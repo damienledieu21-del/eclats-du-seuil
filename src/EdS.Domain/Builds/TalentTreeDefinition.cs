@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdS.Domain.Collections;
 
 namespace EdS.Domain.Builds
 {
@@ -14,7 +15,7 @@ namespace EdS.Domain.Builds
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));
-            Talents = talents ?? throw new ArgumentNullException(nameof(talents));
+            Talents = Frozen.List(talents, nameof(talents));
         }
     }
 }

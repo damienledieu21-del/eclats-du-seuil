@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "rules",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "stats": {
       "base": {

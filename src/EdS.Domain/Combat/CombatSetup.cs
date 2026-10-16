@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using EdS.Domain;
 using EdS.Domain.Builds;
+using EdS.Domain.Collections;
 using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
 
@@ -114,7 +115,7 @@ namespace EdS.Domain.Combat
             Target = target;
             FirstAttackMs = firstAttackMs;
             IntervalMs = intervalMs;
-            Attacks = (attacks ?? throw new ArgumentNullException(nameof(attacks))).ToArray();
+            Attacks = Frozen.List(attacks, nameof(attacks));
         }
     }
 
@@ -143,7 +144,7 @@ namespace EdS.Domain.Combat
         public const string Parry = "parry";
 
         /// <summary>Actions qu'on écrit dans le champ <c>action</c> d'une commande (la compétence s'écrit avec <c>skill</c>).</summary>
-        public static IReadOnlyList<string> Defensive { get; } = new[] { GuardStart, GuardStop, Parry };
+        public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
 
         public static string Of(CombatAction action) => action switch
         {
@@ -228,7 +229,7 @@ namespace EdS.Domain.Combat
         public CombatDataIdentity(DataFileIdentity rules, IEnumerable<DataFileIdentity> classes)
         {
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
-            Classes = (classes ?? throw new ArgumentNullException(nameof(classes))).OrderBy(c => c.Id, StringComparer.Ordinal).ToArray();
+            Classes = Frozen.List((classes ?? throw new ArgumentNullException(nameof(classes))).OrderBy(c => c.Id, StringComparer.Ordinal), nameof(classes));
         }
     }
 
@@ -257,12 +258,14 @@ namespace EdS.Domain.Combat
             Damage = damage ?? throw new ArgumentNullException(nameof(damage));
             Progression = progression ?? throw new ArgumentNullException(nameof(progression));
             Combat = combat ?? throw new ArgumentNullException(nameof(combat));
-            Combatants = (combatants ?? throw new ArgumentNullException(nameof(combatants))).ToArray();
-            Commands = (commands ?? throw new ArgumentNullException(nameof(commands))).ToArray();
+            // Copies figées (M05) : la liste validée est exactement celle que le moteur simulera.
+            Combatants = Frozen.List(combatants, nameof(combatants));
+            Commands = Frozen.List(commands, nameof(commands));
             Data = data ?? throw new ArgumentNullException(nameof(data));
         }
 
-        private static readonly Regex NamePattern = new Regex("^[a-z][a-z0-9_]*$", RegexOptions.CultureInvariant);
+        // Correctif 6.1 : \z exige la fin de la chaîne (« $ » acceptait « bastion\n »).
+        private static readonly Regex NamePattern = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
         /// <summary>Identifiant de combattant ou d'équipe valide : minuscules, chiffres et « _ ».</summary>
         public static bool IsValidName(string? name) => name != null && NamePattern.IsMatch(name);
@@ -308,8 +311,8 @@ namespace EdS.Domain.Combat
                         ValidateCharacter(character, path, tick, errors);
                         break;
                     case DummySetup dummy:
-                        if (dummy.Armor < Fixed.Zero) errors.Add(new RuleViolation("l'armure du mannequin ne peut pas être négative.", path + ".armor"));
-                        if (dummy.MagicResistance < Fixed.Zero) errors.Add(new RuleViolation("la résistance magique du mannequin ne peut pas être négative.", path + ".magicResistance"));
+                        Defense(dummy.Armor, "l'armure du mannequin", path + ".armor", errors);
+                        Defense(dummy.MagicResistance, "la résistance magique du mannequin", path + ".magicResistance", errors);
                         break;
                     case AssailantSetup assailant:
                         ValidateAssailantShape(assailant, path, tick, errors);
@@ -328,6 +331,8 @@ namespace EdS.Domain.Combat
                     else if (target.Team == assailant.Team)
                         errors.Add(new RuleViolation("la cible de l'assaillant doit être un ennemi.", $"combatants[{i}].target"));
                 }
+            if (errors.Count == 0)
+                for (int i = 0; i < Combatants.Count; i++) ValidateNumericLimits(i, Combatants[i], errors);
             if (Combatants.Select(c => c.Team).Distinct(StringComparer.Ordinal).Count() < 2)
                 errors.Add(new RuleViolation("un combat oppose au moins deux équipes.", "combatants"));
 
@@ -360,8 +365,8 @@ namespace EdS.Domain.Combat
 
         private void ValidateAssailantShape(AssailantSetup a, string path, long tick, List<RuleViolation> errors)
         {
-            if (a.Armor < Fixed.Zero) errors.Add(new RuleViolation("l'armure de l'assaillant ne peut pas être négative.", path + ".armor"));
-            if (a.MagicResistance < Fixed.Zero) errors.Add(new RuleViolation("la résistance magique de l'assaillant ne peut pas être négative.", path + ".magicResistance"));
+            Defense(a.Armor, "l'armure de l'assaillant", path + ".armor", errors);
+            Defense(a.MagicResistance, "la résistance magique de l'assaillant", path + ".magicResistance", errors);
             if (a.FirstAttackMs < 0 || a.FirstAttackMs > Combat.MaxDurationMs)
                 errors.Add(new RuleViolation($"instant hors de [0, {Combat.MaxDurationMs}] ms.", path + ".firstAttackMs"));
             else if (a.FirstAttackMs % tick != 0)
@@ -380,7 +385,8 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation($"identifiant « {attack.Id} » invalide : minuscules, chiffres et « _ », commençant par une lettre.", attackPath + ".id"));
                 else if (!seen.Add(attack.Id))
                     errors.Add(new RuleViolation(RuleViolationKind.DuplicateId, $"attaque « {attack.Id} » déjà définie.", attackPath + ".id"));
-                if (attack.RawDamage < 0) errors.Add(new RuleViolation("les dégâts bruts ne peuvent pas être négatifs.", attackPath + ".rawDamage"));
+                if (attack.RawDamage < 0 || attack.RawDamage > CombatantStats.MaxRawDamage)
+                    errors.Add(new RuleViolation($"dégâts bruts hors de [0, {CombatantStats.MaxRawDamage}].", attackPath + ".rawDamage"));
                 if (!Enum.IsDefined(typeof(DamageType), attack.DamageType)) errors.Add(new RuleViolation("type de dégâts inconnu.", attackPath + ".damageType"));
                 if (!Enum.IsDefined(typeof(SkillTargeting), attack.Targeting)) errors.Add(new RuleViolation("ciblage inconnu.", attackPath + ".targeting"));
             }
@@ -397,13 +403,63 @@ namespace EdS.Domain.Combat
             foreach (SkillDefinition skill in character.Class.Skills)
                 if (skill.Combat is { } combat && combat.CooldownMs % tick != 0)
                     errors.Add(new RuleViolation($"recharge de « {skill.Name} » ({combat.CooldownMs} ms) non multiple de la durée du tick ({tick} ms).", path + ".class"));
+        }
+
+        private static void Defense(Fixed value, string label, string path, List<RuleViolation> errors)
+        {
+            if (value < Fixed.Zero || value > CombatantStats.MaxDefense)
+                errors.Add(new RuleViolation($"{label} doit être comprise entre 0 et {CombatantStats.MaxDefense}.", path));
+        }
+
+        /// <summary>
+        /// Correctif 6.1 (M04) : calcule à l'avance, pour chaque combattant, tout ce que le moteur calculera à sa
+        /// construction (statistiques, PV, endurance, puissance de chaque attaque), puis le pire impact possible
+        /// (puissance maximale, critique, Fragilité, aucune défense ni réduction) et le cumul de ces impacts sur toute
+        /// la durée au rythme maximal d'événements. Un dépassement est refusé ici, avant le premier tick, au lieu
+        /// d'échouer à la construction du moteur ou d'interrompre le combat.
+        /// </summary>
+        private void ValidateNumericLimits(int index, CombatantSetup combatant, List<RuleViolation> errors)
+        {
+            string path = $"combatants[{index}]";
+            string at = combatant is CharacterSetup ? path + ".build.attributes" : path;
             try
             {
-                DerivedStats.Calculate(Stats, character.Build.Attributes);
+                DerivedStats undefended = CombatantStats.ForDefenses(Stats, Fixed.Zero, Fixed.Zero);
+                DamageBonuses worstBonuses = DamageBonuses.None.Add(BonusCategory.Alteration, Combat.FragilityDamageTakenIncrease);
+                long worstHit = 0;
+                switch (combatant)
+                {
+                    case CharacterSetup character:
+                        DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build);
+                        stats.MaxHealth.RoundToInt(RoundingMode.Floor);
+                        stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
+                        at = path;
+                        foreach (SkillDefinition skill in character.Class.Skills)
+                            if (skill.Combat is { } combat)
+                                worstHit = Math.Max(worstHit, DamageCalculator.Compute(new DamageInput(stats, undefended, combat.PowerType,
+                                    combat.DamageType, combat.Coefficient, worstBonuses, true, Fixed.Zero), Damage).FinalDamage);
+                        break;
+                    case DummySetup dummy:
+                        CombatantStats.ForDefenses(Stats, dummy.Armor, dummy.MagicResistance);
+                        break;
+                    case AssailantSetup assailant:
+                        CombatantStats.ForDefenses(Stats, assailant.Armor, assailant.MagicResistance);
+                        foreach (AssailantAttack attack in assailant.Attacks)
+                        {
+                            DerivedStats attackStats = CombatantStats.ForAssailantAttack(Stats, attack.RawDamage);
+                            worstHit = Math.Max(worstHit, DamageCalculator.Compute(new DamageInput(attackStats, undefended,
+                                CombatantStats.PowerOf(attack.DamageType), attack.DamageType, Fixed.One, worstBonuses, false, Fixed.Zero), Damage).FinalDamage);
+                        }
+                        break;
+                }
+                long maxImpacts = checked(DurationMs / Combat.TickMilliseconds * Combat.MaxEventsPerTick);
+                _ = checked(worstHit * maxImpacts);
             }
             catch (OverflowException)
             {
-                errors.Add(new RuleViolation("statistiques dérivées hors des limites numériques.", path + ".build.attributes"));
+                errors.Add(new RuleViolation(at == path
+                    ? "dégâts hors des limites numériques du moteur (pire impact ou cumul sur la durée du combat)."
+                    : "statistiques dérivées hors des limites numériques.", at));
             }
         }
     }

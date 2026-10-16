@@ -20,7 +20,7 @@ namespace EdS.Data
         public GameData(LoadedRules rules, IEnumerable<LoadedClass> classes)
         {
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
-            Classes = (classes ?? throw new ArgumentNullException(nameof(classes))).OrderBy(c => c.Definition.Id, StringComparer.Ordinal).ToArray();
+            Classes = EdS.Domain.Collections.Frozen.List((classes ?? throw new ArgumentNullException(nameof(classes))).OrderBy(c => c.Definition.Id, StringComparer.Ordinal), nameof(classes));
             _classes = new Dictionary<string, LoadedClass>(StringComparer.Ordinal);
             foreach (LoadedClass c in Classes)
             {

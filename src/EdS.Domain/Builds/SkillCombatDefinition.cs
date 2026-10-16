@@ -22,6 +22,12 @@ namespace EdS.Domain.Builds
     /// </summary>
     public sealed class SkillCombatDefinition
     {
+        /// <summary>Coefficient maximal (correctif 6.1, M04) : 100 = 10 000 % de la puissance, très au-delà du jeu prévu.</summary>
+        public static readonly Fixed MaxCoefficient = Fixed.FromInt(100);
+
+        /// <summary>Plafond des coûts et gains entiers d'une compétence (correctif 6.1).</summary>
+        public const int MaxCost = 1_000_000;
+
         public PowerType PowerType { get; }
         public DamageType DamageType { get; }
 

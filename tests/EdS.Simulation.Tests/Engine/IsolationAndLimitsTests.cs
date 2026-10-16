@@ -71,16 +71,16 @@ public class IsolationAndLimitsTests
     }
 
     [Fact]
-    public void Debordement_numerique_detecte_et_journalise()
+    public void Debordement_numerique_refuse_avant_le_premier_tick()
     {
-        // Coefficient démesuré : le produit dépasse la plage de Fixed ; jamais d'enroulement silencieux.
+        // Correctif 6.1 (M04) : un coefficient démesuré était accepté puis interrompait le combat (« overflow »).
+        // Il est désormais refusé par la validation, avant toute construction de l'état du combat.
         var huge = Class(frappeCoefficient: "1000000000");
         var setup = Setup(new[] { Cmd(0, Frappe) }, new CombatantSetup[] { Character(definition: huge, attributes: Attrs(force: 1_000_000)), Dummy() });
-        var (result, log) = Run(setup);
-        Assert.Equal(CombatEndReason.Aborted, result.EndReason);
-        Assert.Equal("overflow", result.AbortReason);
-        Assert.Empty(Events(log).OfKind("damage"));
-        Assert.Equal(log.ToString(), Run(setup).Log.ToString());   // même interruption, même journal
+        var log = new MemoryCombatLog();
+        var error = Assert.Throws<CombatSetupException>(() => new CombatEngine(setup, log));
+        Assert.Contains(error.Violations, v => v.Fields.Any(f => f.EndsWith(".coefficient")));
+        Assert.Empty(log.Lines);   // rien n'est journalisé : le combat n'a pas commencé
     }
 
     [Fact]

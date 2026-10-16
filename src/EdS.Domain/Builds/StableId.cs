@@ -9,7 +9,8 @@ namespace EdS.Domain.Builds
     /// </summary>
     public static class StableId
     {
-        private static readonly Regex Pattern = new Regex(@"^[a-z]+(\.[a-z0-9_]+)+$", RegexOptions.CultureInvariant);
+        // Correctif 6.1 : \z exige la fin de la chaîne (« $ » acceptait un saut de ligne final) ; classes ASCII explicites.
+        private static readonly Regex Pattern = new Regex(@"^[a-z]+(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
         public static bool IsValid(string? id) => id != null && Pattern.IsMatch(id);
 

@@ -8,6 +8,7 @@ namespace EdS.Simulation.Tests.Engine;
 
 /// <summary>Parade parfaite (A2) : fenêtre semi-ouverte de 3 ticks, récompense unique, récupération, priorité sur la garde.</summary>
 [Trait("Category", "Engine")]
+[Trait("Category", "Resources")]
 public class ParryTests
 {
     private static (CombatResult Result, List<JsonElement> Events) Fight(IEnumerable<CombatCommand> commands, params CombatantSetup[] others)

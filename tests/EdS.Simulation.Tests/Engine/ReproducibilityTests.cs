@@ -39,12 +39,23 @@ public class ReproducibilityTests
         return Run(setup).Log.ToString() == Run(setup).Log.ToString();
     }
 
+    /// <summary>Décisions aléatoires d'un combat : le résultat du tirage critique de chaque impact, dans l'ordre.</summary>
+    private static string CriticalDecisions(long seed) =>
+        string.Concat(Events(Run(Setup(Rotation(30_000), seed: seed, durationMs: 30_000)).Log).OfKind("damage")
+            .Select(e => e.GetProperty("critical").GetBoolean() ? '1' : '0'));
+
     [Fact]
-    public void Graines_differentes_journaux_differents()
+    public void Graines_differentes_decisions_aleatoires_differentes()
     {
-        // Sur 30 s, les tirages critiques diffèrent presque toujours : on vérifie qu'au moins une graine sur dix s'écarte.
-        string reference = Run(Setup(Rotation(30_000), seed: 1, durationMs: 30_000)).Log.ToString();
-        Assert.Contains(Enumerable.Range(2, 10), s => Run(Setup(Rotation(30_000), seed: s, durationMs: 30_000)).Log.ToString() != reference);
+        // Correctif 6.1 : on compare les décisions aléatoires elles-mêmes, pas le journal entier, dont l'en-tête contient
+        // la graine et différait donc toujours, même avec un générateur constant.
+        string reference = CriticalDecisions(1);
+        Assert.True(reference.Length >= 10, "trop peu d'impacts pour juger les tirages");
+        var decisions = Enumerable.Range(2, 10).Select(s => CriticalDecisions(s)).ToList();
+        Assert.All(decisions, d => Assert.Equal(reference.Length, d.Length));   // même déroulé hors aléa
+        Assert.Contains(decisions, d => d != reference);
+        Assert.True(decisions.Distinct().Count() >= 5, "les graines devraient produire des séquences de critiques variées");
+        Assert.Equal(reference, CriticalDecisions(1));                          // et la même graine, les mêmes décisions
     }
 
     [Fact]
@@ -52,7 +63,7 @@ public class ReproducibilityTests
     {
         var events = Run(Setup(new[] { Cmd(0, Frappe) }, seed: 7)).Log.Lines;
         string header = events[0];
-        Assert.StartsWith("{\"type\":\"header\",\"format\":\"eds-combat-log\",\"formatVersion\":1,\"engineVersion\":\"0.6.0\",\"tickMs\":50,", header);
+        Assert.StartsWith("{\"type\":\"header\",\"format\":\"eds-combat-log\",\"formatVersion\":2,\"engineVersion\":\"0.6.1\",\"tickMs\":50,", header);
         Assert.Contains("\"fingerprint\":\"sha256:regles\"", header);
         Assert.Contains("\"fingerprint\":\"sha256:classe\"", header);
         Assert.Contains("\"seed\":7", header);
@@ -69,7 +80,7 @@ public class ReproducibilityTests
         Assert.Equal(ReferenceHash, hash);
     }
 
-    internal const string ReferenceHash = "56f6029cd3759980238e3dadb26ac688aff5a1427e29eda69a1cb70fc84f184d";
+    internal const string ReferenceHash = "20946456e6803b605cbc85826ea35f8875e20de016953e6f276c06f87668d6eb";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

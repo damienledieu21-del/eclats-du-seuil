@@ -21,7 +21,7 @@ Un majeur coûte 1 point après les 18 : 19 points pour un majeur, il en reste 1
 
 ```json
 {
-  "schemaVersion": 1, "kind": "class", "contentVersion": "0.1.0-provisoire",
+  "schemaVersion": 2, "kind": "class", "contentVersion": "0.2.0-provisoire",
   "data": {
     "id": "class.bastion", "name": "Bastion",
     "trees": [ { "id": "tree.bastion.rempart", "name": "Rempart", "talents": [
@@ -35,7 +35,7 @@ Un majeur coûte 1 point après les 18 : 19 points pour un majeur, il en reste 1
 
 Identifiants stables préfixés (`class.`, `tree.`, `talent.`, `skill.`), minuscules, chiffres et `_` ; jamais renommés ni réutilisés. Tous les champs sont obligatoires.
 
-Vérifications de cohérence (`ClassDefinition.Validate`) : identifiants bien formés et uniques, noms non vides, nombre d'arbres, rang maximum ≥ 1 (1 pour un majeur), prérequis connus, non dupliqués, non réflexifs, de rang dans [1, rang max], pas de majeur exigeant un majeur, pas de cycle, chaque majeur atteignable (assez de points hors majeurs et hors talents qui en dépendent), niveau minimal de compétence valide, ultime pas avant le niveau 10.
+Vérifications de cohérence (`ClassDefinition.Validate`) : identifiants bien formés et uniques, noms non vides, nombre d'arbres, rang maximum dans [1, 100] (1 pour un majeur), prérequis connus, non dupliqués, non réflexifs, de rang dans [1, rang max], pas de majeur exigeant un majeur, pas de cycle, chaque majeur atteignable (assez de points hors majeurs et hors talents qui en dépendent), niveau minimal de compétence valide, ultime pas avant le niveau 10.
 
 ## Mini-arbre du Bastion (provisoire)
 
@@ -62,7 +62,9 @@ Les deux sont parables, sans coût ni gain de Charges. Les autres actives et l'u
 
 Un build donne la classe, le niveau, les attributs (explicites), les rangs de talents, les actives (dans l'ordre des emplacements), l'ultime et les passifs. Toutes les erreurs sont rapportées, avec un code stable et l'élément concerné :
 
-`WrongClass`, `LevelOutOfRange`, `UnknownTalent`, `RankOutOfRange`, `TooManyPoints`, `PrerequisiteNotMet`, `MajorThresholdNotMet`, `TooManyMajorTalents`, `UnknownSkill`, `WrongSlotKind`, `DuplicateSkill`, `TooManySkills`, `SkillLevelTooLow`, `SkillRequirementNotMet`, `UltimateLocked`.
+`WrongClass`, `LevelOutOfRange`, `UnknownTalent`, `RankOutOfRange`, `TooManyPoints`, `PrerequisiteNotMet`, `MajorThresholdNotMet`, `TooManyMajorTalents`, `UnknownSkill`, `WrongSlotKind`, `DuplicateSkill`, `TooManySkills`, `SkillLevelTooLow`, `SkillRequirementNotMet`, `UltimateLocked`, `InvalidProgressionRules` et `AttributeOutOfRange` (correctif 6.1).
+
+Entrées extrêmes (correctif 6.1, M03) : aucune valeur, même `int.MinValue` ou `int.MaxValue` (rangs, niveau, attributs, règles de progression), ne provoque d'exception. Les sommes de rangs sont calculées sur 64 bits ; des règles de progression incohérentes donnent un seul diagnostic `InvalidProgressionRules` ; les attributs sont plafonnés à 1 000 000. Bornes des règles de progression : `maxLevel` et `talentPoints.firstLevel` dans [1, 1000], `perLevel` dans [0, 1000], seuil et maximum de majeurs dans [0, 1 000 000], `treesPerClass` dans [1, 100], au plus 100 emplacements par liste.
 
 La validation est statique (allocation finale) mais respecte l'ordre d'acquisition : les talents qui dépendent d'un majeur ne comptent pas dans son seuil de 18. Les points non dépensés sont autorisés.
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Domain.Stats;
 
 namespace EdS.Domain.Builds
 {
@@ -22,6 +23,12 @@ namespace EdS.Domain.Builds
         SkillLevelTooLow,
         SkillRequirementNotMet,
         UltimateLocked,
+
+        /// <summary>Règles de progression incohérentes : le build ne peut pas être jugé (correctif 6.1).</summary>
+        InvalidProgressionRules,
+
+        /// <summary>Attribut hors de [0, <see cref="BuildValidator.MaxAttributeValue"/>] (correctif 6.1).</summary>
+        AttributeOutOfRange,
     }
 
     /// <summary>Une raison de refus, rattachée à l'élément concerné (talent, compétence, emplacement).</summary>
@@ -52,6 +59,16 @@ namespace EdS.Domain.Builds
     /// </summary>
     public static class BuildValidator
     {
+        /// <summary>
+        /// Plafond de chaque attribut (correctif 6.1, M03). Très au-delà du jeu prévu, il garantit que les statistiques
+        /// dérivées restent calculables ; au-delà, le build est refusé avec un diagnostic, jamais par une exception.
+        /// </summary>
+        public const int MaxAttributeValue = 1_000_000;
+
+        /// <summary>
+        /// Toutes les raisons de refus. Aucune entrée (rangs, niveau, attributs, règles de progression), même extrême
+        /// (<c>int.MinValue</c>, <c>int.MaxValue</c>), ne provoque d'exception : les sommes sont calculées sur 64 bits.
+        /// </summary>
         public static IReadOnlyList<BuildViolation> Validate(CharacterBuild build, ClassDefinition definition, ProgressionRules progression)
         {
             if (build is null) throw new ArgumentNullException(nameof(build));
@@ -59,6 +76,13 @@ namespace EdS.Domain.Builds
             if (progression is null) throw new ArgumentNullException(nameof(progression));
 
             var errors = new List<BuildViolation>();
+            IReadOnlyList<RuleViolation> rules = progression.Validate();
+            if (rules.Count > 0)
+            {
+                errors.Add(new BuildViolation(BuildViolationCode.InvalidProgressionRules, "progression",
+                    "règles de progression incohérentes : " + string.Join(" ; ", rules.Select(r => r.ToString())) + "."));
+                return errors;   // niveaux, points et emplacements en dépendent
+            }
             if (build.ClassId != definition.Id)
                 errors.Add(new BuildViolation(BuildViolationCode.WrongClass, "classId",
                     $"build de la classe « {build.ClassId} » validé avec la définition « {definition.Id} »."));
@@ -70,6 +94,11 @@ namespace EdS.Domain.Builds
                 return errors;   // les limites suivantes dépendent du niveau
             }
 
+            foreach (AttributeKind kind in (AttributeKind[])Enum.GetValues(typeof(AttributeKind)))
+                if (build.Attributes[kind] > MaxAttributeValue)
+                    errors.Add(new BuildViolation(BuildViolationCode.AttributeOutOfRange, "attributes." + kind.ToString().ToLowerInvariant(),
+                        $"attribut {build.Attributes[kind]} hors de [0, {MaxAttributeValue}]."));
+
             ValidateTalents(build, definition, progression, errors);
             ValidateSkills(build, definition, progression, errors);
             return errors;
@@ -78,9 +107,9 @@ namespace EdS.Domain.Builds
         public static bool IsValid(CharacterBuild build, ClassDefinition definition, ProgressionRules progression) =>
             Validate(build, definition, progression).Count == 0;
 
-        /// <summary>Points investis dans une branche (somme des rangs de ses talents).</summary>
-        public static int PointsInTree(CharacterBuild build, TalentTreeDefinition tree) =>
-            tree.Talents.Sum(t => build.TalentRanks.TryGetValue(t.Id, out int rank) && rank > 0 ? rank : 0);
+        /// <summary>Points investis dans une branche (somme des rangs positifs de ses talents, sur 64 bits : jamais de dépassement).</summary>
+        public static long PointsInTree(CharacterBuild build, TalentTreeDefinition tree) =>
+            tree.Talents.Sum(t => build.TalentRanks.TryGetValue(t.Id, out int rank) && rank > 0 ? (long)rank : 0L);
 
         private static int Rank(CharacterBuild build, string talentId) =>
             build.TalentRanks.TryGetValue(talentId, out int rank) ? rank : 0;
@@ -114,16 +143,16 @@ namespace EdS.Domain.Builds
                 {
                     majors.Add(talent);
                     ISet<string> dependents = definition.DependentsOf(talent.Id);
-                    int invested = tree.Talents
+                    long invested = tree.Talents
                         .Where(t => t.Id != talent.Id && !dependents.Contains(t.Id))
-                        .Sum(t => Math.Max(0, Rank(build, t.Id)));
+                        .Sum(t => (long)Math.Max(0, Rank(build, t.Id)));
                     if (invested < progression.MajorTalentThreshold)
                         errors.Add(new BuildViolation(BuildViolationCode.MajorThresholdNotMet, entry.Key,
                             $"talent majeur « {talent.Name} » : {invested} point(s) investi(s) dans « {tree.Name} », {progression.MajorTalentThreshold} requis avant de l'acquérir."));
                 }
             }
 
-            int available = progression.TalentPoints(build.Level);
+            long available = progression.TalentPoints(build.Level);   // règles validées : borné
             if (spent > available)
                 errors.Add(new BuildViolation(BuildViolationCode.TooManyPoints, "talents",
                     $"{spent} point(s) dépensé(s) pour {available} disponible(s) au niveau {build.Level}."));

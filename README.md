@@ -30,6 +30,9 @@ dotnet test --filter Category=Formula
 dotnet test --filter Category=Data
 dotnet test --filter Category=Build
 dotnet test --filter Category=Engine
+dotnet test --filter Category=Resources   # garde, parade, ressources, états (lot 6)
+dotnet test --filter Category=Regression  # non-régression du correctif 6.1 (M01 à M05)
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression   # échoue si une catégorie est vide
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
@@ -59,6 +62,8 @@ Arbitrages du lot 5 : endurance +10/s après 1 s sans dépense, plafonnée, refu
 
 Arbitrages du lot 6 : garde en posture (`guardStart`/`guardStop`), −60 % après armure, 2 endurance/s et 10 par impact bloqué, rupture de 3 s si l'endurance manque, régénération suspendue (A1) ; parade parfaite horodatée, fenêtre [P, P + 3 ticks[, −90 %, +1 Charge, récupération de 500 ms après échec, prioritaire sur la garde sans cumul (A2) ; Charges de rempart 0 à 5, sans gain passif ni décroissance, remises à zéro en fin de combat (A4) ; Résonance 0 à 100, +3 par attaque réussie (une fois par action), +8 par parade, +2 par blocage, ultime à 100, sans génération récursive (A5) ; Fragilité +10 % pendant 6 s renouvelée sans cumul, rupture de garde de 3 s (A19) ; assaillant d'entraînement à PV infinis, 100 bruts toutes les 2 s, sans critique, attaques bloquables ou imparables (A21). Détail : [docs/MOTEUR.md](docs/MOTEUR.md).
 
+Correctif 6.1 (stabilisation, avant le lot 7) : entretien de garde cumulé sur tout le combat, identité et génération des états temporaires, validateurs sans dépassement, limites numériques vérifiées avant le premier tick, collections figées, formats de règles et de classes en version 2 sans migration garantie (pré-alpha), moteur 0.6.1 et journal au format 2. Contrat de limites du lot 7 : [docs/LIMITES_LOT_7.md](docs/LIMITES_LOT_7.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -70,3 +75,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 4 — classes, talents, compétences équipables, validateur de builds
 - [x] Lot 5 — moteur de simulation minimal (horloge, commandes, recharges, endurance, dégâts directs, journal, rejeu)
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
+- [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit

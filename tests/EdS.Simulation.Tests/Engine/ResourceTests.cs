@@ -9,6 +9,7 @@ namespace EdS.Simulation.Tests.Engine;
 
 /// <summary>Charges de rempart (A4) et Résonance (A5) : bornes, sources, consommateurs, zone, ultime, remise à zéro.</summary>
 [Trait("Category", "Engine")]
+[Trait("Category", "Resources")]
 public class ResourceTests
 {
     private static readonly CombatantSetup[] TankVsDummies = { Tank(actives: new[] { Frappe, Onde, Rempart, Recharge }), Dummy("cible_a"), Dummy("cible_b") };

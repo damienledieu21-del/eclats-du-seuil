@@ -16,7 +16,9 @@ namespace EdS.Data.Rules
         public string? ContentVersion { get; set; }
 
         /// <summary>Valeurs indexées par chemin sous <c>data</c> (voir <see cref="RulesCatalog"/>).</summary>
-        public IReadOnlyDictionary<string, RuleValue> Values => _values;
+        public IReadOnlyDictionary<string, RuleValue> Values { get; }
+
+        public RulesDocument() => Values = new System.Collections.ObjectModel.ReadOnlyDictionary<string, RuleValue>(_values);
 
         public void Set(string path, RuleValue value) => _values[path] = value;
 

@@ -49,12 +49,21 @@ namespace EdS.Simulation.Engine
         private readonly List<Entry> _heap = new List<Entry>();
         private long _nextSequence;
 
+        // Position (tick, phase) la plus avancée déjà demandée à TryDequeue. Correctif 6.1 : un événement programmé avant
+        // elle resterait en tête du tas et bloquerait silencieusement toute la file ; il est refusé (voir LIMITES_LOT_7.md).
+        private bool _started;
+        private long _cursorTick;
+        private CombatPhase _cursorPhase;
+
         public int Count => _heap.Count;
 
         /// <summary>Ajoute un élément et renvoie sa séquence.</summary>
         public long Enqueue(long tick, CombatPhase phase, T item)
         {
             if (tick < 0) throw new ArgumentOutOfRangeException(nameof(tick), tick, "Tick négatif.");
+            if (_started && (tick < _cursorTick || (tick == _cursorTick && phase < _cursorPhase)))
+                throw new InvalidOperationException(
+                    $"Événement programmé dans une phase déjà passée ({tick}, {phase}) alors que la file est en ({_cursorTick}, {_cursorPhase}).");
             long sequence = _nextSequence++;
             _heap.Add(new Entry(tick, phase, sequence, item));
             int i = _heap.Count - 1;
@@ -71,6 +80,12 @@ namespace EdS.Simulation.Engine
         /// <summary>Retire le premier élément s'il est prévu exactement à ce tick et dans cette phase.</summary>
         public bool TryDequeue(long tick, CombatPhase phase, out T item)
         {
+            if (!_started || tick > _cursorTick || (tick == _cursorTick && phase > _cursorPhase))
+            {
+                _started = true;
+                _cursorTick = tick;
+                _cursorPhase = phase;
+            }
             if (_heap.Count == 0 || _heap[0].Tick != tick || _heap[0].Phase != phase)
             {
                 item = default!;

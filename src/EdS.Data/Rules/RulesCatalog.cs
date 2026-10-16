@@ -34,7 +34,7 @@ namespace EdS.Data.Rules
             Kind = kind;
             Owner = owner;
             Property = property;
-            AllowedTokens = allowedTokens ?? Array.Empty<string>();
+            AllowedTokens = EdS.Domain.Collections.Frozen.ListOrEmpty(allowedTokens, nameof(allowedTokens));
         }
     }
 
@@ -62,24 +62,24 @@ namespace EdS.Data.Rules
         }
 
         public static IReadOnlyList<string> RoundingTokens { get; } =
-            ((RoundingMode[])Enum.GetValues(typeof(RoundingMode))).Select(Id).ToArray();
+            EdS.Domain.Collections.Frozen.List(((RoundingMode[])Enum.GetValues(typeof(RoundingMode))).Select(Id), nameof(RoundingTokens));
 
         /// <summary>
         /// Objets dont les clés sont des identifiants du domaine : une clé inconnue y est une référence invalide,
         /// pas une simple faute de frappe. Valeur : libellé utilisé dans les messages.
         /// </summary>
-        public static IReadOnlyDictionary<string, string> ReferenceMaps { get; } = new Dictionary<string, string>
+        public static IReadOnlyDictionary<string, string> ReferenceMaps { get; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>
         {
             ["stats.perAttribute"] = "attribut",
             ["damage.defenseConstants"] = "type de dégâts",
-        };
+        });
 
         private static readonly Type S = typeof(StatRules);
         private static readonly Type D = typeof(DamageRules);
         private static readonly Type P = typeof(ProgressionRules);
         private static readonly Type C = typeof(CombatRules);
 
-        public static IReadOnlyList<RuleField> Fields { get; } = new[]
+        public static IReadOnlyList<RuleField> Fields { get; } = Array.AsReadOnly(new[]
         {
             new RuleField("stats.base.physicalPower", RuleValueKind.Decimal, S, nameof(StatRules.BasePhysicalPower)),
             new RuleField("stats.base.agilePower", RuleValueKind.Decimal, S, nameof(StatRules.BaseAgilePower)),
@@ -143,7 +143,7 @@ namespace EdS.Data.Rules
             new RuleField("combat.resonance.ultimateCost", RuleValueKind.Int32, C, nameof(CombatRules.UltimateResonanceCost)),
             new RuleField("combat.states.fragility.durationMs", RuleValueKind.Int64, C, nameof(CombatRules.FragilityDurationMs)),
             new RuleField("combat.states.fragility.damageTakenIncrease", RuleValueKind.Decimal, C, nameof(CombatRules.FragilityDamageTakenIncrease)),
-        };
+        });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);
 

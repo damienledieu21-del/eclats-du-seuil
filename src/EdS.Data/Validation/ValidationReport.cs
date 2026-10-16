@@ -10,7 +10,9 @@ namespace EdS.Data.Validation
     {
         private readonly List<ValidationError> _errors = new List<ValidationError>();
 
-        public IReadOnlyList<ValidationError> Errors => _errors;
+        public IReadOnlyList<ValidationError> Errors { get; }
+
+        public ValidationReport() => Errors = _errors.AsReadOnly();
         public bool IsValid => _errors.Count == 0;
 
         public void Add(string path, ValidationCode code, string message, long? line = null) =>

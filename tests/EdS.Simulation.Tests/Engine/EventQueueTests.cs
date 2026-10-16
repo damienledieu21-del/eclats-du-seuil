@@ -35,6 +35,25 @@ public class EventQueueTests
     }
 
     [Fact]
+    public void Evenement_dans_une_phase_deja_passee_refuse()
+    {
+        // Correctif 6.1 : avant, il restait en tête du tas et bloquait silencieusement toute la file.
+        var queue = new EventQueue<string>();
+        queue.Enqueue(5, CombatPhase.Expirations, "suivant");
+        Assert.False(queue.TryDequeue(3, CombatPhase.Resolution, out _));
+        Assert.Throws<InvalidOperationException>(() => queue.Enqueue(3, CombatPhase.Commands, "passé"));
+        Assert.Throws<InvalidOperationException>(() => queue.Enqueue(2, CombatPhase.EndOfTick, "passé"));
+        queue.Enqueue(3, CombatPhase.Resolution, "phase courante");      // même phase : traité dans la boucle en cours
+        queue.Enqueue(3, CombatPhase.Periodic, "phase suivante");
+        Assert.True(queue.TryDequeue(3, CombatPhase.Resolution, out string current));
+        Assert.Equal("phase courante", current);
+        Assert.True(queue.TryDequeue(3, CombatPhase.Periodic, out string next));
+        Assert.Equal("phase suivante", next);
+        Assert.True(queue.TryDequeue(5, CombatPhase.Expirations, out string later));
+        Assert.Equal("suivant", later);
+    }
+
+    [Fact]
     public void Tick_negatif_refuse() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new EventQueue<int>().Enqueue(-1, CombatPhase.Commands, 0));
 

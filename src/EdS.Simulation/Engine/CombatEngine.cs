@@ -23,10 +23,15 @@ namespace EdS.Simulation.Engine
     public sealed class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.6.0";
+        public const string Version = "0.6.1";
 
         public const string LogFormat = "eds-combat-log";
-        public const int LogFormatVersion = 1;
+
+        /// <summary>
+        /// Version du format du journal. 2 (correctif 6.1) : <c>stateApplied</c> et <c>stateExpired</c> portent
+        /// <c>instance</c> et <c>generation</c> ; nouvel événement <c>stateRemoved</c>. Un journal d'un autre format est refusé au rejeu.
+        /// </summary>
+        public const int LogFormatVersion = 2;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -56,9 +61,12 @@ namespace EdS.Simulation.Engine
             public readonly Dictionary<string, long> CooldownReadyTick = new Dictionary<string, long>(StringComparer.Ordinal);
 
             public bool Guarding;
-            public long GuardStartTick;
+
+            /// <summary>Ticks réellement gardés depuis le début du combat (garde active en phase 4), toutes gardes confondues.</summary>
+            public long GuardedTicks;
+
+            /// <summary>Entretien déjà payé depuis le début du combat : le reliquat fractionnaire n'est jamais perdu (M01).</summary>
             public long GuardUpkeepPaid;
-            public long GuardBrokenUntilTick;     // rupture active tant que tick < valeur
 
             public bool ParryOpen;
             public long ParryStartTick;
@@ -66,7 +74,8 @@ namespace EdS.Simulation.Engine
             public bool ParrySucceeded;
             public long ParryRecoveryUntilTick;   // nouvelle parade refusée tant que tick < valeur
 
-            public long FragileUntilTick;         // Fragilité active tant que tick < valeur
+            /// <summary>États temporaires actifs, au plus une instance par état (non cumulables) ; voir <see cref="StatusInstance"/>.</summary>
+            public readonly Dictionary<string, StatusInstance> Statuses = new Dictionary<string, StatusInstance>(StringComparer.Ordinal);
 
             public int Resonance;
             public int RampartCharges;
@@ -77,8 +86,23 @@ namespace EdS.Simulation.Engine
 
             public string Id => Setup.Id;
             public string Team => Setup.Team;
-            public bool IsGuardBroken(long tick) => tick < GuardBrokenUntilTick;
-            public bool IsFragile(long tick) => tick < FragileUntilTick;
+            public bool IsGuardBroken => Statuses.ContainsKey(GuardBreak);
+            public bool IsFragile => Statuses.ContainsKey(Fragility);
+        }
+
+        /// <summary>
+        /// Instance d'un état temporaire (correctif 6.1, M02). <see cref="Id"/> est unique dans le combat et jamais réutilisé ;
+        /// <see cref="Generation"/> augmente à chaque renouvellement. Une échéance programmée porte le couple (instance,
+        /// génération) en vigueur au moment où elle a été programmée : elle n'agit que si ce couple est toujours celui de
+        /// l'état actif. Une échéance périmée (renouvellement, retrait à la mort, réapplication après expiration) ne
+        /// déclenche donc jamais de transition, et un état non cumulable expire exactement une fois.
+        /// </summary>
+        private sealed class StatusInstance
+        {
+            public long Id;
+            public int Generation;
+            public string State = null!;
+            public long UntilTick;   // actif tant que tick < UntilTick ; retiré en phase 1 du tick UntilTick
         }
 
         private abstract class Scheduled { }
@@ -104,6 +128,8 @@ namespace EdS.Simulation.Engine
         {
             public Fighter Fighter = null!;
             public string State = null!;
+            public long Instance;
+            public int Generation;
         }
 
         private sealed class ParryWindowEnd : Scheduled
@@ -145,6 +171,7 @@ namespace EdS.Simulation.Engine
         private readonly long _parryRecoveryTicks;
         private readonly long _fragilityTicks;
         private long _sequence;
+        private long _lastStatusInstance;
         private int _eventsThisTick;
         private bool _countEvents;
 
@@ -204,7 +231,7 @@ namespace EdS.Simulation.Engine
             {
                 case CharacterSetup character:
                     f.Character = character;
-                    f.Stats = DerivedStats.Calculate(_setup.Stats, character.Build.Attributes);
+                    f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build);
                     f.MaxHealth = f.Stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                     f.Health = f.MaxHealth;
                     f.MaxEndurance = f.Stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
@@ -213,31 +240,17 @@ namespace EdS.Simulation.Engine
                     if (character.Build.Ultimate != null) f.Castable.Add(character.Build.Ultimate);
                     break;
                 case DummySetup dummy:
-                    f.Stats = DefensesOnly(dummy.Armor, dummy.MagicResistance);
+                    f.Stats = CombatantStats.ForDefenses(_setup.Stats, dummy.Armor, dummy.MagicResistance);
                     break;
                 case AssailantSetup assailant:
                     f.Assailant = assailant;
-                    f.Stats = DefensesOnly(assailant.Armor, assailant.MagicResistance);
-                    // Dégâts bruts d'une attaque = puissance du type correspondant, coefficient 1, sans critique.
+                    f.Stats = CombatantStats.ForDefenses(_setup.Stats, assailant.Armor, assailant.MagicResistance);
                     foreach (AssailantAttack attack in assailant.Attacks)
-                        f.AttackStats[attack.Id] = DerivedStats.Calculate(_setup.Stats, Attributes.None, new[]
-                        {
-                            new StatContributions
-                            {
-                                PhysicalPower = Fixed.FromInt(attack.RawDamage) - _setup.Stats.BasePhysicalPower,
-                                MagicPower = Fixed.FromInt(attack.RawDamage) - _setup.Stats.BaseMagicPower,
-                            },
-                        });
+                        f.AttackStats[attack.Id] = CombatantStats.ForAssailantAttack(_setup.Stats, attack.RawDamage);
                     break;
             }
             return f;
         }
-
-        private DerivedStats DefensesOnly(Fixed armor, Fixed magicResistance) =>
-            DerivedStats.Calculate(_setup.Stats, Attributes.None, new[]
-            {
-                new StatContributions { Armor = armor - _setup.Stats.BaseArmor, MagicResistance = magicResistance - _setup.Stats.BaseMagicResistance },
-            });
 
         /// <summary>Flux PCG32 propre à chaque combattant (FNV-1a 64 de son identifiant) : ajouter un combattant ne décale pas les tirages des autres.</summary>
         internal static ulong StreamOf(string id)
@@ -317,9 +330,12 @@ namespace EdS.Simulation.Engine
         private void ExpireState(long tick, StateExpiry expiry)
         {
             Fighter f = expiry.Fighter;
-            long until = expiry.State == Fragility ? f.FragileUntilTick : f.GuardBrokenUntilTick;
-            if (until != tick) return;   // renouvelé depuis : cette échéance est périmée
-            Emit(tick, CombatPhase.Expirations, "stateExpired", w => w.Field("combatant", f.Id).Field("state", expiry.State));
+            // Échéance périmée : état renouvelé (autre génération), retiré, ou remplacé par une nouvelle instance.
+            if (!f.Statuses.TryGetValue(expiry.State, out StatusInstance? status)
+                || status.Id != expiry.Instance || status.Generation != expiry.Generation) return;
+            f.Statuses.Remove(expiry.State);
+            Emit(tick, CombatPhase.Expirations, "stateExpired", w => w
+                .Field("combatant", f.Id).Field("state", status.State).Field("instance", status.Id).Field("generation", status.Generation));
             if (expiry.State == GuardBreak) ResumeRegeneration(f, tick);
         }
 
@@ -357,8 +373,6 @@ namespace EdS.Simulation.Engine
                 case CombatAction.GuardStart:
                     if (Reject(tick, item, actor, CheckGuardStart(tick, actor))) return null;
                     actor.Guarding = true;
-                    actor.GuardStartTick = tick;
-                    actor.GuardUpkeepPaid = 0;
                     Emit(tick, CombatPhase.Commands, "guardStarted", w => w.Field("actor", actor.Id).Field("command", item.Index).Field("endurance", actor.Endurance));
                     return null;
 
@@ -440,7 +454,7 @@ namespace EdS.Simulation.Engine
         private static string? CheckGuardStart(long tick, Fighter actor)
         {
             if (CheckAlive(actor) is { } reason) return reason;
-            if (actor.IsGuardBroken(tick)) return "guardBroken";
+            if (actor.IsGuardBroken) return "guardBroken";
             if (actor.Guarding) return "guardAlreadyActive";
             return null;
         }
@@ -448,7 +462,7 @@ namespace EdS.Simulation.Engine
         private static string? CheckParry(long tick, Fighter actor)
         {
             if (CheckAlive(actor) is { } reason) return reason;
-            if (actor.IsGuardBroken(tick)) return "guardBroken";
+            if (actor.IsGuardBroken) return "guardBroken";
             if (actor.ParryOpen) return "parryActive";
             if (tick < actor.ParryRecoveryUntilTick) return "parryRecovery";
             return null;
@@ -522,7 +536,7 @@ namespace EdS.Simulation.Engine
         {
             Fighter actor = action.Actor;
             bool critical = action.Combat != null && CriticalRoll.Roll(actor.Random, actor.Stats);   // l'assaillant ne critique jamais (aucun tirage)
-            bool fragile = target.IsFragile(tick);
+            bool fragile = target.IsFragile;
             DamageBonuses bonuses = fragile ? DamageBonuses.None.Add(BonusCategory.Alteration, _rules.FragilityDamageTakenIncrease) : DamageBonuses.None;
 
             // Défense de la cible : parade (prioritaire) ou garde ; jamais les deux. Un impact imparable ignore l'une et l'autre.
@@ -568,7 +582,7 @@ namespace EdS.Simulation.Engine
             DamageInput input = action.Combat is { } combat
                 ? new DamageInput(actor.Stats, target.Stats, combat.PowerType, combat.DamageType, combat.Coefficient, bonuses, critical, mitigation)
                 : new DamageInput(actor.AttackStats[action.Attack!.Id], target.Stats,
-                    action.Attack.DamageType == DamageType.Physique ? PowerType.Physique : PowerType.Magique,
+                    CombatantStats.PowerOf(action.Attack.DamageType),
                     action.Attack.DamageType, Fixed.One, bonuses, false, mitigation);
             long amount = DamageCalculator.Compute(input, _setup.Damage).FinalDamage;
 
@@ -593,24 +607,34 @@ namespace EdS.Simulation.Engine
                 Gain(tick, CombatPhase.Resolution, target, Resonance, _rules.ResonancePerPerfectParry, "perfectParry");
             }
             if (blockReward) Gain(tick, CombatPhase.Resolution, target, Resonance, _rules.ResonancePerBlock, "block");
-            if (action.Attack is { AppliesFragility: true }) ApplyFragility(tick, target);
+            if (action.Attack is { AppliesFragility: true }) ApplyState(tick, CombatPhase.Resolution, target, Fragility, _fragilityTicks);
         }
 
-        private void ApplyFragility(long tick, Fighter target)
+        /// <summary>
+        /// Applique un état non cumulable (A19) : une réapplication renouvelle la durée à partir de maintenant, garde
+        /// l'instance et passe à la génération suivante, ce qui périme l'échéance précédente (M02).
+        /// </summary>
+        private void ApplyState(long tick, CombatPhase phase, Fighter f, string state, long durationTicks)
         {
-            // A19 : pas de cumul ; une réapplication renouvelle la durée à partir de maintenant.
-            bool renewed = target.IsFragile(tick);
-            target.FragileUntilTick = checked(tick + _fragilityTicks);
-            _queue.Enqueue(target.FragileUntilTick, CombatPhase.Expirations, new StateExpiry { Fighter = target, State = Fragility });
-            Emit(tick, CombatPhase.Resolution, "stateApplied", w => w
-                .Field("combatant", target.Id).Field("state", Fragility).Field("untilTick", target.FragileUntilTick).Field("renewed", renewed));
+            bool renewed = f.Statuses.TryGetValue(state, out StatusInstance? status);
+            if (status is null)
+            {
+                status = new StatusInstance { Id = ++_lastStatusInstance, State = state };
+                f.Statuses[state] = status;
+            }
+            status.Generation = checked(status.Generation + 1);
+            status.UntilTick = checked(tick + durationTicks);
+            _queue.Enqueue(status.UntilTick, CombatPhase.Expirations,
+                new StateExpiry { Fighter = f, State = state, Instance = status.Id, Generation = status.Generation });
+            Emit(tick, phase, "stateApplied", w => w
+                .Field("combatant", f.Id).Field("state", state).Field("instance", status.Id).Field("generation", status.Generation)
+                .Field("untilTick", status.UntilTick).Field("renewed", renewed));
         }
 
         /// <summary>Rupture de garde (A1, A19) : fin de la garde et de toute fenêtre de parade, ni garde ni parade ni régénération pendant la durée.</summary>
         private void BreakGuard(long tick, CombatPhase phase, Fighter f, string reason)
         {
             f.Guarding = false;
-            f.GuardBrokenUntilTick = checked(tick + _guardBreakTicks);
             f.Result.GuardBreaks++;
             Emit(tick, phase, "guardBroken", w => w.Field("actor", f.Id).Field("reason", reason).Field("endurance", f.Endurance));
             if (f.ParryOpen)
@@ -619,9 +643,7 @@ namespace EdS.Simulation.Engine
                 Emit(tick, phase, "parryEnded", w => w
                     .Field("actor", f.Id).Field("outcome", f.ParrySucceeded ? "success" : "interrupted").Field("recoveryUntilTick", (long?)null));
             }
-            _queue.Enqueue(f.GuardBrokenUntilTick, CombatPhase.Expirations, new StateExpiry { Fighter = f, State = GuardBreak });
-            Emit(tick, phase, "stateApplied", w => w
-                .Field("combatant", f.Id).Field("state", GuardBreak).Field("untilTick", f.GuardBrokenUntilTick).Field("renewed", false));
+            ApplyState(tick, phase, f, GuardBreak, _guardBreakTicks);
         }
 
         // --- Ressources --------------------------------------------------------------------------
@@ -662,21 +684,28 @@ namespace EdS.Simulation.Engine
 
         // --- Phases 4 et 5 : effets périodiques, régénération ------------------------------------
 
-        /// <summary>A1 : entretien de la garde, ⌊ coût/s × ticks gardés × durée du tick / 1000 ⌋ cumulé ; s'il ne peut être payé, la garde est brisée.</summary>
+        /// <summary>
+        /// A1 : entretien de la garde. Un tick est gardé si la garde est active à cette phase (une garde prise puis quittée
+        /// dans le même tick ne compte pas ; prise, quittée et reprise, elle compte une fois). L'entretien dû est
+        /// ⌊ coût/s × ticks gardés depuis le début du combat × durée du tick / 1000 ⌋ : cumulé sur toutes les gardes du
+        /// combat, il ne dépend que du nombre de ticks réellement gardés, quelle que soit leur répartition (M01).
+        /// S'il ne peut être payé, la garde est brisée et ce tick n'est pas compté : le reliquat reste dû.
+        /// </summary>
         private void RunPeriodic(long tick)
         {
             foreach (Fighter f in _fightersById)
             {
                 if (!f.Guarding || f.IsDead) continue;
-                long guardedTicks = tick - f.GuardStartTick + 1;
+                long guardedTicks = checked(f.GuardedTicks + 1);
                 long due = checked(_rules.GuardUpkeepPerSecond * guardedTicks * _tickMs) / 1000;
                 long amount = due - f.GuardUpkeepPaid;
-                if (amount <= 0) continue;
-                if (f.Endurance < amount)
+                if (amount > 0 && f.Endurance < amount)
                 {
                     BreakGuard(tick, CombatPhase.Periodic, f, "upkeep");
                     continue;
                 }
+                f.GuardedTicks = guardedTicks;
+                if (amount <= 0) continue;
                 SpendEndurance(f, amount, tick);
                 f.GuardUpkeepPaid = due;
                 Emit(tick, CombatPhase.Periodic, "guardUpkeep", w => w.Field("actor", f.Id).Field("amount", amount).Field("endurance", f.Endurance));
@@ -695,7 +724,7 @@ namespace EdS.Simulation.Engine
             foreach (Fighter f in _fightersById)
             {
                 if (f.Character is null || f.IsDead || f.RegenFromTick is not long from) continue;
-                if (f.Guarding || f.IsGuardBroken(tick)) continue;
+                if (f.Guarding || f.IsGuardBroken) continue;
                 long regenTicks = tick - from + 1;
                 if (regenTicks <= 0) continue;
                 long target = checked(perSecond * regenTicks * _tickMs) / 1000;
@@ -722,6 +751,15 @@ namespace EdS.Simulation.Engine
                     f.Guarding = false;
                     f.ParryOpen = false;
                     Emit(tick, CombatPhase.EndOfTick, "died", w => w.Field("combatant", f.Id));
+                    // M02 : la mort retire les états actifs (ordre ordinal) ; leurs échéances deviennent périmées.
+                    foreach (string state in f.Statuses.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList())
+                    {
+                        StatusInstance status = f.Statuses[state];
+                        f.Statuses.Remove(state);
+                        Emit(tick, CombatPhase.EndOfTick, "stateRemoved", w => w
+                            .Field("combatant", f.Id).Field("state", state).Field("instance", status.Id).Field("generation", status.Generation)
+                            .Field("reason", "death"));
+                    }
                 }
             }
 
