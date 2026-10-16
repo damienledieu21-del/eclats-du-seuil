@@ -1,15 +1,15 @@
-# Données et validation (lots 3 à 6)
+# Données et validation (lots 3 à 6, correctifs 6.1 et 6.1.1)
 
 ## Fichier de règles
 
-`data/v0/rules.json` centralise tous les paramètres de `StatRules`, `DamageRules` `ProgressionRules` (bloc `progression`, lot 4) et `CombatRules` (bloc `combat` : `tickMs`, `globalCooldownMs`, `endurance.*`, `limits.*` au lot 5 ; `guard.*`, `parry.*`, `rampartCharges.*`, `resonance.*`, `states.fragility.*` au lot 6). Toutes les valeurs provisoires du moteur y sont, aucune n'est codée en dur. `schemaVersion` reste 1. Le schéma `data/schemas/rules.schema.json` sert à l'auto-complétion dans les éditeurs ; la validation qui fait foi est celle du programme.
+`data/v0/rules.json` centralise tous les paramètres de `StatRules`, `DamageRules` `ProgressionRules` (bloc `progression`, lot 4) et `CombatRules` (bloc `combat` : `tickMs`, `globalCooldownMs`, `endurance.*`, `limits.*` au lot 5 ; `guard.*`, `parry.*`, `rampartCharges.*`, `resonance.*`, `states.fragility.*` au lot 6). Toutes les valeurs provisoires du moteur y sont, aucune n'est codée en dur. `schemaVersion` vaut 2 depuis le correctif 6.1 (voir « Versions de format »). Le schéma `data/schemas/rules.schema.json` sert à l'auto-complétion dans les éditeurs ; la validation qui fait foi est celle du programme.
 
 ```json
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 1,                    // forme du fichier ; changement incompatible = +1 et migrateur
+  "schemaVersion": 2,                    // forme du fichier ; changement incompatible = +1, sans migration en pré-alpha
   "kind": "rules",                       // type de fichier attendu
-  "contentVersion": "0.1.0-provisoire",  // version SemVer des valeurs
+  "contentVersion": "0.2.0-provisoire",  // version SemVer des valeurs
   "data": { "stats": { … }, "damage": { … }, "progression": { … }, "combat": { … } }
 }
 ```
@@ -27,7 +27,7 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
                RulesDocument ──► RulesValidator (EdS.Data, commun)
                                     │ en-tête, champs obligatoires, références
                                     ▼
-                               StatRules.Validate / DamageRules.Validate (domaine)
+                               StatRules / DamageRules / ProgressionRules / CombatRules .Validate (domaine)
                                     │ seule validation de gameplay
                                     ▼
                                LoadedRules (règles + versions + empreinte)
@@ -41,8 +41,25 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
 `sha256:…` calculée sur une écriture canonique (version de schéma, puis chaque paramètre dans l'ordre du catalogue). Indépendante des espaces, de l'ordre des clés et de l'écriture des nombres (`2` = `2.0`) ; ignore `contentVersion`. Valeur actuelle de `data/v0/rules.json` :
 
 ```
-sha256:6af8b8838e337a9d6dcd789d3c26ba71ba1d416386f9b01899a569764f459dec
+sha256:67d3894c9d1f66fee1863b16430d6b6a75b8dea3c3929780ac9e8c0099c8fd4b
 ```
+
+(La valeur a changé au correctif 6.1 uniquement parce que la version de schéma, passée à 2, fait partie de l'écriture canonique ; aucun paramètre n'a changé.)
+
+## Versions de format
+
+| Fichier | `schemaVersion` | Historique |
+|---|---|---|
+| `rules.json` | 2 | 1 : lots 3 à 5 ; 2 : blocs `combat.guard`, `parry`, `rampartCharges`, `resonance`, `states` du lot 6 |
+| classes | 2 | 1 : lots 4 et 5 ; 2 : `unblockable`, `rampartChargeCost`, `rampartChargeGain` obligatoires dans le bloc `combat` |
+| scénarios | 1 | ajouts compatibles seulement (assaillant, `action`) : un scénario du lot 5 reste lisible |
+| journal (`formatVersion`) | 2 | 2 : `instance` et `generation` sur les états, `stateRemoved` |
+
+Le lot 6 avait rendu les formats de règles et de classes incompatibles sans changer leur numéro ; le correctif 6.1 corrige cet oubli.
+
+**Politique pré-alpha : aucune migration garantie.** Un fichier d'une version antérieure est refusé explicitement, par un seul message sur `$.schemaVersion` (`UnsupportedSchemaVersion`, « structure incompatible, refusée ; aucune migration n'est garantie »), sans analyse de son contenu : pas de cascade de champs manquants. Il se met à jour à la main en suivant ce document. Une version future est refusée de la même façon. Les migrateurs automatiques n'arriveront qu'avec un format stabilisé.
+
+Contrat des chaînes (correctif 6.1) : `contentVersion` suit SemVer 2.0 strictement (chiffres ASCII, pas de zéro initial, y compris dans les identifiants numériques de pré-version, toute la chaîne : un saut de ligne final est refusé). Identifiants stables et noms de combattants : minuscules ASCII, chiffres et `_`, correspondance de toute la chaîne.
 
 ## Erreurs
 
@@ -53,6 +70,8 @@ $.data.stats.base.maxHealt (ligne …) : champ inconnu ; champs possibles : phys
 $.data.damage.defenseConstants.feu (ligne …) : type de dégâts inconnu « feu » ; valeurs possibles : physique, magique. [UnknownReference]
 $.data.stats.critical.maxChanceBasisPoints : la chance critique maximale ne peut pas dépasser 10 000 points de base (100 %). [InvalidValue]
 ```
+
+Bornes techniques des règles (correctif 6.1.1) : `damage.defenseConstants.*` dans ]0, 10⁹], `combat.globalCooldownMs` et `combat.endurance.regenDelayMs` dans [0, 86 400 000] ms, comme les autres durées. Une valeur **calculée** hors des limites numériques du moteur (défense effective d'un personnage, pire impact, cumul) est refusée à la validation du scénario avec le code `OutOfRange`, sur le chemin du combattant (`$.data.combatants[0]`). Voir [MOTEUR.md](MOTEUR.md#limites).
 
 Codes : `FileUnreadable`, `DuplicateId`, `InvalidJson`, `WrongType`, `MissingField`, `UnknownField`, `DuplicateField`, `InvalidNumber`, `OutOfRange`, `UnknownReference`, `UnsupportedSchemaVersion`, `InvalidContentVersion`, `WrongKind`, `InvalidValue`. Toutes les erreurs sont rapportées en une passe.
 
@@ -73,7 +92,7 @@ Un fichier par classe (`data/v0/classes/<classe>.json`, `kind: "class"`), même 
 Empreinte d'une classe : SHA-256 de `eds-class` puis chaque valeur `chemin=valeur` dans l'ordre du fichier (l'ordre des arbres, talents et compétences fait partie du contenu ; les espaces et l'ordre des clés non ; `contentVersion` ignorée). Valeur actuelle de `bastion.json` :
 
 ```
-sha256:b8043ebbe91b54d17ccff14a944e03db6be9ac6cb53c9282bb922c1f90913f1b
+sha256:b7a3a07bb8584f6907d4ea44c4948dec7b31b5c910bba0dc3c70ba2571970ad2
 ```
 
 Le bloc facultatif `combat` d'une compétence entre dans l'empreinte (`combat=none` s'il est absent). Depuis le lot 6, il porte aussi `unblockable`, `rampartChargeCost` et `rampartChargeGain` (obligatoires dans le bloc).

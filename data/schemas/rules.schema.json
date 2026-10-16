@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "rules"
@@ -235,10 +235,14 @@
               "additionalProperties": false,
               "properties": {
                 "physique": {
-                  "type": "integer"
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000000000
                 },
                 "magique": {
-                  "type": "integer"
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000000000
                 }
               },
               "required": [
@@ -397,6 +401,8 @@
             },
             "globalCooldownMs": {
               "type": "integer",
+              "minimum": 0,
+              "maximum": 86400000,
               "description": "Temps global de recharge après une compétence (A6)."
             },
             "endurance": {
@@ -411,6 +417,8 @@
                 },
                 "regenDelayMs": {
                   "type": "integer",
+                  "minimum": 0,
+                  "maximum": 86400000,
                   "description": "Temps sans dépense avant la régénération (A3)."
                 }
               },

@@ -32,9 +32,10 @@ namespace EdS.Data.Scenarios
     public static class ScenarioValidator
     {
         public const string Kind = "scenario";
+        /// <summary>Le format des scénarios n'a reçu que des ajouts compatibles au lot 6 (assaillant, actions) : il reste en version 1.</summary>
         public const int CurrentSchemaVersion = 1;
 
-        public static IReadOnlyList<string> CombatantTypes { get; } = new[] { "character", "dummy", "assailant" };
+        public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
         /// <summary>Champs propres à chaque type de combattant ; un champ d'un autre type est refusé.</summary>
         private static readonly Dictionary<string, string[]> TypeFields = new Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -52,7 +53,8 @@ namespace EdS.Data.Scenarios
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (data is null) throw new ArgumentNullException(nameof(data));
             report ??= new ValidationReport();
-            HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report);
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report))
+                return new ScenarioLoadResult(report, null);
             return ValidateData(document.Data, data, "$.data", report);
         }
 
@@ -71,6 +73,7 @@ namespace EdS.Data.Scenarios
                 {
                     RuleViolationKind.UnknownReference => ValidationCode.UnknownReference,
                     RuleViolationKind.DuplicateId => ValidationCode.DuplicateId,
+                    RuleViolationKind.NumericLimit => ValidationCode.OutOfRange,
                     _ => ValidationCode.InvalidValue,
                 };
                 foreach (string field in violation.Fields) report.Add(root + "." + field, code, violation.Message);

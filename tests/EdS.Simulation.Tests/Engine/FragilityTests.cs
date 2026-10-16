@@ -7,6 +7,7 @@ namespace EdS.Simulation.Tests.Engine;
 
 /// <summary>Fragilité (A19) : +10 % de dégâts directs reçus pendant 6 s, renouvelée sans cumul ; effets simultanés.</summary>
 [Trait("Category", "Engine")]
+[Trait("Category", "Resources")]
 public class FragilityTests
 {
     private static List<JsonElement> Fight(IEnumerable<CombatCommand> commands, long durationMs, params CombatantSetup[] assailants)

@@ -29,7 +29,7 @@ namespace EdS.Data.Rules
         public static RuleValue FromToken(string value) =>
             new RuleValue(RuleValueKind.Token, Fixed.Zero, 0, value ?? throw new ArgumentNullException(nameof(value)));
         public static RuleValue FromIntegerList(IEnumerable<long> values) =>
-            new RuleValue(RuleValueKind.Int32List, Fixed.Zero, 0, null, (values ?? throw new ArgumentNullException(nameof(values))).ToArray());
+            new RuleValue(RuleValueKind.Int32List, Fixed.Zero, 0, null, EdS.Domain.Collections.Frozen.List(values, nameof(values)));
 
         /// <summary>Écriture canonique, utilisée par l'empreinte : indépendante de la mise en forme du fichier.</summary>
         public string ToCanonicalString()

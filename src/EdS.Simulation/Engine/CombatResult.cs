@@ -75,7 +75,7 @@ namespace EdS.Simulation.Engine
             EndTick = endTick;
             DurationMs = durationMs;
             Winner = winner;
-            Combatants = combatants;
+            Combatants = EdS.Domain.Collections.Frozen.List(combatants, nameof(combatants));
         }
 
         public CombatantResult this[string id] =>

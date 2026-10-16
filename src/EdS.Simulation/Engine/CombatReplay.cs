@@ -38,7 +38,8 @@ namespace EdS.Simulation.Engine
             if (current is null) throw new ArgumentNullException(nameof(current));
             var problems = new List<string>();
             if (loggedFormatVersion != CombatEngine.LogFormatVersion)
-                problems.Add($"format de journal {loggedFormatVersion}, ce moteur lit le format {CombatEngine.LogFormatVersion}.");
+                problems.Add($"format de journal {loggedFormatVersion}, ce moteur lit le format {CombatEngine.LogFormatVersion}"
+                    + (loggedFormatVersion < CombatEngine.LogFormatVersion ? " (journal antérieur, sans migration en pré-alpha : le régénérer avec le moteur actuel)." : "."));
             if (loggedEngineVersion != CombatEngine.Version)
                 problems.Add($"journal produit par le moteur {loggedEngineVersion}, moteur actuel {CombatEngine.Version}.");
             if (loggedTickMs != currentTickMs)

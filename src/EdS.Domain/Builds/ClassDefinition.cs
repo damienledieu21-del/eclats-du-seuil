@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Domain.Collections;
 
 namespace EdS.Domain.Builds
 {
@@ -22,16 +23,17 @@ namespace EdS.Domain.Builds
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));
-            Trees = trees ?? throw new ArgumentNullException(nameof(trees));
-            Skills = skills ?? throw new ArgumentNullException(nameof(skills));
+            Trees = Frozen.List(trees, nameof(trees));
+            Skills = Frozen.List(skills, nameof(skills));
 
             // Index tolérant aux doublons (signalés par Validate) : la première définition gagne.
             _talents = new Dictionary<string, (TalentDefinition, TalentTreeDefinition)>(StringComparer.Ordinal);
-            foreach (TalentTreeDefinition tree in trees)
+            // Index construits depuis les copies figées : ils décrivent toujours exactement Trees et Skills.
+            foreach (TalentTreeDefinition tree in Trees)
                 foreach (TalentDefinition talent in tree.Talents)
                     if (!_talents.ContainsKey(talent.Id)) _talents[talent.Id] = (talent, tree);
             _skills = new Dictionary<string, SkillDefinition>(StringComparer.Ordinal);
-            foreach (SkillDefinition skill in skills)
+            foreach (SkillDefinition skill in Skills)
                 if (!_skills.ContainsKey(skill.Id)) _skills[skill.Id] = skill;
         }
 
@@ -120,8 +122,8 @@ namespace EdS.Domain.Builds
                     string path = $"{treePath}.talents[{i}]";
                     CheckId(talent.Id, "talent", path + ".id");
                     CheckName(talent.Name, path + ".name");
-                    if (talent.MaxRank < 1)
-                        errors.Add(new RuleViolation("le rang maximum doit valoir au moins 1.", path + ".maxRank"));
+                    if (talent.MaxRank < 1 || talent.MaxRank > TalentDefinition.MaxRankLimit)
+                        errors.Add(new RuleViolation($"le rang maximum doit être compris entre 1 et {TalentDefinition.MaxRankLimit}.", path + ".maxRank"));
                     if (talent.IsMajor && talent.MaxRank != 1)
                         errors.Add(new RuleViolation("un talent majeur a un seul rang (1 point pour l'acquérir).", path + ".maxRank"));
                 }
@@ -139,7 +141,8 @@ namespace EdS.Domain.Builds
 
                     if (talent.IsMajor)
                     {
-                        int available = tree.Talents.Where(x => !x.IsMajor && !DependentsOf(talent.Id).Contains(x.Id) && x.MaxRank > 0).Sum(x => x.MaxRank);
+                        ISet<string> dependents = DependentsOf(talent.Id);
+                        long available = tree.Talents.Where(x => !x.IsMajor && !dependents.Contains(x.Id) && x.MaxRank > 0).Sum(x => (long)x.MaxRank);
                         if (available < progression.MajorTalentThreshold)
                             errors.Add(new RuleViolation(
                                 $"talent majeur inaccessible : la branche n'offre que {available} point(s) hors talents majeurs, il en faut {progression.MajorTalentThreshold}.",
@@ -179,14 +182,14 @@ namespace EdS.Domain.Builds
                 errors.Add(new RuleViolation("type de dégâts inconnu.", path + ".damageType"));
             if (!Enum.IsDefined(typeof(SkillTargeting), combat.Targeting))
                 errors.Add(new RuleViolation("ciblage inconnu.", path + ".targeting"));
-            if (combat.Coefficient < Numerics.Fixed.Zero)
-                errors.Add(new RuleViolation("le coefficient ne peut pas être négatif.", path + ".coefficient"));
-            if (combat.EnduranceCost < 0)
-                errors.Add(new RuleViolation("le coût en endurance ne peut pas être négatif.", path + ".enduranceCost"));
-            if (combat.RampartChargeCost < 0)
-                errors.Add(new RuleViolation("le coût en Charges de rempart ne peut pas être négatif.", path + ".rampartChargeCost"));
-            if (combat.RampartChargeGain < 0)
-                errors.Add(new RuleViolation("le gain de Charges de rempart ne peut pas être négatif.", path + ".rampartChargeGain"));
+            if (combat.Coefficient < Numerics.Fixed.Zero || combat.Coefficient > SkillCombatDefinition.MaxCoefficient)
+                errors.Add(new RuleViolation($"coefficient hors de [0, {SkillCombatDefinition.MaxCoefficient}].", path + ".coefficient"));
+            if (combat.EnduranceCost < 0 || combat.EnduranceCost > SkillCombatDefinition.MaxCost)
+                errors.Add(new RuleViolation($"coût en endurance hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".enduranceCost"));
+            if (combat.RampartChargeCost < 0 || combat.RampartChargeCost > SkillCombatDefinition.MaxCost)
+                errors.Add(new RuleViolation($"coût en Charges de rempart hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".rampartChargeCost"));
+            if (combat.RampartChargeGain < 0 || combat.RampartChargeGain > SkillCombatDefinition.MaxCost)
+                errors.Add(new RuleViolation($"gain de Charges de rempart hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".rampartChargeGain"));
             if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
         }

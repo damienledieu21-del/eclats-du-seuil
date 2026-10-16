@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdS.Domain.Collections;
 
 namespace EdS.Domain.Builds
 {
@@ -36,7 +37,7 @@ namespace EdS.Domain.Builds
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Kind = kind;
             MinLevel = minLevel;
-            TalentRequirements = talentRequirements ?? Array.Empty<TalentRequirement>();
+            TalentRequirements = Frozen.ListOrEmpty(talentRequirements, nameof(talentRequirements));
             IsPlaceholder = isPlaceholder;
         }
     }

@@ -25,7 +25,8 @@ namespace EdS.Data.Rules
             if (document is null) throw new ArgumentNullException(nameof(document));
             report ??= new ValidationReport();
 
-            ValidateHeader(document, report);
+            if (!ValidateHeader(document, report))
+                return new RulesLoadResult(report, null);   // structure d'une autre version : refusée sans analyse du contenu
             ValidateFieldsShape(document, report);
 
             if (!report.IsValid) return new RulesLoadResult(report, null);
@@ -45,7 +46,7 @@ namespace EdS.Data.Rules
             return new RulesLoadResult(report, rules);
         }
 
-        private static void ValidateHeader(RulesDocument document, ValidationReport report) =>
+        private static bool ValidateHeader(RulesDocument document, ValidationReport report) =>
             HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion,
                 RulesCatalog.Kind, DataFormat.CurrentSchemaVersion, report);
 

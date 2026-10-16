@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdS.Domain.Collections;
 
 namespace EdS.Domain.Builds
 {
@@ -9,6 +10,9 @@ namespace EdS.Domain.Builds
     /// </summary>
     public sealed class TalentDefinition
     {
+        /// <summary>Rang maximal autorisé pour un talent (correctif 6.1, M03) : garde les sommes de rangs loin des limites numériques.</summary>
+        public const int MaxRankLimit = 100;
+
         public string Id { get; }
         public string Name { get; }
         public int MaxRank { get; }
@@ -29,7 +33,7 @@ namespace EdS.Domain.Builds
             MaxRank = maxRank;
             IsMajor = isMajor;
             IsPlaceholder = isPlaceholder;
-            Prerequisites = prerequisites ?? Array.Empty<TalentRequirement>();
+            Prerequisites = Frozen.ListOrEmpty(prerequisites, nameof(prerequisites));
         }
     }
 }

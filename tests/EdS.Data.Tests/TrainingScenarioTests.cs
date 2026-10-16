@@ -13,6 +13,7 @@ namespace EdS.Data.Tests;
 
 /// <summary>Scénarios d'entraînement (lot 6) : assaillant, garde, parade ; lecture, erreurs, rejeu et journaux de référence.</summary>
 [Trait("Category", "Engine")]
+[Trait("Category", "Resources")]
 public class TrainingScenarioTests
 {
     private static CombatSetup Load(string name)
@@ -64,11 +65,13 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "fa8bfd1bdfb59f3ce5af841a04760f56ed22cf06ebfedf76a3cc88398dea51ca")]
-    [InlineData("entrainement_rupture", "1448cddfc33a4816d6f873454b666d2cfeb74c54b249476d24882ebb00427e2d")]
+    [InlineData("entrainement_garde_parade", "44ab02ccaf525d2ecfb11ecead30eef27d3121626d37ab025fed8074bd47f446")]
+    [InlineData("entrainement_rupture", "8be66808ce4102ddc2cdaf1f84d2288d23bfb1407b73ed3c3a6e3ae1c4f23a04")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
+        // Correctif 6.1 : seuls l'en-tête (moteur 0.6.1, format 2, versions et empreintes des données en schéma 2) et les
+        // champs instance/generation des états changent ; tous les autres événements sont identiques (RAPPORT_CORRECTIF_6_1).
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

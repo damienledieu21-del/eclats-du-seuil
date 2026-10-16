@@ -7,6 +7,7 @@ namespace EdS.Simulation.Tests.Engine;
 
 /// <summary>Garde (A1) : réduction, coûts, entretien, rupture, régénération suspendue, attaques imparables.</summary>
 [Trait("Category", "Engine")]
+[Trait("Category", "Resources")]
 public class GuardTests
 {
     private static (CombatResult Result, List<JsonElement> Events) Fight(IEnumerable<CombatCommand> commands, AssailantSetup? assailant = null,

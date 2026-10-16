@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdS.Domain.Collections;
 using EdS.Domain.Stats;
 
 namespace EdS.Domain.Builds
@@ -33,10 +34,11 @@ namespace EdS.Domain.Builds
             ClassId = classId ?? throw new ArgumentNullException(nameof(classId));
             Level = level;
             Attributes = attributes;
-            TalentRanks = talentRanks ?? new Dictionary<string, int>();
-            ActiveSkills = activeSkills ?? Array.Empty<string>();
+            // Copies figées (M05) : modifier les collections passées ne modifie pas le build.
+            TalentRanks = Frozen.Dictionary(talentRanks ?? new Dictionary<string, int>(), nameof(talentRanks));
+            ActiveSkills = Frozen.ListOrEmpty(activeSkills, nameof(activeSkills));
             Ultimate = ultimate;
-            PassiveSkills = passiveSkills ?? Array.Empty<string>();
+            PassiveSkills = Frozen.ListOrEmpty(passiveSkills, nameof(passiveSkills));
         }
     }
 }

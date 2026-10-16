@@ -49,33 +49,33 @@ namespace EdS.Data.Classes
     public static class ClassValidator
     {
         public const string Kind = "class";
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = DataFormat.CurrentSchemaVersion;
 
-        public static IReadOnlyDictionary<string, SkillKind> SkillKinds { get; } = new Dictionary<string, SkillKind>(StringComparer.Ordinal)
+        public static IReadOnlyDictionary<string, SkillKind> SkillKinds { get; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, SkillKind>(new Dictionary<string, SkillKind>(StringComparer.Ordinal)
         {
             ["active"] = SkillKind.Active,
             ["ultimate"] = SkillKind.Ultimate,
             ["passive"] = SkillKind.Passive,
-        };
+        });
 
-        public static IReadOnlyDictionary<string, PowerType> PowerTypes { get; } = new Dictionary<string, PowerType>(StringComparer.Ordinal)
+        public static IReadOnlyDictionary<string, PowerType> PowerTypes { get; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, PowerType>(new Dictionary<string, PowerType>(StringComparer.Ordinal)
         {
             ["physique"] = PowerType.Physique,
             ["agile"] = PowerType.Agile,
             ["magique"] = PowerType.Magique,
-        };
+        });
 
-        public static IReadOnlyDictionary<string, DamageType> DamageTypes { get; } = new Dictionary<string, DamageType>(StringComparer.Ordinal)
+        public static IReadOnlyDictionary<string, DamageType> DamageTypes { get; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, DamageType>(new Dictionary<string, DamageType>(StringComparer.Ordinal)
         {
             ["physique"] = DamageType.Physique,
             ["magique"] = DamageType.Magique,
-        };
+        });
 
-        public static IReadOnlyDictionary<string, SkillTargeting> Targetings { get; } = new Dictionary<string, SkillTargeting>(StringComparer.Ordinal)
+        public static IReadOnlyDictionary<string, SkillTargeting> Targetings { get; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, SkillTargeting>(new Dictionary<string, SkillTargeting>(StringComparer.Ordinal)
         {
             ["enemy"] = SkillTargeting.Enemy,
             ["allEnemies"] = SkillTargeting.AllEnemies,
-        };
+        });
 
         public static ClassLoadResult Validate(ClassDocument document, ProgressionRules progression, ValidationReport? report = null)
         {
@@ -83,7 +83,8 @@ namespace EdS.Data.Classes
             if (progression is null) throw new ArgumentNullException(nameof(progression));
             report ??= new ValidationReport();
 
-            HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report);
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report))
+                return new ClassLoadResult(report, null);   // structure d'une autre version : refusée sans analyse du contenu
             var shape = new ShapeChecker(report);
             shape.Check(document.Data);
             if (!report.IsValid) return new ClassLoadResult(report, null);
@@ -95,6 +96,7 @@ namespace EdS.Data.Classes
                 {
                     RuleViolationKind.UnknownReference => ValidationCode.UnknownReference,
                     RuleViolationKind.DuplicateId => ValidationCode.DuplicateId,
+                    RuleViolationKind.NumericLimit => ValidationCode.OutOfRange,
                     _ => ValidationCode.InvalidValue,
                 };
                 foreach (string field in violation.Fields)

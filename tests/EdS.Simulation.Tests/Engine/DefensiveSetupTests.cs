@@ -9,6 +9,7 @@ namespace EdS.Simulation.Tests.Engine;
 
 /// <summary>Validation d'un combat avec assaillant et commandes défensives, avant toute simulation.</summary>
 [Trait("Category", "Engine")]
+[Trait("Category", "Resources")]
 public class DefensiveSetupTests
 {
     private static IReadOnlyList<RuleViolation> Validate(CombatantSetup assailant, params CombatCommand[] commands) =>

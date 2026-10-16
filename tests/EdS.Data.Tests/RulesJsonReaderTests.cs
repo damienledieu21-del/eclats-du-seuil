@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(1, result.Rules!.SchemaVersion);
-        Assert.Equal("0.1.0-provisoire", result.Rules.ContentVersion);
+        Assert.Equal(2, result.Rules!.SchemaVersion);
+        Assert.Equal("0.2.0-provisoire", result.Rules.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -89,16 +89,32 @@ public class RulesJsonReaderTests
     public void Empreinte_stable_entre_executions()
     {
         // Valeur de référence : changer le format canonique change toutes les empreintes déjà journalisées.
+        // Correctif 6.1 : nouvelle valeur car la version de schéma (2) fait partie du texte canonique ; valeurs inchangées.
         Assert.Equal(
-            "sha256:6af8b8838e337a9d6dcd789d3c26ba71ba1d416386f9b01899a569764f459dec",
+            "sha256:67d3894c9d1f66fee1863b16430d6b6a75b8dea3c3929780ac9e8c0099c8fd4b",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
     // --- En-tête -----------------------------------------------------------------------
 
     [Fact]
-    public void Version_de_schema_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 2), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+    public void Version_de_schema_future_non_prise_en_charge() =>
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 3), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+
+    [Fact]
+    public void Ancien_format_v1_refuse_explicitement_sans_migration()
+    {
+        // Correctif 6.1 : un fichier de règles d'avant le lot 6 (sans blocs garde, parade…) est refusé par sa version,
+        // avec un seul message explicite, au lieu d'une cascade de champs manquants.
+        RulesLoadResult result = ReadMutated(r =>
+        {
+            r["schemaVersion"] = 1;
+            r["data"]!["combat"]!.AsObject().Remove("guard");
+            r["data"]!["combat"]!.AsObject().Remove("parry");
+        });
+        AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        Assert.Contains("aucune migration", result.Report.Errors[0].Message);
+    }
 
     [Fact]
     public void Mauvais_type_de_fichier() =>

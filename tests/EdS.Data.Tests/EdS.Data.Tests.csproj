@@ -25,6 +25,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\EdS.Data\EdS.Data.csproj" />
     <ProjectReference Include="..\..\src\EdS.Data.Json\EdS.Data.Json.csproj" />
+    <!-- Correctif 6.1.1 : la CLI est lancée telle quelle (processus séparé) par CliNumericLimitsTests. -->
+    <ProjectReference Include="..\..\src\EdS.Cli\EdS.Cli.csproj" />
   </ItemGroup>
 
 </Project>

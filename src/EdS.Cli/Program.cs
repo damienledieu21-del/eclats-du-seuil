@@ -13,6 +13,9 @@ using EdS.Simulation.Randomness;
 // Outil en ligne de commande du simulateur.
 // La commande report arrivera avec le lot 8.
 
+// Code de sortie d'une simulation interrompue (budget d'événements, débordement) : distinct des erreurs d'usage (1).
+const int SimulationAbortedExitCode = 2;
+
 if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
 {
     PrintHelp();
@@ -179,6 +182,12 @@ static int RunSimulate(ReadOnlySpan<string> options)
     if (output is null) Console.Out.Write(log.ToString());
     else File.WriteAllText(output, log.ToString(), new System.Text.UTF8Encoding(false));
 
+    bool aborted = result.EndReason == CombatEndReason.Aborted;
+    if (aborted)
+    {
+        // Correctif 6.1 : un combat interrompu n'a pas de résultat d'équilibrage ; ses statistiques partielles ne servent qu'au diagnostic.
+        summary.WriteLine($"DIAGNOSTIC — simulation interrompue ({result.AbortReason}) : statistiques partielles, à ne pas utiliser pour l'équilibrage.");
+    }
     summary.WriteLine($"Combat simulé — valeurs provisoires ({setup.DurationMs} ms prévus, graine {setup.Seed})");
     summary.WriteLine($"  fin            {result.EndReason} au tick {result.EndTick} ({result.DurationMs} ms){(result.AbortReason is null ? "" : " : " + result.AbortReason)}");
     foreach (CombatantResult c in result.Combatants)
@@ -189,7 +198,7 @@ static int RunSimulate(ReadOnlySpan<string> options)
             summary.WriteLine($"  {"",-14} blocages {c.Blocks}, parades {c.PerfectParries} réussies / {c.FailedParries} ratées, ruptures {c.GuardBreaks}, PV {c.Health}, endurance {c.Endurance}, Résonance {resonance}, Charges {c.RampartCharges}");
     }
     if (output != null) summary.WriteLine($"  journal        {output} ({log.Lines.Count} lignes)");
-    return 0;
+    return aborted ? SimulationAbortedExitCode : 0;
 }
 
 static int RunReplay(ReadOnlySpan<string> options)
@@ -244,5 +253,6 @@ static void PrintHelp()
     Console.WriteLine("                                                 une classe est vérifiée avec la progression de R (défaut : data/v0/rules.json) ;");
     Console.WriteLine("                                                 un scénario avec les données de data/v0");
     Console.WriteLine("  eds simulate scénario.json [--data D] [--out J] Simule un combat ; journal JSON Lines vers J (défaut : sortie standard)");
+    Console.WriteLine("                                                  Code de sortie 2 si la simulation est interrompue (statistiques de diagnostic)");
     Console.WriteLine("  eds replay journal.jsonl [--data D]            Vérifie les empreintes puis rejoue et compare octet par octet");
 }

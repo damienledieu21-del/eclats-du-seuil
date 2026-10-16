@@ -14,7 +14,8 @@ namespace EdS.Simulation.Engine
     public sealed class MemoryCombatLog : ICombatLog
     {
         private readonly List<string> _lines = new List<string>();
-        public IReadOnlyList<string> Lines => _lines;
+        public MemoryCombatLog() => Lines = _lines.AsReadOnly();
+        public IReadOnlyList<string> Lines { get; }
         public void Append(string line) => _lines.Add(line ?? throw new ArgumentNullException(nameof(line)));
 
         /// <summary>Texte complet, chaque ligne terminée par « \n » (jamais « \r\n », pour une comparaison octet par octet).</summary>

@@ -77,10 +77,21 @@ public class CombatReplayTests
     [Fact]
     public void Rejeu_refuse_si_seule_la_version_de_contenu_a_change()
     {
-        GameData changed = LoadCopy((file, text) => file == "rules.json" ? text.Replace("\"contentVersion\": \"0.1.0-provisoire\"", "\"contentVersion\": \"0.1.1\"") : text);
+        GameData changed = LoadCopy((file, text) => file == "rules.json" ? text.Replace("\"contentVersion\": \"0.2.0-provisoire\"", "\"contentVersion\": \"0.1.1\"") : text);
         Assert.Equal(changed.Rules.Fingerprint, ShippedData.Rules.Fingerprint);   // l'empreinte ignore la version…
         ReplayOutcome outcome = CombatLogReplayer.Replay(Simulate().Lines, changed);
         Assert.Equal(ReplayStatus.Refused, outcome.Status);                // …mais le rejeu exige aussi la même version
+    }
+
+    [Fact]
+    public void Rejeu_refuse_un_journal_au_format_1()
+    {
+        // Correctif 6.1 : format de journal 2 ; un journal du lot 6 (format 1) est refusé explicitement, sans migration.
+        var lines = Simulate().Lines.ToArray();
+        lines[0] = lines[0].Replace("\"formatVersion\":2", "\"formatVersion\":1");
+        ReplayOutcome outcome = CombatLogReplayer.Replay(lines, ShippedData);
+        Assert.NotEqual(ReplayStatus.Identical, outcome.Status);
+        Assert.Contains(outcome.Problems, p => p.Contains("format de journal 1") && p.Contains("sans migration"));
     }
 
     [Fact]
@@ -130,5 +141,5 @@ public class CombatReplayTests
         Assert.Equal(MannequinLogHash, hash);
     }
 
-    internal const string MannequinLogHash = "455e8db7aa609e96915ee439d751db28fa6d95eaea56888c12cdfdb4ebb88250";
+    internal const string MannequinLogHash = "96a562bdc13bd5403ab4e16e4fdf0e850416200f8ccef8bf13b402a801efe3e6";
 }

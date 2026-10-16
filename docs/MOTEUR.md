@@ -1,4 +1,4 @@
-# Moteur de simulation (lots 5 et 6)
+# Moteur de simulation (lots 5 et 6, correctif 6.1)
 
 Moteur de combat déterministe, sans Unity, sans réseau et sans horloge système. Code : `src/EdS.Simulation/Engine`. Toutes les valeurs sont **provisoires**.
 
@@ -18,7 +18,7 @@ Moteur de combat déterministe, sans Unity, sans réseau et sans horloge systèm
 | 3. `resolution` | impacts des actions lancées pendant ce tick, dans l'ordre de la phase 2 ; pour chaque cible : défense (parade, garde), dégâts, récompenses, états appliqués |
 | 4. `periodic` | entretien de la garde (`guardUpkeep`, ou rupture `upkeep`) |
 | 5. `regeneration` | régénération d'endurance (`enduranceRegenerated`), sauf pendant la garde ou la rupture |
-| 6. `endOfTick` | morts (`died`), fin de combat, arrêt sur limite |
+| 6. `endOfTick` | morts (`died`, puis `stateRemoved` pour chaque état du mort), fin de combat, arrêt sur limite |
 
 Conséquences testées (`TimingTests`, `OrderingTests`) :
 
@@ -30,7 +30,7 @@ Conséquences testées (`TimingTests`, `OrderingTests`) :
 
 - Toutes les commandes d'un tick sont validées et appliquées (phase 2) avant le premier impact (phase 3). Une garde ou une parade commandée au tick T protège donc contre un impact du même tick T, quelle que soit l'initiative de l'attaquant.
 - Les impacts se résolvent dans l'ordre de la phase 2 (initiative, puis identifiant). Un état appliqué par un impact (Fragilité) vaut pour les impacts suivants du même tick, pas pour celui qui l'applique (`FragilityTests`).
-- Les PV peuvent tomber à 0 pendant la phase 3 sans que le combattant meure : il reste ciblable et ses actions déjà lancées se résolvent. La mort est constatée en phase 6, dans l'ordre des identifiants ; la garde et la fenêtre de parade du mort s'arrêtent alors, sans ligne supplémentaire.
+- Les PV peuvent tomber à 0 pendant la phase 3 sans que le combattant meure : il reste ciblable et ses actions déjà lancées se résolvent. La mort est constatée en phase 6, dans l'ordre des identifiants ; la garde et la fenêtre de parade du mort s'arrêtent alors sans ligne supplémentaire, et ses états actifs sont retirés (`stateRemoved`, raison `death`, ordre ordinal des états) : leurs échéances deviennent périmées.
 - Si toutes les équipes sauf une (ou toutes) sont mortes en phase 6, le combat se termine sur ce tick (`teamDefeated`, vainqueur ou `null`). Mannequins et assaillants ne meurent jamais.
 
 ## Commandes et refus atomiques
@@ -50,7 +50,7 @@ Compétences instantanées. GCD de `combat.globalCooldownMs` (1000 ms) déclench
 
 ## Ciblage (A7)
 
-Logique uniquement : pas de position, de distance ni de collision. `enemy` = une cible ennemie vivante désignée ; `allEnemies` = tous les ennemis vivants, dans l'ordre du scénario. L'énumération `SkillTargeting` est le point d'extension pour un ciblage spatial futur.
+Logique uniquement : pas de position, de distance ni de collision. `enemy` = une cible ennemie vivante désignée ; `allEnemies` = tous les ennemis vivants, dans l'ordre ordinal de leurs identifiants (et non dans l'ordre du scénario, comme l'indiquait à tort la version précédente de ce document). L'énumération `SkillTargeting` est le point d'extension pour un ciblage spatial futur.
 
 ## Endurance (A3)
 
@@ -69,7 +69,7 @@ Suspension (A1) : aucune régénération pendant la garde ni pendant la rupture.
 
 Posture tenue de `guardStart` à `guardStop`. Pendant la garde :
 
-- entretien de `combat.guard.upkeepPerSecond` (2/s), calculé comme la régénération sur le total depuis le début de la garde : ⌊ 2 × ticks gardés × 50 / 1000 ⌋, soit 1 point tous les 10 ticks (ticks 9, 19, … après le début) ; s'il ne peut être payé, la garde est brisée (`upkeep`) ;
+- entretien de `combat.guard.upkeepPerSecond` (2/s), cumulé sur **tout le combat** (correctif 6.1, M01) : dû = ⌊ 2 × ticks gardés depuis le début du combat × 50 / 1000 ⌋, payé au fil des ticks, soit 1 point tous les 10 ticks gardés. Un tick est gardé si la garde est active en phase 4 : une garde prise puis quittée dans le même tick ne compte pas ; prise, quittée et reprise, elle compte une fois. Le coût ne dépend donc que du nombre de ticks réellement gardés, quelle que soit leur répartition (avant le correctif, le reliquat était perdu à chaque reprise : des gardes de 9 ticks ne coûtaient rien). S'il ne peut être payé, la garde est brisée (`upkeep`) et ce tick n'est pas compté : le reliquat reste dû à la garde suivante ;
 - chaque impact direct bloquable coûte `costPerBlock` (10) puis est réduit de `damageReduction` (60 %) après armure (`blocked`, puis `damage` avec `defense: "guard"`). Si l'endurance manque, la garde est brisée **avant** la réduction : l'impact passe en entier (`defense: "guardBroken"`) ;
 - lancer une compétence est refusé (`guardActive`) : il faut d'abord `guardStop`.
 
@@ -100,7 +100,16 @@ Propres aux personnages, à zéro au début de chaque combat, remises à zéro �
 | `fragility` | +10 % de dégâts directs reçus (catégorie « altération » de la formule) | 6 s, [application, +120 ticks[ | renouvelle la durée depuis la nouvelle application, sans cumul (`renewed: true`) |
 | `guardBreak` | ni garde ni parade, pas de régénération | 3 s | impossible : la rupture empêche la garde qui pourrait se briser |
 
-Journal : `stateApplied` (`combatant`, `state`, `untilTick` exclu, `renewed`) et `stateExpired`. La Fragilité est appliquée après les dégâts de l'impact qui la porte.
+Journal : `stateApplied` (`combatant`, `state`, `instance`, `generation`, `untilTick` exclu, `renewed`), `stateExpired` (`combatant`, `state`, `instance`, `generation`) et `stateRemoved` (mêmes champs et `reason`). La Fragilité est appliquée après les dégâts de l'impact qui la porte.
+
+### Contrat des états temporaires (correctif 6.1, M02)
+
+- **Instance** : chaque application d'un état absent crée une instance au numéro unique dans le combat (1, 2, 3… dans l'ordre d'application, tous combattants confondus), jamais réutilisé.
+- **Génération** : une réapplication d'un état non cumulable déjà actif garde l'instance, repousse l'échéance et incrémente la génération (`renewed: true`).
+- **Échéance** : chaque application programme une expiration portant le couple (instance, génération). À l'échéance, l'expiration n'agit que si ce couple est encore celui de l'état actif ; sinon elle est périmée et ignorée sans aucune ligne ni transition. Un état non cumulable expire donc exactement une fois, quel que soit le nombre d'applications simultanées ou de renouvellements.
+- **Même tick** : l'expiration (phase 1) passe avant une réapplication du même tick (phase 3), qui crée alors une nouvelle instance (`renewed: false`).
+- **Retrait** : la mort retire les états (`stateRemoved`, `death`) ; leurs échéances deviennent périmées.
+- **Pour le lot 7 (non implémenté)** : un état cumulable aura plusieurs instances actives par état, chacune avec sa propre échéance ; un état remplacé ou dissipé sera retiré par `stateRemoved` avec une autre raison (`replaced`, `dispelled`). Le couple (instance, génération) reste la seule clé de validité d'une échéance, et un événement programmé pour une instance retirée ne s'exécute jamais.
 
 ## Dégâts
 
@@ -117,8 +126,17 @@ PV infinis, défenses configurables, n'obéit à aucune commande. Il attaque à 
 ## Limites
 
 - `combat.limits.maxDurationMs` (600 000) : durée maximale d'un scénario ; plafond absolu du format 86 400 000.
-- `combat.limits.maxEventsPerTick` (1000) : au-delà, arrêt propre `simulationAborted` (`eventBudgetExceeded`).
-- Tout dépassement arithmétique (`checked`, virgule fixe) arrête le combat proprement (`simulationAborted`, `overflow`) au lieu de planter.
+- `combat.limits.maxEventsPerTick` (1000) : budget des **événements de simulation comptés** dans un tick (phases 1 à 6) ; au-delà, arrêt propre `simulationAborted` (`eventBudgetExceeded`). Ce n'est pas un plafond de lignes du journal : l'en-tête et les lignes `combatant` (initialisation), `simulationAborted` (arrêt), `combatantSummary` et `combatEnded` (finalisation) ne sont pas comptés. Elles restent bornées par le nombre de combattants (1 + N à l'initialisation, au plus 2 + N à la fin) ; leur enveloppe propre est fixée dans le contrat du lot 7.
+- Précontrôle numérique **avant le premier tick** par `CombatSetup.Validate` (correctif 6.1, M04 ; complété au correctif 6.1.1, CA-M01), pour tous les types de combattants :
+  - bornes des valeurs saisies : dégâts bruts d'un assaillant dans [0, 10⁹], armure et résistance magique des mannequins et assaillants dans [0, 10⁹], attributs d'un personnage dans [0, 10⁶], coefficient de compétence dans [0, 100], coûts et gains dans [0, 10⁶] ;
+  - bornes des règles : constantes de défense dans ]0, 10⁹] ; toutes les durées (dont `globalCooldownMs` et `endurance.regenDelayMs` depuis 6.1.1, et les recharges de compétences) dans [0, 86 400 000] ms ;
+  - valeurs **calculées** avec le même code que le moteur (`CombatantStats`) : statistiques de chaque combattant ; défense effective réelle de chaque participant, **personnages compris**, pour les deux types de dégâts, au plus 10⁹, et dénominateur constante × 10 000 + défense brute représentable ; pire impact de chaque attaque contre chaque défenseur ennemi réel ; pire impact sans défense (majorant de tous les autres) cumulé sur toute la durée au rythme maximal d'événements comptés.
+  - Tout dépassement est refusé avec un diagnostic localisé (code `OutOfRange` pour les valeurs calculées, rattaché au combattant) ; rien n'est journalisé, et la CLI ne crée pas le fichier journal.
+- Ce que le précontrôle garantit : les calculs **connus et recensés** du moteur à la date du correctif 6.1.1 restent représentables pour un combat validé. Il ne garantit pas qu'aucun débordement n'est possible : tout calcul ajouté plus tard (lot 7 et suivants) doit être recensé et borné à son tour. Tout dépassement arithmétique non anticipé pendant la simulation (`checked`, virgule fixe) arrête le combat proprement (`simulationAborted`, `overflow`) au lieu de planter ; un test vérifie ce filet de sécurité séparément.
+- Échéances (cas C et D de CA-M01) : avec un tick de 1 ms, dernier tick possible (< 86 400 000) + délai en ticks (≤ 86 400 000) < 2 × 10⁸ ; produits de la régénération et de l'entretien de garde : (régénération ou coût par seconde ≤ 2³¹) × (ticks × durée du tick ≤ 86 400 000 ms) < 2 × 10¹⁷, loin de 2⁶³.
+- Un combat interrompu (`aborted`) n'est pas un résultat d'équilibrage : `eds simulate` renvoie le code de sortie 2 et affiche un bandeau `DIAGNOSTIC` au-dessus des statistiques partielles.
+- Natures des valeurs : les plafonds ci-dessus sont des **limites techniques** provisoires de pré-alpha, pas des paramètres d'équilibrage (qui sont dans `rules.json`) ni des **capacités mesurées** (seuls les trois scénarios de référence ont été simulés : au plus 7 événements comptés par tick). Détail : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#trois-natures-de-valeurs).
+- Limites prévues pour le lot 7 : [LIMITES_LOT_7.md](LIMITES_LOT_7.md).
 
 Fin de combat : `durationReached`, `teamDefeated` (une seule équipe vivante, ou aucune) ou `aborted`. Chaque fin écrit un `combatantSummary` par combattant puis `combatEnded`.
 
@@ -129,14 +147,14 @@ Une ligne JSON par événement, UTF-8 sans BOM, séparateur `\n`, champs dans un
 Première ligne, l'en-tête :
 
 ```json
-{"type":"header","format":"eds-combat-log","formatVersion":1,"engineVersion":"0.5.0","tickMs":50,
+{"type":"header","format":"eds-combat-log","formatVersion":2,"engineVersion":"0.6.1","tickMs":50,
  "data":{"rules":{"contentVersion":"…","fingerprint":"sha256:…"},"classes":[{"id":"class.bastion","contentVersion":"…","fingerprint":"sha256:…"}]},
  "scenario":{…scénario complet…}}
 ```
 
 Puis les événements : `{"tick":0,"seq":2,"phase":"commands","event":"skillCast",…}`. `seq` est le numéro global de la ligne d'événement.
 
-Événements : `combatant`, `cooldownReady`, `skillCast`, `commandRejected`, `guardStarted`, `guardStopped`, `guardUpkeep`, `guardBroken`, `blocked`, `parryStarted`, `parrySucceeded`, `parryEnded`, `attackStarted`, `attackSkipped`, `damage` (avec `fragile` et `defense` : `none`, `guard`, `guardBroken`, `parry`, `unblockable`), `resourceGained`, `stateApplied`, `stateExpired`, `enduranceRegenerated`, `died`, `simulationAborted`, `combatantSummary` (avec blocages, parades, ruptures, Résonance et Charges), `combatEnded`. Version du moteur : `0.6.0`.
+Événements : `combatant`, `cooldownReady`, `skillCast`, `commandRejected`, `guardStarted`, `guardStopped`, `guardUpkeep`, `guardBroken`, `blocked`, `parryStarted`, `parrySucceeded`, `parryEnded`, `attackStarted`, `attackSkipped`, `damage` (avec `fragile` et `defense` : `none`, `guard`, `guardBroken`, `parry`, `unblockable`), `resourceGained`, `stateApplied`, `stateExpired`, `stateRemoved`, `enduranceRegenerated`, `died`, `simulationAborted`, `combatantSummary` (avec blocages, parades, ruptures, Résonance et Charges), `combatEnded`. Version du moteur : `0.6.1`. Format du journal : 2 depuis le correctif 6.1 (`instance` et `generation` sur les états, `stateRemoved`) ; un journal au format 1 est refusé au rejeu, sans migration (pré-alpha).
 
 ## Rejeu
 
