@@ -49,6 +49,29 @@ public class DamageCalculatorTests
         Assert.Equal(233, b.FinalDamage);
     }
 
+    [Theory]
+    [InlineData("0", "232.848", 233)]      // sans protection : identique à l'exemple 1
+    [InlineData("0.6", "93.1392", 93)]     // garde : −60 % après l'armure
+    [InlineData("0.9", "23.2848", 23)]     // parade parfaite : −90 %
+    [InlineData("1", "0", 0)]              // protection totale : aucun dégât, pas de minimum
+    public void Exemple_10_garde_et_parade_apres_la_defense(string mitigation, string afterMitigation, long final)
+    {
+        var input = new DamageInput(Bastion, Defender(armor: "500"), PowerType.Physique, DamageType.Physique,
+            F("1.2"), ExampleBonuses, isCritical: true, mitigation: F(mitigation));
+        var b = DamageCalculator.Compute(input, Rules);
+        Assert.Equal(F("232.848"), b.AfterDefense);
+        Assert.Equal(F(mitigation), b.Mitigation);
+        Assert.Equal(F(afterMitigation), b.AfterMitigation);
+        Assert.Equal(final, b.FinalDamage);
+    }
+
+    [Theory]
+    [InlineData("-0.1")]
+    [InlineData("1.0001")]
+    public void Protection_hors_de_0_1_refusee(string mitigation) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => new DamageInput(Bastion, Defender(), PowerType.Physique, DamageType.Physique,
+            Fixed.One, mitigation: F(mitigation)));
+
     [Fact]
     public void Exemple_2_meme_coup_sans_critique()
     {

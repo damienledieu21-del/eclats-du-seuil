@@ -114,6 +114,9 @@ public static class ClassJsonReader
             ["enduranceCost"] = (v, p) => combat.EnduranceCost = Int(input, v, p),
             ["cooldownMs"] = (v, p) => combat.CooldownMs = input.TryReadInteger(v, p, out long n) ? n : null,
             ["targeting"] = (v, p) => combat.Targeting = Text(input, v, p),
+            ["unblockable"] = (v, p) => combat.Unblockable = Bool(input, v, p),
+            ["rampartChargeCost"] = (v, p) => combat.RampartChargeCost = Int(input, v, p),
+            ["rampartChargeGain"] = (v, p) => combat.RampartChargeGain = Int(input, v, p),
             ["provisional"] = (v, p) => combat.Provisional = Bool(input, v, p),
         });
         return ok ? combat : null;

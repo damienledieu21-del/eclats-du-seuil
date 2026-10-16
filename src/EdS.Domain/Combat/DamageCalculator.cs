@@ -7,9 +7,9 @@ namespace EdS.Domain.Combat
     /// <summary>
     /// Formule de dégâts préliminaire, fonction pure et déterministe :
     /// <code>
-    /// dégâts = arrondi( (puissance × coefficient) × Π(1 + bonus de catégorie) × critique × constante / (constante + défense effective) )
+    /// dégâts = arrondi( (puissance × coefficient) × Π(1 + bonus de catégorie) × critique × constante / (constante + défense effective) × (1 − réduction) )
     /// </code>
-    /// Ordre de résolution : puissance → coefficient → bonus/multiplicateurs → critique → défense → (garde/protections, lot 6) → arrondi final.
+    /// Ordre de résolution : puissance → coefficient → bonus/multiplicateurs → critique → défense → garde ou parade (lot 6) → arrondi final.
     /// Chaque étape intermédiaire est arrondie à 4 décimales (au plus proche) ; seul l'arrondi final produit un entier.
     /// </summary>
     public static class DamageCalculator
@@ -43,8 +43,11 @@ namespace EdS.Domain.Combat
             b.DefenseFactor = Fixed.FromRaw(IntMath.MulDiv(Fixed.Scale, constantRaw, denominator, RoundingMode.HalfAwayFromZero));
             b.AfterDefense = Fixed.FromRaw(IntMath.MulDiv(b.AfterCritical.Raw, constantRaw, denominator, RoundingMode.HalfAwayFromZero));
 
-            long rounded = b.AfterDefense.RoundToInt(rules.FinalRounding);
-            b.FinalDamage = b.AfterDefense > Fixed.Zero ? Math.Max(rules.MinimumDamage, rounded) : 0;
+            b.Mitigation = input.Mitigation;
+            b.AfterMitigation = input.Mitigation == Fixed.Zero ? b.AfterDefense : b.AfterDefense * (Fixed.One - input.Mitigation);
+
+            long rounded = b.AfterMitigation.RoundToInt(rules.FinalRounding);
+            b.FinalDamage = b.AfterMitigation > Fixed.Zero ? Math.Max(rules.MinimumDamage, rounded) : 0;
             return b;
         }
 

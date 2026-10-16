@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using FsCheck.Xunit;
 using static EdS.Simulation.Tests.Engine.TestCombat;
@@ -51,7 +52,7 @@ public class ReproducibilityTests
     {
         var events = Run(Setup(new[] { Cmd(0, Frappe) }, seed: 7)).Log.Lines;
         string header = events[0];
-        Assert.StartsWith("{\"type\":\"header\",\"format\":\"eds-combat-log\",\"formatVersion\":1,\"engineVersion\":\"0.5.0\",\"tickMs\":50,", header);
+        Assert.StartsWith("{\"type\":\"header\",\"format\":\"eds-combat-log\",\"formatVersion\":1,\"engineVersion\":\"0.6.0\",\"tickMs\":50,", header);
         Assert.Contains("\"fingerprint\":\"sha256:regles\"", header);
         Assert.Contains("\"fingerprint\":\"sha256:classe\"", header);
         Assert.Contains("\"seed\":7", header);
@@ -68,7 +69,7 @@ public class ReproducibilityTests
         Assert.Equal(ReferenceHash, hash);
     }
 
-    internal const string ReferenceHash = "e6357743e044b3204b1174f9a7ebfde0b7870c563d1599515311c8bd8be18722";
+    internal const string ReferenceHash = "56f6029cd3759980238e3dadb26ac688aff5a1427e29eda69a1cb70fc84f184d";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

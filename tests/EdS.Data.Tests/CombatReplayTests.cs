@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using EdS.Data.Json;
+using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -129,5 +130,5 @@ public class CombatReplayTests
         Assert.Equal(MannequinLogHash, hash);
     }
 
-    internal const string MannequinLogHash = "5dd17b606470596214400a3a32b5ec3c9532b3b9de5d4916e803566247e12efe";
+    internal const string MannequinLogHash = "455e8db7aa609e96915ee439d751db28fa6d95eaea56888c12cdfdb4ebb88250";
 }

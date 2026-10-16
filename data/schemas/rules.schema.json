@@ -440,13 +440,171 @@
                 "maxEventsPerTick"
               ],
               "description": "Limites de simulation."
+            },
+            "guard": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "damageReduction": {
+                  "type": "number",
+                  "description": "Réduction des dégâts bloquables après armure (0.6 = −60 %)."
+                },
+                "upkeepPerSecond": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Endurance consommée par seconde de garde."
+                },
+                "costPerBlock": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Endurance payée par impact bloqué."
+                },
+                "breakDurationMs": {
+                  "type": "integer",
+                  "description": "Durée de la rupture de garde."
+                }
+              },
+              "required": [
+                "damageReduction",
+                "upkeepPerSecond",
+                "costPerBlock",
+                "breakDurationMs"
+              ],
+              "description": "Garde (A1)."
+            },
+            "parry": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "windowMs": {
+                  "type": "integer",
+                  "description": "Fenêtre [commande, commande + fenêtre[."
+                },
+                "damageReduction": {
+                  "type": "number",
+                  "description": "Réduction des dégâts éligibles (0.9 = −90 %)."
+                },
+                "failureRecoveryMs": {
+                  "type": "integer",
+                  "description": "Récupération après une parade ratée, depuis la fin de la fenêtre."
+                }
+              },
+              "required": [
+                "windowMs",
+                "damageReduction",
+                "failureRecoveryMs"
+              ],
+              "description": "Parade parfaite (A2)."
+            },
+            "rampartCharges": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "perPerfectParry": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Charges gagnées par parade parfaite."
+                },
+                "max": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Maximum ; l'excédent est perdu."
+                }
+              },
+              "required": [
+                "perPerfectParry",
+                "max"
+              ],
+              "description": "Charges de rempart (A4)."
+            },
+            "resonance": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "max": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Maximum."
+                },
+                "perDirectHit": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Gain par attaque directe réussie, une fois par action."
+                },
+                "perPerfectParry": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Gain par parade parfaite."
+                },
+                "perBlock": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Gain par blocage normal."
+                },
+                "ultimateCost": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Coût de l'ultime."
+                }
+              },
+              "required": [
+                "max",
+                "perDirectHit",
+                "perPerfectParry",
+                "perBlock",
+                "ultimateCost"
+              ],
+              "description": "Résonance (A5)."
+            },
+            "states": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "fragility": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "durationMs": {
+                      "type": "integer",
+                      "description": "Durée."
+                    },
+                    "damageTakenIncrease": {
+                      "type": "number",
+                      "description": "Dégâts directs reçus en plus (0.1 = +10 %)."
+                    }
+                  },
+                  "required": [
+                    "durationMs",
+                    "damageTakenIncrease"
+                  ],
+                  "description": "Fragilité : renouvelée sans cumul."
+                }
+              },
+              "required": [
+                "fragility"
+              ],
+              "description": "États défensifs (A19)."
             }
           },
           "required": [
             "tickMs",
             "globalCooldownMs",
             "endurance",
-            "limits"
+            "limits",
+            "guard",
+            "parry",
+            "rampartCharges",
+            "resonance",
+            "states"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         }

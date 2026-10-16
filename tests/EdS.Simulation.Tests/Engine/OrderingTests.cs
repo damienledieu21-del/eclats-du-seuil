@@ -1,3 +1,4 @@
+using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using static EdS.Simulation.Tests.Engine.TestCombat;
 
@@ -60,10 +61,11 @@ public class OrderingTests
     [Fact]
     public void Resolution_apres_toutes_les_commandes_du_tick()
     {
-        // Deux acteurs, même tick : les deux lancements (phase commandes) précèdent les deux impacts (phase résolution).
+        // Deux acteurs, même tick : les deux lancements (phase commandes) précèdent les deux impacts (phase résolution),
+        // chacun suivi de la Résonance gagnée par son auteur.
         CombatantSetup[] combatants = { Character("alpha"), Character("beta"), Dummy() };
         var kinds = Events(Run(Setup(new[] { Cmd(0, Frappe, "alpha"), Cmd(0, Frappe, "beta") }, combatants)).Log)
             .Where(e => e.Tick() == 0 && e.Str("phase") != "setup").Select(e => e.Str("event"));
-        Assert.Equal(new[] { "skillCast", "skillCast", "damage", "damage" }, kinds);
+        Assert.Equal(new[] { "skillCast", "skillCast", "damage", "resourceGained", "damage", "resourceGained" }, kinds);
     }
 }

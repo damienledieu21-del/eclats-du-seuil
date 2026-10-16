@@ -18,9 +18,12 @@ namespace EdS.Domain.Combat
         public DamageBonuses Bonuses { get; }
         public bool IsCritical { get; }
 
+        /// <summary>Réduction appliquée après la défense (garde, parade : 0.6 = −60 %), entre 0 et 1 ; 0 = aucune.</summary>
+        public Fixed Mitigation { get; }
+
         public DamageInput(
             DerivedStats attacker, DerivedStats defender, PowerType powerType, DamageType damageType,
-            Fixed skillCoefficient, DamageBonuses bonuses = default, bool isCritical = false)
+            Fixed skillCoefficient, DamageBonuses bonuses = default, bool isCritical = false, Fixed mitigation = default)
         {
             Attacker = attacker ?? throw new ArgumentNullException(nameof(attacker));
             Defender = defender ?? throw new ArgumentNullException(nameof(defender));
@@ -31,6 +34,9 @@ namespace EdS.Domain.Combat
             SkillCoefficient = skillCoefficient;
             Bonuses = bonuses;
             IsCritical = isCritical;
+            if (mitigation < Fixed.Zero || mitigation > Fixed.One)
+                throw new ArgumentOutOfRangeException(nameof(mitigation), mitigation, "La réduction doit être comprise entre 0 et 1.");
+            Mitigation = mitigation;
         }
     }
 }

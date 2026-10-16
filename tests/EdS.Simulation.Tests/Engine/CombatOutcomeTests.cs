@@ -71,7 +71,8 @@ public class CombatOutcomeTests
     [Fact]
     public void Ultime_lancee_depuis_son_emplacement()
     {
-        var events = Events(Run(Setup(new[] { Cmd(0, Ultime) })).Log);
+        // Coût en Résonance ramené à 0 : seul l'emplacement est testé ici (coût de 100 : ResourceTests).
+        var events = Events(Run(Setup(new[] { Cmd(0, Ultime) }, rules: new CombatRules { UltimateResonanceCost = 0 })).Log);
         Assert.Equal(Ultime, Assert.Single(events.OfKind("skillCast")).Str("skill"));
     }
 

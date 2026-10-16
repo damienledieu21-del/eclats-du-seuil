@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EdS.Data\EdS.Data.csproj" />
+    <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

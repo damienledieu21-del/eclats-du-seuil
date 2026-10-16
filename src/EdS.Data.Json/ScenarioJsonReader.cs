@@ -61,6 +61,10 @@ public static class ScenarioJsonReader
             ["build"] = Track("build", (v, p) => c.Build = ReadBuild(input, v, p)),
             ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
             ["magicResistance"] = Track("magicResistance", (v, p) => c.MagicResistance = input.Decimal(v, p)),
+            ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
+            ["firstAttackMs"] = Track("firstAttackMs", (v, p) => c.FirstAttackMs = input.Int64(v, p)),
+            ["intervalMs"] = Track("intervalMs", (v, p) => c.IntervalMs = input.Int64(v, p)),
+            ["attacks"] = Track("attacks", (v, p) => c.Attacks = input.ReadList(v, p, (e, ip) => ReadAttack(input, e, ip))),
         });
         return ok ? c : null;
     }
@@ -90,15 +94,36 @@ public static class ScenarioJsonReader
         return map;
     }
 
+    private static AttackData? ReadAttack(JsonInput input, JsonElement element, string path)
+    {
+        var a = new AttackData();
+        bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+        {
+            ["id"] = (v, p) => a.Id = input.Text(v, p),
+            ["rawDamage"] = (v, p) => a.RawDamage = input.Int64(v, p),
+            ["damageType"] = (v, p) => a.DamageType = input.Text(v, p),
+            ["targeting"] = (v, p) => a.Targeting = input.Text(v, p),
+            ["unblockable"] = (v, p) => a.Unblockable = input.Boolean(v, p),
+            ["appliesFragility"] = (v, p) => a.AppliesFragility = input.Boolean(v, p),
+        });
+        return ok ? a : null;
+    }
+
     private static CommandData? ReadCommand(JsonInput input, JsonElement element, string path)
     {
         var c = new CommandData();
+        Action<JsonElement, string> Track(string name, Action<JsonElement, string> read) => (v, p) =>
+        {
+            c.Present.Add(name);
+            read(v, p);
+        };
         bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
         {
             ["atMs"] = (v, p) => c.AtMs = input.Int64(v, p),
             ["actor"] = (v, p) => c.Actor = input.Text(v, p),
-            ["skill"] = (v, p) => c.Skill = input.Text(v, p),
-            ["target"] = (v, p) => c.Target = input.NullableText(v, p),
+            ["skill"] = Track("skill", (v, p) => c.Skill = input.Text(v, p)),
+            ["action"] = Track("action", (v, p) => c.Action = input.Text(v, p)),
+            ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
         });
         return ok ? c : null;
     }

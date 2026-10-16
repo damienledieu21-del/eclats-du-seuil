@@ -6,6 +6,7 @@ using EdS.Data.Json;
 using EdS.Data.Rules;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
+using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using EdS.Simulation.Randomness;
 
@@ -184,6 +185,8 @@ static int RunSimulate(ReadOnlySpan<string> options)
     {
         string dps = (c.DamageDealt * 1000m / result.DurationMs).ToString("0.##", CultureInfo.InvariantCulture);
         summary.WriteLine($"  {c.Id,-14} dégâts infligés {c.DamageDealt} (DPS {dps}), reçus {c.DamageTaken}, coups {c.Hits} dont {c.CriticalHits} critiques, compétences {c.SkillsCast}, refus {c.CommandsRejected}");
+        if (c.Resonance is int resonance)
+            summary.WriteLine($"  {"",-14} blocages {c.Blocks}, parades {c.PerfectParries} réussies / {c.FailedParries} ratées, ruptures {c.GuardBreaks}, PV {c.Health}, endurance {c.Endurance}, Résonance {resonance}, Charges {c.RampartCharges}");
     }
     if (output != null) summary.WriteLine($"  journal        {output} ({log.Lines.Count} lignes)");
     return 0;

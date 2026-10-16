@@ -1,5 +1,6 @@
 using System.Text.Json;
 using EdS.Domain.Numerics;
+using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using FsCheck.Xunit;
 

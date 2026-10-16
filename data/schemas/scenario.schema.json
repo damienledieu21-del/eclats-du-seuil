@@ -79,7 +79,8 @@
         "type": {
           "enum": [
             "character",
-            "dummy"
+            "dummy",
+            "assailant"
           ]
         },
         "team": {
@@ -102,9 +103,39 @@
         "magicResistance": {
           "type": "number",
           "minimum": 0
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/name"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Assaillant : cible de ses attaques à cible unique ; null si toutes ses attaques sont de zone."
+        },
+        "firstAttackMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Assaillant : instant de la première attaque, multiple du tick."
+        },
+        "intervalMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Assaillant : intervalle entre deux attaques (A21 : 2000)."
+        },
+        "attacks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/attack"
+          },
+          "description": "Assaillant : attaques jouées dans l'ordre, puis en boucle."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "character : class et build ; dummy : armor et magicResistance ; assailant : armor, magicResistance, target, firstAttackMs, intervalMs et attacks."
     },
     "build": {
       "type": "object",
@@ -190,9 +221,9 @@
       "additionalProperties": false,
       "required": [
         "atMs",
-        "actor",
-        "skill"
+        "actor"
       ],
+      "description": "Compétence (skill, target) ou action défensive (action), jamais les deux.",
       "properties": {
         "atMs": {
           "type": "integer",
@@ -211,6 +242,87 @@
             "null"
           ],
           "description": "Absente ou null pour une compétence de zone."
+        },
+        "action": {
+          "enum": [
+            "guardStart",
+            "guardStop",
+            "parry"
+          ],
+          "description": "Garde (A1) ou parade parfaite (A2)."
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "skill"
+          ],
+          "not": {
+            "required": [
+              "action"
+            ]
+          }
+        },
+        {
+          "required": [
+            "action"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "skill"
+                ]
+              },
+              {
+                "required": [
+                  "target"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "attack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rawDamage",
+        "damageType",
+        "targeting",
+        "unblockable",
+        "appliesFragility"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/name"
+        },
+        "rawDamage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Dégâts bruts avant armure ou résistance magique (A21 : 100)."
+        },
+        "damageType": {
+          "enum": [
+            "physique",
+            "magique"
+          ]
+        },
+        "targeting": {
+          "enum": [
+            "enemy",
+            "allEnemies"
+          ]
+        },
+        "unblockable": {
+          "type": "boolean",
+          "description": "Imparable : ignore garde et parade."
+        },
+        "appliesFragility": {
+          "type": "boolean",
+          "description": "Applique ou renouvelle la Fragilité après l'impact."
         }
       }
     }

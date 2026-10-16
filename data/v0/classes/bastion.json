@@ -215,6 +215,9 @@
           "enduranceCost": 10,
           "cooldownMs": 6000,
           "targeting": "enemy",
+          "unblockable": false,
+          "rampartChargeCost": 0,
+          "rampartChargeGain": 0,
           "provisional": true
         }
       },
@@ -232,6 +235,9 @@
           "enduranceCost": 15,
           "cooldownMs": 10000,
           "targeting": "enemy",
+          "unblockable": false,
+          "rampartChargeCost": 0,
+          "rampartChargeGain": 0,
           "provisional": true
         }
       },

@@ -164,7 +164,8 @@ public class ClassDefinitionTests
     [Fact]
     public void Donnees_de_combat_incoherentes()
     {
-        var bad = new SkillCombatDefinition(PowerType.Physique, DamageType.Physique, Fixed.Parse("-1"), -5, -1000);
+        var bad = new SkillCombatDefinition(PowerType.Physique, DamageType.Physique, Fixed.Parse("-1"), -5, -1000,
+            rampartChargeCost: -1, rampartChargeGain: -2);
         var skills = FictionalClass.Skills
             .Append(new SkillDefinition("skill.essai.mauvaise", "Mauvaise", SkillKind.Active, combat: bad))
             .Append(new SkillDefinition("skill.essai.passif_lance", "Passif lancé", SkillKind.Passive,
@@ -175,6 +176,8 @@ public class ClassDefinitionTests
         AssertViolation(definition, $"skills[{invalid}].combat.coefficient");
         AssertViolation(definition, $"skills[{invalid}].combat.enduranceCost");
         AssertViolation(definition, $"skills[{invalid}].combat.cooldownMs");
+        AssertViolation(definition, $"skills[{invalid}].combat.rampartChargeCost");
+        AssertViolation(definition, $"skills[{invalid}].combat.rampartChargeGain");
         AssertViolation(definition, $"skills[{passive}].combat");
     }
 

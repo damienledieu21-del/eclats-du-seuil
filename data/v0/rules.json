@@ -71,6 +71,34 @@
       "limits": {
         "maxDurationMs": 600000,
         "maxEventsPerTick": 1000
+      },
+      "guard": {
+        "damageReduction": 0.6,
+        "upkeepPerSecond": 2,
+        "costPerBlock": 10,
+        "breakDurationMs": 3000
+      },
+      "parry": {
+        "windowMs": 150,
+        "damageReduction": 0.9,
+        "failureRecoveryMs": 500
+      },
+      "rampartCharges": {
+        "perPerfectParry": 1,
+        "max": 5
+      },
+      "resonance": {
+        "max": 100,
+        "perDirectHit": 3,
+        "perPerfectParry": 8,
+        "perBlock": 2,
+        "ultimateCost": 100
+      },
+      "states": {
+        "fragility": {
+          "durationMs": 6000,
+          "damageTakenIncrease": 0.1
+        }
       }
     }
   }

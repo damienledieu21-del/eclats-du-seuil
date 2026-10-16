@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EdS.Domain\EdS.Domain.csproj" />
-    <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -200,7 +200,7 @@
     "combat": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Facultatif. Dégâts directs, coût et recharge d'une compétence lançable (lot 5). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore.",
+      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore.",
       "required": [
         "powerType",
         "damageType",
@@ -208,6 +208,9 @@
         "enduranceCost",
         "cooldownMs",
         "targeting",
+        "unblockable",
+        "rampartChargeCost",
+        "rampartChargeGain",
         "provisional"
       ],
       "properties": {
@@ -244,6 +247,20 @@
             "allEnemies"
           ],
           "description": "enemy : la cible désignée ; allEnemies : tous les ennemis vivants, par identifiant."
+        },
+        "unblockable": {
+          "type": "boolean",
+          "description": "Imparable : ignore la garde et la parade (A1, A2)."
+        },
+        "rampartChargeCost": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Charges de rempart exigées et dépensées au lancement (A4)."
+        },
+        "rampartChargeGain": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Charges de rempart gagnées au lancement (A4) ; excédent perdu."
         },
         "provisional": {
           "type": "boolean",

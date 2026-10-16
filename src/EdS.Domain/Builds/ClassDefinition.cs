@@ -183,6 +183,10 @@ namespace EdS.Domain.Builds
                 errors.Add(new RuleViolation("le coefficient ne peut pas être négatif.", path + ".coefficient"));
             if (combat.EnduranceCost < 0)
                 errors.Add(new RuleViolation("le coût en endurance ne peut pas être négatif.", path + ".enduranceCost"));
+            if (combat.RampartChargeCost < 0)
+                errors.Add(new RuleViolation("le coût en Charges de rempart ne peut pas être négatif.", path + ".rampartChargeCost"));
+            if (combat.RampartChargeGain < 0)
+                errors.Add(new RuleViolation("le gain de Charges de rempart ne peut pas être négatif.", path + ".rampartChargeGain"));
             if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
         }

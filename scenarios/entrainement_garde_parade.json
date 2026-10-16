@@ -1,0 +1,195 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 1,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 42,
+    "durationMs": 30000,
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 10,
+          "attributes": {
+            "force": 14,
+            "dexterite": 8,
+            "intelligence": 6,
+            "vitalite": 40,
+            "volonte": 10,
+            "endurance": 12
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.barriere_d_acier"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.test_passif_1",
+            "skill.bastion.test_passif_2"
+          ]
+        }
+      },
+      {
+        "id": "assaillant",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion",
+        "firstAttackMs": 1000,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "coup",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "appliesFragility": false
+          },
+          {
+            "id": "coup_bis",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "appliesFragility": false
+          },
+          {
+            "id": "coup_felant",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "appliesFragility": true
+          },
+          {
+            "id": "coup_bis_2",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "appliesFragility": false
+          },
+          {
+            "id": "percee",
+            "rawDamage": 60,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": true,
+            "appliesFragility": false
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 0,
+        "actor": "bastion",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 1000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 3000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 6950,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 9500,
+        "actor": "bastion",
+        "action": "guardStop"
+      },
+      {
+        "atMs": 9500,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "assaillant"
+      },
+      {
+        "atMs": 10500,
+        "actor": "bastion",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "assaillant"
+      },
+      {
+        "atMs": 11000,
+        "actor": "bastion",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 13000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 15000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 16800,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 17000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 19500,
+        "actor": "bastion",
+        "action": "guardStop"
+      },
+      {
+        "atMs": 19500,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "assaillant"
+      },
+      {
+        "atMs": 21000,
+        "actor": "bastion",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 23000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 25000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 27000,
+        "actor": "bastion",
+        "action": "parry"
+      }
+    ]
+  }
+}

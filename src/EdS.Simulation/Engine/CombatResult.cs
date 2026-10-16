@@ -28,11 +28,23 @@ namespace EdS.Simulation.Engine
         public long SkillsCast { get; internal set; }
         public long CommandsRejected { get; internal set; }
 
-        /// <summary>PV restants ; null pour un mannequin aux PV infinis.</summary>
+        /// <summary>PV restants ; null pour un mannequin ou un assaillant aux PV infinis.</summary>
         public long? Health { get; internal set; }
 
-        /// <summary>Endurance restante ; null pour un mannequin.</summary>
+        /// <summary>Endurance restante ; null hors personnage.</summary>
         public long? Endurance { get; internal set; }
+
+        /// <summary>Résonance et Charges de rempart en fin de combat (avant leur remise à zéro) ; null hors personnage.</summary>
+        public int? Resonance { get; internal set; }
+
+        public int? RampartCharges { get; internal set; }
+
+        /// <summary>Impacts bloqués par la garde, parades parfaites réussies et ratées, ruptures de garde subies.</summary>
+        public long Blocks { get; internal set; }
+
+        public long PerfectParries { get; internal set; }
+        public long FailedParries { get; internal set; }
+        public long GuardBreaks { get; internal set; }
 
         public bool IsDead { get; internal set; }
     }

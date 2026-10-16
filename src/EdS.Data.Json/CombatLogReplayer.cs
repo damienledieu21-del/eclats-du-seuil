@@ -1,6 +1,7 @@
 using System.Text.Json;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
+using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 
 namespace EdS.Data.Json;

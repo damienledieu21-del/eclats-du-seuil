@@ -1,4 +1,5 @@
 using System;
+using EdS.Domain.Combat;
 using System.Linq;
 using EdS.Domain.Stats;
 
@@ -35,7 +36,12 @@ namespace EdS.Simulation.Engine
             w.EndArray();
             w.Name("commands").BeginArray();
             foreach (CombatCommand c in setup.Commands)
-                w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor).Field("skill", c.Skill).Field("target", c.Target).EndObject();
+            {
+                w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor);
+                if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
+                else w.Field("action", CombatActionIds.Of(c.Action));
+                w.EndObject();
+            }
             w.EndArray().EndObject();
             return w.EndObject().ToString();
         }
@@ -49,6 +55,13 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Identifiant d'un attribut dans les données (« force », « dexterite »…), comme dans rules.json.</summary>
         public static string AttributeId(AttributeKind kind) => kind.ToString().ToLowerInvariant();
+
+        /// <summary>Identifiant d'un type de dégâts dans les données (« physique », « magique »).</summary>
+        public static string DamageTypeId(DamageType type) => type.ToString().ToLowerInvariant();
+
+        /// <summary>Identifiant d'un ciblage dans les données (« enemy », « allEnemies »).</summary>
+        public static string TargetingId(Domain.Builds.SkillTargeting targeting) =>
+            targeting == Domain.Builds.SkillTargeting.Enemy ? "enemy" : "allEnemies";
 
         private static void WriteCombatant(JsonLineWriter w, CombatantSetup c)
         {
@@ -77,6 +90,17 @@ namespace EdS.Simulation.Engine
                 case DummySetup dummy:
                     w.Field("type", "dummy").Field("team", c.Team).Field("initiative", c.Initiative)
                         .Field("armor", dummy.Armor).Field("magicResistance", dummy.MagicResistance);
+                    break;
+                case AssailantSetup assailant:
+                    w.Field("type", "assailant").Field("team", c.Team).Field("initiative", c.Initiative)
+                        .Field("armor", assailant.Armor).Field("magicResistance", assailant.MagicResistance)
+                        .Field("target", assailant.Target).Field("firstAttackMs", assailant.FirstAttackMs).Field("intervalMs", assailant.IntervalMs);
+                    w.Name("attacks").BeginArray();
+                    foreach (AssailantAttack attack in assailant.Attacks)
+                        w.BeginObject().Field("id", attack.Id).Field("rawDamage", attack.RawDamage)
+                            .Field("damageType", DamageTypeId(attack.DamageType)).Field("targeting", TargetingId(attack.Targeting))
+                            .Field("unblockable", attack.Unblockable).Field("appliesFragility", attack.AppliesFragility).EndObject();
+                    w.EndArray();
                     break;
             }
             w.EndObject();

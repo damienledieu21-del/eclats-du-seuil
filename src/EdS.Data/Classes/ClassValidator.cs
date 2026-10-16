@@ -170,6 +170,9 @@ namespace EdS.Data.Classes
                 Line(p + ".combat.enduranceCost", combat.EnduranceCost);
                 Line(p + ".combat.cooldownMs", combat.CooldownMs);
                 Line(p + ".combat.targeting", combat.Targeting);
+                Line(p + ".combat.unblockable", combat.Unblockable == true ? "true" : "false");
+                Line(p + ".combat.rampartChargeCost", combat.RampartChargeCost);
+                Line(p + ".combat.rampartChargeGain", combat.RampartChargeGain);
                 Line(p + ".combat.provisional", combat.Provisional == true ? "true" : "false");
             }
             return text.ToString();
@@ -188,7 +191,8 @@ namespace EdS.Data.Classes
                     Requirements(x.Prerequisites!), x.Placeholder!.Value)).ToArray())).ToArray();
             SkillCombatDefinition? Combat(SkillCombatData? c) => c is null ? null
                 : new SkillCombatDefinition(PowerTypes[c.PowerType!], DamageTypes[c.DamageType!], c.Coefficient!.Value,
-                    c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value);
+                    c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value,
+                    c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value);
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
                 Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat))).ToArray();
             return new ClassDefinition(data.Id!, data.Name!, trees, skills);
@@ -274,6 +278,9 @@ namespace EdS.Data.Classes
                 Present(combat.EnduranceCost, path + ".enduranceCost", "entier");
                 Present(combat.CooldownMs, path + ".cooldownMs", "entier, en millisecondes");
                 Token(combat.Targeting, path + ".targeting", "enemy ou allEnemies", Targetings);
+                Present(combat.Unblockable, path + ".unblockable", "booléen");
+                Present(combat.RampartChargeCost, path + ".rampartChargeCost", "entier");
+                Present(combat.RampartChargeGain, path + ".rampartChargeGain", "entier");
                 Present(combat.Provisional, path + ".provisional", "booléen");
             }
 

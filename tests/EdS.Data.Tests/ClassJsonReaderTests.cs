@@ -165,6 +165,29 @@ public class ClassJsonReaderTests
         AssertError(ReadMutated(r => Skill(r, FrappeIndex)["combat"]!["enduranceCost"] = -1),
             $"$.data.skills[{FrappeIndex}].combat.enduranceCost", ValidationCode.InvalidValue);
 
+    [Theory]
+    [InlineData("unblockable")]
+    [InlineData("rampartChargeCost")]
+    [InlineData("rampartChargeGain")]
+    public void Donnees_de_combat_du_lot_6_obligatoires(string field) =>
+        AssertError(ReadMutated(r => Skill(r, FrappeIndex)["combat"]!.AsObject().Remove(field)),
+            $"$.data.skills[{FrappeIndex}].combat.{field}", ValidationCode.MissingField);
+
+    [Fact]
+    public void Donnees_de_combat_du_lot_6_lues()
+    {
+        var frappe = Bastion.Skills[FrappeIndex].Combat!;
+        Assert.Equal((false, 0, 0), (frappe.Unblockable, frappe.RampartChargeCost, frappe.RampartChargeGain));
+        var changed = ReadMutated(r =>
+        {
+            Skill(r, FrappeIndex)["combat"]!["unblockable"] = true;
+            Skill(r, FrappeIndex)["combat"]!["rampartChargeCost"] = 2;
+        }).Class!;
+        Assert.True(changed.Definition.Skills[FrappeIndex].Combat!.Unblockable);
+        Assert.Equal(2, changed.Definition.Skills[FrappeIndex].Combat!.RampartChargeCost);
+        Assert.NotEqual(ClassJsonReader.Read(BastionJson, Progression).Class!.Fingerprint, changed.Fingerprint);
+    }
+
     [Fact]
     public void Donnees_de_combat_dans_l_empreinte() =>
         Assert.NotEqual(ClassJsonReader.Read(BastionJson, Progression).Class!.Fingerprint,

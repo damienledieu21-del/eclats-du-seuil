@@ -49,14 +49,14 @@ Chaque arbre contient en plus trois talents `[TEST] Palier 1–3` (5 rangs, `pla
 
 Compétences : six actives (Frappe du rempart, Heurt de bouclier, Provocation, Contrecoup, Barrière d'acier, Onde de rupture, niveau 1 provisoire), l'ultime Bastion absolu (niveau 10) et quatre passifs `[TEST] Passif 1–4`. Les passifs équipables sont distincts des talents permanents.
 
-Depuis le lot 5, une active peut porter un bloc `combat` (puissance et type de dégâts, coefficient, coût d'endurance, recharge en ms, ciblage `enemy` ou `allEnemies`, `provisional`). Un passif ne peut pas en avoir. Seules deux compétences sont implémentées, avec des valeurs **provisoires** :
+Depuis le lot 5, une active peut porter un bloc `combat` (puissance et type de dégâts, coefficient, coût d'endurance, recharge en ms, ciblage `enemy` ou `allEnemies`, `provisional` ; au lot 6 : `unblockable`, `rampartChargeCost`, `rampartChargeGain`). Un passif ne peut pas en avoir. Seules deux compétences sont implémentées, avec des valeurs **provisoires** :
 
 | Compétence | Coefficient | Endurance | Recharge | Ciblage |
 |---|---|---|---|---|
 | Frappe du rempart | 1,20 | 10 | 6 s | ennemi |
 | Heurt de bouclier | 0,80 | 15 | 10 s | ennemi |
 
-Les autres actives sont équipables mais refusées au lancer (`skillNotImplemented`). Moteur : [MOTEUR.md](MOTEUR.md).
+Les deux sont parables, sans coût ni gain de Charges. Les autres actives et l'ultime restent équipables mais refusées au lancer (`skillNotImplemented`) jusqu'au lot 8 ; l'ultime coûtera 100 de Résonance (`combat.resonance.ultimateCost`). Moteur : [MOTEUR.md](MOTEUR.md).
 
 ## Validation d'un build (`BuildValidator`)
 

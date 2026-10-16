@@ -26,7 +26,7 @@ namespace EdS.Data.Scenarios
     {
         public string? Id { get; set; }
 
-        /// <summary>« character » ou « dummy ».</summary>
+        /// <summary>« character », « dummy » ou « assailant ».</summary>
         public string? Type { get; set; }
 
         public string? Team { get; set; }
@@ -36,9 +36,15 @@ namespace EdS.Data.Scenarios
         public string? Class { get; set; }
         public BuildData? Build { get; set; }
 
-        // Mannequin
+        // Mannequin et assaillant
         public Fixed? Armor { get; set; }
         public Fixed? MagicResistance { get; set; }
+
+        // Assaillant
+        public string? Target { get; set; }
+        public long? FirstAttackMs { get; set; }
+        public long? IntervalMs { get; set; }
+        public List<AttackData?>? Attacks { get; set; }
 
         /// <summary>Champs effectivement présents dans le fichier, pour refuser ceux qui ne conviennent pas au type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
@@ -62,13 +68,36 @@ namespace EdS.Data.Scenarios
         public List<string?>? PassiveSkills { get; set; }
     }
 
+    public sealed class AttackData
+    {
+        public string? Id { get; set; }
+        public long? RawDamage { get; set; }
+
+        /// <summary>« physique » ou « magique ».</summary>
+        public string? DamageType { get; set; }
+
+        /// <summary>« enemy » ou « allEnemies ».</summary>
+        public string? Targeting { get; set; }
+
+        public bool? Unblockable { get; set; }
+        public bool? AppliesFragility { get; set; }
+    }
+
     public sealed class CommandData
     {
         public long? AtMs { get; set; }
         public string? Actor { get; set; }
+
+        /// <summary>Compétence lancée ; absente pour une garde ou une parade.</summary>
         public string? Skill { get; set; }
+
+        /// <summary>« guardStart », « guardStop » ou « parry » ; absente pour une compétence.</summary>
+        public string? Action { get; set; }
 
         /// <summary>Cible ; null si absente ou null (compétence de zone).</summary>
         public string? Target { get; set; }
+
+        /// <summary>Champs effectivement présents dans le fichier.</summary>
+        public HashSet<string> Present { get; } = new HashSet<string>();
     }
 }

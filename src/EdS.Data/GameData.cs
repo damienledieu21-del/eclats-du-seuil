@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Classes;
 using EdS.Data.Rules;
-using EdS.Simulation.Engine;
+using EdS.Domain.Combat;
 
 namespace EdS.Data
 {

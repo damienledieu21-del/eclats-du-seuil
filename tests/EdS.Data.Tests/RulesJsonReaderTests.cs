@@ -90,7 +90,7 @@ public class RulesJsonReaderTests
     {
         // Valeur de référence : changer le format canonique change toutes les empreintes déjà journalisées.
         Assert.Equal(
-            "sha256:35e97788abc0824ed3b3843ae846895b0d4d8835a55a42a5155926fda73400e1",
+            "sha256:6af8b8838e337a9d6dcd789d3c26ba71ba1d416386f9b01899a569764f459dec",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 

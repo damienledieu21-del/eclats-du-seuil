@@ -11,6 +11,7 @@ internal static class ScenarioTestData
     public static string DataDirectory => Path.Combine(AppContext.BaseDirectory, "data", "v0");
     public static string MannequinPath => Path.Combine(AppContext.BaseDirectory, "scenarios", "mannequin.json");
     public static string MannequinJson => File.ReadAllText(MannequinPath);
+    public static string ScenarioPath(string name) => Path.Combine(AppContext.BaseDirectory, "scenarios", name + ".json");
 
     public static GameData ShippedData { get; } = GameDataLoader.Load(DataDirectory).Data!;
 
@@ -19,9 +20,9 @@ internal static class ScenarioTestData
     public static JsonObject Combatant(JsonObject root, int index) => DataOf(root)["combatants"]![index]!.AsObject();
     public static JsonObject Command(JsonObject root, int index) => DataOf(root)["commands"]![index]!.AsObject();
 
-    public static ScenarioLoadResult ReadMutated(Action<JsonObject> mutate, GameData? data = null)
+    public static ScenarioLoadResult ReadMutated(Action<JsonObject> mutate, GameData? data = null, string scenario = "mannequin")
     {
-        JsonObject root = Shipped();
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath(scenario)))!.AsObject();
         mutate(root);
         return ScenarioJsonReader.Read(root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), data ?? ShippedData);
     }

@@ -9,13 +9,13 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 
 | Projet | Cible | Rôle |
 |---|---|---|
-| `src/EdS.Domain` | netstandard2.1, C# 9 | Virgule fixe (`Fixed`), temps (`TickRate`), attributs et statistiques (`Stats`), formule de dégâts (`Combat`), classes, talents et validateur de builds (`Builds`) — aucune dépendance |
-| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat déterministe (`Engine` : horloge logique, file d'événements, commandes, journal JSON Lines, rejeu), RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
-| `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte, scénarios — dépend du domaine et de la simulation |
-| `src/EdS.Data.Json` | net10.0 | Adaptateur System.Text.Json, réservé aux outils .NET |
+| `src/EdS.Domain` | netstandard2.1, C# 9 | Virgule fixe (`Fixed`), temps (`TickRate`), attributs et statistiques (`Stats`), formule de dégâts, règles et description d'un combat (`Combat`), classes, talents et validateur de builds (`Builds`) — aucune dépendance |
+| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat déterministe (`Engine` : horloge logique, file d'événements, commandes, garde, parade, ressources, états, assaillant, journal JSON Lines, rejeu), RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
+| `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte, scénarios — dépend du domaine seulement |
+| `src/EdS.Data.Json` | net10.0 | Adaptateur System.Text.Json, chargement et rejeu, réservé aux outils .NET |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`) |
 | `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `schemas/` |
-| `scenarios/` | JSON | Scénarios de combat (`mannequin.json`) |
+| `scenarios/` | JSON | Scénarios de combat (`mannequin.json`, `entrainement_garde_parade.json`, `entrainement_rupture.json`) |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
 
 Les projets `netstandard2.1` sont limités à C# 9 et n'ont aucune dépendance externe : ils sont importables tels quels dans Unity (IL2CPP) et sur un serveur .NET.
@@ -34,6 +34,7 @@ dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
 dotnet run --project src/EdS.Cli -- simulate scenarios/mannequin.json --out combat.jsonl
+dotnet run --project src/EdS.Cli -- simulate scenarios/entrainement_garde_parade.json
 dotnet run --project src/EdS.Cli -- replay combat.jsonl
 ```
 
@@ -56,6 +57,8 @@ Arbitrages du lot 4 : moteur de talents générique, mini-arbre Bastion avec tal
 
 Arbitrages du lot 5 : endurance +10/s après 1 s sans dépense, plafonnée, refus atomique si coût impayable, pas de garde brisée (A3) ; compétences instantanées, GCD 1 s configurable, recharge au lancer (A6) ; ciblage logique sans positions, zones dans un ordre déterministe (A7) ; ordre intra-tick expirations → commandes (initiative puis identifiant) → résolution → périodiques → régénération → morts et fin (A10) ; Frappe du rempart 1,20 / 10 / 6 s et Heurt de bouclier 0,80 / 15 / 10 s provisoires ; mannequin à PV infinis. Détail : [docs/MOTEUR.md](docs/MOTEUR.md).
 
+Arbitrages du lot 6 : garde en posture (`guardStart`/`guardStop`), −60 % après armure, 2 endurance/s et 10 par impact bloqué, rupture de 3 s si l'endurance manque, régénération suspendue (A1) ; parade parfaite horodatée, fenêtre [P, P + 3 ticks[, −90 %, +1 Charge, récupération de 500 ms après échec, prioritaire sur la garde sans cumul (A2) ; Charges de rempart 0 à 5, sans gain passif ni décroissance, remises à zéro en fin de combat (A4) ; Résonance 0 à 100, +3 par attaque réussie (une fois par action), +8 par parade, +2 par blocage, ultime à 100, sans génération récursive (A5) ; Fragilité +10 % pendant 6 s renouvelée sans cumul, rupture de garde de 3 s (A19) ; assaillant d'entraînement à PV infinis, 100 bruts toutes les 2 s, sans critique, attaques bloquables ou imparables (A21). Détail : [docs/MOTEUR.md](docs/MOTEUR.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -66,3 +69,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 3 — données JSON, validation structurelle et sémantique, rules.json
 - [x] Lot 4 — classes, talents, compétences équipables, validateur de builds
 - [x] Lot 5 — moteur de simulation minimal (horloge, commandes, recharges, endurance, dégâts directs, journal, rejeu)
+- [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement

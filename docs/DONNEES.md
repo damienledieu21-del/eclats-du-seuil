@@ -1,8 +1,8 @@
-# Données et validation (lots 3 à 5)
+# Données et validation (lots 3 à 6)
 
 ## Fichier de règles
 
-`data/v0/rules.json` centralise tous les paramètres de `StatRules`, `DamageRules` `ProgressionRules` (bloc `progression`, lot 4) et `CombatRules` (bloc `combat`, lot 5 : `tickMs`, `globalCooldownMs`, `endurance.regenPerSecond`, `endurance.regenDelayMs`, `limits.maxDurationMs`, `limits.maxEventsPerTick`). `schemaVersion` reste 1. Le schéma `data/schemas/rules.schema.json` sert à l'auto-complétion dans les éditeurs ; la validation qui fait foi est celle du programme.
+`data/v0/rules.json` centralise tous les paramètres de `StatRules`, `DamageRules` `ProgressionRules` (bloc `progression`, lot 4) et `CombatRules` (bloc `combat` : `tickMs`, `globalCooldownMs`, `endurance.*`, `limits.*` au lot 5 ; `guard.*`, `parry.*`, `rampartCharges.*`, `resonance.*`, `states.fragility.*` au lot 6). Toutes les valeurs provisoires du moteur y sont, aucune n'est codée en dur. `schemaVersion` reste 1. Le schéma `data/schemas/rules.schema.json` sert à l'auto-complétion dans les éditeurs ; la validation qui fait foi est celle du programme.
 
 ```json
 {
@@ -41,7 +41,7 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
 `sha256:…` calculée sur une écriture canonique (version de schéma, puis chaque paramètre dans l'ordre du catalogue). Indépendante des espaces, de l'ordre des clés et de l'écriture des nombres (`2` = `2.0`) ; ignore `contentVersion`. Valeur actuelle de `data/v0/rules.json` :
 
 ```
-sha256:35e97788abc0824ed3b3843ae846895b0d4d8835a55a42a5155926fda73400e1
+sha256:6af8b8838e337a9d6dcd789d3c26ba71ba1d416386f9b01899a569764f459dec
 ```
 
 ## Erreurs
@@ -73,11 +73,19 @@ Un fichier par classe (`data/v0/classes/<classe>.json`, `kind: "class"`), même 
 Empreinte d'une classe : SHA-256 de `eds-class` puis chaque valeur `chemin=valeur` dans l'ordre du fichier (l'ordre des arbres, talents et compétences fait partie du contenu ; les espaces et l'ordre des clés non ; `contentVersion` ignorée). Valeur actuelle de `bastion.json` :
 
 ```
-sha256:afde9d4ed2839a821bf8378d8b410a97b398b7b2470ccec2d59292088270815f
+sha256:b8043ebbe91b54d17ccff14a944e03db6be9ac6cb53c9282bb922c1f90913f1b
 ```
 
-Le bloc facultatif `combat` d'une compétence entre dans l'empreinte (`combat=none` s'il est absent).
+Le bloc facultatif `combat` d'une compétence entre dans l'empreinte (`combat=none` s'il est absent). Depuis le lot 6, il porte aussi `unblockable`, `rampartChargeCost` et `rampartChargeGain` (obligatoires dans le bloc).
 
-## Scénarios et jeu de données (lot 5)
+## Scénarios et jeu de données (lots 5 et 6)
 
-`GameDataLoader.Load("data/v0")` charge `rules.json` et tous les `classes/*.json` en un `GameData` (règles, classes, identité : versions et empreintes). `ScenarioJsonReader` (forme) → `ScenarioDocument` → `ScenarioValidator` (en-tête, références de classe, build validé par `BuildValidator`, puis `CombatSetup.Validate`) → `CombatSetup`. L'identité retenue pour le journal ne couvre que les règles et les classes utilisées par le scénario. Format, exemple et rejeu : [MOTEUR.md](MOTEUR.md).
+`GameDataLoader.Load("data/v0")` charge `rules.json` et tous les `classes/*.json` en un `GameData` (règles, classes, identité : versions et empreintes). `ScenarioJsonReader` (forme) → `ScenarioDocument` → `ScenarioValidator` (en-tête, références de classe, build validé par `BuildValidator`, puis `CombatSetup.Validate`) → `CombatSetup`. L'identité retenue pour le journal ne couvre que les règles et les classes utilisées par le scénario. Depuis le lot 6, un scénario peut contenir un assaillant (`type: "assailant"`) et des commandes défensives (`action`). Format, exemples et rejeu : [MOTEUR.md](MOTEUR.md).
+
+Dépendances (lot 6) : la description d'un combat (`CombatSetup`, combattants, commandes, identité des données) est passée d'`EdS.Simulation` à `EdS.Domain` (espace `EdS.Domain.Combat`). `EdS.Data` ne dépend donc plus que du domaine ; seuls les outils (`EdS.Data.Json`, `EdS.Cli`) référencent le moteur pour simuler et rejouer.
+
+```
+EdS.Domain ◄── EdS.Simulation ◄── EdS.Data.Json ──► EdS.Data ──► EdS.Domain
+                                       ▲
+                                    EdS.Cli
+```

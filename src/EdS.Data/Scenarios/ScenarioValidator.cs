@@ -6,7 +6,7 @@ using EdS.Data.Validation;
 using EdS.Domain;
 using EdS.Domain.Builds;
 using EdS.Domain.Stats;
-using EdS.Simulation.Engine;
+using EdS.Domain.Combat;
 
 namespace EdS.Data.Scenarios
 {
@@ -34,10 +34,18 @@ namespace EdS.Data.Scenarios
         public const string Kind = "scenario";
         public const int CurrentSchemaVersion = 1;
 
-        public static IReadOnlyList<string> CombatantTypes { get; } = new[] { "character", "dummy" };
+        public static IReadOnlyList<string> CombatantTypes { get; } = new[] { "character", "dummy", "assailant" };
+
+        /// <summary>Champs propres à chaque type de combattant ; un champ d'un autre type est refusé.</summary>
+        private static readonly Dictionary<string, string[]> TypeFields = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["character"] = new[] { "class", "build" },
+            ["dummy"] = new[] { "armor", "magicResistance" },
+            ["assailant"] = new[] { "armor", "magicResistance", "target", "firstAttackMs", "intervalMs", "attacks" },
+        };
 
         private static readonly Dictionary<string, AttributeKind> AttributeIds =
-            ((AttributeKind[])Enum.GetValues(typeof(AttributeKind))).ToDictionary(CombatLogHeader.AttributeId, k => k, StringComparer.Ordinal);
+            ((AttributeKind[])Enum.GetValues(typeof(AttributeKind))).ToDictionary(Rules.RulesCatalog.Id, k => k, StringComparer.Ordinal);
 
         public static ScenarioLoadResult Validate(ScenarioDocument document, GameData data, ValidationReport? report = null)
         {
@@ -89,12 +97,21 @@ namespace EdS.Data.Scenarios
                         b.ActiveSkills!.Select(s => s!).ToArray(), b.Ultimate, b.PassiveSkills!.Select(s => s!).ToArray());
                     combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value));
                 }
+                else if (c.Type == "assailant")
+                {
+                    var attacks = c.Attacks!.Select(a => new AssailantAttack(a!.Id!, a.RawDamage!.Value, ClassValidator.DamageTypes[a.DamageType!],
+                        ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, a.AppliesFragility!.Value));
+                    combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
+                        c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value));
+                }
                 else
                 {
                     combatants.Add(new DummySetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Initiative!.Value));
                 }
             }
-            var commands = scenario.Commands!.Select(c => new CombatCommand(c!.AtMs!.Value, c.Actor!, c.Skill!, c.Target));
+            var commands = scenario.Commands!.Select(c => CombatActionIds.TryParseDefensive(c!.Action, out CombatAction action)
+                ? new CombatCommand(c.AtMs!.Value, c.Actor!, action)
+                : new CombatCommand(c.AtMs!.Value, c.Actor!, c.Skill!, c.Target));
             var identity = new CombatDataIdentity(data.RulesIdentity, usedClasses.Values.Select(GameData.IdentityOf));
             var rules = data.Rules;
             return new CombatSetup(scenario.Seed!.Value, scenario.DurationMs!.Value, rules.Stats, rules.Damage, rules.Progression, rules.Combat,
@@ -145,31 +162,52 @@ namespace EdS.Data.Scenarios
                 Present(c.Id, path + ".id", "identifiant du combattant");
                 Present(c.Team, path + ".team", "équipe");
                 Present(c.Initiative, path + ".initiative", "entier");
-                if (!Present(c.Type, path + ".type", "character ou dummy")) return;
+                if (!Present(c.Type, path + ".type", "character, dummy ou assailant")) return;
+                if (!TypeFields.TryGetValue(c.Type!, out string[] own))
+                {
+                    _report.Add(path + ".type", ValidationCode.UnknownReference,
+                        $"type de combattant inconnu « {c.Type} » ; valeurs possibles : {string.Join(", ", CombatantTypes)}.");
+                    return;
+                }
+                foreach (string field in TypeFields.Values.SelectMany(f => f).Distinct().Where(f => !own.Contains(f) && c.Present.Contains(f)))
+                    _report.Add($"{path}.{field}", ValidationCode.InvalidValue,
+                        $"champ réservé aux types {string.Join(", ", TypeFields.Where(t => t.Value.Contains(field)).Select(t => t.Key))}.");
 
-                string[] characterOnly = { "class", "build" };
-                string[] dummyOnly = { "armor", "magicResistance" };
                 switch (c.Type)
                 {
                     case "character":
-                        foreach (string field in dummyOnly.Where(c.Present.Contains))
-                            _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "champ réservé aux mannequins.");
                         if (Present(c.Class, path + ".class", "identifiant de classe") && !_data.TryGetClass(c.Class!, out _))
                             _report.Add(path + ".class", ValidationCode.UnknownReference,
                                 $"classe inconnue « {c.Class} » ; classes chargées : {string.Join(", ", _data.Classes.Select(x => x.Definition.Id))}.");
                         if (Present(c.Build, path + ".build", "build du personnage")) CheckBuild(c.Build!, path + ".build");
                         break;
                     case "dummy":
-                        foreach (string field in characterOnly.Where(c.Present.Contains))
-                            _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "champ réservé aux personnages.");
                         Present(c.Armor, path + ".armor", "nombre décimal");
                         Present(c.MagicResistance, path + ".magicResistance", "nombre décimal");
                         break;
                     default:
-                        _report.Add(path + ".type", ValidationCode.UnknownReference,
-                            $"type de combattant inconnu « {c.Type} » ; valeurs possibles : {string.Join(", ", CombatantTypes)}.");
+                        Present(c.Armor, path + ".armor", "nombre décimal");
+                        Present(c.MagicResistance, path + ".magicResistance", "nombre décimal");
+                        if (!c.Present.Contains("target")) Present(null, path + ".target", "identifiant de la cible, ou null si toutes les attaques sont de zone");
+                        Present(c.FirstAttackMs, path + ".firstAttackMs", "instant de la première attaque, en millisecondes");
+                        Present(c.IntervalMs, path + ".intervalMs", "intervalle entre deux attaques, en millisecondes");
+                        Items(c.Attacks, path + ".attacks", "liste des attaques, jouées dans l'ordre puis en boucle", CheckAttack);
                         break;
                 }
+            }
+
+            private void CheckAttack(AttackData a, string path)
+            {
+                Present(a.Id, path + ".id", "identifiant de l'attaque");
+                Present(a.RawDamage, path + ".rawDamage", "dégâts bruts entiers, avant défense");
+                if (Present(a.DamageType, path + ".damageType", "physique ou magique") && !ClassValidator.DamageTypes.ContainsKey(a.DamageType!))
+                    _report.Add(path + ".damageType", ValidationCode.UnknownReference,
+                        $"valeur inconnue « {a.DamageType} » ; valeurs possibles : {string.Join(", ", ClassValidator.DamageTypes.Keys)}.");
+                if (Present(a.Targeting, path + ".targeting", "enemy ou allEnemies") && !ClassValidator.Targetings.ContainsKey(a.Targeting!))
+                    _report.Add(path + ".targeting", ValidationCode.UnknownReference,
+                        $"valeur inconnue « {a.Targeting} » ; valeurs possibles : {string.Join(", ", ClassValidator.Targetings.Keys)}.");
+                Present(a.Unblockable, path + ".unblockable", "booléen");
+                Present(a.AppliesFragility, path + ".appliesFragility", "booléen");
             }
 
             private void CheckBuild(BuildData b, string path)
@@ -201,7 +239,16 @@ namespace EdS.Data.Scenarios
             {
                 Present(c.AtMs, path + ".atMs", "instant en millisecondes");
                 Present(c.Actor, path + ".actor", "identifiant du combattant");
-                Present(c.Skill, path + ".skill", "identifiant de compétence");
+                if (!c.Present.Contains("action"))
+                {
+                    Present(c.Skill, path + ".skill", "identifiant de compétence, ou champ action (" + string.Join(", ", CombatActionIds.Defensive) + ")");
+                    return;
+                }
+                if (Present(c.Action, path + ".action", string.Join(", ", CombatActionIds.Defensive)) && !CombatActionIds.TryParseDefensive(c.Action, out _))
+                    _report.Add(path + ".action", ValidationCode.UnknownReference,
+                        $"action inconnue « {c.Action} » ; valeurs possibles : {string.Join(", ", CombatActionIds.Defensive)}.");
+                foreach (string field in new[] { "skill", "target" }.Where(c.Present.Contains))
+                    _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "une garde ou une parade ne prend ni compétence ni cible.");
             }
         }
     }

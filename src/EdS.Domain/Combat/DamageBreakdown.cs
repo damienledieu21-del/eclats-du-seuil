@@ -26,6 +26,11 @@ namespace EdS.Domain.Combat
 
         public Fixed AfterDefense { get; internal set; }
 
+        /// <summary>Réduction de garde ou de parade (0 = aucune), puis montant après cette réduction.</summary>
+        public Fixed Mitigation { get; internal set; }
+
+        public Fixed AfterMitigation { get; internal set; }
+
         /// <summary>Dégâts finaux entiers, après arrondi et minimum.</summary>
         public long FinalDamage { get; internal set; }
     }

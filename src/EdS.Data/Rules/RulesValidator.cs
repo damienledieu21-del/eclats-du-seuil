@@ -179,6 +179,22 @@ namespace EdS.Data.Rules
                 EnduranceRegenDelayMs = Int(d, P(c, nameof(CombatRules.EnduranceRegenDelayMs))),
                 MaxDurationMs = Int(d, P(c, nameof(CombatRules.MaxDurationMs))),
                 MaxEventsPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxEventsPerTick))),
+                GuardDamageReduction = Dec(d, P(c, nameof(CombatRules.GuardDamageReduction))),
+                GuardUpkeepPerSecond = (int)Int(d, P(c, nameof(CombatRules.GuardUpkeepPerSecond))),
+                GuardCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.GuardCostPerBlock))),
+                GuardBreakDurationMs = Int(d, P(c, nameof(CombatRules.GuardBreakDurationMs))),
+                ParryWindowMs = Int(d, P(c, nameof(CombatRules.ParryWindowMs))),
+                ParryDamageReduction = Dec(d, P(c, nameof(CombatRules.ParryDamageReduction))),
+                ParryFailureRecoveryMs = Int(d, P(c, nameof(CombatRules.ParryFailureRecoveryMs))),
+                RampartChargesPerParry = (int)Int(d, P(c, nameof(CombatRules.RampartChargesPerParry))),
+                RampartChargesMax = (int)Int(d, P(c, nameof(CombatRules.RampartChargesMax))),
+                ResonanceMax = (int)Int(d, P(c, nameof(CombatRules.ResonanceMax))),
+                ResonancePerDirectHit = (int)Int(d, P(c, nameof(CombatRules.ResonancePerDirectHit))),
+                ResonancePerPerfectParry = (int)Int(d, P(c, nameof(CombatRules.ResonancePerPerfectParry))),
+                ResonancePerBlock = (int)Int(d, P(c, nameof(CombatRules.ResonancePerBlock))),
+                UltimateResonanceCost = (int)Int(d, P(c, nameof(CombatRules.UltimateResonanceCost))),
+                FragilityDurationMs = Int(d, P(c, nameof(CombatRules.FragilityDurationMs))),
+                FragilityDamageTakenIncrease = Dec(d, P(c, nameof(CombatRules.FragilityDamageTakenIncrease))),
             };
         }
 

@@ -15,7 +15,8 @@ namespace EdS.Domain.Builds
     }
 
     /// <summary>
-    /// Partie « combat » d'une compétence lançable (lot 5) : dégâts directs, coût, recharge.
+    /// Partie « combat » d'une compétence lançable (lot 5) : dégâts directs, coût, recharge ; depuis le lot 6,
+    /// caractère imparable et Charges de rempart consommées ou produites (sources et consommateurs configurables).
     /// Les compétences sont instantanées (A6) ; la recharge démarre au lancement.
     /// Une compétence sans ces données existe dans les builds mais ne peut pas encore être lancée.
     /// </summary>
@@ -31,11 +32,21 @@ namespace EdS.Domain.Builds
         public long CooldownMs { get; }
         public SkillTargeting Targeting { get; }
 
+        /// <summary>Imparable : ignore la garde et la parade de la cible (A1, A2).</summary>
+        public bool Unblockable { get; }
+
+        /// <summary>Charges de rempart exigées et dépensées au lancement (A4) ; 0 = aucune.</summary>
+        public int RampartChargeCost { get; }
+
+        /// <summary>Charges de rempart gagnées au lancement (A4) ; 0 = aucune. L'excédent est perdu.</summary>
+        public int RampartChargeGain { get; }
+
         /// <summary>Valeurs provisoires, non équilibrées.</summary>
         public bool IsProvisional { get; }
 
         public SkillCombatDefinition(PowerType powerType, DamageType damageType, Fixed coefficient, int enduranceCost,
-            long cooldownMs, SkillTargeting targeting = SkillTargeting.Enemy, bool isProvisional = true)
+            long cooldownMs, SkillTargeting targeting = SkillTargeting.Enemy, bool isProvisional = true,
+            bool unblockable = false, int rampartChargeCost = 0, int rampartChargeGain = 0)
         {
             PowerType = powerType;
             DamageType = damageType;
@@ -44,6 +55,9 @@ namespace EdS.Domain.Builds
             CooldownMs = cooldownMs;
             Targeting = targeting;
             IsProvisional = isProvisional;
+            Unblockable = unblockable;
+            RampartChargeCost = rampartChargeCost;
+            RampartChargeGain = rampartChargeGain;
         }
     }
 }

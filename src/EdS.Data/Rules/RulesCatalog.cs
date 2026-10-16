@@ -127,6 +127,22 @@ namespace EdS.Data.Rules
             new RuleField("combat.endurance.regenDelayMs", RuleValueKind.Int64, C, nameof(CombatRules.EnduranceRegenDelayMs)),
             new RuleField("combat.limits.maxDurationMs", RuleValueKind.Int64, C, nameof(CombatRules.MaxDurationMs)),
             new RuleField("combat.limits.maxEventsPerTick", RuleValueKind.Int32, C, nameof(CombatRules.MaxEventsPerTick)),
+            new RuleField("combat.guard.damageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.GuardDamageReduction)),
+            new RuleField("combat.guard.upkeepPerSecond", RuleValueKind.Int32, C, nameof(CombatRules.GuardUpkeepPerSecond)),
+            new RuleField("combat.guard.costPerBlock", RuleValueKind.Int32, C, nameof(CombatRules.GuardCostPerBlock)),
+            new RuleField("combat.guard.breakDurationMs", RuleValueKind.Int64, C, nameof(CombatRules.GuardBreakDurationMs)),
+            new RuleField("combat.parry.windowMs", RuleValueKind.Int64, C, nameof(CombatRules.ParryWindowMs)),
+            new RuleField("combat.parry.damageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.ParryDamageReduction)),
+            new RuleField("combat.parry.failureRecoveryMs", RuleValueKind.Int64, C, nameof(CombatRules.ParryFailureRecoveryMs)),
+            new RuleField("combat.rampartCharges.perPerfectParry", RuleValueKind.Int32, C, nameof(CombatRules.RampartChargesPerParry)),
+            new RuleField("combat.rampartCharges.max", RuleValueKind.Int32, C, nameof(CombatRules.RampartChargesMax)),
+            new RuleField("combat.resonance.max", RuleValueKind.Int32, C, nameof(CombatRules.ResonanceMax)),
+            new RuleField("combat.resonance.perDirectHit", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerDirectHit)),
+            new RuleField("combat.resonance.perPerfectParry", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerPerfectParry)),
+            new RuleField("combat.resonance.perBlock", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerBlock)),
+            new RuleField("combat.resonance.ultimateCost", RuleValueKind.Int32, C, nameof(CombatRules.UltimateResonanceCost)),
+            new RuleField("combat.states.fragility.durationMs", RuleValueKind.Int64, C, nameof(CombatRules.FragilityDurationMs)),
+            new RuleField("combat.states.fragility.damageTakenIncrease", RuleValueKind.Decimal, C, nameof(CombatRules.FragilityDamageTakenIncrease)),
         };
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

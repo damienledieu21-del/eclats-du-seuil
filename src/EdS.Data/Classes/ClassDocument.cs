@@ -75,6 +75,9 @@ namespace EdS.Data.Classes
         /// <summary>« enemy » ou « allEnemies ».</summary>
         public string? Targeting { get; set; }
 
+        public bool? Unblockable { get; set; }
+        public int? RampartChargeCost { get; set; }
+        public int? RampartChargeGain { get; set; }
         public bool? Provisional { get; set; }
     }
 

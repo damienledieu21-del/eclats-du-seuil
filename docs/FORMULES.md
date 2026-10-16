@@ -26,10 +26,10 @@ L'équipement apporte trois puissances distinctes (physique, agile, magique) add
 ```
 puissance         = puissance du type de la compétence (physique pour le Bastion)
 × coefficient     de compétence (≥ 0)
-× bonus           Π sur les catégories (compétence, talent, altération) de borne(1 + Σ bonus de la catégorie, 0, 10)
+× bonus           Π sur les catégories (compétence, talent, altération) de borne(1 + Σ bonus de la catégorie, 0, 10) ; la Fragilité de la cible est une altération de +0,1
 × critique        multiplicateur critique de l'attaquant si le tirage réussit, sinon 1
 × défense         constante / (constante + défense effective), armure ou résistance magique selon le type de dégâts
-(garde/protections : lot 6)
+× (1 − réduction) garde (0,6) ou parade parfaite (0,9), jamais les deux ; 0 sinon (lot 6)
 = arrondi final   au plus proche, moitié loin de zéro ; minimum 1 si le montant est > 0, 0 sinon
 ```
 
