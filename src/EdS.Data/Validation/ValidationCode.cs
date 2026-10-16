@@ -44,5 +44,14 @@ namespace EdS.Data.Validation
 
         /// <summary>Valeur bien formée mais refusée par les règles de gameplay (incohérence, borne).</summary>
         InvalidValue,
+
+        /// <summary>
+        /// Limite de volume dépassée (lot 7.1) : taille de fichier, nombre de combattants ou de commandes, commandes par
+        /// acteur et par tick, capacité de la file, longueur d'un tableau, nombre d'erreurs rapportées.
+        /// </summary>
+        LimitExceeded,
+
+        /// <summary>Fichier plus gros que la limite de taille des lecteurs (lot 7.1) ; refusé avant toute lecture du contenu.</summary>
+        FileTooLarge,
     }
 }

@@ -20,6 +20,9 @@ namespace EdS.Domain
         /// correctif 6.1.1) ; rapportée avec le code <c>OutOfRange</c> par les chargeurs.
         /// </summary>
         NumericLimit = 3,
+
+        /// <summary>Limite de volume dépassée (nombre de combattants, de commandes, capacité de la file…), lot 7.1 ; code <c>LimitExceeded</c>.</summary>
+        LimitExceeded = 4,
     }
 
     /// <summary>

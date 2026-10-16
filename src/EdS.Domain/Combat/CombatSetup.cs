@@ -284,6 +284,22 @@ namespace EdS.Domain.Combat
             foreach (RuleViolation v in Progression.Validate()) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules.progression." + f).ToArray()));
             if (errors.Count > 0) return errors;   // la suite dépend de règles cohérentes
 
+            // Lot 7.1 : admission. Un scénario hors limites de volume est refusé sans analyser ses éléments un par un.
+            bool oversized = false;
+            if (Combatants.Count > Combat.MaxCombatants)
+            {
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"{Combatants.Count} combattants, au plus {Combat.MaxCombatants} (combat.limits.maxCombatants).", "combatants"));
+                oversized = true;
+            }
+            if (Commands.Count > Combat.MaxCommands)
+            {
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"{Commands.Count} commandes, au plus {Combat.MaxCommands} (combat.limits.maxCommands).", "commands"));
+                oversized = true;
+            }
+            if (oversized) return errors;
+
             long tick = Combat.TickMilliseconds;
             if (Seed < 0) errors.Add(new RuleViolation("la graine doit être positive ou nulle.", "seed"));
             if (DurationMs <= 0 || DurationMs > Combat.MaxDurationMs)
@@ -335,6 +351,7 @@ namespace EdS.Domain.Combat
             if (Combatants.Select(c => c.Team).Distinct(StringComparer.Ordinal).Count() < 2)
                 errors.Add(new RuleViolation("un combat oppose au moins deux équipes.", "combatants"));
 
+            var perActorTick = new Dictionary<(string Actor, long Tick), int>();
             for (int i = 0; i < Commands.Count; i++)
             {
                 CombatCommand command = Commands[i];
@@ -343,6 +360,17 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation($"instant {command.AtMs} ms hors du combat [0, {DurationMs}[ ms.", path + ".atMs"));
                 else if (command.AtMs % tick != 0)
                     errors.Add(new RuleViolation($"{command.AtMs} ms n'est pas un multiple de la durée du tick ({tick} ms).", path + ".atMs"));
+                else
+                {
+                    // Une seule erreur par couple (acteur, tick), sur la première commande en excès, dans l'ordre du fichier.
+                    var key = (command.Actor, command.AtMs / tick);
+                    perActorTick.TryGetValue(key, out int count);
+                    perActorTick[key] = ++count;
+                    if (count == Combat.MaxCommandsPerActorPerTick + 1)
+                        errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                            $"{count}ᵉ commande de « {command.Actor} » au tick {key.Item2} ({command.AtMs} ms), au plus {Combat.MaxCommandsPerActorPerTick} (combat.limits.maxCommandsPerActorPerTick).",
+                            path + ".atMs"));
+                }
                 if (!ids.ContainsKey(command.Actor))
                     errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"combattant inconnu « {command.Actor} ».", path + ".actor"));
                 if (command.Target != null && !ids.ContainsKey(command.Target))
@@ -359,7 +387,31 @@ namespace EdS.Domain.Combat
                     if (command.Target != null) errors.Add(new RuleViolation("une garde ou une parade n'a pas de cible.", path + ".target"));
                 }
             }
+            ValidateInitialQueue(errors);
             return errors;
+        }
+
+        /// <summary>
+        /// Lot 7.1 : événements programmés à l'initialisation (une entrée par commande, un premier tour par assaillant qui
+        /// attaque avant la fin) comparés à la capacité réelle de la file. Le moteur refait le même compte à sa construction ;
+        /// un dépassement est refusé ici, avant tout journal.
+        /// </summary>
+        private void ValidateInitialQueue(List<RuleViolation> errors)
+        {
+            if (Combat.TickMilliseconds <= 0 || DurationMs <= 0) return;
+            long initial = InitialEventCount();
+            if (initial > Combat.MaxPendingEvents)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"{initial} événements à programmer avant le premier tick (commandes et premiers tours d'assaillant), capacité de la file {Combat.MaxPendingEvents} (combat.limits.maxPendingEvents).",
+                    "commands"));
+        }
+
+        /// <summary>Nombre d'événements que le moteur met en file à sa construction.</summary>
+        public long InitialEventCount()
+        {
+            long durationTicks = DurationMs / Combat.TickMilliseconds;
+            long assailantTurns = Combatants.OfType<AssailantSetup>().LongCount(a => a.FirstAttackMs >= 0 && a.FirstAttackMs / Combat.TickMilliseconds < durationTicks);
+            return Commands.Count + assailantTurns;
         }
 
         private void ValidateAssailantShape(AssailantSetup a, string path, long tick, List<RuleViolation> errors)

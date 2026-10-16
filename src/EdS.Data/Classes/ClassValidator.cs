@@ -97,6 +97,7 @@ namespace EdS.Data.Classes
                     RuleViolationKind.UnknownReference => ValidationCode.UnknownReference,
                     RuleViolationKind.DuplicateId => ValidationCode.DuplicateId,
                     RuleViolationKind.NumericLimit => ValidationCode.OutOfRange,
+                    RuleViolationKind.LimitExceeded => ValidationCode.LimitExceeded,
                     _ => ValidationCode.InvalidValue,
                 };
                 foreach (string field in violation.Fields)
