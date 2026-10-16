@@ -1,13 +1,16 @@
 ﻿using System.Globalization;
 using System.Text.Json;
+using EdS.Data;
 using EdS.Data.Classes;
 using EdS.Data.Json;
 using EdS.Data.Rules;
+using EdS.Data.Scenarios;
 using EdS.Data.Validation;
+using EdS.Simulation.Engine;
 using EdS.Simulation.Randomness;
 
 // Outil en ligne de commande du simulateur.
-// Les commandes simulate / report arriveront avec les lots 5 et 8.
+// La commande report arrivera avec le lot 8.
 
 if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
 {
@@ -21,6 +24,10 @@ switch (args[0])
         return RunRng(args.AsSpan(1));
     case "validate":
         return RunValidate(args.AsSpan(1));
+    case "simulate":
+        return RunSimulate(args.AsSpan(1));
+    case "replay":
+        return RunReplay(args.AsSpan(1));
     default:
         Console.Error.WriteLine($"Commande inconnue : {args[0]}");
         PrintHelp();
@@ -78,6 +85,19 @@ static int RunValidate(ReadOnlySpan<string> options)
     }
     catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
 
+    if (kind == ScenarioValidator.Kind)
+    {
+        GameData? data = LoadData(DefaultDataDirectory());
+        if (data is null) return 1;
+        ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(path, data);
+        if (scenario.Setup is not { } setup) return Fail(path, scenario.Report);
+        Console.WriteLine($"{path} : valide");
+        Console.WriteLine($"  combattants    {string.Join(", ", setup.Combatants.Select(c => c.Id))}");
+        Console.WriteLine($"  commandes      {setup.Commands.Count}");
+        Console.WriteLine($"  durée          {setup.DurationMs} ms, graine {setup.Seed}");
+        return 0;
+    }
+
     if (kind != ClassValidator.Kind)
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(path);
@@ -117,6 +137,100 @@ static int Fail(string path, ValidationReport report)
     return 1;
 }
 
+static string DefaultDataDirectory() => Path.Combine("data", "v0");
+
+static GameData? LoadData(string directory)
+{
+    GameDataLoadResult loaded = GameDataLoader.Load(directory);
+    if (loaded.Data is { } data) return data;
+    foreach (var (file, report) in loaded.Failures) Fail(file, report);
+    return null;
+}
+
+static int RunSimulate(ReadOnlySpan<string> options)
+{
+    string? scenarioPath = null, output = null, dataDirectory = DefaultDataDirectory();
+    for (int i = 0; i < options.Length; i++)
+    {
+        if (options[i] == "--out" && i + 1 < options.Length) output = options[++i];
+        else if (options[i] == "--data" && i + 1 < options.Length) dataDirectory = options[++i];
+        else if (scenarioPath is null && !options[i].StartsWith("--", StringComparison.Ordinal)) scenarioPath = options[i];
+        else
+        {
+            Console.Error.WriteLine($"Option inconnue : {options[i]}");
+            return 1;
+        }
+    }
+    if (scenarioPath is null)
+    {
+        Console.Error.WriteLine("Usage : eds simulate scénario.json [--data dossier] [--out journal.jsonl]");
+        return 1;
+    }
+
+    GameData? data = LoadData(dataDirectory);
+    if (data is null) return 1;
+    ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(scenarioPath, data);
+    if (scenario.Setup is not { } setup) return Fail(scenarioPath, scenario.Report);
+
+    var log = new MemoryCombatLog();
+    CombatResult result = CombatEngine.Run(setup, log);
+    TextWriter summary = output is null ? Console.Error : Console.Out;
+    if (output is null) Console.Out.Write(log.ToString());
+    else File.WriteAllText(output, log.ToString(), new System.Text.UTF8Encoding(false));
+
+    summary.WriteLine($"Combat simulé — valeurs provisoires ({setup.DurationMs} ms prévus, graine {setup.Seed})");
+    summary.WriteLine($"  fin            {result.EndReason} au tick {result.EndTick} ({result.DurationMs} ms){(result.AbortReason is null ? "" : " : " + result.AbortReason)}");
+    foreach (CombatantResult c in result.Combatants)
+    {
+        string dps = (c.DamageDealt * 1000m / result.DurationMs).ToString("0.##", CultureInfo.InvariantCulture);
+        summary.WriteLine($"  {c.Id,-14} dégâts infligés {c.DamageDealt} (DPS {dps}), reçus {c.DamageTaken}, coups {c.Hits} dont {c.CriticalHits} critiques, compétences {c.SkillsCast}, refus {c.CommandsRejected}");
+    }
+    if (output != null) summary.WriteLine($"  journal        {output} ({log.Lines.Count} lignes)");
+    return 0;
+}
+
+static int RunReplay(ReadOnlySpan<string> options)
+{
+    string? logPath = null, dataDirectory = DefaultDataDirectory();
+    for (int i = 0; i < options.Length; i++)
+    {
+        if (options[i] == "--data" && i + 1 < options.Length) dataDirectory = options[++i];
+        else if (logPath is null && !options[i].StartsWith("--", StringComparison.Ordinal)) logPath = options[i];
+        else
+        {
+            Console.Error.WriteLine($"Option inconnue : {options[i]}");
+            return 1;
+        }
+    }
+    if (logPath is null)
+    {
+        Console.Error.WriteLine("Usage : eds replay journal.jsonl [--data dossier]");
+        return 1;
+    }
+
+    GameData? data = LoadData(dataDirectory);
+    if (data is null) return 1;
+    ReplayOutcome outcome = CombatLogReplayer.ReplayFile(logPath, data);
+    switch (outcome.Status)
+    {
+        case ReplayStatus.Identical:
+            Console.WriteLine($"{logPath} : rejeu identique, octet par octet.");
+            return 0;
+        case ReplayStatus.Diverged:
+            ReplayComparison c = outcome.Comparison!;
+            Console.Error.WriteLine($"{logPath} : rejeu différent à la ligne {c.FirstDifferentLine}.");
+            Console.Error.WriteLine($"  journal : {c.Expected ?? "(fin du journal)"}");
+            Console.Error.WriteLine($"  rejeu   : {c.Actual ?? "(fin du rejeu)"}");
+            return 1;
+        default:
+            Console.Error.WriteLine(outcome.Status == ReplayStatus.Refused
+                ? $"{logPath} : rejeu refusé, le journal n'est pas reproductible avec ces données ou ce moteur :"
+                : $"{logPath} : journal illisible :");
+            foreach (string problem in outcome.Problems) Console.Error.WriteLine("  " + problem);
+            return 1;
+    }
+}
+
 static void PrintHelp()
 {
     Console.WriteLine("Éclats du Seuil — simulateur de combat (v0.1, valeurs provisoires)");
@@ -124,5 +238,8 @@ static void PrintHelp()
     Console.WriteLine("Usage :");
     Console.WriteLine("  eds rng [--seed N] [--stream N] [--count N]   Affiche les premiers tirages PCG32");
     Console.WriteLine("  eds validate [fichier.json] [--rules R]        Valide un fichier de règles ou de classe (défaut : data/v0/rules.json) ;");
-    Console.WriteLine("                                                 une classe est vérifiée avec la progression de R (défaut : data/v0/rules.json)");
+    Console.WriteLine("                                                 une classe est vérifiée avec la progression de R (défaut : data/v0/rules.json) ;");
+    Console.WriteLine("                                                 un scénario avec les données de data/v0");
+    Console.WriteLine("  eds simulate scénario.json [--data D] [--out J] Simule un combat ; journal JSON Lines vers J (défaut : sortie standard)");
+    Console.WriteLine("  eds replay journal.jsonl [--data D]            Vérifie les empreintes puis rejoue et compare octet par octet");
 }

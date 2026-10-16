@@ -1,4 +1,6 @@
 using EdS.Domain.Builds;
+using EdS.Domain.Numerics;
+using EdS.Domain.Stats;
 
 namespace EdS.Domain.Tests.Builds;
 
@@ -157,6 +159,23 @@ public class ClassDefinitionTests
     {
         var skills = FictionalClass.Skills.Append(new SkillDefinition("skill.essai.trop_tard", "Trop tard", SkillKind.Active, 31)).ToArray();
         AssertViolation(FictionalClass.Create(skills: skills), $"skills[{skills.Length - 1}].minLevel");
+    }
+
+    [Fact]
+    public void Donnees_de_combat_incoherentes()
+    {
+        var bad = new SkillCombatDefinition(PowerType.Physique, DamageType.Physique, Fixed.Parse("-1"), -5, -1000);
+        var skills = FictionalClass.Skills
+            .Append(new SkillDefinition("skill.essai.mauvaise", "Mauvaise", SkillKind.Active, combat: bad))
+            .Append(new SkillDefinition("skill.essai.passif_lance", "Passif lancé", SkillKind.Passive,
+                combat: new SkillCombatDefinition(PowerType.Physique, DamageType.Physique, Fixed.One, 0, 0)))
+            .ToArray();
+        var definition = FictionalClass.Create(skills: skills);
+        int invalid = skills.Length - 2, passive = skills.Length - 1;
+        AssertViolation(definition, $"skills[{invalid}].combat.coefficient");
+        AssertViolation(definition, $"skills[{invalid}].combat.enduranceCost");
+        AssertViolation(definition, $"skills[{invalid}].combat.cooldownMs");
+        AssertViolation(definition, $"skills[{passive}].combat");
     }
 
     [Fact]

@@ -70,6 +70,7 @@ public class RulesCatalogTests
         {
             object provisional = field.Owner == typeof(StatRules) ? StatRules.Provisional
                 : field.Owner == typeof(DamageRules) ? DamageRules.Provisional
+                : field.Owner == typeof(CombatRules) ? CombatRules.Provisional
                 : ProgressionRules.Provisional;
             object value = field.Owner.GetProperty(field.Property)!.GetValue(provisional)!;
             document.Set(field.Path, value switch

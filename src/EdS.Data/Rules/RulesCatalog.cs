@@ -19,7 +19,7 @@ namespace EdS.Data.Rules
 
         public RuleValueKind Kind { get; }
 
-        /// <summary>Classe du domaine alimentée : <c>StatRules</c>, <c>DamageRules</c> ou <c>ProgressionRules</c>.</summary>
+        /// <summary>Classe du domaine alimentée : <c>StatRules</c>, <c>DamageRules</c>, <c>ProgressionRules</c> ou <c>CombatRules</c>.</summary>
         public Type Owner { get; }
 
         /// <summary>Nom de la propriété C# alimentée dans <see cref="Owner"/>.</summary>
@@ -77,6 +77,7 @@ namespace EdS.Data.Rules
         private static readonly Type S = typeof(StatRules);
         private static readonly Type D = typeof(DamageRules);
         private static readonly Type P = typeof(ProgressionRules);
+        private static readonly Type C = typeof(CombatRules);
 
         public static IReadOnlyList<RuleField> Fields { get; } = new[]
         {
@@ -119,6 +120,13 @@ namespace EdS.Data.Rules
             new RuleField("progression.slots.activeUnlockLevels", RuleValueKind.Int32List, P, nameof(ProgressionRules.ActiveSlotLevels)),
             new RuleField("progression.slots.passiveUnlockLevels", RuleValueKind.Int32List, P, nameof(ProgressionRules.PassiveSlotLevels)),
             new RuleField("progression.slots.ultimateUnlockLevel", RuleValueKind.Int32, P, nameof(ProgressionRules.UltimateUnlockLevel)),
+
+            new RuleField("combat.tickMs", RuleValueKind.Int32, C, nameof(CombatRules.TickMilliseconds)),
+            new RuleField("combat.globalCooldownMs", RuleValueKind.Int64, C, nameof(CombatRules.GlobalCooldownMs)),
+            new RuleField("combat.endurance.regenPerSecond", RuleValueKind.Int32, C, nameof(CombatRules.EnduranceRegenPerSecond)),
+            new RuleField("combat.endurance.regenDelayMs", RuleValueKind.Int64, C, nameof(CombatRules.EnduranceRegenDelayMs)),
+            new RuleField("combat.limits.maxDurationMs", RuleValueKind.Int64, C, nameof(CombatRules.MaxDurationMs)),
+            new RuleField("combat.limits.maxEventsPerTick", RuleValueKind.Int32, C, nameof(CombatRules.MaxEventsPerTick)),
         };
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

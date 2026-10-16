@@ -17,9 +17,12 @@ namespace EdS.Data.Rules
         public StatRules Stats { get; }
         public DamageRules Damage { get; }
         public ProgressionRules Progression { get; }
+        public CombatRules Combat { get; }
 
-        internal LoadedRules(int schemaVersion, string contentVersion, string fingerprint, StatRules stats, DamageRules damage, ProgressionRules progression)
+        internal LoadedRules(int schemaVersion, string contentVersion, string fingerprint, StatRules stats, DamageRules damage,
+            ProgressionRules progression, CombatRules combat)
         {
+            Combat = combat;
             Progression = progression;
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;

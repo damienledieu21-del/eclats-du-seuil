@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/scenario.schema.json",
+  "title": "Éclats du Seuil — scénario de combat simulé",
+  "description": "Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ScenarioValidator et CombatSetup.Validate).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "scenario"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seed",
+        "durationMs",
+        "combatants",
+        "commands"
+      ],
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Graine PCG32 du combat."
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Durée simulée, multiple du tick, au plus combat.limits.maxDurationMs."
+        },
+        "combatants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/combatant"
+          }
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "combatant": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "team",
+        "initiative"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/name"
+        },
+        "type": {
+          "enum": [
+            "character",
+            "dummy"
+          ]
+        },
+        "team": {
+          "$ref": "#/$defs/name"
+        },
+        "initiative": {
+          "type": "integer",
+          "description": "Commandes simultanées : la plus grande initiative agit d'abord, puis l'identifiant."
+        },
+        "class": {
+          "type": "string"
+        },
+        "build": {
+          "$ref": "#/$defs/build"
+        },
+        "armor": {
+          "type": "number",
+          "minimum": 0
+        },
+        "magicResistance": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "attributes",
+        "talents",
+        "activeSkills",
+        "passiveSkills"
+      ],
+      "properties": {
+        "level": {
+          "type": "integer"
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "force",
+            "dexterite",
+            "intelligence",
+            "vitalite",
+            "volonte",
+            "endurance"
+          ],
+          "properties": {
+            "force": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dexterite": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "intelligence": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "vitalite": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "volonte": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "endurance": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "talents": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "activeSkills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ultimate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "passiveSkills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "atMs",
+        "actor",
+        "skill"
+      ],
+      "properties": {
+        "atMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Instant de la commande, multiple du tick."
+        },
+        "actor": {
+          "$ref": "#/$defs/name"
+        },
+        "skill": {
+          "type": "string"
+        },
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Absente ou null pour une compétence de zone."
+        }
+      }
+    }
+  }
+}

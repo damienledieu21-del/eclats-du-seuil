@@ -33,13 +33,15 @@ namespace EdS.Data.Rules
             StatRules stats = BuildStats(document);
             DamageRules damage = BuildDamage(document);
             ProgressionRules progression = BuildProgression(document);
+            CombatRules combat = BuildCombat(document);
             AddViolations(report, typeof(StatRules), stats.Validate());
             AddViolations(report, typeof(DamageRules), damage.Validate());
             AddViolations(report, typeof(ProgressionRules), progression.Validate());
+            AddViolations(report, typeof(CombatRules), combat.Validate());
             if (!report.IsValid) return new RulesLoadResult(report, null);
 
             int schemaVersion = document.SchemaVersion!.Value;
-            var rules = new LoadedRules(schemaVersion, document.ContentVersion!, RulesFingerprint.Compute(schemaVersion, document), stats, damage, progression);
+            var rules = new LoadedRules(schemaVersion, document.ContentVersion!, RulesFingerprint.Compute(schemaVersion, document), stats, damage, progression, combat);
             return new RulesLoadResult(report, rules);
         }
 
@@ -163,6 +165,20 @@ namespace EdS.Data.Rules
                 ActiveSlotLevels = L(nameof(ProgressionRules.ActiveSlotLevels)),
                 PassiveSlotLevels = L(nameof(ProgressionRules.PassiveSlotLevels)),
                 UltimateUnlockLevel = I(nameof(ProgressionRules.UltimateUnlockLevel)),
+            };
+        }
+
+        private static CombatRules BuildCombat(RulesDocument d)
+        {
+            Type c = typeof(CombatRules);
+            return new CombatRules
+            {
+                TickMilliseconds = (int)Int(d, P(c, nameof(CombatRules.TickMilliseconds))),
+                GlobalCooldownMs = Int(d, P(c, nameof(CombatRules.GlobalCooldownMs))),
+                EnduranceRegenPerSecond = (int)Int(d, P(c, nameof(CombatRules.EnduranceRegenPerSecond))),
+                EnduranceRegenDelayMs = Int(d, P(c, nameof(CombatRules.EnduranceRegenDelayMs))),
+                MaxDurationMs = Int(d, P(c, nameof(CombatRules.MaxDurationMs))),
+                MaxEventsPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxEventsPerTick))),
             };
         }
 

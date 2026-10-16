@@ -13,7 +13,7 @@ namespace EdS.Domain.Builds
 
     /// <summary>
     /// Compétence équipable (active, ultime ou passive). Les passifs équipables sont distincts des talents permanents.
-    /// Coûts, recharges et effets arriveront avec le moteur.
+    /// <see cref="Combat"/> décrit ce que fait la compétence quand on la lance ; null tant qu'elle n'est pas implémentée.
     /// </summary>
     public sealed class SkillDefinition
     {
@@ -24,9 +24,14 @@ namespace EdS.Domain.Builds
         public IReadOnlyList<TalentRequirement> TalentRequirements { get; }
         public bool IsPlaceholder { get; }
 
+        /// <summary>Dégâts, coût et recharge ; null si la compétence ne peut pas encore être lancée.</summary>
+        public SkillCombatDefinition? Combat { get; }
+
         public SkillDefinition(string id, string name, SkillKind kind, int minLevel = 1,
-            IReadOnlyList<TalentRequirement>? talentRequirements = null, bool isPlaceholder = false)
+            IReadOnlyList<TalentRequirement>? talentRequirements = null, bool isPlaceholder = false,
+            SkillCombatDefinition? combat = null)
         {
+            Combat = combat;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Kind = kind;

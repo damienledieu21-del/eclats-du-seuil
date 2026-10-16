@@ -10,11 +10,12 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 | Projet | Cible | Rôle |
 |---|---|---|
 | `src/EdS.Domain` | netstandard2.1, C# 9 | Virgule fixe (`Fixed`), temps (`TickRate`), attributs et statistiques (`Stats`), formule de dégâts (`Combat`), classes, talents et validateur de builds (`Builds`) — aucune dépendance |
-| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat, RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
-| `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte — aucune dépendance |
+| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat déterministe (`Engine` : horloge logique, file d'événements, commandes, journal JSON Lines, rejeu), RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
+| `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte, scénarios — dépend du domaine et de la simulation |
 | `src/EdS.Data.Json` | net10.0 | Adaptateur System.Text.Json, réservé aux outils .NET |
-| `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`) |
+| `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`) |
 | `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `schemas/` |
+| `scenarios/` | JSON | Scénarios de combat (`mannequin.json`) |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
 
 Les projets `netstandard2.1` sont limités à C# 9 et n'ont aucune dépendance externe : ils sont importables tels quels dans Unity (IL2CPP) et sur un serveur .NET.
@@ -28,9 +29,12 @@ dotnet test --filter Category=Numeric
 dotnet test --filter Category=Formula
 dotnet test --filter Category=Data
 dotnet test --filter Category=Build
+dotnet test --filter Category=Engine
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
+dotnet run --project src/EdS.Cli -- simulate scenarios/mannequin.json --out combat.jsonl
+dotnet run --project src/EdS.Cli -- replay combat.jsonl
 ```
 
 Prérequis : SDK .NET 10 (voir `global.json`).
@@ -50,6 +54,8 @@ Arbitrages du lot 3 : PV = 100 + 10 × Vitalité + contributions (E1) ; cœur in
 
 Arbitrages du lot 4 : moteur de talents générique, mini-arbre Bastion avec talents de test « [TEST] » pour atteindre les seuils (F1) ; 1 point par rang, prérequis de rang (F2) ; points non dépensés autorisés (F3) ; pas de compétence en double, niveau minimal et prérequis de talents par compétence, emplacement d'ultime au niveau 10 (F4) ; attributs fournis par le build (F5) ; un fichier par classe, versionné, avec empreinte (F6). Détail : [docs/BUILDS.md](docs/BUILDS.md).
 
+Arbitrages du lot 5 : endurance +10/s après 1 s sans dépense, plafonnée, refus atomique si coût impayable, pas de garde brisée (A3) ; compétences instantanées, GCD 1 s configurable, recharge au lancer (A6) ; ciblage logique sans positions, zones dans un ordre déterministe (A7) ; ordre intra-tick expirations → commandes (initiative puis identifiant) → résolution → périodiques → régénération → morts et fin (A10) ; Frappe du rempart 1,20 / 10 / 6 s et Heurt de bouclier 0,80 / 15 / 10 s provisoires ; mannequin à PV infinis. Détail : [docs/MOTEUR.md](docs/MOTEUR.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -59,3 +65,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 2 — attributs, statistiques dérivées, défenses, bonus, critiques, formule de dégâts
 - [x] Lot 3 — données JSON, validation structurelle et sémantique, rules.json
 - [x] Lot 4 — classes, talents, compétences équipables, validateur de builds
+- [x] Lot 5 — moteur de simulation minimal (horloge, commandes, recharges, endurance, dégâts directs, journal, rejeu)

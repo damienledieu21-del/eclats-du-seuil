@@ -41,6 +41,7 @@ public class RulesJsonReaderTests
         AssertSameProperties(StatRules.Provisional, rules.Stats);
         AssertSameProperties(DamageRules.Provisional, rules.Damage);
         AssertSameProperties(ProgressionRules.Provisional, rules.Progression);
+        AssertSameProperties(CombatRules.Provisional, rules.Combat);
         Assert.Equal(Fixed.FromInt(100), rules.Stats.BaseMaxHealth);   // E1
     }
 
@@ -89,7 +90,7 @@ public class RulesJsonReaderTests
     {
         // Valeur de référence : changer le format canonique change toutes les empreintes déjà journalisées.
         Assert.Equal(
-            "sha256:5604cc6134e4ba2e0ea383b9b2a10d83ed58dff9ecbdfb301fd56fd8be3efd53",
+            "sha256:35e97788abc0824ed3b3843ae846895b0d4d8835a55a42a5155926fda73400e1",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 

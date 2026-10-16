@@ -207,7 +207,16 @@
         "kind": "active",
         "minLevel": 1,
         "placeholder": false,
-        "talentRequirements": []
+        "talentRequirements": [],
+        "combat": {
+          "powerType": "physique",
+          "damageType": "physique",
+          "coefficient": 1.2,
+          "enduranceCost": 10,
+          "cooldownMs": 6000,
+          "targeting": "enemy",
+          "provisional": true
+        }
       },
       {
         "id": "skill.bastion.heurt_de_bouclier",
@@ -215,7 +224,16 @@
         "kind": "active",
         "minLevel": 1,
         "placeholder": false,
-        "talentRequirements": []
+        "talentRequirements": [],
+        "combat": {
+          "powerType": "physique",
+          "damageType": "physique",
+          "coefficient": 0.8,
+          "enduranceCost": 15,
+          "cooldownMs": 10000,
+          "targeting": "enemy",
+          "provisional": true
+        }
       },
       {
         "id": "skill.bastion.provocation",

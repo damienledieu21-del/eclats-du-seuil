@@ -1,0 +1,165 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 1,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 42,
+    "durationMs": 60000,
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 10,
+          "attributes": {
+            "force": 14,
+            "dexterite": 8,
+            "intelligence": 6,
+            "vitalite": 14,
+            "volonte": 10,
+            "endurance": 12
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.barriere_d_acier"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.test_passif_1",
+            "skill.bastion.test_passif_2"
+          ]
+        }
+      },
+      {
+        "id": "mannequin",
+        "type": "dummy",
+        "team": "cibles",
+        "initiative": 0,
+        "armor": 100,
+        "magicResistance": 0
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 0,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 1000,
+        "actor": "bastion",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 2000,
+        "actor": "bastion",
+        "skill": "skill.bastion.provocation",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 3000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 6000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 11000,
+        "actor": "bastion",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 12000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 18000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 21000,
+        "actor": "bastion",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 24000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 30000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 31000,
+        "actor": "bastion",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 36000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 41000,
+        "actor": "bastion",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 42000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 48000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 51000,
+        "actor": "bastion",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "mannequin"
+      },
+      {
+        "atMs": 54000,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "mannequin"
+      }
+    ]
+  }
+}

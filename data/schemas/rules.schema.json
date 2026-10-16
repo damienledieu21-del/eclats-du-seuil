@@ -384,12 +384,78 @@
             "slots"
           ],
           "description": "Règles de progression communes à toutes les classes (ProgressionRules)."
+        },
+        "combat": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tickMs": {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647,
+              "description": "Durée d'un tick en ms (diviseur de 1000)."
+            },
+            "globalCooldownMs": {
+              "type": "integer",
+              "description": "Temps global de recharge après une compétence (A6)."
+            },
+            "endurance": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "regenPerSecond": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Endurance regagnée par seconde (A3)."
+                },
+                "regenDelayMs": {
+                  "type": "integer",
+                  "description": "Temps sans dépense avant la régénération (A3)."
+                }
+              },
+              "required": [
+                "regenPerSecond",
+                "regenDelayMs"
+              ],
+              "description": "Régénération d'endurance."
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxDurationMs": {
+                  "type": "integer",
+                  "description": "Durée maximale d'un combat simulé."
+                },
+                "maxEventsPerTick": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647,
+                  "description": "Événements maximum par tick avant interruption."
+                }
+              },
+              "required": [
+                "maxDurationMs",
+                "maxEventsPerTick"
+              ],
+              "description": "Limites de simulation."
+            }
+          },
+          "required": [
+            "tickMs",
+            "globalCooldownMs",
+            "endurance",
+            "limits"
+          ],
+          "description": "Paramètres du moteur de combat (CombatRules)."
         }
       },
       "required": [
         "stats",
         "damage",
-        "progression"
+        "progression",
+        "combat"
       ]
     }
   }

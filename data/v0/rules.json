@@ -60,6 +60,18 @@
         "passiveUnlockLevels": [1, 5, 20, 30],
         "ultimateUnlockLevel": 10
       }
+    },
+    "combat": {
+      "tickMs": 50,
+      "globalCooldownMs": 1000,
+      "endurance": {
+        "regenPerSecond": 10,
+        "regenDelayMs": 1000
+      },
+      "limits": {
+        "maxDurationMs": 600000,
+        "maxEventsPerTick": 1000
+      }
     }
   }
 }

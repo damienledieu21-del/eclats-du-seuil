@@ -6,6 +6,7 @@ using System.Text;
 using EdS.Data.Validation;
 using EdS.Domain;
 using EdS.Domain.Builds;
+using EdS.Domain.Stats;
 
 namespace EdS.Data.Classes
 {
@@ -55,6 +56,25 @@ namespace EdS.Data.Classes
             ["active"] = SkillKind.Active,
             ["ultimate"] = SkillKind.Ultimate,
             ["passive"] = SkillKind.Passive,
+        };
+
+        public static IReadOnlyDictionary<string, PowerType> PowerTypes { get; } = new Dictionary<string, PowerType>(StringComparer.Ordinal)
+        {
+            ["physique"] = PowerType.Physique,
+            ["agile"] = PowerType.Agile,
+            ["magique"] = PowerType.Magique,
+        };
+
+        public static IReadOnlyDictionary<string, DamageType> DamageTypes { get; } = new Dictionary<string, DamageType>(StringComparer.Ordinal)
+        {
+            ["physique"] = DamageType.Physique,
+            ["magique"] = DamageType.Magique,
+        };
+
+        public static IReadOnlyDictionary<string, SkillTargeting> Targetings { get; } = new Dictionary<string, SkillTargeting>(StringComparer.Ordinal)
+        {
+            ["enemy"] = SkillTargeting.Enemy,
+            ["allEnemies"] = SkillTargeting.AllEnemies,
         };
 
         public static ClassLoadResult Validate(ClassDocument document, ProgressionRules progression, ValidationReport? report = null)
@@ -139,6 +159,18 @@ namespace EdS.Data.Classes
                 Line(p + ".minLevel", skill.MinLevel);
                 Line(p + ".placeholder", skill.Placeholder == true ? "true" : "false");
                 Requirements(p + ".talentRequirements", skill.TalentRequirements!);
+                if (skill.Combat is not { } combat)
+                {
+                    Line(p + ".combat", "none");
+                    continue;
+                }
+                Line(p + ".combat.powerType", combat.PowerType);
+                Line(p + ".combat.damageType", combat.DamageType);
+                Line(p + ".combat.coefficient", combat.Coefficient!.Value.ToString());
+                Line(p + ".combat.enduranceCost", combat.EnduranceCost);
+                Line(p + ".combat.cooldownMs", combat.CooldownMs);
+                Line(p + ".combat.targeting", combat.Targeting);
+                Line(p + ".combat.provisional", combat.Provisional == true ? "true" : "false");
             }
             return text.ToString();
         }
@@ -154,8 +186,11 @@ namespace EdS.Data.Classes
             var trees = data.Trees!.Select(t => new TalentTreeDefinition(t!.Id!, t.Name!,
                 t.Talents!.Select(x => new TalentDefinition(x!.Id!, x.Name!, x.MaxRank!.Value, x.Major!.Value,
                     Requirements(x.Prerequisites!), x.Placeholder!.Value)).ToArray())).ToArray();
+            SkillCombatDefinition? Combat(SkillCombatData? c) => c is null ? null
+                : new SkillCombatDefinition(PowerTypes[c.PowerType!], DamageTypes[c.DamageType!], c.Coefficient!.Value,
+                    c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value);
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
-                Requirements(s.TalentRequirements!), s.Placeholder!.Value)).ToArray();
+                Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat))).ToArray();
             return new ClassDefinition(data.Id!, data.Name!, trees, skills);
         }
 
@@ -222,6 +257,24 @@ namespace EdS.Data.Classes
                 Present(skill.MinLevel, path + ".minLevel", "entier");
                 Present(skill.Placeholder, path + ".placeholder", "booléen");
                 Items(skill.TalentRequirements, path + ".talentRequirements", "liste, éventuellement vide", CheckRequirement);
+                if (skill.Combat is { } combat) CheckCombat(combat, path + ".combat");
+            }
+
+            private void Token<T>(string? value, string path, string description, IReadOnlyDictionary<string, T> allowed)
+            {
+                if (Present(value, path, description) && !allowed.ContainsKey(value!))
+                    _report.Add(path, ValidationCode.UnknownReference, $"valeur inconnue « {value} » ; valeurs possibles : {string.Join(", ", allowed.Keys)}.");
+            }
+
+            private void CheckCombat(SkillCombatData combat, string path)
+            {
+                Token(combat.PowerType, path + ".powerType", "physique, agile ou magique", PowerTypes);
+                Token(combat.DamageType, path + ".damageType", "physique ou magique", DamageTypes);
+                Present(combat.Coefficient, path + ".coefficient", "nombre décimal");
+                Present(combat.EnduranceCost, path + ".enduranceCost", "entier");
+                Present(combat.CooldownMs, path + ".cooldownMs", "entier, en millisecondes");
+                Token(combat.Targeting, path + ".targeting", "enemy ou allEnemies", Targetings);
+                Present(combat.Provisional, path + ".provisional", "booléen");
             }
 
             private void CheckRequirement(RequirementData requirement, string path)

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EdS.Domain.Numerics;
 
 namespace EdS.Data.Classes
 {
@@ -54,6 +55,27 @@ namespace EdS.Data.Classes
         public int? MinLevel { get; set; }
         public bool? Placeholder { get; set; }
         public List<RequirementData?>? TalentRequirements { get; set; }
+
+        /// <summary>Données de lancement (facultatives) : sans elles, la compétence s'équipe mais ne se lance pas encore.</summary>
+        public SkillCombatData? Combat { get; set; }
+    }
+
+    public sealed class SkillCombatData
+    {
+        /// <summary>« physique », « agile » ou « magique ».</summary>
+        public string? PowerType { get; set; }
+
+        /// <summary>« physique » ou « magique ».</summary>
+        public string? DamageType { get; set; }
+
+        public Fixed? Coefficient { get; set; }
+        public int? EnduranceCost { get; set; }
+        public long? CooldownMs { get; set; }
+
+        /// <summary>« enemy » ou « allEnemies ».</summary>
+        public string? Targeting { get; set; }
+
+        public bool? Provisional { get; set; }
     }
 
     public sealed class RequirementData

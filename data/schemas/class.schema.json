@@ -5,25 +5,58 @@
   "description": "Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ClassValidator), qui vérifie aussi les références, les cycles et la faisabilité des talents majeurs avec les règles de progression de rules.json.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "kind", "contentVersion", "data"],
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
   "properties": {
-    "$schema": { "type": "string", "description": "Chemin de ce schéma, ignoré par le programme." },
-    "schemaVersion": { "const": 1 },
-    "kind": { "const": "class" },
-    "contentVersion": { "type": "string", "description": "Version SemVer du contenu, ex. 0.1.0-provisoire." },
+    "$schema": {
+      "type": "string",
+      "description": "Chemin de ce schéma, ignoré par le programme."
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "class"
+    },
+    "contentVersion": {
+      "type": "string",
+      "description": "Version SemVer du contenu, ex. 0.1.0-provisoire."
+    },
     "data": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "trees", "skills"],
+      "required": [
+        "id",
+        "name",
+        "trees",
+        "skills"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/id", "pattern": "^class(\\.[a-z0-9_]+)+$" },
-        "name": { "type": "string", "minLength": 1 },
+        "id": {
+          "$ref": "#/$defs/id",
+          "pattern": "^class(\\.[a-z0-9_]+)+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
         "trees": {
           "type": "array",
           "description": "Exactement progression.treesPerClass arbres (3 en v0).",
-          "items": { "$ref": "#/$defs/tree" }
+          "items": {
+            "$ref": "#/$defs/tree"
+          }
         },
-        "skills": { "type": "array", "items": { "$ref": "#/$defs/skill" } }
+        "skills": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/skill"
+          }
+        }
       }
     }
   },
@@ -36,46 +69,186 @@
     "requirement": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["talent", "rank"],
+      "required": [
+        "talent",
+        "rank"
+      ],
       "properties": {
-        "talent": { "$ref": "#/$defs/id", "pattern": "^talent(\\.[a-z0-9_]+)+$" },
-        "rank": { "type": "integer", "minimum": 1, "description": "Rang minimal exigé dans ce talent." }
+        "talent": {
+          "$ref": "#/$defs/id",
+          "pattern": "^talent(\\.[a-z0-9_]+)+$"
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Rang minimal exigé dans ce talent."
+        }
       }
     },
     "tree": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "talents"],
+      "required": [
+        "id",
+        "name",
+        "talents"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/id", "pattern": "^tree(\\.[a-z0-9_]+)+$" },
-        "name": { "type": "string", "minLength": 1 },
-        "talents": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/talent" } }
+        "id": {
+          "$ref": "#/$defs/id",
+          "pattern": "^tree(\\.[a-z0-9_]+)+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "talents": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/talent"
+          }
+        }
       }
     },
     "talent": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "maxRank", "major", "placeholder", "prerequisites"],
+      "required": [
+        "id",
+        "name",
+        "maxRank",
+        "major",
+        "placeholder",
+        "prerequisites"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/id", "pattern": "^talent(\\.[a-z0-9_]+)+$" },
-        "name": { "type": "string", "minLength": 1 },
-        "maxRank": { "type": "integer", "minimum": 1, "description": "1 point par rang ; un talent majeur a 1 rang." },
-        "major": { "type": "boolean" },
-        "placeholder": { "type": "boolean", "description": "Talent de test sans effet, identifié « [TEST] »." },
-        "prerequisites": { "type": "array", "items": { "$ref": "#/$defs/requirement" } }
+        "id": {
+          "$ref": "#/$defs/id",
+          "pattern": "^talent(\\.[a-z0-9_]+)+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maxRank": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1 point par rang ; un talent majeur a 1 rang."
+        },
+        "major": {
+          "type": "boolean"
+        },
+        "placeholder": {
+          "type": "boolean",
+          "description": "Talent de test sans effet, identifié « [TEST] »."
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        }
       }
     },
     "skill": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "kind", "minLevel", "placeholder", "talentRequirements"],
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "minLevel",
+        "placeholder",
+        "talentRequirements"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/id", "pattern": "^skill(\\.[a-z0-9_]+)+$" },
-        "name": { "type": "string", "minLength": 1 },
-        "kind": { "enum": ["active", "ultimate", "passive"] },
-        "minLevel": { "type": "integer", "minimum": 1, "maximum": 30 },
-        "placeholder": { "type": "boolean" },
-        "talentRequirements": { "type": "array", "items": { "$ref": "#/$defs/requirement" } }
+        "id": {
+          "$ref": "#/$defs/id",
+          "pattern": "^skill(\\.[a-z0-9_]+)+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "active",
+            "ultimate",
+            "passive"
+          ]
+        },
+        "minLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "placeholder": {
+          "type": "boolean"
+        },
+        "talentRequirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        },
+        "combat": {
+          "$ref": "#/$defs/combat"
+        }
+      }
+    },
+    "combat": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Facultatif. Dégâts directs, coût et recharge d'une compétence lançable (lot 5). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore.",
+      "required": [
+        "powerType",
+        "damageType",
+        "coefficient",
+        "enduranceCost",
+        "cooldownMs",
+        "targeting",
+        "provisional"
+      ],
+      "properties": {
+        "powerType": {
+          "enum": [
+            "physique",
+            "agile",
+            "magique"
+          ]
+        },
+        "damageType": {
+          "enum": [
+            "physique",
+            "magique"
+          ]
+        },
+        "coefficient": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Part de la puissance, 4 décimales au plus (1.2 = 120 %)."
+        },
+        "enduranceCost": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cooldownMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Recharge démarrant au lancement, multiple de la durée du tick."
+        },
+        "targeting": {
+          "enum": [
+            "enemy",
+            "allEnemies"
+          ],
+          "description": "enemy : la cible désignée ; allEnemies : tous les ennemis vivants, par identifiant."
+        },
+        "provisional": {
+          "type": "boolean",
+          "description": "Valeurs provisoires, non équilibrées."
+        }
       }
     }
   }

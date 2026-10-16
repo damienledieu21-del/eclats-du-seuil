@@ -163,9 +163,28 @@ namespace EdS.Domain.Builds
                 if (skill.Kind == SkillKind.Ultimate && skill.MinLevel < progression.UltimateUnlockLevel)
                     errors.Add(new RuleViolation($"une ultime ne peut pas être disponible avant le niveau {progression.UltimateUnlockLevel}.", path + ".minLevel"));
                 CheckRequirements(skill.TalentRequirements, path + ".talentRequirements", errors, null);
+                if (skill.Combat is { } combat) CheckCombat(skill, combat, path + ".combat", errors);
             }
 
             return errors;
+        }
+
+        private static void CheckCombat(SkillDefinition skill, SkillCombatDefinition combat, string path, List<RuleViolation> errors)
+        {
+            if (skill.Kind == SkillKind.Passive)
+                errors.Add(new RuleViolation("une compétence passive ne se lance pas : pas de données de combat.", path));
+            if (!Enum.IsDefined(typeof(Stats.PowerType), combat.PowerType))
+                errors.Add(new RuleViolation("type de puissance inconnu.", path + ".powerType"));
+            if (!Enum.IsDefined(typeof(Stats.DamageType), combat.DamageType))
+                errors.Add(new RuleViolation("type de dégâts inconnu.", path + ".damageType"));
+            if (!Enum.IsDefined(typeof(SkillTargeting), combat.Targeting))
+                errors.Add(new RuleViolation("ciblage inconnu.", path + ".targeting"));
+            if (combat.Coefficient < Numerics.Fixed.Zero)
+                errors.Add(new RuleViolation("le coefficient ne peut pas être négatif.", path + ".coefficient"));
+            if (combat.EnduranceCost < 0)
+                errors.Add(new RuleViolation("le coût en endurance ne peut pas être négatif.", path + ".enduranceCost"));
+            if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
+                errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
         }
 
         private void CheckRequirements(IReadOnlyList<TalentRequirement> requirements, string path, List<RuleViolation> errors, string? ownerId)

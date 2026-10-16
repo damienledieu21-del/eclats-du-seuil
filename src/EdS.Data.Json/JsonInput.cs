@@ -58,6 +58,13 @@ internal sealed class JsonInput
     public static JsonHeader Parse(string json, ValidationReport report, Action<JsonInput, JsonElement> readData)
     {
         var header = new JsonHeader();
+        ParseDocument(json, report, (input, root) => input.ReadRoot(root, header, readData));
+        return header;
+    }
+
+    /// <summary>Analyse un texte JSON strict et confie la racine à <paramref name="readRoot"/> (journal, fichiers sans en-tête commun).</summary>
+    public static void ParseDocument(string json, ValidationReport report, Action<JsonInput, JsonElement> readRoot)
+    {
         byte[] bytes = Encoding.UTF8.GetBytes(json);
         JsonDocument parsed;
         try
@@ -67,16 +74,49 @@ internal sealed class JsonInput
         catch (JsonException e)
         {
             report.Add("$", ValidationCode.InvalidJson, "JSON invalide : " + FirstSentence(e.Message), e.LineNumber + 1);
-            return header;
+            return;
         }
 
         using (parsed)
-        {
-            var input = new JsonInput(report, JsonLineIndex.Build(bytes));
-            input.ReadRoot(parsed.RootElement, header, readData);
-        }
-        return header;
+            readRoot(new JsonInput(report, JsonLineIndex.Build(bytes)), parsed.RootElement);
     }
+
+    /// <summary>Lit un objet dont les champs connus ont chacun un lecteur ; tout autre champ est signalé.</summary>
+    public bool ReadFields(JsonElement element, string path, IReadOnlyDictionary<string, Action<JsonElement, string>> fields)
+    {
+        if (!RequireKind(element, JsonValueKind.Object, path, "objet")) return false;
+        foreach (JsonProperty property in UniqueProperties(element, path))
+        {
+            string childPath = path + "." + property.Name;
+            if (fields.TryGetValue(property.Name, out var read)) read(property.Value, childPath);
+            else UnknownField(childPath, fields.Keys);
+        }
+        return true;
+    }
+
+    /// <summary>Lit un tableau ; un élément illisible reste null pour conserver les indices du fichier.</summary>
+    public List<T?>? ReadList<T>(JsonElement element, string path, Func<JsonElement, string, T?> readItem) where T : class
+    {
+        if (!RequireKind(element, JsonValueKind.Array, path, "tableau")) return null;
+        var list = new List<T?>();
+        int index = 0;
+        foreach (JsonElement item in element.EnumerateArray())
+            list.Add(readItem(item, $"{path}[{index++}]"));
+        return list;
+    }
+
+    public string? Text(JsonElement value, string path) => TryReadString(value, path, out string? s) ? s : null;
+
+    /// <summary>Texte, ou null si la valeur est un null JSON explicite.</summary>
+    public string? NullableText(JsonElement value, string path) => value.ValueKind == JsonValueKind.Null ? null : Text(value, path);
+
+    public int? Int32(JsonElement value, string path) => TryReadInt32(value, path, out int n) ? n : null;
+
+    public long? Int64(JsonElement value, string path) => TryReadInteger(value, path, out long n) ? n : null;
+
+    public Fixed? Decimal(JsonElement value, string path) => TryReadDecimal(value, path, out Fixed f) ? f : null;
+
+    public bool? Boolean(JsonElement value, string path) => TryReadBoolean(value, path, out bool b) ? b : null;
 
     private void ReadRoot(JsonElement root, JsonHeader header, Action<JsonInput, JsonElement> readData)
     {

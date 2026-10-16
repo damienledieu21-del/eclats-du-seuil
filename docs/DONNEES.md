@@ -1,8 +1,8 @@
-# Données et validation (lots 3 et 4)
+# Données et validation (lots 3 à 5)
 
 ## Fichier de règles
 
-`data/v0/rules.json` centralise tous les paramètres de `StatRules`, `DamageRules` et, depuis le lot 4, `ProgressionRules` (bloc `progression`). Le schéma `data/schemas/rules.schema.json` sert à l'auto-complétion dans les éditeurs ; la validation qui fait foi est celle du programme.
+`data/v0/rules.json` centralise tous les paramètres de `StatRules`, `DamageRules` `ProgressionRules` (bloc `progression`, lot 4) et `CombatRules` (bloc `combat`, lot 5 : `tickMs`, `globalCooldownMs`, `endurance.regenPerSecond`, `endurance.regenDelayMs`, `limits.maxDurationMs`, `limits.maxEventsPerTick`). `schemaVersion` reste 1. Le schéma `data/schemas/rules.schema.json` sert à l'auto-complétion dans les éditeurs ; la validation qui fait foi est celle du programme.
 
 ```json
 {
@@ -10,7 +10,7 @@
   "schemaVersion": 1,                    // forme du fichier ; changement incompatible = +1 et migrateur
   "kind": "rules",                       // type de fichier attendu
   "contentVersion": "0.1.0-provisoire",  // version SemVer des valeurs
-  "data": { "stats": { … }, "damage": { … }, "progression": { … } }
+  "data": { "stats": { … }, "damage": { … }, "progression": { … }, "combat": { … } }
 }
 ```
 
@@ -41,7 +41,7 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
 `sha256:…` calculée sur une écriture canonique (version de schéma, puis chaque paramètre dans l'ordre du catalogue). Indépendante des espaces, de l'ordre des clés et de l'écriture des nombres (`2` = `2.0`) ; ignore `contentVersion`. Valeur actuelle de `data/v0/rules.json` :
 
 ```
-sha256:5604cc6134e4ba2e0ea383b9b2a10d83ed58dff9ecbdfb301fd56fd8be3efd53
+sha256:35e97788abc0824ed3b3843ae846895b0d4d8835a55a42a5155926fda73400e1
 ```
 
 ## Erreurs
@@ -73,5 +73,11 @@ Un fichier par classe (`data/v0/classes/<classe>.json`, `kind: "class"`), même 
 Empreinte d'une classe : SHA-256 de `eds-class` puis chaque valeur `chemin=valeur` dans l'ordre du fichier (l'ordre des arbres, talents et compétences fait partie du contenu ; les espaces et l'ordre des clés non ; `contentVersion` ignorée). Valeur actuelle de `bastion.json` :
 
 ```
-sha256:298b922380f9f8f7b3bc4d544d7359ed4700f0100d4cf94c98a58fa148f4494a
+sha256:afde9d4ed2839a821bf8378d8b410a97b398b7b2470ccec2d59292088270815f
 ```
+
+Le bloc facultatif `combat` d'une compétence entre dans l'empreinte (`combat=none` s'il est absent).
+
+## Scénarios et jeu de données (lot 5)
+
+`GameDataLoader.Load("data/v0")` charge `rules.json` et tous les `classes/*.json` en un `GameData` (règles, classes, identité : versions et empreintes). `ScenarioJsonReader` (forme) → `ScenarioDocument` → `ScenarioValidator` (en-tête, références de classe, build validé par `BuildValidator`, puis `CombatSetup.Validate`) → `CombatSetup`. L'identité retenue pour le journal ne couvre que les règles et les classes utilisées par le scénario. Format, exemple et rejeu : [MOTEUR.md](MOTEUR.md).

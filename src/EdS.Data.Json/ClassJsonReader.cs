@@ -2,6 +2,7 @@ using System.Text.Json;
 using EdS.Data.Classes;
 using EdS.Data.Validation;
 using EdS.Domain.Builds;
+using EdS.Domain.Numerics;
 
 namespace EdS.Data.Json;
 
@@ -31,29 +32,11 @@ public static class ClassJsonReader
         return ClassValidator.Validate(document, progression, report);
     }
 
-    /// <summary>Lit un objet dont les champs connus ont chacun un lecteur ; tout autre champ est signalé.</summary>
-    private static bool ReadFields(JsonInput input, JsonElement element, string path, IReadOnlyDictionary<string, Action<JsonElement, string>> fields)
-    {
-        if (!input.RequireKind(element, JsonValueKind.Object, path, "objet")) return false;
-        foreach (JsonProperty property in input.UniqueProperties(element, path))
-        {
-            string childPath = path + "." + property.Name;
-            if (fields.TryGetValue(property.Name, out var read)) read(property.Value, childPath);
-            else input.UnknownField(childPath, fields.Keys);
-        }
-        return true;
-    }
+    private static bool ReadFields(JsonInput input, JsonElement element, string path, IReadOnlyDictionary<string, Action<JsonElement, string>> fields) =>
+        input.ReadFields(element, path, fields);
 
-    /// <summary>Lit un tableau d'objets ; un élément illisible reste null pour conserver les indices du fichier.</summary>
-    private static List<T?>? ReadList<T>(JsonInput input, JsonElement element, string path, Func<JsonElement, string, T?> readItem) where T : class
-    {
-        if (!input.RequireKind(element, JsonValueKind.Array, path, "tableau")) return null;
-        var list = new List<T?>();
-        int index = 0;
-        foreach (JsonElement item in element.EnumerateArray())
-            list.Add(readItem(item, $"{path}[{index++}]"));
-        return list;
-    }
+    private static List<T?>? ReadList<T>(JsonInput input, JsonElement element, string path, Func<JsonElement, string, T?> readItem) where T : class =>
+        input.ReadList(element, path, readItem);
 
     private static string? Text(JsonInput input, JsonElement value, string path) =>
         input.TryReadString(value, path, out string? s) ? s : null;
@@ -115,8 +98,25 @@ public static class ClassJsonReader
             ["minLevel"] = (v, p) => skill.MinLevel = Int(input, v, p),
             ["placeholder"] = (v, p) => skill.Placeholder = Bool(input, v, p),
             ["talentRequirements"] = (v, p) => skill.TalentRequirements = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
+            ["combat"] = (v, p) => skill.Combat = ReadCombat(input, v, p),
         });
         return ok ? skill : null;
+    }
+
+    private static SkillCombatData? ReadCombat(JsonInput input, JsonElement element, string path)
+    {
+        var combat = new SkillCombatData();
+        bool ok = ReadFields(input, element, path, new Dictionary<string, Action<JsonElement, string>>
+        {
+            ["powerType"] = (v, p) => combat.PowerType = Text(input, v, p),
+            ["damageType"] = (v, p) => combat.DamageType = Text(input, v, p),
+            ["coefficient"] = (v, p) => combat.Coefficient = input.TryReadDecimal(v, p, out Fixed c) ? c : null,
+            ["enduranceCost"] = (v, p) => combat.EnduranceCost = Int(input, v, p),
+            ["cooldownMs"] = (v, p) => combat.CooldownMs = input.TryReadInteger(v, p, out long n) ? n : null,
+            ["targeting"] = (v, p) => combat.Targeting = Text(input, v, p),
+            ["provisional"] = (v, p) => combat.Provisional = Bool(input, v, p),
+        });
+        return ok ? combat : null;
     }
 
     private static RequirementData? ReadRequirement(JsonInput input, JsonElement element, string path)

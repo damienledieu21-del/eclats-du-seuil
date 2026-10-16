@@ -146,6 +146,30 @@ public class ClassJsonReaderTests
         Assert.Equal(3, result.Report.Errors.Count(e => e.Message.StartsWith("talent majeur inaccessible", StringComparison.Ordinal)));
     }
 
+    // --- Données de combat (lot 5) ----------------------------------------------------
+
+    private static int FrappeIndex => Bastion.Skills.ToList().FindIndex(s => s.Id == "skill.bastion.frappe_du_rempart");
+
+    [Fact]
+    public void Donnees_de_combat_champ_absent() =>
+        AssertError(ReadMutated(r => Skill(r, FrappeIndex)["combat"]!.AsObject().Remove("cooldownMs")),
+            $"$.data.skills[{FrappeIndex}].combat.cooldownMs", ValidationCode.MissingField);
+
+    [Fact]
+    public void Donnees_de_combat_valeur_inconnue() =>
+        AssertError(ReadMutated(r => Skill(r, FrappeIndex)["combat"]!["damageType"] = "feu"),
+            $"$.data.skills[{FrappeIndex}].combat.damageType", ValidationCode.UnknownReference);
+
+    [Fact]
+    public void Donnees_de_combat_cout_negatif() =>
+        AssertError(ReadMutated(r => Skill(r, FrappeIndex)["combat"]!["enduranceCost"] = -1),
+            $"$.data.skills[{FrappeIndex}].combat.enduranceCost", ValidationCode.InvalidValue);
+
+    [Fact]
+    public void Donnees_de_combat_dans_l_empreinte() =>
+        Assert.NotEqual(ClassJsonReader.Read(BastionJson, Progression).Class!.Fingerprint,
+            ReadMutated(r => Skill(r, FrappeIndex)["combat"]!["coefficient"] = 1.25).Class!.Fingerprint);
+
     // --- Empreinte -------------------------------------------------------------------
 
     [Fact]
