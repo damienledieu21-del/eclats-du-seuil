@@ -54,10 +54,30 @@ public class TrainingScenarioTests
         Assert.Contains(setup.Commands, c => c.Action == CombatAction.GuardStop);
     }
 
+    [Fact]
+    [Trait("Category", "Status")]
+    public void Scenario_d_alterations_lu_et_joue()
+    {
+        CombatSetup setup = Load("entrainement_alterations");
+        var assailant = Assert.IsType<AssailantSetup>(setup.Combatants[1]);
+        Assert.Equal(Domain.Numerics.Fixed.FromInt(500), assailant.StatusResistance);
+        Assert.Equal(new[] { "bleed", "burn", "stun", "freeze" }, assailant.Attacks.SelectMany(a => a.Applies).Select(a => a.Status));
+        Assert.Equal(Domain.Numerics.Fixed.Parse("0.5"), assailant.Attacks[0].Applies[0].Coefficient);
+
+        string log = Simulate("entrainement_alterations").ToString();
+        foreach (string expected in new[]
+        {
+            "\"event\":\"dotDamage\"", "\"reason\":\"interrupted\",\"state\":\"stun\"", "\"reason\":\"stunned\"", "\"state\":\"stunImmunity\"",
+            "\"reason\":\"immune\"", "\"movementSpeedModifier\":-0.3", "\"event\":\"parrySucceeded\"",
+        })
+            Assert.Contains(expected, log);
+    }
+
     [Theory]
     [InlineData("mannequin")]
     [InlineData("entrainement_garde_parade")]
     [InlineData("entrainement_rupture")]
+    [InlineData("entrainement_alterations")]
     public void Rejeu_identique_des_scenarios_livres(string name)
     {
         ReplayOutcome outcome = CombatLogReplayer.Replay(Simulate(name).Lines, ShippedData);
@@ -67,12 +87,15 @@ public class TrainingScenarioTests
     [Theory]
     [InlineData("entrainement_garde_parade", "d1c2ab01a080d50a23accc118d254fa6cde87b49ef89c4f0a675ea70a1674510")]
     [InlineData("entrainement_rupture", "47ab4ac1ecccbda216a167c23c865180938de88ba57c4f3fa9214b8d28802d76")]
+    [InlineData("entrainement_alterations", "012990c984dd0f295be473d98c2327968fed555c55cefa4412a9463d2339bb82")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
         // Correctif 6.1 : seuls l'en-tête (moteur 0.6.1, format 2, versions et empreintes des données en schéma 2) et les
         // champs instance/generation des états changent ; tous les autres événements sont identiques (RAPPORT_CORRECTIF_6_1).
         // Lot 7.1 : seul l'en-tête change encore (moteur 0.7.0, règles en schéma 3 et leur empreinte) ; aucun autre octet.
+        // Lot 7.2 : format 3 (catégorie et source sur les lignes d'état, applies) ; égalité structurelle avec 0.7.0 vérifiée
+        // par Lot72MigrationTests. Nouveau scénario entrainement_alterations (DOT, contrôles, immunité).
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

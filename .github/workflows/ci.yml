@@ -17,4 +17,4 @@ jobs:
       - run: dotnet build --no-restore -c Release -warnaserror
       - run: dotnet test --no-build -c Release --logger "console;verbosity=normal"
       # Recettes par catégorie : échec si une catégorie n'exécute aucun test (correctif 6.1).
-      - run: bash scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits
+      - run: bash scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status

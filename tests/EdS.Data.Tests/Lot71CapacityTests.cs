@@ -37,6 +37,7 @@ public class Lot71CapacityTests(ITestOutputHelper output)
     [InlineData("mannequin", 14, 4, 18)]
     [InlineData("entrainement_garde_parade", 20, 7, 19)]
     [InlineData("entrainement_rupture", 20, 7, 7)]
+    [InlineData("entrainement_alterations", 26, 8, 14)]
     public void Pics_des_scenarios_de_reference(string name, long work, long events, long pending)
     {
         var (result, _) = Measure(name, ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!);
@@ -152,6 +153,84 @@ public class Lot71CapacityTests(ITestOutputHelper output)
         // s'arrête au tick 139, celui où les 32 personnages meurent ensemble (died et stateRemoved : 64 lignes de plus).
         Assert.Equal((3082L, 999L, 57_615L), (result.Peaks.WorkPerTick, result.Peaks.EventsPerTick, result.Peaks.PendingEvents));
         Assert.Equal(("eventBudgetExceeded", 139L), (result.AbortReason, result.EndTick));
+    }
+
+    // --- Lot 7.2 : altérations -----------------------------------------------------------------
+
+    private static JsonObject Application(string status, double? coefficient = null)
+    {
+        var application = new JsonObject { ["status"] = status };
+        if (coefficient is { } c) application["coefficient"] = c;
+        return application;
+    }
+
+    /// <summary>
+    /// 32 personnages (vitalité 200) contre <paramref name="assailants"/> assaillants frappant à chaque tick, chacun enchaînant
+    /// les attaques données (identifiants a0, a1…), de zone ou sur « son » personnage.
+    /// </summary>
+    private static JsonObject StatusesAtCap(int assailants, string targeting, params JsonArray[] attacks)
+    {
+        JsonObject root = Shipped();
+        var combatants = new JsonArray();
+        for (int i = 0; i < 32; i++)
+        {
+            JsonObject b = Bastion(root, $"bastion_{i:00}", "joueurs");
+            b["build"]!["attributes"]!["vitalite"] = 200;
+            combatants.Add(b);
+        }
+        for (int i = 0; i < assailants; i++)
+        {
+            JsonObject a = AssailantJson($"assaillant_{i:00}", targeting == "enemy" ? $"bastion_{i % 32:00}" : null, targeting, false, 50);
+            var list = new JsonArray();
+            for (int k = 0; k < attacks.Length; k++)
+                list.Add(new JsonObject
+                {
+                    ["id"] = $"a{k}", ["rawDamage"] = 1, ["damageType"] = "physique", ["targeting"] = targeting, ["unblockable"] = false,
+                    ["applies"] = attacks[k].DeepClone(),
+                });
+            a["attacks"] = list;
+            combatants.Add(a);
+        }
+        DataOf(root)["combatants"] = combatants;
+        DataOf(root)["commands"] = new JsonArray();
+        DataOf(root)["durationMs"] = 30_000;
+        return root;
+    }
+
+    private static JsonArray Dots() => new(Application("burn", 0.5), Application("bleed", 0.5));
+
+    [Fact]
+    public void Lot72_alterations_a_cible_unique_tiennent_dans_les_budgets()
+    {
+        // Brûlure et saignement, puis étourdissement et gel, en alternance à chaque tick : travail 768 (8 %), file 1824.
+        var (alternating, _) = Measure("32 assaillants, cible unique, DOT puis contrôles", Load(StatusesAtCap(32, "enemy", Dots(),
+            new JsonArray(Application("stun"), Application("freeze")))));
+        Assert.Equal(CombatEndReason.DurationReached, alternating.EndReason);
+        Assert.Equal((768, 192, 1824), (alternating.Peaks.WorkPerTick, alternating.Peaks.EventsPerTick, alternating.Peaks.PendingEvents));
+
+        // Les quatre à chaque attaque : chaque étourdissement renouvelé (fin plus tardive d'un tick) remet une échéance en
+        // file ; l'étourdissement n'expire jamais, donc aucune immunité n'est accordée. Travail 992 (10 %), file 3520 (4 %).
+        var (all, log) = Measure("32 assaillants, cible unique, 2 DOT + gel + étourdissement", Load(StatusesAtCap(32, "enemy",
+            new JsonArray(Application("burn", 0.5), Application("bleed", 0.5), Application("freeze"), Application("stun")))));
+        Assert.Equal(CombatEndReason.DurationReached, all.EndReason);
+        Assert.Equal((992, 256, 3520), (all.Peaks.WorkPerTick, all.Peaks.EventsPerTick, all.Peaks.PendingEvents));
+        Assert.DoesNotContain(log.Lines, l => l.Contains("\"state\":\"stunImmunity\""));
+    }
+
+    [Fact]
+    public void Lot72_dot_de_zone_synchronises_depassent_le_budget_de_lignes()
+    {
+        // Les DOT appliqués au même tick gardent la même cadence : tous leurs ticks tombent ensemble tous les 40 ticks.
+        // 10 assaillants de zone : 970 lignes par tick d'application, + 640 ticks de DOT au tick 40 : arrêt au tick 40.
+        var (ten, _) = Measure("10 assaillants de zone, 2 DOT", Load(StatusesAtCap(10, "allEnemies", Dots())));
+        Assert.Equal(("eventBudgetExceeded", 40L), (ten.AbortReason, ten.EndTick));
+        Assert.Equal((2716, 1000, 650), (ten.Peaks.WorkPerTick, ten.Peaks.EventsPerTick, ten.Peaks.PendingEvents));
+
+        // 5 assaillants : 485 lignes par tick, + 320 ticks de DOT tous les 40 ticks ; au tick 400, 17 personnages meurent
+        // ensemble (died, 10 stateRemoved chacun) : arrêt.
+        var (five, _) = Measure("5 assaillants de zone, 2 DOT", Load(StatusesAtCap(5, "allEnemies", Dots())));
+        Assert.Equal(("eventBudgetExceeded", 400L), (five.AbortReason, five.EndTick));
+        Assert.Equal((2708, 992, 325), (five.Peaks.WorkPerTick, five.Peaks.EventsPerTick, five.Peaks.PendingEvents));
     }
 
     [Fact]

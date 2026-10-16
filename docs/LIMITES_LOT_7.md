@@ -1,6 +1,6 @@
-# Contrat de limites du lot 7 (correctifs 6.1 et 6.1.1, sous-lot 7.1)
+# Contrat de limites du lot 7 (correctifs 6.1 et 6.1.1, sous-lots 7.1 et 7.2)
 
-Statut : **contrat en partie implémenté**. Le sous-lot 7.1 a mis en place l'admission des scénarios, les limites des lecteurs, les budgets de travail et de file et la mesure des pics ; ces éléments sont marqués « en place ». Le reste (provenance, profondeur, déclencheurs, report) reste un contrat pour la suite du lot 7, qui fixe à l'avance les bornes et les règles de terminaison du moteur général des états. Toutes les valeurs configurables sont **provisoires** et se trouvent dans `rules.json`, bloc `combat.limits` (`schemaVersion` 3 ; voir [DONNEES.md](DONNEES.md)).
+Statut : **contrat en partie implémenté**. Le sous-lot 7.1 a mis en place l'admission des scénarios, les limites des lecteurs, les budgets de travail et de file et la mesure des pics ; ces éléments sont marqués « en place ». Le sous-lot 7.2 a ajouté les altérations génériques (DOT, contrôles, immunités, résistances), leurs coûts réservés et leur précontrôle numérique, sans déclencheur. Le reste (provenance, profondeur, déclencheurs, report) reste un contrat pour la suite du lot 7, qui fixe à l'avance les bornes et les règles de terminaison du moteur général des états. Toutes les valeurs configurables sont **provisoires** et se trouvent dans `rules.json`, bloc `combat.limits` (`schemaVersion` 4 ; voir [DONNEES.md](DONNEES.md)).
 
 ## Principes
 
@@ -148,7 +148,7 @@ Les sections suivantes ont été relues contre P1 à P8 : tableau des limites (p
 
 ### Échéances périmées
 
-Tout événement programmé pour le compte d'un état porte `sourceInstance` et `sourceGeneration`. À son tour d'exécution, il est **annulé** si l'instance n'existe plus ou si sa génération a changé (renouvellement, retrait, mort du porteur) : il est retiré de la file, compte une unité de travail, n'est pas journalisé et ne déclenche rien. C'est la règle des fins d'état du correctif 6.1 (M02), étendue à tous les effets d'état (périodiques, retardés). Le retrait d'une instance ne parcourt pas la file : l'annulation se fait paresseusement à l'échéance, ce qui garde un coût borné et un ordre déterministe.
+Tout événement programmé pour le compte d'un état porte `sourceInstance` et `sourceGeneration`. À son tour d'exécution, il est **annulé** si l'instance n'existe plus ou si sa génération a changé (renouvellement, retrait, mort du porteur) : il est retiré de la file, compte une unité de travail, n'est pas journalisé et ne déclenche rien. C'est la règle des fins d'état du correctif 6.1 (M02), étendue à tous les effets d'état (périodiques, retardés). **En place pour les altérations depuis le sous-lot 7.2** : échéances (instance, génération) et ticks de DOT (instance), périmés sans ligne, une unité de travail chacun. Le retrait d'une instance ne parcourt pas la file : l'annulation se fait paresseusement à l'échéance, ce qui garde un coût borné et un ordre déterministe.
 
 ### Ordre stable des abonnés
 
@@ -177,6 +177,9 @@ Ordre d'un tick : expirations → commandes → résolution → périodiques →
 | Une commande ou un tour d'assaillant | ses contrôles et ses effets (refus compris) |
 | Une action en résolution, **toutes cibles comprises** | le premier impact |
 | Le passage d'un combattant dans une phase balayée (entretien de garde et rupture éventuelle, régénération, mort et retrait de ses états) | ce passage |
+| Un tick de DOT (sous-lot 7.2) : dégâts et ligne, puis tick suivant en file, ou fin de l'instance et état accordé | son retrait de la file |
+
+Sous-lot 7.2 (décision 14, atomicité par étape) : une altération appliquée par un impact fait partie de la réserve de l'action (rupture, dégâts, puis chaque altération de `applies` avec ses interruptions, calculées sur l'état laissé par les étapes précédentes) ; un état accordé à l'expiration fait partie de la réserve de cette expiration ; une application refusée (`stateBlocked`) coûte sa ligne. Testé par `Impact_compose_degats_rupture_dot_et_etourdissement_refuse_en_entier` et `Dernier_tick_de_dot_atomique_aux_frontieres`.
 
 Si la réserve dépasse un budget, le combat s'arrête avant le traitement, qui n'a donc rien modifié : ni ressource dépensée, ni état appliqué, ni élément en file, ni ligne écrite. Ordre de vérification fixe : **travail, puis file, puis lignes** ; l'arrêt porte la raison du premier qui échoue. Pendant le traitement, toute consommation au-delà de la réserve lève une erreur de programmation ; en Debug, une réserve non entièrement consommée en lève une aussi, ce qui vérifie l'exactitude des coûts sur toute la suite de tests (Debug et Release tournent en CI). Les coûts réservés étant exacts, un tick qui coûte exactement `maxWorkPerTick` passe et un tick qui coûte une unité de plus s'arrête (`Budget_de_travail_aux_frontieres`).
 
@@ -201,7 +204,26 @@ Règles livrées (`data/v0`, contenu `0.3.0-provisoire`), moteur 0.7.0. Pics rel
 
 Lecture : avec le contenu actuel, **le budget de lignes est la première limite atteinte** par les charges extrêmes. Le budget de travail garde une marge d'au moins 3 fois et la file d'au moins 1,7 fois sur ces mesures. Borne théorique de la file : la Fragilité, seul état à échéance, écrit au moins deux lignes par application, donc au plus 500 applications par tick pendant les 120 ticks de sa durée, soit environ 60 000 échéances, plus au plus 20 000 commandes initiales et un tour par assaillant : environ 80 000, sous les 100 000 configurés. Ces marges sont à réévaluer quand le lot 7 ajoutera des états, des DOT et des déclencheurs.
 
-## Ce qui reste hors du sous-lot 7.1
+## Capacités mesurées (sous-lot 7.2, 16 octobre 2026)
 
-- Aucun moteur général d'états, aucun DOT, contrôle ni déclencheur, aucun report, aucune provenance, aucune profondeur : tout ce qui précède, hors mentions « en place », reste un contrat pour la suite du lot 7. Fragilité et rupture de garde restent les deux états codés du lot 6.
-- Décisions à prendre : A12 à A15 et A23 (voir le rapport du lot 6) ; validation définitive des plafonds techniques et des valeurs initiales, approuvés provisoirement pour 7.1.
+Règles livrées (contenu `0.4.0-provisoire`, schéma 4), moteur 0.8.0. Les sept mesures du sous-lot 7.1 sont inchangées (journaux de référence identiques hors en-tête et champs du format 3). Nouvelles mesures, figées par `Lot71CapacityTests` (32 personnages de vitalité 200, sans garde, assaillants de 1 dégât brut qui frappent à chaque tick) :
+
+| Scénario | Fin | Travail max / tick | Lignes max / tick | File max |
+|---|---|---|---|---|
+| `entrainement_alterations` (1 contre 2 assaillants, 20 s : DOT, étourdissement, immunité, gel) | durée atteinte | 26 | 8 | 14 |
+| 32 assaillants à cible unique : brûlure et saignement, puis étourdissement et gel, en alternance | durée atteinte | 768 (8 %) | 192 (19 %) | 1 824 (2 %) |
+| 32 assaillants à cible unique : brûlure, saignement, gel et étourdissement à chaque attaque | durée atteinte | 992 (10 %) | 256 (26 %) | 3 520 (4 %) |
+| 10 assaillants de zone : brûlure et saignement | arrêt `eventBudgetExceeded` au tick 40 | 2 716 | 1 000 | 650 |
+| 5 assaillants de zone : brûlure et saignement | arrêt `eventBudgetExceeded` au tick 400 (17 morts simultanées) | 2 708 | 992 | 325 |
+
+Lecture :
+
+- **Le budget de lignes reste la première limite atteinte.** Les DOT appliqués au même tick gardent la même cadence (décision 11) : leurs ticks tombent tous ensemble toutes les 2 s. Dix assaillants de zone écrivent 970 lignes par tick d'application ; au tick 40, les 640 instances s'ajoutent d'un coup. La charge des DOT n'est donc pas lissée.
+- Un DOT n'occupe qu'une place de file par instance (un seul tick programmé à la fois ; un renouvellement n'en ajoute pas) : au plus 64 cibles × 63 sources × 2 DOT livrés = 8 064 places.
+- Un étourdissement renouvelé à chaque tick (fin plus tardive d'un tick) ne finit jamais : aucune immunité n'est accordée, et chaque renouvellement remet une échéance en file (mesure à 3 520).
+- Borne prudente de la file avec le catalogue livré : une application qui met une échéance en file écrit sa ligne, et chaque impact en écrit une de plus ; seuls la Fragilité (chaque application), le gel et l'étourdissement (au plus un renouvellement par cible et par tick) en mettent. D'où au plus (1000 + 2 × 64) / 2 = 564 échéances par tick pendant au plus 120 ticks (Fragilité), soit environ 67 700, plus 8 064 DOT, 20 000 commandes et 64 tours : environ 96 000, sous les 100 000 configurés mais sans grande marge. Un catalogue avec des altérations renouvelables plus longues peut l'atteindre : l'arrêt est alors propre (`queueLimitExceeded`).
+
+## Ce qui reste hors des sous-lots 7.1 et 7.2
+
+- Aucun déclencheur, aucun report, aucune provenance, aucune profondeur : tout ce qui précède, hors mentions « en place », reste un contrat pour la suite du lot 7 (sous-lot 7.3). Les altérations génériques (sous-lot 7.2) sont en place ; aucune n'est observable par un déclencheur.
+- Décisions à prendre : A15 (déclencheurs) ; points ouverts du sous-lot 7.2 (voir `RAPPORT_LOT_7_2.md`) ; validation définitive des plafonds techniques et des valeurs initiales, approuvés provisoirement pour 7.1 et 7.2.
