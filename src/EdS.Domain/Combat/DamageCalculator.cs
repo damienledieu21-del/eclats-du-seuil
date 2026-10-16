@@ -51,6 +51,31 @@ namespace EdS.Domain.Combat
             return b;
         }
 
+        /// <summary>
+        /// Lot 7.2 : dégâts d'un tick de DOT. <paramref name="power"/> est la puissance figée à l'application (puissance du type
+        /// × coefficient, arrondie à 4 décimales comme l'étape « coefficient » de <see cref="Compute"/>). Si l'altération est
+        /// réduite par la défense, la défense effective actuelle de la cible pour <paramref name="type"/> (armure ou résistance
+        /// magique) est appliquée avec la même formule et le même arrondi que les dégâts directs ; puis arrondi final et dégâts
+        /// minimum. Aucun bonus de catégorie, aucun critique (décision 4), ni garde ni parade (A12) : le résultat est identique à
+        /// <see cref="Compute"/> avec le même coefficient, sans bonus, sans critique et sans réduction.
+        /// </summary>
+        public static long ComputePeriodic(Fixed power, DerivedStats defender, DamageType type, bool reducedByDefense, DamageRules rules)
+        {
+            if (defender is null) throw new ArgumentNullException(nameof(defender));
+            if (rules is null) throw new ArgumentNullException(nameof(rules));
+            Fixed after = power;
+            if (reducedByDefense)
+            {
+                long constant = type == DamageType.Physique ? rules.ArmorConstant : rules.MagicResistanceConstant;
+                if (constant <= 0) throw new InvalidOperationException("La constante de défense doit être strictement positive.");
+                long constantRaw = checked(constant * Fixed.Scale);
+                long denominator = checked(constantRaw + defender.GetEffectiveDefense(type).Raw);
+                after = Fixed.FromRaw(IntMath.MulDiv(power.Raw, constantRaw, denominator, RoundingMode.HalfAwayFromZero));
+            }
+            long rounded = after.RoundToInt(rules.FinalRounding);
+            return after > Fixed.Zero ? Math.Max(rules.MinimumDamage, rounded) : 0;
+        }
+
         /// <summary>Multiplicateur d'une catégorie : 1 + somme des bonus, borné entre les limites des règles (jamais négatif).</summary>
         public static Fixed CategoryMultiplier(Fixed bonusSum, DamageRules rules) =>
             Fixed.Clamp(Fixed.One + bonusSum, rules.MinCategoryMultiplier, rules.MaxCategoryMultiplier);

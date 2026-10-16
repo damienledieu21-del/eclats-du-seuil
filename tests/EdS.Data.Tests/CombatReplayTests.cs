@@ -88,7 +88,7 @@ public class CombatReplayTests
     {
         // Correctif 6.1 : format de journal 2 ; un journal du lot 6 (format 1) est refusé explicitement, sans migration.
         var lines = Simulate().Lines.ToArray();
-        lines[0] = lines[0].Replace("\"formatVersion\":2", "\"formatVersion\":1");
+        lines[0] = lines[0].Replace("\"formatVersion\":3", "\"formatVersion\":1");
         ReplayOutcome outcome = CombatLogReplayer.Replay(lines, ShippedData);
         Assert.NotEqual(ReplayStatus.Identical, outcome.Status);
         Assert.Contains(outcome.Problems, p => p.Contains("format de journal 1") && p.Contains("sans migration"));
@@ -141,5 +141,5 @@ public class CombatReplayTests
         Assert.Equal(MannequinLogHash, hash);
     }
 
-    internal const string MannequinLogHash = "6ca5e8f49d0f71735fa55502bda67ad8fc6d97aceb30a515404f0b797d37234f";
+    internal const string MannequinLogHash = "82d3e2de97f729214b6bcb51210b3cf3696b163e070ad8e1068a75612fc3f754";
 }

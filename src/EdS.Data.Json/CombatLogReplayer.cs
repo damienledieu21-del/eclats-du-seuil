@@ -112,7 +112,7 @@ public static class CombatLogReplayer
             int? formatVersion = null, tickMs = null;
             DataFileIdentity? rules = null;
             List<DataFileIdentity?>? classes = null;
-            bool hasScenario = false;
+            JsonElement? scenario = null;
             bool ok = input.ReadFields(root, "$", new Dictionary<string, Action<JsonElement, string>>
             {
                 ["type"] = (v, p) => type = input.Text(v, p),
@@ -125,18 +125,21 @@ public static class CombatLogReplayer
                     ["rules"] = (rv, rp) => rules = ReadIdentity(input, rv, rp, "rules"),
                     ["classes"] = (cv, cp) => classes = input.ReadList(cv, cp, (e, ip) => ReadIdentity(input, e, ip, null)),
                 }),
-                ["scenario"] = (v, p) =>
-                {
-                    hasScenario = true;
-                    header.Scenario = ScenarioJsonReader.ReadData(input, v, p, limits);
-                },
+                ["scenario"] = (v, p) => scenario = v,
             });
             if (!ok) return;
             if (type != "header" || format != CombatEngine.LogFormat)
                 report.Add("$.type", ValidationCode.WrongKind, $"première ligne attendue : en-tête « {CombatEngine.LogFormat} ».");
-            if (formatVersion is null || engine is null || tickMs is null || rules is null || classes is null || classes.Any(c => c is null) || !hasScenario)
+            if (formatVersion is null || engine is null || tickMs is null || rules is null || classes is null || classes.Any(c => c is null) || scenario is null)
                 report.Add("$", ValidationCode.MissingField, "en-tête incomplet (formatVersion, engineVersion, tickMs, data.rules, data.classes, scenario).");
             if (!report.IsValid) return;
+            // Lot 7.2 : le scénario d'un journal d'un autre format n'est pas lu (sa forme peut avoir changé) ; le rejeu sera
+            // refusé par CombatReplay.CheckIdentity avec le motif de format plutôt qu'avec une erreur de lecture.
+            if (formatVersion == CombatEngine.LogFormatVersion)
+            {
+                header.Scenario = ScenarioJsonReader.ReadData(input, scenario!.Value, "$.scenario", limits);
+                if (!report.IsValid) return;
+            }
             header.FormatVersion = formatVersion!.Value;
             header.EngineVersion = engine!;
             header.TickMs = tickMs!.Value;
