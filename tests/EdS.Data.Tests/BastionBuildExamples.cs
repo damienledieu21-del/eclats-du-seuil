@@ -10,6 +10,7 @@ namespace EdS.Data.Tests;
 /// Les talents « [TEST] Palier » n'ont aucun effet : ils servent seulement à atteindre le seuil des majeurs.
 /// </summary>
 [Trait("Category", "Data")]
+[Trait("Category", "Build")]
 public class BastionBuildExamples
 {
     private static readonly Attributes Attributes = new(14, 8, 6, 14, 10, 12);   // F5 : attributs explicites

@@ -3,6 +3,7 @@ using EdS.Domain.Builds;
 namespace EdS.Domain.Tests.Builds;
 
 /// <summary>Validation des définitions de classe sur des arbres fictifs, pour éprouver le moteur générique.</summary>
+[Trait("Category", "Build")]
 public class ClassDefinitionTests
 {
     private static readonly ProgressionRules Rules = ProgressionRules.Provisional;

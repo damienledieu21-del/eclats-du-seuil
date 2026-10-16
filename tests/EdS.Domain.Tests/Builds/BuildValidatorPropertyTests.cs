@@ -7,6 +7,7 @@ namespace EdS.Domain.Tests.Builds;
 /// Propriétés du validateur de builds. Les builds aléatoires sont construits à partir d'une graine,
 /// ce qui rend chaque contre-exemple reproductible.
 /// </summary>
+[Trait("Category", "Build")]
 public class BuildValidatorPropertyTests
 {
     private static readonly ProgressionRules Rules = ProgressionRules.Provisional;

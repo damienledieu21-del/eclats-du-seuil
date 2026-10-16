@@ -3,6 +3,7 @@ using static EdS.Domain.Tests.Builds.FictionalClass;
 
 namespace EdS.Domain.Tests.Builds;
 
+[Trait("Category", "Build")]
 public class BuildValidatorTests
 {
     private static readonly ProgressionRules Rules = ProgressionRules.Provisional;

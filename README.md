@@ -27,6 +27,7 @@ dotnet test                    # tous les tests
 dotnet test --filter Category=Numeric
 dotnet test --filter Category=Formula
 dotnet test --filter Category=Data
+dotnet test --filter Category=Build
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
