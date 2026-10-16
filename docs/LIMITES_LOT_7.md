@@ -34,7 +34,7 @@ Aucune capacité au-delà de ces mesures n'est revendiquée : 64 combattants ou 
 | Événements de simulation comptés par tick | 1 000 (**en place**) | `combat.limits.maxEventsPerTick` | arrêt `eventBudgetExceeded` (**en place**) | Valeur du plan (§4.4). Compte les événements émis par les phases 1 à 6 d'un tick, pas toutes les lignes du journal (voir ci-dessous). |
 | Lignes d'initialisation | 1 + nombre de combattants (≤ 65) | dérivée de `maxCombatants` | sans objet : bornée par construction | En-tête + une ligne `combatant` par participant, au tick 0, avant tout événement compté. |
 | Lignes d'arrêt et de finalisation | 2 + nombre de combattants (≤ 66) | dérivée de `maxCombatants` | sans objet : bornée par construction | Au plus une ligne `simulationAborted`, une `combatantSummary` par participant, une `combatEnded`. Jamais d'autre ligne après l'arrêt. |
-| Profondeur de chaîne de déclencheurs | 4 | `combat.limits.maxTriggerDepth` | `triggerSuppressed`, le combat continue | Valeur du plan (§4.4, A15) : permet « parade → gain de Charge → passif → effet » sans permettre de cascade longue. |
+| Profondeur de chaîne de déclencheurs | 4 | `combat.limits.maxTriggerDepth` | effet non créé, `triggerSuppressed`, le combat continue | Valeur du plan (§4.4, A15) : quatre réactions successives au plus depuis une racine (règles P1 à P8) ; « parade → gain de Charge → passif → effet » n'en utilise qu'une. |
 
 ### Enveloppes séparées : simulation, initialisation, finalisation
 
@@ -75,18 +75,38 @@ Deux porteurs de la même définition sont deux déclencheurs distincts. La **g�
 
 Chaque événement porte `root`, `depth`, `trigger` (identité ci-dessus, `null` pour une racine) et `chain`, l'ensemble des identités de déclencheurs traversés depuis la racine. `chain` est une **valeur immuable** : un événement produit par le déclencheur D reçoit `chain(parent) ∪ {D}`, construite pour lui seul. Si un événement provoque deux déclencheurs B et C (branches sœurs), la chaîne de C ne contient jamais B, et inversement : ce que fait une branche n'influence ni la profondeur ni la détection de cycle de l'autre. Les sœurs partagent seulement le budget de travail et le budget d'événements du tick.
 
-### Calcul exact de la profondeur
+### Calcul exact de la profondeur (règle normative, clarifiée après le contre-audit Astra)
 
-- `depth(racine) = 0`.
-- Les **conséquences directes** d'une action gardent la profondeur de l'action : impacts d'une même attaque (y compris d'une zone), état appliqué par l'attaque elle-même, ressource gagnée par la règle de base (Résonance, Charge de parade), mort et `stateRemoved` qui en découlent.
-- Un événement produit par un déclencheur a `depth = depth(événement déclencheur) + 1`. Seul le passage par un déclencheur augmente la profondeur.
-- Un déclencheur ne s'exécute que si `depth(événement déclencheur) < maxTriggerDepth` ; ses événements ont donc une profondeur ≤ `maxTriggerDepth` (4).
+La profondeur est une propriété de chaque **effet** (événement de simulation). Les règles P1 à P8 font foi ; toute autre section de ce document qui en parle s'y réfère.
 
-Exemple : parade parfaite (racine `command:3`, profondeur 0) → gain de Charge (conséquence directe, 0) → passif « à chaque Charge » (déclencheur, 1) → effet du passif (1) → déclencheur réagissant à cet effet (2)… La cinquième réaction, qui aurait la profondeur 5, est supprimée (`triggerSuppressed`, `reason: "depth"`).
+- **P1. Racine.** Une racine (tableau « Identité causale des racines ») a `depth = 0`.
+- **P2. Seule une réaction augmente la profondeur.** Une *réaction* est un déclencheur dont la condition est vraie pour un effet E et qui produit un **nouvel effet** F : `depth(F) = depth(E) + 1`. Rien d'autre n'augmente la profondeur.
+- **P3. Conséquences directes.** Ce que la résolution d'un effet calcule elle-même, sans passer par un déclencheur, garde la profondeur de cet effet : impacts d'une même attaque (y compris d'une zone), état appliqué par l'attaque elle-même, ressource gagnée par la règle de base (Résonance, Charge de parade), mort et `stateRemoved` qui en découlent. (Une fin de recharge ou une fin d’état programmée est une racine, P1.)
+- **P4. File et reports neutres.** L'insertion dans la file, l'ajout en fin de phase courante, le passage à une phase ultérieure du même tick et le report au tick suivant ne changent **pas** la profondeur (ni aucun autre champ de provenance).
+- **P5. Profondeur maximale.** `maxTriggerDepth` vaut initialement **4** : un effet peut avoir une profondeur de 0 à 4.
+- **P6. Suppression.** Si une réaction produirait un effet de profondeur 5 (plus généralement `> maxTriggerDepth`), cet effet n'est pas créé : rien n'est programmé, aucune ressource ni aucun état ne change. La suppression est journalisée par une ligne `triggerSuppressed` (`trigger`, `root`, `depth` = profondeur qu'aurait eue l'effet, `reason: "depth"`), et le combat continue. La condition du déclencheur est évaluée d'abord (une unité de travail) : on ne journalise une suppression que pour un effet qui se serait réellement produit.
+- **P7. Branches sœurs.** Quand un même effet E provoque plusieurs réactions, chaque effet produit reçoit sa propre chaîne (`chain(E) ∪ {déclencheur}`) et sa propre profondeur `depth(E) + 1` ; une branche n'allonge jamais la chaîne ni la profondeur d'une autre.
+- **P8. Diagnostics inertes.** `triggerSuppressed` et tout autre diagnostic (arrêt, budget, échéance périmée) ne sont pas des effets de jeu : ils n'ont pas de profondeur propre (le champ `depth` de `triggerSuppressed` décrit l'effet refusé), ne sont présentés à aucun abonné et ne peuvent déclencher aucun effet.
+
+Exemple, avec `maxTriggerDepth = 4` :
+
+| Effet | Produit par | Profondeur |
+|---|---|---|
+| Parade parfaite | commande (racine `command:3`) | 0 |
+| Gain de Charge | conséquence directe de la parade (P3) | 0 |
+| Effet du passif « à chaque Charge » | réaction 1 | 1 |
+| Effet d'un talent qui réagit au passif | réaction 2 | 2 |
+| … même effet reporté au tick suivant | report (P4) | 2 |
+| Réaction 3, puis réaction 4 | réactions | 3, puis 4 |
+| Réaction 5 | réaction (P6) | non créé : `triggerSuppressed`, `depth: 5` |
+
+### Cohérence vérifiée (après le contre-audit Astra)
+
+Les sections suivantes ont été relues contre P1 à P8 : tableau des limites (profondeur 4, suppression sans arrêt) ; identité des racines (P1) ; chaîne et branches sœurs (P7) ; règles de cycle (la chaîne n'est étendue que par une réaction, comme la profondeur) ; diagnostics non déclencheurs (P8) ; échéances périmées (une échéance annulée ne produit aucun effet, donc aucune profondeur) ; événement programmé dans une phase passée (Q = P et Q avant P ne changent pas la profondeur, P4 ; la version précédente indiquait à tort `depth + 1` pour Q = P, corrigé) ; report depuis le dernier tick (effet non exécuté, profondeur sans objet) ; consommation des budgets (l'évaluation de la condition coûte une unité de travail avant la décision de suppression, P6).
 
 ### Règles
 
-1. Profondeur : voir ci-dessus ; sinon `triggerSuppressed` (`trigger`, `depth`, `root`, `reason: "depth"`).
+1. Profondeur : règles P1 à P8 ci-dessus.
 2. Cycle : un déclencheur ne réagit jamais à un événement dont la `chain` contient déjà son identité (généralise `originTriggerId` du plan : empêche A → B → A avant même la limite de profondeur) ; `triggerSuppressed` avec `reason: "cycle"`.
 3. Un événement issu d'une instance d'état retirée ou d'une génération périmée n'est jamais exécuté (voir « Échéances périmées »).
 4. Contrôle statique au chargement des données : graphe « déclencheur → événements qu'il peut produire ». Proposition par défaut (A15, à trancher) : un cycle est un **avertissement** dans le rapport de validation, la limite de profondeur garantissant la terminaison.
@@ -109,9 +129,9 @@ Pour un même événement, les déclencheurs abonnés sont évalués dans un ord
 Ordre d'un tick : expirations → commandes → résolution → périodiques → régénération → fin de tick. Un effet résolu en phase P du tick T peut vouloir programmer un événement en (T, Q).
 
 - **Q après P** (même tick) : exécuté normalement dans la phase Q du tick T.
-- **Q = P** : ajouté à la fin de la phase en cours (ordre d'insertion), dans le même tick, avec `depth + 1` et compté dans le budget de travail. C'est déjà le comportement de la file pour la phase en cours.
+- **Q = P** : ajouté à la fin de la phase en cours (ordre d'insertion), dans le même tick, **sans changer sa profondeur** (P4 ; la profondeur a déjà été fixée par la réaction qui l'a produit, P2) et compté dans le budget de travail. C'est déjà le comportement de la file pour la phase en cours.
 - **Q avant P** : la phase est passée. Règle proposée : l'événement est reporté au tick T + 1, même phase Q, avec un champ `deferredFromTick: T` au journal. Jamais exécuté « en arrière » dans le tick courant.
-- **Provenance conservée** : un événement reporté garde exactement `root`, `depth`, `trigger`, `chain`, `sourceInstance` et `sourceGeneration`. Le report n'augmente pas la profondeur et ne crée pas de nouvelle racine ; seul `deferredFromTick` s'ajoute. Ses contrôles (instance périmée, cycle, profondeur) sont refaits au moment de l'exécution, sur l'état du tick T + 1.
+- **Provenance conservée** : un événement reporté garde exactement `root`, `depth`, `trigger`, `chain`, `sourceInstance` et `sourceGeneration`. Le report n'augmente pas la profondeur et ne crée pas de nouvelle racine (P4) ; seul `deferredFromTick` s'ajoute. À l'exécution, au tick T + 1, on vérifie de nouveau l'instance et la génération ; la profondeur, inchangée, a déjà été admise.
 - **Report depuis le dernier tick** : si T est le dernier tick du combat (T + 1 ≥ durée en ticks), ou si le combat se termine pendant T (équipe vaincue, arrêt), l'événement n'est pas exécuté. Il n'écrit pas de ligne par événement ; leur nombre est donné par un champ `deferredDropped` de `combatEnded` (enveloppe de finalisation bornée). Un combat ne se prolonge jamais pour vider la file.
 
 **En place depuis le correctif 6.1** : `EventQueue` refuse (exception de programmation) tout événement programmé avant la position déjà atteinte. Avant, un tel événement restait en tête du tas et bloquait silencieusement toute la file ; le moteur actuel n'en programme jamais (toutes ses échéances sont au moins au tick suivant), et le lot 7 devra appliquer la règle de report ci-dessus avant d'appeler la file.
