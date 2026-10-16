@@ -1,0 +1,10 @@
+<Project>
+  <!-- Réglages communs à toute la solution. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Authors>Éclats du Seuil</Authors>
+  </PropertyGroup>
+</Project>

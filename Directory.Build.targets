@@ -1,0 +1,7 @@
+<Project>
+  <!-- Évalué après les projets : TargetFramework y est connu. -->
+  <!-- Cœur réutilisable dans Unity (IL2CPP) et sur serveur : netstandard2.1, C# 9 au plus. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <LangVersion>9.0</LangVersion>
+  </PropertyGroup>
+</Project>
