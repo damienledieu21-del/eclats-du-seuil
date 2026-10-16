@@ -59,7 +59,8 @@ public class IsolationAndLimitsTests
     [Fact]
     public void Budget_d_evenements_par_tick_interrompt_proprement()
     {
-        var rules = new CombatRules { MaxEventsPerTick = 3 };
+        // Cinq commandes simultanées : la limite d'admission par acteur et par tick (lot 7.1) est relevée à 5.
+        var rules = new CombatRules { MaxEventsPerTick = 3, MaxCommandsPerActorPerTick = 5 };
         var commands = Enumerable.Range(0, 5).Select(_ => Cmd(0, Inerte));
         var (result, log) = Run(Setup(commands, new CombatantSetup[] { Character(actives: new[] { Inerte }), Dummy() }, rules: rules));
         Assert.Equal(CombatEndReason.Aborted, result.EndReason);

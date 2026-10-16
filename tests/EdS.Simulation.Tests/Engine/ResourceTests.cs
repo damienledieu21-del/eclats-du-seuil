@@ -119,7 +119,9 @@ public class ResourceTests
             Assailant(intervalMs: 300, attacks: new[] { Blow(20), Blow(20, unblockable: true, id: "perce"), Blow(20, fragility: true, id: "fele") }),
             Assailant(firstAttackMs: 150, intervalMs: 450, id: "second", target: null, attacks: Blow(20, targeting: SkillTargeting.AllEnemies, id: "onde")),
         };
-        return Setup(commands, fighters, seed: seed, durationMs: 20_000);
+        // Plan aléatoire : plusieurs commandes peuvent tomber au même tick ; plafond technique par acteur et par tick (lot 7.1).
+        return Setup(commands, fighters, seed: seed, durationMs: 20_000,
+            rules: new CombatRules { MaxCommandsPerActorPerTick = CombatRules.AbsoluteMaxCommandsPerActorPerTick });
     }
 
     [Property(MaxTest = 200)]
