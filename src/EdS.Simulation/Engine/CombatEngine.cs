@@ -339,11 +339,15 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Réservé aux tests : <paramref name="queueBound"/> faux omet le majorant de saturation (correctif 7.2) pour
         /// exercer l'arrêt <c>queueLimitExceeded</c>, devenu un filet de sécurité inatteignable pour un combat validé.</summary>
-        internal CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound)
+        internal CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound) : this(setup, log, queueBound, numericLimits: true) { }
+
+        /// <summary>Réservé aux tests (correctif 7.3.1) : <paramref name="numericLimits"/> faux omet le précontrôle numérique pour
+        /// exercer l'arrêt <c>overflow</c> et vérifier qu'aucun impact n'est appliqué à moitié.</summary>
+        internal CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound, bool numericLimits)
         {
             _setup = setup ?? throw new ArgumentNullException(nameof(setup));
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            var violations = setup.Validate(queueBound);
+            var violations = setup.Validate(queueBound, numericLimits);
             if (violations.Count > 0) throw new CombatSetupException(violations);
 
             _rules = setup.Combat;
@@ -912,15 +916,14 @@ namespace EdS.Simulation.Engine
                         action.Strike.Coefficient!.Value.At(action.StrikeRank), bonuses, false, mitigation);
             long amount = DamageCalculator.Compute(input, _setup.Damage).FinalDamage;
 
-            long overkill = 0;
-            if (target.Health is long health)
-            {
-                overkill = Math.Max(0, amount - health);
-                target.Health = Math.Max(0, health - amount);
-            }
-            target.Result.DamageTaken = checked(target.Result.DamageTaken + amount);
-            actor.Result.DamageDealt = checked(actor.Result.DamageDealt + amount);
-            actor.Result.Hits++;
+            // Correctif 7.3.1 (A73-M01) : nouvelles valeurs préparées et vérifiées avant toute affectation ; un débordement arrête
+            // le combat sans impact à moitié appliqué.
+            DamageUpdate update = PrepareDamage(target, actor, amount);
+            long overkill = update.Overkill;
+            target.Health = update.Health;
+            target.Result.DamageTaken = update.Taken;
+            actor.Result.DamageDealt = update.Dealt!.Value;
+            actor.Result.Hits = update.Hits;
             if (critical) actor.Result.CriticalHits++;
             ObservedEvent hit = HitObserved(TriggerEvent.HitDealt, action, target, TriggerIds.Defenses[defense]);
             hit.Also = TriggerEvent.HitTaken;
@@ -1333,6 +1336,46 @@ namespace EdS.Simulation.Engine
         private static bool IsCurrent(DotTick dot, out StatusInstance status) =>
             dot.Fighter.Statuses.TryGetValue(dot.Key, out status!) && status.Id == dot.Instance;
 
+        /// <summary>Nouvelles valeurs d'un impact ou d'un tick de DOT, calculées sans rien modifier.</summary>
+        private readonly struct DamageUpdate
+        {
+            public readonly long? Health;
+            public readonly long Overkill;
+            public readonly long Taken;
+            public readonly long? Dealt;
+            public readonly long Hits;
+
+            public DamageUpdate(long? health, long overkill, long taken, long? dealt, long hits)
+            {
+                Health = health;
+                Overkill = overkill;
+                Taken = taken;
+                Dealt = dealt;
+                Hits = hits;
+            }
+        }
+
+        /// <summary>
+        /// Correctif 7.3.1 (A73-M01) : prépare dans des variables locales, avec opérations vérifiées, les PV de la cible, ses dégâts
+        /// subis et les dégâts infligés de la source (et son compteur de coups, pour un impact direct). Toutes les opérations qui
+        /// peuvent déborder sont faites ici ; l'appelant n'affecte qu'ensuite. Un débordement (configuration hors du précontrôle)
+        /// arrête donc le combat (<c>overflow</c>) avant toute mutation de l'impact : ni PV, ni compteur, ni ligne partiels.
+        /// </summary>
+        private static DamageUpdate PrepareDamage(Fighter target, Fighter? source, long amount)
+        {
+            long? health = target.Health;
+            long overkill = 0;
+            if (health is long current)
+            {
+                overkill = Math.Max(0, checked(amount - current));
+                health = Math.Max(0, checked(current - amount));
+            }
+            long taken = checked(target.Result.DamageTaken + amount);
+            long? dealt = source is null ? (long?)null : checked(source.Result.DamageDealt + amount);
+            long hits = source is null ? 0 : checked(source.Result.Hits + 1);
+            return new DamageUpdate(health, overkill, taken, dealt, hits);
+        }
+
         /// <summary>Le tick en cours est-il le dernier de l'instance (le suivant dépasserait sa fin) ?</summary>
         private static bool IsLastDotTick(long tick, StatusInstance status) => tick >= status.UntilTick;
 
@@ -1360,15 +1403,13 @@ namespace EdS.Simulation.Engine
             StatusDefinition definition = status.Definition;
             long amount = DamageCalculator.ComputePeriodic(status.Power, target.Stats, definition.DamageType!.Value,
                 definition.Resistance == StatusResistanceMode.Defense, _setup.Damage);
-            long overkill = 0;
-            if (target.Health is long health)
-            {
-                overkill = Math.Max(0, amount - health);
-                target.Health = Math.Max(0, health - amount);
-            }
-            target.Result.DamageTaken = checked(target.Result.DamageTaken + amount);
-            if (status.Source != null && _byId.TryGetValue(status.Source, out Fighter? source))
-                source.Result.DamageDealt = checked(source.Result.DamageDealt + amount);
+            // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage).
+            Fighter? source = status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
+            DamageUpdate update = PrepareDamage(target, source, amount);
+            long overkill = update.Overkill;
+            target.Health = update.Health;
+            target.Result.DamageTaken = update.Taken;
+            if (source != null) source.Result.DamageDealt = update.Dealt!.Value;
             ObservedEvent dotObserved = StateObserved(TriggerEvent.DotTick, target, status);
             long dotEid = Emit(tick, CombatPhase.Periodic, "dotDamage", status.Origin, dotObserved, w => w
                 .Field("source", status.Source).Field("target", target.Id).Field("state", status.State).Field("instance", status.Id)

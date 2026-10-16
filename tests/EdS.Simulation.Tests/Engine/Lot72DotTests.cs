@@ -381,9 +381,12 @@ public class Lot72DotTests
     public void Pire_tick_de_dot_dans_le_precontrole_numerique()
     {
         // Durée maximale (1 728 000 ticks × 1000 lignes) et dégâts bruts maximaux : l'impact direct tient, un saignement de
-        // coefficient 4 aussi ; à 5, le cumul du pire tick (puissance 5 × 10⁹, Fragilité comprise) ne tient plus : refus.
+        // coefficient 5,3375 aussi ; à 5,3376, le cumul du pire tick (puissance figée 5,3376 × 10⁹) ne tient plus : refus.
+        // Correctif 7.3.1 (A73-M01) : le tick est calculé par la formule périodique, sans Fragilité ni bonus de catégorie (le DOT
+        // n'en reçoit pas) ; l'ancien calcul direct, Fragilité comprise, refusait déjà le coefficient 5, qui tient en réalité.
         Assert.Empty(LongFight("4").Validate());
-        AssertRefusedBeforeLog(LongFight("5"), v => v.Kind == RuleViolationKind.NumericLimit && v.Fields.Contains("combatants[1]"));
+        Assert.Empty(LongFight("5.3375").Validate());
+        AssertRefusedBeforeLog(LongFight("5.3376"), v => v.Kind == RuleViolationKind.NumericLimit && v.Fields.Contains("combatants[1]"));
         AssertRefusedBeforeLog(LongFight("100"), v => v.Message.Contains("altération « bleed »") || v.Message.Contains("cumul"));
     }
 

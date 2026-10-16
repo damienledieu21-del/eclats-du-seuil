@@ -343,7 +343,13 @@ namespace EdS.Domain.Combat
         /// Variante réservée aux tests du filet de sécurité <c>queueLimitExceeded</c> : sans le majorant de saturation, un combat
         /// valide peut atteindre la capacité de la file en cours de simulation.
         /// </summary>
-        internal IReadOnlyList<RuleViolation> Validate(bool queueBound)
+        internal IReadOnlyList<RuleViolation> Validate(bool queueBound) => Validate(queueBound, numericLimits: true);
+
+        /// <summary>
+        /// Correctif 7.3.1 : <paramref name="numericLimits"/> faux omet aussi le précontrôle numérique, pour exercer en test la
+        /// défense en profondeur du moteur (mutations préparées dans des variables vérifiées, arrêt <c>overflow</c> sans effet partiel).
+        /// </summary>
+        internal IReadOnlyList<RuleViolation> Validate(bool queueBound, bool numericLimits)
         {
             var errors = new List<RuleViolation>();
             foreach (RuleViolation v in Combat.Validate()) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules.combat." + f).ToArray()));
@@ -421,7 +427,7 @@ namespace EdS.Domain.Combat
                     else if (target.Team == assailant.Team)
                         errors.Add(new RuleViolation("la cible de l'assaillant doit être un ennemi.", $"combatants[{i}].target"));
                 }
-            if (errors.Count == 0) ValidateNumericLimits(errors);
+            if (errors.Count == 0 && numericLimits) ValidateNumericLimits(errors);
             if (Combatants.Select(c => c.Team).Distinct(StringComparer.Ordinal).Count() < 2)
                 errors.Add(new RuleViolation("un combat oppose au moins deux équipes.", "combatants"));
 
@@ -771,7 +777,13 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation($"{label} doit être comprise entre 0 et {CombatantStats.MaxDefense}.", path));
         }
 
-        /// <summary>Profil offensif d'un combattant : ce qui entre dans la formule de dégâts pour une de ses attaques.</summary>
+        /// <summary>
+        /// Profil offensif d'un combattant : ce qui entre dans la formule de dégâts pour une de ses attaques. Correctif 7.3.1 (A73-M01) :
+        /// un impact direct passe par <see cref="DamageCalculator.Compute"/> (bonus de catégorie, critique) ; un tick de DOT
+        /// (<see cref="Periodic"/>) par <see cref="DamageCalculator.ComputePeriodic"/>, avec la puissance figée réelle et le mode de
+        /// résistance de l'altération. La formule directe n'est pas un majorant du DOT : un multiplicateur de catégorie maximal
+        /// inférieur à 1 (jusqu'à 0) la rend plus petite.
+        /// </summary>
         private readonly struct Offense
         {
             public readonly string Label;
@@ -780,8 +792,14 @@ namespace EdS.Domain.Combat
             public readonly DamageType Type;
             public readonly Fixed Coefficient;
             public readonly bool CanCrit;
+            public readonly bool Periodic;
+            public readonly bool ReducedByDefense;
 
             public Offense(string label, DerivedStats attacker, PowerType power, DamageType type, Fixed coefficient, bool canCrit)
+                : this(label, attacker, power, type, coefficient, canCrit, false, false) { }
+
+            private Offense(string label, DerivedStats attacker, PowerType power, DamageType type, Fixed coefficient, bool canCrit,
+                bool periodic, bool reducedByDefense)
             {
                 Label = label;
                 Attacker = attacker;
@@ -789,6 +807,16 @@ namespace EdS.Domain.Combat
                 Type = type;
                 Coefficient = coefficient;
                 CanCrit = canCrit;
+                Periodic = periodic;
+                ReducedByDefense = reducedByDefense;
+            }
+
+            /// <summary>Tick d'un DOT : puissance figée = puissance du type de l'altération × coefficient de l'application.</summary>
+            public static Offense Dot(string label, DerivedStats attacker, StatusDefinition definition, Fixed coefficient)
+            {
+                DamageType type = definition.DamageType!.Value;
+                return new Offense(label, attacker, CombatantStats.PowerOf(type), type, coefficient, false, true,
+                    definition.Resistance == StatusResistanceMode.Defense);
             }
         }
 
@@ -918,18 +946,24 @@ namespace EdS.Domain.Combat
             {
                 string path = $"combatants[{i}]";
                 long worstHit = 0;
+                string? worstLabel = null;
                 bool failed = false;
                 foreach (Offense offense in offenses[i])
                 {
                     if (failed) break;
                     if (!TryWorstHit(offense, undefended, worstBonuses, out long hit))
                     {
-                        errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
-                            $"pire impact de {offense.Label} hors des limites numériques du moteur (critique, Fragilité, aucune défense).", path));
+                        errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, offense.Periodic
+                            ? $"pire tick de {offense.Label} hors des limites numériques du moteur (formule périodique, puissance figée, aucune défense)."
+                            : $"pire impact de {offense.Label} hors des limites numériques du moteur (critique, Fragilité, aucune défense).", path));
                         failed = true;
                         break;
                     }
-                    worstHit = Math.Max(worstHit, hit);
+                    if (hit > worstHit || worstLabel is null)
+                    {
+                        worstHit = Math.Max(worstHit, hit);
+                        worstLabel = (offense.Periodic ? "tick de " : "impact de ") + offense.Label;
+                    }
                     for (int j = 0; j < count; j++)
                     {
                         if (!usable[j] || Combatants[j].Team == Combatants[i].Team) continue;
@@ -944,20 +978,21 @@ namespace EdS.Domain.Combat
                 }
                 if (!failed && !Representable(() => checked(worstHit * maxImpacts)))
                     errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
-                        $"cumul des dégâts sur la durée du combat hors des limites numériques (pire impact {worstHit} × {maxImpacts} événements comptés au plus).", path));
+                        $"cumul des dégâts sur la durée du combat hors des limites numériques (pire impact {worstHit}, {worstLabel}, × {maxImpacts} événements comptés au plus).", path));
             }
         }
 
         /// <summary>
         /// Lot 7.2 : chaque tick d'un DOT est un impact sans critique dont la puissance figée vaut la puissance du type de l'altération
-        /// (dégâts bruts pour un assaillant) × le coefficient de l'application. Il entre dans le pire impact comme une attaque.
+        /// (dégâts bruts pour un assaillant) × le coefficient de l'application. Correctif 7.3.1 (A73-M01) : son pire impact est calculé
+        /// avec la formule périodique du moteur (<see cref="Offense.Dot"/>), pas avec celle des dégâts directs.
         /// </summary>
         private void AddDotOffenses(List<Offense> offenses, string owner, DerivedStats attacker, IReadOnlyList<StatusApplication> applies)
         {
             foreach (StatusApplication application in applies)
                 if (Combat.Statuses.TryGet(application.Status, out StatusDefinition? definition) && definition.IsDot
                     && definition.DamageType is { } type && application.Coefficient is { } coefficient)
-                    offenses.Add(new Offense($"altération « {definition.Id} » de {owner}", attacker, CombatantStats.PowerOf(type), type, coefficient, false));
+                    offenses.Add(Offense.Dot($"altération « {definition.Id} » de {owner}", attacker, definition, coefficient));
         }
 
         /// <summary>
@@ -972,8 +1007,8 @@ namespace EdS.Domain.Combat
                 if (e.Kind == TriggerEffectKind.Strike && e.Coefficient is { } coefficient && e.PowerType is { } power && e.DamageType is { } type)
                     offenses.Add(new Offense($"frappe du {owner}", attacker, power, type, coefficient.At(rank), false));
                 else if (e.Kind == TriggerEffectKind.ApplyStatus && e.Status != null && e.Coefficient is { } dot
-                    && Combat.Statuses.TryGet(e.Status, out StatusDefinition? definition) && definition.IsDot && definition.DamageType is { } dotType)
-                    offenses.Add(new Offense($"altération « {definition.Id} » du {owner}", attacker, CombatantStats.PowerOf(dotType), dotType, dot.At(rank), false));
+                    && Combat.Statuses.TryGet(e.Status, out StatusDefinition? definition) && definition.IsDot && definition.DamageType != null)
+                    offenses.Add(Offense.Dot($"altération « {definition.Id} » du {owner}", attacker, definition, dot.At(rank)));
             }
         }
 
@@ -981,12 +1016,21 @@ namespace EdS.Domain.Combat
             ? $"combatants[{index}]"
             : $"combatants[{index}]." + (type == DamageType.Physique ? "armor" : "magicResistance");
 
+        /// <summary>
+        /// Pire impact d'une offensive contre un défenseur, calculé par la formule exacte du moteur : <see cref="DamageCalculator.Compute"/>
+        /// pour un impact direct (bonus de catégorie, critique, sans garde ni parade) ; pour un tick de DOT, puissance figée calculée
+        /// comme à l'application (puissance × coefficient, même arrondi) puis <see cref="DamageCalculator.ComputePeriodic"/>, sans bonus
+        /// ni critique, réduite par la défense seulement si l'altération l'est.
+        /// </summary>
         private bool TryWorstHit(Offense offense, DerivedStats defender, DamageBonuses bonuses, out long hit)
         {
             try
             {
-                hit = DamageCalculator.Compute(new DamageInput(offense.Attacker, defender, offense.Power, offense.Type, offense.Coefficient,
-                    bonuses, offense.CanCrit, Fixed.Zero), Damage).FinalDamage;
+                hit = offense.Periodic
+                    ? DamageCalculator.ComputePeriodic(offense.Attacker.GetPower(offense.Power) * offense.Coefficient, defender, offense.Type,
+                        offense.ReducedByDefense, Damage)
+                    : DamageCalculator.Compute(new DamageInput(offense.Attacker, defender, offense.Power, offense.Type, offense.Coefficient,
+                        bonuses, offense.CanCrit, Fixed.Zero), Damage).FinalDamage;
                 return true;
             }
             catch (OverflowException)
