@@ -193,6 +193,9 @@ static int RunSimulate(ReadOnlySpan<string> options)
     }
     summary.WriteLine($"Combat simulé — valeurs provisoires ({setup.DurationMs} ms prévus, graine {setup.Seed})");
     summary.WriteLine($"  fin            {result.EndReason} au tick {result.EndTick} ({result.DurationMs} ms){(result.AbortReason is null ? "" : " : " + result.AbortReason)}");
+    // Lot 7.1 : pics de charge mesurés, hors journal, rapportés aux limites configurées.
+    CombatRules limits = setup.Combat;
+    summary.WriteLine($"  charge         pics : travail {result.Peaks.WorkPerTick}/{limits.MaxWorkPerTick} par tick, lignes {result.Peaks.EventsPerTick}/{limits.MaxEventsPerTick} par tick, file {result.Peaks.PendingEvents}/{limits.MaxPendingEvents}");
     foreach (CombatantResult c in result.Combatants)
     {
         string dps = (c.DamageDealt * 1000m / result.DurationMs).ToString("0.##", CultureInfo.InvariantCulture);

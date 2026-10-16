@@ -407,6 +407,69 @@ public class Lot71CliLimitTests
         Assert.True(logWritten);
     }
 
+    /// <summary>Simulation du scénario de rupture, avec des règles modifiées (remplacements exacts dans rules.json).</summary>
+    private static (int ExitCode, string Output, bool LogWritten, string Log) SimulateWithRules(Action<JsonObject> mutateScenario,
+        params (string Original, string Replacement)[] rules)
+    {
+        string directory = CopyData((file, text) =>
+        {
+            if (file != "rules.json") return text;
+            foreach (var (original, replacement) in rules)
+            {
+                Assert.Equal(1, text.Split(original).Length - 1);
+                text = text.Replace(original, replacement, StringComparison.Ordinal);
+            }
+            return text;
+        });
+        try
+        {
+            JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath("entrainement_rupture")))!.AsObject();
+            mutateScenario(root);
+            string scenario = Path.Combine(directory, "scenario.json");
+            string logPath = Path.Combine(directory, "journal.jsonl");
+            File.WriteAllText(scenario, Lot71Files.ToJson(root));
+            var (exitCode, output, _) = Lot71Files.Cli(directory, "simulate", scenario, "--data", directory, "--out", logPath);
+            bool written = File.Exists(logPath);
+            return (exitCode, output, written, written ? File.ReadAllText(logPath) : string.Empty);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Budget_de_travail_depasse_code_2_et_bandeau()
+    {
+        // 6 unités par tick suffisent aux ticks ordinaires (2 combattants × 3 passages), pas à ceux des attaques.
+        var (exitCode, output, logWritten, log) = SimulateWithRules(_ => { },
+            ("\"maxWorkPerTick\": 10000", "\"maxWorkPerTick\": 6"), ("\"maxEventsPerTick\": 1000", "\"maxEventsPerTick\": 6"));
+        Assert.Equal(2, exitCode);
+        Assert.Contains("DIAGNOSTIC — simulation interrompue (workBudgetExceeded)", output);
+        Assert.Contains("charge         pics : travail 6/6 par tick", output);
+        Assert.True(logWritten);
+        Assert.Contains("\"event\":\"simulationAborted\",\"reason\":\"workBudgetExceeded\",\"limit\":6", log);
+    }
+
+    [Fact]
+    public void Capacite_de_la_file_depassee_code_2_et_bandeau()
+    {
+        // L'assaillant frappe à chaque tick avec Fragilité : la file grandit d'une échéance par tick pendant 6 s.
+        var (exitCode, output, logWritten, log) = SimulateWithRules(root =>
+        {
+            JsonObject assailant = DataOf(root)["combatants"]![1]!.AsObject();
+            assailant["intervalMs"] = 50;
+            assailant["attacks"]![0]!["appliesFragility"] = true;
+            assailant["attacks"]![0]!["rawDamage"] = 1;
+            DataOf(root)["commands"] = new JsonArray();
+        }, ("\"maxPendingEvents\": 100000", "\"maxPendingEvents\": 20"));
+        Assert.Equal(2, exitCode);
+        Assert.Contains("DIAGNOSTIC — simulation interrompue (queueLimitExceeded)", output);
+        Assert.Contains("file 20/20", output);
+        Assert.True(logWritten);
+        Assert.Contains("\"reason\":\"queueLimitExceeded\",\"limit\":20", log);
+    }
+
     [Fact]
     public void Fichier_trop_gros_refuse_par_simulate_et_validate() =>
         Lot71Files.InTempDirectory(directory =>

@@ -19,11 +19,16 @@ namespace EdS.Simulation.Engine
     /// à l'instance. Même combat (règles, participants, commandes, graine) = même journal, octet par octet.
     /// <para>Ordre d'un tick (A10) : expirations → commandes (initiative décroissante, puis identifiant) → résolution
     /// des actions et dégâts → effets périodiques (entretien de la garde) → régénération → morts et fin de combat.</para>
+    /// <para>Budgets (lot 7.1) : chaque traitement élémentaire (une échéance, le retrait d'une commande, une commande, une
+    /// action complète avec toutes ses cibles, le passage d'un combattant dans une phase balayée) calcule son coût exact
+    /// en travail, lignes et places de file à partir de l'état courant, puis le <b>réserve avant toute mutation</b>. Si la
+    /// réserve dépasse un budget, le combat s'arrête proprement sans que ce traitement ait rien modifié. Voir
+    /// docs/LIMITES_LOT_7.md pour le modèle de coût et les limites d'atomicité restantes (débordement numérique).</para>
     /// </summary>
     public sealed class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.6.1";
+        public const string Version = "0.7.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -153,7 +158,49 @@ namespace EdS.Simulation.Engine
             public bool Unblockable => Combat?.Unblockable ?? Attack!.Unblockable;
         }
 
-        private sealed class EventBudgetExceeded : Exception { }
+        /// <summary>Un budget du tick ou la capacité de la file serait dépassé par le traitement suivant (lot 7.1).</summary>
+        private sealed class BudgetExceeded : Exception
+        {
+            public string Reason { get; }
+            public long Limit { get; }
+
+            public BudgetExceeded(string reason, long limit)
+            {
+                Reason = reason;
+                Limit = limit;
+            }
+        }
+
+        /// <summary>
+        /// Coût d'un traitement (lot 7.1) : unités de travail, lignes de simulation comptées, places de file prises.
+        /// Une opération (retrait de la file, impact, application ou retrait d'état, passage d'un combattant) vaut une
+        /// unité ; une ligne vaut une unité et une ligne ; une mise en file vaut une unité et une place.
+        /// </summary>
+        private readonly struct Cost
+        {
+            public readonly long Work;
+            public readonly long Events;
+            public readonly long Queue;
+
+            public Cost(long work, long events, long queue)
+            {
+                Work = work;
+                Events = events;
+                Queue = queue;
+            }
+
+            public static readonly Cost None = new Cost(0, 0, 0);
+            public static readonly Cost Op = new Cost(1, 0, 0);
+            public static readonly Cost Line = new Cost(1, 1, 0);
+            public static readonly Cost Enqueue = new Cost(1, 0, 1);
+
+            public static Cost operator +(Cost a, Cost b) =>
+                new Cost(checked(a.Work + b.Work), checked(a.Events + b.Events), checked(a.Queue + b.Queue));
+
+            public static Cost operator *(long k, Cost c) => new Cost(checked(k * c.Work), checked(k * c.Events), checked(k * c.Queue));
+
+            public Cost If(bool condition) => condition ? this : None;
+        }
 
         private readonly CombatSetup _setup;
         private readonly CombatRules _rules;
@@ -172,10 +219,27 @@ namespace EdS.Simulation.Engine
         private readonly long _fragilityTicks;
         private long _sequence;
         private long _lastStatusInstance;
-        private int _eventsThisTick;
+        private long _eventsThisTick;
+        private long _workThisTick;
         private bool _countEvents;
 
+        // Réserve du traitement en cours (lot 7.1) : le travail et les lignes ne peuvent pas dépasser ces valeurs, ni les
+        // mises en file ce nombre. Hors traitement, la réserve est vide : toute consommation non réservée est une erreur.
+        private long _scopeWork;
+        private long _scopeEvents;
+        private long _scopeEnqueues;
+
+        private long _peakWork;
+        private long _peakEvents;
+        private long _peakPending;
+
         public long CurrentTick { get; private set; }
+
+        /// <summary>Travail consommé par le dernier tick simulé (lot 7.1, diagnostic hors journal).</summary>
+        public long LastTickWork { get; private set; }
+
+        /// <summary>Lignes de simulation comptées au dernier tick simulé (lot 7.1, diagnostic hors journal).</summary>
+        public long LastTickEvents { get; private set; }
         public bool IsFinished => Result != null;
         public CombatResult? Result { get; private set; }
 
@@ -204,11 +268,11 @@ namespace EdS.Simulation.Engine
             for (int i = 0; i < setup.Commands.Count; i++)
             {
                 CombatCommand command = setup.Commands[i];
-                _queue.Enqueue(command.AtMs / _tickMs, CombatPhase.Commands, new CommandItem { Index = i, Command = command });
+                Schedule(command.AtMs / _tickMs, CombatPhase.Commands, new CommandItem { Index = i, Command = command });
             }
             foreach (Fighter f in _fighters)
                 if (f.Assailant is { } assailant && assailant.FirstAttackMs / _tickMs < _durationTicks)
-                    _queue.Enqueue(assailant.FirstAttackMs / _tickMs, CombatPhase.Commands, new AssailantTurn { Fighter = f });
+                    Schedule(assailant.FirstAttackMs / _tickMs, CombatPhase.Commands, new AssailantTurn { Fighter = f });
 
             _log.Append(CombatLogHeader.Write(setup));
             foreach (Fighter f in _fighters) LogCombatant(f);
@@ -267,6 +331,8 @@ namespace EdS.Simulation.Engine
             if (IsFinished) return false;
             long tick = CurrentTick;
             _eventsThisTick = 0;
+            _workThisTick = 0;
+            _scopeWork = _scopeEvents = _scopeEnqueues = 0;
             _countEvents = true;
             try
             {
@@ -276,15 +342,19 @@ namespace EdS.Simulation.Engine
                 RunPeriodic(tick);
                 RunRegeneration(tick);
                 RunEndOfTick(tick);
+                CloseScope();
             }
-            catch (EventBudgetExceeded)
+            catch (BudgetExceeded e)
             {
-                Abort(tick, "eventBudgetExceeded", _rules.MaxEventsPerTick);
+                Abort(tick, e.Reason, e.Limit);
             }
             catch (OverflowException)
             {
                 Abort(tick, "overflow", null);
             }
+            RecordTickPeaks();
+            LastTickWork = _workThisTick;
+            LastTickEvents = _eventsThisTick;
             if (!IsFinished) CurrentTick++;
             return !IsFinished;
         }
@@ -293,8 +363,11 @@ namespace EdS.Simulation.Engine
 
         private void RunExpirations(long tick)
         {
-            while (_queue.TryDequeue(tick, CombatPhase.Expirations, out Scheduled item))
+            while (_queue.TryPeek(tick, CombatPhase.Expirations, out Scheduled item))
             {
+                Reserve(Cost.Op + ExpirationCost(tick, item));
+                _queue.Dequeue();
+                Charge(1);
                 switch (item)
                 {
                     case CooldownExpiry expiry:
@@ -310,6 +383,19 @@ namespace EdS.Simulation.Engine
                 }
             }
         }
+
+        /// <summary>Coût exact d'une échéance hors retrait : une ligne si elle agit, rien si elle est périmée.</summary>
+        private static Cost ExpirationCost(long tick, Scheduled item) => item switch
+        {
+            CooldownExpiry e => Cost.Line.If(e.Fighter.CooldownReadyTick.TryGetValue(e.Skill, out long ready) && ready == tick),
+            ParryWindowEnd e => Cost.Line.If(e.Fighter.ParryOpen && e.Fighter.ParryStartTick == e.StartTick),
+            StateExpiry e => (Cost.Op + Cost.Line).If(IsCurrent(e)),
+            _ => Cost.None,
+        };
+
+        private static bool IsCurrent(StateExpiry expiry) =>
+            expiry.Fighter.Statuses.TryGetValue(expiry.State, out StatusInstance? status)
+            && status.Id == expiry.Instance && status.Generation == expiry.Generation;
 
         private void CloseParryWindow(long tick, ParryWindowEnd end)
         {
@@ -331,9 +417,10 @@ namespace EdS.Simulation.Engine
         {
             Fighter f = expiry.Fighter;
             // Échéance périmée : état renouvelé (autre génération), retiré, ou remplacé par une nouvelle instance.
-            if (!f.Statuses.TryGetValue(expiry.State, out StatusInstance? status)
-                || status.Id != expiry.Instance || status.Generation != expiry.Generation) return;
+            if (!IsCurrent(expiry)) return;
+            StatusInstance status = f.Statuses[expiry.State];
             f.Statuses.Remove(expiry.State);
+            Charge(1);
             Emit(tick, CombatPhase.Expirations, "stateExpired", w => w
                 .Field("combatant", f.Id).Field("state", status.State).Field("instance", status.Id).Field("generation", status.Generation));
             if (expiry.State == GuardBreak) ResumeRegeneration(f, tick);
@@ -344,8 +431,11 @@ namespace EdS.Simulation.Engine
         private List<PendingAction> RunCommands(long tick)
         {
             var batch = new List<(Fighter Actor, int Index, Scheduled Item)>();
-            while (_queue.TryDequeue(tick, CombatPhase.Commands, out Scheduled item))
+            while (_queue.TryPeek(tick, CombatPhase.Commands, out Scheduled item))
             {
+                Reserve(Cost.Op);
+                _queue.Dequeue();
+                Charge(1);
                 if (item is CommandItem command) batch.Add((_byId[command.Command.Actor], command.Index, item));
                 else batch.Add((((AssailantTurn)item).Fighter, -1, item));   // le tour d'un assaillant passe avant ses éventuelles commandes
             }
@@ -357,10 +447,44 @@ namespace EdS.Simulation.Engine
                 .ThenBy(c => c.Actor.Id, StringComparer.Ordinal)
                 .ThenBy(c => c.Index))
             {
+                Reserve(entry.Item is CommandItem planned ? CommandCost(tick, planned) : AssailantTurnCost(tick, entry.Actor));
                 PendingAction? action = entry.Item is CommandItem command ? Execute(tick, command) : AssailantAttacks(tick, entry.Actor);
                 if (action != null) actions.Add(action);
             }
             return actions;
+        }
+
+        /// <summary>Coût exact d'une commande, calculé avec les mêmes contrôles que son exécution, sans rien modifier.</summary>
+        private Cost CommandCost(long tick, CommandItem item)
+        {
+            Fighter actor = _byId[item.Command.Actor];
+            switch (item.Command.Action)
+            {
+                case CombatAction.GuardStart:
+                case CombatAction.GuardStop:
+                    return Cost.Line;
+                case CombatAction.Parry:
+                    return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
+                default:
+                    var (skill, target, resonanceCost) = CastContext(item, actor);
+                    if (CheckSkill(tick, actor, skill, target, resonanceCost) != null) return Cost.Line;
+                    SkillCombatDefinition combat = skill!.Combat!;
+                    return Cost.Enqueue.If(combat.CooldownMs / _tickMs > 0) + Cost.Line + GainCost(actor, combat.RampartChargeGain);
+            }
+        }
+
+        /// <summary>Coût exact du tour d'un assaillant : prochain tour s'il tombe avant la fin, et une ligne.</summary>
+        private Cost AssailantTurnCost(long tick, Fighter assailant) =>
+            Cost.Enqueue.If(checked(tick + assailant.Assailant!.IntervalMs / _tickMs) < _durationTicks) + Cost.Line;
+
+        private (SkillDefinition? Skill, Fighter? Target, int ResonanceCost) CastContext(CommandItem item, Fighter actor)
+        {
+            CombatCommand command = item.Command;
+            Fighter? target = command.Target != null ? _byId[command.Target] : null;
+            SkillDefinition? skill = null;
+            actor.Character?.Class.TryGetSkill(command.Skill!, out skill);
+            bool isUltimate = skill != null && actor.Character?.Build.Ultimate == skill.Id;
+            return (skill, target, isUltimate ? _rules.UltimateResonanceCost : 0);
         }
 
         /// <summary>Valide une commande sans rien modifier, puis seulement l'applique (refus atomique).</summary>
@@ -389,7 +513,7 @@ namespace EdS.Simulation.Engine
                     actor.ParryStartTick = tick;
                     actor.ParryEndTick = checked(tick + _parryWindowTicks);
                     actor.ParrySucceeded = false;
-                    _queue.Enqueue(actor.ParryEndTick, CombatPhase.Expirations, new ParryWindowEnd { Fighter = actor, StartTick = tick });
+                    Schedule(actor.ParryEndTick, CombatPhase.Expirations, new ParryWindowEnd { Fighter = actor, StartTick = tick });
                     Emit(tick, CombatPhase.Commands, "parryStarted", w => w
                         .Field("actor", actor.Id).Field("command", item.Index).Field("windowEndTick", actor.ParryEndTick).Field("guarding", actor.Guarding));
                     return null;
@@ -402,11 +526,7 @@ namespace EdS.Simulation.Engine
         private PendingAction? CastSkill(long tick, CommandItem item, Fighter actor)
         {
             CombatCommand command = item.Command;
-            Fighter? target = command.Target != null ? _byId[command.Target] : null;
-            SkillDefinition? skill = null;
-            actor.Character?.Class.TryGetSkill(command.Skill!, out skill);
-            bool isUltimate = skill != null && actor.Character?.Build.Ultimate == skill.Id;
-            int resonanceCost = isUltimate ? _rules.UltimateResonanceCost : 0;
+            var (skill, target, resonanceCost) = CastContext(item, actor);
 
             if (Reject(tick, item, actor, CheckSkill(tick, actor, skill, target, resonanceCost))) return null;
 
@@ -420,7 +540,7 @@ namespace EdS.Simulation.Engine
             if (cooldownTicks > 0)
             {
                 actor.CooldownReadyTick[skill.Id] = readyTick;
-                _queue.Enqueue(readyTick, CombatPhase.Expirations, new CooldownExpiry { Fighter = actor, Skill = skill.Id });
+                Schedule(readyTick, CombatPhase.Expirations, new CooldownExpiry { Fighter = actor, Skill = skill.Id });
             }
             actor.Result.SkillsCast++;
             Emit(tick, CombatPhase.Commands, "skillCast", w => w
@@ -501,7 +621,7 @@ namespace EdS.Simulation.Engine
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             assailant.NextAttack = (assailant.NextAttack + 1) % setup.Attacks.Count;
             long next = checked(tick + setup.IntervalMs / _tickMs);
-            if (next < _durationTicks) _queue.Enqueue(next, CombatPhase.Commands, new AssailantTurn { Fighter = assailant });
+            if (next < _durationTicks) Schedule(next, CombatPhase.Commands, new AssailantTurn { Fighter = assailant });
 
             Fighter? target = attack.Targeting == SkillTargeting.Enemy ? _byId[setup.Target!] : null;
             if (target is { IsDead: true })
@@ -525,15 +645,40 @@ namespace EdS.Simulation.Engine
                 IReadOnlyList<Fighter> targets = action.Targeting == SkillTargeting.Enemy
                     ? new[] { action.Target! }
                     : _fightersById.Where(f => f.Team != action.Actor.Team && !f.IsDead).ToArray();
-                foreach (Fighter target in targets) Hit(tick, action, target);
                 // A5 : une attaque directe réussie rapporte de la Résonance une seule fois, quel que soit le nombre de cibles.
-                if (targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance)
-                    Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, _rules.ResonancePerDirectHit, "directHit");
+                bool resonance = targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
+                // Lot 7.1 : l'action entière (toutes ses cibles) est réservée avant le premier impact ; les cibles étant
+                // distinctes, l'impact sur l'une ne change pas le coût prévu pour les suivantes.
+                Cost cost = resonance ? GainCost(action.Actor, _rules.ResonancePerDirectHit) : Cost.None;
+                foreach (Fighter target in targets) cost += HitCost(action, target);
+                Reserve(cost);
+                foreach (Fighter target in targets) Hit(tick, action, target);
+                if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, _rules.ResonancePerDirectHit, "directHit");
             }
+        }
+
+        /// <summary>Coût exact d'un impact, déduit de l'état de la cible avant l'impact, avec les mêmes branches que <see cref="Hit"/>.</summary>
+        private Cost HitCost(PendingAction action, Fighter target)
+        {
+            Cost cost = Cost.Op + Cost.Line;   // impact, ligne « damage »
+            bool defending = target.Character != null && !target.IsDead && (target.ParryOpen || target.Guarding);
+            if (defending && action.Unblockable) { }
+            else if (defending && target.ParryOpen)
+            {
+                if (!target.ParrySucceeded)
+                    cost += Cost.Line + GainCost(target, _rules.RampartChargesPerParry) + GainCost(target, _rules.ResonancePerPerfectParry);
+            }
+            else if (defending)
+            {
+                cost += target.Endurance < _rules.GuardCostPerBlock ? BreakGuardCost(target) : Cost.Line + GainCost(target, _rules.ResonancePerBlock);
+            }
+            if (action.Attack is { AppliesFragility: true }) cost += ApplyStateCost;
+            return cost;
         }
 
         private void Hit(long tick, PendingAction action, Fighter target)
         {
+            Charge(1);
             Fighter actor = action.Actor;
             bool critical = action.Combat != null && CriticalRoll.Roll(actor.Random, actor.Stats);   // l'assaillant ne critique jamais (aucun tirage)
             bool fragile = target.IsFragile;
@@ -614,8 +759,11 @@ namespace EdS.Simulation.Engine
         /// Applique un état non cumulable (A19) : une réapplication renouvelle la durée à partir de maintenant, garde
         /// l'instance et passe à la génération suivante, ce qui périme l'échéance précédente (M02).
         /// </summary>
+        private static readonly Cost ApplyStateCost = Cost.Op + Cost.Enqueue + Cost.Line;
+
         private void ApplyState(long tick, CombatPhase phase, Fighter f, string state, long durationTicks)
         {
+            Charge(1);
             bool renewed = f.Statuses.TryGetValue(state, out StatusInstance? status);
             if (status is null)
             {
@@ -624,12 +772,14 @@ namespace EdS.Simulation.Engine
             }
             status.Generation = checked(status.Generation + 1);
             status.UntilTick = checked(tick + durationTicks);
-            _queue.Enqueue(status.UntilTick, CombatPhase.Expirations,
+            Schedule(status.UntilTick, CombatPhase.Expirations,
                 new StateExpiry { Fighter = f, State = state, Instance = status.Id, Generation = status.Generation });
             Emit(tick, phase, "stateApplied", w => w
                 .Field("combatant", f.Id).Field("state", state).Field("instance", status.Id).Field("generation", status.Generation)
                 .Field("untilTick", status.UntilTick).Field("renewed", renewed));
         }
+
+        private static Cost BreakGuardCost(Fighter f) => Cost.Line + Cost.Line.If(f.ParryOpen) + ApplyStateCost;
 
         /// <summary>Rupture de garde (A1, A19) : fin de la garde et de toute fenêtre de parade, ni garde ni parade ni régénération pendant la durée.</summary>
         private void BreakGuard(long tick, CombatPhase phase, Fighter f, string reason)
@@ -647,6 +797,9 @@ namespace EdS.Simulation.Engine
         }
 
         // --- Ressources --------------------------------------------------------------------------
+
+        /// <summary>Coût d'un gain : une ligne s'il a lieu (montant positif, personnage), même si tout est perdu au plafond.</summary>
+        private static Cost GainCost(Fighter f, int amount) => Cost.Line.If(amount > 0 && f.Character != null);
 
         /// <summary>Gain plafonné d'une ressource (A4, A5) ; l'excédent est perdu et journalisé. Un gain ne déclenche jamais d'autre gain.</summary>
         private void Gain(long tick, CombatPhase phase, Fighter f, string resource, int amount, string source)
@@ -695,11 +848,19 @@ namespace EdS.Simulation.Engine
         {
             foreach (Fighter f in _fightersById)
             {
-                if (!f.Guarding || f.IsDead) continue;
+                if (!f.Guarding || f.IsDead)
+                {
+                    Reserve(Cost.Op);
+                    Charge(1);
+                    continue;
+                }
                 long guardedTicks = checked(f.GuardedTicks + 1);
                 long due = checked(_rules.GuardUpkeepPerSecond * guardedTicks * _tickMs) / 1000;
                 long amount = due - f.GuardUpkeepPaid;
-                if (amount > 0 && f.Endurance < amount)
+                bool breaks = amount > 0 && f.Endurance < amount;
+                Reserve(Cost.Op + (breaks ? BreakGuardCost(f) : Cost.Line.If(amount > 0)));
+                Charge(1);
+                if (breaks)
                 {
                     BreakGuard(tick, CombatPhase.Periodic, f, "upkeep");
                     continue;
@@ -723,12 +884,13 @@ namespace EdS.Simulation.Engine
             int perSecond = _rules.EnduranceRegenPerSecond;
             foreach (Fighter f in _fightersById)
             {
-                if (f.Character is null || f.IsDead || f.RegenFromTick is not long from) continue;
-                if (f.Guarding || f.IsGuardBroken) continue;
-                long regenTicks = tick - from + 1;
-                if (regenTicks <= 0) continue;
-                long target = checked(perSecond * regenTicks * _tickMs) / 1000;
-                long gain = Math.Min(target - f.RegenGranted, f.MaxEndurance - f.Endurance);
+                long regenTicks = f.RegenFromTick is long from ? tick - from + 1 : 0;
+                bool eligible = f.Character != null && !f.IsDead && f.RegenFromTick != null && !f.Guarding && !f.IsGuardBroken && regenTicks > 0;
+                long target = eligible ? checked(perSecond * regenTicks * _tickMs) / 1000 : 0;
+                long gain = eligible ? Math.Min(target - f.RegenGranted, f.MaxEndurance - f.Endurance) : 0;
+                Reserve(Cost.Op + Cost.Line.If(gain > 0));
+                Charge(1);
+                if (!eligible) continue;
                 f.RegenGranted = target;
                 if (gain > 0)
                 {
@@ -745,7 +907,10 @@ namespace EdS.Simulation.Engine
         {
             foreach (Fighter f in _fightersById)
             {
-                if (!f.IsDead && f.Health == 0)
+                bool dies = !f.IsDead && f.Health == 0;
+                Reserve(Cost.Op + (dies ? Cost.Line + f.Statuses.Count * (Cost.Op + Cost.Line) : Cost.None));
+                Charge(1);
+                if (dies)
                 {
                     f.IsDead = true;
                     f.Guarding = false;
@@ -756,6 +921,7 @@ namespace EdS.Simulation.Engine
                     {
                         StatusInstance status = f.Statuses[state];
                         f.Statuses.Remove(state);
+                        Charge(1);
                         Emit(tick, CombatPhase.EndOfTick, "stateRemoved", w => w
                             .Field("combatant", f.Id).Field("state", state).Field("instance", status.Id).Field("generation", status.Generation)
                             .Field("reason", "death"));
@@ -812,7 +978,9 @@ namespace EdS.Simulation.Engine
             };
             Emit(tick, CombatPhase.EndOfTick, "combatEnded", w => w
                 .Field("reason", reasonId).Field("winner", winner).Field("ticks", tick + 1).Field("durationMs", durationMs));
-            Result = new CombatResult(reason, abortReason, tick, durationMs, winner, _fighters.Select(f => f.Result).ToArray());
+            RecordTickPeaks();
+            Result = new CombatResult(reason, abortReason, tick, durationMs, winner, _fighters.Select(f => f.Result).ToArray(),
+                new CombatLoadPeaks(_peakWork, _peakEvents, _peakPending));
         }
 
         // --- Journal -----------------------------------------------------------------------------
@@ -843,9 +1011,74 @@ namespace EdS.Simulation.Engine
             _ => "endOfTick",
         };
 
+        // --- Budgets (lot 7.1) ---------------------------------------------------------------------
+
+        /// <summary>
+        /// Réserve le coût exact du traitement suivant, avant toute mutation. Ordre de vérification fixe : travail, file,
+        /// lignes ; l'arrêt porte la raison du premier budget qui échoue.
+        /// </summary>
+        private void Reserve(Cost cost)
+        {
+            CloseScope();
+            if (checked(_workThisTick + cost.Work) > _rules.MaxWorkPerTick) throw new BudgetExceeded("workBudgetExceeded", _rules.MaxWorkPerTick);
+            if (checked(_queue.Count + cost.Queue) > _rules.MaxPendingEvents) throw new BudgetExceeded("queueLimitExceeded", _rules.MaxPendingEvents);
+            if (checked(_eventsThisTick + cost.Events) > _rules.MaxEventsPerTick) throw new BudgetExceeded("eventBudgetExceeded", _rules.MaxEventsPerTick);
+            _scopeWork = _workThisTick + cost.Work;
+            _scopeEvents = _eventsThisTick + cost.Events;
+            _scopeEnqueues = cost.Queue;
+        }
+
+        /// <summary>
+        /// Termine le traitement réservé. Un dépassement de la réserve lève aussitôt une erreur (voir <see cref="Charge"/>) ;
+        /// en Debug, une réserve non entièrement consommée en lève une aussi, ce qui vérifie l'exactitude des coûts prévus
+        /// sur toute la suite de tests.
+        /// </summary>
+        private void CloseScope()
+        {
+#if DEBUG
+            if (_workThisTick != _scopeWork || _eventsThisTick != _scopeEvents || _scopeEnqueues != 0)
+                throw new InvalidOperationException(
+                    $"Coût réservé inexact : travail {_workThisTick}/{_scopeWork}, lignes {_eventsThisTick}/{_scopeEvents}, mises en file restantes {_scopeEnqueues}.");
+#endif
+            _scopeWork = _workThisTick;
+            _scopeEvents = _eventsThisTick;
+            _scopeEnqueues = 0;
+        }
+
+        private void Charge(long work)
+        {
+            if (!_countEvents) return;
+            _workThisTick += work;
+            if (_workThisTick > _scopeWork)
+                throw new InvalidOperationException($"Travail consommé au-delà de la réserve ({_workThisTick} > {_scopeWork}).");
+        }
+
+        /// <summary>Met un élément en file ; pendant un tick, cela coûte une unité de travail et une place réservées.</summary>
+        private void Schedule(long tick, CombatPhase phase, Scheduled item)
+        {
+            if (_countEvents)
+            {
+                Charge(1);
+                if (--_scopeEnqueues < 0) throw new InvalidOperationException("Mise en file non réservée.");
+            }
+            _queue.Enqueue(tick, phase, item);
+            if (_queue.Count > _peakPending) _peakPending = _queue.Count;
+        }
+
+        private void RecordTickPeaks()
+        {
+            if (_workThisTick > _peakWork) _peakWork = _workThisTick;
+            if (_eventsThisTick > _peakEvents) _peakEvents = _eventsThisTick;
+        }
+
         private void Emit(long tick, CombatPhase phase, string kind, Action<JsonLineWriter> fields)
         {
-            if (_countEvents && ++_eventsThisTick > _rules.MaxEventsPerTick) throw new EventBudgetExceeded();
+            if (_countEvents)
+            {
+                Charge(1);
+                if (++_eventsThisTick > _scopeEvents)
+                    throw new InvalidOperationException($"Ligne écrite au-delà de la réserve ({_eventsThisTick} > {_scopeEvents}).");
+            }
             var w = new JsonLineWriter().BeginObject()
                 .Field("tick", tick).Field("seq", _sequence++).Field("phase", PhaseId(phase)).Field("event", kind);
             fields(w);

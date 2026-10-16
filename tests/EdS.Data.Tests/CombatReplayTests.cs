@@ -141,5 +141,5 @@ public class CombatReplayTests
         Assert.Equal(MannequinLogHash, hash);
     }
 
-    internal const string MannequinLogHash = "a84e0a54d0029f8b29b21365d9ae8307afb579862d5686de767085b02c4294f6";
+    internal const string MannequinLogHash = "2810376fcb126a1d5db411d58f3699adf0ebb2d501aad09968b4e6b9618fc404";
 }

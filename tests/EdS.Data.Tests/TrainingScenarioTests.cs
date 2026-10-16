@@ -65,13 +65,14 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "59331ab54d4a435e81cf0b880613c287c089c09ff7b8391660d742e1bfab8416")]
-    [InlineData("entrainement_rupture", "7e7537f76f1d8d79e976c9d91b45fd485589a3943320100e2d0216ea57d7cfde")]
+    [InlineData("entrainement_garde_parade", "1a9ec830366cc5b153bee25c1f6132a14338eef4ad85184cd6aea86cc19eb509")]
+    [InlineData("entrainement_rupture", "6ea9593d7de395f7197b600b225c822aaf01abb15fc6c16b765f483b80647942")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
         // Correctif 6.1 : seuls l'en-tête (moteur 0.6.1, format 2, versions et empreintes des données en schéma 2) et les
         // champs instance/generation des états changent ; tous les autres événements sont identiques (RAPPORT_CORRECTIF_6_1).
+        // Lot 7.1 : seul l'en-tête change encore (moteur 0.7.0, règles en schéma 3 et leur empreinte) ; aucun autre octet.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

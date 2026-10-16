@@ -12,7 +12,7 @@ namespace EdS.Simulation.Engine
         /// <summary>Il ne reste qu'une équipe (ou aucune) en vie.</summary>
         TeamDefeated = 1,
 
-        /// <summary>Limite de simulation atteinte (budget d'événements, débordement numérique) : arrêt propre.</summary>
+        /// <summary>Limite de simulation atteinte (budget de travail, d'événements, capacité de la file, débordement numérique) : arrêt propre.</summary>
         Aborted = 2,
     }
 
@@ -53,7 +53,10 @@ namespace EdS.Simulation.Engine
     {
         public CombatEndReason EndReason { get; }
 
-        /// <summary>Raison de l'interruption (<c>overflow</c>, <c>eventBudgetExceeded</c>) ; null sinon.</summary>
+        /// <summary>
+        /// Raison de l'interruption (<c>workBudgetExceeded</c>, <c>queueLimitExceeded</c>, <c>eventBudgetExceeded</c>,
+        /// <c>overflow</c>) ; null sinon.
+        /// </summary>
         public string? AbortReason { get; }
 
         /// <summary>Dernier tick simulé.</summary>
@@ -68,8 +71,17 @@ namespace EdS.Simulation.Engine
         /// <summary>Dans l'ordre du scénario.</summary>
         public IReadOnlyList<CombatantResult> Combatants { get; }
 
-        internal CombatResult(CombatEndReason reason, string? abortReason, long endTick, long durationMs, string? winner, IReadOnlyList<CombatantResult> combatants)
+        /// <summary>
+        /// Pics de charge mesurés (lot 7.1), hors journal : travail maximal consommé en un tick, lignes comptées maximales
+        /// en un tick, taille maximale de la file d'attente (construction comprise). Un tick interrompu compte pour ce
+        /// qu'il a consommé avant l'arrêt.
+        /// </summary>
+        public CombatLoadPeaks Peaks { get; }
+
+        internal CombatResult(CombatEndReason reason, string? abortReason, long endTick, long durationMs, string? winner,
+            IReadOnlyList<CombatantResult> combatants, CombatLoadPeaks peaks)
         {
+            Peaks = peaks;
             EndReason = reason;
             AbortReason = abortReason;
             EndTick = endTick;
@@ -80,5 +92,25 @@ namespace EdS.Simulation.Engine
 
         public CombatantResult this[string id] =>
             Combatants.FirstOrDefault(c => c.Id == id) ?? throw new KeyNotFoundException($"Combattant inconnu : {id}.");
+    }
+
+    /// <summary>Pics de charge d'un combat (lot 7.1) ; voir <see cref="CombatResult.Peaks"/>.</summary>
+    public sealed class CombatLoadPeaks
+    {
+        /// <summary>Unités de travail consommées au tick le plus chargé.</summary>
+        public long WorkPerTick { get; }
+
+        /// <summary>Lignes de simulation comptées au tick le plus chargé.</summary>
+        public long EventsPerTick { get; }
+
+        /// <summary>Taille maximale atteinte par la file d'attente.</summary>
+        public long PendingEvents { get; }
+
+        internal CombatLoadPeaks(long workPerTick, long eventsPerTick, long pendingEvents)
+        {
+            WorkPerTick = workPerTick;
+            EventsPerTick = eventsPerTick;
+            PendingEvents = pendingEvents;
+        }
     }
 }
