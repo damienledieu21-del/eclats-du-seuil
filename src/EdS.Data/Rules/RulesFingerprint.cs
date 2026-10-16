@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 
 namespace EdS.Data.Rules
@@ -12,8 +11,6 @@ namespace EdS.Data.Rules
     /// </summary>
     public static class RulesFingerprint
     {
-        public const string Prefix = "sha256:";
-
         public static string CanonicalText(int schemaVersion, RulesDocument document)
         {
             var text = new StringBuilder();
@@ -24,17 +21,7 @@ namespace EdS.Data.Rules
             return text.ToString();
         }
 
-        public static string Compute(int schemaVersion, RulesDocument document)
-        {
-            byte[] bytes = Encoding.UTF8.GetBytes(CanonicalText(schemaVersion, document));
-            byte[] hash;
-            using (SHA256 sha = SHA256.Create())
-                hash = sha.ComputeHash(bytes);
-
-            var hex = new StringBuilder(Prefix.Length + hash.Length * 2);
-            hex.Append(Prefix);
-            foreach (byte b in hash) hex.Append(b.ToString("x2"));
-            return hex.ToString();
-        }
+        public static string Compute(int schemaVersion, RulesDocument document) =>
+            ContentFingerprint.Compute(CanonicalText(schemaVersion, document));
     }
 }

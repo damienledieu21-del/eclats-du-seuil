@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using EdS.Data.Rules;
 using EdS.Data.Validation;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
@@ -67,15 +68,17 @@ public class RulesCatalogTests
         var document = new RulesDocument { SchemaVersion = 1, Kind = "rules", ContentVersion = "0.1.0" };
         foreach (RuleField field in RulesCatalog.Fields)
         {
-            object value = field.Owner == typeof(StatRules)
-                ? typeof(StatRules).GetProperty(field.Property)!.GetValue(StatRules.Provisional)!
-                : typeof(DamageRules).GetProperty(field.Property)!.GetValue(DamageRules.Provisional)!;
+            object provisional = field.Owner == typeof(StatRules) ? StatRules.Provisional
+                : field.Owner == typeof(DamageRules) ? DamageRules.Provisional
+                : ProgressionRules.Provisional;
+            object value = field.Owner.GetProperty(field.Property)!.GetValue(provisional)!;
             document.Set(field.Path, value switch
             {
                 Fixed f => RuleValue.FromDecimal(f),
                 int i => RuleValue.FromInteger(i),
                 long l => RuleValue.FromInteger(l),
                 RoundingMode m => RuleValue.FromToken(RulesCatalog.Id(m)),
+                IReadOnlyList<int> list => RuleValue.FromIntegerList(list.Select(x => (long)x)),
                 _ => throw new InvalidOperationException(field.Path),
             });
         }

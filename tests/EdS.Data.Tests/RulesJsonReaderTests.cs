@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using EdS.Data.Json;
 using EdS.Data.Rules;
 using EdS.Data.Validation;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
@@ -39,13 +40,18 @@ public class RulesJsonReaderTests
         LoadedRules rules = RulesJsonReader.ReadFile(ShippedPath).Rules!;
         AssertSameProperties(StatRules.Provisional, rules.Stats);
         AssertSameProperties(DamageRules.Provisional, rules.Damage);
+        AssertSameProperties(ProgressionRules.Provisional, rules.Progression);
         Assert.Equal(Fixed.FromInt(100), rules.Stats.BaseMaxHealth);   // E1
     }
 
     private static void AssertSameProperties<T>(T expected, T actual)
     {
         foreach (PropertyInfo p in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
-            Assert.True(Equals(p.GetValue(expected), p.GetValue(actual)), $"{typeof(T).Name}.{p.Name} : {p.GetValue(expected)} attendu, {p.GetValue(actual)} lu.");
+        {
+            object? e = p.GetValue(expected), a = p.GetValue(actual);
+            bool same = e is IEnumerable<int> el && a is IEnumerable<int> al ? el.SequenceEqual(al) : Equals(e, a);
+            Assert.True(same, $"{typeof(T).Name}.{p.Name} : {e} attendu, {a} lu.");
+        }
     }
 
     // --- Empreinte -------------------------------------------------------------------
@@ -83,7 +89,7 @@ public class RulesJsonReaderTests
     {
         // Valeur de référence : changer le format canonique change toutes les empreintes déjà journalisées.
         Assert.Equal(
-            "sha256:f697d2883b2c60d8d60a3c20090309b8fbc5df5f360c94c7a20e344fca142d87",
+            "sha256:5604cc6134e4ba2e0ea383b9b2a10d83ed58dff9ecbdfb301fd56fd8be3efd53",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 

@@ -1,4 +1,5 @@
 using EdS.Data.Validation;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Stats;
 
@@ -15,9 +16,11 @@ namespace EdS.Data.Rules
 
         public StatRules Stats { get; }
         public DamageRules Damage { get; }
+        public ProgressionRules Progression { get; }
 
-        internal LoadedRules(int schemaVersion, string contentVersion, string fingerprint, StatRules stats, DamageRules damage)
+        internal LoadedRules(int schemaVersion, string contentVersion, string fingerprint, StatRules stats, DamageRules damage, ProgressionRules progression)
         {
+            Progression = progression;
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             Fingerprint = fingerprint;

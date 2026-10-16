@@ -1,0 +1,64 @@
+using System.Collections.Generic;
+
+namespace EdS.Data.Classes
+{
+    // Modèle brut d'un fichier de classe (ex. bastion.json), tel qu'un adaptateur l'a lu, avant validation.
+    // Un champ absent du fichier reste null : c'est le validateur commun qui le signale.
+    // La forme suit exactement le JSON, pour que les chemins d'erreur du domaine (trees[0].talents[2].maxRank)
+    // désignent le bon endroit du fichier.
+
+    /// <summary>Fichier de définition d'une classe.</summary>
+    public sealed class ClassDocument
+    {
+        public int? SchemaVersion { get; set; }
+        public string? Kind { get; set; }
+        public string? ContentVersion { get; set; }
+
+        /// <summary>Contenu de <c>data</c> ; null si absent ou illisible.</summary>
+        public ClassData? Data { get; set; }
+    }
+
+    public sealed class ClassData
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public List<TreeData?>? Trees { get; set; }
+        public List<SkillData?>? Skills { get; set; }
+    }
+
+    public sealed class TreeData
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public List<TalentData?>? Talents { get; set; }
+    }
+
+    public sealed class TalentData
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public int? MaxRank { get; set; }
+        public bool? Major { get; set; }
+        public bool? Placeholder { get; set; }
+        public List<RequirementData?>? Prerequisites { get; set; }
+    }
+
+    public sealed class SkillData
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+
+        /// <summary>« active », « ultimate » ou « passive ».</summary>
+        public string? Kind { get; set; }
+
+        public int? MinLevel { get; set; }
+        public bool? Placeholder { get; set; }
+        public List<RequirementData?>? TalentRequirements { get; set; }
+    }
+
+    public sealed class RequirementData
+    {
+        public string? Talent { get; set; }
+        public int? Rank { get; set; }
+    }
+}

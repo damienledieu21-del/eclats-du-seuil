@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
@@ -18,7 +19,7 @@ namespace EdS.Data.Rules
 
         public RuleValueKind Kind { get; }
 
-        /// <summary>Classe du domaine alimentée : <c>StatRules</c> ou <c>DamageRules</c>.</summary>
+        /// <summary>Classe du domaine alimentée : <c>StatRules</c>, <c>DamageRules</c> ou <c>ProgressionRules</c>.</summary>
         public Type Owner { get; }
 
         /// <summary>Nom de la propriété C# alimentée dans <see cref="Owner"/>.</summary>
@@ -75,6 +76,7 @@ namespace EdS.Data.Rules
 
         private static readonly Type S = typeof(StatRules);
         private static readonly Type D = typeof(DamageRules);
+        private static readonly Type P = typeof(ProgressionRules);
 
         public static IReadOnlyList<RuleField> Fields { get; } = new[]
         {
@@ -107,6 +109,16 @@ namespace EdS.Data.Rules
             new RuleField("damage.categoryMultiplier.max", RuleValueKind.Decimal, D, nameof(DamageRules.MaxCategoryMultiplier)),
             new RuleField("damage.finalRounding", RuleValueKind.Token, D, nameof(DamageRules.FinalRounding), RoundingTokens),
             new RuleField("damage.minimumDamage", RuleValueKind.Int64, D, nameof(DamageRules.MinimumDamage)),
+
+            new RuleField("progression.maxLevel", RuleValueKind.Int32, P, nameof(ProgressionRules.MaxLevel)),
+            new RuleField("progression.talentPoints.firstLevel", RuleValueKind.Int32, P, nameof(ProgressionRules.FirstTalentPointLevel)),
+            new RuleField("progression.talentPoints.perLevel", RuleValueKind.Int32, P, nameof(ProgressionRules.TalentPointsPerLevel)),
+            new RuleField("progression.majorTalents.threshold", RuleValueKind.Int32, P, nameof(ProgressionRules.MajorTalentThreshold)),
+            new RuleField("progression.majorTalents.max", RuleValueKind.Int32, P, nameof(ProgressionRules.MaxMajorTalents)),
+            new RuleField("progression.treesPerClass", RuleValueKind.Int32, P, nameof(ProgressionRules.TreesPerClass)),
+            new RuleField("progression.slots.activeUnlockLevels", RuleValueKind.Int32List, P, nameof(ProgressionRules.ActiveSlotLevels)),
+            new RuleField("progression.slots.passiveUnlockLevels", RuleValueKind.Int32List, P, nameof(ProgressionRules.PassiveSlotLevels)),
+            new RuleField("progression.slots.ultimateUnlockLevel", RuleValueKind.Int32, P, nameof(ProgressionRules.UltimateUnlockLevel)),
         };
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

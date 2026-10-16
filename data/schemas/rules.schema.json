@@ -287,11 +287,109 @@
             "minimumDamage"
           ],
           "description": "Paramètres de la formule de dégâts (DamageRules)."
+        },
+        "progression": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maxLevel": {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            },
+            "talentPoints": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "firstLevel": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                },
+                "perLevel": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                }
+              },
+              "required": [
+                "firstLevel",
+                "perLevel"
+              ],
+              "description": "Points de talent : (niveau − firstLevel + 1) × perLevel à partir de firstLevel."
+            },
+            "majorTalents": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "threshold": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                },
+                "max": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                }
+              },
+              "required": [
+                "threshold",
+                "max"
+              ],
+              "description": "Seuil de points investis dans la branche avant un talent majeur, et nombre maximal de majeurs."
+            },
+            "treesPerClass": {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            },
+            "slots": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "activeUnlockLevels": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "Niveaux de déblocage, un par emplacement, dans l'ordre croissant."
+                },
+                "passiveUnlockLevels": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "Niveaux de déblocage, un par emplacement, dans l'ordre croissant."
+                },
+                "ultimateUnlockLevel": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                }
+              },
+              "required": [
+                "activeUnlockLevels",
+                "passiveUnlockLevels",
+                "ultimateUnlockLevel"
+              ],
+              "description": "Déblocage des emplacements."
+            }
+          },
+          "required": [
+            "maxLevel",
+            "talentPoints",
+            "majorTalents",
+            "treesPerClass",
+            "slots"
+          ],
+          "description": "Règles de progression communes à toutes les classes (ProgressionRules)."
         }
       },
       "required": [
         "stats",
-        "damage"
+        "damage",
+        "progression"
       ]
     }
   }

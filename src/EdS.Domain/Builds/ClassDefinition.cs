@@ -1,0 +1,232 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace EdS.Domain.Builds
+{
+    /// <summary>
+    /// Définition immuable d'une classe : ses arbres de talents et ses compétences équipables.
+    /// Le moteur de talents est générique : aucune règle ne dépend d'une classe particulière.
+    /// </summary>
+    public sealed class ClassDefinition
+    {
+        public string Id { get; }
+        public string Name { get; }
+        public IReadOnlyList<TalentTreeDefinition> Trees { get; }
+        public IReadOnlyList<SkillDefinition> Skills { get; }
+
+        private readonly Dictionary<string, (TalentDefinition Talent, TalentTreeDefinition Tree)> _talents;
+        private readonly Dictionary<string, SkillDefinition> _skills;
+
+        public ClassDefinition(string id, string name, IReadOnlyList<TalentTreeDefinition> trees, IReadOnlyList<SkillDefinition> skills)
+        {
+            Id = id ?? throw new ArgumentNullException(nameof(id));
+            Name = name ?? throw new ArgumentNullException(nameof(name));
+            Trees = trees ?? throw new ArgumentNullException(nameof(trees));
+            Skills = skills ?? throw new ArgumentNullException(nameof(skills));
+
+            // Index tolérant aux doublons (signalés par Validate) : la première définition gagne.
+            _talents = new Dictionary<string, (TalentDefinition, TalentTreeDefinition)>(StringComparer.Ordinal);
+            foreach (TalentTreeDefinition tree in trees)
+                foreach (TalentDefinition talent in tree.Talents)
+                    if (!_talents.ContainsKey(talent.Id)) _talents[talent.Id] = (talent, tree);
+            _skills = new Dictionary<string, SkillDefinition>(StringComparer.Ordinal);
+            foreach (SkillDefinition skill in skills)
+                if (!_skills.ContainsKey(skill.Id)) _skills[skill.Id] = skill;
+        }
+
+        public bool TryGetTalent(string id, out TalentDefinition talent, out TalentTreeDefinition tree)
+        {
+            if (_talents.TryGetValue(id, out var found))
+            {
+                talent = found.Talent;
+                tree = found.Tree;
+                return true;
+            }
+            talent = null!;
+            tree = null!;
+            return false;
+        }
+
+        public bool TryGetSkill(string id, out SkillDefinition skill) => _skills.TryGetValue(id, out skill!);
+
+        /// <summary>
+        /// Talents qui dépendent, directement ou par chaîne de prérequis, du talent donné.
+        /// Ils ne peuvent pas avoir été acquis avant lui et ne comptent donc pas dans son seuil.
+        /// </summary>
+        public ISet<string> DependentsOf(string talentId)
+        {
+            var result = new HashSet<string>(StringComparer.Ordinal);
+            bool added = true;
+            while (added)
+            {
+                added = false;
+                foreach (var entry in _talents.Values)
+                {
+                    if (result.Contains(entry.Talent.Id)) continue;
+                    if (entry.Talent.Prerequisites.Any(p => p.TalentId == talentId || result.Contains(p.TalentId)))
+                    {
+                        result.Add(entry.Talent.Id);
+                        added = true;
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Vérifie la cohérence de la définition : identifiants, références, rangs, cycles de prérequis,
+        /// et faisabilité de chaque talent majeur avec les règles de progression.
+        /// Les chemins des erreurs ont la forme des fichiers de données (<c>trees[0].talents[2].maxRank</c>).
+        /// </summary>
+        public IReadOnlyList<RuleViolation> Validate(ProgressionRules progression)
+        {
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            var errors = new List<RuleViolation>();
+            var ids = new Dictionary<string, string>(StringComparer.Ordinal);   // identifiant → chemin de sa première définition
+
+            void CheckId(string id, string prefix, string path)
+            {
+                if (!StableId.HasPrefix(id, prefix))
+                    errors.Add(new RuleViolation($"identifiant « {id} » invalide : « {prefix}.… » en minuscules, chiffres et « _ » attendu.", path));
+                else if (ids.TryGetValue(id, out string? first))
+                    errors.Add(new RuleViolation(RuleViolationKind.DuplicateId, $"identifiant « {id} » déjà utilisé ({first}).", path));
+                else
+                    ids[id] = path;
+            }
+
+            void CheckName(string name, string path)
+            {
+                if (string.IsNullOrWhiteSpace(name)) errors.Add(new RuleViolation("nom vide.", path));
+            }
+
+            CheckId(Id, "class", "id");
+            CheckName(Name, "name");
+
+            if (Trees.Count != progression.TreesPerClass)
+                errors.Add(new RuleViolation($"{Trees.Count} arbre(s) ; une classe en a {progression.TreesPerClass}.", "trees"));
+
+            for (int t = 0; t < Trees.Count; t++)
+            {
+                TalentTreeDefinition tree = Trees[t];
+                string treePath = $"trees[{t}]";
+                CheckId(tree.Id, "tree", treePath + ".id");
+                CheckName(tree.Name, treePath + ".name");
+                if (tree.Talents.Count == 0) errors.Add(new RuleViolation("un arbre doit contenir au moins un talent.", treePath + ".talents"));
+
+                for (int i = 0; i < tree.Talents.Count; i++)
+                {
+                    TalentDefinition talent = tree.Talents[i];
+                    string path = $"{treePath}.talents[{i}]";
+                    CheckId(talent.Id, "talent", path + ".id");
+                    CheckName(talent.Name, path + ".name");
+                    if (talent.MaxRank < 1)
+                        errors.Add(new RuleViolation("le rang maximum doit valoir au moins 1.", path + ".maxRank"));
+                    if (talent.IsMajor && talent.MaxRank != 1)
+                        errors.Add(new RuleViolation("un talent majeur a un seul rang (1 point pour l'acquérir).", path + ".maxRank"));
+                }
+            }
+
+            // Références : après l'indexation de tous les identifiants.
+            for (int t = 0; t < Trees.Count; t++)
+            {
+                TalentTreeDefinition tree = Trees[t];
+                for (int i = 0; i < tree.Talents.Count; i++)
+                {
+                    TalentDefinition talent = tree.Talents[i];
+                    string path = $"trees[{t}].talents[{i}].prerequisites";
+                    CheckRequirements(talent.Prerequisites, path, errors, talent.Id);
+
+                    if (talent.IsMajor)
+                    {
+                        int available = tree.Talents.Where(x => !x.IsMajor && !DependentsOf(talent.Id).Contains(x.Id) && x.MaxRank > 0).Sum(x => x.MaxRank);
+                        if (available < progression.MajorTalentThreshold)
+                            errors.Add(new RuleViolation(
+                                $"talent majeur inaccessible : la branche n'offre que {available} point(s) hors talents majeurs, il en faut {progression.MajorTalentThreshold}.",
+                                $"trees[{t}].talents[{i}]"));
+                    }
+                }
+            }
+
+            CheckCycles(errors);
+
+            for (int s = 0; s < Skills.Count; s++)
+            {
+                SkillDefinition skill = Skills[s];
+                string path = $"skills[{s}]";
+                CheckId(skill.Id, "skill", path + ".id");
+                CheckName(skill.Name, path + ".name");
+                if (!Enum.IsDefined(typeof(SkillKind), skill.Kind))
+                    errors.Add(new RuleViolation("type de compétence inconnu.", path + ".kind"));
+                if (!progression.IsValidLevel(skill.MinLevel))
+                    errors.Add(new RuleViolation($"niveau minimal hors de [1, {progression.MaxLevel}].", path + ".minLevel"));
+                if (skill.Kind == SkillKind.Ultimate && skill.MinLevel < progression.UltimateUnlockLevel)
+                    errors.Add(new RuleViolation($"une ultime ne peut pas être disponible avant le niveau {progression.UltimateUnlockLevel}.", path + ".minLevel"));
+                CheckRequirements(skill.TalentRequirements, path + ".talentRequirements", errors, null);
+            }
+
+            return errors;
+        }
+
+        private void CheckRequirements(IReadOnlyList<TalentRequirement> requirements, string path, List<RuleViolation> errors, string? ownerId)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int r = 0; r < requirements.Count; r++)
+            {
+                TalentRequirement requirement = requirements[r];
+                string rPath = $"{path}[{r}]";
+                if (!TryGetTalent(requirement.TalentId, out TalentDefinition required, out _))
+                {
+                    errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"talent inconnu « {requirement.TalentId} ».", rPath + ".talent"));
+                    continue;
+                }
+                if (!seen.Add(requirement.TalentId))
+                    errors.Add(new RuleViolation($"le talent « {requirement.TalentId} » est exigé deux fois.", rPath + ".talent"));
+                if (requirement.TalentId == ownerId)
+                    errors.Add(new RuleViolation("un talent ne peut pas s'exiger lui-même.", rPath + ".talent"));
+                if (requirement.MinRank < 1 || requirement.MinRank > required.MaxRank)
+                    errors.Add(new RuleViolation($"rang exigé {requirement.MinRank} hors de [1, {required.MaxRank}] pour « {required.Name} ».", rPath + ".rank"));
+                if (required.IsMajor && ownerId != null && TryGetTalent(ownerId, out TalentDefinition owner, out _) && owner.IsMajor)
+                    errors.Add(new RuleViolation("un talent majeur ne peut pas exiger un autre talent majeur.", rPath + ".talent"));
+            }
+        }
+
+        private void CheckCycles(List<RuleViolation> errors)
+        {
+            // Parcours en profondeur : 0 = non visité, 1 = en cours, 2 = terminé.
+            var state = new Dictionary<string, int>(StringComparer.Ordinal);
+            var reported = new HashSet<string>(StringComparer.Ordinal);
+
+            void Visit(string id, Stack<string> chain)
+            {
+                state[id] = 1;
+                chain.Push(id);
+                TryGetTalent(id, out TalentDefinition talent, out _);
+                foreach (TalentRequirement p in talent.Prerequisites)
+                {
+                    if (!_talents.ContainsKey(p.TalentId) || p.TalentId == id) continue;
+                    state.TryGetValue(p.TalentId, out int s);
+                    if (s == 0) Visit(p.TalentId, chain);
+                    else if (s == 1 && reported.Add(p.TalentId))
+                    {
+                        string cycle = string.Join(" → ", chain.Reverse().SkipWhile(x => x != p.TalentId).Concat(new[] { p.TalentId }));
+                        errors.Add(new RuleViolation($"cycle de prérequis : {cycle}.", PathOf(p.TalentId) + ".prerequisites"));
+                    }
+                }
+                chain.Pop();
+                state[id] = 2;
+            }
+
+            foreach (string id in _talents.Keys)
+                if (!state.ContainsKey(id)) Visit(id, new Stack<string>());
+        }
+
+        private string PathOf(string talentId)
+        {
+            for (int t = 0; t < Trees.Count; t++)
+                for (int i = 0; i < Trees[t].Talents.Count; i++)
+                    if (Trees[t].Talents[i].Id == talentId) return $"trees[{t}].talents[{i}]";
+            return "trees";
+        }
+    }
+}

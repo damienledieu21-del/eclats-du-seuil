@@ -14,5 +14,8 @@ namespace EdS.Data.Rules
 
         /// <summary>Identifiant texte choisi dans une liste fermée.</summary>
         Token,
+
+        /// <summary>Liste d'entiers 32 bits (ex. niveaux de déblocage).</summary>
+        Int32List,
     }
 }

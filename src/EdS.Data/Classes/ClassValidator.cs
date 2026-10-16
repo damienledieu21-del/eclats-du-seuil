@@ -1,0 +1,234 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using EdS.Data.Validation;
+using EdS.Domain;
+using EdS.Domain.Builds;
+
+namespace EdS.Data.Classes
+{
+    /// <summary>Classe validée, prête pour le validateur de builds, avec son identité (versions, empreinte).</summary>
+    public sealed class LoadedClass
+    {
+        public int SchemaVersion { get; }
+        public string ContentVersion { get; }
+        public string Fingerprint { get; }
+        public ClassDefinition Definition { get; }
+
+        internal LoadedClass(int schemaVersion, string contentVersion, string fingerprint, ClassDefinition definition)
+        {
+            SchemaVersion = schemaVersion;
+            ContentVersion = contentVersion;
+            Fingerprint = fingerprint;
+            Definition = definition;
+        }
+    }
+
+    /// <summary>Résultat d'un chargement de classe : une définition utilisable, ou le rapport qui explique pourquoi pas.</summary>
+    public sealed class ClassLoadResult
+    {
+        public ValidationReport Report { get; }
+        public LoadedClass? Class { get; }
+        public bool IsValid => Class != null;
+
+        internal ClassLoadResult(ValidationReport report, LoadedClass? loaded)
+        {
+            Report = report;
+            Class = loaded;
+        }
+    }
+
+    /// <summary>
+    /// Validateur commun des fichiers de classe, partagé par tous les adaptateurs. Il vérifie l'en-tête et la présence
+    /// de chaque champ, convertit en <see cref="ClassDefinition"/>, puis délègue toute la cohérence de gameplay
+    /// (identifiants, références, rangs, cycles, faisabilité des talents majeurs) à <see cref="ClassDefinition.Validate"/>.
+    /// </summary>
+    public static class ClassValidator
+    {
+        public const string Kind = "class";
+        public const int CurrentSchemaVersion = 1;
+
+        public static IReadOnlyDictionary<string, SkillKind> SkillKinds { get; } = new Dictionary<string, SkillKind>(StringComparer.Ordinal)
+        {
+            ["active"] = SkillKind.Active,
+            ["ultimate"] = SkillKind.Ultimate,
+            ["passive"] = SkillKind.Passive,
+        };
+
+        public static ClassLoadResult Validate(ClassDocument document, ProgressionRules progression, ValidationReport? report = null)
+        {
+            if (document is null) throw new ArgumentNullException(nameof(document));
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            report ??= new ValidationReport();
+
+            HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report);
+            var shape = new ShapeChecker(report);
+            shape.Check(document.Data);
+            if (!report.IsValid) return new ClassLoadResult(report, null);
+
+            ClassDefinition definition = Build(document.Data!);
+            foreach (RuleViolation violation in definition.Validate(progression))
+            {
+                ValidationCode code = violation.Kind switch
+                {
+                    RuleViolationKind.UnknownReference => ValidationCode.UnknownReference,
+                    RuleViolationKind.DuplicateId => ValidationCode.DuplicateId,
+                    _ => ValidationCode.InvalidValue,
+                };
+                foreach (string field in violation.Fields)
+                    report.Add("$.data." + field, code, violation.Message);
+            }
+            if (!report.IsValid) return new ClassLoadResult(report, null);
+
+            string fingerprint = ContentFingerprint.Compute(CanonicalText(document.SchemaVersion!.Value, document.Data!));
+            return new ClassLoadResult(report, new LoadedClass(document.SchemaVersion.Value, document.ContentVersion!, fingerprint, definition));
+        }
+
+        /// <summary>
+        /// Écriture canonique pour l'empreinte : chaque valeur sous la forme <c>chemin=valeur</c>, dans l'ordre du fichier
+        /// (l'ordre des arbres, talents et compétences fait partie du contenu ; l'ordre des clés et les espaces non).
+        /// </summary>
+        public static string CanonicalText(int schemaVersion, ClassData data)
+        {
+            var text = new StringBuilder();
+            void Line(string path, object? value) =>
+                text.Append(path).Append('=').Append(Escape(Convert.ToString(value, CultureInfo.InvariantCulture))).Append('\n');
+            void Requirements(string path, List<RequirementData?> list)
+            {
+                Line(path + ".count", list.Count);
+                for (int r = 0; r < list.Count; r++)
+                {
+                    Line($"{path}[{r}].talent", list[r]!.Talent);
+                    Line($"{path}[{r}].rank", list[r]!.Rank);
+                }
+            }
+
+            text.Append("eds-class\n");
+            Line("schemaVersion", schemaVersion);
+            Line("id", data.Id);
+            Line("name", data.Name);
+            Line("trees.count", data.Trees!.Count);
+            for (int t = 0; t < data.Trees.Count; t++)
+            {
+                TreeData tree = data.Trees[t]!;
+                Line($"trees[{t}].id", tree.Id);
+                Line($"trees[{t}].name", tree.Name);
+                Line($"trees[{t}].talents.count", tree.Talents!.Count);
+                for (int i = 0; i < tree.Talents.Count; i++)
+                {
+                    TalentData talent = tree.Talents[i]!;
+                    string p = $"trees[{t}].talents[{i}]";
+                    Line(p + ".id", talent.Id);
+                    Line(p + ".name", talent.Name);
+                    Line(p + ".maxRank", talent.MaxRank);
+                    Line(p + ".major", talent.Major == true ? "true" : "false");
+                    Line(p + ".placeholder", talent.Placeholder == true ? "true" : "false");
+                    Requirements(p + ".prerequisites", talent.Prerequisites!);
+                }
+            }
+            Line("skills.count", data.Skills!.Count);
+            for (int s = 0; s < data.Skills.Count; s++)
+            {
+                SkillData skill = data.Skills[s]!;
+                string p = $"skills[{s}]";
+                Line(p + ".id", skill.Id);
+                Line(p + ".name", skill.Name);
+                Line(p + ".kind", skill.Kind);
+                Line(p + ".minLevel", skill.MinLevel);
+                Line(p + ".placeholder", skill.Placeholder == true ? "true" : "false");
+                Requirements(p + ".talentRequirements", skill.TalentRequirements!);
+            }
+            return text.ToString();
+        }
+
+        private static string Escape(string? value) =>
+            (value ?? string.Empty).Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
+
+        private static ClassDefinition Build(ClassData data)
+        {
+            IReadOnlyList<TalentRequirement> Requirements(List<RequirementData?> list) =>
+                list.Select(r => new TalentRequirement(r!.Talent!, r.Rank!.Value)).ToArray();
+
+            var trees = data.Trees!.Select(t => new TalentTreeDefinition(t!.Id!, t.Name!,
+                t.Talents!.Select(x => new TalentDefinition(x!.Id!, x.Name!, x.MaxRank!.Value, x.Major!.Value,
+                    Requirements(x.Prerequisites!), x.Placeholder!.Value)).ToArray())).ToArray();
+            var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
+                Requirements(s.TalentRequirements!), s.Placeholder!.Value)).ToArray();
+            return new ClassDefinition(data.Id!, data.Name!, trees, skills);
+        }
+
+        /// <summary>Vérifie que chaque champ obligatoire est présent ; ne signale rien là où l'adaptateur a déjà signalé une erreur.</summary>
+        private sealed class ShapeChecker
+        {
+            private readonly ValidationReport _report;
+
+            public ShapeChecker(ValidationReport report) => _report = report;
+
+            private bool Present(object? value, string path, string description)
+            {
+                if (value != null) return true;
+                if (!_report.HasErrorAtOrAbove(path))
+                    _report.Add(path, ValidationCode.MissingField, $"champ obligatoire absent ({description}).");
+                return false;
+            }
+
+            private void Items<T>(List<T?>? list, string path, string description, Action<T, string> check) where T : class
+            {
+                if (!Present(list, path, description)) return;
+                for (int i = 0; i < list!.Count; i++)
+                {
+                    string itemPath = $"{path}[{i}]";
+                    if (list[i] is { } item) check(item, itemPath);
+                    else if (!_report.HasErrorAtOrAbove(itemPath)) _report.Add(itemPath, ValidationCode.WrongType, "objet attendu.");
+                }
+            }
+
+            public void Check(ClassData? data)
+            {
+                const string root = "$.data";
+                if (!Present(data, root, "objet décrivant la classe")) return;
+                Present(data!.Id, root + ".id", "identifiant « class.… »");
+                Present(data.Name, root + ".name", "nom affiché");
+                Items(data.Trees, root + ".trees", "liste des arbres", CheckTree);
+                Items(data.Skills, root + ".skills", "liste des compétences", CheckSkill);
+            }
+
+            private void CheckTree(TreeData tree, string path)
+            {
+                Present(tree.Id, path + ".id", "identifiant « tree.… »");
+                Present(tree.Name, path + ".name", "nom affiché");
+                Items(tree.Talents, path + ".talents", "liste des talents", CheckTalent);
+            }
+
+            private void CheckTalent(TalentData talent, string path)
+            {
+                Present(talent.Id, path + ".id", "identifiant « talent.… »");
+                Present(talent.Name, path + ".name", "nom affiché");
+                Present(talent.MaxRank, path + ".maxRank", "entier");
+                Present(talent.Major, path + ".major", "booléen");
+                Present(talent.Placeholder, path + ".placeholder", "booléen");
+                Items(talent.Prerequisites, path + ".prerequisites", "liste, éventuellement vide", CheckRequirement);
+            }
+
+            private void CheckSkill(SkillData skill, string path)
+            {
+                Present(skill.Id, path + ".id", "identifiant « skill.… »");
+                Present(skill.Name, path + ".name", "nom affiché");
+                if (Present(skill.Kind, path + ".kind", "active, ultimate ou passive") && !SkillKinds.ContainsKey(skill.Kind!))
+                    _report.Add(path + ".kind", ValidationCode.UnknownReference,
+                        $"type de compétence inconnu « {skill.Kind} » ; valeurs possibles : {string.Join(", ", SkillKinds.Keys)}.");
+                Present(skill.MinLevel, path + ".minLevel", "entier");
+                Present(skill.Placeholder, path + ".placeholder", "booléen");
+                Items(skill.TalentRequirements, path + ".talentRequirements", "liste, éventuellement vide", CheckRequirement);
+            }
+
+            private void CheckRequirement(RequirementData requirement, string path)
+            {
+                Present(requirement.Talent, path + ".talent", "identifiant de talent");
+                Present(requirement.Rank, path + ".rank", "rang minimal");
+            }
+        }
+    }
+}

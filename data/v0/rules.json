@@ -43,6 +43,23 @@
       },
       "finalRounding": "halfAwayFromZero",
       "minimumDamage": 1
+    },
+    "progression": {
+      "maxLevel": 30,
+      "talentPoints": {
+        "firstLevel": 2,
+        "perLevel": 1
+      },
+      "majorTalents": {
+        "threshold": 18,
+        "max": 1
+      },
+      "treesPerClass": 3,
+      "slots": {
+        "activeUnlockLevels": [1, 1, 5, 10],
+        "passiveUnlockLevels": [1, 5, 20, 30],
+        "ultimateUnlockLevel": 10
+      }
     }
   }
 }

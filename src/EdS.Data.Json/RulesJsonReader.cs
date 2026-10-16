@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using EdS.Data.Rules;
 using EdS.Data.Validation;
@@ -15,58 +13,23 @@ namespace EdS.Data.Json;
 /// </summary>
 public static class RulesJsonReader
 {
-    private static readonly JsonDocumentOptions DocumentOptions = new()
-    {
-        AllowTrailingCommas = false,
-        CommentHandling = JsonCommentHandling.Disallow,
-        MaxDepth = 32,
-    };
-
     public static RulesLoadResult ReadFile(string path)
     {
-        string json;
-        try
-        {
-            json = File.ReadAllText(path, Encoding.UTF8);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            var report = new ValidationReport();
-            report.Add("$", ValidationCode.FileUnreadable, $"impossible de lire « {path} » : {e.Message}");
-            return RulesValidator.Validate(new RulesDocument(), report);
-        }
-        return Read(json);
-    }
-
-    public static RulesLoadResult Read(string json)
-    {
         var report = new ValidationReport();
-        var document = new RulesDocument();
-        byte[] bytes = Encoding.UTF8.GetBytes(json);
-
-        JsonDocument parsed;
-        try
-        {
-            parsed = JsonDocument.Parse(bytes, DocumentOptions);
-        }
-        catch (JsonException e)
-        {
-            report.Add("$", ValidationCode.InvalidJson, "JSON invalide : " + FirstSentence(e.Message), e.LineNumber + 1);
-            return RulesValidator.Validate(document, report);
-        }
-
-        using (parsed)
-        {
-            var reader = new Walker(report, document, LineIndex.Build(bytes));
-            reader.ReadRoot(parsed.RootElement);
-        }
-        return RulesValidator.Validate(document, report);
+        string? json = JsonInput.ReadFile(path, report);
+        return json is null ? RulesValidator.Validate(new RulesDocument(), report) : Read(json, report);
     }
 
-    private static string FirstSentence(string message)
+    public static RulesLoadResult Read(string json) => Read(json, new ValidationReport());
+
+    private static RulesLoadResult Read(string json, ValidationReport report)
     {
-        int end = message.IndexOf(" Path:", StringComparison.Ordinal);
-        return end > 0 ? message[..end] : message;
+        var document = new RulesDocument();
+        JsonHeader header = JsonInput.Parse(json, report, (input, data) => ReadObject(input, document, data, DataTree, "$.data"));
+        document.SchemaVersion = header.SchemaVersion;
+        document.Kind = header.Kind;
+        document.ContentVersion = header.ContentVersion;
+        return RulesValidator.Validate(document, report);
     }
 
     /// <summary>Arbre attendu sous <c>data</c>, construit depuis le catalogue.</summary>
@@ -102,230 +65,58 @@ public static class RulesJsonReader
 
     private static readonly Node DataTree = Node.BuildDataTree();
 
-    private sealed class Walker(ValidationReport report, RulesDocument document, LineIndex lines)
+    private static void ReadObject(JsonInput input, RulesDocument document, JsonElement element, Node node, string jsonPath)
     {
-        public void ReadRoot(JsonElement root)
+        if (!input.RequireKind(element, JsonValueKind.Object, jsonPath, "objet")) return;
+
+        foreach (JsonProperty property in input.UniqueProperties(element, jsonPath))
         {
-            if (root.ValueKind != JsonValueKind.Object)
+            string childPath = jsonPath + "." + property.Name;
+            if (!node.Children.TryGetValue(property.Name, out Node? child))
             {
-                report.Add("$", ValidationCode.WrongType, $"objet JSON attendu à la racine, {Describe(root.ValueKind)} trouvé.", 1);
-                return;
-            }
-
-            foreach (JsonProperty property in UniqueProperties(root, "$"))
-            {
-                string path = "$." + property.Name;
-                JsonElement value = property.Value;
-                switch (property.Name)
-                {
-                    case "schemaVersion":
-                        if (TryReadInteger(value, path, out long version))
-                        {
-                            if (version is < int.MinValue or > int.MaxValue)
-                                report.Add(path, ValidationCode.OutOfRange, "version hors plage.", lines.Of(path));
-                            else
-                                document.SchemaVersion = (int)version;
-                        }
-                        break;
-                    case "kind":
-                        if (TryReadString(value, path, out string? kind)) document.Kind = kind;
-                        break;
-                    case "contentVersion":
-                        if (TryReadString(value, path, out string? contentVersion)) document.ContentVersion = contentVersion;
-                        break;
-                    case "data":
-                        ReadObject(value, DataTree, "$.data", string.Empty);
-                        break;
-                    case "$schema":
-                        // Indication pour les éditeurs (auto-complétion) ; ignorée par le programme.
-                        TryReadString(value, path, out _);
-                        break;
-                    default:
-                        report.Add(path, ValidationCode.UnknownField,
-                            "champ inconnu ; champs possibles : $schema, schemaVersion, kind, contentVersion, data.", lines.Of(path));
-                        break;
-                }
-            }
-        }
-
-        private void ReadObject(JsonElement element, Node node, string jsonPath, string dataPath)
-        {
-            if (element.ValueKind != JsonValueKind.Object)
-            {
-                report.Add(jsonPath, ValidationCode.WrongType, $"objet attendu, {Describe(element.ValueKind)} trouvé.", lines.Of(jsonPath));
-                return;
-            }
-
-            foreach (JsonProperty property in UniqueProperties(element, jsonPath))
-            {
-                string childJsonPath = jsonPath + "." + property.Name;
-                string childDataPath = dataPath.Length == 0 ? property.Name : dataPath + "." + property.Name;
-                if (!node.Children.TryGetValue(property.Name, out Node? child))
-                {
-                    string expected = string.Join(", ", node.Children.Keys);
-                    if (node.ReferenceLabel != null)
-                        report.Add(childJsonPath, ValidationCode.UnknownReference,
-                            $"{node.ReferenceLabel} inconnu « {property.Name} » ; valeurs possibles : {expected}.", lines.Of(childJsonPath));
-                    else
-                        report.Add(childJsonPath, ValidationCode.UnknownField,
-                            $"champ inconnu ; champs possibles : {expected}.", lines.Of(childJsonPath));
-                    continue;
-                }
-
-                if (child.Field != null)
-                    ReadLeaf(property.Value, child.Field, childJsonPath);
+                if (node.ReferenceLabel != null)
+                    input.Report.Add(childPath, ValidationCode.UnknownReference,
+                        $"{node.ReferenceLabel} inconnu « {property.Name} » ; valeurs possibles : {string.Join(", ", node.Children.Keys)}.",
+                        input.LineOf(childPath));
                 else
-                    ReadObject(property.Value, child, childJsonPath, childDataPath);
+                    input.UnknownField(childPath, node.Children.Keys);
+                continue;
             }
-        }
 
-        private void ReadLeaf(JsonElement value, RuleField field, string path)
-        {
-            switch (field.Kind)
-            {
-                case RuleValueKind.Decimal:
-                    if (TryReadDecimal(value, path, out Fixed decimalValue)) document.Set(field.Path, RuleValue.FromDecimal(decimalValue));
-                    break;
-                case RuleValueKind.Int32:
-                case RuleValueKind.Int64:
-                    if (TryReadInteger(value, path, out long integer)) document.Set(field.Path, RuleValue.FromInteger(integer));
-                    break;
-                case RuleValueKind.Token:
-                    if (TryReadString(value, path, out string? token)) document.Set(field.Path, RuleValue.FromToken(token!));
-                    break;
-            }
-        }
-
-        private IEnumerable<JsonProperty> UniqueProperties(JsonElement element, string jsonPath)
-        {
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-            foreach (JsonProperty property in element.EnumerateObject())
-            {
-                if (seen.Add(property.Name))
-                {
-                    yield return property;
-                    continue;
-                }
-                string path = jsonPath + "." + property.Name;
-                report.Add(path, ValidationCode.DuplicateField, "champ présent plusieurs fois dans le même objet ; seule la première occurrence est lue.",
-                    lines.Of(path, occurrence: 1));
-            }
-        }
-
-        private bool TryReadDecimal(JsonElement value, string path, out Fixed result)
-        {
-            result = Fixed.Zero;
-            if (value.ValueKind != JsonValueKind.Number)
-            {
-                report.Add(path, ValidationCode.WrongType, $"nombre attendu, {Describe(value.ValueKind)} trouvé.", lines.Of(path));
-                return false;
-            }
-            string raw = value.GetRawText();
-            if (Fixed.TryParse(raw, out result)) return true;
-
-            bool wellFormed = raw.IndexOfAny(['e', 'E']) < 0 && (raw.IndexOf('.') < 0 || raw.Length - raw.IndexOf('.') - 1 <= Fixed.Decimals);
-            if (wellFormed)
-                report.Add(path, ValidationCode.OutOfRange, $"{raw} est hors de la plage représentable.", lines.Of(path));
+            if (child.Field != null)
+                ReadLeaf(input, document, property.Value, child.Field, childPath);
             else
-                report.Add(path, ValidationCode.InvalidNumber, $"{raw} : 4 décimales au plus et pas d'exposant (ex. 1.5, 0.0001, 1000).", lines.Of(path));
-            return false;
+                ReadObject(input, document, property.Value, child, childPath);
         }
-
-        private bool TryReadInteger(JsonElement value, string path, out long result)
-        {
-            result = 0;
-            if (value.ValueKind != JsonValueKind.Number)
-            {
-                report.Add(path, ValidationCode.WrongType, $"nombre entier attendu, {Describe(value.ValueKind)} trouvé.", lines.Of(path));
-                return false;
-            }
-            string raw = value.GetRawText();
-            if (raw.IndexOfAny(['.', 'e', 'E']) >= 0)
-            {
-                report.Add(path, ValidationCode.InvalidNumber, $"{raw} : nombre entier attendu (sans décimale ni exposant).", lines.Of(path));
-                return false;
-            }
-            if (long.TryParse(raw, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out result)) return true;
-            report.Add(path, ValidationCode.OutOfRange, $"{raw} dépasse la plage d'un entier 64 bits.", lines.Of(path));
-            return false;
-        }
-
-        private bool TryReadString(JsonElement value, string path, out string? result)
-        {
-            result = null;
-            if (value.ValueKind != JsonValueKind.String)
-            {
-                report.Add(path, ValidationCode.WrongType, $"texte attendu, {Describe(value.ValueKind)} trouvé.", lines.Of(path));
-                return false;
-            }
-            result = value.GetString();
-            return true;
-        }
-
-        private static string Describe(JsonValueKind kind) => kind switch
-        {
-            JsonValueKind.Object => "un objet",
-            JsonValueKind.Array => "un tableau",
-            JsonValueKind.String => "un texte",
-            JsonValueKind.Number => "un nombre",
-            JsonValueKind.True or JsonValueKind.False => "un booléen",
-            JsonValueKind.Null => "null",
-            _ => "une valeur inattendue",
-        };
     }
 
-    /// <summary>Associe chaque chemin JSON à la ligne où son nom apparaît, pour des erreurs localisables.</summary>
-    private sealed class LineIndex
+    private static void ReadLeaf(JsonInput input, RulesDocument document, JsonElement value, RuleField field, string path)
     {
-        private readonly Dictionary<string, List<long>> _lines;
-
-        private LineIndex(Dictionary<string, List<long>> lines) => _lines = lines;
-
-        public long? Of(string path, int occurrence = 0) =>
-            _lines.TryGetValue(path, out List<long>? found) && occurrence < found.Count ? found[occurrence] : null;
-
-        public static LineIndex Build(byte[] utf8)
+        switch (field.Kind)
         {
-            var newlines = new List<long>();
-            for (int i = 0; i < utf8.Length; i++)
-                if (utf8[i] == (byte)'\n') newlines.Add(i);
-
-            long LineOf(long offset)
-            {
-                int index = newlines.BinarySearch(offset);
-                return (index < 0 ? ~index : index) + 1;
-            }
-
-            var result = new Dictionary<string, List<long>>(StringComparer.Ordinal);
-            var stack = new List<string> { "$" };
-            string? pendingName = null;
-            var reader = new Utf8JsonReader(utf8, new JsonReaderOptions { CommentHandling = JsonCommentHandling.Disallow });
-            while (reader.Read())
-            {
-                switch (reader.TokenType)
+            case RuleValueKind.Decimal:
+                if (input.TryReadDecimal(value, path, out Fixed decimalValue)) document.Set(field.Path, RuleValue.FromDecimal(decimalValue));
+                break;
+            case RuleValueKind.Int32:
+            case RuleValueKind.Int64:
+                if (input.TryReadInteger(value, path, out long integer)) document.Set(field.Path, RuleValue.FromInteger(integer));
+                break;
+            case RuleValueKind.Token:
+                if (input.TryReadString(value, path, out string? token)) document.Set(field.Path, RuleValue.FromToken(token!));
+                break;
+            case RuleValueKind.Int32List:
+                if (!input.RequireKind(value, JsonValueKind.Array, path, "liste d'entiers")) break;
+                var items = new List<long>();
+                bool ok = true;
+                int index = 0;
+                foreach (JsonElement item in value.EnumerateArray())
                 {
-                    case JsonTokenType.PropertyName:
-                        pendingName = reader.GetString();
-                        string path = string.Join(".", stack) + "." + pendingName;
-                        if (!result.TryGetValue(path, out List<long>? list)) result[path] = list = new List<long>();
-                        list.Add(LineOf(reader.TokenStartIndex));
-                        break;
-                    case JsonTokenType.StartObject:
-                    case JsonTokenType.StartArray:
-                        if (reader.CurrentDepth > 0) stack.Add(pendingName ?? "[]");
-                        pendingName = null;
-                        break;
-                    case JsonTokenType.EndObject:
-                    case JsonTokenType.EndArray:
-                        if (reader.CurrentDepth > 0) stack.RemoveAt(stack.Count - 1);
-                        pendingName = null;
-                        break;
-                    default:
-                        pendingName = null;
-                        break;
+                    if (input.TryReadInteger(item, $"{path}[{index}]", out long n)) items.Add(n);
+                    else ok = false;
+                    index++;
                 }
-            }
-            return new LineIndex(result);
+                if (ok) document.Set(field.Path, RuleValue.FromIntegerList(items));
+                break;
         }
     }
 }

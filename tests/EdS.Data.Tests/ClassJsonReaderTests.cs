@@ -1,0 +1,195 @@
+using System.Text.Json.Nodes;
+using EdS.Data.Classes;
+using EdS.Data.Json;
+using EdS.Data.Validation;
+using EdS.Domain.Builds;
+using static EdS.Data.Tests.ClassTestData;
+
+namespace EdS.Data.Tests;
+
+[Trait("Category", "Data")]
+public class ClassJsonReaderTests
+{
+    private static void AssertError(ClassLoadResult result, string path, ValidationCode code)
+    {
+        Assert.False(result.IsValid);
+        Assert.True(result.Report.Errors.Any(e => e.Path == path && e.Code == code),
+            $"{path} [{code}] attendu ; obtenu :\n{result.Report}");
+    }
+
+    // --- Fichier livré --------------------------------------------------------------
+
+    [Fact]
+    public void Bastion_livre_valide()
+    {
+        ClassLoadResult result = ClassJsonReader.ReadFile(BastionPath, Progression);
+        Assert.True(result.IsValid, result.Report.ToString());
+        Assert.Equal(1, result.Class!.SchemaVersion);
+        Assert.Equal("0.1.0-provisoire", result.Class.ContentVersion);
+        Assert.Matches("^sha256:[0-9a-f]{64}$", result.Class.Fingerprint);
+    }
+
+    [Fact]
+    public void Bastion_contient_les_talents_decides()
+    {
+        ClassDefinition bastion = Bastion;
+        Assert.Equal("class.bastion", bastion.Id);
+        Assert.Equal(new[] { "Rempart", "Contrecoup", "Gardien" }, bastion.Trees.Select(t => t.Name));
+
+        void Real(int tree, params (string Name, int Rank, bool Major)[] expected) =>
+            Assert.Equal(expected, bastion.Trees[tree].Talents.Where(t => !t.IsPlaceholder).Select(t => (t.Name, t.MaxRank, t.IsMajor)));
+        Real(0, ("Garde stable", 3, false), ("Écho défensif", 1, false), ("Rempart éternel", 1, true));
+        Real(1, ("Riposte précise", 3, false), ("Fureur contenue", 2, false), ("Jugement du colosse", 1, true));
+        Real(2, ("Égide réactive", 3, false), ("Lien protecteur", 1, false), ("Serment du gardien", 1, true));
+    }
+
+    [Fact]
+    public void Talents_et_passifs_de_test_clairement_identifies()
+    {
+        var placeholders = Bastion.Trees.SelectMany(t => t.Talents).Where(t => t.IsPlaceholder).Select(t => t.Name)
+            .Concat(Bastion.Skills.Where(s => s.IsPlaceholder).Select(s => s.Name)).ToList();
+        Assert.NotEmpty(placeholders);
+        Assert.All(placeholders, name => Assert.StartsWith("[TEST]", name));
+        Assert.All(Bastion.Trees.SelectMany(t => t.Talents).Where(t => !t.IsPlaceholder), t => Assert.DoesNotContain("[TEST]", t.Name));
+    }
+
+    [Fact]
+    public void Un_ultime_et_des_competences_de_chaque_type()
+    {
+        Assert.Equal("Bastion absolu", Assert.Single(Bastion.Skills, s => s.Kind == SkillKind.Ultimate).Name);
+        Assert.True(Bastion.Skills.Count(s => s.Kind == SkillKind.Active) >= Progression.ActiveSlots(Progression.MaxLevel));
+        Assert.True(Bastion.Skills.Count(s => s.Kind == SkillKind.Passive) >= Progression.PassiveSlots(Progression.MaxLevel));
+    }
+
+    // --- Erreurs de forme ------------------------------------------------------------
+
+    [Fact]
+    public void Champ_obligatoire_absent() =>
+        AssertError(ReadMutated(r => Talent(r, 0, 1).Remove("maxRank")), "$.data.trees[0].talents[1].maxRank", ValidationCode.MissingField);
+
+    [Fact]
+    public void Champ_inconnu_avec_ligne()
+    {
+        ClassLoadResult result = ReadMutated(r => Skill(r, 2)["cooldown"] = 3);
+        AssertError(result, "$.data.skills[2].cooldown", ValidationCode.UnknownField);
+        Assert.NotNull(result.Report.Errors.Single().Line);
+    }
+
+    [Fact]
+    public void Ligne_exacte_dans_un_tableau()
+    {
+        // La ligne pointe sur la valeur fautive dans le fichier tel qu'écrit.
+        string json = BastionJson;
+        string marker = "\"maxRank\": 1,";
+        int lineOfFirstMaxRank1 = json[..json.IndexOf(marker, StringComparison.Ordinal)].Count(c => c == '\n') + 1;
+        string broken = json.Remove(json.IndexOf(marker, StringComparison.Ordinal), marker.Length).Insert(json.IndexOf(marker, StringComparison.Ordinal), "\"maxRank\": \"un\",");
+        ClassLoadResult result = ClassJsonReader.Read(broken, Progression);
+        ValidationError error = Assert.Single(result.Report.Errors);
+        Assert.Equal("$.data.trees[0].talents[1].maxRank", error.Path);
+        Assert.Equal(ValidationCode.WrongType, error.Code);
+        Assert.Equal(lineOfFirstMaxRank1, error.Line);
+    }
+
+    [Fact]
+    public void Type_de_competence_inconnu() =>
+        AssertError(ReadMutated(r => Skill(r, 0)["kind"] = "reactive"), "$.data.skills[0].kind", ValidationCode.UnknownReference);
+
+    [Fact]
+    public void Element_null_dans_une_liste() =>
+        AssertError(ReadMutated(r => DataOf(r)["skills"]!.AsArray().Insert(1, null)), "$.data.skills[1]", ValidationCode.WrongType);
+
+    [Fact]
+    public void Mauvais_type_de_fichier() =>
+        AssertError(ReadMutated(r => r["kind"] = "rules"), "$.kind", ValidationCode.WrongKind);
+
+    [Fact]
+    public void Fichier_absent()
+    {
+        ClassLoadResult result = ClassJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "absent.json"), Progression);
+        Assert.False(result.IsValid);
+        Assert.NotEmpty(result.Report.Errors);
+    }
+
+    // --- Cohérence (validateur commun) ----------------------------------------------
+
+    [Fact]
+    public void Reference_de_talent_inconnue() =>
+        AssertError(ReadMutated(r => Talent(r, 0, 1)["prerequisites"]![0]!["talent"] = "talent.bastion.rempart.fantome"),
+            "$.data.trees[0].talents[1].prerequisites[0].talent", ValidationCode.UnknownReference);
+
+    [Fact]
+    public void Identifiant_en_double() =>
+        AssertError(ReadMutated(r => Skill(r, 1)["id"] = Skill(r, 0)["id"]!.GetValue<string>()), "$.data.skills[1].id", ValidationCode.DuplicateId);
+
+    [Fact]
+    public void Rang_exige_superieur_au_rang_maximum() =>
+        AssertError(ReadMutated(r => Talent(r, 0, 1)["prerequisites"]![0]!["rank"] = 4), "$.data.trees[0].talents[1].prerequisites[0].rank", ValidationCode.InvalidValue);
+
+    [Fact]
+    public void Majeur_rendu_inaccessible() =>
+        // Sans le palier de test 3 (5 points), Rempart n'offre plus que 14 points avant son majeur.
+        AssertError(ReadMutated(r => DataOf(r)["trees"]![0]!["talents"]!.AsArray().RemoveAt(5)), "$.data.trees[0].talents[2]", ValidationCode.InvalidValue);
+
+    [Fact]
+    public void Ultime_avant_le_niveau_10_refusee()
+    {
+        int ultimate = Bastion.Skills.ToList().FindIndex(s => s.Kind == SkillKind.Ultimate);
+        AssertError(ReadMutated(r => Skill(r, ultimate)["minLevel"] = 9), $"$.data.skills[{ultimate}].minLevel", ValidationCode.InvalidValue);
+    }
+
+    [Fact]
+    public void Seuil_des_majeurs_lu_dans_rules_json()
+    {
+        // Avec un seuil de 25, aucune branche du Bastion ne permet d'atteindre son majeur.
+        var strict = new ProgressionRules { MajorTalentThreshold = 25 };
+        ClassLoadResult result = ClassJsonReader.Read(BastionJson, strict);
+        Assert.Equal(3, result.Report.Errors.Count(e => e.Message.StartsWith("talent majeur inaccessible", StringComparison.Ordinal)));
+    }
+
+    // --- Empreinte -------------------------------------------------------------------
+
+    [Fact]
+    public void Empreinte_independante_de_la_mise_en_forme_et_de_la_version()
+    {
+        string original = ClassJsonReader.Read(BastionJson, Progression).Class!.Fingerprint;
+        JsonObject root = Shipped();
+        root["contentVersion"] = "0.2.0";
+        JsonObject talent = Talent(root, 1, 0);
+        var reordered = new JsonObject();
+        foreach (var (key, value) in talent.ToList().AsEnumerable().Reverse()) { talent.Remove(key); reordered[key] = value; }
+        DataOf(root)["trees"]![1]!["talents"]![0] = reordered;
+        Assert.Equal(original, ClassJsonReader.Read(root.ToJsonString(), Progression).Class!.Fingerprint);
+    }
+
+    [Fact]
+    public void Empreinte_change_avec_le_contenu()
+    {
+        string original = ClassJsonReader.Read(BastionJson, Progression).Class!.Fingerprint;
+        Assert.NotEqual(original, ReadMutated(r => Talent(r, 0, 0)["name"] = "Garde stable II").Class!.Fingerprint);
+        Assert.NotEqual(original, ReadMutated(r => Skill(r, 0)["minLevel"] = 2).Class!.Fingerprint);
+    }
+
+    [Fact]
+    public void Validateur_commun_utilisable_sans_JSON()
+    {
+        // Chemin d'un futur chargeur Unity : il remplit un ClassDocument et appelle le même validateur.
+        var document = new ClassDocument
+        {
+            SchemaVersion = 1, Kind = "class", ContentVersion = "0.1.0",
+            Data = new ClassData
+            {
+                Id = "class.mini", Name = "Mini",
+                Trees = Enumerable.Range(1, 3).Select(i => (TreeData?)new TreeData
+                {
+                    Id = $"tree.mini.t{i}", Name = $"T{i}",
+                    Talents = new List<TalentData?> { new() { Id = $"talent.mini.t{i}.a", Name = "A", MaxRank = 1, Major = false, Placeholder = false, Prerequisites = new() } },
+                }).ToList(),
+                Skills = new List<SkillData?> { new() { Id = "skill.mini.coup", Name = "Coup", Kind = "active", MinLevel = 1, Placeholder = false, TalentRequirements = new() } },
+            },
+        };
+        Assert.True(ClassValidator.Validate(document, Progression).IsValid);
+
+        document.Data.Skills[0]!.TalentRequirements!.Add(new RequirementData { Talent = "talent.mini.t9.z", Rank = 1 });
+        AssertError(ClassValidator.Validate(document, Progression), "$.data.skills[0].talentRequirements[0].talent", ValidationCode.UnknownReference);
+    }
+}

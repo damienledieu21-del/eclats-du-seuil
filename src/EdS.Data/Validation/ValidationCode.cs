@@ -39,6 +39,9 @@ namespace EdS.Data.Validation
         /// <summary>Le fichier ne décrit pas le type de données attendu.</summary>
         WrongKind,
 
+        /// <summary>Identifiant déjà utilisé par une autre définition.</summary>
+        DuplicateId,
+
         /// <summary>Valeur bien formée mais refusée par les règles de gameplay (incohérence, borne).</summary>
         InvalidValue,
     }
