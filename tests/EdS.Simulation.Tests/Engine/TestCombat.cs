@@ -21,10 +21,15 @@ internal static class TestCombat
     public const string Percee = "skill.essai.percee";          // imparable, 1.0, sans coût ni recharge
     public const string Rempart = "skill.essai.rempart";        // consomme 2 Charges de rempart
     public const string Recharge = "skill.essai.recharge";      // produit 3 Charges de rempart
+    public const string Brasier = "skill.essai.brasier";        // lot 7.2 : magique 0.5 + brûlure (0.5), sans coût ni recharge
+    public const string Entaille = "skill.essai.entaille";      // lot 7.2 : physique 0.5 + saignement (0.5), sans coût ni recharge
+    public const string Assommer = "skill.essai.assommer";      // lot 7.2 : 0.1 + étourdissement, sans coût ni recharge
+    public const string Givre = "skill.essai.givre";            // lot 7.2 : 0.1 + gel, sans coût ni recharge
 
     private static SkillCombatDefinition Combat(string coefficient, int cost, long cooldownMs, SkillTargeting targeting = SkillTargeting.Enemy,
-        bool unblockable = false, int chargeCost = 0, int chargeGain = 0) =>
-        new(PowerType.Physique, DamageType.Physique, Fixed.Parse(coefficient), cost, cooldownMs, targeting, true, unblockable, chargeCost, chargeGain);
+        bool unblockable = false, int chargeCost = 0, int chargeGain = 0, bool magic = false, params StatusApplication[] applies) =>
+        new(magic ? PowerType.Magique : PowerType.Physique, magic ? DamageType.Magique : DamageType.Physique, Fixed.Parse(coefficient), cost, cooldownMs,
+            targeting, true, unblockable, chargeCost, chargeGain, applies);
 
     public static ClassDefinition Class(long frappeCooldownMs = 6000, string frappeCoefficient = "1.2") => new(
         "class.essai", "Essai",
@@ -43,6 +48,10 @@ internal static class TestCombat
             new SkillDefinition(Percee, "Percée", SkillKind.Active, combat: Combat("1", 0, 0, unblockable: true)),
             new SkillDefinition(Rempart, "Rempart", SkillKind.Active, combat: Combat("0.5", 0, 0, chargeCost: 2)),
             new SkillDefinition(Recharge, "Recharge", SkillKind.Active, combat: Combat("0.1", 0, 0, chargeGain: 3)),
+            new SkillDefinition(Brasier, "Brasier", SkillKind.Active, combat: Combat("0.5", 0, 0, magic: true, applies: Apply("burn", "0.5"))),
+            new SkillDefinition(Entaille, "Entaille", SkillKind.Active, combat: Combat("0.5", 0, 0, applies: Apply("bleed", "0.5"))),
+            new SkillDefinition(Assommer, "Assommer", SkillKind.Active, combat: Combat("0.1", 0, 0, applies: Apply("stun"))),
+            new SkillDefinition(Givre, "Givre", SkillKind.Active, combat: Combat("0.1", 0, 0, applies: Apply("freeze"))),
         });
 
     public static readonly ClassDefinition Essai = Class();
@@ -74,6 +83,14 @@ internal static class TestCombat
     public static AssailantAttack Blow(long raw = 100, bool unblockable = false, bool fragility = false,
         SkillTargeting targeting = SkillTargeting.Enemy, string id = "coup") =>
         new(id, raw, DamageType.Physique, targeting, unblockable, fragility ? new[] { new StatusApplication("fragility") } : null);
+
+    /// <summary>Lot 7.2 : application d'altération ; coefficient (texte décimal) pour un DOT seulement.</summary>
+    public static StatusApplication Apply(string status, string? coefficient = null) =>
+        new(status, coefficient is null ? null : Fixed.Parse(coefficient));
+
+    /// <summary>Lot 7.2 : attaque d'assaillant portant des altérations (la puissance d'un DOT d'assaillant est ses dégâts bruts).</summary>
+    public static AssailantAttack Strike(string id, long raw = 100, DamageType type = DamageType.Physique, bool unblockable = false,
+        params StatusApplication[] applies) => new(id, raw, type, SkillTargeting.Enemy, unblockable, applies);
 
     /// <summary>Assaillant d'entraînement : PV infinis, armure nulle, attaque toutes les 2 s à partir de 1 s par défaut.</summary>
     public static AssailantSetup Assailant(long firstAttackMs = 1000, long intervalMs = 2000, string id = "assaillant", string team = "cibles",
