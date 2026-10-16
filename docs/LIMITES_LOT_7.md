@@ -266,6 +266,16 @@ Mesures (pic réel de la file / majorant), figées par `Lot71CapacityTests` et `
 
 Le majorant est atteint ou presque dans tous les cas : il ne rejette pas de scénario valide sans raison. Il reste un majorant de pire cas : un scénario dont le pic réel tiendrait mais dont le majorant dépasse la capacité est refusé (limite connue, aucun cas avec le contenu livré).
 
+### Avec déclencheurs : majorant non garanti (sous-lot 7.3, C12, Q11 ; en place depuis l'étape 7.3.6)
+
+Dès qu'un déclencheur existe (talent, compétence équipée ou passif d'un personnage, assaillant de scénario, ou altération du catalogue qui en porte un), `ComputeQueueBound()` ajoute un **terme transitoire** et renvoie `Guaranteed = false` :
+- terme transitoire = 2 × `maxWorkPerTick` : chaque mise en file coûte une unité de travail ; les notifications et réactions d'un tick sont toutes retirées avant la fin de leur phase, sauf les réactions reportées au tick suivant ; à tout instant la file en contient donc au plus celles mises en file pendant le tick courant et celles reportées du tick précédent ;
+- les échéances et ticks de DOT créés par des **réactions** ne sont pas majorés (une réaction peut appliquer un état à chaque événement observable ; un tel majorant serait inutilisable).
+
+Le contrôle d'admission reste appliqué au total (événements initiaux, DOT, échéances, terme transitoire) : un combat à déclencheurs dont ce total dépasse `maxPendingEvents` est refusé, et le message cite le terme transitoire. Un combat admis peut en revanche atteindre l'arrêt `queueLimitExceeded`, qui redevient un filet atteignable, réservé avant mutation : une réaction refusée n'a aucun effet (test `Lot73BudgetTests.Saturation_par_reactions_persistantes…`). `eds validate` (scénario) et `eds simulate` écrivent une ligne `file` : « majorant prudent N/capacité, garanti » sans déclencheur, « … dont T transitoires, NON garanti … » avec.
+
+Budgets des déclencheurs : la notification réserve son coût exact (retrait, une évaluation par candidat vivant, une ligne par suppression, une mise en file par acceptation), la réaction réserve son majorant entier (retrait et pire coût de chaque effet sur chaque cible) avant la première mutation. Chacune de ces réservations est testée en N − 1, N et N + 1 pour les trois budgets (`Lot73BudgetTests`) : à N − 1 l'arrêt a lieu sur cette réservation, au même tick, sans aucune ligne de réaction, et le journal est identique jusque-là.
+
 ## Capacités mesurées (sous-lot 7.1, 16 octobre 2026)
 
 Règles livrées (`data/v0`, contenu `0.3.0-provisoire`), moteur 0.7.0. Pics relevés par `CombatResult.Peaks` et figés par `Lot71CapacityTests` ; ils ne figurent pas dans le journal.
@@ -300,6 +310,25 @@ Lecture :
 - Un DOT n'occupe qu'une place de file par instance (un seul tick programmé à la fois ; un renouvellement n'en ajoute pas) : au plus 64 cibles × 63 sources × 2 DOT livrés = 8 064 places.
 - Avant le correctif 7.2, un étourdissement renouvelé à chaque tick (fin plus tardive d'un tick) ne finissait jamais : aucune immunité n'était accordée et chaque renouvellement remettait une échéance en file (3 520). Depuis le correctif, l'étourdissement actif refuse les nouvelles applications (`active`, une ligne sans échéance) et expire au bout de 29 ticks, suivi de son immunité : plus de lignes par tick, moins d'éléments en file.
 - Borne prudente de la file avec le catalogue livré : une application qui met une échéance en file écrit sa ligne, et chaque impact en écrit une de plus ; seuls la Fragilité (chaque application), le gel et l'étourdissement (au plus un renouvellement par cible et par tick) en mettent. D'où au plus (1000 + 2 × 64) / 2 = 564 échéances par tick pendant au plus 120 ticks (Fragilité), soit environ 67 700, plus 8 064 DOT, 20 000 commandes et 64 tours : environ 96 000, sous les 100 000 configurés mais sans grande marge. Depuis le correctif 7.2, un catalogue ou un scénario qui pourrait dépasser la capacité est refusé avant le premier tick par le contrôle prudent de saturation (section précédente), scénario par scénario.
+
+## Capacités mesurées avec déclencheurs (sous-lot 7.3, 16 octobre 2026)
+
+Moteur 0.9.0, règles provisoires (budgets 10 000 / 1 000 / 100 000, profondeur 4), personnages de vitalité 200, ripostes de coefficient 0,1 à l'impact subi, sans entretien de garde. Figées par `Lot73CapacityTests` ; les mesures sans déclencheur (sections précédentes, `Lot71CapacityTests`) sont inchangées.
+
+| Scénario | Fin | Travail max / tick | Lignes max / tick | File max | Réactions | Suppressions | Profondeur max |
+|---|---|---|---|---|---|---|---|
+| Arbre 2 contre 2, ripostes de zone, une commande | durée atteinte | 113 | 25 | 5 | 7 | 8 | 4 |
+| Arbre 3 contre 3 | durée atteinte | 446 | 114 | 37 | 22 | 45 | 4 |
+| Arbre 4 contre 4 | durée atteinte | 1 359 | 375 | 145 | 53 | 160 | 4 |
+| Arbre 6 contre 6 | arrêt `eventBudgetExceeded` au tick 0 | 3 621 | 969 | 741 | 155 | 36 | 4 |
+| Ping-pong entre deux porteurs (riposte ciblée) | durée atteinte | 30 | 6 | 2 | 2 | 1 (`cycle`, profondeur 3) | 2 |
+| 64 porteurs (32 personnages, 32 assaillants frappant à chaque tick), ripostes ciblées, 30 s | durée atteinte | 928 (9 %) | 160 (16 %) | 64 | 38 400 | 19 200 | 2 |
+| 64 porteurs, ripostes de zone | arrêt `eventBudgetExceeded` au tick 0 | 2 616 | 832 | 808 | 24 | 0 | 1 |
+
+Lecture :
+- **Le budget de lignes reste la première limite atteinte**, comme sans déclencheur. Une riposte de zone multiplie les lignes par le nombre d'ennemis à chaque niveau : dès 6 contre 6, l'arbre d'une seule commande dépasse 1 000 lignes dans le tick. L'arrêt est propre, au tick exact, sans réaction partielle.
+- **Le cycle coupe tôt** : un porteur ne réagit pas deux fois dans une même chaîne. Entre deux porteurs seulement, le ping-pong s'arrête à la profondeur 3 par `cycle`, jamais par `depth` ; atteindre la profondeur 4 demande au moins trois porteurs distincts dans la chaîne (ici les arbres de zone). Le plan (§10.2, « chaîne 1-2-3-4 puis depth à 5 » pour deux porteurs de la même définition) est corrigé en ce sens : l'identité d'un déclencheur inclut son porteur, mais la chaîne de deux porteurs se referme sur le premier au troisième maillon.
+- La file reste petite : notifications et réactions sont transitoires ; seules les altérations posées par des réactions s'accumulent (non majorées, voir la section précédente).
 
 ## Ce qui reste hors des sous-lots 7.1 et 7.2
 

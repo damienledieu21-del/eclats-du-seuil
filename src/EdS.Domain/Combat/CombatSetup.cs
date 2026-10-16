@@ -478,24 +478,41 @@ namespace EdS.Domain.Combat
             if (bound.Total > Combat.MaxPendingEvents)
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
                     $"majorant prudent de la file {bound.Total} (événements initiaux {bound.Initial}, instances de DOT {bound.Dots}, " +
-                    $"échéances d'altérations {bound.Expiries}) au-delà de sa capacité {Combat.MaxPendingEvents} (combat.limits.maxPendingEvents).",
+                    $"échéances d'altérations {bound.Expiries}{(bound.Transient > 0 ? $", terme transitoire des déclencheurs {bound.Transient}" : "")}) " +
+                    $"au-delà de sa capacité {Combat.MaxPendingEvents} (combat.limits.maxPendingEvents).",
                     "combatants"));
         }
 
-        /// <summary>Détail du majorant de la file (correctif 7.2).</summary>
+        /// <summary>
+        /// Détail du majorant de la file (correctif 7.2 ; terme transitoire et <see cref="Guaranteed"/> au sous-lot 7.3, C12).
+        /// </summary>
         public readonly struct QueueBound
         {
             public long Initial { get; }
             public long Dots { get; }
             public long Expiries { get; }
-            public long Total => checked(Initial + Dots + Expiries);
+            /// <summary>Places des notifications et réactions des déclencheurs (0 sans déclencheur).</summary>
+            public long Transient { get; }
+            /// <summary>
+            /// Vrai sans déclencheur : le majorant borne la file. Faux dès qu'un déclencheur existe : les échéances et ticks de DOT
+            /// créés par des réactions ne sont pas majorés, et l'arrêt <c>queueLimitExceeded</c> reste un filet atteignable (Q11).
+            /// </summary>
+            public bool Guaranteed { get; }
+            public long Total => checked(Initial + Dots + Expiries + Transient);
 
-            public QueueBound(long initial, long dots, long expiries)
+            public QueueBound(long initial, long dots, long expiries, long transient = 0, bool guaranteed = true)
             {
                 Initial = initial;
                 Dots = dots;
                 Expiries = expiries;
+                Transient = transient;
+                Guaranteed = guaranteed;
             }
+
+            /// <summary>Résumé pour les rapports de la CLI (validate, simulate).</summary>
+            public string Describe(long capacity) => Guaranteed
+                ? $"majorant prudent {Total}/{capacity}, garanti"
+                : $"majorant prudent {Total}/{capacity} dont {Transient} transitoires, NON garanti : les altérations posées par des déclencheurs ne sont pas majorées (arrêt queueLimitExceeded possible)";
         }
 
         /// <summary>
@@ -617,6 +634,11 @@ namespace EdS.Domain.Combat
             foreach (var (status, set) in granted)
                 if (catalog.TryGet(status, out StatusDefinition? d))
                     expiries = checked(expiries + (d.Stacking == StatusStacking.Ignore ? set.Count : checked(set.Count * Window(d))));
+            // Sous-lot 7.3 (§6.4, C12) : chaque mise en file coûte une unité de travail. Les notifications et réactions d'un tick
+            // sont toutes retirées avant la fin de leur phase, sauf les réactions reportées au tick suivant : à tout instant, au
+            // plus celles mises en file pendant le tick courant et celles reportées du tick précédent, soit 2 × maxWorkPerTick.
+            // Les échéances et ticks de DOT créés par des réactions ne sont pas majorés : le majorant n'est plus une garantie.
+            if (HasTriggers) return new QueueBound(InitialEventCount(), dots, expiries, checked(2L * Combat.MaxWorkPerTick), guaranteed: false);
             return new QueueBound(InitialEventCount(), dots, expiries);
         }
 

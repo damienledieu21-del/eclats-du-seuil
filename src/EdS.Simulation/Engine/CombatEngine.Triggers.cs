@@ -134,6 +134,40 @@ namespace EdS.Simulation.Engine
         internal List<(long Tick, string Trigger, long Cause)>? ReactionTrace { get; set; }
 
         /// <summary>
+        /// Réservé aux tests (étape 7.3.6) : tentatives de réservation d'une notification (<c>notify</c>) ou d'une réaction exécutée
+        /// (<c>reaction</c>), notées avant la vérification : consommation du tick et taille de la file à cet instant, puis coût
+        /// vérifié (le majorant pour une réaction). Permet de placer un budget exactement à N − 1, N et N + 1 de chaque réservation.
+        /// </summary>
+        internal List<ReservationAttempt>? ReservationTrace { get; set; }
+
+        internal readonly struct ReservationAttempt
+        {
+            public ReservationAttempt(string kind, long tick, long work, long events, long queue, long needWork, long needEvents, long needQueue)
+            {
+                Kind = kind;
+                Tick = tick;
+                Work = work;
+                Events = events;
+                Queue = queue;
+                NeedWork = needWork;
+                NeedEvents = needEvents;
+                NeedQueue = needQueue;
+            }
+
+            public string Kind { get; }
+            public long Tick { get; }
+            public long Work { get; }
+            public long Events { get; }
+            public long Queue { get; }
+            public long NeedWork { get; }
+            public long NeedEvents { get; }
+            public long NeedQueue { get; }
+        }
+
+        private void TraceReservation(string kind, long tick, Cost need) =>
+            ReservationTrace?.Add(new ReservationAttempt(kind, tick, _workThisTick, _eventsThisTick, _queue.Count, need.Work, need.Events, need.Queue));
+
+        /// <summary>
         /// Construit l'index au chargement du combat : déclencheurs permanents de chaque combattant (talents de rang ≥ 1 et
         /// compétences équipées d'un personnage, liste d'un assaillant), triés une fois pour toutes ; types d'abonnement possibles,
         /// altérations du catalogue comprises. Aucun parcours de dictionnaire ne fixe un ordre.
@@ -281,7 +315,9 @@ namespace EdS.Simulation.Engine
         private void ProcessNotify(long tick, CombatPhase phase, NotifyItem item)
         {
             ObservedEvent e = item.Event;
-            Reserve(NotifyCost(tick, e));
+            Cost cost = NotifyCost(tick, e);
+            TraceReservation("notify", tick, cost);
+            Reserve(cost);
             _queue.Dequeue();
             Charge(1);
             foreach (TriggerSlot slot in e.Candidates)
@@ -438,6 +474,7 @@ namespace EdS.Simulation.Engine
                 });
                 return;
             }
+            TraceReservation("reaction", tick, bound);
             Reserve(Cost.Op, bound);
             _queue.Dequeue();
             Charge(1);

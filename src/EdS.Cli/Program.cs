@@ -102,6 +102,7 @@ static int RunValidate(ReadOnlySpan<string> options)
         Console.WriteLine($"  combattants    {string.Join(", ", setup.Combatants.Select(c => c.Id))}");
         Console.WriteLine($"  commandes      {setup.Commands.Count}");
         Console.WriteLine($"  durée          {setup.DurationMs} ms, graine {setup.Seed}");
+        Console.WriteLine($"  file           {setup.ComputeQueueBound().Describe(setup.Combat.MaxPendingEvents)}");
         return 0;
     }
 
@@ -208,6 +209,8 @@ static int RunSimulate(ReadOnlySpan<string> options)
     // Lot 7.1 : pics de charge mesurés, hors journal, rapportés aux limites configurées.
     CombatRules limits = setup.Combat;
     summary.WriteLine($"  charge         pics : travail {result.Peaks.WorkPerTick}/{limits.MaxWorkPerTick} par tick, lignes {result.Peaks.EventsPerTick}/{limits.MaxEventsPerTick} par tick, file {result.Peaks.PendingEvents}/{limits.MaxPendingEvents}");
+    // Sous-lot 7.3 (C12, Q11) : avec déclencheurs, le majorant de la file n'est plus une garantie.
+    summary.WriteLine($"  file           {setup.ComputeQueueBound().Describe(limits.MaxPendingEvents)}");
     foreach (CombatantResult c in result.Combatants)
     {
         string dps = (c.DamageDealt * 1000m / result.DurationMs).ToString("0.##", CultureInfo.InvariantCulture);
