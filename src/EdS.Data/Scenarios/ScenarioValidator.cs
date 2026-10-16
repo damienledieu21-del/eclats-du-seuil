@@ -7,6 +7,7 @@ using EdS.Domain;
 using EdS.Domain.Builds;
 using EdS.Domain.Stats;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
 
 namespace EdS.Data.Scenarios
 {
@@ -32,8 +33,12 @@ namespace EdS.Data.Scenarios
     public static class ScenarioValidator
     {
         public const string Kind = "scenario";
-        /// <summary>Le format des scénarios n'a reçu que des ajouts compatibles au lot 6 (assaillant, actions) : il reste en version 1.</summary>
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>
+        /// Version 1 : lots 5 et 6 (assaillant, actions, ajouts compatibles). Version 2 (lot 7.2) : <c>applies</c> remplace
+        /// <c>appliesFragility</c> sur les attaques d'assaillant, <c>statusResistance</c> facultatif sur mannequins et assaillants.
+        /// Lot 7.3 : <c>triggers</c> facultatif sur un assaillant (ajout compatible, version inchangée).
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -41,8 +46,8 @@ namespace EdS.Data.Scenarios
         private static readonly Dictionary<string, string[]> TypeFields = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["character"] = new[] { "class", "build" },
-            ["dummy"] = new[] { "armor", "magicResistance" },
-            ["assailant"] = new[] { "armor", "magicResistance", "target", "firstAttackMs", "intervalMs", "attacks" },
+            ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
+            ["assailant"] = new[] { "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers" },
         };
 
         private static readonly Dictionary<string, AttributeKind> AttributeIds =
@@ -74,10 +79,14 @@ namespace EdS.Data.Scenarios
                     RuleViolationKind.UnknownReference => ValidationCode.UnknownReference,
                     RuleViolationKind.DuplicateId => ValidationCode.DuplicateId,
                     RuleViolationKind.NumericLimit => ValidationCode.OutOfRange,
+                    RuleViolationKind.LimitExceeded => ValidationCode.LimitExceeded,
                     _ => ValidationCode.InvalidValue,
                 };
                 foreach (string field in violation.Fields) report.Add(root + "." + field, code, violation.Message);
             }
+            if (report.IsValid)
+                foreach (RuleViolation warning in setup.TriggerWarnings())
+                    foreach (string field in warning.Fields) report.AddWarning(root + "." + field, warning.Message);
             return new ScenarioLoadResult(report, report.IsValid ? setup : null);
         }
 
@@ -103,13 +112,14 @@ namespace EdS.Data.Scenarios
                 else if (c.Type == "assailant")
                 {
                     var attacks = c.Attacks!.Select(a => new AssailantAttack(a!.Id!, a.RawDamage!.Value, ClassValidator.DamageTypes[a.DamageType!],
-                        ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, a.AppliesFragility!.Value));
+                        ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, ClassValidator.Applications(a.Applies!)));
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
-                        c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value));
+                        c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
+                        Triggers.TriggerShape.Build(c.Triggers)));
                 }
                 else
                 {
-                    combatants.Add(new DummySetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Initiative!.Value));
+                    combatants.Add(new DummySetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero));
                 }
             }
             var commands = scenario.Commands!.Select(c => CombatActionIds.TryParseDefensive(c!.Action, out CombatAction action)
@@ -195,6 +205,7 @@ namespace EdS.Data.Scenarios
                         Present(c.FirstAttackMs, path + ".firstAttackMs", "instant de la première attaque, en millisecondes");
                         Present(c.IntervalMs, path + ".intervalMs", "intervalle entre deux attaques, en millisecondes");
                         Items(c.Attacks, path + ".attacks", "liste des attaques, jouées dans l'ordre puis en boucle", CheckAttack);
+                        Triggers.TriggerShape.Check(c.Triggers, path + ".triggers", _report);
                         break;
                 }
             }
@@ -210,7 +221,7 @@ namespace EdS.Data.Scenarios
                     _report.Add(path + ".targeting", ValidationCode.UnknownReference,
                         $"valeur inconnue « {a.Targeting} » ; valeurs possibles : {string.Join(", ", ClassValidator.Targetings.Keys)}.");
                 Present(a.Unblockable, path + ".unblockable", "booléen");
-                Present(a.AppliesFragility, path + ".appliesFragility", "booléen");
+                ClassValidator.CheckApplications(a.Applies, path + ".applies", _report);
             }
 
             private void CheckBuild(BuildData b, string path)

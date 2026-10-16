@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using EdS.Data;
 using EdS.Data.Json;
 using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
@@ -77,7 +78,7 @@ public class CombatReplayTests
     [Fact]
     public void Rejeu_refuse_si_seule_la_version_de_contenu_a_change()
     {
-        GameData changed = LoadCopy((file, text) => file == "rules.json" ? text.Replace("\"contentVersion\": \"0.2.0-provisoire\"", "\"contentVersion\": \"0.1.1\"") : text);
+        GameData changed = LoadCopy((file, text) => file == "rules.json" ? text.Replace($"\"contentVersion\": \"{DataFormat.ProvisionalRulesContentVersion}\"", "\"contentVersion\": \"0.1.1\"") : text);
         Assert.Equal(changed.Rules.Fingerprint, ShippedData.Rules.Fingerprint);   // l'empreinte ignore la version…
         ReplayOutcome outcome = CombatLogReplayer.Replay(Simulate().Lines, changed);
         Assert.Equal(ReplayStatus.Refused, outcome.Status);                // …mais le rejeu exige aussi la même version
@@ -88,7 +89,7 @@ public class CombatReplayTests
     {
         // Correctif 6.1 : format de journal 2 ; un journal du lot 6 (format 1) est refusé explicitement, sans migration.
         var lines = Simulate().Lines.ToArray();
-        lines[0] = lines[0].Replace("\"formatVersion\":2", "\"formatVersion\":1");
+        lines[0] = lines[0].Replace($"\"formatVersion\":{CombatEngine.LogFormatVersion}", "\"formatVersion\":1");
         ReplayOutcome outcome = CombatLogReplayer.Replay(lines, ShippedData);
         Assert.NotEqual(ReplayStatus.Identical, outcome.Status);
         Assert.Contains(outcome.Problems, p => p.Contains("format de journal 1") && p.Contains("sans migration"));
@@ -141,5 +142,5 @@ public class CombatReplayTests
         Assert.Equal(MannequinLogHash, hash);
     }
 
-    internal const string MannequinLogHash = "96a562bdc13bd5403ab4e16e4fdf0e850416200f8ccef8bf13b402a801efe3e6";
+    internal const string MannequinLogHash = "2cbe5c7d3c23faa06f2bd01947e2078fecd2ebad235e5f37ecd7179784cf4d5e";
 }

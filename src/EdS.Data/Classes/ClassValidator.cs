@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using EdS.Data.Triggers;
 using EdS.Data.Validation;
 using EdS.Domain;
 using EdS.Domain.Builds;
@@ -49,7 +50,7 @@ namespace EdS.Data.Classes
     public static class ClassValidator
     {
         public const string Kind = "class";
-        public const int CurrentSchemaVersion = DataFormat.CurrentSchemaVersion;
+        public const int CurrentSchemaVersion = DataFormat.ClassSchemaVersion;
 
         public static IReadOnlyDictionary<string, SkillKind> SkillKinds { get; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, SkillKind>(new Dictionary<string, SkillKind>(StringComparer.Ordinal)
         {
@@ -97,14 +98,18 @@ namespace EdS.Data.Classes
                     RuleViolationKind.UnknownReference => ValidationCode.UnknownReference,
                     RuleViolationKind.DuplicateId => ValidationCode.DuplicateId,
                     RuleViolationKind.NumericLimit => ValidationCode.OutOfRange,
+                    RuleViolationKind.LimitExceeded => ValidationCode.LimitExceeded,
                     _ => ValidationCode.InvalidValue,
                 };
                 foreach (string field in violation.Fields)
                     report.Add("$.data." + field, code, violation.Message);
             }
             if (!report.IsValid) return new ClassLoadResult(report, null);
+            // Lot 7.3 (A15) : cycles statiques entre déclencheurs de la classe, en avertissements.
+            foreach (RuleViolation warning in Domain.Combat.TriggerGraph.Cycles(definition.NamedTriggers(), null))
+                foreach (string field in warning.Fields) report.AddWarning("$.data." + field, warning.Message);
 
-            string fingerprint = ContentFingerprint.Compute(CanonicalText(document.SchemaVersion!.Value, document.Data!));
+            string fingerprint = ContentFingerprint.Compute(CanonicalText(document.SchemaVersion!.Value, document.Data!, definition));
             return new ClassLoadResult(report, new LoadedClass(document.SchemaVersion.Value, document.ContentVersion!, fingerprint, definition));
         }
 
@@ -112,11 +117,12 @@ namespace EdS.Data.Classes
         /// Écriture canonique pour l'empreinte : chaque valeur sous la forme <c>chemin=valeur</c>, dans l'ordre du fichier
         /// (l'ordre des arbres, talents et compétences fait partie du contenu ; l'ordre des clés et les espaces non).
         /// </summary>
-        public static string CanonicalText(int schemaVersion, ClassData data)
+        public static string CanonicalText(int schemaVersion, ClassData data, ClassDefinition definition)
         {
             var text = new StringBuilder();
-            void Line(string path, object? value) =>
-                text.Append(path).Append('=').Append(Escape(Convert.ToString(value, CultureInfo.InvariantCulture))).Append('\n');
+            var w = new CanonicalWriter(text);
+            // Correctif 7.3.1 (A73-M02) : une valeur absente s'écrit comme absente, jamais comme une chaîne vide ou « none ».
+            void Line(string path, object? value) => w.Optional(path, value is null ? null : Convert.ToString(value, CultureInfo.InvariantCulture));
             void Requirements(string path, List<RequirementData?> list)
             {
                 Line(path + ".count", list.Count);
@@ -128,6 +134,7 @@ namespace EdS.Data.Classes
             }
 
             text.Append("eds-class\n");
+            Line("canonical", CanonicalWriter.Version);
             Line("schemaVersion", schemaVersion);
             Line("id", data.Id);
             Line("name", data.Name);
@@ -148,6 +155,7 @@ namespace EdS.Data.Classes
                     Line(p + ".major", talent.Major == true ? "true" : "false");
                     Line(p + ".placeholder", talent.Placeholder == true ? "true" : "false");
                     Requirements(p + ".prerequisites", talent.Prerequisites!);
+                    TriggerShape.AppendCanonical(text, p + ".triggers", definition.Trees[t].Talents[i].Triggers);
                 }
             }
             Line("skills.count", data.Skills!.Count);
@@ -161,9 +169,10 @@ namespace EdS.Data.Classes
                 Line(p + ".minLevel", skill.MinLevel);
                 Line(p + ".placeholder", skill.Placeholder == true ? "true" : "false");
                 Requirements(p + ".talentRequirements", skill.TalentRequirements!);
+                TriggerShape.AppendCanonical(text, p + ".triggers", definition.Skills[s].Triggers);
                 if (skill.Combat is not { } combat)
                 {
-                    Line(p + ".combat", "none");
+                    Line(p + ".combat", null);
                     continue;
                 }
                 Line(p + ".combat.powerType", combat.PowerType);
@@ -176,12 +185,40 @@ namespace EdS.Data.Classes
                 Line(p + ".combat.rampartChargeCost", combat.RampartChargeCost);
                 Line(p + ".combat.rampartChargeGain", combat.RampartChargeGain);
                 Line(p + ".combat.provisional", combat.Provisional == true ? "true" : "false");
+                Line(p + ".combat.applies.count", combat.Applies!.Count);
+                for (int a = 0; a < combat.Applies.Count; a++)
+                {
+                    Line($"{p}.combat.applies[{a}].status", combat.Applies[a]!.Status);
+                    Line($"{p}.combat.applies[{a}].coefficient", combat.Applies[a]!.Coefficient?.ToString());
+                }
             }
             return text.ToString();
         }
 
-        private static string Escape(string? value) =>
-            (value ?? string.Empty).Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
+        /// <summary>Altérations portées, converties pour le domaine (lot 7.2) ; suppose la forme vérifiée.</summary>
+        public static IReadOnlyList<Domain.Combat.StatusApplication> Applications(List<StatusApplicationData?> list) =>
+            list.Select(a => new Domain.Combat.StatusApplication(a!.Status!, a.Coefficient)).ToArray();
+
+        /// <summary>Vérifie la forme d'une liste d'altérations portées : chaque entrée nomme une altération.</summary>
+        public static void CheckApplications(List<StatusApplicationData?>? list, string path, ValidationReport report)
+        {
+            if (list is null)
+            {
+                if (!report.HasErrorAtOrAbove(path))
+                    report.Add(path, ValidationCode.MissingField, "champ obligatoire absent (liste des altérations appliquées, éventuellement vide).");
+                return;
+            }
+            for (int i = 0; i < list.Count; i++)
+            {
+                string itemPath = $"{path}[{i}]";
+                if (list[i] is not { } a)
+                {
+                    if (!report.HasErrorAtOrAbove(itemPath)) report.Add(itemPath, ValidationCode.WrongType, "objet attendu.");
+                }
+                else if (a.Status is null && !report.HasErrorAtOrAbove(itemPath + ".status"))
+                    report.Add(itemPath + ".status", ValidationCode.MissingField, "champ obligatoire absent (identifiant de l'altération).");
+            }
+        }
 
         private static ClassDefinition Build(ClassData data)
         {
@@ -190,13 +227,13 @@ namespace EdS.Data.Classes
 
             var trees = data.Trees!.Select(t => new TalentTreeDefinition(t!.Id!, t.Name!,
                 t.Talents!.Select(x => new TalentDefinition(x!.Id!, x.Name!, x.MaxRank!.Value, x.Major!.Value,
-                    Requirements(x.Prerequisites!), x.Placeholder!.Value)).ToArray())).ToArray();
+                    Requirements(x.Prerequisites!), x.Placeholder!.Value, TriggerShape.Build(x.Triggers))).ToArray())).ToArray();
             SkillCombatDefinition? Combat(SkillCombatData? c) => c is null ? null
                 : new SkillCombatDefinition(PowerTypes[c.PowerType!], DamageTypes[c.DamageType!], c.Coefficient!.Value,
                     c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value,
-                    c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value);
+                    c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value, Applications(c.Applies!));
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
-                Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat))).ToArray();
+                Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat), TriggerShape.Build(s.Triggers))).ToArray();
             return new ClassDefinition(data.Id!, data.Name!, trees, skills);
         }
 
@@ -251,6 +288,7 @@ namespace EdS.Data.Classes
                 Present(talent.Major, path + ".major", "booléen");
                 Present(talent.Placeholder, path + ".placeholder", "booléen");
                 Items(talent.Prerequisites, path + ".prerequisites", "liste, éventuellement vide", CheckRequirement);
+                TriggerShape.Check(talent.Triggers, path + ".triggers", _report);
             }
 
             private void CheckSkill(SkillData skill, string path)
@@ -264,6 +302,7 @@ namespace EdS.Data.Classes
                 Present(skill.Placeholder, path + ".placeholder", "booléen");
                 Items(skill.TalentRequirements, path + ".talentRequirements", "liste, éventuellement vide", CheckRequirement);
                 if (skill.Combat is { } combat) CheckCombat(combat, path + ".combat");
+                TriggerShape.Check(skill.Triggers, path + ".triggers", _report);
             }
 
             private void Token<T>(string? value, string path, string description, IReadOnlyDictionary<string, T> allowed)
@@ -284,6 +323,7 @@ namespace EdS.Data.Classes
                 Present(combat.RampartChargeCost, path + ".rampartChargeCost", "entier");
                 Present(combat.RampartChargeGain, path + ".rampartChargeGain", "entier");
                 Present(combat.Provisional, path + ".provisional", "booléen");
+                CheckApplications(combat.Applies, path + ".applies", _report);
             }
 
             private void CheckRequirement(RequirementData requirement, string path)

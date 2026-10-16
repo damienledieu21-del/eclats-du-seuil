@@ -100,8 +100,9 @@ public class M04InitializationLimitsTests
     [Fact]
     public void Cumul_des_degats_sur_la_duree_verifie()
     {
-        // Pire impact × ticks × événements par tick doit tenir sur 64 bits : avec 10⁹ événements par tick, refus.
-        var rules = new CombatRules { MaxEventsPerTick = int.MaxValue };
+        // Pire impact × ticks × événements par tick doit tenir sur 64 bits : au plafond technique de 10⁷ événements par
+        // tick (lot 7.1), 1,1 × 10⁹ × 12 000 × 10⁷ déborde, refus.
+        var rules = new CombatRules { MaxWorkPerTick = CombatRules.AbsoluteMaxWorkPerTick, MaxEventsPerTick = CombatRules.AbsoluteMaxWorkPerTick };
         var setup = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Tank(), Assailant(attacks: Blow(CombatantStats.MaxRawDamage)) },
             durationMs: 600_000, rules: rules);
         AssertRefused(setup, "combatants[1]");

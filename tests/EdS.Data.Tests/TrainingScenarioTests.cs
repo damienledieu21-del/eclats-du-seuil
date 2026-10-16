@@ -46,7 +46,7 @@ public class TrainingScenarioTests
         Assert.Equal(("bastion", 1000L, 2000L), (assailant.Target!, assailant.FirstAttackMs, assailant.IntervalMs));
         Assert.Equal(new[] { 100L, 100, 100, 100, 60 }, assailant.Attacks.Select(a => a.RawDamage));
         Assert.True(assailant.Attacks[4].Unblockable);
-        Assert.True(assailant.Attacks[2].AppliesFragility);
+        Assert.Equal("fragility", Assert.Single(assailant.Attacks[2].Applies).Status);
         Assert.Equal(SkillTargeting.Enemy, assailant.Attacks[0].Targeting);
         Assert.Equal(CombatAction.GuardStart, setup.Commands[0].Action);
         Assert.Null(setup.Commands[0].Skill);
@@ -54,10 +54,31 @@ public class TrainingScenarioTests
         Assert.Contains(setup.Commands, c => c.Action == CombatAction.GuardStop);
     }
 
+    [Fact]
+    [Trait("Category", "Status")]
+    public void Scenario_d_alterations_lu_et_joue()
+    {
+        CombatSetup setup = Load("entrainement_alterations");
+        var assailant = Assert.IsType<AssailantSetup>(setup.Combatants[1]);
+        Assert.Equal(Domain.Numerics.Fixed.FromInt(500), assailant.StatusResistance);
+        Assert.Equal(new[] { "bleed", "burn", "stun", "freeze" }, assailant.Attacks.SelectMany(a => a.Applies).Select(a => a.Status));
+        Assert.Equal(Domain.Numerics.Fixed.Parse("0.5"), assailant.Attacks[0].Applies[0].Coefficient);
+
+        string log = Simulate("entrainement_alterations").ToString();
+        foreach (string expected in new[]
+        {
+            "\"event\":\"dotDamage\"", "\"reason\":\"interrupted\",\"state\":\"stun\"", "\"reason\":\"stunned\"", "\"state\":\"stunImmunity\"",
+            "\"reason\":\"immune\"", "\"movementSpeedModifier\":-0.3", "\"event\":\"parrySucceeded\"",
+        })
+            Assert.Contains(expected, log);
+    }
+
     [Theory]
     [InlineData("mannequin")]
     [InlineData("entrainement_garde_parade")]
     [InlineData("entrainement_rupture")]
+    [InlineData("entrainement_alterations")]
+    [InlineData("entrainement_declencheurs")]
     public void Rejeu_identique_des_scenarios_livres(string name)
     {
         ReplayOutcome outcome = CombatLogReplayer.Replay(Simulate(name).Lines, ShippedData);
@@ -65,13 +86,21 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "44ab02ccaf525d2ecfb11ecead30eef27d3121626d37ab025fed8074bd47f446")]
-    [InlineData("entrainement_rupture", "8be66808ce4102ddc2cdaf1f84d2288d23bfb1407b73ed3c3a6e3ae1c4f23a04")]
+    [InlineData("entrainement_garde_parade", "b1aa9e12d9e02dc405b7ff49f0ccfd15b5af84ceeb5bc1c2ea91868418bf5e54")]
+    [InlineData("entrainement_rupture", "1d8e63db5e975a9ed4e4381f6a88eb21d21fd7e89dfc0440055780a3ccb8363b")]
+    [InlineData("entrainement_alterations", "53d096548cb276b09d09ca2bca959a2f4b22a7fe780316f0ed4ea5b55dac4ddc")]
+    [InlineData("entrainement_declencheurs", "b5a00d6796c65deb56d8e2162e93680292f672812862dadc1323d048af37895c")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
         // Correctif 6.1 : seuls l'en-tête (moteur 0.6.1, format 2, versions et empreintes des données en schéma 2) et les
         // champs instance/generation des états changent ; tous les autres événements sont identiques (RAPPORT_CORRECTIF_6_1).
+        // Lot 7.1 : seul l'en-tête change encore (moteur 0.7.0, règles en schéma 3 et leur empreinte) ; aucun autre octet.
+        // Lot 7.2 : format 3 (catégorie et source sur les lignes d'état, applies) ; égalité structurelle avec 0.7.0 vérifiée
+        // par Lot72MigrationTests. Nouveau scénario entrainement_alterations (DOT, contrôles, immunité).
+        // Correctif 7.2 : moteur 0.8.1, règles 0.4.1 (étourdissement en ignore) ; garde_parade change à la Fragilité parée,
+        // alterations à l'étourdissement refusé (active) et aux fins effectives des DOT.
+        // Correctif 7.3.1 (D4) : entrainement_declencheurs, figé aussi dans Fixtures/reference-0.9.1 (Correctif731TriggerScenarioTests).
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }
@@ -84,7 +113,11 @@ public class TrainingScenarioTests
         Assert.Equal(CombatEndReason.DurationReached, result.EndReason);
         Assert.Equal((4L, 8L, 1L, 0L), (bastion.Blocks, bastion.PerfectParries, bastion.FailedParries, bastion.GuardBreaks));
         Assert.Equal(5, bastion.RampartCharges);   // 8 parades, plafond 5
-        Assert.Equal(444, bastion.DamageTaken);
+        // Correctif 7.2 : la parade parfaite de l'attaque porteuse de Fragilité l'empêche (stateBlocked, raison parried) ;
+        // les impacts suivants ne subissent plus +10 % : 427 au lieu de 444.
+        Assert.Equal(427, bastion.DamageTaken);
+        Assert.Contains(Simulate("entrainement_garde_parade").Lines,
+            l => l.Contains("\"event\":\"stateBlocked\"") && l.Contains("\"state\":\"fragility\"") && l.Contains("\"reason\":\"parried\""));
     }
 
     [Fact]

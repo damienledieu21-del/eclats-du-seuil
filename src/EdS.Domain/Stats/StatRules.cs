@@ -29,6 +29,12 @@ namespace EdS.Domain.Stats
         public Fixed StatusResistancePerVolonte { get; init; } = Fixed.FromInt(2);
         public Fixed MaxEndurancePerEndurance { get; init; } = Fixed.FromInt(2);
 
+        /// <summary>
+        /// Constante de la résistance aux altérations (A23, lot 7.2) : la durée d'un contrôle est multipliée par
+        /// K / (K + résistance effective). 1000 provisoire ; au plus 10⁹ comme les constantes de défense.
+        /// </summary>
+        public long StatusResistanceConstant { get; init; } = 1000;
+
         // Critiques.
         public int BaseCriticalChanceBasisPoints { get; init; } = 500;
         public int MinCriticalChanceBasisPoints { get; init; } = 0;
@@ -60,6 +66,11 @@ namespace EdS.Domain.Stats
             NonNegative(MaxHealthPerVitalite, nameof(MaxHealthPerVitalite));
             NonNegative(StatusResistancePerVolonte, nameof(StatusResistancePerVolonte));
             NonNegative(MaxEndurancePerEndurance, nameof(MaxEndurancePerEndurance));
+
+            if (StatusResistanceConstant <= 0)
+                errors.Add(new RuleViolation("doit être strictement positive.", nameof(StatusResistanceConstant)));
+            else if (StatusResistanceConstant > 1_000_000_000)
+                errors.Add(new RuleViolation("ne peut pas dépasser 1000000000 (limite technique provisoire).", nameof(StatusResistanceConstant)));
 
             if (MinCriticalChanceBasisPoints < 0)
                 errors.Add(new RuleViolation("la chance critique minimale ne peut pas être négative.", nameof(MinCriticalChanceBasisPoints)));

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
+using EdS.Domain.Combat;
 
 namespace EdS.Data.Json;
 
@@ -13,32 +14,42 @@ public static class ScenarioJsonReader
     public static ScenarioLoadResult ReadFile(string path, GameData data)
     {
         var report = new ValidationReport();
-        string? json = JsonInput.ReadFile(path, report);
-        return json is null ? ScenarioValidator.Validate(new ScenarioDocument(), data, report) : Read(json, data, report);
+        return Read(JsonInput.ReadFile(path, report), data, report);
     }
 
-    public static ScenarioLoadResult Read(string json, GameData data) => Read(json, data, new ValidationReport());
-
-    private static ScenarioLoadResult Read(string json, GameData data, ValidationReport report)
+    public static ScenarioLoadResult Read(string json, GameData data)
     {
+        var report = new ValidationReport();
+        return Read(JsonInput.Utf8(json, report), data, report);
+    }
+
+    private static ScenarioLoadResult Read(byte[]? json, GameData data, ValidationReport report)
+    {
+        if (json is null) return ScenarioValidator.Validate(new ScenarioDocument(), data, report);
         var document = new ScenarioDocument();
-        JsonHeader header = JsonInput.Parse(json, report, (input, element) => document.Data = ReadData(input, element, "$.data"));
+        JsonHeader header = JsonInput.Parse(json, report, (input, element) => document.Data = ReadData(input, element, "$.data", data.Rules.Combat));
         document.SchemaVersion = header.SchemaVersion;
         document.Kind = header.Kind;
         document.ContentVersion = header.ContentVersion;
         return ScenarioValidator.Validate(document, data, report);
     }
 
-    /// <summary>Lit le contenu d'un scénario ; sert aussi pour le scénario recopié dans l'en-tête d'un journal.</summary>
-    internal static ScenarioData? ReadData(JsonInput input, JsonElement element, string path)
+    /// <summary>
+    /// Lit le contenu d'un scénario ; sert aussi pour le scénario recopié dans l'en-tête d'un journal. Lot 7.1 : les
+    /// tableaux de combattants et de commandes sont comparés aux limites configurées <b>avant</b> la construction de
+    /// leurs éléments ; un tableau trop long donne une seule erreur, avec le même message que l'admission du domaine.
+    /// </summary>
+    internal static ScenarioData? ReadData(JsonInput input, JsonElement element, string path, CombatRules limits)
     {
         var data = new ScenarioData();
         bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
         {
             ["seed"] = (v, p) => data.Seed = input.Int64(v, p),
             ["durationMs"] = (v, p) => data.DurationMs = input.Int64(v, p),
-            ["combatants"] = (v, p) => data.Combatants = input.ReadList(v, p, (e, ip) => ReadCombatant(input, e, ip)),
-            ["commands"] = (v, p) => data.Commands = input.ReadList(v, p, (e, ip) => ReadCommand(input, e, ip)),
+            ["combatants"] = (v, p) => data.Combatants = input.ReadLimitedList(v, p, limits.MaxCombatants,
+                n => $"{n} combattants, au plus {limits.MaxCombatants} (combat.limits.maxCombatants).", (e, ip) => ReadCombatant(input, e, ip)),
+            ["commands"] = (v, p) => data.Commands = input.ReadLimitedList(v, p, limits.MaxCommands,
+                n => $"{n} commandes, au plus {limits.MaxCommands} (combat.limits.maxCommands).", (e, ip) => ReadCommand(input, e, ip)),
         });
         return ok ? data : null;
     }
@@ -61,10 +72,12 @@ public static class ScenarioJsonReader
             ["build"] = Track("build", (v, p) => c.Build = ReadBuild(input, v, p)),
             ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
             ["magicResistance"] = Track("magicResistance", (v, p) => c.MagicResistance = input.Decimal(v, p)),
+            ["statusResistance"] = Track("statusResistance", (v, p) => c.StatusResistance = input.Decimal(v, p)),
             ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
             ["firstAttackMs"] = Track("firstAttackMs", (v, p) => c.FirstAttackMs = input.Int64(v, p)),
             ["intervalMs"] = Track("intervalMs", (v, p) => c.IntervalMs = input.Int64(v, p)),
             ["attacks"] = Track("attacks", (v, p) => c.Attacks = input.ReadList(v, p, (e, ip) => ReadAttack(input, e, ip))),
+            ["triggers"] = Track("triggers", (v, p) => c.Triggers = TriggerJsonReader.ReadList(input, v, p)),
         });
         return ok ? c : null;
     }
@@ -104,7 +117,7 @@ public static class ScenarioJsonReader
             ["damageType"] = (v, p) => a.DamageType = input.Text(v, p),
             ["targeting"] = (v, p) => a.Targeting = input.Text(v, p),
             ["unblockable"] = (v, p) => a.Unblockable = input.Boolean(v, p),
-            ["appliesFragility"] = (v, p) => a.AppliesFragility = input.Boolean(v, p),
+            ["applies"] = (v, p) => a.Applies = input.ReadList(v, p, (e, ip) => ClassJsonReader.ReadApplication(input, e, ip)),
         });
         return ok ? a : null;
     }

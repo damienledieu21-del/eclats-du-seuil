@@ -71,8 +71,8 @@ public class DefensiveSetupTests
     public void En_tete_du_journal_decrit_l_assaillant_et_les_actions()
     {
         string header = CombatLogHeader.Write(Setup(new[] { Parry(100) }, new CombatantSetup[] { Tank(), Make(attacks: Blow(fragility: true)) }));
-        Assert.Contains("\"type\":\"assailant\",\"team\":\"cibles\",\"initiative\":0,\"armor\":0,\"magicResistance\":0,\"target\":\"bastion\",\"firstAttackMs\":1000,\"intervalMs\":2000,"
-            + "\"attacks\":[{\"id\":\"coup\",\"rawDamage\":100,\"damageType\":\"physique\",\"targeting\":\"enemy\",\"unblockable\":false,\"appliesFragility\":true}]", header);
+        Assert.Contains("\"type\":\"assailant\",\"team\":\"cibles\",\"initiative\":0,\"armor\":0,\"magicResistance\":0,\"statusResistance\":0,\"target\":\"bastion\",\"firstAttackMs\":1000,\"intervalMs\":2000,"
+            + "\"attacks\":[{\"id\":\"coup\",\"rawDamage\":100,\"damageType\":\"physique\",\"targeting\":\"enemy\",\"unblockable\":false,\"applies\":[{\"status\":\"fragility\"}]}]", header);
         Assert.Contains("\"commands\":[{\"atMs\":100,\"actor\":\"bastion\",\"action\":\"parry\"}]", header);
     }
 }

@@ -102,6 +102,14 @@ namespace EdS.Simulation.Engine
         public JsonLineWriter Field(string name, Fixed value) => Name(name).Value(value);
         public JsonLineWriter Field(string name, bool value) => Name(name).Value(value);
         public JsonLineWriter Field(string name, string? value) => Name(name).Value(value);
+        /// <summary>Tableau de chaînes (lot 7.2 : identifiants d'altérations).</summary>
+        public JsonLineWriter Names(string name, IEnumerable<string> values)
+        {
+            Name(name).BeginArray();
+            foreach (string value in values) Value(value);
+            return EndArray();
+        }
+
         public JsonLineWriter Field(string name, long? value) => value.HasValue ? Field(name, value.Value) : Name(name).Value((string?)null);
 
         private void WriteString(string value)

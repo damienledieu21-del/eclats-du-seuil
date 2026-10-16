@@ -23,13 +23,20 @@ namespace EdS.Domain.Combat
         public static DerivedStats ForCharacter(StatRules rules, CharacterBuild build) =>
             DerivedStats.Calculate(rules, (build ?? throw new ArgumentNullException(nameof(build))).Attributes);
 
-        /// <summary>Mannequin ou assaillant : seules les défenses comptent ; puissances et PV de base.</summary>
-        public static DerivedStats ForDefenses(StatRules rules, Fixed armor, Fixed magicResistance)
+        /// <summary>
+        /// Mannequin ou assaillant : seules les défenses comptent (armure, résistance magique et, depuis le lot 7.2, résistance
+        /// aux altérations) ; puissances et PV de base.
+        /// </summary>
+        public static DerivedStats ForDefenses(StatRules rules, Fixed armor, Fixed magicResistance, Fixed statusResistance = default)
         {
             if (rules is null) throw new ArgumentNullException(nameof(rules));
             return DerivedStats.Calculate(rules, Attributes.None, new[]
             {
-                new StatContributions { Armor = armor - rules.BaseArmor, MagicResistance = magicResistance - rules.BaseMagicResistance },
+                new StatContributions
+                {
+                    Armor = armor - rules.BaseArmor, MagicResistance = magicResistance - rules.BaseMagicResistance,
+                    StatusResistance = statusResistance - rules.BaseStatusResistance,
+                },
             });
         }
 

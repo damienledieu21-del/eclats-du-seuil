@@ -4,4 +4,9 @@
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="EdS.Simulation" />
+    <InternalsVisibleTo Include="EdS.Domain.Tests" />
+  </ItemGroup>
+
 </Project>

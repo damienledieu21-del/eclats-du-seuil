@@ -42,6 +42,9 @@ namespace EdS.Data.Classes
         public bool? Major { get; set; }
         public bool? Placeholder { get; set; }
         public List<RequirementData?>? Prerequisites { get; set; }
+
+        /// <summary>Déclencheurs (format 4, lot 7.3) ; facultatifs, null si absents.</summary>
+        public List<Triggers.TriggerData?>? Triggers { get; set; }
     }
 
     public sealed class SkillData
@@ -58,6 +61,9 @@ namespace EdS.Data.Classes
 
         /// <summary>Données de lancement (facultatives) : sans elles, la compétence s'équipe mais ne se lance pas encore.</summary>
         public SkillCombatData? Combat { get; set; }
+
+        /// <summary>Déclencheurs actifs tant que la compétence est équipée (format 4, lot 7.3) ; facultatifs.</summary>
+        public List<Triggers.TriggerData?>? Triggers { get; set; }
     }
 
     public sealed class SkillCombatData
@@ -79,6 +85,18 @@ namespace EdS.Data.Classes
         public int? RampartChargeCost { get; set; }
         public int? RampartChargeGain { get; set; }
         public bool? Provisional { get; set; }
+
+        /// <summary>Altérations appliquées à chaque cible touchée (schéma 3, lot 7.2) ; liste éventuellement vide.</summary>
+        public List<StatusApplicationData?>? Applies { get; set; }
+    }
+
+    /// <summary>Altération portée par une compétence ou une attaque d'assaillant : <c>{ "status": "burn", "coefficient": 0.5 }</c>.</summary>
+    public sealed class StatusApplicationData
+    {
+        public string? Status { get; set; }
+
+        /// <summary>DOT seulement ; absent pour les autres catégories.</summary>
+        public Fixed? Coefficient { get; set; }
     }
 
     public sealed class RequirementData

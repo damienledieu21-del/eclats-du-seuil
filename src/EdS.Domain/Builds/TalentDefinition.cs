@@ -6,7 +6,7 @@ namespace EdS.Domain.Builds
 {
     /// <summary>
     /// Talent permanent d'un arbre. Chaque rang coûte un point et compte dans les points investis de la branche.
-    /// Les effets de combat arriveront avec le moteur (lot 5 et suivants).
+    /// Depuis le lot 7.3, ses effets de combat sont des déclencheurs génériques (<see cref="Triggers"/>).
     /// </summary>
     public sealed class TalentDefinition
     {
@@ -25,9 +25,14 @@ namespace EdS.Domain.Builds
 
         public IReadOnlyList<TalentRequirement> Prerequisites { get; }
 
+        /// <summary>Déclencheurs permanents (lot 7.3), actifs dès le rang 1 ; leurs valeurs peuvent dépendre du rang.</summary>
+        public IReadOnlyList<Combat.TriggerDefinition> Triggers { get; }
+
         public TalentDefinition(string id, string name, int maxRank, bool isMajor = false,
-            IReadOnlyList<TalentRequirement>? prerequisites = null, bool isPlaceholder = false)
+            IReadOnlyList<TalentRequirement>? prerequisites = null, bool isPlaceholder = false,
+            IEnumerable<Combat.TriggerDefinition>? triggers = null)
         {
+            Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));
             MaxRank = maxRank;

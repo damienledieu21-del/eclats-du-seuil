@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 2
+      "const": 5
     },
     "kind": {
       "const": "rules"
@@ -217,12 +217,17 @@
                 "maxMultiplier"
               ],
               "description": "Chance (points de base, 500 = 5 %) et multiplicateur de critique, avec leurs bornes."
+            },
+            "statusResistanceConstant": {
+              "type": "integer",
+              "description": "Constante K de la résistance aux altérations (lot 7.2) : durée d'un contrôle × K / (K + résistance). ]0, 10⁹]."
             }
           },
           "required": [
             "base",
             "perAttribute",
-            "critical"
+            "critical",
+            "statusResistanceConstant"
           ],
           "description": "Paramètres des statistiques dérivées (StatRules)."
         },
@@ -438,14 +443,56 @@
                 },
                 "maxEventsPerTick": {
                   "type": "integer",
-                  "minimum": -2147483648,
-                  "maximum": 2147483647,
-                  "description": "Événements maximum par tick avant interruption."
+                  "minimum": 1,
+                  "maximum": 10000000,
+                  "description": "Événements de simulation comptés par tick avant interruption (au plus maxWorkPerTick)."
+                },
+                "maxCombatants": {
+                  "type": "integer",
+                  "minimum": 2,
+                  "maximum": 256,
+                  "description": "Combattants par scénario (lot 7.1)."
+                },
+                "maxCommands": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Commandes par scénario (lot 7.1)."
+                },
+                "maxCommandsPerActorPerTick": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64,
+                  "description": "Commandes d'un même acteur au même tick (lot 7.1)."
+                },
+                "maxPendingEvents": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000000,
+                  "description": "Événements en attente dans la file (lot 7.1)."
+                },
+                "maxWorkPerTick": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000000,
+                  "description": "Budget de travail par tick (lot 7.1)."
+                },
+                "maxTriggerDepth": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8,
+                  "description": "Profondeur maximale d'une chaîne de réactions (lot 7.3) ; 0 supprime toute réaction."
                 }
               },
               "required": [
                 "maxDurationMs",
-                "maxEventsPerTick"
+                "maxEventsPerTick",
+                "maxCombatants",
+                "maxCommands",
+                "maxCommandsPerActorPerTick",
+                "maxPendingEvents",
+                "maxWorkPerTick",
+                "maxTriggerDepth"
               ],
               "description": "Limites de simulation."
             },
@@ -469,16 +516,16 @@
                   "maximum": 2147483647,
                   "description": "Endurance payée par impact bloqué."
                 },
-                "breakDurationMs": {
-                  "type": "integer",
-                  "description": "Durée de la rupture de garde."
+                "breakStatus": {
+                  "type": "string",
+                  "description": "Identifiant de l'altération appliquée par la rupture de garde (bloc statuses)."
                 }
               },
               "required": [
                 "damageReduction",
                 "upkeepPerSecond",
                 "costPerBlock",
-                "breakDurationMs"
+                "breakStatus"
               ],
               "description": "Garde (A1)."
             },
@@ -572,35 +619,6 @@
                 "ultimateCost"
               ],
               "description": "Résonance (A5)."
-            },
-            "states": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "fragility": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "durationMs": {
-                      "type": "integer",
-                      "description": "Durée."
-                    },
-                    "damageTakenIncrease": {
-                      "type": "number",
-                      "description": "Dégâts directs reçus en plus (0.1 = +10 %)."
-                    }
-                  },
-                  "required": [
-                    "durationMs",
-                    "damageTakenIncrease"
-                  ],
-                  "description": "Fragilité : renouvelée sans cumul."
-                }
-              },
-              "required": [
-                "fragility"
-              ],
-              "description": "États défensifs (A19)."
             }
           },
           "required": [
@@ -611,18 +629,310 @@
             "guard",
             "parry",
             "rampartCharges",
-            "resonance",
-            "states"
+            "resonance"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
+        },
+        "statuses": {
+          "type": "array",
+          "description": "Définitions des altérations (lot 7.2). L'ordre fixe la priorité des motifs de refus.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "category",
+              "durationMs",
+              "stacking",
+              "resistance"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][A-Za-z0-9]*$"
+              },
+              "category": {
+                "enum": [
+                  "dot",
+                  "control",
+                  "modifier",
+                  "immunity"
+                ]
+              },
+              "durationMs": {
+                "type": "integer",
+                "description": "Multiple du tick, au plus 86 400 000 ; multiple de periodMs pour un DOT."
+              },
+              "periodMs": {
+                "type": "integer",
+                "description": "DOT seulement."
+              },
+              "stacking": {
+                "enum": [
+                  "refresh",
+                  "perSourceKeepStronger",
+                  "keepLonger",
+                  "ignore"
+                ]
+              },
+              "resistance": {
+                "enum": [
+                  "none",
+                  "defense",
+                  "duration"
+                ],
+                "description": "defense : DOT réduit par l'armure ou la résistance magique ; duration : contrôle réduit par la résistance aux altérations."
+              },
+              "damageType": {
+                "enum": [
+                  "physique",
+                  "magique"
+                ],
+                "description": "DOT seulement."
+              },
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "skills",
+                    "guard",
+                    "parry",
+                    "regeneration",
+                    "assailantAttacks"
+                  ]
+                }
+              },
+              "interrupts": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "guard",
+                    "parry"
+                  ]
+                }
+              },
+              "blockReason": {
+                "type": "string",
+                "description": "Motif de refus des commandes bloquées (stunned, guardBroken)."
+              },
+              "damageTakenIncrease": {
+                "type": "number",
+                "description": "Bonus de dégâts directs reçus, catégorie altération (0.1 = +10 %)."
+              },
+              "movementSpeedModifier": {
+                "type": "number",
+                "description": "Modificateur de déplacement enregistré (gel : -0.3)."
+              },
+              "grantsOnExpiry": {
+                "type": "string",
+                "description": "Altération appliquée à l'expiration (pas au retrait)."
+              },
+              "immuneTo": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Immunité seulement."
+              },
+              "triggers": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "$ref": "#/$defs/trigger"
+                },
+                "description": "Déclencheurs (lot 7.3), au plus 8."
+              }
+            }
+          }
         }
       },
       "required": [
         "stats",
         "damage",
         "progression",
-        "combat"
+        "combat",
+        "statuses"
       ]
+    }
+  },
+  "$defs": {
+    "rankedValue": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "type": "number"
+            },
+            "perRank": {
+              "type": "number",
+              "description": "Talents seulement : ajouté à chaque rang au-delà du premier."
+            }
+          },
+          "required": [
+            "base"
+          ]
+        }
+      ],
+      "description": "Nombre décimal, ou valeur par rang { base, perRank } (talents seulement)."
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "on": {
+          "enum": [
+            "onSkillCast",
+            "onHitDealt",
+            "onHitTaken",
+            "onBlock",
+            "onPerfectParry",
+            "onGuardBroken",
+            "onResourceGained",
+            "onStateApplied",
+            "onStateExpired",
+            "onStateRemoved",
+            "onDotTick",
+            "onDeath"
+          ],
+          "description": "Type d'abonnement : l'événement de jeu observé (les diagnostics ne déclenchent jamais)."
+        },
+        "role": {
+          "enum": [
+            "self",
+            "source",
+            "target"
+          ],
+          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un."
+        },
+        "filter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Compétences ou attaques d'assaillant."
+            },
+            "damageType": {
+              "enum": [
+                "physique",
+                "magique"
+              ]
+            },
+            "defense": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "none",
+                  "guard",
+                  "parry",
+                  "unblockable",
+                  "guardBroken"
+                ]
+              }
+            },
+            "status": {
+              "type": "string"
+            },
+            "category": {
+              "enum": [
+                "dot",
+                "control",
+                "modifier",
+                "immunity"
+              ]
+            },
+            "resource": {
+              "enum": [
+                "rampartCharges",
+                "resonance"
+              ]
+            },
+            "renewed": {
+              "type": "boolean"
+            }
+          }
+        },
+        "cooldownMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000,
+          "description": "Recharge interne : intervalle minimal entre deux réactions acceptées, multiple du tick."
+        },
+        "effects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "strike",
+                  "applyStatus",
+                  "gainResource"
+                ]
+              },
+              "target": {
+                "enum": [
+                  "eventSource",
+                  "eventTarget",
+                  "bearer",
+                  "allEnemies"
+                ]
+              },
+              "coefficient": {
+                "$ref": "#/$defs/rankedValue"
+              },
+              "powerType": {
+                "enum": [
+                  "physique",
+                  "agile",
+                  "magique"
+                ]
+              },
+              "damageType": {
+                "enum": [
+                  "physique",
+                  "magique"
+                ]
+              },
+              "unblockable": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "resource": {
+                "enum": [
+                  "rampartCharges",
+                  "resonance",
+                  "endurance"
+                ]
+              },
+              "amount": {
+                "$ref": "#/$defs/rankedValue"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          }
+        }
+      },
+      "required": [
+        "on",
+        "effects"
+      ],
+      "description": "Déclencheur (lot 7.3) : 1 à 4 effets exécutés comme une seule réaction."
     }
   }
 }

@@ -24,7 +24,7 @@ public class ClassJsonReaderTests
     {
         ClassLoadResult result = ClassJsonReader.ReadFile(BastionPath, Progression);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(2, result.Class!.SchemaVersion);
+        Assert.Equal(4, result.Class!.SchemaVersion);
         Assert.Equal("0.2.0-provisoire", result.Class.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Class.Fingerprint);
     }
@@ -222,7 +222,7 @@ public class ClassJsonReaderTests
         // Chemin d'un futur chargeur Unity : il remplit un ClassDocument et appelle le même validateur.
         var document = new ClassDocument
         {
-            SchemaVersion = DataFormat.CurrentSchemaVersion, Kind = "class", ContentVersion = "0.1.0",
+            SchemaVersion = DataFormat.ClassSchemaVersion, Kind = "class", ContentVersion = "0.1.0",
             Data = new ClassData
             {
                 Id = "class.mini", Name = "Mini",

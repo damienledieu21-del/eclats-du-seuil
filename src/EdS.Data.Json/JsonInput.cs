@@ -24,26 +24,48 @@ internal sealed class JsonInput
     {
         AllowTrailingCommas = false,
         CommentHandling = JsonCommentHandling.Disallow,
-        MaxDepth = 64,
+        MaxDepth = InputLimits.MaxJsonDepth,
     };
 
     public ValidationReport Report { get; }
-    private readonly JsonLineIndex _lines;
+    private readonly byte[] _utf8;
+    private JsonLineIndex? _lines;
 
-    private JsonInput(ValidationReport report, JsonLineIndex lines)
+    private JsonInput(ValidationReport report, byte[] utf8)
     {
         Report = report;
-        _lines = lines;
+        _utf8 = utf8;
     }
 
-    public long? LineOf(string path, int occurrence = 0) => _lines.Of(path, occurrence);
+    /// <summary>
+    /// Ligne d'un chemin JSON. L'index des lignes n'est construit qu'à la première demande : un fichier sans erreur
+    /// localisée n'en paie jamais le coût.
+    /// </summary>
+    public long? LineOf(string path, int occurrence = 0) => (_lines ??= JsonLineIndex.Build(_utf8)).Of(path, occurrence);
 
-    /// <summary>Lit un fichier ; en cas d'échec, le rapport contient <see cref="ValidationCode.FileUnreadable"/>.</summary>
-    public static string? ReadFile(string path, ValidationReport report)
+    /// <summary>
+    /// Lit un fichier en octets UTF-8, sans marque d'ordre, en refusant avant lecture un fichier de plus de
+    /// <paramref name="maxBytes"/> octets. La lecture elle-même est bornée : un fichier qui grandit entre le contrôle et
+    /// la lecture est refusé de la même façon. En cas d'échec, le rapport contient <see cref="ValidationCode.FileUnreadable"/>
+    /// ou <see cref="ValidationCode.FileTooLarge"/>.
+    /// </summary>
+    public static byte[]? ReadFile(string path, ValidationReport report, long maxBytes = InputLimits.MaxDataFileBytes)
     {
         try
         {
-            return File.ReadAllText(path, Encoding.UTF8);
+            long length = new FileInfo(path).Length;
+            if (length > maxBytes)
+            {
+                TooLarge(report, length, maxBytes, path);
+                return null;
+            }
+            byte[]? bytes = ReadBounded(path, maxBytes);
+            if (bytes is null)
+            {
+                TooLarge(report, null, maxBytes, path);
+                return null;
+            }
+            return bytes;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -52,24 +74,74 @@ internal sealed class JsonInput
         }
     }
 
+    /// <summary>Lit au plus <paramref name="maxBytes"/> octets ; null si le flux en contient davantage. La marque UTF-8 est retirée.</summary>
+    internal static byte[]? ReadBounded(string path, long maxBytes)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = stream.Read(chunk, 0, chunk.Length)) > 0)
+        {
+            if (buffer.Length + read > maxBytes) return null;
+            buffer.Write(chunk, 0, read);
+        }
+        byte[] bytes = buffer.ToArray();
+        return bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? bytes[3..] : bytes;
+    }
+
+    private static void TooLarge(ValidationReport report, long? length, long maxBytes, string? path)
+    {
+        string what = path is null ? "texte JSON" : $"fichier « {path} »";
+        string size = length is { } n ? $" de {n} octets" : string.Empty;
+        report.Add("$", ValidationCode.FileTooLarge,
+            $"{what}{size} trop volumineux : au plus {InputLimits.DescribeBytes(maxBytes)} ; refusé avant lecture du contenu.");
+    }
+
+    /// <summary>
+    /// Encode un texte JSON en UTF-8 après avoir vérifié sa taille, sans l'encoder d'abord : un texte de plus de
+    /// <see cref="InputLimits.MaxDataFileBytes"/> octets est refusé (<see cref="ValidationCode.FileTooLarge"/>) et null est rendu.
+    /// </summary>
+    public static byte[]? Utf8(string json, ValidationReport report)
+    {
+        // Chaque unité UTF-16 donne au moins un octet : une longueur au-delà de la limite suffit à refuser sans compter.
+        long bytes = json.Length > InputLimits.MaxDataFileBytes ? json.Length : Encoding.UTF8.GetByteCount(json);
+        if (bytes > InputLimits.MaxDataFileBytes)
+        {
+            TooLarge(report, bytes, InputLimits.MaxDataFileBytes, null);
+            return null;
+        }
+        return Encoding.UTF8.GetBytes(json);
+    }
+
     /// <summary>
     /// Analyse le texte puis lit l'en-tête commun ; <paramref name="readData"/> reçoit l'élément <c>data</c>.
     /// </summary>
-    public static JsonHeader Parse(string json, ValidationReport report, Action<JsonInput, JsonElement> readData)
+    public static JsonHeader Parse(byte[] utf8, ValidationReport report, Action<JsonInput, JsonElement> readData)
     {
         var header = new JsonHeader();
-        ParseDocument(json, report, (input, root) => input.ReadRoot(root, header, readData));
+        ParseDocument(utf8, report, (input, root) => input.ReadRoot(root, header, readData));
         return header;
     }
 
-    /// <summary>Analyse un texte JSON strict et confie la racine à <paramref name="readRoot"/> (journal, fichiers sans en-tête commun).</summary>
+    /// <summary>Analyse un texte JSON strict (taille vérifiée avant encodage) et confie la racine à <paramref name="readRoot"/>.</summary>
     public static void ParseDocument(string json, ValidationReport report, Action<JsonInput, JsonElement> readRoot)
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        if (Utf8(json, report) is { } utf8) ParseDocument(utf8, report, readRoot);
+    }
+
+    /// <summary>Analyse des octets UTF-8 (journal, fichiers sans en-tête commun) et confie la racine à <paramref name="readRoot"/>.</summary>
+    public static void ParseDocument(byte[] utf8, ValidationReport report, Action<JsonInput, JsonElement> readRoot)
+    {
+        if (utf8.Length > InputLimits.MaxDataFileBytes)
+        {
+            TooLarge(report, utf8.Length, InputLimits.MaxDataFileBytes, null);
+            return;
+        }
         JsonDocument parsed;
         try
         {
-            parsed = JsonDocument.Parse(bytes, DocumentOptions);
+            parsed = JsonDocument.Parse(utf8, DocumentOptions);
         }
         catch (JsonException e)
         {
@@ -78,7 +150,7 @@ internal sealed class JsonInput
         }
 
         using (parsed)
-            readRoot(new JsonInput(report, JsonLineIndex.Build(bytes)), parsed.RootElement);
+            readRoot(new JsonInput(report, utf8), parsed.RootElement);
     }
 
     /// <summary>Lit un objet dont les champs connus ont chacun un lecteur ; tout autre champ est signalé.</summary>
@@ -98,6 +170,30 @@ internal sealed class JsonInput
     public List<T?>? ReadList<T>(JsonElement element, string path, Func<JsonElement, string, T?> readItem) where T : class
     {
         if (!RequireKind(element, JsonValueKind.Array, path, "tableau")) return null;
+        return ReadItems(element, path, readItem);
+    }
+
+    /// <summary>
+    /// Lit un tableau dont la longueur est plafonnée. La longueur est lue avant tout élément : au-delà de
+    /// <paramref name="max"/>, une seule erreur <see cref="ValidationCode.LimitExceeded"/> est rapportée sur le tableau,
+    /// aucun élément n'est construit ni analysé, et null est rendu.
+    /// </summary>
+    public List<T?>? ReadLimitedList<T>(JsonElement element, string path, int max, Func<int, string> describeExcess,
+        Func<JsonElement, string, T?> readItem) where T : class
+    {
+        if (!RequireKind(element, JsonValueKind.Array, path, "tableau")) return null;
+        int length = element.GetArrayLength();
+        if (length > max)
+        {
+            // Recherche ciblée de la ligne : on ne construit pas l'index complet d'un fichier refusé pour son volume.
+            Report.Add(path, ValidationCode.LimitExceeded, describeExcess(length), _lines?.Of(path) ?? JsonLineIndex.FindFirst(_utf8, path));
+            return null;
+        }
+        return ReadItems(element, path, readItem);
+    }
+
+    private static List<T?> ReadItems<T>(JsonElement element, string path, Func<JsonElement, string, T?> readItem) where T : class
+    {
         var list = new List<T?>();
         int index = 0;
         foreach (JsonElement item in element.EnumerateArray())
@@ -295,6 +391,32 @@ internal sealed class JsonLineIndex
 
     public static JsonLineIndex Build(byte[] utf8)
     {
+        var result = new Dictionary<string, List<long>>(StringComparer.Ordinal);
+        Scan(utf8, (path, line) =>
+        {
+            if (!result.TryGetValue(path, out List<long>? list)) result[path] = list = new List<long>();
+            list.Add(line);
+            return true;
+        });
+        return new JsonLineIndex(result);
+    }
+
+    /// <summary>Ligne de la première occurrence d'un chemin, en arrêtant la lecture dès qu'il est trouvé.</summary>
+    public static long? FindFirst(byte[] utf8, string path)
+    {
+        long? found = null;
+        Scan(utf8, (p, line) =>
+        {
+            if (p != path) return true;
+            found = line;
+            return false;
+        });
+        return found;
+    }
+
+    /// <summary>Parcourt les noms de propriétés dans l'ordre du fichier ; <paramref name="onProperty"/> rend false pour arrêter.</summary>
+    private static void Scan(byte[] utf8, Func<string, long, bool> onProperty)
+    {
         var newlines = new List<long>();
         for (int i = 0; i < utf8.Length; i++)
             if (utf8[i] == (byte)'\n') newlines.Add(i);
@@ -305,19 +427,12 @@ internal sealed class JsonLineIndex
             return (index < 0 ? ~index : index) + 1;
         }
 
-        void Record(Dictionary<string, List<long>> map, string path, long line)
-        {
-            if (!map.TryGetValue(path, out List<long>? list)) map[path] = list = new List<long>();
-            list.Add(line);
-        }
-
         // Pile des segments de chemin ; pour un tableau, on garde aussi l'indice de l'élément courant.
-        var result = new Dictionary<string, List<long>>(StringComparer.Ordinal);
         var stack = new List<string> { "$" };
         var arrayIndex = new Stack<int>();
         var inArray = new Stack<bool>();
         string? pendingName = null;
-        var reader = new Utf8JsonReader(utf8, new JsonReaderOptions { CommentHandling = JsonCommentHandling.Disallow });
+        var reader = new Utf8JsonReader(utf8, new JsonReaderOptions { CommentHandling = JsonCommentHandling.Disallow, MaxDepth = InputLimits.MaxJsonDepth });
 
         string ElementSegment()
         {
@@ -332,7 +447,7 @@ internal sealed class JsonLineIndex
             {
                 case JsonTokenType.PropertyName:
                     pendingName = reader.GetString();
-                    Record(result, string.Join(".", stack.Where(x => x != "\u0000")) + "." + pendingName, LineOf(reader.TokenStartIndex));
+                    if (!onProperty(string.Join(".", stack.Where(x => x != "\u0000")) + "." + pendingName, LineOf(reader.TokenStartIndex))) return;
                     break;
                 case JsonTokenType.StartObject:
                 case JsonTokenType.StartArray:
@@ -373,6 +488,5 @@ internal sealed class JsonLineIndex
                     break;
             }
         }
-        return new JsonLineIndex(result);
     }
 }

@@ -20,6 +20,9 @@ namespace EdS.Data.Rules
 
         public RulesDocument() => Values = new System.Collections.ObjectModel.ReadOnlyDictionary<string, RuleValue>(_values);
 
+        /// <summary>Bloc <c>statuses</c> (lot 7.2) : définitions des altérations dans l'ordre du fichier ; null si absent.</summary>
+        public List<StatusData?>? Statuses { get; set; }
+
         public void Set(string path, RuleValue value) => _values[path] = value;
 
         public bool Remove(string path) => _values.Remove(path);

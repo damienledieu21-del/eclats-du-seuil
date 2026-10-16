@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(2, result.Rules!.SchemaVersion);
-        Assert.Equal("0.2.0-provisoire", result.Rules.ContentVersion);
+        Assert.Equal(5, result.Rules!.SchemaVersion);
+        Assert.Equal("0.5.0-provisoire", result.Rules.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -50,7 +50,16 @@ public class RulesJsonReaderTests
         foreach (PropertyInfo p in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             object? e = p.GetValue(expected), a = p.GetValue(actual);
-            bool same = e is IEnumerable<int> el && a is IEnumerable<int> al ? el.SequenceEqual(al) : Equals(e, a);
+            if (e is StatusCatalog ec && a is StatusCatalog ac)
+            {
+                // Lot 7.2 : catalogue des altérations comparé définition par définition, dans l'ordre.
+                Assert.Equal(ec.Definitions.Count, ac.Definitions.Count);
+                for (int i = 0; i < ec.Definitions.Count; i++) AssertSameProperties(ec.Definitions[i], ac.Definitions[i]);
+                continue;
+            }
+            bool same = e is IEnumerable<int> el && a is IEnumerable<int> al ? el.SequenceEqual(al)
+                : e is IEnumerable<string> es && a is IEnumerable<string> @as ? es.SequenceEqual(@as)
+                : Equals(e, a);
             Assert.True(same, $"{typeof(T).Name}.{p.Name} : {e} attendu, {a} lu.");
         }
     }
@@ -90,8 +99,12 @@ public class RulesJsonReaderTests
     {
         // Valeur de référence : changer le format canonique change toutes les empreintes déjà journalisées.
         // Correctif 6.1 : nouvelle valeur car la version de schéma (2) fait partie du texte canonique ; valeurs inchangées.
+        // Lot 7.2 : schéma 4, bloc statuses et constante de résistance aux altérations dans le texte canonique.
+        // Correctif 7.2 : empilement de l'étourdissement passé à ignore.
+        // Lot 7.3 : schéma 5 et combat.limits.maxTriggerDepth ; une altération sans déclencheur n'ajoute rien au texte canonique.
+        // Correctif 7.3.1 (A73-M02) : contrat canonique 2 (version en tête, champs absents marqués, listes indicées).
         Assert.Equal(
-            "sha256:67d3894c9d1f66fee1863b16430d6b6a75b8dea3c3929780ac9e8c0099c8fd4b",
+            "sha256:293ef0ea83036e903d5d50699a45c8c9d5dbf7a94eb106b42961380506b9c5ad",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -99,7 +112,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 3), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 6), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Ancien_format_v1_refuse_explicitement_sans_migration()
@@ -111,6 +124,22 @@ public class RulesJsonReaderTests
             r["schemaVersion"] = 1;
             r["data"]!["combat"]!.AsObject().Remove("guard");
             r["data"]!["combat"]!.AsObject().Remove("parry");
+        });
+        AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        Assert.Contains("aucune migration", result.Report.Errors[0].Message);
+    }
+
+    [Fact]
+    public void Ancien_format_v2_refuse_explicitement_sans_migration()
+    {
+        // Lot 7.1 : un fichier de règles du lot 6 (sans les cinq limites d'admission et de budget) est refusé par sa
+        // version, avec un seul message, sans cascade de champs manquants.
+        RulesLoadResult result = ReadMutated(r =>
+        {
+            r["schemaVersion"] = 2;
+            var limits = r["data"]!["combat"]!["limits"]!.AsObject();
+            foreach (string name in new[] { "maxCombatants", "maxCommands", "maxCommandsPerActorPerTick", "maxPendingEvents", "maxWorkPerTick" })
+                limits.Remove(name);
         });
         AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
         Assert.Contains("aucune migration", result.Report.Errors[0].Message);
@@ -138,7 +167,9 @@ public class RulesJsonReaderTests
     public void Data_absent_signale_chaque_parametre_manquant()
     {
         var result = ReadMutated(r => r.Remove("data"));
-        Assert.Equal(RulesCatalog.Fields.Count, result.Report.Errors.Count(e => e.Code == ValidationCode.MissingField));
+        // Chaque paramètre du catalogue, plus le bloc « statuses » (lot 7.2).
+        Assert.Equal(RulesCatalog.Fields.Count + 1, result.Report.Errors.Count(e => e.Code == ValidationCode.MissingField));
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.statuses" && e.Code == ValidationCode.MissingField);
     }
 
     // --- Champs ------------------------------------------------------------------------

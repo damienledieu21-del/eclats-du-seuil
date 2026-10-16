@@ -80,6 +80,17 @@ namespace EdS.Simulation.Engine
         /// <summary>Retire le premier élément s'il est prévu exactement à ce tick et dans cette phase.</summary>
         public bool TryDequeue(long tick, CombatPhase phase, out T item)
         {
+            if (!TryPeek(tick, phase, out item)) return false;
+            Dequeue();
+            return true;
+        }
+
+        /// <summary>
+        /// Lit sans le retirer le premier élément s'il est prévu exactement à ce tick et dans cette phase (lot 7.1 : le
+        /// moteur réserve le budget de son traitement avant de le retirer). Avance le curseur comme <see cref="TryDequeue"/>.
+        /// </summary>
+        public bool TryPeek(long tick, CombatPhase phase, out T item)
+        {
             if (!_started || tick > _cursorTick || (tick == _cursorTick && phase > _cursorPhase))
             {
                 _started = true;
@@ -91,7 +102,7 @@ namespace EdS.Simulation.Engine
                 item = default!;
                 return false;
             }
-            item = Dequeue();
+            item = _heap[0].Item;
             return true;
         }
 

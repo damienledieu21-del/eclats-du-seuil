@@ -50,7 +50,7 @@ public class CaM01NumericEnvelopeTests
         return result;
     }
 
-    private static AssailantAttack Magic(long raw = 100) => new("sort", raw, DamageType.Magique, SkillTargeting.Enemy, false, false);
+    private static AssailantAttack Magic(long raw = 100) => new("sort", raw, DamageType.Magique, SkillTargeting.Enemy, false);
 
     /// <summary>Personnage contre assaillant : chacun frappe l'autre, avec des dégâts physiques et magiques.</summary>
     private static CombatSetup Duel(StatRules? stats = null, DamageRules? damage = null, Fixed? assailantDefense = null)

@@ -81,10 +81,27 @@ namespace EdS.Domain.Builds
         /// et faisabilité de chaque talent majeur avec les règles de progression.
         /// Les chemins des erreurs ont la forme des fichiers de données (<c>trees[0].talents[2].maxRank</c>).
         /// </summary>
+        /// <summary>
+        /// Correctif 7.3.1 (A73-M03) : plafonds globaux d'une classe, vérifiés avant tout autre contrôle et avant l'analyse statique des
+        /// cycles. Enveloppes techniques provisoires (la classe livrée a 18 talents et 11 compétences), pas des choix de conception.
+        /// </summary>
+        public const int MaxTalents = 256, MaxSkills = 256, MaxTriggers = 512;
+
         public IReadOnlyList<RuleViolation> Validate(ProgressionRules progression)
         {
             if (progression is null) throw new ArgumentNullException(nameof(progression));
             var errors = new List<RuleViolation>();
+            // Plafonds globaux d'abord : au-delà, rien d'autre n'est examiné (le volume ne peut pas immobiliser la validation).
+            int talents = Trees.Sum(t => t.Talents.Count);
+            int triggers = Trees.Sum(t => t.Talents.Sum(x => x.Triggers.Count)) + Skills.Sum(x => x.Triggers.Count);
+            if (talents > MaxTalents)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{talents} talents, au plus {MaxTalents} par classe (plafond technique provisoire).", "trees"));
+            if (Skills.Count > MaxSkills)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{Skills.Count} compétences, au plus {MaxSkills} par classe (plafond technique provisoire).", "skills"));
+            if (triggers > MaxTriggers)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"{triggers} déclencheurs (talents et compétences), au plus {MaxTriggers} par classe (plafond technique provisoire).", "skills"));
+            if (errors.Count > 0) return errors;
             var ids = new Dictionary<string, string>(StringComparer.Ordinal);   // identifiant → chemin de sa première définition
 
             void CheckId(string id, string prefix, string path)
@@ -126,6 +143,8 @@ namespace EdS.Domain.Builds
                         errors.Add(new RuleViolation($"le rang maximum doit être compris entre 1 et {TalentDefinition.MaxRankLimit}.", path + ".maxRank"));
                     if (talent.IsMajor && talent.MaxRank != 1)
                         errors.Add(new RuleViolation("un talent majeur a un seul rang (1 point pour l'acquérir).", path + ".maxRank"));
+                    // Lot 7.3 : déclencheurs du talent, valeurs bornées à chacun de ses rangs.
+                    Combat.TriggerDefinition.ValidateList(talent.Triggers, path + ".triggers", talent.MaxRank, true, errors);
                 }
             }
 
@@ -167,9 +186,24 @@ namespace EdS.Domain.Builds
                     errors.Add(new RuleViolation($"une ultime ne peut pas être disponible avant le niveau {progression.UltimateUnlockLevel}.", path + ".minLevel"));
                 CheckRequirements(skill.TalentRequirements, path + ".talentRequirements", errors, null);
                 if (skill.Combat is { } combat) CheckCombat(skill, combat, path + ".combat", errors);
+                Combat.TriggerDefinition.ValidateList(skill.Triggers, path + ".triggers", 1, false, errors);
             }
 
             return errors;
+        }
+
+        /// <summary>Lot 7.3 : déclencheurs de la classe nommés pour le graphe statique (A15), dans l'ordre du fichier.</summary>
+        public IReadOnlyList<Combat.NamedTrigger> NamedTriggers()
+        {
+            var named = new List<Combat.NamedTrigger>();
+            for (int t = 0; t < Trees.Count; t++)
+                for (int i = 0; i < Trees[t].Talents.Count; i++)
+                    for (int k = 0; k < Trees[t].Talents[i].Triggers.Count; k++)
+                        named.Add(new Combat.NamedTrigger($"{Trees[t].Talents[i].Id}/{k}", $"trees[{t}].talents[{i}].triggers[{k}]", Trees[t].Talents[i].Triggers[k]));
+            for (int s = 0; s < Skills.Count; s++)
+                for (int k = 0; k < Skills[s].Triggers.Count; k++)
+                    named.Add(new Combat.NamedTrigger($"{Skills[s].Id}/{k}", $"skills[{s}].triggers[{k}]", Skills[s].Triggers[k]));
+            return named;
         }
 
         private static void CheckCombat(SkillDefinition skill, SkillCombatDefinition combat, string path, List<RuleViolation> errors)
@@ -192,6 +226,8 @@ namespace EdS.Domain.Builds
                 errors.Add(new RuleViolation($"gain de Charges de rempart hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".rampartChargeGain"));
             if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
+            // Lot 7.2 : forme des altérations portées ; leur existence est vérifiée avec le catalogue des règles (CombatSetup.Validate).
+            Combat.StatusApplication.ValidateList(combat.Applies, path + ".applies", errors);
         }
 
         private void CheckRequirements(IReadOnlyList<TalentRequirement> requirements, string path, List<RuleViolation> errors, string? ownerId)

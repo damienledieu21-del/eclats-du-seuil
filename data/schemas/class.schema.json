@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 2
+      "const": 4
     },
     "kind": {
       "const": "class"
@@ -148,6 +148,14 @@
           "items": {
             "$ref": "#/$defs/requirement"
           }
+        },
+        "triggers": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/trigger"
+          },
+          "description": "Déclencheurs (lot 7.3), au plus 8."
         }
       }
     },
@@ -194,6 +202,14 @@
         },
         "combat": {
           "$ref": "#/$defs/combat"
+        },
+        "triggers": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/trigger"
+          },
+          "description": "Déclencheurs (lot 7.3), au plus 8."
         }
       }
     },
@@ -211,7 +227,8 @@
         "unblockable",
         "rampartChargeCost",
         "rampartChargeGain",
-        "provisional"
+        "provisional",
+        "applies"
       ],
       "properties": {
         "powerType": {
@@ -265,8 +282,207 @@
         "provisional": {
           "type": "boolean",
           "description": "Valeurs provisoires, non équilibrées."
+        },
+        "applies": {
+          "type": "array",
+          "description": "Altérations appliquées à chaque cible touchée après l'impact (lot 7.2) ; éventuellement vide.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "description": "Identifiant d'une altération du bloc statuses de rules.json (ni immunité ni rupture de garde)."
+              },
+              "coefficient": {
+                "type": "number",
+                "description": "DOT seulement, obligatoire : coefficient de la puissance de la source par tick, [0, 100]."
+              }
+            }
+          }
         }
       }
+    },
+    "rankedValue": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "type": "number"
+            },
+            "perRank": {
+              "type": "number",
+              "description": "Talents seulement : ajouté à chaque rang au-delà du premier."
+            }
+          },
+          "required": [
+            "base"
+          ]
+        }
+      ],
+      "description": "Nombre décimal, ou valeur par rang { base, perRank } (talents seulement)."
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "on": {
+          "enum": [
+            "onSkillCast",
+            "onHitDealt",
+            "onHitTaken",
+            "onBlock",
+            "onPerfectParry",
+            "onGuardBroken",
+            "onResourceGained",
+            "onStateApplied",
+            "onStateExpired",
+            "onStateRemoved",
+            "onDotTick",
+            "onDeath"
+          ],
+          "description": "Type d'abonnement : l'événement de jeu observé (les diagnostics ne déclenchent jamais)."
+        },
+        "role": {
+          "enum": [
+            "self",
+            "source",
+            "target"
+          ],
+          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un."
+        },
+        "filter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Compétences ou attaques d'assaillant."
+            },
+            "damageType": {
+              "enum": [
+                "physique",
+                "magique"
+              ]
+            },
+            "defense": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "none",
+                  "guard",
+                  "parry",
+                  "unblockable",
+                  "guardBroken"
+                ]
+              }
+            },
+            "status": {
+              "type": "string"
+            },
+            "category": {
+              "enum": [
+                "dot",
+                "control",
+                "modifier",
+                "immunity"
+              ]
+            },
+            "resource": {
+              "enum": [
+                "rampartCharges",
+                "resonance"
+              ]
+            },
+            "renewed": {
+              "type": "boolean"
+            }
+          }
+        },
+        "cooldownMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000,
+          "description": "Recharge interne : intervalle minimal entre deux réactions acceptées, multiple du tick."
+        },
+        "effects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "strike",
+                  "applyStatus",
+                  "gainResource"
+                ]
+              },
+              "target": {
+                "enum": [
+                  "eventSource",
+                  "eventTarget",
+                  "bearer",
+                  "allEnemies"
+                ]
+              },
+              "coefficient": {
+                "$ref": "#/$defs/rankedValue"
+              },
+              "powerType": {
+                "enum": [
+                  "physique",
+                  "agile",
+                  "magique"
+                ]
+              },
+              "damageType": {
+                "enum": [
+                  "physique",
+                  "magique"
+                ]
+              },
+              "unblockable": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "resource": {
+                "enum": [
+                  "rampartCharges",
+                  "resonance",
+                  "endurance"
+                ]
+              },
+              "amount": {
+                "$ref": "#/$defs/rankedValue"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          }
+        }
+      },
+      "required": [
+        "on",
+        "effects"
+      ],
+      "description": "Déclencheur (lot 7.3) : 1 à 4 effets exécutés comme une seule réaction."
     }
   }
 }

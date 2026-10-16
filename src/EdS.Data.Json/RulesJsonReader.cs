@@ -16,14 +16,18 @@ public static class RulesJsonReader
     public static RulesLoadResult ReadFile(string path)
     {
         var report = new ValidationReport();
-        string? json = JsonInput.ReadFile(path, report);
-        return json is null ? RulesValidator.Validate(new RulesDocument(), report) : Read(json, report);
+        return Read(JsonInput.ReadFile(path, report), report);
     }
 
-    public static RulesLoadResult Read(string json) => Read(json, new ValidationReport());
-
-    private static RulesLoadResult Read(string json, ValidationReport report)
+    public static RulesLoadResult Read(string json)
     {
+        var report = new ValidationReport();
+        return Read(JsonInput.Utf8(json, report), report);
+    }
+
+    private static RulesLoadResult Read(byte[]? json, ValidationReport report)
+    {
+        if (json is null) return RulesValidator.Validate(new RulesDocument(), report);
         var document = new RulesDocument();
         JsonHeader header = JsonInput.Parse(json, report, (input, data) => ReadObject(input, document, data, DataTree, "$.data"));
         document.SchemaVersion = header.SchemaVersion;
@@ -72,6 +76,11 @@ public static class RulesJsonReader
         foreach (JsonProperty property in input.UniqueProperties(element, jsonPath))
         {
             string childPath = jsonPath + "." + property.Name;
+            if (node == DataTree && property.Name == "statuses")
+            {
+                document.Statuses = input.ReadList(property.Value, childPath, (e, ip) => ReadStatus(input, e, ip));
+                continue;
+            }
             if (!node.Children.TryGetValue(property.Name, out Node? child))
             {
                 if (node.ReferenceLabel != null)
@@ -88,6 +97,32 @@ public static class RulesJsonReader
             else
                 ReadObject(input, document, property.Value, child, childPath);
         }
+    }
+
+    /// <summary>Lot 7.2 : une définition d'altération du bloc <c>statuses</c> (forme seulement, voir <see cref="StatusShape"/>).</summary>
+    private static StatusData? ReadStatus(JsonInput input, JsonElement element, string path)
+    {
+        var s = new StatusData();
+        List<string?>? Names(JsonElement v, string p) => input.ReadList(v, p, (e, ip) => input.Text(e, ip));
+        bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+        {
+            ["id"] = (v, p) => s.Id = input.Text(v, p),
+            ["category"] = (v, p) => s.Category = input.Text(v, p),
+            ["durationMs"] = (v, p) => s.DurationMs = input.Int64(v, p),
+            ["periodMs"] = (v, p) => s.PeriodMs = input.Int64(v, p),
+            ["stacking"] = (v, p) => s.Stacking = input.Text(v, p),
+            ["resistance"] = (v, p) => s.Resistance = input.Text(v, p),
+            ["damageType"] = (v, p) => s.DamageType = input.Text(v, p),
+            ["blocks"] = (v, p) => s.Blocks = Names(v, p),
+            ["interrupts"] = (v, p) => s.Interrupts = Names(v, p),
+            ["blockReason"] = (v, p) => s.BlockReason = input.Text(v, p),
+            ["damageTakenIncrease"] = (v, p) => s.DamageTakenIncrease = input.Decimal(v, p),
+            ["movementSpeedModifier"] = (v, p) => s.MovementSpeedModifier = input.Decimal(v, p),
+            ["grantsOnExpiry"] = (v, p) => s.GrantsOnExpiry = input.Text(v, p),
+            ["immuneTo"] = (v, p) => s.ImmuneTo = Names(v, p),
+            ["triggers"] = (v, p) => s.Triggers = TriggerJsonReader.ReadList(input, v, p),
+        });
+        return ok ? s : null;
     }
 
     private static void ReadLeaf(JsonInput input, RulesDocument document, JsonElement value, RuleField field, string path)

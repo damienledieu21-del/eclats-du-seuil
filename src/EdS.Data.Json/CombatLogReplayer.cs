@@ -46,12 +46,21 @@ public sealed class ReplayOutcome
 /// </summary>
 public static class CombatLogReplayer
 {
-    public static ReplayOutcome ReplayFile(string path, GameData data)
+    public static ReplayOutcome ReplayFile(string path, GameData data) => ReplayFile(path, data, InputLimits.MaxLogFileBytes);
+
+    /// <summary>Rejeu avec une limite de taille donnée (tests de frontière sans fichier de 256 Mio).</summary>
+    internal static ReplayOutcome ReplayFile(string path, GameData data, long maxBytes)
     {
+        // Lot 7.1 : taille vérifiée avant lecture, puis lecture bornée (un fichier qui grandit entre-temps est refusé aussi).
         string[] lines;
         try
         {
-            lines = File.ReadAllText(path).Split('\n');
+            long length = new FileInfo(path).Length;
+            byte[]? bytes = length > maxBytes ? null : JsonInput.ReadBounded(path, maxBytes);
+            if (bytes is null)
+                return new ReplayOutcome(ReplayStatus.Invalid,
+                    [$"journal « {path} » de {length} octets trop volumineux : au plus {InputLimits.DescribeBytes(maxBytes)} ; rejeu refusé avant lecture."]);
+            lines = System.Text.Encoding.UTF8.GetString(bytes).Split('\n');
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -66,7 +75,7 @@ public static class CombatLogReplayer
     {
         if (lines.Count == 0) return new ReplayOutcome(ReplayStatus.Invalid, ["journal vide."]);
         var report = new ValidationReport();
-        LoggedHeader? header = ReadHeader(lines[0], report);
+        LoggedHeader? header = ReadHeader(lines[0], report, data.Rules.Combat);
         if (header is null || !report.IsValid)
             return new ReplayOutcome(ReplayStatus.Invalid, report.Errors.Select(e => "en-tête " + e).ToArray());
 
@@ -93,7 +102,7 @@ public static class CombatLogReplayer
         public ScenarioData? Scenario;
     }
 
-    private static LoggedHeader? ReadHeader(string line, ValidationReport report)
+    private static LoggedHeader? ReadHeader(string line, ValidationReport report, CombatRules limits)
     {
         LoggedHeader? result = null;
         JsonInput.ParseDocument(line, report, (input, root) =>
@@ -103,7 +112,7 @@ public static class CombatLogReplayer
             int? formatVersion = null, tickMs = null;
             DataFileIdentity? rules = null;
             List<DataFileIdentity?>? classes = null;
-            bool hasScenario = false;
+            JsonElement? scenario = null;
             bool ok = input.ReadFields(root, "$", new Dictionary<string, Action<JsonElement, string>>
             {
                 ["type"] = (v, p) => type = input.Text(v, p),
@@ -116,18 +125,21 @@ public static class CombatLogReplayer
                     ["rules"] = (rv, rp) => rules = ReadIdentity(input, rv, rp, "rules"),
                     ["classes"] = (cv, cp) => classes = input.ReadList(cv, cp, (e, ip) => ReadIdentity(input, e, ip, null)),
                 }),
-                ["scenario"] = (v, p) =>
-                {
-                    hasScenario = true;
-                    header.Scenario = ScenarioJsonReader.ReadData(input, v, p);
-                },
+                ["scenario"] = (v, p) => scenario = v,
             });
             if (!ok) return;
             if (type != "header" || format != CombatEngine.LogFormat)
                 report.Add("$.type", ValidationCode.WrongKind, $"première ligne attendue : en-tête « {CombatEngine.LogFormat} ».");
-            if (formatVersion is null || engine is null || tickMs is null || rules is null || classes is null || classes.Any(c => c is null) || !hasScenario)
+            if (formatVersion is null || engine is null || tickMs is null || rules is null || classes is null || classes.Any(c => c is null) || scenario is null)
                 report.Add("$", ValidationCode.MissingField, "en-tête incomplet (formatVersion, engineVersion, tickMs, data.rules, data.classes, scenario).");
             if (!report.IsValid) return;
+            // Lot 7.2 : le scénario d'un journal d'un autre format n'est pas lu (sa forme peut avoir changé) ; le rejeu sera
+            // refusé par CombatReplay.CheckIdentity avec le motif de format plutôt qu'avec une erreur de lecture.
+            if (formatVersion == CombatEngine.LogFormatVersion)
+            {
+                header.Scenario = ScenarioJsonReader.ReadData(input, scenario!.Value, "$.scenario", limits);
+                if (!report.IsValid) return;
+            }
             header.FormatVersion = formatVersion!.Value;
             header.EngineVersion = engine!;
             header.TickMs = tickMs!.Value;

@@ -16,14 +16,18 @@ public static class ClassJsonReader
     public static ClassLoadResult ReadFile(string path, ProgressionRules progression)
     {
         var report = new ValidationReport();
-        string? json = JsonInput.ReadFile(path, report);
-        return json is null ? ClassValidator.Validate(new ClassDocument(), progression, report) : Read(json, progression, report);
+        return Read(JsonInput.ReadFile(path, report), progression, report);
     }
 
-    public static ClassLoadResult Read(string json, ProgressionRules progression) => Read(json, progression, new ValidationReport());
-
-    private static ClassLoadResult Read(string json, ProgressionRules progression, ValidationReport report)
+    public static ClassLoadResult Read(string json, ProgressionRules progression)
     {
+        var report = new ValidationReport();
+        return Read(JsonInput.Utf8(json, report), progression, report);
+    }
+
+    private static ClassLoadResult Read(byte[]? json, ProgressionRules progression, ValidationReport report)
+    {
+        if (json is null) return ClassValidator.Validate(new ClassDocument(), progression, report);
         var document = new ClassDocument();
         JsonHeader header = JsonInput.Parse(json, report, (input, data) => document.Data = ReadClass(input, data, "$.data"));
         document.SchemaVersion = header.SchemaVersion;
@@ -83,6 +87,7 @@ public static class ClassJsonReader
             ["major"] = (v, p) => talent.Major = Bool(input, v, p),
             ["placeholder"] = (v, p) => talent.Placeholder = Bool(input, v, p),
             ["prerequisites"] = (v, p) => talent.Prerequisites = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
+            ["triggers"] = (v, p) => talent.Triggers = TriggerJsonReader.ReadList(input, v, p),
         });
         return ok ? talent : null;
     }
@@ -99,6 +104,7 @@ public static class ClassJsonReader
             ["placeholder"] = (v, p) => skill.Placeholder = Bool(input, v, p),
             ["talentRequirements"] = (v, p) => skill.TalentRequirements = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
             ["combat"] = (v, p) => skill.Combat = ReadCombat(input, v, p),
+            ["triggers"] = (v, p) => skill.Triggers = TriggerJsonReader.ReadList(input, v, p),
         });
         return ok ? skill : null;
     }
@@ -118,8 +124,21 @@ public static class ClassJsonReader
             ["rampartChargeCost"] = (v, p) => combat.RampartChargeCost = Int(input, v, p),
             ["rampartChargeGain"] = (v, p) => combat.RampartChargeGain = Int(input, v, p),
             ["provisional"] = (v, p) => combat.Provisional = Bool(input, v, p),
+            ["applies"] = (v, p) => combat.Applies = ReadList(input, v, p, (e, ip) => ReadApplication(input, e, ip)),
         });
         return ok ? combat : null;
+    }
+
+    /// <summary>Altération portée (lot 7.2), même forme dans les classes et les scénarios.</summary>
+    internal static StatusApplicationData? ReadApplication(JsonInput input, JsonElement element, string path)
+    {
+        var application = new StatusApplicationData();
+        bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+        {
+            ["status"] = (v, p) => application.Status = input.Text(v, p),
+            ["coefficient"] = (v, p) => application.Coefficient = input.Decimal(v, p),
+        });
+        return ok ? application : null;
     }
 
     private static RequirementData? ReadRequirement(JsonInput input, JsonElement element, string path)
