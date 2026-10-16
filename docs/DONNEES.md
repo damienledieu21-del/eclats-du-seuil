@@ -34,6 +34,25 @@ Cohérence vérifiée par `StatusCatalog.Validate` (seule validation de gameplay
 
 Applications (`applies`, dans le bloc `combat` d'une compétence et dans chaque attaque d'assaillant ; obligatoire, éventuellement vide) : `{"status": "bleed", "coefficient": 0.5}`. Le coefficient est obligatoire pour un DOT, interdit sinon, dans [0, 100] ; une altération citée deux fois, inconnue, une immunité ou l'altération de rupture sont refusées. `stats.statusResistanceConstant` (K, 1000) est dans ]0, 10⁹] ; `statusResistance` d'un mannequin ou d'un assaillant (facultatif, 0 par défaut) dans [0, 10⁹].
 
+## Déclencheurs (sous-lot 7.3)
+
+Un déclencheur est une donnée, jamais du code : `triggers` est une liste facultative (au plus 8) sur un **talent** ou une **compétence** de classe (passive, active ou ultime ; seuls les talents de rang ≥ 1 et les compétences équipées sont actifs), sur une **altération** du catalogue (`statuses[].triggers`, actif tant que l'instance existe) et sur un **assaillant** de scénario (Q4, pour les tests et les entraînements). L'équipement est réservé (Q9), non implémenté. Aucune donnée livrée n'en porte : les déclencheurs de gameplay restent dans les tests jusqu'au lot 8 (Q14).
+
+```json
+{ "on": "onBlock", "role": "source", "cooldownMs": 500, "filter": { "damageType": "physique" },
+  "effects": [ { "type": "strike", "target": "eventTarget", "coefficient": 1, "powerType": "physique", "damageType": "magique", "unblockable": true },
+               { "type": "applyStatus", "target": "eventTarget", "status": "bleed", "coefficient": { "base": 0.25, "perRank": 0.05 } } ] }
+```
+
+- `on` (obligatoire) : `onSkillCast`, `onHitDealt`, `onHitTaken`, `onBlock`, `onPerfectParry`, `onGuardBroken`, `onResourceGained`, `onStateApplied`, `onStateExpired`, `onStateRemoved`, `onDotTick`, `onDeath` (événements observables de §1.2 seulement ; aucun diagnostic n'est observable).
+- `role` : `self`, `source` ou `target`, obligatoire quand le type en admet plusieurs (blocage, parade, rupture, états, DOT), interdit sinon ; `onDeath` n'admet que `source` (le tueur), `onHitTaken` que `target`.
+- `filter` (facultatif) : `skills` (identifiants de compétences ou d'attaques d'assaillant), `damageType`, `defense` (liste parmi `none`, `guard`, `parry`, `unblockable`, `guardBroken`), `status` ou `category` (pas les deux), `resource` (`rampartCharges` ou `resonance`), `renewed` ; chaque critère doit avoir un sens pour `on`. Le filtre ne lit que l'instantané de l'événement.
+- `cooldownMs` : recharge interne dans [0, 24 h], multiple du tick.
+- `effects` : 1 à 4, exécutés dans l'ordre comme une seule réaction. `strike` : `target` (`eventSource`, `eventTarget`, `allEnemies`, jamais le porteur), `coefficient` (0 à 100), `powerType`, `damageType`, `unblockable` facultatif. `applyStatus` : `target` (les mêmes, ou `bearer`), `status` (mêmes règles que `applies` : coefficient obligatoire pour un DOT, ni immunité ni rupture de garde). `gainResource` : `resource` (`resonance`, `rampartCharges`, `endurance`), `amount` entier (au plus le coût maximal d'une compétence), toujours au porteur. `onDeath` ne vise pas `eventTarget` (le mort).
+- Valeurs par rang : un nombre, ou `{ "base": x, "perRank": y }` pour un talent seulement, borné à chaque rang possible.
+
+Validation unique (`TriggerDefinition.ValidateList` et `ValidateReferences`, appelées par les lecteurs de règles, de classes et de scénarios et par `CombatSetup.Validate`), erreurs localisées à `…triggers[i].champ`. Un **cycle statique** possible (un déclencheur dont les effets peuvent produire l'événement qu'il observe, directement ou par une chaîne de déclencheurs) est un **avertissement** du rapport, jamais une erreur (Q1) : la règle de cycle et la profondeur garantissent la terminaison. `combat.limits.maxTriggerDepth` (4, de 0 à 8) borne la profondeur. Comportement au combat : [MOTEUR.md](MOTEUR.md#déclencheurs-sous-lot-73).
+
 ## Architecture
 
 ```

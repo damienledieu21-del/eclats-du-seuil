@@ -34,7 +34,8 @@ dotnet test --filter Category=Resources   # garde, parade, ressources, états (l
 dotnet test --filter Category=Regression  # non-régression du correctif 6.1 (M01 à M05)
 dotnet test --filter Category=Limits      # admission, budgets et capacités (sous-lot 7.1)
 dotnet test --filter Category=Status      # altérations : DOT, contrôles, immunités, résistances (sous-lot 7.2)
-scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status   # échoue si une catégorie est vide
+dotnet test --filter Category=Trigger     # déclencheurs, provenance, cycles, profondeur, report (sous-lot 7.3)
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger   # échoue si une catégorie est vide
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
@@ -72,6 +73,8 @@ Sous-lot 7.2 (altérations) : catalogue d'altérations en données (`statuses` d
 
 Correctif 7.2 (arbitrages après revue du sous-lot 7.2) : étourdissement en cumul `ignore` (refus `active`, immunité toujours accordée à l'expiration sauf décès) ; DOT à cadence d'origine avec fin effective alignée sur les ticks et journalisée (`untilTick`, `nextTick`) ; une parade parfaite empêche les altérations de l'impact paré (`parried`), pas la garde normale ni les attaques imparables ; budgets inchangés (1000 événements par tick, 100 000 en file) et contrôle prudent de saturation de la file avant le premier tick ; résistance K = 1000 et +2 par point de Volonté conservées ; DOT maintenus après la mort de leur source. Provenance causale des altérations pour le sous-lot 7.3 : [docs/LIMITES_LOT_7.md](docs/LIMITES_LOT_7.md#provenance-causale-des-altérations-préparation-du-sous-lot-73-correctif-72). Moteur 0.8.1, journal au format 3.
 
+Sous-lot 7.3 (déclencheurs et synergies) : déclencheurs en données sur les talents, compétences équipées, altérations et assaillants de scénario (équipement réservé) ; provenance de chaque effet au journal (`eid`, `cause`, `root`, `depth`, `trigger`, format 4) ; notification à l'émission dans un ordre total, recharge interne, règle de cycle par identité de déclencheur, profondeur 4 (plafond 8), suppressions journalisées (`triggerSuppressed`) ; réactions réservées entières avant toute mutation (frappe sans critique, application, gain de ressource jamais notifié) ; report au tick suivant (`deferredFromTick`, `deferredDropped`) et annulations journalisées (`reactionCancelled`) ; majorant de file non garanti dès qu'un déclencheur existe. Gameplay des quatre scénarios livrés inchangé. Moteur 0.9.0, journal au format 4. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#déclencheurs-sous-lot-73).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -84,4 +87,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 5 — moteur de simulation minimal (horloge, commandes, recharges, endurance, dégâts directs, journal, rejeu)
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
-- [ ] Lot 7 — en cours : sous-lots 7.1 (limites, budgets, capacités mesurées) et 7.2 (altérations) faits, correctif 7.2 en revue ; déclencheurs (7.3) à venir
+- [ ] Lot 7 — en cours : sous-lots 7.1 (limites, budgets, capacités mesurées), 7.2 (altérations) et correctif 7.2 faits ; déclencheurs (7.3) en revue

@@ -1,6 +1,6 @@
-# Contrat de limites du lot 7 (correctifs 6.1 et 6.1.1, sous-lots 7.1 et 7.2, correctif 7.2)
+# Contrat de limites du lot 7 (correctifs 6.1 et 6.1.1, sous-lots 7.1 à 7.3, correctif 7.2)
 
-Statut : **contrat en partie implémenté**. Le sous-lot 7.1 a mis en place l'admission des scénarios, les limites des lecteurs, les budgets de travail et de file et la mesure des pics ; ces éléments sont marqués « en place ». Le sous-lot 7.2 a ajouté les altérations génériques (DOT, contrôles, immunités, résistances), leurs coûts réservés et leur précontrôle numérique, sans déclencheur. Le reste (provenance, profondeur, déclencheurs, report) reste un contrat pour la suite du lot 7, qui fixe à l'avance les bornes et les règles de terminaison du moteur général des états. Toutes les valeurs configurables sont **provisoires** et se trouvent dans `rules.json`, bloc `combat.limits` (`schemaVersion` 4 ; voir [DONNEES.md](DONNEES.md)).
+Statut : **contrat en partie implémenté**. Le sous-lot 7.1 a mis en place l'admission des scénarios, les limites des lecteurs, les budgets de travail et de file et la mesure des pics ; ces éléments sont marqués « en place ». Le sous-lot 7.2 a ajouté les altérations génériques (DOT, contrôles, immunités, résistances), leurs coûts réservés et leur précontrôle numérique, sans déclencheur. Le sous-lot 7.3 a mis en place la provenance des effets (journal au format 4), les déclencheurs, la profondeur, la règle de cycle, le report et l'annulation des réactions, et le majorant de file non garanti avec déclencheurs ; ces éléments sont marqués « en place depuis l'étape 7.3.x ». Les sections qui suivent fixent les bornes et les règles de terminaison du moteur général des états. Toutes les valeurs configurables sont **provisoires** et se trouvent dans `rules.json`, bloc `combat.limits` (`schemaVersion` 4 ; voir [DONNEES.md](DONNEES.md)).
 
 ## Principes
 
@@ -330,7 +330,15 @@ Lecture :
 - **Le cycle coupe tôt** : un porteur ne réagit pas deux fois dans une même chaîne. Entre deux porteurs seulement, le ping-pong s'arrête à la profondeur 3 par `cycle`, jamais par `depth` ; atteindre la profondeur 4 demande au moins trois porteurs distincts dans la chaîne (ici les arbres de zone). Le plan (§10.2, « chaîne 1-2-3-4 puis depth à 5 » pour deux porteurs de la même définition) est corrigé en ce sens : l'identité d'un déclencheur inclut son porteur, mais la chaîne de deux porteurs se referme sur le premier au troisième maillon.
 - La file reste petite : notifications et réactions sont transitoires ; seules les altérations posées par des réactions s'accumulent (non majorées, voir la section précédente).
 
-## Ce qui reste hors des sous-lots 7.1 et 7.2
+## Ce qui reste après le sous-lot 7.3
+
+- Aucun déclencheur dans les données livrées : les déclencheurs de gameplay (talents et compétences du Bastion) arrivent au lot 8 ; aucun scénario d'entraînement à déclencheurs n'est livré (Q14).
+- Équipement porteur de déclencheurs : réservé (origine `equipment`), non implémenté (Q9).
+- Pas de chance de déclenchement ni de critique sur les frappes de réaction (Q7) ; pas de raison d'annulation `staleSource` (voir « Annulation des réactions »).
+- Le majorant de file n'est pas une garantie avec déclencheurs (C12, Q11) : les altérations posées par des réactions ne sont pas majorées.
+- Une exception arithmétique tardive reste théoriquement possible pendant une réaction malgré le précontrôle numérique : l'atomicité est garantie pour toutes les limites prévisibles (budgets, plafonds), pas en général.
+
+## Historique : ce qui restait hors des sous-lots 7.1 et 7.2
 
 - Aucun déclencheur, aucun report, aucune provenance, aucune profondeur : tout ce qui précède, hors mentions « en place », reste un contrat pour la suite du lot 7 (sous-lot 7.3). Les altérations génériques (sous-lot 7.2) sont en place ; aucune n'est observable par un déclencheur.
 - Décisions à prendre : A15 (déclencheurs) ; points ouverts du sous-lot 7.2 (voir `RAPPORT_LOT_7_2.md`, arbitrés au correctif 7.2) et du correctif 7.2 (voir `RAPPORT_CORRECTIF_7_2.md`) ; validation définitive des plafonds techniques et des valeurs initiales, approuvés provisoirement pour 7.1 et 7.2.
