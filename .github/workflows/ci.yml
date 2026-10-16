@@ -18,3 +18,6 @@ jobs:
       - run: dotnet test --no-build -c Release --logger "console;verbosity=normal"
       # Recettes par catégorie : échec si une catégorie n'exécute aucun test (correctif 6.1).
       - run: bash scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger
+      # Correctif 7.3.1 : Debug aussi, où les réserves de budget sont vérifiées exactes à chaque traitement.
+      - run: dotnet build --no-restore -c Debug -warnaserror
+      - run: dotnet test --no-build -c Debug

@@ -75,6 +75,8 @@ Correctif 7.2 (arbitrages après revue du sous-lot 7.2) : étourdissement en cum
 
 Sous-lot 7.3 (déclencheurs et synergies) : déclencheurs en données sur les talents, compétences équipées, altérations et assaillants de scénario (équipement réservé) ; provenance de chaque effet au journal (`eid`, `cause`, `root`, `depth`, `trigger`, format 4) ; notification à l'émission dans un ordre total, recharge interne, règle de cycle par identité de déclencheur, profondeur 4 (plafond 8), suppressions journalisées (`triggerSuppressed`) ; réactions réservées entières avant toute mutation (frappe sans critique, application, gain de ressource jamais notifié) ; report au tick suivant (`deferredFromTick`, `deferredDropped`) et annulations journalisées (`reactionCancelled`) ; majorant de file non garanti dès qu'un déclencheur existe. Gameplay des quatre scénarios livrés inchangé. Moteur 0.9.0, journal au format 4. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#déclencheurs-sous-lot-73).
 
+Correctif 7.3.1 (audit Astra de la PR #2) : la réservation crédite le retrait de l'événement traité (un combat au majorant garanti ne s'arrête plus sur la file) ; précontrôle numérique des DOT par leur formule périodique réelle, compteurs préparés et vérifiés avant mutation ; empreintes au contrat canonique 2, sans sentinelle `none` ; cycles statiques en temps linéaire et plafonds globaux de déclencheurs (512 par classe, 4 096 par combat). Moteur 0.9.1 ; les journaux 0.9.0 sont refusés au rejeu. Détail : [docs/LIMITES_LOT_7.md](docs/LIMITES_LOT_7.md#correctif-731-audit-astra-de-la-pr-2).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
