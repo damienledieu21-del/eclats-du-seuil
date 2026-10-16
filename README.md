@@ -9,8 +9,8 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 
 | Projet | Cible | Rôle |
 |---|---|---|
-| `src/EdS.Domain` | netstandard2.1, C# 9 | Définitions, virgule fixe — aucune dépendance |
-| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat — dépend du domaine seulement |
+| `src/EdS.Domain` | netstandard2.1, C# 9 | Définitions, virgule fixe (`Fixed`), conversion du temps (`TickRate`) — aucune dépendance |
+| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat, RNG (`Pcg32`) — dépend du domaine seulement |
 | `src/EdS.Data` | netstandard2.1, C# 9 | Chargement et validation des données JSON (lot 3) |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
@@ -23,6 +23,7 @@ Les projets `netstandard2.1` sont limités à C# 9 et n'ont aucune dépendance e
 dotnet build -warnaserror      # compilation, avertissements bloquants
 dotnet test                    # tous les tests
 dotnet test --filter Category=Numeric
+dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
 ```
 
 Prérequis : SDK .NET 10 (voir `global.json`).
@@ -41,5 +42,5 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 ## Avancement
 
 - [x] Lot 0 — socle (solution, projets, CI)
-- [ ] Lot 1 — virgule fixe, conversion du temps, RNG PCG32
+- [x] Lot 1 — virgule fixe, conversion du temps, RNG PCG32
 - [ ] Lot 2 — attributs et formules
