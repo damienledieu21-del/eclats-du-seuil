@@ -57,8 +57,14 @@ public class Lot73MigrationTests
             JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = JsonNode.Parse(after[i])!.AsObject();
             foreach (string key in CausalGraph.ProvenanceFields) Assert.False(oldLine.ContainsKey(key), $"format 3 sans « {key} »");
             string kind = newLine["event"]!.GetValue<string>();
-            // Les diagnostics et l'enveloppe ne reçoivent aucun champ ; chaque ligne de jeu reçoit eid et cause.
-            if (DiagnosticKinds.Contains(kind)) Assert.Equal(before[i], after[i]);
+            // Les diagnostics et l'enveloppe ne reçoivent aucun champ de provenance ; combatEnded reçoit deferredDropped (0 sans
+            // déclencheur) ; chaque ligne de jeu reçoit eid et cause.
+            if (kind == "combatEnded")
+            {
+                Assert.Equal(0, newLine["deferredDropped"]!.GetValue<long>());
+                newLine.Remove("deferredDropped");
+            }
+            else if (DiagnosticKinds.Contains(kind)) Assert.Equal(before[i], after[i]);
             else
             {
                 gameplay++;

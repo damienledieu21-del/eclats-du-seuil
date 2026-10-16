@@ -1503,7 +1503,8 @@ namespace EdS.Simulation.Engine
                 _ => "aborted",
             };
             EmitDiagnostic(tick, CombatPhase.EndOfTick, "combatEnded", w => w
-                .Field("reason", reasonId).Field("winner", winner).Field("ticks", tick + 1).Field("durationMs", durationMs));
+                .Field("reason", reasonId).Field("winner", winner).Field("ticks", tick + 1).Field("durationMs", durationMs)
+                .Field("deferredDropped", _deferredPending));
             RecordTickPeaks();
             Result = new CombatResult(reason, abortReason, tick, durationMs, winner, _fighters.Select(f => f.Result).ToArray(),
                 new CombatLoadPeaks(_peakWork, _peakEvents, _peakPending));
@@ -1634,6 +1635,7 @@ namespace EdS.Simulation.Engine
                 w.Field("eid", eid).Field("cause", origin.Cause);
                 if (origin.Cause is null) w.Field("root", origin.Root);
                 if (origin.Depth > 0) w.Field("depth", origin.Depth).Field("trigger", origin.Trigger);
+                if (_deferredFrom is long from) w.Field("deferredFromTick", from);
                 fields(w);
             });
             if (observed != null && Subscribed(observed))

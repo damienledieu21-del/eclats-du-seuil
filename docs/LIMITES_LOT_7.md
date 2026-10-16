@@ -139,7 +139,7 @@ Exemple, avec `maxTriggerDepth = 4` :
 
 ### Provenance causale des altérations (préparation du sous-lot 7.3, correctif 7.2 ; en place depuis l'étape 7.3.2)
 
-Règles normatives pour les altérations, compatibles avec P1 à P8. **En place depuis l'étape 7.3.2** pour A1 à A7 et A9 : l'instance mémorise la provenance de sa dernière application acceptée (`cause` = son `stateApplied`, avec instance et génération), les ticks de DOT, l'expiration et l'état accordé la lisent au moment où ils agissent, et la mort hérite du premier effet qui a amené les points de vie à 0. A8 (reports) arrive à l'étape 7.3.5. La **provenance** d'un effet est le quadruplet (`root`, `depth`, `chain`, `trigger`) ; sa **source** est le combattant crédité (champ `source` du journal), qui n'entre pas dans la provenance mais est conservée avec elle.
+Règles normatives pour les altérations, compatibles avec P1 à P8. **En place depuis l'étape 7.3.2** pour A1 à A7 et A9 : l'instance mémorise la provenance de sa dernière application acceptée (`cause` = son `stateApplied`, avec instance et génération), les ticks de DOT, l'expiration et l'état accordé la lisent au moment où ils agissent, et la mort hérite du premier effet qui a amené les points de vie à 0. A8 (reports) est en place depuis l'étape 7.3.5. La **provenance** d'un effet est le quadruplet (`root`, `depth`, `chain`, `trigger`) ; sa **source** est le combattant crédité (champ `source` du journal), qui n'entre pas dans la provenance mais est conservée avec elle.
 
 - **A1. Application.** L'application d'une altération par une attaque ou une compétence est une conséquence directe de l'impact (P3) : même provenance que l'impact, source = auteur de l'impact. Appliquée par une réaction, elle a la provenance de cet effet (profondeur déjà augmentée par la réaction, P2). L'instance mémorise la provenance et la source de l'application qui l'a créée.
 - **A2. Renouvellement.** Une application acceptée sur une instance existante (nouvelle génération) remplace la provenance et la source mémorisées par les siennes (comme le journal actuel : un gel renouvelé par « c » expire au nom de « c » ; pour un cumul par source, la source ne change pas). Une application refusée (`stateBlocked`) ne change rien à l'instance.
@@ -195,6 +195,25 @@ Ordre d'un tick : expirations → commandes → résolution → périodiques →
 - **Q avant P** : la phase est passée. Règle proposée : l'événement est reporté au tick T + 1, même phase Q, avec un champ `deferredFromTick: T` au journal. Jamais exécuté « en arrière » dans le tick courant.
 - **Provenance conservée** : un événement reporté garde exactement `root`, `depth`, `trigger`, `chain`, `sourceInstance` et `sourceGeneration`. Le report n'augmente pas la profondeur et ne crée pas de nouvelle racine (P4) ; seul `deferredFromTick` s'ajoute. À l'exécution, au tick T + 1, on vérifie de nouveau l'instance et la génération ; la profondeur, inchangée, a déjà été admise.
 - **Report depuis le dernier tick** : si T est le dernier tick du combat (T + 1 ≥ durée en ticks), ou si le combat se termine pendant T (équipe vaincue, arrêt), l'événement n'est pas exécuté. Il n'écrit pas de ligne par événement ; leur nombre est donné par un champ `deferredDropped` de `combatEnded` (enveloppe de finalisation bornée). Un combat ne se prolonge jamais pour vider la file.
+
+**En place depuis l'étape 7.3.5** pour les réactions des déclencheurs : une réaction acceptée dont la phase d'exécution (résolution si elle porte une frappe, sinon la phase courante) est déjà passée est reportée en (T + 1, même phase) ; toutes les lignes qu'elle écrit portent `deferredFromTick: T`, et sa provenance (racine, profondeur, chaîne, cause, déclencheur) est celle fixée à l'acceptation. Les réactions reportées encore en file à la fin du combat (dernier tick, équipe vaincue, arrêt) sont comptées dans `combatEnded.deferredDropped`, sans ligne par réaction ; ce champ vaut 0 sans déclencheur.
+
+### Annulation des réactions à l'exécution (Q5, en place depuis l'étape 7.3.5)
+
+Une réaction acceptée n'est pas exécutée, et écrit à la place un diagnostic `reactionCancelled` (non observable, sans `eid`, citant `trigger`, `root`, `cause`, `depth`, `reason` et, s'il y a lieu, `deferredFromTick`), dans les cas suivants, vérifiés dans cet ordre au moment de l'exécution :
+
+| Raison | Condition | Politique |
+|---|---|---|
+| `bearerDead` | le porteur est mort entre l'acceptation et l'exécution | une réaction est un acte de son porteur ; morte avec lui |
+| `originGone` | la réaction est portée par une altération dont l'instance n'existe plus (expirée, retirée, retrait à la mort) | la réaction dépend de l'état actif qui la porte |
+| `noTarget` | après calcul des cibles, le premier effet n'a aucune cible vivante | aucune ligne partielle ; les effets suivants ne sont pas tentés |
+
+Politique aux trois moments sensibles :
+- **Expiration** : seule une réaction **portée** par l'altération expirée est annulée (`originGone`). Une réaction qui **observe** un effet d'altération (tick de DOT, application) est autonome : l'expiration ou le retrait de l'altération observée ne l'annule pas. La raison `staleSource` envisagée par le plan n'est **pas** retenue : un effet déjà commis ne se défait pas parce que son origine a disparu.
+- **Renouvellement** : il conserve l'instance (seule la génération change) ; une réaction portée par l'altération renouvelée survit et s'exécute.
+- **Mort** : les réactions du mort en attente sont annulées (`bearerDead`) ; celles des autres combattants qui observent la mort (`onDeath`) s'exécutent normalement si elles ont une cible.
+
+Ces annulations sont du gameplay (une réaction n'a plus de sens) et ne coûtent qu'une ligne réservée ; elles se distinguent des arrêts techniques (`simulationAborted`, budgets), qui interrompent le combat sans exécuter partiellement une réaction (réservation de la borne complète avant toute mutation, étape 7.3.4). L'étourdissement du porteur n'empêche pas ses réactions (Q12).
 
 **En place depuis le correctif 6.1** : `EventQueue` refuse (exception de programmation) tout événement programmé avant la position déjà atteinte. Avant, un tel événement restait en tête du tas et bloquait silencieusement toute la file ; le moteur actuel n'en programme jamais (toutes ses échéances sont au moins au tick suivant), et le lot 7 devra appliquer la règle de report ci-dessus avant d'appeler la file.
 

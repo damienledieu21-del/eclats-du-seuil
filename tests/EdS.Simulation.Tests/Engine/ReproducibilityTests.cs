@@ -80,7 +80,7 @@ public class ReproducibilityTests
         Assert.Equal(ReferenceHash, hash);
     }
 
-    internal const string ReferenceHash = "86b792bf3e24b3f6f9c3969e66b43275b8b0a1283aaad8cb3a9158f5f4f9d7de";
+    internal const string ReferenceHash = "020ff3aba72b18ac8a4942be960f272bf77c6680af25dfe32ed7972c66ef9973";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

@@ -90,6 +90,7 @@ public class Lot72MigrationTests
             Assert.DoesNotContain(kind, new[] { "stateBlocked", "dotDamage" });
             // Lot 7.3 : champs de provenance du format 4, comparés à part (Lot73MigrationTests).
             foreach (string key in EdS.TestSupport.CausalGraph.ProvenanceFields) newLine.Remove(key);
+            if (kind == "combatEnded") newLine.Remove("deferredDropped");
             if (StateEvents.Contains(kind))
             {
                 stateLines++;

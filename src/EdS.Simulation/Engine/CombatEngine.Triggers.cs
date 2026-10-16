@@ -114,9 +114,17 @@ namespace EdS.Simulation.Engine
 
             /// <summary>Provenance de ses effets : racine de l'effet observé, profondeur + 1, chaîne étendue, cause = effet observé.</summary>
             public Provenance Origin = null!;
+
+            /// <summary>Tick d'acceptation d'une réaction reportée au tick suivant (§7) ; null si elle s'exécute dans son tick.</summary>
+            public long? DeferredFrom;
         }
 
         private enum TriggerDecision { Rejected, Cycle, Depth, Accepted }
+
+        // Report (§7) : réactions reportées encore en file (perdues si le combat se termine) ; tick d'origine de la réaction reportée
+        // en cours d'exécution, écrit sur ses lignes (deferredFromTick).
+        private long _deferredPending;
+        private long? _deferredFrom;
 
         // Index (§5.4) : abonnement possible par type, déclencheurs permanents par combattant (triés), ordre des porteurs.
         private readonly bool[] _subscribed = new bool[Enum.GetValues(typeof(TriggerEvent)).Length];
@@ -292,11 +300,13 @@ namespace EdS.Simulation.Engine
                     case TriggerDecision.Accepted:
                         slot.ReadyTick = checked(tick + slot.Definition.CooldownMs / _tickMs);
                         CombatPhase target = slot.Strikes ? CombatPhase.Resolution : phase;
-                        long when = target < phase ? checked(tick + 1) : tick;
+                        bool deferred = target < phase;
                         Provenance origin = slot.Status is { } status
                             ? e.Provenance.ReactionTo(e.Eid, slot.Identity, slot.Bearer.Id, status.Id, status.Generation)
                             : e.Provenance.ReactionTo(e.Eid, slot.Identity, slot.Bearer.Id);
-                        Schedule(when, target, new ReactionItem { Slot = slot, Event = e, Origin = origin });
+                        Schedule(deferred ? checked(tick + 1) : tick, target,
+                            new ReactionItem { Slot = slot, Event = e, Origin = origin, DeferredFrom = deferred ? tick : (long?)null });
+                        if (deferred) _deferredPending++;
                         ReactionTrace?.Add((tick, slot.Identity, e.Eid));
                         break;
                 }
@@ -401,19 +411,68 @@ namespace EdS.Simulation.Engine
         {
             TriggerSlot slot = item.Slot;
             IReadOnlyList<TriggerEffect> effects = slot.Definition.Effects;
-            bool runs = !slot.Bearer.IsDead;
             var targets = new IReadOnlyList<Fighter>[effects.Count];
+            string? cancelled = CancelReason(item);
             Cost bound = Cost.Op;
-            if (runs)
+            if (cancelled is null)
+            {
                 for (int k = 0; k < effects.Count; k++)
                 {
                     targets[k] = EffectTargets(effects[k], slot, item.Event);
                     foreach (Fighter target in targets[k]) bound += EffectBound(effects[k], target);
                 }
+                if (targets[0].Count == 0) cancelled = "noTarget";
+            }
+            if (cancelled != null)
+            {
+                Reserve(Cost.Op + Cost.Line);
+                _queue.Dequeue();
+                Charge(1);
+                if (item.DeferredFrom != null) _deferredPending--;
+                ObservedEvent e = item.Event;
+                EmitDiagnostic(tick, phase, "reactionCancelled", w =>
+                {
+                    w.Field("trigger", slot.Identity).Field("root", e.Provenance.Root).Field("cause", e.Eid).Field("depth", item.Origin.Depth)
+                        .Field("reason", cancelled);
+                    if (item.DeferredFrom is long from) w.Field("deferredFromTick", from);
+                });
+                return;
+            }
             Reserve(Cost.Op, bound);
             _queue.Dequeue();
             Charge(1);
-            if (!runs) return;
+            if (item.DeferredFrom != null) _deferredPending--;
+            _deferredFrom = item.DeferredFrom;
+            try
+            {
+                RunEffects(tick, phase, item, targets);
+            }
+            finally
+            {
+                _deferredFrom = null;
+            }
+        }
+
+        /// <summary>
+        /// Annulation d'une réaction acceptée, vérifiée à son exécution (§8), dans cet ordre : porteur mort (<c>bearerDead</c>) ;
+        /// déclencheur porté par une instance d'altération qui n'est plus active, expirée ou retirée (<c>originGone</c>) ; puis,
+        /// après le calcul des cibles, aucune cible pour le premier effet (<c>noTarget</c>). Seule une réaction qui dépend d'une
+        /// altération active (déclencheur porté par elle) est annulée quand elle disparaît ; un renouvellement garde l'instance,
+        /// donc la réaction. Une réaction qui observe un effet d'altération (tick de DOT, expiration) est autonome : elle n'est pas
+        /// annulée parce que cette altération a expiré ou a été renouvelée. L'étourdissement du porteur n'annule rien (Q12).
+        /// </summary>
+        private static string? CancelReason(ReactionItem item)
+        {
+            TriggerSlot slot = item.Slot;
+            if (slot.Bearer.IsDead) return "bearerDead";
+            if (slot.Status != null && !Live(slot)) return "originGone";
+            return null;
+        }
+
+        private void RunEffects(long tick, CombatPhase phase, ReactionItem item, IReadOnlyList<Fighter>[] targets)
+        {
+            TriggerSlot slot = item.Slot;
+            IReadOnlyList<TriggerEffect> effects = slot.Definition.Effects;
             for (int k = 0; k < effects.Count; k++)
             {
                 TriggerEffect effect = effects[k];
