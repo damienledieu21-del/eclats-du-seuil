@@ -9,8 +9,8 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 
 | Projet | Cible | Rôle |
 |---|---|---|
-| `src/EdS.Domain` | netstandard2.1, C# 9 | Définitions, virgule fixe (`Fixed`), conversion du temps (`TickRate`) — aucune dépendance |
-| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat, RNG (`Pcg32`) — dépend du domaine seulement |
+| `src/EdS.Domain` | netstandard2.1, C# 9 | Virgule fixe (`Fixed`), temps (`TickRate`), attributs et statistiques (`Stats`), formule de dégâts (`Combat`) — aucune dépendance |
+| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat, RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
 | `src/EdS.Data` | netstandard2.1, C# 9 | Chargement et validation des données JSON (lot 3) |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
@@ -23,6 +23,7 @@ Les projets `netstandard2.1` sont limités à C# 9 et n'ont aucune dépendance e
 dotnet build -warnaserror      # compilation, avertissements bloquants
 dotnet test                    # tous les tests
 dotnet test --filter Category=Numeric
+dotnet test --filter Category=Formula
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
 ```
 
@@ -37,10 +38,13 @@ Prérequis : SDK .NET 10 (voir `global.json`).
 5. Puissance d'équipement prévue dans les statistiques offensives, configurable, jamais codée en dur.
 6. Un seul talent majeur par build au niveau 30 (voulu) ; les builds sans talent majeur restent valides.
 
+Arbitrages du lot 2 : base offensive 0 et +2 puissance par Force/Dextérité/Intelligence (D1) ; trois puissances d'équipement ajoutées avant le coefficient (D2) ; armure et résistance magique indépendantes, base 0, constante 1000 chacune (D3) ; bonus additifs par catégorie (compétence, talent, altération) et multipliés entre catégories, jamais négatifs (D4). Détail et exemple chiffré : [docs/FORMULES.md](docs/FORMULES.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
 
 - [x] Lot 0 — socle (solution, projets, CI)
 - [x] Lot 1 — virgule fixe, conversion du temps, RNG PCG32
-- [ ] Lot 2 — attributs et formules
+- [x] Lot 2 — attributs, statistiques dérivées, défenses, bonus, critiques, formule de dégâts
+- [ ] Lot 3 — données JSON et validation
