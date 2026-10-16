@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/class.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "class",
   "contentVersion": "0.2.0-provisoire",
   "data": {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using EdS.Data.Modifiers;
 using EdS.Data.Triggers;
 using EdS.Data.Validation;
 using EdS.Domain;
@@ -156,6 +157,7 @@ namespace EdS.Data.Classes
                     Line(p + ".placeholder", talent.Placeholder == true ? "true" : "false");
                     Requirements(p + ".prerequisites", talent.Prerequisites!);
                     TriggerShape.AppendCanonical(text, p + ".triggers", definition.Trees[t].Talents[i].Triggers);
+                    ModifierShape.AppendCanonical(text, p + ".modifiers", definition.Trees[t].Talents[i].Modifiers);
                 }
             }
             Line("skills.count", data.Skills!.Count);
@@ -170,6 +172,8 @@ namespace EdS.Data.Classes
                 Line(p + ".placeholder", skill.Placeholder == true ? "true" : "false");
                 Requirements(p + ".talentRequirements", skill.TalentRequirements!);
                 TriggerShape.AppendCanonical(text, p + ".triggers", definition.Skills[s].Triggers);
+                // Sous-lot 8.1 : avant le bloc combat, qu'une compétence passive n'a jamais (voir « continue » ci-dessous).
+                ModifierShape.AppendCanonical(text, p + ".modifiers", definition.Skills[s].Modifiers);
                 if (skill.Combat is not { } combat)
                 {
                     Line(p + ".combat", null);
@@ -227,13 +231,14 @@ namespace EdS.Data.Classes
 
             var trees = data.Trees!.Select(t => new TalentTreeDefinition(t!.Id!, t.Name!,
                 t.Talents!.Select(x => new TalentDefinition(x!.Id!, x.Name!, x.MaxRank!.Value, x.Major!.Value,
-                    Requirements(x.Prerequisites!), x.Placeholder!.Value, TriggerShape.Build(x.Triggers))).ToArray())).ToArray();
+                    Requirements(x.Prerequisites!), x.Placeholder!.Value, TriggerShape.Build(x.Triggers), ModifierShape.Build(x.Modifiers))).ToArray())).ToArray();
             SkillCombatDefinition? Combat(SkillCombatData? c) => c is null ? null
                 : new SkillCombatDefinition(PowerTypes[c.PowerType!], DamageTypes[c.DamageType!], c.Coefficient!.Value,
                     c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value,
                     c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value, Applications(c.Applies!));
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
-                Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat), TriggerShape.Build(s.Triggers))).ToArray();
+                Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat), TriggerShape.Build(s.Triggers),
+                ModifierShape.Build(s.Modifiers))).ToArray();
             return new ClassDefinition(data.Id!, data.Name!, trees, skills);
         }
 
@@ -289,6 +294,7 @@ namespace EdS.Data.Classes
                 Present(talent.Placeholder, path + ".placeholder", "booléen");
                 Items(talent.Prerequisites, path + ".prerequisites", "liste, éventuellement vide", CheckRequirement);
                 TriggerShape.Check(talent.Triggers, path + ".triggers", _report);
+                ModifierShape.Check(talent.Modifiers, path + ".modifiers", _report);
             }
 
             private void CheckSkill(SkillData skill, string path)
@@ -303,6 +309,7 @@ namespace EdS.Data.Classes
                 Items(skill.TalentRequirements, path + ".talentRequirements", "liste, éventuellement vide", CheckRequirement);
                 if (skill.Combat is { } combat) CheckCombat(combat, path + ".combat");
                 TriggerShape.Check(skill.Triggers, path + ".triggers", _report);
+                ModifierShape.Check(skill.Modifiers, path + ".modifiers", _report);
             }
 
             private void Token<T>(string? value, string path, string description, IReadOnlyDictionary<string, T> allowed)

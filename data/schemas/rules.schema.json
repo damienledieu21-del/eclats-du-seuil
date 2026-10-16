@@ -502,7 +502,9 @@
               "properties": {
                 "damageReduction": {
                   "type": "number",
-                  "description": "Réduction des dégâts bloquables après armure (0.6 = −60 %)."
+                  "minimum": 0,
+                  "maximum": 0.75,
+                  "description": "Réduction des dégâts bloquables après armure (0.6 = −60 %), au plus 0.75 (sous-lot 8.1)."
                 },
                 "upkeepPerSecond": {
                   "type": "integer",

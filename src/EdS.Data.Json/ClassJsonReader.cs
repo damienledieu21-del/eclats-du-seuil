@@ -88,6 +88,7 @@ public static class ClassJsonReader
             ["placeholder"] = (v, p) => talent.Placeholder = Bool(input, v, p),
             ["prerequisites"] = (v, p) => talent.Prerequisites = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
             ["triggers"] = (v, p) => talent.Triggers = TriggerJsonReader.ReadList(input, v, p),
+            ["modifiers"] = (v, p) => talent.Modifiers = ModifierJsonReader.ReadList(input, v, p),
         });
         return ok ? talent : null;
     }
@@ -105,6 +106,7 @@ public static class ClassJsonReader
             ["talentRequirements"] = (v, p) => skill.TalentRequirements = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
             ["combat"] = (v, p) => skill.Combat = ReadCombat(input, v, p),
             ["triggers"] = (v, p) => skill.Triggers = TriggerJsonReader.ReadList(input, v, p),
+            ["modifiers"] = (v, p) => skill.Modifiers = ModifierJsonReader.ReadList(input, v, p),
         });
         return ok ? skill : null;
     }

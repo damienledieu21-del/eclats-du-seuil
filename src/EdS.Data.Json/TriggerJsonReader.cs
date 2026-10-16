@@ -60,8 +60,8 @@ internal static class TriggerJsonReader
         return ok ? e : null;
     }
 
-    /// <summary>Un nombre décimal, ou <c>{ "base": x, "perRank": y }</c>.</summary>
-    private static RankedData? ReadRanked(JsonInput input, JsonElement element, string path)
+    /// <summary>Un nombre décimal, ou <c>{ "base": x, "perRank": y }</c> (aussi la valeur <c>add</c> d'un modificateur, sous-lot 8.1).</summary>
+    internal static RankedData? ReadRanked(JsonInput input, JsonElement element, string path)
     {
         if (element.ValueKind != JsonValueKind.Object)
             return input.TryReadDecimal(element, path, out Fixed value) ? new RankedData { Base = value } : null;

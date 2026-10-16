@@ -73,6 +73,18 @@ namespace EdS.Domain.Combat
         /// <summary>Réduction des dégâts directs bloquables, après armure, pendant la garde (A1 : 0.6 = −60 %).</summary>
         public Fixed GuardDamageReduction { get; init; } = Fixed.FromRatio(6, 10);
 
+        /// <summary>
+        /// Sous-lot 8.1 (B1) : plafond de la réduction de garde, modificateurs compris (constante du moteur, valeur d'équilibrage
+        /// provisoire). La réduction de base y est tenue par <see cref="Validate"/>.
+        /// </summary>
+        public static readonly Fixed MaxGuardDamageReduction = Fixed.FromRatio(3, 4);
+
+        /// <summary>
+        /// Sous-lot 8.1 (B2) : plafond de la réduction totale des dégâts directs subis (garde et modificateurs de dégâts subis,
+        /// multiplicatifs), avant l'absorption par un bouclier (8.2). La parade (0,9) est hors plafond. Valeur provisoire.
+        /// </summary>
+        public static readonly Fixed MaxTotalDamageReduction = Fixed.FromRatio(85, 100);
+
         /// <summary>Endurance consommée par seconde de garde (A1), prélevée au fil des ticks sans dérive d'arrondi.</summary>
         public int GuardUpkeepPerSecond { get; init; } = 2;
 
@@ -165,6 +177,8 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation("doit être comprise entre 0 et 1.", name));
             }
             Fraction(GuardDamageReduction, nameof(GuardDamageReduction));
+            if (GuardDamageReduction > MaxGuardDamageReduction && GuardDamageReduction <= Fixed.One)
+                errors.Add(new RuleViolation($"ne peut pas dépasser le plafond de la réduction de garde ({MaxGuardDamageReduction}).", nameof(GuardDamageReduction)));
             Fraction(ParryDamageReduction, nameof(ParryDamageReduction));
             if (Statuses is null)
                 errors.Add(new RuleViolation("catalogue des altérations obligatoire.", nameof(GuardBreakStatus)));

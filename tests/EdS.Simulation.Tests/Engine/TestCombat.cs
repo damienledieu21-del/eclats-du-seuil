@@ -28,6 +28,9 @@ internal static class TestCombat
     public const string Givre = "skill.essai.givre";            // lot 7.2 : 0.1 + gel, sans coût ni recharge
     public const string Passif = "skill.essai.passif";          // lot 7.3 : passif équipable, porteur de déclencheurs de test
     public const string TalentAlpha = "talent.essai.alpha.a";   // 5 rangs ; lot 7.3 : porteur de déclencheurs de test
+    public const string TalentBeta = "talent.essai.beta.a";     // 5 rangs
+    public const string TalentGamma = "talent.essai.gamma.a";   // 5 rangs
+    public const string PassifB = "skill.essai.passif_b";       // sous-lot 8.1 : second passif, seulement si demandé (secondPassive)
 
     private static SkillCombatDefinition Combat(string coefficient, int cost, long cooldownMs, SkillTargeting targeting = SkillTargeting.Enemy,
         bool unblockable = false, int chargeCost = 0, int chargeGain = 0, bool magic = false, params StatusApplication[] applies) =>
@@ -36,17 +39,19 @@ internal static class TestCombat
 
     /// <summary>
     /// Classe d'essai ; lot 7.3 : déclencheurs facultatifs sur le talent <see cref="TalentAlpha"/>, sur <see cref="Frappe"/> (active
-    /// équipée, Q2) et sur le passif <see cref="Passif"/>.
+    /// équipée, Q2) et sur le passif <see cref="Passif"/>. Sous-lot 8.1 : modificateurs facultatifs par identifiant de talent ou de
+    /// compétence (<paramref name="modifiers"/>) et second passif <see cref="PassifB"/> (<paramref name="secondPassive"/>) ; sans eux,
+    /// la classe est celle des lots précédents.
     /// </summary>
     public static ClassDefinition Class(long frappeCooldownMs = 6000, string frappeCoefficient = "1.2",
         IEnumerable<TriggerDefinition>? talentTriggers = null, IEnumerable<TriggerDefinition>? frappeTriggers = null,
-        IEnumerable<TriggerDefinition>? passiveTriggers = null) => new(
-        "class.essai", "Essai",
-        new[] { "alpha", "beta", "gamma" }.Select(k => new TalentTreeDefinition($"tree.essai.{k}", k,
-            new[] { new TalentDefinition($"talent.essai.{k}.a", "A", 5, triggers: k == "alpha" ? talentTriggers : null) })).ToArray(),
-        new[]
+        IEnumerable<TriggerDefinition>? passiveTriggers = null, IReadOnlyDictionary<string, ModifierDefinition[]>? modifiers = null,
+        bool secondPassive = false)
+    {
+        ModifierDefinition[]? Of(string id) => modifiers != null && modifiers.TryGetValue(id, out ModifierDefinition[]? m) ? m : null;
+        var skills = new List<SkillDefinition>
         {
-            new SkillDefinition(Frappe, "Frappe", SkillKind.Active, combat: Combat(frappeCoefficient, 10, frappeCooldownMs), triggers: frappeTriggers),
+            new SkillDefinition(Frappe, "Frappe", SkillKind.Active, combat: Combat(frappeCoefficient, 10, frappeCooldownMs), triggers: frappeTriggers, modifiers: Of(Frappe)),
             new SkillDefinition(Heurt, "Heurt", SkillKind.Active, combat: Combat("0.8", 15, 10000)),
             new SkillDefinition(Onde, "Onde", SkillKind.Active, combat: Combat("0.5", 5, 2000, SkillTargeting.AllEnemies)),
             new SkillDefinition(Gratuite, "Gratuite", SkillKind.Active, combat: Combat("0.1", 0, 0)),
@@ -61,8 +66,18 @@ internal static class TestCombat
             new SkillDefinition(Entaille, "Entaille", SkillKind.Active, combat: Combat("0.5", 0, 0, applies: Apply("bleed", "0.5"))),
             new SkillDefinition(Assommer, "Assommer", SkillKind.Active, combat: Combat("0.1", 0, 0, applies: Apply("stun"))),
             new SkillDefinition(Givre, "Givre", SkillKind.Active, combat: Combat("0.1", 0, 0, applies: Apply("freeze"))),
-            new SkillDefinition(Passif, "Passif", SkillKind.Passive, triggers: passiveTriggers),
-        });
+            new SkillDefinition(Passif, "Passif", SkillKind.Passive, triggers: passiveTriggers, modifiers: Of(Passif)),
+        };
+        if (secondPassive) skills.Add(new SkillDefinition(PassifB, "Passif B", SkillKind.Passive, modifiers: Of(PassifB)));
+        return new ClassDefinition("class.essai", "Essai",
+            new[] { "alpha", "beta", "gamma" }.Select(k => new TalentTreeDefinition($"tree.essai.{k}", k,
+                new[] { new TalentDefinition($"talent.essai.{k}.a", "A", 5, triggers: k == "alpha" ? talentTriggers : null, modifiers: Of($"talent.essai.{k}.a")) })).ToArray(),
+            skills);
+    }
+
+    /// <summary>Sous-lot 8.1 : modificateur de test, <c>add</c> en texte décimal (et <c>perRank</c> facultatif).</summary>
+    public static ModifierDefinition Mod(string key, string add, string? perRank = null, params ModifierCondition[] conditions) =>
+        new(key, new RankedValue(Fixed.Parse(add), perRank is null ? Fixed.Zero : Fixed.Parse(perRank)), conditions);
 
     public static readonly ClassDefinition Essai = Class();
 
@@ -75,9 +90,9 @@ internal static class TestCombat
     /// <summary>Personnage de niveau 10 : quatre actives (les quatre emplacements du niveau 10) et l'ultime.</summary>
     public static CharacterSetup Character(string id = "bastion", string team = "joueurs", int initiative = 0, Attributes? attributes = null,
         string[]? actives = null, ClassDefinition? definition = null, string? ultimate = Ultime,
-        IReadOnlyDictionary<string, int>? talents = null, string[]? passives = null) =>
+        IReadOnlyDictionary<string, int>? talents = null, string[]? passives = null, int level = 10) =>
         new(id, team, definition ?? Essai,
-            new CharacterBuild("class.essai", 10, attributes ?? Attrs(), talents, actives ?? new[] { Frappe, Heurt, Onde, Gratuite }, ultimate, passives),
+            new CharacterBuild("class.essai", level, attributes ?? Attrs(), talents, actives ?? new[] { Frappe, Heurt, Onde, Gratuite }, ultimate, passives),
             initiative);
 
     public static DummySetup Dummy(string id = "mannequin", string team = "cibles", int armor = 100) =>

@@ -21,4 +21,8 @@
     <ProjectReference Include="..\..\src\EdS.Simulation\EdS.Simulation.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Fixtures\**\*.jsonl" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -425,7 +425,7 @@ namespace EdS.Simulation.Engine
                         break;
                     case TriggerEffectKind.ApplyStatus:
                         StatusDefinition definition = _statuses[effect.Status!];
-                        cost += ApplyCost(Plan(tick, target, definition, slot.Bearer.Id, null), definition, target.Guarding, target.ParryOpen);
+                        cost += ApplyCost(Plan(tick, target, definition, slot.Bearer.Id, null, slot.Bearer), definition, target.Guarding, target.ParryOpen);
                         break;
                     default:
                         cost += GainCost(target, GainAmount(effect, slot.Rank), observable: false);
@@ -525,7 +525,7 @@ namespace EdS.Simulation.Engine
                             Domain.Numerics.Fixed power = definition.IsDot
                                 ? DotPower(slot.Bearer.Stats, definition, new StatusApplication(definition.Id, effect.Coefficient!.Value.At(slot.Rank)))
                                 : Domain.Numerics.Fixed.Zero;
-                            ApplyStatus(tick, phase, target, definition, slot.Bearer.Id, power, item.Origin);
+                            ApplyStatus(tick, phase, target, definition, slot.Bearer.Id, power, item.Origin, dealer: slot.Bearer);
                             break;
                         default:
                             Gain(tick, phase, target, ResourceId(effect.Resource!.Value), GainAmount(effect, slot.Rank), "trigger", item.Origin, observable: false);

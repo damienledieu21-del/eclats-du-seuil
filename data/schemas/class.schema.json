@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 4
+      "const": 5
     },
     "kind": {
       "const": "class"
@@ -156,6 +156,14 @@
             "$ref": "#/$defs/trigger"
           },
           "description": "Déclencheurs (lot 7.3), au plus 8."
+        },
+        "modifiers": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/modifier"
+          },
+          "description": "Modificateurs (sous-lot 8.1), au plus 8 ; valeurs par rang."
         }
       }
     },
@@ -210,6 +218,14 @@
             "$ref": "#/$defs/trigger"
           },
           "description": "Déclencheurs (lot 7.3), au plus 8."
+        },
+        "modifiers": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/modifier"
+          },
+          "description": "Modificateurs (sous-lot 8.1), compétences passives seulement, au plus 8 ; sans perRank."
         }
       }
     },
@@ -303,6 +319,38 @@
               }
             }
           }
+        }
+      }
+    },
+    "modifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "add"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Clé de la liste fermée (docs/DONNEES.md) : guard.damageReduction, guard.upkeepPerSecond, guard.costPerBlock, guard.noUpkeepBreak, guard.reductionAtZeroEndurance, guard.breakShortenPerCharge, parry.windowMs, parry.failureRecoveryMs, rampartCharges.max, resonance.perDirectHit, endurance.max, endurance.regenPerSecond, maxHealth, statusResistance, damageDealt, damageTaken, status.<id>.durationDealt, status.<id>.durationTaken, <id de compétence>.coefficient, <id de compétence>.cooldownMs.",
+          "pattern": "^(guard\\.(damageReduction|upkeepPerSecond|costPerBlock|noUpkeepBreak|reductionAtZeroEndurance|breakShortenPerCharge)|parry\\.(windowMs|failureRecoveryMs)|rampartCharges\\.max|resonance\\.perDirectHit|endurance\\.(max|regenPerSecond)|maxHealth|statusResistance|damageDealt|damageTaken|status\\.[a-z][A-Za-z0-9]*\\.(durationDealt|durationTaken)|skill(\\.[a-z0-9_]+)+\\.(coefficient|cooldownMs))$"
+        },
+        "add": {
+          "$ref": "#/$defs/rankedValue",
+          "description": "Valeur ajoutée au rang 1, plus perRank par rang au-delà (talents). Drapeau guard.noUpkeepBreak : 1 exactement."
+        },
+        "conditions": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "whileGuarding",
+              "perRampartCharge",
+              "perResonanceStep"
+            ]
+          },
+          "description": "X2, damageDealt et damageTaken seulement ; au plus une condition multiplicative (perRampartCharge ou perResonanceStep)."
         }
       }
     },

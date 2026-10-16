@@ -53,6 +53,21 @@ public class CombatRulesTests
         Assert.Contains(rules.Validate(), v => v.Fields.Contains(field));
 
     [Fact]
+    public void Reduction_de_garde_plafonnee_a_75_pour_cent()
+    {
+        // Sous-lot 8.1 (B1) : 0,75 accepté (N), 0,7501 refusé (N + 1) avec une seule erreur sur le seul champ ; 1,1 une seule erreur.
+        Assert.Equal(Fixed.Parse("0.75"), CombatRules.MaxGuardDamageReduction);
+        Assert.Equal(Fixed.Parse("0.85"), CombatRules.MaxTotalDamageReduction);
+        Assert.Empty(new CombatRules { GuardDamageReduction = Fixed.Parse("0.7499") }.Validate());
+        Assert.Empty(new CombatRules { GuardDamageReduction = Fixed.Parse("0.75") }.Validate());
+        foreach (string value in new[] { "0.7501", "1.1" })
+        {
+            RuleViolation error = Assert.Single(new CombatRules { GuardDamageReduction = Fixed.Parse(value) }.Validate());
+            Assert.Equal(new[] { nameof(CombatRules.GuardDamageReduction) }, error.Fields);
+        }
+    }
+
+    [Fact]
     public void Recuperation_de_parade_nulle_autorisee() => Assert.Empty(new CombatRules { ParryFailureRecoveryMs = 0, GuardUpkeepPerSecond = 0 }.Validate());
 
     [Theory]

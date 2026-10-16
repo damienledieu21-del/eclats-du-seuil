@@ -87,6 +87,9 @@ namespace EdS.Domain.Builds
         /// </summary>
         public const int MaxTalents = 256, MaxSkills = 256, MaxTriggers = 512;
 
+        /// <summary>Sous-lot 8.1 : plafond global des modificateurs d'une classe (talents et compétences passives), comme les déclencheurs.</summary>
+        public const int MaxModifiers = 512;
+
         public IReadOnlyList<RuleViolation> Validate(ProgressionRules progression)
         {
             if (progression is null) throw new ArgumentNullException(nameof(progression));
@@ -94,6 +97,7 @@ namespace EdS.Domain.Builds
             // Plafonds globaux d'abord : au-delà, rien d'autre n'est examiné (le volume ne peut pas immobiliser la validation).
             int talents = Trees.Sum(t => t.Talents.Count);
             int triggers = Trees.Sum(t => t.Talents.Sum(x => x.Triggers.Count)) + Skills.Sum(x => x.Triggers.Count);
+            long modifiers = Trees.Sum(t => t.Talents.Sum(x => (long)x.Modifiers.Count)) + Skills.Sum(x => (long)x.Modifiers.Count);
             if (talents > MaxTalents)
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{talents} talents, au plus {MaxTalents} par classe (plafond technique provisoire).", "trees"));
             if (Skills.Count > MaxSkills)
@@ -101,7 +105,11 @@ namespace EdS.Domain.Builds
             if (triggers > MaxTriggers)
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
                     $"{triggers} déclencheurs (talents et compétences), au plus {MaxTriggers} par classe (plafond technique provisoire).", "skills"));
+            if (modifiers > MaxModifiers)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"{modifiers} modificateurs (talents et compétences), au plus {MaxModifiers} par classe (plafond technique provisoire).", "skills"));
             if (errors.Count > 0) return errors;
+            SkillDefinition? SkillOf(string id) => TryGetSkill(id, out SkillDefinition? s) ? s : null;
             var ids = new Dictionary<string, string>(StringComparer.Ordinal);   // identifiant → chemin de sa première définition
 
             void CheckId(string id, string prefix, string path)
@@ -145,6 +153,8 @@ namespace EdS.Domain.Builds
                         errors.Add(new RuleViolation("un talent majeur a un seul rang (1 point pour l'acquérir).", path + ".maxRank"));
                     // Lot 7.3 : déclencheurs du talent, valeurs bornées à chacun de ses rangs.
                     Combat.TriggerDefinition.ValidateList(talent.Triggers, path + ".triggers", talent.MaxRank, true, errors);
+                    // Sous-lot 8.1 : modificateurs du talent, valeurs bornées à chacun de ses rangs.
+                    Combat.ModifierDefinition.ValidateList(talent.Modifiers, path + ".modifiers", talent.MaxRank, true, SkillOf, errors);
                 }
             }
 
@@ -187,6 +197,11 @@ namespace EdS.Domain.Builds
                 CheckRequirements(skill.TalentRequirements, path + ".talentRequirements", errors, null);
                 if (skill.Combat is { } combat) CheckCombat(skill, combat, path + ".combat", errors);
                 Combat.TriggerDefinition.ValidateList(skill.Triggers, path + ".triggers", 1, false, errors);
+                // Sous-lot 8.1 : seuls les talents et les compétences passives portent des modificateurs (rang 1, sans perRank).
+                if (skill.Kind != SkillKind.Passive && skill.Modifiers.Count > 0)
+                    errors.Add(new RuleViolation("seuls les talents et les compétences passives portent des modificateurs.", path + ".modifiers"));
+                else
+                    Combat.ModifierDefinition.ValidateList(skill.Modifiers, path + ".modifiers", 1, false, SkillOf, errors);
             }
 
             return errors;

@@ -63,6 +63,45 @@ namespace EdS.Domain.Combat
                     for (int k = 0; k < skill.Triggers.Count; k++)
                         yield return new BoundTrigger(skill.Kind == SkillKind.Passive ? TriggerOrigin.Passive : TriggerOrigin.Skill, skill.Id, k, 1, skill.Triggers[k]);
         }
+
+        /// <summary>
+        /// Sous-lot 8.1 : modificateurs actifs avec ce build : talents de rang ≥ 1 (valeurs à leur rang), puis compétences
+        /// <b>passives</b> équipées (rang 1), dans l'ordre de la classe. Une référence inconnue (build invalide) est ignorée : la
+        /// validation du build la signale. Agrégés par <see cref="ModifierSet.For"/>, sans effet d'ordre.
+        /// </summary>
+        public IEnumerable<BoundModifier> ActiveModifiers()
+        {
+            foreach (TalentTreeDefinition tree in Class.Trees)
+                foreach (TalentDefinition talent in tree.Talents)
+                    if (Build.TalentRanks.TryGetValue(talent.Id, out int rank) && rank >= 1)
+                        for (int k = 0; k < talent.Modifiers.Count; k++)
+                            yield return new BoundModifier(talent.Id, k, rank, talent.Modifiers[k]);
+            var passives = new HashSet<string>(Build.PassiveSkills, StringComparer.Ordinal);
+            foreach (SkillDefinition skill in Class.Skills)
+                if (skill.Kind == SkillKind.Passive && passives.Contains(skill.Id))
+                    for (int k = 0; k < skill.Modifiers.Count; k++)
+                        yield return new BoundModifier(skill.Id, k, 1, skill.Modifiers[k]);
+        }
+    }
+
+    /// <summary>Sous-lot 8.1 : modificateur rattaché à son talent ou à sa compétence passive, avec le rang qui fixe sa valeur.</summary>
+    public readonly struct BoundModifier
+    {
+        public string DefinitionId { get; }
+        public int Index { get; }
+        public int Rank { get; }
+        public ModifierDefinition Definition { get; }
+
+        public BoundModifier(string definitionId, int index, int rank, ModifierDefinition definition)
+        {
+            DefinitionId = definitionId ?? throw new ArgumentNullException(nameof(definitionId));
+            Index = index;
+            Rank = rank;
+            Definition = definition ?? throw new ArgumentNullException(nameof(definition));
+        }
+
+        /// <summary>Valeur au rang du build (arithmétique vérifiée, bornée par la validation de la classe).</summary>
+        public Fixed Value => Definition.Add.At(Rank);
     }
 
     /// <summary>
@@ -561,7 +600,23 @@ namespace EdS.Domain.Combat
                 applications[d.Id] = checked(n + inWindow);
             }
 
-            long Window(StatusDefinition d) => Math.Max(1, d.DurationMs / tick);
+            // Sous-lot 8.1 : règles effectives des personnages. Une application vit au plus base + le plus grand ajout positif
+            // d'un auteur (durationDealt) + le plus grand ajout positif d'une cible (durationTaken), écrêtée à 24 h comme au moteur ;
+            // un raccourci ne fait que réduire. Les mannequins et assaillants n'ont pas de modificateur.
+            var characterRules = new List<CombatantRules>();
+            foreach (CombatantSetup c in Combatants)
+                if (c is CharacterSetup ch) characterRules.Add(CombatantRules.For(Combat, ModifierSet.For(ch)));
+            long Window(StatusDefinition d)
+            {
+                long dealt = 0, taken = 0;
+                foreach (CombatantRules r in characterRules)
+                {
+                    dealt = Math.Max(dealt, r.DurationDealtMs(d.Id));
+                    taken = Math.Max(taken, r.DurationTakenMs(d.Id));
+                }
+                long ms = dealt == 0 && taken == 0 ? d.DurationMs : Math.Min(CombatRules.AbsoluteMaxDurationMs, checked(d.DurationMs + dealt + taken));
+                return Math.Max(1, ms / tick);
+            }
             var enemies = Combatants.ToDictionary(c => c.Id, c => Combatants.Where(o => o.Team != c.Team).Select(o => o.Id).ToArray(), StringComparer.Ordinal);
 
             foreach (CombatantSetup combatant in Combatants)
@@ -588,6 +643,7 @@ namespace EdS.Domain.Combat
                     }
                     case CharacterSetup c:
                     {
+                        CombatantRules rules = CombatantRules.For(Combat, ModifierSet.For(c));
                         foreach (string status in c.Class.Skills.Where(sk => sk.Combat != null).SelectMany(sk => sk.Combat!.Applies)
                                      .Select(x => x.Status).Distinct(StringComparer.Ordinal))
                         {
@@ -596,9 +652,9 @@ namespace EdS.Domain.Combat
                             foreach (SkillDefinition skill in c.Class.Skills.Where(sk => sk.Combat != null && sk.Combat.Applies.Any(ap => ap.Status == status)))
                             {
                                 long commands = Commands.LongCount(cmd => cmd.Actor == c.Id && cmd.Action == CombatAction.UseSkill && cmd.Skill == skill.Id);
-                                long spacing = Math.Max(gcdTicks, skill.Combat!.CooldownMs / tick);
+                                long spacing = Math.Max(gcdTicks, rules.CooldownMs(skill, skill.Combat!) / tick);   // recharge effective (8.1)
                                 long rate = spacing == 0 ? checked(Combat.MaxCommandsPerActorPerTick * Window(d)) : (Window(d) - 1) / spacing + 1;
-                                long hits = skill.Combat.Targeting == SkillTargeting.AllEnemies ? enemies[c.Id].Length : 1;
+                                long hits = skill.Combat!.Targeting == SkillTargeting.AllEnemies ? enemies[c.Id].Length : 1;
                                 inWindow = checked(inWindow + checked(Math.Min(commands, rate) * hits));
                             }
                             Carry(d, enemies[c.Id], inWindow);
@@ -737,6 +793,12 @@ namespace EdS.Domain.Combat
                     TriggerDefinition.ValidateReferences(character.Class.Trees[t].Talents[i].Triggers, $"trees[{t}].talents[{i}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, problems);
             for (int k = 0; k < character.Class.Skills.Count; k++)
                 TriggerDefinition.ValidateReferences(character.Class.Skills[k].Triggers, $"skills[{k}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, problems);
+            // Sous-lot 8.1 : les modificateurs désignent aussi le catalogue (durées d'altération) et le tick (valeurs en ms).
+            for (int t = 0; t < character.Class.Trees.Count; t++)
+                for (int i = 0; i < character.Class.Trees[t].Talents.Count; i++)
+                    ModifierDefinition.ValidateReferences(character.Class.Trees[t].Talents[i].Modifiers, $"trees[{t}].talents[{i}].modifiers", Combat.Statuses, Combat.GuardBreakStatus, tick, problems);
+            for (int k = 0; k < character.Class.Skills.Count; k++)
+                ModifierDefinition.ValidateReferences(character.Class.Skills[k].Modifiers, $"skills[{k}].modifiers", Combat.Statuses, Combat.GuardBreakStatus, tick, problems);
             foreach (RuleViolation v in problems)
                 errors.Add(new RuleViolation(v.Kind, $"classe « {character.Class.Id} », {string.Join(", ", v.Fields)} : {v.Message}", path + ".class"));
         }
@@ -824,12 +886,16 @@ namespace EdS.Domain.Combat
             public readonly bool Periodic;
             public readonly bool ReducedByDefense;
 
-            public Offense(string label, DerivedStats attacker, PowerType power, DamageType type, Fixed coefficient, bool canCrit)
-                : this(label, attacker, power, type, coefficient, canCrit, false, false) { }
+            /// <summary>Sous-lot 8.1 : majorant du bonus de dégâts infligés (catégorie talent) de l'attaquant ; impacts directs seulement.</summary>
+            public readonly Fixed Talent;
+
+            public Offense(string label, DerivedStats attacker, PowerType power, DamageType type, Fixed coefficient, bool canCrit, Fixed talent = default)
+                : this(label, attacker, power, type, coefficient, canCrit, false, false, talent) { }
 
             private Offense(string label, DerivedStats attacker, PowerType power, DamageType type, Fixed coefficient, bool canCrit,
-                bool periodic, bool reducedByDefense)
+                bool periodic, bool reducedByDefense, Fixed talent = default)
             {
+                Talent = talent;
                 Label = label;
                 Attacker = attacker;
                 Power = power;
@@ -879,22 +945,28 @@ namespace EdS.Domain.Combat
                     switch (combatant)
                     {
                         case CharacterSetup character:
-                            DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build);
+                            // Sous-lot 8.1 : statistiques et règles effectives par les fonctions partagées avec le moteur (modificateurs
+                            // permanents) ; coefficient effectif de chaque compétence ; bonus talent du pire impact direct (permanent et
+                            // conditionnels positifs à leur facteur maximal), compétences et frappes de réaction.
+                            ModifierSet modifiers = ModifierSet.For(character);
+                            DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, modifiers);
                             stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                             stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
                             defenses[i] = stats;
+                            CombatantRules rules = CombatantRules.For(Combat, modifiers);
+                            Fixed talent = rules.WorstDamageDealt(Combat.ResonanceMax);
                             foreach (SkillDefinition skill in character.Class.Skills)
                                 if (skill.Combat is { } combat)
                                 {
-                                    offenses[i].Add(new Offense($"compétence « {skill.Id} »", stats, combat.PowerType, combat.DamageType, combat.Coefficient, true));
+                                    offenses[i].Add(new Offense($"compétence « {skill.Id} »", stats, combat.PowerType, combat.DamageType, rules.Coefficient(skill, combat), true, talent));
                                     AddDotOffenses(offenses[i], $"compétence « {skill.Id} »", stats, combat.Applies);
                                 }
                             // Lot 7.3 (§4.2) : frappes et DOT des réactions, à la puissance du porteur. Un personnage peut porter toute
                             // altération du catalogue : ses déclencheurs comptent pour chacun.
                             foreach (BoundTrigger bound in character.ActiveTriggers())
-                                AddTriggerOffenses(offenses[i], $"déclencheur « {bound.Label} »", stats, bound.Definition, bound.Rank);
+                                AddTriggerOffenses(offenses[i], $"déclencheur « {bound.Label} »", stats, bound.Definition, bound.Rank, talent);
                             foreach (NamedTrigger named in Combat.Statuses.NamedTriggers())
-                                AddTriggerOffenses(offenses[i], $"déclencheur « {named.Label} »", stats, named.Definition, 1);
+                                AddTriggerOffenses(offenses[i], $"déclencheur « {named.Label} »", stats, named.Definition, 1, talent);
                             break;
                         case DummySetup dummy:
                             defenses[i] = CombatantStats.ForDefenses(Stats, dummy.Armor, dummy.MagicResistance, dummy.StatusResistance);
@@ -1029,12 +1101,12 @@ namespace EdS.Domain.Combat
         /// réaction a pour puissance figée celle du porteur. Un porteur sans puissance (mannequin, assaillant) inflige le minimum de
         /// dégâts des règles : il ne majore rien.
         /// </summary>
-        private void AddTriggerOffenses(List<Offense> offenses, string owner, DerivedStats attacker, TriggerDefinition trigger, int rank)
+        private void AddTriggerOffenses(List<Offense> offenses, string owner, DerivedStats attacker, TriggerDefinition trigger, int rank, Fixed talent = default)
         {
             foreach (TriggerEffect e in trigger.Effects)
             {
                 if (e.Kind == TriggerEffectKind.Strike && e.Coefficient is { } coefficient && e.PowerType is { } power && e.DamageType is { } type)
-                    offenses.Add(new Offense($"frappe du {owner}", attacker, power, type, coefficient.At(rank), false));
+                    offenses.Add(new Offense($"frappe du {owner}", attacker, power, type, coefficient.At(rank), false, talent));
                 else if (e.Kind == TriggerEffectKind.ApplyStatus && e.Status != null && e.Coefficient is { } dot
                     && Combat.Statuses.TryGet(e.Status, out StatusDefinition? definition) && definition.IsDot && definition.DamageType != null)
                     offenses.Add(Offense.Dot($"altération « {definition.Id} » du {owner}", attacker, definition, dot.At(rank)));
@@ -1059,7 +1131,7 @@ namespace EdS.Domain.Combat
                     ? DamageCalculator.ComputePeriodic(offense.Attacker.GetPower(offense.Power) * offense.Coefficient, defender, offense.Type,
                         offense.ReducedByDefense, Damage)
                     : DamageCalculator.Compute(new DamageInput(offense.Attacker, defender, offense.Power, offense.Type, offense.Coefficient,
-                        bonuses, offense.CanCrit, Fixed.Zero), Damage).FinalDamage;
+                        offense.Talent == Fixed.Zero ? bonuses : bonuses.Add(BonusCategory.Talent, offense.Talent), offense.CanCrit, Fixed.Zero), Damage).FinalDamage;
                 return true;
             }
             catch (OverflowException)

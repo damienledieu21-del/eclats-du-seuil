@@ -15,7 +15,8 @@ namespace EdS.Data.Tests;
 /// supprimé à la deuxième occurrence dans une chaîne), brûlure posée par réaction à chaque saignement (2, DOT de réaction) et
 /// frappe sur chaque tick de DOT (3, reportée au tick suivant car la phase de résolution est passée). Les assertions métier
 /// ci-dessous ne dépendent pas de l'empreinte du journal ; la comparaison octet par octet se fait contre le journal figé
-/// <c>Fixtures/reference-0.9.1/entrainement_declencheurs.jsonl</c>. Un assaillant n'a pas de puissance : ses frappes et sa
+/// <c>Fixtures/reference-0.10.0/entrainement_declencheurs.jsonl</c> (sous-lot 8.1 : moteur 0.10.0, format 5 ; la référence 0.9.1 reste
+/// figée, refusée au rejeu et reproduite au gameplay près par Lot81ReferenceTests). Un assaillant n'a pas de puissance : ses frappes et sa
 /// brûlure de réaction infligent 0 (le lot 8 portera des déclencheurs sur le Bastion).
 /// </summary>
 [Trait("Category", "Data")]
@@ -29,7 +30,9 @@ public class Correctif731TriggerScenarioTests
     private const string Brulure = "assailant.assaillant/2@assaillant#0";
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.9.1", Name + ".jsonl");
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.10.0", Name + ".jsonl");
+
+    private static string Fixture091Path => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.9.1", Name + ".jsonl");
 
     private static ScenarioLoadResult Read() => ScenarioJsonReader.ReadFile(ScenarioPath(Name), ShippedData);
 
@@ -222,5 +225,15 @@ public class Correctif731TriggerScenarioTests
         Assert.Equal(expected, Simulate().ToString());
         Assert.Equal(expected, Simulate().ToString());
         Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(File.ReadAllLines(FixturePath), ShippedData).Status);
+    }
+
+    [Fact]
+    public void Reference_0_9_1_refusee_au_rejeu()
+    {
+        // Sous-lot 8.1 : politique de compatibilité inchangée, un journal d'un autre format ou d'un autre moteur est refusé, pas migré.
+        ReplayOutcome outcome = CombatLogReplayer.Replay(File.ReadAllLines(Fixture091Path), ShippedData);
+        Assert.Equal(ReplayStatus.Refused, outcome.Status);
+        Assert.Null(outcome.Comparison);
+        Assert.Contains(outcome.Problems, p => p.Contains("0.9.1", StringComparison.Ordinal));
     }
 }
