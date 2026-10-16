@@ -1,6 +1,6 @@
 {
   "$schema": "../data/schemas/scenario.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "scenario",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -59,7 +59,7 @@
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
-            "appliesFragility": false
+            "applies": []
           },
           {
             "id": "coup_bis",
@@ -67,7 +67,7 @@
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
-            "appliesFragility": false
+            "applies": []
           },
           {
             "id": "coup_felant",
@@ -75,7 +75,7 @@
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
-            "appliesFragility": true
+            "applies": [{ "status": "fragility" }]
           },
           {
             "id": "coup_bis_2",
@@ -83,7 +83,7 @@
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
-            "appliesFragility": false
+            "applies": []
           },
           {
             "id": "percee",
@@ -91,7 +91,7 @@
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": true,
-            "appliesFragility": false
+            "applies": []
           }
         ]
       }

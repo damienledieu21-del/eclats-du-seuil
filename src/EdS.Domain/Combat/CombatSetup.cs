@@ -51,11 +51,15 @@ namespace EdS.Domain.Combat
         public Fixed Armor { get; }
         public Fixed MagicResistance { get; }
 
-        public DummySetup(string id, string team, Fixed armor, Fixed magicResistance, int initiative = 0)
+        /// <summary>Résistance aux altérations (lot 7.2, D12) : réduit la durée des contrôles ; 0 par défaut.</summary>
+        public Fixed StatusResistance { get; }
+
+        public DummySetup(string id, string team, Fixed armor, Fixed magicResistance, int initiative = 0, Fixed statusResistance = default)
             : base(id, team, initiative)
         {
             Armor = armor;
             MagicResistance = magicResistance;
+            StatusResistance = statusResistance;
         }
     }
 
@@ -75,18 +79,21 @@ namespace EdS.Domain.Combat
         /// <summary>Imparable : ignore garde et parade.</summary>
         public bool Unblockable { get; }
 
-        /// <summary>Applique (ou renouvelle) la Fragilité sur chaque cible touchée, après les dégâts de l'impact.</summary>
-        public bool AppliesFragility { get; }
+        /// <summary>
+        /// Altérations appliquées (ou renouvelées) sur chaque cible touchée, après les dégâts de l'impact (lot 7.2 ; remplace le
+        /// booléen <c>appliesFragility</c>). Pour un DOT, la puissance de l'assaillant est ses dégâts bruts.
+        /// </summary>
+        public IReadOnlyList<StatusApplication> Applies { get; }
 
         public AssailantAttack(string id, long rawDamage, DamageType damageType = DamageType.Physique,
-            SkillTargeting targeting = SkillTargeting.Enemy, bool unblockable = false, bool appliesFragility = false)
+            SkillTargeting targeting = SkillTargeting.Enemy, bool unblockable = false, IEnumerable<StatusApplication>? applies = null)
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
             RawDamage = rawDamage;
             DamageType = damageType;
             Targeting = targeting;
             Unblockable = unblockable;
-            AppliesFragility = appliesFragility;
+            Applies = Frozen.ListOrEmpty(applies, nameof(applies));
         }
     }
 
@@ -99,6 +106,9 @@ namespace EdS.Domain.Combat
         public Fixed Armor { get; }
         public Fixed MagicResistance { get; }
 
+        /// <summary>Résistance aux altérations (lot 7.2, D12) : réduit la durée des contrôles ; 0 par défaut.</summary>
+        public Fixed StatusResistance { get; }
+
         /// <summary>Cible des attaques <see cref="SkillTargeting.Enemy"/> ; null si toutes ses attaques sont de zone.</summary>
         public string? Target { get; }
 
@@ -107,11 +117,12 @@ namespace EdS.Domain.Combat
         public IReadOnlyList<AssailantAttack> Attacks { get; }
 
         public AssailantSetup(string id, string team, Fixed armor, Fixed magicResistance, string? target, long firstAttackMs, long intervalMs,
-            IEnumerable<AssailantAttack> attacks, int initiative = 0)
+            IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default)
             : base(id, team, initiative)
         {
             Armor = armor;
             MagicResistance = magicResistance;
+            StatusResistance = statusResistance;
             Target = target;
             FirstAttackMs = firstAttackMs;
             IntervalMs = intervalMs;
@@ -282,6 +293,8 @@ namespace EdS.Domain.Combat
             foreach (RuleViolation v in Stats.Validate()) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules.stats." + f).ToArray()));
             foreach (RuleViolation v in Damage.Validate()) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules.damage." + f).ToArray()));
             foreach (RuleViolation v in Progression.Validate()) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules.progression." + f).ToArray()));
+            if (Combat.Statuses != null)
+                foreach (RuleViolation v in Combat.Statuses.Validate(Combat.TickMilliseconds)) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules." + f).ToArray()));
             if (errors.Count > 0) return errors;   // la suite dépend de règles cohérentes
 
             // Lot 7.1 : admission. Un scénario hors limites de volume est refusé sans analyser ses éléments un par un.
@@ -329,6 +342,7 @@ namespace EdS.Domain.Combat
                     case DummySetup dummy:
                         Defense(dummy.Armor, "l'armure du mannequin", path + ".armor", errors);
                         Defense(dummy.MagicResistance, "la résistance magique du mannequin", path + ".magicResistance", errors);
+                        Defense(dummy.StatusResistance, "la résistance aux altérations du mannequin", path + ".statusResistance", errors);
                         break;
                     case AssailantSetup assailant:
                         ValidateAssailantShape(assailant, path, tick, errors);
@@ -418,6 +432,7 @@ namespace EdS.Domain.Combat
         {
             Defense(a.Armor, "l'armure de l'assaillant", path + ".armor", errors);
             Defense(a.MagicResistance, "la résistance magique de l'assaillant", path + ".magicResistance", errors);
+            Defense(a.StatusResistance, "la résistance aux altérations de l'assaillant", path + ".statusResistance", errors);
             if (a.FirstAttackMs < 0 || a.FirstAttackMs > Combat.MaxDurationMs)
                 errors.Add(new RuleViolation($"instant hors de [0, {Combat.MaxDurationMs}] ms.", path + ".firstAttackMs"));
             else if (a.FirstAttackMs % tick != 0)
@@ -440,6 +455,11 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation($"dégâts bruts hors de [0, {CombatantStats.MaxRawDamage}].", attackPath + ".rawDamage"));
                 if (!Enum.IsDefined(typeof(DamageType), attack.DamageType)) errors.Add(new RuleViolation("type de dégâts inconnu.", attackPath + ".damageType"));
                 if (!Enum.IsDefined(typeof(SkillTargeting), attack.Targeting)) errors.Add(new RuleViolation("ciblage inconnu.", attackPath + ".targeting"));
+                StatusApplication.ValidateList(attack.Applies, attackPath + ".applies", errors);
+                for (int m = 0; m < attack.Applies.Count; m++)
+                    if (Combat.Statuses.CheckApplication(attack.Applies[m], Combat.GuardBreakStatus) is { } problem)
+                        errors.Add(new RuleViolation(problem.StartsWith("altération inconnue", StringComparison.Ordinal) ? RuleViolationKind.UnknownReference : RuleViolationKind.InvalidValue,
+                            problem, $"{attackPath}.applies[{m}].status"));
             }
             if (a.Target is null && a.Attacks.Any(x => x.Targeting == SkillTargeting.Enemy))
                 errors.Add(new RuleViolation("une attaque à cible unique exige une cible pour l'assaillant.", path + ".target"));
@@ -452,8 +472,16 @@ namespace EdS.Domain.Combat
             foreach (BuildViolation v in BuildValidator.Validate(character.Build, character.Class, Progression))
                 errors.Add(new RuleViolation($"build invalide ({v.Subject}) : {v.Message} [{v.Code}]", path + ".build"));
             foreach (SkillDefinition skill in character.Class.Skills)
-                if (skill.Combat is { } combat && combat.CooldownMs % tick != 0)
+            {
+                if (skill.Combat is not { } combat) continue;
+                if (combat.CooldownMs % tick != 0)
                     errors.Add(new RuleViolation($"recharge de « {skill.Name} » ({combat.CooldownMs} ms) non multiple de la durée du tick ({tick} ms).", path + ".class"));
+                // Lot 7.2 : les altérations des compétences désignent le catalogue des règles, connu seulement ici.
+                foreach (StatusApplication application in combat.Applies)
+                    if (Combat.Statuses.CheckApplication(application, Combat.GuardBreakStatus) is { } problem)
+                        errors.Add(new RuleViolation(problem.StartsWith("altération inconnue", StringComparison.Ordinal) ? RuleViolationKind.UnknownReference : RuleViolationKind.InvalidValue,
+                            $"compétence « {skill.Id} » : {problem}", path + ".class"));
+            }
         }
 
         private static void Defense(Fixed value, string label, string path, List<RuleViolation> errors)
@@ -519,16 +547,23 @@ namespace EdS.Domain.Combat
                             defenses[i] = stats;
                             foreach (SkillDefinition skill in character.Class.Skills)
                                 if (skill.Combat is { } combat)
+                                {
                                     offenses[i].Add(new Offense($"compétence « {skill.Id} »", stats, combat.PowerType, combat.DamageType, combat.Coefficient, true));
+                                    AddDotOffenses(offenses[i], $"compétence « {skill.Id} »", stats, combat.Applies);
+                                }
                             break;
                         case DummySetup dummy:
-                            defenses[i] = CombatantStats.ForDefenses(Stats, dummy.Armor, dummy.MagicResistance);
+                            defenses[i] = CombatantStats.ForDefenses(Stats, dummy.Armor, dummy.MagicResistance, dummy.StatusResistance);
                             break;
                         case AssailantSetup assailant:
-                            defenses[i] = CombatantStats.ForDefenses(Stats, assailant.Armor, assailant.MagicResistance);
+                            defenses[i] = CombatantStats.ForDefenses(Stats, assailant.Armor, assailant.MagicResistance, assailant.StatusResistance);
                             foreach (AssailantAttack attack in assailant.Attacks)
-                                offenses[i].Add(new Offense($"attaque « {attack.Id} »", CombatantStats.ForAssailantAttack(Stats, attack.RawDamage),
+                            {
+                                DerivedStats attackStats = CombatantStats.ForAssailantAttack(Stats, attack.RawDamage);
+                                offenses[i].Add(new Offense($"attaque « {attack.Id} »", attackStats,
                                     CombatantStats.PowerOf(attack.DamageType), attack.DamageType, Fixed.One, false));
+                                AddDotOffenses(offenses[i], $"attaque « {attack.Id} »", attackStats, attack.Applies);
+                            }
                             break;
                     }
                 }
@@ -567,11 +602,22 @@ namespace EdS.Domain.Combat
                         usable[i] = false;
                     }
                 }
+                // Lot 7.2 : résistance aux altérations, même enveloppe que les défenses ; le facteur K / (K + résistance) a le même
+                // dénominateur que la formule de défense. La durée réduite (ticks de base ≤ 86 400 000 × facteur brut ≤ 10⁴) reste < 10¹².
+                Fixed statusResistance = stats.StatusResistance;
+                string statusField = Combatants[i] is CharacterSetup ? $"combatants[{i}]" : $"combatants[{i}].statusResistance";
+                if (statusResistance > CombatantStats.MaxDefense)
+                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                        $"résistance aux altérations effective calculée ({statusResistance}) au-delà de la limite technique {CombatantStats.MaxDefense}.", statusField));
+                else if (!Representable(() => checked(Stats.StatusResistanceConstant * Fixed.Scale + statusResistance.Raw)))
+                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                        $"dénominateur de résistance aux altérations non représentable (constante {Stats.StatusResistanceConstant}, résistance {statusResistance}).", statusField));
             }
 
             // 2. Pire impact de chaque attaque contre chaque défenseur ennemi réel ; 3. majorant sans défense, cumulé sur la durée.
             DerivedStats undefended = CombatantStats.ForDefenses(Stats, Fixed.Zero, Fixed.Zero);
-            DamageBonuses worstBonuses = DamageBonuses.None.Add(BonusCategory.Alteration, Combat.FragilityDamageTakenIncrease);
+            // Lot 7.2 : majorant des bonus de dégâts reçus, toutes les altérations du catalogue actives à la fois.
+            DamageBonuses worstBonuses = DamageBonuses.None.Add(BonusCategory.Alteration, Combat.Statuses.TotalDamageTakenIncrease());
             long maxImpacts = checked(DurationMs / Combat.TickMilliseconds * Combat.MaxEventsPerTick);
             for (int i = 0; i < count; i++)
             {
@@ -605,6 +651,18 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
                         $"cumul des dégâts sur la durée du combat hors des limites numériques (pire impact {worstHit} × {maxImpacts} événements comptés au plus).", path));
             }
+        }
+
+        /// <summary>
+        /// Lot 7.2 : chaque tick d'un DOT est un impact sans critique dont la puissance figée vaut la puissance du type de l'altération
+        /// (dégâts bruts pour un assaillant) × le coefficient de l'application. Il entre dans le pire impact comme une attaque.
+        /// </summary>
+        private void AddDotOffenses(List<Offense> offenses, string owner, DerivedStats attacker, IReadOnlyList<StatusApplication> applies)
+        {
+            foreach (StatusApplication application in applies)
+                if (Combat.Statuses.TryGet(application.Status, out StatusDefinition? definition) && definition.IsDot
+                    && definition.DamageType is { } type && application.Coefficient is { } coefficient)
+                    offenses.Add(new Offense($"altération « {definition.Id} » de {owner}", attacker, CombatantStats.PowerOf(type), type, coefficient, false));
         }
 
         private string DefenseField(int index, DamageType type) => Combatants[index] is CharacterSetup

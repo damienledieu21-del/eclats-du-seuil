@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using EdS.Domain.Collections;
+using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
 
@@ -50,10 +53,14 @@ namespace EdS.Domain.Builds
         /// <summary>Valeurs provisoires, non équilibrées.</summary>
         public bool IsProvisional { get; }
 
+        /// <summary>Altérations appliquées à chaque cible touchée, après les dégâts de l'impact (lot 7.2).</summary>
+        public IReadOnlyList<StatusApplication> Applies { get; }
+
         public SkillCombatDefinition(PowerType powerType, DamageType damageType, Fixed coefficient, int enduranceCost,
             long cooldownMs, SkillTargeting targeting = SkillTargeting.Enemy, bool isProvisional = true,
-            bool unblockable = false, int rampartChargeCost = 0, int rampartChargeGain = 0)
+            bool unblockable = false, int rampartChargeCost = 0, int rampartChargeGain = 0, IEnumerable<StatusApplication>? applies = null)
         {
+            Applies = Frozen.ListOrEmpty(applies, nameof(applies));
             PowerType = powerType;
             DamageType = damageType;
             Coefficient = coefficient;

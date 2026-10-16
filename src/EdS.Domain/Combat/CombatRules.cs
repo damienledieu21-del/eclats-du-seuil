@@ -7,7 +7,7 @@ namespace EdS.Domain.Combat
 {
     /// <summary>
     /// Paramètres du moteur de combat : rythme et endurance (lot 5, A3 et A6), limites de simulation, garde,
-    /// parade, Charges de rempart, Résonance et états défensifs (lot 6, A1, A2, A4, A5 et A19).
+    /// parade, Charges de rempart, Résonance et états défensifs (lot 6, A1, A2, A4, A5 et A19), catalogue des altérations (lot 7.2).
     /// Valeurs par défaut <b>provisoires</b> ; toutes les durées sont en millisecondes et doivent tomber
     /// exactement sur un tick.
     /// </summary>
@@ -70,8 +70,11 @@ namespace EdS.Domain.Combat
         /// <summary>Endurance payée par impact bloqué (A1) ; si elle manque, la garde est brisée avant la réduction.</summary>
         public int GuardCostPerBlock { get; init; } = 10;
 
-        /// <summary>Durée de la rupture de garde (A1, A19) : ni garde ni parade, pas de régénération.</summary>
-        public long GuardBreakDurationMs { get; init; } = 3000;
+        /// <summary>
+        /// Altération appliquée par la rupture de garde (A1, A19 ; lot 7.2) : sa définition dans <see cref="Statuses"/> fixe la
+        /// durée et les blocages (ni garde ni parade, pas de régénération).
+        /// </summary>
+        public string GuardBreakStatus { get; init; } = "guardBreak";
 
         /// <summary>Fenêtre d'une parade parfaite (A2) : ticks [commande, commande + fenêtre[.</summary>
         public long ParryWindowMs { get; init; } = 150;
@@ -103,11 +106,11 @@ namespace EdS.Domain.Combat
         /// <summary>Résonance dépensée par l'ultime (A5).</summary>
         public int UltimateResonanceCost { get; init; } = 100;
 
-        /// <summary>Durée de la Fragilité (A19) ; une réapplication renouvelle la durée sans cumul.</summary>
-        public long FragilityDurationMs { get; init; } = 6000;
-
-        /// <summary>Augmentation des dégâts directs reçus sous Fragilité (A19 : 0.1 = +10 %), catégorie « altération ».</summary>
-        public Fixed FragilityDamageTakenIncrease { get; init; } = Fixed.FromRatio(1, 10);
+        /// <summary>
+        /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
+        /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
+        /// </summary>
+        public StatusCatalog Statuses { get; init; } = StatusCatalog.Provisional;
 
         /// <summary>
         /// Plafond absolu (24 h) de <see cref="MaxDurationMs"/> et de toutes les durées des règles et des compétences, pour que
@@ -138,15 +141,12 @@ namespace EdS.Domain.Combat
             Duration(MaxDurationMs, nameof(MaxDurationMs), true);
             if (MaxDurationMs > AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"ne peut pas dépasser {AbsoluteMaxDurationMs} ms (24 h).", nameof(MaxDurationMs)));
-            Duration(GuardBreakDurationMs, nameof(GuardBreakDurationMs), true);
             Duration(ParryWindowMs, nameof(ParryWindowMs), true);
             Duration(ParryFailureRecoveryMs, nameof(ParryFailureRecoveryMs), false);
-            Duration(FragilityDurationMs, nameof(FragilityDurationMs), true);
             // Correctif 6.1.1 (CA-M01 C et D) : la recharge globale et le délai de régénération sont bornés comme les autres
             // durées. Avec un tick de 1 ms, dernier tick possible + délai en ticks ≤ 2 × 86 400 000 : très loin de 2⁶³.
             foreach (var (value, name) in new[] { (GlobalCooldownMs, nameof(GlobalCooldownMs)), (EnduranceRegenDelayMs, nameof(EnduranceRegenDelayMs)),
-                (GuardBreakDurationMs, nameof(GuardBreakDurationMs)), (ParryWindowMs, nameof(ParryWindowMs)),
-                (ParryFailureRecoveryMs, nameof(ParryFailureRecoveryMs)), (FragilityDurationMs, nameof(FragilityDurationMs)) })
+                (ParryWindowMs, nameof(ParryWindowMs)), (ParryFailureRecoveryMs, nameof(ParryFailureRecoveryMs)) })
                 if (value > AbsoluteMaxDurationMs)
                     errors.Add(new RuleViolation($"ne peut pas dépasser {AbsoluteMaxDurationMs} ms (24 h).", name));
 
@@ -157,8 +157,12 @@ namespace EdS.Domain.Combat
             }
             Fraction(GuardDamageReduction, nameof(GuardDamageReduction));
             Fraction(ParryDamageReduction, nameof(ParryDamageReduction));
-            if (FragilityDamageTakenIncrease < Fixed.Zero)
-                errors.Add(new RuleViolation("ne peut pas être négative.", nameof(FragilityDamageTakenIncrease)));
+            if (Statuses is null)
+                errors.Add(new RuleViolation("catalogue des altérations obligatoire.", nameof(GuardBreakStatus)));
+            else if (GuardBreakStatus is null || !Statuses.TryGet(GuardBreakStatus, out StatusDefinition? guardBreak))
+                errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"altération inconnue « {GuardBreakStatus} ».", nameof(GuardBreakStatus)));
+            else if (guardBreak.IsDot || guardBreak.Category == StatusCategory.Immunity)
+                errors.Add(new RuleViolation("la rupture de garde doit être un contrôle ou un modificateur, ni périodique ni immunité.", nameof(GuardBreakStatus)));
 
             foreach (var (value, name) in new[]
             {

@@ -46,7 +46,7 @@ public class TrainingScenarioTests
         Assert.Equal(("bastion", 1000L, 2000L), (assailant.Target!, assailant.FirstAttackMs, assailant.IntervalMs));
         Assert.Equal(new[] { 100L, 100, 100, 100, 60 }, assailant.Attacks.Select(a => a.RawDamage));
         Assert.True(assailant.Attacks[4].Unblockable);
-        Assert.True(assailant.Attacks[2].AppliesFragility);
+        Assert.Equal("fragility", Assert.Single(assailant.Attacks[2].Applies).Status);
         Assert.Equal(SkillTargeting.Enemy, assailant.Attacks[0].Targeting);
         Assert.Equal(CombatAction.GuardStart, setup.Commands[0].Action);
         Assert.Null(setup.Commands[0].Skill);
@@ -65,8 +65,8 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "1a9ec830366cc5b153bee25c1f6132a14338eef4ad85184cd6aea86cc19eb509")]
-    [InlineData("entrainement_rupture", "6ea9593d7de395f7197b600b225c822aaf01abb15fc6c16b765f483b80647942")]
+    [InlineData("entrainement_garde_parade", "923c00a2d954bf887d50d986e8e20c316cd1fe31c02f497f07942e5286b4fbc9")]
+    [InlineData("entrainement_rupture", "3cf03fc5dbdf715c2e7db2d65cba30ae39cb1d270d12555da3224a8066686aba")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.

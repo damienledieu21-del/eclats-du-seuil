@@ -16,6 +16,7 @@
   <ItemGroup>
     <None Include="..\..\data\**\*.json" LinkBase="data" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\scenarios\**\*.json" LinkBase="scenarios" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\**\*.jsonl" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

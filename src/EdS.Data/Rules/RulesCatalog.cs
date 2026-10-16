@@ -39,7 +39,8 @@ namespace EdS.Data.Rules
     }
 
     /// <summary>
-    /// Description unique de <c>rules.json</c> : chaque paramètre, son type, son emplacement et la propriété du domaine
+    /// Description unique de <c>rules.json</c> (hors bloc <c>statuses</c>, liste de définitions décrite par
+    /// <see cref="StatusShape"/>) : chaque paramètre, son type, son emplacement et la propriété du domaine
     /// qu'il alimente. Les adaptateurs (System.Text.Json aujourd'hui, Unity plus tard) et le validateur commun
     /// s'appuient tous sur ce catalogue ; il n'existe pas d'autre description du format.
     /// </summary>
@@ -96,6 +97,7 @@ namespace EdS.Data.Rules
             new RuleField($"stats.perAttribute.{Id(AttributeKind.Vitalite)}.maxHealth", RuleValueKind.Decimal, S, nameof(StatRules.MaxHealthPerVitalite)),
             new RuleField($"stats.perAttribute.{Id(AttributeKind.Volonte)}.statusResistance", RuleValueKind.Decimal, S, nameof(StatRules.StatusResistancePerVolonte)),
             new RuleField($"stats.perAttribute.{Id(AttributeKind.Endurance)}.maxEndurance", RuleValueKind.Decimal, S, nameof(StatRules.MaxEndurancePerEndurance)),
+            new RuleField("stats.statusResistanceConstant", RuleValueKind.Int64, S, nameof(StatRules.StatusResistanceConstant)),
 
             new RuleField("stats.critical.baseChanceBasisPoints", RuleValueKind.Int32, S, nameof(StatRules.BaseCriticalChanceBasisPoints)),
             new RuleField("stats.critical.minChanceBasisPoints", RuleValueKind.Int32, S, nameof(StatRules.MinCriticalChanceBasisPoints)),
@@ -135,7 +137,7 @@ namespace EdS.Data.Rules
             new RuleField("combat.guard.damageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.GuardDamageReduction)),
             new RuleField("combat.guard.upkeepPerSecond", RuleValueKind.Int32, C, nameof(CombatRules.GuardUpkeepPerSecond)),
             new RuleField("combat.guard.costPerBlock", RuleValueKind.Int32, C, nameof(CombatRules.GuardCostPerBlock)),
-            new RuleField("combat.guard.breakDurationMs", RuleValueKind.Int64, C, nameof(CombatRules.GuardBreakDurationMs)),
+            new RuleField("combat.guard.breakStatus", RuleValueKind.Token, C, nameof(CombatRules.GuardBreakStatus)),
             new RuleField("combat.parry.windowMs", RuleValueKind.Int64, C, nameof(CombatRules.ParryWindowMs)),
             new RuleField("combat.parry.damageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.ParryDamageReduction)),
             new RuleField("combat.parry.failureRecoveryMs", RuleValueKind.Int64, C, nameof(CombatRules.ParryFailureRecoveryMs)),
@@ -146,8 +148,6 @@ namespace EdS.Data.Rules
             new RuleField("combat.resonance.perPerfectParry", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerPerfectParry)),
             new RuleField("combat.resonance.perBlock", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerBlock)),
             new RuleField("combat.resonance.ultimateCost", RuleValueKind.Int32, C, nameof(CombatRules.UltimateResonanceCost)),
-            new RuleField("combat.states.fragility.durationMs", RuleValueKind.Int64, C, nameof(CombatRules.FragilityDurationMs)),
-            new RuleField("combat.states.fragility.damageTakenIncrease", RuleValueKind.Decimal, C, nameof(CombatRules.FragilityDamageTakenIncrease)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

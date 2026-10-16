@@ -122,8 +122,21 @@ public static class ClassJsonReader
             ["rampartChargeCost"] = (v, p) => combat.RampartChargeCost = Int(input, v, p),
             ["rampartChargeGain"] = (v, p) => combat.RampartChargeGain = Int(input, v, p),
             ["provisional"] = (v, p) => combat.Provisional = Bool(input, v, p),
+            ["applies"] = (v, p) => combat.Applies = ReadList(input, v, p, (e, ip) => ReadApplication(input, e, ip)),
         });
         return ok ? combat : null;
+    }
+
+    /// <summary>Altération portée (lot 7.2), même forme dans les classes et les scénarios.</summary>
+    internal static StatusApplicationData? ReadApplication(JsonInput input, JsonElement element, string path)
+    {
+        var application = new StatusApplicationData();
+        bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+        {
+            ["status"] = (v, p) => application.Status = input.Text(v, p),
+            ["coefficient"] = (v, p) => application.Coefficient = input.Decimal(v, p),
+        });
+        return ok ? application : null;
     }
 
     private static RequirementData? ReadRequirement(JsonInput input, JsonElement element, string path)

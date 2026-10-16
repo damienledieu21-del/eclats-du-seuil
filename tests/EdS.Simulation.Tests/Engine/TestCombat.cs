@@ -73,7 +73,7 @@ internal static class TestCombat
     /// <summary>Attaque d'assaillant : 100 dégâts bruts physiques par défaut (A21).</summary>
     public static AssailantAttack Blow(long raw = 100, bool unblockable = false, bool fragility = false,
         SkillTargeting targeting = SkillTargeting.Enemy, string id = "coup") =>
-        new(id, raw, DamageType.Physique, targeting, unblockable, fragility);
+        new(id, raw, DamageType.Physique, targeting, unblockable, fragility ? new[] { new StatusApplication("fragility") } : null);
 
     /// <summary>Assaillant d'entraînement : PV infinis, armure nulle, attaque toutes les 2 s à partir de 1 s par défaut.</summary>
     public static AssailantSetup Assailant(long firstAttackMs = 1000, long intervalMs = 2000, string id = "assaillant", string team = "cibles",

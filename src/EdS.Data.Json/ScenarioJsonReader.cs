@@ -72,6 +72,7 @@ public static class ScenarioJsonReader
             ["build"] = Track("build", (v, p) => c.Build = ReadBuild(input, v, p)),
             ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
             ["magicResistance"] = Track("magicResistance", (v, p) => c.MagicResistance = input.Decimal(v, p)),
+            ["statusResistance"] = Track("statusResistance", (v, p) => c.StatusResistance = input.Decimal(v, p)),
             ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
             ["firstAttackMs"] = Track("firstAttackMs", (v, p) => c.FirstAttackMs = input.Int64(v, p)),
             ["intervalMs"] = Track("intervalMs", (v, p) => c.IntervalMs = input.Int64(v, p)),
@@ -115,7 +116,7 @@ public static class ScenarioJsonReader
             ["damageType"] = (v, p) => a.DamageType = input.Text(v, p),
             ["targeting"] = (v, p) => a.Targeting = input.Text(v, p),
             ["unblockable"] = (v, p) => a.Unblockable = input.Boolean(v, p),
-            ["appliesFragility"] = (v, p) => a.AppliesFragility = input.Boolean(v, p),
+            ["applies"] = (v, p) => a.Applies = input.ReadList(v, p, (e, ip) => ClassJsonReader.ReadApplication(input, e, ip)),
         });
         return ok ? a : null;
     }

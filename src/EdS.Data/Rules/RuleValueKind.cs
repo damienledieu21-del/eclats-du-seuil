@@ -12,7 +12,10 @@ namespace EdS.Data.Rules
         /// <summary>Entier 64 bits.</summary>
         Int64,
 
-        /// <summary>Identifiant texte choisi dans une liste fermée.</summary>
+        /// <summary>
+        /// Identifiant texte choisi dans une liste fermée ; sans liste (<see cref="RuleField.AllowedTokens"/> vide), identifiant
+        /// libre dont la référence est vérifiée par le domaine (ex. <c>combat.guard.breakStatus</c>, une altération).
+        /// </summary>
         Token,
 
         /// <summary>Liste d'entiers 32 bits (ex. niveaux de déblocage).</summary>

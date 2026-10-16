@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
+using EdS.Data.Json;
 using EdS.Data.Rules;
 using EdS.Data.Validation;
 using EdS.Domain.Builds;
@@ -53,6 +54,7 @@ public class RulesCatalogTests
             {
                 Assert.Contains(p.Name, required);
                 string childPath = prefix.Length == 0 ? p.Name : prefix + "." + p.Name;
+                if (childPath == "statuses") continue;   // lot 7.2 : liste de définitions, vérifiée par Schema_JSON_des_alterations
                 if (p.Value.TryGetProperty("properties", out _)) Walk(p.Value, childPath);
                 else leaves.Add(childPath);
             }
@@ -79,13 +81,25 @@ public class RulesCatalogTests
                 int i => RuleValue.FromInteger(i),
                 long l => RuleValue.FromInteger(l),
                 RoundingMode m => RuleValue.FromToken(RulesCatalog.Id(m)),
+                string s => RuleValue.FromToken(s),
                 IReadOnlyList<int> list => RuleValue.FromIntegerList(list.Select(x => (long)x)),
                 _ => throw new InvalidOperationException(field.Path),
             });
         }
 
+        // Lot 7.2 : le bloc « statuses » se remplit aussi sans JSON, ici depuis le catalogue provisoire du domaine.
+        document.Statuses = CombatRules.Provisional.Statuses.Definitions.Select(d => (StatusData?)new StatusData
+        {
+            Id = d.Id, Category = StatusIds.Of(d.Category), DurationMs = d.DurationMs, PeriodMs = d.IsDot ? d.PeriodMs : null,
+            Stacking = StatusIds.Of(d.Stacking), Resistance = StatusIds.Of(d.Resistance),
+            DamageType = d.DamageType is { } type ? RulesCatalog.Id(type) : null,
+            Blocks = StatusIds.Of(d.Blocks).Select(x => (string?)x).ToList(), Interrupts = StatusIds.Of(d.Interrupts).Select(x => (string?)x).ToList(),
+            BlockReason = d.BlockReason, DamageTakenIncrease = d.DamageTakenIncrease, MovementSpeedModifier = d.MovementSpeedModifier,
+            GrantsOnExpiry = d.GrantsOnExpiry, ImmuneTo = d.ImmuneTo.Select(x => (string?)x).ToList(),
+        }).ToList();
         RulesLoadResult result = RulesValidator.Validate(document);
         Assert.True(result.IsValid, result.Report.ToString());
+        Assert.Equal(RulesJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "data", "v0", "rules.json")).Rules!.Fingerprint, result.Rules!.Fingerprint);
 
         document.Set("stats.base.armor", RuleValue.FromToken("beaucoup"));
         document.Set("stats.inconnu", RuleValue.FromInteger(1));

@@ -44,6 +44,8 @@ namespace EdS.Simulation.Engine
         public const string Fragility = "fragility";
         public const string GuardBreak = "guardBreak";
 
+        private static bool AppliesFragility(AssailantAttack attack) => attack.Applies.Any(a => a.Status == Fragility);
+
         private sealed class Fighter
         {
             public CombatantSetup Setup = null!;
@@ -256,10 +258,10 @@ namespace EdS.Simulation.Engine
             _durationTicks = setup.DurationMs / _tickMs;
             _globalCooldownTicks = _rules.GlobalCooldownMs / _tickMs;
             _regenDelayTicks = _rules.EnduranceRegenDelayMs / _tickMs;
-            _guardBreakTicks = _rules.GuardBreakDurationMs / _tickMs;
+            _guardBreakTicks = _rules.Statuses[_rules.GuardBreakStatus].DurationMs / _tickMs;
             _parryWindowTicks = _rules.ParryWindowMs / _tickMs;
             _parryRecoveryTicks = _rules.ParryFailureRecoveryMs / _tickMs;
-            _fragilityTicks = _rules.FragilityDurationMs / _tickMs;
+            _fragilityTicks = _rules.Statuses[Fragility].DurationMs / _tickMs;
 
             _fighters = setup.Combatants.Select(CreateFighter).ToList();
             _fightersById = _fighters.OrderBy(f => f.Id, StringComparer.Ordinal).ToList();
@@ -632,7 +634,7 @@ namespace EdS.Simulation.Engine
             }
             Emit(tick, CombatPhase.Commands, "attackStarted", w => w
                 .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id)
-                .Field("rawDamage", attack.RawDamage).Field("unblockable", attack.Unblockable).Field("appliesFragility", attack.AppliesFragility));
+                .Field("rawDamage", attack.RawDamage).Field("unblockable", attack.Unblockable).Field("appliesFragility", AppliesFragility(attack)));
             return new PendingAction { Actor = assailant, Attack = attack, Target = target, GeneratesResonance = false };
         }
 
@@ -672,7 +674,7 @@ namespace EdS.Simulation.Engine
             {
                 cost += target.Endurance < _rules.GuardCostPerBlock ? BreakGuardCost(target) : Cost.Line + GainCost(target, _rules.ResonancePerBlock);
             }
-            if (action.Attack is { AppliesFragility: true }) cost += ApplyStateCost;
+            if (action.Attack is { } attack && AppliesFragility(attack)) cost += ApplyStateCost;
             return cost;
         }
 
@@ -682,7 +684,7 @@ namespace EdS.Simulation.Engine
             Fighter actor = action.Actor;
             bool critical = action.Combat != null && CriticalRoll.Roll(actor.Random, actor.Stats);   // l'assaillant ne critique jamais (aucun tirage)
             bool fragile = target.IsFragile;
-            DamageBonuses bonuses = fragile ? DamageBonuses.None.Add(BonusCategory.Alteration, _rules.FragilityDamageTakenIncrease) : DamageBonuses.None;
+            DamageBonuses bonuses = fragile ? DamageBonuses.None.Add(BonusCategory.Alteration, _rules.Statuses[Fragility].DamageTakenIncrease) : DamageBonuses.None;
 
             // Défense de la cible : parade (prioritaire) ou garde ; jamais les deux. Un impact imparable ignore l'une et l'autre.
             string defense = "none";
@@ -752,7 +754,7 @@ namespace EdS.Simulation.Engine
                 Gain(tick, CombatPhase.Resolution, target, Resonance, _rules.ResonancePerPerfectParry, "perfectParry");
             }
             if (blockReward) Gain(tick, CombatPhase.Resolution, target, Resonance, _rules.ResonancePerBlock, "block");
-            if (action.Attack is { AppliesFragility: true }) ApplyState(tick, CombatPhase.Resolution, target, Fragility, _fragilityTicks);
+            if (action.Attack is { } attack && AppliesFragility(attack)) ApplyState(tick, CombatPhase.Resolution, target, Fragility, _fragilityTicks);
         }
 
         /// <summary>

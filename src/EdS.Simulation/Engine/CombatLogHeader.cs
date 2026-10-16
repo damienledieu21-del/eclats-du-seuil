@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using EdS.Domain.Combat;
 using System.Linq;
 using EdS.Domain.Stats;
@@ -63,6 +64,19 @@ namespace EdS.Simulation.Engine
         public static string TargetingId(Domain.Builds.SkillTargeting targeting) =>
             targeting == Domain.Builds.SkillTargeting.Enemy ? "enemy" : "allEnemies";
 
+        /// <summary>Altérations portées (lot 7.2), sous la forme du fichier de scénario : le coefficient n'est écrit que s'il existe.</summary>
+        internal static void WriteApplies(JsonLineWriter w, IReadOnlyList<StatusApplication> applies)
+        {
+            w.Name("applies").BeginArray();
+            foreach (StatusApplication a in applies)
+            {
+                w.BeginObject().Field("status", a.Status);
+                if (a.Coefficient is { } coefficient) w.Field("coefficient", coefficient);
+                w.EndObject();
+            }
+            w.EndArray();
+        }
+
         private static void WriteCombatant(JsonLineWriter w, CombatantSetup c)
         {
             w.BeginObject().Field("id", c.Id);
@@ -89,17 +103,21 @@ namespace EdS.Simulation.Engine
                     break;
                 case DummySetup dummy:
                     w.Field("type", "dummy").Field("team", c.Team).Field("initiative", c.Initiative)
-                        .Field("armor", dummy.Armor).Field("magicResistance", dummy.MagicResistance);
+                        .Field("armor", dummy.Armor).Field("magicResistance", dummy.MagicResistance).Field("statusResistance", dummy.StatusResistance);
                     break;
                 case AssailantSetup assailant:
                     w.Field("type", "assailant").Field("team", c.Team).Field("initiative", c.Initiative)
-                        .Field("armor", assailant.Armor).Field("magicResistance", assailant.MagicResistance)
+                        .Field("armor", assailant.Armor).Field("magicResistance", assailant.MagicResistance).Field("statusResistance", assailant.StatusResistance)
                         .Field("target", assailant.Target).Field("firstAttackMs", assailant.FirstAttackMs).Field("intervalMs", assailant.IntervalMs);
                     w.Name("attacks").BeginArray();
                     foreach (AssailantAttack attack in assailant.Attacks)
+                    {
                         w.BeginObject().Field("id", attack.Id).Field("rawDamage", attack.RawDamage)
                             .Field("damageType", DamageTypeId(attack.DamageType)).Field("targeting", TargetingId(attack.Targeting))
-                            .Field("unblockable", attack.Unblockable).Field("appliesFragility", attack.AppliesFragility).EndObject();
+                            .Field("unblockable", attack.Unblockable);
+                        WriteApplies(w, attack.Applies);
+                        w.EndObject();
+                    }
                     w.EndArray();
                     break;
             }

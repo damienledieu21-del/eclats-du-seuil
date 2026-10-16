@@ -79,6 +79,18 @@ namespace EdS.Data.Classes
         public int? RampartChargeCost { get; set; }
         public int? RampartChargeGain { get; set; }
         public bool? Provisional { get; set; }
+
+        /// <summary>Altérations appliquées à chaque cible touchée (schéma 3, lot 7.2) ; liste éventuellement vide.</summary>
+        public List<StatusApplicationData?>? Applies { get; set; }
+    }
+
+    /// <summary>Altération portée par une compétence ou une attaque d'assaillant : <c>{ "status": "burn", "coefficient": 0.5 }</c>.</summary>
+    public sealed class StatusApplicationData
+    {
+        public string? Status { get; set; }
+
+        /// <summary>DOT seulement ; absent pour les autres catégories.</summary>
+        public Fixed? Coefficient { get; set; }
     }
 
     public sealed class RequirementData

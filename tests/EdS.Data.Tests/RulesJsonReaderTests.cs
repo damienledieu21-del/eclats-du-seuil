@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(3, result.Rules!.SchemaVersion);
-        Assert.Equal("0.3.0-provisoire", result.Rules.ContentVersion);
+        Assert.Equal(4, result.Rules!.SchemaVersion);
+        Assert.Equal("0.4.0-provisoire", result.Rules.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -50,7 +50,16 @@ public class RulesJsonReaderTests
         foreach (PropertyInfo p in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             object? e = p.GetValue(expected), a = p.GetValue(actual);
-            bool same = e is IEnumerable<int> el && a is IEnumerable<int> al ? el.SequenceEqual(al) : Equals(e, a);
+            if (e is StatusCatalog ec && a is StatusCatalog ac)
+            {
+                // Lot 7.2 : catalogue des altérations comparé définition par définition, dans l'ordre.
+                Assert.Equal(ec.Definitions.Count, ac.Definitions.Count);
+                for (int i = 0; i < ec.Definitions.Count; i++) AssertSameProperties(ec.Definitions[i], ac.Definitions[i]);
+                continue;
+            }
+            bool same = e is IEnumerable<int> el && a is IEnumerable<int> al ? el.SequenceEqual(al)
+                : e is IEnumerable<string> es && a is IEnumerable<string> @as ? es.SequenceEqual(@as)
+                : Equals(e, a);
             Assert.True(same, $"{typeof(T).Name}.{p.Name} : {e} attendu, {a} lu.");
         }
     }
@@ -90,8 +99,9 @@ public class RulesJsonReaderTests
     {
         // Valeur de référence : changer le format canonique change toutes les empreintes déjà journalisées.
         // Correctif 6.1 : nouvelle valeur car la version de schéma (2) fait partie du texte canonique ; valeurs inchangées.
+        // Lot 7.2 : schéma 4, bloc statuses et constante de résistance aux altérations dans le texte canonique.
         Assert.Equal(
-            "sha256:9473e0ca90af517d9bf03807d7e08e4d06cafd781ba2ba3b094d7aadc29db5a1",
+            "sha256:82f9db80afef3df7b4016c559776a2a19bda80a608f53a4ed2ee45b422aef351",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -99,7 +109,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 4), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 5), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Ancien_format_v1_refuse_explicitement_sans_migration()
@@ -154,7 +164,9 @@ public class RulesJsonReaderTests
     public void Data_absent_signale_chaque_parametre_manquant()
     {
         var result = ReadMutated(r => r.Remove("data"));
-        Assert.Equal(RulesCatalog.Fields.Count, result.Report.Errors.Count(e => e.Code == ValidationCode.MissingField));
+        // Chaque paramètre du catalogue, plus le bloc « statuses » (lot 7.2).
+        Assert.Equal(RulesCatalog.Fields.Count + 1, result.Report.Errors.Count(e => e.Code == ValidationCode.MissingField));
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.statuses" && e.Code == ValidationCode.MissingField);
     }
 
     // --- Champs ------------------------------------------------------------------------

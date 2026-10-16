@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "scenario"
@@ -132,6 +132,10 @@
             "$ref": "#/$defs/attack"
           },
           "description": "Assaillant : attaques jouées dans l'ordre, puis en boucle."
+        },
+        "statusResistance": {
+          "type": "number",
+          "description": "Mannequin et assaillant : résistance aux altérations (lot 7.2), facultative, 0 par défaut ; réduit la durée des contrôles."
         }
       },
       "additionalProperties": false,
@@ -293,7 +297,7 @@
         "damageType",
         "targeting",
         "unblockable",
-        "appliesFragility"
+        "applies"
       ],
       "properties": {
         "id": {
@@ -320,9 +324,26 @@
           "type": "boolean",
           "description": "Imparable : ignore garde et parade."
         },
-        "appliesFragility": {
-          "type": "boolean",
-          "description": "Applique ou renouvelle la Fragilité après l'impact."
+        "applies": {
+          "type": "array",
+          "description": "Altérations appliquées à chaque cible touchée après l'impact (lot 7.2) ; éventuellement vide.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "description": "Identifiant d'une altération du bloc statuses de rules.json (ni immunité ni rupture de garde)."
+              },
+              "coefficient": {
+                "type": "number",
+                "description": "DOT seulement, obligatoire : coefficient de la puissance de la source par tick, [0, 100]."
+              }
+            }
+          }
         }
       }
     }

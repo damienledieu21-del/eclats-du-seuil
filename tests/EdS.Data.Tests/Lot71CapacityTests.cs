@@ -59,7 +59,7 @@ public class Lot71CapacityTests(ITestOutputHelper output)
         ["attacks"] = new JsonArray(new JsonObject
         {
             ["id"] = "coup", ["rawDamage"] = 1, ["damageType"] = "physique", ["targeting"] = targeting,
-            ["unblockable"] = false, ["appliesFragility"] = fragility,
+            ["unblockable"] = false, ["applies"] = fragility ? new JsonArray(new JsonObject { ["status"] = "fragility" }) : new JsonArray(),
         }),
     };
 

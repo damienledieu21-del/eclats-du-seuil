@@ -28,17 +28,24 @@ namespace EdS.Data.Rules
             if (!ValidateHeader(document, report))
                 return new RulesLoadResult(report, null);   // structure d'une autre version : refusée sans analyse du contenu
             ValidateFieldsShape(document, report);
+            StatusShape.Check(document.Statuses, report);
 
             if (!report.IsValid) return new RulesLoadResult(report, null);
 
             StatRules stats = BuildStats(document);
             DamageRules damage = BuildDamage(document);
             ProgressionRules progression = BuildProgression(document);
-            CombatRules combat = BuildCombat(document);
+            StatusCatalog statuses = StatusShape.Build(document.Statuses!);
+            CombatRules combat = BuildCombat(document, statuses);
             AddViolations(report, typeof(StatRules), stats.Validate());
             AddViolations(report, typeof(DamageRules), damage.Validate());
             AddViolations(report, typeof(ProgressionRules), progression.Validate());
             AddViolations(report, typeof(CombatRules), combat.Validate());
+            // Lot 7.2 : cohérence du catalogue des altérations, chemins « statuses[i].champ » rattachés au fichier.
+            if (combat.TickMilliseconds > 0)
+                foreach (RuleViolation violation in statuses.Validate(combat.TickMilliseconds))
+                    foreach (string field in violation.Fields)
+                        report.Add("$.data." + field, CodeOf(violation.Kind), violation.Message);
             if (!report.IsValid) return new RulesLoadResult(report, null);
 
             int schemaVersion = document.SchemaVersion!.Value;
@@ -83,7 +90,7 @@ namespace EdS.Data.Rules
                     case RuleValueKind.Token:
                         if (value.Kind != RuleValueKind.Token)
                             report.Add(field.JsonPath, ValidationCode.WrongType, "identifiant texte attendu.");
-                        else if (!field.AllowedTokens.Contains(value.Token!))
+                        else if (field.AllowedTokens.Count > 0 && !field.AllowedTokens.Contains(value.Token!))
                             report.Add(field.JsonPath, ValidationCode.UnknownReference,
                                 $"valeur inconnue « {value.Token} » ; valeurs possibles : {string.Join(", ", field.AllowedTokens)}.");
                         break;
@@ -102,7 +109,7 @@ namespace EdS.Data.Rules
                 RuleValueKind.Int32 => "entier",
                 RuleValueKind.Int64 => "entier",
                 RuleValueKind.Int32List => "liste d'entiers",
-                _ => "un parmi : " + string.Join(", ", field.AllowedTokens),
+                _ => field.AllowedTokens.Count == 0 ? "identifiant" : "un parmi : " + string.Join(", ", field.AllowedTokens),
             };
 
         private static void AddViolations(ValidationReport report, Type owner, IReadOnlyList<RuleViolation> violations)
@@ -113,10 +120,18 @@ namespace EdS.Data.Rules
                 foreach (string path in paths)
                 {
                     string related = paths.Length > 1 ? $" (avec {string.Join(", ", paths.Where(p => p != path))})" : string.Empty;
-                    report.Add(path, ValidationCode.InvalidValue, violation.Message + related);
+                    report.Add(path, CodeOf(violation.Kind), violation.Message + related);
                 }
             }
         }
+
+        private static ValidationCode CodeOf(RuleViolationKind kind) => kind switch
+        {
+            RuleViolationKind.UnknownReference => ValidationCode.UnknownReference,
+            RuleViolationKind.DuplicateId => ValidationCode.DuplicateId,
+            RuleViolationKind.LimitExceeded => ValidationCode.LimitExceeded,
+            _ => ValidationCode.InvalidValue,
+        };
 
         private static Fixed Dec(RulesDocument d, string path) => d.Values[path].Decimal;
         private static long Int(RulesDocument d, string path) => d.Values[path].Integer;
@@ -141,6 +156,7 @@ namespace EdS.Data.Rules
                 MaxHealthPerVitalite = Dec(d, P(s, nameof(StatRules.MaxHealthPerVitalite))),
                 StatusResistancePerVolonte = Dec(d, P(s, nameof(StatRules.StatusResistancePerVolonte))),
                 MaxEndurancePerEndurance = Dec(d, P(s, nameof(StatRules.MaxEndurancePerEndurance))),
+                StatusResistanceConstant = Int(d, P(s, nameof(StatRules.StatusResistanceConstant))),
                 BaseCriticalChanceBasisPoints = (int)Int(d, P(s, nameof(StatRules.BaseCriticalChanceBasisPoints))),
                 MinCriticalChanceBasisPoints = (int)Int(d, P(s, nameof(StatRules.MinCriticalChanceBasisPoints))),
                 MaxCriticalChanceBasisPoints = (int)Int(d, P(s, nameof(StatRules.MaxCriticalChanceBasisPoints))),
@@ -169,7 +185,7 @@ namespace EdS.Data.Rules
             };
         }
 
-        private static CombatRules BuildCombat(RulesDocument d)
+        private static CombatRules BuildCombat(RulesDocument d, StatusCatalog statuses)
         {
             Type c = typeof(CombatRules);
             return new CombatRules
@@ -188,7 +204,7 @@ namespace EdS.Data.Rules
                 GuardDamageReduction = Dec(d, P(c, nameof(CombatRules.GuardDamageReduction))),
                 GuardUpkeepPerSecond = (int)Int(d, P(c, nameof(CombatRules.GuardUpkeepPerSecond))),
                 GuardCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.GuardCostPerBlock))),
-                GuardBreakDurationMs = Int(d, P(c, nameof(CombatRules.GuardBreakDurationMs))),
+                GuardBreakStatus = d.Values[P(c, nameof(CombatRules.GuardBreakStatus))].Token!,
                 ParryWindowMs = Int(d, P(c, nameof(CombatRules.ParryWindowMs))),
                 ParryDamageReduction = Dec(d, P(c, nameof(CombatRules.ParryDamageReduction))),
                 ParryFailureRecoveryMs = Int(d, P(c, nameof(CombatRules.ParryFailureRecoveryMs))),
@@ -199,8 +215,7 @@ namespace EdS.Data.Rules
                 ResonancePerPerfectParry = (int)Int(d, P(c, nameof(CombatRules.ResonancePerPerfectParry))),
                 ResonancePerBlock = (int)Int(d, P(c, nameof(CombatRules.ResonancePerBlock))),
                 UltimateResonanceCost = (int)Int(d, P(c, nameof(CombatRules.UltimateResonanceCost))),
-                FragilityDurationMs = Int(d, P(c, nameof(CombatRules.FragilityDurationMs))),
-                FragilityDamageTakenIncrease = Dec(d, P(c, nameof(CombatRules.FragilityDamageTakenIncrease))),
+                Statuses = statuses,
             };
         }
 

@@ -459,7 +459,7 @@ public class Lot71CliLimitTests
         {
             JsonObject assailant = DataOf(root)["combatants"]![1]!.AsObject();
             assailant["intervalMs"] = 50;
-            assailant["attacks"]![0]!["appliesFragility"] = true;
+            assailant["attacks"]![0]!["applies"] = new JsonArray(new JsonObject { ["status"] = "fragility" });
             assailant["attacks"]![0]!["rawDamage"] = 1;
             DataOf(root)["commands"] = new JsonArray();
         }, ("\"maxPendingEvents\": 100000", "\"maxPendingEvents\": 20"));

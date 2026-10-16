@@ -177,12 +177,43 @@ namespace EdS.Data.Classes
                 Line(p + ".combat.rampartChargeCost", combat.RampartChargeCost);
                 Line(p + ".combat.rampartChargeGain", combat.RampartChargeGain);
                 Line(p + ".combat.provisional", combat.Provisional == true ? "true" : "false");
+                Line(p + ".combat.applies.count", combat.Applies!.Count);
+                for (int a = 0; a < combat.Applies.Count; a++)
+                {
+                    Line($"{p}.combat.applies[{a}].status", combat.Applies[a]!.Status);
+                    Line($"{p}.combat.applies[{a}].coefficient", combat.Applies[a]!.Coefficient?.ToString() ?? "none");
+                }
             }
             return text.ToString();
         }
 
         private static string Escape(string? value) =>
             (value ?? string.Empty).Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
+
+        /// <summary>Altérations portées, converties pour le domaine (lot 7.2) ; suppose la forme vérifiée.</summary>
+        public static IReadOnlyList<Domain.Combat.StatusApplication> Applications(List<StatusApplicationData?> list) =>
+            list.Select(a => new Domain.Combat.StatusApplication(a!.Status!, a.Coefficient)).ToArray();
+
+        /// <summary>Vérifie la forme d'une liste d'altérations portées : chaque entrée nomme une altération.</summary>
+        public static void CheckApplications(List<StatusApplicationData?>? list, string path, ValidationReport report)
+        {
+            if (list is null)
+            {
+                if (!report.HasErrorAtOrAbove(path))
+                    report.Add(path, ValidationCode.MissingField, "champ obligatoire absent (liste des altérations appliquées, éventuellement vide).");
+                return;
+            }
+            for (int i = 0; i < list.Count; i++)
+            {
+                string itemPath = $"{path}[{i}]";
+                if (list[i] is not { } a)
+                {
+                    if (!report.HasErrorAtOrAbove(itemPath)) report.Add(itemPath, ValidationCode.WrongType, "objet attendu.");
+                }
+                else if (a.Status is null && !report.HasErrorAtOrAbove(itemPath + ".status"))
+                    report.Add(itemPath + ".status", ValidationCode.MissingField, "champ obligatoire absent (identifiant de l'altération).");
+            }
+        }
 
         private static ClassDefinition Build(ClassData data)
         {
@@ -195,7 +226,7 @@ namespace EdS.Data.Classes
             SkillCombatDefinition? Combat(SkillCombatData? c) => c is null ? null
                 : new SkillCombatDefinition(PowerTypes[c.PowerType!], DamageTypes[c.DamageType!], c.Coefficient!.Value,
                     c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value,
-                    c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value);
+                    c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value, Applications(c.Applies!));
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
                 Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat))).ToArray();
             return new ClassDefinition(data.Id!, data.Name!, trees, skills);
@@ -285,6 +316,7 @@ namespace EdS.Data.Classes
                 Present(combat.RampartChargeCost, path + ".rampartChargeCost", "entier");
                 Present(combat.RampartChargeGain, path + ".rampartChargeGain", "entier");
                 Present(combat.Provisional, path + ".provisional", "booléen");
+                CheckApplications(combat.Applies, path + ".applies", _report);
             }
 
             private void CheckRequirement(RequirementData requirement, string path)

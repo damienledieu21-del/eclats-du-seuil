@@ -40,6 +40,9 @@ namespace EdS.Data.Scenarios
         public Fixed? Armor { get; set; }
         public Fixed? MagicResistance { get; set; }
 
+        /// <summary>Résistance aux altérations (schéma 2, lot 7.2, D12) ; facultative, 0 par défaut.</summary>
+        public Fixed? StatusResistance { get; set; }
+
         // Assaillant
         public string? Target { get; set; }
         public long? FirstAttackMs { get; set; }
@@ -80,7 +83,9 @@ namespace EdS.Data.Scenarios
         public string? Targeting { get; set; }
 
         public bool? Unblockable { get; set; }
-        public bool? AppliesFragility { get; set; }
+
+        /// <summary>Altérations appliquées à chaque cible touchée (schéma 2, lot 7.2 ; remplace <c>appliesFragility</c>).</summary>
+        public List<Classes.StatusApplicationData?>? Applies { get; set; }
     }
 
     public sealed class CommandData

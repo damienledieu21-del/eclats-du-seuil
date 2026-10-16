@@ -1,6 +1,6 @@
 {
   "$schema": "../data/schemas/scenario.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "scenario",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -59,7 +59,7 @@
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
-            "appliesFragility": false
+            "applies": []
           }
         ]
       }

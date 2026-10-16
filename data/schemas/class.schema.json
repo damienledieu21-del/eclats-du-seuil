@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "kind": {
       "const": "class"
@@ -211,7 +211,8 @@
         "unblockable",
         "rampartChargeCost",
         "rampartChargeGain",
-        "provisional"
+        "provisional",
+        "applies"
       ],
       "properties": {
         "powerType": {
@@ -265,6 +266,27 @@
         "provisional": {
           "type": "boolean",
           "description": "Valeurs provisoires, non équilibrées."
+        },
+        "applies": {
+          "type": "array",
+          "description": "Altérations appliquées à chaque cible touchée après l'impact (lot 7.2) ; éventuellement vide.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "description": "Identifiant d'une altération du bloc statuses de rules.json (ni immunité ni rupture de garde)."
+              },
+              "coefficient": {
+                "type": "number",
+                "description": "DOT seulement, obligatoire : coefficient de la puissance de la source par tick, [0, 100]."
+              }
+            }
+          }
         }
       }
     }

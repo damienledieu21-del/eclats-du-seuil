@@ -168,7 +168,7 @@ public class Lot71BudgetTests
         var assailants = Enumerable.Range(0, 3)
             .Select(i => (CombatantSetup)Assailant(firstAttackMs: 1000, intervalMs: 60_000, id: $"assaillant_{i}", attacks: Blow(fragility: true)));
         var setup = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Tank() }.Concat(assailants), durationMs: 10_000);
-        long expiryTick = (1000 + CombatRules.Provisional.FragilityDurationMs) / 50;
+        long expiryTick = (1000 + CombatRules.Provisional.Statuses["fragility"].DurationMs) / 50;
         var engine = new CombatEngine(setup, new MemoryCombatLog());
         while (engine.CurrentTick < expiryTick) engine.Step();
         engine.Step();

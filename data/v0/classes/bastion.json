@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/class.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "class",
   "contentVersion": "0.2.0-provisoire",
   "data": {
@@ -218,7 +218,8 @@
           "unblockable": false,
           "rampartChargeCost": 0,
           "rampartChargeGain": 0,
-          "provisional": true
+          "provisional": true,
+          "applies": []
         }
       },
       {
@@ -238,7 +239,8 @@
           "unblockable": false,
           "rampartChargeCost": 0,
           "rampartChargeGain": 0,
-          "provisional": true
+          "provisional": true,
+          "applies": []
         }
       },
       {

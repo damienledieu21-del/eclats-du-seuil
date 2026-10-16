@@ -76,6 +76,11 @@ public static class RulesJsonReader
         foreach (JsonProperty property in input.UniqueProperties(element, jsonPath))
         {
             string childPath = jsonPath + "." + property.Name;
+            if (node == DataTree && property.Name == "statuses")
+            {
+                document.Statuses = input.ReadList(property.Value, childPath, (e, ip) => ReadStatus(input, e, ip));
+                continue;
+            }
             if (!node.Children.TryGetValue(property.Name, out Node? child))
             {
                 if (node.ReferenceLabel != null)
@@ -92,6 +97,31 @@ public static class RulesJsonReader
             else
                 ReadObject(input, document, property.Value, child, childPath);
         }
+    }
+
+    /// <summary>Lot 7.2 : une définition d'altération du bloc <c>statuses</c> (forme seulement, voir <see cref="StatusShape"/>).</summary>
+    private static StatusData? ReadStatus(JsonInput input, JsonElement element, string path)
+    {
+        var s = new StatusData();
+        List<string?>? Names(JsonElement v, string p) => input.ReadList(v, p, (e, ip) => input.Text(e, ip));
+        bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+        {
+            ["id"] = (v, p) => s.Id = input.Text(v, p),
+            ["category"] = (v, p) => s.Category = input.Text(v, p),
+            ["durationMs"] = (v, p) => s.DurationMs = input.Int64(v, p),
+            ["periodMs"] = (v, p) => s.PeriodMs = input.Int64(v, p),
+            ["stacking"] = (v, p) => s.Stacking = input.Text(v, p),
+            ["resistance"] = (v, p) => s.Resistance = input.Text(v, p),
+            ["damageType"] = (v, p) => s.DamageType = input.Text(v, p),
+            ["blocks"] = (v, p) => s.Blocks = Names(v, p),
+            ["interrupts"] = (v, p) => s.Interrupts = Names(v, p),
+            ["blockReason"] = (v, p) => s.BlockReason = input.Text(v, p),
+            ["damageTakenIncrease"] = (v, p) => s.DamageTakenIncrease = input.Decimal(v, p),
+            ["movementSpeedModifier"] = (v, p) => s.MovementSpeedModifier = input.Decimal(v, p),
+            ["grantsOnExpiry"] = (v, p) => s.GrantsOnExpiry = input.Text(v, p),
+            ["immuneTo"] = (v, p) => s.ImmuneTo = Names(v, p),
+        });
+        return ok ? s : null;
     }
 
     private static void ReadLeaf(JsonInput input, RulesDocument document, JsonElement value, RuleField field, string path)

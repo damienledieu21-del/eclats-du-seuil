@@ -192,6 +192,8 @@ namespace EdS.Domain.Builds
                 errors.Add(new RuleViolation($"gain de Charges de rempart hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".rampartChargeGain"));
             if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
+            // Lot 7.2 : forme des altérations portées ; leur existence est vérifiée avec le catalogue des règles (CombatSetup.Validate).
+            Combat.StatusApplication.ValidateList(combat.Applies, path + ".applies", errors);
         }
 
         private void CheckRequirements(IReadOnlyList<TalentRequirement> requirements, string path, List<RuleViolation> errors, string? ownerId)
