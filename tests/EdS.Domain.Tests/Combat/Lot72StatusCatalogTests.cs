@@ -34,6 +34,9 @@ public class Lot72StatusCatalogTests
         Assert.Equal((1500L, StatusResistanceMode.Duration, "stunImmunity", "stunned"), (stun.DurationMs, stun.Resistance, stun.GrantsOnExpiry, stun.BlockReason));
         Assert.Equal(StatusBlocks.Skills | StatusBlocks.Guard | StatusBlocks.Parry | StatusBlocks.AssailantAttacks, stun.Blocks);
         Assert.Equal(StatusInterrupts.Guard | StatusInterrupts.Parry, stun.Interrupts);
+        // Correctif 7.2 : un étourdissement actif refuse toute nouvelle application (ignore, refus « active ») ; il expire donc
+        // toujours et l'immunité suit.
+        Assert.Equal(StatusStacking.Ignore, stun.Stacking);
         Assert.Equal(3000L, Shipped["stunImmunity"].DurationMs);
         Assert.Equal(new[] { "stun" }, Shipped["stunImmunity"].ImmuneTo);
 

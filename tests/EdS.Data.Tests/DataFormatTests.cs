@@ -11,5 +11,5 @@ public class DataFormatTests
     public void Version_de_schema_des_classes_du_lot_7_2() => Assert.Equal(3, DataFormat.ClassSchemaVersion);
 
     [Fact]
-    public void Contenu_marque_provisoire() => Assert.Equal("0.4.0-provisoire", DataFormat.ProvisionalRulesContentVersion);
+    public void Contenu_marque_provisoire() => Assert.Equal("0.4.1-provisoire", DataFormat.ProvisionalRulesContentVersion);
 }

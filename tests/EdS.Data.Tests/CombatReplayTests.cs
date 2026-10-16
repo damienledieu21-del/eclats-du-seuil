@@ -77,7 +77,7 @@ public class CombatReplayTests
     [Fact]
     public void Rejeu_refuse_si_seule_la_version_de_contenu_a_change()
     {
-        GameData changed = LoadCopy((file, text) => file == "rules.json" ? text.Replace("\"contentVersion\": \"0.4.0-provisoire\"", "\"contentVersion\": \"0.1.1\"") : text);
+        GameData changed = LoadCopy((file, text) => file == "rules.json" ? text.Replace("\"contentVersion\": \"0.4.1-provisoire\"", "\"contentVersion\": \"0.1.1\"") : text);
         Assert.Equal(changed.Rules.Fingerprint, ShippedData.Rules.Fingerprint);   // l'empreinte ignore la version…
         ReplayOutcome outcome = CombatLogReplayer.Replay(Simulate().Lines, changed);
         Assert.Equal(ReplayStatus.Refused, outcome.Status);                // …mais le rejeu exige aussi la même version
@@ -141,5 +141,5 @@ public class CombatReplayTests
         Assert.Equal(MannequinLogHash, hash);
     }
 
-    internal const string MannequinLogHash = "82d3e2de97f729214b6bcb51210b3cf3696b163e070ad8e1068a75612fc3f754";
+    internal const string MannequinLogHash = "1e8b27fed42d8fddbf9e3abcdbbf6ee6c1b7ed3281f8bbc7611203af41833a2b";
 }

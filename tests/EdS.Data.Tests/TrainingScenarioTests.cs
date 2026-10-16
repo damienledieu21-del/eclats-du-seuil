@@ -85,9 +85,9 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "d1c2ab01a080d50a23accc118d254fa6cde87b49ef89c4f0a675ea70a1674510")]
-    [InlineData("entrainement_rupture", "47ab4ac1ecccbda216a167c23c865180938de88ba57c4f3fa9214b8d28802d76")]
-    [InlineData("entrainement_alterations", "012990c984dd0f295be473d98c2327968fed555c55cefa4412a9463d2339bb82")]
+    [InlineData("entrainement_garde_parade", "f3ae9df2720ebdc9c8a63d9e02ed7e02a70b9d02c50b019b77b6eebf552aa48f")]
+    [InlineData("entrainement_rupture", "8ac77ef68071eb370883837bf30829069317a20dfb24bcd108fa0b335a7f0400")]
+    [InlineData("entrainement_alterations", "90622eff3e6df1d3c9e08595b8bd5767c56082c16e9be920df6c2696eab209e0")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -96,6 +96,8 @@ public class TrainingScenarioTests
         // Lot 7.1 : seul l'en-tête change encore (moteur 0.7.0, règles en schéma 3 et leur empreinte) ; aucun autre octet.
         // Lot 7.2 : format 3 (catégorie et source sur les lignes d'état, applies) ; égalité structurelle avec 0.7.0 vérifiée
         // par Lot72MigrationTests. Nouveau scénario entrainement_alterations (DOT, contrôles, immunité).
+        // Correctif 7.2 : moteur 0.8.1, règles 0.4.1 (étourdissement en ignore) ; garde_parade change à la Fragilité parée,
+        // alterations à l'étourdissement refusé (active) et aux fins effectives des DOT.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }
@@ -108,7 +110,11 @@ public class TrainingScenarioTests
         Assert.Equal(CombatEndReason.DurationReached, result.EndReason);
         Assert.Equal((4L, 8L, 1L, 0L), (bastion.Blocks, bastion.PerfectParries, bastion.FailedParries, bastion.GuardBreaks));
         Assert.Equal(5, bastion.RampartCharges);   // 8 parades, plafond 5
-        Assert.Equal(444, bastion.DamageTaken);
+        // Correctif 7.2 : la parade parfaite de l'attaque porteuse de Fragilité l'empêche (stateBlocked, raison parried) ;
+        // les impacts suivants ne subissent plus +10 % : 427 au lieu de 444.
+        Assert.Equal(427, bastion.DamageTaken);
+        Assert.Contains(Simulate("entrainement_garde_parade").Lines,
+            l => l.Contains("\"event\":\"stateBlocked\"") && l.Contains("\"state\":\"fragility\"") && l.Contains("\"reason\":\"parried\""));
     }
 
     [Fact]

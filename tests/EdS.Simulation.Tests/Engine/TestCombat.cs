@@ -115,6 +115,15 @@ internal static class TestCombat
         return (CombatEngine.Run(setup, log), log);
     }
 
+    /// <summary>Simulation sans le majorant de saturation (correctif 7.2) : exerce le filet de sécurité <c>queueLimitExceeded</c>.</summary>
+    public static (CombatResult Result, MemoryCombatLog Log) RunWithoutQueueBound(CombatSetup setup)
+    {
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(setup, log, queueBound: false);
+        while (engine.Step()) { }
+        return (engine.Result!, log);
+    }
+
     /// <summary>Événements du journal (lignes après l'en-tête), analysés.</summary>
     public static List<JsonElement> Events(MemoryCombatLog log) =>
         log.Lines.Skip(1).Select(l => JsonDocument.Parse(l).RootElement.Clone()).ToList();

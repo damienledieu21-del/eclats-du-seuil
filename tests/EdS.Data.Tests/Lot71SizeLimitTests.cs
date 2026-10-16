@@ -428,9 +428,9 @@ public class Lot71CliLimitTests
             string scenario = Path.Combine(directory, "scenario.json");
             string logPath = Path.Combine(directory, "journal.jsonl");
             File.WriteAllText(scenario, Lot71Files.ToJson(root));
-            var (exitCode, output, _) = Lot71Files.Cli(directory, "simulate", scenario, "--data", directory, "--out", logPath);
+            var (exitCode, output, error) = Lot71Files.Cli(directory, "simulate", scenario, "--data", directory, "--out", logPath);
             bool written = File.Exists(logPath);
-            return (exitCode, output, written, written ? File.ReadAllText(logPath) : string.Empty);
+            return (exitCode, output + error, written, written ? File.ReadAllText(logPath) : string.Empty);
         }
         finally
         {
@@ -452,10 +452,12 @@ public class Lot71CliLimitTests
     }
 
     [Fact]
-    public void Capacite_de_la_file_depassee_code_2_et_bandeau()
+    public void Capacite_de_la_file_insuffisante_refusee_avant_journal()
     {
-        // L'assaillant frappe à chaque tick avec Fragilité : la file grandit d'une échéance par tick pendant 6 s.
-        var (exitCode, output, logWritten, log) = SimulateWithRules(root =>
+        // Correctif 7.2 : l'assaillant frappe à chaque tick avec Fragilité ; le majorant prudent (échéances vivantes pendant
+        // 6 s) dépasse une capacité de 20, le scénario est refusé à la validation (code 1), sans journal. L'arrêt
+        // queueLimitExceeded reste un filet de sécurité, testé dans EdS.Simulation.Tests sans le majorant.
+        var (exitCode, output, logWritten, _) = SimulateWithRules(root =>
         {
             JsonObject assailant = DataOf(root)["combatants"]![1]!.AsObject();
             assailant["intervalMs"] = 50;
@@ -463,11 +465,10 @@ public class Lot71CliLimitTests
             assailant["attacks"]![0]!["rawDamage"] = 1;
             DataOf(root)["commands"] = new JsonArray();
         }, ("\"maxPendingEvents\": 100000", "\"maxPendingEvents\": 20"));
-        Assert.Equal(2, exitCode);
-        Assert.Contains("DIAGNOSTIC — simulation interrompue (queueLimitExceeded)", output);
-        Assert.Contains("file 20/20", output);
-        Assert.True(logWritten);
-        Assert.Contains("\"reason\":\"queueLimitExceeded\",\"limit\":20", log);
+        Assert.Equal(1, exitCode);
+        Assert.Contains("majorant prudent de la file", output);
+        Assert.Contains("capacité 20", output);
+        Assert.False(logWritten);
     }
 
     [Fact]

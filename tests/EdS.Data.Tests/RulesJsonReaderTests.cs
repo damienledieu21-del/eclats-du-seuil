@@ -30,7 +30,7 @@ public class RulesJsonReaderTests
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
         Assert.Equal(4, result.Rules!.SchemaVersion);
-        Assert.Equal("0.4.0-provisoire", result.Rules.ContentVersion);
+        Assert.Equal("0.4.1-provisoire", result.Rules.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -100,8 +100,9 @@ public class RulesJsonReaderTests
         // Valeur de référence : changer le format canonique change toutes les empreintes déjà journalisées.
         // Correctif 6.1 : nouvelle valeur car la version de schéma (2) fait partie du texte canonique ; valeurs inchangées.
         // Lot 7.2 : schéma 4, bloc statuses et constante de résistance aux altérations dans le texte canonique.
+        // Correctif 7.2 : empilement de l'étourdissement passé à ignore.
         Assert.Equal(
-            "sha256:82f9db80afef3df7b4016c559776a2a19bda80a608f53a4ed2ee45b422aef351",
+            "sha256:5dcac2fecd9130d8871d44cfa3768d736f98dae10190428bcc62b31c1ffb2e1b",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 

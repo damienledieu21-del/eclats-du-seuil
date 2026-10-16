@@ -286,7 +286,13 @@ namespace EdS.Domain.Combat
         /// Les chemins ont la forme du fichier de scénario (<c>combatants[1].id</c>, <c>commands[3].atMs</c>).
         /// Ce qui relève du jeu (recharge, endurance, cible morte) n'est pas une erreur ici : la commande est refusée en combat.
         /// </summary>
-        public IReadOnlyList<RuleViolation> Validate()
+        public IReadOnlyList<RuleViolation> Validate() => Validate(queueBound: true);
+
+        /// <summary>
+        /// Variante réservée aux tests du filet de sécurité <c>queueLimitExceeded</c> : sans le majorant de saturation, un combat
+        /// valide peut atteindre la capacité de la file en cours de simulation.
+        /// </summary>
+        internal IReadOnlyList<RuleViolation> Validate(bool queueBound)
         {
             var errors = new List<RuleViolation>();
             foreach (RuleViolation v in Combat.Validate()) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules.combat." + f).ToArray()));
@@ -402,7 +408,162 @@ namespace EdS.Domain.Combat
                 }
             }
             ValidateInitialQueue(errors);
+            if (queueBound && errors.Count == 0) ValidateQueueSaturation(errors);
             return errors;
+        }
+
+        /// <summary>
+        /// Correctif 7.2 : contrôle prudent de saturation de la file. Le majorant <see cref="ComputeQueueBound"/> doit tenir dans
+        /// <c>combat.limits.maxPendingEvents</c> ; sinon le scénario est refusé avant tout journal (<c>LimitExceeded</c> sur
+        /// <c>combatants</c>), au lieu d'un arrêt <c>queueLimitExceeded</c> en cours de combat.
+        /// </summary>
+        private void ValidateQueueSaturation(List<RuleViolation> errors)
+        {
+            if (Combat.TickMilliseconds <= 0 || DurationMs <= 0) return;
+            QueueBound bound = ComputeQueueBound();
+            if (bound.Total > Combat.MaxPendingEvents)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"majorant prudent de la file {bound.Total} (événements initiaux {bound.Initial}, instances de DOT {bound.Dots}, " +
+                    $"échéances d'altérations {bound.Expiries}) au-delà de sa capacité {Combat.MaxPendingEvents} (combat.limits.maxPendingEvents).",
+                    "combatants"));
+        }
+
+        /// <summary>Détail du majorant de la file (correctif 7.2).</summary>
+        public readonly struct QueueBound
+        {
+            public long Initial { get; }
+            public long Dots { get; }
+            public long Expiries { get; }
+            public long Total => checked(Initial + Dots + Expiries);
+
+            public QueueBound(long initial, long dots, long expiries)
+            {
+                Initial = initial;
+                Dots = dots;
+                Expiries = expiries;
+            }
+        }
+
+        /// <summary>
+        /// Correctif 7.2 : majorant du nombre d'éléments que la file peut contenir à tout instant du combat, pour un combat valide.
+        /// <list type="bullet">
+        /// <item>Événements initiaux (commandes, premiers tours) : chaque commande retirée en programme au plus un (recharge ou
+        /// fin de fenêtre de parade) et chaque tour d'assaillant le suivant ; leur nombre ne croît donc pas.</item>
+        /// <item>DOT : un seul tick programmé par instance, une instance par (source, cible, altération) : somme, sur chaque
+        /// porteur et chaque DOT qu'il porte, de ses cibles possibles.</item>
+        /// <item>Altérations à échéance : une application mise en file vit au plus la durée de base D de l'altération. Pour
+        /// <c>ignore</c>, une seule échéance vivante par cible ; pour <c>refresh</c> et <c>keepLonger</c>, au plus les applications
+        /// faites pendant D ticks : par assaillant, ses tours dans cette fenêtre (cadence, cycle d'attaques) × ses cibles par
+        /// impact ; par personnage, ses commandes de la compétence, bornées par sa recharge et le GCD ; pour <c>keepLonger</c>,
+        /// au plus un renouvellement par cible et par tick. Une altération jamais appliquée (aucune commande, aucune attaque) ne
+        /// compte pas. La rupture de garde (rien en mode ignore : elle remplace une commande guardStart retirée) et les états accordés à
+        /// l'expiration (une échéance vivante par cible pour <c>ignore</c>, D par cible sinon) s'y ajoutent.</item>
+        /// </list>
+        /// Seules les compétences effectivement commandées sont comptées. Suppose un combat par ailleurs valide.
+        /// </summary>
+        public QueueBound ComputeQueueBound()
+        {
+            long tick = Combat.TickMilliseconds;
+            long durationTicks = DurationMs / tick;
+            long gcdTicks = Combat.GlobalCooldownMs / tick;
+            StatusCatalog catalog = Combat.Statuses;
+            var targets = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);   // cibles possibles par altération
+            var applications = new Dictionary<string, long>(StringComparer.Ordinal);         // applications en D ticks par altération
+            long dots = 0;
+
+            // Appelé une fois par porteur et par altération : ses cibles possibles et ses applications en D ticks.
+            void Carry(StatusDefinition d, IEnumerable<string> possibleTargets, long inWindow)
+            {
+                if (inWindow == 0) return;   // jamais appliquée : ni cible, ni instance
+                if (!targets.TryGetValue(d.Id, out HashSet<string>? set)) targets[d.Id] = set = new HashSet<string>(StringComparer.Ordinal);
+                var hit = new HashSet<string>(possibleTargets, StringComparer.Ordinal);
+                if (d.IsDot) dots = checked(dots + hit.Count);   // une instance par (porteur, cible)
+                set.UnionWith(hit);
+                applications.TryGetValue(d.Id, out long n);
+                applications[d.Id] = checked(n + inWindow);
+            }
+
+            long Window(StatusDefinition d) => Math.Max(1, d.DurationMs / tick);
+            var enemies = Combatants.ToDictionary(c => c.Id, c => Combatants.Where(o => o.Team != c.Team).Select(o => o.Id).ToArray(), StringComparer.Ordinal);
+
+            foreach (CombatantSetup combatant in Combatants)
+            {
+                switch (combatant)
+                {
+                    case AssailantSetup a:
+                    {
+                        long interval = Math.Max(1, a.IntervalMs / tick);
+                        long first = a.FirstAttackMs / tick;
+                        long turns = first < durationTicks ? (durationTicks - 1 - first) / interval + 1 : 0;
+                        int n = a.Attacks.Count;
+                        foreach (string status in a.Attacks.SelectMany(x => x.Applies).Select(x => x.Status).Distinct(StringComparer.Ordinal))
+                        {
+                            if (!catalog.TryGet(status, out StatusDefinition? d)) continue;
+                            long k = Math.Min(turns, (Window(d) - 1) / interval + 1);   // tours dans une fenêtre de D ticks
+                            long perAttack = (k + n - 1) / n;                            // tours d'une même attaque parmi k consécutifs
+                            var carrying = a.Attacks.Where(x => x.Applies.Any(ap => ap.Status == status)).ToList();
+                            bool zone = carrying.Any(x => x.Targeting == SkillTargeting.AllEnemies);
+                            string[] hit = zone ? enemies[a.Id] : (a.Target is null ? Array.Empty<string>() : new[] { a.Target });
+                            Carry(d, hit, checked(Math.Min(k, perAttack * carrying.Count) * hit.Length));
+                        }
+                        break;
+                    }
+                    case CharacterSetup c:
+                    {
+                        foreach (string status in c.Class.Skills.Where(sk => sk.Combat != null).SelectMany(sk => sk.Combat!.Applies)
+                                     .Select(x => x.Status).Distinct(StringComparer.Ordinal))
+                        {
+                            if (!catalog.TryGet(status, out StatusDefinition? d)) continue;
+                            long inWindow = 0;
+                            foreach (SkillDefinition skill in c.Class.Skills.Where(sk => sk.Combat != null && sk.Combat.Applies.Any(ap => ap.Status == status)))
+                            {
+                                long commands = Commands.LongCount(cmd => cmd.Actor == c.Id && cmd.Action == CombatAction.UseSkill && cmd.Skill == skill.Id);
+                                long spacing = Math.Max(gcdTicks, skill.Combat!.CooldownMs / tick);
+                                long rate = spacing == 0 ? checked(Combat.MaxCommandsPerActorPerTick * Window(d)) : (Window(d) - 1) / spacing + 1;
+                                long hits = skill.Combat.Targeting == SkillTargeting.AllEnemies ? enemies[c.Id].Length : 1;
+                                inWindow = checked(inWindow + checked(Math.Min(commands, rate) * hits));
+                            }
+                            Carry(d, enemies[c.Id], inWindow);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            long expiries = 0;
+            var granted = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+            void Grant(string status, IEnumerable<string> on)
+            {
+                if (!granted.TryGetValue(status, out HashSet<string>? set)) granted[status] = set = new HashSet<string>(StringComparer.Ordinal);
+                set.UnionWith(on);
+            }
+            foreach (var (status, set) in targets)
+            {
+                StatusDefinition d = catalog[status];
+                if (d.GrantsOnExpiry is { } g) Grant(g, set);
+                if (d.IsDot) continue;
+                long window = Window(d);
+                expiries = checked(expiries + d.Stacking switch
+                {
+                    StatusStacking.Ignore => set.Count,
+                    StatusStacking.KeepLonger => Math.Min(applications[status], checked(set.Count * window)),
+                    _ => applications[status],
+                });
+            }
+            if (catalog.TryGet(Combat.GuardBreakStatus, out StatusDefinition? guardBreak))
+            {
+                // Seul un personnage qui prend la garde peut la voir brisée. En mode ignore, son unique échéance vivante occupe la
+                // place d'une commande guardStart déjà retirée, qui ne programme rien : elle n'ajoute rien au majorant.
+                string[] characters = Combatants.OfType<CharacterSetup>()
+                    .Where(c => Commands.Any(cmd => cmd.Actor == c.Id && cmd.Action == CombatAction.GuardStart)).Select(c => c.Id).ToArray();
+                if (guardBreak.Stacking != StatusStacking.Ignore)
+                    expiries = checked(expiries + checked(characters.Length * Window(guardBreak)));
+                if (guardBreak.GrantsOnExpiry is { } g) Grant(g, characters);
+            }
+            foreach (var (status, set) in granted)
+                if (catalog.TryGet(status, out StatusDefinition? d))
+                    expiries = checked(expiries + (d.Stacking == StatusStacking.Ignore ? set.Count : checked(set.Count * Window(d))));
+            return new QueueBound(InitialEventCount(), dots, expiries);
         }
 
         /// <summary>

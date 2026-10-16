@@ -22,6 +22,10 @@ public class Lot71BudgetTests
     private static (CombatResult Result, MemoryCombatLog Log) RunWith(Func<CombatRules, CombatSetup> scenario, CombatRules rules) =>
         Run(scenario(rules));
 
+    /// <summary>Le majorant de saturation refuserait ces capacités : le filet de sécurité en cours de combat est testé sans lui.</summary>
+    private static (CombatResult Result, MemoryCombatLog Log) RunUnbounded(Func<CombatRules, CombatSetup> scenario, CombatRules rules) =>
+        RunWithoutQueueBound(scenario(rules));
+
     private static void AssertNotAborted(CombatResult result) =>
         Assert.True(result.EndReason != CombatEndReason.Aborted, result.AbortReason);
 
@@ -189,10 +193,10 @@ public class Lot71BudgetTests
     {
         long p = RunWith(Flood, Budgets()).Result.Peaks.PendingEvents;
         Assert.True(p > 1);   // atteinte en cours de combat, pas à la construction (1 élément initial)
-        AssertNotAborted(RunWith(Flood, Budgets(pending: (int)p + 1)).Result);
-        AssertNotAborted(RunWith(Flood, Budgets(pending: (int)p)).Result);
+        AssertNotAborted(RunUnbounded(Flood, Budgets(pending: (int)p + 1)).Result);
+        AssertNotAborted(RunUnbounded(Flood, Budgets(pending: (int)p)).Result);
 
-        var (result, log) = RunWith(Flood, Budgets(pending: (int)p - 1));
+        var (result, log) = RunUnbounded(Flood, Budgets(pending: (int)p - 1));
         Assert.Equal(("queueLimitExceeded", CombatEndReason.Aborted), (result.AbortReason, result.EndReason));
         Assert.Equal(p - 1, Assert.Single(Events(log).OfKind("simulationAborted")).Int("limit"));
         Assert.Equal(p - 1, result.Peaks.PendingEvents);   // la file n'a jamais dépassé sa capacité
@@ -221,7 +225,7 @@ public class Lot71BudgetTests
         var setup = Setup(Array.Empty<CombatCommand>(),
             new CombatantSetup[] { Tank(), Assailant(firstAttackMs: 0, intervalMs: 50, attacks: Blow(fragility: true)) },
             rules: Budgets(work: work, events: 2, pending: pending));
-        var (result, _) = Run(setup);
+        var (result, _) = RunWithoutQueueBound(setup);
         Assert.Equal((reason, 0L), (result.AbortReason, result.EndTick));
     }
 
@@ -234,7 +238,7 @@ public class Lot71BudgetTests
     {
         Func<(CombatResult, MemoryCombatLog)> run = budget == "work"
             ? () => RunWith(Busy, Budgets(work: 20))
-            : () => RunWith(Flood, Budgets(pending: 10));
+            : () => RunUnbounded(Flood, Budgets(pending: 10));
         var (first, firstLog) = run();
         var (second, secondLog) = run();
         Assert.Equal(CombatEndReason.Aborted, first.EndReason);

@@ -63,7 +63,7 @@ public class ReproducibilityTests
     {
         var events = Run(Setup(new[] { Cmd(0, Frappe) }, seed: 7)).Log.Lines;
         string header = events[0];
-        Assert.StartsWith("{\"type\":\"header\",\"format\":\"eds-combat-log\",\"formatVersion\":3,\"engineVersion\":\"0.8.0\",\"tickMs\":50,", header);
+        Assert.StartsWith("{\"type\":\"header\",\"format\":\"eds-combat-log\",\"formatVersion\":3,\"engineVersion\":\"0.8.1\",\"tickMs\":50,", header);
         Assert.Contains("\"fingerprint\":\"sha256:regles\"", header);
         Assert.Contains("\"fingerprint\":\"sha256:classe\"", header);
         Assert.Contains("\"seed\":7", header);
@@ -80,7 +80,7 @@ public class ReproducibilityTests
         Assert.Equal(ReferenceHash, hash);
     }
 
-    internal const string ReferenceHash = "eab9bf85ba89c9dbe8b49de383e0d94eae2051726fb6037dd27a4c1d937f8f87";
+    internal const string ReferenceHash = "88a700851815de7c3fe0121f902c9b83de31fe8f3462751b499b184ee03c7c18";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

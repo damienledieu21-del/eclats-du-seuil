@@ -80,16 +80,30 @@ public class Lot72ControlTests
         Assert.Equal(1L, result["bastion"].Blocks);
     }
 
-    [Theory]
-    [InlineData(false, "parry", "success")]          // parade réussie (récompensée), puis interrompue par l'étourdissement
-    [InlineData(true, "unblockable", "interrupted")] // impact imparable : la fenêtre est interrompue sans réussite
-    public void Etourdissement_interrompt_la_parade(bool unblockable, string defense, string outcome)
+    [Fact]
+    public void Etourdissement_imparable_interrompt_la_parade()
     {
-        var (_, events) = Fight(new[] { Parry(1000) }, 4000, null, Tank(), Assailant(intervalMs: 60_000, attacks: Stun(unblockable: unblockable)));
-        Assert.Equal(defense, Assert.Single(events.OfKind("damage")).Str("defense"));
+        var (_, events) = Fight(new[] { Parry(1000) }, 4000, null, Tank(), Assailant(intervalMs: 60_000, attacks: Stun(unblockable: true)));
+        Assert.Equal("unblockable", Assert.Single(events.OfKind("damage")).Str("defense"));
         JsonElement ended = Assert.Single(events.OfKind("parryEnded"));   // la fin de fenêtre au tick 23 est périmée
-        Assert.Equal((20L, outcome, JsonValueKind.Null), (ended.Tick(), ended.Str("outcome")!, ended.GetProperty("recoveryUntilTick").ValueKind));
+        Assert.Equal((20L, "interrupted", JsonValueKind.Null), (ended.Tick(), ended.Str("outcome")!, ended.GetProperty("recoveryUntilTick").ValueKind));
         Assert.True(events.OfKind("stateApplied").First(e => e.Str("state") == "stun").Int("seq") < ended.Int("seq"));
+    }
+
+    [Fact]
+    public void Parade_parfaite_empeche_l_etourdissement_de_l_impact_pare()
+    {
+        // Correctif 7.2 : l'impact paré n'applique pas ses altérations (stateBlocked, raison parried, source = l'assaillant) ;
+        // la parade n'est donc pas interrompue et aucune immunité ne suit.
+        var (result, events) = Fight(new[] { Parry(1000) }, 4000, null, Tank(), Assailant(intervalMs: 60_000, attacks: Stun()));
+        Assert.Equal("parry", Assert.Single(events.OfKind("damage")).Str("defense"));
+        JsonElement blocked = Assert.Single(events.OfKind("stateBlocked"));
+        Assert.Equal((20L, "bastion", "stun", "control", "assaillant", "parried"),
+            (blocked.Tick(), blocked.Str("combatant")!, blocked.Str("state")!, blocked.Str("category")!, blocked.Str("source")!, blocked.Str("reason")!));
+        Assert.Empty(events.OfKind("stateApplied"));
+        Assert.DoesNotContain(events.OfKind("parryEnded"), e => e.Str("outcome") == "interrupted");
+        Assert.Empty(Rejections(events));
+        Assert.Equal(1L, result["bastion"].PerfectParries);
     }
 
     [Fact]

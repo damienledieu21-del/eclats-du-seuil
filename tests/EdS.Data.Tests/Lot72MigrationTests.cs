@@ -40,12 +40,23 @@ public class Lot72MigrationTests
     {
         string[] before = Historical(name);
         IReadOnlyList<string> after = Current(name);
-        Assert.Equal(before.Length, after.Count);
+        // Correctif 7.2 : une parade parfaite empêche désormais les altérations de l'impact paré. Le journal reste identique
+        // jusqu'au premier impact paré qui portait la Fragilité, où stateApplied devient stateBlocked (raison parried).
+        int parried = after.ToList().FindIndex(l => l.Contains("\"event\":\"stateBlocked\"") && l.Contains("\"reason\":\"parried\""));
+        int compared = parried < 0 ? before.Length : parried;
+        if (parried < 0) Assert.Equal(before.Length, after.Count);
+        else
+        {
+            Assert.Equal("entrainement_garde_parade", name);
+            JsonObject applied = JsonNode.Parse(before[parried])!.AsObject(), blocked = JsonNode.Parse(after[parried])!.AsObject();
+            Assert.Equal(("stateApplied", "fragility"), (applied["event"]!.GetValue<string>(), applied["state"]!.GetValue<string>()));
+            Assert.Equal(("fragility", applied["tick"]!.GetValue<long>()), (blocked["state"]!.GetValue<string>(), blocked["tick"]!.GetValue<long>()));
+        }
 
         // En-tête : seules les versions, l'identité des données et l'écriture des attaques et résistances changent.
         JsonObject oldHeader = JsonNode.Parse(before[0])!.AsObject(), newHeader = JsonNode.Parse(after[0])!.AsObject();
         Assert.Equal((2, "0.7.0"), (oldHeader["formatVersion"]!.GetValue<int>(), oldHeader["engineVersion"]!.GetValue<string>()));
-        Assert.Equal((3, "0.8.0"), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
+        Assert.Equal((3, "0.8.1"), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
         foreach (JsonObject header in new[] { oldHeader, newHeader })
             foreach (string key in new[] { "formatVersion", "engineVersion", "data" }) header.Remove(key);
         foreach (JsonNode? combatant in oldHeader["scenario"]!["combatants"]!.AsArray().ToList())
@@ -72,7 +83,7 @@ public class Lot72MigrationTests
 
         // Événements : égalité exacte après suppression de category et source sur les lignes d'état.
         int stateLines = 0;
-        for (int i = 1; i < before.Length; i++)
+        for (int i = 1; i < compared; i++)
         {
             JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = JsonNode.Parse(after[i])!.AsObject();
             string kind = newLine["event"]!.GetValue<string>();

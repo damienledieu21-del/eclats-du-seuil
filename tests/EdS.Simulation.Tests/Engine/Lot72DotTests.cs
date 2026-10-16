@@ -189,12 +189,14 @@ public class Lot72DotTests
     [Fact]
     public void Renouvellement_hors_cadence_garde_la_cadence_d_origine()
     {
-        // Application au tick 20, renouvellement au tick 50 (fin 170) : les ticks restent à 60, 100, 140 ; le suivant (180)
-        // dépasserait la fin, donc le tick 140 est le dernier et expire l'instance avant son échéance nominale.
+        // Application au tick 20, renouvellement au tick 50 (fin demandée 170) : les ticks restent à 60, 100, 140 ; le suivant
+        // (180) dépasserait la fin demandée. Correctif 7.2 : la fin effective, alignée sur la cadence, est 140, et c'est elle
+        // que le journal annonce (untilTick), avec le prochain tick (nextTick) ; l'expiration réelle tombe à ce tick.
         var (_, events) = Sequence(1500, Burn("0.4"), Burn("0.4", id: "encore"));
-        Assert.Equal(new[] { 140L, 170L }, events.OfKind("stateApplied").Select(a => a.Int("untilTick")));
+        var applied = events.OfKind("stateApplied").ToList();
+        Assert.Equal(new[] { (140L, 60L), (140L, 60L) }, applied.Select(a => (a.Int("untilTick"), a.Int("nextTick"))));
         Assert.Equal(new[] { (60L, 40L), (100L, 40L), (140L, 40L) }, Dots(events));
-        Assert.Equal(140L, Assert.Single(events.OfKind("stateExpired")).Tick());
+        Assert.Equal(applied[^1].Int("untilTick"), Assert.Single(events.OfKind("stateExpired")).Tick());
     }
 
     [Fact]

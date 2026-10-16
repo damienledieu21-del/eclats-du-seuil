@@ -21,6 +21,6 @@ namespace EdS.Data
         public const int ClassSchemaVersion = 3;
 
         /// <summary>Version de contenu des règles livrées : provisoires, non équilibrées.</summary>
-        public const string ProvisionalRulesContentVersion = "0.4.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.4.1-provisoire";
     }
 }

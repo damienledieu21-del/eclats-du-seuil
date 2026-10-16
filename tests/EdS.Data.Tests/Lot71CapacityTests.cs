@@ -35,7 +35,7 @@ public class Lot71CapacityTests(ITestOutputHelper output)
 
     [Theory]
     [InlineData("mannequin", 14, 4, 18)]
-    [InlineData("entrainement_garde_parade", 20, 7, 19)]
+    [InlineData("entrainement_garde_parade", 18, 7, 19)]   // correctif 7.2 : 20 → 18, la Fragilité parée ne s'applique plus
     [InlineData("entrainement_rupture", 20, 7, 7)]
     [InlineData("entrainement_alterations", 26, 8, 14)]
     public void Pics_des_scenarios_de_reference(string name, long work, long events, long pending)
@@ -202,19 +202,22 @@ public class Lot71CapacityTests(ITestOutputHelper output)
     [Fact]
     public void Lot72_alterations_a_cible_unique_tiennent_dans_les_budgets()
     {
-        // Brûlure et saignement, puis étourdissement et gel, en alternance à chaque tick : travail 768 (8 %), file 1824.
+        // Brûlure et saignement, puis étourdissement et gel, en alternance à chaque tick : travail 928 (9 %), file 1376.
+        // Correctif 7.2 : l'étourdissement actif refuse les nouvelles applications (stateBlocked active, une ligne de plus par
+        // impact, sans échéance en file) et expire toujours, suivi de son immunité.
         var (alternating, _) = Measure("32 assaillants, cible unique, DOT puis contrôles", Load(StatusesAtCap(32, "enemy", Dots(),
             new JsonArray(Application("stun"), Application("freeze")))));
         Assert.Equal(CombatEndReason.DurationReached, alternating.EndReason);
-        Assert.Equal((768, 192, 1824), (alternating.Peaks.WorkPerTick, alternating.Peaks.EventsPerTick, alternating.Peaks.PendingEvents));
+        Assert.Equal((928, 256, 1376), (alternating.Peaks.WorkPerTick, alternating.Peaks.EventsPerTick, alternating.Peaks.PendingEvents));
 
-        // Les quatre à chaque attaque : chaque étourdissement renouvelé (fin plus tardive d'un tick) remet une échéance en
-        // file ; l'étourdissement n'expire jamais, donc aucune immunité n'est accordée. Travail 992 (10 %), file 3520 (4 %).
+        // Les quatre à chaque attaque. Correctif 7.2 : l'étourdissement en ignore n'est plus renouvelé ; il expire au bout de
+        // 29 ticks et accorde toujours son immunité (avant : renouvelé sans fin, sans immunité). Travail 896 (9 %), file 2624 (3 %).
         var (all, log) = Measure("32 assaillants, cible unique, 2 DOT + gel + étourdissement", Load(StatusesAtCap(32, "enemy",
             new JsonArray(Application("burn", 0.5), Application("bleed", 0.5), Application("freeze"), Application("stun")))));
         Assert.Equal(CombatEndReason.DurationReached, all.EndReason);
-        Assert.Equal((992, 256, 3520), (all.Peaks.WorkPerTick, all.Peaks.EventsPerTick, all.Peaks.PendingEvents));
-        Assert.DoesNotContain(log.Lines, l => l.Contains("\"state\":\"stunImmunity\""));
+        Assert.Equal((896, 256, 2624), (all.Peaks.WorkPerTick, all.Peaks.EventsPerTick, all.Peaks.PendingEvents));
+        Assert.Contains(log.Lines, l => l.Contains("\"state\":\"stunImmunity\""));
+        Assert.Contains(log.Lines, l => l.Contains("\"state\":\"stun\"") && l.Contains("\"reason\":\"active\""));
     }
 
     [Fact]

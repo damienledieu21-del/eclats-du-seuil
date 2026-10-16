@@ -29,7 +29,7 @@ namespace EdS.Simulation.Engine
     public sealed class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.8.0";
+        public const string Version = "0.8.1";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -293,11 +293,15 @@ namespace EdS.Simulation.Engine
         public CombatResult? Result { get; private set; }
 
         /// <exception cref="CombatSetupException">Le combat est invalide (voir <see cref="CombatSetup.Validate"/>).</exception>
-        public CombatEngine(CombatSetup setup, ICombatLog log)
+        public CombatEngine(CombatSetup setup, ICombatLog log) : this(setup, log, queueBound: true) { }
+
+        /// <summary>Réservé aux tests : <paramref name="queueBound"/> faux omet le majorant de saturation (correctif 7.2) pour
+        /// exercer l'arrêt <c>queueLimitExceeded</c>, devenu un filet de sécurité inatteignable pour un combat validé.</summary>
+        internal CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound)
         {
             _setup = setup ?? throw new ArgumentNullException(nameof(setup));
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            var violations = setup.Validate();
+            var violations = setup.Validate(queueBound);
             if (violations.Count > 0) throw new CombatSetupException(violations);
 
             _rules = setup.Combat;
@@ -733,9 +737,11 @@ namespace EdS.Simulation.Engine
             Cost cost = Cost.Op + Cost.Line;   // impact, ligne « damage »
             bool guarding = target.Guarding, parryOpen = target.ParryOpen;
             bool defending = target.Character != null && !target.IsDead && (target.ParryOpen || target.Guarding);
+            bool parried = false;
             if (defending && action.Unblockable) { }
             else if (defending && target.ParryOpen)
             {
+                parried = true;
                 if (!target.ParrySucceeded)
                     cost += Cost.Line + GainCost(target, _rules.RampartChargesPerParry) + GainCost(target, _rules.ResonancePerPerfectParry);
             }
@@ -751,6 +757,11 @@ namespace EdS.Simulation.Engine
             foreach (StatusApplication application in action.Applies)
             {
                 StatusDefinition definition = _statuses[application.Status];
+                if (parried)
+                {
+                    cost += Cost.Line;   // stateBlocked « parried »
+                    continue;
+                }
                 StatusPlan plan = Plan(tick, target, definition, action.Actor.Id, null);
                 cost += ApplyCost(plan, definition, guarding, parryOpen);
                 if (plan.Applies)
@@ -855,9 +866,18 @@ namespace EdS.Simulation.Engine
             if (blockReward) Gain(tick, CombatPhase.Resolution, target, Resonance, _rules.ResonancePerBlock, "block");
 
             // Lot 7.2 : altérations portées, après les dégâts, dans l'ordre de la liste. Un DOT fige sa puissance maintenant.
+            // Correctif 7.2 : un impact paré (parade parfaite, réussie à cet impact ou plus tôt dans la même fenêtre) n'applique
+            // aucune altération (stateBlocked « parried ») ; un impact bloqué par la garde ou imparable les applique.
             foreach (StatusApplication application in action.Applies)
             {
                 StatusDefinition definition = _statuses[application.Status];
+                if (defense == "parry")
+                {
+                    Emit(tick, CombatPhase.Resolution, "stateBlocked", w => w
+                        .Field("combatant", target.Id).Field("state", definition.Id).Field("category", StatusIds.Of(definition.Category))
+                        .Field("source", actor.Id).Field("reason", "parried"));
+                    continue;
+                }
                 Fixed power = definition.IsDot ? DotPower(attacker, definition, application) : Fixed.Zero;
                 ApplyStatus(tick, CombatPhase.Resolution, target, definition, actor.Id, power);
             }
@@ -981,7 +1001,6 @@ namespace EdS.Simulation.Engine
             StatusInstance status = plan.Existing ?? new StatusInstance { Id = ++_lastStatusInstance, Definition = definition, Key = plan.Key, Owner = target };
             if (!renewed) target.Statuses[plan.Key] = status;
             status.Generation = checked(status.Generation + 1);
-            status.UntilTick = checked(tick + plan.DurationTicks);
             status.Source = source;
             if (definition.IsDot)
             {
@@ -991,16 +1010,18 @@ namespace EdS.Simulation.Engine
                     status.NextTick = checked(tick + definition.PeriodMs / _tickMs);
                     Schedule(status.NextTick, CombatPhase.Periodic, new DotTick { Fighter = target, Key = plan.Key, Instance = status.Id });
                 }
+                status.UntilTick = DotEffectiveEnd(status.NextTick, checked(tick + plan.DurationTicks), definition);
             }
             else
             {
+                status.UntilTick = checked(tick + plan.DurationTicks);
                 Schedule(status.UntilTick, CombatPhase.Expirations,
                     new StateExpiry { Fighter = target, Key = plan.Key, Instance = status.Id, Generation = status.Generation });
             }
             Emit(tick, phase, "stateApplied", w =>
             {
                 StateFields(w, target, status).Field("untilTick", status.UntilTick).Field("renewed", renewed);
-                if (definition.IsDot) w.Field("power", status.Power);
+                if (definition.IsDot) w.Field("power", status.Power).Field("nextTick", status.NextTick);
                 if (definition.MovementSpeedModifier != Fixed.Zero) w.Field("movementSpeedModifier", definition.MovementSpeedModifier);
             });
 
@@ -1018,6 +1039,19 @@ namespace EdS.Simulation.Engine
                 Emit(tick, phase, "parryEnded", w => w
                     .Field("actor", target.Id).Field("outcome", target.ParrySucceeded ? "success" : "interrupted").Field("recoveryUntilTick", (long?)null));
             }
+        }
+
+        /// <summary>
+        /// Correctif 7.2 : fin effective d'un DOT, alignée sur sa cadence. C'est le dernier tick périodique (à partir du prochain
+        /// tick programmé, de période en période) qui ne dépasse pas la fin demandée (application + durée) ; l'instance inflige ses
+        /// derniers dégâts et expire à ce tick, en phase périodique. Une nouvelle application a toujours une fin alignée (durée
+        /// multiple de la période) ; un renouvellement hors cadence voit sa fin ramenée au dernier tick qu'elle couvre.
+        /// <c>stateApplied</c> journalise cette fin effective (<c>untilTick</c>) et le prochain tick (<c>nextTick</c>).
+        /// </summary>
+        private long DotEffectiveEnd(long nextTick, long requestedEnd, StatusDefinition definition)
+        {
+            long period = definition.PeriodMs / _tickMs;
+            return checked(nextTick + (requestedEnd - nextTick) / period * period);
         }
 
         /// <summary>Champs communs des lignes d'état (format 3) : cible, altération, catégorie, source, instance, génération.</summary>
@@ -1168,7 +1202,7 @@ namespace EdS.Simulation.Engine
             dot.Fighter.Statuses.TryGetValue(dot.Key, out status!) && status.Id == dot.Instance;
 
         /// <summary>Le tick en cours est-il le dernier de l'instance (le suivant dépasserait sa fin) ?</summary>
-        private bool IsLastDotTick(long tick, StatusInstance status) => checked(tick + status.Definition.PeriodMs / _tickMs) > status.UntilTick;
+        private static bool IsLastDotTick(long tick, StatusInstance status) => tick >= status.UntilTick;
 
         /// <summary>
         /// Coût exact d'un tick de DOT hors retrait de la file : périmé (instance retirée à la mort), rien ; sinon l'impact (1) et la

@@ -230,7 +230,7 @@ namespace EdS.Domain.Combat
                 periodMs: 2000, damageType: Stats.DamageType.Magique),
             new StatusDefinition("bleed", StatusCategory.Dot, 6000, StatusStacking.PerSourceKeepStronger, StatusResistanceMode.Defense,
                 periodMs: 2000, damageType: Stats.DamageType.Physique),
-            new StatusDefinition("stun", StatusCategory.Control, 1500, StatusStacking.KeepLonger, StatusResistanceMode.Duration,
+            new StatusDefinition("stun", StatusCategory.Control, 1500, StatusStacking.Ignore, StatusResistanceMode.Duration,
                 blocks: StatusBlocks.Skills | StatusBlocks.Guard | StatusBlocks.Parry | StatusBlocks.AssailantAttacks,
                 interrupts: StatusInterrupts.Guard | StatusInterrupts.Parry, blockReason: "stunned", grantsOnExpiry: "stunImmunity"),
             new StatusDefinition("stunImmunity", StatusCategory.Immunity, 3000, StatusStacking.Ignore, immuneTo: new[] { "stun" }),

@@ -2,7 +2,7 @@
   "$schema": "../schemas/rules.schema.json",
   "schemaVersion": 4,
   "kind": "rules",
-  "contentVersion": "0.4.0-provisoire",
+  "contentVersion": "0.4.1-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -105,7 +105,7 @@
       { "id": "burn", "category": "dot", "durationMs": 6000, "periodMs": 2000, "stacking": "perSourceKeepStronger", "resistance": "defense", "damageType": "magique" },
       { "id": "bleed", "category": "dot", "durationMs": 6000, "periodMs": 2000, "stacking": "perSourceKeepStronger", "resistance": "defense", "damageType": "physique" },
       {
-        "id": "stun", "category": "control", "durationMs": 1500, "stacking": "keepLonger", "resistance": "duration",
+        "id": "stun", "category": "control", "durationMs": 1500, "stacking": "ignore", "resistance": "duration",
         "blocks": ["skills", "guard", "parry", "assailantAttacks"], "interrupts": ["guard", "parry"], "blockReason": "stunned",
         "grantsOnExpiry": "stunImmunity"
       },
