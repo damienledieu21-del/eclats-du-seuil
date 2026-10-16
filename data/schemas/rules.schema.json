@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "kind": {
       "const": "rules"
@@ -438,14 +438,49 @@
                 },
                 "maxEventsPerTick": {
                   "type": "integer",
-                  "minimum": -2147483648,
-                  "maximum": 2147483647,
-                  "description": "Événements maximum par tick avant interruption."
+                  "minimum": 1,
+                  "maximum": 10000000,
+                  "description": "Événements de simulation comptés par tick avant interruption (au plus maxWorkPerTick)."
+                },
+                "maxCombatants": {
+                  "type": "integer",
+                  "minimum": 2,
+                  "maximum": 256,
+                  "description": "Combattants par scénario (lot 7.1)."
+                },
+                "maxCommands": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Commandes par scénario (lot 7.1)."
+                },
+                "maxCommandsPerActorPerTick": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64,
+                  "description": "Commandes d'un même acteur au même tick (lot 7.1)."
+                },
+                "maxPendingEvents": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000000,
+                  "description": "Événements en attente dans la file (lot 7.1)."
+                },
+                "maxWorkPerTick": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000000,
+                  "description": "Budget de travail par tick (lot 7.1)."
                 }
               },
               "required": [
                 "maxDurationMs",
-                "maxEventsPerTick"
+                "maxEventsPerTick",
+                "maxCombatants",
+                "maxCommands",
+                "maxCommandsPerActorPerTick",
+                "maxPendingEvents",
+                "maxWorkPerTick"
               ],
               "description": "Limites de simulation."
             },

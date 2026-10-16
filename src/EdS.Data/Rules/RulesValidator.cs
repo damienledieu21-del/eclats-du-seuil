@@ -48,7 +48,7 @@ namespace EdS.Data.Rules
 
         private static bool ValidateHeader(RulesDocument document, ValidationReport report) =>
             HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion,
-                RulesCatalog.Kind, DataFormat.CurrentSchemaVersion, report);
+                RulesCatalog.Kind, DataFormat.RulesSchemaVersion, report);
 
         private static void ValidateFieldsShape(RulesDocument document, ValidationReport report)
         {
@@ -180,6 +180,11 @@ namespace EdS.Data.Rules
                 EnduranceRegenDelayMs = Int(d, P(c, nameof(CombatRules.EnduranceRegenDelayMs))),
                 MaxDurationMs = Int(d, P(c, nameof(CombatRules.MaxDurationMs))),
                 MaxEventsPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxEventsPerTick))),
+                MaxCombatants = (int)Int(d, P(c, nameof(CombatRules.MaxCombatants))),
+                MaxCommands = (int)Int(d, P(c, nameof(CombatRules.MaxCommands))),
+                MaxCommandsPerActorPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxCommandsPerActorPerTick))),
+                MaxPendingEvents = (int)Int(d, P(c, nameof(CombatRules.MaxPendingEvents))),
+                MaxWorkPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxWorkPerTick))),
                 GuardDamageReduction = Dec(d, P(c, nameof(CombatRules.GuardDamageReduction))),
                 GuardUpkeepPerSecond = (int)Int(d, P(c, nameof(CombatRules.GuardUpkeepPerSecond))),
                 GuardCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.GuardCostPerBlock))),

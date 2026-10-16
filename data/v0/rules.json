@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "rules",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -70,7 +70,12 @@
       },
       "limits": {
         "maxDurationMs": 600000,
-        "maxEventsPerTick": 1000
+        "maxEventsPerTick": 1000,
+        "maxCombatants": 64,
+        "maxCommands": 20000,
+        "maxCommandsPerActorPerTick": 4,
+        "maxPendingEvents": 100000,
+        "maxWorkPerTick": 10000
       },
       "guard": {
         "damageReduction": 0.6,

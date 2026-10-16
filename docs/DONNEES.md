@@ -2,14 +2,14 @@
 
 ## Fichier de règles
 
-`data/v0/rules.json` centralise tous les paramètres de `StatRules`, `DamageRules` `ProgressionRules` (bloc `progression`, lot 4) et `CombatRules` (bloc `combat` : `tickMs`, `globalCooldownMs`, `endurance.*`, `limits.*` au lot 5 ; `guard.*`, `parry.*`, `rampartCharges.*`, `resonance.*`, `states.fragility.*` au lot 6). Toutes les valeurs provisoires du moteur y sont, aucune n'est codée en dur. `schemaVersion` vaut 2 depuis le correctif 6.1 (voir « Versions de format »). Le schéma `data/schemas/rules.schema.json` sert à l'auto-complétion dans les éditeurs ; la validation qui fait foi est celle du programme.
+`data/v0/rules.json` centralise tous les paramètres de `StatRules`, `DamageRules` `ProgressionRules` (bloc `progression`, lot 4) et `CombatRules` (bloc `combat` : `tickMs`, `globalCooldownMs`, `endurance.*`, `limits.*` au lot 5 ; `guard.*`, `parry.*`, `rampartCharges.*`, `resonance.*`, `states.fragility.*` au lot 6). Toutes les valeurs provisoires du moteur y sont, aucune n'est codée en dur. `schemaVersion` vaut 3 depuis le lot 7.1 (voir « Versions de format »). Le schéma `data/schemas/rules.schema.json` sert à l'auto-complétion dans les éditeurs ; la validation qui fait foi est celle du programme.
 
 ```json
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 2,                    // forme du fichier ; changement incompatible = +1, sans migration en pré-alpha
+  "schemaVersion": 3,                    // forme du fichier ; changement incompatible = +1, sans migration en pré-alpha
   "kind": "rules",                       // type de fichier attendu
-  "contentVersion": "0.2.0-provisoire",  // version SemVer des valeurs
+  "contentVersion": "0.3.0-provisoire",  // version SemVer des valeurs
   "data": { "stats": { … }, "damage": { … }, "progression": { … }, "combat": { … } }
 }
 ```
@@ -41,16 +41,16 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
 `sha256:…` calculée sur une écriture canonique (version de schéma, puis chaque paramètre dans l'ordre du catalogue). Indépendante des espaces, de l'ordre des clés et de l'écriture des nombres (`2` = `2.0`) ; ignore `contentVersion`. Valeur actuelle de `data/v0/rules.json` :
 
 ```
-sha256:67d3894c9d1f66fee1863b16430d6b6a75b8dea3c3929780ac9e8c0099c8fd4b
+sha256:9473e0ca90af517d9bf03807d7e08e4d06cafd781ba2ba3b094d7aadc29db5a1
 ```
 
-(La valeur a changé au correctif 6.1 uniquement parce que la version de schéma, passée à 2, fait partie de l'écriture canonique ; aucun paramètre n'a changé.)
+(Elle a changé au correctif 6.1 avec la version de schéma 2, puis au lot 7.1 avec la version 3 et les cinq nouvelles limites ; aucun paramètre préexistant n'a changé.)
 
 ## Versions de format
 
 | Fichier | `schemaVersion` | Historique |
 |---|---|---|
-| `rules.json` | 2 | 1 : lots 3 à 5 ; 2 : blocs `combat.guard`, `parry`, `rampartCharges`, `resonance`, `states` du lot 6 |
+| `rules.json` | 3 | 1 : lots 3 à 5 ; 2 : blocs `combat.guard`, `parry`, `rampartCharges`, `resonance`, `states` du lot 6 ; 3 : `combat.limits.maxCombatants`, `maxCommands`, `maxCommandsPerActorPerTick`, `maxPendingEvents`, `maxWorkPerTick` (lot 7.1) |
 | classes | 2 | 1 : lots 4 et 5 ; 2 : `unblockable`, `rampartChargeCost`, `rampartChargeGain` obligatoires dans le bloc `combat` |
 | scénarios | 1 | ajouts compatibles seulement (assaillant, `action`) : un scénario du lot 5 reste lisible |
 | journal (`formatVersion`) | 2 | 2 : `instance` et `generation` sur les états, `stateRemoved` |

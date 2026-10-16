@@ -65,7 +65,7 @@ public class RulesCatalogTests
     public void Validateur_commun_utilisable_sans_JSON()
     {
         // Chemin d'un futur chargeur Unity : il remplit un RulesDocument et appelle le même validateur.
-        var document = new RulesDocument { SchemaVersion = DataFormat.CurrentSchemaVersion, Kind = "rules", ContentVersion = "0.1.0" };
+        var document = new RulesDocument { SchemaVersion = DataFormat.RulesSchemaVersion, Kind = "rules", ContentVersion = "0.1.0" };
         foreach (RuleField field in RulesCatalog.Fields)
         {
             object provisional = field.Owner == typeof(StatRules) ? StatRules.Provisional

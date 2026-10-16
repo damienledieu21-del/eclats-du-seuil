@@ -7,14 +7,18 @@ namespace EdS.Data
     /// Les migrateurs automatiques n'arriveront qu'avec un format stabilisé.</para>
     /// <para>Historique : 1 = lots 3 à 5 ; 2 = lot 6 (blocs garde, parade, Charges, Résonance, Fragilité dans
     /// <c>rules.json</c>, données de combat imparable et Charges dans les classes), version introduite au correctif 6.1
-    /// car le lot 6 avait changé ces formats sans incrémenter le numéro.</para>
+    /// car le lot 6 avait changé ces formats sans incrémenter le numéro ; 3 (règles seulement) = lot 7.1, cinq limites
+    /// d'admission et de budget dans <c>combat.limits</c>. Les classes restent en version 2.</para>
     /// </summary>
     public static class DataFormat
     {
-        /// <summary>Version de schéma courante des fichiers de règles et de classes.</summary>
-        public const int CurrentSchemaVersion = 2;
+        /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
+        public const int RulesSchemaVersion = 3;
 
-        /// <summary>Version de contenu des données d'équilibrage livrées : provisoires, non équilibrées.</summary>
-        public const string ProvisionalContentVersion = "0.2.0-provisoire";
+        /// <summary>Version de schéma courante des fichiers de classes.</summary>
+        public const int ClassSchemaVersion = 2;
+
+        /// <summary>Version de contenu des règles livrées : provisoires, non équilibrées.</summary>
+        public const string ProvisionalRulesContentVersion = "0.3.0-provisoire";
     }
 }

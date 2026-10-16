@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(2, result.Rules!.SchemaVersion);
-        Assert.Equal("0.2.0-provisoire", result.Rules.ContentVersion);
+        Assert.Equal(3, result.Rules!.SchemaVersion);
+        Assert.Equal("0.3.0-provisoire", result.Rules.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -91,7 +91,7 @@ public class RulesJsonReaderTests
         // Valeur de référence : changer le format canonique change toutes les empreintes déjà journalisées.
         // Correctif 6.1 : nouvelle valeur car la version de schéma (2) fait partie du texte canonique ; valeurs inchangées.
         Assert.Equal(
-            "sha256:67d3894c9d1f66fee1863b16430d6b6a75b8dea3c3929780ac9e8c0099c8fd4b",
+            "sha256:9473e0ca90af517d9bf03807d7e08e4d06cafd781ba2ba3b094d7aadc29db5a1",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -99,7 +99,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 3), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 4), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Ancien_format_v1_refuse_explicitement_sans_migration()
@@ -111,6 +111,22 @@ public class RulesJsonReaderTests
             r["schemaVersion"] = 1;
             r["data"]!["combat"]!.AsObject().Remove("guard");
             r["data"]!["combat"]!.AsObject().Remove("parry");
+        });
+        AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        Assert.Contains("aucune migration", result.Report.Errors[0].Message);
+    }
+
+    [Fact]
+    public void Ancien_format_v2_refuse_explicitement_sans_migration()
+    {
+        // Lot 7.1 : un fichier de règles du lot 6 (sans les cinq limites d'admission et de budget) est refusé par sa
+        // version, avec un seul message, sans cascade de champs manquants.
+        RulesLoadResult result = ReadMutated(r =>
+        {
+            r["schemaVersion"] = 2;
+            var limits = r["data"]!["combat"]!["limits"]!.AsObject();
+            foreach (string name in new[] { "maxCombatants", "maxCommands", "maxCommandsPerActorPerTick", "maxPendingEvents", "maxWorkPerTick" })
+                limits.Remove(name);
         });
         AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
         Assert.Contains("aucune migration", result.Report.Errors[0].Message);

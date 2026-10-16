@@ -30,8 +30,36 @@ namespace EdS.Domain.Combat
         /// <summary>Durée maximale d'un combat simulé : borne le nombre de ticks.</summary>
         public long MaxDurationMs { get; init; } = 600_000;
 
-        /// <summary>Nombre maximal d'événements journalisés en un tick ; au-delà le combat est interrompu proprement.</summary>
+        /// <summary>
+        /// Nombre maximal d'événements de simulation comptés en un tick (phases 1 à 6, hors initialisation et finalisation) ;
+        /// au-delà le combat est interrompu proprement. Au plus <see cref="MaxWorkPerTick"/> : chaque écriture coûte une unité de travail.
+        /// </summary>
         public int MaxEventsPerTick { get; init; } = 1000;
+
+        // Lot 7.1 : admission des scénarios et budgets d'exécution (docs/LIMITES_LOT_7.md). Valeurs configurées provisoires,
+        // bornées par des plafonds techniques absolus.
+
+        /// <summary>Nombre maximal de combattants d'un scénario (refus à la validation).</summary>
+        public int MaxCombatants { get; init; } = 64;
+
+        /// <summary>Nombre maximal de commandes d'un scénario (refus à la validation).</summary>
+        public int MaxCommands { get; init; } = 20_000;
+
+        /// <summary>Nombre maximal de commandes d'un même acteur au même tick (refus à la validation).</summary>
+        public int MaxCommandsPerActorPerTick { get; init; } = 4;
+
+        /// <summary>Nombre maximal d'événements en attente dans la file ; au-delà, arrêt <c>queueLimitExceeded</c>.</summary>
+        public int MaxPendingEvents { get; init; } = 100_000;
+
+        /// <summary>Budget de travail par tick (unités, voir docs/MOTEUR.md) ; au-delà, arrêt <c>workBudgetExceeded</c>.</summary>
+        public int MaxWorkPerTick { get; init; } = 10_000;
+
+        /// <summary>Plafonds techniques absolus des limites (enveloppes de pré-alpha, pas des capacités mesurées).</summary>
+        public const int AbsoluteMinCombatants = 2, AbsoluteMaxCombatants = 256;
+        public const int AbsoluteMaxCommands = 1_000_000;
+        public const int AbsoluteMaxCommandsPerActorPerTick = 64;
+        public const int AbsoluteMaxPendingEvents = 10_000_000;
+        public const int AbsoluteMaxWorkPerTick = 10_000_000;
 
         /// <summary>Réduction des dégâts directs bloquables, après armure, pendant la garde (A1 : 0.6 = −60 %).</summary>
         public Fixed GuardDamageReduction { get; init; } = Fixed.FromRatio(6, 10);
@@ -146,8 +174,21 @@ namespace EdS.Domain.Combat
 
             if (EnduranceRegenPerSecond < 0)
                 errors.Add(new RuleViolation("ne peut pas être négative.", nameof(EnduranceRegenPerSecond)));
+            void Range(int value, int min, int max, string name)
+            {
+                if (value < min || value > max)
+                    errors.Add(new RuleViolation($"doit être compris entre {min} et {max} (plafond technique).", name));
+            }
+            Range(MaxCombatants, AbsoluteMinCombatants, AbsoluteMaxCombatants, nameof(MaxCombatants));
+            Range(MaxCommands, 0, AbsoluteMaxCommands, nameof(MaxCommands));
+            Range(MaxCommandsPerActorPerTick, 1, AbsoluteMaxCommandsPerActorPerTick, nameof(MaxCommandsPerActorPerTick));
+            Range(MaxPendingEvents, 1, AbsoluteMaxPendingEvents, nameof(MaxPendingEvents));
+            Range(MaxWorkPerTick, 1, AbsoluteMaxWorkPerTick, nameof(MaxWorkPerTick));
             if (MaxEventsPerTick < 1)
                 errors.Add(new RuleViolation("doit valoir au moins 1.", nameof(MaxEventsPerTick)));
+            else if (MaxWorkPerTick >= 1 && MaxEventsPerTick > MaxWorkPerTick)
+                errors.Add(new RuleViolation("ne peut pas dépasser le budget de travail par tick : chaque événement coûte une unité de travail.",
+                    nameof(MaxEventsPerTick), nameof(MaxWorkPerTick)));
             return errors;
         }
     }

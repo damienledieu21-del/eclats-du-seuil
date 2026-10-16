@@ -49,7 +49,7 @@ namespace EdS.Data.Classes
     public static class ClassValidator
     {
         public const string Kind = "class";
-        public const int CurrentSchemaVersion = DataFormat.CurrentSchemaVersion;
+        public const int CurrentSchemaVersion = DataFormat.ClassSchemaVersion;
 
         public static IReadOnlyDictionary<string, SkillKind> SkillKinds { get; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, SkillKind>(new Dictionary<string, SkillKind>(StringComparer.Ordinal)
         {
