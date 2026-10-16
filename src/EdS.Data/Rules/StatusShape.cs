@@ -117,31 +117,32 @@ namespace EdS.Data.Rules
                 (s.ImmuneTo ?? new List<string?>()).Select(x => x!), Triggers.TriggerShape.Build(s.Triggers))).ToArray());
 
         /// <summary>
-        /// Écriture canonique pour l'empreinte des règles : dans l'ordre du fichier (il fixe la priorité des motifs de refus),
-        /// chaque champ avec sa valeur neutre s'il est absent. Les listes de drapeaux sont écrites dans l'ordre de déclaration.
+        /// Écriture canonique pour l'empreinte des règles : dans l'ordre du fichier (il fixe la priorité des motifs de refus), chaque
+        /// champ, les listes de drapeaux dans l'ordre de déclaration. Correctif 7.3.1 (A73-M02) : un champ facultatif absent s'écrit comme
+        /// absent (voir <see cref="CanonicalWriter"/>) ; <c>grantsOnExpiry</c> absent et l'altération <c>none</c> ne se confondent plus.
         /// </summary>
         public static void AppendCanonical(StringBuilder text, StatusCatalog catalog)
         {
-            void Line(string path, string value) => text.Append(path).Append('=').Append(value).Append('\n');
-            Line("statuses.count", catalog.Definitions.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var w = new CanonicalWriter(text);
+            w.Value("statuses.count", catalog.Definitions.Count);
             for (int i = 0; i < catalog.Definitions.Count; i++)
             {
                 StatusDefinition d = catalog.Definitions[i];
                 string p = $"statuses[{i}]";
-                Line(p + ".id", d.Id);
-                Line(p + ".category", StatusIds.Of(d.Category));
-                Line(p + ".durationMs", d.DurationMs.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                Line(p + ".periodMs", d.PeriodMs.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                Line(p + ".stacking", StatusIds.Of(d.Stacking));
-                Line(p + ".resistance", StatusIds.Of(d.Resistance));
-                Line(p + ".damageType", d.DamageType is { } type ? RulesCatalog.Id(type) : "none");
-                Line(p + ".blocks", string.Join(",", StatusIds.Of(d.Blocks)));
-                Line(p + ".interrupts", string.Join(",", StatusIds.Of(d.Interrupts)));
-                Line(p + ".blockReason", d.BlockReason ?? "none");
-                Line(p + ".damageTakenIncrease", d.DamageTakenIncrease.ToString());
-                Line(p + ".movementSpeedModifier", d.MovementSpeedModifier.ToString());
-                Line(p + ".grantsOnExpiry", d.GrantsOnExpiry ?? "none");
-                Line(p + ".immuneTo", string.Join(",", d.ImmuneTo));
+                w.Value(p + ".id", d.Id);
+                w.Value(p + ".category", StatusIds.Of(d.Category));
+                w.Value(p + ".durationMs", d.DurationMs);
+                w.Value(p + ".periodMs", d.PeriodMs);
+                w.Value(p + ".stacking", StatusIds.Of(d.Stacking));
+                w.Value(p + ".resistance", StatusIds.Of(d.Resistance));
+                w.Optional(p + ".damageType", d.DamageType is { } type ? RulesCatalog.Id(type) : null);
+                w.List(p + ".blocks", StatusIds.Of(d.Blocks));
+                w.List(p + ".interrupts", StatusIds.Of(d.Interrupts));
+                w.Optional(p + ".blockReason", d.BlockReason);
+                w.Value(p + ".damageTakenIncrease", d.DamageTakenIncrease.ToString());
+                w.Value(p + ".movementSpeedModifier", d.MovementSpeedModifier.ToString());
+                w.Optional(p + ".grantsOnExpiry", d.GrantsOnExpiry);
+                w.List(p + ".immuneTo", d.ImmuneTo);
                 Triggers.TriggerShape.AppendCanonical(text, p + ".triggers", d.Triggers);
             }
         }

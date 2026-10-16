@@ -161,48 +161,47 @@ namespace EdS.Data.Triggers
         }
 
         /// <summary>
-        /// Écriture canonique pour les empreintes : rien si la liste est absente ou vide (les données sans déclencheur gardent leur
-        /// empreinte), sinon chaque champ dans un ordre fixe, avec sa valeur neutre s'il est absent.
+        /// Écriture canonique pour les empreintes : rien si la liste est absente ou vide (les données sans déclencheur n'ajoutent
+        /// rien), sinon chaque champ dans un ordre fixe. Correctif 7.3.1 (A73-M02) : un champ facultatif absent s'écrit comme absent,
+        /// jamais avec une valeur neutre textuelle (voir <see cref="CanonicalWriter"/>).
         /// </summary>
         public static void AppendCanonical(StringBuilder text, string path, IReadOnlyList<TriggerDefinition> triggers)
         {
             if (triggers.Count == 0) return;
-            void Line(string p, string value) => text.Append(p).Append('=').Append(Escape(value)).Append('\n');
-            string Ranked(RankedValue? v) => v is { } r ? (r.PerRank == Fixed.Zero ? r.Base.ToString() : $"{r.Base}+{r.PerRank}/rank") : "none";
-            Line(path + ".count", triggers.Count.ToString(CultureInfo.InvariantCulture));
+            var w = new CanonicalWriter(text);
+            static string? Ranked(RankedValue? v) => v is { } r ? (r.PerRank == Fixed.Zero ? r.Base.ToString() : $"{r.Base}+{r.PerRank}/rank") : null;
+            w.Value(path + ".count", triggers.Count);
             for (int i = 0; i < triggers.Count; i++)
             {
                 TriggerDefinition t = triggers[i];
                 string p = $"{path}[{i}]";
-                Line(p + ".on", TriggerIds.Of(t.On));
-                Line(p + ".role", t.Role is { } role ? TriggerIds.Of(role) : "none");
+                w.Value(p + ".on", TriggerIds.Of(t.On));
+                w.Optional(p + ".role", t.Role is { } role ? TriggerIds.Of(role) : null);
                 TriggerFilter f = t.Filter;
-                Line(p + ".filter.skills", string.Join(",", f.Skills));
-                Line(p + ".filter.damageType", f.DamageType is { } dt ? Rules.RulesCatalog.Id(dt) : "none");
-                Line(p + ".filter.defense", string.Join(",", f.Defenses.Select(TriggerIds.Of)));
-                Line(p + ".filter.status", f.Status ?? "none");
-                Line(p + ".filter.category", f.Category is { } c ? StatusIds.Of(c) : "none");
-                Line(p + ".filter.resource", f.Resource is { } r ? TriggerIds.Of(r) : "none");
-                Line(p + ".filter.renewed", f.Renewed is { } b ? (b ? "true" : "false") : "none");
-                Line(p + ".cooldownMs", t.CooldownMs.ToString(CultureInfo.InvariantCulture));
-                Line(p + ".effects.count", t.Effects.Count.ToString(CultureInfo.InvariantCulture));
+                w.List(p + ".filter.skills", f.Skills);
+                w.Optional(p + ".filter.damageType", f.DamageType is { } dt ? Rules.RulesCatalog.Id(dt) : null);
+                w.List(p + ".filter.defense", f.Defenses.Select(TriggerIds.Of));
+                w.Optional(p + ".filter.status", f.Status);
+                w.Optional(p + ".filter.category", f.Category is { } c ? StatusIds.Of(c) : null);
+                w.Optional(p + ".filter.resource", f.Resource is { } r ? TriggerIds.Of(r) : null);
+                w.Optional(p + ".filter.renewed", f.Renewed is { } b ? (b ? "true" : "false") : null);
+                w.Value(p + ".cooldownMs", t.CooldownMs);
+                w.Value(p + ".effects.count", t.Effects.Count);
                 for (int k = 0; k < t.Effects.Count; k++)
                 {
                     TriggerEffect e = t.Effects[k];
                     string ep = $"{p}.effects[{k}]";
-                    Line(ep + ".type", TriggerIds.Of(e.Kind));
-                    Line(ep + ".target", e.Target is { } target ? TriggerIds.Of(target) : "none");
-                    Line(ep + ".coefficient", Ranked(e.Coefficient));
-                    Line(ep + ".powerType", e.PowerType is { } pt ? ClassValidator.PowerTypes.First(x => x.Value == pt).Key : "none");
-                    Line(ep + ".damageType", e.DamageType is { } edt ? Rules.RulesCatalog.Id(edt) : "none");
-                    Line(ep + ".unblockable", e.Unblockable ? "true" : "false");
-                    Line(ep + ".status", e.Status ?? "none");
-                    Line(ep + ".resource", e.Resource is { } res ? TriggerIds.Of(res) : "none");
-                    Line(ep + ".amount", Ranked(e.Amount));
+                    w.Value(ep + ".type", TriggerIds.Of(e.Kind));
+                    w.Optional(ep + ".target", e.Target is { } target ? TriggerIds.Of(target) : null);
+                    w.Optional(ep + ".coefficient", Ranked(e.Coefficient));
+                    w.Optional(ep + ".powerType", e.PowerType is { } pt ? ClassValidator.PowerTypes.First(x => x.Value == pt).Key : null);
+                    w.Optional(ep + ".damageType", e.DamageType is { } edt ? Rules.RulesCatalog.Id(edt) : null);
+                    w.Value(ep + ".unblockable", e.Unblockable);
+                    w.Optional(ep + ".status", e.Status);
+                    w.Optional(ep + ".resource", e.Resource is { } res ? TriggerIds.Of(res) : null);
+                    w.Optional(ep + ".amount", Ranked(e.Amount));
                 }
             }
         }
-
-        private static string Escape(string value) => value.Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
     }
 }

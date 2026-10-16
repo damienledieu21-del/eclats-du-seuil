@@ -85,9 +85,9 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "781a99fbd3c58ba576cdb95623390f5e1b402da6dbe1f1c90963aa43888e95ff")]
-    [InlineData("entrainement_rupture", "88ca6cb7613cfdd27e7c5a85b453c1e60780ffccc05376171fc73ea0da6cb73f")]
-    [InlineData("entrainement_alterations", "37457467196f6c4b4a35fa562c09a4e641368f926b62f72e1544cf21b39a60ba")]
+    [InlineData("entrainement_garde_parade", "b1aa9e12d9e02dc405b7ff49f0ccfd15b5af84ceeb5bc1c2ea91868418bf5e54")]
+    [InlineData("entrainement_rupture", "1d8e63db5e975a9ed4e4381f6a88eb21d21fd7e89dfc0440055780a3ccb8363b")]
+    [InlineData("entrainement_alterations", "53d096548cb276b09d09ca2bca959a2f4b22a7fe780316f0ed4ea5b55dac4ddc")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.

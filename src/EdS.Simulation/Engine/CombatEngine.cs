@@ -29,7 +29,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.9.0";
+        public const string Version = "0.9.1";
 
         public const string LogFormat = "eds-combat-log";
 

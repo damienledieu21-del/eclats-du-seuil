@@ -120,8 +120,9 @@ namespace EdS.Data.Classes
         public static string CanonicalText(int schemaVersion, ClassData data, ClassDefinition definition)
         {
             var text = new StringBuilder();
-            void Line(string path, object? value) =>
-                text.Append(path).Append('=').Append(Escape(Convert.ToString(value, CultureInfo.InvariantCulture))).Append('\n');
+            var w = new CanonicalWriter(text);
+            // Correctif 7.3.1 (A73-M02) : une valeur absente s'écrit comme absente, jamais comme une chaîne vide ou « none ».
+            void Line(string path, object? value) => w.Optional(path, value is null ? null : Convert.ToString(value, CultureInfo.InvariantCulture));
             void Requirements(string path, List<RequirementData?> list)
             {
                 Line(path + ".count", list.Count);
@@ -133,6 +134,7 @@ namespace EdS.Data.Classes
             }
 
             text.Append("eds-class\n");
+            Line("canonical", CanonicalWriter.Version);
             Line("schemaVersion", schemaVersion);
             Line("id", data.Id);
             Line("name", data.Name);
@@ -170,7 +172,7 @@ namespace EdS.Data.Classes
                 TriggerShape.AppendCanonical(text, p + ".triggers", definition.Skills[s].Triggers);
                 if (skill.Combat is not { } combat)
                 {
-                    Line(p + ".combat", "none");
+                    Line(p + ".combat", null);
                     continue;
                 }
                 Line(p + ".combat.powerType", combat.PowerType);
@@ -187,14 +189,11 @@ namespace EdS.Data.Classes
                 for (int a = 0; a < combat.Applies.Count; a++)
                 {
                     Line($"{p}.combat.applies[{a}].status", combat.Applies[a]!.Status);
-                    Line($"{p}.combat.applies[{a}].coefficient", combat.Applies[a]!.Coefficient?.ToString() ?? "none");
+                    Line($"{p}.combat.applies[{a}].coefficient", combat.Applies[a]!.Coefficient?.ToString());
                 }
             }
             return text.ToString();
         }
-
-        private static string Escape(string? value) =>
-            (value ?? string.Empty).Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
 
         /// <summary>Altérations portées, converties pour le domaine (lot 7.2) ; suppose la forme vérifiée.</summary>
         public static IReadOnlyList<Domain.Combat.StatusApplication> Applications(List<StatusApplicationData?> list) =>

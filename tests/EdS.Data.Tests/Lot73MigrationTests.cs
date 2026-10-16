@@ -46,7 +46,7 @@ public class Lot73MigrationTests
 
         JsonObject oldHeader = JsonNode.Parse(before[0])!.AsObject(), newHeader = JsonNode.Parse(after[0])!.AsObject();
         Assert.Equal((3, "0.8.1"), (oldHeader["formatVersion"]!.GetValue<int>(), oldHeader["engineVersion"]!.GetValue<string>()));
-        Assert.Equal((4, "0.9.0"), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
+        Assert.Equal((4, "0.9.1"), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
         foreach (JsonObject header in new[] { oldHeader, newHeader })
             foreach (string key in new[] { "formatVersion", "engineVersion", "data" }) header.Remove(key);
         Assert.Equal(oldHeader.ToJsonString(), newHeader.ToJsonString());

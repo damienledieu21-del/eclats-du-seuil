@@ -102,8 +102,9 @@ public class RulesJsonReaderTests
         // Lot 7.2 : schéma 4, bloc statuses et constante de résistance aux altérations dans le texte canonique.
         // Correctif 7.2 : empilement de l'étourdissement passé à ignore.
         // Lot 7.3 : schéma 5 et combat.limits.maxTriggerDepth ; une altération sans déclencheur n'ajoute rien au texte canonique.
+        // Correctif 7.3.1 (A73-M02) : contrat canonique 2 (version en tête, champs absents marqués, listes indicées).
         Assert.Equal(
-            "sha256:ee482e9a5ac947bfdb51398452985e848d3cee01b64a71f53a67ea7cf1c4cbb4",
+            "sha256:293ef0ea83036e903d5d50699a45c8c9d5dbf7a94eb106b42961380506b9c5ad",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
