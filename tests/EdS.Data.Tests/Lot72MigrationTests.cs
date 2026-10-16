@@ -56,7 +56,7 @@ public class Lot72MigrationTests
         // En-tête : seules les versions, l'identité des données et l'écriture des attaques et résistances changent.
         JsonObject oldHeader = JsonNode.Parse(before[0])!.AsObject(), newHeader = JsonNode.Parse(after[0])!.AsObject();
         Assert.Equal((2, "0.7.0"), (oldHeader["formatVersion"]!.GetValue<int>(), oldHeader["engineVersion"]!.GetValue<string>()));
-        Assert.Equal((3, "0.8.1"), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
+        Assert.Equal((CombatEngine.LogFormatVersion, CombatEngine.Version), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
         foreach (JsonObject header in new[] { oldHeader, newHeader })
             foreach (string key in new[] { "formatVersion", "engineVersion", "data" }) header.Remove(key);
         foreach (JsonNode? combatant in oldHeader["scenario"]!["combatants"]!.AsArray().ToList())
@@ -88,6 +88,8 @@ public class Lot72MigrationTests
             JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = JsonNode.Parse(after[i])!.AsObject();
             string kind = newLine["event"]!.GetValue<string>();
             Assert.DoesNotContain(kind, new[] { "stateBlocked", "dotDamage" });
+            // Lot 7.3 : champs de provenance du format 4, comparés à part (Lot73MigrationTests).
+            foreach (string key in EdS.TestSupport.CausalGraph.ProvenanceFields) newLine.Remove(key);
             if (StateEvents.Contains(kind))
             {
                 stateLines++;

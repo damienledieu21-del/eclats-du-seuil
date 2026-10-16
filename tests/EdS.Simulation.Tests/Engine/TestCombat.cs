@@ -4,6 +4,7 @@ using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
 using EdS.Simulation.Engine;
+using EdS.TestSupport;
 
 namespace EdS.Simulation.Tests.Engine;
 
@@ -119,10 +120,13 @@ internal static class TestCombat
         new(seed, durationMs, StatRules.Provisional, DamageRules.Provisional, ProgressionRules.Provisional, rules ?? CombatRules.Provisional,
             combatants ?? new CombatantSetup[] { Character(), Dummy() }, commands, Identity);
 
+    /// <summary>Simule un combat ; lot 7.3 : le graphe causal du journal est reconstruit et vérifié à chaque simulation de test.</summary>
     public static (CombatResult Result, MemoryCombatLog Log) Run(CombatSetup setup)
     {
         var log = new MemoryCombatLog();
-        return (CombatEngine.Run(setup, log), log);
+        CombatResult result = CombatEngine.Run(setup, log);
+        CausalGraph.Build(log.Lines);
+        return (result, log);
     }
 
     /// <summary>Simulation sans le majorant de saturation (correctif 7.2) : exerce le filet de sécurité <c>queueLimitExceeded</c>.</summary>
@@ -131,6 +135,7 @@ internal static class TestCombat
         var log = new MemoryCombatLog();
         var engine = new CombatEngine(setup, log, queueBound: false);
         while (engine.Step()) { }
+        CausalGraph.Build(log.Lines);
         return (engine.Result!, log);
     }
 

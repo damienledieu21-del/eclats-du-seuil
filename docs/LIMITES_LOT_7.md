@@ -90,6 +90,12 @@ Une **racine** est un événement qui n'est produit par aucun déclencheur. Son 
 
 `rootSeq` (numéro `seq` de la première ligne journalisée de la racine) est seulement une aide à la lecture du journal ; l'identité qui fait foi est `root`, indépendante de la présence ou non de lignes.
 
+**En place depuis l'étape 7.3.2 (moteur 0.9.0, journal au format 4).** `root` est écrit sur l'effet racine (`cause: null`) ; chaque effet porte `eid` et `cause`. Précisions de mise en œuvre :
+- `assailantTurn:<id>:<n>` : n compte tous les tours programmés, sauts compris (`attackSkipped`) ;
+- `periodic:<porteur>:<source>:<tick>` : pour l'entretien de garde, la source est le porteur lui-même ;
+- `cooldown:…` reste une racine (P1, P3), comme ce tableau l'indique. La ligne « recharge » du tableau de propagation du plan 7.3 (§3.2), qui la faisait hériter de la compétence, est écartée au profit de ce contrat ; une fin de fenêtre de parade hérite bien de la commande `parry` ;
+- racine supplémentaire `endOfTick:<combattant>:<tick>` : mort constatée sans effet mortel (points de vie maximaux nuls dès le départ), seul cas où `died` n'hérite pas d'un impact ou d'un tick de DOT (A6).
+
 Correctif 7.2 : l'échéance d'un état et le tick d'un DOT **ne sont plus des racines**. Ils héritent de la provenance de l'instance qui les a programmés (voir « Provenance causale des altérations » ci-dessous). Les lignes `stateExpiry` et « effet sur la durée » de la version précédente de ce tableau sont remplacées par cette règle.
 
 ### Identité d'un déclencheur
@@ -131,9 +137,9 @@ Exemple, avec `maxTriggerDepth = 4` :
 | Réaction 3, puis réaction 4 | réactions | 3, puis 4 |
 | Réaction 5 | réaction (P6) | non créé : `triggerSuppressed`, `depth: 5` |
 
-### Provenance causale des altérations (préparation du sous-lot 7.3, correctif 7.2)
+### Provenance causale des altérations (préparation du sous-lot 7.3, correctif 7.2 ; en place depuis l'étape 7.3.2)
 
-Règles normatives pour les altérations, compatibles avec P1 à P8 ; rien n'est encore journalisé ni implémenté (aucun déclencheur avant 7.3). La **provenance** d'un effet est le quadruplet (`root`, `depth`, `chain`, `trigger`) ; sa **source** est le combattant crédité (champ `source` du journal), qui n'entre pas dans la provenance mais est conservée avec elle.
+Règles normatives pour les altérations, compatibles avec P1 à P8. **En place depuis l'étape 7.3.2** pour A1 à A7 et A9 : l'instance mémorise la provenance de sa dernière application acceptée (`cause` = son `stateApplied`, avec instance et génération), les ticks de DOT, l'expiration et l'état accordé la lisent au moment où ils agissent, et la mort hérite du premier effet qui a amené les points de vie à 0. A8 (reports) arrive à l'étape 7.3.5. La **provenance** d'un effet est le quadruplet (`root`, `depth`, `chain`, `trigger`) ; sa **source** est le combattant crédité (champ `source` du journal), qui n'entre pas dans la provenance mais est conservée avec elle.
 
 - **A1. Application.** L'application d'une altération par une attaque ou une compétence est une conséquence directe de l'impact (P3) : même provenance que l'impact, source = auteur de l'impact. Appliquée par une réaction, elle a la provenance de cet effet (profondeur déjà augmentée par la réaction, P2). L'instance mémorise la provenance et la source de l'application qui l'a créée.
 - **A2. Renouvellement.** Une application acceptée sur une instance existante (nouvelle génération) remplace la provenance et la source mémorisées par les siennes (comme le journal actuel : un gel renouvelé par « c » expire au nom de « c » ; pour un cumul par source, la source ne change pas). Une application refusée (`stateBlocked`) ne change rien à l'instance.

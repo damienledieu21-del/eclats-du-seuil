@@ -19,11 +19,11 @@ public class OrderingTests
         var casts = Events(Run(Setup(commands, combatants)).Log).OfKind("skillCast").Select(e => e.Str("actor"));
         Assert.Equal(new[] { "beta", "alpha", "gamma" }, casts);
 
-        // Ordre du scénario inversé : même journal d'événements.
+        // Ordre du scénario inversé : même journal d'événements, au numéro de commande près (champ command, racine command:<n>).
         var reversed = Run(Setup(commands.Reverse(), combatants)).Log.Lines.Skip(1)
-            .Select(l => System.Text.RegularExpressions.Regex.Replace(l, "\"command\":\\d+,", ""));
+            .Select(l => System.Text.RegularExpressions.Regex.Replace(l, "\"command\":\\d+,|\"root\":\"command:\\d+\",", ""));
         var original = Run(Setup(commands, combatants)).Log.Lines.Skip(1)
-            .Select(l => System.Text.RegularExpressions.Regex.Replace(l, "\"command\":\\d+,", ""));
+            .Select(l => System.Text.RegularExpressions.Regex.Replace(l, "\"command\":\\d+,|\"root\":\"command:\\d+\",", ""));
         Assert.Equal(original, reversed);
     }
 
