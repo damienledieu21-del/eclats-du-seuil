@@ -42,8 +42,9 @@ public class Correctif731CycleTests
         Assert.Equal("skills[0].triggers[0]", Assert.Single(warning.Fields));
         Assert.Contains($", … et {n - TriggerGraph.MaxLabelsPerWarning} autres)", warning.Message);
         Assert.InRange(warning.Message.Length, 0, 600);   // avertissement borné, quelle que soit la taille de la composante
-        // Borne large (quelques millisecondes mesurées) : l'ancien algorithme dépassait la seconde dès 1 024 déclencheurs.
-        Assert.True(clock.ElapsedMilliseconds <= 500, $"{n} déclencheurs : {clock.ElapsedMilliseconds} ms");
+        // Borne linéaire large (n/8 ms : 128 ms à 1 024, 2 s à 16 384), tenable en Debug sur un exécuteur de CI partagé
+        // (536 ms mesurées à 16 384) ; l'ancien algorithme dépassait déjà la seconde à 1 024 déclencheurs.
+        Assert.True(clock.ElapsedMilliseconds <= n / 8, $"{n} déclencheurs : {clock.ElapsedMilliseconds} ms (borne {n / 8} ms)");
     }
 
     /// <summary>Ancien algorithme (lot 7.3), conservé comme oracle : atteignabilité complète par parcours depuis chaque nœud.</summary>
