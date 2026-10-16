@@ -1,6 +1,6 @@
 # Formules de combat v0.1 (lot 2)
 
-> Valeurs **provisoires et non équilibrées**. Toutes sont réglables dans `StatRules` et `DamageRules`.
+> Valeurs **provisoires et non équilibrées**. Toutes sont réglables dans `data/v0/rules.json` (voir [DONNEES.md](DONNEES.md)).
 
 ## Statistiques dérivées (`DerivedStats.Calculate`)
 
@@ -13,7 +13,7 @@
 | Puissance magique | 0 | +2 par Intelligence | 0 |
 | Armure | 0 | — | brute conservée, effective ≥ 0 |
 | Résistance magique | 0 | — | brute conservée, effective ≥ 0 |
-| PV max | 0 | +10 par Vitalité | 0 |
+| PV max | 100 | +10 par Vitalité | 0 |
 | Résistance aux altérations | 0 | +2 par Volonté | 0 |
 | Endurance max | 100 | +2 par Endurance | 0 |
 | Chance de critique | 5 % | — | bornée à [0 %, 60 %] |

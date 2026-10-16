@@ -14,11 +14,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\data\**\*.json" LinkBase="data" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\EdS.Data\EdS.Data.csproj" />
+    <ProjectReference Include="..\..\src\EdS.Data.Json\EdS.Data.Json.csproj" />
   </ItemGroup>
 
 </Project>

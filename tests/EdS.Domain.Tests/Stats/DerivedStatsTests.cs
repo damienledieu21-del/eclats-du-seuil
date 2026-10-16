@@ -18,7 +18,7 @@ public class DerivedStatsTests
         Assert.Equal(F("100"), stats.PhysicalPower);     // 50 × 2
         Assert.Equal(F("20"), stats.AgilePower);         // 10 × 2
         Assert.Equal(F("10"), stats.MagicPower);         // 5 × 2
-        Assert.Equal(F("400"), stats.MaxHealth);         // 0 + 40 × 10
+        Assert.Equal(F("500"), stats.MaxHealth);         // 100 + 40 × 10 (E1)
         Assert.Equal(F("40"), stats.StatusResistance);   // 20 × 2
         Assert.Equal(F("160"), stats.MaxEndurance);      // 100 + 30 × 2
         Assert.Equal(Fixed.Zero, stats.Armor);           // base 0 (D3)
@@ -63,7 +63,7 @@ public class DerivedStatsTests
         var rules = new StatRules { PhysicalPowerPerForce = F("3"), BasePhysicalPower = F("10"), MaxHealthPerVitalite = F("12.5") };
         var stats = DerivedStats.Calculate(rules, new Attributes(10, 0, 0, 4, 0, 0));
         Assert.Equal(F("40"), stats.PhysicalPower);
-        Assert.Equal(F("50"), stats.MaxHealth);
+        Assert.Equal(F("150"), stats.MaxHealth);        // 100 + 4 × 12,5
     }
 
     [Theory]
@@ -91,6 +91,26 @@ public class DerivedStatsTests
         Assert.Equal(Fixed.Zero, stats.MaxHealth);
         Assert.Equal(Fixed.Zero, stats.MaxEndurance);
         Assert.Equal(Fixed.Zero, stats.StatusResistance);
+    }
+
+    [Theory] // E1 : PV = 100 + 10 × Vitalité + contributions, plancher 0
+    [InlineData(0, "0", "100")]
+    [InlineData(1, "0", "110")]
+    [InlineData(40, "0", "500")]
+    [InlineData(40, "250", "750")]
+    [InlineData(5, "-150", "0")]
+    [InlineData(5, "-149.5", "0.5")]
+    [InlineData(0, "-100", "0")]
+    public void Points_de_vie_formule_et_bornes(int vitalite, string contribution, string expected) =>
+        Assert.Equal(F(expected), DerivedStats.Calculate(Rules, new Attributes(0, 0, 0, vitalite, 0, 0),
+            new[] { new StatContributions { MaxHealth = F(contribution) } }).MaxHealth);
+
+    [Fact]
+    public void Points_de_vie_maximaux_sans_debordement()
+    {
+        // Vitalité maximale d'un int : 100 + 10 × 2 147 483 647, encore représentable.
+        var stats = DerivedStats.Calculate(Rules, new Attributes(0, 0, 0, int.MaxValue, 0, 0));
+        Assert.Equal(Fixed.FromInt(100 + 10L * int.MaxValue), stats.MaxHealth);
     }
 
     [Fact]

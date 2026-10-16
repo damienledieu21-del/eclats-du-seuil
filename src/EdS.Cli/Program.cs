@@ -1,8 +1,10 @@
 ﻿using System.Globalization;
+using EdS.Data.Json;
+using EdS.Data.Rules;
 using EdS.Simulation.Randomness;
 
-// Outil en ligne de commande du simulateur. Lots 0-1 : uniquement l'inspection du générateur aléatoire.
-// Les commandes validate / simulate / report arriveront avec les lots 3, 5 et 8.
+// Outil en ligne de commande du simulateur.
+// Les commandes simulate / report arriveront avec les lots 5 et 8.
 
 if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
 {
@@ -14,6 +16,8 @@ switch (args[0])
 {
     case "rng":
         return RunRng(args.AsSpan(1));
+    case "validate":
+        return RunValidate(args.Length > 1 ? args[1] : Path.Combine("data", "v0", "rules.json"));
     default:
         Console.Error.WriteLine($"Commande inconnue : {args[0]}");
         PrintHelp();
@@ -45,10 +49,29 @@ static int RunRng(ReadOnlySpan<string> options)
     return 0;
 }
 
+static int RunValidate(string path)
+{
+    RulesLoadResult result = RulesJsonReader.ReadFile(path);
+    if (result.Rules is { } rules)
+    {
+        Console.WriteLine($"{path} : valide");
+        Console.WriteLine($"  schemaVersion  {rules.SchemaVersion}");
+        Console.WriteLine($"  contentVersion {rules.ContentVersion}");
+        Console.WriteLine($"  empreinte      {rules.Fingerprint}");
+        return 0;
+    }
+
+    Console.Error.WriteLine($"{path} : {result.Report.Errors.Count} erreur(s)");
+    foreach (var error in result.Report.Errors)
+        Console.Error.WriteLine("  " + error);
+    return 1;
+}
+
 static void PrintHelp()
 {
     Console.WriteLine("Éclats du Seuil — simulateur de combat (v0.1, valeurs provisoires)");
     Console.WriteLine();
     Console.WriteLine("Usage :");
     Console.WriteLine("  eds rng [--seed N] [--stream N] [--count N]   Affiche les premiers tirages PCG32");
+    Console.WriteLine("  eds validate [chemin/rules.json]               Valide un fichier de règles (défaut : data/v0/rules.json)");
 }

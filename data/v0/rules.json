@@ -1,0 +1,48 @@
+{
+  "$schema": "../schemas/rules.schema.json",
+  "schemaVersion": 1,
+  "kind": "rules",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "stats": {
+      "base": {
+        "physicalPower": 0,
+        "agilePower": 0,
+        "magicPower": 0,
+        "armor": 0,
+        "magicResistance": 0,
+        "maxHealth": 100,
+        "maxEndurance": 100,
+        "statusResistance": 0
+      },
+      "perAttribute": {
+        "force": { "physicalPower": 2 },
+        "dexterite": { "agilePower": 2 },
+        "intelligence": { "magicPower": 2 },
+        "vitalite": { "maxHealth": 10 },
+        "volonte": { "statusResistance": 2 },
+        "endurance": { "maxEndurance": 2 }
+      },
+      "critical": {
+        "baseChanceBasisPoints": 500,
+        "minChanceBasisPoints": 0,
+        "maxChanceBasisPoints": 6000,
+        "baseMultiplier": 1.5,
+        "minMultiplier": 1,
+        "maxMultiplier": 2.5
+      }
+    },
+    "damage": {
+      "defenseConstants": {
+        "physique": 1000,
+        "magique": 1000
+      },
+      "categoryMultiplier": {
+        "min": 0,
+        "max": 10
+      },
+      "finalRounding": "halfAwayFromZero",
+      "minimumDamage": 1
+    }
+  }
+}

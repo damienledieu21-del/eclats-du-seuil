@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/rules.schema.json",
+  "title": "Éclats du Seuil — règles d'équilibrage (rules.json)",
+  "description": "Documentation et aide à la saisie. La validation qui fait foi est celle du programme (RulesValidator), qui vérifie aussi la cohérence de gameplay.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "rules"
+    },
+    "contentVersion": {
+      "type": "string",
+      "description": "Version SemVer des valeurs, ex. 0.1.0-provisoire."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stats": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "physicalPower": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "agilePower": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "magicPower": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "armor": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "magicResistance": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "maxHealth": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "maxEndurance": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "statusResistance": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                }
+              },
+              "required": [
+                "physicalPower",
+                "agilePower",
+                "magicPower",
+                "armor",
+                "magicResistance",
+                "maxHealth",
+                "maxEndurance",
+                "statusResistance"
+              ],
+              "description": "Valeurs avant attributs, équipement et effets."
+            },
+            "perAttribute": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "force": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "physicalPower": {
+                      "type": "number",
+                      "description": "Décimal, 4 décimales au plus, sans exposant."
+                    }
+                  },
+                  "required": [
+                    "physicalPower"
+                  ]
+                },
+                "dexterite": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "agilePower": {
+                      "type": "number",
+                      "description": "Décimal, 4 décimales au plus, sans exposant."
+                    }
+                  },
+                  "required": [
+                    "agilePower"
+                  ]
+                },
+                "intelligence": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "magicPower": {
+                      "type": "number",
+                      "description": "Décimal, 4 décimales au plus, sans exposant."
+                    }
+                  },
+                  "required": [
+                    "magicPower"
+                  ]
+                },
+                "vitalite": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "maxHealth": {
+                      "type": "number",
+                      "description": "Décimal, 4 décimales au plus, sans exposant."
+                    }
+                  },
+                  "required": [
+                    "maxHealth"
+                  ]
+                },
+                "volonte": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "statusResistance": {
+                      "type": "number",
+                      "description": "Décimal, 4 décimales au plus, sans exposant."
+                    }
+                  },
+                  "required": [
+                    "statusResistance"
+                  ]
+                },
+                "endurance": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "maxEndurance": {
+                      "type": "number",
+                      "description": "Décimal, 4 décimales au plus, sans exposant."
+                    }
+                  },
+                  "required": [
+                    "maxEndurance"
+                  ]
+                }
+              },
+              "required": [
+                "force",
+                "dexterite",
+                "intelligence",
+                "vitalite",
+                "volonte",
+                "endurance"
+              ],
+              "description": "Apport par point d'attribut (clés : identifiants d'attributs)."
+            },
+            "critical": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "baseChanceBasisPoints": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                },
+                "minChanceBasisPoints": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                },
+                "maxChanceBasisPoints": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                },
+                "baseMultiplier": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "minMultiplier": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "maxMultiplier": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                }
+              },
+              "required": [
+                "baseChanceBasisPoints",
+                "minChanceBasisPoints",
+                "maxChanceBasisPoints",
+                "baseMultiplier",
+                "minMultiplier",
+                "maxMultiplier"
+              ],
+              "description": "Chance (points de base, 500 = 5 %) et multiplicateur de critique, avec leurs bornes."
+            }
+          },
+          "required": [
+            "base",
+            "perAttribute",
+            "critical"
+          ],
+          "description": "Paramètres des statistiques dérivées (StatRules)."
+        },
+        "damage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "defenseConstants": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "physique": {
+                  "type": "integer"
+                },
+                "magique": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "physique",
+                "magique"
+              ],
+              "description": "Constante de réduction par type de dégâts : facteur = constante / (constante + défense effective)."
+            },
+            "categoryMultiplier": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "min": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                },
+                "max": {
+                  "type": "number",
+                  "description": "Décimal, 4 décimales au plus, sans exposant."
+                }
+              },
+              "required": [
+                "min",
+                "max"
+              ],
+              "description": "Bornes du multiplicateur de chaque catégorie de bonus (1 + somme)."
+            },
+            "finalRounding": {
+              "type": "string",
+              "enum": [
+                "halfAwayFromZero",
+                "halfToEven",
+                "towardZero",
+                "floor",
+                "ceiling"
+              ]
+            },
+            "minimumDamage": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "defenseConstants",
+            "categoryMultiplier",
+            "finalRounding",
+            "minimumDamage"
+          ],
+          "description": "Paramètres de la formule de dégâts (DamageRules)."
+        }
+      },
+      "required": [
+        "stats",
+        "damage"
+      ]
+    }
+  }
+}

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using EdS.Domain.Numerics;
 
@@ -32,14 +33,19 @@ namespace EdS.Domain.Combat
         /// </summary>
         public long MinimumDamage { get; init; } = 1;
 
-        public IReadOnlyList<string> Validate()
+        /// <summary>Liste des incohérences ; vide si les règles sont utilisables.</summary>
+        public IReadOnlyList<RuleViolation> Validate()
         {
-            var errors = new List<string>();
-            if (ArmorConstant <= 0) errors.Add("ArmorConstant doit être strictement positive.");
-            if (MagicResistanceConstant <= 0) errors.Add("MagicResistanceConstant doit être strictement positive.");
-            if (MinCategoryMultiplier < Fixed.Zero) errors.Add("MinCategoryMultiplier ne peut pas être négatif : le multiplicateur final ne doit jamais l'être.");
-            if (MaxCategoryMultiplier < MinCategoryMultiplier) errors.Add("MaxCategoryMultiplier doit être supérieur ou égal à MinCategoryMultiplier.");
-            if (MinimumDamage < 0) errors.Add("MinimumDamage ne peut pas être négatif.");
+            var errors = new List<RuleViolation>();
+            if (ArmorConstant <= 0) errors.Add(new RuleViolation("doit être strictement positive.", nameof(ArmorConstant)));
+            if (MagicResistanceConstant <= 0) errors.Add(new RuleViolation("doit être strictement positive.", nameof(MagicResistanceConstant)));
+            if (MinCategoryMultiplier < Fixed.Zero)
+                errors.Add(new RuleViolation("ne peut pas être négatif : le multiplicateur final ne doit jamais l'être.", nameof(MinCategoryMultiplier)));
+            if (MaxCategoryMultiplier < MinCategoryMultiplier)
+                errors.Add(new RuleViolation("le maximum doit être supérieur ou égal au minimum.", nameof(MinCategoryMultiplier), nameof(MaxCategoryMultiplier)));
+            if (!Enum.IsDefined(typeof(RoundingMode), FinalRounding))
+                errors.Add(new RuleViolation("mode d'arrondi inconnu.", nameof(FinalRounding)));
+            if (MinimumDamage < 0) errors.Add(new RuleViolation("ne peut pas être négatif.", nameof(MinimumDamage)));
             return errors;
         }
     }

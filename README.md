@@ -11,8 +11,10 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 |---|---|---|
 | `src/EdS.Domain` | netstandard2.1, C# 9 | Virgule fixe (`Fixed`), temps (`TickRate`), attributs et statistiques (`Stats`), formule de dégâts (`Combat`) — aucune dépendance |
 | `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat, RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
-| `src/EdS.Data` | netstandard2.1, C# 9 | Chargement et validation des données JSON (lot 3) |
-| `src/EdS.Cli` | net10.0 | Outil en ligne de commande |
+| `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte — aucune dépendance |
+| `src/EdS.Data.Json` | net10.0 | Adaptateur System.Text.Json, réservé aux outils .NET |
+| `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`) |
+| `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage), `schemas/` |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
 
 Les projets `netstandard2.1` sont limités à C# 9 et n'ont aucune dépendance externe : ils sont importables tels quels dans Unity (IL2CPP) et sur un serveur .NET.
@@ -24,6 +26,8 @@ dotnet build -warnaserror      # compilation, avertissements bloquants
 dotnet test                    # tous les tests
 dotnet test --filter Category=Numeric
 dotnet test --filter Category=Formula
+dotnet test --filter Category=Data
+dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
 ```
 
@@ -40,6 +44,8 @@ Prérequis : SDK .NET 10 (voir `global.json`).
 
 Arbitrages du lot 2 : base offensive 0 et +2 puissance par Force/Dextérité/Intelligence (D1) ; trois puissances d'équipement ajoutées avant le coefficient (D2) ; armure et résistance magique indépendantes, base 0, constante 1000 chacune (D3) ; bonus additifs par catégorie (compétence, talent, altération) et multipliés entre catégories, jamais négatifs (D4). Détail et exemple chiffré : [docs/FORMULES.md](docs/FORMULES.md).
 
+Arbitrages du lot 3 : PV = 100 + 10 × Vitalité + contributions (E1) ; cœur indépendant de toute bibliothèque de sérialisation, System.Text.Json dans un adaptateur réservé aux outils .NET, un seul validateur de gameplay (E2) ; `rules.json` versionné avec empreinte stable (E3). Détail : [docs/DONNEES.md](docs/DONNEES.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -47,4 +53,5 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 0 — socle (solution, projets, CI)
 - [x] Lot 1 — virgule fixe, conversion du temps, RNG PCG32
 - [x] Lot 2 — attributs, statistiques dérivées, défenses, bonus, critiques, formule de dégâts
-- [ ] Lot 3 — données JSON et validation
+- [x] Lot 3 — données JSON, validation structurelle et sémantique, rules.json
+- [ ] Lot 4 — builds (talents, emplacements)

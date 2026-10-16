@@ -4,7 +4,7 @@ using EdS.Domain.Numerics;
 namespace EdS.Domain.Stats
 {
     /// <summary>
-    /// Paramètres d'équilibrage des statistiques. Valeurs par défaut : arbitrages D1/D3 du 16/10/2026
+    /// Paramètres d'équilibrage des statistiques. Valeurs par défaut : arbitrages D1/D3/E1 du 16/10/2026
     /// et coefficients du cahier des charges, <b>provisoires et non équilibrés</b>.
     /// </summary>
     public sealed class StatRules
@@ -17,7 +17,7 @@ namespace EdS.Domain.Stats
         public Fixed BaseMagicPower { get; init; } = Fixed.Zero;
         public Fixed BaseArmor { get; init; } = Fixed.Zero;
         public Fixed BaseMagicResistance { get; init; } = Fixed.Zero;
-        public Fixed BaseMaxHealth { get; init; } = Fixed.Zero;
+        public Fixed BaseMaxHealth { get; init; } = Fixed.FromInt(100);
         public Fixed BaseMaxEndurance { get; init; } = Fixed.FromInt(100);
         public Fixed BaseStatusResistance { get; init; } = Fixed.Zero;
 
@@ -38,12 +38,12 @@ namespace EdS.Domain.Stats
         public Fixed MaxCriticalMultiplier { get; init; } = Fixed.Parse("2.5");
 
         /// <summary>Liste des incohérences ; vide si les règles sont utilisables.</summary>
-        public IReadOnlyList<string> Validate()
+        public IReadOnlyList<RuleViolation> Validate()
         {
-            var errors = new List<string>();
+            var errors = new List<RuleViolation>();
             void NonNegative(Fixed value, string name)
             {
-                if (value < Fixed.Zero) errors.Add($"{name} ne peut pas être négatif ({value}).");
+                if (value < Fixed.Zero) errors.Add(new RuleViolation($"ne peut pas être négatif ({value}).", name));
             }
 
             NonNegative(BasePhysicalPower, nameof(BasePhysicalPower));
@@ -61,15 +61,21 @@ namespace EdS.Domain.Stats
             NonNegative(StatusResistancePerVolonte, nameof(StatusResistancePerVolonte));
             NonNegative(MaxEndurancePerEndurance, nameof(MaxEndurancePerEndurance));
 
-            if (MinCriticalChanceBasisPoints < 0 || MaxCriticalChanceBasisPoints > 10_000
-                || MinCriticalChanceBasisPoints > MaxCriticalChanceBasisPoints)
-                errors.Add("Bornes de chance critique invalides : 0 ≤ min ≤ max ≤ 10 000 attendu.");
-            if (BaseCriticalChanceBasisPoints < MinCriticalChanceBasisPoints || BaseCriticalChanceBasisPoints > MaxCriticalChanceBasisPoints)
-                errors.Add("La chance critique de base doit être comprise entre ses bornes.");
-            if (MinCriticalMultiplier < Fixed.One || MinCriticalMultiplier > MaxCriticalMultiplier)
-                errors.Add("Bornes du multiplicateur critique invalides : 1 ≤ min ≤ max attendu (un critique ne réduit jamais les dégâts).");
-            if (BaseCriticalMultiplier < MinCriticalMultiplier || BaseCriticalMultiplier > MaxCriticalMultiplier)
-                errors.Add("Le multiplicateur critique de base doit être compris entre ses bornes.");
+            if (MinCriticalChanceBasisPoints < 0)
+                errors.Add(new RuleViolation("la chance critique minimale ne peut pas être négative.", nameof(MinCriticalChanceBasisPoints)));
+            if (MaxCriticalChanceBasisPoints > 10_000)
+                errors.Add(new RuleViolation("la chance critique maximale ne peut pas dépasser 10 000 points de base (100 %).", nameof(MaxCriticalChanceBasisPoints)));
+            if (MinCriticalChanceBasisPoints > MaxCriticalChanceBasisPoints)
+                errors.Add(new RuleViolation("le minimum doit être inférieur ou égal au maximum.", nameof(MinCriticalChanceBasisPoints), nameof(MaxCriticalChanceBasisPoints)));
+            else if (BaseCriticalChanceBasisPoints < MinCriticalChanceBasisPoints || BaseCriticalChanceBasisPoints > MaxCriticalChanceBasisPoints)
+                errors.Add(new RuleViolation($"la chance critique de base doit être comprise entre {MinCriticalChanceBasisPoints} et {MaxCriticalChanceBasisPoints}.", nameof(BaseCriticalChanceBasisPoints)));
+
+            if (MinCriticalMultiplier < Fixed.One)
+                errors.Add(new RuleViolation("le multiplicateur critique minimal doit valoir au moins 1 : un critique ne réduit jamais les dégâts.", nameof(MinCriticalMultiplier)));
+            if (MinCriticalMultiplier > MaxCriticalMultiplier)
+                errors.Add(new RuleViolation("le minimum doit être inférieur ou égal au maximum.", nameof(MinCriticalMultiplier), nameof(MaxCriticalMultiplier)));
+            else if (BaseCriticalMultiplier < MinCriticalMultiplier || BaseCriticalMultiplier > MaxCriticalMultiplier)
+                errors.Add(new RuleViolation($"le multiplicateur critique de base doit être compris entre {MinCriticalMultiplier} et {MaxCriticalMultiplier}.", nameof(BaseCriticalMultiplier)));
             return errors;
         }
     }
