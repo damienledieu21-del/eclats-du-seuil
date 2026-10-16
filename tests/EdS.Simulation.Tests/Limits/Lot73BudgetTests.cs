@@ -79,6 +79,17 @@ public class Lot73BudgetTests
     {
         // La notification ne coûte une ligne que si elle supprime : pour le budget de lignes, profondeur 0 (suppression).
         int depth = kind == "notify" && budget == "events" ? 0 : 4;
+        // Correctif 7.3.1 (A73-M04) : la réservation crédite le retrait de l'élément traité. Une notification à une seule réaction a
+        // alors une occupation nette 0 + 1 (N − 1 = 0, hors règles) ; pour la file, le porteur a deux ripostes : la notification en
+        // met deux en file, soit une de plus que le tour d'assaillant qui l'a produite.
+        bool twin = kind == "notify" && budget == "queue";
+        CombatSetup Scenario(CombatRules rules) => twin
+            ? Setup(Array.Empty<CombatCommand>(), new CombatantSetup[]
+                {
+                    Character("bastion", "joueurs", 0, Attrs(vitalite: 200), null, Class(passiveTriggers: new[] { Riposte, Riposte }), passives: new[] { Passif }),
+                    Hitter(),
+                }, durationMs: 3000, rules: rules)
+            : Lot73BudgetTests.Scenario(rules);
         Traced full = RunTraced(Scenario(Rules(depth: depth)));
         int index = full.Attempts.FindIndex(a => a.Kind == kind);
         Assert.True(index >= 0);

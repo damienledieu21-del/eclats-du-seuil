@@ -158,6 +158,7 @@ namespace EdS.Simulation.Engine
             public long Tick { get; }
             public long Work { get; }
             public long Events { get; }
+            /// <summary>Correctif 7.3.1 : occupation de la file une fois retiré l'élément traité (celle que contrôle la réservation).</summary>
             public long Queue { get; }
             public long NeedWork { get; }
             public long NeedEvents { get; }
@@ -165,7 +166,7 @@ namespace EdS.Simulation.Engine
         }
 
         private void TraceReservation(string kind, long tick, Cost need) =>
-            ReservationTrace?.Add(new ReservationAttempt(kind, tick, _workThisTick, _eventsThisTick, _queue.Count, need.Work, need.Events, need.Queue));
+            ReservationTrace?.Add(new ReservationAttempt(kind, tick, _workThisTick, _eventsThisTick, OccupancyAfter(1), need.Work, need.Events, need.Queue));
 
         /// <summary>
         /// Construit l'index au chargement du combat : déclencheurs permanents de chaque combattant (talents de rang ≥ 1 et
@@ -317,8 +318,7 @@ namespace EdS.Simulation.Engine
             ObservedEvent e = item.Event;
             Cost cost = NotifyCost(tick, e);
             TraceReservation("notify", tick, cost);
-            Reserve(cost);
-            _queue.Dequeue();
+            ReserveAndDequeue(cost);
             Charge(1);
             foreach (TriggerSlot slot in e.Candidates)
             {
@@ -461,8 +461,7 @@ namespace EdS.Simulation.Engine
             }
             if (cancelled != null)
             {
-                Reserve(Cost.Op + Cost.Line);
-                _queue.Dequeue();
+                ReserveAndDequeue(Cost.Op + Cost.Line);
                 Charge(1);
                 if (item.DeferredFrom != null) _deferredPending--;
                 ObservedEvent e = item.Event;
@@ -475,8 +474,7 @@ namespace EdS.Simulation.Engine
                 return;
             }
             TraceReservation("reaction", tick, bound);
-            Reserve(Cost.Op, bound);
-            _queue.Dequeue();
+            ReserveAndDequeue(Cost.Op, bound);
             Charge(1);
             if (item.DeferredFrom != null) _deferredPending--;
             _deferredFrom = item.DeferredFrom;

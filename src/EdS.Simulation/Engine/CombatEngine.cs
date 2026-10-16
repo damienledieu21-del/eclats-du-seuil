@@ -462,8 +462,7 @@ namespace EdS.Simulation.Engine
             while (_queue.TryPeek(tick, CombatPhase.Expirations, out Scheduled item))
             {
                 if (ProcessTriggerItem(tick, CombatPhase.Expirations, item)) continue;
-                Reserve(Cost.Op + ExpirationCost(tick, item));
-                _queue.Dequeue();
+                ReserveAndDequeue(Cost.Op + ExpirationCost(tick, item));
                 Charge(1);
                 switch (item)
                 {
@@ -527,8 +526,7 @@ namespace EdS.Simulation.Engine
             var batch = new List<(Fighter Actor, int Index, Scheduled Item)>();
             while (_queue.TryPeek(tick, CombatPhase.Commands, out Scheduled item))
             {
-                Reserve(Cost.Op);
-                _queue.Dequeue();
+                ReserveAndDequeue(Cost.Op);
                 Charge(1);
                 if (item is CommandItem command) batch.Add((_byId[command.Command.Actor], command.Index, item));
                 else batch.Add((((AssailantTurn)item).Fighter, -1, item));   // le tour d'un assaillant passe avant ses éventuelles commandes
@@ -1298,8 +1296,7 @@ namespace EdS.Simulation.Engine
             {
                 if (ProcessTriggerItem(tick, CombatPhase.Periodic, item)) continue;
                 var dot = (DotTick)item;
-                Reserve(Cost.Op + DotTickCost(tick, dot));
-                _queue.Dequeue();
+                ReserveAndDequeue(Cost.Op + DotTickCost(tick, dot));
                 Charge(1);
                 RunDotTick(tick, dot);
             }
@@ -1551,11 +1548,30 @@ namespace EdS.Simulation.Engine
         /// entier, par exemple une réaction et tous ses effets), mais seule la partie exacte <paramref name="exact"/> est ouverte ;
         /// les réservations exactes suivantes du même traitement tiennent alors toujours dans les budgets.
         /// </summary>
-        private void Reserve(Cost exact, Cost bound)
+        private void Reserve(Cost exact, Cost bound) => Reserve(exact, bound, removing: 0);
+
+        /// <summary>
+        /// Correctif 7.3.1 (A73-M04) : traitement d'un événement programmé, en tête de la file. Réserve son coût, puis le retire. Le
+        /// retrait est certain dès que la réservation passe (aucune mutation ne la précède) : la place qu'il libère est créditée au
+        /// contrôle de capacité, qui porte sur l'occupation nette (file − 1 + insertions) et non sur le nombre d'insertions. Seul point
+        /// de retrait des événements programmés : expirations, commandes, ticks de DOT, notifications et réactions.
+        /// </summary>
+        private Scheduled ReserveAndDequeue(Cost exact, Cost bound)
+        {
+            Reserve(exact, bound, removing: 1);
+            return _queue.Dequeue();
+        }
+
+        private Scheduled ReserveAndDequeue(Cost cost) => ReserveAndDequeue(cost, cost);
+
+        /// <summary>Occupation de la file après le retrait certain de <paramref name="removing"/> élément(s) en tête.</summary>
+        private long OccupancyAfter(int removing) => _queue.Count - removing;
+
+        private void Reserve(Cost exact, Cost bound, int removing)
         {
             CloseScope();
             if (checked(_workThisTick + bound.Work) > _rules.MaxWorkPerTick) throw new BudgetExceeded("workBudgetExceeded", _rules.MaxWorkPerTick);
-            if (checked(_queue.Count + bound.Queue) > _rules.MaxPendingEvents) throw new BudgetExceeded("queueLimitExceeded", _rules.MaxPendingEvents);
+            if (checked(OccupancyAfter(removing) + bound.Queue) > _rules.MaxPendingEvents) throw new BudgetExceeded("queueLimitExceeded", _rules.MaxPendingEvents);
             if (checked(_eventsThisTick + bound.Events) > _rules.MaxEventsPerTick) throw new BudgetExceeded("eventBudgetExceeded", _rules.MaxEventsPerTick);
             Cost cost = exact;
             _scopeWork = _workThisTick + cost.Work;
