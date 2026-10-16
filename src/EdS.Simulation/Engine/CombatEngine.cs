@@ -26,7 +26,7 @@ namespace EdS.Simulation.Engine
     /// réserve dépasse un budget, le combat s'arrête proprement sans que ce traitement ait rien modifié. Voir
     /// docs/LIMITES_LOT_7.md pour le modèle de coût et les limites d'atomicité restantes (débordement numérique).</para>
     /// </summary>
-    public sealed class CombatEngine
+    public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
         public const string Version = "0.9.0";
@@ -102,6 +102,9 @@ namespace EdS.Simulation.Engine
             /// </summary>
             public Provenance? LethalCause;
 
+            /// <summary>Lot 7.3 : déclencheurs permanents (talents, compétences équipées, assaillant), triés (§5.4).</summary>
+            public List<TriggerSlot> Triggers = null!;
+
             public Pcg32 Random = null!;
             public bool IsDead;
             public readonly CombatantResult Result = new CombatantResult();
@@ -165,6 +168,9 @@ namespace EdS.Simulation.Engine
             /// la lisent au moment où ils agissent (A3 à A5).
             /// </summary>
             public Provenance Origin = null!;
+
+            /// <summary>Lot 7.3 : déclencheurs portés par l'instance (identité : numéro d'instance) ; null si l'altération n'en a pas.</summary>
+            public TriggerSlot[]? Slots;
 
             public string State => Definition.Id;
         }
@@ -344,6 +350,7 @@ namespace EdS.Simulation.Engine
             _fighters = setup.Combatants.Select(CreateFighter).ToList();
             _fightersById = _fighters.OrderBy(f => f.Id, StringComparer.Ordinal).ToList();
             _byId = _fighters.ToDictionary(f => f.Id, StringComparer.Ordinal);
+            BuildTriggerIndex();
 
             for (int i = 0; i < setup.Commands.Count; i++)
             {
@@ -445,6 +452,7 @@ namespace EdS.Simulation.Engine
         {
             while (_queue.TryPeek(tick, CombatPhase.Expirations, out Scheduled item))
             {
+                if (ProcessTriggerItem(tick, CombatPhase.Expirations, item)) continue;
                 Reserve(Cost.Op + ExpirationCost(tick, item));
                 _queue.Dequeue();
                 Charge(1);
@@ -528,6 +536,7 @@ namespace EdS.Simulation.Engine
                 PendingAction? action = entry.Item is CommandItem command ? Execute(tick, command) : AssailantAttacks(tick, (AssailantTurn)entry.Item);
                 if (action != null) actions.Add(action);
             }
+            DrainTriggers(tick, CombatPhase.Commands);
             return actions;
         }
 
@@ -546,13 +555,22 @@ namespace EdS.Simulation.Engine
                     var (skill, target, resonanceCost) = CastContext(item, actor);
                     if (CheckSkill(tick, actor, skill, target, resonanceCost) != null) return Cost.Line;
                     SkillCombatDefinition combat = skill!.Combat!;
-                    return Cost.Enqueue.If(combat.CooldownMs / _tickMs > 0) + Cost.Line + GainCost(actor, combat.RampartChargeGain);
+                    return Cost.Enqueue.If(combat.CooldownMs / _tickMs > 0) + Observable(TriggerEvent.SkillCast) + GainCost(actor, combat.RampartChargeGain);
             }
         }
 
-        /// <summary>Coût exact du tour d'un assaillant : prochain tour s'il tombe avant la fin, et une ligne.</summary>
-        private Cost AssailantTurnCost(long tick, Fighter assailant) =>
-            Cost.Enqueue.If(checked(tick + assailant.Assailant!.IntervalMs / _tickMs) < _durationTicks) + Cost.Line;
+        /// <summary>
+        /// Coût exact du tour d'un assaillant : prochain tour s'il tombe avant la fin, et une ligne (<c>attackSkipped</c>, diagnostic,
+        /// ou <c>attackStarted</c>, observable).
+        /// </summary>
+        private Cost AssailantTurnCost(long tick, Fighter assailant)
+        {
+            AssailantSetup setup = assailant.Assailant!;
+            AssailantAttack attack = setup.Attacks[assailant.NextAttack];
+            Fighter? target = attack.Targeting == SkillTargeting.Enemy ? _byId[setup.Target!] : null;
+            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || target is { IsDead: true };
+            return Cost.Enqueue.If(checked(tick + setup.IntervalMs / _tickMs) < _durationTicks) + (skipped ? Cost.Line : Observable(TriggerEvent.SkillCast));
+        }
 
         private (SkillDefinition? Skill, Fighter? Target, int ResonanceCost) CastContext(CommandItem item, Fighter actor)
         {
@@ -623,7 +641,7 @@ namespace EdS.Simulation.Engine
                 Schedule(readyTick, CombatPhase.Expirations, new CooldownExpiry { Fighter = actor, Skill = skill.Id });
             }
             actor.Result.SkillsCast++;
-            long cast = Emit(tick, CombatPhase.Commands, "skillCast", root, w => w
+            long cast = Emit(tick, CombatPhase.Commands, "skillCast", root, new ObservedEvent { Kind = TriggerEvent.SkillCast, Source = actor.Id, Target = command.Target, Skill = skill.Id }, w => w
                 .Field("actor", actor.Id).Field("skill", skill.Id).Field("target", command.Target).Field("command", item.Index)
                 .Field("enduranceCost", combat.EnduranceCost).Field("endurance", actor.Endurance)
                 .Field("resonanceCost", resonanceCost).Field("resonance", actor.Resonance)
@@ -734,7 +752,7 @@ namespace EdS.Simulation.Engine
                 return null;
             }
             Provenance root = Provenance.NewRoot($"assailantTurn:{assailant.Id}:{turn.Turn}", assailant.Id);
-            long started = Emit(tick, CombatPhase.Commands, "attackStarted", root, w => w
+            long started = Emit(tick, CombatPhase.Commands, "attackStarted", root, new ObservedEvent { Kind = TriggerEvent.SkillCast, Source = assailant.Id, Target = target?.Id, Skill = attack.Id }, w => w
                 .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id)
                 .Field("rawDamage", attack.RawDamage).Field("unblockable", attack.Unblockable).Names("applies", attack.Applies.Select(a => a.Status)));
             return new PendingAction { Actor = assailant, Attack = attack, Target = target, GeneratesResonance = false, Origin = root.CausedBy(started) };
@@ -759,6 +777,9 @@ namespace EdS.Simulation.Engine
                 foreach (Fighter target in targets) Hit(tick, action, target);
                 if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, _rules.ResonancePerDirectHit, "directHit", action.Origin);
             }
+            // Lot 7.3 : puis les notifications et réactions de la phase, dans l'ordre de la file (réactions reportées du tick
+            // précédent d'abord, puis celles de ce tick).
+            DrainTriggers(tick, CombatPhase.Resolution);
         }
 
         /// <summary>
@@ -768,7 +789,7 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private Cost HitCost(long tick, PendingAction action, Fighter target)
         {
-            Cost cost = Cost.Op + Cost.Line;   // impact, ligne « damage »
+            Cost cost = Cost.Op + Observable(TriggerEvent.HitDealt, TriggerEvent.HitTaken);   // impact, ligne « damage »
             bool guarding = target.Guarding, parryOpen = target.ParryOpen;
             bool defending = target.Character != null && !target.IsDead && (target.ParryOpen || target.Guarding);
             bool parried = false;
@@ -777,7 +798,7 @@ namespace EdS.Simulation.Engine
             {
                 parried = true;
                 if (!target.ParrySucceeded)
-                    cost += Cost.Line + GainCost(target, _rules.RampartChargesPerParry) + GainCost(target, _rules.ResonancePerPerfectParry);
+                    cost += Observable(TriggerEvent.PerfectParry) + GainCost(target, _rules.RampartChargesPerParry) + GainCost(target, _rules.ResonancePerPerfectParry);
             }
             else if (defending)
             {
@@ -786,7 +807,7 @@ namespace EdS.Simulation.Engine
                     cost += BreakGuardCost(tick, target, action.Actor.Id);
                     guarding = parryOpen = false;
                 }
-                else cost += Cost.Line + GainCost(target, _rules.ResonancePerBlock);
+                else cost += Observable(TriggerEvent.Block) + GainCost(target, _rules.ResonancePerBlock);
             }
             foreach (StatusApplication application in action.Applies)
             {
@@ -850,7 +871,7 @@ namespace EdS.Simulation.Engine
                     target.ParrySucceeded = true;   // récompense une seule fois par tentative
                     target.Result.PerfectParries++;
                     parryReward = true;
-                    parryEid = Emit(tick, CombatPhase.Resolution, "parrySucceeded", origin, w => w.Field("actor", target.Id).Field("source", actor.Id));
+                    parryEid = Emit(tick, CombatPhase.Resolution, "parrySucceeded", origin, HitObserved(TriggerEvent.PerfectParry, action, target, HitDefense.Parry), w => w.Field("actor", target.Id).Field("source", actor.Id));
                 }
             }
             else if (defending)
@@ -867,7 +888,7 @@ namespace EdS.Simulation.Engine
                     defense = "guard";
                     mitigation = _rules.GuardDamageReduction;
                     blockReward = true;
-                    blockEid = Emit(tick, CombatPhase.Resolution, "blocked", origin, w => w
+                    blockEid = Emit(tick, CombatPhase.Resolution, "blocked", origin, HitObserved(TriggerEvent.Block, action, target, HitDefense.Guard), w => w
                         .Field("actor", target.Id).Field("source", actor.Id).Field("enduranceCost", _rules.GuardCostPerBlock).Field("endurance", target.Endurance));
                 }
             }
@@ -889,7 +910,9 @@ namespace EdS.Simulation.Engine
             actor.Result.DamageDealt = checked(actor.Result.DamageDealt + amount);
             actor.Result.Hits++;
             if (critical) actor.Result.CriticalHits++;
-            long damage = Emit(tick, CombatPhase.Resolution, "damage", origin, w => w
+            ObservedEvent hit = HitObserved(TriggerEvent.HitDealt, action, target, TriggerIds.Defenses[defense]);
+            hit.Also = TriggerEvent.HitTaken;
+            long damage = Emit(tick, CombatPhase.Resolution, "damage", origin, hit, w => w
                 .Field("source", actor.Id).Field("target", target.Id).Field("skill", action.Skill?.Id).Field("attack", action.Attack?.Id)
                 .Field("critical", critical).Field("fragile", fragile).Field("defense", defense).Field("amount", amount).Field("overkill", overkill)
                 .Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken));
@@ -921,6 +944,17 @@ namespace EdS.Simulation.Engine
                 ApplyStatus(tick, CombatPhase.Resolution, target, definition, actor.Id, power, impact);
             }
         }
+
+        /// <summary>Instantané d'un impact (§1.4) : auteur, cible, compétence ou attaque, type de dégâts, défense.</summary>
+        private static ObservedEvent HitObserved(TriggerEvent kind, PendingAction action, Fighter target, HitDefense defense) => new ObservedEvent
+        {
+            Kind = kind,
+            Source = action.Actor.Id,
+            Target = target.Id,
+            Skill = action.Skill?.Id ?? action.Attack?.Id,
+            DamageType = action.Combat?.DamageType ?? action.Attack!.DamageType,
+            Defense = defense,
+        };
 
         /// <summary>Statistiques offensives d'une action : celles du personnage, ou celles de l'attaque d'assaillant (dégâts bruts).</summary>
         private static DerivedStats AttackerStats(PendingAction action) =>
@@ -1009,11 +1043,11 @@ namespace EdS.Simulation.Engine
         /// premier tick mis en file (sauf renouvellement d'un DOT, dont l'élément de file existe déjà), la ligne <c>stateApplied</c>,
         /// et une ligne par posture interrompue encore active.
         /// </summary>
-        private static Cost ApplyCost(StatusPlan plan, StatusDefinition definition, bool guarding, bool parryOpen)
+        private Cost ApplyCost(StatusPlan plan, StatusDefinition definition, bool guarding, bool parryOpen)
         {
             if (!plan.Applies) return Cost.Line;
             bool requeue = !(definition.IsDot && plan.Outcome == StatusOutcome.Renew);
-            return Cost.Op + Cost.Enqueue.If(requeue) + Cost.Line
+            return Cost.Op + Cost.Enqueue.If(requeue) + Observable(TriggerEvent.StateApplied)
                 + Cost.Line.If(guarding && (definition.Interrupts & StatusInterrupts.Guard) != 0)
                 + Cost.Line.If(parryOpen && (definition.Interrupts & StatusInterrupts.Parry) != 0);
         }
@@ -1038,7 +1072,11 @@ namespace EdS.Simulation.Engine
             Charge(1);
             bool renewed = plan.Outcome == StatusOutcome.Renew;
             StatusInstance status = plan.Existing ?? new StatusInstance { Id = ++_lastStatusInstance, Definition = definition, Key = plan.Key, Owner = target };
-            if (!renewed) target.Statuses[plan.Key] = status;
+            if (!renewed)
+            {
+                target.Statuses[plan.Key] = status;
+                status.Slots = StatusSlots(target, status);
+            }
             status.Generation = checked(status.Generation + 1);
             status.Source = source;
             if (definition.IsDot)
@@ -1058,7 +1096,7 @@ namespace EdS.Simulation.Engine
                     new StateExpiry { Fighter = target, Key = plan.Key, Instance = status.Id, Generation = status.Generation });
             }
             Provenance applying = origin.WithSource(source);
-            long applied = Emit(tick, phase, "stateApplied", applying, w =>
+            long applied = Emit(tick, phase, "stateApplied", applying, StateObserved(TriggerEvent.StateApplied, target, status, renewed), w =>
             {
                 StateFields(w, target, status).Field("untilTick", status.UntilTick).Field("renewed", renewed);
                 if (definition.IsDot) w.Field("power", status.Power).Field("nextTick", status.NextTick);
@@ -1095,6 +1133,19 @@ namespace EdS.Simulation.Engine
             return checked(nextTick + (requestedEnd - nextTick) / period * period);
         }
 
+        /// <summary>Instantané d'une ligne d'état (§1.4) : porteur (cible), source, altération, catégorie, instance, renouvellement.</summary>
+        private static ObservedEvent StateObserved(TriggerEvent kind, Fighter target, StatusInstance status, bool renewed = false) => new ObservedEvent
+        {
+            Kind = kind,
+            Source = status.Source,
+            Target = target.Id,
+            State = status.State,
+            Category = status.Definition.Category,
+            Instance = status.Id,
+            DamageType = status.Definition.DamageType,
+            Renewed = renewed,
+        };
+
         /// <summary>Champs communs des lignes d'état (format 3) : cible, altération, catégorie, source, instance, génération.</summary>
         private static JsonLineWriter StateFields(JsonLineWriter w, Fighter target, StatusInstance status) => w
             .Field("combatant", target.Id).Field("state", status.State).Field("category", StatusIds.Of(status.Definition.Category))
@@ -1103,7 +1154,7 @@ namespace EdS.Simulation.Engine
         /// <summary>Coût de la fin d'une instance par expiration : retrait (1), ligne <c>stateExpired</c>, état accordé éventuel.</summary>
         private Cost EndStatusCost(long tick, StatusInstance status)
         {
-            Cost cost = Cost.Op + Cost.Line;
+            Cost cost = Cost.Op + Observable(TriggerEvent.StateExpired);
             Fighter target = status.Owner;
             if (status.Definition.GrantsOnExpiry is { } granted)
             {
@@ -1122,7 +1173,7 @@ namespace EdS.Simulation.Engine
         {
             target.Statuses.Remove(status.Key);
             Charge(1);
-            long expired = Emit(tick, phase, "stateExpired", status.Origin, w => StateFields(w, target, status));
+            long expired = Emit(tick, phase, "stateExpired", status.Origin, StateObserved(TriggerEvent.StateExpired, target, status), w => StateFields(w, target, status));
             if ((status.Definition.Blocks & StatusBlocks.Regeneration) != 0) ResumeRegeneration(target, tick);
             if (status.Definition.GrantsOnExpiry is { } granted)
                 ApplyStatus(tick, phase, target, _statuses[granted], status.Source, Fixed.Zero, status.Origin.CausedBy(expired));
@@ -1131,7 +1182,7 @@ namespace EdS.Simulation.Engine
         private Cost BreakGuardCost(long tick, Fighter f, string? source)
         {
             StatusDefinition definition = _statuses[_rules.GuardBreakStatus];
-            return Cost.Line + Cost.Line.If(f.ParryOpen) + ApplyCost(Plan(tick, f, definition, source, null), definition, false, false);
+            return Observable(TriggerEvent.GuardBroken) + Cost.Line.If(f.ParryOpen) + ApplyCost(Plan(tick, f, definition, source, null), definition, false, false);
         }
 
         /// <summary>
@@ -1142,7 +1193,7 @@ namespace EdS.Simulation.Engine
         {
             f.Guarding = false;
             f.Result.GuardBreaks++;
-            long broken = Emit(tick, phase, "guardBroken", origin, w => w.Field("actor", f.Id).Field("reason", reason).Field("endurance", f.Endurance));
+            long broken = Emit(tick, phase, "guardBroken", origin, new ObservedEvent { Kind = TriggerEvent.GuardBroken, Source = source, Target = f.Id }, w => w.Field("actor", f.Id).Field("reason", reason).Field("endurance", f.Endurance));
             Provenance consequences = origin.CausedBy(broken);
             if (f.ParryOpen)
             {
@@ -1155,8 +1206,13 @@ namespace EdS.Simulation.Engine
 
         // --- Ressources --------------------------------------------------------------------------
 
-        /// <summary>Coût d'un gain : une ligne s'il a lieu (montant positif, personnage), même si tout est perdu au plafond.</summary>
-        private static Cost GainCost(Fighter f, int amount) => Cost.Line.If(amount > 0 && f.Character != null);
+        /// <summary>
+        /// Coût d'un gain : une ligne s'il a lieu (montant positif, personnage), même si tout est perdu au plafond, et sa notification
+        /// pour un gain naturel. Lot 7.3 (Q8) : un gain produit par une réaction <c>gainResource</c> est journalisé mais ne notifie
+        /// pas <c>onResourceGained</c>, quelle que soit la profondeur.
+        /// </summary>
+        private Cost GainCost(Fighter f, long amount, bool observable = true) =>
+            (observable ? Observable(TriggerEvent.ResourceGained) : Cost.Line).If(amount > 0 && f.Character != null);
 
         /// <summary>Gain plafonné d'une ressource (A4, A5) ; l'excédent est perdu et journalisé. Un gain ne déclenche jamais d'autre gain.</summary>
         private void Gain(long tick, CombatPhase phase, Fighter f, string resource, int amount, string source, Provenance origin)
@@ -1167,7 +1223,10 @@ namespace EdS.Simulation.Engine
             int max = resonance ? _rules.ResonanceMax : _rules.RampartChargesMax;
             int after = (int)Math.Min(max, (long)before + amount);
             if (resonance) f.Resonance = after; else f.RampartCharges = after;
-            Emit(tick, phase, "resourceGained", origin, w => w
+            Emit(tick, phase, "resourceGained", origin, new ObservedEvent
+            {
+                Kind = TriggerEvent.ResourceGained, Source = f.Id, Resource = resonance ? TriggerResource.Resonance : TriggerResource.RampartCharges,
+            }, w => w
                 .Field("actor", f.Id).Field("resource", resource).Field("source", source)
                 .Field("amount", after - before).Field("wasted", (long)before + amount - after).Field("value", after));
         }
@@ -1206,6 +1265,7 @@ namespace EdS.Simulation.Engine
             // Lot 7.2 : ticks de DOT d'abord, dans l'ordre de la file (ordre de programmation), puis l'entretien des gardes.
             while (_queue.TryPeek(tick, CombatPhase.Periodic, out Scheduled item))
             {
+                if (ProcessTriggerItem(tick, CombatPhase.Periodic, item)) continue;
                 var dot = (DotTick)item;
                 Reserve(Cost.Op + DotTickCost(tick, dot));
                 _queue.Dequeue();
@@ -1239,6 +1299,7 @@ namespace EdS.Simulation.Engine
                 f.GuardUpkeepPaid = due;
                 Emit(tick, CombatPhase.Periodic, "guardUpkeep", upkeep, w => w.Field("actor", f.Id).Field("amount", amount).Field("endurance", f.Endurance));
             }
+            DrainTriggers(tick, CombatPhase.Periodic);
         }
 
         private static bool IsCurrent(DotTick dot, out StatusInstance status) =>
@@ -1254,7 +1315,7 @@ namespace EdS.Simulation.Engine
         private Cost DotTickCost(long tick, DotTick dot)
         {
             if (!IsCurrent(dot, out StatusInstance? status)) return Cost.None;
-            return Cost.Op + Cost.Line + (IsLastDotTick(tick, status) ? EndStatusCost(tick, status) : Cost.Enqueue);
+            return Cost.Op + Observable(TriggerEvent.DotTick) + (IsLastDotTick(tick, status) ? EndStatusCost(tick, status) : Cost.Enqueue);
         }
 
         /// <summary>
@@ -1280,7 +1341,8 @@ namespace EdS.Simulation.Engine
             target.Result.DamageTaken = checked(target.Result.DamageTaken + amount);
             if (status.Source != null && _byId.TryGetValue(status.Source, out Fighter? source))
                 source.Result.DamageDealt = checked(source.Result.DamageDealt + amount);
-            long dotEid = Emit(tick, CombatPhase.Periodic, "dotDamage", status.Origin, w => w
+            ObservedEvent dotObserved = StateObserved(TriggerEvent.DotTick, target, status);
+            long dotEid = Emit(tick, CombatPhase.Periodic, "dotDamage", status.Origin, dotObserved, w => w
                 .Field("source", status.Source).Field("target", target.Id).Field("state", status.State).Field("instance", status.Id)
                 .Field("amount", amount).Field("overkill", overkill).Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken));
             NoteLethal(target, status.Origin.CausedBy(dotEid));
@@ -1320,42 +1382,53 @@ namespace EdS.Simulation.Engine
                 }
                 if (f.Endurance >= f.MaxEndurance) f.RegenFromTick = null;   // plein : plus rien à régénérer jusqu'à la prochaine dépense
             }
+            DrainTriggers(tick, CombatPhase.Regeneration);
         }
 
         // --- Phase 6 : morts et fin de combat ----------------------------------------------------
 
+        /// <summary>
+        /// Phase 6 (lot 7.3, §5.4) : point fixe. Relevé des morts, puis notifications et réactions de la phase, puis nouveau relevé,
+        /// jusqu'à ce que la phase soit vide ; la fin de combat est évaluée ensuite. Sans déclencheur, un seul relevé (inchangé).
+        /// </summary>
         private void RunEndOfTick(long tick)
         {
-            foreach (Fighter f in _fightersById)
-            {
-                bool dies = !f.IsDead && f.Health == 0;
-                Reserve(Cost.Op + (dies ? Cost.Line + f.Statuses.Count * (Cost.Op + Cost.Line) : Cost.None));
-                Charge(1);
-                if (dies)
-                {
-                    f.IsDead = true;
-                    f.Guarding = false;
-                    f.ParryOpen = false;
-                    // A6 : provenance de l'effet mortel ; sans effet mortel (points de vie nuls dès le départ), racine propre.
-                    Provenance lethal = f.LethalCause ?? Provenance.NewRoot($"endOfTick:{f.Id}:{tick}", f.Id);
-                    long died = Emit(tick, CombatPhase.EndOfTick, "died", lethal, w => w.Field("combatant", f.Id));
-                    // M02 : la mort retire les états actifs (ordre ordinal de l'altération, puis de la source) ; leurs échéances et
-                    // ticks deviennent périmés ; aucun état n'est accordé sur un retrait.
-                    foreach (StatusInstance status in f.Statuses.Values
-                        .OrderBy(x => x.State, StringComparer.Ordinal).ThenBy(x => x.Source ?? string.Empty, StringComparer.Ordinal).ToList())
-                    {
-                        f.Statuses.Remove(status.Key);
-                        Charge(1);
-                        Emit(tick, CombatPhase.EndOfTick, "stateRemoved", lethal.CausedBy(died), w => StateFields(w, f, status).Field("reason", "death"));
-                    }
-                }
-            }
+            do ScanDeaths(tick);
+            while (DrainTriggers(tick, CombatPhase.EndOfTick) > 0);
 
             var aliveTeams = _fighters.Where(f => !f.IsDead).Select(f => f.Team).Distinct(StringComparer.Ordinal).ToList();
             if (aliveTeams.Count <= 1)
                 Finish(tick, CombatEndReason.TeamDefeated, null, aliveTeams.Count == 1 ? aliveTeams[0] : null);
             else if (tick >= _durationTicks - 1)
                 Finish(tick, CombatEndReason.DurationReached, null, null);
+        }
+
+        private void ScanDeaths(long tick)
+        {
+            foreach (Fighter f in _fightersById)
+            {
+                bool dies = !f.IsDead && f.Health == 0;
+                Reserve(Cost.Op + (dies ? Observable(TriggerEvent.Death) + f.Statuses.Count * (Cost.Op + Observable(TriggerEvent.StateRemoved)) : Cost.None));
+                Charge(1);
+                if (!dies) continue;
+                f.IsDead = true;
+                f.Guarding = false;
+                f.ParryOpen = false;
+                // A6 : provenance de l'effet mortel ; sans effet mortel (points de vie nuls dès le départ), racine propre.
+                Provenance lethal = f.LethalCause ?? Provenance.NewRoot($"endOfTick:{f.Id}:{tick}", null);
+                long died = Emit(tick, CombatPhase.EndOfTick, "died", lethal,
+                    new ObservedEvent { Kind = TriggerEvent.Death, Source = lethal.Source, Target = f.Id }, w => w.Field("combatant", f.Id));
+                // M02 : la mort retire les états actifs (ordre ordinal de l'altération, puis de la source) ; leurs échéances et
+                // ticks deviennent périmés ; aucun état n'est accordé sur un retrait. Lot 7.3 : leurs déclencheurs disparaissent.
+                foreach (StatusInstance status in f.Statuses.Values
+                    .OrderBy(x => x.State, StringComparer.Ordinal).ThenBy(x => x.Source ?? string.Empty, StringComparer.Ordinal).ToList())
+                {
+                    f.Statuses.Remove(status.Key);
+                    Charge(1);
+                    Emit(tick, CombatPhase.EndOfTick, "stateRemoved", lethal.CausedBy(died), StateObserved(TriggerEvent.StateRemoved, f, status),
+                        w => StateFields(w, f, status).Field("reason", "death"));
+                }
+            }
         }
 
         private void Abort(long tick, string reason, long? limit)
@@ -1507,7 +1580,14 @@ namespace EdS.Simulation.Engine
         /// distinct de <c>seq</c>) et sa provenance compacte : <c>cause</c> toujours (null pour l'effet racine), <c>root</c> sur l'effet
         /// racine seulement, <c>depth</c> et <c>trigger</c> à partir de la profondeur 1. Renvoie l'eid, cause de ses conséquences.
         /// </summary>
-        private long Emit(long tick, CombatPhase phase, string kind, Provenance origin, Action<JsonLineWriter> fields)
+        private long Emit(long tick, CombatPhase phase, string kind, Provenance origin, Action<JsonLineWriter> fields) =>
+            Emit(tick, phase, kind, origin, null, fields);
+
+        /// <summary>
+        /// Variante pour un effet observable (lot 7.3) : après la ligne, l'instantané reçoit l'eid et la provenance, et sa notification
+        /// est mise en file en fin de la phase courante si son type a un abonné possible (coût réservé par <see cref="Observable"/>).
+        /// </summary>
+        private long Emit(long tick, CombatPhase phase, string kind, Provenance origin, ObservedEvent? observed, Action<JsonLineWriter> fields)
         {
             long eid = ++_lastEid;
             WriteLine(tick, phase, kind, w =>
@@ -1517,6 +1597,15 @@ namespace EdS.Simulation.Engine
                 if (origin.Depth > 0) w.Field("depth", origin.Depth).Field("trigger", origin.Trigger);
                 fields(w);
             });
+            if (observed != null && Subscribed(observed))
+            {
+                observed.Eid = eid;
+                observed.Tick = tick;
+                observed.Phase = phase;
+                observed.Provenance = origin;
+                observed.Candidates = Candidates(observed);
+                Schedule(tick, phase, new NotifyItem { Event = observed });
+            }
             return eid;
         }
 

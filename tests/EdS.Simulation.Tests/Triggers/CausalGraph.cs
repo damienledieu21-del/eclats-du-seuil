@@ -23,6 +23,12 @@ public sealed class CausalGraph
     /// <summary>Effet racine de chaque racine (une seule ligne avec <c>cause: null</c> par racine).</summary>
     public IReadOnlyDictionary<string, Node> Roots => _roots;
 
+    /// <summary>Diagnostics de déclencheur, qui citent un effet sans en être un (lot 7.3).</summary>
+    public static readonly string[] CitingDiagnostics = { "triggerSuppressed", "reactionCancelled" };
+
+    /// <summary>Diagnostics de déclencheur lus, dans l'ordre : (type, eid cité, déclencheur).</summary>
+    public List<(string Kind, long Cause, string Trigger)> Cited { get; } = new();
+
     /// <summary>Nombre de diagnostics (lignes sans eid).</summary>
     public int Diagnostics { get; private set; }
 
@@ -42,9 +48,21 @@ public sealed class CausalGraph
             long seq = e.GetProperty("seq").GetInt64();
             if (!e.TryGetProperty("eid", out JsonElement eidElement))
             {
+                graph.Diagnostics++;
+                if (CitingDiagnostics.Contains(kind))
+                {
+                    // Un diagnostic de déclencheur cite l'effet qu'il concerne : cause = eid antérieur, même racine ; depth = profondeur
+                    // qu'aurait eue la réaction refusée (parent + 1).
+                    long cited = e.GetProperty("cause").GetInt64();
+                    if (!graph._nodes.TryGetValue(cited, out Node? parent)) Fail(seq, $"{kind} : cause {cited} inconnue ou postérieure");
+                    if (e.GetProperty("root").GetString() != parent!.Root) Fail(seq, $"{kind} : racine différente de celle de l'effet cité");
+                    if (e.TryGetProperty("depth", out JsonElement d) && d.GetInt32() != parent.Depth + 1) Fail(seq, $"{kind} : profondeur différente de parent + 1");
+                    if (e.TryGetProperty("eid", out _)) Fail(seq, $"{kind} avec un eid");
+                    graph.Cited.Add((kind, cited, e.GetProperty("trigger").GetString()!));
+                    continue;
+                }
                 foreach (string field in ProvenanceFields)
                     if (e.TryGetProperty(field, out _)) Fail(seq, $"diagnostic « {kind} » avec un champ de provenance « {field} »");
-                graph.Diagnostics++;
                 continue;
             }
             long eid = eidElement.GetInt64();
