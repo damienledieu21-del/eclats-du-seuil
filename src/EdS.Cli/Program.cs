@@ -83,7 +83,9 @@ static int RunValidate(ReadOnlySpan<string> options)
     string? kind = null;
     try
     {
-        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
+        // Lot 7.1 : pas de lecture d'un fichier trop gros ; le validateur de règles le refusera avec FileTooLarge.
+        if (new FileInfo(path).Length > InputLimits.MaxDataFileBytes) throw new IOException("fichier trop volumineux");
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(path), new JsonDocumentOptions { MaxDepth = InputLimits.MaxJsonDepth });
         if (document.RootElement.ValueKind == JsonValueKind.Object && document.RootElement.TryGetProperty("kind", out JsonElement k) && k.ValueKind == JsonValueKind.String)
             kind = k.GetString();
     }
@@ -135,9 +137,10 @@ static int Valid(string path, int schemaVersion, string contentVersion, string f
 
 static int Fail(string path, ValidationReport report)
 {
-    Console.Error.WriteLine($"{path} : {report.Errors.Count} erreur(s)");
+    Console.Error.WriteLine($"{path} : {report.TotalCount} erreur(s)");
     foreach (var error in report.Errors)
         Console.Error.WriteLine("  " + error);
+    if (report.OmittedSummary is { } omitted) Console.Error.WriteLine("  " + omitted);
     return 1;
 }
 

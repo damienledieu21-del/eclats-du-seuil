@@ -16,14 +16,18 @@ public static class RulesJsonReader
     public static RulesLoadResult ReadFile(string path)
     {
         var report = new ValidationReport();
-        string? json = JsonInput.ReadFile(path, report);
-        return json is null ? RulesValidator.Validate(new RulesDocument(), report) : Read(json, report);
+        return Read(JsonInput.ReadFile(path, report), report);
     }
 
-    public static RulesLoadResult Read(string json) => Read(json, new ValidationReport());
-
-    private static RulesLoadResult Read(string json, ValidationReport report)
+    public static RulesLoadResult Read(string json)
     {
+        var report = new ValidationReport();
+        return Read(JsonInput.Utf8(json, report), report);
+    }
+
+    private static RulesLoadResult Read(byte[]? json, ValidationReport report)
+    {
+        if (json is null) return RulesValidator.Validate(new RulesDocument(), report);
         var document = new RulesDocument();
         JsonHeader header = JsonInput.Parse(json, report, (input, data) => ReadObject(input, document, data, DataTree, "$.data"));
         document.SchemaVersion = header.SchemaVersion;

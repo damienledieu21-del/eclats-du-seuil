@@ -16,14 +16,18 @@ public static class ClassJsonReader
     public static ClassLoadResult ReadFile(string path, ProgressionRules progression)
     {
         var report = new ValidationReport();
-        string? json = JsonInput.ReadFile(path, report);
-        return json is null ? ClassValidator.Validate(new ClassDocument(), progression, report) : Read(json, progression, report);
+        return Read(JsonInput.ReadFile(path, report), progression, report);
     }
 
-    public static ClassLoadResult Read(string json, ProgressionRules progression) => Read(json, progression, new ValidationReport());
-
-    private static ClassLoadResult Read(string json, ProgressionRules progression, ValidationReport report)
+    public static ClassLoadResult Read(string json, ProgressionRules progression)
     {
+        var report = new ValidationReport();
+        return Read(JsonInput.Utf8(json, report), progression, report);
+    }
+
+    private static ClassLoadResult Read(byte[]? json, ProgressionRules progression, ValidationReport report)
+    {
+        if (json is null) return ClassValidator.Validate(new ClassDocument(), progression, report);
         var document = new ClassDocument();
         JsonHeader header = JsonInput.Parse(json, report, (input, data) => document.Data = ReadClass(input, data, "$.data"));
         document.SchemaVersion = header.SchemaVersion;

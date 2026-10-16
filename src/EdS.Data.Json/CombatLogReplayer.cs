@@ -46,12 +46,21 @@ public sealed class ReplayOutcome
 /// </summary>
 public static class CombatLogReplayer
 {
-    public static ReplayOutcome ReplayFile(string path, GameData data)
+    public static ReplayOutcome ReplayFile(string path, GameData data) => ReplayFile(path, data, InputLimits.MaxLogFileBytes);
+
+    /// <summary>Rejeu avec une limite de taille donnée (tests de frontière sans fichier de 256 Mio).</summary>
+    internal static ReplayOutcome ReplayFile(string path, GameData data, long maxBytes)
     {
+        // Lot 7.1 : taille vérifiée avant lecture, puis lecture bornée (un fichier qui grandit entre-temps est refusé aussi).
         string[] lines;
         try
         {
-            lines = File.ReadAllText(path).Split('\n');
+            long length = new FileInfo(path).Length;
+            byte[]? bytes = length > maxBytes ? null : JsonInput.ReadBounded(path, maxBytes);
+            if (bytes is null)
+                return new ReplayOutcome(ReplayStatus.Invalid,
+                    [$"journal « {path} » de {length} octets trop volumineux : au plus {InputLimits.DescribeBytes(maxBytes)} ; rejeu refusé avant lecture."]);
+            lines = System.Text.Encoding.UTF8.GetString(bytes).Split('\n');
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -66,7 +75,7 @@ public static class CombatLogReplayer
     {
         if (lines.Count == 0) return new ReplayOutcome(ReplayStatus.Invalid, ["journal vide."]);
         var report = new ValidationReport();
-        LoggedHeader? header = ReadHeader(lines[0], report);
+        LoggedHeader? header = ReadHeader(lines[0], report, data.Rules.Combat);
         if (header is null || !report.IsValid)
             return new ReplayOutcome(ReplayStatus.Invalid, report.Errors.Select(e => "en-tête " + e).ToArray());
 
@@ -93,7 +102,7 @@ public static class CombatLogReplayer
         public ScenarioData? Scenario;
     }
 
-    private static LoggedHeader? ReadHeader(string line, ValidationReport report)
+    private static LoggedHeader? ReadHeader(string line, ValidationReport report, CombatRules limits)
     {
         LoggedHeader? result = null;
         JsonInput.ParseDocument(line, report, (input, root) =>
@@ -119,7 +128,7 @@ public static class CombatLogReplayer
                 ["scenario"] = (v, p) =>
                 {
                     hasScenario = true;
-                    header.Scenario = ScenarioJsonReader.ReadData(input, v, p);
+                    header.Scenario = ScenarioJsonReader.ReadData(input, v, p, limits);
                 },
             });
             if (!ok) return;
