@@ -608,8 +608,17 @@ namespace EdS.Domain.Combat
         /// composante cyclique contient au moins un type d'événement : il y a au plus t alertes, chacune citant au plus
         /// <see cref="MaxLabelsPerWarning"/> libellés.</para>
         /// </summary>
-        public static IReadOnlyList<RuleViolation> Cycles(IReadOnlyList<NamedTrigger> triggers, StatusCatalog? catalog)
+        public static IReadOnlyList<RuleViolation> Cycles(IReadOnlyList<NamedTrigger> triggers, StatusCatalog? catalog) =>
+            Cycles(triggers, catalog, out _, out _);
+
+        /// <summary>
+        /// Même analyse, avec deux compteurs déterministes pour les tests de complexité (correctif 7.3.1, D3) : <paramref name="graphSize"/>,
+        /// nœuds plus arcs du graphe ; <paramref name="work"/>, pas du parcours (dépilements de la pile d'appels et de la pile des
+        /// composantes). Le parcours de Tarjan garantit <c>work ≤ 3 × graphSize</c>, indépendamment de la machine.
+        /// </summary>
+        internal static IReadOnlyList<RuleViolation> Cycles(IReadOnlyList<NamedTrigger> triggers, StatusCatalog? catalog, out long work, out long graphSize)
         {
+            work = 0;
             int n = triggers.Count;
             TriggerEvent[] events = (TriggerEvent[])Enum.GetValues(typeof(TriggerEvent));
             int eventCount = events.Length;
@@ -625,6 +634,8 @@ namespace EdS.Domain.Combat
                 foreach (TriggerEvent produced in triggers[i].Definition.ProducedEvents(catalog)) successors[i].Add(n + eventIndex[produced]);
                 successors[n + eventIndex[triggers[i].Definition.On]].Add(i);
             }
+            graphSize = nodes;
+            for (int v = 0; v < nodes; v++) graphSize += successors[v].Count;
 
             // Tarjan itératif : pile d'appels explicite (nœud, prochain successeur à visiter).
             var index = new int[nodes];
@@ -646,6 +657,7 @@ namespace EdS.Domain.Combat
                 while (calls.Count > 0)
                 {
                     (int v, int next) = calls.Pop();
+                    work++;
                     if (next < successors[v].Count)
                     {
                         calls.Push((v, next + 1));
@@ -666,6 +678,7 @@ namespace EdS.Domain.Combat
                         do
                         {
                             w = stack.Pop();
+                            work++;
                             onStack[w] = false;
                             component[w] = components;
                             size++;

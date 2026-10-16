@@ -34,17 +34,16 @@ public class Correctif731CycleTests
     public void Graphe_dense_de_l_audit_analyse_en_temps_lineaire(int n)
     {
         NamedTrigger[] graph = Dense(n);
-        TriggerGraph.Cycles(Dense(8), null);   // compilation à la volée hors mesure
-        var clock = Stopwatch.StartNew();
-        IReadOnlyList<RuleViolation> warnings = TriggerGraph.Cycles(graph, null);
-        clock.Stop();
+        IReadOnlyList<RuleViolation> warnings = TriggerGraph.Cycles(graph, null, out long work, out long size);
         RuleViolation warning = Assert.Single(warnings);
         Assert.Equal("skills[0].triggers[0]", Assert.Single(warning.Fields));
         Assert.Contains($", … et {n - TriggerGraph.MaxLabelsPerWarning} autres)", warning.Message);
         Assert.InRange(warning.Message.Length, 0, 600);   // avertissement borné, quelle que soit la taille de la composante
-        // Borne linéaire large (n/8 ms : 128 ms à 1 024, 2 s à 16 384), tenable en Debug sur un exécuteur de CI partagé
-        // (536 ms mesurées à 16 384) ; l'ancien algorithme dépassait déjà la seconde à 1 024 déclencheurs.
-        Assert.True(clock.ElapsedMilliseconds <= n / 8, $"{n} déclencheurs : {clock.ElapsedMilliseconds} ms (borne {n / 8} ms)");
+        // Correctif 7.3.1 (D3) : complexité vérifiée par des compteurs déterministes, et non par le temps de la machine (le job Debug
+        // de la CI avait mesuré 536 ms à 16 384 déclencheurs). Graphe de taille linéaire (au plus 16 nœuds et arcs par déclencheur,
+        // plus les types d'événements) et parcours linéaire dans cette taille ; l'ancien algorithme faisait Θ(n³) pas.
+        Assert.InRange(size, n, 16L * n + 64);
+        Assert.InRange(work, size / 2, 3 * size);
     }
 
     /// <summary>Ancien algorithme (lot 7.3), conservé comme oracle : atteignabilité complète par parcours depuis chaque nœud.</summary>
@@ -176,6 +175,7 @@ public class Correctif731CycleTests
         clock.Stop();
         Assert.All(violations, v => Assert.Equal(RuleViolationKind.LimitExceeded, v.Kind));   // rien d'autre n'est examiné
         Assert.Contains(violations, v => v.Message.Contains($"{skills * 8} déclencheurs"));
-        Assert.True(clock.ElapsedMilliseconds <= 500, $"{skills * 8} déclencheurs : refus en {clock.ElapsedMilliseconds} ms");
+        // Garde-fou contre un retour de l'analyse quadratique ou cubique (minutes), pas une mesure (D3) : quelques ms en pratique.
+        Assert.True(clock.ElapsedMilliseconds <= 5000, $"{skills * 8} déclencheurs : refus en {clock.ElapsedMilliseconds} ms");
     }
 }

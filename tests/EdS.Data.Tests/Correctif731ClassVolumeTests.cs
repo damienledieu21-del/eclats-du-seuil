@@ -51,7 +51,8 @@ public class Correctif731ClassVolumeTests
         Assert.Contains(result.Report.Errors, e => e.Code == ValidationCode.LimitExceeded && e.Path == "$.data.skills"
             && e.Message.Contains($"{skills * 8} déclencheurs"));
         Assert.Empty(result.Report.Warnings);   // aucune analyse des cycles
-        Assert.True(clock.ElapsedMilliseconds <= 2000, $"{skills * 8} déclencheurs, {json.Length} caractères : {clock.ElapsedMilliseconds} ms");
+        // Garde-fou contre un blocage (l'ancienne analyse prenait des minutes), pas une mesure (D3).
+        Assert.True(clock.ElapsedMilliseconds <= 20_000, $"{skills * 8} déclencheurs, {json.Length} caractères : {clock.ElapsedMilliseconds} ms");
     }
 
     [Fact]
@@ -64,7 +65,7 @@ public class Correctif731ClassVolumeTests
         Assert.True(result.IsValid, string.Join("; ", result.Report.Errors.Select(e => e.ToString())));
         ValidationError warning = Assert.Single(result.Report.Warnings);
         Assert.Contains("… et 504 autres", warning.Message);
-        Assert.True(clock.ElapsedMilliseconds <= 2000, $"512 déclencheurs : {clock.ElapsedMilliseconds} ms");
+        Assert.True(clock.ElapsedMilliseconds <= 20_000, $"512 déclencheurs : {clock.ElapsedMilliseconds} ms");
         Assert.False(ClassJsonReader.Read(AuditClass(65), Progression).IsValid);   // 520
     }
 
@@ -80,7 +81,7 @@ public class Correctif731ClassVolumeTests
             clock.Stop();
             Assert.NotEqual(0, run.ExitCode);
             Assert.Contains("4096 déclencheurs", run.Output + run.Error);
-            Assert.True(clock.ElapsedMilliseconds <= 10_000, $"CLI : {clock.ElapsedMilliseconds} ms");
+            Assert.True(clock.ElapsedMilliseconds <= 60_000, $"CLI : {clock.ElapsedMilliseconds} ms");
             return 0;
         });
     }

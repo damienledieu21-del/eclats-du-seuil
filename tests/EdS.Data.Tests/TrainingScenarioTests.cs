@@ -78,6 +78,7 @@ public class TrainingScenarioTests
     [InlineData("entrainement_garde_parade")]
     [InlineData("entrainement_rupture")]
     [InlineData("entrainement_alterations")]
+    [InlineData("entrainement_declencheurs")]
     public void Rejeu_identique_des_scenarios_livres(string name)
     {
         ReplayOutcome outcome = CombatLogReplayer.Replay(Simulate(name).Lines, ShippedData);
@@ -88,6 +89,7 @@ public class TrainingScenarioTests
     [InlineData("entrainement_garde_parade", "b1aa9e12d9e02dc405b7ff49f0ccfd15b5af84ceeb5bc1c2ea91868418bf5e54")]
     [InlineData("entrainement_rupture", "1d8e63db5e975a9ed4e4381f6a88eb21d21fd7e89dfc0440055780a3ccb8363b")]
     [InlineData("entrainement_alterations", "53d096548cb276b09d09ca2bca959a2f4b22a7fe780316f0ed4ea5b55dac4ddc")]
+    [InlineData("entrainement_declencheurs", "b5a00d6796c65deb56d8e2162e93680292f672812862dadc1323d048af37895c")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -98,6 +100,7 @@ public class TrainingScenarioTests
         // par Lot72MigrationTests. Nouveau scénario entrainement_alterations (DOT, contrôles, immunité).
         // Correctif 7.2 : moteur 0.8.1, règles 0.4.1 (étourdissement en ignore) ; garde_parade change à la Fragilité parée,
         // alterations à l'étourdissement refusé (active) et aux fins effectives des DOT.
+        // Correctif 7.3.1 (D4) : entrainement_declencheurs, figé aussi dans Fixtures/reference-0.9.1 (Correctif731TriggerScenarioTests).
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

@@ -47,7 +47,8 @@ public class M03CombatTriggerCapTests
             IReadOnlyList<RuleViolation> warnings = setup.TriggerWarnings();
             clock.Stop();
             Assert.Single(warnings);
-            Assert.True(clock.ElapsedMilliseconds <= 5000, $"{4088 + catalog} déclencheurs : {clock.ElapsedMilliseconds} ms");
+            // Garde-fou contre un blocage (1 min 55 s avant le correctif à 4 096), pas une mesure (D3).
+            Assert.True(clock.ElapsedMilliseconds <= 30_000, $"{4088 + catalog} déclencheurs : {clock.ElapsedMilliseconds} ms");
         }
 
         CombatSetup over = Crowd(9);   // 4 097
