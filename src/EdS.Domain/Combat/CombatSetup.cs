@@ -427,6 +427,7 @@ namespace EdS.Domain.Combat
                     else if (target.Team == assailant.Team)
                         errors.Add(new RuleViolation("la cible de l'assaillant doit être un ennemi.", $"combatants[{i}].target"));
                 }
+            if (errors.Count == 0) ValidateTriggerCount(errors);
             if (errors.Count == 0 && numericLimits) ValidateNumericLimits(errors);
             if (Combatants.Select(c => c.Team).Distinct(StringComparer.Ordinal).Count() < 2)
                 errors.Add(new RuleViolation("un combat oppose au moins deux équipes.", "combatants"));
@@ -740,6 +741,33 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation(v.Kind, $"classe « {character.Class.Id} », {string.Join(", ", v.Fields)} : {v.Message}", path + ".class"));
         }
 
+        /// <summary>Nombre de déclencheurs que ce combat peut activer (ceux de <see cref="TriggerWarnings"/>), sans les nommer.</summary>
+        private long ActiveTriggerCount()
+        {
+            long count = Combat.Statuses.Definitions.Sum(d => (long)d.Triggers.Count);
+            foreach (CombatantSetup c in Combatants)
+                count += c switch
+                {
+                    CharacterSetup ch => ch.ActiveTriggers().LongCount(),
+                    AssailantSetup a => a.Triggers.Count,
+                    _ => 0,
+                };
+            return count;
+        }
+
+        /// <summary>
+        /// Correctif 7.3.1 (A73-M03) : plafond global des déclencheurs actifs du combat (<see cref="TriggerGraph.MaxTriggers"/>), vérifié
+        /// avant l'analyse statique des cycles et le précontrôle numérique.
+        /// </summary>
+        private void ValidateTriggerCount(List<RuleViolation> errors)
+        {
+            long count = ActiveTriggerCount();
+            if (count > TriggerGraph.MaxTriggers)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"{count} déclencheurs actifs dans le combat (personnages, assaillants, altérations), au plus {TriggerGraph.MaxTriggers} (plafond technique provisoire).",
+                    "combatants"));
+        }
+
         /// <summary>Lot 7.3 : y a-t-il au moins un déclencheur susceptible d'être actif dans ce combat ?</summary>
         public bool HasTriggers =>
             Combatants.Any(c => c is AssailantSetup { Triggers: { Count: > 0 } } || (c is CharacterSetup ch && ch.ActiveTriggers().Any()))
@@ -751,6 +779,7 @@ namespace EdS.Domain.Combat
         /// </summary>
         public IReadOnlyList<RuleViolation> TriggerWarnings()
         {
+            if (ActiveTriggerCount() > TriggerGraph.MaxTriggers) return Array.Empty<RuleViolation>();   // refusé par Validate
             var named = new List<NamedTrigger>();
             for (int i = 0; i < Combatants.Count; i++)
             {

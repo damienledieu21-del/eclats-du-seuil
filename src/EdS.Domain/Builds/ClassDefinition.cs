@@ -81,10 +81,27 @@ namespace EdS.Domain.Builds
         /// et faisabilité de chaque talent majeur avec les règles de progression.
         /// Les chemins des erreurs ont la forme des fichiers de données (<c>trees[0].talents[2].maxRank</c>).
         /// </summary>
+        /// <summary>
+        /// Correctif 7.3.1 (A73-M03) : plafonds globaux d'une classe, vérifiés avant tout autre contrôle et avant l'analyse statique des
+        /// cycles. Enveloppes techniques provisoires (la classe livrée a 18 talents et 11 compétences), pas des choix de conception.
+        /// </summary>
+        public const int MaxTalents = 256, MaxSkills = 256, MaxTriggers = 512;
+
         public IReadOnlyList<RuleViolation> Validate(ProgressionRules progression)
         {
             if (progression is null) throw new ArgumentNullException(nameof(progression));
             var errors = new List<RuleViolation>();
+            // Plafonds globaux d'abord : au-delà, rien d'autre n'est examiné (le volume ne peut pas immobiliser la validation).
+            int talents = Trees.Sum(t => t.Talents.Count);
+            int triggers = Trees.Sum(t => t.Talents.Sum(x => x.Triggers.Count)) + Skills.Sum(x => x.Triggers.Count);
+            if (talents > MaxTalents)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{talents} talents, au plus {MaxTalents} par classe (plafond technique provisoire).", "trees"));
+            if (Skills.Count > MaxSkills)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{Skills.Count} compétences, au plus {MaxSkills} par classe (plafond technique provisoire).", "skills"));
+            if (triggers > MaxTriggers)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"{triggers} déclencheurs (talents et compétences), au plus {MaxTriggers} par classe (plafond technique provisoire).", "skills"));
+            if (errors.Count > 0) return errors;
             var ids = new Dictionary<string, string>(StringComparer.Ordinal);   // identifiant → chemin de sa première définition
 
             void CheckId(string id, string prefix, string path)

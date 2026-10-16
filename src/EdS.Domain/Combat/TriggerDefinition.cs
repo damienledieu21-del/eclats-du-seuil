@@ -589,51 +589,125 @@ namespace EdS.Domain.Combat
     public static class TriggerGraph
     {
         /// <summary>
+        /// Correctif 7.3.1 (A73-M03) : plafond global des déclencheurs d'un même graphe statique (classe, catalogue ou combat), vérifié
+        /// par les appelants avant l'analyse. Au-delà, la donnée est refusée (<see cref="RuleViolationKind.LimitExceeded"/>).
+        /// </summary>
+        public const int MaxTriggers = 4096;
+
+        /// <summary>Libellés cités au plus dans un avertissement ; les suivants sont comptés.</summary>
+        public const int MaxLabelsPerWarning = 8;
+
+        /// <summary>
         /// Une alerte par composante cyclique (au moins deux déclencheurs mutuellement atteignables, ou un déclencheur qui s'atteint
         /// lui-même), dans l'ordre de la liste ; rattachée au chemin du premier déclencheur de la composante.
+        /// <para>Correctif 7.3.1 (A73-M03) : composantes fortement connexes (Tarjan, parcours itératif sans récursion) du graphe biparti
+        /// « déclencheur → type d'événement produit → déclencheur abonné ». Temps et mémoire linéaires en n × t (t types d'événements,
+        /// fixe), au lieu d'une matrice d'atteignabilité n × n parcourue depuis chaque nœud (Θ(n³)). Les arcs ne relient jamais deux
+        /// déclencheurs ni deux types directement : toute composante d'au moins deux nœuds contient un cycle, et deux déclencheurs
+        /// sont dans la même composante si et seulement s'ils s'atteignent mutuellement, d'où les mêmes alertes qu'avant. Chaque
+        /// composante cyclique contient au moins un type d'événement : il y a au plus t alertes, chacune citant au plus
+        /// <see cref="MaxLabelsPerWarning"/> libellés.</para>
         /// </summary>
         public static IReadOnlyList<RuleViolation> Cycles(IReadOnlyList<NamedTrigger> triggers, StatusCatalog? catalog)
         {
             int n = triggers.Count;
-            var produced = new HashSet<TriggerEvent>[n];
-            for (int i = 0; i < n; i++) produced[i] = new HashSet<TriggerEvent>(triggers[i].Definition.ProducedEvents(catalog));
+            TriggerEvent[] events = (TriggerEvent[])Enum.GetValues(typeof(TriggerEvent));
+            int eventCount = events.Length;
+            var eventIndex = new Dictionary<TriggerEvent, int>();
+            for (int e = 0; e < eventCount; e++) eventIndex[events[e]] = e;
 
-            // Atteignabilité par parcours en largeur depuis chaque déclencheur (graphes de quelques centaines de nœuds au plus).
-            var reach = new bool[n, n];
-            for (int s = 0; s < n; s++)
+            // Nœuds 0..n-1 : déclencheurs ; n..n+t-1 : types d'événements. Listes d'adjacence.
+            int nodes = n + eventCount;
+            var successors = new List<int>[nodes];
+            for (int v = 0; v < nodes; v++) successors[v] = new List<int>();
+            for (int i = 0; i < n; i++)
             {
-                var queue = new Queue<int>();
-                queue.Enqueue(s);
-                while (queue.Count > 0)
+                foreach (TriggerEvent produced in triggers[i].Definition.ProducedEvents(catalog)) successors[i].Add(n + eventIndex[produced]);
+                successors[n + eventIndex[triggers[i].Definition.On]].Add(i);
+            }
+
+            // Tarjan itératif : pile d'appels explicite (nœud, prochain successeur à visiter).
+            var index = new int[nodes];
+            var low = new int[nodes];
+            var onStack = new bool[nodes];
+            var component = new int[nodes];
+            for (int v = 0; v < nodes; v++) index[v] = -1;
+            var stack = new Stack<int>();
+            var calls = new Stack<(int Node, int Next)>();
+            int counter = 0, components = 0;
+            var sizes = new List<int>();
+            for (int root = 0; root < nodes; root++)
+            {
+                if (index[root] >= 0) continue;
+                calls.Push((root, 0));
+                index[root] = low[root] = counter++;
+                stack.Push(root);
+                onStack[root] = true;
+                while (calls.Count > 0)
                 {
-                    int u = queue.Dequeue();
-                    for (int v = 0; v < n; v++)
-                        if (!reach[s, v] && produced[u].Contains(triggers[v].Definition.On))
+                    (int v, int next) = calls.Pop();
+                    if (next < successors[v].Count)
+                    {
+                        calls.Push((v, next + 1));
+                        int w = successors[v][next];
+                        if (index[w] < 0)
                         {
-                            reach[s, v] = true;
-                            queue.Enqueue(v);
+                            index[w] = low[w] = counter++;
+                            stack.Push(w);
+                            onStack[w] = true;
+                            calls.Push((w, 0));
                         }
+                        else if (onStack[w]) low[v] = Math.Min(low[v], index[w]);
+                        continue;
+                    }
+                    if (low[v] == index[v])
+                    {
+                        int size = 0, w;
+                        do
+                        {
+                            w = stack.Pop();
+                            onStack[w] = false;
+                            component[w] = components;
+                            size++;
+                        }
+                        while (w != v);
+                        sizes.Add(size);
+                        components++;
+                    }
+                    if (calls.Count > 0)
+                    {
+                        int parent = calls.Peek().Node;
+                        low[parent] = Math.Min(low[parent], low[v]);
+                    }
                 }
             }
 
-            var warnings = new List<RuleViolation>();
-            var assigned = new bool[n];
+            // Une alerte par composante cyclique, dans l'ordre de son premier déclencheur ; membres dans l'ordre de la liste.
+            var members = new Dictionary<int, List<int>>();
+            var order = new List<int>();
             for (int i = 0; i < n; i++)
             {
-                if (assigned[i] || !reach[i, i]) continue;
-                var members = new List<int>();
-                for (int j = i; j < n; j++)
-                    if (!assigned[j] && (j == i || (reach[i, j] && reach[j, i])))
-                    {
-                        members.Add(j);
-                        assigned[j] = true;
-                    }
-                string cycle = members.Count == 1
-                    ? $"{triggers[i].Label} → {triggers[i].Label}"
-                    : string.Join(", ", members.Select(m => triggers[m].Label));
+                int c = component[i];
+                if (sizes[c] < 2) continue;
+                if (!members.TryGetValue(c, out List<int>? list))
+                {
+                    members[c] = list = new List<int>();
+                    order.Add(c);
+                }
+                list.Add(i);
+            }
+            var warnings = new List<RuleViolation>();
+            foreach (int c in order)
+            {
+                List<int> list = members[c];
+                int first = list[0];
+                string cycle = list.Count == 1
+                    ? $"{triggers[first].Label} → {triggers[first].Label}"
+                    : string.Join(", ", list.Take(MaxLabelsPerWarning).Select(m => triggers[m].Label))
+                      + (list.Count > MaxLabelsPerWarning ? $", … et {list.Count - MaxLabelsPerWarning} autres" : "");
                 warnings.Add(new RuleViolation(
                     $"cycle statique de déclencheurs ({cycle}) : avertissement seulement, la règle de cycle et la profondeur maximale (combat.limits.maxTriggerDepth) arrêtent la chaîne en combat.",
-                    triggers[i].Path));
+                    triggers[first].Path));
             }
             return warnings;
         }
