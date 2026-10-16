@@ -1,4 +1,4 @@
-# Moteur de simulation (lots 5 et 6, correctif 6.1)
+# Moteur de simulation (lots 5 et 6, correctif 6.1, sous-lot 7.1)
 
 Moteur de combat déterministe, sans Unity, sans réseau et sans horloge système. Code : `src/EdS.Simulation/Engine`. Toutes les valeurs sont **provisoires**.
 
@@ -126,7 +126,10 @@ PV infinis, défenses configurables, n'obéit à aucune commande. Il attaque à 
 ## Limites
 
 - `combat.limits.maxDurationMs` (600 000) : durée maximale d'un scénario ; plafond absolu du format 86 400 000.
-- `combat.limits.maxEventsPerTick` (1000) : budget des **événements de simulation comptés** dans un tick (phases 1 à 6) ; au-delà, arrêt propre `simulationAborted` (`eventBudgetExceeded`). Ce n'est pas un plafond de lignes du journal : l'en-tête et les lignes `combatant` (initialisation), `simulationAborted` (arrêt), `combatantSummary` et `combatEnded` (finalisation) ne sont pas comptés. Elles restent bornées par le nombre de combattants (1 + N à l'initialisation, au plus 2 + N à la fin) ; leur enveloppe propre est fixée dans le contrat du lot 7.
+- Admission (sous-lot 7.1), par `CombatSetup.Validate`, avant tout journal : au plus `combat.limits.maxCombatants` combattants (64), `maxCommands` commandes (20 000), `maxCommandsPerActorPerTick` commandes d'un même acteur au même tick (4) ; les événements initiaux (commandes et premiers tours d'assaillant avant la fin) doivent tenir dans `maxPendingEvents` (100 000). Code `LimitExceeded`.
+- Budgets d'exécution (sous-lot 7.1) : `combat.limits.maxWorkPerTick` (10 000 unités de travail par tick) et `maxPendingEvents` (taille de la file). Chaque traitement (échéance, retrait, commande, action entière avec toutes ses cibles, passage d'un combattant dans une phase balayée) réserve son coût exact **avant toute mutation** ; si un budget serait dépassé, arrêt propre `simulationAborted` (`workBudgetExceeded` ou `queueLimitExceeded`, champ `limit`) sans effet partiel du traitement refusé. Ordre de vérification : travail, file, lignes. Modèle de coût et limites d'atomicité restantes : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#consommation-des-budgets).
+- Pics de charge (sous-lot 7.1) : `CombatResult.Peaks` (travail et lignes maximaux en un tick, taille maximale de la file) et la ligne `charge` du résumé de `eds simulate`. Ils ne sont pas écrits dans le journal (format inchangé). `CombatEngine.LastTickWork` et `LastTickEvents` donnent le coût du dernier tick simulé, pour le diagnostic.
+- `combat.limits.maxEventsPerTick` (1000, au plus `maxWorkPerTick`) : budget des **événements de simulation comptés** dans un tick (phases 1 à 6) ; au-delà, arrêt propre `simulationAborted` (`eventBudgetExceeded`). Ce n'est pas un plafond de lignes du journal : l'en-tête et les lignes `combatant` (initialisation), `simulationAborted` (arrêt), `combatantSummary` et `combatEnded` (finalisation) ne sont pas comptés. Elles restent bornées par le nombre de combattants (1 + N à l'initialisation, au plus 2 + N à la fin) ; leur enveloppe propre est fixée dans le contrat du lot 7.
 - Précontrôle numérique **avant le premier tick** par `CombatSetup.Validate` (correctif 6.1, M04 ; complété au correctif 6.1.1, CA-M01), pour tous les types de combattants :
   - bornes des valeurs saisies : dégâts bruts d'un assaillant dans [0, 10⁹], armure et résistance magique des mannequins et assaillants dans [0, 10⁹], attributs d'un personnage dans [0, 10⁶], coefficient de compétence dans [0, 100], coûts et gains dans [0, 10⁶] ;
   - bornes des règles : constantes de défense dans ]0, 10⁹] ; toutes les durées (dont `globalCooldownMs` et `endurance.regenDelayMs` depuis 6.1.1, et les recharges de compétences) dans [0, 86 400 000] ms ;
@@ -135,8 +138,8 @@ PV infinis, défenses configurables, n'obéit à aucune commande. Il attaque à 
 - Ce que le précontrôle garantit : les calculs **connus et recensés** du moteur à la date du correctif 6.1.1 restent représentables pour un combat validé. Il ne garantit pas qu'aucun débordement n'est possible : tout calcul ajouté plus tard (lot 7 et suivants) doit être recensé et borné à son tour. Tout dépassement arithmétique non anticipé pendant la simulation (`checked`, virgule fixe) arrête le combat proprement (`simulationAborted`, `overflow`) au lieu de planter ; un test vérifie ce filet de sécurité séparément.
 - Échéances (cas C et D de CA-M01) : avec un tick de 1 ms, dernier tick possible (< 86 400 000) + délai en ticks (≤ 86 400 000) < 2 × 10⁸ ; produits de la régénération et de l'entretien de garde : (régénération ou coût par seconde ≤ 2³¹) × (ticks × durée du tick ≤ 86 400 000 ms) < 2 × 10¹⁷, loin de 2⁶³.
 - Un combat interrompu (`aborted`) n'est pas un résultat d'équilibrage : `eds simulate` renvoie le code de sortie 2 et affiche un bandeau `DIAGNOSTIC` au-dessus des statistiques partielles.
-- Natures des valeurs : les plafonds ci-dessus sont des **limites techniques** provisoires de pré-alpha, pas des paramètres d'équilibrage (qui sont dans `rules.json`) ni des **capacités mesurées** (seuls les trois scénarios de référence ont été simulés : au plus 7 événements comptés par tick). Détail : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#trois-natures-de-valeurs).
-- Limites prévues pour le lot 7 : [LIMITES_LOT_7.md](LIMITES_LOT_7.md).
+- Natures des valeurs : les plafonds ci-dessus sont des **limites techniques** provisoires de pré-alpha, pas des paramètres d'équilibrage (qui sont dans `rules.json`) ni des **capacités mesurées** (voir [LIMITES_LOT_7.md](LIMITES_LOT_7.md#capacités-mesurées-sous-lot-71-16-octobre-2026)). Détail : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#trois-natures-de-valeurs).
+- Contrat des limites du lot 7 : [LIMITES_LOT_7.md](LIMITES_LOT_7.md).
 
 Fin de combat : `durationReached`, `teamDefeated` (une seule équipe vivante, ou aucune) ou `aborted`. Chaque fin écrit un `combatantSummary` par combattant puis `combatEnded`.
 
@@ -147,14 +150,14 @@ Une ligne JSON par événement, UTF-8 sans BOM, séparateur `\n`, champs dans un
 Première ligne, l'en-tête :
 
 ```json
-{"type":"header","format":"eds-combat-log","formatVersion":2,"engineVersion":"0.6.1","tickMs":50,
+{"type":"header","format":"eds-combat-log","formatVersion":2,"engineVersion":"0.7.0","tickMs":50,
  "data":{"rules":{"contentVersion":"…","fingerprint":"sha256:…"},"classes":[{"id":"class.bastion","contentVersion":"…","fingerprint":"sha256:…"}]},
  "scenario":{…scénario complet…}}
 ```
 
 Puis les événements : `{"tick":0,"seq":2,"phase":"commands","event":"skillCast",…}`. `seq` est le numéro global de la ligne d'événement.
 
-Événements : `combatant`, `cooldownReady`, `skillCast`, `commandRejected`, `guardStarted`, `guardStopped`, `guardUpkeep`, `guardBroken`, `blocked`, `parryStarted`, `parrySucceeded`, `parryEnded`, `attackStarted`, `attackSkipped`, `damage` (avec `fragile` et `defense` : `none`, `guard`, `guardBroken`, `parry`, `unblockable`), `resourceGained`, `stateApplied`, `stateExpired`, `stateRemoved`, `enduranceRegenerated`, `died`, `simulationAborted`, `combatantSummary` (avec blocages, parades, ruptures, Résonance et Charges), `combatEnded`. Version du moteur : `0.6.1`. Format du journal : 2 depuis le correctif 6.1 (`instance` et `generation` sur les états, `stateRemoved`) ; un journal au format 1 est refusé au rejeu, sans migration (pré-alpha).
+Événements : `combatant`, `cooldownReady`, `skillCast`, `commandRejected`, `guardStarted`, `guardStopped`, `guardUpkeep`, `guardBroken`, `blocked`, `parryStarted`, `parrySucceeded`, `parryEnded`, `attackStarted`, `attackSkipped`, `damage` (avec `fragile` et `defense` : `none`, `guard`, `guardBroken`, `parry`, `unblockable`), `resourceGained`, `stateApplied`, `stateExpired`, `stateRemoved`, `enduranceRegenerated`, `died`, `simulationAborted`, `combatantSummary` (avec blocages, parades, ruptures, Résonance et Charges), `combatEnded`. Version du moteur : `0.7.0` (sous-lot 7.1 : nouveaux arrêts possibles ; les journaux de référence ne changent que par l'en-tête). Format du journal : 2 depuis le correctif 6.1 (`instance` et `generation` sur les états, `stateRemoved`) ; un journal au format 1 est refusé au rejeu, sans migration (pré-alpha).
 
 ## Rejeu
 

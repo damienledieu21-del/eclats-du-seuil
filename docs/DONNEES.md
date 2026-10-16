@@ -1,4 +1,4 @@
-# Données et validation (lots 3 à 6, correctifs 6.1 et 6.1.1)
+# Données et validation (lots 3 à 6, correctifs 6.1 et 6.1.1, sous-lot 7.1)
 
 ## Fichier de règles
 
@@ -73,7 +73,11 @@ $.data.stats.critical.maxChanceBasisPoints : la chance critique maximale ne peut
 
 Bornes techniques des règles (correctif 6.1.1) : `damage.defenseConstants.*` dans ]0, 10⁹], `combat.globalCooldownMs` et `combat.endurance.regenDelayMs` dans [0, 86 400 000] ms, comme les autres durées. Une valeur **calculée** hors des limites numériques du moteur (défense effective d'un personnage, pire impact, cumul) est refusée à la validation du scénario avec le code `OutOfRange`, sur le chemin du combattant (`$.data.combatants[0]`). Voir [MOTEUR.md](MOTEUR.md#limites).
 
-Codes : `FileUnreadable`, `DuplicateId`, `InvalidJson`, `WrongType`, `MissingField`, `UnknownField`, `DuplicateField`, `InvalidNumber`, `OutOfRange`, `UnknownReference`, `UnsupportedSchemaVersion`, `InvalidContentVersion`, `WrongKind`, `InvalidValue`. Toutes les erreurs sont rapportées en une passe.
+Limites de volume (sous-lot 7.1) : les cinq champs de `combat.limits` ajoutés en schéma 3 sont bornés par des plafonds techniques (`maxCombatants` [2, 256], `maxCommands` [0, 10⁶], `maxCommandsPerActorPerTick` [1, 64], `maxPendingEvents` [1, 10⁷], `maxWorkPerTick` [1, 10⁷]) et `maxEventsPerTick` ne peut pas dépasser `maxWorkPerTick`. Un scénario qui dépasse une limite configurée est refusé avec le code `LimitExceeded` : sur le tableau (`$.data.combatants`, `$.data.commands`, une seule erreur, sans analyser les éléments), sur `$.data.commands[i].atMs` pour la première commande en excès d'un acteur à un tick, ou sur `$.data.commands` si les événements initiaux dépassent la capacité de la file.
+
+Limites des lecteurs (sous-lot 7.1, constantes techniques) : fichier de données ou texte JSON au plus 16 Mio (`FileTooLarge`, vérifié avant lecture ou avant encodage), profondeur JSON au plus 32 (`InvalidJson`), journal rejoué au plus 256 Mio. Un rapport conserve au plus 200 erreurs ; les suivantes sont comptées et résumées par une dernière ligne « … et N autres erreurs ». Détail : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#limites-des-lecteurs-en-place-sous-lot-71).
+
+Codes : `FileUnreadable`, `DuplicateId`, `InvalidJson`, `WrongType`, `MissingField`, `UnknownField`, `DuplicateField`, `InvalidNumber`, `OutOfRange`, `UnknownReference`, `UnsupportedSchemaVersion`, `InvalidContentVersion`, `WrongKind`, `InvalidValue`, `LimitExceeded`, `FileTooLarge` (sous-lot 7.1). Toutes les erreurs sont rapportées en une passe, dans la limite de 200.
 
 ## Commande
 

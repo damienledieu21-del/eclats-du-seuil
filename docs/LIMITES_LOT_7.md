@@ -1,6 +1,6 @@
-# Contrat de limites du lot 7 (proposition, correctifs 6.1 et 6.1.1)
+# Contrat de limites du lot 7 (correctifs 6.1 et 6.1.1, sous-lot 7.1)
 
-Statut : **contrat documentaire**. Rien de ce qui suit n'est implémenté, sauf ce qui est marqué « en place ». Il fixe à l'avance les bornes et les règles de terminaison que le lot 7 (altérations, déclencheurs) devra respecter, pour que le moteur général des états ne soit pas conçu sans garde-fous. Toutes les valeurs sont **provisoires et configurables** dans `rules.json`, bloc `combat.limits` (nouveaux champs au lot 7, donc `schemaVersion` 3 ; voir [DONNEES.md](DONNEES.md)).
+Statut : **contrat en partie implémenté**. Le sous-lot 7.1 a mis en place l'admission des scénarios, les limites des lecteurs, les budgets de travail et de file et la mesure des pics ; ces éléments sont marqués « en place ». Le reste (provenance, profondeur, déclencheurs, report) reste un contrat pour la suite du lot 7, qui fixe à l'avance les bornes et les règles de terminaison du moteur général des états. Toutes les valeurs configurables sont **provisoires** et se trouvent dans `rules.json`, bloc `combat.limits` (`schemaVersion` 3 ; voir [DONNEES.md](DONNEES.md)).
 
 ## Principes
 
@@ -18,23 +18,40 @@ Les nombres de ce document et des règles ne se valent pas ; chaque valeur cité
 |---|---|---|---|
 | **Limite technique** (enveloppe) | Garantit que les calculs restent représentables et que la simulation se termine. Provisoire en pré-alpha, choisie très au-delà du jeu prévu ; ce n'est ni un objectif ni une promesse de performance. | dégâts bruts ≤ 10⁹, défenses effectives ≤ 10⁹, constantes de défense ≤ 10⁹, attributs ≤ 10⁶, coefficient ≤ 100, durées ≤ 86 400 000 ms, 1 000 événements comptés par tick | le code, avec un test aux bornes |
 | **Paramètre d'équilibrage** | Règle du jeu, provisoire, dans `rules.json` ou les classes ; doit rester à l'intérieur des limites techniques. | recharge globale 1 000 ms, délai de régénération 1 000 ms, constantes de défense 1 000, garde −60 % | les données, validées par Dam |
-| **Capacité mesurée** | Ce qui a réellement été simulé et observé ; seule base pour parler de charge. | 3 scénarios de référence (1 personnage contre 1 mannequin ou 1 assaillant, 15 à 20 s) : au plus **7 événements comptés par tick**, 131 à 260 lignes de journal (correctif 6.1.1) | une mesure, datée |
+| **Capacité mesurée** | Ce qui a réellement été simulé et observé ; seule base pour parler de charge. | voir « Capacités mesurées » plus bas (sous-lot 7.1) | une mesure, datée, figée par `Lot71CapacityTests` |
 
-Aucune capacité au-delà de ces mesures n'est revendiquée : 64 combattants ou 100 000 événements en attente sont des enveloppes proposées, pas des volumes testés.
+Aucune capacité au-delà des mesures de la section « Capacités mesurées » n'est revendiquée.
 
-## Limites proposées
+## Limites
 
-| Limite | Valeur initiale | Champ prévu | Dépassement | Justification |
+Les cinq premières lignes sont **en place depuis le sous-lot 7.1** ; chaque valeur configurée est bornée par un plafond technique codé en dur (`CombatRules.Absolute*`), et une configuration hors plafond est refusée au chargement de `rules.json`, à son chemin JSON.
+
+| Limite | Valeur initiale | Champ | Dépassement | Justification |
 |---|---|---|---|---|
-| Combattants par combat | 64 | `combat.limits.maxCombatants` | refus à la validation (`combatants`) | Les scénarios prévus (lot 8 : 1 contre 1, petits groupes) en ont moins de 10. 64 laisse de la marge aux essais de zone tout en gardant les ciblages de zone (parcours de tous les ennemis à chaque impact) et le journal de petite taille. |
-| Commandes par scénario | 20 000 | `combat.limits.maxCommands` | refus à la validation (`commands`) | Un scénario de 10 min (durée maximale actuelle, 12 000 ticks) avec une commande à chaque tick en a 12 000. Au-delà, le fichier est très probablement généré par erreur. |
-| Commandes par acteur et par tick | 4 | `combat.limits.maxCommandsPerActorPerTick` | refus à la validation (`commands[i].atMs`) | Un joueur peut au plus combiner garde, parade et une compétence au même tick ; 4 garde une marge. Empêche qu'un scénario sature la phase 2 d'un seul tick. |
-| Événements en attente dans la file | 100 000 | `combat.limits.maxPendingEvents` | arrêt `queueLimitExceeded` | 64 combattants × (recharges, états, tours) restent sous 10 000 en usage normal ; un facteur 10 de marge. Une file qui dépasse signale un état qui se reprogramme sans fin. |
-| Budget de travail par tick | 10 000 unités | `combat.limits.maxWorkPerTick` | arrêt `workBudgetExceeded` | Voir ci-dessous : distinct du budget d'événements journalisés. 10 × le budget journalisé, car une unité de travail ne produit pas toujours de ligne. |
-| Événements de simulation comptés par tick | 1 000 (**en place**) | `combat.limits.maxEventsPerTick` | arrêt `eventBudgetExceeded` (**en place**) | Valeur du plan (§4.4). Compte les événements émis par les phases 1 à 6 d'un tick, pas toutes les lignes du journal (voir ci-dessous). |
+| Combattants par combat | 64 (plafond [2, 256]) | `combat.limits.maxCombatants` | refus à la validation, `LimitExceeded` sur `combatants` (**en place**) | Les scénarios prévus (lot 8 : 1 contre 1, petits groupes) en ont moins de 10. 64 laisse de la marge aux essais de zone tout en gardant les ciblages de zone (parcours de tous les ennemis à chaque impact) et le journal de petite taille. |
+| Commandes par scénario | 20 000 (plafond [0, 10⁶]) | `combat.limits.maxCommands` | refus à la validation, `LimitExceeded` sur `commands` (**en place**) | Un scénario de 10 min (durée maximale actuelle, 12 000 ticks) avec une commande à chaque tick en a 12 000. Au-delà, le fichier est très probablement généré par erreur. |
+| Commandes par acteur et par tick | 4 (plafond [1, 64]) | `combat.limits.maxCommandsPerActorPerTick` | refus à la validation, `LimitExceeded` sur `commands[i].atMs` de la première commande en excès, une erreur par couple (acteur, tick) (**en place**) | Un joueur peut au plus combiner garde, parade et une compétence au même tick ; 4 garde une marge. Empêche qu'un scénario sature la phase 2 d'un seul tick. |
+| Événements en attente dans la file | 100 000 (plafond [1, 10⁷]) | `combat.limits.maxPendingEvents` | événements initiaux (commandes, premiers tours) au-delà : refus à la validation, `LimitExceeded` sur `commands`, avant tout journal ; en simulation : arrêt `queueLimitExceeded` (**en place**) | Aucune contrainte statique « file ≥ commandes + combattants » : la capacité est comparée aux événements initiaux réels du scénario. Le pire cas mesuré avec le contenu actuel atteint 57 615 (voir plus bas). |
+| Budget de travail par tick | 10 000 unités (plafond [1, 10⁷]) | `combat.limits.maxWorkPerTick` | arrêt `workBudgetExceeded` (**en place**) | Voir ci-dessous : distinct du budget d'événements journalisés. 10 × le budget journalisé, car une unité de travail ne produit pas toujours de ligne. |
+| Événements de simulation comptés par tick | 1 000 (au plus `maxWorkPerTick`) | `combat.limits.maxEventsPerTick` | arrêt `eventBudgetExceeded` (**en place**) | Valeur du plan (§4.4). Compte les événements émis par les phases 1 à 6 d'un tick, pas toutes les lignes du journal (voir ci-dessous). Chaque ligne coûte aussi une unité de travail, d'où la cohérence vérifiée au chargement. |
 | Lignes d'initialisation | 1 + nombre de combattants (≤ 65) | dérivée de `maxCombatants` | sans objet : bornée par construction | En-tête + une ligne `combatant` par participant, au tick 0, avant tout événement compté. |
 | Lignes d'arrêt et de finalisation | 2 + nombre de combattants (≤ 66) | dérivée de `maxCombatants` | sans objet : bornée par construction | Au plus une ligne `simulationAborted`, une `combatantSummary` par participant, une `combatEnded`. Jamais d'autre ligne après l'arrêt. |
 | Profondeur de chaîne de déclencheurs | 4 | `combat.limits.maxTriggerDepth` | effet non créé, `triggerSuppressed`, le combat continue | Valeur du plan (§4.4, A15) : quatre réactions successives au plus depuis une racine (règles P1 à P8) ; « parade → gain de Charge → passif → effet » n'en utilise qu'une. |
+
+### Limites des lecteurs (en place, sous-lot 7.1)
+
+Constantes techniques de `InputLimits`, non configurables. Chacune est vérifiée **avant** le chargement complet de ce qu'elle protège.
+
+| Limite | Valeur | Contrôle | Refus |
+|---|---|---|---|
+| Taille d'un fichier de données (règles, classe, scénario) | 16 Mio | longueur du fichier avant lecture, puis lecture bornée (un fichier qui grandit entre-temps est refusé de même) | `FileTooLarge` sur `$` ; un fichier creux de 1 Gio est refusé sans être lu |
+| Taille d'un texte JSON fourni en mémoire | 16 Mio d'octets UTF-8 | longueur en caractères (refus immédiat au-delà), sinon compte des octets avant encodage | `FileTooLarge` sur `$` |
+| Taille d'un journal rejoué | 256 Mio | longueur du fichier avant lecture, puis lecture bornée | rejeu `Invalid`, « journal … trop volumineux » ; la ligne d'en-tête est en outre bornée à 16 Mio |
+| Profondeur JSON | 32 | analyseur (`MaxDepth`) | `InvalidJson`, avec la ligne |
+| Tableaux `combatants` et `commands` d'un scénario (fichier ou en-tête de journal) | valeurs **configurées** `maxCombatants` et `maxCommands` | longueur du tableau lue avant tout élément | une seule erreur `LimitExceeded` sur le tableau, même message que l'admission ; aucun élément construit ni analysé |
+| Erreurs conservées par rapport | 200 | `ValidationReport` | les suivantes sont comptées ; dernière ligne « … et N autres erreurs » |
+
+L'index des lignes (qui associe chaque chemin JSON à sa ligne pour les diagnostics) n'est construit qu'à la première erreur localisée ; l'erreur d'un tableau trop long utilise une recherche ciblée qui s'arrête au nom du tableau. Le coût d'analyse reste donc proportionnel à un fichier d'au plus 16 Mio.
 
 ### Enveloppes séparées : simulation, initialisation, finalisation
 
@@ -42,7 +59,20 @@ Le budget `maxEventsPerTick` (en place) compte les **événements de simulation*
 
 ### Budget de travail distinct du budget d'événements
 
-Le budget actuel (`maxEventsPerTick`) compte les **événements écrits pendant la simulation**. Or une partie du travail du moteur n'écrit rien : échéances périmées ignorées (M02), conditions de déclencheur évaluées à faux, déclencheurs supprimés, effets sans changement visible. Une boucle de travail silencieux ne serait jamais arrêtée par le budget d'événements. Le lot 7 ajoute donc un compteur de **travail**, remis à zéro à chaque tick, incrémenté d'une unité pour : chaque élément retiré de la file (y compris périmé), chaque évaluation de déclencheur, chaque application d'effet. Les deux budgets coexistent ; le premier atteint arrête le combat avec sa raison.
+Le budget `maxEventsPerTick` compte les **événements écrits pendant la simulation**. Or une partie du travail du moteur n'écrit rien : échéances périmées ignorées (M02), passages de combattants sans effet, et plus tard conditions de déclencheur évaluées à faux ou déclencheurs supprimés. Une boucle de travail silencieux ne serait jamais arrêtée par le budget d'événements. Le compteur de **travail** (**en place** depuis le sous-lot 7.1) est remis à zéro à chaque tick ; les deux budgets coexistent et le premier atteint arrête le combat avec sa raison. Le test `Travail_silencieux_consomme_le_budget_sans_ecrire_de_ligne` arrête un combat de 64 combattants inactifs au tick 0 (192 unités, aucune ligne).
+
+Modèle de coût en place (une unité par opération) :
+
+| Opération | Coût |
+|---|---|
+| Mise en file pendant un tick (prochain tour, recharge, fin de parade, échéance d'état) | 1 unité et 1 place de file |
+| Retrait d'un élément de la file, y compris une échéance périmée ou une commande refusée | 1 |
+| Impact sur une cible (N pour une action de zone) | 1 |
+| Application ou retrait d'un état (expiration, mort) | 1 |
+| Passage d'un combattant dans une phase balayée : effets périodiques, régénération, fin de tick | 1 par phase |
+| Ligne de simulation écrite | 1 unité et 1 ligne comptée |
+
+Ne sont pas décomptés : la construction du combat (en-tête, lignes `combatant`, mise en file initiale, bornée par l'admission) et les lignes d'arrêt et de finalisation (enveloppe séparée). Futur lot 7 : chaque évaluation de déclencheur et chaque application d'effet coûteront une unité de plus.
 
 ## Provenance et prévention des cycles
 
@@ -138,16 +168,40 @@ Ordre d'un tick : expirations → commandes → résolution → périodiques →
 
 ## Consommation des budgets
 
-Les budgets se consomment **avant** l'opération qu'ils autorisent, jamais après :
+**En place depuis le sous-lot 7.1 : réservation avant mutation.** Décompter chaque opération juste avant de l'exécuter ne suffit pas à rendre atomique une action composée (un impact qui brise la garde, inflige des dégâts et applique la Fragilité) : le budget pourrait manquer au milieu. Le moteur découpe donc le tick en **traitements** et, pour chacun, calcule le coût exact (travail, lignes, places de file) à partir de l'état courant, avec les mêmes conditions que l'exécution, puis le réserve **avant toute mutation** :
 
-1. **Programmation** : avant d'ajouter un événement à la file, le moteur vérifie `maxPendingEvents` et décompte une unité de travail ; si l'une des limites serait dépassée, l'événement n'est pas ajouté et le combat s'arrête (`queueLimitExceeded` ou `workBudgetExceeded`).
-2. **Exécution** : avant de traiter un événement retiré de la file (y compris périmé ou supprimé), le moteur décompte une unité de travail ; avant chaque évaluation de déclencheur et chaque application d'effet, une unité de plus.
-3. **Écriture** : avant d'écrire une ligne de simulation, le moteur incrémente le compteur d'événements du tick (comportement **en place** : la ligne qui dépasserait le budget n'est pas écrite).
+| Traitement | Réservé avant |
+|---|---|
+| Une échéance (recharge, fin de parade, état) | son retrait de la file (lecture de la tête sans la retirer) |
+| Le retrait d'une commande ou d'un tour d'assaillant | ce retrait |
+| Une commande ou un tour d'assaillant | ses contrôles et ses effets (refus compris) |
+| Une action en résolution, **toutes cibles comprises** | le premier impact |
+| Le passage d'un combattant dans une phase balayée (entretien de garde et rupture éventuelle, régénération, mort et retrait de ses états) | ce passage |
 
-Un dépassement ne laisse donc jamais d'effet à moitié appliqué : l'opération refusée n'a rien modifié, et seules les lignes d'arrêt et de finalisation (enveloppe séparée) suivent.
+Si la réserve dépasse un budget, le combat s'arrête avant le traitement, qui n'a donc rien modifié : ni ressource dépensée, ni état appliqué, ni élément en file, ni ligne écrite. Ordre de vérification fixe : **travail, puis file, puis lignes** ; l'arrêt porte la raison du premier qui échoue. Pendant le traitement, toute consommation au-delà de la réserve lève une erreur de programmation ; en Debug, une réserve non entièrement consommée en lève une aussi, ce qui vérifie l'exactitude des coûts sur toute la suite de tests (Debug et Release tournent en CI). Les coûts réservés étant exacts, un tick qui coûte exactement `maxWorkPerTick` passe et un tick qui coûte une unité de plus s'arrête (`Budget_de_travail_aux_frontieres`).
 
-## Ce qui reste hors des correctifs 6.1 et 6.1.1
+**Limites d'atomicité restantes** (documentées, non corrigées en 7.1) :
+- L'atomicité vaut **par traitement**, pas par commande de bout en bout : une compétence acceptée en phase 2 (coûts payés, recharge programmée) dont la résolution en phase 3 est refusée garde ses coûts payés, sans impact. C'est le découpage en phases existant (A10), testé par `Action_de_zone_refusee_en_entier_avant_le_premier_impact`.
+- Le débordement numérique (`overflow`, filet des opérations `checked`) n'est pas couvert par la réservation : il peut survenir au milieu d'un traitement. Le précontrôle numérique de `CombatSetup.Validate` (correctif 6.1.1) le rend inatteignable pour les configurations qu'il recense ; seul un dépassement tardif hors de ce recensement l'atteint.
+- La file n'est pas vidée à l'arrêt : les éléments restants sont abandonnés avec le combat ; aucun n'est exécuté.
 
-- Aucun moteur général d'états, aucun déclencheur, aucun budget de travail, aucun report, aucune provenance : tout ce qui précède, hors mentions « en place », est un contrat à implémenter au lot 7. Aucune altération nouvelle : Fragilité et rupture de garde restent les deux états codés du lot 6, désormais avec instance et génération.
-- Les nouveaux champs `combat.limits.*` ci-dessus ne sont pas encore lus ; seuls `maxDurationMs` et `maxEventsPerTick` existent.
-- Décisions à prendre avant le lot 7 : A12 à A15 et A23 (voir le rapport du lot 6), et la validation des valeurs proposées ici.
+## Capacités mesurées (sous-lot 7.1, 16 octobre 2026)
+
+Règles livrées (`data/v0`, contenu `0.3.0-provisoire`), moteur 0.7.0. Pics relevés par `CombatResult.Peaks` et figés par `Lot71CapacityTests` ; ils ne figurent pas dans le journal.
+
+| Scénario | Fin | Travail max / tick | Lignes max / tick | File max |
+|---|---|---|---|---|
+| `mannequin` (1 personnage, 1 mannequin, 60 s) | durée atteinte | 14 | 4 | 18 |
+| `entrainement_garde_parade` (1 contre 1 assaillant, 30 s) | durée atteinte | 20 | 7 | 19 |
+| `entrainement_rupture` (1 contre 1 assaillant, 16 s) | durée atteinte | 20 | 7 | 7 |
+| Plafond d'admission en commandes : 63 personnages, 4 commandes chacun par tick (frappe, parade, garde, fin de garde), 19 908 commandes | durée atteinte | 1 011 (10 %) | 378 (38 %) | 19 908 (20 %) |
+| 32 personnages en garde contre 32 assaillants à cible unique avec Fragilité, une attaque par tick | équipe vaincue | 608 (6 %) | 192 (19 %) | 3 872 (4 %) |
+| 32 personnages en garde contre 32 assaillants de zone, une attaque par tick | arrêt `eventBudgetExceeded` au tick 0 | 1 312 | 928 avant l'arrêt | 64 |
+| Pire cas pour la file : 15 assaillants de zone avec Fragilité contre 32 personnages sans garde (vitalité 200) | arrêt `eventBudgetExceeded` au tick 139 (mort simultanée des 32) | 3 082 (31 %) | 999 | 57 615 (58 %) |
+
+Lecture : avec le contenu actuel, **le budget de lignes est la première limite atteinte** par les charges extrêmes. Le budget de travail garde une marge d'au moins 3 fois et la file d'au moins 1,7 fois sur ces mesures. Borne théorique de la file : la Fragilité, seul état à échéance, écrit au moins deux lignes par application, donc au plus 500 applications par tick pendant les 120 ticks de sa durée, soit environ 60 000 échéances, plus au plus 20 000 commandes initiales et un tour par assaillant : environ 80 000, sous les 100 000 configurés. Ces marges sont à réévaluer quand le lot 7 ajoutera des états, des DOT et des déclencheurs.
+
+## Ce qui reste hors du sous-lot 7.1
+
+- Aucun moteur général d'états, aucun DOT, contrôle ni déclencheur, aucun report, aucune provenance, aucune profondeur : tout ce qui précède, hors mentions « en place », reste un contrat pour la suite du lot 7. Fragilité et rupture de garde restent les deux états codés du lot 6.
+- Décisions à prendre : A12 à A15 et A23 (voir le rapport du lot 6) ; validation définitive des plafonds techniques et des valeurs initiales, approuvés provisoirement pour 7.1.
