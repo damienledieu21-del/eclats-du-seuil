@@ -14,6 +14,12 @@ namespace EdS.Domain
 
         /// <summary>Identifiant déjà utilisé par une autre définition.</summary>
         DuplicateId = 2,
+
+        /// <summary>
+        /// Valeur ou combinaison de valeurs qui sortirait des limites numériques du moteur (précontrôle avant simulation,
+        /// correctif 6.1.1) ; rapportée avec le code <c>OutOfRange</c> par les chargeurs.
+        /// </summary>
+        NumericLimit = 3,
     }
 
     /// <summary>

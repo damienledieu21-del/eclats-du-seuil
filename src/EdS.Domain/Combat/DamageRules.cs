@@ -33,12 +33,22 @@ namespace EdS.Domain.Combat
         /// </summary>
         public long MinimumDamage { get; init; } = 1;
 
+        /// <summary>
+        /// Plafond des constantes de défense (10⁹), enveloppe technique provisoire de pré-alpha (correctif 6.1.1, CA-M01 A) :
+        /// avec une défense effective d'au plus <see cref="CombatantStats.MaxDefense"/>, le dénominateur
+        /// constante × 10 000 + défense brute reste sous 2 × 10¹³, très loin de la limite d'un entier 64 bits.
+        /// </summary>
+        public const long MaxDefenseConstant = 1_000_000_000;
+
         /// <summary>Liste des incohérences ; vide si les règles sont utilisables.</summary>
         public IReadOnlyList<RuleViolation> Validate()
         {
             var errors = new List<RuleViolation>();
-            if (ArmorConstant <= 0) errors.Add(new RuleViolation("doit être strictement positive.", nameof(ArmorConstant)));
-            if (MagicResistanceConstant <= 0) errors.Add(new RuleViolation("doit être strictement positive.", nameof(MagicResistanceConstant)));
+            foreach (var (value, name) in new[] { (ArmorConstant, nameof(ArmorConstant)), (MagicResistanceConstant, nameof(MagicResistanceConstant)) })
+            {
+                if (value <= 0) errors.Add(new RuleViolation("doit être strictement positive.", name));
+                else if (value > MaxDefenseConstant) errors.Add(new RuleViolation($"ne peut pas dépasser {MaxDefenseConstant} (limite technique provisoire).", name));
+            }
             if (MinCategoryMultiplier < Fixed.Zero)
                 errors.Add(new RuleViolation("ne peut pas être négatif : le multiplicateur final ne doit jamais l'être.", nameof(MinCategoryMultiplier)));
             if (MaxCategoryMultiplier < MinCategoryMultiplier)

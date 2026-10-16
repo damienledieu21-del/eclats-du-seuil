@@ -18,13 +18,13 @@ namespace EdS.Domain.Combat
         /// <summary>Durée d'un tick logique (50 ms validés ; 20 ms à l'essai plus tard).</summary>
         public int TickMilliseconds { get; init; } = TickRate.DefaultMillisecondsPerTick;
 
-        /// <summary>Temps global de recharge après chaque compétence lancée (A6). 0 = aucun.</summary>
+        /// <summary>Temps global de recharge après chaque compétence lancée (A6). 0 = aucun ; au plus <see cref="AbsoluteMaxDurationMs"/>.</summary>
         public long GlobalCooldownMs { get; init; } = 1000;
 
         /// <summary>Endurance regagnée par seconde (A3), en points entiers.</summary>
         public int EnduranceRegenPerSecond { get; init; } = 10;
 
-        /// <summary>Temps sans dépense d'endurance avant que la régénération démarre (A3).</summary>
+        /// <summary>Temps sans dépense d'endurance avant que la régénération démarre (A3) ; au plus <see cref="AbsoluteMaxDurationMs"/>.</summary>
         public long EnduranceRegenDelayMs { get; init; } = 1000;
 
         /// <summary>Durée maximale d'un combat simulé : borne le nombre de ticks.</summary>
@@ -81,7 +81,10 @@ namespace EdS.Domain.Combat
         /// <summary>Augmentation des dégâts directs reçus sous Fragilité (A19 : 0.1 = +10 %), catégorie « altération ».</summary>
         public Fixed FragilityDamageTakenIncrease { get; init; } = Fixed.FromRatio(1, 10);
 
-        /// <summary>Plafond absolu de <see cref="MaxDurationMs"/> (24 h), pour que les compteurs de ticks restent petits.</summary>
+        /// <summary>
+        /// Plafond absolu (24 h) de <see cref="MaxDurationMs"/> et de toutes les durées des règles et des compétences, pour que
+        /// les compteurs de ticks restent petits. Enveloppe technique provisoire de pré-alpha, pas une valeur d'équilibrage.
+        /// </summary>
         public const long AbsoluteMaxDurationMs = 86_400_000;
 
         public TickRate Tick => new TickRate(TickMilliseconds);
@@ -111,7 +114,10 @@ namespace EdS.Domain.Combat
             Duration(ParryWindowMs, nameof(ParryWindowMs), true);
             Duration(ParryFailureRecoveryMs, nameof(ParryFailureRecoveryMs), false);
             Duration(FragilityDurationMs, nameof(FragilityDurationMs), true);
-            foreach (var (value, name) in new[] { (GuardBreakDurationMs, nameof(GuardBreakDurationMs)), (ParryWindowMs, nameof(ParryWindowMs)),
+            // Correctif 6.1.1 (CA-M01 C et D) : la recharge globale et le délai de régénération sont bornés comme les autres
+            // durées. Avec un tick de 1 ms, dernier tick possible + délai en ticks ≤ 2 × 86 400 000 : très loin de 2⁶³.
+            foreach (var (value, name) in new[] { (GlobalCooldownMs, nameof(GlobalCooldownMs)), (EnduranceRegenDelayMs, nameof(EnduranceRegenDelayMs)),
+                (GuardBreakDurationMs, nameof(GuardBreakDurationMs)), (ParryWindowMs, nameof(ParryWindowMs)),
                 (ParryFailureRecoveryMs, nameof(ParryFailureRecoveryMs)), (FragilityDurationMs, nameof(FragilityDurationMs)) })
                 if (value > AbsoluteMaxDurationMs)
                     errors.Add(new RuleViolation($"ne peut pas dépasser {AbsoluteMaxDurationMs} ms (24 h).", name));

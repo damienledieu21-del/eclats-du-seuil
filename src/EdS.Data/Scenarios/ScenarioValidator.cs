@@ -73,6 +73,7 @@ namespace EdS.Data.Scenarios
                 {
                     RuleViolationKind.UnknownReference => ValidationCode.UnknownReference,
                     RuleViolationKind.DuplicateId => ValidationCode.DuplicateId,
+                    RuleViolationKind.NumericLimit => ValidationCode.OutOfRange,
                     _ => ValidationCode.InvalidValue,
                 };
                 foreach (string field in violation.Fields) report.Add(root + "." + field, code, violation.Message);

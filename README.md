@@ -64,6 +64,8 @@ Arbitrages du lot 6 : garde en posture (`guardStart`/`guardStop`), −60 % aprè
 
 Correctif 6.1 (stabilisation, avant le lot 7) : entretien de garde cumulé sur tout le combat, identité et génération des états temporaires, validateurs sans dépassement, limites numériques vérifiées avant le premier tick, collections figées, formats de règles et de classes en version 2 sans migration garantie (pré-alpha), moteur 0.6.1 et journal au format 2. Contrat de limites du lot 7 : [docs/LIMITES_LOT_7.md](docs/LIMITES_LOT_7.md).
 
+Correctif 6.1.1 (contre-audit CA-M01) : précontrôle numérique étendu aux défenses réelles de tous les participants, personnages compris, et aux deux types de dégâts ; constantes de défense bornées à 10⁹ ; recharge globale et délai de régénération bornés à 86 400 000 ms. Ces plafonds sont des enveloppes techniques provisoires de pré-alpha, distinctes des paramètres d'équilibrage et des capacités mesurées. Aucun changement de journal pour les scénarios de référence.
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement

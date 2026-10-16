@@ -13,7 +13,8 @@ namespace EdS.Simulation.Tests.Regression;
 /// Correctif 6.1, M04 : les limites numériques sont vérifiées par <see cref="CombatSetup.Validate"/>, avant toute
 /// construction de l'état du combat. Avant, des dégâts bruts supérieurs à la capacité de <c>Fixed.FromInt</c> passaient
 /// la validation puis faisaient échouer la construction du moteur (exception non prévue) ; un combat accepté peut
-/// désormais toujours être construit et simulé, et un combat refusé l'est avant le premier tick, sans rien journaliser.
+/// désormais toujours être construit, et un combat refusé l'est avant le premier tick, sans rien journaliser. La simulation
+/// elle-même n'est protégée que pour les calculs recensés par le précontrôle (complété au correctif 6.1.1, voir CaM01NumericEnvelopeTests).
 /// </summary>
 [Trait("Category", "Engine")]
 [Trait("Category", "Regression")]

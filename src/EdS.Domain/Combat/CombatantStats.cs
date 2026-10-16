@@ -8,7 +8,9 @@ namespace EdS.Domain.Combat
     /// <summary>
     /// Statistiques de départ de chaque type de combattant, calculées de la même façon par la validation du combat
     /// et par le moteur (correctif 6.1, M04) : ce que <see cref="CombatSetup.Validate"/> a pu calculer, le moteur le
-    /// calcule à l'identique, si bien qu'un combat accepté ne peut plus échouer à sa construction.
+    /// calcule à l'identique, si bien qu'un combat accepté ne peut pas échouer à sa construction pour ces calculs. Les bornes
+    /// ci-dessous sont des enveloppes techniques provisoires de pré-alpha, pas des valeurs d'équilibrage ni des capacités
+    /// mesurées (voir docs/MOTEUR.md, « Limites »).
     /// </summary>
     public static class CombatantStats
     {
