@@ -70,6 +70,8 @@ Correctif 6.1.1 (contre-audit CA-M01) : précontrôle numérique étendu aux dé
 
 Sous-lot 7.2 (altérations) : catalogue d'altérations en données (`statuses` de `rules.json`, schéma 4) ; brûlure et saignement, DOT de 6 s toutes les 2 s, réduits par la résistance magique ou l'armure relue à chaque tick, sans critique, renouvelés par source à la plus forte puissance en gardant leur cadence ; étourdissement de 1,5 s qui bloque les actions et interrompt garde et parade, suivi de 3 s d'immunité ; gel de 4 s (−30 % de déplacement enregistré, ne bloque rien) ; résistance aux altérations qui réduit la durée des contrôles (K = 1000) ; Fragilité et rupture de garde migrées sans changement de comportement ; moteur 0.8.0, journal au format 3. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#altérations-a12-à-a15-a19-a23--sous-lot-72).
 
+Correctif 7.2 (arbitrages après revue du sous-lot 7.2) : étourdissement en cumul `ignore` (refus `active`, immunité toujours accordée à l'expiration sauf décès) ; DOT à cadence d'origine avec fin effective alignée sur les ticks et journalisée (`untilTick`, `nextTick`) ; une parade parfaite empêche les altérations de l'impact paré (`parried`), pas la garde normale ni les attaques imparables ; budgets inchangés (1000 événements par tick, 100 000 en file) et contrôle prudent de saturation de la file avant le premier tick ; résistance K = 1000 et +2 par point de Volonté conservées ; DOT maintenus après la mort de leur source. Provenance causale des altérations pour le sous-lot 7.3 : [docs/LIMITES_LOT_7.md](docs/LIMITES_LOT_7.md#provenance-causale-des-altérations-préparation-du-sous-lot-73-correctif-72). Moteur 0.8.1, journal au format 3.
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -82,4 +84,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 5 — moteur de simulation minimal (horloge, commandes, recharges, endurance, dégâts directs, journal, rejeu)
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
-- [ ] Lot 7 — en cours : sous-lot 7.1 (limites, budgets, capacités mesurées) et sous-lot 7.2 (altérations) en revue ; déclencheurs (7.3) à venir
+- [ ] Lot 7 — en cours : sous-lots 7.1 (limites, budgets, capacités mesurées) et 7.2 (altérations) faits, correctif 7.2 en revue ; déclencheurs (7.3) à venir

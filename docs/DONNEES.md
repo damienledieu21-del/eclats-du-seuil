@@ -23,10 +23,12 @@ Identifiants stables utilisés comme clés : attributs `force`, `dexterite`, `in
 `data.statuses` est une liste **ordonnée** de définitions (au plus 64) : l'ordre fixe la priorité des motifs de refus (la première altération bloquante l'emporte) et entre dans l'empreinte. Champs obligatoires : `id`, `category` (`dot`, `control`, `modifier`, `immunity`), `durationMs`, `stacking` (`refresh`, `perSourceKeepStronger`, `keepLonger`, `ignore`), `resistance` (`none`, `defense`, `duration`). Champs facultatifs, à valeur neutre s'ils sont absents : `periodMs` et `damageType` (DOT), `blocks` (`skills`, `guard`, `parry`, `regeneration`, `assailantAttacks`), `interrupts` (`guard`, `parry`), `blockReason`, `damageTakenIncrease` (0 à 10), `movementSpeedModifier` (−1 à 1), `grantsOnExpiry`, `immuneTo`.
 
 ```json
-{ "id": "stun", "category": "control", "durationMs": 1500, "stacking": "keepLonger", "resistance": "duration",
+{ "id": "stun", "category": "control", "durationMs": 1500, "stacking": "ignore", "resistance": "duration",
   "blocks": ["skills", "guard", "parry", "assailantAttacks"], "interrupts": ["guard", "parry"],
   "blockReason": "stunned", "grantsOnExpiry": "stunImmunity" }
 ```
+
+Correctif 7.2 (contenu `0.4.1-provisoire`) : l'étourdissement passe de `keepLonger` à `ignore` ; un étourdissement actif refuse toute nouvelle application, ce qui garantit son expiration et l'immunité qui la suit.
 
 Cohérence vérifiée par `StatusCatalog.Validate` (seule validation de gameplay), erreurs rattachées à `$.data.statuses[i].champ` : identifiants uniques ; durée positive, multiple du tick, au plus 24 h ; un DOT a une période multiple du tick qui divise sa durée, un type de dégâts, le cumul par source et la résistance `none` ou `defense`, et lui seul a période, type de dégâts, cumul par source ou résistance `defense` ; seul un contrôle a la résistance `duration` ; une altération qui bloque a un `blockReason` (et réciproquement) ; seule une immunité a `immuneTo`, qui désigne au moins une altération existante, sans doublon ni immunité ; un état accordé existe, n'est ni un DOT ni l'altération elle-même et n'accorde rien à son tour (profondeur 1). `combat.guard.breakStatus` désigne une altération existante, ni DOT ni immunité.
 

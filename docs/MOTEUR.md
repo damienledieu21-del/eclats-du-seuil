@@ -1,4 +1,4 @@
-# Moteur de simulation (lots 5 et 6, correctif 6.1, sous-lots 7.1 et 7.2)
+# Moteur de simulation (lots 5 et 6, correctif 6.1, sous-lots 7.1 et 7.2, correctif 7.2)
 
 Moteur de combat déterministe, sans Unity, sans réseau et sans horloge système. Code : `src/EdS.Simulation/Engine`. Toutes les valeurs sont **provisoires**.
 
@@ -85,6 +85,8 @@ Rupture de garde : altération désignée par `combat.guard.breakStatus` (`guard
 
 Attaque **imparable** (`unblockable`) : ignore la garde et la parade (`defense: "unblockable"`), aucun coût ni récompense ; une fenêtre traversée par un seul impact imparable se termine en échec.
 
+Altérations portées par l'impact (correctif 7.2) : un impact **paré** (parade parfaite réussie, `defense: "parry"`) n'applique aucune de ses altérations ; chacune écrit `stateBlocked` avec `reason: "parried"` et la source de l'impact. Un impact bloqué par la garde normale et un impact imparable appliquent toutes leurs altérations.
+
 ## Ressources (A4, A5)
 
 Propres aux personnages, à zéro au début de chaque combat, remises à zéro à la fin (après le résumé, qui donne la valeur finale). Tout gain passe par `resourceGained` (`resource`, `source`, `amount` réellement gagné, `wasted` perdu au plafond, `value`). Un gain ne déclenche jamais un autre gain.
@@ -101,7 +103,7 @@ Les altérations sont des **données** : bloc `statuses` de `rules.json` (voir [
 |---|---|---|---|---|---|
 | `burn` | `dot` | dégâts magiques toutes les 2 s | 6 s | par source, plus forte puissance | résistance magique (chaque tick) |
 | `bleed` | `dot` | dégâts physiques toutes les 2 s | 6 s | par source, plus forte puissance | armure (chaque tick) |
-| `stun` | `control` | bloque compétences, garde, parade et attaques d'assaillant ; interrompt garde et parade ; accorde `stunImmunity` à l'expiration | 1,5 s | garde la fin la plus tardive | durée |
+| `stun` | `control` | bloque compétences, garde, parade et attaques d'assaillant ; interrompt garde et parade ; accorde `stunImmunity` à l'expiration | 1,5 s | ignoré si actif (`active`) | durée |
 | `stunImmunity` | `immunity` | immunité à `stun` | 3 s | ignorée si active | aucune |
 | `freeze` | `control` | −30 % de vitesse de déplacement, enregistrée sans simulation du déplacement ; ne bloque rien | 4 s | garde la fin la plus tardive | durée |
 | `fragility` | `modifier` | +10 % de dégâts directs reçus (catégorie « altération » de la formule) | 6 s | renouvelle | aucune |
@@ -114,6 +116,10 @@ Application, dans cet ordre (une issue refusée écrit `stateBlocked` avec `reas
 3. aucune instance pour la clé (altération, et source pour un cumul par source) : nouvelle instance ;
 4. sinon, selon le cumul : `refresh` et `perSourceKeepStronger` renouvellent ; `keepLonger` renouvelle seulement si la nouvelle fin est plus tardive (`notLonger` sinon) ; `ignore` refuse (`active`).
 
+Un impact paré (parade parfaite) refuse toutes ses applications avant ces étapes (`parried`, correctif 7.2).
+
+Étourdissement (correctif 7.2) : en cumul `ignore`, un étourdissement actif refuse toute nouvelle application (`stateBlocked`, `active`), quelle qu'en soit la source ; il n'est jamais prolongé. Son expiration accorde donc toujours `stunImmunity` (même source, même étape), sauf s'il est retiré par la mort de sa cible (`stateRemoved`, `death`), qui n'accorde rien. Un étourdissement tenté au tick même de l'expiration trouve l'immunité déjà active (phase 1) : `immune`.
+
 Durée d'un contrôle à résistance `duration` (A14, A23) : r = K / (K + résistance aux altérations), K = `stats.statusResistanceConstant` (1000), calculé en virgule fixe arrondie vers le bas, puis ⌊ ticks de base × r ⌋. Les personnages tirent leur résistance de la Volonté (2 par point : 20 pour 10 de Volonté, r = 0,9803, étourdissement de 29 ticks) ; mannequins et assaillants ont `statusResistance` (0 par défaut). La résistance aux altérations ne réduit ni les dégâts des DOT ni la durée des altérations sans résistance (immunité, Fragilité, rupture).
 
 DOT (A12, décisions 1, 2, 4, 11) :
@@ -121,12 +127,14 @@ DOT (A12, décisions 1, 2, 4, 11) :
 - puissance figée à l'application : puissance du type de l'altération de la source (dégâts bruts pour un assaillant) × coefficient de l'application (`applies[].coefficient`, obligatoire pour un DOT et interdit sinon) ;
 - dégâts de chaque tick : puissance réduite par la défense **actuelle** de la cible pour le type de l'altération, relue à chaque tick ; ni critique, ni Fragilité (dégâts directs seulement), ni garde, ni parade, ni Résonance, ni compteur de coups ; crédités à la source, même morte ;
 - premier tick à application + période ; le dernier est le premier tick dont le suivant dépasserait la fin : il inflige ses dégâts puis expire l'instance dans la même étape (6 s toutes les 2 s : exactement 3 ticks) ;
-- renouvellement par la même source : même instance, plus forte des deux puissances, fin repoussée, **cadence d'origine conservée**. Une prolongation qui ne couvre pas un tick de plus n'en ajoute pas : l'instance expire alors à son dernier tick, avant l'échéance nominale journalisée ;
+- renouvellement par la même source : même instance, plus forte des deux puissances, **cadence d'origine conservée** ;
+- fin effective (correctif 7.2) : à chaque application, la fin demandée (tick + durée) est alignée sur la cadence, prochain tick + ⌊ (fin demandée − prochain tick) / période ⌋ × période. C'est elle que journalise `untilTick`, avec `nextTick` (prochain tick de dégâts) ; elle est égale au tick du dernier tick de dégâts et de `stateExpired`. Exemple : brûlure au tick 20 (ticks 60, 100, 140), renouvelée au tick 50 : fin demandée 170, fin effective 140 ; renouvelée au tick 70 : fin demandée 190, prochain tick 100, fin effective 180. Une prolongation qui ne couvre pas un tick de plus ne change donc pas la fin ;
+- renouvellement au tick même du dernier tick (résolution avant la phase périodique) : l'instance continue ; un tick plus tard, elle a expiré et l'application crée une nouvelle instance ;
 - deux sources : deux instances indépendantes ; une instance expirée puis réappliquée est une nouvelle instance.
 
 Interruptions : un contrôle qui interrompt la garde ou la parade les termine après sa ligne `stateApplied` (`guardStopped` avec `command: null`, `reason: "interrupted"`, `state` ; `parryEnded` `success` si la parade venait de réussir, `interrupted` sinon). Un assaillant sous une altération qui bloque ses attaques saute son tour (`attackSkipped` avec le motif) ; l'attaque suivante de sa liste et sa cadence ne changent pas.
 
-Journal (format 3) : `stateApplied` (`combatant`, `state`, `category`, `source`, `instance`, `generation`, `untilTick` exclu, `renewed`, `power` pour un DOT, `movementSpeedModifier` s'il est non nul), `stateExpired` et `stateRemoved` (mêmes six premiers champs ; `reason` pour le retrait), `stateBlocked` (`combatant`, `state`, `category`, `source`, `reason`), `dotDamage` (`source`, `target`, `state`, `instance`, `amount`, `overkill`, `health`, `damageTaken`). La source de la rupture d'entretien est `null`.
+Journal (format 3) : `stateApplied` (`combatant`, `state`, `category`, `source`, `instance`, `generation`, `untilTick` exclu — pour un DOT, la fin effective —, `renewed`, `power` et `nextTick` pour un DOT, `movementSpeedModifier` s'il est non nul), `stateExpired` et `stateRemoved` (mêmes six premiers champs ; `reason` pour le retrait), `stateBlocked` (`combatant`, `state`, `category`, `source`, `reason` : `immune`, `resisted`, `active`, `notLonger`, `parried`), `dotDamage` (`source`, `target`, `state`, `instance`, `amount`, `overkill`, `health`, `damageTaken`). La source de la rupture d'entretien est `null`.
 
 ### Contrat des états temporaires (correctif 6.1, M02 ; étendu au sous-lot 7.2)
 
@@ -153,6 +161,7 @@ PV infinis, défenses configurables, n'obéit à aucune commande. Il attaque à 
 
 - `combat.limits.maxDurationMs` (600 000) : durée maximale d'un scénario ; plafond absolu du format 86 400 000.
 - Admission (sous-lot 7.1), par `CombatSetup.Validate`, avant tout journal : au plus `combat.limits.maxCombatants` combattants (64), `maxCommands` commandes (20 000), `maxCommandsPerActorPerTick` commandes d'un même acteur au même tick (4) ; les événements initiaux (commandes et premiers tours d'assaillant avant la fin) doivent tenir dans `maxPendingEvents` (100 000). Code `LimitExceeded`.
+- Contrôle prudent de saturation (correctif 7.2), par `CombatSetup.Validate`, après l'admission : le majorant `CombatSetup.ComputeQueueBound()` (événements initiaux + ticks de DOT programmés + échéances d'altérations vivantes) doit tenir dans `maxPendingEvents` ; sinon refus `LimitExceeded` sur `combatants`, avant tout journal. Le majorant tient compte de la cadence réelle des assaillants, des commandes et recharges des personnages, et du cumul de chaque altération ; une altération jamais appliquée ne compte pas. L'arrêt `queueLimitExceeded` reste un filet de sécurité, inatteignable pour un combat validé. Détail et mesures : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#contrôle-prudent-de-saturation-de-la-file-correctif-72).
 - Budgets d'exécution (sous-lot 7.1) : `combat.limits.maxWorkPerTick` (10 000 unités de travail par tick) et `maxPendingEvents` (taille de la file). Chaque traitement (échéance, retrait, commande, action entière avec toutes ses cibles, passage d'un combattant dans une phase balayée) réserve son coût exact **avant toute mutation** ; si un budget serait dépassé, arrêt propre `simulationAborted` (`workBudgetExceeded` ou `queueLimitExceeded`, champ `limit`) sans effet partiel du traitement refusé. Ordre de vérification : travail, file, lignes. Modèle de coût et limites d'atomicité restantes : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#consommation-des-budgets).
 - Pics de charge (sous-lot 7.1) : `CombatResult.Peaks` (travail et lignes maximaux en un tick, taille maximale de la file) et la ligne `charge` du résumé de `eds simulate`. Ils ne sont pas écrits dans le journal (format inchangé). `CombatEngine.LastTickWork` et `LastTickEvents` donnent le coût du dernier tick simulé, pour le diagnostic.
 - `combat.limits.maxEventsPerTick` (1000, au plus `maxWorkPerTick`) : budget des **événements de simulation comptés** dans un tick (phases 1 à 6) ; au-delà, arrêt propre `simulationAborted` (`eventBudgetExceeded`). Ce n'est pas un plafond de lignes du journal : l'en-tête et les lignes `combatant` (initialisation), `simulationAborted` (arrêt), `combatantSummary` et `combatEnded` (finalisation) ne sont pas comptés. Elles restent bornées par le nombre de combattants (1 + N à l'initialisation, au plus 2 + N à la fin) ; leur enveloppe propre est fixée dans le contrat du lot 7.
@@ -176,14 +185,14 @@ Une ligne JSON par événement, UTF-8 sans BOM, séparateur `\n`, champs dans un
 Première ligne, l'en-tête :
 
 ```json
-{"type":"header","format":"eds-combat-log","formatVersion":3,"engineVersion":"0.8.0","tickMs":50,
+{"type":"header","format":"eds-combat-log","formatVersion":3,"engineVersion":"0.8.1","tickMs":50,
  "data":{"rules":{"contentVersion":"…","fingerprint":"sha256:…"},"classes":[{"id":"class.bastion","contentVersion":"…","fingerprint":"sha256:…"}]},
  "scenario":{…scénario complet…}}
 ```
 
 Puis les événements : `{"tick":0,"seq":2,"phase":"commands","event":"skillCast",…}`. `seq` est le numéro global de la ligne d'événement.
 
-Événements : `combatant`, `cooldownReady`, `skillCast`, `commandRejected`, `guardStarted`, `guardStopped`, `guardUpkeep`, `guardBroken`, `blocked`, `parryStarted`, `parrySucceeded`, `parryEnded`, `attackStarted`, `attackSkipped`, `damage` (avec `fragile` et `defense` : `none`, `guard`, `guardBroken`, `parry`, `unblockable`), `resourceGained`, `stateApplied`, `stateExpired`, `stateRemoved`, `stateBlocked`, `dotDamage`, `enduranceRegenerated`, `died`, `simulationAborted`, `combatantSummary` (avec blocages, parades, ruptures, Résonance et Charges), `combatEnded`. Version du moteur : `0.8.0` (sous-lot 7.2). Format du journal : 3 depuis le sous-lot 7.2 (`category` et `source` sur les lignes d'état, `applies` sur `attackStarted` à la place de `appliesFragility`, `stateBlocked`, `dotDamage`) ; les journaux de référence 0.7.0 restent identiques une fois ces champs retirés (`Lot72MigrationTests`). Un journal d'un format antérieur est refusé au rejeu, sans migration (pré-alpha), avant toute lecture du scénario de l'en-tête.
+Événements : `combatant`, `cooldownReady`, `skillCast`, `commandRejected`, `guardStarted`, `guardStopped`, `guardUpkeep`, `guardBroken`, `blocked`, `parryStarted`, `parrySucceeded`, `parryEnded`, `attackStarted`, `attackSkipped`, `damage` (avec `fragile` et `defense` : `none`, `guard`, `guardBroken`, `parry`, `unblockable`), `resourceGained`, `stateApplied`, `stateExpired`, `stateRemoved`, `stateBlocked`, `dotDamage`, `enduranceRegenerated`, `died`, `simulationAborted`, `combatantSummary` (avec blocages, parades, ruptures, Résonance et Charges), `combatEnded`. Version du moteur : `0.8.1` (correctif 7.2 : étourdissement en `ignore`, fin effective des DOT et `nextTick`, altérations empêchées par la parade parfaite, contrôle de saturation ; format de journal inchangé). Format du journal : 3 depuis le sous-lot 7.2 (`category` et `source` sur les lignes d'état, `applies` sur `attackStarted` à la place de `appliesFragility`, `stateBlocked`, `dotDamage`) ; les journaux de référence 0.7.0 restent identiques une fois ces champs retirés (`Lot72MigrationTests`). Un journal d'un format antérieur est refusé au rejeu, sans migration (pré-alpha), avant toute lecture du scénario de l'en-tête.
 
 ## Rejeu
 
