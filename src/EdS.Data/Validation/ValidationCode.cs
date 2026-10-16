@@ -53,5 +53,8 @@ namespace EdS.Data.Validation
 
         /// <summary>Fichier plus gros que la limite de taille des lecteurs (lot 7.1) ; refusé avant toute lecture du contenu.</summary>
         FileTooLarge,
+
+        /// <summary>Avertissement (lot 7.3) : cycle statique entre déclencheurs, arrêté en combat par la règle de cycle et la profondeur.</summary>
+        TriggerCycle,
     }
 }

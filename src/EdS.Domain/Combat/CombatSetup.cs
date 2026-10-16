@@ -43,6 +43,50 @@ namespace EdS.Domain.Combat
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
             Build = build ?? throw new ArgumentNullException(nameof(build));
         }
+
+        /// <summary>
+        /// Lot 7.3 : déclencheurs permanents actifs avec ce build : talents de rang ≥ 1 (valeurs à leur rang), passifs équipés,
+        /// actives et ultime équipées (Q2). Dans l'ordre de la classe ; le moteur trie les abonnés selon l'ordre total (§5.4).
+        /// Une référence inconnue (build invalide) est ignorée : la validation du build la signale.
+        /// </summary>
+        public IEnumerable<BoundTrigger> ActiveTriggers()
+        {
+            foreach (TalentTreeDefinition tree in Class.Trees)
+                foreach (TalentDefinition talent in tree.Talents)
+                    if (Build.TalentRanks.TryGetValue(talent.Id, out int rank) && rank >= 1)
+                        for (int k = 0; k < talent.Triggers.Count; k++)
+                            yield return new BoundTrigger(TriggerOrigin.Talent, talent.Id, k, rank, talent.Triggers[k]);
+            var equipped = new HashSet<string>(Build.ActiveSkills.Concat(Build.PassiveSkills), StringComparer.Ordinal);
+            if (Build.Ultimate != null) equipped.Add(Build.Ultimate);
+            foreach (SkillDefinition skill in Class.Skills)
+                if (equipped.Contains(skill.Id))
+                    for (int k = 0; k < skill.Triggers.Count; k++)
+                        yield return new BoundTrigger(skill.Kind == SkillKind.Passive ? TriggerOrigin.Passive : TriggerOrigin.Skill, skill.Id, k, 1, skill.Triggers[k]);
+        }
+    }
+
+    /// <summary>
+    /// Lot 7.3 : déclencheur rattaché à son origine (talent, compétence, assaillant) avec le rang qui fixe ses valeurs. L'identité
+    /// journalisée est <c>définition/indice@porteur#instance</c> ; l'instance n'est connue qu'en combat (altérations).
+    /// </summary>
+    public readonly struct BoundTrigger
+    {
+        public TriggerOrigin Origin { get; }
+        public string DefinitionId { get; }
+        public int Index { get; }
+        public int Rank { get; }
+        public TriggerDefinition Definition { get; }
+
+        public BoundTrigger(TriggerOrigin origin, string definitionId, int index, int rank, TriggerDefinition definition)
+        {
+            Origin = origin;
+            DefinitionId = definitionId ?? throw new ArgumentNullException(nameof(definitionId));
+            Index = index;
+            Rank = rank;
+            Definition = definition ?? throw new ArgumentNullException(nameof(definition));
+        }
+
+        public string Label => $"{DefinitionId}/{Index}";
     }
 
     /// <summary>Mannequin d'entraînement : PV infinis, défenses configurables, n'agit jamais.</summary>
@@ -116,10 +160,17 @@ namespace EdS.Domain.Combat
         public long IntervalMs { get; }
         public IReadOnlyList<AssailantAttack> Attacks { get; }
 
+        /// <summary>Déclencheurs déclarés par le scénario (lot 7.3, Q4), pour tester sans classe ; définition <c>assailant.{id}</c>.</summary>
+        public IReadOnlyList<TriggerDefinition> Triggers { get; }
+
+        /// <summary>Identifiant de définition des déclencheurs d'un assaillant, dans leur identité journalisée.</summary>
+        public string TriggerDefinitionId => "assailant." + Id;
+
         public AssailantSetup(string id, string team, Fixed armor, Fixed magicResistance, string? target, long firstAttackMs, long intervalMs,
-            IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default)
+            IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default, IEnumerable<TriggerDefinition>? triggers = null)
             : base(id, team, initiative)
         {
+            Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
             Armor = armor;
             MagicResistance = magicResistance;
             StatusResistance = statusResistance;
@@ -301,6 +352,9 @@ namespace EdS.Domain.Combat
             foreach (RuleViolation v in Progression.Validate()) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules.progression." + f).ToArray()));
             if (Combat.Statuses != null)
                 foreach (RuleViolation v in Combat.Statuses.Validate(Combat.TickMilliseconds)) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules." + f).ToArray()));
+            if (errors.Count == 0)
+                foreach (RuleViolation v in Combat.Statuses!.ValidateTriggers(Combat.TickMilliseconds, Combat.GuardBreakStatus))
+                    errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules." + f).ToArray()));
             if (errors.Count > 0) return errors;   // la suite dépend de règles cohérentes
 
             // Lot 7.1 : admission. Un scénario hors limites de volume est refusé sans analyser ses éléments un par un.
@@ -624,6 +678,9 @@ namespace EdS.Domain.Combat
             }
             if (a.Target is null && a.Attacks.Any(x => x.Targeting == SkillTargeting.Enemy))
                 errors.Add(new RuleViolation("une attaque à cible unique exige une cible pour l'assaillant.", path + ".target"));
+            // Lot 7.3 (Q4) : déclencheurs d'un assaillant de scénario, forme et références.
+            TriggerDefinition.ValidateList(a.Triggers, path + ".triggers", 1, false, errors);
+            TriggerDefinition.ValidateReferences(a.Triggers, path + ".triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, errors);
         }
 
         private void ValidateCharacter(CharacterSetup character, string path, long tick, List<RuleViolation> errors)
@@ -643,6 +700,47 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation(problem.StartsWith("altération inconnue", StringComparison.Ordinal) ? RuleViolationKind.UnknownReference : RuleViolationKind.InvalidValue,
                             $"compétence « {skill.Id} » : {problem}", path + ".class"));
             }
+            // Lot 7.3 : les déclencheurs de la classe désignent le catalogue et le tick des règles, connus seulement ici. Les chemins
+            // internes à la classe sont rattachés au combattant, comme les autres incohérences classe-règles.
+            var problems = new List<RuleViolation>();
+            for (int t = 0; t < character.Class.Trees.Count; t++)
+                for (int i = 0; i < character.Class.Trees[t].Talents.Count; i++)
+                    TriggerDefinition.ValidateReferences(character.Class.Trees[t].Talents[i].Triggers, $"trees[{t}].talents[{i}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, problems);
+            for (int k = 0; k < character.Class.Skills.Count; k++)
+                TriggerDefinition.ValidateReferences(character.Class.Skills[k].Triggers, $"skills[{k}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, problems);
+            foreach (RuleViolation v in problems)
+                errors.Add(new RuleViolation(v.Kind, $"classe « {character.Class.Id} », {string.Join(", ", v.Fields)} : {v.Message}", path + ".class"));
+        }
+
+        /// <summary>Lot 7.3 : y a-t-il au moins un déclencheur susceptible d'être actif dans ce combat ?</summary>
+        public bool HasTriggers =>
+            Combatants.Any(c => c is AssailantSetup { Triggers: { Count: > 0 } } || (c is CharacterSetup ch && ch.ActiveTriggers().Any()))
+            || Combat.Statuses.Definitions.Any(d => d.Triggers.Count > 0);
+
+        /// <summary>
+        /// Lot 7.3 (A15, Q1) : avertissements du contrôle statique des cycles, pour tous les déclencheurs que ce combat peut activer
+        /// (talents et compétences équipées des personnages, assaillants, altérations du catalogue). Jamais une erreur.
+        /// </summary>
+        public IReadOnlyList<RuleViolation> TriggerWarnings()
+        {
+            var named = new List<NamedTrigger>();
+            for (int i = 0; i < Combatants.Count; i++)
+            {
+                switch (Combatants[i])
+                {
+                    case CharacterSetup c:
+                        foreach (BoundTrigger b in c.ActiveTriggers())
+                            named.Add(new NamedTrigger($"{b.Label}@{c.Id}", $"combatants[{i}].class", b.Definition));
+                        break;
+                    case AssailantSetup a:
+                        for (int k = 0; k < a.Triggers.Count; k++)
+                            named.Add(new NamedTrigger($"{a.TriggerDefinitionId}/{k}@{a.Id}", $"combatants[{i}].triggers[{k}]", a.Triggers[k]));
+                        break;
+                }
+            }
+            foreach (NamedTrigger t in Combat.Statuses.NamedTriggers())
+                named.Add(new NamedTrigger(t.Label, "rules." + t.Path, t.Definition));
+            return TriggerGraph.Cycles(named, Combat.Statuses);
         }
 
         private static void Defense(Fixed value, string label, string path, List<RuleViolation> errors)
@@ -712,6 +810,12 @@ namespace EdS.Domain.Combat
                                     offenses[i].Add(new Offense($"compétence « {skill.Id} »", stats, combat.PowerType, combat.DamageType, combat.Coefficient, true));
                                     AddDotOffenses(offenses[i], $"compétence « {skill.Id} »", stats, combat.Applies);
                                 }
+                            // Lot 7.3 (§4.2) : frappes et DOT des réactions, à la puissance du porteur. Un personnage peut porter toute
+                            // altération du catalogue : ses déclencheurs comptent pour chacun.
+                            foreach (BoundTrigger bound in character.ActiveTriggers())
+                                AddTriggerOffenses(offenses[i], $"déclencheur « {bound.Label} »", stats, bound.Definition, bound.Rank);
+                            foreach (NamedTrigger named in Combat.Statuses.NamedTriggers())
+                                AddTriggerOffenses(offenses[i], $"déclencheur « {named.Label} »", stats, named.Definition, 1);
                             break;
                         case DummySetup dummy:
                             defenses[i] = CombatantStats.ForDefenses(Stats, dummy.Armor, dummy.MagicResistance, dummy.StatusResistance);
@@ -824,6 +928,23 @@ namespace EdS.Domain.Combat
                 if (Combat.Statuses.TryGet(application.Status, out StatusDefinition? definition) && definition.IsDot
                     && definition.DamageType is { } type && application.Coefficient is { } coefficient)
                     offenses.Add(new Offense($"altération « {definition.Id} » de {owner}", attacker, CombatantStats.PowerOf(type), type, coefficient, false));
+        }
+
+        /// <summary>
+        /// Lot 7.3 : une frappe de réaction est un impact sans critique (Q7) de coefficient × puissance du porteur ; un DOT appliqué par
+        /// réaction a pour puissance figée celle du porteur. Un porteur sans puissance (mannequin, assaillant) inflige le minimum de
+        /// dégâts des règles : il ne majore rien.
+        /// </summary>
+        private void AddTriggerOffenses(List<Offense> offenses, string owner, DerivedStats attacker, TriggerDefinition trigger, int rank)
+        {
+            foreach (TriggerEffect e in trigger.Effects)
+            {
+                if (e.Kind == TriggerEffectKind.Strike && e.Coefficient is { } coefficient && e.PowerType is { } power && e.DamageType is { } type)
+                    offenses.Add(new Offense($"frappe du {owner}", attacker, power, type, coefficient.At(rank), false));
+                else if (e.Kind == TriggerEffectKind.ApplyStatus && e.Status != null && e.Coefficient is { } dot
+                    && Combat.Statuses.TryGet(e.Status, out StatusDefinition? definition) && definition.IsDot && definition.DamageType is { } dotType)
+                    offenses.Add(new Offense($"altération « {definition.Id} » du {owner}", attacker, CombatantStats.PowerOf(dotType), dotType, dot.At(rank), false));
+            }
         }
 
         private string DefenseField(int index, DamageType type) => Combatants[index] is CharacterSetup

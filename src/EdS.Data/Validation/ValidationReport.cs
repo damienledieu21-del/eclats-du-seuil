@@ -24,7 +24,24 @@ namespace EdS.Data.Validation
         /// <summary>Erreurs détectées au-delà du plafond, comptées mais non conservées.</summary>
         public int OmittedCount => TotalCount - _errors.Count;
 
-        public ValidationReport() => Errors = _errors.AsReadOnly();
+        private readonly List<ValidationError> _warnings = new List<ValidationError>();
+
+        /// <summary>
+        /// Avertissements (lot 7.3 : cycles statiques de déclencheurs, A15) : ils n'empêchent pas le chargement et ne comptent pas
+        /// dans <see cref="TotalCount"/>. Au plus <see cref="InputLimits.MaxReportedErrors"/> conservés.
+        /// </summary>
+        public IReadOnlyList<ValidationError> Warnings { get; }
+
+        public ValidationReport()
+        {
+            Errors = _errors.AsReadOnly();
+            Warnings = _warnings.AsReadOnly();
+        }
+
+        public void AddWarning(string path, string message)
+        {
+            if (_warnings.Count < InputLimits.MaxReportedErrors) _warnings.Add(new ValidationError(path, ValidationCode.TriggerCycle, message));
+        }
         public bool IsValid => TotalCount == 0;
 
         public void Add(string path, ValidationCode code, string message, long? line = null)

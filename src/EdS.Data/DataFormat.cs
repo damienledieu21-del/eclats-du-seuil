@@ -10,17 +10,19 @@ namespace EdS.Data
     /// car le lot 6 avait changé ces formats sans incrémenter le numéro ; 3 (règles seulement) = lot 7.1, cinq limites
     /// d'admission et de budget dans <c>combat.limits</c>. Les classes restent en version 2 ; 4 (règles) et 3 (classes) = lot 7.2,
     /// bloc <c>statuses</c> (définitions des altérations), <c>stats.statusResistanceConstant</c>, <c>combat.guard.breakStatus</c>,
-    /// suppression des champs de Fragilité et de durée de rupture du bloc <c>combat</c> ; <c>combat.applies</c> dans les classes.</para>
+    /// suppression des champs de Fragilité et de durée de rupture du bloc <c>combat</c> ; <c>combat.applies</c> dans les classes ;
+    /// 5 (règles) et 4 (classes) = lot 7.3, déclencheurs : <c>combat.limits.maxTriggerDepth</c> et <c>statuses[].triggers</c> dans
+    /// les règles, <c>talents[].triggers</c> et <c>skills[].triggers</c> dans les classes.</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 4;
+        public const int RulesSchemaVersion = 5;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
-        public const int ClassSchemaVersion = 3;
+        public const int ClassSchemaVersion = 4;
 
         /// <summary>Version de contenu des règles livrées : provisoires, non équilibrées.</summary>
-        public const string ProvisionalRulesContentVersion = "0.4.1-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.5.0-provisoire";
     }
 }

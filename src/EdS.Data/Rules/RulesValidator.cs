@@ -46,7 +46,14 @@ namespace EdS.Data.Rules
                 foreach (RuleViolation violation in statuses.Validate(combat.TickMilliseconds))
                     foreach (string field in violation.Fields)
                         report.Add("$.data." + field, CodeOf(violation.Kind), violation.Message);
+            // Lot 7.3 : références des déclencheurs portés par les altérations, puis cycles statiques en avertissements (A15).
+            if (report.IsValid)
+                foreach (RuleViolation violation in statuses.ValidateTriggers(combat.TickMilliseconds, combat.GuardBreakStatus))
+                    foreach (string field in violation.Fields)
+                        report.Add("$.data." + field, CodeOf(violation.Kind), violation.Message);
             if (!report.IsValid) return new RulesLoadResult(report, null);
+            foreach (RuleViolation warning in TriggerGraph.Cycles(statuses.NamedTriggers(), statuses))
+                foreach (string field in warning.Fields) report.AddWarning("$.data." + field, warning.Message);
 
             int schemaVersion = document.SchemaVersion!.Value;
             var rules = new LoadedRules(schemaVersion, document.ContentVersion!, RulesFingerprint.Compute(schemaVersion, document), stats, damage, progression, combat);
@@ -201,6 +208,7 @@ namespace EdS.Data.Rules
                 MaxCommandsPerActorPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxCommandsPerActorPerTick))),
                 MaxPendingEvents = (int)Int(d, P(c, nameof(CombatRules.MaxPendingEvents))),
                 MaxWorkPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxWorkPerTick))),
+                MaxTriggerDepth = (int)Int(d, P(c, nameof(CombatRules.MaxTriggerDepth))),
                 GuardDamageReduction = Dec(d, P(c, nameof(CombatRules.GuardDamageReduction))),
                 GuardUpkeepPerSecond = (int)Int(d, P(c, nameof(CombatRules.GuardUpkeepPerSecond))),
                 GuardCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.GuardCostPerBlock))),

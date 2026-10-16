@@ -126,6 +126,8 @@ namespace EdS.Domain.Builds
                         errors.Add(new RuleViolation($"le rang maximum doit être compris entre 1 et {TalentDefinition.MaxRankLimit}.", path + ".maxRank"));
                     if (talent.IsMajor && talent.MaxRank != 1)
                         errors.Add(new RuleViolation("un talent majeur a un seul rang (1 point pour l'acquérir).", path + ".maxRank"));
+                    // Lot 7.3 : déclencheurs du talent, valeurs bornées à chacun de ses rangs.
+                    Combat.TriggerDefinition.ValidateList(talent.Triggers, path + ".triggers", talent.MaxRank, true, errors);
                 }
             }
 
@@ -167,9 +169,24 @@ namespace EdS.Domain.Builds
                     errors.Add(new RuleViolation($"une ultime ne peut pas être disponible avant le niveau {progression.UltimateUnlockLevel}.", path + ".minLevel"));
                 CheckRequirements(skill.TalentRequirements, path + ".talentRequirements", errors, null);
                 if (skill.Combat is { } combat) CheckCombat(skill, combat, path + ".combat", errors);
+                Combat.TriggerDefinition.ValidateList(skill.Triggers, path + ".triggers", 1, false, errors);
             }
 
             return errors;
+        }
+
+        /// <summary>Lot 7.3 : déclencheurs de la classe nommés pour le graphe statique (A15), dans l'ordre du fichier.</summary>
+        public IReadOnlyList<Combat.NamedTrigger> NamedTriggers()
+        {
+            var named = new List<Combat.NamedTrigger>();
+            for (int t = 0; t < Trees.Count; t++)
+                for (int i = 0; i < Trees[t].Talents.Count; i++)
+                    for (int k = 0; k < Trees[t].Talents[i].Triggers.Count; k++)
+                        named.Add(new Combat.NamedTrigger($"{Trees[t].Talents[i].Id}/{k}", $"trees[{t}].talents[{i}].triggers[{k}]", Trees[t].Talents[i].Triggers[k]));
+            for (int s = 0; s < Skills.Count; s++)
+                for (int k = 0; k < Skills[s].Triggers.Count; k++)
+                    named.Add(new Combat.NamedTrigger($"{Skills[s].Id}/{k}", $"skills[{s}].triggers[{k}]", Skills[s].Triggers[k]));
+            return named;
         }
 
         private static void CheckCombat(SkillDefinition skill, SkillCombatDefinition combat, string path, List<RuleViolation> errors)

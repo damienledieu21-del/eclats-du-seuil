@@ -49,6 +49,9 @@ namespace EdS.Data.Scenarios
         public long? IntervalMs { get; set; }
         public List<AttackData?>? Attacks { get; set; }
 
+        /// <summary>Déclencheurs d'un assaillant (lot 7.3, Q4) ; facultatifs.</summary>
+        public List<Triggers.TriggerData?>? Triggers { get; set; }
+
         /// <summary>Champs effectivement présents dans le fichier, pour refuser ceux qui ne conviennent pas au type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

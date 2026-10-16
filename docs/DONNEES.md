@@ -57,10 +57,10 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
 `sha256:…` calculée sur une écriture canonique (version de schéma, puis chaque paramètre dans l'ordre du catalogue). Indépendante des espaces, de l'ordre des clés et de l'écriture des nombres (`2` = `2.0`) ; ignore `contentVersion`. Valeur actuelle de `data/v0/rules.json` :
 
 ```
-sha256:5dcac2fecd9130d8871d44cfa3768d736f98dae10190428bcc62b31c1ffb2e1b
+sha256:ee482e9a5ac947bfdb51398452985e848d3cee01b64a71f53a67ea7cf1c4cbb4
 ```
 
-(Elle a changé au correctif 6.1 avec la version de schéma 2, au lot 7.1 avec la version 3 et les cinq nouvelles limites, puis au lot 7.2 avec la version 4, la constante de résistance, `breakStatus` et les altérations, écrites dans l'ordre du fichier avec chaque champ facultatif à sa valeur neutre ; enfin au correctif 7.2, l'étourdissement passant en `ignore`.)
+(Elle a changé au correctif 6.1 avec la version de schéma 2, au lot 7.1 avec la version 3 et les cinq nouvelles limites, puis au lot 7.2 avec la version 4, la constante de résistance, `breakStatus` et les altérations, écrites dans l'ordre du fichier avec chaque champ facultatif à sa valeur neutre ; au correctif 7.2, l’étourdissement passant en `ignore` ; enfin au lot 7.3 avec la version 5 et `combat.limits.maxTriggerDepth`. Une altération sans déclencheur n’ajoute rien au texte canonique.)
 
 ## Versions de format
 

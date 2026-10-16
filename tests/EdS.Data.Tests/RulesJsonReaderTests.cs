@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(4, result.Rules!.SchemaVersion);
-        Assert.Equal("0.4.1-provisoire", result.Rules.ContentVersion);
+        Assert.Equal(5, result.Rules!.SchemaVersion);
+        Assert.Equal("0.5.0-provisoire", result.Rules.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -101,8 +101,9 @@ public class RulesJsonReaderTests
         // Correctif 6.1 : nouvelle valeur car la version de schéma (2) fait partie du texte canonique ; valeurs inchangées.
         // Lot 7.2 : schéma 4, bloc statuses et constante de résistance aux altérations dans le texte canonique.
         // Correctif 7.2 : empilement de l'étourdissement passé à ignore.
+        // Lot 7.3 : schéma 5 et combat.limits.maxTriggerDepth ; une altération sans déclencheur n'ajoute rien au texte canonique.
         Assert.Equal(
-            "sha256:5dcac2fecd9130d8871d44cfa3768d736f98dae10190428bcc62b31c1ffb2e1b",
+            "sha256:ee482e9a5ac947bfdb51398452985e848d3cee01b64a71f53a67ea7cf1c4cbb4",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -110,7 +111,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 5), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 6), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Ancien_format_v1_refuse_explicitement_sans_migration()

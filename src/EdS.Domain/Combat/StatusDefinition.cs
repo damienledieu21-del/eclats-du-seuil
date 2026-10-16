@@ -150,12 +150,16 @@ namespace EdS.Domain.Combat
         /// <summary>Immunité : altérations dont l'application est bloquée.</summary>
         public IReadOnlyList<string> ImmuneTo { get; }
 
+        /// <summary>Déclencheurs portés tant qu'une instance est active sur son porteur (lot 7.3) ; identité par instance.</summary>
+        public IReadOnlyList<TriggerDefinition> Triggers { get; }
+
         public StatusDefinition(string id, StatusCategory category, long durationMs, StatusStacking stacking,
             StatusResistanceMode resistance = StatusResistanceMode.None, long periodMs = 0, DamageType? damageType = null,
             StatusBlocks blocks = StatusBlocks.None, StatusInterrupts interrupts = StatusInterrupts.None, string? blockReason = null,
             Fixed damageTakenIncrease = default, Fixed movementSpeedModifier = default, string? grantsOnExpiry = null,
-            IEnumerable<string>? immuneTo = null)
+            IEnumerable<string>? immuneTo = null, IEnumerable<TriggerDefinition>? triggers = null)
         {
+            Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Category = category;
             DurationMs = durationMs;
@@ -333,6 +337,8 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation("une immunité désigne au moins une altération.", p + ".immuneTo"));
                 if (d.Category != StatusCategory.Immunity && d.ImmuneTo.Count > 0)
                     errors.Add(new RuleViolation("seule une immunité bloque d'autres altérations.", p + ".immuneTo"));
+                // Lot 7.3 : déclencheurs portés par l'altération (forme ; références après l'indexation, plus bas).
+                TriggerDefinition.ValidateList(d.Triggers, p + ".triggers", 1, false, errors);
             }
 
             // Références : après les identifiants, pour signaler une référence inconnue même déclarée plus loin.
@@ -365,6 +371,29 @@ namespace EdS.Domain.Combat
                 }
             }
             return errors;
+        }
+
+        /// <summary>
+        /// Lot 7.3 : références des déclencheurs portés (altérations appliquées ou filtrées, recharge interne multiple du tick). Elles
+        /// dépendent de l'altération de rupture de garde des règles, d'où un appel séparé, fait à côté de <see cref="Validate"/> par le
+        /// validateur des règles et par <see cref="CombatSetup.Validate()"/>.
+        /// </summary>
+        public IReadOnlyList<RuleViolation> ValidateTriggers(int tickMs, string guardBreakStatus)
+        {
+            var errors = new List<RuleViolation>();
+            for (int i = 0; i < Definitions.Count; i++)
+                TriggerDefinition.ValidateReferences(Definitions[i].Triggers, $"statuses[{i}].triggers", this, guardBreakStatus, tickMs, errors);
+            return errors;
+        }
+
+        /// <summary>Déclencheurs du catalogue nommés pour le graphe statique (A15).</summary>
+        public IReadOnlyList<NamedTrigger> NamedTriggers()
+        {
+            var named = new List<NamedTrigger>();
+            for (int i = 0; i < Definitions.Count; i++)
+                for (int k = 0; k < Definitions[i].Triggers.Count; k++)
+                    named.Add(new NamedTrigger($"{Definitions[i].Id}/{k}", $"statuses[{i}].triggers[{k}]", Definitions[i].Triggers[k]));
+            return named;
         }
 
         private static void Duration(long value, string path, int tickMs, bool tickValid, List<RuleViolation> errors)

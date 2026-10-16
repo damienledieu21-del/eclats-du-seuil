@@ -26,6 +26,9 @@ namespace EdS.Data.Rules
         public Fixed? MovementSpeedModifier { get; set; }
         public string? GrantsOnExpiry { get; set; }
         public List<string?>? ImmuneTo { get; set; }
+
+        /// <summary>Déclencheurs portés tant qu'une instance est active (schéma 5, lot 7.3) ; facultatifs.</summary>
+        public List<Triggers.TriggerData?>? Triggers { get; set; }
     }
 
     /// <summary>
@@ -42,7 +45,7 @@ namespace EdS.Data.Rules
         public static IReadOnlyList<string> FieldNames { get; } = Array.AsReadOnly(new[]
         {
             "id", "category", "durationMs", "periodMs", "stacking", "resistance", "damageType", "blocks", "interrupts",
-            "blockReason", "damageTakenIncrease", "movementSpeedModifier", "grantsOnExpiry", "immuneTo",
+            "blockReason", "damageTakenIncrease", "movementSpeedModifier", "grantsOnExpiry", "immuneTo", "triggers",
         });
 
         public static void Check(List<StatusData?>? statuses, ValidationReport report)
@@ -99,6 +102,7 @@ namespace EdS.Data.Rules
                 Tokens(s.Blocks, p + ".blocks", StatusIds.Blocks);
                 Tokens(s.Interrupts, p + ".interrupts", StatusIds.Interrupts);
                 Tokens(s.ImmuneTo, p + ".immuneTo", new Dictionary<string, int>());
+                Triggers.TriggerShape.Check(s.Triggers, p + ".triggers", report);
             }
         }
 
@@ -110,7 +114,7 @@ namespace EdS.Data.Rules
                 (s.Blocks ?? new List<string?>()).Aggregate(StatusBlocks.None, (acc, b) => acc | StatusIds.Blocks[b!]),
                 (s.Interrupts ?? new List<string?>()).Aggregate(StatusInterrupts.None, (acc, b) => acc | StatusIds.Interrupts[b!]),
                 s.BlockReason, s.DamageTakenIncrease ?? Fixed.Zero, s.MovementSpeedModifier ?? Fixed.Zero, s.GrantsOnExpiry,
-                (s.ImmuneTo ?? new List<string?>()).Select(x => x!))).ToArray());
+                (s.ImmuneTo ?? new List<string?>()).Select(x => x!), Triggers.TriggerShape.Build(s.Triggers))).ToArray());
 
         /// <summary>
         /// Écriture canonique pour l'empreinte des règles : dans l'ordre du fichier (il fixe la priorité des motifs de refus),
@@ -138,6 +142,7 @@ namespace EdS.Data.Rules
                 Line(p + ".movementSpeedModifier", d.MovementSpeedModifier.ToString());
                 Line(p + ".grantsOnExpiry", d.GrantsOnExpiry ?? "none");
                 Line(p + ".immuneTo", string.Join(",", d.ImmuneTo));
+                Triggers.TriggerShape.AppendCanonical(text, p + ".triggers", d.Triggers);
             }
         }
     }

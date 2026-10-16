@@ -42,6 +42,9 @@ namespace EdS.Data.Classes
         public bool? Major { get; set; }
         public bool? Placeholder { get; set; }
         public List<RequirementData?>? Prerequisites { get; set; }
+
+        /// <summary>Déclencheurs (format 4, lot 7.3) ; facultatifs, null si absents.</summary>
+        public List<Triggers.TriggerData?>? Triggers { get; set; }
     }
 
     public sealed class SkillData
@@ -58,6 +61,9 @@ namespace EdS.Data.Classes
 
         /// <summary>Données de lancement (facultatives) : sans elles, la compétence s'équipe mais ne se lance pas encore.</summary>
         public SkillCombatData? Combat { get; set; }
+
+        /// <summary>Déclencheurs actifs tant que la compétence est équipée (format 4, lot 7.3) ; facultatifs.</summary>
+        public List<Triggers.TriggerData?>? Triggers { get; set; }
     }
 
     public sealed class SkillCombatData

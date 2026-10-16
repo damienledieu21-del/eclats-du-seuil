@@ -98,6 +98,7 @@ static int RunValidate(ReadOnlySpan<string> options)
         ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(path, data);
         if (scenario.Setup is not { } setup) return Fail(path, scenario.Report);
         Console.WriteLine($"{path} : valide");
+        Warnings(scenario.Report);
         Console.WriteLine($"  combattants    {string.Join(", ", setup.Combatants.Select(c => c.Id))}");
         Console.WriteLine($"  commandes      {setup.Commands.Count}");
         Console.WriteLine($"  durée          {setup.DurationMs} ms, graine {setup.Seed}");
@@ -108,7 +109,9 @@ static int RunValidate(ReadOnlySpan<string> options)
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(path);
         if (result.Rules is not { } rules) return Fail(path, result.Report);
-        return Valid(path, rules.SchemaVersion, rules.ContentVersion, rules.Fingerprint);
+        Valid(path, rules.SchemaVersion, rules.ContentVersion, rules.Fingerprint);
+        Warnings(result.Report);
+        return 0;
     }
 
     rulesPath ??= defaultRules;
@@ -121,6 +124,7 @@ static int RunValidate(ReadOnlySpan<string> options)
     ClassLoadResult classResult = ClassJsonReader.ReadFile(path, progressionSource.Progression);
     if (classResult.Class is not { } loaded) return Fail(path, classResult.Report);
     Valid(path, loaded.SchemaVersion, loaded.ContentVersion, loaded.Fingerprint);
+    Warnings(classResult.Report);
     Console.WriteLine($"  classe         {loaded.Definition.Name} ({loaded.Definition.Id}), {loaded.Definition.Trees.Sum(t => t.Talents.Count)} talents, {loaded.Definition.Skills.Count} compétences");
     Console.WriteLine($"  règles         {rulesPath} ({progressionSource.Fingerprint})");
     return 0;
@@ -142,6 +146,13 @@ static int Fail(string path, ValidationReport report)
         Console.Error.WriteLine("  " + error);
     if (report.OmittedSummary is { } omitted) Console.Error.WriteLine("  " + omitted);
     return 1;
+}
+
+// Lot 7.3 : avertissements (cycles statiques de déclencheurs), sur la sortie d'erreur pour ne pas mêler un journal écrit sur stdout.
+static void Warnings(ValidationReport report)
+{
+    foreach (var warning in report.Warnings)
+        Console.Error.WriteLine("  avertissement : " + warning);
 }
 
 static string DefaultDataDirectory() => Path.Combine("data", "v0");
@@ -178,6 +189,7 @@ static int RunSimulate(ReadOnlySpan<string> options)
     if (data is null) return 1;
     ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(scenarioPath, data);
     if (scenario.Setup is not { } setup) return Fail(scenarioPath, scenario.Report);
+    Warnings(scenario.Report);
 
     var log = new MemoryCombatLog();
     CombatResult result = CombatEngine.Run(setup, log);

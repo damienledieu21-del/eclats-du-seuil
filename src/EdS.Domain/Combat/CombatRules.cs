@@ -54,6 +54,15 @@ namespace EdS.Domain.Combat
         /// <summary>Budget de travail par tick (unités, voir docs/MOTEUR.md) ; au-delà, arrêt <c>workBudgetExceeded</c>.</summary>
         public int MaxWorkPerTick { get; init; } = 10_000;
 
+        /// <summary>
+        /// Profondeur maximale d'une chaîne de réactions (lot 7.3, C6) : une réaction n'est créée que si la profondeur de l'effet
+        /// observé + 1 ne la dépasse pas ; sinon <c>triggerSuppressed</c>. 0 supprime toute réaction.
+        /// </summary>
+        public int MaxTriggerDepth { get; init; } = 4;
+
+        /// <summary>Plafond technique de <see cref="MaxTriggerDepth"/> (Q10) : la chaîne causale reste une liste de 8 maillons au plus.</summary>
+        public const int AbsoluteMaxTriggerDepth = 8;
+
         /// <summary>Plafonds techniques absolus des limites (enveloppes de pré-alpha, pas des capacités mesurées).</summary>
         public const int AbsoluteMinCombatants = 2, AbsoluteMaxCombatants = 256;
         public const int AbsoluteMaxCommands = 1_000_000;
@@ -188,6 +197,7 @@ namespace EdS.Domain.Combat
             Range(MaxCommandsPerActorPerTick, 1, AbsoluteMaxCommandsPerActorPerTick, nameof(MaxCommandsPerActorPerTick));
             Range(MaxPendingEvents, 1, AbsoluteMaxPendingEvents, nameof(MaxPendingEvents));
             Range(MaxWorkPerTick, 1, AbsoluteMaxWorkPerTick, nameof(MaxWorkPerTick));
+            Range(MaxTriggerDepth, 0, AbsoluteMaxTriggerDepth, nameof(MaxTriggerDepth));
             if (MaxEventsPerTick < 1)
                 errors.Add(new RuleViolation("doit valoir au moins 1.", nameof(MaxEventsPerTick)));
             else if (MaxWorkPerTick >= 1 && MaxEventsPerTick > MaxWorkPerTick)

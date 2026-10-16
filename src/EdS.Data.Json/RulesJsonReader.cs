@@ -120,6 +120,7 @@ public static class RulesJsonReader
             ["movementSpeedModifier"] = (v, p) => s.MovementSpeedModifier = input.Decimal(v, p),
             ["grantsOnExpiry"] = (v, p) => s.GrantsOnExpiry = input.Text(v, p),
             ["immuneTo"] = (v, p) => s.ImmuneTo = Names(v, p),
+            ["triggers"] = (v, p) => s.Triggers = TriggerJsonReader.ReadList(input, v, p),
         });
         return ok ? s : null;
     }

@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "rules",
-  "contentVersion": "0.4.1-provisoire",
+  "contentVersion": "0.5.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -76,7 +76,8 @@
         "maxCommands": 20000,
         "maxCommandsPerActorPerTick": 4,
         "maxPendingEvents": 100000,
-        "maxWorkPerTick": 10000
+        "maxWorkPerTick": 10000,
+        "maxTriggerDepth": 4
       },
       "guard": {
         "damageReduction": 0.6,

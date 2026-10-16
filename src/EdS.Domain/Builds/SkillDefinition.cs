@@ -28,10 +28,17 @@ namespace EdS.Domain.Builds
         /// <summary>Dégâts, coût et recharge ; null si la compétence ne peut pas encore être lancée.</summary>
         public SkillCombatDefinition? Combat { get; }
 
+        /// <summary>
+        /// Déclencheurs permanents tant que la compétence est équipée (lot 7.3, Q2) : passif, active ou ultime. Les effets du
+        /// lancer restent des conséquences directes de <see cref="Combat"/>.
+        /// </summary>
+        public IReadOnlyList<EdS.Domain.Combat.TriggerDefinition> Triggers { get; }
+
         public SkillDefinition(string id, string name, SkillKind kind, int minLevel = 1,
             IReadOnlyList<TalentRequirement>? talentRequirements = null, bool isPlaceholder = false,
-            SkillCombatDefinition? combat = null)
+            SkillCombatDefinition? combat = null, IEnumerable<EdS.Domain.Combat.TriggerDefinition>? triggers = null)
         {
+            Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
             Combat = combat;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));

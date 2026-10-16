@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using EdS.Data.Triggers;
 using EdS.Data.Validation;
 using EdS.Domain;
 using EdS.Domain.Builds;
@@ -104,8 +105,11 @@ namespace EdS.Data.Classes
                     report.Add("$.data." + field, code, violation.Message);
             }
             if (!report.IsValid) return new ClassLoadResult(report, null);
+            // Lot 7.3 (A15) : cycles statiques entre déclencheurs de la classe, en avertissements.
+            foreach (RuleViolation warning in Domain.Combat.TriggerGraph.Cycles(definition.NamedTriggers(), null))
+                foreach (string field in warning.Fields) report.AddWarning("$.data." + field, warning.Message);
 
-            string fingerprint = ContentFingerprint.Compute(CanonicalText(document.SchemaVersion!.Value, document.Data!));
+            string fingerprint = ContentFingerprint.Compute(CanonicalText(document.SchemaVersion!.Value, document.Data!, definition));
             return new ClassLoadResult(report, new LoadedClass(document.SchemaVersion.Value, document.ContentVersion!, fingerprint, definition));
         }
 
@@ -113,7 +117,7 @@ namespace EdS.Data.Classes
         /// Écriture canonique pour l'empreinte : chaque valeur sous la forme <c>chemin=valeur</c>, dans l'ordre du fichier
         /// (l'ordre des arbres, talents et compétences fait partie du contenu ; l'ordre des clés et les espaces non).
         /// </summary>
-        public static string CanonicalText(int schemaVersion, ClassData data)
+        public static string CanonicalText(int schemaVersion, ClassData data, ClassDefinition definition)
         {
             var text = new StringBuilder();
             void Line(string path, object? value) =>
@@ -149,6 +153,7 @@ namespace EdS.Data.Classes
                     Line(p + ".major", talent.Major == true ? "true" : "false");
                     Line(p + ".placeholder", talent.Placeholder == true ? "true" : "false");
                     Requirements(p + ".prerequisites", talent.Prerequisites!);
+                    TriggerShape.AppendCanonical(text, p + ".triggers", definition.Trees[t].Talents[i].Triggers);
                 }
             }
             Line("skills.count", data.Skills!.Count);
@@ -162,6 +167,7 @@ namespace EdS.Data.Classes
                 Line(p + ".minLevel", skill.MinLevel);
                 Line(p + ".placeholder", skill.Placeholder == true ? "true" : "false");
                 Requirements(p + ".talentRequirements", skill.TalentRequirements!);
+                TriggerShape.AppendCanonical(text, p + ".triggers", definition.Skills[s].Triggers);
                 if (skill.Combat is not { } combat)
                 {
                     Line(p + ".combat", "none");
@@ -222,13 +228,13 @@ namespace EdS.Data.Classes
 
             var trees = data.Trees!.Select(t => new TalentTreeDefinition(t!.Id!, t.Name!,
                 t.Talents!.Select(x => new TalentDefinition(x!.Id!, x.Name!, x.MaxRank!.Value, x.Major!.Value,
-                    Requirements(x.Prerequisites!), x.Placeholder!.Value)).ToArray())).ToArray();
+                    Requirements(x.Prerequisites!), x.Placeholder!.Value, TriggerShape.Build(x.Triggers))).ToArray())).ToArray();
             SkillCombatDefinition? Combat(SkillCombatData? c) => c is null ? null
                 : new SkillCombatDefinition(PowerTypes[c.PowerType!], DamageTypes[c.DamageType!], c.Coefficient!.Value,
                     c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value,
                     c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value, Applications(c.Applies!));
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
-                Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat))).ToArray();
+                Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat), TriggerShape.Build(s.Triggers))).ToArray();
             return new ClassDefinition(data.Id!, data.Name!, trees, skills);
         }
 
@@ -283,6 +289,7 @@ namespace EdS.Data.Classes
                 Present(talent.Major, path + ".major", "booléen");
                 Present(talent.Placeholder, path + ".placeholder", "booléen");
                 Items(talent.Prerequisites, path + ".prerequisites", "liste, éventuellement vide", CheckRequirement);
+                TriggerShape.Check(talent.Triggers, path + ".triggers", _report);
             }
 
             private void CheckSkill(SkillData skill, string path)
@@ -296,6 +303,7 @@ namespace EdS.Data.Classes
                 Present(skill.Placeholder, path + ".placeholder", "booléen");
                 Items(skill.TalentRequirements, path + ".talentRequirements", "liste, éventuellement vide", CheckRequirement);
                 if (skill.Combat is { } combat) CheckCombat(combat, path + ".combat");
+                TriggerShape.Check(skill.Triggers, path + ".triggers", _report);
             }
 
             private void Token<T>(string? value, string path, string description, IReadOnlyDictionary<string, T> allowed)

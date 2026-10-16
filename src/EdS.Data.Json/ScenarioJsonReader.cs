@@ -77,6 +77,7 @@ public static class ScenarioJsonReader
             ["firstAttackMs"] = Track("firstAttackMs", (v, p) => c.FirstAttackMs = input.Int64(v, p)),
             ["intervalMs"] = Track("intervalMs", (v, p) => c.IntervalMs = input.Int64(v, p)),
             ["attacks"] = Track("attacks", (v, p) => c.Attacks = input.ReadList(v, p, (e, ip) => ReadAttack(input, e, ip))),
+            ["triggers"] = Track("triggers", (v, p) => c.Triggers = TriggerJsonReader.ReadList(input, v, p)),
         });
         return ok ? c : null;
     }

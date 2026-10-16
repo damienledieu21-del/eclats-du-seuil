@@ -36,6 +36,7 @@ namespace EdS.Data.Scenarios
         /// <summary>
         /// Version 1 : lots 5 et 6 (assaillant, actions, ajouts compatibles). Version 2 (lot 7.2) : <c>applies</c> remplace
         /// <c>appliesFragility</c> sur les attaques d'assaillant, <c>statusResistance</c> facultatif sur mannequins et assaillants.
+        /// Lot 7.3 : <c>triggers</c> facultatif sur un assaillant (ajout compatible, version inchangée).
         /// </summary>
         public const int CurrentSchemaVersion = 2;
 
@@ -46,7 +47,7 @@ namespace EdS.Data.Scenarios
         {
             ["character"] = new[] { "class", "build" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
-            ["assailant"] = new[] { "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks" },
+            ["assailant"] = new[] { "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers" },
         };
 
         private static readonly Dictionary<string, AttributeKind> AttributeIds =
@@ -83,6 +84,9 @@ namespace EdS.Data.Scenarios
                 };
                 foreach (string field in violation.Fields) report.Add(root + "." + field, code, violation.Message);
             }
+            if (report.IsValid)
+                foreach (RuleViolation warning in setup.TriggerWarnings())
+                    foreach (string field in warning.Fields) report.AddWarning(root + "." + field, warning.Message);
             return new ScenarioLoadResult(report, report.IsValid ? setup : null);
         }
 
@@ -110,7 +114,8 @@ namespace EdS.Data.Scenarios
                     var attacks = c.Attacks!.Select(a => new AssailantAttack(a!.Id!, a.RawDamage!.Value, ClassValidator.DamageTypes[a.DamageType!],
                         ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, ClassValidator.Applications(a.Applies!)));
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
-                        c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero));
+                        c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
+                        Triggers.TriggerShape.Build(c.Triggers)));
                 }
                 else
                 {
@@ -200,6 +205,7 @@ namespace EdS.Data.Scenarios
                         Present(c.FirstAttackMs, path + ".firstAttackMs", "instant de la première attaque, en millisecondes");
                         Present(c.IntervalMs, path + ".intervalMs", "intervalle entre deux attaques, en millisecondes");
                         Items(c.Attacks, path + ".attacks", "liste des attaques, jouées dans l'ordre puis en boucle", CheckAttack);
+                        Triggers.TriggerShape.Check(c.Triggers, path + ".triggers", _report);
                         break;
                 }
             }
