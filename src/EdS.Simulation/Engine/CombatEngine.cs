@@ -48,6 +48,7 @@ namespace EdS.Simulation.Engine
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
         public const string RampartCharges = "rampartCharges";
+        public const string EnduranceResource = "endurance";
 
         private sealed class Fighter
         {
@@ -234,9 +235,14 @@ namespace EdS.Simulation.Engine
             /// <summary>Faux pour une action qui dépense de la Résonance : pas de génération récursive (A5).</summary>
             public bool GeneratesResonance = true;
 
-            public SkillTargeting Targeting => Combat?.Targeting ?? Attack!.Targeting;
-            public bool Unblockable => Combat?.Unblockable ?? Attack!.Unblockable;
-            public IReadOnlyList<StatusApplication> Applies => Combat?.Applies ?? Attack!.Applies;
+            /// <summary>Lot 7.3 : frappe d'une réaction (effet <c>strike</c>), au rang du déclencheur ; ni compétence ni attaque.</summary>
+            public TriggerEffect? Strike;
+            public int StrikeRank = 1;
+
+            public SkillTargeting Targeting => Combat?.Targeting ?? Attack?.Targeting ?? SkillTargeting.Enemy;
+            public bool Unblockable => Combat?.Unblockable ?? Attack?.Unblockable ?? Strike!.Unblockable;
+            public IReadOnlyList<StatusApplication> Applies => Combat?.Applies ?? Attack?.Applies ?? (IReadOnlyList<StatusApplication>)Array.Empty<StatusApplication>();
+            public DamageType DamageType => Combat?.DamageType ?? Attack?.DamageType ?? Strike!.DamageType!.Value;
         }
 
         /// <summary>Un budget du tick ou la capacité de la file serait dépassé par le traitement suivant (lot 7.1).</summary>
@@ -281,6 +287,9 @@ namespace EdS.Simulation.Engine
             public static Cost operator *(long k, Cost c) => new Cost(checked(k * c.Work), checked(k * c.Events), checked(k * c.Queue));
 
             public Cost If(bool condition) => condition ? this : None;
+
+            /// <summary>Majorant composante par composante (lot 7.3, réservation majorée d'une réaction).</summary>
+            public static Cost Max(Cost a, Cost b) => new Cost(Math.Max(a.Work, b.Work), Math.Max(a.Events, b.Events), Math.Max(a.Queue, b.Queue));
         }
 
         private readonly CombatSetup _setup;
@@ -842,7 +851,9 @@ namespace EdS.Simulation.Engine
             return total;
         }
 
-        private void Hit(long tick, PendingAction action, Fighter target)
+        private void Hit(long tick, PendingAction action, Fighter target) => Hit(tick, CombatPhase.Resolution, action, target);
+
+        private void Hit(long tick, CombatPhase phase, PendingAction action, Fighter target)
         {
             Charge(1);
             Fighter actor = action.Actor;
@@ -871,14 +882,14 @@ namespace EdS.Simulation.Engine
                     target.ParrySucceeded = true;   // récompense une seule fois par tentative
                     target.Result.PerfectParries++;
                     parryReward = true;
-                    parryEid = Emit(tick, CombatPhase.Resolution, "parrySucceeded", origin, HitObserved(TriggerEvent.PerfectParry, action, target, HitDefense.Parry), w => w.Field("actor", target.Id).Field("source", actor.Id));
+                    parryEid = Emit(tick, phase, "parrySucceeded", origin, HitObserved(TriggerEvent.PerfectParry, action, target, HitDefense.Parry), w => w.Field("actor", target.Id).Field("source", actor.Id));
                 }
             }
             else if (defending)
             {
                 if (target.Endurance < _rules.GuardCostPerBlock)
                 {
-                    BreakGuard(tick, CombatPhase.Resolution, target, "insufficientEndurance", actor.Id, origin);
+                    BreakGuard(tick, phase, target, "insufficientEndurance", actor.Id, origin);
                     defense = "guardBroken";
                 }
                 else
@@ -888,7 +899,7 @@ namespace EdS.Simulation.Engine
                     defense = "guard";
                     mitigation = _rules.GuardDamageReduction;
                     blockReward = true;
-                    blockEid = Emit(tick, CombatPhase.Resolution, "blocked", origin, HitObserved(TriggerEvent.Block, action, target, HitDefense.Guard), w => w
+                    blockEid = Emit(tick, phase, "blocked", origin, HitObserved(TriggerEvent.Block, action, target, HitDefense.Guard), w => w
                         .Field("actor", target.Id).Field("source", actor.Id).Field("enduranceCost", _rules.GuardCostPerBlock).Field("endurance", target.Endurance));
                 }
             }
@@ -896,8 +907,11 @@ namespace EdS.Simulation.Engine
             DerivedStats attacker = AttackerStats(action);
             DamageInput input = action.Combat is { } combat
                 ? new DamageInput(attacker, target.Stats, combat.PowerType, combat.DamageType, combat.Coefficient, bonuses, critical, mitigation)
-                : new DamageInput(attacker, target.Stats, CombatantStats.PowerOf(action.Attack!.DamageType),
-                    action.Attack.DamageType, Fixed.One, bonuses, false, mitigation);
+                : action.Attack is { } attack
+                    ? new DamageInput(attacker, target.Stats, CombatantStats.PowerOf(attack.DamageType), attack.DamageType, Fixed.One, bonuses, false, mitigation)
+                    // Lot 7.3 : frappe de réaction, sans critique ni tirage (Q6, Q7), puissance du porteur.
+                    : new DamageInput(attacker, target.Stats, action.Strike!.PowerType!.Value, action.Strike.DamageType!.Value,
+                        action.Strike.Coefficient!.Value.At(action.StrikeRank), bonuses, false, mitigation);
             long amount = DamageCalculator.Compute(input, _setup.Damage).FinalDamage;
 
             long overkill = 0;
@@ -912,7 +926,7 @@ namespace EdS.Simulation.Engine
             if (critical) actor.Result.CriticalHits++;
             ObservedEvent hit = HitObserved(TriggerEvent.HitDealt, action, target, TriggerIds.Defenses[defense]);
             hit.Also = TriggerEvent.HitTaken;
-            long damage = Emit(tick, CombatPhase.Resolution, "damage", origin, hit, w => w
+            long damage = Emit(tick, phase, "damage", origin, hit, w => w
                 .Field("source", actor.Id).Field("target", target.Id).Field("skill", action.Skill?.Id).Field("attack", action.Attack?.Id)
                 .Field("critical", critical).Field("fragile", fragile).Field("defense", defense).Field("amount", amount).Field("overkill", overkill)
                 .Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken));
@@ -922,10 +936,10 @@ namespace EdS.Simulation.Engine
             if (parryReward)
             {
                 Provenance parried = origin.CausedBy(parryEid!.Value).WithSource(target.Id);
-                Gain(tick, CombatPhase.Resolution, target, RampartCharges, _rules.RampartChargesPerParry, "perfectParry", parried);
-                Gain(tick, CombatPhase.Resolution, target, Resonance, _rules.ResonancePerPerfectParry, "perfectParry", parried);
+                Gain(tick, phase, target, RampartCharges, _rules.RampartChargesPerParry, "perfectParry", parried);
+                Gain(tick, phase, target, Resonance, _rules.ResonancePerPerfectParry, "perfectParry", parried);
             }
-            if (blockReward) Gain(tick, CombatPhase.Resolution, target, Resonance, _rules.ResonancePerBlock, "block", origin.CausedBy(blockEid!.Value).WithSource(target.Id));
+            if (blockReward) Gain(tick, phase, target, Resonance, _rules.ResonancePerBlock, "block", origin.CausedBy(blockEid!.Value).WithSource(target.Id));
 
             // Lot 7.2 : altérations portées, après les dégâts, dans l'ordre de la liste. Un DOT fige sa puissance maintenant.
             // Correctif 7.2 : un impact paré (parade parfaite, réussie à cet impact ou plus tôt dans la même fenêtre) n'applique
@@ -935,13 +949,13 @@ namespace EdS.Simulation.Engine
                 StatusDefinition definition = _statuses[application.Status];
                 if (defense == "parry")
                 {
-                    EmitDiagnostic(tick, CombatPhase.Resolution, "stateBlocked", w => w
+                    EmitDiagnostic(tick, phase, "stateBlocked", w => w
                         .Field("combatant", target.Id).Field("state", definition.Id).Field("category", StatusIds.Of(definition.Category))
                         .Field("source", actor.Id).Field("reason", "parried"));
                     continue;
                 }
                 Fixed power = definition.IsDot ? DotPower(attacker, definition, application) : Fixed.Zero;
-                ApplyStatus(tick, CombatPhase.Resolution, target, definition, actor.Id, power, impact);
+                ApplyStatus(tick, phase, target, definition, actor.Id, power, impact);
             }
         }
 
@@ -952,13 +966,13 @@ namespace EdS.Simulation.Engine
             Source = action.Actor.Id,
             Target = target.Id,
             Skill = action.Skill?.Id ?? action.Attack?.Id,
-            DamageType = action.Combat?.DamageType ?? action.Attack!.DamageType,
+            DamageType = action.DamageType,
             Defense = defense,
         };
 
         /// <summary>Statistiques offensives d'une action : celles du personnage, ou celles de l'attaque d'assaillant (dégâts bruts).</summary>
         private static DerivedStats AttackerStats(PendingAction action) =>
-            action.Combat != null ? action.Actor.Stats : action.Actor.AttackStats[action.Attack!.Id];
+            action.Attack != null ? action.Actor.AttackStats[action.Attack.Id] : action.Actor.Stats;
 
         /// <summary>
         /// Puissance figée d'un DOT (A12) : puissance du type de l'altération (physique pour un saignement, magique pour une brûlure ;
@@ -1214,21 +1228,38 @@ namespace EdS.Simulation.Engine
         private Cost GainCost(Fighter f, long amount, bool observable = true) =>
             (observable ? Observable(TriggerEvent.ResourceGained) : Cost.Line).If(amount > 0 && f.Character != null);
 
-        /// <summary>Gain plafonné d'une ressource (A4, A5) ; l'excédent est perdu et journalisé. Un gain ne déclenche jamais d'autre gain.</summary>
-        private void Gain(long tick, CombatPhase phase, Fighter f, string resource, int amount, string source, Provenance origin)
+        /// <summary>
+        /// Gain plafonné d'une ressource (A4, A5) ; l'excédent est perdu et journalisé. Un gain ne déclenche jamais d'autre gain par
+        /// les règles de base. Lot 7.3 : l'endurance n'est gagnée ainsi que par une réaction ; <paramref name="observable"/> faux pour
+        /// un gain de réaction (Q8) : journalisé, jamais notifié.
+        /// </summary>
+        private void Gain(long tick, CombatPhase phase, Fighter f, string resource, long amount, string source, Provenance origin, bool observable = true)
         {
             if (amount <= 0 || f.Character is null) return;
-            bool resonance = resource == Resonance;
-            int before = resonance ? f.Resonance : f.RampartCharges;
-            int max = resonance ? _rules.ResonanceMax : _rules.RampartChargesMax;
-            int after = (int)Math.Min(max, (long)before + amount);
-            if (resonance) f.Resonance = after; else f.RampartCharges = after;
-            Emit(tick, phase, "resourceGained", origin, new ObservedEvent
+            long before, max;
+            TriggerResource kind;
+            switch (resource)
             {
-                Kind = TriggerEvent.ResourceGained, Source = f.Id, Resource = resonance ? TriggerResource.Resonance : TriggerResource.RampartCharges,
-            }, w => w
+                case Resonance:
+                    (before, max, kind) = (f.Resonance, _rules.ResonanceMax, TriggerResource.Resonance);
+                    break;
+                case RampartCharges:
+                    (before, max, kind) = (f.RampartCharges, _rules.RampartChargesMax, TriggerResource.RampartCharges);
+                    break;
+                default:
+                    (before, max, kind) = (f.Endurance, f.MaxEndurance, TriggerResource.Endurance);
+                    break;
+            }
+            long after = Math.Min(max, checked(before + amount));
+            switch (kind)
+            {
+                case TriggerResource.Resonance: f.Resonance = (int)after; break;
+                case TriggerResource.RampartCharges: f.RampartCharges = (int)after; break;
+                default: f.Endurance = after; break;
+            }
+            Emit(tick, phase, "resourceGained", origin, observable ? new ObservedEvent { Kind = TriggerEvent.ResourceGained, Source = f.Id, Resource = kind } : null, w => w
                 .Field("actor", f.Id).Field("resource", resource).Field("source", source)
-                .Field("amount", after - before).Field("wasted", (long)before + amount - after).Field("value", after));
+                .Field("amount", after - before).Field("wasted", before + amount - after).Field("value", after));
         }
 
         private void SpendEndurance(Fighter f, long amount, long tick)
@@ -1512,12 +1543,20 @@ namespace EdS.Simulation.Engine
         /// Réserve le coût exact du traitement suivant, avant toute mutation. Ordre de vérification fixe : travail, file,
         /// lignes ; l'arrêt porte la raison du premier budget qui échoue.
         /// </summary>
-        private void Reserve(Cost cost)
+        private void Reserve(Cost cost) => Reserve(cost, cost);
+
+        /// <summary>
+        /// Lot 7.3 : réservation majorée. Les budgets sont vérifiés contre <paramref name="bound"/> (coût maximal du traitement
+        /// entier, par exemple une réaction et tous ses effets), mais seule la partie exacte <paramref name="exact"/> est ouverte ;
+        /// les réservations exactes suivantes du même traitement tiennent alors toujours dans les budgets.
+        /// </summary>
+        private void Reserve(Cost exact, Cost bound)
         {
             CloseScope();
-            if (checked(_workThisTick + cost.Work) > _rules.MaxWorkPerTick) throw new BudgetExceeded("workBudgetExceeded", _rules.MaxWorkPerTick);
-            if (checked(_queue.Count + cost.Queue) > _rules.MaxPendingEvents) throw new BudgetExceeded("queueLimitExceeded", _rules.MaxPendingEvents);
-            if (checked(_eventsThisTick + cost.Events) > _rules.MaxEventsPerTick) throw new BudgetExceeded("eventBudgetExceeded", _rules.MaxEventsPerTick);
+            if (checked(_workThisTick + bound.Work) > _rules.MaxWorkPerTick) throw new BudgetExceeded("workBudgetExceeded", _rules.MaxWorkPerTick);
+            if (checked(_queue.Count + bound.Queue) > _rules.MaxPendingEvents) throw new BudgetExceeded("queueLimitExceeded", _rules.MaxPendingEvents);
+            if (checked(_eventsThisTick + bound.Events) > _rules.MaxEventsPerTick) throw new BudgetExceeded("eventBudgetExceeded", _rules.MaxEventsPerTick);
+            Cost cost = exact;
             _scopeWork = _workThisTick + cost.Work;
             _scopeEvents = _eventsThisTick + cost.Events;
             _scopeEnqueues = cost.Queue;

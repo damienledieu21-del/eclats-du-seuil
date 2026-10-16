@@ -303,12 +303,142 @@ namespace EdS.Simulation.Engine
             }
         }
 
-        /// <summary>Étape 7.3.3 : une réaction acceptée est retirée de la file (une unité) ; ses effets arrivent à l'étape 7.3.4.</summary>
+        /// <summary>
+        /// Cibles d'un effet de réaction, déterminées avant toute réservation (§8) : combattant source ou cible de l'effet observé,
+        /// porteur, ou ennemis vivants du porteur (ordre ordinal). Un combattant mort est écarté ; une frappe n'atteint jamais le
+        /// porteur ni ses alliés.
+        /// </summary>
+        private IReadOnlyList<Fighter> EffectTargets(TriggerEffect effect, TriggerSlot slot, ObservedEvent e)
+        {
+            Fighter bearer = slot.Bearer;
+            Fighter? One(string? id) => id != null && _byId.TryGetValue(id, out Fighter? f) && !f.IsDead ? f : null;
+            IReadOnlyList<Fighter> targets = (effect.Target ?? TriggerTarget.Bearer) switch
+            {
+                TriggerTarget.EventSource => One(e.Source) is { } source ? new[] { source } : Array.Empty<Fighter>(),
+                TriggerTarget.EventTarget => One(e.Target) is { } target ? new[] { target } : Array.Empty<Fighter>(),
+                TriggerTarget.AllEnemies => _fightersById.Where(f => f.Team != bearer.Team && !f.IsDead).ToArray(),
+                _ => bearer.IsDead ? Array.Empty<Fighter>() : new[] { bearer },
+            };
+            if (effect.Kind == TriggerEffectKind.Strike && targets.Any(t => t.Team == bearer.Team))
+                targets = targets.Where(t => t.Team != bearer.Team).ToArray();
+            return targets;
+        }
+
+        /// <summary>Action d'impact d'une frappe de réaction : porteur, effet et rang ; aucune altération portée, aucune Résonance (A5).</summary>
+        private static PendingAction StrikeAction(TriggerSlot slot, TriggerEffect effect, Provenance origin) => new PendingAction
+        {
+            Actor = slot.Bearer,
+            Strike = effect,
+            StrikeRank = slot.Rank,
+            Origin = origin,
+            GeneratesResonance = false,
+        };
+
+        private static long GainAmount(TriggerEffect effect, int rank) => effect.Amount!.Value.At(rank).Raw / Domain.Numerics.Fixed.Scale;
+
+        private static string ResourceId(TriggerResource resource) => resource switch
+        {
+            TriggerResource.Resonance => Resonance,
+            TriggerResource.RampartCharges => RampartCharges,
+            _ => EnduranceResource,
+        };
+
+        /// <summary>Majorant de l'application d'une altération, quel que soit l'état de la cible (refus, ou application et interruptions).</summary>
+        private Cost ApplyBound() => Cost.Max(Cost.Line, Cost.Op + Cost.Enqueue + Observable(TriggerEvent.StateApplied) + Cost.Line + Cost.Line);
+
+        /// <summary>
+        /// Majorant du coût d'un effet de réaction sur une cible, quel que soit l'état que les effets précédents de la même réaction
+        /// lui auront laissé : pour une frappe, le pire des trois cas de défense (parade récompensée, rupture de garde, blocage).
+        /// </summary>
+        private Cost EffectBound(TriggerEffect effect, Fighter target)
+        {
+            switch (effect.Kind)
+            {
+                case TriggerEffectKind.Strike:
+                    Cost parry = Observable(TriggerEvent.PerfectParry) + GainCost(target, 1) + GainCost(target, 1);
+                    Cost broken = Observable(TriggerEvent.GuardBroken) + Cost.Line + ApplyBound();
+                    Cost block = Observable(TriggerEvent.Block) + GainCost(target, 1);
+                    return Cost.Op + Observable(TriggerEvent.HitDealt, TriggerEvent.HitTaken) + Cost.Max(parry, Cost.Max(broken, block));
+                case TriggerEffectKind.ApplyStatus:
+                    return ApplyBound();
+                default:
+                    return Cost.Line;
+            }
+        }
+
+        /// <summary>Coût exact d'un effet de réaction sur ses cibles (distinctes), à partir de l'état courant, sans rien modifier.</summary>
+        private Cost EffectCost(long tick, TriggerSlot slot, TriggerEffect effect, IReadOnlyList<Fighter> targets, Provenance origin)
+        {
+            Cost cost = Cost.None;
+            foreach (Fighter target in targets)
+            {
+                switch (effect.Kind)
+                {
+                    case TriggerEffectKind.Strike:
+                        cost += HitCost(tick, StrikeAction(slot, effect, origin), target);
+                        break;
+                    case TriggerEffectKind.ApplyStatus:
+                        StatusDefinition definition = _statuses[effect.Status!];
+                        cost += ApplyCost(Plan(tick, target, definition, slot.Bearer.Id, null), definition, target.Guarding, target.ParryOpen);
+                        break;
+                    default:
+                        cost += GainCost(target, GainAmount(effect, slot.Rank), observable: false);
+                        break;
+                }
+            }
+            return cost;
+        }
+
+        /// <summary>
+        /// Exécute une réaction en tête de la file (§5.4). Les cibles de chaque effet sont déterminées d'abord ; puis la réaction
+        /// entière est réservée par un majorant (retrait et pire coût de chaque effet sur chacune de ses cibles) avant toute mutation :
+        /// si le majorant dépasse un budget, le combat s'arrête sans que la réaction ait rien modifié. Chaque effet réserve ensuite son
+        /// coût exact, qui tient toujours dans le majorant ; la consommation exacte est vérifiée en Debug. Les effets s'appliquent dans
+        /// l'ordre, avec la provenance de la réaction : leurs lignes ont pour cause l'effet observé. Un gain de réaction n'est pas
+        /// notifié (Q8) ; les autres effets produits le sont, sous les règles normales de cycle et de profondeur.
+        /// </summary>
         private void ProcessReaction(long tick, CombatPhase phase, ReactionItem item)
         {
-            Reserve(Cost.Op);
+            TriggerSlot slot = item.Slot;
+            IReadOnlyList<TriggerEffect> effects = slot.Definition.Effects;
+            bool runs = !slot.Bearer.IsDead;
+            var targets = new IReadOnlyList<Fighter>[effects.Count];
+            Cost bound = Cost.Op;
+            if (runs)
+                for (int k = 0; k < effects.Count; k++)
+                {
+                    targets[k] = EffectTargets(effects[k], slot, item.Event);
+                    foreach (Fighter target in targets[k]) bound += EffectBound(effects[k], target);
+                }
+            Reserve(Cost.Op, bound);
             _queue.Dequeue();
             Charge(1);
+            if (!runs) return;
+            for (int k = 0; k < effects.Count; k++)
+            {
+                TriggerEffect effect = effects[k];
+                if (targets[k].Count == 0) continue;
+                Reserve(EffectCost(tick, slot, effect, targets[k], item.Origin));
+                foreach (Fighter target in targets[k])
+                {
+                    switch (effect.Kind)
+                    {
+                        case TriggerEffectKind.Strike:
+                            Hit(tick, phase, StrikeAction(slot, effect, item.Origin), target);
+                            break;
+                        case TriggerEffectKind.ApplyStatus:
+                            StatusDefinition definition = _statuses[effect.Status!];
+                            Domain.Numerics.Fixed power = definition.IsDot
+                                ? DotPower(slot.Bearer.Stats, definition, new StatusApplication(definition.Id, effect.Coefficient!.Value.At(slot.Rank)))
+                                : Domain.Numerics.Fixed.Zero;
+                            ApplyStatus(tick, phase, target, definition, slot.Bearer.Id, power, item.Origin);
+                            break;
+                        default:
+                            Gain(tick, phase, target, ResourceId(effect.Resource!.Value), GainAmount(effect, slot.Rank), "trigger", item.Origin, observable: false);
+                            break;
+                    }
+                }
+            }
         }
 
         /// <summary>Traite un élément de déclencheur en tête de la file ; faux si l'élément est d'une autre nature.</summary>

@@ -819,6 +819,9 @@ namespace EdS.Domain.Combat
                             break;
                         case DummySetup dummy:
                             defenses[i] = CombatantStats.ForDefenses(Stats, dummy.Armor, dummy.MagicResistance, dummy.StatusResistance);
+                            // Lot 7.3 : un mannequin peut porter une altération à déclencheurs ; ses réactions frappent à sa puissance de base.
+                            foreach (NamedTrigger named in Combat.Statuses.NamedTriggers())
+                                AddTriggerOffenses(offenses[i], $"déclencheur « {named.Label} »", defenses[i]!, named.Definition, 1);
                             break;
                         case AssailantSetup assailant:
                             defenses[i] = CombatantStats.ForDefenses(Stats, assailant.Armor, assailant.MagicResistance, assailant.StatusResistance);
@@ -829,6 +832,11 @@ namespace EdS.Domain.Combat
                                     CombatantStats.PowerOf(attack.DamageType), attack.DamageType, Fixed.One, false));
                                 AddDotOffenses(offenses[i], $"attaque « {attack.Id} »", attackStats, attack.Applies);
                             }
+                            // Lot 7.3 : déclencheurs de l'assaillant et des altérations qu'il peut porter, à sa puissance de base.
+                            for (int k = 0; k < assailant.Triggers.Count; k++)
+                                AddTriggerOffenses(offenses[i], $"déclencheur « {assailant.TriggerDefinitionId}/{k} »", defenses[i]!, assailant.Triggers[k], 1);
+                            foreach (NamedTrigger named in Combat.Statuses.NamedTriggers())
+                                AddTriggerOffenses(offenses[i], $"déclencheur « {named.Label} »", defenses[i]!, named.Definition, 1);
                             break;
                     }
                 }
