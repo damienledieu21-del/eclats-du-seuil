@@ -21,8 +21,11 @@ public class Lot71CapacityTests(ITestOutputHelper output)
     {
         var log = new MemoryCombatLog();
         CombatResult result = CombatEngine.Run(setup, log);
+        // Correctif 7.2 : chaque scénario mesuré a passé le contrôle de saturation ; son pic de file reste sous le majorant.
+        CombatSetup.QueueBound bound = setup.ComputeQueueBound();
         output.WriteLine($"{label} : fin {result.EndReason}{(result.AbortReason is null ? "" : " (" + result.AbortReason + ")")} au tick {result.EndTick}, " +
-            $"travail {result.Peaks.WorkPerTick}, lignes {result.Peaks.EventsPerTick}, file {result.Peaks.PendingEvents}, journal {log.Lines.Count} lignes");
+            $"travail {result.Peaks.WorkPerTick}, lignes {result.Peaks.EventsPerTick}, file {result.Peaks.PendingEvents} (majorant {bound.Total}), journal {log.Lines.Count} lignes");
+        Assert.InRange(result.Peaks.PendingEvents, 0, bound.Total);
         return (result, log);
     }
 
