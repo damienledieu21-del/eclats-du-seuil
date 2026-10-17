@@ -1066,8 +1066,10 @@ namespace EdS.Simulation.Engine
         /// <para>Sous-lot 8.1 : la durée de base reçoit d'abord, en ms, <c>status.&lt;id&gt;.durationDealt</c> de l'auteur d'une
         /// application directe (<paramref name="dealer"/>, null pour une rupture de garde ou un état accordé), <c>durationTaken</c> de la
         /// cible et le raccourci de rupture (<c>guard.breakShortenPerCharge</c>) ; le total est écrêté dans [1 tick, 24 h] (une période au
-        /// moins pour un DOT ; multiple du tick et, pour un DOT, de la période, par validation), ce qui garde la borne ci-dessus. Seule
-        /// la résistance peut donner 0 tick (<c>resisted</c>).</para>
+        /// moins pour un DOT), ce qui garde la borne ci-dessus. Les ajouts sont des multiples du tick (et de la période d'un DOT, par
+        /// validation) et 24 h est un multiple du tick ; un DOT écrêté à 24 h peut ne plus être un multiple de sa période, et sa fin est
+        /// alors ramenée au dernier tick périodique couvert (<see cref="DotEffectiveEnd"/>). Seule la résistance peut donner 0 tick
+        /// (<c>resisted</c>).</para>
         /// </summary>
         private long DurationTicks(StatusDefinition definition, Fighter target, Fighter? dealer, long shortenMs)
         {

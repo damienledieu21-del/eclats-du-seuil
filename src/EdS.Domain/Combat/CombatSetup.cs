@@ -770,7 +770,8 @@ namespace EdS.Domain.Combat
 
         private void ValidateCharacter(CharacterSetup character, string path, long tick, List<RuleViolation> errors)
         {
-            foreach (RuleViolation v in character.Class.Validate(Progression))
+            IReadOnlyList<RuleViolation> classViolations = character.Class.Validate(Progression);
+            foreach (RuleViolation v in classViolations)
                 errors.Add(new RuleViolation(v.Kind, $"classe « {character.Class.Id} » incohérente : {v.Message}", v.Fields.Select(f => path + ".class:" + f).ToArray()));
             foreach (BuildViolation v in BuildValidator.Validate(character.Build, character.Class, Progression))
                 errors.Add(new RuleViolation($"build invalide ({v.Subject}) : {v.Message} [{v.Code}]", path + ".build"));
@@ -793,12 +794,22 @@ namespace EdS.Domain.Combat
                     TriggerDefinition.ValidateReferences(character.Class.Trees[t].Talents[i].Triggers, $"trees[{t}].talents[{i}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, problems);
             for (int k = 0; k < character.Class.Skills.Count; k++)
                 TriggerDefinition.ValidateReferences(character.Class.Skills[k].Triggers, $"skills[{k}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, problems);
-            // Sous-lot 8.1 : les modificateurs désignent aussi le catalogue (durées d'altération) et le tick (valeurs en ms).
+            // Sous-lot 8.1 : les modificateurs désignent aussi le catalogue (durées d'altération) et le tick (valeurs en ms). Une classe
+            // arrêtée à un plafond global n'est pas examinée plus loin (plafond signalé seul) ; une liste déjà refusée par la classe
+            // (modificateurs d'une active, valeur hors borne…) ne l'est pas non plus : un même modificateur n'est pas signalé deux fois.
+            bool capped = classViolations.Any(v => v.Kind == RuleViolationKind.LimitExceeded && v.Fields.Any(f => f == "trees" || f == "skills"));
+            bool Refused(string list) => classViolations.Any(v => v.Fields.Any(f =>
+                f == list || f.StartsWith(list + "[", StringComparison.Ordinal) || f.StartsWith(list + ".", StringComparison.Ordinal)));
+            void CheckModifiers(IReadOnlyList<ModifierDefinition> modifiers, string list)
+            {
+                if (modifiers.Count > 0 && !capped && !Refused(list))
+                    ModifierDefinition.ValidateReferences(modifiers, list, Combat.Statuses, Combat.GuardBreakStatus, tick, problems);
+            }
             for (int t = 0; t < character.Class.Trees.Count; t++)
                 for (int i = 0; i < character.Class.Trees[t].Talents.Count; i++)
-                    ModifierDefinition.ValidateReferences(character.Class.Trees[t].Talents[i].Modifiers, $"trees[{t}].talents[{i}].modifiers", Combat.Statuses, Combat.GuardBreakStatus, tick, problems);
+                    CheckModifiers(character.Class.Trees[t].Talents[i].Modifiers, $"trees[{t}].talents[{i}].modifiers");
             for (int k = 0; k < character.Class.Skills.Count; k++)
-                ModifierDefinition.ValidateReferences(character.Class.Skills[k].Modifiers, $"skills[{k}].modifiers", Combat.Statuses, Combat.GuardBreakStatus, tick, problems);
+                CheckModifiers(character.Class.Skills[k].Modifiers, $"skills[{k}].modifiers");
             foreach (RuleViolation v in problems)
                 errors.Add(new RuleViolation(v.Kind, $"classe « {character.Class.Id} », {string.Join(", ", v.Fields)} : {v.Message}", path + ".class"));
         }
@@ -940,6 +951,10 @@ namespace EdS.Domain.Combat
                 CombatantSetup combatant = Combatants[i];
                 string path = $"combatants[{i}]";
                 offenses[i] = new List<Offense>();
+                // Champ et message d'un dépassement : les attributs du build, sauf pendant l'application des modificateurs permanents aux
+                // statistiques d'un personnage (sous-lot 8.1), rattachée à sa classe.
+                string overflowPath = combatant is CharacterSetup ? path + ".build.attributes" : path;
+                string overflowMessage = "statistiques dérivées hors des limites numériques.";
                 try
                 {
                     switch (combatant)
@@ -949,9 +964,16 @@ namespace EdS.Domain.Combat
                             // permanents) ; coefficient effectif de chaque compétence ; bonus talent du pire impact direct (permanent et
                             // conditionnels positifs à leur facteur maximal), compétences et frappes de réaction.
                             ModifierSet modifiers = ModifierSet.For(character);
-                            DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, modifiers);
+                            DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, ModifierSet.Empty);
                             stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                             stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
+                            overflowPath = path + ".class";
+                            overflowMessage = "statistiques dérivées hors des limites numériques avec les modificateurs permanents de la classe (maxHealth, endurance.max, statusResistance).";
+                            stats = CombatantStats.ForCharacter(Stats, character.Build, modifiers);
+                            stats.MaxHealth.RoundToInt(RoundingMode.Floor);
+                            stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
+                            overflowPath = path + ".build.attributes";
+                            overflowMessage = "statistiques dérivées hors des limites numériques.";
                             defenses[i] = stats;
                             CombatantRules rules = CombatantRules.For(Combat, modifiers);
                             Fixed talent = rules.WorstDamageDealt(Combat.ResonanceMax);
@@ -993,8 +1015,7 @@ namespace EdS.Domain.Combat
                 }
                 catch (OverflowException)
                 {
-                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, "statistiques dérivées hors des limites numériques.",
-                        combatant is CharacterSetup ? path + ".build.attributes" : path));
+                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, overflowMessage, overflowPath));
                     defenses[i] = null;
                     offenses[i].Clear();
                 }

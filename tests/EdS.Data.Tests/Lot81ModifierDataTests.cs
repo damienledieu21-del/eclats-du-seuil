@@ -275,6 +275,11 @@ public class Lot81ModifierDataReadingTests
         ("""{ "key": "guard.noUpkeepBreak", "add": 0.5 }""", "[0].add", ValidationCode.InvalidValue),
         // damageTaken : réduction seulement (D10).
         ("""{ "key": "damageTaken", "add": 0.0001 }""", "[0].add", ValidationCode.InvalidValue),
+        // Revue 8.1 : valeur nulle à chaque rang (sans effet), quelle que soit l'écriture.
+        ("""{ "key": "maxHealth", "add": 0 }""", "[0].add", ValidationCode.InvalidValue),
+        ("""{ "key": "damageTaken", "add": 0 }""", "[0].add", ValidationCode.InvalidValue),
+        ("""{ "key": "status.burn.durationDealt", "add": { "base": 0 } }""", "[0].add", ValidationCode.InvalidValue),
+        ("""{ "key": "skill.bastion.frappe_du_rempart.coefficient", "add": { "base": 0, "perRank": 0 } }""", "[0].add", ValidationCode.InvalidValue),
         // Conditions : seules damageDealt et damageTaken ; au plus une multiplicative ; sans doublon.
         ("""{ "key": "guard.damageReduction", "add": 0.1, "conditions": ["whileGuarding"] }""", "[0].conditions", ValidationCode.InvalidValue),
         ("""{ "key": "skill.bastion.frappe_du_rempart.coefficient", "add": 0.1, "conditions": ["perRampartCharge"] }""", "[0].conditions", ValidationCode.InvalidValue),
@@ -306,6 +311,18 @@ public class Lot81ModifierDataReadingTests
     [InlineData("""{ "key": "parry.windowMs", "add": { "base": 50, "perRank": 0.5 } }""", ValidationCode.InvalidValue)]
     public void Erreur_de_valeur_par_rang_sur_un_talent(string modifier, ValidationCode code) =>
         AssertSingleError(OnTalent(0, 0, JsonNode.Parse(modifier)), TalentPath + "[0].add", code);
+
+    [Fact]
+    public void PerRank_refuse_sur_un_talent_a_un_seul_rang()
+    {
+        // Revue 8.1 : echo_defensif (1 rang) ; perRank n'aurait aucun effet mais changerait l'empreinte. Nul au rang 1 seulement admis
+        // sur garde_stable (3 rangs).
+        const string path = "$.data.trees[0].talents[1].modifiers[0].add";
+        AssertSingleError(OnTalent(0, 1, Mod("guard.damageReduction", """{ "base": 0.01, "perRank": 99999 }""")), path, ValidationCode.InvalidValue);
+        AssertSingleError(OnTalent(0, 1, Mod("guard.noUpkeepBreak", """{ "base": 1, "perRank": 1 }""")), path, ValidationCode.InvalidValue);
+        Valid(OnTalent(0, 1, Mod("guard.damageReduction", """{ "base": 0.01, "perRank": 0 }""")));
+        Valid(OnTalent(0, 0, Mod("guard.damageReduction", """{ "base": 0, "perRank": 0.02 }""")));
+    }
 
     [Theory]
     // Liste « débordements refusés avant simulation » : valeur au rang maximal (3) non représentable (D2 : débordement → NumericLimit,
@@ -422,9 +439,10 @@ public class Lot81ModifierDataReadingTests
                 {
                     decimal target = limit + outward * k * step;
                     bool valid = k <= 0;
-                    // Rang 1 : nombre simple, sur un talent et sur un passif.
-                    data.Add("talent, rang 1", key, Num(target), valid);
-                    data.Add("passif", key, Num(target), valid);
+                    // Rang 1 : nombre simple, sur un talent et sur un passif. Une valeur nulle à chaque rang est refusée (revue 8.1 :
+                    // sans effet), ce qui touche la borne 0 de damageTaken.
+                    data.Add("talent, rang 1", key, Num(target), valid && target != 0m);
+                    data.Add("passif", key, Num(target), valid && target != 0m);
                     // Rang maximal (garde_stable, 3 rangs) : base + 2 × perRank = cible, perRank d'un pas vers l'extérieur ; au rang 1 la
                     // base reste dans les bornes, seul le rang maximal décide.
                     decimal perRank = outward * step;
@@ -794,15 +812,29 @@ public class Lot81ModifierDataFingerprintTests
     [Fact]
     public void Ordre_de_declaration_fait_partie_du_contenu()
     {
-        // D1 : modificateurs et conditions écrits à leur indice, dans l'ordre du fichier (comme les arbres, talents et déclencheurs).
-        // Deux listes de même sens dans un autre ordre ont donc deux empreintes ; le combat, lui, agrège sans dépendre de l'ordre
+        // D1 : modificateurs écrits à leur indice, dans l'ordre du fichier (comme les arbres, talents et déclencheurs). Deux listes de
+        // même sens dans un autre ordre ont donc deux empreintes ; le combat, lui, agrège sans dépendre de l'ordre
         // (Lot81ModifierDataEndToEndTests.Ordre_des_sources_sans_effet_sur_le_combat_mais_dans_l_empreinte).
         Assert.NotEqual(
             Valid(OnTalent(0, 0, Mod("damageDealt", "0.1"), Mod("guard.damageReduction", "0.05"))).Fingerprint,
             Valid(OnTalent(0, 0, Mod("guard.damageReduction", "0.05"), Mod("damageDealt", "0.1"))).Fingerprint);
-        Assert.NotEqual(
+    }
+
+    [Fact]
+    public void Ordre_des_conditions_sans_effet_sur_l_empreinte()
+    {
+        // Revue 8.1 : les conditions sont un ensemble pour le domaine (doublons et agrégation par ensemble) ; la forme canonique les
+        // écrit dans l'ordre fixe de l'énumération (whileGuarding, perRampartCharge, perResonanceStep), quel que soit l'ordre déclaré.
+        Assert.Equal(
             Valid(OnTalent(0, 0, Mod("damageTaken", "-0.01", "whileGuarding", "perRampartCharge"))).Fingerprint,
             Valid(OnTalent(0, 0, Mod("damageTaken", "-0.01", "perRampartCharge", "whileGuarding"))).Fingerprint);
+        Assert.Equal(
+            Valid(OnTalent(0, 0, Mod("damageDealt", "0.01", "perResonanceStep", "whileGuarding"))).Fingerprint,
+            Valid(OnTalent(0, 0, Mod("damageDealt", "0.01", "whileGuarding", "perResonanceStep"))).Fingerprint);
+        // Ensembles différents : empreintes différentes.
+        Assert.NotEqual(
+            Valid(OnTalent(0, 0, Mod("damageTaken", "-0.01", "whileGuarding", "perRampartCharge"))).Fingerprint,
+            Valid(OnTalent(0, 0, Mod("damageTaken", "-0.01", "whileGuarding", "perResonanceStep"))).Fingerprint);
     }
 
     [Fact]
@@ -917,15 +949,36 @@ public class Lot81ModifierDataSchemaTests
         Assert.Equal(new[] { "base", "perRank" }, oneOf[1]!["properties"]!.AsObject().Select(p => p.Key));
         Assert.False(oneOf[1]!["additionalProperties"]!.GetValue<bool>());
 
-        // Porteurs : talents et compétences, au plus 8 (plafond du programme).
+        // Porteurs : talents et compétences, au plus 8 (plafond du programme). Une compétence passive seulement, sans perRank (revue
+        // 8.1 : le schéma reprend les règles du programme exprimables sans les règles du jeu, sans jamais être plus strict).
         foreach (string owner in new[] { "talent", "skill" })
         {
             JsonObject list = Def(owner)["properties"]!["modifiers"]!.AsObject();
-            Assert.Equal("#/$defs/modifier", list["items"]!["$ref"]!.GetValue<string>());
+            JsonNode items = list["items"]!;
+            string reference = owner == "talent" ? items["$ref"]!.GetValue<string>() : items["allOf"]![0]!["$ref"]!.GetValue<string>();
+            Assert.Equal("#/$defs/modifier", reference);
             Assert.Equal(8, list["maxItems"]!.GetValue<int>());
             Assert.Equal(ModifierDefinition.MaxPerOwner, list["maxItems"]!.GetValue<int>());
             Assert.DoesNotContain("modifiers", Def(owner)["required"]!.AsArray().Select(n => n!.GetValue<string>()));
         }
+        JsonNode passiveOnly = Assert.Single(Def("skill")["allOf"]!.AsArray())!;
+        Assert.Equal("passive", passiveOnly["if"]!["properties"]!["kind"]!["not"]!["const"]!.GetValue<string>());
+        Assert.Equal(0, passiveOnly["then"]!["properties"]!["modifiers"]!["maxItems"]!.GetValue<int>());
+        JsonArray passiveAdd = Def("skill")["properties"]!["modifiers"]!["items"]!["allOf"]![1]!["properties"]!["add"]!["oneOf"]!.AsArray();
+        Assert.Equal(0, passiveAdd[1]!["properties"]!["perRank"]!["const"]!.GetValue<int>());
+
+        // Conditions seulement sur damageDealt et damageTaken, au plus une multiplicative ; drapeau à 1 ; damageTaken ≤ 0 ; jamais nul.
+        JsonArray rules = modifier["allOf"]!.AsArray();
+        Assert.Equal(new[] { "damageDealt", "damageTaken" },
+            rules[0]!["if"]!["properties"]!["key"]!["not"]!["enum"]!.AsArray().Select(n => n!.GetValue<string>()));
+        Assert.Equal(0, rules[0]!["then"]!["properties"]!["conditions"]!["maxItems"]!.GetValue<int>());
+        Assert.Equal(new[] { "perRampartCharge", "perResonanceStep" },
+            conditions["not"]!["allOf"]!.AsArray().Select(n => n!["contains"]!["const"]!.GetValue<string>()));
+        Assert.Equal("guard.noUpkeepBreak", rules[1]!["if"]!["properties"]!["key"]!["const"]!.GetValue<string>());
+        Assert.Equal(1, rules[1]!["then"]!["properties"]!["add"]!["oneOf"]![0]!["const"]!.GetValue<int>());
+        Assert.Equal("damageTaken", rules[2]!["if"]!["properties"]!["key"]!["const"]!.GetValue<string>());
+        Assert.Equal(0, rules[2]!["then"]!["properties"]!["add"]!["oneOf"]![0]!["exclusiveMaximum"]!.GetValue<int>());
+        Assert.Equal(0, modifier["properties"]!["add"]!["not"]!["anyOf"]![0]!["const"]!.GetValue<int>());
     }
 
     /// <summary>Les vingt clés de la liste fermée (tableau D2), écrites indépendamment du programme.</summary>
@@ -1274,7 +1327,8 @@ public class Lot81ModifierDataEndToEndTests
             RulesOf(Run(high)));
 
         // Planchers et révisions D10 : réduction à endurance nulle ramenée à la réduction de garde effective (min(0,7 ; 0,6)) ;
-        // fenêtre 150 − 2 × 500 → 1 tick (50 ms) ; Charges 5 − 10 → 0 ; Résonance 3 − 3 → 0 ; drapeau actif ; raccourci de rupture.
+        // fenêtre 150 − 2 × 500 → 1 tick (50 ms) ; Charges 5 − 10 → 0 ; Résonance 3 − 3 → 0 ; drapeau actif ; raccourci de rupture
+        // inerte avec le drapeau (aucune rupture ne reste), écrit 0 (revue 8.1 : le journal écrit ce qui s'applique).
         GameData low = InMemory(b =>
         {
             ClassTestData.Talent(b, 0, 0)["modifiers"] = List(Mod("guard.reductionAtZeroEndurance", "0.7"), Mod("parry.windowMs", "-500"),
@@ -1283,7 +1337,7 @@ public class Lot81ModifierDataEndToEndTests
         });
         Assert.Equal(
             "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,\"guard.noUpkeepBreak\":true," +
-            "\"guard.reductionAtZeroEndurance\":0.6,\"guard.breakShortenPerCharge\":1000,\"parry.windowMs\":50,\"parry.failureRecoveryMs\":500," +
+            "\"guard.reductionAtZeroEndurance\":0.6,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":50,\"parry.failureRecoveryMs\":500," +
             "\"rampartCharges.max\":0,\"resonance.perDirectHit\":0,\"endurance.regenPerSecond\":10,\"damageDealt\":0,\"damageTaken\":0,\"conditional\":[]}",
             RulesOf(Run(low)));
     }

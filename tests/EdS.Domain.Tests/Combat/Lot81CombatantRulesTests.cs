@@ -504,8 +504,8 @@ public class Lot81CombatantRulesBindingTests
     [InlineData("guard.costPerBlock", "-2", "-1", 5, "4")]
     [InlineData("guard.noUpkeepBreak", "1", "0", 1, "true")]
     [InlineData("guard.noUpkeepBreak", "1", "0", 5, "true")]
-    [InlineData("guard.reductionAtZeroEndurance", "0.1", "0.05", 1, "0.1")]
-    [InlineData("guard.reductionAtZeroEndurance", "0.1", "0.05", 5, "0.3")]  // ≤ garde 0,6
+    [InlineData("guard.reductionAtZeroEndurance", "0.1", "0.05", 1, "0")]    // inerte sans guard.noUpkeepBreak : 0 (valeur avec le
+    [InlineData("guard.reductionAtZeroEndurance", "0.1", "0.05", 5, "0")]    // drapeau : Reduction_a_endurance_nulle_aux_rangs_1_et_5)
     [InlineData("guard.breakShortenPerCharge", "100", "100", 1, "100")]
     [InlineData("guard.breakShortenPerCharge", "100", "100", 5, "500")]
     [InlineData("parry.windowMs", "50", "50", 1, "200")]
@@ -564,7 +564,13 @@ public class Lot81CombatantRulesBindingTests
             string neutral = parsed.Field == ModifierField.GuardNoUpkeepBreak ? "false" : "0";
             Assert.Equal(neutral, Observe(parsed, CombatantRules.For(CombatRules.Provisional, ModifierSet.Empty),
                 CombatantStats.ForCharacter(StatRules.Provisional, character.Build, ModifierSet.Empty), skill));
-            Assert.Equal(parsed.Field == ModifierField.GuardNoUpkeepBreak ? "true" : x.ToString(), expected);
+            // Sauf la réduction à endurance nulle, inerte (0) sans guard.noUpkeepBreak (revue 8.1).
+            Assert.Equal(parsed.Field switch
+            {
+                ModifierField.GuardNoUpkeepBreak => "true",
+                ModifierField.GuardReductionAtZeroEndurance => "0",
+                _ => x.ToString(),
+            }, expected);
         }
     }
 
@@ -629,7 +635,7 @@ public class Lot81CombatantRulesBindingTests
             ("guard.upkeepPerSecond", "1", "0.5", "3.5"),
             ("guard.costPerBlock", "-3", "1", "8"),
             ("guard.reductionAtZeroEndurance", "0.4", "0.4", "0.68"),         // 0,8 → 0,75 → min(0,75 ; 0,68)
-            ("guard.breakShortenPerCharge", "100", "50", "150"),
+            ("guard.breakShortenPerCharge", "100", "50", "150"),             // inerte (0) avec guard.noUpkeepBreak, voir plus bas
             ("parry.windowMs", "50", "100", "300"),
             ("parry.failureRecoveryMs", "-100", "-100", "300"),
             ("rampartCharges.max", "2", "1", "8"),
@@ -649,9 +655,11 @@ public class Lot81CombatantRulesBindingTests
         Assert.Equal(pairs.Length + 1, all.Keys.Count);
         foreach (var (key, a, b, expected) in pairs)
         {
-            Assert.Equal(expected, Value(key, CombatRules.Provisional, all));
+            // Le raccourci de rupture n'a rien à raccourcir quand la garde ne se brise plus (drapeau présent dans « all ») : 0.
+            Assert.Equal(key == "guard.breakShortenPerCharge" ? "0" : expected, Value(key, CombatRules.Provisional, all));
             var alone = new List<ModifierDefinition> { Mod(key, a), Mod(key, b) };
-            if (key == "guard.reductionAtZeroEndurance") alone.AddRange(new[] { Mod("guard.damageReduction", "0.05"), Mod("guard.damageReduction", "0.03") });
+            if (key == "guard.reductionAtZeroEndurance")
+                alone.AddRange(new[] { Mod("guard.damageReduction", "0.05"), Mod("guard.damageReduction", "0.03"), Mod("guard.noUpkeepBreak", "1") });
             Assert.Equal(expected, Value(key, CombatRules.Provisional, Set(alone.ToArray())));
         }
         Assert.Equal("true", Value("guard.noUpkeepBreak", CombatRules.Provisional, all));
@@ -711,10 +719,43 @@ public class Lot81CombatantRulesBoundsTests
     [InlineData("", "0.1;-0.1", "0")]
     public void Reduction_a_endurance_nulle_jamais_au_dessus_de_la_garde_effective(string guardAdds, string adds, string expected)
     {
-        ModifierSet set = Set(Split(guardAdds).Select(a => Mod("guard.damageReduction", a)).Concat(Split(adds).Select(a => Mod("guard.reductionAtZeroEndurance", a))).ToArray());
+        ModifierSet set = Set(Split(guardAdds).Select(a => Mod("guard.damageReduction", a)).Concat(Split(adds).Select(a => Mod("guard.reductionAtZeroEndurance", a)))
+            .Append(Mod("guard.noUpkeepBreak", "1")).ToArray());
         CombatantRules r = CombatantRules.For(CombatRules.Provisional, set);
         Assert.Equal(F(expected), r.GuardReductionAtZeroEndurance);
         Assert.True(r.GuardReductionAtZeroEndurance <= r.GuardDamageReduction);
+    }
+
+    [Theory]
+    // Talent de 5 rangs avec le drapeau : 0,1 + 0,05 × (rang − 1), sous la garde provisoire 0,6.
+    [InlineData(1, "0.1")]
+    [InlineData(5, "0.3")]
+    public void Reduction_a_endurance_nulle_aux_rangs_1_et_5(int rank, string expected)
+    {
+        ModifierSet set = ModifierSet.From(new[]
+        {
+            Bound(Mod("guard.reductionAtZeroEndurance", "0.1", "0.05"), 0, rank),
+            Bound(Mod("guard.noUpkeepBreak", "1"), 1),
+        });
+        Assert.Equal(F(expected), CombatantRules.For(CombatRules.Provisional, set).GuardReductionAtZeroEndurance);
+    }
+
+    [Fact]
+    public void Valeurs_inertes_ramenees_a_zero()
+    {
+        // Revue 8.1 : une valeur sans effet vaut 0, pour que le journal (objet rules) écrive ce qui s'applique. Sans le drapeau, la
+        // réduction à endurance nulle ne sert jamais (la garde se brise avant) ; avec le drapeau, aucune rupture ne reste à raccourcir.
+        CombatantRules withoutFlag = For(Mod("guard.reductionAtZeroEndurance", "0.5"), Mod("guard.breakShortenPerCharge", "500"));
+        Assert.False(withoutFlag.GuardNoUpkeepBreak);
+        Assert.Equal(Fixed.Zero, withoutFlag.GuardReductionAtZeroEndurance);
+        Assert.Equal(500, withoutFlag.GuardBreakShortenPerChargeMs);
+        CombatantRules withFlag = For(Mod("guard.reductionAtZeroEndurance", "0.5"), Mod("guard.breakShortenPerCharge", "500"), Mod("guard.noUpkeepBreak", "1"));
+        Assert.True(withFlag.GuardNoUpkeepBreak);
+        Assert.Equal(F("0.5"), withFlag.GuardReductionAtZeroEndurance);
+        Assert.Equal(0, withFlag.GuardBreakShortenPerChargeMs);
+        // Les clés restent visées (sommes intactes) : seule la valeur appliquée change.
+        Assert.Equal(F("500"), withFlag.Modifiers.Sum(ModifierField.GuardBreakShortenPerCharge));
+        Assert.Equal(F("0.5"), withoutFlag.Modifiers.Sum(ModifierField.GuardReductionAtZeroEndurance));
     }
 
     /// <summary>Règles légales pour un tick donné (récupération de parade 1 000 ms, multiple de 40, 50, 200 et 1 000).</summary>
@@ -882,7 +923,8 @@ public class Lot81CombatantRulesBoundsTests
         Assert.Equal("90000000", Value("parry.failureRecoveryMs", "50", outside));
         Assert.Equal("89999950", Value("parry.failureRecoveryMs", "-50", outside));
         // Réduction à endurance nulle sous une garde de base 0,8 : plafond propre 0,75, puis min avec la garde.
-        Assert.Equal("0.75", Value("guard.reductionAtZeroEndurance", "0.75;0.05", outside));
+        Assert.Equal("0.75", Value("guard.reductionAtZeroEndurance", outside,
+            Set(Mod("guard.reductionAtZeroEndurance", "0.75"), Mod("guard.reductionAtZeroEndurance", "0.05"), Mod("guard.noUpkeepBreak", "1"))));
         // Compétence hors intervalles (bloc combat non validé) : coefficient 150, recharge 25 h.
         SkillDefinition skill = Skill(F("150"), 90_000_000);
         Assert.Equal("150", Value("skill.essai.frappe.coefficient", "", skill: skill));

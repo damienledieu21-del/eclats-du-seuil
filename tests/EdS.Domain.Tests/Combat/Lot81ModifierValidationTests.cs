@@ -284,8 +284,8 @@ public class Lot81ModifierValidationTests
             Refus(SurTalent(5, M(cle, "1", perRank)), Invalide, AddAlpha, perRank);
             Refus(SurTalent(1, M(cle, "1", perRank)), Invalide, AddAlpha, perRank);
         }
-        // Sur un passif, deux règles sont violées (perRank hors talent, drapeau) : deux erreurs sur le même chemin.
-        Assert.Equal(new[] { (Invalide, CheminPassif + "[0].add"), (Invalide, CheminPassif + "[0].add") }, Signatures(SurPassif(M(cle, "1", "1"))));
+        // Sur un passif, perRank hors talent est signalé seul (revue 8.1 : une erreur par valeur), sans l'erreur de drapeau.
+        Assert.Equal(new[] { (Invalide, CheminPassif + "[0].add") }, Signatures(SurPassif(M(cle, "1", "1"))));
     }
 
     [Theory]
@@ -318,12 +318,41 @@ public class Lot81ModifierValidationTests
         Admis(SurTalent(5, Brut(ligne.Cle, v, v)));      // sur un talent : 5 × v au rang 5, dans les bornes de toute clé
     }
 
+    [Theory]
+    [MemberData(nameof(ClesNumeriques))]
+    public void Valeur_nulle_a_chaque_rang_refusee(ModifierField field, int signe)
+    {
+        // Revue 8.1 : un modificateur nul à chaque rang est sans effet (il changerait l'empreinte et l'objet rules du journal sans rien
+        // changer au combat) ; refusé, une seule erreur sur .add.
+        Lot81Classe.Ligne ligne = De(field);
+        Fixed v = (ligne.Unite == ModifierUnit.Decimal ? Fixed.Parse("0.01") : Fixed.One) * signe;
+        Refus(SurTalent(5, Brut(ligne.Cle, Fixed.Zero)), Invalide, AddAlpha);
+        Refus(SurTalent(1, Brut(ligne.Cle, Fixed.Zero)), Invalide, AddAlpha);
+        Refus(SurPassif(Brut(ligne.Cle, Fixed.Zero)), Invalide, CheminPassif + "[0].add");
+        // Nul au rang 1 seulement : admis (rang 5 : 4 × v).
+        Admis(SurTalent(5, Brut(ligne.Cle, Fixed.Zero, v)));
+    }
+
+    [Theory]
+    [MemberData(nameof(ClesNumeriques))]
+    public void PerRank_refuse_sur_un_talent_a_un_seul_rang(ModifierField field, int signe)
+    {
+        // Revue 8.1 : sur un talent à un seul rang, perRank n'aurait aucun effet (seul le rang 1 existe) mais changerait l'empreinte.
+        Lot81Classe.Ligne ligne = De(field);
+        Fixed v = (ligne.Unite == ModifierUnit.Decimal ? Fixed.Parse("0.01") : Fixed.One) * signe;
+        Refus(SurTalent(1, Brut(ligne.Cle, v, v)), Invalide, AddAlpha);
+        Refus(SurTalent(1, Brut(ligne.Cle, v, Fixed.FromInt(99_999))), Invalide, AddAlpha);   // jamais borné : refusé quand même
+        Admis(SurTalent(1, Brut(ligne.Cle, v)));
+        Admis(SurTalent(2, Brut(ligne.Cle, v, v)));
+    }
+
     [Fact]
     public void DamageTaken_reduction_seulement()
     {
         const string cle = "damageTaken";
-        // Admis : 0, négatif, −1 (borne), perRank négatif, perRank positif tant que la valeur reste ≤ 0 à chaque rang.
-        Admis(SurTalent(5, M(cle, "0")));
+        // Admis : négatif, −1 (borne), perRank négatif, perRank positif tant que la valeur reste ≤ 0 à chaque rang (0 à un rang
+        // seulement). Une valeur nulle à chaque rang est sans effet, refusée comme toute clé (revue 8.1).
+        Refus(SurTalent(5, M(cle, "0")), Invalide, AddAlpha);
         Admis(SurTalent(5, M(cle, "-0.005")));
         Admis(SurTalent(5, M(cle, "-1")));
         Admis(SurTalent(5, M(cle, "0", "-0.01")));          // rang 5 : −0,04

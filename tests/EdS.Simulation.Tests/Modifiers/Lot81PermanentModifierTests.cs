@@ -1127,9 +1127,10 @@ public class Lot81CombatantRulesLogTests
             }));
         IReadOnlyList<string> lines = Log(definition, new Dictionary<string, int> { [TalentAlpha] = 3, [TalentBeta] = 2 }, new[] { Passif, PassifB });
 
-        // Réduction à endurance nulle : min(0,7, 0,65) = 0,65 (D10, jamais au-dessus de la réduction de garde effective).
+        // Réduction à endurance nulle : min(0,7, 0,65) = 0,65 (D10, jamais au-dessus de la réduction de garde effective). Raccourci de
+        // rupture inerte avec le drapeau (aucune rupture ne reste) : 0 (revue 8.1 : le journal écrit ce qui s'applique).
         const string expected = "{\"guard.damageReduction\":0.65,\"guard.upkeepPerSecond\":2.5,\"guard.costPerBlock\":10,"
-            + "\"guard.noUpkeepBreak\":true,\"guard.reductionAtZeroEndurance\":0.65,\"guard.breakShortenPerCharge\":500,\"parry.windowMs\":150,"
+            + "\"guard.noUpkeepBreak\":true,\"guard.reductionAtZeroEndurance\":0.65,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":150,"
             + "\"parry.failureRecoveryMs\":500,\"rampartCharges.max\":5,\"resonance.perDirectHit\":5,\"endurance.regenPerSecond\":10,"
             + "\"damageDealt\":0.1,\"damageTaken\":0,"
             + "\"skill.essai.frappe.coefficient\":1.5,\"skill.essai.frappe.cooldownMs\":5000,\"skill.essai.heurt.coefficient\":1,"

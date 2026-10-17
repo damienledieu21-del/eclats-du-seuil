@@ -67,10 +67,14 @@ namespace EdS.Domain.Combat
             GuardUpkeepPerSecond = Clamp(Fixed.FromInt(rules.GuardUpkeepPerSecond), m.Sum(ModifierField.GuardUpkeepPerSecond), Fixed.Zero, MaxInt);
             GuardCostPerBlock = Whole(Clamp(Fixed.FromInt(rules.GuardCostPerBlock), m.Sum(ModifierField.GuardCostPerBlock), Fixed.Zero, MaxInt));
             GuardNoUpkeepBreak = m.Flag(ModifierField.GuardNoUpkeepBreak);
-            // « Ramenée à » : jamais au-dessus de la réduction de garde effective (0 d'endurance ne vaut pas mieux qu'une garde payée).
-            GuardReductionAtZeroEndurance = Fixed.Min(GuardDamageReduction,
+            // Une valeur inerte vaut 0 (le journal écrit ce qui s'applique) : la réduction à 0 d'endurance ne sert que si la garde tient
+            // sans endurance (noUpkeepBreak) ; le raccourci de rupture, que si la garde peut encore se briser (avec le drapeau, ni
+            // l'entretien ni un blocage ne la brisent, et aucune autre rupture n'existe). « Ramenée à » : jamais au-dessus de la
+            // réduction de garde effective (0 d'endurance ne vaut pas mieux qu'une garde payée).
+            GuardReductionAtZeroEndurance = !GuardNoUpkeepBreak ? Fixed.Zero : Fixed.Min(GuardDamageReduction,
                 Clamp(Fixed.Zero, m.Sum(ModifierField.GuardReductionAtZeroEndurance), Fixed.Zero, MaxGuardDamageReduction));
-            GuardBreakShortenPerChargeMs = Whole(Clamp(Fixed.Zero, m.Sum(ModifierField.GuardBreakShortenPerCharge), Fixed.Zero, MaxDuration));
+            GuardBreakShortenPerChargeMs = GuardNoUpkeepBreak ? 0
+                : Whole(Clamp(Fixed.Zero, m.Sum(ModifierField.GuardBreakShortenPerCharge), Fixed.Zero, MaxDuration));
             long windowCap = MaxParryWindowMs - MaxParryWindowMs % _tickMs;
             ParryWindowMs = Whole(Clamp(Fixed.FromInt(rules.ParryWindowMs), m.Sum(ModifierField.ParryWindowMs), Fixed.FromInt(_tickMs), Fixed.FromInt(windowCap)));
             ParryFailureRecoveryMs = Whole(Clamp(Fixed.FromInt(rules.ParryFailureRecoveryMs), m.Sum(ModifierField.ParryFailureRecoveryMs), Fixed.Zero, MaxDuration));

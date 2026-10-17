@@ -17,7 +17,7 @@ namespace EdS.Simulation.Tests.Modifiers;
 //   [L2] bornes N−1, N, N+1 ............................... multiples du tick et de la période, frontière du précontrôle numérique
 //                                                           (force, résistance aux altérations), majorant de file et capacité ;
 //   [L3] combinaisons de modificateurs .................... précontrôle (charges relevées + conditionnel, coefficient + bonus),
-//                                                           sous-ensembles de modificateurs négatifs ou neutres ;
+//                                                           sous-ensembles de modificateurs négatifs ou défensifs ;
 //   [L4] conditions vraies et fausses ..................... hors de ce fichier (moteur) ; ici, majorant d'un conditionnel au facteur maximal ;
 //   [L5] agrégation indépendante de l'ordre ............... validation, majorant et journal identiques quelle que soit la répartition ;
 //   [L6] immuabilité ...................................... entrées inchangées après validation et simulation, sources modifiées sans effet ;
@@ -395,9 +395,11 @@ public class Lot81ModifierNumericPrecheckTests
                 stats: new StatRules { BaseStatusResistance = Fixed.FromInt(998_999_981) }),
             "combatants[1]", "résistance aux altérations effective calculée (1000000001) au-delà de la limite technique 1000000000."),
         // PV max +1 000 % : (100 + 10⁸ × 10⁶) × 11 dépasse la plage de Fixed (≈ 9,22 × 10¹⁴) ; sans modificateur, 10¹⁴ + 100 tient.
+        // Revue 8.1 : le dépassement est rattaché à la classe (les modificateurs), pas aux attributs, qui tiennent seuls.
         ["pv_max_pourcentage"] = (with => Duel(14, with ? Lot81CombatFixtures.Mods((PassifB, Mod("maxHealth", "10"))) : null,
                 stats: new StatRules { MaxHealthPerVitalite = Fixed.FromInt(100_000_000) }, vitalite: Strong),
-            "combatants[1].build.attributes", "statistiques dérivées hors des limites numériques."),
+            "combatants[1].class",
+            "statistiques dérivées hors des limites numériques avec les modificateurs permanents de la classe (maxHealth, endurance.max, statusResistance)."),
     };
 
     public static TheoryData<string> OverflowNames() => new(Overflows.Keys);
@@ -504,10 +506,10 @@ public class Lot81ModifierNumericPrecheckTests
     }
 
     [Fact]
-    public void Modificateurs_negatifs_ou_neutres_ne_durcissent_jamais_le_precontrole()
+    public void Modificateurs_negatifs_ou_defensifs_ne_durcissent_jamais_le_precontrole()
     {
         // À la frontière (force 776 378, damageDealt +10 au rang 5), le combat est accepté. Chaque sous-ensemble de modificateurs
-        // négatifs ou neutres ajouté au même personnage le laisse accepté ; à la force suivante, le refus garde le même message
+        // négatifs ou défensifs ajouté au même personnage le laisse accepté ; à la force suivante, le refus garde le même message
         // (même pire impact : damageTaken n'entre pas dans le pire impact, un conditionnel négatif n'est jamais compté).
         const int frontier = 776_378;
         (string Owner, ModifierDefinition Modifier)[] candidates =
@@ -519,7 +521,7 @@ public class Lot81ModifierNumericPrecheckTests
             (Passif, Mod("damageDealt", "-0.2", null, ModifierCondition.PerResonanceStep)),
             (Passif, Mod("skill.essai.ultime.coefficient", "-1")),                                   // coefficient abaissé
             (PassifB, Mod("maxHealth", "-0.5")),
-            (PassifB, Mod("damageTaken", "0")),                                                      // neutre
+            (PassifB, Mod("guard.damageReduction", "0.05")),                                         // défensif, hors du pire impact
         };
         string refusedAlone = Assert.Single(Duel(frontier + 1, Lot81CombatFixtures.Mods((TalentAlpha, Mod("damageDealt", "2", "2")))).Validate()).Message;
         for (int mask = 0; mask < 1 << candidates.Length; mask++)

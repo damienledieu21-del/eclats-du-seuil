@@ -70,7 +70,10 @@ namespace EdS.Data.Modifiers
 
         /// <summary>
         /// Écriture canonique pour les empreintes : rien si la liste est absente ou vide (les données sans modificateur n'ajoutent rien),
-        /// sinon chaque champ dans un ordre fixe ; une liste de conditions absente et une liste vide s'écrivent de même (même sens).
+        /// sinon chaque champ dans un ordre fixe ; une liste de conditions absente et une liste vide s'écrivent de même (même sens), et les
+        /// conditions, un ensemble pour le domaine, s'écrivent dans l'ordre fixe de l'énumération quel que soit l'ordre déclaré (données
+        /// validées : ni condition inconnue ni doublon). L'ordre des modificateurs d'une liste fait partie du contenu, comme celui des
+        /// déclencheurs.
         /// </summary>
         public static void AppendCanonical(StringBuilder text, string path, IReadOnlyList<ModifierDefinition> modifiers)
         {
@@ -83,7 +86,7 @@ namespace EdS.Data.Modifiers
                 string p = $"{path}[{i}]";
                 w.Value(p + ".key", m.Key);
                 w.Value(p + ".add", m.Add.PerRank == Fixed.Zero ? m.Add.Base.ToString() : $"{m.Add.Base}+{m.Add.PerRank}/rank");
-                w.List(p + ".conditions", m.Conditions.Select(ModifierKeys.Of));
+                w.List(p + ".conditions", ModifierKeys.Of(m.ConditionSet).Select(ModifierKeys.Of));
             }
         }
     }

@@ -16,9 +16,10 @@ Quand une base des règles sort déjà d'un intervalle de jeu (règles de test),
 
 ## Écrêter ou refuser
 
-- **Refus** (erreur de données, avec chemin, avant tout combat) : clé inconnue, condition non admise, doublon, valeur déclarée hors de sa borne au rang 1 ou au rang maximal, entier ou ms non entier, ms non multiple du tick (ou de la période d'un DOT), drapeau ≠ 1, `perRank` hors talent, `damageTaken` positif, modificateur sur une compétence active ou ultime, plus de 8 par porteur ou de 512 par classe. Pour une règle à plafond absolu, la borne d'une valeur déclarée est la largeur du plafond : un modificateur seul ne peut pas le dépasser.
+- **Refus** (erreur de données, avec chemin, avant tout combat) : clé inconnue, condition non admise, doublon, valeur déclarée hors de sa borne au rang 1 ou au rang maximal, entier ou ms non entier, ms non multiple du tick (ou de la période d'un DOT), drapeau ≠ 1, valeur nulle à chaque rang, `perRank` hors talent ou sur un talent à un seul rang, `damageTaken` positif, modificateur sur une compétence active ou ultime, plus de 8 par porteur ou de 512 par classe. Pour une règle à plafond absolu, la borne d'une valeur déclarée est la largeur du plafond : un modificateur seul ne peut pas le dépasser.
 - **Écrêtage** (jamais une erreur) : la somme de plusieurs sources légales. Une combinaison de choix valides ne rend pas un combat invalide ; la valeur appliquée est écrite dans la ligne `combatant` (`rules`).
-- **Inertes** (acceptées, documentées) : `guard.reductionAtZeroEndurance` sans `guard.noUpkeepBreak` chez le même porteur ; `guard.breakShortenPerCharge` avec `guard.noUpkeepBreak` (aucune rupture liée à l'endurance ne reste à raccourcir).
+- **Inertes** (acceptées, documentées) : `guard.reductionAtZeroEndurance` sans `guard.noUpkeepBreak` chez le même combattant ; `guard.breakShortenPerCharge` avec `guard.noUpkeepBreak` (aucune rupture ne reste à raccourcir). Ces combinaisons dépendent du build, pas d'un porteur : elles ne peuvent pas être refusées par la classe. Leur valeur effective vaut 0, et le journal (`rules`) écrit 0.
+- **Rapport.** Au plus une erreur par valeur ; au combat, une classe arrêtée à un plafond global n'est pas examinée plus loin et une liste déjà refusée n'est pas réexaminée. Le plafond de 512 modificateurs est signalé sur `skills`, comme celui des déclencheurs, même quand les modificateurs sont sur des talents (le message dit « talents et compétences »).
 
 ## Absence de débordement
 
@@ -32,4 +33,6 @@ Quand une base des règles sort déjà d'un intervalle de jeu (règles de test),
 ## Ce qui n'est pas couvert en 8.1
 
 - Boucliers (`shield.potencyDealt`, X3, X4), transferts (`protection.redirectRatio`, X6) et provocation (`status.taunt.*`, X7) : sous-lots 8.2 et 8.3. Ces clés sont refusées comme inconnues tant que leur consommateur n'existe pas (une clé sans effet irait contre la validation stricte) ; `status.taunt.*` l'est au combat, `taunt` étant absent du catalogue.
+- Blocage à coût nul : il relance le délai de régénération (comportement du moteur 0.9.1, conservé pour la non-régression), alors qu'un blocage affaibli ou un entretien qui ne paient rien ne le relancent pas.
+- Déclencheurs (7.3) : un `perRank` sur un talent à un seul rang y reste admis ; la règle plus stricte des modificateurs ne leur a pas été étendue.
 - Conditions multiplicatives combinées (`perRampartCharge` avec `perResonanceStep`) : refusées, faute de contenu prévu et parce que leur mise à l'échelle quadratique serait difficile à équilibrer.
