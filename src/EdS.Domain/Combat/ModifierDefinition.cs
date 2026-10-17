@@ -279,8 +279,9 @@ namespace EdS.Domain.Combat
         /// entiers, drapeaux, référence d'une compétence de la classe. Chemins de la forme <c>{path}[i].add</c>. <paramref name="maxRank"/>
         /// vaut le rang maximal d'un talent, 1 ailleurs ; <paramref name="ranked"/> autorise les valeurs par rang (talents à plusieurs rangs
         /// seulement : un perRank sans effet est refusé). Au plus une erreur par valeur. Un rang maximal déclaré inférieur à 1 est déjà
-        /// refusé par la classe : les contrôles « sans effet » qui dépendent des rangs déclarés (perRank d'un talent à un seul rang, valeur
-        /// nulle aux rangs déclarés malgré un perRank) ne s'appliquent pas, pour ne pas signaler une seconde erreur qui n'existe pas.
+        /// refusé par la classe : le refus « perRank sans effet », qui suppose un seul rang déclaré, ne s'applique pas ; une valeur avec
+        /// perRank est alors examinée aux rangs 1 et 2 (le rang 2 existe pour tout rang maximal qui admet un perRank), sans perRank au
+        /// rang 1. Aucune erreur n'est inventée, et une valeur fausse pour tout rang maximal légal est signalée dès le premier passage.
         /// </summary>
         public static void ValidateList(IReadOnlyList<ModifierDefinition> modifiers, string path, int maxRank, bool ranked,
             Func<string, SkillDefinition?> skillOf, List<RuleViolation> errors)
@@ -362,11 +363,12 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation($"« {spec.Name} » est un drapeau : valeur 1, sans perRank.", p));
                 return;
             }
+            int rank = !ranked ? 1 : ranksDeclared ? topRank : value.PerRank != Fixed.Zero ? 2 : 1;
             Fixed low, high;
             try
             {
                 low = value.At(1);
-                high = value.At(ranked ? topRank : 1);
+                high = value.At(rank);
             }
             catch (OverflowException)
             {
@@ -375,8 +377,8 @@ namespace EdS.Domain.Combat
             }
             Fixed max = spec.MaxMagnitude;
             if (low < -max || low > max || high < -max || high > max)
-                errors.Add(new RuleViolation($"valeur hors de [{-max}, {max}] à un rang possible (1 à {(ranked ? topRank : 1)}).", p));
-            else if (low == Fixed.Zero && high == Fixed.Zero && (ranksDeclared || value.PerRank == Fixed.Zero))
+                errors.Add(new RuleViolation($"valeur hors de [{-max}, {max}] à un rang possible (1 à {rank}).", p));
+            else if (low == Fixed.Zero && high == Fixed.Zero)
                 errors.Add(new RuleViolation("modificateur sans effet : valeur nulle à chaque rang.", p));
             else if (spec.Field == ModifierField.DamageTaken && (low > Fixed.Zero || high > Fixed.Zero))
                 errors.Add(new RuleViolation("damageTaken ne fait que réduire les dégâts subis : valeur négative ou nulle à chaque rang.", p));

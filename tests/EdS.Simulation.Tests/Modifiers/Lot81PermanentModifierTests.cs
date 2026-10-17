@@ -1157,6 +1157,33 @@ public class Lot81CombatantRulesLogTests
     }
 
     [Fact]
+    public void Objet_rules_valeurs_sans_effet_selon_le_build_ecrites_telles_quelles()
+    {
+        // Vérification finale 8.1 : seules les deux combinaisons inertes du drapeau valent 0. Une valeur sans effet dans un build donné
+        // est écrite telle quelle : réduction à endurance nulle 0,3 avec le drapeau mais un coût de blocage ramené à 0 (10 − 10) ;
+        // raccourci de rupture de 500 ms par Charge sans le drapeau mais avec 0 Charge max (5 − 5).
+        ClassDefinition sansCout = X1.With((Passif, new[]
+        {
+            Mod("guard.noUpkeepBreak", "1"), Mod("guard.reductionAtZeroEndurance", "0.3"), Mod("guard.costPerBlock", "-10"),
+        }));
+        const string expectedSansCout = "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":0,"
+            + "\"guard.noUpkeepBreak\":true,\"guard.reductionAtZeroEndurance\":0.3,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":150,"
+            + "\"parry.failureRecoveryMs\":500,\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,"
+            + "\"damageDealt\":0,\"damageTaken\":0,\"conditional\":[]}";
+        Assert.Equal(expectedSansCout, X1.RulesJson(Log(sansCout, null, new[] { Passif })));
+
+        ClassDefinition sansCharge = X1.With((Passif, new[]
+        {
+            Mod("guard.breakShortenPerCharge", "500"), Mod("rampartCharges.max", "-5"),
+        }));
+        const string expectedSansCharge = "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,"
+            + "\"guard.noUpkeepBreak\":false,\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":500,\"parry.windowMs\":150,"
+            + "\"parry.failureRecoveryMs\":500,\"rampartCharges.max\":0,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,"
+            + "\"damageDealt\":0,\"damageTaken\":0,\"conditional\":[]}";
+        Assert.Equal(expectedSansCharge, X1.RulesJson(Log(sansCharge, null, new[] { Passif })));
+    }
+
+    [Fact]
     public void Objet_rules_valeurs_ecretees_aux_plafonds_et_aux_planchers()
     {
         ClassDefinition definition = X1.With(

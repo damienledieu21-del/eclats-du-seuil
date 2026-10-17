@@ -358,6 +358,16 @@ public class Lot81ModifierValidationTests
         Refus(SurTalent(rangMax, M("damageDealt", "0.1", "0.1")), Invalide, RangAlpha);
         Refus(SurTalent(rangMax, M("damageDealt", "0", "0.1")), Invalide, RangAlpha);
         Assert.Equal(new[] { (Invalide, RangAlpha), (Invalide, AddAlpha) }, Signatures(SurTalent(rangMax, M("damageDealt", "0"))));
+        // Vérification finale 8.1 : une valeur avec perRank est examinée aux rangs 1 et 2, le rang 2 existant pour tout rang maximal
+        // qui admet un perRank. Une valeur fausse pour tout rang maximal légal est donc signalée dès le premier passage.
+        IReadOnlyList<RuleViolation> horsBorne = SurTalent(rangMax, M("damageDealt", "0.1", "1000"));
+        Assert.Equal(new[] { (Invalide, RangAlpha), (Invalide, AddAlpha) }, Signatures(horsBorne));
+        Assert.Contains("(1 à 2)", horsBorne[1].Message);
+        IReadOnlyList<RuleViolation> positif = SurTalent(rangMax, M("damageTaken", "0", "0.1"));
+        Assert.Equal(new[] { (Invalide, RangAlpha), (Invalide, AddAlpha) }, Signatures(positif));
+        Assert.Contains("damageTaken", positif[1].Message);
+        // Rang 2 dans la borne : aucune seconde erreur, même si un rang plus élevé la dépasserait (5 × 3 > 10).
+        Refus(SurTalent(rangMax, M("damageDealt", "5", "3")), Invalide, RangAlpha);
     }
 
     [Fact]

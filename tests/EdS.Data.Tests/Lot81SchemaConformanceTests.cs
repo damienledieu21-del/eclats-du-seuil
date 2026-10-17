@@ -160,13 +160,14 @@ public class Lot81SchemaConformanceTests
 
     private sealed record Owner(string Name, Func<JsonObject, JsonObject> Of);
 
-    /// <summary>Porteurs de bastion.json : talents de 1, 2, 3 et 5 rangs, passive, actives avec et sans bloc combat, ultime.</summary>
+    /// <summary>Porteurs de bastion.json : talents de 1, 2, 3 et 5 rangs, talent majeur, passive, actives avec et sans bloc combat, ultime.</summary>
     private static readonly Owner[] Owners =
     {
         new("talent à 3 rangs", r => ClassTestData.Talent(r, 0, 0)),
         new("talent à 1 rang", r => ClassTestData.Talent(r, 0, 1)),
         new("talent à 2 rangs", r => ClassTestData.Talent(r, 1, 1)),
         new("talent à 5 rangs", r => ClassTestData.Talent(r, 0, 3)),
+        new("talent majeur", r => ClassTestData.Talent(r, 0, 2)),
         new("passive", r => ClassTestData.Skill(r, 7)),
         new("active avec combat", r => ClassTestData.Skill(r, 0)),
         new("active sans combat", r => ClassTestData.Skill(r, 2)),
@@ -260,7 +261,7 @@ public class Lot81SchemaConformanceTests
     [Fact]
     public void Programme_accepte_donc_schema_accepte_chaque_cle_valeur_et_porteur()
     {
-        // 20 clés × 8 porteurs × 56 valeurs.
+        // 20 clés × 9 porteurs × 56 valeurs.
         var tally = new Tally();
         foreach (ModifierSpec spec in ModifierKeys.Specs)
             foreach (Owner owner in Owners)
@@ -284,7 +285,7 @@ public class Lot81SchemaConformanceTests
         };
         var tally = new Tally();
         foreach (ModifierSpec spec in ModifierKeys.Specs)
-            foreach (Owner owner in new[] { OwnerNamed("talent à 3 rangs"), OwnerNamed("talent à 1 rang"), OwnerNamed("passive") })
+            foreach (Owner owner in new[] { OwnerNamed("talent à 3 rangs"), OwnerNamed("talent à 1 rang"), OwnerNamed("talent majeur"), OwnerNamed("passive") })
                 foreach (string add in new[] { Num(Step(spec)), Num(-Step(spec)), "1" })
                     foreach (string conditions in conditionLists)
                     {

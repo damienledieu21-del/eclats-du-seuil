@@ -363,8 +363,10 @@ public class Lot81ConditionalAndGuardModifierTests
     {
         // Étape 3 de l'autorisation, contre-vérification 8.1 : une condition est lue sur l'état courant sans ligne, sans notification
         // et sans déclencheur. Même combat (Charges gagnées puis consommées, garde prise puis lâchée, Résonance accumulée, riposte
-        // passive sur chaque impact subi) avec et sans damageDealt +0,2 et damageTaken −0,2 sous la condition : la suite des
-        // événements est identique, type, tick et champs texte compris ; seuls des montants changent.
+        // passive sur chaque impact subi, saignement de l'assaillant) avec et sans damageDealt +0,2 et damageTaken −0,2 sous la
+        // condition : la suite des événements est identique, type, tick et champs texte compris ; seuls des montants changent, sur
+        // les impacts comme sur les ticks de DOT. « Sans coût » n'est vérifié qu'en partie : les pics de charge du moteur (travail et
+        // lignes par tick, file d'attente) sont égaux ; le temps de calcul n'est pas mesuré.
         var mods = Mods((Passif, new[] { Mod("damageDealt", "0.2", null, condition), Mod("damageTaken", "-0.2", null, condition) }));
         string[] actives = { Frappe, Recharge, Rempart, Gratuite };
         var commands = new[]
@@ -374,13 +376,17 @@ public class Lot81ConditionalAndGuardModifierTests
         };
         CharacterSetup Fighter(Dictionary<string, ModifierDefinition[]>? m) =>
             Bearer(m, actives: actives, triggers: new[] { Riposte }, frappeCooldownMs: 1000);
-        var (_, events, _) = Fight(commands, NoUpkeep, 10_000, Fighter(mods), Assailant(), Dummy(armor: 0));
-        var (_, plain, _) = Fight(commands, NoUpkeep, 10_000, Fighter(null), Assailant(), Dummy(armor: 0));
+        AssailantSetup Assaillant() => Assailant(attacks: new[] { Bleeding(), Blow() });
+        var (result, events, _) = Fight(commands, NoUpkeep, 10_000, Fighter(mods), Assaillant(), Dummy(armor: 0));
+        var (plainResult, plain, _) = Fight(commands, NoUpkeep, 10_000, Fighter(null), Assaillant(), Dummy(armor: 0));
 
         Assert.Equal(plain.Select(Shape), events.Select(Shape));
         Assert.Contains(events, e => e.TryGetProperty("trigger", out JsonElement t) && t.ValueKind == JsonValueKind.String);
-        // La condition a bien joué : au moins un montant diffère (sinon le test ne prouverait rien).
+        Assert.Equal((plainResult.Peaks.WorkPerTick, plainResult.Peaks.EventsPerTick, plainResult.Peaks.PendingEvents),
+            (result.Peaks.WorkPerTick, result.Peaks.EventsPerTick, result.Peaks.PendingEvents));
+        // La condition a bien joué : au moins un montant diffère, sur les impacts et sur les ticks (sinon le test ne prouverait rien).
         Assert.NotEqual(plain.OfKind("damage").Select(e => e.Int("amount")), events.OfKind("damage").Select(e => e.Int("amount")));
+        Assert.NotEqual(Dots(plain), Dots(events));
     }
 
     // =====================================================================================================================
@@ -532,6 +538,7 @@ public class Lot81ConditionalAndGuardModifierTests
     [Theory]
     [InlineData(25, 0, "-0.75", 6L, 3L)]
     [InlineData(3, 0, "-0.75", 1L, 1L)]
+    [InlineData(1, 0, "-0.75", 1L, 1L)]
     [InlineData(83, 0, "-0.3", 58L, 23L)]
     [InlineData(23, 1000, "-0.7", 3L, 1L)]
     public void Arrondi_des_degats_subis_sur_les_impacts_et_les_ticks_de_dot(long raw, int armor, string damageTaken, long direct, long tick)
@@ -540,6 +547,7 @@ public class Lot81ConditionalAndGuardModifierTests
         // et dégâts minimum (1), sans arrondi intermédiaire. Impact direct de « brut » ; saignement de puissance P = brut × 0,4.
         //   25, v −0,75 : impact 6,25 → 6 ; P = 10 → 2,5 → 3 (moitié loin de zéro)
         //    3, v −0,75 : impact 0,75 → 1 ; P = 1,2 → 0,3 → 0, relevé au minimum de 1
+        //    1, v −0,75 : impact 0,25 → 0, relevé au minimum de 1 ; P = 0,4 → 0,1 → 0, relevé au minimum de 1
         //   83, v −0,3  : impact 58,1 → 58 ; P = 33,2 → 23,24 → 23
         //   23, armure 1000 (facteur 1000 / 2000), v −0,7 : impact 11,5 × 0,3 = 3,45 → 3 (et non 12 × 0,3 = 3,6 → 4) ;
         //       P = 9,2 → 4,6 × 0,3 = 1,38 → 1 (et non 5 × 0,3 = 1,5 → 2)

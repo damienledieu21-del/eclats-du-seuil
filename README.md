@@ -36,7 +36,7 @@ dotnet test --filter Category=Limits      # admission, budgets et capacités (so
 dotnet test --filter Category=Status      # altérations : DOT, contrôles, immunités, résistances (sous-lot 7.2)
 dotnet test --filter Category=Trigger     # déclencheurs, provenance, cycles, profondeur, report (sous-lot 7.3)
 dotnet test --filter Category=Modifier    # modificateurs X1 et X2, règles effectives, plafonds (sous-lot 8.1)
-scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier   # échoue si une catégorie est vide, ou absente d'un projet qui la déclare
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
