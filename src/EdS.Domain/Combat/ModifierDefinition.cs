@@ -278,7 +278,9 @@ namespace EdS.Domain.Combat
         /// connue, doublon (même clé et mêmes conditions), conditions admises, valeurs bornées à chaque rang et non nulles à tous les rangs,
         /// entiers, drapeaux, référence d'une compétence de la classe. Chemins de la forme <c>{path}[i].add</c>. <paramref name="maxRank"/>
         /// vaut le rang maximal d'un talent, 1 ailleurs ; <paramref name="ranked"/> autorise les valeurs par rang (talents à plusieurs rangs
-        /// seulement : un perRank sans effet est refusé). Au plus une erreur par valeur.
+        /// seulement : un perRank sans effet est refusé). Au plus une erreur par valeur. Un rang maximal déclaré inférieur à 1 est déjà
+        /// refusé par la classe : les contrôles « sans effet » qui dépendent des rangs déclarés (perRank d'un talent à un seul rang, valeur
+        /// nulle aux rangs déclarés malgré un perRank) ne s'appliquent pas, pour ne pas signaler une seconde erreur qui n'existe pas.
         /// </summary>
         public static void ValidateList(IReadOnlyList<ModifierDefinition> modifiers, string path, int maxRank, bool ranked,
             Func<string, SkillDefinition?> skillOf, List<RuleViolation> errors)
@@ -286,6 +288,7 @@ namespace EdS.Domain.Combat
             if (modifiers.Count > MaxPerOwner)
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{modifiers.Count} modificateurs, au plus {MaxPerOwner} par définition.", path));
             int topRank = Math.Max(1, Math.Min(maxRank, TalentDefinition.MaxRankLimit));
+            bool ranksDeclared = maxRank >= 1;
             var seen = new Dictionary<(ModifierKey, ModifierConditions), int>();
             for (int i = 0; i < modifiers.Count; i++)
             {
@@ -310,7 +313,7 @@ namespace EdS.Domain.Combat
                 else if (conditionsValid)
                     seen[(key, m.ConditionSet)] = i;
 
-                ValidateValue(m.Add, spec, p + ".add", topRank, ranked, errors);
+                ValidateValue(m.Add, spec, p + ".add", topRank, ranked, ranksDeclared, errors);
             }
         }
 
@@ -339,7 +342,8 @@ namespace EdS.Domain.Combat
             return errors.Count == before;
         }
 
-        private static void ValidateValue(RankedValue value, ModifierSpec spec, string p, int topRank, bool ranked, List<RuleViolation> errors)
+        private static void ValidateValue(RankedValue value, ModifierSpec spec, string p, int topRank, bool ranked, bool ranksDeclared,
+            List<RuleViolation> errors)
         {
             // Une seule erreur par valeur : un perRank interdit n'est pas examiné plus loin (drapeau, entier).
             if (!ranked && value.PerRank != Fixed.Zero)
@@ -347,7 +351,7 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation("seul un talent a des valeurs par rang (perRank).", p));
                 return;
             }
-            if (ranked && topRank == 1 && value.PerRank != Fixed.Zero)
+            if (ranked && ranksDeclared && topRank == 1 && value.PerRank != Fixed.Zero)
             {
                 errors.Add(new RuleViolation("perRank sans effet sur un talent à un seul rang.", p));
                 return;
@@ -372,7 +376,7 @@ namespace EdS.Domain.Combat
             Fixed max = spec.MaxMagnitude;
             if (low < -max || low > max || high < -max || high > max)
                 errors.Add(new RuleViolation($"valeur hors de [{-max}, {max}] à un rang possible (1 à {(ranked ? topRank : 1)}).", p));
-            else if (low == Fixed.Zero && high == Fixed.Zero)
+            else if (low == Fixed.Zero && high == Fixed.Zero && (ranksDeclared || value.PerRank == Fixed.Zero))
                 errors.Add(new RuleViolation("modificateur sans effet : valeur nulle à chaque rang.", p));
             else if (spec.Field == ModifierField.DamageTaken && (low > Fixed.Zero || high > Fixed.Zero))
                 errors.Add(new RuleViolation("damageTaken ne fait que réduire les dégâts subis : valeur négative ou nulle à chaque rang.", p));

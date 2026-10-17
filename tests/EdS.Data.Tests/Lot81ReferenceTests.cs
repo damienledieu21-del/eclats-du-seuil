@@ -15,6 +15,7 @@ namespace EdS.Data.Tests;
 /// tests (TrainingScenarioTests, Correctif731TriggerScenarioTests), indépendantes des empreintes.
 /// </summary>
 [Trait("Category", "Regression")]
+[Trait("Category", "Modifier")]
 public class Lot81ReferenceTests
 {
     public static readonly TheoryData<string> Scenarios = new()

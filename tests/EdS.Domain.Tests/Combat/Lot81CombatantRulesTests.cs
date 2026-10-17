@@ -743,8 +743,9 @@ public class Lot81CombatantRulesBoundsTests
     [Fact]
     public void Valeurs_inertes_ramenees_a_zero()
     {
-        // Revue 8.1 : une valeur sans effet vaut 0, pour que le journal (objet rules) écrive ce qui s'applique. Sans le drapeau, la
-        // réduction à endurance nulle ne sert jamais (la garde se brise avant) ; avec le drapeau, aucune rupture ne reste à raccourcir.
+        // Revue 8.1 : les deux combinaisons inertes du drapeau valent 0, pour que le journal (objet rules) ne les montre pas comme
+        // appliquées. Sans le drapeau, la réduction à endurance nulle ne sert jamais (la garde se brise avant) ; avec le drapeau, aucune
+        // rupture ne reste à raccourcir.
         CombatantRules withoutFlag = For(Mod("guard.reductionAtZeroEndurance", "0.5"), Mod("guard.breakShortenPerCharge", "500"));
         Assert.False(withoutFlag.GuardNoUpkeepBreak);
         Assert.Equal(Fixed.Zero, withoutFlag.GuardReductionAtZeroEndurance);

@@ -348,6 +348,41 @@ public class Lot81ConditionalAndGuardModifierTests
         Assert.Equal(new long[] { 34, 90, 29, 32, 32 }, HitsOn(Events(Run(GuardChargeCombat(arrangements[0], 1, passives)).Log), "bastion").Select(h => h.Amount));
     }
 
+    /// <summary>Forme d'un événement sans ses champs numériques (sauf le tick) : type, tick et champs texte ou booléens (combattants,
+    /// compétence, défense, état, déclencheur, critique…).</summary>
+    private static string Shape(JsonElement e) =>
+        string.Join("|", e.EnumerateObject()
+            .Where(p => p.Name == "tick" || p.Value.ValueKind is JsonValueKind.String or JsonValueKind.True or JsonValueKind.False)
+            .Select(p => p.Name + "=" + p.Value.GetRawText()));
+
+    [Theory]
+    [InlineData(ModifierCondition.WhileGuarding)]
+    [InlineData(ModifierCondition.PerRampartCharge)]
+    [InlineData(ModifierCondition.PerResonanceStep)]
+    public void Condition_lue_sans_ligne_ni_notification_ni_declencheur(ModifierCondition condition)
+    {
+        // Étape 3 de l'autorisation, contre-vérification 8.1 : une condition est lue sur l'état courant sans ligne, sans notification
+        // et sans déclencheur. Même combat (Charges gagnées puis consommées, garde prise puis lâchée, Résonance accumulée, riposte
+        // passive sur chaque impact subi) avec et sans damageDealt +0,2 et damageTaken −0,2 sous la condition : la suite des
+        // événements est identique, type, tick et champs texte compris ; seuls des montants changent.
+        var mods = Mods((Passif, new[] { Mod("damageDealt", "0.2", null, condition), Mod("damageTaken", "-0.2", null, condition) }));
+        string[] actives = { Frappe, Recharge, Rempart, Gratuite };
+        var commands = new[]
+        {
+            Cmd(0, Recharge), Cmd(1000, Frappe), Cmd(2000, Frappe), GuardStart(2500), GuardStop(4500), Cmd(5000, Rempart), Cmd(6000, Frappe),
+            Cmd(7000, Recharge), Cmd(8000, Frappe), Cmd(9000, Frappe),
+        };
+        CharacterSetup Fighter(Dictionary<string, ModifierDefinition[]>? m) =>
+            Bearer(m, actives: actives, triggers: new[] { Riposte }, frappeCooldownMs: 1000);
+        var (_, events, _) = Fight(commands, NoUpkeep, 10_000, Fighter(mods), Assailant(), Dummy(armor: 0));
+        var (_, plain, _) = Fight(commands, NoUpkeep, 10_000, Fighter(null), Assailant(), Dummy(armor: 0));
+
+        Assert.Equal(plain.Select(Shape), events.Select(Shape));
+        Assert.Contains(events, e => e.TryGetProperty("trigger", out JsonElement t) && t.ValueKind == JsonValueKind.String);
+        // La condition a bien joué : au moins un montant diffère (sinon le test ne prouverait rien).
+        Assert.NotEqual(plain.OfKind("damage").Select(e => e.Int("amount")), events.OfKind("damage").Select(e => e.Int("amount")));
+    }
+
     // =====================================================================================================================
     // Dégâts infligés : catégorie talent des impacts de compétence et des frappes de réaction, jamais des DOT
     // =====================================================================================================================
@@ -408,6 +443,23 @@ public class Lot81ConditionalAndGuardModifierTests
         DerivedStats stats = StatsOf(bastion);
         Assert.Equal(nonCritical, Expected(stats, Unarmored, "1", Fixed.Parse(dealt), false));
         Assert.Equal(hits.Select(h => Critical(h) ? Expected(stats, Unarmored, "1", Fixed.Parse(dealt), true) : nonCritical), hits.Select(h => h.Int("amount")));
+    }
+
+    [Theory]
+    [InlineData(1, "0.1")]
+    [InlineData(5, "0.5")]
+    public void Degats_infliges_au_rang_1_et_au_rang_maximal(int rank, string talent)
+    {
+        // [rangs], contre-vérification 8.1. Talent alpha : damageDealt 0,1 + 0,1 par rang (0,1 au rang 1, 0,5 au rang 5), catégorie
+        // talent, sur chaque impact de Frappe ; montant attendu calculé par la formule du domaine avec ce bonus explicite.
+        var mods = Mods((TalentAlpha, new[] { Mod("damageDealt", "0.1", "0.1") }));
+        CharacterSetup bastion = Bearer(mods, talentAlpha: rank, frappeCooldownMs: 1000);
+        var (_, events, _) = Fight(new[] { Cmd(0, Frappe), Cmd(1000, Frappe), Cmd(2000, Frappe) }, null, 4000, bastion, Dummy(armor: 0));
+        List<JsonElement> hits = HitsFrom(events, "bastion");
+        Assert.Equal(3, hits.Count);
+        DerivedStats stats = StatsOf(bastion);
+        Assert.Equal(hits.Select(h => Expected(stats, Unarmored, "1.2", Fixed.Parse(talent), Critical(h))), hits.Select(h => h.Int("amount")));
+        Assert.Equal(new long[] { 37, 50 }, new[] { "0.1", "0.5" }.Select(t => Expected(stats, Unarmored, "1.2", Fixed.Parse(t), false)));
     }
 
     [Fact]
@@ -475,6 +527,31 @@ public class Lot81ConditionalAndGuardModifierTests
         var (_, events, _) = Fight(new[] { GuardStart(2500), GuardStop(4500) }, NoUpkeep, 8000, Bearer(mods), Assailant(intervalMs: 60_000, attacks: Bleeding()));
         Assert.Equal(new[] { (20L, "none", 100L) }, HitsOn(events, "bastion"));
         Assert.Equal(new[] { (60L, "bleed", 20L), (100L, "bleed", 40L), (140L, "bleed", 40L) }, Dots(events));
+    }
+
+    [Theory]
+    [InlineData(25, 0, "-0.75", 6L, 3L)]
+    [InlineData(3, 0, "-0.75", 1L, 1L)]
+    [InlineData(83, 0, "-0.3", 58L, 23L)]
+    [InlineData(23, 1000, "-0.7", 3L, 1L)]
+    public void Arrondi_des_degats_subis_sur_les_impacts_et_les_ticks_de_dot(long raw, int armor, string damageTaken, long direct, long tick)
+    {
+        // [arrondis], contre-vérification 8.1. Défense, puis réduction (1 + v), puis arrondi final (au plus proche, moitié loin de zéro)
+        // et dégâts minimum (1), sans arrondi intermédiaire. Impact direct de « brut » ; saignement de puissance P = brut × 0,4.
+        //   25, v −0,75 : impact 6,25 → 6 ; P = 10 → 2,5 → 3 (moitié loin de zéro)
+        //    3, v −0,75 : impact 0,75 → 1 ; P = 1,2 → 0,3 → 0, relevé au minimum de 1
+        //   83, v −0,3  : impact 58,1 → 58 ; P = 33,2 → 23,24 → 23
+        //   23, armure 1000 (facteur 1000 / 2000), v −0,7 : impact 11,5 × 0,3 = 3,45 → 3 (et non 12 × 0,3 = 3,6 → 4) ;
+        //       P = 9,2 → 4,6 × 0,3 = 1,38 → 1 (et non 5 × 0,3 = 1,5 → 2)
+        var stats = new StatRules { BaseArmor = Fixed.FromInt(armor) };
+        var mods = Mods((Passif, new[] { Mod("damageTaken", damageTaken) }));
+        var setup = new CombatSetup(42, 8000, stats, DamageRules.Provisional, ProgressionRules.Provisional, NoUpkeep,
+            new CombatantSetup[] { Bearer(mods), Assailant(intervalMs: 60_000, attacks: Bleeding(raw)) }, Array.Empty<CombatCommand>(), Identity);
+        var (result, log) = Run(setup);
+        List<JsonElement> events = Events(log);
+        Assert.NotEqual(CombatEndReason.Aborted, result.EndReason);
+        Assert.Equal(new[] { (20L, "none", direct) }, HitsOn(events, "bastion"));
+        Assert.Equal(new[] { 60L, 100L, 140L }.Select(t => (t, "bleed", tick)), Dots(events));
     }
 
     [Theory]
@@ -833,6 +910,19 @@ public class Lot81ConditionalAndGuardModifierTests
         Assert.Equal((20L, 160L), (Applied(events, "fragility", "bastion").Tick(), Applied(events, "fragility", "bastion").Int("untilTick")));
         JsonElement bleed = Applied(events, "bleed", "bastion");
         Assert.Equal((60L, 100L, 220L), (bleed.Tick(), bleed.Int("nextTick"), bleed.Int("untilTick")));
+    }
+
+    [Theory]
+    [InlineData(1, 150L)]
+    [InlineData(5, 190L)]
+    public void Duree_subie_au_rang_1_et_au_rang_maximal(int rank, long untilTick)
+    {
+        // [rangs], contre-vérification 8.1. Talent alpha : fragilité subie +500 ms + 500 ms par rang (500 au rang 1, 2 500 au rang 5).
+        // Fragilité (6 s) posée au tick 20 par l'assaillant : fin au tick 20 + 130 = 150, ou 20 + 170 = 190.
+        var mods = Mods((TalentAlpha, new[] { Mod("status.fragility.durationTaken", "500", "500") }));
+        var (_, events, _) = Fight(Array.Empty<CombatCommand>(), NoUpkeep, 4000, Bearer(mods, talentAlpha: rank),
+            Assailant(intervalMs: 60_000, attacks: Blow(fragility: true)));
+        Assert.Equal((20L, untilTick), (Applied(events, "fragility", "bastion").Tick(), Applied(events, "fragility", "bastion").Int("untilTick")));
     }
 
     [Fact]

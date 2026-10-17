@@ -74,12 +74,38 @@ public class Lot81ReviewTests
     }
 
     [Fact]
-    public void Debordement_des_statistiques_sans_modificateur_reste_rattache_aux_attributs()
+    public void Rang_maximal_invalide_n_empeche_pas_l_examen_des_references()
     {
-        // Le même dépassement, sans modificateur, reste celui des attributs du build (avant 8.1 comme après).
+        // Contre-vérification 8.1 : un talent de rang maximal 0 est refusé sur .maxRank, sans erreur de valeur sur ses modificateurs ;
+        // leur liste n'est donc pas « refusée par la classe » et le combat examine encore leurs références (altération inconnue).
+        TalentTreeDefinition alpha = Essai.Trees[0];
+        var zero = new TalentTreeDefinition(alpha.Id, alpha.Name, new[]
+        {
+            new TalentDefinition(alpha.Talents[0].Id, alpha.Talents[0].Name, 0, modifiers: new[] { Mod("status.inconnue.durationTaken", "100", "50") }),
+        }.Concat(alpha.Talents.Skip(1)).ToArray());
+        var definition = new ClassDefinition("class.essai", "Essai", new[] { zero }.Concat(Essai.Trees.Skip(1)).ToArray(), Essai.Skills);
+        IReadOnlyList<RuleViolation> errors = Solo(definition).Validate();
+        Assert.Equal(new[] { (RuleViolationKind.InvalidValue, "combatants[0].class:trees[0].talents[0].maxRank"), (RuleViolationKind.UnknownReference, "combatants[0].class") },
+            errors.Select(e => (e.Kind, Assert.Single(e.Fields))));
+        Assert.Equal("classe « class.essai », trees[0].talents[0].modifiers[0].key : altération inconnue « inconnue ».", errors[1].Message);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Debordement_des_statistiques_sans_modificateur_reste_rattache_aux_attributs(bool unrelatedModifier)
+    {
+        // Le même dépassement, causé par les attributs seuls, reste celui des attributs du build (avant 8.1 comme après), y compris
+        // quand le personnage porte un modificateur permanent sans rapport (contre-vérification 8.1 : le chemin ne dépend pas de la
+        // seule présence de modificateurs).
         var stats = new StatRules { MaxHealthPerVitalite = Fixed.FromInt(1_000_000_000) };
+        ClassDefinition definition = unrelatedModifier
+            ? Class(modifiers: new Dictionary<string, ModifierDefinition[]> { [Passif] = new[] { Mod("damageDealt", "0.1") } })
+            : Essai;
+        CharacterSetup character = Character(attributes: new Attributes(14, 8, 6, 1_000_000, 10, 0), definition: definition,
+            passives: unrelatedModifier ? new[] { Passif } : null);
         var setup = new CombatSetup(42, 10_000, stats, DamageRules.Provisional, ProgressionRules.Provisional, CombatRules.Provisional,
-            new CombatantSetup[] { Character(attributes: new Attributes(14, 8, 6, 1_000_000, 10, 0)), Dummy() }, new[] { Cmd(0, Frappe) }, Identity);
+            new CombatantSetup[] { character, Dummy() }, new[] { Cmd(0, Frappe) }, Identity);
         RuleViolation violation = Assert.Single(setup.Validate());
         Assert.Equal((RuleViolationKind.NumericLimit, "combatants[0].build.attributes", "statistiques dérivées hors des limites numériques."),
             (violation.Kind, Assert.Single(violation.Fields), violation.Message));

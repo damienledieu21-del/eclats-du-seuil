@@ -346,6 +346,20 @@ public class Lot81ModifierValidationTests
         Admis(SurTalent(2, Brut(ligne.Cle, v, v)));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public void Rang_maximal_invalide_signale_seul(int rangMax)
+    {
+        // Contre-vérification 8.1 : un rang maximal inférieur à 1 est refusé sur .maxRank. Les contrôles « sans effet » qui dépendent
+        // des rangs déclarés (perRank d'un talent à un seul rang, valeur nulle aux rangs déclarés malgré un perRank) n'ajoutent pas
+        // une seconde erreur qui n'existe pas. Une valeur nulle sans perRank est nulle à tout rang : elle reste signalée.
+        const string RangAlpha = "trees[0].talents[0].maxRank";
+        Refus(SurTalent(rangMax, M("damageDealt", "0.1", "0.1")), Invalide, RangAlpha);
+        Refus(SurTalent(rangMax, M("damageDealt", "0", "0.1")), Invalide, RangAlpha);
+        Assert.Equal(new[] { (Invalide, RangAlpha), (Invalide, AddAlpha) }, Signatures(SurTalent(rangMax, M("damageDealt", "0"))));
+    }
+
     [Fact]
     public void DamageTaken_reduction_seulement()
     {

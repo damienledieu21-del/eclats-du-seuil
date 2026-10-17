@@ -1141,6 +1141,22 @@ public class Lot81CombatantRulesLogTests
     }
 
     [Fact]
+    public void Objet_rules_raccourci_de_rupture_sans_drapeau_ecrit_tel_qu_il_s_applique()
+    {
+        // Contre-vérification 8.1 : sans guard.noUpkeepBreak, le raccourci de rupture s'applique et le journal l'écrit : talent alpha au
+        // rang 3 (100 + 2 × 100 = 300) + passif 500 = 800 ms par Charge. La réduction à endurance nulle, sans le drapeau, reste inerte : 0.
+        ClassDefinition definition = X1.With(
+            (TalentAlpha, new[] { Mod("guard.breakShortenPerCharge", "100", "100") }),
+            (Passif, new[] { Mod("guard.breakShortenPerCharge", "500"), Mod("guard.reductionAtZeroEndurance", "0.3") }));
+        IReadOnlyList<string> lines = Log(definition, X1.Alpha(3), new[] { Passif });
+        const string expected = "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,"
+            + "\"guard.noUpkeepBreak\":false,\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":800,\"parry.windowMs\":150,"
+            + "\"parry.failureRecoveryMs\":500,\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,"
+            + "\"damageDealt\":0,\"damageTaken\":0,\"conditional\":[]}";
+        Assert.Equal(expected, X1.RulesJson(lines));
+    }
+
+    [Fact]
     public void Objet_rules_valeurs_ecretees_aux_plafonds_et_aux_planchers()
     {
         ClassDefinition definition = X1.With(

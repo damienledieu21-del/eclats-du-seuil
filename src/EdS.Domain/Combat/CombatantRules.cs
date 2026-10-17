@@ -67,10 +67,12 @@ namespace EdS.Domain.Combat
             GuardUpkeepPerSecond = Clamp(Fixed.FromInt(rules.GuardUpkeepPerSecond), m.Sum(ModifierField.GuardUpkeepPerSecond), Fixed.Zero, MaxInt);
             GuardCostPerBlock = Whole(Clamp(Fixed.FromInt(rules.GuardCostPerBlock), m.Sum(ModifierField.GuardCostPerBlock), Fixed.Zero, MaxInt));
             GuardNoUpkeepBreak = m.Flag(ModifierField.GuardNoUpkeepBreak);
-            // Une valeur inerte vaut 0 (le journal écrit ce qui s'applique) : la réduction à 0 d'endurance ne sert que si la garde tient
-            // sans endurance (noUpkeepBreak) ; le raccourci de rupture, que si la garde peut encore se briser (avec le drapeau, ni
-            // l'entretien ni un blocage ne la brisent, et aucune autre rupture n'existe). « Ramenée à » : jamais au-dessus de la
-            // réduction de garde effective (0 d'endurance ne vaut pas mieux qu'une garde payée).
+            // Les deux combinaisons inertes du drapeau valent 0, pour que le journal ne les montre pas comme appliquées : la réduction à
+            // 0 d'endurance ne sert que si la garde tient sans endurance (noUpkeepBreak) ; le raccourci de rupture, que si la garde peut
+            // encore se briser (avec le drapeau, ni l'entretien ni un blocage ne la brisent, et aucune autre rupture n'existe). D'autres
+            // valeurs peuvent rester sans effet selon le build (réduction à 0 d'endurance avec un coût de blocage nul, raccourci avec
+            // 0 Charge max) : elles sont gardées et journalisées telles quelles. « Ramenée à » : jamais au-dessus de la réduction de
+            // garde effective (0 d'endurance ne vaut pas mieux qu'une garde payée).
             GuardReductionAtZeroEndurance = !GuardNoUpkeepBreak ? Fixed.Zero : Fixed.Min(GuardDamageReduction,
                 Clamp(Fixed.Zero, m.Sum(ModifierField.GuardReductionAtZeroEndurance), Fixed.Zero, MaxGuardDamageReduction));
             GuardBreakShortenPerChargeMs = GuardNoUpkeepBreak ? 0
