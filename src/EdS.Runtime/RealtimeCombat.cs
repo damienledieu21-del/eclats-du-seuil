@@ -95,10 +95,12 @@ namespace EdS.Runtime
         /// <summary>
         /// Compétence d'un emplacement du build (0 à 3 : actives, <see cref="UltimateSlot"/> : ultime) au prochain tick. Un emplacement vide
         /// ou une compétence visiblement indisponible (recharge, ressources, contrôle) donne un retour <see cref="FeedbackKind.Unavailable"/>
-        /// sans commande ; le reste est soumis au moteur, qui reste seul juge (un refus donne <see cref="FeedbackKind.Rejected"/>).
+        /// sans commande ; le reste est soumis au moteur, qui reste seul juge (un refus donne <see cref="FeedbackKind.Rejected"/>). Seule la
+        /// dernière demande d'un tick compte : une demande refusée ici annule aussi la précédente (revue Codex de la PR #13).
         /// </summary>
         public bool UseSlot(int slot)
         {
+            _slotRequested = null;
             SkillSlot? info = Player().Slots.FirstOrDefault(s => s.Slot == slot);
             if (info is null)
             {

@@ -126,6 +126,36 @@ public class Lot92RuntimeTests
     }
 
     [Fact]
+    public void Seule_la_derniere_demande_de_competence_du_tick_compte()
+    {
+        RealtimeCombat combat = Session().Start();
+        SkillSlot second = combat.Player().Slots.Single(s => s.Slot == 1);
+        Assert.True(combat.UseSlot(0));
+        Assert.True(combat.UseSlot(1));
+        combat.StepOnce();
+        Assert.Equal(new[] { second.SkillId }, Commands(combat, 0).Where(c => c.Action == CombatAction.UseSkill).Select(c => c.Skill));
+
+        // Revue Codex de la PR #13 : une demande refusée par le pont annule la précédente, qui n'est pas lancée en douce.
+        while (combat.Player().Slots.Any(s => s.Unavailable != null && s.Slot < RealtimeCombat.UltimateSlot)) combat.StepOnce();
+        long tick = combat.Tick;
+        Assert.True(combat.UseSlot(0));
+        Assert.False(combat.UseSlot(7));
+        combat.StepOnce();
+        Assert.DoesNotContain(Commands(combat, tick), c => c.Action == CombatAction.UseSkill);
+
+        // Idem pour une compétence en recharge : Frappe du rempart lancée, puis, la recharge globale passée, une autre demandée avant elle.
+        Assert.True(combat.UseSlot(0));
+        combat.StepOnce();
+        while (combat.Player().Slots.Single(s => s.Slot == 2).Unavailable != null) combat.StepOnce();
+        tick = combat.Tick;
+        Assert.True(combat.UseSlot(2));
+        Assert.False(combat.UseSlot(0));
+        Assert.StartsWith("Frappe du rempart : en recharge", combat.DrainFeedback().Last().Detail);
+        combat.StepOnce();
+        Assert.DoesNotContain(Commands(combat, tick), c => c.Action == CombatAction.UseSkill);
+    }
+
+    [Fact]
     public void Parade_au_tick_de_l_impact_et_retours_de_combat()
     {
         // Assaillant du scénario : première attaque au tick 20. Garde tenue, parade demandée juste avant ce tick.
