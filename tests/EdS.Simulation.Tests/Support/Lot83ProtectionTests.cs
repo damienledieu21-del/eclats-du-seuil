@@ -1,6 +1,8 @@
 using System.Text.Json;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
+using EdS.Domain.Stats;
 using EdS.Simulation.Engine;
 using static EdS.Simulation.Tests.Engine.TestCombat;
 using static EdS.Simulation.Tests.Support.Lot83Kit;
@@ -87,6 +89,42 @@ public class Lot83ProtectionTests
         JsonElement transfer = FirstHit(events).Transfer;
         Assert.Equal((25L, "guard", taken), (transfer.Long("amount"), transfer.Str("defense"), transfer.Long("taken")));
         Assert.Empty(events.OfKind("guardBroken"));
+    }
+
+    /// <summary>
+    /// Revue du 8.3 (2e tour) : un retrait en fin de tick d'une altération qui bloque la régénération (protection dont la source meurt,
+    /// bouclier épuisé) n'accorde rien au titre des ticks suspendus, comme une expiration. L'allié pare un coup à 0,1 s (blocage : 10
+    /// d'endurance, régénération due au tick 22), arrête de garder ; l'altération bloque sa régénération jusqu'au tick 60 (le gardien meurt,
+    /// ou le bouclier s'épuise, sous le second coup de l'assaillant). La reprise compte à partir du tick 61 : premier point au tick 62.
+    /// Sans la correction, les 10 points manquants revenaient d'un coup au tick 61.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]   // protection, retrait sourceDied
+    [InlineData(true)]    // bouclier, retrait depleted
+    public void Retrait_en_fin_de_tick_sans_regeneration_retroactive(bool shield)
+    {
+        StatusDefinition blocking = shield
+            ? new("egide", StatusCategory.Shield, 4000, StatusStacking.PerSourceKeepStronger, blocks: StatusBlocks.Regeneration, blockReason: "entrave")
+            : new("lien", StatusCategory.Protection, 60_000, StatusStacking.PerSourceKeepStronger, blocks: StatusBlocks.Regeneration, blockReason: "entrave",
+                redirectRatio: Fixed.Parse("0.25"));
+        var rules = new CombatRules
+        {
+            GuardUpkeepPerSecond = 0,
+            Statuses = new StatusCatalog(Rules.Statuses.Definitions.Select(d => d.Id == blocking.Id ? blocking : d)),
+        };
+        // Bouclier : gardien robuste (2 100 PV, égide de 210, épuisée au second coup de 150) ; protection : gardien fragile (240 PV).
+        var gardien = Hero("gardien", new[] { Lien, Barriere, Garde, Provocation }, shield ? 200 : 14);
+        var frappeur = new AssailantSetup("frappeur", "cibles", Fixed.Zero, Fixed.Zero, "allie", 100, 60_000,
+            new[] { new AssailantAttack("coup", 20, DamageType.Physique, SkillTargeting.Enemy, false, Array.Empty<StatusApplication>()) });
+        CombatantSetup brute = shield ? Brute("allie", raw: 150) : Brute("gardien", raw: 150);
+        var events = Simulate(Fight(new[] { Use(0, shield ? Barriere : Lien, "gardien", "allie"), GuardStart(0, "allie"), GuardStop(150, "allie") },
+            new CombatantSetup[] { gardien, Ally(), brute, frappeur }, durationMs: 3500, rules: rules), out _);
+        JsonElement removed = events.OfKind("stateRemoved").Single(r => r.Str("combatant") == "allie");
+        Assert.Equal((60L, shield ? "depleted" : "sourceDied"), (removed.Tick(), removed.Str("reason")));
+        Assert.Equal(90L, events.OfKind("blocked").Single().Long("endurance"));
+        JsonElement[] regen = events.OfKind("enduranceRegenerated").Where(r => r.Str("actor") == "allie").ToArray();
+        Assert.Equal((62L, 1L), (regen[0].Tick(), regen[0].Long("amount")));
+        Assert.All(regen, r => Assert.True(r.Long("amount") <= 1));
     }
 
     [Fact]

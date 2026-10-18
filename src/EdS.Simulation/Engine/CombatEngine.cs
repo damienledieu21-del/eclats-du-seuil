@@ -1411,7 +1411,6 @@ namespace EdS.Simulation.Engine
                 ApplyStatus(tick, phase, target, _statuses[granted], status.Source, Fixed.Zero, status.Origin.CausedBy(expired));
         }
 
-        /// <summary>Sous-lot 8.1 : la garde se brise-t-elle sur ce blocage ? Endurance insuffisante, sauf avec <c>guard.noUpkeepBreak</c>.</summary>
         /// <summary>
         /// Réduction de garde d'un blocage à cet instant : affaiblie (<c>guard.reductionAtZeroEndurance</c>) quand la garde tient sans
         /// pouvoir payer le blocage (<c>guard.noUpkeepBreak</c>), pleine sinon. Même condition que le traitement d'un impact bloqué.
@@ -1419,6 +1418,7 @@ namespace EdS.Simulation.Engine
         private static Fixed GuardReductionNow(Fighter f) =>
             f.Rules.GuardNoUpkeepBreak && f.Endurance < f.Rules.GuardCostPerBlock ? f.Rules.GuardReductionAtZeroEndurance : f.Rules.GuardDamageReduction;
 
+        /// <summary>Sous-lot 8.1 : la garde se brise-t-elle sur ce blocage ? Endurance insuffisante, sauf avec <c>guard.noUpkeepBreak</c>.</summary>
         private static bool GuardBreaksOnBlock(Fighter target) => target.Endurance < target.Rules.GuardCostPerBlock && !target.Rules.GuardNoUpkeepBreak;
 
         /// <summary>
@@ -1508,6 +1508,16 @@ namespace EdS.Simulation.Engine
             f.Endurance -= amount;
             f.RegenFromTick = checked(tick + _regenDelayTicks);
             f.RegenGranted = 0;
+        }
+
+        /// <summary>
+        /// Revue du 8.3 : retrait en fin de tick (bouclier épuisé, provocation ou protection dont la source meurt) d'une altération qui
+        /// bloquait la régénération : comme à son expiration, rien n'est accordé au titre des ticks suspendus. Le retrait suit la phase de
+        /// régénération du tick, restée bloquée : la reprise compte à partir du tick suivant.
+        /// </summary>
+        private static void ResumeAfterEndOfTickRemoval(Fighter owner, StatusInstance status, long tick)
+        {
+            if ((status.Definition.Blocks & StatusBlocks.Regeneration) != 0) ResumeRegeneration(owner, checked(tick + 1));
         }
 
         /// <summary>
@@ -2005,6 +2015,7 @@ namespace EdS.Simulation.Engine
                     {
                         f.Statuses.Remove(shield.Key);
                         Charge(1);
+                        ResumeAfterEndOfTickRemoval(f, shield, tick);
                         Provenance cause = shield.DepletedBy ?? shield.Origin;
                         Emit(tick, CombatPhase.EndOfTick, "stateRemoved", cause, StateObserved(TriggerEvent.StateRemoved, f, shield),
                             w => StateFields(w, f, shield).Field("reason", "depleted"));
@@ -2031,6 +2042,7 @@ namespace EdS.Simulation.Engine
                 {
                     status.Owner.Statuses.Remove(status.Key);
                     Charge(1);
+                    ResumeAfterEndOfTickRemoval(status.Owner, status, tick);
                     Emit(tick, CombatPhase.EndOfTick, "stateRemoved", lethal.CausedBy(died), StateObserved(TriggerEvent.StateRemoved, status.Owner, status),
                         w => StateFields(w, status.Owner, status).Field("reason", "sourceDied"));
                 }
