@@ -1,13 +1,14 @@
-# Limites du lot 8 (sous-lot 8.1 : modificateurs)
+# Limites du lot 8 (sous-lots 8.1 : modificateurs ; 8.2 : renforcements et boucliers)
 
-Ce document complète [LIMITES_LOT_7.md](LIMITES_LOT_7.md) pour les modificateurs du sous-lot 8.1. Les bornes ci-dessous sont des **enveloppes techniques provisoires** (pré-alpha) ou des **plafonds de jeu** ; les valeurs d'équilibrage restent dans les données et sont provisoires.
+Ce document complète [LIMITES_LOT_7.md](LIMITES_LOT_7.md) pour les modificateurs du sous-lot 8.1 et les renforcements et boucliers du sous-lot 8.2. Les bornes ci-dessous sont des **enveloppes techniques provisoires** (pré-alpha) ou des **plafonds de jeu** ; les valeurs d'équilibrage restent dans les données et sont provisoires.
 
 ## Plafonds de jeu
 
 | Plafond | Valeur | Où | Effet |
 |---|---|---|---|
 | Réduction de garde (B1) | 75 % | `combat.guard.maxDamageReduction` (`CombatRules.MaxGuardDamageReduction`) | base de `rules.json` refusée au-delà ; valeur déclarée d'un modificateur refusée au-delà au combat ; valeur effective écrêtée |
-| Réduction totale des dégâts subis (B2) | 85 % | `combat.damageTaken.maxReduction` (`CombatRules.MaxTotalDamageReduction`) | garde × `damageTaken`, avant l'absorption par un bouclier ; la parade (90 %) reste hors plafond |
+| Réduction totale des dégâts subis (B2) | 85 % | `combat.damageTaken.maxReduction` (`CombatRules.MaxTotalDamageReduction`) | garde × `damageTaken` (permanent, conditionnel et renforcements, sous-lot 8.2), avant l'absorption par un bouclier ; la parade (90 %) reste hors plafond |
+| Puissance des boucliers (8.2) | facteur ≥ 0 | `Shields.Value` | `shield.potencyDealt` ≤ −1 donne un bouclier vide (`empty`), jamais une valeur négative |
 | Fenêtre de parade | ⌊500 / tick⌋ × tick | `CombatantRules.MaxParryWindowMs` | valeur effective écrêtée, plancher 1 tick |
 | Charges de rempart max | 10 | `CombatantRules.MaxRampartCharges` | valeur effective écrêtée |
 | PV max | −90 % à +1 000 % | `CombatantRules.MinMaxHealthPercent`, `MaxMaxHealthPercent` | pourcentage résultant écrêté |
@@ -27,12 +28,25 @@ Quand une base des règles sort déjà d'un intervalle de jeu (règles de test),
 - **Conditionnels.** Charges ≤ max(base, 10) ≤ 2³¹ − 1, Résonance ≤ `resonance.max` ≤ 2³¹ − 1, |Σ conditionnel| ≤ 512 × 10 en valeur, soit 5,12·10⁷ en brut : |terme| < 1,2·10¹⁷.
 - **Raccourci de rupture.** valeur ≤ 8,64·10⁷ ms × Charges ≤ 2³¹ − 1 : < 1,9·10¹⁷, calcul vérifié (`checked`).
 - **Entretien et régénération.** taux brut ≤ 2,15·10¹³ × (ticks × durée du tick ≤ 8,64·10⁷) ≤ 1,86·10²¹ sur 128 bits (`IntMath.MulDiv`), quotient < 2·10¹⁴.
+- **Entretien cumulé (8.2).** Chaque tick gardé ajoute taux brut (≤ 2,15·10¹³, renforcements compris, écrêté à 2³¹ − 1 en valeur) × durée du tick (≤ 1000 ms) au reliquat (< 10⁷) : < 2,2·10¹⁶ ; l'entretien dû cumulé ≤ taux × 24 h < 2·10¹⁴ points. Calcul vérifié (`checked`).
+- **Boucliers (8.2).** Valeur ⌊ PV max × coefficient (≤ 100) × (1 + puissance ≤ 11) ⌋ calculée en virgule fixe vérifiée ; le précontrôle la calcule pour chaque personnage au coefficient maximal dès que le catalogue contient un bouclier (dépassement rattaché à `combatants[i].class`). Une valeur tient donc dans la plage de `Fixed` (< 9,3·10¹⁴) ; au plus 64 définitions × 4 096 sources par cible, la somme des valeurs restantes reste < 2⁶³. Le cumul `damageAbsorbed` est borné par les dégâts du combat, déjà majorés.
+- **Bonus des renforcements (8.2).** Le pire impact du précontrôle ajoute à la catégorie « altération » la somme des `damageDealt` positifs de tous les renforcements du catalogue (une instance au plus par définition et par porteur).
 - **Durées.** Durée ajustée écrêtée à 86 400 000 ms avant la conversion en ticks : le produit par le facteur de résistance reste < 10¹².
 - **Dégâts.** Le précontrôle numérique (`CombatSetup.ValidateNumericLimits`) calcule le pire impact avec le coefficient effectif et le bonus « talent » maximal de chaque attaquant ; `damageTaken` ne fait que réduire. Un dépassement est refusé (`NumericLimit`, rattaché au combattant) avant tout journal.
 
 ## Ce qui n'est pas couvert en 8.1
 
-- Boucliers (`shield.potencyDealt`, X3, X4), transferts (`protection.redirectRatio`, X6) et provocation (`status.taunt.*`, X7) : sous-lots 8.2 et 8.3. Ces clés sont refusées comme inconnues tant que leur consommateur n'existe pas (une clé sans effet irait contre la validation stricte) ; `status.taunt.*` l'est au combat, `taunt` étant absent du catalogue.
+- Renforcements et boucliers (X3, X4, `shield.potencyDealt`) : livrés au sous-lot 8.2 (voir plus bas). Transferts (`protection.redirectRatio`, X6) et provocation (`status.taunt.*`, X7) : sous-lot 8.3. Ces clés sont refusées comme inconnues tant que leur consommateur n'existe pas (une clé sans effet irait contre la validation stricte) ; `status.taunt.*` l'est au combat, `taunt` étant absent du catalogue.
 - Blocage à coût nul : il relance le délai de régénération (comportement du moteur 0.9.1), alors qu'un blocage affaibli ou un entretien qui ne paient rien ne le relancent pas. **Décision du 18/10/2026** : comportement conservé.
 - Déclencheurs (7.3) : **décision du 18/10/2026**, un `perRank` sur un talent à un seul rang est désormais refusé comme pour les modificateurs (« perRank sans effet sur un talent à un seul rang », une seule erreur par valeur).
 - Conditions multiplicatives combinées (`perRampartCharge` avec `perResonanceStep`) : refusées, faute de contenu prévu et parce que leur mise à l'échelle quadratique serait difficile à équilibrer.
+
+## Sous-lot 8.2 : interprétations et limites
+
+- **Un bouclier par (définition, source)**, renouvelé à la plus forte des valeurs (restante ou nouvelle) avec une fin repoussée ; plusieurs définitions ou plusieurs sources coexistent.
+- **Ordre d'absorption FIFO** par numéro d'instance (ordre de création, un renouvellement garde sa place) : déterministe et indépendant des identifiants.
+- **Épuisement retiré en fin de tick** (phase 6) et non à l'impact : le coût réservé d'un impact ne dépend pas de l'absorption, et un renouvellement du même tick recharge le bouclier.
+- **Renforcement de dégâts infligés en catégorie « altération »** (additive avec la Fragilité de la cible), distincte de la catégorie « talent » des modificateurs permanents et conditionnels (multiplicatives entre elles).
+- **Renforcements sans cumul par source** (refusé) : une instance au plus par définition et par porteur, ce qui borne leur somme.
+- **Aucune donnée livrée** n'en déclare : empreinte des règles fournies et gameplay des cinq scénarios inchangés (journaux 0.9.1 reproduits au gameplay près, `Lot81ReferenceTests`).
+- **Non couvert** : dissipation, vol ou transfert d'un bouclier ; bouclier de groupe (un effet par cible) ; affichage des boucliers dans le résumé texte de la CLI (le journal et `CombatResult.DamageAbsorbed` les portent).

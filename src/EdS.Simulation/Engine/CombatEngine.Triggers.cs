@@ -425,7 +425,8 @@ namespace EdS.Simulation.Engine
                         break;
                     case TriggerEffectKind.ApplyStatus:
                         StatusDefinition definition = _statuses[effect.Status!];
-                        cost += ApplyCost(Plan(tick, target, definition, slot.Bearer.Id, null, slot.Bearer), definition, target.Guarding, target.ParryOpen);
+                        cost += ApplyCost(Plan(tick, target, definition, slot.Bearer.Id, null, slot.Bearer, shieldAmount: ReactionShield(slot, effect, definition)),
+                            definition, target.Guarding, target.ParryOpen);
                         break;
                     default:
                         cost += GainCost(target, GainAmount(effect, slot.Rank), observable: false);
@@ -525,7 +526,8 @@ namespace EdS.Simulation.Engine
                             Domain.Numerics.Fixed power = definition.IsDot
                                 ? DotPower(slot.Bearer.Stats, definition, new StatusApplication(definition.Id, effect.Coefficient!.Value.At(slot.Rank)))
                                 : Domain.Numerics.Fixed.Zero;
-                            ApplyStatus(tick, phase, target, definition, slot.Bearer.Id, power, item.Origin, dealer: slot.Bearer);
+                            ApplyStatus(tick, phase, target, definition, slot.Bearer.Id, power, item.Origin, dealer: slot.Bearer,
+                                shieldAmount: ReactionShield(slot, effect, definition));
                             break;
                         default:
                             Gain(tick, phase, target, ResourceId(effect.Resource!.Value), GainAmount(effect, slot.Rank), "trigger", item.Origin, observable: false);
@@ -534,6 +536,13 @@ namespace EdS.Simulation.Engine
                 }
             }
         }
+
+        /// <summary>
+        /// Sous-lot 8.2 (X4) : valeur d'un bouclier posé par une réaction : PV max du porteur × coefficient au rang du déclencheur ×
+        /// (1 + sa puissance de boucliers) ; 0 hors bouclier.
+        /// </summary>
+        private static long ReactionShield(TriggerSlot slot, TriggerEffect effect, StatusDefinition definition) =>
+            definition.IsShield && effect.Coefficient is { } c ? ShieldAmount(slot.Bearer, definition, c.At(slot.Rank)) : 0;
 
         /// <summary>Traite un élément de déclencheur en tête de la file ; faux si l'élément est d'une autre nature.</summary>
         private bool ProcessTriggerItem(long tick, CombatPhase phase, Scheduled item)
