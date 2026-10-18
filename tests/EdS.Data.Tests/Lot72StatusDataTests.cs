@@ -30,9 +30,11 @@ public class Lot72StatusDataTests
     public void Regles_livrees_portent_les_sept_alterations()
     {
         LoadedRules rules = RulesJsonReader.ReadFile(RulesTestData.ShippedPath).Rules!;
-        // Les sept du lot 7.2 en tête ; sous-lot 8.4 : celles des compétences du Bastion à la suite.
+        // Les sept du lot 7.2 en tête ; sous-lot 8.4 : celles des compétences du Bastion à la suite ; sous-lot 8.5 : celles des talents
+        // du Gardien (Égide réactive, Lien protecteur, Serment du gardien).
         Assert.Equal(new[] { "burn", "bleed", "stun", "stunImmunity", "freeze", "fragility", "guardBreak",
-                "taunt", "steelBarrier", "bastionAbsolute", "bastionAbsoluteGuard", "bastionAbsoluteTaunt" },
+                "taunt", "steelBarrier", "bastionAbsolute", "bastionAbsoluteGuard", "bastionAbsoluteTaunt",
+                "reactiveAegis", "protectiveLink", "oathTaunt" },
             rules.Combat.Statuses.Definitions.Select(d => d.Id));
         Assert.Equal((1000L, "guardBreak"), (rules.Stats.StatusResistanceConstant, rules.Combat.GuardBreakStatus));
     }

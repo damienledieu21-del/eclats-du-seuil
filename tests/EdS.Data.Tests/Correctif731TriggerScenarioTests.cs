@@ -32,11 +32,14 @@ public class Correctif731TriggerScenarioTests
     private const string Brulure = "assailant.assaillant/2@assaillant#0";
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.14.0", Name + ".jsonl");
+    /// <summary>Sous-lot 8.5 : référence du contenu livré (moteur 0.14.0 inchangé, Bastion 0.4.0, règles 0.8.0).</summary>
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.14.0-contenu-0.4.0", Name + ".jsonl");
 
     private static string FrozenPath(string version) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-" + version, Name + ".jsonl");
 
-    private static ScenarioLoadResult Read(GameData? data = null) => ScenarioJsonReader.ReadFile(ScenarioPath(Name), data ?? HistoricalData);
+    /// <summary>Contenu historique et scénario figé du 8.4 par défaut ; données explicites : scénario livré.</summary>
+    private static ScenarioLoadResult Read(GameData? data = null) =>
+        ScenarioJsonReader.ReadFile(data is null ? FrozenScenarioPath(Name) : ScenarioPath(Name), data ?? HistoricalData);
 
     private static CombatSetup Load(GameData? data = null)
     {
@@ -210,7 +213,7 @@ public class Correctif731TriggerScenarioTests
         CausalGraph graph = CausalGraph.Build(lines);
         var events = new Events(lines);
         Assert.Equal(events.ByEid.Count, graph.Nodes.Count);
-        Assert.Equal(16, graph.Cited.Count);   // sous-lot 8.4 : contenu livré (19 avec le contenu historique, référence 0.13.0)
+        Assert.Equal(16, graph.Cited.Count);   // sous-lots 8.4 et 8.5 : contenu livré (19 avec le contenu historique, référence 0.13.0)
         Assert.Contains("command:0", graph.Roots.Keys);
         Assert.Contains("assailantTurn:assaillant:0", graph.Roots.Keys);
         foreach (CausalGraph.Node node in graph.Nodes.Values.Where(n => n.Depth > 0))
@@ -229,6 +232,34 @@ public class Correctif731TriggerScenarioTests
         Assert.Equal(expected, Simulate(ShippedData).ToString());
         Assert.Equal(expected, Simulate(ShippedData).ToString());
         Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(File.ReadAllLines(FixturePath), ShippedData).Status);
+    }
+
+    [Fact]
+    public void Reference_du_contenu_0_3_0_refusee_au_rejeu_et_reproduite_par_le_moteur_avec_le_contenu_fige()
+    {
+        // Sous-lot 8.5 : la référence 0.14.0 (contenu du 8.4) n'est plus rejouable avec les données livrées, dont l'identité a changé ;
+        // le moteur, inchangé, la reproduit octet par octet avec le contenu figé du 8.4, en-tête compris hormis l'identité des règles
+        // (trois altérations ajoutées au catalogue, sans effet sur ce scénario).
+        string[] frozen = File.ReadAllLines(FrozenPath("0.14.0"));
+        ReplayOutcome outcome = CombatLogReplayer.Replay(frozen, ShippedData);
+        Assert.Equal(ReplayStatus.Refused, outcome.Status);
+        Assert.Null(outcome.Comparison);
+        Assert.Contains(outcome.Problems, p => p.Contains(ShippedData.Rules.Fingerprint, StringComparison.Ordinal));
+
+        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(FrozenScenarioPath(Name), FrozenData);
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        var log = new MemoryCombatLog();
+        CombatEngine.Run(loaded.Setup!, log);
+        Assert.Equal(frozen.Skip(1), log.Lines.Skip(1));
+        static string Header(string line)
+        {
+            var h = System.Text.Json.Nodes.JsonNode.Parse(line)!.AsObject();
+            System.Text.Json.Nodes.JsonObject rules = h["data"]!["rules"]!.AsObject();
+            Assert.True(rules.Remove("fingerprint"));
+            Assert.True(rules.Remove("contentVersion"));
+            return h.ToJsonString();
+        }
+        Assert.Equal(Header(frozen[0]), Header(log.Lines[0]));
     }
 
     [Theory]

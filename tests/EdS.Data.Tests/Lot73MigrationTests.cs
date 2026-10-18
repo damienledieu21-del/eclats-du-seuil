@@ -30,8 +30,9 @@ public class Lot73MigrationTests
     private static IReadOnlyList<string> Current(string name)
     {
         var log = new MemoryCombatLog();
-        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay.
-        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), HistoricalData).Setup!, log);
+        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay. Sous-lot
+        // 8.5 : scénarios figés du 8.4 (passifs « [TEST] »).
+        CombatEngine.Run(ScenarioJsonReader.ReadFile(FrozenScenarioPath(name), HistoricalData).Setup!, log);
         return log.Lines;
     }
 

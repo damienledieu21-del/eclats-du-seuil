@@ -17,10 +17,13 @@ namespace EdS.Data.Tests;
 [Trait("Category", "Limits")]
 public class Correctif731ClassVolumeTests
 {
-    /// <summary>Même construction que le script de l'annexe de l'audit.</summary>
+    /// <summary>
+    /// Même construction que le script de l'annexe de l'audit. Sous-lot 8.5 : sur la classe figée du 8.4 (aucun déclencheur), la
+    /// classe livrée en portant désormais 12.
+    /// </summary>
     private static string AuditClass(int skills)
     {
-        JsonObject root = Shipped();
+        JsonObject root = Frozen();
         JsonObject prototype = DataOf(root)["skills"]!.AsArray().Select(s => s!.AsObject()).Single(s => s["id"]!.GetValue<string>() == "skill.bastion.test_passif_1");
         for (int i = 0; i < skills; i++)
         {
@@ -58,7 +61,7 @@ public class Correctif731ClassVolumeTests
     [Fact]
     public void Classe_au_plafond_admise_avec_son_avertissement()
     {
-        string json = AuditClass(64);   // 512 déclencheurs, la classe livrée n'en a aucun
+        string json = AuditClass(64);   // 512 déclencheurs, la classe figée n'en a aucun
         var clock = Stopwatch.StartNew();
         ClassLoadResult result = ClassJsonReader.Read(json, Progression);
         clock.Stop();

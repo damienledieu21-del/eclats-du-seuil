@@ -37,8 +37,8 @@
           ],
           "ultimate": "skill.bastion.bastion_absolu",
           "passiveSkills": [
-            "skill.bastion.test_passif_1",
-            "skill.bastion.test_passif_2"
+            "skill.bastion.endurance_du_roc",
+            "skill.bastion.posture_de_fer"
           ]
         }
       },

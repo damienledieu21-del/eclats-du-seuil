@@ -330,10 +330,12 @@ Moteur 0.9.0, règles provisoires (budgets 10 000 / 1 000 / 100 000, profondeur 
 | Arbre 2 contre 2, ripostes de zone, une commande | durée atteinte | 113 | 25 | 5 | 7 | 8 | 4 |
 | Arbre 3 contre 3 | durée atteinte | 446 | 114 | 37 | 22 | 45 | 4 |
 | Arbre 4 contre 4 | durée atteinte | 1 359 | 375 | 145 | 53 | 160 | 4 |
-| Arbre 6 contre 6 | arrêt `eventBudgetExceeded` au tick 0 | 3 621 | 969 | 741 | 155 | 36 | 4 |
+| Arbre 6 contre 6 | arrêt `eventBudgetExceeded` au tick 0 | 3 602 (3 621 avant le sous-lot 8.5) | 963 (969) | 736 (741) | 154 (155) | 36 | 4 |
 | Ping-pong entre deux porteurs (riposte ciblée) | durée atteinte | 30 | 6 | 2 | 2 | 1 (`cycle`, profondeur 3) | 2 |
 | 64 porteurs (32 personnages, 32 assaillants frappant à chaque tick), ripostes ciblées, 30 s | durée atteinte | 928 (9 %) | 160 (16 %) | 64 | 38 400 | 19 200 | 2 |
-| 64 porteurs, ripostes de zone | arrêt `eventBudgetExceeded` au tick 0 | 2 616 | 832 | 808 | 24 | 0 | 1 |
+| 64 porteurs, ripostes de zone | arrêt `eventBudgetExceeded` au tick 0 | 2 519 (2 616 avant le sous-lot 8.5) | 800 (832) | 777 (808) | 23 (24) | 0 | 1 |
+
+Sous-lot 8.5 : le catalogue livré contient désormais une protection (`protectiveLink`, Lien protecteur) ; comme le prévoit le moteur depuis le sous-lot 8.3, chaque impact réserve alors une ligne de transfert possible (`damageTransferred`), qu'une protection soit en vigueur ou non. Les deux arrêts au tick 0 surviennent un peu plus tôt (valeurs entre parenthèses : avant le 8.5) ; les autres mesures ne changent pas.
 
 Lecture :
 - **Le budget de lignes reste la première limite atteinte**, comme sans déclencheur. Une riposte de zone multiplie les lignes par le nombre d'ennemis à chaque niveau : dès 6 contre 6, l'arbre d'une seule commande dépasse 1 000 lignes dans le tick. L'arrêt est propre, au tick exact, sans réaction partielle.

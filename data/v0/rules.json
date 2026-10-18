@@ -2,7 +2,7 @@
   "$schema": "../schemas/rules.schema.json",
   "schemaVersion": 9,
   "kind": "rules",
-  "contentVersion": "0.7.0-provisoire",
+  "contentVersion": "0.8.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -134,7 +134,13 @@
         "id": "bastionAbsoluteGuard", "category": "buff", "durationMs": 8000, "stacking": "refresh", "resistance": "none",
         "modifiers": [{ "key": "guard.noUpkeep", "add": 1 }]
       },
-      { "id": "bastionAbsoluteTaunt", "category": "taunt", "durationMs": 8000, "stacking": "perSourceKeepStronger", "resistance": "none" }
+      { "id": "bastionAbsoluteTaunt", "category": "taunt", "durationMs": 8000, "stacking": "perSourceKeepStronger", "resistance": "none" },
+      { "id": "reactiveAegis", "category": "shield", "durationMs": 4000, "stacking": "perSourceKeepStronger", "resistance": "none" },
+      {
+        "id": "protectiveLink", "category": "protection", "durationMs": 6000, "stacking": "perSourceKeepStronger", "resistance": "none",
+        "redirectRatio": 0.25
+      },
+      { "id": "oathTaunt", "category": "taunt", "durationMs": 2000, "stacking": "perSourceKeepStronger", "resistance": "none" }
     ]
   }
 }

@@ -30,7 +30,7 @@ public class RulesJsonReaderTests
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
         Assert.Equal(9, result.Rules!.SchemaVersion);
-        Assert.Equal("0.7.0-provisoire", result.Rules.ContentVersion);
+        Assert.Equal("0.8.0-provisoire", result.Rules.ContentVersion);   // 0.8.0 : altérations des talents du Gardien (sous-lot 8.5)
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -114,8 +114,9 @@ public class RulesJsonReaderTests
         // Sous-lot 8.2 : schéma 7 (renforcements et boucliers) ; seule la version change dans le texte canonique.
         // Sous-lot 8.3 : schéma 8 ; redirectRatio (0) écrit pour chaque altération.
         // Sous-lot 8.4 : schéma 9, contenu 0.7.0 : combat.triggers.areaStrikeMinCooldownMs et les cinq altérations du Bastion.
+        // Sous-lot 8.5 : contenu 0.8.0, schéma inchangé : les trois altérations des talents du Gardien.
         Assert.Equal(
-            "sha256:0176d9652e97eeb24e2b34c30bb234c2dbc595d04f0c60b45d62befd2bc7e9b9",
+            "sha256:03f73faca72b574c972b117e29235f072528b6a5929b268c01842ec9fca1f83a",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 

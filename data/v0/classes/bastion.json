@@ -2,7 +2,7 @@
   "$schema": "../../schemas/class.schema.json",
   "schemaVersion": 8,
   "kind": "class",
-  "contentVersion": "0.3.0-provisoire",
+  "contentVersion": "0.4.0-provisoire",
   "data": {
     "id": "class.bastion",
     "name": "Bastion",
@@ -17,7 +17,23 @@
             "maxRank": 3,
             "major": false,
             "placeholder": false,
-            "prerequisites": []
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "guard.damageReduction",
+                "add": {
+                  "base": 0.04,
+                  "perRank": 0.04
+                }
+              },
+              {
+                "key": "guard.upkeepPerSecond",
+                "add": {
+                  "base": -0.25,
+                  "perRank": -0.25
+                }
+              }
+            ]
           },
           {
             "id": "talent.bastion.rempart.echo_defensif",
@@ -29,6 +45,31 @@
               {
                 "talent": "talent.bastion.rempart.garde_stable",
                 "rank": 3
+              }
+            ],
+            "triggers": [
+              {
+                "on": "onBlock",
+                "role": "target",
+                "effects": [
+                  {
+                    "type": "gainResource",
+                    "resource": "endurance",
+                    "amount": 4
+                  }
+                ]
+              },
+              {
+                "on": "onBlock",
+                "role": "target",
+                "cooldownMs": 3000,
+                "effects": [
+                  {
+                    "type": "gainResource",
+                    "resource": "rampartCharges",
+                    "amount": 1
+                  }
+                ]
               }
             ]
           },
@@ -43,31 +84,79 @@
                 "talent": "talent.bastion.rempart.echo_defensif",
                 "rank": 1
               }
+            ],
+            "modifiers": [
+              {
+                "key": "guard.noUpkeepBreak",
+                "add": 1
+              },
+              {
+                "key": "guard.reductionAtZeroEndurance",
+                "add": 0.4
+              }
             ]
           },
           {
-            "id": "talent.bastion.rempart.test_palier_1",
-            "name": "[TEST] Palier 1",
+            "id": "talent.bastion.rempart.peau_de_fer",
+            "name": "Peau de fer",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "damageTaken",
+                "add": {
+                  "base": -0.015,
+                  "perRank": -0.015
+                }
+              }
+            ]
           },
           {
-            "id": "talent.bastion.rempart.test_palier_2",
-            "name": "[TEST] Palier 2",
+            "id": "talent.bastion.rempart.souffle_du_roc",
+            "name": "Souffle du roc",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "endurance.max",
+                "add": {
+                  "base": 4,
+                  "perRank": 4
+                }
+              },
+              {
+                "key": "endurance.regenPerSecond",
+                "add": {
+                  "base": 1,
+                  "perRank": 1
+                }
+              }
+            ]
           },
           {
-            "id": "talent.bastion.rempart.test_palier_3",
-            "name": "[TEST] Palier 3",
+            "id": "talent.bastion.rempart.poids_du_rempart",
+            "name": "Poids du rempart",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "damageTaken",
+                "add": {
+                  "base": -0.005,
+                  "perRank": -0.005
+                },
+                "conditions": [
+                  "whileGuarding",
+                  "perRampartCharge"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -81,7 +170,25 @@
             "maxRank": 3,
             "major": false,
             "placeholder": false,
-            "prerequisites": []
+            "prerequisites": [],
+            "triggers": [
+              {
+                "on": "onPerfectParry",
+                "role": "target",
+                "effects": [
+                  {
+                    "type": "strike",
+                    "target": "eventSource",
+                    "coefficient": {
+                      "base": 0.75,
+                      "perRank": 0.25
+                    },
+                    "powerType": "physique",
+                    "damageType": "physique"
+                  }
+                ]
+              }
+            ]
           },
           {
             "id": "talent.bastion.contrecoup.fureur_contenue",
@@ -93,6 +200,18 @@
               {
                 "talent": "talent.bastion.contrecoup.riposte_precise",
                 "rank": 2
+              }
+            ],
+            "modifiers": [
+              {
+                "key": "damageDealt",
+                "add": {
+                  "base": 0.01,
+                  "perRank": 0.01
+                },
+                "conditions": [
+                  "perResonanceStep"
+                ]
               }
             ]
           },
@@ -107,31 +226,86 @@
                 "talent": "talent.bastion.contrecoup.fureur_contenue",
                 "rank": 2
               }
+            ],
+            "triggers": [
+              {
+                "on": "onPerfectParry",
+                "role": "target",
+                "cooldownMs": 3000,
+                "effects": [
+                  {
+                    "type": "strike",
+                    "target": "allEnemies",
+                    "coefficient": 1.2,
+                    "powerType": "physique",
+                    "damageType": "physique"
+                  },
+                  {
+                    "type": "gainResource",
+                    "resource": "resonance",
+                    "amount": 10
+                  }
+                ]
+              }
             ]
           },
           {
-            "id": "talent.bastion.contrecoup.test_palier_1",
-            "name": "[TEST] Palier 1",
+            "id": "talent.bastion.contrecoup.main_lourde",
+            "name": "Main lourde",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "damageDealt",
+                "add": {
+                  "base": 0.02,
+                  "perRank": 0.02
+                }
+              }
+            ]
           },
           {
-            "id": "talent.bastion.contrecoup.test_palier_2",
-            "name": "[TEST] Palier 2",
+            "id": "talent.bastion.contrecoup.elan",
+            "name": "Élan",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "parry.failureRecoveryMs",
+                "add": {
+                  "base": -50,
+                  "perRank": -50
+                }
+              }
+            ]
           },
           {
-            "id": "talent.bastion.contrecoup.test_palier_3",
-            "name": "[TEST] Palier 3",
+            "id": "talent.bastion.contrecoup.echo_de_guerre",
+            "name": "Écho de guerre",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "triggers": [
+              {
+                "on": "onPerfectParry",
+                "role": "target",
+                "effects": [
+                  {
+                    "type": "gainResource",
+                    "resource": "resonance",
+                    "amount": {
+                      "base": 2,
+                      "perRank": 2
+                    }
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
@@ -145,7 +319,30 @@
             "maxRank": 3,
             "major": false,
             "placeholder": false,
-            "prerequisites": []
+            "prerequisites": [],
+            "triggers": [
+              {
+                "on": "onHitTaken",
+                "filter": {
+                  "defense": [
+                    "guard",
+                    "parry"
+                  ]
+                },
+                "cooldownMs": 2000,
+                "effects": [
+                  {
+                    "type": "applyStatus",
+                    "target": "bearer",
+                    "status": "reactiveAegis",
+                    "coefficient": {
+                      "base": 0.03,
+                      "perRank": 0.03
+                    }
+                  }
+                ]
+              }
+            ]
           },
           {
             "id": "talent.bastion.gardien.lien_protecteur",
@@ -157,6 +354,23 @@
               {
                 "talent": "talent.bastion.gardien.egide_reactive",
                 "rank": 3
+              }
+            ],
+            "triggers": [
+              {
+                "on": "onSkillCast",
+                "filter": {
+                  "skills": [
+                    "skill.bastion.barriere_d_acier"
+                  ]
+                },
+                "effects": [
+                  {
+                    "type": "applyStatus",
+                    "target": "eventTarget",
+                    "status": "protectiveLink"
+                  }
+                ]
               }
             ]
           },
@@ -171,31 +385,89 @@
                 "talent": "talent.bastion.gardien.lien_protecteur",
                 "rank": 1
               }
+            ],
+            "triggers": [
+              {
+                "on": "onHitTaken",
+                "role": "ally",
+                "cooldownMs": 3000,
+                "effects": [
+                  {
+                    "type": "applyStatus",
+                    "target": "eventSource",
+                    "status": "oathTaunt"
+                  }
+                ]
+              }
+            ],
+            "modifiers": [
+              {
+                "key": "protection.redirectRatio",
+                "add": 0.15
+              },
+              {
+                "key": "protection.redirectThroughGuard",
+                "add": 1
+              }
             ]
           },
           {
-            "id": "talent.bastion.gardien.test_palier_1",
-            "name": "[TEST] Palier 1",
+            "id": "talent.bastion.gardien.vigilance",
+            "name": "Vigilance",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "maxHealth",
+                "add": {
+                  "base": 0.02,
+                  "perRank": 0.02
+                }
+              }
+            ]
           },
           {
-            "id": "talent.bastion.gardien.test_palier_2",
-            "name": "[TEST] Palier 2",
+            "id": "talent.bastion.gardien.presence",
+            "name": "Présence",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "status.taunt.durationDealt",
+                "add": {
+                  "base": 200,
+                  "perRank": 200
+                }
+              },
+              {
+                "key": "status.oathTaunt.durationDealt",
+                "add": {
+                  "base": 200,
+                  "perRank": 200
+                }
+              }
+            ]
           },
           {
-            "id": "talent.bastion.gardien.test_palier_3",
-            "name": "[TEST] Palier 3",
+            "id": "talent.bastion.gardien.rempart_vivant",
+            "name": "Rempart vivant",
             "maxRank": 5,
             "major": false,
-            "placeholder": true,
-            "prerequisites": []
+            "placeholder": false,
+            "prerequisites": [],
+            "modifiers": [
+              {
+                "key": "shield.potencyDealt",
+                "add": {
+                  "base": 0.04,
+                  "perRank": 0.04
+                }
+              }
+            ]
           }
         ]
       }
@@ -372,36 +644,127 @@
         }
       },
       {
-        "id": "skill.bastion.test_passif_1",
-        "name": "[TEST] Passif 1",
+        "id": "skill.bastion.endurance_du_roc",
+        "name": "Endurance du roc",
         "kind": "passive",
         "minLevel": 1,
-        "placeholder": true,
-        "talentRequirements": []
+        "placeholder": false,
+        "talentRequirements": [],
+        "modifiers": [
+          {
+            "key": "endurance.max",
+            "add": 15
+          }
+        ]
       },
       {
-        "id": "skill.bastion.test_passif_2",
-        "name": "[TEST] Passif 2",
+        "id": "skill.bastion.bouclier_lourd",
+        "name": "Bouclier lourd",
         "kind": "passive",
         "minLevel": 1,
-        "placeholder": true,
-        "talentRequirements": []
+        "placeholder": false,
+        "talentRequirements": [],
+        "modifiers": [
+          {
+            "key": "guard.costPerBlock",
+            "add": -3
+          }
+        ]
       },
       {
-        "id": "skill.bastion.test_passif_3",
-        "name": "[TEST] Passif 3",
+        "id": "skill.bastion.reserve_de_charges",
+        "name": "Réserve de Charges",
         "kind": "passive",
         "minLevel": 1,
-        "placeholder": true,
-        "talentRequirements": []
+        "placeholder": false,
+        "talentRequirements": [],
+        "modifiers": [
+          {
+            "key": "rampartCharges.max",
+            "add": 1
+          }
+        ]
       },
       {
-        "id": "skill.bastion.test_passif_4",
-        "name": "[TEST] Passif 4",
+        "id": "skill.bastion.oeil_du_duelliste",
+        "name": "Œil du duelliste",
         "kind": "passive",
         "minLevel": 1,
-        "placeholder": true,
-        "talentRequirements": []
+        "placeholder": false,
+        "talentRequirements": [],
+        "modifiers": [
+          {
+            "key": "parry.windowMs",
+            "add": 50
+          }
+        ]
+      },
+      {
+        "id": "skill.bastion.ferveur",
+        "name": "Ferveur",
+        "kind": "passive",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "modifiers": [
+          {
+            "key": "resonance.perDirectHit",
+            "add": 1
+          }
+        ]
+      },
+      {
+        "id": "skill.bastion.posture_de_fer",
+        "name": "Posture de fer",
+        "kind": "passive",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "modifiers": [
+          {
+            "key": "damageTaken",
+            "add": -0.05,
+            "conditions": [
+              "whileGuarding"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "skill.bastion.sentinelle",
+        "name": "Sentinelle",
+        "kind": "passive",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "triggers": [
+          {
+            "on": "onHitTaken",
+            "role": "ally",
+            "cooldownMs": 6000,
+            "effects": [
+              {
+                "type": "gainResource",
+                "resource": "rampartCharges",
+                "amount": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "skill.bastion.tenacite",
+        "name": "Ténacité",
+        "kind": "passive",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "modifiers": [
+          {
+            "key": "statusResistance",
+            "add": 100
+          }
+        ]
       }
     ]
   }
