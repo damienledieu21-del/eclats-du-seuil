@@ -15,7 +15,7 @@ MMORPG fantasy PC/mobile, monde partagé et persistant à terme, **principalemen
 
 ## Ordre des chantiers
 
-`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 → prototype Unity 3D → serveur autoritaire à deux joueurs → vertical slice`
+`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4) → serveur autoritaire à deux joueurs → vertical slice`
 
 ### Lot 8 — premier Bastion réellement jouable
 
@@ -28,14 +28,27 @@ Deux PR de gameplay (A11) : **8a moteur** (8.1 à 8.4, PR #3, #6, #7 et #8, fusi
 | 8.3 | X5 ciblage `self` / `ally` / `allAllies`, X6 transfert de dégâts, X7 provocation, X9 rôle `ally` des déclencheurs | PR #7, empilée sur la PR #6 (brouillon) : compétences de soutien, catégories `taunt` et `protection`, règles en schéma 8, classes en 7, scénarios en 3, moteur 0.13.0, journal au format 7 ; aucun contenu livré ; deux tours de revue Codex traités |
 | 8.4 | X8 Contrecoup consomme toutes les Charges, fiches complètes des compétences restantes et de l'ultime, L8-D2, aucun `notImplemented` restant | PR empilée sur la PR #7 (brouillon) : fiches complètes du Bastion, Charges dépensées et coefficient par Charge, `resonanceGain`, `guard.noUpkeep`, `combat.triggers.areaStrikeMinCooldownMs` (3 s), rupture de garde limitée aux contrôles et modificateurs ; règles en schéma 9 (contenu 0.7.0), classes en 8 (contenu 0.3.0), moteur 0.14.0, journal au format 8 |
 | 8.5 | Contenu complet du Bastion (talents, intermédiaires, passifs), plus aucun `[TEST]`, builds de référence en données | PR #9, fusionnée le 18 octobre 2026 : talents, intermédiaires et passifs en données (modificateurs et déclencheurs existants, moteur inchangé), altérations `reactiveAegis`, `protectiveLink`, `oathTaunt`, fichier de builds de référence (`kind: "builds"`, schéma 1) ; règles au contenu 0.8.0, Bastion 0.4.0 |
-| 8.6 | X10 compteurs de mesure, scénarios S1 à S5, commande CLI `report`, catégorie `Scenario` | PR en brouillon vers `main` : compteurs hors journal (moteur 0.14.0 et journal inchangés), API de pilotage (`View`, `Submit`), pilote déterministe à trois profils, scénarios `scenarios/mesures`, `eds report` (texte, JSON `measureReport` 1, journaux rejouables), relevé initial dans [BUILDS.md](BUILDS.md#mesures-des-builds-sous-lot-86) : tous les objectifs atteints sauf S1 (écart de DPS 27,2 %) |
-| 8.7 | Passe d'équilibrage mesurée, surtout en données ; rapport de mesures et écarts | PR en brouillon, empilée sur celle du 8.6 : décision 8 (Provocation inflige 0,8), Bastion au contenu 0.5.0, tous les objectifs provisoires atteints ([RAPPORT_8_7.md](RAPPORT_8_7.md)) |
+| 8.6 | X10 compteurs de mesure, scénarios S1 à S5, commande CLI `report`, catégorie `Scenario` | PR #10, fusionnée le 18 octobre 2026 : compteurs hors journal (moteur 0.14.0 et journal inchangés), API de pilotage (`View`, `Submit`), pilote déterministe à trois profils, scénarios `scenarios/mesures`, `eds report` (texte, JSON `measureReport` 1, journaux rejouables), relevé initial dans [BUILDS.md](BUILDS.md#mesures-des-builds-sous-lot-86) ; deux tours de revue Codex |
+| 8.7 | Passe d'équilibrage mesurée, surtout en données ; rapport de mesures et écarts | PR #11, fusionnée le 18 octobre 2026 : décision 8 (Provocation inflige 0,8), Bastion au contenu 0.5.0, tous les objectifs provisoires atteints ([RAPPORT_8_7.md](RAPPORT_8_7.md)) |
 
 Ordre défensif attendu en 8.2 : garde ou parade selon leurs règles, puis bouclier, puis PV. Tests 8.2 attendus : bouclier épuisé pendant un impact, plusieurs boucliers, DOT successifs, mort d'un personnage protégé, réservation exacte, aucun dégât négatif ni effet partiel.
 
 Règles 8.3 : transfert non récursif et non notifiable aux déclencheurs offensifs, conservation des dégâts à l'arrondi près, garde du protecteur seulement selon Serment, protection retirée à la mort du protecteur, allié mort ou hostile refusé, provocation d'un personnage refusée et journalisée (`notApplicable`), provocation la plus récente prioritaire, mort du provocateur gérée.
 
 Tests 8.4 attendus : riposte automatique de zone avec recharge interne 2 950 ms refusée, 3 000 ms acceptée ; Charges insuffisantes ; cibles invalides ; interactions de ressources ; ultimes, boucliers et provocations.
+
+### Lot 9 — prototype Unity 3D
+
+Objectif (« Après le lot 8 », point 1) : importer le cœur C# sans le réécrire et jouer le Bastion dans Unity, graphismes provisoires. Le cœur reste la seule source de vérité du combat ; Unity affiche et transmet les commandes.
+
+| Sous-lot | Contenu | État |
+|---|---|---|
+| 9.1 | Données portables : lecture JSON stricte sans dépendance (analyseur maison), `EdS.Data.Json` en netstandard2.1 / C# 9, utilisable par Unity et le futur serveur ; validation, empreintes et journaux inchangés ; mesures déplacées dans `EdS.Tools` (outils .NET) | PR en brouillon vers `main` |
+| 9.2 | Pont temps réel (`EdS.Runtime`, netstandard2.1) : temps réel → ticks de 50 ms, saisie → commandes, vues pour l'affichage, session d'entraînement depuis les données | à faire |
+| 9.3 | Projet Unity (`unity/`) : paquet local du cœur, arène générée, personnage, caméras isométrique et troisième personne comparées, barres de ressources, garde et parade visibles, compétences, ennemis d'entraînement, altérations ; guide d'installation pour Windows | à faire |
+| 9.4 | Première interface de talents (builds de référence, répartition des points validée par `BuildValidator`) | à faire |
+
+**Décisions du 18 octobre 2026** (prototype, questions posées avant le 9.1) : Unity 6.3 LTS (suivi jusqu’en décembre 2027), licence Personal gratuite ; essais sur le poste de Damien sous Windows ; projet Unity dans ce dépôt (`unity/`) ; rendu URP. Unity ne pouvant pas tourner dans les sessions cloud, les essais dans l'éditeur sont faits par Damien ; tout ce qui ne dépend pas d'Unity est testé en CI.
 
 ## Décisions validées
 
@@ -93,7 +106,7 @@ Objectifs provisoires : S1 écart de DPS ≤ 15 % ; S2 DPS Contrecoup ≥ +25 % 
 
 ## Après le lot 8
 
-1. **Prototype Unity 3D** : importer le cœur C# sans le réécrire ; personnage, déplacements, caméra expérimentale (isométrique et troisième personne comparées), garde et parade visibles, compétences, ennemis d'entraînement, barres de ressources, altérations, première interface de talents. Graphismes provisoires.
+1. **Prototype Unity 3D** (lot 9, ci-dessus) : importer le cœur C# sans le réécrire ; personnage, déplacements, caméra expérimentale (isométrique et troisième personne comparées), garde et parade visibles, compétences, ennemis d'entraînement, barres de ressources, altérations, première interface de talents. Graphismes provisoires.
 2. **Serveur autoritaire à deux joueurs** : deux clients, le serveur résout le combat avec le même cœur, commandes invalides refusées, déconnexion/reconnexion, tests de latence, désynchronisation et rejeu. Pas d'infrastructure massive avant cette preuve.
 3. **Vertical slice** : une zone, le Bastion jouable, quelques ennemis, une mission, progression, récompense, inventaire, une activité de récolte et fabrication, interactions avec un deuxième joueur.
 4. Ensuite, par grands chantiers : progression complète et équipement ; monde, régions, missions ; métiers ; économie ; classes supplémentaires ; multijoueur étendu ; persistance ; interfaces PC/mobile ; direction artistique et son ; tests jouables et première alpha.

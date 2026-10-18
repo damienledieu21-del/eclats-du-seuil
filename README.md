@@ -12,13 +12,14 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 | `src/EdS.Domain` | netstandard2.1, C# 9 | Virgule fixe (`Fixed`), temps (`TickRate`), attributs et statistiques (`Stats`), formule de dégâts, règles et description d'un combat (`Combat`), classes, talents et validateur de builds (`Builds`) — aucune dépendance |
 | `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat déterministe (`Engine` : horloge logique, file d'événements, commandes, garde, parade, ressources, états, assaillant, journal JSON Lines, rejeu, vue et soumission pour un pilote), pilote de mesure (`Pilot`, sous-lot 8.6), RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
 | `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte, scénarios — dépend du domaine seulement |
-| `src/EdS.Data.Json` | net10.0 | Adaptateur System.Text.Json, chargement et rejeu, mesures des builds et rapport (`Measures`, sous-lot 8.6), réservé aux outils .NET |
+| `src/EdS.Data.Json` | netstandard2.1, C# 9 | Lecture des fichiers de données (analyseur JSON strict sans dépendance depuis le sous-lot 9.1), chargement et rejeu — partagé par les outils .NET, Unity et le futur serveur |
+| `src/EdS.Tools` | net10.0 | Outils .NET : mesures des builds et rapport (`EdS.Tools.Measures`, sous-lot 8.6) |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`, `report`) |
 | `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `v0/builds/bastion.json` (builds de référence, sous-lot 8.5), `schemas/` |
 | `scenarios/` | JSON | Scénarios de combat (`mannequin.json`, `entrainement_garde_parade.json`, `entrainement_rupture.json`, `entrainement_alterations.json`, `entrainement_declencheurs.json`) ; `mesures/` : scénarios de mesure S1 à S5 (sous-lot 8.6) |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
 
-Les projets `netstandard2.1` sont limités à C# 9 et n'ont aucune dépendance externe : ils sont importables tels quels dans Unity (IL2CPP) et sur un serveur .NET.
+Les projets `netstandard2.1` (domaine, moteur, données et, depuis le sous-lot 9.1, lecture JSON) sont limités à C# 9 et n'ont aucune dépendance externe : ils sont importables tels quels dans Unity (IL2CPP) et sur un serveur .NET.
 
 ## Commandes
 
@@ -104,6 +105,8 @@ Sous-lot 8.6 (mesures) : compteurs de mesure X10 dans le résultat du moteur (ti
 
 Sous-lot 8.7 (équilibrage, fin de la PR de gameplay 8b) : décision 8 du 18/10/2026, la Provocation inflige une frappe physique de 0,8 ; seul changement de données (Bastion au contenu 0.5.0). Tous les objectifs provisoires de la feuille de route sont atteints : S1 ramené de 27,2 % à 10,5 % d'écart de DPS, les autres inchangés. Moteur, journal et règles inchangés ; nouvelle référence figée `reference-0.14.0-contenu-0.5.0`. Rapport : [docs/RAPPORT_8_7.md](docs/RAPPORT_8_7.md).
 
+Sous-lot 9.1 (données portables, début du prototype Unity) : la lecture des fichiers de données ne dépend plus de System.Text.Json, absent d'Unity : analyseur JSON strict maison (`EdS.Data.Json.Text`), `EdS.Data.Json` en netstandard2.1 / C# 9 ; même arbre que System.Text.Json sur tous les fichiers livrés et figés, sur des valeurs aléatoires et des textes altérés, jamais plus laxiste ; validation, empreintes, journaux et résultats inchangés (les 3 167 tests existants passent sans modification). Les mesures des builds passent dans `EdS.Tools` (net10.0). Décisions du prototype : Unity 6.3 LTS, Windows, projet dans ce dépôt (`unity/`), URP. Détail : [docs/DONNEES.md](docs/DONNEES.md#architecture), [docs/FEUILLE_DE_ROUTE.md](docs/FEUILLE_DE_ROUTE.md#lot-9--prototype-unity-3d).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -117,4 +120,5 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
-- [ ] Lot 8 — en cours : PR de gameplay 8a (sous-lots 8.1 à 8.4 : modificateurs, renforcements et boucliers, soutien, fiches du Bastion ; moteur 0.14.0) fusionnée ; sous-lot 8.5 (contenu complet du Bastion, builds de référence, PR #9) fusionné ; sous-lot 8.6 (mesures, `eds report`) en revue ; sous-lot 8.7 (équilibrage, Provocation à 0,8, tous les objectifs atteints) en revue
+- [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
+- [ ] Lot 9 — prototype Unity 3D : sous-lot 9.1 (données portables) en revue ; 9.2 à 9.4 à faire

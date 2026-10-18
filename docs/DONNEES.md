@@ -219,7 +219,7 @@ Validation : forme (`ModifierShape`, lecteur JSON), puis `ModifierDefinition.Val
 ## Architecture
 
 ```
-rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
+rules.json ──► EdS.Data.Json (analyseur JSON strict maison, netstandard2.1 : outils .NET, Unity, serveur)
                     │ forme : syntaxe, types, champs inconnus/en double, nombres
                     ▼
                RulesDocument ──► RulesValidator (EdS.Data, commun)
@@ -231,8 +231,9 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
                                LoadedRules (règles + versions + empreinte)
 ```
 
-- `EdS.Data` (netstandard2.1, aucune dépendance) : modèle `RulesDocument`, catalogue `RulesCatalog` (unique description du format), validateur commun, empreinte. Un futur chargeur Unity remplira le même `RulesDocument` et appellera le même validateur.
-- `EdS.Data.Json` (net10.0) : adaptateur System.Text.Json, sans réflexion.
+- `EdS.Data` (netstandard2.1, aucune dépendance) : modèle `RulesDocument`, catalogue `RulesCatalog` (unique description du format), validateur commun, empreinte.
+- `EdS.Data.Json` (netstandard2.1, C# 9, aucune dépendance depuis le sous-lot 9.1) : lecture de la forme, sans réflexion, sur un analyseur JSON strict maison (`EdS.Data.Json.Text`) qui remplace System.Text.Json : RFC 8259 sans extension (ni commentaire, ni virgule finale, ni NaN, ni marque d'ordre dans un texte ; un fichier lu par `JsonInput.ReadFile` est débarrassé de la sienne), profondeur bornée (`InputLimits.MaxJsonDepth`), UTF-8 valide, texte brut des nombres conservé, propriétés et doublons dans l'ordre du texte, ligne de chaque nom de propriété. Il est comparé à System.Text.Json sur tous les fichiers livrés et figés, sur des valeurs aléatoires et sur des textes altérés (`Lot91JsonTextTests`) : même arbre, jamais plus laxiste ; il refuse en plus les paires de substitution UTF-16 incomplètes (`\ud83d` seul), que System.Text.Json admet à l'analyse. Les messages d'erreur de syntaxe (`InvalidJson`) sont en français ; codes, chemins et lignes inchangés. Unity et le futur serveur lisent donc les données exactement comme la CLI : même validation, mêmes empreintes.
+- `EdS.Tools` (net10.0) : outils réservés à .NET, aujourd'hui les mesures des builds (`EdS.Tools.Measures`, sous-lot 8.6, rapport JSON écrit avec System.Text.Json).
 
 ## Empreinte
 
@@ -312,10 +313,12 @@ Le bloc facultatif `combat` d'une compétence entre dans l'empreinte (`combat?` 
 
 `GameDataLoader.Load("data/v0")` charge `rules.json`, tous les `classes/*.json` et, depuis le sous-lot 8.5, tous les `builds/*.json` en un `GameData` (règles, classes, builds de référence, identité : versions et empreintes des règles et des classes). `ScenarioJsonReader` (forme) → `ScenarioDocument` → `ScenarioValidator` (en-tête, références de classe, build validé par `BuildValidator`, puis `CombatSetup.Validate`) → `CombatSetup`. L'identité retenue pour le journal ne couvre que les règles et les classes utilisées par le scénario. Depuis le lot 6, un scénario peut contenir un assaillant (`type: "assailant"`) et des commandes défensives (`action`). Format, exemples et rejeu : [MOTEUR.md](MOTEUR.md).
 
-Dépendances (lot 6) : la description d'un combat (`CombatSetup`, combattants, commandes, identité des données) est passée d'`EdS.Simulation` à `EdS.Domain` (espace `EdS.Domain.Combat`). `EdS.Data` ne dépend donc plus que du domaine ; seuls les outils (`EdS.Data.Json`, `EdS.Cli`) référencent le moteur pour simuler et rejouer.
+Dépendances (lot 6) : la description d'un combat (`CombatSetup`, combattants, commandes, identité des données) est passée d'`EdS.Simulation` à `EdS.Domain` (espace `EdS.Domain.Combat`). `EdS.Data` ne dépend donc plus que du domaine ; seuls `EdS.Data.Json` (rejeu) et les outils (`EdS.Tools`, `EdS.Cli`) référencent le moteur pour simuler et rejouer.
 
 ```
 EdS.Domain ◄── EdS.Simulation ◄── EdS.Data.Json ──► EdS.Data ──► EdS.Domain
-                                       ▲
-                                    EdS.Cli
+                     ▲                  ▲
+                     └──── EdS.Tools ───┘      (netstandard2.1 à gauche ; EdS.Tools et EdS.Cli en net10.0)
+                              ▲
+                           EdS.Cli
 ```
