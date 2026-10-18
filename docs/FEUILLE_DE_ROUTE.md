@@ -54,6 +54,12 @@ Aussi : aucun soin, aucune deuxième classe, aucun système de positions, aucune
 3. **Blocage à coût nul** : comportement actuel conservé (il relance le délai de régénération).
 4. Un `perRank` de **déclencheur** sur un talent à un seul rang est **refusé**, comme pour les modificateurs.
 
+**Décisions du 18 octobre 2026** (interprétations du rapport 8.4, PR #8, toutes gardées par Damien) :
+
+5. **Provocation** : les +5 de Résonance sont gagnés au lancement, même si la provocation est refusée (cible qui n'est pas un assaillant).
+6. **Bastion absolu** : les 8 s valent pour ses trois effets ; aucune recharge propre, la Résonance (100) seule le limite ; garde sans entretien pour le Bastion seul, −30 % de dégâts subis pour lui et ses alliés.
+7. **Contrecoup** : les Charges sont dépensées au lancement ; un bonus « par Charge détenue » ne compte pas sur son impact.
+
 ## Catalogue du Bastion (valeurs initiales du plan)
 
 Trois arbres : **Rempart** (garde, endurance, parade, Charges, survie), **Contrecoup** (ripostes, dégâts, Résonance), **Gardien** (boucliers, protection, transfert, soutien ; utile aussi en solo).

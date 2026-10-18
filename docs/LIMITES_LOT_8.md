@@ -66,6 +66,8 @@ Quand une base des règles sort déjà d'un intervalle de jeu (règles de test),
 
 ## Sous-lot 8.4 : interprétations et limites
 
+Les trois interprétations de gameplay ci-dessous (Provocation, Bastion absolu, Contrecoup) ont été gardées par Damien le 18 octobre 2026 (décisions 5 à 7 de la feuille de route).
+
 - **Contrecoup (X8)** : toutes les Charges détenues sont dépensées au lancement (au moins une, refus `insufficientRampartCharges` sinon, sans rien modifier) ; coefficient 0,6 + 0,4 × Charges dépensées, écrêté à 100, puis les modificateurs `skill.<id>.coefficient`, le tout écrêté dans [0, 100] (revue Codex de la PR #8). Les conditionnels `perRampartCharge` de l'impact voient les Charges après la dépense (0). Le précontrôle numérique compte le coefficient au maximum de Charges effectif du personnage.
 - **Provocation, +5 Résonance** : gagnés **au lancement**, même si la provocation est refusée (cible qui n'est pas un assaillant, comme le mannequin) ; champ `resonanceGain`, refusé sur une ultime. Choix plutôt qu'un déclencheur, qui aurait rendu le majorant de file « non garanti » dans tous les scénarios équipant la Provocation.
 - **Bastion absolu** : les « 8 s » valent pour ses trois effets (renforcement de groupe, garde sans entretien, provocation) ; aucune recharge propre (la Résonance, 100 sur 100, la limite) ; la garde sans entretien est réservée au Bastion (altération à part, sur lui seul), la réduction de 30 % vaut pour lui et ses alliés. La provocation n'agit que sur les assaillants (mannequins refusés `notApplicable`).
