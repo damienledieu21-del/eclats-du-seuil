@@ -47,9 +47,12 @@ dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
 dotnet run --project src/EdS.Cli -- simulate scenarios/mannequin.json --out combat.jsonl
 dotnet run --project src/EdS.Cli -- simulate scenarios/entrainement_garde_parade.json
 dotnet run --project src/EdS.Cli -- replay combat.jsonl
+python3 -m unittest discover -s scripts -p 'test_ci_provenance.py' -v   # générateur du rapport CI non signé
 ```
 
-Prérequis : SDK .NET 10 (voir `global.json`).
+Prérequis : SDK .NET 10 (voir `global.json`) ; Python 3 (bibliothèque standard seulement) pour le rapport CI.
+
+CI (`.github/workflows/ci.yml`, check `build-test`) : jeton GitHub en lecture seule (`contents: read`) ; après toutes les étapes de test, `scripts/make_ci_provenance.py` écrit un **rapport auto-déclaré non signé** (`eds-provenance.json` : SHA de tête de la PR et SHA réellement testé, séparés, blob Git du workflow, run et tentative), déposé comme artefact `eds-ci-provenance` pendant 14 jours. Ce n'est **pas** une attestation indépendante : il ne prouve ni la provenance du runner ni l'intégrité des tests ; la signature par un attesteur indépendant est un chantier ultérieur.
 
 ## Décisions validées (revue du plan v0.1)
 
