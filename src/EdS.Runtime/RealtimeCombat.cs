@@ -1,0 +1,341 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using EdS.Domain.Builds;
+using EdS.Domain.Combat;
+using EdS.Simulation.Engine;
+
+namespace EdS.Runtime
+{
+    /// <summary>
+    /// Sous-lot 9.2 : pont temps réel entre un client (Unity) et le moteur déterministe. Le client avance le temps réel écoulé
+    /// (<see cref="Advance"/>) ; le pont le découpe en ticks de 50 ms, soumet avant chaque tick les intentions du joueur saisies entre-temps
+    /// (garde tenue, parade, compétence) et simule le tick. L'état à afficher vient des vues du moteur (<see cref="Player"/>,
+    /// <see cref="Others"/>) et les retours (dégâts, blocage, parade…) de la différence des compteurs d'un tick à l'autre
+    /// (<see cref="DrainFeedback"/>). Le moteur reste seul juge : une commande refusée l'est par lui, et le combat complété des commandes
+    /// soumises (<see cref="CompletedSetup"/>) se rejoue à l'identique.
+    /// </summary>
+    public sealed class RealtimeCombat
+    {
+        /// <summary>Emplacement de l'ultime dans <see cref="UseSlot"/> (les actives occupent 0 à 3).</summary>
+        public const int UltimateSlot = 4;
+
+        /// <summary>Retours conservés au plus (les plus anciens sont abandonnés si le client ne les lit pas).</summary>
+        public const int MaxPendingFeedback = 256;
+
+        private readonly CombatSetup _setup;
+        private readonly CombatEngine _engine;
+        private readonly long _tickMs;
+        private readonly List<CombatFeedback> _feedback = new List<CombatFeedback>();
+        private readonly Dictionary<string, CombatantCounters> _counters = new Dictionary<string, CombatantCounters>(StringComparer.Ordinal);
+        private readonly Dictionary<string, bool> _dead = new Dictionary<string, bool>(StringComparer.Ordinal);
+        private double _accumulated;
+        private bool _guardHeld;
+        private bool _parryRequested;
+        private int? _slotRequested;
+
+        /// <summary>Ticks simulés au plus par appel à <see cref="Advance"/> : une image très lente ne fait pas rattraper des secondes d'un coup.</summary>
+        public int MaxTicksPerAdvance { get; set; } = 5;
+
+        /// <summary>
+        /// Partie interactive sans journal : le journal écrit au fil de la partie aurait un en-tête sans les commandes du joueur, donc
+        /// impossible à rejouer (revue Codex de la PR #13). Le journal d'une partie terminée s'obtient par <see cref="WriteLog"/>.
+        /// </summary>
+        public RealtimeCombat(CombatSetup setup, string playerId)
+        {
+            _setup = setup ?? throw new ArgumentNullException(nameof(setup));
+            PlayerId = playerId ?? throw new ArgumentNullException(nameof(playerId));
+            _engine = new CombatEngine(setup, NullCombatLog.Instance);
+            if (_engine.View(playerId).Kind != CombatantKind.Character)
+                throw new ArgumentException($"« {playerId} » n'est pas un personnage.", nameof(playerId));
+            _tickMs = _engine.TickMilliseconds;
+            foreach (string id in _engine.CombatantIds)
+            {
+                CombatantView view = _engine.View(id);
+                _counters[id] = view.Counters;
+                _dead[id] = view.IsDead;
+            }
+            TargetId = Enemies().FirstOrDefault()?.Id;
+        }
+
+        public string PlayerId { get; }
+
+        /// <summary>Cible des compétences à cible ennemie unique ; null s'il n'y a plus d'ennemi vivant.</summary>
+        public string? TargetId { get; private set; }
+
+        public bool IsFinished => _engine.IsFinished;
+
+        /// <summary>Résultat du combat une fois terminé (durée atteinte ou une équipe vaincue).</summary>
+        public CombatResult? Result => _engine.Result;
+
+        /// <summary>Prochain tick à simuler ; temps de combat écoulé = <c>Tick × TickSeconds</c>.</summary>
+        public long Tick => _engine.CurrentTick;
+
+        public double TickSeconds => _tickMs / 1000.0;
+
+        public long DurationMs => _setup.DurationMs;
+
+        /// <summary>Fraction (0 à 1) du tick en cours déjà écoulée, pour interpoler l'affichage entre deux ticks.</summary>
+        public double TickProgress => Math.Min(1.0, _accumulated / TickSeconds);
+
+        /// <summary>Commandes soumises au moteur depuis le début, dans l'ordre (le scénario de départ n'en a aucune pour le joueur).</summary>
+        public IReadOnlyList<CombatCommand> SubmittedCommands => _engine.SubmittedCommands;
+
+        /// <summary>Le combat de départ complété des commandes soumises : un scénario ordinaire, qui se rejoue à l'identique.</summary>
+        public CombatSetup CompletedSetup() =>
+            new CombatSetup(_setup.Seed, _setup.DurationMs, _setup.Stats, _setup.Damage, _setup.Progression, _setup.Combat, _setup.Combatants,
+                _setup.Commands.Concat(_engine.SubmittedCommands), _setup.Data);
+
+        /// <summary>
+        /// Journal rejouable de la partie terminée : le combat complété (<see cref="CompletedSetup"/>) est simulé de nouveau dans
+        /// <paramref name="log"/>, en-tête compris, et son résultat (identique à <see cref="Result"/>) est rendu. Refusé avant la fin : le
+        /// reste du combat n'aurait pas les commandes à venir du joueur.
+        /// </summary>
+        public CombatResult WriteLog(ICombatLog log)
+        {
+            if (log is null) throw new ArgumentNullException(nameof(log));
+            if (!IsFinished) throw new InvalidOperationException("Partie en cours : le journal s'écrit une fois le combat terminé.");
+            return CombatEngine.Run(CompletedSetup(), log);
+        }
+
+        // --- Intentions du joueur, appliquées au prochain tick --------------------------------------------------------------
+
+        /// <summary>Garde tenue (bouton maintenu) ou relâchée ; la garde est reprise au tick qui suit un lancer tant qu'elle est tenue.</summary>
+        public void SetGuard(bool held) => _guardHeld = held;
+
+        public bool GuardHeld => _guardHeld;
+
+        /// <summary>Parade parfaite au prochain tick.</summary>
+        public void Parry() => _parryRequested = true;
+
+        /// <summary>
+        /// Compétence d'un emplacement du build (0 à 3 : actives, <see cref="UltimateSlot"/> : ultime) au prochain tick. Un emplacement vide
+        /// ou une compétence visiblement indisponible (recharge, ressources, contrôle) donne un retour <see cref="FeedbackKind.Unavailable"/>
+        /// sans commande ; le reste est soumis au moteur, qui reste seul juge (un refus donne <see cref="FeedbackKind.Rejected"/>). Seule la
+        /// dernière demande d'un tick compte : une demande refusée ici annule aussi la précédente (revue Codex de la PR #13).
+        /// </summary>
+        public bool UseSlot(int slot)
+        {
+            _slotRequested = null;
+            SkillSlot? info = Player().Slots.FirstOrDefault(s => s.Slot == slot);
+            if (info is null)
+            {
+                AddFeedback(new CombatFeedback(FeedbackKind.Unavailable, PlayerId, 0, "emplacement vide"));
+                return false;
+            }
+            if (info.Unavailable != null)
+            {
+                AddFeedback(new CombatFeedback(FeedbackKind.Unavailable, PlayerId, 0, $"{info.Name} : {info.Unavailable}"));
+                return false;
+            }
+            _slotRequested = slot;
+            return true;
+        }
+
+        /// <summary>Cible suivante parmi les ennemis vivants (ordre des combattants du scénario).</summary>
+        public void NextTarget()
+        {
+            List<OtherState> enemies = Enemies().ToList();
+            if (enemies.Count == 0)
+            {
+                TargetId = null;
+                return;
+            }
+            int index = enemies.FindIndex(e => e.Id == TargetId);
+            TargetId = enemies[(index + 1) % enemies.Count].Id;
+        }
+
+        public void SelectTarget(string id)
+        {
+            if (!Enemies().Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant.", nameof(id));
+            TargetId = id;
+        }
+
+        // --- Temps --------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Avance de <paramref name="seconds"/> secondes de temps réel : simule les ticks échus (au plus <see cref="MaxTicksPerAdvance"/>,
+        /// le surplus est abandonné) et rend leur nombre. Un temps négatif ou non fini est refusé.
+        /// </summary>
+        public int Advance(double seconds)
+        {
+            if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0) throw new ArgumentOutOfRangeException(nameof(seconds));
+            if (IsFinished) return 0;
+            _accumulated += seconds;
+            int steps = 0;
+            while (_accumulated >= TickSeconds && !IsFinished)
+            {
+                if (steps >= MaxTicksPerAdvance)
+                {
+                    _accumulated = 0;
+                    break;
+                }
+                StepOnce();
+                _accumulated -= TickSeconds;
+                steps++;
+            }
+            if (IsFinished) _accumulated = 0;
+            return steps;
+        }
+
+        /// <summary>Simule exactement un tick, intentions comprises (tests, pas à pas).</summary>
+        public void StepOnce()
+        {
+            if (IsFinished) return;
+            SubmitIntentions();
+            _engine.Step();
+            CollectFeedback();
+            if (TargetId is null || !Enemies().Any(e => e.Id == TargetId)) TargetId = Enemies().FirstOrDefault()?.Id;
+        }
+
+        private void SubmitIntentions()
+        {
+            long tick = _engine.CurrentTick;
+            long atMs = checked(tick * _tickMs);
+            CombatantView me = _engine.View(PlayerId);
+            // Groupes soumis chacun tout ou rien : quitter la garde pour lancer et le lancer forment un seul groupe (revue Codex de la
+            // PR #13), si bien qu'un lancer refusé à l'admission ne fait pas quitter la garde.
+            var groups = new List<CombatCommand[]>();
+            if (!me.IsDead)
+            {
+                if (_slotRequested is int slot && SkillAt(me, slot) is { } skill)
+                {
+                    var cast = new CombatCommand(atMs, PlayerId, skill.Id, TargetFor(skill));
+                    groups.Add(me.Guarding ? new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStop), cast } : new[] { cast });
+                }
+                else if (_guardHeld && !me.Guarding && me.CanGuard)
+                    groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStart) });
+                else if (!_guardHeld && me.Guarding)
+                    groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStop) });
+                if (_parryRequested) groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.Parry) });
+            }
+            _slotRequested = null;
+            _parryRequested = false;
+            foreach (CombatCommand[] group in groups)
+            {
+                try
+                {
+                    _engine.SubmitAll(group);
+                }
+                catch (InvalidOperationException e)
+                {
+                    // Plafond de commandes ou file pleine : le groupe est abandonné en entier, le combat continue.
+                    AddFeedback(new CombatFeedback(FeedbackKind.Rejected, PlayerId, 0, e.Message));
+                }
+            }
+        }
+
+        private string? TargetFor(SkillDefinition skill)
+        {
+            switch (skill.Combat!.Targeting)
+            {
+                case SkillTargeting.Enemy:
+                    return TargetId;
+                case SkillTargeting.Ally:
+                    return PlayerId;   // entraînement en solo : soutien sur soi
+                default:
+                    return null;
+            }
+        }
+
+        private static SkillDefinition? SkillAt(CombatantView me, int slot)
+        {
+            CharacterBuild build = me.Character!.Build;
+            string? id = slot == UltimateSlot ? build.Ultimate : slot >= 0 && slot < build.ActiveSkills.Count ? build.ActiveSkills[slot] : null;
+            return id != null && me.Character.Class.TryGetSkill(id, out SkillDefinition skill) && skill.Combat != null ? skill : null;
+        }
+
+        // --- Retours ------------------------------------------------------------------------------------------------------
+
+        private void AddFeedback(CombatFeedback feedback)
+        {
+            if (_feedback.Count >= MaxPendingFeedback) _feedback.RemoveAt(0);
+            _feedback.Add(feedback);
+        }
+
+        /// <summary>Retours apparus depuis le dernier appel, dans l'ordre ; la liste interne est vidée.</summary>
+        public IReadOnlyList<CombatFeedback> DrainFeedback()
+        {
+            CombatFeedback[] drained = _feedback.ToArray();
+            _feedback.Clear();
+            return drained;
+        }
+
+        private void CollectFeedback()
+        {
+            foreach (string id in _engine.CombatantIds)
+            {
+                CombatantView view = _engine.View(id);
+                CombatantCounters before = _counters[id], after = view.Counters;
+                void Count(long b, long a, FeedbackKind kind)
+                {
+                    if (a > b) AddFeedback(new CombatFeedback(kind, id, a - b, null));
+                }
+                Count(before.DamageTaken, after.DamageTaken, FeedbackKind.DamageTaken);
+                Count(before.DamageAbsorbed, after.DamageAbsorbed, FeedbackKind.Absorbed);
+                Count(before.Blocks, after.Blocks, FeedbackKind.Blocked);
+                Count(before.PerfectParries, after.PerfectParries, FeedbackKind.PerfectParry);
+                Count(before.FailedParries, after.FailedParries, FeedbackKind.FailedParry);
+                Count(before.GuardBreaks, after.GuardBreaks, FeedbackKind.GuardBroken);
+                Count(before.CriticalHits, after.CriticalHits, FeedbackKind.CriticalHit);
+                Count(before.UltimatesCast, after.UltimatesCast, FeedbackKind.Ultimate);
+                Count(before.CommandsRejected, after.CommandsRejected, FeedbackKind.Rejected);
+                if (view.IsDead && !_dead[id]) AddFeedback(new CombatFeedback(FeedbackKind.Died, id, 0, null));
+                _counters[id] = after;
+                _dead[id] = view.IsDead;
+            }
+        }
+
+        // --- État à afficher ----------------------------------------------------------------------------------------------
+
+        /// <summary>État du joueur au début du prochain tick.</summary>
+        public PlayerState Player()
+        {
+            CombatantView me = _engine.View(PlayerId);
+            long tick = _engine.CurrentTick;
+            CombatRules rules = _setup.Combat;
+            CombatantRules effective = me.Rules!;
+            var slots = new List<SkillSlot>();
+            CharacterBuild build = me.Character!.Build;
+            for (int slot = 0; slot <= UltimateSlot; slot++)
+            {
+                if (slot < UltimateSlot && slot >= build.ActiveSkills.Count) continue;
+                SkillDefinition? skill = SkillAt(me, slot);
+                if (skill is null) continue;
+                SkillCombatDefinition combat = skill.Combat!;
+                long readyTick = Math.Max(me.CooldownReadyTick(skill.Id), me.GlobalCooldownReadyTick);
+                double remaining = Math.Max(0, readyTick - tick) * TickSeconds;
+                bool ultimate = slot == UltimateSlot;
+                string? unavailable =
+                    me.IsDead ? "hors de combat"
+                    : !me.CanCast ? "contrôlé"
+                    : tick < me.CooldownReadyTick(skill.Id) ? $"en recharge ({remaining:0.0} s)"
+                    : tick < me.GlobalCooldownReadyTick ? "recharge globale"
+                    : ultimate && me.Resonance < rules.UltimateResonanceCost ? $"Résonance {me.Resonance}/{rules.UltimateResonanceCost}"
+                    : me.Endurance < combat.EnduranceCost ? $"endurance {me.Endurance}/{combat.EnduranceCost}"
+                    : me.RampartCharges < combat.RampartChargeCost ? $"Charges {me.RampartCharges}/{combat.RampartChargeCost}"
+                    : combat.Targeting == SkillTargeting.Enemy && TargetId is null ? "aucune cible"
+                    : null;
+                slots.Add(new SkillSlot(slot, skill.Id, skill.Name, ultimate, combat.EnduranceCost, effective.CooldownMs(skill, combat) / 1000.0,
+                    remaining, unavailable));
+            }
+            return new PlayerState(me, rules.ResonanceMax, effective.RampartChargesMax, slots, TargetId,
+                Math.Max(0, me.ParryRecoveryUntilTick - tick) * TickSeconds);
+        }
+
+        /// <summary>Les autres combattants (ennemis et alliés), dans l'ordre du scénario.</summary>
+        public IReadOnlyList<OtherState> Others()
+        {
+            CombatantView me = _engine.View(PlayerId);
+            long tick = _engine.CurrentTick;
+            return _engine.CombatantIds.Where(id => id != PlayerId).Select(id =>
+            {
+                CombatantView v = _engine.View(id);
+                double? next = v.NextAttackTick is long n ? Math.Max(0, n - tick) * TickSeconds : (double?)null;
+                return new OtherState(v, v.Team != me.Team, next);
+            }).ToList();
+        }
+
+        private IEnumerable<OtherState> Enemies() => Others().Where(o => o.IsEnemy && !o.View.IsDead);
+    }
+}

@@ -44,7 +44,7 @@ Objectif (« Après le lot 8 », point 1) : importer le cœur C# sans le réécr
 | Sous-lot | Contenu | État |
 |---|---|---|
 | 9.1 | Données portables : lecture JSON stricte sans dépendance (analyseur maison), `EdS.Data.Json` en netstandard2.1 / C# 9, utilisable par Unity et le futur serveur ; validation, empreintes et journaux inchangés ; mesures déplacées dans `EdS.Tools` (outils .NET) | PR en brouillon vers `main` |
-| 9.2 | Pont temps réel (`EdS.Runtime`, netstandard2.1) : temps réel → ticks de 50 ms, saisie → commandes, vues pour l'affichage, session d'entraînement depuis les données | à faire |
+| 9.2 | Pont temps réel (`EdS.Runtime`, netstandard2.1) : temps réel → ticks de 50 ms, saisie → commandes, vues pour l'affichage, session d'entraînement depuis les données | PR en brouillon, empilée sur celle du 9.1 : `RealtimeCombat`, `TrainingSession`, compteurs dans la vue du moteur (journal inchangé), catégorie de tests `Runtime` |
 | 9.3 | Projet Unity (`unity/`) : paquet local du cœur, arène générée, personnage, caméras isométrique et troisième personne comparées, barres de ressources, garde et parade visibles, compétences, ennemis d'entraînement, altérations ; guide d'installation pour Windows | à faire |
 | 9.4 | Première interface de talents (builds de référence, répartition des points validée par `BuildValidator`) | à faire |
 
