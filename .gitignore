@@ -480,3 +480,27 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# --- Sous-lot 9.3 : prototype Unity (unity/) et paquet local du cœur (src/) ---
+# Unity génère ses .meta dans le paquet local src/ : ignorés (aucun script du cœur n'est référencé par GUID).
+# Projet Unity : seuls les fichiers écrits à la main sont suivis.
+!unity/Packages/manifest.json
+!src/**/csc.rsp
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Bb]uild/
+unity/[Bb]uilds/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/[Mm]emory[Cc]aptures/
+unity/[Rr]ecordings/
+unity/*.csproj
+unity/*.sln
+unity/*.slnx
+unity/.vs/
+unity/.vsconfig
+unity/Packages/packages-lock.json
+unity/ProjectSettings/*
+!unity/ProjectSettings/ProjectVersion.txt
+unity/Assets/EdS/Settings/

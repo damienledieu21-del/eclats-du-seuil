@@ -1,0 +1,10 @@
+{
+  "name": "com.eclats.core",
+  "version": "0.9.3",
+  "displayName": "Éclats du Seuil — cœur",
+  "description": "Cœur déterministe du jeu (domaine, moteur de combat, données, pont temps réel), compilé par Unity directement depuis les sources de src/. Les outils .NET (EdS.Tools, EdS.Cli) sont exclus de Unity.",
+  "unity": "6000.3",
+  "author": {
+    "name": "Éclats du Seuil"
+  }
+}
