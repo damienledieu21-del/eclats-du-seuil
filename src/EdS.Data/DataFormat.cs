@@ -15,7 +15,9 @@ namespace EdS.Data
     /// les règles, <c>talents[].triggers</c> et <c>skills[].triggers</c> dans les classes ; 5 (classes) = sous-lot 8.1,
     /// modificateurs : <c>talents[].modifiers</c> et <c>skills[].modifiers</c> (passives seulement). Règles inchangées (5) ;
     /// 6 (règles) = lot 8 (décision du 18/10/2026 puis sous-lot 8.2) : plafonds <c>combat.guard.maxDamageReduction</c> et
-    /// <c>combat.damageTaken.maxReduction</c>, auparavant constantes du moteur.</para>
+    /// <c>combat.damageTaken.maxReduction</c>, auparavant constantes du moteur ; puis, au sous-lot 8.2, catégories <c>buff</c> et
+    /// <c>shield</c> et <c>statuses[].modifiers</c> (ajout compatible : un fichier 6 sans renforcement ni bouclier reste valide), et
+    /// clé de modificateur <c>shield.potencyDealt</c> dans les classes 5 (même raison).</para>
     /// </summary>
     public static class DataFormat
     {

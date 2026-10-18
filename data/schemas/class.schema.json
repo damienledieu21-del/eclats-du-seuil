@@ -378,8 +378,8 @@
       "properties": {
         "key": {
           "type": "string",
-          "description": "Clé de la liste fermée (docs/DONNEES.md) : guard.damageReduction, guard.upkeepPerSecond, guard.costPerBlock, guard.noUpkeepBreak, guard.reductionAtZeroEndurance, guard.breakShortenPerCharge, parry.windowMs, parry.failureRecoveryMs, rampartCharges.max, resonance.perDirectHit, endurance.max, endurance.regenPerSecond, maxHealth, statusResistance, damageDealt, damageTaken, status.<id>.durationDealt, status.<id>.durationTaken, <id de compétence>.coefficient, <id de compétence>.cooldownMs.",
-          "pattern": "^(guard\\.(damageReduction|upkeepPerSecond|costPerBlock|noUpkeepBreak|reductionAtZeroEndurance|breakShortenPerCharge)|parry\\.(windowMs|failureRecoveryMs)|rampartCharges\\.max|resonance\\.perDirectHit|endurance\\.(max|regenPerSecond)|maxHealth|statusResistance|damageDealt|damageTaken|status\\.[a-z][A-Za-z0-9]*\\.(durationDealt|durationTaken)|skill(\\.[a-z0-9_]+)+\\.(coefficient|cooldownMs))$"
+          "description": "Clé de la liste fermée (docs/DONNEES.md) : guard.damageReduction, guard.upkeepPerSecond, guard.costPerBlock, guard.noUpkeepBreak, guard.reductionAtZeroEndurance, guard.breakShortenPerCharge, parry.windowMs, parry.failureRecoveryMs, rampartCharges.max, resonance.perDirectHit, endurance.max, endurance.regenPerSecond, maxHealth, statusResistance, damageDealt, damageTaken, status.<id>.durationDealt, status.<id>.durationTaken, <id de compétence>.coefficient, <id de compétence>.cooldownMs, shield.potencyDealt (sous-lot 8.2).",
+          "pattern": "^(guard\\.(damageReduction|upkeepPerSecond|costPerBlock|noUpkeepBreak|reductionAtZeroEndurance|breakShortenPerCharge)|parry\\.(windowMs|failureRecoveryMs)|rampartCharges\\.max|resonance\\.perDirectHit|endurance\\.(max|regenPerSecond)|maxHealth|statusResistance|damageDealt|damageTaken|shield\\.potencyDealt|status\\.[a-z][A-Za-z0-9]*\\.(durationDealt|durationTaken)|skill(\\.[a-z0-9_]+)+\\.(coefficient|cooldownMs))$"
         },
         "add": {
           "$ref": "#/$defs/rankedValue",

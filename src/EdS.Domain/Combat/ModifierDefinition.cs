@@ -58,6 +58,9 @@ namespace EdS.Domain.Combat
         StatusDurationTaken = 17,
         SkillCoefficient = 18,
         SkillCooldownMs = 19,
+
+        /// <summary>Sous-lot 8.2 (X4) : puissance des boucliers posés par le porteur (0,04 = +4 %).</summary>
+        ShieldPotencyDealt = 20,
     }
 
     /// <summary>Nature d'une valeur : contrôle de la forme des valeurs déclarées.</summary>
@@ -175,6 +178,7 @@ namespace EdS.Domain.Combat
             new ModifierSpec(ModifierField.StatusDurationTaken, "status.<id>.durationTaken", ModifierUnit.Milliseconds, Ms),
             new ModifierSpec(ModifierField.SkillCoefficient, "skill.<id>.coefficient", ModifierUnit.Decimal, SkillCombatDefinition.MaxCoefficient),
             new ModifierSpec(ModifierField.SkillCooldownMs, "skill.<id>.cooldownMs", ModifierUnit.Milliseconds, Ms),
+            new ModifierSpec(ModifierField.ShieldPotencyDealt, "shield.potencyDealt", ModifierUnit.Decimal, Fixed.FromInt(10)),
         }, "specs");
 
         private static readonly Dictionary<string, ModifierField> Scalar =

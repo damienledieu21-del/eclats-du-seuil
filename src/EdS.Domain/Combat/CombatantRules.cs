@@ -57,6 +57,15 @@ namespace EdS.Domain.Combat
         /// <summary>Somme des modificateurs permanents de dégâts subis ; écrêtée dans [−1, 0] à l'évaluation (<see cref="DamageTakenAt"/>).</summary>
         public Fixed DamageTaken { get; }
 
+        /// <summary>
+        /// Sous-lot 8.2 (X4) : puissance des boucliers posés par ce combattant (<c>shield.potencyDealt</c>), somme écrêtée dans
+        /// [−1, <see cref="MaxShieldPotency"/>] : la valeur d'un bouclier est multipliée par 1 + cette puissance, jamais négative.
+        /// </summary>
+        public Fixed ShieldPotencyDealt { get; }
+
+        /// <summary>Plafond de <see cref="ShieldPotencyDealt"/> (+1 000 %), comme le bonus de dégâts infligés.</summary>
+        public static readonly Fixed MaxShieldPotency = Fixed.FromInt(10);
+
         private readonly long _tickMs;
 
         private CombatantRules(CombatRules rules, ModifierSet m)
@@ -87,7 +96,20 @@ namespace EdS.Domain.Combat
             EnduranceRegenPerSecond = Clamp(Fixed.FromInt(rules.EnduranceRegenPerSecond), m.Sum(ModifierField.EnduranceRegenPerSecond), Fixed.Zero, MaxInt);
             DamageDealt = m.Sum(ModifierField.DamageDealt);
             DamageTaken = m.Sum(ModifierField.DamageTaken);
+            ShieldPotencyDealt = Fixed.Clamp(m.Sum(ModifierField.ShieldPotencyDealt), -Fixed.One, MaxShieldPotency);
+            _baseUpkeep = Fixed.FromInt(rules.GuardUpkeepPerSecond);
         }
+
+        private readonly Fixed _baseUpkeep;
+
+        /// <summary>
+        /// Sous-lot 8.2 (X3) : entretien de garde par seconde avec les renforcements actifs du porteur (<paramref name="temporary"/>,
+        /// somme de leurs <c>guard.upkeepPerSecond</c>) : base des règles + modificateurs permanents + renforcements, écrêtée comme
+        /// <see cref="GuardUpkeepPerSecond"/> ; sans renforcement, exactement <see cref="GuardUpkeepPerSecond"/>.
+        /// </summary>
+        public Fixed GuardUpkeepPerSecondWith(Fixed temporary) =>
+            temporary == Fixed.Zero ? GuardUpkeepPerSecond
+                : Clamp(_baseUpkeep, Modifiers.Sum(ModifierField.GuardUpkeepPerSecond) + temporary, Fixed.Zero, MaxInt);
 
         private static readonly Fixed MaxDuration = Fixed.FromInt(CombatRules.AbsoluteMaxDurationMs);
 
@@ -141,6 +163,15 @@ namespace EdS.Domain.Combat
         /// <summary>Modificateur de dégâts subis du défenseur dans l'état donné, écrêté dans [−1, 0] : une réduction seulement.</summary>
         public Fixed DamageTakenAt(bool guarding, long charges, long resonance) =>
             Fixed.Clamp(Evaluate(ModifierField.DamageTaken, DamageTaken, guarding, charges, resonance), -Fixed.One, Fixed.Zero);
+
+        /// <summary>
+        /// Sous-lot 8.2 (X3) : modificateur de dégâts subis avec les renforcements actifs du défenseur (<paramref name="temporary"/>, somme
+        /// de leurs <c>damageTaken</c>, négative ou nulle) : permanent + conditionnels + renforcements, écrêté dans [−1, 0], avant le plafond
+        /// de la réduction totale. Sans renforcement, exactement <see cref="DamageTakenAt(bool, long, long)"/>.
+        /// </summary>
+        public Fixed DamageTakenAt(bool guarding, long charges, long resonance, Fixed temporary) =>
+            temporary == Fixed.Zero ? DamageTakenAt(guarding, charges, resonance)
+                : Fixed.Clamp(Evaluate(ModifierField.DamageTaken, DamageTaken, guarding, charges, resonance) + temporary, -Fixed.One, Fixed.Zero);
 
         /// <summary>
         /// Majorant du bonus de dégâts infligés sur tout le combat (précontrôle) : permanent + chaque conditionnel positif à son

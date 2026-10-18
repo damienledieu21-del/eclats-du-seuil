@@ -29,6 +29,9 @@ namespace EdS.Data.Rules
 
         /// <summary>Déclencheurs portés tant qu'une instance est active (schéma 5, lot 7.3) ; facultatifs.</summary>
         public List<Triggers.TriggerData?>? Triggers { get; set; }
+
+        /// <summary>Sous-lot 8.2 (X3, schéma 6) : modificateurs d'un renforcement ; facultatifs (obligatoires pour un buff, voir le domaine).</summary>
+        public List<Modifiers.ModifierData?>? Modifiers { get; set; }
     }
 
     /// <summary>
@@ -45,7 +48,7 @@ namespace EdS.Data.Rules
         public static IReadOnlyList<string> FieldNames { get; } = Array.AsReadOnly(new[]
         {
             "id", "category", "durationMs", "periodMs", "stacking", "resistance", "damageType", "blocks", "interrupts",
-            "blockReason", "damageTakenIncrease", "movementSpeedModifier", "grantsOnExpiry", "immuneTo", "triggers",
+            "blockReason", "damageTakenIncrease", "movementSpeedModifier", "grantsOnExpiry", "immuneTo", "triggers", "modifiers",
         });
 
         public static void Check(List<StatusData?>? statuses, ValidationReport report)
@@ -103,6 +106,7 @@ namespace EdS.Data.Rules
                 Tokens(s.Interrupts, p + ".interrupts", StatusIds.Interrupts);
                 Tokens(s.ImmuneTo, p + ".immuneTo", new Dictionary<string, int>());
                 Triggers.TriggerShape.Check(s.Triggers, p + ".triggers", report);
+                Modifiers.ModifierShape.Check(s.Modifiers, p + ".modifiers", report);
             }
         }
 
@@ -114,7 +118,8 @@ namespace EdS.Data.Rules
                 (s.Blocks ?? new List<string?>()).Aggregate(StatusBlocks.None, (acc, b) => acc | StatusIds.Blocks[b!]),
                 (s.Interrupts ?? new List<string?>()).Aggregate(StatusInterrupts.None, (acc, b) => acc | StatusIds.Interrupts[b!]),
                 s.BlockReason, s.DamageTakenIncrease ?? Fixed.Zero, s.MovementSpeedModifier ?? Fixed.Zero, s.GrantsOnExpiry,
-                (s.ImmuneTo ?? new List<string?>()).Select(x => x!), Triggers.TriggerShape.Build(s.Triggers))).ToArray());
+                (s.ImmuneTo ?? new List<string?>()).Select(x => x!), Triggers.TriggerShape.Build(s.Triggers),
+                Modifiers.ModifierShape.Build(s.Modifiers))).ToArray());
 
         /// <summary>
         /// Écriture canonique pour l'empreinte des règles : dans l'ordre du fichier (il fixe la priorité des motifs de refus), chaque
@@ -144,6 +149,8 @@ namespace EdS.Data.Rules
                 w.Optional(p + ".grantsOnExpiry", d.GrantsOnExpiry);
                 w.List(p + ".immuneTo", d.ImmuneTo);
                 Triggers.TriggerShape.AppendCanonical(text, p + ".triggers", d.Triggers);
+                // Sous-lot 8.2 : rien sans modificateur (empreintes des catalogues antérieurs inchangées hors schéma).
+                Modifiers.ModifierShape.AppendCanonical(text, p + ".modifiers", d.Modifiers);
             }
         }
     }

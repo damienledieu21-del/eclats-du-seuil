@@ -978,6 +978,16 @@ namespace EdS.Domain.Combat
                             overflowMessage = "statistiques dérivées hors des limites numériques.";
                             defenses[i] = stats;
                             CombatantRules rules = CombatantRules.For(Combat, modifiers);
+                            // Sous-lot 8.2 (X4) : valeur d'un bouclier posé par ce personnage, au coefficient maximal d'une application,
+                            // avec sa puissance de boucliers (même fonction que le moteur).
+                            if (Combat.Statuses.HasShields)
+                            {
+                                overflowPath = path + ".class";
+                                overflowMessage = $"valeur d'un bouclier hors des limites numériques (PV max × coefficient {SkillCombatDefinition.MaxCoefficient} × (1 + shield.potencyDealt)).";
+                                Shields.Value(stats.MaxHealth.RoundToInt(RoundingMode.Floor), SkillCombatDefinition.MaxCoefficient, rules.ShieldPotencyDealt);
+                                overflowPath = path + ".build.attributes";
+                                overflowMessage = "statistiques dérivées hors des limites numériques.";
+                            }
                             Fixed talent = rules.WorstDamageDealt(Combat.ResonanceMax);
                             foreach (SkillDefinition skill in character.Class.Skills)
                                 if (skill.Combat is { } combat)
@@ -1063,8 +1073,10 @@ namespace EdS.Domain.Combat
 
             // 2. Pire impact de chaque attaque contre chaque défenseur ennemi réel ; 3. majorant sans défense, cumulé sur la durée.
             DerivedStats undefended = CombatantStats.ForDefenses(Stats, Fixed.Zero, Fixed.Zero);
-            // Lot 7.2 : majorant des bonus de dégâts reçus, toutes les altérations du catalogue actives à la fois.
-            DamageBonuses worstBonuses = DamageBonuses.None.Add(BonusCategory.Alteration, Combat.Statuses.TotalDamageTakenIncrease());
+            // Lot 7.2 : majorant des bonus de dégâts reçus, toutes les altérations du catalogue actives à la fois. Sous-lot 8.2 (X3) : plus
+            // les dégâts infligés de tous les renforcements du catalogue, même catégorie « altération ».
+            DamageBonuses worstBonuses = DamageBonuses.None.Add(BonusCategory.Alteration,
+                Combat.Statuses.TotalDamageTakenIncrease() + Combat.Statuses.TotalBuffDamageDealt());
             long maxImpacts = checked(DurationMs / Combat.TickMilliseconds * Combat.MaxEventsPerTick);
             for (int i = 0; i < count; i++)
             {
