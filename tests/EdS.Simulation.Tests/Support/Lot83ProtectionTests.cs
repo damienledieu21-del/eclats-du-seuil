@@ -72,6 +72,23 @@ public class Lot83ProtectionTests
         Assert.Empty(events.OfKind("blocked"));
     }
 
+    [Theory]
+    [InlineData(true, 20L)]     // garde tenue sans endurance (guard.noUpkeepBreak) : réduction à 0 d'endurance, ⌊ 25 × (1 − 0,2) ⌋
+    [InlineData(false, 10L)]    // sans le drapeau : un transfert ne paie rien ni ne brise la garde, réduction pleine
+    public void Transfert_par_une_garde_affaiblie(bool unbreakable, long taken)
+    {
+        // Revue du 8.3 : le protecteur garde sans endurance (endurance max ramenée à 0) ; la réduction appliquée au transfert est celle
+        // qu'aurait un blocage au même instant.
+        var modifiers = new List<ModifierDefinition> { Mod("protection.redirectThroughGuard", "1"), Mod("endurance.max", "-1000") };
+        if (unbreakable) modifiers.AddRange(new[] { Mod("guard.noUpkeepBreak", "1"), Mod("guard.reductionAtZeroEndurance", "0.2") });
+        var bastion = Hero("bastion", new[] { Lien, Barriere, Garde, Provocation }, 200, SupportClass(passiveModifiers: modifiers.ToArray()));
+        var events = Simulate(Fight(new[] { Use(0, Lien, target: "allie"), GuardStart(50) }, new CombatantSetup[] { bastion, Ally(), Brute() }, durationMs: 1100), out _);
+        Assert.Equal(0L, events.OfKind("guardStarted").Single().Long("endurance"));
+        JsonElement transfer = FirstHit(events).Transfer;
+        Assert.Equal((25L, "guard", taken), (transfer.Long("amount"), transfer.Str("defense"), transfer.Long("taken")));
+        Assert.Empty(events.OfKind("guardBroken"));
+    }
+
     [Fact]
     public void Boucliers_du_protege_et_du_protecteur()
     {

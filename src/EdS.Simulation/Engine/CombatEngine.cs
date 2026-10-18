@@ -1412,6 +1412,13 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>Sous-lot 8.1 : la garde se brise-t-elle sur ce blocage ? Endurance insuffisante, sauf avec <c>guard.noUpkeepBreak</c>.</summary>
+        /// <summary>
+        /// Réduction de garde d'un blocage à cet instant : affaiblie (<c>guard.reductionAtZeroEndurance</c>) quand la garde tient sans
+        /// pouvoir payer le blocage (<c>guard.noUpkeepBreak</c>), pleine sinon. Même condition que le traitement d'un impact bloqué.
+        /// </summary>
+        private static Fixed GuardReductionNow(Fighter f) =>
+            f.Rules.GuardNoUpkeepBreak && f.Endurance < f.Rules.GuardCostPerBlock ? f.Rules.GuardReductionAtZeroEndurance : f.Rules.GuardDamageReduction;
+
         private static bool GuardBreaksOnBlock(Fighter target) => target.Endurance < target.Rules.GuardCostPerBlock && !target.Rules.GuardNoUpkeepBreak;
 
         /// <summary>
@@ -1686,7 +1693,10 @@ namespace EdS.Simulation.Engine
         /// Sous-lot 8.3 (X6) : part d'un montant de dégâts transférée par la protection en vigueur sur la cible : ⌊ montant × part ⌋, la
         /// part effective étant celle de la définition plus le <c>protection.redirectRatio</c> du protecteur, écrêtée dans [0, 1]. Le
         /// protecteur la reçoit sans ses modificateurs de dégâts subis ; avec <c>protection.redirectThroughGuard</c> et en garde, réduite
-        /// par sa réduction de garde (sans coût, sans ligne ni notification de blocage) ; puis ses boucliers absorbent. Jamais retransférée.
+        /// par sa réduction de garde effective (sans coût, sans ligne ni notification de blocage) ; puis ses boucliers absorbent. Jamais
+        /// retransférée. Revue du 8.3 : la réduction effective est celle d'un blocage au même instant, donc la réduction à 0 d'endurance
+        /// quand la garde tient sans pouvoir payer un blocage (<c>guard.noUpkeepBreak</c>) ; sans ce drapeau, un transfert ne paie rien
+        /// et ne brise pas la garde : réduction pleine.
         /// </summary>
         private Transfer PlanTransfer(Fighter target, long amount)
         {
@@ -1695,7 +1705,7 @@ namespace EdS.Simulation.Engine
             Fixed ratio = protector.Rules.RedirectRatio(protection.Definition);
             long part = amount <= 0 ? 0 : (Fixed.FromInt(amount) * ratio).RoundToInt(RoundingMode.Floor);
             bool guarded = protector.Rules.ProtectionRedirectThroughGuard && protector.Guarding;
-            long taken = guarded ? (Fixed.FromInt(part) * (Fixed.One - protector.Rules.GuardDamageReduction)).RoundToInt(RoundingMode.Floor) : part;
+            long taken = guarded ? (Fixed.FromInt(part) * (Fixed.One - GuardReductionNow(protector))).RoundToInt(RoundingMode.Floor) : part;
             return new Transfer(protection, protector, ratio, part, guarded, taken, PlanAbsorption(protector, taken));
         }
 
