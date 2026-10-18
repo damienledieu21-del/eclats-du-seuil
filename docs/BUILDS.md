@@ -116,3 +116,56 @@ Décision A12 : les builds de comparaison sont livrés en données, dans un fich
 | `build.bastion.niveau_10` | contrôle | 4 / 3 / 2 (9 points) | Garde stable 3, Écho défensif ; Riposte précise 3 ; Égide réactive 2 | Frappe du rempart, Heurt de bouclier, Contrecoup, Provocation | Endurance du roc, Posture de fer |
 
 La feuille de route fixe la répartition par arbre, le majeur, les actives et les passifs des trois références ; le détail des intermédiaires et les deux contrôles sont des choix du sous-lot 8.5, provisoires comme le reste. Tests : `Lot85BuildDataTests` (conformité, combat d'entraînement et rejeu de chaque build, erreurs). Les scénarios S1 à S5 qui les comparent arrivent au sous-lot 8.6.
+
+## Mesures des builds (sous-lot 8.6)
+
+`eds report` joue chaque scénario de mesure (`scenarios/mesures`, voir [DONNEES.md](DONNEES.md#scénarios-de-mesure-et-rapport-sous-lot-86)) avec chaque build de la classe du personnage `bastion` et chaque profil de joueur, puis évalue les objectifs provisoires de la feuille de route. Un combat mesuré est un **combat ordinaire** : le build du personnage `bastion` est remplacé par le build mesuré, un pilote déterministe ajoute ses commandes tick par tick, puis le scénario complété est rejoué et le résultat comparé à celui du pilotage (`PilotedCombat`) ; son journal (`--logs`) se rejoue octet par octet avec `eds replay`.
+
+| Scénario | Durée | Adversaires (valeurs du 8.6) |
+|---|---|---|
+| S1 `s1_mannequin` | 60 s | un mannequin sans armure (DPS brut) |
+| S2 `s2_duel` | 120 s | un assaillant toutes les 1,5 s à partir de 1,5 s, 80 de dégâts bruts ; une attaque sur quatre pose Fragilité |
+| S3 `s3_meute` | 60 s | trois assaillants : deux sur le Bastion (45, toutes les 2 s et 2,5 s, une attaque sur deux pose un saignement de coefficient 0,5), un hurleur de zone (30, toutes les 3 s) |
+| S4 `s4_protection` | 90 s | un allié fragile (`allie`, niveau 10, 400 PV, sans compétence ni garde) visé par deux assaillants (40, toutes les 2 s et 2,5 s, le second alterne avec un saignement) |
+| S5 `s5_briseur` | 90 s | un assaillant toutes les 1,5 s : deux coups bloquables de 60 puis un écrasement **imparable** de 90 |
+
+**Profils** : débutant (aucune parade parfaite), standard (une attaque éligible sur deux : la première, la troisième…), expert (toutes). Une attaque éligible est une attaque bloquable d'un assaillant qui vise le Bastion ou frappe en zone, au tick où elle part ; plusieurs au même tick comptent pour une. Les profils ne diffèrent que par les parades.
+
+**Pilote** (`CombatPilot`, mêmes règles pour tous les builds) : il lit l'état du début du tick (`CombatEngine.View`) ; il pare selon le profil ; il tient la garde tant qu'un assaillant le menace (sa prochaine attaque le vise ou frappe en zone), la baisse pour régénérer quand l'endurance ne paie plus un blocage et la relève à la moitié de l'endurance maximale (au moins deux blocages), sauf garde incassable (Rempart éternel), jamais baissée ; aucune garde face à un mannequin ou à des assaillants qui visent un autre. Compétences par priorité : l'ultime dès 100 de Résonance, puis les actives dans l'ordre des emplacements du build, prêtes et payables en gardant de quoi bloquer un coup (aucune compétence payante pendant une pause de garde) ; jamais au tick d'un impact qu'il bloquerait sans le parer (lancer fait quitter la garde, reprise au tick suivant). Cibles : pour une compétence de dégâts, l'assaillant qui le vise et frappe le plus tôt, sinon le premier ennemi ; pour la Provocation, un assaillant qui vise un allié (sinon elle attend) ; pour la Barrière d'acier, l'allié vivant le plus entamé, sinon soi ; Contrecoup seulement à 3 Charges (ou au maximum s'il est plus bas).
+
+**Mesures** (personnage `bastion`, et l'allié de S4) : DPS (dégâts infligés par seconde de vie) ; PV perdus (PV max − PV restants) ; dégâts évités (atténués par la garde, la parade et les réductions de dégâts subis, absorbés par ses boucliers, transférés à un protecteur) ; survie (instant de la mort, sinon estimation durée × PV max / PV perdus, plafonnée à 10 fois la durée) ; survie de l'allié (même calcul) ; blocs, parades, ruptures, compétences, ultimes, refus ; pics de charge en pourcentage de chaque budget.
+
+**Objectifs provisoires** (profil standard, builds de référence) : S1 écart de DPS (max − min) / max ≤ 15 % ; S2 DPS du Contrecoup ≥ 1,25 × Rempart ; S2 et S5 survie et dégâts évités du Rempart ≥ 1,25 × Contrecoup ; S4 survie de l'allié avec le Gardien ≥ 1,5 × la meilleure des deux autres références ; tous les combats (tous profils, tous builds) sous 50 % de chaque budget. Un objectif dont un combat manque est « non mesuré ».
+
+**Relevé initial (8.6, avant équilibrage ; règles 0.8.0, Bastion 0.4.0), profil standard :**
+
+| Scénario | Build | DPS | PV perdus / max | Évités | Survie (s) | Allié (s) | Blocs | Parades | Compétences | Ultimes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| S1 | Rempart | 20,65 | 0 / 440 | 0 | 600 | — | 0 | 0 | 24 | 0 |
+| S1 | Contrecoup | 23,08 | 0 / 400 | 0 | 600 | — | 0 | 0 | 20 | 0 |
+| S1 | Gardien | 16,8 | 0 / 440 | 0 | 600 | — | 0 | 0 | 19 | 0 |
+| S1 | Hybride | 17,33 | 0 / 440 | 0 | 600 | — | 0 | 0 | 18 | 0 |
+| S1 | Niveau 10 | 16,8 | 0 / 400 | 0 | 600 | — | 0 | 0 | 16 | 0 |
+| S2 | Rempart | 23,46 | 177 / 440 | 6391 | 298,3 | — | 38 | 39 | 13 | 4 |
+| S2 | Contrecoup | 89,36 | 400 / 400 | 1599 | † 39 | — | 10 | 12 | 16 | 3 |
+| S2 | Gardien | 24,92 | 440 / 440 | 5111 | † 111 | — | 19 | 34 | 27 | 3 |
+| S2 | Hybride | 57,01 | 440 / 440 | 4679 | † 90 | — | 15 | 30 | 30 | 3 |
+| S2 | Niveau 10 | 46,58 | 400 / 400 | 2398 | † 57 | — | 11 | 17 | 18 | 2 |
+| S3 | Rempart | 36,32 | 236 / 440 | 3714 | 111,9 | — | 42 | 28 | 11 | 3 |
+| S3 | Contrecoup | 146,05 | 400 / 400 | 842 | † 21,5 | — | 9 | 9 | 10 | 2 |
+| S3 | Gardien | 29,85 | 181 / 440 | 3266 | 145,9 | — | 20 | 27 | 18 | 2 |
+| S3 | Hybride | 64,95 | 440 / 440 | 1593 | † 31,5 | — | 13 | 13 | 10 | 1 |
+| S3 | Niveau 10 | 54,42 | 400 / 400 | 960 | † 21,5 | — | 9 | 10 | 8 | 1 |
+| S4 | Rempart | 23,98 | 0 / 440 | 0 | 900 | † 12 | 0 | 0 | 37 | 0 |
+| S4 | Contrecoup | 41,62 | 60 / 400 | 340 | 600 | † 11 | 5 | 4 | 35 | 2 |
+| S4 | Gardien | 17,9 | 50 / 440 | 962 | 792 | † 19,5 | 10 | 11 | 29 | 1 |
+| S4 | Hybride | 22,38 | 55 / 440 | 0 | 720 | † 13 | 0 | 0 | 28 | 0 |
+| S4 | Niveau 10 | 27,43 | 140 / 400 | 580 | 257,1 | † 12 | 7 | 7 | 36 | 1 |
+| S5 | Rempart | 22,5 | 440 / 440 | 1849 | † 50,5 | — | 11 | 11 | 10 | 1 |
+| S5 | Contrecoup | 72,09 | 400 / 400 | 452 | † 22 | — | 4 | 4 | 11 | 1 |
+| S5 | Gardien | 19,47 | 440 / 440 | 1627 | † 49 | — | 8 | 10 | 11 | 1 |
+| S5 | Hybride | 44,8 | 440 / 440 | 1434 | † 40 | — | 7 | 9 | 13 | 1 |
+| S5 | Niveau 10 | 44,32 | 400 / 400 | 586 | † 22 | — | 4 | 5 | 8 | 0 |
+
+(† : mort à cet instant.) Objectifs : **S1 non atteint** (écart de 27,2 % : Rempart 20,65, Contrecoup 23,08, Gardien 16,8) ; S2 DPS +280,9 % ; S2 survie +664,9 % et dégâts évités +299,7 % ; S5 survie +129,5 % et dégâts évités +309,1 % ; S4 allié +62,5 % (19,5 s contre 12 s) ; pic de charge maximal 2,2 % (S3). Lecture : chaque spécialisation excelle sur sa mesure, mais le Contrecoup domine le DPS bien au-delà des +25 % (ripostes de parade) et meurt vite ; le Gardien et le Rempart sont en retrait sur le mannequin, où ni parade ni blocage ne rapporte rien. L'équilibrage est l'objet du sous-lot 8.7 ; le relevé complet des trois profils s'obtient avec `eds report`.
+
