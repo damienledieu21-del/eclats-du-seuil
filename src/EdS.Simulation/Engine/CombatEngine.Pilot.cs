@@ -200,29 +200,46 @@ namespace EdS.Simulation.Engine
         /// et la cible doivent exister. Un refus ne modifie rien. Le majorant prudent de la file (correctif 7.2) n'est vérifié qu'au rejeu
         /// du scénario complété (<c>PilotedCombat</c>), qui refuse alors le combat entier.
         /// </summary>
-        public void Submit(CombatCommand command)
+        public void Submit(CombatCommand command) => SubmitAll(new[] { command ?? throw new ArgumentNullException(nameof(command)) });
+
+        /// <summary>
+        /// Sous-lot 9.2 (revue Codex de la PR #13) : soumet un groupe de commandes du tick courant, tout ou rien. Chacune est contrôlée
+        /// comme par <see cref="Submit"/>, en comptant les précédentes du groupe ; si l'une est refusée, aucune n'est admise et rien ne
+        /// change (par exemple quitter la garde pour lancer une compétence : la garde n'est pas quittée si le lancer ne peut pas l'être).
+        /// </summary>
+        public void SubmitAll(IReadOnlyList<CombatCommand> commands)
         {
-            if (command is null) throw new ArgumentNullException(nameof(command));
+            if (commands is null) throw new ArgumentNullException(nameof(commands));
             if (IsFinished) throw new InvalidOperationException("Combat terminé : plus aucune commande.");
-            if (!_byId.ContainsKey(command.Actor)) throw new ArgumentException($"Acteur inconnu : {command.Actor}.", nameof(command));
-            if (command.Target != null && !_byId.ContainsKey(command.Target)) throw new ArgumentException($"Cible inconnue : {command.Target}.", nameof(command));
-            if (command.AtMs % _tickMs != 0 || command.AtMs / _tickMs != CurrentTick)
-                throw new ArgumentException($"Commande à {command.AtMs} ms : seul le tick courant ({CurrentTick}) est admis.", nameof(command));
-            var key = (command.Actor, CurrentTick);
-            if (_commandsPerActorTick.TryGetValue(key, out int n) && n >= _rules.MaxCommandsPerActorPerTick)
-                throw new InvalidOperationException($"Plus de {_rules.MaxCommandsPerActorPerTick} commandes de « {command.Actor} » au tick {CurrentTick}.");
-            if (_commandCount >= _rules.MaxCommands)
-                throw new InvalidOperationException($"Plus de {_rules.MaxCommands} commandes (combat.limits.maxCommands).");
-            // Revue Codex de la PR #10 : capacité de la file contrôlée avant toute modification. La file ne dépasse jamais sa capacité,
-            // et le scénario complété garde un nombre d'événements initiaux admissible (une entrée par commande, comme à la construction).
             if (_initialEvents < 0) _initialEvents = _setup.InitialEventCount();
-            if (_queue.Count >= _rules.MaxPendingEvents || checked(_initialEvents + _submitted.Count + 1) > _rules.MaxPendingEvents)
-                throw new InvalidOperationException($"File pleine : capacité {_rules.MaxPendingEvents} (combat.limits.maxPendingEvents).");
-            CountSubmitted(command);
-            // Hors traitement, comme les commandes du scénario mises en file à la construction : aucun budget du tick n'est consommé.
-            _queue.Enqueue(CurrentTick, CombatPhase.Commands, new CommandItem { Index = _setup.Commands.Count + _submitted.Count, Command = command });
-            if (_queue.Count > _peakPending) _peakPending = _queue.Count;
-            _submitted.Add(command);
+            var groupPerActor = new Dictionary<string, int>(StringComparer.Ordinal);
+            for (int i = 0; i < commands.Count; i++)
+            {
+                CombatCommand command = commands[i] ?? throw new ArgumentNullException(nameof(commands));
+                if (!_byId.ContainsKey(command.Actor)) throw new ArgumentException($"Acteur inconnu : {command.Actor}.", nameof(commands));
+                if (command.Target != null && !_byId.ContainsKey(command.Target)) throw new ArgumentException($"Cible inconnue : {command.Target}.", nameof(commands));
+                if (command.AtMs % _tickMs != 0 || command.AtMs / _tickMs != CurrentTick)
+                    throw new ArgumentException($"Commande à {command.AtMs} ms : seul le tick courant ({CurrentTick}) est admis.", nameof(commands));
+                int earlier = groupPerActor.TryGetValue(command.Actor, out int g) ? g : 0;
+                int already = _commandsPerActorTick.TryGetValue((command.Actor, CurrentTick), out int n) ? n : 0;
+                if (checked(already + earlier) >= _rules.MaxCommandsPerActorPerTick)
+                    throw new InvalidOperationException($"Plus de {_rules.MaxCommandsPerActorPerTick} commandes de « {command.Actor} » au tick {CurrentTick}.");
+                if (checked(_commandCount + i) >= _rules.MaxCommands)
+                    throw new InvalidOperationException($"Plus de {_rules.MaxCommands} commandes (combat.limits.maxCommands).");
+                // Revue Codex de la PR #10 : capacité de la file contrôlée avant toute modification. La file ne dépasse jamais sa capacité,
+                // et le scénario complété garde un nombre d'événements initiaux admissible (une entrée par commande, comme à la construction).
+                if (checked(_queue.Count + i) >= _rules.MaxPendingEvents || checked(_initialEvents + _submitted.Count + i + 1) > _rules.MaxPendingEvents)
+                    throw new InvalidOperationException($"File pleine : capacité {_rules.MaxPendingEvents} (combat.limits.maxPendingEvents).");
+                groupPerActor[command.Actor] = earlier + 1;
+            }
+            foreach (CombatCommand command in commands)
+            {
+                CountSubmitted(command);
+                // Hors traitement, comme les commandes du scénario mises en file à la construction : aucun budget du tick n'est consommé.
+                _queue.Enqueue(CurrentTick, CombatPhase.Commands, new CommandItem { Index = _setup.Commands.Count + _submitted.Count, Command = command });
+                if (_queue.Count > _peakPending) _peakPending = _queue.Count;
+                _submitted.Add(command);
+            }
         }
     }
 }

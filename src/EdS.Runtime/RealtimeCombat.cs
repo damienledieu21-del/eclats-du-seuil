@@ -37,11 +37,15 @@ namespace EdS.Runtime
         /// <summary>Ticks simulés au plus par appel à <see cref="Advance"/> : une image très lente ne fait pas rattraper des secondes d'un coup.</summary>
         public int MaxTicksPerAdvance { get; set; } = 5;
 
-        public RealtimeCombat(CombatSetup setup, string playerId, ICombatLog? log = null)
+        /// <summary>
+        /// Partie interactive sans journal : le journal écrit au fil de la partie aurait un en-tête sans les commandes du joueur, donc
+        /// impossible à rejouer (revue Codex de la PR #13). Le journal d'une partie terminée s'obtient par <see cref="WriteLog"/>.
+        /// </summary>
+        public RealtimeCombat(CombatSetup setup, string playerId)
         {
             _setup = setup ?? throw new ArgumentNullException(nameof(setup));
             PlayerId = playerId ?? throw new ArgumentNullException(nameof(playerId));
-            _engine = new CombatEngine(setup, log ?? NullCombatLog.Instance);
+            _engine = new CombatEngine(setup, NullCombatLog.Instance);
             if (_engine.View(playerId).Kind != CombatantKind.Character)
                 throw new ArgumentException($"« {playerId} » n'est pas un personnage.", nameof(playerId));
             _tickMs = _engine.TickMilliseconds;
@@ -81,6 +85,18 @@ namespace EdS.Runtime
         public CombatSetup CompletedSetup() =>
             new CombatSetup(_setup.Seed, _setup.DurationMs, _setup.Stats, _setup.Damage, _setup.Progression, _setup.Combat, _setup.Combatants,
                 _setup.Commands.Concat(_engine.SubmittedCommands), _setup.Data);
+
+        /// <summary>
+        /// Journal rejouable de la partie terminée : le combat complété (<see cref="CompletedSetup"/>) est simulé de nouveau dans
+        /// <paramref name="log"/>, en-tête compris, et son résultat (identique à <see cref="Result"/>) est rendu. Refusé avant la fin : le
+        /// reste du combat n'aurait pas les commandes à venir du joueur.
+        /// </summary>
+        public CombatResult WriteLog(ICombatLog log)
+        {
+            if (log is null) throw new ArgumentNullException(nameof(log));
+            if (!IsFinished) throw new InvalidOperationException("Partie en cours : le journal s'écrit une fois le combat terminé.");
+            return CombatEngine.Run(CompletedSetup(), log);
+        }
 
         // --- Intentions du joueur, appliquées au prochain tick --------------------------------------------------------------
 
@@ -177,31 +193,33 @@ namespace EdS.Runtime
             long tick = _engine.CurrentTick;
             long atMs = checked(tick * _tickMs);
             CombatantView me = _engine.View(PlayerId);
-            var commands = new List<CombatCommand>();
+            // Groupes soumis chacun tout ou rien : quitter la garde pour lancer et le lancer forment un seul groupe (revue Codex de la
+            // PR #13), si bien qu'un lancer refusé à l'admission ne fait pas quitter la garde.
+            var groups = new List<CombatCommand[]>();
             if (!me.IsDead)
             {
                 if (_slotRequested is int slot && SkillAt(me, slot) is { } skill)
                 {
-                    if (me.Guarding) commands.Add(new CombatCommand(atMs, PlayerId, CombatAction.GuardStop));
-                    commands.Add(new CombatCommand(atMs, PlayerId, skill.Id, TargetFor(skill)));
+                    var cast = new CombatCommand(atMs, PlayerId, skill.Id, TargetFor(skill));
+                    groups.Add(me.Guarding ? new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStop), cast } : new[] { cast });
                 }
                 else if (_guardHeld && !me.Guarding && me.CanGuard)
-                    commands.Add(new CombatCommand(atMs, PlayerId, CombatAction.GuardStart));
+                    groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStart) });
                 else if (!_guardHeld && me.Guarding)
-                    commands.Add(new CombatCommand(atMs, PlayerId, CombatAction.GuardStop));
-                if (_parryRequested) commands.Add(new CombatCommand(atMs, PlayerId, CombatAction.Parry));
+                    groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStop) });
+                if (_parryRequested) groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.Parry) });
             }
             _slotRequested = null;
             _parryRequested = false;
-            foreach (CombatCommand command in commands)
+            foreach (CombatCommand[] group in groups)
             {
                 try
                 {
-                    _engine.Submit(command);
+                    _engine.SubmitAll(group);
                 }
                 catch (InvalidOperationException e)
                 {
-                    // Plafond de commandes ou file pleine : la commande est abandonnée, le combat continue.
+                    // Plafond de commandes ou file pleine : le groupe est abandonné en entier, le combat continue.
                     AddFeedback(new CombatFeedback(FeedbackKind.Rejected, PlayerId, 0, e.Message));
                 }
             }

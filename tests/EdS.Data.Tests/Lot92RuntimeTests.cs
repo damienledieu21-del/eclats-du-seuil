@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json.Nodes;
 using EdS.Data.Json;
 using EdS.Data.Scenarios;
@@ -245,7 +246,7 @@ public class Lot92RuntimeTests
         RealtimeCombat combat = PlayRandomly(seed, build);
         Assert.NotEmpty(combat.SubmittedCommands);
         var log = new MemoryCombatLog();
-        CombatResult replay = CombatEngine.Run(combat.CompletedSetup(), log);
+        CombatResult replay = combat.WriteLog(log);
         CombatResult played = combat.Result!;
         Assert.Equal((played.EndReason, played.EndTick), (replay.EndReason, replay.EndTick));
         foreach (CombatantResult r in played.Combatants)
@@ -254,8 +255,72 @@ public class Lot92RuntimeTests
             Assert.Equal((r.DamageDealt, r.DamageTaken, r.Blocks, r.PerfectParries, r.FailedParries, r.SkillsCast, r.CommandsRejected, r.Health),
                 (x.DamageDealt, x.DamageTaken, x.Blocks, x.PerfectParries, x.FailedParries, x.SkillsCast, x.CommandsRejected, x.Health));
         }
-        // Le journal du combat rejoué se rejoue lui-même octet par octet.
+        // Le journal de la partie (revue Codex de la PR #13 : écrit depuis le combat complété, en-tête compris) se rejoue octet par octet.
         Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(log.Lines.ToList(), ShippedData).Status);
+    }
+
+    [Fact]
+    public void Journal_ecrit_seulement_une_fois_la_partie_terminee()
+    {
+        RealtimeCombat combat = Session().Start();
+        combat.SetGuard(true);
+        combat.StepOnce();
+        var log = new MemoryCombatLog();
+        Assert.Throws<InvalidOperationException>(() => combat.WriteLog(log));
+        Assert.Empty(log.Lines);
+        Assert.Throws<ArgumentNullException>(() => combat.WriteLog(null!));
+    }
+
+    /// <summary>La séance avec des plafonds d'admission changés, toutes les autres règles du combat recopiées.</summary>
+    private static CombatSetup WithLimits(CombatSetup setup, int? maxCommands = null, int? perActorPerTick = null)
+    {
+        var rules = new CombatRules();
+        foreach (PropertyInfo property in typeof(CombatRules).GetProperties().Where(p => p.CanWrite))
+            property.SetValue(rules, property.GetValue(setup.Combat));
+        if (maxCommands is int total) typeof(CombatRules).GetProperty(nameof(CombatRules.MaxCommands))!.SetValue(rules, total);
+        if (perActorPerTick is int perTick) typeof(CombatRules).GetProperty(nameof(CombatRules.MaxCommandsPerActorPerTick))!.SetValue(rules, perTick);
+        return new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, rules, setup.Combatants, setup.Commands, setup.Data);
+    }
+
+    [Theory]
+    [InlineData(2, null)]      // plus que deux commandes au total
+    [InlineData(null, 1)]      // une seule commande par acteur et par tick
+    public void Quitter_la_garde_pour_lancer_admis_avec_le_lancer_ou_pas_du_tout(int? maxCommands, int? perActorPerTick)
+    {
+        // Revue Codex de la PR #13 : si le lancer est refusé à l'admission, la garde n'est pas quittée pour rien.
+        var combat = new RealtimeCombat(WithLimits(Session().Setup, maxCommands, perActorPerTick), "bastion");
+        combat.SetGuard(true);
+        combat.StepOnce();
+        Assert.Equal(new[] { CombatAction.GuardStart }, Commands(combat, 0).Select(c => c.Action));
+        combat.DrainFeedback();
+
+        Assert.True(combat.UseSlot(0));
+        combat.StepOnce();
+        Assert.Empty(Commands(combat, 1));
+        Assert.True(combat.Player().View.Guarding);
+        CombatFeedback rejected = Assert.Single(combat.DrainFeedback(), f => f.Kind == FeedbackKind.Rejected);
+        Assert.StartsWith("Plus de ", rejected.Detail);
+        Assert.Single(combat.SubmittedCommands);
+    }
+
+    [Fact]
+    public void Groupe_de_commandes_admis_en_entier_ou_refuse_sans_rien_changer()
+    {
+        var engine = new CombatEngine(WithLimits(Session().Setup, perActorPerTick: 2), NullCombatLog.Instance);
+        CombatCommand Guard() => new CombatCommand(0, "bastion", CombatAction.GuardStart);
+        CombatCommand Parry() => new CombatCommand(0, "bastion", CombatAction.Parry);
+
+        Assert.Throws<InvalidOperationException>(() => engine.SubmitAll(new[] { Guard(), Parry(), Parry() }));
+        Assert.Throws<ArgumentException>(() => engine.SubmitAll(new[] { Guard(), new CombatCommand(0, "personne", CombatAction.Parry) }));
+        Assert.Throws<ArgumentException>(() => engine.SubmitAll(new[] { Guard(), new CombatCommand(50, "bastion", CombatAction.Parry) }));
+        Assert.Throws<ArgumentNullException>(() => engine.SubmitAll(new[] { Guard(), null! }));
+        Assert.Empty(engine.SubmittedCommands);
+
+        engine.SubmitAll(new[] { Guard(), Parry() });
+        Assert.Equal(new[] { CombatAction.GuardStart, CombatAction.Parry }, engine.SubmittedCommands.Select(c => c.Action));
+        Assert.Throws<InvalidOperationException>(() => engine.Submit(Parry()));
+        engine.SubmitAll(Array.Empty<CombatCommand>());
+        Assert.Equal(2, engine.SubmittedCommands.Count);
     }
 
     [Fact]
