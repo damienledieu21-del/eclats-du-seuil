@@ -1,4 +1,4 @@
-# Données et validation (lots 3 à 6, correctifs 6.1 et 6.1.1, sous-lots 7.1 à 7.3, sous-lots 8.1 à 8.4)
+# Données et validation (lots 3 à 6, correctifs 6.1 et 6.1.1, sous-lots 7.1 à 7.3, sous-lots 8.1 à 8.5)
 
 ## Fichier de règles
 
@@ -36,7 +36,7 @@ Applications (`applies`, dans le bloc `combat` d'une compétence et dans chaque 
 
 ## Déclencheurs (sous-lot 7.3)
 
-Un déclencheur est une donnée, jamais du code : `triggers` est une liste facultative (au plus 8) sur un **talent** ou une **compétence** de classe (passive, active ou ultime ; seuls les talents de rang ≥ 1 et les compétences équipées sont actifs), sur une **altération** du catalogue (`statuses[].triggers`, actif tant que l'instance existe) et sur un **assaillant** de scénario (Q4, pour les tests et les entraînements). L'équipement est réservé (Q9), non implémenté. Aucune donnée livrée n'en porte : les déclencheurs de gameplay restent dans les tests jusqu'au lot 8 (Q14).
+Un déclencheur est une donnée, jamais du code : `triggers` est une liste facultative (au plus 8) sur un **talent** ou une **compétence** de classe (passive, active ou ultime ; seuls les talents de rang ≥ 1 et les compétences équipées sont actifs), sur une **altération** du catalogue (`statuses[].triggers`, actif tant que l'instance existe) et sur un **assaillant** de scénario (Q4, pour les tests et les entraînements). L'équipement est réservé (Q9), non implémenté. Depuis le sous-lot 8.5, des talents et un passif du Bastion livré en portent (voir « Bastion (sous-lot 8.5) ») ; jusque-là, aucune donnée livrée n'en portait (Q14).
 
 ```json
 { "on": "onBlock", "role": "source", "cooldownMs": 500, "filter": { "damageType": "physique" },
@@ -100,9 +100,62 @@ Champs facultatifs du bloc `combat` d'une compétence (classes, schéma 8) :
 
 Règles (schéma 9) : `combat.triggers.areaStrikeMinCooldownMs` (obligatoire, ms, multiple du tick, [0, 24 h], 3 000 livrés) : recharge interne minimale d'un déclencheur dont un effet `strike` vise `allEnemies` (L8-D2) ; un déclencheur en dessous est refusé à la validation du scénario, sur son `cooldownMs`. `combat.guard.breakStatus` doit désigner un contrôle ou un modificateur (revue Codex de la PR #7).
 
+### Bastion (sous-lot 8.5)
+
+Contenu complet du Bastion : règles au contenu 0.8.0 et classe au contenu 0.4.0, **schémas inchangés** (9 et 8 : aucun champ nouveau, seulement des modificateurs et des déclencheurs des sous-lots 7.3 à 8.4). Plus aucun talent ni passif `[TEST]` : les paliers et passifs d'essai sont retirés, remplacés par les neuf intermédiaires de cinq rangs et les huit passifs du catalogue (effets : [BUILDS.md](BUILDS.md#arbres-du-bastion-provisoires-sous-lot-85)). Altérations ajoutées à la fin du catalogue :
+
+| Identifiant | Catégorie | Durée | Utilisée par |
+|---|---|---|---|
+| `reactiveAegis` | bouclier (cumul par source) | 4 s | Égide réactive (coefficient 0,03 par rang, sur le porteur) |
+| `protectiveLink` | protection, `redirectRatio` 0,25 | 6 s (celle de la Barrière d'acier) | Lien protecteur, sur l'allié qui reçoit la Barrière |
+| `oathTaunt` | provocation | 2 s | Serment du gardien, sur l'assaillant qui frappe un allié |
+
+Forme des effets (extraits de `bastion.json`) :
+
+```json
+{ "id": "talent.bastion.rempart.echo_defensif", "triggers": [
+    { "on": "onBlock", "role": "target", "effects": [ { "type": "gainResource", "resource": "endurance", "amount": 4 } ] },
+    { "on": "onBlock", "role": "target", "cooldownMs": 3000, "effects": [ { "type": "gainResource", "resource": "rampartCharges", "amount": 1 } ] } ] }
+{ "id": "talent.bastion.gardien.egide_reactive", "triggers": [
+    { "on": "onHitTaken", "filter": { "defense": ["guard", "parry"] }, "cooldownMs": 2000,
+      "effects": [ { "type": "applyStatus", "target": "bearer", "status": "reactiveAegis", "coefficient": { "base": 0.03, "perRank": 0.03 } } ] } ] }
+{ "id": "talent.bastion.gardien.lien_protecteur", "triggers": [
+    { "on": "onSkillCast", "filter": { "skills": ["skill.bastion.barriere_d_acier"] },
+      "effects": [ { "type": "applyStatus", "target": "eventTarget", "status": "protectiveLink" } ] } ] }
+{ "id": "talent.bastion.rempart.poids_du_rempart",
+  "modifiers": [ { "key": "damageTaken", "add": { "base": -0.005, "perRank": -0.005 }, "conditions": ["whileGuarding", "perRampartCharge"] } ] }
+```
+
+Riposte précise, Écho de guerre et Jugement du colosse réagissent à `onPerfectParry` (rôle `target` : le Bastion qui pare) ; Serment du gardien et Sentinelle à `onHitTaken` avec le rôle `ally` (un allié vivant frappé) ; Rempart éternel, Fureur contenue, Peau de fer, Souffle du roc, Main lourde, Élan, Vigilance, Présence, Rempart vivant et sept passifs ne portent que des modificateurs. La classe livrée a un avertissement de cycle statique (Riposte précise et Jugement du colosse : face à un autre Bastion qui pare, une frappe de réaction pourrait être parée à son tour) ; c'est un avertissement, jamais une erreur (Q1). Empreintes : règles `sha256:03f73faca72b574c972b117e29235f072528b6a5929b268c01842ec9fca1f83a`, classe `sha256:4a719f82fa129497a4a4cd84152546998a6c919fab8a43d7817cfa7f253313a3`.
+
+Les tests écrits avant le 8.5 qui modifient la classe (forme, empreintes, plafonds) ou mesurent un combat sans déclencheur s'appuient sur le contenu figé du 8.4 (`tests/EdS.Data.Tests/Fixtures/content-0.3.0` : classe et scénarios) ; le contenu livré a ses propres tests (`Lot85ContentDataTests`, `Lot85TalentCombatTests`).
+
+## Builds de référence (sous-lot 8.5)
+
+Un fichier par classe (`data/v0/builds/<classe>.json`, `kind: "builds"`, schéma 1, `data/schemas/builds.schema.json`), même en-tête que les autres fichiers de données. Décision A12 : les builds de comparaison sont des données, pas du code de test.
+
+```json
+{
+  "schemaVersion": 1, "kind": "builds", "contentVersion": "0.1.0-provisoire",
+  "data": { "class": "class.bastion", "builds": [
+    { "id": "build.bastion.rempart", "name": "Rempart", "category": "reference",
+      "build": { "level": 30, "attributes": { "force": 30, "dexterite": 10, "intelligence": 6, "vitalite": 30, "volonte": 15, "endurance": 20 },
+                 "talents": { "talent.bastion.rempart.garde_stable": 3, … }, "activeSkills": [ … ], "ultimate": "skill.bastion.bastion_absolu",
+                 "passiveSkills": [ … ] } } ] }
+}
+```
+
+- `class` (obligatoire) : une classe chargée du même dossier.
+- `builds` (obligatoire) : 1 à 64 builds ; chacun a `id` (identifiant stable `build.<classe>.<nom>`, de la classe du fichier, unique dans toutes les données), `name` (non vide), `category` (`reference` : build de spécialisation comparé ; `control` : build de contrôle) et `build`, de la même forme que le build d'un personnage de scénario (contrôle de forme partagé, `BuildShape`).
+- Validation : `BuildSetJsonReader` (forme) → `BuildSetDocument` → `BuildSetValidator` (en-tête, présence, identifiants, catégories, forme du build) → `BuildValidator` (règles du build, contre la classe et la progression des règles). Une violation du build est rattachée à `$.data.builds[i].build`, avec l'élément et le code du validateur dans le message (`UnknownReference` pour un talent ou une compétence inconnus, `InvalidValue` sinon).
+- Chargement : `GameDataLoader.Load` lit `builds/*.json` après les classes (ordre des noms de fichiers) ; un fichier refusé, ou un identifiant déjà défini par un autre fichier (`DuplicateId`), fait échouer le chargement comme une classe refusée. `GameData.BuildSets` et `GameData.TryGetBuild` les exposent. Les builds n'entrent **pas** dans l'identité des données d'un combat : un scénario recopie le build de chaque personnage, et le journal reste inchangé.
+- Pas d'empreinte pour ce fichier : il n'est lu par aucun combat (une référence aux builds depuis un scénario pourra venir avec les scénarios S1 à S5, sous-lot 8.6).
+
+Contenu livré et choix des points : [BUILDS.md](BUILDS.md#builds-de-référence-sous-lot-85-datav0buildsbastionjson).
+
 ## Modificateurs (sous-lot 8.1)
 
-Un modificateur change une règle de combat ou une statistique **du porteur** : `modifiers` est une liste facultative (au plus 8) sur un **talent** (actif dès le rang 1, valeur au rang du build) ou une **compétence passive** équipée (rang 1, sans `perRank`). Une compétence active ou ultime n'en porte pas (refus). Au plus 512 modificateurs par classe, vérifiés avec les autres plafonds globaux. Aucune donnée livrée n'en porte encore : le contenu du Gardien arrive plus tard dans le lot 8.
+Un modificateur change une règle de combat ou une statistique **du porteur** : `modifiers` est une liste facultative (au plus 8) sur un **talent** (actif dès le rang 1, valeur au rang du build) ou une **compétence passive** équipée (rang 1, sans `perRank`). Une compétence active ou ultime n'en porte pas (refus). Au plus 512 modificateurs par classe, vérifiés avec les autres plafonds globaux. Depuis le sous-lot 8.5, les talents et passifs du Bastion livré en portent (« Bastion (sous-lot 8.5) »).
 
 ```json
 "modifiers": [
@@ -171,12 +224,12 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
 `sha256:…` calculée sur une écriture canonique (version du contrat canonique, version de schéma, puis chaque paramètre dans l'ordre du catalogue). Indépendante des espaces, de l'ordre des clés et de l'écriture des nombres (`2` = `2.0`) ; ignore `contentVersion`. Valeur actuelle de `data/v0/rules.json` :
 
 ```
-sha256:0176d9652e97eeb24e2b34c30bb234c2dbc595d04f0c60b45d62befd2bc7e9b9
+sha256:03f73faca72b574c972b117e29235f072528b6a5929b268c01842ec9fca1f83a
 ```
 
 **Contrat canonique 2 (correctif 7.3.1, A73-M02).** Une ligne par champ : `chemin=valeur` pour une valeur présente (barre oblique inverse, retour à la ligne et retour chariot échappés), `chemin?` pour un champ facultatif absent, et pour une liste `chemin.count=n` puis `chemin[i]=élément`. Aucune valeur textuelle ne sert plus de sentinelle : au contrat 1 (lots 1 à 7.3), un champ absent s'écrivait `none` (ou une chaîne vide dans les classes) et une liste était jointe par des virgules, si bien qu'un `filter.status` ou un `grantsOnExpiry` absent avait la même empreinte que la valeur `none`, identifiant d'altération valide (deux collisions démontrées par l'audit). Le texte haché commence par `eds-rules` ou `eds-class` puis `canonical=2`. Écrit par `CanonicalWriter` (`EdS.Data`) pour les règles, les altérations, les déclencheurs et les classes. **Compatibilité** : toutes les empreintes changent ; un journal antérieur (moteur 0.9.0, contrat 1) est refusé au rejeu avant toute simulation (moteur et empreintes différents), sans migration ; les quatre journaux de référence 0.9.0, figés dans `tests/EdS.Data.Tests/Fixtures/logs-0.9.0`, ne diffèrent des actuels que par `engineVersion` et les empreintes de l'en-tête.
 
-(Elle a changé au correctif 6.1 avec la version de schéma 2, au lot 7.1 avec la version 3 et les cinq nouvelles limites, puis au lot 7.2 avec la version 4, la constante de résistance, `breakStatus` et les altérations, écrites dans l'ordre du fichier avec chaque champ facultatif à sa valeur neutre ; au correctif 7.2, l’étourdissement passant en `ignore` ; au lot 7.3 avec la version 5 et `combat.limits.maxTriggerDepth` ; au correctif 7.3.1 avec le contrat canonique 2 ; au lot 8 avec la version 6 et les plafonds `combat.guard.maxDamageReduction` et `combat.damageTaken.maxReduction` ; aux sous-lots 8.2 et 8.3 avec les versions 7 et 8 ; enfin au sous-lot 8.4 avec la version 9, `combat.triggers.areaStrikeMinCooldownMs` et les cinq altérations du Bastion. Une altération sans déclencheur n’ajoute rien au texte canonique.)
+(Elle a changé au correctif 6.1 avec la version de schéma 2, au lot 7.1 avec la version 3 et les cinq nouvelles limites, puis au lot 7.2 avec la version 4, la constante de résistance, `breakStatus` et les altérations, écrites dans l'ordre du fichier avec chaque champ facultatif à sa valeur neutre ; au correctif 7.2, l’étourdissement passant en `ignore` ; au lot 7.3 avec la version 5 et `combat.limits.maxTriggerDepth` ; au correctif 7.3.1 avec le contrat canonique 2 ; au lot 8 avec la version 6 et les plafonds `combat.guard.maxDamageReduction` et `combat.damageTaken.maxReduction` ; aux sous-lots 8.2 et 8.3 avec les versions 7 et 8 ; au sous-lot 8.4 avec la version 9, `combat.triggers.areaStrikeMinCooldownMs` et les cinq altérations du Bastion ; enfin au sous-lot 8.5 avec les trois altérations des talents du Gardien, schéma inchangé. Une altération sans déclencheur n’ajoute rien au texte canonique.)
 
 ## Versions de format
 
@@ -184,6 +237,7 @@ sha256:0176d9652e97eeb24e2b34c30bb234c2dbc595d04f0c60b45d62befd2bc7e9b9
 |---|---|---|
 | `rules.json` | 9 | 1 : lots 3 à 5 ; 2 : blocs `combat.guard`, `parry`, `rampartCharges`, `resonance`, `states` du lot 6 ; 3 : `combat.limits.maxCombatants`, `maxCommands`, `maxCommandsPerActorPerTick`, `maxPendingEvents`, `maxWorkPerTick` (lot 7.1) ; 4 : `statuses`, `stats.statusResistanceConstant`, `combat.guard.breakStatus` à la place de `breakDurationMs`, `combat.states` supprimé (lot 7.2) ; 5 : `combat.limits.maxTriggerDepth`, `statuses[].triggers` facultatif (lot 7.3) ; 6 : `combat.guard.maxDamageReduction` (0,75) et `combat.damageTaken.maxReduction` (0,85), plafonds de réduction auparavant constantes du moteur (lot 8, décision du 18/10/2026) ; 7 : catégories `buff` et `shield` et `statuses[].modifiers` (sous-lot 8.2) ; 8 : catégories `taunt` et `protection`, `statuses[].redirectRatio`, rôle `ally` des déclencheurs d'altération (sous-lot 8.3) ; 9 : `combat.triggers.areaStrikeMinCooldownMs` (L8-D2, 3 000 ms livrés), clé `guard.noUpkeep` admise sur un renforcement (sous-lot 8.4) |
 | classes | 8 | 1 : lots 4 et 5 ; 2 : `unblockable`, `rampartChargeCost`, `rampartChargeGain` obligatoires dans le bloc `combat` ; 3 : `applies` obligatoire dans le bloc `combat` (lot 7.2) ; 4 : `triggers` facultatif sur les talents et les compétences (lot 7.3) ; 5 : `modifiers` facultatif sur les talents et les compétences passives (sous-lot 8.1) ; 6 : clé de modificateur `shield.potencyDealt` (sous-lot 8.2) ; 7 : ciblages `self`, `ally`, `allAllies`, compétences sans dégâts (`powerType`, `damageType`, `coefficient` tous absents), `applies[].target`, rôle `ally` des déclencheurs, clés `protection.redirectRatio` et `protection.redirectThroughGuard` (sous-lot 8.3) ; 8 : `rampartChargeSpendAll`, `coefficientPerRampartCharge` et `resonanceGain` facultatifs dans le bloc `combat`, clé `guard.noUpkeep` (sous-lot 8.4) |
+| builds de référence | 1 | 1 : `data.class`, `data.builds[]` (`id`, `name`, `category`, `build`) (sous-lot 8.5) |
 | scénarios | 3 | 1 : lots 5 et 6 (assaillant, `action`) ; 2 : `applies` à la place de `appliesFragility`, `statusResistance` facultatif des mannequins et assaillants (lot 7.2) ; 3 : `applies[].target` des attaques d'assaillant, rôle `ally` de leurs déclencheurs, ciblage d'attaque limité à `enemy` et `allEnemies` (sous-lot 8.3) |
 | journal (`formatVersion`) | 8 | 2 : `instance` et `generation` sur les états, `stateRemoved` ; 3 : `category` et `source` sur les états, `applies`, `stateBlocked`, `dotDamage` (lot 7.2) ; 4 : provenance des effets, `eid`, `cause`, `root`, `depth`, `trigger` (lot 7.3, voir MOTEUR.md) ; 5 : `statusResistance` et `rules` (règles effectives) sur `combatant`, `rampartChargesSpent` sur `guardBroken` (sous-lot 8.1) ; 6 : `absorbed` et `absorbedBy` sur `damage` et `dotDamage`, `absorb` sur le `stateApplied` d'un bouclier, raisons `depleted` (`stateRemoved`) et `empty` (`stateBlocked`), `damageAbsorbed` sur `combatantSummary`, `shield.potencyDealt` dans `rules` (sous-lot 8.2, voir MOTEUR.md) ; 7 : `transferred` sur `damage` et `dotDamage`, ligne `damageTransferred`, `redirectRatio` sur le `stateApplied` d'une protection, raisons `notApplicable` et `sourceDied`, `damageTransferred` et `damageRedirected` au bilan, clés `protection.*` dans `rules` (sous-lot 8.3) ; 8 : `guard.noUpkeep` dans `rules`, `rampartChargeCost` de `skillCast` = Charges réellement dépensées (sous-lot 8.4) |
 
@@ -217,9 +271,10 @@ Codes : `FileUnreadable`, `DuplicateId`, `InvalidJson`, `WrongType`, `MissingFie
 dotnet run --project src/EdS.Cli -- validate                  # data/v0/rules.json
 dotnet run --project src/EdS.Cli -- validate chemin/rules.json
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json [--rules chemin/rules.json]
+dotnet run --project src/EdS.Cli -- validate data/v0/builds/bastion.json   # sous-lot 8.5
 ```
 
-Le champ `kind` choisit le validateur. Un fichier de classe est vérifié avec la progression du `rules.json` indiqué (défaut : `data/v0/rules.json`).
+Le champ `kind` choisit le validateur. Un fichier de classe est vérifié avec la progression du `rules.json` indiqué (défaut : `data/v0/rules.json`) ; un fichier de builds, avec les règles et les classes de `data/v0` (sans ses builds), et chaque build est résumé (points par arbre, majeur, emplacements).
 
 ## Fichiers de classe
 
@@ -228,16 +283,16 @@ Un fichier par classe (`data/v0/classes/<classe>.json`, `kind: "class"`), même 
 Empreinte d'une classe : SHA-256 de `eds-class`, `canonical=2`, puis chaque valeur (contrat canonique ci-dessus) dans l'ordre du fichier (l'ordre des arbres, talents et compétences fait partie du contenu ; les espaces et l'ordre des clés non ; `contentVersion` ignorée). Valeur actuelle de `bastion.json` :
 
 ```
-sha256:6921f5e1643be831655528b7a96c673981ffa9fc5772e4fe26da6ed5e7903e2e
+sha256:4a719f82fa129497a4a4cd84152546998a6c919fab8a43d7817cfa7f253313a3
 ```
 
-(Sous-lot 8.1 : la ligne `schemaVersion=5` change l'empreinte ; le contenu de `bastion.json` est inchangé et ne porte aucun modificateur.) Sous-lot 8.3 : schéma 7 ; `applies[].target` écrit pour chaque application (absent : `target?`) et le coefficient d'une compétence de soutien écrit comme absent. Sous-lot 8.4 : schéma 8, contenu 0.3.0 (fiches complètes) ; `rampartChargeSpendAll`, `coefficientPerRampartCharge` et `resonanceGain` écrits après `rampartChargeGain` (absents : `?`).
+(Sous-lot 8.1 : la ligne `schemaVersion=5` change l'empreinte ; le contenu de `bastion.json` est inchangé et ne porte aucun modificateur.) Sous-lot 8.3 : schéma 7 ; `applies[].target` écrit pour chaque application (absent : `target?`) et le coefficient d'une compétence de soutien écrit comme absent. Sous-lot 8.4 : schéma 8, contenu 0.3.0 (fiches complètes) ; `rampartChargeSpendAll`, `coefficientPerRampartCharge` et `resonanceGain` écrits après `rampartChargeGain` (absents : `?`). Sous-lot 8.5 : contenu 0.4.0 (talents, intermédiaires et passifs), schéma inchangé ; l'empreinte du contenu figé du 8.4 reste `sha256:6921f5e1…`.
 
 Le bloc facultatif `combat` d'une compétence entre dans l'empreinte (`combat?` s'il est absent ; `combat=none` au contrat 1). Correctif 7.3.1 : une classe compte au plus 256 talents, 256 compétences et 512 déclencheurs, vérifiés avant tout autre contrôle et avant l'analyse statique des cycles (`LimitExceeded`). Depuis le lot 6, il porte aussi `unblockable`, `rampartChargeCost` et `rampartChargeGain`, et depuis le lot 7.2 `applies` (obligatoires dans le bloc).
 
 ## Scénarios et jeu de données (lots 5 et 6)
 
-`GameDataLoader.Load("data/v0")` charge `rules.json` et tous les `classes/*.json` en un `GameData` (règles, classes, identité : versions et empreintes). `ScenarioJsonReader` (forme) → `ScenarioDocument` → `ScenarioValidator` (en-tête, références de classe, build validé par `BuildValidator`, puis `CombatSetup.Validate`) → `CombatSetup`. L'identité retenue pour le journal ne couvre que les règles et les classes utilisées par le scénario. Depuis le lot 6, un scénario peut contenir un assaillant (`type: "assailant"`) et des commandes défensives (`action`). Format, exemples et rejeu : [MOTEUR.md](MOTEUR.md).
+`GameDataLoader.Load("data/v0")` charge `rules.json`, tous les `classes/*.json` et, depuis le sous-lot 8.5, tous les `builds/*.json` en un `GameData` (règles, classes, builds de référence, identité : versions et empreintes des règles et des classes). `ScenarioJsonReader` (forme) → `ScenarioDocument` → `ScenarioValidator` (en-tête, références de classe, build validé par `BuildValidator`, puis `CombatSetup.Validate`) → `CombatSetup`. L'identité retenue pour le journal ne couvre que les règles et les classes utilisées par le scénario. Depuis le lot 6, un scénario peut contenir un assaillant (`type: "assailant"`) et des commandes défensives (`action`). Format, exemples et rejeu : [MOTEUR.md](MOTEUR.md).
 
 Dépendances (lot 6) : la description d'un combat (`CombatSetup`, combattants, commandes, identité des données) est passée d'`EdS.Simulation` à `EdS.Domain` (espace `EdS.Domain.Combat`). `EdS.Data` ne dépend donc plus que du domaine ; seuls les outils (`EdS.Data.Json`, `EdS.Cli`) référencent le moteur pour simuler et rejouer.
 

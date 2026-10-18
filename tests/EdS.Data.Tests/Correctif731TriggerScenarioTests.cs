@@ -15,11 +15,12 @@ namespace EdS.Data.Tests;
 /// supprimé à la deuxième occurrence dans une chaîne), brûlure posée par réaction à chaque saignement (2, DOT de réaction) et
 /// frappe sur chaque tick de DOT (3, reportée au tick suivant car la phase de résolution est passée). Les assertions métier
 /// ci-dessous ne dépendent pas de l'empreinte du journal ; la comparaison octet par octet se fait contre le journal figé
-/// <c>Fixtures/reference-0.14.0/entrainement_declencheurs.jsonl</c> (sous-lot 8.4 : moteur 0.14.0, format 8 ; les références 0.9.1, 0.10.0, 0.11.0,
-/// 0.12.0 et 0.13.0 restent figées, refusées au rejeu et reproduites au gameplay près par Lot81ReferenceTests). Un assaillant n'a pas de
-/// puissance : ses frappes et sa brûlure de réaction infligent 0. Sous-lot 8.4 : les assertions métier (mécanique des déclencheurs du
-/// correctif 7.3.1) se font sur le contenu historique du Bastion (<see cref="ScenarioTestData.HistoricalData"/>) ; avec le contenu livré,
-/// le Heurt de bouclier étourdit l'assaillant et change le déroulé, figé par la référence 0.14.0.
+/// <c>Fixtures/reference-0.14.0-contenu-0.4.0/entrainement_declencheurs.jsonl</c> (sous-lot 8.5 : moteur 0.14.0, format 8, règles 0.8.0,
+/// Bastion 0.4.0 ; les références 0.9.1 à 0.14.0 restent figées et refusées au rejeu, la 0.14.0 reproduite par le moteur avec le contenu
+/// figé du 8.4). Un assaillant n'a pas de puissance : ses frappes et sa brûlure de réaction infligent 0. Sous-lot 8.4 : les assertions
+/// métier (mécanique des déclencheurs du correctif 7.3.1) se font sur le contenu historique du Bastion
+/// (<see cref="ScenarioTestData.HistoricalData"/>) et, depuis le 8.5, sur le scénario figé du 8.4 ; avec le contenu livré, le Heurt de
+/// bouclier étourdit l'assaillant et les talents du Bastion réagissent, ce que fige la référence du contenu 0.4.0.
 /// </summary>
 [Trait("Category", "Data")]
 [Trait("Category", "Trigger")]

@@ -19,7 +19,7 @@ MMORPG fantasy PC/mobile, monde partagé et persistant à terme, **principalemen
 
 ### Lot 8 — premier Bastion réellement jouable
 
-Deux PR de gameplay (A11) : **8a moteur** (8.1 à 8.4, PR #3 et branches empilées), puis **8b contenu et mesures** (8.5 à 8.7).
+Deux PR de gameplay (A11) : **8a moteur** (8.1 à 8.4, PR #3, #6, #7 et #8, fusionnées le 18 octobre 2026), puis **8b contenu et mesures** (8.5 à 8.7).
 
 | Sous-lot | Contenu | État |
 |---|---|---|
@@ -27,7 +27,7 @@ Deux PR de gameplay (A11) : **8a moteur** (8.1 à 8.4, PR #3 et branches empilé
 | 8.2 | X3 renforcements temporaires, X4 boucliers d'absorption (catégorie `shield`, un bouclier par source, consommation FIFO, absorbe aussi les DOT, fin par durée ou épuisement, champ `absorbed`), réduction de dégâts et modificateurs temporaires | PR empilée sur la PR #3 (brouillon) : catégories `buff` et `shield`, schéma de règles 7 et de classe 6, moteur 0.12.0, journal au format 6 ; aucun contenu livré |
 | 8.3 | X5 ciblage `self` / `ally` / `allAllies`, X6 transfert de dégâts, X7 provocation, X9 rôle `ally` des déclencheurs | PR #7, empilée sur la PR #6 (brouillon) : compétences de soutien, catégories `taunt` et `protection`, règles en schéma 8, classes en 7, scénarios en 3, moteur 0.13.0, journal au format 7 ; aucun contenu livré ; deux tours de revue Codex traités |
 | 8.4 | X8 Contrecoup consomme toutes les Charges, fiches complètes des compétences restantes et de l'ultime, L8-D2, aucun `notImplemented` restant | PR empilée sur la PR #7 (brouillon) : fiches complètes du Bastion, Charges dépensées et coefficient par Charge, `resonanceGain`, `guard.noUpkeep`, `combat.triggers.areaStrikeMinCooldownMs` (3 s), rupture de garde limitée aux contrôles et modificateurs ; règles en schéma 9 (contenu 0.7.0), classes en 8 (contenu 0.3.0), moteur 0.14.0, journal au format 8 |
-| 8.5 | Contenu complet du Bastion (talents, intermédiaires, passifs), plus aucun `[TEST]`, builds de référence en données | à faire |
+| 8.5 | Contenu complet du Bastion (talents, intermédiaires, passifs), plus aucun `[TEST]`, builds de référence en données | PR en brouillon vers `main` : talents, intermédiaires et passifs en données (modificateurs et déclencheurs existants, moteur inchangé), altérations `reactiveAegis`, `protectiveLink`, `oathTaunt`, fichier de builds de référence (`kind: "builds"`, schéma 1) ; règles au contenu 0.8.0, Bastion 0.4.0 |
 | 8.6 | X10 compteurs de mesure, scénarios S1 à S5, commande CLI `report`, catégorie `Scenario` | à faire |
 | 8.7 | Passe d'équilibrage mesurée, surtout en données ; rapport de mesures et écarts | à faire |
 

@@ -344,7 +344,7 @@ Lecture :
 
 ## Ce qui reste après le sous-lot 7.3
 
-- Aucun déclencheur dans les données livrées : les déclencheurs de gameplay (talents et compétences du Bastion) arrivent au lot 8 ; aucun scénario d'entraînement à déclencheurs n'est livré (Q14).
+- Aucun déclencheur dans les données livrées : les déclencheurs de gameplay (talents et compétences du Bastion) arrivent au lot 8 ; aucun scénario d'entraînement à déclencheurs n'est livré (Q14). Depuis : `entrainement_declencheurs` (correctif 7.3.1) et les talents et passifs du Bastion (sous-lot 8.5, [LIMITES_LOT_8.md](LIMITES_LOT_8.md#sous-lot-85--interprétations-et-limites)).
 - Équipement porteur de déclencheurs : réservé (origine `equipment`), non implémenté (Q9).
 - Pas de chance de déclenchement ni de critique sur les frappes de réaction (Q7) ; pas de raison d'annulation `staleSource` (voir « Annulation des réactions »).
 - Le majorant de file n'est pas une garantie avec déclencheurs (C12, Q11) : les altérations posées par des réactions ne sont pas majorées.
