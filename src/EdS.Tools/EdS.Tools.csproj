@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sous-lot 9.1 : outils .NET hors cœur portable (mesures des builds et rapport, sous-lot 8.6), réservés à la CLI et aux tests. -->
+  <ItemGroup>
+    <ProjectReference Include="..\EdS.Data.Json\EdS.Data.Json.csproj" />
+    <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

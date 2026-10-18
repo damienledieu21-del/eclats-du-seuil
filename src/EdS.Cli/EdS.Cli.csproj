@@ -4,6 +4,7 @@
     <ProjectReference Include="..\EdS.Data\EdS.Data.csproj" />
     <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
     <ProjectReference Include="..\EdS.Data.Json\EdS.Data.Json.csproj" />
+    <ProjectReference Include="..\EdS.Tools\EdS.Tools.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

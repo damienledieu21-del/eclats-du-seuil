@@ -1,12 +1,14 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using EdS.Data;
 using EdS.Data.Builds;
+using EdS.Data.Json;
 using EdS.Data.Scenarios;
 using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using EdS.Simulation.Pilot;
 
-namespace EdS.Data.Json.Measures;
+namespace EdS.Tools.Measures;
 
 /// <summary>Scénario de mesure (sous-lot 8.6) : <c>s&lt;n&gt;_&lt;nom&gt;.json</c>, identifiant « S&lt;n&gt; ».</summary>
 public sealed class MeasureScenario
