@@ -82,7 +82,7 @@ public static class ScenarioJsonReader
         return ok ? c : null;
     }
 
-    private static BuildData? ReadBuild(JsonInput input, JsonElement element, string path)
+    internal static BuildData? ReadBuild(JsonInput input, JsonElement element, string path)
     {
         var b = new BuildData();
         bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>

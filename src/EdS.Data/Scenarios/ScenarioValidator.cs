@@ -51,9 +51,6 @@ namespace EdS.Data.Scenarios
             ["assailant"] = new[] { "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers" },
         };
 
-        private static readonly Dictionary<string, AttributeKind> AttributeIds =
-            ((AttributeKind[])Enum.GetValues(typeof(AttributeKind))).ToDictionary(Rules.RulesCatalog.Id, k => k, StringComparer.Ordinal);
-
         public static ScenarioLoadResult Validate(ScenarioDocument document, GameData data, ValidationReport? report = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
@@ -101,13 +98,7 @@ namespace EdS.Data.Scenarios
                 {
                     data.TryGetClass(c.Class!, out LoadedClass loaded);
                     usedClasses[loaded.Definition.Id] = loaded;
-                    BuildData b = c.Build!;
-                    var values = b.Attributes!.ToDictionary(a => AttributeIds[a.Key], a => a.Value!.Value);
-                    var attributes = new Attributes(values[AttributeKind.Force], values[AttributeKind.Dexterite], values[AttributeKind.Intelligence],
-                        values[AttributeKind.Vitalite], values[AttributeKind.Volonte], values[AttributeKind.Endurance]);
-                    var talents = b.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal);
-                    var build = new CharacterBuild(loaded.Definition.Id, b.Level!.Value, attributes, talents,
-                        b.ActiveSkills!.Select(s => s!).ToArray(), b.Ultimate, b.PassiveSkills!.Select(s => s!).ToArray());
+                    CharacterBuild build = Builds.BuildShape.ToCharacterBuild(loaded.Definition.Id, c.Build!);
                     combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value));
                 }
                 else if (c.Type == "assailant")
@@ -193,7 +184,7 @@ namespace EdS.Data.Scenarios
                         if (Present(c.Class, path + ".class", "identifiant de classe") && !_data.TryGetClass(c.Class!, out _))
                             _report.Add(path + ".class", ValidationCode.UnknownReference,
                                 $"classe inconnue « {c.Class} » ; classes chargées : {string.Join(", ", _data.Classes.Select(x => x.Definition.Id))}.");
-                        if (Present(c.Build, path + ".build", "build du personnage")) CheckBuild(c.Build!, path + ".build");
+                        if (Present(c.Build, path + ".build", "build du personnage")) Builds.BuildShape.Check(c.Build!, path + ".build", _report);
                         break;
                     case "dummy":
                         Present(c.Armor, path + ".armor", "nombre décimal");
@@ -224,31 +215,6 @@ namespace EdS.Data.Scenarios
                         $"valeur inconnue « {a.Targeting} » ; valeurs possibles : {string.Join(", ", ClassValidator.AttackTargetings)}.");
                 Present(a.Unblockable, path + ".unblockable", "booléen");
                 ClassValidator.CheckApplications(a.Applies, path + ".applies", _report);
-            }
-
-            private void CheckBuild(BuildData b, string path)
-            {
-                Present(b.Level, path + ".level", "niveau");
-                if (Present(b.Attributes, path + ".attributes", "les six attributs"))
-                {
-                    foreach (var attribute in b.Attributes!)
-                    {
-                        string attributePath = path + ".attributes." + attribute.Key;
-                        if (!AttributeIds.ContainsKey(attribute.Key))
-                            _report.Add(attributePath, ValidationCode.UnknownReference,
-                                $"attribut inconnu « {attribute.Key} » ; valeurs possibles : {string.Join(", ", AttributeIds.Keys)}.");
-                        else if (attribute.Value is int value && value < 0)
-                            _report.Add(attributePath, ValidationCode.InvalidValue, "un attribut ne peut pas être négatif.");
-                        else
-                            Present(attribute.Value, attributePath, "entier");
-                    }
-                    foreach (string id in AttributeIds.Keys.Where(id => b.Attributes.All(a => a.Key != id)))
-                        Present(null, path + ".attributes." + id, "entier positif ou nul");
-                }
-                if (Present(b.Talents, path + ".talents", "rangs par talent, éventuellement vide"))
-                    foreach (var talent in b.Talents!) Present(talent.Value, path + ".talents." + talent.Key, "rang");
-                Items(b.ActiveSkills, path + ".activeSkills", "liste, éventuellement vide", (_, __) => { });
-                Items(b.PassiveSkills, path + ".passiveSkills", "liste, éventuellement vide", (_, __) => { });
             }
 
             private void CheckCommand(CommandData c, string path)

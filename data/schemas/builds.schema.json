@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/builds.schema.json",
+  "title": "Éclats du Seuil — builds de référence d'une classe",
+  "description": "Documentation et aide à la saisie. La validation qui fait foi est celle du programme (BuildSetValidator et BuildValidator).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "builds"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "class",
+        "builds"
+      ],
+      "properties": {
+        "class": {
+          "type": "string",
+          "pattern": "^class(\\.[a-z0-9_]+)+$",
+          "description": "Classe de tous les builds du fichier."
+        },
+        "builds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/referenceBuild"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "referenceBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "category",
+        "build"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^build(\\.[a-z0-9_]+){2,}$",
+          "description": "Identifiant stable, « build.<classe>.<nom> », unique dans les données."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "enum": [
+            "reference",
+            "control"
+          ],
+          "description": "reference : build de spécialisation comparé ; control : build de contrôle."
+        },
+        "build": {
+          "$ref": "#/$defs/build"
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "attributes",
+        "talents",
+        "activeSkills",
+        "passiveSkills"
+      ],
+      "properties": {
+        "level": {
+          "type": "integer"
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "force",
+            "dexterite",
+            "intelligence",
+            "vitalite",
+            "volonte",
+            "endurance"
+          ],
+          "properties": {
+            "force": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dexterite": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "intelligence": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "vitalite": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "volonte": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "endurance": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "talents": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "activeSkills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ultimate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "passiveSkills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
