@@ -6,7 +6,7 @@ Le prototype (lot 9) se trouve dans le dossier `unity/` du dépôt. Unity compil
 
 1. **Unity Hub** : [unity.com/download](https://unity.com/download), version Windows (x64 sur un processeur Intel ou AMD).
 2. Dans le Hub : se connecter (compte Unity gratuit), puis **Preferences → Licenses → Add → Get a free personal license**.
-3. **Installs → Install Editor → Unity 6.3 (LTS)**, version `6000.3.x`. Modules : *Microsoft Visual Studio Community* et *Windows Build Support (IL2CPP)*. Prévoir 15 Go ; sur un SSD si possible.
+3. **Installs → Install Editor → Unity 6.3 (LTS)**, version `6000.3.26f1` (celle du projet) ou une autre `6000.3.x`. Modules : *Microsoft Visual Studio Community* et *Windows Build Support (IL2CPP)*. Prévoir 15 Go ; sur un SSD si possible.
 4. **GitHub Desktop** : [desktop.github.com](https://desktop.github.com), se connecter avec son compte GitHub, puis **File → Clone repository → eclats-du-seuil**.
 
 ## 2. Récupérer la bonne version
@@ -22,7 +22,7 @@ Une fois les PR fusionnées, rester simplement sur `main` et faire **Pull origin
 
 1. Unity Hub → **Projects → Add → Add project from disk**.
 2. Choisir le dossier **`unity`** à l'intérieur du dépôt cloné (par exemple `Documents\GitHub\eclats-du-seuil\unity`), pas le dépôt lui-même.
-3. Si le Hub signale une version manquante (`6000.3.0f1` demandée), **ne pas l'installer** : cocher la version 6.3 installée (par exemple `6000.3.26f1`), puis ouvrir et accepter le changement de version.
+3. Si le Hub signale une version manquante (une autre `6000.3.x` est installée), **ne pas l'installer** : cocher la version 6.3 installée, puis ouvrir et accepter le changement de version.
 4. La première ouverture prend plusieurs minutes : Unity importe le moteur de rendu et compile le cœur du jeu.
 5. À la fin, la console (onglet **Console**) doit afficher « Éclats du Seuil : rendu URP configuré ». Le projet n'a pas de scène : la scène vide proposée par Unity suffit.
 
