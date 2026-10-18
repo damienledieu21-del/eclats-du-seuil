@@ -116,6 +116,9 @@ namespace EdS.Simulation.Engine
             /// <summary>Numéro du prochain tour d'un assaillant (racine <c>assailantTurn:&lt;id&gt;:&lt;n&gt;</c>), sauts compris.</summary>
             public long NextTurn;
 
+            /// <summary>Sous-lot 8.6 : tick du prochain tour programmé d'un assaillant ; null s'il n'y en a plus avant la fin (vue du pilote).</summary>
+            public long? NextAttackTick;
+
             /// <summary>
             /// Lot 7.3 (A6) : provenance du premier effet qui a amené les points de vie à 0 (impact ou tick de DOT), cause = cet effet ;
             /// la ligne <c>died</c> et les retraits qui en découlent en héritent.
@@ -415,7 +418,11 @@ namespace EdS.Simulation.Engine
             }
             foreach (Fighter f in _fighters)
                 if (f.Assailant is { } assailant && assailant.FirstAttackMs / _tickMs < _durationTicks)
-                    Schedule(assailant.FirstAttackMs / _tickMs, CombatPhase.Commands, new AssailantTurn { Fighter = f, Turn = f.NextTurn++ });
+                {
+                    f.NextAttackTick = assailant.FirstAttackMs / _tickMs;
+                    Schedule(f.NextAttackTick.Value, CombatPhase.Commands, new AssailantTurn { Fighter = f, Turn = f.NextTurn++ });
+                }
+            for (int i = 0; i < setup.Commands.Count; i++) CountSubmitted(setup.Commands[i]);
 
             _log.Append(CombatLogHeader.Write(setup));
             foreach (Fighter f in _fighters) LogCombatant(f);
@@ -703,6 +710,7 @@ namespace EdS.Simulation.Engine
                 Schedule(readyTick, CombatPhase.Expirations, new CooldownExpiry { Fighter = actor, Skill = skill.Id });
             }
             actor.Result.SkillsCast++;
+            if (resonanceCost > 0) actor.Result.UltimatesCast++;   // sous-lot 8.6 (X10)
             long cast = Emit(tick, CombatPhase.Commands, "skillCast", root, new ObservedEvent { Kind = TriggerEvent.SkillCast, Source = actor.Id, Target = command.Target, Skill = skill.Id }, w => w
                 .Field("actor", actor.Id).Field("skill", skill.Id).Field("target", command.Target).Field("command", item.Index)
                 .Field("enduranceCost", combat.EnduranceCost).Field("endurance", actor.Endurance)
@@ -805,6 +813,7 @@ namespace EdS.Simulation.Engine
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             assailant.NextAttack = (assailant.NextAttack + 1) % setup.Attacks.Count;
             long next = checked(tick + setup.IntervalMs / _tickMs);
+            assailant.NextAttackTick = next < _durationTicks ? next : (long?)null;
             if (next < _durationTicks) Schedule(next, CombatPhase.Commands, new AssailantTurn { Fighter = assailant, Turn = assailant.NextTurn++ });
 
             Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
@@ -1087,6 +1096,9 @@ namespace EdS.Simulation.Engine
                     : new DamageInput(attacker, target.Stats, action.Strike!.PowerType!.Value, action.Strike.DamageType!.Value,
                         action.Strike.Coefficient!.Value.At(action.StrikeRank), bonuses, false, mitigation);
             long amount = DamageCalculator.Compute(input, _setup.Damage).FinalDamage;
+            // Sous-lot 8.6 (X10) : dégâts atténués par la défense de cet impact (garde, parade, réductions de dégâts subis) = montant sans
+            // réduction − montant ; même tirage critique, mêmes bonus. Hors journal ; préparé avant toute affectation.
+            long mitigated = checked(target.Result.DamageMitigated + Unmitigated(input, mitigation, amount));
 
             // Correctif 7.3.1 (A73-M01) : nouvelles valeurs préparées et vérifiées avant toute affectation ; un débordement arrête
             // le combat sans impact à moitié appliqué. Sous-lot 8.2 (X4) : les boucliers absorbent après la défense, avant les PV.
@@ -1100,6 +1112,7 @@ namespace EdS.Simulation.Engine
             target.Result.DamageTaken = update.Taken;
             target.Result.DamageAbsorbed = update.Absorbed;
             target.Result.DamageTransferred = update.Transferred;
+            target.Result.DamageMitigated = mitigated;
             actor.Result.DamageDealt = update.Dealt!.Value;
             actor.Result.Hits = update.Hits;
             if (critical) actor.Result.CriticalHits++;
@@ -1145,6 +1158,14 @@ namespace EdS.Simulation.Engine
                 ApplyStatus(tick, phase, target, definition, actor.Id, power, impact, dealer: actor,
                     shieldAmount: ShieldAmount(actor, definition, application.Coefficient));
             }
+        }
+
+        /// <summary>Sous-lot 8.6 (X10) : part d'un impact retirée par sa réduction (garde, parade, dégâts subis) ; 0 sans réduction.</summary>
+        private long Unmitigated(DamageInput input, Fixed mitigation, long amount)
+        {
+            if (mitigation == Fixed.Zero) return 0;
+            var raw = new DamageInput(input.Attacker, input.Defender, input.PowerType, input.DamageType, input.SkillCoefficient, input.Bonuses, input.IsCritical);
+            return Math.Max(0, checked(DamageCalculator.Compute(raw, _setup.Damage).FinalDamage - amount));
         }
 
         /// <summary>Instantané d'un impact (§1.4) : auteur, cible, compétence ou attaque, type de dégâts, défense.</summary>
@@ -1589,6 +1610,7 @@ namespace EdS.Simulation.Engine
                 }
                 f.GuardUpkeepDue = due;
                 f.GuardUpkeepRemainder = remainder;
+                f.Result.GuardTicks++;   // sous-lot 8.6 (X10) : tick gardé (non brisé par l'entretien)
                 if (amount <= 0) continue;
                 long paid = shortfall ? f.Endurance : amount;
                 if (paid > 0) SpendEndurance(f, paid, tick);   // rien à payer : pas une dépense (le délai de régénération ne repart pas)
@@ -1918,6 +1940,10 @@ namespace EdS.Simulation.Engine
                 target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance, BuffSum(target, ModifierField.DamageTaken)));
             long amount = DamageCalculator.ComputePeriodic(status.Power, target.Stats, definition.DamageType!.Value,
                 definition.Resistance == StatusResistanceMode.Defense, _setup.Damage, mitigation);
+            // Sous-lot 8.6 (X10) : part retirée par les réductions de dégâts subis, préparée avant toute affectation.
+            long mitigated = mitigation == Fixed.Zero ? target.Result.DamageMitigated : checked(target.Result.DamageMitigated + Math.Max(0, checked(
+                DamageCalculator.ComputePeriodic(status.Power, target.Stats, definition.DamageType!.Value, definition.Resistance == StatusResistanceMode.Defense,
+                    _setup.Damage, Fixed.Zero) - amount)));
             // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage). Sous-lot 8.2
             // (A6) : les boucliers de la cible absorbent aussi les DOT.
             Fighter? source = status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
@@ -1931,6 +1957,7 @@ namespace EdS.Simulation.Engine
             target.Result.DamageTaken = update.Taken;
             target.Result.DamageAbsorbed = update.Absorbed;
             target.Result.DamageTransferred = update.Transferred;
+            target.Result.DamageMitigated = mitigated;
             if (source != null) source.Result.DamageDealt = update.Dealt!.Value;
             ApplyAbsorption(absorption);
             ApplyTransfer(transfer, received);
@@ -2033,6 +2060,7 @@ namespace EdS.Simulation.Engine
                     }
                 if (!dies) continue;
                 f.IsDead = true;
+                f.Result.DeathTick = tick;   // sous-lot 8.6 (X10)
                 f.Guarding = false;
                 f.ParryOpen = false;
                 // A6 : provenance de l'effet mortel ; sans effet mortel (points de vie nuls dès le départ), racine propre.
@@ -2104,6 +2132,7 @@ namespace EdS.Simulation.Engine
             {
                 bool character = f.Character != null;
                 f.Result.Health = f.Health;
+                f.Result.MaxHealth = f.MaxHealth;
                 f.Result.Endurance = character ? f.Endurance : (long?)null;
                 f.Result.Resonance = character ? f.Resonance : (int?)null;
                 f.Result.RampartCharges = character ? f.RampartCharges : (int?)null;
