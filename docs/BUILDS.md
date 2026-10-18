@@ -21,7 +21,7 @@ Un majeur coûte 1 point après les 18 : 19 points pour un majeur, il en reste 1
 
 ```json
 {
-  "schemaVersion": 7, "kind": "class", "contentVersion": "0.2.0-provisoire",
+  "schemaVersion": 8, "kind": "class", "contentVersion": "0.3.0-provisoire",
   "data": {
     "id": "class.bastion", "name": "Bastion",
     "trees": [ { "id": "tree.bastion.rempart", "name": "Rempart", "talents": [
@@ -49,14 +49,19 @@ Chaque arbre contient en plus trois talents `[TEST] Palier 1–3` (5 rangs, `pla
 
 Compétences : six actives (Frappe du rempart, Heurt de bouclier, Provocation, Contrecoup, Barrière d'acier, Onde de rupture, niveau 1 provisoire), l'ultime Bastion absolu (niveau 10) et quatre passifs `[TEST] Passif 1–4`. Les passifs équipables sont distincts des talents permanents.
 
-Depuis le lot 5, une active peut porter un bloc `combat` (puissance et type de dégâts, coefficient, coût d'endurance, recharge en ms, ciblage `enemy` ou `allEnemies`, `provisional` ; au lot 6 : `unblockable`, `rampartChargeCost`, `rampartChargeGain`). Un passif ne peut pas en avoir. Seules deux compétences sont implémentées, avec des valeurs **provisoires** :
+Depuis le lot 5, une active ou l'ultime peut porter un bloc `combat` (puissance et type de dégâts, coefficient, coût d'endurance, recharge en ms, ciblage, `provisional` ; au lot 6 : `unblockable`, `rampartChargeCost`, `rampartChargeGain` ; au sous-lot 7.2 : `applies` ; au sous-lot 8.3 : ciblages de soutien et compétences sans dégâts ; au sous-lot 8.4 : `rampartChargeSpendAll`, `coefficientPerRampartCharge`, `resonanceGain`). Un passif ne peut pas en avoir. Depuis le sous-lot 8.4, toutes les actives et l'ultime ont leur fiche complète, aux valeurs **provisoires** de la feuille de route :
 
-| Compétence | Coefficient | Endurance | Recharge | Ciblage |
-|---|---|---|---|---|
-| Frappe du rempart | 1,20 | 10 | 6 s | ennemi |
-| Heurt de bouclier | 0,80 | 15 | 10 s | ennemi |
+| Compétence | Coefficient | Endurance | Recharge | Ciblage | Effets |
+|---|---|---|---|---|---|
+| Frappe du rempart | 1,20 | 10 | 6 s | ennemi | — |
+| Heurt de bouclier | 0,80 | 15 | 10 s | ennemi | étourdissement 1,5 s (`stun`) |
+| Onde de rupture | 0,50 | 20 | 12 s | tous les ennemis | Fragilité (`fragility`) |
+| Contrecoup | 0,60 + 0,40 par Charge | 10 | 8 s | ennemi | dépense toutes les Charges, au moins une |
+| Provocation | — | 10 | 12 s | ennemi (un assaillant) | provocation 3 s (`taunt`), +5 Résonance au lancement |
+| Barrière d'acier | — | 20 | 20 s | allié (soi compris) | bouclier de 15 % des PV max du Bastion, 6 s (`steelBarrier`) |
+| Bastion absolu (ultime) | — | 0 (100 de Résonance) | — | soi | 8 s : dégâts subis −30 % pour le Bastion et ses alliés, garde sans entretien pour le Bastion, provocation de tous les assaillants |
 
-Les deux sont parables, sans coût ni gain de Charges. Les autres actives et l'ultime restent équipables mais refusées au lancer (`skillNotImplemented`) jusqu'au lot 8 ; l'ultime coûtera 100 de Résonance (`combat.resonance.ultimateCost`). Moteur : [MOTEUR.md](MOTEUR.md).
+Toutes sont parables (aucune n'est imparable). Plus aucune compétence livrée n'est refusée au lancer `skillNotImplemented`. Moteur : [MOTEUR.md](MOTEUR.md#fiches-du-bastion-et-ripostes-de-zone-sous-lot-84).
 
 ## Validation d'un build (`BuildValidator`)
 

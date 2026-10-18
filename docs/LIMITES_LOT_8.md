@@ -1,6 +1,6 @@
-# Limites du lot 8 (sous-lots 8.1 : modificateurs ; 8.2 : renforcements et boucliers ; 8.3 : soutien, provocation, protection)
+# Limites du lot 8 (sous-lots 8.1 : modificateurs ; 8.2 : renforcements et boucliers ; 8.3 : soutien, provocation, protection ; 8.4 : fiches du Bastion)
 
-Ce document complète [LIMITES_LOT_7.md](LIMITES_LOT_7.md) pour les modificateurs du sous-lot 8.1, les renforcements et boucliers du sous-lot 8.2 et le soutien du sous-lot 8.3. Les bornes ci-dessous sont des **enveloppes techniques provisoires** (pré-alpha) ou des **plafonds de jeu** ; les valeurs d'équilibrage restent dans les données et sont provisoires.
+Ce document complète [LIMITES_LOT_7.md](LIMITES_LOT_7.md) pour les modificateurs du sous-lot 8.1, les renforcements et boucliers du sous-lot 8.2, le soutien du sous-lot 8.3 et les fiches du Bastion du sous-lot 8.4. Les bornes ci-dessous sont des **enveloppes techniques provisoires** (pré-alpha) ou des **plafonds de jeu** ; les valeurs d'équilibrage restent dans les données et sont provisoires.
 
 ## Plafonds de jeu
 
@@ -63,3 +63,15 @@ Quand une base des règles sort déjà d'un intervalle de jeu (règles de test),
 - **Rôle `ally`** : tout allié vivant autre que le porteur ; pas encore de filtre « allié lié » (le contenu du sous-lot 8.5 décidera s'il en faut un pour Sentinelle et Serment, avec un seul allié dans les scénarios prévus).
 - **Bornes.** Part transférée ≤ montant (déjà majoré par le précontrôle) ; part après garde ≤ part ; compteurs cumulés bornés par les dégâts du combat. Majorant de file : avec une provocation au catalogue, toutes les cibles ennemies d'un assaillant sont des cibles possibles de ses applications ; une application à cible propre compte toutes ses cibles possibles. Majorant d'une frappe de réaction : une ligne de transfert en plus si le catalogue a une protection.
 - **Non couvert** : protections ou transferts de groupe (une application par protégé), provocation de personnages (refusée par décision A1–A12), retrait d'une protection par dissipation.
+
+## Sous-lot 8.4 : interprétations et limites
+
+- **Contrecoup (X8)** : toutes les Charges détenues sont dépensées au lancement (au moins une, refus `insufficientRampartCharges` sinon, sans rien modifier) ; coefficient 0,6 + 0,4 × Charges dépensées, puis les modificateurs `skill.<id>.coefficient`, écrêtés dans [0, 100]. Les conditionnels `perRampartCharge` de l'impact voient les Charges après la dépense (0). Le précontrôle numérique compte le coefficient au maximum de Charges effectif du personnage.
+- **Provocation, +5 Résonance** : gagnés **au lancement**, même si la provocation est refusée (cible qui n'est pas un assaillant, comme le mannequin) ; champ `resonanceGain`, refusé sur une ultime. Choix plutôt qu'un déclencheur, qui aurait rendu le majorant de file « non garanti » dans tous les scénarios équipant la Provocation.
+- **Bastion absolu** : les « 8 s » valent pour ses trois effets (renforcement de groupe, garde sans entretien, provocation) ; aucune recharge propre (la Résonance, 100 sur 100, la limite) ; la garde sans entretien est réservée au Bastion (altération à part, sur lui seul), la réduction de 30 % vaut pour lui et ses alliés. La provocation n'agit que sur les assaillants (mannequins refusés `notApplicable`).
+- **Barrière d'acier** : bouclier de 15 % des PV max du lanceur sur un allié désigné (le lanceur compris) ; « protège aussi un allié lié » (Lien protecteur) relève du sous-lot 8.5.
+- **Heurt de bouclier** : l'étourdissement de la fiche (1,5 s, puis l'immunité de 3 s du catalogue) est livré ; il change le déroulé des scénarios d'entraînement (une attaque sautée dans `entrainement_garde_parade`, journaux et références figés à nouveau).
+- **Ripostes de zone (L8-D2)** : seuls les effets `strike` sur `allEnemies` comptent (une altération posée sur tous les ennemis n'est pas une riposte) ; la contrainte vaut pour tout porteur (personnage, assaillant, altération). Les essais de chaînes et de capacité du lot 7.3 l'écartent explicitement (`TestCombat.AreaStrikes`).
+- **Rupture de garde** : `combat.guard.breakStatus` limité aux contrôles et modificateurs (revue Codex de la PR #7, troisième relecture, corrigée ici à la demande de Damien).
+- **Non-régression** : le contenu historique du Bastion (compétences des lots 5 à 8.3, fixture `tests/EdS.Data.Tests/Fixtures/content-0.2.0`) rejoue les journaux historiques au gameplay près (`Lot81ReferenceTests`, `Lot72MigrationTests`, `Lot73MigrationTests`, `Correctif731FingerprintTests`) ; le contenu livré a sa propre référence (`reference-0.14.0`).
+- **Non couvert** : talents, intermédiaires et passifs du Bastion (sous-lot 8.5) ; Lien protecteur, Serment du gardien et Présence (8.5) ; les valeurs restent provisoires (équilibrage au 8.7).
