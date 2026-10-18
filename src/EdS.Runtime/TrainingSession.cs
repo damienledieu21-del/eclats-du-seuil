@@ -93,7 +93,7 @@ namespace EdS.Runtime
         public TrainingSession WithBuild(string buildId) => Create(Data, Setup, buildId, PlayerId, Setup.DurationMs);
 
         /// <summary>Nouveau combat depuis le début de la séance (même graine, mêmes adversaires).</summary>
-        public RealtimeCombat Start(ICombatLog? log = null) => new RealtimeCombat(Setup, PlayerId, log);
+        public RealtimeCombat Start() => new RealtimeCombat(Setup, PlayerId);
 
         private static string Describe(ValidationReport report) =>
             string.Join(" ; ", report.Errors.Take(5).Select(e => e.ToString())) + (report.Errors.Count > 5 ? $" (+{report.Errors.Count - 5})" : "");

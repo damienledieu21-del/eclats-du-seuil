@@ -24,8 +24,10 @@ namespace EdS.Data.Json
     /// </summary>
     internal sealed class JsonInput
     {
-        // Sous-lot 9.1 : analyseur strict maison (EdS.Data.Json.Text) : ni virgule finale ni commentaire, profondeur bornée.
-        private static readonly JsonDocumentOptions DocumentOptions = new JsonDocumentOptions { MaxDepth = InputLimits.MaxJsonDepth };
+        // Sous-lot 9.1 : analyseur strict maison (EdS.Data.Json.Text) : ni virgule finale ni commentaire, profondeur et nombre de
+        // valeurs bornés.
+        private static readonly JsonDocumentOptions DocumentOptions =
+            new JsonDocumentOptions { MaxDepth = InputLimits.MaxJsonDepth, MaxValues = InputLimits.MaxJsonValues };
 
         public ValidationReport Report { get; }
         private readonly JsonElement _root;
@@ -142,6 +144,12 @@ namespace EdS.Data.Json
             try
             {
                 parsed = JsonDocument.Parse(utf8, DocumentOptions);
+            }
+            catch (JsonException e) when (e.LimitExceeded)
+            {
+                // Texte bien formé jusque-là mais démesuré : limite de volume, comme un tableau trop long.
+                report.Add("$", ValidationCode.LimitExceeded, e.Message, e.LineNumber + 1);
+                return;
             }
             catch (JsonException e)
             {

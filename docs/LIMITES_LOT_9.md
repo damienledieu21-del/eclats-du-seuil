@@ -12,6 +12,7 @@ Voir [DONNEES.md](DONNEES.md#architecture). L'analyseur JSON maison est comparé
 - **Intentions par tick** : une seule compétence par tick (la dernière demandée avant le tick) ; garde tenue reprise au tick qui suit un lancer, comme le pilote de mesure ; une parade demandée part au tick suivant (le joueur pare « juste avant » l'impact annoncé par la télégraphie).
 - **Soutien en solo** : une compétence de soutien d'un allié (Barrière d'acier) vise le joueur lui-même ; le choix d'un allié viendra avec un scénario à plusieurs personnages.
 - **Retours** : tirés de la différence des compteurs d'un tick à l'autre (pas du journal) : un retour ne dit pas quelle attaque a porté ni de quelle compétence vient un dégât ; au plus 256 retours en attente si le client ne les lit pas.
+- **Journal** : aucun pendant la partie ; celui d'une partie terminée est écrit après coup depuis le combat complété (`WriteLog`), qui se rejoue octet par octet. Une partie abandonnée en cours n'a pas de journal.
 - **Séance d'entraînement** : durée maximale des règles (10 min) ; à la fin, le client relance une séance identique (même graine). Les commandes du scénario sont retirées ; ses adversaires et sa graine sont gardés.
 
 ## Sous-lot 9.3 : projet Unity
