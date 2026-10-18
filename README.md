@@ -13,6 +13,7 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 | `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat déterministe (`Engine` : horloge logique, file d'événements, commandes, garde, parade, ressources, états, assaillant, journal JSON Lines, rejeu, vue et soumission pour un pilote), pilote de mesure (`Pilot`, sous-lot 8.6), RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
 | `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte, scénarios — dépend du domaine seulement |
 | `src/EdS.Data.Json` | netstandard2.1, C# 9 | Lecture des fichiers de données (analyseur JSON strict sans dépendance depuis le sous-lot 9.1), chargement et rejeu — partagé par les outils .NET, Unity et le futur serveur |
+| `src/EdS.Runtime` | netstandard2.1, C# 9 | Pont temps réel pour un client (Unity) : temps réel → ticks, intentions du joueur → commandes, état à afficher et retours, séance d'entraînement (sous-lot 9.2) |
 | `src/EdS.Tools` | net10.0 | Outils .NET : mesures des builds et rapport (`EdS.Tools.Measures`, sous-lot 8.6) |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`, `report`) |
 | `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `v0/builds/bastion.json` (builds de référence, sous-lot 8.5), `schemas/` |
@@ -41,7 +42,8 @@ dotnet test --filter Category=Shield      # renforcements et boucliers (sous-lot
 dotnet test --filter Category=Support     # soutien, provocation, protection, rôle allié (sous-lot 8.3)
 dotnet test --filter Category=Bastion     # fiches du Bastion, Contrecoup, ripostes de zone (8.4) ; talents, passifs, builds (8.5)
 dotnet test --filter Category=Scenario    # compteurs de mesure, pilote, scénarios S1 à S5, commande report (8.6)
-scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
+dotnet test --filter Category=Runtime     # pont temps réel et séance d'entraînement (9.2)
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- validate data/v0/builds/bastion.json
@@ -107,6 +109,8 @@ Sous-lot 8.7 (équilibrage, fin de la PR de gameplay 8b) : décision 8 du 18/10/
 
 Sous-lot 9.1 (données portables, début du prototype Unity) : la lecture des fichiers de données ne dépend plus de System.Text.Json, absent d'Unity : analyseur JSON strict maison (`EdS.Data.Json.Text`), `EdS.Data.Json` en netstandard2.1 / C# 9 ; même arbre que System.Text.Json sur tous les fichiers livrés et figés, sur des valeurs aléatoires et des textes altérés, jamais plus laxiste ; validation, empreintes, journaux et résultats inchangés (les 3 167 tests existants passent sans modification). Les mesures des builds passent dans `EdS.Tools` (net10.0). Décisions du prototype : Unity 6.3 LTS, Windows, projet dans ce dépôt (`unity/`), URP. Détail : [docs/DONNEES.md](docs/DONNEES.md#architecture), [docs/FEUILLE_DE_ROUTE.md](docs/FEUILLE_DE_ROUTE.md#lot-9--prototype-unity-3d).
 
+Sous-lot 9.2 (pont temps réel) : `EdS.Runtime` (netstandard2.1, C# 9, sans dépendance) fait jouer le moteur en temps réel sans le modifier : temps réel découpé en ticks de 50 ms (au plus 5 par image), garde tenue, parade et compétences du joueur soumises au tick suivant, cible, état à afficher (barres, emplacements et recharges, télégraphie des attaques) et retours visuels tirés des compteurs du moteur (`CombatantView.Counters`, seul ajout au moteur, hors journal) ; séance d'entraînement depuis les données et un scénario ordinaire ; le combat complété des commandes soumises se rejoue à l'identique. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#pont-temps-réel-sous-lot-92), [docs/LIMITES_LOT_9.md](docs/LIMITES_LOT_9.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -121,4 +125,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
 - [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
-- [ ] Lot 9 — prototype Unity 3D : sous-lot 9.1 (données portables) en revue ; 9.2 à 9.4 à faire
+- [ ] Lot 9 — prototype Unity 3D : sous-lots 9.1 (données portables) et 9.2 (pont temps réel) en revue ; 9.3 et 9.4 à faire
