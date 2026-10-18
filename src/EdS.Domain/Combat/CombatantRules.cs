@@ -15,11 +15,11 @@ namespace EdS.Domain.Combat
     /// </summary>
     public sealed class CombatantRules
     {
-        /// <summary>Plafond de la réduction de garde (B1) ; les règles de base y sont tenues par <see cref="CombatRules.Validate"/>.</summary>
-        public static readonly Fixed MaxGuardDamageReduction = CombatRules.MaxGuardDamageReduction;
-
-        /// <summary>Plafond de la réduction totale des dégâts subis (B2), avant l'absorption par un bouclier (8.2).</summary>
-        public static readonly Fixed MaxTotalDamageReduction = CombatRules.MaxTotalDamageReduction;
+        // Plafonds de la réduction de garde (B1, combat.guard.maxDamageReduction) et de la réduction totale des dégâts subis (B2,
+        // combat.damageTaken.maxReduction, avant l'absorption par un bouclier) : paramètres des règles depuis la décision du 18/10/2026,
+        // communs à tous les combattants (identifiés par l'empreinte des règles, pas répétés au journal).
+        private readonly Fixed _maxGuardReduction;
+        private readonly Fixed _maxTotalReduction;
 
         /// <summary>Fenêtre de parade maximale atteinte par modificateur (500 ms, ramenée au multiple du tick inférieur).</summary>
         public const long MaxParryWindowMs = 500;
@@ -63,7 +63,9 @@ namespace EdS.Domain.Combat
         {
             Modifiers = m;
             _tickMs = rules.TickMilliseconds;
-            GuardDamageReduction = Clamp(rules.GuardDamageReduction, m.Sum(ModifierField.GuardDamageReduction), Fixed.Zero, MaxGuardDamageReduction);
+            _maxGuardReduction = rules.MaxGuardDamageReduction;
+            _maxTotalReduction = rules.MaxTotalDamageReduction;
+            GuardDamageReduction = Clamp(rules.GuardDamageReduction, m.Sum(ModifierField.GuardDamageReduction), Fixed.Zero, _maxGuardReduction);
             GuardUpkeepPerSecond = Clamp(Fixed.FromInt(rules.GuardUpkeepPerSecond), m.Sum(ModifierField.GuardUpkeepPerSecond), Fixed.Zero, MaxInt);
             GuardCostPerBlock = Whole(Clamp(Fixed.FromInt(rules.GuardCostPerBlock), m.Sum(ModifierField.GuardCostPerBlock), Fixed.Zero, MaxInt));
             GuardNoUpkeepBreak = m.Flag(ModifierField.GuardNoUpkeepBreak);
@@ -74,7 +76,7 @@ namespace EdS.Domain.Combat
             // 0 Charge max) : elles sont gardées et journalisées telles quelles. « Ramenée à » : jamais au-dessus de la réduction de
             // garde effective (0 d'endurance ne vaut pas mieux qu'une garde payée).
             GuardReductionAtZeroEndurance = !GuardNoUpkeepBreak ? Fixed.Zero : Fixed.Min(GuardDamageReduction,
-                Clamp(Fixed.Zero, m.Sum(ModifierField.GuardReductionAtZeroEndurance), Fixed.Zero, MaxGuardDamageReduction));
+                Clamp(Fixed.Zero, m.Sum(ModifierField.GuardReductionAtZeroEndurance), Fixed.Zero, _maxGuardReduction));
             GuardBreakShortenPerChargeMs = GuardNoUpkeepBreak ? 0
                 : Whole(Clamp(Fixed.Zero, m.Sum(ModifierField.GuardBreakShortenPerCharge), Fixed.Zero, MaxDuration));
             long windowCap = MaxParryWindowMs - MaxParryWindowMs % _tickMs;
@@ -158,15 +160,22 @@ namespace EdS.Domain.Combat
         }
 
         /// <summary>
-        /// Réduction totale d'un impact direct (B2, multiplicative) : r = min(85 %, 1 − (1 − d)(1 + v)), d = réduction de la défense
-        /// (garde ≤ 75 %, ou 0), v = modificateur de dégâts subis dans [−1, 0]. Une seule multiplication arrondie. v = 0 donne r = d
-        /// exactement. La parade (hors plafond) n'y passe pas : sur un impact paré, la réduction est celle de la parade.
+        /// Réduction totale d'un impact direct (B2, multiplicative) avec le plafond des règles du combat
+        /// (<see cref="CombatRules.MaxTotalDamageReduction"/>).
         /// </summary>
-        public static Fixed TotalReduction(Fixed defense, Fixed damageTaken)
+        public Fixed TotalReduction(Fixed defense, Fixed damageTaken) => TotalReduction(defense, damageTaken, _maxTotalReduction);
+
+        /// <summary>
+        /// Réduction totale d'un impact direct (B2, multiplicative) : r = min(plafond, 1 − (1 − d)(1 + v)), d = réduction de la défense
+        /// (garde, ou 0), v = modificateur de dégâts subis dans [−1, 0], plafond = <paramref name="maxTotal"/> (85 % dans les règles
+        /// livrées). Une seule multiplication arrondie. v = 0 donne r = d exactement, et le plafond ne descend jamais sous d. La parade
+        /// (hors plafond) n'y passe pas : sur un impact paré, la réduction est celle de la parade.
+        /// </summary>
+        public static Fixed TotalReduction(Fixed defense, Fixed damageTaken, Fixed maxTotal)
         {
             if (damageTaken == Fixed.Zero) return defense;
             Fixed reduction = Fixed.One - (Fixed.One - defense) * (Fixed.One + damageTaken);
-            return Fixed.Min(reduction, Fixed.Max(MaxTotalDamageReduction, defense));
+            return Fixed.Min(reduction, Fixed.Max(maxTotal, defense));
         }
     }
 }

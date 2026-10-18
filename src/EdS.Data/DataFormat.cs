@@ -13,17 +13,19 @@ namespace EdS.Data
     /// suppression des champs de Fragilité et de durée de rupture du bloc <c>combat</c> ; <c>combat.applies</c> dans les classes ;
     /// 5 (règles) et 4 (classes) = lot 7.3, déclencheurs : <c>combat.limits.maxTriggerDepth</c> et <c>statuses[].triggers</c> dans
     /// les règles, <c>talents[].triggers</c> et <c>skills[].triggers</c> dans les classes ; 5 (classes) = sous-lot 8.1,
-    /// modificateurs : <c>talents[].modifiers</c> et <c>skills[].modifiers</c> (passives seulement). Règles inchangées (5).</para>
+    /// modificateurs : <c>talents[].modifiers</c> et <c>skills[].modifiers</c> (passives seulement). Règles inchangées (5) ;
+    /// 6 (règles) = lot 8 (décision du 18/10/2026 puis sous-lot 8.2) : plafonds <c>combat.guard.maxDamageReduction</c> et
+    /// <c>combat.damageTaken.maxReduction</c>, auparavant constantes du moteur.</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 5;
+        public const int RulesSchemaVersion = 6;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
         public const int ClassSchemaVersion = 5;
 
         /// <summary>Version de contenu des règles livrées : provisoires, non équilibrées.</summary>
-        public const string ProvisionalRulesContentVersion = "0.5.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.6.0-provisoire";
     }
 }

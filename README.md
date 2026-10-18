@@ -80,6 +80,8 @@ Correctif 7.3.1 (audit Astra de la PR #2) : la réservation crédite le retrait 
 
 Sous-lot 8.1 (modificateurs, moteur seulement) : modificateurs permanents (X1) et conditionnels (X2 : `whileGuarding`, `perRampartCharge`, `perResonanceStep`) sur les talents et les compétences passives, en données (schéma de classe 5), validés strictement avec chemins ; règles effectives par combattant partagées par la validation et le moteur ; réduction de garde plafonnée à 75 % et réduction totale des dégâts subis à 85 % (avant boucliers) ; précontrôle numérique et majorant de file sur les valeurs effectives ; valeurs effectives au journal (`rules` sur `combatant`). Aucun contenu du Bastion n'est encore modifié : gameplay des cinq scénarios livrés inchangé. Moteur 0.10.0, journal au format 5. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#modificateurs-sous-lot-81), [docs/DONNEES.md](docs/DONNEES.md#modificateurs-sous-lot-81), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md).
 
+Décisions du 18/10/2026 (questions du rapport 8.1) : plafonds de réduction dans `rules.json` (`combat.guard.maxDamageReduction` 0,75, `combat.damageTaken.maxReduction` 0,85 ; schéma de règles 6, contenu 0.6.0) ; un `perRank` de déclencheur sur un talent à un seul rang est refusé ; Rempart éternel sans raccourci de rupture (contenu 8.5) ; blocage à coût nul inchangé. Moteur 0.11.0 (journal identique hors en-tête).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement

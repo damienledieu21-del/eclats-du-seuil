@@ -42,7 +42,7 @@ public class Lot81ReferenceTests
         Assert.Equal(before.Length, after.Count);
         JsonObject oldHeader = JsonNode.Parse(before[0])!.AsObject(), newHeader = JsonNode.Parse(after[0])!.AsObject();
         Assert.Equal((4, "0.9.1"), (oldHeader["formatVersion"]!.GetValue<int>(), oldHeader["engineVersion"]!.GetValue<string>()));
-        Assert.Equal((5, "0.10.0"), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
+        Assert.Equal((CombatEngine.LogFormatVersion, CombatEngine.Version), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
         Assert.Equal(Lot8LogFields.StableHeader(before[0]), Lot8LogFields.StableHeader(after[0]));
         string baseRules = Lot8LogFields.BaseRulesJson(ShippedData.Rules.Combat);
         for (int i = 1; i < before.Length; i++)

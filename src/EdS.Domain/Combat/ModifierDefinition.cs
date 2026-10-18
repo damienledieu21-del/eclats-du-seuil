@@ -88,8 +88,10 @@ namespace EdS.Domain.Combat
 
         /// <summary>
         /// Valeur absolue maximale d'une valeur déclarée, à chaque rang possible (rang 1 et rang maximal). Pour une règle à plafond
-        /// absolu (réduction de garde 0,75, Charges max 10, fenêtre de parade 500 ms), la largeur de ce plafond : un modificateur seul
-        /// qui le dépasserait est une erreur de données ; seules les combinaisons de sources sont écrêtées. Ailleurs, une enveloppe
+        /// absolu du moteur (Charges max 10, fenêtre de parade 500 ms), la largeur de ce plafond : un modificateur seul qui le
+        /// dépasserait est une erreur de données ; seules les combinaisons de sources sont écrêtées. Les deux clés de réduction de garde
+        /// ont ici la borne d'une fraction (1) : leur plafond est un paramètre des règles (<c>combat.guard.maxDamageReduction</c>,
+        /// décision du 18/10/2026), vérifié au combat par <see cref="ModifierDefinition.ValidateCaps"/>. Ailleurs, une enveloppe
         /// technique provisoire.
         /// </summary>
         public Fixed MaxMagnitude { get; }
@@ -153,11 +155,11 @@ namespace EdS.Domain.Combat
         /// <summary>Spécifications, indexées par <see cref="ModifierField"/>.</summary>
         public static IReadOnlyList<ModifierSpec> Specs { get; } = Frozen.List(new[]
         {
-            new ModifierSpec(ModifierField.GuardDamageReduction, "guard.damageReduction", ModifierUnit.Decimal, CombatRules.MaxGuardDamageReduction),
+            new ModifierSpec(ModifierField.GuardDamageReduction, "guard.damageReduction", ModifierUnit.Decimal, Fixed.One),
             new ModifierSpec(ModifierField.GuardUpkeepPerSecond, "guard.upkeepPerSecond", ModifierUnit.Decimal, Million),
             new ModifierSpec(ModifierField.GuardCostPerBlock, "guard.costPerBlock", ModifierUnit.Integer, Million),
             new ModifierSpec(ModifierField.GuardNoUpkeepBreak, "guard.noUpkeepBreak", ModifierUnit.Flag, Fixed.One),
-            new ModifierSpec(ModifierField.GuardReductionAtZeroEndurance, "guard.reductionAtZeroEndurance", ModifierUnit.Decimal, CombatRules.MaxGuardDamageReduction),
+            new ModifierSpec(ModifierField.GuardReductionAtZeroEndurance, "guard.reductionAtZeroEndurance", ModifierUnit.Decimal, Fixed.One),
             new ModifierSpec(ModifierField.GuardBreakShortenPerCharge, "guard.breakShortenPerCharge", ModifierUnit.Milliseconds, Ms),
             new ModifierSpec(ModifierField.ParryWindowMs, "parry.windowMs", ModifierUnit.Milliseconds, Fixed.FromInt(CombatantRules.MaxParryWindowMs)),
             new ModifierSpec(ModifierField.ParryFailureRecoveryMs, "parry.failureRecoveryMs", ModifierUnit.Milliseconds, Ms),
@@ -386,6 +388,42 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation(spec.Unit == ModifierUnit.Milliseconds
                     ? "durée entière en millisecondes attendue (base et perRank)."
                     : "quantité entière attendue (base et perRank).", p));
+        }
+
+        /// <summary>
+        /// Décision du 18/10/2026 : les plafonds de réduction sont des paramètres des règles, connus seulement au combat. Comme une règle à
+        /// plafond absolu, une valeur déclarée de <c>guard.damageReduction</c> ou <c>guard.reductionAtZeroEndurance</c> est bornée à
+        /// chaque rang possible (rang 1 et rang maximal) par la largeur du plafond des règles (<paramref name="guardReductionCap"/>) : un
+        /// modificateur seul qui le dépasse est une erreur de données ; seules les combinaisons de sources sont écrêtées. Appelé après
+        /// <see cref="ValidateList"/>, sur une liste qu'elle n'a pas refusée (une valeur déjà hors de [−1, 1] n'est pas signalée deux fois).
+        /// </summary>
+        public static void ValidateCaps(IReadOnlyList<ModifierDefinition> modifiers, string path, int maxRank, bool ranked, Fixed guardReductionCap,
+            List<RuleViolation> errors)
+        {
+            int topRank = Math.Max(1, Math.Min(maxRank, TalentDefinition.MaxRankLimit));
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                ModifierDefinition m = modifiers[i];
+                if (!ModifierKeys.TryParse(m.Key, out ModifierKey key)) continue;
+                if (key.Field != ModifierField.GuardDamageReduction && key.Field != ModifierField.GuardReductionAtZeroEndurance) continue;
+                // Mêmes rangs examinés que ValidateValue : rang maximal déclaré, ou rang 2 si un perRank existe sans rang valide.
+                int rank = !ranked ? 1 : maxRank >= 1 ? topRank : m.Add.PerRank != Fixed.Zero ? 2 : 1;
+                Fixed low, high;
+                try
+                {
+                    low = m.Add.At(1);
+                    high = m.Add.At(rank);
+                }
+                catch (OverflowException)
+                {
+                    continue;   // déjà signalé par ValidateList
+                }
+                Fixed max = guardReductionCap;
+                if (low < -max || low > max || high < -max || high > max)
+                    errors.Add(new RuleViolation(
+                        $"valeur hors de [{-max}, {max}] à un rang possible (1 à {rank}) : plafond de la réduction de garde des règles (combat.guard.maxDamageReduction).",
+                        $"{path}[{i}].add"));
+            }
         }
 
         /// <summary>

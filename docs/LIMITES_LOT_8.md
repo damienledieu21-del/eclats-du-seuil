@@ -6,13 +6,13 @@ Ce document complète [LIMITES_LOT_7.md](LIMITES_LOT_7.md) pour les modificateur
 
 | Plafond | Valeur | Où | Effet |
 |---|---|---|---|
-| Réduction de garde (B1) | 75 % | `CombatRules.MaxGuardDamageReduction` | base de `rules.json` refusée au-delà ; valeur effective écrêtée |
-| Réduction totale des dégâts subis (B2) | 85 % | `CombatRules.MaxTotalDamageReduction` | garde × `damageTaken`, avant l'absorption par un bouclier ; la parade (90 %) reste hors plafond |
+| Réduction de garde (B1) | 75 % | `combat.guard.maxDamageReduction` (`CombatRules.MaxGuardDamageReduction`) | base de `rules.json` refusée au-delà ; valeur déclarée d'un modificateur refusée au-delà au combat ; valeur effective écrêtée |
+| Réduction totale des dégâts subis (B2) | 85 % | `combat.damageTaken.maxReduction` (`CombatRules.MaxTotalDamageReduction`) | garde × `damageTaken`, avant l'absorption par un bouclier ; la parade (90 %) reste hors plafond |
 | Fenêtre de parade | ⌊500 / tick⌋ × tick | `CombatantRules.MaxParryWindowMs` | valeur effective écrêtée, plancher 1 tick |
 | Charges de rempart max | 10 | `CombatantRules.MaxRampartCharges` | valeur effective écrêtée |
 | PV max | −90 % à +1 000 % | `CombatantRules.MinMaxHealthPercent`, `MaxMaxHealthPercent` | pourcentage résultant écrêté |
 
-Quand une base des règles sort déjà d'un intervalle de jeu (règles de test), l'intervalle est élargi jusqu'à elle : sans modificateur, la valeur effective est toujours la base. Les deux plafonds B1 et B2 sont des constantes du moteur en 8.1 (schéma de règles 5 inchangé) ; pour que l'équilibrage du lot 8.7 reste « données seulement », ils deviendront des paramètres de `rules.json` à la prochaine version du schéma de règles.
+Quand une base des règles sort déjà d'un intervalle de jeu (règles de test), l'intervalle est élargi jusqu'à elle : sans modificateur, la valeur effective est toujours la base. **Décision du 18/10/2026** : les deux plafonds B1 et B2 sont des paramètres de `rules.json` (schéma de règles 6, valeurs 0,75 et 0,85, chacun dans [0, 1]), pour que l'équilibrage du lot 8.7 reste « données seulement ». La classe seule borne une valeur déclarée de réduction de garde à 1 (fraction) ; le plafond des règles, connu au combat, la borne ensuite (`ModifierDefinition.ValidateCaps`, erreur rattachée à `combatants[i].class`, chemin interne dans le message). Ils ne sont pas répétés au journal : l'empreinte des règles les identifie.
 
 ## Écrêter ou refuser
 

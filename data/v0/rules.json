@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "kind": "rules",
-  "contentVersion": "0.5.0-provisoire",
+  "contentVersion": "0.6.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -81,9 +81,13 @@
       },
       "guard": {
         "damageReduction": 0.6,
+        "maxDamageReduction": 0.75,
         "upkeepPerSecond": 2,
         "costPerBlock": 10,
         "breakStatus": "guardBreak"
+      },
+      "damageTaken": {
+        "maxReduction": 0.85
       },
       "parry": {
         "windowMs": 150,

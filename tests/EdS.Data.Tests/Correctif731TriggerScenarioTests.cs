@@ -15,7 +15,7 @@ namespace EdS.Data.Tests;
 /// supprimé à la deuxième occurrence dans une chaîne), brûlure posée par réaction à chaque saignement (2, DOT de réaction) et
 /// frappe sur chaque tick de DOT (3, reportée au tick suivant car la phase de résolution est passée). Les assertions métier
 /// ci-dessous ne dépendent pas de l'empreinte du journal ; la comparaison octet par octet se fait contre le journal figé
-/// <c>Fixtures/reference-0.10.0/entrainement_declencheurs.jsonl</c> (sous-lot 8.1 : moteur 0.10.0, format 5 ; la référence 0.9.1 reste
+/// <c>Fixtures/reference-0.11.0/entrainement_declencheurs.jsonl</c> (lot 8 : moteur 0.11.0 ; les références 0.9.1 et 0.10.0 restent
 /// figée, refusée au rejeu et reproduite au gameplay près par Lot81ReferenceTests). Un assaillant n'a pas de puissance : ses frappes et sa
 /// brûlure de réaction infligent 0 (le lot 8 portera des déclencheurs sur le Bastion).
 /// </summary>
@@ -30,7 +30,7 @@ public class Correctif731TriggerScenarioTests
     private const string Brulure = "assailant.assaillant/2@assaillant#0";
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.10.0", Name + ".jsonl");
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.11.0", Name + ".jsonl");
 
     private static string Fixture091Path => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.9.1", Name + ".jsonl");
 

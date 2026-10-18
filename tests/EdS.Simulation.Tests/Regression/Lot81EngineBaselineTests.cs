@@ -33,7 +33,7 @@ public class Lot81EngineBaselineTests
         IReadOnlyList<string> after = Run(setup).Log.Lines;
         Assert.Equal(before.Length, after.Count);
         Assert.Contains("\"formatVersion\":4,\"engineVersion\":\"0.9.1\"", before[0]);
-        Assert.Contains("\"formatVersion\":5,\"engineVersion\":\"0.10.0\"", after[0]);
+        Assert.Contains($"\"formatVersion\":{CombatEngine.LogFormatVersion},\"engineVersion\":\"{CombatEngine.Version}\"", after[0]);
         Assert.Equal(Lot8LogFields.StableHeader(before[0]), Lot8LogFields.StableHeader(after[0]));
         string baseRules = Lot8LogFields.BaseRulesJson(setup.Combat);
         for (int i = 1; i < before.Length; i++)

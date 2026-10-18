@@ -69,11 +69,11 @@ Un modificateur change une règle de combat ou une statistique **du porteur** : 
 
 | Clé | Nature | Valeur déclarée (rang 1 et rang max) | Valeur résultante |
 |---|---|---|---|
-| `guard.damageReduction` | fraction | ±0,75 | [0 ; 0,75] |
+| `guard.damageReduction` | fraction | ±1 (classe) ; ±plafond des règles (0,75), vérifié au combat | [0 ; `combat.guard.maxDamageReduction`] |
 | `guard.upkeepPerSecond` | décimal par seconde | ±10⁶ | [0 ; 2³¹ − 1] |
 | `guard.costPerBlock` | entier | ±10⁶ | [0 ; 2³¹ − 1] |
 | `guard.noUpkeepBreak` | drapeau, `add` = 1 exactement | — | — |
-| `guard.reductionAtZeroEndurance` | fraction | ±0,75 | [0 ; réduction de garde effective] |
+| `guard.reductionAtZeroEndurance` | fraction | ±1 (classe) ; ±plafond des règles (0,75), vérifié au combat | [0 ; réduction de garde effective] |
 | `guard.breakShortenPerCharge` | ms | ±86 400 000 | [0 ; 24 h] |
 | `parry.windowMs` | ms | ±500 | [1 tick ; ⌊500 / tick⌋ × tick] |
 | `parry.failureRecoveryMs` | ms | ±86 400 000 | [0 ; 24 h] |
@@ -125,13 +125,13 @@ sha256:293ef0ea83036e903d5d50699a45c8c9d5dbf7a94eb106b42961380506b9c5ad
 
 **Contrat canonique 2 (correctif 7.3.1, A73-M02).** Une ligne par champ : `chemin=valeur` pour une valeur présente (barre oblique inverse, retour à la ligne et retour chariot échappés), `chemin?` pour un champ facultatif absent, et pour une liste `chemin.count=n` puis `chemin[i]=élément`. Aucune valeur textuelle ne sert plus de sentinelle : au contrat 1 (lots 1 à 7.3), un champ absent s'écrivait `none` (ou une chaîne vide dans les classes) et une liste était jointe par des virgules, si bien qu'un `filter.status` ou un `grantsOnExpiry` absent avait la même empreinte que la valeur `none`, identifiant d'altération valide (deux collisions démontrées par l'audit). Le texte haché commence par `eds-rules` ou `eds-class` puis `canonical=2`. Écrit par `CanonicalWriter` (`EdS.Data`) pour les règles, les altérations, les déclencheurs et les classes. **Compatibilité** : toutes les empreintes changent ; un journal antérieur (moteur 0.9.0, contrat 1) est refusé au rejeu avant toute simulation (moteur et empreintes différents), sans migration ; les quatre journaux de référence 0.9.0, figés dans `tests/EdS.Data.Tests/Fixtures/logs-0.9.0`, ne diffèrent des actuels que par `engineVersion` et les empreintes de l'en-tête.
 
-(Elle a changé au correctif 6.1 avec la version de schéma 2, au lot 7.1 avec la version 3 et les cinq nouvelles limites, puis au lot 7.2 avec la version 4, la constante de résistance, `breakStatus` et les altérations, écrites dans l'ordre du fichier avec chaque champ facultatif à sa valeur neutre ; au correctif 7.2, l’étourdissement passant en `ignore` ; au lot 7.3 avec la version 5 et `combat.limits.maxTriggerDepth` ; enfin au correctif 7.3.1 avec le contrat canonique 2. Une altération sans déclencheur n’ajoute rien au texte canonique.)
+(Elle a changé au correctif 6.1 avec la version de schéma 2, au lot 7.1 avec la version 3 et les cinq nouvelles limites, puis au lot 7.2 avec la version 4, la constante de résistance, `breakStatus` et les altérations, écrites dans l'ordre du fichier avec chaque champ facultatif à sa valeur neutre ; au correctif 7.2, l’étourdissement passant en `ignore` ; au lot 7.3 avec la version 5 et `combat.limits.maxTriggerDepth` ; au correctif 7.3.1 avec le contrat canonique 2 ; enfin au lot 8 avec la version 6 et les plafonds `combat.guard.maxDamageReduction` et `combat.damageTaken.maxReduction`. Une altération sans déclencheur n’ajoute rien au texte canonique.)
 
 ## Versions de format
 
 | Fichier | `schemaVersion` | Historique |
 |---|---|---|
-| `rules.json` | 5 | 1 : lots 3 à 5 ; 2 : blocs `combat.guard`, `parry`, `rampartCharges`, `resonance`, `states` du lot 6 ; 3 : `combat.limits.maxCombatants`, `maxCommands`, `maxCommandsPerActorPerTick`, `maxPendingEvents`, `maxWorkPerTick` (lot 7.1) ; 4 : `statuses`, `stats.statusResistanceConstant`, `combat.guard.breakStatus` à la place de `breakDurationMs`, `combat.states` supprimé (lot 7.2) ; 5 : `combat.limits.maxTriggerDepth`, `statuses[].triggers` facultatif (lot 7.3) |
+| `rules.json` | 6 | 1 : lots 3 à 5 ; 2 : blocs `combat.guard`, `parry`, `rampartCharges`, `resonance`, `states` du lot 6 ; 3 : `combat.limits.maxCombatants`, `maxCommands`, `maxCommandsPerActorPerTick`, `maxPendingEvents`, `maxWorkPerTick` (lot 7.1) ; 4 : `statuses`, `stats.statusResistanceConstant`, `combat.guard.breakStatus` à la place de `breakDurationMs`, `combat.states` supprimé (lot 7.2) ; 5 : `combat.limits.maxTriggerDepth`, `statuses[].triggers` facultatif (lot 7.3) ; 6 : `combat.guard.maxDamageReduction` (0,75) et `combat.damageTaken.maxReduction` (0,85), plafonds de réduction auparavant constantes du moteur (lot 8, décision du 18/10/2026) |
 | classes | 5 | 1 : lots 4 et 5 ; 2 : `unblockable`, `rampartChargeCost`, `rampartChargeGain` obligatoires dans le bloc `combat` ; 3 : `applies` obligatoire dans le bloc `combat` (lot 7.2) ; 4 : `triggers` facultatif sur les talents et les compétences (lot 7.3) ; 5 : `modifiers` facultatif sur les talents et les compétences passives (sous-lot 8.1) |
 | scénarios | 2 | 1 : lots 5 et 6 (assaillant, `action`) ; 2 : `applies` à la place de `appliesFragility`, `statusResistance` facultatif des mannequins et assaillants (lot 7.2) |
 | journal (`formatVersion`) | 5 | 2 : `instance` et `generation` sur les états, `stateRemoved` ; 3 : `category` et `source` sur les états, `applies`, `stateBlocked`, `dotDamage` (lot 7.2) ; 4 : provenance des effets, `eid`, `cause`, `root`, `depth`, `trigger` (lot 7.3, voir MOTEUR.md) ; 5 : `statusResistance` et `rules` (règles effectives) sur `combatant`, `rampartChargesSpent` sur `guardBroken` (sous-lot 8.1) |

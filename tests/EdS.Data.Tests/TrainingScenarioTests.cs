@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "235d64c22fa73f20a4625adf45a8d25d4124c3314f59d0ead54d297505f8ccf9")]
-    [InlineData("entrainement_rupture", "975aaddf4bf606c4cb4e46c229a48a4628d9d9a2183822481dec507ea094cfbe")]
-    [InlineData("entrainement_alterations", "7c398c48b0e21a7c355715c9c50910c7c40366df8a73d35897ad2949f716eb34")]
-    [InlineData("entrainement_declencheurs", "0e7df8061d906ca94cdcb5c36a42c5fa6406b1e807f393a0e2b26fba5707cffa")]
+    [InlineData("entrainement_garde_parade", "1be270c1e8cd791ad82206cd9e599e49f3eeaa1c53c75d674ebbcd2e8f3846af")]
+    [InlineData("entrainement_rupture", "cc8b98d2e755fea202e2a9babd6ff802eb83faebb81d594e99123da72b32cdf8")]
+    [InlineData("entrainement_alterations", "8d624dba2aa27d39bfb8977147e163648b92077cbf5018914a98c737fbd58ecf")]
+    [InlineData("entrainement_declencheurs", "dfc1474ae5538e67f0f1394d6452518d07c2242f5dc13ddd00b6511f0a40c95f")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -104,6 +104,8 @@ public class TrainingScenarioTests
         // Sous-lot 8.1 : moteur 0.10.0, format 5 (statusResistance et rules sur combatant, rampartChargesSpent sur guardBroken) ;
         // journaux 0.9.1 figés dans Fixtures/logs-0.9.1 et reproduits au gameplay près (Lot81ReferenceTests) ; référence du scénario à
         // déclencheurs dans Fixtures/reference-0.10.0.
+        // Lot 8 (décision du 18/10/2026) : moteur 0.11.0, règles en schéma 6 (plafonds de réduction), contenu 0.6.0 : seul l'en-tête
+        // change ; référence du scénario à déclencheurs dans Fixtures/reference-0.11.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

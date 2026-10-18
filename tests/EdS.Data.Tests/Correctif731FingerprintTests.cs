@@ -188,12 +188,14 @@ public class Correctif731FingerprintTests
             Assert.True(h.Remove("formatVersion"));
             JsonObject data = h["data"]!.AsObject();
             data["rules"]!.AsObject().Remove("fingerprint");
+            // Décision du 18/10/2026 : contenu des règles 0.6.0 (schéma 6, plafonds de réduction), identité des données seulement.
+            data["rules"]!.AsObject().Remove("contentVersion");
             foreach (JsonNode? c in data["classes"]!.AsArray()) c!.AsObject().Remove("fingerprint");
             return h;
         }
         Assert.Equal(Strip(old[0]).ToJsonString(), Strip(log.Lines[0]).ToJsonString());
         Assert.Contains("\"engineVersion\":\"0.9.0\"", old[0]);
-        Assert.Contains("\"engineVersion\":\"0.10.0\"", log.Lines[0]);
+        Assert.Contains($"\"engineVersion\":\"{CombatEngine.Version}\"", log.Lines[0]);
     }
 
     [Fact]

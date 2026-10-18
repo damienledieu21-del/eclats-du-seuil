@@ -50,11 +50,11 @@ internal static class Lot81Classe
 
     public static readonly IReadOnlyDictionary<ModifierField, Ligne> Conception = new Dictionary<ModifierField, Ligne>
     {
-        [ModifierField.GuardDamageReduction] = new("guard.damageReduction", "guard.damageReduction", ModifierUnit.Decimal, "0.75", false),        // D10
+        [ModifierField.GuardDamageReduction] = new("guard.damageReduction", "guard.damageReduction", ModifierUnit.Decimal, "1", false),           // D10 ; décision du 18/10/2026 : plafond des règles vérifié au combat (Lot81RulesCapTests)
         [ModifierField.GuardUpkeepPerSecond] = new("guard.upkeepPerSecond", "guard.upkeepPerSecond", ModifierUnit.Decimal, "1000000", false),
         [ModifierField.GuardCostPerBlock] = new("guard.costPerBlock", "guard.costPerBlock", ModifierUnit.Integer, "1000000", false),
         [ModifierField.GuardNoUpkeepBreak] = new("guard.noUpkeepBreak", "guard.noUpkeepBreak", ModifierUnit.Flag, "1", false),
-        [ModifierField.GuardReductionAtZeroEndurance] = new("guard.reductionAtZeroEndurance", "guard.reductionAtZeroEndurance", ModifierUnit.Decimal, "0.75", false),   // D10
+        [ModifierField.GuardReductionAtZeroEndurance] = new("guard.reductionAtZeroEndurance", "guard.reductionAtZeroEndurance", ModifierUnit.Decimal, "1", false),      // idem
         [ModifierField.GuardBreakShortenPerCharge] = new("guard.breakShortenPerCharge", "guard.breakShortenPerCharge", ModifierUnit.Milliseconds, Jour, false),
         [ModifierField.ParryWindowMs] = new("parry.windowMs", "parry.windowMs", ModifierUnit.Milliseconds, "500", false),                       // D10
         [ModifierField.ParryFailureRecoveryMs] = new("parry.failureRecoveryMs", "parry.failureRecoveryMs", ModifierUnit.Milliseconds, Jour, false),
@@ -257,11 +257,12 @@ public class Lot81ModifierValidationTests
     [Fact]
     public void Talent_au_rang_limite_100()
     {
-        // guard.damageReduction (N = 0,75, D10) : base + 99 × perRank.
-        Admis(SurTalent(100, M("guard.damageReduction", "0.0075", "0.0075")));                                         // 0,0075 × 100 = 0,75
-        Admis(SurTalent(100, M("guard.damageReduction", "0.0074", "0.0075")));                                         // 0,7499
-        Refus(SurTalent(100, M("guard.damageReduction", "0.0076", "0.0075")), Invalide, AddAlpha);                    // 0,7501
-        Refus(SurTalent(100, M("guard.damageReduction", "-0.0076", "-0.0075")), Invalide, AddAlpha);                  // −0,7501
+        // guard.damageReduction (N = 1 pour la classe seule depuis la décision du 18/10/2026 ; le plafond des règles, 0,75, est vérifié
+        // au combat) : base + 99 × perRank.
+        Admis(SurTalent(100, M("guard.damageReduction", "0.01", "0.01")));                                             // 0,01 × 100 = 1
+        Admis(SurTalent(100, M("guard.damageReduction", "0.0099", "0.01")));                                           // 0,9999
+        Refus(SurTalent(100, M("guard.damageReduction", "0.0101", "0.01")), Invalide, AddAlpha);                      // 1,0001
+        Refus(SurTalent(100, M("guard.damageReduction", "-0.0101", "-0.01")), Invalide, AddAlpha);                    // −1,0001
         // rampartCharges.max (N = 10, D10), entier : au rang 100, tout perRank non nul (au moins 1) ajoute au moins 99.
         Admis(SurTalent(100, M("rampartCharges.max", "10")));
         Refus(SurTalent(100, M("rampartCharges.max", "0", "1")), Invalide, AddAlpha);                                 // 0 + 99 × 1 = 99
@@ -821,16 +822,16 @@ public class Lot81ModifierImmutabilityTests
     public void Liste_source_modifiee_apres_coup_sans_effet_sur_la_validation()
     {
         // Source valide, rendue invalide après la construction : la classe reste valide.
-        var alpha = new List<ModifierDefinition> { M("guard.damageReduction", "0.75") };
+        var alpha = new List<ModifierDefinition> { M("guard.damageReduction", "1") };
         var passif = new List<ModifierDefinition> { M("parry.windowMs", "500") };
         ClassDefinition valide = Classe(alpha: alpha, passif: passif);
-        alpha[0] = M("guard.damageReduction", "0.7501");
+        alpha[0] = M("guard.damageReduction", "1.0001");
         passif.Add(M("parry.windowMs", "500"));
         Admis(valide.Validate(Regles));
         // Source invalide, corrigée après la construction : la classe reste invalide, avec la même erreur.
-        var fautive = new List<ModifierDefinition> { M("guard.damageReduction", "0.7501") };
+        var fautive = new List<ModifierDefinition> { M("guard.damageReduction", "1.0001") };
         ClassDefinition invalide = Classe(alpha: fautive);
-        fautive[0] = M("guard.damageReduction", "0.75");
+        fautive[0] = M("guard.damageReduction", "1");
         Refus(invalide.Validate(Regles), RuleViolationKind.InvalidValue, CheminAlpha + "[0].add");
     }
 
@@ -854,7 +855,7 @@ public class Lot81ModifierImmutabilityTests
 
     /// <summary>Classe à cinq erreurs connues, reconstruite à l'identique à chaque appel.</summary>
     private static ClassDefinition Fautive() => Classe(
-        alpha: new[] { M("guard.damageReduction", "0.8"), M("inconnue", "1"), M("guard.damageReduction", "0.1") },
+        alpha: new[] { M("guard.damageReduction", "1.1"), M("inconnue", "1"), M("guard.damageReduction", "0.1") },
         frappe: new[] { M("damageDealt", "0.1") },
         passif: new[] { M("damageTaken", "0.01") });
 
@@ -870,7 +871,7 @@ public class Lot81ModifierImmutabilityTests
         Assert.Equal(Texte(premiere), Texte(Fautive().Validate(Regles)));
         Assert.Equal(new[]
         {
-            (RuleViolationKind.InvalidValue, CheminAlpha + "[0].add"),           // 0,8 > 0,75
+            (RuleViolationKind.InvalidValue, CheminAlpha + "[0].add"),           // 1,1 > 1 (fraction)
             (RuleViolationKind.UnknownReference, CheminAlpha + "[1].key"),
             (RuleViolationKind.DuplicateId, CheminAlpha + "[2].key"),
             (RuleViolationKind.InvalidValue, "skills[0].modifiers"),             // active

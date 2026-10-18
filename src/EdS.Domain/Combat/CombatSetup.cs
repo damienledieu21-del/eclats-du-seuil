@@ -800,16 +800,18 @@ namespace EdS.Domain.Combat
             bool capped = classViolations.Any(v => v.Kind == RuleViolationKind.LimitExceeded && v.Fields.Any(f => f == "trees" || f == "skills"));
             bool Refused(string list) => classViolations.Any(v => v.Fields.Any(f =>
                 f == list || f.StartsWith(list + "[", StringComparison.Ordinal) || f.StartsWith(list + ".", StringComparison.Ordinal)));
-            void CheckModifiers(IReadOnlyList<ModifierDefinition> modifiers, string list)
+            // Décision du 18/10/2026 : le plafond de la réduction de garde est un paramètre des règles, vérifié ici aussi.
+            void CheckModifiers(IReadOnlyList<ModifierDefinition> modifiers, string list, int maxRank, bool ranked)
             {
-                if (modifiers.Count > 0 && !capped && !Refused(list))
-                    ModifierDefinition.ValidateReferences(modifiers, list, Combat.Statuses, Combat.GuardBreakStatus, tick, problems);
+                if (modifiers.Count == 0 || capped || Refused(list)) return;
+                ModifierDefinition.ValidateReferences(modifiers, list, Combat.Statuses, Combat.GuardBreakStatus, tick, problems);
+                ModifierDefinition.ValidateCaps(modifiers, list, maxRank, ranked, Combat.MaxGuardDamageReduction, problems);
             }
             for (int t = 0; t < character.Class.Trees.Count; t++)
                 for (int i = 0; i < character.Class.Trees[t].Talents.Count; i++)
-                    CheckModifiers(character.Class.Trees[t].Talents[i].Modifiers, $"trees[{t}].talents[{i}].modifiers");
+                    CheckModifiers(character.Class.Trees[t].Talents[i].Modifiers, $"trees[{t}].talents[{i}].modifiers", character.Class.Trees[t].Talents[i].MaxRank, true);
             for (int k = 0; k < character.Class.Skills.Count; k++)
-                CheckModifiers(character.Class.Skills[k].Modifiers, $"skills[{k}].modifiers");
+                CheckModifiers(character.Class.Skills[k].Modifiers, $"skills[{k}].modifiers", 1, false);
             foreach (RuleViolation v in problems)
                 errors.Add(new RuleViolation(v.Kind, $"classe « {character.Class.Id} », {string.Join(", ", v.Fields)} : {v.Message}", path + ".class"));
         }

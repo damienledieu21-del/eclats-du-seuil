@@ -210,6 +210,8 @@ namespace EdS.Data.Rules
                 MaxWorkPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxWorkPerTick))),
                 MaxTriggerDepth = (int)Int(d, P(c, nameof(CombatRules.MaxTriggerDepth))),
                 GuardDamageReduction = Dec(d, P(c, nameof(CombatRules.GuardDamageReduction))),
+                MaxGuardDamageReduction = Dec(d, P(c, nameof(CombatRules.MaxGuardDamageReduction))),
+                MaxTotalDamageReduction = Dec(d, P(c, nameof(CombatRules.MaxTotalDamageReduction))),
                 GuardUpkeepPerSecond = (int)Int(d, P(c, nameof(CombatRules.GuardUpkeepPerSecond))),
                 GuardCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.GuardCostPerBlock))),
                 GuardBreakStatus = d.Values[P(c, nameof(CombatRules.GuardBreakStatus))].Token!,

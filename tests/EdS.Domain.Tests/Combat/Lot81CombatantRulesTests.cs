@@ -1129,6 +1129,23 @@ public class Lot81CombatantRulesConditionalTests
 [Trait("Category", "Numeric")]
 public class Lot81CombatantRulesTotalReductionTests
 {
+    /// <summary>Plafond des règles livrées (<c>combat.damageTaken.maxReduction</c>, paramètre depuis la décision du 18/10/2026).</summary>
+    private static readonly Fixed Cap = new CombatRules().MaxTotalDamageReduction;
+
+    [Theory]
+    // Plafond configurable : 0,9 laisse passer 0,88 ; 0,5 ramène 0,7 à 0,5 ; jamais sous la défense (d = 0,6 avec un plafond de 0,5).
+    [InlineData("0.6", "-0.7", "0.9", "0.88")]
+    [InlineData("0.6", "-0.75", "0.9", "0.9")]
+    [InlineData("0.6", "-0.25", "0.5", "0.6")]
+    [InlineData("0", "-0.7", "0.5", "0.5")]
+    public void Reduction_totale_plafonnee_par_les_regles(string defense, string damageTaken, string cap, string expected)
+    {
+        Assert.Equal(F(expected), CombatantRules.TotalReduction(F(defense), F(damageTaken), F(cap)));
+        // Règles effectives d'un combattant : même calcul avec le plafond lu dans les règles du combat.
+        CombatantRules rules = CombatantRules.For(new CombatRules { MaxTotalDamageReduction = F(cap) }, ModifierSet.Empty);
+        Assert.Equal(F(expected), rules.TotalReduction(F(defense), F(damageTaken)));
+    }
+
     [Theory]
     [InlineData("0")]
     [InlineData("0.0001")]
@@ -1136,7 +1153,7 @@ public class Lot81CombatantRulesTotalReductionTests
     [InlineData("0.6")]
     [InlineData("0.75")]
     public void Sans_modificateur_de_degats_subis_la_reduction_de_defense_exactement(string defense) =>
-        Assert.Equal(F(defense), CombatantRules.TotalReduction(F(defense), Fixed.Zero));
+        Assert.Equal(F(defense), CombatantRules.TotalReduction(F(defense), Fixed.Zero, Cap));
 
     [Theory]
     // d = 0,7 : 1 − d = 0,3.
@@ -1166,7 +1183,7 @@ public class Lot81CombatantRulesTotalReductionTests
     [InlineData("0.75", "-0.0003", "0.7501")]
     [InlineData("0.75", "-1", "0.85")]
     public void Reduction_totale_plafonnee_a_85_pour_cent(string defense, string damageTaken, string expected) =>
-        Assert.Equal(F(expected), CombatantRules.TotalReduction(F(defense), F(damageTaken)));
+        Assert.Equal(F(expected), CombatantRules.TotalReduction(F(defense), F(damageTaken), Cap));
 
     [Property(MaxTest = 3000, Replay = "(8103,8115)")]
     public bool Reduction_totale_conforme_a_la_formule_et_jamais_sous_la_defense(ushort defense, ushort damageTaken)
@@ -1176,7 +1193,7 @@ public class Lot81CombatantRulesTotalReductionTests
         long d = defense % 7_501, v = -(damageTaken % 10_001);
         long product = ((Fixed.Scale - d) * (Fixed.Scale + v) + Fixed.Scale / 2) / Fixed.Scale;
         long expected = v == 0 ? d : Math.Min(8_500, Fixed.Scale - product);
-        long actual = CombatantRules.TotalReduction(Fixed.FromRaw(d), Fixed.FromRaw(v)).Raw;
+        long actual = CombatantRules.TotalReduction(Fixed.FromRaw(d), Fixed.FromRaw(v), Cap).Raw;
         return actual == expected && actual >= d && actual <= 8_500;
     }
 }

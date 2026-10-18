@@ -63,7 +63,8 @@ public class Lot81ReviewTests
         // beta : une altération inconnue seule, toujours signalée au combat (chemin interne dans le message, comme les déclencheurs).
         ClassDefinition definition = Class(modifiers: new Dictionary<string, ModifierDefinition[]>
         {
-            [TalentAlpha] = new[] { Mod("status.inconnue.durationTaken", "100"), Mod("guard.damageReduction", "0.9") },
+            // Décision du 18/10/2026 : la classe seule borne une réduction de garde à 1 (fraction) ; 1,1 reste refusé par la classe.
+            [TalentAlpha] = new[] { Mod("status.inconnue.durationTaken", "100"), Mod("guard.damageReduction", "1.1") },
             [TalentBeta] = new[] { Mod("status.autre.durationTaken", "100") },
         });
         IReadOnlyList<RuleViolation> errors = Solo(definition).Validate();

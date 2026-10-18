@@ -55,15 +55,35 @@ public class CombatRulesTests
     [Fact]
     public void Reduction_de_garde_plafonnee_a_75_pour_cent()
     {
-        // Sous-lot 8.1 (B1) : 0,75 accepté (N), 0,7501 refusé (N + 1) avec une seule erreur sur le seul champ ; 1,1 une seule erreur.
-        Assert.Equal(Fixed.Parse("0.75"), CombatRules.MaxGuardDamageReduction);
-        Assert.Equal(Fixed.Parse("0.85"), CombatRules.MaxTotalDamageReduction);
+        // Sous-lot 8.1 (B1) : 0,75 accepté (N), 0,7501 refusé (N + 1) avec une seule erreur ; 1,1 une seule erreur (fraction).
+        // Décision du 18/10/2026 : les plafonds sont des paramètres des règles, 0,75 et 0,85 par défaut ; l'erreur de dépassement
+        // désigne la réduction et son plafond.
+        Assert.Equal(Fixed.Parse("0.75"), new CombatRules().MaxGuardDamageReduction);
+        Assert.Equal(Fixed.Parse("0.85"), new CombatRules().MaxTotalDamageReduction);
         Assert.Empty(new CombatRules { GuardDamageReduction = Fixed.Parse("0.7499") }.Validate());
         Assert.Empty(new CombatRules { GuardDamageReduction = Fixed.Parse("0.75") }.Validate());
-        foreach (string value in new[] { "0.7501", "1.1" })
+        RuleViolation above = Assert.Single(new CombatRules { GuardDamageReduction = Fixed.Parse("0.7501") }.Validate());
+        Assert.Equal(new[] { nameof(CombatRules.GuardDamageReduction), nameof(CombatRules.MaxGuardDamageReduction) }, above.Fields);
+        RuleViolation fraction = Assert.Single(new CombatRules { GuardDamageReduction = Fixed.Parse("1.1") }.Validate());
+        Assert.Equal(new[] { nameof(CombatRules.GuardDamageReduction) }, fraction.Fields);
+    }
+
+    [Fact]
+    public void Plafonds_de_reduction_parametres_des_regles()
+    {
+        // Décision du 18/10/2026 : un plafond relevé admet une réduction de base plus forte ; abaissé, il refuse la base livrée (0,6).
+        Assert.Empty(new CombatRules { MaxGuardDamageReduction = Fixed.Parse("0.8"), GuardDamageReduction = Fixed.Parse("0.8") }.Validate());
+        Assert.Contains(new CombatRules { MaxGuardDamageReduction = Fixed.Parse("0.5") }.Validate(),
+            v => v.Fields.SequenceEqual(new[] { nameof(CombatRules.GuardDamageReduction), nameof(CombatRules.MaxGuardDamageReduction) }));
+        Assert.Empty(new CombatRules { MaxGuardDamageReduction = Fixed.One, MaxTotalDamageReduction = Fixed.One }.Validate());
+        Assert.Empty(new CombatRules { MaxTotalDamageReduction = Fixed.Zero }.Validate());
+        // Hors de [0, 1] : une erreur de fraction sur le plafond, sans erreur de dépassement en plus.
+        foreach (string value in new[] { "-0.0001", "1.0001" })
         {
-            RuleViolation error = Assert.Single(new CombatRules { GuardDamageReduction = Fixed.Parse(value) }.Validate());
-            Assert.Equal(new[] { nameof(CombatRules.GuardDamageReduction) }, error.Fields);
+            RuleViolation guard = Assert.Single(new CombatRules { MaxGuardDamageReduction = Fixed.Parse(value), GuardDamageReduction = Fixed.Zero }.Validate());
+            Assert.Equal(new[] { nameof(CombatRules.MaxGuardDamageReduction) }, guard.Fields);
+            RuleViolation total = Assert.Single(new CombatRules { MaxTotalDamageReduction = Fixed.Parse(value) }.Validate());
+            Assert.Equal(new[] { nameof(CombatRules.MaxTotalDamageReduction) }, total.Fields);
         }
     }
 

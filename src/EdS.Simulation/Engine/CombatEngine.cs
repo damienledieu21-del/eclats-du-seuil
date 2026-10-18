@@ -29,7 +29,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.10.0";
+        public const string Version = "0.11.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -921,7 +921,7 @@ namespace EdS.Simulation.Engine
             // impact, avant ses gains), sans ligne ni notification. Dégâts subis du défenseur : réduction totale multiplicative
             // plafonnée à 85 %, hors parade ; dégâts infligés de l'attaquant : catégorie talent. Sans modificateur, rien ne change.
             if (defense != "parry")
-                mitigation = CombatantRules.TotalReduction(mitigation, target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance));
+                mitigation = target.Rules.TotalReduction(mitigation, target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance));
             Fixed dealt = actor.Rules.DamageDealtAt(actor.Guarding, actor.RampartCharges, actor.Resonance);
             if (dealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Talent, dealt);
 
@@ -1465,7 +1465,7 @@ namespace EdS.Simulation.Engine
             StatusDefinition definition = status.Definition;
             // Sous-lot 8.1 : modificateurs de dégâts subis de la cible, lus sur son état au tick (réduction ≤ 85 %, sans garde ni
             // parade, A12). Sans modificateur, aucune réduction.
-            Fixed mitigation = CombatantRules.TotalReduction(Fixed.Zero, target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance));
+            Fixed mitigation = target.Rules.TotalReduction(Fixed.Zero, target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance));
             long amount = DamageCalculator.ComputePeriodic(status.Power, target.Stats, definition.DamageType!.Value,
                 definition.Resistance == StatusResistanceMode.Defense, _setup.Damage, mitigation);
             // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage).

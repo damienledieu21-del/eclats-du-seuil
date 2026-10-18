@@ -401,14 +401,15 @@ public class Lot81ModifierDataReadingTests
     /// <summary>
     /// Bornes déclarées |add| ≤ N de la conception (tableau D2, resserrées par D10), écrites ici indépendamment de ModifierKeys.Specs, et
     /// nature entière (pas de 1) ou décimale (pas de 0,0001). Clés paramétrées : références valides de la classe livrée. damageTaken :
-    /// intervalle [−1, 0] (D10). Le drapeau guard.noUpkeepBreak a son propre test.
+    /// intervalle [−1, 0] (D10). Le drapeau guard.noUpkeepBreak a son propre test. Décision du 18/10/2026 : les deux clés de réduction de
+    /// garde sont bornées à 1 (fraction) par la classe seule ; le plafond des règles (0,75 livré) est vérifié au combat (Lot81RulesCapTests).
     /// </summary>
     private static readonly (string Key, decimal Bound, bool Integer)[] DeclaredBounds =
     {
-        ("guard.damageReduction", 0.75m, false),
+        ("guard.damageReduction", 1m, false),
         ("guard.upkeepPerSecond", 1_000_000m, false),
         ("guard.costPerBlock", 1_000_000m, true),
-        ("guard.reductionAtZeroEndurance", 0.75m, false),
+        ("guard.reductionAtZeroEndurance", 1m, false),
         ("guard.breakShortenPerCharge", 86_400_000m, true),
         ("parry.windowMs", 500m, true),
         ("parry.failureRecoveryMs", 86_400_000m, true),
