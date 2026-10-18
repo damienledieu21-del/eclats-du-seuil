@@ -22,7 +22,7 @@ Une fois les PR fusionnées, rester simplement sur `main` et faire **Pull origin
 
 1. Unity Hub → **Projects → Add → Add project from disk**.
 2. Choisir le dossier **`unity`** à l'intérieur du dépôt cloné (par exemple `Documents\GitHub\eclats-du-seuil\unity`), pas le dépôt lui-même.
-3. Si le Hub signale une autre version d'Unity (`6000.3.0f1` demandée), choisir la version 6.3 installée et accepter.
+3. Si le Hub signale une version manquante (`6000.3.0f1` demandée), **ne pas l'installer** : cocher la version 6.3 installée (par exemple `6000.3.26f1`), puis ouvrir et accepter le changement de version.
 4. La première ouverture prend plusieurs minutes : Unity importe le moteur de rendu et compile le cœur du jeu.
 5. À la fin, la console (onglet **Console**) doit afficher « Éclats du Seuil : rendu URP configuré ». Le projet n'a pas de scène : la scène vide proposée par Unity suffit.
 
@@ -54,6 +54,7 @@ Appuyer sur **Play** (▶ en haut au centre). L'arène se construit, avec le Bas
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
 - **Cadre rouge « Impossible de charger le jeu »** : le dossier `unity` a été déplacé hors du dépôt. Il doit rester à côté de `data/` et `scenarios/`.
 - **Erreurs rouges dans la Console** : faire une capture de la Console et l'envoyer à Claude.
+- **Fichiers modifiés dans GitHub Desktop** après une ouverture (`ProjectVersion.txt` notamment) : c'est Unity qui les réécrit ; ne rien valider (*Commit*). Si un *Pull* refuse à cause d'eux : clic droit sur le fichier → *Discard changes*, puis *Pull*.
 - Pour remettre le projet à zéro : fermer Unity et supprimer le dossier `unity/Library` (il est recréé à l'ouverture).
 
 ## Ce qui est provisoire

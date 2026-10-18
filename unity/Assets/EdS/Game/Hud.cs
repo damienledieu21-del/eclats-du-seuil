@@ -50,7 +50,10 @@ namespace EdS.Game
         {
             Fill(rect, new Color(0f, 0f, 0f, 0.6f));
             Fill(new Rect(rect.x + 2, rect.y + 2, (rect.width - 4) * Mathf.Clamp01(fraction), rect.height - 4), color);
-            GUI.Label(rect, text, _center);
+            if (string.IsNullOrEmpty(text)) return;
+            // Ombre portée : texte lisible sur une barre claire (endurance jaune, essai de Damien du 18/10).
+            Centered(new Rect(rect.x + 2, rect.y + 2, rect.width, rect.height), text, new Color(0f, 0f, 0f, 0.9f));
+            Centered(rect, text, Color.white);
         }
 
         public static void Text(Rect rect, string text) => GUI.Label(rect, text, _label);
