@@ -37,7 +37,8 @@ dotnet test --filter Category=Status      # altérations : DOT, contrôles, immu
 dotnet test --filter Category=Trigger     # déclencheurs, provenance, cycles, profondeur, report (sous-lot 7.3)
 dotnet test --filter Category=Modifier    # modificateurs X1 et X2, règles effectives, plafonds (sous-lot 8.1)
 dotnet test --filter Category=Shield      # renforcements et boucliers (sous-lot 8.2)
-scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
+dotnet test --filter Category=Support     # soutien, provocation, protection, rôle allié (sous-lot 8.3)
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
@@ -85,6 +86,8 @@ Décisions du 18/10/2026 (questions du rapport 8.1) : plafonds de réduction dan
 
 Sous-lot 8.2 (renforcements et boucliers, moteur seulement) : catégorie d'altération `buff` qui porte des modificateurs temporaires (dégâts infligés, dégâts subis sous le plafond total, entretien de garde) et catégorie `shield` (un bouclier par source, valeur = PV max de la source × coefficient × (1 + `shield.potencyDealt`), renouvelé au plus fort, absorbe dégâts directs et DOT après la défense et avant les PV, dans l'ordre de création, retiré épuisé en fin de tick) ; entretien de garde cumulé au taux du moment. Aucune donnée livrée n'en déclare : gameplay des cinq scénarios inchangé. Schéma de règles 7, schéma de classe 6 (les fichiers 6 et 5 sont refusés sans migration), moteur 0.12.0, journal au format 6. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#renforcements-et-boucliers-sous-lot-82), [docs/DONNEES.md](docs/DONNEES.md#renforcements-et-boucliers-sous-lot-82), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-82--interprétations-et-limites).
 
+Sous-lot 8.3 (soutien, moteur seulement) : compétences de soutien sans dégâts et ciblages `self`, `ally`, `allAllies` (X5) ; applications à cible propre (`applies[].target`) ; provocation (`taunt`, X7) : un assaillant provoqué vise la source de sa provocation la plus récente ; protection (`protection`, X6) : une part des dégâts d'un allié transférée à son protecteur, jamais retransférée ni notifiée, par sa garde seulement avec `protection.redirectThroughGuard` ; provocations et protections retirées à la mort de leur source ; rôle `ally` des déclencheurs (X9). Aucune donnée livrée n'en déclare : gameplay des cinq scénarios inchangé. Règles en schéma 8, classes en 7, scénarios en 3 (versions antérieures refusées sans migration), moteur 0.13.0, journal au format 7. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#provocation-protection-et-rôle-allié-sous-lot-83), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-83--interprétations-et-limites).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -98,4 +101,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
-- [ ] Lot 8 — en cours : sous-lot 8.1 (modificateurs X1 et X2, moteur 0.10.0 puis 0.11.0) et sous-lot 8.2 (renforcements et boucliers, moteur 0.12.0) en revue
+- [ ] Lot 8 — en cours : sous-lot 8.1 (modificateurs X1 et X2, moteur 0.10.0 puis 0.11.0), sous-lot 8.2 (renforcements et boucliers, moteur 0.12.0) et sous-lot 8.3 (soutien, provocation, protection, moteur 0.13.0) en revue

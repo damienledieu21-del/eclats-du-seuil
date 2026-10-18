@@ -1,6 +1,6 @@
-# Limites du lot 8 (sous-lots 8.1 : modificateurs ; 8.2 : renforcements et boucliers)
+# Limites du lot 8 (sous-lots 8.1 : modificateurs ; 8.2 : renforcements et boucliers ; 8.3 : soutien, provocation, protection)
 
-Ce document complète [LIMITES_LOT_7.md](LIMITES_LOT_7.md) pour les modificateurs du sous-lot 8.1 et les renforcements et boucliers du sous-lot 8.2. Les bornes ci-dessous sont des **enveloppes techniques provisoires** (pré-alpha) ou des **plafonds de jeu** ; les valeurs d'équilibrage restent dans les données et sont provisoires.
+Ce document complète [LIMITES_LOT_7.md](LIMITES_LOT_7.md) pour les modificateurs du sous-lot 8.1, les renforcements et boucliers du sous-lot 8.2 et le soutien du sous-lot 8.3. Les bornes ci-dessous sont des **enveloppes techniques provisoires** (pré-alpha) ou des **plafonds de jeu** ; les valeurs d'équilibrage restent dans les données et sont provisoires.
 
 ## Plafonds de jeu
 
@@ -36,7 +36,7 @@ Quand une base des règles sort déjà d'un intervalle de jeu (règles de test),
 
 ## Ce qui n'est pas couvert en 8.1
 
-- Renforcements et boucliers (X3, X4, `shield.potencyDealt`) : livrés au sous-lot 8.2 (voir plus bas). Transferts (`protection.redirectRatio`, X6) et provocation (`status.taunt.*`, X7) : sous-lot 8.3. Ces clés sont refusées comme inconnues tant que leur consommateur n'existe pas (une clé sans effet irait contre la validation stricte) ; `status.taunt.*` l'est au combat, `taunt` étant absent du catalogue.
+- Renforcements et boucliers (X3, X4, `shield.potencyDealt`) : livrés au sous-lot 8.2 (voir plus bas). Transferts (`protection.redirectRatio`, X6) et provocation (X7) : livrés au sous-lot 8.3 (voir plus bas) ; `status.taunt.*` désigne une altération du catalogue nommée `taunt`, refusée tant qu'elle n'y est pas. Ces clés sont refusées comme inconnues tant que leur consommateur n'existe pas (une clé sans effet irait contre la validation stricte) ; `status.taunt.*` l'est au combat, `taunt` étant absent du catalogue.
 - Blocage à coût nul : il relance le délai de régénération (comportement du moteur 0.9.1), alors qu'un blocage affaibli ou un entretien qui ne paient rien ne le relancent pas. **Décision du 18/10/2026** : comportement conservé.
 - Déclencheurs (7.3) : **décision du 18/10/2026**, un `perRank` sur un talent à un seul rang est désormais refusé comme pour les modificateurs (« perRank sans effet sur un talent à un seul rang », une seule erreur par valeur).
 - Conditions multiplicatives combinées (`perRampartCharge` avec `perResonanceStep`) : refusées, faute de contenu prévu et parce que leur mise à l'échelle quadratique serait difficile à équilibrer.
@@ -50,3 +50,15 @@ Quand une base des règles sort déjà d'un intervalle de jeu (règles de test),
 - **Renforcements sans cumul par source** (refusé) : une instance au plus par définition et par porteur, ce qui borne leur somme.
 - **Aucune donnée livrée** n'en déclare : empreinte des règles fournies et gameplay des cinq scénarios inchangés (journaux 0.9.1 reproduits au gameplay près, `Lot81ReferenceTests`).
 - **Non couvert** : dissipation, vol ou transfert d'un bouclier ; bouclier de groupe (un effet par cible) ; affichage des boucliers dans le résumé texte de la CLI (le journal et `CombatResult.DamageAbsorbed` les portent).
+
+## Sous-lot 8.3 : interprétations et limites
+
+- **Compétence de soutien** = sans `powerType`, `damageType` ni `coefficient` (tous absents) : aucun impact, aucune défense, aucune Résonance ; obligatoire pour `self`, `ally`, `allAllies`. Un `unblockable` vrai et un `skill.<id>.coefficient` y sont refusés (sans effet).
+- **Allié désigné** (`ally`) : le lanceur compris ; un hostile est refusé (`targetNotAlly`), un mort aussi (`targetDead`).
+- **Cible propre d'application** (`applies[].target` : `self`, `allAllies`, `allEnemies`) : appliquée une fois par action, après les impacts, non bloquée par une parade ; la même altération ne peut pas être citée deux fois par une action, quelle que soit sa cible (refus existant).
+- **Provocation la plus récente** : dernière application ou dernier renouvellement acceptés (rang unique dans le combat) ; attaques de zone non détournées ; provocation d'un personnage, d'un mannequin ou par un allié de l'assaillant refusée (`notApplicable`).
+- **Protection** : une seule en vigueur par protégé, la plus récente ; part ⌊ montant × part ⌋ au protecteur, arrondie vers le bas, le reste au protégé ; impacts directs et ticks de DOT ; sans les modificateurs de dégâts subis du protecteur ; sa garde seulement avec `protection.redirectThroughGuard` (réduction de garde effective, sans coût, sans `blocked` ni Résonance de blocage) ; puis ses boucliers. Jamais retransférée ni notifiée ; provenance au nom du protecteur (une mort par transfert n'est observée par aucun déclencheur de l'attaquant).
+- **Retrait à la mort de la source** (`sourceDied`) : provocations et protections ; les DOT, boucliers et renforcements d'une source morte restent (règles des lots précédents).
+- **Rôle `ally`** : tout allié vivant autre que le porteur ; pas encore de filtre « allié lié » (le contenu du sous-lot 8.5 décidera s'il en faut un pour Sentinelle et Serment, avec un seul allié dans les scénarios prévus).
+- **Bornes.** Part transférée ≤ montant (déjà majoré par le précontrôle) ; part après garde ≤ part ; compteurs cumulés bornés par les dégâts du combat. Majorant de file : avec une provocation au catalogue, toutes les cibles ennemies d'un assaillant sont des cibles possibles de ses applications ; une application à cible propre compte toutes ses cibles possibles. Majorant d'une frappe de réaction : une ligne de transfert en plus si le catalogue a une protection.
+- **Non couvert** : protections ou transferts de groupe (une application par protégé), provocation de personnages (refusée par décision A1–A12), retrait d'une protection par dissipation.
