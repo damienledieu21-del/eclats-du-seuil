@@ -29,7 +29,7 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(7, result.Rules!.SchemaVersion);
+        Assert.Equal(8, result.Rules!.SchemaVersion);
         Assert.Equal("0.6.0-provisoire", result.Rules.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
@@ -105,8 +105,9 @@ public class RulesJsonReaderTests
         // Correctif 7.3.1 (A73-M02) : contrat canonique 2 (version en tête, champs absents marqués, listes indicées).
         // Lot 8 (décision du 18/10/2026) : schéma 6, contenu 0.6.0, plafonds combat.guard.maxDamageReduction et combat.damageTaken.maxReduction.
         // Sous-lot 8.2 : schéma 7 (renforcements et boucliers) ; seule la version change dans le texte canonique.
+        // Sous-lot 8.3 : schéma 8 ; redirectRatio (0) écrit pour chaque altération.
         Assert.Equal(
-            "sha256:4630aa06b8750000e81403fdbfca568785b7474d8c62ed006a777496a58186f6",
+            "sha256:e0ae93d979c7536c7af5f6d287a24a1cec11d67b4f45bb7e91ae98523696b4a8",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -114,7 +115,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 8), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 9), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Format_5_sans_plafonds_refuse_explicitement()
