@@ -82,12 +82,14 @@ namespace EdS.Data.Builds
         /// <summary>Plafond technique de builds par fichier (enveloppe pré-alpha, comme les combattants d'un scénario).</summary>
         public const int MaxBuilds = 64;
 
+        /// <summary>Catégories admises, table immuable (revue Codex de la PR #9 : aucun état statique modifiable par transtypage).</summary>
         public static IReadOnlyDictionary<string, ReferenceBuildCategory> Categories { get; } =
-            new Dictionary<string, ReferenceBuildCategory>(StringComparer.Ordinal)
-            {
-                ["reference"] = ReferenceBuildCategory.Reference,
-                ["control"] = ReferenceBuildCategory.Control,
-            };
+            new System.Collections.ObjectModel.ReadOnlyDictionary<string, ReferenceBuildCategory>(
+                new Dictionary<string, ReferenceBuildCategory>(StringComparer.Ordinal)
+                {
+                    ["reference"] = ReferenceBuildCategory.Reference,
+                    ["control"] = ReferenceBuildCategory.Control,
+                });
 
         public static string Id(ReferenceBuildCategory category) => Categories.First(p => p.Value == category).Key;
 

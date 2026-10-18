@@ -272,6 +272,20 @@ public class Lot85BuildDataTests
     // --- Chargement, CLI, schéma ------------------------------------------------------------------------------------------------
 
     [Fact]
+    public void Tables_et_builds_charges_non_modifiables()
+    {
+        // Revue Codex de la PR #9 : la table publique des catégories est immuable, même après transtypage ; les builds chargés aussi.
+        var categories = Assert.IsAssignableFrom<IDictionary<string, ReferenceBuildCategory>>(BuildSetValidator.Categories);
+        Assert.Throws<NotSupportedException>(() => categories.Remove("reference"));
+        Assert.Throws<NotSupportedException>(() => categories["principal"] = ReferenceBuildCategory.Reference);
+        Assert.Equal(new[] { "control", "reference" }, BuildSetValidator.Categories.Keys.OrderBy(k => k, StringComparer.Ordinal));
+        var builds = Assert.IsAssignableFrom<IList<ReferenceBuild>>(Assert.Single(ShippedData.BuildSets).Builds);
+        Assert.Throws<NotSupportedException>(() => builds.RemoveAt(0));
+        var sets = Assert.IsAssignableFrom<IList<LoadedBuildSet>>(ShippedData.BuildSets);
+        Assert.Throws<NotSupportedException>(() => sets.Clear());
+    }
+
+    [Fact]
     public void Un_fichier_de_builds_refuse_fait_echouer_le_chargement_des_donnees()
     {
         string directory = CopyData((relative, text) => relative == "builds/bastion.json"

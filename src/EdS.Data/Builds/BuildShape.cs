@@ -16,8 +16,8 @@ namespace EdS.Data.Builds
     /// </summary>
     internal static class BuildShape
     {
-        public static readonly IReadOnlyDictionary<string, AttributeKind> AttributeIds =
-            ((AttributeKind[])Enum.GetValues(typeof(AttributeKind))).ToDictionary(Rules.RulesCatalog.Id, k => k, StringComparer.Ordinal);
+        public static readonly IReadOnlyDictionary<string, AttributeKind> AttributeIds = new System.Collections.ObjectModel.ReadOnlyDictionary<string, AttributeKind>(
+            ((AttributeKind[])Enum.GetValues(typeof(AttributeKind))).ToDictionary(Rules.RulesCatalog.Id, k => k, StringComparer.Ordinal));
 
         private static bool Present(object? value, string path, string description, ValidationReport report)
         {
