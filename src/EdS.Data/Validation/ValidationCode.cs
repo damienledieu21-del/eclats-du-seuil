@@ -47,7 +47,8 @@ namespace EdS.Data.Validation
 
         /// <summary>
         /// Limite de volume dépassée (lot 7.1) : taille de fichier, nombre de combattants ou de commandes, commandes par
-        /// acteur et par tick, capacité de la file, longueur d'un tableau, nombre d'erreurs rapportées.
+        /// acteur et par tick, capacité de la file, longueur d'un tableau, nombre d'erreurs rapportées, nombre de valeurs
+        /// d'un document JSON (sous-lot 9.1).
         /// </summary>
         LimitExceeded,
 
