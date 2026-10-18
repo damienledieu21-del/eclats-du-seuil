@@ -82,8 +82,9 @@ public class ReproducibilityTests
 
     // Sous-lot 8.1 : moteur 0.10.0, format 5 ; le journal 0.9.1 (ancienne empreinte a67e3671…) est figé dans Fixtures/logs-0.9.1 et
     // reproduit au gameplay près des champs ajoutés (Lot81EngineBaselineTests). Lot 8 (décision du 18/10/2026) : moteur 0.11.0, seul
-    // l'en-tête change (ancienne empreinte 6321d723…).
-    internal const string ReferenceHash = "6cefb445ccf9d02a84ff259b90aaffefb2c92d94b3d1e02b213adb5b31012c42";
+    // l'en-tête change (ancienne empreinte 6321d723…). Sous-lot 8.2 : moteur 0.12.0, format 6 (absorbed et absorbedBy sur les dégâts,
+    // damageAbsorbed au bilan, shield.potencyDealt dans les règles effectives), sans bouclier : gameplay inchangé (ancienne empreinte 6cefb445…).
+    internal const string ReferenceHash = "9294c3e3c94c13f0aac06d8e018785f0bda3b7caaf7ef1277efdd0ed5d920c85";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

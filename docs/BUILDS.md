@@ -21,7 +21,7 @@ Un majeur coûte 1 point après les 18 : 19 points pour un majeur, il en reste 1
 
 ```json
 {
-  "schemaVersion": 5, "kind": "class", "contentVersion": "0.2.0-provisoire",
+  "schemaVersion": 6, "kind": "class", "contentVersion": "0.2.0-provisoire",
   "data": {
     "id": "class.bastion", "name": "Bastion",
     "trees": [ { "id": "tree.bastion.rempart", "name": "Rempart", "talents": [

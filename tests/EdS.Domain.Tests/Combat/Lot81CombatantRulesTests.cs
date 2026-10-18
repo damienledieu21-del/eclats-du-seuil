@@ -372,6 +372,7 @@ public class Lot81CombatantRulesAggregationTests
         Assert.Equal(Fixed.FromInt(rules.EnduranceRegenPerSecond), r.EnduranceRegenPerSecond);
         Assert.Equal(Fixed.Zero, r.DamageDealt);
         Assert.Equal(Fixed.Zero, r.DamageTaken);
+        Assert.Equal(Fixed.Zero, r.ShieldPotencyDealt);   // sous-lot 8.2
         // Méthodes : bases des compétences (même hors intervalles : coefficient 150, recharge 25 h), aucun ajout de durée, aucune valeur
         // conditionnelle, majorant nul.
         foreach (SkillDefinition skill in new[] { Skill(), Skill(F("150"), 90_000_000), Skill(Fixed.Zero, 0) })
@@ -402,7 +403,7 @@ public class Lot81CombatantRulesAggregationTests
             nameof(CombatantRules.GuardCostPerBlock), nameof(CombatantRules.GuardNoUpkeepBreak), nameof(CombatantRules.GuardReductionAtZeroEndurance),
             nameof(CombatantRules.GuardBreakShortenPerChargeMs), nameof(CombatantRules.ParryWindowMs), nameof(CombatantRules.ParryFailureRecoveryMs),
             nameof(CombatantRules.RampartChargesMax), nameof(CombatantRules.ResonancePerDirectHit), nameof(CombatantRules.EnduranceRegenPerSecond),
-            nameof(CombatantRules.DamageDealt), nameof(CombatantRules.DamageTaken),
+            nameof(CombatantRules.DamageDealt), nameof(CombatantRules.DamageTaken), nameof(CombatantRules.ShieldPotencyDealt),
         };
         Assert.Equal(covered.OrderBy(n => n, StringComparer.Ordinal),
             typeof(CombatantRules).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));

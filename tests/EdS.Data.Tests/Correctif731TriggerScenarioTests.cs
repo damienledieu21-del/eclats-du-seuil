@@ -15,7 +15,7 @@ namespace EdS.Data.Tests;
 /// supprimé à la deuxième occurrence dans une chaîne), brûlure posée par réaction à chaque saignement (2, DOT de réaction) et
 /// frappe sur chaque tick de DOT (3, reportée au tick suivant car la phase de résolution est passée). Les assertions métier
 /// ci-dessous ne dépendent pas de l'empreinte du journal ; la comparaison octet par octet se fait contre le journal figé
-/// <c>Fixtures/reference-0.11.0/entrainement_declencheurs.jsonl</c> (lot 8 : moteur 0.11.0 ; les références 0.9.1 et 0.10.0 restent
+/// <c>Fixtures/reference-0.12.0/entrainement_declencheurs.jsonl</c> (sous-lot 8.2 : moteur 0.12.0, format 6 ; les références 0.9.1, 0.10.0 et 0.11.0 restent
 /// figée, refusée au rejeu et reproduite au gameplay près par Lot81ReferenceTests). Un assaillant n'a pas de puissance : ses frappes et sa
 /// brûlure de réaction infligent 0 (le lot 8 portera des déclencheurs sur le Bastion).
 /// </summary>
@@ -30,9 +30,9 @@ public class Correctif731TriggerScenarioTests
     private const string Brulure = "assailant.assaillant/2@assaillant#0";
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.11.0", Name + ".jsonl");
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.12.0", Name + ".jsonl");
 
-    private static string Fixture091Path => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.9.1", Name + ".jsonl");
+    private static string FrozenPath(string version) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-" + version, Name + ".jsonl");
 
     private static ScenarioLoadResult Read() => ScenarioJsonReader.ReadFile(ScenarioPath(Name), ShippedData);
 
@@ -227,13 +227,17 @@ public class Correctif731TriggerScenarioTests
         Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(File.ReadAllLines(FixturePath), ShippedData).Status);
     }
 
-    [Fact]
-    public void Reference_0_9_1_refusee_au_rejeu()
+    [Theory]
+    [InlineData("0.9.1")]
+    [InlineData("0.10.0")]
+    [InlineData("0.11.0")]
+    public void Reference_d_un_moteur_anterieur_refusee_au_rejeu(string version)
     {
         // Sous-lot 8.1 : politique de compatibilité inchangée, un journal d'un autre format ou d'un autre moteur est refusé, pas migré.
-        ReplayOutcome outcome = CombatLogReplayer.Replay(File.ReadAllLines(Fixture091Path), ShippedData);
+        // Sous-lot 8.2 : les références figées des moteurs 0.10.0 et 0.11.0 aussi.
+        ReplayOutcome outcome = CombatLogReplayer.Replay(File.ReadAllLines(FrozenPath(version)), ShippedData);
         Assert.Equal(ReplayStatus.Refused, outcome.Status);
         Assert.Null(outcome.Comparison);
-        Assert.Contains(outcome.Problems, p => p.Contains("0.9.1", StringComparison.Ordinal));
+        Assert.Contains(outcome.Problems, p => p.Contains(version, StringComparison.Ordinal));
     }
 }

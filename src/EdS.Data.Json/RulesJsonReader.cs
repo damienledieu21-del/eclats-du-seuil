@@ -121,6 +121,7 @@ public static class RulesJsonReader
             ["grantsOnExpiry"] = (v, p) => s.GrantsOnExpiry = input.Text(v, p),
             ["immuneTo"] = (v, p) => s.ImmuneTo = Names(v, p),
             ["triggers"] = (v, p) => s.Triggers = TriggerJsonReader.ReadList(input, v, p),
+            ["modifiers"] = (v, p) => s.Modifiers = ModifierJsonReader.ReadList(input, v, p),
         });
         return ok ? s : null;
     }

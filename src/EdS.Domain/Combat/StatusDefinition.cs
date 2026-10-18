@@ -22,6 +22,19 @@ namespace EdS.Domain.Combat
 
         /// <summary>Immunité temporaire à d'autres altérations.</summary>
         Immunity = 3,
+
+        /// <summary>
+        /// Sous-lot 8.2 (X3) : renforcement temporaire. Porte des modificateurs (<see cref="StatusDefinition.Modifiers"/>) actifs tant
+        /// que l'instance existe : dégâts infligés, dégâts subis (réduction), entretien de la garde.
+        /// </summary>
+        Buff = 4,
+
+        /// <summary>
+        /// Sous-lot 8.2 (X4) : bouclier d'absorption. Une instance par (bouclier, source) ; sa valeur, fixée à l'application (fraction des PV
+        /// max de la source), absorbe les dégâts directs et périodiques après la garde ou la parade, avant les PV ; épuisé, il est retiré
+        /// en fin de tick.
+        /// </summary>
+        Shield = 5,
     }
 
     /// <summary>Comportement d'une réapplication (A13).</summary>
@@ -77,7 +90,8 @@ namespace EdS.Domain.Combat
     public static class StatusIds
     {
         public static IReadOnlyDictionary<string, StatusCategory> Categories { get; } = Map(
-            ("dot", StatusCategory.Dot), ("control", StatusCategory.Control), ("modifier", StatusCategory.Modifier), ("immunity", StatusCategory.Immunity));
+            ("dot", StatusCategory.Dot), ("control", StatusCategory.Control), ("modifier", StatusCategory.Modifier), ("immunity", StatusCategory.Immunity),
+            ("buff", StatusCategory.Buff), ("shield", StatusCategory.Shield));
 
         public static IReadOnlyDictionary<string, StatusStacking> Stackings { get; } = Map(
             ("refresh", StatusStacking.Refresh), ("perSourceKeepStronger", StatusStacking.PerSourceKeepStronger),
@@ -153,13 +167,29 @@ namespace EdS.Domain.Combat
         /// <summary>Déclencheurs portés tant qu'une instance est active sur son porteur (lot 7.3) ; identité par instance.</summary>
         public IReadOnlyList<TriggerDefinition> Triggers { get; }
 
+        /// <summary>
+        /// Sous-lot 8.2 (X3) : modificateurs d'un renforcement (<see cref="StatusCategory.Buff"/>), actifs tant que l'instance existe sur
+        /// son porteur. Clés admises : <see cref="BuffKeys"/> ; ni condition ni perRank. Vide pour les autres catégories.
+        /// </summary>
+        public IReadOnlyList<ModifierDefinition> Modifiers { get; }
+
+        /// <summary>
+        /// Sous-lot 8.2 : clés de modificateur admises sur un renforcement : dégâts infligés (catégorie « altération »), dégâts subis
+        /// (réduction, sous le plafond total des règles) et entretien de la garde.
+        /// </summary>
+        public static readonly IReadOnlyList<ModifierField> BuffKeys = Frozen.List(new[]
+        {
+            ModifierField.DamageDealt, ModifierField.DamageTaken, ModifierField.GuardUpkeepPerSecond,
+        }, nameof(BuffKeys));
+
         public StatusDefinition(string id, StatusCategory category, long durationMs, StatusStacking stacking,
             StatusResistanceMode resistance = StatusResistanceMode.None, long periodMs = 0, DamageType? damageType = null,
             StatusBlocks blocks = StatusBlocks.None, StatusInterrupts interrupts = StatusInterrupts.None, string? blockReason = null,
             Fixed damageTakenIncrease = default, Fixed movementSpeedModifier = default, string? grantsOnExpiry = null,
-            IEnumerable<string>? immuneTo = null, IEnumerable<TriggerDefinition>? triggers = null)
+            IEnumerable<string>? immuneTo = null, IEnumerable<TriggerDefinition>? triggers = null, IEnumerable<ModifierDefinition>? modifiers = null)
         {
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
+            Modifiers = Frozen.ListOrEmpty(modifiers, nameof(modifiers));
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Category = category;
             DurationMs = durationMs;
@@ -177,6 +207,21 @@ namespace EdS.Domain.Combat
         }
 
         public bool IsDot => Category == StatusCategory.Dot;
+
+        /// <summary>Sous-lot 8.2 (X4) : bouclier d'absorption.</summary>
+        public bool IsShield => Category == StatusCategory.Shield;
+
+        /// <summary>Sous-lot 8.2 (X3) : renforcement temporaire.</summary>
+        public bool IsBuff => Category == StatusCategory.Buff;
+
+        /// <summary>Somme des valeurs des modificateurs de ce renforcement pour un champ (0 hors renforcement ou sans ce champ).</summary>
+        public Fixed ModifierSum(ModifierField field)
+        {
+            Fixed total = Fixed.Zero;
+            foreach (ModifierDefinition m in Modifiers)
+                if (ModifierKeys.TryParse(m.Key, out ModifierKey key) && key.Field == field) total += m.Add.Base;
+            return total;
+        }
     }
 
     /// <summary>Altération portée par une compétence ou une attaque d'assaillant, appliquée à chaque cible touchée après les dégâts.</summary>
@@ -184,7 +229,10 @@ namespace EdS.Domain.Combat
     {
         public string Status { get; }
 
-        /// <summary>DOT : coefficient de la puissance de la source par tick ; null pour les autres catégories (sans paramètre en 7.2).</summary>
+        /// <summary>
+        /// DOT : coefficient de la puissance de la source par tick. Sous-lot 8.2, bouclier : fraction des PV max de la source (valeur du
+        /// bouclier). Null pour les autres catégories.
+        /// </summary>
         public Fixed? Coefficient { get; }
 
         public StatusApplication(string status, Fixed? coefficient = null)
@@ -272,6 +320,21 @@ namespace EdS.Domain.Combat
         }
 
         /// <summary>
+        /// Sous-lot 8.2 : majorant des bonus de dégâts infligés des renforcements (catégorie « altération ») : chaque renforcement du
+        /// catalogue actif à la fois sur l'attaquant (une instance au plus par définition et par porteur), parts positives seulement.
+        /// </summary>
+        public Fixed TotalBuffDamageDealt()
+        {
+            Fixed total = Fixed.Zero;
+            foreach (StatusDefinition d in Definitions)
+                if (d.IsBuff && d.ModifierSum(ModifierField.DamageDealt) is var v && v > Fixed.Zero) total += v;
+            return total;
+        }
+
+        /// <summary>Sous-lot 8.2 : le catalogue contient-il un bouclier ?</summary>
+        public bool HasShields => Definitions.Any(d => d.IsShield);
+
+        /// <summary>
         /// Incohérences du catalogue ; chemins de la forme <c>statuses[2].periodMs</c>. <paramref name="tickMs"/> est la durée du
         /// tick des règles ; si elle est invalide, les contrôles de multiple sont omis (l'erreur est signalée sur le tick).
         /// </summary>
@@ -317,8 +380,11 @@ namespace EdS.Domain.Combat
                 {
                     if (d.PeriodMs != 0) errors.Add(new RuleViolation("seule une altération périodique a une période.", p + ".periodMs"));
                     if (d.DamageType != null) errors.Add(new RuleViolation("seule une altération périodique a un type de dégâts.", p + ".damageType"));
-                    if (d.Stacking == StatusStacking.PerSourceKeepStronger)
-                        errors.Add(new RuleViolation("le cumul par source est réservé aux altérations périodiques.", p + ".stacking"));
+                    // Sous-lot 8.2 (A7) : un bouclier par source, renouvelé au plus fort ; le cumul par source est réservé aux DOT et aux boucliers.
+                    if (d.IsShield && d.Stacking != StatusStacking.PerSourceKeepStronger)
+                        errors.Add(new RuleViolation("un bouclier se cumule par source (perSourceKeepStronger) : un bouclier par source, renouvelé au plus fort.", p + ".stacking"));
+                    else if (!d.IsShield && d.Stacking == StatusStacking.PerSourceKeepStronger)
+                        errors.Add(new RuleViolation("le cumul par source est réservé aux altérations périodiques et aux boucliers.", p + ".stacking"));
                     if (d.Resistance == StatusResistanceMode.Defense)
                         errors.Add(new RuleViolation("la résistance par la défense est réservée aux altérations périodiques.", p + ".resistance"));
                     if (d.Resistance == StatusResistanceMode.Duration && d.Category != StatusCategory.Control)
@@ -335,6 +401,9 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation($"doit être comprise entre 0 et {StatusDefinition.MaxDamageTakenIncrease}.", p + ".damageTakenIncrease"));
                 if (d.MovementSpeedModifier < -Fixed.One || d.MovementSpeedModifier > Fixed.One)
                     errors.Add(new RuleViolation("doit être compris entre -1 et 1.", p + ".movementSpeedModifier"));
+
+                // Sous-lot 8.2 (X3) : seul un renforcement porte des modificateurs, et il en porte au moins un.
+                ValidateBuffModifiers(d, p, errors);
 
                 if (d.Category == StatusCategory.Immunity && d.ImmuneTo.Count == 0)
                     errors.Add(new RuleViolation("une immunité désigne au moins une altération.", p + ".immuneTo"));
@@ -359,6 +428,8 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation($"« {granted} » accorde déjà une autre altération : profondeur 1 au plus, sans chaîne.", p + ".grantsOnExpiry"));
                     else if (target.IsDot)
                         errors.Add(new RuleViolation("une altération périodique ne peut pas être accordée : elle n'a pas de source qui fixe sa puissance.", p + ".grantsOnExpiry"));
+                    else if (target.IsShield)
+                        errors.Add(new RuleViolation("un bouclier ne peut pas être accordé : aucune application ne fixe sa valeur.", p + ".grantsOnExpiry"));
                 }
                 var seen = new HashSet<string>(StringComparer.Ordinal);
                 for (int k = 0; k < d.ImmuneTo.Count; k++)
@@ -374,6 +445,42 @@ namespace EdS.Domain.Combat
                 }
             }
             return errors;
+        }
+
+        /// <summary>
+        /// Sous-lot 8.2 (X3) : modificateurs d'un renforcement, chemins <c>statuses[i].modifiers[k]</c>. Un renforcement en porte au moins
+        /// un ; les autres catégories aucun. Mêmes contrôles que ceux d'une compétence passive (<see cref="ModifierDefinition.ValidateList"/> :
+        /// clé connue, doublon, bornes, sans perRank, valeur non nulle, dégâts subis négatifs), plus : clé parmi
+        /// <see cref="StatusDefinition.BuffKeys"/> et aucune condition. Au plus une erreur par élément ou champ.
+        /// </summary>
+        private static void ValidateBuffModifiers(StatusDefinition d, string p, List<RuleViolation> errors)
+        {
+            if (!d.IsBuff)
+            {
+                if (d.Modifiers.Count > 0)
+                    errors.Add(new RuleViolation("seul un renforcement (catégorie buff) porte des modificateurs.", p + ".modifiers"));
+                return;
+            }
+            if (d.Modifiers.Count == 0)
+            {
+                errors.Add(new RuleViolation("un renforcement porte au moins un modificateur.", p + ".modifiers"));
+                return;
+            }
+            var own = new List<RuleViolation>();
+            ModifierDefinition.ValidateList(d.Modifiers, p + ".modifiers", 1, false, _ => null, own);
+            for (int k = 0; k < d.Modifiers.Count; k++)
+            {
+                string mp = $"{p}.modifiers[{k}]";
+                ModifierDefinition m = d.Modifiers[k];
+                bool keyReported = own.Any(v => v.Fields.Contains(mp + ".key"));
+                if (!keyReported && ModifierKeys.TryParse(m.Key, out ModifierKey key) && !StatusDefinition.BuffKeys.Contains(key.Field))
+                    own.Add(new RuleViolation(RuleViolationKind.InvalidValue,
+                        $"« {m.Key} » n'est pas admise sur un renforcement ; clés possibles : {string.Join(", ", StatusDefinition.BuffKeys.Select(f => ModifierKeys.Specs[(int)f].Name))}.",
+                        mp + ".key"));
+                if (m.Conditions.Count > 0 && !own.Any(v => v.Fields.Contains(mp + ".conditions")))
+                    own.Add(new RuleViolation("un renforcement n'a pas de condition : ses modificateurs valent tant qu'il est actif.", mp + ".conditions"));
+            }
+            errors.AddRange(own);
         }
 
         /// <summary>
@@ -419,7 +526,9 @@ namespace EdS.Domain.Combat
             if (d.Category == StatusCategory.Immunity) return $"« {d.Id} » est une immunité : elle n'est accordée que par l'expiration d'une autre altération.";
             if (d.Id == guardBreakStatus) return $"« {d.Id} » n'est appliquée que par la mécanique de garde (combat.guard.breakStatus).";
             if (d.IsDot && application.Coefficient is null) return $"« {d.Id} » est périodique : coefficient obligatoire.";
-            if (!d.IsDot && application.Coefficient != null) return $"« {d.Id} » n'est pas périodique : pas de coefficient en 7.2.";
+            // Sous-lot 8.2 (X4) : la valeur d'un bouclier est une fraction des PV max de sa source.
+            if (d.IsShield && application.Coefficient is null) return $"« {d.Id} » est un bouclier : coefficient obligatoire (fraction des PV max de la source).";
+            if (!d.IsDot && !d.IsShield && application.Coefficient != null) return $"« {d.Id} » n'est ni périodique ni un bouclier : pas de coefficient.";
             return null;
         }
     }

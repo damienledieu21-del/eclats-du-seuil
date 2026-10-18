@@ -36,7 +36,8 @@ dotnet test --filter Category=Limits      # admission, budgets et capacités (so
 dotnet test --filter Category=Status      # altérations : DOT, contrôles, immunités, résistances (sous-lot 7.2)
 dotnet test --filter Category=Trigger     # déclencheurs, provenance, cycles, profondeur, report (sous-lot 7.3)
 dotnet test --filter Category=Modifier    # modificateurs X1 et X2, règles effectives, plafonds (sous-lot 8.1)
-scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
+dotnet test --filter Category=Shield      # renforcements et boucliers (sous-lot 8.2)
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
@@ -82,6 +83,8 @@ Sous-lot 8.1 (modificateurs, moteur seulement) : modificateurs permanents (X1) e
 
 Décisions du 18/10/2026 (questions du rapport 8.1) : plafonds de réduction dans `rules.json` (`combat.guard.maxDamageReduction` 0,75, `combat.damageTaken.maxReduction` 0,85 ; schéma de règles 6, contenu 0.6.0) ; un `perRank` de déclencheur sur un talent à un seul rang est refusé ; Rempart éternel sans raccourci de rupture (contenu 8.5) ; blocage à coût nul inchangé. Moteur 0.11.0 (journal identique hors en-tête).
 
+Sous-lot 8.2 (renforcements et boucliers, moteur seulement) : catégorie d'altération `buff` qui porte des modificateurs temporaires (dégâts infligés, dégâts subis sous le plafond total, entretien de garde) et catégorie `shield` (un bouclier par source, valeur = PV max de la source × coefficient × (1 + `shield.potencyDealt`), renouvelé au plus fort, absorbe dégâts directs et DOT après la défense et avant les PV, dans l'ordre de création, retiré épuisé en fin de tick) ; entretien de garde cumulé au taux du moment. Aucune donnée livrée n'en déclare : gameplay des cinq scénarios inchangé. Schéma de règles 7, schéma de classe 6 (les fichiers 6 et 5 sont refusés sans migration), moteur 0.12.0, journal au format 6. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#renforcements-et-boucliers-sous-lot-82), [docs/DONNEES.md](docs/DONNEES.md#renforcements-et-boucliers-sous-lot-82), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-82--interprétations-et-limites).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -95,4 +98,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
-- [ ] Lot 8 — en cours : sous-lot 8.1 (modificateurs X1 et X2, moteur 0.10.0) en revue
+- [ ] Lot 8 — en cours : sous-lot 8.1 (modificateurs X1 et X2, moteur 0.10.0 puis 0.11.0) et sous-lot 8.2 (renforcements et boucliers, moteur 0.12.0) en revue

@@ -134,8 +134,8 @@ namespace EdS.Simulation.Engine
         internal List<(long Tick, string Trigger, long Cause)>? ReactionTrace { get; set; }
 
         /// <summary>
-        /// Réservé aux tests (étape 7.3.6) : tentatives de réservation d'une notification (<c>notify</c>) ou d'une réaction exécutée
-        /// (<c>reaction</c>), notées avant la vérification : consommation du tick et taille de la file à cet instant, puis coût
+        /// Réservé aux tests (étape 7.3.6) : tentatives de réservation d'une notification (<c>notify</c>), d'une réaction exécutée
+        /// (<c>reaction</c>) ou, depuis le sous-lot 8.2, du retrait des boucliers épuisés d'un combattant (<c>depleted</c>), notées avant la vérification : consommation du tick et taille de la file à cet instant, puis coût
         /// vérifié (le majorant pour une réaction). Permet de placer un budget exactement à N − 1, N et N + 1 de chaque réservation.
         /// </summary>
         internal List<ReservationAttempt>? ReservationTrace { get; set; }
@@ -165,8 +165,12 @@ namespace EdS.Simulation.Engine
             public long NeedQueue { get; }
         }
 
-        private void TraceReservation(string kind, long tick, Cost need) =>
-            ReservationTrace?.Add(new ReservationAttempt(kind, tick, _workThisTick, _eventsThisTick, OccupancyAfter(1), need.Work, need.Events, need.Queue));
+        /// <summary>
+        /// <paramref name="removing"/> : éléments retirés de la file par ce traitement (1 pour un événement programmé ; 0 pour le retrait
+        /// des boucliers épuisés en fin de tick, sous-lot 8.2, trace <c>depleted</c>).
+        /// </summary>
+        private void TraceReservation(string kind, long tick, Cost need, int removing = 1) =>
+            ReservationTrace?.Add(new ReservationAttempt(kind, tick, _workThisTick, _eventsThisTick, OccupancyAfter(removing), need.Work, need.Events, need.Queue));
 
         /// <summary>
         /// Construit l'index au chargement du combat : déclencheurs permanents de chaque combattant (talents de rang ≥ 1 et
@@ -425,7 +429,8 @@ namespace EdS.Simulation.Engine
                         break;
                     case TriggerEffectKind.ApplyStatus:
                         StatusDefinition definition = _statuses[effect.Status!];
-                        cost += ApplyCost(Plan(tick, target, definition, slot.Bearer.Id, null, slot.Bearer), definition, target.Guarding, target.ParryOpen);
+                        cost += ApplyCost(Plan(tick, target, definition, slot.Bearer.Id, null, slot.Bearer, shieldAmount: ReactionShield(slot, effect, definition)),
+                            definition, target.Guarding, target.ParryOpen);
                         break;
                     default:
                         cost += GainCost(target, GainAmount(effect, slot.Rank), observable: false);
@@ -525,7 +530,8 @@ namespace EdS.Simulation.Engine
                             Domain.Numerics.Fixed power = definition.IsDot
                                 ? DotPower(slot.Bearer.Stats, definition, new StatusApplication(definition.Id, effect.Coefficient!.Value.At(slot.Rank)))
                                 : Domain.Numerics.Fixed.Zero;
-                            ApplyStatus(tick, phase, target, definition, slot.Bearer.Id, power, item.Origin, dealer: slot.Bearer);
+                            ApplyStatus(tick, phase, target, definition, slot.Bearer.Id, power, item.Origin, dealer: slot.Bearer,
+                                shieldAmount: ReactionShield(slot, effect, definition));
                             break;
                         default:
                             Gain(tick, phase, target, ResourceId(effect.Resource!.Value), GainAmount(effect, slot.Rank), "trigger", item.Origin, observable: false);
@@ -534,6 +540,13 @@ namespace EdS.Simulation.Engine
                 }
             }
         }
+
+        /// <summary>
+        /// Sous-lot 8.2 (X4) : valeur d'un bouclier posé par une réaction : PV max du porteur × coefficient au rang du déclencheur ×
+        /// (1 + sa puissance de boucliers) ; 0 hors bouclier.
+        /// </summary>
+        private static long ReactionShield(TriggerSlot slot, TriggerEffect effect, StatusDefinition definition) =>
+            definition.IsShield && effect.Coefficient is { } c ? ShieldAmount(slot.Bearer, definition, c.At(slot.Rank)) : 0;
 
         /// <summary>Traite un élément de déclencheur en tête de la file ; faux si l'élément est d'une autre nature.</summary>
         private bool ProcessTriggerItem(long tick, CombatPhase phase, Scheduled item)

@@ -70,6 +70,7 @@ internal static class Lot81Classe
         [ModifierField.StatusDurationTaken] = new("status.burn.durationTaken", "status.<id>.durationTaken", ModifierUnit.Milliseconds, Jour, false),
         [ModifierField.SkillCoefficient] = new("skill.essai.frappe.coefficient", "skill.<id>.coefficient", ModifierUnit.Decimal, "100", false),
         [ModifierField.SkillCooldownMs] = new("skill.essai.frappe.cooldownMs", "skill.<id>.cooldownMs", ModifierUnit.Milliseconds, Jour, false),
+        [ModifierField.ShieldPotencyDealt] = new("shield.potencyDealt", "shield.potencyDealt", ModifierUnit.Decimal, "10", false),              // sous-lot 8.2 (X4)
     };
 
     /// <summary>Ligne de conception d'une clé ; une clé ajoutée à la liste fermée sans être ajoutée ici fait échouer le test qui la lit.</summary>
@@ -209,8 +210,8 @@ public class Lot81ModifierValidationTests
     {
         IReadOnlyList<ModifierSpec> specs = ModifierKeys.Specs;
         Assert.Equal(Enum.GetValues(typeof(ModifierField)).Length, specs.Count);
-        Assert.Equal(20, specs.Count);
-        Assert.Equal(16, specs.Count(s => !s.Name.Contains("<id>")));   // 16 clés scalaires + 4 paramétrées
+        Assert.Equal(21, specs.Count);
+        Assert.Equal(17, specs.Count(s => !s.Name.Contains("<id>")));   // 17 clés scalaires + 4 paramétrées (sous-lot 8.2 : shield.potencyDealt)
         for (int i = 0; i < specs.Count; i++)
         {
             ModifierSpec spec = specs[i];
@@ -401,7 +402,6 @@ public class Lot81ModifierValidationTests
     [InlineData("guard.damagereduction")]
     [InlineData(" guard.damageReduction")]
     [InlineData("guard.damageReduction\n")]
-    [InlineData("shield.potencyDealt")]          // reportée au sous-lot 8.2 (X4)
     [InlineData("protection.redirectRatio")]     // reportée au sous-lot 8.3 (X6)
     [InlineData("damage")]
     [InlineData("status.burn")]
@@ -602,9 +602,10 @@ public class Lot81ModifierValidationTests
     [Fact]
     public void Toutes_les_cles_ensemble_admises()
     {
-        // [L3] Les 20 clés de la liste fermée, une fois chacune, réparties sur trois porteurs (au plus 8 chacun).
+        // [L3] Les 21 clés de la liste fermée (sous-lot 8.2 : shield.potencyDealt), une fois chacune, réparties sur trois porteurs (au
+        // plus 8 chacun).
         ModifierDefinition[] toutes = ModifierKeys.Specs.Select(s => Brut(De(s.Field).Cle, ValeurValide(s.Field))).ToArray();
-        Assert.Equal(20, toutes.Length);
+        Assert.Equal(21, toutes.Length);
         Admis(Classe(alpha: toutes.Take(8), beta: toutes.Skip(8).Take(8), passif: toutes.Skip(16)).Validate(Regles));
         // Et chacune à sa borne (−1 pour damageTaken), sauf le drapeau qui vaut 1.
         ModifierDefinition[] bornes = ModifierKeys.Specs.Select(s => Brut(De(s.Field).Cle,

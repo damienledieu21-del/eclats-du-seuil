@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 6
+      "const": 7
     },
     "kind": {
       "const": "rules"
@@ -682,8 +682,11 @@
                   "dot",
                   "control",
                   "modifier",
-                  "immunity"
-                ]
+                  "immunity",
+                  "buff",
+                  "shield"
+                ],
+                "description": "buff : renforcement porteur de modificateurs ; shield : bouclier d'absorption, cumul par source (sous-lot 8.2)."
               },
               "durationMs": {
                 "type": "integer",
@@ -767,6 +770,32 @@
                   "$ref": "#/$defs/trigger"
                 },
                 "description": "Déclencheurs (lot 7.3), au plus 8."
+              },
+              "modifiers": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "key",
+                    "add"
+                  ],
+                  "properties": {
+                    "key": {
+                      "enum": [
+                        "damageDealt",
+                        "damageTaken",
+                        "guard.upkeepPerSecond"
+                      ]
+                    },
+                    "add": {
+                      "$ref": "#/$defs/rankedValue",
+                      "description": "Valeur du modificateur (perRank nul : une altération n'a pas de rang)."
+                    }
+                  }
+                },
+                "description": "Renforcement (buff) seulement, au moins un : modificateurs actifs tant que l'instance existe, sans rang ni condition (sous-lot 8.2)."
               }
             }
           }

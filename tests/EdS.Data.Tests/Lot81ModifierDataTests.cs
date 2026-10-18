@@ -108,10 +108,11 @@ public class Lot81ModifierDataReadingTests
     // --- Lecture ---------------------------------------------------------------------------
 
     [Fact]
-    public void Classe_livree_au_schema_5_sans_modificateur()
+    public void Classe_livree_au_schema_courant_sans_modificateur()
     {
+        // Sous-lot 8.2 : schéma de classe 6 (clé shield.potencyDealt), toujours sans modificateur livré.
         LoadedClass shipped = ClassJsonReader.Read(ClassTestData.BastionJson, ClassTestData.Progression).Class!;
-        Assert.Equal(5, shipped.SchemaVersion);
+        Assert.Equal(6, shipped.SchemaVersion);
         Assert.All(shipped.Definition.Trees.SelectMany(t => t.Talents), t => Assert.Empty(t.Modifiers));
         Assert.All(shipped.Definition.Skills, s => Assert.Empty(s.Modifiers));
     }
@@ -251,9 +252,8 @@ public class Lot81ModifierDataReadingTests
     /// <summary>Erreurs de ClassDefinition.Validate valables sur les deux porteurs (valeurs sans perRank).</summary>
     private static readonly (string Json, string Path, ValidationCode Code)[] DomainCases =
     {
-        // Clé hors de la liste fermée (D2), dont les clés reportées à 8.2 et 8.3.
+        // Clé hors de la liste fermée (D2), dont la clé reportée à 8.3 (shield.potencyDealt existe depuis 8.2).
         ("""{ "key": "guard.reflect", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
-        ("""{ "key": "shield.potencyDealt", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
         ("""{ "key": "protection.redirectRatio", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
         ("""{ "key": "Guard.damageReduction", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
         ("""{ "key": "", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
@@ -425,6 +425,7 @@ public class Lot81ModifierDataReadingTests
         ("status.fragility.durationTaken", 86_400_000m, true),
         ("skill.bastion.frappe_du_rempart.coefficient", 100m, false),
         ("skill.bastion.heurt_de_bouclier.cooldownMs", 86_400_000m, true),
+        ("shield.potencyDealt", 10m, false),   // sous-lot 8.2 (X4)
     };
 
     public static TheoryData<string, string, string, bool> Boundaries()
@@ -581,7 +582,7 @@ public class Lot81ModifierDataReadingTests
 public class Lot81ModifierDataFingerprintTests
 {
     private const string SmallClass = """
-        { "schemaVersion": 5, "kind": "class", "contentVersion": "0.1.0-test",
+        { "schemaVersion": 6, "kind": "class", "contentVersion": "0.1.0-test",
           "data": { "id": "class.essai", "name": "Essai",
             "trees": [ { "id": "tree.essai.a", "name": "A", "talents": [
               { "id": "talent.essai.a.t", "name": "T", "maxRank": 3, "major": false, "placeholder": false, "prerequisites": [],
@@ -615,7 +616,7 @@ public class Lot81ModifierDataFingerprintTests
     /// après ses exigences et ses déclencheurs, avant le bloc combat (« combat? » d'une passive) ; rien pour une liste vide (active).
     /// </summary>
     private static readonly string SmallClassCanonical =
-        "eds-class\ncanonical=2\nschemaVersion=5\nid=class.essai\nname=Essai\n" +
+        "eds-class\ncanonical=2\nschemaVersion=6\nid=class.essai\nname=Essai\n" +
         "trees.count=1\ntrees[0].id=tree.essai.a\ntrees[0].name=A\ntrees[0].talents.count=1\n" +
         "trees[0].talents[0].id=talent.essai.a.t\ntrees[0].talents[0].name=T\ntrees[0].talents[0].maxRank=3\n" +
         "trees[0].talents[0].major=false\ntrees[0].talents[0].placeholder=false\ntrees[0].talents[0].prerequisites.count=0\n" +
@@ -867,19 +868,22 @@ public class Lot81ModifierDataSchemaTests
     private static Regex KeyPattern() => new(Def("modifier")["properties"]!["key"]!["pattern"]!.GetValue<string>(), RegexOptions.CultureInvariant);
 
     [Fact]
-    public void Version_de_schema_des_classes_5()
+    public void Version_de_schema_des_classes_6()
     {
-        Assert.Equal(5, DataFormat.ClassSchemaVersion);
-        Assert.Equal(5, ClassValidator.CurrentSchemaVersion);
-        Assert.Equal(5, JsonNode.Parse(ClassTestData.BastionJson)!["schemaVersion"]!.GetValue<int>());
-        Assert.Equal(5, Schema()["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        // Sous-lot 8.2 (revue Codex de la PR #6) : 6, clé de modificateur shield.potencyDealt.
+        Assert.Equal(6, DataFormat.ClassSchemaVersion);
+        Assert.Equal(6, ClassValidator.CurrentSchemaVersion);
+        Assert.Equal(6, JsonNode.Parse(ClassTestData.BastionJson)!["schemaVersion"]!.GetValue<int>());
+        Assert.Equal(6, Schema()["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
     }
 
     [Theory]
+    [InlineData(5, false)]
+    [InlineData(5, true)]
     [InlineData(4, false)]
     [InlineData(4, true)]
     [InlineData(3, true)]
-    [InlineData(6, true)]
+    [InlineData(7, true)]
     public void Classe_d_une_autre_version_refusee_avec_un_message_explicite(int version, bool withModifiers)
     {
         ClassLoadResult result = ClassTestData.ReadMutated(root =>
@@ -891,12 +895,12 @@ public class Lot81ModifierDataSchemaTests
         AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
         string message = result.Report.Errors[0].Message;
         Assert.Contains($"version de format {version}", message);
-        if (version < 5)
+        if (version < 6)
         {
-            Assert.Contains("antérieure à la version 5", message);
+            Assert.Contains("antérieure à la version 6", message);
             Assert.Contains("aucune migration", message);
         }
-        else Assert.Contains("ce programme lit la version 5", message);
+        else Assert.Contains("ce programme lit la version 6", message);
     }
 
     [Fact]
@@ -917,7 +921,7 @@ public class Lot81ModifierDataSchemaTests
             Assert.EndsWith("bastion.json", path);
             ValidationError error = Assert.Single(report.Errors);
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (error.Path, error.Code));
-            Assert.Contains("version de format 4 antérieure à la version 5", error.Message);
+            Assert.Contains("version de format 4 antérieure à la version 6", error.Message);
         }
         finally
         {
@@ -989,6 +993,7 @@ public class Lot81ModifierDataSchemaTests
         "guard.breakShortenPerCharge", "parry.windowMs", "parry.failureRecoveryMs", "rampartCharges.max", "resonance.perDirectHit",
         "endurance.max", "endurance.regenPerSecond", "maxHealth", "statusResistance", "damageDealt", "damageTaken",
         "status.<id>.durationDealt", "status.<id>.durationTaken", "skill.<id>.coefficient", "skill.<id>.cooldownMs",
+        "shield.potencyDealt",   // sous-lot 8.2 (X4)
     };
 
     /// <summary>Exemple concret d'une spécification : identifiant d'altération ou de compétence de la classe livrée à la place de &lt;id&gt;.</summary>
@@ -1033,7 +1038,6 @@ public class Lot81ModifierDataSchemaTests
     [InlineData("damageDealt ")]
     [InlineData("maxhealth")]
     [InlineData("statusResistance.max")]
-    [InlineData("shield.potencyDealt")]                     // 8.2
     [InlineData("protection.redirectRatio")]                // 8.3
     [InlineData("status.fragility.duration")]
     [InlineData("status.Fragility.durationTaken")]
@@ -1142,7 +1146,7 @@ public class Lot81ModifierDataEndToEndTests
     private const string FiveSourcesRules =
         "{\"guard.damageReduction\":0.72,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":6,\"guard.noUpkeepBreak\":false," +
         "\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":150,\"parry.failureRecoveryMs\":500," +
-        "\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,\"damageDealt\":0,\"damageTaken\":0," +
+        "\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0," +
         "\"skill.bastion.frappe_du_rempart.coefficient\":1.35,\"status.fragility.durationTaken\":-1000," +
         "\"conditional\":[{\"key\":\"damageTaken\",\"conditions\":[\"whileGuarding\"],\"value\":-0.05}]}";
 
@@ -1322,7 +1326,7 @@ public class Lot81ModifierDataEndToEndTests
         Assert.Equal(
             "{\"guard.damageReduction\":0.75,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":0,\"guard.noUpkeepBreak\":false," +
             "\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":500,\"parry.failureRecoveryMs\":500," +
-            "\"rampartCharges.max\":10,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":0,\"damageDealt\":0,\"damageTaken\":0," +
+            "\"rampartCharges.max\":10,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":0,\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0," +
             "\"skill.bastion.frappe_du_rempart.coefficient\":100,\"skill.bastion.heurt_de_bouclier.cooldownMs\":0," +
             "\"status.burn.durationDealt\":172800000,\"conditional\":[]}",
             RulesOf(Run(high)));
@@ -1339,7 +1343,7 @@ public class Lot81ModifierDataEndToEndTests
         Assert.Equal(
             "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,\"guard.noUpkeepBreak\":true," +
             "\"guard.reductionAtZeroEndurance\":0.6,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":50,\"parry.failureRecoveryMs\":500," +
-            "\"rampartCharges.max\":0,\"resonance.perDirectHit\":0,\"endurance.regenPerSecond\":10,\"damageDealt\":0,\"damageTaken\":0,\"conditional\":[]}",
+            "\"rampartCharges.max\":0,\"resonance.perDirectHit\":0,\"endurance.regenPerSecond\":10,\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"conditional\":[]}",
             RulesOf(Run(low)));
     }
 
@@ -1359,7 +1363,7 @@ public class Lot81ModifierDataEndToEndTests
         Assert.Equal(
             "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,\"guard.noUpkeepBreak\":false," +
             "\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":150,\"parry.failureRecoveryMs\":500," +
-            "\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,\"damageDealt\":0.1,\"damageTaken\":-0.1," +
+            "\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,\"damageDealt\":0.1,\"damageTaken\":-0.1,\"shield.potencyDealt\":0," +
             "\"conditional\":[{\"key\":\"damageDealt\",\"conditions\":[\"perResonanceStep\"],\"value\":0.03}," +
             "{\"key\":\"damageTaken\",\"conditions\":[\"whileGuarding\"],\"value\":-0.05}," +
             "{\"key\":\"damageTaken\",\"conditions\":[\"whileGuarding\",\"perRampartCharge\"],\"value\":-0.07}]}",
@@ -1480,7 +1484,7 @@ public class Lot81ModifierDataImmutabilityTests
         Assert.Throws<NotSupportedException>(() => ((IDictionary<string, ModifierCondition>)ModifierKeys.Conditions)["whileBlocking"] = ModifierCondition.WhileGuarding);
         Assert.Throws<NotSupportedException>(() => ((IList<ModifierSpec>)ModifierKeys.Specs).RemoveAt(0));
         Assert.Equal(3, ModifierKeys.Conditions.Count);
-        Assert.Equal(20, ModifierKeys.Specs.Count);
+        Assert.Equal(21, ModifierKeys.Specs.Count);   // sous-lot 8.2 : shield.potencyDealt
     }
 
     [Fact]

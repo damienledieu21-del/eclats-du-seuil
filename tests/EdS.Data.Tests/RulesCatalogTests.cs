@@ -54,7 +54,7 @@ public class RulesCatalogTests
             {
                 Assert.Contains(p.Name, required);
                 string childPath = prefix.Length == 0 ? p.Name : prefix + "." + p.Name;
-                if (childPath == "statuses") continue;   // lot 7.2 : liste de définitions, vérifiée par Schema_JSON_des_alterations
+                if (childPath == "statuses") continue;   // lot 7.2 : liste de définitions, vérifiée par Lot82StatusDataTests.Schema_JSON_des_alterations
                 if (p.Value.TryGetProperty("properties", out _)) Walk(p.Value, childPath);
                 else leaves.Add(childPath);
             }

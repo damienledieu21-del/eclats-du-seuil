@@ -29,7 +29,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.11.0";
+        public const string Version = "0.12.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -42,9 +42,13 @@ namespace EdS.Simulation.Engine
         /// (identité de l'effet) et <c>cause</c> (eid du parent, null pour l'effet racine) ; l'effet racine porte <c>root</c> ; un effet
         /// de profondeur ≥ 1 porte <c>depth</c> et <c>trigger</c>. Les diagnostics n'en portent aucun. 5 (sous-lot 8.1) : la ligne
         /// <c>combatant</c> porte <c>statusResistance</c> et <c>rules</c> (règles effectives d'un personnage, null sinon) ;
-        /// <c>guardBroken</c> porte <c>rampartChargesSpent</c>. Un journal d'un autre format est refusé au rejeu.
+        /// <c>guardBroken</c> porte <c>rampartChargesSpent</c>. 6 (sous-lot 8.2) : <c>damage</c> et <c>dotDamage</c> portent
+        /// <c>absorbed</c> et <c>absorbedBy</c> (boucliers consommés) ; <c>stateApplied</c> d'un bouclier porte <c>absorb</c> ;
+        /// <c>stateRemoved</c> peut avoir la raison <c>depleted</c> ; <c>stateBlocked</c> la raison <c>empty</c> ; <c>combatantSummary</c>
+        /// porte <c>damageAbsorbed</c> ; les règles effectives (<c>rules</c>) portent <c>shield.potencyDealt</c>. Un journal d'un autre
+        /// format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 5;
+        public const int LogFormatVersion = 6;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -77,8 +81,13 @@ namespace EdS.Simulation.Engine
 
             public bool Guarding;
 
-            /// <summary>Ticks réellement gardés depuis le début du combat (garde active en phase 4), toutes gardes confondues.</summary>
-            public long GuardedTicks;
+            /// <summary>
+            /// Entretien dû depuis le début du combat, en points entiers (M01), et son reliquat en unités brutes × ms (moins de
+            /// 1000 × échelle). Sous-lot 8.2 : cumulé tick par tick au taux du moment (renforcements compris) ; à taux constant, égal à
+            /// ⌊ coût/s × ticks gardés × durée du tick / 1000 ⌋ comme avant.
+            /// </summary>
+            public long GuardUpkeepDue;
+            public long GuardUpkeepRemainder;
 
             /// <summary>Entretien déjà payé depuis le début du combat : le reliquat fractionnaire n'est jamais perdu (M01).</summary>
             public long GuardUpkeepPaid;
@@ -166,6 +175,12 @@ namespace EdS.Simulation.Engine
 
             /// <summary>DOT : tick du prochain tick de dégâts (cadence d'origine, jamais décalée par un renouvellement, D4).</summary>
             public long NextTick;
+
+            /// <summary>Sous-lot 8.2 (X4), bouclier : valeur restante ; épuisé à 0, retiré en fin de tick (<c>depleted</c>).</summary>
+            public long Absorb;
+
+            /// <summary>Sous-lot 8.2 : provenance de l'effet qui a épuisé le bouclier (cause de son retrait) ; null tant qu'il reste une valeur.</summary>
+            public Provenance? DepletedBy;
 
             /// <summary>
             /// Lot 7.3 (A1, A2) : provenance de la dernière application acceptée, cause = son <c>stateApplied</c>, avec l'instance et la
@@ -835,7 +850,7 @@ namespace EdS.Simulation.Engine
                     cost += Cost.Line;   // stateBlocked « parried »
                     continue;
                 }
-                StatusPlan plan = Plan(tick, target, definition, action.Actor.Id, null, action.Actor);
+                StatusPlan plan = Plan(tick, target, definition, action.Actor.Id, null, action.Actor, shieldAmount: ShieldAmount(action.Actor, definition, application.Coefficient));
                 cost += ApplyCost(plan, definition, guarding, parryOpen);
                 if (plan.Applies)
                 {
@@ -872,6 +887,9 @@ namespace EdS.Simulation.Engine
             Fixed increase = DamageTakenIncrease(target);
             bool fragile = increase != Fixed.Zero;
             DamageBonuses bonuses = fragile ? DamageBonuses.None.Add(BonusCategory.Alteration, increase) : DamageBonuses.None;
+            // Sous-lot 8.2 (X3) : dégâts infligés des renforcements actifs de l'attaquant, même catégorie « altération ».
+            Fixed buffDealt = BuffSum(actor, ModifierField.DamageDealt);
+            if (buffDealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Alteration, buffDealt);
 
             // Défense de la cible : parade (prioritaire) ou garde ; jamais les deux. Un impact imparable ignore l'une et l'autre.
             string defense = "none";
@@ -920,8 +938,10 @@ namespace EdS.Simulation.Engine
             // Sous-lot 8.1 (X1, X2, B2) : modificateurs de dégâts lus au calcul des dégâts, sur l'état courant (après la défense de cet
             // impact, avant ses gains), sans ligne ni notification. Dégâts subis du défenseur : réduction totale multiplicative
             // plafonnée à 85 %, hors parade ; dégâts infligés de l'attaquant : catégorie talent. Sans modificateur, rien ne change.
+            // Sous-lot 8.2 (X3) : réduction temporaire des renforcements actifs du défenseur, sous le même plafond total.
             if (defense != "parry")
-                mitigation = target.Rules.TotalReduction(mitigation, target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance));
+                mitigation = target.Rules.TotalReduction(mitigation,
+                    target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance, BuffSum(target, ModifierField.DamageTaken)));
             Fixed dealt = actor.Rules.DamageDealtAt(actor.Guarding, actor.RampartCharges, actor.Resonance);
             if (dealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Talent, dealt);
 
@@ -936,21 +956,28 @@ namespace EdS.Simulation.Engine
             long amount = DamageCalculator.Compute(input, _setup.Damage).FinalDamage;
 
             // Correctif 7.3.1 (A73-M01) : nouvelles valeurs préparées et vérifiées avant toute affectation ; un débordement arrête
-            // le combat sans impact à moitié appliqué.
-            DamageUpdate update = PrepareDamage(target, actor, amount);
+            // le combat sans impact à moitié appliqué. Sous-lot 8.2 (X4) : les boucliers absorbent après la défense, avant les PV.
+            Absorption absorption = PlanAbsorption(target, amount);
+            DamageUpdate update = PrepareDamage(target, actor, amount, absorption.Total);
             long overkill = update.Overkill;
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
+            target.Result.DamageAbsorbed = update.Absorbed;
             actor.Result.DamageDealt = update.Dealt!.Value;
             actor.Result.Hits = update.Hits;
             if (critical) actor.Result.CriticalHits++;
+            ApplyAbsorption(absorption);
             ObservedEvent hit = HitObserved(TriggerEvent.HitDealt, action, target, TriggerIds.Defenses[defense]);
             hit.Also = TriggerEvent.HitTaken;
-            long damage = Emit(tick, phase, "damage", origin, hit, w => w
-                .Field("source", actor.Id).Field("target", target.Id).Field("skill", action.Skill?.Id).Field("attack", action.Attack?.Id)
-                .Field("critical", critical).Field("fragile", fragile).Field("defense", defense).Field("amount", amount).Field("overkill", overkill)
-                .Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken));
+            long damage = Emit(tick, phase, "damage", origin, hit, w =>
+            {
+                w.Field("source", actor.Id).Field("target", target.Id).Field("skill", action.Skill?.Id).Field("attack", action.Attack?.Id)
+                    .Field("critical", critical).Field("fragile", fragile).Field("defense", defense).Field("amount", amount);
+                WriteAbsorption(w, absorption);
+                w.Field("overkill", overkill).Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken);
+            });
             Provenance impact = origin.CausedBy(damage);
+            NoteDepleted(absorption, impact);
             NoteLethal(target, impact);
 
             if (parryReward)
@@ -975,7 +1002,8 @@ namespace EdS.Simulation.Engine
                     continue;
                 }
                 Fixed power = definition.IsDot ? DotPower(attacker, definition, application) : Fixed.Zero;
-                ApplyStatus(tick, phase, target, definition, actor.Id, power, impact, dealer: actor);
+                ApplyStatus(tick, phase, target, definition, actor.Id, power, impact, dealer: actor,
+                    shieldAmount: ShieldAmount(actor, definition, application.Coefficient));
             }
         }
 
@@ -1004,7 +1032,7 @@ namespace EdS.Simulation.Engine
         // --- Altérations (lot 7.2) ----------------------------------------------------------------
 
         /// <summary>Issue d'une application, calculée sans rien modifier ; sert au coût réservé et à l'exécution.</summary>
-        private enum StatusOutcome { New, Renew, Immune, Resisted, Active, NotLonger }
+        private enum StatusOutcome { New, Renew, Immune, Resisted, Active, NotLonger, Empty }
 
         private readonly struct StatusPlan
         {
@@ -1028,6 +1056,7 @@ namespace EdS.Simulation.Engine
                 StatusOutcome.Immune => "immune",
                 StatusOutcome.Resisted => "resisted",
                 StatusOutcome.Active => "active",
+                StatusOutcome.Empty => "empty",
                 _ => "notLonger",
             };
         }
@@ -1037,10 +1066,11 @@ namespace EdS.Simulation.Engine
         /// 0 tick par la résistance (<c>resisted</c>, D7) ; nouvelle instance si la clé est libre ; sinon le mode de cumul :
         /// <c>refresh</c> et <c>perSourceKeepStronger</c> renouvellent, <c>keepLonger</c> renouvelle seulement si la nouvelle fin est
         /// plus tardive (<c>notLonger</c> sinon), <c>ignore</c> refuse (<c>active</c>). <paramref name="excluding"/> est une instance
-        /// en cours de retrait, ignorée (expiration qui accorde un état).
+        /// en cours de retrait, ignorée (expiration qui accorde un état). Sous-lot 8.2 : un bouclier de valeur nulle
+        /// (<paramref name="shieldAmount"/>, source sans PV max ou coefficient nul) est refusé (<c>empty</c>), juste après l'immunité.
         /// </summary>
         private StatusPlan Plan(long tick, Fighter target, StatusDefinition definition, string? source, StatusInstance? excluding,
-            Fighter? dealer, long shortenMs = 0)
+            Fighter? dealer, long shortenMs = 0, long shieldAmount = 0)
         {
             var key = new StatusKey(definition.Id, definition.Stacking == StatusStacking.PerSourceKeepStronger ? source : null);
             target.Statuses.TryGetValue(key, out StatusInstance? existing);
@@ -1048,6 +1078,7 @@ namespace EdS.Simulation.Engine
             foreach (StatusInstance status in target.Statuses.Values)
                 if (status != excluding && status.Definition.ImmuneTo.Contains(definition.Id))
                     return new StatusPlan(StatusOutcome.Immune, key, existing, 0);
+            if (definition.IsShield && shieldAmount <= 0) return new StatusPlan(StatusOutcome.Empty, key, existing, 0);
             long ticks = DurationTicks(definition, target, dealer, shortenMs);
             if (ticks == 0) return new StatusPlan(StatusOutcome.Resisted, key, existing, 0);
             if (existing is null) return new StatusPlan(StatusOutcome.New, key, null, ticks);
@@ -1107,9 +1138,9 @@ namespace EdS.Simulation.Engine
         /// interrompues (garde, parade) le sont après la ligne <c>stateApplied</c>.
         /// </summary>
         private void ApplyStatus(long tick, CombatPhase phase, Fighter target, StatusDefinition definition, string? source, Fixed power,
-            Provenance origin, StatusInstance? excluding = null, Fighter? dealer = null, long shortenMs = 0)
+            Provenance origin, StatusInstance? excluding = null, Fighter? dealer = null, long shortenMs = 0, long shieldAmount = 0)
         {
-            StatusPlan plan = Plan(tick, target, definition, source, excluding, dealer, shortenMs);
+            StatusPlan plan = Plan(tick, target, definition, source, excluding, dealer, shortenMs, shieldAmount);
             if (!plan.Applies)
             {
                 EmitDiagnostic(tick, phase, "stateBlocked", w => w
@@ -1142,12 +1173,20 @@ namespace EdS.Simulation.Engine
                 status.UntilTick = checked(tick + plan.DurationTicks);
                 Schedule(status.UntilTick, CombatPhase.Expirations,
                     new StateExpiry { Fighter = target, Key = plan.Key, Instance = status.Id, Generation = status.Generation });
+                // Sous-lot 8.2 (X4, A7) : un bouclier par source ; un renouvellement garde la plus forte des valeurs (restante ou nouvelle)
+                // et repart de maintenant + durée. Un bouclier épuisé non encore retiré repart ainsi de la nouvelle valeur.
+                if (definition.IsShield)
+                {
+                    status.Absorb = renewed ? Math.Max(status.Absorb, shieldAmount) : shieldAmount;
+                    status.DepletedBy = null;
+                }
             }
             Provenance applying = origin.WithSource(source);
             long applied = Emit(tick, phase, "stateApplied", applying, StateObserved(TriggerEvent.StateApplied, target, status, renewed), w =>
             {
                 StateFields(w, target, status).Field("untilTick", status.UntilTick).Field("renewed", renewed);
                 if (definition.IsDot) w.Field("power", status.Power).Field("nextTick", status.NextTick);
+                if (definition.IsShield) w.Field("absorb", status.Absorb);
                 if (definition.MovementSpeedModifier != Fixed.Zero) w.Field("movementSpeedModifier", definition.MovementSpeedModifier);
             });
             status.Origin = applying.CausedBy(applied).ForInstance(status.Id, status.Generation);
@@ -1364,8 +1403,7 @@ namespace EdS.Simulation.Engine
                     Charge(1);
                     continue;
                 }
-                long guardedTicks = checked(f.GuardedTicks + 1);
-                long due = UpkeepDue(f, guardedTicks);
+                var (due, remainder) = UpkeepAfterTick(f);
                 long amount = due - f.GuardUpkeepPaid;
                 bool shortfall = amount > 0 && f.Endurance < amount;
                 bool breaks = shortfall && !f.Rules.GuardNoUpkeepBreak;
@@ -1377,7 +1415,8 @@ namespace EdS.Simulation.Engine
                     BreakGuard(tick, CombatPhase.Periodic, f, "upkeep", null, upkeep, impact: false);
                     continue;
                 }
-                f.GuardedTicks = guardedTicks;
+                f.GuardUpkeepDue = due;
+                f.GuardUpkeepRemainder = remainder;
                 if (amount <= 0) continue;
                 long paid = shortfall ? f.Endurance : amount;
                 if (paid > 0) SpendEndurance(f, paid, tick);   // rien à payer : pas une dépense (le délai de régénération ne repart pas)
@@ -1388,11 +1427,19 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Entretien dû après <paramref name="guardedTicks"/> ticks gardés : ⌊ coût/s × ticks × durée du tick / 1000 ⌋, coût/s
-        /// décimal effectif ; égal au calcul entier du lot 7 pour un coût entier. Sans débordement : coût/s &lt; 2³¹, durée ≤ 24 h.
+        /// Entretien dû si ce tick est gardé, sans rien modifier : l'entretien dû et son reliquat avancent du coût/s effectif du moment
+        /// × durée du tick (unités brutes × ms), le reliquat passant en points entiers par 1000 × échelle. À coût constant, l'entretien dû
+        /// après n ticks gardés vaut exactement ⌊ coût/s × n × durée du tick / 1000 ⌋ (calcul des lots 7 et 8.1). Sous-lot 8.2 (X3) : le
+        /// coût/s comprend les renforcements actifs du porteur (<c>guard.upkeepPerSecond</c>, écrêté à 0). Sans débordement : coût/s brut
+        /// &lt; 2,2·10¹³, × durée du tick ≤ 1000 ms ; l'entretien dû cumulé ≤ coût/s × 24 h.
         /// </summary>
-        private long UpkeepDue(Fighter f, long guardedTicks) =>
-            IntMath.MulDiv(f.Rules.GuardUpkeepPerSecond.Raw, checked(guardedTicks * _tickMs), 1000 * Fixed.Scale, RoundingMode.Floor);
+        private (long Due, long Remainder) UpkeepAfterTick(Fighter f)
+        {
+            const long unit = 1000 * Fixed.Scale;
+            Fixed rate = f.Rules.GuardUpkeepPerSecondWith(BuffSum(f, ModifierField.GuardUpkeepPerSecond));
+            long total = checked(f.GuardUpkeepRemainder + checked(rate.Raw * _tickMs));
+            return (checked(f.GuardUpkeepDue + total / unit), total % unit);
+        }
 
         private static bool IsCurrent(DotTick dot, out StatusInstance status) =>
             dot.Fighter.Statuses.TryGetValue(dot.Key, out status!) && status.Id == dot.Instance;
@@ -1403,14 +1450,16 @@ namespace EdS.Simulation.Engine
             public readonly long? Health;
             public readonly long Overkill;
             public readonly long Taken;
+            public readonly long Absorbed;
             public readonly long? Dealt;
             public readonly long Hits;
 
-            public DamageUpdate(long? health, long overkill, long taken, long? dealt, long hits)
+            public DamageUpdate(long? health, long overkill, long taken, long absorbed, long? dealt, long hits)
             {
                 Health = health;
                 Overkill = overkill;
                 Taken = taken;
+                Absorbed = absorbed;
                 Dealt = dealt;
                 Hits = hits;
             }
@@ -1421,20 +1470,110 @@ namespace EdS.Simulation.Engine
         /// subis et les dégâts infligés de la source (et son compteur de coups, pour un impact direct). Toutes les opérations qui
         /// peuvent déborder sont faites ici ; l'appelant n'affecte qu'ensuite. Un débordement (configuration hors du précontrôle)
         /// arrête donc le combat (<c>overflow</c>) avant toute mutation de l'impact : ni PV, ni compteur, ni ligne partiels.
+        /// <para>Sous-lot 8.2 (X4) : <paramref name="absorbed"/> (0 ≤ absorbé ≤ montant) est retenu par les boucliers de la cible : seul le
+        /// reste atteint ses PV et ses dégâts subis ; les dégâts infligés de la source comptent le montant entier.</para>
         /// </summary>
-        private static DamageUpdate PrepareDamage(Fighter target, Fighter? source, long amount)
+        private static DamageUpdate PrepareDamage(Fighter target, Fighter? source, long amount, long absorbed)
         {
+            long lost = checked(amount - absorbed);
             long? health = target.Health;
             long overkill = 0;
             if (health is long current)
             {
-                overkill = Math.Max(0, checked(amount - current));
-                health = Math.Max(0, checked(current - amount));
+                overkill = Math.Max(0, checked(lost - current));
+                health = Math.Max(0, checked(current - lost));
             }
-            long taken = checked(target.Result.DamageTaken + amount);
+            long taken = checked(target.Result.DamageTaken + lost);
+            long totalAbsorbed = checked(target.Result.DamageAbsorbed + absorbed);
             long? dealt = source is null ? (long?)null : checked(source.Result.DamageDealt + amount);
             long hits = source is null ? 0 : checked(source.Result.Hits + 1);
-            return new DamageUpdate(health, overkill, taken, dealt, hits);
+            return new DamageUpdate(health, overkill, taken, totalAbsorbed, dealt, hits);
+        }
+
+        // --- Renforcements et boucliers (sous-lot 8.2) ---------------------------------------------
+
+        /// <summary>
+        /// Sous-lot 8.2 (X3) : somme d'un champ des modificateurs des renforcements actifs d'un combattant (une instance au plus par
+        /// définition : pas de cumul par source). Addition exacte, indépendante de l'ordre.
+        /// </summary>
+        private static Fixed BuffSum(Fighter f, ModifierField field)
+        {
+            Fixed total = Fixed.Zero;
+            foreach (StatusInstance status in f.Statuses.Values)
+                if (status.Definition.IsBuff) total += status.Definition.ModifierSum(field);
+            return total;
+        }
+
+        /// <summary>Sous-lot 8.2 (X4) : valeur d'un bouclier posé par <paramref name="source"/> (0 hors bouclier ; voir <see cref="Shields.Value"/>).</summary>
+        private static long ShieldAmount(Fighter source, StatusDefinition definition, Fixed? coefficient) =>
+            definition.IsShield && coefficient is { } c ? Shields.Value(source.MaxHealth, c, source.Rules.ShieldPotencyDealt) : 0;
+
+        /// <summary>Absorption planifiée d'un montant de dégâts : boucliers consommés, dans l'ordre, et part prise à chacun.</summary>
+        private readonly struct Absorption
+        {
+            public readonly long Total;
+            public readonly List<(StatusInstance Shield, long Taken)>? Takes;
+
+            public Absorption(long total, List<(StatusInstance, long)>? takes)
+            {
+                Total = total;
+                Takes = takes;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot 8.2 (X4, A6, A7) : absorption d'un impact ou d'un tick de DOT par les boucliers de la cible, sans rien modifier. Les
+        /// boucliers non épuisés sont consommés dans l'ordre de leur création (numéro d'instance croissant : FIFO, un renouvellement
+        /// garde sa place), chacun jusqu'à sa valeur restante ; le reste du montant atteint les PV.
+        /// </summary>
+        private static Absorption PlanAbsorption(Fighter target, long amount)
+        {
+            if (amount <= 0 || !HasAbsorb(target)) return default;   // chemin courant sans bouclier : ni tri ni allocation
+            List<(StatusInstance, long)>? takes = null;
+            long left = amount;
+            foreach (StatusInstance shield in target.Statuses.Values.Where(x => x.Definition.IsShield && x.Absorb > 0).OrderBy(x => x.Id))
+            {
+                long taken = Math.Min(left, shield.Absorb);
+                (takes ??= new List<(StatusInstance, long)>()).Add((shield, taken));
+                left -= taken;
+                if (left == 0) break;
+            }
+            return new Absorption(amount - left, takes);
+        }
+
+        private static bool HasAbsorb(Fighter target)
+        {
+            foreach (StatusInstance status in target.Statuses.Values)
+                if (status.Definition.IsShield && status.Absorb > 0) return true;
+            return false;
+        }
+
+        private static void ApplyAbsorption(Absorption absorption)
+        {
+            if (absorption.Takes is null) return;
+            foreach (var (shield, taken) in absorption.Takes) shield.Absorb -= taken;
+        }
+
+        /// <summary>Un bouclier épuisé retient l'effet qui l'a épuisé : cause de son retrait en fin de tick.</summary>
+        private static void NoteDepleted(Absorption absorption, Provenance effect)
+        {
+            if (absorption.Takes is null) return;
+            foreach (var (shield, _) in absorption.Takes)
+                if (shield.Absorb == 0 && shield.DepletedBy is null) shield.DepletedBy = effect;
+        }
+
+        /// <summary>
+        /// Champs <c>absorbed</c> (total) et <c>absorbedBy</c> (format 6) : pour chaque bouclier consommé, son instance, son altération,
+        /// sa source, la part absorbée et la valeur restante. Liste vide sans bouclier.
+        /// </summary>
+        private static void WriteAbsorption(JsonLineWriter w, Absorption absorption)
+        {
+            w.Field("absorbed", absorption.Total).Name("absorbedBy").BeginArray();
+            if (absorption.Takes != null)
+                foreach (var (shield, taken) in absorption.Takes)
+                    w.BeginObject().Field("instance", shield.Id).Field("state", shield.State).Field("source", shield.Source)
+                        .Field("amount", taken).Field("remaining", shield.Absorb).EndObject();
+            w.EndArray();
         }
 
         /// <summary>Le tick en cours est-il le dernier de l'instance (le suivant dépasserait sa fin) ?</summary>
@@ -1465,20 +1604,31 @@ namespace EdS.Simulation.Engine
             StatusDefinition definition = status.Definition;
             // Sous-lot 8.1 : modificateurs de dégâts subis de la cible, lus sur son état au tick (réduction ≤ 85 %, sans garde ni
             // parade, A12). Sans modificateur, aucune réduction.
-            Fixed mitigation = target.Rules.TotalReduction(Fixed.Zero, target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance));
+            // Sous-lot 8.2 (X3) : renforcements actifs de la cible compris, sous le même plafond total.
+            Fixed mitigation = target.Rules.TotalReduction(Fixed.Zero,
+                target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance, BuffSum(target, ModifierField.DamageTaken)));
             long amount = DamageCalculator.ComputePeriodic(status.Power, target.Stats, definition.DamageType!.Value,
                 definition.Resistance == StatusResistanceMode.Defense, _setup.Damage, mitigation);
-            // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage).
+            // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage). Sous-lot 8.2
+            // (A6) : les boucliers de la cible absorbent aussi les DOT.
             Fighter? source = status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
-            DamageUpdate update = PrepareDamage(target, source, amount);
+            Absorption absorption = PlanAbsorption(target, amount);
+            DamageUpdate update = PrepareDamage(target, source, amount, absorption.Total);
             long overkill = update.Overkill;
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
+            target.Result.DamageAbsorbed = update.Absorbed;
             if (source != null) source.Result.DamageDealt = update.Dealt!.Value;
+            ApplyAbsorption(absorption);
             ObservedEvent dotObserved = StateObserved(TriggerEvent.DotTick, target, status);
-            long dotEid = Emit(tick, CombatPhase.Periodic, "dotDamage", status.Origin, dotObserved, w => w
-                .Field("source", status.Source).Field("target", target.Id).Field("state", status.State).Field("instance", status.Id)
-                .Field("amount", amount).Field("overkill", overkill).Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken));
+            long dotEid = Emit(tick, CombatPhase.Periodic, "dotDamage", status.Origin, dotObserved, w =>
+            {
+                w.Field("source", status.Source).Field("target", target.Id).Field("state", status.State).Field("instance", status.Id)
+                    .Field("amount", amount);
+                WriteAbsorption(w, absorption);
+                w.Field("overkill", overkill).Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken);
+            });
+            NoteDepleted(absorption, status.Origin.CausedBy(dotEid));
             NoteLethal(target, status.Origin.CausedBy(dotEid));
             if (IsLastDotTick(tick, status))
             {
@@ -1544,8 +1694,23 @@ namespace EdS.Simulation.Engine
             foreach (Fighter f in _fightersById)
             {
                 bool dies = !f.IsDead && f.Health == 0;
-                Reserve(Cost.Op + (dies ? Observable(TriggerEvent.Death) + f.Statuses.Count * (Cost.Op + Observable(TriggerEvent.StateRemoved)) : Cost.None));
+                // Sous-lot 8.2 (X4) : un bouclier épuisé est retiré ici, en fin de tick (raison depleted), dans l'ordre des instances ; chez un
+                // mort, il l'est avec les autres états (raison death).
+                List<StatusInstance>? depleted = dies || f.IsDead ? null : Depleted(f);
+                Cost scan = Cost.Op + (dies ? Observable(TriggerEvent.Death) + f.Statuses.Count * (Cost.Op + Observable(TriggerEvent.StateRemoved))
+                    : (depleted?.Count ?? 0) * (Cost.Op + Observable(TriggerEvent.StateRemoved)));
+                if (depleted != null) TraceReservation("depleted", tick, scan, removing: 0);
+                Reserve(scan);
                 Charge(1);
+                if (depleted != null)
+                    foreach (StatusInstance shield in depleted)
+                    {
+                        f.Statuses.Remove(shield.Key);
+                        Charge(1);
+                        Provenance cause = shield.DepletedBy ?? shield.Origin;
+                        Emit(tick, CombatPhase.EndOfTick, "stateRemoved", cause, StateObserved(TriggerEvent.StateRemoved, f, shield),
+                            w => StateFields(w, f, shield).Field("reason", "depleted"));
+                    }
                 if (!dies) continue;
                 f.IsDead = true;
                 f.Guarding = false;
@@ -1565,6 +1730,16 @@ namespace EdS.Simulation.Engine
                         w => StateFields(w, f, status).Field("reason", "death"));
                 }
             }
+        }
+
+        /// <summary>Sous-lot 8.2 : boucliers épuisés d'un combattant (valeur 0), par numéro d'instance ; null s'il n'y en a pas.</summary>
+        private static List<StatusInstance>? Depleted(Fighter f)
+        {
+            List<StatusInstance>? depleted = null;
+            foreach (StatusInstance status in f.Statuses.Values)
+                if (status.Definition.IsShield && status.Absorb == 0) (depleted ??= new List<StatusInstance>()).Add(status);
+            depleted?.Sort((a, b) => a.Id.CompareTo(b.Id));
+            return depleted;
         }
 
         private void Abort(long tick, string reason, long? limit)
@@ -1592,6 +1767,7 @@ namespace EdS.Simulation.Engine
                 CombatantResult r = f.Result;
                 EmitDiagnostic(tick, CombatPhase.EndOfTick, "combatantSummary", w => w
                     .Field("combatant", r.Id).Field("team", r.Team).Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken)
+                    .Field("damageAbsorbed", r.DamageAbsorbed)
                     .Field("hits", r.Hits).Field("criticalHits", r.CriticalHits).Field("skillsCast", r.SkillsCast)
                     .Field("commandsRejected", r.CommandsRejected).Field("blocks", r.Blocks).Field("perfectParries", r.PerfectParries)
                     .Field("failedParries", r.FailedParries).Field("guardBreaks", r.GuardBreaks)
@@ -1653,7 +1829,7 @@ namespace EdS.Simulation.Engine
                 .Field("parry.windowMs", r.ParryWindowMs).Field("parry.failureRecoveryMs", r.ParryFailureRecoveryMs)
                 .Field("rampartCharges.max", r.RampartChargesMax).Field("resonance.perDirectHit", r.ResonancePerDirectHit)
                 .Field("endurance.regenPerSecond", r.EnduranceRegenPerSecond)
-                .Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken);
+                .Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken).Field("shield.potencyDealt", r.ShieldPotencyDealt);
             foreach (ModifierKey key in r.Modifiers.Keys)
             {
                 switch (key.Field)
