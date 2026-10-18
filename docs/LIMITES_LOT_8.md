@@ -1,4 +1,4 @@
-# Limites du lot 8 (sous-lots 8.1 : modificateurs ; 8.2 : renforcements et boucliers ; 8.3 : soutien, provocation, protection ; 8.4 : fiches du Bastion ; 8.5 : contenu complet et builds de référence ; 8.6 : mesures)
+# Limites du lot 8 (sous-lots 8.1 : modificateurs ; 8.2 : renforcements et boucliers ; 8.3 : soutien, provocation, protection ; 8.4 : fiches du Bastion ; 8.5 : contenu complet et builds de référence ; 8.6 : mesures ; 8.7 : équilibrage)
 
 Ce document complète [LIMITES_LOT_7.md](LIMITES_LOT_7.md) pour les modificateurs du sous-lot 8.1, les renforcements et boucliers du sous-lot 8.2, le soutien du sous-lot 8.3, les fiches du Bastion du sous-lot 8.4 et le contenu complet du sous-lot 8.5. Les bornes ci-dessous sont des **enveloppes techniques provisoires** (pré-alpha) ou des **plafonds de jeu** ; les valeurs d'équilibrage restent dans les données et sont provisoires.
 
@@ -112,3 +112,14 @@ La feuille de route nomme les scénarios, les profils et les objectifs ; le rest
 - **Objectifs** : évalués au profil standard sur les trois builds de référence ; les budgets sur tous les combats. Les contrôles (hybride, niveau 10) sont mesurés mais n'entrent dans aucun objectif. Relevé initial : S1 non atteint (écart de 27,2 %), les autres atteints, pic de charge maximal 2,2 %.
 - **Tests** : catégorie `Scenario` (déclarée dans `.github/workflows/ci.yml` et `scripts/test-category.sh`). Les valeurs mesurées ne sont pas figées (le 8.7 les change) : les tests vérifient les contrats (combats complets sans refus du pilote, budgets, rejeu octet par octet des 75 journaux, déterminisme du rapport, compteurs recoupés avec le journal et avec un combat sans défense, profils, objectifs aux frontières, commande). Coût : 75 combats pilotés (deux passes chacun) en environ 2 s.
 - **Non couvert** : équilibrage (8.7) ; pilote de plusieurs personnages ; esquive ou repositionnement (aucun système de positions au lot 8) ; référence à un build par son identifiant depuis un scénario.
+
+## Sous-lot 8.7 : interprétations et limites
+
+Passe d'équilibrage mesurée ; rapport complet : [RAPPORT_8_7.md](RAPPORT_8_7.md). Moteur 0.14.0, journal au format 8, règles 0.8.0 et schémas inchangés ; Bastion au contenu 0.5.0.
+
+- **Un seul changement de données** (décision 8 de la feuille de route, choisie par Damien parmi trois options) : la Provocation inflige une frappe physique de 0,8. Elle reste une provocation (3 s, +5 Résonance au lancement, même refusée) ; sur un mannequin ou un personnage, la provocation est refusée `notApplicable` mais la frappe porte.
+- **Pilote** : une provocation qui inflige des dégâts vise d'abord un assaillant qui vise un allié, sinon l'ennemi désigné ; une provocation sans dégâts attend toujours ; un contrôle sans dégâts ni provocation n'est jamais lancé (aucun dans le contenu livré). Conséquence mesurée : le Gardien lance sa Provocation contre un loup qui le vise déjà en S3 (mort à 53 s → vivant à 60 s, 69,7 s estimées).
+- **Écarts conservés** : le Contrecoup reste très au-dessus du minimum de +25 % de DPS (S2 : +281 %) et meurt le premier ; la feuille de route ne fixe qu'un minimum, rien n'a été réduit. La marge la plus étroite est S4 (1,63 pour 1,5).
+- **Références** : nouvelle référence figée `reference-0.14.0-contenu-0.5.0` (seul l'en-tête diffère de celle du 0.4.0 : aucune Provocation dans ce combat) ; `reference-0.14.0-contenu-0.4.0` reste intacte, refusée au rejeu et reproduite octet par octet avec le Bastion figé du 8.5 (`Fixtures/content-0.4.0`). Le scénario `mannequin` change de gameplay (la Provocation frappe le mannequin) ; les quatre autres ne changent qu'à l'en-tête. La CI compare désormais la référence du 0.5.0 (`.github/workflows/ci.yml`, une ligne).
+- **Tests** : `Lot87BalanceTests` (catégories `Scenario` et `Bastion`) : contenu 0.5.0 et empreinte, seule la Provocation change depuis le 0.4.0, tous les objectifs atteints avec les données livrées, relevé du 8.6 reproduit avec le contenu figé, choix de cible de la Provocation.
+- **Non couvert** : une seconde passe (marges plus larges, profils débutant et expert) ; tout réglage des scénarios de mesure.

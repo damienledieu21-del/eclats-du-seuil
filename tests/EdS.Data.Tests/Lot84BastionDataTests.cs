@@ -42,7 +42,7 @@ public class Lot84BastionDataTests
             ("heurt_de_bouclier", "0.8", 15, 10_000, SkillTargeting.Enemy),
             ("onde_de_rupture", "0.5", 20, 12_000, SkillTargeting.AllEnemies),
             ("contrecoup", "0.6", 10, 8000, SkillTargeting.Enemy),
-            ("provocation", null, 10, 12_000, SkillTargeting.Enemy),
+            ("provocation", "0.8", 10, 12_000, SkillTargeting.Enemy),   // sous-lot 8.7 : 0,8 (décision de Damien du 18/10/2026)
             ("barriere_d_acier", null, 20, 20_000, SkillTargeting.Ally),
             ("bastion_absolu", null, 0, 0, SkillTargeting.Self),
         };
@@ -56,7 +56,7 @@ public class Lot84BastionDataTests
         // Contrecoup : toutes les Charges, au moins une, 0,6 + 0,4 par Charge.
         SkillCombatDefinition contrecoup = Combat("contrecoup");
         Assert.Equal((1, true, Fixed.Parse("0.4")), (contrecoup.RampartChargeCost, contrecoup.RampartChargeSpendAll, contrecoup.CoefficientPerRampartCharge));
-        // Provocation : 3 s sur l'assaillant, +5 Résonance. Barrière d'acier : bouclier de 15 % des PV max, 6 s, sur soi ou un allié.
+        // Provocation : 3 s sur l'assaillant, +5 Résonance, frappe physique de 0,8 depuis le sous-lot 8.7. Barrière d'acier : bouclier de 15 % des PV max, 6 s, sur soi ou un allié.
         Assert.Equal((5, "taunt"), (Combat("provocation").ResonanceGain, Combat("provocation").Applies.Single().Status));
         StatusApplication barrier = Combat("barriere_d_acier").Applies.Single();
         Assert.Equal(("steelBarrier", (Fixed?)Fixed.Parse("0.15")), (barrier.Status, barrier.Coefficient));

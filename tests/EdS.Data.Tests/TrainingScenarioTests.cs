@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "05f3e4e900af80f1d43449c58038799a709911565e2667c140f6ebd7fc92bcf5")]
-    [InlineData("entrainement_rupture", "6ea4d854d82fdba11577e8c5d2b77c3e18c6e3ba2bb3899b98c31c4c467557a1")]
-    [InlineData("entrainement_alterations", "c89f8e06cfe3cf2a1e81cf7580f3cf92bab992e906e6b7154b4e7d7e0b0994c4")]
-    [InlineData("entrainement_declencheurs", "c38cb6c4b071080635d84ad90662ebee652e690a6c4870fb52619f7f4d4d6438")]
+    [InlineData("entrainement_garde_parade", "1348e7e8d531b2cdc3fefc76707d71e1cb1e1c3fb2208d284f02ade80354ead3")]
+    [InlineData("entrainement_rupture", "5a95e30602f7f36b63ff2191af41f45170fcfdeb645797bf30367517214bc5cc")]
+    [InlineData("entrainement_alterations", "d5dbf16a251eb72f328fbf490d169ca5e008f036a39f3a10cb9eb8dee6e1dc2c")]
+    [InlineData("entrainement_declencheurs", "6ac4c4215aadf5b06e36f17d39b069e2936afa12a0e0e3be0d1157ece1a240d5")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -119,7 +119,9 @@ public class TrainingScenarioTests
         // scénarios équipent des passifs réels et leurs talents agissent (Écho défensif, Égide réactive, Riposte précise, Garde stable) ;
         // le rupture ne garde que les talents de Gardien et de Contrecoup pour montrer encore une rupture ; le moteur reproduit l'ancien
         // gameplay avec le contenu figé du 8.4 (Correctif731TriggerScenarioTests) ; référence du scénario à déclencheurs dans
-        // Fixtures/reference-0.14.0-contenu-0.4.0.
+        // Fixtures/reference-0.14.0-contenu-0.4.0. Sous-lot 8.7 : Bastion au contenu 0.5.0 (Provocation inflige 0,8) : seuls l'empreinte
+        // et la version de la classe changent dans ces quatre journaux (aucune Provocation lancée) ; référence du scénario à
+        // déclencheurs dans Fixtures/reference-0.14.0-contenu-0.5.0, celle du 0.4.0 reproduite avec le contenu figé du 8.5.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

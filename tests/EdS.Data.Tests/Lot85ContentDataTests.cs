@@ -146,7 +146,8 @@ public class Lot85ContentDataTests
         // Riposte précise et Jugement du colosse frappent sur une parade parfaite : face à un autre Bastion qui pare, la frappe pourrait
         // être parée à son tour. Cycle statique entre deux porteurs : simple avertissement, la règle de cycle et la profondeur arrêtent
         // la chaîne en combat (Q1).
-        ClassLoadResult result = ClassJsonReader.ReadFile(ClassTestData.BastionPath, ClassTestData.Progression);
+        // Sous-lot 8.7 : le contenu 0.4.0 est figé (Fixtures/content-0.4.0) ; le contenu livré 0.5.0 a son test (Lot87BalanceTests).
+        ClassLoadResult result = ClassJsonReader.ReadFile(ScenarioTestData.Content040ClassPath, ClassTestData.Progression);
         Assert.True(result.IsValid, result.Report.ToString());
         Assert.Equal((8, "0.4.0-provisoire"), (result.Class!.SchemaVersion, result.Class.ContentVersion));
         ValidationError warning = Assert.Single(result.Report.Warnings);

@@ -15,9 +15,9 @@ namespace EdS.Data.Tests;
 /// supprimé à la deuxième occurrence dans une chaîne), brûlure posée par réaction à chaque saignement (2, DOT de réaction) et
 /// frappe sur chaque tick de DOT (3, reportée au tick suivant car la phase de résolution est passée). Les assertions métier
 /// ci-dessous ne dépendent pas de l'empreinte du journal ; la comparaison octet par octet se fait contre le journal figé
-/// <c>Fixtures/reference-0.14.0-contenu-0.4.0/entrainement_declencheurs.jsonl</c> (sous-lot 8.5 : moteur 0.14.0, format 8, règles 0.8.0,
-/// Bastion 0.4.0 ; les références 0.9.1 à 0.14.0 restent figées et refusées au rejeu, la 0.14.0 reproduite par le moteur avec le contenu
-/// figé du 8.4). Un assaillant n'a pas de puissance : ses frappes et sa brûlure de réaction infligent 0. Sous-lot 8.4 : les assertions
+/// <c>Fixtures/reference-0.14.0-contenu-0.5.0/entrainement_declencheurs.jsonl</c> (sous-lot 8.7 : moteur 0.14.0, format 8, règles 0.8.0,
+/// Bastion 0.5.0 ; les références 0.9.1 à 0.14.0 et 0.14.0-contenu-0.4.0 restent figées et refusées au rejeu, la 0.14.0 reproduite par le
+/// moteur avec le contenu figé du 8.4, la 0.14.0-contenu-0.4.0 avec celui du 8.5). Un assaillant n'a pas de puissance : ses frappes et sa brûlure de réaction infligent 0. Sous-lot 8.4 : les assertions
 /// métier (mécanique des déclencheurs du correctif 7.3.1) se font sur le contenu historique du Bastion
 /// (<see cref="ScenarioTestData.HistoricalData"/>) et, depuis le 8.5, sur le scénario figé du 8.4 ; avec le contenu livré, le Heurt de
 /// bouclier étourdit l'assaillant et les talents du Bastion réagissent, ce que fige la référence du contenu 0.4.0.
@@ -33,8 +33,8 @@ public class Correctif731TriggerScenarioTests
     private const string Brulure = "assailant.assaillant/2@assaillant#0";
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
-    /// <summary>Sous-lot 8.5 : référence du contenu livré (moteur 0.14.0 inchangé, Bastion 0.4.0, règles 0.8.0).</summary>
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.14.0-contenu-0.4.0", Name + ".jsonl");
+    /// <summary>Sous-lot 8.7 : référence du contenu livré (moteur 0.14.0 inchangé, Bastion 0.5.0, règles 0.8.0).</summary>
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.14.0-contenu-0.5.0", Name + ".jsonl");
 
     private static string FrozenPath(string version) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-" + version, Name + ".jsonl");
 
@@ -261,6 +261,27 @@ public class Correctif731TriggerScenarioTests
             return h.ToJsonString();
         }
         Assert.Equal(Header(frozen[0]), Header(log.Lines[0]));
+    }
+
+    [Fact]
+    public void Reference_du_contenu_0_4_0_refusee_au_rejeu_et_reproduite_par_le_moteur_avec_le_contenu_fige()
+    {
+        // Sous-lot 8.7 : la référence du 8.5 (Bastion 0.4.0) n'est plus rejouable avec les données livrées (identité de la classe
+        // changée) ; le moteur, inchangé, la reproduit octet par octet, en-tête compris, avec le Bastion figé du 8.5 et les règles livrées
+        // (inchangées). Le combat ne lance pas de Provocation : ses lignes d'événements sont aussi celles de la référence du 0.5.0.
+        string[] frozen = File.ReadAllLines(FrozenPath("0.14.0-contenu-0.4.0"));
+        ReplayOutcome outcome = CombatLogReplayer.Replay(frozen, ShippedData);
+        Assert.Equal(ReplayStatus.Refused, outcome.Status);
+        Assert.Null(outcome.Comparison);
+        Assert.Contains(outcome.Problems, p => p.Contains("class.bastion", StringComparison.Ordinal));
+        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(frozen, Content040Data).Status);
+
+        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(ScenarioPath(Name), Content040Data);
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        var log = new MemoryCombatLog();
+        CombatEngine.Run(loaded.Setup!, log);
+        Assert.Equal(frozen, log.Lines);
+        Assert.Equal(frozen.Skip(1), File.ReadAllLines(FixturePath).Skip(1));
     }
 
     [Theory]

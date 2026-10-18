@@ -299,8 +299,10 @@ Un fichier par classe (`data/v0/classes/<classe>.json`, `kind: "class"`), même 
 Empreinte d'une classe : SHA-256 de `eds-class`, `canonical=2`, puis chaque valeur (contrat canonique ci-dessus) dans l'ordre du fichier (l'ordre des arbres, talents et compétences fait partie du contenu ; les espaces et l'ordre des clés non ; `contentVersion` ignorée). Valeur actuelle de `bastion.json` :
 
 ```
-sha256:4a719f82fa129497a4a4cd84152546998a6c919fab8a43d7817cfa7f253313a3
+sha256:51f673a64869909a288e9bd76ab774fae2986df4f7f7007dcf6897aef514832e
 ```
+
+Sous-lot 8.7 : contenu 0.5.0, la Provocation porte `powerType`, `damageType` et `coefficient` (0,8) ; schéma 8 inchangé. Empreinte du contenu 0.4.0 (sous-lot 8.5, figé dans `tests/EdS.Data.Tests/Fixtures/content-0.4.0`) : `sha256:4a719f82fa129497a4a4cd84152546998a6c919fab8a43d7817cfa7f253313a3`.
 
 (Sous-lot 8.1 : la ligne `schemaVersion=5` change l'empreinte ; le contenu de `bastion.json` est inchangé et ne porte aucun modificateur.) Sous-lot 8.3 : schéma 7 ; `applies[].target` écrit pour chaque application (absent : `target?`) et le coefficient d'une compétence de soutien écrit comme absent. Sous-lot 8.4 : schéma 8, contenu 0.3.0 (fiches complètes) ; `rampartChargeSpendAll`, `coefficientPerRampartCharge` et `resonanceGain` écrits après `rampartChargeGain` (absents : `?`). Sous-lot 8.5 : contenu 0.4.0 (talents, intermédiaires et passifs), schéma inchangé ; l'empreinte du contenu figé du 8.4 reste `sha256:6921f5e1…`.
 

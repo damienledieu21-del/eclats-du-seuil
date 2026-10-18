@@ -2,7 +2,7 @@
   "$schema": "../../schemas/class.schema.json",
   "schemaVersion": 8,
   "kind": "class",
-  "contentVersion": "0.4.0-provisoire",
+  "contentVersion": "0.5.0-provisoire",
   "data": {
     "id": "class.bastion",
     "name": "Bastion",
@@ -527,6 +527,9 @@
         "placeholder": false,
         "talentRequirements": [],
         "combat": {
+          "powerType": "physique",
+          "damageType": "physique",
+          "coefficient": 0.8,
           "enduranceCost": 10,
           "cooldownMs": 12000,
           "targeting": "enemy",

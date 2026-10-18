@@ -30,8 +30,8 @@ namespace EdS.Simulation.Pilot
     /// sont prêtes et payables en gardant de quoi bloquer un coup (aucune compétence payante pendant une pause de garde) ; jamais au tick
     /// d'un impact qu'il bloquerait sans le parer (lancer impose de quitter la garde).</item>
     /// </list>
-    /// Choix des cibles : ennemi désigné = l'assaillant qui le vise et frappe le plus tôt, sinon le premier ennemi vivant ; compétence de
-    /// contrôle sans dégâts sur un ennemi (Provocation) = un assaillant qui vise un allié, sinon rien ; soutien d'un allié (Barrière d'acier) =
+    /// Choix des cibles : ennemi désigné = l'assaillant qui le vise et frappe le plus tôt, sinon le premier ennemi vivant ; provocation
+    /// (Provocation) = un assaillant qui vise un allié, sinon l'ennemi désigné si elle inflige des dégâts, sinon elle attend ; soutien d'un allié (Barrière d'acier) =
     /// l'allié vivant le plus entamé, sinon soi ; Contrecoup (toutes les Charges) seulement à 3 Charges ou au maximum s'il est plus bas.
     /// Les règles sont identiques pour tous les builds et tous les profils.
     /// </summary>
@@ -128,15 +128,18 @@ namespace EdS.Simulation.Pilot
                 if (enemies.Count == 0) continue;
                 switch (combat.Targeting)
                 {
+                    case SkillTargeting.Enemy when Taunts(combat):
+                        // Provocation : détourner un assaillant qui vise un allié (jamais un assaillant sans cible unique, revue Codex de la
+                        // PR #10) ; à défaut, une provocation qui inflige des dégâts frappe l'ennemi désigné, une provocation sans dégâts attend.
+                        CombatantView? away = enemies.Where(e => e.Kind == CombatantKind.Assailant && e.CurrentTarget != null && e.CurrentTarget != _actor)
+                            .OrderBy(e => e.NextAttackTick ?? long.MaxValue).ThenBy(e => e.Id, StringComparer.Ordinal).FirstOrDefault();
+                        if (away != null) return (id, away.Id);
+                        if (!combat.HasDamage) continue;
+                        return (id, PrimaryEnemy(enemies, tick).Id);
                     case SkillTargeting.Enemy when combat.HasDamage:
                         return (id, PrimaryEnemy(enemies, tick).Id);
                     case SkillTargeting.Enemy:
-                        // Contrôle sans dégâts (Provocation) : détourner un assaillant qui vise un allié (revue Codex de la PR #10 : un
-                        // assaillant sans cible unique, qui n'attaque qu'en zone, n'a rien à détourner).
-                        CombatantView? away = enemies.Where(e => e.Kind == CombatantKind.Assailant && e.CurrentTarget != null && e.CurrentTarget != _actor)
-                            .OrderBy(e => e.NextAttackTick ?? long.MaxValue).ThenBy(e => e.Id, StringComparer.Ordinal).FirstOrDefault();
-                        if (away is null) continue;
-                        return (id, away.Id);
+                        continue;   // contrôle sans dégâts ni provocation : aucune règle de cible, jamais lancé
                     case SkillTargeting.Ally:
                         // Rapports PV / PV max comparés en entiers (revue Codex de la PR #10 : pas de double dans un choix déterministe).
                         CombatantView? ally = others.Where(o => o.Team == me.Team && !o.IsDead && o.Kind == CombatantKind.Character && o.MaxHealth > 0)
@@ -166,6 +169,10 @@ namespace EdS.Simulation.Pilot
             int ratio = CompareHealthRatio(a.Health!.Value, a.MaxHealth!.Value, b.Health!.Value, b.MaxHealth!.Value);
             return ratio != 0 ? ratio : StringComparer.Ordinal.Compare(a.Id, b.Id);
         });
+
+        /// <summary>La compétence pose une provocation sur ses cibles (altération de catégorie <c>taunt</c> appliquée aux cibles de l'action).</summary>
+        private bool Taunts(SkillCombatDefinition combat) =>
+            combat.Applies.Any(a => a.Target == ApplicationTarget.Targets && _engine.Setup.Combat.Statuses.TryGet(a.Status, out StatusDefinition definition) && definition.IsTaunt);
 
         /// <summary>Assaillant qui le vise et frappe le plus tôt ; sinon le premier ennemi vivant (ordre ordinal).</summary>
         private CombatantView PrimaryEnemy(List<CombatantView> enemies, long tick) =>

@@ -246,10 +246,15 @@ public class Lot86PilotTests
     [Fact]
     public void Provocation_jamais_sur_un_assaillant_sans_cible_unique()
     {
-        // Revue Codex de la PR #10 : en S3, le hurleur n'attaque qu'en zone (cible nulle) ; il n'a rien à détourner.
+        // Revue Codex de la PR #10 : en S3, le hurleur n'attaque qu'en zone (cible nulle) ; il n'a rien à détourner. Sous-lot 8.7 : la
+        // règle de détournement est vérifiée avec la Provocation sans dégâts du contenu 0.4.0 (figé) ; celle du contenu livré, qui frappe,
+        // peut viser le hurleur comme ennemi désigné quand l'ultime l'a provoqué (il vise alors le Bastion).
+        var failures = new List<(string, ScenarioLoadResult)>();
+        MeasureScenario s3 = Measures.LoadScenarios(MeasuresDirectory, Content040Data, failures).Single(s => s.Id == "S3");
+        Assert.True(Content040Data.TryGetBuild(Measures.Gardien, out ReferenceBuild gardien));
         foreach (PilotProfile profile in Measures.Profiles.Values)
         {
-            PilotedCombat combat = PilotedCombat.Run(Measures.WithBuild(Scenario("S3").Setup, Build(Measures.Gardien)), Measures.MeasuredId, profile, NullCombatLog.Instance);
+            PilotedCombat combat = PilotedCombat.Run(Measures.WithBuild(s3.Setup, gardien), Measures.MeasuredId, profile, NullCombatLog.Instance);
             Assert.DoesNotContain(combat.Setup.Commands, c => c.Skill == "skill.bastion.provocation" && c.Target == "hurleur");
         }
     }
