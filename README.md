@@ -17,8 +17,9 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 | `src/EdS.Tools` | net10.0 | Outils .NET : mesures des builds et rapport (`EdS.Tools.Measures`, sous-lot 8.6) |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`, `report`) |
 | `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `v0/builds/bastion.json` (builds de référence, sous-lot 8.5), `schemas/` |
+| `unity/` | Unity 6.3 LTS, URP | Prototype jouable (sous-lot 9.3) : le cœur est compilé par Unity depuis `src/` (paquet local `com.eclats.core`) ; guide : [docs/UNITY.md](docs/UNITY.md) |
 | `scenarios/` | JSON | Scénarios de combat (`mannequin.json`, `entrainement_garde_parade.json`, `entrainement_rupture.json`, `entrainement_alterations.json`, `entrainement_declencheurs.json`) ; `mesures/` : scénarios de mesure S1 à S5 (sous-lot 8.6) |
-| `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
+| `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) ; `EdS.Unity.CompileCheck` (netstandard2.1) compile les scripts du prototype contre des bouchons de l'API Unity |
 
 Les projets `netstandard2.1` (domaine, moteur, données et, depuis le sous-lot 9.1, lecture JSON) sont limités à C# 9 et n'ont aucune dépendance externe : ils sont importables tels quels dans Unity (IL2CPP) et sur un serveur .NET.
 
@@ -111,6 +112,8 @@ Sous-lot 9.1 (données portables, début du prototype Unity) : la lecture des fi
 
 Sous-lot 9.2 (pont temps réel) : `EdS.Runtime` (netstandard2.1, C# 9, sans dépendance) fait jouer le moteur en temps réel sans le modifier : temps réel découpé en ticks de 50 ms (au plus 5 par image), garde tenue, parade et compétences du joueur soumises au tick suivant, cible, état à afficher (barres, emplacements et recharges, télégraphie des attaques) et retours visuels tirés des compteurs du moteur (`CombatantView.Counters`, seul ajout au moteur, hors journal) ; séance d'entraînement depuis les données et un scénario ordinaire ; le combat complété des commandes soumises se rejoue à l'identique. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#pont-temps-réel-sous-lot-92), [docs/LIMITES_LOT_9.md](docs/LIMITES_LOT_9.md).
 
+Sous-lot 9.3 (prototype Unity) : projet `unity/` (Unity 6.3 LTS, URP) qui compile le cœur directement depuis `src/` (une définition d'assemblage par projet, outils .NET exclus, sorties .NET déplacées dans `artifacts/`) ; jeu construit par le code au lancement : arène, Bastion déplaçable, bouclier visible en garde et en parade, assaillants, mannequin et allié, deux caméras (isométrique et troisième personne), interface provisoire (barres, compétences et recharges, télégraphie des coups, fiche de cible, textes de combat), scénarios d'entraînement et de mesure, builds de référence ; rendu URP configuré à la première ouverture. Non essayé dans l'éditeur par Claude : la CI compile les scripts contre des bouchons et vérifie le paquet ; l'essai revient à Damien ([docs/UNITY.md](docs/UNITY.md)).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -125,4 +128,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
 - [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
-- [ ] Lot 9 — prototype Unity 3D : sous-lots 9.1 (données portables) et 9.2 (pont temps réel) en revue ; 9.3 et 9.4 à faire
+- [ ] Lot 9 — prototype Unity 3D : sous-lots 9.1 (données portables), 9.2 (pont temps réel) et 9.3 (projet Unity) en revue ; 9.4 à faire

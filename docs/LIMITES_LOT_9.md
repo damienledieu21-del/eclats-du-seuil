@@ -13,3 +13,17 @@ Voir [DONNEES.md](DONNEES.md#architecture). L'analyseur JSON maison est comparé
 - **Soutien en solo** : une compétence de soutien d'un allié (Barrière d'acier) vise le joueur lui-même ; le choix d'un allié viendra avec un scénario à plusieurs personnages.
 - **Retours** : tirés de la différence des compteurs d'un tick à l'autre (pas du journal) : un retour ne dit pas quelle attaque a porté ni de quelle compétence vient un dégât ; au plus 256 retours en attente si le client ne les lit pas.
 - **Séance d'entraînement** : durée maximale des règles (10 min) ; à la fin, le client relance une séance identique (même graine). Les commandes du scénario sont retirées ; ses adversaires et sa graine sont gardés.
+
+## Sous-lot 9.3 : projet Unity
+
+Guide d'installation et touches : [UNITY.md](UNITY.md).
+
+- **Non essayé dans Unity par Claude** : les sessions de développement n'ont pas d'éditeur Unity. La CI compile les scripts du jeu en C# 9 contre des bouchons de l'API Unity (`tests/EdS.Unity.CompileCheck`) et vérifie la cohérence du paquet (`Lot93UnityPackageTests`) ; un écart avec la vraie API d'Unity ne se voit qu'à l'ouverture dans l'éditeur (essai de Damien).
+- **Cœur compilé par Unity depuis `src/`** : paquet local `com.eclats.core` (`unity/Packages/manifest.json` → `file:../../src`), une définition d'assemblage par projet (`noEngineReferences`, références identiques aux `.csproj`, transitives comprises), `csc.rsp` pour les annotations de nullabilité, `InternalsVisibleTo` du domaine vers le moteur repris en source sous `UNITY_5_3_OR_NEWER`. `EdS.Tools` et `EdS.Cli` (.NET récent) sont exclus par une contrainte de définition jamais satisfaite. Les sorties de compilation .NET vont dans `artifacts/` (`UseArtifactsOutput`) pour que Unity ne trouve ni `.cs` générés ni `.dll` dans `src/`. Unity écrit ses `.meta` dans `src/` : ignorés par git (aucun script du cœur n'est référencé par GUID).
+- **Projet minimal** : seuls `Packages/manifest.json`, `ProjectSettings/ProjectVersion.txt` (6000.3.0f1, le Hub propose la version installée) et `Assets/EdS` sont suivis ; Unity génère le reste. Aucune scène : `EdsBootstrap` construit le jeu au lancement dans la scène ouverte.
+- **Rendu URP** : configuré automatiquement à la première ouverture (`EdsProjectSetup` crée un asset URP et son renderer dans `Assets/EdS/Settings`, non suivis) ; en cas d'échec, le rendu intégré reste actif et les matériaux passent au shader « Standard ». Aucun post-traitement.
+- **Saisie** : ancien gestionnaire d'entrées d'Unity (`Input`), touches pensées pour un clavier AZERTY (ZQSD, A/E). Le paquet Input System n'est pas utilisé.
+- **Interface** : IMGUI (`OnGUI`), provisoire ; écran virtuel de 1080 pixels de haut.
+- **Arène** : formes simples, positions visuelles (voir 9.2 : aucun système de positions dans le cœur) ; les ennemis sont placés en arc devant le joueur, un allié à ses côtés ; déplacement bloqué pendant un étourdissement.
+- **Données** : lues dans le dépôt (`data/v0`, `scenarios/`) depuis le dossier parent de `unity/` ; une version compilée du jeu (hors éditeur) demandera de les embarquer (chantier ultérieur).
+- **Scénarios jouables** : l'entraînement garde et parade et les scénarios de mesure S1 à S5 (touche N) ; builds de référence (F1 à F5).
