@@ -73,12 +73,12 @@ Combats dont une mesure principale change ; tous les autres sont identiques.
 | débutant | S2 | Niveau 10 | 18,67 → 22,29 | † 22,5 → † 21 | 668 → 585 | = |
 | standard | S2 | Niveau 10 | 46,58 → 46,89 | † 57 → † 57 | 2398 → 2383 | = |
 | expert | S2 | Niveau 10 | 65,95 → 63,4 | 1200 → 1200 | 5904 → 5904 | = |
-| débutant | S3 | Gardien | 11,29 → 14,12 | † 17 → † 17 | 667 → 667 | = |
-| standard | S3 | Gardien | 29,85 → 33,5 | 145,9 → 69,7 | 3266 → 3091 | = |
-| expert | S3 | Gardien | 53,5 → 54,45 | 600 → 600 | 2925 → 2955 | = |
-| débutant | S3 | Niveau 10 | 21,43 → 24,86 | † 14 → † 14 | 539 → 539 | = |
-| standard | S3 | Niveau 10 | 54,42 → 52,96 | † 21,5 → † 23 | 960 → 1007 | = |
-| expert | S3 | Niveau 10 | 87,75 → 88,95 | 600 → 600 | 2980 → 2980 | = |
+| débutant | S3 | Gardien | 11,29 → 14,12 | † 17 → † 17 | 723 → 667 | = |
+| standard | S3 | Gardien | 30,45 → 33,5 | † 53 → 69,7 | 2692 → 3091 | = |
+| expert | S3 | Gardien | 50,15 → 54,45 | 600 → 600 | 2850 → 2955 | = |
+| débutant | S3 | Niveau 10 | 18,75 → 24,86 | † 16 → † 14 | 633 → 539 | = |
+| standard | S3 | Niveau 10 | 62,42 → 52,96 | † 31 → † 23 | 1355 → 1007 | = |
+| expert | S3 | Niveau 10 | 91,7 → 88,95 | 600 → 600 | 2920 → 2980 | = |
 | débutant | S4 | Gardien | 12,8 → 17,6 | 135,2 → 262,3 | 791 → 673 | = |
 | standard | S4 | Gardien | 17,9 → 22,17 | 792 → 495 | 962 → 952 | = |
 | expert | S4 | Gardien | 29,17 → 33,2 | 900 → 900 | 1452 → 1532 | = |
@@ -97,7 +97,7 @@ Combats dont une mesure principale change ; tous les autres sont identiques.
 - **S1 (mannequin)** : la Provocation rapporte 4,4 de DPS au Gardien (0,8 × 60 / 12 s, plus quelques critiques) ; elle se lance sur le mannequin (provocation refusée `notApplicable`, +5 Résonance). Les trois références tiennent dans 10,5 % ; le Contrecoup reste en tête (Main lourde, Fureur contenue).
 - **Le Contrecoup domine le DPS partout et meurt le premier en S2, S3 et S5** : ses ripostes de parade (Riposte précise 1,25, Jugement du colosse 1,2 de zone) font l'essentiel de ses dégâts en S2, S3 et S5 (+281 % en S2), mais sa garde plus faible et l'absence de boucliers le tuent tôt (39 s en S2, 21,5 s en S3). Sur la durée de vie, ses dégâts totaux restent du même ordre que ceux du Rempart (S2 : 3 485 contre 2 815). L'objectif ne fixe qu'un minimum (+25 %) : l'écart n'a pas été réduit.
 - **Le Rempart survit** : garde incassable, Peau de fer et Poids du rempart ; en S2, il est encore vivant à 120 s (estimation 298 s). En S5, les écrasements imparables l'usent quand même (50,5 s), mais deux fois moins vite que le Contrecoup.
-- **Le Gardien protège** : en S4, l'allié tient 19,5 s contre 12 s avec les deux autres (Serment du gardien et la Barrière d'acier liée y font l'essentiel ; la Provocation ne change pas ce chiffre). En S3, le Gardien survit moins qu'au 8.6 (69,7 s estimées contre 145,9) : la Provocation, désormais lancée pour ses dégâts sur un loup qui le vise déjà, coûte de l'endurance et fait quitter la garde un tick toutes les 12 s. Le Rempart redevient le plus endurant de la meute (111,9 s).
+- **Le Gardien protège** : en S4, l'allié tient 19,5 s contre 12 s avec les deux autres (Serment du gardien et la Barrière d'acier liée y font l'essentiel ; la Provocation ne change pas ce chiffre). En S3, la Provocation, désormais lancée pour ses dégâts sur un loup qui le vise déjà, coûte de l'endurance et fait quitter la garde un tick toutes les 12 s ; le Gardien y survit pourtant un peu mieux (vivant à 60 s, 69,7 s estimées, contre une mort à 53 s) ; l'effet net d'un lancer de plus sur la garde, l'endurance et la Résonance n'est pas décomposé ici. Le Rempart reste le plus endurant de la meute (111,9 s).
 - **Charge** : 2,2 % au plus d'un budget (S3), très loin des 50 %.
 
 ## Limites
