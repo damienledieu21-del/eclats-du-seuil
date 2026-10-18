@@ -4,19 +4,23 @@ using EdS.Data;
 using EdS.Data.Builds;
 using EdS.Data.Classes;
 using EdS.Data.Json;
+using EdS.Data.Json.Measures;
 using EdS.Data.Rules;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
+using EdS.Simulation.Pilot;
 using EdS.Simulation.Randomness;
 
 // Outil en ligne de commande du simulateur.
-// La commande report arrivera avec le lot 8.
 
 // Code de sortie d'une simulation interrompue (budget d'événements, débordement) : distinct des erreurs d'usage (1).
 const int SimulationAbortedExitCode = 2;
+
+// Sous-lot 8.6 : eds report --strict, au moins un objectif provisoire non atteint (les combats sont tous allés au bout).
+const int ObjectiveFailedExitCode = 3;
 
 if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
 {
@@ -34,6 +38,8 @@ switch (args[0])
         return RunSimulate(args.AsSpan(1));
     case "replay":
         return RunReplay(args.AsSpan(1));
+    case "report":
+        return RunReport(args.AsSpan(1), SimulationAbortedExitCode, ObjectiveFailedExitCode);
     default:
         Console.Error.WriteLine($"Commande inconnue : {args[0]}");
         PrintHelp();
@@ -293,6 +299,125 @@ static int RunReplay(ReadOnlySpan<string> options)
     }
 }
 
+// Sous-lot 8.6 : mesures des builds de référence sur les scénarios de mesure, avec le pilote de mesure.
+static int RunReport(ReadOnlySpan<string> options, int abortedExitCode, int objectiveFailedExitCode)
+{
+    string directory = Path.Combine("scenarios", "mesures"), dataDirectory = DefaultDataDirectory();
+    string? logs = null;
+    bool json = false, strict = false, directorySet = false;
+    var buildIds = new List<string>();
+    var profiles = new List<PilotProfile>();
+    for (int i = 0; i < options.Length; i++)
+    {
+        string option = options[i];
+        bool hasValue = i + 1 < options.Length;
+        if (option == "--data" && hasValue) dataDirectory = options[++i];
+        else if (option == "--logs" && hasValue) logs = options[++i];
+        else if (option == "--build" && hasValue) buildIds.Add(options[++i]);
+        else if (option == "--profile" && hasValue)
+        {
+            if (!Measures.Profiles.TryGetValue(options[++i], out PilotProfile profile))
+            {
+                Console.Error.WriteLine($"Profil inconnu : {options[i]} (beginner, standard ou expert).");
+                return 1;
+            }
+            if (!profiles.Contains(profile)) profiles.Add(profile);
+        }
+        else if (option == "--json") json = true;
+        else if (option == "--strict") strict = true;
+        else if (!directorySet && !option.StartsWith("--", StringComparison.Ordinal))
+        {
+            directory = option;
+            directorySet = true;
+        }
+        else
+        {
+            Console.Error.WriteLine($"Option inconnue : {option}");
+            return 1;
+        }
+    }
+    if (!Directory.Exists(directory))
+    {
+        Console.Error.WriteLine($"Dossier de scénarios de mesure introuvable : {directory}");
+        return 1;
+    }
+
+    GameData? data = LoadData(dataDirectory);
+    if (data is null) return 1;
+    var failures = new List<(string Path, ScenarioLoadResult Result)>();
+    IReadOnlyList<MeasureScenario> scenarios = Measures.LoadScenarios(directory, data, failures);
+    foreach (var (file, failure) in failures) Fail(file, failure.Report);
+    if (failures.Count > 0) return 1;
+    if (scenarios.Count == 0)
+    {
+        Console.Error.WriteLine($"{directory} : aucun scénario de mesure (s<n>_<nom>.json).");
+        return 1;
+    }
+
+    // Builds : ceux demandés, sinon tous les builds de la classe du personnage mesuré, dans l'ordre de leur fichier.
+    var builds = new List<ReferenceBuild>();
+    foreach (string id in buildIds)
+    {
+        if (!data.TryGetBuild(id, out ReferenceBuild build))
+        {
+            Console.Error.WriteLine($"Build de référence inconnu : {id}");
+            return 1;
+        }
+        if (!builds.Contains(build)) builds.Add(build);
+    }
+    if (builds.Count == 0)
+    {
+        var classes = scenarios.Select(s => s.Setup.Combatants.OfType<CharacterSetup>().FirstOrDefault(c => c.Id == Measures.MeasuredId)?.Class.Id).Distinct().ToList();
+        if (classes.Count != 1 || classes[0] is null)
+        {
+            Console.Error.WriteLine($"Chaque scénario de mesure doit avoir un personnage « {Measures.MeasuredId} », de la même classe.");
+            return 1;
+        }
+        builds.AddRange(data.BuildSets.Where(b => b.ClassId == classes[0]).SelectMany(b => b.Builds));
+        if (builds.Count == 0)
+        {
+            Console.Error.WriteLine($"Aucun build de référence pour la classe {classes[0]}.");
+            return 1;
+        }
+    }
+    if (profiles.Count == 0) profiles.AddRange(new[] { PilotProfile.Beginner, PilotProfile.Standard, PilotProfile.Expert });
+
+    if (logs != null) Directory.CreateDirectory(logs);
+    var written = new List<(string Path, MemoryCombatLog Log)>();
+    IReadOnlyList<MeasureResult> results;
+    try
+    {
+        results = Measures.RunAll(scenarios, builds, profiles, (scenario, build, profile) =>
+        {
+            if (logs is null) return null;
+            var log = new MemoryCombatLog();
+            written.Add((Path.Combine(logs, MeasureReport.LogFileName(scenario, build, profile)), log));
+            return log;
+        });
+    }
+    catch (ArgumentException e)
+    {
+        Console.Error.WriteLine("Mesure impossible : " + e.Message);
+        return 1;
+    }
+    foreach (var (path, log) in written) File.WriteAllText(path, log.ToString(), new System.Text.UTF8Encoding(false));
+
+    IReadOnlyList<ObjectiveResult> objectives = Measures.Objectives(results);
+    if (json)
+    {
+        using Stream stdout = Console.OpenStandardOutput();
+        stdout.Write(MeasureReport.ToJson(data, scenarios, builds, results, objectives));
+    }
+    else MeasureReport.WriteText(Console.Out, data, scenarios, builds, results, objectives);
+    if (logs != null) Console.Error.WriteLine($"  journaux       {written.Count} dans {logs} (rejouables avec eds replay)");
+
+    var aborted = results.Where(r => r.Aborted).ToList();
+    foreach (MeasureResult r in aborted)
+        Console.Error.WriteLine($"DIAGNOSTIC — combat interrompu ({r.Scenario}, {r.Build}, {Measures.IdOf(r.Profile)}) : mesures partielles, à ne pas utiliser pour l'équilibrage.");
+    if (aborted.Count > 0) return abortedExitCode;
+    return strict && objectives.Any(o => o.Passed == false) ? objectiveFailedExitCode : 0;
+}
+
 static void PrintHelp()
 {
     Console.WriteLine("Éclats du Seuil — simulateur de combat (v0.1, valeurs provisoires)");
@@ -305,4 +430,9 @@ static void PrintHelp()
     Console.WriteLine("  eds simulate scénario.json [--data D] [--out J] Simule un combat ; journal JSON Lines vers J (défaut : sortie standard)");
     Console.WriteLine("                                                  Code de sortie 2 si la simulation est interrompue (statistiques de diagnostic)");
     Console.WriteLine("  eds replay journal.jsonl [--data D]            Vérifie les empreintes puis rejoue et compare octet par octet");
+    Console.WriteLine("  eds report [dossier] [--data D] [--build B]... [--profile P]... [--json] [--logs L] [--strict]");
+    Console.WriteLine("                                                 Mesure les builds de référence sur les scénarios de mesure (défaut :");
+    Console.WriteLine("                                                 scenarios/mesures), profils beginner, standard, expert, avec le pilote ;");
+    Console.WriteLine("                                                 journaux des combats vers L ; code 2 si un combat est interrompu,");
+    Console.WriteLine("                                                 3 avec --strict si un objectif provisoire n'est pas atteint");
 }
