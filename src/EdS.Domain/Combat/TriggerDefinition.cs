@@ -371,11 +371,14 @@ namespace EdS.Domain.Combat
             if (triggers.Count > MaxPerOwner)
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{triggers.Count} déclencheurs, au plus {MaxPerOwner} par définition.", path));
             int topRank = Math.Max(1, Math.Min(maxRank, TalentDefinition.MaxRankLimit));
+            // Décision du 18/10/2026 (question 4 du rapport 8.1) : comme pour les modificateurs, un perRank sur un talent à un seul rang
+            // déclaré est refusé (il serait sans effet). Un rang maximal inférieur à 1 est déjà refusé par la classe : pas de refus ajouté.
+            bool singleRank = ranked && maxRank == 1;
             for (int i = 0; i < triggers.Count; i++)
-                triggers[i].ValidateShape($"{path}[{i}]", topRank, ranked, errors);
+                triggers[i].ValidateShape($"{path}[{i}]", topRank, ranked, singleRank, errors);
         }
 
-        private void ValidateShape(string p, int topRank, bool ranked, List<RuleViolation> errors)
+        private void ValidateShape(string p, int topRank, bool ranked, bool singleRank, List<RuleViolation> errors)
         {
             if (!Enum.IsDefined(typeof(TriggerEvent), On))
             {
@@ -434,10 +437,10 @@ namespace EdS.Domain.Combat
             if (Effects.Count == 0 || Effects.Count > MaxEffects)
                 errors.Add(new RuleViolation($"de 1 à {MaxEffects} effets.", p + ".effects"));
             for (int k = 0; k < Effects.Count; k++)
-                ValidateEffect(Effects[k], $"{p}.effects[{k}]", topRank, ranked, errors);
+                ValidateEffect(Effects[k], $"{p}.effects[{k}]", topRank, ranked, singleRank, errors);
         }
 
-        private void ValidateEffect(TriggerEffect e, string p, int topRank, bool ranked, List<RuleViolation> errors)
+        private void ValidateEffect(TriggerEffect e, string p, int topRank, bool ranked, bool singleRank, List<RuleViolation> errors)
         {
             void Forbidden(bool present, string field)
             {
@@ -447,6 +450,11 @@ namespace EdS.Domain.Combat
             {
                 if (!ranked && value.PerRank != Fixed.Zero)
                     errors.Add(new RuleViolation("seul un talent a des valeurs par rang (perRank).", $"{p}.{field}"));
+                else if (singleRank && value.PerRank != Fixed.Zero)
+                {
+                    errors.Add(new RuleViolation("perRank sans effet sur un talent à un seul rang.", $"{p}.{field}"));
+                    return;
+                }
                 Fixed low, high;
                 try
                 {
