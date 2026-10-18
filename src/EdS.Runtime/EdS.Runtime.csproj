@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sous-lot 9.2 : pont temps réel entre un client (Unity) et le moteur déterministe, sans dépendance : netstandard2.1, C# 9. -->
+  <ItemGroup>
+    <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
+    <ProjectReference Include="..\EdS.Data\EdS.Data.csproj" />
+    <ProjectReference Include="..\EdS.Data.Json\EdS.Data.Json.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+
+</Project>

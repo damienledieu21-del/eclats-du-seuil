@@ -67,6 +67,30 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Tick de disponibilité d'une compétence (0 si jamais lancée).</summary>
         public long CooldownReadyTick(string skill) => CooldownReadyTicks.TryGetValue(skill, out long tick) ? tick : 0;
+
+        /// <summary>
+        /// Sous-lot 9.2 : compteurs du combat jusqu'au tick précédent (mêmes valeurs que <see cref="CombatantResult"/> en fin de combat) :
+        /// l'affichage en tire ses retours (dégâts, blocage, parade, rupture, refus) par différence d'un tick à l'autre.
+        /// </summary>
+        public CombatantCounters Counters { get; internal set; } = new CombatantCounters();
+    }
+
+    /// <summary>Sous-lot 9.2 : compteurs d'un combattant en cours de combat (copie, aucune référence à l'état du moteur).</summary>
+    public sealed class CombatantCounters
+    {
+        public long DamageDealt { get; internal set; }
+        public long DamageTaken { get; internal set; }
+        public long DamageAbsorbed { get; internal set; }
+        public long DamageMitigated { get; internal set; }
+        public long Hits { get; internal set; }
+        public long CriticalHits { get; internal set; }
+        public long SkillsCast { get; internal set; }
+        public long UltimatesCast { get; internal set; }
+        public long CommandsRejected { get; internal set; }
+        public long Blocks { get; internal set; }
+        public long PerfectParries { get; internal set; }
+        public long FailedParries { get; internal set; }
+        public long GuardBreaks { get; internal set; }
     }
 
     public sealed partial class CombatEngine
@@ -111,6 +135,22 @@ namespace EdS.Simulation.Engine
                 Health = f.Health,
                 MaxHealth = f.MaxHealth,
                 States = f.Statuses.Values.Where(s => s.UntilTick > tick).Select(s => s.State).Distinct().OrderBy(s => s, StringComparer.Ordinal).ToArray(),
+                Counters = new CombatantCounters
+                {
+                    DamageDealt = f.Result.DamageDealt,
+                    DamageTaken = f.Result.DamageTaken,
+                    DamageAbsorbed = f.Result.DamageAbsorbed,
+                    DamageMitigated = f.Result.DamageMitigated,
+                    Hits = f.Result.Hits,
+                    CriticalHits = f.Result.CriticalHits,
+                    SkillsCast = f.Result.SkillsCast,
+                    UltimatesCast = f.Result.UltimatesCast,
+                    CommandsRejected = f.Result.CommandsRejected,
+                    Blocks = f.Result.Blocks,
+                    PerfectParries = f.Result.PerfectParries,
+                    FailedParries = f.Result.FailedParries,
+                    GuardBreaks = f.Result.GuardBreaks,
+                },
             };
             if (f.Character != null)
             {
