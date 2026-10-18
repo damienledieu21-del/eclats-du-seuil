@@ -128,4 +128,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
 - [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
-- [ ] Lot 9 — prototype Unity 3D : sous-lots 9.1 (données portables) et 9.2 (pont temps réel) fusionnés ; 9.3 (projet Unity) essayé par Damien dans Unity, en revue ; 9.4 à faire
+- [ ] Lot 9 — prototype Unity 3D : sous-lots 9.1 (données portables) et 9.2 (pont temps réel) fusionnés ; 9.3 (projet Unity) fusionné après essai de Damien ; 9.4 à faire

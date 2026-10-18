@@ -103,6 +103,22 @@ public class Lot93UnityPackageTests
     }
 
     [Fact]
+    public void Version_de_l_essai_et_fichiers_generes_par_Unity_non_suivis()
+    {
+        // Sous-lot 9.3.1 (essai de Damien du 18/10) : version de l'éditeur de l'essai, réglages par défaut créés par URP non suivis
+        // (sinon GitHub Desktop les propose à chaque ouverture). Seuls manifest.json, ProjectVersion.txt et Assets/EdS sont suivis.
+        Assert.Equal(new[] { "m_EditorVersion: 6000.3.26f1", "m_EditorVersionWithRevision: 6000.3.26f1 (de8167e7440c)" },
+            File.ReadAllLines(Path.Combine(Root, "unity", "ProjectSettings", "ProjectVersion.txt")));
+        string[] ignored = File.ReadAllLines(Path.Combine(Root, ".gitignore"));
+        foreach (string rule in new[]
+        {
+            "unity/[Ll]ibrary/", "unity/ProjectSettings/*", "!unity/ProjectSettings/ProjectVersion.txt", "unity/Assets/EdS/Settings/",
+            "unity/Assets/DefaultVolumeProfile.asset", "unity/Assets/UniversalRenderPipelineGlobalSettings.asset",
+        })
+            Assert.Contains(rule, ignored);
+    }
+
+    [Fact]
     public void Scripts_du_jeu_dans_un_assemblage_qui_reference_le_coeur()
     {
         JsonObject game = Json(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdS.Game.asmdef"));

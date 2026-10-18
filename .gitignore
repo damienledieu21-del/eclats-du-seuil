@@ -504,3 +504,6 @@ unity/Packages/packages-lock.json
 unity/ProjectSettings/*
 !unity/ProjectSettings/ProjectVersion.txt
 unity/Assets/EdS/Settings/
+# Créés par URP à la première ouverture (profil de volume et réglages globaux par défaut), régénérés au besoin : non suivis.
+unity/Assets/DefaultVolumeProfile.asset
+unity/Assets/UniversalRenderPipelineGlobalSettings.asset
