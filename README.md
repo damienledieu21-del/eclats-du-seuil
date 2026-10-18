@@ -10,12 +10,12 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 | Projet | Cible | Rôle |
 |---|---|---|
 | `src/EdS.Domain` | netstandard2.1, C# 9 | Virgule fixe (`Fixed`), temps (`TickRate`), attributs et statistiques (`Stats`), formule de dégâts, règles et description d'un combat (`Combat`), classes, talents et validateur de builds (`Builds`) — aucune dépendance |
-| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat déterministe (`Engine` : horloge logique, file d'événements, commandes, garde, parade, ressources, états, assaillant, journal JSON Lines, rejeu), RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
+| `src/EdS.Simulation` | netstandard2.1, C# 9 | Moteur de combat déterministe (`Engine` : horloge logique, file d'événements, commandes, garde, parade, ressources, états, assaillant, journal JSON Lines, rejeu, vue et soumission pour un pilote), pilote de mesure (`Pilot`, sous-lot 8.6), RNG (`Pcg32`), tirage critique — dépend du domaine seulement |
 | `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte, scénarios — dépend du domaine seulement |
-| `src/EdS.Data.Json` | net10.0 | Adaptateur System.Text.Json, chargement et rejeu, réservé aux outils .NET |
-| `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`) |
+| `src/EdS.Data.Json` | net10.0 | Adaptateur System.Text.Json, chargement et rejeu, mesures des builds et rapport (`Measures`, sous-lot 8.6), réservé aux outils .NET |
+| `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`, `report`) |
 | `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `v0/builds/bastion.json` (builds de référence, sous-lot 8.5), `schemas/` |
-| `scenarios/` | JSON | Scénarios de combat (`mannequin.json`, `entrainement_garde_parade.json`, `entrainement_rupture.json`, `entrainement_alterations.json`, `entrainement_declencheurs.json`) |
+| `scenarios/` | JSON | Scénarios de combat (`mannequin.json`, `entrainement_garde_parade.json`, `entrainement_rupture.json`, `entrainement_alterations.json`, `entrainement_declencheurs.json`) ; `mesures/` : scénarios de mesure S1 à S5 (sous-lot 8.6) |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
 
 Les projets `netstandard2.1` sont limités à C# 9 et n'ont aucune dépendance externe : ils sont importables tels quels dans Unity (IL2CPP) et sur un serveur .NET.
@@ -39,7 +39,8 @@ dotnet test --filter Category=Modifier    # modificateurs X1 et X2, règles effe
 dotnet test --filter Category=Shield      # renforcements et boucliers (sous-lot 8.2)
 dotnet test --filter Category=Support     # soutien, provocation, protection, rôle allié (sous-lot 8.3)
 dotnet test --filter Category=Bastion     # fiches du Bastion, Contrecoup, ripostes de zone (8.4) ; talents, passifs, builds (8.5)
-scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
+dotnet test --filter Category=Scenario    # compteurs de mesure, pilote, scénarios S1 à S5, commande report (8.6)
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- validate data/v0/builds/bastion.json
@@ -47,6 +48,8 @@ dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
 dotnet run --project src/EdS.Cli -- simulate scenarios/mannequin.json --out combat.jsonl
 dotnet run --project src/EdS.Cli -- simulate scenarios/entrainement_garde_parade.json
 dotnet run --project src/EdS.Cli -- replay combat.jsonl
+dotnet run --project src/EdS.Cli -- report                 # mesures des builds de référence (S1 à S5, trois profils) et objectifs
+dotnet run --project src/EdS.Cli -- report --json --logs journaux   # rapport JSON reproductible, journaux rejouables
 python3 -m unittest discover -s scripts -p 'test_ci_provenance.py' -v   # générateur du rapport CI non signé
 ```
 
@@ -97,6 +100,8 @@ Sous-lot 8.4 (fiches du Bastion) : toutes les compétences du Bastion ont leur f
 
 Sous-lot 8.5 (contenu complet du Bastion, début de la PR de gameplay 8b) : plus aucun « [TEST] » ; les neuf talents notables portent leurs effets (Garde stable, Écho défensif, Rempart éternel ; Riposte précise, Fureur contenue, Jugement du colosse ; Égide réactive, Lien protecteur, Serment du gardien), neuf intermédiaires de cinq rangs remplacent les paliers d'essai et huit passifs équipables les passifs d'essai, tous en données (modificateurs et déclencheurs existants, aucun changement du moteur). Trois altérations du Gardien (`reactiveAegis`, `protectiveLink`, `oathTaunt`). Builds de référence en données (décision A12) : nouveau fichier `kind: "builds"` (schéma 1) avec Rempart, Contrecoup, Gardien, un hybride sans majeur et un contrôle de niveau 10, validés par `BuildValidator`, chargés avec les données et vérifiés par `eds validate`. Le gameplay des scénarios livrés change (talents actifs, passifs réels) ; le moteur reproduit l'ancien avec le contenu figé du 8.4 (fixture `content-0.3.0`). Règles au contenu 0.8.0, Bastion au contenu 0.4.0, schémas, moteur (0.14.0) et journal (format 8) inchangés. Détail : [docs/BUILDS.md](docs/BUILDS.md#arbres-du-bastion-provisoires-sous-lot-85), [docs/DONNEES.md](docs/DONNEES.md#bastion-sous-lot-85), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-85--interprétations-et-limites).
 
+Sous-lot 8.6 (mesures) : compteurs de mesure X10 dans le résultat du moteur (tick de mort, PV max, dégâts atténués, ticks gardés, ultimes), hors journal ; API de pilotage (`CombatEngine.View`, `Submit`) et pilote déterministe à trois profils (débutant, standard, expert) hors du moteur, dont chaque combat est rejoué et vérifié ; scénarios de mesure S1 à S5 (`scenarios/mesures`) ; commande `eds report` (texte, JSON `measureReport` 1, journaux rejouables, `--strict`) ; catégorie de tests `Scenario`. Moteur 0.14.0, journal au format 8 et données inchangés. Relevé initial : tous les objectifs provisoires atteints sauf S1 (écart de DPS de 27,2 %, limite 15 %). Détail : [docs/BUILDS.md](docs/BUILDS.md#mesures-des-builds-sous-lot-86), [docs/MOTEUR.md](docs/MOTEUR.md#compteurs-de-mesure-et-pilotage-sous-lot-86), [docs/DONNEES.md](docs/DONNEES.md#scénarios-de-mesure-et-rapport-sous-lot-86), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-86--interprétations-et-limites).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -110,4 +115,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
-- [ ] Lot 8 — en cours : PR de gameplay 8a (sous-lots 8.1 à 8.4 : modificateurs, renforcements et boucliers, soutien, fiches du Bastion ; moteur 0.14.0) fusionnée ; sous-lot 8.5 (contenu complet du Bastion, builds de référence) en revue ; 8.6 et 8.7 à faire
+- [ ] Lot 8 — en cours : PR de gameplay 8a (sous-lots 8.1 à 8.4 : modificateurs, renforcements et boucliers, soutien, fiches du Bastion ; moteur 0.14.0) fusionnée ; sous-lot 8.5 (contenu complet du Bastion, builds de référence, PR #9) fusionné ; sous-lot 8.6 (mesures, `eds report`) en revue ; 8.7 à faire

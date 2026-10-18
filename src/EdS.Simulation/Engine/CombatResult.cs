@@ -61,6 +61,27 @@ namespace EdS.Simulation.Engine
         public long GuardBreaks { get; internal set; }
 
         public bool IsDead { get; internal set; }
+
+        // --- Sous-lot 8.6 (X10) : compteurs de mesure, hors journal (comme les pics de charge) ---------------------------------
+
+        /// <summary>PV maximaux ; null pour un mannequin ou un assaillant aux PV infinis.</summary>
+        public long? MaxHealth { get; internal set; }
+
+        /// <summary>Tick de la mort ; null si le combattant est vivant à la fin.</summary>
+        public long? DeathTick { get; internal set; }
+
+        /// <summary>
+        /// Dégâts retirés par la défense de chaque impact (garde, parade, réductions de dégâts subis) et par les réductions des ticks de
+        /// DOT : montant sans réduction − montant, même tirage critique et mêmes bonus. Les boucliers (<see cref="DamageAbsorbed"/>) et les
+        /// transferts (<see cref="DamageTransferred"/>) sont comptés à part.
+        /// </summary>
+        public long DamageMitigated { get; internal set; }
+
+        /// <summary>Ticks gardés (garde active en phase 4 et non brisée par l'entretien), comme pour l'entretien de garde.</summary>
+        public long GuardTicks { get; internal set; }
+
+        /// <summary>Ultimes lancées.</summary>
+        public long UltimatesCast { get; internal set; }
     }
 
     public sealed class CombatResult

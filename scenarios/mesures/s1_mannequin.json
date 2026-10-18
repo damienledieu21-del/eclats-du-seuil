@@ -1,0 +1,63 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 3,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 61,
+    "durationMs": 60000,
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 30,
+          "attributes": {
+            "force": 30,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 30,
+            "volonte": 15,
+            "endurance": 20
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.rempart.peau_de_fer": 5,
+            "talent.bastion.rempart.souffle_du_roc": 4,
+            "talent.bastion.rempart.poids_du_rempart": 5,
+            "talent.bastion.rempart.rempart_eternel": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.gardien.vigilance": 5,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.barriere_d_acier",
+            "skill.bastion.onde_de_rupture"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.endurance_du_roc",
+            "skill.bastion.bouclier_lourd",
+            "skill.bastion.reserve_de_charges",
+            "skill.bastion.posture_de_fer"
+          ]
+        }
+      },
+      {
+        "id": "mannequin",
+        "type": "dummy",
+        "team": "cibles",
+        "initiative": 0,
+        "armor": 0,
+        "magicResistance": 0
+      }
+    ],
+    "commands": []
+  }
+}

@@ -22,6 +22,14 @@ namespace EdS.Simulation.Engine
         public override string ToString() => string.Concat(_lines.ConvertAll(l => l + "\n"));
     }
 
+    /// <summary>Sous-lot 8.6 : journal qui ignore les lignes (passe de planification du pilote, dont seul le résultat compte).</summary>
+    public sealed class NullCombatLog : ICombatLog
+    {
+        public static readonly NullCombatLog Instance = new NullCombatLog();
+        private NullCombatLog() { }
+        public void Append(string line) { }
+    }
+
     /// <summary>Journal écrit au fil de l'eau dans un flux texte, lignes terminées par « \n ».</summary>
     public sealed class TextWriterCombatLog : ICombatLog
     {
