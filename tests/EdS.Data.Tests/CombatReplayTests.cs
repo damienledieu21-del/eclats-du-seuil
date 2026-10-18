@@ -142,5 +142,7 @@ public class CombatReplayTests
         Assert.Equal(MannequinLogHash, hash);
     }
 
-    internal const string MannequinLogHash = "a3148f26ce725884a71ea91aec274bcfe2d4fe6cb0d20d2f7ac6a72e119659d9";
+    // Sous-lot 8.7 : la Provocation (lancée sur le mannequin, provocation refusée notApplicable) inflige désormais 0,8 : 461 dégâts au
+    // lieu de 441, 56 de Résonance au lieu de 53.
+    internal const string MannequinLogHash = "4c5f475baa260527587590ec722051dbde4bb6599941e8c770d15be6ad003e10";
 }

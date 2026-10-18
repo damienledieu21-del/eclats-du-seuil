@@ -102,6 +102,8 @@ Sous-lot 8.5 (contenu complet du Bastion, début de la PR de gameplay 8b) : plus
 
 Sous-lot 8.6 (mesures) : compteurs de mesure X10 dans le résultat du moteur (tick de mort, PV max, dégâts atténués, ticks gardés, ultimes), hors journal ; API de pilotage (`CombatEngine.View`, `Submit`) et pilote déterministe à trois profils (débutant, standard, expert) hors du moteur, dont chaque combat est rejoué et vérifié ; scénarios de mesure S1 à S5 (`scenarios/mesures`) ; commande `eds report` (texte, JSON `measureReport` 1, journaux rejouables, `--strict`) ; catégorie de tests `Scenario`. Moteur 0.14.0, journal au format 8 et données inchangés. Relevé initial : tous les objectifs provisoires atteints sauf S1 (écart de DPS de 27,2 %, limite 15 %). Détail : [docs/BUILDS.md](docs/BUILDS.md#mesures-des-builds-sous-lot-86), [docs/MOTEUR.md](docs/MOTEUR.md#compteurs-de-mesure-et-pilotage-sous-lot-86), [docs/DONNEES.md](docs/DONNEES.md#scénarios-de-mesure-et-rapport-sous-lot-86), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-86--interprétations-et-limites).
 
+Sous-lot 8.7 (équilibrage, fin de la PR de gameplay 8b) : décision 8 du 18/10/2026, la Provocation inflige une frappe physique de 0,8 ; seul changement de données (Bastion au contenu 0.5.0). Tous les objectifs provisoires de la feuille de route sont atteints : S1 ramené de 27,2 % à 10,5 % d'écart de DPS, les autres inchangés. Moteur, journal et règles inchangés ; nouvelle référence figée `reference-0.14.0-contenu-0.5.0`. Rapport : [docs/RAPPORT_8_7.md](docs/RAPPORT_8_7.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -115,4 +117,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
-- [ ] Lot 8 — en cours : PR de gameplay 8a (sous-lots 8.1 à 8.4 : modificateurs, renforcements et boucliers, soutien, fiches du Bastion ; moteur 0.14.0) fusionnée ; sous-lot 8.5 (contenu complet du Bastion, builds de référence, PR #9) fusionné ; sous-lot 8.6 (mesures, `eds report`) en revue ; 8.7 à faire
+- [ ] Lot 8 — en cours : PR de gameplay 8a (sous-lots 8.1 à 8.4 : modificateurs, renforcements et boucliers, soutien, fiches du Bastion ; moteur 0.14.0) fusionnée ; sous-lot 8.5 (contenu complet du Bastion, builds de référence, PR #9) fusionné ; sous-lot 8.6 (mesures, `eds report`) en revue ; sous-lot 8.7 (équilibrage, Provocation à 0,8, tous les objectifs atteints) en revue

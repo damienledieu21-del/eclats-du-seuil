@@ -25,8 +25,9 @@ public class ClassJsonReaderTests
         ClassLoadResult result = ClassJsonReader.ReadFile(BastionPath, Progression);
         Assert.True(result.IsValid, result.Report.ToString());
         Assert.Equal(8, result.Class!.SchemaVersion);
-        // 0.3.0 : fiches complètes des compétences (sous-lot 8.4) ; 0.4.0 : talents, intermédiaires et passifs (sous-lot 8.5).
-        Assert.Equal("0.4.0-provisoire", result.Class.ContentVersion);
+        // 0.3.0 : fiches complètes des compétences (sous-lot 8.4) ; 0.4.0 : talents, intermédiaires et passifs (sous-lot 8.5) ; 0.5.0 :
+        // Provocation inflige des dégâts (sous-lot 8.7, décision de Damien du 18/10/2026).
+        Assert.Equal("0.5.0-provisoire", result.Class.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Class.Fingerprint);
     }
 

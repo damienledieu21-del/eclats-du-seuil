@@ -29,7 +29,7 @@ Deux PR de gameplay (A11) : **8a moteur** (8.1 à 8.4, PR #3, #6, #7 et #8, fusi
 | 8.4 | X8 Contrecoup consomme toutes les Charges, fiches complètes des compétences restantes et de l'ultime, L8-D2, aucun `notImplemented` restant | PR empilée sur la PR #7 (brouillon) : fiches complètes du Bastion, Charges dépensées et coefficient par Charge, `resonanceGain`, `guard.noUpkeep`, `combat.triggers.areaStrikeMinCooldownMs` (3 s), rupture de garde limitée aux contrôles et modificateurs ; règles en schéma 9 (contenu 0.7.0), classes en 8 (contenu 0.3.0), moteur 0.14.0, journal au format 8 |
 | 8.5 | Contenu complet du Bastion (talents, intermédiaires, passifs), plus aucun `[TEST]`, builds de référence en données | PR #9, fusionnée le 18 octobre 2026 : talents, intermédiaires et passifs en données (modificateurs et déclencheurs existants, moteur inchangé), altérations `reactiveAegis`, `protectiveLink`, `oathTaunt`, fichier de builds de référence (`kind: "builds"`, schéma 1) ; règles au contenu 0.8.0, Bastion 0.4.0 |
 | 8.6 | X10 compteurs de mesure, scénarios S1 à S5, commande CLI `report`, catégorie `Scenario` | PR en brouillon vers `main` : compteurs hors journal (moteur 0.14.0 et journal inchangés), API de pilotage (`View`, `Submit`), pilote déterministe à trois profils, scénarios `scenarios/mesures`, `eds report` (texte, JSON `measureReport` 1, journaux rejouables), relevé initial dans [BUILDS.md](BUILDS.md#mesures-des-builds-sous-lot-86) : tous les objectifs atteints sauf S1 (écart de DPS 27,2 %) |
-| 8.7 | Passe d'équilibrage mesurée, surtout en données ; rapport de mesures et écarts | à faire |
+| 8.7 | Passe d'équilibrage mesurée, surtout en données ; rapport de mesures et écarts | PR en brouillon, empilée sur celle du 8.6 : décision 8 (Provocation inflige 0,8), Bastion au contenu 0.5.0, tous les objectifs provisoires atteints ([RAPPORT_8_7.md](RAPPORT_8_7.md)) |
 
 Ordre défensif attendu en 8.2 : garde ou parade selon leurs règles, puis bouclier, puis PV. Tests 8.2 attendus : bouclier épuisé pendant un impact, plusieurs boucliers, DOT successifs, mort d'un personnage protégé, réservation exacte, aucun dégât négatif ni effet partiel.
 
@@ -60,6 +60,10 @@ Aussi : aucun soin, aucune deuxième classe, aucun système de positions, aucune
 6. **Bastion absolu** : les 8 s valent pour ses trois effets ; aucune recharge propre, la Résonance (100) seule le limite ; garde sans entretien pour le Bastion seul, −30 % de dégâts subis pour lui et ses alliés.
 7. **Contrecoup** : les Charges sont dépensées au lancement ; un bonus « par Charge détenue » ne compte pas sur son impact.
 
+**Décision du 18 octobre 2026** (sous-lot 8.7, passe d'équilibrage) :
+
+8. **Provocation** : inflige une frappe physique de 0,8 en plus de provoquer (objectif S1 : le Gardien n'avait que deux actives de dégâts ; écart de DPS ramené de 27,2 % à 10,5 %). Options écartées : Onde de rupture à la place de Provocation dans le build du Gardien, ou objectif S1 assoupli à 30 %. Rapport : [RAPPORT_8_7.md](RAPPORT_8_7.md).
+
 ## Catalogue du Bastion (valeurs initiales du plan)
 
 Trois arbres : **Rempart** (garde, endurance, parade, Charges, survie), **Contrecoup** (ripostes, dégâts, Résonance), **Gardien** (boucliers, protection, transfert, soutien ; utile aussi en solo).
@@ -72,7 +76,7 @@ Trois arbres : **Rempart** (garde, endurance, parade, Charges, survie), **Contre
 
 **Passifs équipables** : Endurance du roc (endurance max +15), Bouclier lourd (coût par blocage −3), Réserve de Charges (Charges max +1), Œil du duelliste (fenêtre de parade +50 ms), Ferveur (Résonance par impact direct +1), Posture de fer (en garde, dégâts subis −5 %), Sentinelle (premier impact sur l'allié lié : +1 Charge, recharge 6 s), Ténacité (résistance aux altérations +100). Martèlement et Vengeance ne sont pas réintroduits.
 
-**Compétences** — Frappe du rempart (1,2 ; 10 endurance ; 6 s ; ennemi unique) ; Heurt de bouclier (0,8 ; 15 ; 10 s ; étourdissement 1,5 s) ; Onde de rupture (0,5 ; 20 ; 12 s ; tous les ennemis ; Fragilité) ; Contrecoup (10 ; 8 s ; consomme toutes les Charges, au moins une ; 0,6 + 0,4 par Charge) ; Provocation (10 ; 12 s ; assaillant ; 3 s ; +5 Résonance) ; Barrière d'acier (20 ; 20 s ; bouclier de 15 % des PV max du Bastion, 6 s, sur soi ou un allié). **Ultime Bastion absolu** : 100 Résonance, 8 s, dégâts subis −30 % pour le Bastion et ses alliés, provoque tous les assaillants, garde sans entretien pendant l'effet.
+**Compétences** — Frappe du rempart (1,2 ; 10 endurance ; 6 s ; ennemi unique) ; Heurt de bouclier (0,8 ; 15 ; 10 s ; étourdissement 1,5 s) ; Onde de rupture (0,5 ; 20 ; 12 s ; tous les ennemis ; Fragilité) ; Contrecoup (10 ; 8 s ; consomme toutes les Charges, au moins une ; 0,6 + 0,4 par Charge) ; Provocation (0,8 depuis le sous-lot 8.7, décision 8 ; 10 ; 12 s ; assaillant ; 3 s ; +5 Résonance) ; Barrière d'acier (20 ; 20 s ; bouclier de 15 % des PV max du Bastion, 6 s, sur soi ou un allié). **Ultime Bastion absolu** : 100 Résonance, 8 s, dégâts subis −30 % pour le Bastion et ses alliés, provoque tous les assaillants, garde sans entretien pendant l'effet.
 
 ## Builds et scénarios de référence (8.5 à 8.7)
 
