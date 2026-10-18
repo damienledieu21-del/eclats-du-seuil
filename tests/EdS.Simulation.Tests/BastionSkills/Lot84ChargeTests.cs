@@ -78,6 +78,16 @@ public class Lot84ChargeTests
     }
 
     [Fact]
+    public void Coefficient_de_lancement_ecrete_a_100()
+    {
+        // Revue Codex de la PR #8 : 0,6 + 2 × 100 Charges dépensées = 200,6, écrêté à 100 ; l'impact frappe à 100.
+        ClassDefinition definition = KitClass(counter: Counter(perCharge: "100"));
+        var (events, hero) = Spend(2, definition: definition);
+        JsonElement hit = events.OfKind("damage").Single();
+        Assert.Equal(Expected(hero, "100", hit.GetProperty("critical").GetBoolean()), hit.Long("amount"));
+    }
+
+    [Fact]
     public void Charges_conservees_par_un_refus_et_rejeu_identique()
     {
         // Contrecoup en recharge (8 s) : refusé, les Charges restent.

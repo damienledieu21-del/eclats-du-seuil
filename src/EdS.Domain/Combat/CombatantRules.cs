@@ -154,15 +154,17 @@ namespace EdS.Domain.Combat
         public Fixed Coefficient(SkillDefinition skill, SkillCombatDefinition combat) => Coefficient(skill, combat, 0);
 
         /// <summary>
-        /// Sous-lot 8.4 (X8) : coefficient effectif d'un lancement qui a dépensé <paramref name="chargesSpent"/> Charges : (base +
-        /// coefficient par Charge × Charges dépensées) + modificateurs, écrêté comme <see cref="Coefficient(SkillDefinition, SkillCombatDefinition)"/>
-        /// (la base peut dépasser le plafond : elle n'est jamais réduite par l'écrêtage). Sans débordement : coefficient par Charge ≤ 100 et
+        /// Sous-lot 8.4 (X8) : coefficient effectif d'un lancement qui a dépensé <paramref name="chargesSpent"/> Charges. L'ajout par Charge
+        /// ne porte la base du lancement qu'au plus à <see cref="SkillCombatDefinition.MaxCoefficient"/> (revue Codex de la PR #8 : 0,6 + 2 × 100
+        /// donne 100, pas 200,6) ; une base déjà au-delà (définition non validée, contrat du sous-lot 8.1) n'est ni réduite ni augmentée. Les
+        /// modificateurs s'ajoutent ensuite sous le même écrêtage que <see cref="Coefficient(SkillDefinition, SkillCombatDefinition)"/>. Sans débordement : coefficient par Charge ≤ 100 et
         /// Charges dépensées ≤ 2³¹ − 1, soit au plus 2,2 × 10¹⁵ en valeur brute, loin de 2⁶³ (arithmétique vérifiée de toute façon). Le
         /// précontrôle numérique borne les dégâts avec le maximum de Charges du combattant.
         /// </summary>
         public Fixed Coefficient(SkillDefinition skill, SkillCombatDefinition combat, int chargesSpent) =>
-            Clamp(combat.Coefficient + combat.CoefficientPerRampartCharge * chargesSpent, Modifiers.Sum(ModifierField.SkillCoefficient, skill.Id),
-                Fixed.Zero, SkillCombatDefinition.MaxCoefficient);
+            Clamp(combat.Coefficient + Fixed.Min(combat.CoefficientPerRampartCharge * chargesSpent,
+                    Fixed.Max(Fixed.Zero, SkillCombatDefinition.MaxCoefficient - combat.Coefficient)),
+                Modifiers.Sum(ModifierField.SkillCoefficient, skill.Id), Fixed.Zero, SkillCombatDefinition.MaxCoefficient);
 
         /// <summary>Recharge effective d'une compétence (ms) : base + modificateurs, écrêtée dans [0, 24 h] ; multiple du tick (validé).</summary>
         public long CooldownMs(SkillDefinition skill, SkillCombatDefinition combat) =>

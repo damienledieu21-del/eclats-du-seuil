@@ -40,6 +40,44 @@ public class Lot84ValidationTests
     }
 
     [Theory]
+    [InlineData(0, null, "0.6")]
+    [InlineData(5, null, "2.6")]
+    [InlineData(1, "-0.5", "0.5")]
+    [InlineData(10, null, "4.6")]
+    public void Coefficient_effectif_par_Charges_depensees(int charges, string? modifier, string expected)
+    {
+        SkillDefinition skill = Active(Strike());
+        ModifierSet set = modifier is null ? ModifierSet.Empty
+            : ModifierSet.From(new[] { new BoundModifier("skill.essai.p", 0, 1, new ModifierDefinition("skill.essai.s.coefficient", Fixed.Parse(modifier))) });
+        Assert.Equal(Fixed.Parse(expected), CombatantRules.For(CombatRules.Provisional, set).Coefficient(skill, skill.Combat!, charges));
+    }
+
+    [Theory]
+    [InlineData(2, null, "100")]        // 0,6 + 2 × 100 : base écrêtée à 100 (revue Codex de la PR #8), et non 200,6
+    [InlineData(1, null, "100")]        // 100,6 → 100
+    [InlineData(2, "-0.5", "99.5")]     // l'écrêtage de la base précède les modificateurs
+    [InlineData(2, "0.1", "100")]
+    [InlineData(0, "-1", "0")]          // jamais négatif
+    public void Coefficient_par_Charge_ecrete_au_plafond(int charges, string? modifier, string expected)
+    {
+        SkillDefinition skill = Active(Strike(perCharge: "100"));
+        ModifierSet set = modifier is null ? ModifierSet.Empty
+            : ModifierSet.From(new[] { new BoundModifier("skill.essai.p", 0, 1, new ModifierDefinition("skill.essai.s.coefficient", Fixed.Parse(modifier))) });
+        Assert.Equal(Fixed.Parse(expected), CombatantRules.For(CombatRules.Provisional, set).Coefficient(skill, skill.Combat!, charges));
+    }
+
+    [Fact]
+    public void Base_non_validee_au_dela_du_plafond_ni_reduite_ni_augmentee()
+    {
+        // Contrat du sous-lot 8.1 (Lot81CombatantRulesBoundsTests) : une base hors intervalle n'est pas ramenée dans l'intervalle ; les
+        // Charges n'y ajoutent rien.
+        var combat = new SkillCombatDefinition(PowerType.Physique, DamageType.Physique, Fixed.FromInt(150), 0, 0, rampartChargeCost: 1,
+            rampartChargeSpendAll: true, coefficientPerRampartCharge: Fixed.One);
+        SkillDefinition skill = Active(combat);
+        Assert.Equal(Fixed.FromInt(150), CombatantRules.For(CombatRules.Provisional, ModifierSet.Empty).Coefficient(skill, combat, 3));
+    }
+
+    [Theory]
     [InlineData("-0.0001")]
     [InlineData("100.0001")]
     public void Coefficient_par_Charge_hors_bornes(string perCharge) =>
