@@ -54,6 +54,7 @@ bash scripts/test-category.sh -c Release <catégories listées dans ci.yml>
 # scénario de référence : simulate, cmp avec le journal figé, replay (voir ci.yml)
 dotnet build --no-restore -c Debug -warnaserror
 dotnet test --no-build -c Debug
+python3 -m unittest discover -s scripts -p 'test_ci_provenance.py' -v   # générateur du rapport CI non signé (PR #4)
 ```
 
 Un push n'a lieu que si tout est vert localement. Après le push, vérifier le check `build-test` de GitHub (`gh api repos/{owner}/{repo}/commits/{sha}/check-runs`). `gh pr` ne fonctionne pas dans les sessions cloud : utiliser `gh api` (REST).
