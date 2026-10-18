@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(8, result.Rules!.SchemaVersion);
-        Assert.Equal("0.6.0-provisoire", result.Rules.ContentVersion);
+        Assert.Equal(9, result.Rules!.SchemaVersion);
+        Assert.Equal("0.7.0-provisoire", result.Rules.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -55,6 +55,13 @@ public class RulesJsonReaderTests
                 // Lot 7.2 : catalogue des altérations comparé définition par définition, dans l'ordre.
                 Assert.Equal(ec.Definitions.Count, ac.Definitions.Count);
                 for (int i = 0; i < ec.Definitions.Count; i++) AssertSameProperties(ec.Definitions[i], ac.Definitions[i]);
+                continue;
+            }
+            if (e is IReadOnlyList<ModifierDefinition> em && a is IReadOnlyList<ModifierDefinition> am)
+            {
+                // Sous-lot 8.4 : renforcements livrés, modificateurs comparés un par un (clé, valeur, conditions).
+                Assert.Equal(em.Select(m => (m.Key, m.Add.Base, m.Add.PerRank, string.Join(",", m.Conditions))),
+                    am.Select(m => (m.Key, m.Add.Base, m.Add.PerRank, string.Join(",", m.Conditions))));
                 continue;
             }
             bool same = e is IEnumerable<int> el && a is IEnumerable<int> al ? el.SequenceEqual(al)
@@ -106,8 +113,9 @@ public class RulesJsonReaderTests
         // Lot 8 (décision du 18/10/2026) : schéma 6, contenu 0.6.0, plafonds combat.guard.maxDamageReduction et combat.damageTaken.maxReduction.
         // Sous-lot 8.2 : schéma 7 (renforcements et boucliers) ; seule la version change dans le texte canonique.
         // Sous-lot 8.3 : schéma 8 ; redirectRatio (0) écrit pour chaque altération.
+        // Sous-lot 8.4 : schéma 9, contenu 0.7.0 : combat.triggers.areaStrikeMinCooldownMs et les cinq altérations du Bastion.
         Assert.Equal(
-            "sha256:e0ae93d979c7536c7af5f6d287a24a1cec11d67b4f45bb7e91ae98523696b4a8",
+            "sha256:0176d9652e97eeb24e2b34c30bb234c2dbc595d04f0c60b45d62befd2bc7e9b9",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -115,7 +123,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 9), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 10), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Format_5_sans_plafonds_refuse_explicitement()

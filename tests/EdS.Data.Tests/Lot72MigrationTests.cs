@@ -24,7 +24,8 @@ public class Lot72MigrationTests
     private static IReadOnlyList<string> Current(string name)
     {
         var log = new MemoryCombatLog();
-        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!, log);
+        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay.
+        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), HistoricalData).Setup!, log);
         return log.Lines;
     }
 

@@ -15,6 +15,18 @@ internal static class ScenarioTestData
 
     public static GameData ShippedData { get; } = GameDataLoader.Load(DataDirectory).Data!;
 
+    /// <summary>
+    /// Sous-lot 8.4 : contenu historique du Bastion (classe « 0.2.0-provisoire » des lots 5 à 8.3, au schéma de classe courant :
+    /// Frappe du rempart et Heurt de bouclier sans étourdissement, autres compétences sans bloc combat), avec les règles livrées (les
+    /// altérations ajoutées au catalogue ne servent qu'aux nouvelles compétences). Les tests de non-régression des journaux historiques
+    /// le rejouent : le moteur reproduit leur gameplay tant que le contenu ne change pas. Le contenu livré, lui, change le gameplay
+    /// des scénarios (références figées à part).
+    /// </summary>
+    public static string HistoricalClassPath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "content-0.2.0", "bastion.json");
+
+    public static GameData HistoricalData { get; } =
+        new(ShippedData.Rules, new[] { ClassJsonReader.ReadFile(HistoricalClassPath, ShippedData.Rules.Progression).Class! });
+
     public static JsonObject Shipped() => JsonNode.Parse(MannequinJson)!.AsObject();
     public static JsonObject DataOf(JsonObject root) => root["data"]!.AsObject();
     public static JsonObject Combatant(JsonObject root, int index) => DataOf(root)["combatants"]![index]!.AsObject();

@@ -17,6 +17,7 @@
     <None Include="..\..\data\**\*.json" LinkBase="data" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\scenarios\**\*.json" LinkBase="scenarios" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures\**\*.jsonl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\EdS.Simulation.Tests\Triggers\CausalGraph.cs" Link="Support\CausalGraph.cs" />
     <Compile Include="..\EdS.Simulation.Tests\Regression\Lot8LogFields.cs" Link="Support\Lot8LogFields.cs" />
   </ItemGroup>

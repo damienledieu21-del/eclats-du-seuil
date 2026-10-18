@@ -37,8 +37,10 @@ public class Lot71CapacityTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData("mannequin", 14, 4, 18)]
-    [InlineData("entrainement_garde_parade", 18, 7, 19)]   // correctif 7.2 : 20 → 18, la Fragilité parée ne s'applique plus
+    // Sous-lot 8.4 : fiches complètes. Mannequin : la Provocation se lance (gain de Résonance, refus notApplicable) ; garde et parade :
+    // l'étourdissement du Heurt de bouclier (pose et immunité).
+    [InlineData("mannequin", 17, 5, 19)]
+    [InlineData("entrainement_garde_parade", 21, 8, 19)]   // correctif 7.2 : 20 → 18, la Fragilité parée ne s'applique plus ; 8.4 : 21
     [InlineData("entrainement_rupture", 20, 7, 7)]
     [InlineData("entrainement_alterations", 26, 8, 14)]
     public void Pics_des_scenarios_de_reference(string name, long work, long events, long pending)

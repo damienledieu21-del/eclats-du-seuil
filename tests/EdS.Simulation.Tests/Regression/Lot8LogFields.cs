@@ -61,7 +61,7 @@ public static class Lot8LogFields
         "{" + string.Join(",", new (string Key, string Value)[]
         {
             ("guard.damageReduction", r.GuardDamageReduction.ToString()), ("guard.upkeepPerSecond", r.GuardUpkeepPerSecond.ToString()),
-            ("guard.costPerBlock", r.GuardCostPerBlock.ToString()), ("guard.noUpkeepBreak", "false"), ("guard.reductionAtZeroEndurance", "0"),
+            ("guard.costPerBlock", r.GuardCostPerBlock.ToString()), ("guard.noUpkeepBreak", "false"), ("guard.noUpkeep", "false"), ("guard.reductionAtZeroEndurance", "0"),
             ("guard.breakShortenPerCharge", "0"), ("parry.windowMs", r.ParryWindowMs.ToString()),
             ("parry.failureRecoveryMs", r.ParryFailureRecoveryMs.ToString()), ("rampartCharges.max", r.RampartChargesMax.ToString()),
             ("resonance.perDirectHit", r.ResonancePerDirectHit.ToString()), ("endurance.regenPerSecond", r.EnduranceRegenPerSecond.ToString()),

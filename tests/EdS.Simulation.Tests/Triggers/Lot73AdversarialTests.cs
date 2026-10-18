@@ -105,7 +105,7 @@ public class Lot73AdversarialTests
             Bearer("fort", new[] { avenge }, "rouge", Attrs(force: 500)),
             Bearer("e1", team: "bleu", attributes: Attrs(vitalite: 0)), Bearer("e2", team: "bleu", attributes: Attrs(vitalite: 0)),
             Dummy("mannequin", "bleu"),
-        }, durationMs: 1000, rules: NoUpkeep));
+        }, durationMs: 1000, rules: NoUpkeepAreaStrikes));
         var died = events.OfKind("died").ToList();
         Assert.Equal(new[] { ("e1", 0L, 0), ("e2", 1L, 1) }, died.Select(d => (d.Str("combatant")!, d.Tick(), Depth(d))));
         Assert.All(events.OfKind("damage").Where(e => Depth(e) == 1), e => Assert.Equal((1L, 0L), (e.Tick(), e.Int("deferredFromTick"))));

@@ -363,6 +363,9 @@ public class Lot81CombatantRulesAggregationTests
         Assert.Equal(Fixed.FromInt(rules.GuardUpkeepPerSecond), r.GuardUpkeepPerSecond);
         Assert.Equal(rules.GuardCostPerBlock, r.GuardCostPerBlock);
         Assert.False(r.GuardNoUpkeepBreak);
+        Assert.False(r.GuardNoUpkeep);   // sous-lot 8.4
+        Assert.Equal(r.GuardUpkeepPerSecond, r.GuardUpkeepPerSecondWith(Fixed.Zero));
+        Assert.Equal(Fixed.Zero, r.GuardUpkeepPerSecondWith(Fixed.Zero, temporaryNoUpkeep: true));
         Assert.Equal(Fixed.Zero, r.GuardReductionAtZeroEndurance);
         Assert.Equal(0, r.GuardBreakShortenPerChargeMs);
         Assert.Equal(rules.ParryWindowMs, r.ParryWindowMs);
@@ -407,7 +410,7 @@ public class Lot81CombatantRulesAggregationTests
             nameof(CombatantRules.GuardBreakShortenPerChargeMs), nameof(CombatantRules.ParryWindowMs), nameof(CombatantRules.ParryFailureRecoveryMs),
             nameof(CombatantRules.RampartChargesMax), nameof(CombatantRules.ResonancePerDirectHit), nameof(CombatantRules.EnduranceRegenPerSecond),
             nameof(CombatantRules.DamageDealt), nameof(CombatantRules.DamageTaken), nameof(CombatantRules.ShieldPotencyDealt),
-            nameof(CombatantRules.ProtectionRedirectRatio), nameof(CombatantRules.ProtectionRedirectThroughGuard),
+            nameof(CombatantRules.ProtectionRedirectRatio), nameof(CombatantRules.ProtectionRedirectThroughGuard), nameof(CombatantRules.GuardNoUpkeep),
         };
         Assert.Equal(covered.OrderBy(n => n, StringComparer.Ordinal),
             typeof(CombatantRules).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));

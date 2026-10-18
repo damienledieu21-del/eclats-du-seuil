@@ -96,6 +96,10 @@ public class RulesCatalogTests
             Blocks = StatusIds.Of(d.Blocks).Select(x => (string?)x).ToList(), Interrupts = StatusIds.Of(d.Interrupts).Select(x => (string?)x).ToList(),
             BlockReason = d.BlockReason, DamageTakenIncrease = d.DamageTakenIncrease, MovementSpeedModifier = d.MovementSpeedModifier,
             GrantsOnExpiry = d.GrantsOnExpiry, ImmuneTo = d.ImmuneTo.Select(x => (string?)x).ToList(),
+            // Sous-lot 8.4 : renforcements livrés (modificateurs sans rang) ; protection : part transférée.
+            Modifiers = d.IsBuff ? d.Modifiers.Select(m => (EdS.Data.Modifiers.ModifierData?)new EdS.Data.Modifiers.ModifierData
+                { Key = m.Key, Add = new EdS.Data.Triggers.RankedData { Base = m.Add.Base } }).ToList() : null,
+            RedirectRatio = d.IsProtection ? d.RedirectRatio : null,
         }).ToList();
         RulesLoadResult result = RulesValidator.Validate(document);
         Assert.True(result.IsValid, result.Report.ToString());

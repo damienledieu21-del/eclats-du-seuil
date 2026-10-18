@@ -130,6 +130,15 @@ internal static class TestCombat
     /// <summary>Règles sans entretien de garde, pour isoler les autres coûts.</summary>
     public static readonly CombatRules NoUpkeep = new() { GuardUpkeepPerSecond = 0 };
 
+    /// <summary>
+    /// Sous-lot 8.4 (L8-D2) : configuration explicite de test des ripostes automatiques de zone sans recharge interne (les règles livrées
+    /// exigent 3 s, <c>combat.triggers.areaStrikeMinCooldownMs</c>) ; pour les essais de chaînes et de capacité du lot 7.3.
+    /// </summary>
+    public static readonly CombatRules AreaStrikes = new() { AreaStrikeMinCooldownMs = 0 };
+
+    /// <summary><see cref="NoUpkeep"/> et <see cref="AreaStrikes"/> à la fois.</summary>
+    public static readonly CombatRules NoUpkeepAreaStrikes = new() { GuardUpkeepPerSecond = 0, AreaStrikeMinCooldownMs = 0 };
+
     public static CombatSetup Setup(IEnumerable<CombatCommand> commands, IEnumerable<CombatantSetup>? combatants = null,
         long seed = 42, long durationMs = 10_000, CombatRules? rules = null) =>
         new(seed, durationMs, StatRules.Provisional, DamageRules.Provisional, ProgressionRules.Provisional, rules ?? CombatRules.Provisional,

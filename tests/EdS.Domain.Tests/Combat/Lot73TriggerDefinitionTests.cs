@@ -219,7 +219,8 @@ public class Lot73TriggerDefinitionTests
     private static List<RuleViolation> References(TriggerDefinition trigger, int tickMs = 50)
     {
         var errors = new List<RuleViolation>();
-        TriggerDefinition.ValidateReferences(new[] { trigger }, "triggers", StatusCatalog.Provisional, "guardBreak", tickMs, errors);
+        TriggerDefinition.ValidateReferences(new[] { trigger }, "triggers", StatusCatalog.Provisional, "guardBreak", tickMs,
+            CombatRules.Provisional.AreaStrikeMinCooldownMs, errors);
         return errors;
     }
 
@@ -254,10 +255,11 @@ public class Lot73TriggerDefinitionTests
             triggers: new[] { On(TriggerEvent.HitTaken, effects: TriggerEffect.ApplyStatus(TriggerTarget.EventSource, "absente")), On(TriggerEvent.HitTaken, TriggerRole.Source) });
         var catalog = new StatusCatalog(StatusCatalog.Provisional.Definitions.Append(withTrigger));
         RuleViolation shape = Assert.Single(catalog.Validate(50));
-        Assert.Equal("statuses[7].triggers[1].role", shape.Fields[0]);
-        RuleViolation reference = Assert.Single(catalog.ValidateTriggers(50, "guardBreak"));
-        Assert.Equal("statuses[7].triggers[0].effects[0].status", reference.Fields[0]);
-        Assert.Empty(StatusCatalog.Provisional.ValidateTriggers(50, "guardBreak"));
+        int n = StatusCatalog.Provisional.Definitions.Count;   // altération ajoutée en fin de catalogue
+        Assert.Equal($"statuses[{n}].triggers[1].role", shape.Fields[0]);
+        RuleViolation reference = Assert.Single(catalog.ValidateTriggers(50, "guardBreak", 3000));
+        Assert.Equal($"statuses[{n}].triggers[0].effects[0].status", reference.Fields[0]);
+        Assert.Empty(StatusCatalog.Provisional.ValidateTriggers(50, "guardBreak", 3000));
         Assert.All(StatusCatalog.Provisional.Definitions, d => Assert.Empty(d.Triggers));
     }
 

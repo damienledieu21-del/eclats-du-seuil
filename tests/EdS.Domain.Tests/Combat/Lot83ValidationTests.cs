@@ -13,7 +13,8 @@ namespace EdS.Domain.Tests.Combat;
 public class Lot83ValidationTests
 {
     private static readonly StatusCatalog Shipped = StatusCatalog.Provisional;
-    private const string P = "statuses[7]";
+    private static readonly int N = StatusCatalog.Provisional.Definitions.Count;   // sous-lot 8.4 : douze altérations livrées
+    private static readonly string P = $"statuses[{N}]";
 
     private static SkillDefinition Skill(SkillCombatDefinition combat, string id = "skill.essai.s") => new(id, "S", SkillKind.Active, combat: combat);
 
@@ -114,7 +115,7 @@ public class Lot83ValidationTests
     {
         var grants = new StatusDefinition("voile", StatusCategory.Modifier, 2000, StatusStacking.Refresh, grantsOnExpiry: "provoc");
         RuleViolation v = Assert.Single(Errors(Taunt(), grants));
-        Assert.Equal(("statuses[8].grantsOnExpiry", true), (v.Fields.Single(), v.Message.Contains("provocation ne peut pas être accordée")));
+        Assert.Equal(($"statuses[{N + 1}].grantsOnExpiry", true), (v.Fields.Single(), v.Message.Contains("provocation ne peut pas être accordée")));
         var grantsLink = new StatusDefinition("voile", StatusCategory.Modifier, 2000, StatusStacking.Refresh, grantsOnExpiry: "lien");
         Assert.Contains("protection ne peut pas être accordée", Assert.Single(Errors(Protection(), grantsLink)).Message);
     }

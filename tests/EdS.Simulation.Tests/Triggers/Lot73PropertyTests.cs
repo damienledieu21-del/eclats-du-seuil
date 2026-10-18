@@ -38,7 +38,11 @@ public class Lot73PropertyTests
         IReadOnlyList<TriggerRole> roles = TriggerDefinition.AllowedRoles(on);
         TriggerRole? role = roles.Count > 1 ? Pick(rng, roles) : null;
         var effects = Enumerable.Range(0, 1 + rng.Next(2)).Select(_ => Effect(rng)).ToArray();
-        return new TriggerDefinition(on, effects, role, cooldownMs: rng.Next(2) * 500);
+        long cooldownMs = rng.Next(2) * 500;
+        // Sous-lot 8.4 (L8-D2) : une riposte de zone respecte la recharge interne minimale des règles livrées (3 s).
+        if (effects.Any(e => e.Kind == TriggerEffectKind.Strike && e.Target == TriggerTarget.AllEnemies))
+            cooldownMs = Math.Max(cooldownMs, CombatRules.Provisional.AreaStrikeMinCooldownMs);
+        return new TriggerDefinition(on, effects, role, cooldownMs: cooldownMs);
     }
 
     private static TriggerDefinition[] Triggers(Random rng) => Enumerable.Range(0, 1 + rng.Next(3)).Select(_ => Trigger(rng)).ToArray();

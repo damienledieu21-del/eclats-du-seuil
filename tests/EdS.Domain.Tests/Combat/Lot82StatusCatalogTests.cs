@@ -12,7 +12,8 @@ namespace EdS.Domain.Tests.Combat;
 public class Lot82StatusCatalogTests
 {
     private static readonly StatusCatalog Shipped = StatusCatalog.Provisional;
-    private const string P = "statuses[7]";   // première définition ajoutée après les sept altérations livrées
+    private static readonly int N = StatusCatalog.Provisional.Definitions.Count;   // sous-lot 8.4 : douze altérations livrées
+    private static readonly string P = $"statuses[{N}]";   // première définition ajoutée après les sept altérations livrées
 
     private static ModifierDefinition Mod(string key, string add, string perRank = "0", params ModifierCondition[] conditions) =>
         new(key, new RankedValue(Fixed.Parse(add), Fixed.Parse(perRank)), conditions);
@@ -40,9 +41,11 @@ public class Lot82StatusCatalogTests
     {
         Assert.Equal(StatusCategory.Buff, StatusIds.Categories["buff"]);
         Assert.Equal(StatusCategory.Shield, StatusIds.Categories["shield"]);
-        Assert.Equal(new[] { ModifierField.DamageDealt, ModifierField.DamageTaken, ModifierField.GuardUpkeepPerSecond }, StatusDefinition.BuffKeys);
-        Assert.False(Shipped.HasShields);
-        Assert.Equal(Fixed.Zero, Shipped.TotalBuffDamageDealt());
+        // Sous-lot 8.4 : garde sans entretien (Bastion absolu) admise sur un renforcement.
+        Assert.Equal(new[] { ModifierField.DamageDealt, ModifierField.DamageTaken, ModifierField.GuardUpkeepPerSecond, ModifierField.GuardNoUpkeep },
+            StatusDefinition.BuffKeys);
+        Assert.True(Shipped.HasShields);                              // sous-lot 8.4 : bouclier de la Barrière d'acier
+        Assert.Equal(Fixed.Zero, Shipped.TotalBuffDamageDealt());     // aucun renforcement livré n'augmente les dégâts infligés
     }
 
     [Fact]
@@ -112,7 +115,7 @@ public class Lot82StatusCatalogTests
         // Un bouclier n'a pas de source qui fixe sa valeur à l'expiration d'une autre altération.
         var accorde = new StatusDefinition("voile", StatusCategory.Modifier, 2000, StatusStacking.Refresh, grantsOnExpiry: "egide");
         RuleViolation violation = Assert.Single(Errors(Shield(), accorde));
-        Assert.Equal(("statuses[8].grantsOnExpiry", true), (violation.Fields.Single(), violation.Message.Contains("bouclier ne peut pas être accordé")));
+        Assert.Equal(($"statuses[{N + 1}].grantsOnExpiry", true), (violation.Fields.Single(), violation.Message.Contains("bouclier ne peut pas être accordé")));
         // Un bouclier peut, lui, accorder une altération à son expiration (épuisé, il est retiré sans rien accorder : voir le moteur).
         Assert.Empty(Errors(Shield(grants: "fragility")));
     }

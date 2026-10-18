@@ -19,7 +19,8 @@ namespace EdS.Data.Tests;
 [Trait("Category", "Shield")]
 public class Lot82StatusDataTests
 {
-    private const string P = "$.data.statuses[7]";   // première altération ajoutée après les sept livrées
+    private static readonly int N = StatusCatalog.Provisional.Definitions.Count;   // sous-lot 8.4 : douze altérations livrées
+    private static readonly string P = $"$.data.statuses[{N}]";   // première altération ajoutée après les altérations livrées
 
     private static JsonArray Statuses(JsonObject rules) => rules["data"]!["statuses"]!.AsArray();
 
@@ -64,10 +65,13 @@ public class Lot82StatusDataTests
     }
 
     [Fact]
-    public void Regles_livrees_sans_renforcement_ni_bouclier()
+    public void Regles_livrees_renforcements_et_bouclier_du_Bastion()
     {
+        // Sous-lot 8.4 : seuls les renforcements de l'ultime (dégâts subis, garde sans entretien) et le bouclier de la Barrière d'acier.
         StatusCatalog shipped = RulesJsonReader.ReadFile(RulesTestData.ShippedPath).Rules!.Combat.Statuses;
-        Assert.DoesNotContain(shipped.Definitions, d => d.IsBuff || d.IsShield || d.Modifiers.Count > 0);
+        Assert.Equal(new[] { "bastionAbsolute", "bastionAbsoluteGuard" }, shipped.Definitions.Where(d => d.IsBuff).Select(d => d.Id));
+        Assert.Equal(new[] { "steelBarrier" }, shipped.Definitions.Where(d => d.IsShield).Select(d => d.Id));
+        Assert.All(shipped.Definitions.Where(d => !d.IsBuff), d => Assert.Empty(d.Modifiers));
     }
 
     [Fact]
@@ -146,12 +150,13 @@ public class Lot82StatusDataTests
         var text = new StringBuilder();
         StatusShape.AppendCanonical(text, catalog);
         string canonical = text.ToString();
-        Assert.EndsWith("statuses[7].id=fortifie\nstatuses[7].category=buff\nstatuses[7].durationMs=8000\nstatuses[7].periodMs=0\n" +
-            "statuses[7].stacking=refresh\nstatuses[7].resistance=none\nstatuses[7].damageType?\nstatuses[7].blocks.count=0\n" +
-            "statuses[7].interrupts.count=0\nstatuses[7].blockReason?\nstatuses[7].damageTakenIncrease=0\nstatuses[7].movementSpeedModifier=0\n" +
-            "statuses[7].grantsOnExpiry?\nstatuses[7].immuneTo.count=0\n" +
-            "statuses[7].modifiers.count=1\nstatuses[7].modifiers[0].key=damageTaken\nstatuses[7].modifiers[0].add=-0.3\n" +
-            "statuses[7].modifiers[0].conditions.count=0\nstatuses[7].redirectRatio=0\n", canonical);   // 8.3 : redirectRatio
+        string S = $"statuses[{N}]";
+        Assert.EndsWith($"{S}.id=fortifie\n{S}.category=buff\n{S}.durationMs=8000\n{S}.periodMs=0\n" +
+            $"{S}.stacking=refresh\n{S}.resistance=none\n{S}.damageType?\n{S}.blocks.count=0\n" +
+            $"{S}.interrupts.count=0\n{S}.blockReason?\n{S}.damageTakenIncrease=0\n{S}.movementSpeedModifier=0\n" +
+            $"{S}.grantsOnExpiry?\n{S}.immuneTo.count=0\n" +
+            $"{S}.modifiers.count=1\n{S}.modifiers[0].key=damageTaken\n{S}.modifiers[0].add=-0.3\n" +
+            $"{S}.modifiers[0].conditions.count=0\n{S}.redirectRatio=0\n", canonical);   // 8.3 : redirectRatio
         Assert.DoesNotContain("statuses[6].modifiers", canonical);   // altérations sans modificateur : rien d'écrit
     }
 

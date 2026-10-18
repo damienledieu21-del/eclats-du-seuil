@@ -110,9 +110,10 @@ public class Lot81ModifierDataReadingTests
     [Fact]
     public void Classe_livree_au_schema_courant_sans_modificateur()
     {
-        // Sous-lot 8.2 : schéma de classe 6 (clé shield.potencyDealt) ; 8.3 : 7 (soutien, protections). Toujours sans modificateur livré.
+        // Sous-lot 8.2 : schéma de classe 6 (clé shield.potencyDealt) ; 8.3 : 7 (soutien, protections) ; 8.4 : 8 (Charges dépensées,
+        // guard.noUpkeep). Toujours sans modificateur livré.
         LoadedClass shipped = ClassJsonReader.Read(ClassTestData.BastionJson, ClassTestData.Progression).Class!;
-        Assert.Equal(7, shipped.SchemaVersion);
+        Assert.Equal(8, shipped.SchemaVersion);
         Assert.All(shipped.Definition.Trees.SelectMany(t => t.Talents), t => Assert.Empty(t.Modifiers));
         Assert.All(shipped.Definition.Skills, s => Assert.Empty(s.Modifiers));
     }
@@ -259,9 +260,10 @@ public class Lot81ModifierDataReadingTests
         ("""{ "key": "", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
         ("""{ "key": "status.Burn.durationTaken", "add": 2000 }""", "[0].key", ValidationCode.UnknownReference),
         ("""{ "key": "status.burn.duration", "add": 2000 }""", "[0].key", ValidationCode.UnknownReference),
-        // Référence de compétence : inconnue, sans bloc combat (active ou passive), ou identifiant d'un autre domaine.
+        // Référence de compétence : inconnue, sans bloc combat (passive ; depuis le sous-lot 8.4, toutes les actives livrées en ont un,
+        // le cas d'une active sans bloc reste couvert par Lot81ModifierValidationTests), ou identifiant d'un autre domaine.
         ("""{ "key": "skill.bastion.inconnue.coefficient", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
-        ("""{ "key": "skill.bastion.provocation.cooldownMs", "add": -1000 }""", "[0].key", ValidationCode.UnknownReference),
+        ("""{ "key": "skill.bastion.test_passif_2.cooldownMs", "add": -1000 }""", "[0].key", ValidationCode.UnknownReference),
         ("""{ "key": "skill.bastion.test_passif_1.coefficient", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
         ("""{ "key": "talent.bastion.rempart.garde_stable.coefficient", "add": 0.1 }""", "[0].key", ValidationCode.UnknownReference),
         // Valeurs entières et drapeau.
@@ -469,7 +471,8 @@ public class Lot81ModifierDataReadingTests
     {
         // Garde-fou de la théorie ci-dessus : une clé par spécification de la liste fermée (D2), les drapeaux à part (8.3 : deux).
         var covered = DeclaredBounds.Select(b => ModifierKeys.TryParse(b.Key, out ModifierKey k) ? k.Field : (ModifierField)(-1)).ToHashSet();
-        Assert.Equal(Enum.GetValues<ModifierField>().Where(f => f != ModifierField.GuardNoUpkeepBreak && f != ModifierField.ProtectionRedirectThroughGuard).ToHashSet(), covered);
+        Assert.Equal(Enum.GetValues<ModifierField>().Where(f => f != ModifierField.GuardNoUpkeepBreak && f != ModifierField.ProtectionRedirectThroughGuard
+            && f != ModifierField.GuardNoUpkeep).ToHashSet(), covered);
     }
 
     [Fact]
@@ -541,8 +544,8 @@ public class Lot81ModifierDataReadingTests
     }
 
     [Theory]
-    // status.taunt.* : syntaxe admise, refusée tant que « taunt » n'est pas au catalogue (D2, X7 en 8.3).
-    [InlineData("status.taunt.durationDealt", "1000", ValidationCode.UnknownReference, ".key")]
+    // status.<id>.* : syntaxe admise, refusée quand l'altération n'est pas au catalogue (D2).
+    [InlineData("status.provocation.durationDealt", "1000", ValidationCode.UnknownReference, ".key")]
     // durationDealt exige une altération appliquée directement : ni immunité, ni rupture de garde.
     [InlineData("status.guardBreak.durationDealt", "1000", ValidationCode.InvalidValue, ".key")]
     [InlineData("status.stunImmunity.durationDealt", "1000", ValidationCode.InvalidValue, ".key")]
@@ -566,6 +569,7 @@ public class Lot81ModifierDataReadingTests
     [InlineData("status.fragility.durationDealt", "{ \"base\": 1000, \"perRank\": 50 }")]
     [InlineData("status.burn.durationTaken", "{ \"base\": -2000, \"perRank\": 2000 }")]
     [InlineData("parry.windowMs", "50")]
+    [InlineData("status.taunt.durationDealt", "200")]   // sous-lot 8.4 : « taunt » livrée au catalogue (Provocation ; Présence au 8.5)
     public void Reference_au_catalogue_et_au_tick_admise_au_scenario(string key, string add)
     {
         ScenarioLoadResult result = ScenarioWith(Mod(key, add));
@@ -583,7 +587,7 @@ public class Lot81ModifierDataReadingTests
 public class Lot81ModifierDataFingerprintTests
 {
     private const string SmallClass = """
-        { "schemaVersion": 7, "kind": "class", "contentVersion": "0.1.0-test",
+        { "schemaVersion": 8, "kind": "class", "contentVersion": "0.1.0-test",
           "data": { "id": "class.essai", "name": "Essai",
             "trees": [ { "id": "tree.essai.a", "name": "A", "talents": [
               { "id": "talent.essai.a.t", "name": "T", "maxRank": 3, "major": false, "placeholder": false, "prerequisites": [],
@@ -617,7 +621,7 @@ public class Lot81ModifierDataFingerprintTests
     /// après ses exigences et ses déclencheurs, avant le bloc combat (« combat? » d'une passive) ; rien pour une liste vide (active).
     /// </summary>
     private static readonly string SmallClassCanonical =
-        "eds-class\ncanonical=2\nschemaVersion=7\nid=class.essai\nname=Essai\n" +
+        "eds-class\ncanonical=2\nschemaVersion=8\nid=class.essai\nname=Essai\n" +
         "trees.count=1\ntrees[0].id=tree.essai.a\ntrees[0].name=A\ntrees[0].talents.count=1\n" +
         "trees[0].talents[0].id=talent.essai.a.t\ntrees[0].talents[0].name=T\ntrees[0].talents[0].maxRank=3\n" +
         "trees[0].talents[0].major=false\ntrees[0].talents[0].placeholder=false\ntrees[0].talents[0].prerequisites.count=0\n" +
@@ -645,6 +649,7 @@ public class Lot81ModifierDataFingerprintTests
         "skills[1].combat.powerType=physique\nskills[1].combat.damageType=physique\nskills[1].combat.coefficient=1.2\n" +
         "skills[1].combat.enduranceCost=10\nskills[1].combat.cooldownMs=6000\nskills[1].combat.targeting=enemy\n" +
         "skills[1].combat.unblockable=false\nskills[1].combat.rampartChargeCost=0\nskills[1].combat.rampartChargeGain=0\n" +
+        "skills[1].combat.rampartChargeSpendAll?\nskills[1].combat.coefficientPerRampartCharge?\nskills[1].combat.resonanceGain?\n" +   // sous-lot 8.4 : facultatifs absents
         "skills[1].combat.provisional=true\nskills[1].combat.applies.count=0\n";
 
     private static string Sha256(string text) =>
@@ -872,11 +877,11 @@ public class Lot81ModifierDataSchemaTests
     public void Version_de_schema_des_classes_courante()
     {
         // Sous-lot 8.2 (revue Codex de la PR #6) : 6, clé de modificateur shield.potencyDealt ; 8.3 : 7, compétences de soutien,
-        // cibles propres d'application, rôle ally, clés protection.*.
-        Assert.Equal(7, DataFormat.ClassSchemaVersion);
-        Assert.Equal(7, ClassValidator.CurrentSchemaVersion);
-        Assert.Equal(7, JsonNode.Parse(ClassTestData.BastionJson)!["schemaVersion"]!.GetValue<int>());
-        Assert.Equal(7, Schema()["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        // cibles propres d'application, rôle ally, clés protection.* ; 8.4 : 8, Charges dépensées (X8), clé guard.noUpkeep.
+        Assert.Equal(8, DataFormat.ClassSchemaVersion);
+        Assert.Equal(8, ClassValidator.CurrentSchemaVersion);
+        Assert.Equal(8, JsonNode.Parse(ClassTestData.BastionJson)!["schemaVersion"]!.GetValue<int>());
+        Assert.Equal(8, Schema()["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
     }
 
     [Theory]
@@ -885,7 +890,8 @@ public class Lot81ModifierDataSchemaTests
     [InlineData(5, true)]
     [InlineData(4, false)]
     [InlineData(3, true)]
-    [InlineData(8, true)]
+    [InlineData(7, true)]
+    [InlineData(9, true)]
     public void Classe_d_une_autre_version_refusee_avec_un_message_explicite(int version, bool withModifiers)
     {
         ClassLoadResult result = ClassTestData.ReadMutated(root =>
@@ -897,12 +903,12 @@ public class Lot81ModifierDataSchemaTests
         AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
         string message = result.Report.Errors[0].Message;
         Assert.Contains($"version de format {version}", message);
-        if (version < 7)
+        if (version < 8)
         {
-            Assert.Contains("antérieure à la version 7", message);
+            Assert.Contains("antérieure à la version 8", message);
             Assert.Contains("aucune migration", message);
         }
-        else Assert.Contains("ce programme lit la version 7", message);
+        else Assert.Contains("ce programme lit la version 8", message);
     }
 
     [Fact]
@@ -923,7 +929,7 @@ public class Lot81ModifierDataSchemaTests
             Assert.EndsWith("bastion.json", path);
             ValidationError error = Assert.Single(report.Errors);
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (error.Path, error.Code));
-            Assert.Contains("version de format 4 antérieure à la version 7", error.Message);
+            Assert.Contains("version de format 4 antérieure à la version 8", error.Message);
         }
         finally
         {
@@ -997,6 +1003,7 @@ public class Lot81ModifierDataSchemaTests
         "status.<id>.durationDealt", "status.<id>.durationTaken", "skill.<id>.coefficient", "skill.<id>.cooldownMs",
         "shield.potencyDealt",   // sous-lot 8.2 (X4)
         "protection.redirectRatio", "protection.redirectThroughGuard",   // sous-lot 8.3 (X6)
+        "guard.noUpkeep",   // sous-lot 8.4 (Bastion absolu)
     };
 
     /// <summary>Exemple concret d'une spécification : identifiant d'altération ou de compétence de la classe livrée à la place de &lt;id&gt;.</summary>
@@ -1147,7 +1154,7 @@ public class Lot81ModifierDataEndToEndTests
     /// (deux sources sommées). Ni le talent non pris (Résonance) ni le passif non équipé (garde) ne comptent.
     /// </summary>
     private const string FiveSourcesRules =
-        "{\"guard.damageReduction\":0.72,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":6,\"guard.noUpkeepBreak\":false," +
+        "{\"guard.damageReduction\":0.72,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":6,\"guard.noUpkeepBreak\":false,\"guard.noUpkeep\":false," +
         "\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":150,\"parry.failureRecoveryMs\":500," +
         "\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false," +
         "\"skill.bastion.frappe_du_rempart.coefficient\":1.35,\"status.fragility.durationTaken\":-1000," +
@@ -1327,7 +1334,7 @@ public class Lot81ModifierDataEndToEndTests
                 Mod("endurance.regenPerSecond", "-1000000"), Mod("skill.bastion.heurt_de_bouclier.cooldownMs", "-86400000"));
         });
         Assert.Equal(
-            "{\"guard.damageReduction\":0.75,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":0,\"guard.noUpkeepBreak\":false," +
+            "{\"guard.damageReduction\":0.75,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":0,\"guard.noUpkeepBreak\":false,\"guard.noUpkeep\":false," +
             "\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":500,\"parry.failureRecoveryMs\":500," +
             "\"rampartCharges.max\":10,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":0,\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false," +
             "\"skill.bastion.frappe_du_rempart.coefficient\":100,\"skill.bastion.heurt_de_bouclier.cooldownMs\":0," +
@@ -1344,7 +1351,7 @@ public class Lot81ModifierDataEndToEndTests
             ClassTestData.Skill(b, 7)["modifiers"] = List(Mod("parry.windowMs", "-500"), Mod("resonance.perDirectHit", "-3"), Mod("guard.breakShortenPerCharge", "1000"));
         });
         Assert.Equal(
-            "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,\"guard.noUpkeepBreak\":true," +
+            "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,\"guard.noUpkeepBreak\":true,\"guard.noUpkeep\":false," +
             "\"guard.reductionAtZeroEndurance\":0.6,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":50,\"parry.failureRecoveryMs\":500," +
             "\"rampartCharges.max\":0,\"resonance.perDirectHit\":0,\"endurance.regenPerSecond\":10,\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false,\"conditional\":[]}",
             RulesOf(Run(low)));
@@ -1364,7 +1371,7 @@ public class Lot81ModifierDataEndToEndTests
             ClassTestData.Skill(b, 8)["modifiers"] = List(Mod("damageDealt", "0.01", "perResonanceStep"), Mod("damageTaken", "-0.1"));
         });
         Assert.Equal(
-            "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,\"guard.noUpkeepBreak\":false," +
+            "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,\"guard.noUpkeepBreak\":false,\"guard.noUpkeep\":false," +
             "\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":150,\"parry.failureRecoveryMs\":500," +
             "\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,\"damageDealt\":0.1,\"damageTaken\":-0.1,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false," +
             "\"conditional\":[{\"key\":\"damageDealt\",\"conditions\":[\"perResonanceStep\"],\"value\":0.03}," +
@@ -1487,7 +1494,7 @@ public class Lot81ModifierDataImmutabilityTests
         Assert.Throws<NotSupportedException>(() => ((IDictionary<string, ModifierCondition>)ModifierKeys.Conditions)["whileBlocking"] = ModifierCondition.WhileGuarding);
         Assert.Throws<NotSupportedException>(() => ((IList<ModifierSpec>)ModifierKeys.Specs).RemoveAt(0));
         Assert.Equal(3, ModifierKeys.Conditions.Count);
-        Assert.Equal(23, ModifierKeys.Specs.Count);   // 8.2 : shield.potencyDealt ; 8.3 : protection.redirectRatio et redirectThroughGuard
+        Assert.Equal(24, ModifierKeys.Specs.Count);   // 8.2 : shield.potencyDealt ; 8.3 : protection.redirectRatio et redirectThroughGuard ; 8.4 : guard.noUpkeep
     }
 
     [Fact]

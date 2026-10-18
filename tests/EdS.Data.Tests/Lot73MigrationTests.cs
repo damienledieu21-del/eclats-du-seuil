@@ -30,7 +30,8 @@ public class Lot73MigrationTests
     private static IReadOnlyList<string> Current(string name)
     {
         var log = new MemoryCombatLog();
-        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!, log);
+        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay.
+        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), HistoricalData).Setup!, log);
         return log.Lines;
     }
 
@@ -139,7 +140,7 @@ public class Lot73MigrationTests
     [MemberData(nameof(Scenarios))]
     public void Journal_au_format_4_rejoue_octet_par_octet(string name)
     {
-        ReplayOutcome outcome = CombatLogReplayer.Replay(Current(name).ToArray(), ShippedData);
+        ReplayOutcome outcome = CombatLogReplayer.Replay(Current(name).ToArray(), HistoricalData);
         Assert.Equal(ReplayStatus.Identical, outcome.Status);
     }
 }

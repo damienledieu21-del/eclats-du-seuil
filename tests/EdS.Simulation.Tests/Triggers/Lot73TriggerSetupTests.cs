@@ -88,7 +88,7 @@ public class Lot73TriggerSetupTests
             triggers: new[] { new TriggerDefinition(TriggerEvent.HitTaken, new[] { TriggerEffect.ApplyStatus(TriggerTarget.EventSource, "guardBreak") }) });
         var rules = new CombatRules { Statuses = new StatusCatalog(StatusCatalog.Provisional.Definitions.Append(marked)) };
         RuleViolation error = Assert.Single(Setup(new[] { Cmd(0, Frappe) }, rules: rules).Validate());
-        Assert.Equal("rules.statuses[7].triggers[0].effects[0].status", error.Fields[0]);
+        Assert.Equal($"rules.statuses[{StatusCatalog.Provisional.Definitions.Count}].triggers[0].effects[0].status", error.Fields[0]);
     }
 
     [Theory]

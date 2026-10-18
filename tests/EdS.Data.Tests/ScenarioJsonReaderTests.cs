@@ -48,7 +48,9 @@ public class ScenarioJsonReaderTests
         bastion.Definition.TryGetSkill("skill.bastion.heurt_de_bouclier", out var heurt);
         Assert.Equal(("1.2", 10, 6000L, true), (frappe.Combat!.Coefficient.ToString(), frappe.Combat.EnduranceCost, frappe.Combat.CooldownMs, frappe.Combat.IsProvisional));
         Assert.Equal(("0.8", 15, 10000L, true), (heurt.Combat!.Coefficient.ToString(), heurt.Combat.EnduranceCost, heurt.Combat.CooldownMs, heurt.Combat.IsProvisional));
-        Assert.Equal(2, bastion.Definition.Skills.Count(s => s.Combat != null));
+        // Sous-lot 8.4 : les six actives et l'ultime ont leur bloc combat (fiches complètes, Lot84BastionDataTests) ; les passifs d'essai non.
+        Assert.Equal(7, bastion.Definition.Skills.Count(s => s.Combat != null));
+        Assert.All(bastion.Definition.Skills.Where(s => s.Kind != EdS.Domain.Builds.SkillKind.Passive), s => Assert.NotNull(s.Combat));
     }
 
     [Fact]
