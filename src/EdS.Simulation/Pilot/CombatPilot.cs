@@ -131,14 +131,16 @@ namespace EdS.Simulation.Pilot
                     case SkillTargeting.Enemy when combat.HasDamage:
                         return (id, PrimaryEnemy(enemies, tick).Id);
                     case SkillTargeting.Enemy:
-                        // Contrôle sans dégâts (Provocation) : détourner un assaillant qui vise un allié.
-                        CombatantView? away = enemies.Where(e => e.Kind == CombatantKind.Assailant && e.CurrentTarget != _actor)
+                        // Contrôle sans dégâts (Provocation) : détourner un assaillant qui vise un allié (revue Codex de la PR #10 : un
+                        // assaillant sans cible unique, qui n'attaque qu'en zone, n'a rien à détourner).
+                        CombatantView? away = enemies.Where(e => e.Kind == CombatantKind.Assailant && e.CurrentTarget != null && e.CurrentTarget != _actor)
                             .OrderBy(e => e.NextAttackTick ?? long.MaxValue).ThenBy(e => e.Id, StringComparer.Ordinal).FirstOrDefault();
                         if (away is null) continue;
                         return (id, away.Id);
                     case SkillTargeting.Ally:
+                        // Rapports PV / PV max comparés en entiers (revue Codex de la PR #10 : pas de double dans un choix déterministe).
                         CombatantView? ally = others.Where(o => o.Team == me.Team && !o.IsDead && o.Kind == CombatantKind.Character && o.MaxHealth > 0)
-                            .OrderBy(o => (double)o.Health!.Value / o.MaxHealth!.Value).ThenBy(o => o.Id, StringComparer.Ordinal).FirstOrDefault();
+                            .OrderBy(o => o, MostDamagedFirst).FirstOrDefault();
                         return (id, ally?.Id ?? _actor);
                     default:
                         return (id, null);
@@ -146,6 +148,24 @@ namespace EdS.Simulation.Pilot
             }
             return null;
         }
+
+        /// <summary>
+        /// Compare deux rapports PV / PV max sans arrondi : signe de <c>healthA × maxB − healthB × maxA</c> (PV et PV max d'un combattant
+        /// tiennent sur 32 bits : le produit tient sur 64 bits, vérifié). Les PV max doivent être strictement positifs.
+        /// </summary>
+        public static int CompareHealthRatio(long healthA, long maxA, long healthB, long maxB)
+        {
+            if (maxA <= 0) throw new ArgumentOutOfRangeException(nameof(maxA));
+            if (maxB <= 0) throw new ArgumentOutOfRangeException(nameof(maxB));
+            return checked(healthA * maxB).CompareTo(checked(healthB * maxA));
+        }
+
+        /// <summary>L'allié le plus entamé (plus petit rapport PV / PV max) d'abord, puis l'ordre ordinal des identifiants.</summary>
+        private static readonly Comparer<CombatantView> MostDamagedFirst = Comparer<CombatantView>.Create((a, b) =>
+        {
+            int ratio = CompareHealthRatio(a.Health!.Value, a.MaxHealth!.Value, b.Health!.Value, b.MaxHealth!.Value);
+            return ratio != 0 ? ratio : StringComparer.Ordinal.Compare(a.Id, b.Id);
+        });
 
         /// <summary>Assaillant qui le vise et frappe le plus tôt ; sinon le premier ennemi vivant (ordre ordinal).</summary>
         private CombatantView PrimaryEnemy(List<CombatantView> enemies, long tick) =>

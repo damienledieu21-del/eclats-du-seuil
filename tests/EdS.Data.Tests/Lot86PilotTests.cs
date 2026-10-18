@@ -242,4 +242,68 @@ public class Lot86PilotTests
         Assert.Contains(combat.Setup.Commands, c => c.Action == CombatAction.GuardStop);
         Assert.Contains(log.Lines, l => l.Contains("\"event\":\"enduranceRegenerated\"", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Provocation_jamais_sur_un_assaillant_sans_cible_unique()
+    {
+        // Revue Codex de la PR #10 : en S3, le hurleur n'attaque qu'en zone (cible nulle) ; il n'a rien à détourner.
+        foreach (PilotProfile profile in Measures.Profiles.Values)
+        {
+            PilotedCombat combat = PilotedCombat.Run(Measures.WithBuild(Scenario("S3").Setup, Build(Measures.Gardien)), Measures.MeasuredId, profile, NullCombatLog.Instance);
+            Assert.DoesNotContain(combat.Setup.Commands, c => c.Skill == "skill.bastion.provocation" && c.Target == "hurleur");
+        }
+    }
+
+    [Fact]
+    public void Rapports_de_PV_compares_sans_arrondi()
+    {
+        // Revue Codex de la PR #10 : F44/F45 < F45/F46 (F44 × F46 − F45² = −1), mais les deux rapports ont le même double.
+        const long f44 = 701_408_733, f45 = 1_134_903_170, f46 = 1_836_311_903;
+        Assert.Equal((double)f44 / f45, (double)f45 / f46);
+        Assert.Equal(-1, CombatPilot.CompareHealthRatio(f44, f45, f45, f46));
+        Assert.Equal(1, CombatPilot.CompareHealthRatio(f45, f46, f44, f45));
+        Assert.Equal(0, CombatPilot.CompareHealthRatio(1, 2, 200, 400));
+        Assert.Equal(0, CombatPilot.CompareHealthRatio(int.MaxValue, int.MaxValue, 1, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CombatPilot.CompareHealthRatio(1, 0, 1, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CombatPilot.CompareHealthRatio(1, 1, 1, -1));
+    }
+
+    [Fact]
+    public void Soumission_refusee_quand_la_file_ou_ses_evenements_initiaux_sont_pleins()
+    {
+        // Revue Codex de la PR #10 : la capacité de la file est contrôlée avant toute modification ; le scénario complété garde un
+        // nombre d'événements initiaux (une entrée par commande) admissible.
+        Action<JsonObject> noCommands = root => DataOf(root)["commands"] = new JsonArray();
+        long bound = Frozen(noCommands).ComputeQueueBound().Total;
+        long capacity = checked(bound + 2);
+        string directory = CopyFrozenData((path, text) => path == "rules.json" ? text.Replace("\"maxPendingEvents\": 100000", $"\"maxPendingEvents\": {capacity}", StringComparison.Ordinal) : text);
+        try
+        {
+            GameData data = GameDataLoader.Load(directory).Data!;
+            Assert.Equal(capacity, data.Rules.Combat.MaxPendingEvents);
+            ScenarioLoadResult loaded = ReadFrozenMutated(noCommands, data, "entrainement_garde_parade");
+            Assert.True(loaded.Setup != null, string.Join("\n", loaded.Report.Errors));
+            CombatSetup setup = loaded.Setup!;
+            var engine = new CombatEngine(setup, NullCombatLog.Instance);
+            int accepted = 0;
+            InvalidOperationException? refused = null;
+            while (!engine.IsFinished && refused is null)
+            {
+                try
+                {
+                    engine.Submit(new CombatCommand(engine.CurrentTick * 50, "bastion", CombatAction.Parry));
+                    accepted++;
+                }
+                catch (InvalidOperationException e) { refused = e; }
+                engine.Step();
+            }
+            Assert.NotNull(refused);
+            Assert.Contains("maxPendingEvents", refused!.Message, StringComparison.Ordinal);
+            Assert.Equal(capacity - setup.InitialEventCount(), accepted);
+            Assert.Equal(accepted, engine.SubmittedCommands.Count);   // le refus n'a rien ajouté
+            while (!engine.IsFinished) engine.Step();
+            Assert.True(engine.Result!.Peaks.PendingEvents <= capacity);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
 }

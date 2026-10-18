@@ -74,6 +74,7 @@ namespace EdS.Simulation.Engine
         private readonly Dictionary<(string Actor, long Tick), int> _commandsPerActorTick = new Dictionary<(string, long), int>();
         private readonly List<CombatCommand> _submitted = new List<CombatCommand>();
         private int _commandCount;
+        private long _initialEvents = -1;
 
         /// <summary>Identifiants des combattants, dans l'ordre du scénario.</summary>
         public IReadOnlyList<string> CombatantIds => _fighters.Select(f => f.Id).ToArray();
@@ -155,7 +156,9 @@ namespace EdS.Simulation.Engine
         /// Sous-lot 8.6 : soumet une commande pour le tick courant, avant qu'il soit simulé (pilote de mesure). Elle est traitée exactement
         /// comme une commande du scénario de même rang : son numéro suit ceux du scénario puis des commandes déjà soumises, si bien qu'un
         /// combat rejoué avec le scénario complété de <see cref="SubmittedCommands"/> est identique. Mêmes plafonds d'admission que le
-        /// scénario (commandes au total, par acteur et par tick) ; l'acteur et la cible doivent exister.
+        /// scénario (commandes au total, par acteur et par tick, capacité de la file, événements initiaux du scénario complété) ; l'acteur
+        /// et la cible doivent exister. Un refus ne modifie rien. Le majorant prudent de la file (correctif 7.2) n'est vérifié qu'au rejeu
+        /// du scénario complété (<c>PilotedCombat</c>), qui refuse alors le combat entier.
         /// </summary>
         public void Submit(CombatCommand command)
         {
@@ -170,6 +173,11 @@ namespace EdS.Simulation.Engine
                 throw new InvalidOperationException($"Plus de {_rules.MaxCommandsPerActorPerTick} commandes de « {command.Actor} » au tick {CurrentTick}.");
             if (_commandCount >= _rules.MaxCommands)
                 throw new InvalidOperationException($"Plus de {_rules.MaxCommands} commandes (combat.limits.maxCommands).");
+            // Revue Codex de la PR #10 : capacité de la file contrôlée avant toute modification. La file ne dépasse jamais sa capacité,
+            // et le scénario complété garde un nombre d'événements initiaux admissible (une entrée par commande, comme à la construction).
+            if (_initialEvents < 0) _initialEvents = _setup.InitialEventCount();
+            if (_queue.Count >= _rules.MaxPendingEvents || checked(_initialEvents + _submitted.Count + 1) > _rules.MaxPendingEvents)
+                throw new InvalidOperationException($"File pleine : capacité {_rules.MaxPendingEvents} (combat.limits.maxPendingEvents).");
             CountSubmitted(command);
             // Hors traitement, comme les commandes du scénario mises en file à la construction : aucun budget du tick n'est consommé.
             _queue.Enqueue(CurrentTick, CombatPhase.Commands, new CommandItem { Index = _setup.Commands.Count + _submitted.Count, Command = command });
