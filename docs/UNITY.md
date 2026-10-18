@@ -41,6 +41,7 @@ Appuyer sur **Play** (▶ en haut au centre). L'arène se construit, avec le Bas
 | C | caméra isométrique ↔ troisième personne |
 | A / E | tourner la caméra isométrique |
 | molette | zoom ; bouton du milieu maintenu : tourner la caméra en troisième personne |
+| T | écran des talents (combat en pause) ; T ou Échap pour le fermer |
 | N | scénario suivant (entraînement, S1 à S5) |
 | F1 à F5 | build : Rempart, Contrecoup, Gardien, hybride, niveau 10 |
 | Retour arrière | recommencer la séance |
@@ -49,7 +50,17 @@ Appuyer sur **Play** (▶ en haut au centre). L'arène se construit, avec le Bas
 
 À l'écran : barres de PV, d'endurance, de Résonance et de Charges en bas ; les compétences avec leur recharge ; au-dessus de chaque ennemi, sa barre de PV et une **barre de télégraphie** qui se remplit avant son coup (rouge vif : coup **imparable**, à encaisser sans garde ni parade) ; la fiche de la cible en haut à droite ; les textes de combat (dégâts, « Bloqué », « Parade parfaite ! »).
 
-## 5. En cas de problème
+## 5. Talents
+
+Touche **T** : le combat se met en pause et l'écran des talents s'ouvre, avec les trois arbres du Bastion (Rempart, Contrecoup, Gardien).
+
+- **+** et **−** ajoutent ou retirent un point. Un bouton grisé signale un point refusé ; un clic dessus affiche la raison (plus de point, prérequis, seuil de 18 points du talent majeur ★, un seul majeur par build, talent dont un autre dépend).
+- **Partir de** : charge un build de référence (Rempart, Contrecoup, Gardien, hybride, niveau 10) ; **Tout retirer** repart de zéro.
+- **Jouer ce build** relance la séance avec le build composé (« Personnalisé ») ; il reste actif en changeant de scénario (N). F1 à F5 reviennent à un build de référence.
+
+Le niveau et les compétences équipées sont ceux du build de départ ; le build composé n'est pas encore sauvegardé (il disparaît à l'arrêt du jeu).
+
+## 6. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
 - **Cadre rouge « Impossible de charger le jeu »** : le dossier `unity` a été déplacé hors du dépôt. Il doit rester à côté de `data/` et `scenarios/`.

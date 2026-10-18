@@ -28,3 +28,10 @@ Guide d'installation et touches : [UNITY.md](UNITY.md).
 - **Arène** : formes simples, positions visuelles (voir 9.2 : aucun système de positions dans le cœur) ; les ennemis sont placés en arc devant le joueur, un allié à ses côtés ; déplacement bloqué pendant un étourdissement.
 - **Données** : lues dans le dépôt (`data/v0`, `scenarios/`) depuis le dossier parent de `unity/` ; une version compilée du jeu (hors éditeur) demandera de les embarquer (chantier ultérieur).
 - **Scénarios jouables** : l'entraînement garde et parade et les scénarios de mesure S1 à S5 (touche N) ; builds de référence (F1 à F5).
+
+## Sous-lot 9.4 : talents
+
+- **Talents seulement** : le niveau, les attributs et les compétences équipées (actives, ultime, passifs) sont ceux du build de départ (build joué ou build de référence chargé). Le choix des compétences viendra plus tard.
+- **Validation** : un seul validateur, `BuildValidator`, juge chaque point ; l'éditeur n'a pas de règles à lui. Seuls trois refus évidents sont dits avec un message propre avant le validateur (rang maximal, plus de point, aucun point à retirer), avec le code du validateur. Un talent dont un autre dépend ne se retire qu'après lui (pas de retrait en cascade).
+- **Aucune sauvegarde** : le build composé vit le temps de la session de jeu ; il n'est écrit ni dans les données ni sur le disque.
+- **Interface** : IMGUI provisoire, panneau de 1 560 pixels virtuels de large (écran de 1 080 pixels de haut) : sur un écran plus étroit que 16:10, il déborde à droite. Les talents n'ont pas encore de description de leurs effets dans les données : l'écran montre nom, rang, prérequis et condition du majeur.

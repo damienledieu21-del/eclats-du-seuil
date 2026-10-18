@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using EdS.Data.Builds;
+using EdS.Domain.Builds;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -51,6 +52,11 @@ namespace EdS.Game
         private readonly List<Floating> _floating = new List<Floating>();
         private readonly List<KeyValuePair<float, string>> _messages = new List<KeyValuePair<float, string>>();
 
+        // Sous-lot 9.4 : écran des talents ouvert (null sinon), pause d'avant son ouverture, build composé joué (null : build de référence).
+        private TalentScreen _talents;
+        private bool _pausedBeforeTalents;
+        private CharacterBuild _customBuild;
+
         private void Start()
         {
             // Projet Unity dans unity/ : le dépôt est le dossier parent.
@@ -69,7 +75,9 @@ namespace EdS.Game
             {
                 string data = Path.Combine(_repoRoot, "data", "v0");
                 string file = Path.Combine(_repoRoot, "scenarios", ScenarioFiles[scenario]);
+                if (buildId != null) _customBuild = null;   // un build de référence choisi (F1 à F5) remplace le build composé
                 _session = TrainingSession.Load(data, file, buildId ?? _session?.Build?.Id ?? "build.bastion.rempart");
+                if (_customBuild != null) _session = _session.WithCustomBuild(_customBuild, TalentScreenName);
                 Restart();
             }
             catch (Exception e)
@@ -91,7 +99,41 @@ namespace EdS.Game
 
         private string ScenarioName() => Path.GetFileNameWithoutExtension(ScenarioFiles[_scenario]);
 
-        private string BuildName() => _session?.Build?.Name ?? "du scénario";
+        private string BuildName() => _session?.BuildName ?? "du scénario";
+
+        /// <summary>Nom du build composé dans l'écran des talents.</summary>
+        private const string TalentScreenName = "Personnalisé";
+
+        private void OpenTalents()
+        {
+            _pausedBeforeTalents = _paused;
+            _paused = true;
+            _talents = new TalentScreen(_session.CreateTalentEditor(), _session.AvailableBuilds());
+        }
+
+        private void CloseTalents()
+        {
+            _talents = null;
+            _paused = _pausedBeforeTalents;
+        }
+
+        /// <summary>Joue le build composé : nouvelle séance (même scénario) avec ce build, relancée du début.</summary>
+        private void PlayTalents()
+        {
+            CharacterBuild build = _talents.Editor.Build;
+            try
+            {
+                _session = _session.WithCustomBuild(build, TalentScreenName);
+            }
+            catch (Exception e)
+            {
+                _talents.Say("Build refusé : " + e.Message, true);
+                return;
+            }
+            _customBuild = build;
+            _talents = null;
+            Restart();
+        }
 
         private void Say(string message)
         {
@@ -101,10 +143,21 @@ namespace EdS.Game
 
         private void Update()
         {
+            // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran.
+            if (_talents != null)
+            {
+                if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) CloseTalents();
+                return;
+            }
             if (Input.GetKeyDown(KeyCode.H)) _help = !_help;
             if (Input.GetKeyDown(KeyCode.N)) Load((_scenario + 1) % ScenarioFiles.Length, null);
             if (_combat == null) return;
 
+            if (Input.GetKeyDown(KeyCode.T))
+            {
+                OpenTalents();
+                return;
+            }
             if (Input.GetKeyDown(KeyCode.Escape)) _paused = !_paused;
             if (Input.GetKeyDown(KeyCode.Backspace)) Restart();
             if (Input.GetKeyDown(KeyCode.C)) _camera.Toggle(_playerYaw);
@@ -232,6 +285,14 @@ namespace EdS.Game
             _messages.RemoveAll(m => Time.time - m.Key > MessageSeconds);
             for (int i = 0; i < _messages.Count; i++)
                 Hud.Centered(new Rect(Hud.Width / 2f - 400, 80 + i * 30, 800, 28), _messages[i].Value, new Color(1f, 0.95f, 0.8f));
+
+            if (_talents != null)
+            {
+                TalentScreen.Action action = _talents.Draw();
+                if (action == TalentScreen.Action.Play) PlayTalents();
+                else if (action == TalentScreen.Action.Close) CloseTalents();
+                return;
+            }
 
             float elapsed = _combat.Tick * (float)_combat.TickSeconds;
             Hud.Centered(new Rect(Hud.Width / 2f - 150, 20, 300, 40), $"{(int)elapsed / 60}:{(int)elapsed % 60:00}", Color.white);
