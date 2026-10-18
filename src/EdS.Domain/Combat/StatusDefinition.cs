@@ -224,6 +224,9 @@ namespace EdS.Domain.Combat
 
         private static readonly Regex IdPattern = new Regex(@"^[a-z][A-Za-z0-9]*\z", RegexOptions.CultureInvariant);
 
+        /// <summary>Identifiant d'altération bien formé (camelCase ASCII, sans point) ; sous-lot 8.1 : clés <c>status.&lt;id&gt;.…</c> des modificateurs.</summary>
+        public static bool IsValidId(string? id) => id != null && IdPattern.IsMatch(id);
+
         /// <summary>
         /// Valeurs initiales du sous-lot 7.2 (décisions du 16 octobre), <b>provisoires</b> : brûlure et saignement 6 s / 2 s,
         /// étourdissement 1,5 s puis immunité 3 s, gel 4 s à −30 % de déplacement, Fragilité et rupture de garde inchangées.

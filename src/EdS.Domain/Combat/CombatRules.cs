@@ -73,6 +73,20 @@ namespace EdS.Domain.Combat
         /// <summary>Réduction des dégâts directs bloquables, après armure, pendant la garde (A1 : 0.6 = −60 %).</summary>
         public Fixed GuardDamageReduction { get; init; } = Fixed.FromRatio(6, 10);
 
+        /// <summary>
+        /// Sous-lot 8.1 (B1) : plafond de la réduction de garde, modificateurs compris (<c>combat.guard.maxDamageReduction</c>, 0.75,
+        /// valeur d'équilibrage provisoire). Paramètre des règles depuis la décision du 18/10/2026 (schéma de règles 6) ; la réduction de
+        /// base y est tenue par <see cref="Validate"/>.
+        /// </summary>
+        public Fixed MaxGuardDamageReduction { get; init; } = Fixed.FromRatio(3, 4);
+
+        /// <summary>
+        /// Sous-lot 8.1 (B2) : plafond de la réduction totale des dégâts subis (garde, modificateurs et renforcements de dégâts subis,
+        /// multiplicatifs), avant l'absorption par un bouclier (sous-lot 8.2) ; <c>combat.damageTaken.maxReduction</c>, 0.85, provisoire.
+        /// La parade (0,9) est hors plafond. Paramètre des règles depuis la décision du 18/10/2026 (schéma de règles 6).
+        /// </summary>
+        public Fixed MaxTotalDamageReduction { get; init; } = Fixed.FromRatio(85, 100);
+
         /// <summary>Endurance consommée par seconde de garde (A1), prélevée au fil des ticks sans dérive d'arrondi.</summary>
         public int GuardUpkeepPerSecond { get; init; } = 2;
 
@@ -165,6 +179,12 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation("doit être comprise entre 0 et 1.", name));
             }
             Fraction(GuardDamageReduction, nameof(GuardDamageReduction));
+            Fraction(MaxGuardDamageReduction, nameof(MaxGuardDamageReduction));
+            Fraction(MaxTotalDamageReduction, nameof(MaxTotalDamageReduction));
+            if (GuardDamageReduction > MaxGuardDamageReduction && GuardDamageReduction <= Fixed.One
+                && MaxGuardDamageReduction >= Fixed.Zero && MaxGuardDamageReduction <= Fixed.One)
+                errors.Add(new RuleViolation($"ne peut pas dépasser le plafond de la réduction de garde ({MaxGuardDamageReduction}).",
+                    nameof(GuardDamageReduction), nameof(MaxGuardDamageReduction)));
             Fraction(ParryDamageReduction, nameof(ParryDamageReduction));
             if (Statuses is null)
                 errors.Add(new RuleViolation("catalogue des altérations obligatoire.", nameof(GuardBreakStatus)));

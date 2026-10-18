@@ -29,7 +29,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.9.1";
+        public const string Version = "0.11.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -40,10 +40,11 @@ namespace EdS.Simulation.Engine
         /// <c>applies</c> (liste des altérations) au lieu de <c>appliesFragility</c> ; garde interrompue (<c>guardStopped</c>, raison
         /// <c>interrupted</c>) ; motifs de refus et de saut issus des altérations. 4 (lot 7.3) : chaque ligne de jeu porte <c>eid</c>
         /// (identité de l'effet) et <c>cause</c> (eid du parent, null pour l'effet racine) ; l'effet racine porte <c>root</c> ; un effet
-        /// de profondeur ≥ 1 porte <c>depth</c> et <c>trigger</c>. Les diagnostics n'en portent aucun. Un journal d'un autre format
-        /// est refusé au rejeu.
+        /// de profondeur ≥ 1 porte <c>depth</c> et <c>trigger</c>. Les diagnostics n'en portent aucun. 5 (sous-lot 8.1) : la ligne
+        /// <c>combatant</c> porte <c>statusResistance</c> et <c>rules</c> (règles effectives d'un personnage, null sinon) ;
+        /// <c>guardBroken</c> porte <c>rampartChargesSpent</c>. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 4;
+        public const int LogFormatVersion = 5;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -56,6 +57,9 @@ namespace EdS.Simulation.Engine
             public CharacterSetup? Character;
             public AssailantSetup? Assailant;
             public DerivedStats Stats = null!;
+
+            /// <summary>Sous-lot 8.1 : règles effectives (règles de base et modificateurs X1, évaluation des X2) ; neutres hors personnage.</summary>
+            public CombatantRules Rules = null!;
             public readonly Dictionary<string, DerivedStats> AttackStats = new Dictionary<string, DerivedStats>(StringComparer.Ordinal);
             public int NextAttack;
             public HashSet<string> Castable = new HashSet<string>(StringComparer.Ordinal);
@@ -303,8 +307,7 @@ namespace EdS.Simulation.Engine
         private readonly long _durationTicks;
         private readonly long _globalCooldownTicks;
         private readonly long _regenDelayTicks;
-        private readonly long _parryWindowTicks;
-        private readonly long _parryRecoveryTicks;
+        private readonly CombatantRules _baseRules;
         private readonly StatusCatalog _statuses;
         private readonly Dictionary<string, int> _statusOrder = new Dictionary<string, int>(StringComparer.Ordinal);
         private long _sequence;
@@ -355,8 +358,7 @@ namespace EdS.Simulation.Engine
             _durationTicks = setup.DurationMs / _tickMs;
             _globalCooldownTicks = _rules.GlobalCooldownMs / _tickMs;
             _regenDelayTicks = _rules.EnduranceRegenDelayMs / _tickMs;
-            _parryWindowTicks = _rules.ParryWindowMs / _tickMs;
-            _parryRecoveryTicks = _rules.ParryFailureRecoveryMs / _tickMs;
+            _baseRules = CombatantRules.For(_rules, ModifierSet.Empty);
             _statuses = _rules.Statuses;
             for (int i = 0; i < _statuses.Definitions.Count; i++) _statusOrder[_statuses.Definitions[i].Id] = i;
 
@@ -395,7 +397,10 @@ namespace EdS.Simulation.Engine
             {
                 case CharacterSetup character:
                     f.Character = character;
-                    f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build);
+                    // Sous-lot 8.1 : mêmes fonctions que la validation (précontrôle) : modificateurs agrégés, statistiques, règles.
+                    ModifierSet modifiers = ModifierSet.For(character);
+                    f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build, modifiers);
+                    f.Rules = CombatantRules.For(_rules, modifiers);
                     f.MaxHealth = f.Stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                     f.Health = f.MaxHealth;
                     f.MaxEndurance = f.Stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
@@ -404,10 +409,12 @@ namespace EdS.Simulation.Engine
                     if (character.Build.Ultimate != null) f.Castable.Add(character.Build.Ultimate);
                     break;
                 case DummySetup dummy:
+                    f.Rules = _baseRules;
                     f.Stats = CombatantStats.ForDefenses(_setup.Stats, dummy.Armor, dummy.MagicResistance, dummy.StatusResistance);
                     break;
                 case AssailantSetup assailant:
                     f.Assailant = assailant;
+                    f.Rules = _baseRules;
                     f.Stats = CombatantStats.ForDefenses(_setup.Stats, assailant.Armor, assailant.MagicResistance, assailant.StatusResistance);
                     foreach (AssailantAttack attack in assailant.Attacks)
                         f.AttackStats[attack.Id] = CombatantStats.ForAssailantAttack(_setup.Stats, attack.RawDamage);
@@ -508,7 +515,7 @@ namespace EdS.Simulation.Engine
             long? recoveryUntil = null;
             if (!f.ParrySucceeded)
             {
-                f.ParryRecoveryUntilTick = checked(tick + _parryRecoveryTicks);
+                f.ParryRecoveryUntilTick = checked(tick + f.Rules.ParryFailureRecoveryMs / _tickMs);
                 recoveryUntil = f.ParryRecoveryUntilTick;
                 f.Result.FailedParries++;
             }
@@ -566,7 +573,7 @@ namespace EdS.Simulation.Engine
                     var (skill, target, resonanceCost) = CastContext(item, actor);
                     if (CheckSkill(tick, actor, skill, target, resonanceCost) != null) return Cost.Line;
                     SkillCombatDefinition combat = skill!.Combat!;
-                    return Cost.Enqueue.If(combat.CooldownMs / _tickMs > 0) + Observable(TriggerEvent.SkillCast) + GainCost(actor, combat.RampartChargeGain);
+                    return Cost.Enqueue.If(actor.Rules.CooldownMs(skill, combat) / _tickMs > 0) + Observable(TriggerEvent.SkillCast) + GainCost(actor, combat.RampartChargeGain);
             }
         }
 
@@ -618,7 +625,7 @@ namespace EdS.Simulation.Engine
                     if (Reject(tick, item, actor, CheckParry(tick, actor))) return null;
                     actor.ParryOpen = true;
                     actor.ParryStartTick = tick;
-                    actor.ParryEndTick = checked(tick + _parryWindowTicks);
+                    actor.ParryEndTick = checked(tick + actor.Rules.ParryWindowMs / _tickMs);   // ≥ 1 tick (CombatantRules)
                     actor.ParrySucceeded = false;
                     var end = new ParryWindowEnd { Fighter = actor, StartTick = tick };
                     Schedule(actor.ParryEndTick, CombatPhase.Expirations, end);
@@ -644,7 +651,7 @@ namespace EdS.Simulation.Engine
             actor.Resonance -= resonanceCost;
             actor.RampartCharges -= combat.RampartChargeCost;
             actor.GlobalCooldownReadyTick = checked(tick + _globalCooldownTicks);
-            long cooldownTicks = combat.CooldownMs / _tickMs;
+            long cooldownTicks = actor.Rules.CooldownMs(skill, combat) / _tickMs;
             long readyTick = checked(tick + cooldownTicks);
             if (cooldownTicks > 0)
             {
@@ -782,11 +789,11 @@ namespace EdS.Simulation.Engine
                 bool resonance = targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
                 // Lot 7.1 : l'action entière (toutes ses cibles) est réservée avant le premier impact ; les cibles étant
                 // distinctes, l'impact sur l'une ne change pas le coût prévu pour les suivantes.
-                Cost cost = resonance ? GainCost(action.Actor, _rules.ResonancePerDirectHit) : Cost.None;
+                Cost cost = resonance ? GainCost(action.Actor, action.Actor.Rules.ResonancePerDirectHit) : Cost.None;
                 foreach (Fighter target in targets) cost += HitCost(tick, action, target);
                 Reserve(cost);
                 foreach (Fighter target in targets) Hit(tick, action, target);
-                if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, _rules.ResonancePerDirectHit, "directHit", action.Origin);
+                if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, action.Actor.Rules.ResonancePerDirectHit, "directHit", action.Origin);
             }
             // Lot 7.3 : puis les notifications et réactions de la phase, dans l'ordre de la file (réactions reportées du tick
             // précédent d'abord, puis celles de ce tick).
@@ -813,9 +820,9 @@ namespace EdS.Simulation.Engine
             }
             else if (defending)
             {
-                if (target.Endurance < _rules.GuardCostPerBlock)
+                if (GuardBreaksOnBlock(target))
                 {
-                    cost += BreakGuardCost(tick, target, action.Actor.Id);
+                    cost += BreakGuardCost(tick, target, action.Actor.Id, impact: true);
                     guarding = parryOpen = false;
                 }
                 else cost += Observable(TriggerEvent.Block) + GainCost(target, _rules.ResonancePerBlock);
@@ -828,7 +835,7 @@ namespace EdS.Simulation.Engine
                     cost += Cost.Line;   // stateBlocked « parried »
                     continue;
                 }
-                StatusPlan plan = Plan(tick, target, definition, action.Actor.Id, null);
+                StatusPlan plan = Plan(tick, target, definition, action.Actor.Id, null, action.Actor);
                 cost += ApplyCost(plan, definition, guarding, parryOpen);
                 if (plan.Applies)
                 {
@@ -889,26 +896,38 @@ namespace EdS.Simulation.Engine
             }
             else if (defending)
             {
-                if (target.Endurance < _rules.GuardCostPerBlock)
+                if (GuardBreaksOnBlock(target))
                 {
-                    BreakGuard(tick, phase, target, "insufficientEndurance", actor.Id, origin);
+                    BreakGuard(tick, phase, target, "insufficientEndurance", actor.Id, origin, impact: true);
                     defense = "guardBroken";
                 }
                 else
                 {
-                    SpendEndurance(target, _rules.GuardCostPerBlock, tick);
+                    // Sous-lot 8.1 (guard.noUpkeepBreak) : sans endurance suffisante, la garde tient ; le combattant paie ce qui lui
+                    // reste et la réduction est ramenée à guard.reductionAtZeroEndurance. Ligne « blocked » normale, coût réellement payé.
+                    bool weakened = target.Endurance < target.Rules.GuardCostPerBlock;
+                    long blockCost = weakened ? target.Endurance : target.Rules.GuardCostPerBlock;
+                    if (!weakened || blockCost > 0) SpendEndurance(target, blockCost, tick);   // garde affaiblie sans endurance : pas une dépense
                     target.Result.Blocks++;
                     defense = "guard";
-                    mitigation = _rules.GuardDamageReduction;
+                    mitigation = weakened ? target.Rules.GuardReductionAtZeroEndurance : target.Rules.GuardDamageReduction;
                     blockReward = true;
                     blockEid = Emit(tick, phase, "blocked", origin, HitObserved(TriggerEvent.Block, action, target, HitDefense.Guard), w => w
-                        .Field("actor", target.Id).Field("source", actor.Id).Field("enduranceCost", _rules.GuardCostPerBlock).Field("endurance", target.Endurance));
+                        .Field("actor", target.Id).Field("source", actor.Id).Field("enduranceCost", blockCost).Field("endurance", target.Endurance));
                 }
             }
 
+            // Sous-lot 8.1 (X1, X2, B2) : modificateurs de dégâts lus au calcul des dégâts, sur l'état courant (après la défense de cet
+            // impact, avant ses gains), sans ligne ni notification. Dégâts subis du défenseur : réduction totale multiplicative
+            // plafonnée à 85 %, hors parade ; dégâts infligés de l'attaquant : catégorie talent. Sans modificateur, rien ne change.
+            if (defense != "parry")
+                mitigation = target.Rules.TotalReduction(mitigation, target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance));
+            Fixed dealt = actor.Rules.DamageDealtAt(actor.Guarding, actor.RampartCharges, actor.Resonance);
+            if (dealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Talent, dealt);
+
             DerivedStats attacker = AttackerStats(action);
             DamageInput input = action.Combat is { } combat
-                ? new DamageInput(attacker, target.Stats, combat.PowerType, combat.DamageType, combat.Coefficient, bonuses, critical, mitigation)
+                ? new DamageInput(attacker, target.Stats, combat.PowerType, combat.DamageType, actor.Rules.Coefficient(action.Skill!, combat), bonuses, critical, mitigation)
                 : action.Attack is { } attack
                     ? new DamageInput(attacker, target.Stats, CombatantStats.PowerOf(attack.DamageType), attack.DamageType, Fixed.One, bonuses, false, mitigation)
                     // Lot 7.3 : frappe de réaction, sans critique ni tirage (Q6, Q7), puissance du porteur.
@@ -956,7 +975,7 @@ namespace EdS.Simulation.Engine
                     continue;
                 }
                 Fixed power = definition.IsDot ? DotPower(attacker, definition, application) : Fixed.Zero;
-                ApplyStatus(tick, phase, target, definition, actor.Id, power, impact);
+                ApplyStatus(tick, phase, target, definition, actor.Id, power, impact, dealer: actor);
             }
         }
 
@@ -1020,7 +1039,8 @@ namespace EdS.Simulation.Engine
         /// plus tardive (<c>notLonger</c> sinon), <c>ignore</c> refuse (<c>active</c>). <paramref name="excluding"/> est une instance
         /// en cours de retrait, ignorée (expiration qui accorde un état).
         /// </summary>
-        private StatusPlan Plan(long tick, Fighter target, StatusDefinition definition, string? source, StatusInstance? excluding)
+        private StatusPlan Plan(long tick, Fighter target, StatusDefinition definition, string? source, StatusInstance? excluding,
+            Fighter? dealer, long shortenMs = 0)
         {
             var key = new StatusKey(definition.Id, definition.Stacking == StatusStacking.PerSourceKeepStronger ? source : null);
             target.Statuses.TryGetValue(key, out StatusInstance? existing);
@@ -1028,7 +1048,7 @@ namespace EdS.Simulation.Engine
             foreach (StatusInstance status in target.Statuses.Values)
                 if (status != excluding && status.Definition.ImmuneTo.Contains(definition.Id))
                     return new StatusPlan(StatusOutcome.Immune, key, existing, 0);
-            long ticks = DurationTicks(definition, target);
+            long ticks = DurationTicks(definition, target, dealer, shortenMs);
             if (ticks == 0) return new StatusPlan(StatusOutcome.Resisted, key, existing, 0);
             if (existing is null) return new StatusPlan(StatusOutcome.New, key, null, ticks);
             return definition.Stacking switch
@@ -1043,10 +1063,23 @@ namespace EdS.Simulation.Engine
         /// Durée en ticks d'une application (A14, A23) : durée de base, réduite pour un contrôle à résistance <c>duration</c> par le
         /// facteur r = K / (K + résistance aux altérations effective), calculé en <c>Fixed</c> arrondi vers le bas, puis
         /// ⌊ ticks × r ⌋. Ticks de base ≤ 86 400 000 et r brut ≤ 10⁴ : produit &lt; 10¹², sans débordement.
+        /// <para>Sous-lot 8.1 : la durée de base reçoit d'abord, en ms, <c>status.&lt;id&gt;.durationDealt</c> de l'auteur d'une
+        /// application directe (<paramref name="dealer"/>, null pour une rupture de garde ou un état accordé), <c>durationTaken</c> de la
+        /// cible et le raccourci de rupture (<c>guard.breakShortenPerCharge</c>) ; le total est écrêté dans [1 tick, 24 h] (une période au
+        /// moins pour un DOT), ce qui garde la borne ci-dessus. Les ajouts sont des multiples du tick (et de la période d'un DOT, par
+        /// validation) et 24 h est un multiple du tick ; un DOT écrêté à 24 h peut ne plus être un multiple de sa période, et sa fin est
+        /// alors ramenée au dernier tick périodique couvert (<see cref="DotEffectiveEnd"/>). Seule la résistance peut donner 0 tick
+        /// (<c>resisted</c>).</para>
         /// </summary>
-        private long DurationTicks(StatusDefinition definition, Fighter target)
+        private long DurationTicks(StatusDefinition definition, Fighter target, Fighter? dealer, long shortenMs)
         {
-            long baseTicks = definition.DurationMs / _tickMs;
+            long durationMs = definition.DurationMs;
+            long adjust = checked(target.Rules.DurationTakenMs(definition.Id) + (dealer?.Rules.DurationDealtMs(definition.Id) ?? 0) - shortenMs);
+            // Sous-lot 8.1 : durée modifiée écrêtée dans [1 tick (une période pour un DOT), 24 h] : un modificateur raccourcit, il
+            // n'annule jamais (seule la résistance peut ramener une application à 0 tick, « resisted »).
+            if (adjust != 0)
+                durationMs = Math.Max(definition.IsDot ? definition.PeriodMs : _tickMs, Math.Min(CombatRules.AbsoluteMaxDurationMs, checked(durationMs + adjust)));
+            long baseTicks = durationMs / _tickMs;
             if (definition.Resistance != StatusResistanceMode.Duration) return baseTicks;
             long constantRaw = checked(_setup.Stats.StatusResistanceConstant * Fixed.Scale);
             long factorRaw = IntMath.MulDiv(Fixed.Scale, constantRaw, checked(constantRaw + target.Stats.StatusResistance.Raw), RoundingMode.Floor);
@@ -1074,9 +1107,9 @@ namespace EdS.Simulation.Engine
         /// interrompues (garde, parade) le sont après la ligne <c>stateApplied</c>.
         /// </summary>
         private void ApplyStatus(long tick, CombatPhase phase, Fighter target, StatusDefinition definition, string? source, Fixed power,
-            Provenance origin, StatusInstance? excluding = null)
+            Provenance origin, StatusInstance? excluding = null, Fighter? dealer = null, long shortenMs = 0)
         {
-            StatusPlan plan = Plan(tick, target, definition, source, excluding);
+            StatusPlan plan = Plan(tick, target, definition, source, excluding, dealer, shortenMs);
             if (!plan.Applies)
             {
                 EmitDiagnostic(tick, phase, "stateBlocked", w => w
@@ -1174,7 +1207,7 @@ namespace EdS.Simulation.Engine
             if (status.Definition.GrantsOnExpiry is { } granted)
             {
                 StatusDefinition definition = _statuses[granted];
-                cost += ApplyCost(Plan(tick, target, definition, status.Source, status), definition, target.Guarding, target.ParryOpen);
+                cost += ApplyCost(Plan(tick, target, definition, status.Source, status, null), definition, target.Guarding, target.ParryOpen);
             }
             return cost;
         }
@@ -1194,21 +1227,37 @@ namespace EdS.Simulation.Engine
                 ApplyStatus(tick, phase, target, _statuses[granted], status.Source, Fixed.Zero, status.Origin.CausedBy(expired));
         }
 
-        private Cost BreakGuardCost(long tick, Fighter f, string? source)
+        /// <summary>Sous-lot 8.1 : la garde se brise-t-elle sur ce blocage ? Endurance insuffisante, sauf avec <c>guard.noUpkeepBreak</c>.</summary>
+        private static bool GuardBreaksOnBlock(Fighter target) => target.Endurance < target.Rules.GuardCostPerBlock && !target.Rules.GuardNoUpkeepBreak;
+
+        /// <summary>
+        /// Sous-lot 8.1 (<c>guard.breakShortenPerCharge</c>) : Charges consommées par une rupture <b>par impact</b> (toutes, si le
+        /// combattant a ce modificateur ; aucune sinon, ni pour l'entretien) ; lues avant la rupture, à l'identique pour le coût.
+        /// </summary>
+        private static int ChargesSpentByBreak(Fighter f, bool impact) => impact && f.Rules.GuardBreakShortenPerChargeMs > 0 ? f.RampartCharges : 0;
+
+        private Cost BreakGuardCost(long tick, Fighter f, string? source, bool impact)
         {
             StatusDefinition definition = _statuses[_rules.GuardBreakStatus];
-            return Observable(TriggerEvent.GuardBroken) + Cost.Line.If(f.ParryOpen) + ApplyCost(Plan(tick, f, definition, source, null), definition, false, false);
+            long shortenMs = checked(ChargesSpentByBreak(f, impact) * f.Rules.GuardBreakShortenPerChargeMs);
+            return Observable(TriggerEvent.GuardBroken) + Cost.Line.If(f.ParryOpen) + ApplyCost(Plan(tick, f, definition, source, null, null, shortenMs), definition, false, false);
         }
 
         /// <summary>
         /// Rupture de garde (A1, A19) : fin de la garde et de toute fenêtre de parade, puis l'altération de rupture
-        /// (<c>combat.guard.breakStatus</c>) : ni garde ni parade ni régénération pendant sa durée.
+        /// (<c>combat.guard.breakStatus</c>) : ni garde ni parade ni régénération pendant sa durée. Sous-lot 8.1 : une rupture par
+        /// impact consomme les Charges selon <see cref="ChargesSpentByBreak"/> (champ <c>rampartChargesSpent</c>) et raccourcit
+        /// l'altération de <c>guard.breakShortenPerCharge</c> par Charge consommée.
         /// </summary>
-        private void BreakGuard(long tick, CombatPhase phase, Fighter f, string reason, string? source, Provenance origin)
+        private void BreakGuard(long tick, CombatPhase phase, Fighter f, string reason, string? source, Provenance origin, bool impact)
         {
+            int spent = ChargesSpentByBreak(f, impact);
+            long shortenMs = checked(spent * f.Rules.GuardBreakShortenPerChargeMs);
             f.Guarding = false;
+            f.RampartCharges -= spent;
             f.Result.GuardBreaks++;
-            long broken = Emit(tick, phase, "guardBroken", origin, new ObservedEvent { Kind = TriggerEvent.GuardBroken, Source = source, Target = f.Id }, w => w.Field("actor", f.Id).Field("reason", reason).Field("endurance", f.Endurance));
+            long broken = Emit(tick, phase, "guardBroken", origin, new ObservedEvent { Kind = TriggerEvent.GuardBroken, Source = source, Target = f.Id }, w => w
+                .Field("actor", f.Id).Field("reason", reason).Field("endurance", f.Endurance).Field("rampartChargesSpent", spent));
             Provenance consequences = origin.CausedBy(broken);
             if (f.ParryOpen)
             {
@@ -1216,7 +1265,7 @@ namespace EdS.Simulation.Engine
                 Emit(tick, phase, "parryEnded", consequences, w => w
                     .Field("actor", f.Id).Field("outcome", f.ParrySucceeded ? "success" : "interrupted").Field("recoveryUntilTick", (long?)null));
             }
-            ApplyStatus(tick, phase, f, _statuses[_rules.GuardBreakStatus], source, Fixed.Zero, consequences);
+            ApplyStatus(tick, phase, f, _statuses[_rules.GuardBreakStatus], source, Fixed.Zero, consequences, shortenMs: shortenMs);
         }
 
         // --- Ressources --------------------------------------------------------------------------
@@ -1245,7 +1294,7 @@ namespace EdS.Simulation.Engine
                     (before, max, kind) = (f.Resonance, _rules.ResonanceMax, TriggerResource.Resonance);
                     break;
                 case RampartCharges:
-                    (before, max, kind) = (f.RampartCharges, _rules.RampartChargesMax, TriggerResource.RampartCharges);
+                    (before, max, kind) = (f.RampartCharges, f.Rules.RampartChargesMax, TriggerResource.RampartCharges);
                     break;
                 default:
                     (before, max, kind) = (f.Endurance, f.MaxEndurance, TriggerResource.Endurance);
@@ -1291,6 +1340,9 @@ namespace EdS.Simulation.Engine
         /// ⌊ coût/s × ticks gardés depuis le début du combat × durée du tick / 1000 ⌋ : cumulé sur toutes les gardes du
         /// combat, il ne dépend que du nombre de ticks réellement gardés, quelle que soit leur répartition (M01).
         /// S'il ne peut être payé, la garde est brisée et ce tick n'est pas compté : le reliquat reste dû.
+        /// <para>Sous-lot 8.1 : coût/s effectif du combattant (décimal, à 4 décimales, même arrondi par défaut). Avec
+        /// <c>guard.noUpkeepBreak</c>, un entretien impayable ne brise pas la garde : le combattant paie ce qui lui reste, le tick est
+        /// compté et le reste du dû est abandonné (ligne « guardUpkeep » avec le montant réellement payé, éventuellement 0).</para>
         /// </summary>
         private void RunPeriodic(long tick)
         {
@@ -1313,25 +1365,34 @@ namespace EdS.Simulation.Engine
                     continue;
                 }
                 long guardedTicks = checked(f.GuardedTicks + 1);
-                long due = checked(_rules.GuardUpkeepPerSecond * guardedTicks * _tickMs) / 1000;
+                long due = UpkeepDue(f, guardedTicks);
                 long amount = due - f.GuardUpkeepPaid;
-                bool breaks = amount > 0 && f.Endurance < amount;
-                Reserve(Cost.Op + (breaks ? BreakGuardCost(tick, f, null) : Cost.Line.If(amount > 0)));
+                bool shortfall = amount > 0 && f.Endurance < amount;
+                bool breaks = shortfall && !f.Rules.GuardNoUpkeepBreak;
+                Reserve(Cost.Op + (breaks ? BreakGuardCost(tick, f, null, impact: false) : Cost.Line.If(amount > 0)));
                 Charge(1);
                 Provenance upkeep = Provenance.NewRoot($"periodic:{f.Id}:{f.Id}:{tick}", f.Id);
                 if (breaks)
                 {
-                    BreakGuard(tick, CombatPhase.Periodic, f, "upkeep", null, upkeep);
+                    BreakGuard(tick, CombatPhase.Periodic, f, "upkeep", null, upkeep, impact: false);
                     continue;
                 }
                 f.GuardedTicks = guardedTicks;
                 if (amount <= 0) continue;
-                SpendEndurance(f, amount, tick);
+                long paid = shortfall ? f.Endurance : amount;
+                if (paid > 0) SpendEndurance(f, paid, tick);   // rien à payer : pas une dépense (le délai de régénération ne repart pas)
                 f.GuardUpkeepPaid = due;
-                Emit(tick, CombatPhase.Periodic, "guardUpkeep", upkeep, w => w.Field("actor", f.Id).Field("amount", amount).Field("endurance", f.Endurance));
+                Emit(tick, CombatPhase.Periodic, "guardUpkeep", upkeep, w => w.Field("actor", f.Id).Field("amount", paid).Field("endurance", f.Endurance));
             }
             DrainTriggers(tick, CombatPhase.Periodic);
         }
+
+        /// <summary>
+        /// Entretien dû après <paramref name="guardedTicks"/> ticks gardés : ⌊ coût/s × ticks × durée du tick / 1000 ⌋, coût/s
+        /// décimal effectif ; égal au calcul entier du lot 7 pour un coût entier. Sans débordement : coût/s &lt; 2³¹, durée ≤ 24 h.
+        /// </summary>
+        private long UpkeepDue(Fighter f, long guardedTicks) =>
+            IntMath.MulDiv(f.Rules.GuardUpkeepPerSecond.Raw, checked(guardedTicks * _tickMs), 1000 * Fixed.Scale, RoundingMode.Floor);
 
         private static bool IsCurrent(DotTick dot, out StatusInstance status) =>
             dot.Fighter.Statuses.TryGetValue(dot.Key, out status!) && status.Id == dot.Instance;
@@ -1392,7 +1453,8 @@ namespace EdS.Simulation.Engine
         /// <summary>
         /// Tick de DOT (A12, décisions 1, 2, 4) : dégâts = puissance figée réduite par la défense <b>actuelle</b> de la cible pour le
         /// type de l'altération (armure pour un saignement, résistance magique pour une brûlure), sans critique, ni garde, ni parade,
-        /// ni Fragilité (dégâts directs seulement), ni Résonance, ni compteur de coups. Crédités à la source même morte. Le dernier
+        /// ni Fragilité (dégâts directs seulement), ni Résonance, ni compteur de coups. Sous-lot 8.1 : réduits par les modificateurs de
+        /// dégâts subis de la cible (<c>damageTaken</c>, plafond de 85 %), pas par ceux de dégâts infligés de la source. Crédités à la source même morte. Le dernier
         /// tick inflige ses dégâts puis expire l'instance dans la même étape : 6 s / 2 s donnent exactement 3 ticks.
         /// </summary>
         private void RunDotTick(long tick, DotTick dot)
@@ -1401,8 +1463,11 @@ namespace EdS.Simulation.Engine
             Charge(1);
             Fighter target = dot.Fighter;
             StatusDefinition definition = status.Definition;
+            // Sous-lot 8.1 : modificateurs de dégâts subis de la cible, lus sur son état au tick (réduction ≤ 85 %, sans garde ni
+            // parade, A12). Sans modificateur, aucune réduction.
+            Fixed mitigation = target.Rules.TotalReduction(Fixed.Zero, target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance));
             long amount = DamageCalculator.ComputePeriodic(status.Power, target.Stats, definition.DamageType!.Value,
-                definition.Resistance == StatusResistanceMode.Defense, _setup.Damage);
+                definition.Resistance == StatusResistanceMode.Defense, _setup.Damage, mitigation);
             // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage).
             Fighter? source = status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
             DamageUpdate update = PrepareDamage(target, source, amount);
@@ -1432,13 +1497,15 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private void RunRegeneration(long tick)
         {
-            int perSecond = _rules.EnduranceRegenPerSecond;
             foreach (Fighter f in _fightersById)
             {
                 long regenTicks = f.RegenFromTick is long from ? tick - from + 1 : 0;
                 bool eligible = f.Character != null && !f.IsDead && f.RegenFromTick != null && !f.Guarding
                     && BlockReason(f, StatusBlocks.Regeneration) is null && regenTicks > 0;
-                long target = eligible ? checked(perSecond * regenTicks * _tickMs) / 1000 : 0;
+                // Sous-lot 8.1 : régénération/s effective du combattant (décimale), même arrondi par défaut.
+                long target = eligible
+                    ? IntMath.MulDiv(f.Rules.EnduranceRegenPerSecond.Raw, checked(regenTicks * _tickMs), 1000 * Fixed.Scale, RoundingMode.Floor)
+                    : 0;
                 long gain = eligible ? Math.Min(target - f.RegenGranted, f.MaxEndurance - f.Endurance) : 0;
                 Reserve(Cost.Op + Cost.Line.If(gain > 0));
                 Charge(1);
@@ -1555,14 +1622,65 @@ namespace EdS.Simulation.Engine
             DerivedStats s = f.Stats;
             bool character = f.Character != null;
             string type = character ? "character" : f.Assailant != null ? "assailant" : "dummy";
-            EmitDiagnostic(0, CombatPhase.Setup, "combatant", w => w
-                .Field("combatant", f.Id).Field("team", f.Team).Field("type", type)
-                .Field("initiative", f.Setup.Initiative).Field("health", f.Health).Field("maxHealth", f.MaxHealth)
-                .Field("endurance", character ? f.Endurance : (long?)null).Field("maxEndurance", character ? f.MaxEndurance : (long?)null)
-                .Field("resonance", character ? f.Resonance : (long?)null).Field("rampartCharges", character ? f.RampartCharges : (long?)null)
-                .Field("physicalPower", s.PhysicalPower).Field("agilePower", s.AgilePower).Field("magicPower", s.MagicPower)
-                .Field("armor", s.Armor).Field("magicResistance", s.MagicResistance)
-                .Field("criticalChanceBasisPoints", s.CriticalChanceBasisPoints).Field("criticalMultiplier", s.CriticalMultiplier));
+            EmitDiagnostic(0, CombatPhase.Setup, "combatant", w =>
+            {
+                w.Field("combatant", f.Id).Field("team", f.Team).Field("type", type)
+                    .Field("initiative", f.Setup.Initiative).Field("health", f.Health).Field("maxHealth", f.MaxHealth)
+                    .Field("endurance", character ? f.Endurance : (long?)null).Field("maxEndurance", character ? f.MaxEndurance : (long?)null)
+                    .Field("resonance", character ? f.Resonance : (long?)null).Field("rampartCharges", character ? f.RampartCharges : (long?)null)
+                    .Field("physicalPower", s.PhysicalPower).Field("agilePower", s.AgilePower).Field("magicPower", s.MagicPower)
+                    .Field("armor", s.Armor).Field("magicResistance", s.MagicResistance).Field("statusResistance", s.StatusResistance)
+                    .Field("criticalChanceBasisPoints", s.CriticalChanceBasisPoints).Field("criticalMultiplier", s.CriticalMultiplier);
+                w.Name("rules");
+                if (character) WriteRules(w, f);
+                else w.Value((string?)null);
+            });
+        }
+
+        /// <summary>
+        /// Sous-lot 8.1 (format 5) : règles effectives d'un personnage. Valeurs résultantes des clés de règle scalaires (les clés de
+        /// statistiques, <c>endurance.max</c>, <c>maxHealth</c> et <c>statusResistance</c>, sont dans les champs du combattant) ; puis
+        /// chaque clé paramétrée visée par un modificateur actif, dans l'ordre ordinal (coefficient et recharge effectifs pour une
+        /// compétence, ajout en ms pour une durée d'altération) ; puis les modificateurs conditionnels agrégés (<c>conditional</c>).
+        /// </summary>
+        private static void WriteRules(JsonLineWriter w, Fighter f)
+        {
+            CombatantRules r = f.Rules;
+            w.BeginObject()
+                .Field("guard.damageReduction", r.GuardDamageReduction).Field("guard.upkeepPerSecond", r.GuardUpkeepPerSecond)
+                .Field("guard.costPerBlock", r.GuardCostPerBlock).Field("guard.noUpkeepBreak", r.GuardNoUpkeepBreak)
+                .Field("guard.reductionAtZeroEndurance", r.GuardReductionAtZeroEndurance).Field("guard.breakShortenPerCharge", r.GuardBreakShortenPerChargeMs)
+                .Field("parry.windowMs", r.ParryWindowMs).Field("parry.failureRecoveryMs", r.ParryFailureRecoveryMs)
+                .Field("rampartCharges.max", r.RampartChargesMax).Field("resonance.perDirectHit", r.ResonancePerDirectHit)
+                .Field("endurance.regenPerSecond", r.EnduranceRegenPerSecond)
+                .Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken);
+            foreach (ModifierKey key in r.Modifiers.Keys)
+            {
+                switch (key.Field)
+                {
+                    case ModifierField.StatusDurationDealt:
+                        w.Field(key.ToString(), r.DurationDealtMs(key.Parameter!));
+                        break;
+                    case ModifierField.StatusDurationTaken:
+                        w.Field(key.ToString(), r.DurationTakenMs(key.Parameter!));
+                        break;
+                    case ModifierField.SkillCoefficient when f.Character!.Class.TryGetSkill(key.Parameter!, out SkillDefinition skill) && skill.Combat is { } combat:
+                        w.Field(key.ToString(), r.Coefficient(skill, combat));
+                        break;
+                    case ModifierField.SkillCooldownMs when f.Character!.Class.TryGetSkill(key.Parameter!, out SkillDefinition skill) && skill.Combat is { } combat:
+                        w.Field(key.ToString(), r.CooldownMs(skill, combat));
+                        break;
+                }
+            }
+            w.Name("conditional").BeginArray();
+            foreach (ConditionalModifier c in r.Modifiers.Conditional)
+            {
+                w.BeginObject().Field("key", ModifierKeys.Specs[(int)c.Field].Name);
+                w.Name("conditions").BeginArray();
+                foreach (ModifierCondition condition in ModifierKeys.Of(c.Conditions)) w.Value(ModifierKeys.Of(condition));
+                w.EndArray().Field("value", c.Value).EndObject();
+            }
+            w.EndArray().EndObject();
         }
 
         private static string PhaseId(CombatPhase phase) => phase switch

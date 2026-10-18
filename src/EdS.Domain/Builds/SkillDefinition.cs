@@ -34,11 +34,19 @@ namespace EdS.Domain.Builds
         /// </summary>
         public IReadOnlyList<EdS.Domain.Combat.TriggerDefinition> Triggers { get; }
 
+        /// <summary>
+        /// Modificateurs (sous-lot 8.1, X1 et X2) d'une compétence passive, actifs tant qu'elle est équipée ; une compétence active ou
+        /// ultime n'en porte pas (refusé par <see cref="ClassDefinition.Validate"/>).
+        /// </summary>
+        public IReadOnlyList<EdS.Domain.Combat.ModifierDefinition> Modifiers { get; }
+
         public SkillDefinition(string id, string name, SkillKind kind, int minLevel = 1,
             IReadOnlyList<TalentRequirement>? talentRequirements = null, bool isPlaceholder = false,
-            SkillCombatDefinition? combat = null, IEnumerable<EdS.Domain.Combat.TriggerDefinition>? triggers = null)
+            SkillCombatDefinition? combat = null, IEnumerable<EdS.Domain.Combat.TriggerDefinition>? triggers = null,
+            IEnumerable<EdS.Domain.Combat.ModifierDefinition>? modifiers = null)
         {
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
+            Modifiers = Frozen.ListOrEmpty(modifiers, nameof(modifiers));
             Combat = combat;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));

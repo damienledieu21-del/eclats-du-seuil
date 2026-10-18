@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 5
+      "const": 6
     },
     "kind": {
       "const": "rules"
@@ -502,7 +502,15 @@
               "properties": {
                 "damageReduction": {
                   "type": "number",
-                  "description": "Réduction des dégâts bloquables après armure (0.6 = −60 %)."
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Réduction des dégâts bloquables après armure (0.6 = −60 %), au plus maxDamageReduction (vérifié par le programme)."
+                },
+                "maxDamageReduction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Plafond de la réduction de garde, modificateurs compris (0.75 ; sous-lot 8.1, paramètre des règles depuis le schéma 6)."
                 },
                 "upkeepPerSecond": {
                   "type": "integer",
@@ -523,11 +531,28 @@
               },
               "required": [
                 "damageReduction",
+                "maxDamageReduction",
                 "upkeepPerSecond",
                 "costPerBlock",
                 "breakStatus"
               ],
               "description": "Garde (A1)."
+            },
+            "damageTaken": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxReduction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Plafond de la réduction totale des dégâts subis (garde, modificateurs, renforcements), avant boucliers ; la parade est hors plafond (0.85 ; schéma 6)."
+                }
+              },
+              "required": [
+                "maxReduction"
+              ],
+              "description": "Dégâts subis (sous-lot 8.1, plafond B2)."
             },
             "parry": {
               "type": "object",
@@ -627,6 +652,7 @@
             "endurance",
             "limits",
             "guard",
+            "damageTaken",
             "parry",
             "rampartCharges",
             "resonance"

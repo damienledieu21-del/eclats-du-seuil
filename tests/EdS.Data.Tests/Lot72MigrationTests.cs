@@ -85,7 +85,7 @@ public class Lot72MigrationTests
         int stateLines = 0;
         for (int i = 1; i < compared; i++)
         {
-            JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = JsonNode.Parse(after[i])!.AsObject();
+            JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = EdS.TestSupport.Lot8LogFields.RemoveAdded(JsonNode.Parse(after[i])!.AsObject());
             string kind = newLine["event"]!.GetValue<string>();
             Assert.DoesNotContain(kind, new[] { "stateBlocked", "dotDamage" });
             // Lot 7.3 : champs de provenance du format 4, comparés à part (Lot73MigrationTests).

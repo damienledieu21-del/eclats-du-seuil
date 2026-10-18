@@ -20,8 +20,32 @@ namespace EdS.Domain.Combat
         /// <summary>Armure et résistance magique maximales d'un mannequin ou d'un assaillant (10⁹).</summary>
         public static readonly Fixed MaxDefense = Fixed.FromInt(1_000_000_000);
 
-        public static DerivedStats ForCharacter(StatRules rules, CharacterBuild build) =>
-            DerivedStats.Calculate(rules, (build ?? throw new ArgumentNullException(nameof(build))).Attributes);
+        public static DerivedStats ForCharacter(StatRules rules, CharacterBuild build) => ForCharacter(rules, build, ModifierSet.Empty);
+
+        /// <summary>
+        /// Sous-lot 8.1 : statistiques d'un personnage avec ses modificateurs permanents. <c>endurance.max</c> et
+        /// <c>statusResistance</c> sont des contributions plates ; <c>maxHealth</c> est un pourcentage du PV max calculé, écrêté dans
+        /// [−90 %, +1 000 %] (<see cref="CombatantRules.MinMaxHealthPercent"/>), appliqué par une multiplication en virgule fixe arrondie
+        /// au plus proche ; le moteur et la validation en prennent ensuite la partie entière (plancher), comme avant. Sans modificateur,
+        /// identique au calcul sans contribution. Fonction partagée par la validation et le moteur (M04).
+        /// </summary>
+        public static DerivedStats ForCharacter(StatRules rules, CharacterBuild build, ModifierSet modifiers)
+        {
+            if (build is null) throw new ArgumentNullException(nameof(build));
+            if (modifiers is null) throw new ArgumentNullException(nameof(modifiers));
+            Fixed endurance = modifiers.Sum(ModifierField.EnduranceMax), resistance = modifiers.Sum(ModifierField.StatusResistance);
+            StatContributions[]? flat = endurance == Fixed.Zero && resistance == Fixed.Zero ? null
+                : new[] { new StatContributions { MaxEndurance = endurance, StatusResistance = resistance } };
+            DerivedStats stats = DerivedStats.Calculate(rules, build.Attributes, flat);
+            Fixed percent = modifiers.Sum(ModifierField.MaxHealth);
+            if (percent == Fixed.Zero) return stats;
+            percent = Fixed.Clamp(percent, CombatantRules.MinMaxHealthPercent, CombatantRules.MaxMaxHealthPercent);
+            Fixed extra = stats.MaxHealth * percent;
+            return DerivedStats.Calculate(rules, build.Attributes, new[]
+            {
+                new StatContributions { MaxEndurance = endurance, StatusResistance = resistance, MaxHealth = extra },
+            });
+        }
 
         /// <summary>
         /// Mannequin ou assaillant : seules les défenses comptent (armure, résistance magique et, depuis le lot 7.2, résistance

@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "b1aa9e12d9e02dc405b7ff49f0ccfd15b5af84ceeb5bc1c2ea91868418bf5e54")]
-    [InlineData("entrainement_rupture", "1d8e63db5e975a9ed4e4381f6a88eb21d21fd7e89dfc0440055780a3ccb8363b")]
-    [InlineData("entrainement_alterations", "53d096548cb276b09d09ca2bca959a2f4b22a7fe780316f0ed4ea5b55dac4ddc")]
-    [InlineData("entrainement_declencheurs", "b5a00d6796c65deb56d8e2162e93680292f672812862dadc1323d048af37895c")]
+    [InlineData("entrainement_garde_parade", "1be270c1e8cd791ad82206cd9e599e49f3eeaa1c53c75d674ebbcd2e8f3846af")]
+    [InlineData("entrainement_rupture", "cc8b98d2e755fea202e2a9babd6ff802eb83faebb81d594e99123da72b32cdf8")]
+    [InlineData("entrainement_alterations", "8d624dba2aa27d39bfb8977147e163648b92077cbf5018914a98c737fbd58ecf")]
+    [InlineData("entrainement_declencheurs", "dfc1474ae5538e67f0f1394d6452518d07c2242f5dc13ddd00b6511f0a40c95f")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -101,6 +101,11 @@ public class TrainingScenarioTests
         // Correctif 7.2 : moteur 0.8.1, règles 0.4.1 (étourdissement en ignore) ; garde_parade change à la Fragilité parée,
         // alterations à l'étourdissement refusé (active) et aux fins effectives des DOT.
         // Correctif 7.3.1 (D4) : entrainement_declencheurs, figé aussi dans Fixtures/reference-0.9.1 (Correctif731TriggerScenarioTests).
+        // Sous-lot 8.1 : moteur 0.10.0, format 5 (statusResistance et rules sur combatant, rampartChargesSpent sur guardBroken) ;
+        // journaux 0.9.1 figés dans Fixtures/logs-0.9.1 et reproduits au gameplay près (Lot81ReferenceTests) ; référence du scénario à
+        // déclencheurs dans Fixtures/reference-0.10.0.
+        // Lot 8 (décision du 18/10/2026) : moteur 0.11.0, règles en schéma 6 (plafonds de réduction), contenu 0.6.0 : seul l'en-tête
+        // change ; référence du scénario à déclencheurs dans Fixtures/reference-0.11.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

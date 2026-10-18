@@ -179,19 +179,23 @@ public class Correctif731FingerprintTests
         string[] old = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "logs-0.9.0", name + ".jsonl"));
         var log = new MemoryCombatLog();
         CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!, log);
-        Assert.Equal(old.Skip(1), log.Lines.Skip(1));
+        // Sous-lot 8.1 : hors champs ajoutés au format 5 (Lot81ReferenceTests), comparés à part.
+        Assert.Equal(old.Skip(1).Select(EdS.TestSupport.Lot8LogFields.Comparable), log.Lines.Skip(1).Select(EdS.TestSupport.Lot8LogFields.Comparable));
         JsonObject Strip(string header)
         {
             JsonObject h = JsonNode.Parse(header)!.AsObject();
             Assert.True(h.Remove("engineVersion"));
+            Assert.True(h.Remove("formatVersion"));
             JsonObject data = h["data"]!.AsObject();
             data["rules"]!.AsObject().Remove("fingerprint");
+            // Décision du 18/10/2026 : contenu des règles 0.6.0 (schéma 6, plafonds de réduction), identité des données seulement.
+            data["rules"]!.AsObject().Remove("contentVersion");
             foreach (JsonNode? c in data["classes"]!.AsArray()) c!.AsObject().Remove("fingerprint");
             return h;
         }
         Assert.Equal(Strip(old[0]).ToJsonString(), Strip(log.Lines[0]).ToJsonString());
         Assert.Contains("\"engineVersion\":\"0.9.0\"", old[0]);
-        Assert.Contains("\"engineVersion\":\"0.9.1\"", log.Lines[0]);
+        Assert.Contains($"\"engineVersion\":\"{CombatEngine.Version}\"", log.Lines[0]);
     }
 
     [Fact]

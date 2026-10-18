@@ -45,6 +45,9 @@ namespace EdS.Data.Classes
 
         /// <summary>Déclencheurs (format 4, lot 7.3) ; facultatifs, null si absents.</summary>
         public List<Triggers.TriggerData?>? Triggers { get; set; }
+
+        /// <summary>Modificateurs (format 5, sous-lot 8.1) ; facultatifs, null si absents.</summary>
+        public List<Modifiers.ModifierData?>? Modifiers { get; set; }
     }
 
     public sealed class SkillData
@@ -64,6 +67,9 @@ namespace EdS.Data.Classes
 
         /// <summary>Déclencheurs actifs tant que la compétence est équipée (format 4, lot 7.3) ; facultatifs.</summary>
         public List<Triggers.TriggerData?>? Triggers { get; set; }
+
+        /// <summary>Modificateurs d'une compétence passive (format 5, sous-lot 8.1) ; facultatifs, null si absents.</summary>
+        public List<Modifiers.ModifierData?>? Modifiers { get; set; }
     }
 
     public sealed class SkillCombatData

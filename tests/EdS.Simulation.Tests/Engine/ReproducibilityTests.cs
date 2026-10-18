@@ -63,7 +63,7 @@ public class ReproducibilityTests
     {
         var events = Run(Setup(new[] { Cmd(0, Frappe) }, seed: 7)).Log.Lines;
         string header = events[0];
-        Assert.StartsWith("{\"type\":\"header\",\"format\":\"eds-combat-log\",\"formatVersion\":4,\"engineVersion\":\"0.9.1\",\"tickMs\":50,", header);
+        Assert.StartsWith($"{{\"type\":\"header\",\"format\":\"eds-combat-log\",\"formatVersion\":{CombatEngine.LogFormatVersion},\"engineVersion\":\"{CombatEngine.Version}\",\"tickMs\":50,", header);
         Assert.Contains("\"fingerprint\":\"sha256:regles\"", header);
         Assert.Contains("\"fingerprint\":\"sha256:classe\"", header);
         Assert.Contains("\"seed\":7", header);
@@ -80,7 +80,10 @@ public class ReproducibilityTests
         Assert.Equal(ReferenceHash, hash);
     }
 
-    internal const string ReferenceHash = "a67e3671093766c692e5bcbc96bbb8bd693dd308df4c2aad5f0f53e43bd9577f";
+    // Sous-lot 8.1 : moteur 0.10.0, format 5 ; le journal 0.9.1 (ancienne empreinte a67e3671…) est figé dans Fixtures/logs-0.9.1 et
+    // reproduit au gameplay près des champs ajoutés (Lot81EngineBaselineTests). Lot 8 (décision du 18/10/2026) : moteur 0.11.0, seul
+    // l'en-tête change (ancienne empreinte 6321d723…).
+    internal const string ReferenceHash = "6cefb445ccf9d02a84ff259b90aaffefb2c92d94b3d1e02b213adb5b31012c42";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

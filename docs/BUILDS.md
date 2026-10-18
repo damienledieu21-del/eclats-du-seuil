@@ -1,6 +1,6 @@
 # Classes, talents et builds (lot 4)
 
-Le moteur est générique : aucune règle ne dépend d'une classe. Les effets de combat des talents et des compétences ne sont **pas** implémentés (lot 5 et suivants) ; ce lot ne décrit que leur structure et la validité d'un build.
+Le moteur est générique : aucune règle ne dépend d'une classe. Les effets de combat des talents et des compétences ne sont **pas** implémentés (lot 5 et suivants) ; ce lot ne décrit que leur structure et la validité d'un build. Depuis le lot 7.3, un talent ou une compétence peut porter des déclencheurs ; depuis le sous-lot 8.1, un talent ou une compétence passive peut porter des **modificateurs** (règles effectives du porteur, schéma de classe 5) : voir [DONNEES.md](DONNEES.md#modificateurs-sous-lot-81). Le Bastion livré n'en porte pas encore.
 
 ## Règles de progression (`rules.json`, bloc `progression`)
 
@@ -21,7 +21,7 @@ Un majeur coûte 1 point après les 18 : 19 points pour un majeur, il en reste 1
 
 ```json
 {
-  "schemaVersion": 2, "kind": "class", "contentVersion": "0.2.0-provisoire",
+  "schemaVersion": 5, "kind": "class", "contentVersion": "0.2.0-provisoire",
   "data": {
     "id": "class.bastion", "name": "Bastion",
     "trees": [ { "id": "tree.bastion.rempart", "name": "Rempart", "talents": [
@@ -33,9 +33,9 @@ Un majeur coûte 1 point après les 18 : 19 points pour un majeur, il en reste 1
 }
 ```
 
-Identifiants stables préfixés (`class.`, `tree.`, `talent.`, `skill.`), minuscules, chiffres et `_` ; jamais renommés ni réutilisés. Tous les champs sont obligatoires.
+Identifiants stables préfixés (`class.`, `tree.`, `talent.`, `skill.`), minuscules, chiffres et `_` ; jamais renommés ni réutilisés. Tous les champs de l'exemple sont obligatoires ; `combat`, `triggers` (lot 7.3) et `modifiers` (sous-lot 8.1) sont facultatifs.
 
-Vérifications de cohérence (`ClassDefinition.Validate`) : identifiants bien formés et uniques, noms non vides, nombre d'arbres, rang maximum dans [1, 100] (1 pour un majeur), prérequis connus, non dupliqués, non réflexifs, de rang dans [1, rang max], pas de majeur exigeant un majeur, pas de cycle, chaque majeur atteignable (assez de points hors majeurs et hors talents qui en dépendent), niveau minimal de compétence valide, ultime pas avant le niveau 10.
+Vérifications de cohérence (`ClassDefinition.Validate`) : identifiants bien formés et uniques, noms non vides, nombre d'arbres, rang maximum dans [1, 100] (1 pour un majeur), prérequis connus, non dupliqués, non réflexifs, de rang dans [1, rang max], pas de majeur exigeant un majeur, pas de cycle, chaque majeur atteignable (assez de points hors majeurs et hors talents qui en dépendent), niveau minimal de compétence valide, ultime pas avant le niveau 10 ; depuis le sous-lot 8.1, modificateurs bien formés (clé connue, bornes au rang 1 et au rang maximal, conditions, doublons, au plus 8 par porteur et 512 par classe, aucun sur une active ou une ultime).
 
 ## Mini-arbre du Bastion (provisoire)
 
