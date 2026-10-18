@@ -75,7 +75,8 @@ public class Lot73DeferralTests
     {
         // Le tueur riposte à la mort (phase 6) : frappe reportée au tick suivant ; l'équipe adverse est vaincue, rien n'est exécuté.
         var fort = Bearer("fort", new[] { Riposte(TriggerEvent.Death, target: TriggerTarget.AllEnemies) }, "rouge", Attrs(force: 500));
-        var (events, _) = Simulate(Setup(new[] { Cmd(0, Frappe, "fort", "faible") }, new CombatantSetup[] { fort, Bearer("faible", team: "bleu", attributes: Attrs(vitalite: 0)) }));
+        var (events, _) = Simulate(Setup(new[] { Cmd(0, Frappe, "fort", "faible") }, new CombatantSetup[] { fort, Bearer("faible", team: "bleu", attributes: Attrs(vitalite: 0)) },
+            rules: AreaStrikes));
         JsonElement ended = Ended(events);
         Assert.Equal(("teamDefeated", 1L), (ended.Str("reason"), ended.Int("deferredDropped")));
         Assert.Single(events.OfKind("damage"));

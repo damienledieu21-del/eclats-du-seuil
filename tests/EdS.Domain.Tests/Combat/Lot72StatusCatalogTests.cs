@@ -16,7 +16,8 @@ public class Lot72StatusCatalogTests
     public void Valeurs_decidees_pour_le_sous_lot_7_2()
     {
         Assert.Empty(Shipped.Validate(50));
-        Assert.Equal(new[] { "burn", "bleed", "stun", "stunImmunity", "freeze", "fragility", "guardBreak" }, Shipped.Definitions.Select(d => d.Id));
+        // Les sept altérations du lot 7.2 en tête ; le sous-lot 8.4 ajoute celles du Bastion à la suite (Lot84CatalogTests).
+        Assert.Equal(new[] { "burn", "bleed", "stun", "stunImmunity", "freeze", "fragility", "guardBreak" }, Shipped.Definitions.Take(7).Select(d => d.Id));
 
         // Décisions 1 et 2 : brûlure magique réduite par la résistance magique, saignement physique réduit par l'armure.
         StatusDefinition burn = Shipped["burn"], bleed = Shipped["bleed"];
@@ -149,7 +150,7 @@ public class Lot72StatusCatalogTests
     [Fact]
     public void Identifiants_uniques_et_valides()
     {
-        AssertInvalid(new StatusCatalog(Shipped.Definitions.Append(Control())), "statuses[7].id");
+        AssertInvalid(new StatusCatalog(Shipped.Definitions.Append(Control())), $"statuses[{Shipped.Definitions.Count}].id");
         AssertInvalid(Replace("freeze", Control("Gel")), "statuses[4].id");
         Assert.Contains(new StatusCatalog(Enumerable.Range(0, StatusCatalog.MaxDefinitions + 1).Select(i => Control($"etat{i}"))).Validate(50),
             v => v.Kind == RuleViolationKind.LimitExceeded);

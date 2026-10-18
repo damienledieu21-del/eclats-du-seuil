@@ -87,6 +87,9 @@ namespace EdS.Domain.Builds
         /// </summary>
         public const int MaxTalents = 256, MaxSkills = 256, MaxTriggers = 512;
 
+        /// <summary>Sous-lot 8.1 : plafond global des modificateurs d'une classe (talents et compétences passives), comme les déclencheurs.</summary>
+        public const int MaxModifiers = 512;
+
         public IReadOnlyList<RuleViolation> Validate(ProgressionRules progression)
         {
             if (progression is null) throw new ArgumentNullException(nameof(progression));
@@ -94,6 +97,7 @@ namespace EdS.Domain.Builds
             // Plafonds globaux d'abord : au-delà, rien d'autre n'est examiné (le volume ne peut pas immobiliser la validation).
             int talents = Trees.Sum(t => t.Talents.Count);
             int triggers = Trees.Sum(t => t.Talents.Sum(x => x.Triggers.Count)) + Skills.Sum(x => x.Triggers.Count);
+            long modifiers = Trees.Sum(t => t.Talents.Sum(x => (long)x.Modifiers.Count)) + Skills.Sum(x => (long)x.Modifiers.Count);
             if (talents > MaxTalents)
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{talents} talents, au plus {MaxTalents} par classe (plafond technique provisoire).", "trees"));
             if (Skills.Count > MaxSkills)
@@ -101,7 +105,11 @@ namespace EdS.Domain.Builds
             if (triggers > MaxTriggers)
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
                     $"{triggers} déclencheurs (talents et compétences), au plus {MaxTriggers} par classe (plafond technique provisoire).", "skills"));
+            if (modifiers > MaxModifiers)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    $"{modifiers} modificateurs (talents et compétences), au plus {MaxModifiers} par classe (plafond technique provisoire).", "skills"));
             if (errors.Count > 0) return errors;
+            SkillDefinition? SkillOf(string id) => TryGetSkill(id, out SkillDefinition? s) ? s : null;
             var ids = new Dictionary<string, string>(StringComparer.Ordinal);   // identifiant → chemin de sa première définition
 
             void CheckId(string id, string prefix, string path)
@@ -145,6 +153,8 @@ namespace EdS.Domain.Builds
                         errors.Add(new RuleViolation("un talent majeur a un seul rang (1 point pour l'acquérir).", path + ".maxRank"));
                     // Lot 7.3 : déclencheurs du talent, valeurs bornées à chacun de ses rangs.
                     Combat.TriggerDefinition.ValidateList(talent.Triggers, path + ".triggers", talent.MaxRank, true, errors);
+                    // Sous-lot 8.1 : modificateurs du talent, valeurs bornées à chacun de ses rangs.
+                    Combat.ModifierDefinition.ValidateList(talent.Modifiers, path + ".modifiers", talent.MaxRank, true, SkillOf, errors);
                 }
             }
 
@@ -187,6 +197,11 @@ namespace EdS.Domain.Builds
                 CheckRequirements(skill.TalentRequirements, path + ".talentRequirements", errors, null);
                 if (skill.Combat is { } combat) CheckCombat(skill, combat, path + ".combat", errors);
                 Combat.TriggerDefinition.ValidateList(skill.Triggers, path + ".triggers", 1, false, errors);
+                // Sous-lot 8.1 : seuls les talents et les compétences passives portent des modificateurs (rang 1, sans perRank).
+                if (skill.Kind != SkillKind.Passive && skill.Modifiers.Count > 0)
+                    errors.Add(new RuleViolation("seuls les talents et les compétences passives portent des modificateurs.", path + ".modifiers"));
+                else
+                    Combat.ModifierDefinition.ValidateList(skill.Modifiers, path + ".modifiers", 1, false, SkillOf, errors);
             }
 
             return errors;
@@ -210,13 +225,19 @@ namespace EdS.Domain.Builds
         {
             if (skill.Kind == SkillKind.Passive)
                 errors.Add(new RuleViolation("une compétence passive ne se lance pas : pas de données de combat.", path));
-            if (!Enum.IsDefined(typeof(Stats.PowerType), combat.PowerType))
+            if (combat.HasDamage && !Enum.IsDefined(typeof(Stats.PowerType), combat.PowerType))
                 errors.Add(new RuleViolation("type de puissance inconnu.", path + ".powerType"));
-            if (!Enum.IsDefined(typeof(Stats.DamageType), combat.DamageType))
+            if (combat.HasDamage && !Enum.IsDefined(typeof(Stats.DamageType), combat.DamageType))
                 errors.Add(new RuleViolation("type de dégâts inconnu.", path + ".damageType"));
             if (!Enum.IsDefined(typeof(SkillTargeting), combat.Targeting))
                 errors.Add(new RuleViolation("ciblage inconnu.", path + ".targeting"));
-            if (combat.Coefficient < Numerics.Fixed.Zero || combat.Coefficient > SkillCombatDefinition.MaxCoefficient)
+            // Sous-lot 8.3 (X5) : une compétence qui vise soi, un allié ou tous les alliés est de soutien (aucun dégât direct) ; une
+            // compétence de soutien n'a pas d'imparable (aucun impact à défendre).
+            else if (combat.Targeting.IsFriendly() && combat.HasDamage)
+                errors.Add(new RuleViolation("une compétence qui vise soi, un allié ou tous les alliés n'inflige pas de dégâts : powerType, damageType et coefficient absents.", path + ".targeting"));
+            if (!combat.HasDamage && combat.Unblockable)
+                errors.Add(new RuleViolation("une compétence sans dégâts directs n'a aucun impact à rendre imparable : unblockable vaut false.", path + ".unblockable"));
+            if (combat.HasDamage && (combat.Coefficient < Numerics.Fixed.Zero || combat.Coefficient > SkillCombatDefinition.MaxCoefficient))
                 errors.Add(new RuleViolation($"coefficient hors de [0, {SkillCombatDefinition.MaxCoefficient}].", path + ".coefficient"));
             if (combat.EnduranceCost < 0 || combat.EnduranceCost > SkillCombatDefinition.MaxCost)
                 errors.Add(new RuleViolation($"coût en endurance hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".enduranceCost"));
@@ -224,6 +245,20 @@ namespace EdS.Domain.Builds
                 errors.Add(new RuleViolation($"coût en Charges de rempart hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".rampartChargeCost"));
             if (combat.RampartChargeGain < 0 || combat.RampartChargeGain > SkillCombatDefinition.MaxCost)
                 errors.Add(new RuleViolation($"gain de Charges de rempart hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".rampartChargeGain"));
+            // Sous-lot 8.4 (X8) : coefficient par Charge dépensée, borné comme un coefficient ; sans dégâts directs ou sans dépense de
+            // Charges possible, il serait sans effet.
+            if (combat.CoefficientPerRampartCharge < Numerics.Fixed.Zero || combat.CoefficientPerRampartCharge > SkillCombatDefinition.MaxCoefficient)
+                errors.Add(new RuleViolation($"coefficient par Charge hors de [0, {SkillCombatDefinition.MaxCoefficient}].", path + ".coefficientPerRampartCharge"));
+            else if (combat.CoefficientPerRampartCharge > Numerics.Fixed.Zero && !combat.HasDamage)
+                errors.Add(new RuleViolation("coefficient par Charge sans dégâts directs : sans effet.", path + ".coefficientPerRampartCharge"));
+            else if (combat.CoefficientPerRampartCharge > Numerics.Fixed.Zero && combat.RampartChargeCost == 0 && !combat.RampartChargeSpendAll)
+                errors.Add(new RuleViolation("coefficient par Charge sans Charge dépensée (rampartChargeCost nul, rampartChargeSpendAll faux) : sans effet.",
+                    path + ".coefficientPerRampartCharge"));
+            // Sous-lot 8.4 : gain de Résonance au lancement, jamais sur une ultime (elle dépense la Résonance, A5).
+            if (combat.ResonanceGain < 0 || combat.ResonanceGain > SkillCombatDefinition.MaxCost)
+                errors.Add(new RuleViolation($"gain de Résonance hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".resonanceGain"));
+            else if (combat.ResonanceGain > 0 && skill.Kind == SkillKind.Ultimate)
+                errors.Add(new RuleViolation("une ultime dépense la Résonance : aucun gain de Résonance à son lancement.", path + ".resonanceGain"));
             if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
             // Lot 7.2 : forme des altérations portées ; leur existence est vérifiée avec le catalogue des règles (CombatSetup.Validate).

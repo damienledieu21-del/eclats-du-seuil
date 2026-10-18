@@ -27,7 +27,8 @@ public class Correctif731FingerprintTests
 
     private static GameData Data(Action<JsonObject>? rules = null, Action<JsonObject>? bastion = null)
     {
-        string directory = CopyData((relative, text) =>
+        // Sous-lot 8.5 : contenu figé du 8.4 (passif « [TEST] » sans déclencheur), le contenu livré portant ses propres déclencheurs.
+        string directory = CopyFrozenData((relative, text) =>
         {
             if (relative == "rules.json")
             {
@@ -98,8 +99,8 @@ public class Correctif731FingerprintTests
         Assert.NotEqual(classA, classB);
         Assert.Equal(a.Rules.Fingerprint, b.Rules.Fingerprint);
 
-        // Mannequin livré (passif 1 équipé) et un assaillant qui pose la Fragilité au tick 0 : la réaction ne joue qu'avec A.
-        JsonObject scenario = JsonNode.Parse(MannequinJson)!.AsObject();
+        // Mannequin figé du 8.4 (passif 1 équipé) et un assaillant qui pose la Fragilité au tick 0 : la réaction ne joue qu'avec A.
+        JsonObject scenario = JsonNode.Parse(File.ReadAllText(FrozenMannequinPath))!.AsObject();
         DataOf(scenario)["combatants"]!.AsArray().Add(FragilityAssailant("bastion", 0));
         string json = scenario.ToJsonString();
         List<string> logA = Simulate(json, a), logB = Simulate(json, b);
@@ -122,7 +123,7 @@ public class Correctif731FingerprintTests
 
         // Mannequin sans défense, Fragilité à 0 puis 6 500 ms sur 7 000 ms : B reçoit « none » à l'expiration (6 000 ms).
         string json = $$"""
-            { "schemaVersion": 2, "kind": "scenario", "contentVersion": "0.1.0-test",
+            { "schemaVersion": 3, "kind": "scenario", "contentVersion": "0.1.0-test",
               "data": { "seed": 42, "durationMs": 7000, "commands": [],
                 "combatants": [ { "id": "target", "type": "dummy", "team": "blue", "initiative": 0, "armor": 0, "magicResistance": 0 },
                   {{FragilityAssailant("target", 0, 6500).ToJsonString().Replace("\"cibles\"", "\"red\"")}} ] } }
@@ -178,20 +179,26 @@ public class Correctif731FingerprintTests
         // version du moteur et les empreintes de l'en-tête : toutes les lignes de combat sont identiques octet par octet.
         string[] old = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "logs-0.9.0", name + ".jsonl"));
         var log = new MemoryCombatLog();
-        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!, log);
-        Assert.Equal(old.Skip(1), log.Lines.Skip(1));
+        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay. Sous-lot
+        // 8.5 : scénarios figés du 8.4 (passifs « [TEST] »), ceux livrés équipant désormais des passifs réels.
+        CombatEngine.Run(ScenarioJsonReader.ReadFile(FrozenScenarioPath(name), HistoricalData).Setup!, log);
+        // Sous-lot 8.1 : hors champs ajoutés au format 5 (Lot81ReferenceTests), comparés à part.
+        Assert.Equal(old.Skip(1).Select(EdS.TestSupport.Lot8LogFields.Comparable), log.Lines.Skip(1).Select(EdS.TestSupport.Lot8LogFields.Comparable));
         JsonObject Strip(string header)
         {
             JsonObject h = JsonNode.Parse(header)!.AsObject();
             Assert.True(h.Remove("engineVersion"));
+            Assert.True(h.Remove("formatVersion"));
             JsonObject data = h["data"]!.AsObject();
             data["rules"]!.AsObject().Remove("fingerprint");
+            // Décision du 18/10/2026 : contenu des règles 0.6.0 (schéma 6, plafonds de réduction), identité des données seulement.
+            data["rules"]!.AsObject().Remove("contentVersion");
             foreach (JsonNode? c in data["classes"]!.AsArray()) c!.AsObject().Remove("fingerprint");
             return h;
         }
         Assert.Equal(Strip(old[0]).ToJsonString(), Strip(log.Lines[0]).ToJsonString());
         Assert.Contains("\"engineVersion\":\"0.9.0\"", old[0]);
-        Assert.Contains("\"engineVersion\":\"0.9.1\"", log.Lines[0]);
+        Assert.Contains($"\"engineVersion\":\"{CombatEngine.Version}\"", log.Lines[0]);
     }
 
     [Fact]

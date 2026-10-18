@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 4
+      "const": 8
     },
     "kind": {
       "const": "class"
@@ -156,6 +156,14 @@
             "$ref": "#/$defs/trigger"
           },
           "description": "Déclencheurs (lot 7.3), au plus 8."
+        },
+        "modifiers": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/modifier"
+          },
+          "description": "Modificateurs (sous-lot 8.1), au plus 8 ; valeurs par rang."
         }
       }
     },
@@ -210,17 +218,68 @@
             "$ref": "#/$defs/trigger"
           },
           "description": "Déclencheurs (lot 7.3), au plus 8."
+        },
+        "modifiers": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/modifier"
+              },
+              {
+                "properties": {
+                  "add": {
+                    "oneOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "perRank": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "description": "Modificateurs (sous-lot 8.1), compétences passives seulement, au plus 8 ; sans perRank."
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "not": {
+                  "const": "passive"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "modifiers": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
     },
     "combat": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore.",
+      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore. Sous-lot 8.3 : powerType, damageType et coefficient ensemble, ou aucun (compétence de soutien, obligatoire pour les ciblages self, ally et allAllies). Sous-lot 8.4 : rampartChargeSpendAll et coefficientPerRampartCharge (Contrecoup), resonanceGain (Provocation), facultatifs.",
       "required": [
-        "powerType",
-        "damageType",
-        "coefficient",
         "enduranceCost",
         "cooldownMs",
         "targeting",
@@ -261,9 +320,12 @@
         "targeting": {
           "enum": [
             "enemy",
-            "allEnemies"
+            "allEnemies",
+            "self",
+            "ally",
+            "allAllies"
           ],
-          "description": "enemy : la cible désignée ; allEnemies : tous les ennemis vivants, par identifiant."
+          "description": "enemy : la cible désignée ; allEnemies : tous les ennemis vivants, par identifiant ; sous-lot 8.3, soutien sans dégâts : self (le lanceur), ally (un allié vivant désigné, le lanceur compris), allAllies (tous les alliés vivants, le lanceur compris)."
         },
         "unblockable": {
           "type": "boolean",
@@ -278,6 +340,21 @@
           "type": "integer",
           "minimum": 0,
           "description": "Charges de rempart gagnées au lancement (A4) ; excédent perdu."
+        },
+        "rampartChargeSpendAll": {
+          "type": "boolean",
+          "description": "Facultatif (sous-lot 8.4, X8) : vrai, le lancement dépense toutes les Charges détenues, au moins rampartChargeCost (exigées) ; absent ou faux, exactement rampartChargeCost."
+        },
+        "coefficientPerRampartCharge": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Facultatif (sous-lot 8.4, X8) : ajouté au coefficient par Charge dépensée par le lancement (Contrecoup : 0,6 + 0,4 par Charge), 4 décimales au plus ; seulement avec des dégâts directs et une dépense de Charges possible (rampartChargeCost > 0 ou rampartChargeSpendAll vrai)."
+        },
+        "resonanceGain": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Facultatif (sous-lot 8.4) : Résonance gagnée au lancement (Provocation : 5), plafonnée au maximum ; jamais sur une ultime."
         },
         "provisional": {
           "type": "boolean",
@@ -299,12 +376,389 @@
               },
               "coefficient": {
                 "type": "number",
-                "description": "DOT seulement, obligatoire : coefficient de la puissance de la source par tick, [0, 100]."
+                "description": "DOT et bouclier seulement, obligatoire : coefficient de la puissance de la source par tick (DOT) ou fraction des PV max de la source (bouclier), [0, 100]."
+              },
+              "target": {
+                "enum": [
+                  "self",
+                  "allAllies",
+                  "allEnemies"
+                ],
+                "description": "Sous-lot 8.3 : cible propre de l'application, relative à l'acteur (lui-même, ses alliés vivants lui compris, ses ennemis vivants), appliquée une fois après les impacts ; absente : chaque cible de l'action."
               }
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "powerType"
+            ]
+          },
+          "then": {
+            "required": [
+              "powerType",
+              "damageType",
+              "coefficient"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "damageType"
+            ]
+          },
+          "then": {
+            "required": [
+              "powerType",
+              "damageType",
+              "coefficient"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "coefficient"
+            ]
+          },
+          "then": {
+            "required": [
+              "powerType",
+              "damageType",
+              "coefficient"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "targeting"
+            ],
+            "properties": {
+              "targeting": {
+                "enum": [
+                  "self",
+                  "ally",
+                  "allAllies"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "powerType"
+                  ]
+                },
+                {
+                  "required": [
+                    "damageType"
+                  ]
+                },
+                {
+                  "required": [
+                    "coefficient"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "required": [
+                "powerType"
+              ]
+            }
+          },
+          "then": {
+            "properties": {
+              "unblockable": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "coefficientPerRampartCharge"
+            ],
+            "properties": {
+              "coefficientPerRampartCharge": {
+                "exclusiveMinimum": 0
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "powerType"
+            ],
+            "anyOf": [
+              {
+                "properties": {
+                  "rampartChargeSpendAll": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "rampartChargeSpendAll"
+                ]
+              },
+              {
+                "properties": {
+                  "rampartChargeCost": {
+                    "minimum": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "modifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "add"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Clé de la liste fermée (docs/DONNEES.md) : guard.damageReduction, guard.upkeepPerSecond, guard.costPerBlock, guard.noUpkeepBreak, guard.reductionAtZeroEndurance, guard.breakShortenPerCharge, parry.windowMs, parry.failureRecoveryMs, rampartCharges.max, resonance.perDirectHit, endurance.max, endurance.regenPerSecond, maxHealth, statusResistance, damageDealt, damageTaken, status.<id>.durationDealt, status.<id>.durationTaken, <id de compétence>.coefficient, <id de compétence>.cooldownMs, shield.potencyDealt (sous-lot 8.2), protection.redirectRatio, protection.redirectThroughGuard (sous-lot 8.3), guard.noUpkeep (sous-lot 8.4).",
+          "pattern": "^(guard\\.(damageReduction|upkeepPerSecond|costPerBlock|noUpkeepBreak|noUpkeep|reductionAtZeroEndurance|breakShortenPerCharge)|parry\\.(windowMs|failureRecoveryMs)|rampartCharges\\.max|resonance\\.perDirectHit|endurance\\.(max|regenPerSecond)|maxHealth|statusResistance|damageDealt|damageTaken|shield\\.potencyDealt|protection\\.(redirectRatio|redirectThroughGuard)|status\\.[a-z][A-Za-z0-9]*\\.(durationDealt|durationTaken)|skill(\\.[a-z0-9_]+)+\\.(coefficient|cooldownMs))$"
+        },
+        "add": {
+          "$ref": "#/$defs/rankedValue",
+          "not": {
+            "anyOf": [
+              {
+                "const": 0
+              },
+              {
+                "type": "object",
+                "required": [
+                  "base"
+                ],
+                "properties": {
+                  "base": {
+                    "const": 0
+                  },
+                  "perRank": {
+                    "const": 0
+                  }
+                }
+              }
+            ]
+          },
+          "description": "Valeur ajoutée au rang 1, plus perRank par rang au-delà (talents à plusieurs rangs). Jamais nulle à tous les rangs. Drapeaux guard.noUpkeepBreak, protection.redirectThroughGuard et guard.noUpkeep : 1 exactement. damageTaken : négative ou nulle à chaque rang."
+        },
+        "conditions": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "whileGuarding",
+              "perRampartCharge",
+              "perResonanceStep"
+            ]
+          },
+          "description": "X2, damageDealt et damageTaken seulement ; au plus une condition multiplicative (perRampartCharge ou perResonanceStep).",
+          "not": {
+            "allOf": [
+              {
+                "contains": {
+                  "const": "perRampartCharge"
+                }
+              },
+              {
+                "contains": {
+                  "const": "perResonanceStep"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "not": {
+                  "enum": [
+                    "damageDealt",
+                    "damageTaken"
+                  ]
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "conditions": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "guard.noUpkeepBreak"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "add": {
+                "oneOf": [
+                  {
+                    "const": 1
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "base"
+                    ],
+                    "properties": {
+                      "base": {
+                        "const": 1
+                      },
+                      "perRank": {
+                        "const": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "damageTaken"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "add": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMaximum": 0
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "base": {
+                        "maximum": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "protection.redirectThroughGuard"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "add": {
+                "oneOf": [
+                  {
+                    "const": 1
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "base"
+                    ],
+                    "properties": {
+                      "base": {
+                        "const": 1
+                      },
+                      "perRank": {
+                        "const": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "guard.noUpkeep"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "add": {
+                "oneOf": [
+                  {
+                    "const": 1
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "base"
+                    ],
+                    "properties": {
+                      "base": {
+                        "const": 1
+                      },
+                      "perRank": {
+                        "const": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "rankedValue": {
       "oneOf": [
@@ -355,9 +809,10 @@
           "enum": [
             "self",
             "source",
-            "target"
+            "target",
+            "ally"
           ],
-          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un."
+          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un. ally (sous-lot 8.3) : la cible de l'événement est un allié vivant du porteur, autre que lui ; jamais implicite, admis là où target l'est."
         },
         "filter": {
           "type": "object",
@@ -396,7 +851,11 @@
                 "dot",
                 "control",
                 "modifier",
-                "immunity"
+                "immunity",
+                "buff",
+                "shield",
+                "taunt",
+                "protection"
               ]
             },
             "resource": {

@@ -67,6 +67,12 @@ namespace EdS.Domain.Combat
 
         /// <summary>Le porteur est la cible (il subit, il bloque, il pare, il porte l'altération).</summary>
         Target = 2,
+
+        /// <summary>
+        /// Sous-lot 8.3 (X9) : la cible de l'événement est un allié vivant du porteur, autre que lui (un allié subit, bloque, pare,
+        /// porte l'altération). Jamais implicite : admis partout où le rôle cible l'est, et seulement déclaré.
+        /// </summary>
+        Ally = 3,
     }
 
     /// <summary>Effet générique du premier palier (§4.2).</summary>
@@ -140,7 +146,7 @@ namespace EdS.Domain.Combat
             ("onDotTick", TriggerEvent.DotTick), ("onDeath", TriggerEvent.Death));
 
         public static IReadOnlyDictionary<string, TriggerRole> Roles { get; } = Map(
-            ("self", TriggerRole.Self), ("source", TriggerRole.Source), ("target", TriggerRole.Target));
+            ("self", TriggerRole.Self), ("source", TriggerRole.Source), ("target", TriggerRole.Target), ("ally", TriggerRole.Ally));
 
         public static IReadOnlyDictionary<string, TriggerEffectKind> Effects { get; } = Map(
             ("strike", TriggerEffectKind.Strike), ("applyStatus", TriggerEffectKind.ApplyStatus), ("gainResource", TriggerEffectKind.GainResource));
@@ -319,6 +325,17 @@ namespace EdS.Domain.Combat
         /// <summary>Recharge interne (§4.5) : intervalle minimal entre deux réactions acceptées ; 0 par défaut.</summary>
         public long CooldownMs { get; }
 
+        /// <summary>Sous-lot 8.4 (L8-D2) : riposte automatique de zone, un effet <c>strike</c> au moins visant <c>allEnemies</c>.</summary>
+        public bool IsAreaStrike
+        {
+            get
+            {
+                foreach (TriggerEffect e in Effects)
+                    if (e.Kind == TriggerEffectKind.Strike && e.Target == TriggerTarget.AllEnemies) return true;
+                return false;
+            }
+        }
+
         public IReadOnlyList<TriggerEffect> Effects { get; }
 
         public TriggerDefinition(TriggerEvent on, IEnumerable<TriggerEffect> effects, TriggerRole? role = null, TriggerFilter? filter = null, long cooldownMs = 0)
@@ -341,6 +358,9 @@ namespace EdS.Domain.Combat
             TriggerEvent.HitTaken => TargetOnly,
             _ => SourceOrTarget,
         };
+
+        /// <summary>Sous-lot 8.3 (X9) : le rôle ally est admis partout où le rôle cible l'est (un allié est la cible de l'événement).</summary>
+        public static bool AllyAllowed(TriggerEvent on) => AllowedRoles(on).Contains(TriggerRole.Target);
 
         private static readonly IReadOnlyList<TriggerRole> SelfOnly = Frozen.List(new[] { TriggerRole.Self }, nameof(SelfOnly));
         private static readonly IReadOnlyList<TriggerRole> SourceOnly = Frozen.List(new[] { TriggerRole.Source }, nameof(SourceOnly));
@@ -371,11 +391,14 @@ namespace EdS.Domain.Combat
             if (triggers.Count > MaxPerOwner)
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{triggers.Count} déclencheurs, au plus {MaxPerOwner} par définition.", path));
             int topRank = Math.Max(1, Math.Min(maxRank, TalentDefinition.MaxRankLimit));
+            // Décision du 18/10/2026 (question 4 du rapport 8.1) : comme pour les modificateurs, un perRank sur un talent à un seul rang
+            // déclaré est refusé (il serait sans effet). Un rang maximal inférieur à 1 est déjà refusé par la classe : pas de refus ajouté.
+            bool singleRank = ranked && maxRank == 1;
             for (int i = 0; i < triggers.Count; i++)
-                triggers[i].ValidateShape($"{path}[{i}]", topRank, ranked, errors);
+                triggers[i].ValidateShape($"{path}[{i}]", topRank, ranked, singleRank, errors);
         }
 
-        private void ValidateShape(string p, int topRank, bool ranked, List<RuleViolation> errors)
+        private void ValidateShape(string p, int topRank, bool ranked, bool singleRank, List<RuleViolation> errors)
         {
             if (!Enum.IsDefined(typeof(TriggerEvent), On))
             {
@@ -386,10 +409,11 @@ namespace EdS.Domain.Combat
             string on = TriggerIds.Of(On);
             if (Role is { } role)
             {
-                if (!roles.Contains(role))
-                    errors.Add(new RuleViolation(On == TriggerEvent.Death && role == TriggerRole.Target
+                bool ally = role == TriggerRole.Ally && AllyAllowed(On);
+                if (!roles.Contains(role) && !ally)
+                    errors.Add(new RuleViolation(On == TriggerEvent.Death && (role == TriggerRole.Target || role == TriggerRole.Ally)
                         ? "onDeath : le mort ne réagit pas ; seul le rôle source (celui qui tue) est admis."
-                        : $"rôle « {(Enum.IsDefined(typeof(TriggerRole), role) ? TriggerIds.Of(role) : role.ToString())} » incompatible avec {on} ; rôles admis : {string.Join(", ", roles.Select(TriggerIds.Of))}.", p + ".role"));
+                        : $"rôle « {(Enum.IsDefined(typeof(TriggerRole), role) ? TriggerIds.Of(role) : role.ToString())} » incompatible avec {on} ; rôles admis : {string.Join(", ", roles.Concat(AllyAllowed(On) ? new[] { TriggerRole.Ally } : Array.Empty<TriggerRole>()).Select(TriggerIds.Of))}.", p + ".role"));
             }
             else if (roles.Count > 1)
                 errors.Add(new RuleViolation($"{on} admet plusieurs rôles ({string.Join(", ", roles.Select(TriggerIds.Of))}) : rôle obligatoire.", p + ".role"));
@@ -434,10 +458,10 @@ namespace EdS.Domain.Combat
             if (Effects.Count == 0 || Effects.Count > MaxEffects)
                 errors.Add(new RuleViolation($"de 1 à {MaxEffects} effets.", p + ".effects"));
             for (int k = 0; k < Effects.Count; k++)
-                ValidateEffect(Effects[k], $"{p}.effects[{k}]", topRank, ranked, errors);
+                ValidateEffect(Effects[k], $"{p}.effects[{k}]", topRank, ranked, singleRank, errors);
         }
 
-        private void ValidateEffect(TriggerEffect e, string p, int topRank, bool ranked, List<RuleViolation> errors)
+        private void ValidateEffect(TriggerEffect e, string p, int topRank, bool ranked, bool singleRank, List<RuleViolation> errors)
         {
             void Forbidden(bool present, string field)
             {
@@ -447,6 +471,11 @@ namespace EdS.Domain.Combat
             {
                 if (!ranked && value.PerRank != Fixed.Zero)
                     errors.Add(new RuleViolation("seul un talent a des valeurs par rang (perRank).", $"{p}.{field}"));
+                else if (singleRank && value.PerRank != Fixed.Zero)
+                {
+                    errors.Add(new RuleViolation("perRank sans effet sur un talent à un seul rang.", $"{p}.{field}"));
+                    return;
+                }
                 Fixed low, high;
                 try
                 {
@@ -512,10 +541,11 @@ namespace EdS.Domain.Combat
         /// <summary>
         /// Contrôles qui exigent le contexte d'un combat ou des règles (§4.1) : altérations du filtre et des effets présentes dans
         /// le catalogue et applicables (même règle que les compétences), recharge interne multiple du tick. <paramref name="tickMs"/>
-        /// invalide ou nul : contrôle de multiple omis.
+        /// invalide ou nul : contrôle de multiple omis. Sous-lot 8.4 (L8-D2) : une riposte automatique de zone (effet <c>strike</c> sur
+        /// <c>allEnemies</c>) a une recharge interne d'au moins <paramref name="areaStrikeMinCooldownMs"/> (<see cref="CombatRules.AreaStrikeMinCooldownMs"/>).
         /// </summary>
         public static void ValidateReferences(IReadOnlyList<TriggerDefinition> triggers, string path, StatusCatalog catalog, string guardBreakStatus,
-            int tickMs, List<RuleViolation> errors)
+            int tickMs, long areaStrikeMinCooldownMs, List<RuleViolation> errors)
         {
             bool tickValid = tickMs > 0 && 1000 % tickMs == 0;
             for (int i = 0; i < triggers.Count; i++)
@@ -524,6 +554,9 @@ namespace EdS.Domain.Combat
                 string p = $"{path}[{i}]";
                 if (tickValid && d.CooldownMs > 0 && d.CooldownMs % tickMs != 0)
                     errors.Add(new RuleViolation($"{d.CooldownMs} ms n'est pas un multiple de la durée du tick ({tickMs} ms).", p + ".cooldownMs"));
+                if (d.IsAreaStrike && d.CooldownMs < areaStrikeMinCooldownMs)
+                    errors.Add(new RuleViolation($"riposte automatique de zone (strike sur allEnemies) : recharge interne d'au moins {areaStrikeMinCooldownMs} ms " +
+                        $"(combat.triggers.areaStrikeMinCooldownMs), {d.CooldownMs} ms déclarés.", p + ".cooldownMs"));
                 if (d.Filter.Status is { } filtered && !catalog.TryGet(filtered, out _))
                     errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"altération inconnue « {filtered} ».", p + ".filter.status"));
                 for (int k = 0; k < d.Effects.Count; k++)

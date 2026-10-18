@@ -72,6 +72,7 @@ namespace EdS.Simulation.Engine
             {
                 w.BeginObject().Field("status", a.Status);
                 if (a.Coefficient is { } coefficient) w.Field("coefficient", coefficient);
+                if (ApplicationTargets.Of(a.Target) is { } target) w.Field("target", target);   // sous-lot 8.3 : cible propre seulement
                 w.EndObject();
             }
             w.EndArray();

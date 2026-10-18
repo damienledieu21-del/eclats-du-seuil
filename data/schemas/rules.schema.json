@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 5
+      "const": 9
     },
     "kind": {
       "const": "rules"
@@ -496,13 +496,37 @@
               ],
               "description": "Limites de simulation."
             },
+            "triggers": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "areaStrikeMinCooldownMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 86400000,
+                  "description": "Sous-lot 8.4 (L8-D2) : recharge interne minimale d'un déclencheur dont un effet strike vise allEnemies (riposte automatique de zone), multiple du tick ; 3000 livré, une valeur plus basse est une configuration de test."
+                }
+              },
+              "required": [
+                "areaStrikeMinCooldownMs"
+              ],
+              "description": "Déclencheurs (sous-lot 8.4)."
+            },
             "guard": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
                 "damageReduction": {
                   "type": "number",
-                  "description": "Réduction des dégâts bloquables après armure (0.6 = −60 %)."
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Réduction des dégâts bloquables après armure (0.6 = −60 %), au plus maxDamageReduction (vérifié par le programme)."
+                },
+                "maxDamageReduction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Plafond de la réduction de garde, modificateurs compris (0.75 ; sous-lot 8.1, paramètre des règles depuis le schéma 6)."
                 },
                 "upkeepPerSecond": {
                   "type": "integer",
@@ -523,11 +547,28 @@
               },
               "required": [
                 "damageReduction",
+                "maxDamageReduction",
                 "upkeepPerSecond",
                 "costPerBlock",
                 "breakStatus"
               ],
               "description": "Garde (A1)."
+            },
+            "damageTaken": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxReduction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Plafond de la réduction totale des dégâts subis (garde, modificateurs, renforcements), avant boucliers ; la parade est hors plafond (0.85 ; schéma 6)."
+                }
+              },
+              "required": [
+                "maxReduction"
+              ],
+              "description": "Dégâts subis (sous-lot 8.1, plafond B2)."
             },
             "parry": {
               "type": "object",
@@ -626,7 +667,9 @@
             "globalCooldownMs",
             "endurance",
             "limits",
+            "triggers",
             "guard",
+            "damageTaken",
             "parry",
             "rampartCharges",
             "resonance"
@@ -656,8 +699,13 @@
                   "dot",
                   "control",
                   "modifier",
-                  "immunity"
-                ]
+                  "immunity",
+                  "buff",
+                  "shield",
+                  "taunt",
+                  "protection"
+                ],
+                "description": "buff : renforcement porteur de modificateurs ; shield : bouclier d'absorption, cumul par source (sous-lot 8.2) ; taunt : provocation d'un assaillant ; protection : transfert d'une part des dégâts d'un allié à son protecteur (sous-lot 8.3), cumul par source."
               },
               "durationMs": {
                 "type": "integer",
@@ -741,6 +789,78 @@
                   "$ref": "#/$defs/trigger"
                 },
                 "description": "Déclencheurs (lot 7.3), au plus 8."
+              },
+              "modifiers": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "key",
+                    "add"
+                  ],
+                  "properties": {
+                    "key": {
+                      "enum": [
+                        "damageDealt",
+                        "damageTaken",
+                        "guard.upkeepPerSecond",
+                        "guard.noUpkeep"
+                      ]
+                    },
+                    "add": {
+                      "$ref": "#/$defs/rankedValue",
+                      "description": "Valeur du modificateur (perRank nul : une altération n'a pas de rang)."
+                    }
+                  },
+                  "allOf": [
+                    {
+                      "if": {
+                        "required": [
+                          "key"
+                        ],
+                        "properties": {
+                          "key": {
+                            "const": "guard.noUpkeep"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "add": {
+                            "oneOf": [
+                              {
+                                "const": 1
+                              },
+                              {
+                                "type": "object",
+                                "required": [
+                                  "base"
+                                ],
+                                "properties": {
+                                  "base": {
+                                    "const": 1
+                                  },
+                                  "perRank": {
+                                    "const": 0
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "description": "Renforcement (buff) seulement, au moins un : modificateurs actifs tant que l'instance existe, sans rang ni condition (sous-lot 8.2) ; guard.noUpkeep (drapeau, 1 exactement : garde sans entretien, sous-lot 8.4)."
+              },
+              "redirectRatio": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1,
+                "description": "Protection seulement, obligatoire : part des dégâts subis par le protégé transférée au protecteur, ]0, 1] (sous-lot 8.3)."
               }
             }
           }
@@ -805,9 +925,10 @@
           "enum": [
             "self",
             "source",
-            "target"
+            "target",
+            "ally"
           ],
-          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un."
+          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un. ally (sous-lot 8.3) : la cible de l'événement est un allié vivant du porteur, autre que lui ; jamais implicite, admis là où target l'est."
         },
         "filter": {
           "type": "object",
@@ -846,7 +967,11 @@
                 "dot",
                 "control",
                 "modifier",
-                "immunity"
+                "immunity",
+                "buff",
+                "shield",
+                "taunt",
+                "protection"
               ]
             },
             "resource": {

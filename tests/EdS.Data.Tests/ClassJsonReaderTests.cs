@@ -24,8 +24,9 @@ public class ClassJsonReaderTests
     {
         ClassLoadResult result = ClassJsonReader.ReadFile(BastionPath, Progression);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(4, result.Class!.SchemaVersion);
-        Assert.Equal("0.2.0-provisoire", result.Class.ContentVersion);
+        Assert.Equal(8, result.Class!.SchemaVersion);
+        // 0.3.0 : fiches complètes des compétences (sous-lot 8.4) ; 0.4.0 : talents, intermédiaires et passifs (sous-lot 8.5).
+        Assert.Equal("0.4.0-provisoire", result.Class.ContentVersion);
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Class.Fingerprint);
     }
 
@@ -36,21 +37,27 @@ public class ClassJsonReaderTests
         Assert.Equal("class.bastion", bastion.Id);
         Assert.Equal(new[] { "Rempart", "Contrecoup", "Gardien" }, bastion.Trees.Select(t => t.Name));
 
+        // Sous-lot 8.5 : les trois talents notables puis les trois intermédiaires de cinq rangs de chaque arbre (A2, noms de travail).
         void Real(int tree, params (string Name, int Rank, bool Major)[] expected) =>
-            Assert.Equal(expected, bastion.Trees[tree].Talents.Where(t => !t.IsPlaceholder).Select(t => (t.Name, t.MaxRank, t.IsMajor)));
-        Real(0, ("Garde stable", 3, false), ("Écho défensif", 1, false), ("Rempart éternel", 1, true));
-        Real(1, ("Riposte précise", 3, false), ("Fureur contenue", 2, false), ("Jugement du colosse", 1, true));
-        Real(2, ("Égide réactive", 3, false), ("Lien protecteur", 1, false), ("Serment du gardien", 1, true));
+            Assert.Equal(expected, bastion.Trees[tree].Talents.Select(t => (t.Name, t.MaxRank, t.IsMajor)));
+        Real(0, ("Garde stable", 3, false), ("Écho défensif", 1, false), ("Rempart éternel", 1, true),
+            ("Peau de fer", 5, false), ("Souffle du roc", 5, false), ("Poids du rempart", 5, false));
+        Real(1, ("Riposte précise", 3, false), ("Fureur contenue", 2, false), ("Jugement du colosse", 1, true),
+            ("Main lourde", 5, false), ("Élan", 5, false), ("Écho de guerre", 5, false));
+        Real(2, ("Égide réactive", 3, false), ("Lien protecteur", 1, false), ("Serment du gardien", 1, true),
+            ("Vigilance", 5, false), ("Présence", 5, false), ("Rempart vivant", 5, false));
     }
 
     [Fact]
-    public void Talents_et_passifs_de_test_clairement_identifies()
+    public void Plus_aucun_talent_ni_passif_de_test()
     {
-        var placeholders = Bastion.Trees.SelectMany(t => t.Talents).Where(t => t.IsPlaceholder).Select(t => t.Name)
-            .Concat(Bastion.Skills.Where(s => s.IsPlaceholder).Select(s => s.Name)).ToList();
-        Assert.NotEmpty(placeholders);
-        Assert.All(placeholders, name => Assert.StartsWith("[TEST]", name));
-        Assert.All(Bastion.Trees.SelectMany(t => t.Talents).Where(t => !t.IsPlaceholder), t => Assert.DoesNotContain("[TEST]", t.Name));
+        // Sous-lot 8.5 : plus aucun « [TEST] » ni marqueur placeholder dans le contenu livré ; les huit passifs du catalogue.
+        Assert.All(Bastion.Trees.SelectMany(t => t.Talents), t => Assert.False(t.IsPlaceholder, t.Name));
+        Assert.All(Bastion.Skills, s => Assert.False(s.IsPlaceholder, s.Name));
+        Assert.DoesNotContain("[TEST]", BastionJson);
+        Assert.DoesNotContain("test_", BastionJson);
+        Assert.Equal(new[] { "Endurance du roc", "Bouclier lourd", "Réserve de Charges", "Œil du duelliste", "Ferveur", "Posture de fer", "Sentinelle", "Ténacité" },
+            Bastion.Skills.Where(s => s.Kind == SkillKind.Passive).Select(s => s.Name));
     }
 
     [Fact]
@@ -127,7 +134,7 @@ public class ClassJsonReaderTests
 
     [Fact]
     public void Majeur_rendu_inaccessible() =>
-        // Sans le palier de test 3 (5 points), Rempart n'offre plus que 14 points avant son majeur.
+        // Sans Poids du rempart (5 points, sous-lot 8.5), Rempart n'offre plus que 14 points avant son majeur.
         AssertError(ReadMutated(r => DataOf(r)["trees"]![0]!["talents"]!.AsArray().RemoveAt(5)), "$.data.trees[0].talents[2]", ValidationCode.InvalidValue);
 
     [Fact]

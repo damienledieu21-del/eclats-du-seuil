@@ -28,11 +28,15 @@ namespace EdS.Domain.Builds
         /// <summary>Déclencheurs permanents (lot 7.3), actifs dès le rang 1 ; leurs valeurs peuvent dépendre du rang.</summary>
         public IReadOnlyList<Combat.TriggerDefinition> Triggers { get; }
 
+        /// <summary>Modificateurs (sous-lot 8.1, X1 et X2), actifs dès le rang 1 ; leurs valeurs dépendent du rang.</summary>
+        public IReadOnlyList<Combat.ModifierDefinition> Modifiers { get; }
+
         public TalentDefinition(string id, string name, int maxRank, bool isMajor = false,
             IReadOnlyList<TalentRequirement>? prerequisites = null, bool isPlaceholder = false,
-            IEnumerable<Combat.TriggerDefinition>? triggers = null)
+            IEnumerable<Combat.TriggerDefinition>? triggers = null, IEnumerable<Combat.ModifierDefinition>? modifiers = null)
         {
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
+            Modifiers = Frozen.ListOrEmpty(modifiers, nameof(modifiers));
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));
             MaxRank = maxRank;

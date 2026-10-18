@@ -1,11 +1,13 @@
 ﻿using System.Globalization;
 using System.Text.Json;
 using EdS.Data;
+using EdS.Data.Builds;
 using EdS.Data.Classes;
 using EdS.Data.Json;
 using EdS.Data.Rules;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using EdS.Simulation.Randomness;
@@ -103,6 +105,33 @@ static int RunValidate(ReadOnlySpan<string> options)
         Console.WriteLine($"  commandes      {setup.Commands.Count}");
         Console.WriteLine($"  durée          {setup.DurationMs} ms, graine {setup.Seed}");
         Console.WriteLine($"  file           {setup.ComputeQueueBound().Describe(setup.Combat.MaxPendingEvents)}");
+        return 0;
+    }
+
+    if (kind == BuildSetValidator.Kind)
+    {
+        // Sous-lot 8.5 : builds de référence, validés contre les règles et les classes de data/v0 (sans ses propres builds).
+        GameDataLoadResult loadedData = GameDataLoader.Load(DefaultDataDirectory(), builds: false);
+        if (loadedData.Data is not { } data)
+        {
+            foreach (var (file, report) in loadedData.Failures) Fail(file, report);
+            return 1;
+        }
+        BuildSetLoadResult builds = BuildSetJsonReader.ReadFile(path, data);
+        if (builds.BuildSet is not { } set) return Fail(path, builds.Report);
+        Console.WriteLine($"{path} : valide");
+        Console.WriteLine($"  schemaVersion  {set.SchemaVersion}");
+        Console.WriteLine($"  contentVersion {set.ContentVersion}");
+        data.TryGetClass(set.ClassId, out LoadedClass buildClass);
+        Console.WriteLine($"  classe         {buildClass.Definition.Name} ({set.ClassId}), {set.Builds.Count} builds");
+        foreach (ReferenceBuild b in set.Builds)
+        {
+            string trees = string.Join(", ", buildClass.Definition.Trees.Select(t => $"{t.Name} {BuildValidator.PointsInTree(b.Build, t)}"));
+            string major = buildClass.Definition.Trees.SelectMany(t => t.Talents).Where(t => t.IsMajor && b.Build.TalentRanks.TryGetValue(t.Id, out int rank) && rank > 0)
+                .Select(t => t.Name).FirstOrDefault() ?? "aucun majeur";
+            Console.WriteLine($"  {b.Id,-26} {b.Name} ({BuildSetValidator.Id(b.Category)}), niveau {b.Build.Level} : {trees} ; {major} ; " +
+                $"{b.Build.ActiveSkills.Count} actives, {(b.Build.Ultimate is null ? "sans ultime" : "ultime")}, {b.Build.PassiveSkills.Count} passifs");
+        }
         return 0;
     }
 
@@ -272,7 +301,7 @@ static void PrintHelp()
     Console.WriteLine("  eds rng [--seed N] [--stream N] [--count N]   Affiche les premiers tirages PCG32");
     Console.WriteLine("  eds validate [fichier.json] [--rules R]        Valide un fichier de règles ou de classe (défaut : data/v0/rules.json) ;");
     Console.WriteLine("                                                 une classe est vérifiée avec la progression de R (défaut : data/v0/rules.json) ;");
-    Console.WriteLine("                                                 un scénario avec les données de data/v0");
+    Console.WriteLine("                                                 un scénario ou des builds de référence avec les données de data/v0");
     Console.WriteLine("  eds simulate scénario.json [--data D] [--out J] Simule un combat ; journal JSON Lines vers J (défaut : sortie standard)");
     Console.WriteLine("                                                  Code de sortie 2 si la simulation est interrompue (statistiques de diagnostic)");
     Console.WriteLine("  eds replay journal.jsonl [--data D]            Vérifie les empreintes puis rejoue et compare octet par octet");

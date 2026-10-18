@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "kind": {
       "const": "scenario"
@@ -349,6 +349,14 @@
               "coefficient": {
                 "type": "number",
                 "description": "DOT seulement, obligatoire : coefficient de la puissance de la source par tick, [0, 100]."
+              },
+              "target": {
+                "enum": [
+                  "self",
+                  "allAllies",
+                  "allEnemies"
+                ],
+                "description": "Sous-lot 8.3 : cible propre de l'application, relative à l'acteur (lui-même, ses alliés vivants lui compris, ses ennemis vivants), appliquée une fois après les impacts ; absente : chaque cible de l'action."
               }
             }
           }
@@ -404,9 +412,10 @@
           "enum": [
             "self",
             "source",
-            "target"
+            "target",
+            "ally"
           ],
-          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un."
+          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un. ally (sous-lot 8.3) : la cible de l'événement est un allié vivant du porteur, autre que lui ; jamais implicite, admis là où target l'est."
         },
         "filter": {
           "type": "object",
@@ -445,7 +454,11 @@
                 "dot",
                 "control",
                 "modifier",
-                "immunity"
+                "immunity",
+                "buff",
+                "shield",
+                "taunt",
+                "protection"
               ]
             },
             "resource": {

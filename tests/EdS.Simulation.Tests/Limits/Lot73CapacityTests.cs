@@ -56,7 +56,7 @@ public class Lot73CapacityTests(ITestOutputHelper output)
     private static CombatSetup Tree(int k) => Setup(new[] { Cmd(0, Frappe, "a0", "b0") },
         Enumerable.Range(0, k).Select(i => (CombatantSetup)Bearer($"a{i}", "rouge", Riposte(TriggerTarget.AllEnemies)))
             .Concat(Enumerable.Range(0, k).Select(i => Bearer($"b{i}", "bleu", Riposte(TriggerTarget.AllEnemies)))),
-        durationMs: 1000, rules: NoUpkeep);
+        durationMs: 1000, rules: NoUpkeepAreaStrikes);
 
     /// <summary>Mesures figées : fin, tick de fin, pics (travail, lignes, file), réactions exécutées, suppressions, profondeur maximale.</summary>
     private static void AssertMeasured(Measured m, CombatEndReason end, long tick, long work, long events, long pending, int reactions, int suppressed, int depth)
@@ -72,8 +72,10 @@ public class Lot73CapacityTests(ITestOutputHelper output)
     [InlineData(2, CombatEndReason.DurationReached, 19, 113, 25, 5, 7, 8)]
     [InlineData(3, CombatEndReason.DurationReached, 19, 446, 114, 37, 22, 45)]
     [InlineData(4, CombatEndReason.DurationReached, 19, 1359, 375, 145, 53, 160)]
-    // 6 contre 6 : l'explosion est arrêtée par le budget de lignes au tick 0, proprement.
-    [InlineData(6, CombatEndReason.Aborted, 0, 3621, 969, 741, 155, 36)]
+    // 6 contre 6 : l'explosion est arrêtée par le budget de lignes au tick 0, proprement. Sous-lot 8.5 : le catalogue livré contient une
+    // protection (Lien protecteur) ; chaque impact réserve une ligne de transfert possible et l'arrêt survient un peu plus tôt
+    // (3 621, 969, 741, 155 réactions avant).
+    [InlineData(6, CombatEndReason.Aborted, 0, 3602, 963, 736, 154, 36)]
     public void Arbre_maximal_de_ripostes_de_zone(int k, CombatEndReason end, long tick, long work, long events, long pending, int reactions, int suppressed)
     {
         Measured m = Measure($"arbre {k} contre {k}", Tree(k));
@@ -98,7 +100,7 @@ public class Lot73CapacityTests(ITestOutputHelper output)
         Enumerable.Range(0, 32).Select(i => (CombatantSetup)Bearer($"bastion_{i:00}", "joueurs", Riposte(target)))
             .Concat(Enumerable.Range(0, 32).Select(i => new AssailantSetup($"assaillant_{i:00}", "cibles", Fixed.Zero, Fixed.Zero, $"bastion_{i:00}", 0, 50,
                 new[] { Blow(1) }, triggers: new[] { Riposte(target) }))),
-        durationMs: 30_000, rules: NoUpkeep);
+        durationMs: 30_000, rules: target == TriggerTarget.AllEnemies ? NoUpkeepAreaStrikes : NoUpkeep);
 
     [Fact]
     public void Soixante_quatre_porteurs_ripostes_ciblees()
@@ -111,9 +113,10 @@ public class Lot73CapacityTests(ITestOutputHelper output)
     [Fact]
     public void Soixante_quatre_porteurs_ripostes_de_zone()
     {
-        // 32 ripostes de zone sur 32 cibles dès le premier tick : arrêt par le budget de lignes.
+        // 32 ripostes de zone sur 32 cibles dès le premier tick : arrêt par le budget de lignes. Sous-lot 8.5 : ligne de transfert
+        // réservée par impact (catalogue avec protection), arrêt un peu plus tôt (2 616, 832, 808, 24 réactions avant).
         Measured m = Measure("64 porteurs, ripostes de zone", SixtyFour(TriggerTarget.AllEnemies));
-        AssertMeasured(m, CombatEndReason.Aborted, 0, 2616, 832, 808, 24, 0, 1);
+        AssertMeasured(m, CombatEndReason.Aborted, 0, 2519, 800, 777, 23, 0, 1);
         Assert.Equal("eventBudgetExceeded", m.Result.AbortReason);
     }
 }

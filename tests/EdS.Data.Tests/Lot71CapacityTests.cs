@@ -29,18 +29,25 @@ public class Lot71CapacityTests(ITestOutputHelper output)
         return (result, log);
     }
 
+    /// <summary>
+    /// Scénarios synthétiques : sous-lot 8.5, contenu figé du 8.4 (Bastion sans déclencheur ni modificateur), pour que ces mesures
+    /// restent celles d'un combat sans déclencheur (les mesures avec déclencheurs sont dans Lot73CapacityTests).
+    /// </summary>
     private static CombatSetup Load(JsonObject root)
     {
-        ScenarioLoadResult loaded = ScenarioJsonReader.Read(Lot71Files.ToJson(root), ShippedData);
+        ScenarioLoadResult loaded = ScenarioJsonReader.Read(Lot71Files.ToJson(root), FrozenData);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         return loaded.Setup!;
     }
 
     [Theory]
-    [InlineData("mannequin", 14, 4, 18)]
-    [InlineData("entrainement_garde_parade", 18, 7, 19)]   // correctif 7.2 : 20 → 18, la Fragilité parée ne s'applique plus
-    [InlineData("entrainement_rupture", 20, 7, 7)]
-    [InlineData("entrainement_alterations", 26, 8, 14)]
+    // Sous-lot 8.4 : fiches complètes. Mannequin : la Provocation se lance (gain de Résonance, refus notApplicable) ; garde et parade :
+    // l'étourdissement du Heurt de bouclier (pose et immunité).
+    // Sous-lot 8.5 : talents et passifs réels, déclencheurs compris (réactions et notifications réservées au tick).
+    [InlineData("mannequin", 19, 5, 20)]
+    [InlineData("entrainement_garde_parade", 38, 10, 21)]   // correctif 7.2 : 20 → 18, la Fragilité parée ne s'applique plus ; 8.4 : 21 ; 8.5 : 38
+    [InlineData("entrainement_rupture", 37, 9, 9)]
+    [InlineData("entrainement_alterations", 39, 9, 17)]
     public void Pics_des_scenarios_de_reference(string name, long work, long events, long pending)
     {
         var (result, _) = Measure(name, ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!);
@@ -73,7 +80,7 @@ public class Lot71CapacityTests(ITestOutputHelper output)
     /// </summary>
     private static JsonObject CommandsAtCap()
     {
-        JsonObject root = Shipped();
+        JsonObject root = FrozenMannequin();
         var combatants = new JsonArray();
         for (int i = 0; i < 63; i++) combatants.Add(Bastion(root, $"bastion_{i:00}", "joueurs"));
         combatants.Add(DataOf(root)["combatants"]![1]!.DeepClone());
@@ -97,7 +104,7 @@ public class Lot71CapacityTests(ITestOutputHelper output)
     /// <summary>32 personnages en garde contre 32 assaillants frappant à chaque tick, de zone ou non, avec ou sans Fragilité.</summary>
     private static JsonObject AssailantsAtCap(string targeting, bool fragility)
     {
-        JsonObject root = Shipped();
+        JsonObject root = FrozenMannequin();
         var combatants = new JsonArray();
         var commands = new JsonArray();
         for (int i = 0; i < 32; i++)
@@ -173,7 +180,7 @@ public class Lot71CapacityTests(ITestOutputHelper output)
     /// </summary>
     private static JsonObject StatusesAtCap(int assailants, string targeting, params JsonArray[] attacks)
     {
-        JsonObject root = Shipped();
+        JsonObject root = FrozenMannequin();
         var combatants = new JsonArray();
         for (int i = 0; i < 32; i++)
         {

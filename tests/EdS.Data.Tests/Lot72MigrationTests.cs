@@ -24,7 +24,9 @@ public class Lot72MigrationTests
     private static IReadOnlyList<string> Current(string name)
     {
         var log = new MemoryCombatLog();
-        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!, log);
+        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay. Sous-lot
+        // 8.5 : scénarios figés du 8.4 (passifs « [TEST] »).
+        CombatEngine.Run(ScenarioJsonReader.ReadFile(FrozenScenarioPath(name), HistoricalData).Setup!, log);
         return log.Lines;
     }
 
@@ -85,7 +87,7 @@ public class Lot72MigrationTests
         int stateLines = 0;
         for (int i = 1; i < compared; i++)
         {
-            JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = JsonNode.Parse(after[i])!.AsObject();
+            JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = EdS.TestSupport.Lot8LogFields.RemoveAdded(JsonNode.Parse(after[i])!.AsObject());
             string kind = newLine["event"]!.GetValue<string>();
             Assert.DoesNotContain(kind, new[] { "stateBlocked", "dotDamage" });
             // Lot 7.3 : champs de provenance du format 4, comparés à part (Lot73MigrationTests).

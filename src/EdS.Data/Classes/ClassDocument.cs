@@ -45,6 +45,9 @@ namespace EdS.Data.Classes
 
         /// <summary>Déclencheurs (format 4, lot 7.3) ; facultatifs, null si absents.</summary>
         public List<Triggers.TriggerData?>? Triggers { get; set; }
+
+        /// <summary>Modificateurs (format 5, sous-lot 8.1) ; facultatifs, null si absents.</summary>
+        public List<Modifiers.ModifierData?>? Modifiers { get; set; }
     }
 
     public sealed class SkillData
@@ -64,11 +67,14 @@ namespace EdS.Data.Classes
 
         /// <summary>Déclencheurs actifs tant que la compétence est équipée (format 4, lot 7.3) ; facultatifs.</summary>
         public List<Triggers.TriggerData?>? Triggers { get; set; }
+
+        /// <summary>Modificateurs d'une compétence passive (format 5, sous-lot 8.1) ; facultatifs, null si absents.</summary>
+        public List<Modifiers.ModifierData?>? Modifiers { get; set; }
     }
 
     public sealed class SkillCombatData
     {
-        /// <summary>« physique », « agile » ou « magique ».</summary>
+        /// <summary>« physique », « agile » ou « magique ». Sous-lot 8.3 : absent avec damageType et coefficient (compétence de soutien).</summary>
         public string? PowerType { get; set; }
 
         /// <summary>« physique » ou « magique ».</summary>
@@ -78,12 +84,22 @@ namespace EdS.Data.Classes
         public int? EnduranceCost { get; set; }
         public long? CooldownMs { get; set; }
 
-        /// <summary>« enemy » ou « allEnemies ».</summary>
+        /// <summary>« enemy », « allEnemies » ; sous-lot 8.3 : « self », « ally », « allAllies » (soutien).</summary>
         public string? Targeting { get; set; }
 
         public bool? Unblockable { get; set; }
         public int? RampartChargeCost { get; set; }
         public int? RampartChargeGain { get; set; }
+
+        /// <summary>Sous-lot 8.4 (X8), facultatif : dépense de toutes les Charges détenues (absent = faux).</summary>
+        public bool? RampartChargeSpendAll { get; set; }
+
+        /// <summary>Sous-lot 8.4 (X8), facultatif : ajout au coefficient par Charge dépensée (absent = 0).</summary>
+        public Fixed? CoefficientPerRampartCharge { get; set; }
+
+        /// <summary>Sous-lot 8.4, facultatif : Résonance gagnée au lancement (absent = 0).</summary>
+        public int? ResonanceGain { get; set; }
+
         public bool? Provisional { get; set; }
 
         /// <summary>Altérations appliquées à chaque cible touchée (schéma 3, lot 7.2) ; liste éventuellement vide.</summary>
@@ -95,8 +111,11 @@ namespace EdS.Data.Classes
     {
         public string? Status { get; set; }
 
-        /// <summary>DOT seulement ; absent pour les autres catégories.</summary>
+        /// <summary>DOT et bouclier seulement ; absent pour les autres catégories.</summary>
         public Fixed? Coefficient { get; set; }
+
+        /// <summary>Sous-lot 8.3 (X5) : cible propre (« self », « allAllies », « allEnemies ») ; absent = les cibles de l'action.</summary>
+        public string? Target { get; set; }
     }
 
     public sealed class RequirementData

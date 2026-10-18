@@ -88,6 +88,7 @@ public static class ClassJsonReader
             ["placeholder"] = (v, p) => talent.Placeholder = Bool(input, v, p),
             ["prerequisites"] = (v, p) => talent.Prerequisites = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
             ["triggers"] = (v, p) => talent.Triggers = TriggerJsonReader.ReadList(input, v, p),
+            ["modifiers"] = (v, p) => talent.Modifiers = ModifierJsonReader.ReadList(input, v, p),
         });
         return ok ? talent : null;
     }
@@ -105,6 +106,7 @@ public static class ClassJsonReader
             ["talentRequirements"] = (v, p) => skill.TalentRequirements = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
             ["combat"] = (v, p) => skill.Combat = ReadCombat(input, v, p),
             ["triggers"] = (v, p) => skill.Triggers = TriggerJsonReader.ReadList(input, v, p),
+            ["modifiers"] = (v, p) => skill.Modifiers = ModifierJsonReader.ReadList(input, v, p),
         });
         return ok ? skill : null;
     }
@@ -123,6 +125,9 @@ public static class ClassJsonReader
             ["unblockable"] = (v, p) => combat.Unblockable = Bool(input, v, p),
             ["rampartChargeCost"] = (v, p) => combat.RampartChargeCost = Int(input, v, p),
             ["rampartChargeGain"] = (v, p) => combat.RampartChargeGain = Int(input, v, p),
+            ["rampartChargeSpendAll"] = (v, p) => combat.RampartChargeSpendAll = Bool(input, v, p),
+            ["coefficientPerRampartCharge"] = (v, p) => combat.CoefficientPerRampartCharge = input.TryReadDecimal(v, p, out Fixed k) ? k : null,
+            ["resonanceGain"] = (v, p) => combat.ResonanceGain = Int(input, v, p),
             ["provisional"] = (v, p) => combat.Provisional = Bool(input, v, p),
             ["applies"] = (v, p) => combat.Applies = ReadList(input, v, p, (e, ip) => ReadApplication(input, e, ip)),
         });
@@ -137,6 +142,7 @@ public static class ClassJsonReader
         {
             ["status"] = (v, p) => application.Status = input.Text(v, p),
             ["coefficient"] = (v, p) => application.Coefficient = input.Decimal(v, p),
+            ["target"] = (v, p) => application.Target = input.Text(v, p),
         });
         return ok ? application : null;
     }

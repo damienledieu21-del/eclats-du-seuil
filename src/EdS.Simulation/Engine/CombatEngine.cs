@@ -29,7 +29,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.9.1";
+        public const string Version = "0.14.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -40,10 +40,21 @@ namespace EdS.Simulation.Engine
         /// <c>applies</c> (liste des altérations) au lieu de <c>appliesFragility</c> ; garde interrompue (<c>guardStopped</c>, raison
         /// <c>interrupted</c>) ; motifs de refus et de saut issus des altérations. 4 (lot 7.3) : chaque ligne de jeu porte <c>eid</c>
         /// (identité de l'effet) et <c>cause</c> (eid du parent, null pour l'effet racine) ; l'effet racine porte <c>root</c> ; un effet
-        /// de profondeur ≥ 1 porte <c>depth</c> et <c>trigger</c>. Les diagnostics n'en portent aucun. Un journal d'un autre format
-        /// est refusé au rejeu.
+        /// de profondeur ≥ 1 porte <c>depth</c> et <c>trigger</c>. Les diagnostics n'en portent aucun. 5 (sous-lot 8.1) : la ligne
+        /// <c>combatant</c> porte <c>statusResistance</c> et <c>rules</c> (règles effectives d'un personnage, null sinon) ;
+        /// <c>guardBroken</c> porte <c>rampartChargesSpent</c>. 6 (sous-lot 8.2) : <c>damage</c> et <c>dotDamage</c> portent
+        /// <c>absorbed</c> et <c>absorbedBy</c> (boucliers consommés) ; <c>stateApplied</c> d'un bouclier porte <c>absorb</c> ;
+        /// <c>stateRemoved</c> peut avoir la raison <c>depleted</c> ; <c>stateBlocked</c> la raison <c>empty</c> ; <c>combatantSummary</c>
+        /// porte <c>damageAbsorbed</c> ; les règles effectives (<c>rules</c>) portent <c>shield.potencyDealt</c>. 7 (sous-lot 8.3) :
+        /// <c>damage</c> et <c>dotDamage</c> portent <c>transferred</c> ; ligne <c>damageTransferred</c> (part transférée au protecteur,
+        /// non notifiée) ; <c>stateApplied</c> d'une protection porte <c>redirectRatio</c> ; raisons <c>notApplicable</c> (stateBlocked) et
+        /// <c>sourceDied</c> (stateRemoved) ; <c>combatantSummary</c> porte <c>damageTransferred</c> et <c>damageRedirected</c> ; les règles
+        /// effectives portent <c>protection.redirectRatio</c> et <c>protection.redirectThroughGuard</c>. 8 (sous-lot 8.4) : les règles
+        /// effectives portent <c>guard.noUpkeep</c> ; <c>rampartChargeCost</c> de <c>skillCast</c> donne les Charges réellement dépensées
+        /// (toutes les Charges détenues pour une compétence qui les dépense toutes, comme Contrecoup). Un journal d'un autre format est
+        /// refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 4;
+        public const int LogFormatVersion = 8;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -56,6 +67,9 @@ namespace EdS.Simulation.Engine
             public CharacterSetup? Character;
             public AssailantSetup? Assailant;
             public DerivedStats Stats = null!;
+
+            /// <summary>Sous-lot 8.1 : règles effectives (règles de base et modificateurs X1, évaluation des X2) ; neutres hors personnage.</summary>
+            public CombatantRules Rules = null!;
             public readonly Dictionary<string, DerivedStats> AttackStats = new Dictionary<string, DerivedStats>(StringComparer.Ordinal);
             public int NextAttack;
             public HashSet<string> Castable = new HashSet<string>(StringComparer.Ordinal);
@@ -73,8 +87,13 @@ namespace EdS.Simulation.Engine
 
             public bool Guarding;
 
-            /// <summary>Ticks réellement gardés depuis le début du combat (garde active en phase 4), toutes gardes confondues.</summary>
-            public long GuardedTicks;
+            /// <summary>
+            /// Entretien dû depuis le début du combat, en points entiers (M01), et son reliquat en unités brutes × ms (moins de
+            /// 1000 × échelle). Sous-lot 8.2 : cumulé tick par tick au taux du moment (renforcements compris) ; à taux constant, égal à
+            /// ⌊ coût/s × ticks gardés × durée du tick / 1000 ⌋ comme avant.
+            /// </summary>
+            public long GuardUpkeepDue;
+            public long GuardUpkeepRemainder;
 
             /// <summary>Entretien déjà payé depuis le début du combat : le reliquat fractionnaire n'est jamais perdu (M01).</summary>
             public long GuardUpkeepPaid;
@@ -163,6 +182,18 @@ namespace EdS.Simulation.Engine
             /// <summary>DOT : tick du prochain tick de dégâts (cadence d'origine, jamais décalée par un renouvellement, D4).</summary>
             public long NextTick;
 
+            /// <summary>Sous-lot 8.2 (X4), bouclier : valeur restante ; épuisé à 0, retiré en fin de tick (<c>depleted</c>).</summary>
+            public long Absorb;
+
+            /// <summary>Sous-lot 8.2 : provenance de l'effet qui a épuisé le bouclier (cause de son retrait) ; null tant qu'il reste une valeur.</summary>
+            public Provenance? DepletedBy;
+
+            /// <summary>
+            /// Sous-lot 8.3 : rang de la dernière application acceptée (nouvelle ou renouvellement), unique dans le combat : la provocation
+            /// et la protection les plus récentes l'emportent.
+            /// </summary>
+            public long AppliedSeq;
+
             /// <summary>
             /// Lot 7.3 (A1, A2) : provenance de la dernière application acceptée, cause = son <c>stateApplied</c>, avec l'instance et la
             /// génération courantes. Un renouvellement la remplace ; un refus n'y touche pas. Ticks de DOT, expiration et état accordé
@@ -235,6 +266,9 @@ namespace EdS.Simulation.Engine
             /// <summary>Faux pour une action qui dépense de la Résonance : pas de génération récursive (A5).</summary>
             public bool GeneratesResonance = true;
 
+            /// <summary>Sous-lot 8.4 (X8) : Charges dépensées au lancement, pour le coefficient par Charge de la compétence.</summary>
+            public int ChargesSpent;
+
             /// <summary>Lot 7.3 : frappe d'une réaction (effet <c>strike</c>), au rang du déclencheur ; ni compétence ni attaque.</summary>
             public TriggerEffect? Strike;
             public int StrikeRank = 1;
@@ -242,6 +276,12 @@ namespace EdS.Simulation.Engine
             public SkillTargeting Targeting => Combat?.Targeting ?? Attack?.Targeting ?? SkillTargeting.Enemy;
             public bool Unblockable => Combat?.Unblockable ?? Attack?.Unblockable ?? Strike!.Unblockable;
             public IReadOnlyList<StatusApplication> Applies => Combat?.Applies ?? Attack?.Applies ?? (IReadOnlyList<StatusApplication>)Array.Empty<StatusApplication>();
+
+            /// <summary>Sous-lot 8.3 (X5) : l'action inflige-t-elle des dégâts directs ? Faux pour une compétence de soutien.</summary>
+            public bool Damaging => Combat?.HasDamage ?? true;
+
+            /// <summary>Sous-lot 8.3 : applications portées sur chaque cible de l'action (sans cible propre).</summary>
+            public IEnumerable<StatusApplication> TargetApplies => Applies.Where(a => a.Target == ApplicationTarget.Targets);
             public DamageType DamageType => Combat?.DamageType ?? Attack?.DamageType ?? Strike!.DamageType!.Value;
         }
 
@@ -303,13 +343,16 @@ namespace EdS.Simulation.Engine
         private readonly long _durationTicks;
         private readonly long _globalCooldownTicks;
         private readonly long _regenDelayTicks;
-        private readonly long _parryWindowTicks;
-        private readonly long _parryRecoveryTicks;
+        private readonly CombatantRules _baseRules;
         private readonly StatusCatalog _statuses;
         private readonly Dictionary<string, int> _statusOrder = new Dictionary<string, int>(StringComparer.Ordinal);
         private long _sequence;
         private long _lastEid;
         private long _lastStatusInstance;
+        private long _lastApplication;
+
+        /// <summary>Sous-lot 8.3 : le catalogue contient-il une protection ? (majorant des frappes de réaction, ligne de transfert)</summary>
+        private readonly bool _hasProtections;
         private long _eventsThisTick;
         private long _workThisTick;
         private bool _countEvents;
@@ -355,10 +398,10 @@ namespace EdS.Simulation.Engine
             _durationTicks = setup.DurationMs / _tickMs;
             _globalCooldownTicks = _rules.GlobalCooldownMs / _tickMs;
             _regenDelayTicks = _rules.EnduranceRegenDelayMs / _tickMs;
-            _parryWindowTicks = _rules.ParryWindowMs / _tickMs;
-            _parryRecoveryTicks = _rules.ParryFailureRecoveryMs / _tickMs;
+            _baseRules = CombatantRules.For(_rules, ModifierSet.Empty);
             _statuses = _rules.Statuses;
             for (int i = 0; i < _statuses.Definitions.Count; i++) _statusOrder[_statuses.Definitions[i].Id] = i;
+            _hasProtections = _statuses.Definitions.Any(d => d.IsProtection);
 
             _fighters = setup.Combatants.Select(CreateFighter).ToList();
             _fightersById = _fighters.OrderBy(f => f.Id, StringComparer.Ordinal).ToList();
@@ -395,7 +438,10 @@ namespace EdS.Simulation.Engine
             {
                 case CharacterSetup character:
                     f.Character = character;
-                    f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build);
+                    // Sous-lot 8.1 : mêmes fonctions que la validation (précontrôle) : modificateurs agrégés, statistiques, règles.
+                    ModifierSet modifiers = ModifierSet.For(character);
+                    f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build, modifiers);
+                    f.Rules = CombatantRules.For(_rules, modifiers);
                     f.MaxHealth = f.Stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                     f.Health = f.MaxHealth;
                     f.MaxEndurance = f.Stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
@@ -404,10 +450,12 @@ namespace EdS.Simulation.Engine
                     if (character.Build.Ultimate != null) f.Castable.Add(character.Build.Ultimate);
                     break;
                 case DummySetup dummy:
+                    f.Rules = _baseRules;
                     f.Stats = CombatantStats.ForDefenses(_setup.Stats, dummy.Armor, dummy.MagicResistance, dummy.StatusResistance);
                     break;
                 case AssailantSetup assailant:
                     f.Assailant = assailant;
+                    f.Rules = _baseRules;
                     f.Stats = CombatantStats.ForDefenses(_setup.Stats, assailant.Armor, assailant.MagicResistance, assailant.StatusResistance);
                     foreach (AssailantAttack attack in assailant.Attacks)
                         f.AttackStats[attack.Id] = CombatantStats.ForAssailantAttack(_setup.Stats, attack.RawDamage);
@@ -508,7 +556,7 @@ namespace EdS.Simulation.Engine
             long? recoveryUntil = null;
             if (!f.ParrySucceeded)
             {
-                f.ParryRecoveryUntilTick = checked(tick + _parryRecoveryTicks);
+                f.ParryRecoveryUntilTick = checked(tick + f.Rules.ParryFailureRecoveryMs / _tickMs);
                 recoveryUntil = f.ParryRecoveryUntilTick;
                 f.Result.FailedParries++;
             }
@@ -566,7 +614,8 @@ namespace EdS.Simulation.Engine
                     var (skill, target, resonanceCost) = CastContext(item, actor);
                     if (CheckSkill(tick, actor, skill, target, resonanceCost) != null) return Cost.Line;
                     SkillCombatDefinition combat = skill!.Combat!;
-                    return Cost.Enqueue.If(combat.CooldownMs / _tickMs > 0) + Observable(TriggerEvent.SkillCast) + GainCost(actor, combat.RampartChargeGain);
+                    return Cost.Enqueue.If(actor.Rules.CooldownMs(skill, combat) / _tickMs > 0) + Observable(TriggerEvent.SkillCast) + GainCost(actor, combat.RampartChargeGain)
+                        + GainCost(actor, combat.ResonanceGain);   // sous-lot 8.4
             }
         }
 
@@ -578,7 +627,7 @@ namespace EdS.Simulation.Engine
         {
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
-            Fighter? target = attack.Targeting == SkillTargeting.Enemy ? _byId[setup.Target!] : null;
+            Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
             bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || target is { IsDead: true };
             return Cost.Enqueue.If(checked(tick + setup.IntervalMs / _tickMs) < _durationTicks) + (skipped ? Cost.Line : Observable(TriggerEvent.SkillCast));
         }
@@ -618,7 +667,7 @@ namespace EdS.Simulation.Engine
                     if (Reject(tick, item, actor, CheckParry(tick, actor))) return null;
                     actor.ParryOpen = true;
                     actor.ParryStartTick = tick;
-                    actor.ParryEndTick = checked(tick + _parryWindowTicks);
+                    actor.ParryEndTick = checked(tick + actor.Rules.ParryWindowMs / _tickMs);   // ≥ 1 tick (CombatantRules)
                     actor.ParrySucceeded = false;
                     var end = new ParryWindowEnd { Fighter = actor, StartTick = tick };
                     Schedule(actor.ParryEndTick, CombatPhase.Expirations, end);
@@ -642,9 +691,11 @@ namespace EdS.Simulation.Engine
             SkillCombatDefinition combat = skill!.Combat!;
             if (combat.EnduranceCost > 0) SpendEndurance(actor, combat.EnduranceCost, tick);
             actor.Resonance -= resonanceCost;
-            actor.RampartCharges -= combat.RampartChargeCost;
+            // Sous-lot 8.4 (X8) : toutes les Charges détenues (au moins le coût, vérifié par CheckSkill) ou exactement le coût.
+            int chargesSpent = combat.RampartChargesSpent(actor.RampartCharges);
+            actor.RampartCharges -= chargesSpent;
             actor.GlobalCooldownReadyTick = checked(tick + _globalCooldownTicks);
-            long cooldownTicks = combat.CooldownMs / _tickMs;
+            long cooldownTicks = actor.Rules.CooldownMs(skill, combat) / _tickMs;
             long readyTick = checked(tick + cooldownTicks);
             if (cooldownTicks > 0)
             {
@@ -656,11 +707,13 @@ namespace EdS.Simulation.Engine
                 .Field("actor", actor.Id).Field("skill", skill.Id).Field("target", command.Target).Field("command", item.Index)
                 .Field("enduranceCost", combat.EnduranceCost).Field("endurance", actor.Endurance)
                 .Field("resonanceCost", resonanceCost).Field("resonance", actor.Resonance)
-                .Field("rampartChargeCost", combat.RampartChargeCost).Field("rampartCharges", actor.RampartCharges)
+                .Field("rampartChargeCost", chargesSpent).Field("rampartCharges", actor.RampartCharges)
                 .Field("cooldownReadyTick", readyTick).Field("globalCooldownReadyTick", actor.GlobalCooldownReadyTick));
             Provenance consequences = root.CausedBy(cast);
             Gain(tick, CombatPhase.Commands, actor, RampartCharges, combat.RampartChargeGain, "skill", consequences);
-            return new PendingAction { Actor = actor, Skill = skill, Combat = combat, Target = target, GeneratesResonance = resonanceCost == 0, Origin = consequences };
+            Gain(tick, CombatPhase.Commands, actor, Resonance, combat.ResonanceGain, "skill", consequences);   // sous-lot 8.4 (Provocation)
+            return new PendingAction { Actor = actor, Skill = skill, Combat = combat, Target = target, GeneratesResonance = resonanceCost == 0, Origin = consequences,
+                ChargesSpent = chargesSpent };
         }
 
         private bool Reject(long tick, CommandItem item, Fighter actor, string? reason)
@@ -728,7 +781,13 @@ namespace EdS.Simulation.Engine
                     if (target.Team == actor.Team) return "targetNotEnemy";
                     if (target.IsDead) return "targetDead";
                     break;
-                case SkillTargeting.AllEnemies:
+                // Sous-lot 8.3 (X5) : un allié désigné, le lanceur compris ; un hostile ou un mort est refusé.
+                case SkillTargeting.Ally:
+                    if (target is null) return "targetRequired";
+                    if (target.Team != actor.Team) return "targetNotAlly";
+                    if (target.IsDead) return "targetDead";
+                    break;
+                default:   // tous les ennemis, soi, tous les alliés : aucune cible désignée
                     if (target != null) return "targetNotAllowed";
                     break;
             }
@@ -748,7 +807,7 @@ namespace EdS.Simulation.Engine
             long next = checked(tick + setup.IntervalMs / _tickMs);
             if (next < _durationTicks) Schedule(next, CombatPhase.Commands, new AssailantTurn { Fighter = assailant, Turn = assailant.NextTurn++ });
 
-            Fighter? target = attack.Targeting == SkillTargeting.Enemy ? _byId[setup.Target!] : null;
+            Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
             // Lot 7.2 : un assaillant sous contrôle saute son attaque ; l'attaque suivante de sa liste et sa cadence ne changent pas.
             if (BlockReason(assailant, StatusBlocks.AssailantAttacks) is { } blocked)
             {
@@ -769,24 +828,74 @@ namespace EdS.Simulation.Engine
             return new PendingAction { Actor = assailant, Attack = attack, Target = target, GeneratesResonance = false, Origin = root.CausedBy(started) };
         }
 
-        // --- Phase 3 : résolution ----------------------------------------------------------------
+        /// <summary>
+        /// Sous-lot 8.3 (X7) : cible des attaques à cible unique d'un assaillant : la source de sa provocation la plus récente (dernière
+        /// application ou renouvellement), sinon la cible du scénario. Une provocation est retirée à la mort de sa source : la source
+        /// retenue est toujours vivante.
+        /// </summary>
+        private Fighter SingleTarget(Fighter assailant)
+        {
+            StatusInstance? taunt = null;
+            foreach (StatusInstance status in assailant.Statuses.Values)
+                if (status.Definition.IsTaunt && (taunt is null || status.AppliedSeq > taunt.AppliedSeq)) taunt = status;
+            return taunt is null ? _byId[assailant.Assailant!.Target!] : _byId[taunt.Source!];
+        }
+
+        /// <summary>
+        /// Sous-lot 8.3 (X5) : cibles d'une action, dans l'ordre de leurs identifiants pour un ciblage de groupe : la cible désignée
+        /// (ennemi ou allié), le lanceur lui-même, ou tous les ennemis ou tous les alliés vivants (le lanceur compris).
+        /// </summary>
+        private IReadOnlyList<Fighter> ActionTargets(PendingAction action) => action.Targeting switch
+        {
+            SkillTargeting.Enemy or SkillTargeting.Ally => new[] { action.Target! },
+            SkillTargeting.Self => new[] { action.Actor },
+            SkillTargeting.AllAllies => _fightersById.Where(f => f.Team == action.Actor.Team && !f.IsDead).ToArray(),
+            _ => _fightersById.Where(f => f.Team != action.Actor.Team && !f.IsDead).ToArray(),
+        };
+
+        /// <summary>Sous-lot 8.3 (X5) : cibles d'une application à cible propre, relatives à l'acteur, dans l'ordre de leurs identifiants.</summary>
+        private IReadOnlyList<Fighter> OwnTargets(Fighter actor, ApplicationTarget target) => target switch
+        {
+            ApplicationTarget.Self => new[] { actor },
+            ApplicationTarget.AllAllies => _fightersById.Where(f => f.Team == actor.Team && !f.IsDead).ToArray(),
+            _ => _fightersById.Where(f => f.Team != actor.Team && !f.IsDead).ToArray(),
+        };
+
+        /// <summary>Postures (garde, parade) d'une cible laissées par les étapes déjà comptées d'une même action : coût exact des suivantes.</summary>
+        private sealed class Postures : Dictionary<Fighter, (bool Guarding, bool ParryOpen)>
+        {
+            public (bool Guarding, bool ParryOpen) Of(Fighter f) => TryGetValue(f, out var p) ? p : (f.Guarding, f.ParryOpen);
+        }
 
         private void RunResolution(long tick, List<PendingAction> actions)
         {
             foreach (PendingAction action in actions)
             {
-                IReadOnlyList<Fighter> targets = action.Targeting == SkillTargeting.Enemy
-                    ? new[] { action.Target! }
-                    : _fightersById.Where(f => f.Team != action.Actor.Team && !f.IsDead).ToArray();
-                // A5 : une attaque directe réussie rapporte de la Résonance une seule fois, quel que soit le nombre de cibles.
-                bool resonance = targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
-                // Lot 7.1 : l'action entière (toutes ses cibles) est réservée avant le premier impact ; les cibles étant
-                // distinctes, l'impact sur l'une ne change pas le coût prévu pour les suivantes.
-                Cost cost = resonance ? GainCost(action.Actor, _rules.ResonancePerDirectHit) : Cost.None;
-                foreach (Fighter target in targets) cost += HitCost(tick, action, target);
+                IReadOnlyList<Fighter> targets = ActionTargets(action);
+                // A5 : une attaque directe réussie rapporte de la Résonance une seule fois, quel que soit le nombre de cibles. Sous-lot 8.3 :
+                // une compétence de soutien n'a pas d'impact direct, donc pas de Résonance.
+                bool damaging = action.Damaging;
+                bool resonance = damaging && targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
+                // Lot 7.1 : l'action entière (toutes ses cibles, et sous-lot 8.3 ses applications à cible propre) est réservée avant le
+                // premier impact. Les cibles d'impact étant distinctes, l'impact sur l'une ne change pas le coût prévu pour les suivantes ;
+                // les postures qu'une étape laisse à une cible sont reportées sur les étapes suivantes de la même action (Postures).
+                var postures = new Postures();
+                Cost cost = resonance ? GainCost(action.Actor, action.Actor.Rules.ResonancePerDirectHit) : Cost.None;
+                foreach (Fighter target in targets)
+                    cost += damaging ? HitCost(tick, action, target, postures) : SupportCost(tick, action, target, postures);
+                var own = action.Applies.Where(a => a.Target != ApplicationTarget.Targets).Select(a => (Application: a, Targets: OwnTargets(action.Actor, a.Target))).ToList();
+                foreach (var (application, ownTargets) in own)
+                    foreach (Fighter target in ownTargets) cost += ApplicationCost(tick, action, application, target, postures);
+                TraceReservation("action", tick, cost, removing: 0);
                 Reserve(cost);
-                foreach (Fighter target in targets) Hit(tick, action, target);
-                if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, _rules.ResonancePerDirectHit, "directHit", action.Origin);
+                foreach (Fighter target in targets)
+                {
+                    if (damaging) Hit(tick, action, target);
+                    else Support(tick, action, target);
+                }
+                if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, action.Actor.Rules.ResonancePerDirectHit, "directHit", action.Origin);
+                foreach (var (application, ownTargets) in own)
+                    foreach (Fighter target in ownTargets) Apply(tick, CombatPhase.Resolution, action, application, target, action.Origin);
             }
             // Lot 7.3 : puis les notifications et réactions de la phase, dans l'ordre de la file (réactions reportées du tick
             // précédent d'abord, puis celles de ce tick).
@@ -798,9 +907,12 @@ namespace EdS.Simulation.Engine
         /// défense, puis chaque altération portée dans l'ordre, avec l'état de garde et de parade laissé par les étapes précédentes
         /// (une rupture de garde ou un étourdissement change ce que les suivantes interrompent).
         /// </summary>
-        private Cost HitCost(long tick, PendingAction action, Fighter target)
+        private Cost HitCost(long tick, PendingAction action, Fighter target, Postures? postures = null)
         {
             Cost cost = Cost.Op + Observable(TriggerEvent.HitDealt, TriggerEvent.HitTaken);   // impact, ligne « damage »
+            // Sous-lot 8.3 (X6) : une protection active sur la cible transfère une part de l'impact : ligne « damageTransferred », non
+            // notifiée, même si la part est nulle (le coût ne dépend jamais du montant des dégâts).
+            cost += Cost.Line.If(ActiveProtection(target) != null);
             bool guarding = target.Guarding, parryOpen = target.ParryOpen;
             bool defending = target.Character != null && !target.IsDead && (target.ParryOpen || target.Guarding);
             bool parried = false;
@@ -813,14 +925,14 @@ namespace EdS.Simulation.Engine
             }
             else if (defending)
             {
-                if (target.Endurance < _rules.GuardCostPerBlock)
+                if (GuardBreaksOnBlock(target))
                 {
-                    cost += BreakGuardCost(tick, target, action.Actor.Id);
+                    cost += BreakGuardCost(tick, target, action.Actor.Id, impact: true);
                     guarding = parryOpen = false;
                 }
                 else cost += Observable(TriggerEvent.Block) + GainCost(target, _rules.ResonancePerBlock);
             }
-            foreach (StatusApplication application in action.Applies)
+            foreach (StatusApplication application in action.TargetApplies)
             {
                 StatusDefinition definition = _statuses[application.Status];
                 if (parried)
@@ -828,7 +940,7 @@ namespace EdS.Simulation.Engine
                     cost += Cost.Line;   // stateBlocked « parried »
                     continue;
                 }
-                StatusPlan plan = Plan(tick, target, definition, action.Actor.Id, null);
+                StatusPlan plan = Plan(tick, target, definition, action.Actor.Id, null, action.Actor, shieldAmount: ShieldAmount(action.Actor, definition, application.Coefficient));
                 cost += ApplyCost(plan, definition, guarding, parryOpen);
                 if (plan.Applies)
                 {
@@ -836,7 +948,50 @@ namespace EdS.Simulation.Engine
                     if ((definition.Interrupts & StatusInterrupts.Parry) != 0) parryOpen = false;
                 }
             }
+            if (postures != null) postures[target] = (guarding, parryOpen);
             return cost;
+        }
+
+        /// <summary>
+        /// Sous-lot 8.3 (X5) : coût exact d'une compétence de soutien sur une cible : ni impact ni défense, chaque application portée
+        /// dans l'ordre, avec les postures laissées par les précédentes.
+        /// </summary>
+        private Cost SupportCost(long tick, PendingAction action, Fighter target, Postures postures)
+        {
+            Cost cost = Cost.None;
+            foreach (StatusApplication application in action.TargetApplies) cost += ApplicationCost(tick, action, application, target, postures);
+            return cost;
+        }
+
+        /// <summary>Coût exact d'une application de l'action sur une cible (refus ou application et interruptions), postures reportées.</summary>
+        private Cost ApplicationCost(long tick, PendingAction action, StatusApplication application, Fighter target, Postures postures)
+        {
+            StatusDefinition definition = _statuses[application.Status];
+            var (guarding, parryOpen) = postures.Of(target);
+            StatusPlan plan = Plan(tick, target, definition, action.Actor.Id, null, action.Actor, shieldAmount: ShieldAmount(action.Actor, definition, application.Coefficient));
+            Cost cost = ApplyCost(plan, definition, guarding, parryOpen);
+            if (plan.Applies)
+            {
+                if ((definition.Interrupts & StatusInterrupts.Guard) != 0) guarding = false;
+                if ((definition.Interrupts & StatusInterrupts.Parry) != 0) parryOpen = false;
+            }
+            postures[target] = (guarding, parryOpen);
+            return cost;
+        }
+
+        /// <summary>Sous-lot 8.3 (X5) : compétence de soutien sur une cible : ses applications, dans l'ordre, causées par le lancer.</summary>
+        private void Support(long tick, PendingAction action, Fighter target)
+        {
+            foreach (StatusApplication application in action.TargetApplies) Apply(tick, CombatPhase.Resolution, action, application, target, action.Origin);
+        }
+
+        /// <summary>Application d'une altération portée par une action : source et auteur = l'acteur ; DOT à sa puissance, bouclier à ses PV max.</summary>
+        private void Apply(long tick, CombatPhase phase, PendingAction action, StatusApplication application, Fighter target, Provenance origin)
+        {
+            StatusDefinition definition = _statuses[application.Status];
+            Fixed power = definition.IsDot ? DotPower(AttackerStats(action), definition, application) : Fixed.Zero;
+            ApplyStatus(tick, phase, target, definition, action.Actor.Id, power, origin, dealer: action.Actor,
+                shieldAmount: ShieldAmount(action.Actor, definition, application.Coefficient));
         }
 
         /// <summary>
@@ -865,6 +1020,9 @@ namespace EdS.Simulation.Engine
             Fixed increase = DamageTakenIncrease(target);
             bool fragile = increase != Fixed.Zero;
             DamageBonuses bonuses = fragile ? DamageBonuses.None.Add(BonusCategory.Alteration, increase) : DamageBonuses.None;
+            // Sous-lot 8.2 (X3) : dégâts infligés des renforcements actifs de l'attaquant, même catégorie « altération ».
+            Fixed buffDealt = BuffSum(actor, ModifierField.DamageDealt);
+            if (buffDealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Alteration, buffDealt);
 
             // Défense de la cible : parade (prioritaire) ou garde ; jamais les deux. Un impact imparable ignore l'une et l'autre.
             string defense = "none";
@@ -889,26 +1047,40 @@ namespace EdS.Simulation.Engine
             }
             else if (defending)
             {
-                if (target.Endurance < _rules.GuardCostPerBlock)
+                if (GuardBreaksOnBlock(target))
                 {
-                    BreakGuard(tick, phase, target, "insufficientEndurance", actor.Id, origin);
+                    BreakGuard(tick, phase, target, "insufficientEndurance", actor.Id, origin, impact: true);
                     defense = "guardBroken";
                 }
                 else
                 {
-                    SpendEndurance(target, _rules.GuardCostPerBlock, tick);
+                    // Sous-lot 8.1 (guard.noUpkeepBreak) : sans endurance suffisante, la garde tient ; le combattant paie ce qui lui
+                    // reste et la réduction est ramenée à guard.reductionAtZeroEndurance. Ligne « blocked » normale, coût réellement payé.
+                    bool weakened = target.Endurance < target.Rules.GuardCostPerBlock;
+                    long blockCost = weakened ? target.Endurance : target.Rules.GuardCostPerBlock;
+                    if (!weakened || blockCost > 0) SpendEndurance(target, blockCost, tick);   // garde affaiblie sans endurance : pas une dépense
                     target.Result.Blocks++;
                     defense = "guard";
-                    mitigation = _rules.GuardDamageReduction;
+                    mitigation = weakened ? target.Rules.GuardReductionAtZeroEndurance : target.Rules.GuardDamageReduction;
                     blockReward = true;
                     blockEid = Emit(tick, phase, "blocked", origin, HitObserved(TriggerEvent.Block, action, target, HitDefense.Guard), w => w
-                        .Field("actor", target.Id).Field("source", actor.Id).Field("enduranceCost", _rules.GuardCostPerBlock).Field("endurance", target.Endurance));
+                        .Field("actor", target.Id).Field("source", actor.Id).Field("enduranceCost", blockCost).Field("endurance", target.Endurance));
                 }
             }
 
+            // Sous-lot 8.1 (X1, X2, B2) : modificateurs de dégâts lus au calcul des dégâts, sur l'état courant (après la défense de cet
+            // impact, avant ses gains), sans ligne ni notification. Dégâts subis du défenseur : réduction totale multiplicative
+            // plafonnée à 85 %, hors parade ; dégâts infligés de l'attaquant : catégorie talent. Sans modificateur, rien ne change.
+            // Sous-lot 8.2 (X3) : réduction temporaire des renforcements actifs du défenseur, sous le même plafond total.
+            if (defense != "parry")
+                mitigation = target.Rules.TotalReduction(mitigation,
+                    target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance, BuffSum(target, ModifierField.DamageTaken)));
+            Fixed dealt = actor.Rules.DamageDealtAt(actor.Guarding, actor.RampartCharges, actor.Resonance);
+            if (dealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Talent, dealt);
+
             DerivedStats attacker = AttackerStats(action);
             DamageInput input = action.Combat is { } combat
-                ? new DamageInput(attacker, target.Stats, combat.PowerType, combat.DamageType, combat.Coefficient, bonuses, critical, mitigation)
+                ? new DamageInput(attacker, target.Stats, combat.PowerType, combat.DamageType, actor.Rules.Coefficient(action.Skill!, combat, action.ChargesSpent), bonuses, critical, mitigation)
                 : action.Attack is { } attack
                     ? new DamageInput(attacker, target.Stats, CombatantStats.PowerOf(attack.DamageType), attack.DamageType, Fixed.One, bonuses, false, mitigation)
                     // Lot 7.3 : frappe de réaction, sans critique ni tirage (Q6, Q7), puissance du porteur.
@@ -917,22 +1089,36 @@ namespace EdS.Simulation.Engine
             long amount = DamageCalculator.Compute(input, _setup.Damage).FinalDamage;
 
             // Correctif 7.3.1 (A73-M01) : nouvelles valeurs préparées et vérifiées avant toute affectation ; un débordement arrête
-            // le combat sans impact à moitié appliqué.
-            DamageUpdate update = PrepareDamage(target, actor, amount);
+            // le combat sans impact à moitié appliqué. Sous-lot 8.2 (X4) : les boucliers absorbent après la défense, avant les PV.
+            // Sous-lot 8.3 (X6) : une protection active transfère d'abord sa part au protecteur ; les boucliers de la cible absorbent le reste.
+            Transfer transfer = PlanTransfer(target, amount);
+            Absorption absorption = PlanAbsorption(target, amount - transfer.Amount);
+            DamageUpdate update = PrepareDamage(target, actor, amount, absorption.Total, transfer.Amount);
+            TransferUpdate received = PrepareTransfer(transfer);
             long overkill = update.Overkill;
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
+            target.Result.DamageAbsorbed = update.Absorbed;
+            target.Result.DamageTransferred = update.Transferred;
             actor.Result.DamageDealt = update.Dealt!.Value;
             actor.Result.Hits = update.Hits;
             if (critical) actor.Result.CriticalHits++;
+            ApplyAbsorption(absorption);
+            ApplyTransfer(transfer, received);
             ObservedEvent hit = HitObserved(TriggerEvent.HitDealt, action, target, TriggerIds.Defenses[defense]);
             hit.Also = TriggerEvent.HitTaken;
-            long damage = Emit(tick, phase, "damage", origin, hit, w => w
-                .Field("source", actor.Id).Field("target", target.Id).Field("skill", action.Skill?.Id).Field("attack", action.Attack?.Id)
-                .Field("critical", critical).Field("fragile", fragile).Field("defense", defense).Field("amount", amount).Field("overkill", overkill)
-                .Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken));
+            long damage = Emit(tick, phase, "damage", origin, hit, w =>
+            {
+                w.Field("source", actor.Id).Field("target", target.Id).Field("skill", action.Skill?.Id).Field("attack", action.Attack?.Id)
+                    .Field("critical", critical).Field("fragile", fragile).Field("defense", defense).Field("amount", amount);
+                WriteAbsorption(w, absorption);
+                w.Field("transferred", transfer.Amount);
+                w.Field("overkill", overkill).Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken);
+            });
             Provenance impact = origin.CausedBy(damage);
+            NoteDepleted(absorption, impact);
             NoteLethal(target, impact);
+            EmitTransfer(tick, phase, actor.Id, target, transfer, received, impact);
 
             if (parryReward)
             {
@@ -945,7 +1131,7 @@ namespace EdS.Simulation.Engine
             // Lot 7.2 : altérations portées, après les dégâts, dans l'ordre de la liste. Un DOT fige sa puissance maintenant.
             // Correctif 7.2 : un impact paré (parade parfaite, réussie à cet impact ou plus tôt dans la même fenêtre) n'applique
             // aucune altération (stateBlocked « parried ») ; un impact bloqué par la garde ou imparable les applique.
-            foreach (StatusApplication application in action.Applies)
+            foreach (StatusApplication application in action.TargetApplies)
             {
                 StatusDefinition definition = _statuses[application.Status];
                 if (defense == "parry")
@@ -956,7 +1142,8 @@ namespace EdS.Simulation.Engine
                     continue;
                 }
                 Fixed power = definition.IsDot ? DotPower(attacker, definition, application) : Fixed.Zero;
-                ApplyStatus(tick, phase, target, definition, actor.Id, power, impact);
+                ApplyStatus(tick, phase, target, definition, actor.Id, power, impact, dealer: actor,
+                    shieldAmount: ShieldAmount(actor, definition, application.Coefficient));
             }
         }
 
@@ -985,7 +1172,7 @@ namespace EdS.Simulation.Engine
         // --- Altérations (lot 7.2) ----------------------------------------------------------------
 
         /// <summary>Issue d'une application, calculée sans rien modifier ; sert au coût réservé et à l'exécution.</summary>
-        private enum StatusOutcome { New, Renew, Immune, Resisted, Active, NotLonger }
+        private enum StatusOutcome { New, Renew, Immune, Resisted, Active, NotLonger, Empty, NotApplicable }
 
         private readonly struct StatusPlan
         {
@@ -1009,6 +1196,8 @@ namespace EdS.Simulation.Engine
                 StatusOutcome.Immune => "immune",
                 StatusOutcome.Resisted => "resisted",
                 StatusOutcome.Active => "active",
+                StatusOutcome.Empty => "empty",
+                StatusOutcome.NotApplicable => "notApplicable",
                 _ => "notLonger",
             };
         }
@@ -1018,17 +1207,23 @@ namespace EdS.Simulation.Engine
         /// 0 tick par la résistance (<c>resisted</c>, D7) ; nouvelle instance si la clé est libre ; sinon le mode de cumul :
         /// <c>refresh</c> et <c>perSourceKeepStronger</c> renouvellent, <c>keepLonger</c> renouvelle seulement si la nouvelle fin est
         /// plus tardive (<c>notLonger</c> sinon), <c>ignore</c> refuse (<c>active</c>). <paramref name="excluding"/> est une instance
-        /// en cours de retrait, ignorée (expiration qui accorde un état).
+        /// en cours de retrait, ignorée (expiration qui accorde un état). Sous-lot 8.2 : un bouclier de valeur nulle
+        /// (<paramref name="shieldAmount"/>, source sans PV max ou coefficient nul) est refusé (<c>empty</c>), juste après l'immunité.
         /// </summary>
-        private StatusPlan Plan(long tick, Fighter target, StatusDefinition definition, string? source, StatusInstance? excluding)
+        private StatusPlan Plan(long tick, Fighter target, StatusDefinition definition, string? source, StatusInstance? excluding,
+            Fighter? dealer, long shortenMs = 0, long shieldAmount = 0)
         {
             var key = new StatusKey(definition.Id, definition.Stacking == StatusStacking.PerSourceKeepStronger ? source : null);
             target.Statuses.TryGetValue(key, out StatusInstance? existing);
             if (existing == excluding) existing = null;
+            // Sous-lot 8.3 (X6, X7) : une provocation ne vise qu'un assaillant, posée par un de ses ennemis vivants ; une protection, un
+            // allié personnage autre que sa source vivante. Sinon : refus « notApplicable », avant tout autre motif.
+            if (definition.IsSourceBound && !SourceFits(target, definition, source)) return new StatusPlan(StatusOutcome.NotApplicable, key, existing, 0);
             foreach (StatusInstance status in target.Statuses.Values)
                 if (status != excluding && status.Definition.ImmuneTo.Contains(definition.Id))
                     return new StatusPlan(StatusOutcome.Immune, key, existing, 0);
-            long ticks = DurationTicks(definition, target);
+            if (definition.IsShield && shieldAmount <= 0) return new StatusPlan(StatusOutcome.Empty, key, existing, 0);
+            long ticks = DurationTicks(definition, target, dealer, shortenMs);
             if (ticks == 0) return new StatusPlan(StatusOutcome.Resisted, key, existing, 0);
             if (existing is null) return new StatusPlan(StatusOutcome.New, key, null, ticks);
             return definition.Stacking switch
@@ -1039,14 +1234,36 @@ namespace EdS.Simulation.Engine
             };
         }
 
+        /// <summary>Sous-lot 8.3 : la source d'une provocation ou d'une protection convient-elle à sa cible ?</summary>
+        private bool SourceFits(Fighter target, StatusDefinition definition, string? source)
+        {
+            if (source is null || !_byId.TryGetValue(source, out Fighter? from) || from.IsDead) return false;
+            return definition.IsTaunt
+                ? target.Assailant != null && from.Team != target.Team
+                : target.Character != null && from != target && from.Team == target.Team;
+        }
+
         /// <summary>
         /// Durée en ticks d'une application (A14, A23) : durée de base, réduite pour un contrôle à résistance <c>duration</c> par le
         /// facteur r = K / (K + résistance aux altérations effective), calculé en <c>Fixed</c> arrondi vers le bas, puis
         /// ⌊ ticks × r ⌋. Ticks de base ≤ 86 400 000 et r brut ≤ 10⁴ : produit &lt; 10¹², sans débordement.
+        /// <para>Sous-lot 8.1 : la durée de base reçoit d'abord, en ms, <c>status.&lt;id&gt;.durationDealt</c> de l'auteur d'une
+        /// application directe (<paramref name="dealer"/>, null pour une rupture de garde ou un état accordé), <c>durationTaken</c> de la
+        /// cible et le raccourci de rupture (<c>guard.breakShortenPerCharge</c>) ; le total est écrêté dans [1 tick, 24 h] (une période au
+        /// moins pour un DOT), ce qui garde la borne ci-dessus. Les ajouts sont des multiples du tick (et de la période d'un DOT, par
+        /// validation) et 24 h est un multiple du tick ; un DOT écrêté à 24 h peut ne plus être un multiple de sa période, et sa fin est
+        /// alors ramenée au dernier tick périodique couvert (<see cref="DotEffectiveEnd"/>). Seule la résistance peut donner 0 tick
+        /// (<c>resisted</c>).</para>
         /// </summary>
-        private long DurationTicks(StatusDefinition definition, Fighter target)
+        private long DurationTicks(StatusDefinition definition, Fighter target, Fighter? dealer, long shortenMs)
         {
-            long baseTicks = definition.DurationMs / _tickMs;
+            long durationMs = definition.DurationMs;
+            long adjust = checked(target.Rules.DurationTakenMs(definition.Id) + (dealer?.Rules.DurationDealtMs(definition.Id) ?? 0) - shortenMs);
+            // Sous-lot 8.1 : durée modifiée écrêtée dans [1 tick (une période pour un DOT), 24 h] : un modificateur raccourcit, il
+            // n'annule jamais (seule la résistance peut ramener une application à 0 tick, « resisted »).
+            if (adjust != 0)
+                durationMs = Math.Max(definition.IsDot ? definition.PeriodMs : _tickMs, Math.Min(CombatRules.AbsoluteMaxDurationMs, checked(durationMs + adjust)));
+            long baseTicks = durationMs / _tickMs;
             if (definition.Resistance != StatusResistanceMode.Duration) return baseTicks;
             long constantRaw = checked(_setup.Stats.StatusResistanceConstant * Fixed.Scale);
             long factorRaw = IntMath.MulDiv(Fixed.Scale, constantRaw, checked(constantRaw + target.Stats.StatusResistance.Raw), RoundingMode.Floor);
@@ -1074,9 +1291,9 @@ namespace EdS.Simulation.Engine
         /// interrompues (garde, parade) le sont après la ligne <c>stateApplied</c>.
         /// </summary>
         private void ApplyStatus(long tick, CombatPhase phase, Fighter target, StatusDefinition definition, string? source, Fixed power,
-            Provenance origin, StatusInstance? excluding = null)
+            Provenance origin, StatusInstance? excluding = null, Fighter? dealer = null, long shortenMs = 0, long shieldAmount = 0)
         {
-            StatusPlan plan = Plan(tick, target, definition, source, excluding);
+            StatusPlan plan = Plan(tick, target, definition, source, excluding, dealer, shortenMs, shieldAmount);
             if (!plan.Applies)
             {
                 EmitDiagnostic(tick, phase, "stateBlocked", w => w
@@ -1094,6 +1311,7 @@ namespace EdS.Simulation.Engine
             }
             status.Generation = checked(status.Generation + 1);
             status.Source = source;
+            status.AppliedSeq = ++_lastApplication;   // sous-lot 8.3 : la provocation ou la protection la plus récente l'emporte
             if (definition.IsDot)
             {
                 status.Power = renewed ? Fixed.Max(status.Power, power) : power;
@@ -1109,12 +1327,21 @@ namespace EdS.Simulation.Engine
                 status.UntilTick = checked(tick + plan.DurationTicks);
                 Schedule(status.UntilTick, CombatPhase.Expirations,
                     new StateExpiry { Fighter = target, Key = plan.Key, Instance = status.Id, Generation = status.Generation });
+                // Sous-lot 8.2 (X4, A7) : un bouclier par source ; un renouvellement garde la plus forte des valeurs (restante ou nouvelle)
+                // et repart de maintenant + durée. Un bouclier épuisé non encore retiré repart ainsi de la nouvelle valeur.
+                if (definition.IsShield)
+                {
+                    status.Absorb = renewed ? Math.Max(status.Absorb, shieldAmount) : shieldAmount;
+                    status.DepletedBy = null;
+                }
             }
             Provenance applying = origin.WithSource(source);
             long applied = Emit(tick, phase, "stateApplied", applying, StateObserved(TriggerEvent.StateApplied, target, status, renewed), w =>
             {
                 StateFields(w, target, status).Field("untilTick", status.UntilTick).Field("renewed", renewed);
                 if (definition.IsDot) w.Field("power", status.Power).Field("nextTick", status.NextTick);
+                if (definition.IsShield) w.Field("absorb", status.Absorb);
+                if (definition.IsProtection) w.Field("redirectRatio", _byId[status.Source!].Rules.RedirectRatio(definition));
                 if (definition.MovementSpeedModifier != Fixed.Zero) w.Field("movementSpeedModifier", definition.MovementSpeedModifier);
             });
             status.Origin = applying.CausedBy(applied).ForInstance(status.Id, status.Generation);
@@ -1174,7 +1401,7 @@ namespace EdS.Simulation.Engine
             if (status.Definition.GrantsOnExpiry is { } granted)
             {
                 StatusDefinition definition = _statuses[granted];
-                cost += ApplyCost(Plan(tick, target, definition, status.Source, status), definition, target.Guarding, target.ParryOpen);
+                cost += ApplyCost(Plan(tick, target, definition, status.Source, status, null), definition, target.Guarding, target.ParryOpen);
             }
             return cost;
         }
@@ -1194,21 +1421,44 @@ namespace EdS.Simulation.Engine
                 ApplyStatus(tick, phase, target, _statuses[granted], status.Source, Fixed.Zero, status.Origin.CausedBy(expired));
         }
 
-        private Cost BreakGuardCost(long tick, Fighter f, string? source)
+        /// <summary>
+        /// Réduction de garde d'un blocage à cet instant : affaiblie (<c>guard.reductionAtZeroEndurance</c>) quand la garde tient sans
+        /// pouvoir payer le blocage (<c>guard.noUpkeepBreak</c>), pleine sinon. Même condition que le traitement d'un impact bloqué.
+        /// </summary>
+        private static Fixed GuardReductionNow(Fighter f) =>
+            f.Rules.GuardNoUpkeepBreak && f.Endurance < f.Rules.GuardCostPerBlock ? f.Rules.GuardReductionAtZeroEndurance : f.Rules.GuardDamageReduction;
+
+        /// <summary>Sous-lot 8.1 : la garde se brise-t-elle sur ce blocage ? Endurance insuffisante, sauf avec <c>guard.noUpkeepBreak</c>.</summary>
+        private static bool GuardBreaksOnBlock(Fighter target) => target.Endurance < target.Rules.GuardCostPerBlock && !target.Rules.GuardNoUpkeepBreak;
+
+        /// <summary>
+        /// Sous-lot 8.1 (<c>guard.breakShortenPerCharge</c>) : Charges consommées par une rupture <b>par impact</b> (toutes, si le
+        /// combattant a ce modificateur ; aucune sinon, ni pour l'entretien) ; lues avant la rupture, à l'identique pour le coût.
+        /// </summary>
+        private static int ChargesSpentByBreak(Fighter f, bool impact) => impact && f.Rules.GuardBreakShortenPerChargeMs > 0 ? f.RampartCharges : 0;
+
+        private Cost BreakGuardCost(long tick, Fighter f, string? source, bool impact)
         {
             StatusDefinition definition = _statuses[_rules.GuardBreakStatus];
-            return Observable(TriggerEvent.GuardBroken) + Cost.Line.If(f.ParryOpen) + ApplyCost(Plan(tick, f, definition, source, null), definition, false, false);
+            long shortenMs = checked(ChargesSpentByBreak(f, impact) * f.Rules.GuardBreakShortenPerChargeMs);
+            return Observable(TriggerEvent.GuardBroken) + Cost.Line.If(f.ParryOpen) + ApplyCost(Plan(tick, f, definition, source, null, null, shortenMs), definition, false, false);
         }
 
         /// <summary>
         /// Rupture de garde (A1, A19) : fin de la garde et de toute fenêtre de parade, puis l'altération de rupture
-        /// (<c>combat.guard.breakStatus</c>) : ni garde ni parade ni régénération pendant sa durée.
+        /// (<c>combat.guard.breakStatus</c>) : ni garde ni parade ni régénération pendant sa durée. Sous-lot 8.1 : une rupture par
+        /// impact consomme les Charges selon <see cref="ChargesSpentByBreak"/> (champ <c>rampartChargesSpent</c>) et raccourcit
+        /// l'altération de <c>guard.breakShortenPerCharge</c> par Charge consommée.
         /// </summary>
-        private void BreakGuard(long tick, CombatPhase phase, Fighter f, string reason, string? source, Provenance origin)
+        private void BreakGuard(long tick, CombatPhase phase, Fighter f, string reason, string? source, Provenance origin, bool impact)
         {
+            int spent = ChargesSpentByBreak(f, impact);
+            long shortenMs = checked(spent * f.Rules.GuardBreakShortenPerChargeMs);
             f.Guarding = false;
+            f.RampartCharges -= spent;
             f.Result.GuardBreaks++;
-            long broken = Emit(tick, phase, "guardBroken", origin, new ObservedEvent { Kind = TriggerEvent.GuardBroken, Source = source, Target = f.Id }, w => w.Field("actor", f.Id).Field("reason", reason).Field("endurance", f.Endurance));
+            long broken = Emit(tick, phase, "guardBroken", origin, new ObservedEvent { Kind = TriggerEvent.GuardBroken, Source = source, Target = f.Id }, w => w
+                .Field("actor", f.Id).Field("reason", reason).Field("endurance", f.Endurance).Field("rampartChargesSpent", spent));
             Provenance consequences = origin.CausedBy(broken);
             if (f.ParryOpen)
             {
@@ -1216,7 +1466,7 @@ namespace EdS.Simulation.Engine
                 Emit(tick, phase, "parryEnded", consequences, w => w
                     .Field("actor", f.Id).Field("outcome", f.ParrySucceeded ? "success" : "interrupted").Field("recoveryUntilTick", (long?)null));
             }
-            ApplyStatus(tick, phase, f, _statuses[_rules.GuardBreakStatus], source, Fixed.Zero, consequences);
+            ApplyStatus(tick, phase, f, _statuses[_rules.GuardBreakStatus], source, Fixed.Zero, consequences, shortenMs: shortenMs);
         }
 
         // --- Ressources --------------------------------------------------------------------------
@@ -1245,7 +1495,7 @@ namespace EdS.Simulation.Engine
                     (before, max, kind) = (f.Resonance, _rules.ResonanceMax, TriggerResource.Resonance);
                     break;
                 case RampartCharges:
-                    (before, max, kind) = (f.RampartCharges, _rules.RampartChargesMax, TriggerResource.RampartCharges);
+                    (before, max, kind) = (f.RampartCharges, f.Rules.RampartChargesMax, TriggerResource.RampartCharges);
                     break;
                 default:
                     (before, max, kind) = (f.Endurance, f.MaxEndurance, TriggerResource.Endurance);
@@ -1271,6 +1521,16 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
+        /// Revue du 8.3 : retrait en fin de tick (bouclier épuisé, provocation ou protection dont la source meurt) d'une altération qui
+        /// bloquait la régénération : comme à son expiration, rien n'est accordé au titre des ticks suspendus. Le retrait suit la phase de
+        /// régénération du tick, restée bloquée : la reprise compte à partir du tick suivant.
+        /// </summary>
+        private static void ResumeAfterEndOfTickRemoval(Fighter owner, StatusInstance status, long tick)
+        {
+            if ((status.Definition.Blocks & StatusBlocks.Regeneration) != 0) ResumeRegeneration(owner, checked(tick + 1));
+        }
+
+        /// <summary>
         /// Fin d'une garde ou d'une rupture : la régénération reprend dès qu'une seconde complète s'est écoulée depuis la
         /// dernière dépense, mais aucun point n'est accordé au titre des ticks suspendus.
         /// </summary>
@@ -1291,6 +1551,9 @@ namespace EdS.Simulation.Engine
         /// ⌊ coût/s × ticks gardés depuis le début du combat × durée du tick / 1000 ⌋ : cumulé sur toutes les gardes du
         /// combat, il ne dépend que du nombre de ticks réellement gardés, quelle que soit leur répartition (M01).
         /// S'il ne peut être payé, la garde est brisée et ce tick n'est pas compté : le reliquat reste dû.
+        /// <para>Sous-lot 8.1 : coût/s effectif du combattant (décimal, à 4 décimales, même arrondi par défaut). Avec
+        /// <c>guard.noUpkeepBreak</c>, un entretien impayable ne brise pas la garde : le combattant paie ce qui lui reste, le tick est
+        /// compté et le reste du dû est abandonné (ligne « guardUpkeep » avec le montant réellement payé, éventuellement 0).</para>
         /// </summary>
         private void RunPeriodic(long tick)
         {
@@ -1312,25 +1575,43 @@ namespace EdS.Simulation.Engine
                     Charge(1);
                     continue;
                 }
-                long guardedTicks = checked(f.GuardedTicks + 1);
-                long due = checked(_rules.GuardUpkeepPerSecond * guardedTicks * _tickMs) / 1000;
+                var (due, remainder) = UpkeepAfterTick(f);
                 long amount = due - f.GuardUpkeepPaid;
-                bool breaks = amount > 0 && f.Endurance < amount;
-                Reserve(Cost.Op + (breaks ? BreakGuardCost(tick, f, null) : Cost.Line.If(amount > 0)));
+                bool shortfall = amount > 0 && f.Endurance < amount;
+                bool breaks = shortfall && !f.Rules.GuardNoUpkeepBreak;
+                Reserve(Cost.Op + (breaks ? BreakGuardCost(tick, f, null, impact: false) : Cost.Line.If(amount > 0)));
                 Charge(1);
                 Provenance upkeep = Provenance.NewRoot($"periodic:{f.Id}:{f.Id}:{tick}", f.Id);
                 if (breaks)
                 {
-                    BreakGuard(tick, CombatPhase.Periodic, f, "upkeep", null, upkeep);
+                    BreakGuard(tick, CombatPhase.Periodic, f, "upkeep", null, upkeep, impact: false);
                     continue;
                 }
-                f.GuardedTicks = guardedTicks;
+                f.GuardUpkeepDue = due;
+                f.GuardUpkeepRemainder = remainder;
                 if (amount <= 0) continue;
-                SpendEndurance(f, amount, tick);
+                long paid = shortfall ? f.Endurance : amount;
+                if (paid > 0) SpendEndurance(f, paid, tick);   // rien à payer : pas une dépense (le délai de régénération ne repart pas)
                 f.GuardUpkeepPaid = due;
-                Emit(tick, CombatPhase.Periodic, "guardUpkeep", upkeep, w => w.Field("actor", f.Id).Field("amount", amount).Field("endurance", f.Endurance));
+                Emit(tick, CombatPhase.Periodic, "guardUpkeep", upkeep, w => w.Field("actor", f.Id).Field("amount", paid).Field("endurance", f.Endurance));
             }
             DrainTriggers(tick, CombatPhase.Periodic);
+        }
+
+        /// <summary>
+        /// Entretien dû si ce tick est gardé, sans rien modifier : l'entretien dû et son reliquat avancent du coût/s effectif du moment
+        /// × durée du tick (unités brutes × ms), le reliquat passant en points entiers par 1000 × échelle. À coût constant, l'entretien dû
+        /// après n ticks gardés vaut exactement ⌊ coût/s × n × durée du tick / 1000 ⌋ (calcul des lots 7 et 8.1). Sous-lot 8.2 (X3) : le
+        /// coût/s comprend les renforcements actifs du porteur (<c>guard.upkeepPerSecond</c>, écrêté à 0). Sans débordement : coût/s brut
+        /// &lt; 2,2·10¹³, × durée du tick ≤ 1000 ms ; l'entretien dû cumulé ≤ coût/s × 24 h.
+        /// </summary>
+        private (long Due, long Remainder) UpkeepAfterTick(Fighter f)
+        {
+            const long unit = 1000 * Fixed.Scale;
+            // Sous-lot 8.4 : un renforcement actif à guard.noUpkeep (Bastion absolu) annule l'entretien tant qu'il dure.
+            Fixed rate = f.Rules.GuardUpkeepPerSecondWith(BuffSum(f, ModifierField.GuardUpkeepPerSecond), BuffSum(f, ModifierField.GuardNoUpkeep) > Fixed.Zero);
+            long total = checked(f.GuardUpkeepRemainder + checked(rate.Raw * _tickMs));
+            return (checked(f.GuardUpkeepDue + total / unit), total % unit);
         }
 
         private static bool IsCurrent(DotTick dot, out StatusInstance status) =>
@@ -1342,14 +1623,18 @@ namespace EdS.Simulation.Engine
             public readonly long? Health;
             public readonly long Overkill;
             public readonly long Taken;
+            public readonly long Absorbed;
+            public readonly long Transferred;
             public readonly long? Dealt;
             public readonly long Hits;
 
-            public DamageUpdate(long? health, long overkill, long taken, long? dealt, long hits)
+            public DamageUpdate(long? health, long overkill, long taken, long absorbed, long transferred, long? dealt, long hits)
             {
                 Health = health;
                 Overkill = overkill;
                 Taken = taken;
+                Absorbed = absorbed;
+                Transferred = transferred;
                 Dealt = dealt;
                 Hits = hits;
             }
@@ -1360,20 +1645,243 @@ namespace EdS.Simulation.Engine
         /// subis et les dégâts infligés de la source (et son compteur de coups, pour un impact direct). Toutes les opérations qui
         /// peuvent déborder sont faites ici ; l'appelant n'affecte qu'ensuite. Un débordement (configuration hors du précontrôle)
         /// arrête donc le combat (<c>overflow</c>) avant toute mutation de l'impact : ni PV, ni compteur, ni ligne partiels.
+        /// <para>Sous-lot 8.2 (X4) : <paramref name="absorbed"/> (0 ≤ absorbé ≤ montant) est retenu par les boucliers de la cible : seul le
+        /// reste atteint ses PV et ses dégâts subis ; les dégâts infligés de la source comptent le montant entier.</para>
         /// </summary>
-        private static DamageUpdate PrepareDamage(Fighter target, Fighter? source, long amount)
+        private static DamageUpdate PrepareDamage(Fighter target, Fighter? source, long amount, long absorbed, long transferred = 0)
         {
+            long lost = checked(amount - transferred - absorbed);
             long? health = target.Health;
             long overkill = 0;
             if (health is long current)
             {
-                overkill = Math.Max(0, checked(amount - current));
-                health = Math.Max(0, checked(current - amount));
+                overkill = Math.Max(0, checked(lost - current));
+                health = Math.Max(0, checked(current - lost));
             }
-            long taken = checked(target.Result.DamageTaken + amount);
+            long taken = checked(target.Result.DamageTaken + lost);
+            long totalAbsorbed = checked(target.Result.DamageAbsorbed + absorbed);
+            long totalTransferred = checked(target.Result.DamageTransferred + transferred);
             long? dealt = source is null ? (long?)null : checked(source.Result.DamageDealt + amount);
             long hits = source is null ? 0 : checked(source.Result.Hits + 1);
-            return new DamageUpdate(health, overkill, taken, dealt, hits);
+            return new DamageUpdate(health, overkill, taken, totalAbsorbed, totalTransferred, dealt, hits);
+        }
+
+        // --- Protections et transferts (sous-lot 8.3) ---------------------------------------------
+
+        /// <summary>
+        /// Sous-lot 8.3 (X6) : protection en vigueur sur un combattant : la plus récemment appliquée (ou renouvelée) ; null sans
+        /// protection. Sa source, retirée à sa mort avec elle, est toujours vivante.
+        /// </summary>
+        private static StatusInstance? ActiveProtection(Fighter target)
+        {
+            StatusInstance? best = null;
+            foreach (StatusInstance status in target.Statuses.Values)
+                if (status.Definition.IsProtection && (best is null || status.AppliedSeq > best.AppliedSeq)) best = status;
+            return best;
+        }
+
+        /// <summary>Transfert planifié d'un impact ou d'un tick de DOT vers le protecteur, sans rien modifier.</summary>
+        private readonly struct Transfer
+        {
+            public readonly StatusInstance? Protection;
+            public readonly Fighter? Protector;
+            public readonly Fixed Ratio;
+
+            /// <summary>Part transférée, ⌊ montant × part ⌋ ; le protégé garde le reste (conservation à l'arrondi près).</summary>
+            public readonly long Amount;
+
+            /// <summary>Le transfert passe par la garde du protecteur (protection.redirectThroughGuard, protecteur en garde).</summary>
+            public readonly bool Guarded;
+
+            /// <summary>Part reçue par le protecteur après sa garde éventuelle, avant ses boucliers.</summary>
+            public readonly long Taken;
+
+            public readonly Absorption Absorption;
+
+            public Transfer(StatusInstance protection, Fighter protector, Fixed ratio, long amount, bool guarded, long taken, Absorption absorption)
+            {
+                Protection = protection;
+                Protector = protector;
+                Ratio = ratio;
+                Amount = amount;
+                Guarded = guarded;
+                Taken = taken;
+                Absorption = absorption;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot 8.3 (X6) : part d'un montant de dégâts transférée par la protection en vigueur sur la cible : ⌊ montant × part ⌋, la
+        /// part effective étant celle de la définition plus le <c>protection.redirectRatio</c> du protecteur, écrêtée dans [0, 1]. Le
+        /// protecteur la reçoit sans ses modificateurs de dégâts subis ; avec <c>protection.redirectThroughGuard</c> et en garde, réduite
+        /// par sa réduction de garde effective (sans coût, sans ligne ni notification de blocage) ; puis ses boucliers absorbent. Jamais
+        /// retransférée. Revue du 8.3 : la réduction effective est celle d'un blocage au même instant, donc la réduction à 0 d'endurance
+        /// quand la garde tient sans pouvoir payer un blocage (<c>guard.noUpkeepBreak</c>) ; sans ce drapeau, un transfert ne paie rien
+        /// et ne brise pas la garde : réduction pleine.
+        /// </summary>
+        private Transfer PlanTransfer(Fighter target, long amount)
+        {
+            if (ActiveProtection(target) is not { } protection) return default;
+            Fighter protector = _byId[protection.Source!];
+            Fixed ratio = protector.Rules.RedirectRatio(protection.Definition);
+            long part = amount <= 0 ? 0 : (Fixed.FromInt(amount) * ratio).RoundToInt(RoundingMode.Floor);
+            bool guarded = protector.Rules.ProtectionRedirectThroughGuard && protector.Guarding;
+            long taken = guarded ? (Fixed.FromInt(part) * (Fixed.One - GuardReductionNow(protector))).RoundToInt(RoundingMode.Floor) : part;
+            return new Transfer(protection, protector, ratio, part, guarded, taken, PlanAbsorption(protector, taken));
+        }
+
+        /// <summary>Nouvelles valeurs du protecteur après un transfert, préparées et vérifiées avant toute affectation (A73-M01).</summary>
+        private readonly struct TransferUpdate
+        {
+            public readonly long? Health;
+            public readonly long Overkill;
+            public readonly long Taken;
+            public readonly long Absorbed;
+            public readonly long Redirected;
+
+            public TransferUpdate(long? health, long overkill, long taken, long absorbed, long redirected)
+            {
+                Health = health;
+                Overkill = overkill;
+                Taken = taken;
+                Absorbed = absorbed;
+                Redirected = redirected;
+            }
+        }
+
+        private static TransferUpdate PrepareTransfer(Transfer transfer)
+        {
+            if (transfer.Protector is not { } protector) return default;
+            long lost = checked(transfer.Taken - transfer.Absorption.Total);
+            long? health = protector.Health;
+            long overkill = 0;
+            if (health is long current)
+            {
+                overkill = Math.Max(0, checked(lost - current));
+                health = Math.Max(0, checked(current - lost));
+            }
+            return new TransferUpdate(health, overkill, checked(protector.Result.DamageTaken + lost),
+                checked(protector.Result.DamageAbsorbed + transfer.Absorption.Total), checked(protector.Result.DamageRedirected + transfer.Amount));
+        }
+
+        private static void ApplyTransfer(Transfer transfer, TransferUpdate update)
+        {
+            if (transfer.Protector is not { } protector) return;
+            protector.Health = update.Health;
+            protector.Result.DamageTaken = update.Taken;
+            protector.Result.DamageAbsorbed = update.Absorbed;
+            protector.Result.DamageRedirected = update.Redirected;
+            ApplyAbsorption(transfer.Absorption);
+        }
+
+        /// <summary>
+        /// Ligne <c>damageTransferred</c> (format 7), causée par la ligne de dégâts du protégé, jamais notifiée (A1–A12 : ni réaction ni
+        /// retransfert) : source des dégâts, protégé, protecteur, protection, part, part après la garde, absorption par les boucliers du
+        /// protecteur, puis ses PV. Écrite dès qu'une protection est en vigueur, même pour une part nulle.
+        /// </summary>
+        private void EmitTransfer(long tick, CombatPhase phase, string? source, Fighter target, Transfer transfer, TransferUpdate update, Provenance cause)
+        {
+            if (transfer.Protector is not { } protector) return;
+            StatusInstance protection = transfer.Protection!;
+            Provenance transferred = cause.WithSource(protector.Id);
+            long eid = Emit(tick, phase, "damageTransferred", transferred, w =>
+            {
+                w.Field("source", source).Field("protected", target.Id).Field("target", protector.Id).Field("state", protection.State)
+                    .Field("instance", protection.Id).Field("ratio", transfer.Ratio).Field("amount", transfer.Amount)
+                    .Field("defense", transfer.Guarded ? "guard" : "none").Field("taken", transfer.Taken);
+                WriteAbsorption(w, transfer.Absorption);
+                w.Field("overkill", update.Overkill).Field("health", protector.Health).Field("damageTaken", protector.Result.DamageTaken);
+            });
+            Provenance received = transferred.CausedBy(eid);
+            NoteDepleted(transfer.Absorption, received);
+            NoteLethal(protector, received);
+        }
+
+
+        // --- Renforcements et boucliers (sous-lot 8.2) ---------------------------------------------
+
+        /// <summary>
+        /// Sous-lot 8.2 (X3) : somme d'un champ des modificateurs des renforcements actifs d'un combattant (une instance au plus par
+        /// définition : pas de cumul par source). Addition exacte, indépendante de l'ordre.
+        /// </summary>
+        private static Fixed BuffSum(Fighter f, ModifierField field)
+        {
+            Fixed total = Fixed.Zero;
+            foreach (StatusInstance status in f.Statuses.Values)
+                if (status.Definition.IsBuff) total += status.Definition.ModifierSum(field);
+            return total;
+        }
+
+        /// <summary>Sous-lot 8.2 (X4) : valeur d'un bouclier posé par <paramref name="source"/> (0 hors bouclier ; voir <see cref="Shields.Value"/>).</summary>
+        private static long ShieldAmount(Fighter source, StatusDefinition definition, Fixed? coefficient) =>
+            definition.IsShield && coefficient is { } c ? Shields.Value(source.MaxHealth, c, source.Rules.ShieldPotencyDealt) : 0;
+
+        /// <summary>Absorption planifiée d'un montant de dégâts : boucliers consommés, dans l'ordre, et part prise à chacun.</summary>
+        private readonly struct Absorption
+        {
+            public readonly long Total;
+            public readonly List<(StatusInstance Shield, long Taken)>? Takes;
+
+            public Absorption(long total, List<(StatusInstance, long)>? takes)
+            {
+                Total = total;
+                Takes = takes;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot 8.2 (X4, A6, A7) : absorption d'un impact ou d'un tick de DOT par les boucliers de la cible, sans rien modifier. Les
+        /// boucliers non épuisés sont consommés dans l'ordre de leur création (numéro d'instance croissant : FIFO, un renouvellement
+        /// garde sa place), chacun jusqu'à sa valeur restante ; le reste du montant atteint les PV.
+        /// </summary>
+        private static Absorption PlanAbsorption(Fighter target, long amount)
+        {
+            if (amount <= 0 || !HasAbsorb(target)) return default;   // chemin courant sans bouclier : ni tri ni allocation
+            List<(StatusInstance, long)>? takes = null;
+            long left = amount;
+            foreach (StatusInstance shield in target.Statuses.Values.Where(x => x.Definition.IsShield && x.Absorb > 0).OrderBy(x => x.Id))
+            {
+                long taken = Math.Min(left, shield.Absorb);
+                (takes ??= new List<(StatusInstance, long)>()).Add((shield, taken));
+                left -= taken;
+                if (left == 0) break;
+            }
+            return new Absorption(amount - left, takes);
+        }
+
+        private static bool HasAbsorb(Fighter target)
+        {
+            foreach (StatusInstance status in target.Statuses.Values)
+                if (status.Definition.IsShield && status.Absorb > 0) return true;
+            return false;
+        }
+
+        private static void ApplyAbsorption(Absorption absorption)
+        {
+            if (absorption.Takes is null) return;
+            foreach (var (shield, taken) in absorption.Takes) shield.Absorb -= taken;
+        }
+
+        /// <summary>Un bouclier épuisé retient l'effet qui l'a épuisé : cause de son retrait en fin de tick.</summary>
+        private static void NoteDepleted(Absorption absorption, Provenance effect)
+        {
+            if (absorption.Takes is null) return;
+            foreach (var (shield, _) in absorption.Takes)
+                if (shield.Absorb == 0 && shield.DepletedBy is null) shield.DepletedBy = effect;
+        }
+
+        /// <summary>
+        /// Champs <c>absorbed</c> (total) et <c>absorbedBy</c> (format 6) : pour chaque bouclier consommé, son instance, son altération,
+        /// sa source, la part absorbée et la valeur restante. Liste vide sans bouclier.
+        /// </summary>
+        private static void WriteAbsorption(JsonLineWriter w, Absorption absorption)
+        {
+            w.Field("absorbed", absorption.Total).Name("absorbedBy").BeginArray();
+            if (absorption.Takes != null)
+                foreach (var (shield, taken) in absorption.Takes)
+                    w.BeginObject().Field("instance", shield.Id).Field("state", shield.State).Field("source", shield.Source)
+                        .Field("amount", taken).Field("remaining", shield.Absorb).EndObject();
+            w.EndArray();
         }
 
         /// <summary>Le tick en cours est-il le dernier de l'instance (le suivant dépasserait sa fin) ?</summary>
@@ -1386,13 +1894,15 @@ namespace EdS.Simulation.Engine
         private Cost DotTickCost(long tick, DotTick dot)
         {
             if (!IsCurrent(dot, out StatusInstance? status)) return Cost.None;
-            return Cost.Op + Observable(TriggerEvent.DotTick) + (IsLastDotTick(tick, status) ? EndStatusCost(tick, status) : Cost.Enqueue);
+            return Cost.Op + Observable(TriggerEvent.DotTick) + Cost.Line.If(ActiveProtection(dot.Fighter) != null)   // 8.3 : transfert
+                + (IsLastDotTick(tick, status) ? EndStatusCost(tick, status) : Cost.Enqueue);
         }
 
         /// <summary>
         /// Tick de DOT (A12, décisions 1, 2, 4) : dégâts = puissance figée réduite par la défense <b>actuelle</b> de la cible pour le
         /// type de l'altération (armure pour un saignement, résistance magique pour une brûlure), sans critique, ni garde, ni parade,
-        /// ni Fragilité (dégâts directs seulement), ni Résonance, ni compteur de coups. Crédités à la source même morte. Le dernier
+        /// ni Fragilité (dégâts directs seulement), ni Résonance, ni compteur de coups. Sous-lot 8.1 : réduits par les modificateurs de
+        /// dégâts subis de la cible (<c>damageTaken</c>, plafond de 85 %), pas par ceux de dégâts infligés de la source. Crédités à la source même morte. Le dernier
         /// tick inflige ses dégâts puis expire l'instance dans la même étape : 6 s / 2 s donnent exactement 3 ticks.
         /// </summary>
         private void RunDotTick(long tick, DotTick dot)
@@ -1401,20 +1911,42 @@ namespace EdS.Simulation.Engine
             Charge(1);
             Fighter target = dot.Fighter;
             StatusDefinition definition = status.Definition;
+            // Sous-lot 8.1 : modificateurs de dégâts subis de la cible, lus sur son état au tick (réduction ≤ 85 %, sans garde ni
+            // parade, A12). Sans modificateur, aucune réduction.
+            // Sous-lot 8.2 (X3) : renforcements actifs de la cible compris, sous le même plafond total.
+            Fixed mitigation = target.Rules.TotalReduction(Fixed.Zero,
+                target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance, BuffSum(target, ModifierField.DamageTaken)));
             long amount = DamageCalculator.ComputePeriodic(status.Power, target.Stats, definition.DamageType!.Value,
-                definition.Resistance == StatusResistanceMode.Defense, _setup.Damage);
-            // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage).
+                definition.Resistance == StatusResistanceMode.Defense, _setup.Damage, mitigation);
+            // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage). Sous-lot 8.2
+            // (A6) : les boucliers de la cible absorbent aussi les DOT.
             Fighter? source = status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
-            DamageUpdate update = PrepareDamage(target, source, amount);
+            // Sous-lot 8.3 (X6) : une protection transfère aussi sa part d'un tick de DOT.
+            Transfer transfer = PlanTransfer(target, amount);
+            Absorption absorption = PlanAbsorption(target, amount - transfer.Amount);
+            DamageUpdate update = PrepareDamage(target, source, amount, absorption.Total, transfer.Amount);
+            TransferUpdate received = PrepareTransfer(transfer);
             long overkill = update.Overkill;
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
+            target.Result.DamageAbsorbed = update.Absorbed;
+            target.Result.DamageTransferred = update.Transferred;
             if (source != null) source.Result.DamageDealt = update.Dealt!.Value;
+            ApplyAbsorption(absorption);
+            ApplyTransfer(transfer, received);
             ObservedEvent dotObserved = StateObserved(TriggerEvent.DotTick, target, status);
-            long dotEid = Emit(tick, CombatPhase.Periodic, "dotDamage", status.Origin, dotObserved, w => w
-                .Field("source", status.Source).Field("target", target.Id).Field("state", status.State).Field("instance", status.Id)
-                .Field("amount", amount).Field("overkill", overkill).Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken));
-            NoteLethal(target, status.Origin.CausedBy(dotEid));
+            long dotEid = Emit(tick, CombatPhase.Periodic, "dotDamage", status.Origin, dotObserved, w =>
+            {
+                w.Field("source", status.Source).Field("target", target.Id).Field("state", status.State).Field("instance", status.Id)
+                    .Field("amount", amount);
+                WriteAbsorption(w, absorption);
+                w.Field("transferred", transfer.Amount);
+                w.Field("overkill", overkill).Field("health", target.Health).Field("damageTaken", target.Result.DamageTaken);
+            });
+            Provenance dotImpact = status.Origin.CausedBy(dotEid);
+            NoteDepleted(absorption, dotImpact);
+            NoteLethal(target, dotImpact);
+            EmitTransfer(tick, CombatPhase.Periodic, status.Source, target, transfer, received, dotImpact);
             if (IsLastDotTick(tick, status))
             {
                 EndStatus(tick, CombatPhase.Periodic, target, status);
@@ -1432,13 +1964,15 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private void RunRegeneration(long tick)
         {
-            int perSecond = _rules.EnduranceRegenPerSecond;
             foreach (Fighter f in _fightersById)
             {
                 long regenTicks = f.RegenFromTick is long from ? tick - from + 1 : 0;
                 bool eligible = f.Character != null && !f.IsDead && f.RegenFromTick != null && !f.Guarding
                     && BlockReason(f, StatusBlocks.Regeneration) is null && regenTicks > 0;
-                long target = eligible ? checked(perSecond * regenTicks * _tickMs) / 1000 : 0;
+                // Sous-lot 8.1 : régénération/s effective du combattant (décimale), même arrondi par défaut.
+                long target = eligible
+                    ? IntMath.MulDiv(f.Rules.EnduranceRegenPerSecond.Raw, checked(regenTicks * _tickMs), 1000 * Fixed.Scale, RoundingMode.Floor)
+                    : 0;
                 long gain = eligible ? Math.Min(target - f.RegenGranted, f.MaxEndurance - f.Endurance) : 0;
                 Reserve(Cost.Op + Cost.Line.If(gain > 0));
                 Charge(1);
@@ -1477,8 +2011,26 @@ namespace EdS.Simulation.Engine
             foreach (Fighter f in _fightersById)
             {
                 bool dies = !f.IsDead && f.Health == 0;
-                Reserve(Cost.Op + (dies ? Observable(TriggerEvent.Death) + f.Statuses.Count * (Cost.Op + Observable(TriggerEvent.StateRemoved)) : Cost.None));
+                // Sous-lot 8.2 (X4) : un bouclier épuisé est retiré ici, en fin de tick (raison depleted), dans l'ordre des instances ; chez un
+                // mort, il l'est avec les autres états (raison death).
+                List<StatusInstance>? depleted = dies || f.IsDead ? null : Depleted(f);
+                // Sous-lot 8.3 : à sa mort, ses provocations et protections posées sur les autres sont retirées (raison sourceDied).
+                List<StatusInstance> bound = dies ? BoundTo(f) : new List<StatusInstance>();
+                Cost scan = Cost.Op + (dies ? Observable(TriggerEvent.Death) + checked(f.Statuses.Count + bound.Count) * (Cost.Op + Observable(TriggerEvent.StateRemoved))
+                    : (depleted?.Count ?? 0) * (Cost.Op + Observable(TriggerEvent.StateRemoved)));
+                if (depleted != null) TraceReservation("depleted", tick, scan, removing: 0);
+                Reserve(scan);
                 Charge(1);
+                if (depleted != null)
+                    foreach (StatusInstance shield in depleted)
+                    {
+                        f.Statuses.Remove(shield.Key);
+                        Charge(1);
+                        ResumeAfterEndOfTickRemoval(f, shield, tick);
+                        Provenance cause = shield.DepletedBy ?? shield.Origin;
+                        Emit(tick, CombatPhase.EndOfTick, "stateRemoved", cause, StateObserved(TriggerEvent.StateRemoved, f, shield),
+                            w => StateFields(w, f, shield).Field("reason", "depleted"));
+                    }
                 if (!dies) continue;
                 f.IsDead = true;
                 f.Guarding = false;
@@ -1497,7 +2049,41 @@ namespace EdS.Simulation.Engine
                     Emit(tick, CombatPhase.EndOfTick, "stateRemoved", lethal.CausedBy(died), StateObserved(TriggerEvent.StateRemoved, f, status),
                         w => StateFields(w, f, status).Field("reason", "death"));
                 }
+                foreach (StatusInstance status in bound)
+                {
+                    status.Owner.Statuses.Remove(status.Key);
+                    Charge(1);
+                    ResumeAfterEndOfTickRemoval(status.Owner, status, tick);
+                    Emit(tick, CombatPhase.EndOfTick, "stateRemoved", lethal.CausedBy(died), StateObserved(TriggerEvent.StateRemoved, status.Owner, status),
+                        w => StateFields(w, status.Owner, status).Field("reason", "sourceDied"));
+                }
             }
+        }
+
+        /// <summary>
+        /// Sous-lot 8.3 : provocations et protections dont <paramref name="source"/> est la source, sur les autres combattants vivants, par
+        /// identifiant de porteur puis par altération (ordre ordinal).
+        /// </summary>
+        private List<StatusInstance> BoundTo(Fighter source)
+        {
+            var bound = new List<StatusInstance>();
+            foreach (Fighter f in _fightersById)
+            {
+                if (f == source || f.IsDead) continue;
+                foreach (StatusInstance status in f.Statuses.Values.Where(x => x.Definition.IsSourceBound && x.Source == source.Id).OrderBy(x => x.State, StringComparer.Ordinal))
+                    bound.Add(status);
+            }
+            return bound;
+        }
+
+        /// <summary>Sous-lot 8.2 : boucliers épuisés d'un combattant (valeur 0), par numéro d'instance ; null s'il n'y en a pas.</summary>
+        private static List<StatusInstance>? Depleted(Fighter f)
+        {
+            List<StatusInstance>? depleted = null;
+            foreach (StatusInstance status in f.Statuses.Values)
+                if (status.Definition.IsShield && status.Absorb == 0) (depleted ??= new List<StatusInstance>()).Add(status);
+            depleted?.Sort((a, b) => a.Id.CompareTo(b.Id));
+            return depleted;
         }
 
         private void Abort(long tick, string reason, long? limit)
@@ -1525,6 +2111,7 @@ namespace EdS.Simulation.Engine
                 CombatantResult r = f.Result;
                 EmitDiagnostic(tick, CombatPhase.EndOfTick, "combatantSummary", w => w
                     .Field("combatant", r.Id).Field("team", r.Team).Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken)
+                    .Field("damageAbsorbed", r.DamageAbsorbed).Field("damageTransferred", r.DamageTransferred).Field("damageRedirected", r.DamageRedirected)
                     .Field("hits", r.Hits).Field("criticalHits", r.CriticalHits).Field("skillsCast", r.SkillsCast)
                     .Field("commandsRejected", r.CommandsRejected).Field("blocks", r.Blocks).Field("perfectParries", r.PerfectParries)
                     .Field("failedParries", r.FailedParries).Field("guardBreaks", r.GuardBreaks)
@@ -1555,14 +2142,66 @@ namespace EdS.Simulation.Engine
             DerivedStats s = f.Stats;
             bool character = f.Character != null;
             string type = character ? "character" : f.Assailant != null ? "assailant" : "dummy";
-            EmitDiagnostic(0, CombatPhase.Setup, "combatant", w => w
-                .Field("combatant", f.Id).Field("team", f.Team).Field("type", type)
-                .Field("initiative", f.Setup.Initiative).Field("health", f.Health).Field("maxHealth", f.MaxHealth)
-                .Field("endurance", character ? f.Endurance : (long?)null).Field("maxEndurance", character ? f.MaxEndurance : (long?)null)
-                .Field("resonance", character ? f.Resonance : (long?)null).Field("rampartCharges", character ? f.RampartCharges : (long?)null)
-                .Field("physicalPower", s.PhysicalPower).Field("agilePower", s.AgilePower).Field("magicPower", s.MagicPower)
-                .Field("armor", s.Armor).Field("magicResistance", s.MagicResistance)
-                .Field("criticalChanceBasisPoints", s.CriticalChanceBasisPoints).Field("criticalMultiplier", s.CriticalMultiplier));
+            EmitDiagnostic(0, CombatPhase.Setup, "combatant", w =>
+            {
+                w.Field("combatant", f.Id).Field("team", f.Team).Field("type", type)
+                    .Field("initiative", f.Setup.Initiative).Field("health", f.Health).Field("maxHealth", f.MaxHealth)
+                    .Field("endurance", character ? f.Endurance : (long?)null).Field("maxEndurance", character ? f.MaxEndurance : (long?)null)
+                    .Field("resonance", character ? f.Resonance : (long?)null).Field("rampartCharges", character ? f.RampartCharges : (long?)null)
+                    .Field("physicalPower", s.PhysicalPower).Field("agilePower", s.AgilePower).Field("magicPower", s.MagicPower)
+                    .Field("armor", s.Armor).Field("magicResistance", s.MagicResistance).Field("statusResistance", s.StatusResistance)
+                    .Field("criticalChanceBasisPoints", s.CriticalChanceBasisPoints).Field("criticalMultiplier", s.CriticalMultiplier);
+                w.Name("rules");
+                if (character) WriteRules(w, f);
+                else w.Value((string?)null);
+            });
+        }
+
+        /// <summary>
+        /// Sous-lot 8.1 (format 5) : règles effectives d'un personnage. Valeurs résultantes des clés de règle scalaires (les clés de
+        /// statistiques, <c>endurance.max</c>, <c>maxHealth</c> et <c>statusResistance</c>, sont dans les champs du combattant) ; puis
+        /// chaque clé paramétrée visée par un modificateur actif, dans l'ordre ordinal (coefficient et recharge effectifs pour une
+        /// compétence, ajout en ms pour une durée d'altération) ; puis les modificateurs conditionnels agrégés (<c>conditional</c>).
+        /// </summary>
+        private static void WriteRules(JsonLineWriter w, Fighter f)
+        {
+            CombatantRules r = f.Rules;
+            w.BeginObject()
+                .Field("guard.damageReduction", r.GuardDamageReduction).Field("guard.upkeepPerSecond", r.GuardUpkeepPerSecond)
+                .Field("guard.costPerBlock", r.GuardCostPerBlock).Field("guard.noUpkeepBreak", r.GuardNoUpkeepBreak).Field("guard.noUpkeep", r.GuardNoUpkeep)
+                .Field("guard.reductionAtZeroEndurance", r.GuardReductionAtZeroEndurance).Field("guard.breakShortenPerCharge", r.GuardBreakShortenPerChargeMs)
+                .Field("parry.windowMs", r.ParryWindowMs).Field("parry.failureRecoveryMs", r.ParryFailureRecoveryMs)
+                .Field("rampartCharges.max", r.RampartChargesMax).Field("resonance.perDirectHit", r.ResonancePerDirectHit)
+                .Field("endurance.regenPerSecond", r.EnduranceRegenPerSecond)
+                .Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken).Field("shield.potencyDealt", r.ShieldPotencyDealt)
+                .Field("protection.redirectRatio", r.ProtectionRedirectRatio).Field("protection.redirectThroughGuard", r.ProtectionRedirectThroughGuard);
+            foreach (ModifierKey key in r.Modifiers.Keys)
+            {
+                switch (key.Field)
+                {
+                    case ModifierField.StatusDurationDealt:
+                        w.Field(key.ToString(), r.DurationDealtMs(key.Parameter!));
+                        break;
+                    case ModifierField.StatusDurationTaken:
+                        w.Field(key.ToString(), r.DurationTakenMs(key.Parameter!));
+                        break;
+                    case ModifierField.SkillCoefficient when f.Character!.Class.TryGetSkill(key.Parameter!, out SkillDefinition skill) && skill.Combat is { } combat:
+                        w.Field(key.ToString(), r.Coefficient(skill, combat));
+                        break;
+                    case ModifierField.SkillCooldownMs when f.Character!.Class.TryGetSkill(key.Parameter!, out SkillDefinition skill) && skill.Combat is { } combat:
+                        w.Field(key.ToString(), r.CooldownMs(skill, combat));
+                        break;
+                }
+            }
+            w.Name("conditional").BeginArray();
+            foreach (ConditionalModifier c in r.Modifiers.Conditional)
+            {
+                w.BeginObject().Field("key", ModifierKeys.Specs[(int)c.Field].Name);
+                w.Name("conditions").BeginArray();
+                foreach (ModifierCondition condition in ModifierKeys.Of(c.Conditions)) w.Value(ModifierKeys.Of(condition));
+                w.EndArray().Field("value", c.Value).EndObject();
+            }
+            w.EndArray().EndObject();
         }
 
         private static string PhaseId(CombatPhase phase) => phase switch

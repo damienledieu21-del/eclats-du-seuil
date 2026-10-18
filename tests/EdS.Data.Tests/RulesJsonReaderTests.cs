@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(5, result.Rules!.SchemaVersion);
-        Assert.Equal("0.5.0-provisoire", result.Rules.ContentVersion);
+        Assert.Equal(9, result.Rules!.SchemaVersion);
+        Assert.Equal("0.8.0-provisoire", result.Rules.ContentVersion);   // 0.8.0 : altérations des talents du Gardien (sous-lot 8.5)
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -55,6 +55,13 @@ public class RulesJsonReaderTests
                 // Lot 7.2 : catalogue des altérations comparé définition par définition, dans l'ordre.
                 Assert.Equal(ec.Definitions.Count, ac.Definitions.Count);
                 for (int i = 0; i < ec.Definitions.Count; i++) AssertSameProperties(ec.Definitions[i], ac.Definitions[i]);
+                continue;
+            }
+            if (e is IReadOnlyList<ModifierDefinition> em && a is IReadOnlyList<ModifierDefinition> am)
+            {
+                // Sous-lot 8.4 : renforcements livrés, modificateurs comparés un par un (clé, valeur, conditions).
+                Assert.Equal(em.Select(m => (m.Key, m.Add.Base, m.Add.PerRank, string.Join(",", m.Conditions))),
+                    am.Select(m => (m.Key, m.Add.Base, m.Add.PerRank, string.Join(",", m.Conditions))));
                 continue;
             }
             bool same = e is IEnumerable<int> el && a is IEnumerable<int> al ? el.SequenceEqual(al)
@@ -103,8 +110,13 @@ public class RulesJsonReaderTests
         // Correctif 7.2 : empilement de l'étourdissement passé à ignore.
         // Lot 7.3 : schéma 5 et combat.limits.maxTriggerDepth ; une altération sans déclencheur n'ajoute rien au texte canonique.
         // Correctif 7.3.1 (A73-M02) : contrat canonique 2 (version en tête, champs absents marqués, listes indicées).
+        // Lot 8 (décision du 18/10/2026) : schéma 6, contenu 0.6.0, plafonds combat.guard.maxDamageReduction et combat.damageTaken.maxReduction.
+        // Sous-lot 8.2 : schéma 7 (renforcements et boucliers) ; seule la version change dans le texte canonique.
+        // Sous-lot 8.3 : schéma 8 ; redirectRatio (0) écrit pour chaque altération.
+        // Sous-lot 8.4 : schéma 9, contenu 0.7.0 : combat.triggers.areaStrikeMinCooldownMs et les cinq altérations du Bastion.
+        // Sous-lot 8.5 : contenu 0.8.0, schéma inchangé : les trois altérations des talents du Gardien.
         Assert.Equal(
-            "sha256:293ef0ea83036e903d5d50699a45c8c9d5dbf7a94eb106b42961380506b9c5ad",
+            "sha256:03f73faca72b574c972b117e29235f072528b6a5929b268c01842ec9fca1f83a",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -112,7 +124,40 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 6), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 10), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+
+    [Fact]
+    public void Format_5_sans_plafonds_refuse_explicitement()
+    {
+        // Décision du 18/10/2026 : schéma 6, plafonds de réduction dans les règles. Un fichier au format 5 (sans ces deux champs) est
+        // refusé par sa version, avec un seul message, sans migration (politique pré-alpha).
+        RulesLoadResult result = ReadMutated(r =>
+        {
+            r["schemaVersion"] = 5;
+            r["data"]!["combat"]!["guard"]!.AsObject().Remove("maxDamageReduction");
+            r["data"]!["combat"]!.AsObject().Remove("damageTaken");
+        });
+        AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+    }
+
+    [Fact]
+    public void Plafonds_de_reduction_lus_et_verifies()
+    {
+        // Les deux plafonds sont lus dans le fichier ; une réduction de garde au-dessus de son plafond est refusée sur les deux champs.
+        LoadedRules rules = ReadMutated(r =>
+        {
+            r["data"]!["combat"]!["guard"]!["maxDamageReduction"] = 0.8;
+            r["data"]!["combat"]!["guard"]!["damageReduction"] = 0.8;
+            r["data"]!["combat"]!["damageTaken"]!["maxReduction"] = 0.9;
+        }).Rules!;
+        Assert.Equal(Fixed.Parse("0.8"), rules.Combat.MaxGuardDamageReduction);
+        Assert.Equal(Fixed.Parse("0.9"), rules.Combat.MaxTotalDamageReduction);
+        RulesLoadResult above = ReadMutated(r => r["data"]!["combat"]!["guard"]!["maxDamageReduction"] = 0.5);
+        Assert.False(above.IsValid);
+        Assert.Contains(above.Report.Errors, e => e.Path == "$.data.combat.guard.damageReduction");
+        RulesLoadResult outside = ReadMutated(r => r["data"]!["combat"]!["damageTaken"]!["maxReduction"] = 1.5);
+        Assert.Contains(outside.Report.Errors, e => e.Path == "$.data.combat.damageTaken.maxReduction");
+    }
 
     [Fact]
     public void Ancien_format_v1_refuse_explicitement_sans_migration()

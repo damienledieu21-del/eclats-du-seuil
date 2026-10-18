@@ -30,7 +30,9 @@ public class Lot73MigrationTests
     private static IReadOnlyList<string> Current(string name)
     {
         var log = new MemoryCombatLog();
-        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!, log);
+        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay. Sous-lot
+        // 8.5 : scénarios figés du 8.4 (passifs « [TEST] »).
+        CombatEngine.Run(ScenarioJsonReader.ReadFile(FrozenScenarioPath(name), HistoricalData).Setup!, log);
         return log.Lines;
     }
 
@@ -46,7 +48,7 @@ public class Lot73MigrationTests
 
         JsonObject oldHeader = JsonNode.Parse(before[0])!.AsObject(), newHeader = JsonNode.Parse(after[0])!.AsObject();
         Assert.Equal((3, "0.8.1"), (oldHeader["formatVersion"]!.GetValue<int>(), oldHeader["engineVersion"]!.GetValue<string>()));
-        Assert.Equal((4, "0.9.1"), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
+        Assert.Equal((CombatEngine.LogFormatVersion, CombatEngine.Version), (newHeader["formatVersion"]!.GetValue<int>(), newHeader["engineVersion"]!.GetValue<string>()));
         foreach (JsonObject header in new[] { oldHeader, newHeader })
             foreach (string key in new[] { "formatVersion", "engineVersion", "data" }) header.Remove(key);
         Assert.Equal(oldHeader.ToJsonString(), newHeader.ToJsonString());
@@ -54,7 +56,8 @@ public class Lot73MigrationTests
         int gameplay = 0;
         for (int i = 1; i < before.Length; i++)
         {
-            JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = JsonNode.Parse(after[i])!.AsObject();
+            // Sous-lot 8.1 : champs ajoutés au format 5, comparés à part (Lot81ReferenceTests, Lot8LogFields).
+            JsonObject oldLine = JsonNode.Parse(before[i])!.AsObject(), newLine = EdS.TestSupport.Lot8LogFields.RemoveAdded(JsonNode.Parse(after[i])!.AsObject());
             foreach (string key in CausalGraph.ProvenanceFields) Assert.False(oldLine.ContainsKey(key), $"format 3 sans « {key} »");
             string kind = newLine["event"]!.GetValue<string>();
             // Les diagnostics et l'enveloppe ne reçoivent aucun champ de provenance ; combatEnded reçoit deferredDropped (0 sans
@@ -64,7 +67,7 @@ public class Lot73MigrationTests
                 Assert.Equal(0, newLine["deferredDropped"]!.GetValue<long>());
                 newLine.Remove("deferredDropped");
             }
-            else if (DiagnosticKinds.Contains(kind)) Assert.Equal(before[i], after[i]);
+            else if (DiagnosticKinds.Contains(kind)) Assert.Equal(EdS.TestSupport.Lot8LogFields.Comparable(before[i]), EdS.TestSupport.Lot8LogFields.Comparable(after[i]));
             else
             {
                 gameplay++;
@@ -138,7 +141,7 @@ public class Lot73MigrationTests
     [MemberData(nameof(Scenarios))]
     public void Journal_au_format_4_rejoue_octet_par_octet(string name)
     {
-        ReplayOutcome outcome = CombatLogReplayer.Replay(Current(name).ToArray(), ShippedData);
+        ReplayOutcome outcome = CombatLogReplayer.Replay(Current(name).ToArray(), HistoricalData);
         Assert.Equal(ReplayStatus.Identical, outcome.Status);
     }
 }

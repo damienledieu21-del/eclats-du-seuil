@@ -57,9 +57,12 @@ namespace EdS.Domain.Combat
         /// réduite par la défense, la défense effective actuelle de la cible pour <paramref name="type"/> (armure ou résistance
         /// magique) est appliquée avec la même formule et le même arrondi que les dégâts directs ; puis arrondi final et dégâts
         /// minimum. Aucun bonus de catégorie, aucun critique (décision 4), ni garde ni parade (A12) : le résultat est identique à
-        /// <see cref="Compute"/> avec le même coefficient, sans bonus, sans critique et sans réduction.
+        /// <see cref="Compute"/> avec le même coefficient, sans bonus, sans critique et sans réduction. Sous-lot 8.1 :
+        /// <paramref name="mitigation"/> (modificateurs de dégâts subis, dans [0, 0,85]) s'applique après la défense, comme l'étape
+        /// « réduction » de <see cref="Compute"/> ; 0 la laisse sans effet.
         /// </summary>
-        public static long ComputePeriodic(Fixed power, DerivedStats defender, DamageType type, bool reducedByDefense, DamageRules rules)
+        public static long ComputePeriodic(Fixed power, DerivedStats defender, DamageType type, bool reducedByDefense, DamageRules rules,
+            Fixed mitigation = default)
         {
             if (defender is null) throw new ArgumentNullException(nameof(defender));
             if (rules is null) throw new ArgumentNullException(nameof(rules));
@@ -72,6 +75,7 @@ namespace EdS.Domain.Combat
                 long denominator = checked(constantRaw + defender.GetEffectiveDefense(type).Raw);
                 after = Fixed.FromRaw(IntMath.MulDiv(power.Raw, constantRaw, denominator, RoundingMode.HalfAwayFromZero));
             }
+            if (mitigation != Fixed.Zero) after *= Fixed.One - mitigation;
             long rounded = after.RoundToInt(rules.FinalRounding);
             return after > Fixed.Zero ? Math.Max(rules.MinimumDamage, rounded) : 0;
         }

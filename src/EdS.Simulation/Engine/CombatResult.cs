@@ -22,7 +22,21 @@ namespace EdS.Simulation.Engine
         public string Id { get; internal set; } = string.Empty;
         public string Team { get; internal set; } = string.Empty;
         public long DamageDealt { get; internal set; }
+
+        /// <summary>
+        /// PV perdus. Sous-lot 8.2 : les dégâts absorbés par un bouclier n'en font pas partie (<see cref="DamageAbsorbed"/>) ; les
+        /// dégâts infligés de la source (<see cref="DamageDealt"/>) les comprennent.
+        /// </summary>
         public long DamageTaken { get; internal set; }
+
+        /// <summary>Sous-lot 8.2 (X4) : dégâts subis absorbés par les boucliers de ce combattant.</summary>
+        public long DamageAbsorbed { get; internal set; }
+
+        /// <summary>Sous-lot 8.3 (X6) : part de ses dégâts transférée à ses protecteurs (protégé).</summary>
+        public long DamageTransferred { get; internal set; }
+
+        /// <summary>Sous-lot 8.3 (X6) : parts reçues des alliés qu'il protège, avant sa garde et ses boucliers (protecteur).</summary>
+        public long DamageRedirected { get; internal set; }
         public long Hits { get; internal set; }
         public long CriticalHits { get; internal set; }
         public long SkillsCast { get; internal set; }

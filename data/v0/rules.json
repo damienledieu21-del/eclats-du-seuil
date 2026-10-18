@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 5,
+  "schemaVersion": 9,
   "kind": "rules",
-  "contentVersion": "0.5.0-provisoire",
+  "contentVersion": "0.8.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -79,11 +79,18 @@
         "maxWorkPerTick": 10000,
         "maxTriggerDepth": 4
       },
+      "triggers": {
+        "areaStrikeMinCooldownMs": 3000
+      },
       "guard": {
         "damageReduction": 0.6,
+        "maxDamageReduction": 0.75,
         "upkeepPerSecond": 2,
         "costPerBlock": 10,
         "breakStatus": "guardBreak"
+      },
+      "damageTaken": {
+        "maxReduction": 0.85
       },
       "parry": {
         "windowMs": 150,
@@ -116,7 +123,24 @@
       {
         "id": "guardBreak", "category": "control", "durationMs": 3000, "stacking": "ignore", "resistance": "none",
         "blocks": ["guard", "parry", "regeneration"], "blockReason": "guardBroken"
-      }
+      },
+      { "id": "taunt", "category": "taunt", "durationMs": 3000, "stacking": "perSourceKeepStronger", "resistance": "none" },
+      { "id": "steelBarrier", "category": "shield", "durationMs": 6000, "stacking": "perSourceKeepStronger", "resistance": "none" },
+      {
+        "id": "bastionAbsolute", "category": "buff", "durationMs": 8000, "stacking": "refresh", "resistance": "none",
+        "modifiers": [{ "key": "damageTaken", "add": -0.3 }]
+      },
+      {
+        "id": "bastionAbsoluteGuard", "category": "buff", "durationMs": 8000, "stacking": "refresh", "resistance": "none",
+        "modifiers": [{ "key": "guard.noUpkeep", "add": 1 }]
+      },
+      { "id": "bastionAbsoluteTaunt", "category": "taunt", "durationMs": 8000, "stacking": "perSourceKeepStronger", "resistance": "none" },
+      { "id": "reactiveAegis", "category": "shield", "durationMs": 4000, "stacking": "perSourceKeepStronger", "resistance": "none" },
+      {
+        "id": "protectiveLink", "category": "protection", "durationMs": 6000, "stacking": "perSourceKeepStronger", "resistance": "none",
+        "redirectRatio": 0.25
+      },
+      { "id": "oathTaunt", "category": "taunt", "durationMs": 2000, "stacking": "perSourceKeepStronger", "resistance": "none" }
     ]
   }
 }
