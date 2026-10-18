@@ -618,6 +618,29 @@ namespace EdS.Domain.Combat
                 return Math.Max(1, ms / tick);
             }
             var enemies = Combatants.ToDictionary(c => c.Id, c => Combatants.Where(o => o.Team != c.Team).Select(o => o.Id).ToArray(), StringComparer.Ordinal);
+            // Sous-lot 8.3 (X5) : alliés de chacun (lui compris), pour les compétences de soutien et les cibles propres d'application.
+            var allies = Combatants.ToDictionary(c => c.Id, c => Combatants.Where(o => o.Team == c.Team).Select(o => o.Id).ToArray(), StringComparer.Ordinal);
+            // Sous-lot 8.3 (X7) : une attaque à cible unique d'un assaillant provoqué vise la source de la provocation, un ennemi
+            // quelconque : avec une provocation au catalogue, toutes les cibles ennemies sont possibles.
+            bool taunts = catalog.Definitions.Any(d => d.IsTaunt);
+            // Cibles possibles et impacts par action d'une application, selon le ciblage de l'action et la cible propre de l'application.
+            (string[] Set, long Hits) Reach(string actor, SkillTargeting targeting, string? singleTarget, ApplicationTarget target)
+            {
+                switch (target)
+                {
+                    case ApplicationTarget.Self: return (new[] { actor }, 1);
+                    case ApplicationTarget.AllAllies: return (allies[actor], allies[actor].Length);
+                    case ApplicationTarget.AllEnemies: return (enemies[actor], enemies[actor].Length);
+                }
+                return targeting switch
+                {
+                    SkillTargeting.AllEnemies => (enemies[actor], enemies[actor].Length),
+                    SkillTargeting.Self => (new[] { actor }, 1),
+                    SkillTargeting.Ally => (allies[actor], 1),
+                    SkillTargeting.AllAllies => (allies[actor], allies[actor].Length),
+                    _ => singleTarget is null || taunts ? (enemies[actor], 1) : (new[] { singleTarget }, 1),
+                };
+            }
 
             foreach (CombatantSetup combatant in Combatants)
             {
@@ -635,9 +658,18 @@ namespace EdS.Domain.Combat
                             long k = Math.Min(turns, (Window(d) - 1) / interval + 1);   // tours dans une fenêtre de D ticks
                             long perAttack = (k + n - 1) / n;                            // tours d'une même attaque parmi k consécutifs
                             var carrying = a.Attacks.Where(x => x.Applies.Any(ap => ap.Status == status)).ToList();
-                            bool zone = carrying.Any(x => x.Targeting == SkillTargeting.AllEnemies);
-                            string[] hit = zone ? enemies[a.Id] : (a.Target is null ? Array.Empty<string>() : new[] { a.Target });
-                            Carry(d, hit, checked(Math.Min(k, perAttack * carrying.Count) * hit.Length));
+                            // Sous-lot 8.3 : cibles possibles de chaque application (cible de l'attaque, ou cible propre), et le plus
+                            // grand nombre d'applications par tour.
+                            var hit = new HashSet<string>(StringComparer.Ordinal);
+                            long hits = 0;
+                            foreach (AssailantAttack x in carrying)
+                                foreach (StatusApplication ap in x.Applies.Where(ap => ap.Status == status))
+                                {
+                                    var (set, count) = Reach(a.Id, x.Targeting, a.Target, ap.Target);
+                                    hit.UnionWith(set);
+                                    hits = Math.Max(hits, count);
+                                }
+                            Carry(d, hit, checked(Math.Min(k, perAttack * carrying.Count) * hits));
                         }
                         break;
                     }
@@ -649,15 +681,18 @@ namespace EdS.Domain.Combat
                         {
                             if (!catalog.TryGet(status, out StatusDefinition? d)) continue;
                             long inWindow = 0;
+                            var reached = new HashSet<string>(StringComparer.Ordinal);
                             foreach (SkillDefinition skill in c.Class.Skills.Where(sk => sk.Combat != null && sk.Combat.Applies.Any(ap => ap.Status == status)))
                             {
                                 long commands = Commands.LongCount(cmd => cmd.Actor == c.Id && cmd.Action == CombatAction.UseSkill && cmd.Skill == skill.Id);
                                 long spacing = Math.Max(gcdTicks, rules.CooldownMs(skill, skill.Combat!) / tick);   // recharge effective (8.1)
                                 long rate = spacing == 0 ? checked(Combat.MaxCommandsPerActorPerTick * Window(d)) : (Window(d) - 1) / spacing + 1;
-                                long hits = skill.Combat!.Targeting == SkillTargeting.AllEnemies ? enemies[c.Id].Length : 1;
+                                // Sous-lot 8.3 : cibles possibles et applications par lancer, selon le ciblage et la cible propre.
+                                var (set, hits) = Reach(c.Id, skill.Combat!.Targeting, null, skill.Combat.Applies.First(ap => ap.Status == status).Target);
+                                reached.UnionWith(set);
                                 inWindow = checked(inWindow + checked(Math.Min(commands, rate) * hits));
                             }
-                            Carry(d, enemies[c.Id], inWindow);
+                            Carry(d, reached, inWindow);
                         }
                         break;
                     }
@@ -755,6 +790,9 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation($"dégâts bruts hors de [0, {CombatantStats.MaxRawDamage}].", attackPath + ".rawDamage"));
                 if (!Enum.IsDefined(typeof(DamageType), attack.DamageType)) errors.Add(new RuleViolation("type de dégâts inconnu.", attackPath + ".damageType"));
                 if (!Enum.IsDefined(typeof(SkillTargeting), attack.Targeting)) errors.Add(new RuleViolation("ciblage inconnu.", attackPath + ".targeting"));
+                // Sous-lot 8.3 : une attaque d'assaillant frappe ; seules les compétences ont un ciblage de soutien.
+                else if (attack.Targeting != SkillTargeting.Enemy && attack.Targeting != SkillTargeting.AllEnemies)
+                    errors.Add(new RuleViolation("une attaque d'assaillant vise un ennemi ou tous les ennemis (enemy, allEnemies).", attackPath + ".targeting"));
                 StatusApplication.ValidateList(attack.Applies, attackPath + ".applies", errors);
                 for (int m = 0; m < attack.Applies.Count; m++)
                     if (Combat.Statuses.CheckApplication(attack.Applies[m], Combat.GuardBreakStatus) is { } problem)
@@ -992,7 +1030,9 @@ namespace EdS.Domain.Combat
                             foreach (SkillDefinition skill in character.Class.Skills)
                                 if (skill.Combat is { } combat)
                                 {
-                                    offenses[i].Add(new Offense($"compétence « {skill.Id} »", stats, combat.PowerType, combat.DamageType, rules.Coefficient(skill, combat), true, talent));
+                                    // Sous-lot 8.3 : une compétence de soutien n'a pas d'impact ; ses DOT éventuels comptent.
+                                    if (combat.HasDamage)
+                                        offenses[i].Add(new Offense($"compétence « {skill.Id} »", stats, combat.PowerType, combat.DamageType, rules.Coefficient(skill, combat), true, talent));
                                     AddDotOffenses(offenses[i], $"compétence « {skill.Id} »", stats, combat.Applies);
                                 }
                             // Lot 7.3 (§4.2) : frappes et DOT des réactions, à la puissance du porteur. Un personnage peut porter toute

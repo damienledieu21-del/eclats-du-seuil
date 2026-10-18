@@ -15,7 +15,7 @@ public class Correctif731CliTests
 {
     /// <summary>Scénario de l'annexe de l'audit : mannequin « target » et assaillant « attacker » qui pose une brûlure.</summary>
     private static string Scenario(long intervalMs, bool direct, bool trigger) => $$"""
-        { "schemaVersion": 2, "kind": "scenario", "contentVersion": "0.1.0-audit",
+        { "schemaVersion": 3, "kind": "scenario", "contentVersion": "0.1.0-audit",
           "data": { "seed": 42, "durationMs": 5000, "commands": [],
             "combatants": [
               { "id": "target", "type": "dummy", "team": "blue", "initiative": 0, "armor": 0, "magicResistance": 0 },

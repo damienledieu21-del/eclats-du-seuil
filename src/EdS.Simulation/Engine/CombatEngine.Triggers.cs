@@ -135,7 +135,8 @@ namespace EdS.Simulation.Engine
 
         /// <summary>
         /// Réservé aux tests (étape 7.3.6) : tentatives de réservation d'une notification (<c>notify</c>), d'une réaction exécutée
-        /// (<c>reaction</c>) ou, depuis le sous-lot 8.2, du retrait des boucliers épuisés d'un combattant (<c>depleted</c>), notées avant la vérification : consommation du tick et taille de la file à cet instant, puis coût
+        /// (<c>reaction</c>), depuis le sous-lot 8.2 du retrait des boucliers épuisés d'un combattant (<c>depleted</c>), et depuis le sous-lot
+        /// 8.3 d'une action entière en phase de résolution (<c>action</c> : impacts, transferts, applications), notées avant la vérification : consommation du tick et taille de la file à cet instant, puis coût
         /// vérifié (le majorant pour une réaction). Permet de placer un budget exactement à N − 1, N et N + 1 de chaque réservation.
         /// </summary>
         internal List<ReservationAttempt>? ReservationTrace { get; set; }
@@ -251,11 +252,17 @@ namespace EdS.Simulation.Engine
         private static bool Live(TriggerSlot slot) =>
             !slot.Bearer.IsDead && (slot.Status is not { } status || (status.Owner.Statuses.TryGetValue(status.Key, out StatusInstance? current) && current == status));
 
-        /// <summary>Le déclencheur est-il abonné à ce type d'effet, avec un porteur qui tient le rôle demandé ?</summary>
-        private static bool Matches(TriggerSlot slot, ObservedEvent e)
+        /// <summary>
+        /// Le déclencheur est-il abonné à ce type d'effet, avec un porteur qui tient le rôle demandé ? Sous-lot 8.3 (X9) : rôle allié, la
+        /// cible de l'effet est un allié vivant du porteur, autre que lui.
+        /// </summary>
+        private bool Matches(TriggerSlot slot, ObservedEvent e)
         {
             TriggerDefinition d = slot.Definition;
             if (d.On != e.Kind && d.On != e.Also) return false;
+            if (d.EffectiveRole == TriggerRole.Ally)
+                return e.Target != null && !string.Equals(e.Target, slot.Bearer.Id, StringComparison.Ordinal)
+                    && _byId.TryGetValue(e.Target, out Fighter? ally) && ally.Team == slot.Bearer.Team && !ally.IsDead;
             string? holder = d.EffectiveRole == TriggerRole.Target ? e.Target : e.Source;   // self et source : l'auteur
             return string.Equals(holder, slot.Bearer.Id, StringComparison.Ordinal);
         }
@@ -408,7 +415,9 @@ namespace EdS.Simulation.Engine
                     Cost parry = Observable(TriggerEvent.PerfectParry) + GainCost(target, 1) + GainCost(target, 1);
                     Cost broken = Observable(TriggerEvent.GuardBroken) + Cost.Line + ApplyBound();
                     Cost block = Observable(TriggerEvent.Block) + GainCost(target, 1);
-                    return Cost.Op + Observable(TriggerEvent.HitDealt, TriggerEvent.HitTaken) + Cost.Max(parry, Cost.Max(broken, block));
+                    // Sous-lot 8.3 : plus la ligne de transfert éventuelle, si le catalogue a une protection (un effet précédent de la même
+                    // réaction peut en poser une sur la cible).
+                    return Cost.Op + Observable(TriggerEvent.HitDealt, TriggerEvent.HitTaken) + Cost.Line.If(_hasProtections) + Cost.Max(parry, Cost.Max(broken, block));
                 case TriggerEffectKind.ApplyStatus:
                     return ApplyBound();
                 default:

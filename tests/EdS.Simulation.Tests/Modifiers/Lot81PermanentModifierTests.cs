@@ -1132,7 +1132,7 @@ public class Lot81CombatantRulesLogTests
         const string expected = "{\"guard.damageReduction\":0.65,\"guard.upkeepPerSecond\":2.5,\"guard.costPerBlock\":10,"
             + "\"guard.noUpkeepBreak\":true,\"guard.reductionAtZeroEndurance\":0.65,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":150,"
             + "\"parry.failureRecoveryMs\":500,\"rampartCharges.max\":5,\"resonance.perDirectHit\":5,\"endurance.regenPerSecond\":10,"
-            + "\"damageDealt\":0.1,\"damageTaken\":0,\"shield.potencyDealt\":0,"
+            + "\"damageDealt\":0.1,\"damageTaken\":0,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false,"
             + "\"skill.essai.frappe.coefficient\":1.5,\"skill.essai.frappe.cooldownMs\":5000,\"skill.essai.heurt.coefficient\":1,"
             + "\"status.burn.durationTaken\":2000,\"status.stun.durationDealt\":500,"
             + "\"conditional\":[{\"key\":\"damageDealt\",\"conditions\":[\"whileGuarding\"],\"value\":0.1},"
@@ -1152,7 +1152,7 @@ public class Lot81CombatantRulesLogTests
         const string expected = "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,"
             + "\"guard.noUpkeepBreak\":false,\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":800,\"parry.windowMs\":150,"
             + "\"parry.failureRecoveryMs\":500,\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,"
-            + "\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"conditional\":[]}";
+            + "\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false,\"conditional\":[]}";
         Assert.Equal(expected, X1.RulesJson(lines));
     }
 
@@ -1169,7 +1169,7 @@ public class Lot81CombatantRulesLogTests
         const string expectedSansCout = "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":0,"
             + "\"guard.noUpkeepBreak\":true,\"guard.reductionAtZeroEndurance\":0.3,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":150,"
             + "\"parry.failureRecoveryMs\":500,\"rampartCharges.max\":5,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,"
-            + "\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"conditional\":[]}";
+            + "\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false,\"conditional\":[]}";
         Assert.Equal(expectedSansCout, X1.RulesJson(Log(sansCout, null, new[] { Passif })));
 
         ClassDefinition sansCharge = X1.With((Passif, new[]
@@ -1179,7 +1179,7 @@ public class Lot81CombatantRulesLogTests
         const string expectedSansCharge = "{\"guard.damageReduction\":0.6,\"guard.upkeepPerSecond\":2,\"guard.costPerBlock\":10,"
             + "\"guard.noUpkeepBreak\":false,\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":500,\"parry.windowMs\":150,"
             + "\"parry.failureRecoveryMs\":500,\"rampartCharges.max\":0,\"resonance.perDirectHit\":3,\"endurance.regenPerSecond\":10,"
-            + "\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"conditional\":[]}";
+            + "\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false,\"conditional\":[]}";
         Assert.Equal(expectedSansCharge, X1.RulesJson(Log(sansCharge, null, new[] { Passif })));
     }
 
@@ -1204,7 +1204,7 @@ public class Lot81CombatantRulesLogTests
         const string expected = "{\"guard.damageReduction\":0.75,\"guard.upkeepPerSecond\":0,\"guard.costPerBlock\":0,"
             + "\"guard.noUpkeepBreak\":false,\"guard.reductionAtZeroEndurance\":0,\"guard.breakShortenPerCharge\":0,\"parry.windowMs\":500,"
             + "\"parry.failureRecoveryMs\":0,\"rampartCharges.max\":10,\"resonance.perDirectHit\":0,\"endurance.regenPerSecond\":0,"
-            + "\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,"
+            + "\"damageDealt\":0,\"damageTaken\":0,\"shield.potencyDealt\":0,\"protection.redirectRatio\":0,\"protection.redirectThroughGuard\":false,"
             + "\"skill.essai.frappe.coefficient\":0,\"skill.essai.frappe.cooldownMs\":0,"
             + "\"skill.essai.heurt.coefficient\":100,\"skill.essai.heurt.cooldownMs\":86400000,\"conditional\":[]}";
         Assert.Equal(expected, X1.RulesJson(lines));

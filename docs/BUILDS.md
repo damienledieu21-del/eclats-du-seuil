@@ -1,6 +1,6 @@
 # Classes, talents et builds (lot 4)
 
-Le moteur est générique : aucune règle ne dépend d'une classe. Les effets de combat des talents et des compétences ne sont **pas** implémentés (lot 5 et suivants) ; ce lot ne décrit que leur structure et la validité d'un build. Depuis le lot 7.3, un talent ou une compétence peut porter des déclencheurs ; depuis le sous-lot 8.1, un talent ou une compétence passive peut porter des **modificateurs** (règles effectives du porteur, schéma de classe 5) : voir [DONNEES.md](DONNEES.md#modificateurs-sous-lot-81). Le Bastion livré n'en porte pas encore.
+Le moteur est générique : aucune règle ne dépend d'une classe. Les effets de combat des talents et des compétences ne sont **pas** implémentés (lot 5 et suivants) ; ce lot ne décrit que leur structure et la validité d'un build. Depuis le lot 7.3, un talent ou une compétence peut porter des déclencheurs ; depuis le sous-lot 8.1, un talent ou une compétence passive peut porter des **modificateurs** (règles effectives du porteur, schéma de classe 5 ; 7 depuis le sous-lot 8.3) : voir [DONNEES.md](DONNEES.md#modificateurs-sous-lot-81). Le Bastion livré n'en porte pas encore.
 
 ## Règles de progression (`rules.json`, bloc `progression`)
 
@@ -21,7 +21,7 @@ Un majeur coûte 1 point après les 18 : 19 points pour un majeur, il en reste 1
 
 ```json
 {
-  "schemaVersion": 6, "kind": "class", "contentVersion": "0.2.0-provisoire",
+  "schemaVersion": 7, "kind": "class", "contentVersion": "0.2.0-provisoire",
   "data": {
     "id": "class.bastion", "name": "Bastion",
     "trees": [ { "id": "tree.bastion.rempart", "name": "Rempart", "talents": [

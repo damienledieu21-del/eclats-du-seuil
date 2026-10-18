@@ -151,7 +151,7 @@ public class Lot82StatusDataTests
             "statuses[7].interrupts.count=0\nstatuses[7].blockReason?\nstatuses[7].damageTakenIncrease=0\nstatuses[7].movementSpeedModifier=0\n" +
             "statuses[7].grantsOnExpiry?\nstatuses[7].immuneTo.count=0\n" +
             "statuses[7].modifiers.count=1\nstatuses[7].modifiers[0].key=damageTaken\nstatuses[7].modifiers[0].add=-0.3\n" +
-            "statuses[7].modifiers[0].conditions.count=0\n", canonical);
+            "statuses[7].modifiers[0].conditions.count=0\nstatuses[7].redirectRatio=0\n", canonical);   // 8.3 : redirectRatio
         Assert.DoesNotContain("statuses[6].modifiers", canonical);   // altérations sans modificateur : rien d'écrit
     }
 
@@ -163,8 +163,8 @@ public class Lot82StatusDataTests
         RulesLoadResult result = RulesTestData.ReadMutated(r => r["schemaVersion"] = 6);
         ValidationError error = Assert.Single(result.Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (error.Path, error.Code));
-        Assert.Contains("antérieure à la version 7", error.Message);
-        Assert.Equal(7, RulesJsonReader.ReadFile(RulesTestData.ShippedPath).Rules!.SchemaVersion);
+        Assert.Contains($"antérieure à la version {DataFormat.RulesSchemaVersion}", error.Message);
+        Assert.True(RulesJsonReader.ReadFile(RulesTestData.ShippedPath).Rules!.SchemaVersion >= 7);
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class Lot82StatusDataTests
         ClassLoadResult result = ClassTestData.ReadMutated(c => c["schemaVersion"] = 5);
         ValidationError error = Assert.Single(result.Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (error.Path, error.Code));
-        Assert.Contains("antérieure à la version 6", error.Message);
+        Assert.Contains($"antérieure à la version {DataFormat.ClassSchemaVersion}", error.Message);
     }
 
     [Fact]

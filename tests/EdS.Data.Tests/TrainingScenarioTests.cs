@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "5c408a5e9662e5f39d2baf204b13e75849c4d180b7f84a84c33b32aa78fb677c")]
-    [InlineData("entrainement_rupture", "11d37e593bb35cf3bb1fd899a71cd72e939293bab900f2ea7ac8fb9e1adf97fa")]
-    [InlineData("entrainement_alterations", "eb7349f24746111ae4d3582b633687163a6ef9afe334b1a7b96c63cada050aa4")]
-    [InlineData("entrainement_declencheurs", "fee83e6dd9be06f71caa77d3faa444f99cf110ee465c207d9751ce3ab6f15a50")]
+    [InlineData("entrainement_garde_parade", "e272d43cfa852219d7aea9b00fc6c341df16578f0ab1828c0288f18f2b3f1e9d")]
+    [InlineData("entrainement_rupture", "ec478f0bf414973b5b3ac39059f2ef58a3b95c53a957b37cfeff1fa9a3dd58fd")]
+    [InlineData("entrainement_alterations", "b3b0ee7ff192a745b091449464dff6801fba95a8b123cb6ef98ee69f608470d9")]
+    [InlineData("entrainement_declencheurs", "302a141ffbfdf0087e73b4628a425978a959e1c8505013e72fa539ce2e53434b")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -109,7 +109,9 @@ public class TrainingScenarioTests
         // Sous-lot 8.2 : moteur 0.12.0, format 6 (absorbed et absorbedBy sur damage et dotDamage, damageAbsorbed au bilan,
         // shield.potencyDealt dans les règles effectives) ; données livrées sans bouclier ni renforcement : gameplay inchangé
         // (Lot81ReferenceTests) ; référence du scénario à déclencheurs dans Fixtures/reference-0.12.0. Règles en schéma 7 et classes en
-        // schéma 6 (revue Codex de la PR #6) : empreintes de l'en-tête.
+        // schéma 6 (revue Codex de la PR #6) : empreintes de l'en-tête. Sous-lot 8.3 : moteur 0.13.0, format 7 (transferred, damageTransferred,
+        // damageRedirected, clés protection.*), règles en schéma 8, classes en 7, scénarios en 3 ; sans protection ni provocation : gameplay
+        // inchangé ; référence du scénario à déclencheurs dans Fixtures/reference-0.13.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

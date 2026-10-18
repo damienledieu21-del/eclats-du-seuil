@@ -66,6 +66,18 @@ namespace EdS.Domain.Combat
         /// <summary>Plafond de <see cref="ShieldPotencyDealt"/> (+1 000 %), comme le bonus de dégâts infligés.</summary>
         public static readonly Fixed MaxShieldPotency = Fixed.FromInt(10);
 
+        /// <summary>
+        /// Sous-lot 8.3 (X6) : part ajoutée à celle des protections posées par ce combattant (<c>protection.redirectRatio</c>), somme
+        /// écrêtée dans [−1, 1] ; la part effective d'une protection (définition + cette part) est écrêtée dans [0, 1].
+        /// </summary>
+        public Fixed ProtectionRedirectRatio { get; }
+
+        /// <summary>Sous-lot 8.3 (X6, Serment) : les dégâts transférés à ce combattant passent par sa garde quand il garde.</summary>
+        public bool ProtectionRedirectThroughGuard { get; }
+
+        /// <summary>Part effective transférée par une protection de cette définition posée par ce combattant, dans [0, 1].</summary>
+        public Fixed RedirectRatio(StatusDefinition protection) => Fixed.Clamp(protection.RedirectRatio + ProtectionRedirectRatio, Fixed.Zero, Fixed.One);
+
         private readonly long _tickMs;
 
         private CombatantRules(CombatRules rules, ModifierSet m)
@@ -97,6 +109,8 @@ namespace EdS.Domain.Combat
             DamageDealt = m.Sum(ModifierField.DamageDealt);
             DamageTaken = m.Sum(ModifierField.DamageTaken);
             ShieldPotencyDealt = Fixed.Clamp(m.Sum(ModifierField.ShieldPotencyDealt), -Fixed.One, MaxShieldPotency);
+            ProtectionRedirectRatio = Fixed.Clamp(m.Sum(ModifierField.ProtectionRedirectRatio), -Fixed.One, Fixed.One);
+            ProtectionRedirectThroughGuard = m.Flag(ModifierField.ProtectionRedirectThroughGuard);
             _baseUpkeep = Fixed.FromInt(rules.GuardUpkeepPerSecond);
         }
 

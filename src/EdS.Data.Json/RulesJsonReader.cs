@@ -118,6 +118,7 @@ public static class RulesJsonReader
             ["blockReason"] = (v, p) => s.BlockReason = input.Text(v, p),
             ["damageTakenIncrease"] = (v, p) => s.DamageTakenIncrease = input.Decimal(v, p),
             ["movementSpeedModifier"] = (v, p) => s.MovementSpeedModifier = input.Decimal(v, p),
+            ["redirectRatio"] = (v, p) => s.RedirectRatio = input.Decimal(v, p),
             ["grantsOnExpiry"] = (v, p) => s.GrantsOnExpiry = input.Text(v, p),
             ["immuneTo"] = (v, p) => s.ImmuneTo = Names(v, p),
             ["triggers"] = (v, p) => s.Triggers = TriggerJsonReader.ReadList(input, v, p),

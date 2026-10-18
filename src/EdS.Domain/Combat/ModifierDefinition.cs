@@ -61,6 +61,12 @@ namespace EdS.Domain.Combat
 
         /// <summary>Sous-lot 8.2 (X4) : puissance des boucliers posés par le porteur (0,04 = +4 %).</summary>
         ShieldPotencyDealt = 20,
+
+        /// <summary>Sous-lot 8.3 (X6) : part transférée en plus par les protections que pose le porteur (0,15 = +15 points).</summary>
+        ProtectionRedirectRatio = 21,
+
+        /// <summary>Sous-lot 8.3 (X6, Serment) : les dégâts transférés au porteur passent par sa garde (réduction seulement) quand il garde.</summary>
+        ProtectionRedirectThroughGuard = 22,
     }
 
     /// <summary>Nature d'une valeur : contrôle de la forme des valeurs déclarées.</summary>
@@ -179,6 +185,8 @@ namespace EdS.Domain.Combat
             new ModifierSpec(ModifierField.SkillCoefficient, "skill.<id>.coefficient", ModifierUnit.Decimal, SkillCombatDefinition.MaxCoefficient),
             new ModifierSpec(ModifierField.SkillCooldownMs, "skill.<id>.cooldownMs", ModifierUnit.Milliseconds, Ms),
             new ModifierSpec(ModifierField.ShieldPotencyDealt, "shield.potencyDealt", ModifierUnit.Decimal, Fixed.FromInt(10)),
+            new ModifierSpec(ModifierField.ProtectionRedirectRatio, "protection.redirectRatio", ModifierUnit.Decimal, Fixed.One),
+            new ModifierSpec(ModifierField.ProtectionRedirectThroughGuard, "protection.redirectThroughGuard", ModifierUnit.Flag, Fixed.One),
         }, "specs");
 
         private static readonly Dictionary<string, ModifierField> Scalar =
@@ -312,6 +320,9 @@ namespace EdS.Domain.Combat
                     && !(skillOf(key.Parameter!) is { Combat: not null }))
                     errors.Add(new RuleViolation(RuleViolationKind.UnknownReference,
                         $"« {key.Parameter} » ne désigne aucune compétence de la classe qui se lance (bloc combat).", p + ".key"));
+                // Sous-lot 8.3 : une compétence de soutien n'a pas de coefficient de dégâts à modifier.
+                else if (key.Field == ModifierField.SkillCoefficient && skillOf(key.Parameter!) is { Combat: { HasDamage: false } })
+                    errors.Add(new RuleViolation($"« {key.Parameter} » est une compétence de soutien, sans dégâts directs : pas de coefficient à modifier.", p + ".key"));
 
                 bool conditionsValid = ValidateConditions(m, spec, p, errors);
                 if (conditionsValid && seen.TryGetValue((key, m.ConditionSet), out int first))

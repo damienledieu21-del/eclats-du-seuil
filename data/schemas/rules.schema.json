@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 7
+      "const": 8
     },
     "kind": {
       "const": "rules"
@@ -684,9 +684,11 @@
                   "modifier",
                   "immunity",
                   "buff",
-                  "shield"
+                  "shield",
+                  "taunt",
+                  "protection"
                 ],
-                "description": "buff : renforcement porteur de modificateurs ; shield : bouclier d'absorption, cumul par source (sous-lot 8.2)."
+                "description": "buff : renforcement porteur de modificateurs ; shield : bouclier d'absorption, cumul par source (sous-lot 8.2) ; taunt : provocation d'un assaillant ; protection : transfert d'une part des dégâts d'un allié à son protecteur (sous-lot 8.3), cumul par source."
               },
               "durationMs": {
                 "type": "integer",
@@ -796,6 +798,12 @@
                   }
                 },
                 "description": "Renforcement (buff) seulement, au moins un : modificateurs actifs tant que l'instance existe, sans rang ni condition (sous-lot 8.2)."
+              },
+              "redirectRatio": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1,
+                "description": "Protection seulement, obligatoire : part des dégâts subis par le protégé transférée au protecteur, ]0, 1] (sous-lot 8.3)."
               }
             }
           }
@@ -860,9 +868,10 @@
           "enum": [
             "self",
             "source",
-            "target"
+            "target",
+            "ally"
           ],
-          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un."
+          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un. ally (sous-lot 8.3) : la cible de l'événement est un allié vivant du porteur, autre que lui ; jamais implicite, admis là où target l'est."
         },
         "filter": {
           "type": "object",
@@ -901,7 +910,11 @@
                 "dot",
                 "control",
                 "modifier",
-                "immunity"
+                "immunity",
+                "buff",
+                "shield",
+                "taunt",
+                "protection"
               ]
             },
             "resource": {

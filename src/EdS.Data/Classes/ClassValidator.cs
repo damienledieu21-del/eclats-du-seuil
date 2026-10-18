@@ -77,7 +77,13 @@ namespace EdS.Data.Classes
         {
             ["enemy"] = SkillTargeting.Enemy,
             ["allEnemies"] = SkillTargeting.AllEnemies,
+            ["self"] = SkillTargeting.Self,
+            ["ally"] = SkillTargeting.Ally,
+            ["allAllies"] = SkillTargeting.AllAllies,
         });
+
+        /// <summary>Sous-lot 8.3 : ciblages d'une attaque d'assaillant (il frappe toujours).</summary>
+        public static IReadOnlyList<string> AttackTargetings { get; } = Array.AsReadOnly(new[] { "enemy", "allEnemies" });
 
         public static ClassLoadResult Validate(ClassDocument document, ProgressionRules progression, ValidationReport? report = null)
         {
@@ -181,7 +187,7 @@ namespace EdS.Data.Classes
                 }
                 Line(p + ".combat.powerType", combat.PowerType);
                 Line(p + ".combat.damageType", combat.DamageType);
-                Line(p + ".combat.coefficient", combat.Coefficient!.Value.ToString());
+                Line(p + ".combat.coefficient", combat.Coefficient?.ToString());   // sous-lot 8.3 : absent pour une compétence de soutien
                 Line(p + ".combat.enduranceCost", combat.EnduranceCost);
                 Line(p + ".combat.cooldownMs", combat.CooldownMs);
                 Line(p + ".combat.targeting", combat.Targeting);
@@ -194,6 +200,7 @@ namespace EdS.Data.Classes
                 {
                     Line($"{p}.combat.applies[{a}].status", combat.Applies[a]!.Status);
                     Line($"{p}.combat.applies[{a}].coefficient", combat.Applies[a]!.Coefficient?.ToString());
+                    Line($"{p}.combat.applies[{a}].target", combat.Applies[a]!.Target);   // sous-lot 8.3 : absent = les cibles de l'action
                 }
             }
             return text.ToString();
@@ -201,7 +208,8 @@ namespace EdS.Data.Classes
 
         /// <summary>Altérations portées, converties pour le domaine (lot 7.2) ; suppose la forme vérifiée.</summary>
         public static IReadOnlyList<Domain.Combat.StatusApplication> Applications(List<StatusApplicationData?> list) =>
-            list.Select(a => new Domain.Combat.StatusApplication(a!.Status!, a.Coefficient)).ToArray();
+            list.Select(a => new Domain.Combat.StatusApplication(a!.Status!, a.Coefficient,
+                a.Target is null ? Domain.Combat.ApplicationTarget.Targets : Domain.Combat.ApplicationTargets.Ids[a.Target])).ToArray();
 
         /// <summary>Vérifie la forme d'une liste d'altérations portées : chaque entrée nomme une altération.</summary>
         public static void CheckApplications(List<StatusApplicationData?>? list, string path, ValidationReport report)
@@ -219,8 +227,15 @@ namespace EdS.Data.Classes
                 {
                     if (!report.HasErrorAtOrAbove(itemPath)) report.Add(itemPath, ValidationCode.WrongType, "objet attendu.");
                 }
-                else if (a.Status is null && !report.HasErrorAtOrAbove(itemPath + ".status"))
-                    report.Add(itemPath + ".status", ValidationCode.MissingField, "champ obligatoire absent (identifiant de l'altération).");
+                else
+                {
+                    if (a.Status is null && !report.HasErrorAtOrAbove(itemPath + ".status"))
+                        report.Add(itemPath + ".status", ValidationCode.MissingField, "champ obligatoire absent (identifiant de l'altération).");
+                    // Sous-lot 8.3 (X5) : cible propre facultative.
+                    if (a.Target != null && !Domain.Combat.ApplicationTargets.Ids.ContainsKey(a.Target) && !report.HasErrorAtOrAbove(itemPath + ".target"))
+                        report.Add(itemPath + ".target", ValidationCode.UnknownReference,
+                            $"cible inconnue « {a.Target} » ; valeurs possibles : {string.Join(", ", Domain.Combat.ApplicationTargets.Ids.Keys)} (absente : les cibles de l'action).");
+                }
             }
         }
 
@@ -233,7 +248,7 @@ namespace EdS.Data.Classes
                 t.Talents!.Select(x => new TalentDefinition(x!.Id!, x.Name!, x.MaxRank!.Value, x.Major!.Value,
                     Requirements(x.Prerequisites!), x.Placeholder!.Value, TriggerShape.Build(x.Triggers), ModifierShape.Build(x.Modifiers))).ToArray())).ToArray();
             SkillCombatDefinition? Combat(SkillCombatData? c) => c is null ? null
-                : new SkillCombatDefinition(PowerTypes[c.PowerType!], DamageTypes[c.DamageType!], c.Coefficient!.Value,
+                : new SkillCombatDefinition(c.PowerType is null ? null : PowerTypes[c.PowerType], c.DamageType is null ? null : DamageTypes[c.DamageType], c.Coefficient,
                     c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value,
                     c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value, Applications(c.Applies!));
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
@@ -320,12 +335,17 @@ namespace EdS.Data.Classes
 
             private void CheckCombat(SkillCombatData combat, string path)
             {
-                Token(combat.PowerType, path + ".powerType", "physique, agile ou magique", PowerTypes);
-                Token(combat.DamageType, path + ".damageType", "physique ou magique", DamageTypes);
-                Present(combat.Coefficient, path + ".coefficient", "nombre décimal");
+                // Sous-lot 8.3 (X5) : dégâts directs tous ensemble, ou aucun (compétence de soutien).
+                bool anyDamage = combat.PowerType != null || combat.DamageType != null || combat.Coefficient != null;
+                if (anyDamage)
+                {
+                    Token(combat.PowerType, path + ".powerType", "physique, agile ou magique ; dégâts directs : powerType, damageType et coefficient ensemble ou aucun", PowerTypes);
+                    Token(combat.DamageType, path + ".damageType", "physique ou magique ; dégâts directs : powerType, damageType et coefficient ensemble ou aucun", DamageTypes);
+                    Present(combat.Coefficient, path + ".coefficient", "nombre décimal ; dégâts directs : powerType, damageType et coefficient ensemble ou aucun");
+                }
                 Present(combat.EnduranceCost, path + ".enduranceCost", "entier");
                 Present(combat.CooldownMs, path + ".cooldownMs", "entier, en millisecondes");
-                Token(combat.Targeting, path + ".targeting", "enemy ou allEnemies", Targetings);
+                Token(combat.Targeting, path + ".targeting", "enemy, allEnemies, self, ally ou allAllies", Targetings);
                 Present(combat.Unblockable, path + ".unblockable", "booléen");
                 Present(combat.RampartChargeCost, path + ".rampartChargeCost", "entier");
                 Present(combat.RampartChargeGain, path + ".rampartChargeGain", "entier");
