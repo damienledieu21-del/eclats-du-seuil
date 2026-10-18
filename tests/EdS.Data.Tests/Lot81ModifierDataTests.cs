@@ -108,10 +108,11 @@ public class Lot81ModifierDataReadingTests
     // --- Lecture ---------------------------------------------------------------------------
 
     [Fact]
-    public void Classe_livree_au_schema_5_sans_modificateur()
+    public void Classe_livree_au_schema_courant_sans_modificateur()
     {
+        // Sous-lot 8.2 : schéma de classe 6 (clé shield.potencyDealt), toujours sans modificateur livré.
         LoadedClass shipped = ClassJsonReader.Read(ClassTestData.BastionJson, ClassTestData.Progression).Class!;
-        Assert.Equal(5, shipped.SchemaVersion);
+        Assert.Equal(6, shipped.SchemaVersion);
         Assert.All(shipped.Definition.Trees.SelectMany(t => t.Talents), t => Assert.Empty(t.Modifiers));
         Assert.All(shipped.Definition.Skills, s => Assert.Empty(s.Modifiers));
     }
@@ -581,7 +582,7 @@ public class Lot81ModifierDataReadingTests
 public class Lot81ModifierDataFingerprintTests
 {
     private const string SmallClass = """
-        { "schemaVersion": 5, "kind": "class", "contentVersion": "0.1.0-test",
+        { "schemaVersion": 6, "kind": "class", "contentVersion": "0.1.0-test",
           "data": { "id": "class.essai", "name": "Essai",
             "trees": [ { "id": "tree.essai.a", "name": "A", "talents": [
               { "id": "talent.essai.a.t", "name": "T", "maxRank": 3, "major": false, "placeholder": false, "prerequisites": [],
@@ -615,7 +616,7 @@ public class Lot81ModifierDataFingerprintTests
     /// après ses exigences et ses déclencheurs, avant le bloc combat (« combat? » d'une passive) ; rien pour une liste vide (active).
     /// </summary>
     private static readonly string SmallClassCanonical =
-        "eds-class\ncanonical=2\nschemaVersion=5\nid=class.essai\nname=Essai\n" +
+        "eds-class\ncanonical=2\nschemaVersion=6\nid=class.essai\nname=Essai\n" +
         "trees.count=1\ntrees[0].id=tree.essai.a\ntrees[0].name=A\ntrees[0].talents.count=1\n" +
         "trees[0].talents[0].id=talent.essai.a.t\ntrees[0].talents[0].name=T\ntrees[0].talents[0].maxRank=3\n" +
         "trees[0].talents[0].major=false\ntrees[0].talents[0].placeholder=false\ntrees[0].talents[0].prerequisites.count=0\n" +
@@ -867,19 +868,22 @@ public class Lot81ModifierDataSchemaTests
     private static Regex KeyPattern() => new(Def("modifier")["properties"]!["key"]!["pattern"]!.GetValue<string>(), RegexOptions.CultureInvariant);
 
     [Fact]
-    public void Version_de_schema_des_classes_5()
+    public void Version_de_schema_des_classes_6()
     {
-        Assert.Equal(5, DataFormat.ClassSchemaVersion);
-        Assert.Equal(5, ClassValidator.CurrentSchemaVersion);
-        Assert.Equal(5, JsonNode.Parse(ClassTestData.BastionJson)!["schemaVersion"]!.GetValue<int>());
-        Assert.Equal(5, Schema()["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        // Sous-lot 8.2 (revue Codex de la PR #6) : 6, clé de modificateur shield.potencyDealt.
+        Assert.Equal(6, DataFormat.ClassSchemaVersion);
+        Assert.Equal(6, ClassValidator.CurrentSchemaVersion);
+        Assert.Equal(6, JsonNode.Parse(ClassTestData.BastionJson)!["schemaVersion"]!.GetValue<int>());
+        Assert.Equal(6, Schema()["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
     }
 
     [Theory]
+    [InlineData(5, false)]
+    [InlineData(5, true)]
     [InlineData(4, false)]
     [InlineData(4, true)]
     [InlineData(3, true)]
-    [InlineData(6, true)]
+    [InlineData(7, true)]
     public void Classe_d_une_autre_version_refusee_avec_un_message_explicite(int version, bool withModifiers)
     {
         ClassLoadResult result = ClassTestData.ReadMutated(root =>
@@ -891,12 +895,12 @@ public class Lot81ModifierDataSchemaTests
         AssertSingleError(result, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
         string message = result.Report.Errors[0].Message;
         Assert.Contains($"version de format {version}", message);
-        if (version < 5)
+        if (version < 6)
         {
-            Assert.Contains("antérieure à la version 5", message);
+            Assert.Contains("antérieure à la version 6", message);
             Assert.Contains("aucune migration", message);
         }
-        else Assert.Contains("ce programme lit la version 5", message);
+        else Assert.Contains("ce programme lit la version 6", message);
     }
 
     [Fact]
@@ -917,7 +921,7 @@ public class Lot81ModifierDataSchemaTests
             Assert.EndsWith("bastion.json", path);
             ValidationError error = Assert.Single(report.Errors);
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (error.Path, error.Code));
-            Assert.Contains("version de format 4 antérieure à la version 5", error.Message);
+            Assert.Contains("version de format 4 antérieure à la version 6", error.Message);
         }
         finally
         {

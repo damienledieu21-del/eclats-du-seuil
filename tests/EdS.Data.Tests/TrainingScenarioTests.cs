@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "0cd95794a3c5cc51ffc8fb4213f8c324614251b64f1b0722a00f6e0e03d38797")]
-    [InlineData("entrainement_rupture", "87369e02164c3e7912ce587de94b4dd2df5215d6f27a8eb115cb28619b0d6e12")]
-    [InlineData("entrainement_alterations", "4686ddeededc1f60cee3e5365492b5f7a271643ae565da00ed28933f3542858e")]
-    [InlineData("entrainement_declencheurs", "ec12e3df7d1759d48d4ed87e14d9094e4e49e4ca3a56a46cce97a7f342347944")]
+    [InlineData("entrainement_garde_parade", "5c408a5e9662e5f39d2baf204b13e75849c4d180b7f84a84c33b32aa78fb677c")]
+    [InlineData("entrainement_rupture", "11d37e593bb35cf3bb1fd899a71cd72e939293bab900f2ea7ac8fb9e1adf97fa")]
+    [InlineData("entrainement_alterations", "eb7349f24746111ae4d3582b633687163a6ef9afe334b1a7b96c63cada050aa4")]
+    [InlineData("entrainement_declencheurs", "fee83e6dd9be06f71caa77d3faa444f99cf110ee465c207d9751ce3ab6f15a50")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -108,7 +108,8 @@ public class TrainingScenarioTests
         // change ; référence du scénario à déclencheurs dans Fixtures/reference-0.11.0.
         // Sous-lot 8.2 : moteur 0.12.0, format 6 (absorbed et absorbedBy sur damage et dotDamage, damageAbsorbed au bilan,
         // shield.potencyDealt dans les règles effectives) ; données livrées sans bouclier ni renforcement : gameplay inchangé
-        // (Lot81ReferenceTests) ; référence du scénario à déclencheurs dans Fixtures/reference-0.12.0.
+        // (Lot81ReferenceTests) ; référence du scénario à déclencheurs dans Fixtures/reference-0.12.0. Règles en schéma 7 et classes en
+        // schéma 6 (revue Codex de la PR #6) : empreintes de l'en-tête.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EdS.Data.Classes;
 using EdS.Data.Json;
 using EdS.Data.Rules;
 using EdS.Data.Validation;
@@ -11,7 +12,7 @@ namespace EdS.Data.Tests;
 
 /// <summary>
 /// Sous-lot 8.2 : renforcements (<c>category: "buff"</c>, liste <c>modifiers</c>) et boucliers (<c>category: "shield"</c>) dans le bloc
-/// <c>statuses</c> de <c>rules.json</c> (schéma 6) : lecture, erreurs localisées par leur chemin JSON, empreinte, conformité du schéma.
+/// <c>statuses</c> de <c>rules.json</c> (schéma 7) : lecture, erreurs localisées par leur chemin JSON, empreinte, conformité du schéma.
 /// Les règles livrées n'en déclarent aucun : leur empreinte n'en dépend pas.
 /// </summary>
 [Trait("Category", "Data")]
@@ -152,6 +153,28 @@ public class Lot82StatusDataTests
             "statuses[7].modifiers.count=1\nstatuses[7].modifiers[0].key=damageTaken\nstatuses[7].modifiers[0].add=-0.3\n" +
             "statuses[7].modifiers[0].conditions.count=0\n", canonical);
         Assert.DoesNotContain("statuses[6].modifiers", canonical);   // altérations sans modificateur : rien d'écrit
+    }
+
+    [Fact]
+    public void Regles_au_schema_6_refusees_meme_sans_renforcement()
+    {
+        // Revue Codex de la PR #6 : renforcements et boucliers = schéma de règles 7. Un fichier 6 est refusé par sa version, un seul
+        // message, sans migration (politique pré-alpha), même s'il n'utilise aucune nouveauté.
+        RulesLoadResult result = RulesTestData.ReadMutated(r => r["schemaVersion"] = 6);
+        ValidationError error = Assert.Single(result.Report.Errors);
+        Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (error.Path, error.Code));
+        Assert.Contains("antérieure à la version 7", error.Message);
+        Assert.Equal(7, RulesJsonReader.ReadFile(RulesTestData.ShippedPath).Rules!.SchemaVersion);
+    }
+
+    [Fact]
+    public void Classe_au_schema_5_refusee_meme_sans_puissance_de_boucliers()
+    {
+        // Clé shield.potencyDealt = schéma de classe 6 ; un fichier 5 est refusé par sa version.
+        ClassLoadResult result = ClassTestData.ReadMutated(c => c["schemaVersion"] = 5);
+        ValidationError error = Assert.Single(result.Report.Errors);
+        Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (error.Path, error.Code));
+        Assert.Contains("antérieure à la version 6", error.Message);
     }
 
     [Fact]

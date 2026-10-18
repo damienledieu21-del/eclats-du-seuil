@@ -30,7 +30,7 @@ namespace EdS.Data.Rules
         /// <summary>Déclencheurs portés tant qu'une instance est active (schéma 5, lot 7.3) ; facultatifs.</summary>
         public List<Triggers.TriggerData?>? Triggers { get; set; }
 
-        /// <summary>Sous-lot 8.2 (X3, schéma 6) : modificateurs d'un renforcement ; facultatifs (obligatoires pour un buff, voir le domaine).</summary>
+        /// <summary>Sous-lot 8.2 (X3, schéma de règles 7) : modificateurs d'un renforcement ; facultatifs (obligatoires pour un buff, voir le domaine).</summary>
         public List<Modifiers.ModifierData?>? Modifiers { get; set; }
     }
 

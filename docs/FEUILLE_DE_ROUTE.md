@@ -24,7 +24,7 @@ Deux PR de gameplay (A11) : **8a moteur** (8.1 à 8.4, PR #3 et branches empilé
 | Sous-lot | Contenu | État |
 |---|---|---|
 | 8.1 | X1 modificateurs permanents, X2 conditionnels (`whileGuarding`, `perRampartCharge`, `perResonanceStep`), règles effectives par combattant, plafonds | PR #3 (brouillon) ; décisions du 18/10 appliquées (moteur 0.11.0, schéma de règles 6) |
-| 8.2 | X3 renforcements temporaires, X4 boucliers d'absorption (catégorie `shield`, un bouclier par source, consommation FIFO, absorbe aussi les DOT, fin par durée ou épuisement, champ `absorbed`), réduction de dégâts et modificateurs temporaires | PR empilée sur la PR #3 (brouillon) : catégories `buff` et `shield`, moteur 0.12.0, journal au format 6 ; aucun contenu livré |
+| 8.2 | X3 renforcements temporaires, X4 boucliers d'absorption (catégorie `shield`, un bouclier par source, consommation FIFO, absorbe aussi les DOT, fin par durée ou épuisement, champ `absorbed`), réduction de dégâts et modificateurs temporaires | PR empilée sur la PR #3 (brouillon) : catégories `buff` et `shield`, schéma de règles 7 et de classe 6, moteur 0.12.0, journal au format 6 ; aucun contenu livré |
 | 8.3 | X5 ciblage `self` / `ally` / `allAllies`, X6 transfert de dégâts, X7 provocation, X9 rôle `ally` des déclencheurs | à faire |
 | 8.4 | X8 Contrecoup consomme toutes les Charges, fiches complètes des compétences restantes et de l'ultime, L8-D2, aucun `notImplemented` restant | à faire |
 | 8.5 | Contenu complet du Bastion (talents, intermédiaires, passifs), plus aucun `[TEST]`, builds de référence en données | à faire |
