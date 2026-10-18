@@ -134,8 +134,8 @@ namespace EdS.Simulation.Engine
         internal List<(long Tick, string Trigger, long Cause)>? ReactionTrace { get; set; }
 
         /// <summary>
-        /// Réservé aux tests (étape 7.3.6) : tentatives de réservation d'une notification (<c>notify</c>) ou d'une réaction exécutée
-        /// (<c>reaction</c>), notées avant la vérification : consommation du tick et taille de la file à cet instant, puis coût
+        /// Réservé aux tests (étape 7.3.6) : tentatives de réservation d'une notification (<c>notify</c>), d'une réaction exécutée
+        /// (<c>reaction</c>) ou, depuis le sous-lot 8.2, du retrait des boucliers épuisés d'un combattant (<c>depleted</c>), notées avant la vérification : consommation du tick et taille de la file à cet instant, puis coût
         /// vérifié (le majorant pour une réaction). Permet de placer un budget exactement à N − 1, N et N + 1 de chaque réservation.
         /// </summary>
         internal List<ReservationAttempt>? ReservationTrace { get; set; }
@@ -165,8 +165,12 @@ namespace EdS.Simulation.Engine
             public long NeedQueue { get; }
         }
 
-        private void TraceReservation(string kind, long tick, Cost need) =>
-            ReservationTrace?.Add(new ReservationAttempt(kind, tick, _workThisTick, _eventsThisTick, OccupancyAfter(1), need.Work, need.Events, need.Queue));
+        /// <summary>
+        /// <paramref name="removing"/> : éléments retirés de la file par ce traitement (1 pour un événement programmé ; 0 pour le retrait
+        /// des boucliers épuisés en fin de tick, sous-lot 8.2, trace <c>depleted</c>).
+        /// </summary>
+        private void TraceReservation(string kind, long tick, Cost need, int removing = 1) =>
+            ReservationTrace?.Add(new ReservationAttempt(kind, tick, _workThisTick, _eventsThisTick, OccupancyAfter(removing), need.Work, need.Events, need.Queue));
 
         /// <summary>
         /// Construit l'index au chargement du combat : déclencheurs permanents de chaque combattant (talents de rang ≥ 1 et

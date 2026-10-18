@@ -1697,8 +1697,10 @@ namespace EdS.Simulation.Engine
                 // Sous-lot 8.2 (X4) : un bouclier épuisé est retiré ici, en fin de tick (raison depleted), dans l'ordre des instances ; chez un
                 // mort, il l'est avec les autres états (raison death).
                 List<StatusInstance>? depleted = dies || f.IsDead ? null : Depleted(f);
-                Reserve(Cost.Op + (dies ? Observable(TriggerEvent.Death) + f.Statuses.Count * (Cost.Op + Observable(TriggerEvent.StateRemoved))
-                    : (depleted?.Count ?? 0) * (Cost.Op + Observable(TriggerEvent.StateRemoved))));
+                Cost scan = Cost.Op + (dies ? Observable(TriggerEvent.Death) + f.Statuses.Count * (Cost.Op + Observable(TriggerEvent.StateRemoved))
+                    : (depleted?.Count ?? 0) * (Cost.Op + Observable(TriggerEvent.StateRemoved)));
+                if (depleted != null) TraceReservation("depleted", tick, scan, removing: 0);
+                Reserve(scan);
                 Charge(1);
                 if (depleted != null)
                     foreach (StatusInstance shield in depleted)
