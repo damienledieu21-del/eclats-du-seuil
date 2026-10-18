@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using EdS.Data.Builds;
 using EdS.Data.Scenarios;
@@ -108,19 +109,25 @@ public static class Measures
     /// <summary>Profil des objectifs de gameplay (les budgets valent pour tous les profils).</summary>
     public const PilotProfile ObjectiveProfile = PilotProfile.Standard;
 
-    public static readonly IReadOnlyDictionary<string, PilotProfile> Profiles = new Dictionary<string, PilotProfile>(StringComparer.Ordinal)
-    {
-        ["beginner"] = PilotProfile.Beginner,
-        ["standard"] = PilotProfile.Standard,
-        ["expert"] = PilotProfile.Expert,
-    };
+    /// <summary>Identifiants des profils (table figée : revue Codex de la PR #10).</summary>
+    public static readonly IReadOnlyDictionary<string, PilotProfile> Profiles = new ReadOnlyDictionary<string, PilotProfile>(
+        new Dictionary<string, PilotProfile>(StringComparer.Ordinal)
+        {
+            ["beginner"] = PilotProfile.Beginner,
+            ["standard"] = PilotProfile.Standard,
+            ["expert"] = PilotProfile.Expert,
+        });
 
     public static string IdOf(PilotProfile profile) => Profiles.First(p => p.Value == profile).Key;
 
-    /// <summary>Scénarios de mesure d'un dossier (<c>s&lt;n&gt;_*.json</c>, triés), lus avec les données ; erreurs de lecture signalées.</summary>
+    /// <summary>
+    /// Scénarios de mesure d'un dossier (<c>s&lt;n&gt;_*.json</c>, triés), lus avec les données ; erreurs de lecture signalées. Deux
+    /// fichiers au même numéro (<c>s1_a.json</c>, <c>s1_b.json</c>) sont refusés (<see cref="ArgumentException"/>, revue Codex de la PR #10).
+    /// </summary>
     public static IReadOnlyList<MeasureScenario> LoadScenarios(string directory, GameData data, List<(string Path, ScenarioLoadResult Result)> failures)
     {
         var scenarios = new List<MeasureScenario>();
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
         string[] files = Directory.GetFiles(directory, "s*.json");
         Array.Sort(files, StringComparer.Ordinal);
         foreach (string file in files)
@@ -128,9 +135,12 @@ public static class Measures
             string name = Path.GetFileNameWithoutExtension(file);
             int underscore = name.IndexOf('_');
             if (underscore < 2 || !name[1..underscore].All(char.IsAsciiDigit)) continue;
+            string id = "S" + name[1..underscore];
+            if (!names.TryAdd(id, name))
+                throw new ArgumentException($"Numéro de scénario de mesure en double : {id} ({names[id]}.json et {name}.json).");
             ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(file, data);
             if (loaded.Setup is null) failures.Add((file, loaded));
-            else scenarios.Add(new MeasureScenario("S" + name[1..underscore], name, loaded.Setup));
+            else scenarios.Add(new MeasureScenario(id, name, loaded.Setup));
         }
         return scenarios;
     }
@@ -229,10 +239,14 @@ public static class Measures
     /// Contrecoup ≥ +25 % sur le Rempart ; S2 et S5 survie et dégâts évités du Rempart ≥ +25 % sur le Contrecoup ; S4 allié protégé au moins
     /// 1,5 fois plus longtemps avec le Gardien qu'avec chacun des deux autres ; tous les combats sous 50 % de chaque budget du moteur.
     /// </summary>
+    /// <remarks>
+    /// Revue Codex de la PR #10 : un combat interrompu (mesures de diagnostic) n'entre dans aucun objectif de gameplay, qui devient alors
+    /// « non mesuré » ; il fait échouer l'objectif des budgets (une limite du moteur a été atteinte).
+    /// </remarks>
     public static IReadOnlyList<ObjectiveResult> Objectives(IReadOnlyList<MeasureResult> results)
     {
         MeasureResult? Of(string scenario, string build) =>
-            results.FirstOrDefault(r => r.Scenario == scenario && r.Build == build && r.Profile == ObjectiveProfile);
+            results.FirstOrDefault(r => r.Scenario == scenario && r.Build == build && r.Profile == ObjectiveProfile && !r.Aborted);
         static string F(decimal v) => v.ToString("0.##", CultureInfo.InvariantCulture);
         static string Pct(decimal ratio) => (ratio >= 1 ? "+" : "") + ((ratio - 1) * 100).ToString("0.#", CultureInfo.InvariantCulture) + " %";
         var objectives = new List<ObjectiveResult>();
@@ -268,7 +282,11 @@ public static class Measures
         decimal? others = new[] { Of("S4", Rempart)?.AllySurvival, Of("S4", Contrecoup)?.AllySurvival } is var o && o.All(v => v != null) ? o.Max() : null;
         Ratio("S4.allie", "S4 : allié protégé ≥ 1,5 fois plus longtemps avec le Gardien", gardien, others, 1.5m, "survie de l'allié (s, Gardien contre le meilleur des deux autres)");
 
+        MeasureResult? aborted = results.FirstOrDefault(r => r.Aborted);
         if (results.Count == 0) objectives.Add(new ObjectiveResult("budgets", "Tous les combats < 50 % de chaque budget du moteur", null, "non mesuré"));
+        else if (aborted != null)
+            objectives.Add(new ObjectiveResult("budgets", "Tous les combats < 50 % de chaque budget du moteur", false,
+                $"combat interrompu ({aborted.Scenario}, {aborted.Build}, {IdOf(aborted.Profile)} : {aborted.EndReason}), {results.Count(r => r.Aborted)} au total"));
         else
         {
             MeasureResult worst = results.OrderByDescending(r => Math.Max(r.WorkPeak, Math.Max(r.EventsPeak, r.QueuePeak))).First();

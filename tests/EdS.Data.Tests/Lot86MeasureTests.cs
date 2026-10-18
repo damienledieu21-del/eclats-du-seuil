@@ -258,6 +258,67 @@ public class Lot86MeasureTests
             Assert.Contains(s, text, StringComparison.Ordinal);
         Assert.Contains($"= {results.Count} combats", text, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Combat_interrompu_exclu_des_objectifs_de_gameplay_et_echec_des_budgets()
+    {
+        // Revue Codex de la PR #10 : des mesures partielles ne donnent aucun verdict de gameplay.
+        var results = new List<MeasureResult>
+        {
+            R("S2", Measures.Rempart, dps: 10, survival: 200, avoided: 2000), R("S2", Measures.Contrecoup, dps: 100, survival: 10, avoided: 10),
+        };
+        Assert.True(Objective(results, "S2.dps").Passed);
+        results[1] = new MeasureResult
+        {
+            Scenario = "S2", Build = Measures.Contrecoup, Profile = PilotProfile.Standard, Dps = 100, Survival = 10, Avoided = 10,
+            Aborted = true, EndReason = "workBudgetExceeded",
+        };
+        Assert.Null(Objective(results, "S2.dps").Passed);
+        Assert.Null(Objective(results, "S2.survie").Passed);
+        ObjectiveResult budgets = Objective(results, "budgets");
+        Assert.False(budgets.Passed);
+        Assert.Contains("workBudgetExceeded", budgets.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Numero_de_scenario_en_double_refuse()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "eds-mesures-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            File.Copy(Path.Combine(MeasuresDirectory, "s1_mannequin.json"), Path.Combine(directory, "s1_a.json"));
+            File.Copy(Path.Combine(MeasuresDirectory, "s1_mannequin.json"), Path.Combine(directory, "s1_b.json"));
+            var failures = new List<(string Path, ScenarioLoadResult Result)>();
+            var e = Assert.Throws<ArgumentException>(() => Measures.LoadScenarios(directory, ShippedData, failures));
+            Assert.Equal("Numéro de scénario de mesure en double : S1 (s1_a.json et s1_b.json).", e.Message);
+            var cli = Lot71Files.Cli(AppContext.BaseDirectory, "report", directory, "--data", DataDirectory);
+            Assert.Equal(1, cli.ExitCode);
+            Assert.Contains("en double : S1", cli.Error, StringComparison.Ordinal);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void Table_des_profils_figee()
+    {
+        Assert.IsNotType<Dictionary<string, PilotProfile>>(Measures.Profiles);
+        var asCollection = (ICollection<KeyValuePair<string, PilotProfile>>)Measures.Profiles;
+        Assert.True(asCollection.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() => asCollection.Clear());
+        Assert.Equal(new[] { "beginner", "standard", "expert" }, Measures.Profiles.Keys);
+    }
+
+    [Fact]
+    public void Rapport_texte_aux_fins_de_ligne_LF_quelle_que_soit_la_plateforme()
+    {
+        IReadOnlyList<MeasureResult> results = All.Value.Results;
+        var writer = new StringWriter { NewLine = "\r\n" };
+        MeasureReport.WriteText(writer, ShippedData, Scenarios(), Builds(), results, Measures.Objectives(results));
+        string text = writer.ToString();
+        Assert.DoesNotContain("\r", text, StringComparison.Ordinal);
+        Assert.EndsWith("\n", text, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>Sous-lot 8.6 : la commande <c>eds report</c>, lancée telle quelle (processus séparé).</summary>

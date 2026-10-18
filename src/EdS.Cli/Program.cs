@@ -345,7 +345,16 @@ static int RunReport(ReadOnlySpan<string> options, int abortedExitCode, int obje
     GameData? data = LoadData(dataDirectory);
     if (data is null) return 1;
     var failures = new List<(string Path, ScenarioLoadResult Result)>();
-    IReadOnlyList<MeasureScenario> scenarios = Measures.LoadScenarios(directory, data, failures);
+    IReadOnlyList<MeasureScenario> scenarios;
+    try
+    {
+        scenarios = Measures.LoadScenarios(directory, data, failures);
+    }
+    catch (ArgumentException e)
+    {
+        Console.Error.WriteLine(e.Message);   // numéro de scénario en double
+        return 1;
+    }
     foreach (var (file, failure) in failures) Fail(file, failure.Report);
     if (failures.Count > 0) return 1;
     if (scenarios.Count == 0)

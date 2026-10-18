@@ -135,7 +135,7 @@ La feuille de route fixe la répartition par arbre, le majeur, les actives et le
 
 **Mesures** (personnage `bastion`, et l'allié de S4) : DPS (dégâts infligés par seconde de vie) ; PV perdus (PV max − PV restants) ; dégâts évités (atténués par la garde, la parade et les réductions de dégâts subis, absorbés par ses boucliers, transférés à un protecteur) ; survie (instant de la mort, sinon estimation durée × PV max / PV perdus, plafonnée à 10 fois la durée) ; survie de l'allié (même calcul) ; blocs, parades, ruptures, compétences, ultimes, refus ; pics de charge en pourcentage de chaque budget.
 
-**Objectifs provisoires** (profil standard, builds de référence) : S1 écart de DPS (max − min) / max ≤ 15 % ; S2 DPS du Contrecoup ≥ 1,25 × Rempart ; S2 et S5 survie et dégâts évités du Rempart ≥ 1,25 × Contrecoup ; S4 survie de l'allié avec le Gardien ≥ 1,5 × la meilleure des deux autres références ; tous les combats (tous profils, tous builds) sous 50 % de chaque budget. Un objectif dont un combat manque est « non mesuré ».
+**Objectifs provisoires** (profil standard, builds de référence) : S1 écart de DPS (max − min) / max ≤ 15 % ; S2 DPS du Contrecoup ≥ 1,25 × Rempart ; S2 et S5 survie et dégâts évités du Rempart ≥ 1,25 × Contrecoup ; S4 survie de l'allié avec le Gardien ≥ 1,5 × la meilleure des deux autres références ; tous les combats (tous profils, tous builds) sous 50 % de chaque budget. Un objectif dont un combat manque ou a été interrompu par une limite du moteur (mesures de diagnostic) est « non mesuré » ; un combat interrompu fait échouer l'objectif des budgets.
 
 **Relevé initial (8.6, avant équilibrage ; règles 0.8.0, Bastion 0.4.0), profil standard :**
 
