@@ -10,6 +10,11 @@ namespace EdS.Data.Json.Text
     // sémantique utilisée par JsonInput : RFC 8259 sans extension (ni commentaire, ni virgule finale, ni NaN), profondeur bornée,
     // UTF-8 valide, texte brut des nombres conservé (les nombres sont lus exactement en virgule fixe), propriétés dans l'ordre du texte,
     // doublons conservés (JsonInput les signale), ligne de chaque nom de propriété.
+    //
+    // Mémoire (revue Codex de la PR #12) : le nombre de valeurs est borné pendant l'analyse (JsonDocumentOptions.MaxValues), avant
+    // la création de chaque valeur, et l'arbre est compact : aucun objet par valeur (une valeur est une structure qui porte son texte,
+    // ses propriétés ou ses éléments), tableaux à la taille exacte, littéraux et nombres d'un chiffre sans allocation. Un texte valide
+    // mais démesuré (16 Mio de « 0, ») est donc refusé après quelques Mio lus, sans construire des millions de valeurs.
 
     /// <summary>Nature d'une valeur JSON (mêmes noms et valeurs que <c>System.Text.Json.JsonValueKind</c>).</summary>
     internal enum JsonValueKind
@@ -24,76 +29,86 @@ namespace EdS.Data.Json.Text
         Null = 7,
     }
 
-    /// <summary>Texte JSON invalide : message en français, ligne et colonne (en octets) comptées à partir de 0.</summary>
+    /// <summary>
+    /// Texte JSON refusé : message en français, ligne et colonne (en octets) comptées à partir de 0. <see cref="LimitExceeded"/> distingue
+    /// un texte trop volumineux (<see cref="JsonDocumentOptions.MaxValues"/>) d'un texte mal écrit.
+    /// </summary>
     internal sealed class JsonException : Exception
     {
         public long? LineNumber { get; }
         public long? BytePositionInLine { get; }
 
-        public JsonException(string message, long lineNumber, long bytePositionInLine) : base(message)
+        /// <summary>Vrai si le texte est refusé pour son nombre de valeurs, et non pour sa syntaxe.</summary>
+        public bool LimitExceeded { get; }
+
+        public JsonException(string message, long lineNumber, long bytePositionInLine, bool limitExceeded = false) : base(message)
         {
             LineNumber = lineNumber;
             BytePositionInLine = bytePositionInLine;
+            LimitExceeded = limitExceeded;
         }
     }
 
-    /// <summary>Options d'analyse : seule la profondeur est réglable, la syntaxe est toujours stricte.</summary>
+    /// <summary>Options d'analyse : profondeur et nombre de valeurs ; la syntaxe est toujours stricte.</summary>
     internal sealed class JsonDocumentOptions
     {
         /// <summary>Nombre maximal de conteneurs (objets, tableaux) imbriqués, racine comprise.</summary>
         public int MaxDepth { get; set; } = 64;
+
+        /// <summary>
+        /// Nombre maximal de valeurs (objets, tableaux, textes, nombres, true, false, null), racine comprise ; les noms de propriétés ne
+        /// comptent pas (chacun accompagne une valeur). Compté pendant l'analyse, avant la création de chaque valeur.
+        /// </summary>
+        public int MaxValues { get; set; } = InputLimits.MaxJsonValues;
     }
 
-    /// <summary>Nœud de l'arbre analysé (immuable une fois construit).</summary>
-    internal sealed class JsonNode
-    {
-        public JsonValueKind Kind;
-
-        /// <summary>Texte d'une chaîne (déséchappé) ou texte brut d'un nombre.</summary>
-        public string? Text;
-        public List<JsonProperty>? Properties;
-        public List<JsonElement>? Items;
-    }
-
-    /// <summary>Valeur JSON en lecture seule (sous-ensemble de l'API de <c>System.Text.Json.JsonElement</c> utilisé par les lecteurs).</summary>
+    /// <summary>
+    /// Valeur JSON en lecture seule (sous-ensemble de l'API de <c>System.Text.Json.JsonElement</c> utilisé par les lecteurs). Immuable :
+    /// le contenu est le texte d'une chaîne (déséchappé) ou le texte brut d'un nombre, les propriétés d'un objet ou les éléments d'un
+    /// tableau, rien pour un littéral. La valeur par défaut est <see cref="JsonValueKind.Undefined"/>.
+    /// </summary>
     internal readonly struct JsonElement
     {
-        private readonly JsonNode? _node;
+        private readonly object? _content;
+        private readonly JsonValueKind _kind;
 
-        internal JsonElement(JsonNode node) => _node = node;
-
-        public JsonValueKind ValueKind => _node?.Kind ?? JsonValueKind.Undefined;
-
-        private JsonNode Node(JsonValueKind expected)
+        internal JsonElement(JsonValueKind kind, object? content)
         {
-            if (_node is null || _node.Kind != expected)
-                throw new InvalidOperationException($"Valeur JSON {ValueKind} : {expected} attendu.");
-            return _node;
+            _kind = kind;
+            _content = content;
+        }
+
+        public JsonValueKind ValueKind => _kind;
+
+        private object Content(JsonValueKind expected)
+        {
+            if (_kind != expected) throw new InvalidOperationException($"Valeur JSON {_kind} : {expected} attendu.");
+            return _content!;
         }
 
         /// <summary>Propriétés dans l'ordre du texte, doublons compris.</summary>
-        public IReadOnlyList<JsonProperty> EnumerateObject() => Node(JsonValueKind.Object).Properties!;
+        public IReadOnlyList<JsonProperty> EnumerateObject() => (JsonProperty[])Content(JsonValueKind.Object);
 
-        public IReadOnlyList<JsonElement> EnumerateArray() => Node(JsonValueKind.Array).Items!;
+        public IReadOnlyList<JsonElement> EnumerateArray() => (JsonElement[])Content(JsonValueKind.Array);
 
-        public int GetArrayLength() => Node(JsonValueKind.Array).Items!.Count;
+        public int GetArrayLength() => ((JsonElement[])Content(JsonValueKind.Array)).Length;
 
         /// <summary>Texte d'une chaîne ; null pour un null JSON (comme <c>System.Text.Json</c>).</summary>
         public string? GetString()
         {
-            if (_node?.Kind == JsonValueKind.Null) return null;
-            return Node(JsonValueKind.String).Text;
+            if (_kind == JsonValueKind.Null) return null;
+            return (string)Content(JsonValueKind.String);
         }
 
         public bool GetBoolean()
         {
-            if (_node?.Kind == JsonValueKind.True) return true;
-            if (_node?.Kind == JsonValueKind.False) return false;
-            throw new InvalidOperationException($"Valeur JSON {ValueKind} : booléen attendu.");
+            if (_kind == JsonValueKind.True) return true;
+            if (_kind == JsonValueKind.False) return false;
+            throw new InvalidOperationException($"Valeur JSON {_kind} : booléen attendu.");
         }
 
         /// <summary>Texte brut d'un nombre, tel qu'écrit (aucune conversion par un flottant).</summary>
-        public string GetRawText() => Node(JsonValueKind.Number).Text!;
+        public string GetRawText() => (string)Content(JsonValueKind.Number);
     }
 
     /// <summary>Propriété d'un objet : nom déséchappé, valeur et ligne (à partir de 1) où commence son nom.</summary>
@@ -124,22 +139,33 @@ namespace EdS.Data.Json.Text
         {
             if (utf8 is null) throw new ArgumentNullException(nameof(utf8));
             if (options is null) throw new ArgumentNullException(nameof(options));
-            return new JsonDocument(new Parser(utf8, options.MaxDepth).ParseDocument());
+            return new JsonDocument(new Parser(utf8, options.MaxDepth, options.MaxValues).ParseDocument());
         }
 
         private sealed class Parser
         {
+            /// <summary>Nombres d'un seul chiffre (« 0 » à « 9 »), partagés : les plus fréquents, et le pire cas d'un tableau démesuré.</summary>
+            private static readonly string[] Digit = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+
             private readonly byte[] _s;
             private readonly int _maxDepth;
+            private readonly int _maxValues;
+            private int _values;
             private int _pos;
             private long _line;
             private int _lineStart;
             private readonly StringBuilder _buffer = new StringBuilder();
 
-            public Parser(byte[] utf8, int maxDepth)
+            // Piles de travail : les éléments (ou propriétés) d'un conteneur ouvert s'y accumulent, puis sont copiés dans un tableau à la
+            // taille exacte à sa fermeture. Les conteneurs imbriqués empilent au-dessus et retirent leur part avant leur parent.
+            private readonly List<JsonElement> _items = new List<JsonElement>();
+            private readonly List<JsonProperty> _properties = new List<JsonProperty>();
+
+            public Parser(byte[] utf8, int maxDepth, int maxValues)
             {
                 _s = utf8;
                 _maxDepth = maxDepth;
+                _maxValues = maxValues;
                 // Pas de marque d'ordre UTF-8 : comme System.Text.Json, elle est refusée ici ; JsonInput.ReadFile la retire d'un fichier.
             }
 
@@ -181,19 +207,36 @@ namespace EdS.Data.Json.Text
             private JsonElement ParseValue(int depth)
             {
                 if (_pos >= _s.Length) throw Unexpected("une valeur");
-                switch (_s[_pos])
+                byte c = _s[_pos];
+                bool number = c == (byte)'-' || IsDigit(c);
+                if (!number && c != (byte)'{' && c != (byte)'[' && c != (byte)'"' && c != (byte)'t' && c != (byte)'f' && c != (byte)'n')
+                    throw Unexpected("une valeur (objet, tableau, texte, nombre, true, false ou null)");
+                // Compte avant de créer quoi que ce soit : au-delà de la limite, rien de plus n'est construit.
+                if (++_values > _maxValues)
+                    throw new JsonException(
+                        $"document de plus de {_maxValues} valeurs JSON (objets, tableaux, textes, nombres, true, false, null) : refusé pendant l'analyse, avant d'être construit en entier.",
+                        _line, _pos - _lineStart, limitExceeded: true);
+                switch (c)
                 {
                     case (byte)'{': return ParseObject(depth + 1);
                     case (byte)'[': return ParseArray(depth + 1);
-                    case (byte)'"': return new JsonElement(new JsonNode { Kind = JsonValueKind.String, Text = ParseString() });
+                    case (byte)'"': return new JsonElement(JsonValueKind.String, ParseString());
                     case (byte)'t': return Literal("true", JsonValueKind.True);
                     case (byte)'f': return Literal("false", JsonValueKind.False);
                     case (byte)'n': return Literal("null", JsonValueKind.Null);
-                    default:
-                        byte c = _s[_pos];
-                        if (c == (byte)'-' || (c >= (byte)'0' && c <= (byte)'9')) return ParseNumber();
-                        throw Unexpected("une valeur (objet, tableau, texte, nombre, true, false ou null)");
+                    default: return ParseNumber();
                 }
+            }
+
+            /// <summary>Retire les <c>Count − start</c> derniers éléments d'une pile de travail, dans un tableau à la taille exacte.</summary>
+            private static T[] Pop<T>(List<T> stack, int start)
+            {
+                int count = stack.Count - start;
+                if (count == 0) return Array.Empty<T>();
+                var result = new T[count];
+                stack.CopyTo(start, result, 0, count);
+                stack.RemoveRange(start, count);
+                return result;
             }
 
             private void EnterContainer(int depth)
@@ -205,12 +248,12 @@ namespace EdS.Data.Json.Text
             {
                 EnterContainer(depth);
                 _pos++;   // {
-                var properties = new List<JsonProperty>();
+                int start = _properties.Count;
                 SkipWhitespace();
                 if (_pos < _s.Length && _s[_pos] == (byte)'}')
                 {
                     _pos++;
-                    return new JsonElement(new JsonNode { Kind = JsonValueKind.Object, Properties = properties });
+                    return new JsonElement(JsonValueKind.Object, Array.Empty<JsonProperty>());
                 }
                 while (true)
                 {
@@ -223,7 +266,7 @@ namespace EdS.Data.Json.Text
                     _pos++;
                     SkipWhitespace();
                     JsonElement value = ParseValue(depth);
-                    properties.Add(new JsonProperty(name, value, line));
+                    _properties.Add(new JsonProperty(name, value, line));
                     SkipWhitespace();
                     if (_pos >= _s.Length) throw Unexpected("« , » ou « } »");
                     if (_s[_pos] == (byte)',')
@@ -234,7 +277,7 @@ namespace EdS.Data.Json.Text
                     if (_s[_pos] == (byte)'}')
                     {
                         _pos++;
-                        return new JsonElement(new JsonNode { Kind = JsonValueKind.Object, Properties = properties });
+                        return new JsonElement(JsonValueKind.Object, Pop(_properties, start));
                     }
                     throw Unexpected("« , » ou « } »");
                 }
@@ -244,17 +287,17 @@ namespace EdS.Data.Json.Text
             {
                 EnterContainer(depth);
                 _pos++;   // [
-                var items = new List<JsonElement>();
+                int start = _items.Count;
                 SkipWhitespace();
                 if (_pos < _s.Length && _s[_pos] == (byte)']')
                 {
                     _pos++;
-                    return new JsonElement(new JsonNode { Kind = JsonValueKind.Array, Items = items });
+                    return new JsonElement(JsonValueKind.Array, Array.Empty<JsonElement>());
                 }
                 while (true)
                 {
                     SkipWhitespace();
-                    items.Add(ParseValue(depth));
+                    _items.Add(ParseValue(depth));
                     SkipWhitespace();
                     if (_pos >= _s.Length) throw Unexpected("« , » ou « ] »");
                     if (_s[_pos] == (byte)',')
@@ -265,7 +308,7 @@ namespace EdS.Data.Json.Text
                     if (_s[_pos] == (byte)']')
                     {
                         _pos++;
-                        return new JsonElement(new JsonNode { Kind = JsonValueKind.Array, Items = items });
+                        return new JsonElement(JsonValueKind.Array, Pop(_items, start));
                     }
                     throw Unexpected("« , » ou « ] »");
                 }
@@ -282,7 +325,7 @@ namespace EdS.Data.Json.Text
                     }
                 }
                 _pos += word.Length;
-                return new JsonElement(new JsonNode { Kind = kind });
+                return new JsonElement(kind, null);
             }
 
             /// <summary>Nombre RFC 8259 : -? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)? ; texte brut conservé.</summary>
@@ -310,8 +353,8 @@ namespace EdS.Data.Json.Text
                     if (_pos >= _s.Length || !IsDigit(_s[_pos])) throw Unexpected("un chiffre dans l'exposant");
                     Digits();
                 }
-                string raw = Encoding.ASCII.GetString(_s, start, _pos - start);
-                return new JsonElement(new JsonNode { Kind = JsonValueKind.Number, Text = raw });
+                string raw = _pos - start == 1 ? Digit[_s[start] - (byte)'0'] : Encoding.ASCII.GetString(_s, start, _pos - start);
+                return new JsonElement(JsonValueKind.Number, raw);
             }
 
             private void Digits()

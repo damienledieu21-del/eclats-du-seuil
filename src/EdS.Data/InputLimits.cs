@@ -3,8 +3,8 @@ namespace EdS.Data
     /// <summary>
     /// Limites techniques des lecteurs (lot 7.1), non configurables : elles bornent le travail fait <b>avant</b> que les
     /// règles soient connues ou appliquées. Chacune est vérifiée avant le chargement complet de ce qu'elle protège :
-    /// la taille d'un fichier avant de le lire, la taille d'un texte avant de l'encoder, la longueur d'un tableau avant
-    /// de construire ses éléments.
+    /// la taille d'un fichier avant de le lire, la taille d'un texte avant de l'encoder, le nombre de valeurs JSON avant de
+    /// construire l'arbre, la longueur d'un tableau avant de construire ses éléments.
     /// </summary>
     public static class InputLimits
     {
@@ -16,6 +16,13 @@ namespace EdS.Data
 
         /// <summary>Profondeur maximale d'imbrication JSON (objets et tableaux).</summary>
         public const int MaxJsonDepth = 32;
+
+        /// <summary>
+        /// Nombre maximal de valeurs d'un document JSON (objets, tableaux, textes, nombres, true, false, null, racine comprise) :
+        /// 1 048 576 (2²⁰), compté pendant l'analyse avant la création de chaque valeur (revue de la PR #12). Les plus gros fichiers
+        /// livrés en ont moins de 1 000 ; un scénario de 20 000 commandes (plafond des règles livrées), environ 120 000.
+        /// </summary>
+        public const int MaxJsonValues = 1 << 20;
 
         /// <summary>Nombre maximal d'erreurs conservées par rapport ; les suivantes sont seulement comptées.</summary>
         public const int MaxReportedErrors = 200;

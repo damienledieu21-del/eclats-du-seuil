@@ -249,6 +249,100 @@ public class Lot91JsonTextTests
         Assert.Equal("JSON invalide : « ] » inattendu : une valeur (objet, tableau, texte, nombre, true, false ou null) attendu.", error.Message);
     }
 
+    // --- Nombre de valeurs (revue Codex de la PR #12) ------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("0", 1)]
+    [InlineData("\"x\"", 1)]
+    [InlineData("[]", 1)]
+    [InlineData("{}", 1)]
+    [InlineData("{\"a\":1}", 2)]                     // le nom d'une propriété ne compte pas : il accompagne sa valeur
+    [InlineData("[true,false,null]", 4)]
+    [InlineData("[1,[2,{\"b\":null}],{}]", 7)]
+    public void Valeurs_comptees_racine_et_conteneurs_compris(string json, int values)
+    {
+        byte[] utf8 = Encoding.UTF8.GetBytes(json);
+        Assert.Equal(StjShape(utf8), Shape(Portable.JsonDocument.Parse(utf8, new Portable.JsonDocumentOptions { MaxValues = values }).RootElement));
+        var error = Assert.Throws<Portable.JsonException>(() => Portable.JsonDocument.Parse(utf8, new Portable.JsonDocumentOptions { MaxValues = values - 1 }));
+        Assert.True(error.LimitExceeded);
+    }
+
+    [Fact]
+    public void Erreur_de_syntaxe_distincte_d_un_depassement_de_valeurs()
+    {
+        Assert.False(Assert.Throws<Portable.JsonException>(() => Portable.JsonDocument.Parse(Encoding.UTF8.GetBytes("[1,]"), Options)).LimitExceeded);
+        // Au-delà de la limite, une valeur mal écrite n'est pas analysée : le refus pour volume vient d'abord.
+        var error = Assert.Throws<Portable.JsonException>(() =>
+            Portable.JsonDocument.Parse(Encoding.UTF8.GetBytes("[1,tru]"), new Portable.JsonDocumentOptions { MaxValues = 2 }));
+        Assert.True(error.LimitExceeded);
+        Assert.Equal(3, error.BytePositionInLine);
+    }
+
+    /// <summary>Tableau de <paramref name="zeros"/> zéros sur la deuxième ligne : <c>zeros + 1</c> valeurs.</summary>
+    private static string Zeros(int zeros) => "[\n" + string.Join(",", Enumerable.Repeat("0", zeros)) + "]";
+
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(1, false)]
+    public void Limite_de_valeurs_d_un_document_a_la_frontiere(int extra, bool accepted)
+    {
+        var report = new ValidationReport();
+        bool read = false;
+        JsonInput.ParseDocument(Zeros(InputLimits.MaxJsonValues - 1 + extra), report, (_, root) => read = root.GetArrayLength() == InputLimits.MaxJsonValues - 1);
+        Assert.Equal(accepted, read);
+        if (accepted)
+        {
+            Assert.True(report.IsValid, report.ToString());
+            return;
+        }
+        ValidationError error = Assert.Single(report.Errors);
+        Assert.Equal(("$", ValidationCode.LimitExceeded, 2L), (error.Path, error.Code, error.Line));
+        Assert.Equal("document de plus de 1048576 valeurs JSON (objets, tableaux, textes, nombres, true, false, null) : refusé pendant l'analyse, avant d'être construit en entier.", error.Message);
+    }
+
+    [Fact]
+    public void Texte_valide_mais_demesure_refuse_sans_construire_ses_valeurs()
+    {
+        // Le cas de la revue : près de 16 Mio de « 0, », valide et sous la limite de taille, soit environ 8 millions de valeurs.
+        int zeros = (int)(InputLimits.MaxDataFileBytes / 2) - 2;
+        byte[] utf8 = Encoding.UTF8.GetBytes(Zeros(zeros));
+        Assert.True(utf8.Length <= InputLimits.MaxDataFileBytes);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        var error = Assert.Throws<Portable.JsonException>(() => Portable.JsonDocument.Parse(utf8, Options));
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        // Refus à la première valeur de trop, après environ 2 Mio lus sur 16 : le reste du texte n'est jamais analysé.
+        Assert.True(error.LimitExceeded);
+        Assert.Equal(1, error.LineNumber);
+        Assert.Equal(2L * InputLimits.MaxJsonValues - 2, error.BytePositionInLine);
+        // Mémoire bornée par la limite de valeurs, pas par la taille du texte (environ 32 Mio de pile de travail, aucun texte par zéro).
+        Assert.True(allocated < 48L * 1024 * 1024, $"{allocated} octets alloués");
+
+        var report = new ValidationReport();
+        JsonInput.ParseDocument(utf8, report, (_, _) => throw new InvalidOperationException("non lu"));
+        Assert.Equal(ValidationCode.LimitExceeded, Assert.Single(report.Errors).Code);
+    }
+
+    [Fact]
+    public void Nombres_d_un_chiffre_et_litteraux_sans_allocation_par_valeur()
+    {
+        // Arbre compact : 16 octets par élément de tableau, rien de plus pour « 0 » à « 9 », true, false et null.
+        const int count = 100_000;
+        byte[] digits = Encoding.UTF8.GetBytes("[" + string.Join(",", Enumerable.Range(0, count).Select(i => (i % 10).ToString(CultureInfo.InvariantCulture))) + "]");
+        byte[] literals = Encoding.UTF8.GetBytes("[" + string.Join(",", Enumerable.Range(0, count).Select(i => (i % 3) switch { 0 => "true", 1 => "false", _ => "null" })) + "]");
+        foreach (byte[] utf8 in new[] { digits, literals })
+        {
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            using var document = Portable.JsonDocument.Parse(utf8, Options);
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            Assert.Equal(count, document.RootElement.GetArrayLength());
+            // Seuls restent les 16 octets de chaque élément du tableau final ; la pile de travail, aux capacités doublées, en alloue au
+            // plus 64 de plus en tout (environ 42 ici). Un nœud et un texte par valeur en coûteraient plus de 70 de plus.
+            Assert.True(allocated < 80L * count, $"{allocated} octets alloués pour {count} valeurs");
+        }
+    }
+
     // --- Propriétés : valeurs aléatoires et textes altérés ------------------------------------------------------------------
 
     private static string RandomJson(System.Random random, int depth)
