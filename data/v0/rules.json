@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "kind": "rules",
   "contentVersion": "0.6.0-provisoire",
   "data": {

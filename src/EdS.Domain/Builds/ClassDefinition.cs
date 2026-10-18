@@ -225,13 +225,19 @@ namespace EdS.Domain.Builds
         {
             if (skill.Kind == SkillKind.Passive)
                 errors.Add(new RuleViolation("une compétence passive ne se lance pas : pas de données de combat.", path));
-            if (!Enum.IsDefined(typeof(Stats.PowerType), combat.PowerType))
+            if (combat.HasDamage && !Enum.IsDefined(typeof(Stats.PowerType), combat.PowerType))
                 errors.Add(new RuleViolation("type de puissance inconnu.", path + ".powerType"));
-            if (!Enum.IsDefined(typeof(Stats.DamageType), combat.DamageType))
+            if (combat.HasDamage && !Enum.IsDefined(typeof(Stats.DamageType), combat.DamageType))
                 errors.Add(new RuleViolation("type de dégâts inconnu.", path + ".damageType"));
             if (!Enum.IsDefined(typeof(SkillTargeting), combat.Targeting))
                 errors.Add(new RuleViolation("ciblage inconnu.", path + ".targeting"));
-            if (combat.Coefficient < Numerics.Fixed.Zero || combat.Coefficient > SkillCombatDefinition.MaxCoefficient)
+            // Sous-lot 8.3 (X5) : une compétence qui vise soi, un allié ou tous les alliés est de soutien (aucun dégât direct) ; une
+            // compétence de soutien n'a pas d'imparable (aucun impact à défendre).
+            else if (combat.Targeting.IsFriendly() && combat.HasDamage)
+                errors.Add(new RuleViolation("une compétence qui vise soi, un allié ou tous les alliés n'inflige pas de dégâts : powerType, damageType et coefficient absents.", path + ".targeting"));
+            if (!combat.HasDamage && combat.Unblockable)
+                errors.Add(new RuleViolation("une compétence sans dégâts directs n'a aucun impact à rendre imparable : unblockable vaut false.", path + ".unblockable"));
+            if (combat.HasDamage && (combat.Coefficient < Numerics.Fixed.Zero || combat.Coefficient > SkillCombatDefinition.MaxCoefficient))
                 errors.Add(new RuleViolation($"coefficient hors de [0, {SkillCombatDefinition.MaxCoefficient}].", path + ".coefficient"));
             if (combat.EnduranceCost < 0 || combat.EnduranceCost > SkillCombatDefinition.MaxCost)
                 errors.Add(new RuleViolation($"coût en endurance hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".enduranceCost"));

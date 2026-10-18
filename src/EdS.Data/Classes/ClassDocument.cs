@@ -74,7 +74,7 @@ namespace EdS.Data.Classes
 
     public sealed class SkillCombatData
     {
-        /// <summary>« physique », « agile » ou « magique ».</summary>
+        /// <summary>« physique », « agile » ou « magique ». Sous-lot 8.3 : absent avec damageType et coefficient (compétence de soutien).</summary>
         public string? PowerType { get; set; }
 
         /// <summary>« physique » ou « magique ».</summary>
@@ -84,7 +84,7 @@ namespace EdS.Data.Classes
         public int? EnduranceCost { get; set; }
         public long? CooldownMs { get; set; }
 
-        /// <summary>« enemy » ou « allEnemies ».</summary>
+        /// <summary>« enemy », « allEnemies » ; sous-lot 8.3 : « self », « ally », « allAllies » (soutien).</summary>
         public string? Targeting { get; set; }
 
         public bool? Unblockable { get; set; }
@@ -101,8 +101,11 @@ namespace EdS.Data.Classes
     {
         public string? Status { get; set; }
 
-        /// <summary>DOT seulement ; absent pour les autres catégories.</summary>
+        /// <summary>DOT et bouclier seulement ; absent pour les autres catégories.</summary>
         public Fixed? Coefficient { get; set; }
+
+        /// <summary>Sous-lot 8.3 (X5) : cible propre (« self », « allAllies », « allEnemies ») ; absent = les cibles de l'action.</summary>
+        public string? Target { get; set; }
     }
 
     public sealed class RequirementData

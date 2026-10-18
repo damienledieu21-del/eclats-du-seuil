@@ -67,6 +67,12 @@ namespace EdS.Domain.Combat
 
         /// <summary>Le porteur est la cible (il subit, il bloque, il pare, il porte l'altération).</summary>
         Target = 2,
+
+        /// <summary>
+        /// Sous-lot 8.3 (X9) : la cible de l'événement est un allié vivant du porteur, autre que lui (un allié subit, bloque, pare,
+        /// porte l'altération). Jamais implicite : admis partout où le rôle cible l'est, et seulement déclaré.
+        /// </summary>
+        Ally = 3,
     }
 
     /// <summary>Effet générique du premier palier (§4.2).</summary>
@@ -140,7 +146,7 @@ namespace EdS.Domain.Combat
             ("onDotTick", TriggerEvent.DotTick), ("onDeath", TriggerEvent.Death));
 
         public static IReadOnlyDictionary<string, TriggerRole> Roles { get; } = Map(
-            ("self", TriggerRole.Self), ("source", TriggerRole.Source), ("target", TriggerRole.Target));
+            ("self", TriggerRole.Self), ("source", TriggerRole.Source), ("target", TriggerRole.Target), ("ally", TriggerRole.Ally));
 
         public static IReadOnlyDictionary<string, TriggerEffectKind> Effects { get; } = Map(
             ("strike", TriggerEffectKind.Strike), ("applyStatus", TriggerEffectKind.ApplyStatus), ("gainResource", TriggerEffectKind.GainResource));
@@ -342,6 +348,9 @@ namespace EdS.Domain.Combat
             _ => SourceOrTarget,
         };
 
+        /// <summary>Sous-lot 8.3 (X9) : le rôle ally est admis partout où le rôle cible l'est (un allié est la cible de l'événement).</summary>
+        public static bool AllyAllowed(TriggerEvent on) => AllowedRoles(on).Contains(TriggerRole.Target);
+
         private static readonly IReadOnlyList<TriggerRole> SelfOnly = Frozen.List(new[] { TriggerRole.Self }, nameof(SelfOnly));
         private static readonly IReadOnlyList<TriggerRole> SourceOnly = Frozen.List(new[] { TriggerRole.Source }, nameof(SourceOnly));
         private static readonly IReadOnlyList<TriggerRole> TargetOnly = Frozen.List(new[] { TriggerRole.Target }, nameof(TargetOnly));
@@ -389,10 +398,11 @@ namespace EdS.Domain.Combat
             string on = TriggerIds.Of(On);
             if (Role is { } role)
             {
-                if (!roles.Contains(role))
-                    errors.Add(new RuleViolation(On == TriggerEvent.Death && role == TriggerRole.Target
+                bool ally = role == TriggerRole.Ally && AllyAllowed(On);
+                if (!roles.Contains(role) && !ally)
+                    errors.Add(new RuleViolation(On == TriggerEvent.Death && (role == TriggerRole.Target || role == TriggerRole.Ally)
                         ? "onDeath : le mort ne réagit pas ; seul le rôle source (celui qui tue) est admis."
-                        : $"rôle « {(Enum.IsDefined(typeof(TriggerRole), role) ? TriggerIds.Of(role) : role.ToString())} » incompatible avec {on} ; rôles admis : {string.Join(", ", roles.Select(TriggerIds.Of))}.", p + ".role"));
+                        : $"rôle « {(Enum.IsDefined(typeof(TriggerRole), role) ? TriggerIds.Of(role) : role.ToString())} » incompatible avec {on} ; rôles admis : {string.Join(", ", roles.Concat(AllyAllowed(On) ? new[] { TriggerRole.Ally } : Array.Empty<TriggerRole>()).Select(TriggerIds.Of))}.", p + ".role"));
             }
             else if (roles.Count > 1)
                 errors.Add(new RuleViolation($"{on} admet plusieurs rôles ({string.Join(", ", roles.Select(TriggerIds.Of))}) : rôle obligatoire.", p + ".role"));

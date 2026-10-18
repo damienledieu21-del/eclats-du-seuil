@@ -35,6 +35,21 @@ namespace EdS.Domain.Combat
         /// en fin de tick.
         /// </summary>
         Shield = 5,
+
+        /// <summary>
+        /// Sous-lot 8.3 (X7) : provocation. Posée sur un assaillant par un ennemi vivant de celui-ci (sa source) ; tant qu'elle est active,
+        /// les attaques à cible unique de l'assaillant visent la source de sa provocation la plus récente. Sur un autre combattant, ou
+        /// sans source ennemie vivante, l'application est refusée (<c>notApplicable</c>). Retirée à la mort de sa source.
+        /// </summary>
+        Taunt = 6,
+
+        /// <summary>
+        /// Sous-lot 8.3 (X6) : protection. Posée sur un allié (personnage, autre que la source) par sa source, le protecteur : tant
+        /// qu'elle est active, une part des dégâts subis par le protégé (<see cref="StatusDefinition.RedirectRatio"/>, plus le
+        /// <c>protection.redirectRatio</c> du protecteur) est transférée au protecteur. Un transfert n'est jamais retransféré ni
+        /// notifié ; la protection est retirée à la mort de sa source.
+        /// </summary>
+        Protection = 7,
     }
 
     /// <summary>Comportement d'une réapplication (A13).</summary>
@@ -91,7 +106,7 @@ namespace EdS.Domain.Combat
     {
         public static IReadOnlyDictionary<string, StatusCategory> Categories { get; } = Map(
             ("dot", StatusCategory.Dot), ("control", StatusCategory.Control), ("modifier", StatusCategory.Modifier), ("immunity", StatusCategory.Immunity),
-            ("buff", StatusCategory.Buff), ("shield", StatusCategory.Shield));
+            ("buff", StatusCategory.Buff), ("shield", StatusCategory.Shield), ("taunt", StatusCategory.Taunt), ("protection", StatusCategory.Protection));
 
         public static IReadOnlyDictionary<string, StatusStacking> Stackings { get; } = Map(
             ("refresh", StatusStacking.Refresh), ("perSourceKeepStronger", StatusStacking.PerSourceKeepStronger),
@@ -174,6 +189,12 @@ namespace EdS.Domain.Combat
         public IReadOnlyList<ModifierDefinition> Modifiers { get; }
 
         /// <summary>
+        /// Sous-lot 8.3 (X6) : protection seulement, part des dégâts subis par le protégé transférée au protecteur, dans ]0, 1] ; 0
+        /// ailleurs. Le <c>protection.redirectRatio</c> du protecteur s'y ajoute, somme écrêtée dans [0, 1].
+        /// </summary>
+        public Fixed RedirectRatio { get; }
+
+        /// <summary>
         /// Sous-lot 8.2 : clés de modificateur admises sur un renforcement : dégâts infligés (catégorie « altération »), dégâts subis
         /// (réduction, sous le plafond total des règles) et entretien de la garde.
         /// </summary>
@@ -186,8 +207,10 @@ namespace EdS.Domain.Combat
             StatusResistanceMode resistance = StatusResistanceMode.None, long periodMs = 0, DamageType? damageType = null,
             StatusBlocks blocks = StatusBlocks.None, StatusInterrupts interrupts = StatusInterrupts.None, string? blockReason = null,
             Fixed damageTakenIncrease = default, Fixed movementSpeedModifier = default, string? grantsOnExpiry = null,
-            IEnumerable<string>? immuneTo = null, IEnumerable<TriggerDefinition>? triggers = null, IEnumerable<ModifierDefinition>? modifiers = null)
+            IEnumerable<string>? immuneTo = null, IEnumerable<TriggerDefinition>? triggers = null, IEnumerable<ModifierDefinition>? modifiers = null,
+            Fixed redirectRatio = default)
         {
+            RedirectRatio = redirectRatio;
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
             Modifiers = Frozen.ListOrEmpty(modifiers, nameof(modifiers));
             Id = id ?? throw new ArgumentNullException(nameof(id));
@@ -214,6 +237,21 @@ namespace EdS.Domain.Combat
         /// <summary>Sous-lot 8.2 (X3) : renforcement temporaire.</summary>
         public bool IsBuff => Category == StatusCategory.Buff;
 
+        /// <summary>Sous-lot 8.3 (X7) : provocation.</summary>
+        public bool IsTaunt => Category == StatusCategory.Taunt;
+
+        /// <summary>Sous-lot 8.3 (X6) : protection (transfert de dégâts).</summary>
+        public bool IsProtection => Category == StatusCategory.Protection;
+
+        /// <summary>
+        /// Sous-lot 8.3 : altération liée à sa source vivante (provocation, protection) : refusée sans source qui convienne, jamais accordée
+        /// à l'expiration d'une autre, retirée à la mort de sa source (<c>sourceDied</c>).
+        /// </summary>
+        public bool IsSourceBound => IsTaunt || IsProtection;
+
+        /// <summary>Le cumul par source est-il admis (et obligatoire) pour cette catégorie ? DOT, boucliers, provocations, protections.</summary>
+        public bool StacksPerSource => IsDot || IsShield || IsSourceBound;
+
         /// <summary>Somme des valeurs des modificateurs de ce renforcement pour un champ (0 hors renforcement ou sans ce champ).</summary>
         public Fixed ModifierSum(ModifierField field)
         {
@@ -224,10 +262,41 @@ namespace EdS.Domain.Combat
         }
     }
 
+    /// <summary>
+    /// Sous-lot 8.3 (X5) : cible d'une application d'altération portée par une compétence ou une attaque. Par défaut, chaque cible de
+    /// l'action (après l'impact pour une action qui inflige des dégâts) ; sinon une fois, après les impacts, à la cible propre de
+    /// l'application, relative à l'acteur : lui-même, ses alliés vivants (lui compris) ou ses ennemis vivants.
+    /// </summary>
+    public enum ApplicationTarget
+    {
+        Targets = 0,
+        Self = 1,
+        AllAllies = 2,
+        AllEnemies = 3,
+    }
+
+    /// <summary>Identifiants stables des cibles propres d'application (<c>applies[].target</c>) ; l'absence vaut « les cibles de l'action ».</summary>
+    public static class ApplicationTargets
+    {
+        public static IReadOnlyDictionary<string, ApplicationTarget> Ids { get; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, ApplicationTarget>(
+            new Dictionary<string, ApplicationTarget>(StringComparer.Ordinal)
+            {
+                ["self"] = ApplicationTarget.Self,
+                ["allAllies"] = ApplicationTarget.AllAllies,
+                ["allEnemies"] = ApplicationTarget.AllEnemies,
+            });
+
+        /// <summary>Identifiant d'une cible propre ; null pour <see cref="ApplicationTarget.Targets"/> (champ absent).</summary>
+        public static string? Of(ApplicationTarget target) => target == ApplicationTarget.Targets ? null : Ids.First(p => p.Value == target).Key;
+    }
+
     /// <summary>Altération portée par une compétence ou une attaque d'assaillant, appliquée à chaque cible touchée après les dégâts.</summary>
     public sealed class StatusApplication
     {
         public string Status { get; }
+
+        /// <summary>Sous-lot 8.3 (X5) : cible propre de l'application ; <see cref="ApplicationTarget.Targets"/> par défaut.</summary>
+        public ApplicationTarget Target { get; }
 
         /// <summary>
         /// DOT : coefficient de la puissance de la source par tick. Sous-lot 8.2, bouclier : fraction des PV max de la source (valeur du
@@ -235,10 +304,11 @@ namespace EdS.Domain.Combat
         /// </summary>
         public Fixed? Coefficient { get; }
 
-        public StatusApplication(string status, Fixed? coefficient = null)
+        public StatusApplication(string status, Fixed? coefficient = null, ApplicationTarget target = ApplicationTarget.Targets)
         {
             Status = status ?? throw new ArgumentNullException(nameof(status));
             Coefficient = coefficient;
+            Target = target;
         }
 
         /// <summary>Contrôles propres à une liste d'applications (coefficients, doublons), sans le catalogue.</summary>
@@ -254,6 +324,8 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation(RuleViolationKind.DuplicateId, $"altération « {a.Status} » déjà appliquée par cette action.", itemPath + ".status"));
                 if (a.Coefficient is { } c && (c < Fixed.Zero || c > Builds.SkillCombatDefinition.MaxCoefficient))
                     errors.Add(new RuleViolation($"coefficient hors de [0, {Builds.SkillCombatDefinition.MaxCoefficient}].", itemPath + ".coefficient"));
+                if (!Enum.IsDefined(typeof(ApplicationTarget), a.Target))
+                    errors.Add(new RuleViolation("cible d'application inconnue.", itemPath + ".target"));
             }
         }
     }
@@ -380,15 +452,19 @@ namespace EdS.Domain.Combat
                 {
                     if (d.PeriodMs != 0) errors.Add(new RuleViolation("seule une altération périodique a une période.", p + ".periodMs"));
                     if (d.DamageType != null) errors.Add(new RuleViolation("seule une altération périodique a un type de dégâts.", p + ".damageType"));
-                    // Sous-lot 8.2 (A7) : un bouclier par source, renouvelé au plus fort ; le cumul par source est réservé aux DOT et aux boucliers.
-                    if (d.IsShield && d.Stacking != StatusStacking.PerSourceKeepStronger)
-                        errors.Add(new RuleViolation("un bouclier se cumule par source (perSourceKeepStronger) : un bouclier par source, renouvelé au plus fort.", p + ".stacking"));
-                    else if (!d.IsShield && d.Stacking == StatusStacking.PerSourceKeepStronger)
-                        errors.Add(new RuleViolation("le cumul par source est réservé aux altérations périodiques et aux boucliers.", p + ".stacking"));
+                    // Sous-lot 8.2 (A7) : un bouclier par source, renouvelé au plus fort ; sous-lot 8.3 : une provocation et une protection
+                    // par source aussi. Le cumul par source est réservé à ces catégories et aux DOT.
+                    if (d.StacksPerSource && d.Stacking != StatusStacking.PerSourceKeepStronger)
+                        errors.Add(new RuleViolation(d.IsShield
+                            ? "un bouclier se cumule par source (perSourceKeepStronger) : un bouclier par source, renouvelé au plus fort."
+                            : $"une {(d.IsTaunt ? "provocation" : "protection")} se cumule par source (perSourceKeepStronger) : une par source, renouvelée.", p + ".stacking"));
+                    else if (!d.StacksPerSource && d.Stacking == StatusStacking.PerSourceKeepStronger)
+                        errors.Add(new RuleViolation("le cumul par source est réservé aux altérations périodiques, aux boucliers, aux provocations et aux protections.", p + ".stacking"));
                     if (d.Resistance == StatusResistanceMode.Defense)
                         errors.Add(new RuleViolation("la résistance par la défense est réservée aux altérations périodiques.", p + ".resistance"));
-                    if (d.Resistance == StatusResistanceMode.Duration && d.Category != StatusCategory.Control)
-                        errors.Add(new RuleViolation("la résistance aux altérations ne réduit que la durée des contrôles.", p + ".resistance"));
+                    // Sous-lot 8.3 : une provocation est un contrôle de l'assaillant : sa durée peut être réduite comme celle d'un contrôle.
+                    if (d.Resistance == StatusResistanceMode.Duration && d.Category != StatusCategory.Control && !d.IsTaunt)
+                        errors.Add(new RuleViolation("la résistance aux altérations ne réduit que la durée des contrôles et des provocations.", p + ".resistance"));
                 }
 
                 if (d.Blocks != StatusBlocks.None && d.BlockReason is null)
@@ -404,6 +480,12 @@ namespace EdS.Domain.Combat
 
                 // Sous-lot 8.2 (X3) : seul un renforcement porte des modificateurs, et il en porte au moins un.
                 ValidateBuffModifiers(d, p, errors);
+
+                // Sous-lot 8.3 (X6) : seule une protection a une part transférée, dans ]0, 1].
+                if (d.IsProtection && (d.RedirectRatio <= Fixed.Zero || d.RedirectRatio > Fixed.One))
+                    errors.Add(new RuleViolation("une protection transfère une part des dégâts dans ]0, 1].", p + ".redirectRatio"));
+                else if (!d.IsProtection && d.RedirectRatio != Fixed.Zero)
+                    errors.Add(new RuleViolation("seule une protection transfère des dégâts.", p + ".redirectRatio"));
 
                 if (d.Category == StatusCategory.Immunity && d.ImmuneTo.Count == 0)
                     errors.Add(new RuleViolation("une immunité désigne au moins une altération.", p + ".immuneTo"));
@@ -430,6 +512,8 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation("une altération périodique ne peut pas être accordée : elle n'a pas de source qui fixe sa puissance.", p + ".grantsOnExpiry"));
                     else if (target.IsShield)
                         errors.Add(new RuleViolation("un bouclier ne peut pas être accordé : aucune application ne fixe sa valeur.", p + ".grantsOnExpiry"));
+                    else if (target.IsSourceBound)
+                        errors.Add(new RuleViolation($"une {(target.IsTaunt ? "provocation" : "protection")} ne peut pas être accordée : elle dépend d'une source vivante qui la pose.", p + ".grantsOnExpiry"));
                 }
                 var seen = new HashSet<string>(StringComparer.Ordinal);
                 for (int k = 0; k < d.ImmuneTo.Count; k++)

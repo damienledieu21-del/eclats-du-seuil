@@ -24,6 +24,9 @@ namespace EdS.Data.Rules
         public string? BlockReason { get; set; }
         public Fixed? DamageTakenIncrease { get; set; }
         public Fixed? MovementSpeedModifier { get; set; }
+
+        /// <summary>Sous-lot 8.3 (X6, schéma 8) : protection seulement, part des dégâts transférée au protecteur ; facultative (0).</summary>
+        public Fixed? RedirectRatio { get; set; }
         public string? GrantsOnExpiry { get; set; }
         public List<string?>? ImmuneTo { get; set; }
 
@@ -48,7 +51,7 @@ namespace EdS.Data.Rules
         public static IReadOnlyList<string> FieldNames { get; } = Array.AsReadOnly(new[]
         {
             "id", "category", "durationMs", "periodMs", "stacking", "resistance", "damageType", "blocks", "interrupts",
-            "blockReason", "damageTakenIncrease", "movementSpeedModifier", "grantsOnExpiry", "immuneTo", "triggers", "modifiers",
+            "blockReason", "damageTakenIncrease", "movementSpeedModifier", "grantsOnExpiry", "immuneTo", "triggers", "modifiers", "redirectRatio",
         });
 
         public static void Check(List<StatusData?>? statuses, ValidationReport report)
@@ -119,7 +122,7 @@ namespace EdS.Data.Rules
                 (s.Interrupts ?? new List<string?>()).Aggregate(StatusInterrupts.None, (acc, b) => acc | StatusIds.Interrupts[b!]),
                 s.BlockReason, s.DamageTakenIncrease ?? Fixed.Zero, s.MovementSpeedModifier ?? Fixed.Zero, s.GrantsOnExpiry,
                 (s.ImmuneTo ?? new List<string?>()).Select(x => x!), Triggers.TriggerShape.Build(s.Triggers),
-                Modifiers.ModifierShape.Build(s.Modifiers))).ToArray());
+                Modifiers.ModifierShape.Build(s.Modifiers), s.RedirectRatio ?? Fixed.Zero)).ToArray());
 
         /// <summary>
         /// Écriture canonique pour l'empreinte des règles : dans l'ordre du fichier (il fixe la priorité des motifs de refus), chaque
@@ -151,6 +154,7 @@ namespace EdS.Data.Rules
                 Triggers.TriggerShape.AppendCanonical(text, p + ".triggers", d.Triggers);
                 // Sous-lot 8.2 : rien sans modificateur (empreintes des catalogues antérieurs inchangées hors schéma).
                 Modifiers.ModifierShape.AppendCanonical(text, p + ".modifiers", d.Modifiers);
+                w.Value(p + ".redirectRatio", d.RedirectRatio.ToString());   // sous-lot 8.3 : 0 hors protection
             }
         }
     }

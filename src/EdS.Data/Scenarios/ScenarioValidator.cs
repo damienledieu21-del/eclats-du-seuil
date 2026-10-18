@@ -36,9 +36,10 @@ namespace EdS.Data.Scenarios
         /// <summary>
         /// Version 1 : lots 5 et 6 (assaillant, actions, ajouts compatibles). Version 2 (lot 7.2) : <c>applies</c> remplace
         /// <c>appliesFragility</c> sur les attaques d'assaillant, <c>statusResistance</c> facultatif sur mannequins et assaillants.
-        /// Lot 7.3 : <c>triggers</c> facultatif sur un assaillant (ajout compatible, version inchangée).
+        /// Lot 7.3 : <c>triggers</c> facultatif sur un assaillant (ajout compatible, version inchangée). Version 3 (sous-lot 8.3) :
+        /// <c>applies[].target</c> sur les attaques et rôle <c>ally</c> des déclencheurs d'assaillant.
         /// </summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -217,9 +218,10 @@ namespace EdS.Data.Scenarios
                 if (Present(a.DamageType, path + ".damageType", "physique ou magique") && !ClassValidator.DamageTypes.ContainsKey(a.DamageType!))
                     _report.Add(path + ".damageType", ValidationCode.UnknownReference,
                         $"valeur inconnue « {a.DamageType} » ; valeurs possibles : {string.Join(", ", ClassValidator.DamageTypes.Keys)}.");
-                if (Present(a.Targeting, path + ".targeting", "enemy ou allEnemies") && !ClassValidator.Targetings.ContainsKey(a.Targeting!))
+                // Sous-lot 8.3 : une attaque d'assaillant frappe : enemy ou allEnemies seulement (les ciblages de soutien sont aux compétences).
+                if (Present(a.Targeting, path + ".targeting", "enemy ou allEnemies") && !ClassValidator.AttackTargetings.Contains(a.Targeting!))
                     _report.Add(path + ".targeting", ValidationCode.UnknownReference,
-                        $"valeur inconnue « {a.Targeting} » ; valeurs possibles : {string.Join(", ", ClassValidator.Targetings.Keys)}.");
+                        $"valeur inconnue « {a.Targeting} » ; valeurs possibles : {string.Join(", ", ClassValidator.AttackTargetings)}.");
                 Present(a.Unblockable, path + ".unblockable", "booléen");
                 ClassValidator.CheckApplications(a.Applies, path + ".applies", _report);
             }

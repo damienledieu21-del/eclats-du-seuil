@@ -71,6 +71,8 @@ internal static class Lot81Classe
         [ModifierField.SkillCoefficient] = new("skill.essai.frappe.coefficient", "skill.<id>.coefficient", ModifierUnit.Decimal, "100", false),
         [ModifierField.SkillCooldownMs] = new("skill.essai.frappe.cooldownMs", "skill.<id>.cooldownMs", ModifierUnit.Milliseconds, Jour, false),
         [ModifierField.ShieldPotencyDealt] = new("shield.potencyDealt", "shield.potencyDealt", ModifierUnit.Decimal, "10", false),              // sous-lot 8.2 (X4)
+        [ModifierField.ProtectionRedirectRatio] = new("protection.redirectRatio", "protection.redirectRatio", ModifierUnit.Decimal, "1", false),  // sous-lot 8.3 (X6)
+        [ModifierField.ProtectionRedirectThroughGuard] = new("protection.redirectThroughGuard", "protection.redirectThroughGuard", ModifierUnit.Flag, "1", false),
     };
 
     /// <summary>Ligne de conception d'une clé ; une clé ajoutée à la liste fermée sans être ajoutée ici fait échouer le test qui la lit.</summary>
@@ -210,8 +212,8 @@ public class Lot81ModifierValidationTests
     {
         IReadOnlyList<ModifierSpec> specs = ModifierKeys.Specs;
         Assert.Equal(Enum.GetValues(typeof(ModifierField)).Length, specs.Count);
-        Assert.Equal(21, specs.Count);
-        Assert.Equal(17, specs.Count(s => !s.Name.Contains("<id>")));   // 17 clés scalaires + 4 paramétrées (sous-lot 8.2 : shield.potencyDealt)
+        Assert.Equal(23, specs.Count);
+        Assert.Equal(19, specs.Count(s => !s.Name.Contains("<id>")));   // 19 clés scalaires + 4 paramétrées (8.2 : shield.potencyDealt ; 8.3 : protection.*)
         for (int i = 0; i < specs.Count; i++)
         {
             ModifierSpec spec = specs[i];
@@ -222,7 +224,7 @@ public class Lot81ModifierValidationTests
             Assert.Equal(spec.Field, key.Field);
             Assert.Equal(ligne.Cle, key.ToString());   // texte canonique (journal)
         }
-        Assert.Equal(new[] { ModifierField.GuardNoUpkeepBreak }, specs.Where(s => s.Unit == ModifierUnit.Flag).Select(s => s.Field));
+        Assert.Equal(new[] { ModifierField.GuardNoUpkeepBreak, ModifierField.ProtectionRedirectThroughGuard }, specs.Where(s => s.Unit == ModifierUnit.Flag).Select(s => s.Field));
         Assert.Equal(new[] { ModifierField.DamageDealt, ModifierField.DamageTaken }, specs.Where(s => s.Conditional).Select(s => s.Field));
     }
 
@@ -402,7 +404,7 @@ public class Lot81ModifierValidationTests
     [InlineData("guard.damagereduction")]
     [InlineData(" guard.damageReduction")]
     [InlineData("guard.damageReduction\n")]
-    [InlineData("protection.redirectRatio")]     // reportée au sous-lot 8.3 (X6)
+    [InlineData("protection.redirect")]          // sous-lot 8.3 : seules redirectRatio et redirectThroughGuard existent
     [InlineData("damage")]
     [InlineData("status.burn")]
     [InlineData("status.burn.duration")]
@@ -602,12 +604,12 @@ public class Lot81ModifierValidationTests
     [Fact]
     public void Toutes_les_cles_ensemble_admises()
     {
-        // [L3] Les 21 clés de la liste fermée (sous-lot 8.2 : shield.potencyDealt), une fois chacune, réparties sur trois porteurs (au
-        // plus 8 chacun).
+        // [L3] Les 23 clés de la liste fermée (8.2 : shield.potencyDealt ; 8.3 : protection.*), une fois chacune, réparties sur trois
+        // porteurs (au plus 8 chacun).
         ModifierDefinition[] toutes = ModifierKeys.Specs.Select(s => Brut(De(s.Field).Cle, ValeurValide(s.Field))).ToArray();
-        Assert.Equal(21, toutes.Length);
+        Assert.Equal(23, toutes.Length);
         Admis(Classe(alpha: toutes.Take(8), beta: toutes.Skip(8).Take(8), passif: toutes.Skip(16)).Validate(Regles));
-        // Et chacune à sa borne (−1 pour damageTaken), sauf le drapeau qui vaut 1.
+        // Et chacune à sa borne (−1 pour damageTaken), sauf les drapeaux qui valent 1.
         ModifierDefinition[] bornes = ModifierKeys.Specs.Select(s => Brut(De(s.Field).Cle,
             Fixed.Parse(De(s.Field).Borne) * (s.Field == ModifierField.DamageTaken ? -1 : 1))).ToArray();
         Admis(Classe(alpha: bornes.Take(8), beta: bornes.Skip(8).Take(8), passif: bornes.Skip(16)).Validate(Regles));

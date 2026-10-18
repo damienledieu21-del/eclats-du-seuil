@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 6
+      "const": 7
     },
     "kind": {
       "const": "class"
@@ -278,11 +278,8 @@
     "combat": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore.",
+      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore. Sous-lot 8.3 : powerType, damageType et coefficient ensemble, ou aucun (compétence de soutien, obligatoire pour les ciblages self, ally et allAllies).",
       "required": [
-        "powerType",
-        "damageType",
-        "coefficient",
         "enduranceCost",
         "cooldownMs",
         "targeting",
@@ -323,9 +320,12 @@
         "targeting": {
           "enum": [
             "enemy",
-            "allEnemies"
+            "allEnemies",
+            "self",
+            "ally",
+            "allAllies"
           ],
-          "description": "enemy : la cible désignée ; allEnemies : tous les ennemis vivants, par identifiant."
+          "description": "enemy : la cible désignée ; allEnemies : tous les ennemis vivants, par identifiant ; sous-lot 8.3, soutien sans dégâts : self (le lanceur), ally (un allié vivant désigné, le lanceur compris), allAllies (tous les alliés vivants, le lanceur compris)."
         },
         "unblockable": {
           "type": "boolean",
@@ -361,12 +361,117 @@
               },
               "coefficient": {
                 "type": "number",
-                "description": "DOT seulement, obligatoire : coefficient de la puissance de la source par tick, [0, 100]."
+                "description": "DOT et bouclier seulement, obligatoire : coefficient de la puissance de la source par tick (DOT) ou fraction des PV max de la source (bouclier), [0, 100]."
+              },
+              "target": {
+                "enum": [
+                  "self",
+                  "allAllies",
+                  "allEnemies"
+                ],
+                "description": "Sous-lot 8.3 : cible propre de l'application, relative à l'acteur (lui-même, ses alliés vivants lui compris, ses ennemis vivants), appliquée une fois après les impacts ; absente : chaque cible de l'action."
               }
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "powerType"
+            ]
+          },
+          "then": {
+            "required": [
+              "powerType",
+              "damageType",
+              "coefficient"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "damageType"
+            ]
+          },
+          "then": {
+            "required": [
+              "powerType",
+              "damageType",
+              "coefficient"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "coefficient"
+            ]
+          },
+          "then": {
+            "required": [
+              "powerType",
+              "damageType",
+              "coefficient"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "targeting"
+            ],
+            "properties": {
+              "targeting": {
+                "enum": [
+                  "self",
+                  "ally",
+                  "allAllies"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "powerType"
+                  ]
+                },
+                {
+                  "required": [
+                    "damageType"
+                  ]
+                },
+                {
+                  "required": [
+                    "coefficient"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "required": [
+                "powerType"
+              ]
+            }
+          },
+          "then": {
+            "properties": {
+              "unblockable": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
     },
     "modifier": {
       "type": "object",
@@ -379,7 +484,7 @@
         "key": {
           "type": "string",
           "description": "Clé de la liste fermée (docs/DONNEES.md) : guard.damageReduction, guard.upkeepPerSecond, guard.costPerBlock, guard.noUpkeepBreak, guard.reductionAtZeroEndurance, guard.breakShortenPerCharge, parry.windowMs, parry.failureRecoveryMs, rampartCharges.max, resonance.perDirectHit, endurance.max, endurance.regenPerSecond, maxHealth, statusResistance, damageDealt, damageTaken, status.<id>.durationDealt, status.<id>.durationTaken, <id de compétence>.coefficient, <id de compétence>.cooldownMs, shield.potencyDealt (sous-lot 8.2).",
-          "pattern": "^(guard\\.(damageReduction|upkeepPerSecond|costPerBlock|noUpkeepBreak|reductionAtZeroEndurance|breakShortenPerCharge)|parry\\.(windowMs|failureRecoveryMs)|rampartCharges\\.max|resonance\\.perDirectHit|endurance\\.(max|regenPerSecond)|maxHealth|statusResistance|damageDealt|damageTaken|shield\\.potencyDealt|status\\.[a-z][A-Za-z0-9]*\\.(durationDealt|durationTaken)|skill(\\.[a-z0-9_]+)+\\.(coefficient|cooldownMs))$"
+          "pattern": "^(guard\\.(damageReduction|upkeepPerSecond|costPerBlock|noUpkeepBreak|reductionAtZeroEndurance|breakShortenPerCharge)|parry\\.(windowMs|failureRecoveryMs)|rampartCharges\\.max|resonance\\.perDirectHit|endurance\\.(max|regenPerSecond)|maxHealth|statusResistance|damageDealt|damageTaken|shield\\.potencyDealt|protection\\.(redirectRatio|redirectThroughGuard)|status\\.[a-z][A-Za-z0-9]*\\.(durationDealt|durationTaken)|skill(\\.[a-z0-9_]+)+\\.(coefficient|cooldownMs))$"
         },
         "add": {
           "$ref": "#/$defs/rankedValue",
@@ -527,6 +632,43 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "protection.redirectThroughGuard"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "add": {
+                "oneOf": [
+                  {
+                    "const": 1
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "base"
+                    ],
+                    "properties": {
+                      "base": {
+                        "const": 1
+                      },
+                      "perRank": {
+                        "const": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
         }
       ]
     },
@@ -579,9 +721,10 @@
           "enum": [
             "self",
             "source",
-            "target"
+            "target",
+            "ally"
           ],
-          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un."
+          "description": "Rôle du porteur dans l'événement ; facultatif quand le type n'en admet qu'un. ally (sous-lot 8.3) : la cible de l'événement est un allié vivant du porteur, autre que lui ; jamais implicite, admis là où target l'est."
         },
         "filter": {
           "type": "object",
@@ -620,7 +763,11 @@
                 "dot",
                 "control",
                 "modifier",
-                "immunity"
+                "immunity",
+                "buff",
+                "shield",
+                "taunt",
+                "protection"
               ]
             },
             "resource": {

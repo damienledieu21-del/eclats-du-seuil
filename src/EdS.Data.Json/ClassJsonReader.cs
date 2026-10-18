@@ -139,6 +139,7 @@ public static class ClassJsonReader
         {
             ["status"] = (v, p) => application.Status = input.Text(v, p),
             ["coefficient"] = (v, p) => application.Coefficient = input.Decimal(v, p),
+            ["target"] = (v, p) => application.Target = input.Text(v, p),
         });
         return ok ? application : null;
     }

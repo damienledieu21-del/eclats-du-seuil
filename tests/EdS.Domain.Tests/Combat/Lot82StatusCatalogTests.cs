@@ -101,7 +101,7 @@ public class Lot82StatusCatalogTests
         foreach (StatusStacking other in new[] { StatusStacking.Refresh, StatusStacking.KeepLonger, StatusStacking.Ignore })
             AssertSingle(P + ".stacking", "un bouclier se cumule par source", Shield(stacking: other));
         // Le cumul par source reste refusé aux autres catégories non périodiques, renforcements compris.
-        AssertSingle(P + ".stacking", "périodiques et aux boucliers", Buff(stacking: StatusStacking.PerSourceKeepStronger, modifiers: Mod("damageTaken", "-0.1")));
+        AssertSingle(P + ".stacking", "réservé aux altérations périodiques, aux boucliers", Buff(stacking: StatusStacking.PerSourceKeepStronger, modifiers: Mod("damageTaken", "-0.1")));
     }
 
     [Fact]

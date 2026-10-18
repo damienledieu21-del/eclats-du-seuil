@@ -18,15 +18,18 @@ namespace EdS.Data
     /// <c>combat.damageTaken.maxReduction</c>, auparavant constantes du moteur ; 7 (règles) et 6 (classes) = sous-lot 8.2 :
     /// catégories <c>buff</c> et <c>shield</c> et <c>statuses[].modifiers</c> dans les règles, clé de modificateur
     /// <c>shield.potencyDealt</c> dans les classes. Une version incrémentée même pour un ajout : un programme antérieur refuse
-    /// ainsi d'emblée un fichier qui en use, au lieu de le lire comme un format qu'il croit connaître (revue Codex de la PR #6).</para>
+    /// ainsi d'emblée un fichier qui en use, au lieu de le lire comme un format qu'il croit connaître (revue Codex de la PR #6) ;
+    /// 8 (règles) et 7 (classes) = sous-lot 8.3 : catégories <c>taunt</c> et <c>protection</c>, <c>statuses[].redirectRatio</c>, rôle
+    /// <c>ally</c> des déclencheurs et <c>applies[].target</c> dans les règles ; ciblages <c>self</c>, <c>ally</c>, <c>allAllies</c>,
+    /// compétences sans dégâts directs, <c>applies[].target</c>, rôle <c>ally</c> et clés <c>protection.*</c> dans les classes.</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 7;
+        public const int RulesSchemaVersion = 8;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
-        public const int ClassSchemaVersion = 6;
+        public const int ClassSchemaVersion = 7;
 
         /// <summary>Version de contenu des règles livrées : provisoires, non équilibrées.</summary>
         public const string ProvisionalRulesContentVersion = "0.6.0-provisoire";
