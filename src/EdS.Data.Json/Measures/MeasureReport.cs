@@ -99,6 +99,7 @@ public static class MeasureReport
                 w.WriteNumber("avoided", r.Avoided);
                 w.WriteNumber("mitigated", r.Mitigated);
                 w.WriteNumber("absorbed", r.Absorbed);
+                w.WriteNumber("transferred", r.Transferred);
                 w.WriteNumber("redirected", r.Redirected);
                 w.WriteBoolean("died", r.Died);
                 w.WriteNumber("survivalSeconds", r.Survival);

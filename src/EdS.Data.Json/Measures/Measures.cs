@@ -50,6 +50,7 @@ public sealed class MeasureResult
     public long Avoided { get; init; }
     public long Mitigated { get; init; }
     public long Absorbed { get; init; }
+    public long Transferred { get; init; }
 
     /// <summary>Parts des dégâts d'un allié reçues comme protecteur (avant sa garde et ses boucliers).</summary>
     public long Redirected { get; init; }
@@ -174,6 +175,7 @@ public static class Measures
             MaxHealth = maxHealth,
             Mitigated = me.DamageMitigated,
             Absorbed = me.DamageAbsorbed,
+            Transferred = me.DamageTransferred,
             Avoided = me.DamageMitigated + me.DamageAbsorbed + me.DamageTransferred,
             Redirected = me.DamageRedirected,
             Died = me.IsDead,

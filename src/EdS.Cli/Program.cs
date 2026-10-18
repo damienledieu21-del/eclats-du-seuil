@@ -395,8 +395,9 @@ static int RunReport(ReadOnlySpan<string> options, int abortedExitCode, int obje
             return log;
         });
     }
-    catch (ArgumentException e)
+    catch (Exception e) when (e is ArgumentException or InvalidOperationException)
     {
+        // Personnage mesuré absent ou d'une autre classe, ou (défaut du pilote) combat piloté non reproductible.
         Console.Error.WriteLine("Mesure impossible : " + e.Message);
         return 1;
     }
