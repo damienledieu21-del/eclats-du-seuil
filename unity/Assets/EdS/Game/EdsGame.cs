@@ -115,7 +115,9 @@ namespace EdS.Game
             if (_combat == null) return;
 
             PlayerState player = _combat.Player();
-            ReadCombatInput();
+            // Revue Codex de la PR #14 : en pause (ou séance finie), aucune entrée de combat n'est enregistrée ; sinon une parade ou une
+            // compétence pressée pendant la pause partirait au premier tick de la reprise, avec un timing préparé à l'arrêt.
+            if (!_paused) ReadCombatInput();
             Move(player);
 
             if (!_paused)
