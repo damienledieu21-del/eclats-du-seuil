@@ -6,5 +6,8 @@
     <Deterministic>true</Deterministic>
     <InvariantGlobalization>true</InvariantGlobalization>
     <Authors>Éclats du Seuil</Authors>
+    <!-- Sous-lot 9.3 : sorties de compilation (bin, obj) dans artifacts/ à la racine, hors de src/, que Unity compile comme un
+         paquet local : aucun fichier généré (.cs d'obj, .dll de bin) ne doit s'y trouver. -->
+    <UseArtifactsOutput>true</UseArtifactsOutput>
   </PropertyGroup>
 </Project>

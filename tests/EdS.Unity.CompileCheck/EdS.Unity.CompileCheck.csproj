@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sous-lot 9.3 : compile les scripts du prototype Unity (unity/Assets/EdS) contre des bouchons de l'API Unity, en C# 9 comme
+       Unity, avertissements bloquants. Aucun test : la compilation est la vérification. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="UnityApiStubs.cs" />
+    <Compile Include="..\..\unity\Assets\EdS\**\*.cs" Link="Unity\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EdS.Runtime\EdS.Runtime.csproj" />
+  </ItemGroup>
+
+</Project>

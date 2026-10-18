@@ -1,0 +1,20 @@
+{
+    "name": "EdS.Game",
+    "rootNamespace": "EdS.Game",
+    "references": [
+        "EdS.Domain",
+        "EdS.Simulation",
+        "EdS.Data",
+        "EdS.Data.Json",
+        "EdS.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
