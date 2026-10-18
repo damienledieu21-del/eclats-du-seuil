@@ -29,7 +29,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.13.0";
+        public const string Version = "0.14.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -49,10 +49,12 @@ namespace EdS.Simulation.Engine
         /// <c>damage</c> et <c>dotDamage</c> portent <c>transferred</c> ; ligne <c>damageTransferred</c> (part transférée au protecteur,
         /// non notifiée) ; <c>stateApplied</c> d'une protection porte <c>redirectRatio</c> ; raisons <c>notApplicable</c> (stateBlocked) et
         /// <c>sourceDied</c> (stateRemoved) ; <c>combatantSummary</c> porte <c>damageTransferred</c> et <c>damageRedirected</c> ; les règles
-        /// effectives portent <c>protection.redirectRatio</c> et <c>protection.redirectThroughGuard</c>. Un journal d'un autre format est
+        /// effectives portent <c>protection.redirectRatio</c> et <c>protection.redirectThroughGuard</c>. 8 (sous-lot 8.4) : les règles
+        /// effectives portent <c>guard.noUpkeep</c> ; <c>rampartChargeCost</c> de <c>skillCast</c> donne les Charges réellement dépensées
+        /// (toutes les Charges détenues pour une compétence qui les dépense toutes, comme Contrecoup). Un journal d'un autre format est
         /// refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 7;
+        public const int LogFormatVersion = 8;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -263,6 +265,9 @@ namespace EdS.Simulation.Engine
 
             /// <summary>Faux pour une action qui dépense de la Résonance : pas de génération récursive (A5).</summary>
             public bool GeneratesResonance = true;
+
+            /// <summary>Sous-lot 8.4 (X8) : Charges dépensées au lancement, pour le coefficient par Charge de la compétence.</summary>
+            public int ChargesSpent;
 
             /// <summary>Lot 7.3 : frappe d'une réaction (effet <c>strike</c>), au rang du déclencheur ; ni compétence ni attaque.</summary>
             public TriggerEffect? Strike;
@@ -609,7 +614,8 @@ namespace EdS.Simulation.Engine
                     var (skill, target, resonanceCost) = CastContext(item, actor);
                     if (CheckSkill(tick, actor, skill, target, resonanceCost) != null) return Cost.Line;
                     SkillCombatDefinition combat = skill!.Combat!;
-                    return Cost.Enqueue.If(actor.Rules.CooldownMs(skill, combat) / _tickMs > 0) + Observable(TriggerEvent.SkillCast) + GainCost(actor, combat.RampartChargeGain);
+                    return Cost.Enqueue.If(actor.Rules.CooldownMs(skill, combat) / _tickMs > 0) + Observable(TriggerEvent.SkillCast) + GainCost(actor, combat.RampartChargeGain)
+                        + GainCost(actor, combat.ResonanceGain);   // sous-lot 8.4
             }
         }
 
@@ -685,7 +691,9 @@ namespace EdS.Simulation.Engine
             SkillCombatDefinition combat = skill!.Combat!;
             if (combat.EnduranceCost > 0) SpendEndurance(actor, combat.EnduranceCost, tick);
             actor.Resonance -= resonanceCost;
-            actor.RampartCharges -= combat.RampartChargeCost;
+            // Sous-lot 8.4 (X8) : toutes les Charges détenues (au moins le coût, vérifié par CheckSkill) ou exactement le coût.
+            int chargesSpent = combat.RampartChargesSpent(actor.RampartCharges);
+            actor.RampartCharges -= chargesSpent;
             actor.GlobalCooldownReadyTick = checked(tick + _globalCooldownTicks);
             long cooldownTicks = actor.Rules.CooldownMs(skill, combat) / _tickMs;
             long readyTick = checked(tick + cooldownTicks);
@@ -699,11 +707,13 @@ namespace EdS.Simulation.Engine
                 .Field("actor", actor.Id).Field("skill", skill.Id).Field("target", command.Target).Field("command", item.Index)
                 .Field("enduranceCost", combat.EnduranceCost).Field("endurance", actor.Endurance)
                 .Field("resonanceCost", resonanceCost).Field("resonance", actor.Resonance)
-                .Field("rampartChargeCost", combat.RampartChargeCost).Field("rampartCharges", actor.RampartCharges)
+                .Field("rampartChargeCost", chargesSpent).Field("rampartCharges", actor.RampartCharges)
                 .Field("cooldownReadyTick", readyTick).Field("globalCooldownReadyTick", actor.GlobalCooldownReadyTick));
             Provenance consequences = root.CausedBy(cast);
             Gain(tick, CombatPhase.Commands, actor, RampartCharges, combat.RampartChargeGain, "skill", consequences);
-            return new PendingAction { Actor = actor, Skill = skill, Combat = combat, Target = target, GeneratesResonance = resonanceCost == 0, Origin = consequences };
+            Gain(tick, CombatPhase.Commands, actor, Resonance, combat.ResonanceGain, "skill", consequences);   // sous-lot 8.4 (Provocation)
+            return new PendingAction { Actor = actor, Skill = skill, Combat = combat, Target = target, GeneratesResonance = resonanceCost == 0, Origin = consequences,
+                ChargesSpent = chargesSpent };
         }
 
         private bool Reject(long tick, CommandItem item, Fighter actor, string? reason)
@@ -1070,7 +1080,7 @@ namespace EdS.Simulation.Engine
 
             DerivedStats attacker = AttackerStats(action);
             DamageInput input = action.Combat is { } combat
-                ? new DamageInput(attacker, target.Stats, combat.PowerType, combat.DamageType, actor.Rules.Coefficient(action.Skill!, combat), bonuses, critical, mitigation)
+                ? new DamageInput(attacker, target.Stats, combat.PowerType, combat.DamageType, actor.Rules.Coefficient(action.Skill!, combat, action.ChargesSpent), bonuses, critical, mitigation)
                 : action.Attack is { } attack
                     ? new DamageInput(attacker, target.Stats, CombatantStats.PowerOf(attack.DamageType), attack.DamageType, Fixed.One, bonuses, false, mitigation)
                     // Lot 7.3 : frappe de réaction, sans critique ni tirage (Q6, Q7), puissance du porteur.
@@ -1598,7 +1608,8 @@ namespace EdS.Simulation.Engine
         private (long Due, long Remainder) UpkeepAfterTick(Fighter f)
         {
             const long unit = 1000 * Fixed.Scale;
-            Fixed rate = f.Rules.GuardUpkeepPerSecondWith(BuffSum(f, ModifierField.GuardUpkeepPerSecond));
+            // Sous-lot 8.4 : un renforcement actif à guard.noUpkeep (Bastion absolu) annule l'entretien tant qu'il dure.
+            Fixed rate = f.Rules.GuardUpkeepPerSecondWith(BuffSum(f, ModifierField.GuardUpkeepPerSecond), BuffSum(f, ModifierField.GuardNoUpkeep) > Fixed.Zero);
             long total = checked(f.GuardUpkeepRemainder + checked(rate.Raw * _tickMs));
             return (checked(f.GuardUpkeepDue + total / unit), total % unit);
         }
@@ -2157,7 +2168,7 @@ namespace EdS.Simulation.Engine
             CombatantRules r = f.Rules;
             w.BeginObject()
                 .Field("guard.damageReduction", r.GuardDamageReduction).Field("guard.upkeepPerSecond", r.GuardUpkeepPerSecond)
-                .Field("guard.costPerBlock", r.GuardCostPerBlock).Field("guard.noUpkeepBreak", r.GuardNoUpkeepBreak)
+                .Field("guard.costPerBlock", r.GuardCostPerBlock).Field("guard.noUpkeepBreak", r.GuardNoUpkeepBreak).Field("guard.noUpkeep", r.GuardNoUpkeep)
                 .Field("guard.reductionAtZeroEndurance", r.GuardReductionAtZeroEndurance).Field("guard.breakShortenPerCharge", r.GuardBreakShortenPerChargeMs)
                 .Field("parry.windowMs", r.ParryWindowMs).Field("parry.failureRecoveryMs", r.ParryFailureRecoveryMs)
                 .Field("rampartCharges.max", r.RampartChargesMax).Field("resonance.perDirectHit", r.ResonancePerDirectHit)

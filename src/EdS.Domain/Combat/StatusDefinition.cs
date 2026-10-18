@@ -196,11 +196,12 @@ namespace EdS.Domain.Combat
 
         /// <summary>
         /// Sous-lot 8.2 : clés de modificateur admises sur un renforcement : dégâts infligés (catégorie « altération »), dégâts subis
-        /// (réduction, sous le plafond total des règles) et entretien de la garde.
+        /// (réduction, sous le plafond total des règles) et entretien de la garde ; sous-lot 8.4 : garde sans entretien
+        /// (<c>guard.noUpkeep</c>, Bastion absolu).
         /// </summary>
         public static readonly IReadOnlyList<ModifierField> BuffKeys = Frozen.List(new[]
         {
-            ModifierField.DamageDealt, ModifierField.DamageTaken, ModifierField.GuardUpkeepPerSecond,
+            ModifierField.DamageDealt, ModifierField.DamageTaken, ModifierField.GuardUpkeepPerSecond, ModifierField.GuardNoUpkeep,
         }, nameof(BuffKeys));
 
         public StatusDefinition(string id, StatusCategory category, long durationMs, StatusStacking stacking,
@@ -349,7 +350,9 @@ namespace EdS.Domain.Combat
 
         /// <summary>
         /// Valeurs initiales du sous-lot 7.2 (décisions du 16 octobre), <b>provisoires</b> : brûlure et saignement 6 s / 2 s,
-        /// étourdissement 1,5 s puis immunité 3 s, gel 4 s à −30 % de déplacement, Fragilité et rupture de garde inchangées.
+        /// étourdissement 1,5 s puis immunité 3 s, gel 4 s à −30 % de déplacement, Fragilité et rupture de garde inchangées. Sous-lot 8.4 :
+        /// altérations des compétences du Bastion (feuille de route) : provocation 3 s, bouclier de la Barrière d'acier 6 s, et pour l'ultime
+        /// Bastion absolu, 8 s de dégâts subis −30 % (le Bastion et ses alliés), de garde sans entretien (le Bastion) et de provocation.
         /// </summary>
         public static readonly StatusCatalog Provisional = new StatusCatalog(new[]
         {
@@ -366,6 +369,13 @@ namespace EdS.Domain.Combat
             new StatusDefinition("fragility", StatusCategory.Modifier, 6000, StatusStacking.Refresh, damageTakenIncrease: Fixed.FromRatio(1, 10)),
             new StatusDefinition("guardBreak", StatusCategory.Control, 3000, StatusStacking.Ignore,
                 blocks: StatusBlocks.Guard | StatusBlocks.Parry | StatusBlocks.Regeneration, blockReason: "guardBroken"),
+            new StatusDefinition("taunt", StatusCategory.Taunt, 3000, StatusStacking.PerSourceKeepStronger),
+            new StatusDefinition("steelBarrier", StatusCategory.Shield, 6000, StatusStacking.PerSourceKeepStronger),
+            new StatusDefinition("bastionAbsolute", StatusCategory.Buff, 8000, StatusStacking.Refresh,
+                modifiers: new[] { new ModifierDefinition("damageTaken", Fixed.Parse("-0.3")) }),
+            new StatusDefinition("bastionAbsoluteGuard", StatusCategory.Buff, 8000, StatusStacking.Refresh,
+                modifiers: new[] { new ModifierDefinition("guard.noUpkeep", Fixed.One) }),
+            new StatusDefinition("bastionAbsoluteTaunt", StatusCategory.Taunt, 8000, StatusStacking.PerSourceKeepStronger),
         });
 
         private readonly Dictionary<string, StatusDefinition> _byId = new Dictionary<string, StatusDefinition>(StringComparer.Ordinal);
@@ -572,11 +582,11 @@ namespace EdS.Domain.Combat
         /// dépendent de l'altération de rupture de garde des règles, d'où un appel séparé, fait à côté de <see cref="Validate"/> par le
         /// validateur des règles et par <see cref="CombatSetup.Validate()"/>.
         /// </summary>
-        public IReadOnlyList<RuleViolation> ValidateTriggers(int tickMs, string guardBreakStatus)
+        public IReadOnlyList<RuleViolation> ValidateTriggers(int tickMs, string guardBreakStatus, long areaStrikeMinCooldownMs)
         {
             var errors = new List<RuleViolation>();
             for (int i = 0; i < Definitions.Count; i++)
-                TriggerDefinition.ValidateReferences(Definitions[i].Triggers, $"statuses[{i}].triggers", this, guardBreakStatus, tickMs, errors);
+                TriggerDefinition.ValidateReferences(Definitions[i].Triggers, $"statuses[{i}].triggers", this, guardBreakStatus, tickMs, areaStrikeMinCooldownMs, errors);
             return errors;
         }
 

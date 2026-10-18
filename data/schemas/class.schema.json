@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 7
+      "const": 8
     },
     "kind": {
       "const": "class"
@@ -278,7 +278,7 @@
     "combat": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore. Sous-lot 8.3 : powerType, damageType et coefficient ensemble, ou aucun (compétence de soutien, obligatoire pour les ciblages self, ally et allAllies).",
+      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore. Sous-lot 8.3 : powerType, damageType et coefficient ensemble, ou aucun (compétence de soutien, obligatoire pour les ciblages self, ally et allAllies). Sous-lot 8.4 : rampartChargeSpendAll et coefficientPerRampartCharge (Contrecoup), resonanceGain (Provocation), facultatifs.",
       "required": [
         "enduranceCost",
         "cooldownMs",
@@ -340,6 +340,21 @@
           "type": "integer",
           "minimum": 0,
           "description": "Charges de rempart gagnées au lancement (A4) ; excédent perdu."
+        },
+        "rampartChargeSpendAll": {
+          "type": "boolean",
+          "description": "Facultatif (sous-lot 8.4, X8) : vrai, le lancement dépense toutes les Charges détenues, au moins rampartChargeCost (exigées) ; absent ou faux, exactement rampartChargeCost."
+        },
+        "coefficientPerRampartCharge": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Facultatif (sous-lot 8.4, X8) : ajouté au coefficient par Charge dépensée par le lancement (Contrecoup : 0,6 + 0,4 par Charge), 4 décimales au plus ; seulement avec des dégâts directs et une dépense de Charges possible (rampartChargeCost > 0 ou rampartChargeSpendAll vrai)."
+        },
+        "resonanceGain": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Facultatif (sous-lot 8.4) : Résonance gagnée au lancement (Provocation : 5), plafonnée au maximum ; jamais sur une ultime."
         },
         "provisional": {
           "type": "boolean",
@@ -470,6 +485,42 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "coefficientPerRampartCharge"
+            ],
+            "properties": {
+              "coefficientPerRampartCharge": {
+                "exclusiveMinimum": 0
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "powerType"
+            ],
+            "anyOf": [
+              {
+                "properties": {
+                  "rampartChargeSpendAll": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "rampartChargeSpendAll"
+                ]
+              },
+              {
+                "properties": {
+                  "rampartChargeCost": {
+                    "minimum": 1
+                  }
+                }
+              }
+            ]
+          }
         }
       ]
     },
@@ -483,8 +534,8 @@
       "properties": {
         "key": {
           "type": "string",
-          "description": "Clé de la liste fermée (docs/DONNEES.md) : guard.damageReduction, guard.upkeepPerSecond, guard.costPerBlock, guard.noUpkeepBreak, guard.reductionAtZeroEndurance, guard.breakShortenPerCharge, parry.windowMs, parry.failureRecoveryMs, rampartCharges.max, resonance.perDirectHit, endurance.max, endurance.regenPerSecond, maxHealth, statusResistance, damageDealt, damageTaken, status.<id>.durationDealt, status.<id>.durationTaken, <id de compétence>.coefficient, <id de compétence>.cooldownMs, shield.potencyDealt (sous-lot 8.2).",
-          "pattern": "^(guard\\.(damageReduction|upkeepPerSecond|costPerBlock|noUpkeepBreak|reductionAtZeroEndurance|breakShortenPerCharge)|parry\\.(windowMs|failureRecoveryMs)|rampartCharges\\.max|resonance\\.perDirectHit|endurance\\.(max|regenPerSecond)|maxHealth|statusResistance|damageDealt|damageTaken|shield\\.potencyDealt|protection\\.(redirectRatio|redirectThroughGuard)|status\\.[a-z][A-Za-z0-9]*\\.(durationDealt|durationTaken)|skill(\\.[a-z0-9_]+)+\\.(coefficient|cooldownMs))$"
+          "description": "Clé de la liste fermée (docs/DONNEES.md) : guard.damageReduction, guard.upkeepPerSecond, guard.costPerBlock, guard.noUpkeepBreak, guard.reductionAtZeroEndurance, guard.breakShortenPerCharge, parry.windowMs, parry.failureRecoveryMs, rampartCharges.max, resonance.perDirectHit, endurance.max, endurance.regenPerSecond, maxHealth, statusResistance, damageDealt, damageTaken, status.<id>.durationDealt, status.<id>.durationTaken, <id de compétence>.coefficient, <id de compétence>.cooldownMs, shield.potencyDealt (sous-lot 8.2), protection.redirectRatio, protection.redirectThroughGuard (sous-lot 8.3), guard.noUpkeep (sous-lot 8.4).",
+          "pattern": "^(guard\\.(damageReduction|upkeepPerSecond|costPerBlock|noUpkeepBreak|noUpkeep|reductionAtZeroEndurance|breakShortenPerCharge)|parry\\.(windowMs|failureRecoveryMs)|rampartCharges\\.max|resonance\\.perDirectHit|endurance\\.(max|regenPerSecond)|maxHealth|statusResistance|damageDealt|damageTaken|shield\\.potencyDealt|protection\\.(redirectRatio|redirectThroughGuard)|status\\.[a-z][A-Za-z0-9]*\\.(durationDealt|durationTaken)|skill(\\.[a-z0-9_]+)+\\.(coefficient|cooldownMs))$"
         },
         "add": {
           "$ref": "#/$defs/rankedValue",
@@ -509,7 +560,7 @@
               }
             ]
           },
-          "description": "Valeur ajoutée au rang 1, plus perRank par rang au-delà (talents à plusieurs rangs). Jamais nulle à tous les rangs. Drapeau guard.noUpkeepBreak : 1 exactement. damageTaken : négative ou nulle à chaque rang."
+          "description": "Valeur ajoutée au rang 1, plus perRank par rang au-delà (talents à plusieurs rangs). Jamais nulle à tous les rangs. Drapeaux guard.noUpkeepBreak, protection.redirectThroughGuard et guard.noUpkeep : 1 exactement. damageTaken : négative ou nulle à chaque rang."
         },
         "conditions": {
           "type": "array",
@@ -641,6 +692,43 @@
             "properties": {
               "key": {
                 "const": "protection.redirectThroughGuard"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "add": {
+                "oneOf": [
+                  {
+                    "const": 1
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "base"
+                    ],
+                    "properties": {
+                      "base": {
+                        "const": 1
+                      },
+                      "perRank": {
+                        "const": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "guard.noUpkeep"
               }
             }
           },

@@ -194,6 +194,10 @@ namespace EdS.Data.Classes
                 Line(p + ".combat.unblockable", combat.Unblockable == true ? "true" : "false");
                 Line(p + ".combat.rampartChargeCost", combat.RampartChargeCost);
                 Line(p + ".combat.rampartChargeGain", combat.RampartChargeGain);
+                // Sous-lot 8.4 (X8) : facultatifs, « ? » quand ils sont absents.
+                Line(p + ".combat.rampartChargeSpendAll", combat.RampartChargeSpendAll is { } all ? (all ? "true" : "false") : null);
+                Line(p + ".combat.coefficientPerRampartCharge", combat.CoefficientPerRampartCharge?.ToString());
+                Line(p + ".combat.resonanceGain", combat.ResonanceGain);
                 Line(p + ".combat.provisional", combat.Provisional == true ? "true" : "false");
                 Line(p + ".combat.applies.count", combat.Applies!.Count);
                 for (int a = 0; a < combat.Applies.Count; a++)
@@ -250,7 +254,8 @@ namespace EdS.Data.Classes
             SkillCombatDefinition? Combat(SkillCombatData? c) => c is null ? null
                 : new SkillCombatDefinition(c.PowerType is null ? null : PowerTypes[c.PowerType], c.DamageType is null ? null : DamageTypes[c.DamageType], c.Coefficient,
                     c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value,
-                    c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value, Applications(c.Applies!));
+                    c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value, Applications(c.Applies!),
+                    c.RampartChargeSpendAll ?? false, c.CoefficientPerRampartCharge, c.ResonanceGain ?? 0);
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
                 Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat), TriggerShape.Build(s.Triggers),
                 ModifierShape.Build(s.Modifiers))).ToArray();
