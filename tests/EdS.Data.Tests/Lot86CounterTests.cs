@@ -152,4 +152,26 @@ public class Lot86CounterTests
         Assert.DoesNotContain("damageMitigated", log.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("guardTicks", log.ToString(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Ultime_comptee_meme_a_cout_de_Resonance_nul()
+    {
+        // Revue Codex de la PR #10 : la nature de la compétence (emplacement d'ultime), pas son coût, fait l'ultime.
+        string directory = CopyFrozenData((path, text) => path == "rules.json" ? text.Replace("\"ultimateCost\": 100", "\"ultimateCost\": 0", StringComparison.Ordinal) : text);
+        try
+        {
+            GameData data = GameDataLoader.Load(directory).Data!;
+            Assert.Equal(0, data.Rules.Combat.UltimateResonanceCost);
+            ScenarioLoadResult loaded = ReadFrozenMutated(root =>
+            {
+                DataOf(root)["durationMs"] = 2000;
+                DataOf(root)["commands"] = new JsonArray(new JsonObject { ["atMs"] = 0, ["actor"] = "bastion", ["skill"] = "skill.bastion.bastion_absolu" });
+            }, data, "entrainement_garde_parade");
+            Assert.True(loaded.Setup != null, string.Join("\n", loaded.Report.Errors));
+            var (result, lines) = Run(loaded.Setup!);
+            Assert.Single(lines, l => l.Contains("\"event\":\"skillCast\"", StringComparison.Ordinal) && l.Contains("skill.bastion.bastion_absolu", StringComparison.Ordinal));
+            Assert.Equal(1, result["bastion"].UltimatesCast);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
 }

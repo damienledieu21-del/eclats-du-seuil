@@ -710,7 +710,8 @@ namespace EdS.Simulation.Engine
                 Schedule(readyTick, CombatPhase.Expirations, new CooldownExpiry { Fighter = actor, Skill = skill.Id });
             }
             actor.Result.SkillsCast++;
-            if (resonanceCost > 0) actor.Result.UltimatesCast++;   // sous-lot 8.6 (X10)
+            // Sous-lot 8.6 (X10) : la compétence de l'emplacement d'ultime, même à coût de Résonance nul (revue Codex de la PR #10).
+            if (actor.Character?.Build.Ultimate == skill.Id) actor.Result.UltimatesCast++;
             long cast = Emit(tick, CombatPhase.Commands, "skillCast", root, new ObservedEvent { Kind = TriggerEvent.SkillCast, Source = actor.Id, Target = command.Target, Skill = skill.Id }, w => w
                 .Field("actor", actor.Id).Field("skill", skill.Id).Field("target", command.Target).Field("command", item.Index)
                 .Field("enduranceCost", combat.EnduranceCost).Field("endurance", actor.Endurance)

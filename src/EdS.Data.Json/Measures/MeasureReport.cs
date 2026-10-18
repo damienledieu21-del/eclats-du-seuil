@@ -14,32 +14,33 @@ public static class MeasureReport
 
     private static string F(decimal v) => v.ToString("0.##", CultureInfo.InvariantCulture);
 
+    /// <summary>Rapport texte, fins de ligne « \n » sur toutes les plateformes (revue Codex de la PR #10).</summary>
     public static void WriteText(TextWriter w, GameData data, IReadOnlyList<MeasureScenario> scenarios, IReadOnlyList<ReferenceBuild> builds,
         IReadOnlyList<MeasureResult> results, IReadOnlyList<ObjectiveResult> objectives)
     {
         int profiles = results.Select(r => r.Profile).Distinct().Count();
-        w.WriteLine($"Mesures des builds — valeurs provisoires (moteur {CombatEngine.Version}, règles {data.Rules.ContentVersion}) : " +
-            $"{scenarios.Count} scénarios × {builds.Count} builds × {profiles} profils = {results.Count} combats");
+        w.Write($"Mesures des builds — valeurs provisoires (moteur {CombatEngine.Version}, règles {data.Rules.ContentVersion}) : " +
+            $"{scenarios.Count} scénarios × {builds.Count} builds × {profiles} profils = {results.Count} combats" + "\n");
         foreach (MeasureScenario scenario in scenarios)
         {
-            w.WriteLine();
-            w.WriteLine($"{scenario.Id} {scenario.Name} ({scenario.Setup.DurationMs / 1000m} s, graine {scenario.Setup.Seed})");
-            w.WriteLine($"  {"build",-26} {"profil",-9} {"DPS",8} {"PV perdus",10} {"évités",8} {"survie",8} {"allié",8} {"blocs",6} {"parades",8} {"rupt.",6} {"compét.",8} {"ult.",5} {"refus",6} {"charge",7}");
+            w.Write("\n");
+            w.Write($"{scenario.Id} {scenario.Name} ({scenario.Setup.DurationMs / 1000m} s, graine {scenario.Setup.Seed})" + "\n");
+            w.Write($"  {"build",-26} {"profil",-9} {"DPS",8} {"PV perdus",10} {"évités",8} {"survie",8} {"allié",8} {"blocs",6} {"parades",8} {"rupt.",6} {"compét.",8} {"ult.",5} {"refus",6} {"charge",7}" + "\n");
             foreach (MeasureResult r in results.Where(r => r.Scenario == scenario.Id))
             {
                 string survival = (r.Died ? "†" : "") + F(r.Survival);
                 string ally = r.AllySurvival is decimal a ? (r.AllyDied == true ? "†" : "") + F(a) : "—";
                 decimal load = Math.Max(r.WorkPeak, Math.Max(r.EventsPeak, r.QueuePeak));
-                w.WriteLine($"  {r.Build,-26} {Measures.IdOf(r.Profile),-9} {F(r.Dps),8} {r.HealthLost,10} {r.Avoided,8} {survival,8} {ally,8} {r.Blocks,6} {r.PerfectParries,8} {r.GuardBreaks,6} {r.SkillsCast,8} {r.Ultimates,5} {r.Rejected,6} {F(load) + " %",7}");
+                w.Write($"  {r.Build,-26} {Measures.IdOf(r.Profile),-9} {F(r.Dps),8} {r.HealthLost,10} {r.Avoided,8} {survival,8} {ally,8} {r.Blocks,6} {r.PerfectParries,8} {r.GuardBreaks,6} {r.SkillsCast,8} {r.Ultimates,5} {r.Rejected,6} {F(load) + " %",7}" + "\n");
             }
         }
-        w.WriteLine();
-        w.WriteLine($"Objectifs provisoires (profil {Measures.IdOf(Measures.ObjectiveProfile)} ; budgets : tous les profils)");
+        w.Write("\n");
+        w.Write($"Objectifs provisoires (profil {Measures.IdOf(Measures.ObjectiveProfile)} ; budgets : tous les profils)" + "\n");
         foreach (ObjectiveResult o in objectives)
-            w.WriteLine($"  {(o.Passed switch { true => "[OK]", false => "[ÉCHEC]", null => "[—]" }),-8} {o.Description} — {o.Detail}");
-        w.WriteLine();
-        w.WriteLine("Survie en secondes : instant de la mort (†) ; vivant à la fin, estimation au rythme de PV perdus observé (plafond : 10 fois la durée).");
-        w.WriteLine("Évités : dégâts retirés par la garde, la parade et les réductions, absorbés par les boucliers et transférés à un protecteur.");
+            w.Write($"  {(o.Passed switch { true => "[OK]", false => "[ÉCHEC]", null => "[—]" }),-8} {o.Description} — {o.Detail}" + "\n");
+        w.Write("\n");
+        w.Write("Survie en secondes : instant de la mort (†) ; vivant à la fin, estimation au rythme de PV perdus observé (plafond : 10 fois la durée)." + "\n");
+        w.Write("Évités : dégâts retirés par la garde, la parade et les réductions, absorbés par les boucliers et transférés à un protecteur." + "\n");
     }
 
     /// <summary>Rapport JSON : propriétés dans un ordre fixe, nombres en notation invariante, fin de ligne finale.</summary>
