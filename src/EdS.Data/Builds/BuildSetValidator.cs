@@ -138,13 +138,30 @@ namespace EdS.Data.Builds
                 string path = $"$.data.builds[{i}].build";
                 CharacterBuild build = BuildShape.ToCharacterBuild(loaded.Definition.Id, b.Build!);
                 foreach (BuildViolation v in BuildValidator.Validate(build, loaded.Definition, data.Rules.Progression))
-                    report.Add(path, v.Code is BuildViolationCode.UnknownTalent or BuildViolationCode.UnknownSkill ? ValidationCode.UnknownReference : ValidationCode.InvalidValue,
+                    report.Add(PathOf(v, path), v.Code is BuildViolationCode.UnknownTalent or BuildViolationCode.UnknownSkill ? ValidationCode.UnknownReference : ValidationCode.InvalidValue,
                         $"build invalide ({v.Subject}) : {v.Message} [{v.Code}]");
                 builds.Add(new ReferenceBuild(b.Id!, b.Name!, Categories[b.Category!], build));
             }
             return new BuildSetLoadResult(report,
                 report.IsValid ? new LoadedBuildSet(document.SchemaVersion!.Value, document.ContentVersion, loaded.Definition.Id, builds) : null);
         }
+
+        private static readonly System.Text.RegularExpressions.Regex SlotSubject =
+            new System.Text.RegularExpressions.Regex(@"^(level|talents|activeSkills|passiveSkills|ultimate|attributes\.[a-z]+|(activeSkills|passiveSkills)\[[0-9]+\])\z",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Revue Codex de la PR #9 : chemin JSON du champ fautif d'après l'élément désigné par la violation (<see cref="BuildViolation.Subject"/>) :
+        /// emplacement ou champ du build (<c>.level</c>, <c>.attributes.force</c>, <c>.talents</c>, <c>.activeSkills[2]</c>, <c>.ultimate</c>…),
+        /// sinon identifiant de talent (<c>.talents.&lt;id&gt;</c>) ; une autre classe vise <c>$.data.class</c>, des règles incohérentes le build.
+        /// </summary>
+        public static string PathOf(BuildViolation violation, string buildPath) => violation.Subject switch
+        {
+            "classId" => "$.data.class",
+            "progression" => buildPath,
+            string subject when SlotSubject.IsMatch(subject) => buildPath + "." + subject,
+            string talent => buildPath + ".talents." + talent,
+        };
 
         private static void CheckBuilds(List<ReferenceBuildData?>? builds, ValidationReport report)
         {

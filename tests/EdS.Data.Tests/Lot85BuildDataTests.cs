@@ -254,20 +254,50 @@ public class Lot85BuildDataTests
     }
 
     [Fact]
-    public void Regles_du_build_par_le_validateur_unique()
+    public void Regles_du_build_par_le_validateur_unique_rattachees_au_champ_fautif()
     {
-        // Talent inconnu, majeur sous le seuil, trop de points, passif non débloqué : rattachés au build, avec le code du validateur.
-        AssertError(ReadMutated(r => Entry(r, 0)["build"]!["talents"]!["talent.bastion.rempart.test_palier_1"] = 1), "$.data.builds[0].build",
-            ValidationCode.UnknownReference, "[UnknownTalent]");
-        AssertError(ReadMutated(r => Entry(r, 0)["build"]!["talents"]!["talent.bastion.rempart.poids_du_rempart"] = 4), "$.data.builds[0].build",
-            ValidationCode.InvalidValue, "[MajorThresholdNotMet]");
-        AssertError(ReadMutated(r => Entry(r, 3)["build"]!["talents"]!["talent.bastion.gardien.presence"] = 1), "$.data.builds[3].build",
-            ValidationCode.InvalidValue, "[TooManyPoints]");
-        AssertError(ReadMutated(r => Entry(r, 4)["build"]!["passiveSkills"]!.AsArray().Add(S("ferveur"))), "$.data.builds[4].build",
-            ValidationCode.InvalidValue, "[TooManySkills]");
-        AssertError(ReadMutated(r => Entry(r, 1)["build"]!["activeSkills"]!.AsArray().Add(S("inexistante"))), "$.data.builds[1].build",
-            ValidationCode.UnknownReference, "[UnknownSkill]");
+        // Revue Codex de la PR #9 : chaque violation du validateur unique vise le champ concerné, avec le code du validateur.
+        const string B = "$.data.builds";
+        AssertError(ReadMutated(r => Entry(r, 0)["build"]!["talents"]!["talent.bastion.rempart.test_palier_1"] = 1),
+            $"{B}[0].build.talents.talent.bastion.rempart.test_palier_1", ValidationCode.UnknownReference, "[UnknownTalent]");
+        // Majeur sous le seuil : rattaché au majeur ; rang hors bornes : au talent.
+        AssertError(ReadMutated(r => Entry(r, 0)["build"]!["talents"]!["talent.bastion.rempart.poids_du_rempart"] = 4),
+            $"{B}[0].build.talents.talent.bastion.rempart.rempart_eternel", ValidationCode.InvalidValue, "[MajorThresholdNotMet]");
+        AssertError(ReadMutated(r => Entry(r, 2)["build"]!["talents"]!["talent.bastion.gardien.presence"] = 6),
+            $"{B}[2].build.talents.talent.bastion.gardien.presence", ValidationCode.InvalidValue, "[RankOutOfRange]");
+        AssertError(ReadMutated(r => Entry(r, 3)["build"]!["talents"]!["talent.bastion.gardien.presence"] = 1),
+            $"{B}[3].build.talents", ValidationCode.InvalidValue, "[TooManyPoints]");
+        AssertError(ReadMutated(r => Entry(r, 4)["build"]!["passiveSkills"]!.AsArray().Add(S("ferveur"))),
+            $"{B}[4].build.passiveSkills", ValidationCode.InvalidValue, "[TooManySkills]");
+        AssertError(ReadMutated(r => Entry(r, 1)["build"]!["activeSkills"]!.AsArray().Add(S("inexistante"))),
+            $"{B}[1].build.activeSkills[4]", ValidationCode.UnknownReference, "[UnknownSkill]");
+        AssertError(ReadMutated(r => Entry(r, 1)["build"]!["activeSkills"]![1] = S("frappe_du_rempart")),
+            $"{B}[1].build.activeSkills[1]", ValidationCode.InvalidValue, "[DuplicateSkill]");
+        AssertError(ReadMutated(r => Entry(r, 0)["build"]!["passiveSkills"]![0] = S("provocation")),
+            $"{B}[0].build.passiveSkills[0]", ValidationCode.InvalidValue, "[WrongSlotKind]");
+        AssertError(ReadMutated(r => Entry(r, 0)["build"]!["level"] = 31), $"{B}[0].build.level", ValidationCode.InvalidValue, "[LevelOutOfRange]");
+        AssertError(ReadMutated(r => Entry(r, 0)["build"]!["attributes"]!["force"] = 1_000_001), $"{B}[0].build.attributes.force", ValidationCode.InvalidValue,
+            "[AttributeOutOfRange]");
+        BuildSetLoadResult locked = ReadMutated(r => Entry(r, 4)["build"]!["level"] = 9);
+        AssertError(locked, $"{B}[4].build.ultimate", ValidationCode.InvalidValue, "[UltimateLocked]");
+        AssertError(locked, $"{B}[4].build.activeSkills", ValidationCode.InvalidValue, "[TooManySkills]");
+        Assert.DoesNotContain(locked.Report.Errors, e => e.Path == $"{B}[4].build");   // plus aucune erreur sur le bloc entier
     }
+
+    [Theory]
+    [InlineData("classId", "$.data.class")]
+    [InlineData("progression", "$.b")]
+    [InlineData("level", "$.b.level")]
+    [InlineData("attributes.volonte", "$.b.attributes.volonte")]
+    [InlineData("talents", "$.b.talents")]
+    [InlineData("activeSkills", "$.b.activeSkills")]
+    [InlineData("activeSkills[3]", "$.b.activeSkills[3]")]
+    [InlineData("passiveSkills[0]", "$.b.passiveSkills[0]")]
+    [InlineData("ultimate", "$.b.ultimate")]
+    [InlineData("talent.bastion.rempart.garde_stable", "$.b.talents.talent.bastion.rempart.garde_stable")]
+    [InlineData("level\n", "$.b.talents.level\n")]   // fin de chaîne exigée (\z) : un saut de ligne n'est pas un emplacement
+    public void Chemin_de_chaque_sujet_de_violation(string subject, string expected) =>
+        Assert.Equal(expected, BuildSetValidator.PathOf(new BuildViolation(BuildViolationCode.UnknownTalent, subject, "m"), "$.b"));
 
     // --- Chargement, CLI, schéma ------------------------------------------------------------------------------------------------
 
@@ -296,7 +326,7 @@ public class Lot85BuildDataTests
             Assert.Null(loaded.Data);
             var (path, report) = Assert.Single(loaded.Failures);
             Assert.EndsWith(Path.Combine("builds", "bastion.json"), path);
-            Assert.Contains(report.Errors, e => e.Path == "$.data.builds[0].build" && e.Message.Contains("[RankOutOfRange]"));
+            Assert.Contains(report.Errors, e => e.Path == "$.data.builds[0].build.talents.talent.bastion.gardien.vigilance" && e.Message.Contains("[RankOutOfRange]"));
             // Sans les builds (eds validate d'un fichier de builds), les règles et les classes se chargent.
             Assert.Empty(GameDataLoader.Load(directory, builds: false).Data!.BuildSets);
         }
