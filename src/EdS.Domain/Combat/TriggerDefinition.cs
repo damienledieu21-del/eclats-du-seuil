@@ -325,6 +325,17 @@ namespace EdS.Domain.Combat
         /// <summary>Recharge interne (§4.5) : intervalle minimal entre deux réactions acceptées ; 0 par défaut.</summary>
         public long CooldownMs { get; }
 
+        /// <summary>Sous-lot 8.4 (L8-D2) : riposte automatique de zone, un effet <c>strike</c> au moins visant <c>allEnemies</c>.</summary>
+        public bool IsAreaStrike
+        {
+            get
+            {
+                foreach (TriggerEffect e in Effects)
+                    if (e.Kind == TriggerEffectKind.Strike && e.Target == TriggerTarget.AllEnemies) return true;
+                return false;
+            }
+        }
+
         public IReadOnlyList<TriggerEffect> Effects { get; }
 
         public TriggerDefinition(TriggerEvent on, IEnumerable<TriggerEffect> effects, TriggerRole? role = null, TriggerFilter? filter = null, long cooldownMs = 0)
@@ -530,10 +541,11 @@ namespace EdS.Domain.Combat
         /// <summary>
         /// Contrôles qui exigent le contexte d'un combat ou des règles (§4.1) : altérations du filtre et des effets présentes dans
         /// le catalogue et applicables (même règle que les compétences), recharge interne multiple du tick. <paramref name="tickMs"/>
-        /// invalide ou nul : contrôle de multiple omis.
+        /// invalide ou nul : contrôle de multiple omis. Sous-lot 8.4 (L8-D2) : une riposte automatique de zone (effet <c>strike</c> sur
+        /// <c>allEnemies</c>) a une recharge interne d'au moins <paramref name="areaStrikeMinCooldownMs"/> (<see cref="CombatRules.AreaStrikeMinCooldownMs"/>).
         /// </summary>
         public static void ValidateReferences(IReadOnlyList<TriggerDefinition> triggers, string path, StatusCatalog catalog, string guardBreakStatus,
-            int tickMs, List<RuleViolation> errors)
+            int tickMs, long areaStrikeMinCooldownMs, List<RuleViolation> errors)
         {
             bool tickValid = tickMs > 0 && 1000 % tickMs == 0;
             for (int i = 0; i < triggers.Count; i++)
@@ -542,6 +554,9 @@ namespace EdS.Domain.Combat
                 string p = $"{path}[{i}]";
                 if (tickValid && d.CooldownMs > 0 && d.CooldownMs % tickMs != 0)
                     errors.Add(new RuleViolation($"{d.CooldownMs} ms n'est pas un multiple de la durée du tick ({tickMs} ms).", p + ".cooldownMs"));
+                if (d.IsAreaStrike && d.CooldownMs < areaStrikeMinCooldownMs)
+                    errors.Add(new RuleViolation($"riposte automatique de zone (strike sur allEnemies) : recharge interne d'au moins {areaStrikeMinCooldownMs} ms " +
+                        $"(combat.triggers.areaStrikeMinCooldownMs), {d.CooldownMs} ms déclarés.", p + ".cooldownMs"));
                 if (d.Filter.Status is { } filtered && !catalog.TryGet(filtered, out _))
                     errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"altération inconnue « {filtered} ».", p + ".filter.status"));
                 for (int k = 0; k < d.Effects.Count; k++)

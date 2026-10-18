@@ -20,6 +20,8 @@ namespace EdS.Data.Tests;
 [Trait("Category", "Support")]
 public class Lot83SupportDataTests
 {
+    private static readonly int N = StatusCatalog.Provisional.Definitions.Count;   // altération ajoutée en fin de catalogue (sous-lot 8.4 : 12 livrées)
+
     private static void AssertError(ValidationReport report, string path, ValidationCode code) =>
         Assert.Contains(report.Errors, e => e.Path == path && e.Code == code);
 
@@ -87,9 +89,9 @@ public class Lot83SupportDataTests
         Assert.True(result.IsValid, result.Report.ToString());
         StatusCatalog catalog = result.Rules!.Combat.Statuses;
         Assert.Equal((StatusCategory.Taunt, StatusCategory.Protection, Fixed.Parse("0.25")), (catalog["provoc"].Category, catalog["lien"].Category, catalog["lien"].RedirectRatio));
-        AssertError(WithStatuses(Status("lien", "protection")).Report, "$.data.statuses[7].redirectRatio", ValidationCode.InvalidValue);
-        AssertError(WithStatuses(Status("provoc", "taunt", ratio: 0.5)).Report, "$.data.statuses[7].redirectRatio", ValidationCode.InvalidValue);
-        AssertError(WithStatuses(Status("provoc", "taunt", "refresh")).Report, "$.data.statuses[7].stacking", ValidationCode.InvalidValue);
+        AssertError(WithStatuses(Status("lien", "protection")).Report, $"$.data.statuses[{N}].redirectRatio", ValidationCode.InvalidValue);
+        AssertError(WithStatuses(Status("provoc", "taunt", ratio: 0.5)).Report, $"$.data.statuses[{N}].redirectRatio", ValidationCode.InvalidValue);
+        AssertError(WithStatuses(Status("provoc", "taunt", "refresh")).Report, $"$.data.statuses[{N}].stacking", ValidationCode.InvalidValue);
         // L'empreinte des règles dépend de la part transférée.
         Assert.NotEqual(WithStatuses(Status("lien", "protection", ratio: 0.25)).Rules!.Fingerprint, WithStatuses(Status("lien", "protection", ratio: 0.5)).Rules!.Fingerprint);
     }
@@ -97,11 +99,12 @@ public class Lot83SupportDataTests
     [Fact]
     public void Versions_precedentes_refusees_sans_migration()
     {
-        ValidationError rules = Assert.Single(RulesTestData.ReadMutated(r => r["schemaVersion"] = 7).Report.Errors);
+        // Sous-lot 8.4 : versions courantes 9 (règles) et 8 (classes) ; celles du 8.3 sont refusées à leur tour.
+        ValidationError rules = Assert.Single(RulesTestData.ReadMutated(r => r["schemaVersion"] = 8).Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (rules.Path, rules.Code));
-        Assert.Contains("antérieure à la version 8", rules.Message);
-        ValidationError klass = Assert.Single(ClassTestData.ReadMutated(c => c["schemaVersion"] = 6).Report.Errors);
-        Assert.Contains("antérieure à la version 7", klass.Message);
+        Assert.Contains("antérieure à la version 9", rules.Message);
+        ValidationError klass = Assert.Single(ClassTestData.ReadMutated(c => c["schemaVersion"] = 7).Report.Errors);
+        Assert.Contains("antérieure à la version 8", klass.Message);
         ValidationError scenario = Assert.Single(ScenarioTestData.ReadMutated(s => s["schemaVersion"] = 2).Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (scenario.Path, scenario.Code));
         Assert.Equal(3, ScenarioValidator.CurrentSchemaVersion);

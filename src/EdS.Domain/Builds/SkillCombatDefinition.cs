@@ -77,6 +77,24 @@ namespace EdS.Domain.Builds
         /// <summary>Charges de rempart gagnées au lancement (A4) ; 0 = aucune. L'excédent est perdu.</summary>
         public int RampartChargeGain { get; }
 
+        /// <summary>
+        /// Sous-lot 8.4 (X8) : le lancement dépense toutes les Charges détenues, au moins <see cref="RampartChargeCost"/> (exigées comme
+        /// d'habitude) ; faux : exactement <see cref="RampartChargeCost"/>.
+        /// </summary>
+        public bool RampartChargeSpendAll { get; }
+
+        /// <summary>
+        /// Sous-lot 8.4 (X8) : ajout au coefficient par Charge dépensée par ce lancement (Contrecoup : 0,6 + 0,4 par Charge) ; 0 = aucun.
+        /// Seulement avec des dégâts directs et une dépense de Charges possible.
+        /// </summary>
+        public Fixed CoefficientPerRampartCharge { get; }
+
+        /// <summary>
+        /// Sous-lot 8.4 : Résonance gagnée au lancement (Provocation : +5), plafonnée au maximum, l'excédent perdu ; 0 = aucune. Jamais
+        /// sur une ultime, qui dépense la Résonance (A5).
+        /// </summary>
+        public int ResonanceGain { get; }
+
         /// <summary>Valeurs provisoires, non équilibrées.</summary>
         public bool IsProvisional { get; }
 
@@ -90,7 +108,8 @@ namespace EdS.Domain.Builds
         /// <exception cref="ArgumentException">Seule une partie des trois données de dégâts est fournie.</exception>
         public SkillCombatDefinition(PowerType? powerType, DamageType? damageType, Fixed? coefficient, int enduranceCost,
             long cooldownMs, SkillTargeting targeting = SkillTargeting.Enemy, bool isProvisional = true,
-            bool unblockable = false, int rampartChargeCost = 0, int rampartChargeGain = 0, IEnumerable<StatusApplication>? applies = null)
+            bool unblockable = false, int rampartChargeCost = 0, int rampartChargeGain = 0, IEnumerable<StatusApplication>? applies = null,
+            bool rampartChargeSpendAll = false, Fixed? coefficientPerRampartCharge = null, int resonanceGain = 0)
         {
             int given = (powerType is null ? 0 : 1) + (damageType is null ? 0 : 1) + (coefficient is null ? 0 : 1);
             if (given != 0 && given != 3)
@@ -107,6 +126,12 @@ namespace EdS.Domain.Builds
             Unblockable = unblockable;
             RampartChargeCost = rampartChargeCost;
             RampartChargeGain = rampartChargeGain;
+            RampartChargeSpendAll = rampartChargeSpendAll;
+            CoefficientPerRampartCharge = coefficientPerRampartCharge ?? Fixed.Zero;
+            ResonanceGain = resonanceGain;
         }
+
+        /// <summary>Sous-lot 8.4 (X8) : Charges dépensées par un lancement accepté, le combattant en détenant <paramref name="held"/>.</summary>
+        public int RampartChargesSpent(int held) => RampartChargeSpendAll ? held : RampartChargeCost;
     }
 }

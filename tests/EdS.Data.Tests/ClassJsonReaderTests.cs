@@ -24,8 +24,8 @@ public class ClassJsonReaderTests
     {
         ClassLoadResult result = ClassJsonReader.ReadFile(BastionPath, Progression);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(7, result.Class!.SchemaVersion);
-        Assert.Equal("0.2.0-provisoire", result.Class.ContentVersion);
+        Assert.Equal(8, result.Class!.SchemaVersion);
+        Assert.Equal("0.3.0-provisoire", result.Class.ContentVersion);   // 0.3.0 : fiches complètes des compétences (sous-lot 8.4)
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Class.Fingerprint);
     }
 

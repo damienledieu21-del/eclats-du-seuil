@@ -398,7 +398,7 @@ namespace EdS.Domain.Combat
             if (Combat.Statuses != null)
                 foreach (RuleViolation v in Combat.Statuses.Validate(Combat.TickMilliseconds)) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules." + f).ToArray()));
             if (errors.Count == 0)
-                foreach (RuleViolation v in Combat.Statuses!.ValidateTriggers(Combat.TickMilliseconds, Combat.GuardBreakStatus))
+                foreach (RuleViolation v in Combat.Statuses!.ValidateTriggers(Combat.TickMilliseconds, Combat.GuardBreakStatus, Combat.AreaStrikeMinCooldownMs))
                     errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules." + f).ToArray()));
             if (errors.Count > 0) return errors;   // la suite dépend de règles cohérentes
 
@@ -803,7 +803,7 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation("une attaque à cible unique exige une cible pour l'assaillant.", path + ".target"));
             // Lot 7.3 (Q4) : déclencheurs d'un assaillant de scénario, forme et références.
             TriggerDefinition.ValidateList(a.Triggers, path + ".triggers", 1, false, errors);
-            TriggerDefinition.ValidateReferences(a.Triggers, path + ".triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, errors);
+            TriggerDefinition.ValidateReferences(a.Triggers, path + ".triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, Combat.AreaStrikeMinCooldownMs, errors);
         }
 
         private void ValidateCharacter(CharacterSetup character, string path, long tick, List<RuleViolation> errors)
@@ -829,9 +829,9 @@ namespace EdS.Domain.Combat
             var problems = new List<RuleViolation>();
             for (int t = 0; t < character.Class.Trees.Count; t++)
                 for (int i = 0; i < character.Class.Trees[t].Talents.Count; i++)
-                    TriggerDefinition.ValidateReferences(character.Class.Trees[t].Talents[i].Triggers, $"trees[{t}].talents[{i}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, problems);
+                    TriggerDefinition.ValidateReferences(character.Class.Trees[t].Talents[i].Triggers, $"trees[{t}].talents[{i}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, Combat.AreaStrikeMinCooldownMs, problems);
             for (int k = 0; k < character.Class.Skills.Count; k++)
-                TriggerDefinition.ValidateReferences(character.Class.Skills[k].Triggers, $"skills[{k}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, problems);
+                TriggerDefinition.ValidateReferences(character.Class.Skills[k].Triggers, $"skills[{k}].triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, Combat.AreaStrikeMinCooldownMs, problems);
             // Sous-lot 8.1 : les modificateurs désignent aussi le catalogue (durées d'altération) et le tick (valeurs en ms). Une classe
             // arrêtée à un plafond global n'est pas examinée plus loin (plafond signalé seul) ; une liste déjà refusée par la classe
             // (modificateurs d'une active, valeur hors borne…) ne l'est pas non plus : un même modificateur n'est pas signalé deux fois.
@@ -1031,8 +1031,12 @@ namespace EdS.Domain.Combat
                                 if (skill.Combat is { } combat)
                                 {
                                     // Sous-lot 8.3 : une compétence de soutien n'a pas d'impact ; ses DOT éventuels comptent.
+                                    // Sous-lot 8.4 (X8) : coefficient au plus de Charges dépensables (toutes les Charges, au plus le maximum
+                                    // effectif du personnage, ou le coût fixe), croissant avec elles.
+                                    int spendable = combat.RampartChargeSpendAll ? Math.Max(rules.RampartChargesMax, combat.RampartChargeCost) : combat.RampartChargeCost;
                                     if (combat.HasDamage)
-                                        offenses[i].Add(new Offense($"compétence « {skill.Id} »", stats, combat.PowerType, combat.DamageType, rules.Coefficient(skill, combat), true, talent));
+                                        offenses[i].Add(new Offense($"compétence « {skill.Id} »", stats, combat.PowerType, combat.DamageType,
+                                            rules.Coefficient(skill, combat, spendable), true, talent));
                                     AddDotOffenses(offenses[i], $"compétence « {skill.Id} »", stats, combat.Applies);
                                 }
                             // Lot 7.3 (§4.2) : frappes et DOT des réactions, à la puissance du porteur. Un personnage peut porter toute

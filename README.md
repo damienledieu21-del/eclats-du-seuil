@@ -38,7 +38,8 @@ dotnet test --filter Category=Trigger     # déclencheurs, provenance, cycles, p
 dotnet test --filter Category=Modifier    # modificateurs X1 et X2, règles effectives, plafonds (sous-lot 8.1)
 dotnet test --filter Category=Shield      # renforcements et boucliers (sous-lot 8.2)
 dotnet test --filter Category=Support     # soutien, provocation, protection, rôle allié (sous-lot 8.3)
-scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
+dotnet test --filter Category=Bastion     # fiches du Bastion, Contrecoup, ripostes de zone (sous-lot 8.4)
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
@@ -88,6 +89,8 @@ Sous-lot 8.2 (renforcements et boucliers, moteur seulement) : catégorie d'alté
 
 Sous-lot 8.3 (soutien, moteur seulement) : compétences de soutien sans dégâts et ciblages `self`, `ally`, `allAllies` (X5) ; applications à cible propre (`applies[].target`) ; provocation (`taunt`, X7) : un assaillant provoqué vise la source de sa provocation la plus récente ; protection (`protection`, X6) : une part des dégâts d'un allié transférée à son protecteur, jamais retransférée ni notifiée, par sa garde seulement avec `protection.redirectThroughGuard` ; provocations et protections retirées à la mort de leur source ; rôle `ally` des déclencheurs (X9). Aucune donnée livrée n'en déclare : gameplay des cinq scénarios inchangé. Règles en schéma 8, classes en 7, scénarios en 3 (versions antérieures refusées sans migration), moteur 0.13.0, journal au format 7. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#provocation-protection-et-rôle-allié-sous-lot-83), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-83--interprétations-et-limites).
 
+Sous-lot 8.4 (fiches du Bastion) : toutes les compétences du Bastion ont leur fiche complète (feuille de route), plus aucune n'est refusée `skillNotImplemented` : Heurt de bouclier étourdit, Onde de rupture fragilise tous les ennemis, Contrecoup dépense toutes les Charges (0,6 + 0,4 par Charge, X8), Provocation provoque 3 s et rapporte 5 de Résonance, Barrière d'acier pose un bouclier de 15 % des PV max, et l'ultime Bastion absolu (100 de Résonance) renforce le Bastion et ses alliés (−30 % de dégâts subis), lui donne une garde sans entretien (`guard.noUpkeep`) et provoque tous les assaillants pendant 8 s. Toute riposte automatique de zone a au moins 3 s de recharge interne (L8-D2, `combat.triggers.areaStrikeMinCooldownMs`). Le gameplay des scénarios livrés change (étourdissement, Provocation lancée) ; le moteur reproduit l'ancien sur le contenu historique (fixture `content-0.2.0`). Règles en schéma 9 (contenu 0.7.0), classes en 8 (contenu 0.3.0), moteur 0.14.0, journal au format 8. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#fiches-du-bastion-et-ripostes-de-zone-sous-lot-84), [docs/BUILDS.md](docs/BUILDS.md), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-84--interprétations-et-limites).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -101,4 +104,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
-- [ ] Lot 8 — en cours : sous-lot 8.1 (modificateurs X1 et X2, moteur 0.10.0 puis 0.11.0), sous-lot 8.2 (renforcements et boucliers, moteur 0.12.0) et sous-lot 8.3 (soutien, provocation, protection, moteur 0.13.0) en revue
+- [ ] Lot 8 — en cours : sous-lot 8.1 (modificateurs X1 et X2, moteur 0.10.0 puis 0.11.0), sous-lot 8.2 (renforcements et boucliers, moteur 0.12.0) sous-lot 8.3 (soutien, provocation, protection, moteur 0.13.0) et sous-lot 8.4 (fiches du Bastion, moteur 0.14.0) en revue

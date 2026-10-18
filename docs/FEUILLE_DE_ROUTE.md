@@ -25,8 +25,8 @@ Deux PR de gameplay (A11) : **8a moteur** (8.1 à 8.4, PR #3 et branches empilé
 |---|---|---|
 | 8.1 | X1 modificateurs permanents, X2 conditionnels (`whileGuarding`, `perRampartCharge`, `perResonanceStep`), règles effectives par combattant, plafonds | PR #3 (brouillon) ; décisions du 18/10 appliquées (moteur 0.11.0, schéma de règles 6) |
 | 8.2 | X3 renforcements temporaires, X4 boucliers d'absorption (catégorie `shield`, un bouclier par source, consommation FIFO, absorbe aussi les DOT, fin par durée ou épuisement, champ `absorbed`), réduction de dégâts et modificateurs temporaires | PR empilée sur la PR #3 (brouillon) : catégories `buff` et `shield`, schéma de règles 7 et de classe 6, moteur 0.12.0, journal au format 6 ; aucun contenu livré |
-| 8.3 | X5 ciblage `self` / `ally` / `allAllies`, X6 transfert de dégâts, X7 provocation, X9 rôle `ally` des déclencheurs | PR empilée sur la PR #6 (brouillon) : compétences de soutien, catégories `taunt` et `protection`, règles en schéma 8, classes en 7, scénarios en 3, moteur 0.13.0, journal au format 7 ; aucun contenu livré |
-| 8.4 | X8 Contrecoup consomme toutes les Charges, fiches complètes des compétences restantes et de l'ultime, L8-D2, aucun `notImplemented` restant | à faire |
+| 8.3 | X5 ciblage `self` / `ally` / `allAllies`, X6 transfert de dégâts, X7 provocation, X9 rôle `ally` des déclencheurs | PR #7, empilée sur la PR #6 (brouillon) : compétences de soutien, catégories `taunt` et `protection`, règles en schéma 8, classes en 7, scénarios en 3, moteur 0.13.0, journal au format 7 ; aucun contenu livré ; deux tours de revue Codex traités |
+| 8.4 | X8 Contrecoup consomme toutes les Charges, fiches complètes des compétences restantes et de l'ultime, L8-D2, aucun `notImplemented` restant | PR empilée sur la PR #7 (brouillon) : fiches complètes du Bastion, Charges dépensées et coefficient par Charge, `resonanceGain`, `guard.noUpkeep`, `combat.triggers.areaStrikeMinCooldownMs` (3 s), rupture de garde limitée aux contrôles et modificateurs ; règles en schéma 9 (contenu 0.7.0), classes en 8 (contenu 0.3.0), moteur 0.14.0, journal au format 8 |
 | 8.5 | Contenu complet du Bastion (talents, intermédiaires, passifs), plus aucun `[TEST]`, builds de référence en données | à faire |
 | 8.6 | X10 compteurs de mesure, scénarios S1 à S5, commande CLI `report`, catégorie `Scenario` | à faire |
 | 8.7 | Passe d'équilibrage mesurée, surtout en données ; rapport de mesures et écarts | à faire |
@@ -53,6 +53,12 @@ Aussi : aucun soin, aucune deuxième classe, aucun système de positions, aucune
 2. Les plafonds de 75 % et 85 % deviennent des **paramètres de `rules.json`** (nouvelle version du schéma de règles).
 3. **Blocage à coût nul** : comportement actuel conservé (il relance le délai de régénération).
 4. Un `perRank` de **déclencheur** sur un talent à un seul rang est **refusé**, comme pour les modificateurs.
+
+**Décisions du 18 octobre 2026** (interprétations du rapport 8.4, PR #8, toutes gardées par Damien) :
+
+5. **Provocation** : les +5 de Résonance sont gagnés au lancement, même si la provocation est refusée (cible qui n'est pas un assaillant).
+6. **Bastion absolu** : les 8 s valent pour ses trois effets ; aucune recharge propre, la Résonance (100) seule le limite ; garde sans entretien pour le Bastion seul, −30 % de dégâts subis pour lui et ses alliés.
+7. **Contrecoup** : les Charges sont dépensées au lancement ; un bonus « par Charge détenue » ne compte pas sur son impact.
 
 ## Catalogue du Bastion (valeurs initiales du plan)
 

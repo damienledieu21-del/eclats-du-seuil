@@ -178,7 +178,8 @@ public class Correctif731FingerprintTests
         // version du moteur et les empreintes de l'en-tête : toutes les lignes de combat sont identiques octet par octet.
         string[] old = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "logs-0.9.0", name + ".jsonl"));
         var log = new MemoryCombatLog();
-        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), ShippedData).Setup!, log);
+        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay.
+        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), HistoricalData).Setup!, log);
         // Sous-lot 8.1 : hors champs ajoutés au format 5 (Lot81ReferenceTests), comparés à part.
         Assert.Equal(old.Skip(1).Select(EdS.TestSupport.Lot8LogFields.Comparable), log.Lines.Skip(1).Select(EdS.TestSupport.Lot8LogFields.Comparable));
         JsonObject Strip(string header)

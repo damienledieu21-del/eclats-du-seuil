@@ -73,6 +73,7 @@ internal static class Lot81Classe
         [ModifierField.ShieldPotencyDealt] = new("shield.potencyDealt", "shield.potencyDealt", ModifierUnit.Decimal, "10", false),              // sous-lot 8.2 (X4)
         [ModifierField.ProtectionRedirectRatio] = new("protection.redirectRatio", "protection.redirectRatio", ModifierUnit.Decimal, "1", false),  // sous-lot 8.3 (X6)
         [ModifierField.ProtectionRedirectThroughGuard] = new("protection.redirectThroughGuard", "protection.redirectThroughGuard", ModifierUnit.Flag, "1", false),
+        [ModifierField.GuardNoUpkeep] = new("guard.noUpkeep", "guard.noUpkeep", ModifierUnit.Flag, "1", false),                                  // sous-lot 8.4 (Bastion absolu)
     };
 
     /// <summary>Ligne de conception d'une clé ; une clé ajoutée à la liste fermée sans être ajoutée ici fait échouer le test qui la lit.</summary>
@@ -212,8 +213,8 @@ public class Lot81ModifierValidationTests
     {
         IReadOnlyList<ModifierSpec> specs = ModifierKeys.Specs;
         Assert.Equal(Enum.GetValues(typeof(ModifierField)).Length, specs.Count);
-        Assert.Equal(23, specs.Count);
-        Assert.Equal(19, specs.Count(s => !s.Name.Contains("<id>")));   // 19 clés scalaires + 4 paramétrées (8.2 : shield.potencyDealt ; 8.3 : protection.*)
+        Assert.Equal(24, specs.Count);
+        Assert.Equal(20, specs.Count(s => !s.Name.Contains("<id>")));   // 20 clés scalaires + 4 paramétrées (8.2 : shield.potencyDealt ; 8.3 : protection.* ; 8.4 : guard.noUpkeep)
         for (int i = 0; i < specs.Count; i++)
         {
             ModifierSpec spec = specs[i];
@@ -224,7 +225,8 @@ public class Lot81ModifierValidationTests
             Assert.Equal(spec.Field, key.Field);
             Assert.Equal(ligne.Cle, key.ToString());   // texte canonique (journal)
         }
-        Assert.Equal(new[] { ModifierField.GuardNoUpkeepBreak, ModifierField.ProtectionRedirectThroughGuard }, specs.Where(s => s.Unit == ModifierUnit.Flag).Select(s => s.Field));
+        Assert.Equal(new[] { ModifierField.GuardNoUpkeepBreak, ModifierField.ProtectionRedirectThroughGuard, ModifierField.GuardNoUpkeep },
+            specs.Where(s => s.Unit == ModifierUnit.Flag).Select(s => s.Field));
         Assert.Equal(new[] { ModifierField.DamageDealt, ModifierField.DamageTaken }, specs.Where(s => s.Conditional).Select(s => s.Field));
     }
 
@@ -604,10 +606,10 @@ public class Lot81ModifierValidationTests
     [Fact]
     public void Toutes_les_cles_ensemble_admises()
     {
-        // [L3] Les 23 clés de la liste fermée (8.2 : shield.potencyDealt ; 8.3 : protection.*), une fois chacune, réparties sur trois
-        // porteurs (au plus 8 chacun).
+        // [L3] Les 24 clés de la liste fermée (8.2 : shield.potencyDealt ; 8.3 : protection.* ; 8.4 : guard.noUpkeep), une fois chacune,
+        // réparties sur trois porteurs (au plus 8 chacun).
         ModifierDefinition[] toutes = ModifierKeys.Specs.Select(s => Brut(De(s.Field).Cle, ValeurValide(s.Field))).ToArray();
-        Assert.Equal(23, toutes.Length);
+        Assert.Equal(24, toutes.Length);
         Admis(Classe(alpha: toutes.Take(8), beta: toutes.Skip(8).Take(8), passif: toutes.Skip(16)).Validate(Regles));
         // Et chacune à sa borne (−1 pour damageTaken), sauf les drapeaux qui valent 1.
         ModifierDefinition[] bornes = ModifierKeys.Specs.Select(s => Brut(De(s.Field).Cle,

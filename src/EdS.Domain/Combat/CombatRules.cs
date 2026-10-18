@@ -60,6 +60,13 @@ namespace EdS.Domain.Combat
         /// </summary>
         public int MaxTriggerDepth { get; init; } = 4;
 
+        /// <summary>
+        /// Sous-lot 8.4 (L8-D2) : recharge interne minimale d'une riposte automatique de zone, c'est-à-dire d'un déclencheur dont un effet
+        /// <c>strike</c> vise <c>allEnemies</c> (<c>combat.triggers.areaStrikeMinCooldownMs</c>, 3 s). Un déclencheur en dessous est refusé à
+        /// la validation du combat. Une valeur plus basse est une configuration explicite de test ; 0 lève la contrainte.
+        /// </summary>
+        public long AreaStrikeMinCooldownMs { get; init; } = 3000;
+
         /// <summary>Plafond technique de <see cref="MaxTriggerDepth"/> (Q10) : la chaîne causale reste une liste de 8 maillons au plus.</summary>
         public const int AbsoluteMaxTriggerDepth = 8;
 
@@ -166,10 +173,12 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation($"ne peut pas dépasser {AbsoluteMaxDurationMs} ms (24 h).", nameof(MaxDurationMs)));
             Duration(ParryWindowMs, nameof(ParryWindowMs), true);
             Duration(ParryFailureRecoveryMs, nameof(ParryFailureRecoveryMs), false);
+            Duration(AreaStrikeMinCooldownMs, nameof(AreaStrikeMinCooldownMs), false);
             // Correctif 6.1.1 (CA-M01 C et D) : la recharge globale et le délai de régénération sont bornés comme les autres
             // durées. Avec un tick de 1 ms, dernier tick possible + délai en ticks ≤ 2 × 86 400 000 : très loin de 2⁶³.
             foreach (var (value, name) in new[] { (GlobalCooldownMs, nameof(GlobalCooldownMs)), (EnduranceRegenDelayMs, nameof(EnduranceRegenDelayMs)),
-                (ParryWindowMs, nameof(ParryWindowMs)), (ParryFailureRecoveryMs, nameof(ParryFailureRecoveryMs)) })
+                (ParryWindowMs, nameof(ParryWindowMs)), (ParryFailureRecoveryMs, nameof(ParryFailureRecoveryMs)),
+                (AreaStrikeMinCooldownMs, nameof(AreaStrikeMinCooldownMs)) })
                 if (value > AbsoluteMaxDurationMs)
                     errors.Add(new RuleViolation($"ne peut pas dépasser {AbsoluteMaxDurationMs} ms (24 h).", name));
 
@@ -190,8 +199,13 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation("catalogue des altérations obligatoire.", nameof(GuardBreakStatus)));
             else if (GuardBreakStatus is null || !Statuses.TryGet(GuardBreakStatus, out StatusDefinition? guardBreak))
                 errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"altération inconnue « {GuardBreakStatus} ».", nameof(GuardBreakStatus)));
-            else if (guardBreak.IsDot || guardBreak.Category == StatusCategory.Immunity)
-                errors.Add(new RuleViolation("la rupture de garde doit être un contrôle ou un modificateur, ni périodique ni immunité.", nameof(GuardBreakStatus)));
+            // Revue Codex de la PR #7 (corrigée au sous-lot 8.4, décision de Damien) : seulement un contrôle ou un modificateur. Les
+            // catégories ajoutées depuis (renforcement, bouclier, provocation, protection) seraient refusées ou sans effet à la rupture
+            // (provocation et protection exigent une source alliée ou assaillante, un bouclier un coefficient) : la garde se briserait
+            // sans poser l'état censé bloquer garde, parade et régénération.
+            else if (guardBreak.Category != StatusCategory.Control && guardBreak.Category != StatusCategory.Modifier)
+                errors.Add(new RuleViolation($"la rupture de garde doit être un contrôle ou un modificateur (catégorie « {StatusIds.Of(guardBreak.Category)} » refusée).",
+                    nameof(GuardBreakStatus)));
 
             foreach (var (value, name) in new[]
             {

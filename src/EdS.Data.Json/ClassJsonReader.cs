@@ -125,6 +125,9 @@ public static class ClassJsonReader
             ["unblockable"] = (v, p) => combat.Unblockable = Bool(input, v, p),
             ["rampartChargeCost"] = (v, p) => combat.RampartChargeCost = Int(input, v, p),
             ["rampartChargeGain"] = (v, p) => combat.RampartChargeGain = Int(input, v, p),
+            ["rampartChargeSpendAll"] = (v, p) => combat.RampartChargeSpendAll = Bool(input, v, p),
+            ["coefficientPerRampartCharge"] = (v, p) => combat.CoefficientPerRampartCharge = input.TryReadDecimal(v, p, out Fixed k) ? k : null,
+            ["resonanceGain"] = (v, p) => combat.ResonanceGain = Int(input, v, p),
             ["provisional"] = (v, p) => combat.Provisional = Bool(input, v, p),
             ["applies"] = (v, p) => combat.Applies = ReadList(input, v, p, (e, ip) => ReadApplication(input, e, ip)),
         });

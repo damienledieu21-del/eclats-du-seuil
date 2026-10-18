@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 8
+      "const": 9
     },
     "kind": {
       "const": "rules"
@@ -496,6 +496,22 @@
               ],
               "description": "Limites de simulation."
             },
+            "triggers": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "areaStrikeMinCooldownMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 86400000,
+                  "description": "Sous-lot 8.4 (L8-D2) : recharge interne minimale d'un déclencheur dont un effet strike vise allEnemies (riposte automatique de zone), multiple du tick ; 3000 livré, une valeur plus basse est une configuration de test."
+                }
+              },
+              "required": [
+                "areaStrikeMinCooldownMs"
+              ],
+              "description": "Déclencheurs (sous-lot 8.4)."
+            },
             "guard": {
               "type": "object",
               "additionalProperties": false,
@@ -651,6 +667,7 @@
             "globalCooldownMs",
             "endurance",
             "limits",
+            "triggers",
             "guard",
             "damageTaken",
             "parry",
@@ -788,16 +805,56 @@
                       "enum": [
                         "damageDealt",
                         "damageTaken",
-                        "guard.upkeepPerSecond"
+                        "guard.upkeepPerSecond",
+                        "guard.noUpkeep"
                       ]
                     },
                     "add": {
                       "$ref": "#/$defs/rankedValue",
                       "description": "Valeur du modificateur (perRank nul : une altération n'a pas de rang)."
                     }
-                  }
+                  },
+                  "allOf": [
+                    {
+                      "if": {
+                        "required": [
+                          "key"
+                        ],
+                        "properties": {
+                          "key": {
+                            "const": "guard.noUpkeep"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "add": {
+                            "oneOf": [
+                              {
+                                "const": 1
+                              },
+                              {
+                                "type": "object",
+                                "required": [
+                                  "base"
+                                ],
+                                "properties": {
+                                  "base": {
+                                    "const": 1
+                                  },
+                                  "perRank": {
+                                    "const": 0
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  ]
                 },
-                "description": "Renforcement (buff) seulement, au moins un : modificateurs actifs tant que l'instance existe, sans rang ni condition (sous-lot 8.2)."
+                "description": "Renforcement (buff) seulement, au moins un : modificateurs actifs tant que l'instance existe, sans rang ni condition (sous-lot 8.2) ; guard.noUpkeep (drapeau, 1 exactement : garde sans entretien, sous-lot 8.4)."
               },
               "redirectRatio": {
                 "type": "number",

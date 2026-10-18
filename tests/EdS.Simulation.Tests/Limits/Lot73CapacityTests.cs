@@ -56,7 +56,7 @@ public class Lot73CapacityTests(ITestOutputHelper output)
     private static CombatSetup Tree(int k) => Setup(new[] { Cmd(0, Frappe, "a0", "b0") },
         Enumerable.Range(0, k).Select(i => (CombatantSetup)Bearer($"a{i}", "rouge", Riposte(TriggerTarget.AllEnemies)))
             .Concat(Enumerable.Range(0, k).Select(i => Bearer($"b{i}", "bleu", Riposte(TriggerTarget.AllEnemies)))),
-        durationMs: 1000, rules: NoUpkeep);
+        durationMs: 1000, rules: NoUpkeepAreaStrikes);
 
     /// <summary>Mesures figées : fin, tick de fin, pics (travail, lignes, file), réactions exécutées, suppressions, profondeur maximale.</summary>
     private static void AssertMeasured(Measured m, CombatEndReason end, long tick, long work, long events, long pending, int reactions, int suppressed, int depth)
@@ -98,7 +98,7 @@ public class Lot73CapacityTests(ITestOutputHelper output)
         Enumerable.Range(0, 32).Select(i => (CombatantSetup)Bearer($"bastion_{i:00}", "joueurs", Riposte(target)))
             .Concat(Enumerable.Range(0, 32).Select(i => new AssailantSetup($"assaillant_{i:00}", "cibles", Fixed.Zero, Fixed.Zero, $"bastion_{i:00}", 0, 50,
                 new[] { Blow(1) }, triggers: new[] { Riposte(target) }))),
-        durationMs: 30_000, rules: NoUpkeep);
+        durationMs: 30_000, rules: target == TriggerTarget.AllEnemies ? NoUpkeepAreaStrikes : NoUpkeep);
 
     [Fact]
     public void Soixante_quatre_porteurs_ripostes_ciblees()

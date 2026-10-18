@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "e272d43cfa852219d7aea9b00fc6c341df16578f0ab1828c0288f18f2b3f1e9d")]
-    [InlineData("entrainement_rupture", "ec478f0bf414973b5b3ac39059f2ef58a3b95c53a957b37cfeff1fa9a3dd58fd")]
-    [InlineData("entrainement_alterations", "b3b0ee7ff192a745b091449464dff6801fba95a8b123cb6ef98ee69f608470d9")]
-    [InlineData("entrainement_declencheurs", "302a141ffbfdf0087e73b4628a425978a959e1c8505013e72fa539ce2e53434b")]
+    [InlineData("entrainement_garde_parade", "9cb84d3befb21cc151bac5c3daf23946408d5227d3e3143359735e047c7ce9a6")]
+    [InlineData("entrainement_rupture", "7a741baad5b3c2c0875d79cc3966d6d0b7e9998393a4af5c804a5f61d3114da8")]
+    [InlineData("entrainement_alterations", "7757439d2aa359305dab10fb7d37566c11e46efa2a811217239c5212d126ee98")]
+    [InlineData("entrainement_declencheurs", "686243bedce5ce08e65a588be2c3b3f371268f928dfb9183990e212f52da9c88")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -111,7 +111,10 @@ public class TrainingScenarioTests
         // (Lot81ReferenceTests) ; référence du scénario à déclencheurs dans Fixtures/reference-0.12.0. Règles en schéma 7 et classes en
         // schéma 6 (revue Codex de la PR #6) : empreintes de l'en-tête. Sous-lot 8.3 : moteur 0.13.0, format 7 (transferred, damageTransferred,
         // damageRedirected, clés protection.*), règles en schéma 8, classes en 7, scénarios en 3 ; sans protection ni provocation : gameplay
-        // inchangé ; référence du scénario à déclencheurs dans Fixtures/reference-0.13.0.
+        // inchangé ; référence du scénario à déclencheurs dans Fixtures/reference-0.13.0. Sous-lot 8.4 : moteur 0.14.0, format 8
+        // (guard.noUpkeep), règles en schéma 9 (contenu 0.7.0), classes en 8 (contenu 0.3.0, fiches complètes) : le gameplay change
+        // (Heurt de bouclier étourdit, Provocation se lance) ; le moteur reproduit l'ancien sur le contenu historique (Lot81ReferenceTests) ;
+        // référence du scénario à déclencheurs dans Fixtures/reference-0.14.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }
@@ -122,11 +125,15 @@ public class TrainingScenarioTests
         CombatResult result = CombatEngine.Run(Load("entrainement_garde_parade"), new MemoryCombatLog());
         CombatantResult bastion = result["bastion"];
         Assert.Equal(CombatEndReason.DurationReached, result.EndReason);
-        Assert.Equal((4L, 8L, 1L, 0L), (bastion.Blocks, bastion.PerfectParries, bastion.FailedParries, bastion.GuardBreaks));
+        // Sous-lot 8.4 : le Heurt de bouclier (tick 210) étourdit l'assaillant 1,5 s : son attaque du tick 220 est sautée (stunned), un
+        // blocage de moins (4 → 3) et 40 dégâts de moins (100 × 0,4).
+        Assert.Equal((3L, 8L, 1L, 0L), (bastion.Blocks, bastion.PerfectParries, bastion.FailedParries, bastion.GuardBreaks));
         Assert.Equal(5, bastion.RampartCharges);   // 8 parades, plafond 5
         // Correctif 7.2 : la parade parfaite de l'attaque porteuse de Fragilité l'empêche (stateBlocked, raison parried) ;
-        // les impacts suivants ne subissent plus +10 % : 427 au lieu de 444.
-        Assert.Equal(427, bastion.DamageTaken);
+        // les impacts suivants ne subissent plus +10 % : 427 au lieu de 444 (387 depuis l'étourdissement du sous-lot 8.4).
+        Assert.Equal(387, bastion.DamageTaken);
+        Assert.Contains(Simulate("entrainement_garde_parade").Lines,
+            l => l.Contains("\"event\":\"attackSkipped\"") && l.Contains("\"reason\":\"stunned\""));
         Assert.Contains(Simulate("entrainement_garde_parade").Lines,
             l => l.Contains("\"event\":\"stateBlocked\"") && l.Contains("\"state\":\"fragility\"") && l.Contains("\"reason\":\"parried\""));
     }

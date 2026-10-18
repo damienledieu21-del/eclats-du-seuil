@@ -135,6 +135,7 @@ namespace EdS.Data.Rules
             new RuleField("combat.limits.maxPendingEvents", RuleValueKind.Int32, C, nameof(CombatRules.MaxPendingEvents)),
             new RuleField("combat.limits.maxWorkPerTick", RuleValueKind.Int32, C, nameof(CombatRules.MaxWorkPerTick)),
             new RuleField("combat.limits.maxTriggerDepth", RuleValueKind.Int32, C, nameof(CombatRules.MaxTriggerDepth)),
+            new RuleField("combat.triggers.areaStrikeMinCooldownMs", RuleValueKind.Int64, C, nameof(CombatRules.AreaStrikeMinCooldownMs)),
             new RuleField("combat.guard.damageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.GuardDamageReduction)),
             new RuleField("combat.guard.maxDamageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.MaxGuardDamageReduction)),
             new RuleField("combat.guard.upkeepPerSecond", RuleValueKind.Int32, C, nameof(CombatRules.GuardUpkeepPerSecond)),

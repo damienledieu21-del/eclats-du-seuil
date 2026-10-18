@@ -48,7 +48,7 @@ namespace EdS.Data.Rules
                         report.Add("$.data." + field, CodeOf(violation.Kind), violation.Message);
             // Lot 7.3 : références des déclencheurs portés par les altérations, puis cycles statiques en avertissements (A15).
             if (report.IsValid)
-                foreach (RuleViolation violation in statuses.ValidateTriggers(combat.TickMilliseconds, combat.GuardBreakStatus))
+                foreach (RuleViolation violation in statuses.ValidateTriggers(combat.TickMilliseconds, combat.GuardBreakStatus, combat.AreaStrikeMinCooldownMs))
                     foreach (string field in violation.Fields)
                         report.Add("$.data." + field, CodeOf(violation.Kind), violation.Message);
             if (!report.IsValid) return new RulesLoadResult(report, null);
@@ -209,6 +209,7 @@ namespace EdS.Data.Rules
                 MaxPendingEvents = (int)Int(d, P(c, nameof(CombatRules.MaxPendingEvents))),
                 MaxWorkPerTick = (int)Int(d, P(c, nameof(CombatRules.MaxWorkPerTick))),
                 MaxTriggerDepth = (int)Int(d, P(c, nameof(CombatRules.MaxTriggerDepth))),
+                AreaStrikeMinCooldownMs = Int(d, P(c, nameof(CombatRules.AreaStrikeMinCooldownMs))),
                 GuardDamageReduction = Dec(d, P(c, nameof(CombatRules.GuardDamageReduction))),
                 MaxGuardDamageReduction = Dec(d, P(c, nameof(CombatRules.MaxGuardDamageReduction))),
                 MaxTotalDamageReduction = Dec(d, P(c, nameof(CombatRules.MaxTotalDamageReduction))),

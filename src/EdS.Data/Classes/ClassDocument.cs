@@ -90,6 +90,16 @@ namespace EdS.Data.Classes
         public bool? Unblockable { get; set; }
         public int? RampartChargeCost { get; set; }
         public int? RampartChargeGain { get; set; }
+
+        /// <summary>Sous-lot 8.4 (X8), facultatif : dépense de toutes les Charges détenues (absent = faux).</summary>
+        public bool? RampartChargeSpendAll { get; set; }
+
+        /// <summary>Sous-lot 8.4 (X8), facultatif : ajout au coefficient par Charge dépensée (absent = 0).</summary>
+        public Fixed? CoefficientPerRampartCharge { get; set; }
+
+        /// <summary>Sous-lot 8.4, facultatif : Résonance gagnée au lancement (absent = 0).</summary>
+        public int? ResonanceGain { get; set; }
+
         public bool? Provisional { get; set; }
 
         /// <summary>Altérations appliquées à chaque cible touchée (schéma 3, lot 7.2) ; liste éventuellement vide.</summary>

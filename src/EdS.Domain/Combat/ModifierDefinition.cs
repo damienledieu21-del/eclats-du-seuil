@@ -67,6 +67,12 @@ namespace EdS.Domain.Combat
 
         /// <summary>Sous-lot 8.3 (X6, Serment) : les dégâts transférés au porteur passent par sa garde (réduction seulement) quand il garde.</summary>
         ProtectionRedirectThroughGuard = 22,
+
+        /// <summary>
+        /// Sous-lot 8.4 (Bastion absolu) : garde sans entretien (coût par seconde nul) tant que le modificateur vaut, sur un talent, un
+        /// passif ou un renforcement actif. Distinct de <see cref="GuardNoUpkeepBreak"/> (l'entretien est dû, mais ne brise pas la garde).
+        /// </summary>
+        GuardNoUpkeep = 23,
     }
 
     /// <summary>Nature d'une valeur : contrôle de la forme des valeurs déclarées.</summary>
@@ -187,6 +193,7 @@ namespace EdS.Domain.Combat
             new ModifierSpec(ModifierField.ShieldPotencyDealt, "shield.potencyDealt", ModifierUnit.Decimal, Fixed.FromInt(10)),
             new ModifierSpec(ModifierField.ProtectionRedirectRatio, "protection.redirectRatio", ModifierUnit.Decimal, Fixed.One),
             new ModifierSpec(ModifierField.ProtectionRedirectThroughGuard, "protection.redirectThroughGuard", ModifierUnit.Flag, Fixed.One),
+            new ModifierSpec(ModifierField.GuardNoUpkeep, "guard.noUpkeep", ModifierUnit.Flag, Fixed.One),
         }, "specs");
 
         private static readonly Dictionary<string, ModifierField> Scalar =

@@ -144,8 +144,8 @@ public class Lot81ModifierCombatValidationTests
     [InlineData("poison", "durationTaken", true)]
     [InlineData("poison", "durationDealt", false)]
     [InlineData("poison", "durationDealt", true)]
-    [InlineData("taunt", "durationTaken", false)]   // D2 : status.taunt.* refusée tant que taunt n'est pas au catalogue (X7, 8.3)
-    [InlineData("taunt", "durationDealt", true)]
+    [InlineData("provocation", "durationTaken", false)]   // syntaxe admise, identifiant absent du catalogue
+    [InlineData("provocation", "durationDealt", true)]
     public void Alteration_inconnue_refusee_avec_le_chemin_interne(string status, string suffix, bool passive)
     {
         ModifierDefinition modifier = Mod($"status.{status}.{suffix}", "1000");
@@ -156,6 +156,17 @@ public class Lot81ModifierCombatValidationTests
 
         string path = passive ? $"skills[{PassiveIndex}].modifiers[0].key" : "trees[0].talents[0].modifiers[0].key";
         AssertClassRefusal(Second(definition), RuleViolationKind.UnknownReference, path, $"altération inconnue « {status} ».");
+    }
+
+    [Theory]
+    [InlineData("durationTaken", false)]
+    [InlineData("durationDealt", true)]
+    public void Provocation_livree_au_catalogue_acceptee(string suffix, bool passive)
+    {
+        // D2 : status.taunt.* était refusée tant que « taunt » n'était pas au catalogue ; le sous-lot 8.4 l'y livre (Provocation du
+        // Bastion), la clé est donc acceptée par les règles livrées (Présence, sous-lot 8.5).
+        ModifierDefinition modifier = Mod($"status.taunt.{suffix}", "200");
+        Assert.Empty(Second(passive ? OnPassive(modifier) : OnTalent(modifier)).Validate());
     }
 
     [Fact]
@@ -343,6 +354,16 @@ public class Lot81ModifierNumericPrecheckTests
     // Règles du précontrôle : 600 s au tick de 50 ms (12 000 ticks) × 10⁷ événements par tick = 1,2 × 10¹¹ impacts comptés au plus.
     private const long DurationMs = 600_000;
     private static readonly CombatRules Wide = new() { MaxWorkPerTick = 10_000_000, MaxEventsPerTick = 10_000_000 };
+
+    /// <summary>
+    /// Sous-lot 8.4 : <see cref="Wide"/> sans bouclier au catalogue. Avec le bouclier livré (Barrière d'acier), un personnage de 10¹⁴ PV
+    /// déborderait déjà sans modificateur (valeur d'un bouclier au coefficient 100) : le cas des PV max isole ainsi leur seul dépassement.
+    /// </summary>
+    private static readonly CombatRules WideWithoutShield = new()
+    {
+        MaxWorkPerTick = 10_000_000, MaxEventsPerTick = 10_000_000,
+        Statuses = new StatusCatalog(StatusCatalog.Provisional.Definitions.Where(d => !d.IsShield)),
+    };
     private const long MaxImpacts = DurationMs / 50 * 10_000_000;
     private const int Strong = 1_000_000;   // force maximale d'un build (BuildValidator.MaxAttributeValue)
 
@@ -397,7 +418,7 @@ public class Lot81ModifierNumericPrecheckTests
         // PV max +1 000 % : (100 + 10⁸ × 10⁶) × 11 dépasse la plage de Fixed (≈ 9,22 × 10¹⁴) ; sans modificateur, 10¹⁴ + 100 tient.
         // Revue 8.1 : le dépassement est rattaché à la classe (les modificateurs), pas aux attributs, qui tiennent seuls.
         ["pv_max_pourcentage"] = (with => Duel(14, with ? Lot81CombatFixtures.Mods((PassifB, Mod("maxHealth", "10"))) : null,
-                stats: new StatRules { MaxHealthPerVitalite = Fixed.FromInt(100_000_000) }, vitalite: Strong),
+                rules: WideWithoutShield, stats: new StatRules { MaxHealthPerVitalite = Fixed.FromInt(100_000_000) }, vitalite: Strong),
             "combatants[1].class",
             "statistiques dérivées hors des limites numériques avec les modificateurs permanents de la classe (maxHealth, endurance.max, statusResistance)."),
     };

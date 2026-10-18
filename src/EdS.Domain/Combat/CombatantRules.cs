@@ -43,6 +43,9 @@ namespace EdS.Domain.Combat
         public Fixed GuardUpkeepPerSecond { get; }
         public long GuardCostPerBlock { get; }
         public bool GuardNoUpkeepBreak { get; }
+
+        /// <summary>Sous-lot 8.4 : garde sans entretien (<c>guard.noUpkeep</c> permanent) ; <see cref="GuardUpkeepPerSecond"/> vaut alors 0.</summary>
+        public bool GuardNoUpkeep { get; }
         public Fixed GuardReductionAtZeroEndurance { get; }
         public long GuardBreakShortenPerChargeMs { get; }
         public long ParryWindowMs { get; }
@@ -87,7 +90,9 @@ namespace EdS.Domain.Combat
             _maxGuardReduction = rules.MaxGuardDamageReduction;
             _maxTotalReduction = rules.MaxTotalDamageReduction;
             GuardDamageReduction = Clamp(rules.GuardDamageReduction, m.Sum(ModifierField.GuardDamageReduction), Fixed.Zero, _maxGuardReduction);
-            GuardUpkeepPerSecond = Clamp(Fixed.FromInt(rules.GuardUpkeepPerSecond), m.Sum(ModifierField.GuardUpkeepPerSecond), Fixed.Zero, MaxInt);
+            GuardNoUpkeep = m.Flag(ModifierField.GuardNoUpkeep);
+            GuardUpkeepPerSecond = GuardNoUpkeep ? Fixed.Zero
+                : Clamp(Fixed.FromInt(rules.GuardUpkeepPerSecond), m.Sum(ModifierField.GuardUpkeepPerSecond), Fixed.Zero, MaxInt);
             GuardCostPerBlock = Whole(Clamp(Fixed.FromInt(rules.GuardCostPerBlock), m.Sum(ModifierField.GuardCostPerBlock), Fixed.Zero, MaxInt));
             GuardNoUpkeepBreak = m.Flag(ModifierField.GuardNoUpkeepBreak);
             // Les deux combinaisons inertes du drapeau valent 0, pour que le journal ne les montre pas comme appliquées : la réduction à
@@ -119,10 +124,12 @@ namespace EdS.Domain.Combat
         /// <summary>
         /// Sous-lot 8.2 (X3) : entretien de garde par seconde avec les renforcements actifs du porteur (<paramref name="temporary"/>,
         /// somme de leurs <c>guard.upkeepPerSecond</c>) : base des règles + modificateurs permanents + renforcements, écrêtée comme
-        /// <see cref="GuardUpkeepPerSecond"/> ; sans renforcement, exactement <see cref="GuardUpkeepPerSecond"/>.
+        /// <see cref="GuardUpkeepPerSecond"/> ; sans renforcement, exactement <see cref="GuardUpkeepPerSecond"/>. Sous-lot 8.4 : 0 avec
+        /// <c>guard.noUpkeep</c>, permanent ou porté par un renforcement actif (<paramref name="temporaryNoUpkeep"/>).
         /// </summary>
-        public Fixed GuardUpkeepPerSecondWith(Fixed temporary) =>
-            temporary == Fixed.Zero ? GuardUpkeepPerSecond
+        public Fixed GuardUpkeepPerSecondWith(Fixed temporary, bool temporaryNoUpkeep = false) =>
+            GuardNoUpkeep || temporaryNoUpkeep ? Fixed.Zero
+                : temporary == Fixed.Zero ? GuardUpkeepPerSecond
                 : Clamp(_baseUpkeep, Modifiers.Sum(ModifierField.GuardUpkeepPerSecond) + temporary, Fixed.Zero, MaxInt);
 
         private static readonly Fixed MaxDuration = Fixed.FromInt(CombatRules.AbsoluteMaxDurationMs);
@@ -144,8 +151,20 @@ namespace EdS.Domain.Combat
         public long DurationTakenMs(string status) => Whole(Modifiers.Sum(ModifierField.StatusDurationTaken, status));
 
         /// <summary>Coefficient effectif d'une compétence : base + modificateurs, écrêté dans [0, <see cref="SkillCombatDefinition.MaxCoefficient"/>].</summary>
-        public Fixed Coefficient(SkillDefinition skill, SkillCombatDefinition combat) =>
-            Clamp(combat.Coefficient, Modifiers.Sum(ModifierField.SkillCoefficient, skill.Id), Fixed.Zero, SkillCombatDefinition.MaxCoefficient);
+        public Fixed Coefficient(SkillDefinition skill, SkillCombatDefinition combat) => Coefficient(skill, combat, 0);
+
+        /// <summary>
+        /// Sous-lot 8.4 (X8) : coefficient effectif d'un lancement qui a dépensé <paramref name="chargesSpent"/> Charges. L'ajout par Charge
+        /// ne porte la base du lancement qu'au plus à <see cref="SkillCombatDefinition.MaxCoefficient"/> (revue Codex de la PR #8 : 0,6 + 2 × 100
+        /// donne 100, pas 200,6) ; une base déjà au-delà (définition non validée, contrat du sous-lot 8.1) n'est ni réduite ni augmentée. Les
+        /// modificateurs s'ajoutent ensuite sous le même écrêtage que <see cref="Coefficient(SkillDefinition, SkillCombatDefinition)"/>. Sans débordement : coefficient par Charge ≤ 100 et
+        /// Charges dépensées ≤ 2³¹ − 1, soit au plus 2,2 × 10¹⁵ en valeur brute, loin de 2⁶³ (arithmétique vérifiée de toute façon). Le
+        /// précontrôle numérique borne les dégâts avec le maximum de Charges du combattant.
+        /// </summary>
+        public Fixed Coefficient(SkillDefinition skill, SkillCombatDefinition combat, int chargesSpent) =>
+            Clamp(combat.Coefficient + Fixed.Min(combat.CoefficientPerRampartCharge * chargesSpent,
+                    Fixed.Max(Fixed.Zero, SkillCombatDefinition.MaxCoefficient - combat.Coefficient)),
+                Modifiers.Sum(ModifierField.SkillCoefficient, skill.Id), Fixed.Zero, SkillCombatDefinition.MaxCoefficient);
 
         /// <summary>Recharge effective d'une compétence (ms) : base + modificateurs, écrêtée dans [0, 24 h] ; multiple du tick (validé).</summary>
         public long CooldownMs(SkillDefinition skill, SkillCombatDefinition combat) =>

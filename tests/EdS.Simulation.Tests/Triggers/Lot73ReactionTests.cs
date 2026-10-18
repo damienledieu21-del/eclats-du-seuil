@@ -189,7 +189,7 @@ public class Lot73ReactionTests
             Bearer("b2", new[] { Riposte(target: TriggerTarget.AllEnemies, coefficient: "0.01") }, "y"),
             Bearer("b3", new[] { Riposte(target: TriggerTarget.AllEnemies, coefficient: "0.01") }, "y"),
         };
-        var (events, graph) = Simulate(Setup(new[] { Cmd(0, Gratuite, "a1", "b1") }, fighters, durationMs: 1000, rules: NoUpkeep));
+        var (events, graph) = Simulate(Setup(new[] { Cmd(0, Gratuite, "a1", "b1") }, fighters, durationMs: 1000, rules: NoUpkeepAreaStrikes));
         Assert.Equal(4, graph.Nodes.Values.Max(n => n.Depth));
         Assert.Contains(events.OfKind("triggerSuppressed"), e => e.Str("reason") == "depth" && e.Int("depth") == 5);
         Assert.All(events.OfKind("triggerSuppressed").Where(e => e.Str("reason") == "depth"), e => Assert.Equal(5L, e.Int("depth")));
@@ -244,7 +244,7 @@ public class Lot73ReactionTests
         var commands = new[] { GuardStart(0), Cmd(500, Gratuite, "allie", "assaillant") };
         var (events, graph) = Simulate(Setup(commands,
             new CombatantSetup[] { bastion, Bearer("allie"), Hitter(1000, 60_000, triggers: new[] { Riposte(target: TriggerTarget.AllEnemies) }) },
-            durationMs: 3000, rules: NoUpkeep));
+            durationMs: 3000, rules: NoUpkeepAreaStrikes));
         var gains = events.OfKind("resourceGained").Where(e => e.Str("actor") == "bastion").ToList();
         var natural = gains.Where(e => e.Str("source") != "trigger").ToList();
         var reactions = gains.Where(e => e.Str("source") == "trigger").ToList();

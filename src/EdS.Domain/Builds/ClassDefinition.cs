@@ -245,6 +245,20 @@ namespace EdS.Domain.Builds
                 errors.Add(new RuleViolation($"coût en Charges de rempart hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".rampartChargeCost"));
             if (combat.RampartChargeGain < 0 || combat.RampartChargeGain > SkillCombatDefinition.MaxCost)
                 errors.Add(new RuleViolation($"gain de Charges de rempart hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".rampartChargeGain"));
+            // Sous-lot 8.4 (X8) : coefficient par Charge dépensée, borné comme un coefficient ; sans dégâts directs ou sans dépense de
+            // Charges possible, il serait sans effet.
+            if (combat.CoefficientPerRampartCharge < Numerics.Fixed.Zero || combat.CoefficientPerRampartCharge > SkillCombatDefinition.MaxCoefficient)
+                errors.Add(new RuleViolation($"coefficient par Charge hors de [0, {SkillCombatDefinition.MaxCoefficient}].", path + ".coefficientPerRampartCharge"));
+            else if (combat.CoefficientPerRampartCharge > Numerics.Fixed.Zero && !combat.HasDamage)
+                errors.Add(new RuleViolation("coefficient par Charge sans dégâts directs : sans effet.", path + ".coefficientPerRampartCharge"));
+            else if (combat.CoefficientPerRampartCharge > Numerics.Fixed.Zero && combat.RampartChargeCost == 0 && !combat.RampartChargeSpendAll)
+                errors.Add(new RuleViolation("coefficient par Charge sans Charge dépensée (rampartChargeCost nul, rampartChargeSpendAll faux) : sans effet.",
+                    path + ".coefficientPerRampartCharge"));
+            // Sous-lot 8.4 : gain de Résonance au lancement, jamais sur une ultime (elle dépense la Résonance, A5).
+            if (combat.ResonanceGain < 0 || combat.ResonanceGain > SkillCombatDefinition.MaxCost)
+                errors.Add(new RuleViolation($"gain de Résonance hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".resonanceGain"));
+            else if (combat.ResonanceGain > 0 && skill.Kind == SkillKind.Ultimate)
+                errors.Add(new RuleViolation("une ultime dépense la Résonance : aucun gain de Résonance à son lancement.", path + ".resonanceGain"));
             if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
             // Lot 7.2 : forme des altérations portées ; leur existence est vérifiée avec le catalogue des règles (CombatSetup.Validate).
