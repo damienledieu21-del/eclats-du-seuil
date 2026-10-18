@@ -4,7 +4,7 @@ using EdS.Data;
 using EdS.Data.Builds;
 using EdS.Data.Classes;
 using EdS.Data.Json;
-using EdS.Data.Json.Measures;
+using EdS.Tools.Measures;
 using EdS.Data.Rules;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;

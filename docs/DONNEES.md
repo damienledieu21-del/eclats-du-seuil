@@ -219,7 +219,7 @@ Validation : forme (`ModifierShape`, lecteur JSON), puis `ModifierDefinition.Val
 ## Architecture
 
 ```
-rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
+rules.json ──► EdS.Data.Json (analyseur JSON strict maison, netstandard2.1 : outils .NET, Unity, serveur)
                     │ forme : syntaxe, types, champs inconnus/en double, nombres
                     ▼
                RulesDocument ──► RulesValidator (EdS.Data, commun)
@@ -231,8 +231,9 @@ rules.json ──► EdS.Data.Json (System.Text.Json, outils .NET uniquement)
                                LoadedRules (règles + versions + empreinte)
 ```
 
-- `EdS.Data` (netstandard2.1, aucune dépendance) : modèle `RulesDocument`, catalogue `RulesCatalog` (unique description du format), validateur commun, empreinte. Un futur chargeur Unity remplira le même `RulesDocument` et appellera le même validateur.
-- `EdS.Data.Json` (net10.0) : adaptateur System.Text.Json, sans réflexion.
+- `EdS.Data` (netstandard2.1, aucune dépendance) : modèle `RulesDocument`, catalogue `RulesCatalog` (unique description du format), validateur commun, empreinte.
+- `EdS.Data.Json` (netstandard2.1, C# 9, aucune dépendance depuis le sous-lot 9.1) : lecture de la forme, sans réflexion, sur un analyseur JSON strict maison (`EdS.Data.Json.Text`) qui remplace System.Text.Json : RFC 8259 sans extension (ni commentaire, ni virgule finale, ni NaN, ni marque d'ordre dans un texte ; un fichier lu par `JsonInput.ReadFile` est débarrassé de la sienne), profondeur bornée (`InputLimits.MaxJsonDepth`), nombre de valeurs borné pendant l'analyse (`InputLimits.MaxJsonValues`, voir les limites des lecteurs ci-dessous), arbre compact (aucun objet alloué par valeur, tableaux à la taille exacte), UTF-8 valide, texte brut des nombres conservé, propriétés et doublons dans l'ordre du texte, ligne de chaque nom de propriété. Il est comparé à System.Text.Json sur tous les fichiers livrés et figés, sur des valeurs aléatoires et sur des textes altérés (`Lot91JsonTextTests`) : même arbre, jamais plus laxiste ; il refuse en plus les paires de substitution UTF-16 incomplètes (`\ud83d` seul), que System.Text.Json admet à l'analyse. Les messages d'erreur de syntaxe (`InvalidJson`) sont en français ; codes, chemins et lignes inchangés. Unity et le futur serveur lisent donc les données exactement comme la CLI : même validation, mêmes empreintes.
+- `EdS.Tools` (net10.0) : outils réservés à .NET, aujourd'hui les mesures des builds (`EdS.Tools.Measures`, sous-lot 8.6, rapport JSON écrit avec System.Text.Json).
 
 ## Empreinte
 
@@ -277,7 +278,7 @@ Bornes techniques des règles (correctif 6.1.1) : `damage.defenseConstants.*` da
 
 Limites de volume (sous-lot 7.1) : les cinq champs de `combat.limits` ajoutés en schéma 3 sont bornés par des plafonds techniques (`maxCombatants` [2, 256], `maxCommands` [0, 10⁶], `maxCommandsPerActorPerTick` [1, 64], `maxPendingEvents` [1, 10⁷], `maxWorkPerTick` [1, 10⁷]) et `maxEventsPerTick` ne peut pas dépasser `maxWorkPerTick`. Un scénario qui dépasse une limite configurée est refusé avec le code `LimitExceeded` : sur le tableau (`$.data.combatants`, `$.data.commands`, une seule erreur, sans analyser les éléments), sur `$.data.commands[i].atMs` pour la première commande en excès d'un acteur à un tick, ou sur `$.data.commands` si les événements initiaux dépassent la capacité de la file.
 
-Limites des lecteurs (sous-lot 7.1, constantes techniques) : fichier de données ou texte JSON au plus 16 Mio (`FileTooLarge`, vérifié avant lecture ou avant encodage), profondeur JSON au plus 32 (`InvalidJson`), journal rejoué au plus 256 Mio. Un rapport conserve au plus 200 erreurs ; les suivantes sont comptées et résumées par une dernière ligne « … et N autres erreurs ». Détail : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#limites-des-lecteurs-en-place-sous-lot-71).
+Limites des lecteurs (sous-lot 7.1, constantes techniques) : fichier de données ou texte JSON au plus 16 Mio (`FileTooLarge`, vérifié avant lecture ou avant encodage), profondeur JSON au plus 32 (`InvalidJson`), document JSON d'au plus 1 048 576 valeurs (sous-lot 9.1, revue de la PR #12 : objets, tableaux, textes, nombres et littéraux, racine comprise ; `LimitExceeded` sur `$` avec la ligne, compté avant la création de chaque valeur : un texte valide de 16 Mio de « 0, » est refusé après 2 Mio lus, 32 Mio alloués au lieu de 700, alors que les fichiers livrés en ont moins de 1 000 et qu'un scénario de 20 000 commandes en a environ 120 000), journal rejoué au plus 256 Mio. Un rapport conserve au plus 200 erreurs ; les suivantes sont comptées et résumées par une dernière ligne « … et N autres erreurs ». Détail : [LIMITES_LOT_7.md](LIMITES_LOT_7.md#limites-des-lecteurs-en-place-sous-lot-71).
 
 Codes : `FileUnreadable`, `DuplicateId`, `InvalidJson`, `WrongType`, `MissingField`, `UnknownField`, `DuplicateField`, `InvalidNumber`, `OutOfRange`, `UnknownReference`, `UnsupportedSchemaVersion`, `InvalidContentVersion`, `WrongKind`, `InvalidValue`, `LimitExceeded`, `FileTooLarge` (sous-lot 7.1). Toutes les erreurs sont rapportées en une passe, dans la limite de 200.
 
@@ -312,10 +313,12 @@ Le bloc facultatif `combat` d'une compétence entre dans l'empreinte (`combat?` 
 
 `GameDataLoader.Load("data/v0")` charge `rules.json`, tous les `classes/*.json` et, depuis le sous-lot 8.5, tous les `builds/*.json` en un `GameData` (règles, classes, builds de référence, identité : versions et empreintes des règles et des classes). `ScenarioJsonReader` (forme) → `ScenarioDocument` → `ScenarioValidator` (en-tête, références de classe, build validé par `BuildValidator`, puis `CombatSetup.Validate`) → `CombatSetup`. L'identité retenue pour le journal ne couvre que les règles et les classes utilisées par le scénario. Depuis le lot 6, un scénario peut contenir un assaillant (`type: "assailant"`) et des commandes défensives (`action`). Format, exemples et rejeu : [MOTEUR.md](MOTEUR.md).
 
-Dépendances (lot 6) : la description d'un combat (`CombatSetup`, combattants, commandes, identité des données) est passée d'`EdS.Simulation` à `EdS.Domain` (espace `EdS.Domain.Combat`). `EdS.Data` ne dépend donc plus que du domaine ; seuls les outils (`EdS.Data.Json`, `EdS.Cli`) référencent le moteur pour simuler et rejouer.
+Dépendances (lot 6) : la description d'un combat (`CombatSetup`, combattants, commandes, identité des données) est passée d'`EdS.Simulation` à `EdS.Domain` (espace `EdS.Domain.Combat`). `EdS.Data` ne dépend donc plus que du domaine ; seuls `EdS.Data.Json` (rejeu) et les outils (`EdS.Tools`, `EdS.Cli`) référencent le moteur pour simuler et rejouer.
 
 ```
 EdS.Domain ◄── EdS.Simulation ◄── EdS.Data.Json ──► EdS.Data ──► EdS.Domain
-                                       ▲
-                                    EdS.Cli
+                     ▲                  ▲
+                     └──── EdS.Tools ───┘      (netstandard2.1 à gauche ; EdS.Tools et EdS.Cli en net10.0)
+                              ▲
+                           EdS.Cli
 ```

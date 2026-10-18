@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using EdS.Data;
 using EdS.Data.Builds;
+using EdS.Data.Json;
 using EdS.Simulation.Engine;
 
-namespace EdS.Data.Json.Measures;
+namespace EdS.Tools.Measures;
 
 /// <summary>Sous-lot 8.6 : rapport des mesures (<c>eds report</c>), en texte ou en JSON, octet par octet reproductible.</summary>
 public static class MeasureReport
