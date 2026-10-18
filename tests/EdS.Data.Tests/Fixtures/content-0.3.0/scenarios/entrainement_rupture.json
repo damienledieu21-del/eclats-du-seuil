@@ -1,0 +1,100 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 3,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 7,
+    "durationMs": 16000,
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 10,
+          "attributes": {
+            "force": 14,
+            "dexterite": 8,
+            "intelligence": 6,
+            "vitalite": 80,
+            "volonte": 10,
+            "endurance": 0
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.barriere_d_acier"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.test_passif_1",
+            "skill.bastion.test_passif_2"
+          ]
+        }
+      },
+      {
+        "id": "assaillant",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion",
+        "firstAttackMs": 1000,
+        "intervalMs": 1000,
+        "attacks": [
+          {
+            "id": "coup",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": []
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 0,
+        "actor": "bastion",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 10000,
+        "actor": "bastion",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 10000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 12000,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 13950,
+        "actor": "bastion",
+        "action": "parry"
+      },
+      {
+        "atMs": 15000,
+        "actor": "bastion",
+        "action": "parry"
+      }
+    ]
+  }
+}

@@ -67,10 +67,11 @@ public class Lot82StatusDataTests
     [Fact]
     public void Regles_livrees_renforcements_et_bouclier_du_Bastion()
     {
-        // Sous-lot 8.4 : seuls les renforcements de l'ultime (dégâts subis, garde sans entretien) et le bouclier de la Barrière d'acier.
+        // Sous-lot 8.4 : seuls les renforcements de l'ultime (dégâts subis, garde sans entretien) et le bouclier de la Barrière d'acier ;
+        // sous-lot 8.5 : le bouclier d'Égide réactive.
         StatusCatalog shipped = RulesJsonReader.ReadFile(RulesTestData.ShippedPath).Rules!.Combat.Statuses;
         Assert.Equal(new[] { "bastionAbsolute", "bastionAbsoluteGuard" }, shipped.Definitions.Where(d => d.IsBuff).Select(d => d.Id));
-        Assert.Equal(new[] { "steelBarrier" }, shipped.Definitions.Where(d => d.IsShield).Select(d => d.Id));
+        Assert.Equal(new[] { "steelBarrier", "reactiveAegis" }, shipped.Definitions.Where(d => d.IsShield).Select(d => d.Id));
         Assert.All(shipped.Definitions.Where(d => !d.IsBuff), d => Assert.Empty(d.Modifiers));
     }
 

@@ -1,0 +1,408 @@
+{
+  "$schema": "../../schemas/class.schema.json",
+  "schemaVersion": 8,
+  "kind": "class",
+  "contentVersion": "0.3.0-provisoire",
+  "data": {
+    "id": "class.bastion",
+    "name": "Bastion",
+    "trees": [
+      {
+        "id": "tree.bastion.rempart",
+        "name": "Rempart",
+        "talents": [
+          {
+            "id": "talent.bastion.rempart.garde_stable",
+            "name": "Garde stable",
+            "maxRank": 3,
+            "major": false,
+            "placeholder": false,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.rempart.echo_defensif",
+            "name": "Écho défensif",
+            "maxRank": 1,
+            "major": false,
+            "placeholder": false,
+            "prerequisites": [
+              {
+                "talent": "talent.bastion.rempart.garde_stable",
+                "rank": 3
+              }
+            ]
+          },
+          {
+            "id": "talent.bastion.rempart.rempart_eternel",
+            "name": "Rempart éternel",
+            "maxRank": 1,
+            "major": true,
+            "placeholder": false,
+            "prerequisites": [
+              {
+                "talent": "talent.bastion.rempart.echo_defensif",
+                "rank": 1
+              }
+            ]
+          },
+          {
+            "id": "talent.bastion.rempart.test_palier_1",
+            "name": "[TEST] Palier 1",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.rempart.test_palier_2",
+            "name": "[TEST] Palier 2",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.rempart.test_palier_3",
+            "name": "[TEST] Palier 3",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          }
+        ]
+      },
+      {
+        "id": "tree.bastion.contrecoup",
+        "name": "Contrecoup",
+        "talents": [
+          {
+            "id": "talent.bastion.contrecoup.riposte_precise",
+            "name": "Riposte précise",
+            "maxRank": 3,
+            "major": false,
+            "placeholder": false,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.contrecoup.fureur_contenue",
+            "name": "Fureur contenue",
+            "maxRank": 2,
+            "major": false,
+            "placeholder": false,
+            "prerequisites": [
+              {
+                "talent": "talent.bastion.contrecoup.riposte_precise",
+                "rank": 2
+              }
+            ]
+          },
+          {
+            "id": "talent.bastion.contrecoup.jugement_du_colosse",
+            "name": "Jugement du colosse",
+            "maxRank": 1,
+            "major": true,
+            "placeholder": false,
+            "prerequisites": [
+              {
+                "talent": "talent.bastion.contrecoup.fureur_contenue",
+                "rank": 2
+              }
+            ]
+          },
+          {
+            "id": "talent.bastion.contrecoup.test_palier_1",
+            "name": "[TEST] Palier 1",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.contrecoup.test_palier_2",
+            "name": "[TEST] Palier 2",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.contrecoup.test_palier_3",
+            "name": "[TEST] Palier 3",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          }
+        ]
+      },
+      {
+        "id": "tree.bastion.gardien",
+        "name": "Gardien",
+        "talents": [
+          {
+            "id": "talent.bastion.gardien.egide_reactive",
+            "name": "Égide réactive",
+            "maxRank": 3,
+            "major": false,
+            "placeholder": false,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.gardien.lien_protecteur",
+            "name": "Lien protecteur",
+            "maxRank": 1,
+            "major": false,
+            "placeholder": false,
+            "prerequisites": [
+              {
+                "talent": "talent.bastion.gardien.egide_reactive",
+                "rank": 3
+              }
+            ]
+          },
+          {
+            "id": "talent.bastion.gardien.serment_du_gardien",
+            "name": "Serment du gardien",
+            "maxRank": 1,
+            "major": true,
+            "placeholder": false,
+            "prerequisites": [
+              {
+                "talent": "talent.bastion.gardien.lien_protecteur",
+                "rank": 1
+              }
+            ]
+          },
+          {
+            "id": "talent.bastion.gardien.test_palier_1",
+            "name": "[TEST] Palier 1",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.gardien.test_palier_2",
+            "name": "[TEST] Palier 2",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          },
+          {
+            "id": "talent.bastion.gardien.test_palier_3",
+            "name": "[TEST] Palier 3",
+            "maxRank": 5,
+            "major": false,
+            "placeholder": true,
+            "prerequisites": []
+          }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "id": "skill.bastion.frappe_du_rempart",
+        "name": "Frappe du rempart",
+        "kind": "active",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "combat": {
+          "powerType": "physique",
+          "damageType": "physique",
+          "coefficient": 1.2,
+          "enduranceCost": 10,
+          "cooldownMs": 6000,
+          "targeting": "enemy",
+          "unblockable": false,
+          "rampartChargeCost": 0,
+          "rampartChargeGain": 0,
+          "provisional": true,
+          "applies": []
+        }
+      },
+      {
+        "id": "skill.bastion.heurt_de_bouclier",
+        "name": "Heurt de bouclier",
+        "kind": "active",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "combat": {
+          "powerType": "physique",
+          "damageType": "physique",
+          "coefficient": 0.8,
+          "enduranceCost": 15,
+          "cooldownMs": 10000,
+          "targeting": "enemy",
+          "unblockable": false,
+          "rampartChargeCost": 0,
+          "rampartChargeGain": 0,
+          "provisional": true,
+          "applies": [
+            {
+              "status": "stun"
+            }
+          ]
+        }
+      },
+      {
+        "id": "skill.bastion.provocation",
+        "name": "Provocation",
+        "kind": "active",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "combat": {
+          "enduranceCost": 10,
+          "cooldownMs": 12000,
+          "targeting": "enemy",
+          "unblockable": false,
+          "rampartChargeCost": 0,
+          "rampartChargeGain": 0,
+          "resonanceGain": 5,
+          "provisional": true,
+          "applies": [
+            {
+              "status": "taunt"
+            }
+          ]
+        }
+      },
+      {
+        "id": "skill.bastion.contrecoup",
+        "name": "Contrecoup",
+        "kind": "active",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "combat": {
+          "powerType": "physique",
+          "damageType": "physique",
+          "coefficient": 0.6,
+          "enduranceCost": 10,
+          "cooldownMs": 8000,
+          "targeting": "enemy",
+          "unblockable": false,
+          "rampartChargeCost": 1,
+          "rampartChargeGain": 0,
+          "rampartChargeSpendAll": true,
+          "coefficientPerRampartCharge": 0.4,
+          "provisional": true,
+          "applies": []
+        }
+      },
+      {
+        "id": "skill.bastion.barriere_d_acier",
+        "name": "Barrière d'acier",
+        "kind": "active",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "combat": {
+          "enduranceCost": 20,
+          "cooldownMs": 20000,
+          "targeting": "ally",
+          "unblockable": false,
+          "rampartChargeCost": 0,
+          "rampartChargeGain": 0,
+          "provisional": true,
+          "applies": [
+            {
+              "status": "steelBarrier",
+              "coefficient": 0.15
+            }
+          ]
+        }
+      },
+      {
+        "id": "skill.bastion.onde_de_rupture",
+        "name": "Onde de rupture",
+        "kind": "active",
+        "minLevel": 1,
+        "placeholder": false,
+        "talentRequirements": [],
+        "combat": {
+          "powerType": "physique",
+          "damageType": "physique",
+          "coefficient": 0.5,
+          "enduranceCost": 20,
+          "cooldownMs": 12000,
+          "targeting": "allEnemies",
+          "unblockable": false,
+          "rampartChargeCost": 0,
+          "rampartChargeGain": 0,
+          "provisional": true,
+          "applies": [
+            {
+              "status": "fragility"
+            }
+          ]
+        }
+      },
+      {
+        "id": "skill.bastion.bastion_absolu",
+        "name": "Bastion absolu",
+        "kind": "ultimate",
+        "minLevel": 10,
+        "placeholder": false,
+        "talentRequirements": [],
+        "combat": {
+          "enduranceCost": 0,
+          "cooldownMs": 0,
+          "targeting": "self",
+          "unblockable": false,
+          "rampartChargeCost": 0,
+          "rampartChargeGain": 0,
+          "provisional": true,
+          "applies": [
+            {
+              "status": "bastionAbsolute",
+              "target": "allAllies"
+            },
+            {
+              "status": "bastionAbsoluteGuard"
+            },
+            {
+              "status": "bastionAbsoluteTaunt",
+              "target": "allEnemies"
+            }
+          ]
+        }
+      },
+      {
+        "id": "skill.bastion.test_passif_1",
+        "name": "[TEST] Passif 1",
+        "kind": "passive",
+        "minLevel": 1,
+        "placeholder": true,
+        "talentRequirements": []
+      },
+      {
+        "id": "skill.bastion.test_passif_2",
+        "name": "[TEST] Passif 2",
+        "kind": "passive",
+        "minLevel": 1,
+        "placeholder": true,
+        "talentRequirements": []
+      },
+      {
+        "id": "skill.bastion.test_passif_3",
+        "name": "[TEST] Passif 3",
+        "kind": "passive",
+        "minLevel": 1,
+        "placeholder": true,
+        "talentRequirements": []
+      },
+      {
+        "id": "skill.bastion.test_passif_4",
+        "name": "[TEST] Passif 4",
+        "kind": "passive",
+        "minLevel": 1,
+        "placeholder": true,
+        "talentRequirements": []
+      }
+    ]
+  }
+}

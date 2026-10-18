@@ -28,16 +28,18 @@ public class Lot73TriggerDataTests
     // --- Classes (format 4) --------------------------------------------------------------
 
     [Fact]
-    public void Classe_livree_sans_declencheur()
+    public void Classe_figee_du_8_4_sans_declencheur()
     {
-        Assert.All(ClassTestData.Bastion.Trees.SelectMany(t => t.Talents), t => Assert.Empty(t.Triggers));
-        Assert.All(ClassTestData.Bastion.Skills, s => Assert.Empty(s.Triggers));
+        // Q14 : aucune donnée livrée ne portait de déclencheur jusqu'au contenu du lot 8. Sous-lot 8.5 : les talents et passifs livrés en
+        // portent (Lot85ContentDataTests) ; ces tests de forme partent de la classe figée du 8.4, qui n'en a aucun.
+        Assert.All(ClassTestData.FrozenBastion.Trees.SelectMany(t => t.Talents), t => Assert.Empty(t.Triggers));
+        Assert.All(ClassTestData.FrozenBastion.Skills, s => Assert.Empty(s.Triggers));
     }
 
     [Fact]
     public void Talent_et_competence_avec_declencheurs_lus()
     {
-        ClassLoadResult result = ClassTestData.ReadMutated(root =>
+        ClassLoadResult result = ClassTestData.ReadFrozenMutated(root =>
         {
             ClassTestData.Talent(root, 0, 0)["triggers"] = List(JsonNode.Parse("""
                 { "on": "onBlock", "role": "target", "cooldownMs": 1000,
@@ -65,11 +67,11 @@ public class Lot73TriggerDataTests
     [Fact]
     public void Empreinte_de_classe_inchangee_sans_declencheur_changee_avec()
     {
-        string shipped = ClassJsonReader.Read(ClassTestData.BastionJson, ClassTestData.Progression).Class!.Fingerprint;
-        ClassLoadResult empty = ClassTestData.ReadMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = new JsonArray());
+        string shipped = ClassJsonReader.Read(ClassTestData.FrozenJson, ClassTestData.Progression).Class!.Fingerprint;
+        ClassLoadResult empty = ClassTestData.ReadFrozenMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = new JsonArray());
         Assert.Equal(shipped, empty.Class!.Fingerprint);
-        ClassLoadResult with = ClassTestData.ReadMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = List(Riposte()));
-        ClassLoadResult other = ClassTestData.ReadMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = List(Riposte(coefficient: 0.6)));
+        ClassLoadResult with = ClassTestData.ReadFrozenMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = List(Riposte()));
+        ClassLoadResult other = ClassTestData.ReadFrozenMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = List(Riposte(coefficient: 0.6)));
         Assert.NotEqual(shipped, with.Class!.Fingerprint);
         Assert.NotEqual(with.Class.Fingerprint, other.Class!.Fingerprint);
     }
@@ -77,13 +79,13 @@ public class Lot73TriggerDataTests
     [Fact]
     public void Erreurs_de_forme_localisees()
     {
-        ClassLoadResult missing = ClassTestData.ReadMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = List(JsonNode.Parse("""{ "effects": [] }""")!));
+        ClassLoadResult missing = ClassTestData.ReadFrozenMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = List(JsonNode.Parse("""{ "effects": [] }""")!));
         Assert.Equal(("$.data.trees[0].talents[0].triggers[0].on", ValidationCode.MissingField), (Assert.Single(missing.Report.Errors).Path, missing.Report.Errors[0].Code));
 
-        ClassLoadResult unknown = ClassTestData.ReadMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = List(Riposte("onStateBlocked")));
+        ClassLoadResult unknown = ClassTestData.ReadFrozenMutated(root => ClassTestData.Talent(root, 0, 0)["triggers"] = List(Riposte("onStateBlocked")));
         Assert.Equal(("$.data.trees[0].talents[0].triggers[0].on", ValidationCode.UnknownReference), (Assert.Single(unknown.Report.Errors).Path, unknown.Report.Errors[0].Code));
 
-        ClassLoadResult field = ClassTestData.ReadMutated(root =>
+        ClassLoadResult field = ClassTestData.ReadFrozenMutated(root =>
         {
             JsonNode trigger = Riposte();
             trigger["chance"] = 0.5;   // Q6 : pas de chance de déclenchement en 7.3
@@ -91,7 +93,7 @@ public class Lot73TriggerDataTests
         });
         Assert.Equal(("$.data.trees[0].talents[0].triggers[0].chance", ValidationCode.UnknownField), (Assert.Single(field.Report.Errors).Path, field.Report.Errors[0].Code));
 
-        ClassLoadResult ranked = ClassTestData.ReadMutated(root =>
+        ClassLoadResult ranked = ClassTestData.ReadFrozenMutated(root =>
         {
             JsonNode trigger = Riposte();
             trigger["effects"]![0]!["coefficient"] = JsonNode.Parse("""{ "perRank": 0.1 }""");
@@ -105,7 +107,7 @@ public class Lot73TriggerDataTests
     public void Validation_de_gameplay_rattachee_au_fichier()
     {
         // Valeur par rang hors bornes au rang maximal du talent (garde_stable : 3 rangs ; 98 + 2 × 2 = 102 > 100).
-        ClassLoadResult result = ClassTestData.ReadMutated(root =>
+        ClassLoadResult result = ClassTestData.ReadFrozenMutated(root =>
         {
             JsonNode trigger = Riposte();
             trigger["effects"]![0]!["coefficient"] = JsonNode.Parse("""{ "base": 98, "perRank": 2 }""");
@@ -115,7 +117,7 @@ public class Lot73TriggerDataTests
         Assert.Equal(("$.data.trees[0].talents[0].triggers[0].effects[0].coefficient", ValidationCode.InvalidValue), (error.Path, error.Code));
 
         // Valeur par rang sur une compétence : refusée.
-        ClassLoadResult skill = ClassTestData.ReadMutated(root =>
+        ClassLoadResult skill = ClassTestData.ReadFrozenMutated(root =>
         {
             JsonNode trigger = Riposte();
             trigger["effects"]![0]!["coefficient"] = JsonNode.Parse("""{ "base": 1, "perRank": 1 }""");
@@ -127,7 +129,7 @@ public class Lot73TriggerDataTests
     [Fact]
     public void Cycle_statique_de_classe_avertissement_sans_refus()
     {
-        ClassLoadResult result = ClassTestData.ReadMutated(root => ClassTestData.Talent(root, 1, 0)["triggers"] = List(Riposte()));
+        ClassLoadResult result = ClassTestData.ReadFrozenMutated(root => ClassTestData.Talent(root, 1, 0)["triggers"] = List(Riposte()));
         Assert.True(result.IsValid);
         ValidationError warning = Assert.Single(result.Report.Warnings);
         Assert.Equal(("$.data.trees[1].talents[0].triggers[0]", ValidationCode.TriggerCycle), (warning.Path, warning.Code));
@@ -137,7 +139,7 @@ public class Lot73TriggerDataTests
     [Fact]
     public void Format_de_classe_3_refuse()
     {
-        ClassLoadResult result = ClassTestData.ReadMutated(c => c["schemaVersion"] = 3);
+        ClassLoadResult result = ClassTestData.ReadFrozenMutated(c => c["schemaVersion"] = 3);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Assert.Single(result.Report.Errors).Path, result.Report.Errors[0].Code));
     }
 
@@ -207,22 +209,22 @@ public class Lot73TriggerDataTests
     [Fact]
     public void Declencheurs_d_assaillant_lus_et_valides()
     {
-        ScenarioLoadResult result = ScenarioTestData.ReadMutated(s => ScenarioTestData.Combatant(s, 1)["triggers"] = List(AssailantRiposte()), scenario: "entrainement_garde_parade");
+        ScenarioLoadResult result = ScenarioTestData.ReadFrozenMutated(s => ScenarioTestData.Combatant(s, 1)["triggers"] = List(AssailantRiposte()), scenario: "entrainement_garde_parade");
         Assert.True(result.IsValid, result.Report.ToString());
         var assailant = (AssailantSetup)result.Setup!.Combatants[1];
         TriggerDefinition trigger = Assert.Single(assailant.Triggers);
         Assert.Equal(("assailant.assaillant", 2), (assailant.TriggerDefinitionId, trigger.Effects.Count));
         Assert.True(result.Setup.HasTriggers);
-        Assert.False(ScenarioTestData.ReadMutated(_ => { }, scenario: "entrainement_garde_parade").Setup!.HasTriggers);
+        Assert.False(ScenarioTestData.ReadFrozenMutated(_ => { }, scenario: "entrainement_garde_parade").Setup!.HasTriggers);
     }
 
     [Fact]
     public void Declencheurs_reserves_aux_assaillants_et_valides()
     {
-        ScenarioLoadResult dummy = ScenarioTestData.ReadMutated(s => ScenarioTestData.Combatant(s, 1)["triggers"] = List(AssailantRiposte()));
+        ScenarioLoadResult dummy = ScenarioTestData.ReadFrozenMutated(s => ScenarioTestData.Combatant(s, 1)["triggers"] = List(AssailantRiposte()));
         Assert.Equal("$.data.combatants[1].triggers", Assert.Single(dummy.Report.Errors).Path);
 
-        ScenarioLoadResult cooldown = ScenarioTestData.ReadMutated(s =>
+        ScenarioLoadResult cooldown = ScenarioTestData.ReadFrozenMutated(s =>
         {
             JsonNode trigger = AssailantRiposte();
             trigger["cooldownMs"] = 525;
@@ -235,7 +237,7 @@ public class Lot73TriggerDataTests
     public void Cycle_statique_de_scenario_avertissement()
     {
         // Riposte de l'assaillant sur impact subi : peut s'observer elle-même.
-        ScenarioLoadResult result = ScenarioTestData.ReadMutated(s => ScenarioTestData.Combatant(s, 1)["triggers"] = List(Riposte()), scenario: "entrainement_garde_parade");
+        ScenarioLoadResult result = ScenarioTestData.ReadFrozenMutated(s => ScenarioTestData.Combatant(s, 1)["triggers"] = List(Riposte()), scenario: "entrainement_garde_parade");
         Assert.True(result.IsValid, result.Report.ToString());
         ValidationError warning = Assert.Single(result.Report.Warnings);
         Assert.Equal("$.data.combatants[1].triggers[0]", warning.Path);
@@ -245,16 +247,16 @@ public class Lot73TriggerDataTests
     [Fact]
     public void En_tete_de_journal_et_rejeu_avec_declencheurs_d_assaillant()
     {
-        ScenarioLoadResult result = ScenarioTestData.ReadMutated(s => ScenarioTestData.Combatant(s, 1)["triggers"] = List(AssailantRiposte()), scenario: "entrainement_garde_parade");
+        ScenarioLoadResult result = ScenarioTestData.ReadFrozenMutated(s => ScenarioTestData.Combatant(s, 1)["triggers"] = List(AssailantRiposte()), scenario: "entrainement_garde_parade");
         var log = new MemoryCombatLog();
         CombatEngine.Run(result.Setup!, log);
         Assert.Contains("\"triggers\":[{\"on\":\"onBlock\",\"role\":\"source\",\"filter\":{\"damageType\":\"physique\"},\"cooldownMs\":500,", log.Lines[0]);
         Assert.Contains("\"coefficient\":0.25", log.Lines[0]);
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(log.Lines, ScenarioTestData.ShippedData).Status);
+        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(log.Lines, ScenarioTestData.FrozenData).Status);
 
         // Sans déclencheur, l'en-tête n'a pas de champ triggers (journaux existants inchangés).
         var plain = new MemoryCombatLog();
-        CombatEngine.Run(ScenarioTestData.ReadMutated(_ => { }, scenario: "entrainement_garde_parade").Setup!, plain);
+        CombatEngine.Run(ScenarioTestData.ReadFrozenMutated(_ => { }, scenario: "entrainement_garde_parade").Setup!, plain);
         Assert.DoesNotContain("\"triggers\"", plain.Lines[0]);
     }
 }

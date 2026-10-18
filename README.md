@@ -14,7 +14,7 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 | `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte, scénarios — dépend du domaine seulement |
 | `src/EdS.Data.Json` | net10.0 | Adaptateur System.Text.Json, chargement et rejeu, réservé aux outils .NET |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`) |
-| `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `schemas/` |
+| `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `v0/builds/bastion.json` (builds de référence, sous-lot 8.5), `schemas/` |
 | `scenarios/` | JSON | Scénarios de combat (`mannequin.json`, `entrainement_garde_parade.json`, `entrainement_rupture.json`, `entrainement_alterations.json`, `entrainement_declencheurs.json`) |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) |
 
@@ -38,10 +38,11 @@ dotnet test --filter Category=Trigger     # déclencheurs, provenance, cycles, p
 dotnet test --filter Category=Modifier    # modificateurs X1 et X2, règles effectives, plafonds (sous-lot 8.1)
 dotnet test --filter Category=Shield      # renforcements et boucliers (sous-lot 8.2)
 dotnet test --filter Category=Support     # soutien, provocation, protection, rôle allié (sous-lot 8.3)
-dotnet test --filter Category=Bastion     # fiches du Bastion, Contrecoup, ripostes de zone (sous-lot 8.4)
+dotnet test --filter Category=Bastion     # fiches du Bastion, Contrecoup, ripostes de zone (8.4) ; talents, passifs, builds (8.5)
 scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
+dotnet run --project src/EdS.Cli -- validate data/v0/builds/bastion.json
 dotnet run --project src/EdS.Cli -- rng --seed 42 --count 6
 dotnet run --project src/EdS.Cli -- simulate scenarios/mannequin.json --out combat.jsonl
 dotnet run --project src/EdS.Cli -- simulate scenarios/entrainement_garde_parade.json
@@ -63,7 +64,7 @@ Arbitrages du lot 2 : base offensive 0 et +2 puissance par Force/Dextérité/Int
 
 Arbitrages du lot 3 : PV = 100 + 10 × Vitalité + contributions (E1) ; cœur indépendant de toute bibliothèque de sérialisation, System.Text.Json dans un adaptateur réservé aux outils .NET, un seul validateur de gameplay (E2) ; `rules.json` versionné avec empreinte stable (E3). Détail : [docs/DONNEES.md](docs/DONNEES.md).
 
-Arbitrages du lot 4 : moteur de talents générique, mini-arbre Bastion avec talents de test « [TEST] » pour atteindre les seuils (F1) ; 1 point par rang, prérequis de rang (F2) ; points non dépensés autorisés (F3) ; pas de compétence en double, niveau minimal et prérequis de talents par compétence, emplacement d'ultime au niveau 10 (F4) ; attributs fournis par le build (F5) ; un fichier par classe, versionné, avec empreinte (F6). Détail : [docs/BUILDS.md](docs/BUILDS.md).
+Arbitrages du lot 4 : moteur de talents générique, mini-arbre Bastion avec talents de test « [TEST] » pour atteindre les seuils (F1, remplacés par le contenu réel au sous-lot 8.5) ; 1 point par rang, prérequis de rang (F2) ; points non dépensés autorisés (F3) ; pas de compétence en double, niveau minimal et prérequis de talents par compétence, emplacement d'ultime au niveau 10 (F4) ; attributs fournis par le build (F5) ; un fichier par classe, versionné, avec empreinte (F6). Détail : [docs/BUILDS.md](docs/BUILDS.md).
 
 Arbitrages du lot 5 : endurance +10/s après 1 s sans dépense, plafonnée, refus atomique si coût impayable, pas de garde brisée (A3) ; compétences instantanées, GCD 1 s configurable, recharge au lancer (A6) ; ciblage logique sans positions, zones dans un ordre déterministe (A7) ; ordre intra-tick expirations → commandes (initiative puis identifiant) → résolution → périodiques → régénération → morts et fin (A10) ; Frappe du rempart 1,20 / 10 / 6 s et Heurt de bouclier 0,80 / 15 / 10 s provisoires ; mannequin à PV infinis. Détail : [docs/MOTEUR.md](docs/MOTEUR.md).
 
@@ -91,6 +92,8 @@ Sous-lot 8.3 (soutien, moteur seulement) : compétences de soutien sans dégâts
 
 Sous-lot 8.4 (fiches du Bastion) : toutes les compétences du Bastion ont leur fiche complète (feuille de route), plus aucune n'est refusée `skillNotImplemented` : Heurt de bouclier étourdit, Onde de rupture fragilise tous les ennemis, Contrecoup dépense toutes les Charges (0,6 + 0,4 par Charge, X8), Provocation provoque 3 s et rapporte 5 de Résonance, Barrière d'acier pose un bouclier de 15 % des PV max, et l'ultime Bastion absolu (100 de Résonance) renforce le Bastion et ses alliés (−30 % de dégâts subis), lui donne une garde sans entretien (`guard.noUpkeep`) et provoque tous les assaillants pendant 8 s. Toute riposte automatique de zone a au moins 3 s de recharge interne (L8-D2, `combat.triggers.areaStrikeMinCooldownMs`). Le gameplay des scénarios livrés change (étourdissement, Provocation lancée) ; le moteur reproduit l'ancien sur le contenu historique (fixture `content-0.2.0`). Règles en schéma 9 (contenu 0.7.0), classes en 8 (contenu 0.3.0), moteur 0.14.0, journal au format 8. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#fiches-du-bastion-et-ripostes-de-zone-sous-lot-84), [docs/BUILDS.md](docs/BUILDS.md), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-84--interprétations-et-limites).
 
+Sous-lot 8.5 (contenu complet du Bastion, début de la PR de gameplay 8b) : plus aucun « [TEST] » ; les neuf talents notables portent leurs effets (Garde stable, Écho défensif, Rempart éternel ; Riposte précise, Fureur contenue, Jugement du colosse ; Égide réactive, Lien protecteur, Serment du gardien), neuf intermédiaires de cinq rangs remplacent les paliers d'essai et huit passifs équipables les passifs d'essai, tous en données (modificateurs et déclencheurs existants, aucun changement du moteur). Trois altérations du Gardien (`reactiveAegis`, `protectiveLink`, `oathTaunt`). Builds de référence en données (décision A12) : nouveau fichier `kind: "builds"` (schéma 1) avec Rempart, Contrecoup, Gardien, un hybride sans majeur et un contrôle de niveau 10, validés par `BuildValidator`, chargés avec les données et vérifiés par `eds validate`. Le gameplay des scénarios livrés change (talents actifs, passifs réels) ; le moteur reproduit l'ancien avec le contenu figé du 8.4 (fixture `content-0.3.0`). Règles au contenu 0.8.0, Bastion au contenu 0.4.0, schémas, moteur (0.14.0) et journal (format 8) inchangés. Détail : [docs/BUILDS.md](docs/BUILDS.md#arbres-du-bastion-provisoires-sous-lot-85), [docs/DONNEES.md](docs/DONNEES.md#bastion-sous-lot-85), [docs/LIMITES_LOT_8.md](docs/LIMITES_LOT_8.md#sous-lot-85--interprétations-et-limites).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -104,4 +107,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 6 — ressources du Bastion, garde, parade parfaite, états défensifs, assaillant d'entraînement
 - [x] Correctif 6.1 — stabilisation (entretien de garde, identité des états, dépassements, immuabilité, formats v2), en attente de contre-audit
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
-- [ ] Lot 8 — en cours : sous-lot 8.1 (modificateurs X1 et X2, moteur 0.10.0 puis 0.11.0), sous-lot 8.2 (renforcements et boucliers, moteur 0.12.0) sous-lot 8.3 (soutien, provocation, protection, moteur 0.13.0) et sous-lot 8.4 (fiches du Bastion, moteur 0.14.0) en revue
+- [ ] Lot 8 — en cours : PR de gameplay 8a (sous-lots 8.1 à 8.4 : modificateurs, renforcements et boucliers, soutien, fiches du Bastion ; moteur 0.14.0) fusionnée ; sous-lot 8.5 (contenu complet du Bastion, builds de référence) en revue ; 8.6 et 8.7 à faire

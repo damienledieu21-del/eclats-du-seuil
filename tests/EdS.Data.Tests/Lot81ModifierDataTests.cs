@@ -39,7 +39,11 @@ namespace EdS.Data.Tests;
 //  10. non-régression des 5 scénarios .................. déjà couverte (Lot81ReferenceTests, Lot81EngineBaselineTests) ; ici, des
 //                                                        modificateurs inactifs laissent le journal livré inchangé (Sources_inactives_…)
 
-/// <summary>Sous-lot 8.1 : constructeurs JSON de modificateurs et lecture de bastion.json muté, partagés par les tests de ce fichier.</summary>
+/// <summary>
+/// Sous-lot 8.1 : constructeurs JSON de modificateurs et lecture de bastion.json muté, partagés par les tests de ce fichier. Sous-lot 8.5 :
+/// la classe mutée est la classe figée du 8.4 (<see cref="ScenarioTestData.FrozenClassPath"/>) et les scénarios, ceux du 8.4
+/// (<see cref="ScenarioTestData.FrozenScenarioPath"/>) : le contenu livré porte désormais ses propres modificateurs et déclencheurs.
+/// </summary>
 internal static class Lot81ModifierJson
 {
     /// <summary>Talent « garde_stable » (arbre 0, talent 0) : 3 rangs, pris au rang 3 par entrainement_garde_parade.</summary>
@@ -59,10 +63,10 @@ internal static class Lot81ModifierJson
     public static JsonArray List(params JsonNode?[] modifiers) => new(modifiers);
 
     public static ClassLoadResult OnTalent(int tree, int talent, params JsonNode?[] modifiers) =>
-        ClassTestData.ReadMutated(root => ClassTestData.Talent(root, tree, talent)["modifiers"] = List(modifiers));
+        ClassTestData.ReadFrozenMutated(root => ClassTestData.Talent(root, tree, talent)["modifiers"] = List(modifiers));
 
     public static ClassLoadResult OnSkill(int skill, params JsonNode?[] modifiers) =>
-        ClassTestData.ReadMutated(root => ClassTestData.Skill(root, skill)["modifiers"] = List(modifiers));
+        ClassTestData.ReadFrozenMutated(root => ClassTestData.Skill(root, skill)["modifiers"] = List(modifiers));
 
     /// <summary>Porteur désigné par son nom de test : « talent » (garde_stable) ou « passif » (test_passif_1).</summary>
     public static ClassLoadResult On(string owner, params JsonNode?[] modifiers) => owner == "passif" ? OnSkill(7, modifiers) : OnTalent(0, 0, modifiers);
@@ -85,12 +89,12 @@ internal static class Lot81ModifierJson
 
     public static string Fingerprint(Action<JsonObject> mutate)
     {
-        ClassLoadResult result = ClassTestData.ReadMutated(mutate);
+        ClassLoadResult result = ClassTestData.ReadFrozenMutated(mutate);
         Assert.True(result.IsValid, result.Report.ToString());
         return result.Class!.Fingerprint;
     }
 
-    public static string ShippedFingerprint => ClassJsonReader.Read(ClassTestData.BastionJson, ClassTestData.Progression).Class!.Fingerprint;
+    public static string ShippedFingerprint => ClassJsonReader.Read(ClassTestData.FrozenJson, ClassTestData.Progression).Class!.Fingerprint;
 
     /// <summary>Nombre JSON d'un décimal exact (sans zéro final, 4 décimales au plus), écrit indépendamment de <see cref="Fixed"/>.</summary>
     public static string Num(decimal value) => value == 0m ? "0" : value.ToString("0.####", CultureInfo.InvariantCulture);
@@ -108,11 +112,12 @@ public class Lot81ModifierDataReadingTests
     // --- Lecture ---------------------------------------------------------------------------
 
     [Fact]
-    public void Classe_livree_au_schema_courant_sans_modificateur()
+    public void Classe_figee_au_schema_courant_sans_modificateur()
     {
         // Sous-lot 8.2 : schéma de classe 6 (clé shield.potencyDealt) ; 8.3 : 7 (soutien, protections) ; 8.4 : 8 (Charges dépensées,
-        // guard.noUpkeep). Toujours sans modificateur livré.
-        LoadedClass shipped = ClassJsonReader.Read(ClassTestData.BastionJson, ClassTestData.Progression).Class!;
+        // guard.noUpkeep). Sous-lot 8.5 : le contenu livré porte des modificateurs (Lot85ContentDataTests) ; ces tests de mutation
+        // partent de la classe figée du 8.4 (ClassTestData.Frozen), toujours sans modificateur.
+        LoadedClass shipped = ClassJsonReader.Read(ClassTestData.FrozenJson, ClassTestData.Progression).Class!;
         Assert.Equal(8, shipped.SchemaVersion);
         Assert.All(shipped.Definition.Trees.SelectMany(t => t.Talents), t => Assert.Empty(t.Modifiers));
         Assert.All(shipped.Definition.Skills, s => Assert.Empty(s.Modifiers));
@@ -218,14 +223,14 @@ public class Lot81ModifierDataReadingTests
     [InlineData("0")]
     public void Liste_de_modificateurs_qui_n_est_pas_un_tableau(string value)
     {
-        AssertSingleError(ClassTestData.ReadMutated(root => ClassTestData.Talent(root, 0, 0)["modifiers"] = JsonNode.Parse(value)), TalentPath, ValidationCode.WrongType);
-        AssertSingleError(ClassTestData.ReadMutated(root => ClassTestData.Skill(root, 7)["modifiers"] = JsonNode.Parse(value)), PassivePath, ValidationCode.WrongType);
+        AssertSingleError(ClassTestData.ReadFrozenMutated(root => ClassTestData.Talent(root, 0, 0)["modifiers"] = JsonNode.Parse(value)), TalentPath, ValidationCode.WrongType);
+        AssertSingleError(ClassTestData.ReadFrozenMutated(root => ClassTestData.Skill(root, 7)["modifiers"] = JsonNode.Parse(value)), PassivePath, ValidationCode.WrongType);
     }
 
     [Fact]
     public void Champ_en_double_dans_un_modificateur()
     {
-        JsonObject root = ClassTestData.Shipped();
+        JsonObject root = ClassTestData.Frozen();
         ClassTestData.Talent(root, 0, 0)["modifiers"] = List(JsonNode.Parse("""{ "key": "damageDealt", "add": 0.1, "doublon": 0.2 }"""));
         string json = ClassTestData.ToJson(root).Replace("\"doublon\"", "\"add\"", StringComparison.Ordinal);
         AssertSingleError(ClassJsonReader.Read(json, ClassTestData.Progression), TalentPath + "[0].add", ValidationCode.DuplicateField);
@@ -234,7 +239,7 @@ public class Lot81ModifierDataReadingTests
     [Fact]
     public void Toutes_les_erreurs_de_forme_en_une_passe()
     {
-        ClassLoadResult result = ClassTestData.ReadMutated(root =>
+        ClassLoadResult result = ClassTestData.ReadFrozenMutated(root =>
         {
             ClassTestData.Talent(root, 0, 0)["modifiers"] = List(JsonNode.Parse("""{ "add": 0.1 }"""), Mod("damageDealt", "0.1", "whileBlocking"));
             ClassTestData.Skill(root, 7)["modifiers"] = List(JsonNode.Parse("""{ "key": "endurance.max" }"""));
@@ -390,7 +395,7 @@ public class Lot81ModifierDataReadingTests
         // Clés paramétrées distinctes : pas de doublon.
         Valid(OnTalent(0, 0, Mod("status.burn.durationTaken", "2000"), Mod("status.bleed.durationTaken", "2000"), Mod("status.burn.durationDealt", "2000")));
         // Même clé sur deux sources : elles s'additionneront au combat.
-        Valid(ClassTestData.ReadMutated(root =>
+        Valid(ClassTestData.ReadFrozenMutated(root =>
         {
             ClassTestData.Talent(root, 0, 0)["modifiers"] = List(Mod("guard.damageReduction", "0.05"));
             ClassTestData.Talent(root, 1, 0)["modifiers"] = List(Mod("guard.damageReduction", "0.05"));
@@ -506,7 +511,7 @@ public class Lot81ModifierDataReadingTests
     }
 
     /// <summary>Classe livrée plus <paramref name="passives"/> compétences passives de 8 modificateurs et <paramref name="onTalent"/> sur garde_stable.</summary>
-    private static ClassLoadResult WithVolume(int passives, int onTalent) => ClassTestData.ReadMutated(root =>
+    private static ClassLoadResult WithVolume(int passives, int onTalent) => ClassTestData.ReadFrozenMutated(root =>
     {
         JsonArray skills = ClassTestData.DataOf(root)["skills"]!.AsArray();
         for (int n = 0; n < passives; n++)
@@ -539,8 +544,8 @@ public class Lot81ModifierDataReadingTests
     private static ScenarioLoadResult ScenarioWith(params JsonNode[] modifiers)
     {
         LoadedClass loaded = Valid(OnTalent(0, 0, modifiers));
-        var data = new GameData(ScenarioTestData.ShippedData.Rules, new[] { loaded });
-        return ScenarioJsonReader.Read(File.ReadAllText(ScenarioTestData.ScenarioPath("entrainement_garde_parade")), data);
+        var data = new GameData(ScenarioTestData.FrozenData.Rules, new[] { loaded });
+        return ScenarioJsonReader.Read(File.ReadAllText(ScenarioTestData.FrozenScenarioPath("entrainement_garde_parade")), data);
     }
 
     [Theory]
@@ -800,7 +805,7 @@ public class Lot81ModifierDataFingerprintTests
     [Fact]
     public void Mise_en_forme_sans_effet()
     {
-        JsonObject root = ClassTestData.Shipped();
+        JsonObject root = ClassTestData.Frozen();
         ClassTestData.Talent(root, 0, 0)["modifiers"] = List(Mod("guard.damageReduction", """{ "base": 0.04, "perRank": 0.04 }"""));
         ClassTestData.Skill(root, 7)["modifiers"] = List(Mod("damageTaken", "-0.005", "whileGuarding", "perRampartCharge"));
         string compact = root.ToJsonString();
@@ -880,7 +885,7 @@ public class Lot81ModifierDataSchemaTests
         // cibles propres d'application, rôle ally, clés protection.* ; 8.4 : 8, Charges dépensées (X8), clé guard.noUpkeep.
         Assert.Equal(8, DataFormat.ClassSchemaVersion);
         Assert.Equal(8, ClassValidator.CurrentSchemaVersion);
-        Assert.Equal(8, JsonNode.Parse(ClassTestData.BastionJson)!["schemaVersion"]!.GetValue<int>());
+        Assert.Equal(8, JsonNode.Parse(ClassTestData.FrozenJson)!["schemaVersion"]!.GetValue<int>());
         Assert.Equal(8, Schema()["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
     }
 
@@ -894,7 +899,7 @@ public class Lot81ModifierDataSchemaTests
     [InlineData(9, true)]
     public void Classe_d_une_autre_version_refusee_avec_un_message_explicite(int version, bool withModifiers)
     {
-        ClassLoadResult result = ClassTestData.ReadMutated(root =>
+        ClassLoadResult result = ClassTestData.ReadFrozenMutated(root =>
         {
             root["schemaVersion"] = version;
             // Contenu non analysé : une clé inconnue sans « add » ne s'ajoute pas au refus de la version.
@@ -914,7 +919,7 @@ public class Lot81ModifierDataSchemaTests
     [Fact]
     public void Fichier_de_classe_au_schema_4_refuse_au_chargement_du_dossier()
     {
-        string directory = ScenarioTestData.CopyData((relative, text) =>
+        string directory = ScenarioTestData.CopyFrozenData((relative, text) =>
         {
             if (relative != "classes/bastion.json") return text;
             JsonObject root = JsonNode.Parse(text)!.AsObject();
@@ -1084,7 +1089,7 @@ public class Lot81ModifierDataEndToEndTests
 
     /// <summary>Copie de data/v0 avec bastion.json et rules.json modifiés ; le dossier est à supprimer par l'appelant.</summary>
     private static string DataDirectory(Action<JsonObject>? bastion = null, Action<JsonObject>? rules = null) =>
-        ScenarioTestData.CopyData((relative, text) =>
+        ScenarioTestData.CopyFrozenData((relative, text) =>
         {
             Action<JsonObject>? mutate = relative == "classes/bastion.json" ? bastion : relative == "rules.json" ? rules : null;
             if (mutate is null) return text;
@@ -1115,7 +1120,7 @@ public class Lot81ModifierDataEndToEndTests
 
     private static IReadOnlyList<string> Run(GameData data)
     {
-        ScenarioLoadResult loaded = ScenarioJsonReader.Read(File.ReadAllText(ScenarioTestData.ScenarioPath(Scenario)), data);
+        ScenarioLoadResult loaded = ScenarioJsonReader.Read(File.ReadAllText(ScenarioTestData.FrozenScenarioPath(Scenario)), data);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         var log = new MemoryCombatLog();
         CombatEngine.Run(loaded.Setup!, log);
@@ -1168,12 +1173,12 @@ public class Lot81ModifierDataEndToEndTests
         {
             GameData data = Load(directory);
             LoadedClass bastion = data.Classes.Single();
-            Assert.NotEqual(ScenarioTestData.ShippedData.Classes.Single().Fingerprint, bastion.Fingerprint);
+            Assert.NotEqual(ScenarioTestData.FrozenData.Classes.Single().Fingerprint, bastion.Fingerprint);
             Assert.Equal(9, bastion.Definition.Trees.SelectMany(t => t.Talents).Sum(t => t.Modifiers.Count) + bastion.Definition.Skills.Sum(s => s.Modifiers.Count));
 
             // Scénario écrit dans le dossier temporaire, lu depuis le fichier.
             string scenarioPath = Path.Combine(directory, "scenario.json");
-            File.WriteAllText(scenarioPath, File.ReadAllText(ScenarioTestData.ScenarioPath(Scenario)));
+            File.WriteAllText(scenarioPath, File.ReadAllText(ScenarioTestData.FrozenScenarioPath(Scenario)));
             ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(scenarioPath, data);
             Assert.True(scenario.IsValid, scenario.Report.ToString());
             var first = new MemoryCombatLog();
@@ -1192,7 +1197,7 @@ public class Lot81ModifierDataEndToEndTests
             Assert.EndsWith(",\"rules\":null}", first.Lines[CombatantLine(first.Lines, "assaillant")], StringComparison.Ordinal);
 
             // endurance.max : +20 sur l'endurance maximale du même build sans modificateur (champ du combattant, pas de rules).
-            IReadOnlyList<string> shipped = Run(ScenarioTestData.ShippedData);
+            IReadOnlyList<string> shipped = Run(ScenarioTestData.FrozenData);
             long Endurance(IReadOnlyList<string> lines) => JsonNode.Parse(lines[CombatantLine(lines, "bastion")])!["maxEndurance"]!.GetValue<long>();
             Assert.Equal(Endurance(shipped) + 20, Endurance(first.Lines));
 
@@ -1217,7 +1222,7 @@ public class Lot81ModifierDataEndToEndTests
             }
 
             // Données livrées (classe sans modificateur) : rejeu refusé avant simulation, empreinte de classe en cause.
-            ReplayOutcome refused = CombatLogReplayer.Replay(first.Lines, ScenarioTestData.ShippedData);
+            ReplayOutcome refused = CombatLogReplayer.Replay(first.Lines, ScenarioTestData.FrozenData);
             Assert.Equal(ReplayStatus.Refused, refused.Status);
             Assert.Null(refused.Comparison);
             Assert.Contains(refused.Problems, p => p.Contains(bastion.Fingerprint, StringComparison.Ordinal));
@@ -1253,7 +1258,7 @@ public class Lot81ModifierDataEndToEndTests
             RulesTestData.Set(r, "combat.resonance.perDirectHit", 5);
             RulesTestData.Set(r, "combat.parry.windowMs", 200);
         });
-        IReadOnlyList<string> withModifiers = Run(modified), withRules = Run(baseline), shipped = Run(ScenarioTestData.ShippedData);
+        IReadOnlyList<string> withModifiers = Run(modified), withRules = Run(baseline), shipped = Run(ScenarioTestData.FrozenData);
         Assert.NotEqual(withModifiers[0], withRules[0]);
         Assert.Equal(withRules.Skip(1), withModifiers.Skip(1));
         Assert.Contains("\"rules\":{\"guard.damageReduction\":0.72,\"guard.upkeepPerSecond\":3,\"guard.costPerBlock\":6,", withModifiers[CombatantLine(withModifiers, "bastion")]);
@@ -1289,7 +1294,7 @@ public class Lot81ModifierDataEndToEndTests
 
     /// <summary>Données livrées avec la classe mutée, en mémoire (sans dossier temporaire).</summary>
     private static GameData InMemory(Action<JsonObject> bastion) =>
-        new(ScenarioTestData.ShippedData.Rules, new[] { Valid(ClassTestData.ReadMutated(bastion)) });
+        new(ScenarioTestData.FrozenData.Rules, new[] { Valid(ClassTestData.ReadFrozenMutated(bastion)) });
 
     private static string RulesOf(IReadOnlyList<string> lines)
     {
@@ -1310,10 +1315,10 @@ public class Lot81ModifierDataEndToEndTests
             ClassTestData.Skill(b, 9)["modifiers"] = List(Mod("damageTaken", "-0.5", "whileGuarding"), Mod("maxHealth", "1"));
             ClassTestData.Skill(b, 10)["modifiers"] = List(Mod("skill.bastion.frappe_du_rempart.coefficient", "1"), Mod("status.fragility.durationTaken", "-1000"));
         });
-        IReadOnlyList<string> log = Run(data), shipped = Run(ScenarioTestData.ShippedData);
+        IReadOnlyList<string> log = Run(data), shipped = Run(ScenarioTestData.FrozenData);
         Assert.NotEqual(shipped[0], log[0]);
         Assert.Equal(shipped.Skip(1), log.Skip(1));
-        Assert.Equal(EdS.TestSupport.Lot8LogFields.BaseRulesJson(ScenarioTestData.ShippedData.Rules.Combat), RulesOf(log));
+        Assert.Equal(EdS.TestSupport.Lot8LogFields.BaseRulesJson(ScenarioTestData.FrozenData.Rules.Combat), RulesOf(log));
     }
 
     [Fact]
@@ -1387,7 +1392,7 @@ public class Lot81ModifierDataEndToEndTests
         // attendues depuis le même build sans modificateur : PV max × (1 + %) avec le % écrêté dans [−90 %, +1 000 %] (D2) ;
         // endurance et résistance en contributions plates, endurance ≥ 0.
         JsonObject Bastion(IReadOnlyList<string> lines) => JsonNode.Parse(lines[CombatantLine(lines, "bastion")])!.AsObject();
-        JsonObject shipped = Bastion(Run(ScenarioTestData.ShippedData));
+        JsonObject shipped = Bastion(Run(ScenarioTestData.FrozenData));
         long health = shipped["maxHealth"]!.GetValue<long>();
         decimal resistance = shipped["statusResistance"]!.GetValue<decimal>();
         Assert.Equal(0, health % 10);   // multiplications exactes ci-dessous : l'arrondi n'intervient pas
@@ -1400,7 +1405,7 @@ public class Lot81ModifierDataEndToEndTests
         Assert.Equal((health * 11, health * 11), (high["maxHealth"]!.GetValue<long>(), high["health"]!.GetValue<long>()));   // +2 000 % → +1 000 %
         Assert.Equal((0L, 0L), (high["maxEndurance"]!.GetValue<long>(), high["endurance"]!.GetValue<long>()));
         Assert.Equal(resistance + 5.5m, high["statusResistance"]!.GetValue<decimal>());
-        Assert.Equal(EdS.TestSupport.Lot8LogFields.BaseRulesJson(ScenarioTestData.ShippedData.Rules.Combat), high["rules"]!.ToJsonString());
+        Assert.Equal(EdS.TestSupport.Lot8LogFields.BaseRulesJson(ScenarioTestData.FrozenData.Rules.Combat), high["rules"]!.ToJsonString());
 
         JsonObject low = Bastion(Run(InMemory(b =>
         {
@@ -1449,7 +1454,7 @@ public class Lot81ModifierDataImmutabilityTests
         Assert.True(((IList<T>)list).IsReadOnly);
     }
 
-    private static LoadedClass Loaded() => Valid(ClassTestData.ReadMutated(root =>
+    private static LoadedClass Loaded() => Valid(ClassTestData.ReadFrozenMutated(root =>
     {
         ClassTestData.Talent(root, 0, 0)["modifiers"] = List(Mod("guard.damageReduction", """{ "base": 0.04, "perRank": 0.04 }"""));
         ClassTestData.Skill(root, 7)["modifiers"] = List(Mod("endurance.max", "20"), Mod("damageTaken", "-0.02", "whileGuarding", "perRampartCharge"));

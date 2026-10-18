@@ -19,6 +19,9 @@ public class Lot73CliTests
         Lot71Files.InTempDirectory(directory =>
         {
             JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath("entrainement_garde_parade")))!.AsObject();
+            // Sous-lot 8.5 : les talents livrés Écho défensif, Égide réactive et Riposte précise portent des déclencheurs ; le Bastion
+            // ne garde ici que Garde stable (modificateurs seulement) pour un combat sans déclencheur.
+            Combatant(root, 0)["build"]!["talents"] = new JsonObject { ["talent.bastion.rempart.garde_stable"] = 3 };
             mutate(root);
             string path = Path.Combine(directory, "scenario.json");
             File.WriteAllText(path, Lot71Files.ToJson(root));

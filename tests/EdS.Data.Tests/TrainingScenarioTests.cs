@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "9cb84d3befb21cc151bac5c3daf23946408d5227d3e3143359735e047c7ce9a6")]
-    [InlineData("entrainement_rupture", "7a741baad5b3c2c0875d79cc3966d6d0b7e9998393a4af5c804a5f61d3114da8")]
-    [InlineData("entrainement_alterations", "7757439d2aa359305dab10fb7d37566c11e46efa2a811217239c5212d126ee98")]
-    [InlineData("entrainement_declencheurs", "686243bedce5ce08e65a588be2c3b3f371268f928dfb9183990e212f52da9c88")]
+    [InlineData("entrainement_garde_parade", "05f3e4e900af80f1d43449c58038799a709911565e2667c140f6ebd7fc92bcf5")]
+    [InlineData("entrainement_rupture", "6ea4d854d82fdba11577e8c5d2b77c3e18c6e3ba2bb3899b98c31c4c467557a1")]
+    [InlineData("entrainement_alterations", "c89f8e06cfe3cf2a1e81cf7580f3cf92bab992e906e6b7154b4e7d7e0b0994c4")]
+    [InlineData("entrainement_declencheurs", "c38cb6c4b071080635d84ad90662ebee652e690a6c4870fb52619f7f4d4d6438")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -114,7 +114,12 @@ public class TrainingScenarioTests
         // inchangé ; référence du scénario à déclencheurs dans Fixtures/reference-0.13.0. Sous-lot 8.4 : moteur 0.14.0, format 8
         // (guard.noUpkeep), règles en schéma 9 (contenu 0.7.0), classes en 8 (contenu 0.3.0, fiches complètes) : le gameplay change
         // (Heurt de bouclier étourdit, Provocation se lance) ; le moteur reproduit l'ancien sur le contenu historique (Lot81ReferenceTests) ;
-        // référence du scénario à déclencheurs dans Fixtures/reference-0.14.0.
+        // référence du scénario à déclencheurs dans Fixtures/reference-0.14.0. Sous-lot 8.5 : moteur inchangé (0.14.0, format 8),
+        // règles au contenu 0.8.0 (altérations du Gardien), Bastion au contenu 0.4.0 (talents, intermédiaires et passifs réels) : les
+        // scénarios équipent des passifs réels et leurs talents agissent (Écho défensif, Égide réactive, Riposte précise, Garde stable) ;
+        // le rupture ne garde que les talents de Gardien et de Contrecoup pour montrer encore une rupture ; le moteur reproduit l'ancien
+        // gameplay avec le contenu figé du 8.4 (Correctif731TriggerScenarioTests) ; référence du scénario à déclencheurs dans
+        // Fixtures/reference-0.14.0-contenu-0.4.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }
@@ -130,8 +135,9 @@ public class TrainingScenarioTests
         Assert.Equal((3L, 8L, 1L, 0L), (bastion.Blocks, bastion.PerfectParries, bastion.FailedParries, bastion.GuardBreaks));
         Assert.Equal(5, bastion.RampartCharges);   // 8 parades, plafond 5
         // Correctif 7.2 : la parade parfaite de l'attaque porteuse de Fragilité l'empêche (stateBlocked, raison parried) ;
-        // les impacts suivants ne subissent plus +10 % : 427 au lieu de 444 (387 depuis l'étourdissement du sous-lot 8.4).
-        Assert.Equal(387, bastion.DamageTaken);
+        // les impacts suivants ne subissent plus +10 % : 427 au lieu de 444 (387 depuis l'étourdissement du sous-lot 8.4). Sous-lot 8.5 :
+        // 89, la garde plus forte (Garde stable, Posture de fer) et les boucliers d'Égide réactive absorbant le reste.
+        Assert.Equal(89, bastion.DamageTaken);
         Assert.Contains(Simulate("entrainement_garde_parade").Lines,
             l => l.Contains("\"event\":\"attackSkipped\"") && l.Contains("\"reason\":\"stunned\""));
         Assert.Contains(Simulate("entrainement_garde_parade").Lines,

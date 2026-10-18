@@ -353,6 +353,8 @@ namespace EdS.Domain.Combat
         /// étourdissement 1,5 s puis immunité 3 s, gel 4 s à −30 % de déplacement, Fragilité et rupture de garde inchangées. Sous-lot 8.4 :
         /// altérations des compétences du Bastion (feuille de route) : provocation 3 s, bouclier de la Barrière d'acier 6 s, et pour l'ultime
         /// Bastion absolu, 8 s de dégâts subis −30 % (le Bastion et ses alliés), de garde sans entretien (le Bastion) et de provocation.
+        /// Sous-lot 8.5 : altérations des talents du Gardien : bouclier d'Égide réactive 4 s, protection de Lien protecteur 6 s (25 % des
+        /// dégâts transférés au Bastion, comme la Barrière d'acier qui la pose) et provocation de Serment du gardien 2 s.
         /// </summary>
         public static readonly StatusCatalog Provisional = new StatusCatalog(new[]
         {
@@ -376,6 +378,10 @@ namespace EdS.Domain.Combat
             new StatusDefinition("bastionAbsoluteGuard", StatusCategory.Buff, 8000, StatusStacking.Refresh,
                 modifiers: new[] { new ModifierDefinition("guard.noUpkeep", Fixed.One) }),
             new StatusDefinition("bastionAbsoluteTaunt", StatusCategory.Taunt, 8000, StatusStacking.PerSourceKeepStronger),
+            new StatusDefinition("reactiveAegis", StatusCategory.Shield, 4000, StatusStacking.PerSourceKeepStronger),
+            new StatusDefinition("protectiveLink", StatusCategory.Protection, 6000, StatusStacking.PerSourceKeepStronger,
+                redirectRatio: Fixed.FromRatio(1, 4)),
+            new StatusDefinition("oathTaunt", StatusCategory.Taunt, 2000, StatusStacking.PerSourceKeepStronger),
         });
 
         private readonly Dictionary<string, StatusDefinition> _byId = new Dictionary<string, StatusDefinition>(StringComparer.Ordinal);

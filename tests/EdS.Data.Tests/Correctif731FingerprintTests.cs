@@ -27,7 +27,8 @@ public class Correctif731FingerprintTests
 
     private static GameData Data(Action<JsonObject>? rules = null, Action<JsonObject>? bastion = null)
     {
-        string directory = CopyData((relative, text) =>
+        // Sous-lot 8.5 : contenu figé du 8.4 (passif « [TEST] » sans déclencheur), le contenu livré portant ses propres déclencheurs.
+        string directory = CopyFrozenData((relative, text) =>
         {
             if (relative == "rules.json")
             {
@@ -98,8 +99,8 @@ public class Correctif731FingerprintTests
         Assert.NotEqual(classA, classB);
         Assert.Equal(a.Rules.Fingerprint, b.Rules.Fingerprint);
 
-        // Mannequin livré (passif 1 équipé) et un assaillant qui pose la Fragilité au tick 0 : la réaction ne joue qu'avec A.
-        JsonObject scenario = JsonNode.Parse(MannequinJson)!.AsObject();
+        // Mannequin figé du 8.4 (passif 1 équipé) et un assaillant qui pose la Fragilité au tick 0 : la réaction ne joue qu'avec A.
+        JsonObject scenario = JsonNode.Parse(File.ReadAllText(FrozenMannequinPath))!.AsObject();
         DataOf(scenario)["combatants"]!.AsArray().Add(FragilityAssailant("bastion", 0));
         string json = scenario.ToJsonString();
         List<string> logA = Simulate(json, a), logB = Simulate(json, b);
@@ -178,8 +179,9 @@ public class Correctif731FingerprintTests
         // version du moteur et les empreintes de l'en-tête : toutes les lignes de combat sont identiques octet par octet.
         string[] old = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "logs-0.9.0", name + ".jsonl"));
         var log = new MemoryCombatLog();
-        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay.
-        CombatEngine.Run(ScenarioJsonReader.ReadFile(ScenarioPath(name), HistoricalData).Setup!, log);
+        // Sous-lot 8.4 : contenu historique du Bastion (ScenarioTestData.HistoricalData) ; le contenu livré change le gameplay. Sous-lot
+        // 8.5 : scénarios figés du 8.4 (passifs « [TEST] »), ceux livrés équipant désormais des passifs réels.
+        CombatEngine.Run(ScenarioJsonReader.ReadFile(FrozenScenarioPath(name), HistoricalData).Setup!, log);
         // Sous-lot 8.1 : hors champs ajoutés au format 5 (Lot81ReferenceTests), comparés à part.
         Assert.Equal(old.Skip(1).Select(EdS.TestSupport.Lot8LogFields.Comparable), log.Lines.Skip(1).Select(EdS.TestSupport.Lot8LogFields.Comparable));
         JsonObject Strip(string header)

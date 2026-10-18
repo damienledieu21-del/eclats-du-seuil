@@ -11,5 +11,5 @@ public class DataFormatTests
     public void Version_de_schema_des_classes_du_lot_8() => Assert.Equal(8, DataFormat.ClassSchemaVersion);   // 5 : modificateurs (8.1) ; 6 : shield.potencyDealt (8.2) ; 7 : soutien et protections (8.3) ; 8 : Charges dépensées, guard.noUpkeep (8.4)
 
     [Fact]
-    public void Contenu_marque_provisoire() => Assert.Equal("0.7.0-provisoire", DataFormat.ProvisionalRulesContentVersion);   // 0.7.0 : altérations du Bastion (8.4)
+    public void Contenu_marque_provisoire() => Assert.Equal("0.8.0-provisoire", DataFormat.ProvisionalRulesContentVersion);   // 0.8.0 : altérations du Gardien (8.5)
 }

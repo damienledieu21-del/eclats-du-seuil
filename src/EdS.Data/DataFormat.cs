@@ -34,7 +34,13 @@ namespace EdS.Data
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
         public const int ClassSchemaVersion = 8;
 
-        /// <summary>Version de contenu des règles livrées : provisoires, non équilibrées. 0.7.0 : altérations du Bastion (sous-lot 8.4).</summary>
-        public const string ProvisionalRulesContentVersion = "0.7.0-provisoire";
+        /// <summary>Version de schéma courante des fichiers de builds de référence (<c>builds/*.json</c>, sous-lot 8.5).</summary>
+        public const int BuildsSchemaVersion = 1;
+
+        /// <summary>
+        /// Version de contenu des règles livrées : provisoires, non équilibrées. 0.7.0 : altérations du Bastion (sous-lot 8.4) ;
+        /// 0.8.0 : altérations des talents du Gardien (sous-lot 8.5).
+        /// </summary>
+        public const string ProvisionalRulesContentVersion = "0.8.0-provisoire";
     }
 }
