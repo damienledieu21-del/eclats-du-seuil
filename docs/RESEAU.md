@@ -69,6 +69,7 @@ Serveur dédié (outil .NET, hors Unity) :
 ```bash
 dotnet run --project src/EdS.Server -- --local                      # ce poste seulement, port 7777
 dotnet run --project src/EdS.Server -- --port 7777 --journaux combats   # réseau local, journaux rejouables (eds replay)
+dotnet run --project src/EdS.Server -- --local --robot              # avec un équipier robot (sous-lot 10.4)
 ```
 
 ## Client (sous-lot 10.3)
@@ -82,6 +83,13 @@ dotnet run --project src/EdS.Server -- --port 7777 --journaux combats   # résea
 - **Affichage partagé** : `CombatDisplay` (état du joueur, autres combattants) et `FeedbackTracker` (retours tirés des compteurs du moteur) sont communs au solo et au réseau ; les refus du serveur (`rejected`) s'affichent comme des retours.
 - **Temps aller-retour** : un `ping` par seconde ; `RttMs` (dernier) et `SmoothedRttMs` (moyenne mobile, 1/8 par mesure).
 - **Coupure** pendant un combat : `Status` = `Disconnected`, jeton gardé, `DisconnectedSeconds` et `CanReconnect` pour l'affichage. `Reconnect(connexion)` reprend la même place : `welcome`, puis l'historique complet ; le combat reprend au tick du serveur (la garde a été relâchée pendant l'absence). Hors combat, une coupure arrête le client (`Failed`), comme un refus du serveur (`error`) ou un message illisible.
+
+## Jeu en réseau dans Unity (sous-lot 10.4)
+
+- **`NetworkSession`** (`EdS.Net`) : une partie vue du jeu, sans détail de transport. `HostGame` crée la salle (`CombatRoom`), l'écoute TCP (port 7777, tout le réseau local) et son hôte temps réel (`RoomHost`) dans le processus du jeu, puis la rejoint par le poste lui-même ; `Join` rejoint une adresse. Les connexions s'ouvrent sans bloquer l'image (délai de 10 s) ; une coupure pendant un combat fait revenir automatiquement avec le jeton, une tentative toutes les 2 s tant que le serveur garde la place (30 s). Les échecs se lisent dans `Error`, sans exception.
+- **`BotPlayer`** : équipier robot pour essayer la coopération seul (hôte Unity « avec un équipier robot », serveur dédié `--robot`). C'est un client ordinaire (mêmes messages, mêmes limites) : prêt dans la salle d'attente, garde levée quand un coup arrive (0,8 s), parade juste avant un coup parable (0,15 s), compétences dès qu'elles sont prêtes, soutiens sur l'autre joueur. Déterministe, sans hasard ; ce n'est pas une intelligence de jeu.
+- **Arrêt de l'hôte** : `RoomHost.Dispose` ferme aussi les connexions des joueurs, avec la raison (« serveur arrêté. ») ; rien ne reste ouvert dans l'éditeur après Play.
+- **Unity** (`EdsGame`, `NetworkScreen`) : touche M (menu : nom, héberger, héberger avec un robot, rejoindre « hôte » ou « hôte:port », revenir au solo) ; salle d'attente (places, builds, prêts, adresse à donner, F1 à F5 et talents envoyés au serveur) ; combat affiché par le même écran que le solo (`ICombatClient`), l'autre Bastion en allié (capsule verte, cercle vert sur l'allié visé, G pour changer) ; temps aller-retour sous le chrono ; bandeau de coupure et de retour. Pas de pause en réseau. Le jeu construit (`unity/Build/`) retrouve les données du dépôt dans ses dossiers parents. Guide : [UNITY.md](UNITY.md#6-jouer-à-deux-en-réseau-lot-10).
 
 ## Réseau simulé
 

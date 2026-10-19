@@ -57,7 +57,7 @@ dotnet run --project src/EdS.Cli -- simulate scenarios/entrainement_garde_parade
 dotnet run --project src/EdS.Cli -- replay combat.jsonl
 dotnet run --project src/EdS.Cli -- report                 # mesures des builds de référence (S1 à S5, trois profils) et objectifs
 dotnet run --project src/EdS.Cli -- report --json --logs journaux   # rapport JSON reproductible, journaux rejouables
-dotnet run --project src/EdS.Server -- --local      # serveur de coopération à deux joueurs (lot 10), port 7777
+dotnet run --project src/EdS.Server -- --local      # serveur de coopération à deux joueurs (lot 10), port 7777 (--robot : équipier robot)
 python3 -m unittest discover -s scripts -p 'test_ci_provenance.py' -v   # générateur du rapport CI non signé
 ```
 
@@ -126,6 +126,8 @@ Sous-lot 10.2 (serveur) : `CombatRoom` (salle de combat autoritaire, une place p
 
 Sous-lot 10.3 (client) : `NetworkClient` (salle d'attente, combat, mesure du temps aller-retour, retour après une coupure avec le jeton) et `NetworkCombat` : le moteur local rejoue les commandes admises par le serveur et compare l'empreinte de son journal à chaque tick ; une divergence, un tick manquant ou une commande refusée localement font demander l'historique et reconstruire le combat (abandon après trois historiques sans accord). Pas de prédiction : le serveur reste seul juge. Les intentions sont regroupées (un envoi toutes les 25 ms au plus). `ICombatClient`, `CombatDisplay` et `FeedbackTracker` (`EdS.Runtime`) font servir le même écran au solo et au réseau. Détail : [docs/RESEAU.md](docs/RESEAU.md#client-sous-lot-103).
 
+Sous-lot 10.4 (Unity) : touche M dans le prototype : héberger une partie de coopération sur ce poste (avec un équipier robot si l'on veut essayer seul) ou rejoindre l'adresse d'un autre poste du réseau local ; salle d'attente (places, builds, prêts), combat à deux affiché par le même écran que le solo, allié visé par les soutiens (G), temps aller-retour, retour automatique après une coupure. Côté cœur : `NetworkSession`, `BotPlayer` (aussi `EdS.Server --robot`), arrêt de l'hôte qui ferme les connexions. Guide : [docs/UNITY.md](docs/UNITY.md#6-jouer-à-deux-en-réseau-lot-10).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -141,4 +143,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
 - [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
 - [x] Lot 9 — prototype Unity 3D : données portables (9.1, PR #12), pont temps réel (9.2, PR #13), projet Unity jouable (9.3, PR #14 et #15), interface de talents (9.4, PR #16) ; terminé le 19 octobre 2026, essayé par Damien dans Unity 6.3
-- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 (protocole et transport, PR #18) fusionné ; 10.2 (serveur, PR #19) et 10.3 (client) en revue ; 10.4 et 10.5 à faire
+- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 (protocole et transport, PR #18) fusionné ; 10.2 (serveur, PR #19), 10.3 (client) et 10.4 (Unity) en revue ; 10.5 à faire
