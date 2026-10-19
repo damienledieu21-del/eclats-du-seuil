@@ -44,7 +44,7 @@
 
 ## Sous-lot 10.6 : télégraphie avancée (option B de la parade)
 
-- **Sensible à la gigue** : l'avance est le temps aller-retour **lissé** (moyenne mobile, 1/8 par mesure, une mesure par seconde) ; quand le délai du prochain message s'écarte beaucoup de la moyenne (gigue forte), la parade tombe trop tôt ou trop tard (56 % à 200 + 0 à 120 ms d'un sens, contre 75 à 82 % sans gigue forte).
+- **Sensible à la gigue** : l'avance est le temps aller-retour **lissé** (moyenne mobile, 1/8 par mesure, une mesure par seconde) ; quand le délai du prochain message s'écarte beaucoup de la moyenne (gigue forte), la parade tombe trop tôt ou trop tard (53 % de parades parfaites à 200 + 0 à 120 ms d'un sens, contre 70 à 78 % sans gigue forte).
 - **Le coup s'affiche avant de tomber** : la barre se remplit et le compte à rebours atteint zéro un aller-retour avant que le coup ne frappe (dégâts, retours et état restent ceux du dernier tick reçu, donc en retard). En réseau local, l'avance ne dépasse pas quelques millisecondes : rien de visible.
 - **Plafond de 1 s** (`MaxTelegraphLeadSeconds`, de 0 à 10 s) : au-delà, la parade redevient difficile, mais le jeu est de toute façon peu jouable à plus de 500 ms d'aller-retour.
 - **Seule la télégraphie** est avancée : recharges, récupération de parade, altérations et barres restent celles du dernier tick reçu. Pas de prédiction locale.
