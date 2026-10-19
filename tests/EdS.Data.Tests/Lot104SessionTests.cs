@@ -60,11 +60,19 @@ public class Lot104SessionTests
         /// <summary>Faux : les connexions échouent (hôte injoignable).</summary>
         public bool Reachable { get; set; } = true;
 
+        /// <summary>Vrai : les connexions aboutissent puis sont coupées aussitôt (avant l'accueil du serveur).</summary>
+        public bool CutOnOpen { get; set; }
+
+        /// <summary>Tentatives de connexion demandées.</summary>
+        public int Attempts { get; private set; }
+
         public Task<INetConnection> Connect()
         {
+            Attempts++;
             if (!Reachable) return Task.FromException<INetConnection>(new SocketLikeException("hôte injoignable"));
             SimulatedConnection connection = Net.Connect("salle", Link);
             Links.Add(connection);
+            if (CutOnOpen) Net.Cut(connection);
             return Task.FromResult<INetConnection>(connection);
         }
 
@@ -103,6 +111,19 @@ public class Lot104SessionTests
 
     private static IReadOnlyList<CombatCommand> ServerCommands(CombatRoom room) =>
         CombatLogReplayer.ReadSetup(room.LastJournal![0], ShippedData, out _)!.Commands;
+
+    [Fact]
+    public void Robot_refuse_erreur_visible_place_libre()
+    {
+        // Revue Codex de la PR #21 (tour 6) : un robot refusé par le serveur (build inconnu) s'arrête avec la raison, que la salle d'attente
+        // d'Unity affiche (« robot arrêté : … ») ; sa place reste libre, le joueur reste dans la salle.
+        var lan = new Lan(Calm(3_000));
+        NetworkSession session = lan.Session("Dam", Rempart, bot: new BuildChoice("build.inconnu"));
+        lan.RunUntil(() => session.Client?.Status == ClientStatus.Lobby && session.Bot?.Client.Status == ClientStatus.Failed, 3);
+        Assert.Contains("build de référence inconnu", session.Bot!.Client.Error);
+        Assert.Null(session.Client!.Lobby!.Seats.Single(s => s.Id == "bastion2").Player);
+        Assert.Equal(ClientStatus.Lobby, session.Client!.Status);
+    }
 
     [Fact]
     public void Build_retenu_seulement_une_fois_accepte_par_le_serveur()
@@ -292,6 +313,28 @@ public class Lot104SessionTests
         lan.RunUntil(() => dam.Client.Status == ClientStatus.Lobby, 40);
         Assert.Equal(ServerHash(lan.Room, dam.Client.Combat), dam.Client.Combat.Hash);
         Assert.Equal(0, dam.Client.Combat.Desyncs);
+    }
+
+    [Fact]
+    public void Retours_coupes_a_l_ouverture_espaces_de_deux_secondes()
+    {
+        // Revue Codex de la PR #21 (tour 7) : une connexion de retour qui aboutit puis se referme avant l'accueil ne fait pas relancer une
+        // tentative à chaque image : une toutes les 2 s, comme quand l'hôte est injoignable.
+        var lan = new Lan(Calm(30_000));
+        NetworkSession dam = lan.Session("Dam", Rempart), lea = lan.Session("Léa", Gardien);
+        lan.RunUntil(() => dam.Client?.Status == ClientStatus.Lobby && lea.Client?.Status == ClientStatus.Lobby, 3);
+        dam.Client!.SetReady(true);
+        lea.Client!.SetReady(true);
+        lan.RunUntil(() => dam.Client.Status == ClientStatus.Combat, 2);
+        lan.CutOnOpen = true;
+        lan.Net.Cut(lan.Links[0]);
+        int before = lan.Attempts;
+        lan.Run(5);
+        Assert.InRange(lan.Attempts - before, 2, 4);   // vers 0, 2 et 4 s (avant : une par image, des centaines)
+        Assert.Equal(ClientStatus.Disconnected, dam.Client.Status);
+        lan.CutOnOpen = false;
+        lan.RunUntil(() => dam.Client.Status == ClientStatus.Combat, 4);
+        Assert.Equal(1, dam.Client.Combat!.Resyncs);
     }
 
     [Fact]
