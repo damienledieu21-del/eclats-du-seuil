@@ -18,3 +18,10 @@
 - **Historique en mémoire** : borné par le plafond de commandes du combat (20 000 dans les règles livrées).
 - **Serveur dédié** : demande le SDK .NET 10 ; l'hôte Unity (10.4) n'en aura pas besoin.
 
+## Sous-lot 10.3 : client
+
+- **Pas de prédiction** : l'affichage montre le dernier tick reçu, en retard d'une latence aller sur le serveur ; une action du joueur prend effet après la latence aller, au tick suivant du serveur (50 ms au plus), et se voit après la latence retour. La parade est la plus exposée : mesures et options au 10.5, décision de Damien ensuite.
+- **Reconstruction complète** après une divergence ou un retour : le combat est rejoué depuis son début (au plus la durée du combat, 1 200 ticks pour le duo) ; rapide en pratique, mais proportionnel au temps écoulé.
+- **Retour manuel** : le client ne rouvre pas la connexion lui-même (il ne connaît pas le transport) ; l'appelant fournit la nouvelle connexion (Unity le fera au 10.4).
+- **Client à appeler régulièrement** : un client qui ne lit plus (jeu figé plusieurs minutes) dépasse les 4 096 messages en attente et sa connexion est coupée ; il peut alors revenir pendant un combat.
+- **Confiance dans le serveur** : un serveur fautif ne fait pas planter le client (lecture stricte, moteur protégé), mais le client montre ce qu'il dit. L'empreinte FNV-1a détecte les divergences accidentelles, pas une falsification.

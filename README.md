@@ -124,6 +124,8 @@ Sous-lot 10.1 (protocole et transport, début du lot 10) : `EdS.Net` (netstandar
 
 Sous-lot 10.2 (serveur) : `CombatRoom` (salle de combat autoritaire, une place par personnage du scénario de coopération `scenarios/coop/duo_meute.json`), `RoomHost` (animation en temps réel avec une écoute TCP) et le serveur dédié `EdS.Server`. Salle d'attente (présentation, build validé par `BuildValidator`, prêt), combat à 50 ms par tick (intentions transformées par `IntentionPlanner`, partagé avec le pont temps réel ; commandes admises et empreinte du journal diffusées à chaque tick), déconnexion sans arrêt du combat et retour avec un jeton dans les 30 s (historique complet), protections (présentation en 5 s, débit, taille, connexions), journal rejouable de chaque combat. Détail : [docs/RESEAU.md](docs/RESEAU.md#serveur-sous-lot-102).
 
+Sous-lot 10.3 (client) : `NetworkClient` (salle d'attente, combat, mesure du temps aller-retour, retour après une coupure avec le jeton) et `NetworkCombat` : le moteur local rejoue les commandes admises par le serveur et compare l'empreinte de son journal à chaque tick ; une divergence, un tick manquant ou une commande refusée localement font demander l'historique et reconstruire le combat (abandon après trois historiques sans accord). Pas de prédiction : le serveur reste seul juge. Les intentions sont regroupées (un envoi toutes les 25 ms au plus). `ICombatClient`, `CombatDisplay` et `FeedbackTracker` (`EdS.Runtime`) font servir le même écran au solo et au réseau. Détail : [docs/RESEAU.md](docs/RESEAU.md#client-sous-lot-103).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -139,4 +141,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
 - [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
 - [x] Lot 9 — prototype Unity 3D : données portables (9.1, PR #12), pont temps réel (9.2, PR #13), projet Unity jouable (9.3, PR #14 et #15), interface de talents (9.4, PR #16) ; terminé le 19 octobre 2026, essayé par Damien dans Unity 6.3
-- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 (protocole et transport, PR #18) fusionné ; 10.2 (serveur, PR #19) en revue ; 10.3 à 10.5 à faire
+- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 (protocole et transport, PR #18) fusionné ; 10.2 (serveur, PR #19) et 10.3 (client) en revue ; 10.4 et 10.5 à faire
