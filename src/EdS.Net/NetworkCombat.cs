@@ -289,14 +289,19 @@ namespace EdS.Net
             return true;
         }
 
-        /// <summary>Historique complet : le combat est reconstruit depuis son début ; rend vrai si l'empreinte finale est celle du serveur.</summary>
-        internal bool ApplyResync(ResyncMessage message)
+        /// <summary>
+        /// Historique complet : le combat est reconstruit depuis son début ; rend vrai si l'empreinte finale est celle du serveur, avec le
+        /// nombre de ticks rejoués (revue Codex de la PR #20 : compté dans ce que rend <see cref="NetworkClient.Advance"/>).
+        /// </summary>
+        internal bool ApplyResync(ResyncMessage message, out int replayed)
         {
+            replayed = 0;
             var log = new HashingCombatLog();
             var engine = new CombatEngine(Setup, log);
             var byTick = new Dictionary<long, TickCommands>();
             foreach (TickCommands t in message.History) byTick[t.Tick] = t;
             var empty = Array.Empty<CombatCommand>();
+            int count = 0;
             // Borné par la durée du combat : un nombre de ticks démesuré s'arrête à la fin du moteur.
             while (engine.CurrentTick < message.Ticks && !engine.IsFinished)
             {
@@ -306,6 +311,7 @@ namespace EdS.Net
                     ResyncFailed($"historique : commandes du tick {engine.CurrentTick} refusées par le moteur local ({refused}).");
                     return false;
                 }
+                count = checked(count + 1);
             }
             if (engine.CurrentTick != message.Ticks || log.Hash != message.Hash)
             {
@@ -320,6 +326,7 @@ namespace EdS.Net
             ResyncAttempts = 0;
             Resyncs++;
             KeepTargets();
+            replayed = count;
             return true;
         }
 
