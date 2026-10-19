@@ -346,6 +346,67 @@ public class Lot101ProtocolTests
         Assert.Equal("trop de messages en attente de lecture.", server.CloseReason);
     }
 
+    [Fact]
+    public void Reseau_simule_file_d_envoi_bornee_en_messages_et_en_octets()
+    {
+        // Revue Codex de la PR #18 (tour 2) : sans avancer le réseau, un émetteur ne peut pas accumuler des messages en route sans fin.
+        var net = new SimulatedNetwork(3);
+        SimulatedListener listener = net.Listen("salle");
+        SimulatedConnection client = net.Connect("salle", new LinkProfile(100, 0));
+        Assert.True(listener.TryAccept(out INetConnection server));
+        for (int i = 0; i < TcpNetConnection.MaxPendingSend; i++) Assert.True(client.Send(Bytes(i)));
+        Assert.Equal(TcpNetConnection.MaxPendingSend, net.InFlightCount);
+        Assert.False(client.Send(Bytes(0)));
+        Assert.False(client.IsOpen);
+        Assert.Equal("file d'envoi pleine : l'autre côté ne lit plus.", client.CloseReason);
+        // Les messages déjà partis arrivent, puis la fin du flux ; rien n'est resté en route.
+        net.Advance(1);
+        Assert.Equal(0, net.InFlightCount);
+        for (int i = 0; i < TcpNetConnection.MaxPendingSend; i++)
+        {
+            Assert.True(server.TryReceive(out byte[] got));
+            Assert.Equal(Bytes(i), got);
+        }
+        Assert.False(server.TryReceive(out _));
+        Assert.Equal("connexion fermée par l'autre côté.", server.CloseReason);
+
+        // En octets : 64 Mio en route au plus (16 messages de 4 Mio dans le sens serveur → client).
+        var bytesNet = new SimulatedNetwork(4);
+        SimulatedListener bytesListener = bytesNet.Listen("salle");
+        bytesNet.Connect("salle", new LinkProfile(100, 0));
+        Assert.True(bytesListener.TryAccept(out INetConnection writer));
+        var big = new byte[Protocol.MaxServerMessageBytes];
+        int fit = (int)(TcpNetConnection.MaxPendingBytes / big.Length);
+        Assert.Equal(16, fit);
+        for (int i = 0; i < fit; i++) Assert.True(writer.Send(big));
+        Assert.False(writer.Send(Bytes(1)));
+        Assert.Equal("file d'envoi pleine : l'autre côté ne lit plus.", writer.CloseReason);
+
+        // Le compte baisse à la livraison : un émetteur au rythme du réseau n'est jamais coupé.
+        var steady = new SimulatedNetwork(5);
+        SimulatedListener steadyListener = steady.Listen("salle");
+        SimulatedConnection talker = steady.Connect("salle", new LinkProfile(100, 0));
+        Assert.True(steadyListener.TryAccept(out INetConnection hearer));
+        for (int i = 0; i < 3 * TcpNetConnection.MaxPendingSend; i++)
+        {
+            Assert.True(talker.Send(Bytes(i)), $"envoi {i}");
+            steady.Advance(0.05);
+            while (hearer.TryReceive(out _)) { }
+        }
+        Assert.True(talker.IsOpen);
+        Assert.True(hearer.IsOpen);
+
+        // L'écoute simulée range au plus 64 connexions pas encore acceptées, comme l'écoute TCP.
+        var crowd = new SimulatedNetwork(6);
+        SimulatedListener door = crowd.Listen("salle");
+        for (int i = 0; i < TcpNetListener.MaxPendingAccepted; i++) Assert.True(crowd.Connect("salle", LinkProfile.Perfect).IsOpen);
+        SimulatedConnection late = crowd.Connect("salle", LinkProfile.Perfect);
+        Assert.False(late.IsOpen);
+        Assert.Equal("connexion refusée : écoute saturée.", late.CloseReason);
+        Assert.True(door.TryAccept(out _));
+        Assert.True(crowd.Connect("salle", LinkProfile.Perfect).IsOpen);
+    }
+
     // --- TCP ---------------------------------------------------------------------------------------------------------------
 
     /// <summary>Attend une condition (fils TCP) au plus 10 s.</summary>
@@ -435,6 +496,37 @@ public class Lot101ProtocolTests
             Assert.Contains("refusé dans ce sens", error);
             Assert.False(third.IsOpen);
         }
+    }
+
+    [Fact]
+    public async Task TCP_ecoute_arretee_ne_rend_plus_aucune_connexion()
+    {
+        // Revue Codex de la PR #18 (tour 2) : des connexions arrivent pendant l'arrêt ; aucune ne survit à l'écoute ni n'est rendue après.
+        var listener = new TcpNetListener(IPAddress.Loopback, 0);
+        int port = listener.Port;
+        Task<TcpNetConnection>[] connecting = Enumerable.Range(0, 16)
+            .Select(_ => TcpNetConnection.ConnectAsync("127.0.0.1", port, Protocol.MaxServerMessageBytes, Protocol.MaxClientMessageBytes))
+            .ToArray();
+        Thread.Sleep(20);
+        listener.Dispose();
+        Assert.False(listener.TryAccept(out _));
+        listener.Dispose();   // sans effet la seconde fois
+        foreach (Task<TcpNetConnection> attempt in connecting)
+        {
+            TcpNetConnection client;
+            try
+            {
+                client = await attempt;
+            }
+            catch (SocketException)
+            {
+                continue;   // refusée : l'écoute était déjà arrêtée
+            }
+            using (client)
+                Eventually(() => !client.IsOpen, "connexion fermée par l'écoute arrêtée");
+        }
+        Thread.Sleep(50);
+        Assert.False(listener.TryAccept(out _));
     }
 
     [Fact]
