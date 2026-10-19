@@ -259,7 +259,19 @@ namespace EdS.Net
 
         public PlayerState Player() => CombatDisplay.Player(_engine, Setup.Combat, PlayerId, TargetId);
 
-        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId);
+        /// <summary>
+        /// Sous-lot 10.6 (option B de la parade, décision du 19/10/2026) : avance de la télégraphie, en secondes. L'affichage a environ une
+        /// latence de retard sur le serveur et une parade met une latence à l'atteindre : montrer le coup un temps aller-retour plus tôt
+        /// fait arriver une parade pressée « à vue » au moment qui réussit en solo. Temps aller-retour lissé, plafonné
+        /// (<see cref="NetworkClientOptions.MaxTelegraphLeadSeconds"/>) ; 0 avant la première mesure ou si l'option est coupée.
+        /// </summary>
+        public double TelegraphLeadSeconds =>
+            _client.Options.TelegraphAdvance && _client.SmoothedRttMs is double rtt
+                ? Math.Min(_client.Options.MaxTelegraphLeadSeconds, Math.Max(0, rtt / 1000))
+                : 0;
+
+        /// <summary>Les autres combattants ; la télégraphie des assaillants est avancée de <see cref="TelegraphLeadSeconds"/>.</summary>
+        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, TelegraphLeadSeconds);
 
         // --- Commandes du serveur -------------------------------------------------------------------------------------------
 

@@ -17,8 +17,9 @@ public enum ParryTiming
     OnSight = 0,
 
     /// <summary>
-    /// Anticipée : le même moment avancé du temps aller-retour mesuré ; c'est ce que ferait, pour un joueur qui pare à vue, une
-    /// télégraphie affichée en avance du ping.
+    /// Anticipée : le même joueur, qui pare à vue, mais sur la télégraphie avancée du temps aller-retour lissé (option B, sous-lot 10.6,
+    /// <see cref="NetworkClientOptions.TelegraphAdvance"/>) ; au 10.5, avant l'option B, le joueur scripté avançait lui-même son moment
+    /// de parade du temps aller-retour.
     /// </summary>
     Anticipated = 1,
 }
@@ -173,7 +174,9 @@ public static class NetworkMeasures
             SimulatedConnection connection = net.Connect("salle", link);
             players.Add(new Player
             {
-                Client = new NetworkClient(data, connection, name, new BuildChoice(build)),
+                // Sous-lot 10.6 : « à vue » sans avance de la télégraphie (option A), « anticipée » avec (option B, réglage du jeu).
+                Client = new NetworkClient(data, connection, name, new BuildChoice(build),
+                    new NetworkClientOptions { TelegraphAdvance = options.Timing == ParryTiming.Anticipated }),
                 Link = connection,
                 Timing = options.Timing,
                 Aim = new Pcg32(options.Seed, (ulong)(2 * players.Count + 1)),
@@ -316,7 +319,8 @@ public static class NetworkMeasures
             .ToList();
         double soonest = threats.Count == 0 ? double.PositiveInfinity : threats.Min(o => o.NextAttackSeconds!.Value);
         combat.SetGuard(soonest <= GuardSeconds);
-        double lead = ParryLeadSeconds + (player.Timing == ParryTiming.Anticipated ? (client.SmoothedRttMs ?? 0) / 1000 : 0);
+        // Le joueur pare toujours à vue, 50 ms avant le coup affiché ; en « anticipée », l'affichage est avancé par le client (10.6).
+        double lead = ParryLeadSeconds;
         // Temps avant le coup tel que le joueur le perçoit : le compte à rebours du dernier tick reçu, qui continue de s'écouler entre
         // deux ticks (affichage interpolé), à la précision d'une image.
         double elapsed = Math.Min(1.0, combat.TickProgress) * combat.TickSeconds;

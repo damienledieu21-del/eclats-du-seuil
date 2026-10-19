@@ -52,6 +52,30 @@ namespace EdS.Net
 
         /// <summary>Délai du serveur pour revenir après une déconnexion (décision du 19/10/2026 : 30 s), affiché au joueur.</summary>
         public double ReconnectSeconds { get; set; } = 30;
+
+        /// <summary>
+        /// Sous-lot 10.6, option B de la parade en réseau (décision de Damien du 19/10/2026 à 11:28) : la télégraphie des assaillants
+        /// (barre et compte à rebours avant le prochain coup) s'affiche en avance du temps aller-retour lissé, pour qu'une parade pressée
+        /// « à vue » arrive au serveur au même moment qu'en solo. Affichage seulement : le serveur juge toujours sur son tick. Vrai par défaut.
+        /// </summary>
+        public bool TelegraphAdvance { get; set; } = true;
+
+        private double _maxTelegraphLeadSeconds = 1;
+
+        /// <summary>
+        /// Avance de la télégraphie au plus (secondes, de 0 à 10) : une mesure aberrante du temps aller-retour ne vide pas la télégraphie.
+        /// 1 s par défaut, bien au-delà des 400 ms d'aller-retour mesurés au 10.5.
+        /// </summary>
+        public double MaxTelegraphLeadSeconds
+        {
+            get => _maxTelegraphLeadSeconds;
+            set
+            {
+                if (double.IsNaN(value) || value < 0 || value > 10)
+                    throw new ArgumentOutOfRangeException(nameof(value), $"Avance de la télégraphie de {value} s au plus : de 0 à 10 s.");
+                _maxTelegraphLeadSeconds = value;
+            }
+        }
     }
 
     /// <summary>
