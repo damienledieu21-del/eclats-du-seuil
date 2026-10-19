@@ -43,22 +43,27 @@ namespace EdS.Runtime
         }
 
         /// <summary>
-        /// Les autres combattants (ennemis et alliés), dans l'ordre du scénario. <paramref name="telegraphLeadSeconds"/> avance la
-        /// télégraphie (temps avant la prochaine attaque, jamais négatif) : 0 en solo ; en réseau, le temps aller-retour lissé (sous-lot
-        /// 10.6, option B de la parade). Seul l'affichage change : le moteur n'est pas touché.
+        /// Les autres combattants (ennemis et alliés), dans l'ordre du scénario. Le temps avant la prochaine attaque (télégraphie, jamais
+        /// négatif) est diminué de <paramref name="telegraphLeadSeconds"/> (0 en solo ; en réseau, le temps aller-retour lissé : sous-lot
+        /// 10.6, option B de la parade) et de <paramref name="elapsedSeconds"/>, le temps déjà écoulé dans le tick en cours (revue Codex de
+        /// la PR #23, tour 3 : le compte à rebours et la barre s'écoulent en continu entre deux ticks au lieu d'avancer par sauts de 50 ms).
+        /// Seul l'affichage change : le moteur n'est pas touché.
         /// </summary>
-        public static IReadOnlyList<OtherState> Others(CombatEngine engine, string playerId, double telegraphLeadSeconds = 0)
+        public static IReadOnlyList<OtherState> Others(CombatEngine engine, string playerId, double telegraphLeadSeconds = 0, double elapsedSeconds = 0)
         {
             if (engine is null) throw new ArgumentNullException(nameof(engine));
             if (double.IsNaN(telegraphLeadSeconds) || double.IsInfinity(telegraphLeadSeconds) || telegraphLeadSeconds < 0)
                 throw new ArgumentOutOfRangeException(nameof(telegraphLeadSeconds), $"Avance de la télégraphie de {telegraphLeadSeconds} s : positive ou nulle et finie.");
+            if (double.IsNaN(elapsedSeconds) || double.IsInfinity(elapsedSeconds) || elapsedSeconds < 0)
+                throw new ArgumentOutOfRangeException(nameof(elapsedSeconds), $"Temps écoulé dans le tick de {elapsedSeconds} s : positif ou nul et fini.");
+            double shift = telegraphLeadSeconds + elapsedSeconds;
             CombatantView me = engine.View(playerId);
             long tick = engine.CurrentTick;
             double tickSeconds = engine.TickMilliseconds / 1000.0;
             return engine.CombatantIds.Where(id => id != playerId).Select(id =>
             {
                 CombatantView v = engine.View(id);
-                double? next = v.NextAttackTick is long n ? Math.Max(0, Math.Max(0, n - tick) * tickSeconds - telegraphLeadSeconds) : (double?)null;
+                double? next = v.NextAttackTick is long n ? Math.Max(0, Math.Max(0, n - tick) * tickSeconds - shift) : (double?)null;
                 return new OtherState(v, v.Team != me.Team, next);
             }).ToList();
         }

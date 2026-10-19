@@ -93,9 +93,16 @@ public class Lot106TelegraphTests
         }
     }
 
-    /// <summary>Temps avant le prochain coup sans avance : celui du moteur local (dernier tick reçu).</summary>
+    /// <summary>
+    /// Temps avant le prochain coup sans avance : celui du moteur local (dernier tick reçu), écoulé en continu dans le tick en cours
+    /// (revue Codex de la PR #23, tour 3), jamais négatif.
+    /// </summary>
     private static double Raw(NetworkCombat combat, OtherState other) =>
-        Math.Max(0, other.View.NextAttackTick!.Value - combat.Tick) * combat.TickSeconds;
+        Math.Max(0, Math.Max(0, other.View.NextAttackTick!.Value - combat.Tick) * combat.TickSeconds - combat.TickProgress * combat.TickSeconds);
+
+    /// <summary>Le même, avancé de <paramref name="lead"/>.</summary>
+    private static double Advanced(NetworkCombat combat, OtherState other, double lead) =>
+        Math.Max(0, Math.Max(0, other.View.NextAttackTick!.Value - combat.Tick) * combat.TickSeconds - lead - combat.TickProgress * combat.TickSeconds);
 
     [Fact]
     public void Telegraphie_avancee_du_temps_aller_retour_lisse_affichage_seulement()
@@ -123,7 +130,7 @@ public class Lot106TelegraphTests
             foreach (OtherState other in a.Others().Where(o => o.View.NextAttackTick is long))
             {
                 double raw = Raw(a, other);
-                Assert.Equal(Math.Max(0, raw - a.TelegraphLeadSeconds), other.NextAttackSeconds!.Value, 9);
+                Assert.Equal(Advanced(a, other, a.TelegraphLeadSeconds), other.NextAttackSeconds!.Value, 9);
                 checkedThreats++;
                 if (raw > a.TelegraphLeadSeconds) shortened++;
             }
@@ -213,6 +220,25 @@ public class Lot106TelegraphTests
     {
         var engine = new CombatEngine(Duo, new HashingCombatLog());
         Assert.Throws<ArgumentOutOfRangeException>(() => CombatDisplay.Others(engine, "bastion", lead));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CombatDisplay.Others(engine, "bastion", 0, lead));   // temps écoulé (tour 3)
+    }
+
+    [Fact]
+    public void Compte_a_rebours_continu_entre_deux_ticks_en_solo()
+    {
+        // Revue Codex de la PR #23 (tour 3) : la télégraphie s'écoule en continu dans le tick en cours, comme la voit le joueur (barre
+        // fluide dans Unity), au lieu d'avancer par sauts de 50 ms.
+        RealtimeCombat solo = TrainingSession.Load(DataDirectory, ScenarioPath("coop/duo_meute"), durationMs: 10_000).Start();
+        double At() => solo.Others().Where(o => o.NextAttackSeconds is double).Min(o => o.NextAttackSeconds!.Value);
+        double start = At();
+        solo.Advance(0.02);
+        Assert.Equal(0, solo.Tick);   // toujours dans le premier tick
+        Assert.Equal(start - 0.02, At(), 6);
+        solo.Advance(0.02);
+        Assert.Equal(start - 0.04, At(), 6);
+        solo.Advance(0.02);   // tick suivant : le moteur a avancé d'un tick, 10 ms déjà écoulées dans le nouveau
+        Assert.Equal(1, solo.Tick);
+        Assert.Equal(start - 0.06, At(), 6);
     }
 
     [Fact]

@@ -389,10 +389,9 @@ public static class NetworkMeasures
         double soonest = threats.Count == 0 ? double.PositiveInfinity : threats.Min(o => o.NextAttackSeconds!.Value);
         combat.SetGuard(soonest <= GuardSeconds);
         // Le joueur pare toujours à vue, 50 ms avant le coup affiché ; en « anticipée », l'affichage est avancé par le client (10.6).
+        // Revue Codex de la PR #23 (tour 3) : il lit exactement ce que le jeu affiche (Others), dont le compte à rebours s'écoule déjà en
+        // continu entre deux ticks ; plus aucune interpolation propre à la mesure.
         double lead = ParryLeadSeconds;
-        // Temps avant le coup tel que le joueur le perçoit : le compte à rebours du dernier tick reçu, qui continue de s'écouler entre
-        // deux ticks (affichage interpolé), à la précision d'une image.
-        double elapsed = Math.Min(1.0, combat.TickProgress) * combat.TickSeconds;
         foreach (OtherState threat in threats)
         {
             if (threat.View.NextAttack!.Unblockable) continue;
@@ -403,7 +402,7 @@ public static class NetworkMeasures
                 offset = (player.Aim.NextUInt() / (double)uint.MaxValue * 2 - 1) * AimSpreadSeconds;
                 player.Offsets[key] = offset;
             }
-            if (threat.NextAttackSeconds!.Value - elapsed > lead + offset + 1e-9) continue;
+            if (threat.NextAttackSeconds!.Value > lead + offset + 1e-9) continue;
             player.Parried.Add(key);
             player.Offsets.Remove(key);
             combat.Parry();

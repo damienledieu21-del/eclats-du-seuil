@@ -283,8 +283,11 @@ namespace EdS.Net
                 ? Math.Min(_client.Options.MaxTelegraphLeadSeconds, Math.Max(0, rtt / 1000))
                 : 0;
 
-        /// <summary>Les autres combattants ; la télégraphie des assaillants est avancée de <see cref="TelegraphLeadSeconds"/>.</summary>
-        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, TelegraphLeadSeconds);
+        /// <summary>
+        /// Les autres combattants ; la télégraphie des assaillants est avancée de <see cref="TelegraphLeadSeconds"/> et s'écoule en
+        /// continu dans le tick en cours (<see cref="TickProgress"/>, plafonné à un tick si le suivant tarde).
+        /// </summary>
+        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, TelegraphLeadSeconds, TickProgress * TickSeconds);
 
         // --- Commandes du serveur -------------------------------------------------------------------------------------------
 
