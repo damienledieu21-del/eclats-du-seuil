@@ -55,7 +55,7 @@ Exemple : `{"type":"input","guard":true,"parry":false,"slot":2,"target":"loup_a"
 
 ## Réseau simulé
 
-`SimulatedNetwork` remplace TCP dans les tests et les mesures : temps virtuel avancé par l'appelant, latence d'un sens et gigue par lien (tirage `Pcg32` : même graine, mêmes délais), ordre conservé dans chaque sens comme en TCP, fermeture vue après les messages déjà partis, coupure brutale (`Cut`) qui perd les messages en route, mêmes limites de taille. Aucun fil, aucune horloge réelle : les tests de réseau sont reproductibles.
+`SimulatedNetwork` remplace TCP dans les tests et les mesures : temps virtuel avancé par l'appelant, latence d'un sens et gigue par lien (tirage `Pcg32` : même graine, mêmes délais), ordre conservé dans chaque sens comme en TCP, fermeture vue après les messages déjà partis, coupure brutale (`Cut`) qui perd les messages en route, écoute arrêtée qui coupe les connexions pas encore acceptées et libère son adresse, mêmes limites que TCP (taille des messages, 4 096 messages non lus au plus). Aucun fil, aucune horloge réelle : les tests de réseau sont reproductibles.
 
 ## Limites
 
