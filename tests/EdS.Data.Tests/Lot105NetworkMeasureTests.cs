@@ -104,6 +104,8 @@ public class Lot105NetworkMeasureTests
     [InlineData(double.NaN, 0, 0, null, 3.0)]
     [InlineData(double.PositiveInfinity, 0, 0, null, 3.0)]
     [InlineData(2.0, 0, 0, null, 3.0)]
+    [InlineData(1.0, 0, 0, null, 3.0)]
+    [InlineData(0.251, 0, 0, null, 3.0)]
     [InlineData(0.01, -1, 0, null, 3.0)]
     [InlineData(0.01, 0, -5, null, 3.0)]
     [InlineData(0.01, 0, 0, -1.0, 3.0)]
@@ -139,11 +141,16 @@ public class Lot105NetworkMeasureTests
     [Fact]
     public void Pas_minimal_accepte_et_boucle_finie()
     {
-        // Le plus petit pas accepté (1 ms) mesure normalement, en un nombre d'images fini.
-        NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(2_000), new NetworkMeasureOptions { StepSeconds = NetworkMeasures.MinStepSeconds });
-        Assert.True(r.HashesMatch);
-        Assert.Equal(0, r.Desyncs);
-        Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
+        // Le plus petit pas accepté (1 ms) et le plus grand (5 ticks de 50 ms, ce que la salle simule par appel, revue Codex de la
+        // PR #22, tour 5) mesurent un combat complet, en un nombre d'images fini.
+        foreach (double step in new[] { NetworkMeasures.MinStepSeconds, 0.25 })
+        {
+            NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(2_000), new NetworkMeasureOptions { StepSeconds = step });
+            Assert.True(r.HashesMatch, $"pas de {step} s");
+            Assert.Equal(0, r.Desyncs);
+            Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
+            Assert.Equal(40, r.EndTick);
+        }
     }
 
     [Fact]

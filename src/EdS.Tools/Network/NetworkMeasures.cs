@@ -168,7 +168,13 @@ public static class NetworkMeasures
         var net = new SimulatedNetwork(options.Seed);
         SimulatedListener listener = net.Listen("salle");
         int tokens = 0;
-        var room = new CombatRoom(data, scenario, new RoomOptions { TokenSource = () => (++tokens).ToString("x32", CultureInfo.InvariantCulture) });
+        var roomOptions = new RoomOptions { TokenSource = () => (++tokens).ToString("x32", CultureInfo.InvariantCulture) };
+        var room = new CombatRoom(data, scenario, roomOptions);
+        // Revue Codex de la PR #22 (tour 5) : la salle simule au plus MaxTicksPerAdvance ticks par appel et abandonne le reste ;
+        // un pas plus long ferait perdre du temps de combat et rendrait un résultat partiel.
+        if (options.StepSeconds * 1000 > roomOptions.MaxTicksPerAdvance * (double)room.TickMs)
+            throw new ArgumentOutOfRangeException(nameof(options),
+                $"Pas de temps de {options.StepSeconds} s : au plus {roomOptions.MaxTicksPerAdvance} ticks de {room.TickMs} ms par image.");
         // Deux joueurs scriptés : le scénario doit avoir exactement deux places (personnages Bastion).
         if (room.SeatIds.Count != 2)
             throw new ArgumentException($"Scénario à {room.SeatIds.Count} personnage(s) : les mesures du réseau en demandent deux (deux joueurs).", nameof(scenario));
