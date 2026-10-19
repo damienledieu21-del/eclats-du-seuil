@@ -110,6 +110,8 @@ public class Lot105NetworkMeasureTests
     [InlineData(0.01, 0, -5, null, 3.0)]
     [InlineData(0.01, 0, 0, -1.0, 3.0)]
     [InlineData(0.01, 0, 0, double.NaN, 3.0)]
+    [InlineData(0.01, 0, 0, 60.0, 3.0)]
+    [InlineData(0.01, 0, 0, 75.0, 3.0)]
     [InlineData(0.01, 0, 0, 5.0, -1.0)]
     [InlineData(0.01, 0, 0, 5.0, double.PositiveInfinity)]
     public void Reglages_invalides_refuses_avant_la_simulation(double step, int latency, int jitter, double? cutAt, double cutSeconds)
@@ -152,6 +154,34 @@ public class Lot105NetworkMeasureTests
             Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
             Assert.Equal(reference, r.EndTick);   // même fin qu'avec le pas de 10 ms : tout le combat est joué
         }
+    }
+
+    [Fact]
+    public void Latence_extreme_combat_mesure_en_entier()
+    {
+        // Revue Codex de la PR #22 (tour 6) : le budget du combat part de son début (l'entrée dans la salle a son propre budget, borné
+        // d'après la latence) ; une latence de plusieurs secondes est mesurée en entier.
+        NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(3_000), new NetworkMeasureOptions { LatencyMs = 4_000, JitterMs = 500 });
+        Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
+        Assert.True(r.HashesMatch);
+        Assert.Equal(0, r.Desyncs);
+        Assert.InRange(r.RttMs, 8_000, 9_100);
+        // Au-delà de ce que la salle attend pour une présentation (5 s), la mesure échoue avec la raison, jamais un résultat partiel.
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            NetworkMeasures.Run(ShippedData, Calm(3_000), new NetworkMeasureOptions { LatencyMs = 11_000 }));
+        Assert.StartsWith("Le combat n'a pas commencé", error.Message);
+    }
+
+    [Fact]
+    public void Coupure_qui_depasse_la_fin_du_combat_mesure_complete()
+    {
+        // Revue Codex de la PR #22 (tour 6) : coupé à 1 s d'un combat de 3 s, le joueur revient à 6 s ; la mesure attend son retour et dit
+        // pourquoi il n'a pas repris le combat, au lieu de s'arrêter sur un résultat partiel.
+        NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(3_000), new NetworkMeasureOptions { CutAtSeconds = 1, CutSeconds = 5 });
+        Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
+        Assert.False(r.Reconnected);
+        Assert.NotNull(r.ReconnectError);
+        Assert.True(r.HashesMatch);   // l'autre joueur a vu tout le combat
     }
 
     [Fact]
