@@ -58,8 +58,8 @@ Objectif (« Après le lot 8 », point 2) : deux joueurs dans le même combat, r
 
 | Sous-lot | Contenu | État |
 |---|---|---|
-| 10.1 | Protocole (messages stricts et bornés, version 1), transport TCP sans dépendance, réseau simulé déterministe pour les tests | PR #18 : `EdS.Net` (netstandard2.1), `MessageCodec`, `Framing`, `TcpNetConnection`, `SimulatedNetwork`, catégorie de tests `Network` |
-| 10.2 | Serveur : salle à deux places, horloge de 50 ms, intentions rangées au tick, refus motivés, limites de débit, déconnexion et reconnexion, journal rejouable ; serveur dédié | PR vers `main` : `CombatRoom`, `RoomHost`, `EdS.Server`, `IntentionPlanner` (partagé avec le pont temps réel), `HashingCombatLog`, `CombatLogReplayer.ReadSetup`, scénario `coop/duo_meute` |
+| 10.1 | Protocole (messages stricts et bornés, version 1), transport TCP sans dépendance, réseau simulé déterministe pour les tests | PR #18, fusionnée le 19 octobre 2026 : `EdS.Net` (netstandard2.1), `MessageCodec`, `Framing`, `TcpNetConnection`, `SimulatedNetwork`, catégorie de tests `Network` |
+| 10.2 | Serveur : salle à deux places, horloge de 50 ms, intentions rangées au tick, refus motivés, limites de débit, déconnexion et reconnexion, journal rejouable ; serveur dédié | PR #19 : `CombatRoom`, `RoomHost`, `EdS.Server`, `IntentionPlanner` (partagé avec le pont temps réel), `HashingCombatLog`, `CombatLogReplayer.ReadSetup`, scénario `coop/duo_meute` |
 | 10.3 | Client réseau : combat local rejoué depuis les commandes du serveur, contrôle d'empreinte, resynchronisation, reconnexion | à faire |
 | 10.4 | Unity : héberger ou rejoindre, salle d'attente, deux Bastions, ciblage d'un allié, ping | à faire |
 | 10.5 | Mesures : latence (0 à 200 ms), gigue, désynchronisations et coupures provoquées ; rapport, notamment sur la parade | à faire |
