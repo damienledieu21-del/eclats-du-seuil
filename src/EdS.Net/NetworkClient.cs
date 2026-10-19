@@ -120,7 +120,7 @@ namespace EdS.Net
         /// <summary>Combat en cours ou dernier combat ; null avant le premier.</summary>
         public NetworkCombat? Combat { get; private set; }
 
-        /// <summary>Erreur qui a arrêté le client, ou raison de la dernière coupure.</summary>
+        /// <summary>Erreur qui a arrêté le client, raison de la dernière coupure, ou fin de combat non vérifiée (le client reste dans la salle).</summary>
         public string? Error { get; private set; }
 
         /// <summary>Dernier refus du serveur (build, prêt, commande…).</summary>
@@ -280,6 +280,7 @@ namespace EdS.Net
                     }
                     Combat = combat;
                     Status = ClientStatus.Combat;
+                    Error = null;   // une fin non vérifiée du combat précédent ne concerne plus celui-ci
                     _lastInputAt = double.NegativeInfinity;
                     return false;
                 case TickMessage tick:
@@ -303,6 +304,8 @@ namespace EdS.Net
                     {
                         Combat.End(end.Tick, end.Reason);
                         Back(ClientStatus.Lobby);
+                        // Revue Codex de la PR #20 : une fin qui ne concorde pas avec le combat local n'est pas acceptée en silence.
+                        if (Combat.EndProblem != null) Error = Protocol.Text("fin du combat non vérifiée : " + Combat.EndProblem);
                     }
                     return false;
                 case ErrorMessage failure:

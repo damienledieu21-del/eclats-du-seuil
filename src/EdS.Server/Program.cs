@@ -71,15 +71,21 @@ public static class Program
         if (robot != null && !gameData.TryGetBuild(robot, out _)) return Fail($"build du robot inconnu : « {robot} ».");
         var room = new CombatRoom(gameData, scenario.Setup, new RoomOptions { DurationMs = duration });
         room.Trace = message => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {message}");
-        int combats = 0;
         if (journals != null)
         {
-            Directory.CreateDirectory(journals);
+            // Revue Codex de la PR #19 : un serveur relancé sur le même dossier continue la numérotation, sans écraser de journal ; une
+            // erreur d'écriture est signalée sans arrêter la salle.
+            var folder = new JournalFolder(journals);
             room.CombatEnded = lines =>
             {
-                string file = Path.Combine(journals, $"combat-{++combats:000}.jsonl");
-                File.WriteAllText(file, string.Concat(lines.Select(l => l + "\n")));
-                Console.WriteLine($"journal écrit : {file}");
+                try
+                {
+                    Console.WriteLine($"journal écrit : {folder.Write(lines)}");
+                }
+                catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+                {
+                    Console.Error.WriteLine($"journal non écrit ({folder.Directory}) : {e.Message}");
+                }
             };
         }
 
