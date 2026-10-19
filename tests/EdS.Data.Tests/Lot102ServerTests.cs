@@ -346,6 +346,37 @@ public class Lot102ServerTests
     }
 
     /// <summary>Les règles du scénario avec un plafond de commandes par acteur et par tick changé.</summary>
+    [Fact]
+    public void Competence_indisponible_refusee_avant_la_planification_la_garde_reste()
+    {
+        // Revue Codex de la PR #19 : comme en solo, une compétence visiblement indisponible ne produit aucune commande et ne fait pas
+        // quitter la garde ; le joueur reçoit un refus motivé.
+        var world = new World(Calm);
+        (Bot a, _) = world.Start();
+        a.Input(guard: true);
+        world.Run(0.2);
+        a.Input(guard: true, slot: 0);
+        world.Run(0.2);
+        Assert.Contains(Commands(a, "bastion"), c => c.Action == CombatAction.UseSkill && c.Skill == "skill.bastion.frappe_du_rempart");
+        int before = Commands(a, "bastion").Count();
+        int rejected = a.All<RejectedMessage>().Count();
+
+        // Juste après : en recharge. Ultime, une fois la recharge globale passée : Résonance insuffisante.
+        a.Input(guard: true, slot: 0);
+        world.Run(1.2);
+        a.Input(guard: true, slot: RealtimeCombatUltimate);
+        world.Run(0.1);
+        Assert.Equal(before, Commands(a, "bastion").Count());   // aucune commande : ni lancer, ni garde quittée
+        string[] reasons = a.All<RejectedMessage>().Skip(rejected).Select(r => r.Reason).ToArray();
+        Assert.True(reasons.Length == 2, string.Join(" | ", reasons));
+        Assert.True(reasons[0].StartsWith("Frappe du rempart : en recharge", StringComparison.Ordinal), reasons[0]);
+        Assert.True(reasons[1].Contains(": Résonance ", StringComparison.Ordinal) && reasons[1].EndsWith("/100", StringComparison.Ordinal), reasons[1]);
+        Assert.True(a.Connection.IsOpen);
+        AssertTicksReplayed(a);
+    }
+
+    private const int RealtimeCombatUltimate = EdS.Runtime.RealtimeCombat.UltimateSlot;
+
     private static CombatSetup WithPerTickLimit(CombatSetup setup, int perTick)
     {
         var rules = new CombatRules();

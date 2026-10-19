@@ -49,5 +49,32 @@ namespace EdS.Runtime
             string? id = slot == RealtimeCombat.UltimateSlot ? build.Ultimate : slot >= 0 && slot < build.ActiveSkills.Count ? build.ActiveSkills[slot] : null;
             return id != null && me.Character.Class.TryGetSkill(id, out SkillDefinition skill) && skill.Combat != null ? skill : null;
         }
+
+        /// <summary>
+        /// Raison visible pour laquelle la compétence d'un emplacement ne partirait pas à ce tick (hors de combat, contrôle, recharge,
+        /// Résonance, endurance, Charges, aucune cible) ; null si elle semble lançable. Le même contrôle sert au pont temps réel (aucune
+        /// commande pour une compétence visiblement indisponible) et au serveur (revue Codex de la PR #19), pour que solo et réseau
+        /// produisent les mêmes commandes : une compétence indisponible ne fait jamais quitter la garde. Indicatif : le moteur reste juge.
+        /// </summary>
+        /// <param name="tick">Tick courant (prochain tick à simuler).</param>
+        /// <param name="hasTarget">Une cible existe pour une compétence à cible ennemie unique.</param>
+        public static string? Unavailable(CombatantView me, SkillDefinition skill, bool ultimate, long tick, double tickSeconds, CombatRules rules, bool hasTarget)
+        {
+            if (me is null) throw new ArgumentNullException(nameof(me));
+            if (skill?.Combat is null) throw new ArgumentException("Compétence sans définition de combat.", nameof(skill));
+            if (rules is null) throw new ArgumentNullException(nameof(rules));
+            SkillCombatDefinition combat = skill.Combat;
+            long readyTick = Math.Max(me.CooldownReadyTick(skill.Id), me.GlobalCooldownReadyTick);
+            double remaining = Math.Max(0, readyTick - tick) * tickSeconds;
+            return me.IsDead ? "hors de combat"
+                : !me.CanCast ? "contrôlé"
+                : tick < me.CooldownReadyTick(skill.Id) ? $"en recharge ({remaining:0.0} s)"
+                : tick < me.GlobalCooldownReadyTick ? "recharge globale"
+                : ultimate && me.Resonance < rules.UltimateResonanceCost ? $"Résonance {me.Resonance}/{rules.UltimateResonanceCost}"
+                : me.Endurance < combat.EnduranceCost ? $"endurance {me.Endurance}/{combat.EnduranceCost}"
+                : me.RampartCharges < combat.RampartChargeCost ? $"Charges {me.RampartCharges}/{combat.RampartChargeCost}"
+                : combat.Targeting == SkillTargeting.Enemy && !hasTarget ? "aucune cible"
+                : null;
+        }
     }
 }
