@@ -1,0 +1,16 @@
+{
+    "name": "EdS.Server",
+    "rootNamespace": "EdS.Server",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "EDS_OUTIL_DOTNET_HORS_UNITY"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

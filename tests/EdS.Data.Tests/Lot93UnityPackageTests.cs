@@ -12,7 +12,7 @@ namespace EdS.Data.Tests;
 public class Lot93UnityPackageTests
 {
     private static readonly string[] Portable = { "EdS.Domain", "EdS.Simulation", "EdS.Data", "EdS.Data.Json", "EdS.Runtime", "EdS.Net" };
-    private static readonly string[] Tools = { "EdS.Tools", "EdS.Cli" };
+    private static readonly string[] Tools = { "EdS.Tools", "EdS.Cli", "EdS.Server" };
 
     /// <summary>Racine du dépôt (dossier qui contient EdS.sln), retrouvée depuis le dossier des tests.</summary>
     private static string Root
@@ -79,6 +79,7 @@ public class Lot93UnityPackageTests
     [Theory]
     [InlineData("EdS.Tools")]
     [InlineData("EdS.Cli")]
+    [InlineData("EdS.Server")]
     public void Outils_dotnet_exclus_de_Unity(string project) =>
         Assert.Equal(new[] { "EDS_OUTIL_DOTNET_HORS_UNITY" }, Asmdef(project)["defineConstraints"]!.AsArray().Select(c => c!.GetValue<string>()));
 

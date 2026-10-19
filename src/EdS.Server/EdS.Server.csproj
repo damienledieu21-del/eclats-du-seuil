@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sous-lot 10.2 : serveur dédié (outil .NET, hors Unity) : une salle de combat autoritaire sur le réseau local. -->
+  <ItemGroup>
+    <ProjectReference Include="..\EdS.Net\EdS.Net.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>
