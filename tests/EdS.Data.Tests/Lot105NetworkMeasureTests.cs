@@ -1,6 +1,7 @@
 using EdS.Data.Json;
 using EdS.Data.Scenarios;
 using EdS.Domain.Combat;
+using EdS.Simulation.Engine;
 using EdS.Tools.Network;
 using static EdS.Data.Tests.ScenarioTestData;
 
