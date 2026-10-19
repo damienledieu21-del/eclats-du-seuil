@@ -34,3 +34,10 @@
 - **Un seul scénario en réseau** (`coop/duo_meute`) ; place attribuée dans l'ordre d'arrivée (le robot peut prendre la première).
 - **Pas de pause** en réseau (le serveur mène le combat) ; talents et builds se changent en salle d'attente seulement ; le build composé n'est pas sauvegardé.
 - **Positions toujours visuelles** : l'allié est dessiné à côté du joueur ; chacun voit son personnage au centre.
+
+## Sous-lot 10.5 : mesures
+
+- **Joueurs scriptés** : plus réguliers qu'un humain (± 25 ms d'imprécision) ; les pourcentages de parade sont des ordres de grandeur.
+- **Un scénario, deux builds** (coopération contre la meute, Rempart et Gardien), parties de 60 s, 3 graines par réglage par défaut.
+- **Réseau simulé** sans perte isolée ni débit limité ; la gigue représente les retards de TCP.
+- **Aucune compensation de latence** n'est faite : le choix (options A à D du rapport) revient à Damien.
