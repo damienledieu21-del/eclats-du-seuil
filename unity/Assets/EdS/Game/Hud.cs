@@ -19,6 +19,7 @@ namespace EdS.Game
         private static GUIStyle _small;
         private static GUIStyle _title;
         private static GUIStyle _button;
+        private static GUIStyle _field;
 
         public static float Scale => Screen.height / VirtualHeight;
         public static float Width => Screen.width / Scale;
@@ -32,6 +33,7 @@ namespace EdS.Game
             _small = new GUIStyle(_label) { fontSize = 16 };
             _title = new GUIStyle(_label) { fontSize = 26, fontStyle = FontStyle.Bold };
             _button = new GUIStyle(GUI.skin.button) { fontSize = 20, richText = true };
+            _field = new GUIStyle(GUI.skin.textField) { fontSize = 20 };
         }
 
         public static void Begin()
@@ -73,6 +75,9 @@ namespace EdS.Game
         }
 
         public static void Small(Rect rect, string text) => GUI.Label(rect, text, _small);
+
+        /// <summary>Sous-lot 10.4 : champ de saisie d'une ligne (nom du joueur, adresse de l'hôte).</summary>
+        public static string Field(Rect rect, string text, int maxLength) => GUI.TextField(rect, text ?? "", maxLength, _field);
 
         public static void Title(Rect rect, string text) => GUI.Label(rect, text, _title);
 
@@ -156,19 +161,22 @@ namespace EdS.Game
             Centered(new Rect(x - 100, y - 70, 200, 26), (isTarget ? "» " : "") + other.Id, isTarget ? new Color(1f, 0.9f, 0.3f) : Color.white);
         }
 
-        public static void Help(string scenario, string build, string camera, bool paused)
+        public static void Help(string scenario, string build, string camera, bool paused, bool network)
         {
             float y = 20f;
-            Fill(new Rect(10, 10, 560, 300), new Color(0f, 0f, 0f, 0.4f));
+            Fill(new Rect(10, 10, 560, 324), new Color(0f, 0f, 0f, 0.4f));
             Title(new Rect(20, y, 540, 34), "Éclats du Seuil — prototype");
-            Small(new Rect(20, y + 36, 540, 24), $"Scénario : {scenario}  ·  Build : {build}");
+            Small(new Rect(20, y + 36, 540, 24), $"{(network ? "Réseau" : "Scénario")} : {scenario}  ·  Build : {build}");
             Small(new Rect(20, y + 60, 540, 24), $"Caméra : {camera}{(paused ? "  ·  <color=#ffd84a>PAUSE</color>" : "")}");
-            Small(new Rect(20, y + 92, 540, 210),
+            // Sous-lot 10.4 : en réseau, pas de pause ni de scénario suivant (le serveur mène le combat) ; G vise l'autre joueur.
+            Small(new Rect(20, y + 92, 540, 230),
                 "ZQSD / flèches : se déplacer   ·   clic droit ou Maj : garde (maintenir)\n" +
                 "Espace : parade parfaite (juste avant l'impact)   ·   1 à 4 : compétences   ·   R : ultime\n" +
                 "Tab : changer de cible   ·   C : caméra   ·   A / E : tourner (isométrique)   ·   molette : zoom\n" +
-                "N : scénario suivant   ·   F1 à F5 : build   ·   Retour arrière : recommencer\n" +
-                "T : talents   ·   Échap : pause   ·   H : masquer l'aide");
+                (network
+                    ? "G : allié visé par les soutiens   ·   F1 à F5 et T (salle d'attente) : build\nM : menu réseau   ·   H : masquer l'aide"
+                    : "N : scénario suivant   ·   F1 à F5 : build   ·   Retour arrière : recommencer\n" +
+                      "T : talents   ·   Échap : pause   ·   M : jeu en réseau   ·   H : masquer l'aide"));
         }
     }
 }
