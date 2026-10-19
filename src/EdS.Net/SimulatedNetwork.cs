@@ -111,6 +111,12 @@ namespace EdS.Net
         /// <summary>Messages en route (tests).</summary>
         public int InFlightCount => _inFlight.Count;
 
+        /// <summary>Retire une écoute arrêtée : l'adresse peut de nouveau être écoutée (revue Codex de la PR #18).</summary>
+        internal void Unregister(SimulatedListener listener)
+        {
+            if (_listeners.TryGetValue(listener.Address, out SimulatedListener? current) && current == listener) _listeners.Remove(listener.Address);
+        }
+
         internal void Post(SimulatedConnection from, byte[]? payload, string? closeReason)
         {
             SimulatedConnection to = from.Peer!;
@@ -188,7 +194,16 @@ namespace EdS.Net
 
         public void Dispose() => Close("fermée.");
 
-        internal void Deliver(byte[] payload) => _inbox.Enqueue(payload);
+        /// <summary>Comme en TCP : au-delà de <see cref="TcpNetConnection.MaxPendingReceived"/> messages non lus, le lien est coupé.</summary>
+        internal void Deliver(byte[] payload)
+        {
+            if (_inbox.Count >= TcpNetConnection.MaxPendingReceived)
+            {
+                _network.Cut(this, "trop de messages en attente de lecture.");
+                return;
+            }
+            _inbox.Enqueue(payload);
+        }
 
         internal void MarkClosed(string reason)
         {
@@ -224,6 +239,16 @@ namespace EdS.Net
             return true;
         }
 
-        public void Dispose() => Stopped = true;
+        /// <summary>
+        /// Arrête l'écoute (revue Codex de la PR #18) : les connexions pas encore acceptées sont coupées (leurs clients ne peuvent plus
+        /// rien envoyer), l'adresse est libérée pour une nouvelle écoute.
+        /// </summary>
+        public void Dispose()
+        {
+            if (Stopped) return;
+            Stopped = true;
+            while (Pending.Count > 0) _network.Cut(Pending.Dequeue(), "écoute arrêtée.");
+            _network.Unregister(this);
+        }
     }
 }

@@ -314,6 +314,38 @@ public class Lot101ProtocolTests
         Assert.False(net.Connect("ailleurs", LinkProfile.Perfect).IsOpen);
     }
 
+    [Fact]
+    public void Reseau_simule_ecoute_arretee_et_lecteur_qui_ne_lit_plus()
+    {
+        // Revue Codex de la PR #18 : une écoute arrêtée coupe les connexions pas encore acceptées et libère son adresse.
+        var net = new SimulatedNetwork(1);
+        SimulatedListener first = net.Listen("salle");
+        SimulatedConnection waiting = net.Connect("salle", new LinkProfile(10, 0));
+        Assert.True(waiting.Send(Bytes(1)));
+        first.Dispose();
+        Assert.False(waiting.IsOpen);
+        Assert.Equal("écoute arrêtée.", waiting.CloseReason);
+        Assert.False(waiting.Send(Bytes(2)));
+        Assert.Equal(0, net.InFlightCount);
+        Assert.False(first.TryAccept(out _));
+        Assert.False(net.Connect("salle", LinkProfile.Perfect).IsOpen);
+        first.Dispose();   // sans effet la seconde fois
+
+        SimulatedListener second = net.Listen("salle");
+        SimulatedConnection client = net.Connect("salle", LinkProfile.Perfect);
+        Assert.True(second.TryAccept(out INetConnection server));
+
+        // Comme en TCP, un côté qui ne lit plus est coupé au-delà de 4 096 messages en attente, au lieu de grossir sans fin.
+        for (int i = 0; i < TcpNetConnection.MaxPendingReceived; i++) Assert.True(client.Send(Bytes(i)));
+        net.Advance(0);
+        Assert.True(server.IsOpen);
+        Assert.True(client.Send(Bytes(0)));
+        net.Advance(0);
+        Assert.False(server.IsOpen);
+        Assert.False(client.IsOpen);
+        Assert.Equal("trop de messages en attente de lecture.", server.CloseReason);
+    }
+
     // --- TCP ---------------------------------------------------------------------------------------------------------------
 
     /// <summary>Attend une condition (fils TCP) au plus 10 s.</summary>
