@@ -76,6 +76,9 @@ public sealed class NetworkMeasureResult
     /// <summary>Durée d'un tick du combat mesuré (règles des données), en millisecondes.</summary>
     public int TickMs { get; init; }
 
+    /// <summary>Ticks du serveur dont l'instant a été relevé (contrôle : tous ceux du combat, dernier compris).</summary>
+    public int TimedTicks { get; init; }
+
     /// <summary>Retard moyen de l'affichage sur le serveur (ticks d'écart × 50 ms).</summary>
     public double DisplayLagMeanMs { get; init; }
 
@@ -240,8 +243,15 @@ public static class NetworkMeasures
                     combatBudget = true;
                     frameLimit = checked(frame + 1 + (long)Math.Ceiling(combatSeconds / step));
                 }
-                for (long t = lastTick; t < room.Tick; t++) tickTimes[t] = net.Now;
-                lastTick = room.Tick;
+            }
+            // Revue Codex de la PR #22 (tour 7, corrigé au 10.6) : instants des ticks relevés aussi pendant l'image où la salle passe à
+            // Ended (son moteur est alors rendu : le dernier tick est celui du résultat) ; une parade appliquée sur les derniers ticks
+            // compte ainsi dans les délais d'action, comme dans les résultats.
+            if (combatStart != null)
+            {
+                long reached = room.Phase == RoomPhase.Ended && room.LastResult is { } done ? done.EndTick : room.Tick;
+                for (long t = lastTick; t < reached; t++) tickTimes[t] = net.Now;
+                lastTick = Math.Max(lastTick, reached);
             }
             Player first = players[0];
             if (options.CutAtSeconds is double cutAt && !cut && combatStart is double started && net.Now - started >= cutAt)
@@ -325,6 +335,7 @@ public static class NetworkMeasures
             ActionDelayP95Ms = Percentile95(delays),
             ActionDelaysMs = delays.AsReadOnly(),
             TickMs = room.TickMs,
+            TimedTicks = tickTimes.Count,
             DisplayLagMeanMs = lagSamples == 0 ? 0 : lagSum / lagSamples,
             RttMs = firstClient.SmoothedRttMs ?? 0,
             Desyncs = players.Sum(p => p.Client.Combat?.Desyncs ?? 0),
