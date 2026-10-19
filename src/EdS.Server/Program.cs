@@ -28,11 +28,21 @@ public static class Program
         string? robot = null;
         for (int i = 0; i < args.Length; i++)
         {
-            string? Next() => i + 1 < args.Length ? args[++i] : null;
-            switch (args[i])
+            // Revue Codex de la PR #19 : une option à valeur sans valeur (ou suivie d'une autre option) est refusée, au lieu d'avaler
+            // l'option suivante (« --journaux --local » ouvrait tout le réseau local).
+            string option = args[i];
+            string? Next() => i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : null;
+            string? value;
+            switch (option)
             {
-                case "--data": data = Next() ?? ""; break;
-                case "--scenario": scenarioPath = Next() ?? ""; break;
+                case "--data":
+                    if (string.IsNullOrWhiteSpace(value = Next())) return Fail($"valeur manquante après « {option} ».");
+                    data = value;
+                    break;
+                case "--scenario":
+                    if (string.IsNullOrWhiteSpace(value = Next())) return Fail($"valeur manquante après « {option} ».");
+                    scenarioPath = value;
+                    break;
                 case "--port":
                     if (!int.TryParse(Next(), out port) || port < 0 || port > 65535) return Fail("port invalide.");
                     break;
@@ -40,7 +50,10 @@ public static class Program
                     if (!long.TryParse(Next(), out long ms) || ms <= 0) return Fail("durée invalide.");
                     duration = ms;
                     break;
-                case "--journaux": journals = Next(); break;
+                case "--journaux":
+                    if (string.IsNullOrWhiteSpace(value = Next())) return Fail($"valeur manquante après « {option} ».");
+                    journals = value;
+                    break;
                 case "--local": local = true; break;
                 case "--robot":
                     robot = i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : "build.bastion.gardien";

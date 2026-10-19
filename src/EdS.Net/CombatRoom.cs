@@ -57,6 +57,9 @@ namespace EdS.Net
             public double Tokens;
             public double TokensAt;
             public double LastResyncAt = double.NegativeInfinity;
+
+            /// <summary>Refusée (erreur envoyée, connexion fermée) : ses messages encore en file ne sont plus lus.</summary>
+            public bool Failed;
         }
 
         private sealed class Seat
@@ -183,17 +186,16 @@ namespace EdS.Net
         {
             if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0) throw new ArgumentOutOfRangeException(nameof(seconds));
             Now += seconds;
-            foreach (Client client in _clients.ToArray()) Receive(client);
+            // Revue Codex de la PR #19 : les délais sont appliqués au nouvel instant avant de lire les messages en attente ; un hello
+            // ou un reconnect arrivé pendant cet intervalle mais lu après l'échéance n'est plus accepté.
             foreach (Client client in _clients.ToArray())
-            {
-                if (client.Connection.IsOpen)
-                {
-                    if (client.Seat is null && Now - client.AcceptedAt >= _options.HelloTimeoutSeconds)
-                        Fail(client, $"présentation attendue (hello ou reconnect) dans les {_options.HelloTimeoutSeconds} s.");
-                    continue;
-                }
-                Drop(client);
-            }
+                if (client.Connection.IsOpen && client.Seat is null && Now - client.AcceptedAt >= _options.HelloTimeoutSeconds)
+                    Fail(client, $"présentation attendue (hello ou reconnect) dans les {_options.HelloTimeoutSeconds} s.");
+            ExpireDisconnected();
+            foreach (Client client in _clients.ToArray())
+                if (!client.Failed) Receive(client);
+            foreach (Client client in _clients.ToArray())
+                if (!client.Connection.IsOpen) Drop(client);
             ExpireDisconnected();
             if (Phase == RoomPhase.Combat)
             {
@@ -455,20 +457,36 @@ namespace EdS.Net
                 : c);
             var setup = new CombatSetup(_scenario.Seed, _options.DurationMs ?? _scenario.DurationMs, _scenario.Stats, _scenario.Damage,
                 _scenario.Progression, _scenario.Combat, combatants, Array.Empty<CombatCommand>(), _scenario.Data);
-            IReadOnlyList<RuleViolation> violations = setup.Validate();
-            if (violations.Count > 0)
+            void Refuse(string reason)
             {
                 foreach (Seat seat in _seats)
                 {
                     seat.Ready = false;
-                    if (seat.Client != null) Send(seat.Client, new RejectedMessage(Protocol.Text("combat refusé : " + violations[0])));
+                    if (seat.Client != null) Send(seat.Client, new RejectedMessage(Protocol.Text("combat refusé : " + reason)));
                 }
+                Trace?.Invoke("combat refusé : " + reason);
                 BroadcastLobby();
+            }
+            IReadOnlyList<RuleViolation> violations = setup.Validate();
+            if (violations.Count > 0)
+            {
+                Refuse(violations[0].ToString());
+                return;
+            }
+            var log = new HashingCombatLog();
+            var engine = new CombatEngine(setup, log);
+            // Revue Codex de la PR #19 : l'historique d'un retour doit tenir dans un message du serveur ; sinon le combat est refusé
+            // avant de commencer, plutôt que de couper le joueur au moment de revenir.
+            long bound = ResyncBound(setup, log.Header!, TickMs);
+            if (bound > Protocol.MaxServerMessageBytes)
+            {
+                Refuse($"un historique pourrait atteindre {bound} octets, au-delà de la limite de {Protocol.MaxServerMessageBytes} octets du protocole " +
+                    "(plafond de commandes ou identifiants trop longs).");
                 return;
             }
             _setup = setup;
-            _log = new HashingCombatLog();
-            _engine = new CombatEngine(setup, _log);
+            _log = log;
+            _engine = engine;
             _history.Clear();
             _accumulated = 0;
             Phase = RoomPhase.Combat;
@@ -594,6 +612,31 @@ namespace EdS.Net
             if (LastJournal != null) CombatEnded?.Invoke(LastJournal);
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #19 : taille maximale de l'historique (<see cref="ResyncMessage"/>) d'un combat, en octets : son en-tête,
+        /// puis le plafond de commandes des règles, chacune dans son propre tick, avec les identifiants les plus longs du combat et
+        /// l'instant le plus tardif. Majorant : un vrai historique est toujours plus petit.
+        /// </summary>
+        internal static long ResyncBound(CombatSetup setup, string header, int tickMs)
+        {
+            if (setup is null) throw new ArgumentNullException(nameof(setup));
+            if (header is null) throw new ArgumentNullException(nameof(header));
+            string Longest(IEnumerable<string> ids) => ids.OrderByDescending(id => id.Length).ThenBy(id => id, StringComparer.Ordinal).First();
+            string actor = Longest(setup.Combatants.OfType<CharacterSetup>().Select(c => c.Id));
+            string target = Longest(setup.Combatants.Select(c => c.Id));
+            string skill = Longest(setup.Combatants.OfType<CharacterSetup>()
+                .SelectMany(c => c.Build.ActiveSkills.Concat(c.Build.Ultimate is null ? Array.Empty<string>() : new[] { c.Build.Ultimate })).DefaultIfEmpty("x"));
+            long lastTick = Math.Max(1, setup.DurationMs / tickMs);
+            var worst = new CombatCommand(checked(lastTick * tickMs), actor, skill, target);
+            string hash = MessageCodec.HashPrefix + new string('f', 16);
+            long Size(params TickCommands[] history) => MessageCodec.Encode(new ResyncMessage(header, lastTick, history, hash)).Length;
+            long empty = Size();
+            long one = Size(new TickCommands(lastTick, new[] { worst }));
+            long two = Size(new TickCommands(lastTick - 1, new[] { worst }), new TickCommands(lastTick, new[] { worst }));
+            long commands = Math.Max(1, setup.Combat.MaxCommands);
+            return checked(one + (commands - 1) * (two - one));
+        }
+
         private void SendResync(Client client)
         {
             client.LastResyncAt = Now;
@@ -630,6 +673,7 @@ namespace EdS.Net
         private void Fail(Client client, string reason)
         {
             string text = Protocol.Text(reason);
+            client.Failed = true;
             Trace?.Invoke($"{client.Connection.RemoteAddress} refusé : {text}");
             client.Connection.Send(new ErrorMessage(text));
             client.Connection.Close(text);

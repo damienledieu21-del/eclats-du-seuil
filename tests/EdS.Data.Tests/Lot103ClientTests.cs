@@ -580,10 +580,22 @@ public class Lot103ClientTests
         Assert.Equal(ClientStatus.Combat, b.Status);
         Assert.True(b.Combat!.Tick > frozen + 50);
 
-        // Retour : même place, historique complet, le combat reprend au tick du serveur.
+        // Retour : même place, historique complet, le combat reprend au tick du serveur. Revue Codex de la PR #20 : Advance rend tous
+        // les ticks rejoués par l'historique, pas un seul.
         game.Reconnect(a, link);
         Assert.Equal(ClientStatus.Reconnecting, a.Status);
-        game.RunUntil(() => a.Status == ClientStatus.Combat, 2);
+        // Pas à pas, pour lire ce que rend Advance au pas du retour : tous les ticks rejoués depuis le début (et les suivants reçus).
+        for (int i = 0; i < 400 && a.Status != ClientStatus.Combat; i++)
+        {
+            game.Net.Advance(0.01);
+            while (game.Listener.TryAccept(out INetConnection connection)) game.Room.Accept(connection);
+            game.Room.Advance(0.01);
+            b.Advance(0.01);
+            int ticks = a.Advance(0.01);
+            if (a.Status == ClientStatus.Combat) Assert.Equal(a.Combat.Tick, ticks);
+            else Assert.Equal(0, ticks);
+        }
+        Assert.Equal(ClientStatus.Combat, a.Status);
         Assert.Equal(1, a.Combat.Resyncs);
         Assert.Equal(0, a.Combat.Desyncs);
         Assert.Null(a.DisconnectedSeconds);

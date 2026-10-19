@@ -444,6 +444,8 @@ public class Lot102ServerTests
         world.Run(0.05);
         Assert.Equal(("bastion", token), (back.Welcome.Seat, back.Welcome.Token));
         ResyncMessage resync = back.Last<ResyncMessage>();
+        // Revue Codex de la PR #19 : le majorant calculé avant le combat couvre bien un vrai historique.
+        Assert.True(MessageCodec.Encode(resync).Length <= CombatRoom.ResyncBound(replica0Setup(resync), resync.Header, 50));
         var replica = new Replica(resync.Header);
         replica.Resync(resync);
         Assert.Equal(resync.Hash, replica.Hash);
@@ -593,6 +595,94 @@ public class Lot102ServerTests
         Assert.Equal("serveur arrêté.", received.OfType<ErrorMessage>().Single().Reason);
         Assert.Equal("connexion fermée par l'autre côté.", a.CloseReason);
         host.Dispose();   // sans effet la seconde fois
+    }
+
+    private static CombatSetup replica0Setup(ResyncMessage resync) => new Replica(resync.Header).Setup;
+
+    [Fact]
+    public void Delais_appliques_avant_les_messages_en_attente()
+    {
+        // Revue Codex de la PR #19 : un hello lu après l'échéance de 5 s, ou un reconnect lu après celle de 30 s, est refusé même s'il
+        // attendait déjà dans la file (premier passage de la salle après une longue pause).
+        var world = new World();
+        Bot late = world.Connect();
+        world.Run(0.02);
+        late.Send(new HelloMessage(Protocol.Version, "Dam", new BuildChoice(Rempart)));
+        world.Net.Advance(0);
+        world.Room.Advance(5.1);
+        world.Flush();
+        Assert.Empty(late.All<WelcomeMessage>());
+        Assert.StartsWith("présentation attendue", late.Last<ErrorMessage>().Reason);
+
+        var game = new World(Calm, new RoomOptions { DurationMs = 120_000, HelloTimeoutSeconds = 60 });
+        (Bot a, Bot b) = game.Start();
+        string token = a.Welcome.Token;
+        game.Net.Cut(a.Connection);
+        game.Run(1);
+        Bot back = game.Connect();
+        game.Run(0.02);
+        back.Send(new ReconnectMessage(Protocol.Version, token));
+        game.Net.Advance(0);
+        game.Room.Advance(30);
+        game.Flush();
+        Assert.Empty(back.All<WelcomeMessage>());
+        Assert.Equal("jeton inconnu ou expiré.", back.Last<ErrorMessage>().Reason);
+        Assert.Equal(RoomPhase.Combat, game.Room.Phase);
+        _ = b;
+    }
+
+    [Fact]
+    public void Historique_trop_gros_pour_le_protocole_combat_refuse_avant_de_commencer()
+    {
+        // Revue Codex de la PR #19 : avec les règles livrées, l'historique d'un combat tient largement dans un message ; avec un plafond
+        // de commandes démesuré, le combat est refusé avant de commencer au lieu de couper un joueur à son retour.
+        var shipped = new World();
+        (Bot a, _) = shipped.Start();
+        long bound = CombatRoom.ResyncBound(new Replica(a.Last<StartMessage>().Header).Setup, a.Last<StartMessage>().Header, 50);
+        Assert.InRange(bound, 1, Protocol.MaxServerMessageBytes);
+
+        var huge = new World(WithMaxCommands(Duo, CombatRules.AbsoluteMaxCommands));
+        Bot x = huge.Join("Dam");
+        Bot y = huge.Join("Léa", Gardien);
+        x.Send(new ReadyMessage(true));
+        y.Send(new ReadyMessage(true));
+        huge.Run(0.1);
+        Assert.Equal(RoomPhase.Lobby, huge.Room.Phase);
+        Assert.Empty(x.All<StartMessage>());
+        Assert.StartsWith("combat refusé : un historique pourrait atteindre", x.Last<RejectedMessage>().Reason);
+        Assert.False(x.Last<LobbyMessage>().Seats[0].Ready);
+    }
+
+    private static CombatSetup WithMaxCommands(CombatSetup setup, int maxCommands)
+    {
+        var rules = new CombatRules();
+        foreach (PropertyInfo property in typeof(CombatRules).GetProperties().Where(p => p.CanWrite))
+            property.SetValue(rules, property.GetValue(setup.Combat));
+        typeof(CombatRules).GetProperty(nameof(CombatRules.MaxCommands))!.SetValue(rules, maxCommands);
+        return new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, rules, setup.Combatants, setup.Commands, setup.Data);
+    }
+
+    [Theory]
+    [InlineData("--journaux", "--local")]
+    [InlineData("--journaux")]
+    [InlineData("--data")]
+    [InlineData("--scenario", "--port", "1")]
+    [InlineData("--journaux", "")]
+    public void Serveur_dedie_option_sans_valeur_refusee(params string[] args)
+    {
+        // Revue Codex de la PR #19 : « --journaux --local » ne doit pas prendre « --local » pour un dossier (et ouvrir tout le réseau).
+        TextWriter error = Console.Error;
+        try
+        {
+            var captured = new StringWriter();
+            Console.SetError(captured);
+            Assert.Equal(2, EdS.Server.Program.Main(args));
+            Assert.Contains("valeur manquante après", captured.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(error);
+        }
     }
 
     [Fact]
