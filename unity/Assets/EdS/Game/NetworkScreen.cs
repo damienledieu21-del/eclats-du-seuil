@@ -59,7 +59,7 @@ namespace EdS.Game
 
             if (Hud.Button(new Rect(x, y + 310, w, 40), "Revenir au jeu solo", true)) action = Action.Solo;
             if (Hud.Button(new Rect(x, y + 358, w, 40), "Fermer ce menu", true)) action = Action.Close;
-            if (!string.IsNullOrEmpty(Message)) Hud.Small(new Rect(x, y + 410, w, 80), "<color=#ff9a7a>" + Message + "</color>");
+            if (!string.IsNullOrEmpty(Message)) Hud.Small(new Rect(x, y + 410, w, 80), "<color=#ff9a7a>" + Hud.Plain(Message) + "</color>");
             return action;
         }
 
@@ -85,7 +85,7 @@ namespace EdS.Game
             }
             else if (session.Address != null)
             {
-                Hud.Small(new Rect(x, line, w, 24), "Hôte : " + session.Address);
+                Hud.Small(new Rect(x, line, w, 24), "Hôte : " + Hud.Plain(session.Address));
                 line += 28;
             }
 
@@ -93,7 +93,7 @@ namespace EdS.Game
             Action action = Action.None;
             if (client == null)
             {
-                Hud.Text(new Rect(x, line + 10, w, 30), session.Error ?? "Connexion en cours…");
+                Hud.Text(new Rect(x, line + 10, w, 30), Hud.Plain(session.Error) ?? "Connexion en cours…");
             }
             else if (client.Status == ClientStatus.Connecting)
             {
@@ -101,7 +101,7 @@ namespace EdS.Game
             }
             else if (client.Status == ClientStatus.Failed || client.Status == ClientStatus.Left)
             {
-                Hud.Text(new Rect(x, line + 10, w, 60), "<color=#ff9a7a>Partie arrêtée : " + (client.Error ?? "départ.") + "</color>");
+                Hud.Text(new Rect(x, line + 10, w, 60), "<color=#ff9a7a>Partie arrêtée : " + Hud.Plain(client.Error ?? "départ.") + "</color>");
             }
             else if (client.Lobby != null)
             {
@@ -110,10 +110,10 @@ namespace EdS.Game
                 {
                     bool me = seat.Id == client.SeatId;
                     if (me) mine = seat;
-                    string who = seat.Player == null ? "<color=#8a8a8a>place libre</color>" : seat.Player + (me ? " (toi)" : "");
+                    string who = seat.Player == null ? "<color=#8a8a8a>place libre</color>" : Hud.Plain(seat.Player) + (me ? " (toi)" : "");
                     string state = seat.Player == null ? "" : !seat.Connected ? "  <color=#ff9a7a>déconnecté</color>"
                         : seat.Ready ? "  <color=#9be59b>prêt</color>" : "  <color=#d8d8d8>en attente</color>";
-                    Hud.Text(new Rect(x, line + 10, w, 30), $"{seat.Id} : {who}{(seat.Build != null ? " — " + seat.Build : "")}{state}");
+                    Hud.Text(new Rect(x, line + 10, w, 30), $"{seat.Id} : {who}{(seat.Build != null ? " — " + Hud.Plain(seat.Build) : "")}{state}");
                     line += 34;
                 }
                 line += 16;
@@ -125,13 +125,13 @@ namespace EdS.Game
                 line += 28;
                 Hud.Small(new Rect(x, line, w, 24), "Le combat commence quand les deux joueurs sont prêts.");
                 line += 28;
-                if (client.LastRejected != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ffcf7a>Refusé : " + client.LastRejected + "</color>");
+                if (client.LastRejected != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ffcf7a>Refusé : " + Hud.Plain(client.LastRejected) + "</color>");
                 line += 30;
                 // Fin de combat non vérifiée (divergence non réparée) : à signaler à Claude, le client reste dans la salle.
-                if (client.Error != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ff9a7a>" + client.Error + "</color>");
+                if (client.Error != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ff9a7a>" + Hud.Plain(client.Error) + "</color>");
                 line += 30;
             }
-            if (!string.IsNullOrEmpty(lastCombat)) Hud.Small(new Rect(x, y + 470, w, 24), lastCombat);
+            if (!string.IsNullOrEmpty(lastCombat)) Hud.Small(new Rect(x, y + 470, w, 24), Hud.Plain(lastCombat));
             if (client == null || client.Status == ClientStatus.Failed || client.Status == ClientStatus.Left || client.Lobby == null)
                 if (Hud.Button(new Rect(x, y + 500, w, 40), "Revenir au menu", true)) action = Action.Leave;
             return action;

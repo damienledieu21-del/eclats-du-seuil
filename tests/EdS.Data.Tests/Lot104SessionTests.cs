@@ -166,7 +166,9 @@ public class Lot104SessionTests
         dam.Client!.SetReady(true);
         lea.Client!.SetReady(true);
         lan.RunUntil(() => dam.Client.Status == ClientStatus.Combat, 2);
+        dam.Client.Combat!.SetGuard(true);
         lan.Run(2);
+        Assert.True(dam.Client.Combat.Player().View.Guarding);
 
         // Coupure, et l'hôte injoignable 3 s : tentatives toutes les 2 s, puis retour avec le jeton.
         lan.Reachable = false;
@@ -179,6 +181,10 @@ public class Lot104SessionTests
         lan.Reachable = true;
         lan.RunUntil(() => dam.Client.Status == ClientStatus.Combat, 3);
         Assert.Equal(1, dam.Client.Combat!.Resyncs);
+        // Revue Codex de la PR #21 : la garde tenue avant la coupure n'est pas renvoyée au retour (le jeu relit la touche).
+        Assert.False(dam.Client.Combat.GuardHeld);
+        lan.Run(0.5);
+        Assert.False(dam.Client.Combat.Player().View.Guarding);
         Assert.InRange(dam.Client.Combat.Tick, lea.Client.Combat!.Tick - 3, lea.Client.Combat.Tick + 3);
         lan.RunUntil(() => dam.Client.Status == ClientStatus.Lobby, 40);
         Assert.Equal(ServerHash(lan.Room, dam.Client.Combat), dam.Client.Combat.Hash);

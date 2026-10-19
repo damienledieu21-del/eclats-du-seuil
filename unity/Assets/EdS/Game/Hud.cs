@@ -76,6 +76,12 @@ namespace EdS.Game
 
         public static void Small(Rect rect, string text) => GUI.Label(rect, text, _small);
 
+        /// <summary>
+        /// Revue Codex de la PR #21 : texte venu d'ailleurs (nom d'un joueur, build, raison envoyée par le serveur, adresse tapée) rendu
+        /// inoffensif pour le texte enrichi : ses chevrons ne peuvent plus former de balise (taille, couleur…).
+        /// </summary>
+        public static string Plain(string text) => text?.Replace("<", "‹").Replace(">", "›");
+
         /// <summary>Sous-lot 10.4 : champ de saisie d'une ligne (nom du joueur, adresse de l'hôte).</summary>
         public static string Field(Rect rect, string text, int maxLength) => GUI.TextField(rect, text ?? "", maxLength, _field);
 
