@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -20,6 +21,12 @@ namespace EdS.Net
         /// <summary>Messages au plus en attente d'envoi.</summary>
         public const int MaxPendingSend = 4096;
 
+        /// <summary>
+        /// Octets au plus en attente dans chaque sens (lecture par l'application, envoi au pair) : avec des messages jusqu'à 4 Mio, le
+        /// nombre de messages seul ne bornerait pas la mémoire (revue Codex de la PR #18).
+        /// </summary>
+        public const long MaxPendingBytes = 64L * 1024 * 1024;
+
         /// <summary>Délai d'écriture : un pair qui ne lit plus est déconnecté.</summary>
         public const int SendTimeoutMs = 10_000;
 
@@ -32,6 +39,8 @@ namespace EdS.Net
         private readonly BlockingCollection<byte[]> _outgoing = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>(), MaxPendingSend);
         private readonly object _gate = new object();
         private string? _closeReason;
+        private long _receivedBytes;
+        private long _outgoingBytes;
 
         /// <param name="maxReceivePayload">Plus gros message accepté de l'autre côté.</param>
         /// <param name="maxSendPayload">Plus gros message que l'autre côté accepte.</param>
@@ -93,19 +102,32 @@ namespace EdS.Net
                 Close($"message de {payload.Length} octets à envoyer, l'autre côté en accepte {_maxSend} au plus.");
                 return false;
             }
+            if (Interlocked.Add(ref _outgoingBytes, payload.Length) > MaxPendingBytes)
+            {
+                Interlocked.Add(ref _outgoingBytes, -payload.Length);
+                Close("file d'envoi pleine : l'autre côté ne lit plus.");
+                return false;
+            }
             try
             {
                 if (_outgoing.TryAdd(Framing.Frame(payload))) return true;
             }
             catch (InvalidOperationException)
             {
+                Interlocked.Add(ref _outgoingBytes, -payload.Length);
                 return false;   // file fermée entre-temps
             }
+            Interlocked.Add(ref _outgoingBytes, -payload.Length);
             Close("file d'envoi pleine : l'autre côté ne lit plus.");
             return false;
         }
 
-        public bool TryReceive(out byte[] payload) => _received.TryDequeue(out payload!);
+        public bool TryReceive(out byte[] payload)
+        {
+            if (!_received.TryDequeue(out payload!)) return false;
+            Interlocked.Add(ref _receivedBytes, -payload.Length);
+            return true;
+        }
 
         public void Close(string reason)
         {
@@ -160,11 +182,12 @@ namespace EdS.Net
                     }
                     foreach (byte[] message in reader.Push(buffer, 0, read))
                     {
-                        if (_received.Count >= MaxPendingReceived)
+                        if (_received.Count >= MaxPendingReceived || Interlocked.Read(ref _receivedBytes) + message.Length > MaxPendingBytes)
                         {
                             Fail("trop de messages en attente de lecture.");
                             return;
                         }
+                        Interlocked.Add(ref _receivedBytes, message.Length);
                         _received.Enqueue(message);
                     }
                     if (reader.Error != null)
@@ -186,7 +209,10 @@ namespace EdS.Net
             try
             {
                 foreach (byte[] frame in _outgoing.GetConsumingEnumerable())
+                {
                     _stream.Write(frame, 0, frame.Length);
+                    Interlocked.Add(ref _outgoingBytes, -(frame.Length - Framing.HeaderBytes));
+                }
                 // File close et vidée : fin d'envoi propre, puis fermeture.
                 try
                 {
@@ -217,8 +243,9 @@ namespace EdS.Net
         private readonly TcpListener _listener;
         private readonly int _maxReceive;
         private readonly int _maxSend;
-        private readonly ConcurrentQueue<TcpNetConnection> _accepted = new ConcurrentQueue<TcpNetConnection>();
-        private volatile bool _stopped;
+        private readonly Queue<TcpNetConnection> _accepted = new Queue<TcpNetConnection>();
+        private readonly object _gate = new object();
+        private bool _stopped;
 
         /// <param name="address">Adresse d'écoute (<see cref="IPAddress.Any"/> : tout le réseau local ; <see cref="IPAddress.Loopback"/> : ce poste).</param>
         /// <param name="port">Port ; 0 pour un port libre choisi par le système (tests).</param>
@@ -237,15 +264,24 @@ namespace EdS.Net
 
         public bool TryAccept(out INetConnection connection)
         {
-            bool found = _accepted.TryDequeue(out TcpNetConnection? accepted);
-            connection = accepted!;
-            return found;
+            lock (_gate)
+            {
+                if (_accepted.Count == 0)
+                {
+                    connection = null!;
+                    return false;
+                }
+                connection = _accepted.Dequeue();
+                return true;
+            }
         }
 
         private void AcceptLoop()
         {
-            while (!_stopped)
+            while (true)
             {
+                lock (_gate)
+                    if (_stopped) return;
                 TcpClient client;
                 try
                 {
@@ -255,27 +291,40 @@ namespace EdS.Net
                 {
                     return;   // écoute arrêtée (aucune exception ne sort d'un fil)
                 }
-                if (_stopped || _accepted.Count >= MaxPendingAccepted)
-                {
-                    client.Dispose();
-                    continue;
-                }
+                TcpNetConnection connection;
                 try
                 {
-                    _accepted.Enqueue(new TcpNetConnection(client, _maxReceive, _maxSend));
+                    connection = new TcpNetConnection(client, _maxReceive, _maxSend);
                 }
                 catch (Exception)
                 {
                     client.Dispose();
+                    continue;
                 }
+                // Revue Codex de la PR #18 : l'enregistrement et l'arrêt sont exclusifs ; une connexion arrivée pendant l'arrêt est fermée.
+                bool kept;
+                lock (_gate)
+                {
+                    kept = !_stopped && _accepted.Count < MaxPendingAccepted;
+                    if (kept) _accepted.Enqueue(connection);
+                }
+                if (!kept) connection.Dispose();
             }
         }
 
+        /// <summary>Arrête l'écoute : les connexions pas encore prises en charge sont fermées, aucune n'est plus rendue ensuite.</summary>
         public void Dispose()
         {
-            _stopped = true;
+            TcpNetConnection[] pending;
+            lock (_gate)
+            {
+                if (_stopped) return;
+                _stopped = true;
+                pending = _accepted.ToArray();
+                _accepted.Clear();
+            }
             _listener.Stop();
-            while (_accepted.TryDequeue(out TcpNetConnection? pending)) pending.Dispose();
+            foreach (TcpNetConnection connection in pending) connection.Dispose();
         }
     }
 }

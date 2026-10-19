@@ -23,7 +23,7 @@ TCP, sans chiffrement (réseau local). Chaque message : longueur sur 4 octets gr
 | client → serveur | 8 Kio | intentions, présentation, build : petits messages ; un client ne peut pas faire allouer de gros tampons au serveur |
 | serveur → client | 4 Mio | historique d'un combat (resynchronisation) |
 
-Côté transport : files bornées (4 096 messages en attente de lecture, 4 096 en attente d'envoi), délai d'écriture de 10 s ; un pair qui inonde ou ne lit plus est déconnecté. Aucune exception ne sort des fils de lecture et d'écriture.
+Côté transport : files bornées en messages et en octets (4 096 messages et 64 Mio en attente de lecture, autant en attente d'envoi), délai d'écriture de 10 s ; un pair qui inonde ou ne lit plus est déconnecté. L'écoute range au plus 64 connexions pas encore prises en charge ; son arrêt et l'enregistrement d'une connexion sont exclusifs : une connexion arrivée pendant l'arrêt est fermée, aucune n'est rendue après. Aucune exception ne sort des fils de lecture, d'écriture et d'écoute.
 
 ### Lecture stricte
 
@@ -55,7 +55,7 @@ Exemple : `{"type":"input","guard":true,"parry":false,"slot":2,"target":"loup_a"
 
 ## Réseau simulé
 
-`SimulatedNetwork` remplace TCP dans les tests et les mesures : temps virtuel avancé par l'appelant, latence d'un sens et gigue par lien (tirage `Pcg32` : même graine, mêmes délais), ordre conservé dans chaque sens comme en TCP, fermeture vue après les messages déjà partis, coupure brutale (`Cut`) qui perd les messages en route, écoute arrêtée qui coupe les connexions pas encore acceptées et libère son adresse, mêmes limites que TCP (taille des messages, 4 096 messages non lus au plus). Aucun fil, aucune horloge réelle : les tests de réseau sont reproductibles.
+`SimulatedNetwork` remplace TCP dans les tests et les mesures : temps virtuel avancé par l'appelant, latence d'un sens et gigue par lien (tirage `Pcg32` : même graine, mêmes délais), ordre conservé dans chaque sens comme en TCP, fermeture vue après les messages déjà partis, coupure brutale (`Cut`) qui perd les messages en route, écoute arrêtée qui coupe les connexions pas encore acceptées et libère son adresse, 64 connexions au plus en attente d'acceptation, mêmes limites que TCP (taille des messages ; 4 096 messages et 64 Mio non lus au plus ; 4 096 messages et 64 Mio en route par émetteur, au-delà l'émetteur est fermé « file d'envoi pleine »). Aucun fil, aucune horloge réelle : les tests de réseau sont reproductibles.
 
 ## Limites
 

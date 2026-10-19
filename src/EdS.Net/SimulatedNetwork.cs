@@ -40,6 +40,7 @@ namespace EdS.Net
         {
             public double DeliverAt;
             public long Sequence;
+            public SimulatedConnection From = null!;
             public SimulatedConnection To = null!;
             public byte[]? Payload;        // null : fermeture par l'autre côté
             public string? CloseReason;
@@ -74,6 +75,12 @@ namespace EdS.Net
                 client.MarkClosed("connexion refusée : aucune écoute.");
                 return client;
             }
+            // Comme l'écoute TCP : au plus 64 connexions pas encore prises en charge.
+            if (listener.Pending.Count >= TcpNetListener.MaxPendingAccepted)
+            {
+                client.MarkClosed("connexion refusée : écoute saturée.");
+                return client;
+            }
             var server = new SimulatedConnection(this, "serveur←" + address, profile, listener.MaxReceivePayload);
             client.Peer = server;
             server.Peer = client;
@@ -85,7 +92,13 @@ namespace EdS.Net
         public void Cut(SimulatedConnection connection, string reason = "coupure réseau.")
         {
             if (connection is null) throw new ArgumentNullException(nameof(connection));
-            _inFlight.RemoveAll(m => m.To == connection || m.To == connection.Peer);
+            for (int i = _inFlight.Count - 1; i >= 0; i--)
+            {
+                InFlight m = _inFlight[i];
+                if (m.To != connection && m.To != connection.Peer) continue;
+                Release(m);
+                _inFlight.RemoveAt(i);
+            }
             connection.MarkClosed(reason);
             connection.Peer?.MarkClosed(reason);
         }
@@ -103,6 +116,7 @@ namespace EdS.Net
                         next = m;
                 if (next is null) return;
                 _inFlight.Remove(next);
+                Release(next);
                 if (next.Payload is null) next.To.MarkClosed(next.CloseReason ?? "connexion fermée par l'autre côté.");
                 else next.To.Deliver(next.Payload);
             }
@@ -126,7 +140,19 @@ namespace EdS.Net
             // Ordre conservé dans chaque sens : jamais avant le message précédent du même sens.
             if (at < from.LastDeliverAt) at = from.LastDeliverAt;
             from.LastDeliverAt = at;
-            _inFlight.Add(new InFlight { DeliverAt = at, Sequence = _sequence++, To = to, Payload = payload, CloseReason = closeReason });
+            _inFlight.Add(new InFlight { DeliverAt = at, Sequence = _sequence++, From = from, To = to, Payload = payload, CloseReason = closeReason });
+            if (payload != null)
+            {
+                from.InFlightMessages++;
+                from.InFlightBytes += payload.Length;
+            }
+        }
+
+        private static void Release(InFlight message)
+        {
+            if (message.Payload is null) return;
+            message.From.InFlightMessages--;
+            message.From.InFlightBytes -= message.Payload.Length;
         }
     }
 
@@ -136,6 +162,7 @@ namespace EdS.Net
         private readonly SimulatedNetwork _network;
         private readonly Queue<byte[]> _inbox = new Queue<byte[]>();
         private readonly int _maxReceive;
+        private long _inboxBytes;
 
         internal SimulatedConnection(SimulatedNetwork network, string address, LinkProfile profile, int maxReceivePayload)
         {
@@ -148,6 +175,10 @@ namespace EdS.Net
         internal SimulatedConnection? Peer { get; set; }
         internal LinkProfile Profile { get; }
         internal double LastDeliverAt { get; set; }
+
+        /// <summary>Messages envoyés par ce côté et encore en route, et leurs octets (file d'envoi bornée comme en TCP).</summary>
+        internal int InFlightMessages { get; set; }
+        internal long InFlightBytes { get; set; }
 
         public string RemoteAddress { get; }
         public bool IsOpen => CloseReason is null;
@@ -169,6 +200,13 @@ namespace EdS.Net
                 Peer.MarkClosed("faute de protocole : " + reason);
                 return false;
             }
+            // Revue Codex de la PR #18 : file d'envoi bornée comme en TCP (messages et octets) ; un appelant qui n'avance plus le
+            // réseau, ou un pair trop lent, ferme le lien au lieu de faire grossir la mémoire.
+            if (InFlightMessages >= TcpNetConnection.MaxPendingSend || InFlightBytes + payload.Length > TcpNetConnection.MaxPendingBytes)
+            {
+                Close("file d'envoi pleine : l'autre côté ne lit plus.");
+                return false;
+            }
             _network.Post(this, (byte[])payload.Clone(), null);
             return true;
         }
@@ -181,6 +219,7 @@ namespace EdS.Net
                 return false;
             }
             payload = _inbox.Dequeue();
+            _inboxBytes -= payload.Length;
             return true;
         }
 
@@ -194,14 +233,18 @@ namespace EdS.Net
 
         public void Dispose() => Close("fermée.");
 
-        /// <summary>Comme en TCP : au-delà de <see cref="TcpNetConnection.MaxPendingReceived"/> messages non lus, le lien est coupé.</summary>
+        /// <summary>
+        /// Comme en TCP : au-delà de <see cref="TcpNetConnection.MaxPendingReceived"/> messages ou de
+        /// <see cref="TcpNetConnection.MaxPendingBytes"/> octets non lus, le lien est coupé.
+        /// </summary>
         internal void Deliver(byte[] payload)
         {
-            if (_inbox.Count >= TcpNetConnection.MaxPendingReceived)
+            if (_inbox.Count >= TcpNetConnection.MaxPendingReceived || _inboxBytes + payload.Length > TcpNetConnection.MaxPendingBytes)
             {
                 _network.Cut(this, "trop de messages en attente de lecture.");
                 return;
             }
+            _inboxBytes += payload.Length;
             _inbox.Enqueue(payload);
         }
 
