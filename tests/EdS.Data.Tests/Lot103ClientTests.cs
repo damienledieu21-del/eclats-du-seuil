@@ -432,13 +432,22 @@ public class Lot103ClientTests
         });
         var seen = new List<CombatFeedback>();
         bool checkedWhileAwaiting = false;
+        string? hashAt20 = null;
         game.Script = client =>
         {
             if (client != a || client.Combat is not { } combat) return;
             seen.AddRange(combat.DrainFeedback());
+            if (combat.Tick == 20 && !combat.AwaitingResync) hashAt20 = combat.Hash;
             if (combat.AwaitingResync && !checkedWhileAwaiting)
             {
                 checkedWhileAwaiting = true;
+                // Revue Codex de la PR #20 (tour 4) : le moteur affiché est remis au dernier tick accepté ; la frappe du tick refusé
+                // n'apparaît ni sur le mannequin, ni dans l'endurance ou la recharge du joueur.
+                Assert.Equal(20, combat.Tick);
+                Assert.Equal(hashAt20, combat.Hash);
+                Assert.Equal(0, combat.Others().Single(o => o.Id == "mannequin").View.Counters.DamageTaken + combat.Player().View.Counters.DamageDealt);
+                Assert.Equal(combat.Player().View.MaxEndurance, combat.Player().View.Endurance);
+                Assert.All(combat.Player().Slots, s => Assert.Equal(0, s.RemainingSeconds));
                 Assert.False(combat.UseSlot(0));
                 Assert.Contains(combat.DrainFeedback(), f => f.Detail == "resynchronisation en cours");
                 string? target = combat.TargetId;
@@ -551,6 +560,33 @@ public class Lot103ClientTests
         game.RunUntil(() => a.Status == ClientStatus.Failed, 2);
         Assert.StartsWith(expected, a.Error);
         Assert.Null(a.Combat);
+    }
+
+    [Fact]
+    public void Identifiant_de_combattant_hors_protocole_refuse_par_le_client_et_le_serveur()
+    {
+        // Revue Codex de la PR #20 (tour 4) : un ennemi dont l'identifiant dépasse 128 caractères serait visé, puis nommé dans un message
+        // que le serveur refuse. Le client refuse l'en-tête avant le combat ; le serveur refuse le scénario dès la création de la salle.
+        string longId = new string('m', Protocol.MaxIdLength + 1);
+        var game = new Game(Calm(10_000));
+        NetworkClient a = game.Join("Dam", wrap: inner => new Tampering(inner)
+        {
+            Alter = m => m is StartMessage s ? new StartMessage(s.Header.Replace("\"mannequin\"", "\"" + longId + "\"")) : m,
+        });
+        NetworkClient b = game.Join("Léa");
+        a.SetReady(true);
+        b.SetReady(true);
+        game.RunUntil(() => a.Status == ClientStatus.Failed, 2);
+        Assert.StartsWith("début de combat refusé : $.scenario.combatants[2].id, identifiant incompatible avec le protocole", a.Error);
+        Assert.Null(a.Combat);
+
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ScenarioPath("coop/duo_meute")))!.AsObject();
+        root["data"]!["combatants"]!.AsArray().Last()!["id"] = longId;
+        ScenarioLoadResult loaded = ScenarioJsonReader.Read(root.ToJsonString(), ShippedData);
+        Assert.True(loaded.Setup != null, loaded.Report.ToString());
+        int last = loaded.Setup!.Combatants.Count - 1;
+        var error = Assert.Throws<ArgumentException>(() => new CombatRoom(ShippedData, loaded.Setup));
+        Assert.StartsWith($"Combattant {last} (combatants[{last}].id) : identifiant invalide pour le protocole", error.Message);
     }
 
     // --- Coupures et retour ---------------------------------------------------------------------------------------------
