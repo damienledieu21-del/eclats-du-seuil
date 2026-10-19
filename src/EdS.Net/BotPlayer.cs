@@ -19,8 +19,12 @@ namespace EdS.Net
         /// <summary>Garde levée quand un coup arrive dans moins de ce délai.</summary>
         public const double GuardSeconds = 0.8;
 
-        /// <summary>Parade tentée quand un coup parable arrive dans moins de ce délai.</summary>
-        public const double ParrySeconds = 0.15;
+        /// <summary>
+        /// Parade tentée quand un coup parable arrive dans moins de ce délai (affiché). Sous-lot 10.6 : 0,1 s au lieu de 0,15 s. En solo, une
+        /// parade réussit pressée de 100 ms avant le coup affiché à 50 ms après ; avec 0,15 s et une décision toutes les 0,1 s, le robot
+        /// pressait souvent trop tôt et ne réussissait qu'à la faveur du retard du réseau, que la télégraphie avancée compense désormais.
+        /// </summary>
+        public const double ParrySeconds = 0.10;
 
         private double _nextThought;
         private double _lastReadyAt = double.NegativeInfinity;

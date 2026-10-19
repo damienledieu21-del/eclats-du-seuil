@@ -208,17 +208,18 @@ public class Lot106TelegraphTests
     [Fact]
     public void Robot_pare_a_vue_sur_la_telegraphie_avancee_malgre_la_latence()
     {
-        // Deux robots à 100 ms d'un sens, l'un avec l'avance (réglage du jeu), l'autre sans (option A) : mêmes réflexes, même combat.
+        // Deux robots Rempart à 100 ms d'un sens, l'un avec l'avance (réglage du jeu), l'autre sans (option A) : mêmes réflexes, même combat.
         var duel = new Duel(seed: 3);
         var link = new LinkProfile(100, 0);
         NetworkClient advanced = duel.Join("Robot B", "build.bastion.rempart", link, new NetworkClientOptions(), bot: true);
-        NetworkClient plain = duel.Join("Robot A", "build.bastion.gardien", link, new NetworkClientOptions { TelegraphAdvance = false }, bot: true);
+        NetworkClient plain = duel.Join("Robot A", "build.bastion.rempart", link, new NetworkClientOptions { TelegraphAdvance = false }, bot: true);
         duel.RunUntil(() => duel.Room.LastResult != null && advanced.Status == ClientStatus.Lobby && plain.Status == ClientStatus.Lobby, 80);
         CombatResult result = duel.Room.LastResult!;
         CombatantResult b = result.Combatants.Single(c => c.Id == advanced.SeatId), a = result.Combatants.Single(c => c.Id == plain.SeatId);
-        Assert.True(b.PerfectParries >= 10 && b.PerfectParries > 4 * b.FailedParries,
+        // Avec l'avance, le robot fait aussi bien qu'à 0 ms (environ deux parfaites pour une ratée) ; sans, il pare toujours trop tard.
+        Assert.True(b.PerfectParries >= 25 && b.PerfectParries >= 2 * b.FailedParries,
             $"avec l'avance : {b.PerfectParries} parfaites, {b.FailedParries} ratées");
-        Assert.True(a.FailedParries >= 5 && a.PerfectParries * 4 < a.FailedParries,
+        Assert.True(a.FailedParries >= 20 && a.PerfectParries * 4 < a.FailedParries,
             $"sans l'avance : {a.PerfectParries} parfaites, {a.FailedParries} ratées");
     }
 }
