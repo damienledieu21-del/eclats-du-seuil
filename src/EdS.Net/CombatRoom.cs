@@ -26,7 +26,7 @@ namespace EdS.Net
         /// <summary>Connexions simultanées au plus (places comprises).</summary>
         public int MaxConnections { get; set; } = 16;
 
-        /// <summary>Durée du combat ; null : durée maximale des règles (<c>combat.limits.maxDurationMs</c>).</summary>
+        /// <summary>Durée du combat ; null : celle du scénario de la salle (60 s pour <c>coop/duo_meute</c>).</summary>
         public long? DurationMs { get; set; }
 
         /// <summary>Ticks simulés au plus par appel à <see cref="CombatRoom.Advance"/> (un serveur en retard ralentit au lieu de rattraper d'un coup).</summary>
@@ -453,7 +453,7 @@ namespace EdS.Net
             IEnumerable<CombatantSetup> combatants = _scenario.Combatants.Select(c => c is CharacterSetup ch && _seats.FirstOrDefault(s => s.Id == ch.Id) is { } seat
                 ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative)
                 : c);
-            var setup = new CombatSetup(_scenario.Seed, _options.DurationMs ?? _scenario.Combat.MaxDurationMs, _scenario.Stats, _scenario.Damage,
+            var setup = new CombatSetup(_scenario.Seed, _options.DurationMs ?? _scenario.DurationMs, _scenario.Stats, _scenario.Damage,
                 _scenario.Progression, _scenario.Combat, combatants, Array.Empty<CombatCommand>(), _scenario.Data);
             IReadOnlyList<RuleViolation> violations = setup.Validate();
             if (violations.Count > 0)
