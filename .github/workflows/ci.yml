@@ -20,7 +20,7 @@ jobs:
       - run: dotnet build --no-restore -c Release -warnaserror
       - run: dotnet test --no-build -c Release --logger "console;verbosity=normal"
       # Recettes par catégorie : échec si une catégorie n'exécute aucun test (correctif 6.1).
-      - run: bash scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime
+      - run: bash scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network
       # Correctif 7.3.1 (D4) : scénario de référence avec déclencheurs, simulé par la CLI, comparé octet par octet au journal figé, puis rejoué.
       - name: Scénario entrainement_declencheurs (simulation, comparaison, rejeu)
         run: |

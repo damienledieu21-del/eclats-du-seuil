@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\EdS.Data.Json\EdS.Data.Json.csproj" />
     <ProjectReference Include="..\..\src\EdS.Tools\EdS.Tools.csproj" />
     <ProjectReference Include="..\..\src\EdS.Runtime\EdS.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\EdS.Net\EdS.Net.csproj" />
     <!-- Correctif 6.1.1 : la CLI est lancée telle quelle (processus séparé) par CliNumericLimitsTests. -->
     <ProjectReference Include="..\..\src\EdS.Cli\EdS.Cli.csproj" />
   </ItemGroup>

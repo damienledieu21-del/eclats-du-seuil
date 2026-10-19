@@ -419,6 +419,7 @@ public class Lot91JsonTextTests
     [InlineData("EdS.Data")]
     [InlineData("EdS.Data.Json")]
     [InlineData("EdS.Runtime")]   // sous-lot 9.2
+    [InlineData("EdS.Net")]       // lot 10
     public void Projets_portables_netstandard21_sans_System_Text_Json(string name)
     {
         Assembly assembly = Assembly.Load(name);

@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="EdS.Data.Tests" />
+    <!-- Lot 10 : le protocole réseau lit ses messages avec l'analyseur strict (JsonInput). -->
+    <InternalsVisibleTo Include="EdS.Net" />
   </ItemGroup>
 
   <PropertyGroup>

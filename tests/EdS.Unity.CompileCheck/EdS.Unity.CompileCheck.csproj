@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\EdS.Runtime\EdS.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\EdS.Net\EdS.Net.csproj" />
   </ItemGroup>
 
 </Project>

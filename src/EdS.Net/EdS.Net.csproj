@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Lot 10 : réseau du jeu (protocole, transport, salle de combat autoritaire, client), sans dépendance : netstandard2.1, C# 9,
+       utilisable par Unity (hôte et client) et par le serveur dédié. -->
+  <ItemGroup>
+    <ProjectReference Include="..\EdS.Runtime\EdS.Runtime.csproj" />
+    <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
+    <ProjectReference Include="..\EdS.Data\EdS.Data.csproj" />
+    <ProjectReference Include="..\EdS.Data.Json\EdS.Data.Json.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="EdS.Data.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+
+</Project>
