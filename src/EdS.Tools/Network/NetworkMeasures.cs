@@ -129,6 +129,15 @@ public static class NetworkMeasures
     /// </summary>
     public const double MinStepSeconds = 0.001;
 
+    /// <summary>
+    /// Latence et gigue d'un sens les plus grandes acceptées (5 s chacune, revue Codex de la PR #22, tour 7) : au-delà, la salle refuse de
+    /// toute façon la présentation (5 s au plus) ; les bornes gardent les budgets d'images petits et sans débordement.
+    /// </summary>
+    public const int MaxDelayMs = 5_000;
+
+    /// <summary>Coupure la plus longue acceptée (120 s, tour 7) : le serveur ne garde la place que 30 s.</summary>
+    public const double MaxCutSeconds = 120;
+
 
     private sealed class Player
     {
@@ -159,15 +168,15 @@ public static class NetworkMeasures
         // Revue Codex de la PR #22 : réglages vérifiés avant la simulation (un pas nul ferait tourner la boucle sans fin).
         if (!(options.StepSeconds >= MinStepSeconds) || options.StepSeconds > 1)
             throw new ArgumentOutOfRangeException(nameof(options), $"Pas de temps de {options.StepSeconds} s : de {MinStepSeconds} à 1 s.");
-        if (options.LatencyMs < 0 || options.JitterMs < 0)
-            throw new ArgumentOutOfRangeException(nameof(options), "Latence et gigue positives ou nulles.");
+        if (options.LatencyMs < 0 || options.JitterMs < 0 || options.LatencyMs > MaxDelayMs || options.JitterMs > MaxDelayMs)
+            throw new ArgumentOutOfRangeException(nameof(options), $"Latence et gigue de 0 à {MaxDelayMs} ms.");
         if (options.CutAtSeconds is double cutAtCheck && (!(cutAtCheck >= 0) || double.IsInfinity(cutAtCheck)))
             throw new ArgumentOutOfRangeException(nameof(options), $"Coupure à {cutAtCheck} s : instant positif ou nul et fini.");
         // Revue Codex de la PR #22 (tour 6) : une coupure doit tomber pendant le combat, sinon la mesure annoncerait un retour manqué.
         if (options.CutAtSeconds is double cutAtLimit && cutAtLimit * 1000 >= scenario.DurationMs)
             throw new ArgumentOutOfRangeException(nameof(options), $"Coupure à {cutAtLimit} s : avant la fin du combat ({scenario.DurationMs / 1000.0} s).");
-        if (!(options.CutSeconds >= 0) || double.IsInfinity(options.CutSeconds))
-            throw new ArgumentOutOfRangeException(nameof(options), $"Coupure de {options.CutSeconds} s : durée positive ou nulle et finie.");
+        if (!(options.CutSeconds >= 0) || options.CutSeconds > MaxCutSeconds)
+            throw new ArgumentOutOfRangeException(nameof(options), $"Coupure de {options.CutSeconds} s : de 0 à {MaxCutSeconds} s.");
         // Revue Codex de la PR #22 : un moment de parade inconnu serait calculé d'une façon et affiché d'une autre.
         if (options.Timing != ParryTiming.OnSight && options.Timing != ParryTiming.Anticipated)
             throw new ArgumentOutOfRangeException(nameof(options), $"Moment de parade inconnu : {(int)options.Timing}.");
@@ -208,7 +217,9 @@ public static class NetworkMeasures
         // Revue Codex de la PR #22 (tours 4 et 6) : un nombre entier d'images, qui finit toujours. Deux budgets : l'entrée dans la salle
         // (présentation, accueil, prêt : quelques allers-retours, bornés d'après la latence), puis le combat, compté depuis son début
         // (durée du scénario, plus 30 s pour les fins de coupure).
-        double startSeconds = 10 + 8 * (options.LatencyMs + options.JitterMs) / 1000.0;
+        double startSeconds = 10 + 8.0 * ((double)options.LatencyMs + options.JitterMs) / 1000;   // 90 s au plus (bornes ci-dessus)
+        // Le combat dure le scénario, ou jusqu'au retour d'un joueur coupé s'il est plus tard ; plus 30 s.
+        double combatSeconds = Math.Max(scenario.DurationMs / 1000.0, options.CutAtSeconds is double cutAtEnd ? cutAtEnd + options.CutSeconds : 0) + 30;
         long frameLimit = checked((long)Math.Ceiling(startSeconds / step));
         bool combatBudget = false;
         for (long frame = 0; frame < frameLimit; frame++)
@@ -216,13 +227,15 @@ public static class NetworkMeasures
             net.Advance(step);
             while (listener.TryAccept(out INetConnection connection)) room.Accept(connection);
             room.Advance(step);
+            // Tour 7 : deux joueurs refusés avant le combat (présentation trop lente, par exemple) : inutile d'attendre la fin du budget.
+            if (combatStart is null && players.All(p => p.Client.Status == ClientStatus.Failed)) break;
             if (room.Phase == RoomPhase.Combat)
             {
                 combatStart ??= net.Now;
                 if (!combatBudget)
                 {
                     combatBudget = true;
-                    frameLimit = checked(frame + 1 + (long)Math.Ceiling((scenario.DurationMs / 1000.0 + 30) / step));
+                    frameLimit = checked(frame + 1 + (long)Math.Ceiling(combatSeconds / step));
                 }
                 for (long t = lastTick; t < room.Tick; t++) tickTimes[t] = net.Now;
                 lastTick = room.Tick;

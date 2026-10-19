@@ -42,7 +42,10 @@ public static class NetworkReport
         (0, 0), (25, 5), (50, 10), (75, 15), (100, 20), (150, 30), (200, 40), (100, 60), (200, 120),
     });   // revue Codex de la PR #22 : listes publiées immuables (pas de tableau modifiable derrière)
 
-    /// <summary>Coupures du premier joueur (latence 50 + 0 à 10 ms, parade anticipée), à 5 s de combat : durée avant la nouvelle connexion.</summary>
+    /// <summary>
+    /// Coupures du premier joueur (latence 50 + 0 à 10 ms, parade anticipée), à 5 s de combat (ou à la moitié d'un scénario plus court,
+    /// revue Codex de la PR #22, tour 7) : durée avant la nouvelle connexion.
+    /// </summary>
     public static readonly IReadOnlyList<double> Cuts = Array.AsReadOnly(new[] { 1.0, 3.0, 10.0, 25.0, 35.0 });
 
     /// <summary>Plus grand nombre de graines par réglage (celui de <c>eds reseau --graines</c>).</summary>
@@ -67,9 +70,16 @@ public static class NetworkReport
         return rows;
     }
 
-    public static IReadOnlyList<NetworkMeasureResult> MeasureCuts(GameData data, CombatSetup scenario) =>
-        Cuts.Select(seconds => NetworkMeasures.Run(data, scenario,
-            new NetworkMeasureOptions { LatencyMs = 50, JitterMs = 10, Seed = 1, Timing = ParryTiming.Anticipated, CutAtSeconds = 5, CutSeconds = seconds })).ToList();
+    public static IReadOnlyList<NetworkMeasureResult> MeasureCuts(GameData data, CombatSetup scenario)
+    {
+        ArgumentNullException.ThrowIfNull(scenario);
+        double cutAt = CutAt(scenario.DurationMs);
+        return Cuts.Select(seconds => NetworkMeasures.Run(data, scenario,
+            new NetworkMeasureOptions { LatencyMs = 50, JitterMs = 10, Seed = 1, Timing = ParryTiming.Anticipated, CutAtSeconds = cutAt, CutSeconds = seconds })).ToList();
+    }
+
+    /// <summary>Instant des coupures : 5 s de combat, ou la moitié d'un scénario plus court (toujours pendant le combat).</summary>
+    public static double CutAt(long durationMs) => Math.Min(5.0, durationMs / 2000.0);
 
     /// <param name="scenario">Nom du scénario mesuré (affiché).</param>
     /// <param name="durationMs">Durée de ses combats (affichée).</param>
@@ -95,7 +105,8 @@ public static class NetworkReport
                 $"{F(row.ActionDelayMs)} ms | {F(row.ActionDelayP95Ms)} ms | {F(row.DisplayLagMs)} ms | {F(row.RttMs)} ms | {row.Desyncs} | {(row.HashesMatch ? "égales" : "**différentes**")} |");
         }
         w.WriteLine();
-        w.WriteLine("Coupures du premier joueur à 5 s de combat (latence 50 + 0 à 10 ms, parade anticipée ; le serveur garde la place 30 s) :");
+        string cutAt = cuts.Count > 0 && cuts[0].Options.CutAtSeconds is double at ? F(at, at % 1 == 0 ? 0 : 1) : F(CutAt(durationMs), 1);
+        w.WriteLine($"Coupures du premier joueur à {cutAt} s de combat (latence 50 + 0 à 10 ms, parade anticipée ; le serveur garde la place 30 s) :");
         w.WriteLine();
         w.WriteLine("| Coupure | Retour | Reprise après la nouvelle connexion | Resynchronisations | Désync. | Fin du combat | Empreintes |");
         w.WriteLine("|---:|---|---:|---:|---:|---|---|");
