@@ -179,6 +179,8 @@ namespace EdS.Simulation.Engine
                     w.EndArray();
                     // Lot 7.3 (Q4) : écrits seulement s'il y en a, sous la forme du fichier de scénario.
                     if (assailant.Triggers.Count > 0) WriteTriggers(w, assailant.Triggers);
+                    // Sous-lot 11.1 : PV d'un assaillant mortel, écrits seulement s'il en a (format 9), comme dans le fichier de scénario.
+                    if (assailant.Health is long health) w.Field("health", health);
                     break;
             }
             w.EndObject();

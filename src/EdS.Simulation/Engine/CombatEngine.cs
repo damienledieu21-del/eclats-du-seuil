@@ -29,7 +29,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.14.0";
+        public const string Version = "0.15.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -51,10 +51,12 @@ namespace EdS.Simulation.Engine
         /// <c>sourceDied</c> (stateRemoved) ; <c>combatantSummary</c> porte <c>damageTransferred</c> et <c>damageRedirected</c> ; les règles
         /// effectives portent <c>protection.redirectRatio</c> et <c>protection.redirectThroughGuard</c>. 8 (sous-lot 8.4) : les règles
         /// effectives portent <c>guard.noUpkeep</c> ; <c>rampartChargeCost</c> de <c>skillCast</c> donne les Charges réellement dépensées
-        /// (toutes les Charges détenues pour une compétence qui les dépense toutes, comme Contrecoup). Un journal d'un autre format est
-        /// refusé au rejeu.
+        /// (toutes les Charges détenues pour une compétence qui les dépense toutes, comme Contrecoup). 9 (sous-lot 11.1) : un assaillant de
+        /// l'en-tête peut porter <c>health</c> (PV de départ et maximaux d'un assaillant mortel) ; sa ligne <c>combatant</c> porte alors ses
+        /// PV, et il meurt à 0 PV (<c>died</c>, une fois) : ses tours suivants sont abandonnés sans ligne, la victoire peut revenir aux
+        /// joueurs (<c>combatEnded</c>, <c>teamDefeated</c>). Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 8;
+        public const int LogFormatVersion = 9;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -463,6 +465,9 @@ namespace EdS.Simulation.Engine
                 case AssailantSetup assailant:
                     f.Assailant = assailant;
                     f.Rules = _baseRules;
+                    // Sous-lot 11.1 : un assaillant mortel a des PV ; sans PV (null), il reste l'assaillant d'entraînement (A21).
+                    f.MaxHealth = assailant.Health;
+                    f.Health = assailant.Health;
                     f.Stats = CombatantStats.ForDefenses(_setup.Stats, assailant.Armor, assailant.MagicResistance, assailant.StatusResistance);
                     foreach (AssailantAttack attack in assailant.Attacks)
                         f.AttackStats[attack.Id] = CombatantStats.ForAssailantAttack(_setup.Stats, attack.RawDamage);
@@ -632,6 +637,7 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private Cost AssailantTurnCost(long tick, Fighter assailant)
         {
+            if (assailant.IsDead) return Cost.None;   // sous-lot 11.1 : tour périmé, abandonné sans ligne (voir AssailantAttacks)
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
@@ -810,6 +816,9 @@ namespace EdS.Simulation.Engine
         private PendingAction? AssailantAttacks(long tick, AssailantTurn turn)
         {
             Fighter assailant = turn.Fighter;
+            // Sous-lot 11.1 : la mort arrête les tours. Le tour déjà programmé est périmé, comme une échéance d'état retiré : il n'agit
+            // pas, n'écrit rien et ne programme pas de suivant.
+            if (assailant.IsDead) return null;
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             assailant.NextAttack = (assailant.NextAttack + 1) % setup.Attacks.Count;
@@ -2064,6 +2073,7 @@ namespace EdS.Simulation.Engine
                 f.Result.DeathTick = tick;   // sous-lot 8.6 (X10)
                 f.Guarding = false;
                 f.ParryOpen = false;
+                f.NextAttackTick = null;     // sous-lot 11.1 : un assaillant mort n'a plus de tour (vue du pilote, télégraphie)
                 // A6 : provenance de l'effet mortel ; sans effet mortel (points de vie nuls dès le départ), racine propre.
                 Provenance lethal = f.LethalCause ?? Provenance.NewRoot($"endOfTick:{f.Id}:{tick}", null);
                 long died = Emit(tick, CombatPhase.EndOfTick, "died", lethal,

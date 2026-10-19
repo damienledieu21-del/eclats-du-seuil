@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "1348e7e8d531b2cdc3fefc76707d71e1cb1e1c3fb2208d284f02ade80354ead3")]
-    [InlineData("entrainement_rupture", "5a95e30602f7f36b63ff2191af41f45170fcfdeb645797bf30367517214bc5cc")]
-    [InlineData("entrainement_alterations", "d5dbf16a251eb72f328fbf490d169ca5e008f036a39f3a10cb9eb8dee6e1dc2c")]
-    [InlineData("entrainement_declencheurs", "6ac4c4215aadf5b06e36f17d39b069e2936afa12a0e0e3be0d1157ece1a240d5")]
+    [InlineData("entrainement_garde_parade", "d186165839ffe4c427ac0349ed91031c4af2283bf90280c9f7163225c84056be")]
+    [InlineData("entrainement_rupture", "7484d947a2a58a54d902c7dec4dd56cb06bd8314f2aac09d38318f28215f97b8")]
+    [InlineData("entrainement_alterations", "233e1b6262edfb614bbb38ddb58ff4a4bc982b609749f44d7a685d7aef9d33ef")]
+    [InlineData("entrainement_declencheurs", "78d2210177cb093ec00306c4d0ffb19e06d1a43d82630a0fddbd86a9e725d5ad")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -122,6 +122,9 @@ public class TrainingScenarioTests
         // Fixtures/reference-0.14.0-contenu-0.4.0. Sous-lot 8.7 : Bastion au contenu 0.5.0 (Provocation inflige 0,8) : seuls l'empreinte
         // et la version de la classe changent dans ces quatre journaux (aucune Provocation lancée) ; référence du scénario à
         // déclencheurs dans Fixtures/reference-0.14.0-contenu-0.5.0, celle du 0.4.0 reproduite avec le contenu figé du 8.5.
+        // Sous-lot 11.1 : moteur 0.15.0, format 9 (PV facultatifs des assaillants), scénarios en schéma 4 ; aucun assaillant livré n'a de
+        // PV : seul l'en-tête change (format et version du moteur), corps identique à celui du moteur 0.14.0 ; référence du scénario à
+        // déclencheurs dans Fixtures/reference-0.15.0-contenu-0.5.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

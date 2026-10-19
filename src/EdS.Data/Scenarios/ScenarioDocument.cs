@@ -44,6 +44,9 @@ namespace EdS.Data.Scenarios
         public Fixed? StatusResistance { get; set; }
 
         // Assaillant
+        /// <summary>Sous-lot 11.1 (schéma 4) : PV d'un assaillant mortel ; absent : PV infinis (entraînement, A21).</summary>
+        public long? Health { get; set; }
+
         public string? Target { get; set; }
         public long? FirstAttackMs { get; set; }
         public long? IntervalMs { get; set; }
