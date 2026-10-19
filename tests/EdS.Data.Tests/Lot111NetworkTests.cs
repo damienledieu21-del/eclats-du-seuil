@@ -76,6 +76,31 @@ public class Lot111NetworkTests
         Assert.Contains("\"health\":250", room.LastJournal![0], StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("build.bastion.contrecoup", "build.bastion.rempart")]
+    [InlineData("build.bastion.gardien", "build.bastion.gardien")]
+    public void Meute_a_vaincre_en_cooperation_gagnee_par_deux_robots(string first, string second)
+    {
+        // Scénario de coopération d'Unity depuis le sous-lot 11.1 ; valeurs provisoires : deux robots gagnent avant la fin (90 s).
+        int tokens = 0;
+        var net = new SimulatedNetwork(12);
+        SimulatedListener listener = net.Listen("salle");
+        CombatSetup setup = ScenarioJsonReader.ReadFile(ScenarioPath("coop/meute_a_vaincre"), ShippedData).Setup!;
+        var room = new CombatRoom(ShippedData, setup, new RoomOptions { TokenSource = () => (++tokens).ToString("x32") });
+        BotPlayer[] bots = new[] { first, second }.Select((build, i) => new BotPlayer(new NetworkClient(ShippedData, net.Connect("salle", new LinkProfile(50, 0)),
+            "J" + i, new BuildChoice(build), new NetworkClientOptions()))).ToArray();
+        for (double t = 0; t < 100 && room.LastResult is null; t += 0.01)
+        {
+            net.Advance(0.01);
+            while (listener.TryAccept(out INetConnection connection)) room.Accept(connection);
+            room.Advance(0.01);
+            foreach (BotPlayer bot in bots) bot.Advance(0.01);
+        }
+        CombatResult result = Assert.IsType<CombatResult>(room.LastResult);
+        Assert.Equal((CombatEndReason.TeamDefeated, "joueurs"), (result.EndReason, result.Winner));
+        Assert.InRange(result.EndTick * 0.05, 5, 60);
+    }
+
     [Fact]
     public void En_solo_la_cible_passe_au_loup_suivant_et_la_victoire_termine_le_combat()
     {

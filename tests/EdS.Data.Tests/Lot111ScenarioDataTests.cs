@@ -4,6 +4,7 @@ using EdS.Data.Json;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Domain.Combat;
+using EdS.Runtime;
 using EdS.Simulation.Engine;
 using EdS.TestSupport;
 using static EdS.Data.Tests.ScenarioTestData;
@@ -119,6 +120,47 @@ public class Lot111ScenarioDataTests
         JsonElement health = root.GetProperty("$defs").GetProperty("combatant").GetProperty("properties").GetProperty("health");
         Assert.Equal(("integer", 1, AssailantSetup.MaxHealth),
             (health.GetProperty("type").GetString(), health.GetProperty("minimum").GetInt64(), health.GetProperty("maximum").GetInt64()));
+    }
+
+    /// <summary>
+    /// Joue la meute à vaincre en solo avec un build de référence : <paramref name="defend"/> faux, le joueur ne se défend pas ; vrai, il
+    /// alterne parade juste avant un coup et garde levée (script simple, déterministe).
+    /// </summary>
+    private static (CombatResult Result, double Seconds) PlaySolo(string build, bool defend)
+    {
+        TrainingSession session = TrainingSession.Create(ShippedData, ScenarioJsonReader.ReadFile(ScenarioPath("meute_a_vaincre"), ShippedData).Setup!, build);
+        RealtimeCombat combat = session.Start();
+        for (int step = 0; step < 90 * 20 && !combat.IsFinished; step++)
+        {
+            if (defend)
+            {
+                double? next = combat.Others().Where(o => o.IsEnemy && !o.View.IsDead && o.NextAttackSeconds is double).Select(o => o.NextAttackSeconds).Min();
+                bool parryTurn = step / 7 % 2 == 0;
+                if (parryTurn && next is double n && n < 0.12) combat.Parry();
+                combat.SetGuard(!parryTurn && next is double g && g < 0.4);
+            }
+            if (step % 4 == 0) combat.UseSlot(step / 4 % 5);
+            combat.Advance(0.05);
+        }
+        Assert.True(combat.IsFinished);
+        return (combat.Result!, combat.Tick * combat.TickSeconds);
+    }
+
+    [Theory]
+    [InlineData("build.bastion.rempart")]
+    [InlineData("build.bastion.contrecoup")]
+    [InlineData("build.bastion.gardien")]
+    [InlineData("build.bastion.hybride")]
+    [InlineData("build.bastion.niveau_10")]
+    public void Meute_a_vaincre_gagnee_en_se_defendant_perdue_sans_defense(string build)
+    {
+        // Valeurs provisoires (scénario de démonstration du 11.1) : chaque build de référence gagne en se défendant, avant la fin du temps
+        // imparti, et tombe sans se défendre.
+        var (won, seconds) = PlaySolo(build, defend: true);
+        Assert.Equal((CombatEndReason.TeamDefeated, "joueurs"), (won.EndReason, won.Winner));
+        Assert.InRange(seconds, 5, 60);
+        var (lost, _) = PlaySolo(build, defend: false);
+        Assert.Equal("cibles", lost.Winner);
     }
 
     [Fact]
