@@ -493,7 +493,8 @@ namespace EdS.Net
             foreach (Seat seat in _seats)
             {
                 CombatantView me = engine.View(seat.Id);
-                IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, atMs, seat.Guard, seat.Parry, seat.Slot, skill => TargetFor(engine, seat, me, skill));
+                int? slot = Available(engine, seat, me, tick);
+                IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, atMs, seat.Guard, seat.Parry, slot, skill => TargetFor(engine, seat, me, skill));
                 seat.Parry = false;
                 seat.Slot = null;
                 foreach (CombatCommand[] group in groups)
@@ -523,6 +524,23 @@ namespace EdS.Net
                     CombatEndReason.TeamDefeated => "une équipe vaincue.",
                     _ => "combat interrompu : " + (engine.Result.AbortReason ?? "limite atteinte") + ".",
                 });
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #19 : emplacement demandé seulement si sa compétence semble lançable, avec le même contrôle que le pont
+        /// temps réel (<see cref="IntentionPlanner.Unavailable"/>) ; sinon le joueur reçoit un refus motivé et rien n'est planifié pour
+        /// cet emplacement (la garde n'est pas quittée), comme en solo.
+        /// </summary>
+        private int? Available(CombatEngine engine, Seat seat, CombatantView me, long tick)
+        {
+            if (seat.Slot is not int slot) return null;
+            SkillDefinition? skill = IntentionPlanner.SkillAt(me, slot);
+            string? why = skill is null ? "emplacement vide"
+                : IntentionPlanner.Unavailable(me, skill, slot == RealtimeCombat.UltimateSlot, tick, _tickSeconds, _setup!.Combat,
+                    skill.Combat!.Targeting != SkillTargeting.Enemy || TargetFor(engine, seat, me, skill) != null);
+            if (why is null) return slot;
+            if (seat.Client != null) Send(seat.Client, new RejectedMessage(Protocol.Text(skill is null ? why : $"{skill.Name} : {why}")));
+            return null;
         }
 
         /// <summary>Cible d'une compétence : choix du joueur s'il est valide, sinon le premier ennemi vivant ou l'autre joueur.</summary>
