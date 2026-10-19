@@ -25,3 +25,12 @@
 - **Retour manuel** : le client ne rouvre pas la connexion lui-même (il ne connaît pas le transport) ; l'appelant fournit la nouvelle connexion (Unity le fera au 10.4).
 - **Client à appeler régulièrement** : un client qui ne lit plus (jeu figé plusieurs minutes) dépasse les 4 096 messages en attente et sa connexion est coupée ; il peut alors revenir pendant un combat.
 - **Confiance dans le serveur** : un serveur fautif ne fait pas planter le client (lecture stricte, moteur protégé), mais le client montre ce qu'il dit. L'empreinte FNV-1a détecte les divergences accidentelles, pas une falsification.
+
+## Sous-lot 10.4 : Unity
+
+- **Pas essayé dans l'éditeur par Claude** : Unity ne tourne pas dans les sessions cloud. Les scripts compilent en CI contre les bouchons de l'API Unity (`EdS.Unity.CompileCheck`) et tout ce qui ne dépend pas d'Unity (`NetworkSession`, `BotPlayer`, arrêt de l'hôte) est testé, TCP réel compris ; l'essai dans Unity est celui de Damien.
+- **Réseau local seulement** : pas de passage par Internet (box, NAT), pas de découverte automatique : on tape l'adresse affichée par l'hôte. Port d'hébergement fixe (7777) ; Windows demande d'autoriser Unity sur les réseaux privés.
+- **Équipier robot sommaire** : il réagit à la télégraphie et lance ce qui est prêt, sans tactique.
+- **Un seul scénario en réseau** (`coop/duo_meute`) ; place attribuée dans l'ordre d'arrivée (le robot peut prendre la première).
+- **Pas de pause** en réseau (le serveur mène le combat) ; talents et builds se changent en salle d'attente seulement ; le build composé n'est pas sauvegardé.
+- **Positions toujours visuelles** : l'allié est dessiné à côté du joueur ; chacun voit son personnage au centre.

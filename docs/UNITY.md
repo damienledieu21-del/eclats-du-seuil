@@ -47,6 +47,7 @@ Appuyer sur **Play** (▶ en haut au centre). L'arène se construit, avec le Bas
 | Retour arrière | recommencer la séance |
 | Échap | pause |
 | H | masquer ou afficher l'aide |
+| M | jeu en réseau à deux (voir la section 6) |
 
 À l'écran : barres de PV, d'endurance, de Résonance et de Charges en bas ; les compétences avec leur recharge ; au-dessus de chaque ennemi, sa barre de PV et une **barre de télégraphie** qui se remplit avant son coup (rouge vif : coup **imparable**, à encaisser sans garde ni parade) ; la fiche de la cible en haut à droite ; les textes de combat (dégâts, « Bloqué », « Parade parfaite ! »).
 
@@ -60,13 +61,41 @@ Touche **T** : le combat se met en pause et l'écran des talents s'ouvre, avec l
 
 Le niveau et les compétences équipées sont ceux du build de départ ; le build composé n'est pas encore sauvegardé (il disparaît à l'arrêt du jeu).
 
-## 6. En cas de problème
+## 6. Jouer à deux en réseau (lot 10)
+
+Touche **M** : le menu du réseau s'ouvre. On y tape son nom, puis on choisit une façon de jouer. La partie est une **coopération** : deux Bastions contre deux loups et un hurleur (60 s). Le serveur mène le combat ; si un joueur perd la connexion, le combat continue, son personnage baisse la garde, et le jeu revient tout seul dans la partie s'il retrouve le réseau dans les 30 s.
+
+**a. Essayer seul, avec un équipier robot** (le plus simple pour un premier essai) :
+
+1. Play, puis **M** → **Héberger avec un équipier robot**.
+2. La salle d'attente montre les deux places ; le robot est déjà prêt. Clic sur **Je suis prêt** : le combat commence.
+3. Le robot joue simplement (garde quand un coup arrive, parade, compétences, Barrière d'acier sur toi). **G** choisit l'allié visé par tes soutiens (cercle vert).
+
+**b. À deux PC sur le même réseau (box, Wi-Fi)** :
+
+1. PC qui héberge : Play → **M** → **Héberger la partie**. Windows peut demander d'autoriser Unity sur le réseau : accepter pour les **réseaux privés**. La salle d'attente affiche l'adresse à donner (par exemple `192.168.1.20`).
+2. Autre PC (même projet ouvert dans Unity, même branche) : Play → **M** → taper cette adresse → **Rejoindre**.
+3. Chacun clique sur **Je suis prêt**.
+
+**c. Sur un seul PC, deux fenêtres** : Unity n'ouvre pas deux fois le même projet ; on construit donc le jeu une fois.
+
+1. **File → Build Profiles → Windows → Build**, et choisir le dossier **`unity/Build`** (il est ignoré par GitHub Desktop). Le jeu construit retrouve tout seul les données du dépôt.
+2. Dans l'éditeur : Play → **M** → **Héberger la partie**.
+3. Lancer le jeu construit (`unity/Build/…exe`) → **M** → adresse `127.0.0.1` → **Rejoindre**.
+
+**d. Avec le serveur dédié** (outil .NET, pour les curieux) : `dotnet run --project src/EdS.Server -- --local --robot` dans un terminal ouvert dans le dépôt, puis dans Unity **M** → adresse `127.0.0.1` → **Rejoindre**.
+
+Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** ouvre les talents (« Jouer ce build » envoie le build composé au serveur, qui le vérifie). En combat, le temps aller-retour (ping) s'affiche sous le chrono ; pas de pause en réseau. **Quitter la partie** ramène au menu ; **Revenir au jeu solo** reprend l'entraînement.
+
+## 7. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
 - **Cadre rouge « Impossible de charger le jeu »** : le dossier `unity` a été déplacé hors du dépôt. Il doit rester à côté de `data/` et `scenarios/`.
 - **Erreurs rouges dans la Console** : faire une capture de la Console et l'envoyer à Claude.
 - **Fichiers modifiés dans GitHub Desktop** après une ouverture (`ProjectVersion.txt` notamment) : c'est Unity qui les réécrit ; ne rien valider (*Commit*). Si un *Pull* refuse à cause d'eux : clic droit sur le fichier → *Discard changes*, puis *Pull*.
 - Pour remettre le projet à zéro : fermer Unity et supprimer le dossier `unity/Library` (il est recréé à l'ouverture).
+- **Réseau : « connexion impossible »** : vérifier l'adresse, que l'autre PC héberge bien (salle d'attente affichée) et que le pare-feu Windows autorise Unity (ou le jeu construit) sur les réseaux privés, port 7777.
+- **Réseau : « désynchronisation persistante »** : ne devrait jamais arriver ; faire une capture et l'envoyer à Claude (c'est exactement ce que le lot 10 doit détecter).
 
 ## Ce qui est provisoire
 

@@ -10,8 +10,9 @@ namespace EdS.Game
     /// <summary>
     /// Sous-lot 9.3 : arène construite par le code (graphismes provisoires : formes simples). Le joueur est une capsule bleue avec un
     /// bouclier visible en garde (doré pendant la fenêtre de parade) ; les assaillants sont des capsules rouges, le mannequin un
-    /// cylindre, un allié une capsule verte ; la cible est cerclée de jaune. Les positions sont purement visuelles : le cœur n'a pas de
-    /// système de positions.
+    /// cylindre, un allié une capsule verte ; la cible est cerclée de jaune, l'allié visé par les soutiens de vert (lot 10, à deux). Les
+    /// positions sont purement visuelles : le cœur n'a pas de système de positions. Sert au combat solo comme au combat en réseau
+    /// (<see cref="ICombatClient"/>, sous-lot 10.4).
     /// </summary>
     public sealed class ArenaView
     {
@@ -25,6 +26,7 @@ namespace EdS.Game
         private GameObject _shield;
         private Renderer _shieldRenderer;
         private GameObject _targetRing;
+        private GameObject _allyRing;
         private Material _shieldGuard;
         private Material _shieldParry;
         private Material _shieldBroken;
@@ -71,7 +73,7 @@ namespace EdS.Game
         }
 
         /// <summary>Remplace les combattants affichés par ceux d'un nouveau combat.</summary>
-        public void Populate(RealtimeCombat combat)
+        public void Populate(ICombatClient combat)
         {
             foreach (GameObject body in _bodies.Values) Object.Destroy(body);
             _bodies.Clear();
@@ -79,6 +81,7 @@ namespace EdS.Game
             _baseColors.Clear();
             if (_player != null) Object.Destroy(_player);
             if (_targetRing != null) Object.Destroy(_targetRing);
+            if (_allyRing != null) Object.Destroy(_allyRing);
 
             _player = Body(combat.PlayerId, PrimitiveType.Capsule, new Color(0.25f, 0.45f, 0.95f), Vector3.zero);
             _shield = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -114,6 +117,14 @@ namespace EdS.Game
             _targetRing.transform.SetParent(_root.transform, false);
             _targetRing.transform.localScale = new Vector3(1.6f, 0.01f, 1.6f);
             _targetRing.GetComponent<Renderer>().sharedMaterial = MakeMaterial(new Color(1f, 0.85f, 0.2f));
+
+            _allyRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            _allyRing.name = "Allié visé";
+            Object.Destroy(_allyRing.GetComponent<Collider>());
+            _allyRing.transform.SetParent(_root.transform, false);
+            _allyRing.transform.localScale = new Vector3(1.4f, 0.01f, 1.4f);
+            _allyRing.GetComponent<Renderer>().sharedMaterial = MakeMaterial(new Color(0.3f, 0.9f, 0.45f));
+            _allyRing.SetActive(false);
         }
 
         private GameObject Body(string id, PrimitiveType shape, Color color, Vector3 position)
@@ -133,8 +144,11 @@ namespace EdS.Game
         /// <summary>Position d'affichage d'un combattant (au-dessus de sa tête), ou null s'il n'est pas affiché.</summary>
         public Vector3? Head(string id) => _bodies.TryGetValue(id, out GameObject body) ? body.transform.position + Vector3.up * 1.3f : (Vector3?)null;
 
-        /// <summary>Met l'arène à l'état du combat : garde, parade, cible, combattants hors de combat, adversaires tournés vers le joueur.</summary>
-        public void Sync(RealtimeCombat combat, PlayerState player)
+        /// <summary>
+        /// Met l'arène à l'état du combat : garde, parade, cible, allié visé (null : aucun), combattants hors de combat, adversaires
+        /// tournés vers le joueur.
+        /// </summary>
+        public void Sync(ICombatClient combat, PlayerState player, string allyId)
         {
             CombatantView me = player.View;
             bool broken = me.States.Contains("guardBreak");
@@ -159,6 +173,14 @@ namespace EdS.Game
                 _targetRing.transform.position = new Vector3(p.x, 0.02f, p.z);
             }
             else _targetRing.SetActive(false);
+
+            if (allyId != null && _bodies.TryGetValue(allyId, out GameObject ally))
+            {
+                _allyRing.SetActive(true);
+                Vector3 p = ally.transform.position;
+                _allyRing.transform.position = new Vector3(p.x, 0.015f, p.z);
+            }
+            else _allyRing.SetActive(false);
         }
 
         private void Tint(string id, bool dead, bool stunned)

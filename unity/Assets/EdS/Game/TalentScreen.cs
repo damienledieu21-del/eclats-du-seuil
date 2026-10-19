@@ -29,13 +29,21 @@ namespace EdS.Game
         private readonly Dictionary<string, BuildViolation> _whyNotAdd = new Dictionary<string, BuildViolation>();
         private readonly Dictionary<string, BuildViolation> _whyNotRemove = new Dictionary<string, BuildViolation>();
 
-        public TalentScreen(TalentEditor editor, IReadOnlyList<ReferenceBuild> references)
+        /// <param name="referenceId">Build de référence dont part l'éditeur (null : inconnu).</param>
+        public TalentScreen(TalentEditor editor, IReadOnlyList<ReferenceBuild> references, string referenceId = null)
         {
             _editor = editor;
             _references = references;
+            ReferenceId = referenceId;
         }
 
         public TalentEditor Editor => _editor;
+
+        /// <summary>
+        /// Sous-lot 10.4 : build de référence dont part le build composé (le dernier chargé par « Partir de »). En réseau, le serveur
+        /// reçoit cette référence et les rangs de talents (attributs et compétences sont ceux de la référence).
+        /// </summary>
+        public string ReferenceId { get; private set; }
 
         /// <summary>Message affiché en bas de l'écran (par exemple un refus au moment de jouer le build).</summary>
         public void Say(string message, bool error)
@@ -83,6 +91,7 @@ namespace EdS.Game
                 if (Hud.Button(new Rect(bx, y + 88, 210, 34), reference.Name, true))
                 {
                     _editor.Load(reference.Build);
+                    ReferenceId = reference.Id;
                     Say($"Build de référence « {reference.Name} » chargé.", false);
                 }
                 bx += 218;

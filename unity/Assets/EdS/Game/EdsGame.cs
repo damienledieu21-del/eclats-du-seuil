@@ -2,8 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using EdS.Data;
 using EdS.Data.Builds;
+using EdS.Data.Json;
+using EdS.Data.Scenarios;
 using EdS.Domain.Builds;
+using EdS.Domain.Combat;
+using EdS.Simulation.Engine;
+using EdS.Net;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -12,7 +18,9 @@ namespace EdS.Game
     /// <summary>
     /// Sous-lot 9.3 : boucle du prototype. Charge les données du dépôt (<c>data/v0</c>) et un scénario (<c>scenarios/</c>), joue le
     /// combat en temps réel avec le pont <see cref="RealtimeCombat"/> (sous-lot 9.2), transmet les touches, affiche l'arène, la caméra,
-    /// l'interface et les retours. Le cœur reste seul juge du combat : cette classe ne calcule aucune règle.
+    /// l'interface et les retours. Le cœur reste seul juge du combat : cette classe ne calcule aucune règle. Sous-lot 10.4 : jeu en
+    /// réseau (touche M) : héberger, avec un équipier robot si l'on veut, ou rejoindre ; le combat en coopération est mené par le serveur
+    /// (<see cref="NetworkSession"/>), le même écran l'affiche.
     /// </summary>
     public sealed class EdsGame : MonoBehaviour
     {
@@ -40,7 +48,7 @@ namespace EdS.Game
 
         private string _repoRoot;
         private TrainingSession _session;
-        private RealtimeCombat _combat;
+        private ICombatClient _combat;
         private int _scenario;
         private string _error;
         private bool _paused;
@@ -57,14 +65,46 @@ namespace EdS.Game
         private bool _pausedBeforeTalents;
         private CharacterBuild _customBuild;
 
+        // Sous-lot 10.4 : jeu en réseau. Session (null : solo), menu ouvert, combat affiché, build demandé au serveur.
+        private const string CoopScenario = "coop/duo_meute.json";
+        private const string RobotBuild = "build.bastion.gardien";
+        private NetworkSession _net;
+        private readonly NetworkScreen _netScreen = new NetworkScreen();
+        private bool _menuOpen;
+        private NetworkCombat _shownCombat;
+        private string _netBuildId = "build.bastion.rempart";
+        private bool _netTalentScreen;
+        private string _lastCombat;
+
+        private bool Network => _net != null;
+
         private void Start()
         {
-            // Projet Unity dans unity/ : le dépôt est le dossier parent.
-            _repoRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
+            _repoRoot = FindRepoRoot();
             _camera = CameraRig.Create();
             _arena = new ArenaView();
             Load(0, null);
         }
+
+        /// <summary>
+        /// Dossier du dépôt (données <c>data/v0</c> et scénarios) : le parent du projet Unity dans l'éditeur ; pour un jeu construit
+        /// (sous-lot 10.4, essai à deux postes), le premier dossier parent qui les contient (construire dans <c>unity/Build/</c>).
+        /// </summary>
+        private static string FindRepoRoot()
+        {
+            string fallback = Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
+            string dir = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            for (int i = 0; i < 6 && !string.IsNullOrEmpty(dir); i++)
+            {
+                if (Directory.Exists(Path.Combine(dir, "data", "v0")) && Directory.Exists(Path.Combine(dir, "scenarios"))) return dir;
+                dir = Path.GetDirectoryName(dir);
+            }
+            return fallback;
+        }
+
+        private void OnDestroy() => StopNetwork();
+
+        private void OnApplicationQuit() => StopNetwork();
 
         private void Load(int scenario, string buildId)
         {
@@ -108,18 +148,55 @@ namespace EdS.Game
         {
             _pausedBeforeTalents = _paused;
             _paused = true;
-            _talents = new TalentScreen(_session.CreateTalentEditor(), _session.AvailableBuilds());
+            _netTalentScreen = false;
+            _talents = new TalentScreen(_session.CreateTalentEditor(), _session.AvailableBuilds(), _session.Build?.Id);
         }
+
+        /// <summary>Sous-lot 10.4 : talents du build demandé au serveur (salle d'attente), à partir de sa référence.</summary>
+        private void OpenNetworkTalents()
+        {
+            try
+            {
+                // Revue Codex de la PR #21 (tour 4) : on repart du build que le serveur a accepté, jamais d'une demande refusée.
+                BuildChoice accepted = AcceptedNetworkBuild;
+                TrainingSession reference = TrainingSession.Create(_session.Data, _session.Setup, accepted.Reference, _session.PlayerId);
+                if (accepted.Talents != null) reference = reference.WithCustomBuild(WithTalents(reference.Player.Build, accepted.Talents), TalentScreenName);
+                _talents = new TalentScreen(reference.CreateTalentEditor(), reference.AvailableBuilds(), accepted.Reference);
+                _netTalentScreen = true;
+            }
+            catch (Exception e)
+            {
+                Say("Talents indisponibles : " + e.Message);
+                Debug.LogException(e);
+            }
+        }
+
+        private static CharacterBuild WithTalents(CharacterBuild build, IReadOnlyDictionary<string, int> talents) =>
+            new CharacterBuild(build.ClassId, build.Level, build.Attributes, talents, build.ActiveSkills, build.Ultimate, build.PassiveSkills);
 
         private void CloseTalents()
         {
             _talents = null;
-            _paused = _pausedBeforeTalents;
+            if (!_netTalentScreen) _paused = _pausedBeforeTalents;
+            _netTalentScreen = false;
         }
 
-        /// <summary>Joue le build composé : nouvelle séance (même scénario) avec ce build, relancée du début.</summary>
+        /// <summary>Joue le build composé : nouvelle séance (même scénario) avec ce build, relancée du début ; en réseau, demandé au serveur.</summary>
         private void PlayTalents()
         {
+            if (_netTalentScreen)
+            {
+                string reference = _talents.ReferenceId ?? AcceptedNetworkBuild.Reference;
+                // Revue Codex de la PR #21 : la demande ne part qu'en salle d'attente ; le serveur l'accepte ou la refuse (tour 4 : le build
+                // retenu ne change qu'à son accord, voir AcceptedNetworkBuild).
+                if (!SetNetworkBuild(reference, new Dictionary<string, int>(_talents.Editor.Build.TalentRanks), out string why))
+                {
+                    _talents.Say(why, true);
+                    return;
+                }
+                CloseTalents();
+                return;
+            }
             CharacterBuild build = _talents.Editor.Build;
             try
             {
@@ -137,19 +214,36 @@ namespace EdS.Game
 
         private void Say(string message)
         {
-            _messages.Add(new KeyValuePair<float, string>(Time.time, message));
+            // Les messages peuvent porter du texte venu du serveur ou de l'autre joueur : jamais de balise de texte enrichi.
+            _messages.Add(new KeyValuePair<float, string>(Time.time, Hud.Plain(message)));
             if (_messages.Count > 5) _messages.RemoveAt(0);
         }
 
         private void Update()
         {
-            // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran.
+            // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran. En réseau,
+            // la partie continue d'avancer (le serveur ne s'arrête pas), sans entrée de combat.
             if (_talents != null)
             {
                 if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) CloseTalents();
+                if (Network) UpdateNetwork(false);
+                return;
+            }
+            // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
+            // Une lettre M tapée dans un champ du menu (nom, adresse) ne le ferme pas.
+            if (Input.GetKeyDown(KeyCode.M) && !(_menuOpen && GUIUtility.keyboardControl != 0)) _menuOpen = !_menuOpen;
+            if (_menuOpen)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;
+                if (Network) UpdateNetwork(false);
                 return;
             }
             if (Input.GetKeyDown(KeyCode.H)) _help = !_help;
+            if (Network)
+            {
+                UpdateNetwork(true);
+                return;
+            }
             if (Input.GetKeyDown(KeyCode.N)) Load((_scenario + 1) % ScenarioFiles.Length, null);
             if (_combat == null) return;
 
@@ -185,7 +279,7 @@ namespace EdS.Game
             }
 
             player = _combat.Player();
-            _arena.Sync(_combat, player);
+            _arena.Sync(_combat, player, null);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
         }
 
@@ -199,6 +293,197 @@ namespace EdS.Game
                 if (Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i])) _combat.UseSlot(i);
             if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5)) _combat.UseSlot(RealtimeCombat.UltimateSlot);
             if (Input.GetKeyDown(KeyCode.Tab)) _combat.NextTarget();
+            if (Input.GetKeyDown(KeyCode.G) && _combat is NetworkCombat network) network.NextAlly();
+        }
+
+        // --- Jeu en réseau (sous-lot 10.4) ---------------------------------------------------------------------------------------
+
+        private void StartNetwork(NetworkScreen.Action action)
+        {
+            StopNetwork();
+            _netScreen.Message = null;
+            try
+            {
+                if (_session == null) throw new InvalidOperationException("données du jeu non chargées (voir le message d'erreur du solo).");
+                GameData data = _session.Data;
+                string name = (_netScreen.PlayerName ?? "").Trim();
+                if (name.Length == 0) name = "Joueur";
+                _netBuildId = _session.Build?.Id ?? _netBuildId;
+                var build = new BuildChoice(_netBuildId);
+                if (action == NetworkScreen.Action.Join)
+                {
+                    ParseAddress(_netScreen.Address, out string host, out int port);
+                    _net = NetworkSession.Join(data, host, port, name, build);
+                }
+                else
+                {
+                    ScenarioLoadResult coop = ScenarioJsonReader.ReadFile(Path.Combine(_repoRoot, "scenarios", CoopScenario), data);
+                    if (coop.Setup == null) throw new InvalidOperationException("scénario de coopération refusé : " + coop.Report);
+                    _net = NetworkSession.HostGame(data, coop.Setup, name, build, Protocol.DefaultPort, true,
+                        action == NetworkScreen.Action.HostWithBot ? new BuildChoice(RobotBuild) : null);
+                }
+                _menuOpen = false;
+                _paused = false;
+                _combat = null;
+                _shownCombat = null;
+                _lastCombat = null;
+                Say(action == NetworkScreen.Action.Join ? "Connexion à " + _net.Address : "Partie hébergée sur ce poste.");
+            }
+            catch (Exception e)
+            {
+                StopNetwork();
+                _netScreen.Message = "Impossible : " + e.Message;
+                Debug.LogException(e);
+            }
+        }
+
+        /// <summary>« hôte » ou « hôte:port » (port 7777 par défaut).</summary>
+        private static void ParseAddress(string text, out string host, out int port)
+        {
+            host = (text ?? "").Trim();
+            port = Protocol.DefaultPort;
+            int colon = host.LastIndexOf(':');
+            if (colon > 0 && host.IndexOf(':') == colon)
+            {
+                if (!int.TryParse(host.Substring(colon + 1), out port) || port < 1 || port > 65535) throw new ArgumentException("port invalide.");
+                host = host.Substring(0, colon);
+            }
+            if (host.Length == 0) throw new ArgumentException("adresse vide.");
+        }
+
+        private void StopNetwork()
+        {
+            if (_net == null) return;
+            try
+            {
+                _net.Dispose();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+            _net = null;
+            _shownCombat = null;
+            if (!(_combat is RealtimeCombat)) _combat = null;
+        }
+
+        /// <summary>Quitte le réseau et reprend la séance solo du début.</summary>
+        private void BackToSolo()
+        {
+            StopNetwork();
+            if (_session != null) Restart();
+            else Load(_scenario, null);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #21 (tour 4) : build retenu en réseau = celui que le serveur a accepté (suivi par le client : une demande
+        /// refusée, par exemple arrivée au serveur après le début du combat, ne le change pas).
+        /// </summary>
+        private BuildChoice AcceptedNetworkBuild => _net?.Client?.AcceptedBuild ?? new BuildChoice(_netBuildId);
+
+        /// <summary>
+        /// Demande un build au serveur (salle d'attente seulement, une demande à la fois) ; rend faux avec la raison si elle n'est pas
+        /// partie. Le build retenu ne change qu'une fois la demande acceptée par le serveur.
+        /// </summary>
+        private bool SetNetworkBuild(string referenceId, IReadOnlyDictionary<string, int> talents, out string why)
+        {
+            NetworkClient client = _net?.Client;
+            why = null;
+            if (client == null || client.Status != ClientStatus.Lobby)
+                why = "Le combat a commencé : build non envoyé (à refaire en salle d'attente).";
+            else if (client.PendingBuild != null)
+                why = "Le build précédent attend encore la réponse du serveur.";
+            if (why != null)
+            {
+                Say(why);
+                return false;
+            }
+            try
+            {
+                if (client.SetBuild(new BuildChoice(referenceId, talents))) return true;
+                why = "Build non envoyé (à refaire en salle d'attente).";
+            }
+            catch (Exception e)
+            {
+                why = "Build refusé : " + e.Message;
+            }
+            Say(why);
+            return false;
+        }
+
+        private string NetworkBuildName()
+        {
+            NetworkClient client = _net?.Client;
+            SeatInfo seat = client?.Lobby?.Seats.FirstOrDefault(s => s.Id == client.SeatId);
+            return Hud.Plain(seat?.Build ?? AcceptedNetworkBuild.Reference);
+        }
+
+        private void UpdateNetwork(bool input)
+        {
+            try
+            {
+                _net.Advance(Time.deltaTime);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                _netScreen.Message = "Partie arrêtée : " + e.Message;
+                BackToSolo();
+                return;
+            }
+            NetworkClient client = _net.Client;
+            NetworkCombat combat = client?.Combat;
+            if (combat != null && combat != _shownCombat)
+            {
+                // Revue Codex de la PR #21 : l'écran des talents ouvert en salle d'attente se ferme au début du combat (le build ne
+                // pourrait plus partir) ; le joueur le retrouve au retour en salle d'attente.
+                if (_netTalentScreen)
+                {
+                    CloseTalents();
+                    Say("Combat commencé : écran des talents fermé, build inchangé.");
+                }
+                _shownCombat = combat;
+                _combat = combat;
+                _arena.Populate(combat);
+                _playerYaw = 0f;
+                _floating.Clear();
+                Say($"Combat en coopération : tu joues {client.SeatId}.");
+            }
+            if (input && Input.GetKeyDown(KeyCode.C)) _camera.Toggle(_playerYaw);
+            if (input && client != null && client.Status == ClientStatus.Lobby)
+            {
+                IReadOnlyList<ReferenceBuild> builds = _session.AvailableBuilds();
+                KeyCode[] buildKeys = { KeyCode.F1, KeyCode.F2, KeyCode.F3, KeyCode.F4, KeyCode.F5 };
+                for (int i = 0; i < buildKeys.Length && i < builds.Count; i++)
+                    if (Input.GetKeyDown(buildKeys[i])) SetNetworkBuild(builds[i].Id, null, out _);
+                if (Input.GetKeyDown(KeyCode.T))
+                {
+                    OpenNetworkTalents();
+                    return;
+                }
+            }
+            if (_combat == null) return;
+
+            PlayerState player = _combat.Player();
+            bool fighting = client != null && client.Status == ClientStatus.Combat && !_combat.IsFinished;
+            if (input && fighting) ReadCombatInput();
+            else if (fighting) _combat.SetGuard(false);   // menu ou talents ouverts : garde relâchée, rien d'autre n'est envoyé
+            // Revue Codex de la PR #21 : coupé ou en retour, la garde mémorisée est oubliée ; la touche est relue une fois le combat repris.
+            else if (combat != null && !combat.IsFinished) combat.SetGuard(false);
+            Move(player);
+            foreach (CombatFeedback feedback in _combat.DrainFeedback()) Show(feedback);
+            if (combat != null && combat.IsFinished && _lastCombat == null)
+            {
+                CombatResult result = combat.Result;
+                string outcome = result == null ? "" : result.Winner == null ? " — aucun vainqueur" : $" — équipe gagnante : {result.Winner}";
+                _lastCombat = $"Dernier combat : {combat.EndReason ?? "terminé."}{outcome}";
+                Say("Fin du combat : retour en salle d'attente.");
+            }
+            if (combat != null && !combat.IsFinished) _lastCombat = null;
+
+            player = _combat.Player();
+            _arena.Sync(_combat, player, combat?.AllyId);
+            if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
         }
 
         /// <summary>Déplacement purement visuel, relatif à la caméra (ZQSD ou flèches) ; impossible hors de combat ou étourdi.</summary>
@@ -247,13 +532,52 @@ namespace EdS.Game
             });
         }
 
+        private void DrawTalents()
+        {
+            TalentScreen.Action action = _talents.Draw();
+            if (action == TalentScreen.Action.Play) PlayTalents();
+            else if (action == TalentScreen.Action.Close) CloseTalents();
+        }
+
         private void OnGUI()
         {
             Hud.Begin();
-            if (_error != null)
+            if (_error != null && !Network)
             {
                 Hud.Fill(new Rect(40, 40, Hud.Width - 80, 260), new Color(0.3f, 0f, 0f, 0.85f));
                 Hud.Text(new Rect(60, 60, Hud.Width - 120, 220), _error);
+                return;
+            }
+            if (_menuOpen)
+            {
+                NetworkScreen.Action menu = _netScreen.DrawMenu();
+                if (menu == NetworkScreen.Action.Host || menu == NetworkScreen.Action.HostWithBot || menu == NetworkScreen.Action.Join) StartNetwork(menu);
+                else if (menu == NetworkScreen.Action.Solo)
+                {
+                    _menuOpen = false;
+                    BackToSolo();
+                }
+                else if (menu == NetworkScreen.Action.Close) _menuOpen = false;
+                return;
+            }
+            if (Network && _talents == null && (_net.Client == null || _net.Client.Status != ClientStatus.Combat && _net.Client.Status != ClientStatus.Disconnected
+                && _net.Client.Status != ClientStatus.Reconnecting))
+            {
+                // Salle d'attente (avant, entre et après les combats) ; l'arène du dernier combat reste visible derrière.
+                NetworkScreen.Action lobby = _netScreen.DrawLobby(_net, NetworkBuildName(), _lastCombat);
+                if (lobby == NetworkScreen.Action.Ready) _net.Client?.SetReady(true);
+                else if (lobby == NetworkScreen.Action.NotReady) _net.Client?.SetReady(false);
+                else if (lobby == NetworkScreen.Action.Leave)
+                {
+                    _netScreen.Message = _net.Error ?? _net.Client?.Error;
+                    BackToSolo();
+                    _menuOpen = true;
+                }
+                return;
+            }
+            if (_talents != null && _combat == null)
+            {
+                DrawTalents();
                 return;
             }
             if (_combat == null) return;
@@ -280,7 +604,9 @@ namespace EdS.Game
 
             Hud.Player(player);
             Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId));
-            if (_help) Hud.Help(ScenarioName(), BuildName(), _camera.Describe(), _paused);
+            if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
+                Network ? NetworkBuildName() : BuildName(), _camera.Describe(), _paused, Network);
+            if (Network) NetworkScreen.DrawCombat(_net, _shownCombat?.AllyId);
 
             _messages.RemoveAll(m => Time.time - m.Key > MessageSeconds);
             for (int i = 0; i < _messages.Count; i++)
@@ -288,9 +614,7 @@ namespace EdS.Game
 
             if (_talents != null)
             {
-                TalentScreen.Action action = _talents.Draw();
-                if (action == TalentScreen.Action.Play) PlayTalents();
-                else if (action == TalentScreen.Action.Close) CloseTalents();
+                DrawTalents();
                 return;
             }
 

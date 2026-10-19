@@ -29,6 +29,9 @@ namespace EdS.Net
         /// <summary>Longueur maximale d'un identifiant (build, talent, combattant, compétence).</summary>
         public const int MaxIdLength = 128;
 
+        /// <summary>Début du refus envoyé à chaque joueur quand le combat ne peut pas commencer (revue Codex de la PR #21, tour 4).</summary>
+        public const string CombatRefused = "combat refusé : ";
+
         /// <summary>Talents au plus dans un build envoyé par un client.</summary>
         public const int MaxTalents = 256;
 
