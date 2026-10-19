@@ -17,8 +17,9 @@ public enum ParryTiming
     OnSight = 0,
 
     /// <summary>
-    /// Anticipée : le même moment avancé du temps aller-retour mesuré ; c'est ce que ferait, pour un joueur qui pare à vue, une
-    /// télégraphie affichée en avance du ping.
+    /// Anticipée : le même joueur, qui pare à vue, mais sur la télégraphie avancée du temps aller-retour lissé (option B, sous-lot 10.6,
+    /// <see cref="NetworkClientOptions.TelegraphAdvance"/>) ; au 10.5, avant l'option B, le joueur scripté avançait lui-même son moment
+    /// de parade du temps aller-retour.
     /// </summary>
     Anticipated = 1,
 }
@@ -74,6 +75,9 @@ public sealed class NetworkMeasureResult
 
     /// <summary>Durée d'un tick du combat mesuré (règles des données), en millisecondes.</summary>
     public int TickMs { get; init; }
+
+    /// <summary>Ticks du serveur dont l'instant a été relevé (contrôle : tous ceux du combat, de 0 à <see cref="EndTick"/> inclus).</summary>
+    public int TimedTicks { get; init; }
 
     /// <summary>Retard moyen de l'affichage sur le serveur (ticks d'écart × 50 ms).</summary>
     public double DisplayLagMeanMs { get; init; }
@@ -200,7 +204,9 @@ public static class NetworkMeasures
             SimulatedConnection connection = net.Connect("salle", link);
             players.Add(new Player
             {
-                Client = new NetworkClient(data, connection, name, new BuildChoice(build)),
+                // Sous-lot 10.6 : « à vue » sans avance de la télégraphie (option A), « anticipée » avec (option B, réglage du jeu).
+                Client = new NetworkClient(data, connection, name, new BuildChoice(build),
+                    new NetworkClientOptions { TelegraphAdvance = options.Timing == ParryTiming.Anticipated }),
                 Link = connection,
                 Timing = options.Timing,
                 Aim = new Pcg32(options.Seed, (ulong)(2 * players.Count + 1)),
@@ -237,8 +243,15 @@ public static class NetworkMeasures
                     combatBudget = true;
                     frameLimit = checked(frame + 1 + (long)Math.Ceiling(combatSeconds / step));
                 }
-                for (long t = lastTick; t < room.Tick; t++) tickTimes[t] = net.Now;
-                lastTick = room.Tick;
+            }
+            // Revue Codex de la PR #22 (tour 7, corrigé au 10.6) : instants des ticks relevés aussi pendant l'image où la salle passe à
+            // Ended (son moteur est alors rendu : le dernier tick, inclus, est celui du résultat, d'où + 1) ; une parade appliquée sur les
+            // derniers ticks, le tout dernier compris, compte ainsi dans les délais d'action, comme dans les résultats.
+            if (combatStart != null)
+            {
+                long reached = room.Phase == RoomPhase.Ended && room.LastResult is { } done ? checked(done.EndTick + 1) : room.Tick;
+                for (long t = lastTick; t < reached; t++) tickTimes[t] = net.Now;
+                lastTick = Math.Max(lastTick, reached);
             }
             Player first = players[0];
             if (options.CutAtSeconds is double cutAt && !cut && combatStart is double started && net.Now - started >= cutAt)
@@ -322,6 +335,7 @@ public static class NetworkMeasures
             ActionDelayP95Ms = Percentile95(delays),
             ActionDelaysMs = delays.AsReadOnly(),
             TickMs = room.TickMs,
+            TimedTicks = tickTimes.Count,
             DisplayLagMeanMs = lagSamples == 0 ? 0 : lagSum / lagSamples,
             RttMs = firstClient.SmoothedRttMs ?? 0,
             Desyncs = players.Sum(p => p.Client.Combat?.Desyncs ?? 0),
@@ -374,10 +388,10 @@ public static class NetworkMeasures
             .ToList();
         double soonest = threats.Count == 0 ? double.PositiveInfinity : threats.Min(o => o.NextAttackSeconds!.Value);
         combat.SetGuard(soonest <= GuardSeconds);
-        double lead = ParryLeadSeconds + (player.Timing == ParryTiming.Anticipated ? (client.SmoothedRttMs ?? 0) / 1000 : 0);
-        // Temps avant le coup tel que le joueur le perçoit : le compte à rebours du dernier tick reçu, qui continue de s'écouler entre
-        // deux ticks (affichage interpolé), à la précision d'une image.
-        double elapsed = Math.Min(1.0, combat.TickProgress) * combat.TickSeconds;
+        // Le joueur pare toujours à vue, 50 ms avant le coup affiché ; en « anticipée », l'affichage est avancé par le client (10.6).
+        // Revue Codex de la PR #23 (tour 3) : il lit exactement ce que le jeu affiche (Others), dont le compte à rebours s'écoule déjà en
+        // continu entre deux ticks ; plus aucune interpolation propre à la mesure.
+        double lead = ParryLeadSeconds;
         foreach (OtherState threat in threats)
         {
             if (threat.View.NextAttack!.Unblockable) continue;
@@ -388,7 +402,7 @@ public static class NetworkMeasures
                 offset = (player.Aim.NextUInt() / (double)uint.MaxValue * 2 - 1) * AimSpreadSeconds;
                 player.Offsets[key] = offset;
             }
-            if (threat.NextAttackSeconds!.Value - elapsed > lead + offset + 1e-9) continue;
+            if (threat.NextAttackSeconds!.Value > lead + offset + 1e-9) continue;
             player.Parried.Add(key);
             player.Offsets.Remove(key);
             combat.Parry();

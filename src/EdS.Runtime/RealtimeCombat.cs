@@ -228,7 +228,8 @@ namespace EdS.Runtime
         public PlayerState Player() => CombatDisplay.Player(_engine, _setup.Combat, PlayerId, TargetId);
 
         /// <summary>Les autres combattants (ennemis et alliés), dans l'ordre du scénario.</summary>
-        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId);
+        /// <summary>Les autres combattants ; leur télégraphie s'écoule en continu dans le tick en cours (<see cref="TickProgress"/>).</summary>
+        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, 0, TickProgress * TickSeconds);
 
         private IEnumerable<OtherState> Enemies() => CombatDisplay.LivingEnemies(_engine, PlayerId);
     }

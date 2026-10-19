@@ -40,4 +40,12 @@
 - **Joueurs scriptés** : plus réguliers qu'un humain (± 25 ms d'imprécision) ; les pourcentages de parade sont des ordres de grandeur.
 - **Un scénario, deux builds** (coopération contre la meute, Rempart et Gardien), parties de 60 s, 3 graines par réglage par défaut.
 - **Réseau simulé** sans perte isolée ni débit limité ; la gigue représente les retards de TCP.
-- **Aucune compensation de latence** n'est faite : le choix (options A à D du rapport) revient à Damien.
+- **Aucune compensation de latence** au 10.5 : Damien a choisi ensuite l'option B (sous-lot 10.6).
+
+## Sous-lot 10.6 : télégraphie avancée (option B de la parade)
+
+- **Sensible à la gigue** : l'avance est le temps aller-retour **lissé** (moyenne mobile, 1/8 par mesure, une mesure par seconde) ; quand le délai du prochain message s'écarte beaucoup de la moyenne (gigue forte), la parade tombe trop tôt ou trop tard (53 % de parades parfaites à 200 + 0 à 120 ms d'un sens, contre 69 à 76 % sans gigue forte).
+- **Le coup s'affiche avant de tomber** : la barre se remplit et le compte à rebours atteint zéro un aller-retour avant que le coup ne frappe (dégâts, retours et état restent ceux du dernier tick reçu, donc en retard). En réseau local, l'avance ne dépasse pas quelques millisecondes : rien de visible.
+- **Plafond de 1 s** (`MaxTelegraphLeadSeconds`, de 0 à 10 s) : au-delà, la parade redevient difficile, mais le jeu est de toute façon peu jouable à plus de 500 ms d'aller-retour.
+- **Seule la télégraphie** est avancée : recharges, récupération de parade, altérations et barres restent celles du dernier tick reçu. Pas de prédiction locale.
+- **Pas de réglage dans Unity** : l'avance est toujours active en réseau (le bandeau affiche sa valeur) ; `TelegraphAdvance = false` la coupe dans le code (mesures, essais).

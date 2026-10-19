@@ -129,7 +129,9 @@ Sous-lot 10.3 (client) : `NetworkClient` (salle d'attente, combat, mesure du tem
 
 Sous-lot 10.4 (Unity) : touche M dans le prototype : héberger une partie de coopération sur ce poste (avec un équipier robot si l'on veut essayer seul) ou rejoindre l'adresse d'un autre poste du réseau local ; salle d'attente (places, builds, prêts), combat à deux affiché par le même écran que le solo, allié visé par les soutiens (G), temps aller-retour, retour automatique après une coupure. Côté cœur : `NetworkSession`, `BotPlayer` (aussi `EdS.Server --robot`). Guide : [docs/UNITY.md](docs/UNITY.md#6-jouer-à-deux-en-réseau-lot-10).
 
-Sous-lot 10.5 (mesures) : `eds reseau` fait jouer la coopération à deux joueurs scriptés sur le réseau simulé (0 à 200 ms d'un sens, gigue, coupures) ; aucune divergence, retour après une coupure en 130 ms ; la parade « à vue » ne tient que jusqu'à 25 ms d'un sens, la parade anticipée du ping (ce que donnerait une télégraphie affichée en avance) tient jusqu'à 200 ms. Options de compensation et question à Damien : [docs/RAPPORT_10_5.md](docs/RAPPORT_10_5.md).
+Sous-lot 10.5 (mesures) : `eds reseau` fait jouer la coopération à deux joueurs scriptés sur le réseau simulé (0 à 200 ms d'un sens, gigue, coupures) ; aucune divergence, retour après une coupure en 130 ms ; la parade « à vue » ne tient que jusqu'à 25 ms d'un sens, la parade anticipée du ping (ce que donnerait une télégraphie affichée en avance) tient jusqu'à 200 ms. Options de compensation : [docs/RAPPORT_10_5.md](docs/RAPPORT_10_5.md).
+
+Sous-lot 10.6 (parade en réseau, option B choisie par Damien le 19/10/2026 à 11:28) : en réseau, la télégraphie des assaillants (barre et compte à rebours du prochain coup) s'affiche en avance du temps aller-retour lissé (plafond de 1 s) ; le joueur pare à vue sur cet affichage et sa parade arrive au serveur au moment qui réussit en solo. Affichage seulement : serveur, moteur, protocole et règles inchangés. Détail : [docs/RESEAU.md](docs/RESEAU.md#télégraphie-avancée-sous-lot-106-option-b-de-la-parade).
 
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
@@ -146,4 +148,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
 - [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
 - [x] Lot 9 — prototype Unity 3D : données portables (9.1, PR #12), pont temps réel (9.2, PR #13), projet Unity jouable (9.3, PR #14 et #15), interface de talents (9.4, PR #16) ; terminé le 19 octobre 2026, essayé par Damien dans Unity 6.3
-- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 (protocole et transport, PR #18) fusionné ; 10.2 (serveur, PR #19), 10.3 (client), 10.4 (Unity) et 10.5 (mesures) en revue ; compensation de la parade à décider
+- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 à 10.5 (PR #18 à #22) fusionnés le 19 octobre 2026 ; 10.6 (parade en réseau, option B) en revue ; Unity en réseau à essayer par Damien

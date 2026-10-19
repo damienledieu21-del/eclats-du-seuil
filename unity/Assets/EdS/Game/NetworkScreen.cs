@@ -149,10 +149,12 @@ namespace EdS.Game
             NetworkClient client = session.Client;
             if (client == null) return;
             string ping = client.SmoothedRttMs is double rtt ? $"{rtt:0} ms" : "…";
+            // Sous-lot 10.6 (option B de la parade) : la télégraphie des assaillants est avancée du temps aller-retour lissé.
+            double lead = client.Combat != null ? client.Combat.TelegraphLeadSeconds * 1000 : 0;
             float x = Hud.Width / 2f - 300f;
             Hud.Fill(new Rect(x, 62, 600, 60), new Color(0f, 0f, 0f, 0.4f));
-            Hud.Small(new Rect(x + 10, 64, 580, 24), $"Réseau : temps aller-retour {ping}  ·  place {client.SeatId}");
-            Hud.Small(new Rect(x + 10, 90, 580, 24), $"Allié visé par les soutiens : {allyId ?? "aucun"} (G : changer)");
+            Hud.Small(new Rect(x + 10, 64, 580, 24), $"Réseau : temps aller-retour {ping}  ·  télégraphie avancée de {lead:0} ms");
+            Hud.Small(new Rect(x + 10, 90, 580, 24), $"Place {client.SeatId}  ·  allié visé par les soutiens : {allyId ?? "aucun"} (G : changer)");
             if (client.Status == ClientStatus.Disconnected || client.Status == ClientStatus.Reconnecting)
             {
                 double left = client.Options.ReconnectSeconds - (client.DisconnectedSeconds ?? 0);
