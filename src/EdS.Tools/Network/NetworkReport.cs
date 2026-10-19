@@ -25,7 +25,8 @@ public sealed class NetworkReportRow
     public double DisplayLagMs => Runs.Count == 0 ? 0 : Runs.Average(r => r.DisplayLagMeanMs);
     public double RttMs => Runs.Count == 0 ? 0 : Runs.Average(r => r.RttMs);
     public int Desyncs => Runs.Sum(r => r.Desyncs);
-    public bool HashesMatch => Runs.All(r => r.HashesMatch);
+    // Revue Codex de la PR #22 (tour 4) : une ligne sans partie mesurée n'affirme pas des empreintes égales.
+    public bool HashesMatch => Runs.Count > 0 && Runs.All(r => r.HashesMatch);
     public int Victories => Runs.Count(r => r.EndReason == nameof(CombatEndReason.TeamDefeated) && r.Winner == "joueurs");
 }
 
@@ -44,8 +45,14 @@ public static class NetworkReport
     /// <summary>Coupures du premier joueur (latence 50 + 0 à 10 ms, parade anticipée), à 5 s de combat : durée avant la nouvelle connexion.</summary>
     public static readonly IReadOnlyList<double> Cuts = Array.AsReadOnly(new[] { 1.0, 3.0, 10.0, 25.0, 35.0 });
 
+    /// <summary>Plus grand nombre de graines par réglage (celui de <c>eds reseau --graines</c>).</summary>
+    public const int MaxSeeds = 20;
+
     public static IReadOnlyList<NetworkReportRow> MeasureLinks(GameData data, CombatSetup scenario, int seeds)
     {
+        // Revue Codex de la PR #22 (tour 4) : au moins une partie par réglage, même par un appel direct.
+        if (seeds < 1 || seeds > MaxSeeds)
+            throw new ArgumentOutOfRangeException(nameof(seeds), $"{seeds} graine(s) par réglage : de 1 à {MaxSeeds}.");
         var rows = new List<NetworkReportRow>();
         foreach (ParryTiming timing in new[] { ParryTiming.OnSight, ParryTiming.Anticipated })
             foreach ((int latency, int jitter) in Links)
@@ -70,6 +77,8 @@ public static class NetworkReport
         long durationMs)
     {
         ArgumentNullException.ThrowIfNull(w);
+        if (seeds < 1 || seeds > MaxSeeds)
+            throw new ArgumentOutOfRangeException(nameof(seeds), $"{seeds} graine(s) par réglage : de 1 à {MaxSeeds}.");
         // Virgule décimale à la française, sans dépendre des cultures installées (mode de globalisation invariant).
         string F(double value, int decimals = 0) =>
             value.ToString(decimals == 0 ? "0" : "0." + new string('0', decimals), CultureInfo.InvariantCulture).Replace('.', ',');

@@ -16,6 +16,21 @@ public class Lot105NetworkMeasureTests
 {
     private static CombatSetup Duo => ScenarioJsonReader.ReadFile(ScenarioPath("coop/duo_meute"), ShippedData).Setup!;
 
+    /// <summary>Les deux Bastions face à un mannequin qui ne frappe pas : le combat dure tout son temps.</summary>
+    private static CombatSetup Calm(long durationMs)
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ScenarioPath("coop/duo_meute")))!.AsObject();
+        root["data"]!["durationMs"] = durationMs;
+        var combatants = root["data"]!["combatants"]!.AsArray();
+        var players = combatants.Where(c => (string?)c!["type"] == "character").Select(c => c!.DeepClone()).ToList();
+        combatants.Clear();
+        foreach (var player in players) combatants.Add(player);
+        combatants.Add(System.Text.Json.Nodes.JsonNode.Parse("{\"id\":\"mannequin\",\"type\":\"dummy\",\"team\":\"cibles\",\"initiative\":0,\"armor\":0,\"magicResistance\":0}"));
+        ScenarioLoadResult result = ScenarioJsonReader.Read(root.ToJsonString(), ShippedData);
+        Assert.True(result.Setup != null, result.Report.ToString());
+        return result.Setup!;
+    }
+
     private static NetworkMeasureResult Run(int latency, int jitter, ParryTiming timing, ulong seed = 1, double? cutAt = null, double cutSeconds = 3) =>
         NetworkMeasures.Run(ShippedData, Duo, new NetworkMeasureOptions
         {
@@ -82,6 +97,8 @@ public class Lot105NetworkMeasureTests
 
     [Theory]
     [InlineData(0.0, 0, 0, null, 3.0)]
+    [InlineData(1e-9, 0, 0, null, 3.0)]
+    [InlineData(0.000999, 0, 0, null, 3.0)]
     [InlineData(-0.01, 0, 0, null, 3.0)]
     [InlineData(double.NaN, 0, 0, null, 3.0)]
     [InlineData(double.PositiveInfinity, 0, 0, null, 3.0)]
@@ -103,6 +120,29 @@ public class Lot105NetworkMeasureTests
             CutAtSeconds = cutAt,
             CutSeconds = cutSeconds,
         }));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(21)]
+    public void Nombre_de_graines_hors_bornes_refuse(int seeds)
+    {
+        // Revue Codex de la PR #22 (tour 4) : zéro graine ne mesurait rien mais annonçait des empreintes égales.
+        Assert.Throws<ArgumentOutOfRangeException>(() => NetworkReport.MeasureLinks(ShippedData, Duo, seeds));
+        Assert.Throws<ArgumentOutOfRangeException>(() => NetworkReport.Write(new StringWriter(), Array.Empty<NetworkReportRow>(),
+            Array.Empty<NetworkMeasureResult>(), seeds, "duo_meute", Duo.DurationMs));
+        Assert.False(new NetworkReportRow().HashesMatch);   // une ligne sans partie n'affirme rien
+    }
+
+    [Fact]
+    public void Pas_minimal_accepte_et_boucle_finie()
+    {
+        // Le plus petit pas accepté (1 ms) mesure normalement, en un nombre d'images fini.
+        NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(2_000), new NetworkMeasureOptions { StepSeconds = NetworkMeasures.MinStepSeconds });
+        Assert.True(r.HashesMatch);
+        Assert.Equal(0, r.Desyncs);
+        Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
     }
 
     [Fact]

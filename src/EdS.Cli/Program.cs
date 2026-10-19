@@ -442,7 +442,7 @@ static int RunNetwork(ReadOnlySpan<string> options)
         bool hasValue = i + 1 < options.Length;
         if (options[i] == "--data" && hasValue) dataDirectory = options[++i];
         else if (options[i] == "--scenario" && hasValue) scenarioPath = options[++i];
-        else if (options[i] == "--graines" && hasValue && int.TryParse(options[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out int n) && n >= 1 && n <= 20)
+        else if (options[i] == "--graines" && hasValue && int.TryParse(options[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out int n) && n >= 1 && n <= NetworkReport.MaxSeeds)
         {
             seeds = n;
             i++;
