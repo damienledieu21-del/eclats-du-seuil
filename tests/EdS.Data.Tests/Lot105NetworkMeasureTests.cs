@@ -157,9 +157,9 @@ public class Lot105NetworkMeasureTests
             Assert.Equal(0, r.Desyncs);
             Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
             Assert.Equal(reference, r.EndTick);   // même fin qu'avec le pas de 10 ms : tout le combat est joué
-            // Revue Codex de la PR #22 (tour 7, corrigé au 10.6) : l'instant de chaque tick simulé (0 à EndTick - 1) est relevé, ceux de
-            // la dernière image compris (au pas de 0,25 s, les cinq derniers manquaient).
-            Assert.Equal(r.EndTick, r.TimedTicks);
+            // Revue Codex des PR #22 (tour 7) et #23 (tour 2) : l'instant de chaque tick simulé, de 0 à EndTick inclus, est relevé, ceux
+            // de la dernière image et le tick final compris.
+            Assert.Equal(r.EndTick + 1, r.TimedTicks);
         }
     }
 

@@ -76,7 +76,7 @@ public sealed class NetworkMeasureResult
     /// <summary>Durée d'un tick du combat mesuré (règles des données), en millisecondes.</summary>
     public int TickMs { get; init; }
 
-    /// <summary>Ticks du serveur dont l'instant a été relevé (contrôle : tous ceux du combat, dernier compris).</summary>
+    /// <summary>Ticks du serveur dont l'instant a été relevé (contrôle : tous ceux du combat, de 0 à <see cref="EndTick"/> inclus).</summary>
     public int TimedTicks { get; init; }
 
     /// <summary>Retard moyen de l'affichage sur le serveur (ticks d'écart × 50 ms).</summary>
@@ -245,11 +245,11 @@ public static class NetworkMeasures
                 }
             }
             // Revue Codex de la PR #22 (tour 7, corrigé au 10.6) : instants des ticks relevés aussi pendant l'image où la salle passe à
-            // Ended (son moteur est alors rendu : le dernier tick est celui du résultat) ; une parade appliquée sur les derniers ticks
-            // compte ainsi dans les délais d'action, comme dans les résultats.
+            // Ended (son moteur est alors rendu : le dernier tick, inclus, est celui du résultat, d'où + 1) ; une parade appliquée sur les
+            // derniers ticks, le tout dernier compris, compte ainsi dans les délais d'action, comme dans les résultats.
             if (combatStart != null)
             {
-                long reached = room.Phase == RoomPhase.Ended && room.LastResult is { } done ? done.EndTick : room.Tick;
+                long reached = room.Phase == RoomPhase.Ended && room.LastResult is { } done ? checked(done.EndTick + 1) : room.Tick;
                 for (long t = lastTick; t < reached; t++) tickTimes[t] = net.Now;
                 lastTick = Math.Max(lastTick, reached);
             }
