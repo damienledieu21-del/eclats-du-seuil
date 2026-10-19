@@ -6,7 +6,8 @@
         "EdS.Simulation",
         "EdS.Data",
         "EdS.Data.Json",
-        "EdS.Runtime"
+        "EdS.Runtime",
+        "EdS.Net"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

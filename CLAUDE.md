@@ -28,7 +28,7 @@ S'arrêter et poser la question à Damien (dans la PR et dans le rapport) seulem
 ## Contrats techniques non négociables
 
 - Déterminisme : tick logique (50 ms), aucune horloge réelle, virgule fixe `Fixed` (échelle 10 000), RNG `Pcg32`, ordre d'événements stable, aucun état global mutable, journaux reproductibles octet par octet.
-- Projets `EdS.Domain`, `EdS.Simulation`, `EdS.Data`, `EdS.Data.Json` (depuis le sous-lot 9.1), `EdS.Runtime` (9.2) : `netstandard2.1`, C# 9, **aucune dépendance externe** (compatibilité Unity/IL2CPP). Pas d'API .NET plus récente dans ces projets ; ce qui a besoin de .NET récent va dans `EdS.Tools` ou `EdS.Cli`.
+- Projets `EdS.Domain`, `EdS.Simulation`, `EdS.Data`, `EdS.Data.Json` (depuis le sous-lot 9.1), `EdS.Runtime` (9.2), `EdS.Net` (lot 10) : `netstandard2.1`, C# 9, **aucune dépendance externe** (compatibilité Unity/IL2CPP). Pas d'API .NET plus récente dans ces projets ; ce qui a besoin de .NET récent va dans `EdS.Tools` ou `EdS.Cli`.
 - Unity compile les projets portables directement depuis `src/` (paquet `com.eclats.core`, sous-lot 9.3) : tout nouveau projet de `src/` reçoit sa définition d'assemblage (`.asmdef`, références identiques au `.csproj`, ou contrainte d'exclusion pour un outil .NET) ; aucune sortie de compilation dans `src/` (`UseArtifactsOutput`). Les scripts de `unity/Assets` sont en C# 9, sans annotation de nullabilité, et compilés en CI contre `tests/EdS.Unity.CompileCheck`.
 - Arithmétique vérifiée (`checked`, `IntMath`), aucun débordement silencieux, précontrôle numérique avant le premier tick.
 - Refus atomiques : une opération refusée ne modifie rien. Réservation exacte des budgets avant mutation. Files et déclencheurs bornés.
