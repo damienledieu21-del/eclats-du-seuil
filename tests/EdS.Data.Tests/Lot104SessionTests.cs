@@ -136,6 +136,28 @@ public class Lot104SessionTests
     }
 
     [Fact]
+    public void Robot_pare_aussi_au_combat_suivant()
+    {
+        // Revue Codex de la PR #21 : le suivi des coups parés repart de zéro à chaque combat ; les mêmes coups (même assaillant, même
+        // tick) du combat suivant sont parés aussi.
+        var lan = new Lan(Duo, new RoomOptions { DurationMs = 6_000 });
+        NetworkSession session = lan.Session("Dam", Rempart, new BuildChoice(Gardien));
+        lan.RunUntil(() => session.Client?.Status == ClientStatus.Lobby && session.Bot?.Client.Status == ClientStatus.Lobby, 3);
+        var parries = new List<int>();
+        for (int round = 0; round < 2; round++)
+        {
+            lan.RunUntil(() => session.Client!.Lobby!.Seats.Single(s => s.Id == session.Bot!.Client.SeatId).Ready, 3);
+            session.Client!.SetReady(true);
+            lan.RunUntil(() => session.Client.Status == ClientStatus.Combat, 2);
+            session.Client.Combat!.SetGuard(true);
+            lan.RunUntil(() => session.Client.Status == ClientStatus.Lobby && session.Bot!.Client.Status == ClientStatus.Lobby, 10);
+            parries.Add(ServerCommands(lan.Room).Count(c => c.Actor == session.Bot!.Client.SeatId && c.Action == CombatAction.Parry));
+        }
+        Assert.True(parries[0] > 0, "aucune parade au premier combat");
+        Assert.Equal(parries[0], parries[1]);   // même combat, mêmes coups : autant de parades la seconde fois
+    }
+
+    [Fact]
     public void Retour_automatique_apres_une_coupure()
     {
         var lan = new Lan(Calm(30_000));

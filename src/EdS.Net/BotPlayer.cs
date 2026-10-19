@@ -24,7 +24,10 @@ namespace EdS.Net
 
         private double _nextThought;
         private double _lastReadyAt = double.NegativeInfinity;
-        private readonly HashSet<string> _parried = new HashSet<string>(StringComparer.Ordinal);
+        // Revue Codex de la PR #21 : coups déjà parés du combat suivi (clé : assaillant et tick du coup), oubliés une fois passés et
+        // remis à zéro à chaque nouveau combat.
+        private readonly Dictionary<string, long> _parried = new Dictionary<string, long>(StringComparer.Ordinal);
+        private NetworkCombat? _followed;
 
         public BotPlayer(NetworkClient client) => Client = client ?? throw new ArgumentNullException(nameof(client));
 
@@ -62,21 +65,28 @@ namespace EdS.Net
 
         private void Fight(NetworkCombat combat)
         {
+            if (combat != _followed)
+            {
+                _followed = combat;
+                _parried.Clear();
+            }
+            foreach (string passed in _parried.Where(p => p.Value < combat.Tick).Select(p => p.Key).ToList()) _parried.Remove(passed);
             PlayerState me = combat.Player();
             if (me.View.IsDead) return;
             List<OtherState> threats = combat.Others()
-                .Where(o => o.IsEnemy && !o.View.IsDead && o.View.NextAttack != null && o.NextAttackSeconds is double)
+                .Where(o => o.IsEnemy && !o.View.IsDead && o.View.NextAttack != null && o.View.NextAttackTick is long && o.NextAttackSeconds is double)
                 .ToList();
             double soonest = threats.Count == 0 ? double.PositiveInfinity : threats.Min(o => o.NextAttackSeconds!.Value);
             combat.SetGuard(soonest <= GuardSeconds);
             foreach (OtherState threat in threats)
             {
-                // Une parade par coup annoncé : la clé est l'assaillant et l'instant de son coup.
-                string key = threat.Id + "@" + (combat.Tick + (long)Math.Round(threat.NextAttackSeconds!.Value / combat.TickSeconds));
-                if (threat.NextAttackSeconds <= ParrySeconds && !threat.View.NextAttack!.Unblockable && _parried.Add(key))
+                // Une parade par coup annoncé : la clé est l'assaillant et le tick de son coup.
+                long attackTick = threat.View.NextAttackTick!.Value;
+                string key = threat.Id + "@" + attackTick;
+                if (threat.NextAttackSeconds <= ParrySeconds && !threat.View.NextAttack!.Unblockable && !_parried.ContainsKey(key))
                 {
+                    _parried[key] = attackTick;
                     combat.Parry();
-                    if (_parried.Count > 64) _parried.Clear();
                 }
             }
             // Pas de compétence pendant qu'un coup approche : la garde passe d'abord.
