@@ -176,9 +176,9 @@ namespace EdS.Game
             Small(new Rect(20, y + 60, 540, 24), $"Caméra : {camera}{(paused ? "  ·  <color=#ffd84a>PAUSE</color>" : "")}");
             // Sous-lot 10.4 : en réseau, pas de pause ni de scénario suivant (le serveur mène le combat) ; G vise l'autre joueur.
             Small(new Rect(20, y + 92, 540, 230),
-                "ZQSD / flèches : se déplacer   ·   clic droit ou Maj : garde (maintenir)\n" +
+                "ZQSD (WASD en QWERTY) / flèches : se déplacer   ·   clic droit ou Maj : garde (maintenir)\n" +
                 "Espace : parade parfaite (juste avant l'impact)   ·   1 à 4 : compétences   ·   R : ultime\n" +
-                "Tab : changer de cible   ·   C : caméra   ·   A / E : tourner (isométrique)   ·   molette : zoom\n" +
+                "Tab : changer de cible   ·   C : caméra   ·   A / E (Q / E en QWERTY) : tourner   ·   molette : zoom\n" +
                 (network
                     ? "G : allié visé par les soutiens   ·   F1 à F5 et T (salle d'attente) : build\nM : menu réseau   ·   H : masquer l'aide"
                     : "N : scénario suivant   ·   F1 à F5 : build   ·   Retour arrière : recommencer\n" +

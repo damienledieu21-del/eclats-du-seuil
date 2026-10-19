@@ -30,6 +30,8 @@ Pour essayer une PR avant sa fusion, choisir sa branche de la même façon (ongl
 
 Appuyer sur **Play** (▶ en haut au centre). L'arène se construit, avec le Bastion (capsule bleue) face à l'assaillant d'entraînement.
 
+Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tableau donne les lettres d'un clavier **AZERTY**. En QWERTY, Z Q S D deviennent W A S D, A / E deviennent Q / E, et M reste M.
+
 | Touche | Action |
 |---|---|
 | Z Q S D ou flèches | se déplacer (déplacement visuel, voir les limites) |

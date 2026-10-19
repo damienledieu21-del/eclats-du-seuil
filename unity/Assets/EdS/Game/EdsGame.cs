@@ -231,7 +231,7 @@ namespace EdS.Game
             }
             // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
             // Une lettre M tapée dans un champ du menu (nom, adresse) ne le ferme pas.
-            if (Input.GetKeyDown(KeyCode.M) && !(_menuOpen && GUIUtility.keyboardControl != 0)) _menuOpen = !_menuOpen;
+            if (Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) _menuOpen = !_menuOpen;
             if (_menuOpen)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;
@@ -486,13 +486,16 @@ namespace EdS.Game
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
         }
 
-        /// <summary>Déplacement purement visuel, relatif à la caméra (ZQSD ou flèches) ; impossible hors de combat ou étourdi.</summary>
+        /// <summary>
+        /// Déplacement purement visuel, relatif à la caméra (ZQSD en AZERTY, WASD en QWERTY, ou flèches : voir <see cref="Keys"/>) ;
+        /// impossible hors de combat ou étourdi.
+        /// </summary>
         private void Move(PlayerState player)
         {
-            float x = (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) ? 1f : 0f)
-                - (Input.GetKey(KeyCode.Q) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
-            float z = (Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
-                - (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
+            float x = (Input.GetKey(Keys.Right) || Input.GetKey(KeyCode.RightArrow) ? 1f : 0f)
+                - (Input.GetKey(Keys.Left) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
+            float z = (Input.GetKey(Keys.Forward) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
+                - (Input.GetKey(Keys.Back) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
             bool blocked = player.View.IsDead || player.View.States.Contains("stun") || _paused;
             _moving = !blocked && (x != 0f || z != 0f);
             Vector3 delta = Vector3.zero;
@@ -621,5 +624,32 @@ namespace EdS.Game
             float elapsed = _combat.Tick * (float)_combat.TickSeconds;
             Hud.Centered(new Rect(Hud.Width / 2f - 150, 20, 300, 40), $"{(int)elapsed / 60}:{(int)elapsed % 60:00}", Color.white);
         }
+    }
+
+    /// <summary>
+    /// Touches dont la lettre change entre AZERTY et QWERTY (essai de Damien du 19/10/2026 : les touches répondaient en QWERTY). Unity 6
+    /// lit les lettres par leur position physique (réglage « Use Physical Keys » du gestionnaire d'entrées, actif par défaut) : un
+    /// <see cref="KeyCode"/> désigne la touche placée à cet endroit sur un clavier QWERTY. Les touches sont donc choisies par position :
+    /// Z Q S D, A / E et M sur un clavier AZERTY, ce qui donne W A S D, Q / E et « ; » en QWERTY (M y est aussi accepté pour le menu).
+    /// Les autres touches du jeu (E, R, T, G, H, N, C, S, D, chiffres, F1 à F5…) sont au même endroit sur les deux claviers.
+    /// </summary>
+    internal static class Keys
+    {
+        /// <summary>Avancer : Z en AZERTY, W en QWERTY.</summary>
+        public const KeyCode Forward = KeyCode.W;
+
+        /// <summary>Aller à gauche : Q en AZERTY, A en QWERTY.</summary>
+        public const KeyCode Left = KeyCode.A;
+
+        public const KeyCode Back = KeyCode.S;
+        public const KeyCode Right = KeyCode.D;
+
+        /// <summary>Tourner la caméra isométrique vers la gauche : A en AZERTY, Q en QWERTY.</summary>
+        public const KeyCode TurnLeft = KeyCode.Q;
+
+        public const KeyCode TurnRight = KeyCode.E;
+
+        /// <summary>Menu du réseau : M en AZERTY (position du « ; » en QWERTY), et M en QWERTY.</summary>
+        public static bool MenuPressed => Input.GetKeyDown(KeyCode.Semicolon) || Input.GetKeyDown(KeyCode.M);
     }
 }
