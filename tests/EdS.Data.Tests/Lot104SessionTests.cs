@@ -163,6 +163,51 @@ public class Lot104SessionTests
     }
 
     [Fact]
+    public void Build_sans_reponse_a_la_coupure_oublie_au_retour()
+    {
+        // Revue Codex de la PR #21 (tour 5) : la connexion tombe après le début du combat, avant le refus du build et la réponse à sa
+        // mesure ; au retour, une mesure sur la nouvelle connexion ne doit pas valider ce build.
+        var net = new SimulatedNetwork(5);
+        SimulatedListener listener = net.Listen("salle");
+        int tokens = 0;
+        var room = new CombatRoom(ShippedData, Calm(6_000), new RoomOptions { TokenSource = () => (++tokens).ToString("x32") });
+        var link = new LinkProfile(100, 0);
+        SimulatedConnection first = net.Connect("salle", link);
+        var slow = new NetworkClient(ShippedData, first, "Dam", new BuildChoice(Rempart));
+        var fast = new NetworkClient(ShippedData, net.Connect("salle", LinkProfile.Perfect), "Léa", new BuildChoice(Gardien));
+        void Run(double seconds)
+        {
+            for (double t = 0; t < seconds - 1e-9; t += 0.01)
+            {
+                net.Advance(0.01);
+                while (listener.TryAccept(out INetConnection connection)) room.Accept(connection);
+                room.Advance(0.01);
+                slow.Advance(0.01);
+                fast.Advance(0.01);
+            }
+        }
+        Run(0.5);
+        slow.SetReady(true);
+        Run(0.3);
+        Assert.True(slow.SetBuild(new BuildChoice(Gardien)));
+        fast.SetReady(true);
+        for (int i = 0; i < 100 && slow.Status != ClientStatus.Combat; i++) Run(0.01);
+        Assert.Equal(ClientStatus.Combat, slow.Status);
+        Assert.NotNull(slow.PendingBuild);   // refus et réponse à la mesure encore en route
+
+        net.Cut(first);
+        Run(0.05);
+        Assert.Equal(ClientStatus.Disconnected, slow.Status);
+        Assert.Null(slow.PendingBuild);
+        slow.Reconnect(net.Connect("salle", link));
+        for (int i = 0; i < 300 && !(slow.Status == ClientStatus.Combat && slow.SmoothedRttMs != null); i++) Run(0.01);
+        Assert.Equal(ClientStatus.Combat, slow.Status);
+        Assert.NotNull(slow.SmoothedRttMs);   // une mesure a abouti sur la nouvelle connexion
+        Assert.Null(slow.PendingBuild);
+        Assert.Equal(Rempart, slow.AcceptedBuild.Reference);
+    }
+
+    [Fact]
     public void Joueur_et_equipier_robot_jouent_toute_la_meute()
     {
         var lan = new Lan(Duo);

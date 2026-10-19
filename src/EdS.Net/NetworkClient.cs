@@ -411,6 +411,11 @@ namespace EdS.Net
         private void Lost(string reason)
         {
             Error = reason;
+            // Revue Codex de la PR #21 (tour 5) : une demande de build sans réponse à la coupure n'a pas été acceptée. Le serveur traite build,
+            // mesure puis prêt dans l'ordre : un build accepté remet « prêt » à faux, et le combat ne peut commencer qu'après un nouveau
+            // « prêt », donc après la réponse à la mesure. Un combat commencé avant cette réponse a refusé le build (ou ne l'a jamais reçu).
+            // Sans cela, une mesure envoyée sur la connexion du retour validerait ce build.
+            PendingBuild = null;
             bool inCombat = (Status == ClientStatus.Combat || Status == ClientStatus.Reconnecting) && Combat != null && !Combat.IsFinished && Token != null;
             if (!inCombat)
             {
