@@ -418,6 +418,43 @@ public class Lot103ClientTests
     }
 
     [Fact]
+    public void Tick_refuse_ni_retour_fantome_ni_choix_sur_sa_base()
+    {
+        // Revue Codex de la PR #20 : un tick aux commandes altérées mais acceptées par le moteur local (une frappe ajoutée sur le
+        // mannequin) diverge ; ses effets ne sont jamais publiés : aucun dégât fantôme, aucun choix fondé sur lui.
+        var game = new Game(Calm(4_000), seed: 3);
+        var link = new LinkProfile(80, 0);
+        (NetworkClient a, NetworkClient b) = game.Start(link, link, inner => new Tampering(inner)
+        {
+            Alter = m => m is TickMessage t && t.Commands.Tick == 20
+                ? new TickMessage(new TickCommands(20, new[] { new CombatCommand(1000, "bastion", "skill.bastion.frappe_du_rempart", "mannequin") }), t.Hash)
+                : m,
+        });
+        var seen = new List<CombatFeedback>();
+        bool checkedWhileAwaiting = false;
+        game.Script = client =>
+        {
+            if (client != a || client.Combat is not { } combat) return;
+            seen.AddRange(combat.DrainFeedback());
+            if (combat.AwaitingResync && !checkedWhileAwaiting)
+            {
+                checkedWhileAwaiting = true;
+                Assert.False(combat.UseSlot(0));
+                Assert.Contains(combat.DrainFeedback(), f => f.Detail == "resynchronisation en cours");
+                string? target = combat.TargetId;
+                combat.NextTarget();
+                combat.SelectTarget("inconnu");   // ignoré pendant l'attente, sans exception
+                Assert.Equal(target, combat.TargetId);
+            }
+        };
+        game.RunUntil(() => a.Status == ClientStatus.Lobby && b.Status == ClientStatus.Lobby, 8);
+        Assert.True(checkedWhileAwaiting);
+        Assert.Equal((1, 1), (a.Combat!.Desyncs, a.Combat.Resyncs));
+        Assert.DoesNotContain(seen, f => f.Kind == FeedbackKind.DamageTaken);   // personne n'a frappé en vrai
+        Assert.Equal(ServerHash(game, a.Combat), a.Combat.Hash);
+    }
+
+    [Fact]
     public void Tick_perdu_trou_detecte_et_repare()
     {
         var game = new Game(Calm(6_000)) { Script = Playing() };

@@ -156,6 +156,12 @@ namespace EdS.Net
         public bool UseSlot(int slot)
         {
             _slot = null;
+            if (AwaitingResync)
+            {
+                // L'état affiché vient d'un tick refusé : rien n'est demandé sur cette base (revue Codex de la PR #20).
+                _feedback.Add(new CombatFeedback(FeedbackKind.Unavailable, PlayerId, 0, "resynchronisation en cours"));
+                return false;
+            }
             SkillSlot? info = Player().Slots.FirstOrDefault(s => s.Slot == slot);
             if (info is null)
             {
@@ -181,6 +187,7 @@ namespace EdS.Net
 
         public void SelectTarget(string id)
         {
+            if (AwaitingResync) return;
             if (!CombatDisplay.LivingEnemies(_engine, PlayerId).Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant.", nameof(id));
             SetTarget(id);
         }
@@ -195,20 +202,21 @@ namespace EdS.Net
 
         public void SelectAlly(string id)
         {
+            if (AwaitingResync) return;
             if (!CombatDisplay.LivingAllies(_engine, PlayerId).Any(a => a.Id == id)) throw new ArgumentException($"« {id} » n'est pas un allié vivant.", nameof(id));
             SetAlly(id);
         }
 
         private void SetTarget(string? id)
         {
-            if (id == TargetId) return;
+            if (id == TargetId || AwaitingResync) return;   // pas de choix fondé sur un tick refusé
             TargetId = id;
             _inputDirty = true;
         }
 
         private void SetAlly(string? id)
         {
-            if (id == AllyId) return;
+            if (id == AllyId || AwaitingResync) return;
             AllyId = id;
             _inputDirty = true;
         }
@@ -268,10 +276,16 @@ namespace EdS.Net
                 Diverged($"tick {tick} : commandes du serveur refusées par le moteur local ({refused}).");
                 return false;
             }
+            // Revue Codex de la PR #20 : l'empreinte est vérifiée avant de publier quoi que ce soit du tick. Un tick refusé ne produit ni
+            // retour (pas de dégâts fantômes), ni changement de cible ou d'allié ; l'affichage et les choix attendent l'historique.
+            if (_log.Hash != message.Hash)
+            {
+                Diverged($"tick {tick} : empreinte {_log.Hash} au lieu de {message.Hash}.");
+                return false;
+            }
             _feedback.Collect(_engine);
             _sinceTick = 0;
             KeepTargets();
-            if (_log.Hash != message.Hash) Diverged($"tick {tick} : empreinte {_log.Hash} au lieu de {message.Hash}.");
             return true;
         }
 
