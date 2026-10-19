@@ -232,14 +232,17 @@ namespace EdS.Net
                     Fail("message du serveur refusé : " + error);
                     return ticks;
                 }
-                if (Handle(message)) ticks++;
+                ticks += Handle(message);
                 if (Status == ClientStatus.Failed) return ticks;
             }
             return ticks;
         }
 
-        /// <summary>Traite un message du serveur ; rend vrai si c'était un tick rejoué.</summary>
-        private bool Handle(NetMessage message)
+        /// <summary>
+        /// Traite un message du serveur ; rend le nombre de ticks rejoués et retenus (1 pour un tick, tous ceux de l'historique pour une
+        /// resynchronisation réussie, revue Codex de la PR #20).
+        /// </summary>
+        private int Handle(NetMessage message)
         {
             switch (message)
             {
@@ -247,12 +250,12 @@ namespace EdS.Net
                     if (welcome.ProtocolVersion != Protocol.Version)
                     {
                         Fail($"protocole {welcome.ProtocolVersion} du serveur, version {Protocol.Version} attendue.");
-                        return false;
+                        return 0;
                     }
                     if (SeatId != null && welcome.Seat != SeatId)
                     {
                         Fail($"place « {welcome.Seat} » rendue au retour, « {SeatId} » attendue.");
-                        return false;
+                        return 0;
                     }
                     SeatId = welcome.Seat;
                     Token = welcome.Token;
@@ -260,45 +263,45 @@ namespace EdS.Net
                     if (Status == ClientStatus.Connecting) Status = ClientStatus.Lobby;
                     // Place reprise : le délai du serveur repart de zéro à la prochaine coupure.
                     if (Status == ClientStatus.Reconnecting) _disconnectedAt = null;
-                    return false;
+                    return 0;
                 case LobbyMessage lobby:
                     Lobby = lobby;
                     // Retour après la fin du combat : plus d'historique à attendre.
                     if (Status == ClientStatus.Reconnecting && lobby.Phase != RoomPhase.Combat) Back(ClientStatus.Lobby);
-                    return false;
+                    return 0;
                 case StartMessage start:
                     if (SeatId is null)
                     {
                         Fail("début de combat avant l'accueil.");
-                        return false;
+                        return 0;
                     }
                     NetworkCombat? combat = NetworkCombat.Create(this, _data, start.Header, SeatId, out string? error);
                     if (combat is null)
                     {
                         Fail(error!);
-                        return false;
+                        return 0;
                     }
                     Combat = combat;
                     Status = ClientStatus.Combat;
                     Error = null;   // une fin non vérifiée du combat précédent ne concerne plus celui-ci
                     _lastInputAt = double.NegativeInfinity;
-                    return false;
+                    return 0;
                 case TickMessage tick:
-                    if (Status != ClientStatus.Combat || Combat is null) return false;   // en attente de l'historique, ou hors combat
-                    return Combat.ApplyTick(tick);
+                    if (Status != ClientStatus.Combat || Combat is null) return 0;   // en attente de l'historique, ou hors combat
+                    return Combat.ApplyTick(tick) ? 1 : 0;
                 case ResyncMessage resync:
                     return ApplyResync(resync);
                 case RejectedMessage rejected:
                     LastRejected = rejected.Reason;
                     if (Status == ClientStatus.Combat && Combat != null && SeatId != null)
                         Combat.AddFeedback(new CombatFeedback(FeedbackKind.Rejected, SeatId, 0, rejected.Reason));
-                    return false;
+                    return 0;
                 case PongMessage pong:
                     double rtt = Now * 1000 - pong.ClientTime;
-                    if (rtt < 0 || rtt > 3_600_000) return false;   // réponse qui ne vient pas d'un ping de ce client
+                    if (rtt < 0 || rtt > 3_600_000) return 0;   // réponse qui ne vient pas d'un ping de ce client
                     RttMs = rtt;
                     SmoothedRttMs = SmoothedRttMs is double s ? s + (rtt - s) / 8 : rtt;
-                    return false;
+                    return 0;
                 case EndMessage end:
                     if (Combat != null && (Status == ClientStatus.Combat || Status == ClientStatus.Reconnecting))
                     {
@@ -307,19 +310,19 @@ namespace EdS.Net
                         // Revue Codex de la PR #20 : une fin qui ne concorde pas avec le combat local n'est pas acceptée en silence.
                         if (Combat.EndProblem != null) Error = Protocol.Text("fin du combat non vérifiée : " + Combat.EndProblem);
                     }
-                    return false;
+                    return 0;
                 case ErrorMessage failure:
                     Fail("refusé par le serveur : " + failure.Reason);
-                    return false;
+                    return 0;
                 default:
                     Fail($"message « {message.Type} » inattendu du serveur.");
-                    return false;
+                    return 0;
             }
         }
 
-        private bool ApplyResync(ResyncMessage resync)
+        private int ApplyResync(ResyncMessage resync)
         {
-            if (SeatId is null || (Status != ClientStatus.Combat && Status != ClientStatus.Reconnecting)) return false;
+            if (SeatId is null || (Status != ClientStatus.Combat && Status != ClientStatus.Reconnecting)) return 0;
             if (Combat is null || Combat.Header != resync.Header)
             {
                 // Retour dans un combat commencé sans nous (client relancé) : il se lit dans l'en-tête de l'historique.
@@ -327,18 +330,18 @@ namespace EdS.Net
                 if (combat is null)
                 {
                     Fail(error!);
-                    return false;
+                    return 0;
                 }
                 Combat = combat;
             }
-            if (Combat.ApplyResync(resync))
+            if (Combat.ApplyResync(resync, out int replayed))
             {
                 Back(ClientStatus.Combat);
-                return true;
+                return replayed;
             }
             if (Combat.ResyncAttempts >= Options.MaxResyncAttempts)
                 Fail($"désynchronisation persistante après {Combat.ResyncAttempts} historiques : {Combat.LastDesync}");
-            return false;
+            return 0;
         }
 
         /// <summary>Demande l'historique complet au serveur (divergence, tick manquant, historique perdu).</summary>
