@@ -143,13 +143,14 @@ public class Lot105NetworkMeasureTests
     {
         // Le plus petit pas accepté (1 ms) et le plus grand (5 ticks de 50 ms, ce que la salle simule par appel, revue Codex de la
         // PR #22, tour 5) mesurent un combat complet, en un nombre d'images fini.
+        long reference = NetworkMeasures.Run(ShippedData, Calm(2_000), new NetworkMeasureOptions()).EndTick;
         foreach (double step in new[] { NetworkMeasures.MinStepSeconds, 0.25 })
         {
             NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(2_000), new NetworkMeasureOptions { StepSeconds = step });
             Assert.True(r.HashesMatch, $"pas de {step} s");
             Assert.Equal(0, r.Desyncs);
             Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
-            Assert.Equal(40, r.EndTick);
+            Assert.Equal(reference, r.EndTick);   // même fin qu'avec le pas de 10 ms : tout le combat est joué
         }
     }
 
