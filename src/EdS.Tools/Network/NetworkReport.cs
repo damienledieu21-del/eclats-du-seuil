@@ -62,13 +62,17 @@ public static class NetworkReport
         Cuts.Select(seconds => NetworkMeasures.Run(data, scenario,
             new NetworkMeasureOptions { LatencyMs = 50, JitterMs = 10, Seed = 1, Timing = ParryTiming.Anticipated, CutAtSeconds = 5, CutSeconds = seconds })).ToList();
 
-    public static void Write(TextWriter w, IReadOnlyList<NetworkReportRow> rows, IReadOnlyList<NetworkMeasureResult> cuts, int seeds)
+    /// <param name="scenario">Nom du scénario mesuré (affiché).</param>
+    /// <param name="durationMs">Durée de ses combats (affichée).</param>
+    public static void Write(TextWriter w, IReadOnlyList<NetworkReportRow> rows, IReadOnlyList<NetworkMeasureResult> cuts, int seeds, string scenario,
+        long durationMs)
     {
         ArgumentNullException.ThrowIfNull(w);
         // Virgule décimale à la française, sans dépendre des cultures installées (mode de globalisation invariant).
         string F(double value, int decimals = 0) =>
             value.ToString(decimals == 0 ? "0" : "0." + new string('0', decimals), CultureInfo.InvariantCulture).Replace('.', ',');
-        w.WriteLine($"Parades (deux joueurs scriptés, {seeds} graine(s) par réglage, scénario de coopération, 60 s) :");
+        // Revue Codex de la PR #22 : scénario et durée réellement mesurés, pas ceux du scénario par défaut.
+        w.WriteLine($"Parades (deux joueurs scriptés, {seeds} graine(s) par réglage, scénario {scenario}, {F(durationMs / 1000.0, durationMs % 1000 == 0 ? 0 : 1)} s) :");
         w.WriteLine();
         w.WriteLine("| Parade | Latence (un sens) | Pressées | Parfaites | Réussite | Ratées | Refusées | Délai d'action moyen | p95 | Retard d'affichage | Aller-retour mesuré | Désync. | Empreintes |");
         w.WriteLine("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|");

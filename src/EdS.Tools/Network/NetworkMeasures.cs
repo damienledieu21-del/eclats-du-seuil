@@ -52,6 +52,9 @@ public sealed class NetworkMeasureResult
 {
     public NetworkMeasureOptions Options { get; init; } = new();
 
+    /// <summary>Places attribuées aux deux joueurs mesurés (identifiants des personnages), dans l'ordre d'arrivée.</summary>
+    public IReadOnlyList<string> Seats { get; init; } = Array.Empty<string>();
+
     /// <summary>Parades pressées par les deux joueurs.</summary>
     public int ParryPresses { get; init; }
 
@@ -114,7 +117,6 @@ public static class NetworkMeasures
     /// <summary>Pause minimale entre deux demandes de compétence (plus le temps aller-retour).</summary>
     public const double SkillPauseSeconds = 0.1;
 
-    public const string FirstSeat = "bastion";
 
     private sealed class Player
     {
@@ -148,10 +150,16 @@ public static class NetworkMeasures
             throw new ArgumentOutOfRangeException(nameof(options), $"Coupure à {cutAtCheck} s : instant positif ou nul et fini.");
         if (!(options.CutSeconds >= 0) || double.IsInfinity(options.CutSeconds))
             throw new ArgumentOutOfRangeException(nameof(options), $"Coupure de {options.CutSeconds} s : durée positive ou nulle et finie.");
+        // Revue Codex de la PR #22 : un moment de parade inconnu serait calculé d'une façon et affiché d'une autre.
+        if (options.Timing != ParryTiming.OnSight && options.Timing != ParryTiming.Anticipated)
+            throw new ArgumentOutOfRangeException(nameof(options), $"Moment de parade inconnu : {(int)options.Timing}.");
         var net = new SimulatedNetwork(options.Seed);
         SimulatedListener listener = net.Listen("salle");
         int tokens = 0;
         var room = new CombatRoom(data, scenario, new RoomOptions { TokenSource = () => (++tokens).ToString("x32", CultureInfo.InvariantCulture) });
+        // Deux joueurs scriptés : le scénario doit avoir exactement deux places (personnages Bastion).
+        if (room.SeatIds.Count != 2)
+            throw new ArgumentException($"Scénario à {room.SeatIds.Count} personnage(s) : les mesures du réseau en demandent deux (deux joueurs).", nameof(scenario));
         var link = new LinkProfile(options.LatencyMs, options.JitterMs);
         var players = new List<Player>();
         foreach ((string name, string build) in new[] { ("Dam", "build.bastion.rempart"), ("Léa", "build.bastion.gardien") })
@@ -237,8 +245,12 @@ public static class NetworkMeasures
         }
         delays.Sort();
 
+        if (combatStart is null)
+            throw new InvalidOperationException("Le combat n'a pas commencé : " + string.Join(" ; ", players.Select(p => $"{p.Client.Name} : {p.Client.Status} {p.Client.Error}")));
+        // Revue Codex de la PR #22 : compteurs des places réellement attribuées aux joueurs mesurés (quels que soient leurs identifiants).
+        var seats = new HashSet<string>(players.Select(p => p.Client.SeatId!), StringComparer.Ordinal);
         long Count(Func<CombatantResult, long> value) =>
-            result?.Combatants.Where(c => c.Id == FirstSeat || c.Id == "bastion2").Sum(value) ?? 0;
+            result?.Combatants.Where(c => seats.Contains(c.Id)).Sum(value) ?? 0;
         // Un joueur dont le retour a été refusé, ou pas encore tenté à la fin, s'arrête en plein combat : seules les empreintes des
         // joueurs qui ont vu la fin du combat sont comparées (au moins un).
         var finished = players.Where(p => p.Client.Combat is { IsFinished: true }).ToList();
@@ -248,6 +260,7 @@ public static class NetworkMeasures
         return new NetworkMeasureResult
         {
             Options = options,
+            Seats = players.Select(p => p.Client.SeatId!).ToArray(),
             ParryPresses = players.Sum(p => p.Presses.Count),
             PerfectParries = Count(c => c.PerfectParries),
             FailedParries = Count(c => c.FailedParries),

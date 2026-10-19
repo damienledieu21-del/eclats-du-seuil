@@ -5,6 +5,7 @@ Mesures obtenues avec `eds reseau` (sous-lot 10.5) : la salle (`CombatRoom`) et 
 ```bash
 dotnet run --project src/EdS.Cli -- reseau              # 3 graines par réglage (environ 20 s)
 dotnet run --project src/EdS.Cli -- reseau --graines 5
+dotnet run --project src/EdS.Cli -- reseau --scenario scenarios/mesures/s4_protection.json   # tout scénario à deux personnages Bastion
 ```
 
 ## Méthode

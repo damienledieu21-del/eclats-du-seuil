@@ -457,10 +457,22 @@ static int RunNetwork(ReadOnlySpan<string> options)
     if (data is null) return 1;
     ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(scenarioPath, data);
     if (scenario.Setup is null) return Fail(scenarioPath, scenario.Report);
-    IReadOnlyList<NetworkReportRow> rows = NetworkReport.MeasureLinks(data, scenario.Setup, seeds);
-    IReadOnlyList<NetworkMeasureResult> cuts = NetworkReport.MeasureCuts(data, scenario.Setup);
-    NetworkReport.Write(Console.Out, rows, cuts, seeds);
-    return rows.All(r => r.HashesMatch && r.Desyncs == 0) && cuts.All(c => c.HashesMatch) ? 0 : 3;
+    IReadOnlyList<NetworkReportRow> rows;
+    IReadOnlyList<NetworkMeasureResult> cuts;
+    try
+    {
+        rows = NetworkReport.MeasureLinks(data, scenario.Setup, seeds);
+        cuts = NetworkReport.MeasureCuts(data, scenario.Setup);
+    }
+    catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+    {
+        // Scénario incompatible (pas exactement deux personnages Bastion, combat qui ne commence pas).
+        Console.Error.WriteLine($"Mesures impossibles ({scenarioPath}) : {e.Message}");
+        return 1;
+    }
+    NetworkReport.Write(Console.Out, rows, cuts, seeds, Path.GetFileNameWithoutExtension(scenarioPath), scenario.Setup.DurationMs);
+    // Revue Codex de la PR #22 : une divergence pendant une coupure fait aussi échouer la commande.
+    return rows.All(r => r.HashesMatch && r.Desyncs == 0) && cuts.All(c => c.HashesMatch && c.Desyncs == 0) ? 0 : 3;
 }
 
 static void PrintHelp()

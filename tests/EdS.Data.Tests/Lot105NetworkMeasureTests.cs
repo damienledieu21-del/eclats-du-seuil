@@ -106,6 +106,35 @@ public class Lot105NetworkMeasureTests
     }
 
     [Fact]
+    public void Moment_de_parade_inconnu_et_scenario_incompatible_refuses()
+    {
+        // Revue Codex de la PR #22.
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            NetworkMeasures.Run(ShippedData, Duo, new NetworkMeasureOptions { Timing = (ParryTiming)2 }));
+        CombatSetup alone = ScenarioJsonReader.ReadFile(ScenarioPath("mannequin"), ShippedData).Setup!;
+        Assert.Throws<ArgumentException>(() => NetworkMeasures.Run(ShippedData, alone, new NetworkMeasureOptions()));
+    }
+
+    [Fact]
+    public void Compteurs_des_places_reellement_attribuees()
+    {
+        // Revue Codex de la PR #22 : avec s4_protection, la seconde place s'appelle « allie » ; ses parades comptent aussi.
+        CombatSetup protection = ScenarioJsonReader.ReadFile(ScenarioPath("mesures/s4_protection"), ShippedData).Setup!;
+        NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, protection, new NetworkMeasureOptions { Timing = ParryTiming.Anticipated });
+        Assert.Equal(new[] { "bastion", "allie" }, r.Seats);
+        Assert.True(r.HashesMatch);
+        Assert.Equal(0, r.Desyncs);
+        // Les pressions des deux joueurs finissent presque toutes parfaites, ratées ou refusées chez les places mesurées ; sans la place
+        // « allie » dans les compteurs, la moitié manquerait.
+        long outcomes = r.PerfectParries + r.FailedParries + r.CommandsRejected;
+        Assert.True(r.PerfectParries <= r.ParryPresses && outcomes >= 0.75 * r.ParryPresses,
+            $"{r.PerfectParries} parfaites, {r.FailedParries} ratées, {r.CommandsRejected} refusées, {r.ParryPresses} pressées");
+        var report = new StringWriter();
+        NetworkReport.Write(report, Array.Empty<NetworkReportRow>(), Array.Empty<NetworkMeasureResult>(), 1, "s4_protection", protection.DurationMs);
+        Assert.Contains("scénario s4_protection, 90 s", report.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Rapport_complet_reproductible()
     {
         IReadOnlyList<NetworkReportRow> rows = NetworkReport.MeasureLinks(ShippedData, Duo, 1);
@@ -113,11 +142,12 @@ public class Lot105NetworkMeasureTests
         Assert.Equal(2 * NetworkReport.Links.Count, rows.Count);
         Assert.All(rows, r => Assert.True(r.HashesMatch && r.Desyncs == 0, $"{r.LatencyMs} ms {r.Timing}"));
         var first = new StringWriter();
-        NetworkReport.Write(first, rows, cuts, 1);
+        NetworkReport.Write(first, rows, cuts, 1, "duo_meute", Duo.DurationMs);
         var second = new StringWriter();
-        NetworkReport.Write(second, NetworkReport.MeasureLinks(ShippedData, Duo, 1), NetworkReport.MeasureCuts(ShippedData, Duo), 1);
+        NetworkReport.Write(second, NetworkReport.MeasureLinks(ShippedData, Duo, 1), NetworkReport.MeasureCuts(ShippedData, Duo), 1, "duo_meute", Duo.DurationMs);
         Assert.Equal(first.ToString(), second.ToString());
         Assert.Contains("| à vue | 0 ms |", first.ToString(), StringComparison.Ordinal);
+        Assert.Contains("scénario duo_meute, 60 s", first.ToString(), StringComparison.Ordinal);
         Assert.Contains("| anticipée | 200 + 0 à 120 ms |", first.ToString(), StringComparison.Ordinal);
     }
 }
