@@ -44,7 +44,7 @@ public sealed class NetworkMeasureOptions
     /// <summary>Durée de la coupure avant la nouvelle connexion.</summary>
     public double CutSeconds { get; init; } = 3;
 
-    /// <summary>Pas du temps virtuel (une image de 10 ms).</summary>
+    /// <summary>Pas du temps virtuel (une image de 10 ms) ; de <see cref="NetworkMeasures.MinStepSeconds"/> à 1 s.</summary>
     public double StepSeconds { get; init; } = 0.01;
 }
 
@@ -124,6 +124,12 @@ public static class NetworkMeasures
     /// <summary>Pause minimale entre deux demandes de compétence (plus le temps aller-retour).</summary>
     public const double SkillPauseSeconds = 0.1;
 
+    /// <summary>
+    /// Pas de temps le plus court accepté (1 ms, revue Codex de la PR #22, tour 4) : en dessous, une mesure demanderait des millions
+    /// d'images sans rien gagner (le réseau simulé compte en millisecondes).
+    /// </summary>
+    public const double MinStepSeconds = 0.001;
+
 
     private sealed class Player
     {
@@ -149,8 +155,8 @@ public static class NetworkMeasures
         ArgumentNullException.ThrowIfNull(scenario);
         ArgumentNullException.ThrowIfNull(options);
         // Revue Codex de la PR #22 : réglages vérifiés avant la simulation (un pas nul ferait tourner la boucle sans fin).
-        if (!(options.StepSeconds > 0) || double.IsInfinity(options.StepSeconds) || options.StepSeconds > 1)
-            throw new ArgumentOutOfRangeException(nameof(options), $"Pas de temps de {options.StepSeconds} s : entre 0 (exclu) et 1 s.");
+        if (!(options.StepSeconds >= MinStepSeconds) || options.StepSeconds > 1)
+            throw new ArgumentOutOfRangeException(nameof(options), $"Pas de temps de {options.StepSeconds} s : de {MinStepSeconds} à 1 s.");
         if (options.LatencyMs < 0 || options.JitterMs < 0)
             throw new ArgumentOutOfRangeException(nameof(options), "Latence et gigue positives ou nulles.");
         if (options.CutAtSeconds is double cutAtCheck && (!(cutAtCheck >= 0) || double.IsInfinity(cutAtCheck)))
@@ -191,7 +197,9 @@ public static class NetworkMeasures
         double lagSum = 0;
         long lagSamples = 0;
         double limit = scenario.DurationMs / 1000.0 + 30;
-        for (double now = 0; now < limit; now += step)
+        // Revue Codex de la PR #22 (tour 4) : un nombre entier d'images, qui finit toujours (pas de somme flottante qui stagne).
+        long frames = checked((long)Math.Ceiling(limit / step));
+        for (long frame = 0; frame < frames; frame++)
         {
             net.Advance(step);
             while (listener.TryAccept(out INetConnection connection)) room.Accept(connection);

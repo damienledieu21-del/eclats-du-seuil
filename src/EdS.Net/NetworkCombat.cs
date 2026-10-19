@@ -28,6 +28,10 @@ namespace EdS.Net
         private int? _slot;
         private bool _inputDirty;
 
+        // Revue Codex de la PR #20 (tour 4) : commandes des ticks acceptés (empreinte du serveur retrouvée), dans l'ordre, ticks vides
+        // exclus ; elles servent à remettre le moteur au dernier tick accepté quand un tick rejoué est refusé.
+        private readonly List<TickCommands> _accepted = new List<TickCommands>();
+
         private NetworkCombat(NetworkClient client, string header, CombatSetup setup, string playerId)
         {
             _client = client;
@@ -55,6 +59,15 @@ namespace EdS.Net
                 error = $"début de combat sans le personnage « {playerId} ».";
                 return null;
             }
+            // Revue Codex de la PR #20 (tour 4) : tout combattant peut être nommé dans un message (cible, allié) ; un identifiant que le
+            // lecteur strict du serveur refuse ferait fermer la connexion au premier envoi. L'en-tête est refusé avant le combat.
+            for (int i = 0; i < setup.Combatants.Count; i++)
+                if (!MessageCodec.IsId(setup.Combatants[i].Id))
+                {
+                    error = $"début de combat refusé : $.scenario.combatants[{i}].id, identifiant incompatible avec le protocole (1 à " +
+                        $"{Protocol.MaxIdLength} caractères parmi a-z, A-Z, 0-9, « . », « _ », « - »).";
+                    return null;
+                }
             try
             {
                 var combat = new NetworkCombat(client, header, setup, playerId);
@@ -288,6 +301,7 @@ namespace EdS.Net
             }
             if (!Replay(message.Commands, out string? refused))
             {
+                RestoreTo(tick);
                 Diverged($"tick {tick} : commandes du serveur refusées par le moteur local ({refused}).");
                 return false;
             }
@@ -295,9 +309,13 @@ namespace EdS.Net
             // retour (pas de dégâts fantômes), ni changement de cible ou d'allié ; l'affichage et les choix attendent l'historique.
             if (_log.Hash != message.Hash)
             {
-                Diverged($"tick {tick} : empreinte {_log.Hash} au lieu de {message.Hash}.");
+                string local = _log.Hash;
+                // Tour 4 : le moteur, déjà avancé par ce tick, est remis au dernier tick accepté ; l'affichage n'en montre rien.
+                RestoreTo(tick);
+                Diverged($"tick {tick} : empreinte {local} au lieu de {message.Hash}.");
                 return false;
             }
+            if (message.Commands.Commands.Count > 0) _accepted.Add(message.Commands);
             _feedback.Collect(_engine);
             _sinceTick = 0;
             KeepTargets();
@@ -335,6 +353,8 @@ namespace EdS.Net
             }
             _engine = engine;
             _log = log;
+            _accepted.Clear();
+            _accepted.AddRange(byTick.Values.Where(t => t.Tick < message.Ticks && t.Commands.Count > 0).OrderBy(t => t.Tick));   // ceux rejoués
             _feedback.Reset(_engine);
             _sinceTick = 0;
             AwaitingResync = false;
@@ -392,6 +412,38 @@ namespace EdS.Net
         }
 
         private bool Replay(TickCommands commands, out string? refused) => Replay(_engine, commands, out refused);
+
+        /// <summary>
+        /// Revue Codex de la PR #20 (tour 4) : un tick rejoué puis refusé (empreinte différente, commande refusée) a déjà modifié le moteur
+        /// local. Il est reconstruit depuis le début jusqu'au tick <paramref name="tick"/> avec les commandes acceptées, pour que
+        /// l'affichage (joueur, autres combattants) ne montre jamais un état que le serveur n'a pas confirmé en attendant l'historique.
+        /// Rejouer des commandes déjà acceptées redonne le même moteur (déterminisme) ; un échec, impossible, laisse le moteur tel quel.
+        /// </summary>
+        private void RestoreTo(long tick)
+        {
+            var log = new HashingCombatLog();
+            CombatEngine engine;
+            try
+            {
+                engine = new CombatEngine(Setup, log);
+            }
+            catch (Exception)
+            {
+                return;
+            }
+            var empty = Array.Empty<CombatCommand>();
+            int next = 0;
+            while (engine.CurrentTick < tick && !engine.IsFinished)
+            {
+                TickCommands commands = next < _accepted.Count && _accepted[next].Tick == engine.CurrentTick
+                    ? _accepted[next++]
+                    : new TickCommands(engine.CurrentTick, empty);
+                if (!Replay(engine, commands, out _)) return;
+            }
+            if (engine.CurrentTick != tick) return;
+            _engine = engine;
+            _log = log;
+        }
 
         /// <summary>
         /// Rejoue un tick. Les commandes viennent du serveur : toute exception du moteur (commande refusée, état incohérent) est une

@@ -105,6 +105,64 @@ public class Lot104SessionTests
         CombatLogReplayer.ReadSetup(room.LastJournal![0], ShippedData, out _)!.Commands;
 
     [Fact]
+    public void Build_retenu_seulement_une_fois_accepte_par_le_serveur()
+    {
+        // Revue Codex de la PR #21 (tour 4) : un build demandé n'est retenu qu'après l'accord du serveur ; un refus, notamment quand la
+        // demande arrive au serveur après le début du combat (le client était encore en salle d'attente), ne change rien.
+        var net = new SimulatedNetwork(5);
+        SimulatedListener listener = net.Listen("salle");
+        int tokens = 0;
+        var room = new CombatRoom(ShippedData, Calm(3_000), new RoomOptions { TokenSource = () => (++tokens).ToString("x32") });
+        var slow = new NetworkClient(ShippedData, net.Connect("salle", new LinkProfile(100, 0)), "Dam", new BuildChoice(Rempart));
+        var fast = new NetworkClient(ShippedData, net.Connect("salle", LinkProfile.Perfect), "Léa", new BuildChoice(Gardien));
+        void Run(double seconds)
+        {
+            for (double t = 0; t < seconds - 1e-9; t += 0.01)
+            {
+                net.Advance(0.01);
+                while (listener.TryAccept(out INetConnection connection)) room.Accept(connection);
+                room.Advance(0.01);
+                slow.Advance(0.01);
+                fast.Advance(0.01);
+            }
+        }
+        Run(0.5);
+        Assert.Equal((ClientStatus.Lobby, ClientStatus.Lobby), (slow.Status, fast.Status));
+        Assert.Equal(Rempart, slow.AcceptedBuild.Reference);
+
+        // Accepté : retenu à la réponse du serveur, pas avant ; une demande à la fois.
+        var gardien = new BuildChoice(Gardien);
+        Assert.True(slow.SetBuild(gardien));
+        Assert.Same(gardien, slow.PendingBuild);
+        Assert.False(slow.SetBuild(new BuildChoice(Rempart)));
+        Assert.Equal(Rempart, slow.AcceptedBuild.Reference);
+        Run(0.3);
+        Assert.Null(slow.PendingBuild);
+        Assert.Same(gardien, slow.AcceptedBuild);
+        Assert.Equal("Gardien", slow.Lobby!.Seats.Single(s => s.Id == slow.SeatId).Build);
+
+        // Refusé (build inconnu) : le build retenu ne change pas.
+        Assert.True(slow.SetBuild(new BuildChoice("build.inconnu")));
+        Run(0.3);
+        Assert.Null(slow.PendingBuild);
+        Assert.Same(gardien, slow.AcceptedBuild);
+        Assert.Contains("build de référence inconnu", slow.LastRejected);
+
+        // Course : déjà prêt, il change de build au moment où l'autre lance le combat ; le serveur reçoit la demande en combat.
+        slow.SetReady(true);
+        Run(0.3);
+        var rempart = new BuildChoice(Rempart);
+        Assert.True(slow.SetBuild(rempart));   // encore en salle d'attente de son côté
+        fast.SetReady(true);
+        Run(0.4);
+        Assert.Equal(ClientStatus.Combat, slow.Status);
+        Assert.Null(slow.PendingBuild);
+        Assert.Same(gardien, slow.AcceptedBuild);
+        Assert.Equal("combat en cours : le build se change en salle d'attente.", slow.LastRejected);
+        Assert.False(slow.SetBuild(rempart));   // pas en combat
+    }
+
+    [Fact]
     public void Joueur_et_equipier_robot_jouent_toute_la_meute()
     {
         var lan = new Lan(Duo);
