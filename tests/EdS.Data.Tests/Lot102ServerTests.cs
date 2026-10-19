@@ -494,6 +494,77 @@ public class Lot102ServerTests
     }
 
     [Fact]
+    public void Journaux_jamais_ecrases_serveur_relance_sur_le_meme_dossier()
+    {
+        // Revue Codex de la PR #19 : un serveur relancé sur le même dossier --journaux continue la numérotation au lieu d'écraser.
+        string directory = Path.Combine(Path.GetTempPath(), "eds-journaux-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            IReadOnlyList<string> Play()
+            {
+                var world = new World(options: new RoomOptions { DurationMs = 1000 });
+                (Bot a, _) = world.Start();
+                a.Input(guard: true);
+                world.Run(1.2);
+                Assert.NotNull(world.Room.LastJournal);
+                return world.Room.LastJournal!;
+            }
+            IReadOnlyList<string> first = Play(), second = Play();
+            var run1 = new JournalFolder(directory);
+            Assert.Equal(Path.Combine(run1.Directory, "combat-001.jsonl"), run1.Write(first));
+            // Relance : nouveau dossier ouvert sur le même chemin, nouveaux combats numérotés à la suite.
+            var run2 = new JournalFolder(directory);
+            Assert.Equal(Path.Combine(run2.Directory, "combat-002.jsonl"), run2.Write(second));
+            Assert.Equal(string.Concat(first.Select(l => l + "\n")), File.ReadAllText(Path.Combine(directory, "combat-001.jsonl")));
+            Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(File.ReadAllLines(Path.Combine(directory, "combat-002.jsonl")).ToList(), ShippedData).Status);
+
+            // Numéro le plus grand repris (trous compris), fichiers étrangers ignorés, fichier existant jamais remplacé.
+            File.WriteAllText(Path.Combine(directory, "combat-010.jsonl"), "ancien");
+            File.WriteAllText(Path.Combine(directory, "combat-abc.jsonl"), "autre");
+            File.WriteAllText(Path.Combine(directory, "notes.jsonl"), "autre");
+            Assert.EndsWith("combat-011.jsonl", run1.Write(first));
+            Assert.Equal("ancien", File.ReadAllText(Path.Combine(directory, "combat-010.jsonl")));
+            Assert.Equal(6, Directory.GetFiles(directory).Length);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
+    public async Task Hote_arrete_ferme_les_connexions_des_joueurs()
+    {
+        // Revue Codex de la PR #19 : un hôte libéré ferme aussi les connexions déjà prises par la salle, avec la raison.
+        var room = new CombatRoom(ShippedData, Calm);
+        var listener = new TcpNetListener(IPAddress.Loopback, 0);
+        var host = new RoomHost(room, listener);
+        host.Start();
+        using TcpNetConnection a = await TcpNetConnection.ConnectAsync("127.0.0.1", listener.Port, Protocol.MaxServerMessageBytes, Protocol.MaxClientMessageBytes);
+        a.Send(new HelloMessage(1, "Dam", new BuildChoice(Rempart)));
+        var received = new List<NetMessage>();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!received.OfType<WelcomeMessage>().Any())
+        {
+            Assert.True(watch.Elapsed.TotalSeconds < 10, "accueil attendu");
+            while (a.TryReceive(MessageDirection.ServerToClient, out NetMessage? m, out string? e)) received.Add(m ?? throw new InvalidOperationException(e));
+            await Task.Delay(5);
+        }
+        Assert.Equal(1, host.Read(r => r.ConnectionCount));
+        host.Dispose();
+        Assert.Equal(0, host.Read(r => r.ConnectionCount));
+        while (a.IsOpen)
+        {
+            Assert.True(watch.Elapsed.TotalSeconds < 20, "fermeture attendue");
+            await Task.Delay(5);
+        }
+        while (a.TryReceive(MessageDirection.ServerToClient, out NetMessage? m, out _)) if (m != null) received.Add(m);
+        Assert.Equal("serveur arrêté.", received.OfType<ErrorMessage>().Single().Reason);
+        Assert.Equal("connexion fermée par l'autre côté.", a.CloseReason);
+        host.Dispose();   // sans effet la seconde fois
+    }
+
+    [Fact]
     public void Meme_scenario_memes_entrees_meme_journal()
     {
         IReadOnlyList<string> Play(LinkProfile link, ulong seed)

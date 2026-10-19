@@ -76,8 +76,8 @@ namespace EdS.Net
         }
 
         /// <summary>
-        /// Arrête la boucle et l'écoute, puis ferme les connexions des joueurs avec une raison (sous-lot 10.4 : l'hôte Unity s'arrête sans
-        /// laisser de connexion ouverte dans l'éditeur).
+        /// Arrête la boucle et l'écoute, puis ferme les connexions des joueurs avec une raison (revue Codex de la PR #19 : un hôte arrêté,
+        /// dans Unity notamment, ne laisse aucune connexion ouverte ni fil de lecture bloqué).
         /// </summary>
         public void Dispose()
         {

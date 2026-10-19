@@ -583,8 +583,8 @@ namespace EdS.Net
         }
 
         /// <summary>
-        /// Sous-lot 10.4 : arrêt de la salle (hôte fermé) : chaque connexion reçoit une erreur avec la raison, puis est fermée ; la salle
-        /// ne garde plus aucune connexion.
+        /// Revue Codex de la PR #19 : arrêt de la salle (hôte fermé) : chaque connexion reçoit une erreur avec la raison, puis est fermée ;
+        /// la salle ne garde plus aucune connexion.
         /// </summary>
         public void CloseAll(string reason)
         {

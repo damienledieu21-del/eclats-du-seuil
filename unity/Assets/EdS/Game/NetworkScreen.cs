@@ -34,6 +34,10 @@ namespace EdS.Game
         /// <summary>Message affiché sous le menu (erreur de la dernière tentative).</summary>
         public string Message;
 
+        // Adresses de ce poste, cherchées une fois par partie hébergée (OnGUI dessine plusieurs fois par image).
+        private NetworkSession _addressesFor;
+        private IReadOnlyList<string> _addresses;
+
         /// <summary>Menu du réseau, au centre de l'écran.</summary>
         public Action DrawMenu()
         {
@@ -69,7 +73,12 @@ namespace EdS.Game
             float line = y + 44;
             if (session.Host != null)
             {
-                IReadOnlyList<string> addresses = NetworkSession.LocalAddresses();
+                if (_addressesFor != session)
+                {
+                    _addressesFor = session;
+                    _addresses = NetworkSession.LocalAddresses();
+                }
+                IReadOnlyList<string> addresses = _addresses;
                 string where = addresses.Count == 0 ? "adresse de ce poste inconnue (ipconfig)" : string.Join(" ou ", addresses);
                 Hud.Small(new Rect(x, line, w, 24), $"Adresse à donner à l'autre joueur : <b>{where}</b> (port {Protocol.DefaultPort})");
                 line += 28;
@@ -117,6 +126,9 @@ namespace EdS.Game
                 Hud.Small(new Rect(x, line, w, 24), "Le combat commence quand les deux joueurs sont prêts.");
                 line += 28;
                 if (client.LastRejected != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ffcf7a>Refusé : " + client.LastRejected + "</color>");
+                line += 30;
+                // Fin de combat non vérifiée (divergence non réparée) : à signaler à Claude, le client reste dans la salle.
+                if (client.Error != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ff9a7a>" + client.Error + "</color>");
                 line += 30;
             }
             if (!string.IsNullOrEmpty(lastCombat)) Hud.Small(new Rect(x, y + 470, w, 24), lastCombat);

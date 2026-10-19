@@ -84,7 +84,17 @@ namespace EdS.Net
         /// <summary>Fin du combat : moteur local terminé, ou fin annoncée par le serveur (<see cref="EndReason"/>).</summary>
         public bool IsFinished => _engine.IsFinished || EndReason != null;
 
-        public CombatResult? Result => _engine.Result;
+        /// <summary>
+        /// Résultat du combat local une fois terminé ; null avant, et null aussi si la fin n'a pas pu être vérifiée (<see cref="EndProblem"/>) :
+        /// un résultat divergent n'est jamais montré comme celui du combat.
+        /// </summary>
+        public CombatResult? Result => EndProblem is null ? _engine.Result : null;
+
+        /// <summary>
+        /// Revue Codex de la PR #20 : raison pour laquelle la fin annoncée par le serveur n'a pas pu être vérifiée (divergence pas encore
+        /// réparée, tick de fin différent, combat local pas terminé) ; null si la fin concorde ou n'est pas encore annoncée.
+        /// </summary>
+        public string? EndProblem { get; private set; }
 
         /// <summary>Raison de fin envoyée par le serveur ; null tant qu'il ne l'a pas annoncée.</summary>
         public string? EndReason { get; private set; }
@@ -299,10 +309,26 @@ namespace EdS.Net
             return true;
         }
 
+        /// <summary>
+        /// Fin annoncée par le serveur. Elle n'est acceptée telle quelle que si le combat local concorde : aucune divergence en attente
+        /// d'historique, moteur local terminé au même tick (le serveur n'envoie la fin à un joueur présent que quand son moteur a fini).
+        /// Sinon la raison est gardée dans <see cref="EndProblem"/> : le serveur ne répond plus aux demandes d'historique après la fin.
+        /// </summary>
         internal void End(long tick, string reason)
         {
             EndTick = tick;
             EndReason = reason;
+            EndProblem =
+                AwaitingResync ? "divergence pas encore réparée à la fin du combat (" + (LastDesync ?? "historique attendu") + ")"
+                : !_engine.IsFinished ? $"fin annoncée au tick {tick}, combat local au tick {_engine.CurrentTick} pas terminé"
+                : _engine.CurrentTick != tick ? $"fin annoncée au tick {tick}, combat local terminé au tick {_engine.CurrentTick}"
+                : null;
+            if (EndProblem != null)
+            {
+                Desyncs++;
+                LastDesync = EndProblem;
+                AwaitingResync = false;
+            }
         }
 
         /// <summary>Demande d'historique envoyée (ou renvoyée après un délai).</summary>
