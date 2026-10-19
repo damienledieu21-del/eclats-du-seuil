@@ -15,7 +15,7 @@ MMORPG fantasy PC/mobile, monde partagé et persistant à terme, **principalemen
 
 ## Ordre des chantiers
 
-`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4) → serveur autoritaire à deux joueurs → vertical slice`
+`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4, terminé le 19 octobre 2026) → serveur autoritaire à deux joueurs → vertical slice`
 
 ### Lot 8 — premier Bastion réellement jouable
 
@@ -46,7 +46,7 @@ Objectif (« Après le lot 8 », point 1) : importer le cœur C# sans le réécr
 | 9.1 | Données portables : lecture JSON stricte sans dépendance (analyseur maison), `EdS.Data.Json` en netstandard2.1 / C# 9, utilisable par Unity et le futur serveur ; validation, empreintes et journaux inchangés ; mesures déplacées dans `EdS.Tools` (outils .NET) | PR #12, fusionnée le 18 octobre 2026 ; revue Codex : nombre de valeurs JSON borné pendant l'analyse et arbre compact (`InputLimits.MaxJsonValues`) |
 | 9.2 | Pont temps réel (`EdS.Runtime`, netstandard2.1) : temps réel → ticks de 50 ms, saisie → commandes, vues pour l'affichage, session d'entraînement depuis les données | PR #13, fusionnée le 18 octobre 2026 : `RealtimeCombat`, `TrainingSession`, compteurs dans la vue du moteur (journal inchangé), catégorie de tests `Runtime` ; revue Codex : dernière demande de compétence du tick, garde et lancer admis ensemble (`CombatEngine.SubmitAll`), journal écrit en fin de partie (`WriteLog`) |
 | 9.3 | Projet Unity (`unity/`) : paquet local du cœur, arène générée, personnage, caméras isométrique et troisième personne comparées, barres de ressources, garde et parade visibles, compétences, ennemis d'entraînement, altérations ; guide d'installation pour Windows | PR #14, fusionnée le 19 octobre 2026 : paquet `com.eclats.core` compilé par Unity depuis `src/`, sorties .NET dans `artifacts/`, jeu construit par le code (arène, caméras, interface IMGUI, télégraphie), rendu URP configuré à l'ouverture, guide [UNITY.md](UNITY.md) ; essayé par Damien le 18 octobre 2026 (Unity 6000.3.26f1) : le jeu se lance, Console sans erreur |
-| 9.4 | Première interface de talents (builds de référence, répartition des points validée par `BuildValidator`) | PR vers `main` : `TalentEditor` (point par point, refus atomiques avec raison), `TrainingSession.WithCustomBuild`, écran des talents dans Unity (touche T) ; à essayer par Damien |
+| 9.4 | Première interface de talents (builds de référence, répartition des points validée par `BuildValidator`) | PR #16, fusionnée le 19 octobre 2026 : `TalentEditor` (point par point, refus atomiques avec raison), `TrainingSession.WithCustomBuild`, écran des talents dans Unity (touche T) ; essayé par Damien dans Unity 6000.3.26f1, Console sans erreur |
 
 **Décisions du 18 octobre 2026** (prototype, questions posées avant le 9.1) : Unity 6.3 LTS (suivi jusqu’en décembre 2027), licence Personal gratuite ; essais sur le poste de Damien sous Windows ; projet Unity dans ce dépôt (`unity/`) ; rendu URP. Unity ne pouvant pas tourner dans les sessions cloud, les essais dans l'éditeur sont faits par Damien ; tout ce qui ne dépend pas d'Unity est testé en CI.
 
