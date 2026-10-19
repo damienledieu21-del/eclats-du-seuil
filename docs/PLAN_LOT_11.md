@@ -11,19 +11,19 @@ Vérifié dans le code le 19 octobre 2026 (`main` à `f5998c5`).
 | Domaine | Ce qui existe | Ce qui manque pour le cadrage |
 |---|---|---|
 | **Combat** | Moteur déterministe 0.14.0 (tick de 50 ms, virgule fixe, journal au format 8, rejeu octet par octet), 64 combattants par combat au plus (paramètre, borne 256). **Bastion complet** : trois arbres, six actives, l'ultime, huit passifs, garde, parade, Charges, Résonance, boucliers, provocation, transfert, altérations, déclencheurs | **Ennemis qui meurent** : les assaillants n'ont pas de PV et frappent à intervalles programmés (`FirstAttackMs`, `IntervalMs`), sans comportement. Les joueurs ne peuvent que perdre ou tenir jusqu'au temps imparti. **Aucun soin** (pas de catégorie d'effet) |
-| **Positions** | Aucune (A7). Unity déplace le personnage et place les assaillants pour l'affichage seulement | Tout le socle : positions, déplacement, portée, formes, zones au sol, collisions, obstacles |
+| **Positions** | Aucune (A7 du moteur, `MOTEUR.md`). Unity déplace le personnage et place les assaillants pour l'affichage seulement | Tout le socle : positions, déplacement, portée, formes, zones au sol, collisions, obstacles |
 | **Progression** | Règles de niveau dans `rules.json` (niveau maximal 30, points, déblocages, majeur à 18 points + 1), `BuildValidator`, `TalentEditor` (redistribution point par point), builds de référence aux niveaux 30 et 10 | Expérience, attributs par niveau, livres, héritages, maîtrises |
 | **Objets** | Les formules prévoient trois puissances d'équipement (`StatContributions`). L'origine `equipment` des déclencheurs est réservée | Objets, raretés, équipement, inventaire, butin, effets d'équipement |
 | **Monde** | Rien | Zone, PNJ, dialogues, quêtes, récolte, fabrication, points sûrs, temps du monde |
-| **Multijoueur** | Lot 10 : serveur autoritaire d'**un combat**, salle de deux places (le protocole en admet huit), TCP sans chiffrement pour le réseau local. Chaque client rejoue tout le combat et compare l'empreinte ; resynchronisation ; retour dans les 30 s ; robot ; mesures (`eds reseau`) ; télégraphie avancée du ping (option B) | Monde partagé, réplication filtrée, prédiction du déplacement, comptes, chiffrement, hébergement |
+| **Multijoueur** | Lot 10 : serveur autoritaire d'**un combat**, une place par personnage du scénario (deux dans la coopération livrée, huit au plus), composition fixe, pas d'entrée dans un combat commencé, TCP sans chiffrement pour le réseau local. Chaque client rejoue tout le combat et compare l'empreinte ; resynchronisation ; retour dans les 30 s ; robot ; mesures (`eds reseau`) ; télégraphie avancée du ping (option B) | Monde partagé, réplication filtrée, prédiction du déplacement, comptes, chiffrement, hébergement |
 | **Persistance** | Aucune, à part les journaux de combat | Sauvegarde locale, puis sauvegarde serveur |
-| **Unity** | Prototype jouable sur PC (Windows) : arène générée, interface IMGUI, combat solo et réseau, écran des talents, graphismes provisoires. **Deux caméras** : « isométrique » (perspective plongeante à 50°, recul de 8 à 30, quarts de tour), troisième personne (18°, recul de 3 à 14, souris) ; bascule par la touche C, sans transition | Vues 1 et 2 reliées, visibilité près des obstacles, scène de terrain, commandes tactiles, essai sur téléphone |
+| **Unity** | Prototype jouable sur PC (Windows) : arène générée, interface IMGUI, combat solo et réseau, écran des talents, graphismes provisoires. **Deux caméras** : « isométrique » (perspective plongeante à 50°, recul de 8 à 30, quarts de tour), troisième personne (18°, recul de 3 à 14, souris) ; bascule par la touche C avec un court lissage (environ 0,3 s), sans réglage continu entre les deux | Vues 1 et 2 reliées par un réglage continu, visibilité près des obstacles, scène de terrain, commandes tactiles, essai sur téléphone |
 | **Textes** | En français, écrits dans le code d'Unity et dans les noms des données | Textes par clés, préparés pour la traduction (Q37) |
 
 ## 2. Acquis réutilisables
 
 - **Déterminisme et rejeu** : base de l'autorité du serveur, des tests de propriétés et des journaux de référence, pour le monde comme pour le combat.
-- **Reconstruction à un tick confirmé** (`NetworkCombat`, lot 10) : c'est le mécanisme de la prédiction locale avec correction, nécessaire au déplacement en réseau.
+- **Reconstruction à un tick confirmé** (`NetworkCombat`, lot 10, qui ne prédit rien et rejoue depuis le début du combat) : base réutilisable de la prédiction locale avec correction, nécessaire au déplacement en réseau ; il faudra y ajouter des instantanés pour ne rejouer que les derniers ticks.
 - **Code partagé** : `IntentionPlanner` (intentions en commandes) et `CombatDisplay` (affichage), communs au solo et au réseau.
 - **Option B** : la télégraphie avancée du ping s'étend aux zones au sol (instant d'impact affiché en avance du temps aller-retour).
 - **Équipement** : `StatContributions` pour les bonus de caractéristiques, l'origine `equipment` des déclencheurs pour les effets spéciaux.
@@ -43,7 +43,7 @@ Viennent ensuite le contenu en solo, puis le monde partagé, puis le mobile. La 
 | 2 | **12** | **Les Vallons d'Aube en solo** | Mission « Les traces sous le moulin » de bout en bout, niveaux 1 à 10, équipement, récolte et fabrication, chef, sauvegarde locale | Tranche |
 | 3 | **13** | **Monde partagé et persistance** | Deux joueurs, puis davantage, dans les Vallons : se voir, combattre ensemble, chacun sa mission ; comptes de test et sauvegarde sur le serveur | Tranche |
 | 4 | **14** | **Mobile et nouvelle interface** | La tranche sur téléphone Android, même personnage sur PC et mobile, interface qui remplace l'IMGUI du prototype | Tranche |
-| 5 | **15 et suivants** | **Première alpha** | Trois classes, refonte de la progression, donjon avec boss et réveil renforcé, groupes, échanges, une à trois régions selon le chiffrage | Alpha |
+| 5 | **15 et suivants** | **Première alpha** | Trois classes, refonte de la progression, donjon avec boss et réveil renforcé, groupes, échanges ; les Vallons et d'autres régions selon le chiffrage (trois régions : alpha élargie, Q22) | Alpha |
 | 6 | — | **Jeu complet** | Ville, cinq régions, Cœur du Seuil, économie, guildes, factions, boss de monde, refuge… | Final |
 
 ## 4. Lot 11 — combat dans l'espace
@@ -97,7 +97,7 @@ Commandes tactiles complètes, nouvelle interface pensée pour le PC et le mobil
 - **Classes** : deuxième et troisième classes (le mage du Seuil est proposé, Q17).
 - **Progression refondue** : livres (deux actifs), héritages, maîtrises, budget de points, plafond (Q18, H6, H7).
 - **Donjon** : boss garanti et réveil renforcé (H4) ; groupes (taille Q31).
-- **Régions** : une à trois selon le chiffrage (Q22).
+- **Régions** : les Vallons, plus d'autres selon le chiffrage ; trois régions relèvent d'une alpha élargie (Q16, Q22).
 - **Métiers et échanges** : métiers étendus, échanges directs et commandes, refuge de base.
 - **Langues** : textes en français et en anglais.
 - **Production artistique** : méthode et budget à décider (Q39).
@@ -138,7 +138,7 @@ Havre d'Ambre et les cinq régions, Cœur du Seuil, marchés régionaux et carav
 
 Indicative, non engagée, à corriger après le lot 11 sur le rythme réel. Hypothèses :
 
-- le rythme des lots 9 et 10 : quatre à six sous-lots en un à deux jours, revues Codex comprises (deux à trois tours) ;
+- le rythme des lots 9 et 10 : quatre à six sous-lots en un à deux jours, revues Codex comprises (jusqu'à sept tours pour certaines PR du lot 10) ; un sous-lot qui demande plus de tours allonge sa durée ;
 - Damien essaie chaque livraison Unity dans les 24 heures ;
 - les décisions sont prises avant leur lot ;
 - formes simples jusqu'à l'alpha, aucune dépense.
@@ -211,17 +211,20 @@ Pour chaque décision : les options, puis mon avis. Répondre par la lettre, par
 - B. « Aucune voie essentielle de progression n'exige un groupe ; des contenus collectifs dédiés, annoncés comme tels, peuvent exister. »
 - *Avis* : B, qui est ce que dit ton cadrage (Q14, Q23).
 
-**L11-D10. Recommandations de la tranche à confirmer** :
+**L11-D10. Recommandations de la tranche et points à confirmer** :
 - Q2, la mission ;
 - Q3, niveaux 1 à 10 ;
 - Q4, quatre emplacements ;
 - Q5, 24 places ;
+- Q6, une courte chaîne de chaque famille (minerais et forge, plantes et remèdes) ;
 - Q7, potions limitées ;
 - Q10, sauvegarde locale pour la tranche ;
 - Q12, un raccourci et une manifestation ;
-- Q20, attributs par classe et niveau.
+- Q20, attributs par classe et niveau ;
+- Q10 et Q12 pour le jeu final (comptes sous autorité serveur, tous les éléments de terrain), écrits « Jeu final » sans le mot « retenu » ;
+- le ton : garder « plutôt sombre » de l'ancienne vision, ou adopter la déclinaison proposée (couleurs expressives, ambiance propre à chaque région).
 
-« Comme les recommandations » suffit.
+« Comme les recommandations » suffit pour les points qui en ont une ; pour le ton, j'ai besoin de ta préférence.
 
 ### Pratique et budget
 

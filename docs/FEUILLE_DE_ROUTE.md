@@ -7,14 +7,14 @@ Source de vérité pour les agents : le lot en cours, les décisions validées p
 MMORPG fantasy original PC/mobile, monde partagé et persistant à terme, **principalement jouable en solo** (aucun groupe imposé pour la moindre activité ; formule à préciser, voir l'écart E1 du [cadrage](CADRAGE.md#6-écarts-avec-lexistant)), combats dynamiques en temps réel, progression profonde, classes aux identités mécaniques très distinctes, trois arbres de talents combinables par classe, synergies, exploration, métiers, économie, coopération facultative, cross-play PC/mobile.
 
 **Cadrage du 19 octobre 2026** (choix de Damien, détail et statuts dans [CADRAGE.md](CADRAGE.md)) :
-- **Direction artistique** : fantasy stylisée, ambiance propre à chaque région (Vallons accueillants, forêt mystérieuse, profondeurs du Seuil étranges) ; remplace « plutôt sombre ».
+- **Direction artistique** : fantasy stylisée. Déclinaison proposée, à confirmer : couleurs expressives, ambiance propre à chaque région (Vallons accueillants, forêt mystérieuse, profondeurs du Seuil étranges). La mention « plutôt sombre » de la vision précédente (base créative, pas une charte) est gardée jusqu'à la réponse de Damien (écart E2 du [cadrage](CADRAGE.md#6-écarts-avec-lexistant)).
 - **Deux vues au choix du joueur** : vue haute de trois quarts (vue 1) et troisième personne montrant le personnage entier (vue 2), en exploration comme en combat ; remplace « caméra non tranchée ».
 - **Positions réelles en combat** (Q13).
 - **Première région** : les Vallons d'Aube.
 
 ## Progression validée (configuration actuelle, provisoire)
 
-Toujours en vigueur ; paramètres de `rules.json`. Le cadrage du 19 octobre 2026 laisse le plafond final ouvert (Q18) et prévoit une refonte avec les livres de build, les héritages et les maîtrises (H6, H7) : elle se fera avec Damien, au chantier de l'alpha.
+Toujours en vigueur ; paramètres de `rules.json`. Le cadrage du 19 octobre 2026 laisse le plafond final ouvert (Q18) et prévoit une refonte avec les livres de build, les héritages et les maîtrises (H6, H7), proposée au chantier de l'alpha (plan, décision L11-D1) ; elle se fera avec Damien.
 
 - Niveau maximal provisoire 30 ; 1 point de talent par niveau à partir du niveau 2, soit 29 points au niveau 30.
 - Trois arbres librement combinables. Talent majeur : 18 points dans son arbre + prérequis, puis 1 point. Un seul majeur par build ; un build sans majeur est valide.
@@ -85,7 +85,7 @@ Objectif (« Après le lot 8 », point 2) : deux joueurs dans le même combat, r
 
 Aussi : aucun soin, aucune deuxième classe, aucun système de positions, aucune interface Unity avant la fin du lot 8 ; pas de déclencheurs d'équipement avant le chantier des objets.
 
-Ces limites étaient liées au lot 8. Le cadrage du 19 octobre 2026 retient ensuite les positions réelles (Q13). Il recommande des potions de soin limitées, sans soin propre au Bastion (Q7, à confirmer), et une classe à distance (Q17). A1 ne visait que l'arbre Gardien au lot 8 ; le résumé « pas de soin pour le Bastion » du questionnaire était inexact (écart E4 du [cadrage](CADRAGE.md#6-écarts-avec-lexistant)). A7, le ciblage sans position du moteur ([MOTEUR.md](MOTEUR.md#ciblage-a7)), reste vrai pour le moteur 0.14.0 jusqu'au moteur spatial (lot 11 proposé).
+Ces limites étaient liées au lot 8. Le cadrage du 19 octobre 2026 retient ensuite les positions réelles (Q13). Il recommande des potions de soin limitées, sans soin propre au Bastion (Q7, à confirmer), et une classe à distance (Q17). A1 (ci-dessus, décisions du lot 8) ne visait que l'arbre Gardien au lot 8 ; le résumé « pas de soin pour le Bastion » du questionnaire était trop large (écart E4 du [cadrage](CADRAGE.md#6-écarts-avec-lexistant)). Le ciblage sans position du moteur (A7 du plan du simulateur v0.1, [MOTEUR.md](MOTEUR.md#ciblage-a7), à ne pas confondre avec A7 ci-dessus) reste vrai pour le moteur 0.14.0 jusqu'au moteur spatial (lot 11 proposé).
 
 **L8-D1 à L8-D6** : frappes de réaction sans critique ni Résonance automatique ; toute riposte automatique de zone a au moins 3 s de recharge interne (sauf configuration explicite de test) ; une réaction mixte s'exécute entièrement pendant la résolution ; pas d'annulation `staleSource` pour les effets autonomes ; pas de condition générale `requiresAbleToAct` (les déclencheurs autorisés réagissent malgré un étourdissement) ; déclencheurs d'équipement reportés au système d'objets.
 
