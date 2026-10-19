@@ -620,6 +620,12 @@ public class Lot103ClientTests
         // les ticks rejoués par l'historique, pas un seul.
         game.Reconnect(a, link);
         Assert.Equal(ClientStatus.Reconnecting, a.Status);
+        // Revue Codex de la PR #20 (tour 5) : pas de seconde demande par-dessus la première (le serveur refuserait le jeton tant que
+        // l'ancienne connexion n'est pas détachée) ; le refus ne change rien.
+        INetConnection extra = game.Connect();
+        Assert.Throws<InvalidOperationException>(() => a.Reconnect(extra));
+        Assert.Equal(ClientStatus.Reconnecting, a.Status);
+        extra.Close("essai terminé.");
         // Pas à pas, pour lire ce que rend Advance au pas du retour : tous les ticks rejoués depuis le début (et les suivants reçus).
         for (int i = 0; i < 400 && a.Status != ClientStatus.Combat; i++)
         {
