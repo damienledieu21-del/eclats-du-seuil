@@ -26,8 +26,8 @@ namespace UnityEngine
     public struct Quaternion { public static Quaternion Euler(float x, float y, float z) => default; public static Quaternion Slerp(Quaternion a, Quaternion b, float t) => a; public static Quaternion LookRotation(Vector3 f) => default; public Vector3 eulerAngles => default; public static Vector3 operator *(Quaternion q, Vector3 v) => v; }
     public struct Rect { public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public float x, y, width, height; }
     public struct Matrix4x4 { public static Matrix4x4 Scale(Vector3 v) => default; }
-    public static class Mathf { public static float Clamp(float v, float a, float b) => v; public static float Clamp01(float v) => v; public static float Lerp(float a, float b, float t) => a; public static float LerpAngle(float a, float b, float t) => a; public static float Exp(float p) => p; public static float Sin(float f) => f; }
-    public enum KeyCode { None, Backspace, Tab, Escape, Space, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, A, C, D, E, H, N, Q, R, S, Z, LeftShift, RightShift }
+    public static class Mathf { public static float Clamp(float v, float a, float b) => v; public static float Clamp01(float v) => v; public static float Lerp(float a, float b, float t) => a; public static float LerpAngle(float a, float b, float t) => a; public static float Exp(float p) => p; public static float Sin(float f) => f; public static float Max(float a, float b) => a; }
+    public enum KeyCode { None, Backspace, Tab, Escape, Space, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, A, C, D, E, H, N, Q, R, S, T, Z, LeftShift, RightShift }
     public static class Input { public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; }
     public static class Time { public static float time => 0; public static float deltaTime => 0; }
     public static class Application { public static string dataPath => ""; }
@@ -42,8 +42,8 @@ namespace UnityEngine
     public enum FontStyle { Normal, Bold }
     public sealed class GUIStyleState { public Color textColor { get; set; } }
     public sealed class GUIStyle { public GUIStyle(GUIStyle other) { } public int fontSize { get; set; } public bool richText { get; set; } public TextAnchor alignment { get; set; } public FontStyle fontStyle { get; set; } public GUIStyleState normal { get; set; } }
-    public sealed class GUISkin : Object { public GUIStyle label => null; }
-    public static class GUI { public static GUISkin skin => null; public static Color color { get; set; } public static Matrix4x4 matrix { get; set; } public static void DrawTexture(Rect r, Texture t) { } public static void Label(Rect r, string t, GUIStyle s) { } }
+    public sealed class GUISkin : Object { public GUIStyle label => null; public GUIStyle button => null; }
+    public static class GUI { public static GUISkin skin => null; public static Color color { get; set; } public static Matrix4x4 matrix { get; set; } public static void DrawTexture(Rect r, Texture t) { } public static void Label(Rect r, string t, GUIStyle s) { } public static bool Button(Rect r, string t, GUIStyle s) => false; }
     public static class Screen { public static int width => 0; public static int height => 0; }
     public static class QualitySettings { public static UnityEngine.Rendering.RenderPipelineAsset renderPipeline { get; set; } }
 }

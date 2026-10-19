@@ -18,6 +18,7 @@ namespace EdS.Game
         private static GUIStyle _center;
         private static GUIStyle _small;
         private static GUIStyle _title;
+        private static GUIStyle _button;
 
         public static float Scale => Screen.height / VirtualHeight;
         public static float Width => Screen.width / Scale;
@@ -30,6 +31,7 @@ namespace EdS.Game
             _center = new GUIStyle(_label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             _small = new GUIStyle(_label) { fontSize = 16 };
             _title = new GUIStyle(_label) { fontSize = 26, fontStyle = FontStyle.Bold };
+            _button = new GUIStyle(GUI.skin.button) { fontSize = 20, richText = true };
         }
 
         public static void Begin()
@@ -57,6 +59,18 @@ namespace EdS.Game
         }
 
         public static void Text(Rect rect, string text) => GUI.Label(rect, text, _label);
+
+        /// <summary>
+        /// Sous-lot 9.4 : bouton ; <paramref name="available"/> faux le grise sans le désactiver, pour qu'un clic affiche la raison du refus.
+        /// </summary>
+        public static bool Button(Rect rect, string text, bool available)
+        {
+            Color previous = GUI.color;
+            if (!available) GUI.color = new Color(1f, 1f, 1f, 0.35f);
+            bool clicked = GUI.Button(rect, text, _button);
+            GUI.color = previous;
+            return clicked;
+        }
 
         public static void Small(Rect rect, string text) => GUI.Label(rect, text, _small);
 
@@ -154,7 +168,7 @@ namespace EdS.Game
                 "Espace : parade parfaite (juste avant l'impact)   ·   1 à 4 : compétences   ·   R : ultime\n" +
                 "Tab : changer de cible   ·   C : caméra   ·   A / E : tourner (isométrique)   ·   molette : zoom\n" +
                 "N : scénario suivant   ·   F1 à F5 : build   ·   Retour arrière : recommencer\n" +
-                "Échap : pause   ·   H : masquer l'aide");
+                "T : talents   ·   Échap : pause   ·   H : masquer l'aide");
         }
     }
 }

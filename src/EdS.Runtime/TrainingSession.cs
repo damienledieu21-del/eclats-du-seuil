@@ -8,6 +8,7 @@ using EdS.Data.Json;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Domain;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 
@@ -27,15 +28,25 @@ namespace EdS.Runtime
         public CombatSetup Setup { get; }
         public string PlayerId { get; }
 
-        /// <summary>Build de référence joué ; null pour le build écrit dans le scénario.</summary>
+        /// <summary>Build de référence joué ; null pour le build écrit dans le scénario ou un build composé (<see cref="WithCustomBuild"/>).</summary>
         public ReferenceBuild? Build { get; }
 
-        private TrainingSession(GameData data, CombatSetup setup, string playerId, ReferenceBuild? build)
+        /// <summary>Sous-lot 9.4 : nom du build composé par le joueur ; null pour un build de référence ou celui du scénario.</summary>
+        public string? CustomBuildName { get; }
+
+        /// <summary>Nom du build joué, pour l'affichage.</summary>
+        public string BuildName => CustomBuildName ?? Build?.Name ?? "du scénario";
+
+        /// <summary>Personnage joué (classe et build effectivement en jeu).</summary>
+        public CharacterSetup Player => Setup.Combatants.OfType<CharacterSetup>().Single(c => c.Id == PlayerId);
+
+        private TrainingSession(GameData data, CombatSetup setup, string playerId, ReferenceBuild? build, string? customBuildName)
         {
             Data = data;
             Setup = setup;
             PlayerId = playerId;
             Build = build;
+            CustomBuildName = customBuildName;
         }
 
         /// <summary>
@@ -71,15 +82,21 @@ namespace EdS.Runtime
                     throw new ArgumentException($"Build « {buildId} » de la classe « {found.Build.ClassId} », personnage de la classe « {player.Class.Id} ».", nameof(buildId));
                 build = found;
             }
-            long duration = durationMs ?? scenario.Combat.MaxDurationMs;
-            IEnumerable<CombatantSetup> combatants = scenario.Combatants.Select(c => c == player && build != null
-                ? new CharacterSetup(player.Id, player.Team, player.Class, build.Build, player.Initiative)
+            return Prepare(data, scenario, player, build?.Build, durationMs ?? scenario.Combat.MaxDurationMs, build, null);
+        }
+
+        /// <summary>Scénario de la séance : commandes retirées, build du joueur remplacé (s'il est donné), durée de la séance ; validé.</summary>
+        private static TrainingSession Prepare(GameData data, CombatSetup scenario, CharacterSetup player, CharacterBuild? playerBuild, long duration,
+            ReferenceBuild? reference, string? customName)
+        {
+            IEnumerable<CombatantSetup> combatants = scenario.Combatants.Select(c => c == player && playerBuild != null
+                ? new CharacterSetup(player.Id, player.Team, player.Class, playerBuild, player.Initiative)
                 : c);
             var setup = new CombatSetup(scenario.Seed, duration, scenario.Stats, scenario.Damage, scenario.Progression, scenario.Combat, combatants,
                 Array.Empty<CombatCommand>(), scenario.Data);
             IReadOnlyList<RuleViolation> violations = setup.Validate();
             if (violations.Count > 0) throw new CombatSetupException(violations);
-            return new TrainingSession(data, setup, playerId, build);
+            return new TrainingSession(data, setup, player.Id, reference, customName);
         }
 
         /// <summary>Builds de référence de la classe du personnage joué, dans l'ordre de leur fichier.</summary>
@@ -91,6 +108,20 @@ namespace EdS.Runtime
 
         /// <summary>La même séance avec un autre build de référence.</summary>
         public TrainingSession WithBuild(string buildId) => Create(Data, Setup, buildId, PlayerId, Setup.DurationMs);
+
+        /// <summary>
+        /// Sous-lot 9.4 : la même séance avec un build composé par le joueur (<see cref="TalentEditor"/>), nommé <paramref name="name"/>.
+        /// Le build est validé comme tout build de scénario ; refusé, il lève <see cref="CombatSetupException"/> et la séance ne change pas.
+        /// </summary>
+        public TrainingSession WithCustomBuild(CharacterBuild build, string name)
+        {
+            if (build is null) throw new ArgumentNullException(nameof(build));
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Nom de build vide.", nameof(name));
+            return Prepare(Data, Setup, Player, build, Setup.DurationMs, null, name);
+        }
+
+        /// <summary>Sous-lot 9.4 : éditeur de talents qui part du build joué, avec la classe du personnage et les règles de progression du combat.</summary>
+        public TalentEditor CreateTalentEditor() => new TalentEditor(Player.Build, Player.Class, Setup.Progression);
 
         /// <summary>Nouveau combat depuis le début de la séance (même graine, mêmes adversaires).</summary>
         public RealtimeCombat Start() => new RealtimeCombat(Setup, PlayerId);
