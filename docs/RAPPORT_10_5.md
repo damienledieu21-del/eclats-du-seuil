@@ -28,18 +28,18 @@ Deux joueurs, 3 graines par réglage (une graine change les délais tirés et l'
 | à vue | 75 + 0 à 15 ms | 199 | 0 | 0,0 % | 137 | 48 | 105 ms | 130 ms | 87 ms | 172 ms | 0 | égales |
 | à vue | 100 + 0 à 20 ms | 203 | 0 | 0,0 % | 140 | 54 | 133 ms | 160 ms | 115 ms | 230 ms | 0 | égales |
 | à vue | 150 + 0 à 30 ms | 207 | 0 | 0,0 % | 140 | 60 | 184 ms | 220 ms | 170 ms | 341 ms | 0 | égales |
-| à vue | 200 + 0 à 40 ms | 206 | 8 | 3,9 % | 141 | 52 | 241 ms | 280 ms | 225 ms | 449 ms | 0 | égales |
+| à vue | 200 + 0 à 40 ms | 205 | 8 | 3,9 % | 141 | 48 | 242 ms | 280 ms | 225 ms | 449 ms | 0 | égales |
 | à vue | 100 + 0 à 60 ms | 201 | 0 | 0,0 % | 137 | 52 | 153 ms | 190 ms | 135 ms | 274 ms | 0 | égales |
-| à vue | 200 + 0 à 120 ms | 204 | 18 | 8,8 % | 141 | 36 | 282 ms | 350 ms | 270 ms | 549 ms | 0 | égales |
+| à vue | 200 + 0 à 120 ms | 201 | 18 | 9,0 % | 141 | 32 | 284 ms | 350 ms | 270 ms | 553 ms | 0 | égales |
 | anticipée | 0 ms | 277 | 213 | 76,9 % | 3 | 45 | 27 ms | 50 ms | 10 ms | 20 ms | 0 | égales |
 | anticipée | 25 + 0 à 5 ms | 267 | 201 | 75,3 % | 3 | 51 | 46 ms | 70 ms | 30 ms | 60 ms | 0 | égales |
 | anticipée | 50 + 0 à 10 ms | 267 | 201 | 75,3 % | 0 | 55 | 75 ms | 100 ms | 60 ms | 120 ms | 0 | égales |
 | anticipée | 75 + 0 à 15 ms | 271 | 221 | 81,5 % | 10 | 27 | 103 ms | 130 ms | 87 ms | 175 ms | 0 | égales |
 | anticipée | 100 + 0 à 20 ms | 275 | 226 | 82,2 % | 10 | 24 | 131 ms | 160 ms | 115 ms | 231 ms | 0 | égales |
 | anticipée | 150 + 0 à 30 ms | 278 | 211 | 75,9 % | 15 | 37 | 186 ms | 220 ms | 170 ms | 341 ms | 0 | égales |
-| anticipée | 200 + 0 à 40 ms | 283 | 216 | 76,3 % | 28 | 24 | 243 ms | 280 ms | 225 ms | 448 ms | 0 | égales |
-| anticipée | 100 + 0 à 60 ms | 266 | 215 | 80,8 % | 16 | 23 | 153 ms | 190 ms | 135 ms | 271 ms | 0 | égales |
-| anticipée | 200 + 0 à 120 ms | 267 | 150 | 56,2 % | 58 | 44 | 285 ms | 350 ms | 270 ms | 550 ms | 0 | égales |
+| anticipée | 200 + 0 à 40 ms | 283 | 212 | 74,9 % | 28 | 26 | 244 ms | 280 ms | 225 ms | 446 ms | 0 | égales |
+| anticipée | 100 + 0 à 60 ms | 266 | 214 | 80,5 % | 17 | 22 | 152 ms | 190 ms | 135 ms | 274 ms | 0 | égales |
+| anticipée | 200 + 0 à 120 ms | 265 | 148 | 55,8 % | 57 | 42 | 286 ms | 350 ms | 270 ms | 554 ms | 0 | égales |
 
 ## Coupures
 
