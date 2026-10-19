@@ -52,6 +52,30 @@ namespace EdS.Net
 
         /// <summary>Délai du serveur pour revenir après une déconnexion (décision du 19/10/2026 : 30 s), affiché au joueur.</summary>
         public double ReconnectSeconds { get; set; } = 30;
+
+        /// <summary>
+        /// Sous-lot 10.6, option B de la parade en réseau (décision de Damien du 19/10/2026 à 11:28) : la télégraphie des assaillants
+        /// (barre et compte à rebours avant le prochain coup) s'affiche en avance du temps aller-retour lissé, pour qu'une parade pressée
+        /// « à vue » arrive au serveur au même moment qu'en solo. Affichage seulement : le serveur juge toujours sur son tick. Vrai par défaut.
+        /// </summary>
+        public bool TelegraphAdvance { get; set; } = true;
+
+        private double _maxTelegraphLeadSeconds = 1;
+
+        /// <summary>
+        /// Avance de la télégraphie au plus (secondes, de 0 à 10) : une mesure aberrante du temps aller-retour ne vide pas la télégraphie.
+        /// 1 s par défaut, bien au-delà des 400 ms d'aller-retour mesurés au 10.5.
+        /// </summary>
+        public double MaxTelegraphLeadSeconds
+        {
+            get => _maxTelegraphLeadSeconds;
+            set
+            {
+                if (double.IsNaN(value) || value < 0 || value > 10)
+                    throw new ArgumentOutOfRangeException(nameof(value), $"Avance de la télégraphie de {value} s au plus : de 0 à 10 s.");
+                _maxTelegraphLeadSeconds = value;
+            }
+        }
     }
 
     /// <summary>
@@ -143,7 +167,7 @@ namespace EdS.Net
         /// <summary>Dernier temps aller-retour mesuré, en millisecondes ; null avant la première mesure.</summary>
         public double? RttMs { get; private set; }
 
-        /// <summary>Temps aller-retour lissé (moyenne mobile, 1/8 par mesure), en millisecondes.</summary>
+        /// <summary>Temps aller-retour lissé (moyenne mobile, 1/8 par mesure), en millisecondes ; repart de zéro à chaque retour (<see cref="Reconnect"/>).</summary>
         public double? SmoothedRttMs { get; private set; }
 
         /// <summary>Secondes écoulées depuis la coupure ; null si le client n'est pas coupé.</summary>
@@ -221,6 +245,10 @@ namespace EdS.Net
             if (_connection.IsOpen) _connection.Close("remplacée par une nouvelle connexion.");
             _connection = connection;
             _lastPingAt = double.NegativeInfinity;
+            // Revue Codex de la PR #23 : la nouvelle connexion n'a pas forcément la latence de l'ancienne ; la mesure repart de zéro
+            // (sans avance de la télégraphie jusqu'à la première réponse) au lieu de converger lentement depuis l'ancien lien.
+            RttMs = null;
+            SmoothedRttMs = null;
             Combat.PrepareReconnect();
             Status = ClientStatus.Reconnecting;
             _connection.Send(new ReconnectMessage(Protocol.Version, Token));

@@ -64,8 +64,9 @@ namespace EdS.Game
             float scroll = Input.mouseScrollDelta.y;
             if (Current == Mode.Isometric)
             {
-                if (Input.GetKeyDown(KeyCode.A)) _isoYaw -= 90f;
-                if (Input.GetKeyDown(KeyCode.E)) _isoYaw += 90f;
+                // Par position : A / E en AZERTY, Q / E en QWERTY (voir Keys).
+                if (Input.GetKeyDown(Keys.TurnLeft)) _isoYaw -= 90f;
+                if (Input.GetKeyDown(Keys.TurnRight)) _isoYaw += 90f;
                 _isoDistance = Mathf.Clamp(_isoDistance - scroll * 1.5f, 8f, 30f);
                 Quaternion rotation = Quaternion.Euler(50f, _isoYaw, 0f);
                 Vector3 target = player + Vector3.up * 0.8f;

@@ -27,7 +27,7 @@ namespace UnityEngine
     public struct Rect { public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public float x, y, width, height; }
     public struct Matrix4x4 { public static Matrix4x4 Scale(Vector3 v) => default; }
     public static class Mathf { public static float Clamp(float v, float a, float b) => v; public static float Clamp01(float v) => v; public static float Lerp(float a, float b, float t) => a; public static float LerpAngle(float a, float b, float t) => a; public static float Exp(float p) => p; public static float Sin(float f) => f; public static float Max(float a, float b) => a; }
-    public enum KeyCode { None, Backspace, Tab, Escape, Space, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, A, C, D, E, G, H, M, N, Q, R, S, T, Z, LeftShift, RightShift }
+    public enum KeyCode { None, Backspace, Tab, Escape, Space, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, A, C, D, E, G, H, M, N, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift }
     public static class Input { public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; }
     public static class Time { public static float time => 0; public static float deltaTime => 0; }
     public static class Application { public static string dataPath => ""; }
