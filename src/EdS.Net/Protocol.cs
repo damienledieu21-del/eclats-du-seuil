@@ -46,6 +46,34 @@ namespace EdS.Net
 
         /// <summary>Emplacement le plus haut d'une compétence (actives 0 à 3, ultime 4 : <c>RealtimeCombat.UltimateSlot</c>).</summary>
         public const int MaxSlot = 4;
+
+        /// <summary>
+        /// Sous-lot 10.2 : texte libre rendu acceptable par <see cref="MessageCodec.IsText"/> (raison d'un refus, nom de build) : caractères
+        /// de contrôle et demi-paires remplacés par une espace, espaces de bord retirées, longueur ramenée à <paramref name="max"/> sans couper
+        /// une paire de substitution ; « ? » si rien ne reste.
+        /// </summary>
+        public static string Text(string? text, int max = MaxReasonLength)
+        {
+            if (string.IsNullOrEmpty(text)) return "?";
+            var clean = new System.Text.StringBuilder(text!.Length);
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (char.IsHighSurrogate(c) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]))
+                {
+                    clean.Append(c).Append(text[++i]);
+                    continue;
+                }
+                clean.Append(char.IsControl(c) || char.IsSurrogate(c) ? ' ' : c);
+            }
+            string result = clean.ToString().Trim();
+            if (result.Length > max)
+            {
+                int cut = char.IsHighSurrogate(result[max - 1]) ? max - 1 : max;
+                result = result.Substring(0, cut).TrimEnd();
+            }
+            return result.Length == 0 ? "?" : result;
+        }
     }
 
     /// <summary>Sens d'un message : un serveur n'accepte que les messages de client, un client que ceux du serveur.</summary>

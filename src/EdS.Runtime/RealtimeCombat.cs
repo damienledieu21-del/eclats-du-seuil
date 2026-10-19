@@ -190,25 +190,9 @@ namespace EdS.Runtime
 
         private void SubmitIntentions()
         {
-            long tick = _engine.CurrentTick;
-            long atMs = checked(tick * _tickMs);
             CombatantView me = _engine.View(PlayerId);
-            // Groupes soumis chacun tout ou rien : quitter la garde pour lancer et le lancer forment un seul groupe (revue Codex de la
-            // PR #13), si bien qu'un lancer refusé à l'admission ne fait pas quitter la garde.
-            var groups = new List<CombatCommand[]>();
-            if (!me.IsDead)
-            {
-                if (_slotRequested is int slot && SkillAt(me, slot) is { } skill)
-                {
-                    var cast = new CombatCommand(atMs, PlayerId, skill.Id, TargetFor(skill));
-                    groups.Add(me.Guarding ? new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStop), cast } : new[] { cast });
-                }
-                else if (_guardHeld && !me.Guarding && me.CanGuard)
-                    groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStart) });
-                else if (!_guardHeld && me.Guarding)
-                    groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.GuardStop) });
-                if (_parryRequested) groups.Add(new[] { new CombatCommand(atMs, PlayerId, CombatAction.Parry) });
-            }
+            IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, checked(_engine.CurrentTick * _tickMs), _guardHeld, _parryRequested,
+                _slotRequested, TargetFor);
             _slotRequested = null;
             _parryRequested = false;
             foreach (CombatCommand[] group in groups)
@@ -238,12 +222,7 @@ namespace EdS.Runtime
             }
         }
 
-        private static SkillDefinition? SkillAt(CombatantView me, int slot)
-        {
-            CharacterBuild build = me.Character!.Build;
-            string? id = slot == UltimateSlot ? build.Ultimate : slot >= 0 && slot < build.ActiveSkills.Count ? build.ActiveSkills[slot] : null;
-            return id != null && me.Character.Class.TryGetSkill(id, out SkillDefinition skill) && skill.Combat != null ? skill : null;
-        }
+        private static SkillDefinition? SkillAt(CombatantView me, int slot) => IntentionPlanner.SkillAt(me, slot);
 
         // --- Retours ------------------------------------------------------------------------------------------------------
 

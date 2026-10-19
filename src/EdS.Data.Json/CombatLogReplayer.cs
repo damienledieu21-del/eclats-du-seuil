@@ -97,6 +97,30 @@ namespace EdS.Data.Json
             return new ReplayOutcome(comparison.Identical ? ReplayStatus.Identical : ReplayStatus.Diverged, Array.Empty<string>(), comparison);
         }
 
+        /// <summary>
+        /// Lot 10 : combat décrit par une ligne d'en-tête de journal, reconstruit avec les données <paramref name="data"/> après les
+        /// mêmes contrôles qu'un rejeu (moteur, format, durée du tick, empreintes des données). Le client réseau reconstruit ainsi le
+        /// combat du serveur ; null avec les raisons si l'en-tête est illisible ou les données différentes.
+        /// </summary>
+        public static CombatSetup? ReadSetup(string headerLine, GameData data, out IReadOnlyList<string> problems)
+        {
+            if (headerLine is null) throw new ArgumentNullException(nameof(headerLine));
+            if (data is null) throw new ArgumentNullException(nameof(data));
+            var report = new ValidationReport();
+            LoggedHeader? header = ReadHeader(headerLine, report, data.Rules.Combat);
+            if (header is null || !report.IsValid)
+            {
+                problems = report.Errors.Select(e => "en-tête " + e).ToArray();
+                return null;
+            }
+            problems = CombatReplay.CheckIdentity(header.EngineVersion, header.FormatVersion, header.TickMs, header.Identity, data.Identity,
+                data.Rules.Combat.TickMilliseconds);
+            if (problems.Count > 0) return null;
+            ScenarioLoadResult scenario = ScenarioValidator.ValidateData(header.Scenario, data, "$.scenario", report);
+            problems = report.Errors.Select(e => "en-tête " + e).ToArray();
+            return scenario.Setup;
+        }
+
         private sealed class LoggedHeader
         {
             public int FormatVersion;
