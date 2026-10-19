@@ -19,7 +19,7 @@ Ce qui manque, vérifié dans le code :
 | Manque | Détail |
 |---|---|
 | **Ennemis qui meurent** | Les assaillants n'ont pas de points de vie (`AssailantSetup` sans PV, `Health` nul) : ce sont des mannequins qui frappent. Un combat ne se gagne donc pas, il dure jusqu'au temps imparti. Il faut des PV, la mort d'un assaillant et la victoire des joueurs : changement du moteur, du schéma des scénarios et du journal (nouvelles versions, nouveaux journaux de référence). |
-| **Progression par niveau** | Les règles de niveau (points de talent, actives, ultime, passifs) existent et sont vérifiées par `BuildValidator` ; des builds valides existent aux niveaux 30 et 10 (`build.bastion.niveau_10`), et un débutant de niveau 1 dans les tests. Mais tous ont les **attributs du niveau 30** : il manque le **budget d'attributs par niveau** (« chantier ultérieur » dans la feuille de route) et l'**expérience** qui fait monter de niveau. |
+| **Progression par niveau** | Les règles de niveau (points de talent, actives, ultime, passifs) existent et sont vérifiées par `BuildValidator` ; des builds valides existent aux niveaux 30 et 10 (`build.bastion.niveau_10`), et des exemples de niveaux 1, 10 et 30 dans les tests. Mais **aucune règle ne lie les attributs au niveau** : les builds livrés (`data/v0/builds/bastion.json`), même celui de niveau 10, ont les attributs communs du niveau 30 (30, 10, 6, 30, 15, 20), et les exemples des tests (`BastionBuildExamples`) un autre jeu fixe (14, 8, 6, 14, 10, 12) quel que soit leur niveau. Il manque le **budget d'attributs par niveau** (« chantier ultérieur » dans la feuille de route) et l'**expérience** qui fait monter de niveau. |
 | **Monde** | Aucune notion de zone, de déplacement hors combat, de rencontre, de mission, d'objet, d'inventaire, de récolte, de fabrication ni de sauvegarde. Le moteur n'a pas de positions (décision du lot 8) : ce qui se passe hors combat est à construire à côté. |
 | **Deuxième joueur hors combat** | Le réseau ne partage que les combats (salle d'attente puis combat) ; personne ne voit l'autre se déplacer. |
 
@@ -67,7 +67,7 @@ Pour chaque question : les options, puis mon avis. Réponds simplement par la le
 **Q3. La progression dans la slice.** Jusqu'à quel niveau ?
 - A. Du niveau 1 au niveau 5 (2 puis 3 actives, 4 points de talent) : court, simple.
 - B. Du niveau 1 au niveau 10 (4 actives et l'ultime au niveau 10) : on voit tout le Bastion se construire, environ 45 minutes de jeu.
-- *Avis* : B. Il faut aussi décider du **budget d'attributs par niveau** (aujourd'hui, tous les builds, même celui de niveau 10, ont les attributs prévus pour le niveau 30) et de la courbe d'expérience : je proposerai une courbe simple, à valider.
+- *Avis* : B. Il faut aussi décider du **budget d'attributs par niveau** (aujourd'hui, les attributs ne dépendent pas du niveau : les builds livrés, même celui de niveau 10, ont ceux prévus pour le niveau 30) et de la courbe d'expérience : je proposerai une courbe simple, à valider.
 
 **Q4. L'équipement.**
 - A. Pas d'équipement : la récompense est l'expérience et des objets de fabrication.
