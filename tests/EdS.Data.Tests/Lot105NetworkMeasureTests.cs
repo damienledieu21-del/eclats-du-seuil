@@ -104,12 +104,20 @@ public class Lot105NetworkMeasureTests
     [InlineData(double.NaN, 0, 0, null, 3.0)]
     [InlineData(double.PositiveInfinity, 0, 0, null, 3.0)]
     [InlineData(2.0, 0, 0, null, 3.0)]
+    [InlineData(1.0, 0, 0, null, 3.0)]
+    [InlineData(0.251, 0, 0, null, 3.0)]
     [InlineData(0.01, -1, 0, null, 3.0)]
     [InlineData(0.01, 0, -5, null, 3.0)]
     [InlineData(0.01, 0, 0, -1.0, 3.0)]
     [InlineData(0.01, 0, 0, double.NaN, 3.0)]
+    [InlineData(0.01, 0, 0, 60.0, 3.0)]
+    [InlineData(0.01, 0, 0, 75.0, 3.0)]
     [InlineData(0.01, 0, 0, 5.0, -1.0)]
     [InlineData(0.01, 0, 0, 5.0, double.PositiveInfinity)]
+    [InlineData(0.01, 0, 0, 5.0, 120.001)]
+    [InlineData(0.01, 5_001, 0, null, 3.0)]
+    [InlineData(0.01, 0, 5_001, null, 3.0)]
+    [InlineData(0.01, 268_435_456, 0, null, 3.0)]
     public void Reglages_invalides_refuses_avant_la_simulation(double step, int latency, int jitter, double? cutAt, double cutSeconds)
     {
         // Revue Codex de la PR #22 : un pas nul faisait tourner la boucle sans fin.
@@ -139,11 +147,66 @@ public class Lot105NetworkMeasureTests
     [Fact]
     public void Pas_minimal_accepte_et_boucle_finie()
     {
-        // Le plus petit pas accepté (1 ms) mesure normalement, en un nombre d'images fini.
-        NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(2_000), new NetworkMeasureOptions { StepSeconds = NetworkMeasures.MinStepSeconds });
+        // Le plus petit pas accepté (1 ms) et le plus grand (5 ticks de 50 ms, ce que la salle simule par appel, revue Codex de la
+        // PR #22, tour 5) mesurent un combat complet, en un nombre d'images fini.
+        long reference = NetworkMeasures.Run(ShippedData, Calm(2_000), new NetworkMeasureOptions()).EndTick;
+        foreach (double step in new[] { NetworkMeasures.MinStepSeconds, 0.25 })
+        {
+            NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(2_000), new NetworkMeasureOptions { StepSeconds = step });
+            Assert.True(r.HashesMatch, $"pas de {step} s");
+            Assert.Equal(0, r.Desyncs);
+            Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
+            Assert.Equal(reference, r.EndTick);   // même fin qu'avec le pas de 10 ms : tout le combat est joué
+        }
+    }
+
+    [Fact]
+    public void Latence_extreme_combat_mesure_en_entier()
+    {
+        // Revue Codex de la PR #22 (tour 6) : le budget du combat part de son début (l'entrée dans la salle a son propre budget, borné
+        // d'après la latence) ; une latence de plusieurs secondes est mesurée en entier.
+        NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(3_000), new NetworkMeasureOptions { LatencyMs = 4_000, JitterMs = 500 });
+        Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
         Assert.True(r.HashesMatch);
         Assert.Equal(0, r.Desyncs);
+        Assert.InRange(r.RttMs, 8_000, 9_100);
+        // Au-delà de ce que la salle attend pour une présentation (5 s), la mesure échoue avec la raison, jamais un résultat partiel, et
+        // sans attendre la fin du budget (tour 7). Au-delà de 5 s d'un sens, le réglage est refusé d'emblée.
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            NetworkMeasures.Run(ShippedData, Calm(3_000), new NetworkMeasureOptions { LatencyMs = 4_000, JitterMs = 5_000 }));
+        Assert.StartsWith("Le combat n'a pas commencé", error.Message);
+        Assert.Contains("présentation attendue", error.Message);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            NetworkMeasures.Run(ShippedData, Calm(3_000), new NetworkMeasureOptions { LatencyMs = 11_000 }));
+    }
+
+    [Fact]
+    public void Coupure_qui_depasse_la_fin_du_combat_mesure_complete()
+    {
+        // Revue Codex de la PR #22 (tour 6) : coupé à 1 s d'un combat de 3 s, le joueur revient à 6 s ; la mesure attend son retour et dit
+        // pourquoi il n'a pas repris le combat, au lieu de s'arrêter sur un résultat partiel.
+        NetworkMeasureResult r = NetworkMeasures.Run(ShippedData, Calm(3_000), new NetworkMeasureOptions { CutAtSeconds = 1, CutSeconds = 5 });
         Assert.Equal(nameof(CombatEndReason.DurationReached), r.EndReason);
+        Assert.False(r.Reconnected);
+        Assert.NotNull(r.ReconnectError);
+        Assert.True(r.HashesMatch);   // l'autre joueur a vu tout le combat
+    }
+
+    [Fact]
+    public void Coupures_d_un_scenario_court_pendant_le_combat()
+    {
+        // Revue Codex de la PR #22 (tour 7) : un scénario de 4 s est coupé à 2 s (la moitié), pas à 5 s ; toutes les coupures sont
+        // mesurées, y compris celles qui dépassent la fin du combat.
+        CombatSetup shortScenario = Calm(4_000);
+        IReadOnlyList<NetworkMeasureResult> cuts = NetworkReport.MeasureCuts(ShippedData, shortScenario);
+        Assert.Equal(NetworkReport.Cuts.Count, cuts.Count);
+        Assert.All(cuts, c => Assert.Equal(2.0, c.Options.CutAtSeconds));
+        Assert.True(cuts[0].Reconnected);   // 1 s de coupure : retour avant la fin
+        Assert.All(cuts.Skip(1), c => Assert.NotNull(c.ReconnectError));
+        var report = new StringWriter();
+        NetworkReport.Write(report, Array.Empty<NetworkReportRow>(), cuts, 1, "court", shortScenario.DurationMs);
+        Assert.Contains("Coupures du premier joueur à 2 s de combat", report.ToString(), StringComparison.Ordinal);
+        Assert.Equal(5.0, NetworkReport.CutAt(Duo.DurationMs));
     }
 
     [Fact]

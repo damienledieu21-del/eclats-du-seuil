@@ -10,6 +10,8 @@ dotnet run --project src/EdS.Cli -- reseau --graines 5
 dotnet run --project src/EdS.Cli -- reseau --scenario scenarios/mesures/s4_protection.json   # tout scénario à deux personnages Bastion
 ```
 
+Réglages de l'outil (`NetworkMeasures`), vérifiés avant la simulation : latence et gigue de 0 à 5 s, pas de temps de 1 ms à 5 ticks de la salle, coupure pendant le combat et de 120 s au plus, 1 à 20 graines. Une mesure incomplète (combat pas commencé ou pas fini, coupure jamais atteinte) est une erreur, jamais un résultat partiel. Les coupures du rapport tombent à 5 s de combat, ou à la moitié d'un scénario plus court.
+
 ## Méthode
 
 - **Joueurs scriptés**, identiques pour les deux places : ils voient ce que montre leur client (l'état reçu du serveur, compte à rebours interpolé entre deux ticks, à la précision d'une image de 10 ms). Garde levée quand un coup qui les vise arrive dans moins de 0,8 s ; compétences sinon, une à la fois en attendant d'en voir le lancer ; **parade** sur chaque coup parable qui les vise.

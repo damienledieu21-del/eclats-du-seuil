@@ -130,6 +130,15 @@ public static class NetworkMeasures
     /// </summary>
     public const double MinStepSeconds = 0.001;
 
+    /// <summary>
+    /// Latence et gigue d'un sens les plus grandes acceptées (5 s chacune, revue Codex de la PR #22, tour 7) : au-delà, la salle refuse de
+    /// toute façon la présentation (5 s au plus) ; les bornes gardent les budgets d'images petits et sans débordement.
+    /// </summary>
+    public const int MaxDelayMs = 5_000;
+
+    /// <summary>Coupure la plus longue acceptée (120 s, tour 7) : le serveur ne garde la place que 30 s.</summary>
+    public const double MaxCutSeconds = 120;
+
 
     private sealed class Player
     {
@@ -147,6 +156,9 @@ public static class NetworkMeasures
         public double NextSkillAt;
         public readonly HashSet<string> Parried = new(StringComparer.Ordinal);
         public readonly List<double> Presses = new();
+
+        /// <summary>Joueur dont la connexion a été coupée par la mesure.</summary>
+        public bool WasCut;
     }
 
     public static NetworkMeasureResult Run(GameData data, CombatSetup scenario, NetworkMeasureOptions options)
@@ -157,19 +169,28 @@ public static class NetworkMeasures
         // Revue Codex de la PR #22 : réglages vérifiés avant la simulation (un pas nul ferait tourner la boucle sans fin).
         if (!(options.StepSeconds >= MinStepSeconds) || options.StepSeconds > 1)
             throw new ArgumentOutOfRangeException(nameof(options), $"Pas de temps de {options.StepSeconds} s : de {MinStepSeconds} à 1 s.");
-        if (options.LatencyMs < 0 || options.JitterMs < 0)
-            throw new ArgumentOutOfRangeException(nameof(options), "Latence et gigue positives ou nulles.");
+        if (options.LatencyMs < 0 || options.JitterMs < 0 || options.LatencyMs > MaxDelayMs || options.JitterMs > MaxDelayMs)
+            throw new ArgumentOutOfRangeException(nameof(options), $"Latence et gigue de 0 à {MaxDelayMs} ms.");
         if (options.CutAtSeconds is double cutAtCheck && (!(cutAtCheck >= 0) || double.IsInfinity(cutAtCheck)))
             throw new ArgumentOutOfRangeException(nameof(options), $"Coupure à {cutAtCheck} s : instant positif ou nul et fini.");
-        if (!(options.CutSeconds >= 0) || double.IsInfinity(options.CutSeconds))
-            throw new ArgumentOutOfRangeException(nameof(options), $"Coupure de {options.CutSeconds} s : durée positive ou nulle et finie.");
+        // Revue Codex de la PR #22 (tour 6) : une coupure doit tomber pendant le combat, sinon la mesure annoncerait un retour manqué.
+        if (options.CutAtSeconds is double cutAtLimit && cutAtLimit * 1000 >= scenario.DurationMs)
+            throw new ArgumentOutOfRangeException(nameof(options), $"Coupure à {cutAtLimit} s : avant la fin du combat ({scenario.DurationMs / 1000.0} s).");
+        if (!(options.CutSeconds >= 0) || options.CutSeconds > MaxCutSeconds)
+            throw new ArgumentOutOfRangeException(nameof(options), $"Coupure de {options.CutSeconds} s : de 0 à {MaxCutSeconds} s.");
         // Revue Codex de la PR #22 : un moment de parade inconnu serait calculé d'une façon et affiché d'une autre.
         if (options.Timing != ParryTiming.OnSight && options.Timing != ParryTiming.Anticipated)
             throw new ArgumentOutOfRangeException(nameof(options), $"Moment de parade inconnu : {(int)options.Timing}.");
         var net = new SimulatedNetwork(options.Seed);
         SimulatedListener listener = net.Listen("salle");
         int tokens = 0;
-        var room = new CombatRoom(data, scenario, new RoomOptions { TokenSource = () => (++tokens).ToString("x32", CultureInfo.InvariantCulture) });
+        var roomOptions = new RoomOptions { TokenSource = () => (++tokens).ToString("x32", CultureInfo.InvariantCulture) };
+        var room = new CombatRoom(data, scenario, roomOptions);
+        // Revue Codex de la PR #22 (tour 5) : la salle simule au plus MaxTicksPerAdvance ticks par appel et abandonne le reste ;
+        // un pas plus long ferait perdre du temps de combat et rendrait un résultat partiel.
+        if (options.StepSeconds * 1000 > roomOptions.MaxTicksPerAdvance * (double)room.TickMs)
+            throw new ArgumentOutOfRangeException(nameof(options),
+                $"Pas de temps de {options.StepSeconds} s : au plus {roomOptions.MaxTicksPerAdvance} ticks de {room.TickMs} ms par image.");
         // Deux joueurs scriptés : le scénario doit avoir exactement deux places (personnages Bastion).
         if (room.SeatIds.Count != 2)
             throw new ArgumentException($"Scénario à {room.SeatIds.Count} personnage(s) : les mesures du réseau en demandent deux (deux joueurs).", nameof(scenario));
@@ -196,17 +217,29 @@ public static class NetworkMeasures
         long lastTick = 0;
         double lagSum = 0;
         long lagSamples = 0;
-        double limit = scenario.DurationMs / 1000.0 + 30;
-        // Revue Codex de la PR #22 (tour 4) : un nombre entier d'images, qui finit toujours (pas de somme flottante qui stagne).
-        long frames = checked((long)Math.Ceiling(limit / step));
-        for (long frame = 0; frame < frames; frame++)
+        // Revue Codex de la PR #22 (tours 4 et 6) : un nombre entier d'images, qui finit toujours. Deux budgets : l'entrée dans la salle
+        // (présentation, accueil, prêt : quelques allers-retours, bornés d'après la latence), puis le combat, compté depuis son début
+        // (durée du scénario, plus 30 s pour les fins de coupure).
+        double startSeconds = 10 + 8.0 * ((double)options.LatencyMs + options.JitterMs) / 1000;   // 90 s au plus (bornes ci-dessus)
+        // Le combat dure le scénario, ou jusqu'au retour d'un joueur coupé s'il est plus tard ; plus 30 s.
+        double combatSeconds = Math.Max(scenario.DurationMs / 1000.0, options.CutAtSeconds is double cutAtEnd ? cutAtEnd + options.CutSeconds : 0) + 30;
+        long frameLimit = checked((long)Math.Ceiling(startSeconds / step));
+        bool combatBudget = false;
+        for (long frame = 0; frame < frameLimit; frame++)
         {
             net.Advance(step);
             while (listener.TryAccept(out INetConnection connection)) room.Accept(connection);
             room.Advance(step);
+            // Tour 7 : deux joueurs refusés avant le combat (présentation trop lente, par exemple) : inutile d'attendre la fin du budget.
+            if (combatStart is null && players.All(p => p.Client.Status == ClientStatus.Failed)) break;
             if (room.Phase == RoomPhase.Combat)
             {
                 combatStart ??= net.Now;
+                if (!combatBudget)
+                {
+                    combatBudget = true;
+                    frameLimit = checked(frame + 1 + (long)Math.Ceiling(combatSeconds / step));
+                }
                 for (long t = lastTick; t < room.Tick; t++) tickTimes[t] = net.Now;
                 lastTick = room.Tick;
             }
@@ -214,6 +247,7 @@ public static class NetworkMeasures
             if (options.CutAtSeconds is double cutAt && !cut && combatStart is double started && net.Now - started >= cutAt)
             {
                 cut = true;
+                first.WasCut = true;
                 net.Cut(first.Link);
                 reconnectAt = net.Now + options.CutSeconds;
             }
@@ -234,9 +268,7 @@ public static class NetworkMeasures
                 lagSum += (room.Tick - watched.Tick) * (double)room.TickMs;
                 lagSamples++;
             }
-            if (combatStart != null && room.Phase == RoomPhase.Ended && players.All(p => p.Client.Status != ClientStatus.Combat
-                && p.Client.Status != ClientStatus.Reconnecting))
-                break;
+            if (combatStart != null && room.Phase == RoomPhase.Ended && players.All(Done)) break;
         }
 
         CombatResult? result = room.LastResult;
@@ -264,6 +296,13 @@ public static class NetworkMeasures
 
         if (combatStart is null)
             throw new InvalidOperationException("Le combat n'a pas commencé : " + string.Join(" ; ", players.Select(p => $"{p.Client.Name} : {p.Client.Status} {p.Client.Error}")));
+        // Revue Codex de la PR #22 (tour 6) : jamais de résultat partiel rendu comme une mesure. Combat fini chez le serveur, clients sortis
+        // du combat, coupure demandée bien faite : sinon, erreur.
+        if (result is null || !players.All(Done))
+            throw new InvalidOperationException("Mesure incomplète : combat pas terminé dans le temps imparti (" +
+                string.Join(" ; ", players.Select(p => $"{p.Client.Name} : {p.Client.Status}")) + ").");
+        if (options.CutAtSeconds != null && !cut)
+            throw new InvalidOperationException($"Mesure incomplète : coupure à {options.CutAtSeconds} s de combat jamais atteinte.");
         // Revue Codex de la PR #22 : compteurs des places réellement attribuées aux joueurs mesurés (quels que soient leurs identifiants).
         var seats = new HashSet<string>(players.Select(p => p.Client.SeatId!), StringComparer.Ordinal);
         long Count(Func<CombatantResult, long> value) =>
@@ -294,13 +333,24 @@ public static class NetworkMeasures
             ReconnectDelayMs = reconnectedAt is double r && players[0].ResumedAt is double back ? (back - r) * 1000 : null,
             ReconnectError = options.CutAtSeconds is null ? null
                 : firstClient.Status == ClientStatus.Failed ? firstClient.Error
-                : reconnectedAt is null ? "combat terminé avant la nouvelle connexion." : null,
+                : reconnectedAt is null ? "combat terminé avant la nouvelle connexion."
+                : firstClient.Combat?.Resyncs > 0 ? null
+                : "combat terminé pendant la coupure.",
             HashesMatch = hashes,
             EndReason = result?.EndReason.ToString() ?? "aucun",
             EndTick = result?.EndTick ?? 0,
             Winner = result?.Winner,
         };
     }
+
+    /// <summary>
+    /// Revue Codex de la PR #22 (tour 6) : un joueur a fini sa partie quand il a vu la fin du combat (revenu dans la salle, combat local
+    /// terminé), quand son retour a été refusé, ou, coupé, quand il revient dans la salle après la fin. Avec une forte latence, le serveur
+    /// peut avoir fini le combat avant que les joueurs n'en voient le début : il faut les attendre.
+    /// </summary>
+    private static bool Done(Player p) =>
+        p.Client.Status == ClientStatus.Failed
+        || (p.Client.Status == ClientStatus.Lobby && p.Client.Combat is { } combat && (combat.IsFinished || p.WasCut));
 
     /// <summary>95e centile (rang supérieur) d'une liste triée ; 0 si elle est vide.</summary>
     public static double Percentile95(IReadOnlyList<double> sorted)

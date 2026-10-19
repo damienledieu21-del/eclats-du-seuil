@@ -231,13 +231,16 @@ namespace EdS.Net
 
         /// <summary>
         /// Revient après une coupure avec une nouvelle connexion : même place, garde relâchée, historique complet renvoyé par le serveur.
-        /// Refusé si le client n'est pas coupé pendant un combat ou n'a pas de jeton.
+        /// Refusé si le client n'est pas coupé pendant un combat ou n'a pas de jeton, et si un retour est déjà demandé (revue Codex de la
+        /// PR #20, tour 5) : une tentative dont la connexion se ferme ramène à <see cref="ClientStatus.Disconnected"/>, d'où l'on recommence.
         /// </summary>
         public void Reconnect(INetConnection connection)
         {
             if (connection is null) throw new ArgumentNullException(nameof(connection));
-            if (Status != ClientStatus.Disconnected && Status != ClientStatus.Reconnecting)
-                throw new InvalidOperationException($"Retour impossible : client {Status}, pas coupé pendant un combat.");
+            // Revue Codex de la PR #20 (tour 5) : pas de remplacement d'une demande de retour en cours ; le serveur refuserait le
+            // jeton tant que l'ancienne connexion n'est pas détachée. Une demande qui échoue ramène le client à Disconnected.
+            if (Status != ClientStatus.Disconnected)
+                throw new InvalidOperationException($"Retour impossible : client {Status}, pas coupé pendant un combat (ou retour déjà demandé).");
             if (Token is null || Combat is null) throw new InvalidOperationException("Retour impossible : aucun jeton de reconnexion.");
             if (_connection.IsOpen) _connection.Close("remplacée par une nouvelle connexion.");
             _connection = connection;
@@ -436,6 +439,11 @@ namespace EdS.Net
         private void Lost(string reason)
         {
             Error = reason;
+            // Revue Codex de la PR #21 (tour 5) : une demande de build sans réponse à la coupure n'a pas été acceptée. Le serveur traite build,
+            // mesure puis prêt dans l'ordre : un build accepté remet « prêt » à faux, et le combat ne peut commencer qu'après un nouveau
+            // « prêt », donc après la réponse à la mesure. Un combat commencé avant cette réponse a refusé le build (ou ne l'a jamais reçu).
+            // Sans cela, une mesure envoyée sur la connexion du retour validerait ce build.
+            PendingBuild = null;
             bool inCombat = (Status == ClientStatus.Combat || Status == ClientStatus.Reconnecting) && Combat != null && !Combat.IsFinished && Token != null;
             if (!inCombat)
             {

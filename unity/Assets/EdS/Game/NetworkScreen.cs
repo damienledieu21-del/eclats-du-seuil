@@ -131,6 +131,12 @@ namespace EdS.Game
                 if (client.Error != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ff9a7a>" + Hud.Plain(client.Error) + "</color>");
                 line += 30;
             }
+            // Revue Codex de la PR #21 (tour 6) : erreur de la session (salle hébergée arrêtée, robot qui ne se connecte pas) et arrêt du
+            // robot (par exemple build refusé) ; sans cela, sa place restait libre sans explication.
+            string problem = session.Error;
+            if (problem == null && session.Bot != null && session.Bot.Client.Status == ClientStatus.Failed)
+                problem = "robot arrêté : " + (session.Bot.Client.Error ?? "raison inconnue.");
+            if (client != null && problem != null) Hud.Small(new Rect(x, y + 440, w, 28), "<color=#ff9a7a>" + Hud.Plain(problem) + "</color>");
             if (!string.IsNullOrEmpty(lastCombat)) Hud.Small(new Rect(x, y + 470, w, 24), Hud.Plain(lastCombat));
             if (client == null || client.Status == ClientStatus.Failed || client.Status == ClientStatus.Left || client.Lobby == null)
                 if (Hud.Button(new Rect(x, y + 500, w, 40), "Revenir au menu", true)) action = Action.Leave;
