@@ -280,6 +280,8 @@ public class Lot103ClientTests
         game.RunUntil(() => a.Status == ClientStatus.Lobby, 5);
         Assert.Equal(RoomPhase.Ended, a.Lobby!.Phase);
         Assert.Equal("durée atteinte.", a.Combat!.EndReason);
+        Assert.Null(a.Combat.EndProblem);
+        Assert.Null(a.Error);
         Assert.Equal(ServerHash(game, a.Combat), a.Combat.Hash);
 
         // Un second combat dans la même salle : nouveau combat local.
@@ -426,6 +428,36 @@ public class Lot103ClientTests
         Assert.Contains("tick 30 reçu, tick 29 attendu", a.Combat.LastDesync);
         Assert.Equal(1, a.Combat.Resyncs);
         Assert.Equal(ServerHash(game, a.Combat), a.Combat.Hash);
+    }
+
+    [Theory]
+    [InlineData(true, "divergence pas encore réparée à la fin du combat (tick 39 : empreinte")]
+    [InlineData(false, "fin annoncée au tick 39, combat local au tick 39 pas terminé")]
+    public void Fin_du_combat_avec_une_divergence_pas_reparee_jamais_acceptee_en_silence(bool alterHash, string expected)
+    {
+        // Revue Codex de la PR #20 : le dernier tick faussé (ou perdu) laisse le client en attente d'historique quand la fin arrive ; le
+        // serveur ne répond plus après la fin : le client le dit au lieu d'accepter un résultat divergent.
+        var game = new Game(Calm(2_000));
+        (NetworkClient a, NetworkClient b) = game.Start(wrapA: inner => new Tampering(inner)
+        {
+            Alter = m => m is TickMessage t && t.Commands.Tick == 39 ? alterHash ? new TickMessage(t.Commands, "fnv1a64:0000000000000000") : null : m,
+        });
+        game.RunUntil(() => a.Status == ClientStatus.Lobby && b.Status == ClientStatus.Lobby, 5);
+        NetworkCombat combat = a.Combat!;
+        Assert.True(combat.IsFinished);
+        Assert.StartsWith(expected, combat.EndProblem);
+        Assert.Null(combat.Result);
+        Assert.Equal("fin du combat non vérifiée : " + combat.EndProblem, a.Error);
+        Assert.False(combat.AwaitingResync);
+        // L'autre joueur, lui, a une fin vérifiée.
+        Assert.Null(b.Combat!.EndProblem);
+        Assert.NotNull(b.Combat.Result);
+        Assert.Null(b.Error);
+        // Le client reste dans la salle : un nouveau combat efface l'erreur.
+        a.SetReady(true);
+        b.SetReady(true);
+        game.RunUntil(() => a.Status == ClientStatus.Combat, 2);
+        Assert.Null(a.Error);
     }
 
     [Fact]
