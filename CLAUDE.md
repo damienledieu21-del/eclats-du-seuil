@@ -4,13 +4,13 @@ Ce fichier est lu au début de chaque session (interactive ou planifiée). Il es
 
 ## Le projet
 
-*Éclats du Seuil* est un MMORPG fantasy PC/mobile, jouable surtout en solo dans un monde partagé. Ce dépôt contient le **cœur C# du jeu** (simulateur de combat déterministe), indépendant de Unity, du réseau et de toute interface. Le but n'est pas le simulateur le plus complexe possible : c'est un vrai jeu jouable. Après le lot 8 viennent le prototype Unity 3D, puis un serveur autoritaire à deux joueurs.
+*Éclats du Seuil* est un MMORPG fantasy PC/mobile, jouable surtout en solo dans un monde partagé. Ce dépôt contient le **cœur C# du jeu** (simulateur de combat déterministe), indépendant de Unity, du réseau et de toute interface. Le but n'est pas le simulateur le plus complexe possible : c'est un vrai jeu jouable. Le prototype Unity 3D (lot 9) et le serveur autoritaire à deux joueurs (lot 10) sont faits. La vision du jeu complet (cadrage de Damien du 19 octobre 2026) est dans [docs/CADRAGE.md](docs/CADRAGE.md), l'ordre des chantiers (validé le 20 octobre 2026) dans [docs/PLAN_LOT_11.md](docs/PLAN_LOT_11.md).
 
 - Directeur du jeu : **Damien** (« Dam »). Il décide du gameplay, des dépenses et de **toutes les fusions**.
 - Claude : développement, tests, documentation, préparation des PR.
 - Codex : revue indépendante des PR sur GitHub (règles dans [AGENTS.md](AGENTS.md)). Une auto-revue Claude n'est jamais présentée comme une revue Codex.
 
-Lire avant de travailler : [README.md](README.md), [docs/FEUILLE_DE_ROUTE.md](docs/FEUILLE_DE_ROUTE.md) (lot en cours, décisions validées, catalogue du Bastion), puis les documents du domaine touché ([docs/MOTEUR.md](docs/MOTEUR.md), [docs/DONNEES.md](docs/DONNEES.md), [docs/BUILDS.md](docs/BUILDS.md), [docs/FORMULES.md](docs/FORMULES.md), `docs/LIMITES_LOT_*.md`).
+Lire avant de travailler : [README.md](README.md), [docs/FEUILLE_DE_ROUTE.md](docs/FEUILLE_DE_ROUTE.md) (lot en cours, décisions validées, catalogue du Bastion), [docs/CADRAGE.md](docs/CADRAGE.md) (choix du jeu complet, avec leur statut : retenu, recommandation, ouvert ; une recommandation n'est jamais présentée comme une décision de Damien), puis les documents du domaine touché ([docs/MOTEUR.md](docs/MOTEUR.md), [docs/DONNEES.md](docs/DONNEES.md), [docs/BUILDS.md](docs/BUILDS.md), [docs/FORMULES.md](docs/FORMULES.md), `docs/LIMITES_LOT_*.md`).
 
 ## Règles absolues
 
