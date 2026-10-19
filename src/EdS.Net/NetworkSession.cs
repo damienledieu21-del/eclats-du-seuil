@@ -217,6 +217,9 @@ namespace EdS.Net
                 return;
             }
             Error = null;
+            // Revue Codex de la PR #21 (tour 7) : si cette connexion se referme avant l'accueil (serveur qui redémarre, intermédiaire qui
+            // accepte puis coupe), la tentative suivante attend aussi RetrySeconds au lieu de repartir à l'image suivante.
+            _nextRetryAt = Now + RetrySeconds;
             Client.Reconnect(connection);
         }
 
