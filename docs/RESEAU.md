@@ -93,7 +93,17 @@ dotnet run --project src/EdS.Server -- --local --robot              # avec un é
 
 ## Mesures (sous-lot 10.5)
 
-`eds reseau` (`EdS.Tools.Network`) fait jouer la coopération à deux joueurs scriptés sur le réseau simulé, de 0 à 200 ms de latence d'un sens, avec gigue et coupures, et écrit un rapport Markdown reproductible. Résultats et options pour la parade : [RAPPORT_10_5.md](RAPPORT_10_5.md). En bref : aucune divergence ; retour après coupure en 130 ms ; la parade « à vue » ne tient que jusqu'à 25 ms d'un sens, la parade anticipée du ping tient jusqu'à 200 ms (sauf gigue forte). Le choix d'une compensation revient à Damien.
+`eds reseau` (`EdS.Tools.Network`) fait jouer la coopération à deux joueurs scriptés sur le réseau simulé, de 0 à 200 ms de latence d'un sens, avec gigue et coupures, et écrit un rapport Markdown reproductible. Résultats et options pour la parade : [RAPPORT_10_5.md](RAPPORT_10_5.md). En bref : aucune divergence ; retour après coupure en 130 ms ; la parade « à vue » ne tient que jusqu'à 25 ms d'un sens, la parade anticipée du ping tient jusqu'à 200 ms (sauf gigue forte). Damien a choisi l'option B (décision du 19 octobre 2026 à 11:28), faite au sous-lot 10.6 (ci-dessous).
+
+## Télégraphie avancée (sous-lot 10.6, option B de la parade)
+
+L'affichage a environ une latence de retard sur le serveur, et une parade met une latence à l'atteindre : une parade pressée « à vue » arrive donc un aller-retour trop tard (parade perdue dès 50 ms d'un sens, rapport du 10.5). Le client avance la **télégraphie** des assaillants (`OtherState.NextAttackSeconds`, barre au-dessus de l'assaillant et « Prochain coup dans … » de la fiche de la cible) du **temps aller-retour lissé** (`NetworkCombat.TelegraphLeadSeconds`, jamais moins de 0) : le joueur qui pare au moment appris en solo sur cet affichage atteint le serveur au bon tick.
+
+- Réglages (`NetworkClientOptions`) : `TelegraphAdvance` (vrai par défaut) ; `MaxTelegraphLeadSeconds` (1 s par défaut, de 0 à 10 s ; une valeur hors bornes est refusée). Avant la première mesure du temps aller-retour, l'avance est nulle.
+- **Affichage seulement** : `CombatDisplay.Others(engine, joueur, avance)` ; le moteur local, les empreintes, le protocole (version 1), le serveur et les règles sont inchangés. En solo, l'avance vaut 0.
+- L'équipier robot (`BotPlayer`) pare sur le même affichage : il en profite aussi.
+- Unity : le bandeau du combat en réseau affiche l'avance (« télégraphie avancée de … ms ») à côté du temps aller-retour.
+- Mesures : `eds reseau` mesure la parade « anticipée » avec cette télégraphie (le joueur scripté pare à vue, le client avance l'affichage) et la parade « à vue » sans elle ([RAPPORT_10_5.md](RAPPORT_10_5.md)).
 
 ## Réseau simulé
 

@@ -15,7 +15,7 @@ MMORPG fantasy PC/mobile, monde partagé et persistant à terme, **principalemen
 
 ## Ordre des chantiers
 
-`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4, terminé le 19 octobre 2026) → serveur autoritaire à deux joueurs (lot 10 : 10.1 → 10.2 → 10.3 → 10.4 → 10.5) → vertical slice`
+`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4, terminé le 19 octobre 2026) → serveur autoritaire à deux joueurs (lot 10 : 10.1 → 10.2 → 10.3 → 10.4 → 10.5 → 10.6) → vertical slice`
 
 ### Lot 8 — premier Bastion réellement jouable
 
@@ -59,12 +59,15 @@ Objectif (« Après le lot 8 », point 2) : deux joueurs dans le même combat, r
 | Sous-lot | Contenu | État |
 |---|---|---|
 | 10.1 | Protocole (messages stricts et bornés, version 1), transport TCP sans dépendance, réseau simulé déterministe pour les tests | PR #18, fusionnée le 19 octobre 2026 : `EdS.Net` (netstandard2.1), `MessageCodec`, `Framing`, `TcpNetConnection`, `SimulatedNetwork`, catégorie de tests `Network` |
-| 10.2 | Serveur : salle à deux places, horloge de 50 ms, intentions rangées au tick, refus motivés, limites de débit, déconnexion et reconnexion, journal rejouable ; serveur dédié | PR #19 : `CombatRoom`, `RoomHost`, `EdS.Server`, `IntentionPlanner` (partagé avec le pont temps réel), `HashingCombatLog`, `CombatLogReplayer.ReadSetup`, scénario `coop/duo_meute` |
-| 10.3 | Client réseau : combat local rejoué depuis les commandes du serveur, contrôle d'empreinte, resynchronisation, reconnexion | PR vers `main` : `NetworkClient`, `NetworkCombat`, `ICombatClient`, `CombatDisplay` et `FeedbackTracker` (affichage partagé avec le solo) |
-| 10.4 | Unity : héberger ou rejoindre, salle d'attente, deux Bastions, ciblage d'un allié, ping | PR vers `main` : `NetworkSession` (héberger, rejoindre, retour automatique), `BotPlayer` (équipier robot, aussi `EdS.Server --robot`), menu réseau, salle d'attente et combat à deux dans Unity (touche M) ; à essayer par Damien |
-| 10.5 | Mesures : latence (0 à 200 ms), gigue, désynchronisations et coupures provoquées ; rapport, notamment sur la parade | PR vers `main` : `eds reseau` (`EdS.Tools.Network`), rapport [RAPPORT_10_5.md](RAPPORT_10_5.md) : aucune divergence, retour en 130 ms, parade à vue perdue dès 50 ms d'un sens, parade anticipée du ping tenue jusqu'à 200 ms ; **choix de la compensation à faire par Damien** (options A à D) |
+| 10.2 | Serveur : salle à deux places, horloge de 50 ms, intentions rangées au tick, refus motivés, limites de débit, déconnexion et reconnexion, journal rejouable ; serveur dédié | PR #19, fusionnée le 19 octobre 2026 : `CombatRoom`, `RoomHost`, `EdS.Server`, `IntentionPlanner` (partagé avec le pont temps réel), `HashingCombatLog`, `CombatLogReplayer.ReadSetup`, scénario `coop/duo_meute` |
+| 10.3 | Client réseau : combat local rejoué depuis les commandes du serveur, contrôle d'empreinte, resynchronisation, reconnexion | PR #20, fusionnée le 19 octobre 2026 : `NetworkClient`, `NetworkCombat`, `ICombatClient`, `CombatDisplay` et `FeedbackTracker` (affichage partagé avec le solo) |
+| 10.4 | Unity : héberger ou rejoindre, salle d'attente, deux Bastions, ciblage d'un allié, ping | PR #21, fusionnée le 19 octobre 2026 : `NetworkSession` (héberger, rejoindre, retour automatique), `BotPlayer` (équipier robot, aussi `EdS.Server --robot`), menu réseau, salle d'attente et combat à deux dans Unity (touche M) ; à essayer par Damien |
+| 10.5 | Mesures : latence (0 à 200 ms), gigue, désynchronisations et coupures provoquées ; rapport, notamment sur la parade | PR #22, fusionnée le 19 octobre 2026 : `eds reseau` (`EdS.Tools.Network`), rapport [RAPPORT_10_5.md](RAPPORT_10_5.md) : aucune divergence, retour en 130 ms, parade à vue perdue dès 50 ms d'un sens, parade anticipée du ping tenue jusqu'à 200 ms ; options A à D pour la compensation |
+| 10.6 | Parade en réseau, **option B** (décision ci-dessous) : télégraphie des assaillants avancée du temps aller-retour lissé, côté client | PR vers `main` : `NetworkClientOptions.TelegraphAdvance` (actif par défaut, plafond de 1 s), `NetworkCombat.TelegraphLeadSeconds`, bandeau Unity ; affichage seulement, serveur, moteur et protocole inchangés ; `eds reseau` mesure la parade « anticipée » sur cette télégraphie ; à essayer par Damien |
 
 **Décisions du 19 octobre 2026** (avant le 10.1) : **coopération** (deux Bastions contre des assaillants) ; un joueur déconnecté laisse le **combat continuer**, son personnage inactif (garde relâchée), avec 30 secondes pour se reconnecter. La compensation de latence de la parade sera décidée après les mesures du 10.5.
+
+**Décision du 19 octobre 2026 à 11:28** (après le rapport du 10.5) : la parade en réseau est compensée par l'**option B**, une **télégraphie avancée du ping côté client** : la barre et le compte à rebours du prochain coup s'affichent en avance du temps aller-retour mesuré, et le joueur pare « à vue » sur cet affichage. Aucune règle ne change ; le serveur juge toujours la parade sur son tick (aucune triche possible). Options écartées pour l'instant : A (rien), C (rembobinage borné côté serveur, gardé pour un serveur sur Internet), D (fenêtre élargie en réseau).
 
 ## Décisions validées
 
