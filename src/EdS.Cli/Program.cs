@@ -5,6 +5,7 @@ using EdS.Data.Builds;
 using EdS.Data.Classes;
 using EdS.Data.Json;
 using EdS.Tools.Measures;
+using EdS.Tools.Network;
 using EdS.Data.Rules;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
@@ -40,6 +41,8 @@ switch (args[0])
         return RunReplay(args.AsSpan(1));
     case "report":
         return RunReport(args.AsSpan(1), SimulationAbortedExitCode, ObjectiveFailedExitCode);
+    case "reseau":
+        return RunNetwork(args.AsSpan(1));
     default:
         Console.Error.WriteLine($"Commande inconnue : {args[0]}");
         PrintHelp();
@@ -429,6 +432,49 @@ static int RunReport(ReadOnlySpan<string> options, int abortedExitCode, int obje
     return strict && objectives.Any(o => o.Passed == false) ? objectiveFailedExitCode : 0;
 }
 
+// Sous-lot 10.5 : mesures du réseau (parades selon la latence, désynchronisations, coupures), rapport Markdown sur la sortie standard.
+static int RunNetwork(ReadOnlySpan<string> options)
+{
+    string dataDirectory = DefaultDataDirectory(), scenarioPath = Path.Combine("scenarios", "coop", "duo_meute.json");
+    int seeds = 3;
+    for (int i = 0; i < options.Length; i++)
+    {
+        bool hasValue = i + 1 < options.Length;
+        if (options[i] == "--data" && hasValue) dataDirectory = options[++i];
+        else if (options[i] == "--scenario" && hasValue) scenarioPath = options[++i];
+        else if (options[i] == "--graines" && hasValue && int.TryParse(options[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out int n) && n >= 1 && n <= NetworkReport.MaxSeeds)
+        {
+            seeds = n;
+            i++;
+        }
+        else
+        {
+            Console.Error.WriteLine($"Option inconnue ou invalide : {options[i]}");
+            return 1;
+        }
+    }
+    GameData? data = LoadData(dataDirectory);
+    if (data is null) return 1;
+    ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(scenarioPath, data);
+    if (scenario.Setup is null) return Fail(scenarioPath, scenario.Report);
+    IReadOnlyList<NetworkReportRow> rows;
+    IReadOnlyList<NetworkMeasureResult> cuts;
+    try
+    {
+        rows = NetworkReport.MeasureLinks(data, scenario.Setup, seeds);
+        cuts = NetworkReport.MeasureCuts(data, scenario.Setup);
+    }
+    catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+    {
+        // Scénario incompatible (pas exactement deux personnages Bastion, combat qui ne commence pas).
+        Console.Error.WriteLine($"Mesures impossibles ({scenarioPath}) : {e.Message}");
+        return 1;
+    }
+    NetworkReport.Write(Console.Out, rows, cuts, seeds, Path.GetFileNameWithoutExtension(scenarioPath), scenario.Setup.DurationMs);
+    // Revue Codex de la PR #22 : une divergence pendant une coupure fait aussi échouer la commande.
+    return rows.All(r => r.HashesMatch && r.Desyncs == 0) && cuts.All(c => c.HashesMatch && c.Desyncs == 0) ? 0 : 3;
+}
+
 static void PrintHelp()
 {
     Console.WriteLine("Éclats du Seuil — simulateur de combat (v0.1, valeurs provisoires)");
@@ -446,4 +492,8 @@ static void PrintHelp()
     Console.WriteLine("                                                 scenarios/mesures), profils beginner, standard, expert, avec le pilote ;");
     Console.WriteLine("                                                 journaux des combats vers L ; code 2 si un combat est interrompu,");
     Console.WriteLine("                                                 3 avec --strict si un objectif provisoire n'est pas atteint");
+    Console.WriteLine("  eds reseau [--data D] [--scenario S] [--graines N]");
+    Console.WriteLine("                                                 Mesure le jeu en réseau sur le réseau simulé (latence 0 à 200 ms,");
+    Console.WriteLine("                                                 gigue, coupures) : parades, délais, désynchronisations ; rapport");
+    Console.WriteLine("                                                 Markdown ; code 3 si une empreinte diffère ou une divergence survient");
 }
