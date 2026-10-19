@@ -11,12 +11,12 @@ Le prototype (lot 9) se trouve dans le dossier `unity/` du dépôt. Unity compil
 
 ## 2. Récupérer la bonne version
 
-Tant que les PR du lot 9 ne sont pas fusionnées, le prototype n'existe que sur sa branche :
+Le prototype est sur `main` depuis la fin du lot 9 (19 octobre 2026) :
 
-1. Dans GitHub Desktop, en haut : **Current branch → feat/lot-9-3-unity** (onglet *Other branches* au besoin).
+1. Dans GitHub Desktop, en haut : **Current branch → main**.
 2. **Fetch origin** puis **Pull origin** pour prendre les dernières modifications.
 
-Une fois les PR fusionnées, rester simplement sur `main` et faire **Pull origin**.
+Pour essayer une PR avant sa fusion, choisir sa branche de la même façon (onglet *Other branches*), puis revenir sur `main` une fois la PR fusionnée.
 
 ## 3. Ouvrir le projet
 
