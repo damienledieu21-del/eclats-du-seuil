@@ -80,6 +80,31 @@ public class Lot105NetworkMeasureTests
         else Assert.Equal("refusé par le serveur : jeton inconnu ou expiré.", r.ReconnectError);
     }
 
+    [Theory]
+    [InlineData(0.0, 0, 0, null, 3.0)]
+    [InlineData(-0.01, 0, 0, null, 3.0)]
+    [InlineData(double.NaN, 0, 0, null, 3.0)]
+    [InlineData(double.PositiveInfinity, 0, 0, null, 3.0)]
+    [InlineData(2.0, 0, 0, null, 3.0)]
+    [InlineData(0.01, -1, 0, null, 3.0)]
+    [InlineData(0.01, 0, -5, null, 3.0)]
+    [InlineData(0.01, 0, 0, -1.0, 3.0)]
+    [InlineData(0.01, 0, 0, double.NaN, 3.0)]
+    [InlineData(0.01, 0, 0, 5.0, -1.0)]
+    [InlineData(0.01, 0, 0, 5.0, double.PositiveInfinity)]
+    public void Reglages_invalides_refuses_avant_la_simulation(double step, int latency, int jitter, double? cutAt, double cutSeconds)
+    {
+        // Revue Codex de la PR #22 : un pas nul faisait tourner la boucle sans fin.
+        Assert.Throws<ArgumentOutOfRangeException>(() => NetworkMeasures.Run(ShippedData, Duo, new NetworkMeasureOptions
+        {
+            StepSeconds = step,
+            LatencyMs = latency,
+            JitterMs = jitter,
+            CutAtSeconds = cutAt,
+            CutSeconds = cutSeconds,
+        }));
+    }
+
     [Fact]
     public void Rapport_complet_reproductible()
     {

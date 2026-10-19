@@ -139,6 +139,15 @@ public static class NetworkMeasures
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(scenario);
         ArgumentNullException.ThrowIfNull(options);
+        // Revue Codex de la PR #22 : réglages vérifiés avant la simulation (un pas nul ferait tourner la boucle sans fin).
+        if (!(options.StepSeconds > 0) || double.IsInfinity(options.StepSeconds) || options.StepSeconds > 1)
+            throw new ArgumentOutOfRangeException(nameof(options), $"Pas de temps de {options.StepSeconds} s : entre 0 (exclu) et 1 s.");
+        if (options.LatencyMs < 0 || options.JitterMs < 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "Latence et gigue positives ou nulles.");
+        if (options.CutAtSeconds is double cutAtCheck && (!(cutAtCheck >= 0) || double.IsInfinity(cutAtCheck)))
+            throw new ArgumentOutOfRangeException(nameof(options), $"Coupure à {cutAtCheck} s : instant positif ou nul et fini.");
+        if (!(options.CutSeconds >= 0) || double.IsInfinity(options.CutSeconds))
+            throw new ArgumentOutOfRangeException(nameof(options), $"Coupure de {options.CutSeconds} s : durée positive ou nulle et finie.");
         var net = new SimulatedNetwork(options.Seed);
         SimulatedListener listener = net.Listen("salle");
         int tokens = 0;
