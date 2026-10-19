@@ -28,7 +28,7 @@ Pour essayer une PR avant sa fusion, choisir sa branche de la même façon (ongl
 
 ## 4. Jouer
 
-Appuyer sur **Play** (▶ en haut au centre). L'arène se construit, avec le Bastion (capsule bleue) face à l'assaillant d'entraînement.
+Appuyer sur **Play** (▶ en haut au centre). L'arène se construit, avec le Bastion (capsule bleue) face à la **meute à vaincre** (sous-lot 11.1) : deux loups et un hurleur qui ont des PV. Garde et parade sont nécessaires ; quand les trois sont morts, c'est la victoire (« Victoire : tous les ennemis sont vaincus ! ») ; si le Bastion tombe, c'est la défaite. Retour arrière pour recommencer, N pour les autres séances.
 
 Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tableau donne les lettres d'un clavier **AZERTY**. En QWERTY, Z Q S D deviennent W A S D, A / E deviennent Q / E, et M reste M.
 
@@ -44,14 +44,14 @@ Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tablea
 | A / E | tourner la caméra isométrique |
 | molette | zoom ; bouton du milieu maintenu : tourner la caméra en troisième personne |
 | T | écran des talents (combat en pause) ; T ou Échap pour le fermer |
-| N | scénario suivant (entraînement, S1 à S5) |
+| N | scénario suivant (meute à vaincre, entraînement, S1 à S5) |
 | F1 à F5 | build : Rempart, Contrecoup, Gardien, hybride, niveau 10 |
 | Retour arrière | recommencer la séance |
 | Échap | pause |
 | H | masquer ou afficher l'aide |
 | M | jeu en réseau à deux (voir la section 6) |
 
-À l'écran : barres de PV, d'endurance, de Résonance et de Charges en bas ; les compétences avec leur recharge ; au-dessus de chaque ennemi, sa barre de PV et une **barre de télégraphie** qui se remplit avant son coup (rouge vif : coup **imparable**, à encaisser sans garde ni parade) ; la fiche de la cible en haut à droite ; les textes de combat (dégâts, « Bloqué », « Parade parfaite ! »).
+À l'écran : barres de PV, d'endurance, de Résonance et de Charges en bas ; les compétences avec leur recharge ; au-dessus de chaque ennemi, sa barre de PV (« PV infinis » pour un ennemi d'entraînement) et une **barre de télégraphie** qui se remplit avant son coup ; un ennemi mort s'assombrit, n'attaque plus, et la cible passe au suivant (rouge vif : coup **imparable**, à encaisser sans garde ni parade) ; la fiche de la cible en haut à droite ; les textes de combat (dégâts, « Bloqué », « Parade parfaite ! »).
 
 ## 5. Talents
 
@@ -65,7 +65,7 @@ Le niveau et les compétences équipées sont ceux du build de départ ; le buil
 
 ## 6. Jouer à deux en réseau (lot 10)
 
-Touche **M** : le menu du réseau s'ouvre. On y tape son nom, puis on choisit une façon de jouer. La partie est une **coopération** : deux Bastions contre deux loups et un hurleur (60 s). Le serveur mène le combat ; si un joueur perd la connexion, le combat continue, son personnage baisse la garde, et le jeu revient tout seul dans la partie s'il retrouve le réseau dans les 30 s.
+Touche **M** : le menu du réseau s'ouvre. On y tape son nom, puis on choisit une façon de jouer. La partie est une **coopération** : deux Bastions contre deux loups et un hurleur. Depuis le sous-lot 11.1, la meute peut mourir (scénario `coop/meute_a_vaincre`, 90 s) : quand elle est vaincue, c'est la victoire des deux joueurs. Le serveur mène le combat ; si un joueur perd la connexion, le combat continue, son personnage baisse la garde, et le jeu revient tout seul dans la partie s'il retrouve le réseau dans les 30 s.
 
 **a. Essayer seul, avec un équipier robot** (le plus simple pour un premier essai) :
 

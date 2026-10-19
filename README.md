@@ -133,6 +133,8 @@ Sous-lot 10.5 (mesures) : `eds reseau` fait jouer la coopération à deux joueur
 
 Sous-lot 10.6 (parade en réseau, option B choisie par Damien le 19/10/2026 à 11:28) : en réseau, la télégraphie des assaillants (barre et compte à rebours du prochain coup) s'affiche en avance du temps aller-retour lissé (plafond de 1 s) ; le joueur pare à vue sur cet affichage et sa parade arrive au serveur au moment qui réussit en solo. Affichage seulement : serveur, moteur, protocole et règles inchangés. Détail : [docs/RESEAU.md](docs/RESEAU.md#télégraphie-avancée-sous-lot-106-option-b-de-la-parade).
 
+Sous-lot 11.1 (ennemis qui meurent, autorisé par Damien le 20/10/2026, décision L11-D1) : un assaillant peut avoir des PV (`health`, scénarios en schéma 4) ; à 0 PV il meurt comme un personnage (une ligne `died`, états retirés), n'attaque plus (son tour programmé est abandonné sans ligne), n'est plus une cible, et la victoire revient aux joueurs quand tous les ennemis sont morts. Sans PV, il reste l'assaillant d'entraînement. Moteur 0.15.0, journal au format 9 ; les journaux des scénarios livrés gardent le même corps. Nouveaux scénarios `meute_a_vaincre` (solo, en tête des séances d'Unity) et `coop/meute_a_vaincre` (coopération d'Unity). Détail : [docs/MOTEUR.md](docs/MOTEUR.md#cycle-de-vie-des-assaillants-sous-lot-111), limites : [docs/LIMITES_LOT_11.md](docs/LIMITES_LOT_11.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -150,4 +152,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 9 — prototype Unity 3D : données portables (9.1, PR #12), pont temps réel (9.2, PR #13), projet Unity jouable (9.3, PR #14 et #15), interface de talents (9.4, PR #16) ; terminé le 19 octobre 2026, essayé par Damien dans Unity 6.3
 - [x] Lot 10 — serveur autoritaire à deux joueurs : 10.1 à 10.6 (PR #18 à #23) fusionnés le 19 octobre 2026 ; essayé par Damien dans Unity le 19 octobre au soir (combat à deux, option B de la parade, touches AZERTY)
 - [x] Cadrage du jeu complet (19 et 20 octobre 2026) : choix de Damien Q1 à Q40, systèmes H1 à H14 et décisions L11-D1 à L11-D12 dans [docs/CADRAGE.md](docs/CADRAGE.md) (retenu, recommandation, ouvert)
-- [ ] Lot 11 — combat dans l'espace (ordre validé le 20 octobre 2026, [docs/PLAN_LOT_11.md](docs/PLAN_LOT_11.md)) : ennemis qui meurent, architecture du monde partagé, positions, scène des deux vues, démonstration réseau, essai tactile ; puis lot 12 les Vallons d'Aube en solo, lot 13 monde partagé, lot 14 interface mobile, l'alpha
+- [ ] Lot 11 — combat dans l'espace (ordre validé le 20 octobre 2026, [docs/PLAN_LOT_11.md](docs/PLAN_LOT_11.md)) : ennemis qui meurent (11.1, en revue), architecture du monde partagé, positions, scène des deux vues, démonstration réseau, essai tactile ; puis lot 12 les Vallons d'Aube en solo, lot 13 monde partagé, lot 14 interface mobile, l'alpha
