@@ -33,16 +33,8 @@ namespace EdS.Runtime
                 long readyTick = Math.Max(me.CooldownReadyTick(skill.Id), me.GlobalCooldownReadyTick);
                 double remaining = Math.Max(0, readyTick - tick) * tickSeconds;
                 bool ultimate = slot == RealtimeCombat.UltimateSlot;
-                string? unavailable =
-                    me.IsDead ? "hors de combat"
-                    : !me.CanCast ? "contrôlé"
-                    : tick < me.CooldownReadyTick(skill.Id) ? $"en recharge ({remaining:0.0} s)"
-                    : tick < me.GlobalCooldownReadyTick ? "recharge globale"
-                    : ultimate && me.Resonance < rules.UltimateResonanceCost ? $"Résonance {me.Resonance}/{rules.UltimateResonanceCost}"
-                    : me.Endurance < combat.EnduranceCost ? $"endurance {me.Endurance}/{combat.EnduranceCost}"
-                    : me.RampartCharges < combat.RampartChargeCost ? $"Charges {me.RampartCharges}/{combat.RampartChargeCost}"
-                    : combat.Targeting == SkillTargeting.Enemy && targetId is null ? "aucune cible"
-                    : null;
+                // Le seul contrôle de disponibilité, partagé avec le serveur (revue Codex de la PR #19).
+                string? unavailable = IntentionPlanner.Unavailable(me, skill, ultimate, tick, tickSeconds, rules, targetId != null);
                 slots.Add(new SkillSlot(slot, skill.Id, skill.Name, ultimate, combat.EnduranceCost, effective.CooldownMs(skill, combat) / 1000.0,
                     remaining, unavailable));
             }

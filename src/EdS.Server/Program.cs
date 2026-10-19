@@ -98,8 +98,17 @@ public static class Program
         BotPlayer? bot = null;
         if (robot != null)
         {
-            TcpNetConnection connection = TcpNetConnection.ConnectAsync("127.0.0.1", listener.Port, Protocol.MaxServerMessageBytes, Protocol.MaxClientMessageBytes)
-                .GetAwaiter().GetResult();
+            TcpNetConnection connection;
+            try
+            {
+                connection = TcpNetConnection.ConnectAsync("127.0.0.1", listener.Port, Protocol.MaxServerMessageBytes, Protocol.MaxClientMessageBytes)
+                    .GetAwaiter().GetResult();
+            }
+            catch (Exception e) when (e is System.Net.Sockets.SocketException || e is IOException)
+            {
+                Console.Error.WriteLine("Équipier robot impossible à connecter : " + e.Message);
+                return 1;
+            }
             bot = new BotPlayer(new NetworkClient(gameData, connection, "Robot", new BuildChoice(robot)));
             Console.WriteLine($"Équipier robot connecté ({robot}).");
         }
