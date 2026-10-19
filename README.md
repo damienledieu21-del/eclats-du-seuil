@@ -15,11 +15,12 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 | `src/EdS.Data.Json` | netstandard2.1, C# 9 | Lecture des fichiers de données (analyseur JSON strict sans dépendance depuis le sous-lot 9.1), chargement et rejeu — partagé par les outils .NET, Unity et le futur serveur |
 | `src/EdS.Runtime` | netstandard2.1, C# 9 | Pont temps réel pour un client (Unity) : temps réel → ticks, intentions du joueur → commandes, état à afficher et retours, séance d'entraînement (sous-lot 9.2), éditeur de talents (9.4) |
 | `src/EdS.Net` | netstandard2.1, C# 9 | Réseau (lot 10) : protocole à messages strict, transport TCP et réseau simulé, salle de combat autoritaire et client ; détail : [docs/RESEAU.md](docs/RESEAU.md) |
+| `src/EdS.Server` | net10.0 | Serveur dédié (sous-lot 10.2) : une salle de combat autoritaire sur le réseau local, journaux rejouables |
 | `src/EdS.Tools` | net10.0 | Outils .NET : mesures des builds et rapport (`EdS.Tools.Measures`, sous-lot 8.6) |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`, `report`) |
 | `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `v0/builds/bastion.json` (builds de référence, sous-lot 8.5), `schemas/` |
 | `unity/` | Unity 6.3 LTS, URP | Prototype jouable (sous-lot 9.3) : le cœur est compilé par Unity depuis `src/` (paquet local `com.eclats.core`) ; guide : [docs/UNITY.md](docs/UNITY.md) |
-| `scenarios/` | JSON | Scénarios de combat (`mannequin.json`, `entrainement_garde_parade.json`, `entrainement_rupture.json`, `entrainement_alterations.json`, `entrainement_declencheurs.json`) ; `mesures/` : scénarios de mesure S1 à S5 (sous-lot 8.6) |
+| `scenarios/` | JSON | Scénarios de combat (`mannequin.json`, `entrainement_garde_parade.json`, `entrainement_rupture.json`, `entrainement_alterations.json`, `entrainement_declencheurs.json`) ; `coop/duo_meute.json` : coopération à deux Bastions (lot 10) ; `mesures/` : scénarios de mesure S1 à S5 (sous-lot 8.6) |
 | `tests/*` | net10.0 | xUnit + FsCheck (tests de propriétés) ; `EdS.Unity.CompileCheck` (netstandard2.1) compile les scripts du prototype contre des bouchons de l'API Unity |
 
 Les projets `netstandard2.1` (domaine, moteur, données et, depuis le sous-lot 9.1, lecture JSON) sont limités à C# 9 et n'ont aucune dépendance externe : ils sont importables tels quels dans Unity (IL2CPP) et sur un serveur .NET.
@@ -56,6 +57,7 @@ dotnet run --project src/EdS.Cli -- simulate scenarios/entrainement_garde_parade
 dotnet run --project src/EdS.Cli -- replay combat.jsonl
 dotnet run --project src/EdS.Cli -- report                 # mesures des builds de référence (S1 à S5, trois profils) et objectifs
 dotnet run --project src/EdS.Cli -- report --json --logs journaux   # rapport JSON reproductible, journaux rejouables
+dotnet run --project src/EdS.Server -- --local      # serveur de coopération à deux joueurs (lot 10), port 7777
 python3 -m unittest discover -s scripts -p 'test_ci_provenance.py' -v   # générateur du rapport CI non signé
 ```
 
@@ -120,6 +122,8 @@ Sous-lot 9.4 (talents) : `TalentEditor` (`EdS.Runtime`) édite les talents d'un 
 
 Sous-lot 10.1 (protocole et transport, début du lot 10) : `EdS.Net` (netstandard2.1, C# 9, sans dépendance) définit le protocole version 1 (messages JSON encadrés par leur longueur, lus par l'analyseur strict du 9.1, tailles bornées par sens : 8 Kio d'un client, 4 Mio du serveur), le transport TCP (fils de lecture et d'écriture, files bornées, faute de protocole détectée avant lecture) et un réseau simulé déterministe (latence, gigue, coupures) pour les tests. Décisions de Damien du 19 octobre 2026 : coopération à deux Bastions ; un joueur déconnecté laisse le combat continuer, personnage inactif, 30 s pour revenir. Détail : [docs/RESEAU.md](docs/RESEAU.md).
 
+Sous-lot 10.2 (serveur) : `CombatRoom` (salle de combat autoritaire, une place par personnage du scénario de coopération `scenarios/coop/duo_meute.json`), `RoomHost` (animation en temps réel avec une écoute TCP) et le serveur dédié `EdS.Server`. Salle d'attente (présentation, build validé par `BuildValidator`, prêt), combat à 50 ms par tick (intentions transformées par `IntentionPlanner`, partagé avec le pont temps réel ; commandes admises et empreinte du journal diffusées à chaque tick), déconnexion sans arrêt du combat et retour avec un jeton dans les 30 s (historique complet), protections (présentation en 5 s, débit, taille, connexions), journal rejouable de chaque combat. Détail : [docs/RESEAU.md](docs/RESEAU.md#serveur-sous-lot-102).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -135,4 +139,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
 - [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
 - [x] Lot 9 — prototype Unity 3D : données portables (9.1, PR #12), pont temps réel (9.2, PR #13), projet Unity jouable (9.3, PR #14 et #15), interface de talents (9.4, PR #16) ; terminé le 19 octobre 2026, essayé par Damien dans Unity 6.3
-- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 (protocole et transport) en revue ; 10.2 à 10.5 à faire
+- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 (protocole et transport) et 10.2 (serveur) en revue ; 10.3 à 10.5 à faire

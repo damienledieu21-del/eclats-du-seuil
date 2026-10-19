@@ -53,6 +53,24 @@ Chaque message passe par l'analyseur strict du sous-lot 9.1 (`MessageCodec`) : t
 
 Exemple : `{"type":"input","guard":true,"parry":false,"slot":2,"target":"loup_a","ally":null}`.
 
+## Serveur (sous-lot 10.2)
+
+`CombatRoom` est une salle de combat autoritaire, animée par des appels à `Advance(secondes)` : aucun fil ni horloge dans la salle, ce qui la rend testable en temps virtuel. `RoomHost` l'anime en temps réel sur un fil, avec une écoute TCP ; c'est ce qu'utilisent le serveur dédié et l'hôte Unity.
+
+- **Places** : une par personnage du scénario, dans l'ordre (`scenarios/coop/duo_meute.json` : `bastion` et `bastion2` contre deux loups et un hurleur). Un `hello` prend la première place libre ; la salle pleine, un protocole autre que 1 ou un build invalide sont refusés (`error`, puis fermeture). Le build demandé (référence et rangs de talents) est résolu et jugé par `BuildValidator` (`BuildChoices`) ; un build composé s'affiche « Personnalisé (Rempart) ».
+- **Salle d'attente** : `build` change de build (prêt remis à faux), `ready` se déclare prêt. Le combat commence quand toutes les places sont prises, connectées et prêtes ; le serveur envoie à chacun l'en-tête du journal (`start`). On ne rejoint pas un combat commencé.
+- **Combat** : à chaque tick (50 ms), pour chaque place dans l'ordre, les intentions deviennent des groupes de commandes (`IntentionPlanner`, partagé avec le pont temps réel du 9.2 : quitter la garde et lancer forment un groupe) soumis tout ou rien ; un groupe refusé à l'admission vaut un `rejected` au joueur et rien n'est soumis. Puis le moteur simule le tick et chaque joueur reçoit `tick` (commandes admises, empreinte FNV-1a sur 64 bits du journal à ce point, `HashingCombatLog`). Cibles : celle choisie par le joueur si c'est un ennemi vivant (un allié vivant pour un soutien), sinon le premier ennemi vivant (l'autre joueur pour un soutien, soi-même à défaut).
+- **Déconnexion** (décision du 19/10/2026) : le combat continue ; la place reste réservée, le personnage est inactif (garde relâchée au tick suivant). Le joueur a 30 s pour revenir avec son jeton (`reconnect`) : il reçoit `welcome` puis l'historique complet (`resync`). Au-delà, la place est abandonnée. Un départ volontaire (`bye`) abandonne la place tout de suite. Si plus personne n'est présent ni attendu, le combat s'arrête.
+- **Protections** : présentation dans les 5 s, 60 messages par seconde (rafale de 120), un historique par seconde au plus, 16 connexions au plus, jetons de 128 bits comparés en temps constant.
+- **Fin** : `end` (dernier tick simulé, raison), retour en salle d'attente (`ended`) ; une nouvelle partie commence quand tous sont de nouveau prêts. Le journal rejouable du combat (scénario complété des commandes admises, simulé de nouveau) est disponible (`LastJournal`, `CombatEnded`) ; ses lignes de combat sont exactement celles que les clients ont vérifiées.
+
+Serveur dédié (outil .NET, hors Unity) :
+
+```bash
+dotnet run --project src/EdS.Server -- --local                      # ce poste seulement, port 7777
+dotnet run --project src/EdS.Server -- --port 7777 --journaux combats   # réseau local, journaux rejouables (eds replay)
+```
+
 ## Réseau simulé
 
 `SimulatedNetwork` remplace TCP dans les tests et les mesures : temps virtuel avancé par l'appelant, latence d'un sens et gigue par lien (tirage `Pcg32` : même graine, mêmes délais), ordre conservé dans chaque sens comme en TCP, fermeture vue après les messages déjà partis, coupure brutale (`Cut`) qui perd les messages en route, mêmes limites de taille. Aucun fil, aucune horloge réelle : les tests de réseau sont reproductibles.
