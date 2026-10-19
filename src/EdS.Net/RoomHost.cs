@@ -75,11 +75,16 @@ namespace EdS.Net
             }
         }
 
+        /// <summary>
+        /// Arrête la boucle et l'écoute, puis ferme les connexions des joueurs avec une raison (revue Codex de la PR #19 : un hôte arrêté,
+        /// dans Unity notamment, ne laisse aucune connexion ouverte ni fil de lecture bloqué).
+        /// </summary>
         public void Dispose()
         {
             _running = false;
             if (_thread.IsAlive) _thread.Join(1000);
             _listener.Dispose();
+            lock (_gate) _room.CloseAll("serveur arrêté.");
         }
     }
 }
