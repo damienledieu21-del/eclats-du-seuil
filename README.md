@@ -14,6 +14,7 @@ Le plan complet est dans [PLAN_SIMULATEUR_V0_1.md](PLAN_SIMULATEUR_V0_1.md).
 | `src/EdS.Data` | netstandard2.1, C# 9 | Modèle de données, catalogue du format, validateur commun, empreinte, scénarios — dépend du domaine seulement |
 | `src/EdS.Data.Json` | netstandard2.1, C# 9 | Lecture des fichiers de données (analyseur JSON strict sans dépendance depuis le sous-lot 9.1), chargement et rejeu — partagé par les outils .NET, Unity et le futur serveur |
 | `src/EdS.Runtime` | netstandard2.1, C# 9 | Pont temps réel pour un client (Unity) : temps réel → ticks, intentions du joueur → commandes, état à afficher et retours, séance d'entraînement (sous-lot 9.2), éditeur de talents (9.4) |
+| `src/EdS.Net` | netstandard2.1, C# 9 | Réseau (lot 10) : protocole à messages strict, transport TCP et réseau simulé, salle de combat autoritaire et client ; détail : [docs/RESEAU.md](docs/RESEAU.md) |
 | `src/EdS.Tools` | net10.0 | Outils .NET : mesures des builds et rapport (`EdS.Tools.Measures`, sous-lot 8.6) |
 | `src/EdS.Cli` | net10.0 | Outil en ligne de commande (`rng`, `validate`, `simulate`, `replay`, `report`) |
 | `data/` | JSON | `v0/rules.json` (paramètres d'équilibrage et de progression), `v0/classes/bastion.json` (arbres, talents, compétences), `v0/builds/bastion.json` (builds de référence, sous-lot 8.5), `schemas/` |
@@ -44,7 +45,8 @@ dotnet test --filter Category=Support     # soutien, provocation, protection, r�
 dotnet test --filter Category=Bastion     # fiches du Bastion, Contrecoup, ripostes de zone (8.4) ; talents, passifs, builds (8.5)
 dotnet test --filter Category=Scenario    # compteurs de mesure, pilote, scénarios S1 à S5, commande report (8.6)
 dotnet test --filter Category=Runtime     # pont temps réel, séance d'entraînement, paquet Unity, éditeur de talents (9.2 à 9.4)
-scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
+dotnet test --filter Category=Network     # protocole, transport TCP et réseau simulé (lot 10)
+scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- validate data/v0/builds/bastion.json
@@ -116,6 +118,8 @@ Sous-lot 9.3 (prototype Unity) : projet `unity/` (Unity 6.3 LTS, URP) qui compil
 
 Sous-lot 9.4 (talents) : `TalentEditor` (`EdS.Runtime`) édite les talents d'un build point par point ; chaque point ajouté ou retiré donne un build candidat jugé par `BuildValidator`, le seul validateur : refusé, rien ne change et la raison s'affiche (rang maximal, plus de point, prérequis, seuil de 18 points du majeur, un seul majeur, dépendants). `TrainingSession.WithCustomBuild` fait jouer le build composé, validé comme tout build de scénario ; la partie se rejoue à l'identique. Dans Unity, la touche T ouvre l'écran des talents (combat en pause) : trois arbres, rangs, prérequis, départ d'un build de référence ou de zéro, « Jouer ce build ». Niveau, attributs et compétences restent ceux du build de départ. Détail : [docs/LIMITES_LOT_9.md](docs/LIMITES_LOT_9.md#sous-lot-94--talents).
 
+Sous-lot 10.1 (protocole et transport, début du lot 10) : `EdS.Net` (netstandard2.1, C# 9, sans dépendance) définit le protocole version 1 (messages JSON encadrés par leur longueur, lus par l'analyseur strict du 9.1, tailles bornées par sens : 8 Kio d'un client, 4 Mio du serveur), le transport TCP (fils de lecture et d'écriture, files bornées, faute de protocole détectée avant lecture) et un réseau simulé déterministe (latence, gigue, coupures) pour les tests. Décisions de Damien du 19 octobre 2026 : coopération à deux Bastions ; un joueur déconnecté laisse le combat continuer, personnage inactif, 30 s pour revenir. Détail : [docs/RESEAU.md](docs/RESEAU.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -131,4 +135,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 7 — limites et budgets (7.1), altérations (7.2), déclencheurs (7.3), correctifs 7.2 et 7.3.1 (PR #2 fusionnée)
 - [x] Lot 8 — premier Bastion jouable : PR de gameplay 8a (8.1 à 8.4) et 8b (8.5 à 8.7, PR #9, #10 et #11), fusionnées le 18 octobre 2026 ; tous les objectifs provisoires de mesure atteints
 - [x] Lot 9 — prototype Unity 3D : données portables (9.1, PR #12), pont temps réel (9.2, PR #13), projet Unity jouable (9.3, PR #14 et #15), interface de talents (9.4, PR #16) ; terminé le 19 octobre 2026, essayé par Damien dans Unity 6.3
-- [ ] Lot 10 — serveur autoritaire à deux joueurs : à faire
+- [ ] Lot 10 — serveur autoritaire à deux joueurs : 10.1 (protocole et transport) en revue ; 10.2 à 10.5 à faire

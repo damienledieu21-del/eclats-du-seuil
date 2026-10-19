@@ -15,7 +15,7 @@ MMORPG fantasy PC/mobile, monde partagé et persistant à terme, **principalemen
 
 ## Ordre des chantiers
 
-`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4, terminé le 19 octobre 2026) → serveur autoritaire à deux joueurs → vertical slice`
+`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4, terminé le 19 octobre 2026) → serveur autoritaire à deux joueurs (lot 10 : 10.1 → 10.2 → 10.3 → 10.4 → 10.5) → vertical slice`
 
 ### Lot 8 — premier Bastion réellement jouable
 
@@ -51,6 +51,20 @@ Objectif (« Après le lot 8 », point 1) : importer le cœur C# sans le réécr
 **Décisions du 18 octobre 2026** (prototype, questions posées avant le 9.1) : Unity 6.3 LTS (suivi jusqu’en décembre 2027), licence Personal gratuite ; essais sur le poste de Damien sous Windows ; projet Unity dans ce dépôt (`unity/`) ; rendu URP. Unity ne pouvant pas tourner dans les sessions cloud, les essais dans l'éditeur sont faits par Damien ; tout ce qui ne dépend pas d'Unity est testé en CI.
 
 **Décision du 18 octobre 2026** (essai du 9.3) : les deux caméras plaisent à Damien ; l'isométrique et la troisième personne sont toutes deux gardées, au choix du joueur (touche C).
+
+### Lot 10 — serveur autoritaire à deux joueurs
+
+Objectif (« Après le lot 8 », point 2) : deux joueurs dans le même combat, résolu par un serveur avec le même cœur ; commandes invalides refusées, déconnexion et reconnexion, latence, désynchronisation et rejeu. Pas d'infrastructure massive avant cette preuve. Détail : [RESEAU.md](RESEAU.md).
+
+| Sous-lot | Contenu | État |
+|---|---|---|
+| 10.1 | Protocole (messages stricts et bornés, version 1), transport TCP sans dépendance, réseau simulé déterministe pour les tests | PR vers `main` : `EdS.Net` (netstandard2.1), `MessageCodec`, `Framing`, `TcpNetConnection`, `SimulatedNetwork`, catégorie de tests `Network` |
+| 10.2 | Serveur : salle à deux places, horloge de 50 ms, intentions rangées au tick, refus motivés, limites de débit, déconnexion et reconnexion, journal rejouable ; serveur dédié | à faire |
+| 10.3 | Client réseau : combat local rejoué depuis les commandes du serveur, contrôle d'empreinte, resynchronisation, reconnexion | à faire |
+| 10.4 | Unity : héberger ou rejoindre, salle d'attente, deux Bastions, ciblage d'un allié, ping | à faire |
+| 10.5 | Mesures : latence (0 à 200 ms), gigue, désynchronisations et coupures provoquées ; rapport, notamment sur la parade | à faire |
+
+**Décisions du 19 octobre 2026** (avant le 10.1) : **coopération** (deux Bastions contre des assaillants) ; un joueur déconnecté laisse le **combat continuer**, son personnage inactif (garde relâchée), avec 30 secondes pour se reconnecter. La compensation de latence de la parade sera décidée après les mesures du 10.5.
 
 ## Décisions validées
 
