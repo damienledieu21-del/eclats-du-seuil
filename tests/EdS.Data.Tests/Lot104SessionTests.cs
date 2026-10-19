@@ -227,7 +227,9 @@ public class Lot104SessionTests
         var watch = System.Diagnostics.Stopwatch.StartNew();
         double last = 0;
         bool ready = false;
-        while (watch.Elapsed.TotalSeconds < 15 && !(session.Client?.Combat?.IsFinished == true && session.Client.Status == ClientStatus.Lobby))
+        // Les deux clients (joueur et robot, chacun sa connexion) doivent avoir reçu la fin : sous charge, l'un peut la recevoir plus tard.
+        bool Done(NetworkClient? c) => c?.Combat?.IsFinished == true && c.Status == ClientStatus.Lobby;
+        while (watch.Elapsed.TotalSeconds < 15 && !(Done(session.Client) && Done(session.Bot?.Client)))
         {
             double now = watch.Elapsed.TotalSeconds;
             session.Advance(now - last);
@@ -245,6 +247,8 @@ public class Lot104SessionTests
         string expected = session.Host!.Read(room => HashingCombatLog.Of(new[] { combat.Header }.Concat(room.LastJournal!.Skip(1))));
         Assert.Equal(expected, combat.Hash);
         Assert.Equal(expected, session.Bot!.Client.Combat!.Hash);
+        Assert.Equal(0, combat.Desyncs + session.Bot.Client.Combat.Desyncs);
+        Assert.Null(combat.EndProblem);
         session.Dispose();
         Assert.False(session.Host.IsRunning);
         Assert.Equal(ClientStatus.Left, session.Client.Status);
