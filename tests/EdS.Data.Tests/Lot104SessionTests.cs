@@ -105,6 +105,19 @@ public class Lot104SessionTests
         CombatLogReplayer.ReadSetup(room.LastJournal![0], ShippedData, out _)!.Commands;
 
     [Fact]
+    public void Robot_refuse_erreur_visible_place_libre()
+    {
+        // Revue Codex de la PR #21 (tour 6) : un robot refusé par le serveur (build inconnu) s'arrête avec la raison, que la salle d'attente
+        // d'Unity affiche (« robot arrêté : … ») ; sa place reste libre, le joueur reste dans la salle.
+        var lan = new Lan(Calm(3_000));
+        NetworkSession session = lan.Session("Dam", Rempart, bot: new BuildChoice("build.inconnu"));
+        lan.RunUntil(() => session.Client?.Status == ClientStatus.Lobby && session.Bot?.Client.Status == ClientStatus.Failed, 3);
+        Assert.Contains("build de référence inconnu", session.Bot!.Client.Error);
+        Assert.Null(session.Client!.Lobby!.Seats.Single(s => s.Id == "bastion2").Player);
+        Assert.Equal(ClientStatus.Lobby, session.Client!.Status);
+    }
+
+    [Fact]
     public void Build_retenu_seulement_une_fois_accepte_par_le_serveur()
     {
         // Revue Codex de la PR #21 (tour 4) : un build demandé n'est retenu qu'après l'accord du serveur ; un refus, notamment quand la
