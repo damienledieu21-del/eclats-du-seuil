@@ -235,6 +235,9 @@ namespace EdS.Net
         /// <summary>Après une reconnexion : la garde du personnage a été relâchée par le serveur, les demandes ponctuelles sont périmées.</summary>
         internal void PrepareReconnect()
         {
+            // Revue Codex de la PR #21 : la garde tenue avant la coupure est oubliée (le serveur l'a relâchée) ; le jeu la redonne en
+            // lisant la touche une fois le combat repris, au lieu de renvoyer une garde peut-être lâchée pendant l'absence.
+            _guardHeld = false;
             _parry = false;
             _slot = null;
             _inputDirty = true;

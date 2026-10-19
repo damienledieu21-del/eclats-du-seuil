@@ -207,7 +207,8 @@ namespace EdS.Game
 
         private void Say(string message)
         {
-            _messages.Add(new KeyValuePair<float, string>(Time.time, message));
+            // Les messages peuvent porter du texte venu du serveur ou de l'autre joueur : jamais de balise de texte enrichi.
+            _messages.Add(new KeyValuePair<float, string>(Time.time, Hud.Plain(message)));
             if (_messages.Count > 5) _messages.RemoveAt(0);
         }
 
@@ -387,7 +388,7 @@ namespace EdS.Game
         {
             NetworkClient client = _net?.Client;
             SeatInfo seat = client?.Lobby?.Seats.FirstOrDefault(s => s.Id == client.SeatId);
-            return seat?.Build ?? _netBuildId;
+            return Hud.Plain(seat?.Build ?? _netBuildId);
         }
 
         private void UpdateNetwork(bool input)
@@ -433,6 +434,8 @@ namespace EdS.Game
             bool fighting = client != null && client.Status == ClientStatus.Combat && !_combat.IsFinished;
             if (input && fighting) ReadCombatInput();
             else if (fighting) _combat.SetGuard(false);   // menu ou talents ouverts : garde relâchée, rien d'autre n'est envoyé
+            // Revue Codex de la PR #21 : coupé ou en retour, la garde mémorisée est oubliée ; la touche est relue une fois le combat repris.
+            else if (combat != null && !combat.IsFinished) combat.SetGuard(false);
             Move(player);
             foreach (CombatFeedback feedback in _combat.DrainFeedback()) Show(feedback);
             if (combat != null && combat.IsFinished && _lastCombat == null)
