@@ -57,11 +57,15 @@ public class Lot106TelegraphTests
         public SimulatedNetwork Net { get; }
         public CombatRoom Room { get; }
 
+        /// <summary>Lien simulé de chaque joueur (pour le couper).</summary>
+        public Dictionary<NetworkClient, SimulatedConnection> Links { get; } = new();
+
         public NetworkClient Join(string name, string build, LinkProfile link, NetworkClientOptions options, bool bot = false,
             Func<INetConnection, INetConnection>? wrap = null)
         {
-            INetConnection connection = Net.Connect("salle", link);
+            SimulatedConnection connection = Net.Connect("salle", link);
             var client = new NetworkClient(ShippedData, wrap is null ? connection : wrap(connection), name, new BuildChoice(build), options);
+            Links[client] = connection;
             if (bot)
             {
                 var player = new BotPlayer(client);
@@ -162,6 +166,31 @@ public class Lot106TelegraphTests
         Assert.Null(blind.SmoothedRttMs);
         Assert.Equal(0, blind.Combat!.TelegraphLeadSeconds);
         Assert.All(blind.Combat.Others().Where(o => o.View.NextAttackTick is long), o => Assert.Equal(Raw(blind.Combat, o), o.NextAttackSeconds!.Value, 9));
+    }
+
+    [Fact]
+    public void Mesure_repartie_de_zero_apres_un_retour()
+    {
+        // Revue Codex de la PR #23 : au retour par un lien plus rapide, l'avance ne garde pas celle de l'ancien lien.
+        var duel = new Duel(seed: 13);
+        NetworkClient a = duel.Join("Dam", "build.bastion.rempart", new LinkProfile(150, 0), new NetworkClientOptions());
+        NetworkClient b = duel.Join("Léa", "build.bastion.gardien", new LinkProfile(20, 0), new NetworkClientOptions());
+        duel.RunUntil(() => a.Status == ClientStatus.Lobby && b.Status == ClientStatus.Lobby, 3);
+        a.SetReady(true);
+        b.SetReady(true);
+        duel.RunUntil(() => a.Status == ClientStatus.Combat && a.Combat!.Tick > 40, 8);
+        Assert.InRange(a.Combat!.TelegraphLeadSeconds, 0.29, 0.33);
+
+        duel.Net.Cut(duel.Links[a]);
+        duel.RunUntil(() => a.Status == ClientStatus.Disconnected, 1);
+        SimulatedConnection fast = duel.Net.Connect("salle", new LinkProfile(20, 0));
+        duel.Links[a] = fast;
+        a.Reconnect(fast);
+        Assert.Null(a.SmoothedRttMs);
+        Assert.Equal(0, a.Combat.TelegraphLeadSeconds);
+        duel.RunUntil(() => a.Status == ClientStatus.Combat && a.SmoothedRttMs != null, 3);
+        Assert.InRange(a.SmoothedRttMs!.Value, 39, 61);
+        Assert.InRange(a.Combat.TelegraphLeadSeconds, 0.039, 0.061);
     }
 
     [Theory]

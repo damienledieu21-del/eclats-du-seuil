@@ -167,7 +167,7 @@ namespace EdS.Net
         /// <summary>Dernier temps aller-retour mesuré, en millisecondes ; null avant la première mesure.</summary>
         public double? RttMs { get; private set; }
 
-        /// <summary>Temps aller-retour lissé (moyenne mobile, 1/8 par mesure), en millisecondes.</summary>
+        /// <summary>Temps aller-retour lissé (moyenne mobile, 1/8 par mesure), en millisecondes ; repart de zéro à chaque retour (<see cref="Reconnect"/>).</summary>
         public double? SmoothedRttMs { get; private set; }
 
         /// <summary>Secondes écoulées depuis la coupure ; null si le client n'est pas coupé.</summary>
@@ -242,6 +242,10 @@ namespace EdS.Net
             if (_connection.IsOpen) _connection.Close("remplacée par une nouvelle connexion.");
             _connection = connection;
             _lastPingAt = double.NegativeInfinity;
+            // Revue Codex de la PR #23 : la nouvelle connexion n'a pas forcément la latence de l'ancienne ; la mesure repart de zéro
+            // (sans avance de la télégraphie jusqu'à la première réponse) au lieu de converger lentement depuis l'ancien lien.
+            RttMs = null;
+            SmoothedRttMs = null;
             Combat.PrepareReconnect();
             Status = ClientStatus.Reconnecting;
             _connection.Send(new ReconnectMessage(Protocol.Version, Token));
