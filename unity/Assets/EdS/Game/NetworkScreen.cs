@@ -127,6 +127,9 @@ namespace EdS.Game
                 line += 28;
                 if (client.LastRejected != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ffcf7a>Refusé : " + client.LastRejected + "</color>");
                 line += 30;
+                // Fin de combat non vérifiée (divergence non réparée) : à signaler à Claude, le client reste dans la salle.
+                if (client.Error != null) Hud.Small(new Rect(x, line, w, 48), "<color=#ff9a7a>" + client.Error + "</color>");
+                line += 30;
             }
             if (!string.IsNullOrEmpty(lastCombat)) Hud.Small(new Rect(x, y + 470, w, 24), lastCombat);
             if (client == null || client.Status == ClientStatus.Failed || client.Status == ClientStatus.Left || client.Lobby == null)
