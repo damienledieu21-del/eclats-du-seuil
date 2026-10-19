@@ -15,20 +15,18 @@ namespace EdS.Runtime
     /// (<see cref="DrainFeedback"/>). Le moteur reste seul juge : une commande refusée l'est par lui, et le combat complété des commandes
     /// soumises (<see cref="CompletedSetup"/>) se rejoue à l'identique.
     /// </summary>
-    public sealed class RealtimeCombat
+    public sealed class RealtimeCombat : ICombatClient
     {
         /// <summary>Emplacement de l'ultime dans <see cref="UseSlot"/> (les actives occupent 0 à 3).</summary>
         public const int UltimateSlot = 4;
 
         /// <summary>Retours conservés au plus (les plus anciens sont abandonnés si le client ne les lit pas).</summary>
-        public const int MaxPendingFeedback = 256;
+        public const int MaxPendingFeedback = FeedbackTracker.MaxPending;
 
         private readonly CombatSetup _setup;
         private readonly CombatEngine _engine;
         private readonly long _tickMs;
-        private readonly List<CombatFeedback> _feedback = new List<CombatFeedback>();
-        private readonly Dictionary<string, CombatantCounters> _counters = new Dictionary<string, CombatantCounters>(StringComparer.Ordinal);
-        private readonly Dictionary<string, bool> _dead = new Dictionary<string, bool>(StringComparer.Ordinal);
+        private readonly FeedbackTracker _feedback;
         private double _accumulated;
         private bool _guardHeld;
         private bool _parryRequested;
@@ -49,12 +47,7 @@ namespace EdS.Runtime
             if (_engine.View(playerId).Kind != CombatantKind.Character)
                 throw new ArgumentException($"« {playerId} » n'est pas un personnage.", nameof(playerId));
             _tickMs = _engine.TickMilliseconds;
-            foreach (string id in _engine.CombatantIds)
-            {
-                CombatantView view = _engine.View(id);
-                _counters[id] = view.Counters;
-                _dead[id] = view.IsDead;
-            }
+            _feedback = new FeedbackTracker(_engine);
             TargetId = Enemies().FirstOrDefault()?.Id;
         }
 
@@ -184,7 +177,7 @@ namespace EdS.Runtime
             if (IsFinished) return;
             SubmitIntentions();
             _engine.Step();
-            CollectFeedback();
+            _feedback.Collect(_engine);
             if (TargetId is null || !Enemies().Any(e => e.Id == TargetId)) TargetId = Enemies().FirstOrDefault()?.Id;
         }
 
@@ -222,99 +215,21 @@ namespace EdS.Runtime
             }
         }
 
-        private static SkillDefinition? SkillAt(CombatantView me, int slot) => IntentionPlanner.SkillAt(me, slot);
-
         // --- Retours ------------------------------------------------------------------------------------------------------
 
-        private void AddFeedback(CombatFeedback feedback)
-        {
-            if (_feedback.Count >= MaxPendingFeedback) _feedback.RemoveAt(0);
-            _feedback.Add(feedback);
-        }
+        private void AddFeedback(CombatFeedback feedback) => _feedback.Add(feedback);
 
         /// <summary>Retours apparus depuis le dernier appel, dans l'ordre ; la liste interne est vidée.</summary>
-        public IReadOnlyList<CombatFeedback> DrainFeedback()
-        {
-            CombatFeedback[] drained = _feedback.ToArray();
-            _feedback.Clear();
-            return drained;
-        }
-
-        private void CollectFeedback()
-        {
-            foreach (string id in _engine.CombatantIds)
-            {
-                CombatantView view = _engine.View(id);
-                CombatantCounters before = _counters[id], after = view.Counters;
-                void Count(long b, long a, FeedbackKind kind)
-                {
-                    if (a > b) AddFeedback(new CombatFeedback(kind, id, a - b, null));
-                }
-                Count(before.DamageTaken, after.DamageTaken, FeedbackKind.DamageTaken);
-                Count(before.DamageAbsorbed, after.DamageAbsorbed, FeedbackKind.Absorbed);
-                Count(before.Blocks, after.Blocks, FeedbackKind.Blocked);
-                Count(before.PerfectParries, after.PerfectParries, FeedbackKind.PerfectParry);
-                Count(before.FailedParries, after.FailedParries, FeedbackKind.FailedParry);
-                Count(before.GuardBreaks, after.GuardBreaks, FeedbackKind.GuardBroken);
-                Count(before.CriticalHits, after.CriticalHits, FeedbackKind.CriticalHit);
-                Count(before.UltimatesCast, after.UltimatesCast, FeedbackKind.Ultimate);
-                Count(before.CommandsRejected, after.CommandsRejected, FeedbackKind.Rejected);
-                if (view.IsDead && !_dead[id]) AddFeedback(new CombatFeedback(FeedbackKind.Died, id, 0, null));
-                _counters[id] = after;
-                _dead[id] = view.IsDead;
-            }
-        }
+        public IReadOnlyList<CombatFeedback> DrainFeedback() => _feedback.Drain();
 
         // --- État à afficher ----------------------------------------------------------------------------------------------
 
         /// <summary>État du joueur au début du prochain tick.</summary>
-        public PlayerState Player()
-        {
-            CombatantView me = _engine.View(PlayerId);
-            long tick = _engine.CurrentTick;
-            CombatRules rules = _setup.Combat;
-            CombatantRules effective = me.Rules!;
-            var slots = new List<SkillSlot>();
-            CharacterBuild build = me.Character!.Build;
-            for (int slot = 0; slot <= UltimateSlot; slot++)
-            {
-                if (slot < UltimateSlot && slot >= build.ActiveSkills.Count) continue;
-                SkillDefinition? skill = SkillAt(me, slot);
-                if (skill is null) continue;
-                SkillCombatDefinition combat = skill.Combat!;
-                long readyTick = Math.Max(me.CooldownReadyTick(skill.Id), me.GlobalCooldownReadyTick);
-                double remaining = Math.Max(0, readyTick - tick) * TickSeconds;
-                bool ultimate = slot == UltimateSlot;
-                string? unavailable =
-                    me.IsDead ? "hors de combat"
-                    : !me.CanCast ? "contrôlé"
-                    : tick < me.CooldownReadyTick(skill.Id) ? $"en recharge ({remaining:0.0} s)"
-                    : tick < me.GlobalCooldownReadyTick ? "recharge globale"
-                    : ultimate && me.Resonance < rules.UltimateResonanceCost ? $"Résonance {me.Resonance}/{rules.UltimateResonanceCost}"
-                    : me.Endurance < combat.EnduranceCost ? $"endurance {me.Endurance}/{combat.EnduranceCost}"
-                    : me.RampartCharges < combat.RampartChargeCost ? $"Charges {me.RampartCharges}/{combat.RampartChargeCost}"
-                    : combat.Targeting == SkillTargeting.Enemy && TargetId is null ? "aucune cible"
-                    : null;
-                slots.Add(new SkillSlot(slot, skill.Id, skill.Name, ultimate, combat.EnduranceCost, effective.CooldownMs(skill, combat) / 1000.0,
-                    remaining, unavailable));
-            }
-            return new PlayerState(me, rules.ResonanceMax, effective.RampartChargesMax, slots, TargetId,
-                Math.Max(0, me.ParryRecoveryUntilTick - tick) * TickSeconds);
-        }
+        public PlayerState Player() => CombatDisplay.Player(_engine, _setup.Combat, PlayerId, TargetId);
 
         /// <summary>Les autres combattants (ennemis et alliés), dans l'ordre du scénario.</summary>
-        public IReadOnlyList<OtherState> Others()
-        {
-            CombatantView me = _engine.View(PlayerId);
-            long tick = _engine.CurrentTick;
-            return _engine.CombatantIds.Where(id => id != PlayerId).Select(id =>
-            {
-                CombatantView v = _engine.View(id);
-                double? next = v.NextAttackTick is long n ? Math.Max(0, n - tick) * TickSeconds : (double?)null;
-                return new OtherState(v, v.Team != me.Team, next);
-            }).ToList();
-        }
+        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId);
 
-        private IEnumerable<OtherState> Enemies() => Others().Where(o => o.IsEnemy && !o.View.IsDead);
+        private IEnumerable<OtherState> Enemies() => CombatDisplay.LivingEnemies(_engine, PlayerId);
     }
 }
