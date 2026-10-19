@@ -12,13 +12,13 @@ Ce qui existe et sert tel quel :
 
 - le **moteur de combat** déterministe (lots 5 à 8) et le **Bastion** complet (trois arbres, actives, ultime, passifs, builds de référence) ;
 - le **prototype Unity** (lot 9) : arène, deux caméras, interface de combat, écran des talents ;
-- le **réseau** (lot 10) : serveur autoritaire, combat à deux, reconnexion, mesures ; la parade en réseau (option B) en revue.
+- le **réseau** (lot 10) : serveur autoritaire, combat à deux, reconnexion, mesures. Pour la parade en réseau, Damien a choisi l'option B le 19 octobre (télégraphie avancée du ping) ; ce choix n'entre dans la feuille de route qu'avec la PR #23, pas encore fusionnée (`main` indique encore « choix en attente »).
 
 Ce qui manque, vérifié dans le code :
 
 | Manque | Détail |
 |---|---|
-| **Ennemis qui meurent** | Les assaillants n'ont pas de points de vie (`AssailantSetup` sans PV, `Health` nul) : ce sont des mannequins qui frappent. Un combat ne se gagne donc pas, il dure jusqu'au temps imparti. Il faut des PV, la mort d'un assaillant et la victoire des joueurs : changement du moteur, du schéma des scénarios et du journal (nouvelles versions, nouveaux journaux de référence). |
+| **Ennemis qui meurent** | Les assaillants n'ont pas de points de vie (`AssailantSetup` sans PV, `Health` nul) : ce sont des mannequins qui frappent. Les joueurs ne peuvent donc pas gagner : le combat s'arrête quand ils tombent (`TeamDefeated`, l'équipe des assaillants gagne) ou au temps imparti. La défaite existe déjà ; il faut des PV, la mort d'un assaillant et la **victoire des joueurs** : changement du moteur, du schéma des scénarios et du journal (nouvelles versions, nouveaux journaux de référence). |
 | **Progression par niveau** | Les règles de niveau (points de talent, actives, ultime, passifs) existent et sont vérifiées par `BuildValidator` ; des builds valides existent aux niveaux 30 et 10 (`build.bastion.niveau_10`), et des exemples de niveaux 1, 10 et 30 dans les tests. Mais **aucune règle ne lie les attributs au niveau** : les builds livrés (`data/v0/builds/bastion.json`), même celui de niveau 10, ont les attributs communs du niveau 30 (30, 10, 6, 30, 15, 20), et les exemples des tests (`BastionBuildExamples`) un autre jeu fixe (14, 8, 6, 14, 10, 12) quel que soit leur niveau. Il manque le **budget d'attributs par niveau** (« chantier ultérieur » dans la feuille de route) et l'**expérience** qui fait monter de niveau. |
 | **Monde** | Aucune notion de zone, de déplacement hors combat, de rencontre, de mission, d'objet, d'inventaire, de récolte, de fabrication ni de sauvegarde. Le moteur n'a pas de positions (décision du lot 8) : ce qui se passe hors combat est à construire à côté. |
 | **Deuxième joueur hors combat** | Le réseau ne partage que les combats (salle d'attente puis combat) ; personne ne voit l'autre se déplacer. |
@@ -71,8 +71,9 @@ Pour chaque question : les options, puis mon avis. Réponds simplement par la le
 
 **Q4. L'équipement.**
 - A. Pas d'équipement : la récompense est l'expérience et des objets de fabrication.
-- B. Trois emplacements (arme, armure, bijou) qui ne donnent que des bonus de caractéristiques (pas d'effets spéciaux, comme décidé : « pas de déclencheurs d'équipement avant le chantier des objets »).
-- *Avis* : B ; sans équipement, la fabrication n'a pas de but.
+- B. Trois emplacements (arme, armure, bijou) qui ne donnent que des bonus de caractéristiques : le plus simple pour la slice.
+- C. Trois emplacements avec, en plus, des effets spéciaux (déclencheurs d'équipement). La décision « pas de déclencheurs d'équipement avant le chantier des objets » les reportait à ce chantier, que la slice commence : ils sont donc possibles, mais demandent plus de travail (moteur et données).
+- *Avis* : B pour la slice (sans équipement, la fabrication n'a pas de but), C plus tard avec le chantier des objets.
 
 **Q5. L'inventaire.**
 - A. Simple : 24 places, objets empilables, pas de poids, pas d'échange.
