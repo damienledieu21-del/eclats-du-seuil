@@ -130,6 +130,11 @@ namespace EdS.Net
             if (_seats.Count == 0) throw new ArgumentException("Scénario sans personnage : aucune place.", nameof(scenario));
             if (_seats.Count > Protocol.MaxSeats) throw new ArgumentException($"Au plus {Protocol.MaxSeats} places.", nameof(scenario));
             if (_seats.Any(s => !MessageCodec.IsId(s.Id))) throw new ArgumentException("Identifiant de personnage invalide pour le protocole.", nameof(scenario));
+            // Revue Codex de la PR #20 (tour 4) : les ennemis aussi peuvent être nommés dans un message (cible) ; le client refuserait
+            // l'en-tête, le serveur refuse donc un tel scénario dès la création de la salle.
+            for (int i = 0; i < scenario.Combatants.Count; i++)
+                if (!MessageCodec.IsId(scenario.Combatants[i].Id))
+                    throw new ArgumentException($"Combattant {i} (combatants[{i}].id) : identifiant invalide pour le protocole (1 à {Protocol.MaxIdLength} caractères parmi a-z, A-Z, 0-9, « . », « _ », « - »).", nameof(scenario));
             TickMs = checked((int)scenario.Combat.TickMilliseconds);
             _tickSeconds = TickMs / 1000.0;
         }
