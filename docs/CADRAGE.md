@@ -215,9 +215,10 @@ Relevés le 19 octobre 2026 en confrontant le cadrage aux documents et au code, 
 
 **À proposer par Claude, puis à valider par un essai ou par Damien**
 
-- Règle du contact entre joueurs et créatures (L11-D5), avant de figer le moteur (sous-lot 11.3).
-- Couverture directionnelle du bouclier, moment de verrouillage de la cible et de la direction, valeur du ralentissement en garde (L11-D2, L11-D3).
-- Portées et rayons des compétences du Bastion.
+- Règle du contact entre joueurs et créatures (L11-D5) : deux règles candidates réalisées au 11.4, choix de Damien après l'essai du 11.6.
+- Valeur finale du ralentissement en garde (L11-D3) : réglée à l'essai 11.9 (départ : la moitié de la vitesse).
+
+Retenus le 20 octobre 2026 à 01 h 48 : la couverture du bouclier (180° de devant), l'orientation en garde vers la cible, le verrouillage au lancement, les portées du Bastion ([COMBAT_ESPACE.md](COMBAT_ESPACE.md#10-retenu-par-damien-le-20-octobre-2026)) et les quatre principes de l'architecture ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md#9-retenu-par-damien-le-20-octobre-2026)).
 
 **Arbitrages de gameplay**
 

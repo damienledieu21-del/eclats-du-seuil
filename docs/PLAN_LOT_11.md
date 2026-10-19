@@ -196,8 +196,7 @@ Ces durées s'additionnent si les lots se suivent. Leur somme n'est ni une estim
 
 **À proposer par Claude, puis à valider** :
 
-- **Architecture de référence** (11.2) : relue et validée par Damien avant le moteur spatial.
-- **Couverture du bouclier, verrouillage de la cible et de la direction, portées et rayons du Bastion** (11.3) : validés par Damien.
+- **Architecture de référence** (11.2) et **règles du combat dans l'espace** (11.3) : validées par Damien le 20 octobre 2026 à 01 h 48 ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md), [COMBAT_ESPACE.md](COMBAT_ESPACE.md)).
 - **Contact joueur–créature** (section 4.1) : choisi par Damien après l'essai du 11.6 (rapport 11.9).
 - **Ralentissement en garde** : réglé par essais (11.9).
 

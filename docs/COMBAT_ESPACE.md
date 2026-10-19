@@ -1,8 +1,8 @@
 # Règles du combat dans l'espace (sous-lot 11.3)
 
-Proposition de Claude du 20 octobre 2026, **à valider par Damien** avant le moteur spatial (11.4). Elle applique les décisions L11-D2 à L11-D7 du 20 octobre 2026 ([registre](CADRAGE.md#5-décisions-du-20-octobre-2026-l11-d1-à-l11-d12)) et l'architecture du 11.2 ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md)).
+Proposition de Claude du 20 octobre 2026, **validée par Damien le 20 octobre 2026 à 01 h 48 (« pour les 9 questions on garde tes avis »)**, avant le moteur spatial (11.4). Elle applique les décisions L11-D2 à L11-D7 du 20 octobre 2026 ([registre](CADRAGE.md#5-décisions-du-20-octobre-2026-l11-d1-à-l11-d12)) et l'architecture du 11.2 ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md)).
 
-Ce qui est **décidé** est rappelé comme tel. Ce qui est **proposé** est marqué *Proposition* et regroupé en section 10. Toutes les valeurs sont provisoires et seront des paramètres des données.
+Ce qui est **décidé** est rappelé comme tel. Les cinq propositions de la section 10 sont **retenues** (marquées *Retenu*). Les autres choix marqués *Proposition* sont des choix techniques de Claude, réglables. Toutes les valeurs sont provisoires et seront des paramètres des données.
 
 ## 1. Espace
 
@@ -10,18 +10,18 @@ Ce qui est **décidé** est rappelé comme tel. Ce qui est **proposé** est marq
 - **Plan au sol** (décidé, L11-D6) : une position est un point (x, z) sur une **surface praticable**. Les étages (pont, souterrain) sont des surfaces distinctes, reliées par des passages (rampe, escalier). Deux combattants à la même position (x, z) sur deux surfaces ne se touchent pas et ne sont pas à portée.
   - *Proposition* : la première démonstration n'a qu'une surface ; les pentes y sont visuelles (pas d'effet sur la vitesse).
 - **Orientation** : chaque combattant a une direction (angle sur le plan). Elle sert aux cônes, à la couverture du bouclier et à l'affichage.
-- **Emprise** : un cercle par combattant. *Proposition* : rayon de 0,5 m pour le Bastion, 0,6 m pour un loup, 1,2 m pour un chef ; une donnée de chaque combattant.
+- **Emprise** : un cercle par combattant. *Retenu comme valeurs de départ* : rayon de 0,5 m pour le Bastion, 0,6 m pour un loup, 1,2 m pour un chef ; une donnée de chaque combattant.
 - **Décor** : obstacles solides (murs, rochers, troncs), en segments et polygones convexes, donnés avec la zone. Ils arrêtent le déplacement et la ligne de vue des compétences à cible.
   - *Proposition* : au lot 11, ils n'arrêtent pas les zones au sol, que la conception place en conséquence.
 
 ## 2. Déplacement
 
 - **Intention de déplacement** à chaque tick : une direction et une allure (marche). Le moteur applique la vitesse, le décor et les collisions ; personne ne se téléporte.
-- **Vitesse de base** : *Proposition* 5 m/s, celle du prototype Unity.
-- **Garde en marchant** (décidé, L11-D3) : la garde ralentit le Bastion. La valeur se règle par essais ; l'essai 11.9 la fixe. *Proposition* : commencer à la moitié de la vitesse.
+- **Vitesse de base** : *Retenu comme valeur de départ* : 5 m/s, celle du prototype Unity.
+- **Garde en marchant** (décidé, L11-D3) : la garde ralentit le Bastion. La valeur se règle par essais ; l'essai 11.9 la fixe. *Retenu comme valeur de départ* : la moitié de la vitesse.
 - **Parade et compétences en mouvement** : *Proposition* oui pour le Bastion ; seules les incantations longues des classes futures s'interrompront au déplacement.
 - **Pas d'esquive universelle** (décidé, L11-D4) : on évite en marchant.
-- **Règle de conception** (L11-D4), vérifiée par le validateur des données : une attaque ordinaire évitable laisse le temps d'en sortir au pas de base. Son annonce dure au moins le temps de traverser sa zone (rayon ÷ vitesse de base), plus un temps de réaction. *Proposition* : 300 ms de réaction.
+- **Règle de conception** (L11-D4), vérifiée par le validateur des données : une attaque ordinaire évitable laisse le temps d'en sortir au pas de base. Son annonce dure au moins le temps de traverser sa zone (rayon ÷ vitesse de base), plus un temps de réaction. *Retenu comme valeur de départ* : 300 ms de réaction.
 
 ## 3. Collisions
 
@@ -50,7 +50,7 @@ Décidé (L11-D2) : ciblage mixte.
 | **Point au sol** | Un point choisi, à portée | Le point doit être à portée et sur une surface praticable |
 | **Autour de soi** | Le lanceur | Cercle centré sur le lanceur au moment de l'impact |
 
-- **Verrouillage** (à préciser selon L11-D2) : *Proposition* : cible, direction et point sont **verrouillés au lancement**. Un coup instantané du Bastion part et touche dans le même tick, comme aujourd'hui.
+- **Verrouillage** (précisé selon L11-D2) : *Retenu* : cible, direction et point sont **verrouillés au lancement**. Un coup instantané du Bastion part et touche dans le même tick, comme aujourd'hui.
 - **Sélection de cible en vue 2 et sur mobile** : *Proposition* : touche Tab et clic, comme aujourd'hui ; aide à la visée sur mobile (cible la plus proche dans la direction regardée) au 11.8.
 - **La caméra ne change rien** : ni portée, ni zone, ni résolution (Q13).
 
@@ -79,14 +79,14 @@ Décidé (L11-D7) : la forme d'une attaque et ses défenses sont deux informatio
 
 Décidé (L11-D3) : la couverture du bouclier est décrite explicitement, sans protection à 360° implicite.
 
-- *Proposition* : la garde et la parade parfaite ne valent que contre un coup venu de l'**arc frontal** du Bastion, de **180°** centré sur son orientation (paramètre des règles). Un coup reçu de dos n'est ni gardé ni paré : dégâts pleins.
+- *Retenu* : la garde et la parade parfaite ne valent que contre un coup venu de l'**arc frontal** du Bastion, de **180°** centré sur son orientation (paramètre des règles). Un coup reçu de dos n'est ni gardé ni paré : dégâts pleins.
 - **Origine d'un coup** : la position de l'attaquant pour un coup dirigé ou un projectile ; le centre de la forme pour une zone.
-- *Proposition* : **orientation en garde**. En garde, le Bastion se tourne vers sa cible sélectionnée ; sans cible, il garde l'orientation de son déplacement. C'est simple au clavier comme au pouce, et le placement compte : un ennemi qui le contourne le frappe de dos.
+- *Retenu* : **orientation en garde**. En garde, le Bastion se tourne vers sa cible sélectionnée ; sans cible, il garde l'orientation de son déplacement. C'est simple au clavier comme au pouce, et le placement compte : un ennemi qui le contourne le frappe de dos.
 - Coûts d'endurance, rupture de garde et fenêtre de parade (150 ms) sont inchangés.
 
 ## 7. Le Bastion dans l'espace
 
-*Proposition*, à valider : des portées pour chaque compétence. Elles changent le sens de certaines fiches du catalogue (« tous les ennemis » devient « tous les ennemis dans le rayon »).
+*Retenu* : des portées pour chaque compétence. Elles changent le sens de certaines fiches du catalogue (« tous les ennemis » devient « tous les ennemis dans le rayon »).
 
 | Compétence ou talent | Portée ou forme proposée |
 |---|---|
@@ -123,12 +123,12 @@ Comme au 11.1, les journaux des scénarios livrés sans positions sont comparés
 - **Caméra sans effet** : le même combat scripté donne le même journal dans les deux vues.
 - **Contact** : les deux règles candidates testées (aucun chevauchement en A, aucun blocage en B, aucun piège dans un angle en A).
 
-## 10. À valider par Damien
+## 10. Retenu par Damien le 20 octobre 2026
 
-1. **Arc du bouclier** : garde et parade valent contre les coups venus des 180° de devant ; de dos, dégâts pleins. *Avis* : oui.
-2. **Orientation en garde** : vers la cible sélectionnée, sinon dans le sens du déplacement. *Avis* : oui.
-3. **Portées du Bastion** (section 7), dont Onde de rupture limitée à 5 m et Riposte précise en mêlée seulement. *Avis* : oui.
-4. **Verrouillage au lancement** de la cible, de la direction et du point. *Avis* : oui.
-5. **Valeurs de départ des essais** : vitesse de 5 m/s, garde à la moitié, réaction de 300 ms, emprises de 0,5 à 1,2 m. *Avis* : oui, à régler au 11.9.
+1. **Arc du bouclier** : garde et parade valent contre les coups venus des 180° de devant ; de dos, dégâts pleins. **Retenu.**
+2. **Orientation en garde** : vers la cible sélectionnée, sinon dans le sens du déplacement. **Retenu.**
+3. **Portées du Bastion** (section 7), dont Onde de rupture limitée à 5 m et Riposte précise en mêlée seulement. **Retenu.**
+4. **Verrouillage au lancement** de la cible, de la direction et du point. **Retenu.**
+5. **Valeurs de départ des essais** : vitesse de 5 m/s, garde à la moitié, réaction de 300 ms, emprises de 0,5 à 1,2 m. **Retenu**, à régler au 11.9.
 
 Le contact entre joueurs et créatures (A ou B) se choisit après l'essai du 11.6, pas maintenant.
