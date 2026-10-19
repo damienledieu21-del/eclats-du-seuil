@@ -40,7 +40,7 @@ Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tablea
 | 1, 2, 3, 4 | compétences des emplacements |
 | R | ultime (100 de Résonance) |
 | Tab | ennemi suivant comme cible |
-| C | caméra isométrique ↔ troisième personne |
+| C | caméra isométrique ↔ troisième personne (bases des vues 1 et 2 retenues par le [cadrage](CADRAGE.md#2-direction-générale-retenu)) |
 | A / E | tourner la caméra isométrique |
 | molette | zoom ; bouton du milieu maintenu : tourner la caméra en troisième personne |
 | T | écran des talents (combat en pause) ; T ou Échap pour le fermer |

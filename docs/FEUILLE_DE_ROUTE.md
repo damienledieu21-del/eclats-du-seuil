@@ -4,18 +4,28 @@ Source de vérité pour les agents : le lot en cours, les décisions validées p
 
 ## Vision
 
-MMORPG fantasy PC/mobile, monde partagé et persistant à terme, **principalement jouable en solo** (aucun groupe imposé pour la moindre activité), combats dynamiques en temps réel, progression profonde, classes aux identités mécaniques très distinctes, trois arbres de talents combinables par classe, synergies, exploration, métiers, économie, coopération facultative, cross-play PC/mobile. Direction artistique : fantasy stylisée plutôt sombre (base créative, pas une charte). Caméra : **non tranchée** (isométrique 3D orientable, troisième personne ou hybride), à comparer dans le prototype Unity.
+MMORPG fantasy original PC/mobile, monde partagé et persistant à terme, **principalement jouable en solo** (aucun groupe imposé pour la moindre activité ; formule à préciser, voir l'écart E1 du [cadrage](CADRAGE.md#6-écarts-avec-lexistant)), combats dynamiques en temps réel, progression profonde, classes aux identités mécaniques très distinctes, trois arbres de talents combinables par classe, synergies, exploration, métiers, économie, coopération facultative, cross-play PC/mobile.
 
-## Progression validée (ne change pas pendant le lot 8)
+**Cadrage du 19 octobre 2026** (choix de Damien, détail et statuts dans [CADRAGE.md](CADRAGE.md)) :
+- **Direction artistique** : fantasy stylisée, ambiance propre à chaque région (Vallons accueillants, forêt mystérieuse, profondeurs du Seuil étranges) ; remplace « plutôt sombre ».
+- **Deux vues au choix du joueur** : vue haute de trois quarts (vue 1) et troisième personne montrant le personnage entier (vue 2), en exploration comme en combat ; remplace « caméra non tranchée ».
+- **Positions réelles en combat** (Q13).
+- **Première région** : les Vallons d'Aube.
+
+## Progression validée (configuration actuelle, provisoire)
+
+Toujours en vigueur ; paramètres de `rules.json`. Le cadrage du 19 octobre 2026 laisse le plafond final ouvert (Q18) et prévoit une refonte avec les livres de build, les héritages et les maîtrises (H6, H7) : elle se fera avec Damien, au chantier de l'alpha.
 
 - Niveau maximal provisoire 30 ; 1 point de talent par niveau à partir du niveau 2, soit 29 points au niveau 30.
 - Trois arbres librement combinables. Talent majeur : 18 points dans son arbre + prérequis, puis 1 point. Un seul majeur par build ; un build sans majeur est valide.
 - Actives : 2 (niv. 1), 3 (niv. 5), 4 (niv. 10). Ultime : 1 à partir du niveau 10. Passifs équipables (distincts des talents) : 1 (niv. 1), 2 (niv. 5), 3 (niv. 20), 4 (niv. 30).
-- Budget d'attributs et progression de long terme : chantier ultérieur.
+- Attributs et progression de long terme : chantier ultérieur. Aujourd'hui, les attributs sont écrits dans chaque build. Le cadrage recommande une base fixée par la classe et le niveau, sans répartition manuelle (Q20, à confirmer), plutôt qu'un budget à répartir.
 
 ## Ordre des chantiers
 
-`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4, terminé le 19 octobre 2026) → serveur autoritaire à deux joueurs (lot 10 : 10.1 → 10.2 → 10.3 → 10.4 → 10.5 → 10.6) → vertical slice`
+`8.1 → 8.2 → 8.3 → 8.4 → revue PR 8a → 8.5 → 8.6 → 8.7 (lot 8 terminé le 18 octobre 2026) → prototype Unity 3D (lot 9 : 9.1 → 9.2 → 9.3 → 9.4, terminé le 19 octobre 2026) → serveur autoritaire à deux joueurs (lot 10 : 10.1 → 10.2 → 10.3 → 10.4 → 10.5 → 10.6, terminé le 19 octobre 2026) → tranche des Vallons d'Aube`
+
+Ordre proposé ensuite (en attente de Damien, décision L11-D1 du [plan](PLAN_LOT_11.md#3-ordre-proposé-des-chantiers)) : `lot 11 combat dans l'espace → lot 12 les Vallons en solo → lot 13 monde partagé et persistance → lot 14 mobile et nouvelle interface → première alpha → jeu complet`.
 
 ### Lot 8 — premier Bastion réellement jouable
 
@@ -63,7 +73,7 @@ Objectif (« Après le lot 8 », point 2) : deux joueurs dans le même combat, r
 | 10.3 | Client réseau : combat local rejoué depuis les commandes du serveur, contrôle d'empreinte, resynchronisation, reconnexion | PR #20, fusionnée le 19 octobre 2026 : `NetworkClient`, `NetworkCombat`, `ICombatClient`, `CombatDisplay` et `FeedbackTracker` (affichage partagé avec le solo) |
 | 10.4 | Unity : héberger ou rejoindre, salle d'attente, deux Bastions, ciblage d'un allié, ping | PR #21, fusionnée le 19 octobre 2026 : `NetworkSession` (héberger, rejoindre, retour automatique), `BotPlayer` (équipier robot, aussi `EdS.Server --robot`), menu réseau, salle d'attente et combat à deux dans Unity (touche M) ; essayé par Damien le 19 octobre 2026 au soir (branche du 10.6) : tout fonctionne, touches corrigées pour l'AZERTY au 10.6 |
 | 10.5 | Mesures : latence (0 à 200 ms), gigue, désynchronisations et coupures provoquées ; rapport, notamment sur la parade | PR #22, fusionnée le 19 octobre 2026 : `eds reseau` (`EdS.Tools.Network`), rapport [RAPPORT_10_5.md](RAPPORT_10_5.md) : aucune divergence, retour en 130 ms, parade à vue perdue dès 50 ms d'un sens, parade anticipée du ping tenue jusqu'à 200 ms ; options A à D pour la compensation |
-| 10.6 | Parade en réseau, **option B** (décision ci-dessous) : télégraphie des assaillants avancée du temps aller-retour lissé, côté client | PR vers `main` : `NetworkClientOptions.TelegraphAdvance` (actif par défaut, plafond de 1 s), `NetworkCombat.TelegraphLeadSeconds`, bandeau Unity ; affichage seulement, serveur, moteur et protocole inchangés ; `eds reseau` mesure la parade « anticipée » sur cette télégraphie : 69 à 76 % de parades parfaites jusqu'à 200 ms d'un sens (0 % à vue dès 50 ms) ; robot réglé au moment du solo ; essayé par Damien le 19 octobre 2026 au soir : tout fonctionne ; lettres lues par position (Z Q S D, A / E et M en AZERTY, demande de Damien) |
+| 10.6 | Parade en réseau, **option B** (décision ci-dessous) : télégraphie des assaillants avancée du temps aller-retour lissé, côté client | PR #23, fusionnée le 19 octobre 2026 : `NetworkClientOptions.TelegraphAdvance` (actif par défaut, plafond de 1 s), `NetworkCombat.TelegraphLeadSeconds`, bandeau Unity ; affichage seulement, serveur, moteur et protocole inchangés ; `eds reseau` mesure la parade « anticipée » sur cette télégraphie : 69 à 76 % de parades parfaites jusqu'à 200 ms d'un sens (0 % à vue dès 50 ms) ; robot réglé au moment du solo ; essayé par Damien le 19 octobre 2026 au soir : tout fonctionne ; lettres lues par position (Z Q S D, A / E et M en AZERTY, demande de Damien) |
 
 **Décisions du 19 octobre 2026** (avant le 10.1) : **coopération** (deux Bastions contre des assaillants) ; un joueur déconnecté laisse le **combat continuer**, son personnage inactif (garde relâchée), avec 30 secondes pour se reconnecter. La compensation de latence de la parade sera décidée après les mesures du 10.5.
 
@@ -74,6 +84,8 @@ Objectif (« Après le lot 8 », point 2) : deux joueurs dans le même combat, r
 **A1 à A12** : pas de soin pour le Gardien au lot 8 (boucliers, protections, transferts, provocations) ; trois talents intermédiaires de cinq rangs par arbre (noms de travail) ; Fureur contenue dépend de la Résonance détenue ; Charges conservées (Rempart) ou dépensées (Contrecoup) selon le build ; une ultime commune, Bastion absolu ; les boucliers absorbent les DOT ; un bouclier par source, FIFO ; dégâts transférés jamais retransférés ni déclencheurs de réactions, garde du protecteur seulement dans le cadre de Serment ; provocation sur un personnage refusée `notApplicable` et journalisée ; attributs identiques pour les builds de comparaison ; deux PR de gameplay 8a puis 8b ; builds de référence livrés en données.
 
 Aussi : aucun soin, aucune deuxième classe, aucun système de positions, aucune interface Unity avant la fin du lot 8 ; pas de déclencheurs d'équipement avant le chantier des objets.
+
+Ces limites étaient liées au lot 8. Le cadrage du 19 octobre 2026 retient ensuite les positions réelles (Q13). Il recommande des potions de soin limitées, sans soin propre au Bastion (Q7, à confirmer), et une classe à distance (Q17). A1 ne visait que l'arbre Gardien au lot 8 ; le résumé « pas de soin pour le Bastion » du questionnaire était inexact (écart E4 du [cadrage](CADRAGE.md#6-écarts-avec-lexistant)). A7, le ciblage sans position du moteur ([MOTEUR.md](MOTEUR.md#ciblage-a7)), reste vrai pour le moteur 0.14.0 jusqu'au moteur spatial (lot 11 proposé).
 
 **L8-D1 à L8-D6** : frappes de réaction sans critique ni Résonance automatique ; toute riposte automatique de zone a au moins 3 s de recharge interne (sauf configuration explicite de test) ; une réaction mixte s'exécute entièrement pendant la résolution ; pas d'annulation `staleSource` pour les effets autonomes ; pas de condition générale `requiresAbleToAct` (les déclencheurs autorisés réagissent malgré un étourdissement) ; déclencheurs d'équipement reportés au système d'objets.
 
@@ -127,5 +139,5 @@ Objectifs provisoires : S1 écart de DPS ≤ 15 % ; S2 DPS Contrecoup ≥ +25 % 
 
 1. **Prototype Unity 3D** (lot 9, ci-dessus) : importer le cœur C# sans le réécrire ; personnage, déplacements, caméra expérimentale (isométrique et troisième personne comparées), garde et parade visibles, compétences, ennemis d'entraînement, barres de ressources, altérations, première interface de talents. Graphismes provisoires.
 2. **Serveur autoritaire à deux joueurs** : deux clients, le serveur résout le combat avec le même cœur, commandes invalides refusées, déconnexion/reconnexion, tests de latence, désynchronisation et rejeu. Pas d'infrastructure massive avant cette preuve.
-3. **Vertical slice** : une zone, le Bastion jouable, quelques ennemis, une mission, progression, récompense, inventaire, une activité de récolte et fabrication, interactions avec un deuxième joueur. Découpage proposé le 19 octobre 2026 (lot 11), **en attente des décisions de Damien** : [PLAN_LOT_11.md](PLAN_LOT_11.md).
-4. Ensuite, par grands chantiers : progression complète et équipement ; monde, régions, missions ; métiers ; économie ; classes supplémentaires ; multijoueur étendu ; persistance ; interfaces PC/mobile ; direction artistique et son ; tests jouables et première alpha.
+3. **Vertical slice**, devenue la **tranche des Vallons d'Aube** (cadrage du 19 octobre 2026) : une zone, le Bastion jouable, quelques ennemis, une mission, progression, récompense, inventaire, récolte et fabrication (minerais et forge, plantes et remèdes), un deuxième joueur dans une région partagée. Avec les positions réelles en combat (Q13), elle se découpe en quatre lots proposés (11 à 14) ; voir [PLAN_LOT_11.md](PLAN_LOT_11.md), **en attente des décisions de Damien**.
+4. Ensuite : première alpha (proposée avec trois classes, progression refondue, donjon, groupes, échanges), puis le jeu complet. Si Damien le valide (L11-D1), cet ordre remplace la liste précédente (progression et équipement, monde, métiers, économie, classes, multijoueur étendu, persistance, interfaces, direction artistique, alpha) ; écart E9 du [cadrage](CADRAGE.md#6-écarts-avec-lexistant).
