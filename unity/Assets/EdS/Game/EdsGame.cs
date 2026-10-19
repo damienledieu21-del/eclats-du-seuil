@@ -186,7 +186,12 @@ namespace EdS.Game
             if (_netTalentScreen)
             {
                 string reference = _talents.ReferenceId ?? _netBuildId;
-                SetNetworkBuild(reference, new Dictionary<string, int>(_talents.Editor.Build.TalentRanks));
+                // Revue Codex de la PR #21 : le build n'est retenu que s'il part vraiment au serveur (salle d'attente).
+                if (!SetNetworkBuild(reference, new Dictionary<string, int>(_talents.Editor.Build.TalentRanks)))
+                {
+                    _talents.Say("Le combat a commencé : build non envoyé (à refaire en salle d'attente).", true);
+                    return;
+                }
                 CloseTalents();
                 return;
             }
@@ -369,18 +374,29 @@ namespace EdS.Game
             else Load(_scenario, null);
         }
 
-        private void SetNetworkBuild(string referenceId, IReadOnlyDictionary<string, int> talents)
+        /// <summary>
+        /// Envoie un build au serveur ; il n'est retenu que s'il est vraiment parti (le client n'envoie un build qu'en salle d'attente,
+        /// revue Codex de la PR #21). Rend faux sinon.
+        /// </summary>
+        private bool SetNetworkBuild(string referenceId, IReadOnlyDictionary<string, int> talents)
         {
+            NetworkClient client = _net?.Client;
+            if (client == null || client.Status != ClientStatus.Lobby)
+            {
+                Say("Le build se change en salle d'attente.");
+                return false;
+            }
             try
             {
-                var choice = new BuildChoice(referenceId, talents);
-                _net?.Client?.SetBuild(choice);
+                client.SetBuild(new BuildChoice(referenceId, talents));
                 _netBuildId = referenceId;
                 _netTalents = talents;
+                return true;
             }
             catch (Exception e)
             {
                 Say("Build refusé : " + e.Message);
+                return false;
             }
         }
 
@@ -408,6 +424,13 @@ namespace EdS.Game
             NetworkCombat combat = client?.Combat;
             if (combat != null && combat != _shownCombat)
             {
+                // Revue Codex de la PR #21 : l'écran des talents ouvert en salle d'attente se ferme au début du combat (le build ne
+                // pourrait plus partir) ; le joueur le retrouve au retour en salle d'attente.
+                if (_netTalentScreen)
+                {
+                    CloseTalents();
+                    Say("Combat commencé : écran des talents fermé, build inchangé.");
+                }
                 _shownCombat = combat;
                 _combat = combat;
                 _arena.Populate(combat);
