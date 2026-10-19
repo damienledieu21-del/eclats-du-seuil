@@ -66,6 +66,9 @@ namespace EdS.Net
         private readonly GameData _data;
         private INetConnection _connection;
         private double _lastPingAt = double.NegativeInfinity;
+        private long _lastPingTime = long.MinValue;
+        private long _pendingBuildPing;
+        private bool _pendingBuildRejected;
         private double _lastInputAt = double.NegativeInfinity;
         private double? _disconnectedAt;
 
@@ -81,6 +84,7 @@ namespace EdS.Net
             Name = name;
             Options = options ?? new NetworkClientOptions();
             _connection.Send(Checked(new HelloMessage(Protocol.Version, name, build), nameof(build)));
+            AcceptedBuild = build;
         }
 
         /// <summary>
@@ -126,6 +130,16 @@ namespace EdS.Net
         /// <summary>Dernier refus du serveur (build, prêt, commande…).</summary>
         public string? LastRejected { get; private set; }
 
+        /// <summary>
+        /// Revue Codex de la PR #21 (tour 4) : build que le serveur garde pour ce joueur d'après ses réponses (celui de la présentation au
+        /// départ). Un build demandé n'y entre qu'une fois accepté : une demande refusée (par exemple arrivée au serveur après le début du
+        /// combat) ne le change pas.
+        /// </summary>
+        public BuildChoice AcceptedBuild { get; private set; }
+
+        /// <summary>Build demandé dont la réponse du serveur n'est pas encore arrivée ; null sinon.</summary>
+        public BuildChoice? PendingBuild { get; private set; }
+
         /// <summary>Dernier temps aller-retour mesuré, en millisecondes ; null avant la première mesure.</summary>
         public double? RttMs { get; private set; }
 
@@ -141,12 +155,36 @@ namespace EdS.Net
 
         // --- Salle d'attente ----------------------------------------------------------------------------------------------
 
-        /// <summary>Change de build (salle d'attente seulement ; le serveur valide et peut refuser).</summary>
-        public void SetBuild(BuildChoice build)
+        /// <summary>
+        /// Demande un build (salle d'attente seulement ; le serveur valide et peut refuser). Rend vrai si la demande est partie : faux hors
+        /// de la salle d'attente ou si une demande attend encore sa réponse (<see cref="PendingBuild"/>).
+        /// </summary>
+        /// <remarks>
+        /// Revue Codex de la PR #21 (tour 4) : une mesure du temps aller-retour part juste derrière la demande. Le serveur traite les
+        /// messages dans l'ordre et répond au build (salle mise à jour, ou refus) avant de répondre à la mesure : à l'arrivée de cette
+        /// réponse, le build est accepté (<see cref="AcceptedBuild"/>) sauf si un refus est arrivé entre-temps.
+        /// </remarks>
+        public bool SetBuild(BuildChoice build)
         {
             if (build is null) throw new ArgumentNullException(nameof(build));
             NetMessage message = Checked(new BuildMessage(build), nameof(build));
-            if (Status == ClientStatus.Lobby) _connection.Send(message);
+            if (Status != ClientStatus.Lobby || PendingBuild != null) return false;
+            _connection.Send(message);
+            _pendingBuildPing = SendPing();
+            _pendingBuildRejected = false;
+            PendingBuild = build;
+            return true;
+        }
+
+        /// <summary>Envoie une mesure du temps aller-retour ; son instant (ms) croît strictement d'une mesure à l'autre.</summary>
+        private long SendPing()
+        {
+            long time = checked((long)Math.Round(Now * 1000));
+            if (time <= _lastPingTime) time = checked(_lastPingTime + 1);
+            _lastPingTime = time;
+            _lastPingAt = Now;
+            _connection.Send(new PingMessage(time));
+            return time;
         }
 
         public void SetReady(bool ready)
@@ -214,11 +252,7 @@ namespace EdS.Net
                     _lastInputAt = Now;
                 }
             }
-            if (Status != ClientStatus.Failed && Now - _lastPingAt >= Options.PingIntervalSeconds)
-            {
-                _connection.Send(new PingMessage(checked((long)Math.Round(Now * 1000))));
-                _lastPingAt = Now;
-            }
+            if (Status != ClientStatus.Failed && Now - _lastPingAt >= Options.PingIntervalSeconds) SendPing();
             return ticks;
         }
 
@@ -293,10 +327,17 @@ namespace EdS.Net
                     return ApplyResync(resync);
                 case RejectedMessage rejected:
                     LastRejected = rejected.Reason;
+                    // Un refus arrivé entre la demande de build et la réponse à sa mesure est celui du build, sauf un combat refusé au départ.
+                    if (PendingBuild != null && !rejected.Reason.StartsWith(Protocol.CombatRefused, StringComparison.Ordinal)) _pendingBuildRejected = true;
                     if (Status == ClientStatus.Combat && Combat != null && SeatId != null)
                         Combat.AddFeedback(new CombatFeedback(FeedbackKind.Rejected, SeatId, 0, rejected.Reason));
                     return 0;
                 case PongMessage pong:
+                    if (PendingBuild != null && pong.ClientTime >= _pendingBuildPing && pong.ClientTime <= _lastPingTime)
+                    {
+                        if (!_pendingBuildRejected) AcceptedBuild = PendingBuild;
+                        PendingBuild = null;
+                    }
                     double rtt = Now * 1000 - pong.ClientTime;
                     if (rtt < 0 || rtt > 3_600_000) return 0;   // réponse qui ne vient pas d'un ping de ce client
                     RttMs = rtt;

@@ -73,7 +73,6 @@ namespace EdS.Game
         private bool _menuOpen;
         private NetworkCombat _shownCombat;
         private string _netBuildId = "build.bastion.rempart";
-        private IReadOnlyDictionary<string, int> _netTalents;
         private bool _netTalentScreen;
         private string _lastCombat;
 
@@ -158,9 +157,11 @@ namespace EdS.Game
         {
             try
             {
-                TrainingSession reference = TrainingSession.Create(_session.Data, _session.Setup, _netBuildId, _session.PlayerId);
-                if (_netTalents != null) reference = reference.WithCustomBuild(WithTalents(reference.Player.Build, _netTalents), TalentScreenName);
-                _talents = new TalentScreen(reference.CreateTalentEditor(), reference.AvailableBuilds(), _netBuildId);
+                // Revue Codex de la PR #21 (tour 4) : on repart du build que le serveur a accepté, jamais d'une demande refusée.
+                BuildChoice accepted = AcceptedNetworkBuild;
+                TrainingSession reference = TrainingSession.Create(_session.Data, _session.Setup, accepted.Reference, _session.PlayerId);
+                if (accepted.Talents != null) reference = reference.WithCustomBuild(WithTalents(reference.Player.Build, accepted.Talents), TalentScreenName);
+                _talents = new TalentScreen(reference.CreateTalentEditor(), reference.AvailableBuilds(), accepted.Reference);
                 _netTalentScreen = true;
             }
             catch (Exception e)
@@ -185,11 +186,12 @@ namespace EdS.Game
         {
             if (_netTalentScreen)
             {
-                string reference = _talents.ReferenceId ?? _netBuildId;
-                // Revue Codex de la PR #21 : le build n'est retenu que s'il part vraiment au serveur (salle d'attente).
-                if (!SetNetworkBuild(reference, new Dictionary<string, int>(_talents.Editor.Build.TalentRanks)))
+                string reference = _talents.ReferenceId ?? AcceptedNetworkBuild.Reference;
+                // Revue Codex de la PR #21 : la demande ne part qu'en salle d'attente ; le serveur l'accepte ou la refuse (tour 4 : le build
+                // retenu ne change qu'à son accord, voir AcceptedNetworkBuild).
+                if (!SetNetworkBuild(reference, new Dictionary<string, int>(_talents.Editor.Build.TalentRanks), out string why))
                 {
-                    _talents.Say("Le combat a commencé : build non envoyé (à refaire en salle d'attente).", true);
+                    _talents.Say(why, true);
                     return;
                 }
                 CloseTalents();
@@ -307,7 +309,6 @@ namespace EdS.Game
                 string name = (_netScreen.PlayerName ?? "").Trim();
                 if (name.Length == 0) name = "Joueur";
                 _netBuildId = _session.Build?.Id ?? _netBuildId;
-                _netTalents = null;
                 var build = new BuildChoice(_netBuildId);
                 if (action == NetworkScreen.Action.Join)
                 {
@@ -375,36 +376,46 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Envoie un build au serveur ; il n'est retenu que s'il est vraiment parti (le client n'envoie un build qu'en salle d'attente,
-        /// revue Codex de la PR #21). Rend faux sinon.
+        /// Revue Codex de la PR #21 (tour 4) : build retenu en réseau = celui que le serveur a accepté (suivi par le client : une demande
+        /// refusée, par exemple arrivée au serveur après le début du combat, ne le change pas).
         /// </summary>
-        private bool SetNetworkBuild(string referenceId, IReadOnlyDictionary<string, int> talents)
+        private BuildChoice AcceptedNetworkBuild => _net?.Client?.AcceptedBuild ?? new BuildChoice(_netBuildId);
+
+        /// <summary>
+        /// Demande un build au serveur (salle d'attente seulement, une demande à la fois) ; rend faux avec la raison si elle n'est pas
+        /// partie. Le build retenu ne change qu'une fois la demande acceptée par le serveur.
+        /// </summary>
+        private bool SetNetworkBuild(string referenceId, IReadOnlyDictionary<string, int> talents, out string why)
         {
             NetworkClient client = _net?.Client;
+            why = null;
             if (client == null || client.Status != ClientStatus.Lobby)
+                why = "Le combat a commencé : build non envoyé (à refaire en salle d'attente).";
+            else if (client.PendingBuild != null)
+                why = "Le build précédent attend encore la réponse du serveur.";
+            if (why != null)
             {
-                Say("Le build se change en salle d'attente.");
+                Say(why);
                 return false;
             }
             try
             {
-                client.SetBuild(new BuildChoice(referenceId, talents));
-                _netBuildId = referenceId;
-                _netTalents = talents;
-                return true;
+                if (client.SetBuild(new BuildChoice(referenceId, talents))) return true;
+                why = "Build non envoyé (à refaire en salle d'attente).";
             }
             catch (Exception e)
             {
-                Say("Build refusé : " + e.Message);
-                return false;
+                why = "Build refusé : " + e.Message;
             }
+            Say(why);
+            return false;
         }
 
         private string NetworkBuildName()
         {
             NetworkClient client = _net?.Client;
             SeatInfo seat = client?.Lobby?.Seats.FirstOrDefault(s => s.Id == client.SeatId);
-            return Hud.Plain(seat?.Build ?? _netBuildId);
+            return Hud.Plain(seat?.Build ?? AcceptedNetworkBuild.Reference);
         }
 
         private void UpdateNetwork(bool input)
@@ -444,7 +455,7 @@ namespace EdS.Game
                 IReadOnlyList<ReferenceBuild> builds = _session.AvailableBuilds();
                 KeyCode[] buildKeys = { KeyCode.F1, KeyCode.F2, KeyCode.F3, KeyCode.F4, KeyCode.F5 };
                 for (int i = 0; i < buildKeys.Length && i < builds.Count; i++)
-                    if (Input.GetKeyDown(buildKeys[i])) SetNetworkBuild(builds[i].Id, null);
+                    if (Input.GetKeyDown(buildKeys[i])) SetNetworkBuild(builds[i].Id, null, out _);
                 if (Input.GetKeyDown(KeyCode.T))
                 {
                     OpenNetworkTalents();

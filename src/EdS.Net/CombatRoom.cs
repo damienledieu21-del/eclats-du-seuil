@@ -462,7 +462,7 @@ namespace EdS.Net
                 foreach (Seat seat in _seats)
                 {
                     seat.Ready = false;
-                    if (seat.Client != null) Send(seat.Client, new RejectedMessage(Protocol.Text("combat refusé : " + reason)));
+                    if (seat.Client != null) Send(seat.Client, new RejectedMessage(Protocol.Text(Protocol.CombatRefused + reason)));
                 }
                 Trace?.Invoke("combat refusé : " + reason);
                 BroadcastLobby();
