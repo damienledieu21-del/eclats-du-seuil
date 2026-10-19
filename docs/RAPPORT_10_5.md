@@ -31,7 +31,7 @@ Deux joueurs, 3 graines par réglage (une graine change les délais tirés et l'
 | à vue | 150 + 0 à 30 ms | 207 | 0 | 0,0 % | 140 | 60 | 184 ms | 220 ms | 170 ms | 341 ms | 0 | égales |
 | à vue | 200 + 0 à 40 ms | 205 | 8 | 3,9 % | 141 | 48 | 242 ms | 280 ms | 225 ms | 449 ms | 0 | égales |
 | à vue | 100 + 0 à 60 ms | 201 | 0 | 0,0 % | 137 | 52 | 153 ms | 190 ms | 135 ms | 274 ms | 0 | égales |
-| à vue | 200 + 0 à 120 ms | 201 | 18 | 9,0 % | 141 | 32 | 284 ms | 350 ms | 270 ms | 553 ms | 0 | égales |
+| à vue | 200 + 0 à 120 ms | 201 | 18 | 9,0 % | 141 | 32 | 283 ms | 340 ms | 270 ms | 553 ms | 0 | égales |
 | anticipée | 0 ms | 277 | 213 | 76,9 % | 3 | 45 | 27 ms | 50 ms | 10 ms | 20 ms | 0 | égales |
 | anticipée | 25 + 0 à 5 ms | 267 | 201 | 75,3 % | 3 | 51 | 46 ms | 70 ms | 30 ms | 60 ms | 0 | égales |
 | anticipée | 50 + 0 à 10 ms | 267 | 201 | 75,3 % | 0 | 55 | 75 ms | 100 ms | 60 ms | 120 ms | 0 | égales |

@@ -69,6 +69,12 @@ public sealed class NetworkMeasureResult
     public double ActionDelayMeanMs { get; init; }
     public double ActionDelayP95Ms { get; init; }
 
+    /// <summary>Tous les délais d'action mesurés, triés (revue Codex de la PR #22 : agrégés sur plusieurs graines par le rapport).</summary>
+    public IReadOnlyList<double> ActionDelaysMs { get; init; } = Array.Empty<double>();
+
+    /// <summary>Durée d'un tick du combat mesuré (règles des données), en millisecondes.</summary>
+    public int TickMs { get; init; }
+
     /// <summary>Retard moyen de l'affichage sur le serveur (ticks d'écart × 50 ms).</summary>
     public double DisplayLagMeanMs { get; init; }
 
@@ -266,7 +272,9 @@ public static class NetworkMeasures
             FailedParries = Count(c => c.FailedParries),
             CommandsRejected = Count(c => c.CommandsRejected),
             ActionDelayMeanMs = delays.Count == 0 ? 0 : delays.Average(),
-            ActionDelayP95Ms = delays.Count == 0 ? 0 : delays[(int)Math.Min(delays.Count - 1, Math.Ceiling(0.95 * delays.Count) - 1)],
+            ActionDelayP95Ms = Percentile95(delays),
+            ActionDelaysMs = delays.AsReadOnly(),
+            TickMs = room.TickMs,
             DisplayLagMeanMs = lagSamples == 0 ? 0 : lagSum / lagSamples,
             RttMs = firstClient.SmoothedRttMs ?? 0,
             Desyncs = players.Sum(p => p.Client.Combat?.Desyncs ?? 0),
@@ -281,6 +289,13 @@ public static class NetworkMeasures
             EndTick = result?.EndTick ?? 0,
             Winner = result?.Winner,
         };
+    }
+
+    /// <summary>95e centile (rang supérieur) d'une liste triée ; 0 si elle est vide.</summary>
+    public static double Percentile95(IReadOnlyList<double> sorted)
+    {
+        ArgumentNullException.ThrowIfNull(sorted);
+        return sorted.Count == 0 ? 0 : sorted[(int)Math.Min(sorted.Count - 1, Math.Ceiling(0.95 * sorted.Count) - 1)];
     }
 
     private static void Play(Player player, double now)

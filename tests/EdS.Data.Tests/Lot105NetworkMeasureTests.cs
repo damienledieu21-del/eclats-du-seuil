@@ -135,6 +135,23 @@ public class Lot105NetworkMeasureTests
     }
 
     [Fact]
+    public void Ligne_du_rapport_agregee_sur_toutes_les_graines_listes_figees_tick_mesure()
+    {
+        // Revue Codex de la PR #22 : p95 et moyenne sur tous les délais réunis ; listes de réglages immuables ; durée de tick mesurée.
+        NetworkMeasureResult Fake(params double[] delays) => new() { ActionDelaysMs = delays.OrderBy(d => d).ToArray(), TickMs = 50 };
+        var row = new NetworkReportRow
+        {
+            Runs = new[] { Fake(Enumerable.Repeat(10.0, 19).Append(500).ToArray()), Fake(Enumerable.Repeat(10.0, 20).ToArray()), Fake(Enumerable.Repeat(20.0, 20).ToArray()) },
+        };
+        // 60 délais : le 95e centile est le 57e (20 ms) ; le plus grand p95 par graine aurait donné 500 ms.
+        Assert.Equal(20, row.ActionDelayP95Ms);
+        Assert.Equal((19 * 10 + 500 + 20 * 10 + 20 * 20) / 60.0, row.ActionDelayMs, 6);
+        Assert.Throws<NotSupportedException>(() => ((IList<(int, int)>)NetworkReport.Links)[0] = (999, 0));
+        Assert.Throws<NotSupportedException>(() => ((IList<double>)NetworkReport.Cuts)[0] = 999);
+        Assert.Equal(50, NetworkMeasures.Run(ShippedData, Duo, new NetworkMeasureOptions()).TickMs);
+    }
+
+    [Fact]
     public void Rapport_complet_reproductible()
     {
         IReadOnlyList<NetworkReportRow> rows = NetworkReport.MeasureLinks(ShippedData, Duo, 1);

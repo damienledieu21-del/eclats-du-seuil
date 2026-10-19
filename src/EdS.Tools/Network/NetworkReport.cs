@@ -18,8 +18,10 @@ public sealed class NetworkReportRow
     public long Failed => Runs.Sum(r => r.FailedParries);
     public long Rejected => Runs.Sum(r => r.CommandsRejected);
     public double Success => Presses == 0 ? 0 : (double)Perfect / Presses;
-    public double ActionDelayMs => Runs.Count == 0 ? 0 : Runs.Average(r => r.ActionDelayMeanMs);
-    public double ActionDelayP95Ms => Runs.Count == 0 ? 0 : Runs.Max(r => r.ActionDelayP95Ms);
+    // Revue Codex de la PR #22 : moyenne et 95e centile sur tous les délais de la ligne réunis (toutes graines), pas par graine.
+    private IReadOnlyList<double> AllDelays => Runs.SelectMany(r => r.ActionDelaysMs).OrderBy(d => d).ToList();
+    public double ActionDelayMs => AllDelays.Count == 0 ? 0 : AllDelays.Average();
+    public double ActionDelayP95Ms => NetworkMeasures.Percentile95(AllDelays);
     public double DisplayLagMs => Runs.Count == 0 ? 0 : Runs.Average(r => r.DisplayLagMeanMs);
     public double RttMs => Runs.Count == 0 ? 0 : Runs.Average(r => r.RttMs);
     public int Desyncs => Runs.Sum(r => r.Desyncs);
@@ -34,13 +36,13 @@ public sealed class NetworkReportRow
 public static class NetworkReport
 {
     /// <summary>Latence d'un sens et gigue mesurées (ms) : de 0 à 200 ms, puis deux gigues fortes.</summary>
-    public static readonly IReadOnlyList<(int Latency, int Jitter)> Links = new[]
+    public static readonly IReadOnlyList<(int Latency, int Jitter)> Links = Array.AsReadOnly(new[]
     {
         (0, 0), (25, 5), (50, 10), (75, 15), (100, 20), (150, 30), (200, 40), (100, 60), (200, 120),
-    };
+    });   // revue Codex de la PR #22 : listes publiées immuables (pas de tableau modifiable derrière)
 
     /// <summary>Coupures du premier joueur (latence 50 + 0 à 10 ms, parade anticipée), à 5 s de combat : durée avant la nouvelle connexion.</summary>
-    public static readonly IReadOnlyList<double> Cuts = new[] { 1.0, 3.0, 10.0, 25.0, 35.0 };
+    public static readonly IReadOnlyList<double> Cuts = Array.AsReadOnly(new[] { 1.0, 3.0, 10.0, 25.0, 35.0 });
 
     public static IReadOnlyList<NetworkReportRow> MeasureLinks(GameData data, CombatSetup scenario, int seeds)
     {
@@ -92,7 +94,7 @@ public static class NetworkReport
         {
             string back = cut.Reconnected == true ? "réussi" : "refusé : " + (cut.ReconnectError ?? "aucun");
             string delay = cut.ReconnectDelayMs is double d ? $"{F(d)} ms" : "—";
-            string end = $"{cut.EndReason}, {F(cut.EndTick * 0.05, 1)} s";
+            string end = $"{cut.EndReason}, {F(cut.EndTick * (double)cut.TickMs / 1000, 1)} s";   // durée du tick mesurée (PR #22)
             w.WriteLine($"| {F(cut.Options.CutSeconds)} s | {back} | {delay} | {cut.Resyncs} | {cut.Desyncs} | {end} | {(cut.HashesMatch ? "égales" : "**différentes**")} |");
         }
     }
