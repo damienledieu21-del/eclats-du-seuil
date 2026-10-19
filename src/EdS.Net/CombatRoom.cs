@@ -582,6 +582,21 @@ namespace EdS.Net
             Send(client, new ResyncMessage(_log!.Header!, _engine!.CurrentTick, _history.ToArray(), _log.Hash));
         }
 
+        /// <summary>
+        /// Sous-lot 10.4 : arrêt de la salle (hôte fermé) : chaque connexion reçoit une erreur avec la raison, puis est fermée ; la salle
+        /// ne garde plus aucune connexion.
+        /// </summary>
+        public void CloseAll(string reason)
+        {
+            string text = Protocol.Text(reason);
+            foreach (Client client in _clients)
+            {
+                client.Connection.Send(new ErrorMessage(text));
+                client.Connection.Close(text);
+            }
+            _clients.Clear();
+        }
+
         // --- Envoi -----------------------------------------------------------------------------------------------------------
 
         private void BroadcastLobby()

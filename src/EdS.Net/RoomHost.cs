@@ -75,11 +75,16 @@ namespace EdS.Net
             }
         }
 
+        /// <summary>
+        /// Arrête la boucle et l'écoute, puis ferme les connexions des joueurs avec une raison (sous-lot 10.4 : l'hôte Unity s'arrête sans
+        /// laisser de connexion ouverte dans l'éditeur).
+        /// </summary>
         public void Dispose()
         {
             _running = false;
             if (_thread.IsAlive) _thread.Join(1000);
             _listener.Dispose();
+            lock (_gate) _room.CloseAll("serveur arrêté.");
         }
     }
 }

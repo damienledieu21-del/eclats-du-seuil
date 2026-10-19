@@ -14,7 +14,9 @@ public static class Program
 {
     private const string Usage =
         "Usage : eds-server [--data data/v0] [--scenario scenarios/coop/duo_meute.json] [--port 7777] [--duration ms] [--journaux dossier] [--local]\n" +
-        "  --local : écoute ce poste seulement (127.0.0.1) ; sinon tout le réseau local.";
+        "                  [--robot [build.bastion.gardien]]\n" +
+        "  --local : écoute ce poste seulement (127.0.0.1) ; sinon tout le réseau local.\n" +
+        "  --robot : un équipier robot prend une place (pour essayer la coopération seul).";
 
     public static int Main(string[] args)
     {
@@ -23,6 +25,7 @@ public static class Program
         long? duration = null;
         string? journals = null;
         bool local = false;
+        string? robot = null;
         for (int i = 0; i < args.Length; i++)
         {
             string? Next() => i + 1 < args.Length ? args[++i] : null;
@@ -39,6 +42,9 @@ public static class Program
                     break;
                 case "--journaux": journals = Next(); break;
                 case "--local": local = true; break;
+                case "--robot":
+                    robot = i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : "build.bastion.gardien";
+                    break;
                 case "-h":
                 case "--help":
                     Console.WriteLine(Usage);
@@ -62,6 +68,7 @@ public static class Program
             return 1;
         }
 
+        if (robot != null && !gameData.TryGetBuild(robot, out _)) return Fail($"build du robot inconnu : « {robot} ».");
         var room = new CombatRoom(gameData, scenario.Setup, new RoomOptions { DurationMs = duration });
         room.Trace = message => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {message}");
         int combats = 0;
@@ -81,18 +88,39 @@ public static class Program
         host.Start();
         Console.WriteLine($"Serveur Éclats du Seuil : {Path.GetFileNameWithoutExtension(scenarioPath)}, places {string.Join(", ", room.SeatIds)}, " +
             $"port {listener.Port}{(local ? " (ce poste seulement)" : "")}. Ctrl+C pour arrêter.");
+        // Sous-lot 10.4 : équipier robot, un client ordinaire relié à ce serveur par le poste lui-même.
+        BotPlayer? bot = null;
+        if (robot != null)
+        {
+            TcpNetConnection connection = TcpNetConnection.ConnectAsync("127.0.0.1", listener.Port, Protocol.MaxServerMessageBytes, Protocol.MaxClientMessageBytes)
+                .GetAwaiter().GetResult();
+            bot = new BotPlayer(new NetworkClient(gameData, connection, "Robot", new BuildChoice(robot)));
+            Console.WriteLine($"Équipier robot connecté ({robot}).");
+        }
         using var stop = new ManualResetEventSlim();
         Console.CancelKeyPress += (_, e) =>
         {
             e.Cancel = true;
             stop.Set();
         };
-        while (!stop.Wait(500))
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        double last = 0;
+        bool botStopped = false;
+        while (!stop.Wait(bot is null ? 500 : 10))
         {
             if (host.Error is { } error)
             {
                 Console.Error.WriteLine("Erreur du serveur : " + error);
                 return 1;
+            }
+            if (bot is null) continue;
+            double now = clock.Elapsed.TotalSeconds;
+            bot.Advance(now - last);
+            last = now;
+            if (!botStopped && (bot.Client.Status == ClientStatus.Failed || bot.Client.Status == ClientStatus.Left))
+            {
+                botStopped = true;
+                Console.Error.WriteLine("Équipier robot arrêté : " + bot.Client.Error);
             }
         }
         Console.WriteLine("Arrêt du serveur.");
