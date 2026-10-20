@@ -2223,12 +2223,15 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private void RunEndOfTick(long tick)
         {
-            do
+            // Sous-lot 11.4d (revue Codex de la PR #32) : les départs du tick n'ont lieu qu'une fois le point fixe des morts atteint (morts et
+            // réactions à ces morts) ; leurs retraits d'états peuvent à leur tour provoquer des réactions et des morts, d'où le nouveau tour.
+            while (true)
             {
-                ScanDeaths(tick);
-                RunDepartures(tick);   // sous-lot 11.4d : départs du tick, après les morts
+                do ScanDeaths(tick);
+                while (DrainTriggers(tick, CombatPhase.EndOfTick) > 0);
+                if (!_fightersById.Any(f => f.LeaveCommand != null)) break;
+                RunDepartures(tick);
             }
-            while (DrainTriggers(tick, CombatPhase.EndOfTick) > 0);
 
             // Sous-lot 11.4d : une équipe compte tant qu'elle a un combattant présent vivant ou une arrivée encore attendue.
             var aliveTeams = _fighters.Where(f => !f.IsDead && (f.Presence == Presence.Present || f.Presence == Presence.Pending))

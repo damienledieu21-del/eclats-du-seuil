@@ -347,8 +347,21 @@ namespace EdS.Simulation.Engine
                 entries.Add((e["tick"].Long, Phase(e["phase"].Int), sequence, item));
                 bySequence[sequence] = item;
             }
+            // Revue Codex de la PR #32 : la file est relue telle qu'entre deux ticks. Curseur : jamais demandé avant le premier tick ; sinon
+            // à la fin (endOfTick) du tick précédent. Éléments : tous à venir (tick repris ou suivants).
             SnapshotNode queue = head["queue"];
-            _queue.Load(entries, queue["started"].Bool, queue["tick"].Long, Phase(queue["phase"].Int), queue["next"].Long);
+            bool started = queue["started"].Bool;
+            long cursorTick = queue["tick"].Long;
+            CombatPhase cursorPhase = Phase(queue["phase"].Int);
+            bool boundary = CurrentTick == 0
+                ? !started && cursorTick == 0 && cursorPhase == CombatPhase.Setup
+                : started && cursorTick == CurrentTick - 1 && cursorPhase == CombatPhase.EndOfTick;
+            if (!boundary) throw new FormatException($"Curseur de file ({cursorTick}, {cursorPhase}) incohérent avec un instantané pris avant le tick {CurrentTick}.");
+            foreach (var (tick, _, sequence, _) in entries)
+                if (tick < CurrentTick) throw new FormatException($"Élément de file {sequence} au tick {tick}, déjà passé (instantané pris avant le tick {CurrentTick}).");
+            foreach (var key in _commandsPerActorTick.Keys)
+                if (key.Tick < CurrentTick) throw new FormatException($"Commandes de « {key.Actor} » comptées au tick {key.Tick}, déjà passé.");
+            _queue.Load(entries, started, cursorTick, cursorPhase, queue["next"].Long);
             foreach (SnapshotNode s in head["announced"].Items) _announced.Add((AttackImpact)bySequence[s.Long]);
         }
 

@@ -215,6 +215,25 @@ public class Lot114dPresenceTests
     }
 
     [Fact]
+    public void Le_depart_attend_les_reactions_aux_morts_du_tick()
+    {
+        // Revue Codex de la PR #32 : l'assaillant tue l'allié au tick 20 et réagit à cette mort en fragilisant tous ses ennemis ; le Bastion,
+        // qui part à ce tick, est encore là pour cette réaction (point fixe des morts d'abord), puis part : la fragilité est retirée (left).
+        var assailant = new AssailantSetup("assaillant", "cibles", Fixed.Zero, Fixed.Zero, "allie", 1000, 10_000, new[] { Blow(raw: 100_000_000) },
+            triggers: new[] { new TriggerDefinition(TriggerEvent.Death, new[] { TriggerEffect.ApplyStatus(TriggerTarget.AllEnemies, "fragility") }) });
+        var (_, log) = Run(Setup(new[] { Leave(1000, "bastion") }, new CombatantSetup[] { Tank(), Character("allie", attributes: Attrs(vitalite: 1)), Tank("renfort"), assailant },
+            durationMs: 3000, rules: AreaStrikes));
+        var tick20 = Events(log).Where(e => e.Tick() == 20 && e.Str("phase") == "endOfTick").Select(e => (e.Str("event"), e.TryGetProperty("combatant", out var c) ? c.GetString() : null)).ToList();
+        int died = tick20.IndexOf(("died", "allie"));
+        int applied = tick20.IndexOf(("stateApplied", "bastion"));
+        int left = tick20.IndexOf(("combatantLeft", "bastion"));
+        int removed = tick20.IndexOf(("stateRemoved", "bastion"));
+        Assert.True(died >= 0 && died < applied && applied < left && left < removed, string.Join(" ; ", tick20));
+        Assert.Equal("left", Lines(log, "stateRemoved").Single(r => r.Str("combatant") == "bastion").Str("reason"));
+        Assert.Empty(Lines(log, "leaveCancelled"));
+    }
+
+    [Fact]
     public void Depart_refuse_a_un_mort_et_a_un_absent()
     {
         var (_, log) = Run(Setup(new[] { Leave(2000, "bastion"), Leave(0, "renfort"), Leave(1000, "allie"), Leave(2000, "allie") }, new CombatantSetup[]

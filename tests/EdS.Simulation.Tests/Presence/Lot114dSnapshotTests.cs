@@ -114,6 +114,19 @@ public class Lot114dSnapshotTests
             CombatSnapshot.Parse(snapshot.Text.Replace("\"lastEid\":", "\"inconnu\":0,\"lastEid\":")), NullCombatLog.Instance)).Message);
         Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(snapshot.Text.Replace(",\"guarding\":", ",\"garde\":")), NullCombatLog.Instance));
         Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(snapshot.Text + "\n{\"entry\":0}"), NullCombatLog.Instance));
+        // Revue Codex de la PR #32 : curseur de file et éléments relus tels qu'entre deux ticks.
+        string head = snapshot.Text.Split('\n')[0];
+        Assert.Contains("\"queue\":{\"started\":true,\"tick\":29,\"phase\":7,", head);
+        Assert.Contains("Curseur", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
+            CombatSnapshot.Parse(snapshot.Text.Replace("\"queue\":{\"started\":true,\"tick\":29,\"phase\":7,", "\"queue\":{\"started\":true,\"tick\":30,\"phase\":7,")),
+            NullCombatLog.Instance)).Message);
+        Assert.Contains("Curseur", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
+            CombatSnapshot.Parse(snapshot.Text.Replace("\"queue\":{\"started\":true,\"tick\":29,\"phase\":7,", "\"queue\":{\"started\":true,\"tick\":29,\"phase\":2,")),
+            NullCombatLog.Instance)).Message);
+        string firstEntry = snapshot.Text.Split('\n').First(l => l.StartsWith("{\"entry\":", StringComparison.Ordinal));
+        string past = System.Text.RegularExpressions.Regex.Replace(firstEntry, "\"tick\":[0-9]+", "\"tick\":12");
+        Assert.Contains("déjà passé", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(snapshot.Text.Replace(firstEntry, past)),
+            NullCombatLog.Instance)).Message);
         Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":2,\"tick\":0,\"setup\":\"x\"}"));
         Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":1, \"tick\":0}"));
         // Un instantané refusé n'a rien écrit.
