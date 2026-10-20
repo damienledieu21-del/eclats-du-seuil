@@ -26,23 +26,26 @@ namespace EdS.Data
     /// des renforcements dans les règles ; <c>combat.rampartChargeSpendAll</c>, <c>combat.coefficientPerRampartCharge</c> (X8) et clé
     /// <c>guard.noUpkeep</c> dans les classes ; 10 (règles) = sous-lot 11.4a : <c>combat.movement.speed</c>,
     /// <c>combat.movement.guardSpeedFactor</c>, <c>combat.contact.playerCreature</c>, <c>combat.contact.crossingSpeedFactor</c> et
-    /// <c>combat.contact.largeCreatureRadius</c> (déplacement et contact d'un combat positionné). Classes inchangées (8).</para>
+    /// <c>combat.contact.largeCreatureRadius</c> (déplacement et contact d'un combat positionné). Classes inchangées (8) ;
+    /// 11 (règles) et 9 (classes) = sous-lot 11.4b, portées d'un combat positionné : <c>statuses[].range</c> (protection seulement)
+    /// dans les règles ; <c>combat.range</c>, <c>combat.applies[].range</c> et <c>triggers[].effects[].range</c> dans les classes.</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 10;
+        public const int RulesSchemaVersion = 11;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
-        public const int ClassSchemaVersion = 8;
+        public const int ClassSchemaVersion = 9;
 
         /// <summary>Version de schéma courante des fichiers de builds de référence (<c>builds/*.json</c>, sous-lot 8.5).</summary>
         public const int BuildsSchemaVersion = 1;
 
         /// <summary>
         /// Version de contenu des règles livrées : provisoires, non équilibrées. 0.7.0 : altérations du Bastion (sous-lot 8.4) ;
-        /// 0.8.0 : altérations des talents du Gardien (sous-lot 8.5) ; 0.9.0 : déplacement et contact (sous-lot 11.4a).
+        /// 0.8.0 : altérations des talents du Gardien (sous-lot 8.5) ; 0.9.0 : déplacement et contact (sous-lot 11.4a) ; 0.10.0 :
+        /// portée du lien protecteur (sous-lot 11.4b).
         /// </summary>
-        public const string ProvisionalRulesContentVersion = "0.9.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.10.0-provisoire";
     }
 }

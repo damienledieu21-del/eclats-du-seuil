@@ -21,6 +21,16 @@ namespace EdS.Domain.Space
         public static readonly Fixed MinSpeed = Fixed.FromRatio(1, 10);
         public static readonly Fixed MaxSpeed = Fixed.FromInt(20);
 
+        /// <summary>
+        /// Sous-lot 11.4b : portée ou rayon d'une compétence, d'une application, d'un effet de réaction ou d'une protection : de 0,1 à
+        /// 100 m (bornes techniques).
+        /// </summary>
+        public static readonly Fixed MinRange = Fixed.FromRatio(1, 10);
+        public static readonly Fixed MaxRange = Fixed.FromInt(100);
+
+        /// <summary>Une portée est-elle dans [<see cref="MinRange"/>, <see cref="MaxRange"/>] ?</summary>
+        public static bool IsRange(Fixed range) => range >= MinRange && range <= MaxRange;
+
         /// <summary>Nombre maximal d'obstacles d'un espace, et de sommets d'un obstacle (au moins 3).</summary>
         public const int MaxObstacles = 64;
         public const int MinVertices = 3, MaxVertices = 16;
@@ -94,6 +104,25 @@ namespace EdS.Domain.Space
             long c = Math.Abs(Cross(ex, ez, wx, wz));   // distance × |AB|
             return IntMath.CompareProducts(c, c, r2, ee) < 0;
         }
+
+        /// <summary>
+        /// Sous-lot 11.4b : les segments fermés [A, B] et [C, D] se touchent-ils (croisement, contact d'une extrémité, chevauchement
+        /// colinéaire) ? Test exact par orientations.
+        /// </summary>
+        public static bool SegmentsIntersect(long ax, long az, long bx, long bz, long cx, long cz, long dx, long dz)
+        {
+            int d1 = Math.Sign(Cross(checked(bx - ax), checked(bz - az), checked(cx - ax), checked(cz - az)));
+            int d2 = Math.Sign(Cross(checked(bx - ax), checked(bz - az), checked(dx - ax), checked(dz - az)));
+            int d3 = Math.Sign(Cross(checked(dx - cx), checked(dz - cz), checked(ax - cx), checked(az - cz)));
+            int d4 = Math.Sign(Cross(checked(dx - cx), checked(dz - cz), checked(bx - cx), checked(bz - cz)));
+            if (d1 * d2 < 0 && d3 * d4 < 0) return true;
+            return (d1 == 0 && OnSegment(ax, az, bx, bz, cx, cz)) || (d2 == 0 && OnSegment(ax, az, bx, bz, dx, dz))
+                || (d3 == 0 && OnSegment(cx, cz, dx, dz, ax, az)) || (d4 == 0 && OnSegment(cx, cz, dx, dz, bx, bz));
+        }
+
+        /// <summary>P, colinéaire à [A, B], est-il dans la boîte du segment (donc sur le segment) ?</summary>
+        private static bool OnSegment(long ax, long az, long bx, long bz, long px, long pz) =>
+            px >= Math.Min(ax, bx) && px <= Math.Max(ax, bx) && pz >= Math.Min(az, bz) && pz <= Math.Max(az, bz);
 
         /// <summary>Point du segment [A, B] le plus proche de P, arrondi à l'unité brute (sert à la direction d'un dégagement).</summary>
         public static void ClosestOnSegment(long ax, long az, long bx, long bz, long px, long pz, out long qx, out long qz)

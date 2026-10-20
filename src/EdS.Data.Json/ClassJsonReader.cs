@@ -91,7 +91,7 @@ namespace EdS.Data.Json
                 ["major"] = (v, p) => talent.Major = Bool(input, v, p),
                 ["placeholder"] = (v, p) => talent.Placeholder = Bool(input, v, p),
                 ["prerequisites"] = (v, p) => talent.Prerequisites = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
-                ["triggers"] = (v, p) => talent.Triggers = TriggerJsonReader.ReadList(input, v, p),
+                ["triggers"] = (v, p) => talent.Triggers = TriggerJsonReader.ReadList(input, v, p, allowRange: true),
                 ["modifiers"] = (v, p) => talent.Modifiers = ModifierJsonReader.ReadList(input, v, p),
             });
             return ok ? talent : null;
@@ -109,7 +109,7 @@ namespace EdS.Data.Json
                 ["placeholder"] = (v, p) => skill.Placeholder = Bool(input, v, p),
                 ["talentRequirements"] = (v, p) => skill.TalentRequirements = ReadList(input, v, p, (e, ip) => ReadRequirement(input, e, ip)),
                 ["combat"] = (v, p) => skill.Combat = ReadCombat(input, v, p),
-                ["triggers"] = (v, p) => skill.Triggers = TriggerJsonReader.ReadList(input, v, p),
+                ["triggers"] = (v, p) => skill.Triggers = TriggerJsonReader.ReadList(input, v, p, allowRange: true),
                 ["modifiers"] = (v, p) => skill.Modifiers = ModifierJsonReader.ReadList(input, v, p),
             });
             return ok ? skill : null;
@@ -133,21 +133,27 @@ namespace EdS.Data.Json
                 ["coefficientPerRampartCharge"] = (v, p) => combat.CoefficientPerRampartCharge = input.TryReadDecimal(v, p, out Fixed k) ? k : null,
                 ["resonanceGain"] = (v, p) => combat.ResonanceGain = Int(input, v, p),
                 ["provisional"] = (v, p) => combat.Provisional = Bool(input, v, p),
-                ["applies"] = (v, p) => combat.Applies = ReadList(input, v, p, (e, ip) => ReadApplication(input, e, ip)),
+                ["range"] = (v, p) => combat.Range = input.Decimal(v, p),
+                ["applies"] = (v, p) => combat.Applies = ReadList(input, v, p, (e, ip) => ReadApplication(input, e, ip, allowRange: true)),
             });
             return ok ? combat : null;
         }
 
-        /// <summary>Altération portée (lot 7.2), même forme dans les classes et les scénarios.</summary>
-        internal static StatusApplicationData? ReadApplication(JsonInput input, JsonElement element, string path)
+        /// <summary>
+        /// Altération portée (lot 7.2), même forme dans les classes et les scénarios. Sous-lot 11.4b : le rayon (<c>range</c>) n'est lu
+        /// que dans les classes (schéma 9).
+        /// </summary>
+        internal static StatusApplicationData? ReadApplication(JsonInput input, JsonElement element, string path, bool allowRange = false)
         {
             var application = new StatusApplicationData();
-            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            var fields = new Dictionary<string, Action<JsonElement, string>>
             {
                 ["status"] = (v, p) => application.Status = input.Text(v, p),
                 ["coefficient"] = (v, p) => application.Coefficient = input.Decimal(v, p),
                 ["target"] = (v, p) => application.Target = input.Text(v, p),
-            });
+            };
+            if (allowRange) fields["range"] = (v, p) => application.Range = input.Decimal(v, p);
+            bool ok = input.ReadFields(element, path, fields);
             return ok ? application : null;
         }
 

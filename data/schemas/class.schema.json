@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 8
+      "const": 9
     },
     "kind": {
       "const": "class"
@@ -360,6 +360,12 @@
           "type": "boolean",
           "description": "Valeurs provisoires, non équilibrées."
         },
+        "range": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100,
+          "description": "Facultatif (sous-lot 11.4b) : portée en mètres dans un combat positionné, 4 décimales au plus ; absente : sans limite ; ignorée sans espace. Ciblage enemy ou ally : distance maximale entre les bords des emprises, vérifiée au lancement avec la ligne de vue (refus targetOutOfRange, noLineOfSight). allEnemies ou allAllies : rayon du cercle centré sur le lanceur au moment de l'impact, que l'emprise d'une cible doit toucher. Interdite pour self."
+        },
         "applies": {
           "type": "array",
           "description": "Altérations appliquées à chaque cible touchée après l'impact (lot 7.2) ; éventuellement vide.",
@@ -385,12 +391,37 @@
                   "allEnemies"
                 ],
                 "description": "Sous-lot 8.3 : cible propre de l'application, relative à l'acteur (lui-même, ses alliés vivants lui compris, ses ennemis vivants), appliquée une fois après les impacts ; absente : chaque cible de l'action."
+              },
+              "range": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 100,
+                "description": "Facultatif (sous-lot 11.4b), seulement avec target allAllies ou allEnemies : rayon en mètres du cercle centré sur l'acteur, dans un combat positionné ; absent : sans limite."
               }
             }
           }
         }
       },
       "allOf": [
+        {
+          "if": {
+            "required": [
+              "targeting"
+            ],
+            "properties": {
+              "targeting": {
+                "const": "self"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "range"
+              ]
+            }
+          }
+        },
         {
           "if": {
             "required": [
@@ -929,6 +960,12 @@
               },
               "amount": {
                 "$ref": "#/$defs/rankedValue"
+              },
+              "range": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 100,
+                "description": "Facultatif (sous-lot 11.4b), strike ou applyStatus vers eventSource, eventTarget ou allEnemies : portée en mètres dans un combat positionné (bords des emprises pour une cible ; rayon autour du porteur pour allEnemies) ; absente : sans limite."
               }
             },
             "required": [

@@ -102,6 +102,12 @@ namespace EdS.Data.Classes
 
         public bool? Provisional { get; set; }
 
+        /// <summary>
+        /// Sous-lot 11.4b (schéma 9), facultatif : portée en mètres dans un combat positionné (cible désignée : bords des emprises ;
+        /// groupe : rayon autour du lanceur) ; absent = sans limite.
+        /// </summary>
+        public Fixed? Range { get; set; }
+
         /// <summary>Altérations appliquées à chaque cible touchée (schéma 3, lot 7.2) ; liste éventuellement vide.</summary>
         public List<StatusApplicationData?>? Applies { get; set; }
     }
@@ -116,6 +122,9 @@ namespace EdS.Data.Classes
 
         /// <summary>Sous-lot 8.3 (X5) : cible propre (« self », « allAllies », « allEnemies ») ; absent = les cibles de l'action.</summary>
         public string? Target { get; set; }
+
+        /// <summary>Sous-lot 11.4b (classes, schéma 9) : rayon d'une cible propre de groupe ; absent = sans limite.</summary>
+        public Fixed? Range { get; set; }
     }
 
     public sealed class RequirementData

@@ -48,6 +48,9 @@ namespace EdS.Data.Triggers
         public string? Status { get; set; }
         public string? Resource { get; set; }
         public RankedData? Amount { get; set; }
+
+        /// <summary>Sous-lot 11.4b (classes, schéma 9) : portée en mètres dans un combat positionné ; facultative (sans limite).</summary>
+        public Fixed? Range { get; set; }
     }
 
     /// <summary>Valeur par rang : un nombre décimal, ou <c>{ "base": x, "perRank": y }</c> (perRank facultatif, 0 par défaut).</summary>
@@ -156,7 +159,7 @@ namespace EdS.Data.Triggers
             var effects = t.Effects!.Select(e => new TriggerEffect(TriggerIds.Effects[e!.Type!],
                 e.Target is null ? null : TriggerIds.Targets[e.Target], Ranked(e.Coefficient),
                 e.PowerType is null ? null : ClassValidator.PowerTypes[e.PowerType], e.DamageType is null ? null : ClassValidator.DamageTypes[e.DamageType],
-                e.Unblockable ?? false, e.Status, e.Resource is null ? null : TriggerIds.Resources[e.Resource], Ranked(e.Amount)));
+                e.Unblockable ?? false, e.Status, e.Resource is null ? null : TriggerIds.Resources[e.Resource], Ranked(e.Amount), e.Range));
             return new TriggerDefinition(TriggerIds.Events[t.On!], effects, t.Role is null ? null : TriggerIds.Roles[t.Role], filter, t.CooldownMs ?? 0);
         }
 
@@ -200,6 +203,7 @@ namespace EdS.Data.Triggers
                     w.Optional(ep + ".status", e.Status);
                     w.Optional(ep + ".resource", e.Resource is { } res ? TriggerIds.Of(res) : null);
                     w.Optional(ep + ".amount", Ranked(e.Amount));
+                    w.Optional(ep + ".range", e.Range?.ToString());   // sous-lot 11.4b : absente sans portée
                 }
             }
         }

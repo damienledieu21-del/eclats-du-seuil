@@ -27,6 +27,9 @@ namespace EdS.Data.Rules
 
         /// <summary>Sous-lot 8.3 (X6, schéma 8) : protection seulement, part des dégâts transférée au protecteur ; facultative (0).</summary>
         public Fixed? RedirectRatio { get; set; }
+
+        /// <summary>Sous-lot 11.4b (schéma 11) : protection seulement, portée du lien en mètres dans un combat positionné ; facultative (sans limite).</summary>
+        public Fixed? Range { get; set; }
         public string? GrantsOnExpiry { get; set; }
         public List<string?>? ImmuneTo { get; set; }
 
@@ -51,7 +54,7 @@ namespace EdS.Data.Rules
         public static IReadOnlyList<string> FieldNames { get; } = Array.AsReadOnly(new[]
         {
             "id", "category", "durationMs", "periodMs", "stacking", "resistance", "damageType", "blocks", "interrupts",
-            "blockReason", "damageTakenIncrease", "movementSpeedModifier", "grantsOnExpiry", "immuneTo", "triggers", "modifiers", "redirectRatio",
+            "blockReason", "damageTakenIncrease", "movementSpeedModifier", "grantsOnExpiry", "immuneTo", "triggers", "modifiers", "redirectRatio", "range",
         });
 
         public static void Check(List<StatusData?>? statuses, ValidationReport report)
@@ -122,7 +125,7 @@ namespace EdS.Data.Rules
                 (s.Interrupts ?? new List<string?>()).Aggregate(StatusInterrupts.None, (acc, b) => acc | StatusIds.Interrupts[b!]),
                 s.BlockReason, s.DamageTakenIncrease ?? Fixed.Zero, s.MovementSpeedModifier ?? Fixed.Zero, s.GrantsOnExpiry,
                 (s.ImmuneTo ?? new List<string?>()).Select(x => x!), Triggers.TriggerShape.Build(s.Triggers),
-                Modifiers.ModifierShape.Build(s.Modifiers), s.RedirectRatio ?? Fixed.Zero)).ToArray());
+                Modifiers.ModifierShape.Build(s.Modifiers), s.RedirectRatio ?? Fixed.Zero, s.Range)).ToArray());
 
         /// <summary>
         /// Écriture canonique pour l'empreinte des règles : dans l'ordre du fichier (il fixe la priorité des motifs de refus), chaque
@@ -155,6 +158,7 @@ namespace EdS.Data.Rules
                 // Sous-lot 8.2 : rien sans modificateur (empreintes des catalogues antérieurs inchangées hors schéma).
                 Modifiers.ModifierShape.AppendCanonical(text, p + ".modifiers", d.Modifiers);
                 w.Value(p + ".redirectRatio", d.RedirectRatio.ToString());   // sous-lot 8.3 : 0 hors protection
+                w.Optional(p + ".range", d.Range?.ToString());   // sous-lot 11.4b : absente sans portée
             }
         }
     }

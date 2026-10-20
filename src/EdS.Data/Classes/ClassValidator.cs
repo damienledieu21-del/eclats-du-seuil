@@ -199,12 +199,14 @@ namespace EdS.Data.Classes
                 Line(p + ".combat.coefficientPerRampartCharge", combat.CoefficientPerRampartCharge?.ToString());
                 Line(p + ".combat.resonanceGain", combat.ResonanceGain);
                 Line(p + ".combat.provisional", combat.Provisional == true ? "true" : "false");
+                Line(p + ".combat.range", combat.Range?.ToString());   // sous-lot 11.4b : « ? » sans portée
                 Line(p + ".combat.applies.count", combat.Applies!.Count);
                 for (int a = 0; a < combat.Applies.Count; a++)
                 {
                     Line($"{p}.combat.applies[{a}].status", combat.Applies[a]!.Status);
                     Line($"{p}.combat.applies[{a}].coefficient", combat.Applies[a]!.Coefficient?.ToString());
                     Line($"{p}.combat.applies[{a}].target", combat.Applies[a]!.Target);   // sous-lot 8.3 : absent = les cibles de l'action
+                    Line($"{p}.combat.applies[{a}].range", combat.Applies[a]!.Range?.ToString());   // sous-lot 11.4b : « ? » sans rayon
                 }
             }
             return text.ToString();
@@ -213,7 +215,7 @@ namespace EdS.Data.Classes
         /// <summary>Altérations portées, converties pour le domaine (lot 7.2) ; suppose la forme vérifiée.</summary>
         public static IReadOnlyList<Domain.Combat.StatusApplication> Applications(List<StatusApplicationData?> list) =>
             list.Select(a => new Domain.Combat.StatusApplication(a!.Status!, a.Coefficient,
-                a.Target is null ? Domain.Combat.ApplicationTarget.Targets : Domain.Combat.ApplicationTargets.Ids[a.Target])).ToArray();
+                a.Target is null ? Domain.Combat.ApplicationTarget.Targets : Domain.Combat.ApplicationTargets.Ids[a.Target], a.Range)).ToArray();
 
         /// <summary>Vérifie la forme d'une liste d'altérations portées : chaque entrée nomme une altération.</summary>
         public static void CheckApplications(List<StatusApplicationData?>? list, string path, ValidationReport report)
@@ -255,7 +257,7 @@ namespace EdS.Data.Classes
                 : new SkillCombatDefinition(c.PowerType is null ? null : PowerTypes[c.PowerType], c.DamageType is null ? null : DamageTypes[c.DamageType], c.Coefficient,
                     c.EnduranceCost!.Value, c.CooldownMs!.Value, Targetings[c.Targeting!], c.Provisional!.Value,
                     c.Unblockable!.Value, c.RampartChargeCost!.Value, c.RampartChargeGain!.Value, Applications(c.Applies!),
-                    c.RampartChargeSpendAll ?? false, c.CoefficientPerRampartCharge, c.ResonanceGain ?? 0);
+                    c.RampartChargeSpendAll ?? false, c.CoefficientPerRampartCharge, c.ResonanceGain ?? 0, c.Range);
             var skills = data.Skills!.Select(s => new SkillDefinition(s!.Id!, s.Name!, SkillKinds[s.Kind!], s.MinLevel!.Value,
                 Requirements(s.TalentRequirements!), s.Placeholder!.Value, Combat(s.Combat), TriggerShape.Build(s.Triggers),
                 ModifierShape.Build(s.Modifiers))).ToArray();

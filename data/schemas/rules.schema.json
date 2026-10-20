@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 10
+      "const": 11
     },
     "kind": {
       "const": "rules"
@@ -919,6 +919,12 @@
                 "exclusiveMinimum": 0,
                 "maximum": 1,
                 "description": "Protection seulement, obligatoire : part des dégâts subis par le protégé transférée au protecteur, ]0, 1] (sous-lot 8.3)."
+              },
+              "range": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 100,
+                "description": "Protection seulement, facultatif (sous-lot 11.4b) : dans un combat positionné, la protection ne transfère que si le protecteur est à cette distance au plus du protégé (bords des emprises), en mètres ; hors de portée, elle reste posée sans rien transférer. Absente : sans limite."
               }
             }
           }
