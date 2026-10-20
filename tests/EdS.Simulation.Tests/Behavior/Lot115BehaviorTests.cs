@@ -294,6 +294,24 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void La_recherche_du_bout_de_la_charge_compte_son_travail()
+    {
+        // Revue Codex de la PR #33 (tour 10) : chaque sous-pas de la recherche (au plus la moitié du rayon, 0,25 m ici) et son contrôle de
+        // piège coûtent une unité de travail, réservée avec l'impact : une bande de 40 m coûte 2 × (160 − 24) unités de plus qu'une bande
+        // de 6 m au tick de l'impact (Bastion hors des deux bandes, à 50 m).
+        long WorkAtImpact(string range)
+        {
+            var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+                range: F(range), width: F("1"), charge: true);
+            var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("50", "0")), Hunter("sanglier", At("0", "0"), "60", firstMs: 0, attacks: charge) },
+                durationMs: 2000, space: Arena(60)), NullCombatLog.Instance);
+            while (engine.CurrentTick <= 20) engine.Step();
+            return engine.LastTickWork;
+        }
+        Assert.Equal(2 * (160 - 24), WorkAtImpact("40") - WorkAtImpact("6"));
+    }
+
+    [Fact]
     public void Une_charge_qui_l_etourdit_lui_meme_ne_fonce_pas()
     {
         // Revue Codex de la PR #33 (tour 8) : la bande pose un étourdissement sur le sanglier lui-même, avec ses coups. L'immobilisation est

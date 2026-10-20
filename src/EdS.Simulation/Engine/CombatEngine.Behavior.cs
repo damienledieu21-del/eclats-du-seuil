@@ -263,17 +263,12 @@ namespace EdS.Simulation.Engine
                 x[k] = _fightersById[k].Body!.X;
                 z[k] = _fightersById[k].Body!.Z;
             }
-            // Revue Codex de la PR #33 : la charge va vers le bout de la bande verrouillée (origine + axe × longueur), depuis la place
-            // actuelle : une charge précédente qui a déjà porté l'ennemi plus loin ne le pousse pas au-delà de sa zone.
-            long endX = checked(zone.OriginX + Domain.Numerics.IntMath.MulDiv(zone.AxisX, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero));
-            long endZ = checked(zone.OriginZ + Domain.Numerics.IntMath.MulDiv(zone.AxisZ, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero));
+            var (endX, endZ) = ChargeTarget(zone);
             long dx = checked(endX - b.X), dz = checked(endZ - b.Z);
             var path = new List<(long X, long Z)> { (b.X, b.Z) };
-            if (Planar.Dot(dx, dz, zone.AxisX, zone.AxisZ) > 0)
+            long count = ChargeSteps(f, zone);
+            if (count > 0)
             {
-                long length = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(dx, dz));
-                long half = Math.Max(1, b.Radius / 2);
-                long count = Math.Max(1, (length + half - 1) / half);
                 for (long k = 1; k <= count; k++)
                 {
                     long cx = checked(b.X + Domain.Numerics.IntMath.MulDiv(dx, k, count, Domain.Numerics.RoundingMode.HalfAwayFromZero));
@@ -286,6 +281,30 @@ namespace EdS.Simulation.Engine
             for (int k = path.Count - 1; k > 0; k--)
                 if (f.Character != null || TrapPrevented(index, x, z, path[k].X, path[k].Z) is null) return path[k];
             return path[0];
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #33 : la charge va vers le bout de la bande verrouillée (origine + axe × longueur), depuis la place actuelle :
+        /// une charge précédente qui a déjà porté l'ennemi plus loin ne le pousse pas au-delà de sa zone.
+        /// </summary>
+        private static (long X, long Z) ChargeTarget(AttackZone zone) =>
+            (checked(zone.OriginX + Domain.Numerics.IntMath.MulDiv(zone.AxisX, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero)),
+             checked(zone.OriginZ + Domain.Numerics.IntMath.MulDiv(zone.AxisZ, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero)));
+
+        /// <summary>
+        /// Revue Codex de la PR #33 (tour 10) : nombre de sous-pas de la recherche du bout de la charge (au plus la moitié du rayon chacun,
+        /// jusqu'au bout de la bande ; 0 si l'ennemi y est déjà ou au-delà). Chaque sous-pas et le contrôle de piège qui peut le suivre
+        /// coûtent chacun une unité de travail, réservées avec l'impact (<see cref="ProcessImpact"/>), même si la charge est bloquée.
+        /// </summary>
+        private static long ChargeSteps(Fighter f, AttackZone zone)
+        {
+            Body b = f.Body!;
+            var (endX, endZ) = ChargeTarget(zone);
+            long dx = checked(endX - b.X), dz = checked(endZ - b.Z);
+            if (Planar.Dot(dx, dz, zone.AxisX, zone.AxisZ) <= 0) return 0;
+            long length = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(dx, dz));
+            long half = Math.Max(1, b.Radius / 2);
+            return Math.Max(1, (length + half - 1) / half);
         }
 
         /// <summary>
