@@ -666,10 +666,18 @@ namespace EdS.Simulation.Engine
                 Require((f.IsDead ? f.Health == 0 && f.Presence != Presence.Pending && f.Presence != Presence.Refused : f.Health != 0 || unscanned)
                     && f.IsDead == (f.Result.DeathTick != null) && (f.Result.DeathTick is null || (f.Result.DeathTick >= 0 && f.Result.DeathTick < CurrentTick)),
                     $"Mort de {who} incohérente avec ses points de vie.");
+                // Relecture d'ensemble (après le 18e tour) : sans soin, les PV ne baissent que des dégâts subis (après boucliers et transferts,
+                // PrepareDamage) : un vivant a perdu exactement ses dégâts subis, un mort au moins ses PV maximaux (dégâts au-delà de 0).
+                if (f.Health is long hp && f.MaxHealth is long maxHp)
+                    Require(f.IsDead ? f.Result.DamageTaken >= maxHp - hp : f.Result.DamageTaken == maxHp - hp, $"Dégâts subis de {who} incohérents avec ses points de vie.");
                 // 11e tour : la cause mortelle est notée quand les PV tombent à 0, et la mort suit en fin du même tick : un vivant n'en a pas.
                 Require(f.IsDead || f.LethalCause is null, $"Cause mortelle de {who} vivant.");
                 // Ressources.
                 Require(f.Endurance >= 0 && f.Endurance <= f.MaxEndurance, $"Endurance de {who} hors de [0, {f.MaxEndurance}] : {f.Endurance}.");
+                // Relecture d'ensemble : l'endurance ne baisse que par une dépense, qui fixe la reprise de la régénération (et remet le cumul à
+                // 0) ; la reprise n'est effacée qu'endurance pleine. Une reprise à venir n'a encore rien accordé.
+                Require(f.RegenFromTick != null || f.Endurance == f.MaxEndurance, $"Endurance de {who} entamée sans reprise de régénération.");
+                Require(f.RegenFromTick is not long resume || resume < CurrentTick || f.RegenGranted == 0, $"Régénération de {who} accordée avant sa reprise.");
                 Require(f.Character is null
                     ? f.Resonance == 0 && f.RampartCharges == 0 && !f.Guarding && !f.ParryOpen
                     : f.Resonance >= 0 && f.Resonance <= _rules.ResonanceMax && f.RampartCharges >= 0 && f.RampartCharges <= f.Rules.RampartChargesMax,

@@ -206,7 +206,8 @@ public class Lot114dSnapshotTests
         string text = engine.Snapshot().Text;
         CombatSetup setup = engine.CompletedSetup();
         Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
-        string ogre = Tampered(text, "{\"fighter\":\"ogre\"", "\"health\":500", "\"health\":499");   // un autre état possible : accepté
+        // Un autre état possible (l'ogre a pris un point de dégâts) : accepté.
+        string ogre = Tampered(Tampered(text, "{\"fighter\":\"ogre\"", "\"health\":500", "\"health\":499"), "{\"fighter\":\"ogre\"", "\"damageTaken\":0", "\"damageTaken\":1");
         Assert.Equal(ogre, CombatEngine.Restore(setup, CombatSnapshot.Parse(ogre), NullCombatLog.Instance).Snapshot().Text);
         const string Head = "{\"snapshot\"", Bastion = "{\"fighter\":\"bastion\"", Ogre = "{\"fighter\":\"ogre\"", Cible = "{\"fighter\":\"cible\"",
             Impact = "{\"entry\":3,", Turn = "{\"entry\":2,";
@@ -299,7 +300,7 @@ public class Lot114dSnapshotTests
             (Assaillant, "\"nextAttack\":1", "\"nextAttack\":0", "Tours de « assaillant » incohérents avec sa cadence"),
             (Assaillant, "\"nextTurn\":2", "\"nextTurn\":3", "Tours de « assaillant » incohérents"),
             (Assaillant, "\"151c15caa15e12f3\"", "\"151c15caa15e12f5\"", "Flux de tirage de « assaillant »"),
-            (Renfort, "\"endurance\":100", "\"endurance\":99", "« renfort », pas encore entré"),
+            (Renfort, "\"resonance\":0", "\"resonance\":1", "« renfort », pas encore entré"),
             (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":1000", "Recharge globale ou parade de « bastion » au-delà"),
         });
         // Revue Codex de la PR #32 (8e tour) : un renfort attendu, déclaré refusé avant son tick d'arrivée (et son arrivée retirée de la file).
@@ -483,8 +484,8 @@ public class Lot114dSnapshotTests
             ("\"next\":[0-9]+", "\"next\":" + (long.MaxValue - 10), "trop grands"),
             ("\"slots\":\\[[0-9]+", "\"slots\":[-1", "Recharge d'un déclencheur"),
             ("\"slots\":\\[[0-9]+", "\"slots\":[" + (long.MaxValue - 10), "Recharge d'un déclencheur"),
-            ("\"damageTaken\":[0-9]+", "\"damageTaken\":-1", "Bilan de"),
-            ("\"damageTaken\":[0-9]+", "\"damageTaken\":" + (long.MaxValue - 10), "Bilan de"),
+            ("\"damageTaken\":[0-9]+", "\"damageTaken\":-1", "de « bastion »"),   // bilan, ou dégâts subis loin des PV perdus
+            ("\"damageTaken\":[0-9]+", "\"damageTaken\":" + (long.MaxValue - 10), "de « bastion »"),
             ("\"guardTicks\":[0-9]+", "\"guardTicks\":100000", "Bilan de"),
             ("\"upkeepRemainder\":[0-9]+", "\"upkeepRemainder\":10000000", "Entretien de la garde"),
             ("\"upkeepPaid\":[0-9]+", "\"upkeepPaid\":5", "Entretien de la garde"),
@@ -683,6 +684,17 @@ public class Lot114dSnapshotTests
             .Replace("\"leftTick\":null", "\"leftTick\":0", StringComparison.Ordinal), StringComparison.Ordinal);
         Assert.Contains("avant son arrivée", Assert.Throws<FormatException>(() => CombatEngine.Restore(stay.CompletedSetup(), CombatSnapshot.Parse(departed),
             NullCombatLog.Instance)).Message);
+        // Relecture d'ensemble : sans soin, un vivant a perdu exactement ses dégâts subis ; l'endurance n'est entamée qu'avec une reprise de
+        // régénération en attente ; une reprise à venir (le Bastion garde : l'entretien la repousse) n'a encore rien accordé.
+        string health = System.Text.RegularExpressions.Regex.Match(bastion, "\"health\":[0-9]+").Value;
+        long healthValue = long.Parse(health.Substring("\"health\":".Length), System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Matches("\"regenFromTick\":(3[0-9]|[4-9][0-9])", bastion);
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, health, $"\"health\":{healthValue - 1}", "Dégâts subis de « bastion » incohérents"),
+            ("{\"fighter\":\"allie\"", "\"endurance\":100", "\"endurance\":99", "entamée sans reprise"),
+            (Bastion, "\"regenGranted\":0", "\"regenGranted\":1", "accordée avant sa reprise"),
+        });
         // 18e tour : un coup critique est un coup, un ultime une compétence lancée ; un mort dont le départ a été annulé n'est pas parti.
         string hits = System.Text.RegularExpressions.Regex.Match(bastion, "\"hits\":[0-9]+").Value;
         long hitCount = long.Parse(hits.Substring("\"hits\":".Length), System.Globalization.CultureInfo.InvariantCulture);
