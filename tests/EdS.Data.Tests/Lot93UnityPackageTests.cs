@@ -142,4 +142,21 @@ public class Lot93UnityPackageTests
             Assert.True(File.Exists(Path.Combine(Root, "scenarios", scenario)), scenario);
         }
     }
+
+    [Fact]
+    public void Donnees_emportees_dans_le_jeu_construit()
+    {
+        // Sous-lot 11.8 : la construction copie data/v0 et scenarios (fichiers .json) dans StreamingAssets/eds avec leur liste, que le
+        // jeu relit (et recopie sur Android) ; même dossier et même liste des deux côtés ; la copie n'est jamais suivie par git.
+        string build = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdsBuildData.cs"));
+        string files = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "GameFiles.cs"));
+        Assert.Contains("\"StreamingAssets\", \"eds\"", build, StringComparison.Ordinal);
+        Assert.Contains("\"fichiers.txt\"", build, StringComparison.Ordinal);
+        Assert.Contains("Folder = \"eds\"", files, StringComparison.Ordinal);
+        Assert.Contains("Index = \"fichiers.txt\"", files, StringComparison.Ordinal);
+        string ignore = File.ReadAllText(Path.Combine(Root, ".gitignore"));
+        Assert.Contains("unity/Assets/StreamingAssets/", ignore, StringComparison.Ordinal);
+        // Tout ce que le jeu ouvre est un .json de data/v0 ou de scenarios : la copie n'en oublie aucun.
+        Assert.All(Directory.GetFiles(Path.Combine(Root, "scenarios"), "*", SearchOption.AllDirectories), f => Assert.EndsWith(".json", f, StringComparison.Ordinal));
+    }
 }
