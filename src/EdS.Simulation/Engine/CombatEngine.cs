@@ -677,7 +677,8 @@ namespace EdS.Simulation.Engine
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
-            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || target is { IsDead: true } || DirectedReach(assailant, attack, target) != null;
+            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || (target is { IsDead: true } && UsesTarget(attack))
+                || DirectedReach(assailant, attack, target) != null;
             // Sous-lot 11.4c : une attaque annoncée (ou une zone) programme son impact, s'il tombe avant la fin.
             bool impact = !skipped && Deferred(attack) && ImpactTickOf(tick, attack) < _durationTicks;
             return Cost.Enqueue.If(checked(tick + setup.IntervalMs / _tickMs) < _durationTicks) + (skipped ? Cost.Line : Observable(TriggerEvent.SkillCast))
@@ -898,9 +899,14 @@ namespace EdS.Simulation.Engine
             }
             if (target is { IsDead: true })
             {
-                EmitDiagnostic(tick, CombatPhase.Commands, "attackSkipped", w => w
-                    .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target.Id).Field("reason", "targetDead"));
-                return null;
+                // Revue Codex de la PR #31 : une zone centrée sur l'assaillant ne dépend pas de sa cible ; elle part sans elle.
+                if (!UsesTarget(attack)) target = null;
+                else
+                {
+                    EmitDiagnostic(tick, CombatPhase.Commands, "attackSkipped", w => w
+                        .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target.Id).Field("reason", "targetDead"));
+                    return null;
+                }
             }
             // Sous-lot 11.4c : un coup dirigé exige sa cible à portée et en vue, au tour de l'assaillant.
             if (DirectedReach(assailant, attack, target) is { } unreachable)
@@ -911,7 +917,7 @@ namespace EdS.Simulation.Engine
             }
             bool deferred = Deferred(attack);
             long impactTick = ImpactTickOf(tick, attack);
-            AttackZone? zone = attack.IsZone ? LockZone(assailant, attack, target!) : null;
+            AttackZone? zone = attack.IsZone ? LockZone(assailant, attack, target) : null;
             Provenance root = Provenance.NewRoot($"assailantTurn:{assailant.Id}:{turn.Turn}", assailant.Id);
             long started = Emit(tick, CombatPhase.Commands, "attackStarted", root, new ObservedEvent { Kind = TriggerEvent.SkillCast, Source = assailant.Id, Target = target?.Id, Skill = attack.Id }, w =>
             {

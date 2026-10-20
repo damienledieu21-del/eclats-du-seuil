@@ -100,16 +100,27 @@ namespace EdS.Simulation.Engine
 
         private long ImpactTickOf(long tick, AssailantAttack attack) => checked(tick + attack.TelegraphMs / _tickMs);
 
-        /// <summary>Zone verrouillée au tour de l'assaillant : origine, axe vers la cible (ou orientation de l'assaillant), dimensions.</summary>
-        private AttackZone LockZone(Fighter assailant, AssailantAttack attack, Fighter target)
+        /// <summary>
+        /// Revue Codex de la PR #31 : l'attaque a-t-elle besoin de sa cible ? Oui pour un coup, un cône, une bande ou un cercle autour de la
+        /// cible ; non pour un cercle (ou une zone qui reste) centré sur l'assaillant, qui part même si sa cible est morte.
+        /// </summary>
+        private static bool UsesTarget(AssailantAttack attack) =>
+            !(attack.Shape is AttackShape.Circle or AttackShape.Persistent && attack.Center == ShapeCenter.Self);
+
+        /// <summary>
+        /// Zone verrouillée au tour de l'assaillant : origine, axe vers la cible (ou orientation de l'assaillant), dimensions. La cible
+        /// est celle des attaques qui visent (provocation comprise) ; null seulement pour une zone centrée sur l'assaillant.
+        /// </summary>
+        private AttackZone LockZone(Fighter assailant, AssailantAttack attack, Fighter? target)
         {
-            Body a = assailant.Body!, t = target.Body!;
+            Body a = assailant.Body!;
             AttackShape shape = attack.Shape!.Value;
             if (shape is AttackShape.Circle or AttackShape.Persistent)
             {
-                Body center = attack.Center == ShapeCenter.Self ? a : t;
+                Body center = attack.Center == ShapeCenter.Self ? a : target!.Body!;
                 return new AttackZone(shape, center.X, center.Z, 0, 0, attack.Radius!.Value.Raw);
             }
+            Body t = target!.Body!;
             if (!Planar.TryNormalize(checked(t.X - a.X), checked(t.Z - a.Z), out long ux, out long uz))
             {
                 ux = a.FacingX;

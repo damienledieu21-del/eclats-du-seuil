@@ -114,6 +114,54 @@ public class Lot114cAttackTests
         Assert.Empty(DamageTo(log, "loin"));
     }
 
+    [Theory]
+    [InlineData(ShapeCenter.Self, true)]
+    [InlineData(ShapeCenter.Target, false)]
+    public void Zone_centree_sur_l_assaillant_part_meme_si_sa_cible_est_morte(ShapeCenter center, bool starts)
+    {
+        // Revue Codex de la PR #31 : la cible du scénario meurt au premier tour ; au second, un cercle autour de l'ours ne dépend pas d'elle
+        // et frappe l'allié vivant ; un cercle autour de la cible, lui, saute (targetDead).
+        var ours = new AssailantSetup("ours", "cibles", Fixed.Zero, Fixed.Zero, "faible", 1000, 1000, new[]
+        {
+            Form(AttackShape.Target, raw: 100_000_000, id: "coup"),
+            Form(AttackShape.Circle, telegraphMs: 1000, radius: "3", center: center, id: "ecrasement"),
+        }, placement: At("2", "0"));
+        var (_, log) = Run(Fight(new CombatantSetup[] { Player("faible", At("0", "0")), Player("allie", At("3", "1.5")), ours }, Array.Empty<CombatCommand>()));
+        Assert.Equal(20L, Assert.Single(Lines(log, "died")).Tick());
+        if (starts)
+        {
+            JsonElement started = Lines(log, "attackStarted").Single(a => a.Str("attack") == "ecrasement");
+            Assert.Equal((40L, JsonValueKind.Null, "[2,0]"), (started.Tick(), started.GetProperty("target").ValueKind, started.GetProperty("origin").GetRawText()));
+            Assert.Equal(new[] { "allie" }, Targets(Assert.Single(Lines(log, "attackLanded"))));
+            Assert.Single(DamageTo(log, "allie"));
+            Assert.DoesNotContain(Lines(log, "attackSkipped"), a => a.Str("attack") == "ecrasement");
+        }
+        else
+        {
+            JsonElement skipped = Assert.Single(Lines(log, "attackSkipped"), a => a.Str("attack") == "ecrasement");
+            Assert.Equal(("ecrasement", "faible", "targetDead"), (skipped.Str("attack"), skipped.Str("target"), skipped.Str("reason")));
+            Assert.Empty(Lines(log, "attackLanded"));
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Une_provocation_detourne_aussi_une_zone_visee(bool taunted)
+    {
+        // Revue Codex de la PR #31 (comportement documenté, question posée à Damien) : la cible d'une zone visée (cône vers la cible) est
+        // celle des attaques à cible unique, provocation comprise. Le Bastion provoque l'ours (Cri : provocation de tous les ennemis à 15 m)
+        // et prend le cône à la place du soigneur visé par le scénario ; sans provocation, le cône part vers le soigneur.
+        var (_, log) = Run(Fight(new CombatantSetup[]
+        {
+            Lot114bRangeTests.Hero("bastion", At("0", "0"), new[] { Lot114bRangeTests.Cri }), Lot114bRangeTests.Hero("soigneur", At("0", "5")),
+            Beast("ours", At("0", "2.5"), Form(AttackShape.Cone, telegraphMs: 1000, range: "4", angle: 60), target: "soigneur"),
+        }, taunted ? new[] { Cmd(0, Lot114bRangeTests.Cri, target: null) } : Array.Empty<CombatCommand>()));
+        JsonElement started = Assert.Single(Lines(log, "attackStarted"));
+        Assert.Equal((taunted ? "bastion" : "soigneur", taunted ? "[0,-1]" : "[0,1]"), (started.Str("target"), started.GetProperty("axis").GetRawText()));
+        Assert.Equal(new[] { taunted ? "bastion" : "soigneur" }, Targets(Assert.Single(Lines(log, "attackLanded"))));
+    }
+
     [Fact]
     public void Cone_vers_la_cible_frontiere_exacte()
     {
