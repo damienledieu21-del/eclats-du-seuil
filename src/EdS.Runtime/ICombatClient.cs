@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EdS.Domain.Space;
 using EdS.Simulation.Engine;
 
 namespace EdS.Runtime
@@ -52,5 +53,18 @@ namespace EdS.Runtime
         PlayerState Player();
 
         IReadOnlyList<OtherState> Others();
+
+        /// <summary>Sous-lot 11.6 : aire et décor d'un combat positionné ; null sans espace (positions purement visuelles).</summary>
+        CombatSpace? Space { get; }
+
+        /// <summary>
+        /// Sous-lot 11.6 : direction de marche voulue, dans le repère du sol (x vers l'est, z vers le nord) ; sous la zone morte de
+        /// <see cref="MoveInput"/>, arrêt. Sans espace, sans effet. Le déplacement est simulé par le moteur (commandes <c>move</c> et
+        /// <c>stop</c>, envoyées seulement quand le cap change).
+        /// </summary>
+        void SetMove(double x, double z);
+
+        /// <summary>Sous-lot 11.6 : attaques annoncées en cours (formes au sol, impact à venir), pour l'affichage.</summary>
+        IReadOnlyList<AnnouncedAttack> Announced();
     }
 }

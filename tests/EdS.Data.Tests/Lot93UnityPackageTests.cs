@@ -130,7 +130,7 @@ public class Lot93UnityPackageTests
         Assert.Equal(new[] { "Editor" }, editor["includePlatforms"]!.AsArray().Select(p => p!.GetValue<string>()));
         // Scénarios proposés par le prototype : tous présents dans le dépôt.
         string gameScript = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
-        foreach (string scenario in new[] { "entrainement_garde_parade.json", "mesures/s1_mannequin.json", "mesures/s2_duel.json", "mesures/s3_meute.json", "mesures/s4_protection.json", "mesures/s5_briseur.json" })
+        foreach (string scenario in new[] { "vallons_demo.json", "meute_a_vaincre.json", "entrainement_garde_parade.json", "mesures/s1_mannequin.json", "mesures/s2_duel.json", "mesures/s3_meute.json", "mesures/s4_protection.json", "mesures/s5_briseur.json" })
         {
             Assert.Contains($"\"{scenario}\"", gameScript, StringComparison.Ordinal);
             Assert.True(File.Exists(Path.Combine(Root, "scenarios", scenario)), scenario);

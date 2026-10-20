@@ -1,0 +1,213 @@
+using EdS.Data.Json;
+using EdS.Data.Scenarios;
+using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
+using EdS.Runtime;
+using EdS.Simulation.Engine;
+using static EdS.Data.Tests.ScenarioTestData;
+
+namespace EdS.Data.Tests;
+
+/// <summary>
+/// Sous-lot 11.6 : scène de démonstration des Vallons et pont temps réel d'un combat positionné. La marche saisie (flottants de
+/// l'appareil) devient un cap fixe ; le pont n'envoie <c>move</c>, <c>stop</c> et <c>select</c> au moteur que quand ils changent, dans la
+/// place laissée par le plafond de commandes du tick ; le moteur déplace le personnage ; le combat complété se rejoue à l'identique.
+/// L'affichage sait qui est en vue du joueur (la caméra ne voit pas à travers les parois) et quelles attaques sont annoncées au sol.
+/// </summary>
+[Trait("Category", "Scene")]
+[Trait("Category", "Runtime")]
+public class Lot116SceneTests
+{
+    private const string Vallons = "vallons_demo";
+
+    private static TrainingSession Session(long durationMs = 60_000) =>
+        TrainingSession.Load(DataDirectory, ScenarioPath(Vallons), "build.bastion.rempart", durationMs: durationMs);
+
+    private static List<CombatCommand> At(RealtimeCombat combat, long tick) => combat.SubmittedCommands.Where(c => c.AtMs == tick * 50).ToList();
+
+    private static GroundVector Position(RealtimeCombat combat) => combat.Player().View.Position!.Value;
+
+    [Fact]
+    public void Caps_de_marche_fixes_et_directions_en_virgule_fixe()
+    {
+        Assert.Equal(0, MoveInput.Heading(1, 0));
+        Assert.Equal(16, MoveInput.Heading(0, 1));
+        Assert.Equal(32, MoveInput.Heading(-1, 0));
+        Assert.Equal(48, MoveInput.Heading(0, -1));
+        Assert.Equal(8, MoveInput.Heading(0.7, 0.7));
+        Assert.Equal(0, MoveInput.Heading(1, -0.04));   // à moins d'un demi-cap : est
+        Assert.Null(MoveInput.Heading(0.1, 0.1));        // zone morte
+        Assert.Null(MoveInput.Heading(0, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => MoveInput.Heading(double.NaN, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => MoveInput.Direction(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => MoveInput.Direction(MoveInput.Headings));
+        for (int k = 0; k < MoveInput.Headings; k++)
+        {
+            GroundVector d = MoveInput.Direction(k);
+            Assert.True(SpaceLimits.IsDirection(d), $"cap {k}");
+            long squared = Planar.LengthSquared(d.X.Raw, d.Z.Raw);
+            Assert.InRange(squared, 9_998L * 9_998L, 10_002L * 10_002L);
+            Assert.Equal(k, MoveInput.Heading(d.X.Raw / 10_000.0, d.Z.Raw / 10_000.0));
+            GroundVector opposite = MoveInput.Direction((k + MoveInput.Headings / 2) % MoveInput.Headings);
+            Assert.Equal((-d.X.Raw, -d.Z.Raw), (opposite.X.Raw, opposite.Z.Raw));
+        }
+    }
+
+    [Fact]
+    public void Scene_des_Vallons_decor_passages_et_ennemis_caches_par_le_decor()
+    {
+        RealtimeCombat combat = Session().Start();
+        CombatSpace space = combat.Space!;
+        Assert.Equal(new[] { "moulin", "riviere_sud", "riviere_nord", "arbre1", "arbre2", "arbre3", "arbre4", "arbre5", "mur_nord", "mur_sud",
+            "pilier1", "pilier2", "pilier3", "pilier4" }, space.Obstacles.Select(o => o.Id));
+        SpaceObstacle south = space.Obstacles.Single(o => o.Id == "riviere_sud"), north = space.Obstacles.Single(o => o.Id == "riviere_nord");
+        // Le pont (entre les deux bras de la rivière) et le passage étroit (entre les deux murs) laissent passer le Bastion (1 m de large).
+        Assert.Equal(Fixed.Parse("3.5"), north.Points.Min(p => p.Z) - south.Points.Max(p => p.Z));
+        SpaceObstacle wallN = space.Obstacles.Single(o => o.Id == "mur_nord"), wallS = space.Obstacles.Single(o => o.Id == "mur_sud");
+        Assert.Equal(Fixed.Parse("2"), wallN.Points.Min(p => p.Z) - wallS.Points.Max(p => p.Z));
+        // Au départ, tous les ennemis sont cachés au Bastion : les loups derrière le moulin, le sanglier et l'archer derrière la rivière.
+        List<OtherState> others = combat.Others().ToList();
+        Assert.Equal(new[] { "loup1", "loup2", "loup3", "sanglier", "archer" }, others.Select(o => o.Id));
+        Assert.All(others, o => Assert.False(o.InSight, o.Id));
+        // Sans espace, tout le monde est en vue et la marche est sans effet.
+        RealtimeCombat flat = TrainingSession.Load(DataDirectory, ScenarioPath("entrainement_garde_parade"), durationMs: 5000).Start();
+        Assert.Null(flat.Space);
+        Assert.All(flat.Others(), o => Assert.True(o.InSight));
+        flat.SetMove(1, 0);
+        Assert.Null(flat.WishedHeading);
+        for (int i = 0; i < 5; i++) flat.StepOnce();
+        Assert.DoesNotContain(flat.SubmittedCommands, c => c.Action is CombatAction.Move or CombatAction.Stop or CombatAction.Select);
+    }
+
+    [Fact]
+    public void Marche_simulee_par_le_moteur_une_commande_par_changement_de_cap()
+    {
+        RealtimeCombat combat = Session().Start();
+        GroundVector start = Position(combat);
+        combat.SetMove(1, 0);
+        for (int i = 0; i < 20; i++) combat.StepOnce();
+        // Une seule commande de marche (vers l'est) ; la sélection de la cible part au même tick.
+        Assert.Equal(new[] { CombatAction.Move, CombatAction.Select }, At(combat, 0).Select(c => c.Action));
+        Assert.Equal(new[] { CombatAction.Move, CombatAction.Select }, combat.SubmittedCommands.Select(c => c.Action));
+        Assert.Equal(MoveInput.Direction(0), combat.SubmittedCommands[0].Direction);
+        GroundVector after = Position(combat);
+        Assert.InRange((after.X - start.X).Raw, 40_000, 60_000);   // environ 5 m/s pendant 1 s
+        Assert.Equal(start.Z, after.Z);
+        // Même cap : rien de nouveau ; nouveau cap : une commande ; relâché : un arrêt, et le Bastion ne bouge plus.
+        combat.SetMove(1, 0.03);
+        combat.StepOnce();
+        Assert.Empty(At(combat, 20));
+        combat.SetMove(0, 1);
+        combat.StepOnce();
+        Assert.Equal(MoveInput.Direction(16), Assert.Single(At(combat, 21)).Direction);
+        for (int i = 0; i < 4; i++) combat.StepOnce();
+        Assert.True(Position(combat).Z > after.Z);
+        combat.SetMove(0.05, -0.1);   // sous la zone morte
+        combat.StepOnce();
+        Assert.Equal(CombatAction.Stop, Assert.Single(At(combat, 26)).Action);
+        GroundVector stopped = Position(combat);
+        for (int i = 0; i < 5; i++) combat.StepOnce();
+        Assert.Equal(stopped, Position(combat));
+        Assert.Null(combat.Player().View.MoveDirection);
+    }
+
+    [Fact]
+    public void Cible_selectionnee_envoyee_au_moteur_quand_elle_change()
+    {
+        RealtimeCombat combat = Session().Start();
+        combat.StepOnce();
+        CombatCommand select = Assert.Single(At(combat, 0));
+        Assert.Equal((CombatAction.Select, "loup1"), (select.Action, select.Target));
+        Assert.Equal("loup1", combat.Player().View.SelectedTarget);
+        combat.StepOnce();
+        Assert.Empty(At(combat, 1));
+        combat.NextTarget();
+        combat.StepOnce();
+        Assert.Equal("loup2", Assert.Single(At(combat, 2)).Target);
+    }
+
+    [Fact]
+    public void Plafond_de_commandes_par_tick_respecte_la_marche_attend_le_tick_suivant()
+    {
+        RealtimeCombat combat = Session().Start();
+        int max = combat.CompletedSetup().Combat.MaxCommandsPerActorPerTick;
+        combat.SetGuard(true);
+        combat.SetMove(1, 0);
+        combat.StepOnce();   // garde, marche, sélection : 3
+        Assert.Equal(new[] { CombatAction.GuardStart, CombatAction.Move, CombatAction.Select }, At(combat, 0).Select(c => c.Action));
+        for (int i = 0; i < 30; i++) combat.StepOnce();
+        // En garde : une compétence (quitter la garde + lancer), une parade, une nouvelle marche et une nouvelle cible = 5 > 4.
+        long tick = combat.Tick;
+        Assert.True(combat.UseSlot(2), "provocation disponible");
+        combat.Parry();
+        combat.SetMove(0, 1);
+        combat.NextTarget();
+        combat.StepOnce();
+        List<CombatCommand> first = At(combat, tick);
+        Assert.Equal(max, first.Count);
+        Assert.Equal(new[] { CombatAction.GuardStop, CombatAction.UseSkill, CombatAction.Parry, CombatAction.Move }, first.Select(c => c.Action));
+        combat.StepOnce();
+        // La sélection part au tick suivant, avec la reprise de la garde (bouton toujours tenu).
+        Assert.Contains(At(combat, tick + 1), c => c.Action == CombatAction.Select && c.Target == "loup2");
+        Assert.All(combat.SubmittedCommands.GroupBy(c => c.AtMs), g => Assert.True(g.Count() <= max, $"{g.Count()} commandes à {g.Key} ms"));
+    }
+
+    [Fact]
+    public void Partie_positionnee_au_hasard_rejouee_a_l_identique()
+    {
+        // Saisies tirées au hasard (marche, arrêt, garde, parade, compétences, cible) sur 30 s : le moteur reste seul juge, le combat
+        // complété des commandes soumises se rejoue octet par octet, et le Bastion ne traverse jamais le décor.
+        var random = new Random(116);
+        RealtimeCombat combat = Session(durationMs: 30_000).Start();
+        List<ConvexPolygon> obstacles = combat.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToList();
+        long radius = combat.Player().View.Radius!.Value.Raw;
+        var visited = new HashSet<(long, long)>();
+        while (!combat.IsFinished)
+        {
+            if (random.Next(10) == 0)
+            {
+                double a = random.NextDouble() * 2 * Math.PI;
+                if (random.Next(5) == 0) combat.SetMove(0, 0);
+                else combat.SetMove(Math.Cos(a), Math.Sin(a));
+            }
+            if (random.Next(15) == 0) combat.SetGuard(random.Next(2) == 0);
+            if (random.Next(30) == 0) combat.Parry();
+            if (random.Next(25) == 0) combat.UseSlot(random.Next(5));
+            if (random.Next(40) == 0) combat.NextTarget();
+            combat.StepOnce();
+            if (combat.IsFinished) break;
+            GroundVector p = Position(combat);
+            visited.Add((p.X.Raw / 10_000, p.Z.Raw / 10_000));
+            Assert.All(obstacles, o => Assert.False(o.OverlapsCircle(p.X.Raw, p.Z.Raw, radius), $"Bastion dans le décor en {p}"));
+        }
+        Assert.True(visited.Count > 20, $"{visited.Count} mètres carrés parcourus");
+        Assert.True(combat.SubmittedCommands.Count(c => c.Action == CombatAction.Move) > 20);
+        var log = new MemoryCombatLog();
+        CombatResult replayed = combat.WriteLog(log);
+        Assert.Equal((combat.Result!.EndReason, combat.Result.EndTick, combat.Result.Winner), (replayed.EndReason, replayed.EndTick, replayed.Winner));
+        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(log.Lines.ToArray(), ShippedData).Status);
+    }
+
+    [Fact]
+    public void Attaques_annoncees_exposees_a_l_affichage()
+    {
+        // La meute de l'espace (sous-lot 11.5) annonce une charge (bande) et une pluie de flèches (cercle) : le pont les donne telles que
+        // le moteur les a verrouillées, sans rien modifier.
+        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(ScenarioPath("espace_meute"), ShippedData);
+        var combat = new RealtimeCombat(loaded.Setup!, "bastion");
+        var shapes = new HashSet<AttackShape>();
+        while (!combat.IsFinished)
+        {
+            foreach (AnnouncedAttack attack in combat.Announced())
+            {
+                shapes.Add(attack.Shape);
+                Assert.True(attack.ImpactTick >= combat.Tick);
+                if (attack.Shape is AttackShape.Line or AttackShape.Circle) Assert.NotNull(attack.Zone);
+            }
+            combat.StepOnce();
+        }
+        Assert.Contains(AttackShape.Line, shapes);
+        Assert.Contains(AttackShape.Circle, shapes);
+    }
+}
