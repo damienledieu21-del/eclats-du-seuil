@@ -6,6 +6,7 @@ using EdS.Domain;
 using EdS.Domain.Builds;
 using EdS.Domain.Collections;
 using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 using EdS.Domain.Stats;
 
 namespace EdS.Domain.Combat
@@ -23,11 +24,18 @@ namespace EdS.Domain.Combat
         /// <summary>Ordre des commandes simultanées : la plus grande initiative agit d'abord, puis l'identifiant (ordinal).</summary>
         public int Initiative { get; }
 
-        protected CombatantSetup(string id, string team, int initiative)
+        /// <summary>
+        /// Sous-lot 11.4 : place de départ dans un combat positionné (<see cref="CombatSetup.Space"/>) ; null dans un combat sans espace.
+        /// Tous les combattants d'un combat positionné en ont une, aucun d'un combat sans espace.
+        /// </summary>
+        public CombatantPlacement? Placement { get; }
+
+        protected CombatantSetup(string id, string team, int initiative, CombatantPlacement? placement = null)
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Team = team ?? throw new ArgumentNullException(nameof(team));
             Initiative = initiative;
+            Placement = placement;
         }
     }
 
@@ -37,8 +45,8 @@ namespace EdS.Domain.Combat
         public ClassDefinition Class { get; }
         public CharacterBuild Build { get; }
 
-        public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0)
-            : base(id, team, initiative)
+        public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null)
+            : base(id, team, initiative, placement)
         {
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
             Build = build ?? throw new ArgumentNullException(nameof(build));
@@ -137,8 +145,9 @@ namespace EdS.Domain.Combat
         /// <summary>Résistance aux altérations (lot 7.2, D12) : réduit la durée des contrôles ; 0 par défaut.</summary>
         public Fixed StatusResistance { get; }
 
-        public DummySetup(string id, string team, Fixed armor, Fixed magicResistance, int initiative = 0, Fixed statusResistance = default)
-            : base(id, team, initiative)
+        public DummySetup(string id, string team, Fixed armor, Fixed magicResistance, int initiative = 0, Fixed statusResistance = default,
+            CombatantPlacement? placement = null)
+            : base(id, team, initiative, placement)
         {
             Armor = armor;
             MagicResistance = magicResistance;
@@ -217,8 +226,8 @@ namespace EdS.Domain.Combat
 
         public AssailantSetup(string id, string team, Fixed armor, Fixed magicResistance, string? target, long firstAttackMs, long intervalMs,
             IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default, IEnumerable<TriggerDefinition>? triggers = null,
-            long? health = null)
-            : base(id, team, initiative)
+            long? health = null, CombatantPlacement? placement = null)
+            : base(id, team, initiative, placement)
         {
             Health = health;
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
@@ -246,6 +255,12 @@ namespace EdS.Domain.Combat
 
         /// <summary>Tenter une parade parfaite (A2).</summary>
         Parry = 3,
+
+        /// <summary>Sous-lot 11.4 : marcher dans une direction, jusqu'à nouvel ordre (intention de déplacement d'un combat positionné).</summary>
+        Move = 4,
+
+        /// <summary>Sous-lot 11.4 : s'arrêter.</summary>
+        Stop = 5,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -255,9 +270,17 @@ namespace EdS.Domain.Combat
         public const string GuardStart = "guardStart";
         public const string GuardStop = "guardStop";
         public const string Parry = "parry";
+        public const string Move = "move";
+        public const string Stop = "stop";
 
-        /// <summary>Actions qu'on écrit dans le champ <c>action</c> d'une commande (la compétence s'écrit avec <c>skill</c>).</summary>
+        /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
+
+        /// <summary>
+        /// Actions qu'on écrit dans le champ <c>action</c> d'une commande de scénario (la compétence s'écrit avec <c>skill</c>) : les
+        /// défensives, puis le déplacement (sous-lot 11.4).
+        /// </summary>
+        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop }, nameof(Named));
 
         public static string Of(CombatAction action) => action switch
         {
@@ -265,8 +288,21 @@ namespace EdS.Domain.Combat
             CombatAction.GuardStart => GuardStart,
             CombatAction.GuardStop => GuardStop,
             CombatAction.Parry => Parry,
+            CombatAction.Move => Move,
+            CombatAction.Stop => Stop,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
+
+        /// <summary>Action nommée d'une commande de scénario (<see cref="Named"/>) ; faux pour une autre valeur.</summary>
+        public static bool TryParseNamed(string? id, out CombatAction action)
+        {
+            switch (id)
+            {
+                case Move: action = CombatAction.Move; return true;
+                case Stop: action = CombatAction.Stop; return true;
+                default: return TryParseDefensive(id, out action);
+            }
+        }
 
         public static bool TryParseDefensive(string? id, out CombatAction action)
         {
@@ -280,18 +316,24 @@ namespace EdS.Domain.Combat
         }
     }
 
-    /// <summary>Commande horodatée en millisecondes depuis le début du combat : compétence, garde ou parade.</summary>
+    /// <summary>Commande horodatée en millisecondes depuis le début du combat : compétence, garde, parade ou déplacement (sous-lot 11.4).</summary>
     public sealed class CombatCommand
     {
         public long AtMs { get; }
         public string Actor { get; }
         public CombatAction Action { get; }
 
-        /// <summary>Compétence lancée ; null pour une garde ou une parade.</summary>
+        /// <summary>Compétence lancée ; null pour une garde, une parade ou un déplacement.</summary>
         public string? Skill { get; }
 
-        /// <summary>Cible désignée ; null pour une compétence qui choisit ses cibles (zone), une garde ou une parade.</summary>
+        /// <summary>Cible désignée ; null pour une compétence qui choisit ses cibles (zone), une garde, une parade ou un déplacement.</summary>
         public string? Target { get; }
+
+        /// <summary>
+        /// Sous-lot 11.4 : direction de marche d'un <see cref="CombatAction.Move"/>, telle que donnée (composantes dans [−1, 1], non toutes
+        /// deux nulles ; le moteur la normalise) ; null pour toute autre commande.
+        /// </summary>
+        public GroundVector? Direction { get; }
 
         /// <summary>Commande « utiliser une compétence ».</summary>
         public CombatCommand(long atMs, string actor, string skill, string? target = null)
@@ -303,13 +345,23 @@ namespace EdS.Domain.Combat
             Target = target;
         }
 
-        /// <summary>Commande de garde ou de parade (sans compétence ni cible).</summary>
+        /// <summary>Commande de garde, de parade ou d'arrêt (sans compétence, cible ni direction).</summary>
         public CombatCommand(long atMs, string actor, CombatAction action)
         {
             if (action == CombatAction.UseSkill) throw new ArgumentException("Une compétence se lance avec le constructeur qui la nomme.", nameof(action));
+            if (action == CombatAction.Move) throw new ArgumentException("Un déplacement se donne avec le constructeur qui porte sa direction.", nameof(action));
             AtMs = atMs;
             Actor = actor ?? throw new ArgumentNullException(nameof(actor));
             Action = action;
+        }
+
+        /// <summary>Sous-lot 11.4 : commande « marcher dans la direction <paramref name="direction"/> », jusqu'à un arrêt ou une autre direction.</summary>
+        public CombatCommand(long atMs, string actor, GroundVector direction)
+        {
+            AtMs = atMs;
+            Actor = actor ?? throw new ArgumentNullException(nameof(actor));
+            Action = CombatAction.Move;
+            Direction = direction;
         }
     }
 
@@ -362,9 +414,17 @@ namespace EdS.Domain.Combat
         public IReadOnlyList<CombatCommand> Commands { get; }
         public CombatDataIdentity Data { get; }
 
+        /// <summary>
+        /// Sous-lot 11.4 : espace d'un combat positionné (aire praticable, décor) ; null pour un combat sans positions, simulé exactement
+        /// comme avant le sous-lot.
+        /// </summary>
+        public CombatSpace? Space { get; }
+
         public CombatSetup(long seed, long durationMs, StatRules stats, DamageRules damage, ProgressionRules progression,
-            CombatRules combat, IEnumerable<CombatantSetup> combatants, IEnumerable<CombatCommand> commands, CombatDataIdentity data)
+            CombatRules combat, IEnumerable<CombatantSetup> combatants, IEnumerable<CombatCommand> commands, CombatDataIdentity data,
+            CombatSpace? space = null)
         {
+            Space = space;
             Seed = seed;
             DurationMs = durationMs;
             Stats = stats ?? throw new ArgumentNullException(nameof(stats));
@@ -478,6 +538,7 @@ namespace EdS.Domain.Combat
                     else if (target.Team == assailant.Team)
                         errors.Add(new RuleViolation("la cible de l'assaillant doit être un ennemi.", $"combatants[{i}].target"));
                 }
+            ValidateSpace(errors);
             if (errors.Count == 0) ValidateTriggerCount(errors);
             if (errors.Count == 0 && numericLimits) ValidateNumericLimits(errors);
             if (Combatants.Select(c => c.Team).Distinct(StringComparer.Ordinal).Count() < 2)
@@ -515,13 +576,101 @@ namespace EdS.Domain.Combat
                 }
                 else
                 {
-                    if (command.Skill != null) errors.Add(new RuleViolation("une garde ou une parade ne nomme pas de compétence.", path + ".skill"));
-                    if (command.Target != null) errors.Add(new RuleViolation("une garde ou une parade n'a pas de cible.", path + ".target"));
+                    if (command.Skill != null) errors.Add(new RuleViolation("une garde, une parade ou un déplacement ne nomme pas de compétence.", path + ".skill"));
+                    if (command.Target != null) errors.Add(new RuleViolation("une garde, une parade ou un déplacement n'a pas de cible.", path + ".target"));
                 }
+                // Sous-lot 11.4 : déplacement seulement dans un combat positionné ; une direction seulement pour un déplacement.
+                bool moving = command.Action == CombatAction.Move || command.Action == CombatAction.Stop;
+                if (moving && Space is null)
+                    errors.Add(new RuleViolation("déplacement dans un combat sans espace (bloc space absent).", path + ".action"));
+                if (command.Action == CombatAction.Move)
+                {
+                    if (command.Direction is not { } direction || !SpaceLimits.IsDirection(direction))
+                        errors.Add(new RuleViolation("direction obligatoire : composantes dans [−1, 1], non toutes deux nulles.", path + ".direction"));
+                }
+                else if (command.Direction != null)
+                    errors.Add(new RuleViolation("seul un déplacement (move) a une direction.", path + ".direction"));
             }
             ValidateInitialQueue(errors);
             if (queueBound && errors.Count == 0) ValidateQueueSaturation(errors);
             return errors;
+        }
+
+        /// <summary>
+        /// Sous-lot 11.4 : cohérence des positions. Sans espace, aucun combattant n'a de position. Avec un espace valide, chaque combattant en a
+        /// une : rayon dans [0,1 ; 5] m, orientation non nulle, vitesse propre réservée aux assaillants, emprise entière dans l'aire praticable,
+        /// sans chevaucher un obstacle ni un combattant qui lui est solide (<see cref="CombatRules.AreSolid"/>, selon la règle de contact).
+        /// L'état de départ respecte ainsi les invariants que le déplacement maintient ensuite.
+        /// </summary>
+        private void ValidateSpace(List<RuleViolation> errors)
+        {
+            if (Space is null)
+            {
+                for (int i = 0; i < Combatants.Count; i++)
+                    if (Combatants[i].Placement != null)
+                        errors.Add(new RuleViolation("position dans un combat sans espace : ajouter le bloc space ou retirer la position.", $"combatants[{i}].position"));
+                return;
+            }
+            int first = errors.Count;
+            errors.AddRange(Space.Validate());
+            bool spaceValid = errors.Count == first;
+            ConvexPolygon[] polygons = spaceValid ? Space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray() : Array.Empty<ConvexPolygon>();
+            bool placementsValid = true;
+            for (int i = 0; i < Combatants.Count; i++)
+            {
+                CombatantSetup c = Combatants[i];
+                string path = $"combatants[{i}]";
+                if (c.Placement is not { } p)
+                {
+                    errors.Add(new RuleViolation("position obligatoire dans un combat positionné (bloc space).", path + ".position"));
+                    placementsValid = false;
+                    continue;
+                }
+                int before = errors.Count;
+                bool radiusValid = p.Radius >= SpaceLimits.MinRadius && p.Radius <= SpaceLimits.MaxRadius;
+                if (!radiusValid)
+                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                        $"rayon d'emprise hors de [{SpaceLimits.MinRadius}, {SpaceLimits.MaxRadius}] m (borne technique).", path + ".radius"));
+                if (!SpaceLimits.IsDirection(p.Facing))
+                    errors.Add(new RuleViolation("orientation : composantes dans [−1, 1], non toutes deux nulles.", path + ".facing"));
+                if (p.Speed is { } speed)
+                {
+                    if (c is not AssailantSetup)
+                        errors.Add(new RuleViolation("vitesse propre réservée aux assaillants (les personnages marchent à combat.movement.speed).", path + ".speed"));
+                    else if (speed < SpaceLimits.MinSpeed || speed > SpaceLimits.MaxSpeed)
+                        errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                            $"vitesse hors de [{SpaceLimits.MinSpeed}, {SpaceLimits.MaxSpeed}] m/s (borne technique).", path + ".speed"));
+                }
+                if (!SpaceLimits.InRange(p.Position))
+                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, $"position hors de ±{SpaceLimits.MaxCoordinate} m (borne technique).", path + ".position"));
+                else if (spaceValid && radiusValid)
+                {
+                    if (p.Position.X - p.Radius < Space.Min.X || p.Position.X + p.Radius > Space.Max.X
+                        || p.Position.Z - p.Radius < Space.Min.Z || p.Position.Z + p.Radius > Space.Max.Z)
+                        errors.Add(new RuleViolation("emprise hors de l'aire praticable (space.bounds).", path + ".position"));
+                    else
+                        for (int k = 0; k < polygons.Length; k++)
+                            if (polygons[k].OverlapsCircle(p.Position.X.Raw, p.Position.Z.Raw, p.Radius.Raw))
+                            {
+                                errors.Add(new RuleViolation($"emprise qui chevauche l'obstacle « {Space.Obstacles[k].Id} ».", path + ".position"));
+                                break;
+                            }
+                }
+                if (errors.Count != before) placementsValid = false;
+            }
+            if (!spaceValid || !placementsValid) return;
+            for (int j = 1; j < Combatants.Count; j++)
+                for (int i = 0; i < j; i++)
+                {
+                    CombatantSetup a = Combatants[i], b = Combatants[j];
+                    CombatantPlacement pa = a.Placement!, pb = b.Placement!;
+                    if (Combat.AreSolid(a is CharacterSetup, pa.Radius, b is CharacterSetup, pb.Radius)
+                        && Planar.CirclesOverlap(pa.Position.X.Raw, pa.Position.Z.Raw, pa.Radius.Raw, pb.Position.X.Raw, pb.Position.Z.Raw, pb.Radius.Raw))
+                    {
+                        errors.Add(new RuleViolation($"emprise qui chevauche celle de « {a.Id} » (combatants[{i}]), solide pour elle.", $"combatants[{j}].position"));
+                        break;
+                    }
+                }
         }
 
         /// <summary>

@@ -47,6 +47,42 @@ namespace EdS.Domain.Numerics
             return ApplySign(RoundMagnitude(quotient, remainder, ud, negative, mode), negative);
         }
 
+        /// <summary>
+        /// Sous-lot 11.4 : racine carrée entière par défaut, ⌊√<paramref name="n"/>⌋, d'un entier positif ou nul. Méthode bit à bit,
+        /// sans flottant : même résultat sur toutes les plateformes.
+        /// </summary>
+        public static long Sqrt(long n)
+        {
+            if (n < 0) throw new ArgumentOutOfRangeException(nameof(n), n, "racine d'un nombre négatif.");
+            ulong x = (ulong)n, result = 0, bit = 1UL << 62;
+            while (bit > x) bit >>= 2;
+            while (bit != 0)
+            {
+                if (x >= result + bit)
+                {
+                    x -= result + bit;
+                    result = (result >> 1) + bit;
+                }
+                else result >>= 1;
+                bit >>= 2;
+            }
+            return (long)result;
+        }
+
+        /// <summary>
+        /// Sous-lot 11.4 : compare exactement <paramref name="a"/> × <paramref name="b"/> et <paramref name="c"/> × <paramref name="d"/>
+        /// (entiers positifs ou nuls), produits sur 128 bits : −1, 0 ou 1. Sert aux tests exacts de distance du moteur spatial.
+        /// </summary>
+        public static int CompareProducts(long a, long b, long c, long d)
+        {
+            if (a < 0 || b < 0 || c < 0 || d < 0) throw new ArgumentOutOfRangeException(nameof(a), "facteurs positifs ou nuls attendus.");
+            Multiply128((ulong)a, (ulong)b, out ulong hi1, out ulong lo1);
+            Multiply128((ulong)c, (ulong)d, out ulong hi2, out ulong lo2);
+            if (hi1 != hi2) return hi1 < hi2 ? -1 : 1;
+            if (lo1 != lo2) return lo1 < lo2 ? -1 : 1;
+            return 0;
+        }
+
         private static ulong RoundMagnitude(ulong q, ulong r, ulong d, bool negative, RoundingMode mode)
         {
             if (r == 0) return q;
