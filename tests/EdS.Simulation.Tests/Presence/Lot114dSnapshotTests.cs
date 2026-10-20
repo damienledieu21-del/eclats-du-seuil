@@ -166,6 +166,18 @@ public class Lot114dSnapshotTests
         return string.Join("\n", lines);
     }
 
+    /// <summary>Le texte sans l'élément de file qui commence par <paramref name="prefix"/> et contient <paramref name="marker"/> (compte de la file mis à jour).</summary>
+    private static string WithoutEntry(string text, string prefix, string marker)
+    {
+        List<string> lines = text.Split('\n').ToList();
+        int i = lines.FindIndex(l => l.StartsWith(prefix, StringComparison.Ordinal) && l.Contains(marker, StringComparison.Ordinal));
+        Assert.True(i > 0, marker);
+        lines.RemoveAt(i);
+        var head = System.Text.RegularExpressions.Regex.Match(lines[0], "\"count\":([0-9]+)");
+        lines[0] = lines[0].Replace(head.Value, $"\"count\":{long.Parse(head.Groups[1].Value) - 1}");
+        return string.Join("\n", lines);
+    }
+
     internal static void AssertRefused(CombatSetup setup, string text, IEnumerable<(string Prefix, string From, string To, string Message)> cases)
     {
         foreach (var (prefix, from, to, message) in cases)
@@ -284,6 +296,10 @@ public class Lot114dSnapshotTests
             (Renfort, "\"endurance\":100", "\"endurance\":99", "« renfort », pas encore entré"),
             (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":1000", "Recharge globale ou parade de « bastion » au-delà"),
         });
+        // Revue Codex de la PR #32 (8e tour) : un renfort attendu, déclaré refusé avant son tick d'arrivée (et son arrivée retirée de la file).
+        string refused = WithoutEntry(Tampered(text, Renfort, "\"presence\":1", "\"presence\":3"), "{\"entry\":", "\"item\":\"arrival\"");
+        Assert.Contains("incohérente avec son tick d'arrivée", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(refused),
+            NullCombatLog.Instance)).Message);
         foreach (string entry in new[] { "{\"entry\":9,", "{\"entry\":11," })
             Assert.Contains("en double", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(WithDuplicate(text, entry)),
                 NullCombatLog.Instance)).Message);
@@ -425,6 +441,44 @@ public class Lot114dSnapshotTests
         Assert.Equal(1, ResumeWhere(dying, "\"detached\":true"));
         var (_, log) = Run(dying);
         Assert.Equal("bearerDead", Events(log).OfKind("reactionCancelled").Single().Str("reason"));
+    }
+
+    [Fact]
+    public void Compteurs_recharges_et_puissances_impossibles_refuses()
+    {
+        // Revue Codex de la PR #32 (7e tour) : prochain numéro de la file, recharges des déclencheurs portés par une altération, bilan,
+        // entretien de la garde, régénération et puissance d'un DOT ont maintenant des bornes.
+        var epine = new StatusDefinition("epine", StatusCategory.Modifier, 2050, StatusStacking.Refresh, triggers: new[] { Riposte(TriggerEvent.DotTick) });
+        var rules = new CombatRules { GuardUpkeepPerSecond = 0, Statuses = new StatusCatalog(StatusCatalog.Provisional.Definitions.Append(epine)) };
+        CombatSetup setup = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[]
+        {
+            Bearer(), Hitter(Strike("piqure", 100, applies: new[] { Apply("bleed", "0.4"), Apply("epine") })),
+        }, durationMs: 4000, rules: rules);
+        var engine = new CombatEngine(setup, NullCombatLog.Instance);
+        while (!engine.Snapshot().Text.Contains("\"slots\":[", StringComparison.Ordinal) || engine.CurrentTick < 30) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup completed = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(completed, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        foreach ((string pattern, string value, string message) in new[]
+        {
+            ("\"next\":[0-9]+", "\"next\":" + (long.MaxValue - 10), "trop grands"),
+            ("\"slots\":\\[[0-9]+", "\"slots\":[-1", "Recharge d'un déclencheur"),
+            ("\"slots\":\\[[0-9]+", "\"slots\":[" + (long.MaxValue - 10), "Recharge d'un déclencheur"),
+            ("\"damageTaken\":[0-9]+", "\"damageTaken\":-1", "Bilan de"),
+            ("\"damageTaken\":[0-9]+", "\"damageTaken\":" + (long.MaxValue - 10), "Bilan de"),
+            ("\"guardTicks\":[0-9]+", "\"guardTicks\":100000", "Bilan de"),
+            ("\"upkeepRemainder\":[0-9]+", "\"upkeepRemainder\":10000000", "Entretien de la garde"),
+            ("\"upkeepPaid\":[0-9]+", "\"upkeepPaid\":5", "Entretien de la garde"),
+            ("\"regenGranted\":[0-9]+", "\"regenGranted\":-1", "Échéances de"),
+            ("\"regenFromTick\":(null|[0-9]+)", "\"regenFromTick\":100000", "Régénération"),
+            ("\"power\":[0-9]+", "\"power\":-1", "puissance impossible"),
+        })
+        {
+            string tampered = new System.Text.RegularExpressions.Regex(pattern).Replace(text, value, 1);
+            Assert.NotEqual(text, tampered);
+            Exception? refused = Record.Exception(() => CombatEngine.Restore(completed, CombatSnapshot.Parse(tampered), NullCombatLog.Instance));
+            Assert.True(refused is FormatException && refused.Message.Contains(message, StringComparison.Ordinal), $"{value} : {refused?.Message ?? "accepté"}");
+        }
     }
 
     [Fact]

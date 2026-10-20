@@ -191,4 +191,23 @@ public class Lot114aGeometryTests
         square.ClosestBoundaryPoint(25_000, 26_000, out qx, out qz);
         Assert.Equal((20_000L, 20_000L), (qx, qz));
     }
+
+    [Fact]
+    public void Disque_balaye_contre_un_polygone_exact()
+    {
+        // Revue Codex de la PR #33 : une gélule (disque balayé de A à B) qui longe une face ou frôle un coin entre deux points libres.
+        var square = new ConvexPolygon(Square);
+        Assert.False(square.OverlapsCapsule(-10_000, -6_000, 30_000, -6_000, 5_000));   // à 0,6 m de la face du bas
+        Assert.False(square.OverlapsCapsule(-10_000, -5_000, 30_000, -5_000, 5_000));   // la touche seulement : pas de chevauchement
+        Assert.True(square.OverlapsCapsule(-10_000, -4_000, 30_000, -4_000, 5_000));    // à 0,4 m : chevauche, extrémités libres
+        Assert.False(square.OverlapsCircle(-10_000, -4_000, 5_000));
+        Assert.False(square.OverlapsCircle(30_000, -4_000, 5_000));
+        Assert.True(square.OverlapsCapsule(-10_000, 10_000, 30_000, 10_000, 1));       // traverse
+        // Coin d'un obstacle mince frôlé entre deux échantillons d'une charge (sous-pas de 0,25 m, rayon 0,5 m).
+        var sliver = new ConvexPolygon(new[] { P("2.1", "0.49"), P("2.12", "0.49"), P("2.12", "3"), P("2.1", "3") });
+        Assert.False(sliver.OverlapsCircle(20_000, 0, 5_000));
+        Assert.False(sliver.OverlapsCircle(22_500, 0, 5_000));
+        Assert.True(sliver.OverlapsCapsule(20_000, 0, 22_500, 0, 5_000));
+        Assert.False(sliver.OverlapsCapsule(20_000, -2_000, 22_500, -2_000, 5_000));
+    }
 }

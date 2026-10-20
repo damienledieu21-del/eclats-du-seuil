@@ -363,7 +363,7 @@ namespace EdS.Game
                 case AttackShape.Cone:
                 {
                     float axis = Mathf.Atan2(az, ax), half = zone.Angle * Mathf.Deg2Rad / 2f;
-                    Sector(_outlineMesh, ox, oz, reach - Band, reach, axis - half, axis + half);
+                    ConeOutline(_outlineMesh, ox, oz, reach, axis - half, axis + half);
                     Sector(_fillMesh, ox, oz, 0f, Mathf.Max(0.05f, reach * progress), axis - half, axis + half);
                     break;
                 }
@@ -414,6 +414,43 @@ namespace EdS.Game
                 triangles[k + 5] = v + 3;
             }
             Set(mesh, vertices, triangles);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #34 : contour d'un cône : l'arc au bout (couronne de largeur <see cref="Band"/>) et les deux rayons qui le
+        /// bornent (bandes de même largeur, à l'intérieur du cône), pour voir ses côtés avant que le remplissage ait grandi.
+        /// </summary>
+        private static void ConeOutline(Mesh mesh, float x, float z, float reach, float from, float to)
+        {
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            for (int i = 0; i <= Segments; i++)
+            {
+                float a = Mathf.Lerp(from, to, i / (float)Segments);
+                float c = Mathf.Cos(a), s = Mathf.Sin(a);
+                vertices.Add(new Vector3(x + c * Mathf.Max(0f, reach - Band), 0f, z + s * Mathf.Max(0f, reach - Band)));
+                vertices.Add(new Vector3(x + c * reach, 0f, z + s * reach));
+            }
+            for (int i = 0; i < Segments; i++)
+            {
+                int v = 2 * i;
+                triangles.AddRange(new[] { v, v + 3, v + 1, v, v + 2, v + 3 });
+            }
+            // Côtés : du sommet au bout de chaque rayon, la bande décalée vers l'intérieur du cône (normale tournée vers l'autre rayon).
+            void Side(float angle, float inward)
+            {
+                float c = Mathf.Cos(angle), s = Mathf.Sin(angle), nx = -s * inward * Band, nz = c * inward * Band;
+                int b = vertices.Count;
+                vertices.Add(new Vector3(x, 0f, z));
+                vertices.Add(new Vector3(x + c * reach, 0f, z + s * reach));
+                vertices.Add(new Vector3(x + c * reach + nx, 0f, z + s * reach + nz));
+                vertices.Add(new Vector3(x + nx, 0f, z + nz));
+                // Les deux faces : l'ordre des coins dépend du côté, on garde le quadrilatère visible d'en haut dans les deux cas.
+                triangles.AddRange(inward > 0f ? new[] { b, b + 2, b + 1, b, b + 3, b + 2 } : new[] { b, b + 1, b + 2, b, b + 2, b + 3 });
+            }
+            Side(from, 1f);
+            Side(to, -1f);
+            Set(mesh, vertices.ToArray(), triangles.ToArray());
         }
 
         /// <summary>
