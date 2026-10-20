@@ -90,8 +90,8 @@ namespace EdS.Simulation.Engine
         private string? EngageReason(Fighter f, AssailantBehavior behavior)
         {
             if (f.Struck || f.Result.DamageTaken > 0) return "hit";
-            foreach (StatusInstance status in f.Statuses.Values)
-                if (status.Definition.IsTaunt) return "taunt";
+            // Revue Codex de la PR #33 (tour 6) : la provocation reçue est mémorisée, même expirée ou retirée avant cette phase.
+            if (f.Taunted) return "taunt";
             long aggro = behavior.AggroRange!.Value.Raw;
             foreach (Fighter other in _fightersById)
                 if (!other.Out && other.Team != f.Team && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return "aggro";
@@ -204,19 +204,25 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Place de <paramref name="i"/> dans l'anneau de sa meute autour de la cible <paramref name="j"/> : les ennemis qui encerclent la même
-        /// cible, rangés dans le sens trigonométrique à partir du premier (ordre angulaire, puis identifiant), se partagent le tour à angles
-        /// égaux ; le rayon de l'anneau met chacun au milieu de ses distances (bords).
+        /// Place de <paramref name="i"/> dans l'anneau de sa meute autour de la cible <paramref name="j"/> : les ennemis de son équipe qui
+        /// encerclent la même cible, rangés dans le sens trigonométrique à partir du premier (ordre angulaire, puis identifiant ; un ennemi au centre de la cible
+        /// d'abord), se partagent le tour à angles égaux ; le rayon de l'anneau met chacun au milieu de ses distances (bords).
         /// </summary>
         private (long X, long Z) RingSlot(int i, int j, int[] targets, long[] x, long[] z, AssailantBehavior behavior)
         {
+            // Revue Codex de la PR #33 (tour 7) : la meute est celle de son équipe ; deux équipes qui encerclent la même cible ont chacune
+            // leur anneau.
             var pack = new List<int>();
             for (int k = 0; k < targets.Length; k++)
-                if (targets[k] == j && _fightersById[k].Behavior is { Encircle: true }) pack.Add(k);
+                if (targets[k] == j && _fightersById[k].Behavior is { Encircle: true } && _fightersById[k].Team == _fightersById[i].Team) pack.Add(k);
             long tx = x[j], tz = z[j];
             pack.Sort((a, b) =>
             {
                 long ax = checked(x[a] - tx), az = checked(z[a] - tz), bx = checked(x[b] - tx), bz = checked(z[b] - tz);
+                // Revue Codex de la PR #33 (tour 6) : un ennemi au centre de la cible (vecteur nul, règle B) n'a pas d'angle ; il passe avant
+                // tous les autres (entre eux, par identifiant), ce qui garde l'ordre total et transitif.
+                bool za = ax == 0 && az == 0, zb = bx == 0 && bz == 0;
+                if (za || zb) return za && zb ? string.CompareOrdinal(_fightersById[a].Id, _fightersById[b].Id) : za ? -1 : 1;
                 int ha = az > 0 || (az == 0 && ax >= 0) ? 0 : 1, hb = bz > 0 || (bz == 0 && bx >= 0) ? 0 : 1;
                 if (ha != hb) return ha.CompareTo(hb);
                 long cross = Planar.Cross(ax, az, bx, bz);

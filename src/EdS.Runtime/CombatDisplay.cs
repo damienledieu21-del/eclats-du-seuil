@@ -48,8 +48,10 @@ namespace EdS.Runtime
         /// négatif) est diminué de <paramref name="telegraphLeadSeconds"/> (0 en solo ; en réseau, le temps aller-retour lissé : sous-lot
         /// 10.6, option B de la parade) et de <paramref name="elapsedSeconds"/>, le temps déjà écoulé dans le tick en cours (revue Codex de
         /// la PR #23, tour 3 : le compte à rebours et la barre s'écoulent en continu entre deux ticks au lieu d'avancer par sauts de 50 ms).
-        /// Seul l'affichage change : le moteur n'est pas touché. Sous-lot 11.6 : avec le décor (<paramref name="obstacles"/>, combat
-        /// positionné), chacun dit s'il est en vue du joueur (<see cref="OtherState.InSight"/>).
+        /// Seul l'affichage change : le moteur n'est pas touché. Sous-lot 11.4d (revue Codex de la PR #32, 16e tour) : la liste comprend aussi
+        /// les absents (attendus, refusés, partis), pour que l'affichage prépare leur corps avant une arrivée ; chaque affichage les saute
+        /// (<c>View.IsPresent</c> faux) : corps cachés, ni barre ni fiche, jamais ciblés (<see cref="LivingEnemies"/>). Sous-lot 11.6 : avec
+        /// le décor (<paramref name="obstacles"/>, combat positionné), chacun dit s'il est en vue du joueur (<see cref="OtherState.InSight"/>).
         /// </summary>
         public static IReadOnlyList<OtherState> Others(CombatEngine engine, string playerId, double telegraphLeadSeconds = 0, double elapsedSeconds = 0,
             IReadOnlyList<ConvexPolygon>? obstacles = null)

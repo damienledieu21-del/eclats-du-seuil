@@ -107,7 +107,7 @@ public class Lot114dSnapshotTests
         Assert.Contains("0.18.0", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, older, NullCombatLog.Instance)).Message);
         // Texte retouché : une valeur changée est un autre état, d'une autre empreinte ; un champ inconnu (texte non canonique), manquant ou
         // une ligne de trop est refusé.
-        CombatSnapshot changed = CombatSnapshot.Parse(snapshot.Text.Replace("\"lastEid\":", "\"lastEid\":1"));
+        CombatSnapshot changed = CombatSnapshot.Parse(snapshot.Text.Replace("\"seq\":", "\"seq\":1"));   // 15e tour : lastEid ne dépasse plus seq
         Assert.NotEqual(snapshot.Fingerprint, changed.Fingerprint);
         Assert.Equal(changed.Text, CombatEngine.Restore(setup, changed, NullCombatLog.Instance).Snapshot().Text);
         Assert.Contains("canonique", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
@@ -206,7 +206,8 @@ public class Lot114dSnapshotTests
         string text = engine.Snapshot().Text;
         CombatSetup setup = engine.CompletedSetup();
         Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
-        string ogre = Tampered(text, "{\"fighter\":\"ogre\"", "\"health\":500", "\"health\":499");   // un autre état possible : accepté
+        // Un autre état possible (l'ogre a pris un point de dégâts) : accepté.
+        string ogre = Tampered(Tampered(text, "{\"fighter\":\"ogre\"", "\"health\":500", "\"health\":499"), "{\"fighter\":\"ogre\"", "\"damageTaken\":0", "\"damageTaken\":1");
         Assert.Equal(ogre, CombatEngine.Restore(setup, CombatSnapshot.Parse(ogre), NullCombatLog.Instance).Snapshot().Text);
         const string Head = "{\"snapshot\"", Bastion = "{\"fighter\":\"bastion\"", Ogre = "{\"fighter\":\"ogre\"", Cible = "{\"fighter\":\"cible\"",
             Impact = "{\"entry\":3,", Turn = "{\"entry\":2,";
@@ -231,7 +232,7 @@ public class Lot114dSnapshotTests
             (Ogre, "\"engaged\":false", "\"engaged\":true", "Engagement de « ogre »"),   // sous-lot 11.5 : sans comportement
             // Présence.
             (Bastion, "\"leaveCommand\":null", "\"leaveCommand\":0", "Départ de « bastion » encore demandé"),
-            (Ogre, "\"presence\":0", "\"presence\":1", "Arrivée de « ogre »"),
+            (Ogre, "\"presence\":0", "\"presence\":1", "de « ogre »"),   // refusé par ses tours (9e tour) ou par son arrivée absente
             (Ogre, "\"presence\":0", "\"presence\":2", "Départ de « ogre »"),
             // Place et orientation.
             (Ogre, "\"x\":30000", "\"x\":100000", "Place de « ogre » hors de l'aire"),
@@ -257,7 +258,15 @@ public class Lot114dSnapshotTests
             (Head, "\"lastEid\":2", "\"lastEid\":1", "Provenance citant l'événement 2"),
             // Revue Codex de la PR #32 (4e tour) : impulsion à son tick.
             (Impact, "\"tick\":40", "\"tick\":41", "hors de son tick"),
+            // 15e tour : un mannequin qui marche ; un numéro de ligne en deçà du dernier événement.
+            (Cible, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "qui ne marche jamais"),
+            // Relecture d'ensemble (4) : marche de l'ogre sans commande move ; cible sélectionnée par le Bastion sans commande select.
+            (Ogre, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "Marche ou sélection de « ogre »"),
+            (Bastion, "\"selected\":null", "\"selected\":\"ogre\"", "Marche ou sélection de « bastion »"),
         });
+        // 15e tour : numéro de ligne en deçà du dernier événement (chaque événement a pris une ligne).
+        string seq = System.Text.RegularExpressions.Regex.Match(text.Split('\n')[0], "\"seq\":[0-9]+").Value;
+        AssertRefused(setup, text, new[] { (Head, seq, "\"seq\":1", "en deçà du dernier événement") });
         // Revue Codex de la PR #32 (6e tour) : un compteur sans marge pour la suite du combat est refusé (sinon le prochain numéro
         // déborderait).
         foreach (string counter in new[] { "seq", "lastEid", "lastStatusInstance", "lastApplication" })
@@ -277,15 +286,17 @@ public class Lot114dSnapshotTests
         {
             (Bastion, "\"id\":2,\"generation\"", "\"id\":3,\"generation\"", "instance impossible ou en double"),
             (Assaillant, "\"id\":1,\"generation\"", "\"id\":2,\"generation\"", "instance impossible ou en double"),
-            (Bastion, "\"keySource\":\"assaillant\"", "\"keySource\":null", "clé de cumul"),
+            (Bastion, "\"keySource\":\"assaillant\"", "\"keySource\":null", "tick de DOT impossible"),   // 9e tour : son tick de DOT cite l'ancienne clé
             (Bastion, "\"untilTick\":140", "\"untilTick\":20", "déjà échue"),
+            (Bastion, "\"untilTick\":140", "\"untilTick\":100000", "au-delà de sa plus longue durée possible"),   // 10e tour : saignement (DOT)
             (Bastion, "\"absorb\":0,", "\"absorb\":5,", "absorption impossible"),
             ("{\"entry\":3,", "\"index\":2", "\"index\":3", "hors de son tick ou en double"),
             ("{\"entry\":0,", "\"fighter\":\"renfort\"", "\"fighter\":\"allie\"", "n'est pas attendu"),
             (Renfort, "\"presence\":1", "\"presence\":0", "n'est pas attendu"),
-            (Allie, "\"arrivedTick\":null", "\"arrivedTick\":10", "Bilan de présence"),
+            (Allie, "\"arrivedTick\":null", "\"arrivedTick\":10", "pas celle de son combat"),   // 14e tour : présent dès l'origine, sans tick d'arrivée
             (Head, "[\"bastion\",50,1]", "[\"bastion\",50,2]", "par acteur et par tick"),
-            (Bastion, "\"nextTick\":60", "\"nextTick\":80", "échéance absente de la file"),
+            (Bastion, "\"nextTick\":60", "\"nextTick\":61", "échéance absente de la file"),
+            (Bastion, "\"nextTick\":60", "\"nextTick\":80", "au-delà de sa plus longue durée possible"),   // 10e tour : plus d'une période après le tick 29
             ("{\"entry\":9,", "\"instance\":1}", "\"instance\":0}", "Altération non numérotée"),
             // 4e tour : arrivée au tick prévu, échéance d'altération une seule fois.
             ("{\"entry\":0,", "\"tick\":80", "\"tick\":81", "hors du tick prévu"),
@@ -293,7 +304,7 @@ public class Lot114dSnapshotTests
             (Assaillant, "\"nextAttack\":1", "\"nextAttack\":0", "Tours de « assaillant » incohérents avec sa cadence"),
             (Assaillant, "\"nextTurn\":2", "\"nextTurn\":3", "Tours de « assaillant » incohérents"),
             (Assaillant, "\"151c15caa15e12f3\"", "\"151c15caa15e12f5\"", "Flux de tirage de « assaillant »"),
-            (Renfort, "\"endurance\":100", "\"endurance\":99", "« renfort », pas encore entré"),
+            (Renfort, "\"resonance\":0", "\"resonance\":1", "« renfort », pas encore entré"),
             (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":1000", "Recharge globale ou parade de « bastion » au-delà"),
         });
         // Revue Codex de la PR #32 (8e tour) : un renfort attendu, déclaré refusé avant son tick d'arrivée (et son arrivée retirée de la file).
@@ -336,7 +347,20 @@ public class Lot114dSnapshotTests
         while (thrower.CurrentTick < 15) thrower.Step();
         string thrown = thrower.Snapshot().Text;
         string impactLine = thrown.Split('\n').First(l => l.Contains("\"item\":\"impact\"", StringComparison.Ordinal));
-        AssertRefused(thrower.CompletedSetup(), thrown, new[] { (impactLine.Substring(0, impactLine.IndexOf(',') + 1), "\"target\":\"bastion\"", "\"target\":null", "impact dirigé sans cible") });
+        AssertRefused(thrower.CompletedSetup(), thrown, new[]
+        {
+            (impactLine.Substring(0, impactLine.IndexOf(',') + 1), "\"target\":\"bastion\"", "\"target\":null", "impact dirigé sans cible"),
+            // Revue Codex de la PR #32 (9e tour) : la cible verrouillée est un adversaire de l'assaillant.
+            (impactLine.Substring(0, impactLine.IndexOf(',') + 1), "\"target\":\"bastion\"", "\"target\":\"ogre\"", "impact dirigé sans cible adverse"),
+        });
+        // 9e tour : deux emprises solides présentes ne se chevauchent pas (le Bastion posé sur l'ogre).
+        string[] thrownLines = thrown.Split('\n');
+        var place = new System.Text.RegularExpressions.Regex("\"x\":-?[0-9]+,\"z\":-?[0-9]+");
+        string ogrePlace = place.Match(thrownLines.First(l => l.StartsWith("{\"fighter\":\"ogre\"", StringComparison.Ordinal))).Value;
+        int bastionLine = Array.FindIndex(thrownLines, l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        thrownLines[bastionLine] = place.Replace(thrownLines[bastionLine], ogrePlace, 1);
+        Assert.Contains("qui se chevauchent", Assert.Throws<FormatException>(() => CombatEngine.Restore(thrower.CompletedSetup(),
+            CombatSnapshot.Parse(string.Join("\n", thrownLines)), NullCombatLog.Instance)).Message);
 
         // Abonnements d'un déclencheur permanent (riposte aux ticks de DOT) : la liste reçue doit être exactement celle des combattants.
         CombatSetup riposte = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Bearer(new[] { Riposte(TriggerEvent.DotTick) }),
@@ -464,14 +488,16 @@ public class Lot114dSnapshotTests
             ("\"next\":[0-9]+", "\"next\":" + (long.MaxValue - 10), "trop grands"),
             ("\"slots\":\\[[0-9]+", "\"slots\":[-1", "Recharge d'un déclencheur"),
             ("\"slots\":\\[[0-9]+", "\"slots\":[" + (long.MaxValue - 10), "Recharge d'un déclencheur"),
-            ("\"damageTaken\":[0-9]+", "\"damageTaken\":-1", "Bilan de"),
-            ("\"damageTaken\":[0-9]+", "\"damageTaken\":" + (long.MaxValue - 10), "Bilan de"),
+            ("\"damageTaken\":[0-9]+", "\"damageTaken\":-1", "de « bastion »"),   // bilan, ou dégâts subis loin des PV perdus
+            ("\"damageTaken\":[0-9]+", "\"damageTaken\":" + (long.MaxValue - 10), "de « bastion »"),
             ("\"guardTicks\":[0-9]+", "\"guardTicks\":100000", "Bilan de"),
             ("\"upkeepRemainder\":[0-9]+", "\"upkeepRemainder\":10000000", "Entretien de la garde"),
             ("\"upkeepPaid\":[0-9]+", "\"upkeepPaid\":5", "Entretien de la garde"),
             ("\"regenGranted\":[0-9]+", "\"regenGranted\":-1", "Échéances de"),
             ("\"regenFromTick\":(null|[0-9]+)", "\"regenFromTick\":100000", "Régénération"),
             ("\"power\":[0-9]+", "\"power\":-1", "puissance impossible"),
+            // Relecture d'ensemble (20e tour) : puissance du saignement au-delà de sa plus forte application (puissance × 0,4).
+            ("(\"state\":\"bleed\"[^{}]*?\"power\":)[0-9]+", "${1}1000000000000", "puissance au-delà du plus fort DOT possible"),
         })
         {
             string tampered = new System.Text.RegularExpressions.Regex(pattern).Replace(text, value, 1);
@@ -479,6 +505,290 @@ public class Lot114dSnapshotTests
             Exception? refused = Record.Exception(() => CombatEngine.Restore(completed, CombatSnapshot.Parse(tampered), NullCombatLog.Instance));
             Assert.True(refused is FormatException && refused.Message.Contains(message, StringComparison.Ordinal), $"{value} : {refused?.Message ?? "accepté"}");
         }
+    }
+
+    [Fact]
+    public void Echeances_reactions_et_provenances_impossibles_refusees()
+    {
+        // Revue Codex de la PR #32 (10e tour). 1) Étourdissement de l'assaillant (Assommer au tick 52) : son échéance et son entrée de file
+        // repoussées ensemble restent cohérentes entre elles, mais au-delà de la plus longue durée qu'il a pu recevoir : refusées.
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 55) training.Step();
+        string text = training.Snapshot().Text;
+        CombatSetup setup = training.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string[] lines = text.Split('\n');
+        int expiry = Array.FindIndex(lines, l => l.StartsWith("{\"entry\":", StringComparison.Ordinal) && l.Contains("\"item\":\"expiry\"", StringComparison.Ordinal)
+            && l.Contains("\"fighter\":\"assaillant\"", StringComparison.Ordinal));
+        Assert.True(expiry > 0, "étourdissement en file");
+        string at = System.Text.RegularExpressions.Regex.Match(lines[expiry], "\"tick\":[0-9]+").Value;
+        long until = long.Parse(at.Substring("\"tick\":".Length), System.Globalization.CultureInfo.InvariantCulture);
+        int assailant = Array.FindIndex(lines, l => l.StartsWith("{\"fighter\":\"assaillant\"", StringComparison.Ordinal));
+        Assert.Contains($"\"untilTick\":{until}", lines[assailant], StringComparison.Ordinal);
+        lines[expiry] = lines[expiry].Replace(at, $"\"tick\":{until + 1000}", StringComparison.Ordinal);
+        lines[assailant] = lines[assailant].Replace($"\"untilTick\":{until}", $"\"untilTick\":{until + 1000}", StringComparison.Ordinal);
+        Assert.Contains("au-delà de sa plus longue durée possible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
+            CombatSnapshot.Parse(string.Join("\n", lines)), NullCombatLog.Instance)).Message);
+
+        // 2) Réaction reportée (riposte aux ticks de DOT) : échangée contre l'autre déclencheur du porteur, qui ne frappe pas ; recharge
+        // interne du déclencheur retouchée ; effet observé renuméroté (la provenance de la réaction ne le cite plus).
+        var gain = new TriggerDefinition(TriggerEvent.DotTick, new[] { TriggerEffect.GainResource(TriggerResource.Resonance, Fixed.FromInt(1)) }, TriggerRole.Target);
+        CombatSetup riposte = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Bearer(new[] { Riposte(TriggerEvent.DotTick), gain }),
+            Hitter(Strike("entaille", 100, applies: Apply("bleed", "0.4"))) }, durationMs: 8000, rules: NoUpkeep);
+        var reacting = new CombatEngine(riposte, NullCombatLog.Instance);
+        while (!reacting.Snapshot().Text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal)) reacting.Step();
+        string deferred = reacting.Snapshot().Text;
+        CombatSetup completed = reacting.CompletedSetup();
+        Assert.Equal(deferred, CombatEngine.Restore(completed, CombatSnapshot.Parse(deferred), NullCombatLog.Instance).Snapshot().Text);
+        string reaction = deferred.Split('\n').First(l => l.Contains("\"item\":\"reaction\"", StringComparison.Ordinal));
+        string entry = reaction.Substring(0, reaction.IndexOf(',') + 1);
+        long eid = long.Parse(System.Text.RegularExpressions.Regex.Match(reaction, "\"eid\":([0-9]+)").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        string ready = System.Text.RegularExpressions.Regex.Match(deferred.Split('\n').First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal)),
+            "\"triggers\":\\[[0-9]+").Value;
+        Assert.NotEqual("\"triggers\":[0", ready);
+        AssertRefused(completed, deferred, new[]
+        {
+            (entry, "\"index\":0", "\"index\":1", "réaction reportée incohérente"),
+            (entry, $"\"eid\":{eid}", $"\"eid\":{eid - 1}", "provenance de réaction incohérente"),
+            ("{\"fighter\":\"bastion\"", ready, "\"triggers\":[0", "réaction reportée incohérente"),
+        });
+
+        // 3) Provenances que les constructeurs ne produisent pas : profondeur sans chaîne, dernier déclencheur hors de la chaîne, maillon
+        // en double, réaction sans cause, profondeur au-delà des règles.
+        foreach ((string pattern, string value, string message) in new[]
+        {
+            ("\"depth\":0,\"chain\":\\[\\]", "\"depth\":3,\"chain\":[]", "pour une chaîne de 0"),
+            ("\"chain\":\\[\\],\"trigger\":null", "\"chain\":[],\"trigger\":\"x/0@bastion#0\"", "bout de sa chaîne"),
+        })
+        {
+            string tampered = new System.Text.RegularExpressions.Regex(pattern).Replace(deferred, value, 1);
+            Assert.NotEqual(deferred, tampered);
+            Assert.Contains(message, Assert.Throws<FormatException>(() => CombatEngine.Restore(completed, CombatSnapshot.Parse(tampered), NullCombatLog.Instance)).Message);
+        }
+        Assert.Contains("en double", Assert.Throws<FormatException>(() => Provenance.Restore("r", 2, new[] { "a", "a" }, "a", 5, null, null, null)).Message);
+        Assert.Contains("sans cause", Assert.Throws<FormatException>(() => Provenance.Restore("r", 1, new[] { "a" }, "a", null, null, null, null)).Message);
+        string deep = new System.Text.RegularExpressions.Regex("\"depth\":1,\"chain\":\\[(\"[^\"]+\")\\],\"trigger\":(\"[^\"]+\")")
+            .Replace(deferred, "\"depth\":5,\"chain\":[\"a\",\"b\",\"c\",\"d\",$1],\"trigger\":$2", 1);
+        Assert.NotEqual(deferred, deep);
+        Assert.Contains("profondeur maximale", Assert.Throws<FormatException>(() => CombatEngine.Restore(completed, CombatSnapshot.Parse(deep), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
+    public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
+    {
+        // Revue Codex de la PR #32 (11e à 19e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 30) training.Step();
+        string text = training.Snapshot().Text;
+        CombatSetup setup = training.CompletedSetup();
+        string[] lines = text.Split('\n');
+        string bastion = lines.First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        string assailant = lines.First(l => l.StartsWith("{\"fighter\":\"assaillant\"", StringComparison.Ordinal));
+        string generation = System.Text.RegularExpressions.Regex.Match(bastion, "\"id\":2,\"generation\":[0-9]+").Value;
+        string mine = System.Text.RegularExpressions.Regex.Match(bastion, "\"appliedSeq\":[0-9]+").Value;
+        string other = System.Text.RegularExpressions.Regex.Match(assailant, "\"appliedSeq\":[0-9]+").Value;
+        Assert.NotEqual(mine, other);
+        const string Bastion = "{\"fighter\":\"bastion\"";
+        AssertRefused(setup, text, new[]
+        {
+            // Génération d'une altération active : au moins 1, au plus le dernier rang d'application.
+            (Bastion, generation, "\"id\":2,\"generation\":0", "instance impossible ou en double"),
+            (Bastion, generation, "\"id\":2,\"generation\":2147483647", "instance impossible ou en double"),
+            // Deux altérations au même rang d'application.
+            (Bastion, mine, other, "rang d'application impossible ou en double"),
+            // 13e tour : recharge globale sans lancer à son origine (le Bastion a lancé Entaille au tick 0 : prête au tick 20).
+            (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":0", "Recharge globale de « bastion » sans lancer"),
+            (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":25", "Recharge globale de « bastion » sans lancer"),
+            // Cause mortelle d'un vivant.
+            (Bastion, "\"lethalCause\":null", "\"lethalCause\":{\"root\":\"x\",\"depth\":0,\"chain\":[],\"trigger\":null,\"cause\":null,\"source\":null,\"instance\":null,\"generation\":null}",
+                "Cause mortelle de « bastion » vivant"),
+        });
+        // 12e tour : entretien dû sans l'entretien payé (le Bastion garde au tick 30), refusé.
+        string due = System.Text.RegularExpressions.Regex.Match(bastion, "\"upkeepDue\":([0-9]+)").Groups[1].Value;
+        AssertRefused(setup, text, new[] { (Bastion, $"\"upkeepDue\":{due},", $"\"upkeepDue\":{long.Parse(due, System.Globalization.CultureInfo.InvariantCulture) + 1},",
+            "Entretien de la garde de « bastion »") });
+        // 12e tour : régénération en cours (Heurt au tick 0, 15 d'endurance, puis rien) : le cumul accordé est celui du tick précédent, pas moins.
+        var resting = new CombatEngine(Setup(new[] { Cmd(0, Heurt, target: "assaillant") }, new CombatantSetup[]
+        {
+            Tank(actives: new[] { Heurt }), Assailant(firstAttackMs: 60_000, intervalMs: 60_000),
+        }, durationMs: 9000), NullCombatLog.Instance);
+        var regen = new System.Text.RegularExpressions.Regex("\"regenFromTick\":([0-9]+),\"regenGranted\":([1-9][0-9]*)");
+        System.Text.RegularExpressions.Match granted = System.Text.RegularExpressions.Match.Empty;
+        while (!resting.IsFinished)
+        {
+            granted = regen.Match(resting.Snapshot().Text.Split('\n').First(l => l.StartsWith(Bastion, StringComparison.Ordinal)));
+            if (granted.Success && long.Parse(granted.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) < resting.CurrentTick - 1) break;
+            resting.Step();
+        }
+        Assert.False(resting.IsFinished, "régénération en cours");
+        AssertRefused(resting.CompletedSetup(), resting.Snapshot().Text, new[] { (Bastion, granted.Value,
+            granted.Value.Replace("\"regenGranted\":" + granted.Groups[2].Value, "\"regenGranted\":0", StringComparison.Ordinal), "Régénération de « bastion » impossible") });
+        // 15e tour : parade réussie ou récupération de parade sans parade au bilan ; plus d'instances d'altération que de rangs d'application.
+        long applications = long.Parse(System.Text.RegularExpressions.Regex.Match(lines[0], "\"lastApplication\":([0-9]+)").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        string instancesField = System.Text.RegularExpressions.Regex.Match(lines[0], "\"lastStatusInstance\":[0-9]+").Value;
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"parrySucceeded\":false", "\"parrySucceeded\":true", "Parade de « bastion » incohérente"),
+            (Bastion, "\"parryRecoveryUntilTick\":0", "\"parryRecoveryUntilTick\":5", "Parade de « bastion » incohérente"),
+            ("{\"snapshot\"", instancesField, $"\"lastStatusInstance\":{applications + 1}", "rangs d'application"),
+        });
+        // 14e tour : mesures de charge au-delà des budgets ; dernier tick au-delà des pics.
+        foreach ((string pattern, string value) in new[] { ("\"peakWork\":[0-9]+", "\"peakWork\":9223372036854775000"), ("\"lastTickEvents\":[0-9]+", "\"lastTickEvents\":1000000000") })
+        {
+            string tampered = new System.Text.RegularExpressions.Regex(pattern).Replace(text, value, 1);
+            Assert.NotEqual(text, tampered);
+            Assert.Contains("Mesures de charge", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tampered), NullCombatLog.Instance)).Message);
+        }
+        // 14e tour : le renfort, arrivé au tick 80 (4 s), ne peut pas être déclaré arrivé à un autre tick.
+        var late = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (late.CurrentTick < 90) late.Step();
+        string arrived = late.Snapshot().Text;
+        Assert.Contains("\"arrivedTick\":80", arrived.Split('\n').First(l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal)), StringComparison.Ordinal);
+        AssertRefused(late.CompletedSetup(), arrived, new[]
+        {
+            ("{\"fighter\":\"renfort\"", "\"arrivedTick\":80", "\"arrivedTick\":79", "pas celle de son combat"),
+            ("{\"fighter\":\"renfort\"", "\"arrivedTick\":80", "\"arrivedTick\":null", "pas celle de son combat"),
+        });
+        // 16e tour : hors d'un combat positionné, une arrivée n'est jamais refusée (le renfort, arrivé au tick 80, déclaré refusé dans son
+        // état de départ) ; un départ suit une commande leave à son tick (l'allié part au tick 140 : déclaré parti au tick 130).
+        string start = new CombatEngine(Training(), NullCombatLog.Instance).Snapshot().Text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal));
+        string[] refusedLines = arrived.Split('\n');
+        int renfort = Array.FindIndex(refusedLines, l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal));
+        refusedLines[renfort] = start.Replace("\"presence\":1", "\"presence\":3", StringComparison.Ordinal);
+        Assert.Contains("refusée hors d'un combat positionné", Assert.Throws<FormatException>(() => CombatEngine.Restore(late.CompletedSetup(),
+            CombatSnapshot.Parse(string.Join("\n", refusedLines)), NullCombatLog.Instance)).Message);
+        while (late.CurrentTick < 150) late.Step();
+        string gone = late.Snapshot().Text;
+        string allie = gone.Split('\n').First(l => l.StartsWith("{\"fighter\":\"allie\"", StringComparison.Ordinal));
+        Assert.Contains("\"leftTick\":140", allie, StringComparison.Ordinal);
+        // 16e tour : un parti n'a ni compétence, ni garde, ni parade disponibles (la vue suit la présence, comme pour la marche).
+        CombatantView leftView = late.View("allie");
+        Assert.False(leftView.IsPresent || leftView.CanCast || leftView.CanGuard || leftView.CanParry);
+        string earlier = gone.Replace(allie, allie.Replace("\"leftTick\":140", "\"leftTick\":130", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("sans commande de départ", Assert.Throws<FormatException>(() => CombatEngine.Restore(late.CompletedSetup(),
+            CombatSnapshot.Parse(earlier), NullCombatLog.Instance)).Message);
+        // 17e tour : avant le premier tick, l'état du tirage d'un combattant présent est celui de départ ; un départ suit l'arrivée (le renfort
+        // arrivé au tick 80, déclaré parti au tick 0 sur une commande leave refusée alors) ; les lancers comptés ne dépassent pas les
+        // commandes de compétence passées.
+        var fresh = new CombatEngine(Training(), NullCombatLog.Instance);
+        string zero = fresh.Snapshot().Text;
+        string draw = System.Text.RegularExpressions.Regex.Match(zero.Split('\n').First(l => l.StartsWith(Bastion, StringComparison.Ordinal)), "\"random\":\\[\"[0-9a-f]").Value;
+        string redraw = draw.Substring(0, draw.Length - 1) + (draw[draw.Length - 1] == '0' ? '1' : '0');
+        AssertRefused(fresh.CompletedSetup(), zero, new[] { (Bastion, draw, redraw, "avant le premier tick") });
+        AssertRefused(setup, text, new[] { (Bastion, "\"skillsCast\":1,", "\"skillsCast\":2,", "Lancers ou refus de « bastion »") });
+        CombatSetup leaving = Setup(new[] { Cmd(0, Entaille, target: "assaillant"), Leave(0, "renfort") }, new CombatantSetup[]
+        {
+            Tank(endurance: 30, actives: new[] { Frappe, Entaille, Assommer, Onde }), Tank("allie"), Tank("renfort").Arriving(4000),
+            Assailant(firstAttackMs: 1000, intervalMs: 1300),
+        }, durationMs: 9000);
+        var stay = new CombatEngine(leaving, NullCombatLog.Instance);
+        while (stay.CurrentTick < 90) stay.Step();
+        string stayed = stay.Snapshot().Text;
+        string renfortLine = stayed.Split('\n').First(l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal));
+        Assert.Contains("\"presence\":0", renfortLine, StringComparison.Ordinal);
+        string departed = stayed.Replace(renfortLine, renfortLine.Replace("\"presence\":0", "\"presence\":2", StringComparison.Ordinal)
+            .Replace("\"leftTick\":null", "\"leftTick\":0", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("avant son arrivée", Assert.Throws<FormatException>(() => CombatEngine.Restore(stay.CompletedSetup(), CombatSnapshot.Parse(departed),
+            NullCombatLog.Instance)).Message);
+        // Relecture d'ensemble : sans soin, un vivant a perdu exactement ses dégâts subis ; l'endurance n'est entamée qu'avec une reprise de
+        // régénération en attente ; une reprise à venir (le Bastion garde : l'entretien la repousse) n'a encore rien accordé.
+        string health = System.Text.RegularExpressions.Regex.Match(bastion, "\"health\":[0-9]+").Value;
+        long healthValue = long.Parse(health.Substring("\"health\":".Length), System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Matches("\"regenFromTick\":(3[0-9]|[4-9][0-9])", bastion);
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, health, $"\"health\":{healthValue - 1}", "Dégâts subis de « bastion » incohérents"),
+            ("{\"fighter\":\"allie\"", "\"endurance\":100", "\"endurance\":99", "entamée sans reprise"),
+            (Bastion, "\"regenGranted\":0", "\"regenGranted\":1", "accordée avant sa reprise"),
+        });
+        // Relecture d'ensemble : fenêtre de parade sans parade, parade comptée sans commande de parade passée ; provocation venue d'un allié.
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"parryEndTick\":0", "\"parryEndTick\":5", "fenêtre"),
+            (Bastion, "\"perfectParries\":0", "\"perfectParries\":1", "Parade de « bastion » incohérente avec ses commandes"),
+        });
+        var taunting = new CombatEngine(Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(30), new CombatantSetup[]
+        {
+            Space.Lot114bRangeTests.Hero("bastion", Space.SpaceTestKit.At("0", "0"), new[] { Space.Lot114bRangeTests.Cri }),
+            Space.SpaceTestKit.Creature("ogre", Space.SpaceTestKit.At("3", "0"), health: 500, firstAttackMs: 600_000),
+            Space.SpaceTestKit.Creature("loup", Space.SpaceTestKit.At("6", "0"), health: 500, firstAttackMs: 600_000),
+        }, new[] { Cmd(0, Space.Lot114bRangeTests.Cri, target: null) }, durationMs: 2000), NullCombatLog.Instance);
+        taunting.Step();
+        string taunted = taunting.Snapshot().Text;
+        Assert.Equal(taunted, CombatEngine.Restore(taunting.CompletedSetup(), CombatSnapshot.Parse(taunted), NullCombatLog.Instance).Snapshot().Text);
+        // La provocation de l'ogre (et son échéance en file) attribuée au loup, son allié.
+        string[] tauntLines = taunted.Split('\n');
+        for (int k = 0; k < tauntLines.Length; k++)
+            if (tauntLines[k].StartsWith("{\"fighter\":\"ogre\"", StringComparison.Ordinal))
+                tauntLines[k] = tauntLines[k].Replace("\"keySource\":\"bastion\"", "\"keySource\":\"loup\"", StringComparison.Ordinal)
+                    .Replace("\"source\":\"bastion\"", "\"source\":\"loup\"", StringComparison.Ordinal);   // l'altération et son origine (19e tour)
+            else if (tauntLines[k].StartsWith("{\"entry\":", StringComparison.Ordinal) && tauntLines[k].Contains("\"fighter\":\"ogre\"", StringComparison.Ordinal)
+                && tauntLines[k].Contains("Taunt\"", StringComparison.Ordinal))
+                tauntLines[k] = tauntLines[k].Replace("\"keySource\":\"bastion\"", "\"keySource\":\"loup\"", StringComparison.Ordinal);
+        string fromAlly = string.Join("\n", tauntLines);
+        Assert.NotEqual(taunted, fromAlly);
+        Assert.Contains("source qui ne convient pas", Assert.Throws<FormatException>(() => CombatEngine.Restore(taunting.CompletedSetup(),
+            CombatSnapshot.Parse(fromAlly), NullCombatLog.Instance)).Message);
+        // Relecture d'ensemble (3) : garde ou ticks gardés de l'allié sans commande de garde ; parade du Bastion sans commande à son tick ;
+        // tours d'un personnage.
+        AssertRefused(setup, text, new[]
+        {
+            ("{\"fighter\":\"allie\"", "\"guarding\":false", "\"guarding\":true", "Garde ou parade de « allie » sans commande"),
+            ("{\"fighter\":\"allie\"", "\"guardTicks\":0", "\"guardTicks\":3", "Garde ou parade de « allie » sans commande"),
+            (Bastion, "\"parryStartTick\":0,\"parryEndTick\":0", "\"parryStartTick\":5,\"parryEndTick\":" + (5 + training.View("bastion").Rules!.ParryWindowMs / 50), "Garde ou parade de « bastion » sans commande"),
+            ("{\"fighter\":\"allie\"", "\"nextTurn\":0", "\"nextTurn\":1", "Tours de « allie »"),
+        });
+        // 19e tour : l'origine d'une altération porte sa source, son instance et sa génération ; les dégâts infligés ont leur contrepartie
+        // reçue (subis, absorbés ou transférés) quelque part.
+        // Le saignement du Bastion (et son tick de DOT en file) attribué à l'allié, l'origine gardant l'assaillant.
+        string[] bleedLines = text.Split('\n');
+        for (int k = 0; k < bleedLines.Length; k++)
+            if (bleedLines[k].StartsWith(Bastion, StringComparison.Ordinal))
+                bleedLines[k] = bleedLines[k].Replace("\"keySource\":\"assaillant\",\"source\":\"assaillant\"", "\"keySource\":\"allie\",\"source\":\"allie\"", StringComparison.Ordinal);
+            else if (bleedLines[k].StartsWith("{\"entry\":", StringComparison.Ordinal) && bleedLines[k].Contains("\"item\":\"dot\",\"fighter\":\"bastion\"", StringComparison.Ordinal))
+                bleedLines[k] = bleedLines[k].Replace("\"keySource\":\"assaillant\"", "\"keySource\":\"allie\"", StringComparison.Ordinal);
+        string reattributed = string.Join("\n", bleedLines);
+        Assert.NotEqual(text, reattributed);
+        Assert.Contains("provenance différente de l'altération", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(reattributed),
+            NullCombatLog.Instance)).Message);
+        string dealt = System.Text.RegularExpressions.Regex.Match(bastion, "\"damageDealt\":[0-9]+").Value;
+        long dealtValue = long.Parse(dealt.Substring("\"damageDealt\":".Length), System.Globalization.CultureInfo.InvariantCulture);
+        AssertRefused(setup, text, new[] { (Bastion, dealt, $"\"damageDealt\":{dealtValue + 1_000_000}", "Dégâts du bilan incohérents") });
+        // 18e tour : un coup critique est un coup, un ultime une compétence lancée ; un mort dont le départ a été annulé n'est pas parti.
+        string hits = System.Text.RegularExpressions.Regex.Match(bastion, "\"hits\":[0-9]+").Value;
+        long hitCount = long.Parse(hits.Substring("\"hits\":".Length), System.Globalization.CultureInfo.InvariantCulture);
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"criticalHits\":", $"\"criticalHits\":{hitCount + 1}0", "Bilan de « bastion » impossible"),
+            (Bastion, "\"ultimatesCast\":0", "\"ultimatesCast\":2", "Bilan de « bastion » impossible"),
+        });
+        var dying = new CombatEngine(Setup(new[] { Leave(1000, "bastion") }, new CombatantSetup[]
+        {
+            Character(attributes: Attrs(vitalite: 1)), Tank("allie"), Assailant(firstAttackMs: 1000, intervalMs: 10_000, attacks: Blow(raw: 100_000_000)),
+        }, durationMs: 3000), NullCombatLog.Instance);
+        while (dying.CurrentTick < 25) dying.Step();
+        string dead = dying.Snapshot().Text;
+        string deadLine = dead.Split('\n').First(l => l.StartsWith(Bastion, StringComparison.Ordinal));
+        Assert.Contains("\"dead\":true", deadLine, StringComparison.Ordinal);
+        string leftDead = dead.Replace(deadLine, deadLine.Replace("\"presence\":0", "\"presence\":2", StringComparison.Ordinal)
+            .Replace("\"leftTick\":null", "\"leftTick\":20", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("mort, déclaré parti", Assert.Throws<FormatException>(() => CombatEngine.Restore(dying.CompletedSetup(), CombatSnapshot.Parse(leftDead),
+            NullCombatLog.Instance)).Message);
+        // 14e tour : un texte tronqué au milieu de true, false ou null est illisible (FormatException), pas une erreur d'indice.
+        foreach (string truncated in new[] { "n", "tru", "{\"a\":fals", "[nul" })
+            Assert.Throws<FormatException>(() => CombatSnapshot.Parse(truncated));
+        // File vide (un Bastion et un mannequin, sans commande) : son prochain numéro ne peut pas être négatif.
+        var quiet = new CombatEngine(Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")), Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("3", "0")),
+        }, Array.Empty<CombatCommand>(), durationMs: 2000), NullCombatLog.Instance);
+        while (quiet.CurrentTick < 5) quiet.Step();
+        string empty = quiet.Snapshot().Text;
+        Assert.Contains("\"count\":0}", empty.Split('\n')[0], StringComparison.Ordinal);
+        string negative = new System.Text.RegularExpressions.Regex("\"next\":[0-9]+").Replace(empty, "\"next\":-5", 1);
+        Assert.NotEqual(empty, negative);
+        Assert.Contains("Prochain numéro de la file négatif", Assert.Throws<FormatException>(() => CombatEngine.Restore(quiet.CompletedSetup(),
+            CombatSnapshot.Parse(negative), NullCombatLog.Instance)).Message);
     }
 
     [Fact]

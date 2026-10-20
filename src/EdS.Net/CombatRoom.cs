@@ -458,7 +458,7 @@ namespace EdS.Net
         {
             if (Phase == RoomPhase.Combat || !_seats.All(s => s.Taken && s.Client != null && s.Ready)) return;
             IEnumerable<CombatantSetup> combatants = _scenario.Combatants.Select(c => c is CharacterSetup ch && _seats.FirstOrDefault(s => s.Id == ch.Id) is { } seat
-                ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement)
+                ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement, ch.ArrivalMs)
                 : c);
             var setup = new CombatSetup(_scenario.Seed, _options.DurationMs ?? _scenario.DurationMs, _scenario.Stats, _scenario.Damage,
                 _scenario.Progression, _scenario.Combat, combatants, Array.Empty<CombatCommand>(), _scenario.Data, _scenario.Space);

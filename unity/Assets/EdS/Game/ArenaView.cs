@@ -196,8 +196,10 @@ namespace EdS.Game
         /// </summary>
         private void Place(ICombatClient combat, bool snap)
         {
-            var views = new List<CombatantView> { combat.Player().View };
-            var visible = new Dictionary<string, bool> { [combat.PlayerId] = true };
+            CombatantView me = combat.Player().View;
+            var views = new List<CombatantView> { me };
+            // Revue Codex de la PR #32 (20e tour) : le joueur absent (avant son arrivée, après son départ) reste caché.
+            var visible = new Dictionary<string, bool> { [combat.PlayerId] = me.IsPresent };
             foreach (OtherState other in combat.Others())
             {
                 views.Add(other.View);
@@ -249,7 +251,9 @@ namespace EdS.Game
         {
             CombatantView me = player.View;
             bool broken = me.States.Contains("guardBreak");
-            _shield.SetActive(me.Guarding || me.ParryOpen || broken);
+            // Revue Codex de la PR #32 (20e tour) : le joueur absent (avant son arrivée, après son départ) est caché, bouclier compris.
+            _player.SetActive(me.IsPresent);
+            _shield.SetActive(me.IsPresent && (me.Guarding || me.ParryOpen || broken));
             _shieldRenderer.sharedMaterial = me.ParryOpen ? _shieldParry : broken ? _shieldBroken : _shieldGuard;
             if (_space != null) Place(combat, false);
 
@@ -258,9 +262,13 @@ namespace EdS.Game
                 if (!_bodies.TryGetValue(other.Id, out GameObject body)) continue;
                 if (_space != null)
                 {
+                    // Place gère déjà la visibilité en combat positionné (présent et en vue).
                     Tint(other.Id, other.View.IsDead, other.View.States.Contains("stun"));
                     continue;   // orientation donnée par le moteur
                 }
+                // Revue Codex de la PR #32 (16e tour) : un absent (attendu, refusé, parti) est caché ; il apparaît à son arrivée.
+                body.SetActive(other.View.IsPresent);
+                if (!other.View.IsPresent) continue;
                 Vector3 look = _player.transform.position;
                 look.y = body.transform.position.y;
                 if (other.IsEnemy && other.View.Kind != CombatantKind.Dummy && (look - body.transform.position).sqrMagnitude > 0.01f)

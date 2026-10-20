@@ -151,7 +151,8 @@ namespace EdS.Simulation.Engine
 
         private static void Expect(string s, ref int i, string word)
         {
-            if (string.CompareOrdinal(s, i, word, 0, word.Length) != 0) throw Error(s, i, $"« {word} » attendu");
+            // Revue Codex de la PR #32 (14e tour) : un texte tronqué au milieu du mot est illisible (FormatException), pas une erreur d'indice.
+            if (i + word.Length > s.Length || string.CompareOrdinal(s, i, word, 0, word.Length) != 0) throw Error(s, i, $"« {word} » attendu");
             i += word.Length;
         }
 
