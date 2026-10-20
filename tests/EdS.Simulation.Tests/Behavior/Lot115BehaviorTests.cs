@@ -228,6 +228,25 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Deux_equipes_qui_encerclent_la_meme_cible_ont_chacune_leur_anneau()
+    {
+        // Revue Codex de la PR #33 (tour 7) : trois équipes ; le loup de la meute (est) et celui des rivaux (nord) encerclent le Bastion.
+        // Chacun est seul dans l'anneau de son équipe : il prend la place 0, dans sa propre direction, et descend tout droit (x = 0) ; dans
+        // un anneau partagé, le rival aurait pris la place opposée au loup (vers l'ouest).
+        var rival = new AssailantSetup("rival", "rivaux", Fixed.Zero, Fixed.Zero, null, 600_000, 1000, new[] { Bite() }, placement: At("0", "6"),
+            behavior: new AssailantBehavior(F("0.5"), null, null, true));
+        var (track, _, engine) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("loup", At("6", "0"), "0.5", encircle: true), rival },
+            durationMs: 1000));
+        Assert.Equal(("bastion", "bastion"), (engine.View("loup").CurrentTarget, engine.View("rival").CurrentTarget));
+        for (int t = 1; t <= 10; t++)
+        {
+            Assert.Equal(Fixed.Zero, track.After("rival", t).X);
+            Assert.Equal(Fixed.Zero, track.After("loup", t).Z);
+        }
+        Assert.True(track.After("rival", 10).Z < Fixed.Parse("6"));
+    }
+
+    [Fact]
     public void Il_s_arrete_pendant_l_annonce_de_son_attaque()
     {
         AssailantAttack rain = new("pluie", 10, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Circle, 1000, radius: F("1"));

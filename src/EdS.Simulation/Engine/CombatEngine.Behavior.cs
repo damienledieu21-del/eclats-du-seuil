@@ -204,15 +204,17 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Place de <paramref name="i"/> dans l'anneau de sa meute autour de la cible <paramref name="j"/> : les ennemis qui encerclent la même
-        /// cible, rangés dans le sens trigonométrique à partir du premier (ordre angulaire, puis identifiant ; un ennemi au centre de la cible
+        /// Place de <paramref name="i"/> dans l'anneau de sa meute autour de la cible <paramref name="j"/> : les ennemis de son équipe qui
+        /// encerclent la même cible, rangés dans le sens trigonométrique à partir du premier (ordre angulaire, puis identifiant ; un ennemi au centre de la cible
         /// d'abord), se partagent le tour à angles égaux ; le rayon de l'anneau met chacun au milieu de ses distances (bords).
         /// </summary>
         private (long X, long Z) RingSlot(int i, int j, int[] targets, long[] x, long[] z, AssailantBehavior behavior)
         {
+            // Revue Codex de la PR #33 (tour 7) : la meute est celle de son équipe ; deux équipes qui encerclent la même cible ont chacune
+            // leur anneau.
             var pack = new List<int>();
             for (int k = 0; k < targets.Length; k++)
-                if (targets[k] == j && _fightersById[k].Behavior is { Encircle: true }) pack.Add(k);
+                if (targets[k] == j && _fightersById[k].Behavior is { Encircle: true } && _fightersById[k].Team == _fightersById[i].Team) pack.Add(k);
             long tx = x[j], tz = z[j];
             pack.Sort((a, b) =>
             {
