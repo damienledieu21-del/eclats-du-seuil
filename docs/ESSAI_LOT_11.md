@@ -50,6 +50,7 @@ Mesure faite (cercle de 2 m annoncé 900 ms avant l'impact, sortir demande 0,5 s
 
 | Vérification | Résultat |
 |---|---|
+| Version d'Android du Note8 (Informations sur le logiciel) | |
 | Installation et démarrage sur le Note8 | |
 | Marche au pouce | |
 | Boutons (taille, place) | |
