@@ -511,6 +511,14 @@ namespace EdS.Simulation.Engine
                             $"{at} : réaction qui n'est pas reportée du tick précédent.");
                         // 9e tour : un déclencheur ne réagit qu'une fois à un même effet observé.
                         Require(reacted.Add((reaction.Slot, reaction.Origin.Cause, reaction.Origin.Root)), $"{at} : réaction en double.");
+                        // 10e tour : seule une frappe se reporte (une autre réaction s'exécute dans sa phase). Son déclencheur est abonné à
+                        // l'effet observé (type, rôle, filtre), émis au tick précédent après la résolution ; sa recharge interne est repartie de
+                        // ce tick ; sa provenance est exactement la réaction de ce déclencheur à cet effet.
+                        Require(reaction.Slot.Strikes && Subscribes(reaction.Slot, reaction.Event) && FilterAccepts(reaction.Slot.Definition.Filter, reaction.Event)
+                            && reaction.Event.Tick == CurrentTick - 1 && reaction.Event.Phase > CombatPhase.Resolution
+                            && reaction.Slot.ReadyTick == checked(CurrentTick - 1 + reaction.Slot.Definition.CooldownMs / _tickMs),
+                            $"{at} : réaction reportée incohérente avec son déclencheur ou l'effet observé.");
+                        Require(ReactionOriginFits(reaction), $"{at} : provenance de réaction incohérente avec l'effet observé.");
                         reactions++;
                         break;
                     default:
@@ -645,6 +653,13 @@ namespace EdS.Simulation.Engine
                     Require(string.Equals(s.Key.Source, s.Definition.Stacking == StatusStacking.PerSourceKeepStronger ? s.Source : null, StringComparison.Ordinal),
                         $"{status} : clé de cumul incohérente avec sa source.");
                     Require(s.UntilTick >= CurrentTick && (!s.Definition.IsDot || s.NextTick >= CurrentTick), $"{status} : déjà échue.");
+                    // 10e tour : posée au plus tard au tick précédent, elle ne dure pas plus que la plus longue durée qu'elle a pu recevoir (base,
+                    // plus grands ajouts positifs d'un auteur et de la cible, écrêtés à 24 h ; résistance et raccourcis ne font que réduire) ; le
+                    // prochain tick d'un DOT tombe au plus une période après le tick précédent.
+                    long longest = MaxStatusTicks(f, s.Definition);
+                    Require(s.Definition.IsDot
+                        ? s.NextTick <= checked(CurrentTick - 1 + s.Definition.PeriodMs / _tickMs) && s.UntilTick <= Math.Max(checked(CurrentTick - 1 + longest), s.NextTick)
+                        : s.UntilTick <= checked(CurrentTick - 1 + longest), $"{status} : échéance au-delà de sa plus longue durée possible.");
                     Require(s.Absorb >= 0 && s.Absorb <= CounterCeiling && (s.Definition.IsShield || s.Absorb == 0), $"{status} : absorption impossible.");
                     // 7e tour : puissance d'un DOT positive (nulle pour une autre altération), sous le plafond.
                     Require(s.Power.Raw >= 0 && s.Power.Raw <= CounterCeiling && (s.Definition.IsDot || (s.Power == Fixed.Zero && s.NextTick == 0)),
@@ -694,6 +709,56 @@ namespace EdS.Simulation.Engine
                         $"Tours de {who} incohérents avec sa cadence : {played} joués, prochain au tick {(scheduled ? next.ToString(CultureInfo.InvariantCulture) : "aucun")}.");
                 }
             }
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (10e tour) : plus longue durée, en ticks, qu'une application de <paramref name="definition"/> à
+        /// <paramref name="target"/> peut recevoir (<see cref="DurationTicks"/> sans résistance ni raccourci, avec les plus grands ajouts
+        /// positifs de la cible et d'un auteur quelconque du combat).
+        /// </summary>
+        private long MaxStatusTicks(Fighter target, StatusDefinition definition)
+        {
+            long dealt = 0;
+            foreach (Fighter dealer in _fightersById) dealt = Math.Max(dealt, dealer.Rules.DurationDealtMs(definition.Id));
+            long added = checked(Math.Max(0, target.Rules.DurationTakenMs(definition.Id)) + dealt);
+            long floor = definition.IsDot ? definition.PeriodMs : _tickMs;
+            long ms = Math.Max(Math.Max(definition.DurationMs, floor), Math.Min(CombatRules.AbsoluteMaxDurationMs, checked(definition.DurationMs + added)));
+            return ms / _tickMs;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (10e tour) : le déclencheur d'une réaction est abonné à l'effet observé et son porteur y tient le rôle
+        /// demandé (<see cref="Matches"/>, sans exiger qu'un allié visé soit encore vivant : il l'était à l'émission).
+        /// </summary>
+        private bool Subscribes(TriggerSlot slot, ObservedEvent e)
+        {
+            TriggerDefinition d = slot.Definition;
+            if (d.On != e.Kind && d.On != e.Also) return false;
+            if (d.EffectiveRole == TriggerRole.Ally)
+                return e.Target != null && !string.Equals(e.Target, slot.Bearer.Id, StringComparison.Ordinal)
+                    && _byId.TryGetValue(e.Target, out Fighter? ally) && ally.Team == slot.Bearer.Team;
+            string? holder = d.EffectiveRole == TriggerRole.Target ? e.Target : e.Source;
+            return string.Equals(holder, slot.Bearer.Id, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (10e tour) : la provenance d'une réaction est celle que <see cref="ProcessNotify"/> lui donne
+        /// (<see cref="Provenance.ReactionTo"/> de l'effet observé : même racine, profondeur + 1, chaîne étendue de son déclencheur, absent
+        /// avant, cause = effet observé, source = porteur ; instance de l'altération porteuse, à une génération déjà atteinte).
+        /// </summary>
+        private static bool ReactionOriginFits(ReactionItem reaction)
+        {
+            Provenance origin = reaction.Origin, observed = reaction.Event.Provenance;
+            TriggerSlot slot = reaction.Slot;
+            List<string> chain = observed.ChainOldestFirst();
+            if (chain.Contains(slot.Identity, StringComparer.Ordinal)) return false;   // cycle : jamais acceptée
+            chain.Add(slot.Identity);
+            bool instance = slot.Status is { } status
+                ? origin.SourceInstance == status.Id && origin.SourceGeneration is int generation && generation >= 1 && generation <= status.Generation
+                : origin.SourceInstance is null && origin.SourceGeneration is null;
+            return instance && string.Equals(origin.Root, observed.Root, StringComparison.Ordinal) && origin.Depth == checked(observed.Depth + 1)
+                && origin.ChainOldestFirst().SequenceEqual(chain, StringComparer.Ordinal) && string.Equals(origin.Trigger, slot.Identity, StringComparison.Ordinal)
+                && origin.Cause == reaction.Event.Eid && string.Equals(origin.Source, slot.Bearer.Id, StringComparison.Ordinal);
         }
 
         /// <summary>Vecteur unitaire à l'arrondi près (<see cref="Planar.TryNormalize"/> : au plus une unité brute d'erreur sur la longueur).</summary>
@@ -758,6 +823,8 @@ namespace EdS.Simulation.Engine
             if (cause < 1 || instance < 1) throw new FormatException("Provenance citant un événement ou une altération non numérotés.");
             _maxLoadedEid = Math.Max(_maxLoadedEid, cause ?? 0);
             _maxLoadedInstance = Math.Max(_maxLoadedInstance, instance ?? 0);
+            // Revue Codex de la PR #32 (10e tour) : une réaction n'est acceptée que sous la profondeur maximale des règles.
+            if (n["depth"].Int > _rules.MaxTriggerDepth) throw new FormatException($"Provenance au-delà de la profondeur maximale ({_rules.MaxTriggerDepth}).");
             return Provenance.Restore(n["root"].String, n["depth"].Int, n["chain"].Items.Select(c => c.String).ToList(), n["trigger"].NullableString,
                 cause, n["source"].NullableString, instance, n["generation"].NullableInt);
         }

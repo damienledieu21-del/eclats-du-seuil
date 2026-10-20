@@ -278,13 +278,15 @@ public class Lot114dSnapshotTests
             (Assaillant, "\"id\":1,\"generation\"", "\"id\":2,\"generation\"", "instance impossible ou en double"),
             (Bastion, "\"keySource\":\"assaillant\"", "\"keySource\":null", "tick de DOT impossible"),   // 9e tour : son tick de DOT cite l'ancienne clé
             (Bastion, "\"untilTick\":140", "\"untilTick\":20", "déjà échue"),
+            (Bastion, "\"untilTick\":140", "\"untilTick\":100000", "au-delà de sa plus longue durée possible"),   // 10e tour : saignement (DOT)
             (Bastion, "\"absorb\":0,", "\"absorb\":5,", "absorption impossible"),
             ("{\"entry\":3,", "\"index\":2", "\"index\":3", "hors de son tick ou en double"),
             ("{\"entry\":0,", "\"fighter\":\"renfort\"", "\"fighter\":\"allie\"", "n'est pas attendu"),
             (Renfort, "\"presence\":1", "\"presence\":0", "n'est pas attendu"),
             (Allie, "\"arrivedTick\":null", "\"arrivedTick\":10", "Bilan de présence"),
             (Head, "[\"bastion\",50,1]", "[\"bastion\",50,2]", "par acteur et par tick"),
-            (Bastion, "\"nextTick\":60", "\"nextTick\":80", "échéance absente de la file"),
+            (Bastion, "\"nextTick\":60", "\"nextTick\":61", "échéance absente de la file"),
+            (Bastion, "\"nextTick\":60", "\"nextTick\":80", "au-delà de sa plus longue durée possible"),   // 10e tour : plus d'une période après le tick 29
             ("{\"entry\":9,", "\"instance\":1}", "\"instance\":0}", "Altération non numérotée"),
             // 4e tour : arrivée au tick prévu, échéance d'altération une seule fois.
             ("{\"entry\":0,", "\"tick\":80", "\"tick\":81", "hors du tick prévu"),
@@ -491,6 +493,72 @@ public class Lot114dSnapshotTests
             Exception? refused = Record.Exception(() => CombatEngine.Restore(completed, CombatSnapshot.Parse(tampered), NullCombatLog.Instance));
             Assert.True(refused is FormatException && refused.Message.Contains(message, StringComparison.Ordinal), $"{value} : {refused?.Message ?? "accepté"}");
         }
+    }
+
+    [Fact]
+    public void Echeances_reactions_et_provenances_impossibles_refusees()
+    {
+        // Revue Codex de la PR #32 (10e tour). 1) Étourdissement de l'assaillant (Assommer au tick 52) : son échéance et son entrée de file
+        // repoussées ensemble restent cohérentes entre elles, mais au-delà de la plus longue durée qu'il a pu recevoir : refusées.
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 55) training.Step();
+        string text = training.Snapshot().Text;
+        CombatSetup setup = training.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string[] lines = text.Split('\n');
+        int expiry = Array.FindIndex(lines, l => l.StartsWith("{\"entry\":", StringComparison.Ordinal) && l.Contains("\"item\":\"expiry\"", StringComparison.Ordinal)
+            && l.Contains("\"fighter\":\"assaillant\"", StringComparison.Ordinal));
+        Assert.True(expiry > 0, "étourdissement en file");
+        string at = System.Text.RegularExpressions.Regex.Match(lines[expiry], "\"tick\":[0-9]+").Value;
+        long until = long.Parse(at.Substring("\"tick\":".Length), System.Globalization.CultureInfo.InvariantCulture);
+        int assailant = Array.FindIndex(lines, l => l.StartsWith("{\"fighter\":\"assaillant\"", StringComparison.Ordinal));
+        Assert.Contains($"\"untilTick\":{until}", lines[assailant], StringComparison.Ordinal);
+        lines[expiry] = lines[expiry].Replace(at, $"\"tick\":{until + 1000}", StringComparison.Ordinal);
+        lines[assailant] = lines[assailant].Replace($"\"untilTick\":{until}", $"\"untilTick\":{until + 1000}", StringComparison.Ordinal);
+        Assert.Contains("au-delà de sa plus longue durée possible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
+            CombatSnapshot.Parse(string.Join("\n", lines)), NullCombatLog.Instance)).Message);
+
+        // 2) Réaction reportée (riposte aux ticks de DOT) : échangée contre l'autre déclencheur du porteur, qui ne frappe pas ; recharge
+        // interne du déclencheur retouchée ; effet observé renuméroté (la provenance de la réaction ne le cite plus).
+        var gain = new TriggerDefinition(TriggerEvent.DotTick, new[] { TriggerEffect.GainResource(TriggerResource.Resonance, Fixed.FromInt(1)) }, TriggerRole.Target);
+        CombatSetup riposte = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Bearer(new[] { Riposte(TriggerEvent.DotTick), gain }),
+            Hitter(Strike("entaille", 100, applies: Apply("bleed", "0.4"))) }, durationMs: 8000, rules: NoUpkeep);
+        var reacting = new CombatEngine(riposte, NullCombatLog.Instance);
+        while (!reacting.Snapshot().Text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal)) reacting.Step();
+        string deferred = reacting.Snapshot().Text;
+        CombatSetup completed = reacting.CompletedSetup();
+        Assert.Equal(deferred, CombatEngine.Restore(completed, CombatSnapshot.Parse(deferred), NullCombatLog.Instance).Snapshot().Text);
+        string reaction = deferred.Split('\n').First(l => l.Contains("\"item\":\"reaction\"", StringComparison.Ordinal));
+        string entry = reaction.Substring(0, reaction.IndexOf(',') + 1);
+        long eid = long.Parse(System.Text.RegularExpressions.Regex.Match(reaction, "\"eid\":([0-9]+)").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        string ready = System.Text.RegularExpressions.Regex.Match(deferred.Split('\n').First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal)),
+            "\"triggers\":\\[[0-9]+").Value;
+        Assert.NotEqual("\"triggers\":[0", ready);
+        AssertRefused(completed, deferred, new[]
+        {
+            (entry, "\"index\":0", "\"index\":1", "réaction reportée incohérente"),
+            (entry, $"\"eid\":{eid}", $"\"eid\":{eid - 1}", "provenance de réaction incohérente"),
+            ("{\"fighter\":\"bastion\"", ready, "\"triggers\":[0", "réaction reportée incohérente"),
+        });
+
+        // 3) Provenances que les constructeurs ne produisent pas : profondeur sans chaîne, dernier déclencheur hors de la chaîne, maillon
+        // en double, réaction sans cause, profondeur au-delà des règles.
+        foreach ((string pattern, string value, string message) in new[]
+        {
+            ("\"depth\":0,\"chain\":\\[\\]", "\"depth\":3,\"chain\":[]", "pour une chaîne de 0"),
+            ("\"chain\":\\[\\],\"trigger\":null", "\"chain\":[],\"trigger\":\"x/0@bastion#0\"", "bout de sa chaîne"),
+        })
+        {
+            string tampered = new System.Text.RegularExpressions.Regex(pattern).Replace(deferred, value, 1);
+            Assert.NotEqual(deferred, tampered);
+            Assert.Contains(message, Assert.Throws<FormatException>(() => CombatEngine.Restore(completed, CombatSnapshot.Parse(tampered), NullCombatLog.Instance)).Message);
+        }
+        Assert.Contains("en double", Assert.Throws<FormatException>(() => Provenance.Restore("r", 2, new[] { "a", "a" }, "a", 5, null, null, null)).Message);
+        Assert.Contains("sans cause", Assert.Throws<FormatException>(() => Provenance.Restore("r", 1, new[] { "a" }, "a", null, null, null, null)).Message);
+        string deep = new System.Text.RegularExpressions.Regex("\"depth\":1,\"chain\":\\[(\"[^\"]+\")\\],\"trigger\":(\"[^\"]+\")")
+            .Replace(deferred, "\"depth\":5,\"chain\":[\"a\",\"b\",\"c\",\"d\",$1],\"trigger\":$2", 1);
+        Assert.NotEqual(deferred, deep);
+        Assert.Contains("profondeur maximale", Assert.Throws<FormatException>(() => CombatEngine.Restore(completed, CombatSnapshot.Parse(deep), NullCombatLog.Instance)).Message);
     }
 
     [Fact]
