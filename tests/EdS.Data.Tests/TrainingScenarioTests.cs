@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "d186165839ffe4c427ac0349ed91031c4af2283bf90280c9f7163225c84056be")]
-    [InlineData("entrainement_rupture", "7484d947a2a58a54d902c7dec4dd56cb06bd8314f2aac09d38318f28215f97b8")]
-    [InlineData("entrainement_alterations", "233e1b6262edfb614bbb38ddb58ff4a4bc982b609749f44d7a685d7aef9d33ef")]
-    [InlineData("entrainement_declencheurs", "78d2210177cb093ec00306c4d0ffb19e06d1a43d82630a0fddbd86a9e725d5ad")]
+    [InlineData("entrainement_garde_parade", "943868556655995e19b8991a029c439a2abee45a26b6e1f9a28dc3a55005fe63")]
+    [InlineData("entrainement_rupture", "7af833f238c8511aabc0f03397b73148f273f266436c597141aa4b8e57b55663")]
+    [InlineData("entrainement_alterations", "3acb7352fe665f7db7b2ce70aeef4995dca58bb3b3e0910911038b61e1e7ab1a")]
+    [InlineData("entrainement_declencheurs", "57dffd12c051b6b978bf26b03fb9b076953bf310030a4555582d5c2aff96e8b2")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -125,6 +125,9 @@ public class TrainingScenarioTests
         // Sous-lot 11.1 : moteur 0.15.0, format 9 (PV facultatifs des assaillants), scénarios en schéma 4 ; aucun assaillant livré n'a de
         // PV : seul l'en-tête change (format et version du moteur), corps identique à celui du moteur 0.14.0 ; référence du scénario à
         // déclencheurs dans Fixtures/reference-0.15.0-contenu-0.5.0.
+        // Sous-lot 11.4 : moteur 0.16.0, format 10 (combat positionné), règles en schéma 10 (contenu 0.9.0), Bastion en schéma 9 (contenu
+        // 0.6.0, portées), scénarios en schéma 5 ; ces combats n'ont pas d'espace : seul l'en-tête change, corps identique à celui du moteur
+        // 0.15.0 ; référence du scénario à déclencheurs dans Fixtures/reference-0.16.0-contenu-0.6.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

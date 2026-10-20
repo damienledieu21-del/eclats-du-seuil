@@ -132,6 +132,7 @@ namespace EdS.Data.Json
                 ["rampartChargeSpendAll"] = (v, p) => combat.RampartChargeSpendAll = Bool(input, v, p),
                 ["coefficientPerRampartCharge"] = (v, p) => combat.CoefficientPerRampartCharge = input.TryReadDecimal(v, p, out Fixed k) ? k : null,
                 ["resonanceGain"] = (v, p) => combat.ResonanceGain = Int(input, v, p),
+                ["range"] = (v, p) => combat.Range = input.TryReadDecimal(v, p, out Fixed r) ? r : null,   // sous-lot 11.4 (schéma 9)
                 ["provisional"] = (v, p) => combat.Provisional = Bool(input, v, p),
                 ["applies"] = (v, p) => combat.Applies = ReadList(input, v, p, (e, ip) => ReadApplication(input, e, ip)),
             });

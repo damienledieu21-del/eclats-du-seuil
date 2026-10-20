@@ -20,6 +20,31 @@ namespace EdS.Data.Scenarios
         public long? DurationMs { get; set; }
         public List<CombatantData?>? Combatants { get; set; }
         public List<CommandData?>? Commands { get; set; }
+
+        /// <summary>Sous-lot 11.4 (schéma 5) : espace d'un combat positionné ; absent : combat logique.</summary>
+        public SpaceData? Space { get; set; }
+    }
+
+    /// <summary>Sous-lot 11.4 : bloc <c>space</c> d'un scénario.</summary>
+    public sealed class SpaceData
+    {
+        public BoundsData? Bounds { get; set; }
+    }
+
+    /// <summary>Sous-lot 11.4 : bornes du rectangle praticable, en mètres.</summary>
+    public sealed class BoundsData
+    {
+        public Fixed? MinX { get; set; }
+        public Fixed? MaxX { get; set; }
+        public Fixed? MinZ { get; set; }
+        public Fixed? MaxZ { get; set; }
+    }
+
+    /// <summary>Sous-lot 11.4 : point ou direction <c>{ "x": …, "z": … }</c>, en mètres.</summary>
+    public sealed class PointData
+    {
+        public Fixed? X { get; set; }
+        public Fixed? Z { get; set; }
     }
 
     public sealed class CombatantData
@@ -31,6 +56,14 @@ namespace EdS.Data.Scenarios
 
         public string? Team { get; set; }
         public int? Initiative { get; set; }
+
+        // Sous-lot 11.4 (schéma 5) : placement dans un combat positionné, pour tous les types.
+        public PointData? Position { get; set; }
+
+        /// <summary>Orientation de départ ; facultative (absente : vers +z).</summary>
+        public PointData? Facing { get; set; }
+
+        public Fixed? Radius { get; set; }
 
         // Personnage
         public string? Class { get; set; }
@@ -102,8 +135,11 @@ namespace EdS.Data.Scenarios
         /// <summary>Compétence lancée ; absente pour une garde ou une parade.</summary>
         public string? Skill { get; set; }
 
-        /// <summary>« guardStart », « guardStop » ou « parry » ; absente pour une compétence.</summary>
+        /// <summary>« guardStart », « guardStop », « parry », « move » ou « moveStop » ; absente pour une compétence.</summary>
         public string? Action { get; set; }
+
+        /// <summary>Sous-lot 11.4 : direction d'un déplacement (action « move »).</summary>
+        public PointData? Direction { get; set; }
 
         /// <summary>Cible ; null si absente ou null (compétence de zone).</summary>
         public string? Target { get; set; }

@@ -38,13 +38,18 @@ public class Lot87BalanceTests
     private static IReadOnlyList<ObjectiveResult> Objectives(GameData data) =>
         Measures.Objectives(Measures.RunAll(Scenarios(data), References(data), Measures.Profiles.Values.ToList()));
 
+    /// <summary>Empreinte du Bastion 0.5.0 figé au schéma de classe 9 (sous-lot 11.4).</summary>
+    internal const string Content050Fingerprint = "sha256:b54ca7238ab70c8d5e125cfff3d851d9877c1b3138cff034f123f5781f45172f";
+
     [Fact]
     public void Bastion_livre_au_contenu_0_5_0()
     {
-        ClassLoadResult result = ClassJsonReader.ReadFile(ClassTestData.BastionPath, ClassTestData.Progression);
+        // Sous-lot 11.4 : le Bastion du 8.7 est figé (Fixtures/content-0.5.0, au schéma de classe 9) ; le contenu livré 0.6.0 n'y ajoute que
+        // les portées (Lot114SpaceDataTests). Ancienne empreinte, au schéma 8 : 51f673a6….
+        ClassLoadResult result = ClassJsonReader.ReadFile(ScenarioTestData.Content050ClassPath, ClassTestData.Progression);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal((8, "0.5.0-provisoire"), (result.Class!.SchemaVersion, result.Class.ContentVersion));
-        Assert.Equal("sha256:51f673a64869909a288e9bd76ab774fae2986df4f7f7007dcf6897aef514832e", result.Class.Fingerprint);
+        Assert.Equal((9, "0.5.0-provisoire"), (result.Class!.SchemaVersion, result.Class.ContentVersion));
+        Assert.Equal(Content050Fingerprint, result.Class.Fingerprint);
         ValidationErrorAssert.SingleCycleWarning(result);
     }
 
@@ -53,7 +58,7 @@ public class Lot87BalanceTests
     {
         // Comparaison champ par champ des deux fichiers de classe : seuls la version de contenu et le bloc combat de la Provocation
         // (puissance, type de dégâts, coefficient) diffèrent.
-        JsonObject shipped = JsonNode.Parse(File.ReadAllText(ClassTestData.BastionPath))!.AsObject();
+        JsonObject shipped = JsonNode.Parse(File.ReadAllText(ScenarioTestData.Content050ClassPath))!.AsObject();   // sous-lot 11.4 : figé
         JsonObject frozen = JsonNode.Parse(File.ReadAllText(Content040ClassPath))!.AsObject();
         Assert.Equal(("0.5.0-provisoire", "0.4.0-provisoire"), (shipped["contentVersion"]!.GetValue<string>(), frozen["contentVersion"]!.GetValue<string>()));
         JsonObject Provocation(JsonObject root) => root["data"]!["skills"]!.AsArray().Single(s => s!["id"]!.GetValue<string>() == "skill.bastion.provocation")!["combat"]!.AsObject();

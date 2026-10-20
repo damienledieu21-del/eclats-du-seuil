@@ -137,6 +137,18 @@ namespace EdS.Domain.Combat
         public int UltimateResonanceCost { get; init; } = 100;
 
         /// <summary>
+        /// Sous-lot 11.4 : vitesse de déplacement de base, en mètres par seconde (<c>combat.movement.baseSpeed</c> ; 5 m/s, valeur de
+        /// départ retenue le 20 octobre 2026, à régler à l'essai 11.9). Dans ]0, <see cref="Space.SpaceLimits.MaxSpeed"/>].
+        /// </summary>
+        public Fixed MovementBaseSpeed { get; init; } = Fixed.FromInt(5);
+
+        /// <summary>
+        /// Sous-lot 11.4 (L11-D3) : facteur de vitesse pendant la garde (<c>combat.movement.guardSpeedRatio</c> ; 0,5, valeur de départ
+        /// retenue, réglée à l'essai 11.9). Dans [0, 1].
+        /// </summary>
+        public Fixed GuardMovementSpeedRatio { get; init; } = Fixed.FromRatio(1, 2);
+
+        /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
         /// </summary>
@@ -195,6 +207,9 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation($"ne peut pas dépasser le plafond de la réduction de garde ({MaxGuardDamageReduction}).",
                     nameof(GuardDamageReduction), nameof(MaxGuardDamageReduction)));
             Fraction(ParryDamageReduction, nameof(ParryDamageReduction));
+            Fraction(GuardMovementSpeedRatio, nameof(GuardMovementSpeedRatio));
+            if (MovementBaseSpeed <= Fixed.Zero || MovementBaseSpeed > Space.SpaceLimits.MaxSpeed)
+                errors.Add(new RuleViolation($"doit être comprise dans ]0, {Space.SpaceLimits.MaxSpeed}] m/s.", nameof(MovementBaseSpeed)));
             if (Statuses is null)
                 errors.Add(new RuleViolation("catalogue des altérations obligatoire.", nameof(GuardBreakStatus)));
             else if (GuardBreakStatus is null || !Statuses.TryGet(GuardBreakStatus, out StatusDefinition? guardBreak))

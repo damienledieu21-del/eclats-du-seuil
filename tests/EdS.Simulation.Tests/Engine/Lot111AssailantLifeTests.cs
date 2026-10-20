@@ -50,7 +50,8 @@ public class Lot111AssailantLifeTests
         JsonElement[] described = header.GetProperty("scenario").GetProperty("combatants").EnumerateArray().ToArray();
         Assert.Equal(250, described.Single(c => c.GetProperty("id").GetString() == "loup").GetProperty("health").GetInt64());
         Assert.False(described.Single(c => c.GetProperty("id").GetString() == "mannequin_vivant").TryGetProperty("health", out _));
-        Assert.Equal((9, "0.15.0"), (header.GetProperty("formatVersion").GetInt32(), header.GetProperty("engineVersion").GetString()));
+        // Sous-lot 11.4 : format 10, moteur 0.16.0 ; les PV restent écrits de la même façon.
+        Assert.Equal((10, "0.16.0"), (header.GetProperty("formatVersion").GetInt32(), header.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]

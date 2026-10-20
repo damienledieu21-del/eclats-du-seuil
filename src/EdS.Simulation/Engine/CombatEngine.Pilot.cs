@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 
 namespace EdS.Simulation.Engine
 {
@@ -28,6 +30,15 @@ namespace EdS.Simulation.Engine
         /// <summary>PV ; null pour un mannequin ou un assaillant aux PV infinis.</summary>
         public long? Health { get; internal set; }
         public long? MaxHealth { get; internal set; }
+
+        /// <summary>
+        /// Sous-lot 11.4 : placement au début du tick dans un combat positionné (null dans un combat logique) : centre de l'emprise,
+        /// orientation (au plus 1 m), rayon, et direction du déplacement en cours (null à l'arrêt).
+        /// </summary>
+        public GroundVector? Position { get; internal set; }
+        public GroundVector? Facing { get; internal set; }
+        public Fixed? Radius { get; internal set; }
+        public GroundVector? Moving { get; internal set; }
 
         // Personnage seulement (valeurs neutres sinon).
         public CharacterSetup? Character { get; internal set; }
@@ -134,6 +145,10 @@ namespace EdS.Simulation.Engine
                 IsDead = f.IsDead,
                 Health = f.Health,
                 MaxHealth = f.MaxHealth,
+                Position = _space is null ? (GroundVector?)null : f.Position,
+                Facing = _space is null ? (GroundVector?)null : f.Facing,
+                Radius = _space is null ? (Fixed?)null : f.Radius,
+                Moving = f.Moving,
                 States = f.Statuses.Values.Where(s => s.UntilTick > tick).Select(s => s.State).Distinct().OrderBy(s => s, StringComparer.Ordinal).ToArray(),
                 Counters = new CombatantCounters
                 {
@@ -218,6 +233,14 @@ namespace EdS.Simulation.Engine
                 CombatCommand command = commands[i] ?? throw new ArgumentNullException(nameof(commands));
                 if (!_byId.ContainsKey(command.Actor)) throw new ArgumentException($"Acteur inconnu : {command.Actor}.", nameof(commands));
                 if (command.Target != null && !_byId.ContainsKey(command.Target)) throw new ArgumentException($"Cible inconnue : {command.Target}.", nameof(commands));
+                // Sous-lot 11.4 : mêmes contrôles que la validation du scénario pour un déplacement.
+                if (command.Action == CombatAction.Move || command.Action == CombatAction.MoveStop)
+                {
+                    if (_space is null) throw new ArgumentException("Déplacement dans un combat sans espace.", nameof(commands));
+                    if (command.Action == CombatAction.Move && (command.Direction is not { } d || d.IsZero
+                        || !SpaceLimits.IsCoordinate(d.X) || !SpaceLimits.IsCoordinate(d.Z)))
+                        throw new ArgumentException("Direction de déplacement nulle ou hors limites.", nameof(commands));
+                }
                 if (command.AtMs % _tickMs != 0 || command.AtMs / _tickMs != CurrentTick)
                     throw new ArgumentException($"Commande à {command.AtMs} ms : seul le tick courant ({CurrentTick}) est admis.", nameof(commands));
                 int earlier = groupPerActor.TryGetValue(command.Actor, out int g) ? g : 0;

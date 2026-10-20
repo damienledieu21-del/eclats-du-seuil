@@ -149,11 +149,12 @@ public class Lot85ContentDataTests
         // Sous-lot 8.7 : le contenu 0.4.0 est figé (Fixtures/content-0.4.0) ; le contenu livré 0.5.0 a son test (Lot87BalanceTests).
         ClassLoadResult result = ClassJsonReader.ReadFile(ScenarioTestData.Content040ClassPath, ClassTestData.Progression);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal((8, "0.4.0-provisoire"), (result.Class!.SchemaVersion, result.Class.ContentVersion));
+        // Sous-lot 11.4 : figé au schéma de classe courant (9, portée absente) ; seule l'empreinte change (ancienne 4a719f82…).
+        Assert.Equal((9, "0.4.0-provisoire"), (result.Class!.SchemaVersion, result.Class.ContentVersion));
         ValidationError warning = Assert.Single(result.Report.Warnings);
         Assert.Equal(("$.data.trees[1].talents[0].triggers[0]", ValidationCode.TriggerCycle), (warning.Path, warning.Code));
         Assert.Contains("talent.bastion.contrecoup.riposte_precise/0, talent.bastion.contrecoup.jugement_du_colosse/0", warning.Message);
-        Assert.Equal("sha256:4a719f82fa129497a4a4cd84152546998a6c919fab8a43d7817cfa7f253313a3", result.Class.Fingerprint);
+        Assert.Equal("sha256:308cf989fef6e35b52aa18d93e75374da3f50a1cda7f8f8ae94ec6f99e27263e", result.Class.Fingerprint);
     }
 
     [Fact]
@@ -177,6 +178,6 @@ public class Lot85ContentDataTests
         // Le catalogue du domaine (StatusCatalog.Provisional) reprend les mêmes définitions, dans le même ordre.
         Assert.Equal(StatusCatalog.Provisional.Definitions.Select(d => (d.Id, d.Category, d.DurationMs, d.Stacking, d.RedirectRatio)),
             catalog.Definitions.Select(d => (d.Id, d.Category, d.DurationMs, d.Stacking, d.RedirectRatio)));
-        Assert.Equal("0.8.0-provisoire", ShippedData.Rules.ContentVersion);
+        Assert.Equal("0.9.0-provisoire", ShippedData.Rules.ContentVersion);   // sous-lot 11.4 : 0.9.0 (déplacement), altérations inchangées
     }
 }

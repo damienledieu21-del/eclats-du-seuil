@@ -95,6 +95,13 @@ namespace EdS.Domain.Builds
         /// </summary>
         public int ResonanceGain { get; }
 
+        /// <summary>
+        /// Sous-lot 11.4 : portée en mètres, entre les bords des emprises, vérifiée au lancement dans un combat positionné (refus
+        /// <c>targetOutOfRange</c>) ; null : sans limite. Ciblages <see cref="SkillTargeting.Enemy"/> et <see cref="SkillTargeting.Ally"/>
+        /// seulement ; ignorée dans un combat sans espace.
+        /// </summary>
+        public Fixed? Range { get; }
+
         /// <summary>Valeurs provisoires, non équilibrées.</summary>
         public bool IsProvisional { get; }
 
@@ -109,8 +116,9 @@ namespace EdS.Domain.Builds
         public SkillCombatDefinition(PowerType? powerType, DamageType? damageType, Fixed? coefficient, int enduranceCost,
             long cooldownMs, SkillTargeting targeting = SkillTargeting.Enemy, bool isProvisional = true,
             bool unblockable = false, int rampartChargeCost = 0, int rampartChargeGain = 0, IEnumerable<StatusApplication>? applies = null,
-            bool rampartChargeSpendAll = false, Fixed? coefficientPerRampartCharge = null, int resonanceGain = 0)
+            bool rampartChargeSpendAll = false, Fixed? coefficientPerRampartCharge = null, int resonanceGain = 0, Fixed? range = null)
         {
+            Range = range;
             int given = (powerType is null ? 0 : 1) + (damageType is null ? 0 : 1) + (coefficient is null ? 0 : 1);
             if (given != 0 && given != 3)
                 throw new ArgumentException("dégâts directs : puissance, type et coefficient tous ensemble, ou aucun (compétence de soutien).");

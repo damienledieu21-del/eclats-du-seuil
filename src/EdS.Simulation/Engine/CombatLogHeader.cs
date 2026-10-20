@@ -32,6 +32,11 @@ namespace EdS.Simulation.Engine
             w.Name("scenario").BeginObject()
                 .Field("seed", setup.Seed)
                 .Field("durationMs", setup.DurationMs);
+            // Sous-lot 11.4 (format 10) : espace d'un combat positionné, écrit seulement s'il existe, comme dans le fichier de scénario.
+            if (setup.Space is { } space)
+                w.Name("space").BeginObject().Name("bounds").BeginObject()
+                    .Field("minX", space.MinX).Field("maxX", space.MaxX).Field("minZ", space.MinZ).Field("maxZ", space.MaxZ)
+                    .EndObject().EndObject();
             w.Name("combatants").BeginArray();
             foreach (CombatantSetup c in setup.Combatants) WriteCombatant(w, c);
             w.EndArray();
@@ -41,11 +46,15 @@ namespace EdS.Simulation.Engine
                 w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor);
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
                 else w.Field("action", CombatActionIds.Of(c.Action));
+                if (c.Direction is { } direction) WritePoint(w, "direction", direction);   // sous-lot 11.4
                 w.EndObject();
             }
             w.EndArray().EndObject();
             return w.EndObject().ToString();
         }
+
+        private static void WritePoint(JsonLineWriter w, string name, Domain.Space.GroundVector point) =>
+            w.Name(name).BeginObject().Field("x", point.X).Field("z", point.Z).EndObject();
 
         private static void WriteIdentity(JsonLineWriter w, DataFileIdentity identity, bool withId)
         {
@@ -182,6 +191,13 @@ namespace EdS.Simulation.Engine
                     // Sous-lot 11.1 : PV d'un assaillant mortel, écrits seulement s'il en a (format 9), comme dans le fichier de scénario.
                     if (assailant.Health is long health) w.Field("health", health);
                     break;
+            }
+            // Sous-lot 11.4 (format 10) : placement d'un combattant d'un combat positionné, tel que dans le fichier de scénario.
+            if (c.Placement is { } placement)
+            {
+                WritePoint(w, "position", placement.Position);
+                WritePoint(w, "facing", placement.Facing);
+                w.Field("radius", placement.Radius);
             }
             w.EndObject();
         }

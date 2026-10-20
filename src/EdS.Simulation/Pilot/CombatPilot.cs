@@ -210,7 +210,7 @@ namespace EdS.Simulation.Pilot
                 planning.Step();
             }
             var setup = new CombatSetup(baseSetup.Seed, baseSetup.DurationMs, baseSetup.Stats, baseSetup.Damage, baseSetup.Progression, baseSetup.Combat,
-                baseSetup.Combatants, baseSetup.Commands.Concat(planning.SubmittedCommands), baseSetup.Data);
+                baseSetup.Combatants, baseSetup.Commands.Concat(planning.SubmittedCommands), baseSetup.Data, baseSetup.Space);
             CombatResult result = CombatEngine.Run(setup, log);
             string? difference = Difference(planning.Result!, result);
             if (difference != null)

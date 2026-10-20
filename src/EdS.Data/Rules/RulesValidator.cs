@@ -226,6 +226,8 @@ namespace EdS.Data.Rules
                 ResonancePerPerfectParry = (int)Int(d, P(c, nameof(CombatRules.ResonancePerPerfectParry))),
                 ResonancePerBlock = (int)Int(d, P(c, nameof(CombatRules.ResonancePerBlock))),
                 UltimateResonanceCost = (int)Int(d, P(c, nameof(CombatRules.UltimateResonanceCost))),
+                MovementBaseSpeed = Dec(d, P(c, nameof(CombatRules.MovementBaseSpeed))),
+                GuardMovementSpeedRatio = Dec(d, P(c, nameof(CombatRules.GuardMovementSpeedRatio))),
                 Statuses = statuses,
             };
         }
