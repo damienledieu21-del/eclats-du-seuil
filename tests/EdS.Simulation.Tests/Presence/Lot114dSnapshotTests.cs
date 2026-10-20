@@ -149,6 +149,23 @@ public class Lot114dSnapshotTests
         return string.Join("\n", lines);
     }
 
+    /// <summary>
+    /// Le texte avec une copie de l'élément de file qui commence par <paramref name="prefix"/>, sous la prochaine séquence libre (compte et
+    /// prochaine séquence et pic de la file de l'en-tête mis à jour) : une échéance en double.
+    /// </summary>
+    private static string WithDuplicate(string text, string prefix)
+    {
+        List<string> lines = text.Split('\n').ToList();
+        string line = lines.First(l => l.StartsWith(prefix, StringComparison.Ordinal));
+        var head = System.Text.RegularExpressions.Regex.Match(lines[0], "\"next\":([0-9]+),\"count\":([0-9]+)");
+        long next = long.Parse(head.Groups[1].Value), count = long.Parse(head.Groups[2].Value);
+        lines[0] = lines[0].Replace(head.Value, $"\"next\":{next + 1},\"count\":{count + 1}");
+        var peak = System.Text.RegularExpressions.Regex.Match(lines[0], "\"peakPending\":([0-9]+)");
+        lines[0] = lines[0].Replace(peak.Value, $"\"peakPending\":{long.Parse(peak.Groups[1].Value) + 1}");
+        lines.Add("{\"entry\":" + next + line.Substring(line.IndexOf(',')));
+        return string.Join("\n", lines);
+    }
+
     private static void AssertRefused(CombatSetup setup, string text, IEnumerable<(string Prefix, string From, string To, string Message)> cases)
     {
         foreach (var (prefix, from, to, message) in cases)
@@ -225,6 +242,8 @@ public class Lot114dSnapshotTests
             (Turn, "\"turn\":1", "\"turn\":0", "Tours de « ogre »"),
             (Bastion, "\"parryOpen\":false", "\"parryOpen\":true", "Parade ouverte de « bastion »"),
             (Head, "\"lastEid\":2", "\"lastEid\":1", "Provenance citant l'événement 2"),
+            // Revue Codex de la PR #32 (4e tour) : impulsion à son tick.
+            (Impact, "\"tick\":40", "\"tick\":41", "hors de son tick"),
         });
 
         // Combat d'entraînement au tick 30 : un saignement sur chacun, des commandes à venir, un renfort attendu.
@@ -247,7 +266,32 @@ public class Lot114dSnapshotTests
             (Head, "[\"bastion\",50,1]", "[\"bastion\",50,2]", "par acteur et par tick"),
             (Bastion, "\"nextTick\":60", "\"nextTick\":80", "échéance absente de la file"),
             ("{\"entry\":9,", "\"instance\":1}", "\"instance\":0}", "Altération non numérotée"),
+            // 4e tour : arrivée au tick prévu, échéance d'altération une seule fois.
+            ("{\"entry\":0,", "\"tick\":80", "\"tick\":81", "hors du tick prévu"),
         });
+        foreach (string entry in new[] { "{\"entry\":9,", "{\"entry\":11," })
+            Assert.Contains("en double", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(WithDuplicate(text, entry)),
+                NullCombatLog.Instance)).Message);
+        // Parade ouverte (tick 79, fenêtre jusqu'au tick 81) : sa fin en double est refusée.
+        while (training.CurrentTick < 79) training.Step();
+        string parry = training.Snapshot().Text;
+        Assert.Contains("\"parryOpen\":true", parry);
+        string end = parry.Split('\n').First(l => l.Contains("\"item\":\"parryEnd\"", StringComparison.Ordinal));
+        Assert.Contains("en double", Assert.Throws<FormatException>(() => CombatEngine.Restore(training.CompletedSetup(),
+            CombatSnapshot.Parse(WithDuplicate(parry, end.Substring(0, end.IndexOf(',') + 1))), NullCombatLog.Instance)).Message);
+
+        // Attaque dirigée annoncée : son impact garde sa cible.
+        CombatSetup aimed = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")),
+            Space.SpaceTestKit.Creature("ogre", Space.SpaceTestKit.At("3", "0"), health: 500, firstAttackMs: 500,
+                attacks: new AssailantAttack("jet", 10, shape: AttackShape.Target, telegraphMs: 1500, range: Fixed.Parse("8"))),
+        }, Array.Empty<CombatCommand>(), durationMs: 6000);
+        var thrower = new CombatEngine(aimed, NullCombatLog.Instance);
+        while (thrower.CurrentTick < 15) thrower.Step();
+        string thrown = thrower.Snapshot().Text;
+        string impactLine = thrown.Split('\n').First(l => l.Contains("\"item\":\"impact\"", StringComparison.Ordinal));
+        AssertRefused(thrower.CompletedSetup(), thrown, new[] { (impactLine.Substring(0, impactLine.IndexOf(',') + 1), "\"target\":\"bastion\"", "\"target\":null", "impact dirigé sans cible") });
 
         // Abonnements d'un déclencheur permanent (riposte aux ticks de DOT) : la liste reçue doit être exactement celle des combattants.
         CombatSetup riposte = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Bearer(new[] { Riposte(TriggerEvent.DotTick) }),
@@ -260,6 +304,12 @@ public class Lot114dSnapshotTests
         string list = subscribed.Substring(from, subscribed.IndexOf(']', from) - from + 1);
         Assert.NotEqual("\"subscribed\":[]", list);
         AssertRefused(reacting.CompletedSetup(), text, new[] { (Head, list, "\"subscribed\":[]", "Abonnements incohérents") });
+        // Réaction reportée : l'effet observé ne cite que des combattants du combat.
+        while (!reacting.Snapshot().Text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal)) reacting.Step();
+        string deferred = reacting.Snapshot().Text;
+        string reaction = deferred.Split('\n').First(l => l.Contains("\"item\":\"reaction\"", StringComparison.Ordinal));
+        AssertRefused(reacting.CompletedSetup(), deferred, new[] { (reaction.Substring(0, reaction.IndexOf(',') + 1), "\"source\":\"assaillant\"", "\"source\":\"inconnu\"",
+            "combattant inconnu") });
     }
 
     [Fact]
