@@ -588,11 +588,25 @@ namespace EdS.Simulation.Engine
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
                     Require(slot.ReadyTick >= 0 && slot.ReadyTick <= Math.Max(0, previous + slot.Definition.CooldownMs / _tickMs), $"Recharge d'un déclencheur de {who} au-delà de sa durée.");
+                // 13e tour : un lancer a toujours sa commande de compétence, de ce combattant et à son tick, dans le combat complété. La recharge
+                // globale part du dernier lancer (son tick + sa durée), chaque recharge de compétence de son lancer (au plus le dernier) ; sans
+                // lancer, ni l'une ni les autres.
+                var casts = new HashSet<(long Tick, string Skill)>();
+                foreach (CombatCommand command in _setup.Commands)
+                    if (command.Action == CombatAction.UseSkill && command.Actor == f.Id && command.AtMs / _tickMs <= previous) casts.Add((command.AtMs / _tickMs, command.Skill!));
+                long lastCast = checked(f.GlobalCooldownReadyTick - _globalCooldownTicks);
+                Require(f.Result.SkillsCast == 0
+                    ? f.GlobalCooldownReadyTick == 0 && f.CooldownReadyTick.Count == 0
+                    : f.Character != null && casts.Any(c => c.Tick == lastCast), $"Recharge globale de {who} sans lancer à son origine.");
                 foreach (var cooldown in f.CooldownReadyTick)
                 {
-                    Require(f.Character != null && f.Character.Class.TryGetSkill(cooldown.Key, out SkillDefinition skill) && skill.Combat != null
-                        && cooldown.Value >= 0 && cooldown.Value <= Math.Max(0, previous + f.Rules.CooldownMs(skill, skill.Combat) / _tickMs),
+                    long cooldownTicks = f.Character != null && f.Character.Class.TryGetSkill(cooldown.Key, out SkillDefinition skill) && skill.Combat is { } combat
+                        ? f.Rules.CooldownMs(skill, combat) / _tickMs
+                        : -1;
+                    Require(cooldownTicks >= 0 && cooldown.Value >= 0 && cooldown.Value <= Math.Max(0, previous + cooldownTicks),
                         $"Recharge de {who} pour une compétence inconnue ou au-delà de sa durée : {cooldown.Key}.");
+                    long castAt = cooldown.Value - cooldownTicks;
+                    Require(castAt <= lastCast && casts.Contains((castAt, cooldown.Key)), $"Recharge de {who} ({cooldown.Key}) sans lancer à son origine.");
                     if (cooldown.Value < CurrentTick) continue;
                     int pending = entries.Count(e => e.Item is CooldownExpiry c && c.Fighter == f && c.Skill == cooldown.Key && e.Tick == cooldown.Value);
                     Require(pending == 1, $"Recharge de {who} ({cooldown.Key}) : {pending} échéance(s) en file au tick {cooldown.Value}.");
