@@ -429,6 +429,8 @@ namespace EdS.Simulation.Engine
             // 7e tour : le prochain numéro de la file aussi (chaque mise en file coûte une unité de travail).
             Require(_sequence <= ceiling && _lastEid <= ceiling && _lastStatusInstance <= ceiling && _lastApplication <= ceiling
                 && _queue.Cursor.NextSequence <= ceiling, "Compteurs de l'instantané trop grands pour la suite du combat.");
+            // 11e tour : le prochain numéro de la file n'est jamais négatif, même file vide (EventQueue.Load ne le recoupe qu'avec ses éléments).
+            Require(_queue.Cursor.NextSequence >= 0, "Prochain numéro de la file négatif.");
             // Revue Codex de la PR #32 (3e tour) : le combat complété porte toutes les commandes comptées ; leur nombre et leur compte par
             // acteur et par tick à venir s'en déduisent exactement.
             Require(_commandCount == _setup.Commands.Count, $"{_commandCount} commandes comptées, {_setup.Commands.Count} dans le combat complété.");
@@ -541,6 +543,7 @@ namespace EdS.Simulation.Engine
                 }
 
             var instances = new HashSet<long>();
+            var appliedSeqs = new HashSet<long>();   // 11e tour : chaque rang d'application est donné une fois (++_lastApplication)
             // Revue Codex de la PR #32 (5e tour) : un moteur neuf du même combat donne l'état de départ de chaque combattant. Un combattant pas
             // encore entré (attendu, ou refusé à son arrivée) y est encore, champ pour champ ; le flux de tirage de chacun est celui du combat.
             var reference = new CombatEngine(_setup, NullCombatLog.Instance);
@@ -618,6 +621,8 @@ namespace EdS.Simulation.Engine
                 Require((f.IsDead ? f.Health == 0 && f.Presence != Presence.Pending && f.Presence != Presence.Refused : f.Health != 0 || unscanned)
                     && f.IsDead == (f.Result.DeathTick != null) && (f.Result.DeathTick is null || (f.Result.DeathTick >= 0 && f.Result.DeathTick < CurrentTick)),
                     $"Mort de {who} incohérente avec ses points de vie.");
+                // 11e tour : la cause mortelle est notée quand les PV tombent à 0, et la mort suit en fin du même tick : un vivant n'en a pas.
+                Require(f.IsDead || f.LethalCause is null, $"Cause mortelle de {who} vivant.");
                 // Ressources.
                 Require(f.Endurance >= 0 && f.Endurance <= f.MaxEndurance, $"Endurance de {who} hors de [0, {f.MaxEndurance}] : {f.Endurance}.");
                 Require(f.Character is null
@@ -648,8 +653,11 @@ namespace EdS.Simulation.Engine
                 foreach (StatusInstance s in f.Statuses.Values)
                 {
                     string status = $"Altération {s.Id} ({s.Definition.Id}) de {who}";
-                    Require(s.Id >= 1 && s.Id <= _lastStatusInstance && instances.Add(s.Id) && s.Generation >= 0, $"{status} : instance impossible ou en double.");
-                    Require(s.AppliedSeq >= 1 && s.AppliedSeq <= _lastApplication, $"{status} : rang d'application impossible.");
+                    // 11e tour : une altération active a été posée au moins une fois (génération ≥ 1), et chaque pose ou renouvellement prend un
+                    // rang d'application : sa génération ne dépasse pas le dernier rang, et deux altérations n'ont jamais le même rang.
+                    Require(s.Id >= 1 && s.Id <= _lastStatusInstance && instances.Add(s.Id) && s.Generation >= 1 && s.Generation <= _lastApplication,
+                        $"{status} : instance impossible ou en double.");
+                    Require(s.AppliedSeq >= 1 && s.AppliedSeq <= _lastApplication && appliedSeqs.Add(s.AppliedSeq), $"{status} : rang d'application impossible ou en double.");
                     Require(string.Equals(s.Key.Source, s.Definition.Stacking == StatusStacking.PerSourceKeepStronger ? s.Source : null, StringComparison.Ordinal),
                         $"{status} : clé de cumul incohérente avec sa source.");
                     Require(s.UntilTick >= CurrentTick && (!s.Definition.IsDot || s.NextTick >= CurrentTick), $"{status} : déjà échue.");
@@ -660,7 +668,10 @@ namespace EdS.Simulation.Engine
                     Require(s.Definition.IsDot
                         ? s.NextTick <= checked(CurrentTick - 1 + s.Definition.PeriodMs / _tickMs) && s.UntilTick <= Math.Max(checked(CurrentTick - 1 + longest), s.NextTick)
                         : s.UntilTick <= checked(CurrentTick - 1 + longest), $"{status} : échéance au-delà de sa plus longue durée possible.");
-                    Require(s.Absorb >= 0 && s.Absorb <= CounterCeiling && (s.Definition.IsShield || s.Absorb == 0), $"{status} : absorption impossible.");
+                    // 11e tour : un bouclier épuisé est retiré en fin de tick (raison depleted) : entre deux ticks, un bouclier actif absorbe encore,
+                    // et aucune altération ne garde l'effet qui l'aurait épuisée.
+                    Require(s.Absorb >= 0 && s.Absorb <= CounterCeiling && (s.Definition.IsShield ? s.Absorb > 0 : s.Absorb == 0) && s.DepletedBy is null,
+                        $"{status} : absorption impossible.");
                     // 7e tour : puissance d'un DOT positive (nulle pour une autre altération), sous le plafond.
                     Require(s.Power.Raw >= 0 && s.Power.Raw <= CounterCeiling && (s.Definition.IsDot || (s.Power == Fixed.Zero && s.NextTick == 0)),
                         $"{status} : puissance impossible.");
@@ -1007,9 +1018,12 @@ namespace EdS.Simulation.Engine
                 return live.Slots![index];
             }
             StatusDefinition definition = _statuses[definitionId];
+            // Revue Codex de la PR #32 (11e tour) : l'instance retirée avait été posée (génération ≥ 1), au plus au dernier rang d'application.
+            int generation = n["generation"].Int;
+            if (generation < 1 || generation > _lastApplication) throw new FormatException($"Génération impossible pour un déclencheur détaché de « {bearer.Id} » : {generation}.");
             var gone = new StatusInstance
             {
-                Id = instance, Generation = n["generation"].Int, Definition = definition, Key = new StatusKey(definitionId, null), Owner = bearer,
+                Id = instance, Generation = generation, Definition = definition, Key = new StatusKey(definitionId, null), Owner = bearer,
                 Origin = Provenance.NewRoot("detached", null),
             };
             TriggerSlot slot = Slot(bearer, origin, definitionId, index, n["rank"].Int, definition.Triggers[index], gone);

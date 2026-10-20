@@ -61,6 +61,30 @@ public class Lot114dSnapshotDataTests
     }
 
     [Fact]
+    public void Bouclier_epuise_ou_deja_vide_refuse()
+    {
+        // Revue Codex de la PR #32 (11e tour) : un bouclier épuisé est retiré en fin de tick ; entre deux ticks, un bouclier actif absorbe
+        // encore (absorb > 0) et ne garde pas l'effet qui l'aurait épuisé (depletedBy). Scénario entrainement_declencheurs (Barrière d'acier).
+        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "scenarios", "entrainement_declencheurs.json"), ShippedData);
+        var engine = new CombatEngine(loaded.Setup!, NullCombatLog.Instance);
+        var shield = new System.Text.RegularExpressions.Regex("(\"state\":\"(steelBarrier|reactiveAegis)\"[^{}]*?\"absorb\":)[1-9][0-9]*");
+        while (!engine.IsFinished && !shield.IsMatch(engine.Snapshot().Text)) engine.Step();
+        Assert.False(engine.IsFinished, "bouclier actif entre deux ticks");
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string drained = shield.Replace(text, "${1}0", 1);
+        Assert.NotEqual(text, drained);
+        Assert.Contains("absorption impossible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(drained),
+            NullCombatLog.Instance)).Message);
+        var depleted = new System.Text.RegularExpressions.Regex("(\"state\":\"(steelBarrier|reactiveAegis)\"[^{}]*?\"depletedBy\":)null");
+        string marked = depleted.Replace(text, "${1}{\"root\":\"x\",\"depth\":0,\"chain\":[],\"trigger\":null,\"cause\":null,\"source\":null,\"instance\":null,\"generation\":null}", 1);
+        Assert.NotEqual(text, marked);
+        Assert.Contains("absorption impossible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(marked),
+            NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
     public void Recharge_retouchee_refusee()
     {
         // Revue Codex de la PR #32 (4e tour) : une recharge en cours est celle d'une compétence du Bastion, et son échéance est en file une

@@ -562,6 +562,47 @@ public class Lot114dSnapshotTests
     }
 
     [Fact]
+    public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
+    {
+        // Revue Codex de la PR #32 (11e tour). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 30) training.Step();
+        string text = training.Snapshot().Text;
+        CombatSetup setup = training.CompletedSetup();
+        string[] lines = text.Split('\n');
+        string bastion = lines.First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        string assailant = lines.First(l => l.StartsWith("{\"fighter\":\"assaillant\"", StringComparison.Ordinal));
+        string generation = System.Text.RegularExpressions.Regex.Match(bastion, "\"id\":2,\"generation\":[0-9]+").Value;
+        string mine = System.Text.RegularExpressions.Regex.Match(bastion, "\"appliedSeq\":[0-9]+").Value;
+        string other = System.Text.RegularExpressions.Regex.Match(assailant, "\"appliedSeq\":[0-9]+").Value;
+        Assert.NotEqual(mine, other);
+        const string Bastion = "{\"fighter\":\"bastion\"";
+        AssertRefused(setup, text, new[]
+        {
+            // Génération d'une altération active : au moins 1, au plus le dernier rang d'application.
+            (Bastion, generation, "\"id\":2,\"generation\":0", "instance impossible ou en double"),
+            (Bastion, generation, "\"id\":2,\"generation\":2147483647", "instance impossible ou en double"),
+            // Deux altérations au même rang d'application.
+            (Bastion, mine, other, "rang d'application impossible ou en double"),
+            // Cause mortelle d'un vivant.
+            (Bastion, "\"lethalCause\":null", "\"lethalCause\":{\"root\":\"x\",\"depth\":0,\"chain\":[],\"trigger\":null,\"cause\":null,\"source\":null,\"instance\":null,\"generation\":null}",
+                "Cause mortelle de « bastion » vivant"),
+        });
+        // File vide (un Bastion et un mannequin, sans commande) : son prochain numéro ne peut pas être négatif.
+        var quiet = new CombatEngine(Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")), Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("3", "0")),
+        }, Array.Empty<CombatCommand>(), durationMs: 2000), NullCombatLog.Instance);
+        while (quiet.CurrentTick < 5) quiet.Step();
+        string empty = quiet.Snapshot().Text;
+        Assert.Contains("\"count\":0}", empty.Split('\n')[0], StringComparison.Ordinal);
+        string negative = new System.Text.RegularExpressions.Regex("\"next\":[0-9]+").Replace(empty, "\"next\":-5", 1);
+        Assert.NotEqual(empty, negative);
+        Assert.Contains("Prochain numéro de la file négatif", Assert.Throws<FormatException>(() => CombatEngine.Restore(quiet.CompletedSetup(),
+            CombatSnapshot.Parse(negative), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
     public void Combats_aleatoires_arrivees_departs_et_instantanes()
     {
         // Combats du générateur des arrivées (positionnés ou non, arrivées pilotées, départs, morts, DOT, étourdissements, zones annoncées) :
