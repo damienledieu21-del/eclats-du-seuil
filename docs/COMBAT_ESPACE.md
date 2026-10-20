@@ -104,6 +104,8 @@ Décidé (L11-D3) : la couverture du bouclier est décrite explicitement, sans p
 
 ## 8. Formats prévus au 11.4
 
+*Réalisation* : la première étape du 11.4 (positions, déplacement, bords, portée des compétences à cible) livre le moteur 0.16.0, le journal au format 10, les scénarios en schéma 5 (`space`, `position`, `facing`, `radius`, `move`, `moveStop`), les classes en schéma 9 (`combat.range`) et les règles en schéma 10, limitées pour l'instant à `combat.movement.baseSpeed` et `combat.movement.guardSpeedRatio` ; l'arc du bouclier, la règle de contact et le temps de réaction minimal entreront dans les règles avec les étapes qui les appliquent (aucune clé sans effet). Détail : [MOTEUR.md](MOTEUR.md#combat-dans-lespace-sous-lot-114-première-étape), limites : [LIMITES_LOT_11.md](LIMITES_LOT_11.md#sous-lot-114-première-étape--positions-déplacement-portée).
+
 | Format | Évolution prévue |
 |---|---|
 | Moteur | 0.16.0 |
