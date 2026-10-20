@@ -1,5 +1,6 @@
 using EdS.Data.Json;
 using EdS.Data.Scenarios;
+using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -57,5 +58,36 @@ public class Lot114dSnapshotDataTests
             Assert.Equal(log.Lines.Skip(from), resumed.Lines);
             Assert.Equal((engine.Result!.EndReason, engine.Result.EndTick), (copy.Result!.EndReason, copy.Result.EndTick));
         }
+    }
+
+    [Fact]
+    public void Recharge_retouchee_refusee()
+    {
+        // Revue Codex de la PR #32 (4e tour) : une recharge en cours est celle d'une compétence du Bastion, et son échéance est en file une
+        // seule fois à son tick (une échéance en double écrirait deux fois cooldownReady).
+        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "scenarios", "entrainement_garde_parade.json"), ShippedData);
+        var engine = new CombatEngine(loaded.Setup!, NullCombatLog.Instance);
+        while (!engine.Snapshot().Text.Contains("\"item\":\"cooldown\"", StringComparison.Ordinal)) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        List<string> lines = text.Split('\n').ToList();
+        string cooldown = lines.First(l => l.Contains("\"item\":\"cooldown\"", StringComparison.Ordinal));
+        string skill = System.Text.RegularExpressions.Regex.Match(cooldown, "\"skill\":\"([^\"]+)\"").Groups[1].Value;
+        // Échéance en double (prochaine séquence, compte et pic de la file mis à jour).
+        var head = System.Text.RegularExpressions.Regex.Match(lines[0], "\"next\":([0-9]+),\"count\":([0-9]+)");
+        long next = long.Parse(head.Groups[1].Value), count = long.Parse(head.Groups[2].Value);
+        var peak = System.Text.RegularExpressions.Regex.Match(lines[0], "\"peakPending\":([0-9]+)");
+        var doubled = new List<string>(lines);
+        doubled[0] = doubled[0].Replace(head.Value, $"\"next\":{next + 1},\"count\":{count + 1}")
+            .Replace(peak.Value, $"\"peakPending\":{Math.Max(long.Parse(peak.Groups[1].Value), count + 1)}");
+        doubled.Add("{\"entry\":" + next + cooldown.Substring(cooldown.IndexOf(',')));
+        Assert.Contains("échéance(s)", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(string.Join("\n", doubled)),
+            NullCombatLog.Instance)).Message);
+        // Recharge d'une compétence inconnue.
+        string renamed = text.Replace("[\"" + skill + "\",", "[\"skill.inconnue\",");
+        Assert.NotEqual(text, renamed);
+        Assert.Contains("compétence inconnue", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(renamed),
+            NullCombatLog.Instance)).Message);
     }
 }

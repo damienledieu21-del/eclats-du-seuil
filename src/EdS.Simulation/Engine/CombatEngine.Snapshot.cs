@@ -432,6 +432,8 @@ namespace EdS.Simulation.Engine
                 {
                     case ArrivalItem arrival:
                         Require(phase == CombatPhase.Setup && arrival.Fighter.Presence == Presence.Pending, $"{at} : arrivée d'un combattant qui n'est pas attendu.");
+                        // Revue Codex de la PR #32 (4e tour) : au tick prévu par le combat complété.
+                        Require(arrival.Fighter.Setup.ArrivalMs is long arrivalMs && tick == arrivalMs / _tickMs, $"{at} : arrivée hors du tick prévu par le combat.");
                         arrivals.Add(arrival.Fighter);
                         break;
                     case CommandItem command:
@@ -441,7 +443,9 @@ namespace EdS.Simulation.Engine
                         Require(phase == CombatPhase.Commands && turn.Fighter.Assailant != null && turn.Turn >= 0 && turn.Turn < turn.Fighter.NextTurn,
                             $"{at} : tour impossible.");
                         break;
-                    case CooldownExpiry:
+                    case CooldownExpiry cooldown:
+                        Require(phase == CombatPhase.Expirations && cooldown.Fighter.Character != null, $"{at} : recharge impossible.");
+                        break;
                     case ParryWindowEnd:
                     case StateExpiry:
                         Require(phase == CombatPhase.Expirations, $"{at} : hors de la phase des expirations.");
@@ -452,6 +456,10 @@ namespace EdS.Simulation.Engine
                     case AttackImpact impact:
                         Require(phase == CombatPhase.Resolution && impact.Pulse >= 0 && impact.Pulse < impact.Attack.Pulses,
                             $"{at} : impact impossible.");
+                        // Revue Codex de la PR #32 (4e tour) : une attaque dirigée garde sa cible ; chaque impulsion tombe à son tick.
+                        Require(impact.Zone != null || impact.Target != null, $"{at} : impact dirigé sans cible.");
+                        Require(impact.ImpactTick >= 0 && tick == checked(impact.ImpactTick + impact.Pulse * (impact.Attack.PulseMs / _tickMs)),
+                            $"{at} : impulsion {impact.Pulse} hors de son tick (impact au tick {impact.ImpactTick}).");
                         ValidateZone(impact, at);
                         break;
                     case ReactionItem reaction:
@@ -482,9 +490,22 @@ namespace EdS.Simulation.Engine
                         ? turns.Count == 1 && turns[0].Tick == next && ((AssailantTurn)turns[0].Item).Turn == f.NextTurn - 1
                         : turns.Count == 0, $"Tours de {who} incohérents avec son prochain tour ({f.NextAttackTick?.ToString(CultureInfo.InvariantCulture) ?? "aucun"}).");
                 }
-                // Une parade ouverte se ferme à la fin de sa fenêtre : sa fin est en file.
-                Require(!f.ParryOpen || entries.Any(e => e.Item is ParryWindowEnd end && end.Fighter == f && end.StartTick == f.ParryStartTick && e.Tick == f.ParryEndTick),
-                    $"Parade ouverte de {who} sans sa fin en file.");
+                // Une parade ouverte, commencée à un tick passé, se ferme à la fin de sa fenêtre : sa fin est en file, une seule fois (4e tour).
+                if (f.ParryOpen)
+                {
+                    var ends = entries.Where(e => e.Item is ParryWindowEnd end && end.Fighter == f && end.StartTick == f.ParryStartTick).ToList();
+                    Require(f.ParryStartTick < CurrentTick && f.ParryEndTick >= CurrentTick && ends.Count == 1 && ends[0].Tick == f.ParryEndTick,
+                        $"Parade ouverte de {who} sans sa fin en file (ou en double).");
+                }
+                // Revue Codex de la PR #32 (4e tour) : une recharge en cours est celle d'une compétence du personnage, et son échéance est en
+                // file une seule fois à son tick (une échéance en double écrirait deux fois cooldownReady).
+                foreach (var cooldown in f.CooldownReadyTick)
+                {
+                    Require(f.Character != null && f.Character.Class.TryGetSkill(cooldown.Key, out _), $"Recharge de {who} pour une compétence inconnue : {cooldown.Key}.");
+                    if (cooldown.Value < CurrentTick) continue;
+                    int pending = entries.Count(e => e.Item is CooldownExpiry c && c.Fighter == f && c.Skill == cooldown.Key && e.Tick == cooldown.Value);
+                    Require(pending == 1, $"Recharge de {who} ({cooldown.Key}) : {pending} échéance(s) en file au tick {cooldown.Value}.");
+                }
                 // Présence : une arrivée en file pour un combattant attendu, aucune sinon ; départ et arrivée déjà passés.
                 Require(arrivals.Count(a => a == f) == (f.Presence == Presence.Pending ? 1 : 0), $"Arrivée de {who} incohérente avec sa présence.");
                 Require(f.LeaveCommand is null, $"Départ de {who} encore demandé entre deux ticks.");
@@ -524,11 +545,17 @@ namespace EdS.Simulation.Engine
                         $"{status} : clé de cumul incohérente avec sa source.");
                     Require(s.UntilTick >= CurrentTick && (!s.Definition.IsDot || s.NextTick >= CurrentTick), $"{status} : déjà échue.");
                     Require(s.Absorb >= 0 && (s.Definition.IsShield || s.Absorb == 0), $"{status} : absorption impossible.");
-                    // Son échéance (ou, pour un DOT, son prochain tick) est en file.
+                    // Son échéance (ou, pour un DOT, son prochain tick) est en file, une seule fois et à son tick (revue Codex de la PR #32,
+                    // 4e tour : une échéance en double agirait) ; aucune échéance de l'autre genre ne la vise.
+                    var expiries = entries.Where(e => e.Item is StateExpiry x && x.Fighter == f && x.Key.Equals(s.Key) && x.Instance == s.Id && x.Generation == s.Generation).ToList();
+                    var dots = entries.Where(e => e.Item is DotTick d && d.Fighter == f && d.Key.Equals(s.Key) && d.Instance == s.Id).ToList();
                     Require(s.Definition.IsDot
-                        ? entries.Any(e => e.Item is DotTick d && d.Fighter == f && d.Key.Equals(s.Key) && d.Instance == s.Id && e.Tick == s.NextTick)
-                        : entries.Any(e => e.Item is StateExpiry x && x.Fighter == f && x.Key.Equals(s.Key) && x.Instance == s.Id && x.Generation == s.Generation
-                            && e.Tick == s.UntilTick), $"{status} : échéance absente de la file.");
+                        ? expiries.Count == 0 && dots.Count == 1 && dots[0].Tick == s.NextTick
+                        : dots.Count == 0 && expiries.Count == 1 && expiries[0].Tick == s.UntilTick, $"{status} : échéance absente de la file, en double ou hors de son tick.");
+                    // La source d'une altération est un combattant du combat ; celle d'une provocation ou d'une protection est présente et vivante
+                    // (sa mort ou son départ les retire).
+                    Require(s.Source is null || _byId.ContainsKey(s.Source), $"{status} : source inconnue.");
+                    Require(!s.Definition.IsSourceBound || s.Source != null && !_byId[s.Source].Out, $"{status} : provocation ou protection sans source présente.");
                 }
                 if (f.Body is { } b)
                 {
@@ -797,6 +824,8 @@ namespace EdS.Simulation.Engine
 
         private ObservedEvent LoadObserved(SnapshotNode n)
         {
+            foreach (string field in new[] { "source", "target" })
+                if (n[field].NullableString is string id && !_byId.ContainsKey(id)) throw new FormatException($"Événement observé citant un combattant inconnu : {id}.");
             long eid = n["eid"].Long;
             if (eid < 1) throw new FormatException($"Événement observé non numéroté : {eid}.");
             _maxLoadedEid = Math.Max(_maxLoadedEid, eid);
