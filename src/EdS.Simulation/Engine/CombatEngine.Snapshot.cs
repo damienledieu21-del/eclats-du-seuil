@@ -433,6 +433,8 @@ namespace EdS.Simulation.Engine
             // 7e tour : le prochain numéro de la file aussi (chaque mise en file coûte une unité de travail).
             Require(_sequence <= ceiling && _lastEid <= ceiling && _lastStatusInstance <= ceiling && _lastApplication <= ceiling
                 && _queue.Cursor.NextSequence <= ceiling, "Compteurs de l'instantané trop grands pour la suite du combat.");
+            // 15e tour : chaque numéro d'événement a pris une ligne : le numéro de ligne n'est jamais en deçà du dernier événement.
+            Require(_sequence >= _lastEid, $"Numéro de ligne {_sequence} en deçà du dernier événement {_lastEid}.");
             // 11e tour : le prochain numéro de la file n'est jamais négatif, même file vide (EventQueue.Load ne le recoupe qu'avec ses éléments).
             Require(_queue.Cursor.NextSequence >= 0, "Prochain numéro de la file négatif.");
             // Revue Codex de la PR #32 (3e tour) : le combat complété porte toutes les commandes comptées ; leur nombre et leur compte par
@@ -721,6 +723,8 @@ namespace EdS.Simulation.Engine
                         $"Place de {who} hors de l'aire.");
                     Require(!_obstacles.Any(o => o.OverlapsCircle(b.X, b.Z, b.Radius)), $"Place de {who} dans le décor.");
                     Require(IsUnit(b.FacingX, b.FacingZ) && (!b.Moving || IsUnit(b.DirectionX, b.DirectionZ)), $"Orientation ou direction de {who} non unitaire.");
+                    // 15e tour : seul un personnage ou un assaillant marche (un mannequin ne reçoit jamais move).
+                    Require(!b.Moving || f.Character != null || f.Assailant != null, $"Marche de {who}, qui ne marche jamais.");
                 }
                 Fighter start = initial[f.Id];
                 Require(f.Random.Capture().Increment == start.Random.Capture().Increment, $"Flux de tirage de {who} différent de celui du combat.");

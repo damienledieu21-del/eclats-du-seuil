@@ -107,7 +107,7 @@ public class Lot114dSnapshotTests
         Assert.Contains("0.18.0", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, older, NullCombatLog.Instance)).Message);
         // Texte retouché : une valeur changée est un autre état, d'une autre empreinte ; un champ inconnu (texte non canonique), manquant ou
         // une ligne de trop est refusé.
-        CombatSnapshot changed = CombatSnapshot.Parse(snapshot.Text.Replace("\"lastEid\":", "\"lastEid\":1"));
+        CombatSnapshot changed = CombatSnapshot.Parse(snapshot.Text.Replace("\"seq\":", "\"seq\":1"));   // 15e tour : lastEid ne dépasse plus seq
         Assert.NotEqual(snapshot.Fingerprint, changed.Fingerprint);
         Assert.Equal(changed.Text, CombatEngine.Restore(setup, changed, NullCombatLog.Instance).Snapshot().Text);
         Assert.Contains("canonique", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
@@ -256,7 +256,12 @@ public class Lot114dSnapshotTests
             (Head, "\"lastEid\":2", "\"lastEid\":1", "Provenance citant l'événement 2"),
             // Revue Codex de la PR #32 (4e tour) : impulsion à son tick.
             (Impact, "\"tick\":40", "\"tick\":41", "hors de son tick"),
+            // 15e tour : un mannequin qui marche ; un numéro de ligne en deçà du dernier événement.
+            (Cible, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "qui ne marche jamais"),
         });
+        // 15e tour : numéro de ligne en deçà du dernier événement (chaque événement a pris une ligne).
+        string seq = System.Text.RegularExpressions.Regex.Match(text.Split('\n')[0], "\"seq\":[0-9]+").Value;
+        AssertRefused(setup, text, new[] { (Head, seq, "\"seq\":1", "en deçà du dernier événement") });
         // Revue Codex de la PR #32 (6e tour) : un compteur sans marge pour la suite du combat est refusé (sinon le prochain numéro
         // déborderait).
         foreach (string counter in new[] { "seq", "lastEid", "lastStatusInstance", "lastApplication" })
