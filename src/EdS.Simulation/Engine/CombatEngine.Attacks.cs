@@ -205,7 +205,9 @@ namespace EdS.Simulation.Engine
             long next = checked(tick + impact.Attack.PulseMs / _tickMs);
             bool again = impact.Attack.Shape == AttackShape.Persistent && impact.Pulse + 1 < impact.Attack.Pulses && next < _durationTicks;
             PendingAction action = ImpactAction(impact);
-            // Sous-lot 11.5 : une charge fonce le long de sa bande, sauf si un contrôle immobilise l'ennemi.
+            // Sous-lot 11.5 : une charge fonce le long de sa bande, sauf si un contrôle immobilise l'ennemi. Revue Codex de la PR #33 (tour 8) :
+            // l'immobilisation est relue après les coups et les applications de la bande (une application sur lui-même peut l'étourdir) ; la
+            // ligne réservée est alors chargeBlocked (diagnostic, avec la raison) au lieu de charged.
             bool charges = impact.Attack.Charge && impact.Zone != null && BlockReason(impact.Assailant, StatusBlocks.Movement) is null;
             ResolveAction(tick, action, targets, Cost.Op + Cost.Line + Cost.Enqueue.If(again) + Cost.Line.If(charges), dequeue: true, () =>
             {
@@ -227,6 +229,12 @@ namespace EdS.Simulation.Engine
             {
                 // Revue Codex de la PR #33 : la charge part après les coups de la bande (ligne réservée avec l'impact).
                 if (!charges) return;
+                if ((impact.Assailant.Out ? OutReason(impact.Assailant, "actor") : BlockReason(impact.Assailant, StatusBlocks.Movement)) is { } stopped)
+                {
+                    EmitDiagnostic(tick, CombatPhase.Resolution, "chargeBlocked", w => w
+                        .Field("actor", impact.Assailant.Id).Field("attack", impact.Attack.Id).Field("reason", stopped));
+                    return;
+                }
                 var (cx, cz) = ChargeEnd(impact.Assailant, impact.Zone!);
                 Body body = impact.Assailant.Body!;
                 body.X = cx;

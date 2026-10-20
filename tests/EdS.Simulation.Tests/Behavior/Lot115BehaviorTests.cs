@@ -294,6 +294,23 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Une_charge_qui_l_etourdit_lui_meme_ne_fonce_pas()
+    {
+        // Revue Codex de la PR #33 (tour 8) : la bande pose un étourdissement sur le sanglier lui-même, avec ses coups. L'immobilisation est
+        // relue après eux : il ne fonce pas, et la ligne réservée est chargeBlocked (raison de l'étourdissement) au lieu de charged.
+        var stunning = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
+            new[] { new StatusApplication("stun", target: ApplicationTarget.Self) }, AttackShape.Line, 1000, range: F("6"), width: F("1"), charge: true);
+        var (track, log, _) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("4", "0")), Hunter("sanglier", At("0", "0"), "20", firstMs: 0, attacks: stunning) },
+            durationMs: 2000));
+        Assert.Contains(Lines(log, "stateApplied"), s => s.Str("combatant") == "sanglier" && s.Str("state") == "stun" && s.Tick() == 20);
+        Assert.Empty(Lines(log, "charged"));
+        JsonElement blocked = Assert.Single(Lines(log, "chargeBlocked"));
+        Assert.Equal(("sanglier", "charge", 20L), (blocked.Str("actor"), blocked.Str("attack"), blocked.Tick()));
+        Assert.False(string.IsNullOrEmpty(blocked.Str("reason")));
+        Assert.Equal(track.After("sanglier", 19), track.After("sanglier", 21));
+    }
+
+    [Fact]
     public void Deux_charges_annoncees_qui_se_chevauchent_vont_au_bout_de_leur_bande()
     {
         // Revue Codex de la PR #33 : annoncée à 0 et à 600 ms depuis (0, 0), chaque bande va jusqu'à (6, 0). La première charge y porte le
