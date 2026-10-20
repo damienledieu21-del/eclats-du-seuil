@@ -216,20 +216,6 @@ namespace EdS.Simulation.Engine
                     w.Names("targets", targets.Select(t => t.Id));
                 });
                 action.Origin = impact.Origin.CausedBy(landed);
-                if (charges)
-                {
-                    var (cx, cz) = ChargeEnd(impact.Assailant, impact.Zone!);
-                    Body body = impact.Assailant.Body!;
-                    body.X = cx;
-                    body.Z = cz;
-                    body.FacingX = impact.Zone!.AxisX;
-                    body.FacingZ = impact.Zone.AxisZ;
-                    EmitDiagnostic(tick, CombatPhase.Resolution, "charged", w =>
-                    {
-                        w.Field("actor", impact.Assailant.Id).Field("attack", impact.Attack.Id);
-                        WriteVector(w, "position", cx, cz);
-                    });
-                }
                 // La même attaque reste en file pour son impulsion suivante (et dans la liste des attaques annoncées), ou s'achève.
                 if (again)
                 {
@@ -237,6 +223,21 @@ namespace EdS.Simulation.Engine
                     Schedule(next, CombatPhase.Resolution, impact);
                 }
                 else _announced.Remove(impact);
+            }, () =>
+            {
+                // Revue Codex de la PR #33 : la charge part après les coups de la bande (ligne réservée avec l'impact).
+                if (!charges) return;
+                var (cx, cz) = ChargeEnd(impact.Assailant, impact.Zone!);
+                Body body = impact.Assailant.Body!;
+                body.X = cx;
+                body.Z = cz;
+                body.FacingX = impact.Zone!.AxisX;
+                body.FacingZ = impact.Zone.AxisZ;
+                EmitDiagnostic(tick, CombatPhase.Resolution, "charged", w =>
+                {
+                    w.Field("actor", impact.Assailant.Id).Field("attack", impact.Attack.Id);
+                    WriteVector(w, "position", cx, cz);
+                });
             });
         }
 

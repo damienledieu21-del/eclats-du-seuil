@@ -256,7 +256,9 @@ namespace EdS.Data.Scenarios
                     default:
                         Present(c.Armor, path + ".armor", "nombre décimal");
                         Present(c.MagicResistance, path + ".magicResistance", "nombre décimal");
-                        if (!c.Present.Contains("target")) Present(null, path + ".target", "identifiant de la cible, ou null si toutes les attaques sont de zone");
+                        // Revue Codex de la PR #33 : avec un comportement, la cible est facultative (il prend le plus proche).
+                        if (!c.Present.Contains("target") && c.Behavior is null)
+                            Present(null, path + ".target", "identifiant de la cible, ou null si toutes les attaques sont de zone");
                         Present(c.FirstAttackMs, path + ".firstAttackMs", "instant de la première attaque, en millisecondes");
                         Present(c.IntervalMs, path + ".intervalMs", "intervalle entre deux attaques, en millisecondes");
                         Items(c.Attacks, path + ".attacks", "liste des attaques, jouées dans l'ordre puis en boucle", CheckAttack);

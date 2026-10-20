@@ -178,6 +178,12 @@ namespace EdS.Simulation.Engine
             /// <summary>Sous-lot 11.5 : un ennemi qui a un comportement s'est engagé (il approche et attaque) ; vrai d'emblée sans <c>aggroRange</c>.</summary>
             public bool Engaged;
 
+            /// <summary>
+            /// Sous-lot 11.5 (revue Codex de la PR #33) : a reçu un impact ou un tick de DOT, même entièrement absorbé ou transféré ; un ennemi
+            /// en attente s'engage alors (raison <c>hit</c>).
+            /// </summary>
+            public bool Struck;
+
             public AssailantBehavior? Behavior => Assailant?.Behavior;
 
             /// <summary>Hors du combat : mort ou absent. Remplace « mort » partout où un combattant ne doit plus compter.</summary>
@@ -1096,7 +1102,8 @@ namespace EdS.Simulation.Engine
         /// faits par <paramref name="afterReserve"/>). Les cibles d'impact étant distinctes, l'impact sur l'une ne change pas le coût prévu
         /// pour les suivantes ; les postures qu'une étape laisse à une cible sont reportées sur les étapes suivantes (Postures).
         /// </summary>
-        private void ResolveAction(long tick, PendingAction action, IReadOnlyList<Fighter> targets, Cost prefix, bool dequeue, System.Action? afterReserve)
+        private void ResolveAction(long tick, PendingAction action, IReadOnlyList<Fighter> targets, Cost prefix, bool dequeue, System.Action? afterReserve,
+            System.Action? afterResolve = null)
         {
             bool damaging = action.Damaging;
             bool resonance = damaging && targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
@@ -1119,6 +1126,7 @@ namespace EdS.Simulation.Engine
             if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, action.Actor.Rules.ResonancePerDirectHit, "directHit", action.Origin);
             foreach (var (application, ownTargets) in own)
                 foreach (Fighter target in ownTargets) Apply(tick, CombatPhase.Resolution, action, application, target, action.Origin);
+            afterResolve?.Invoke();   // sous-lot 11.5 : la charge, après ses coups, dans la même réservation
         }
 
         /// <summary>
@@ -1231,6 +1239,7 @@ namespace EdS.Simulation.Engine
         private void Hit(long tick, CombatPhase phase, PendingAction action, Fighter target)
         {
             Charge(1);
+            target.Struck = true;
             Fighter actor = action.Actor;
             Provenance origin = action.Origin;
             long? parryEid = null, blockEid = null;
@@ -2152,6 +2161,7 @@ namespace EdS.Simulation.Engine
             if (!IsCurrent(dot, out StatusInstance? status)) return;
             Charge(1);
             Fighter target = dot.Fighter;
+            target.Struck = true;
             StatusDefinition definition = status.Definition;
             // Sous-lot 8.1 : modificateurs de dégâts subis de la cible, lus sur son état au tick (réduction ≤ 85 %, sans garde ni
             // parade, A12). Sans modificateur, aucune réduction.

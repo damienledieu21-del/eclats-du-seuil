@@ -26,6 +26,7 @@ public class Lot114bRangeTests
     public const string Riposte = "skill.portee.riposte";  // passif : parade parfaite → frappe la source à 2,5 m
     public const string Colosse = "skill.portee.colosse";  // passif : parade parfaite → frappe les ennemis à 5 m, puis +10 Résonance
     public const string Serment = "skill.portee.serment";  // passif : un allié touché → provoque la source à 15 m
+    public const string Effleure = "skill.portee.effleure"; // ennemi, 15 m, coefficient nul (un coup sans dégâts ; sous-lot 11.5)
 
     private static Fixed F(string value) => Fixed.Parse(value);
 
@@ -43,6 +44,7 @@ public class Lot114bRangeTests
             new SkillDefinition(Appel, "Appel", SkillKind.Active, combat: Hit("0.1", SkillTargeting.Enemy, "15")),
             new SkillDefinition(Vague, "Onde", SkillKind.Active, combat: Hit("0.5", SkillTargeting.AllEnemies, "5")),
             new SkillDefinition(Libre, "Libre", SkillKind.Active, combat: Hit("0.1", SkillTargeting.Enemy, null)),
+            new SkillDefinition(Effleure, "Effleure", SkillKind.Active, combat: Hit("0", SkillTargeting.Enemy, "15")),
             new SkillDefinition(Lien, "Lien", SkillKind.Active, combat: new SkillCombatDefinition(null, null, null, 0, 0, SkillTargeting.Ally,
                 applies: new[] { new StatusApplication("protectiveLink") }, range: F("15"))),
             new SkillDefinition(Cri, "Cri", SkillKind.Active, combat: new SkillCombatDefinition(null, null, null, 0, 0, SkillTargeting.Self,

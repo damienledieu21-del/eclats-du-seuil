@@ -155,7 +155,7 @@ namespace EdS.Simulation.Engine
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
-                .Field("engaged", f.Engaged);
+                .Field("engaged", f.Engaged).Field("struck", f.Struck);
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -665,6 +665,7 @@ namespace EdS.Simulation.Engine
             if (f.Assailant != null && (f.NextAttack < 0 || f.NextAttack >= f.Assailant.Attacks.Count)) throw new FormatException($"Attaque suivante invalide pour « {f.Id} ».");
             f.NextAttackTick = n["nextAttackTick"].NullableLong;
             f.Engaged = n["engaged"].Bool;
+            f.Struck = n["struck"].Bool;
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),

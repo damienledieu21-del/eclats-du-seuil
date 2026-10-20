@@ -94,6 +94,10 @@ public class Lot115BehaviorDataTests
         Assert.Equal("$.data.combatants[0].behavior", Error(Mutated(root => DataOf(root)["combatants"]![0]!["behavior"] = JsonNode.Parse("{\"maxRange\":1}"))).Path);
         Assert.Equal("$.data.combatants[1].attacks[0].charge", Error(Mutated(root => DataOf(root)["combatants"]![1]!["attacks"]![0]!["charge"] = true)).Path);
         Assert.Equal("$.data.commands[0].action", Error(Mutated(root => DataOf(root)["commands"]![0]!["actor"] = "loup1")).Path);
+        // Revue Codex de la PR #33 : avec un comportement, la cible peut être omise (pas seulement nulle).
+        ScenarioLoadResult omitted = Mutated(root => DataOf(root)["combatants"]![1]!.AsObject().Remove("target"));
+        Assert.True(omitted.IsValid, omitted.Report.ToString());
+        Assert.Null(omitted.Setup!.Combatants.OfType<EdS.Domain.Combat.AssailantSetup>().Single(a => a.Id == "loup1").Target);
     }
 
     [Fact]

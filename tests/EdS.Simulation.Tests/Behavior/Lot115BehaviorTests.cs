@@ -174,6 +174,36 @@ public class Lot115BehaviorTests
         Assert.Equal(new[] { "bastion" }, Assert.Single(Lines(hit, "attackLanded")).GetProperty("targets").EnumerateArray().Select(t => t.GetString()));
         double stop = JsonDocument.Parse(Assert.Single(Lines(hit, "charged")).GetProperty("position").GetRawText()).RootElement[0].GetDouble();
         Assert.InRange(stop, 2.75, 3.0);
+        // Revue Codex de la PR #33 : la charge part après les coups de la bande (ligne charged après la ligne damage du Bastion).
+        List<JsonElement> lines = Events(hit).ToList();
+        int damage = lines.FindIndex(e => e.Str("event") == "damage" && e.Str("target") == "bastion");
+        Assert.True(damage >= 0 && damage < lines.FindIndex(e => e.Str("event") == "charged"));
+    }
+
+    [Fact]
+    public void Deux_charges_annoncees_qui_se_chevauchent_vont_au_bout_de_leur_bande()
+    {
+        // Revue Codex de la PR #33 : annoncée à 0 et à 600 ms depuis (0, 0), chaque bande va jusqu'à (6, 0). La première charge y porte le
+        // sanglier ; la seconde, déjà au bout de sa bande, ne le pousse pas plus loin (avant : jusqu'au Bastion, à x = 9).
+        var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+            range: F("6"), width: F("1"), charge: true);
+        var boar = new AssailantSetup("sanglier", "meute", Fixed.Zero, Fixed.Zero, "bastion", 0, 600, new[] { charge }, placement: At("0", "0"));
+        var (_, log) = Run(Fight(new CombatantSetup[] { Player("bastion", At("10", "0")), boar }, durationMs: 1700));
+        Assert.Equal(new[] { (20L, "[6,0]"), (32L, "[6,0]") }, Lines(log, "charged").Select(c => (c.Tick(), c.GetProperty("position").GetRawText())));
+    }
+
+    [Fact]
+    public void Un_coup_sans_degats_engage_aussi()
+    {
+        // Revue Codex de la PR #33 : être frappé engage, même si rien n'atteint les PV (coup à coefficient nul ici ; bouclier, transfert).
+        var (_, log) = Run(Fight(new CombatantSetup[]
+        {
+            EdS.Simulation.Tests.Space.Lot114bRangeTests.Hero("bastion", At("0", "0"), new[] { EdS.Simulation.Tests.Space.Lot114bRangeTests.Effleure }),
+            Hunter("loup", At("10", "0"), "0.5", aggro: "2"),
+        }, new[] { Cmd(0, EdS.Simulation.Tests.Space.Lot114bRangeTests.Effleure, target: "loup") }, durationMs: 1000, rules: NoUpkeep));
+        Assert.Equal(0L, Lines(log, "damage").Single(d => d.Str("target") == "loup").GetProperty("amount").GetInt64());
+        JsonElement engaged = Assert.Single(Lines(log, "engaged"));
+        Assert.Equal(("hit", 1L), (engaged.Str("reason"), engaged.Tick()));
     }
 
     [Fact]

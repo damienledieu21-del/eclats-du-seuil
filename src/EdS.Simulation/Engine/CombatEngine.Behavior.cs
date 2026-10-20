@@ -19,9 +19,9 @@ namespace EdS.Simulation.Engine
     /// recule en deçà de <c>minRange</c>, s'arrête entre les deux et se tourne vers elle ; avec <c>encircle</c>, la meute qui vise la même
     /// cible se répartit autour d'elle, à parts égales, dans l'ordre où elle l'entoure déjà. Il s'arrête pendant l'annonce d'une de ses
     /// attaques. Le décor et les autres emprises le font glisser comme une marche ordinaire ; il n'y a pas de recherche de chemin.</item>
-    /// <item><b>Charge</b> (<see cref="AssailantAttack.Charge"/>) : à l'impact de la bande, après ses coups, l'ennemi fonce le long de l'axe
-    /// verrouillé jusqu'au bout, ou jusqu'au premier obstacle ou à la première emprise solide (<c>charged</c>), sans laisser un joueur sans
-    /// issue (règle A).</item>
+    /// <item><b>Charge</b> (<see cref="AssailantAttack.Charge"/>) : à l'impact de la bande, après ses coups, l'ennemi fonce depuis sa place
+    /// vers le bout de la bande verrouillée, ou jusqu'au premier obstacle ou à la première emprise solide (<c>charged</c>), sans laisser un
+    /// joueur sans issue (règle A).</item>
     /// </list>
     /// </summary>
     public sealed partial class CombatEngine
@@ -89,7 +89,7 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private string? EngageReason(Fighter f, AssailantBehavior behavior)
         {
-            if (f.Result.DamageTaken > 0) return "hit";
+            if (f.Struck || f.Result.DamageTaken > 0) return "hit";
             foreach (StatusInstance status in f.Statuses.Values)
                 if (status.Definition.IsTaunt) return "taunt";
             long aggro = behavior.AggroRange!.Value.Raw;
@@ -208,7 +208,8 @@ namespace EdS.Simulation.Engine
                 rz = 0;
             }
             int rank = pack.IndexOf(i);
-            Angles.Rotate(rx, rz, checked(rank * (720 / pack.Count)), out long sx, out long sz);
+            // Revue Codex de la PR #33 : l'angle de chaque rang est pris sur le tour entier (720 demi-degrés), le reste de la division réparti.
+            Angles.Rotate(rx, rz, checked(rank * 720 / pack.Count), out long sx, out long sz);
             Body self = _fightersById[i].Body!;
             long gap = (behavior.MinRange.Raw + behavior.MaxRange.Raw) / 2;
             long radius = checked(_fightersById[j].Body!.Radius + self.Radius + gap);
@@ -234,15 +235,24 @@ namespace EdS.Simulation.Engine
                 x[k] = _fightersById[k].Body!.X;
                 z[k] = _fightersById[k].Body!.Z;
             }
-            long half = Math.Max(1, b.Radius / 2);
-            long count = Math.Max(1, (zone.Reach + half - 1) / half);
+            // Revue Codex de la PR #33 : la charge va vers le bout de la bande verrouillée (origine + axe × longueur), depuis la place
+            // actuelle : une charge précédente qui a déjà porté l'ennemi plus loin ne le pousse pas au-delà de sa zone.
+            long endX = checked(zone.OriginX + Domain.Numerics.IntMath.MulDiv(zone.AxisX, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero));
+            long endZ = checked(zone.OriginZ + Domain.Numerics.IntMath.MulDiv(zone.AxisZ, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero));
+            long dx = checked(endX - b.X), dz = checked(endZ - b.Z);
             var path = new List<(long X, long Z)> { (b.X, b.Z) };
-            for (long k = 1; k <= count; k++)
+            if (Planar.Dot(dx, dz, zone.AxisX, zone.AxisZ) > 0)
             {
-                long cx = checked(b.X + Domain.Numerics.IntMath.MulDiv(zone.AxisX, checked(zone.Reach * k), checked(count * Planar.Unit), Domain.Numerics.RoundingMode.HalfAwayFromZero));
-                long cz = checked(b.Z + Domain.Numerics.IntMath.MulDiv(zone.AxisZ, checked(zone.Reach * k), checked(count * Planar.Unit), Domain.Numerics.RoundingMode.HalfAwayFromZero));
-                if (!FreeFor(index, cx, cz, x, z)) break;
-                path.Add((cx, cz));
+                long length = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(dx, dz));
+                long half = Math.Max(1, b.Radius / 2);
+                long count = Math.Max(1, (length + half - 1) / half);
+                for (long k = 1; k <= count; k++)
+                {
+                    long cx = checked(b.X + Domain.Numerics.IntMath.MulDiv(dx, k, count, Domain.Numerics.RoundingMode.HalfAwayFromZero));
+                    long cz = checked(b.Z + Domain.Numerics.IntMath.MulDiv(dz, k, count, Domain.Numerics.RoundingMode.HalfAwayFromZero));
+                    if (!FreeFor(index, cx, cz, x, z)) break;
+                    path.Add((cx, cz));
+                }
             }
             for (int k = path.Count - 1; k > 0; k--)
                 if (f.Character != null || TrapPrevented(index, x, z, path[k].X, path[k].Z) is null) return path[k];
