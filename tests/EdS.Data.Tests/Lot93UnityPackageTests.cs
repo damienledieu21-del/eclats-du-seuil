@@ -154,6 +154,11 @@ public class Lot93UnityPackageTests
         Assert.Contains("\"fichiers.txt\"", build, StringComparison.Ordinal);
         Assert.Contains("Folder = \"eds\"", files, StringComparison.Ordinal);
         Assert.Contains("Index = \"fichiers.txt\"", files, StringComparison.Ordinal);
+        // Revue Codex de la PR #36 : la liste porte l'empreinte du contenu (relue comme une ligne à sauter), et la copie Android précédente
+        // est retirée avant la nouvelle.
+        Assert.Contains("\"# empreinte \" + Fingerprint(files)", build, StringComparison.Ordinal);
+        Assert.Contains("StartsWith(\"#\", StringComparison.Ordinal)", files, StringComparison.Ordinal);
+        Assert.Contains("Directory.Delete(target, true)", files, StringComparison.Ordinal);
         string ignore = File.ReadAllText(Path.Combine(Root, ".gitignore"));
         Assert.Contains("unity/Assets/StreamingAssets/", ignore, StringComparison.Ordinal);
         // Tout ce que le jeu ouvre est un .json de data/v0 ou de scenarios : la copie n'en oublie aucun.

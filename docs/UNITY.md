@@ -141,7 +141,7 @@ Premier essai tactile : la scène des Vallons au doigt, d'abord dans le **simula
 2. **Sur le Note8** : *Paramètres → À propos du téléphone → Informations sur le logiciel* → toucher **7 fois** *Numéro de version* (« Mode développeur activé ») ; puis *Paramètres → Options de développement* → activer **Débogage USB**. Brancher le téléphone au PC en USB et accepter « Autoriser le débogage USB » sur le téléphone.
 3. **Dans Unity** : **File → Build Profiles → Android → Switch Platform** (long la première fois). Puis **Player Settings** (dans la même fenêtre) → *Other Settings* : **Scripting Backend : IL2CPP**, **Target Architectures : ARM64** coché, **Minimum API Level** : laisser la valeur proposée si elle est au plus *Android 9.0 (API level 28)*, sinon choisir celle-là (le Note8 est en Android 9). Si l'écran reste noir au premier essai : décocher *Auto Graphics API* et mettre **OpenGLES3** en premier.
 4. **Build Profiles → Android** : *Run Device* → choisir le **Note8** (bouton *Refresh* s'il n'apparaît pas) → **Build And Run** → dossier **`unity/Build/Android`** (ignoré par GitHub Desktop), nom `eclats.apk`. Unity construit le jeu (plusieurs minutes la première fois), l'installe et le lance.
-5. Au premier lancement : « Préparation des données du jeu… » (les données et scénarios du dépôt, emportés dans le jeu, sont recopiés sur le téléphone), puis les Vallons.
+5. Au premier lancement : « Préparation des données du jeu… » (les données et scénarios du dépôt, emportés dans le jeu, sont recopiés sur le téléphone), puis les Vallons. Après une nouvelle construction dont les données ont changé, la copie est refaite à neuf au lancement suivant.
 
 **c. Ce que tu vérifies sur le téléphone** (rapport au 11.9) :
 

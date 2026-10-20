@@ -19,7 +19,10 @@ namespace EdS.Game
         /// <summary>Dossier des données emportées, sous <c>StreamingAssets</c> (et sous le dossier de l'application sur Android).</summary>
         public const string Folder = "eds";
 
-        /// <summary>Liste des fichiers emportés (chemins relatifs, un par ligne, séparateur « / »).</summary>
+        /// <summary>
+        /// Liste des fichiers emportés : une ligne <c># empreinte …</c> (contenu de tous les fichiers), puis les chemins relatifs, un par
+        /// ligne, séparateur « / ».
+        /// </summary>
         public const string Index = "fichiers.txt";
 
         /// <summary>
@@ -43,7 +46,8 @@ namespace EdS.Game
                 done(null, "liste des données absente du jeu construit (" + error + ") : reconstruire le jeu depuis l'éditeur.");
                 yield break;
             }
-            // Déjà copiées pour ce jeu (même liste) : rien à refaire. La liste est écrite en dernier, après tous les fichiers.
+            // Déjà copiées pour ce jeu (même liste, empreinte du contenu comprise : revue Codex de la PR #36) : rien à refaire. La liste est
+            // écrite en dernier, après tous les fichiers.
             string copied = Path.Combine(target, Index);
             if (File.Exists(copied) && File.ReadAllText(copied) == index)
             {
@@ -54,7 +58,7 @@ namespace EdS.Game
             foreach (string line in index.Split('\n'))
             {
                 string relative = line.Trim();
-                if (relative.Length == 0) continue;
+                if (relative.Length == 0 || relative.StartsWith("#", StringComparison.Ordinal)) continue;
                 // Une liste retouchée ne fait rien écrire hors du dossier de l'application.
                 if (relative.Contains("..") || Path.IsPathRooted(relative))
                 {
@@ -63,6 +67,9 @@ namespace EdS.Game
                 }
                 files.Add(relative);
             }
+            // Revue Codex de la PR #36 : la copie précédente est retirée entière (fichiers retirés ou renommés depuis compris), comme pour
+            // une installation propre.
+            if (Directory.Exists(target)) Directory.Delete(target, true);
             foreach (string relative in files)
             {
                 byte[] content = null;

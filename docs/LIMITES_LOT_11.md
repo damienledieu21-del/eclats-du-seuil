@@ -107,7 +107,7 @@ Mode d'emploi : [UNITY.md](UNITY.md#7-jouer-sur-téléphone-sous-lot-118).
 - **Interface provisoire** : boutons carrés dessinés par l'interface IMGUI du lot 9, placés pour un téléphone tenu à l'horizontale (pas de réglage de disposition, pas de mode portrait) ; pas de retour haptique.
 - **Stick tout ou rien** : sous la zone morte, pas de marche ; au-delà, marche à pleine vitesse dans l'un des 64 caps (comme le clavier ; la marche lente n'existe pas dans le moteur).
 - **Écran des talents et salle d'attente** : pensés pour la souris ; ils se touchent du doigt mais restent petits sur un téléphone. Les touches F1 à F5 (builds) n'ont pas d'équivalent tactile.
-- **Données emportées** : le jeu construit emporte `data/v0` et `scenarios` (copiés à la construction, recopiés au premier lancement sur Android) ; une nouvelle version demande une nouvelle construction.
+- **Données emportées** : le jeu construit emporte `data/v0` et `scenarios` (copiés à la construction, recopiés au premier lancement sur Android, et à neuf quand l'empreinte du contenu change) ; une nouvelle version demande une nouvelle construction.
 - **iPhone** : pas de chaîne de compilation iOS (Mac et Xcode) ici ; non essayé.
 
 ## Sous-lot 11.5 : comportements des ennemis
