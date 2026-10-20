@@ -268,6 +268,12 @@ public class Lot114dSnapshotTests
             ("{\"entry\":9,", "\"instance\":1}", "\"instance\":0}", "Altération non numérotée"),
             // 4e tour : arrivée au tick prévu, échéance d'altération une seule fois.
             ("{\"entry\":0,", "\"tick\":80", "\"tick\":81", "hors du tick prévu"),
+            // 5e tour : tours déduits de la cadence, flux de tirage du combattant, combattant attendu dans son état de départ.
+            (Assaillant, "\"nextAttack\":1", "\"nextAttack\":0", "Tours de « assaillant » incohérents avec sa cadence"),
+            (Assaillant, "\"nextTurn\":2", "\"nextTurn\":3", "Tours de « assaillant » incohérents"),
+            (Assaillant, "\"151c15caa15e12f3\"", "\"151c15caa15e12f5\"", "Flux de tirage de « assaillant »"),
+            (Renfort, "\"endurance\":100", "\"endurance\":99", "« renfort », pas encore entré"),
+            (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":1000", "Recharge globale ou parade de « bastion » au-delà"),
         });
         foreach (string entry in new[] { "{\"entry\":9,", "{\"entry\":11," })
             Assert.Contains("en double", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(WithDuplicate(text, entry)),
@@ -279,6 +285,20 @@ public class Lot114dSnapshotTests
         string end = parry.Split('\n').First(l => l.Contains("\"item\":\"parryEnd\"", StringComparison.Ordinal));
         Assert.Contains("en double", Assert.Throws<FormatException>(() => CombatEngine.Restore(training.CompletedSetup(),
             CombatSnapshot.Parse(WithDuplicate(parry, end.Substring(0, end.IndexOf(',') + 1))), NullCombatLog.Instance)).Message);
+
+        // Un renfort positionné attendu garde la place de son scénario (5e tour).
+        CombatSetup awaited = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")),
+            Space.SpaceTestKit.Creature("ogre", Space.SpaceTestKit.At("3", "0"), health: 500),
+            Space.SpaceTestKit.Creature("renfort", Space.SpaceTestKit.At("6", "6"), health: 500).Arriving(2000),
+        }, Array.Empty<CombatCommand>(), durationMs: 6000);
+        var waiting = new CombatEngine(awaited, NullCombatLog.Instance);
+        while (waiting.CurrentTick < 5) waiting.Step();
+        AssertRefused(waiting.CompletedSetup(), waiting.Snapshot().Text, new[]
+        {
+            ("{\"fighter\":\"renfort\"", "\"x\":60000", "\"x\":50000", "« renfort », pas encore entré"),
+        });
 
         // Attaque dirigée annoncée : son impact garde sa cible.
         CombatSetup aimed = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]

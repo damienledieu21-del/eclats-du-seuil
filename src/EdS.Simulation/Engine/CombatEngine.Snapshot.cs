@@ -476,6 +476,10 @@ namespace EdS.Simulation.Engine
                 Require(commands.Contains(i) == (_setup.Commands[i].AtMs / _tickMs >= CurrentTick), $"Commande {i} : en file si et seulement si elle est à venir.");
 
             var instances = new HashSet<long>();
+            // Revue Codex de la PR #32 (5e tour) : un moteur neuf du même combat donne l'état de départ de chaque combattant. Un combattant pas
+            // encore entré (attendu, ou refusé à son arrivée) y est encore, champ pour champ ; le flux de tirage de chacun est celui du combat.
+            var reference = new CombatEngine(_setup, NullCombatLog.Instance);
+            var initial = reference._fighters.ToDictionary(x => x.Id, StringComparer.Ordinal);
             foreach (Fighter f in _fighters)
             {
                 string who = $"« {f.Id} »";
@@ -497,9 +501,20 @@ namespace EdS.Simulation.Engine
                 }
                 // Revue Codex de la PR #32 (4e tour) : une recharge en cours est celle d'une compétence du personnage, et son échéance est en
                 // file une seule fois à son tick (une échéance en double écrirait deux fois cooldownReady).
+                // 5e tour : une échéance ne tombe pas plus loin que sa durée à partir du tick précédent (recharge globale ou d'une compétence,
+                // récupération d'une parade ratée, recharge d'un déclencheur) ; une fenêtre de parade ouverte a sa durée.
+                long previous = CurrentTick - 1;
+                Require(f.GlobalCooldownReadyTick <= Math.Max(0, previous + _globalCooldownTicks)
+                    && f.ParryRecoveryUntilTick <= Math.Max(0, previous + f.Rules.ParryFailureRecoveryMs / _tickMs)
+                    && (!f.ParryOpen || f.ParryEndTick == f.ParryStartTick + f.Rules.ParryWindowMs / _tickMs),
+                    $"Recharge globale ou parade de {who} au-delà de sa durée.");
+                foreach (TriggerSlot slot in f.Triggers)
+                    Require(slot.ReadyTick >= 0 && slot.ReadyTick <= Math.Max(0, previous + slot.Definition.CooldownMs / _tickMs), $"Recharge d'un déclencheur de {who} au-delà de sa durée.");
                 foreach (var cooldown in f.CooldownReadyTick)
                 {
-                    Require(f.Character != null && f.Character.Class.TryGetSkill(cooldown.Key, out _), $"Recharge de {who} pour une compétence inconnue : {cooldown.Key}.");
+                    Require(f.Character != null && f.Character.Class.TryGetSkill(cooldown.Key, out SkillDefinition skill) && skill.Combat != null
+                        && cooldown.Value <= Math.Max(0, previous + f.Rules.CooldownMs(skill, skill.Combat) / _tickMs),
+                        $"Recharge de {who} pour une compétence inconnue ou au-delà de sa durée : {cooldown.Key}.");
                     if (cooldown.Value < CurrentTick) continue;
                     int pending = entries.Count(e => e.Item is CooldownExpiry c && c.Fighter == f && c.Skill == cooldown.Key && e.Tick == cooldown.Value);
                     Require(pending == 1, $"Recharge de {who} ({cooldown.Key}) : {pending} échéance(s) en file au tick {cooldown.Value}.");
@@ -559,6 +574,31 @@ namespace EdS.Simulation.Engine
                         $"Place de {who} hors de l'aire.");
                     Require(!_obstacles.Any(o => o.OverlapsCircle(b.X, b.Z, b.Radius)), $"Place de {who} dans le décor.");
                     Require(IsUnit(b.FacingX, b.FacingZ) && (!b.Moving || IsUnit(b.DirectionX, b.DirectionZ)), $"Orientation ou direction de {who} non unitaire.");
+                }
+                Fighter start = initial[f.Id];
+                Require(f.Random.Capture().Increment == start.Random.Capture().Increment, $"Flux de tirage de {who} différent de celui du combat.");
+                bool entered = f.Presence != Presence.Pending && f.Presence != Presence.Refused;
+                if (!entered)
+                {
+                    // Seules différences possibles : sa présence (refusé) et ses commandes refusées (un absent n'agit pas).
+                    start.Presence = f.Presence;
+                    start.Result.CommandsRejected = f.Result.CommandsRejected;
+                    Require(f.Result.CommandsRejected >= 0 && string.Equals(WriteFighter(f), WriteFighter(start), StringComparison.Ordinal),
+                        $"{who}, pas encore entré, n'est plus dans son état de départ.");
+                }
+                // Les tours d'un assaillant entré se déduisent de sa cadence : tours joués jusqu'à son dernier tick d'action (le précédent,
+                // ou celui de sa mort ou de son départ), attaque suivante de sa liste, tour suivant programmé s'il tombe avant la fin.
+                if (entered && f.Assailant is { } assailant)
+                {
+                    long first = checked((f.ArrivedTick ?? 0) + assailant.FirstAttackMs / _tickMs);
+                    long interval = assailant.IntervalMs / _tickMs;
+                    long last = Math.Min(f.Result.DeathTick ?? f.LeftTick ?? CurrentTick - 1, _durationTicks - 1);
+                    long played = interval <= 0 || first > last ? 0 : (last - first) / interval + 1;
+                    long next = checked(first + played * interval);
+                    bool scheduled = next < _durationTicks;
+                    Require(f.NextTurn == played + (scheduled ? 1 : 0) && f.NextAttack == played % assailant.Attacks.Count
+                        && f.NextAttackTick == (f.Out || !scheduled ? (long?)null : next),
+                        $"Tours de {who} incohérents avec sa cadence : {played} joués, prochain au tick {(scheduled ? next.ToString(CultureInfo.InvariantCulture) : "aucun")}.");
                 }
             }
         }
