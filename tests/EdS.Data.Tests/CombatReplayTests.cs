@@ -148,6 +148,7 @@ public class CombatReplayTests
     // empreinte 0d88a125…). Sous-lot 11.4b : moteur 0.17.0, format 11, règles 0.10.0, Bastion 0.6.0 (portées) ; combat sans espace :
     // seul l'en-tête change (ancienne empreinte b8bf4baa…). Sous-lot 11.4c : moteur 0.18.0, format 12, règles 0.11.0, scénario en
     // schéma 6 ; seul l'en-tête change (ancienne empreinte 08f267a9…). Sous-lot 11.4d : moteur 0.19.0, format 13, scénario en schéma 7 ;
-    // seul l'en-tête change (ancienne empreinte 70ef6a7f…).
-    internal const string MannequinLogHash = "1754b6683ff3ede830be107447b14bdec3129adf9e24599a4912813c3ab8e6ce";
+    // seul l'en-tête change (ancienne empreinte 70ef6a7f…). Sous-lot 11.5 : moteur 0.20.0, format 14, schéma 8 ; seul l'en-tête change
+    // (ancienne empreinte 1754b668…).
+    internal const string MannequinLogHash = "9d42464b10aee9b7c3aa3d3fee6a1290671713817c16b30b828ebf795d4adc9b";
 }

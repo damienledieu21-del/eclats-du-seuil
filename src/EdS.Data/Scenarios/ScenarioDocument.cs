@@ -104,6 +104,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 11.4d (schéma 7) : instant d'arrivée en cours de combat, en ms ; absent : présent dès le départ.</summary>
         public long? ArrivalMs { get; set; }
 
+        /// <summary>Sous-lot 11.5 (schéma 8) : comportement d'un assaillant dans un combat positionné ; facultatif.</summary>
+        public BehaviorData? Behavior { get; set; }
+
         /// <summary>Champs effectivement présents dans le fichier, pour refuser ceux qui ne conviennent pas au type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -158,6 +161,18 @@ namespace EdS.Data.Scenarios
         public long? TickMs { get; set; }
         public bool? Guardable { get; set; }
         public bool? Parryable { get; set; }
+
+        /// <summary>Sous-lot 11.5 (schéma 8) : charge d'une bande ; facultatif, faux par défaut.</summary>
+        public bool? Charge { get; set; }
+    }
+
+    /// <summary>Sous-lot 11.5 : comportement d'un assaillant (distances en mètres).</summary>
+    public sealed class BehaviorData
+    {
+        public Domain.Numerics.Fixed? MaxRange { get; set; }
+        public Domain.Numerics.Fixed? MinRange { get; set; }
+        public Domain.Numerics.Fixed? AggroRange { get; set; }
+        public bool? Encircle { get; set; }
     }
 
     public sealed class CommandData

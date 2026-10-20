@@ -95,8 +95,23 @@ namespace EdS.Data.Json
                 ["radius"] = Track("radius", (v, p) => c.Radius = input.Decimal(v, p)),
                 ["speed"] = Track("speed", (v, p) => c.Speed = input.Decimal(v, p)),
                 ["arrivalMs"] = Track("arrivalMs", (v, p) => c.ArrivalMs = input.Int64(v, p)),   // sous-lot 11.4d (schéma 7)
+                ["behavior"] = Track("behavior", (v, p) => c.Behavior = ReadBehavior(input, v, p)),   // sous-lot 11.5 (schéma 8)
             });
             return ok ? c : null;
+        }
+
+        /// <summary>Sous-lot 11.5 : comportement d'un assaillant.</summary>
+        private static BehaviorData? ReadBehavior(JsonInput input, JsonElement element, string path)
+        {
+            var b = new BehaviorData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["maxRange"] = (v, p) => b.MaxRange = input.Decimal(v, p),
+                ["minRange"] = (v, p) => b.MinRange = input.Decimal(v, p),
+                ["aggroRange"] = (v, p) => b.AggroRange = input.Decimal(v, p),
+                ["encircle"] = (v, p) => b.Encircle = input.Boolean(v, p),
+            });
+            return ok ? b : null;
         }
 
         /// <summary>Sous-lot 11.4 : point ou direction, tableau d'exactement deux nombres <c>[x, z]</c>.</summary>
@@ -197,6 +212,7 @@ namespace EdS.Data.Json
                 ["tickMs"] = (v, p) => a.TickMs = input.Int64(v, p),
                 ["guardable"] = (v, p) => a.Guardable = input.Boolean(v, p),
                 ["parryable"] = (v, p) => a.Parryable = input.Boolean(v, p),
+                ["charge"] = (v, p) => a.Charge = input.Boolean(v, p),   // sous-lot 11.5 (schéma 8)
             });
             return ok ? a : null;
         }
