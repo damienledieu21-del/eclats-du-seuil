@@ -62,7 +62,10 @@ namespace EdS.Runtime
 
         public string PlayerId { get; }
 
-        /// <summary>Cible des compétences à cible ennemie unique ; null s'il n'y a plus d'ennemi vivant.</summary>
+        /// <summary>
+        /// Cible des compétences à cible ennemie unique : un ennemi vivant et, dans un combat positionné, en vue du joueur ; null s'il n'y en
+        /// a aucun. Une cible qui passe derrière le décor est remplacée par le premier ennemi en vue (ou par aucune).
+        /// </summary>
         public string? TargetId { get; private set; }
 
         public bool IsFinished => _engine.IsFinished;
@@ -152,7 +155,7 @@ namespace EdS.Runtime
             return true;
         }
 
-        /// <summary>Cible suivante parmi les ennemis vivants (ordre des combattants du scénario).</summary>
+        /// <summary>Cible suivante parmi les ennemis vivants en vue (ordre des combattants du scénario).</summary>
         public void NextTarget()
         {
             List<OtherState> enemies = Enemies().ToList();
@@ -167,7 +170,7 @@ namespace EdS.Runtime
 
         public void SelectTarget(string id)
         {
-            if (!Enemies().Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant.", nameof(id));
+            if (!Enemies().Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant en vue.", nameof(id));
             TargetId = id;
         }
 
@@ -220,7 +223,8 @@ namespace EdS.Runtime
                 if (TrySubmit(group)) used += group.Length;
             if (_setup.Space is null || me.IsDead) return;
             // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles changent, dans
-            // la place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant.
+            // la place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue
+            // sans remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
             long atMs = checked(_engine.CurrentTick * _tickMs);
             int room = _setup.Combat.MaxCommandsPerActorPerTick - used;
             if (room > 0 && _wishedHeading != _sentHeading)
@@ -234,7 +238,7 @@ namespace EdS.Runtime
                     room--;
                 }
             }
-            if (room > 0 && TargetId != null && TargetId != _sentSelection && TrySubmit(new[] { CombatCommand.SelectTarget(atMs, PlayerId, TargetId) }))
+            if (room > 0 && TargetId != _sentSelection && TrySubmit(new[] { CombatCommand.SelectTarget(atMs, PlayerId, TargetId) }))
                 _sentSelection = TargetId;
         }
 
@@ -281,6 +285,6 @@ namespace EdS.Runtime
         /// <summary>Les autres combattants (ennemis et alliés), dans l'ordre du scénario ; leur télégraphie s'écoule en continu dans le tick en cours (<see cref="TickProgress"/>).</summary>
         public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, 0, TickProgress * TickSeconds, _obstacles);
 
-        private IEnumerable<OtherState> Enemies() => CombatDisplay.LivingEnemies(_engine, PlayerId);
+        private IEnumerable<OtherState> Enemies() => CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles);
     }
 }

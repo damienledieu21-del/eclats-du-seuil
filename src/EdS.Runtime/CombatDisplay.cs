@@ -89,9 +89,12 @@ namespace EdS.Runtime
         public static IReadOnlyList<ConvexPolygon>? Obstacles(CombatSpace? space) =>
             space?.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToList();
 
-        /// <summary>Ennemis vivants, dans l'ordre du scénario.</summary>
-        public static IEnumerable<OtherState> LivingEnemies(CombatEngine engine, string playerId) =>
-            Others(engine, playerId).Where(o => o.IsEnemy && !o.View.IsDead && o.View.IsPresent);   // sous-lot 11.4d : un absent ne s'affiche pas
+        /// <summary>
+        /// Ennemis vivants, dans l'ordre du scénario ; avec le décor (<paramref name="obstacles"/>), seulement ceux en vue du joueur
+        /// (revue Codex de la PR #34 : un ennemi caché ne s'affiche pas, il ne se cible donc pas non plus).
+        /// </summary>
+        public static IEnumerable<OtherState> LivingEnemies(CombatEngine engine, string playerId, IReadOnlyList<ConvexPolygon>? obstacles = null) =>
+            Others(engine, playerId, 0, 0, obstacles).Where(o => o.IsEnemy && !o.View.IsDead && o.View.IsPresent && o.InSight);   // 11.4d : un absent ne s'affiche pas
 
         /// <summary>Personnages alliés vivants autres que le joueur, dans l'ordre du scénario (coopération, lot 10).</summary>
         public static IEnumerable<OtherState> LivingAllies(CombatEngine engine, string playerId) =>

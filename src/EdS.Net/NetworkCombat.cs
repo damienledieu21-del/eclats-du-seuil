@@ -44,7 +44,7 @@ namespace EdS.Net
             _engine = new CombatEngine(setup, _log);
             _feedback = new FeedbackTracker(_engine);
             _obstacles = CombatDisplay.Obstacles(setup.Space);
-            TargetId = CombatDisplay.LivingEnemies(_engine, PlayerId).FirstOrDefault()?.Id;
+            TargetId = CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).FirstOrDefault()?.Id;
             AllyId = CombatDisplay.LivingAllies(_engine, PlayerId).FirstOrDefault()?.Id;
         }
 
@@ -196,7 +196,7 @@ namespace EdS.Net
 
         public void NextTarget()
         {
-            List<OtherState> enemies = CombatDisplay.LivingEnemies(_engine, PlayerId).ToList();
+            List<OtherState> enemies = CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).ToList();
             string? next = enemies.Count == 0 ? null : enemies[(enemies.FindIndex(e => e.Id == TargetId) + 1) % enemies.Count].Id;
             SetTarget(next);
         }
@@ -204,7 +204,7 @@ namespace EdS.Net
         public void SelectTarget(string id)
         {
             if (AwaitingResync) return;
-            if (!CombatDisplay.LivingEnemies(_engine, PlayerId).Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant.", nameof(id));
+            if (!CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant en vue.", nameof(id));
             SetTarget(id);
         }
 
@@ -490,8 +490,8 @@ namespace EdS.Net
         /// <summary>Cible et allié encore valides, sinon le premier vivant (même règle que le serveur).</summary>
         private void KeepTargets()
         {
-            if (TargetId is null || !CombatDisplay.LivingEnemies(_engine, PlayerId).Any(e => e.Id == TargetId))
-                SetTarget(CombatDisplay.LivingEnemies(_engine, PlayerId).FirstOrDefault()?.Id);
+            if (TargetId is null || !CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).Any(e => e.Id == TargetId))
+                SetTarget(CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).FirstOrDefault()?.Id);
             if (AllyId is null || !CombatDisplay.LivingAllies(_engine, PlayerId).Any(a => a.Id == AllyId))
                 SetAlly(CombatDisplay.LivingAllies(_engine, PlayerId).FirstOrDefault()?.Id);
         }
