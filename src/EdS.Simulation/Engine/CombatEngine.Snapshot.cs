@@ -640,8 +640,14 @@ namespace EdS.Simulation.Engine
                     : 0;
                 Require((f.RegenFromTick is null || (f.RegenFromTick >= 0 && f.RegenFromTick <= Math.Max(0, previous + _regenDelayTicks)))
                     && f.RegenGranted <= (f.RegenFromTick is null ? CounterCeiling : Math.Max(0, grantable)), $"Régénération de {who} impossible.");
+                // 12e tour : un personnage vivant, présent, sans garde ni altération qui bloque la régénération, dont la régénération avait
+                // commencé au tick précédent, a reçu à ce tick tout ce que son délai permettait (RunRegeneration fixe le cumul accordé).
+                if (!f.Out && f.Character != null && !f.Guarding && BlockReason(f, StatusBlocks.Regeneration) is null && f.RegenFromTick is long started && started <= previous)
+                    Require(f.RegenGranted == grantable, $"Régénération de {who} impossible : {f.RegenGranted} accordés, {grantable} au tick précédent.");
+                // 12e tour : l'entretien payé suit toujours l'entretien dû (tous deux partent de 0, un tick gardé les fixe à la même valeur, une
+                // rupture n'en change aucun).
                 Require(f.GuardUpkeepRemainder >= 0 && f.GuardUpkeepRemainder < 1000 * Fixed.Scale && f.GuardUpkeepPaid >= 0
-                    && f.GuardUpkeepPaid <= f.GuardUpkeepDue && f.GuardUpkeepDue <= CounterCeiling, $"Entretien de la garde de {who} impossible.");
+                    && f.GuardUpkeepPaid == f.GuardUpkeepDue && f.GuardUpkeepDue <= CounterCeiling, $"Entretien de la garde de {who} impossible.");
                 CombatantResult r = f.Result;
                 Require(new[] { r.DamageDealt, r.DamageTaken, r.DamageAbsorbed, r.DamageTransferred, r.DamageRedirected, r.DamageMitigated, r.Hits,
                         r.CriticalHits, r.SkillsCast, r.UltimatesCast, r.CommandsRejected, r.Blocks, r.PerfectParries, r.FailedParries, r.GuardBreaks }

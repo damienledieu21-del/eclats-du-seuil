@@ -564,7 +564,7 @@ public class Lot114dSnapshotTests
     [Fact]
     public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
     {
-        // Revue Codex de la PR #32 (11e tour). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        // Revue Codex de la PR #32 (11e et 12e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
         while (training.CurrentTick < 30) training.Step();
         string text = training.Snapshot().Text;
@@ -588,6 +588,26 @@ public class Lot114dSnapshotTests
             (Bastion, "\"lethalCause\":null", "\"lethalCause\":{\"root\":\"x\",\"depth\":0,\"chain\":[],\"trigger\":null,\"cause\":null,\"source\":null,\"instance\":null,\"generation\":null}",
                 "Cause mortelle de « bastion » vivant"),
         });
+        // 12e tour : entretien dû sans l'entretien payé (le Bastion garde au tick 30), refusé.
+        string due = System.Text.RegularExpressions.Regex.Match(bastion, "\"upkeepDue\":([0-9]+)").Groups[1].Value;
+        AssertRefused(setup, text, new[] { (Bastion, $"\"upkeepDue\":{due},", $"\"upkeepDue\":{long.Parse(due, System.Globalization.CultureInfo.InvariantCulture) + 1},",
+            "Entretien de la garde de « bastion »") });
+        // 12e tour : régénération en cours (Heurt au tick 0, 15 d'endurance, puis rien) : le cumul accordé est celui du tick précédent, pas moins.
+        var resting = new CombatEngine(Setup(new[] { Cmd(0, Heurt, target: "assaillant") }, new CombatantSetup[]
+        {
+            Tank(actives: new[] { Heurt }), Assailant(firstAttackMs: 60_000, intervalMs: 60_000),
+        }, durationMs: 9000), NullCombatLog.Instance);
+        var regen = new System.Text.RegularExpressions.Regex("\"regenFromTick\":([0-9]+),\"regenGranted\":([1-9][0-9]*)");
+        System.Text.RegularExpressions.Match granted = System.Text.RegularExpressions.Match.Empty;
+        while (!resting.IsFinished)
+        {
+            granted = regen.Match(resting.Snapshot().Text.Split('\n').First(l => l.StartsWith(Bastion, StringComparison.Ordinal)));
+            if (granted.Success && long.Parse(granted.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) < resting.CurrentTick - 1) break;
+            resting.Step();
+        }
+        Assert.False(resting.IsFinished, "régénération en cours");
+        AssertRefused(resting.CompletedSetup(), resting.Snapshot().Text, new[] { (Bastion, granted.Value,
+            granted.Value.Replace("\"regenGranted\":" + granted.Groups[2].Value, "\"regenGranted\":0", StringComparison.Ordinal), "Régénération de « bastion » impossible") });
         // File vide (un Bastion et un mannequin, sans commande) : son prochain numéro ne peut pas être négatif.
         var quiet = new CombatEngine(Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
         {
