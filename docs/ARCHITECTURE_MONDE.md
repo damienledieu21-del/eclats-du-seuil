@@ -41,7 +41,7 @@ Exigences retenues, reprises du cadrage :
 **Une simulation déterministe par zone**, au même tick que le combat. Le combat n'est pas un moteur à part qu'on lance par rencontre : c'est une partie des règles de la zone.
 
 1. **Le moteur de combat devient le cœur de la zone.** Le moteur actuel (`CombatEngine`) a déjà l'essentiel : tick, file d'événements, commandes, budgets, provenance, déclencheurs, morts. Il lui manque :
-   - des **entités qui entrent et sortent** en cours de route (aujourd'hui, la liste est fixée au départ) ;
+   - des **entités qui entrent et sortent** en cours de route (réalisé au sous-lot 11.4d : arrivées, arrivée pilotée, départs) ;
    - les **positions** (11.4) ;
    - un **mode « zone »** sans fin globale : la zone ne s'arrête pas quand une équipe tombe ; ce sont ses rencontres qui se résolvent.
 
@@ -52,7 +52,7 @@ Exigences retenues, reprises du cadrage :
 
 ## 5. Entrée dans une zone, état courant, mises à jour
 
-1. **Instantané d'état.** L'état complet d'une zone à un tick s'écrit de façon canonique et se relit à l'identique : entités, ressources, états, recharges, files, tirages aléatoires. On en tire une empreinte. Il n'existe pas encore : c'est un chantier du moteur (11.4, puis 11.7). Il sert à :
+1. **Instantané d'état.** L'état complet d'une zone à un tick s'écrit de façon canonique et se relit à l'identique : entités, ressources, états, recharges, files, tirages aléatoires. On en tire une empreinte. Réalisé au sous-lot 11.4d pour le moteur de combat (`CombatEngine.Snapshot` et `Restore`, [MOTEUR.md](MOTEUR.md#arrivées-départs-et-instantané-détat-sous-lot-114d)) ; l'état filtré envoyé aux clients vient au 11.7. Il sert à :
    - entrer dans une zone ;
    - revenir après une coupure ;
    - rejouer seulement les derniers ticks pour corriger une prédiction ;

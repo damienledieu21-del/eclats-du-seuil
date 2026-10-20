@@ -295,8 +295,9 @@ namespace EdS.Simulation.Engine
                 // Rien n'est écrit au journal à la construction d'un moteur relu.
                 engine = new CombatEngine(setup, log, queueBound: true, numericLimits: true, snapshot);
             }
-            catch (Exception e) when (e is KeyNotFoundException || e is InvalidCastException || e is IndexOutOfRangeException
-                || e is ArgumentException || e is OverflowException || e is InvalidOperationException)
+            // Un combat invalide reste une CombatSetupException (erreur de l'appelant) ; le reste vient du texte de l'instantané.
+            catch (Exception e) when (e is not CombatSetupException && (e is KeyNotFoundException || e is InvalidCastException
+                || e is IndexOutOfRangeException || e is ArgumentException || e is OverflowException || e is InvalidOperationException))
             {
                 throw new FormatException($"Instantané incohérent avec le combat : {e.Message}", e);
             }
