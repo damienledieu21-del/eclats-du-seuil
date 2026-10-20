@@ -608,6 +608,13 @@ namespace EdS.Simulation.Engine
                 foreach (CombatCommand command in _setup.Commands)
                     if (command.Action == CombatAction.UseSkill && command.Actor == f.Id && command.AtMs / _tickMs <= previous) casts.Add((command.AtMs / _tickMs, command.Skill!));
                 long lastCast = checked(f.GlobalCooldownReadyTick - _globalCooldownTicks);
+                // 17e tour : chaque commande passée a été acceptée ou refusée (CommandsRejected) ; les lancers comptés (SkillsCast) ne
+                // dépassent donc pas les commandes de compétence passées, ni, avec les refus, l'ensemble des commandes passées. L'acceptation
+                // d'une commande précise n'est pas dans l'instantané : au-delà, c'est son empreinte qui fait foi.
+                int skillCommands = _setup.Commands.Count(c => c.Action == CombatAction.UseSkill && c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                int pastCommands = _setup.Commands.Count(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                Require(f.Result.SkillsCast <= skillCommands && checked(f.Result.SkillsCast + f.Result.CommandsRejected) <= pastCommands,
+                    $"Lancers ou refus de {who} au-delà de ses commandes passées.");
                 Require(f.Result.SkillsCast == 0
                     ? f.GlobalCooldownReadyTick == 0 && f.CooldownReadyTick.Count == 0
                     : f.Character != null && casts.Any(c => c.Tick == lastCast), $"Recharge globale de {who} sans lancer à son origine.");
@@ -640,6 +647,8 @@ namespace EdS.Simulation.Engine
                 Require(f.Presence != Presence.Refused || _spatial, $"Arrivée de {who} refusée hors d'un combat positionné.");
                 Require(f.LeftTick is not long left || _setup.Commands.Any(c => c.Action == CombatAction.Leave && c.Actor == f.Id && c.AtMs / _tickMs == left),
                     $"Départ de {who} sans commande de départ à son tick.");
+                // 17e tour : un départ suit l'admission (la commande leave n'est reçue que d'un combattant présent, arrivé au plus tard à ce tick).
+                Require(f.LeftTick is not long leftAt || leftAt >= (f.ArrivedTick ?? 0), $"Départ de {who} avant son arrivée.");
                 Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
                     $"Arrivée de {who} au tick {f.ArrivedTick} impossible.");
                 // 14e tour : un combattant admis est arrivé exactement à son tick prévu ; un combattant présent dès l'origine, attendu ou refusé

@@ -570,7 +570,7 @@ public class Lot114dSnapshotTests
     [Fact]
     public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
     {
-        // Revue Codex de la PR #32 (11e à 16e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        // Revue Codex de la PR #32 (11e à 17e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
         while (training.CurrentTick < 30) training.Step();
         string text = training.Snapshot().Text;
@@ -661,6 +661,29 @@ public class Lot114dSnapshotTests
         string earlier = gone.Replace(allie, allie.Replace("\"leftTick\":140", "\"leftTick\":130", StringComparison.Ordinal), StringComparison.Ordinal);
         Assert.Contains("sans commande de départ", Assert.Throws<FormatException>(() => CombatEngine.Restore(late.CompletedSetup(),
             CombatSnapshot.Parse(earlier), NullCombatLog.Instance)).Message);
+        // 17e tour : avant le premier tick, l'état du tirage d'un combattant présent est celui de départ ; un départ suit l'arrivée (le renfort
+        // arrivé au tick 80, déclaré parti au tick 0 sur une commande leave refusée alors) ; les lancers comptés ne dépassent pas les
+        // commandes de compétence passées.
+        var fresh = new CombatEngine(Training(), NullCombatLog.Instance);
+        string zero = fresh.Snapshot().Text;
+        string draw = System.Text.RegularExpressions.Regex.Match(zero.Split('\n').First(l => l.StartsWith(Bastion, StringComparison.Ordinal)), "\"random\":\\[\"[0-9a-f]").Value;
+        string redraw = draw.Substring(0, draw.Length - 1) + (draw[draw.Length - 1] == '0' ? '1' : '0');
+        AssertRefused(fresh.CompletedSetup(), zero, new[] { (Bastion, draw, redraw, "avant le premier tick") });
+        AssertRefused(setup, text, new[] { (Bastion, "\"skillsCast\":1,", "\"skillsCast\":2,", "Lancers ou refus de « bastion »") });
+        CombatSetup leaving = Setup(new[] { Cmd(0, Entaille, target: "assaillant"), Leave(0, "renfort") }, new CombatantSetup[]
+        {
+            Tank(endurance: 30, actives: new[] { Frappe, Entaille, Assommer, Onde }), Tank("allie"), Tank("renfort").Arriving(4000),
+            Assailant(firstAttackMs: 1000, intervalMs: 1300),
+        }, durationMs: 9000);
+        var stay = new CombatEngine(leaving, NullCombatLog.Instance);
+        while (stay.CurrentTick < 90) stay.Step();
+        string stayed = stay.Snapshot().Text;
+        string renfortLine = stayed.Split('\n').First(l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal));
+        Assert.Contains("\"presence\":0", renfortLine, StringComparison.Ordinal);
+        string departed = stayed.Replace(renfortLine, renfortLine.Replace("\"presence\":0", "\"presence\":2", StringComparison.Ordinal)
+            .Replace("\"leftTick\":null", "\"leftTick\":0", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("avant son arrivée", Assert.Throws<FormatException>(() => CombatEngine.Restore(stay.CompletedSetup(), CombatSnapshot.Parse(departed),
+            NullCombatLog.Instance)).Message);
         // 14e tour : un texte tronqué au milieu de true, false ou null est illisible (FormatException), pas une erreur d'indice.
         foreach (string truncated in new[] { "n", "tru", "{\"a\":fals", "[nul" })
             Assert.Throws<FormatException>(() => CombatSnapshot.Parse(truncated));
