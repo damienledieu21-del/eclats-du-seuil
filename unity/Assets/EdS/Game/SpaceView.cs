@@ -316,11 +316,17 @@ namespace EdS.Game
         public void Destroy() => Object.Destroy(_root);
     }
 
-    /// <summary>Sous-lot 11.6 : une forme d'attaque annoncée au sol (contour et remplissage), maillages refaits à chaque image.</summary>
+    /// <summary>
+    /// Sous-lot 11.6 : une forme d'attaque annoncée au sol (contour et remplissage), maillages refaits à chaque image. Revue Codex de la
+    /// PR #34 : dessinée au-dessus de la plus haute surface où l'on marche (tablier du pont, eau, décor abaissé : 0,12 m), et une bande a
+    /// les bouts arrondis du moteur (distance au segment : deux demi-disques aux extrémités).
+    /// </summary>
     internal sealed class ZoneView
     {
         private const int Segments = 40;
+        private const int CapSegments = 16;
         private const float Band = 0.12f;
+        private const float Height = 0.16f;
         private readonly GameObject _outline;
         private readonly GameObject _fill;
         private readonly Mesh _outlineMesh = new Mesh();
@@ -328,8 +334,8 @@ namespace EdS.Game
 
         public ZoneView(Transform parent, Material outline, Material fill)
         {
-            _outline = Part("Annonce (contour)", parent, outline, _outlineMesh, 0.035f);
-            _fill = Part("Annonce", parent, fill, _fillMesh, 0.03f);
+            _outline = Part("Annonce (contour)", parent, outline, _outlineMesh, Height + 0.005f);
+            _fill = Part("Annonce", parent, fill, _fillMesh, Height);
         }
 
         private static GameObject Part(string name, Transform parent, Material material, Mesh mesh, float height)
@@ -357,15 +363,15 @@ namespace EdS.Game
                 case AttackShape.Cone:
                 {
                     float axis = Mathf.Atan2(az, ax), half = zone.Angle * Mathf.Deg2Rad / 2f;
-                    Sector(_outlineMesh, ox, oz, reach - Band, reach, axis - half, axis + half);
+                    ConeOutline(_outlineMesh, ox, oz, reach, axis - half, axis + half);
                     Sector(_fillMesh, ox, oz, 0f, Mathf.Max(0.05f, reach * progress), axis - half, axis + half);
                     break;
                 }
                 case AttackShape.Line:
                 {
                     float w = zone.HalfWidth / 10000f;
-                    Band4(_outlineMesh, ox, oz, ax, az, reach, w, true);
-                    Band4(_fillMesh, ox, oz, ax, az, Mathf.Max(0.05f, reach * progress), w, false);
+                    Stadium(_outlineMesh, ox, oz, ax, az, reach, w, true);
+                    Stadium(_fillMesh, ox, oz, ax, az, Mathf.Max(0.05f, reach * progress), w, false);
                     break;
                 }
                 default:   // cercle, zone qui reste
@@ -410,35 +416,108 @@ namespace EdS.Game
             Set(mesh, vertices, triangles);
         }
 
-        /// <summary>Bande de longueur <paramref name="length"/> et de demi-largeur <paramref name="half"/> le long de l'axe ; contour seul ou pleine.</summary>
-        private static void Band4(Mesh mesh, float x, float z, float ax, float az, float length, float half, bool outline)
+        /// <summary>
+        /// Revue Codex de la PR #34 : contour d'un cône : l'arc au bout (couronne de largeur <see cref="Band"/>) et les deux rayons qui le
+        /// bornent (bandes de même largeur, à l'intérieur du cône), pour voir ses côtés avant que le remplissage ait grandi.
+        /// </summary>
+        private static void ConeOutline(Mesh mesh, float x, float z, float reach, float from, float to)
         {
-            float nx = -az, nz = ax;   // normale à gauche de l'axe
-            Vector3 P(float along, float side) => new Vector3(x + ax * along + nx * side, 0f, z + az * along + nz * side);
-            var quads = new List<Vector3[]>();
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            for (int i = 0; i <= Segments; i++)
+            {
+                float a = Mathf.Lerp(from, to, i / (float)Segments);
+                float c = Mathf.Cos(a), s = Mathf.Sin(a);
+                vertices.Add(new Vector3(x + c * Mathf.Max(0f, reach - Band), 0f, z + s * Mathf.Max(0f, reach - Band)));
+                vertices.Add(new Vector3(x + c * reach, 0f, z + s * reach));
+            }
+            for (int i = 0; i < Segments; i++)
+            {
+                int v = 2 * i;
+                triangles.AddRange(new[] { v, v + 3, v + 1, v, v + 2, v + 3 });
+            }
+            // Côtés : du sommet au bout de chaque rayon, la bande décalée vers l'intérieur du cône (normale tournée vers l'autre rayon).
+            void Side(float angle, float inward)
+            {
+                float c = Mathf.Cos(angle), s = Mathf.Sin(angle), nx = -s * inward * Band, nz = c * inward * Band;
+                int b = vertices.Count;
+                vertices.Add(new Vector3(x, 0f, z));
+                vertices.Add(new Vector3(x + c * reach, 0f, z + s * reach));
+                vertices.Add(new Vector3(x + c * reach + nx, 0f, z + s * reach + nz));
+                vertices.Add(new Vector3(x + nx, 0f, z + nz));
+                // Les deux faces : l'ordre des coins dépend du côté, on garde le quadrilatère visible d'en haut dans les deux cas.
+                triangles.AddRange(inward > 0f ? new[] { b, b + 2, b + 1, b, b + 3, b + 2 } : new[] { b, b + 1, b + 2, b, b + 2, b + 3 });
+            }
+            Side(from, 1f);
+            Side(to, -1f);
+            Set(mesh, vertices.ToArray(), triangles.ToArray());
+        }
+
+        /// <summary>
+        /// Contour fermé d'une bande à bouts arrondis (« stade ») de longueur <paramref name="length"/> et de rayon <paramref name="r"/> le
+        /// long de l'axe, dans le sens trigonométrique vu de dessus : demi-cercle autour du bout, puis demi-cercle autour de l'origine.
+        /// </summary>
+        private static List<Vector3> StadiumLoop(float x, float z, float ax, float az, float length, float r)
+        {
+            var points = new List<Vector3>();
+            float axis = Mathf.Atan2(az, ax);
+            for (int i = 0; i <= CapSegments; i++)
+            {
+                float a = axis - Mathf.PI / 2f + Mathf.PI * i / CapSegments;
+                points.Add(new Vector3(x + ax * length + Mathf.Cos(a) * r, 0f, z + az * length + Mathf.Sin(a) * r));
+            }
+            for (int i = 0; i <= CapSegments; i++)
+            {
+                float a = axis + Mathf.PI / 2f + Mathf.PI * i / CapSegments;
+                points.Add(new Vector3(x + Mathf.Cos(a) * r, 0f, z + Mathf.Sin(a) * r));
+            }
+            return points;
+        }
+
+        /// <summary>
+        /// Bande de longueur <paramref name="length"/> et de demi-largeur <paramref name="half"/> le long de l'axe, bouts arrondis comme
+        /// dans le moteur ; contour (couronne de largeur <see cref="Band"/>) ou pleine (éventail depuis le milieu, la forme est convexe).
+        /// </summary>
+        private static void Stadium(Mesh mesh, float x, float z, float ax, float az, float length, float half, bool outline)
+        {
+            List<Vector3> outer = StadiumLoop(x, z, ax, az, length, half);
+            int n = outer.Count;
             if (outline)
             {
-                quads.Add(new[] { P(0f, -half), P(length, -half), P(length, -half + Band), P(0f, -half + Band) });
-                quads.Add(new[] { P(0f, half - Band), P(length, half - Band), P(length, half), P(0f, half) });
-                quads.Add(new[] { P(length - Band, -half), P(length, -half), P(length, half), P(length - Band, half) });
-                quads.Add(new[] { P(0f, -half), P(Band, -half), P(Band, half), P(0f, half) });
+                List<Vector3> inner = StadiumLoop(x, z, ax, az, length, Mathf.Max(0f, half - Band));
+                var vertices = new Vector3[2 * n];
+                var triangles = new int[6 * n];
+                for (int i = 0; i < n; i++)
+                {
+                    vertices[2 * i] = inner[i];
+                    vertices[2 * i + 1] = outer[i];
+                }
+                for (int i = 0; i < n; i++)
+                {
+                    // Comme une couronne de Sector : (intérieur, extérieur suivant, extérieur) et (intérieur, intérieur suivant, extérieur
+                    // suivant) regardent vers le haut ; le dernier quadrilatère referme le contour.
+                    int v = 2 * i, w = 2 * ((i + 1) % n), k = 6 * i;
+                    triangles[k] = v;
+                    triangles[k + 1] = w + 1;
+                    triangles[k + 2] = v + 1;
+                    triangles[k + 3] = v;
+                    triangles[k + 4] = w;
+                    triangles[k + 5] = w + 1;
+                }
+                Set(mesh, vertices, triangles);
+                return;
             }
-            else quads.Add(new[] { P(0f, -half), P(length, -half), P(length, half), P(0f, half) });
-            var vertices = new Vector3[quads.Count * 4];
-            var triangles = new int[quads.Count * 6];
-            for (int q = 0; q < quads.Count; q++)
+            var fill = new Vector3[n + 1];
+            var fan = new int[3 * n];
+            fill[0] = new Vector3(x + ax * length / 2f, 0f, z + az * length / 2f);
+            for (int i = 0; i < n; i++) fill[i + 1] = outer[i];
+            for (int i = 0; i < n; i++)
             {
-                for (int i = 0; i < 4; i++) vertices[4 * q + i] = quads[q][i];
-                // Coins dans le sens trigonométrique vu de dessus : (0, 2, 1) et (0, 3, 2) regardent vers le haut.
-                int k = 6 * q, v = 4 * q;
-                triangles[k] = v;
-                triangles[k + 1] = v + 2;
-                triangles[k + 2] = v + 1;
-                triangles[k + 3] = v;
-                triangles[k + 4] = v + 3;
-                triangles[k + 5] = v + 2;
+                fan[3 * i] = 0;
+                fan[3 * i + 1] = 1 + (i + 1) % n;
+                fan[3 * i + 2] = 1 + i;
             }
-            Set(mesh, vertices, triangles);
+            Set(mesh, fill, fan);
         }
 
         private static void Set(Mesh mesh, Vector3[] vertices, int[] triangles)

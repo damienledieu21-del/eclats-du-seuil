@@ -73,6 +73,22 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Centres_confondus_le_tireur_recule_a_l_oppose_de_son_orientation()
+    {
+        // Revue Codex de la PR #33 (tour 5) : règle B (traversée freinée), le joueur et l'archer partent de la même place ; l'archer recule
+        // à l'opposé de son orientation (vers l'ouest, il regarde l'est) jusqu'à sa distance minimale, au lieu de rester immobile.
+        var rules = new CombatRules { GuardUpkeepPerSecond = 0, TelegraphMinReactionMs = 0, PlayerCreatureContact = ContactRule.SlowedCrossing };
+        var (track, _, _) = Trace(Fight(new CombatantSetup[]
+        {
+            Player("bastion", At("0", "0")),
+            Hunter("archer", At("0", "0", facing: GroundVector.Parse("1", "0")), "4", minRange: "2"),
+        }, durationMs: 2000, rules: rules));
+        GroundVector after = track.After("archer", 39);
+        Assert.True(after.X < Fixed.Zero, $"archer en {after}");
+        Assert.InRange(Edge(after, track.After("bastion", 39), 0.5, 0.5), 1.998, 2.002);
+    }
+
+    [Fact]
     public void Un_tireur_garde_ses_distances_il_recule_quand_on_approche()
     {
         var (track, _, _) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("archer", At("7", "0"), "9", minRange: "6") },
@@ -199,6 +215,13 @@ public class Lot115BehaviorTests
         List<JsonElement> lines = Events(hit).ToList();
         int damage = lines.FindIndex(e => e.Str("event") == "damage" && e.Str("target") == "bastion");
         Assert.True(damage >= 0 && damage < lines.FindIndex(e => e.Str("event") == "charged"));
+        // Revue Codex de la PR #33 (tour 4) : le coin d'un obstacle mince frôlé entre deux échantillons (centres à x = 2 et 2,25, tous deux
+        // libres) arrête la charge : le disque balayé le toucherait. Elle s'arrête à x = 2.
+        var sliver = new SpaceObstacle("piquet", new[] { GroundVector.Parse("2.1", "0.49"), GroundVector.Parse("2.12", "0.49"),
+            GroundVector.Parse("2.12", "3"), GroundVector.Parse("2.1", "3") });
+        var (_, corner) = Run(Spatial(Arena(20, sliver), new CombatantSetup[]
+            { Player("bastion", At("10", "0")), Hunter("sanglier", At("0", "0"), "20", firstMs: 0, attacks: Charge("6")) }, Array.Empty<CombatCommand>(), Rules, 2000));
+        Assert.Equal("[2,0]", Assert.Single(Lines(corner, "charged")).GetProperty("position").GetRawText());
     }
 
     [Fact]
@@ -250,6 +273,13 @@ public class Lot115BehaviorTests
             ("{\"fighter\":\"bastion\"", "\"engaged\":false", "\"engaged\":true", "Engagement de « bastion »"),
             ("{\"fighter\":\"renfort\"", "\"struck\":false", "\"struck\":true", "« renfort », pas encore entré"),
             ("{\"fighter\":\"renfort\"", "\"engaged\":false", "\"engaged\":true", "« renfort », pas encore entré"),
+        });
+        // Revue Codex de la PR #33 (tour 4) : avant le premier tick, le guetteur (distance d'engagement) n'est pas encore engagé.
+        var fresh = new CombatEngine(setup, NullCombatLog.Instance);
+        string zero = fresh.Snapshot().Text;
+        EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertRefused(fresh.CompletedSetup(), zero, new[]
+        {
+            ("{\"fighter\":\"guetteur\"", "\"engaged\":false", "\"engaged\":true", "« guetteur », avant le premier tick"),
         });
         EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertResumesIdentically(engine, log);
     }
