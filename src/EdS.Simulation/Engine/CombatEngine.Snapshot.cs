@@ -22,8 +22,8 @@ namespace EdS.Simulation.Engine
     /// </summary>
     public sealed class CombatSnapshot
     {
-        /// <summary>Version du format de l'instantané (indépendante de celle du journal).</summary>
-        public const int FormatVersion = 1;
+        /// <summary>Version du format de l'instantané (indépendante de celle du journal) : 2 depuis le sous-lot 11.5 (engagement des ennemis).</summary>
+        public const int FormatVersion = 2;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -154,7 +154,8 @@ namespace EdS.Simulation.Engine
                 .Field("parryOpen", f.ParryOpen).Field("parryStartTick", f.ParryStartTick).Field("parryEndTick", f.ParryEndTick)
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
-                .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick);
+                .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
+                .Field("engaged", f.Engaged);
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -392,7 +393,8 @@ namespace EdS.Simulation.Engine
         /// bornes ; ni altération, ni garde, ni parade, ni tour annoncé, ni marche chez un mort ou un absent ; altérations uniques, déjà
         /// numérotées, rangées sous la clé de leur cumul, pas encore échues ; place dans l'aire et hors du décor, orientation unitaire ;
         /// éléments de file à leur phase et d'un combattant du bon genre ; commandes à venir toutes en file, au tick de leur instant ;
-        /// réactions en file toutes reportées du tick précédent ; zones verrouillées aux dimensions de leur attaque.
+        /// réactions en file toutes reportées du tick précédent ; zones verrouillées aux dimensions de leur attaque ; sous-lot 11.5 :
+        /// engagement seulement d'un ennemi qui a un comportement, d'emblée sans distance d'engagement.
         /// </summary>
         private void ValidateLoaded(List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)> entries)
         {
@@ -507,6 +509,8 @@ namespace EdS.Simulation.Engine
                     $"Résonance, charges ou garde de {who} impossibles.");
                 Require(f.GlobalCooldownReadyTick >= 0 && f.RegenGranted >= 0 && f.NextTurn >= 0 && (f.NextAttackTick is null || f.NextAttackTick >= CurrentTick),
                     $"Échéances de {who} impossibles.");
+                // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
+                Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
                 // Un mort ou un absent n'a ni altération, ni garde, ni parade, ni tour annoncé, et ne marche pas.
                 if (f.Out)
                     Require(f.Statuses.Count == 0 && !f.Guarding && !f.ParryOpen && f.NextAttackTick is null && f.Body is not { Moving: true },
@@ -633,6 +637,7 @@ namespace EdS.Simulation.Engine
             f.NextAttack = n["nextAttack"].Int;
             if (f.Assailant != null && (f.NextAttack < 0 || f.NextAttack >= f.Assailant.Attacks.Count)) throw new FormatException($"Attaque suivante invalide pour « {f.Id} ».");
             f.NextAttackTick = n["nextAttackTick"].NullableLong;
+            f.Engaged = n["engaged"].Bool;
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),

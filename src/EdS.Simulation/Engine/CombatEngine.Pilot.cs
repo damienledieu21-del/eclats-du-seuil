@@ -226,12 +226,16 @@ namespace EdS.Simulation.Engine
         /// Cible des attaques à cible unique vue au début du tick (<see cref="SingleTarget"/> après les expirations du tick) : la source de
         /// la provocation active la plus récente, sinon la cible du scénario (null si l'assaillant n'a que des attaques de zone).
         /// </summary>
-        private static string? ViewTarget(Fighter assailant, long tick)
+        private string? ViewTarget(Fighter assailant, long tick)
         {
             StatusInstance? taunt = null;
             foreach (StatusInstance status in assailant.Statuses.Values)
                 if (status.Definition.IsTaunt && status.UntilTick > tick && (taunt is null || status.AppliedSeq > taunt.AppliedSeq)) taunt = status;
-            return taunt?.Source ?? assailant.Assailant!.Target;
+            if (taunt?.Source is { } source) return source;
+            AssailantSetup setup = assailant.Assailant!;
+            // Sous-lot 11.5 : cible de scénario là et vivante, sinon l'ennemi le plus proche.
+            if (setup.Behavior is null || (setup.Target != null && !_byId[setup.Target].Out)) return setup.Target;
+            return Nearest(assailant)?.Id;
         }
 
         /// <summary>

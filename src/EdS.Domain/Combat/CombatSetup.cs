@@ -233,9 +233,11 @@ namespace EdS.Domain.Combat
         public AssailantAttack(string id, long rawDamage, DamageType damageType = DamageType.Physique,
             SkillTargeting targeting = SkillTargeting.Enemy, bool unblockable = false, IEnumerable<StatusApplication>? applies = null,
             AttackShape? shape = null, long telegraphMs = 0, Fixed? range = null, Fixed? radius = null, int? angle = null, Fixed? width = null,
-            ShapeCenter center = ShapeCenter.Target, long persistentMs = 0, long pulseMs = 0, bool? guardable = null, bool? parryable = null)
+            ShapeCenter center = ShapeCenter.Target, long persistentMs = 0, long pulseMs = 0, bool? guardable = null, bool? parryable = null,
+            bool charge = false)
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
+            Charge = charge;
             RawDamage = rawDamage;
             DamageType = damageType;
             Targeting = targeting;
@@ -256,6 +258,46 @@ namespace EdS.Domain.Combat
 
         /// <summary>Nombre d'impacts d'une zone persistante (à l'impact, puis toutes les <see cref="PulseMs"/> pendant <see cref="PersistentMs"/>).</summary>
         public long Pulses => Shape == AttackShape.Persistent && PulseMs > 0 ? (PersistentMs - 1) / PulseMs + 1 : 1;
+
+        /// <summary>
+        /// Sous-lot 11.5 : charge. Une bande (<see cref="AttackShape.Line"/>) seulement : à l'impact, après avoir frappé la bande, l'ennemi
+        /// fonce le long de son axe jusqu'au bout, ou jusqu'au premier obstacle ou à la première emprise solide (il s'arrête au contact).
+        /// </summary>
+        public bool Charge { get; }
+    }
+
+    /// <summary>
+    /// Sous-lot 11.5 : comportement d'un ennemi dans un combat positionné (PLAN_LOT_11.md, 11.5). Sans comportement, l'ennemi ne bouge que
+    /// par les commandes du scénario, comme avant. Avec, il choisit sa cible (provocation, sinon sa cible de scénario présente et vivante,
+    /// sinon l'ennemi le plus proche), l'engage quand un ennemi entre dans <see cref="AggroRange"/> (ou qu'on le frappe, ou qu'on le
+    /// provoque), puis se place entre <see cref="MinRange"/> et <see cref="MaxRange"/> de sa cible (distance entre les bords) : il
+    /// approche, poursuit, recule ; avec <see cref="Encircle"/>, la meute qui vise la même cible se répartit autour d'elle. Il s'arrête
+    /// pendant l'annonce d'une de ses attaques.
+    /// </summary>
+    public sealed class AssailantBehavior
+    {
+        /// <summary>Distance maximale à garder avec sa cible, entre les bords des emprises (m) : au-delà, il approche.</summary>
+        public Fixed MaxRange { get; }
+
+        /// <summary>Distance minimale (m) : en deçà, il recule (un tireur garde ses distances) ; 0 par défaut.</summary>
+        public Fixed MinRange { get; }
+
+        /// <summary>Distance d'engagement (m) : il attend qu'un ennemi y entre ; null : engagé dès le départ.</summary>
+        public Fixed? AggroRange { get; }
+
+        /// <summary>Se répartir autour de la cible avec les autres ennemis qui la visent et encerclent (meute).</summary>
+        public bool Encircle { get; }
+
+        /// <summary>Borne technique des distances d'un comportement (m).</summary>
+        public static readonly Fixed MaxDistance = Fixed.FromInt(100);
+
+        public AssailantBehavior(Fixed maxRange, Fixed? minRange = null, Fixed? aggroRange = null, bool encircle = false)
+        {
+            MaxRange = maxRange;
+            MinRange = minRange ?? Fixed.Zero;
+            AggroRange = aggroRange;
+            Encircle = encircle;
+        }
     }
 
     /// <summary>
@@ -293,11 +335,15 @@ namespace EdS.Domain.Combat
         /// <summary>Identifiant de définition des déclencheurs d'un assaillant, dans leur identité journalisée.</summary>
         public string TriggerDefinitionId => "assailant." + Id;
 
+        /// <summary>Sous-lot 11.5 : comportement dans un combat positionné ; null : il ne bouge que par les commandes du scénario.</summary>
+        public AssailantBehavior? Behavior { get; }
+
         public AssailantSetup(string id, string team, Fixed armor, Fixed magicResistance, string? target, long firstAttackMs, long intervalMs,
             IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default, IEnumerable<TriggerDefinition>? triggers = null,
-            long? health = null, CombatantPlacement? placement = null, long? arrivalMs = null)
+            long? health = null, CombatantPlacement? placement = null, long? arrivalMs = null, AssailantBehavior? behavior = null)
             : base(id, team, initiative, placement, arrivalMs)
         {
+            Behavior = behavior;
             Health = health;
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
             Armor = armor;
@@ -629,6 +675,7 @@ namespace EdS.Domain.Combat
                         break;
                     case AssailantSetup assailant:
                         ValidateAssailantShape(assailant, path, tick, errors);
+                        ValidateBehavior(assailant, path, errors);   // sous-lot 11.5
                         break;
                     default:
                         errors.Add(new RuleViolation($"type de combattant non pris en charge : {c.GetType().Name}.", path));
@@ -691,6 +738,9 @@ namespace EdS.Domain.Combat
                 bool moving = command.Action == CombatAction.Move || command.Action == CombatAction.Stop;
                 if (moving && Space is null)
                     errors.Add(new RuleViolation("déplacement dans un combat sans espace (bloc space absent).", path + ".action"));
+                // Sous-lot 11.5 : un ennemi qui a un comportement se déplace seul.
+                if (moving && ids.TryGetValue(command.Actor, out int actorIndex) && Combatants[actorIndex] is AssailantSetup { Behavior: not null })
+                    errors.Add(new RuleViolation("un ennemi qui a un comportement se déplace seul (pas de move ni de stop).", path + ".action"));
                 if (command.Action == CombatAction.Select && Space is null)
                     errors.Add(new RuleViolation("sélection de cible dans un combat sans espace (bloc space absent).", path + ".action"));
                 if (command.Action == CombatAction.Move)
@@ -951,7 +1001,8 @@ namespace EdS.Domain.Combat
                                 foreach (StatusApplication ap in x.Applies.Where(ap => ap.Status == status))
                                 {
                                     // Sous-lot 11.4c : une zone atteint tous les ennemis, à chacun de ses impacts.
-                                    var (set, count) = Reach(a.Id, x.IsZone ? SkillTargeting.AllEnemies : x.Targeting, a.Target, ap.Target);
+                                    // Sous-lot 11.5 : un ennemi qui a un comportement peut viser n'importe quel ennemi (le plus proche).
+                                    var (set, count) = Reach(a.Id, x.IsZone ? SkillTargeting.AllEnemies : x.Targeting, a.Behavior is null ? a.Target : null, ap.Target);
                                     hit.UnionWith(set);
                                     hits = Math.Max(hits, checked(count * x.Pulses));
                                 }
@@ -1062,6 +1113,29 @@ namespace EdS.Domain.Combat
             new CombatSetup(Seed, DurationMs, Stats, Damage, Progression, Combat, Combatants.Concat(joined ?? throw new ArgumentNullException(nameof(joined))),
                 Commands.Concat(submitted ?? throw new ArgumentNullException(nameof(submitted))), Data, Space);
 
+        /// <summary>
+        /// Sous-lot 11.5 : comportement d'un ennemi, dans un combat positionné seulement : distances dans [0, 100] m (engagement dans
+        /// ]0, 100]), minimale au plus égale à la maximale. Un ennemi qui a un comportement se déplace seul : pas de commande move ni stop
+        /// (contrôlé avec les commandes).
+        /// </summary>
+        private void ValidateBehavior(AssailantSetup a, string path, List<RuleViolation> errors)
+        {
+            if (a.Behavior is not { } b) return;
+            string at = path + ".behavior";
+            if (Space is null) errors.Add(new RuleViolation("comportement dans un combat sans espace (bloc space absent).", at));
+            void Distance(Fixed value, string field, bool positive)
+            {
+                if (value < Fixed.Zero || value > AssailantBehavior.MaxDistance || (positive && value == Fixed.Zero))
+                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                        $"distance hors de {(positive ? "]" : "[")}0, {AssailantBehavior.MaxDistance}] m (borne technique).", $"{at}.{field}"));
+            }
+            Distance(b.MaxRange, "maxRange", positive: false);
+            Distance(b.MinRange, "minRange", positive: false);
+            if (b.AggroRange is { } aggro) Distance(aggro, "aggroRange", positive: true);
+            if (b.MinRange > b.MaxRange && b.MaxRange >= Fixed.Zero && b.MaxRange <= AssailantBehavior.MaxDistance)
+                errors.Add(new RuleViolation("distance minimale plus grande que la maximale.", at + ".minRange"));
+        }
+
         private void ValidateAssailantShape(AssailantSetup a, string path, long tick, List<RuleViolation> errors)
         {
             // Sous-lot 11.1 : un assaillant mortel commence vivant ; null garde les PV infinis de l'entraînement (A21).
@@ -1102,8 +1176,9 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation(problem.StartsWith("altération inconnue", StringComparison.Ordinal) ? RuleViolationKind.UnknownReference : RuleViolationKind.InvalidValue,
                             problem, $"{attackPath}.applies[{m}].status"));
             }
-            if (a.Target is null && a.Attacks.Any(x => x.Targeting == SkillTargeting.Enemy))
-                errors.Add(new RuleViolation("une attaque à cible unique exige une cible pour l'assaillant.", path + ".target"));
+            // Sous-lot 11.5 : un ennemi qui a un comportement choisit sa cible (le plus proche) ; sa cible de scénario est facultative.
+            if (a.Target is null && a.Behavior is null && a.Attacks.Any(x => x.Targeting == SkillTargeting.Enemy))
+                errors.Add(new RuleViolation("une attaque à cible unique exige une cible pour l'assaillant (ou un comportement, qui choisit le plus proche).", path + ".target"));
             // Lot 7.3 (Q4) : déclencheurs d'un assaillant de scénario, forme et références.
             TriggerDefinition.ValidateList(a.Triggers, path + ".triggers", 1, false, errors);
             TriggerDefinition.ValidateReferences(a.Triggers, path + ".triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, Combat.AreaStrikeMinCooldownMs, errors);
@@ -1155,6 +1230,7 @@ namespace EdS.Domain.Combat
                 Forbidden(attack.Center != ShapeCenter.Target, "center", historical);
                 Forbidden(attack.PersistentMs != 0, "persistentMs", historical);
                 Forbidden(attack.PulseMs != 0, "tickMs", historical);
+                Forbidden(attack.Charge, "charge", historical);
                 return;
             }
             if (!Enum.IsDefined(typeof(AttackShape), shape))
@@ -1197,6 +1273,7 @@ namespace EdS.Domain.Combat
                 Forbidden(attack.PulseMs != 0, "tickMs", notFor);
             }
             if (attack.IsZone) Forbidden(attack.ParryableOverride == true, "parryable", "une zone ne se pare pas (seul un coup dirigé se pare).");
+            Forbidden(attack.Charge && shape != AttackShape.Line, "charge", "seule une bande (shape line) peut être une charge (sous-lot 11.5).");
 
             // Annonce évitable : réaction minimale + sortie de la forme, au pas de base, pour le plus grand joueur.
             if (!attack.IsZone || errors.Count > before) return;
