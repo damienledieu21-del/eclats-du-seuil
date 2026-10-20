@@ -202,7 +202,7 @@ namespace EdS.Game
             }
             Layout(network);
             float half = Hud.Width / 2f;
-            var looking = new List<Vector2>();
+            var looking = new List<(int Id, Vector2 At)>();
             List<Finger> fingers = Fingers();
             Forget(fingers);
             for (int i = 0; i < fingers.Count; i++)
@@ -251,17 +251,24 @@ namespace EdS.Game
                         break;
                 }
                 if (at.x >= half && !_pressed.ContainsKey(touch.fingerId) && touch.fingerId != _stickFinger
-                    && touch.phase != TouchPhase.Ended && touch.phase != TouchPhase.Canceled) looking.Add(at);
+                    && touch.phase != TouchPhase.Ended && touch.phase != TouchPhase.Canceled) looking.Add((touch.fingerId, at));
             }
             // Deux doigts sur la moitié droite : l'écart règle la vue (s'écarter : vers la vue 2, plus proche).
             if (looking.Count >= 2)
             {
-                float spread = Vector2.Distance(looking[0], looking[1]);
+                float spread = Vector2.Distance(looking[0].At, looking[1].At);
                 if (_pinchLast >= 0f) ViewDelta = (spread - _pinchLast) / 600f;
                 _pinchLast = spread;
                 YawDelta = 0f;
             }
             else _pinchLast = -1f;
+            // Revue Codex de la PR #36 (4e tour) : le doigt de regard levé (fin d'un pincement), un autre doigt resté sur la moitié droite
+            // reprend le regard aussitôt, sans avoir à être levé puis reposé.
+            if (_lookFinger < 0 && looking.Count > 0)
+            {
+                _lookFinger = looking[0].Id;
+                _lookLast = looking[0].At;
+            }
             if (_stickFinger < 0) Move = Vector2.zero;
             else
             {
