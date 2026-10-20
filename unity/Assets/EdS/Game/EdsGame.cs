@@ -26,6 +26,7 @@ namespace EdS.Game
     {
         private static readonly string[] ScenarioFiles =
         {
+            "vallons_demo.json",      // sous-lot 11.6 : coin des Vallons, combat positionné (déplacement simulé par le moteur)
             "meute_a_vaincre.json",   // sous-lot 11.1 : loups mortels, le combat se gagne
             "entrainement_garde_parade.json",
             "mesures/s1_mannequin.json",
@@ -282,6 +283,7 @@ namespace EdS.Game
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+            _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
         }
 
         /// <summary>
@@ -496,11 +498,13 @@ namespace EdS.Game
             player = _combat.Player();
             _arena.Sync(_combat, player, combat?.AllyId);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+            _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
         }
 
         /// <summary>
-        /// Déplacement purement visuel, relatif à la caméra (ZQSD en AZERTY, WASD en QWERTY, ou flèches : voir <see cref="Keys"/>) ;
-        /// impossible hors de combat ou étourdi.
+        /// Déplacement relatif à la caméra (ZQSD en AZERTY, WASD en QWERTY, ou flèches : voir <see cref="Keys"/>). Sous-lot 11.6 : dans un
+        /// combat positionné, la direction est envoyée au moteur, qui déplace le personnage (décor, emprises, étourdissement) ; sinon le
+        /// déplacement est purement visuel, impossible hors de combat ou étourdi.
         /// </summary>
         private void Move(PlayerState player)
         {
@@ -508,6 +512,14 @@ namespace EdS.Game
                 - (Input.GetKey(Keys.Left) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
             float z = (Input.GetKey(Keys.Forward) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
                 - (Input.GetKey(Keys.Back) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
+            if (_arena.Spatial)
+            {
+                Vector3 wish = x != 0f || z != 0f ? Quaternion.Euler(0f, _camera.Yaw, 0f) * new Vector3(x, 0f, z).normalized : Vector3.zero;
+                _combat.SetMove(wish.x, wish.z);
+                _moving = !player.View.IsDead && (x != 0f || z != 0f);
+                if (player.View.Facing is EdS.Domain.Space.GroundVector f) _playerYaw = Mathf.Atan2(f.X.Raw, f.Z.Raw) * Mathf.Rad2Deg;
+                return;
+            }
             bool blocked = player.View.IsDead || player.View.States.Contains("stun") || _paused;
             _moving = !blocked && (x != 0f || z != 0f);
             Vector3 delta = Vector3.zero;

@@ -170,15 +170,16 @@ namespace EdS.Game
         public static void Help(string scenario, string build, string camera, bool paused, bool network)
         {
             float y = 20f;
-            Fill(new Rect(10, 10, 560, 324), new Color(0f, 0f, 0f, 0.4f));
+            Fill(new Rect(10, 10, 560, 348), new Color(0f, 0f, 0f, 0.4f));
             Title(new Rect(20, y, 540, 34), "Éclats du Seuil — prototype");
             Small(new Rect(20, y + 36, 540, 24), $"{(network ? "Réseau" : "Scénario")} : {scenario}  ·  Build : {build}");
             Small(new Rect(20, y + 60, 540, 24), $"Caméra : {camera}{(paused ? "  ·  <color=#ffd84a>PAUSE</color>" : "")}");
             // Sous-lot 10.4 : en réseau, pas de pause ni de scénario suivant (le serveur mène le combat) ; G vise l'autre joueur.
-            Small(new Rect(20, y + 92, 540, 230),
+            Small(new Rect(20, y + 92, 540, 254),
                 "ZQSD (WASD en QWERTY) / flèches : se déplacer   ·   clic droit ou Maj : garde (maintenir)\n" +
                 "Espace : parade parfaite (juste avant l'impact)   ·   1 à 4 : compétences   ·   R : ultime\n" +
-                "Tab : changer de cible   ·   C : caméra   ·   A / E (Q / E en QWERTY) : tourner   ·   molette : zoom\n" +
+                "Tab : changer de cible   ·   molette : de la vue 1 à la vue 2   ·   C : rappel de l'autre vue\n" +
+                "A / E (Q / E en QWERTY) : tourner   ·   bouton du milieu maintenu : tourner librement\n" +
                 (network
                     ? "G : allié visé par les soutiens   ·   F1 à F5 et T (salle d'attente) : build\nM : menu réseau   ·   H : masquer l'aide"
                     : "N : scénario suivant   ·   F1 à F5 : build   ·   Retour arrière : recommencer\n" +
