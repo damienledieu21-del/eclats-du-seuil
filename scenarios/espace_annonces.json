@@ -1,0 +1,209 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 6,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 1143,
+    "durationMs": 8000,
+    "space": {
+      "bounds": {
+        "min": [
+          -12,
+          -8
+        ],
+        "max": [
+          12,
+          8
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 30,
+          "attributes": {
+            "force": 30,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 30,
+            "volonte": 15,
+            "endurance": 20
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.rempart.peau_de_fer": 5,
+            "talent.bastion.rempart.souffle_du_roc": 4,
+            "talent.bastion.rempart.poids_du_rempart": 5,
+            "talent.bastion.rempart.rempart_eternel": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.gardien.vigilance": 5,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.onde_de_rupture"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.endurance_du_roc",
+            "skill.bastion.bouclier_lourd",
+            "skill.bastion.reserve_de_charges",
+            "skill.bastion.posture_de_fer"
+          ]
+        },
+        "position": [
+          -4,
+          0
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.5
+      },
+      {
+        "id": "ogre",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "health": 4000,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion",
+        "firstAttackMs": 1000,
+        "intervalMs": 3000,
+        "attacks": [
+          {
+            "id": "ecrasement",
+            "rawDamage": 120,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 900,
+            "radius": 2
+          },
+          {
+            "id": "souffle",
+            "rawDamage": 80,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "cone",
+            "telegraphMs": 1100,
+            "range": 8,
+            "angle": 90,
+            "guardable": true
+          },
+          {
+            "id": "coup",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 2.5
+          }
+        ],
+        "position": [
+          2,
+          0
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 1.2,
+        "speed": 3
+      },
+      {
+        "id": "loup",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "health": 800,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion",
+        "firstAttackMs": 5000,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 50,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 2
+          }
+        ],
+        "position": [
+          -10,
+          2.75
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 5
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 0,
+        "actor": "bastion",
+        "action": "select",
+        "target": "ogre"
+      },
+      {
+        "atMs": 1100,
+        "actor": "bastion",
+        "action": "move",
+        "direction": [
+          0,
+          1
+        ]
+      },
+      {
+        "atMs": 1650,
+        "actor": "bastion",
+        "action": "stop"
+      },
+      {
+        "atMs": 3500,
+        "actor": "bastion",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 3000,
+        "actor": "loup",
+        "action": "move",
+        "direction": [
+          1,
+          0
+        ]
+      },
+      {
+        "atMs": 3800,
+        "actor": "loup",
+        "action": "stop"
+      }
+    ]
+  }
+}

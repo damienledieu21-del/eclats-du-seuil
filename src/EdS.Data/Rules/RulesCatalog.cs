@@ -158,6 +158,9 @@ namespace EdS.Data.Rules
             new RuleField("combat.contact.playerCreature", RuleValueKind.Token, C, nameof(CombatRules.PlayerCreatureContact), ContactRuleIds.All),
             new RuleField("combat.contact.crossingSpeedFactor", RuleValueKind.Decimal, C, nameof(CombatRules.CrossingSpeedFactor)),
             new RuleField("combat.contact.largeCreatureRadius", RuleValueKind.Decimal, C, nameof(CombatRules.LargeCreatureRadius)),
+            // Sous-lot 11.4c (schéma 12) : arc du bouclier et réaction minimale des annonces.
+            new RuleField("combat.guard.arcDegrees", RuleValueKind.Int32, C, nameof(CombatRules.GuardArcDegrees)),
+            new RuleField("combat.telegraph.minReactionMs", RuleValueKind.Int64, C, nameof(CombatRules.TelegraphMinReactionMs)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

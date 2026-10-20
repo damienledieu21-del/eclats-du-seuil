@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.17.0";
+        public const string Version = "0.18.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -65,9 +65,16 @@ namespace EdS.Simulation.Engine
         /// refus <c>targetOutOfRange</c> et <c>noLineOfSight</c> (<c>commandRejected</c>) et raison <c>outOfRange</c> d'une réaction
         /// annulée (<c>reactionCancelled</c>) ; les cibles d'une compétence de groupe, d'une application de groupe et d'une réaction
         /// sont limitées à leur rayon ou à leur portée, et une protection hors de portée ne transfère rien. Lignes et champs inchangés :
-        /// un combat sans espace écrit exactement les mêmes lignes qu'au format 10. Un journal d'un autre format est refusé au rejeu.
+        /// un combat sans espace écrit exactement les mêmes lignes qu'au format 10. 12 (sous-lot 11.4c) : attaques annoncées et garde de
+        /// face d'un combat positionné. L'en-tête peut porter la forme d'une attaque (<c>shape</c>, <c>telegraphMs</c>, <c>range</c>,
+        /// <c>radius</c>, <c>angle</c>, <c>width</c>, <c>center</c>, <c>persistentMs</c>, <c>tickMs</c>, <c>guardable</c>, <c>parryable</c>)
+        /// et des commandes <c>select</c> ; <c>attackStarted</c> d'une attaque qui a une forme décrit la forme verrouillée et son tick
+        /// d'impact ; nouvelles lignes <c>attackLanded</c> (impact ou impulsion d'une zone, avec ses cibles), <c>attackCancelled</c>
+        /// (diagnostic) et <c>targetSelected</c> ; défense <c>behind</c> (coup venu de dos) ; raisons de saut <c>targetOutOfRange</c> et
+        /// <c>noLineOfSight</c> (<c>attackSkipped</c>). Un combat sans espace écrit exactement les mêmes lignes qu'au format 11. Un journal
+        /// d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 11;
+        public const int LogFormatVersion = 12;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -297,6 +304,13 @@ namespace EdS.Simulation.Engine
             /// <summary>Sous-lot 11.4b : portée ou rayon de la compétence ; les attaques d'assaillant n'en ont pas encore (11.4c).</summary>
             public Fixed? Range => Combat?.Range;
             public bool Unblockable => Combat?.Unblockable ?? Attack?.Unblockable ?? Strike!.Unblockable;
+
+            /// <summary>Sous-lot 11.4c : défenses admises par l'impact (une attaque d'assaillant les déclare ; compétences et frappes : non imparables).</summary>
+            public bool Parryable => Attack?.Parryable ?? !Unblockable;
+            public bool Guardable => Attack?.Guardable ?? !Unblockable;
+
+            /// <summary>Sous-lot 11.4c : origine du coup pour le bouclier quand ce n'est pas l'acteur (zone : son origine verrouillée).</summary>
+            public long? FromX, FromZ;
             public IReadOnlyList<StatusApplication> Applies => Combat?.Applies ?? Attack?.Applies ?? (IReadOnlyList<StatusApplication>)Array.Empty<StatusApplication>();
 
             /// <summary>Sous-lot 8.3 (X5) : l'action inflige-t-elle des dégâts directs ? Faux pour une compétence de soutien.</summary>
@@ -640,6 +654,7 @@ namespace EdS.Simulation.Engine
                 case CombatAction.GuardStop:
                 case CombatAction.Move:   // sous-lot 11.4 : moveStarted, moveStopped ou refus
                 case CombatAction.Stop:
+                case CombatAction.Select:   // sous-lot 11.4c : targetSelected ou refus
                     return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
@@ -662,8 +677,12 @@ namespace EdS.Simulation.Engine
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
-            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || target is { IsDead: true };
-            return Cost.Enqueue.If(checked(tick + setup.IntervalMs / _tickMs) < _durationTicks) + (skipped ? Cost.Line : Observable(TriggerEvent.SkillCast));
+            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || (target is { IsDead: true } && UsesTarget(attack))
+                || DirectedReach(assailant, attack, target) != null;
+            // Sous-lot 11.4c : une attaque annoncée (ou une zone) programme son impact, s'il tombe avant la fin.
+            bool impact = !skipped && Deferred(attack) && ImpactTickOf(tick, attack) < _durationTicks;
+            return Cost.Enqueue.If(checked(tick + setup.IntervalMs / _tickMs) < _durationTicks) + (skipped ? Cost.Line : Observable(TriggerEvent.SkillCast))
+                + Cost.Enqueue.If(impact);
         }
 
         private (SkillDefinition? Skill, Fighter? Target, int ResonanceCost) CastContext(CommandItem item, Fighter actor)
@@ -720,6 +739,16 @@ namespace EdS.Simulation.Engine
                     if (Reject(tick, item, actor, CheckMove(actor) ?? (actor.Body!.Moving ? null : "notMoving"))) return null;
                     StopMoving(tick, item, actor, root);
                     return null;
+
+                // Sous-lot 11.4c : sélection de cible (oriente la garde). Un personnage vivant sélectionne un combattant vivant, ou rien.
+                case CombatAction.Select:
+                {
+                    Fighter? selected = command.Target is null ? null : _byId[command.Target];
+                    if (Reject(tick, item, actor, CheckAlive(actor) ?? (selected is { IsDead: true } ? "targetDead" : null))) return null;
+                    actor.Body!.Selected = selected;
+                    Emit(tick, CombatPhase.Commands, "targetSelected", root, w => w.Field("actor", actor.Id).Field("command", item.Index).Field("target", selected?.Id));
+                    return null;
+                }
 
                 default:
                     return CastSkill(tick, item, actor, root);
@@ -870,15 +899,41 @@ namespace EdS.Simulation.Engine
             }
             if (target is { IsDead: true })
             {
+                // Revue Codex de la PR #31 : une zone centrée sur l'assaillant ne dépend pas de sa cible ; elle part sans elle.
+                if (!UsesTarget(attack)) target = null;
+                else
+                {
+                    EmitDiagnostic(tick, CombatPhase.Commands, "attackSkipped", w => w
+                        .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target.Id).Field("reason", "targetDead"));
+                    return null;
+                }
+            }
+            // Sous-lot 11.4c : un coup dirigé exige sa cible à portée et en vue, au tour de l'assaillant.
+            if (DirectedReach(assailant, attack, target) is { } unreachable)
+            {
                 EmitDiagnostic(tick, CombatPhase.Commands, "attackSkipped", w => w
-                    .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target.Id).Field("reason", "targetDead"));
+                    .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target!.Id).Field("reason", unreachable));
                 return null;
             }
+            bool deferred = Deferred(attack);
+            long impactTick = ImpactTickOf(tick, attack);
+            AttackZone? zone = attack.IsZone ? LockZone(assailant, attack, target) : null;
             Provenance root = Provenance.NewRoot($"assailantTurn:{assailant.Id}:{turn.Turn}", assailant.Id);
-            long started = Emit(tick, CombatPhase.Commands, "attackStarted", root, new ObservedEvent { Kind = TriggerEvent.SkillCast, Source = assailant.Id, Target = target?.Id, Skill = attack.Id }, w => w
-                .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id)
-                .Field("rawDamage", attack.RawDamage).Field("unblockable", attack.Unblockable).Names("applies", attack.Applies.Select(a => a.Status)));
-            return new PendingAction { Actor = assailant, Attack = attack, Target = target, GeneratesResonance = false, Origin = root.CausedBy(started) };
+            long started = Emit(tick, CombatPhase.Commands, "attackStarted", root, new ObservedEvent { Kind = TriggerEvent.SkillCast, Source = assailant.Id, Target = target?.Id, Skill = attack.Id }, w =>
+            {
+                w.Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id)
+                    .Field("rawDamage", attack.RawDamage).Field("unblockable", attack.Unblockable).Names("applies", attack.Applies.Select(a => a.Status));
+                if (attack.Shape != null) WriteForm(w, attack, zone, impactTick);
+            });
+            Provenance origin = root.CausedBy(started);
+            if (!deferred) return new PendingAction { Actor = assailant, Attack = attack, Target = target, GeneratesResonance = false, Origin = origin };
+            if (impactTick < _durationTicks)
+            {
+                var impact = new AttackImpact { Assailant = assailant, Attack = attack, Target = zone is null ? target : null, Zone = zone, ImpactTick = impactTick, Origin = origin };
+                Schedule(impactTick, CombatPhase.Resolution, impact);
+                _announced.Add(impact);
+            }
+            return null;
         }
 
         /// <summary>
@@ -928,36 +983,43 @@ namespace EdS.Simulation.Engine
         private void RunResolution(long tick, List<PendingAction> actions)
         {
             foreach (PendingAction action in actions)
-            {
-                IReadOnlyList<Fighter> targets = ActionTargets(action);
-                // A5 : une attaque directe réussie rapporte de la Résonance une seule fois, quel que soit le nombre de cibles. Sous-lot 8.3 :
-                // une compétence de soutien n'a pas d'impact direct, donc pas de Résonance.
-                bool damaging = action.Damaging;
-                bool resonance = damaging && targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
-                // Lot 7.1 : l'action entière (toutes ses cibles, et sous-lot 8.3 ses applications à cible propre) est réservée avant le
-                // premier impact. Les cibles d'impact étant distinctes, l'impact sur l'une ne change pas le coût prévu pour les suivantes ;
-                // les postures qu'une étape laisse à une cible sont reportées sur les étapes suivantes de la même action (Postures).
-                var postures = new Postures();
-                Cost cost = resonance ? GainCost(action.Actor, action.Actor.Rules.ResonancePerDirectHit) : Cost.None;
-                foreach (Fighter target in targets)
-                    cost += damaging ? HitCost(tick, action, target, postures) : SupportCost(tick, action, target, postures);
-                var own = action.Applies.Where(a => a.Target != ApplicationTarget.Targets).Select(a => (Application: a, Targets: OwnTargets(action.Actor, a))).ToList();
-                foreach (var (application, ownTargets) in own)
-                    foreach (Fighter target in ownTargets) cost += ApplicationCost(tick, action, application, target, postures);
-                TraceReservation("action", tick, cost, removing: 0);
-                Reserve(cost);
-                foreach (Fighter target in targets)
-                {
-                    if (damaging) Hit(tick, action, target);
-                    else Support(tick, action, target);
-                }
-                if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, action.Actor.Rules.ResonancePerDirectHit, "directHit", action.Origin);
-                foreach (var (application, ownTargets) in own)
-                    foreach (Fighter target in ownTargets) Apply(tick, CombatPhase.Resolution, action, application, target, action.Origin);
-            }
+                ResolveAction(tick, action, ActionTargets(action), Cost.None, dequeue: false, null);
             // Lot 7.3 : puis les notifications et réactions de la phase, dans l'ordre de la file (réactions reportées du tick
-            // précédent d'abord, puis celles de ce tick).
+            // précédent d'abord, puis celles de ce tick). Sous-lot 11.4c : les impacts des attaques annoncées y sont, à leur rang.
             DrainTriggers(tick, CombatPhase.Resolution);
+        }
+
+        /// <summary>
+        /// Résout une action sur ses cibles. A5 : une attaque directe réussie rapporte de la Résonance une seule fois, quel que soit le
+        /// nombre de cibles ; sous-lot 8.3 : une compétence de soutien n'a pas d'impact direct, donc pas de Résonance. Lot 7.1 : l'action
+        /// entière (toutes ses cibles, et sous-lot 8.3 ses applications à cible propre) est réservée avant le premier impact, avec
+        /// <paramref name="prefix"/> (sous-lot 11.4c : retrait de l'impact de la file, ligne <c>attackLanded</c> et impulsion suivante,
+        /// faits par <paramref name="afterReserve"/>). Les cibles d'impact étant distinctes, l'impact sur l'une ne change pas le coût prévu
+        /// pour les suivantes ; les postures qu'une étape laisse à une cible sont reportées sur les étapes suivantes (Postures).
+        /// </summary>
+        private void ResolveAction(long tick, PendingAction action, IReadOnlyList<Fighter> targets, Cost prefix, bool dequeue, System.Action? afterReserve)
+        {
+            bool damaging = action.Damaging;
+            bool resonance = damaging && targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
+            var postures = new Postures();
+            Cost cost = prefix + (resonance ? GainCost(action.Actor, action.Actor.Rules.ResonancePerDirectHit) : Cost.None);
+            foreach (Fighter target in targets)
+                cost += damaging ? HitCost(tick, action, target, postures) : SupportCost(tick, action, target, postures);
+            var own = action.Applies.Where(a => a.Target != ApplicationTarget.Targets).Select(a => (Application: a, Targets: OwnTargets(action.Actor, a))).ToList();
+            foreach (var (application, ownTargets) in own)
+                foreach (Fighter target in ownTargets) cost += ApplicationCost(tick, action, application, target, postures);
+            TraceReservation(dequeue ? "impact" : "action", tick, cost, removing: dequeue ? 1 : 0);
+            if (dequeue) ReserveAndDequeue(cost);
+            else Reserve(cost);
+            afterReserve?.Invoke();
+            foreach (Fighter target in targets)
+            {
+                if (damaging) Hit(tick, action, target);
+                else Support(tick, action, target);
+            }
+            if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, action.Actor.Rules.ResonancePerDirectHit, "directHit", action.Origin);
+            foreach (var (application, ownTargets) in own)
+                foreach (Fighter target in ownTargets) Apply(tick, CombatPhase.Resolution, action, application, target, action.Origin);
         }
 
         /// <summary>
@@ -972,16 +1034,15 @@ namespace EdS.Simulation.Engine
             // notifiée, même si la part est nulle (le coût ne dépend jamais du montant des dégâts).
             cost += Cost.Line.If(ActiveProtection(target) != null);
             bool guarding = target.Guarding, parryOpen = target.ParryOpen;
-            bool defending = target.Character != null && !target.IsDead && (target.ParryOpen || target.Guarding);
+            Defense applicable = DefenseOf(action, target, target.ParryOpen, target.Guarding);
             bool parried = false;
-            if (defending && action.Unblockable) { }
-            else if (defending && target.ParryOpen)
+            if (applicable == Defense.Parry)
             {
                 parried = true;
                 if (!target.ParrySucceeded)
                     cost += Observable(TriggerEvent.PerfectParry) + GainCost(target, _rules.RampartChargesPerParry) + GainCost(target, _rules.ResonancePerPerfectParry);
             }
-            else if (defending)
+            else if (applicable == Defense.Guard)
             {
                 if (GuardBreaksOnBlock(target))
                 {
@@ -1082,16 +1143,21 @@ namespace EdS.Simulation.Engine
             Fixed buffDealt = BuffSum(actor, ModifierField.DamageDealt);
             if (buffDealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Alteration, buffDealt);
 
-            // Défense de la cible : parade (prioritaire) ou garde ; jamais les deux. Un impact imparable ignore l'une et l'autre.
+            // Défense de la cible : parade (prioritaire) ou garde ; jamais les deux. Un impact imparable ignore l'une et l'autre. Sous-lot
+            // 11.4c : seulement contre un coup venu de l'arc frontal, et seulement les défenses que l'attaque admet.
             string defense = "none";
             Fixed mitigation = Fixed.Zero;
             bool parryReward = false, blockReward = false;
-            bool defending = target.Character != null && !target.IsDead && (target.ParryOpen || target.Guarding);
-            if (defending && action.Unblockable)
+            Defense applicable = DefenseOf(action, target, target.ParryOpen, target.Guarding);
+            if (applicable == Defense.Ignored)
             {
                 defense = "unblockable";
             }
-            else if (defending && target.ParryOpen)
+            else if (applicable == Defense.Behind)
+            {
+                defense = "behind";
+            }
+            else if (applicable == Defense.Parry)
             {
                 defense = "parry";
                 mitigation = _rules.ParryDamageReduction;
@@ -1103,7 +1169,7 @@ namespace EdS.Simulation.Engine
                     parryEid = Emit(tick, phase, "parrySucceeded", origin, HitObserved(TriggerEvent.PerfectParry, action, target, HitDefense.Parry), w => w.Field("actor", target.Id).Field("source", actor.Id));
                 }
             }
-            else if (defending)
+            else if (applicable == Defense.Guard)
             {
                 if (GuardBreaksOnBlock(target))
                 {
@@ -1167,7 +1233,8 @@ namespace EdS.Simulation.Engine
             if (critical) actor.Result.CriticalHits++;
             ApplyAbsorption(absorption);
             ApplyTransfer(transfer, received);
-            ObservedEvent hit = HitObserved(TriggerEvent.HitDealt, action, target, TriggerIds.Defenses[defense]);
+            // Sous-lot 11.4c : un coup de dos est observé comme un coup sans défense (le vocabulaire des filtres ne change pas).
+            ObservedEvent hit = HitObserved(TriggerEvent.HitDealt, action, target, TriggerIds.Defenses[defense == "behind" ? "none" : defense]);
             hit.Also = TriggerEvent.HitTaken;
             long damage = Emit(tick, phase, "damage", origin, hit, w =>
             {

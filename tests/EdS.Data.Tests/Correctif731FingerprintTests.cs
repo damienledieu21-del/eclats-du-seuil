@@ -123,7 +123,7 @@ public class Correctif731FingerprintTests
 
         // Mannequin sans défense, Fragilité à 0 puis 6 500 ms sur 7 000 ms : B reçoit « none » à l'expiration (6 000 ms).
         string json = $$"""
-            { "schemaVersion": 5, "kind": "scenario", "contentVersion": "0.1.0-test",
+            { "schemaVersion": 6, "kind": "scenario", "contentVersion": "0.1.0-test",
               "data": { "seed": 42, "durationMs": 7000, "commands": [],
                 "combatants": [ { "id": "target", "type": "dummy", "team": "blue", "initiative": 0, "armor": 0, "magicResistance": 0 },
                   {{FragilityAssailant("target", 0, 6500).ToJsonString().Replace("\"cibles\"", "\"red\"")}} ] } }

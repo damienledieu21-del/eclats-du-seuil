@@ -28,12 +28,14 @@ namespace EdS.Data
     /// <c>combat.movement.guardSpeedFactor</c>, <c>combat.contact.playerCreature</c>, <c>combat.contact.crossingSpeedFactor</c> et
     /// <c>combat.contact.largeCreatureRadius</c> (déplacement et contact d'un combat positionné). Classes inchangées (8) ;
     /// 11 (règles) et 9 (classes) = sous-lot 11.4b, portées d'un combat positionné : <c>statuses[].range</c> (protection seulement)
-    /// dans les règles ; <c>combat.range</c>, <c>combat.applies[].range</c> et <c>triggers[].effects[].range</c> dans les classes.</para>
+    /// dans les règles ; <c>combat.range</c>, <c>combat.applies[].range</c> et <c>triggers[].effects[].range</c> dans les classes ;
+    /// 12 (règles) = sous-lot 11.4c : <c>combat.guard.arcDegrees</c> (arc frontal du bouclier) et <c>combat.telegraph.minReactionMs</c>
+    /// (réaction minimale des annonces). Classes inchangées (9).</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 11;
+        public const int RulesSchemaVersion = 12;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
         public const int ClassSchemaVersion = 9;
@@ -44,8 +46,8 @@ namespace EdS.Data
         /// <summary>
         /// Version de contenu des règles livrées : provisoires, non équilibrées. 0.7.0 : altérations du Bastion (sous-lot 8.4) ;
         /// 0.8.0 : altérations des talents du Gardien (sous-lot 8.5) ; 0.9.0 : déplacement et contact (sous-lot 11.4a) ; 0.10.0 :
-        /// portée du lien protecteur (sous-lot 11.4b).
+        /// portée du lien protecteur (sous-lot 11.4b) ; 0.11.0 : arc du bouclier et réaction minimale des annonces (sous-lot 11.4c).
         /// </summary>
-        public const string ProvisionalRulesContentVersion = "0.10.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.11.0-provisoire";
     }
 }

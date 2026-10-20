@@ -84,6 +84,9 @@ namespace EdS.Simulation.Engine
         /// <summary>Déplacement non bloqué par une altération encore active à ce tick (l'étourdissement immobilise) ; faux hors combat positionné.</summary>
         public bool CanMove { get; internal set; }
 
+        /// <summary>Sous-lot 11.4c : cible sélectionnée (commande <c>select</c>), vers laquelle le personnage se tourne en garde ; null sinon.</summary>
+        public string? SelectedTarget { get; internal set; }
+
         /// <summary>Tick de disponibilité d'une compétence (0 si jamais lancée).</summary>
         public long CooldownReadyTick(string skill) => CooldownReadyTicks.TryGetValue(skill, out long tick) ? tick : 0;
 
@@ -195,6 +198,7 @@ namespace EdS.Simulation.Engine
                 view.Radius = Fixed.FromRaw(body.Radius);
                 view.MoveDirection = body.Moving ? GroundVector.FromRaw(body.DirectionX, body.DirectionZ) : (GroundVector?)null;
                 view.CanMove = !f.IsDead && (f.Character != null || f.Assailant != null) && !Blocked(StatusBlocks.Movement);   // un mannequin ne marche pas
+                view.SelectedTarget = body.Selected?.Id;
             }
             if (f.Assailant is { } assailant)
             {
@@ -255,6 +259,11 @@ namespace EdS.Simulation.Engine
                     throw new ArgumentException("Action inconnue.", nameof(commands));
                 if ((command.Action == CombatAction.Move || command.Action == CombatAction.Stop) && _setup.Space is null)
                     throw new ArgumentException("Déplacement dans un combat sans espace (bloc space absent).", nameof(commands));
+                // Sous-lot 11.4c : sélection seulement dans un combat positionné ; une cible seulement pour une compétence ou une sélection.
+                if (command.Action == CombatAction.Select && _setup.Space is null)
+                    throw new ArgumentException("Sélection de cible dans un combat sans espace (bloc space absent).", nameof(commands));
+                if (command.Target != null && command.Action != CombatAction.UseSkill && command.Action != CombatAction.Select)
+                    throw new ArgumentException("Une garde, une parade ou un déplacement n'a pas de cible.", nameof(commands));
                 if (command.Action == CombatAction.Move ? command.Direction is not { } direction || !SpaceLimits.IsDirection(direction) : command.Direction != null)
                     throw new ArgumentException(command.Action == CombatAction.Move
                         ? "Direction de déplacement : composantes dans [−1, 1], non toutes deux nulles."

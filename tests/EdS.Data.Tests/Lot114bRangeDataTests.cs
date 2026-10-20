@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EdS.Data;
 using EdS.Data.Classes;
 using EdS.Data.Json;
 using EdS.Data.Rules;
@@ -193,7 +194,7 @@ public class Lot114bRangeDataTests
         Assert.NotNull(combat["properties"]!["applies"]!["items"]!["properties"]!["range"]);
         Assert.NotNull(klass["$defs"]!["trigger"]!["properties"]!["effects"]!["items"]!["properties"]!["range"]);
         JsonNode rules = Schema("rules.schema.json");
-        Assert.Equal(11, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(DataFormat.RulesSchemaVersion, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Null(rules["$defs"]!["trigger"]!["properties"]!["effects"]!["items"]!["properties"]!["range"]);
         Assert.Null(Schema("scenario.schema.json")["$defs"]!["trigger"]!["properties"]!["effects"]!["items"]!["properties"]!["range"]);
     }

@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 11,
+  "schemaVersion": 12,
   "kind": "rules",
-  "contentVersion": "0.10.0-provisoire",
+  "contentVersion": "0.11.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -87,7 +87,8 @@
         "maxDamageReduction": 0.75,
         "upkeepPerSecond": 2,
         "costPerBlock": 10,
-        "breakStatus": "guardBreak"
+        "breakStatus": "guardBreak",
+        "arcDegrees": 180
       },
       "damageTaken": {
         "maxReduction": 0.85
@@ -116,6 +117,9 @@
         "playerCreature": "solid",
         "crossingSpeedFactor": 0.3,
         "largeCreatureRadius": 1
+      },
+      "telegraph": {
+        "minReactionMs": 300
       }
     },
     "statuses": [

@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 5
+      "const": 6
     },
     "kind": {
       "const": "scenario"
@@ -366,9 +366,10 @@
             "guardStop",
             "parry",
             "move",
-            "stop"
+            "stop",
+            "select"
           ],
-          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné)."
+          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible)."
         },
         "direction": {
           "$ref": "#/$defs/direction",
@@ -400,17 +401,8 @@
             "action"
           ],
           "not": {
-            "anyOf": [
-              {
-                "required": [
-                  "skill"
-                ]
-              },
-              {
-                "required": [
-                  "target"
-                ]
-              }
+            "required": [
+              "skill"
             ]
           }
         }
@@ -436,6 +428,27 @@
             "not": {
               "required": [
                 "direction"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "action"
+            ],
+            "not": {
+              "properties": {
+                "action": {
+                  "const": "select"
+                }
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "target"
               ]
             }
           }
@@ -506,6 +519,70 @@
               }
             }
           }
+        },
+        "shape": {
+          "enum": [
+            "target",
+            "cone",
+            "circle",
+            "line",
+            "persistent"
+          ],
+          "description": "Sous-lot 11.4c, combat positionné, targeting enemy : coup dirigé (target), cône depuis l'assaillant (cone : range, angle), cercle autour de la cible ou de l'assaillant (circle : radius, center), bande (line : range, width), zone qui reste (persistent : radius, center, persistentMs, tickMs). Absente : attaque historique."
+        },
+        "telegraphMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Durée de l'annonce (ms, multiple du tick) : la forme est verrouillée au tour de l'assaillant et frappe au tick d'impact. Une zone doit laisser combat.telegraph.minReactionMs plus le temps d'en sortir au pas de base."
+        },
+        "range": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100,
+          "description": "Coup dirigé : portée entre les bords des emprises (absente : sans limite) ; cône et bande : longueur depuis l'assaillant (obligatoire)."
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100,
+          "description": "Cercle et zone persistante : rayon (obligatoire)."
+        },
+        "angle": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 180,
+          "description": "Cône : ouverture en degrés (obligatoire)."
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100,
+          "description": "Bande : largeur (obligatoire)."
+        },
+        "center": {
+          "enum": [
+            "target",
+            "self"
+          ],
+          "description": "Cercle et zone persistante : centre, la cible (défaut) ou l'assaillant, au début de l'annonce."
+        },
+        "persistentMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Zone persistante : durée (ms, multiple du tick)."
+        },
+        "tickMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Zone persistante : cadence de ses impacts (ms, multiple du tick, au plus persistentMs)."
+        },
+        "guardable": {
+          "type": "boolean",
+          "description": "La garde réduit-elle les dégâts ? Défaut : oui pour un coup dirigé ou une attaque historique non imparable, non pour une zone ; jamais pour une zone persistante ni une attaque imparable."
+        },
+        "parryable": {
+          "type": "boolean",
+          "description": "La parade parfaite s'applique-t-elle ? Défaut : oui pour un coup dirigé ou une attaque historique non imparable ; jamais pour une zone ni une attaque imparable."
         }
       }
     },

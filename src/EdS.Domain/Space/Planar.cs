@@ -106,6 +106,26 @@ namespace EdS.Domain.Space
         }
 
         /// <summary>
+        /// Sous-lot 11.4c : le disque fermé (centre P, rayon r) touche-t-il le segment [A, B] (distance au plus r, frontière comprise) ?
+        /// Même calcul exact que <see cref="SegmentOverlapsCircle"/>, inégalités larges. Un segment réduit à un point est admis.
+        /// </summary>
+        public static bool SegmentTouchesCircle(long ax, long az, long bx, long bz, long px, long pz, long r)
+        {
+            long ex = checked(bx - ax), ez = checked(bz - az), wx = checked(px - ax), wz = checked(pz - az);
+            long r2 = checked(r * r);
+            long t = Dot(wx, wz, ex, ez);
+            if (t <= 0) return LengthSquared(wx, wz) <= r2;
+            long ee = LengthSquared(ex, ez);
+            if (t >= ee) return LengthSquared(checked(px - bx), checked(pz - bz)) <= r2;
+            long c = Math.Abs(Cross(ex, ez, wx, wz));   // distance × |AB|
+            return IntMath.CompareProducts(c, c, r2, ee) <= 0;
+        }
+
+        /// <summary>Le point P est-il à au plus <paramref name="d"/> du point A (frontière comprise) ?</summary>
+        public static bool WithinDistance(long ax, long az, long px, long pz, long d) =>
+            LengthSquared(checked(px - ax), checked(pz - az)) <= checked(d * d);
+
+        /// <summary>
         /// Sous-lot 11.4b : les segments fermés [A, B] et [C, D] se touchent-ils (croisement, contact d'une extrémité, chevauchement
         /// colinéaire) ? Test exact par orientations.
         /// </summary>
