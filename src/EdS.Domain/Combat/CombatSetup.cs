@@ -177,8 +177,54 @@ namespace EdS.Domain.Combat
         /// </summary>
         public IReadOnlyList<StatusApplication> Applies { get; }
 
+        /// <summary>
+        /// Sous-lot 11.4c : forme dans un combat positionné ; null : attaque historique (la cible, ou tous les ennemis, sans géométrie).
+        /// Voir <see cref="AttackShape"/>.
+        /// </summary>
+        public AttackShape? Shape { get; }
+
+        /// <summary>Sous-lot 11.4c : durée de l'annonce, en ms (multiple du tick) ; 0 : l'impact suit le tour, comme avant.</summary>
+        public long TelegraphMs { get; }
+
+        /// <summary>Coup dirigé : portée entre les bords des emprises (null : sans limite) ; cône et bande : longueur depuis l'assaillant.</summary>
+        public Fixed? Range { get; }
+
+        /// <summary>Cercle et zone persistante : rayon.</summary>
+        public Fixed? Radius { get; }
+
+        /// <summary>Cône : ouverture en degrés, de 1 à 180.</summary>
+        public int? Angle { get; }
+
+        /// <summary>Bande : largeur.</summary>
+        public Fixed? Width { get; }
+
+        /// <summary>Cercle et zone persistante : centre (la cible, ou l'assaillant), verrouillé au début de l'annonce.</summary>
+        public ShapeCenter Center { get; }
+
+        /// <summary>Zone persistante : durée en ms (multiple du tick) et cadence de ses impacts (<c>tickMs</c> des données).</summary>
+        public long PersistentMs { get; }
+        public long PulseMs { get; }
+
+        /// <summary>Valeurs données de <c>guardable</c> et <c>parryable</c> (null : valeur par défaut de la forme).</summary>
+        public bool? GuardableOverride { get; }
+        public bool? ParryableOverride { get; }
+
+        /// <summary>
+        /// Sous-lot 11.4c : la garde réduit-elle les dégâts ? Par défaut : oui pour un coup dirigé ou une attaque historique non imparable,
+        /// non pour une zone (« souffle ou onde : garde seulement si l'attaque le dit ») ; jamais pour une zone persistante.
+        /// </summary>
+        public bool Guardable => GuardableOverride ?? (!Unblockable && !IsZone);
+
+        /// <summary>La parade parfaite s'applique-t-elle ? Par défaut : oui pour un coup dirigé non imparable ; jamais pour une zone.</summary>
+        public bool Parryable => ParryableOverride ?? (!Unblockable && !IsZone);
+
+        /// <summary>Cône, cercle, bande ou zone persistante : frappe ce qui est dedans à l'impact.</summary>
+        public bool IsZone => Shape is AttackShape.Cone or AttackShape.Circle or AttackShape.Line or AttackShape.Persistent;
+
         public AssailantAttack(string id, long rawDamage, DamageType damageType = DamageType.Physique,
-            SkillTargeting targeting = SkillTargeting.Enemy, bool unblockable = false, IEnumerable<StatusApplication>? applies = null)
+            SkillTargeting targeting = SkillTargeting.Enemy, bool unblockable = false, IEnumerable<StatusApplication>? applies = null,
+            AttackShape? shape = null, long telegraphMs = 0, Fixed? range = null, Fixed? radius = null, int? angle = null, Fixed? width = null,
+            ShapeCenter center = ShapeCenter.Target, long persistentMs = 0, long pulseMs = 0, bool? guardable = null, bool? parryable = null)
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
             RawDamage = rawDamage;
@@ -186,7 +232,21 @@ namespace EdS.Domain.Combat
             Targeting = targeting;
             Unblockable = unblockable;
             Applies = Frozen.ListOrEmpty(applies, nameof(applies));
+            Shape = shape;
+            TelegraphMs = telegraphMs;
+            Range = range;
+            Radius = radius;
+            Angle = angle;
+            Width = width;
+            Center = center;
+            PersistentMs = persistentMs;
+            PulseMs = pulseMs;
+            GuardableOverride = guardable;
+            ParryableOverride = parryable;
         }
+
+        /// <summary>Nombre d'impacts d'une zone persistante (à l'impact, puis toutes les <see cref="PulseMs"/> pendant <see cref="PersistentMs"/>).</summary>
+        public long Pulses => Shape == AttackShape.Persistent && PulseMs > 0 ? (PersistentMs - 1) / PulseMs + 1 : 1;
     }
 
     /// <summary>
@@ -261,6 +321,12 @@ namespace EdS.Domain.Combat
 
         /// <summary>Sous-lot 11.4 : s'arrêter.</summary>
         Stop = 5,
+
+        /// <summary>
+        /// Sous-lot 11.4c : sélectionner une cible (ou effacer la sélection, sans cible). En garde, un personnage se tourne vers sa cible
+        /// sélectionnée (COMBAT_ESPACE.md, section 6, retenu par Damien le 20/10/2026) ; combat positionné seulement.
+        /// </summary>
+        Select = 6,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -272,6 +338,7 @@ namespace EdS.Domain.Combat
         public const string Parry = "parry";
         public const string Move = "move";
         public const string Stop = "stop";
+        public const string Select = "select";
 
         /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
@@ -280,7 +347,7 @@ namespace EdS.Domain.Combat
         /// Actions qu'on écrit dans le champ <c>action</c> d'une commande de scénario (la compétence s'écrit avec <c>skill</c>) : les
         /// défensives, puis le déplacement (sous-lot 11.4).
         /// </summary>
-        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop }, nameof(Named));
+        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select }, nameof(Named));
 
         public static string Of(CombatAction action) => action switch
         {
@@ -290,6 +357,7 @@ namespace EdS.Domain.Combat
             CombatAction.Parry => Parry,
             CombatAction.Move => Move,
             CombatAction.Stop => Stop,
+            CombatAction.Select => Select,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
@@ -300,6 +368,7 @@ namespace EdS.Domain.Combat
             {
                 case Move: action = CombatAction.Move; return true;
                 case Stop: action = CombatAction.Stop; return true;
+                case Select: action = CombatAction.Select; return true;
                 default: return TryParseDefensive(id, out action);
             }
         }
@@ -363,6 +432,17 @@ namespace EdS.Domain.Combat
             Action = CombatAction.Move;
             Direction = direction;
         }
+
+        private CombatCommand(long atMs, string actor, string? target, CombatAction action)
+        {
+            AtMs = atMs;
+            Actor = actor ?? throw new ArgumentNullException(nameof(actor));
+            Action = action;
+            Target = target;
+        }
+
+        /// <summary>Sous-lot 11.4c : commande « sélectionner <paramref name="target"/> » ; null efface la sélection.</summary>
+        public static CombatCommand SelectTarget(long atMs, string actor, string? target) => new(atMs, actor, target, CombatAction.Select);
     }
 
     /// <summary>Identité d'un fichier de données utilisé (version de contenu et empreinte).</summary>
@@ -576,13 +656,17 @@ namespace EdS.Domain.Combat
                 }
                 else
                 {
-                    if (command.Skill != null) errors.Add(new RuleViolation("une garde, une parade ou un déplacement ne nomme pas de compétence.", path + ".skill"));
-                    if (command.Target != null) errors.Add(new RuleViolation("une garde, une parade ou un déplacement n'a pas de cible.", path + ".target"));
+                    if (command.Skill != null) errors.Add(new RuleViolation("une garde, une parade, un déplacement ou une sélection ne nomme pas de compétence.", path + ".skill"));
+                    if (command.Target != null && command.Action != CombatAction.Select)
+                        errors.Add(new RuleViolation("une garde, une parade ou un déplacement n'a pas de cible.", path + ".target"));
                 }
-                // Sous-lot 11.4 : déplacement seulement dans un combat positionné ; une direction seulement pour un déplacement.
+                // Sous-lot 11.4 : déplacement seulement dans un combat positionné ; une direction seulement pour un déplacement. Sous-lot
+                // 11.4c : la sélection aussi (elle oriente la garde).
                 bool moving = command.Action == CombatAction.Move || command.Action == CombatAction.Stop;
                 if (moving && Space is null)
                     errors.Add(new RuleViolation("déplacement dans un combat sans espace (bloc space absent).", path + ".action"));
+                if (command.Action == CombatAction.Select && Space is null)
+                    errors.Add(new RuleViolation("sélection de cible dans un combat sans espace (bloc space absent).", path + ".action"));
                 if (command.Action == CombatAction.Move)
                 {
                     if (command.Direction is not { } direction || !SpaceLimits.IsDirection(direction))
@@ -700,20 +784,23 @@ namespace EdS.Domain.Combat
             public long Expiries { get; }
             /// <summary>Places des notifications et réactions des déclencheurs (0 sans déclencheur).</summary>
             public long Transient { get; }
+            /// <summary>Sous-lot 11.4c : impacts annoncés en attente et zones persistantes vivantes (une place chacun).</summary>
+            public long Attacks { get; }
             /// <summary>
             /// Vrai sans déclencheur : le majorant borne la file. Faux dès qu'un déclencheur existe : les échéances et ticks de DOT
             /// créés par des réactions ne sont pas majorés, et l'arrêt <c>queueLimitExceeded</c> reste un filet atteignable (Q11).
             /// </summary>
             public bool Guaranteed { get; }
-            public long Total => checked(Initial + Dots + Expiries + Transient);
+            public long Total => checked(Initial + Dots + Expiries + Transient + Attacks);
 
-            public QueueBound(long initial, long dots, long expiries, long transient = 0, bool guaranteed = true)
+            public QueueBound(long initial, long dots, long expiries, long transient = 0, bool guaranteed = true, long attacks = 0)
             {
                 Initial = initial;
                 Dots = dots;
                 Expiries = expiries;
                 Transient = transient;
                 Guaranteed = guaranteed;
+                Attacks = attacks;
             }
 
             /// <summary>Résumé pour les rapports de la CLI (validate, simulate).</summary>
@@ -748,6 +835,7 @@ namespace EdS.Domain.Combat
             var targets = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);   // cibles possibles par altération
             var applications = new Dictionary<string, long>(StringComparer.Ordinal);         // applications en D ticks par altération
             long dots = 0;
+            long pendingAttacks = 0;   // sous-lot 11.4c
 
             // Appelé une fois par porteur et par altération : ses cibles possibles et ses applications en D ticks.
             void Carry(StatusDefinition d, IEnumerable<string> possibleTargets, long inWindow)
@@ -813,10 +901,17 @@ namespace EdS.Domain.Combat
                         long first = a.FirstAttackMs / tick;
                         long turns = first < durationTicks ? (durationTicks - 1 - first) / interval + 1 : 0;
                         int n = a.Attacks.Count;
+                        // Sous-lot 11.4c : un tour d'attaque annoncée laisse un impact en file jusqu'à son tick, une zone persistante une
+                        // place jusqu'à sa fin ; au plus autant que de tours dans la plus longue annonce + durée de zone.
+                        long lasting = a.Attacks.Select(x => (x.TelegraphMs + (x.Shape == AttackShape.Persistent ? x.PersistentMs : 0)) / tick).DefaultIfEmpty(0).Max();
+                        if (lasting > 0) pendingAttacks = checked(pendingAttacks + Math.Min(turns, lasting / interval + 1));
                         foreach (string status in a.Attacks.SelectMany(x => x.Applies).Select(x => x.Status).Distinct(StringComparer.Ordinal))
                         {
                             if (!catalog.TryGet(status, out StatusDefinition? d)) continue;
-                            long k = Math.Min(turns, (Window(d) - 1) / interval + 1);   // tours dans une fenêtre de D ticks
+                            // Sous-lot 11.4c : une annonce retarde l'impact, une zone persistante répète ses impacts : la fenêtre s'allonge d'autant.
+                            long late = a.Attacks.Where(x => x.Applies.Any(ap => ap.Status == status))
+                                .Select(x => (x.TelegraphMs + (x.Shape == AttackShape.Persistent ? x.PersistentMs : 0)) / tick).DefaultIfEmpty(0).Max();
+                            long k = Math.Min(turns, (checked(Window(d) + late) - 1) / interval + 1);   // tours dans une fenêtre de D ticks
                             long perAttack = (k + n - 1) / n;                            // tours d'une même attaque parmi k consécutifs
                             var carrying = a.Attacks.Where(x => x.Applies.Any(ap => ap.Status == status)).ToList();
                             // Sous-lot 8.3 : cibles possibles de chaque application (cible de l'attaque, ou cible propre), et le plus
@@ -826,9 +921,10 @@ namespace EdS.Domain.Combat
                             foreach (AssailantAttack x in carrying)
                                 foreach (StatusApplication ap in x.Applies.Where(ap => ap.Status == status))
                                 {
-                                    var (set, count) = Reach(a.Id, x.Targeting, a.Target, ap.Target);
+                                    // Sous-lot 11.4c : une zone atteint tous les ennemis, à chacun de ses impacts.
+                                    var (set, count) = Reach(a.Id, x.IsZone ? SkillTargeting.AllEnemies : x.Targeting, a.Target, ap.Target);
                                     hit.UnionWith(set);
-                                    hits = Math.Max(hits, count);
+                                    hits = Math.Max(hits, checked(count * x.Pulses));
                                 }
                             Carry(d, hit, checked(Math.Min(k, perAttack * carrying.Count) * hits));
                         }
@@ -897,8 +993,8 @@ namespace EdS.Domain.Combat
             // sont toutes retirées avant la fin de leur phase, sauf les réactions reportées au tick suivant : à tout instant, au
             // plus celles mises en file pendant le tick courant et celles reportées du tick précédent, soit 2 × maxWorkPerTick.
             // Les échéances et ticks de DOT créés par des réactions ne sont pas majorés : le majorant n'est plus une garantie.
-            if (HasTriggers) return new QueueBound(InitialEventCount(), dots, expiries, checked(2L * Combat.MaxWorkPerTick), guaranteed: false);
-            return new QueueBound(InitialEventCount(), dots, expiries);
+            if (HasTriggers) return new QueueBound(InitialEventCount(), dots, expiries, checked(2L * Combat.MaxWorkPerTick), guaranteed: false, attacks: pendingAttacks);
+            return new QueueBound(InitialEventCount(), dots, expiries, attacks: pendingAttacks);
         }
 
         /// <summary>
@@ -957,6 +1053,7 @@ namespace EdS.Domain.Combat
                 // Sous-lot 8.3 : une attaque d'assaillant frappe ; seules les compétences ont un ciblage de soutien.
                 else if (attack.Targeting != SkillTargeting.Enemy && attack.Targeting != SkillTargeting.AllEnemies)
                     errors.Add(new RuleViolation("une attaque d'assaillant vise un ennemi ou tous les ennemis (enemy, allEnemies).", attackPath + ".targeting"));
+                ValidateForm(attack, attackPath, tick, errors);   // sous-lot 11.4c
                 StatusApplication.ValidateList(attack.Applies, attackPath + ".applies", errors);
                 for (int m = 0; m < attack.Applies.Count; m++)
                     if (Combat.Statuses.CheckApplication(attack.Applies[m], Combat.GuardBreakStatus) is { } problem)
@@ -968,6 +1065,110 @@ namespace EdS.Domain.Combat
             // Lot 7.3 (Q4) : déclencheurs d'un assaillant de scénario, forme et références.
             TriggerDefinition.ValidateList(a.Triggers, path + ".triggers", 1, false, errors);
             TriggerDefinition.ValidateReferences(a.Triggers, path + ".triggers", Combat.Statuses, Combat.GuardBreakStatus, (int)tick, Combat.AreaStrikeMinCooldownMs, errors);
+        }
+
+        /// <summary>
+        /// Sous-lot 11.4c (COMBAT_ESPACE.md, sections 5 et 9) : forme, annonce et défenses d'une attaque d'assaillant. Une forme n'existe que
+        /// dans un combat positionné et vise la cible de l'assaillant ; chaque forme a ses dimensions, et seulement elles. Une zone ne se pare
+        /// jamais, une zone persistante ne se garde pas, une attaque imparable ne se garde ni ne se pare. <b>Annonce évitable</b> : une zone
+        /// doit laisser, au pas de base (<c>combat.movement.speed</c>), le temps de réaction minimal (<c>combat.telegraph.minReactionMs</c>)
+        /// plus le temps de sortir de la forme au pire pour le plus grand joueur du combat.
+        /// </summary>
+        private void ValidateForm(AssailantAttack attack, string path, long tick, List<RuleViolation> errors)
+        {
+            int before = errors.Count;
+            void Forbidden(bool present, string field, string why)
+            {
+                if (present) errors.Add(new RuleViolation(why, $"{path}.{field}"));
+            }
+            void Length(Fixed? value, string field, bool required, string what)
+            {
+                if (value is { } v)
+                {
+                    if (!SpaceLimits.IsRange(v))
+                        errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                            $"{what} hors de [{SpaceLimits.MinRange}, {SpaceLimits.MaxRange}] m (borne technique).", $"{path}.{field}"));
+                }
+                else if (required) errors.Add(new RuleViolation($"{what} obligatoire pour cette forme.", $"{path}.{field}"));
+            }
+            void Duration(long ms, string field, bool positive)
+            {
+                if (ms < (positive ? 1 : 0) || ms > Combat.MaxDurationMs)
+                    errors.Add(new RuleViolation($"durée hors de [{(positive ? 1 : 0)}, {Combat.MaxDurationMs}] ms.", $"{path}.{field}"));
+                else if (tick > 0 && ms % tick != 0)
+                    errors.Add(new RuleViolation($"{ms} ms n'est pas un multiple de la durée du tick ({tick} ms).", $"{path}.{field}"));
+            }
+
+            if (attack.Unblockable && (attack.GuardableOverride == true || attack.ParryableOverride == true))
+                errors.Add(new RuleViolation("une attaque imparable ne se garde ni ne se pare (guardable, parryable).",
+                    $"{path}.{(attack.GuardableOverride == true ? "guardable" : "parryable")}"));
+            if (attack.Shape is not { } shape)
+            {
+                const string historical = "seule une attaque qui a une forme (shape) a une annonce et des dimensions.";
+                Forbidden(attack.TelegraphMs != 0, "telegraphMs", historical);
+                Forbidden(attack.Range != null, "range", historical);
+                Forbidden(attack.Radius != null, "radius", historical);
+                Forbidden(attack.Angle != null, "angle", historical);
+                Forbidden(attack.Width != null, "width", historical);
+                Forbidden(attack.Center != ShapeCenter.Target, "center", historical);
+                Forbidden(attack.PersistentMs != 0, "persistentMs", historical);
+                Forbidden(attack.PulseMs != 0, "tickMs", historical);
+                return;
+            }
+            if (!Enum.IsDefined(typeof(AttackShape), shape))
+            {
+                errors.Add(new RuleViolation("forme inconnue.", path + ".shape"));
+                return;
+            }
+            if (Space is null) errors.Add(new RuleViolation("forme d'attaque dans un combat sans espace (bloc space absent).", path + ".shape"));
+            if (attack.Targeting != SkillTargeting.Enemy)
+                errors.Add(new RuleViolation("une attaque qui a une forme vise la cible de l'assaillant (targeting enemy).", path + ".targeting"));
+            Duration(attack.TelegraphMs, "telegraphMs", positive: false);
+            string name = AttackShapeIds.Of(shape);
+            string notFor = $"champ sans objet pour la forme {name}.";
+            bool round = shape is AttackShape.Circle or AttackShape.Persistent;
+            Length(attack.Range, "range", shape is AttackShape.Cone or AttackShape.Line, shape == AttackShape.Target ? "portée" : "longueur");
+            Forbidden(round && attack.Range != null, "range", notFor);
+            Length(attack.Radius, "radius", round, "rayon");
+            Forbidden(!round && attack.Radius != null, "radius", notFor);
+            Forbidden(!round && attack.Center != ShapeCenter.Target, "center", notFor);
+            if (!Enum.IsDefined(typeof(ShapeCenter), attack.Center)) errors.Add(new RuleViolation("centre inconnu.", path + ".center"));
+            if (shape == AttackShape.Cone)
+            {
+                if (attack.Angle is not { } angle) errors.Add(new RuleViolation("ouverture obligatoire pour un cône.", path + ".angle"));
+                else if (angle < 1 || angle > 180) errors.Add(new RuleViolation("ouverture hors de [1, 180] degrés.", path + ".angle"));
+            }
+            else Forbidden(attack.Angle != null, "angle", notFor);
+            Length(attack.Width, "width", shape == AttackShape.Line, "largeur");
+            Forbidden(shape != AttackShape.Line && attack.Width != null, "width", notFor);
+            if (shape == AttackShape.Persistent)
+            {
+                Duration(attack.PersistentMs, "persistentMs", positive: true);
+                Duration(attack.PulseMs, "tickMs", positive: true);
+                if (attack.PersistentMs > 0 && attack.PulseMs > attack.PersistentMs)
+                    errors.Add(new RuleViolation("cadence plus longue que la durée de la zone.", path + ".tickMs"));
+                Forbidden(attack.GuardableOverride == true, "guardable", "une zone persistante ne se garde pas : il faut en sortir.");
+            }
+            else
+            {
+                Forbidden(attack.PersistentMs != 0, "persistentMs", notFor);
+                Forbidden(attack.PulseMs != 0, "tickMs", notFor);
+            }
+            if (attack.IsZone) Forbidden(attack.ParryableOverride == true, "parryable", "une zone ne se pare pas (seul un coup dirigé se pare).");
+
+            // Annonce évitable : réaction minimale + sortie de la forme, au pas de base, pour le plus grand joueur.
+            if (!attack.IsZone || errors.Count > before) return;
+            long speed = Combat.MovementSpeed.Raw;
+            long largest = Combatants.OfType<CharacterSetup>().Select(c => c.Placement?.Radius.Raw ?? 0).DefaultIfEmpty(0).Max();
+            if (largest == 0 || speed <= 0) return;
+            long reach = (attack.Range ?? attack.Radius)!.Value.Raw;
+            long escape = AttackZone.EscapeDistance(shape, reach, attack.Angle ?? 0, (attack.Width?.Raw ?? 0) / 2, largest);
+            long escapeMs = checked(escape * 1000 + speed - 1) / speed;
+            long needed = checked(Combat.TelegraphMinReactionMs + escapeMs);
+            if (attack.TelegraphMs < needed)
+                errors.Add(new RuleViolation(
+                    $"annonce de {attack.TelegraphMs} ms trop courte pour une zone évitable : au moins {needed} ms (réaction {Combat.TelegraphMinReactionMs} ms, " +
+                    $"combat.telegraph.minReactionMs, + {escapeMs} ms pour sortir de la forme au pas de base de {Combat.MovementSpeed} m/s).", path + ".telegraphMs"));
         }
 
         private void ValidateCharacter(CharacterSetup character, string path, long tick, List<RuleViolation> errors)

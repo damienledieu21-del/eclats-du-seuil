@@ -168,6 +168,22 @@ namespace EdS.Domain.Combat
         public Fixed LargeCreatureRadius { get; init; } = Fixed.One;
 
         /// <summary>
+        /// Sous-lot 11.4c (L11-D3, retenu par Damien le 20/10/2026) : ouverture, en degrés, de l'arc frontal du bouclier
+        /// (<c>combat.guard.arcDegrees</c>) : garde et parade parfaite ne valent que contre un coup venu de cet arc, centré sur
+        /// l'orientation du défenseur. Valeur retenue : 180. Dans [1, 360] (360 : protection de tous côtés).
+        /// </summary>
+        public int GuardArcDegrees { get; init; } = 180;
+
+        /// <summary>
+        /// Sous-lot 11.4c : temps de réaction minimal d'une annonce (<c>combat.telegraph.minReactionMs</c>), ajouté au temps de sortie
+        /// de la forme pour juger qu'une zone est évitable. Valeur de départ retenue : 300 ms, réglée à l'essai 11.9. Dans [0, 10 000] ms.
+        /// </summary>
+        public long TelegraphMinReactionMs { get; init; } = 300;
+
+        /// <summary>Plafond technique de <see cref="TelegraphMinReactionMs"/>.</summary>
+        public const long MaxTelegraphReactionMs = 10_000;
+
+        /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
         /// </summary>
@@ -293,6 +309,10 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation("règle de contact inconnue.", nameof(PlayerCreatureContact)));
             if (LargeCreatureRadius < Space.SpaceLimits.MinRadius || LargeCreatureRadius > Space.SpaceLimits.MaxRadius)
                 errors.Add(new RuleViolation($"doit être compris entre {Space.SpaceLimits.MinRadius} et {Space.SpaceLimits.MaxRadius} m (borne technique).", nameof(LargeCreatureRadius)));
+            // Sous-lot 11.4c : arc du bouclier et réaction minimale des annonces.
+            Range(GuardArcDegrees, 1, 360, nameof(GuardArcDegrees));
+            if (TelegraphMinReactionMs < 0 || TelegraphMinReactionMs > MaxTelegraphReactionMs)
+                errors.Add(new RuleViolation($"doit être compris entre 0 et {MaxTelegraphReactionMs} ms (plafond technique).", nameof(TelegraphMinReactionMs)));
             return errors;
         }
     }
