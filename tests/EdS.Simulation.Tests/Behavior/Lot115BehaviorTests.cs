@@ -210,9 +210,12 @@ public class Lot115BehaviorTests
     public void Instantane_d_ennemis_a_comportement_engagement_relu_et_controle()
     {
         // Le loup (sans distance d'engagement) est engagé d'emblée, le guetteur attend : l'instantané porte l'engagement, la copie relue
-        // continue à l'identique ; un loup désengagé est refusé, un guetteur engagé est un autre état possible (accepté).
-        CombatSetup setup = Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("loup", At("6", "0"), "0.5"), Hunter("guetteur", At("-8", "0"), "0.5", aggro: "2") },
-            durationMs: 2000);
+        // continue à l'identique ; un loup désengagé est refusé, un guetteur engagé est un autre état possible (accepté). Revue Codex de la
+        // PR #33 : un renfort à comportement pas encore arrivé ne peut être ni engagé, ni déjà frappé.
+        var renfort = new AssailantSetup("renfort", "meute", Fixed.Zero, Fixed.Zero, null, 600_000, 1000, new[] { Bite() }, placement: At("8", "6"),
+            arrivalMs: 1500, behavior: new AssailantBehavior(F("0.5"), null, F("2"), false));
+        CombatSetup setup = Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("loup", At("6", "0"), "0.5"), Hunter("guetteur", At("-8", "0"), "0.5", aggro: "2"),
+            renfort }, durationMs: 2000);
         var log = new MemoryCombatLog();
         var engine = new CombatEngine(setup, log);
         while (engine.CurrentTick < 5) engine.Step();
@@ -224,8 +227,32 @@ public class Lot115BehaviorTests
         {
             ("{\"fighter\":\"loup\"", "\"engaged\":true", "\"engaged\":false", "Engagement de « loup »"),
             ("{\"fighter\":\"bastion\"", "\"engaged\":false", "\"engaged\":true", "Engagement de « bastion »"),
+            ("{\"fighter\":\"renfort\"", "\"struck\":false", "\"struck\":true", "« renfort », pas encore entré"),
+            ("{\"fighter\":\"renfort\"", "\"engaged\":false", "\"engaged\":true", "« renfort », pas encore entré"),
         });
         EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertResumesIdentically(engine, log);
+    }
+
+    [Fact]
+    public void Deplacement_pilote_d_un_ennemi_a_comportement_refuse()
+    {
+        // Revue Codex de la PR #33 : le pilote ne peut pas faire marcher (ni arrêter) un ennemi qui se déplace seul ; le refus ne change
+        // rien et le combat complété reste valide. Un ennemi sans comportement se pilote toujours.
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("loup", At("6", "0"), "0.5"),
+            Creature("ours", At("-6", "0"), firstAttackMs: 600_000) }, durationMs: 1000), NullCombatLog.Instance);
+        engine.Step();
+        string before = engine.Snapshot().Text;
+        foreach (CombatCommand command in new[] { Move(50, "loup", "1", "0"), new CombatCommand(50, "loup", CombatAction.Stop) })
+        {
+            Assert.Contains("se déplace seul", Assert.Throws<ArgumentException>(() => engine.Submit(command)).Message);
+            Assert.Throws<ArgumentException>(() => engine.SubmitAll(new[] { Move(50, "bastion", "1", "0"), command }));
+        }
+        Assert.Equal(before, engine.Snapshot().Text);
+        engine.Submit(Move(50, "ours", "0", "1"));
+        while (!engine.IsFinished) engine.Step();
+        CombatSetup completed = engine.CompletedSetup();
+        Assert.Empty(completed.Validate());
+        Assert.Equal(CombatAction.Move, Assert.Single(completed.Commands).Action);
     }
 
     [Fact]
