@@ -208,7 +208,13 @@ namespace EdS.Game
             float t = snap ? 1f : (float)combat.TickProgress;
             foreach (CombatantView v in views)
             {
-                if (!_bodies.TryGetValue(v.Id, out GameObject body) || v.Position is not GroundVector p) continue;
+                if (!_bodies.TryGetValue(v.Id, out GameObject body)) continue;
+                // Revue Codex de la PR #34 : un combattant sans place (renfort pas encore arrivé) est caché, barre comprise (Head le suit).
+                if (v.Position is not GroundVector p)
+                {
+                    body.SetActive(false);
+                    continue;
+                }
                 Vector3 target = World(p);
                 if (snap || !_to.ContainsKey(v.Id))
                 {
