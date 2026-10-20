@@ -131,7 +131,7 @@ Premier essai tactile : la scène des Vallons au doigt, d'abord dans le **simula
 | au-dessus | **Cible**, **Vue** (et **Allié** en réseau) | ennemi suivant, rappel vue 1 ↔ vue 2, allié visé |
 | moitié droite, hors des boutons | glisser un doigt | tourner la vue |
 | moitié droite | écarter ou rapprocher deux doigts | régler la vue entre la 1 (haute) et la 2 (proche) |
-| en haut à droite | **Menu**, **Aide** ; seul : **Pause**, **Rejouer**, **Scène** | menu réseau, aide, pause, recommencer, scène suivante |
+| à droite, sous la fiche de la cible | **Menu**, **Aide** ; seul : **Pause**, **Rejouer**, **Scène** | menu réseau, aide, pause, recommencer, scène suivante |
 
 **a. Dans l'éditeur, sans téléphone** : **Window → General → Device Simulator**. Dans l'onglet *Simulator* qui s'ouvre, choisir un téléphone (un Samsung Galaxy si la liste en propose un, sinon un téléphone Android récent), le tourner à l'horizontale (bouton de rotation), puis **Play** : la souris fait le doigt (un seul doigt : le pincement ne s'essaie que sur le vrai téléphone). Vérifier que les boutons ne cachent ni les barres ni la fiche de la cible. Au PC sans simulateur, **F8** affiche aussi les commandes (la souris fait un doigt).
 

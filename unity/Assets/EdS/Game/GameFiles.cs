@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using EdS.Runtime;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -16,14 +17,11 @@ namespace EdS.Game
     /// </summary>
     public static class GameFiles
     {
-        /// <summary>Dossier des données emportées, sous <c>StreamingAssets</c> (et sous le dossier de l'application sur Android).</summary>
-        public const string Folder = "eds";
+        /// <summary>Dossier des données emportées (<see cref="BundledData.Folder"/>).</summary>
+        public const string Folder = BundledData.Folder;
 
-        /// <summary>
-        /// Liste des fichiers emportés : une ligne <c># empreinte …</c> (contenu de tous les fichiers), puis les chemins relatifs, un par
-        /// ligne, séparateur « / ».
-        /// </summary>
-        public const string Index = "fichiers.txt";
+        /// <summary>Liste des fichiers emportés, avec l'empreinte de leur contenu (<see cref="BundledData.Index"/>).</summary>
+        public const string Index = BundledData.IndexFile;
 
         /// <summary>
         /// Prépare la racine des données et la rend à <paramref name="done"/> (racine, erreur éventuelle). À lancer en coroutine : sur
@@ -56,18 +54,16 @@ namespace EdS.Game
                 done(target, null);
                 yield break;
             }
-            var files = new List<string>();
-            foreach (string line in index.Split('\n'))
+            // Une liste retouchée ne fait rien écrire hors du dossier de l'application (BundledData.ParseIndex).
+            IReadOnlyList<string> files;
+            try
             {
-                string relative = line.Trim();
-                if (relative.Length == 0 || relative.StartsWith("#", StringComparison.Ordinal)) continue;
-                // Une liste retouchée ne fait rien écrire hors du dossier de l'application.
-                if (relative.Contains("..") || Path.IsPathRooted(relative))
-                {
-                    done(null, "liste des données invalide : " + relative);
-                    yield break;
-                }
-                files.Add(relative);
+                files = BundledData.ParseIndex(index);
+            }
+            catch (FormatException e)
+            {
+                done(null, e.Message);
+                yield break;
             }
             // Revue Codex de la PR #36 : la copie précédente est retirée entière (fichiers retirés ou renommés depuis compris), comme pour
             // une installation propre.

@@ -138,13 +138,16 @@ namespace EdS.Game
             Add(ButtonId.Target, gx + (Big - Small) / 2, gy - 3 * (Small + m), Small, "Cible");
             Add(ButtonId.View, gx - Big - m + (Big - Small) / 2, gy - 3 * (Small + m), Small, "Vue");
             if (network) Add(ButtonId.Ally, gx - 2 * (Big + m) + (Big - Small), gy - Small - m, Small, "Allié");
-            Add(ButtonId.Menu, w - m - Small, m + 60f, Small, "Menu");
-            Add(ButtonId.Help, w - 2 * (m + Small), m + 60f, Small, "Aide");
+            // Revue Codex de la PR #36 (3e tour) : sous la fiche de la cible (Hud.Target : y de 14 à 146), pour ne pas cacher son compte à
+            // rebours ni ses altérations.
+            float top = 160f;
+            Add(ButtonId.Menu, w - m - Small, top, Small, "Menu");
+            Add(ButtonId.Help, w - 2 * (m + Small), top, Small, "Aide");
             if (!network)
             {
-                Add(ButtonId.Pause, w - 3 * (m + Small), m + 60f, Small, "Pause");
-                Add(ButtonId.Restart, w - 4 * (m + Small), m + 60f, Small, "Rejouer");
-                Add(ButtonId.NextScene, w - 5 * (m + Small), m + 60f, Small, "Scène");
+                Add(ButtonId.Pause, w - 3 * (m + Small), top, Small, "Pause");
+                Add(ButtonId.Restart, w - 4 * (m + Small), top, Small, "Rejouer");
+                Add(ButtonId.NextScene, w - 5 * (m + Small), top, Small, "Scène");
             }
         }
 
