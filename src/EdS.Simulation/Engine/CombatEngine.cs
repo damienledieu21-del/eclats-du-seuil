@@ -1518,7 +1518,7 @@ namespace EdS.Simulation.Engine
             }
             Charge(1);
             bool renewed = plan.Outcome == StatusOutcome.Renew;
-            StatusInstance status = plan.Existing ?? new StatusInstance { Id = ++_lastStatusInstance, Definition = definition, Key = plan.Key, Owner = target };
+            StatusInstance status = plan.Existing ?? new StatusInstance { Id = checked(++_lastStatusInstance), Definition = definition, Key = plan.Key, Owner = target };
             if (!renewed)
             {
                 target.Statuses[plan.Key] = status;
@@ -1526,7 +1526,7 @@ namespace EdS.Simulation.Engine
             }
             status.Generation = checked(status.Generation + 1);
             status.Source = source;
-            status.AppliedSeq = ++_lastApplication;   // sous-lot 8.3 : la provocation ou la protection la plus récente l'emporte
+            status.AppliedSeq = checked(++_lastApplication);   // sous-lot 8.3 : la provocation ou la protection la plus récente l'emporte
             if (definition.IsDot)
             {
                 status.Power = renewed ? Fixed.Max(status.Power, power) : power;
@@ -2585,7 +2585,7 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private long Emit(long tick, CombatPhase phase, string kind, Provenance origin, ObservedEvent? observed, Action<JsonLineWriter> fields)
         {
-            long eid = ++_lastEid;
+            long eid = checked(++_lastEid);   // revue Codex de la PR #32 (6e tour) : aucun débordement silencieux
             WriteLine(tick, phase, kind, w =>
             {
                 w.Field("eid", eid).Field("cause", origin.Cause);
@@ -2621,7 +2621,7 @@ namespace EdS.Simulation.Engine
                     throw new InvalidOperationException($"Ligne écrite au-delà de la réserve ({_eventsThisTick} > {_scopeEvents}).");
             }
             var w = new JsonLineWriter().BeginObject()
-                .Field("tick", tick).Field("seq", _sequence++).Field("phase", PhaseId(phase)).Field("event", kind);
+                .Field("tick", tick).Field("seq", checked(_sequence++)).Field("phase", PhaseId(phase)).Field("event", kind);
             fields(w);
             _log.Append(w.EndObject().ToString());
         }

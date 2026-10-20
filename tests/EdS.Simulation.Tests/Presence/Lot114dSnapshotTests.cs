@@ -245,6 +245,14 @@ public class Lot114dSnapshotTests
             // Revue Codex de la PR #32 (4e tour) : impulsion à son tick.
             (Impact, "\"tick\":40", "\"tick\":41", "hors de son tick"),
         });
+        // Revue Codex de la PR #32 (6e tour) : un compteur sans marge pour la suite du combat est refusé (sinon le prochain numéro
+        // déborderait).
+        foreach (string counter in new[] { "seq", "lastEid", "lastStatusInstance", "lastApplication" })
+        {
+            string huge = new System.Text.RegularExpressions.Regex("\"" + counter + "\":[0-9]+").Replace(text, "\"" + counter + "\":" + (long.MaxValue - 10), 1);   // en-tête : première ligne
+            Assert.NotEqual(text, huge);
+            Assert.Contains("trop grands", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(huge), NullCombatLog.Instance)).Message);
+        }
 
         // Combat d'entraînement au tick 30 : un saignement sur chacun, des commandes à venir, un renfort attendu.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
