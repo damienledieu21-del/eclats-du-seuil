@@ -394,6 +394,12 @@ namespace EdS.Simulation.Engine
         /// éléments de file à leur phase et d'un combattant du bon genre ; commandes à venir toutes en file, au tick de leur instant ;
         /// réactions en file toutes reportées du tick précédent ; zones verrouillées aux dimensions de leur attaque.
         /// </summary>
+        /// <summary>
+        /// Revue Codex de la PR #32 (7e tour) : plafond des compteurs cumulés relus (bilan, entretien, absorption, puissance) : très au-delà
+        /// de tout combat (2⁵³ environ), il laisse aux incréments, tous vérifiés, une marge de plus de mille fois sa valeur.
+        /// </summary>
+        private const long CounterCeiling = long.MaxValue / 1024;
+
         private void ValidateLoaded(List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)> entries)
         {
             static void Require(bool ok, string message)
@@ -409,8 +415,9 @@ namespace EdS.Simulation.Engine
             // d'application. Un compteur plus grand est refusé ; les incréments sont de toute façon vérifiés.
             long margin = checked((Math.Max(0, _durationTicks - CurrentTick) + 2) * Math.Max(_rules.MaxWorkPerTick, _rules.MaxEventsPerTick) + 1_000_000);
             long ceiling = long.MaxValue - margin;
-            Require(_sequence <= ceiling && _lastEid <= ceiling && _lastStatusInstance <= ceiling && _lastApplication <= ceiling,
-                "Compteurs de l'instantané trop grands pour la suite du combat.");
+            // 7e tour : le prochain numéro de la file aussi (chaque mise en file coûte une unité de travail).
+            Require(_sequence <= ceiling && _lastEid <= ceiling && _lastStatusInstance <= ceiling && _lastApplication <= ceiling
+                && _queue.Cursor.NextSequence <= ceiling, "Compteurs de l'instantané trop grands pour la suite du combat.");
             // Revue Codex de la PR #32 (3e tour) : le combat complété porte toutes les commandes comptées ; leur nombre et leur compte par
             // acteur et par tick à venir s'en déduisent exactement.
             Require(_commandCount == _setup.Commands.Count, $"{_commandCount} commandes comptées, {_setup.Commands.Count} dans le combat complété.");
@@ -515,12 +522,13 @@ namespace EdS.Simulation.Engine
                     && f.ParryRecoveryUntilTick <= Math.Max(0, previous + f.Rules.ParryFailureRecoveryMs / _tickMs)
                     && (!f.ParryOpen || f.ParryEndTick == f.ParryStartTick + f.Rules.ParryWindowMs / _tickMs),
                     $"Recharge globale ou parade de {who} au-delà de sa durée.");
-                foreach (TriggerSlot slot in f.Triggers)
+                // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
+                foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
                     Require(slot.ReadyTick >= 0 && slot.ReadyTick <= Math.Max(0, previous + slot.Definition.CooldownMs / _tickMs), $"Recharge d'un déclencheur de {who} au-delà de sa durée.");
                 foreach (var cooldown in f.CooldownReadyTick)
                 {
                     Require(f.Character != null && f.Character.Class.TryGetSkill(cooldown.Key, out SkillDefinition skill) && skill.Combat != null
-                        && cooldown.Value <= Math.Max(0, previous + f.Rules.CooldownMs(skill, skill.Combat) / _tickMs),
+                        && cooldown.Value >= 0 && cooldown.Value <= Math.Max(0, previous + f.Rules.CooldownMs(skill, skill.Combat) / _tickMs),
                         $"Recharge de {who} pour une compétence inconnue ou au-delà de sa durée : {cooldown.Key}.");
                     if (cooldown.Value < CurrentTick) continue;
                     int pending = entries.Count(e => e.Item is CooldownExpiry c && c.Fighter == f && c.Skill == cooldown.Key && e.Tick == cooldown.Value);
@@ -550,6 +558,21 @@ namespace EdS.Simulation.Engine
                     $"Résonance, charges ou garde de {who} impossibles.");
                 Require(f.GlobalCooldownReadyTick >= 0 && f.RegenGranted >= 0 && f.NextTurn >= 0 && (f.NextAttackTick is null || f.NextAttackTick >= CurrentTick),
                     $"Échéances de {who} impossibles.");
+                // 7e tour : régénération accordée au plus ce que son délai permet jusqu'au tick précédent (sans régénération en cours, endurance
+                // pleine, l'ancienne valeur reste sans effet jusqu'à la prochaine dépense, qui la remet à zéro) ; entretien de la garde (reliquat sous
+                // l'unité, payé au plus le dû) ; compteurs du bilan positifs, sous un plafond qui laisse la marge de leurs incréments (vérifiés),
+                // ticks gardés au plus les ticks joués.
+                long grantable = f.RegenFromTick is long regenFrom && regenFrom <= previous
+                    ? IntMath.MulDiv(f.Rules.EnduranceRegenPerSecond.Raw, checked((previous - regenFrom + 1) * _tickMs), 1000 * Fixed.Scale, RoundingMode.Floor)
+                    : 0;
+                Require((f.RegenFromTick is null || (f.RegenFromTick >= 0 && f.RegenFromTick <= Math.Max(0, previous + _regenDelayTicks)))
+                    && f.RegenGranted <= (f.RegenFromTick is null ? CounterCeiling : Math.Max(0, grantable)), $"Régénération de {who} impossible.");
+                Require(f.GuardUpkeepRemainder >= 0 && f.GuardUpkeepRemainder < 1000 * Fixed.Scale && f.GuardUpkeepPaid >= 0
+                    && f.GuardUpkeepPaid <= f.GuardUpkeepDue && f.GuardUpkeepDue <= CounterCeiling, $"Entretien de la garde de {who} impossible.");
+                CombatantResult r = f.Result;
+                Require(new[] { r.DamageDealt, r.DamageTaken, r.DamageAbsorbed, r.DamageTransferred, r.DamageRedirected, r.DamageMitigated, r.Hits,
+                        r.CriticalHits, r.SkillsCast, r.UltimatesCast, r.CommandsRejected, r.Blocks, r.PerfectParries, r.FailedParries, r.GuardBreaks }
+                    .All(v => v >= 0 && v <= CounterCeiling) && r.GuardTicks >= 0 && r.GuardTicks <= CurrentTick, $"Bilan de {who} impossible.");
                 // Un mort ou un absent n'a ni altération, ni garde, ni parade, ni tour annoncé, et ne marche pas.
                 if (f.Out)
                     Require(f.Statuses.Count == 0 && !f.Guarding && !f.ParryOpen && f.NextAttackTick is null && f.Body is not { Moving: true },
@@ -562,7 +585,10 @@ namespace EdS.Simulation.Engine
                     Require(string.Equals(s.Key.Source, s.Definition.Stacking == StatusStacking.PerSourceKeepStronger ? s.Source : null, StringComparison.Ordinal),
                         $"{status} : clé de cumul incohérente avec sa source.");
                     Require(s.UntilTick >= CurrentTick && (!s.Definition.IsDot || s.NextTick >= CurrentTick), $"{status} : déjà échue.");
-                    Require(s.Absorb >= 0 && (s.Definition.IsShield || s.Absorb == 0), $"{status} : absorption impossible.");
+                    Require(s.Absorb >= 0 && s.Absorb <= CounterCeiling && (s.Definition.IsShield || s.Absorb == 0), $"{status} : absorption impossible.");
+                    // 7e tour : puissance d'un DOT positive (nulle pour une autre altération), sous le plafond.
+                    Require(s.Power.Raw >= 0 && s.Power.Raw <= CounterCeiling && (s.Definition.IsDot || (s.Power == Fixed.Zero && s.NextTick == 0)),
+                        $"{status} : puissance impossible.");
                     // Son échéance (ou, pour un DOT, son prochain tick) est en file, une seule fois et à son tick (revue Codex de la PR #32,
                     // 4e tour : une échéance en double agirait) ; aucune échéance de l'autre genre ne la vise.
                     var expiries = entries.Where(e => e.Item is StateExpiry x && x.Fighter == f && x.Key.Equals(s.Key) && x.Instance == s.Id && x.Generation == s.Generation).ToList();
@@ -861,6 +887,9 @@ namespace EdS.Simulation.Engine
             };
             TriggerSlot slot = Slot(bearer, origin, definitionId, index, n["rank"].Int, definition.Triggers[index], gone);
             slot.ReadyTick = n["readyTick"].Long;
+            // Revue Codex de la PR #32 (7e tour) : mêmes bornes que les autres recharges de déclencheurs.
+            if (slot.ReadyTick < 0 || slot.ReadyTick > Math.Max(0, CurrentTick - 1 + slot.Definition.CooldownMs / _tickMs))
+                throw new FormatException($"Recharge d'un déclencheur détaché de « {bearer.Id} » au-delà de sa durée.");
             return slot;
         }
 
