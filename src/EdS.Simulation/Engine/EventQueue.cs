@@ -132,5 +132,46 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Tick du prochain élément, ou null si la file est vide.</summary>
         public long? NextTick => _heap.Count == 0 ? (long?)null : _heap[0].Tick;
+
+        /// <summary>Sous-lot 11.4d (instantané d'état) : éléments dans l'ordre de sortie (tick, phase, séquence).</summary>
+        internal List<(long Tick, CombatPhase Phase, long Sequence, T Item)> Entries()
+        {
+            var entries = new List<(long, CombatPhase, long, T)>(_heap.Count);
+            foreach (Entry e in _heap) entries.Add((e.Tick, e.Phase, e.Sequence, e.Item));
+            entries.Sort((a, b) => a.Item1 != b.Item1 ? a.Item1.CompareTo(b.Item1) : a.Item2 != b.Item2 ? a.Item2.CompareTo(b.Item2) : a.Item3.CompareTo(b.Item3));
+            return entries;
+        }
+
+        /// <summary>Sous-lot 11.4d : curseur (position la plus avancée déjà demandée) et prochaine séquence.</summary>
+        internal (bool Started, long Tick, CombatPhase Phase, long NextSequence) Cursor => (_started, _cursorTick, _cursorPhase, _nextSequence);
+
+        /// <summary>
+        /// Sous-lot 11.4d : recharge une file vide à l'identique (éléments, séquences, curseur). L'ordre de sortie ne dépend que de
+        /// (tick, phase, séquence), toutes distinctes : la file rechargée rend les éléments dans le même ordre que l'originale.
+        /// </summary>
+        internal void Load(IEnumerable<(long Tick, CombatPhase Phase, long Sequence, T Item)> entries, bool started, long cursorTick, CombatPhase cursorPhase,
+            long nextSequence)
+        {
+            if (_heap.Count != 0) throw new InvalidOperationException("File déjà remplie.");
+            var seen = new HashSet<long>();
+            foreach (var (tick, phase, sequence, item) in entries)
+            {
+                if (tick < 0 || sequence < 0 || sequence >= nextSequence || !seen.Add(sequence))
+                    throw new FormatException($"Élément de file invalide (tick {tick}, séquence {sequence}).");
+                _heap.Add(new Entry(tick, phase, sequence, item));
+                int i = _heap.Count - 1;
+                while (i > 0)
+                {
+                    int parent = (i - 1) / 2;
+                    if (!_heap[i].Before(_heap[parent])) break;
+                    (_heap[i], _heap[parent]) = (_heap[parent], _heap[i]);
+                    i = parent;
+                }
+            }
+            _started = started;
+            _cursorTick = cursorTick;
+            _cursorPhase = cursorPhase;
+            _nextSequence = nextSequence;
+        }
     }
 }

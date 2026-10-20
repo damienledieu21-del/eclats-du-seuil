@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace EdS.Simulation.Engine
 {
@@ -93,5 +94,25 @@ namespace EdS.Simulation.Engine
         /// </summary>
         public Provenance ReactionTo(long eid, string trigger, string bearer, long? sourceInstance = null, int? sourceGeneration = null) =>
             new Provenance(Root, checked(Depth + 1), TriggerChain.Extend(Chain, trigger), trigger, eid, bearer, sourceInstance, sourceGeneration);
+
+        /// <summary>Sous-lot 11.4d : déclencheurs de la chaîne, du plus ancien au plus récent (instantané d'état).</summary>
+        public List<string> ChainOldestFirst()
+        {
+            var chain = new List<string>();
+            for (TriggerChain? link = Chain; link != null; link = link.Parent) chain.Add(link.Trigger);
+            chain.Reverse();
+            return chain;
+        }
+
+        /// <summary>Sous-lot 11.4d : provenance relue d'un instantané d'état, à l'identique.</summary>
+        public static Provenance Restore(string root, int depth, IReadOnlyList<string> chain, string? trigger, long? cause, string? source,
+            long? sourceInstance, int? sourceGeneration)
+        {
+            if (root is null) throw new ArgumentNullException(nameof(root));
+            if (depth < 0 || depth > TriggerChain.MaxLength) throw new FormatException($"Profondeur de provenance invalide : {depth}.");
+            TriggerChain? links = null;
+            foreach (string link in chain) links = TriggerChain.Extend(links, link);
+            return new Provenance(root, depth, links, trigger, cause, source, sourceInstance, sourceGeneration);
+        }
     }
 }

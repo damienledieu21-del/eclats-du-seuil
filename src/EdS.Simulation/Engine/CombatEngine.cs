@@ -462,7 +462,13 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Réservé aux tests (correctif 7.3.1) : <paramref name="numericLimits"/> faux omet le précontrôle numérique pour
         /// exercer l'arrêt <c>overflow</c> et vérifier qu'aucun impact n'est appliqué à moitié.</summary>
-        internal CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound, bool numericLimits)
+        internal CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound, bool numericLimits) : this(setup, log, queueBound, numericLimits, null) { }
+
+        /// <summary>
+        /// Sous-lot 11.4d : avec <paramref name="snapshot"/>, le moteur est reconstruit dans l'état de l'instantané (voir
+        /// <see cref="Restore"/>) : rien n'est mis en file ni écrit au journal à la construction.
+        /// </summary>
+        private CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound, bool numericLimits, CombatSnapshot? snapshot)
         {
             _setup = setup ?? throw new ArgumentNullException(nameof(setup));
             _log = log ?? throw new ArgumentNullException(nameof(log));
@@ -484,6 +490,11 @@ namespace EdS.Simulation.Engine
             _byId = _fighters.ToDictionary(f => f.Id, StringComparer.Ordinal);
             BuildTriggerIndex();
             InitSpace();
+            if (snapshot != null)
+            {
+                LoadSnapshot(snapshot);
+                return;
+            }
 
             // Sous-lot 11.4d : une arrivée par combattant qui arrive en cours de combat, dans l'ordre du scénario.
             foreach (Fighter f in _fighters)

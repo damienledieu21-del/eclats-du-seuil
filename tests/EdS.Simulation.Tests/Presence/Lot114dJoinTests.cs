@@ -90,7 +90,7 @@ public class Lot114dJoinTests
 
     private static readonly string[] Skills = { Frappe, Entaille, Assommer, Onde, Gratuite, Heurt };
 
-    private sealed record Plan(CombatSetup Base, List<CombatantSetup> Joins, List<CombatCommand> Live);
+    internal sealed record Plan(CombatSetup Base, List<CombatantSetup> Joins, List<CombatCommand> Live);
 
     private static Fixed Between(Random random, int minRaw, int maxRaw) => Fixed.FromRaw(random.Next(minRaw, maxRaw + 1));
 
@@ -117,7 +117,7 @@ public class Lot114dJoinTests
         };
     }
 
-    private static Plan RandomPlan(Random random)
+    internal static Plan RandomPlan(Random random)
     {
         bool spatial = random.Next(2) == 0;
         CombatSpace? space = spatial ? Arena(8, new SpaceObstacle("mur", new[] { V("-1", "-1"), V("1", "-1"), V("1", "1"), V("-1", "1") })) : null;
