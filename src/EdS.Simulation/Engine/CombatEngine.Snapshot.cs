@@ -645,6 +645,8 @@ namespace EdS.Simulation.Engine
                 Require(f.Presence != Presence.Refused || _spatial, $"Arrivée de {who} refusée hors d'un combat positionné.");
                 Require(f.LeftTick is not long left || _setup.Commands.Any(c => c.Action == CombatAction.Leave && c.Actor == f.Id && c.AtMs / _tickMs == left),
                     $"Départ de {who} sans commande de départ à son tick.");
+                // 18e tour : un mort ne part pas (le départ est annulé, leaveCancelled) et un parti ne meurt plus.
+                Require(!(f.IsDead && (f.Presence == Presence.Left || f.LeftTick != null)), $"{who}, mort, déclaré parti.");
                 // 17e tour : un départ suit l'admission (la commande leave n'est reçue que d'un combattant présent, arrivé au plus tard à ce tick).
                 Require(f.LeftTick is not long leftAt || leftAt >= (f.ArrivedTick ?? 0), $"Départ de {who} avant son arrivée.");
                 Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
@@ -694,7 +696,9 @@ namespace EdS.Simulation.Engine
                 CombatantResult r = f.Result;
                 Require(new[] { r.DamageDealt, r.DamageTaken, r.DamageAbsorbed, r.DamageTransferred, r.DamageRedirected, r.DamageMitigated, r.Hits,
                         r.CriticalHits, r.SkillsCast, r.UltimatesCast, r.CommandsRejected, r.Blocks, r.PerfectParries, r.FailedParries, r.GuardBreaks }
-                    .All(v => v >= 0 && v <= CounterCeiling) && r.GuardTicks >= 0 && r.GuardTicks <= CurrentTick, $"Bilan de {who} impossible.");
+                    .All(v => v >= 0 && v <= CounterCeiling) && r.GuardTicks >= 0 && r.GuardTicks <= CurrentTick
+                    // 18e tour : un coup critique est un coup, un ultime est une compétence lancée (le total est toujours compté avec lui).
+                    && r.CriticalHits <= r.Hits && r.UltimatesCast <= r.SkillsCast, $"Bilan de {who} impossible.");
                 // Un mort ou un absent n'a ni altération, ni garde, ni parade, ni tour annoncé, et ne marche pas.
                 if (f.Out)
                     Require(f.Statuses.Count == 0 && !f.Guarding && !f.ParryOpen && f.NextAttackTick is null && f.Body is not { Moving: true },

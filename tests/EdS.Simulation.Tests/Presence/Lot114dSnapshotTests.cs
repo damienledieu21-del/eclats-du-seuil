@@ -569,7 +569,7 @@ public class Lot114dSnapshotTests
     [Fact]
     public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
     {
-        // Revue Codex de la PR #32 (11e à 17e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        // Revue Codex de la PR #32 (11e à 18e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
         while (training.CurrentTick < 30) training.Step();
         string text = training.Snapshot().Text;
@@ -682,6 +682,26 @@ public class Lot114dSnapshotTests
         string departed = stayed.Replace(renfortLine, renfortLine.Replace("\"presence\":0", "\"presence\":2", StringComparison.Ordinal)
             .Replace("\"leftTick\":null", "\"leftTick\":0", StringComparison.Ordinal), StringComparison.Ordinal);
         Assert.Contains("avant son arrivée", Assert.Throws<FormatException>(() => CombatEngine.Restore(stay.CompletedSetup(), CombatSnapshot.Parse(departed),
+            NullCombatLog.Instance)).Message);
+        // 18e tour : un coup critique est un coup, un ultime une compétence lancée ; un mort dont le départ a été annulé n'est pas parti.
+        string hits = System.Text.RegularExpressions.Regex.Match(bastion, "\"hits\":[0-9]+").Value;
+        long hitCount = long.Parse(hits.Substring("\"hits\":".Length), System.Globalization.CultureInfo.InvariantCulture);
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"criticalHits\":", $"\"criticalHits\":{hitCount + 1}0", "Bilan de « bastion » impossible"),
+            (Bastion, "\"ultimatesCast\":0", "\"ultimatesCast\":2", "Bilan de « bastion » impossible"),
+        });
+        var dying = new CombatEngine(Setup(new[] { Leave(1000, "bastion") }, new CombatantSetup[]
+        {
+            Character(attributes: Attrs(vitalite: 1)), Tank("allie"), Assailant(firstAttackMs: 1000, intervalMs: 10_000, attacks: Blow(raw: 100_000_000)),
+        }, durationMs: 3000), NullCombatLog.Instance);
+        while (dying.CurrentTick < 25) dying.Step();
+        string dead = dying.Snapshot().Text;
+        string deadLine = dead.Split('\n').First(l => l.StartsWith(Bastion, StringComparison.Ordinal));
+        Assert.Contains("\"dead\":true", deadLine, StringComparison.Ordinal);
+        string leftDead = dead.Replace(deadLine, deadLine.Replace("\"presence\":0", "\"presence\":2", StringComparison.Ordinal)
+            .Replace("\"leftTick\":null", "\"leftTick\":20", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("mort, déclaré parti", Assert.Throws<FormatException>(() => CombatEngine.Restore(dying.CompletedSetup(), CombatSnapshot.Parse(leftDead),
             NullCombatLog.Instance)).Message);
         // 14e tour : un texte tronqué au milieu de true, false ou null est illisible (FormatException), pas une erreur d'indice.
         foreach (string truncated in new[] { "n", "tru", "{\"a\":fals", "[nul" })
