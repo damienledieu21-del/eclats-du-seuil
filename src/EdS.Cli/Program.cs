@@ -439,11 +439,17 @@ static int RunNetwork(ReadOnlySpan<string> options)
 {
     string dataDirectory = DefaultDataDirectory(), scenarioPath = Path.Combine("scenarios", "coop", "duo_meute.json");
     int seeds = 3;
+    bool dodge = false, scenarioGiven = false;
     for (int i = 0; i < options.Length; i++)
     {
         bool hasValue = i + 1 < options.Length;
         if (options[i] == "--data" && hasValue) dataDirectory = options[++i];
-        else if (options[i] == "--scenario" && hasValue) scenarioPath = options[++i];
+        else if (options[i] == "--esquive") dodge = true;   // sous-lot 11.7
+        else if (options[i] == "--scenario" && hasValue)
+        {
+            scenarioPath = options[++i];
+            scenarioGiven = true;
+        }
         else if (options[i] == "--graines" && hasValue && int.TryParse(options[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out int n) && n >= 1 && n <= NetworkReport.MaxSeeds)
         {
             seeds = n;
@@ -457,8 +463,25 @@ static int RunNetwork(ReadOnlySpan<string> options)
     }
     GameData? data = LoadData(dataDirectory);
     if (data is null) return 1;
+    if (dodge && !scenarioGiven) scenarioPath = Path.Combine("scenarios", "coop", "esquive_duo.json");
     ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(scenarioPath, data);
     if (scenario.Setup is null) return Fail(scenarioPath, scenario.Report);
+    if (dodge)
+    {
+        // Sous-lot 11.7 : esquive d'une attaque annoncée selon la latence (0 à 200 ms d'un sens) et le temps de réaction.
+        IReadOnlyList<DodgeMeasureResult> dodges;
+        try
+        {
+            dodges = NetworkDodge.Measure(data, scenario.Setup);
+        }
+        catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+        {
+            Console.Error.WriteLine($"Mesure d'esquive impossible ({scenarioPath}) : {e.Message}");
+            return 1;
+        }
+        NetworkDodge.Write(Console.Out, dodges, Path.GetFileNameWithoutExtension(scenarioPath));
+        return dodges.All(d => d.HashesMatch && d.Desyncs == 0) ? 0 : 3;
+    }
     IReadOnlyList<NetworkReportRow> rows;
     IReadOnlyList<NetworkMeasureResult> cuts;
     try
@@ -494,8 +517,10 @@ static void PrintHelp()
     Console.WriteLine("                                                 scenarios/mesures), profils beginner, standard, expert, avec le pilote ;");
     Console.WriteLine("                                                 journaux des combats vers L ; code 2 si un combat est interrompu,");
     Console.WriteLine("                                                 3 avec --strict si un objectif provisoire n'est pas atteint");
-    Console.WriteLine("  eds reseau [--data D] [--scenario S] [--graines N]");
+    Console.WriteLine("  eds reseau [--data D] [--scenario S] [--graines N] [--esquive]");
     Console.WriteLine("                                                 Mesure le jeu en réseau sur le réseau simulé (latence 0 à 200 ms,");
     Console.WriteLine("                                                 gigue, coupures) : parades, délais, désynchronisations ; rapport");
-    Console.WriteLine("                                                 Markdown ; code 3 si une empreinte diffère ou une divergence survient");
+    Console.WriteLine("                                                 Markdown ; code 3 si une empreinte diffère ou une divergence survient ;");
+    Console.WriteLine("                                                 --esquive : esquive d'une attaque annoncée selon la latence (0 à 200 ms)");
+    Console.WriteLine("                                                 et le temps de réaction (scénario par défaut : coop/esquive_duo)");
 }

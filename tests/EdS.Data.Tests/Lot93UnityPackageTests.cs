@@ -135,5 +135,11 @@ public class Lot93UnityPackageTests
             Assert.Contains($"\"{scenario}\"", gameScript, StringComparison.Ordinal);
             Assert.True(File.Exists(Path.Combine(Root, "scenarios", scenario)), scenario);
         }
+        // Scénarios du jeu en réseau (sous-lots 11.1 et 11.7).
+        foreach (string scenario in new[] { "coop/meute_a_vaincre.json", "coop/vallons_duo.json" })
+        {
+            Assert.Contains($"\"{scenario}\"", gameScript, StringComparison.Ordinal);
+            Assert.True(File.Exists(Path.Combine(Root, "scenarios", scenario)), scenario);
+        }
     }
 }

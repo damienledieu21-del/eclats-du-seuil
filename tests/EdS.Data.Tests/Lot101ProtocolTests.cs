@@ -24,20 +24,30 @@ public class Lot101ProtocolTests
         new(500, "bastion2", CombatAction.Parry),
     };
 
+    /// <summary>Sous-lot 11.7 (protocole 2) : marche, arrêt, sélection (cible ou rien) et départ transmis aussi.</summary>
+    private static readonly CombatCommand[] SpatialCommands =
+    {
+        new(550, "bastion", EdS.Domain.Space.GroundVector.Parse("-0.7071", "0.7071")),
+        new(550, "bastion2", CombatAction.Stop),
+        CombatCommand.SelectTarget(550, "bastion", "loup_a"),
+        CombatCommand.SelectTarget(550, "bastion2", null),
+        new(550, "bastion2", CombatAction.Leave),
+    };
+
     /// <summary>Un exemplaire de chaque message, tous champs remplis ou absents.</summary>
     public static IEnumerable<object[]> AllMessages()
     {
         var talents = new Dictionary<string, int> { ["talent.bastion.rempart.garde_stable"] = 3, ["talent.bastion.rempart.echo_defensif"] = 1 };
         NetMessage[] messages =
         {
-            new HelloMessage(1, "Dam é😀", new BuildChoice("build.bastion.rempart")),
-            new HelloMessage(1, "Léa", new BuildChoice("build.bastion.gardien", talents)),
-            new ReconnectMessage(1, Token),
+            new HelloMessage(Protocol.Version, "Dam é😀", new BuildChoice("build.bastion.rempart")),
+            new HelloMessage(Protocol.Version, "Léa", new BuildChoice("build.bastion.gardien", talents)),
+            new ReconnectMessage(Protocol.Version, Token),
             new BuildMessage(new BuildChoice("build.bastion.contrecoup", talents)),
             new ReadyMessage(true),
             new ReadyMessage(false),
             new InputMessage(true, false, null, null, null),
-            new InputMessage(false, true, 4, "loup_a", "bastion2"),
+            new InputMessage(false, true, 4, "loup_a", "bastion2", 63),
             new PingMessage(123_456_789),
             new ResyncRequestMessage(),
             new ByeMessage(),
@@ -47,7 +57,8 @@ public class Lot101ProtocolTests
             new StartMessage("{\"type\":\"header\",\"x\":\"é\\n\"}"),
             new TickMessage(new TickCommands(10, SampleCommands), Hash),
             new TickMessage(new TickCommands(0, Array.Empty<CombatCommand>()), Hash),
-            new ResyncMessage("{\"type\":\"header\"}", 42, new[] { new TickCommands(3, SampleCommands), new TickCommands(41, SampleCommands.Take(1).ToArray()) }, Hash),
+            new TickMessage(new TickCommands(11, SpatialCommands), Hash),
+            new StateMessage("{\"type\":\"header\"}", "{\"snapshot\":2}\n{\"fighter\":\"bastion\"}", Hash),
             new RejectedMessage("Plus de 4 commandes de « bastion » au tick 12."),
             new PongMessage(-5),
             new EndMessage(1200, "durée atteinte"),
@@ -74,8 +85,12 @@ public class Lot101ProtocolTests
     [Fact]
     public void Champs_des_messages_relus()
     {
-        var input = (InputMessage)Decode("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":2,\"target\":\"loup_a\",\"ally\":null}", MessageDirection.ClientToServer);
-        Assert.Equal((true, false, 2, "loup_a", (string?)null), (input.Guard, input.Parry, input.Slot, input.Target, input.Ally));
+        var input = (InputMessage)Decode("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":2,\"target\":\"loup_a\",\"ally\":null,\"heading\":17}", MessageDirection.ClientToServer);
+        Assert.Equal((true, false, 2, "loup_a", (string?)null, (int?)17), (input.Guard, input.Parry, input.Slot, input.Target, input.Ally, input.Heading));
+        // Sous-lot 11.7 : les commandes de marche, d'arrêt, de sélection et de départ sont relues telles quelles.
+        var spatial = (TickMessage)Decode(MessageCodec.EncodeText(new TickMessage(new TickCommands(11, SpatialCommands), Hash)), MessageDirection.ServerToClient);
+        Assert.Equal(SpatialCommands.Select(c => (c.AtMs, c.Actor, c.Action, c.Target, c.Direction)),
+            spatial.Commands.Commands.Select(c => (c.AtMs, c.Actor, c.Action, c.Target, c.Direction)));
         var tick = (TickMessage)Decode(MessageCodec.EncodeText(new TickMessage(new TickCommands(10, SampleCommands), Hash)), MessageDirection.ServerToClient);
         Assert.Equal(10, tick.Commands.Tick);
         Assert.Equal(SampleCommands.Select(c => (c.AtMs, c.Actor, c.Action, c.Skill, c.Target)),
@@ -115,10 +130,12 @@ public class Lot101ProtocolTests
     [InlineData("{\"type\":\"hello\",\"protocol\":1,\"name\":\"Dam\",\"build\":{\"reference\":\"b.r\",\"talents\":[]}}", "objet attendu")]
     [InlineData("{\"type\":\"reconnect\",\"protocol\":1,\"token\":\"0123456789ABCDEF0123456789ABCDEF\"}", "jeton invalide")]
     [InlineData("{\"type\":\"reconnect\",\"protocol\":1,\"token\":\"0123\"}", "jeton invalide")]
-    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":5,\"target\":null,\"ally\":null}", "hors de [0, 4]")]
-    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":-1,\"target\":null,\"ally\":null}", "hors de [0, 4]")]
-    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":\"a\\\"b\",\"ally\":null}", "identifiant invalide")]
-    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null}", "« ally » obligatoire")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":5,\"target\":null,\"ally\":null,\"heading\":null}", "hors de [0, 4]")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":-1,\"target\":null,\"ally\":null,\"heading\":null}", "hors de [0, 4]")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":\"a\\\"b\",\"ally\":null,\"heading\":null}", "identifiant invalide")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"heading\":null}", "« ally » obligatoire")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null}", "« heading » obligatoire")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":64}", "hors de [0, 63]")]
     [InlineData("{\"type\":\"ready\",\"ready\":1}", "")]
     [InlineData("{\"type\":\"resyncRequest\",\"x\":1}", "champ inconnu")]
     public void Message_client_refuse_avec_sa_raison(string json, string expected) =>
@@ -131,9 +148,17 @@ public class Lot101ProtocolTests
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"a\",\"action\":\"skill\",\"skill\":\"s.k\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "« target » obligatoire")]
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"a\",\"action\":\"parry\",\"skill\":\"s.k\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "réservés")]
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":-50,\"actor\":\"a\",\"action\":\"parry\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "hors de")]
-    [InlineData("{\"type\":\"resync\",\"header\":\"h\",\"ticks\":5,\"history\":[{\"tick\":3,\"commands\":[]},{\"tick\":3,\"commands\":[]}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "strictement croissants")]
-    [InlineData("{\"type\":\"resync\",\"header\":\"h\",\"ticks\":5,\"history\":[{\"tick\":5,\"commands\":[]}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "strictement croissants")]
-    [InlineData("{\"type\":\"resync\",\"header\":\"\",\"ticks\":5,\"history\":[],\"hash\":\"fnv1a64:0123456789abcdef\"}", "en-tête vide")]
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"move\",\"direction\":[0,0]}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "non toutes deux nulles")]
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"move\",\"direction\":[2,0]}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "composantes dans")]
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"move\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "« direction » obligatoire")]
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"stop\",\"target\":null}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "réservés aux actions")]
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"select\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "« target » obligatoire")]
+    [InlineData("{\"type\":\"state\",\"header\":\"h\",\"hash\":\"fnv1a64:0123456789abcdef\"}", "« snapshot » obligatoire")]
+    [InlineData("{\"type\":\"state\",\"header\":\"\",\"snapshot\":\"s\",\"hash\":\"fnv1a64:0123456789abcdef\"}", "en-tête vide")]
+    [InlineData("{\"type\":\"state\",\"header\":\"h\",\"snapshot\":\"\",\"hash\":\"fnv1a64:0123456789abcdef\"}", "instantané vide")]
+    [InlineData("{\"type\":\"state\",\"header\":\"h\",\"snapshot\":\"s\",\"hash\":\"fnv1a64:0123\"}", "empreinte invalide")]
+    [InlineData("{\"type\":\"state\",\"header\":\"h\",\"snapshot\":\"s\",\"hash\":\"fnv1a64:0123456789abcdef\",\"history\":[]}", "champ inconnu")]
+    [InlineData("{\"type\":\"resync\",\"header\":\"h\",\"ticks\":5,\"history\":[],\"hash\":\"fnv1a64:0123456789abcdef\"}", "type de message inconnu")]   // protocole 1
     [InlineData("{\"type\":\"lobby\",\"phase\":\"pause\",\"seats\":[]}", "phase inconnue")]
     [InlineData("{\"type\":\"lobby\",\"phase\":\"lobby\",\"seats\":[{\"id\":\"a\",\"player\":null,\"connected\":true,\"ready\":false}]}", "« build » obligatoire")]
     [InlineData("{\"type\":\"welcome\",\"protocol\":1,\"seat\":\"bastion\",\"token\":\"0123456789abcdef0123456789abcdef\",\"tickMs\":0}", "hors de")]
@@ -438,15 +463,15 @@ public class Lot101ProtocolTests
         Eventually(() => listener.TryAccept(out server), "connexion acceptée");
         using (server)
         {
-            Assert.True(client.Send(new HelloMessage(1, "Dam", new BuildChoice("build.bastion.rempart"))));
+            Assert.True(client.Send(new HelloMessage(Protocol.Version, "Dam", new BuildChoice("build.bastion.rempart"))));
             Assert.IsType<HelloMessage>(Receive(server, MessageDirection.ClientToServer));
             for (int i = 0; i < 200; i++) Assert.True(client.Send(new PingMessage(i)));
             for (int i = 0; i < 200; i++) Assert.Equal(i, ((PingMessage)Receive(server, MessageDirection.ClientToServer)).ClientTime);
 
-            // Un gros message du serveur (historique) passe en un seul morceau logique.
+            // Un gros message du serveur (état courant) passe en un seul morceau logique.
             string header = new string('h', 1_000_000);
-            Assert.True(server.Send(new ResyncMessage(header, 1, Array.Empty<TickCommands>(), Hash)));
-            Assert.Equal(header, ((ResyncMessage)Receive(client, MessageDirection.ServerToClient)).Header);
+            Assert.True(server.Send(new StateMessage(header, "s", Hash)));
+            Assert.Equal(header, ((StateMessage)Receive(client, MessageDirection.ServerToClient)).Header);
 
             // Fermeture par le serveur : le message d'erreur arrive avant la fin.
             server.Send(new ErrorMessage("salle pleine"));

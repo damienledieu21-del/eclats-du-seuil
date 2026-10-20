@@ -304,8 +304,8 @@ namespace EdS.Net
         }
 
         /// <summary>
-        /// Traite un message du serveur ; rend le nombre de ticks rejoués et retenus (1 pour un tick, tous ceux de l'historique pour une
-        /// resynchronisation réussie, revue Codex de la PR #20).
+        /// Traite un message du serveur ; rend le nombre de ticks rejoués et retenus (1 pour un tick ; aucun pour un état courant, repris
+        /// sans rien rejouer depuis le sous-lot 11.7).
         /// </summary>
         private int Handle(NetMessage message)
         {
@@ -354,8 +354,8 @@ namespace EdS.Net
                 case TickMessage tick:
                     if (Status != ClientStatus.Combat || Combat is null) return 0;   // en attente de l'historique, ou hors combat
                     return Combat.ApplyTick(tick) ? 1 : 0;
-                case ResyncMessage resync:
-                    return ApplyResync(resync);
+                case StateMessage state:
+                    return ApplyState(state);
                 case RejectedMessage rejected:
                     LastRejected = rejected.Reason;
                     // Un refus arrivé entre la demande de build et la réponse à sa mesure est celui du build, sauf un combat refusé au départ.
@@ -392,37 +392,48 @@ namespace EdS.Net
             }
         }
 
-        private int ApplyResync(ResyncMessage resync)
+        /// <summary>
+        /// Sous-lot 11.7 : état courant du serveur. Hors combat local (arrivée pendant le combat, client relancé), le combat se crée à cet
+        /// état ; sinon le combat local y reprend (arrivée d'un autre joueur, retour, désynchronisation). Rend 1 si l'état est accepté.
+        /// </summary>
+        private int ApplyState(StateMessage state)
         {
-            if (SeatId is null || (Status != ClientStatus.Combat && Status != ClientStatus.Reconnecting)) return 0;
-            if (Combat is null || Combat.Header != resync.Header)
+            if (SeatId is null)
             {
-                // Retour dans un combat commencé sans nous (client relancé) : il se lit dans l'en-tête de l'historique.
-                NetworkCombat? combat = NetworkCombat.Create(this, _data, resync.Header, SeatId, out string? error);
+                Fail("état courant avant l'accueil.");
+                return 0;
+            }
+            if (Combat is null || Combat.IsFinished || (Status != ClientStatus.Combat && Status != ClientStatus.Reconnecting))
+            {
+                NetworkCombat? combat = NetworkCombat.Create(this, _data, state.Header, SeatId, out string? error, state);
                 if (combat is null)
                 {
                     Fail(error!);
                     return 0;
                 }
                 Combat = combat;
+                Error = null;
+                _lastInputAt = double.NegativeInfinity;
+                Back(ClientStatus.Combat);
+                return 0;
             }
-            if (Combat.ApplyResync(resync, out int replayed))
+            if (Combat.ApplyState(state, _data))
             {
                 Back(ClientStatus.Combat);
-                return replayed;
+                return 0;
             }
             if (Combat.ResyncAttempts >= Options.MaxResyncAttempts)
-                Fail($"désynchronisation persistante après {Combat.ResyncAttempts} historiques : {Combat.LastDesync}");
+                Fail($"désynchronisation persistante après {Combat.ResyncAttempts} demandes d'état courant : {Combat.LastDesync}");
             return 0;
         }
 
-        /// <summary>Demande l'historique complet au serveur (divergence, tick manquant, historique perdu).</summary>
+        /// <summary>Demande l'état courant au serveur (divergence, tick manquant, état perdu).</summary>
         internal void RequestResync(NetworkCombat combat)
         {
             if (combat != Combat || Status == ClientStatus.Failed) return;
             if (combat.ResyncAttempts >= Options.MaxResyncAttempts)
             {
-                Fail($"désynchronisation persistante après {combat.ResyncAttempts} historiques : {combat.LastDesync}");
+                Fail($"désynchronisation persistante après {combat.ResyncAttempts} demandes d'état courant : {combat.LastDesync}");
                 return;
             }
             combat.MarkResyncRequested();

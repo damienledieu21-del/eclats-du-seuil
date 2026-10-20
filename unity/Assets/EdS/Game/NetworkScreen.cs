@@ -17,6 +17,8 @@ namespace EdS.Game
             None,
             Host,
             HostWithBot,
+            HostVallons,
+            HostVallonsWithBot,
             Join,
             Solo,
             Close,
@@ -41,25 +43,28 @@ namespace EdS.Game
         /// <summary>Menu du réseau, au centre de l'écran.</summary>
         public Action DrawMenu()
         {
-            float w = 680f, x = Hud.Width / 2f - w / 2f, y = 170f;
-            Hud.Fill(new Rect(x - 16, y - 16, w + 32, 520), new Color(0.05f, 0.07f, 0.1f, 0.92f));
+            float w = 680f, x = Hud.Width / 2f - w / 2f, y = 120f;
+            Hud.Fill(new Rect(x - 16, y - 16, w + 32, 640), new Color(0.05f, 0.07f, 0.1f, 0.92f));
             Hud.Title(new Rect(x, y, w, 36), "Jeu en réseau — deux Bastions contre la meute");
-            Hud.Small(new Rect(x, y + 40, w, 24), "Coopération sur le réseau local (scénario coop/meute_a_vaincre : la meute peut mourir). Échap ou M : fermer.");
+            Hud.Small(new Rect(x, y + 40, w, 24), "Coopération sur le réseau local. Échap ou M : fermer.");
 
             Hud.Text(new Rect(x, y + 84, 160, 30), "Ton nom :");
             PlayerName = Hud.Field(new Rect(x + 170, y + 82, 300, 34), PlayerName, Protocol.MaxNameLength);
 
             Action action = Action.None;
-            if (Hud.Button(new Rect(x, y + 136, w, 44), $"Héberger la partie (port {Protocol.DefaultPort})", true)) action = Action.Host;
-            if (Hud.Button(new Rect(x, y + 188, w, 44), "Héberger avec un équipier robot (pour essayer seul)", true)) action = Action.HostWithBot;
+            if (Hud.Button(new Rect(x, y + 136, w, 44), $"Héberger la meute à vaincre (port {Protocol.DefaultPort})", true)) action = Action.Host;
+            if (Hud.Button(new Rect(x, y + 188, w, 44), "Héberger la meute avec un équipier robot (pour essayer seul)", true)) action = Action.HostWithBot;
+            // Sous-lot 11.7 : les Vallons à deux, déplacements résolus par le serveur ; le second joueur peut arriver en plein combat.
+            if (Hud.Button(new Rect(x, y + 248, w, 44), "Héberger les Vallons à deux (l'autre peut arriver en plein combat)", true)) action = Action.HostVallons;
+            if (Hud.Button(new Rect(x, y + 300, w, 44), "Héberger les Vallons, robot qui arrive après 10 s de combat", true)) action = Action.HostVallonsWithBot;
 
-            Hud.Text(new Rect(x, y + 252, 160, 30), "Adresse :");
-            Address = Hud.Field(new Rect(x + 170, y + 250, 300, 34), Address, 64);
-            if (Hud.Button(new Rect(x + 480, y + 248, w - 480, 38), "Rejoindre", true)) action = Action.Join;
+            Hud.Text(new Rect(x, y + 364, 160, 30), "Adresse :");
+            Address = Hud.Field(new Rect(x + 170, y + 362, 300, 34), Address, 64);
+            if (Hud.Button(new Rect(x + 480, y + 360, w - 480, 38), "Rejoindre", true)) action = Action.Join;
 
-            if (Hud.Button(new Rect(x, y + 310, w, 40), "Revenir au jeu solo", true)) action = Action.Solo;
-            if (Hud.Button(new Rect(x, y + 358, w, 40), "Fermer ce menu", true)) action = Action.Close;
-            if (!string.IsNullOrEmpty(Message)) Hud.Small(new Rect(x, y + 410, w, 80), "<color=#ff9a7a>" + Hud.Plain(Message) + "</color>");
+            if (Hud.Button(new Rect(x, y + 422, w, 40), "Revenir au jeu solo", true)) action = Action.Solo;
+            if (Hud.Button(new Rect(x, y + 470, w, 40), "Fermer ce menu", true)) action = Action.Close;
+            if (!string.IsNullOrEmpty(Message)) Hud.Small(new Rect(x, y + 522, w, 80), "<color=#ff9a7a>" + Hud.Plain(Message) + "</color>");
             return action;
         }
 
@@ -154,7 +159,8 @@ namespace EdS.Game
             float x = Hud.Width / 2f - 300f;
             Hud.Fill(new Rect(x, 62, 600, 60), new Color(0f, 0f, 0f, 0.4f));
             Hud.Small(new Rect(x + 10, 64, 580, 24), $"Réseau : temps aller-retour {ping}  ·  télégraphie avancée de {lead:0} ms");
-            Hud.Small(new Rect(x + 10, 90, 580, 24), $"Place {client.SeatId}  ·  allié visé par les soutiens : {allyId ?? "aucun"} (G : changer)");
+            string robot = session.BotArrivesIn is double inSeconds ? $"  ·  robot dans {inSeconds:0} s" : "";
+            Hud.Small(new Rect(x + 10, 90, 580, 24), $"Place {client.SeatId}  ·  allié visé par les soutiens : {allyId ?? "aucun"} (G : changer){robot}");
             if (client.Status == ClientStatus.Disconnected || client.Status == ClientStatus.Reconnecting)
             {
                 double left = client.Options.ReconnectSeconds - (client.DisconnectedSeconds ?? 0);

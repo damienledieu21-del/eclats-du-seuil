@@ -33,12 +33,10 @@ namespace EdS.Runtime
         private bool _parryRequested;
         private int? _slotRequested;
 
-        // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage), cap voulu et dernier cap envoyé (null : arrêt ou rien),
-        // dernière cible sélectionnée envoyée au moteur.
+        // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage) ; marche voulue et cible sélectionnée (sous-lot 11.7 :
+        // partagées avec la salle du serveur).
         private readonly IReadOnlyList<ConvexPolygon>? _obstacles;
-        private int? _wishedHeading;
-        private int? _sentHeading;
-        private string? _sentSelection;
+        private readonly MovementIntent _movement = new MovementIntent();
 
         /// <summary>Ticks simulés au plus par appel à <see cref="Advance"/> : une image très lente ne fait pas rattraper des secondes d'un coup.</summary>
         public int MaxTicksPerAdvance { get; set; } = 5;
@@ -116,14 +114,17 @@ namespace EdS.Runtime
         public void SetMove(double x, double z)
         {
             int? heading = MoveInput.Heading(x, z);
-            _wishedHeading = _setup.Space is null ? null : heading;
+            _movement.Wished = _setup.Space is null ? null : heading;
         }
 
         /// <summary>Cap de marche voulu (null : arrêt), pour les essais et l'affichage.</summary>
-        public int? WishedHeading => _wishedHeading;
+        public int? WishedHeading => _movement.Wished;
 
         /// <summary>Sous-lot 11.6 : attaques annoncées en cours (formes au sol verrouillées, impact à venir), lecture seule.</summary>
         public IReadOnlyList<AnnouncedAttack> Announced() => _engine.Announced();
+
+        /// <summary>Sous-lot 11.7 : joué seul, rien n'est prédit (le moteur tourne sur place).</summary>
+        public (double X, double Z)? PredictedPosition() => null;
 
         /// <summary>Parade parfaite au prochain tick.</summary>
         public void Parry() => _parryRequested = true;
@@ -218,24 +219,9 @@ namespace EdS.Runtime
             int used = 0;
             foreach (CombatCommand[] group in groups)
                 if (TrySubmit(group)) used += group.Length;
-            if (_setup.Space is null || me.IsDead) return;
             // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles changent, dans
             // la place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant.
-            long atMs = checked(_engine.CurrentTick * _tickMs);
-            int room = _setup.Combat.MaxCommandsPerActorPerTick - used;
-            if (room > 0 && _wishedHeading != _sentHeading)
-            {
-                CombatCommand move = _wishedHeading is int heading
-                    ? new CombatCommand(atMs, PlayerId, MoveInput.Direction(heading))
-                    : new CombatCommand(atMs, PlayerId, CombatAction.Stop);
-                if (TrySubmit(new[] { move }))
-                {
-                    _sentHeading = _wishedHeading;
-                    room--;
-                }
-            }
-            if (room > 0 && TargetId != null && TargetId != _sentSelection && TrySubmit(new[] { CombatCommand.SelectTarget(atMs, PlayerId, TargetId) }))
-                _sentSelection = TargetId;
+            _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, _setup.Combat.MaxCommandsPerActorPerTick - used, TrySubmit);
         }
 
         /// <summary>Soumet un groupe tout ou rien ; plafond de commandes ou file pleine : abandonné en entier, le combat continue.</summary>

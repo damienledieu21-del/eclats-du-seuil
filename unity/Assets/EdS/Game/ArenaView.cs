@@ -192,7 +192,7 @@ namespace EdS.Game
         /// <summary>
         /// Sous-lot 11.6 : places du moteur. Au changement de tick, la place affichée part de celle du tick précédent vers la nouvelle ;
         /// entre deux ticks, elle glisse selon <see cref="ICombatClient.TickProgress"/>. Un absent, ou un ennemi hors de vue du joueur,
-        /// n'est pas affiché.
+        /// n'est pas affiché. Sous-lot 11.7 : en réseau, le joueur est montré à sa place prédite (<see cref="ICombatClient.PredictedPosition"/>).
         /// </summary>
         private void Place(ICombatClient combat, bool snap)
         {
@@ -206,6 +206,7 @@ namespace EdS.Game
             bool newTick = combat.Tick != _shownTick;
             _shownTick = combat.Tick;
             float t = snap ? 1f : (float)combat.TickProgress;
+            (double X, double Z)? predicted = combat.PredictedPosition();
             foreach (CombatantView v in views)
             {
                 if (!_bodies.TryGetValue(v.Id, out GameObject body) || v.Position is not GroundVector p) continue;
@@ -220,7 +221,14 @@ namespace EdS.Game
                     _from[v.Id] = _to[v.Id];
                     _to[v.Id] = target;
                 }
-                body.transform.position = Vector3.Lerp(_from[v.Id], _to[v.Id], t) + Vector3.up;
+                Vector3 place = Vector3.Lerp(_from[v.Id], _to[v.Id], t) + Vector3.up;
+                // Sous-lot 11.7 : en réseau, le joueur est montré à sa place prédite, rejointe en douceur (un écart corrigé glisse).
+                if (v.Id == combat.PlayerId && predicted.HasValue)
+                {
+                    Vector3 aim = new Vector3((float)predicted.Value.X, 1f, (float)predicted.Value.Z);
+                    place = snap ? aim : Vector3.Lerp(body.transform.position, aim, 1f - Mathf.Exp(-18f * Time.deltaTime));
+                }
+                body.transform.position = place;
                 if (v.Facing is GroundVector f)
                     body.transform.rotation = Quaternion.Slerp(body.transform.rotation, Quaternion.Euler(0f, Yaw(f), 0f), snap ? 1f : 0.3f);
                 body.SetActive(visible.TryGetValue(v.Id, out bool shown) && shown);

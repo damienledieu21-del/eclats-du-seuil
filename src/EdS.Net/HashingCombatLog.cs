@@ -17,6 +17,20 @@ namespace EdS.Net
 
         private ulong _hash = OffsetBasis;
 
+        public HashingCombatLog()
+        {
+        }
+
+        /// <summary>
+        /// Sous-lot 11.7 : journal qui reprend au point d'un état courant (<see cref="StateMessage"/>) : l'empreinte FNV-1a continue depuis
+        /// <paramref name="hash"/>, celle des lignes écrites avant (qu'on n'a pas). Sans en-tête.
+        /// </summary>
+        public HashingCombatLog(string hash)
+        {
+            if (!MessageCodec.IsHash(hash)) throw new ArgumentException("Empreinte mal formée.", nameof(hash));
+            _hash = ulong.Parse(hash.Substring(MessageCodec.HashPrefix.Length), System.Globalization.NumberStyles.AllowHexSpecifier, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         /// <summary>Première ligne écrite (en-tête du journal) ; null avant.</summary>
         public string? Header { get; private set; }
 

@@ -6,6 +6,8 @@ using EdS.Data;
 using EdS.Domain;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 using EdS.Runtime;
 using EdS.Simulation.Engine;
 
@@ -37,6 +39,14 @@ namespace EdS.Net
 
         /// <summary>Source des jetons de reconnexion (tests) ; null : 128 bits aléatoires cryptographiques.</summary>
         public Func<string>? TokenSource { get; set; }
+
+        /// <summary>
+        /// Sous-lot 11.7 : arrivée pendant le combat. Le combat commence dès que les joueurs présents sont prêts (au moins un) ; les places
+        /// libres restent hors du combat, et un joueur qui arrive pendant l'affrontement y entre au tick courant (<c>CombatEngine.Join</c>),
+        /// à sa place du scénario ou, si elle est prise, à la plus proche place libre. Faux par défaut : la salle du lot 10 attend toutes les
+        /// places.
+        /// </summary>
+        public bool JoinDuringCombat { get; set; }
     }
 
     /// <summary>
@@ -44,8 +54,10 @@ namespace EdS.Net
     /// (présentation, build, prêt), puis le combat : le serveur range les intentions de chaque joueur dans le prochain tick, les soumet au
     /// moteur par groupes tout ou rien, simule le tick et diffuse les commandes admises avec l'empreinte du journal. Un joueur déconnecté
     /// laisse le combat continuer (personnage inactif, garde relâchée) et a <see cref="RoomOptions.ReconnectSeconds"/> pour revenir avec
-    /// son jeton (historique complet renvoyé). Le temps est celui des appels à <see cref="Advance"/> : aucun fil, aucune horloge ; un
-    /// hôte (<see cref="RoomHost"/>) l'anime en temps réel, les tests en temps virtuel.
+    /// son jeton (état courant renvoyé, sous-lot 11.7). Le temps est celui des appels à <see cref="Advance"/> : aucun fil, aucune horloge ;
+    /// un hôte (<see cref="RoomHost"/>) l'anime en temps réel, les tests en temps virtuel. Sous-lot 11.7 : dans un combat positionné, la
+    /// marche voulue de chaque joueur devient <c>move</c> ou <c>stop</c> et sa cible <c>select</c> (<see cref="MovementIntent"/>, comme en
+    /// solo) ; avec <see cref="RoomOptions.JoinDuringCombat"/>, un joueur peut arriver pendant l'affrontement.
     /// </summary>
     public sealed class CombatRoom
     {
@@ -80,6 +92,12 @@ namespace EdS.Net
             public string? Target;
             public string? Ally;
 
+            /// <summary>Sous-lot 11.7 : marche voulue et cible sélectionnée (combat positionné).</summary>
+            public readonly MovementIntent Movement = new MovementIntent();
+
+            /// <summary>Sous-lot 11.7 : son personnage est dans le combat en cours (au départ, ou arrivé pendant l'affrontement).</summary>
+            public bool InCombat;
+
             public bool Taken => Player != null;
 
             public void ResetIntentions()
@@ -87,6 +105,7 @@ namespace EdS.Net
                 Guard = false;
                 Parry = false;
                 Slot = null;
+                Movement.Wished = null;   // sous-lot 11.7 : un joueur coupé s'arrête
             }
 
             public void Free()
@@ -101,7 +120,9 @@ namespace EdS.Net
                 Abandoned = false;
                 Target = null;
                 Ally = null;
+                InCombat = false;
                 ResetIntentions();
+                Movement.Reset();
             }
         }
 
@@ -113,8 +134,8 @@ namespace EdS.Net
         private readonly double _tickSeconds;
         private CombatEngine? _engine;
         private CombatSetup? _setup;
+        private IReadOnlyList<ConvexPolygon>? _obstacles;
         private HashingCombatLog? _log;
-        private readonly List<TickCommands> _history = new List<TickCommands>();
         private double _accumulated;
 
         /// <summary>
@@ -279,12 +300,12 @@ namespace EdS.Net
                 Fail(client, $"protocole {hello.ProtocolVersion} non pris en charge : version {Protocol.Version} attendue.");
                 return;
             }
-            if (Phase == RoomPhase.Combat)
+            if (Phase == RoomPhase.Combat && !_options.JoinDuringCombat)
             {
                 Fail(client, "combat en cours : on ne rejoint pas une partie commencée (se reconnecter avec son jeton, ou attendre la fin).");
                 return;
             }
-            Seat? seat = _seats.FirstOrDefault(s => !s.Taken);
+            Seat? seat = _seats.FirstOrDefault(s => !s.Taken && !(Phase == RoomPhase.Combat && s.InCombat));
             if (seat is null)
             {
                 Fail(client, "salle pleine.");
@@ -296,14 +317,77 @@ namespace EdS.Net
                 Fail(client, error!);
                 return;
             }
+            // Sous-lot 11.7 : pendant le combat, le personnage entre au tick courant, avant même l'accueil (un refus ne prend pas la place).
+            if (Phase == RoomPhase.Combat && JoinCombat(seat, build) is { } refused)
+            {
+                Fail(client, refused);
+                return;
+            }
             seat.Player = hello.Name;
             seat.Build = build;
             seat.BuildName = Protocol.Text(name, Protocol.MaxIdLength);
-            seat.Ready = false;
+            seat.Ready = Phase == RoomPhase.Combat;
             seat.Token = NewToken();
             Attach(seat, client);
-            Trace?.Invoke($"{hello.Name} prend la place « {seat.Id} » ({seat.BuildName})");
+            Trace?.Invoke($"{hello.Name} prend la place « {seat.Id} » ({seat.BuildName}){(Phase == RoomPhase.Combat ? " pendant le combat" : "")}");
             BroadcastLobby();
+            // Tout le monde repart de l'état courant, qui contient le nouveau venu (pas de place réservée d'avance dans le combat de départ).
+            if (Phase == RoomPhase.Combat)
+            {
+                StateMessage state = CurrentState();
+                foreach (Seat other in _seats)
+                    if (other.Client != null) SendState(other.Client, state);
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot 11.7 : fait entrer le personnage de <paramref name="seat"/> dans le combat en cours, au tick courant : à sa place du
+        /// scénario si elle est libre (aucune emprise présente et vivante dessus), sinon à la plus proche place libre essayée (anneaux de
+        /// 1,5 m, 3 m puis 4,5 m, huit directions), toujours dans l'aire, hors du décor et acceptée par la validation du combat complété.
+        /// Rend null si le personnage est entré, la raison sinon.
+        /// </summary>
+        private string? JoinCombat(Seat seat, CharacterBuild build)
+        {
+            CombatEngine engine = _engine!;
+            CharacterSetup scenario = _scenario.Combatants.OfType<CharacterSetup>().Single(c => c.Id == seat.Id);
+            long atMs = checked(engine.CurrentTick * TickMs);
+            var candidates = new List<CombatantPlacement?> { scenario.Placement };
+            if (scenario.Placement is { } p && _scenario.Space is { } space)
+            {
+                IReadOnlyList<ConvexPolygon> obstacles = _obstacles!;
+                var occupied = engine.CombatantIds.Select(engine.View).Where(v => v.IsPresent && !v.IsDead && v.Position != null).ToList();
+                bool Free(GroundVector at)
+                {
+                    long r = p.Radius.Raw, x = at.X.Raw, z = at.Z.Raw;
+                    if (x - r < space.Min.X.Raw || x + r > space.Max.X.Raw || z - r < space.Min.Z.Raw || z + r > space.Max.Z.Raw) return false;
+                    if (obstacles.Any(o => o.OverlapsCircle(x, z, r))) return false;
+                    return !occupied.Any(v => Planar.CirclesOverlap(x, z, r, v.Position!.Value.X.Raw, v.Position.Value.Z.Raw, v.Radius!.Value.Raw));
+                }
+                candidates.Clear();
+                foreach (int ring in new[] { 0, 15_000, 30_000, 45_000 })
+                    for (int k = 0; k < (ring == 0 ? 1 : 8); k++)
+                    {
+                        GroundVector d = MoveInput.Direction(k * MoveInput.Headings / 8);
+                        var at = new GroundVector(Fixed.FromRaw(checked(p.Position.X.Raw + d.X.Raw * ring / 10_000)),
+                            Fixed.FromRaw(checked(p.Position.Z.Raw + d.Z.Raw * ring / 10_000)));
+                        if (Free(at)) candidates.Add(new CombatantPlacement(at, p.Radius, p.Facing, p.Speed));
+                    }
+                if (candidates.Count == 0) return "aucune place libre autour de la place du scénario pour entrer dans le combat.";
+            }
+            string? last = null;
+            foreach (CombatantPlacement? placement in candidates)
+                try
+                {
+                    engine.Join(new CharacterSetup(scenario.Id, scenario.Team, scenario.Class, build, scenario.Initiative, placement, atMs));
+                    seat.InCombat = true;
+                    seat.Movement.Reset();
+                    return null;
+                }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                {
+                    last = e.Message;
+                }
+            return "entrée dans le combat refusée : " + last;
         }
 
         private void Reconnect(Client client, ReconnectMessage reconnect)
@@ -322,7 +406,7 @@ namespace EdS.Net
             Attach(seat, client);
             Trace?.Invoke($"{seat.Player} revient sur la place « {seat.Id} »");
             BroadcastLobby();
-            if (Phase == RoomPhase.Combat) SendResync(client);
+            if (Phase == RoomPhase.Combat) SendState(client);
         }
 
         private void Attach(Seat seat, Client client)
@@ -371,6 +455,7 @@ namespace EdS.Net
                     if (input.Slot != null) seat.Slot = input.Slot;
                     seat.Target = input.Target;
                     seat.Ally = input.Ally;
+                    seat.Movement.Wished = input.Heading;   // sous-lot 11.7
                     break;
                 case PingMessage ping:
                     Send(client, new PongMessage(ping.ClientTime));
@@ -379,10 +464,10 @@ namespace EdS.Net
                     if (Phase != RoomPhase.Combat) break;
                     if (Now - client.LastResyncAt < _options.ResyncIntervalSeconds)
                     {
-                        Send(client, new RejectedMessage($"historique déjà demandé : au plus un par {_options.ResyncIntervalSeconds} s."));
+                        Send(client, new RejectedMessage($"état courant déjà demandé : au plus un par {_options.ResyncIntervalSeconds} s."));
                         break;
                     }
-                    SendResync(client);
+                    SendState(client);
                     break;
                 case ByeMessage _:
                     Trace?.Invoke($"{seat.Player} quitte la place « {seat.Id} »");
@@ -456,10 +541,18 @@ namespace EdS.Net
 
         private void TryStart()
         {
-            if (Phase == RoomPhase.Combat || !_seats.All(s => s.Taken && s.Client != null && s.Ready)) return;
-            IEnumerable<CombatantSetup> combatants = _scenario.Combatants.Select(c => c is CharacterSetup ch && _seats.FirstOrDefault(s => s.Id == ch.Id) is { } seat
-                ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement)
-                : c);
+            if (Phase == RoomPhase.Combat) return;
+            // Sous-lot 11.7 : avec l'arrivée pendant le combat, il commence dès que les joueurs présents sont prêts ; les places libres
+            // restent hors du combat de départ (leur personnage entrera avec son joueur).
+            bool ready = _options.JoinDuringCombat
+                ? _seats.Any(s => s.Taken) && _seats.Where(s => s.Taken).All(s => s.Client != null && s.Ready)
+                : _seats.All(s => s.Taken && s.Client != null && s.Ready);
+            if (!ready) return;
+            IEnumerable<CombatantSetup> combatants = _scenario.Combatants
+                .Where(c => !(c is CharacterSetup free && _seats.Any(s => s.Id == free.Id && !s.Taken)))
+                .Select(c => c is CharacterSetup ch && _seats.FirstOrDefault(s => s.Id == ch.Id) is { } seat
+                    ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement)
+                    : c);
             var setup = new CombatSetup(_scenario.Seed, _options.DurationMs ?? _scenario.DurationMs, _scenario.Stats, _scenario.Damage,
                 _scenario.Progression, _scenario.Combat, combatants, Array.Empty<CombatCommand>(), _scenario.Data, _scenario.Space);
             void Refuse(string reason)
@@ -480,24 +573,38 @@ namespace EdS.Net
             }
             var log = new HashingCombatLog();
             var engine = new CombatEngine(setup, log);
-            // Revue Codex de la PR #19 : l'historique d'un retour doit tenir dans un message du serveur ; sinon le combat est refusé
-            // avant de commencer, plutôt que de couper le joueur au moment de revenir.
-            long bound = ResyncBound(setup, log.Header!, TickMs);
+            // Revue Codex de la PR #19 : l'état courant d'un retour (sous-lot 11.7 ; au lot 10, l'historique) doit tenir dans un message du
+            // serveur ; sinon le combat est refusé avant de commencer, plutôt que de couper le joueur au moment de revenir. Le majorant
+            // porte sur l'en-tête du combat complété (toutes les commandes admises) ; l'instantané, lui, est contrôlé à l'envoi.
+            // Sous-lot 11.7 : avec l'arrivée pendant le combat, le majorant compte aussi les personnages des places libres (build du
+            // scénario, arrivée au dernier tick) ; l'état réel reste contrôlé à l'envoi.
+            CombatSetup bounded = setup;
+            if (_options.JoinDuringCombat && _seats.Any(s => !s.Taken))
+            {
+                long last = checked(Math.Max(1, setup.DurationMs / TickMs) * TickMs);
+                IEnumerable<CombatantSetup> joiners = _scenario.Combatants.OfType<CharacterSetup>().Where(c => _seats.Any(s => s.Id == c.Id && !s.Taken))
+                    .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, last));
+                bounded = new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, setup.Combat,
+                    setup.Combatants.Concat(joiners), setup.Commands, setup.Data, setup.Space);
+            }
+            long bound = StateBound(bounded, TickMs);
             if (bound > Protocol.MaxServerMessageBytes)
             {
-                Refuse($"un historique pourrait atteindre {bound} octets, au-delà de la limite de {Protocol.MaxServerMessageBytes} octets du protocole " +
+                Refuse($"un état courant pourrait atteindre {bound} octets, au-delà de la limite de {Protocol.MaxServerMessageBytes} octets du protocole " +
                     "(plafond de commandes ou identifiants trop longs).");
                 return;
             }
             _setup = setup;
+            _obstacles = CombatDisplay.Obstacles(setup.Space);
             _log = log;
             _engine = engine;
-            _history.Clear();
             _accumulated = 0;
             Phase = RoomPhase.Combat;
             foreach (Seat seat in _seats)
             {
                 seat.ResetIntentions();
+                seat.Movement.Reset();
+                seat.InCombat = seat.Taken;
                 seat.Target = null;
                 seat.Ally = null;
             }
@@ -515,28 +622,36 @@ namespace EdS.Net
             int before = engine.SubmittedCommands.Count;
             foreach (Seat seat in _seats)
             {
+                if (!seat.InCombat) continue;   // sous-lot 11.7 : place libre, personnage hors du combat
                 CombatantView me = engine.View(seat.Id);
                 int? slot = Available(engine, seat, me, tick);
                 IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, atMs, seat.Guard, seat.Parry, slot, skill => TargetFor(engine, seat, me, skill));
                 seat.Parry = false;
                 seat.Slot = null;
-                foreach (CombatCommand[] group in groups)
+                bool TrySubmit(CombatCommand[] group)
                 {
                     try
                     {
                         engine.SubmitAll(group);
+                        return true;
                     }
                     catch (Exception e) when (e is InvalidOperationException || e is ArgumentException)
                     {
                         // Plafond, file pleine : le groupe entier est refusé, rien n'est soumis ; le joueur est prévenu.
                         if (seat.Client != null) Send(seat.Client, new RejectedMessage(Protocol.Text(e.Message)));
+                        return false;
                     }
                 }
+                int used = 0;
+                foreach (CombatCommand[] group in groups)
+                    if (TrySubmit(group)) used += group.Length;
+                // Sous-lot 11.7 : marche et cible sélectionnée, comme le pont solo, dans la place qui reste au tick.
+                string? target = EnemyTarget(engine, seat, me, _obstacles);
+                seat.Movement.Submit(me, _setup!.Space != null, atMs, target, _setup.Combat.MaxCommandsPerActorPerTick - used, TrySubmit);
             }
             engine.Step();
             CombatCommand[] admitted = engine.SubmittedCommands.Skip(before).ToArray();
             var commands = new TickCommands(tick, admitted);
-            if (admitted.Length > 0) _history.Add(commands);
             var message = new TickMessage(commands, _log!.Hash);
             foreach (Seat seat in _seats)
                 if (seat.Client != null) Send(seat.Client, message);
@@ -567,19 +682,31 @@ namespace EdS.Net
         }
 
         /// <summary>Cible d'une compétence : choix du joueur s'il est valide, sinon le premier ennemi vivant ou l'autre joueur.</summary>
-        private static string? TargetFor(CombatEngine engine, Seat seat, CombatantView me, SkillDefinition skill)
+        private static bool Alive(CombatEngine engine, string? id, Func<CombatantView, bool> accept)
         {
-            bool Alive(string? id, Func<CombatantView, bool> accept)
-            {
-                if (id is null || !engine.CombatantIds.Contains(id)) return false;
-                CombatantView view = engine.View(id);
-                return !view.IsDead && view.IsPresent && accept(view);
-            }
+            if (id is null || !engine.CombatantIds.Contains(id)) return false;
+            CombatantView view = engine.View(id);
+            return !view.IsDead && view.IsPresent && accept(view);
+        }
+
+        /// <summary>
+        /// Cible ennemie du joueur : celle qu'il a choisie si elle est présente et vivante (son client ne propose que des ennemis en vue ;
+        /// la ligne de vue d'une compétence est contrôlée par le moteur), sinon le premier ennemi présent, vivant et, dans un combat
+        /// positionné, en vue du joueur (revue Codex de la PR #34 : pas de cible ni de sélection cachée) ; sinon aucune.
+        /// </summary>
+        private static string? EnemyTarget(CombatEngine engine, Seat seat, CombatantView me, IReadOnlyList<ConvexPolygon>? obstacles) =>
+            Alive(engine, seat.Target, v => v.Team != me.Team)
+                ? seat.Target
+                : engine.CombatantIds.FirstOrDefault(id => Alive(engine, id, v => v.Team != me.Team && CombatDisplay.InSight(me, v, obstacles)));
+
+        private string? TargetFor(CombatEngine engine, Seat seat, CombatantView me, SkillDefinition skill)
+        {
+            bool Alive(string? id, Func<CombatantView, bool> accept) => CombatRoom.Alive(engine, id, accept);
+            IReadOnlyList<ConvexPolygon>? obstacles = _obstacles;
             switch (skill.Combat!.Targeting)
             {
                 case SkillTargeting.Enemy:
-                    if (Alive(seat.Target, v => v.Team != me.Team)) return seat.Target;
-                    return engine.CombatantIds.FirstOrDefault(id => Alive(id, v => v.Team != me.Team));
+                    return EnemyTarget(engine, seat, me, obstacles);
                 case SkillTargeting.Ally:
                     if (Alive(seat.Ally, v => v.Team == me.Team && v.Kind == CombatantKind.Character)) return seat.Ally;
                     return engine.CombatantIds.FirstOrDefault(id => id != me.Id && Alive(id, v => v.Team == me.Team && v.Kind == CombatantKind.Character)) ?? me.Id;
@@ -616,34 +743,57 @@ namespace EdS.Net
         }
 
         /// <summary>
-        /// Revue Codex de la PR #19 : taille maximale de l'historique (<see cref="ResyncMessage"/>) d'un combat, en octets : son en-tête,
-        /// puis le plafond de commandes des règles, chacune dans son propre tick, avec les identifiants les plus longs du combat et
-        /// l'instant le plus tardif. Majorant : un vrai historique est toujours plus petit.
+        /// Revue Codex de la PR #19, sous-lot 11.7 : taille maximale d'un état courant (<see cref="StateMessage"/>), hors instantané, en
+        /// octets : l'en-tête du combat complété au pire, c'est-à-dire avec le plafond de commandes des règles, chacune la plus longue
+        /// possible (compétence aux identifiants les plus longs, ou marche), à l'instant le plus tardif. Majorant : un vrai en-tête est
+        /// toujours plus petit. L'instantané est contrôlé à l'envoi (<see cref="SendState"/>).
         /// </summary>
-        internal static long ResyncBound(CombatSetup setup, string header, int tickMs)
+        internal static long StateBound(CombatSetup setup, int tickMs)
         {
             if (setup is null) throw new ArgumentNullException(nameof(setup));
-            if (header is null) throw new ArgumentNullException(nameof(header));
             string Longest(IEnumerable<string> ids) => ids.OrderByDescending(id => id.Length).ThenBy(id => id, StringComparer.Ordinal).First();
-            string actor = Longest(setup.Combatants.OfType<CharacterSetup>().Select(c => c.Id));
+            string actor = Longest(setup.Combatants.OfType<CharacterSetup>().Select(c => c.Id).DefaultIfEmpty("x"));
             string target = Longest(setup.Combatants.Select(c => c.Id));
             string skill = Longest(setup.Combatants.OfType<CharacterSetup>()
                 .SelectMany(c => c.Build.ActiveSkills.Concat(c.Build.Ultimate is null ? Array.Empty<string>() : new[] { c.Build.Ultimate })).DefaultIfEmpty("x"));
             long lastTick = Math.Max(1, setup.DurationMs / tickMs);
-            var worst = new CombatCommand(checked(lastTick * tickMs), actor, skill, target);
+            long atMs = checked(lastTick * tickMs);
+            var diagonal = Fixed.Parse("-0.7071");
+            CombatCommand[] worst =
+            {
+                new CombatCommand(atMs, actor, skill, target),
+                new CombatCommand(atMs, actor, new GroundVector(diagonal, diagonal)),
+            };
             string hash = MessageCodec.HashPrefix + new string('f', 16);
-            long Size(params TickCommands[] history) => MessageCodec.Encode(new ResyncMessage(header, lastTick, history, hash)).Length;
-            long empty = Size();
-            long one = Size(new TickCommands(lastTick, new[] { worst }));
-            long two = Size(new TickCommands(lastTick - 1, new[] { worst }), new TickCommands(lastTick, new[] { worst }));
+            long Size(params CombatCommand[] commands) => MessageCodec.Encode(new StateMessage(CombatLogHeader.Write(new CombatSetup(setup.Seed, setup.DurationMs,
+                setup.Stats, setup.Damage, setup.Progression, setup.Combat, setup.Combatants, commands, setup.Data, setup.Space)), "-", hash)).Length;
+            CombatCommand longest = worst.OrderByDescending(c => Size(c)).First();
+            long one = Size(longest);
+            long two = Size(longest, longest);
             long commands = Math.Max(1, setup.Combat.MaxCommands);
             return checked(one + (commands - 1) * (two - one));
         }
 
-        private void SendResync(Client client)
+        /// <summary>
+        /// Sous-lot 11.7 : état courant du combat (en-tête du combat complété, instantané, empreinte du journal) ; refusé s'il ne tient pas
+        /// dans un message du serveur (connexion fermée avec la raison).
+        /// </summary>
+        private StateMessage CurrentState()
+        {
+            CombatEngine engine = _engine!;
+            return new StateMessage(CombatLogHeader.Write(engine.CompletedSetup()), engine.Snapshot().Text, _log!.Hash);
+        }
+
+        private void SendState(Client client, StateMessage? state = null)
         {
             client.LastResyncAt = Now;
-            Send(client, new ResyncMessage(_log!.Header!, _engine!.CurrentTick, _history.ToArray(), _log.Hash));
+            state ??= CurrentState();
+            if (MessageCodec.Encode(state).Length > Protocol.MaxServerMessageBytes)
+            {
+                Fail(client, $"état courant du combat au-delà de la limite de {Protocol.MaxServerMessageBytes} octets du protocole.");
+                return;
+            }
+            Send(client, state);
         }
 
         /// <summary>
