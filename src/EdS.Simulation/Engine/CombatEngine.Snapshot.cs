@@ -400,6 +400,17 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private const long CounterCeiling = long.MaxValue / 1024;
 
+        /// <summary>
+        /// 9e tour : une échéance (ou un tick de DOT) cite une instance numérotée par le moteur ; si l'altération est encore là, c'est sa clé,
+        /// et une échéance n'en cite pas une génération à venir.
+        /// </summary>
+        private bool Numbered(Fighter f, StatusKey key, long instance, int? generation)
+        {
+            if (instance < 1 || instance > _lastStatusInstance || (generation is int g && g < 1)) return false;
+            StatusInstance? live = f.Statuses.Values.FirstOrDefault(s => s.Id == instance);
+            return live is null || (live.Key.Equals(key) && (generation is null || generation <= live.Generation));
+        }
+
         private void ValidateLoaded(List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)> entries)
         {
             static void Require(bool ok, string message)
@@ -437,6 +448,13 @@ namespace EdS.Simulation.Engine
             var commands = new HashSet<int>();
             long reactions = 0;
             var arrivals = new List<Fighter>();
+            // Revue Codex de la PR #32 (9e tour) : une échéance périmée (altération renouvelée ou retirée, parade fermée plus tôt, tour d'un
+            // mort) reste en file sans effet, mais elle coûte du travail quand elle tombe : chacune est unique, et ses numéros sont de ceux
+            // que le moteur a donnés. Des copies ne peuvent donc pas gonfler la file.
+            var expiryKeys = new HashSet<(Fighter, StatusKey, long, int)>();
+            var dotTicks = new HashSet<(Fighter, StatusKey, long)>();
+            var parryEnds = new HashSet<(Fighter, long)>();
+            var reacted = new HashSet<(TriggerSlot, long?, string)>();
             foreach (var (tick, phase, sequence, item) in entries)
             {
                 string at = $"Élément de file {sequence} ({item.GetType().Name}, tick {tick}, phase {phase})";
@@ -462,18 +480,27 @@ namespace EdS.Simulation.Engine
                             && cooldown.Fighter.CooldownReadyTick.TryGetValue(cooldown.Skill, out long readyTick) && readyTick == tick,
                             $"{at} : recharge impossible ou sans recharge en cours.");
                         break;
-                    case ParryWindowEnd:
-                    case StateExpiry:
-                        Require(phase == CombatPhase.Expirations, $"{at} : hors de la phase des expirations.");
+                    case ParryWindowEnd end:
+                        // Une fin de parade tombe à la fin de la fenêtre ouverte à son tick de départ (passé, au plus le dernier départ).
+                        Require(phase == CombatPhase.Expirations && end.Fighter.Character != null && end.StartTick < CurrentTick
+                            && end.StartTick <= end.Fighter.ParryStartTick && tick == checked(end.StartTick + end.Fighter.Rules.ParryWindowMs / _tickMs)
+                            && parryEnds.Add((end.Fighter, end.StartTick)), $"{at} : fin de parade impossible ou en double.");
                         break;
-                    case DotTick:
-                        Require(phase == CombatPhase.Periodic, $"{at} : hors de la phase des effets périodiques.");
+                    case StateExpiry expiry:
+                        Require(phase == CombatPhase.Expirations && Numbered(expiry.Fighter, expiry.Key, expiry.Instance, expiry.Generation)
+                            && expiryKeys.Add((expiry.Fighter, expiry.Key, expiry.Instance, expiry.Generation)), $"{at} : échéance d'altération impossible ou en double.");
+                        break;
+                    case DotTick dot:
+                        Require(phase == CombatPhase.Periodic && Numbered(dot.Fighter, dot.Key, dot.Instance, null) && dotTicks.Add((dot.Fighter, dot.Key, dot.Instance)),
+                            $"{at} : tick de DOT impossible ou en double.");
                         break;
                     case AttackImpact impact:
                         Require(phase == CombatPhase.Resolution && impact.Pulse >= 0 && impact.Pulse < impact.Attack.Pulses,
                             $"{at} : impact impossible.");
                         // Revue Codex de la PR #32 (4e tour) : une attaque dirigée garde sa cible ; chaque impulsion tombe à son tick.
-                        Require(impact.Zone != null || impact.Target != null, $"{at} : impact dirigé sans cible.");
+                        // 9e tour : la cible verrouillée d'un coup dirigé est un adversaire de l'assaillant (l'annonce ne garde pas d'autre
+                        // preuve ; l'empreinte de l'instantané protège le reste).
+                        Require(impact.Zone != null || (impact.Target is { } locked && locked.Team != impact.Assailant.Team), $"{at} : impact dirigé sans cible adverse.");
                         Require(impact.ImpactTick >= 0 && tick == checked(impact.ImpactTick + impact.Pulse * (impact.Attack.PulseMs / _tickMs)),
                             $"{at} : impulsion {impact.Pulse} hors de son tick (impact au tick {impact.ImpactTick}).");
                         ValidateZone(impact, at);
@@ -482,6 +509,8 @@ namespace EdS.Simulation.Engine
                         // Une réaction du tick est traitée dans son tick ; entre deux ticks, seules attendent les frappes reportées du précédent.
                         Require(phase == CombatPhase.Resolution && tick == CurrentTick && reaction.DeferredFrom == CurrentTick - 1,
                             $"{at} : réaction qui n'est pas reportée du tick précédent.");
+                        // 9e tour : un déclencheur ne réagit qu'une fois à un même effet observé.
+                        Require(reacted.Add((reaction.Slot, reaction.Origin.Cause, reaction.Origin.Root)), $"{at} : réaction en double.");
                         reactions++;
                         break;
                     default:
@@ -492,6 +521,16 @@ namespace EdS.Simulation.Engine
             Require(_deferredPending == reactions, $"{_deferredPending} réactions reportées comptées, {reactions} en file.");
             for (int i = 0; i < _setup.Commands.Count; i++)
                 Require(commands.Contains(i) == (_setup.Commands[i].AtMs / _tickMs >= CurrentTick), $"Commande {i} : en file si et seulement si elle est à venir.");
+
+            // 9e tour : deux emprises solides présentes ne se chevauchent jamais (placement, marche, arrivée et charge les en empêchent).
+            for (int i = 0; i < _fightersById.Count; i++)
+                for (int j = i + 1; j < _fightersById.Count; j++)
+                {
+                    Fighter a = _fightersById[i], b = _fightersById[j];
+                    if (a.Out || b.Out || a.Body is null || b.Body is null || !_solid[i, j]) continue;
+                    Require(!Planar.CirclesOverlap(a.Body.X, a.Body.Z, a.Body.Radius, b.Body.X, b.Body.Z, b.Body.Radius),
+                        $"Emprises de « {a.Id} » et « {b.Id} » qui se chevauchent.");
+                }
 
             var instances = new HashSet<long>();
             // Revue Codex de la PR #32 (5e tour) : un moteur neuf du même combat donne l'état de départ de chaque combattant. Un combattant pas
@@ -509,6 +548,15 @@ namespace EdS.Simulation.Engine
                     Require(f.NextAttackTick is long next
                         ? turns.Count == 1 && turns[0].Tick == next && ((AssailantTurn)turns[0].Item).Turn == f.NextTurn - 1
                         : turns.Count == 0, $"Tours de {who} incohérents avec son prochain tour ({f.NextAttackTick?.ToString(CultureInfo.InvariantCulture) ?? "aucun"}).");
+                }
+                else if (f.Assailant != null)
+                {
+                    // 9e tour : un assaillant pas encore entré n'a aucun tour en file (le premier vient à son arrivée) ; un mort ou un parti en
+                    // garde au plus un, périmé : celui qui était programmé.
+                    var turns = entries.Where(e => e.Item is AssailantTurn t && t.Fighter == f).ToList();
+                    bool absent = f.Presence == Presence.Pending || f.Presence == Presence.Refused;
+                    Require(absent ? turns.Count == 0 : turns.Count <= 1 && turns.All(e => ((AssailantTurn)e.Item).Turn == f.NextTurn - 1),
+                        $"Tours de {who}, mort ou absent, impossibles.");
                 }
                 // Une parade ouverte, commencée à un tick passé, se ferme à la fin de sa fenêtre : sa fin est en file, une seule fois (4e tour).
                 if (f.ParryOpen)

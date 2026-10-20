@@ -230,7 +230,7 @@ public class Lot114dSnapshotTests
             (Ogre, "\"guarding\":false", "\"guarding\":true", "Résonance, charges ou garde de « ogre »"),
             // Présence.
             (Bastion, "\"leaveCommand\":null", "\"leaveCommand\":0", "Départ de « bastion » encore demandé"),
-            (Ogre, "\"presence\":0", "\"presence\":1", "Arrivée de « ogre »"),
+            (Ogre, "\"presence\":0", "\"presence\":1", "de « ogre »"),   // refusé par ses tours (9e tour) ou par son arrivée absente
             (Ogre, "\"presence\":0", "\"presence\":2", "Départ de « ogre »"),
             // Place et orientation.
             (Ogre, "\"x\":30000", "\"x\":100000", "Place de « ogre » hors de l'aire"),
@@ -276,7 +276,7 @@ public class Lot114dSnapshotTests
         {
             (Bastion, "\"id\":2,\"generation\"", "\"id\":3,\"generation\"", "instance impossible ou en double"),
             (Assaillant, "\"id\":1,\"generation\"", "\"id\":2,\"generation\"", "instance impossible ou en double"),
-            (Bastion, "\"keySource\":\"assaillant\"", "\"keySource\":null", "clé de cumul"),
+            (Bastion, "\"keySource\":\"assaillant\"", "\"keySource\":null", "tick de DOT impossible"),   // 9e tour : son tick de DOT cite l'ancienne clé
             (Bastion, "\"untilTick\":140", "\"untilTick\":20", "déjà échue"),
             (Bastion, "\"absorb\":0,", "\"absorb\":5,", "absorption impossible"),
             ("{\"entry\":3,", "\"index\":2", "\"index\":3", "hors de son tick ou en double"),
@@ -335,7 +335,20 @@ public class Lot114dSnapshotTests
         while (thrower.CurrentTick < 15) thrower.Step();
         string thrown = thrower.Snapshot().Text;
         string impactLine = thrown.Split('\n').First(l => l.Contains("\"item\":\"impact\"", StringComparison.Ordinal));
-        AssertRefused(thrower.CompletedSetup(), thrown, new[] { (impactLine.Substring(0, impactLine.IndexOf(',') + 1), "\"target\":\"bastion\"", "\"target\":null", "impact dirigé sans cible") });
+        AssertRefused(thrower.CompletedSetup(), thrown, new[]
+        {
+            (impactLine.Substring(0, impactLine.IndexOf(',') + 1), "\"target\":\"bastion\"", "\"target\":null", "impact dirigé sans cible"),
+            // Revue Codex de la PR #32 (9e tour) : la cible verrouillée est un adversaire de l'assaillant.
+            (impactLine.Substring(0, impactLine.IndexOf(',') + 1), "\"target\":\"bastion\"", "\"target\":\"ogre\"", "impact dirigé sans cible adverse"),
+        });
+        // 9e tour : deux emprises solides présentes ne se chevauchent pas (le Bastion posé sur l'ogre).
+        string[] thrownLines = thrown.Split('\n');
+        var place = new System.Text.RegularExpressions.Regex("\"x\":-?[0-9]+,\"z\":-?[0-9]+");
+        string ogrePlace = place.Match(thrownLines.First(l => l.StartsWith("{\"fighter\":\"ogre\"", StringComparison.Ordinal))).Value;
+        int bastionLine = Array.FindIndex(thrownLines, l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        thrownLines[bastionLine] = place.Replace(thrownLines[bastionLine], ogrePlace, 1);
+        Assert.Contains("qui se chevauchent", Assert.Throws<FormatException>(() => CombatEngine.Restore(thrower.CompletedSetup(),
+            CombatSnapshot.Parse(string.Join("\n", thrownLines)), NullCombatLog.Instance)).Message);
 
         // Abonnements d'un déclencheur permanent (riposte aux ticks de DOT) : la liste reçue doit être exactement celle des combattants.
         CombatSetup riposte = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Bearer(new[] { Riposte(TriggerEvent.DotTick) }),
