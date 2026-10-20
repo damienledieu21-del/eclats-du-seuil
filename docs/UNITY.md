@@ -57,6 +57,7 @@ Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tablea
 | Retour arrière | recommencer la séance |
 | Échap | pause |
 | H | masquer ou afficher l'aide |
+| F8 | afficher ou cacher les commandes au doigt (essai au PC ; voir la section 7) |
 | M | jeu en réseau à deux (voir la section 6) |
 
 À l'écran : barres de PV, d'endurance, de Résonance et de Charges en bas ; les compétences avec leur recharge ; au-dessus de chaque ennemi, sa barre de PV (« PV infinis » pour un ennemi d'entraînement) et une **barre de télégraphie** qui se remplit avant son coup ; un ennemi mort s'assombrit, n'attaque plus, et la cible passe au suivant (rouge vif : coup **imparable**, à encaisser sans garde ni parade) ; la fiche de la cible en haut à droite ; les textes de combat (dégâts, « Bloqué », « Parade parfaite ! »).
@@ -115,7 +116,43 @@ Touche **M** : le menu du réseau s'ouvre. On y tape son nom, puis on choisit un
 
 Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** ouvre les talents (« Jouer ce build » envoie le build composé au serveur, qui le vérifie). En combat, le temps aller-retour (ping) s'affiche sous le chrono, avec l'avance de la télégraphie : en réseau, la barre orange au-dessus d'un assaillant se remplit en avance du ping (sous-lot 10.6), il suffit donc de parer « à vue », comme en solo ; en réseau local, l'avance ne dépasse pas quelques millisecondes. Pas de pause en réseau. **Quitter la partie** ramène au menu ; **Revenir au jeu solo** reprend l'entraînement.
 
-## 7. En cas de problème
+## 7. Jouer sur téléphone (sous-lot 11.8)
+
+Premier essai tactile : la scène des Vallons au doigt, d'abord dans le **simulateur d'appareils** de l'éditeur, puis sur le **Galaxy Note8** (Android). L'iPhone 13 demande un Mac avec Xcode : pas pour cet essai.
+
+**Les commandes au doigt** (téléphone tenu à l'horizontale) :
+
+| Où | Geste | Action |
+|---|---|---|
+| moitié gauche | poser le pouce et le pousser | marcher (le stick apparaît là où le pouce se pose ; marche relative à la caméra) |
+| en bas à droite | maintenir **Garde** | garde |
+| en bas à droite | toucher **Parade** | parade parfaite |
+| au-dessus | **1**, **2**, **3**, **4**, **Ultime** | compétences |
+| au-dessus | **Cible**, **Vue** (et **Allié** en réseau) | ennemi suivant, rappel vue 1 ↔ vue 2, allié visé |
+| moitié droite, hors des boutons | glisser un doigt | tourner la vue |
+| moitié droite | écarter ou rapprocher deux doigts | régler la vue entre la 1 (haute) et la 2 (proche) |
+| en haut à droite | **Menu**, **Aide** ; seul : **Pause**, **Rejouer**, **Scène** | menu réseau, aide, pause, recommencer, scène suivante |
+
+**a. Dans l'éditeur, sans téléphone** : **Window → General → Device Simulator**. Dans l'onglet *Simulator* qui s'ouvre, choisir un téléphone (un Samsung Galaxy si la liste en propose un, sinon un téléphone Android récent), le tourner à l'horizontale (bouton de rotation), puis **Play** : la souris fait le doigt (un seul doigt : le pincement ne s'essaie que sur le vrai téléphone). Vérifier que les boutons ne cachent ni les barres ni la fiche de la cible. Au PC sans simulateur, **F8** affiche aussi les commandes (la souris fait un doigt).
+
+**b. Installer sur le Note8** (une seule fois pour les étapes 1 à 3) :
+
+1. **Unity Hub → Installs** → roue dentée de Unity 6.3 → **Add modules** → cocher **Android Build Support** avec **OpenJDK** et **Android SDK & NDK Tools** (environ 5 Go).
+2. **Sur le Note8** : *Paramètres → À propos du téléphone → Informations sur le logiciel* → toucher **7 fois** *Numéro de version* (« Mode développeur activé ») ; puis *Paramètres → Options de développement* → activer **Débogage USB**. Brancher le téléphone au PC en USB et accepter « Autoriser le débogage USB » sur le téléphone.
+3. **Dans Unity** : **File → Build Profiles → Android → Switch Platform** (long la première fois). Puis **Player Settings** (dans la même fenêtre) → *Other Settings* : **Scripting Backend : IL2CPP**, **Target Architectures : ARM64** coché, **Minimum API Level** : laisser la valeur proposée si elle est au plus *Android 9.0 (API level 28)*, sinon choisir celle-là (le Note8 est en Android 9). Si l'écran reste noir au premier essai : décocher *Auto Graphics API* et mettre **OpenGLES3** en premier.
+4. **Build Profiles → Android** : *Run Device* → choisir le **Note8** (bouton *Refresh* s'il n'apparaît pas) → **Build And Run** → dossier **`unity/Build/Android`** (ignoré par GitHub Desktop), nom `eclats.apk`. Unity construit le jeu (plusieurs minutes la première fois), l'installe et le lance.
+5. Au premier lancement : « Préparation des données du jeu… » (les données et scénarios du dépôt, emportés dans le jeu, sont recopiés sur le téléphone), puis les Vallons.
+
+**c. Ce que tu vérifies sur le téléphone** (rapport au 11.9) :
+
+1. **Installation et démarrage** : le jeu s'installe, démarre, garde l'écran allumé, tourne avec le téléphone (deux sens à l'horizontale).
+2. **Marche au pouce** : départ, arrêt, changement de direction ; la marche suit bien la caméra.
+3. **Boutons** : assez grands, bien placés pour les pouces ; garde maintenue et parade au bon moment.
+4. **Geste entre les deux vues** : pincer pour passer de la vue 1 à la vue 2, glisser pour tourner ; rien ne change tout seul.
+5. **Lisibilité et fluidité** : annonces au sol, barres, textes lisibles ; image fluide (ombres et anticrénelage coupés sur téléphone).
+6. **En réseau** (si tu veux) : PC qui héberge les Vallons (section 6), téléphone sur le même Wi-Fi → **Menu** → adresse du PC → **Rejoindre**.
+
+## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
 - **Cadre rouge « Impossible de charger le jeu »** : le dossier `unity` a été déplacé hors du dépôt. Il doit rester à côté de `data/` et `scenarios/`.
@@ -125,6 +162,8 @@ Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** o
 - **Réseau : « connexion impossible »** : vérifier l'adresse, que l'autre PC héberge bien (salle d'attente affichée) et que le pare-feu Windows autorise Unity (ou le jeu construit) sur les réseaux privés, port 7777.
 - **Réseau : « désynchronisation persistante »** : ne devrait jamais arriver ; faire une capture et l'envoyer à Claude (c'est exactement ce que le lot 10 doit détecter).
 - **Réseau : « protocole 1 non pris en charge »** (ou 2) : les deux PC n'ont pas la même version du projet ; faire un *Pull* sur les deux (sous-lot 11.7 : protocole 2).
+- **Téléphone non proposé dans *Run Device*** : câble de données (pas seulement de charge), débogage USB activé, autorisation acceptée sur le téléphone ; débrancher, rebrancher, *Refresh*.
+- **Téléphone : « Impossible de préparer les données du jeu »** : le jeu a été construit sans ses données (projet Unity déplacé hors du dépôt) ; reconstruire depuis le projet du dépôt.
 
 ## Ce qui est provisoire
 
