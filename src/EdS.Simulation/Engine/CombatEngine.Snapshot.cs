@@ -458,7 +458,11 @@ namespace EdS.Simulation.Engine
                             $"{at} : tour impossible.");
                         break;
                     case CooldownExpiry cooldown:
-                        Require(phase == CombatPhase.Expirations && cooldown.Fighter.Character != null, $"{at} : recharge impossible.");
+                        // Revue Codex de la PR #32 (8e tour) : entre deux ticks, chaque échéance de recharge est celle d'une recharge en cours
+                        // (une échéance périmée ne survit pas à son tick : relancer une compétence n'est possible qu'à partir de son échéance).
+                        Require(phase == CombatPhase.Expirations && cooldown.Fighter.Character != null
+                            && cooldown.Fighter.CooldownReadyTick.TryGetValue(cooldown.Skill, out long readyTick) && readyTick == tick,
+                            $"{at} : recharge impossible ou sans recharge en cours.");
                         break;
                     case ParryWindowEnd:
                     case StateExpiry:
@@ -538,6 +542,14 @@ namespace EdS.Simulation.Engine
                 }
                 // Présence : une arrivée en file pour un combattant attendu, aucune sinon ; départ et arrivée déjà passés.
                 Require(arrivals.Count(a => a == f) == (f.Presence == Presence.Pending ? 1 : 0), $"Arrivée de {who} incohérente avec sa présence.");
+                // 8e tour : un combattant attendu l'est jusqu'à son tick d'arrivée ; un refus d'arrivée n'existe qu'après ce tick.
+                long? arrivalTick = f.Setup.ArrivalMs is long due ? due / _tickMs : (long?)null;
+                Require(f.Presence switch
+                {
+                    Presence.Pending => arrivalTick is long awaited && awaited >= CurrentTick,
+                    Presence.Refused => arrivalTick is long refusedAt && refusedAt < CurrentTick,
+                    _ => arrivalTick is null || arrivalTick < CurrentTick,
+                }, $"Présence de {who} incohérente avec son tick d'arrivée.");
                 Require(f.LeaveCommand is null, $"Départ de {who} encore demandé entre deux ticks.");
                 Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
                     $"Arrivée de {who} au tick {f.ArrivedTick} impossible.");

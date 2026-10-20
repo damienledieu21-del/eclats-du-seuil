@@ -166,6 +166,18 @@ public class Lot114dSnapshotTests
         return string.Join("\n", lines);
     }
 
+    /// <summary>Le texte sans l'élément de file qui commence par <paramref name="prefix"/> et contient <paramref name="marker"/> (compte de la file mis à jour).</summary>
+    private static string WithoutEntry(string text, string prefix, string marker)
+    {
+        List<string> lines = text.Split('\n').ToList();
+        int i = lines.FindIndex(l => l.StartsWith(prefix, StringComparison.Ordinal) && l.Contains(marker, StringComparison.Ordinal));
+        Assert.True(i > 0, marker);
+        lines.RemoveAt(i);
+        var head = System.Text.RegularExpressions.Regex.Match(lines[0], "\"count\":([0-9]+)");
+        lines[0] = lines[0].Replace(head.Value, $"\"count\":{long.Parse(head.Groups[1].Value) - 1}");
+        return string.Join("\n", lines);
+    }
+
     internal static void AssertRefused(CombatSetup setup, string text, IEnumerable<(string Prefix, string From, string To, string Message)> cases)
     {
         foreach (var (prefix, from, to, message) in cases)
@@ -284,6 +296,10 @@ public class Lot114dSnapshotTests
             (Renfort, "\"endurance\":100", "\"endurance\":99", "« renfort », pas encore entré"),
             (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":1000", "Recharge globale ou parade de « bastion » au-delà"),
         });
+        // Revue Codex de la PR #32 (8e tour) : un renfort attendu, déclaré refusé avant son tick d'arrivée (et son arrivée retirée de la file).
+        string refused = WithoutEntry(Tampered(text, Renfort, "\"presence\":1", "\"presence\":3"), "{\"entry\":", "\"item\":\"arrival\"");
+        Assert.Contains("incohérente avec son tick d'arrivée", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(refused),
+            NullCombatLog.Instance)).Message);
         foreach (string entry in new[] { "{\"entry\":9,", "{\"entry\":11," })
             Assert.Contains("en double", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(WithDuplicate(text, entry)),
                 NullCombatLog.Instance)).Message);
