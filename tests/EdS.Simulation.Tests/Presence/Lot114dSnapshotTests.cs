@@ -284,7 +284,7 @@ public class Lot114dSnapshotTests
             ("{\"entry\":3,", "\"index\":2", "\"index\":3", "hors de son tick ou en double"),
             ("{\"entry\":0,", "\"fighter\":\"renfort\"", "\"fighter\":\"allie\"", "n'est pas attendu"),
             (Renfort, "\"presence\":1", "\"presence\":0", "n'est pas attendu"),
-            (Allie, "\"arrivedTick\":null", "\"arrivedTick\":10", "Bilan de présence"),
+            (Allie, "\"arrivedTick\":null", "\"arrivedTick\":10", "pas celle de son combat"),   // 14e tour : présent dès l'origine, sans tick d'arrivée
             (Head, "[\"bastion\",50,1]", "[\"bastion\",50,2]", "par acteur et par tick"),
             (Bastion, "\"nextTick\":60", "\"nextTick\":61", "échéance absente de la file"),
             (Bastion, "\"nextTick\":60", "\"nextTick\":80", "au-delà de sa plus longue durée possible"),   // 10e tour : plus d'une période après le tick 29
@@ -565,7 +565,7 @@ public class Lot114dSnapshotTests
     [Fact]
     public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
     {
-        // Revue Codex de la PR #32 (11e à 13e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        // Revue Codex de la PR #32 (11e à 14e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
         while (training.CurrentTick < 30) training.Step();
         string text = training.Snapshot().Text;
@@ -612,6 +612,26 @@ public class Lot114dSnapshotTests
         Assert.False(resting.IsFinished, "régénération en cours");
         AssertRefused(resting.CompletedSetup(), resting.Snapshot().Text, new[] { (Bastion, granted.Value,
             granted.Value.Replace("\"regenGranted\":" + granted.Groups[2].Value, "\"regenGranted\":0", StringComparison.Ordinal), "Régénération de « bastion » impossible") });
+        // 14e tour : mesures de charge au-delà des budgets ; dernier tick au-delà des pics.
+        foreach ((string pattern, string value) in new[] { ("\"peakWork\":[0-9]+", "\"peakWork\":9223372036854775000"), ("\"lastTickEvents\":[0-9]+", "\"lastTickEvents\":1000000000") })
+        {
+            string tampered = new System.Text.RegularExpressions.Regex(pattern).Replace(text, value, 1);
+            Assert.NotEqual(text, tampered);
+            Assert.Contains("Mesures de charge", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tampered), NullCombatLog.Instance)).Message);
+        }
+        // 14e tour : le renfort, arrivé au tick 80 (4 s), ne peut pas être déclaré arrivé à un autre tick.
+        var late = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (late.CurrentTick < 90) late.Step();
+        string arrived = late.Snapshot().Text;
+        Assert.Contains("\"arrivedTick\":80", arrived.Split('\n').First(l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal)), StringComparison.Ordinal);
+        AssertRefused(late.CompletedSetup(), arrived, new[]
+        {
+            ("{\"fighter\":\"renfort\"", "\"arrivedTick\":80", "\"arrivedTick\":79", "pas celle de son combat"),
+            ("{\"fighter\":\"renfort\"", "\"arrivedTick\":80", "\"arrivedTick\":null", "pas celle de son combat"),
+        });
+        // 14e tour : un texte tronqué au milieu de true, false ou null est illisible (FormatException), pas une erreur d'indice.
+        foreach (string truncated in new[] { "n", "tru", "{\"a\":fals", "[nul" })
+            Assert.Throws<FormatException>(() => CombatSnapshot.Parse(truncated));
         // File vide (un Bastion et un mannequin, sans commande) : son prochain numéro ne peut pas être négatif.
         var quiet = new CombatEngine(Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
         {
