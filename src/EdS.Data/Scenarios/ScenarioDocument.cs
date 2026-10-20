@@ -138,6 +138,23 @@ namespace EdS.Data.Scenarios
 
         /// <summary>Altérations appliquées à chaque cible touchée (schéma 2, lot 7.2 ; remplace <c>appliesFragility</c>).</summary>
         public List<Classes.StatusApplicationData?>? Applies { get; set; }
+
+        // Sous-lot 11.4c (schéma 6) : forme, annonce, dimensions et défenses, tous facultatifs.
+
+        /// <summary>« target », « cone », « circle », « line » ou « persistent » ; absente : attaque historique.</summary>
+        public string? Shape { get; set; }
+        public long? TelegraphMs { get; set; }
+        public Domain.Numerics.Fixed? Range { get; set; }
+        public Domain.Numerics.Fixed? Radius { get; set; }
+        public int? Angle { get; set; }
+        public Domain.Numerics.Fixed? Width { get; set; }
+
+        /// <summary>« target » ou « self ».</summary>
+        public string? Center { get; set; }
+        public long? PersistentMs { get; set; }
+        public long? TickMs { get; set; }
+        public bool? Guardable { get; set; }
+        public bool? Parryable { get; set; }
     }
 
     public sealed class CommandData
@@ -148,7 +165,7 @@ namespace EdS.Data.Scenarios
         /// <summary>Compétence lancée ; absente pour une garde ou une parade.</summary>
         public string? Skill { get; set; }
 
-        /// <summary>« guardStart », « guardStop », « parry », « move » ou « stop » ; absente pour une compétence.</summary>
+        /// <summary>« guardStart », « guardStop », « parry », « move », « stop » ou « select » (sous-lot 11.4c) ; absente pour une compétence.</summary>
         public string? Action { get; set; }
 
         /// <summary>Cible ; null si absente ou null (compétence de zone).</summary>

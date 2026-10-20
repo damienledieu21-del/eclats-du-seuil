@@ -184,6 +184,18 @@ namespace EdS.Data.Json
                 ["targeting"] = (v, p) => a.Targeting = input.Text(v, p),
                 ["unblockable"] = (v, p) => a.Unblockable = input.Boolean(v, p),
                 ["applies"] = (v, p) => a.Applies = input.ReadList(v, p, (e, ip) => ClassJsonReader.ReadApplication(input, e, ip)),
+                // Sous-lot 11.4c (schéma 6) : forme, annonce, dimensions et défenses.
+                ["shape"] = (v, p) => a.Shape = input.Text(v, p),
+                ["telegraphMs"] = (v, p) => a.TelegraphMs = input.Int64(v, p),
+                ["range"] = (v, p) => a.Range = input.Decimal(v, p),
+                ["radius"] = (v, p) => a.Radius = input.Decimal(v, p),
+                ["angle"] = (v, p) => a.Angle = input.Int32(v, p),
+                ["width"] = (v, p) => a.Width = input.Decimal(v, p),
+                ["center"] = (v, p) => a.Center = input.Text(v, p),
+                ["persistentMs"] = (v, p) => a.PersistentMs = input.Int64(v, p),
+                ["tickMs"] = (v, p) => a.TickMs = input.Int64(v, p),
+                ["guardable"] = (v, p) => a.Guardable = input.Boolean(v, p),
+                ["parryable"] = (v, p) => a.Parryable = input.Boolean(v, p),
             });
             return ok ? a : null;
         }

@@ -231,6 +231,8 @@ namespace EdS.Data.Rules
                 PlayerCreatureContact = ContactRuleIds.Parse(d.Values[P(c, nameof(CombatRules.PlayerCreatureContact))].Token!),
                 CrossingSpeedFactor = Dec(d, P(c, nameof(CombatRules.CrossingSpeedFactor))),
                 LargeCreatureRadius = Dec(d, P(c, nameof(CombatRules.LargeCreatureRadius))),
+                GuardArcDegrees = (int)Int(d, P(c, nameof(CombatRules.GuardArcDegrees))),
+                TelegraphMinReactionMs = Int(d, P(c, nameof(CombatRules.TelegraphMinReactionMs))),
                 Statuses = statuses,
             };
         }

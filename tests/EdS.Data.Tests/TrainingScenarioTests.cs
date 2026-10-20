@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "f5dbd9e297c1836f046b6c7bf5a22633642f9bd6f3ac2e3255b902f171f78081")]
-    [InlineData("entrainement_rupture", "4ccfacd9f5e217b38e83ec78c6c6ebd3ff72607e66a3bcb4d3431f44a8fa4bb5")]
-    [InlineData("entrainement_alterations", "c8fca81b26b97d33c5aff110b4ec9a62814328e140d65623ea6bee2f56e6087d")]
-    [InlineData("entrainement_declencheurs", "579286c811029a3b682eff661b65a44843c4dda41c81778fd5d469d48031300b")]
+    [InlineData("entrainement_garde_parade", "d7d47009ac1cf50539357c9a6abbf77adf7161d26b23a14cea0c1a9766eed2b8")]
+    [InlineData("entrainement_rupture", "03dfdb1489be7aa72d7196d8d2f278d0eeca6d6d987e3aac049bc57b0683102b")]
+    [InlineData("entrainement_alterations", "5bdde4264132a83e27c8c071533c6786759f432cf6c83490b36c7b78cc805313")]
+    [InlineData("entrainement_declencheurs", "5f0097bbf51d63ce36ce42e1907f69a6c70d8641cfb8b6c4e6537d2d1540f9fa")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -129,7 +129,9 @@ public class TrainingScenarioTests
         // règles, dont l'étourdissement qui bloque désormais le déplacement), corps identique à celui du moteur 0.15.0 ; référence dans
         // Fixtures/reference-0.16.0-contenu-0.5.0. Sous-lot 11.4b : moteur 0.17.0, format 11, règles 0.10.0 (portée du lien protecteur),
         // Bastion 0.6.0 (portées) ; sans espace, une portée est ignorée : seul l'en-tête change (format, version, identité des règles et
-        // de la classe), corps identique à celui du moteur 0.16.0 ; référence dans Fixtures/reference-0.17.0-contenu-0.6.0.
+        // de la classe), corps identique à celui du moteur 0.16.0 ; référence dans Fixtures/reference-0.17.0-contenu-0.6.0. Sous-lot 11.4c :
+        // moteur 0.18.0, format 12, règles 0.11.0 (arc du bouclier, réaction des annonces), scénarios en schéma 6 ; sans espace, seul
+        // l'en-tête change ; référence dans Fixtures/reference-0.18.0-contenu-0.6.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

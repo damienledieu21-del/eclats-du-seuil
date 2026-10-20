@@ -42,10 +42,12 @@ namespace EdS.Data.Scenarios
         /// facultatif sur un assaillant (PV d'un assaillant mortel ; absent : PV infinis de l'entraînement). Version 5 (sous-lot 11.4a) :
         /// combat positionné, bloc <c>space</c> facultatif (aire <c>bounds</c>, <c>obstacles</c> convexes) ; avec lui, <c>position</c> et
         /// <c>radius</c> obligatoires et <c>facing</c> facultatif sur chaque combattant, <c>speed</c> facultatif sur un assaillant ; actions
-        /// <c>move</c> (avec <c>direction</c>) et <c>stop</c>. Une version antérieure est refusée sans migration : le fichier se met à jour à
-        /// la main.
+        /// <c>move</c> (avec <c>direction</c>) et <c>stop</c>. Version 6 (sous-lot 11.4c) : forme, annonce, dimensions et défenses des attaques
+        /// d'assaillant (<c>shape</c>, <c>telegraphMs</c>, <c>range</c>, <c>radius</c>, <c>angle</c>, <c>width</c>, <c>center</c>,
+        /// <c>persistentMs</c>, <c>tickMs</c>, <c>guardable</c>, <c>parryable</c>) et action <c>select</c> (avec <c>target</c> facultatif).
+        /// Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 5;
+        public const int CurrentSchemaVersion = 6;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -117,7 +119,9 @@ namespace EdS.Data.Scenarios
                 else if (c.Type == "assailant")
                 {
                     var attacks = c.Attacks!.Select(a => new AssailantAttack(a!.Id!, a.RawDamage!.Value, ClassValidator.DamageTypes[a.DamageType!],
-                        ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, ClassValidator.Applications(a.Applies!)));
+                        ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, ClassValidator.Applications(a.Applies!),
+                        a.Shape is null ? null : AttackShapeIds.Shapes[a.Shape], a.TelegraphMs ?? 0, a.Range, a.Radius, a.Angle, a.Width,
+                        a.Center is null ? ShapeCenter.Target : AttackShapeIds.Centers[a.Center], a.PersistentMs ?? 0, a.TickMs ?? 0, a.Guardable, a.Parryable));
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
                         Triggers.TriggerShape.Build(c.Triggers), c.Health, placement));
@@ -132,7 +136,9 @@ namespace EdS.Data.Scenarios
                 ? new CombatCommand(c.AtMs!.Value, c.Actor!, c.Skill!, c.Target)
                 : action == CombatAction.Move
                     ? new CombatCommand(c.AtMs!.Value, c.Actor!, Point(c.Direction!))
-                    : new CombatCommand(c.AtMs!.Value, c.Actor!, action));
+                    : action == CombatAction.Select   // sous-lot 11.4c
+                        ? CombatCommand.SelectTarget(c.AtMs!.Value, c.Actor!, c.Target)
+                        : new CombatCommand(c.AtMs!.Value, c.Actor!, action));
             CombatSpace? space = scenario.Space is { } s
                 ? new CombatSpace(Point(s.Bounds!.Min!), Point(s.Bounds.Max!),
                     (s.Obstacles ?? new List<ObstacleData?>()).Select(o => new SpaceObstacle(o!.Id!, o.Points!.Select(p => Point(p!)))))
@@ -267,6 +273,13 @@ namespace EdS.Data.Scenarios
                         $"valeur inconnue « {a.Targeting} » ; valeurs possibles : {string.Join(", ", ClassValidator.AttackTargetings)}.");
                 Present(a.Unblockable, path + ".unblockable", "booléen");
                 ClassValidator.CheckApplications(a.Applies, path + ".applies", _report);
+                // Sous-lot 11.4c : identifiants de forme et de centre ; la cohérence est jugée par CombatSetup.Validate.
+                if (a.Shape != null && !AttackShapeIds.Shapes.ContainsKey(a.Shape))
+                    _report.Add(path + ".shape", ValidationCode.UnknownReference,
+                        $"valeur inconnue « {a.Shape} » ; valeurs possibles : {string.Join(", ", AttackShapeIds.Shapes.Keys)}.");
+                if (a.Center != null && !AttackShapeIds.Centers.ContainsKey(a.Center))
+                    _report.Add(path + ".center", ValidationCode.UnknownReference,
+                        $"valeur inconnue « {a.Center} » ; valeurs possibles : {string.Join(", ", AttackShapeIds.Centers.Keys)}.");
             }
 
             private void CheckCommand(CommandData c, string path)
@@ -287,8 +300,12 @@ namespace EdS.Data.Scenarios
                     _report.Add(path + ".action", ValidationCode.UnknownReference, $"action inconnue « {c.Action} » ; valeurs possibles : {actions}.");
                     return;
                 }
+                // Sous-lot 11.4c : une sélection prend une cible (ou aucune, pour effacer la sélection), pas de compétence.
                 foreach (string field in new[] { "skill", "target" }.Where(c.Present.Contains))
-                    _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "une garde, une parade ou un déplacement ne prend ni compétence ni cible.");
+                    if (!(field == "target" && action == CombatAction.Select))
+                        _report.Add($"{path}.{field}", ValidationCode.InvalidValue, action == CombatAction.Select
+                            ? "une sélection ne nomme pas de compétence."
+                            : "une garde, une parade ou un déplacement ne prend ni compétence ni cible.");
                 // Sous-lot 11.4 : une direction pour un déplacement, et seulement pour lui.
                 if (c.Action is null) return;
                 if (action == CombatAction.Move) Present(c.Direction, path + ".direction", "direction de marche [x, z], composantes dans [−1, 1]");

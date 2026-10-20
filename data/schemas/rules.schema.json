@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 11
+      "const": 12
     },
     "kind": {
       "const": "rules"
@@ -543,6 +543,12 @@
                 "breakStatus": {
                   "type": "string",
                   "description": "Identifiant de l'altération appliquée par la rupture de garde (bloc statuses)."
+                },
+                "arcDegrees": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 360,
+                  "description": "Sous-lot 11.4c (L11-D3, retenu par Damien) : ouverture en degrés de l'arc frontal du bouclier, centré sur l'orientation ; garde et parade parfaite ne valent que contre un coup venu de cet arc (combat positionné). 180 livrés."
                 }
               },
               "required": [
@@ -550,7 +556,8 @@
                 "maxDamageReduction",
                 "upkeepPerSecond",
                 "costPerBlock",
-                "breakStatus"
+                "breakStatus",
+                "arcDegrees"
               ],
               "description": "Garde (A1)."
             },
@@ -715,6 +722,22 @@
                 "largeCreatureRadius"
               ],
               "description": "Contact entre joueurs et créatures (sous-lot 11.4, schéma 10)."
+            },
+            "telegraph": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "minReactionMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10000,
+                  "description": "Temps de réaction minimal (ms) d'une annonce : une zone évitable doit laisser ce temps plus celui de sortir de la forme au pas de base (300 livrés)."
+                }
+              },
+              "required": [
+                "minReactionMs"
+              ],
+              "description": "Annonces des attaques au sol (sous-lot 11.4c, schéma 12)."
             }
           },
           "required": [
@@ -729,7 +752,8 @@
             "rampartCharges",
             "resonance",
             "movement",
-            "contact"
+            "contact",
+            "telegraph"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         },
