@@ -589,13 +589,14 @@ namespace EdS.Simulation.Engine
                 Fighter start = initial[f.Id];
                 Require(f.Random.Capture().Increment == start.Random.Capture().Increment, $"Flux de tirage de {who} différent de celui du combat.");
                 bool entered = f.Presence != Presence.Pending && f.Presence != Presence.Refused;
-                if (!entered)
+                // Revue Codex de la PR #33 (tour 4) : avant le premier tick, aucun combattant n'a encore rien fait (engagement compris).
+                if (!entered || CurrentTick == 0)
                 {
                     // Seules différences possibles : sa présence (refusé) et ses commandes refusées (un absent n'agit pas).
                     start.Presence = f.Presence;
                     start.Result.CommandsRejected = f.Result.CommandsRejected;
                     Require(f.Result.CommandsRejected >= 0 && string.Equals(WriteFighter(f), WriteFighter(start), StringComparison.Ordinal),
-                        $"{who}, pas encore entré, n'est plus dans son état de départ.");
+                        entered ? $"{who}, avant le premier tick, n'est plus dans son état de départ." : $"{who}, pas encore entré, n'est plus dans son état de départ.");
                 }
                 // Les tours d'un assaillant entré se déduisent de sa cadence : tours joués jusqu'à son dernier tick d'action (le précédent,
                 // ou celui de sa mort ou de son départ), attaque suivante de sa liste, tour suivant programmé s'il tombe avant la fin.

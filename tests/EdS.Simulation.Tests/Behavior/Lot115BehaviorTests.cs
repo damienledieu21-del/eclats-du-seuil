@@ -199,6 +199,13 @@ public class Lot115BehaviorTests
         List<JsonElement> lines = Events(hit).ToList();
         int damage = lines.FindIndex(e => e.Str("event") == "damage" && e.Str("target") == "bastion");
         Assert.True(damage >= 0 && damage < lines.FindIndex(e => e.Str("event") == "charged"));
+        // Revue Codex de la PR #33 (tour 4) : le coin d'un obstacle mince frôlé entre deux échantillons (centres à x = 2 et 2,25, tous deux
+        // libres) arrête la charge : le disque balayé le toucherait. Elle s'arrête à x = 2.
+        var sliver = new SpaceObstacle("piquet", new[] { GroundVector.Parse("2.1", "0.49"), GroundVector.Parse("2.12", "0.49"),
+            GroundVector.Parse("2.12", "3"), GroundVector.Parse("2.1", "3") });
+        var (_, corner) = Run(Spatial(Arena(20, sliver), new CombatantSetup[]
+            { Player("bastion", At("10", "0")), Hunter("sanglier", At("0", "0"), "20", firstMs: 0, attacks: Charge("6")) }, Array.Empty<CombatCommand>(), Rules, 2000));
+        Assert.Equal("[2,0]", Assert.Single(Lines(corner, "charged")).GetProperty("position").GetRawText());
     }
 
     [Fact]
@@ -250,6 +257,13 @@ public class Lot115BehaviorTests
             ("{\"fighter\":\"bastion\"", "\"engaged\":false", "\"engaged\":true", "Engagement de « bastion »"),
             ("{\"fighter\":\"renfort\"", "\"struck\":false", "\"struck\":true", "« renfort », pas encore entré"),
             ("{\"fighter\":\"renfort\"", "\"engaged\":false", "\"engaged\":true", "« renfort », pas encore entré"),
+        });
+        // Revue Codex de la PR #33 (tour 4) : avant le premier tick, le guetteur (distance d'engagement) n'est pas encore engagé.
+        var fresh = new CombatEngine(setup, NullCombatLog.Instance);
+        string zero = fresh.Snapshot().Text;
+        EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertRefused(fresh.CompletedSetup(), zero, new[]
+        {
+            ("{\"fighter\":\"guetteur\"", "\"engaged\":false", "\"engaged\":true", "« guetteur », avant le premier tick"),
         });
         EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertResumesIdentically(engine, log);
     }
