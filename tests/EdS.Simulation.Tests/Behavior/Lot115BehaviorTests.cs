@@ -73,6 +73,22 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Centres_confondus_le_tireur_recule_a_l_oppose_de_son_orientation()
+    {
+        // Revue Codex de la PR #33 (tour 5) : règle B (traversée freinée), le joueur et l'archer partent de la même place ; l'archer recule
+        // à l'opposé de son orientation (vers l'ouest, il regarde l'est) jusqu'à sa distance minimale, au lieu de rester immobile.
+        var rules = new CombatRules { GuardUpkeepPerSecond = 0, TelegraphMinReactionMs = 0, PlayerCreatureContact = ContactRule.SlowedCrossing };
+        var (track, _, _) = Trace(Fight(new CombatantSetup[]
+        {
+            Player("bastion", At("0", "0")),
+            Hunter("archer", At("0", "0", facing: GroundVector.Parse("1", "0")), "4", minRange: "2"),
+        }, durationMs: 2000, rules: rules));
+        GroundVector after = track.After("archer", 39);
+        Assert.True(after.X < Fixed.Zero, $"archer en {after}");
+        Assert.InRange(Edge(after, track.After("bastion", 39), 0.5, 0.5), 1.998, 2.002);
+    }
+
+    [Fact]
     public void Un_tireur_garde_ses_distances_il_recule_quand_on_approche()
     {
         var (track, _, _) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("archer", At("7", "0"), "9", minRange: "6") },

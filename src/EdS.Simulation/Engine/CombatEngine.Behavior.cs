@@ -187,7 +187,9 @@ namespace EdS.Simulation.Engine
                     }
                     else if (d < checked(near - BandTolerance))
                     {
-                        (gx, gz) = (checked(-vx), checked(-vz));
+                        // Revue Codex de la PR #33 (tour 5) : centres confondus (règle B, traversée permise) : recul à l'opposé de son
+                        // orientation, direction déterministe.
+                        (gx, gz) = vx == 0 && vz == 0 ? (checked(-f.Body.FacingX), checked(-f.Body.FacingZ)) : (checked(-vx), checked(-vz));
                         maxStep = checked(near - d);
                     }
                     else
