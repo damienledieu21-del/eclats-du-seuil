@@ -8,6 +8,7 @@ using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
+using EdS.Domain.Stats;
 using EdS.Simulation.Randomness;
 
 namespace EdS.Simulation.Engine
@@ -598,6 +599,16 @@ namespace EdS.Simulation.Engine
                 // 15e tour (relecture d'ensemble) : une parade réussie est comptée ; une récupération de parade ratée suppose une parade ratée.
                 Require((!f.ParrySucceeded || f.Result.PerfectParries >= 1) && (f.ParryRecoveryUntilTick == 0 || f.Result.FailedParries >= 1),
                     $"Parade de {who} incohérente avec son bilan.");
+                // Relecture d'ensemble (avant le 19e tour) : la dernière parade a commencé à un tick passé et sa fenêtre a sa durée (aucune
+                // parade : tout à 0) ; une récupération de parade ratée part de la fin de cette fenêtre, sauf si une parade a été reprise
+                // après elle ; parades réussies et ratées au plus les commandes de parade passées.
+                long window = f.Rules.ParryWindowMs / _tickMs, recovery = f.Rules.ParryFailureRecoveryMs / _tickMs;
+                int parryCommands = _setup.Commands.Count(c => c.Action == CombatAction.Parry && c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                Require(f.ParryStartTick >= 0 && f.ParryStartTick <= Math.Max(0, previous)
+                    && (f.ParryEndTick == checked(f.ParryStartTick + window) || (f.ParryStartTick == 0 && f.ParryEndTick == 0 && !f.ParrySucceeded))
+                    && (f.ParryRecoveryUntilTick == 0 || f.ParryRecoveryUntilTick == checked(f.ParryEndTick + recovery) || f.ParryStartTick >= f.ParryRecoveryUntilTick)
+                    && checked(f.Result.PerfectParries + f.Result.FailedParries) <= parryCommands,
+                    $"Parade de {who} incohérente avec ses commandes ou sa fenêtre.");
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
                     Require(slot.ReadyTick >= 0 && slot.ReadyTick <= Math.Max(0, previous + slot.Definition.CooldownMs / _tickMs), $"Recharge d'un déclencheur de {who} au-delà de sa durée.");
@@ -647,6 +658,8 @@ namespace EdS.Simulation.Engine
                 Require(f.Presence != Presence.Refused || _spatial, $"Arrivée de {who} refusée hors d'un combat positionné.");
                 Require(f.LeftTick is not long left || _setup.Commands.Any(c => c.Action == CombatAction.Leave && c.Actor == f.Id && c.AtMs / _tickMs == left),
                     $"Départ de {who} sans commande de départ à son tick.");
+                // 18e tour : un mort ne part pas (le départ est annulé, leaveCancelled) et un parti ne meurt plus.
+                Require(!(f.IsDead && (f.Presence == Presence.Left || f.LeftTick != null)), $"{who}, mort, déclaré parti.");
                 // 17e tour : un départ suit l'admission (la commande leave n'est reçue que d'un combattant présent, arrivé au plus tard à ce tick).
                 Require(f.LeftTick is not long leftAt || leftAt >= (f.ArrivedTick ?? 0), $"Départ de {who} avant son arrivée.");
                 Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
@@ -666,10 +679,18 @@ namespace EdS.Simulation.Engine
                 Require((f.IsDead ? f.Health == 0 && f.Presence != Presence.Pending && f.Presence != Presence.Refused : f.Health != 0 || unscanned)
                     && f.IsDead == (f.Result.DeathTick != null) && (f.Result.DeathTick is null || (f.Result.DeathTick >= 0 && f.Result.DeathTick < CurrentTick)),
                     $"Mort de {who} incohérente avec ses points de vie.");
+                // Relecture d'ensemble (après le 18e tour) : sans soin, les PV ne baissent que des dégâts subis (après boucliers et transferts,
+                // PrepareDamage) : un vivant a perdu exactement ses dégâts subis, un mort au moins ses PV maximaux (dégâts au-delà de 0).
+                if (f.Health is long hp && f.MaxHealth is long maxHp)
+                    Require(f.IsDead ? f.Result.DamageTaken >= maxHp - hp : f.Result.DamageTaken == maxHp - hp, $"Dégâts subis de {who} incohérents avec ses points de vie.");
                 // 11e tour : la cause mortelle est notée quand les PV tombent à 0, et la mort suit en fin du même tick : un vivant n'en a pas.
                 Require(f.IsDead || f.LethalCause is null, $"Cause mortelle de {who} vivant.");
                 // Ressources.
                 Require(f.Endurance >= 0 && f.Endurance <= f.MaxEndurance, $"Endurance de {who} hors de [0, {f.MaxEndurance}] : {f.Endurance}.");
+                // Relecture d'ensemble : l'endurance ne baisse que par une dépense, qui fixe la reprise de la régénération (et remet le cumul à
+                // 0) ; la reprise n'est effacée qu'endurance pleine. Une reprise à venir n'a encore rien accordé.
+                Require(f.RegenFromTick != null || f.Endurance == f.MaxEndurance, $"Endurance de {who} entamée sans reprise de régénération.");
+                Require(f.RegenFromTick is not long resume || resume < CurrentTick || f.RegenGranted == 0, $"Régénération de {who} accordée avant sa reprise.");
                 Require(f.Character is null
                     ? f.Resonance == 0 && f.RampartCharges == 0 && !f.Guarding && !f.ParryOpen
                     : f.Resonance >= 0 && f.Resonance <= _rules.ResonanceMax && f.RampartCharges >= 0 && f.RampartCharges <= f.Rules.RampartChargesMax,
@@ -701,7 +722,19 @@ namespace EdS.Simulation.Engine
                 CombatantResult r = f.Result;
                 Require(new[] { r.DamageDealt, r.DamageTaken, r.DamageAbsorbed, r.DamageTransferred, r.DamageRedirected, r.DamageMitigated, r.Hits,
                         r.CriticalHits, r.SkillsCast, r.UltimatesCast, r.CommandsRejected, r.Blocks, r.PerfectParries, r.FailedParries, r.GuardBreaks }
-                    .All(v => v >= 0 && v <= CounterCeiling) && r.GuardTicks >= 0 && r.GuardTicks <= CurrentTick, $"Bilan de {who} impossible.");
+                    .All(v => v >= 0 && v <= CounterCeiling) && r.GuardTicks >= 0 && r.GuardTicks <= CurrentTick
+                    // 18e tour : un coup critique est un coup, un ultime est une compétence lancée (le total est toujours compté avec lui).
+                    && r.CriticalHits <= r.Hits && r.UltimatesCast <= r.SkillsCast, $"Bilan de {who} impossible.");
+                // Relecture d'ensemble (3) : garde et parade ne commencent que sur commande. Une parade a sa commande à son tick de début ;
+                // une garde tenue (ou rompue) suppose une commande de garde passée ; l'entretien n'avance que sur des ticks gardés.
+                Require((f.ParryEndTick == 0 || _setup.Commands.Any(c => c.Action == CombatAction.Parry && c.Actor == f.Id && c.AtMs / _tickMs == f.ParryStartTick))
+                    && (!f.Guarding && f.Result.GuardBreaks == 0 && f.Result.GuardTicks == 0
+                        || _setup.Commands.Any(c => c.Action == CombatAction.GuardStart && c.Actor == f.Id && c.AtMs / _tickMs <= previous))
+                    && (f.GuardUpkeepDue == 0 && f.GuardUpkeepRemainder == 0 || f.Result.GuardTicks >= 1),
+                    $"Garde ou parade de {who} sans commande à son origine.");
+                // Relecture d'ensemble (3) : seuls les assaillants ont des tours ; une mort suit l'arrivée.
+                Require(f.Assailant != null || (f.NextTurn == 0 && f.NextAttack == 0 && f.NextAttackTick is null), $"Tours de {who}, qui n'attaque pas seul.");
+                Require(f.Result.DeathTick is not long died || died >= (f.ArrivedTick ?? 0), $"Mort de {who} avant son arrivée.");
                 // Un mort ou un absent n'a ni altération, ni garde, ni parade, ni tour annoncé, et ne marche pas.
                 if (f.Out)
                     Require(f.Statuses.Count == 0 && !f.Guarding && !f.ParryOpen && f.NextAttackTick is null && f.Body is not { Moving: true },
@@ -728,9 +761,19 @@ namespace EdS.Simulation.Engine
                     // et aucune altération ne garde l'effet qui l'aurait épuisée.
                     Require(s.Absorb >= 0 && s.Absorb <= CounterCeiling && (s.Definition.IsShield ? s.Absorb > 0 : s.Absorb == 0) && s.DepletedBy is null,
                         $"{status} : absorption impossible.");
+                    // 20e tour : un bouclier absorbe au plus la valeur de la plus forte application possible de cette altération (l'absorption
+                    // ne fait ensuite que décroître, un renouvellement gardant la plus forte des deux valeurs).
+                    Require(!s.Definition.IsShield || s.Absorb <= MaxShieldAbsorb(s.Definition, s.Key.Source),
+                        $"{status} : absorption au-delà du plus fort bouclier possible.");
+                    // 19e tour : ApplyStatus fixe l'origine par WithSource(source).CausedBy(ligne).ForInstance(instance, génération) : même source,
+                    // même instance, même génération, une cause.
+                    Require(string.Equals(s.Origin.Source, s.Source, StringComparison.Ordinal) && s.Origin.SourceInstance == s.Id
+                        && s.Origin.SourceGeneration == s.Generation && s.Origin.Cause != null, $"{status} : provenance différente de l'altération.");
                     // 7e tour : puissance d'un DOT positive (nulle pour une autre altération), sous le plafond.
                     Require(s.Power.Raw >= 0 && s.Power.Raw <= CounterCeiling && (s.Definition.IsDot || (s.Power == Fixed.Zero && s.NextTick == 0)),
                         $"{status} : puissance impossible.");
+                    // Relecture d'ensemble (20e tour) : au plus la puissance de la plus forte application possible de ce DOT.
+                    Require(!s.Definition.IsDot || s.Power <= MaxDotPower(s.Definition, s.Key.Source), $"{status} : puissance au-delà du plus fort DOT possible.");
                     // Son échéance (ou, pour un DOT, son prochain tick) est en file, une seule fois et à son tick (revue Codex de la PR #32,
                     // 4e tour : une échéance en double agirait) ; aucune échéance de l'autre genre ne la vise.
                     var expiries = entries.Where(e => e.Item is StateExpiry x && x.Fighter == f && x.Key.Equals(s.Key) && x.Instance == s.Id && x.Generation == s.Generation).ToList();
@@ -742,6 +785,11 @@ namespace EdS.Simulation.Engine
                     // (sa mort ou son départ les retire).
                     Require(s.Source is null || _byId.ContainsKey(s.Source), $"{status} : source inconnue.");
                     Require(!s.Definition.IsSourceBound || s.Source != null && !_byId[s.Source].Out, $"{status} : provocation ou protection sans source présente.");
+                    // Relecture d'ensemble : une provocation vient d'un adversaire de l'assaillant, une protection d'un allié du personnage, autre
+                    // que lui (SourceFits).
+                    Require(!s.Definition.IsSourceBound || (s.Definition.IsTaunt
+                        ? f.Assailant != null && _byId[s.Source!].Team != f.Team
+                        : f.Character != null && s.Source != f.Id && _byId[s.Source!].Team == f.Team), $"{status} : source qui ne convient pas.");
                 }
                 if (f.Body is { } b)
                 {
@@ -751,6 +799,11 @@ namespace EdS.Simulation.Engine
                     Require(IsUnit(b.FacingX, b.FacingZ) && (!b.Moving || IsUnit(b.DirectionX, b.DirectionZ)), $"Orientation ou direction de {who} non unitaire.");
                     // 15e tour : seul un personnage ou un assaillant marche (un mannequin ne reçoit jamais move).
                     Require(!b.Moving || f.Character != null || f.Assailant != null, $"Marche de {who}, qui ne marche jamais.");
+                    // Relecture d'ensemble (4) : une marche suit une commande move passée de ce combattant ; une cible sélectionnée, une commande
+                    // select passée de ce combattant qui la désigne. Sous-lot 11.5 : un ennemi à comportement marche sans commande (placement).
+                    Require((!b.Moving || f.Behavior != null || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous))
+                        && (b.Selected is not { } chosen || _setup.Commands.Any(c => c.Action == CombatAction.Select && c.Actor == f.Id && c.Target == chosen.Id
+                            && c.AtMs / _tickMs <= previous)), $"Marche ou sélection de {who} sans commande à son origine.");
                 }
                 Fighter start = initial[f.Id];
                 Require(f.Random.Capture().Increment == start.Random.Capture().Increment, $"Flux de tirage de {who} différent de celui du combat.");
@@ -779,6 +832,20 @@ namespace EdS.Simulation.Engine
                         $"Tours de {who} incohérents avec sa cadence : {played} joués, prochain au tick {(scheduled ? next.ToString(CultureInfo.InvariantCulture) : "aucun")}.");
                 }
             }
+            // 19e tour : chaque montant de dégâts est crédité à sa source et réparti chez sa cible entre dégâts subis, absorbés et transférés ;
+            // la part transférée est comptée redirigée chez le protecteur, qui en subit ou en absorbe au plus autant (sa garde peut réduire).
+            // Sur tout le combat : transferts = redirections, et reçus (subis + absorbés + transférés) au moins les dégâts infligés crédités.
+            long dealtTotal = 0, receivedTotal = 0, transferredTotal = 0, redirectedTotal = 0;
+            foreach (Fighter f in _fightersById)
+            {
+                CombatantResult r = f.Result;
+                dealtTotal = checked(dealtTotal + r.DamageDealt);
+                receivedTotal = checked(receivedTotal + r.DamageTaken + r.DamageAbsorbed + r.DamageTransferred);
+                transferredTotal = checked(transferredTotal + r.DamageTransferred);
+                redirectedTotal = checked(redirectedTotal + r.DamageRedirected);
+            }
+            Require(transferredTotal == redirectedTotal && receivedTotal >= dealtTotal,
+                $"Dégâts du bilan incohérents entre combattants : {dealtTotal} infligés, {receivedTotal} reçus, {transferredTotal} transférés, {redirectedTotal} redirigés.");
         }
 
         /// <summary>
@@ -794,6 +861,79 @@ namespace EdS.Simulation.Engine
             long floor = definition.IsDot ? definition.PeriodMs : _tickMs;
             long ms = Math.Max(Math.Max(definition.DurationMs, floor), Math.Min(CombatRules.AbsoluteMaxDurationMs, checked(definition.DurationMs + added)));
             return ms / _tickMs;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (20e tour) : plus fort coefficient d'une application de l'altération <paramref name="status"/> posée par
+        /// <paramref name="source"/> : compétences de sa classe, attaques d'un assaillant, déclencheurs permanents à leur rang, déclencheurs
+        /// portés par une altération du catalogue (rang 1, posés au nom de leur porteur).
+        /// </summary>
+        private Fixed StrongestApplication(Fighter source, string status)
+        {
+            Fixed coefficient = Fixed.Zero;
+            foreach (StatusDefinition carrier in _statuses.Definitions)
+                foreach (TriggerDefinition trigger in carrier.Triggers) coefficient = Fixed.Max(coefficient, StrongestCoefficient(trigger, status, 1));
+            if (source.Character is { } character)
+                foreach (SkillDefinition skill in character.Class.Skills)
+                    if (skill.Combat is { } combat) coefficient = Fixed.Max(coefficient, StrongestCoefficient(combat.Applies, status));
+            if (source.Assailant is { } assailant)
+                foreach (AssailantAttack attack in assailant.Attacks) coefficient = Fixed.Max(coefficient, StrongestCoefficient(attack.Applies, status));
+            foreach (TriggerSlot slot in source.Triggers) coefficient = Fixed.Max(coefficient, StrongestCoefficient(slot.Definition, status, slot.Rank));
+            return coefficient;
+        }
+
+        /// <summary>
+        /// Sources possibles d'une altération : la source de sa clé pour un cumul par source, n'importe quel combattant sinon (un
+        /// renouvellement par une autre source garde la plus forte valeur).
+        /// </summary>
+        private IEnumerable<Fighter> PossibleSources(string? keySource) =>
+            keySource is null ? _fightersById : _fightersById.Where(f => string.Equals(f.Id, keySource, StringComparison.Ordinal));
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (20e tour) : plus forte absorption qu'un bouclier <paramref name="definition"/> a pu recevoir
+        /// (<see cref="ShieldAmount"/> de la plus forte application par une source possible).
+        /// </summary>
+        private long MaxShieldAbsorb(StatusDefinition definition, string? keySource)
+        {
+            long best = 0;
+            foreach (Fighter source in PossibleSources(keySource))
+                best = Math.Max(best, ShieldAmount(source, definition, StrongestApplication(source, definition.Id)));
+            return best;
+        }
+
+        /// <summary>
+        /// Relecture d'ensemble (20e tour) : plus forte puissance qu'un DOT <paramref name="definition"/> a pu recevoir (<see cref="DotPower"/> :
+        /// plus forte puissance du type de l'altération d'une source possible, toutes statistiques d'attaque comprises, × plus fort coefficient
+        /// de ses applications ; un renouvellement garde la plus forte des deux puissances).
+        /// </summary>
+        private Fixed MaxDotPower(StatusDefinition definition, string? keySource)
+        {
+            PowerType type = CombatantStats.PowerOf(definition.DamageType!.Value);
+            Fixed best = Fixed.Zero;
+            foreach (Fighter source in PossibleSources(keySource))
+            {
+                Fixed power = source.Stats.GetPower(type);
+                foreach (DerivedStats stats in source.AttackStats.Values) power = Fixed.Max(power, stats.GetPower(type));
+                best = Fixed.Max(best, Fixed.Max(Fixed.Zero, power) * StrongestApplication(source, definition.Id));
+            }
+            return best;
+        }
+
+        private static Fixed StrongestCoefficient(IReadOnlyList<StatusApplication> applies, string status)
+        {
+            Fixed best = Fixed.Zero;
+            foreach (StatusApplication a in applies)
+                if (a.Coefficient is { } c && string.Equals(a.Status, status, StringComparison.Ordinal)) best = Fixed.Max(best, c);
+            return best;
+        }
+
+        private static Fixed StrongestCoefficient(TriggerDefinition trigger, string status, int rank)
+        {
+            Fixed best = Fixed.Zero;
+            foreach (TriggerEffect e in trigger.Effects)
+                if (e.Kind == TriggerEffectKind.ApplyStatus && e.Coefficient is { } c && string.Equals(e.Status, status, StringComparison.Ordinal))
+                    best = Fixed.Max(best, c.At(rank));
+            return best;
         }
 
         /// <summary>

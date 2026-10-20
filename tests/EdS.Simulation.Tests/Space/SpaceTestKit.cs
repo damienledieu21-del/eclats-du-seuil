@@ -32,7 +32,7 @@ internal static class SpaceTestKit
     public static CharacterSetup Player(string id, CombatantPlacement placement, Attributes? attributes = null, string team = "joueurs")
     {
         CharacterSetup c = Character(id, team, attributes: attributes ?? Attrs(vitalite: 200));
-        return new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, placement);
+        return new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, placement, c.ArrivalMs);
     }
 
     /// <summary>Assaillant placé, qui n'attaque pas pendant les essais (première attaque après la fin).</summary>
