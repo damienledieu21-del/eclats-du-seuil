@@ -7,6 +7,7 @@ using System.Text;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 using EdS.Simulation.Randomness;
 
 namespace EdS.Simulation.Engine
@@ -337,7 +338,7 @@ namespace EdS.Simulation.Engine
             if (lines.Length != 1 + _fighters.Count + count) throw new FormatException($"{lines.Length} lignes, {1 + _fighters.Count + count} attendues.");
             for (int i = 0; i < _fighters.Count; i++) LoadFighter(_fighters[i], SnapshotNode.Parse(lines[1 + i]));
 
-            var entries = new List<(long, CombatPhase, long, Scheduled)>();
+            var entries = new List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)>();
             var bySequence = new Dictionary<long, Scheduled>();
             for (int i = 0; i < count; i++)
             {
@@ -362,11 +363,182 @@ namespace EdS.Simulation.Engine
             foreach (var key in _commandsPerActorTick.Keys)
                 if (key.Tick < CurrentTick) throw new FormatException($"Commandes de « {key.Actor} » comptées au tick {key.Tick}, déjà passé.");
             _queue.Load(entries, started, cursorTick, cursorPhase, queue["next"].Long);
-            foreach (SnapshotNode s in head["announced"].Items) _announced.Add((AttackImpact)bySequence[s.Long]);
+            // Revue Codex de la PR #32 (2e tour) : chaque impact en file est une attaque annoncée, citée une seule fois, et inversement.
+            var impacts = new HashSet<long>(entries.Where(x => x.Item is AttackImpact).Select(x => x.Sequence));
+            var announced = new HashSet<long>();
+            foreach (SnapshotNode s in head["announced"].Items)
+            {
+                long sequence = s.Long;
+                if (!impacts.Contains(sequence) || !announced.Add(sequence))
+                    throw new FormatException($"Attaque annoncée {sequence} : pas un impact en file, ou citée deux fois.");
+                _announced.Add((AttackImpact)bySequence[sequence]);
+            }
+            if (announced.Count != impacts.Count) throw new FormatException("Impact en file absent des attaques annoncées.");
+            ValidateLoaded(entries);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (2e tour) : un instantané retouché peut se réécrire à l'identique (contrôle canonique) tout en décrivant un
+        /// état que le moteur n'atteint jamais entre deux ticks ; il est refusé ici, avant tout tick. Contrôles : compteurs ; présence, arrivée
+        /// et départ ; points de vie (absents si et seulement si infinis, dans [0, max], nuls si et seulement si mort) ; ressources dans leurs
+        /// bornes ; ni altération, ni garde, ni parade, ni tour annoncé, ni marche chez un mort ou un absent ; altérations uniques, déjà
+        /// numérotées, rangées sous la clé de leur cumul, pas encore échues ; place dans l'aire et hors du décor, orientation unitaire ;
+        /// éléments de file à leur phase et d'un combattant du bon genre ; commandes à venir toutes en file, au tick de leur instant ;
+        /// réactions en file toutes reportées du tick précédent ; zones verrouillées aux dimensions de leur attaque.
+        /// </summary>
+        private void ValidateLoaded(List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)> entries)
+        {
+            static void Require(bool ok, string message)
+            {
+                if (!ok) throw new FormatException(message);
+            }
+
+            Require(_sequence >= 0 && _lastEid >= 0 && _lastStatusInstance >= 0 && _lastApplication >= 0 && _peakWork >= 0 && _peakEvents >= 0
+                && _peakPending >= entries.Count && entries.Count <= _rules.MaxPendingEvents && LastTickWork >= 0 && LastTickEvents >= 0
+                && _commandCount >= 0 && (_initialEvents == -1 || _initialEvents == _setup.InitialEventCount()), "Compteurs de l'instantané impossibles.");
+            foreach (var pair in _commandsPerActorTick)
+                Require(_byId.ContainsKey(pair.Key.Actor) && pair.Value > 0, $"Commandes comptées pour « {pair.Key.Actor} » au tick {pair.Key.Tick} impossibles.");
+
+            // File : chaque élément à sa phase, d'un combattant du bon genre.
+            var commands = new HashSet<int>();
+            long reactions = 0;
+            var arrivals = new List<Fighter>();
+            foreach (var (tick, phase, sequence, item) in entries)
+            {
+                string at = $"Élément de file {sequence} ({item.GetType().Name}, tick {tick}, phase {phase})";
+                switch (item)
+                {
+                    case ArrivalItem arrival:
+                        Require(phase == CombatPhase.Setup && arrival.Fighter.Presence == Presence.Pending, $"{at} : arrivée d'un combattant qui n'est pas attendu.");
+                        arrivals.Add(arrival.Fighter);
+                        break;
+                    case CommandItem command:
+                        Require(phase == CombatPhase.Commands && tick == command.Command.AtMs / _tickMs && commands.Add(command.Index), $"{at} : commande hors de son tick ou en double.");
+                        break;
+                    case AssailantTurn turn:
+                        Require(phase == CombatPhase.Commands && turn.Fighter.Assailant != null && turn.Turn >= 0 && turn.Turn < turn.Fighter.NextTurn,
+                            $"{at} : tour impossible.");
+                        break;
+                    case CooldownExpiry:
+                    case ParryWindowEnd:
+                    case StateExpiry:
+                        Require(phase == CombatPhase.Expirations, $"{at} : hors de la phase des expirations.");
+                        break;
+                    case DotTick:
+                        Require(phase == CombatPhase.Periodic, $"{at} : hors de la phase des effets périodiques.");
+                        break;
+                    case AttackImpact impact:
+                        Require(phase == CombatPhase.Resolution && impact.Pulse >= 0 && impact.Pulse < impact.Attack.Pulses,
+                            $"{at} : impact impossible.");
+                        ValidateZone(impact, at);
+                        break;
+                    case ReactionItem reaction:
+                        // Une réaction du tick est traitée dans son tick ; entre deux ticks, seules attendent les frappes reportées du précédent.
+                        Require(phase == CombatPhase.Resolution && tick == CurrentTick && reaction.DeferredFrom == CurrentTick - 1,
+                            $"{at} : réaction qui n'est pas reportée du tick précédent.");
+                        reactions++;
+                        break;
+                    default:
+                        Require(false, $"{at} : élément inattendu entre deux ticks.");
+                        break;
+                }
+            }
+            Require(_deferredPending == reactions, $"{_deferredPending} réactions reportées comptées, {reactions} en file.");
+            for (int i = 0; i < _setup.Commands.Count; i++)
+                Require(commands.Contains(i) == (_setup.Commands[i].AtMs / _tickMs >= CurrentTick), $"Commande {i} : en file si et seulement si elle est à venir.");
+
+            var instances = new HashSet<long>();
+            foreach (Fighter f in _fighters)
+            {
+                string who = $"« {f.Id} »";
+                // Présence : une arrivée en file pour un combattant attendu, aucune sinon ; départ et arrivée déjà passés.
+                Require(arrivals.Count(a => a == f) == (f.Presence == Presence.Pending ? 1 : 0), $"Arrivée de {who} incohérente avec sa présence.");
+                Require(f.LeaveCommand is null, $"Départ de {who} encore demandé entre deux ticks.");
+                Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
+                    $"Arrivée de {who} au tick {f.ArrivedTick} impossible.");
+                Require((f.LeftTick != null) == (f.Presence == Presence.Left) && (f.LeftTick is null || (f.LeftTick >= 0 && f.LeftTick < CurrentTick)),
+                    $"Départ de {who} au tick {f.LeftTick} impossible.");
+                Require(f.Result.ArrivedTick == f.ArrivedTick && f.Result.LeftTick == f.LeftTick, $"Bilan de présence de {who} incohérent.");
+                // Points de vie : absents si et seulement si infinis, dans [0, max] ; nuls si et seulement si mort (morts relevés en fin de tick).
+                Require((f.Health is null) == (f.MaxHealth is null) && (f.Health is null || (f.Health >= 0 && f.Health <= f.MaxHealth)),
+                    $"Points de vie de {who} impossibles : {f.Health?.ToString(CultureInfo.InvariantCulture) ?? "infinis"} (max {f.MaxHealth?.ToString(CultureInfo.InvariantCulture) ?? "infini"}).");
+                // Des points de vie nuls sans mort : seulement avant le premier relevé (tick 0) ou chez un combattant jamais entré.
+                bool unscanned = f.Presence == Presence.Pending || f.Presence == Presence.Refused || (CurrentTick == 0 && f.Presence == Presence.Present);
+                Require((f.IsDead ? f.Health == 0 && f.Presence != Presence.Pending && f.Presence != Presence.Refused : f.Health != 0 || unscanned)
+                    && f.IsDead == (f.Result.DeathTick != null) && (f.Result.DeathTick is null || (f.Result.DeathTick >= 0 && f.Result.DeathTick < CurrentTick)),
+                    $"Mort de {who} incohérente avec ses points de vie.");
+                // Ressources.
+                Require(f.Endurance >= 0 && f.Endurance <= f.MaxEndurance, $"Endurance de {who} hors de [0, {f.MaxEndurance}] : {f.Endurance}.");
+                Require(f.Character is null
+                    ? f.Resonance == 0 && f.RampartCharges == 0 && !f.Guarding && !f.ParryOpen
+                    : f.Resonance >= 0 && f.Resonance <= _rules.ResonanceMax && f.RampartCharges >= 0 && f.RampartCharges <= f.Rules.RampartChargesMax,
+                    $"Résonance, charges ou garde de {who} impossibles.");
+                Require(f.GlobalCooldownReadyTick >= 0 && f.RegenGranted >= 0 && f.NextTurn >= 0 && (f.NextAttackTick is null || f.NextAttackTick >= CurrentTick),
+                    $"Échéances de {who} impossibles.");
+                // Un mort ou un absent n'a ni altération, ni garde, ni parade, ni tour annoncé, et ne marche pas.
+                if (f.Out)
+                    Require(f.Statuses.Count == 0 && !f.Guarding && !f.ParryOpen && f.NextAttackTick is null && f.Body is not { Moving: true },
+                        $"{who}, mort ou absent, garde un état actif.");
+                foreach (StatusInstance s in f.Statuses.Values)
+                {
+                    string status = $"Altération {s.Id} ({s.Definition.Id}) de {who}";
+                    Require(s.Id >= 1 && s.Id <= _lastStatusInstance && instances.Add(s.Id) && s.Generation >= 0, $"{status} : instance impossible ou en double.");
+                    Require(s.AppliedSeq >= 1 && s.AppliedSeq <= _lastApplication, $"{status} : rang d'application impossible.");
+                    Require(string.Equals(s.Key.Source, s.Definition.Stacking == StatusStacking.PerSourceKeepStronger ? s.Source : null, StringComparison.Ordinal),
+                        $"{status} : clé de cumul incohérente avec sa source.");
+                    Require(s.UntilTick >= CurrentTick && (!s.Definition.IsDot || s.NextTick >= CurrentTick), $"{status} : déjà échue.");
+                    Require(s.Absorb >= 0 && (s.Definition.IsShield || s.Absorb == 0), $"{status} : absorption impossible.");
+                }
+                if (f.Body is { } b)
+                {
+                    Require(b.X >= checked(_minX + b.Radius) && b.X <= checked(_maxX - b.Radius) && b.Z >= checked(_minZ + b.Radius) && b.Z <= checked(_maxZ - b.Radius),
+                        $"Place de {who} hors de l'aire.");
+                    Require(!_obstacles.Any(o => o.OverlapsCircle(b.X, b.Z, b.Radius)), $"Place de {who} dans le décor.");
+                    Require(IsUnit(b.FacingX, b.FacingZ) && (!b.Moving || IsUnit(b.DirectionX, b.DirectionZ)), $"Orientation ou direction de {who} non unitaire.");
+                }
+            }
+        }
+
+        /// <summary>Vecteur unitaire à l'arrondi près (<see cref="Planar.TryNormalize"/> : au plus une unité brute d'erreur sur la longueur).</summary>
+        private static bool IsUnit(long x, long z)
+        {
+            if (Math.Abs(x) > Planar.Unit || Math.Abs(z) > Planar.Unit) return false;
+            long squared = Planar.LengthSquared(x, z);
+            return squared >= (Planar.Unit - 3) * (Planar.Unit - 3) && squared <= (Planar.Unit + 3) * (Planar.Unit + 3);
+        }
+
+        /// <summary>Zone verrouillée d'un impact : présente pour une attaque de zone seulement, à la forme et aux dimensions de l'attaque, dans l'aire.</summary>
+        private void ValidateZone(AttackImpact impact, string at)
+        {
+            AssailantAttack attack = impact.Attack;
+            if (impact.Zone is not { } z)
+            {
+                if (attack.IsZone) throw new FormatException($"{at} : zone absente.");
+                return;
+            }
+            bool round = attack.Shape is AttackShape.Circle or AttackShape.Persistent;
+            bool ok = attack.IsZone && impact.Target is null && z.Shape == attack.Shape
+                && z.OriginX >= _minX && z.OriginX <= _maxX && z.OriginZ >= _minZ && z.OriginZ <= _maxZ
+                && (round
+                    ? z.AxisX == 0 && z.AxisZ == 0 && z.Reach == attack.Radius!.Value.Raw && z.Angle == 0 && z.HalfWidth == 0
+                    : IsUnit(z.AxisX, z.AxisZ) && z.Reach == attack.Range!.Value.Raw && z.Angle == (attack.Angle ?? 0) && z.HalfWidth == (attack.Width?.Raw ?? 0) / 2);
+            if (!ok) throw new FormatException($"{at} : zone incohérente avec l'attaque {attack.Id}.");
         }
 
         private static CombatPhase Phase(int value) =>
             Enum.IsDefined(typeof(CombatPhase), value) ? (CombatPhase)value : throw new FormatException($"Phase inconnue : {value}.");
+
+        /// <summary>Revue Codex de la PR #32 (2e tour) : valeur d'énumération relue, refusée si elle ne nomme aucun cas.</summary>
+        private static T Defined<T>(SnapshotNode n) where T : struct, Enum
+        {
+            int value = n.Int;
+            if (!Enum.IsDefined(typeof(T), value)) throw new FormatException($"{typeof(T).Name} inconnu : {value}.");
+            return (T)(object)value;
+        }
+
+        private static T? DefinedOrNull<T>(SnapshotNode n) where T : struct, Enum => n.IsNull ? (T?)null : Defined<T>(n);
+
+        private static Provenance Required(Provenance? provenance) => provenance ?? throw new FormatException("Provenance absente.");
 
         private Fighter FighterOf(SnapshotNode id) => _byId[id.String];
 
@@ -500,22 +672,23 @@ namespace EdS.Simulation.Engine
                 case "dot":
                     return new DotTick { Fighter = FighterOf(e["fighter"]), Key = new StatusKey(e["state"].String, e["keySource"].NullableString), Instance = e["instance"].Long };
                 case "parryEnd":
-                    return new ParryWindowEnd { Fighter = FighterOf(e["fighter"]), StartTick = e["startTick"].Long, Origin = ReadProvenance(e["origin"])! };
+                    return new ParryWindowEnd { Fighter = FighterOf(e["fighter"]), StartTick = e["startTick"].Long, Origin = Required(ReadProvenance(e["origin"])) };
                 case "impact":
                 {
                     Fighter assailant = FighterOf(e["assailant"]);
-                    AssailantAttack attack = assailant.Assailant!.Attacks.Single(a => a.Id == e["attack"].String);
+                    AssailantAttack attack = (assailant.Assailant ?? throw new FormatException($"Impact d'un combattant qui n'est pas un assaillant : « {assailant.Id} »."))
+                        .Attacks.Single(a => a.Id == e["attack"].String);
                     SnapshotNode z = e["zone"];
                     return new AttackImpact
                     {
                         Assailant = assailant,
                         Attack = attack,
                         Target = e["target"].IsNull ? null : FighterOf(e["target"]),
-                        Zone = z.IsNull ? null : new AttackZone((AttackShape)z["shape"].Int, z["originX"].Long, z["originZ"].Long, z["axisX"].Long, z["axisZ"].Long,
+                        Zone = z.IsNull ? null : new AttackZone(Defined<AttackShape>(z["shape"]), z["originX"].Long, z["originZ"].Long, z["axisX"].Long, z["axisZ"].Long,
                             z["reach"].Long, z["angle"].Int, z["halfWidth"].Long),
                         Pulse = e["pulse"].Long,
                         ImpactTick = e["impactTick"].Long,
-                        Origin = ReadProvenance(e["origin"])!,
+                        Origin = Required(ReadProvenance(e["origin"])),
                     };
                 }
                 case "reaction":
@@ -523,7 +696,7 @@ namespace EdS.Simulation.Engine
                     {
                         Slot = LoadSlot(e["slot"]),
                         Event = LoadObserved(e["event"]),
-                        Origin = ReadProvenance(e["origin"])!,
+                        Origin = Required(ReadProvenance(e["origin"])),
                         DeferredFrom = e["deferredFrom"].NullableLong,
                     };
                 default:
@@ -538,7 +711,7 @@ namespace EdS.Simulation.Engine
         private TriggerSlot LoadSlot(SnapshotNode n)
         {
             Fighter bearer = FighterOf(n["bearer"]);
-            var origin = (TriggerOrigin)n["origin"].Int;
+            TriggerOrigin origin = Defined<TriggerOrigin>(n["origin"]);
             string definitionId = n["definition"].String;
             int index = n["index"].Int;
             long instance = n["instance"].Long;
@@ -562,22 +735,22 @@ namespace EdS.Simulation.Engine
 
         private static ObservedEvent LoadObserved(SnapshotNode n) => new ObservedEvent
         {
-            Kind = (TriggerEvent)n["kind"].Int,
-            Also = n["also"].IsNull ? (TriggerEvent?)null : (TriggerEvent)n["also"].Int,
+            Kind = Defined<TriggerEvent>(n["kind"]),
+            Also = DefinedOrNull<TriggerEvent>(n["also"]),
             Source = n["source"].NullableString,
             Target = n["target"].NullableString,
             Skill = n["skill"].NullableString,
             State = n["state"].NullableString,
-            Category = n["category"].IsNull ? (StatusCategory?)null : (StatusCategory)n["category"].Int,
+            Category = DefinedOrNull<StatusCategory>(n["category"]),
             Instance = n["instance"].NullableLong,
-            DamageType = n["damageType"].IsNull ? (Domain.Stats.DamageType?)null : (Domain.Stats.DamageType)n["damageType"].Int,
-            Defense = (HitDefense)n["defense"].Int,
+            DamageType = DefinedOrNull<Domain.Stats.DamageType>(n["damageType"]),
+            Defense = Defined<HitDefense>(n["defense"]),
             Renewed = n["renewed"].Bool,
-            Resource = n["resource"].IsNull ? (TriggerResource?)null : (TriggerResource)n["resource"].Int,
+            Resource = DefinedOrNull<TriggerResource>(n["resource"]),
             Eid = n["eid"].Long,
             Tick = n["tick"].Long,
-            Phase = (CombatPhase)n["phase"].Int,
-            Provenance = ReadProvenance(n["provenance"])!,
+            Phase = Phase(n["phase"].Int),
+            Provenance = Required(ReadProvenance(n["provenance"])),
             Candidates = new List<TriggerSlot>(),   // lus seulement à la notification, déjà traitée
         };
     }

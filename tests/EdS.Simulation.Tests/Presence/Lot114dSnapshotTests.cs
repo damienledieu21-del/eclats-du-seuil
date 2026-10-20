@@ -137,6 +137,109 @@ public class Lot114dSnapshotTests
         Assert.Throws<InvalidOperationException>(() => engine.Snapshot());
     }
 
+    /// <summary>Le texte avec, dans la première ligne qui commence par <paramref name="prefix"/>, la première occurrence de <paramref name="from"/> remplacée.</summary>
+    private static string Tampered(string text, string prefix, string from, string to)
+    {
+        string[] lines = text.Split('\n');
+        int i = Array.FindIndex(lines, l => l.StartsWith(prefix, StringComparison.Ordinal));
+        Assert.True(i >= 0, prefix);
+        int at = lines[i].IndexOf(from, StringComparison.Ordinal);
+        Assert.True(at >= 0, $"{from} absent de {lines[i]}");
+        lines[i] = lines[i].Substring(0, at) + to + lines[i].Substring(at + from.Length);
+        return string.Join("\n", lines);
+    }
+
+    private static void AssertRefused(CombatSetup setup, string text, IEnumerable<(string Prefix, string From, string To, string Message)> cases)
+    {
+        foreach (var (prefix, from, to, message) in cases)
+        {
+            FormatException? error = null;
+            try { CombatEngine.Restore(setup, CombatSnapshot.Parse(Tampered(text, prefix, from, to)), NullCombatLog.Instance); }
+            catch (FormatException e) { error = e; }
+            Assert.True(error != null && error.Message.Contains(message, StringComparison.Ordinal), $"{prefix} {from} → {to} : {error?.Message ?? "accepté"}");
+        }
+    }
+
+    [Fact]
+    public void Instantane_retouche_en_un_etat_impossible_refuse()
+    {
+        // Revue Codex de la PR #32 (2e tour) : un état retouché se réécrit à l'identique ; il est refusé s'il n'est pas un état que le moteur
+        // atteint entre deux ticks. Combat positionné au tick 15 : une onde annoncée (impact au tick 40), le tour suivant de l'ogre en file.
+        CombatSetup spatial = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")),
+            Space.SpaceTestKit.Creature("ogre", Space.SpaceTestKit.At("3", "0"), health: 500, firstAttackMs: 500,
+                attacks: new AssailantAttack("onde", 10, shape: AttackShape.Circle, telegraphMs: 1500, radius: Fixed.Parse("2"))),
+            Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("-5", "-5")),
+        }, new[] { Space.SpaceTestKit.Move(0, "bastion", "0", "1") }, durationMs: 6000);
+        var engine = new CombatEngine(spatial, NullCombatLog.Instance);
+        while (engine.CurrentTick < 15) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string ogre = Tampered(text, "{\"fighter\":\"ogre\"", "\"health\":500", "\"health\":499");   // un autre état possible : accepté
+        Assert.Equal(ogre, CombatEngine.Restore(setup, CombatSnapshot.Parse(ogre), NullCombatLog.Instance).Snapshot().Text);
+        const string Head = "{\"snapshot\"", Bastion = "{\"fighter\":\"bastion\"", Ogre = "{\"fighter\":\"ogre\"", Cible = "{\"fighter\":\"cible\"",
+            Impact = "{\"entry\":3,", Turn = "{\"entry\":2,";
+        AssertRefused(setup, text, new[]
+        {
+            // Attaques annoncées : chacune un impact en file, une seule fois, toutes.
+            (Head, "\"announced\":[3]", "\"announced\":[3,3]", "Attaque annoncée 3"),
+            (Head, "\"announced\":[3]", "\"announced\":[2]", "Attaque annoncée 2"),
+            (Head, "\"announced\":[3]", "\"announced\":[]", "Impact en file absent"),
+            // Points de vie et mort.
+            (Ogre, "\"health\":500", "\"health\":-1", "Points de vie de « ogre »"),
+            (Ogre, "\"health\":500", "\"health\":501", "Points de vie de « ogre »"),
+            (Ogre, "\"health\":500", "\"health\":null", "Points de vie de « ogre »"),
+            (Cible, "\"health\":null", "\"health\":7", "Points de vie de « cible »"),
+            (Ogre, "\"dead\":false", "\"dead\":true", "Mort de « ogre »"),
+            (Ogre, "\"health\":500", "\"health\":0", "Mort de « ogre »"),
+            // Ressources et garde.
+            (Bastion, "\"endurance\":100", "\"endurance\":101", "Endurance de « bastion »"),
+            (Bastion, "\"resonance\":0", "\"resonance\":1000000", "Résonance, charges ou garde de « bastion »"),
+            (Ogre, "\"resonance\":0", "\"resonance\":1", "Résonance, charges ou garde de « ogre »"),
+            (Ogre, "\"guarding\":false", "\"guarding\":true", "Résonance, charges ou garde de « ogre »"),
+            // Présence.
+            (Bastion, "\"leaveCommand\":null", "\"leaveCommand\":0", "Départ de « bastion » encore demandé"),
+            (Ogre, "\"presence\":0", "\"presence\":1", "Arrivée de « ogre »"),
+            (Ogre, "\"presence\":0", "\"presence\":2", "Départ de « ogre »"),
+            // Place et orientation.
+            (Ogre, "\"x\":30000", "\"x\":100000", "Place de « ogre » hors de l'aire"),
+            (Bastion, "\"facingZ\":10000", "\"facingZ\":5000", "non unitaire"),
+            // File : zone, impulsion, assaillant, tour, phase.
+            (Impact, "\"reach\":20000", "\"reach\":30000", "zone incohérente"),
+            (Impact, "\"shape\":2", "\"shape\":9", "AttackShape inconnu"),
+            (Impact, "\"pulse\":0", "\"pulse\":1", "impact impossible"),
+            (Impact, "\"assailant\":\"ogre\"", "\"assailant\":\"bastion\"", "pas un assaillant"),
+            (Turn, "\"fighter\":\"ogre\"", "\"fighter\":\"bastion\"", "tour impossible"),
+            (Turn, "\"phase\":2", "\"phase\":3", "tour impossible"),
+            // Compteurs.
+            (Head, "\"commandsPerTick\":[]", "\"commandsPerTick\":[[\"inconnu\",20,1]]", "Commandes comptées"),
+            (Head, "\"initialEvents\":-1", "\"initialEvents\":5", "Compteurs"),
+            (Head, "\"deferredPending\":0", "\"deferredPending\":1", "réactions reportées"),
+            (Head, "\"lastEid\":2", "\"lastEid\":-1", "Compteurs"),
+        });
+
+        // Combat d'entraînement au tick 30 : un saignement sur chacun, des commandes à venir, un renfort attendu.
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 30) training.Step();
+        text = training.Snapshot().Text;
+        setup = training.CompletedSetup();
+        const string Assaillant = "{\"fighter\":\"assaillant\"", Allie = "{\"fighter\":\"allie\"", Renfort = "{\"fighter\":\"renfort\"";
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"id\":2,\"generation\"", "\"id\":3,\"generation\"", "instance impossible ou en double"),
+            (Assaillant, "\"id\":1,\"generation\"", "\"id\":2,\"generation\"", "instance impossible ou en double"),
+            (Bastion, "\"keySource\":\"assaillant\"", "\"keySource\":null", "clé de cumul"),
+            (Bastion, "\"untilTick\":140", "\"untilTick\":20", "déjà échue"),
+            (Bastion, "\"absorb\":0,", "\"absorb\":5,", "absorption impossible"),
+            ("{\"entry\":3,", "\"index\":2", "\"index\":3", "hors de son tick ou en double"),
+            ("{\"entry\":0,", "\"fighter\":\"renfort\"", "\"fighter\":\"allie\"", "n'est pas attendu"),
+            (Renfort, "\"presence\":1", "\"presence\":0", "n'est pas attendu"),
+            (Allie, "\"arrivedTick\":null", "\"arrivedTick\":10", "Bilan de présence"),
+        });
+    }
+
     [Fact]
     public void Un_moteur_relu_accepte_commandes_et_arrivees_et_se_rejoue_a_l_identique()
     {

@@ -7,10 +7,10 @@ namespace EdS.Data.Tests;
 
 /// <summary>
 /// Sous-lot 11.4d : instantané d'état sur tous les scénarios livrés (déclencheurs et réactions reportées, DOT, boucliers, protections,
-/// provocations, garde et parade, combats positionnés, attaques annoncées, arrivées et départs). Tous les dix ticks, l'instantané se relit
-/// (et se réécrit à l'identique, contrôle de <see cref="CombatEngine.Restore"/>) ; à cinq ticks répartis et à chaque tick où une réaction
-/// reportée attend dans la file, la copie relue avance avec l'original jusqu'à la fin : mêmes instantanés à chaque tick, mêmes lignes de
-/// journal, même résultat.
+/// provocations, garde et parade, combats positionnés, attaques annoncées, arrivées et départs). À chaque tick, l'instantané se relit
+/// (contrôles de cohérence de l'état relu, puis réécriture à l'identique, dans <see cref="CombatEngine.Restore"/>) ; à cinq ticks
+/// répartis et à chaque tick où une réaction reportée attend dans la file, la copie relue avance avec l'original jusqu'à la fin : mêmes
+/// instantanés à chaque tick, mêmes lignes de journal, même résultat.
 /// </summary>
 [Trait("Category", "Presence")]
 [Trait("Category", "Data")]
@@ -39,14 +39,10 @@ public class Lot114dSnapshotDataTests
             string text = engine.Snapshot().Text;
             // Une réaction reportée (entrainement_declencheurs) est dans la file entre deux ticks : la copie continue aussi depuis là.
             bool resume = resumeAt.Contains(tick) || text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal);
-            if (tick % 10 == 0 || resume)
-            {
-                CombatSnapshot snapshot = CombatSnapshot.Parse(text);
-                var resumed = new MemoryCombatLog();
-                CombatEngine copy = CombatEngine.Restore(engine.CompletedSetup(), snapshot, resumed);
-                checkedSnapshots++;
-                if (resume) copies.Add((copy, resumed, log.Lines.Count));
-            }
+            var restoredLog = new MemoryCombatLog();
+            CombatEngine restored = CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog);
+            checkedSnapshots++;
+            if (resume) copies.Add((restored, restoredLog, log.Lines.Count));
             engine.Step();
             foreach (var (copy, _, _) in copies)
             {
