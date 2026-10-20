@@ -54,6 +54,12 @@ internal static class ScenarioTestData
     public static GameData Content040Data { get; } =
         new(ShippedData.Rules, new[] { ClassJsonReader.ReadFile(Content040ClassPath, ShippedData.Rules.Progression).Class! }, ShippedData.BuildSets);
 
+    /// <summary>
+    /// Sous-lot 11.4b : Bastion livré aux sous-lots 8.7 à 11.4a (« 0.5.0-provisoire », sans portée), figé au schéma de classe courant
+    /// pour comparer le contenu 0.6.0 (portées) et garder les contrôles du contenu équilibré au 8.7.
+    /// </summary>
+    public static string Content050ClassPath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "content-0.5.0", "bastion.json");
+
     public static JsonObject Shipped() => JsonNode.Parse(MannequinJson)!.AsObject();
 
     /// <summary>Mannequin figé du sous-lot 8.4 (Bastion sans déclencheur ni modificateur avec <see cref="FrozenData"/>).</summary>

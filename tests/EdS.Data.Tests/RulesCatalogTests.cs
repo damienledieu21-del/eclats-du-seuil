@@ -101,6 +101,7 @@ public class RulesCatalogTests
             Modifiers = d.IsBuff ? d.Modifiers.Select(m => (EdS.Data.Modifiers.ModifierData?)new EdS.Data.Modifiers.ModifierData
                 { Key = m.Key, Add = new EdS.Data.Triggers.RankedData { Base = m.Add.Base } }).ToList() : null,
             RedirectRatio = d.IsProtection ? d.RedirectRatio : null,
+            Range = d.Range,   // sous-lot 11.4b : portée du lien protecteur
         }).ToList();
         RulesLoadResult result = RulesValidator.Validate(document);
         Assert.True(result.IsValid, result.Report.ToString());

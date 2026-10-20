@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/class.schema.json",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "kind": "class",
-  "contentVersion": "0.5.0-provisoire",
+  "contentVersion": "0.6.0-provisoire",
   "data": {
     "id": "class.bastion",
     "name": "Bastion",
@@ -184,7 +184,8 @@
                       "perRank": 0.25
                     },
                     "powerType": "physique",
-                    "damageType": "physique"
+                    "damageType": "physique",
+                    "range": 2.5
                   }
                 ]
               }
@@ -238,7 +239,8 @@
                     "target": "allEnemies",
                     "coefficient": 1.2,
                     "powerType": "physique",
-                    "damageType": "physique"
+                    "damageType": "physique",
+                    "range": 5
                   },
                   {
                     "type": "gainResource",
@@ -395,7 +397,8 @@
                   {
                     "type": "applyStatus",
                     "target": "eventSource",
-                    "status": "oathTaunt"
+                    "status": "oathTaunt",
+                    "range": 15
                   }
                 ]
               }
@@ -491,6 +494,7 @@
           "rampartChargeCost": 0,
           "rampartChargeGain": 0,
           "provisional": true,
+          "range": 2.5,
           "applies": []
         }
       },
@@ -512,6 +516,7 @@
           "rampartChargeCost": 0,
           "rampartChargeGain": 0,
           "provisional": true,
+          "range": 2.5,
           "applies": [
             {
               "status": "stun"
@@ -538,6 +543,7 @@
           "rampartChargeGain": 0,
           "resonanceGain": 5,
           "provisional": true,
+          "range": 15,
           "applies": [
             {
               "status": "taunt"
@@ -565,6 +571,7 @@
           "rampartChargeSpendAll": true,
           "coefficientPerRampartCharge": 0.4,
           "provisional": true,
+          "range": 2.5,
           "applies": []
         }
       },
@@ -583,6 +590,7 @@
           "rampartChargeCost": 0,
           "rampartChargeGain": 0,
           "provisional": true,
+          "range": 15,
           "applies": [
             {
               "status": "steelBarrier",
@@ -609,6 +617,7 @@
           "rampartChargeCost": 0,
           "rampartChargeGain": 0,
           "provisional": true,
+          "range": 5,
           "applies": [
             {
               "status": "fragility"
@@ -634,14 +643,16 @@
           "applies": [
             {
               "status": "bastionAbsolute",
-              "target": "allAllies"
+              "target": "allAllies",
+              "range": 15
             },
             {
               "status": "bastionAbsoluteGuard"
             },
             {
               "status": "bastionAbsoluteTaunt",
-              "target": "allEnemies"
+              "target": "allEnemies",
+              "range": 15
             }
           ]
         }

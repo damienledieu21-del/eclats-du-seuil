@@ -145,6 +145,7 @@ public class CombatReplayTests
     // Sous-lot 8.7 : la Provocation (lancée sur le mannequin, provocation refusée notApplicable) inflige désormais 0,8 : 461 dégâts au
     // lieu de 441, 56 de Résonance au lieu de 53. Sous-lot 11.1 : moteur 0.15.0, format 9 ; seul l'en-tête change (ancienne empreinte
     // 4c5f475b…). Sous-lot 11.4a : moteur 0.16.0, format 10, règles 0.9.0 ; combat sans espace : seul l'en-tête change (ancienne
-    // empreinte 0d88a125…).
-    internal const string MannequinLogHash = "b8bf4baac54384b3b7f400ff960276ac5d596fccc8d6cb5673ce73c4eebafee1";
+    // empreinte 0d88a125…). Sous-lot 11.4b : moteur 0.17.0, format 11, règles 0.10.0, Bastion 0.6.0 (portées) ; combat sans espace :
+    // seul l'en-tête change (ancienne empreinte b8bf4baa…).
+    internal const string MannequinLogHash = "08f267a9ec39d6b6c403c7b57554d7dbd5a04c2a65a8c4aff5006ea5d457cf21";
 }

@@ -157,7 +157,7 @@ public class Lot82StatusDataTests
             $"{S}.interrupts.count=0\n{S}.blockReason?\n{S}.damageTakenIncrease=0\n{S}.movementSpeedModifier=0\n" +
             $"{S}.grantsOnExpiry?\n{S}.immuneTo.count=0\n" +
             $"{S}.modifiers.count=1\n{S}.modifiers[0].key=damageTaken\n{S}.modifiers[0].add=-0.3\n" +
-            $"{S}.modifiers[0].conditions.count=0\n{S}.redirectRatio=0\n", canonical);   // 8.3 : redirectRatio
+            $"{S}.modifiers[0].conditions.count=0\n{S}.redirectRatio=0\n{S}.range?\n", canonical);   // 8.3 : redirectRatio ; 11.4b : range
         Assert.DoesNotContain("statuses[6].modifiers", canonical);   // altérations sans modificateur : rien d'écrit
     }
 
