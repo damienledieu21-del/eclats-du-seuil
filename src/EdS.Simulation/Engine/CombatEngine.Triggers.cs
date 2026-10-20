@@ -363,9 +363,23 @@ namespace EdS.Simulation.Engine
         /// <summary>
         /// Cibles d'un effet de réaction, déterminées avant toute réservation (§8) : combattant source ou cible de l'effet observé,
         /// porteur, ou ennemis vivants du porteur (ordre ordinal). Un combattant mort est écarté ; une frappe n'atteint jamais le
-        /// porteur ni ses alliés.
+        /// porteur ni ses alliés. Sous-lot 11.4b : dans un combat positionné, un effet à portée écarte ensuite les cibles hors de
+        /// portée du porteur (<see cref="TriggerEffect.Range"/>) ; <paramref name="outOfRange"/> dit si la portée a écarté quelqu'un.
         /// </summary>
-        private IReadOnlyList<Fighter> EffectTargets(TriggerEffect effect, TriggerSlot slot, ObservedEvent e)
+        private IReadOnlyList<Fighter> EffectTargets(TriggerEffect effect, TriggerSlot slot, ObservedEvent e, out bool outOfRange)
+        {
+            IReadOnlyList<Fighter> targets = EffectTargetsIgnoringRange(effect, slot, e);
+            outOfRange = false;
+            if (!_spatial || effect.Range is null || targets.Count == 0) return targets;
+            Fighter bearer = slot.Bearer;
+            Fighter[] kept = (effect.Target == TriggerTarget.AllEnemies
+                ? targets.Where(t => InArea(bearer, t, effect.Range))
+                : targets.Where(t => InReach(bearer, t, effect.Range))).ToArray();
+            outOfRange = kept.Length < targets.Count;
+            return kept;
+        }
+
+        private IReadOnlyList<Fighter> EffectTargetsIgnoringRange(TriggerEffect effect, TriggerSlot slot, ObservedEvent e)
         {
             Fighter bearer = slot.Bearer;
             Fighter? One(string? id) => id != null && _byId.TryGetValue(id, out Fighter? f) && !f.IsDead ? f : null;
@@ -466,12 +480,15 @@ namespace EdS.Simulation.Engine
             Cost bound = Cost.Op;
             if (cancelled is null)
             {
+                bool firstOutOfRange = false;
                 for (int k = 0; k < effects.Count; k++)
                 {
-                    targets[k] = EffectTargets(effects[k], slot, item.Event);
+                    targets[k] = EffectTargets(effects[k], slot, item.Event, out bool outOfRange);
+                    if (k == 0) firstOutOfRange = outOfRange;
                     foreach (Fighter target in targets[k]) bound += EffectBound(effects[k], target);
                 }
-                if (targets[0].Count == 0) cancelled = "noTarget";
+                // Sous-lot 11.4b : le premier effet n'a plus de cible parce que la portée les a toutes écartées.
+                if (targets[0].Count == 0) cancelled = firstOutOfRange ? "outOfRange" : "noTarget";
             }
             if (cancelled != null)
             {
@@ -505,7 +522,8 @@ namespace EdS.Simulation.Engine
         /// <summary>
         /// Annulation d'une réaction acceptée, vérifiée à son exécution (§8), dans cet ordre : porteur mort (<c>bearerDead</c>) ;
         /// déclencheur porté par une instance d'altération qui n'est plus active, expirée ou retirée (<c>originGone</c>) ; puis,
-        /// après le calcul des cibles, aucune cible pour le premier effet (<c>noTarget</c>). Seule une réaction qui dépend d'une
+        /// après le calcul des cibles, aucune cible pour le premier effet : <c>outOfRange</c> si sa portée (sous-lot 11.4b) les a
+        /// toutes écartées, sinon <c>noTarget</c>. Seule une réaction qui dépend d'une
         /// altération active (déclencheur porté par elle) est annulée quand elle disparaît ; un renouvellement garde l'instance,
         /// donc la réaction. Une réaction qui observe un effet d'altération (tick de DOT, expiration) est autonome : elle n'est pas
         /// annulée parce que cette altération a expiré ou a été renouvelée. L'étourdissement du porteur n'annule rien (Q12).

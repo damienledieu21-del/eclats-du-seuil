@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.16.0";
+        public const string Version = "0.17.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -61,9 +61,13 @@ namespace EdS.Simulation.Engine
         /// rayon et vitesse ; nouvelles lignes <c>moveStarted</c> et <c>moveStopped</c> (commandes acceptées), <c>moved</c> (phase
         /// <c>movement</c>, une par tick où quelque chose bouge, sans eid), raison de refus <c>notMoving</c> et position finale sur
         /// <c>combatantSummary</c>. Un combat sans espace écrit
-        /// exactement les mêmes lignes qu'au format 9. Un journal d'un autre format est refusé au rejeu.
+        /// exactement les mêmes lignes qu'au format 9. 11 (sous-lot 11.4b) : portées et ligne de vue d'un combat positionné ; raisons de
+        /// refus <c>targetOutOfRange</c> et <c>noLineOfSight</c> (<c>commandRejected</c>) et raison <c>outOfRange</c> d'une réaction
+        /// annulée (<c>reactionCancelled</c>) ; les cibles d'une compétence de groupe, d'une application de groupe et d'une réaction
+        /// sont limitées à leur rayon ou à leur portée, et une protection hors de portée ne transfère rien. Lignes et champs inchangés :
+        /// un combat sans espace écrit exactement les mêmes lignes qu'au format 10. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 10;
+        public const int LogFormatVersion = 11;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -289,6 +293,9 @@ namespace EdS.Simulation.Engine
             public int StrikeRank = 1;
 
             public SkillTargeting Targeting => Combat?.Targeting ?? Attack?.Targeting ?? SkillTargeting.Enemy;
+
+            /// <summary>Sous-lot 11.4b : portée ou rayon de la compétence ; les attaques d'assaillant n'en ont pas encore (11.4c).</summary>
+            public Fixed? Range => Combat?.Range;
             public bool Unblockable => Combat?.Unblockable ?? Attack?.Unblockable ?? Strike!.Unblockable;
             public IReadOnlyList<StatusApplication> Applies => Combat?.Applies ?? Attack?.Applies ?? (IReadOnlyList<StatusApplication>)Array.Empty<StatusApplication>();
 
@@ -820,12 +827,14 @@ namespace EdS.Simulation.Engine
                     if (target is null) return "targetRequired";
                     if (target.Team == actor.Team) return "targetNotEnemy";
                     if (target.IsDead) return "targetDead";
+                    if (CheckReach(actor, target, combat) is { } farEnemy) return farEnemy;   // sous-lot 11.4b
                     break;
                 // Sous-lot 8.3 (X5) : un allié désigné, le lanceur compris ; un hostile ou un mort est refusé.
                 case SkillTargeting.Ally:
                     if (target is null) return "targetRequired";
                     if (target.Team != actor.Team) return "targetNotAlly";
                     if (target.IsDead) return "targetDead";
+                    if (CheckReach(actor, target, combat) is { } farAlly) return farAlly;   // sous-lot 11.4b
                     break;
                 default:   // tous les ennemis, soi, tous les alliés : aucune cible désignée
                     if (target != null) return "targetNotAllowed";
@@ -887,22 +896,27 @@ namespace EdS.Simulation.Engine
 
         /// <summary>
         /// Sous-lot 8.3 (X5) : cibles d'une action, dans l'ordre de leurs identifiants pour un ciblage de groupe : la cible désignée
-        /// (ennemi ou allié), le lanceur lui-même, ou tous les ennemis ou tous les alliés vivants (le lanceur compris).
+        /// (ennemi ou allié), le lanceur lui-même, ou tous les ennemis ou tous les alliés vivants (le lanceur compris). Sous-lot 11.4b :
+        /// dans un combat positionné, un ciblage de groupe ne garde que les combattants dans le rayon de la compétence au moment de
+        /// l'impact (la cible désignée, elle, a été contrôlée au lancement).
         /// </summary>
         private IReadOnlyList<Fighter> ActionTargets(PendingAction action) => action.Targeting switch
         {
             SkillTargeting.Enemy or SkillTargeting.Ally => new[] { action.Target! },
             SkillTargeting.Self => new[] { action.Actor },
-            SkillTargeting.AllAllies => _fightersById.Where(f => f.Team == action.Actor.Team && !f.IsDead).ToArray(),
-            _ => _fightersById.Where(f => f.Team != action.Actor.Team && !f.IsDead).ToArray(),
+            SkillTargeting.AllAllies => WithinArea(action.Actor, _fightersById.Where(f => f.Team == action.Actor.Team && !f.IsDead).ToArray(), action.Range),
+            _ => WithinArea(action.Actor, _fightersById.Where(f => f.Team != action.Actor.Team && !f.IsDead).ToArray(), action.Range),
         };
 
-        /// <summary>Sous-lot 8.3 (X5) : cibles d'une application à cible propre, relatives à l'acteur, dans l'ordre de leurs identifiants.</summary>
-        private IReadOnlyList<Fighter> OwnTargets(Fighter actor, ApplicationTarget target) => target switch
+        /// <summary>
+        /// Sous-lot 8.3 (X5) : cibles d'une application à cible propre, relatives à l'acteur, dans l'ordre de leurs identifiants.
+        /// Sous-lot 11.4b : une application de groupe à rayon ne garde que les combattants dans ce rayon autour de l'acteur.
+        /// </summary>
+        private IReadOnlyList<Fighter> OwnTargets(Fighter actor, StatusApplication application) => application.Target switch
         {
             ApplicationTarget.Self => new[] { actor },
-            ApplicationTarget.AllAllies => _fightersById.Where(f => f.Team == actor.Team && !f.IsDead).ToArray(),
-            _ => _fightersById.Where(f => f.Team != actor.Team && !f.IsDead).ToArray(),
+            ApplicationTarget.AllAllies => WithinArea(actor, _fightersById.Where(f => f.Team == actor.Team && !f.IsDead).ToArray(), application.Range),
+            _ => WithinArea(actor, _fightersById.Where(f => f.Team != actor.Team && !f.IsDead).ToArray(), application.Range),
         };
 
         /// <summary>Postures (garde, parade) d'une cible laissées par les étapes déjà comptées d'une même action : coût exact des suivantes.</summary>
@@ -927,7 +941,7 @@ namespace EdS.Simulation.Engine
                 Cost cost = resonance ? GainCost(action.Actor, action.Actor.Rules.ResonancePerDirectHit) : Cost.None;
                 foreach (Fighter target in targets)
                     cost += damaging ? HitCost(tick, action, target, postures) : SupportCost(tick, action, target, postures);
-                var own = action.Applies.Where(a => a.Target != ApplicationTarget.Targets).Select(a => (Application: a, Targets: OwnTargets(action.Actor, a.Target))).ToList();
+                var own = action.Applies.Where(a => a.Target != ApplicationTarget.Targets).Select(a => (Application: a, Targets: OwnTargets(action.Actor, a))).ToList();
                 foreach (var (application, ownTargets) in own)
                     foreach (Fighter target in ownTargets) cost += ApplicationCost(tick, action, application, target, postures);
                 TraceReservation("action", tick, cost, removing: 0);
@@ -1727,13 +1741,17 @@ namespace EdS.Simulation.Engine
 
         /// <summary>
         /// Sous-lot 8.3 (X6) : protection en vigueur sur un combattant : la plus récemment appliquée (ou renouvelée) ; null sans
-        /// protection. Sa source, retirée à sa mort avec elle, est toujours vivante.
+        /// protection. Sa source, retirée à sa mort avec elle, est toujours vivante. Sous-lot 11.4b : dans un combat positionné, une
+        /// protection à portée ne compte que si son protecteur est à portée du protégé (bords des emprises) ; hors de portée, elle reste
+        /// posée sans rien transférer, et la plus récente des protections à portée l'emporte.
         /// </summary>
-        private static StatusInstance? ActiveProtection(Fighter target)
+        private StatusInstance? ActiveProtection(Fighter target)
         {
             StatusInstance? best = null;
             foreach (StatusInstance status in target.Statuses.Values)
-                if (status.Definition.IsProtection && (best is null || status.AppliedSeq > best.AppliedSeq)) best = status;
+                if (status.Definition.IsProtection && (best is null || status.AppliedSeq > best.AppliedSeq)
+                    && InReach(target, _byId[status.Source!], status.Definition.Range))
+                    best = status;
             return best;
         }
 
