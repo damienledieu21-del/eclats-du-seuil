@@ -85,9 +85,9 @@ Objectif : un combat où se placer compte, résolu par le serveur, lisible dans 
 
 | Sous-lot | Contenu | État |
 |---|---|---|
-| 11.1 | Ennemis qui meurent : PV des assaillants, mort comme état de la simulation (plus d'action, cibles invalidées, un seul événement), cycle de vie prêt pour réapparition et réveil, victoire des joueurs | autorisé le 20 octobre 2026 (L11-D1) ; PR empilée sur la PR #24 : `health` facultatif des assaillants (scénarios en schéma 4), tour d'un mort abandonné sans ligne, victoire des joueurs, moteur 0.15.0, journal au format 9, référence `reference-0.15.0-contenu-0.5.0` (corps des journaux livrés inchangé) ; scénarios `meute_a_vaincre` (solo) et `coop/meute_a_vaincre` (Unity) ; « Victoire » ou « Défaite » dans Unity ; limites : [LIMITES_LOT_11.md](LIMITES_LOT_11.md) ; à essayer par Damien |
-| 11.2 | Architecture de référence du monde partagé (document, L11-D8) | PR empilée sur celle du 11.1 : [ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md), une simulation déterministe par zone, entités qui entrent et sortent, instantané d'état, état filtré par zone d'intérêt et prédiction du joueur local, événements consommables à identité unique ; **quatre points à valider par Damien** (section 9) |
-| 11.3 | Règles du combat dans l'espace (document, L11-D2 à L11-D7) : couverture du bouclier, contact joueur–créature, portées du Bastion | à faire, avant le moteur spatial |
+| 11.1 | Ennemis qui meurent : PV des assaillants, mort comme état de la simulation (plus d'action, cibles invalidées, un seul événement), cycle de vie prêt pour réapparition et réveil, victoire des joueurs | autorisé le 20 octobre 2026 (L11-D1) ; PR empilée sur la PR #24 : `health` facultatif des assaillants (scénarios en schéma 4), tour d'un mort abandonné sans ligne, victoire des joueurs, moteur 0.15.0, journal au format 9, référence `reference-0.15.0-contenu-0.5.0` (corps des journaux livrés inchangé) ; scénarios `meute_a_vaincre` (solo) et `coop/meute_a_vaincre` (Unity) ; « Victoire » ou « Défaite » dans Unity ; limites : [LIMITES_LOT_11.md](LIMITES_LOT_11.md) ; essayé par Damien le 20 octobre 2026 à 01 h 48 : « très bien, le niveau est bien » |
+| 11.2 | Architecture de référence du monde partagé (document, L11-D8) | PR empilée sur celle du 11.1 : [ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md), une simulation déterministe par zone, entités qui entrent et sortent, instantané d'état, état filtré par zone d'intérêt et prédiction du joueur local, événements consommables à identité unique ; quatre points **retenus par Damien le 20 octobre 2026** (section 9) |
+| 11.3 | Règles du combat dans l'espace (document, L11-D2 à L11-D7) : couverture du bouclier, contact joueur–créature, portées du Bastion | PR empilée sur celle du 11.2 : [COMBAT_ESPACE.md](COMBAT_ESPACE.md), espace et surfaces, déplacement, collisions, ciblage mixte, attaques annoncées et défenses déclarées, formats prévus ; cinq propositions **retenues par Damien le 20 octobre 2026** (section 10), contact joueur–créature choisi après l'essai du 11.6 |
 | 11.4 | Moteur spatial | à faire |
 | 11.5 | Ennemis dans l'espace | à faire |
 | 11.6 | Scène de démonstration Unity, vues 1 et 2 (H14) | à faire |
@@ -109,6 +109,11 @@ Objectif : un combat où se placer compte, résolu par le serveur, lisible dans 
 - **D10 tranche** : recommandations du cadrage retenues.
 - **D11 téléphones** : Galaxy Note8 et iPhone 13.
 - **D12** : budget et horizon non fixés ; estimation à refaire après les premières démonstrations.
+
+**Décisions du 20 octobre 2026 à 01 h 48** (Damien : « pour les 9 questions on garde tes avis », après l'essai du 11.1 : « le niveau est bien ») :
+
+- **Architecture** ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md), section 9) : une simulation déterministe par zone sous autorité du serveur, les combats sur place en font partie, la zone tourne sur le poste en solo ; mises à jour par état filtré (zone d'intérêt) avec prédiction du joueur local, le rejeu intégral du lot 10 restant pour les combats fermés ; même modèle pour les donjons et expéditions ; TCP gardé pour la démonstration du 11.7, avec mesures.
+- **Règles du combat dans l'espace** ([COMBAT_ESPACE.md](COMBAT_ESPACE.md), section 10) : garde et parade valent contre les coups venus des 180° de devant, de dos dégâts pleins ; en garde, le Bastion fait face à sa cible ; portées du Bastion (mêlée à 2,5 m, Onde de rupture à 5 m, Provocation et soutiens à 15 m, Riposte précise en mêlée seulement) ; cible, direction et point verrouillés au lancement ; valeurs de départ des essais (5 m/s, garde à la moitié, 300 ms de réaction, emprises de 0,5 à 1,2 m).
 
 ## Décisions validées
 

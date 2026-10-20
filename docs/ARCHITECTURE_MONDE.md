@@ -1,8 +1,8 @@
 # Architecture de référence du monde partagé (sous-lot 11.2)
 
-Proposition de Claude du 20 octobre 2026, **à valider par Damien** avant le moteur spatial (11.4). C'est un choix difficile à défaire.
+Proposition de Claude du 20 octobre 2026, **validée par Damien le 20 octobre 2026 à 01 h 48 (« pour les 9 questions on garde tes avis »)**, avant le moteur spatial (11.4). C'est un choix difficile à défaire.
 
-Elle applique la décision L11-D8 du 20 octobre 2026 ([registre](CADRAGE.md#5-décisions-du-20-octobre-2026-l11-d1-à-l11-d12)) : simulation de zone sous autorité du serveur ; entrée dans une zone depuis l'état courant, sans rejeu du passé ni place réservée. Elle s'appuie sur l'état réel du code ([plan, sections 1 et 2](PLAN_LOT_11.md#2-acquis-réutilisables-et-ce-qui-change)). Les points qui demandent une réponse de Damien sont en section 9.
+Elle applique la décision L11-D8 du 20 octobre 2026 ([registre](CADRAGE.md#5-décisions-du-20-octobre-2026-l11-d1-à-l11-d12)) : simulation de zone sous autorité du serveur ; entrée dans une zone depuis l'état courant, sans rejeu du passé ni place réservée. Elle s'appuie sur l'état réel du code ([plan, sections 1 et 2](PLAN_LOT_11.md#2-acquis-réutilisables-et-ce-qui-change)). Les quatre points de la section 9 sont retenus.
 
 ## 1. Ce que l'architecture doit permettre
 
@@ -70,7 +70,7 @@ Exigences retenues, reprises du cadrage :
    | Secrets | Le client connaît tout : un tricheur voit à travers les parois | Le client ne reçoit que ce qu'il peut voir ou entendre (H14) |
    | Échelle | Quelques joueurs | Une région avec beaucoup de joueurs |
 
-   **Avis** : B pour la région et les donjons. A reste pour les combats fermés (essais, mesures, duels), et le lot 10 continue de servir là.
+   **Retenu (20 octobre 2026)** : B pour la région et les donjons. A reste pour les combats fermés (essais, mesures, duels), et le lot 10 continue de servir là.
 4. **Prédiction du joueur local.** Le client simule son propre déplacement avec les mêmes règles (vitesse, ralenti en garde, décor solide). Si le serveur le place ailleurs, il revient à la dernière position confirmée et rejoue ses intentions non confirmées. Les autres entités sont affichées légèrement en retard et lissées.
 5. **Annonces des coups (option B généralisée).** Le serveur envoie le tick d'impact de chaque attaque annoncée. Le client affiche le compte à rebours avancé du temps aller-retour, comme pour la parade du lot 10. Le joueur sort de la zone ou pare au moment qui compte pour le serveur. La garde et la parade restent jugées sur le tick du serveur : aucune triche possible.
 
@@ -112,11 +112,11 @@ Ordre de réalisation :
 3. **12.1** — la zone des Vallons sur la même simulation, hébergée sur le poste en solo.
 4. **Lot 13** — serveur de zone, réplication filtrée complète, comptes de test, persistance.
 
-## 9. À valider par Damien
+## 9. Retenu par Damien le 20 octobre 2026
 
-1. **Le principe** : une simulation déterministe par zone sous autorité du serveur ; les combats sur place en font partie ; en solo, la zone tourne sur le poste. *Avis* : oui (c'est L11-D8 mis en œuvre).
-2. **Les mises à jour du monde** : état filtré par zone d'intérêt, avec prédiction du joueur local (B, section 5). Le rejeu intégral du lot 10 (A) reste pour les combats fermés. *Avis* : B.
-3. **Les donjons et expéditions** suivent le même modèle que la région, B compris (secrets protégés, même code). *Avis* : oui.
-4. **TCP gardé** pour la démonstration du 11.7, avec mesures. On ne passe à un transport plus rapide que si les mesures le demandent. *Avis* : oui.
+1. **Le principe** : une simulation déterministe par zone sous autorité du serveur ; les combats sur place en font partie ; en solo, la zone tourne sur le poste. **Retenu.**
+2. **Les mises à jour du monde** : état filtré par zone d'intérêt, avec prédiction du joueur local (B, section 5). Le rejeu intégral du lot 10 (A) reste pour les combats fermés. **Retenu : B.**
+3. **Les donjons et expéditions** suivent le même modèle que la région, B compris (secrets protégés, même code). **Retenu.**
+4. **TCP gardé** pour la démonstration du 11.7, avec mesures. On ne passe à un transport plus rapide que si les mesures le demandent. **Retenu.**
 
 Rien d'autre ne demande de décision de gameplay ici. Les règles du combat dans l'espace (couverture du bouclier, contact entre joueurs et créatures, portées) sont l'objet du 11.3.
