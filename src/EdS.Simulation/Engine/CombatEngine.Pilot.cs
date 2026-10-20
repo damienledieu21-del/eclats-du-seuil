@@ -258,7 +258,8 @@ namespace EdS.Simulation.Engine
         {
             if (commands is null) throw new ArgumentNullException(nameof(commands));
             if (IsFinished) throw new InvalidOperationException("Combat terminé : plus aucune commande.");
-            if (_initialEvents < 0) _initialEvents = _setup.InitialEventCount();
+            // Revue Codex de la PR #33 : calculé ici, retenu seulement si le groupe est admis (un refus ne change rien, instantané compris).
+            long initialEvents = _initialEvents >= 0 ? _initialEvents : _setup.InitialEventCount();
             var groupPerActor = new Dictionary<string, int>(StringComparer.Ordinal);
             for (int i = 0; i < commands.Count; i++)
             {
@@ -274,6 +275,10 @@ namespace EdS.Simulation.Engine
                     throw new ArgumentException("Action inconnue.", nameof(commands));
                 if ((command.Action == CombatAction.Move || command.Action == CombatAction.Stop) && _setup.Space is null)
                     throw new ArgumentException("Déplacement dans un combat sans espace (bloc space absent).", nameof(commands));
+                // Revue Codex de la PR #33 : un ennemi qui a un comportement se déplace seul ; le scénario complété refuserait sa marche
+                // pilotée (et l'intention autonome l'écraserait dans la même phase).
+                if ((command.Action == CombatAction.Move || command.Action == CombatAction.Stop) && _byId[command.Actor].Behavior != null)
+                    throw new ArgumentException("Un ennemi qui a un comportement se déplace seul (pas de move ni de stop).", nameof(commands));
                 // Sous-lot 11.4c : sélection seulement dans un combat positionné ; une cible seulement pour une compétence ou une sélection.
                 if (command.Action == CombatAction.Select && _setup.Space is null)
                     throw new ArgumentException("Sélection de cible dans un combat sans espace (bloc space absent).", nameof(commands));
@@ -292,10 +297,11 @@ namespace EdS.Simulation.Engine
                 // Revue Codex de la PR #10 : capacité de la file contrôlée avant toute modification. La file ne dépasse jamais sa capacité,
                 // et le scénario complété garde un nombre d'événements initiaux admissible (une entrée par commande, comme à la construction).
                 // Sous-lot 11.4d : le combat complété compte aussi une entrée par arrivée (Join).
-                if (checked(_queue.Count + i) >= _rules.MaxPendingEvents || checked(_initialEvents + _joined.Count + _submitted.Count + i + 1) > _rules.MaxPendingEvents)
+                if (checked(_queue.Count + i) >= _rules.MaxPendingEvents || checked(initialEvents + _joined.Count + _submitted.Count + i + 1) > _rules.MaxPendingEvents)
                     throw new InvalidOperationException($"File pleine : capacité {_rules.MaxPendingEvents} (combat.limits.maxPendingEvents).");
                 groupPerActor[command.Actor] = earlier + 1;
             }
+            _initialEvents = initialEvents;
             foreach (CombatCommand command in commands)
             {
                 CountSubmitted(command);

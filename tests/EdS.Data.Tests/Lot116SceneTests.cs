@@ -21,8 +21,8 @@ public class Lot116SceneTests
 {
     private const string Vallons = "vallons_demo";
 
-    private static TrainingSession Session(long durationMs = 60_000) =>
-        TrainingSession.Load(DataDirectory, ScenarioPath(Vallons), "build.bastion.rempart", durationMs: durationMs);
+    private static TrainingSession Session(long durationMs = 60_000, string scenario = Vallons) =>
+        TrainingSession.Load(DataDirectory, ScenarioPath(scenario), "build.bastion.rempart", durationMs: durationMs);
 
     private static List<CombatCommand> At(RealtimeCombat combat, long tick) => combat.SubmittedCommands.Where(c => c.AtMs == tick * 50).ToList();
 
@@ -87,9 +87,9 @@ public class Lot116SceneTests
         GroundVector start = Position(combat);
         combat.SetMove(1, 0);
         for (int i = 0; i < 20; i++) combat.StepOnce();
-        // Une seule commande de marche (vers l'est) ; la sélection de la cible part au même tick.
-        Assert.Equal(new[] { CombatAction.Move, CombatAction.Select }, At(combat, 0).Select(c => c.Action));
-        Assert.Equal(new[] { CombatAction.Move, CombatAction.Select }, combat.SubmittedCommands.Select(c => c.Action));
+        // Une seule commande de marche (vers l'est), au premier tick ; aucun ennemi n'est en vue au départ : pas de sélection à ce tick.
+        Assert.Equal(new[] { CombatAction.Move }, At(combat, 0).Select(c => c.Action));
+        Assert.Equal(new[] { CombatAction.Move }, combat.SubmittedCommands.Where(c => c.Action != CombatAction.Select).Select(c => c.Action));
         Assert.Equal(MoveInput.Direction(0), combat.SubmittedCommands[0].Direction);
         GroundVector after = Position(combat);
         Assert.InRange((after.X - start.X).Raw, 40_000, 60_000);   // environ 5 m/s pendant 1 s
@@ -97,15 +97,16 @@ public class Lot116SceneTests
         // Même cap : rien de nouveau ; nouveau cap : une commande ; relâché : un arrêt, et le Bastion ne bouge plus.
         combat.SetMove(1, 0.03);
         combat.StepOnce();
-        Assert.Empty(At(combat, 20));
+        Assert.DoesNotContain(At(combat, 20), c => c.Action is CombatAction.Move or CombatAction.Stop);
         combat.SetMove(0, 1);
         combat.StepOnce();
-        Assert.Equal(MoveInput.Direction(16), Assert.Single(At(combat, 21)).Direction);
+        Assert.Equal(MoveInput.Direction(16), Assert.Single(At(combat, 21), c => c.Action == CombatAction.Move).Direction);
         for (int i = 0; i < 4; i++) combat.StepOnce();
         Assert.True(Position(combat).Z > after.Z);
         combat.SetMove(0.05, -0.1);   // sous la zone morte
         combat.StepOnce();
-        Assert.Equal(CombatAction.Stop, Assert.Single(At(combat, 26)).Action);
+        Assert.Single(At(combat, 26), c => c.Action == CombatAction.Stop);
+        Assert.DoesNotContain(combat.SubmittedCommands, c => c.Action == CombatAction.Move && c.AtMs > 21 * 50);
         GroundVector stopped = Position(combat);
         for (int i = 0; i < 5; i++) combat.StepOnce();
         Assert.Equal(stopped, Position(combat));
@@ -115,22 +116,68 @@ public class Lot116SceneTests
     [Fact]
     public void Cible_selectionnee_envoyee_au_moteur_quand_elle_change()
     {
-        RealtimeCombat combat = Session().Start();
+        // Annonces de l'espace (sous-lot 11.4c) : un ogre et un loup, sans décor, tous deux en vue.
+        RealtimeCombat combat = Session(scenario: "espace_annonces").Start();
         combat.StepOnce();
         CombatCommand select = Assert.Single(At(combat, 0));
-        Assert.Equal((CombatAction.Select, "loup1"), (select.Action, select.Target));
-        Assert.Equal("loup1", combat.Player().View.SelectedTarget);
+        Assert.Equal((CombatAction.Select, "ogre"), (select.Action, select.Target));
+        Assert.Equal("ogre", combat.Player().View.SelectedTarget);
         combat.StepOnce();
         Assert.Empty(At(combat, 1));
         combat.NextTarget();
         combat.StepOnce();
-        Assert.Equal("loup2", Assert.Single(At(combat, 2)).Target);
+        Assert.Equal("loup", Assert.Single(At(combat, 2)).Target);
+    }
+
+    [Fact]
+    public void Ennemi_cache_ni_cible_ni_selectionne()
+    {
+        // Revue Codex de la PR #34 : un ennemi hors de vue ne s'affiche pas ; il ne devient donc ni la cible (fiche, compte à rebours,
+        // compétences), ni la sélection envoyée au moteur (la garde ne se tourne pas vers lui).
+        RealtimeCombat combat = Session(durationMs: 20_000).Start();
+        Assert.Null(combat.TargetId);
+        Assert.Null(combat.Player().TargetId);
+        combat.NextTarget();
+        Assert.Null(combat.TargetId);
+        Assert.Contains("en vue", Assert.Throws<ArgumentException>(() => combat.SelectTarget("loup1")).Message);
+        for (int i = 0; i < 5; i++) combat.StepOnce();
+        Assert.DoesNotContain(combat.SubmittedCommands, c => c.Action == CombatAction.Select);
+        Assert.Null(combat.Player().View.SelectedTarget);
+
+        // Vers le nord : un loup finit par apparaître (au-dessus du moulin) ; il devient la cible, sa sélection part au tick suivant.
+        combat.SetMove(0, 1);
+        for (int i = 0; i < 200 && combat.TargetId is null; i++) combat.StepOnce();
+        string seen = Assert.IsType<string>(combat.TargetId);
+        Assert.True(combat.Others().Single(o => o.Id == seen).InSight);
+        Assert.All(combat.Others().Where(o => o.IsEnemy && !o.InSight), o => Assert.NotEqual(seen, o.Id));
+        combat.StepOnce();
+        Assert.Equal(seen, combat.SubmittedCommands.Last(c => c.Action == CombatAction.Select).Target);
+        Assert.Equal(seen, combat.Player().View.SelectedTarget);
+        // Tab ne propose que des ennemis en vue.
+        for (int i = 0; i < 6; i++)
+        {
+            combat.NextTarget();
+            Assert.True(combat.Others().Single(o => o.Id == combat.TargetId).InSight, combat.TargetId);
+        }
+
+        // Retour vers le sud jusqu'à ne plus voir aucun ennemi : la cible est lâchée et la sélection vidée.
+        combat.SetMove(0, -1);
+        for (int i = 0; i < 200 && combat.Others().Any(o => o.IsEnemy && o.InSight); i++) combat.StepOnce();
+        Assert.DoesNotContain(combat.Others(), o => o.IsEnemy && o.InSight);
+        Assert.Null(combat.TargetId);
+        combat.StepOnce();
+        Assert.Null(combat.SubmittedCommands.Last(c => c.Action == CombatAction.Select).Target);
+        Assert.Null(combat.Player().View.SelectedTarget);
+        while (!combat.IsFinished) combat.StepOnce();
+        var log = new MemoryCombatLog();
+        combat.WriteLog(log);
+        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(log.Lines.ToArray(), ShippedData).Status);
     }
 
     [Fact]
     public void Plafond_de_commandes_par_tick_respecte_la_marche_attend_le_tick_suivant()
     {
-        RealtimeCombat combat = Session().Start();
+        RealtimeCombat combat = Session(scenario: "espace_annonces").Start();
         int max = combat.CompletedSetup().Combat.MaxCommandsPerActorPerTick;
         combat.SetGuard(true);
         combat.SetMove(1, 0);
@@ -149,7 +196,7 @@ public class Lot116SceneTests
         Assert.Equal(new[] { CombatAction.GuardStop, CombatAction.UseSkill, CombatAction.Parry, CombatAction.Move }, first.Select(c => c.Action));
         combat.StepOnce();
         // La sélection part au tick suivant, avec la reprise de la garde (bouton toujours tenu).
-        Assert.Contains(At(combat, tick + 1), c => c.Action == CombatAction.Select && c.Target == "loup2");
+        Assert.Contains(At(combat, tick + 1), c => c.Action == CombatAction.Select && c.Target == "loup");
         Assert.All(combat.SubmittedCommands.GroupBy(c => c.AtMs), g => Assert.True(g.Count() <= max, $"{g.Count()} commandes à {g.Key} ms"));
     }
 
