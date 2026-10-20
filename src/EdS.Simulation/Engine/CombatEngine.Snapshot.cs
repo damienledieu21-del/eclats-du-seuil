@@ -435,6 +435,8 @@ namespace EdS.Simulation.Engine
                 && _queue.Cursor.NextSequence <= ceiling, "Compteurs de l'instantané trop grands pour la suite du combat.");
             // 15e tour : chaque numéro d'événement a pris une ligne : le numéro de ligne n'est jamais en deçà du dernier événement.
             Require(_sequence >= _lastEid, $"Numéro de ligne {_sequence} en deçà du dernier événement {_lastEid}.");
+            // Chaque nouvelle instance d'altération prend aussi un rang d'application : il n'y a jamais plus d'instances que de rangs.
+            Require(_lastStatusInstance <= _lastApplication, $"{_lastStatusInstance} instances d'altération pour {_lastApplication} rangs d'application.");
             // 11e tour : le prochain numéro de la file n'est jamais négatif, même file vide (EventQueue.Load ne le recoupe qu'avec ses éléments).
             Require(_queue.Cursor.NextSequence >= 0, "Prochain numéro de la file négatif.");
             // Revue Codex de la PR #32 (3e tour) : le combat complété porte toutes les commandes comptées ; leur nombre et leur compte par
@@ -591,6 +593,9 @@ namespace EdS.Simulation.Engine
                     && f.ParryRecoveryUntilTick <= Math.Max(0, previous + f.Rules.ParryFailureRecoveryMs / _tickMs)
                     && (!f.ParryOpen || f.ParryEndTick == f.ParryStartTick + f.Rules.ParryWindowMs / _tickMs),
                     $"Recharge globale ou parade de {who} au-delà de sa durée.");
+                // 15e tour (relecture d'ensemble) : une parade réussie est comptée ; une récupération de parade ratée suppose une parade ratée.
+                Require((!f.ParrySucceeded || f.Result.PerfectParries >= 1) && (f.ParryRecoveryUntilTick == 0 || f.Result.FailedParries >= 1),
+                    $"Parade de {who} incohérente avec son bilan.");
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
                     Require(slot.ReadyTick >= 0 && slot.ReadyTick <= Math.Max(0, previous + slot.Definition.CooldownMs / _tickMs), $"Recharge d'un déclencheur de {who} au-delà de sa durée.");

@@ -616,6 +616,15 @@ public class Lot114dSnapshotTests
         Assert.False(resting.IsFinished, "régénération en cours");
         AssertRefused(resting.CompletedSetup(), resting.Snapshot().Text, new[] { (Bastion, granted.Value,
             granted.Value.Replace("\"regenGranted\":" + granted.Groups[2].Value, "\"regenGranted\":0", StringComparison.Ordinal), "Régénération de « bastion » impossible") });
+        // 15e tour : parade réussie ou récupération de parade sans parade au bilan ; plus d'instances d'altération que de rangs d'application.
+        long applications = long.Parse(System.Text.RegularExpressions.Regex.Match(lines[0], "\"lastApplication\":([0-9]+)").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        string instancesField = System.Text.RegularExpressions.Regex.Match(lines[0], "\"lastStatusInstance\":[0-9]+").Value;
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"parrySucceeded\":false", "\"parrySucceeded\":true", "Parade de « bastion » incohérente"),
+            (Bastion, "\"parryRecoveryUntilTick\":0", "\"parryRecoveryUntilTick\":5", "Parade de « bastion » incohérente"),
+            ("{\"snapshot\"", instancesField, $"\"lastStatusInstance\":{applications + 1}", "rangs d'application"),
+        });
         // 14e tour : mesures de charge au-delà des budgets ; dernier tick au-delà des pics.
         foreach ((string pattern, string value) in new[] { ("\"peakWork\":[0-9]+", "\"peakWork\":9223372036854775000"), ("\"lastTickEvents\":[0-9]+", "\"lastTickEvents\":1000000000") })
         {
