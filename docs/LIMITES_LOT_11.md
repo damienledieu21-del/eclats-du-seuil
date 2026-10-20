@@ -52,7 +52,7 @@ Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#attaques-annoncées-et-garde-d
 - **Provocation et zones visées** : une provocation détourne aussi les zones visées de l'ennemi (cône, bande, cercle autour de sa cible), comme ses coups ; le Bastion qui provoque prend donc le souffle à la place de son allié. Choix du développement, à confirmer par Damien (question posée dans la PR #31). Les attaques sur tous les ennemis et les zones centrées sur l'ennemi ne changent pas.
 - **Rotation instantanée** : en garde, le Bastion fait face à sa cible sélectionnée à chaque tick, sans vitesse de rotation ; un ennemi qui le contourne n'est donc frappé de dos que si le Bastion n'a pas sélectionné cet ennemi-là (ou ne garde pas). À régler à l'essai du 11.6 si c'est trop facile.
 - **Cône par le centre** : le cône frappe une emprise dont le centre est dans son ouverture et à sa portée (rayon compris), ou qui touche l'un de ses côtés ; une emprise qui ne touche que l'arc de bout hors de l'ouverture n'est pas comptée (écart de quelques centimètres au plus pour une emprise de 0,5 m).
-- **Pas de zone qui bouge** : une zone reste où elle a été posée ; une charge (11.5) ou un souffle qui suit sa cible n'existent pas encore.
+- **Pas de zone qui bouge** : une zone reste où elle a été posée ; un souffle qui suit sa cible n'existe pas. La charge (11.5) est une bande posée à l'annonce, puis un déplacement de l'ennemi à l'impact.
 - **Origine du coup pour le bouclier** : l'assaillant pour un cône ou une bande, le centre pour un cercle ; une zone centrée sur le Bastion est donc toujours « de face ».
 - **Annonces évitables** : le contrôle prend le plus grand joueur du combat et le pire point de la forme (centre du cercle inscrit) ; il ne tient pas compte du décor qui pourrait bloquer la sortie, ni de la garde (qui ralentit de moitié).
 - **Attaques historiques** : une attaque sans forme garde son ciblage d'avant (la cible ou tous les ennemis, à toute distance), mais l'arc du bouclier s'applique à elle dans un combat positionné (l'assaillant est l'origine du coup).
@@ -73,3 +73,16 @@ Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#arrivées-départs-et-instanta
 - **Taille et coût** : texte de l'ordre de quelques Kio pour un petit combat (une ligne par combattant et par élément de la file) ; écrit et relu en temps linéaire, sans compression. Rien n'est encore mesuré sur une zone pleine (12.1).
 - **Pas de commande en ligne** : `eds` n'écrit ni ne relit encore d'instantané (essais et code seulement).
 - **Formats** : moteur 0.19.0, journal au format 13, scénarios en schéma 7, instantané au format 1 ; règles (schéma 12) et classes (schéma 9) inchangées. Un combat sans arrivée ni départ écrit les mêmes lignes qu'au moteur 0.18.0 (seize scénarios livrés comparés) ; un journal 0.18.0 est refusé au rejeu, sans migration.
+
+## Sous-lot 11.5 : comportements des ennemis
+
+Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#comportements-des-ennemis-sous-lot-115) ; données : [DONNEES.md](DONNEES.md#scénarios-et-jeu-de-données-lots-5-et-6).
+
+- **Pas de recherche de chemin** : un ennemi marche droit vers sa place et glisse le long du décor ; derrière un mur en U, il reste coincé. À revoir avec la scène du 11.6 (passage étroit, pont).
+- **Pas de retour au calme** : une fois engagé, un ennemi le reste jusqu'à la fin du combat ou sa mort ; il poursuit sa cible partout (pas de laisse, pas de réinitialisation : règles de rencontre Q8 au lot 12).
+- **Anneau simple** : la meute se répartit à angles égaux autour de sa cible, sans tenir compte du décor ni des autres ennemis qui ne l'encerclent pas ; une place dans un mur reste visée (l'ennemi s'arrête contre lui).
+- **Arrêt pendant l'annonce** : un ennemi s'arrête de marcher pendant l'annonce de chacune de ses attaques, coups dirigés compris. Choix du développement pour que l'annonce se lise (question posée dans la PR).
+- **Charge sans recul ni poussée** : la charge s'arrête au contact d'un joueur (règle A) ; elle ne le repousse pas. Elle ne suit pas sa cible pendant l'annonce.
+- **Engagement par la meute** : un allié engagé à distance d'engagement entraîne les autres, de proche en proche (question posée dans la PR : c'est ce qui fait venir toute la meute).
+- **Pilote de mesure** : `CombatPilot` ne déplace pas son personnage ; un scénario positionné mesuré par `eds report` laisse les ennemis venir à lui.
+- **Formats** : moteur 0.20.0, journal au format 14, scénarios en schéma 8, instantané au format 2 ; règles (schéma 12) et classes (schéma 9) inchangées. Un combat sans comportement ni charge écrit les mêmes lignes qu'au moteur 0.19.0 (dix-sept scénarios livrés comparés) ; un journal 0.19.0 est refusé au rejeu, sans migration.
