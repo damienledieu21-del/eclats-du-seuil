@@ -187,7 +187,9 @@ namespace EdS.Simulation.Engine
                     }
                     else if (d < checked(near - BandTolerance))
                     {
-                        (gx, gz) = (checked(-vx), checked(-vz));
+                        // Revue Codex de la PR #33 (tour 5) : centres confondus (règle B, traversée permise) : recul à l'opposé de son
+                        // orientation, direction déterministe.
+                        (gx, gz) = vx == 0 && vz == 0 ? (checked(-f.Body.FacingX), checked(-f.Body.FacingZ)) : (checked(-vx), checked(-vz));
                         maxStep = checked(near - d);
                     }
                     else
@@ -270,13 +272,31 @@ namespace EdS.Simulation.Engine
                 {
                     long cx = checked(b.X + Domain.Numerics.IntMath.MulDiv(dx, k, count, Domain.Numerics.RoundingMode.HalfAwayFromZero));
                     long cz = checked(b.Z + Domain.Numerics.IntMath.MulDiv(dz, k, count, Domain.Numerics.RoundingMode.HalfAwayFromZero));
-                    if (!FreeFor(index, cx, cz, x, z)) break;
+                    var (px, pz) = path[path.Count - 1];
+                    if (!FreeFor(index, cx, cz, x, z) || !SweepFree(index, px, pz, cx, cz, x, z)) break;
                     path.Add((cx, cz));
                 }
             }
             for (int k = path.Count - 1; k > 0; k--)
                 if (f.Character != null || TrapPrevented(index, x, z, path[k].X, path[k].Z) is null) return path[k];
             return path[0];
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #33 : le trajet de (px, pz) à (cx, cz) est-il libre pour l'emprise de <paramref name="index"/> ? Le disque
+        /// balayé ne chevauche ni le décor ni une emprise solide (entre deux points libres, un coin mince ne se traverse pas) ; l'aire est
+        /// convexe, ses deux extrémités suffisent.
+        /// </summary>
+        private bool SweepFree(int index, long px, long pz, long cx, long cz, long[] x, long[] z)
+        {
+            long r = _fightersById[index].Body!.Radius;
+            foreach (ConvexPolygon obstacle in _obstacles)
+                if (obstacle.OverlapsCapsule(px, pz, cx, cz, r)) return false;
+            for (int j = 0; j < _fightersById.Count; j++)
+                if (j != index && _solid[index, j] && !_fightersById[j].Out
+                    && Planar.SegmentOverlapsCircle(px, pz, cx, cz, x[j], z[j], checked(r + _fightersById[j].Body!.Radius)))
+                    return false;
+            return true;
         }
 
         /// <summary>La place (cx, cz) est-elle libre pour l'emprise de <paramref name="index"/> : dans l'aire, hors du décor, sans chevaucher une emprise solide ?</summary>

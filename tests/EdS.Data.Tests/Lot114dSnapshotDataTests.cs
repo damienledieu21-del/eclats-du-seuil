@@ -84,8 +84,14 @@ public class Lot114dSnapshotDataTests
         doubled.Add("{\"entry\":" + next + cooldown.Substring(cooldown.IndexOf(',')));
         Assert.Contains("échéance(s)", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(string.Join("\n", doubled)),
             NullCombatLog.Instance)).Message);
-        // Recharge d'une compétence inconnue.
-        string renamed = text.Replace("[\"" + skill + "\",", "[\"skill.inconnue\",");
+        // Revue Codex de la PR #32 (8e tour) : une échéance de recharge sans recharge en cours (compétence inconnue ou au repos), refusée.
+        var fake = new List<string>(doubled);
+        fake[fake.Count - 1] = fake[fake.Count - 1].Replace("\"skill\":\"" + skill + "\"", "\"skill\":\"skill.fausse\"");
+        Assert.NotEqual(doubled[doubled.Count - 1], fake[fake.Count - 1]);
+        Assert.Contains("sans recharge en cours", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(string.Join("\n", fake)),
+            NullCombatLog.Instance)).Message);
+        // Recharge d'une compétence inconnue (et son échéance, renommée de même).
+        string renamed = text.Replace("\"" + skill + "\"", "\"skill.inconnue\"");
         Assert.NotEqual(text, renamed);
         Assert.Contains("compétence inconnue", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(renamed),
             NullCombatLog.Instance)).Message);
