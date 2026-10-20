@@ -50,7 +50,9 @@ public class Lot111AssailantLifeTests
         JsonElement[] described = header.GetProperty("scenario").GetProperty("combatants").EnumerateArray().ToArray();
         Assert.Equal(250, described.Single(c => c.GetProperty("id").GetString() == "loup").GetProperty("health").GetInt64());
         Assert.False(described.Single(c => c.GetProperty("id").GetString() == "mannequin_vivant").TryGetProperty("health", out _));
-        Assert.Equal((9, "0.15.0"), (header.GetProperty("formatVersion").GetInt32(), header.GetProperty("engineVersion").GetString()));
+        // Format 9 au sous-lot 11.1 ; le format courant (10 depuis le 11.4a) garde ces champs.
+        Assert.Equal((CombatEngine.LogFormatVersion, CombatEngine.Version), (header.GetProperty("formatVersion").GetInt32(), header.GetProperty("engineVersion").GetString()));
+        Assert.True(CombatEngine.LogFormatVersion >= 9);
     }
 
     [Fact]

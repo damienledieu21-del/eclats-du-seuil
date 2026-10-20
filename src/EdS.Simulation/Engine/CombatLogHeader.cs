@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using EdS.Domain.Combat;
 using System.Linq;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 using EdS.Domain.Stats;
 
 namespace EdS.Simulation.Engine
@@ -32,6 +34,7 @@ namespace EdS.Simulation.Engine
             w.Name("scenario").BeginObject()
                 .Field("seed", setup.Seed)
                 .Field("durationMs", setup.DurationMs);
+            if (setup.Space is { } space) WriteSpace(w, space);   // sous-lot 11.4 (format 10) : combat positionné seulement
             w.Name("combatants").BeginArray();
             foreach (CombatantSetup c in setup.Combatants) WriteCombatant(w, c);
             w.EndArray();
@@ -41,10 +44,41 @@ namespace EdS.Simulation.Engine
                 w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor);
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
                 else w.Field("action", CombatActionIds.Of(c.Action));
+                if (c.Direction is { } direction) WritePoint(w.Name("direction"), direction);   // sous-lot 11.4 : telle que donnée
                 w.EndObject();
             }
             w.EndArray().EndObject();
             return w.EndObject().ToString();
+        }
+
+        /// <summary>Sous-lot 11.4 : point ou direction sous la forme des fichiers de scénario, <c>[x, z]</c>.</summary>
+        internal static JsonLineWriter WritePoint(JsonLineWriter w, GroundVector p) => w.BeginArray().Value(p.X).Value(p.Z).EndArray();
+
+        private static void WriteSpace(JsonLineWriter w, CombatSpace space)
+        {
+            w.Name("space").BeginObject();
+            w.Name("bounds").BeginObject();
+            WritePoint(w.Name("min"), space.Min);
+            WritePoint(w.Name("max"), space.Max);
+            w.EndObject();
+            w.Name("obstacles").BeginArray();
+            foreach (SpaceObstacle obstacle in space.Obstacles)
+            {
+                w.BeginObject().Field("id", obstacle.Id);
+                w.Name("points").BeginArray();
+                foreach (GroundVector p in obstacle.Points) WritePoint(w, p);
+                w.EndArray().EndObject();
+            }
+            w.EndArray().EndObject();
+        }
+
+        /// <summary>Sous-lot 11.4 : place de départ, sous la forme du fichier de scénario ; la vitesse seulement si elle est donnée.</summary>
+        private static void WritePlacement(JsonLineWriter w, CombatantPlacement p)
+        {
+            WritePoint(w.Name("position"), p.Position);
+            WritePoint(w.Name("facing"), p.Facing);
+            w.Field("radius", p.Radius);
+            if (p.Speed is Fixed speed) w.Field("speed", speed);
         }
 
         private static void WriteIdentity(JsonLineWriter w, DataFileIdentity identity, bool withId)
@@ -183,6 +217,7 @@ namespace EdS.Simulation.Engine
                     if (assailant.Health is long health) w.Field("health", health);
                     break;
             }
+            if (c.Placement is { } placement) WritePlacement(w, placement);
             w.EndObject();
         }
     }

@@ -255,6 +255,8 @@ static int RunSimulate(ReadOnlySpan<string> options)
         summary.WriteLine($"  {c.Id,-14} dégâts infligés {c.DamageDealt} (DPS {dps}), reçus {c.DamageTaken}, coups {c.Hits} dont {c.CriticalHits} critiques, compétences {c.SkillsCast}, refus {c.CommandsRejected}");
         if (c.Resonance is int resonance)
             summary.WriteLine($"  {"",-14} blocages {c.Blocks}, parades {c.PerfectParries} réussies / {c.FailedParries} ratées, ruptures {c.GuardBreaks}, PV {c.Health}, endurance {c.Endurance}, Résonance {resonance}, Charges {c.RampartCharges}");
+        if (c.Position is { } position)   // sous-lot 11.4 : combat positionné
+            summary.WriteLine($"  {"",-14} position finale {position}");
     }
     if (output != null) summary.WriteLine($"  journal        {output} ({log.Lines.Count} lignes)");
     return aborted ? SimulationAbortedExitCode : 0;

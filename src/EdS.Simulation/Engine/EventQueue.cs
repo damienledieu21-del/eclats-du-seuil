@@ -12,10 +12,13 @@ namespace EdS.Simulation.Engine
         Setup = 0,
         Expirations = 1,
         Commands = 2,
-        Resolution = 3,
-        Periodic = 4,
-        Regeneration = 5,
-        EndOfTick = 6,
+
+        /// <summary>Sous-lot 11.4 : déplacement des combattants d'un combat positionné, après les commandes et avant les impacts.</summary>
+        Movement = 3,
+        Resolution = 4,
+        Periodic = 5,
+        Regeneration = 6,
+        EndOfTick = 7,
     }
 
     /// <summary>

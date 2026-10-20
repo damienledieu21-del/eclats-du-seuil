@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 
 namespace EdS.Simulation.Engine
 {
@@ -64,6 +66,20 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Ses attaques sont bloquées à ce tick (contrôle actif).</summary>
         public bool AttacksBlocked { get; internal set; }
+
+        // Sous-lot 11.4 : combat positionné seulement (null sinon).
+
+        /// <summary>Centre de l'emprise au début du tick.</summary>
+        public GroundVector? Position { get; internal set; }
+
+        /// <summary>Orientation (vecteur unitaire à 10⁻⁴ près).</summary>
+        public GroundVector? Facing { get; internal set; }
+
+        /// <summary>Rayon de l'emprise au sol.</summary>
+        public Fixed? Radius { get; internal set; }
+
+        /// <summary>Direction de marche en cours (unitaire) ; null à l'arrêt.</summary>
+        public GroundVector? MoveDirection { get; internal set; }
 
         /// <summary>Tick de disponibilité d'une compétence (0 si jamais lancée).</summary>
         public long CooldownReadyTick(string skill) => CooldownReadyTicks.TryGetValue(skill, out long tick) ? tick : 0;
@@ -168,6 +184,13 @@ namespace EdS.Simulation.Engine
                 view.CanCast = !Blocked(StatusBlocks.Skills);
                 view.CanGuard = !Blocked(StatusBlocks.Guard);
                 view.CanParry = !Blocked(StatusBlocks.Parry);
+            }
+            if (f.Body is { } body)
+            {
+                view.Position = GroundVector.FromRaw(body.X, body.Z);
+                view.Facing = GroundVector.FromRaw(body.FacingX, body.FacingZ);
+                view.Radius = Fixed.FromRaw(body.Radius);
+                view.MoveDirection = body.Moving ? GroundVector.FromRaw(body.DirectionX, body.DirectionZ) : (GroundVector?)null;
             }
             if (f.Assailant is { } assailant)
             {

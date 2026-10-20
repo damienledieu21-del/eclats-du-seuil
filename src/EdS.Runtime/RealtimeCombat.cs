@@ -77,7 +77,7 @@ namespace EdS.Runtime
         /// <summary>Le combat de départ complété des commandes soumises : un scénario ordinaire, qui se rejoue à l'identique.</summary>
         public CombatSetup CompletedSetup() =>
             new CombatSetup(_setup.Seed, _setup.DurationMs, _setup.Stats, _setup.Damage, _setup.Progression, _setup.Combat, _setup.Combatants,
-                _setup.Commands.Concat(_engine.SubmittedCommands), _setup.Data);
+                _setup.Commands.Concat(_engine.SubmittedCommands), _setup.Data, _setup.Space);
 
         /// <summary>
         /// Journal rejouable de la partie terminée : le combat complété (<see cref="CompletedSetup"/>) est simulé de nouveau dans
