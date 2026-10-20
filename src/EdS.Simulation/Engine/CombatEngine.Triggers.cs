@@ -601,7 +601,9 @@ namespace EdS.Simulation.Engine
             int processed = 0;
             while (_queue.TryPeek(tick, phase, out Scheduled item))
             {
-                if (!ProcessTriggerItem(tick, phase, item))
+                // Sous-lot 11.4c : impact d'une attaque annoncée, en phase de résolution, à son rang dans la file.
+                if (phase == CombatPhase.Resolution && item is AttackImpact impact) ProcessImpact(tick, impact);
+                else if (!ProcessTriggerItem(tick, phase, item))
                     throw new InvalidOperationException($"Élément inattendu en file ({item.GetType().Name}) en phase {phase}.");
                 processed++;
             }

@@ -116,8 +116,8 @@ namespace EdS.Net
             {
                 // Sous-lot 11.4 : le protocole du lot 10 (salle à places fixes, rejeu des commandes) ne transmet pas les déplacements ; le
                 // combat positionné en réseau suit le modèle retenu pour le monde (état filtré, démonstration du 11.7).
-                if (c.Action == CombatAction.Move || c.Action == CombatAction.Stop)
-                    throw new ArgumentException("Déplacement non transmis par le protocole du lot 10 (combat positionné en réseau : sous-lot 11.7).", nameof(commands));
+                if (c.Action == CombatAction.Move || c.Action == CombatAction.Stop || c.Action == CombatAction.Select)   // sous-lot 11.4c : sélection aussi
+                    throw new ArgumentException("Déplacement ou sélection non transmis par le protocole du lot 10 (combat positionné en réseau : sous-lot 11.7).", nameof(commands));
                 w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor).Field("action", CombatActionIds.Of(c.Action));
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
                 w.EndObject();

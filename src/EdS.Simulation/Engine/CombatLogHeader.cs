@@ -44,11 +44,31 @@ namespace EdS.Simulation.Engine
                 w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor);
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
                 else w.Field("action", CombatActionIds.Of(c.Action));
+                if (c.Action == CombatAction.Select && c.Target != null) w.Field("target", c.Target);   // sous-lot 11.4c
                 if (c.Direction is { } direction) WritePoint(w.Name("direction"), direction);   // sous-lot 11.4 : telle que donnée
                 w.EndObject();
             }
             w.EndArray().EndObject();
             return w.EndObject().ToString();
+        }
+
+        /// <summary>Sous-lot 11.4c : forme, annonce, dimensions et défenses d'une attaque, sous la forme du fichier (champs absents omis).</summary>
+        private static void WriteForm(JsonLineWriter w, AssailantAttack attack)
+        {
+            if (attack.Shape is { } shape)
+            {
+                w.Field("shape", AttackShapeIds.Of(shape));
+                if (attack.TelegraphMs != 0) w.Field("telegraphMs", attack.TelegraphMs);
+                if (attack.Range is { } range) w.Field("range", range);
+                if (attack.Radius is { } radius) w.Field("radius", radius);
+                if (attack.Angle is { } angle) w.Field("angle", angle);
+                if (attack.Width is { } width) w.Field("width", width);
+                if (attack.Center != ShapeCenter.Target) w.Field("center", AttackShapeIds.Of(attack.Center));
+                if (attack.PersistentMs != 0) w.Field("persistentMs", attack.PersistentMs);
+                if (attack.PulseMs != 0) w.Field("tickMs", attack.PulseMs);
+            }
+            if (attack.GuardableOverride is { } guardable) w.Field("guardable", guardable);
+            if (attack.ParryableOverride is { } parryable) w.Field("parryable", parryable);
         }
 
         /// <summary>Sous-lot 11.4 : point ou direction sous la forme des fichiers de scénario, <c>[x, z]</c>.</summary>
@@ -208,6 +228,7 @@ namespace EdS.Simulation.Engine
                             .Field("damageType", DamageTypeId(attack.DamageType)).Field("targeting", TargetingId(attack.Targeting))
                             .Field("unblockable", attack.Unblockable);
                         WriteApplies(w, attack.Applies);
+                        WriteForm(w, attack);   // sous-lot 11.4c (format 12) : seulement les champs donnés
                         w.EndObject();
                     }
                     w.EndArray();

@@ -39,6 +39,9 @@ namespace EdS.Simulation.Engine
             /// <summary>Intention de déplacement en cours et sa direction unitaire.</summary>
             public bool Moving;
             public long DirectionX, DirectionZ;
+
+            /// <summary>Sous-lot 11.4c : cible sélectionnée (commande <c>select</c>) ; en garde, le personnage se tourne vers elle.</summary>
+            public Fighter? Selected;
         }
 
         /// <summary>Résultat prévu du déplacement d'un combattant à ce tick, calculé avant toute mutation.</summary>
@@ -191,9 +194,27 @@ namespace EdS.Simulation.Engine
                         plan.Z = nz;
                     }
                 }
+                plans[i] = plan;
+            }
+            // Sous-lot 11.4c (COMBAT_ESPACE.md, section 6, retenu par Damien) : en garde, un personnage se tourne vers sa cible sélectionnée
+            // vivante, d'après les positions de fin de phase ; sans cible, il garde l'orientation de son déplacement.
+            for (int i = 0; i < n; i++)
+            {
+                Fighter f = _fightersById[i];
+                if (f.IsDead || !f.Guarding || f.Body!.Selected is not { IsDead: false } selected || ReferenceEquals(selected, f)) continue;
+                int j = _fightersById.IndexOf(selected);
+                if (Planar.TryNormalize(checked(x[j] - x[i]), checked(z[j] - z[i]), out long fx, out long fz))
+                {
+                    plans[i].FacingX = fx;
+                    plans[i].FacingZ = fz;
+                }
+            }
+            for (int i = 0; i < n; i++)
+            {
+                Body b = _fightersById[i].Body!;
+                ref MovePlan plan = ref plans[i];
                 plan.Changed = plan.X != b.X || plan.Z != b.Z || plan.FacingX != b.FacingX || plan.FacingZ != b.FacingZ || plan.TrapPrevented != null;
                 any |= plan.Changed;
-                plans[i] = plan;
             }
 
             Reserve(checked(n * Cost.Op) + Cost.Line.If(any));

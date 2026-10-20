@@ -251,13 +251,13 @@ public class Lot114bRangePropertyTests
         }
         // Couverture : chaque décision est réellement exercée.
         string counts = $"lancements {casts}, hors de portée {outOfRange}, sans vue {noSight}, onde {waveHits}/{waveMisses}, ripostes {ripostes}/{riposteCancels}, transferts {transfers}";
-        // Au tirage 1141 : 686 lancements, 575 refus hors de portée, 39 sans vue, onde 267 touchés et 582 manqués, 57 ripostes et 230
-        // annulées, 68 transferts.
+        // Au tirage 1141 : 686 lancements, 575 refus hors de portée, 39 sans vue, onde 267 touchés et 582 manqués, 68 transferts ; 29
+        // ripostes et 76 annulées (sous-lot 11.4c : la parade ne vaut plus contre un coup venu de dos, moins de parades parfaites).
         Assert.True(casts > 500, counts);
         Assert.True(outOfRange > 400, counts);
         Assert.True(noSight > 25, counts);
         Assert.True(waveHits > 150 && waveMisses > 400, counts);
-        Assert.True(ripostes > 30 && riposteCancels > 150, counts);
+        Assert.True(ripostes > 15 && riposteCancels > 40, counts);
         Assert.True(transfers > 40, counts);
     }
 }

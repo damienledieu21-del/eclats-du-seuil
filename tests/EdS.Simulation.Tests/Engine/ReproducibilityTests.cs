@@ -90,7 +90,8 @@ public class ReproducibilityTests
     // 11.1 : moteur 0.15.0, format 9 (PV facultatifs des assaillants) ; le mannequin n'en a pas : seul l'en-tête change (ancienne empreinte
     // 234e3c83…). Sous-lot 11.4a : moteur 0.16.0, format 10 ; combat sans espace : seul l'en-tête change (ancienne empreinte 4d08cf79…).
     // Sous-lot 11.4b : moteur 0.17.0, format 11 (portées) ; combat sans espace : seul l'en-tête change (ancienne empreinte ed17e941…).
-    internal const string ReferenceHash = "fa85733dc520acd8d76453a440f2a81d1014e550301cf3d7dadd6c1e3012d93c";
+    // Sous-lot 11.4c : moteur 0.18.0, format 12 (annonces, garde de face) ; seul l'en-tête change (ancienne empreinte fa85733d…).
+    internal const string ReferenceHash = "61557b5e160254144bcb1e65be94554d4af43c364d2e9a23f2bbc49c869a9fde";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()
