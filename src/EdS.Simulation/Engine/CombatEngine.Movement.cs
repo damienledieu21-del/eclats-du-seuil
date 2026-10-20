@@ -177,6 +177,7 @@ namespace EdS.Simulation.Engine
                 if (!f.Out && moving)
                 {
                     long step = StepLength(f, i, x, z);
+                    if (intentions[i] is { } bounded) step = Math.Min(step, bounded.MaxStep);   // revue Codex de la PR #33
                     if (step > 0)
                     {
                         plan.FacingX = directionX;

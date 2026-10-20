@@ -40,15 +40,36 @@ public class Lot115BehaviorTests
     public void Un_loup_approche_jusqu_a_sa_distance_puis_s_arrete_face_a_sa_cible()
     {
         var (track, log, engine) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("loup", At("8", "0.5"), "0.5") }, durationMs: 3000));
-        // 5 m/s : 0,25 m par tick ; bords à 7 m au départ, il s'arrête dès qu'il est à 0,5 m au plus.
+        // 5 m/s : 0,25 m par tick ; bords à 7 m au départ, il s'arrête à 0,5 m (revue Codex de la PR #33 : le dernier pas s'arrête à la
+        // frontière de sa bande, à 2 mm près).
         double final = Edge(track.After("loup", 59), track.After("bastion", 59), 0.5, 0.5);
-        Assert.InRange(final, 0.25, 0.5);
+        Assert.InRange(final, 0.498, 0.502);
         Assert.Equal(track.After("loup", 40), track.After("loup", 59));   // arrêté
         // Arrêté, il fait face à sa cible (orientation unitaire vers le Bastion, à 10⁻⁴ près).
         GroundVector facing = engine.View("loup").Facing!.Value, at = track.After("loup", 59), toward = track.After("bastion", 59);
         double fx = facing.X.Raw / 1e4, fz = facing.Z.Raw / 1e4, dx = (toward.X.Raw - at.X.Raw) / 1e4, dz = (toward.Z.Raw - at.Z.Raw) / 1e4;
         Assert.InRange((fx * dx + fz * dz) / Math.Sqrt(dx * dx + dz * dz), 0.9999, 1.0001);
         Assert.Empty(Lines(log, "engaged"));   // sans distance d'engagement : engagé d'emblée, sans ligne
+    }
+
+    [Fact]
+    public void Bande_plus_etroite_qu_un_pas_l_ennemi_s_arrete_a_sa_frontiere_sans_osciller()
+    {
+        // Revue Codex de la PR #33 : à 20 m/s (1 m par tick), une distance à garder d'exactement 0,5 m (ou 3 m) : le pas s'arrête à la
+        // frontière de la bande, au lieu de la dépasser et d'osciller de part et d'autre.
+        var (track, _, _) = Trace(Fight(new CombatantSetup[]
+        {
+            Player("bastion", At("0", "0")),
+            Hunter("loup", At("10.3", "0", speed: "20"), "0.5", minRange: "0.5"),
+            Hunter("archer", At("-1.8", "0", speed: "20"), "3", minRange: "3"),
+        }, durationMs: 2000));
+        for (int t = 12; t < 40; t++)
+        {
+            Assert.Equal(track.After("loup", 11), track.After("loup", t));
+            Assert.Equal(track.After("archer", 11), track.After("archer", t));
+        }
+        Assert.InRange(Edge(track.After("loup", 11), track.After("bastion", 11), 0.5, 0.5), 0.4997, 0.5003);
+        Assert.InRange(Edge(track.After("archer", 11), track.After("bastion", 11), 0.5, 0.5), 2.9997, 3.0003);
     }
 
     [Fact]

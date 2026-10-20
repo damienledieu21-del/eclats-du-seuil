@@ -406,6 +406,13 @@ namespace EdS.Simulation.Engine
             Require(_sequence >= 0 && _lastEid >= 0 && _lastStatusInstance >= 0 && _lastApplication >= 0 && _peakWork >= 0 && _peakEvents >= 0
                 && _peakPending >= entries.Count && entries.Count <= _rules.MaxPendingEvents && LastTickWork >= 0 && LastTickEvents >= 0
                 && (_initialEvents == -1 || _initialEvents == _setup.InitialEventCount()), "Compteurs de l'instantané impossibles.");
+            // Revue Codex de la PR #32 (6e tour) : chaque ligne écrite coûte au moins une unité de travail ; la suite du combat (ticks restants,
+            // plus la fin et une large marge) ne peut donc pas faire déborder les numéros de ligne, d'événement, d'altération et
+            // d'application. Un compteur plus grand est refusé ; les incréments sont de toute façon vérifiés.
+            long margin = checked((Math.Max(0, _durationTicks - CurrentTick) + 2) * Math.Max(_rules.MaxWorkPerTick, _rules.MaxEventsPerTick) + 1_000_000);
+            long ceiling = long.MaxValue - margin;
+            Require(_sequence <= ceiling && _lastEid <= ceiling && _lastStatusInstance <= ceiling && _lastApplication <= ceiling,
+                "Compteurs de l'instantané trop grands pour la suite du combat.");
             // Revue Codex de la PR #32 (3e tour) : le combat complété porte toutes les commandes comptées ; leur nombre et leur compte par
             // acteur et par tick à venir s'en déduisent exactement.
             Require(_commandCount == _setup.Commands.Count, $"{_commandCount} commandes comptées, {_setup.Commands.Count} dans le combat complété.");
