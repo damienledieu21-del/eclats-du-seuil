@@ -74,6 +74,18 @@ Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#arrivées-départs-et-instanta
 - **Pas de commande en ligne** : `eds` n'écrit ni ne relit encore d'instantané (essais et code seulement).
 - **Formats** : moteur 0.19.0, journal au format 13, scénarios en schéma 7, instantané au format 1 ; règles (schéma 12) et classes (schéma 9) inchangées. Un combat sans arrivée ni départ écrit les mêmes lignes qu'au moteur 0.18.0 (seize scénarios livrés comparés) ; un journal 0.18.0 est refusé au rejeu, sans migration.
 
+## Sous-lot 11.6 : scène de démonstration des Vallons
+
+Mode d'emploi et vérifications à faire : [UNITY.md](UNITY.md#4-jouer).
+
+- **Validation par l'essai** : la scène Unity n'est vérifiée en CI que par la compilation des scripts (contre des bouchons de l'API Unity) ; le pont temps réel, la marche, la ligne de vue de l'affichage et la scène elle-même (`scenarios/vallons_demo.json`) sont testés en .NET. Le rendu, la caméra et la coupe du décor ne le sont que par l'essai de Damien (11.6, rapport au 11.9).
+- **Un seul genre d'obstacle** : la rivière arrête la marche et aussi la vue (on ne tire pas par-dessus) ; un obstacle bas qui laisse passer la vue n'existe pas encore dans le moteur. Le toit de l'abri est un décor d'affichage seulement (il ne protège de rien) ; ses piliers sont des obstacles.
+- **Marche par caps** : la direction saisie est ramenée à l'un de 64 caps (5,6°) ; une commande ne part qu'au changement de cap, dans la place laissée par le plafond de commandes du tick (sinon au tick suivant). Pas de recherche de chemin.
+- **Vue du joueur** : un ennemi est montré s'il est en vue du centre du Bastion (segment entre les centres, règle des compétences) ; un ennemi qui sort à moitié d'un angle reste caché tant que son centre l'est. Les annonces au sol d'un ennemi caché restent dessinées.
+- **Coupe du décor** : approchée par des boîtes (un décor dont la boîte touche le segment caméra–Bastion est abaissé ou effacé) ; un grand décor peut se couper un peu trop tôt.
+- **Caméra** : angles et distances des vues 1 et 2 provisoires (52° à 17 m, 16° à 6 m) ; rotation par huitième de tour ou à la souris. Pas encore de geste ni de bouton mobile (11.8).
+- **Réseau** : la coopération en réseau n'a pas de décor ; la marche n'y est pas transmise (11.7).
+
 ## Sous-lot 11.5 : comportements des ennemis
 
 Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#comportements-des-ennemis-sous-lot-115) ; données : [DONNEES.md](DONNEES.md#scénarios-et-jeu-de-données-lots-5-et-6).
