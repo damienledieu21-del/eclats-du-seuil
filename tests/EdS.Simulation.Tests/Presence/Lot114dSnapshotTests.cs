@@ -722,6 +722,15 @@ public class Lot114dSnapshotTests
         Assert.NotEqual(taunted, fromAlly);
         Assert.Contains("source qui ne convient pas", Assert.Throws<FormatException>(() => CombatEngine.Restore(taunting.CompletedSetup(),
             CombatSnapshot.Parse(fromAlly), NullCombatLog.Instance)).Message);
+        // Relecture d'ensemble (3) : garde ou ticks gardés de l'allié sans commande de garde ; parade du Bastion sans commande à son tick ;
+        // tours d'un personnage.
+        AssertRefused(setup, text, new[]
+        {
+            ("{\"fighter\":\"allie\"", "\"guarding\":false", "\"guarding\":true", "Garde ou parade de « allie » sans commande"),
+            ("{\"fighter\":\"allie\"", "\"guardTicks\":0", "\"guardTicks\":3", "Garde ou parade de « allie » sans commande"),
+            (Bastion, "\"parryStartTick\":0,\"parryEndTick\":0", "\"parryStartTick\":5,\"parryEndTick\":" + (5 + training.View("bastion").Rules!.ParryWindowMs / 50), "Garde ou parade de « bastion » sans commande"),
+            ("{\"fighter\":\"allie\"", "\"nextTurn\":0", "\"nextTurn\":1", "Tours de « allie »"),
+        });
         // 18e tour : un coup critique est un coup, un ultime une compétence lancée ; un mort dont le départ a été annulé n'est pas parti.
         string hits = System.Text.RegularExpressions.Regex.Match(bastion, "\"hits\":[0-9]+").Value;
         long hitCount = long.Parse(hits.Substring("\"hits\":".Length), System.Globalization.CultureInfo.InvariantCulture);

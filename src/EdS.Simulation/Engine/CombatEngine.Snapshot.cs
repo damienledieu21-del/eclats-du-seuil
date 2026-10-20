@@ -717,6 +717,16 @@ namespace EdS.Simulation.Engine
                     .All(v => v >= 0 && v <= CounterCeiling) && r.GuardTicks >= 0 && r.GuardTicks <= CurrentTick
                     // 18e tour : un coup critique est un coup, un ultime est une compétence lancée (le total est toujours compté avec lui).
                     && r.CriticalHits <= r.Hits && r.UltimatesCast <= r.SkillsCast, $"Bilan de {who} impossible.");
+                // Relecture d'ensemble (3) : garde et parade ne commencent que sur commande. Une parade a sa commande à son tick de début ;
+                // une garde tenue (ou rompue) suppose une commande de garde passée ; l'entretien n'avance que sur des ticks gardés.
+                Require((f.ParryEndTick == 0 || _setup.Commands.Any(c => c.Action == CombatAction.Parry && c.Actor == f.Id && c.AtMs / _tickMs == f.ParryStartTick))
+                    && (!f.Guarding && f.Result.GuardBreaks == 0 && f.Result.GuardTicks == 0
+                        || _setup.Commands.Any(c => c.Action == CombatAction.GuardStart && c.Actor == f.Id && c.AtMs / _tickMs <= previous))
+                    && (f.GuardUpkeepDue == 0 && f.GuardUpkeepRemainder == 0 || f.Result.GuardTicks >= 1),
+                    $"Garde ou parade de {who} sans commande à son origine.");
+                // Relecture d'ensemble (3) : seuls les assaillants ont des tours ; une mort suit l'arrivée.
+                Require(f.Assailant != null || (f.NextTurn == 0 && f.NextAttack == 0 && f.NextAttackTick is null), $"Tours de {who}, qui n'attaque pas seul.");
+                Require(f.Result.DeathTick is not long died || died >= (f.ArrivedTick ?? 0), $"Mort de {who} avant son arrivée.");
                 // Un mort ou un absent n'a ni altération, ni garde, ni parade, ni tour annoncé, et ne marche pas.
                 if (f.Out)
                     Require(f.Statuses.Count == 0 && !f.Guarding && !f.ParryOpen && f.NextAttackTick is null && f.Body is not { Moving: true },
