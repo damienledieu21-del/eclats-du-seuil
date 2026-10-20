@@ -107,7 +107,7 @@ public class Lot114dSnapshotTests
         Assert.Contains("0.18.0", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, older, NullCombatLog.Instance)).Message);
         // Texte retouché : une valeur changée est un autre état, d'une autre empreinte ; un champ inconnu (texte non canonique), manquant ou
         // une ligne de trop est refusé.
-        CombatSnapshot changed = CombatSnapshot.Parse(snapshot.Text.Replace("\"lastEid\":", "\"lastEid\":1"));
+        CombatSnapshot changed = CombatSnapshot.Parse(snapshot.Text.Replace("\"seq\":", "\"seq\":1"));   // 15e tour : lastEid ne dépasse plus seq
         Assert.NotEqual(snapshot.Fingerprint, changed.Fingerprint);
         Assert.Equal(changed.Text, CombatEngine.Restore(setup, changed, NullCombatLog.Instance).Snapshot().Text);
         Assert.Contains("canonique", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
@@ -257,7 +257,12 @@ public class Lot114dSnapshotTests
             (Head, "\"lastEid\":2", "\"lastEid\":1", "Provenance citant l'événement 2"),
             // Revue Codex de la PR #32 (4e tour) : impulsion à son tick.
             (Impact, "\"tick\":40", "\"tick\":41", "hors de son tick"),
+            // 15e tour : un mannequin qui marche ; un numéro de ligne en deçà du dernier événement.
+            (Cible, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "qui ne marche jamais"),
         });
+        // 15e tour : numéro de ligne en deçà du dernier événement (chaque événement a pris une ligne).
+        string seq = System.Text.RegularExpressions.Regex.Match(text.Split('\n')[0], "\"seq\":[0-9]+").Value;
+        AssertRefused(setup, text, new[] { (Head, seq, "\"seq\":1", "en deçà du dernier événement") });
         // Revue Codex de la PR #32 (6e tour) : un compteur sans marge pour la suite du combat est refusé (sinon le prochain numéro
         // déborderait).
         foreach (string counter in new[] { "seq", "lastEid", "lastStatusInstance", "lastApplication" })
@@ -565,7 +570,7 @@ public class Lot114dSnapshotTests
     [Fact]
     public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
     {
-        // Revue Codex de la PR #32 (11e à 14e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        // Revue Codex de la PR #32 (11e à 16e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
         while (training.CurrentTick < 30) training.Step();
         string text = training.Snapshot().Text;
@@ -612,6 +617,15 @@ public class Lot114dSnapshotTests
         Assert.False(resting.IsFinished, "régénération en cours");
         AssertRefused(resting.CompletedSetup(), resting.Snapshot().Text, new[] { (Bastion, granted.Value,
             granted.Value.Replace("\"regenGranted\":" + granted.Groups[2].Value, "\"regenGranted\":0", StringComparison.Ordinal), "Régénération de « bastion » impossible") });
+        // 15e tour : parade réussie ou récupération de parade sans parade au bilan ; plus d'instances d'altération que de rangs d'application.
+        long applications = long.Parse(System.Text.RegularExpressions.Regex.Match(lines[0], "\"lastApplication\":([0-9]+)").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        string instancesField = System.Text.RegularExpressions.Regex.Match(lines[0], "\"lastStatusInstance\":[0-9]+").Value;
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"parrySucceeded\":false", "\"parrySucceeded\":true", "Parade de « bastion » incohérente"),
+            (Bastion, "\"parryRecoveryUntilTick\":0", "\"parryRecoveryUntilTick\":5", "Parade de « bastion » incohérente"),
+            ("{\"snapshot\"", instancesField, $"\"lastStatusInstance\":{applications + 1}", "rangs d'application"),
+        });
         // 14e tour : mesures de charge au-delà des budgets ; dernier tick au-delà des pics.
         foreach ((string pattern, string value) in new[] { ("\"peakWork\":[0-9]+", "\"peakWork\":9223372036854775000"), ("\"lastTickEvents\":[0-9]+", "\"lastTickEvents\":1000000000") })
         {
@@ -629,6 +643,24 @@ public class Lot114dSnapshotTests
             ("{\"fighter\":\"renfort\"", "\"arrivedTick\":80", "\"arrivedTick\":79", "pas celle de son combat"),
             ("{\"fighter\":\"renfort\"", "\"arrivedTick\":80", "\"arrivedTick\":null", "pas celle de son combat"),
         });
+        // 16e tour : hors d'un combat positionné, une arrivée n'est jamais refusée (le renfort, arrivé au tick 80, déclaré refusé dans son
+        // état de départ) ; un départ suit une commande leave à son tick (l'allié part au tick 140 : déclaré parti au tick 130).
+        string start = new CombatEngine(Training(), NullCombatLog.Instance).Snapshot().Text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal));
+        string[] refusedLines = arrived.Split('\n');
+        int renfort = Array.FindIndex(refusedLines, l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal));
+        refusedLines[renfort] = start.Replace("\"presence\":1", "\"presence\":3", StringComparison.Ordinal);
+        Assert.Contains("refusée hors d'un combat positionné", Assert.Throws<FormatException>(() => CombatEngine.Restore(late.CompletedSetup(),
+            CombatSnapshot.Parse(string.Join("\n", refusedLines)), NullCombatLog.Instance)).Message);
+        while (late.CurrentTick < 150) late.Step();
+        string gone = late.Snapshot().Text;
+        string allie = gone.Split('\n').First(l => l.StartsWith("{\"fighter\":\"allie\"", StringComparison.Ordinal));
+        Assert.Contains("\"leftTick\":140", allie, StringComparison.Ordinal);
+        // 16e tour : un parti n'a ni compétence, ni garde, ni parade disponibles (la vue suit la présence, comme pour la marche).
+        CombatantView leftView = late.View("allie");
+        Assert.False(leftView.IsPresent || leftView.CanCast || leftView.CanGuard || leftView.CanParry);
+        string earlier = gone.Replace(allie, allie.Replace("\"leftTick\":140", "\"leftTick\":130", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("sans commande de départ", Assert.Throws<FormatException>(() => CombatEngine.Restore(late.CompletedSetup(),
+            CombatSnapshot.Parse(earlier), NullCombatLog.Instance)).Message);
         // 14e tour : un texte tronqué au milieu de true, false ou null est illisible (FormatException), pas une erreur d'indice.
         foreach (string truncated in new[] { "n", "tru", "{\"a\":fals", "[nul" })
             Assert.Throws<FormatException>(() => CombatSnapshot.Parse(truncated));
