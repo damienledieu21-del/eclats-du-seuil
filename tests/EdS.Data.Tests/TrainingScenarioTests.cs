@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "d186165839ffe4c427ac0349ed91031c4af2283bf90280c9f7163225c84056be")]
-    [InlineData("entrainement_rupture", "7484d947a2a58a54d902c7dec4dd56cb06bd8314f2aac09d38318f28215f97b8")]
-    [InlineData("entrainement_alterations", "233e1b6262edfb614bbb38ddb58ff4a4bc982b609749f44d7a685d7aef9d33ef")]
-    [InlineData("entrainement_declencheurs", "78d2210177cb093ec00306c4d0ffb19e06d1a43d82630a0fddbd86a9e725d5ad")]
+    [InlineData("entrainement_garde_parade", "a95e64ff198145aca35c46f1765cd1a75460bea62dd3839abaad686948c3604a")]
+    [InlineData("entrainement_rupture", "cf05d05eda263ac199f9bff716552f5b31caa3ee58cfd5a343c383632b50cbb9")]
+    [InlineData("entrainement_alterations", "63b9cf54feb4007fe5b014d052161ff555cf0e8db708c32877994b5f1ebf4e14")]
+    [InlineData("entrainement_declencheurs", "4efd5b145b3ec114e626b93232cbec7ee8e8de4b9ea61231db3c15bb72eca3d4")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -124,7 +124,9 @@ public class TrainingScenarioTests
         // déclencheurs dans Fixtures/reference-0.14.0-contenu-0.5.0, celle du 0.4.0 reproduite avec le contenu figé du 8.5.
         // Sous-lot 11.1 : moteur 0.15.0, format 9 (PV facultatifs des assaillants), scénarios en schéma 4 ; aucun assaillant livré n'a de
         // PV : seul l'en-tête change (format et version du moteur), corps identique à celui du moteur 0.14.0 ; référence du scénario à
-        // déclencheurs dans Fixtures/reference-0.15.0-contenu-0.5.0.
+        // déclencheurs dans Fixtures/reference-0.15.0-contenu-0.5.0. Sous-lot 11.4a : moteur 0.16.0, format 10, règles 0.9.0
+        // (déplacement et contact), scénarios en schéma 5 ; aucun n'a d'espace : seul l'en-tête change (format, version, identité des
+        // règles), corps identique à celui du moteur 0.15.0 ; référence dans Fixtures/reference-0.16.0-contenu-0.5.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

@@ -81,6 +81,7 @@ public class RulesCatalogTests
                 int i => RuleValue.FromInteger(i),
                 long l => RuleValue.FromInteger(l),
                 RoundingMode m => RuleValue.FromToken(RulesCatalog.Id(m)),
+                ContactRule c => RuleValue.FromToken(ContactRuleIds.Of(c)),   // sous-lot 11.4a
                 string s => RuleValue.FromToken(s),
                 IReadOnlyList<int> list => RuleValue.FromIntegerList(list.Select(x => (long)x)),
                 _ => throw new InvalidOperationException(field.Path),

@@ -226,6 +226,11 @@ namespace EdS.Data.Rules
                 ResonancePerPerfectParry = (int)Int(d, P(c, nameof(CombatRules.ResonancePerPerfectParry))),
                 ResonancePerBlock = (int)Int(d, P(c, nameof(CombatRules.ResonancePerBlock))),
                 UltimateResonanceCost = (int)Int(d, P(c, nameof(CombatRules.UltimateResonanceCost))),
+                MovementSpeed = Dec(d, P(c, nameof(CombatRules.MovementSpeed))),
+                GuardSpeedFactor = Dec(d, P(c, nameof(CombatRules.GuardSpeedFactor))),
+                PlayerCreatureContact = ContactRuleIds.Parse(d.Values[P(c, nameof(CombatRules.PlayerCreatureContact))].Token!),
+                CrossingSpeedFactor = Dec(d, P(c, nameof(CombatRules.CrossingSpeedFactor))),
+                LargeCreatureRadius = Dec(d, P(c, nameof(CombatRules.LargeCreatureRadius))),
                 Statuses = statuses,
             };
         }

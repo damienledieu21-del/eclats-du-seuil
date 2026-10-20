@@ -99,15 +99,15 @@ public class Lot83SupportDataTests
     [Fact]
     public void Versions_precedentes_refusees_sans_migration()
     {
-        // Sous-lot 8.4 : versions courantes 9 (règles) et 8 (classes) ; celles du 8.3 sont refusées à leur tour.
+        // Sous-lot 8.4 : versions courantes 9 (règles) et 8 (classes) ; celles du 8.3 sont refusées à leur tour. Sous-lot 11.4a : règles 10.
         ValidationError rules = Assert.Single(RulesTestData.ReadMutated(r => r["schemaVersion"] = 8).Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (rules.Path, rules.Code));
-        Assert.Contains("antérieure à la version 9", rules.Message);
+        Assert.Contains("antérieure à la version 10", rules.Message);
         ValidationError klass = Assert.Single(ClassTestData.ReadMutated(c => c["schemaVersion"] = 7).Report.Errors);
         Assert.Contains("antérieure à la version 8", klass.Message);
         ValidationError scenario = Assert.Single(ScenarioTestData.ReadMutated(s => s["schemaVersion"] = 2).Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (scenario.Path, scenario.Code));
-        Assert.Equal(4, ScenarioValidator.CurrentSchemaVersion);   // sous-lot 11.1 : 4 (health des assaillants mortels)
+        Assert.Equal(5, ScenarioValidator.CurrentSchemaVersion);   // sous-lot 11.1 : 4 (health des assaillants mortels) ; 11.4a : 5 (positions)
     }
 
     [Fact]

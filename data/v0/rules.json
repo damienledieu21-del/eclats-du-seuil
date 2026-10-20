@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "kind": "rules",
-  "contentVersion": "0.8.0-provisoire",
+  "contentVersion": "0.9.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -107,6 +107,15 @@
         "perPerfectParry": 8,
         "perBlock": 2,
         "ultimateCost": 100
+      },
+      "movement": {
+        "speed": 5,
+        "guardSpeedFactor": 0.5
+      },
+      "contact": {
+        "playerCreature": "solid",
+        "crossingSpeedFactor": 0.3,
+        "largeCreatureRadius": 1
       }
     },
     "statuses": [

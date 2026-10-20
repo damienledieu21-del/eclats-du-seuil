@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 4
+      "const": 5
     },
     "kind": {
       "const": "scenario"
@@ -44,6 +44,9 @@
           "minimum": 1,
           "description": "Durée simulée, multiple du tick, au plus combat.limits.maxDurationMs."
         },
+        "space": {
+          "$ref": "#/$defs/space"
+        },
         "combatants": {
           "type": "array",
           "items": {
@@ -63,6 +66,82 @@
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "point": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number",
+        "minimum": -1000,
+        "maximum": 1000
+      },
+      "description": "Sous-lot 11.4 : point [x, z] du sol, en mètres (x vers l'est, z vers le nord), dans ±1000 m (borne technique)."
+    },
+    "direction": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number",
+        "minimum": -1,
+        "maximum": 1
+      },
+      "description": "Sous-lot 11.4 : direction [x, z], composantes dans [−1, 1], non toutes deux nulles ; le moteur la normalise."
+    },
+    "space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bounds"
+      ],
+      "properties": {
+        "bounds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "$ref": "#/$defs/point"
+            },
+            "max": {
+              "$ref": "#/$defs/point"
+            }
+          },
+          "description": "Aire praticable : coin sud-ouest (min) et nord-est (max) ; chaque combattant y garde toute son emprise."
+        },
+        "obstacles": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "points"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/name"
+              },
+              "points": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 16,
+                "items": {
+                  "$ref": "#/$defs/point"
+                },
+                "description": "Sommets d'un polygone strictement convexe, dans un sens ou dans l'autre."
+              }
+            }
+          },
+          "description": "Obstacles solides du décor (murs, rochers, troncs), facultatifs."
+        }
+      },
+      "description": "Sous-lot 11.4 (schéma 5) : espace d'un combat positionné. Avec lui, chaque combattant a position et radius."
     },
     "combatant": {
       "type": "object",
@@ -150,10 +229,30 @@
             "$ref": "#/$defs/trigger"
           },
           "description": "Déclencheurs (lot 7.3), au plus 8."
+        },
+        "position": {
+          "$ref": "#/$defs/point",
+          "description": "Combat positionné (bloc space) : centre de l'emprise au départ."
+        },
+        "facing": {
+          "$ref": "#/$defs/direction",
+          "description": "Combat positionné : orientation de départ, facultative ([0, 1], vers le nord, par défaut)."
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5,
+          "description": "Combat positionné : rayon de l'emprise au sol, en mètres (Bastion 0,5 ; loup 0,6 ; chef 1,2)."
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 20,
+          "description": "Assaillant d'un combat positionné : vitesse de marche propre, en m/s ; facultative (combat.movement.speed sinon)."
         }
       },
       "additionalProperties": false,
-      "description": "character : class et build ; dummy : armor et magicResistance ; assailant : armor, magicResistance, target, firstAttackMs, intervalMs et attacks (health facultatif)."
+      "description": "character : class et build ; dummy : armor et magicResistance ; assailant : armor, magicResistance, target, firstAttackMs, intervalMs et attacks (health facultatif). Combat positionné (sous-lot 11.4) : position et radius, facing facultatif ; speed facultatif pour un assaillant."
     },
     "build": {
       "type": "object",
@@ -241,7 +340,7 @@
         "atMs",
         "actor"
       ],
-      "description": "Compétence (skill, target) ou action défensive (action), jamais les deux.",
+      "description": "Compétence (skill, target) ou action nommée (action), jamais les deux ; une direction pour l'action move seulement.",
       "properties": {
         "atMs": {
           "type": "integer",
@@ -265,9 +364,15 @@
           "enum": [
             "guardStart",
             "guardStop",
-            "parry"
+            "parry",
+            "move",
+            "stop"
           ],
-          "description": "Garde (A1) ou parade parfaite (A2)."
+          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné)."
+        },
+        "direction": {
+          "$ref": "#/$defs/direction",
+          "description": "Action move : direction de marche, jusqu'à un arrêt ou une autre direction."
         }
       },
       "oneOf": [
@@ -276,8 +381,17 @@
             "skill"
           ],
           "not": {
-            "required": [
-              "action"
+            "anyOf": [
+              {
+                "required": [
+                  "action"
+                ]
+              },
+              {
+                "required": [
+                  "direction"
+                ]
+              }
             ]
           }
         },
@@ -298,6 +412,32 @@
                 ]
               }
             ]
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "move"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "direction"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "direction"
+              ]
+            }
           }
         }
       ]

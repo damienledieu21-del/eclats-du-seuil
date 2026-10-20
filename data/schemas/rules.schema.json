@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 9
+      "const": 10
     },
     "kind": {
       "const": "rules"
@@ -660,6 +660,61 @@
                 "ultimateCost"
               ],
               "description": "Résonance (A5)."
+            },
+            "movement": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "speed": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 20,
+                  "description": "Vitesse de marche de base d'un combattant positionné, en m/s (valeur de départ retenue : 5)."
+                },
+                "guardSpeedFactor": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Facteur de vitesse pendant la garde (L11-D3 ; valeur de départ retenue : 0,5, fixée à l'essai 11.9)."
+                }
+              },
+              "required": [
+                "speed",
+                "guardSpeedFactor"
+              ],
+              "description": "Déplacement d'un combat positionné (sous-lot 11.4, schéma 10)."
+            },
+            "contact": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "playerCreature": {
+                  "type": "string",
+                  "enum": [
+                    "solid",
+                    "slowedCrossing"
+                  ],
+                  "description": "Contact joueur–créature (L11-D5) : solid (règle A, volumes solides sans poussée) ou slowedCrossing (règle B, traversée freinée) ; choisi après l'essai du 11.6."
+                },
+                "crossingSpeedFactor": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1,
+                  "description": "Règle B : facteur de vitesse d'un joueur qui traverse une créature."
+                },
+                "largeCreatureRadius": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 5,
+                  "description": "Rayon d'emprise (m) à partir duquel une créature reste solide pour les joueurs dans les deux règles."
+                }
+              },
+              "required": [
+                "playerCreature",
+                "crossingSpeedFactor",
+                "largeCreatureRadius"
+              ],
+              "description": "Contact entre joueurs et créatures (sous-lot 11.4, schéma 10)."
             }
           },
           "required": [
@@ -672,7 +727,9 @@
             "damageTaken",
             "parry",
             "rampartCharges",
-            "resonance"
+            "resonance",
+            "movement",
+            "contact"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         },
