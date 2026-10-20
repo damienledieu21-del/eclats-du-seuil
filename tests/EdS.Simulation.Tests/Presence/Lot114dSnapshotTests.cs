@@ -565,7 +565,7 @@ public class Lot114dSnapshotTests
     [Fact]
     public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
     {
-        // Revue Codex de la PR #32 (11e et 12e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        // Revue Codex de la PR #32 (11e à 13e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
         while (training.CurrentTick < 30) training.Step();
         string text = training.Snapshot().Text;
@@ -585,6 +585,9 @@ public class Lot114dSnapshotTests
             (Bastion, generation, "\"id\":2,\"generation\":2147483647", "instance impossible ou en double"),
             // Deux altérations au même rang d'application.
             (Bastion, mine, other, "rang d'application impossible ou en double"),
+            // 13e tour : recharge globale sans lancer à son origine (le Bastion a lancé Entaille au tick 0 : prête au tick 20).
+            (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":0", "Recharge globale de « bastion » sans lancer"),
+            (Bastion, "\"globalCooldownReadyTick\":20", "\"globalCooldownReadyTick\":25", "Recharge globale de « bastion » sans lancer"),
             // Cause mortelle d'un vivant.
             (Bastion, "\"lethalCause\":null", "\"lethalCause\":{\"root\":\"x\",\"depth\":0,\"chain\":[],\"trigger\":null,\"cause\":null,\"source\":null,\"instance\":null,\"generation\":null}",
                 "Cause mortelle de « bastion » vivant"),
