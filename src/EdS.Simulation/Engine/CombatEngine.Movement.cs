@@ -83,6 +83,13 @@ namespace EdS.Simulation.Engine
             _maxZ = space.Max.Z.Raw;
             _maxStep = IntMath.MulDiv(SpaceLimits.MaxSpeed.Raw, _tickMs, 1000, RoundingMode.Floor);
             _probeStep = IntMath.MulDiv(_rules.MovementSpeed.Raw, _tickMs, 1000, RoundingMode.Floor);
+            BuildSolid();
+        }
+
+        /// <summary>Solidité de chaque paire (ordre des identifiants) ; sous-lot 11.4d : refaite quand un combattant rejoint le combat (<see cref="Join"/>).</summary>
+        private void BuildSolid()
+        {
+            if (!_spatial) return;
             int n = _fightersById.Count;
             _solid = new bool[n, n];
             for (int i = 0; i < n; i++)
@@ -112,7 +119,7 @@ namespace EdS.Simulation.Engine
         /// <summary>Motif de refus d'un déplacement : mort, ou mannequin (il n'agit jamais) ; un personnage et un assaillant marchent.</summary>
         private static string? CheckMove(Fighter actor)
         {
-            if (actor.IsDead) return "actorDead";
+            if (actor.Out) return OutReason(actor, "actor");
             if (actor.Character is null && actor.Assailant is null) return "actorCannotAct";
             return null;
         }
@@ -163,7 +170,7 @@ namespace EdS.Simulation.Engine
                 Fighter f = _fightersById[i];
                 Body b = f.Body!;
                 MovePlan plan = new MovePlan { X = b.X, Z = b.Z, FacingX = b.FacingX, FacingZ = b.FacingZ };
-                if (!f.IsDead && b.Moving)
+                if (!f.Out && b.Moving)
                 {
                     long step = StepLength(f, i, x, z);
                     if (step > 0)
@@ -201,7 +208,7 @@ namespace EdS.Simulation.Engine
             for (int i = 0; i < n; i++)
             {
                 Fighter f = _fightersById[i];
-                if (f.IsDead || !f.Guarding || f.Body!.Selected is not { IsDead: false } selected || ReferenceEquals(selected, f)) continue;
+                if (f.Out || !f.Guarding || f.Body!.Selected is not { Out: false } selected || ReferenceEquals(selected, f)) continue;
                 int j = _fightersById.IndexOf(selected);
                 if (Planar.TryNormalize(checked(x[j] - x[i]), checked(z[j] - z[i]), out long fx, out long fz))
                 {
@@ -217,10 +224,12 @@ namespace EdS.Simulation.Engine
                 any |= plan.Changed;
             }
 
-            Reserve(checked(n * Cost.Op) + Cost.Line.If(any));
+            // Sous-lot 11.4d : un absent ne coûte rien (sa place ne change pas).
+            long present = _fightersById.LongCount(f => !f.Absent);
+            Reserve(checked(present * Cost.Op) + Cost.Line.If(any));
             for (int i = 0; i < n; i++)
             {
-                Charge(1);
+                if (!_fightersById[i].Absent) Charge(1);
                 Body b = _fightersById[i].Body!;
                 b.X = plans[i].X;
                 b.Z = plans[i].Z;
@@ -283,7 +292,7 @@ namespace EdS.Simulation.Engine
             for (int j = 0; j < _fightersById.Count; j++)
             {
                 Fighter other = _fightersById[j];
-                if (j == index || other.IsDead || other.Character != null || _solid[index, j]) continue;
+                if (j == index || other.Out || other.Character != null || _solid[index, j]) continue;
                 if (Planar.CirclesOverlap(x[index], z[index], r, x[j], z[j], other.Body!.Radius)) return true;
             }
             return false;
@@ -333,7 +342,7 @@ namespace EdS.Simulation.Engine
                 }
                 for (int j = 0; j < _fightersById.Count; j++)
                 {
-                    if (j == index || !_solid[index, j] || _fightersById[j].IsDead) continue;
+                    if (j == index || !_solid[index, j] || _fightersById[j].Out) continue;
                     long rj = _fightersById[j].Body!.Radius;
                     if (!Planar.CirclesOverlap(cx, cz, r, x[j], z[j], rj)) continue;
                     overlapping = true;
@@ -377,7 +386,7 @@ namespace EdS.Simulation.Engine
             for (int j = 0; j < _fightersById.Count; j++)
             {
                 Fighter player = _fightersById[j];
-                if (j == mover || player.Character is null || player.IsDead || !_solid[mover, j]) continue;
+                if (j == mover || player.Character is null || player.Out || !_solid[mover, j]) continue;
                 long reach = checked(player.Body!.Radius + rm + 2 * _probeStep);
                 if (Planar.LengthSquared(checked(x[j] - nx), checked(z[j] - nz)) >= checked(reach * reach)) continue;
                 if (IsTrapped(j, x, z)) continue;   // déjà sans issue avant ce pas : la créature n'en est pas la cause

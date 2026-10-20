@@ -21,7 +21,7 @@ if [[ ${#categories[@]} -eq 0 ]]; then
   exit 1
 fi
 
-known=(Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space)
+known=(Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence)
 is_known() { local k; for k in "${known[@]}"; do [[ "$k" == "$1" ]] && return 0; done; return 1; }
 status=0
 declared=$( (grep -rhoE --include='*.cs' --exclude-dir=bin --exclude-dir=obj 'Trait\("Category", *"[^"]*"\)' "$root/tests" || true) \

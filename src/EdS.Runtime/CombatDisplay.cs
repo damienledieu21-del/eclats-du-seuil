@@ -70,11 +70,11 @@ namespace EdS.Runtime
 
         /// <summary>Ennemis vivants, dans l'ordre du scénario.</summary>
         public static IEnumerable<OtherState> LivingEnemies(CombatEngine engine, string playerId) =>
-            Others(engine, playerId).Where(o => o.IsEnemy && !o.View.IsDead);
+            Others(engine, playerId).Where(o => o.IsEnemy && !o.View.IsDead && o.View.IsPresent);   // sous-lot 11.4d : un absent ne s'affiche pas
 
         /// <summary>Personnages alliés vivants autres que le joueur, dans l'ordre du scénario (coopération, lot 10).</summary>
         public static IEnumerable<OtherState> LivingAllies(CombatEngine engine, string playerId) =>
-            Others(engine, playerId).Where(o => !o.IsEnemy && !o.View.IsDead && o.View.Kind == CombatantKind.Character);
+            Others(engine, playerId).Where(o => !o.IsEnemy && !o.View.IsDead && o.View.IsPresent && o.View.Kind == CombatantKind.Character);
     }
 
     /// <summary>

@@ -573,7 +573,7 @@ namespace EdS.Net
             {
                 if (id is null || !engine.CombatantIds.Contains(id)) return false;
                 CombatantView view = engine.View(id);
-                return !view.IsDead && accept(view);
+                return !view.IsDead && view.IsPresent && accept(view);
             }
             switch (skill.Combat!.Targeting)
             {
@@ -595,9 +595,7 @@ namespace EdS.Net
             if (engine.Result is null) LastResult = null;
             else LastResult = engine.Result;
             // Journal rejouable : le combat de départ complété des commandes admises (les lignes, hors en-tête, sont celles du combat joué).
-            var setup = _setup!;
-            var completed = new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, setup.Combat, setup.Combatants,
-                setup.Commands.Concat(engine.SubmittedCommands), setup.Data, setup.Space);
+            CombatSetup completed = engine.CompletedSetup();   // sous-lot 11.4d : arrivées comprises
             var journal = new MemoryCombatLog();
             if (engine.IsFinished) CombatEngine.Run(completed, journal);
             LastJournal = engine.IsFinished ? journal.Lines : null;

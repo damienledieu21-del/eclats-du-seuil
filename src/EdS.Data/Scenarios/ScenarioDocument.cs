@@ -101,6 +101,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Vitesse propre d'un assaillant, en m/s ; facultative (celle des règles sinon).</summary>
         public Fixed? Speed { get; set; }
 
+        /// <summary>Sous-lot 11.4d (schéma 7) : instant d'arrivée en cours de combat, en ms ; absent : présent dès le départ.</summary>
+        public long? ArrivalMs { get; set; }
+
         /// <summary>Champs effectivement présents dans le fichier, pour refuser ceux qui ne conviennent pas au type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

@@ -165,17 +165,18 @@ public class Lot114aSpaceDataTests
     [Fact]
     public void Schema_5_et_schema_JSON()
     {
-        // Sous-lot 11.4c : schéma 6 (formes des attaques, action select) ; le bloc space et les places du schéma 5 restent.
-        Assert.Equal(6, ScenarioValidator.CurrentSchemaVersion);
+        // Sous-lot 11.4c : schéma 6 (formes des attaques, action select) ; 11.4d : schéma 7 (arrivées, départ) ; le bloc space et les
+        // places du schéma 5 restent.
+        Assert.Equal(7, ScenarioValidator.CurrentSchemaVersion);
         ValidationError old = Error(Mutated(root => root["schemaVersion"] = 4));
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (old.Path, old.Code));
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement root = schema.RootElement, defs = root.GetProperty("$defs");
-        Assert.Equal(6, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
+        Assert.Equal(7, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
         Assert.Equal("#/$defs/space", root.GetProperty("properties").GetProperty("data").GetProperty("properties").GetProperty("space").GetProperty("$ref").GetString());
         JsonElement combatant = defs.GetProperty("combatant").GetProperty("properties");
         Assert.All(new[] { "position", "facing", "radius", "speed" }, f => Assert.True(combatant.TryGetProperty(f, out _), f));
-        Assert.Equal(new[] { "guardStart", "guardStop", "parry", "move", "stop", "select" },
+        Assert.Equal(new[] { "guardStart", "guardStop", "parry", "move", "stop", "select", "leave" },
             defs.GetProperty("command").GetProperty("properties").GetProperty("action").GetProperty("enum").EnumerateArray().Select(e => e.GetString()));
         Assert.Equal((5.0, 0.1), (combatant.GetProperty("radius").GetProperty("maximum").GetDouble(), combatant.GetProperty("radius").GetProperty("minimum").GetDouble()));
         Assert.Equal(16, defs.GetProperty("space").GetProperty("properties").GetProperty("obstacles").GetProperty("items").GetProperty("properties")

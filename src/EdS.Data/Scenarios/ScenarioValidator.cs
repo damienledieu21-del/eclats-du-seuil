@@ -45,9 +45,10 @@ namespace EdS.Data.Scenarios
         /// <c>move</c> (avec <c>direction</c>) et <c>stop</c>. Version 6 (sous-lot 11.4c) : forme, annonce, dimensions et défenses des attaques
         /// d'assaillant (<c>shape</c>, <c>telegraphMs</c>, <c>range</c>, <c>radius</c>, <c>angle</c>, <c>width</c>, <c>center</c>,
         /// <c>persistentMs</c>, <c>tickMs</c>, <c>guardable</c>, <c>parryable</c>) et action <c>select</c> (avec <c>target</c> facultatif).
-        /// Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
+        /// Version 7 (sous-lot 11.4d) : <c>arrivalMs</c> facultatif sur un combattant (arrivée en cours de combat) et action <c>leave</c>
+        /// (départ, sans compétence ni cible). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 6;
+        public const int CurrentSchemaVersion = 7;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -114,7 +115,7 @@ namespace EdS.Data.Scenarios
                     data.TryGetClass(c.Class!, out LoadedClass loaded);
                     usedClasses[loaded.Definition.Id] = loaded;
                     CharacterBuild build = Builds.BuildShape.ToCharacterBuild(loaded.Definition.Id, c.Build!);
-                    combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement));
+                    combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement, c.ArrivalMs));
                 }
                 else if (c.Type == "assailant")
                 {
@@ -124,12 +125,12 @@ namespace EdS.Data.Scenarios
                         a.Center is null ? ShapeCenter.Target : AttackShapeIds.Centers[a.Center], a.PersistentMs ?? 0, a.TickMs ?? 0, a.Guardable, a.Parryable));
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
-                        Triggers.TriggerShape.Build(c.Triggers), c.Health, placement));
+                        Triggers.TriggerShape.Build(c.Triggers), c.Health, placement, c.ArrivalMs));
                 }
                 else
                 {
                     combatants.Add(new DummySetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
-                        placement));
+                        placement, c.ArrivalMs));
                 }
             }
             var commands = scenario.Commands!.Select(c => !CombatActionIds.TryParseNamed(c!.Action, out CombatAction action)
@@ -305,7 +306,7 @@ namespace EdS.Data.Scenarios
                     if (!(field == "target" && action == CombatAction.Select))
                         _report.Add($"{path}.{field}", ValidationCode.InvalidValue, action == CombatAction.Select
                             ? "une sélection ne nomme pas de compétence."
-                            : "une garde, une parade ou un déplacement ne prend ni compétence ni cible.");
+                            : "une garde, une parade, un déplacement ou un départ ne prend ni compétence ni cible.");
                 // Sous-lot 11.4 : une direction pour un déplacement, et seulement pour lui.
                 if (c.Action is null) return;
                 if (action == CombatAction.Move) Present(c.Direction, path + ".direction", "direction de marche [x, z], composantes dans [−1, 1]");

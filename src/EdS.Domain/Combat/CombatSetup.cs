@@ -30,12 +30,20 @@ namespace EdS.Domain.Combat
         /// </summary>
         public CombatantPlacement? Placement { get; }
 
-        protected CombatantSetup(string id, string team, int initiative, CombatantPlacement? placement = null)
+        /// <summary>
+        /// Sous-lot 11.4d : instant d'arrivée en cours de combat (multiple du tick, dans [0, durée[) ; null pour un combattant présent dès
+        /// le départ. Avant son arrivée, le combattant est absent : il n'agit pas, n'est ni ciblé, ni solide, ni compté dans un groupe. Le
+        /// moteur l'admet au début du tick d'arrivée (phase <c>setup</c>), à sa place, si aucune emprise solide ne l'occupe.
+        /// </summary>
+        public long? ArrivalMs { get; }
+
+        protected CombatantSetup(string id, string team, int initiative, CombatantPlacement? placement = null, long? arrivalMs = null)
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Team = team ?? throw new ArgumentNullException(nameof(team));
             Initiative = initiative;
             Placement = placement;
+            ArrivalMs = arrivalMs;
         }
     }
 
@@ -45,8 +53,9 @@ namespace EdS.Domain.Combat
         public ClassDefinition Class { get; }
         public CharacterBuild Build { get; }
 
-        public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null)
-            : base(id, team, initiative, placement)
+        public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null,
+            long? arrivalMs = null)
+            : base(id, team, initiative, placement, arrivalMs)
         {
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
             Build = build ?? throw new ArgumentNullException(nameof(build));
@@ -146,8 +155,8 @@ namespace EdS.Domain.Combat
         public Fixed StatusResistance { get; }
 
         public DummySetup(string id, string team, Fixed armor, Fixed magicResistance, int initiative = 0, Fixed statusResistance = default,
-            CombatantPlacement? placement = null)
-            : base(id, team, initiative, placement)
+            CombatantPlacement? placement = null, long? arrivalMs = null)
+            : base(id, team, initiative, placement, arrivalMs)
         {
             Armor = armor;
             MagicResistance = magicResistance;
@@ -286,8 +295,8 @@ namespace EdS.Domain.Combat
 
         public AssailantSetup(string id, string team, Fixed armor, Fixed magicResistance, string? target, long firstAttackMs, long intervalMs,
             IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default, IEnumerable<TriggerDefinition>? triggers = null,
-            long? health = null, CombatantPlacement? placement = null)
-            : base(id, team, initiative, placement)
+            long? health = null, CombatantPlacement? placement = null, long? arrivalMs = null)
+            : base(id, team, initiative, placement, arrivalMs)
         {
             Health = health;
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
@@ -327,6 +336,12 @@ namespace EdS.Domain.Combat
         /// sélectionnée (COMBAT_ESPACE.md, section 6, retenu par Damien le 20/10/2026) ; combat positionné seulement.
         /// </summary>
         Select = 6,
+
+        /// <summary>
+        /// Sous-lot 11.4d : quitter le combat (changement de zone, départ d'un joueur, retrait d'un ennemi). Le combattant devient absent
+        /// pour la suite : ses états sont retirés (<c>left</c>), ses provocations et protections sur les autres aussi (<c>sourceLeft</c>).
+        /// </summary>
+        Leave = 7,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -339,6 +354,7 @@ namespace EdS.Domain.Combat
         public const string Move = "move";
         public const string Stop = "stop";
         public const string Select = "select";
+        public const string Leave = "leave";
 
         /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
@@ -347,7 +363,7 @@ namespace EdS.Domain.Combat
         /// Actions qu'on écrit dans le champ <c>action</c> d'une commande de scénario (la compétence s'écrit avec <c>skill</c>) : les
         /// défensives, puis le déplacement (sous-lot 11.4).
         /// </summary>
-        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select }, nameof(Named));
+        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave }, nameof(Named));
 
         public static string Of(CombatAction action) => action switch
         {
@@ -358,6 +374,7 @@ namespace EdS.Domain.Combat
             CombatAction.Move => Move,
             CombatAction.Stop => Stop,
             CombatAction.Select => Select,
+            CombatAction.Leave => Leave,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
@@ -369,6 +386,7 @@ namespace EdS.Domain.Combat
                 case Move: action = CombatAction.Move; return true;
                 case Stop: action = CombatAction.Stop; return true;
                 case Select: action = CombatAction.Select; return true;
+                case Leave: action = CombatAction.Leave; return true;
                 default: return TryParseDefensive(id, out action);
             }
         }
@@ -590,6 +608,14 @@ namespace EdS.Domain.Combat
                     ids[c.Id] = i;
                 if (!IsValidName(c.Team))
                     errors.Add(new RuleViolation($"équipe « {c.Team} » invalide : minuscules, chiffres et « _ », commençant par une lettre.", path + ".team"));
+                // Sous-lot 11.4d : arrivée en cours de combat, au début d'un tick du combat.
+                if (c.ArrivalMs is long arrival)
+                {
+                    if (arrival < 0 || (DurationMs > 0 && arrival >= DurationMs))
+                        errors.Add(new RuleViolation($"arrivée à {arrival} ms hors du combat [0, {DurationMs}[ ms.", path + ".arrivalMs"));
+                    else if (arrival % tick != 0)
+                        errors.Add(new RuleViolation($"{arrival} ms n'est pas un multiple de la durée du tick ({tick} ms).", path + ".arrivalMs"));
+                }
 
                 switch (c)
                 {
@@ -656,9 +682,9 @@ namespace EdS.Domain.Combat
                 }
                 else
                 {
-                    if (command.Skill != null) errors.Add(new RuleViolation("une garde, une parade, un déplacement ou une sélection ne nomme pas de compétence.", path + ".skill"));
+                    if (command.Skill != null) errors.Add(new RuleViolation("une garde, une parade, un déplacement, une sélection ou un départ ne nomme pas de compétence.", path + ".skill"));
                     if (command.Target != null && command.Action != CombatAction.Select)
-                        errors.Add(new RuleViolation("une garde, une parade ou un déplacement n'a pas de cible.", path + ".target"));
+                        errors.Add(new RuleViolation("une garde, une parade, un déplacement ou un départ n'a pas de cible.", path + ".target"));
                 }
                 // Sous-lot 11.4 : déplacement seulement dans un combat positionné ; une direction seulement pour un déplacement. Sous-lot
                 // 11.4c : la sélection aussi (elle oriente la garde).
@@ -743,10 +769,13 @@ namespace EdS.Domain.Combat
                 if (errors.Count != before) placementsValid = false;
             }
             if (!spaceValid || !placementsValid) return;
+            // Sous-lot 11.4d : un combattant qui arrive en cours de combat n'est comparé à personne ici ; le moteur refuse son arrivée
+            // (arrivalRefused, occupied) si une emprise solide occupe sa place à ce moment-là.
             for (int j = 1; j < Combatants.Count; j++)
                 for (int i = 0; i < j; i++)
                 {
                     CombatantSetup a = Combatants[i], b = Combatants[j];
+                    if (a.ArrivalMs != null || b.ArrivalMs != null) continue;
                     CombatantPlacement pa = a.Placement!, pb = b.Placement!;
                     if (Combat.AreSolid(a is CharacterSetup, pa.Radius, b is CharacterSetup, pb.Radius)
                         && Planar.CirclesOverlap(pa.Position.X.Raw, pa.Position.Z.Raw, pa.Radius.Raw, pb.Position.X.Raw, pb.Position.Z.Raw, pb.Radius.Raw))
@@ -1012,13 +1041,26 @@ namespace EdS.Domain.Combat
                     "commands"));
         }
 
-        /// <summary>Nombre d'événements que le moteur met en file à sa construction.</summary>
+        /// <summary>
+        /// Nombre d'événements que le moteur met en file à sa construction : une entrée par commande, un premier tour par assaillant présent
+        /// dès le départ qui attaque avant la fin, et (sous-lot 11.4d) une arrivée par combattant qui arrive en cours de combat (son premier
+        /// tour éventuel prend la place de son arrivée dans la file).
+        /// </summary>
         public long InitialEventCount()
         {
             long durationTicks = DurationMs / Combat.TickMilliseconds;
-            long assailantTurns = Combatants.OfType<AssailantSetup>().LongCount(a => a.FirstAttackMs >= 0 && a.FirstAttackMs / Combat.TickMilliseconds < durationTicks);
-            return Commands.Count + assailantTurns;
+            long assailantTurns = Combatants.OfType<AssailantSetup>().LongCount(a => a.ArrivalMs is null && a.FirstAttackMs >= 0 && a.FirstAttackMs / Combat.TickMilliseconds < durationTicks);
+            long arrivals = Combatants.LongCount(c => c.ArrivalMs != null);
+            return checked(Commands.Count + assailantTurns + arrivals);
         }
+
+        /// <summary>
+        /// Sous-lot 11.4d : le combat complété de combattants arrivés en cours de route (après ceux du combat, dans l'ordre d'arrivée) et de
+        /// commandes soumises (après celles du combat) ; même graine, mêmes règles, même espace. Un combat piloté se rejoue ainsi à l'identique.
+        /// </summary>
+        public CombatSetup Completed(IEnumerable<CombatantSetup> joined, IEnumerable<CombatCommand> submitted) =>
+            new CombatSetup(Seed, DurationMs, Stats, Damage, Progression, Combat, Combatants.Concat(joined ?? throw new ArgumentNullException(nameof(joined))),
+                Commands.Concat(submitted ?? throw new ArgumentNullException(nameof(submitted))), Data, Space);
 
         private void ValidateAssailantShape(AssailantSetup a, string path, long tick, List<RuleViolation> errors)
         {

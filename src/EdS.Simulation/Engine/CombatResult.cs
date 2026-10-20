@@ -71,6 +71,16 @@ namespace EdS.Simulation.Engine
         public long? DeathTick { get; internal set; }
 
         /// <summary>
+        /// Sous-lot 11.4d : présence en fin de combat, null pour un combattant présent du début à la fin : <c>joined</c> (arrivé en cours
+        /// de route, encore là), <c>left</c> (parti), <c>pending</c> (arrivée pas encore venue), <c>refused</c> (arrivée refusée).
+        /// </summary>
+        public string? Presence { get; internal set; }
+
+        /// <summary>Sous-lot 11.4d : tick d'arrivée (arrivé en cours de combat) et tick de départ ; null sinon.</summary>
+        public long? ArrivedTick { get; internal set; }
+        public long? LeftTick { get; internal set; }
+
+        /// <summary>
         /// Dégâts retirés par la défense de chaque impact (garde, parade, réductions de dégâts subis) et par les réductions des ticks de
         /// DOT : montant sans réduction − montant, même tirage critique et mêmes bonus. Les boucliers (<see cref="DamageAbsorbed"/>) et les
         /// transferts (<see cref="DamageTransferred"/>) sont comptés à part.
