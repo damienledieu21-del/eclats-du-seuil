@@ -803,7 +803,8 @@
                     "guard",
                     "parry",
                     "regeneration",
-                    "assailantAttacks"
+                    "assailantAttacks",
+                    "movement"
                   ]
                 }
               },

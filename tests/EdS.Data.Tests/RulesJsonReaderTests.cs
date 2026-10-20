@@ -115,9 +115,9 @@ public class RulesJsonReaderTests
         // Sous-lot 8.3 : schéma 8 ; redirectRatio (0) écrit pour chaque altération.
         // Sous-lot 8.4 : schéma 9, contenu 0.7.0 : combat.triggers.areaStrikeMinCooldownMs et les cinq altérations du Bastion.
         // Sous-lot 8.5 : contenu 0.8.0, schéma inchangé : les trois altérations des talents du Gardien.
-        // Sous-lot 11.4a : schéma 10, contenu 0.9.0 : combat.movement et combat.contact.
+        // Sous-lot 11.4a : schéma 10, contenu 0.9.0 : combat.movement, combat.contact, et l'étourdissement bloque le déplacement.
         Assert.Equal(
-            "sha256:0a3d117c2ccdfef6fe4f76c9a167bac6bbd8348519714cf831fdefbff2862e53",
+            "sha256:c7b8d5af0f5f0e774bf9923058660175128fb6c4808de8d5a9e6bab4eab9260b",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 

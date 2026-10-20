@@ -146,5 +146,5 @@ public class CombatReplayTests
     // lieu de 441, 56 de Résonance au lieu de 53. Sous-lot 11.1 : moteur 0.15.0, format 9 ; seul l'en-tête change (ancienne empreinte
     // 4c5f475b…). Sous-lot 11.4a : moteur 0.16.0, format 10, règles 0.9.0 ; combat sans espace : seul l'en-tête change (ancienne
     // empreinte 0d88a125…).
-    internal const string MannequinLogHash = "8fc4a1206f118901a9938bad6d5ad2cbda49b0a692f6777fe41344156d99f850";
+    internal const string MannequinLogHash = "b8bf4baac54384b3b7f400ff960276ac5d596fccc8d6cb5673ce73c4eebafee1";
 }

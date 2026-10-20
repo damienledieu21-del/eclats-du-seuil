@@ -144,6 +144,54 @@ public class Lot114aMovementTests
     }
 
     [Fact]
+    public void Etourdissement_immobilise_puis_le_combattant_repart()
+    {
+        // Décision de Damien du 20/10/2026 : l'étourdissement bloque le déplacement. Posé au tick 20 (résolution), 29 ticks (Volonté 10) :
+        // immobile des ticks 21 à 48, l'intention reste ; une nouvelle direction donnée pendant l'étourdissement est acceptée.
+        AssailantSetup choc = Creature("choc", At("-8", "-8"), firstAttackMs: 1000, attacks: new[] { Strike("assomme", 1, DamageType.Physique, false, Apply("stun")) });
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(Walk(new[] { Move(0, "bastion", "1", "0"), Move(1500, "bastion", "0", "1") }, null, null, choc), log);
+        var track = new List<GroundVector>();
+        var canMove = new List<bool>();
+        do
+        {
+            track.Add(engine.View("bastion").Position!.Value);
+            canMove.Add(engine.View("bastion").CanMove);
+        }
+        while (engine.Step() && engine.CurrentTick <= 60);
+        Assert.Equal(Raw(2500 * 21, 0), track[21]);
+        Assert.All(track.Skip(22).Take(28), p => Assert.Equal(Raw(2500 * 21, 0), p));
+        Assert.Equal(Raw(2500 * 21, 2500), track[50]);   // repart, vers le nord demandé pendant l'étourdissement
+        Assert.True(canMove[20] && !canMove[30] && canMove[50]);
+        Assert.Contains(Lines(log, "moveStarted"), m => m.Tick() == 30);
+        Assert.Contains(Lines(log, "stateApplied"), s => s.Str("state") == "stun" && s.Tick() == 20);
+        Assert.Contains(Lines(log, "stateExpired"), s => s.Str("state") == "stun" && s.Tick() == 49);
+    }
+
+    [Fact]
+    public void Deplacement_soumis_en_cours_de_combat_controle_comme_au_scenario()
+    {
+        // Revue Codex de la PR #28 : un déplacement soumis (Submit) passe les mêmes contrôles que celui d'un scénario.
+        var plain = new CombatEngine(Setup(Array.Empty<CombatCommand>()), new MemoryCombatLog());
+        Assert.Throws<ArgumentException>(() => plain.Submit(Move(0, "bastion", "1", "0")));
+        Assert.Throws<ArgumentException>(() => plain.Submit(Stop(0, "bastion")));
+        Assert.Empty(plain.SubmittedCommands);
+        Assert.True(plain.Step());
+
+        var log = new MemoryCombatLog();
+        var placed = new CombatEngine(Walk(Array.Empty<CombatCommand>()), log);
+        Assert.Throws<ArgumentException>(() => placed.Submit(Move(0, "bastion", "0", "0")));
+        Assert.Throws<ArgumentException>(() => placed.Submit(Move(0, "bastion", "1.5", "0")));
+        // Tout ou rien : un groupe dont un déplacement est invalide n'admet rien.
+        Assert.Throws<ArgumentException>(() => placed.SubmitAll(new[] { GuardStart(0), Move(0, "bastion", "0", "0") }));
+        Assert.Empty(placed.SubmittedCommands);
+        placed.Submit(Move(0, "bastion", "1", "0"));
+        while (placed.Step()) { }
+        Assert.Equal(Raw(95_000, 0), placed.View("bastion").Position);
+        Assert.Single(placed.SubmittedCommands);
+    }
+
+    [Fact]
     public void Bord_de_l_aire_arrete_exactement_a_l_emprise()
     {
         var (track, _, _) = Trace(Walk(new[] { Move(0, "bastion", "1", "0") }));

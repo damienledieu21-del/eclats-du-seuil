@@ -81,6 +81,9 @@ namespace EdS.Simulation.Engine
         /// <summary>Direction de marche en cours (unitaire) ; null à l'arrêt.</summary>
         public GroundVector? MoveDirection { get; internal set; }
 
+        /// <summary>Déplacement non bloqué par une altération encore active à ce tick (l'étourdissement immobilise) ; faux hors combat positionné.</summary>
+        public bool CanMove { get; internal set; }
+
         /// <summary>Tick de disponibilité d'une compétence (0 si jamais lancée).</summary>
         public long CooldownReadyTick(string skill) => CooldownReadyTicks.TryGetValue(skill, out long tick) ? tick : 0;
 
@@ -191,6 +194,7 @@ namespace EdS.Simulation.Engine
                 view.Facing = GroundVector.FromRaw(body.FacingX, body.FacingZ);
                 view.Radius = Fixed.FromRaw(body.Radius);
                 view.MoveDirection = body.Moving ? GroundVector.FromRaw(body.DirectionX, body.DirectionZ) : (GroundVector?)null;
+                view.CanMove = !f.IsDead && (f.Character != null || f.Assailant != null) && !Blocked(StatusBlocks.Movement);   // un mannequin ne marche pas
             }
             if (f.Assailant is { } assailant)
             {
@@ -220,7 +224,8 @@ namespace EdS.Simulation.Engine
         /// comme une commande du scénario de même rang : son numéro suit ceux du scénario puis des commandes déjà soumises, si bien qu'un
         /// combat rejoué avec le scénario complété de <see cref="SubmittedCommands"/> est identique. Mêmes plafonds d'admission que le
         /// scénario (commandes au total, par acteur et par tick, capacité de la file, événements initiaux du scénario complété) ; l'acteur
-        /// et la cible doivent exister. Un refus ne modifie rien. Le majorant prudent de la file (correctif 7.2) n'est vérifié qu'au rejeu
+        /// et la cible doivent exister ; sous-lot 11.4a, un déplacement n'est admis que dans un combat positionné, avec une direction valide. Un
+        /// refus ne modifie rien. Le majorant prudent de la file (correctif 7.2) n'est vérifié qu'au rejeu
         /// du scénario complété (<c>PilotedCombat</c>), qui refuse alors le combat entier.
         /// </summary>
         public void Submit(CombatCommand command) => SubmitAll(new[] { command ?? throw new ArgumentNullException(nameof(command)) });
@@ -243,6 +248,17 @@ namespace EdS.Simulation.Engine
                 if (command.Target != null && !_byId.ContainsKey(command.Target)) throw new ArgumentException($"Cible inconnue : {command.Target}.", nameof(commands));
                 if (command.AtMs % _tickMs != 0 || command.AtMs / _tickMs != CurrentTick)
                     throw new ArgumentException($"Commande à {command.AtMs} ms : seul le tick courant ({CurrentTick}) est admis.", nameof(commands));
+                // Revue Codex de la PR #28 : mêmes contrôles de forme qu'une commande du scénario (CombatSetup.Validate), pour que le moteur
+                // n'exécute jamais une commande que le scénario complété refuserait : action connue ; déplacement seulement dans un combat
+                // positionné, avec une direction valide ; une direction seulement pour un déplacement.
+                if (!Enum.IsDefined(typeof(CombatAction), command.Action))
+                    throw new ArgumentException("Action inconnue.", nameof(commands));
+                if ((command.Action == CombatAction.Move || command.Action == CombatAction.Stop) && _setup.Space is null)
+                    throw new ArgumentException("Déplacement dans un combat sans espace (bloc space absent).", nameof(commands));
+                if (command.Action == CombatAction.Move ? command.Direction is not { } direction || !SpaceLimits.IsDirection(direction) : command.Direction != null)
+                    throw new ArgumentException(command.Action == CombatAction.Move
+                        ? "Direction de déplacement : composantes dans [−1, 1], non toutes deux nulles."
+                        : "Seul un déplacement (move) a une direction.", nameof(commands));
                 int earlier = groupPerActor.TryGetValue(command.Actor, out int g) ? g : 0;
                 int already = _commandsPerActorTick.TryGetValue((command.Actor, CurrentTick), out int n) ? n : 0;
                 if (checked(already + earlier) >= _rules.MaxCommandsPerActorPerTick)

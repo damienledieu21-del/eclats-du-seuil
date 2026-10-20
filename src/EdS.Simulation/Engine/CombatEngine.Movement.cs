@@ -224,13 +224,16 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Longueur du pas de ce tick, en unités brutes, arrondie par défaut à chaque facteur, dans cet ordre : vitesse de base × durée du
+        /// Longueur du pas de ce tick, en unités brutes : nulle sous une altération qui bloque le déplacement (<c>blocks: movement</c>,
+        /// l'étourdissement) ; sinon arrondie par défaut à chaque facteur, dans cet ordre : vitesse de base × durée du
         /// tick ; × facteur de garde si le combattant garde ; × (1 + somme des <c>movementSpeedModifier</c> actifs, chaque altération une
         /// fois, au moins 0) ; règle B, × facteur de traversée si un joueur chevauche une créature qu'il peut traverser ; plafonnée par la
         /// vitesse technique maximale.
         /// </summary>
         private long StepLength(Fighter f, int index, long[] x, long[] z)
         {
+            // Décision de Damien du 20/10/2026 : une altération qui bloque le déplacement (étourdissement) immobilise ; l'intention reste.
+            if (BlockReason(f, StatusBlocks.Movement) != null) return 0;
             long step = IntMath.MulDiv(f.Body!.Speed, _tickMs, 1000, RoundingMode.Floor);
             if (f.Guarding) step = Fixed.Multiply(Fixed.FromRaw(step), _rules.GuardSpeedFactor, RoundingMode.Floor).Raw;
             Fixed modifier = MovementSpeedModifier(f);

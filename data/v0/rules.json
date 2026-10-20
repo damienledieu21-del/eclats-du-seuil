@@ -123,7 +123,7 @@
       { "id": "bleed", "category": "dot", "durationMs": 6000, "periodMs": 2000, "stacking": "perSourceKeepStronger", "resistance": "defense", "damageType": "physique" },
       {
         "id": "stun", "category": "control", "durationMs": 1500, "stacking": "ignore", "resistance": "duration",
-        "blocks": ["skills", "guard", "parry", "assailantAttacks"], "interrupts": ["guard", "parry"], "blockReason": "stunned",
+        "blocks": ["skills", "guard", "parry", "assailantAttacks", "movement"], "interrupts": ["guard", "parry"], "blockReason": "stunned",
         "grantsOnExpiry": "stunImmunity"
       },
       { "id": "stunImmunity", "category": "immunity", "durationMs": 3000, "stacking": "ignore", "resistance": "none", "immuneTo": ["stun"] },
