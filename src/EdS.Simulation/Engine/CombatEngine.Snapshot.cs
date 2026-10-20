@@ -421,6 +421,10 @@ namespace EdS.Simulation.Engine
             Require(_sequence >= 0 && _lastEid >= 0 && _lastStatusInstance >= 0 && _lastApplication >= 0 && _peakWork >= 0 && _peakEvents >= 0
                 && _peakPending >= entries.Count && entries.Count <= _rules.MaxPendingEvents && LastTickWork >= 0 && LastTickEvents >= 0
                 && (_initialEvents == -1 || _initialEvents == _setup.InitialEventCount()), "Compteurs de l'instantané impossibles.");
+            // 14e tour : les mesures de charge restent sous les budgets (une réserve qui les dépasserait arrête le combat avant de compter), et
+            // le dernier tick ne dépasse pas les pics (ils sont relevés avant lui).
+            Require(_peakWork <= _rules.MaxWorkPerTick && _peakEvents <= _rules.MaxEventsPerTick && _peakPending <= _rules.MaxPendingEvents
+                && LastTickWork <= _peakWork && LastTickEvents <= _peakEvents, "Mesures de charge de l'instantané au-delà des budgets.");
             // Revue Codex de la PR #32 (6e tour) : chaque ligne écrite coûte au moins une unité de travail ; la suite du combat (ticks restants,
             // plus la fin et une large marge) ne peut donc pas faire déborder les numéros de ligne, d'événement, d'altération et
             // d'application. Un compteur plus grand est refusé ; les incréments sont de toute façon vérifiés.
@@ -624,6 +628,10 @@ namespace EdS.Simulation.Engine
                 Require(f.LeaveCommand is null, $"Départ de {who} encore demandé entre deux ticks.");
                 Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
                     $"Arrivée de {who} au tick {f.ArrivedTick} impossible.");
+                // 14e tour : un combattant admis est arrivé exactement à son tick prévu ; un combattant présent dès l'origine, attendu ou refusé
+                // n'a pas de tick d'arrivée.
+                bool admitted = f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.Setup.ArrivalMs != null;
+                Require(f.ArrivedTick == (admitted ? f.Setup.ArrivalMs / _tickMs : null), $"Arrivée de {who} au tick {f.ArrivedTick} : pas celle de son combat.");
                 Require((f.LeftTick != null) == (f.Presence == Presence.Left) && (f.LeftTick is null || (f.LeftTick >= 0 && f.LeftTick < CurrentTick)),
                     $"Départ de {who} au tick {f.LeftTick} impossible.");
                 Require(f.Result.ArrivedTick == f.ArrivedTick && f.Result.LeftTick == f.LeftTick, $"Bilan de présence de {who} incohérent.");
