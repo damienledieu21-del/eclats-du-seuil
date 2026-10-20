@@ -785,6 +785,11 @@ namespace EdS.Simulation.Engine
                     Require(IsUnit(b.FacingX, b.FacingZ) && (!b.Moving || IsUnit(b.DirectionX, b.DirectionZ)), $"Orientation ou direction de {who} non unitaire.");
                     // 15e tour : seul un personnage ou un assaillant marche (un mannequin ne reçoit jamais move).
                     Require(!b.Moving || f.Character != null || f.Assailant != null, $"Marche de {who}, qui ne marche jamais.");
+                    // Relecture d'ensemble (4) : une marche suit une commande move passée de ce combattant ; une cible sélectionnée, une commande
+                    // select passée de ce combattant qui la désigne.
+                    Require((!b.Moving || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous))
+                        && (b.Selected is not { } chosen || _setup.Commands.Any(c => c.Action == CombatAction.Select && c.Actor == f.Id && c.Target == chosen.Id
+                            && c.AtMs / _tickMs <= previous)), $"Marche ou sélection de {who} sans commande à son origine.");
                 }
                 Fighter start = initial[f.Id];
                 Require(f.Random.Capture().Increment == start.Random.Capture().Increment, $"Flux de tirage de {who} différent de celui du combat.");

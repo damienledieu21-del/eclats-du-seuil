@@ -259,6 +259,9 @@ public class Lot114dSnapshotTests
             (Impact, "\"tick\":40", "\"tick\":41", "hors de son tick"),
             // 15e tour : un mannequin qui marche ; un numéro de ligne en deçà du dernier événement.
             (Cible, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "qui ne marche jamais"),
+            // Relecture d'ensemble (4) : marche de l'ogre sans commande move ; cible sélectionnée par le Bastion sans commande select.
+            (Ogre, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "Marche ou sélection de « ogre »"),
+            (Bastion, "\"selected\":null", "\"selected\":\"ogre\"", "Marche ou sélection de « bastion »"),
         });
         // 15e tour : numéro de ligne en deçà du dernier événement (chaque événement a pris une ligne).
         string seq = System.Text.RegularExpressions.Regex.Match(text.Split('\n')[0], "\"seq\":[0-9]+").Value;
