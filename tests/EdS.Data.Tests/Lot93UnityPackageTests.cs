@@ -159,6 +159,14 @@ public class Lot93UnityPackageTests
         Assert.Contains("\"# empreinte \" + Fingerprint(files)", build, StringComparison.Ordinal);
         Assert.Contains("StartsWith(\"#\", StringComparison.Ordinal)", files, StringComparison.Ordinal);
         Assert.Contains("Directory.Delete(target, true)", files, StringComparison.Ordinal);
+        // 2e tour : une écriture impossible (stockage plein) est rendue comme une erreur, pas une coroutine interrompue ; les doigts posés
+        // sont oubliés quand le jeu est suspendu, et un doigt mémorisé qui n'est plus sur l'écran est relâché.
+        Assert.Contains("copie des données du jeu impossible", files, StringComparison.Ordinal);
+        string game = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        string touch = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "TouchControls.cs"));
+        Assert.Contains("private void OnApplicationPause(bool paused)", game, StringComparison.Ordinal);
+        Assert.Contains("private void OnApplicationFocus(bool focus)", game, StringComparison.Ordinal);
+        Assert.Contains("Forget(fingers);", touch, StringComparison.Ordinal);
         string ignore = File.ReadAllText(Path.Combine(Root, ".gitignore"));
         Assert.Contains("unity/Assets/StreamingAssets/", ignore, StringComparison.Ordinal);
         // Tout ce que le jeu ouvre est un .json de data/v0 ou de scenarios : la copie n'en oublie aucun.

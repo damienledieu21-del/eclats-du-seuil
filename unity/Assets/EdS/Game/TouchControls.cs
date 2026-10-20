@@ -96,6 +96,29 @@ namespace EdS.Game
             ViewDelta = 0f;
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #36 : Android peut suspendre le jeu (verrouillage, accueil, autre application) sans livrer la fin des doigts
+        /// posés. Un doigt mémorisé (stick, regard, bouton tenu) qui n'est plus sur l'écran est relâché, comme s'il était levé.
+        /// </summary>
+        private void Forget(List<Finger> fingers)
+        {
+            bool Present(int id)
+            {
+                foreach (Finger f in fingers)
+                    if (f.fingerId == id) return true;
+                return false;
+            }
+            if (_stickFinger >= 0 && !Present(_stickFinger)) _stickFinger = -1;
+            if (_lookFinger >= 0 && !Present(_lookFinger)) _lookFinger = -1;
+            foreach (int id in new List<int>(_pressed.Keys))
+            {
+                if (Present(id)) continue;
+                ButtonId released = _pressed[id];
+                _pressed.Remove(id);
+                if (!_pressed.ContainsValue(released)) _held.Remove(released);
+            }
+        }
+
         /// <summary>Place les boutons pour la taille d'écran courante ; <paramref name="network"/> : bouton Allié.</summary>
         private void Layout(bool network)
         {
@@ -178,6 +201,7 @@ namespace EdS.Game
             float half = Hud.Width / 2f;
             var looking = new List<Vector2>();
             List<Finger> fingers = Fingers();
+            Forget(fingers);
             for (int i = 0; i < fingers.Count; i++)
             {
                 Finger touch = fingers[i];

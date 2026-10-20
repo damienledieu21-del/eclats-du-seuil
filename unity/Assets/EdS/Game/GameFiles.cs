@@ -49,7 +49,9 @@ namespace EdS.Game
             // Déjà copiées pour ce jeu (même liste, empreinte du contenu comprise : revue Codex de la PR #36) : rien à refaire. La liste est
             // écrite en dernier, après tous les fichiers.
             string copied = Path.Combine(target, Index);
-            if (File.Exists(copied) && File.ReadAllText(copied) == index)
+            string existing = null;
+            Try(() => existing = File.Exists(copied) ? File.ReadAllText(copied) : null);   // illisible : la copie est refaite
+            if (existing == index)
             {
                 done(target, null);
                 yield break;
@@ -69,7 +71,16 @@ namespace EdS.Game
             }
             // Revue Codex de la PR #36 : la copie précédente est retirée entière (fichiers retirés ou renommés depuis compris), comme pour
             // une installation propre.
-            if (Directory.Exists(target)) Directory.Delete(target, true);
+            // Revue Codex de la PR #36 (2e tour) : un stockage plein ou inaccessible est signalé (écran d'erreur), pas une coroutine arrêtée.
+            string failure = Try(() =>
+            {
+                if (Directory.Exists(target)) Directory.Delete(target, true);
+            });
+            if (failure != null)
+            {
+                done(null, "copie des données du jeu impossible : " + failure);
+                yield break;
+            }
             foreach (string relative in files)
             {
                 byte[] content = null;
@@ -80,11 +91,33 @@ namespace EdS.Game
                     yield break;
                 }
                 string path = Path.Combine(target, relative.Replace('/', Path.DirectorySeparatorChar));
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                File.WriteAllBytes(path, content);
+                failure = Try(() =>
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(path));
+                    File.WriteAllBytes(path, content);
+                });
+                if (failure != null)
+                {
+                    done(null, "copie des données du jeu impossible (" + relative + ") : " + failure);
+                    yield break;
+                }
             }
-            File.WriteAllText(copied, index);
-            done(target, null);
+            failure = Try(() => File.WriteAllText(copied, index));
+            done(failure == null ? target : null, failure == null ? null : "copie des données du jeu impossible : " + failure);
+        }
+
+        /// <summary>Exécute une opération de fichiers ; rend null si elle a réussi, le message de l'erreur sinon.</summary>
+        private static string Try(Action action)
+        {
+            try
+            {
+                action();
+                return null;
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is NotSupportedException || e is System.Security.SecurityException)
+            {
+                return e.Message;
+            }
         }
 
         private static IEnumerator Read(string url, Action<byte[]> ok, Action<string> failed)

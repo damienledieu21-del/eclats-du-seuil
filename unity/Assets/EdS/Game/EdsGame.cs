@@ -257,6 +257,20 @@ namespace EdS.Game
             if (_messages.Count > 5) _messages.RemoveAt(0);
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #36 : jeu suspendu ou passé en arrière-plan (verrouillage, accueil, autre application) : les commandes au
+        /// doigt repartent de zéro, rien ne reste tenu (marche, garde) au retour.
+        /// </summary>
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) _touch.Reset();
+        }
+
+        private void OnApplicationFocus(bool focus)
+        {
+            if (!focus) _touch.Reset();
+        }
+
         private void Update()
         {
             if (!_ready) return;   // sous-lot 11.8 : données en préparation
