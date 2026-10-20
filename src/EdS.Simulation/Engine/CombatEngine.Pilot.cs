@@ -54,7 +54,7 @@ namespace EdS.Simulation.Engine
         public long GlobalCooldownReadyTick { get; internal set; }
         public IReadOnlyDictionary<string, long> CooldownReadyTicks { get; internal set; } = new Dictionary<string, long>();
 
-        /// <summary>Compétences, garde et parade non bloquées par une altération encore active à ce tick.</summary>
+        /// <summary>Compétences, garde et parade non bloquées par une altération encore active à ce tick ; faux pour un absent ou un mort.</summary>
         public bool CanCast { get; internal set; }
         public bool CanGuard { get; internal set; }
         public bool CanParry { get; internal set; }
@@ -198,9 +198,10 @@ namespace EdS.Simulation.Engine
                 view.ParryRecoveryUntilTick = f.ParryRecoveryUntilTick;
                 view.GlobalCooldownReadyTick = f.GlobalCooldownReadyTick;
                 view.CooldownReadyTicks = new Dictionary<string, long>(f.CooldownReadyTick, StringComparer.Ordinal);
-                view.CanCast = !Blocked(StatusBlocks.Skills);
-                view.CanGuard = !Blocked(StatusBlocks.Guard);
-                view.CanParry = !Blocked(StatusBlocks.Parry);
+                // Revue Codex de la PR #32 (16e tour) : un absent (attendu, refusé, parti) ou un mort n'agit pas, comme pour CanMove.
+                view.CanCast = !f.Out && !Blocked(StatusBlocks.Skills);
+                view.CanGuard = !f.Out && !Blocked(StatusBlocks.Guard);
+                view.CanParry = !f.Out && !Blocked(StatusBlocks.Parry);
             }
             if (f.Body is { } body)
             {

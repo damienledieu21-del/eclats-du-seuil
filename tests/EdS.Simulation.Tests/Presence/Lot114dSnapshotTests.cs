@@ -569,7 +569,7 @@ public class Lot114dSnapshotTests
     [Fact]
     public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
     {
-        // Revue Codex de la PR #32 (11e à 14e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        // Revue Codex de la PR #32 (11e à 16e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
         while (training.CurrentTick < 30) training.Step();
         string text = training.Snapshot().Text;
@@ -642,6 +642,24 @@ public class Lot114dSnapshotTests
             ("{\"fighter\":\"renfort\"", "\"arrivedTick\":80", "\"arrivedTick\":79", "pas celle de son combat"),
             ("{\"fighter\":\"renfort\"", "\"arrivedTick\":80", "\"arrivedTick\":null", "pas celle de son combat"),
         });
+        // 16e tour : hors d'un combat positionné, une arrivée n'est jamais refusée (le renfort, arrivé au tick 80, déclaré refusé dans son
+        // état de départ) ; un départ suit une commande leave à son tick (l'allié part au tick 140 : déclaré parti au tick 130).
+        string start = new CombatEngine(Training(), NullCombatLog.Instance).Snapshot().Text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal));
+        string[] refusedLines = arrived.Split('\n');
+        int renfort = Array.FindIndex(refusedLines, l => l.StartsWith("{\"fighter\":\"renfort\"", StringComparison.Ordinal));
+        refusedLines[renfort] = start.Replace("\"presence\":1", "\"presence\":3", StringComparison.Ordinal);
+        Assert.Contains("refusée hors d'un combat positionné", Assert.Throws<FormatException>(() => CombatEngine.Restore(late.CompletedSetup(),
+            CombatSnapshot.Parse(string.Join("\n", refusedLines)), NullCombatLog.Instance)).Message);
+        while (late.CurrentTick < 150) late.Step();
+        string gone = late.Snapshot().Text;
+        string allie = gone.Split('\n').First(l => l.StartsWith("{\"fighter\":\"allie\"", StringComparison.Ordinal));
+        Assert.Contains("\"leftTick\":140", allie, StringComparison.Ordinal);
+        // 16e tour : un parti n'a ni compétence, ni garde, ni parade disponibles (la vue suit la présence, comme pour la marche).
+        CombatantView leftView = late.View("allie");
+        Assert.False(leftView.IsPresent || leftView.CanCast || leftView.CanGuard || leftView.CanParry);
+        string earlier = gone.Replace(allie, allie.Replace("\"leftTick\":140", "\"leftTick\":130", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("sans commande de départ", Assert.Throws<FormatException>(() => CombatEngine.Restore(late.CompletedSetup(),
+            CombatSnapshot.Parse(earlier), NullCombatLog.Instance)).Message);
         // 14e tour : un texte tronqué au milieu de true, false ou null est illisible (FormatException), pas une erreur d'indice.
         foreach (string truncated in new[] { "n", "tru", "{\"a\":fals", "[nul" })
             Assert.Throws<FormatException>(() => CombatSnapshot.Parse(truncated));

@@ -158,6 +158,9 @@ namespace EdS.Game
             foreach (OtherState other in combat.Others())
             {
                 if (!_bodies.TryGetValue(other.Id, out GameObject body)) continue;
+                // Revue Codex de la PR #32 (16e tour) : un absent (attendu, refusé, parti) est caché ; il apparaît à son arrivée.
+                body.SetActive(other.View.IsPresent);
+                if (!other.View.IsPresent) continue;
                 Vector3 look = _player.transform.position;
                 look.y = body.transform.position.y;
                 if (other.IsEnemy && other.View.Kind != CombatantKind.Dummy && (look - body.transform.position).sqrMagnitude > 0.01f)

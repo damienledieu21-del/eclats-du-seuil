@@ -633,6 +633,11 @@ namespace EdS.Simulation.Engine
                     _ => arrivalTick is null || arrivalTick < CurrentTick,
                 }, $"Présence de {who} incohérente avec son tick d'arrivée.");
                 Require(f.LeaveCommand is null, $"Départ de {who} encore demandé entre deux ticks.");
+                // 16e tour : un refus d'arrivée n'existe que dans un combat positionné (place prise) ; un départ suit une commande leave de ce
+                // combattant, à son tick, dans le combat complété.
+                Require(f.Presence != Presence.Refused || _spatial, $"Arrivée de {who} refusée hors d'un combat positionné.");
+                Require(f.LeftTick is not long left || _setup.Commands.Any(c => c.Action == CombatAction.Leave && c.Actor == f.Id && c.AtMs / _tickMs == left),
+                    $"Départ de {who} sans commande de départ à son tick.");
                 Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
                     $"Arrivée de {who} au tick {f.ArrivedTick} impossible.");
                 // 14e tour : un combattant admis est arrivé exactement à son tick prévu ; un combattant présent dès l'origine, attendu ou refusé
