@@ -308,6 +308,20 @@ public class Lot115BehaviorTests
         Assert.Equal(("sanglier", "charge", 20L), (blocked.Str("actor"), blocked.Str("attack"), blocked.Tick()));
         Assert.False(string.IsNullOrEmpty(blocked.Str("reason")));
         Assert.Equal(track.After("sanglier", 19), track.After("sanglier", 21));
+        // Tour 9 : étourdi pendant l'annonce (par son attaque suivante, deux ticks après), donc déjà immobilisé à l'impact : la charge écrit
+        // aussi chargeBlocked.
+        var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+            range: F("6"), width: F("1"), charge: true);
+        var cri = new AssailantAttack("cri", 1, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
+            new[] { new StatusApplication("stun", target: ApplicationTarget.Self) });
+        var (before, early, _) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("4", "0")),
+            Hunter("sanglier", At("0", "0"), "20", firstMs: 0, intervalMs: 100, attacks: new[] { charge, cri }) }, durationMs: 2000));
+        JsonElement stunned = Lines(early, "stateApplied").First(s => s.Str("combatant") == "sanglier" && s.Str("state") == "stun");
+        Assert.True(stunned.Tick() < 20, $"étourdi au tick {stunned.Tick()}");
+        Assert.Empty(Lines(early, "charged"));
+        JsonElement already = Assert.Single(Lines(early, "chargeBlocked"));
+        Assert.Equal(("sanglier", "charge", 20L), (already.Str("actor"), already.Str("attack"), already.Tick()));
+        Assert.Equal(before.After("sanglier", 19), before.After("sanglier", 21));
     }
 
     [Fact]
