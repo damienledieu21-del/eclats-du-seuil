@@ -606,6 +606,13 @@ namespace EdS.Simulation.Engine
                 foreach (CombatCommand command in _setup.Commands)
                     if (command.Action == CombatAction.UseSkill && command.Actor == f.Id && command.AtMs / _tickMs <= previous) casts.Add((command.AtMs / _tickMs, command.Skill!));
                 long lastCast = checked(f.GlobalCooldownReadyTick - _globalCooldownTicks);
+                // 17e tour : chaque commande passée a été acceptée ou refusée (CommandsRejected) ; les lancers comptés (SkillsCast) ne
+                // dépassent donc pas les commandes de compétence passées, ni, avec les refus, l'ensemble des commandes passées. L'acceptation
+                // d'une commande précise n'est pas dans l'instantané : au-delà, c'est son empreinte qui fait foi.
+                int skillCommands = _setup.Commands.Count(c => c.Action == CombatAction.UseSkill && c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                int pastCommands = _setup.Commands.Count(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                Require(f.Result.SkillsCast <= skillCommands && checked(f.Result.SkillsCast + f.Result.CommandsRejected) <= pastCommands,
+                    $"Lancers ou refus de {who} au-delà de ses commandes passées.");
                 Require(f.Result.SkillsCast == 0
                     ? f.GlobalCooldownReadyTick == 0 && f.CooldownReadyTick.Count == 0
                     : f.Character != null && casts.Any(c => c.Tick == lastCast), $"Recharge globale de {who} sans lancer à son origine.");
@@ -638,6 +645,8 @@ namespace EdS.Simulation.Engine
                 Require(f.Presence != Presence.Refused || _spatial, $"Arrivée de {who} refusée hors d'un combat positionné.");
                 Require(f.LeftTick is not long left || _setup.Commands.Any(c => c.Action == CombatAction.Leave && c.Actor == f.Id && c.AtMs / _tickMs == left),
                     $"Départ de {who} sans commande de départ à son tick.");
+                // 17e tour : un départ suit l'admission (la commande leave n'est reçue que d'un combattant présent, arrivé au plus tard à ce tick).
+                Require(f.LeftTick is not long leftAt || leftAt >= (f.ArrivedTick ?? 0), $"Départ de {who} avant son arrivée.");
                 Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
                     $"Arrivée de {who} au tick {f.ArrivedTick} impossible.");
                 // 14e tour : un combattant admis est arrivé exactement à son tick prévu ; un combattant présent dès l'origine, attendu ou refusé
@@ -739,13 +748,14 @@ namespace EdS.Simulation.Engine
                 Fighter start = initial[f.Id];
                 Require(f.Random.Capture().Increment == start.Random.Capture().Increment, $"Flux de tirage de {who} différent de celui du combat.");
                 bool entered = f.Presence != Presence.Pending && f.Presence != Presence.Refused;
-                if (!entered)
+                // Revue Codex de la PR #33 (tour 4) : avant le premier tick, aucun combattant n'a encore rien fait (engagement compris).
+                if (!entered || CurrentTick == 0)
                 {
                     // Seules différences possibles : sa présence (refusé) et ses commandes refusées (un absent n'agit pas).
                     start.Presence = f.Presence;
                     start.Result.CommandsRejected = f.Result.CommandsRejected;
                     Require(f.Result.CommandsRejected >= 0 && string.Equals(WriteFighter(f), WriteFighter(start), StringComparison.Ordinal),
-                        $"{who}, pas encore entré, n'est plus dans son état de départ.");
+                        entered ? $"{who}, avant le premier tick, n'est plus dans son état de départ." : $"{who}, pas encore entré, n'est plus dans son état de départ.");
                 }
                 // Les tours d'un assaillant entré se déduisent de sa cadence : tours joués jusqu'à son dernier tick d'action (le précédent,
                 // ou celui de sa mort ou de son départ), attaque suivante de sa liste, tour suivant programmé s'il tombe avant la fin.
