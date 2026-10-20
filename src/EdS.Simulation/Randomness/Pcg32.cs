@@ -70,6 +70,34 @@ namespace EdS.Simulation.Randomness
             return NextBounded(10_000) < (uint)chanceBasisPoints;
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #32 (21e tour) : nombre de pas du générateur pour aller de <paramref name="from"/> à <paramref name="to"/>
+        /// (même flux), modulo 2⁶⁴ ; chaque tirage avance d'au moins un pas. Algorithme de distance des générateurs congruentiels de la
+        /// référence PCG (bit par bit, 64 tours) : l'incrément est impair et le multiplicateur ≡ 1 (mod 4), la période est donc pleine et la
+        /// distance existe toujours.
+        /// </summary>
+        public static ulong Distance(Pcg32State from, Pcg32State to)
+        {
+            if (from.Increment != to.Increment) throw new ArgumentException("Deux flux PCG32 différents n'ont pas de distance.", nameof(to));
+            if ((from.Increment & 1UL) == 0) throw new ArgumentException("L'incrément PCG32 doit être impair.", nameof(from));
+            unchecked
+            {
+                ulong state = from.State, multiplier = Multiplier, plus = from.Increment, bit = 1UL, distance = 0UL;
+                while (state != to.State)
+                {
+                    if ((state & bit) != (to.State & bit))
+                    {
+                        state = state * multiplier + plus;
+                        distance |= bit;
+                    }
+                    bit <<= 1;
+                    plus = (multiplier + 1UL) * plus;
+                    multiplier *= multiplier;
+                }
+                return distance;
+            }
+        }
+
         private void Step()
         {
             unchecked { _state = _state * Multiplier + _increment; }
