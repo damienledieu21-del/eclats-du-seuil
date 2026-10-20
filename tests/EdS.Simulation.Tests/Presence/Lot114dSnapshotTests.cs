@@ -695,6 +695,33 @@ public class Lot114dSnapshotTests
             ("{\"fighter\":\"allie\"", "\"endurance\":100", "\"endurance\":99", "entamée sans reprise"),
             (Bastion, "\"regenGranted\":0", "\"regenGranted\":1", "accordée avant sa reprise"),
         });
+        // Relecture d'ensemble : fenêtre de parade sans parade, parade comptée sans commande de parade passée ; provocation venue d'un allié.
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"parryEndTick\":0", "\"parryEndTick\":5", "fenêtre"),
+            (Bastion, "\"perfectParries\":0", "\"perfectParries\":1", "Parade de « bastion » incohérente avec ses commandes"),
+        });
+        var taunting = new CombatEngine(Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(30), new CombatantSetup[]
+        {
+            Space.Lot114bRangeTests.Hero("bastion", Space.SpaceTestKit.At("0", "0"), new[] { Space.Lot114bRangeTests.Cri }),
+            Space.SpaceTestKit.Creature("ogre", Space.SpaceTestKit.At("3", "0"), health: 500, firstAttackMs: 600_000),
+            Space.SpaceTestKit.Creature("loup", Space.SpaceTestKit.At("6", "0"), health: 500, firstAttackMs: 600_000),
+        }, new[] { Cmd(0, Space.Lot114bRangeTests.Cri, target: null) }, durationMs: 2000), NullCombatLog.Instance);
+        taunting.Step();
+        string taunted = taunting.Snapshot().Text;
+        Assert.Equal(taunted, CombatEngine.Restore(taunting.CompletedSetup(), CombatSnapshot.Parse(taunted), NullCombatLog.Instance).Snapshot().Text);
+        // La provocation de l'ogre (et son échéance en file) attribuée au loup, son allié.
+        string[] tauntLines = taunted.Split('\n');
+        for (int k = 0; k < tauntLines.Length; k++)
+            if (tauntLines[k].StartsWith("{\"fighter\":\"ogre\"", StringComparison.Ordinal))
+                tauntLines[k] = tauntLines[k].Replace("\"keySource\":\"bastion\",\"source\":\"bastion\"", "\"keySource\":\"loup\",\"source\":\"loup\"", StringComparison.Ordinal);
+            else if (tauntLines[k].StartsWith("{\"entry\":", StringComparison.Ordinal) && tauntLines[k].Contains("\"fighter\":\"ogre\"", StringComparison.Ordinal)
+                && tauntLines[k].Contains("Taunt\"", StringComparison.Ordinal))
+                tauntLines[k] = tauntLines[k].Replace("\"keySource\":\"bastion\"", "\"keySource\":\"loup\"", StringComparison.Ordinal);
+        string fromAlly = string.Join("\n", tauntLines);
+        Assert.NotEqual(taunted, fromAlly);
+        Assert.Contains("source qui ne convient pas", Assert.Throws<FormatException>(() => CombatEngine.Restore(taunting.CompletedSetup(),
+            CombatSnapshot.Parse(fromAlly), NullCombatLog.Instance)).Message);
         // 18e tour : un coup critique est un coup, un ultime une compétence lancée ; un mort dont le départ a été annulé n'est pas parti.
         string hits = System.Text.RegularExpressions.Regex.Match(bastion, "\"hits\":[0-9]+").Value;
         long hitCount = long.Parse(hits.Substring("\"hits\":".Length), System.Globalization.CultureInfo.InvariantCulture);

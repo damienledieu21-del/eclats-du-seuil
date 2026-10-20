@@ -596,6 +596,16 @@ namespace EdS.Simulation.Engine
                 // 15e tour (relecture d'ensemble) : une parade réussie est comptée ; une récupération de parade ratée suppose une parade ratée.
                 Require((!f.ParrySucceeded || f.Result.PerfectParries >= 1) && (f.ParryRecoveryUntilTick == 0 || f.Result.FailedParries >= 1),
                     $"Parade de {who} incohérente avec son bilan.");
+                // Relecture d'ensemble (avant le 19e tour) : la dernière parade a commencé à un tick passé et sa fenêtre a sa durée (aucune
+                // parade : tout à 0) ; une récupération de parade ratée part de la fin de cette fenêtre, sauf si une parade a été reprise
+                // après elle ; parades réussies et ratées au plus les commandes de parade passées.
+                long window = f.Rules.ParryWindowMs / _tickMs, recovery = f.Rules.ParryFailureRecoveryMs / _tickMs;
+                int parryCommands = _setup.Commands.Count(c => c.Action == CombatAction.Parry && c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                Require(f.ParryStartTick >= 0 && f.ParryStartTick <= Math.Max(0, previous)
+                    && (f.ParryEndTick == checked(f.ParryStartTick + window) || (f.ParryStartTick == 0 && f.ParryEndTick == 0 && !f.ParrySucceeded))
+                    && (f.ParryRecoveryUntilTick == 0 || f.ParryRecoveryUntilTick == checked(f.ParryEndTick + recovery) || f.ParryStartTick >= f.ParryRecoveryUntilTick)
+                    && checked(f.Result.PerfectParries + f.Result.FailedParries) <= parryCommands,
+                    $"Parade de {who} incohérente avec ses commandes ou sa fenêtre.");
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
                     Require(slot.ReadyTick >= 0 && slot.ReadyTick <= Math.Max(0, previous + slot.Definition.CooldownMs / _tickMs), $"Recharge d'un déclencheur de {who} au-delà de sa durée.");
@@ -747,6 +757,11 @@ namespace EdS.Simulation.Engine
                     // (sa mort ou son départ les retire).
                     Require(s.Source is null || _byId.ContainsKey(s.Source), $"{status} : source inconnue.");
                     Require(!s.Definition.IsSourceBound || s.Source != null && !_byId[s.Source].Out, $"{status} : provocation ou protection sans source présente.");
+                    // Relecture d'ensemble : une provocation vient d'un adversaire de l'assaillant, une protection d'un allié du personnage, autre
+                    // que lui (SourceFits).
+                    Require(!s.Definition.IsSourceBound || (s.Definition.IsTaunt
+                        ? f.Assailant != null && _byId[s.Source!].Team != f.Team
+                        : f.Character != null && s.Source != f.Id && _byId[s.Source!].Team == f.Team), $"{status} : source qui ne convient pas.");
                 }
                 if (f.Body is { } b)
                 {
