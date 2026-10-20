@@ -90,10 +90,10 @@ namespace EdS.Runtime
             ReferenceBuild? reference, string? customName)
         {
             IEnumerable<CombatantSetup> combatants = scenario.Combatants.Select(c => c == player && playerBuild != null
-                ? new CharacterSetup(player.Id, player.Team, player.Class, playerBuild, player.Initiative)
+                ? new CharacterSetup(player.Id, player.Team, player.Class, playerBuild, player.Initiative, player.Placement)
                 : c);
             var setup = new CombatSetup(scenario.Seed, duration, scenario.Stats, scenario.Damage, scenario.Progression, scenario.Combat, combatants,
-                Array.Empty<CombatCommand>(), scenario.Data);
+                Array.Empty<CombatCommand>(), scenario.Data, scenario.Space);
             IReadOnlyList<RuleViolation> violations = setup.Validate();
             if (violations.Count > 0) throw new CombatSetupException(violations);
             return new TrainingSession(data, setup, player.Id, reference, customName);

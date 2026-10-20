@@ -18,8 +18,9 @@ namespace EdS.Simulation.Engine
     /// génériques définies en données (lot 7.2) : DOT, contrôles, modificateurs et immunités, voir <see cref="StatusDefinition"/>.
     /// Aucune lecture de l'horloge système, aucun flottant, aucun état partagé entre combats : tout l'état appartient
     /// à l'instance. Même combat (règles, participants, commandes, graine) = même journal, octet par octet.
-    /// <para>Ordre d'un tick (A10) : expirations → commandes (initiative décroissante, puis identifiant) → résolution
-    /// des actions et dégâts → effets périodiques (entretien de la garde) → régénération → morts et fin de combat.</para>
+    /// <para>Ordre d'un tick (A10) : expirations → commandes (initiative décroissante, puis identifiant) → déplacement (combat positionné
+    /// seulement, sous-lot 11.4a, voir CombatEngine.Movement.cs) → résolution des actions et dégâts → effets périodiques (entretien de la
+    /// garde) → régénération → morts et fin de combat.</para>
     /// <para>Budgets (lot 7.1) : chaque traitement élémentaire (une échéance, le retrait d'une commande, une commande, une
     /// action complète avec toutes ses cibles, le passage d'un combattant dans une phase balayée) calcule son coût exact
     /// en travail, lignes et places de file à partir de l'état courant, puis le <b>réserve avant toute mutation</b>. Si la
@@ -29,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.15.0";
+        public const string Version = "0.16.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -54,9 +55,15 @@ namespace EdS.Simulation.Engine
         /// (toutes les Charges détenues pour une compétence qui les dépense toutes, comme Contrecoup). 9 (sous-lot 11.1) : un assaillant de
         /// l'en-tête peut porter <c>health</c> (PV de départ et maximaux d'un assaillant mortel) ; sa ligne <c>combatant</c> porte alors ses
         /// PV, et il meurt à 0 PV (<c>died</c>, une fois) : ses tours suivants sont abandonnés sans ligne, la victoire peut revenir aux
-        /// joueurs (<c>combatEnded</c>, <c>teamDefeated</c>). Un journal d'un autre format est refusé au rejeu.
+        /// joueurs (<c>combatEnded</c>, <c>teamDefeated</c>). 10 (sous-lot 11.4a) : combat positionné. Le scénario de l'en-tête peut porter
+        /// <c>space</c> (aire et obstacles), chaque combattant <c>position</c>, <c>facing</c>, <c>radius</c> et, pour un assaillant, <c>speed</c>,
+        /// et les commandes <c>move</c> (avec <c>direction</c>) et <c>stop</c> ; la ligne <c>combatant</c> porte alors position, orientation,
+        /// rayon et vitesse ; nouvelles lignes <c>moveStarted</c> et <c>moveStopped</c> (commandes acceptées), <c>moved</c> (phase
+        /// <c>movement</c>, une par tick où quelque chose bouge, sans eid), raison de refus <c>notMoving</c> et position finale sur
+        /// <c>combatantSummary</c>. Un combat sans espace écrit
+        /// exactement les mêmes lignes qu'au format 9. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 9;
+        public const int LogFormatVersion = 10;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -132,6 +139,9 @@ namespace EdS.Simulation.Engine
 
             public Pcg32 Random = null!;
             public bool IsDead;
+
+            /// <summary>Sous-lot 11.4 : état spatial dans un combat positionné ; null sinon.</summary>
+            public Body? Body;
             public readonly CombatantResult Result = new CombatantResult();
 
             public string Id => Setup.Id;
@@ -412,6 +422,7 @@ namespace EdS.Simulation.Engine
             _fightersById = _fighters.OrderBy(f => f.Id, StringComparer.Ordinal).ToList();
             _byId = _fighters.ToDictionary(f => f.Id, StringComparer.Ordinal);
             BuildTriggerIndex();
+            InitSpace();
 
             for (int i = 0; i < setup.Commands.Count; i++)
             {
@@ -440,7 +451,7 @@ namespace EdS.Simulation.Engine
 
         private Fighter CreateFighter(CombatantSetup setup)
         {
-            var f = new Fighter { Setup = setup, Random = new Pcg32(unchecked((ulong)_setup.Seed), StreamOf(setup.Id)) };
+            var f = new Fighter { Setup = setup, Random = new Pcg32(unchecked((ulong)_setup.Seed), StreamOf(setup.Id)), Body = CreateBody(setup) };
             f.Result.Id = setup.Id;
             f.Result.Team = setup.Team;
             switch (setup)
@@ -498,6 +509,7 @@ namespace EdS.Simulation.Engine
             {
                 RunExpirations(tick);
                 List<PendingAction> actions = RunCommands(tick);
+                RunMovement(tick);   // sous-lot 11.4 : combat positionné seulement
                 RunResolution(tick, actions);
                 RunPeriodic(tick);
                 RunRegeneration(tick);
@@ -619,6 +631,8 @@ namespace EdS.Simulation.Engine
             {
                 case CombatAction.GuardStart:
                 case CombatAction.GuardStop:
+                case CombatAction.Move:   // sous-lot 11.4 : moveStarted, moveStopped ou refus
+                case CombatAction.Stop:
                     return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
@@ -687,6 +701,17 @@ namespace EdS.Simulation.Engine
                     long started = Emit(tick, CombatPhase.Commands, "parryStarted", root, w => w
                         .Field("actor", actor.Id).Field("command", item.Index).Field("windowEndTick", actor.ParryEndTick).Field("guarding", actor.Guarding));
                     end.Origin = root.CausedBy(started);
+                    return null;
+
+                // Sous-lot 11.4 : intention de déplacement, appliquée par la phase « movement » de ce tick.
+                case CombatAction.Move:
+                    if (Reject(tick, item, actor, CheckMove(actor))) return null;
+                    StartMoving(tick, item, actor, root);
+                    return null;
+
+                case CombatAction.Stop:
+                    if (Reject(tick, item, actor, CheckMove(actor) ?? (actor.Body!.Moving ? null : "notMoving"))) return null;
+                    StopMoving(tick, item, actor, root);
                     return null;
 
                 default:
@@ -2074,6 +2099,7 @@ namespace EdS.Simulation.Engine
                 f.Guarding = false;
                 f.ParryOpen = false;
                 f.NextAttackTick = null;     // sous-lot 11.1 : un assaillant mort n'a plus de tour (vue du pilote, télégraphie)
+                if (f.Body != null) f.Body.Moving = false;   // sous-lot 11.4 : un mort ne marche plus et n'est plus solide pour personne
                 // A6 : provenance de l'effet mortel ; sans effet mortel (points de vie nuls dès le départ), racine propre.
                 Provenance lethal = f.LethalCause ?? Provenance.NewRoot($"endOfTick:{f.Id}:{tick}", null);
                 long died = Emit(tick, CombatPhase.EndOfTick, "died", lethal,
@@ -2148,15 +2174,20 @@ namespace EdS.Simulation.Engine
                 f.Result.Resonance = character ? f.Resonance : (int?)null;
                 f.Result.RampartCharges = character ? f.RampartCharges : (int?)null;
                 f.Result.IsDead = f.IsDead;
+                if (f.Body is { } body) f.Result.Position = Domain.Space.GroundVector.FromRaw(body.X, body.Z);   // sous-lot 11.4
                 CombatantResult r = f.Result;
-                EmitDiagnostic(tick, CombatPhase.EndOfTick, "combatantSummary", w => w
-                    .Field("combatant", r.Id).Field("team", r.Team).Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken)
-                    .Field("damageAbsorbed", r.DamageAbsorbed).Field("damageTransferred", r.DamageTransferred).Field("damageRedirected", r.DamageRedirected)
-                    .Field("hits", r.Hits).Field("criticalHits", r.CriticalHits).Field("skillsCast", r.SkillsCast)
-                    .Field("commandsRejected", r.CommandsRejected).Field("blocks", r.Blocks).Field("perfectParries", r.PerfectParries)
-                    .Field("failedParries", r.FailedParries).Field("guardBreaks", r.GuardBreaks)
-                    .Field("health", r.Health).Field("endurance", r.Endurance)
-                    .Field("resonance", r.Resonance).Field("rampartCharges", r.RampartCharges).Field("dead", r.IsDead));
+                Body? placed = f.Body;
+                EmitDiagnostic(tick, CombatPhase.EndOfTick, "combatantSummary", w =>
+                {
+                    w.Field("combatant", r.Id).Field("team", r.Team).Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken)
+                        .Field("damageAbsorbed", r.DamageAbsorbed).Field("damageTransferred", r.DamageTransferred).Field("damageRedirected", r.DamageRedirected)
+                        .Field("hits", r.Hits).Field("criticalHits", r.CriticalHits).Field("skillsCast", r.SkillsCast)
+                        .Field("commandsRejected", r.CommandsRejected).Field("blocks", r.Blocks).Field("perfectParries", r.PerfectParries)
+                        .Field("failedParries", r.FailedParries).Field("guardBreaks", r.GuardBreaks)
+                        .Field("health", r.Health).Field("endurance", r.Endurance)
+                        .Field("resonance", r.Resonance).Field("rampartCharges", r.RampartCharges).Field("dead", r.IsDead);
+                    if (placed != null) WriteVector(w, "position", placed.X, placed.Z);   // sous-lot 11.4 (format 10) : combat positionné
+                });
                 f.Resonance = 0;
                 f.RampartCharges = 0;
             }
@@ -2194,6 +2225,13 @@ namespace EdS.Simulation.Engine
                 w.Name("rules");
                 if (character) WriteRules(w, f);
                 else w.Value((string?)null);
+                // Sous-lot 11.4 (format 10) : place de départ, seulement dans un combat positionné.
+                if (f.Body is { } body)
+                {
+                    WriteVector(w, "position", body.X, body.Z);
+                    WriteVector(w, "facing", body.FacingX, body.FacingZ);
+                    w.Field("radius", Fixed.FromRaw(body.Radius)).Field("speed", Fixed.FromRaw(body.Speed));
+                }
             });
         }
 
@@ -2249,6 +2287,7 @@ namespace EdS.Simulation.Engine
             CombatPhase.Setup => "setup",
             CombatPhase.Expirations => "expirations",
             CombatPhase.Commands => "commands",
+            CombatPhase.Movement => "movement",
             CombatPhase.Resolution => "resolution",
             CombatPhase.Periodic => "periodic",
             CombatPhase.Regeneration => "regeneration",

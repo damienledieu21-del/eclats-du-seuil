@@ -137,6 +137,37 @@ namespace EdS.Domain.Combat
         public int UltimateResonanceCost { get; init; } = 100;
 
         /// <summary>
+        /// Sous-lot 11.4 : vitesse de marche de base d'un combattant positionné, en m/s (<c>combat.movement.speed</c>). Valeur de départ
+        /// retenue le 20/10/2026 : 5 m/s, celle du prototype Unity ; réglée à l'essai 11.9. Dans [0,1 ; 20] m/s (borne technique).
+        /// </summary>
+        public Fixed MovementSpeed { get; init; } = Fixed.FromInt(5);
+
+        /// <summary>
+        /// Sous-lot 11.4 (L11-D3) : facteur de vitesse pendant la garde (<c>combat.movement.guardSpeedFactor</c>). Valeur de départ retenue :
+        /// la moitié ; la valeur finale est fixée à l'essai 11.9. Dans [0, 1].
+        /// </summary>
+        public Fixed GuardSpeedFactor { get; init; } = Fixed.FromRatio(1, 2);
+
+        /// <summary>
+        /// Sous-lot 11.4 (L11-D5) : règle de contact entre joueurs et créatures (<c>combat.contact.playerCreature</c>), A ou B, choisie par
+        /// Damien après l'essai du 11.6. Le moteur réalise les deux ; la valeur livrée n'est qu'un point de départ.
+        /// </summary>
+        public ContactRule PlayerCreatureContact { get; init; } = ContactRule.Solid;
+
+        /// <summary>
+        /// Sous-lot 11.4, règle B : facteur de vitesse d'un joueur qui traverse une créature (<c>combat.contact.crossingSpeedFactor</c>).
+        /// Proposition de départ : 0,3 (« ralentit fortement »). Dans ]0, 1] : un joueur n'est jamais immobilisé par un contact.
+        /// </summary>
+        public Fixed CrossingSpeedFactor { get; init; } = Fixed.FromRatio(3, 10);
+
+        /// <summary>
+        /// Sous-lot 11.4 : rayon d'emprise à partir duquel une créature est « grande » (<c>combat.contact.largeCreatureRadius</c>) : elle
+        /// reste solide pour les joueurs quelle que soit la règle (plan du lot 11, section 4.1). Proposition de départ : 1 m (un chef fait
+        /// 1,2 m). Dans [0,1 ; 5] m.
+        /// </summary>
+        public Fixed LargeCreatureRadius { get; init; } = Fixed.One;
+
+        /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
         /// </summary>
@@ -149,6 +180,20 @@ namespace EdS.Domain.Combat
         public const long AbsoluteMaxDurationMs = 86_400_000;
 
         public TickRate Tick => new TickRate(TickMilliseconds);
+
+        /// <summary>
+        /// Sous-lot 11.4 (L11-D5) : deux combattants positionnés sont-ils solides l'un pour l'autre ? Joueurs (personnages) entre eux :
+        /// jamais, ni blocage ni poussée. Créatures (assaillants, mannequins) entre elles : toujours, chacune évite l'autre sans la pousser.
+        /// Joueur et créature : selon <see cref="PlayerCreatureContact"/> (A solide, B traversable), sauf une grande créature
+        /// (<see cref="LargeCreatureRadius"/>), toujours solide.
+        /// </summary>
+        public bool AreSolid(bool firstIsPlayer, Fixed firstRadius, bool secondIsPlayer, Fixed secondRadius)
+        {
+            if (firstIsPlayer && secondIsPlayer) return false;
+            if (!firstIsPlayer && !secondIsPlayer) return true;
+            Fixed creature = firstIsPlayer ? secondRadius : firstRadius;
+            return PlayerCreatureContact == ContactRule.Solid || creature >= LargeCreatureRadius;
+        }
 
         /// <summary>Liste des incohérences ; vide si les règles sont utilisables.</summary>
         public IReadOnlyList<RuleViolation> Validate()
@@ -237,7 +282,54 @@ namespace EdS.Domain.Combat
             else if (MaxWorkPerTick >= 1 && MaxEventsPerTick > MaxWorkPerTick)
                 errors.Add(new RuleViolation("ne peut pas dépasser le budget de travail par tick : chaque événement coûte une unité de travail.",
                     nameof(MaxEventsPerTick), nameof(MaxWorkPerTick)));
+
+            // Sous-lot 11.4 : déplacement et contact.
+            if (MovementSpeed < Space.SpaceLimits.MinSpeed || MovementSpeed > Space.SpaceLimits.MaxSpeed)
+                errors.Add(new RuleViolation($"doit être comprise entre {Space.SpaceLimits.MinSpeed} et {Space.SpaceLimits.MaxSpeed} m/s (borne technique).", nameof(MovementSpeed)));
+            Fraction(GuardSpeedFactor, nameof(GuardSpeedFactor));
+            if (CrossingSpeedFactor <= Fixed.Zero || CrossingSpeedFactor > Fixed.One)
+                errors.Add(new RuleViolation("doit être comprise dans ]0, 1] : un joueur n'est jamais immobilisé par un contact.", nameof(CrossingSpeedFactor)));
+            if (!Enum.IsDefined(typeof(ContactRule), PlayerCreatureContact))
+                errors.Add(new RuleViolation("règle de contact inconnue.", nameof(PlayerCreatureContact)));
+            if (LargeCreatureRadius < Space.SpaceLimits.MinRadius || LargeCreatureRadius > Space.SpaceLimits.MaxRadius)
+                errors.Add(new RuleViolation($"doit être compris entre {Space.SpaceLimits.MinRadius} et {Space.SpaceLimits.MaxRadius} m (borne technique).", nameof(LargeCreatureRadius)));
             return errors;
         }
+    }
+
+    /// <summary>
+    /// Sous-lot 11.4 (L11-D5) : contact entre un joueur et une créature (plan du lot 11, section 4.1). Les joueurs ne se bloquent jamais
+    /// entre eux ; les créatures sont solides entre elles ; les grandes créatures restent solides pour les joueurs dans les deux règles.
+    /// </summary>
+    public enum ContactRule
+    {
+        /// <summary>Règle A, « volumes solides sans poussée » (<c>solid</c>) : on glisse le long de l'emprise, avec le garde-fou anti-piège.</summary>
+        Solid = 0,
+
+        /// <summary>Règle B, « traversée freinée » (<c>slowedCrossing</c>) : chevauchement permis, le joueur qui traverse est ralenti.</summary>
+        SlowedCrossing = 1,
+    }
+
+    /// <summary>Identifiants stables des règles de contact dans les données et le journal.</summary>
+    public static class ContactRuleIds
+    {
+        public const string Solid = "solid";
+        public const string SlowedCrossing = "slowedCrossing";
+
+        public static IReadOnlyList<string> All { get; } = Collections.Frozen.List(new[] { Solid, SlowedCrossing }, nameof(All));
+
+        public static string Of(ContactRule rule) => rule switch
+        {
+            ContactRule.Solid => Solid,
+            ContactRule.SlowedCrossing => SlowedCrossing,
+            _ => throw new ArgumentOutOfRangeException(nameof(rule), rule, null),
+        };
+
+        public static ContactRule Parse(string id) => id switch
+        {
+            Solid => ContactRule.Solid,
+            SlowedCrossing => ContactRule.SlowedCrossing,
+            _ => throw new ArgumentException($"règle de contact inconnue « {id} ».", nameof(id)),
+        };
     }
 }

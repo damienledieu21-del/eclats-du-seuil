@@ -6,6 +6,7 @@ using EdS.Data.Json.Text;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Domain.Combat;
+using EdS.Domain.Space;
 
 namespace EdS.Data.Json
 {
@@ -50,6 +51,11 @@ namespace EdS.Data.Json
             {
                 ["seed"] = (v, p) => data.Seed = input.Int64(v, p),
                 ["durationMs"] = (v, p) => data.DurationMs = input.Int64(v, p),
+                ["space"] = (v, p) =>   // sous-lot 11.4 (schéma 5)
+                {
+                    data.Present.Add("space");
+                    data.Space = ReadSpace(input, v, p);
+                },
                 ["combatants"] = (v, p) => data.Combatants = input.ReadLimitedList(v, p, limits.MaxCombatants,
                     n => $"{n} combattants, au plus {limits.MaxCombatants} (combat.limits.maxCombatants).", (e, ip) => ReadCombatant(input, e, ip)),
                 ["commands"] = (v, p) => data.Commands = input.ReadLimitedList(v, p, limits.MaxCommands,
@@ -83,8 +89,63 @@ namespace EdS.Data.Json
                 ["intervalMs"] = Track("intervalMs", (v, p) => c.IntervalMs = input.Int64(v, p)),
                 ["attacks"] = Track("attacks", (v, p) => c.Attacks = input.ReadList(v, p, (e, ip) => ReadAttack(input, e, ip))),
                 ["triggers"] = Track("triggers", (v, p) => c.Triggers = TriggerJsonReader.ReadList(input, v, p)),
+                // Sous-lot 11.4 (schéma 5) : place de départ.
+                ["position"] = Track("position", (v, p) => c.Position = ReadPoint(input, v, p)),
+                ["facing"] = Track("facing", (v, p) => c.Facing = ReadPoint(input, v, p)),
+                ["radius"] = Track("radius", (v, p) => c.Radius = input.Decimal(v, p)),
+                ["speed"] = Track("speed", (v, p) => c.Speed = input.Decimal(v, p)),
             });
             return ok ? c : null;
+        }
+
+        /// <summary>Sous-lot 11.4 : point ou direction, tableau d'exactement deux nombres <c>[x, z]</c>.</summary>
+        private static PointData? ReadPoint(JsonInput input, JsonElement element, string path)
+        {
+            if (!input.RequireKind(element, JsonValueKind.Array, path, "tableau [x, z]")) return null;
+            IReadOnlyList<JsonElement> items = element.EnumerateArray();
+            if (items.Count != 2)
+            {
+                input.Report.Add(path, ValidationCode.WrongType, $"tableau de deux nombres [x, z] attendu ({items.Count} valeur(s)).", input.LineOf(path));
+                return null;
+            }
+            // Une coordonnée invalide est signalée sur le point lui-même : un seul message, pas de « champ absent » en plus.
+            var point = new PointData { X = input.Decimal(items[0], path), Z = input.Decimal(items[1], path) };
+            return point.X is null || point.Z is null ? null : point;
+        }
+
+        private static SpaceData? ReadSpace(JsonInput input, JsonElement element, string path)
+        {
+            var space = new SpaceData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["bounds"] = (v, p) => space.Bounds = ReadBounds(input, v, p),
+                ["obstacles"] = (v, p) => space.Obstacles = input.ReadLimitedList(v, p, SpaceLimits.MaxObstacles,
+                    n => $"{n} obstacles, au plus {SpaceLimits.MaxObstacles}.", (e, ip) => ReadObstacle(input, e, ip)),
+            });
+            return ok ? space : null;
+        }
+
+        private static BoundsData? ReadBounds(JsonInput input, JsonElement element, string path)
+        {
+            var bounds = new BoundsData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["min"] = (v, p) => bounds.Min = ReadPoint(input, v, p),
+                ["max"] = (v, p) => bounds.Max = ReadPoint(input, v, p),
+            });
+            return ok ? bounds : null;
+        }
+
+        private static ObstacleData? ReadObstacle(JsonInput input, JsonElement element, string path)
+        {
+            var obstacle = new ObstacleData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => obstacle.Id = input.Text(v, p),
+                ["points"] = (v, p) => obstacle.Points = input.ReadLimitedList(v, p, SpaceLimits.MaxVertices,
+                    n => $"{n} sommets, au plus {SpaceLimits.MaxVertices}.", (e, ip) => ReadPoint(input, e, ip)),
+            });
+            return ok ? obstacle : null;
         }
 
         internal static BuildData? ReadBuild(JsonInput input, JsonElement element, string path)
@@ -142,6 +203,7 @@ namespace EdS.Data.Json
                 ["skill"] = Track("skill", (v, p) => c.Skill = input.Text(v, p)),
                 ["action"] = Track("action", (v, p) => c.Action = input.Text(v, p)),
                 ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
+                ["direction"] = Track("direction", (v, p) => c.Direction = ReadPoint(input, v, p)),   // sous-lot 11.4
             });
             return ok ? c : null;
         }

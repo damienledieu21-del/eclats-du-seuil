@@ -152,6 +152,12 @@ namespace EdS.Data.Rules
             new RuleField("combat.resonance.perPerfectParry", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerPerfectParry)),
             new RuleField("combat.resonance.perBlock", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerBlock)),
             new RuleField("combat.resonance.ultimateCost", RuleValueKind.Int32, C, nameof(CombatRules.UltimateResonanceCost)),
+            // Sous-lot 11.4 (schéma 10) : déplacement et contact.
+            new RuleField("combat.movement.speed", RuleValueKind.Decimal, C, nameof(CombatRules.MovementSpeed)),
+            new RuleField("combat.movement.guardSpeedFactor", RuleValueKind.Decimal, C, nameof(CombatRules.GuardSpeedFactor)),
+            new RuleField("combat.contact.playerCreature", RuleValueKind.Token, C, nameof(CombatRules.PlayerCreatureContact), ContactRuleIds.All),
+            new RuleField("combat.contact.crossingSpeedFactor", RuleValueKind.Decimal, C, nameof(CombatRules.CrossingSpeedFactor)),
+            new RuleField("combat.contact.largeCreatureRadius", RuleValueKind.Decimal, C, nameof(CombatRules.LargeCreatureRadius)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

@@ -90,6 +90,9 @@ namespace EdS.Domain.Combat
         Parry = 4,
         Regeneration = 8,
         AssailantAttacks = 16,
+
+        /// <summary>Sous-lot 11.4a (décision de Damien du 20/10/2026) : le déplacement d'un combat positionné ; l'intention est gardée.</summary>
+        Movement = 32,
     }
 
     /// <summary>Postures interrompues à l'application.</summary>
@@ -117,7 +120,7 @@ namespace EdS.Domain.Combat
 
         public static IReadOnlyDictionary<string, StatusBlocks> Blocks { get; } = Map(
             ("skills", StatusBlocks.Skills), ("guard", StatusBlocks.Guard), ("parry", StatusBlocks.Parry),
-            ("regeneration", StatusBlocks.Regeneration), ("assailantAttacks", StatusBlocks.AssailantAttacks));
+            ("regeneration", StatusBlocks.Regeneration), ("assailantAttacks", StatusBlocks.AssailantAttacks), ("movement", StatusBlocks.Movement));
 
         public static IReadOnlyDictionary<string, StatusInterrupts> Interrupts { get; } = Map(
             ("guard", StatusInterrupts.Guard), ("parry", StatusInterrupts.Parry));
@@ -363,7 +366,7 @@ namespace EdS.Domain.Combat
             new StatusDefinition("bleed", StatusCategory.Dot, 6000, StatusStacking.PerSourceKeepStronger, StatusResistanceMode.Defense,
                 periodMs: 2000, damageType: Stats.DamageType.Physique),
             new StatusDefinition("stun", StatusCategory.Control, 1500, StatusStacking.Ignore, StatusResistanceMode.Duration,
-                blocks: StatusBlocks.Skills | StatusBlocks.Guard | StatusBlocks.Parry | StatusBlocks.AssailantAttacks,
+                blocks: StatusBlocks.Skills | StatusBlocks.Guard | StatusBlocks.Parry | StatusBlocks.AssailantAttacks | StatusBlocks.Movement,
                 interrupts: StatusInterrupts.Guard | StatusInterrupts.Parry, blockReason: "stunned", grantsOnExpiry: "stunImmunity"),
             new StatusDefinition("stunImmunity", StatusCategory.Immunity, 3000, StatusStacking.Ignore, immuneTo: new[] { "stun" }),
             new StatusDefinition("freeze", StatusCategory.Control, 4000, StatusStacking.KeepLonger, StatusResistanceMode.Duration,

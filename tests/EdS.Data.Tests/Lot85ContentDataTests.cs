@@ -177,6 +177,6 @@ public class Lot85ContentDataTests
         // Le catalogue du domaine (StatusCatalog.Provisional) reprend les mêmes définitions, dans le même ordre.
         Assert.Equal(StatusCatalog.Provisional.Definitions.Select(d => (d.Id, d.Category, d.DurationMs, d.Stacking, d.RedirectRatio)),
             catalog.Definitions.Select(d => (d.Id, d.Category, d.DurationMs, d.Stacking, d.RedirectRatio)));
-        Assert.Equal("0.8.0-provisoire", ShippedData.Rules.ContentVersion);
+        Assert.Equal(DataFormat.ProvisionalRulesContentVersion, ShippedData.Rules.ContentVersion);   // 0.8.0 au 8.5, 0.9.0 au 11.4a (déplacement)
     }
 }

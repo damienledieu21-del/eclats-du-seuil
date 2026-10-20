@@ -105,10 +105,10 @@ public class Lot111ScenarioDataTests
     [Fact]
     public void Schema_3_refuse_sans_migration()
     {
-        Assert.Equal(4, ScenarioValidator.CurrentSchemaVersion);
+        Assert.True(ScenarioValidator.CurrentSchemaVersion >= 4);   // 4 au sous-lot 11.1, 5 au 11.4a (positions)
         ValidationError error = Assert.Single(ReadMutated(s => s["schemaVersion"] = 3, scenario: Scenario).Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (error.Path, error.Code));
-        Assert.Contains("antérieure à la version 4", error.Message);
+        Assert.Contains($"antérieure à la version {ScenarioValidator.CurrentSchemaVersion}", error.Message);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class Lot111ScenarioDataTests
     {
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement root = schema.RootElement;
-        Assert.Equal(4, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
+        Assert.Equal(ScenarioValidator.CurrentSchemaVersion, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
         JsonElement health = root.GetProperty("$defs").GetProperty("combatant").GetProperty("properties").GetProperty("health");
         Assert.Equal(("integer", 1, AssailantSetup.MaxHealth),
             (health.GetProperty("type").GetString(), health.GetProperty("minimum").GetInt64(), health.GetProperty("maximum").GetInt64()));

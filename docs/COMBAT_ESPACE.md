@@ -115,6 +115,8 @@ Décidé (L11-D3) : la couverture du bouclier est décrite explicitement, sans p
 
 Comme au 11.1, les journaux des scénarios livrés sans positions sont comparés à ceux du moteur précédent ; le combat sans positions reste reproductible.
 
+**Réalisé au 11.4a** (positions, déplacement et décor ; sections 1 à 3) : moteur 0.16.0, journal au format 10 (place de départ sur `combatant`, `moveStarted`, `moveStopped`, `moved` regroupé par tick, position finale), scénarios en schéma 5 (`space`, `position`, `facing`, `radius`, `speed`, `move` et `stop`), règles en schéma 10 (`combat.movement` et `combat.contact`). Le 11.4 étant livré en plusieurs PR, chacune versionne ses propres ajouts : portées et formes des compétences (classes en schéma 9, refus de portée et de ligne de vue) au 11.4b, attaques annoncées, défenses déclarées, arc du bouclier et temps de réaction (règles et scénarios) au 11.4c, entrées et sorties et instantané d'état au 11.4d. Écart à ce tableau : la **surface** n'est pas dans le schéma 5 ; la démonstration n'a qu'un niveau (proposition de la section 1) et les surfaces viendront avec leurs passages. Détail : [MOTEUR.md](MOTEUR.md#combat-positionné-sous-lot-114a), limites : [LIMITES_LOT_11.md](LIMITES_LOT_11.md#sous-lot-114a--positions-déplacement-et-décor).
+
 ## 9. Preuves prévues
 
 - **Portée et esquive réelles** : au tick près, à la frontière exacte ; propriétés sur positions aléatoires ; en réseau, esquive mesurée de 0 à 200 ms d'un sens (11.7).

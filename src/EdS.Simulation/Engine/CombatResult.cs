@@ -82,6 +82,9 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Ultimes lancées.</summary>
         public long UltimatesCast { get; internal set; }
+
+        /// <summary>Sous-lot 11.4 : position en fin de combat (centre de l'emprise) d'un combat positionné ; null sinon.</summary>
+        public Domain.Space.GroundVector? Position { get; internal set; }
     }
 
     public sealed class CombatResult

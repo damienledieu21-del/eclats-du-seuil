@@ -1,0 +1,243 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 5,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 114,
+    "durationMs": 8000,
+    "space": {
+      "bounds": {
+        "min": [
+          -10,
+          -6
+        ],
+        "max": [
+          10,
+          6
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "rocher",
+          "points": [
+            [
+              -4.5,
+              -0.2
+            ],
+            [
+              -3.5,
+              -0.2
+            ],
+            [
+              -3.5,
+              2
+            ],
+            [
+              -4.5,
+              2
+            ]
+          ]
+        },
+        {
+          "id": "mur_nord",
+          "points": [
+            [
+              2,
+              0.9
+            ],
+            [
+              2.4,
+              0.9
+            ],
+            [
+              2.4,
+              6
+            ],
+            [
+              2,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "mur_sud",
+          "points": [
+            [
+              2,
+              -6
+            ],
+            [
+              2.4,
+              -6
+            ],
+            [
+              2.4,
+              -0.9
+            ],
+            [
+              2,
+              -0.9
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 30,
+          "attributes": {
+            "force": 30,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 30,
+            "volonte": 15,
+            "endurance": 20
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.rempart.peau_de_fer": 5,
+            "talent.bastion.rempart.souffle_du_roc": 4,
+            "talent.bastion.rempart.poids_du_rempart": 5,
+            "talent.bastion.rempart.rempart_eternel": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.gardien.vigilance": 5,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.barriere_d_acier",
+            "skill.bastion.onde_de_rupture"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.endurance_du_roc",
+            "skill.bastion.bouclier_lourd",
+            "skill.bastion.reserve_de_charges",
+            "skill.bastion.posture_de_fer"
+          ]
+        },
+        "position": [
+          -6,
+          0.5
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.5
+      },
+      {
+        "id": "loup",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "health": 600,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion",
+        "firstAttackMs": 60000,
+        "intervalMs": 3000,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 60,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": []
+          }
+        ],
+        "position": [
+          8,
+          0.4
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 6
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 0,
+        "actor": "bastion",
+        "action": "move",
+        "direction": [
+          1,
+          0
+        ]
+      },
+      {
+        "atMs": 500,
+        "actor": "bastion",
+        "action": "move",
+        "direction": [
+          1,
+          -1
+        ]
+      },
+      {
+        "atMs": 1000,
+        "actor": "bastion",
+        "action": "move",
+        "direction": [
+          1,
+          0.2
+        ]
+      },
+      {
+        "atMs": 1500,
+        "actor": "loup",
+        "action": "move",
+        "direction": [
+          -1,
+          0
+        ]
+      },
+      {
+        "atMs": 2200,
+        "actor": "bastion",
+        "action": "stop"
+      },
+      {
+        "atMs": 2250,
+        "actor": "bastion",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 5000,
+        "actor": "loup",
+        "action": "move",
+        "direction": [
+          -1,
+          0.6
+        ]
+      },
+      {
+        "atMs": 6000,
+        "actor": "bastion",
+        "action": "move",
+        "direction": [
+          -1,
+          0
+        ]
+      },
+      {
+        "atMs": 7000,
+        "actor": "bastion",
+        "action": "stop"
+      }
+    ]
+  }
+}

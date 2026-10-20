@@ -18,8 +18,43 @@ namespace EdS.Data.Scenarios
     {
         public long? Seed { get; set; }
         public long? DurationMs { get; set; }
+
+        /// <summary>Sous-lot 11.4 (schéma 5) : espace d'un combat positionné ; absent pour un combat sans positions.</summary>
+        public SpaceData? Space { get; set; }
+
         public List<CombatantData?>? Combatants { get; set; }
         public List<CommandData?>? Commands { get; set; }
+
+        /// <summary>Champs effectivement présents dans le fichier.</summary>
+        public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Sous-lot 11.4 : point ou direction <c>[x, z]</c>, en mètres.</summary>
+    public sealed class PointData
+    {
+        public Fixed? X { get; set; }
+        public Fixed? Z { get; set; }
+    }
+
+    /// <summary>Sous-lot 11.4 (schéma 5) : aire praticable et obstacles.</summary>
+    public sealed class SpaceData
+    {
+        public BoundsData? Bounds { get; set; }
+
+        /// <summary>Obstacles convexes ; facultatif, aucun par défaut.</summary>
+        public List<ObstacleData?>? Obstacles { get; set; }
+    }
+
+    public sealed class BoundsData
+    {
+        public PointData? Min { get; set; }
+        public PointData? Max { get; set; }
+    }
+
+    public sealed class ObstacleData
+    {
+        public string? Id { get; set; }
+        public List<PointData?>? Points { get; set; }
     }
 
     public sealed class CombatantData
@@ -54,6 +89,17 @@ namespace EdS.Data.Scenarios
 
         /// <summary>Déclencheurs d'un assaillant (lot 7.3, Q4) ; facultatifs.</summary>
         public List<Triggers.TriggerData?>? Triggers { get; set; }
+
+        // Sous-lot 11.4 (schéma 5) : place de départ dans un combat positionné.
+        public PointData? Position { get; set; }
+
+        /// <summary>Orientation de départ ; facultative, vers le nord ([0, 1]) par défaut.</summary>
+        public PointData? Facing { get; set; }
+
+        public Fixed? Radius { get; set; }
+
+        /// <summary>Vitesse propre d'un assaillant, en m/s ; facultative (celle des règles sinon).</summary>
+        public Fixed? Speed { get; set; }
 
         /// <summary>Champs effectivement présents dans le fichier, pour refuser ceux qui ne conviennent pas au type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
@@ -102,11 +148,14 @@ namespace EdS.Data.Scenarios
         /// <summary>Compétence lancée ; absente pour une garde ou une parade.</summary>
         public string? Skill { get; set; }
 
-        /// <summary>« guardStart », « guardStop » ou « parry » ; absente pour une compétence.</summary>
+        /// <summary>« guardStart », « guardStop », « parry », « move » ou « stop » ; absente pour une compétence.</summary>
         public string? Action { get; set; }
 
         /// <summary>Cible ; null si absente ou null (compétence de zone).</summary>
         public string? Target { get; set; }
+
+        /// <summary>Sous-lot 11.4 : direction d'un « move ».</summary>
+        public PointData? Direction { get; set; }
 
         /// <summary>Champs effectivement présents dans le fichier.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();

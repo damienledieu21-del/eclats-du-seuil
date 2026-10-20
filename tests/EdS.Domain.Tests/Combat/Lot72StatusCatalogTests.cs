@@ -33,7 +33,8 @@ public class Lot72StatusCatalogTests
         // Décisions 7 et 8 : étourdissement 1,5 s, bloque les actions, interrompt garde et parade ; immunité de 3 s à l'expiration.
         StatusDefinition stun = Shipped["stun"];
         Assert.Equal((1500L, StatusResistanceMode.Duration, "stunImmunity", "stunned"), (stun.DurationMs, stun.Resistance, stun.GrantsOnExpiry, stun.BlockReason));
-        Assert.Equal(StatusBlocks.Skills | StatusBlocks.Guard | StatusBlocks.Parry | StatusBlocks.AssailantAttacks, stun.Blocks);
+        // Sous-lot 11.4a : l'étourdissement bloque aussi le déplacement (décision de Damien du 20/10/2026).
+        Assert.Equal(StatusBlocks.Skills | StatusBlocks.Guard | StatusBlocks.Parry | StatusBlocks.AssailantAttacks | StatusBlocks.Movement, stun.Blocks);
         Assert.Equal(StatusInterrupts.Guard | StatusInterrupts.Parry, stun.Interrupts);
         // Correctif 7.2 : un étourdissement actif refuse toute nouvelle application (ignore, refus « active ») ; il expire donc
         // toujours et l'immunité suit.
