@@ -26,6 +26,7 @@ namespace EdS.Game
     {
         private static readonly string[] ScenarioFiles =
         {
+            "meute_a_vaincre.json",   // sous-lot 11.1 : loups mortels, le combat se gagne
             "entrainement_garde_parade.json",
             "mesures/s1_mannequin.json",
             "mesures/s2_duel.json",
@@ -66,7 +67,7 @@ namespace EdS.Game
         private CharacterBuild _customBuild;
 
         // Sous-lot 10.4 : jeu en réseau. Session (null : solo), menu ouvert, combat affiché, build demandé au serveur.
-        private const string CoopScenario = "coop/duo_meute.json";
+        private const string CoopScenario = "coop/meute_a_vaincre.json";   // sous-lot 11.1 : la meute meurt, la coopération se gagne
         private const string RobotBuild = "build.bastion.gardien";
         private NetworkSession _net;
         private readonly NetworkScreen _netScreen = new NetworkScreen();
@@ -273,7 +274,7 @@ namespace EdS.Game
                 foreach (CombatFeedback feedback in _combat.DrainFeedback()) Show(feedback);
                 if (_combat.IsFinished && !_paused)
                 {
-                    Say("Fin de la séance : Retour arrière pour recommencer.");
+                    Say($"{Outcome(_combat.Result, _combat.Player().View.Team)} Retour arrière pour recommencer.");
                     _paused = true;
                 }
             }
@@ -281,6 +282,18 @@ namespace EdS.Game
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+        }
+
+        /// <summary>
+        /// Sous-lot 11.1 : issue d'un combat vue du joueur. Les ennemis mortels peuvent tous tomber : victoire ; sinon défaite, ou temps
+        /// écoulé contre des ennemis d'entraînement aux PV infinis.
+        /// </summary>
+        private static string Outcome(CombatResult result, string team)
+        {
+            if (result == null) return "Combat terminé.";
+            if (result.Winner == team) return "Victoire : tous les ennemis sont vaincus !";
+            if (result.Winner != null) return "Défaite.";
+            return result.EndReason == CombatEndReason.DurationReached ? "Temps écoulé : fin de la séance." : "Combat terminé, sans vainqueur.";
         }
 
         private void ReadCombatInput()
@@ -475,8 +488,7 @@ namespace EdS.Game
             if (combat != null && combat.IsFinished && _lastCombat == null)
             {
                 CombatResult result = combat.Result;
-                string outcome = result == null ? "" : result.Winner == null ? " — aucun vainqueur" : $" — équipe gagnante : {result.Winner}";
-                _lastCombat = $"Dernier combat : {combat.EndReason ?? "terminé."}{outcome}";
+                _lastCombat = result == null ? $"Dernier combat : {combat.EndReason ?? "terminé."}" : "Dernier combat : " + Outcome(result, _combat.Player().View.Team);
                 Say("Fin du combat : retour en salle d'attente.");
             }
             if (combat != null && !combat.IsFinished) _lastCombat = null;

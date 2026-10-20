@@ -37,9 +37,11 @@ namespace EdS.Data.Scenarios
         /// Version 1 : lots 5 et 6 (assaillant, actions, ajouts compatibles). Version 2 (lot 7.2) : <c>applies</c> remplace
         /// <c>appliesFragility</c> sur les attaques d'assaillant, <c>statusResistance</c> facultatif sur mannequins et assaillants.
         /// Lot 7.3 : <c>triggers</c> facultatif sur un assaillant (ajout compatible, version inchangée). Version 3 (sous-lot 8.3) :
-        /// <c>applies[].target</c> sur les attaques et rôle <c>ally</c> des déclencheurs d'assaillant.
+        /// <c>applies[].target</c> sur les attaques et rôle <c>ally</c> des déclencheurs d'assaillant. Version 4 (sous-lot 11.1) : <c>health</c>
+        /// facultatif sur un assaillant (PV d'un assaillant mortel ; absent : PV infinis de l'entraînement). Une version antérieure est
+        /// refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -48,7 +50,7 @@ namespace EdS.Data.Scenarios
         {
             ["character"] = new[] { "class", "build" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
-            ["assailant"] = new[] { "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers" },
+            ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers" },
         };
 
         public static ScenarioLoadResult Validate(ScenarioDocument document, GameData data, ValidationReport? report = null)
@@ -107,7 +109,7 @@ namespace EdS.Data.Scenarios
                         ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, ClassValidator.Applications(a.Applies!)));
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
-                        Triggers.TriggerShape.Build(c.Triggers)));
+                        Triggers.TriggerShape.Build(c.Triggers), c.Health));
                 }
                 else
                 {

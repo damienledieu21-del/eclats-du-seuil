@@ -44,7 +44,7 @@ namespace EdS.Game
             float w = 680f, x = Hud.Width / 2f - w / 2f, y = 170f;
             Hud.Fill(new Rect(x - 16, y - 16, w + 32, 520), new Color(0.05f, 0.07f, 0.1f, 0.92f));
             Hud.Title(new Rect(x, y, w, 36), "Jeu en réseau — deux Bastions contre la meute");
-            Hud.Small(new Rect(x, y + 40, w, 24), "Coopération sur le réseau local (scénario coop/duo_meute). Échap ou M : fermer.");
+            Hud.Small(new Rect(x, y + 40, w, 24), "Coopération sur le réseau local (scénario coop/meute_a_vaincre : la meute peut mourir). Échap ou M : fermer.");
 
             Hud.Text(new Rect(x, y + 84, 160, 30), "Ton nom :");
             PlayerName = Hud.Field(new Rect(x + 170, y + 82, 300, 34), PlayerName, Protocol.MaxNameLength);

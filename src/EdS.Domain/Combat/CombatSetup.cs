@@ -181,11 +181,21 @@ namespace EdS.Domain.Combat
     }
 
     /// <summary>
-    /// Assaillant d'entraînement (A21) : PV infinis, n'obéit à aucune commande, attaque à intervalle fixe en enchaînant
-    /// ses attaques dans l'ordre (puis recommence). Première attaque à <see cref="FirstAttackMs"/>.
+    /// Assaillant : n'obéit à aucune commande, attaque à intervalle fixe en enchaînant ses attaques dans l'ordre (puis recommence).
+    /// Première attaque à <see cref="FirstAttackMs"/>. Sans <see cref="Health"/>, c'est l'assaillant d'entraînement (A21) aux PV infinis ;
+    /// avec, il meurt à 0 PV comme un personnage (sous-lot 11.1).
     /// </summary>
     public sealed class AssailantSetup : CombatantSetup
     {
+        /// <summary>PV maximaux d'un assaillant mortel (10⁹), très au-delà du jeu prévu.</summary>
+        public const long MaxHealth = 1_000_000_000;
+
+        /// <summary>
+        /// Sous-lot 11.1 : PV de départ et maximaux, dans [1, <see cref="MaxHealth"/>] ; null : PV infinis (assaillant d'entraînement, A21).
+        /// À 0 PV, l'assaillant meurt : plus aucune attaque, plus une cible valide, une seule ligne <c>died</c>.
+        /// </summary>
+        public long? Health { get; }
+
         public Fixed Armor { get; }
         public Fixed MagicResistance { get; }
 
@@ -206,9 +216,11 @@ namespace EdS.Domain.Combat
         public string TriggerDefinitionId => "assailant." + Id;
 
         public AssailantSetup(string id, string team, Fixed armor, Fixed magicResistance, string? target, long firstAttackMs, long intervalMs,
-            IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default, IEnumerable<TriggerDefinition>? triggers = null)
+            IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default, IEnumerable<TriggerDefinition>? triggers = null,
+            long? health = null)
             : base(id, team, initiative)
         {
+            Health = health;
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
             Armor = armor;
             MagicResistance = magicResistance;
@@ -765,6 +777,9 @@ namespace EdS.Domain.Combat
 
         private void ValidateAssailantShape(AssailantSetup a, string path, long tick, List<RuleViolation> errors)
         {
+            // Sous-lot 11.1 : un assaillant mortel commence vivant ; null garde les PV infinis de l'entraînement (A21).
+            if (a.Health is long health && (health < 1 || health > AssailantSetup.MaxHealth))
+                errors.Add(new RuleViolation($"PV hors de [1, {AssailantSetup.MaxHealth}].", path + ".health"));
             Defense(a.Armor, "l'armure de l'assaillant", path + ".armor", errors);
             Defense(a.MagicResistance, "la résistance magique de l'assaillant", path + ".magicResistance", errors);
             Defense(a.StatusResistance, "la résistance aux altérations de l'assaillant", path + ".statusResistance", errors);

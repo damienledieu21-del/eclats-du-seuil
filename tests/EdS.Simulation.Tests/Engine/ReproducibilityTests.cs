@@ -86,8 +86,10 @@ public class ReproducibilityTests
     // damageAbsorbed au bilan, shield.potencyDealt dans les règles effectives), sans bouclier : gameplay inchangé (ancienne empreinte 6cefb445…).
     // Sous-lot 8.3 : moteur 0.13.0, format 7 (transferred sur les dégâts, damageTransferred et damageRedirected au bilan, clés protection.*
     // dans les règles effectives), sans protection : gameplay inchangé (ancienne empreinte 9294c3e3…). Sous-lot 8.4 : moteur 0.14.0, format 8
-    // (guard.noUpkeep dans les règles effectives) ; classe d'essai inchangée : gameplay inchangé (ancienne empreinte 0f1be953…).
-    internal const string ReferenceHash = "234e3c83ae57c337d16254a21472434d16a26b7b767d7d8c480775b72b604e55";
+    // (guard.noUpkeep dans les règles effectives) ; classe d'essai inchangée : gameplay inchangé (ancienne empreinte 0f1be953…). Sous-lot
+    // 11.1 : moteur 0.15.0, format 9 (PV facultatifs des assaillants) ; le mannequin n'en a pas : seul l'en-tête change (ancienne empreinte
+    // 234e3c83…).
+    internal const string ReferenceHash = "4d08cf794cd9bd6a37db24e34582c8cbfab7dbbd3abe8690812c0163aa1cd683";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

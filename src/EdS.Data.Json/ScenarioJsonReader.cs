@@ -77,6 +77,7 @@ namespace EdS.Data.Json
                 ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
                 ["magicResistance"] = Track("magicResistance", (v, p) => c.MagicResistance = input.Decimal(v, p)),
                 ["statusResistance"] = Track("statusResistance", (v, p) => c.StatusResistance = input.Decimal(v, p)),
+                ["health"] = Track("health", (v, p) => c.Health = input.Int64(v, p)),   // sous-lot 11.1 (schéma 4)
                 ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
                 ["firstAttackMs"] = Track("firstAttackMs", (v, p) => c.FirstAttackMs = input.Int64(v, p)),
                 ["intervalMs"] = Track("intervalMs", (v, p) => c.IntervalMs = input.Int64(v, p)),
