@@ -753,6 +753,10 @@ namespace EdS.Simulation.Engine
                     // et aucune altération ne garde l'effet qui l'aurait épuisée.
                     Require(s.Absorb >= 0 && s.Absorb <= CounterCeiling && (s.Definition.IsShield ? s.Absorb > 0 : s.Absorb == 0) && s.DepletedBy is null,
                         $"{status} : absorption impossible.");
+                    // 20e tour : un bouclier absorbe au plus la valeur de la plus forte application possible de cette altération (l'absorption
+                    // ne fait ensuite que décroître, un renouvellement gardant la plus forte des deux valeurs).
+                    Require(!s.Definition.IsShield || s.Absorb <= MaxShieldAbsorb(s.Definition, s.Key.Source),
+                        $"{status} : absorption au-delà du plus fort bouclier possible.");
                     // 19e tour : ApplyStatus fixe l'origine par WithSource(source).CausedBy(ligne).ForInstance(instance, génération) : même source,
                     // même instance, même génération, une cause.
                     Require(string.Equals(s.Origin.Source, s.Source, StringComparison.Ordinal) && s.Origin.SourceInstance == s.Id
@@ -847,6 +851,51 @@ namespace EdS.Simulation.Engine
             long floor = definition.IsDot ? definition.PeriodMs : _tickMs;
             long ms = Math.Max(Math.Max(definition.DurationMs, floor), Math.Min(CombatRules.AbsoluteMaxDurationMs, checked(definition.DurationMs + added)));
             return ms / _tickMs;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (20e tour) : plus forte absorption qu'un bouclier <paramref name="definition"/> a pu recevoir, soit
+        /// <see cref="ShieldAmount"/> de la plus forte application de cette altération par une source possible : la source de la clé pour un
+        /// cumul par source, n'importe quel combattant sinon (un renouvellement par une autre source garde la plus forte valeur). Applications
+        /// comptées pour une source : compétences de sa classe, attaques d'un assaillant, déclencheurs permanents à leur rang, déclencheurs
+        /// portés par une altération du catalogue (rang 1, posés au nom de leur porteur).
+        /// </summary>
+        private long MaxShieldAbsorb(StatusDefinition definition, string? keySource)
+        {
+            Fixed carried = Fixed.Zero;
+            foreach (StatusDefinition carrier in _statuses.Definitions)
+                foreach (TriggerDefinition trigger in carrier.Triggers) carried = Fixed.Max(carried, StrongestShield(trigger, definition.Id, 1));
+            long best = 0;
+            foreach (Fighter source in _fightersById)
+            {
+                if (keySource != null && !string.Equals(source.Id, keySource, StringComparison.Ordinal)) continue;
+                Fixed coefficient = carried;
+                if (source.Character is { } character)
+                    foreach (SkillDefinition skill in character.Class.Skills)
+                        if (skill.Combat is { } combat) coefficient = Fixed.Max(coefficient, StrongestShield(combat.Applies, definition.Id));
+                if (source.Assailant is { } assailant)
+                    foreach (AssailantAttack attack in assailant.Attacks) coefficient = Fixed.Max(coefficient, StrongestShield(attack.Applies, definition.Id));
+                foreach (TriggerSlot slot in source.Triggers) coefficient = Fixed.Max(coefficient, StrongestShield(slot.Definition, definition.Id, slot.Rank));
+                best = Math.Max(best, ShieldAmount(source, definition, coefficient));
+            }
+            return best;
+        }
+
+        private static Fixed StrongestShield(IReadOnlyList<StatusApplication> applies, string status)
+        {
+            Fixed best = Fixed.Zero;
+            foreach (StatusApplication a in applies)
+                if (a.Coefficient is { } c && string.Equals(a.Status, status, StringComparison.Ordinal)) best = Fixed.Max(best, c);
+            return best;
+        }
+
+        private static Fixed StrongestShield(TriggerDefinition trigger, string status, int rank)
+        {
+            Fixed best = Fixed.Zero;
+            foreach (TriggerEffect e in trigger.Effects)
+                if (e.Kind == TriggerEffectKind.ApplyStatus && e.Coefficient is { } c && string.Equals(e.Status, status, StringComparison.Ordinal))
+                    best = Fixed.Max(best, c.At(rank));
+            return best;
         }
 
         /// <summary>

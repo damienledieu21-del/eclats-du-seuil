@@ -493,6 +493,18 @@ public class Lot102ServerTests
     // --- Fin et nouvelle partie --------------------------------------------------------------------------------------------
 
     [Fact]
+    public void Build_du_siege_garde_l_arrivee_du_personnage()
+    {
+        // Revue Codex de la PR #32 (20e tour) : le build choisi pour un siège remplace celui du scénario sans effacer l'instant d'arrivée
+        // du personnage (le renfort du scénario livré espace_renfort arrive à 3 s).
+        var world = new World(ScenarioJsonReader.ReadFile(ScenarioPath("espace_renfort"), ShippedData).Setup!);
+        (Bot a, _) = world.Start();
+        System.Text.Json.JsonElement combatants = System.Text.Json.JsonDocument.Parse(a.Last<StartMessage>().Header).RootElement
+            .GetProperty("scenario").GetProperty("combatants");
+        Assert.Equal(("renfort", 3000L), (combatants[1].GetProperty("id").GetString(), combatants[1].GetProperty("arrivalMs").GetInt64()));
+    }
+
+    [Fact]
     public void Fin_du_combat_journal_rejouable_puis_nouvelle_partie()
     {
         var world = new World(options: new RoomOptions { DurationMs = 3000 });

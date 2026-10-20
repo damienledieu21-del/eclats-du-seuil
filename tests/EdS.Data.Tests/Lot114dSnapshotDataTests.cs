@@ -77,6 +77,10 @@ public class Lot114dSnapshotDataTests
         Assert.NotEqual(text, drained);
         Assert.Contains("absorption impossible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(drained),
             NullCombatLog.Instance)).Message);
+        // 20e tour : une absorption au-delà de la plus forte application possible de ce bouclier est refusée.
+        string inflated = shield.Replace(text, "${1}999999999", 1);
+        Assert.Contains("absorption au-delà du plus fort bouclier possible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
+            CombatSnapshot.Parse(inflated), NullCombatLog.Instance)).Message);
         var depleted = new System.Text.RegularExpressions.Regex("(\"state\":\"(steelBarrier|reactiveAegis)\"[^{}]*?\"depletedBy\":)null");
         string marked = depleted.Replace(text, "${1}{\"root\":\"x\",\"depth\":0,\"chain\":[],\"trigger\":null,\"cause\":null,\"source\":null,\"instance\":null,\"generation\":null}", 1);
         Assert.NotEqual(text, marked);

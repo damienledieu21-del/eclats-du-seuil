@@ -4,8 +4,12 @@ using EdS.Data.Json;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Domain.Combat;
+using EdS.Data.Builds;
+using EdS.Domain.Builds;
 using EdS.Net;
+using EdS.Runtime;
 using EdS.Simulation.Engine;
+using EdS.Tools.Measures;
 using static EdS.Data.Tests.ScenarioTestData;
 
 namespace EdS.Data.Tests;
@@ -67,6 +71,27 @@ public class Lot114dPresenceDataTests
         Assert.Equal(new[] { ("renfort", "left"), ("loup", "joined"), ("loup_cache", "refused") },
             Of("combatantSummary").Where(s => s.TryGetProperty("presence", out _)).Select(s => (S(s, "combatant")!, S(s, "presence")!)).ToArray());
         Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(log.Lines.ToArray(), ShippedData).Status);
+    }
+
+    [Fact]
+    public void Build_remplace_sans_effacer_l_arrivee()
+    {
+        // Revue Codex de la PR #32 (20e tour) : remplacer le build d'un personnage (séance d'entraînement, mesures ; salle réseau dans
+        // Lot102ServerTests) garde l'instant de son arrivée : le renfort n'est pas présent dès le tick 0.
+        CombatSetup scenario = ScenarioJsonReader.ReadFile(ScenarioPath(Renfort), ShippedData).Setup!;
+        long? Arrival(CombatSetup s, string id) => s.Combatants.Single(c => c.Id == id).ArrivalMs;
+        Assert.Equal(3000L, Arrival(scenario, "renfort"));
+        Assert.True(ShippedData.TryGetBuild("build.bastion.gardien", out ReferenceBuild gardien));
+        TrainingSession session = TrainingSession.Create(ShippedData, scenario, gardien.Id, playerId: "renfort");
+        CharacterSetup renfort = session.Setup.Combatants.OfType<CharacterSetup>().Single(c => c.Id == "renfort");
+        Assert.Same(gardien.Build, renfort.Build);
+        Assert.Equal(3000L, renfort.ArrivalMs);
+        var late = new CombatSetup(scenario.Seed, scenario.DurationMs, scenario.Stats, scenario.Damage, scenario.Progression, scenario.Combat,
+            scenario.Combatants.Select(c => c is CharacterSetup ch && ch.Id == "bastion" ? new CharacterSetup(ch.Id, ch.Team, ch.Class, ch.Build, ch.Initiative, ch.Placement, 1000) : c),
+            scenario.Commands, scenario.Data, scenario.Space);
+        CombatSetup measured = Measures.WithBuild(late, gardien);
+        Assert.Same(gardien.Build, measured.Combatants.OfType<CharacterSetup>().Single(c => c.Id == "bastion").Build);
+        Assert.Equal(1000L, Arrival(measured, "bastion"));
     }
 
     [Fact]
