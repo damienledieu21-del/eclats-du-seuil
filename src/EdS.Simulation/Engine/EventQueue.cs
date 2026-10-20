@@ -67,7 +67,8 @@ namespace EdS.Simulation.Engine
             if (_started && (tick < _cursorTick || (tick == _cursorTick && phase < _cursorPhase)))
                 throw new InvalidOperationException(
                     $"Événement programmé dans une phase déjà passée ({tick}, {phase}) alors que la file est en ({_cursorTick}, {_cursorPhase}).");
-            long sequence = _nextSequence++;
+            long sequence = _nextSequence;
+            _nextSequence = checked(_nextSequence + 1);   // revue Codex de la PR #32 (7e tour) : aucun débordement silencieux
             _heap.Add(new Entry(tick, phase, sequence, item));
             int i = _heap.Count - 1;
             while (i > 0)
