@@ -76,6 +76,7 @@ namespace EdS.Game
         private readonly NetworkScreen _netScreen = new NetworkScreen();
         private bool _menuOpen;
         private NetworkCombat _shownCombat;
+        private int _shownRoster;
         private string _netBuildId = "build.bastion.rempart";
         private bool _netTalentScreen;
         private string _lastCombat;
@@ -464,11 +465,19 @@ namespace EdS.Game
                     Say("Combat commencé : écran des talents fermé, build inchangé.");
                 }
                 _shownCombat = combat;
+                _shownRoster = combat.RosterVersion;
                 _combat = combat;
                 _arena.Populate(combat);
                 _playerYaw = 0f;
                 _floating.Clear();
                 Say($"Combat en coopération : tu joues {client.SeatId}.");
+            }
+            else if (combat != null && combat.RosterVersion != _shownRoster)
+            {
+                // Revue Codex de la PR #35 : un joueur est arrivé pendant l'affrontement (état courant) : l'arène est repeuplée, pour
+                // qu'il ait son corps.
+                _shownRoster = combat.RosterVersion;
+                _arena.Populate(combat);
             }
             if (input && Input.GetKeyDown(KeyCode.C)) _camera.Toggle(_playerYaw);
             if (input && client != null && client.Status == ClientStatus.Lobby)

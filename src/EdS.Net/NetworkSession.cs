@@ -33,6 +33,9 @@ namespace EdS.Net
         private Pending? _pending;
         private Pending? _pendingBot;
         private double? _botAt;
+
+        /// <summary>Revue Codex de la PR #35 : délai du robot, armé au début du combat du joueur ; null une fois armé ou sans délai.</summary>
+        private double? _botDelay;
         private double _nextRetryAt;
         private bool _disposed;
 
@@ -62,7 +65,7 @@ namespace EdS.Net
             // Sous-lot 11.7 : le robot peut arriver plus tard (pendant le combat, si la salle l'accepte).
             if (_connectBot != null)
             {
-                if (botDelaySeconds > 0) _botAt = botDelaySeconds;
+                if (botDelaySeconds > 0) _botDelay = botDelaySeconds;
                 else _pendingBot = Start(_connectBot);
             }
         }
@@ -120,8 +123,11 @@ namespace EdS.Net
         /// <summary>Équipier robot ; null sans robot ou avant sa connexion.</summary>
         public BotPlayer? Bot { get; private set; }
 
-        /// <summary>Sous-lot 11.7 : secondes avant l'arrivée prévue du robot ; null s'il n'est pas attendu (aucun, ou déjà en route).</summary>
-        public double? BotArrivesIn => _botAt is double at ? Math.Max(0, at - Now) : (double?)null;
+        /// <summary>
+        /// Sous-lot 11.7 : secondes avant l'arrivée prévue du robot (le délai entier tant que le combat du joueur n'a pas commencé : il
+        /// compte à partir de là) ; null s'il n'est pas attendu (aucun, ou déjà en route).
+        /// </summary>
+        public double? BotArrivesIn => _botAt is double at ? Math.Max(0, at - Now) : _botDelay;
 
         /// <summary>Temps écoulé de la session (somme des appels à <see cref="Advance"/>).</summary>
         public double Now { get; private set; }
@@ -163,6 +169,13 @@ namespace EdS.Net
             PollBot();
             Client?.Advance(seconds);
             Bot?.Advance(seconds);
+            // Revue Codex de la PR #35 : le délai du robot part du début du combat du joueur, pas de la création de la salle (un joueur qui
+            // reste en salle d'attente ne le consomme pas).
+            if (_botDelay is double delay && Client?.Status == ClientStatus.Combat)
+            {
+                _botAt = Now + delay;
+                _botDelay = null;
+            }
             if (Client != null && Client.Status == ClientStatus.Disconnected && _pending is null)
             {
                 if (!Client.CanReconnect) Error ??= "retour impossible : le serveur ne garde la place que " + Client.Options.ReconnectSeconds + " s.";
