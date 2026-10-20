@@ -84,7 +84,19 @@ Mode d'emploi et vérifications à faire : [UNITY.md](UNITY.md#4-jouer).
 - **Vue du joueur** : un ennemi est montré s'il est en vue du centre du Bastion (segment entre les centres, règle des compétences) ; un ennemi qui sort à moitié d'un angle reste caché tant que son centre l'est. Les annonces au sol d'un ennemi caché restent dessinées.
 - **Coupe du décor** : approchée par des boîtes (un décor dont la boîte touche le segment caméra–Bastion est abaissé ou effacé) ; un grand décor peut se couper un peu trop tôt.
 - **Caméra** : angles et distances des vues 1 et 2 provisoires (52° à 17 m, 16° à 6 m) ; rotation par huitième de tour ou à la souris. Pas encore de geste ni de bouton mobile (11.8).
-- **Réseau** : la coopération en réseau n'a pas de décor ; la marche n'y est pas transmise (11.7).
+- **Réseau** : la coopération du lot 10 n'a pas de décor ; la marche en réseau arrive au 11.7 (les Vallons à deux).
+
+## Sous-lot 11.7 : démonstration réseau minimale
+
+Détail : [RESEAU.md](RESEAU.md#protocole-2-et-démonstration-réseau-sous-lot-117) ; mode d'emploi : [UNITY.md](UNITY.md#6-jouer-à-deux-en-réseau-lot-10).
+
+- **Protocole 2 sans compatibilité** : un client ou un serveur du protocole 1 (lot 10) est refusé à la présentation ; les deux postes doivent être à la même version.
+- **Combat fermé, pas encore de zone** : la salle mène un combat fermé (durée, victoire), comme au lot 10 ; l'état filtré par zone d'intérêt et le mode « zone » sans fin globale viennent aux lots 12 et 13. L'état courant envoyé est tout le combat (instantané et en-tête complété), pas un état filtré.
+- **Arrivée seulement sur une place du scénario** : deux places (deux Bastions) ; un troisième joueur est refusé (salle pleine). L'arrivée cherche une place libre sur trois anneaux autour de celle du scénario (sinon elle est refusée) ; elle ne tient pas compte des ennemis qui approchent.
+- **Pas de rattrapage côté serveur** : le serveur juge l'impact avec les positions de son tick, sans remonter le temps du joueur (pas de « lag compensation ») ; l'esquive dépend donc directement de la latence (mesures ci-dessous). Choix volontaire : c'est la règle juste pour une zone partagée, la marge vient de la durée des annonces.
+- **Prédiction d'affichage seulement** : la place prédite ignore les autres combattants (elle peut se poser un instant sur un loup, puis glisse) et les altérations qui ralentissent ; la vitesse est celle du personnage, ralentie en garde. Un écart se corrige en douceur, pas de retour en arrière brutal.
+- **Robot** : le robot du lot 10 joue (garde, parade, compétences, soutiens) mais ne marche pas ; dans les Vallons, il reste à sa place d'arrivée.
+- **Esquive mesurée par un joueur scripté** : réaction immédiate ou de 250 ms à l'affichage, sortie du cercle en ligne droite ; pas de gigue dans la mesure d'esquive (la mesure de la parade du lot 10 en a).
 
 ## Sous-lot 11.5 : comportements des ennemis
 
