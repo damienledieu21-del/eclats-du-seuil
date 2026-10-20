@@ -91,6 +91,8 @@ Depuis le lot 5, une active ou l'ultime peut porter un bloc `combat` (puissance 
 
 Toutes sont parables (aucune n'est imparable). Plus aucune compétence livrée n'est refusée au lancer `skillNotImplemented`. Moteur : [MOTEUR.md](MOTEUR.md#fiches-du-bastion-et-ripostes-de-zone-sous-lot-84).
 
+Sous-lot 11.4b (contenu 0.6.0, portées retenues par Damien le 20 octobre 2026) : dans un combat positionné, Frappe du rempart, Heurt de bouclier et Contrecoup visent un ennemi à 2,5 m, Provocation et Barrière d'acier une cible à 15 m, l'Onde de rupture frappe les ennemis d'un cercle de 5 m autour du Bastion (« tous les ennemis » devient « tous les ennemis dans le rayon »), Bastion absolu agit sur les alliés et les assaillants à 15 m ; parmi les talents, Riposte précise ne frappe qu'un attaquant à 2,5 m, Jugement du colosse un cercle de 5 m, Serment du gardien un assaillant à 15 m, et le lien protecteur ne transfère que si le Bastion est à 15 m de l'allié. Sans espace, aucune portée ne compte. Détail : [DONNEES.md](DONNEES.md#portées-sous-lot-114b).
+
 ## Validation d'un build (`BuildValidator`)
 
 Un build donne la classe, le niveau, les attributs (explicites), les rangs de talents, les actives (dans l'ordre des emplacements), l'ultime et les passifs. Toutes les erreurs sont rapportées, avec un code stable et l'élément concerné :

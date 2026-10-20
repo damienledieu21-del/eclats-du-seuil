@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(10, result.Rules!.SchemaVersion);   // sous-lot 11.4a : déplacement et contact
-        Assert.Equal("0.9.0-provisoire", result.Rules.ContentVersion);   // 0.9.0 : déplacement et contact (sous-lot 11.4a)
+        Assert.Equal(11, result.Rules!.SchemaVersion);   // sous-lot 11.4a : déplacement et contact ; 11.4b : portée des protections
+        Assert.Equal("0.10.0-provisoire", result.Rules.ContentVersion);   // 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b)
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -116,8 +116,9 @@ public class RulesJsonReaderTests
         // Sous-lot 8.4 : schéma 9, contenu 0.7.0 : combat.triggers.areaStrikeMinCooldownMs et les cinq altérations du Bastion.
         // Sous-lot 8.5 : contenu 0.8.0, schéma inchangé : les trois altérations des talents du Gardien.
         // Sous-lot 11.4a : schéma 10, contenu 0.9.0 : combat.movement, combat.contact, et l'étourdissement bloque le déplacement.
+        // Sous-lot 11.4b : schéma 11, contenu 0.10.0 : range écrit pour chaque altération (absent, sauf le lien protecteur : 15 m).
         Assert.Equal(
-            "sha256:c7b8d5af0f5f0e774bf9923058660175128fb6c4808de8d5a9e6bab4eab9260b",
+            "sha256:28f021f4896a889cf8ae47ba898b444dfc1aed26373420b82f2dff9215c27924",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -125,7 +126,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 11), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 12), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Format_5_sans_plafonds_refuse_explicitement()

@@ -198,6 +198,13 @@ namespace EdS.Domain.Combat
         public Fixed RedirectRatio { get; }
 
         /// <summary>
+        /// Sous-lot 11.4b : protection seulement, distance maximale entre les bords des emprises du protecteur et du protégé pour que la
+        /// protection transfère, dans un combat positionné (« lien actif tant que l'allié est à 15 m ») ; null : sans limite. Hors de
+        /// portée, la protection reste posée mais ne transfère rien.
+        /// </summary>
+        public Fixed? Range { get; }
+
+        /// <summary>
         /// Sous-lot 8.2 : clés de modificateur admises sur un renforcement : dégâts infligés (catégorie « altération »), dégâts subis
         /// (réduction, sous le plafond total des règles) et entretien de la garde ; sous-lot 8.4 : garde sans entretien
         /// (<c>guard.noUpkeep</c>, Bastion absolu).
@@ -212,9 +219,10 @@ namespace EdS.Domain.Combat
             StatusBlocks blocks = StatusBlocks.None, StatusInterrupts interrupts = StatusInterrupts.None, string? blockReason = null,
             Fixed damageTakenIncrease = default, Fixed movementSpeedModifier = default, string? grantsOnExpiry = null,
             IEnumerable<string>? immuneTo = null, IEnumerable<TriggerDefinition>? triggers = null, IEnumerable<ModifierDefinition>? modifiers = null,
-            Fixed redirectRatio = default)
+            Fixed redirectRatio = default, Fixed? range = null)
         {
             RedirectRatio = redirectRatio;
+            Range = range;
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
             Modifiers = Frozen.ListOrEmpty(modifiers, nameof(modifiers));
             Id = id ?? throw new ArgumentNullException(nameof(id));
@@ -308,11 +316,19 @@ namespace EdS.Domain.Combat
         /// </summary>
         public Fixed? Coefficient { get; }
 
-        public StatusApplication(string status, Fixed? coefficient = null, ApplicationTarget target = ApplicationTarget.Targets)
+        /// <summary>
+        /// Sous-lot 11.4b : application à cible propre de groupe (<see cref="ApplicationTarget.AllAllies"/>,
+        /// <see cref="ApplicationTarget.AllEnemies"/>) : rayon, en mètres, du cercle centré sur l'acteur où sont ses cibles, dans un combat
+        /// positionné ; null : sans limite.
+        /// </summary>
+        public Fixed? Range { get; }
+
+        public StatusApplication(string status, Fixed? coefficient = null, ApplicationTarget target = ApplicationTarget.Targets, Fixed? range = null)
         {
             Status = status ?? throw new ArgumentNullException(nameof(status));
             Coefficient = coefficient;
             Target = target;
+            Range = range;
         }
 
         /// <summary>Contrôles propres à une liste d'applications (coefficients, doublons), sans le catalogue.</summary>
@@ -330,6 +346,15 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation($"coefficient hors de [0, {Builds.SkillCombatDefinition.MaxCoefficient}].", itemPath + ".coefficient"));
                 if (!Enum.IsDefined(typeof(ApplicationTarget), a.Target))
                     errors.Add(new RuleViolation("cible d'application inconnue.", itemPath + ".target"));
+                // Sous-lot 11.4b : un rayon seulement pour une cible propre de groupe (les cibles de l'action suivent sa portée).
+                if (a.Range is { } range)
+                {
+                    if (!Space.SpaceLimits.IsRange(range))
+                        errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                            $"rayon hors de [{Space.SpaceLimits.MinRange}, {Space.SpaceLimits.MaxRange}] m (borne technique).", itemPath + ".range"));
+                    else if (a.Target != ApplicationTarget.AllAllies && a.Target != ApplicationTarget.AllEnemies)
+                        errors.Add(new RuleViolation("un rayon seulement pour une cible propre de groupe (allAllies, allEnemies).", itemPath + ".range"));
+                }
             }
         }
     }
@@ -383,7 +408,7 @@ namespace EdS.Domain.Combat
             new StatusDefinition("bastionAbsoluteTaunt", StatusCategory.Taunt, 8000, StatusStacking.PerSourceKeepStronger),
             new StatusDefinition("reactiveAegis", StatusCategory.Shield, 4000, StatusStacking.PerSourceKeepStronger),
             new StatusDefinition("protectiveLink", StatusCategory.Protection, 6000, StatusStacking.PerSourceKeepStronger,
-                redirectRatio: Fixed.FromRatio(1, 4)),
+                redirectRatio: Fixed.FromRatio(1, 4), range: Fixed.FromInt(15)),
             new StatusDefinition("oathTaunt", StatusCategory.Taunt, 2000, StatusStacking.PerSourceKeepStronger),
         });
 
@@ -505,6 +530,15 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation("une protection transfère une part des dégâts dans ]0, 1].", p + ".redirectRatio"));
                 else if (!d.IsProtection && d.RedirectRatio != Fixed.Zero)
                     errors.Add(new RuleViolation("seule une protection transfère des dégâts.", p + ".redirectRatio"));
+                // Sous-lot 11.4b : portée d'une protection seulement.
+                if (d.Range is { } range)
+                {
+                    if (!Space.SpaceLimits.IsRange(range))
+                        errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                            $"portée hors de [{Space.SpaceLimits.MinRange}, {Space.SpaceLimits.MaxRange}] m (borne technique).", p + ".range"));
+                    else if (!d.IsProtection)
+                        errors.Add(new RuleViolation("seule une protection a une portée.", p + ".range"));
+                }
 
                 if (d.Category == StatusCategory.Immunity && d.ImmuneTo.Count == 0)
                     errors.Add(new RuleViolation("une immunité désigne au moins une altération.", p + ".immuneTo"));

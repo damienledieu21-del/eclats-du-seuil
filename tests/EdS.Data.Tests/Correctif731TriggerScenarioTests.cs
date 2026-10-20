@@ -15,8 +15,8 @@ namespace EdS.Data.Tests;
 /// supprimé à la deuxième occurrence dans une chaîne), brûlure posée par réaction à chaque saignement (2, DOT de réaction) et
 /// frappe sur chaque tick de DOT (3, reportée au tick suivant car la phase de résolution est passée). Les assertions métier
 /// ci-dessous ne dépendent pas de l'empreinte du journal ; la comparaison octet par octet se fait contre le journal figé
-/// <c>Fixtures/reference-0.15.0-contenu-0.5.0/entrainement_declencheurs.jsonl</c> (sous-lot 11.1 : moteur 0.15.0, format 9, règles 0.8.0,
-/// Bastion 0.5.0 ; les références 0.9.1 à 0.14.0-contenu-0.5.0 restent figées et refusées au rejeu ; le moteur reproduit les lignes
+/// <c>Fixtures/reference-0.17.0-contenu-0.6.0/entrainement_declencheurs.jsonl</c> (sous-lot 11.4b : moteur 0.17.0, format 11, règles 0.10.0,
+/// Bastion 0.6.0 ; les références 0.9.1 à 0.16.0-contenu-0.5.0 restent figées et refusées au rejeu ; le moteur reproduit les lignes
 /// d'événements des références 0.14.0, avec le contenu figé du 8.4, 0.14.0-contenu-0.4.0 avec celui du 8.5, et 0.14.0-contenu-0.5.0 avec
 /// le contenu livré). Un assaillant n'a pas de puissance : ses frappes et sa brûlure de réaction infligent 0. Sous-lot 8.4 : les assertions
 /// métier (mécanique des déclencheurs du correctif 7.3.1) se font sur le contenu historique du Bastion
@@ -34,13 +34,15 @@ public class Correctif731TriggerScenarioTests
     private const string Brulure = "assailant.assaillant/2@assaillant#0";
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
-    /// <summary>Sous-lot 11.4a : référence du contenu livré (moteur 0.16.0, format 10, Bastion 0.5.0, règles 0.9.0).</summary>
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.16.0-contenu-0.5.0", Name + ".jsonl");
+    /// <summary>Sous-lot 11.4b : référence du contenu livré (moteur 0.17.0, format 11, Bastion 0.6.0, règles 0.10.0).</summary>
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.17.0-contenu-0.6.0", Name + ".jsonl");
 
     /// <summary>
-    /// En-tête sans ce qui distingue légitimement deux moteurs (format et version, sous-lot 11.1) ni, sur demande, l'identité des règles.
+    /// En-tête sans ce qui distingue légitimement deux moteurs (format et version, sous-lot 11.1) ni, sur demande, l'identité des règles
+    /// et (sous-lot 11.4b) celle des classes : une classe figée au schéma 9 n'a plus l'empreinte qu'elle avait au schéma 8, et le Bastion
+    /// livré a changé de contenu (portées, sans effet sur un combat sans espace). L'identifiant de chaque classe reste comparé.
     /// </summary>
-    private static string StableHeader(string line, bool withoutRules = false)
+    private static string StableHeader(string line, bool withoutRules = false, bool withoutClasses = false)
     {
         var h = System.Text.Json.Nodes.JsonNode.Parse(line)!.AsObject();
         Assert.True(h.Remove("formatVersion"));
@@ -51,6 +53,12 @@ public class Correctif731TriggerScenarioTests
             Assert.True(rules.Remove("fingerprint"));
             Assert.True(rules.Remove("contentVersion"));
         }
+        if (withoutClasses)
+            foreach (System.Text.Json.Nodes.JsonNode? c in h["data"]!["classes"]!.AsArray())
+            {
+                Assert.True(c!.AsObject().Remove("fingerprint"));
+                Assert.True(c.AsObject().Remove("contentVersion"));
+            }
         return h.ToJsonString();
     }
 
@@ -271,7 +279,7 @@ public class Correctif731TriggerScenarioTests
         var log = new MemoryCombatLog();
         CombatEngine.Run(loaded.Setup!, log);
         Assert.Equal(frozen.Skip(1), log.Lines.Skip(1));
-        Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(log.Lines[0], withoutRules: true));
+        Assert.Equal(StableHeader(frozen[0], withoutRules: true, withoutClasses: true), StableHeader(log.Lines[0], withoutRules: true, withoutClasses: true));
     }
 
     [Fact]
@@ -297,7 +305,7 @@ public class Correctif731TriggerScenarioTests
         var log = new MemoryCombatLog();
         CombatEngine.Run(loaded.Setup!, log);
         Assert.Equal(frozen.Skip(1), log.Lines.Skip(1));
-        Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(log.Lines[0], withoutRules: true));
+        Assert.Equal(StableHeader(frozen[0], withoutRules: true, withoutClasses: true), StableHeader(log.Lines[0], withoutRules: true, withoutClasses: true));
         Assert.Equal(frozen.Skip(1), File.ReadAllLines(FixturePath).Skip(1));
     }
 
@@ -315,7 +323,7 @@ public class Correctif731TriggerScenarioTests
         Assert.Contains(outcome.Problems, p => p.Contains("0.14.0", StringComparison.Ordinal));
         string[] current = File.ReadAllLines(FixturePath);
         Assert.Equal(frozen.Skip(1), current.Skip(1));
-        Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(current[0], withoutRules: true));
+        Assert.Equal(StableHeader(frozen[0], withoutRules: true, withoutClasses: true), StableHeader(current[0], withoutRules: true, withoutClasses: true));
         Assert.Equal((8, "0.14.0"), (JsonDocument.Parse(frozen[0]).RootElement.GetProperty("formatVersion").GetInt32(),
             JsonDocument.Parse(frozen[0]).RootElement.GetProperty("engineVersion").GetString()));
         Assert.Equal((CombatEngine.LogFormatVersion, CombatEngine.Version), (JsonDocument.Parse(current[0]).RootElement.GetProperty("formatVersion").GetInt32(),
@@ -327,7 +335,8 @@ public class Correctif731TriggerScenarioTests
     {
         // Sous-lot 11.4a : la référence du sous-lot 11.1 (moteur 0.15.0, format 9, règles 0.8.0) est refusée au rejeu ; le moteur 0.16.0
         // (format 10) en reproduit octet par octet les lignes d'événements : un combat sans espace ne passe jamais par la phase de
-        // déplacement. L'en-tête ne diffère que par le format, la version et l'identité des règles (combat.movement et combat.contact).
+        // déplacement. L'en-tête ne diffère que par le format, la version et l'identité des règles (combat.movement et combat.contact) ;
+        // sous-lot 11.4b : la référence courante est celle du moteur 0.17.0 (Bastion 0.6.0), au même corps.
         string[] frozen = File.ReadAllLines(FrozenPath("0.15.0-contenu-0.5.0"));
         ReplayOutcome outcome = CombatLogReplayer.Replay(frozen, ShippedData);
         Assert.Equal(ReplayStatus.Refused, outcome.Status);
@@ -335,13 +344,33 @@ public class Correctif731TriggerScenarioTests
         Assert.Contains(outcome.Problems, p => p.Contains("0.15.0", StringComparison.Ordinal));
         string[] current = File.ReadAllLines(FixturePath);
         Assert.Equal(frozen.Skip(1), current.Skip(1));
-        Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(current[0], withoutRules: true));
+        Assert.Equal(StableHeader(frozen[0], withoutRules: true, withoutClasses: true), StableHeader(current[0], withoutRules: true, withoutClasses: true));
         Assert.Equal((9, "0.15.0", "0.8.0-provisoire"), (JsonDocument.Parse(frozen[0]).RootElement.GetProperty("formatVersion").GetInt32(),
             JsonDocument.Parse(frozen[0]).RootElement.GetProperty("engineVersion").GetString(),
             JsonDocument.Parse(frozen[0]).RootElement.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString()));
-        Assert.Equal((10, "0.16.0", "0.9.0-provisoire"), (JsonDocument.Parse(current[0]).RootElement.GetProperty("formatVersion").GetInt32(),
+        Assert.Equal((11, "0.17.0", "0.10.0-provisoire"), (JsonDocument.Parse(current[0]).RootElement.GetProperty("formatVersion").GetInt32(),
             JsonDocument.Parse(current[0]).RootElement.GetProperty("engineVersion").GetString(),
             JsonDocument.Parse(current[0]).RootElement.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString()));
+    }
+
+    [Fact]
+    public void Reference_du_moteur_0_16_0_refusee_et_corps_reproduit_sans_portee()
+    {
+        // Sous-lot 11.4b : la référence du sous-lot 11.4a (moteur 0.16.0, format 10, règles 0.9.0, Bastion 0.5.0) est refusée au rejeu ; le
+        // moteur 0.17.0 (format 11) avec le Bastion 0.6.0 (portées) en reproduit octet par octet les lignes d'événements : sans espace, une
+        // portée est ignorée. L'en-tête ne diffère que par le format, la version et l'identité des règles et de la classe.
+        string[] frozen = File.ReadAllLines(FrozenPath("0.16.0-contenu-0.5.0"));
+        ReplayOutcome outcome = CombatLogReplayer.Replay(frozen, ShippedData);
+        Assert.Equal(ReplayStatus.Refused, outcome.Status);
+        Assert.Null(outcome.Comparison);
+        Assert.Contains(outcome.Problems, p => p.Contains("0.16.0", StringComparison.Ordinal));
+        string[] current = File.ReadAllLines(FixturePath);
+        Assert.Equal(frozen.Skip(1), current.Skip(1));
+        Assert.Equal(StableHeader(frozen[0], withoutRules: true, withoutClasses: true), StableHeader(current[0], withoutRules: true, withoutClasses: true));
+        JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
+        static string ClassVersion(JsonElement h) => h.GetProperty("data").GetProperty("classes")[0].GetProperty("contentVersion").GetString()!;
+        Assert.Equal((10, "0.16.0", "0.5.0-provisoire"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString(), ClassVersion(before)));
+        Assert.Equal((11, "0.17.0", "0.6.0-provisoire"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString(), ClassVersion(after)));
     }
 
     [Theory]

@@ -41,10 +41,12 @@ public class Lot87BalanceTests
     [Fact]
     public void Bastion_livre_au_contenu_0_5_0()
     {
-        ClassLoadResult result = ClassJsonReader.ReadFile(ClassTestData.BastionPath, ClassTestData.Progression);
+        // Sous-lot 11.4b : le contenu 0.5.0 est figé (Fixtures/content-0.5.0, schéma de classe 9) ; le contenu livré 0.6.0 ajoute les
+        // portées (Lot114bRangeDataTests).
+        ClassLoadResult result = ClassJsonReader.ReadFile(ScenarioTestData.Content050ClassPath, ClassTestData.Progression);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal((8, "0.5.0-provisoire"), (result.Class!.SchemaVersion, result.Class.ContentVersion));
-        Assert.Equal("sha256:51f673a64869909a288e9bd76ab774fae2986df4f7f7007dcf6897aef514832e", result.Class.Fingerprint);
+        Assert.Equal((9, "0.5.0-provisoire"), (result.Class!.SchemaVersion, result.Class.ContentVersion));
+        Assert.Equal("sha256:1d46aafe6f4e7702e81659b764a3ca2aad9aeffb21c022807a174bd9c6a4d6bd", result.Class.Fingerprint);
         ValidationErrorAssert.SingleCycleWarning(result);
     }
 
@@ -53,7 +55,7 @@ public class Lot87BalanceTests
     {
         // Comparaison champ par champ des deux fichiers de classe : seuls la version de contenu et le bloc combat de la Provocation
         // (puissance, type de dégâts, coefficient) diffèrent.
-        JsonObject shipped = JsonNode.Parse(File.ReadAllText(ClassTestData.BastionPath))!.AsObject();
+        JsonObject shipped = JsonNode.Parse(File.ReadAllText(ScenarioTestData.Content050ClassPath))!.AsObject();   // sous-lot 11.4b : 0.5.0 figé
         JsonObject frozen = JsonNode.Parse(File.ReadAllText(Content040ClassPath))!.AsObject();
         Assert.Equal(("0.5.0-provisoire", "0.4.0-provisoire"), (shipped["contentVersion"]!.GetValue<string>(), frozen["contentVersion"]!.GetValue<string>()));
         JsonObject Provocation(JsonObject root) => root["data"]!["skills"]!.AsArray().Single(s => s!["id"]!.GetValue<string>() == "skill.bastion.provocation")!["combat"]!.AsObject();

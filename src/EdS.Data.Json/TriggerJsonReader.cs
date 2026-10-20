@@ -9,13 +9,16 @@ using EdS.Domain.Numerics;
 
 namespace EdS.Data.Json
 {
-    /// <summary>Lecture des déclencheurs (lot 7.3), même forme dans les classes, les règles et les scénarios (forme seulement).</summary>
+    /// <summary>
+    /// Lecture des déclencheurs (lot 7.3), même forme dans les classes, les règles et les scénarios (forme seulement). Sous-lot 11.4b :
+    /// la portée d'un effet (<c>effects[].range</c>) n'est lue que dans les classes (schéma 9) ; ailleurs, elle reste un champ inconnu.
+    /// </summary>
     internal static class TriggerJsonReader
     {
-        public static List<TriggerData?>? ReadList(JsonInput input, JsonElement element, string path) =>
-            input.ReadList(element, path, (e, ip) => Read(input, e, ip));
+        public static List<TriggerData?>? ReadList(JsonInput input, JsonElement element, string path, bool allowRange = false) =>
+            input.ReadList(element, path, (e, ip) => Read(input, e, ip, allowRange));
 
-        private static TriggerData? Read(JsonInput input, JsonElement element, string path)
+        private static TriggerData? Read(JsonInput input, JsonElement element, string path, bool allowRange)
         {
             var t = new TriggerData();
             bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
@@ -24,7 +27,7 @@ namespace EdS.Data.Json
                 ["role"] = (v, p) => t.Role = input.Text(v, p),
                 ["filter"] = (v, p) => t.Filter = ReadFilter(input, v, p),
                 ["cooldownMs"] = (v, p) => t.CooldownMs = input.Int64(v, p),
-                ["effects"] = (v, p) => t.Effects = input.ReadList(v, p, (e, ip) => ReadEffect(input, e, ip)),
+                ["effects"] = (v, p) => t.Effects = input.ReadList(v, p, (e, ip) => ReadEffect(input, e, ip, allowRange)),
             });
             return ok ? t : null;
         }
@@ -46,10 +49,10 @@ namespace EdS.Data.Json
             return ok ? f : null;
         }
 
-        private static TriggerEffectData? ReadEffect(JsonInput input, JsonElement element, string path)
+        private static TriggerEffectData? ReadEffect(JsonInput input, JsonElement element, string path, bool allowRange)
         {
             var e = new TriggerEffectData();
-            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            var fields = new Dictionary<string, Action<JsonElement, string>>
             {
                 ["type"] = (v, p) => e.Type = input.Text(v, p),
                 ["target"] = (v, p) => e.Target = input.Text(v, p),
@@ -60,7 +63,9 @@ namespace EdS.Data.Json
                 ["status"] = (v, p) => e.Status = input.Text(v, p),
                 ["resource"] = (v, p) => e.Resource = input.Text(v, p),
                 ["amount"] = (v, p) => e.Amount = ReadRanked(input, v, p),
-            });
+            };
+            if (allowRange) fields["range"] = (v, p) => e.Range = input.Decimal(v, p);
+            bool ok = input.ReadFields(element, path, fields);
             return ok ? e : null;
         }
 

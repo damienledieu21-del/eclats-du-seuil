@@ -104,13 +104,22 @@ namespace EdS.Domain.Builds
         /// </summary>
         public IReadOnlyList<StatusApplication> Applies { get; }
 
+        /// <summary>
+        /// Sous-lot 11.4b : portée dans un combat positionné, en mètres ; null : sans limite. Compétence à cible (<c>enemy</c>, <c>ally</c>) :
+        /// distance maximale entre les bords des emprises, vérifiée au lancement avec la ligne de vue. Compétence de groupe (<c>allEnemies</c>,
+        /// <c>allAllies</c>) : rayon du cercle centré sur le lanceur, au moment de l'impact. Jamais pour <c>self</c>. Sans effet hors combat
+        /// positionné.
+        /// </summary>
+        public Fixed? Range { get; }
+
         /// <param name="powerType">Null avec <paramref name="damageType"/> et <paramref name="coefficient"/> : compétence de soutien.</param>
         /// <exception cref="ArgumentException">Seule une partie des trois données de dégâts est fournie.</exception>
         public SkillCombatDefinition(PowerType? powerType, DamageType? damageType, Fixed? coefficient, int enduranceCost,
             long cooldownMs, SkillTargeting targeting = SkillTargeting.Enemy, bool isProvisional = true,
             bool unblockable = false, int rampartChargeCost = 0, int rampartChargeGain = 0, IEnumerable<StatusApplication>? applies = null,
-            bool rampartChargeSpendAll = false, Fixed? coefficientPerRampartCharge = null, int resonanceGain = 0)
+            bool rampartChargeSpendAll = false, Fixed? coefficientPerRampartCharge = null, int resonanceGain = 0, Fixed? range = null)
         {
+            Range = range;
             int given = (powerType is null ? 0 : 1) + (damageType is null ? 0 : 1) + (coefficient is null ? 0 : 1);
             if (given != 0 && given != 3)
                 throw new ArgumentException("dégâts directs : puissance, type et coefficient tous ensemble, ou aucun (compétence de soutien).");

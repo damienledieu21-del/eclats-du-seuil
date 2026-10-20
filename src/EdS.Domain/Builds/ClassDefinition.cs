@@ -261,6 +261,15 @@ namespace EdS.Domain.Builds
                 errors.Add(new RuleViolation("une ultime dépense la Résonance : aucun gain de Résonance à son lancement.", path + ".resonanceGain"));
             if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
+            // Sous-lot 11.4b : portée bornée ; une compétence sur soi n'en a pas.
+            if (combat.Range is { } range)
+            {
+                if (!Space.SpaceLimits.IsRange(range))
+                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                        $"portée hors de [{Space.SpaceLimits.MinRange}, {Space.SpaceLimits.MaxRange}] m (borne technique).", path + ".range"));
+                else if (combat.Targeting == SkillTargeting.Self)
+                    errors.Add(new RuleViolation("une compétence sur soi n'a pas de portée.", path + ".range"));
+            }
             // Lot 7.2 : forme des altérations portées ; leur existence est vérifiée avec le catalogue des règles (CombatSetup.Validate).
             Combat.StatusApplication.ValidateList(combat.Applies, path + ".applies", errors);
         }

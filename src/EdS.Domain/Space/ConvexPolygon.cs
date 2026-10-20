@@ -105,6 +105,22 @@ namespace EdS.Domain.Space
         }
 
         /// <summary>
+        /// Sous-lot 11.4b (ligne de vue) : le segment fermé [A, B] touche-t-il le polygone (une extrémité dedans, ou une arête touchée) ?
+        /// Exact ; frôler un sommet ou longer une face compte comme toucher.
+        /// </summary>
+        public bool IntersectsSegment(long ax, long az, long bx, long bz)
+        {
+            if (Math.Max(ax, bx) < MinX || Math.Min(ax, bx) > MaxX || Math.Max(az, bz) < MinZ || Math.Min(az, bz) > MaxZ) return false;
+            if (Contains(ax, az) || Contains(bx, bz)) return true;
+            for (int i = 0; i < _x.Length; i++)
+            {
+                int j = i + 1 == _x.Length ? 0 : i + 1;
+                if (Planar.SegmentsIntersect(ax, az, bx, bz, _x[i], _z[i], _x[j], _z[j])) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Point du bord le plus proche d'un point extérieur, arrondi à l'unité brute ; à distance égale, la première arête dans l'ordre
         /// des sommets. Sert à la direction d'un dégagement (le chevauchement, lui, est jugé par <see cref="OverlapsCircle"/>).
         /// </summary>

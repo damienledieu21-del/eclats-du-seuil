@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 10,
+  "schemaVersion": 11,
   "kind": "rules",
-  "contentVersion": "0.9.0-provisoire",
+  "contentVersion": "0.10.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -147,7 +147,7 @@
       { "id": "reactiveAegis", "category": "shield", "durationMs": 4000, "stacking": "perSourceKeepStronger", "resistance": "none" },
       {
         "id": "protectiveLink", "category": "protection", "durationMs": 6000, "stacking": "perSourceKeepStronger", "resistance": "none",
-        "redirectRatio": 0.25
+        "redirectRatio": 0.25, "range": 15
       },
       { "id": "oathTaunt", "category": "taunt", "durationMs": 2000, "stacking": "perSourceKeepStronger", "resistance": "none" }
     ]

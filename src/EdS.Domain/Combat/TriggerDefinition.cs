@@ -274,9 +274,19 @@ namespace EdS.Domain.Combat
         /// <summary><c>gainResource</c> : quantité entière (par rang pour un talent).</summary>
         public RankedValue? Amount { get; }
 
+        /// <summary>
+        /// Sous-lot 11.4b : portée, en mètres, dans un combat positionné ; null : sans limite. Cible <c>eventSource</c> ou
+        /// <c>eventTarget</c> : distance maximale entre les bords des emprises du porteur et de la cible (hors de portée, l'effet n'a
+        /// pas de cible). <c>allEnemies</c> : rayon du cercle centré sur le porteur, que l'emprise d'un ennemi doit toucher. Jamais
+        /// pour le porteur ni un gain de ressource.
+        /// </summary>
+        public Fixed? Range { get; }
+
         public TriggerEffect(TriggerEffectKind kind, TriggerTarget? target = null, RankedValue? coefficient = null, PowerType? powerType = null,
-            DamageType? damageType = null, bool unblockable = false, string? status = null, TriggerResource? resource = null, RankedValue? amount = null)
+            DamageType? damageType = null, bool unblockable = false, string? status = null, TriggerResource? resource = null, RankedValue? amount = null,
+            Fixed? range = null)
         {
+            Range = range;
             Kind = kind;
             Target = target;
             Coefficient = coefficient;
@@ -289,11 +299,11 @@ namespace EdS.Domain.Combat
         }
 
         public static TriggerEffect Strike(TriggerTarget target, RankedValue coefficient, PowerType powerType = Stats.PowerType.Physique,
-            DamageType damageType = Stats.DamageType.Physique, bool unblockable = false) =>
-            new TriggerEffect(TriggerEffectKind.Strike, target, coefficient, powerType, damageType, unblockable);
+            DamageType damageType = Stats.DamageType.Physique, bool unblockable = false, Fixed? range = null) =>
+            new TriggerEffect(TriggerEffectKind.Strike, target, coefficient, powerType, damageType, unblockable, range: range);
 
-        public static TriggerEffect ApplyStatus(TriggerTarget target, string status, RankedValue? coefficient = null) =>
-            new TriggerEffect(TriggerEffectKind.ApplyStatus, target, coefficient, status: status);
+        public static TriggerEffect ApplyStatus(TriggerTarget target, string status, RankedValue? coefficient = null, Fixed? range = null) =>
+            new TriggerEffect(TriggerEffectKind.ApplyStatus, target, coefficient, status: status, range: range);
 
         public static TriggerEffect GainResource(TriggerResource resource, RankedValue amount) =>
             new TriggerEffect(TriggerEffectKind.GainResource, resource: resource, amount: amount);
@@ -536,6 +546,15 @@ namespace EdS.Domain.Combat
             }
             if (On == TriggerEvent.Death && e.Target == TriggerTarget.EventTarget)
                 errors.Add(new RuleViolation("onDeath : la cible de l'événement est morte ; eventSource, bearer ou allEnemies.", p + ".target"));
+            // Sous-lot 11.4b : une portée seulement pour une frappe ou une altération dirigée vers un autre combattant.
+            if (e.Range is { } range)
+            {
+                if (!Space.SpaceLimits.IsRange(range))
+                    errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                        $"portée hors de [{Space.SpaceLimits.MinRange}, {Space.SpaceLimits.MaxRange}] m (borne technique).", p + ".range"));
+                else if (e.Kind == TriggerEffectKind.GainResource || e.Target == TriggerTarget.Bearer)
+                    errors.Add(new RuleViolation("une portée seulement pour un effet dirigé vers un autre combattant (eventSource, eventTarget, allEnemies).", p + ".range"));
+            }
         }
 
         /// <summary>
