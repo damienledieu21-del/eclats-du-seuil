@@ -495,6 +495,8 @@ public class Lot114dSnapshotTests
             ("\"regenGranted\":[0-9]+", "\"regenGranted\":-1", "Échéances de"),
             ("\"regenFromTick\":(null|[0-9]+)", "\"regenFromTick\":100000", "Régénération"),
             ("\"power\":[0-9]+", "\"power\":-1", "puissance impossible"),
+            // Relecture d'ensemble (20e tour) : puissance du saignement au-delà de sa plus forte application (puissance × 0,4).
+            ("(\"state\":\"bleed\"[^{}]*?\"power\":)[0-9]+", "${1}1000000000000", "puissance au-delà du plus fort DOT possible"),
         })
         {
             string tampered = new System.Text.RegularExpressions.Regex(pattern).Replace(text, value, 1);

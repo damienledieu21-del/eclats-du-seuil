@@ -8,6 +8,7 @@ using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
+using EdS.Domain.Stats;
 using EdS.Simulation.Randomness;
 
 namespace EdS.Simulation.Engine
@@ -764,6 +765,8 @@ namespace EdS.Simulation.Engine
                     // 7e tour : puissance d'un DOT positive (nulle pour une autre altération), sous le plafond.
                     Require(s.Power.Raw >= 0 && s.Power.Raw <= CounterCeiling && (s.Definition.IsDot || (s.Power == Fixed.Zero && s.NextTick == 0)),
                         $"{status} : puissance impossible.");
+                    // Relecture d'ensemble (20e tour) : au plus la puissance de la plus forte application possible de ce DOT.
+                    Require(!s.Definition.IsDot || s.Power <= MaxDotPower(s.Definition, s.Key.Source), $"{status} : puissance au-delà du plus fort DOT possible.");
                     // Son échéance (ou, pour un DOT, son prochain tick) est en file, une seule fois et à son tick (revue Codex de la PR #32,
                     // 4e tour : une échéance en double agirait) ; aucune échéance de l'autre genre ne la vise.
                     var expiries = entries.Where(e => e.Item is StateExpiry x && x.Fighter == f && x.Key.Equals(s.Key) && x.Instance == s.Id && x.Generation == s.Generation).ToList();
@@ -854,34 +857,62 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Revue Codex de la PR #32 (20e tour) : plus forte absorption qu'un bouclier <paramref name="definition"/> a pu recevoir, soit
-        /// <see cref="ShieldAmount"/> de la plus forte application de cette altération par une source possible : la source de la clé pour un
-        /// cumul par source, n'importe quel combattant sinon (un renouvellement par une autre source garde la plus forte valeur). Applications
-        /// comptées pour une source : compétences de sa classe, attaques d'un assaillant, déclencheurs permanents à leur rang, déclencheurs
+        /// Revue Codex de la PR #32 (20e tour) : plus fort coefficient d'une application de l'altération <paramref name="status"/> posée par
+        /// <paramref name="source"/> : compétences de sa classe, attaques d'un assaillant, déclencheurs permanents à leur rang, déclencheurs
         /// portés par une altération du catalogue (rang 1, posés au nom de leur porteur).
+        /// </summary>
+        private Fixed StrongestApplication(Fighter source, string status)
+        {
+            Fixed coefficient = Fixed.Zero;
+            foreach (StatusDefinition carrier in _statuses.Definitions)
+                foreach (TriggerDefinition trigger in carrier.Triggers) coefficient = Fixed.Max(coefficient, StrongestCoefficient(trigger, status, 1));
+            if (source.Character is { } character)
+                foreach (SkillDefinition skill in character.Class.Skills)
+                    if (skill.Combat is { } combat) coefficient = Fixed.Max(coefficient, StrongestCoefficient(combat.Applies, status));
+            if (source.Assailant is { } assailant)
+                foreach (AssailantAttack attack in assailant.Attacks) coefficient = Fixed.Max(coefficient, StrongestCoefficient(attack.Applies, status));
+            foreach (TriggerSlot slot in source.Triggers) coefficient = Fixed.Max(coefficient, StrongestCoefficient(slot.Definition, status, slot.Rank));
+            return coefficient;
+        }
+
+        /// <summary>
+        /// Sources possibles d'une altération : la source de sa clé pour un cumul par source, n'importe quel combattant sinon (un
+        /// renouvellement par une autre source garde la plus forte valeur).
+        /// </summary>
+        private IEnumerable<Fighter> PossibleSources(string? keySource) =>
+            keySource is null ? _fightersById : _fightersById.Where(f => string.Equals(f.Id, keySource, StringComparison.Ordinal));
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (20e tour) : plus forte absorption qu'un bouclier <paramref name="definition"/> a pu recevoir
+        /// (<see cref="ShieldAmount"/> de la plus forte application par une source possible).
         /// </summary>
         private long MaxShieldAbsorb(StatusDefinition definition, string? keySource)
         {
-            Fixed carried = Fixed.Zero;
-            foreach (StatusDefinition carrier in _statuses.Definitions)
-                foreach (TriggerDefinition trigger in carrier.Triggers) carried = Fixed.Max(carried, StrongestShield(trigger, definition.Id, 1));
             long best = 0;
-            foreach (Fighter source in _fightersById)
+            foreach (Fighter source in PossibleSources(keySource))
+                best = Math.Max(best, ShieldAmount(source, definition, StrongestApplication(source, definition.Id)));
+            return best;
+        }
+
+        /// <summary>
+        /// Relecture d'ensemble (20e tour) : plus forte puissance qu'un DOT <paramref name="definition"/> a pu recevoir (<see cref="DotPower"/> :
+        /// plus forte puissance du type de l'altération d'une source possible, toutes statistiques d'attaque comprises, × plus fort coefficient
+        /// de ses applications ; un renouvellement garde la plus forte des deux puissances).
+        /// </summary>
+        private Fixed MaxDotPower(StatusDefinition definition, string? keySource)
+        {
+            PowerType type = CombatantStats.PowerOf(definition.DamageType!.Value);
+            Fixed best = Fixed.Zero;
+            foreach (Fighter source in PossibleSources(keySource))
             {
-                if (keySource != null && !string.Equals(source.Id, keySource, StringComparison.Ordinal)) continue;
-                Fixed coefficient = carried;
-                if (source.Character is { } character)
-                    foreach (SkillDefinition skill in character.Class.Skills)
-                        if (skill.Combat is { } combat) coefficient = Fixed.Max(coefficient, StrongestShield(combat.Applies, definition.Id));
-                if (source.Assailant is { } assailant)
-                    foreach (AssailantAttack attack in assailant.Attacks) coefficient = Fixed.Max(coefficient, StrongestShield(attack.Applies, definition.Id));
-                foreach (TriggerSlot slot in source.Triggers) coefficient = Fixed.Max(coefficient, StrongestShield(slot.Definition, definition.Id, slot.Rank));
-                best = Math.Max(best, ShieldAmount(source, definition, coefficient));
+                Fixed power = source.Stats.GetPower(type);
+                foreach (DerivedStats stats in source.AttackStats.Values) power = Fixed.Max(power, stats.GetPower(type));
+                best = Fixed.Max(best, Fixed.Max(Fixed.Zero, power) * StrongestApplication(source, definition.Id));
             }
             return best;
         }
 
-        private static Fixed StrongestShield(IReadOnlyList<StatusApplication> applies, string status)
+        private static Fixed StrongestCoefficient(IReadOnlyList<StatusApplication> applies, string status)
         {
             Fixed best = Fixed.Zero;
             foreach (StatusApplication a in applies)
@@ -889,7 +920,7 @@ namespace EdS.Simulation.Engine
             return best;
         }
 
-        private static Fixed StrongestShield(TriggerDefinition trigger, string status, int rank)
+        private static Fixed StrongestCoefficient(TriggerDefinition trigger, string status, int rank)
         {
             Fixed best = Fixed.Zero;
             foreach (TriggerEffect e in trigger.Effects)
