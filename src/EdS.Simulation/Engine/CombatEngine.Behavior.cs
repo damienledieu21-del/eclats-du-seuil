@@ -103,19 +103,24 @@ namespace EdS.Simulation.Engine
 
         // --- Placement -----------------------------------------------------------------------------------------------------------
 
-        /// <summary>Intention de marche d'un ennemi à comportement pour ce tick : marche (direction unitaire) ou arrêt, et cible vers laquelle se tourner.</summary>
+        /// <summary>
+        /// Intention de marche d'un ennemi à comportement pour ce tick : marche (direction unitaire) ou arrêt, cible vers laquelle se tourner
+        /// et, revue Codex de la PR #33, longueur de pas au plus (la frontière de sa bande de distance : pas de dépassement).
+        /// </summary>
         private readonly struct Intention
         {
             public readonly bool Moving;
             public readonly long DirectionX, DirectionZ;
             public readonly int Face;   // indice de la cible vers laquelle se tourner à l'arrêt ; −1 sinon
+            public readonly long MaxStep;   // unités brutes ; long.MaxValue : pas de borne
 
-            public Intention(bool moving, long directionX, long directionZ, int face)
+            public Intention(bool moving, long directionX, long directionZ, int face, long maxStep = long.MaxValue)
             {
                 Moving = moving;
                 DirectionX = directionX;
                 DirectionZ = directionZ;
                 Face = face;
+                MaxStep = maxStep;
             }
 
             public static readonly Intention Hold = new Intention(false, 0, 0, -1);
@@ -125,6 +130,9 @@ namespace EdS.Simulation.Engine
         /// Intentions des ennemis à comportement (indices de <see cref="_fightersById"/>), calculées sans rien modifier d'après les positions
         /// du début de la phase ; null pour un combattant sans comportement (il garde la sienne).
         /// </summary>
+        /// <summary>Tolérance autour de la bande de distance d'un ennemi (2 mm, en unités brutes) : les arrondis d'un pas borné y restent.</summary>
+        private const long BandTolerance = 20;
+
         private Intention?[] Intentions(long[] x, long[] z)
         {
             int n = _fightersById.Count;
@@ -152,6 +160,7 @@ namespace EdS.Simulation.Engine
                 long rr = checked(f.Body!.Radius + _fightersById[j].Body!.Radius);
                 long vx = checked(x[j] - x[i]), vz = checked(z[j] - z[i]);
                 long gx, gz;   // point visé
+                long maxStep = long.MaxValue;
                 if (behavior.Encircle)
                 {
                     var (px, pz) = RingSlot(i, j, targets, x, z, behavior);
@@ -166,17 +175,28 @@ namespace EdS.Simulation.Engine
                 }
                 else
                 {
-                    long d2 = Planar.LengthSquared(vx, vz);
+                    // Revue Codex de la PR #33 : le pas s'arrête à la frontière de la bande [minRange, maxRange] (distance entre les centres
+                    // arrondie par défaut), avec une tolérance de BandTolerance de part et d'autre : une bande plus étroite qu'un pas ne fait
+                    // plus osciller l'ennemi d'un côté à l'autre.
+                    long d = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(vx, vz));
                     long far = checked(rr + behavior.MaxRange.Raw), near = checked(rr + behavior.MinRange.Raw);
-                    if (d2 > checked(far * far)) (gx, gz) = (vx, vz);
-                    else if (d2 < checked(near * near)) (gx, gz) = (checked(-vx), checked(-vz));
+                    if (d > checked(far + BandTolerance))
+                    {
+                        (gx, gz) = (vx, vz);
+                        maxStep = checked(d - far);
+                    }
+                    else if (d < checked(near - BandTolerance))
+                    {
+                        (gx, gz) = (checked(-vx), checked(-vz));
+                        maxStep = checked(near - d);
+                    }
                     else
                     {
                         intentions[i] = new Intention(false, 0, 0, j);
                         continue;
                     }
                 }
-                intentions[i] = Planar.TryNormalize(gx, gz, out long ux, out long uz) ? new Intention(true, ux, uz, j) : new Intention(false, 0, 0, j);
+                intentions[i] = Planar.TryNormalize(gx, gz, out long ux, out long uz) ? new Intention(true, ux, uz, j, maxStep) : new Intention(false, 0, 0, j);
             }
             return intentions;
         }
