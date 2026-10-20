@@ -753,6 +753,10 @@ namespace EdS.Simulation.Engine
                     // et aucune altération ne garde l'effet qui l'aurait épuisée.
                     Require(s.Absorb >= 0 && s.Absorb <= CounterCeiling && (s.Definition.IsShield ? s.Absorb > 0 : s.Absorb == 0) && s.DepletedBy is null,
                         $"{status} : absorption impossible.");
+                    // 19e tour : ApplyStatus fixe l'origine par WithSource(source).CausedBy(ligne).ForInstance(instance, génération) : même source,
+                    // même instance, même génération, une cause.
+                    Require(string.Equals(s.Origin.Source, s.Source, StringComparison.Ordinal) && s.Origin.SourceInstance == s.Id
+                        && s.Origin.SourceGeneration == s.Generation && s.Origin.Cause != null, $"{status} : provenance différente de l'altération.");
                     // 7e tour : puissance d'un DOT positive (nulle pour une autre altération), sous le plafond.
                     Require(s.Power.Raw >= 0 && s.Power.Raw <= CounterCeiling && (s.Definition.IsDot || (s.Power == Fixed.Zero && s.NextTick == 0)),
                         $"{status} : puissance impossible.");
@@ -809,6 +813,20 @@ namespace EdS.Simulation.Engine
                         $"Tours de {who} incohérents avec sa cadence : {played} joués, prochain au tick {(scheduled ? next.ToString(CultureInfo.InvariantCulture) : "aucun")}.");
                 }
             }
+            // 19e tour : chaque montant de dégâts est crédité à sa source et réparti chez sa cible entre dégâts subis, absorbés et transférés ;
+            // la part transférée est comptée redirigée chez le protecteur, qui en subit ou en absorbe au plus autant (sa garde peut réduire).
+            // Sur tout le combat : transferts = redirections, et reçus (subis + absorbés + transférés) au moins les dégâts infligés crédités.
+            long dealtTotal = 0, receivedTotal = 0, transferredTotal = 0, redirectedTotal = 0;
+            foreach (Fighter f in _fightersById)
+            {
+                CombatantResult r = f.Result;
+                dealtTotal = checked(dealtTotal + r.DamageDealt);
+                receivedTotal = checked(receivedTotal + r.DamageTaken + r.DamageAbsorbed + r.DamageTransferred);
+                transferredTotal = checked(transferredTotal + r.DamageTransferred);
+                redirectedTotal = checked(redirectedTotal + r.DamageRedirected);
+            }
+            Require(transferredTotal == redirectedTotal && receivedTotal >= dealtTotal,
+                $"Dégâts du bilan incohérents entre combattants : {dealtTotal} infligés, {receivedTotal} reçus, {transferredTotal} transférés, {redirectedTotal} redirigés.");
         }
 
         /// <summary>

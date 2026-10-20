@@ -570,7 +570,7 @@ public class Lot114dSnapshotTests
     [Fact]
     public void Generations_rangs_file_et_cause_mortelle_impossibles_refuses()
     {
-        // Revue Codex de la PR #32 (11e à 18e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
+        // Revue Codex de la PR #32 (11e à 19e tours). Combat d'entraînement au tick 30 : un saignement sur le Bastion et un sur l'assaillant.
         var training = new CombatEngine(Training(), NullCombatLog.Instance);
         while (training.CurrentTick < 30) training.Step();
         string text = training.Snapshot().Text;
@@ -714,7 +714,8 @@ public class Lot114dSnapshotTests
         string[] tauntLines = taunted.Split('\n');
         for (int k = 0; k < tauntLines.Length; k++)
             if (tauntLines[k].StartsWith("{\"fighter\":\"ogre\"", StringComparison.Ordinal))
-                tauntLines[k] = tauntLines[k].Replace("\"keySource\":\"bastion\",\"source\":\"bastion\"", "\"keySource\":\"loup\",\"source\":\"loup\"", StringComparison.Ordinal);
+                tauntLines[k] = tauntLines[k].Replace("\"keySource\":\"bastion\"", "\"keySource\":\"loup\"", StringComparison.Ordinal)
+                    .Replace("\"source\":\"bastion\"", "\"source\":\"loup\"", StringComparison.Ordinal);   // l'altération et son origine (19e tour)
             else if (tauntLines[k].StartsWith("{\"entry\":", StringComparison.Ordinal) && tauntLines[k].Contains("\"fighter\":\"ogre\"", StringComparison.Ordinal)
                 && tauntLines[k].Contains("Taunt\"", StringComparison.Ordinal))
                 tauntLines[k] = tauntLines[k].Replace("\"keySource\":\"bastion\"", "\"keySource\":\"loup\"", StringComparison.Ordinal);
@@ -731,6 +732,22 @@ public class Lot114dSnapshotTests
             (Bastion, "\"parryStartTick\":0,\"parryEndTick\":0", "\"parryStartTick\":5,\"parryEndTick\":" + (5 + training.View("bastion").Rules!.ParryWindowMs / 50), "Garde ou parade de « bastion » sans commande"),
             ("{\"fighter\":\"allie\"", "\"nextTurn\":0", "\"nextTurn\":1", "Tours de « allie »"),
         });
+        // 19e tour : l'origine d'une altération porte sa source, son instance et sa génération ; les dégâts infligés ont leur contrepartie
+        // reçue (subis, absorbés ou transférés) quelque part.
+        // Le saignement du Bastion (et son tick de DOT en file) attribué à l'allié, l'origine gardant l'assaillant.
+        string[] bleedLines = text.Split('\n');
+        for (int k = 0; k < bleedLines.Length; k++)
+            if (bleedLines[k].StartsWith(Bastion, StringComparison.Ordinal))
+                bleedLines[k] = bleedLines[k].Replace("\"keySource\":\"assaillant\",\"source\":\"assaillant\"", "\"keySource\":\"allie\",\"source\":\"allie\"", StringComparison.Ordinal);
+            else if (bleedLines[k].StartsWith("{\"entry\":", StringComparison.Ordinal) && bleedLines[k].Contains("\"item\":\"dot\",\"fighter\":\"bastion\"", StringComparison.Ordinal))
+                bleedLines[k] = bleedLines[k].Replace("\"keySource\":\"assaillant\"", "\"keySource\":\"allie\"", StringComparison.Ordinal);
+        string reattributed = string.Join("\n", bleedLines);
+        Assert.NotEqual(text, reattributed);
+        Assert.Contains("provenance différente de l'altération", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(reattributed),
+            NullCombatLog.Instance)).Message);
+        string dealt = System.Text.RegularExpressions.Regex.Match(bastion, "\"damageDealt\":[0-9]+").Value;
+        long dealtValue = long.Parse(dealt.Substring("\"damageDealt\":".Length), System.Globalization.CultureInfo.InvariantCulture);
+        AssertRefused(setup, text, new[] { (Bastion, dealt, $"\"damageDealt\":{dealtValue + 1_000_000}", "Dégâts du bilan incohérents") });
         // 18e tour : un coup critique est un coup, un ultime une compétence lancée ; un mort dont le départ a été annulé n'est pas parti.
         string hits = System.Text.RegularExpressions.Regex.Match(bastion, "\"hits\":[0-9]+").Value;
         long hitCount = long.Parse(hits.Substring("\"hits\":".Length), System.Globalization.CultureInfo.InvariantCulture);
