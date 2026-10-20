@@ -154,8 +154,10 @@ public static class Measures
             ?? throw new ArgumentException($"Aucun personnage « {MeasuredId} » dans le scénario.", nameof(setup));
         if (bastion.Class.Id != build.Build.ClassId)
             throw new ArgumentException($"Build « {build.Id} » de la classe « {build.Build.ClassId} », personnage mesuré de la classe « {bastion.Class.Id} ».", nameof(build));
-        var combatants = setup.Combatants.Select(c => c == bastion ? new CharacterSetup(bastion.Id, bastion.Team, bastion.Class, build.Build, bastion.Initiative) : c);
-        return new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, setup.Combat, combatants, setup.Commands, setup.Data);
+        var combatants = setup.Combatants.Select(c => c == bastion
+            ? new CharacterSetup(bastion.Id, bastion.Team, bastion.Class, build.Build, bastion.Initiative) { Placement = bastion.Placement } : c);
+        return new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, setup.Combat, combatants, setup.Commands, setup.Data,
+            setup.Space);
     }
 
     /// <summary>Joue un combat mesuré et calcule ses mesures ; <paramref name="log"/> reçoit le journal du combat complété.</summary>

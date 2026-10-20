@@ -100,6 +100,9 @@ namespace EdS.Data.Classes
         /// <summary>Sous-lot 8.4, facultatif : Résonance gagnée au lancement (absent = 0).</summary>
         public int? ResonanceGain { get; set; }
 
+        /// <summary>Sous-lot 11.4 (schéma 9), facultatif : portée en mètres d'une compétence à cible (absent = sans limite).</summary>
+        public Fixed? Range { get; set; }
+
         public bool? Provisional { get; set; }
 
         /// <summary>Altérations appliquées à chaque cible touchée (schéma 3, lot 7.2) ; liste éventuellement vide.</summary>

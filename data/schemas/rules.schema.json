@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 9
+      "const": 10
     },
     "kind": {
       "const": "rules"
@@ -660,6 +660,29 @@
                 "ultimateCost"
               ],
               "description": "Résonance (A5)."
+            },
+            "movement": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "baseSpeed": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100,
+                  "description": "Vitesse de déplacement de base, en m/s (5 : valeur de départ retenue le 20 octobre 2026)."
+                },
+                "guardSpeedRatio": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Facteur de vitesse pendant la garde (0.5 : valeur de départ retenue, L11-D3)."
+                }
+              },
+              "required": [
+                "baseSpeed",
+                "guardSpeedRatio"
+              ],
+              "description": "Déplacement dans un combat positionné (sous-lot 11.4, schéma 10)."
             }
           },
           "required": [
@@ -672,7 +695,8 @@
             "damageTaken",
             "parry",
             "rampartCharges",
-            "resonance"
+            "resonance",
+            "movement"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         },

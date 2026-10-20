@@ -8,6 +8,7 @@ using EdS.Domain.Builds;
 using EdS.Domain.Stats;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 
 namespace EdS.Data.Scenarios
 {
@@ -38,10 +39,15 @@ namespace EdS.Data.Scenarios
         /// <c>appliesFragility</c> sur les attaques d'assaillant, <c>statusResistance</c> facultatif sur mannequins et assaillants.
         /// Lot 7.3 : <c>triggers</c> facultatif sur un assaillant (ajout compatible, version inchangée). Version 3 (sous-lot 8.3) :
         /// <c>applies[].target</c> sur les attaques et rôle <c>ally</c> des déclencheurs d'assaillant. Version 4 (sous-lot 11.1) : <c>health</c>
-        /// facultatif sur un assaillant (PV d'un assaillant mortel ; absent : PV infinis de l'entraînement). Une version antérieure est
-        /// refusée sans migration : le fichier se met à jour à la main.
+        /// facultatif sur un assaillant (PV d'un assaillant mortel ; absent : PV infinis de l'entraînement). Version 5 (sous-lot 11.4) :
+        /// bloc <c>space</c> facultatif (combat positionné), <c>position</c>, <c>facing</c> et <c>radius</c> sur chaque combattant d'un
+        /// combat positionné, actions <c>move</c> (avec <c>direction</c>) et <c>moveStop</c>. Une version antérieure est refusée sans
+        /// migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 4;
+        public const int CurrentSchemaVersion = 5;
+
+        /// <summary>Sous-lot 11.4 : orientation de départ par défaut (vers +z).</summary>
+        public static readonly GroundVector DefaultFacing = new GroundVector(Fixed.Zero, Fixed.One);
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -90,6 +96,12 @@ namespace EdS.Data.Scenarios
             return new ScenarioLoadResult(report, report.IsValid ? setup : null);
         }
 
+        private static GroundVector Point(PointData p) => new GroundVector(p.X!.Value, p.Z!.Value);
+
+        /// <summary>Sous-lot 11.4 : placement d'un combattant qui a une position (rayon vérifié présent par la forme).</summary>
+        private static CombatantPlacement? Placement(CombatantData c) => c.Position is null ? null
+            : new CombatantPlacement(Point(c.Position), c.Facing is null ? DefaultFacing : Point(c.Facing), c.Radius!.Value);
+
         private static CombatSetup Build(ScenarioData scenario, GameData data)
         {
             var combatants = new List<CombatantSetup>();
@@ -101,7 +113,7 @@ namespace EdS.Data.Scenarios
                     data.TryGetClass(c.Class!, out LoadedClass loaded);
                     usedClasses[loaded.Definition.Id] = loaded;
                     CharacterBuild build = Builds.BuildShape.ToCharacterBuild(loaded.Definition.Id, c.Build!);
-                    combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value));
+                    combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value) { Placement = Placement(c) });
                 }
                 else if (c.Type == "assailant")
                 {
@@ -109,20 +121,26 @@ namespace EdS.Data.Scenarios
                         ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, ClassValidator.Applications(a.Applies!)));
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
-                        Triggers.TriggerShape.Build(c.Triggers), c.Health));
+                        Triggers.TriggerShape.Build(c.Triggers), c.Health) { Placement = Placement(c) });
                 }
                 else
                 {
-                    combatants.Add(new DummySetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero));
+                    combatants.Add(new DummySetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero)
+                        { Placement = Placement(c) });
                 }
             }
-            var commands = scenario.Commands!.Select(c => CombatActionIds.TryParseDefensive(c!.Action, out CombatAction action)
-                ? new CombatCommand(c.AtMs!.Value, c.Actor!, action)
-                : new CombatCommand(c.AtMs!.Value, c.Actor!, c.Skill!, c.Target));
+            var commands = scenario.Commands!.Select(c => !CombatActionIds.TryParseAction(c!.Action, out CombatAction action)
+                ? new CombatCommand(c.AtMs!.Value, c.Actor!, c.Skill!, c.Target)
+                : action == CombatAction.Move
+                    ? new CombatCommand(c.AtMs!.Value, c.Actor!, Point(c.Direction!))
+                    : new CombatCommand(c.AtMs!.Value, c.Actor!, action));
+            CombatSpace? space = scenario.Space is { Bounds: { } b }
+                ? new CombatSpace(b.MinX!.Value, b.MaxX!.Value, b.MinZ!.Value, b.MaxZ!.Value)
+                : null;
             var identity = new CombatDataIdentity(data.RulesIdentity, usedClasses.Values.Select(GameData.IdentityOf));
             var rules = data.Rules;
             return new CombatSetup(scenario.Seed!.Value, scenario.DurationMs!.Value, rules.Stats, rules.Damage, rules.Progression, rules.Combat,
-                combatants, commands, identity);
+                combatants, commands, identity, space);
         }
 
         private sealed class ShapeChecker
@@ -162,6 +180,22 @@ namespace EdS.Data.Scenarios
                 Present(scenario.DurationMs, root + ".durationMs", "durée en millisecondes");
                 Items(scenario.Combatants, root + ".combatants", "liste des combattants", CheckCombatant);
                 Items(scenario.Commands, root + ".commands", "liste des commandes, éventuellement vide", CheckCommand);
+                if (scenario.Space is { } space && Present(space.Bounds, root + ".space.bounds", "bornes minX, maxX, minZ, maxZ en mètres"))
+                {
+                    string b = root + ".space.bounds";
+                    Present(space.Bounds!.MinX, b + ".minX", "nombre décimal, en mètres");
+                    Present(space.Bounds.MaxX, b + ".maxX", "nombre décimal, en mètres");
+                    Present(space.Bounds.MinZ, b + ".minZ", "nombre décimal, en mètres");
+                    Present(space.Bounds.MaxZ, b + ".maxZ", "nombre décimal, en mètres");
+                }
+            }
+
+            /// <summary>Sous-lot 11.4 : point ou direction, ses deux composantes présentes.</summary>
+            private void CheckPoint(PointData? point, string path, string description)
+            {
+                if (!Present(point, path, description)) return;
+                Present(point!.X, path + ".x", "nombre décimal, en mètres");
+                Present(point.Z, path + ".z", "nombre décimal, en mètres");
             }
 
             private void CheckCombatant(CombatantData c, string path)
@@ -169,6 +203,17 @@ namespace EdS.Data.Scenarios
                 Present(c.Id, path + ".id", "identifiant du combattant");
                 Present(c.Team, path + ".team", "équipe");
                 Present(c.Initiative, path + ".initiative", "entier");
+                // Sous-lot 11.4 : placement. Orientation et rayon n'ont de sens qu'avec une position ; une position exige un rayon. Une position
+                // dans un combat sans espace, ou son absence dans un combat positionné, est refusée par le domaine (CombatSetup).
+                if (c.Present.Contains("position"))
+                {
+                    CheckPoint(c.Position, path + ".position", "position du centre de l'emprise");
+                    if (c.Present.Contains("facing")) CheckPoint(c.Facing, path + ".facing", "orientation de départ");
+                    Present(c.Radius, path + ".radius", "rayon de l'emprise, en mètres");
+                }
+                else
+                    foreach (string field in new[] { "facing", "radius" }.Where(c.Present.Contains))
+                        _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "sans position, ce champ est sans effet.");
                 if (!Present(c.Type, path + ".type", "character, dummy ou assailant")) return;
                 if (!TypeFields.TryGetValue(c.Type!, out string[] own))
                 {
@@ -225,14 +270,20 @@ namespace EdS.Data.Scenarios
                 Present(c.Actor, path + ".actor", "identifiant du combattant");
                 if (!c.Present.Contains("action"))
                 {
-                    Present(c.Skill, path + ".skill", "identifiant de compétence, ou champ action (" + string.Join(", ", CombatActionIds.Defensive) + ")");
+                    Present(c.Skill, path + ".skill", "identifiant de compétence, ou champ action (" + string.Join(", ", CombatActionIds.Actions) + ")");
+                    if (c.Present.Contains("direction"))
+                        _report.Add(path + ".direction", ValidationCode.InvalidValue, "une compétence n'a pas de direction (action move seulement).");
                     return;
                 }
-                if (Present(c.Action, path + ".action", string.Join(", ", CombatActionIds.Defensive)) && !CombatActionIds.TryParseDefensive(c.Action, out _))
+                if (Present(c.Action, path + ".action", string.Join(", ", CombatActionIds.Actions)) && !CombatActionIds.TryParseAction(c.Action, out _))
                     _report.Add(path + ".action", ValidationCode.UnknownReference,
-                        $"action inconnue « {c.Action} » ; valeurs possibles : {string.Join(", ", CombatActionIds.Defensive)}.");
+                        $"action inconnue « {c.Action} » ; valeurs possibles : {string.Join(", ", CombatActionIds.Actions)}.");
                 foreach (string field in new[] { "skill", "target" }.Where(c.Present.Contains))
-                    _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "une garde ou une parade ne prend ni compétence ni cible.");
+                    _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "une garde, une parade ou un déplacement ne prend ni compétence ni cible.");
+                // Sous-lot 11.4 : direction obligatoire pour move, refusée pour toute autre action.
+                if (c.Action == CombatActionIds.Move) CheckPoint(c.Direction, path + ".direction", "direction du déplacement { x, z }, non nulle");
+                else if (c.Present.Contains("direction"))
+                    _report.Add(path + ".direction", ValidationCode.InvalidValue, "seule l'action move prend une direction.");
             }
         }
     }

@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 8
+      "const": 9
     },
     "kind": {
       "const": "class"
@@ -278,7 +278,7 @@
     "combat": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore. Sous-lot 8.3 : powerType, damageType et coefficient ensemble, ou aucun (compétence de soutien, obligatoire pour les ciblages self, ally et allAllies). Sous-lot 8.4 : rampartChargeSpendAll et coefficientPerRampartCharge (Contrecoup), resonanceGain (Provocation), facultatifs.",
+      "description": "Facultatif. Dégâts directs, coût, recharge, caractère imparable et Charges de rempart d'une compétence lançable (lots 5 et 6). Sans ce bloc, la compétence s'équipe mais ne se lance pas encore. Sous-lot 8.3 : powerType, damageType et coefficient ensemble, ou aucun (compétence de soutien, obligatoire pour les ciblages self, ally et allAllies). Sous-lot 8.4 : rampartChargeSpendAll et coefficientPerRampartCharge (Contrecoup), resonanceGain (Provocation), facultatifs. Sous-lot 11.4 (schéma 9) : range, facultatif, pour les ciblages enemy et ally.",
       "required": [
         "enduranceCost",
         "cooldownMs",
@@ -356,6 +356,12 @@
           "minimum": 0,
           "description": "Facultatif (sous-lot 8.4) : Résonance gagnée au lancement (Provocation : 5), plafonnée au maximum ; jamais sur une ultime."
         },
+        "range": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Facultatif (sous-lot 11.4, schéma 9), ciblages enemy et ally seulement : portée en mètres entre les bords des emprises, vérifiée au lancement dans un combat positionné (refus targetOutOfRange) ; absente : sans limite. Ignorée dans un combat sans espace."
+        },
         "provisional": {
           "type": "boolean",
           "description": "Valeurs provisoires, non équilibrées."
@@ -391,6 +397,23 @@
         }
       },
       "allOf": [
+        {
+          "if": {
+            "required": [
+              "range"
+            ]
+          },
+          "then": {
+            "properties": {
+              "targeting": {
+                "enum": [
+                  "enemy",
+                  "ally"
+                ]
+              }
+            }
+          }
+        },
         {
           "if": {
             "required": [

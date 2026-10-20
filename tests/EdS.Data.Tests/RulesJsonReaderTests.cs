@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(9, result.Rules!.SchemaVersion);
-        Assert.Equal("0.8.0-provisoire", result.Rules.ContentVersion);   // 0.8.0 : altérations des talents du Gardien (sous-lot 8.5)
+        Assert.Equal(10, result.Rules!.SchemaVersion);
+        Assert.Equal("0.9.0-provisoire", result.Rules.ContentVersion);   // 0.8.0 : altérations des talents du Gardien (sous-lot 8.5) ; 0.9.0 : déplacement (11.4)
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -115,8 +115,9 @@ public class RulesJsonReaderTests
         // Sous-lot 8.3 : schéma 8 ; redirectRatio (0) écrit pour chaque altération.
         // Sous-lot 8.4 : schéma 9, contenu 0.7.0 : combat.triggers.areaStrikeMinCooldownMs et les cinq altérations du Bastion.
         // Sous-lot 8.5 : contenu 0.8.0, schéma inchangé : les trois altérations des talents du Gardien.
+        // Sous-lot 11.4 : schéma 10, contenu 0.9.0 : combat.movement.baseSpeed et combat.movement.guardSpeedRatio.
         Assert.Equal(
-            "sha256:03f73faca72b574c972b117e29235f072528b6a5929b268c01842ec9fca1f83a",
+            "sha256:0c55c0a6c2101b1d543049e1d74fb9acba5aaab6500a55ea7e2ab9ce1d6d53c0",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -124,7 +125,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 10), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 11), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Format_5_sans_plafonds_refuse_explicitement()

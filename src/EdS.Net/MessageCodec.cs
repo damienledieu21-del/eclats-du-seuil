@@ -114,6 +114,10 @@ namespace EdS.Net
             w.BeginArray();
             foreach (CombatCommand c in commands)
             {
+                // Sous-lot 11.4 : le protocole 1 ne transporte pas les déplacements (démonstration réseau positionnée au sous-lot 11.7) ; un
+                // client ne peut pas en envoyer (lecture stricte), et rien ne doit en écrire un qu'aucun pair ne saurait lire.
+                if (c.Action == CombatAction.Move || c.Action == CombatAction.MoveStop)
+                    throw new NotSupportedException("Déplacements hors du protocole réseau 1 (sous-lot 11.7).");
                 w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor).Field("action", CombatActionIds.Of(c.Action));
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
                 w.EndObject();

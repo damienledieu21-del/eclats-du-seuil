@@ -54,8 +54,42 @@ namespace EdS.Data.Json
                     n => $"{n} combattants, au plus {limits.MaxCombatants} (combat.limits.maxCombatants).", (e, ip) => ReadCombatant(input, e, ip)),
                 ["commands"] = (v, p) => data.Commands = input.ReadLimitedList(v, p, limits.MaxCommands,
                     n => $"{n} commandes, au plus {limits.MaxCommands} (combat.limits.maxCommands).", (e, ip) => ReadCommand(input, e, ip)),
+                ["space"] = (v, p) => data.Space = ReadSpace(input, v, p),   // sous-lot 11.4 (schéma 5)
             });
             return ok ? data : null;
+        }
+
+        /// <summary>Sous-lot 11.4 : bloc <c>space</c> (bornes du rectangle praticable).</summary>
+        private static SpaceData? ReadSpace(JsonInput input, JsonElement element, string path)
+        {
+            var space = new SpaceData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["bounds"] = (v, p) =>
+                {
+                    var b = new BoundsData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["minX"] = (x, xp) => b.MinX = input.Decimal(x, xp),
+                        ["maxX"] = (x, xp) => b.MaxX = input.Decimal(x, xp),
+                        ["minZ"] = (x, xp) => b.MinZ = input.Decimal(x, xp),
+                        ["maxZ"] = (x, xp) => b.MaxZ = input.Decimal(x, xp),
+                    })) space.Bounds = b;
+                },
+            });
+            return ok ? space : null;
+        }
+
+        /// <summary>Sous-lot 11.4 : point ou direction <c>{ "x": …, "z": … }</c>.</summary>
+        internal static PointData? ReadPoint(JsonInput input, JsonElement element, string path)
+        {
+            var point = new PointData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["x"] = (v, p) => point.X = input.Decimal(v, p),
+                ["z"] = (v, p) => point.Z = input.Decimal(v, p),
+            });
+            return ok ? point : null;
         }
 
         private static CombatantData? ReadCombatant(JsonInput input, JsonElement element, string path)
@@ -72,6 +106,9 @@ namespace EdS.Data.Json
                 ["type"] = (v, p) => c.Type = input.Text(v, p),
                 ["team"] = (v, p) => c.Team = input.Text(v, p),
                 ["initiative"] = (v, p) => c.Initiative = input.Int32(v, p),
+                ["position"] = Track("position", (v, p) => c.Position = ReadPoint(input, v, p)),   // sous-lot 11.4 (schéma 5)
+                ["facing"] = Track("facing", (v, p) => c.Facing = ReadPoint(input, v, p)),
+                ["radius"] = Track("radius", (v, p) => c.Radius = input.Decimal(v, p)),
                 ["class"] = Track("class", (v, p) => c.Class = input.Text(v, p)),
                 ["build"] = Track("build", (v, p) => c.Build = ReadBuild(input, v, p)),
                 ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
@@ -142,6 +179,7 @@ namespace EdS.Data.Json
                 ["skill"] = Track("skill", (v, p) => c.Skill = input.Text(v, p)),
                 ["action"] = Track("action", (v, p) => c.Action = input.Text(v, p)),
                 ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
+                ["direction"] = Track("direction", (v, p) => c.Direction = ReadPoint(input, v, p)),   // sous-lot 11.4
             });
             return ok ? c : null;
         }

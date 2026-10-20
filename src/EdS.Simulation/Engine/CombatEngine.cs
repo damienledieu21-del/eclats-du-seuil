@@ -5,6 +5,7 @@ using System.Text;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 using EdS.Domain.Stats;
 using EdS.Simulation.Combat;
 using EdS.Simulation.Randomness;
@@ -18,7 +19,8 @@ namespace EdS.Simulation.Engine
     /// génériques définies en données (lot 7.2) : DOT, contrôles, modificateurs et immunités, voir <see cref="StatusDefinition"/>.
     /// Aucune lecture de l'horloge système, aucun flottant, aucun état partagé entre combats : tout l'état appartient
     /// à l'instance. Même combat (règles, participants, commandes, graine) = même journal, octet par octet.
-    /// <para>Ordre d'un tick (A10) : expirations → commandes (initiative décroissante, puis identifiant) → résolution
+    /// <para>Ordre d'un tick (A10) : expirations → commandes (initiative décroissante, puis identifiant) → déplacements (combat positionné,
+    /// sous-lot 11.4) → résolution
     /// des actions et dégâts → effets périodiques (entretien de la garde) → régénération → morts et fin de combat.</para>
     /// <para>Budgets (lot 7.1) : chaque traitement élémentaire (une échéance, le retrait d'une commande, une commande, une
     /// action complète avec toutes ses cibles, le passage d'un combattant dans une phase balayée) calcule son coût exact
@@ -29,7 +31,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.15.0";
+        public const string Version = "0.16.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -54,9 +56,15 @@ namespace EdS.Simulation.Engine
         /// (toutes les Charges détenues pour une compétence qui les dépense toutes, comme Contrecoup). 9 (sous-lot 11.1) : un assaillant de
         /// l'en-tête peut porter <c>health</c> (PV de départ et maximaux d'un assaillant mortel) ; sa ligne <c>combatant</c> porte alors ses
         /// PV, et il meurt à 0 PV (<c>died</c>, une fois) : ses tours suivants sont abandonnés sans ligne, la victoire peut revenir aux
-        /// joueurs (<c>combatEnded</c>, <c>teamDefeated</c>). Un journal d'un autre format est refusé au rejeu.
+        /// joueurs (<c>combatEnded</c>, <c>teamDefeated</c>). 10 (sous-lot 11.4) : combat positionné. L'en-tête porte le bloc <c>space</c>,
+        /// le placement de chaque combattant (<c>position</c>, <c>facing</c>, <c>radius</c>) et les commandes <c>move</c> (avec
+        /// <c>direction</c>) et <c>moveStop</c> ; la ligne <c>combatant</c> porte <c>x</c>, <c>z</c>, <c>facingX</c>, <c>facingZ</c> et
+        /// <c>radius</c> ; lignes <c>movementStarted</c> et <c>movementStopped</c> (commandes acceptées), <c>moved</c> (phase <c>movement</c>,
+        /// une ligne par tick, positions et orientations de ceux qui ont bougé) ; refus <c>targetOutOfRange</c> et <c>notMoving</c>. Ces
+        /// champs et lignes n'existent que dans un combat positionné : un combat sans espace garde les lignes du format 9. Un journal d'un
+        /// autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 9;
+        public const int LogFormatVersion = 10;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -132,6 +140,14 @@ namespace EdS.Simulation.Engine
 
             public Pcg32 Random = null!;
             public bool IsDead;
+
+            // Sous-lot 11.4 : placement dans un combat positionné (valeurs neutres sinon). Orientation ramenée à 1 m au plus.
+            public GroundVector Position;
+            public GroundVector Facing;
+            public Fixed Radius;
+
+            /// <summary>Direction du déplacement en cours (intention gardée d'un tick à l'autre) ; null à l'arrêt.</summary>
+            public GroundVector? Moving;
             public readonly CombatantResult Result = new CombatantResult();
 
             public string Id => Setup.Id;
@@ -358,6 +374,9 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Sous-lot 8.3 : le catalogue contient-il une protection ? (majorant des frappes de réaction, ligne de transfert)</summary>
         private readonly bool _hasProtections;
+
+        /// <summary>Sous-lot 11.4 : espace d'un combat positionné ; null pour un combat logique (aucune portée, aucun déplacement).</summary>
+        private readonly CombatSpace? _space;
         private long _eventsThisTick;
         private long _workThisTick;
         private bool _countEvents;
@@ -407,6 +426,7 @@ namespace EdS.Simulation.Engine
             _statuses = _rules.Statuses;
             for (int i = 0; i < _statuses.Definitions.Count; i++) _statusOrder[_statuses.Definitions[i].Id] = i;
             _hasProtections = _statuses.Definitions.Any(d => d.IsProtection);
+            _space = setup.Space;
 
             _fighters = setup.Combatants.Select(CreateFighter).ToList();
             _fightersById = _fighters.OrderBy(f => f.Id, StringComparer.Ordinal).ToList();
@@ -443,6 +463,12 @@ namespace EdS.Simulation.Engine
             var f = new Fighter { Setup = setup, Random = new Pcg32(unchecked((ulong)_setup.Seed), StreamOf(setup.Id)) };
             f.Result.Id = setup.Id;
             f.Result.Team = setup.Team;
+            if (setup.Placement is { } placement)
+            {
+                f.Position = placement.Position;
+                f.Facing = SpaceMath.Normalize(placement.Facing);
+                f.Radius = placement.Radius;
+            }
             switch (setup)
             {
                 case CharacterSetup character:
@@ -498,6 +524,7 @@ namespace EdS.Simulation.Engine
             {
                 RunExpirations(tick);
                 List<PendingAction> actions = RunCommands(tick);
+                RunMovement(tick);
                 RunResolution(tick, actions);
                 RunPeriodic(tick);
                 RunRegeneration(tick);
@@ -619,6 +646,8 @@ namespace EdS.Simulation.Engine
             {
                 case CombatAction.GuardStart:
                 case CombatAction.GuardStop:
+                case CombatAction.Move:
+                case CombatAction.MoveStop:
                     return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
@@ -687,6 +716,22 @@ namespace EdS.Simulation.Engine
                     long started = Emit(tick, CombatPhase.Commands, "parryStarted", root, w => w
                         .Field("actor", actor.Id).Field("command", item.Index).Field("windowEndTick", actor.ParryEndTick).Field("guarding", actor.Guarding));
                     end.Origin = root.CausedBy(started);
+                    return null;
+
+                // Sous-lot 11.4 : intention de déplacement, appliquée en phase movement de ce tick et des suivants. Aucune altération ne
+                // bloque le déplacement à ce stade (question posée à Damien pour l'étourdissement) ; la garde le ralentit.
+                case CombatAction.Move:
+                    if (Reject(tick, item, actor, CheckAlive(actor))) return null;
+                    GroundVector direction = command.Direction!.Value;
+                    actor.Moving = direction;
+                    Emit(tick, CombatPhase.Commands, "movementStarted", root, w => w
+                        .Field("actor", actor.Id).Field("command", item.Index).Field("directionX", direction.X).Field("directionZ", direction.Z));
+                    return null;
+
+                case CombatAction.MoveStop:
+                    if (Reject(tick, item, actor, CheckAlive(actor) ?? (actor.Moving is null ? "notMoving" : null))) return null;
+                    actor.Moving = null;
+                    Emit(tick, CombatPhase.Commands, "movementStopped", root, w => w.Field("actor", actor.Id).Field("command", item.Index));
                     return null;
 
                 default:
@@ -795,12 +840,14 @@ namespace EdS.Simulation.Engine
                     if (target is null) return "targetRequired";
                     if (target.Team == actor.Team) return "targetNotEnemy";
                     if (target.IsDead) return "targetDead";
+                    if (OutOfRange(actor, target, combat)) return "targetOutOfRange";
                     break;
                 // Sous-lot 8.3 (X5) : un allié désigné, le lanceur compris ; un hostile ou un mort est refusé.
                 case SkillTargeting.Ally:
                     if (target is null) return "targetRequired";
                     if (target.Team != actor.Team) return "targetNotAlly";
                     if (target.IsDead) return "targetDead";
+                    if (OutOfRange(actor, target, combat)) return "targetOutOfRange";
                     break;
                 default:   // tous les ennemis, soi, tous les alliés : aucune cible désignée
                     if (target != null) return "targetNotAllowed";
@@ -810,6 +857,69 @@ namespace EdS.Simulation.Engine
             if (actor.Resonance < resonanceCost) return "insufficientResonance";
             if (actor.RampartCharges < combat.RampartChargeCost) return "insufficientRampartCharges";
             return null;
+        }
+
+        /// <summary>
+        /// Sous-lot 11.4 : la cible est-elle hors de portée au lancement ? Seulement dans un combat positionné et pour une compétence qui a
+        /// une portée : distance entre les bords des emprises au plus la portée, frontière incluse (comparaison exacte des carrés).
+        /// </summary>
+        private bool OutOfRange(Fighter actor, Fighter target, SkillCombatDefinition combat) =>
+            _space != null && combat.Range is { } range && !SpaceMath.WithinReach(actor.Position, actor.Radius, target.Position, target.Radius, range);
+
+        // --- Phase movement (sous-lot 11.4) ----------------------------------------------------------
+
+        /// <summary>
+        /// Déplacements d'un combat positionné, après les commandes du tick (une intention donnée au tick T fait bouger dès le tick T) et
+        /// avant la résolution (les impacts voient les nouvelles positions ; une compétence à cible a vérifié sa portée au lancement, avec
+        /// les positions du tick précédent). Chaque combattant vivant qui a une intention avance, dans l'ordre de ses identifiants, d'au plus
+        /// vitesse × durée du tick dans sa direction ; son emprise reste dans les bornes (glissement le long d'un bord) ; il se tourne dans
+        /// le sens de sa marche. Vitesse : base des règles, × facteur de garde s'il garde, × (1 + somme des <c>movementSpeedModifier</c> de
+        /// ses altérations actives, au moins 0). Une seule ligne <c>moved</c> pour le tick, s'il y a eu un changement. Aucune collision entre
+        /// combattants à ce stade.
+        /// </summary>
+        private void RunMovement(long tick)
+        {
+            if (_space is null) return;
+            var plans = new List<(Fighter Fighter, GroundVector Position, GroundVector Facing)>();
+            long considered = 0;
+            foreach (Fighter f in _fightersById)
+            {
+                if (f.IsDead || f.Moving is not { } direction) continue;
+                considered++;
+                long step = IntMath.MulDiv(MovementSpeed(f).Raw, _tickMs, 1000, RoundingMode.Floor);
+                GroundVector delta = SpaceMath.Scale(direction, step);
+                GroundVector position = _space.Clamp(new GroundVector(f.Position.X + delta.X, f.Position.Z + delta.Z), f.Radius);
+                GroundVector facing = SpaceMath.Normalize(direction);
+                if (position != f.Position || facing != f.Facing) plans.Add((f, position, facing));
+            }
+            Reserve(considered * Cost.Op + Cost.Line.If(plans.Count > 0));
+            Charge(considered);
+            if (plans.Count == 0) return;
+            foreach (var plan in plans)
+            {
+                plan.Fighter.Position = plan.Position;
+                plan.Fighter.Facing = plan.Facing;
+            }
+            EmitDiagnostic(tick, CombatPhase.Movement, "moved", w =>
+            {
+                w.Name("positions").BeginArray();
+                foreach (var plan in plans)
+                    w.BeginObject().Field("combatant", plan.Fighter.Id).Field("x", plan.Position.X).Field("z", plan.Position.Z)
+                        .Field("facingX", plan.Facing.X).Field("facingZ", plan.Facing.Z).EndObject();
+                w.EndArray();
+            });
+        }
+
+        /// <summary>Sous-lot 11.4 : vitesse effective d'un combattant, en m/s (voir <see cref="RunMovement"/>).</summary>
+        private Fixed MovementSpeed(Fighter f)
+        {
+            Fixed speed = _rules.MovementBaseSpeed;
+            if (f.Guarding) speed = Fixed.Multiply(speed, _rules.GuardMovementSpeedRatio, RoundingMode.Floor);
+            Fixed modifier = Fixed.Zero;
+            foreach (StatusInstance status in f.Statuses.Values) modifier += status.Definition.MovementSpeedModifier;
+            if (modifier == Fixed.Zero) return speed;
+            Fixed factor = Fixed.Max(Fixed.Zero, Fixed.One + modifier);
+            return Fixed.Multiply(speed, factor, RoundingMode.Floor);
         }
 
         /// <summary>Tour d'un assaillant : attaque suivante de sa liste, puis tour suivant programmé.</summary>
@@ -2074,6 +2184,7 @@ namespace EdS.Simulation.Engine
                 f.Guarding = false;
                 f.ParryOpen = false;
                 f.NextAttackTick = null;     // sous-lot 11.1 : un assaillant mort n'a plus de tour (vue du pilote, télégraphie)
+                f.Moving = null;             // sous-lot 11.4 : un mort ne se déplace plus
                 // A6 : provenance de l'effet mortel ; sans effet mortel (points de vie nuls dès le départ), racine propre.
                 Provenance lethal = f.LethalCause ?? Provenance.NewRoot($"endOfTick:{f.Id}:{tick}", null);
                 long died = Emit(tick, CombatPhase.EndOfTick, "died", lethal,
@@ -2184,8 +2295,11 @@ namespace EdS.Simulation.Engine
             string type = character ? "character" : f.Assailant != null ? "assailant" : "dummy";
             EmitDiagnostic(0, CombatPhase.Setup, "combatant", w =>
             {
-                w.Field("combatant", f.Id).Field("team", f.Team).Field("type", type)
-                    .Field("initiative", f.Setup.Initiative).Field("health", f.Health).Field("maxHealth", f.MaxHealth)
+                w.Field("combatant", f.Id).Field("team", f.Team).Field("type", type).Field("initiative", f.Setup.Initiative);
+                // Sous-lot 11.4 (format 10) : placement, seulement dans un combat positionné.
+                if (_space != null)
+                    w.Field("x", f.Position.X).Field("z", f.Position.Z).Field("facingX", f.Facing.X).Field("facingZ", f.Facing.Z).Field("radius", f.Radius);
+                w.Field("health", f.Health).Field("maxHealth", f.MaxHealth)
                     .Field("endurance", character ? f.Endurance : (long?)null).Field("maxEndurance", character ? f.MaxEndurance : (long?)null)
                     .Field("resonance", character ? f.Resonance : (long?)null).Field("rampartCharges", character ? f.RampartCharges : (long?)null)
                     .Field("physicalPower", s.PhysicalPower).Field("agilePower", s.AgilePower).Field("magicPower", s.MagicPower)
@@ -2249,6 +2363,7 @@ namespace EdS.Simulation.Engine
             CombatPhase.Setup => "setup",
             CombatPhase.Expirations => "expirations",
             CombatPhase.Commands => "commands",
+            CombatPhase.Movement => "movement",
             CombatPhase.Resolution => "resolution",
             CombatPhase.Periodic => "periodic",
             CombatPhase.Regeneration => "regeneration",

@@ -259,6 +259,14 @@ namespace EdS.Domain.Builds
                 errors.Add(new RuleViolation($"gain de Résonance hors de [0, {SkillCombatDefinition.MaxCost}].", path + ".resonanceGain"));
             else if (combat.ResonanceGain > 0 && skill.Kind == SkillKind.Ultimate)
                 errors.Add(new RuleViolation("une ultime dépense la Résonance : aucun gain de Résonance à son lancement.", path + ".resonanceGain"));
+            // Sous-lot 11.4 : portée d'une compétence à cible (ennemi ou allié désigné), bornée ; sur un autre ciblage, sans effet.
+            if (combat.Range is { } range)
+            {
+                if (range < Numerics.Fixed.Zero || range > Space.SpaceLimits.MaxRange)
+                    errors.Add(new RuleViolation($"portée hors de [0, {Space.SpaceLimits.MaxRange}] m.", path + ".range"));
+                else if (!combat.Targeting.NeedsTarget())
+                    errors.Add(new RuleViolation("portée réservée aux ciblages enemy et ally (cible désignée) : sans effet sur ce ciblage.", path + ".range"));
+            }
             if (combat.CooldownMs < 0 || combat.CooldownMs > Combat.CombatRules.AbsoluteMaxDurationMs)
                 errors.Add(new RuleViolation($"recharge hors de [0, {Combat.CombatRules.AbsoluteMaxDurationMs}] ms.", path + ".cooldownMs"));
             // Lot 7.2 : forme des altérations portées ; leur existence est vérifiée avec le catalogue des règles (CombatSetup.Validate).

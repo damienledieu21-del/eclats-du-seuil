@@ -152,6 +152,9 @@ namespace EdS.Data.Rules
             new RuleField("combat.resonance.perPerfectParry", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerPerfectParry)),
             new RuleField("combat.resonance.perBlock", RuleValueKind.Int32, C, nameof(CombatRules.ResonancePerBlock)),
             new RuleField("combat.resonance.ultimateCost", RuleValueKind.Int32, C, nameof(CombatRules.UltimateResonanceCost)),
+            // Sous-lot 11.4 (schéma de règles 10) : déplacement dans un combat positionné.
+            new RuleField("combat.movement.baseSpeed", RuleValueKind.Decimal, C, nameof(CombatRules.MovementBaseSpeed)),
+            new RuleField("combat.movement.guardSpeedRatio", RuleValueKind.Decimal, C, nameof(CombatRules.GuardMovementSpeedRatio)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

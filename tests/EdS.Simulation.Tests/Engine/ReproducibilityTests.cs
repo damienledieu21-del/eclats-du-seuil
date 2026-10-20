@@ -88,8 +88,9 @@ public class ReproducibilityTests
     // dans les règles effectives), sans protection : gameplay inchangé (ancienne empreinte 9294c3e3…). Sous-lot 8.4 : moteur 0.14.0, format 8
     // (guard.noUpkeep dans les règles effectives) ; classe d'essai inchangée : gameplay inchangé (ancienne empreinte 0f1be953…). Sous-lot
     // 11.1 : moteur 0.15.0, format 9 (PV facultatifs des assaillants) ; le mannequin n'en a pas : seul l'en-tête change (ancienne empreinte
-    // 234e3c83…).
-    internal const string ReferenceHash = "4d08cf794cd9bd6a37db24e34582c8cbfab7dbbd3abe8690812c0163aa1cd683";
+    // 234e3c83…). Sous-lot 11.4 : moteur 0.16.0, format 10 (combat positionné) ; combat sans espace : seul l'en-tête change (ancienne
+    // empreinte 4d08cf79…).
+    internal const string ReferenceHash = "ed17e941ea715954747664adf633596aab660706a70c85415c82115b4e45d6ca";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 4
+      "const": 5
     },
     "kind": {
       "const": "scenario"
@@ -54,6 +54,49 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/command"
+          }
+        },
+        "space": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bounds"
+          ],
+          "description": "Sous-lot 11.4 (schéma 5), facultatif : combat positionné sur une seule surface praticable. Absent : combat logique (portées ignorées, aucun déplacement, aucune position acceptée).",
+          "properties": {
+            "bounds": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "minX",
+                "maxX",
+                "minZ",
+                "maxZ"
+              ],
+              "description": "Rectangle praticable en mètres, bords solides ; |coordonnée| ≤ 10 000, min < max.",
+              "properties": {
+                "minX": {
+                  "type": "number",
+                  "minimum": -10000,
+                  "maximum": 10000
+                },
+                "maxX": {
+                  "type": "number",
+                  "minimum": -10000,
+                  "maximum": 10000
+                },
+                "minZ": {
+                  "type": "number",
+                  "minimum": -10000,
+                  "maximum": 10000
+                },
+                "maxZ": {
+                  "type": "number",
+                  "minimum": -10000,
+                  "maximum": 10000
+                }
+              }
+            }
           }
         }
       }
@@ -150,6 +193,20 @@
             "$ref": "#/$defs/trigger"
           },
           "description": "Déclencheurs (lot 7.3), au plus 8."
+        },
+        "position": {
+          "$ref": "#/$defs/point",
+          "description": "Sous-lot 11.4 : centre de l'emprise au départ ; obligatoire dans un combat positionné (bloc space), refusé sinon. L'emprise doit tenir dans les bornes."
+        },
+        "facing": {
+          "$ref": "#/$defs/point",
+          "description": "Sous-lot 11.4, facultatif avec une position : orientation de départ (direction non nulle, ramenée à 1 m) ; absente : vers +z."
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 50,
+          "description": "Sous-lot 11.4, obligatoire avec une position : rayon de l'emprise circulaire, en mètres (valeurs de départ : Bastion 0,5, loup 0,6, chef 1,2)."
         }
       },
       "additionalProperties": false,
@@ -241,7 +298,7 @@
         "atMs",
         "actor"
       ],
-      "description": "Compétence (skill, target) ou action défensive (action), jamais les deux.",
+      "description": "Compétence (skill, target), action défensive ou déplacement (action), jamais les deux.",
       "properties": {
         "atMs": {
           "type": "integer",
@@ -265,9 +322,15 @@
           "enum": [
             "guardStart",
             "guardStop",
-            "parry"
+            "parry",
+            "move",
+            "moveStop"
           ],
-          "description": "Garde (A1) ou parade parfaite (A2)."
+          "description": "Garde (A1), parade parfaite (A2) ; sous-lot 11.4, combat positionné seulement : move (avec direction, intention gardée jusqu'à la suivante, moveStop ou la mort) et moveStop."
+        },
+        "direction": {
+          "$ref": "#/$defs/point",
+          "description": "Sous-lot 11.4 : direction non nulle d'un déplacement (action move seulement) ; sa longueur est sans effet, la vitesse vient des règles."
         }
       },
       "oneOf": [
@@ -276,8 +339,17 @@
             "skill"
           ],
           "not": {
-            "required": [
-              "action"
+            "anyOf": [
+              {
+                "required": [
+                  "action"
+                ]
+              },
+              {
+                "required": [
+                  "direction"
+                ]
+              }
             ]
           }
         },
@@ -298,6 +370,32 @@
                 ]
               }
             ]
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "const": "move"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "direction"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "direction"
+              ]
+            }
           }
         }
       ]
@@ -551,6 +649,27 @@
         "effects"
       ],
       "description": "Déclencheur (lot 7.3) : 1 à 4 effets exécutés comme une seule réaction."
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "z"
+      ],
+      "description": "Sous-lot 11.4 : point ou direction sur le plan au sol, en mètres, 4 décimales au plus, |composante| ≤ 10 000.",
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": -10000,
+          "maximum": 10000
+        },
+        "z": {
+          "type": "number",
+          "minimum": -10000,
+          "maximum": 10000
+        }
+      }
     }
   }
 }
