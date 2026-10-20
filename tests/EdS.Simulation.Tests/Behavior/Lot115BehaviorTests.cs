@@ -140,6 +140,38 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Provocation_retiree_avant_la_phase_d_engagement_engage_quand_meme()
+    {
+        // Revue Codex de la PR #33 (tour 6) : le Bastion provoque le loup (Cri) et part dans le même tick ; la provocation est retirée en fin
+        // de tick (sourceLeft), avant la phase d'engagement du tick suivant. Le loup, provoqué, s'engage quand même (taunt) et vise l'allié.
+        var (_, log) = Run(Fight(new CombatantSetup[]
+        {
+            EdS.Simulation.Tests.Space.Lot114bRangeTests.Hero("bastion", At("0", "0"), new[] { EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri }),
+            Player("allie", At("-10", "0")),
+            Hunter("loup", At("10", "0"), "0.5", aggro: "2"),
+        }, new[] { Cmd(0, EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri, target: null), new CombatCommand(0, "bastion", CombatAction.Leave) },
+            durationMs: 1000, rules: NoUpkeep));
+        Assert.Contains(Lines(log, "stateRemoved"), r => r.Str("combatant") == "loup" && r.Str("reason") == "sourceLeft" && r.Tick() == 0);
+        JsonElement engaged = Assert.Single(Lines(log, "engaged"));
+        Assert.Equal(("taunt", "allie", 1L), (engaged.Str("reason"), engaged.Str("target"), engaged.Tick()));
+        // L'instantané porte la provocation reçue (taunted) ; une provocation active non mémorisée, ou reçue par un personnage, est refusée.
+        var engine = new CombatEngine(Fight(new CombatantSetup[]
+        {
+            EdS.Simulation.Tests.Space.Lot114bRangeTests.Hero("bastion", At("0", "0"), new[] { EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri }),
+            Hunter("loup", At("10", "0"), "0.5", aggro: "2"),
+        }, new[] { Cmd(0, EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri, target: null) }, durationMs: 1000, rules: NoUpkeep), NullCombatLog.Instance);
+        engine.Step();
+        string text = engine.Snapshot().Text;
+        Assert.Contains("\"taunted\":true", text, StringComparison.Ordinal);
+        Assert.Equal(text, CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertRefused(engine.CompletedSetup(), text, new[]
+        {
+            ("{\"fighter\":\"loup\"", "\"taunted\":true", "\"taunted\":false", "Provocation active de « loup » non mémorisée"),
+            ("{\"fighter\":\"bastion\"", "\"taunted\":false", "\"taunted\":true", "Provocation reçue par « bastion » impossible"),
+        });
+    }
+
+    [Fact]
     public void Cible_de_scenario_puis_le_plus_proche_et_provocation_prioritaire()
     {
         // L'ours vise sa cible de scénario (« loin ») ; elle part : il prend le plus proche ; à distance égale, l'identifiant décide.
@@ -175,6 +207,24 @@ public class Lot115BehaviorTests
         }
         foreach (string id in new[] { "loup1", "loup2", "loup3", "loup4" })
             Assert.InRange(Edge(track.After(id, 119), bastion, 0.5, 0.5), 0, 0.75);
+    }
+
+    [Fact]
+    public void Un_ennemi_au_centre_de_la_cible_prend_la_premiere_place_de_l_anneau()
+    {
+        // Revue Codex de la PR #33 (tour 6) : règle B (traversée freinée), loup2 part du centre du Bastion (vecteur nul, sans angle). Le tri
+        // de l'anneau le range d'abord (ordre total, transitif) : il prend la place 0, prise sur l'axe x faute de direction, et part vers
+        // l'est. Avant (comparé par identifiant aux autres, qui se comparaient par angle : ordre non transitif), il partait vers le sud-ouest.
+        var rules = new CombatRules { GuardUpkeepPerSecond = 0, TelegraphMinReactionMs = 0, PlayerCreatureContact = ContactRule.SlowedCrossing };
+        var (track, _, _) = Trace(Fight(new CombatantSetup[]
+        {
+            Player("bastion", At("0", "0")),
+            Hunter("loup1", At("0.5", "3"), "0.5", encircle: true), Hunter("loup2", At("0", "0"), "0.5", encircle: true),
+            Hunter("loup3", At("3", "0.5"), "0.5", encircle: true),
+        }, durationMs: 500, rules: rules));
+        Assert.Equal(GroundVector.Parse("0", "0"), track.After("loup2", 0));   // place de départ
+        GroundVector first = track.After("loup2", 1);
+        Assert.True(first.X > Fixed.Zero && first.Z == Fixed.Zero, $"loup2 en {first}");
     }
 
     [Fact]
@@ -273,6 +323,7 @@ public class Lot115BehaviorTests
             ("{\"fighter\":\"bastion\"", "\"engaged\":false", "\"engaged\":true", "Engagement de « bastion »"),
             ("{\"fighter\":\"renfort\"", "\"struck\":false", "\"struck\":true", "« renfort », pas encore entré"),
             ("{\"fighter\":\"renfort\"", "\"engaged\":false", "\"engaged\":true", "« renfort », pas encore entré"),
+            ("{\"fighter\":\"renfort\"", "\"taunted\":false", "\"taunted\":true", "« renfort », pas encore entré"),
         });
         // Revue Codex de la PR #33 (tour 4) : avant le premier tick, le guetteur (distance d'engagement) n'est pas encore engagé.
         var fresh = new CombatEngine(setup, NullCombatLog.Instance);

@@ -155,7 +155,7 @@ namespace EdS.Simulation.Engine
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
-                .Field("engaged", f.Engaged).Field("struck", f.Struck);
+                .Field("engaged", f.Engaged).Field("struck", f.Struck).Field("taunted", f.Taunted);
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -574,6 +574,9 @@ namespace EdS.Simulation.Engine
                     $"Échéances de {who} impossibles.");
                 // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
                 Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
+                // Revue Codex de la PR #33 (tour 6) : seul un assaillant est provoqué, et une provocation active a été reçue.
+                Require(f.Assailant != null || !f.Taunted, $"Provocation reçue par {who} impossible.");
+                Require(f.Taunted || !f.Statuses.Values.Any(s => s.Definition.IsTaunt), $"Provocation active de {who} non mémorisée.");
                 // 7e tour : régénération accordée au plus ce que son délai permet jusqu'au tick précédent (sans régénération en cours, endurance
                 // pleine, l'ancienne valeur reste sans effet jusqu'à la prochaine dépense, qui la remet à zéro) ; entretien de la garde (reliquat sous
                 // l'unité, payé au plus le dû) ; compteurs du bilan positifs, sous un plafond qui laisse la marge de leurs incréments (vérifiés),
@@ -752,6 +755,7 @@ namespace EdS.Simulation.Engine
             f.NextAttackTick = n["nextAttackTick"].NullableLong;
             f.Engaged = n["engaged"].Bool;
             f.Struck = n["struck"].Bool;
+            f.Taunted = n["taunted"].Bool;
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),
