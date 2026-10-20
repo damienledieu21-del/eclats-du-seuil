@@ -329,14 +329,22 @@ namespace EdS.Simulation.Engine
             LastTickEvents = head["lastTickEvents"].Long;
             _commandCount = head["commandCount"].Int;
             _initialEvents = head["initialEvents"].Long;
-            Array.Clear(_subscribed, 0, _subscribed.Length);
-            foreach (SnapshotNode k in head["subscribed"].Items) _subscribed[k.Int] = true;
+            var subscribed = new List<int>(head["subscribed"].Items.Select(k => k.Int));
             foreach (SnapshotNode e in head["commandsPerTick"].Items)
                 _commandsPerActorTick[(e.Items[0].String, e.Items[1].Long)] = e.Items[2].Int;
 
             int count = checked((int)head["queue"]["count"].Long);
             if (lines.Length != 1 + _fighters.Count + count) throw new FormatException($"{lines.Length} lignes, {1 + _fighters.Count + count} attendues.");
             for (int i = 0; i < _fighters.Count; i++) LoadFighter(_fighters[i], SnapshotNode.Parse(lines[1 + i]));
+            // Revue Codex de la PR #32 (3e tour) : les abonnements se déduisent des combattants entrés (présents, morts compris, ou partis)
+            // et du catalogue ; ils sont recalculés, et la liste reçue doit être exactement celle-là.
+            Array.Clear(_subscribed, 0, _subscribed.Length);
+            foreach (Fighter f in _fighters)
+                if (f.Presence == Presence.Present || f.Presence == Presence.Left) AddSubscriptions(f);
+            foreach (StatusDefinition definition in _statuses.Definitions)
+                foreach (TriggerDefinition trigger in definition.Triggers) _subscribed[(int)trigger.On] = true;
+            if (!subscribed.SequenceEqual(Enumerable.Range(0, _subscribed.Length).Where(k => _subscribed[k])))
+                throw new FormatException("Abonnements incohérents avec les combattants entrés et le catalogue.");
 
             var entries = new List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)>();
             var bySequence = new Dictionary<long, Scheduled>();
@@ -395,9 +403,21 @@ namespace EdS.Simulation.Engine
 
             Require(_sequence >= 0 && _lastEid >= 0 && _lastStatusInstance >= 0 && _lastApplication >= 0 && _peakWork >= 0 && _peakEvents >= 0
                 && _peakPending >= entries.Count && entries.Count <= _rules.MaxPendingEvents && LastTickWork >= 0 && LastTickEvents >= 0
-                && _commandCount >= 0 && (_initialEvents == -1 || _initialEvents == _setup.InitialEventCount()), "Compteurs de l'instantané impossibles.");
-            foreach (var pair in _commandsPerActorTick)
-                Require(_byId.ContainsKey(pair.Key.Actor) && pair.Value > 0, $"Commandes comptées pour « {pair.Key.Actor} » au tick {pair.Key.Tick} impossibles.");
+                && (_initialEvents == -1 || _initialEvents == _setup.InitialEventCount()), "Compteurs de l'instantané impossibles.");
+            // Revue Codex de la PR #32 (3e tour) : le combat complété porte toutes les commandes comptées ; leur nombre et leur compte par
+            // acteur et par tick à venir s'en déduisent exactement.
+            Require(_commandCount == _setup.Commands.Count, $"{_commandCount} commandes comptées, {_setup.Commands.Count} dans le combat complété.");
+            var expectedPerTick = new Dictionary<(string Actor, long Tick), int>();
+            foreach (CombatCommand command in _setup.Commands)
+            {
+                var key = (command.Actor, command.AtMs / _tickMs);
+                if (key.Item2 >= CurrentTick) expectedPerTick[key] = expectedPerTick.TryGetValue(key, out int n) ? n + 1 : 1;
+            }
+            Require(expectedPerTick.Count == _commandsPerActorTick.Count
+                && expectedPerTick.All(pair => _commandsPerActorTick.TryGetValue(pair.Key, out int n) && n == pair.Value),
+                "Commandes comptées par acteur et par tick incohérentes avec le combat complété.");
+            Require(_maxLoadedEid <= _lastEid && _maxLoadedInstance <= _lastStatusInstance,
+                $"Provenance citant l'événement {_maxLoadedEid} ou l'altération {_maxLoadedInstance}, au-delà des derniers numérotés.");
 
             // File : chaque élément à sa phase, d'un combattant du bon genre.
             var commands = new HashSet<int>();
@@ -451,6 +471,18 @@ namespace EdS.Simulation.Engine
             foreach (Fighter f in _fighters)
             {
                 string who = $"« {f.Id} »";
+                // Revue Codex de la PR #32 (3e tour) : un assaillant présent et vivant a exactement son tour à venir en file, au tick de
+                // NextAttackTick (aucun s'il n'en a plus) ; les tours d'un mort ou d'un absent sont périmés (sans effet).
+                if (f.Assailant != null && !f.Out)
+                {
+                    var turns = entries.Where(e => e.Item is AssailantTurn t && t.Fighter == f).ToList();
+                    Require(f.NextAttackTick is long next
+                        ? turns.Count == 1 && turns[0].Tick == next && ((AssailantTurn)turns[0].Item).Turn == f.NextTurn - 1
+                        : turns.Count == 0, $"Tours de {who} incohérents avec son prochain tour ({f.NextAttackTick?.ToString(CultureInfo.InvariantCulture) ?? "aucun"}).");
+                }
+                // Une parade ouverte se ferme à la fin de sa fenêtre : sa fin est en file.
+                Require(!f.ParryOpen || entries.Any(e => e.Item is ParryWindowEnd end && end.Fighter == f && end.StartTick == f.ParryStartTick && e.Tick == f.ParryEndTick),
+                    $"Parade ouverte de {who} sans sa fin en file.");
                 // Présence : une arrivée en file pour un combattant attendu, aucune sinon ; départ et arrivée déjà passés.
                 Require(arrivals.Count(a => a == f) == (f.Presence == Presence.Pending ? 1 : 0), $"Arrivée de {who} incohérente avec sa présence.");
                 Require(f.LeaveCommand is null, $"Départ de {who} encore demandé entre deux ticks.");
@@ -488,6 +520,11 @@ namespace EdS.Simulation.Engine
                         $"{status} : clé de cumul incohérente avec sa source.");
                     Require(s.UntilTick >= CurrentTick && (!s.Definition.IsDot || s.NextTick >= CurrentTick), $"{status} : déjà échue.");
                     Require(s.Absorb >= 0 && (s.Definition.IsShield || s.Absorb == 0), $"{status} : absorption impossible.");
+                    // Son échéance (ou, pour un DOT, son prochain tick) est en file.
+                    Require(s.Definition.IsDot
+                        ? entries.Any(e => e.Item is DotTick d && d.Fighter == f && d.Key.Equals(s.Key) && d.Instance == s.Id && e.Tick == s.NextTick)
+                        : entries.Any(e => e.Item is StateExpiry x && x.Fighter == f && x.Key.Equals(s.Key) && x.Instance == s.Id && x.Generation == s.Generation
+                            && e.Tick == s.UntilTick), $"{status} : échéance absente de la file.");
                 }
                 if (f.Body is { } b)
                 {
@@ -542,9 +579,28 @@ namespace EdS.Simulation.Engine
 
         private Fighter FighterOf(SnapshotNode id) => _byId[id.String];
 
-        private static Provenance? ReadProvenance(SnapshotNode n) => n.IsNull ? null
-            : Provenance.Restore(n["root"].String, n["depth"].Int, n["chain"].Items.Select(c => c.String).ToList(), n["trigger"].NullableString,
-                n["cause"].NullableLong, n["source"].NullableString, n["instance"].NullableLong, n["generation"].NullableInt);
+        // Revue Codex de la PR #32 (3e tour) : plus grand événement et plus grande instance d'altération cités par l'état relu.
+        private long _maxLoadedEid;
+        private long _maxLoadedInstance;
+
+        /// <summary>Instance d'altération citée par l'état relu (null : aucune) : numérotée, au plus la dernière.</summary>
+        private long? Instance(long? instance)
+        {
+            if (instance < 1) throw new FormatException($"Altération non numérotée citée : {instance}.");
+            _maxLoadedInstance = Math.Max(_maxLoadedInstance, instance ?? 0);
+            return instance;
+        }
+
+        private Provenance? ReadProvenance(SnapshotNode n)
+        {
+            if (n.IsNull) return null;
+            long? cause = n["cause"].NullableLong, instance = n["instance"].NullableLong;
+            if (cause < 1 || instance < 1) throw new FormatException("Provenance citant un événement ou une altération non numérotés.");
+            _maxLoadedEid = Math.Max(_maxLoadedEid, cause ?? 0);
+            _maxLoadedInstance = Math.Max(_maxLoadedInstance, instance ?? 0);
+            return Provenance.Restore(n["root"].String, n["depth"].Int, n["chain"].Items.Select(c => c.String).ToList(), n["trigger"].NullableString,
+                cause, n["source"].NullableString, instance, n["generation"].NullableInt);
+        }
 
         private void LoadFighter(Fighter f, SnapshotNode n)
         {
@@ -667,10 +723,10 @@ namespace EdS.Simulation.Engine
                     return new StateExpiry
                     {
                         Fighter = FighterOf(e["fighter"]), Key = new StatusKey(e["state"].String, e["keySource"].NullableString),
-                        Instance = e["instance"].Long, Generation = e["generation"].Int,
+                        Instance = Instance(e["instance"].Long)!.Value, Generation = e["generation"].Int,
                     };
                 case "dot":
-                    return new DotTick { Fighter = FighterOf(e["fighter"]), Key = new StatusKey(e["state"].String, e["keySource"].NullableString), Instance = e["instance"].Long };
+                    return new DotTick { Fighter = FighterOf(e["fighter"]), Key = new StatusKey(e["state"].String, e["keySource"].NullableString), Instance = Instance(e["instance"].Long)!.Value };
                 case "parryEnd":
                     return new ParryWindowEnd { Fighter = FighterOf(e["fighter"]), StartTick = e["startTick"].Long, Origin = Required(ReadProvenance(e["origin"])) };
                 case "impact":
@@ -715,6 +771,7 @@ namespace EdS.Simulation.Engine
             string definitionId = n["definition"].String;
             int index = n["index"].Int;
             long instance = n["instance"].Long;
+            if (instance != 0) Instance(instance);
             if (instance == 0)
                 return bearer.Triggers.Single(s => s.Origin == origin && s.DefinitionId == definitionId && s.Index == index);
             if (!n["detached"].Bool)
@@ -733,7 +790,16 @@ namespace EdS.Simulation.Engine
             return slot;
         }
 
-        private static ObservedEvent LoadObserved(SnapshotNode n) => new ObservedEvent
+        private ObservedEvent LoadObserved(SnapshotNode n)
+        {
+            long eid = n["eid"].Long;
+            if (eid < 1) throw new FormatException($"Événement observé non numéroté : {eid}.");
+            _maxLoadedEid = Math.Max(_maxLoadedEid, eid);
+            Instance(n["instance"].NullableLong);
+            return Observed(n);
+        }
+
+        private ObservedEvent Observed(SnapshotNode n) => new ObservedEvent
         {
             Kind = Defined<TriggerEvent>(n["kind"]),
             Also = DefinedOrNull<TriggerEvent>(n["also"]),

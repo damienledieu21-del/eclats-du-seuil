@@ -218,6 +218,13 @@ public class Lot114dSnapshotTests
             (Head, "\"initialEvents\":-1", "\"initialEvents\":5", "Compteurs"),
             (Head, "\"deferredPending\":0", "\"deferredPending\":1", "réactions reportées"),
             (Head, "\"lastEid\":2", "\"lastEid\":-1", "Compteurs"),
+            // Revue Codex de la PR #32 (3e tour) : état qui se déduit du combat complété, tours, parade, provenances.
+            (Head, "\"subscribed\":[]", "\"subscribed\":[0]", "Abonnements incohérents"),
+            (Head, "\"commandCount\":1", "\"commandCount\":2", "commandes comptées"),
+            (Turn, "\"tick\":50", "\"tick\":51", "Tours de « ogre »"),
+            (Turn, "\"turn\":1", "\"turn\":0", "Tours de « ogre »"),
+            (Bastion, "\"parryOpen\":false", "\"parryOpen\":true", "Parade ouverte de « bastion »"),
+            (Head, "\"lastEid\":2", "\"lastEid\":1", "Provenance citant l'événement 2"),
         });
 
         // Combat d'entraînement au tick 30 : un saignement sur chacun, des commandes à venir, un renfort attendu.
@@ -237,7 +244,22 @@ public class Lot114dSnapshotTests
             ("{\"entry\":0,", "\"fighter\":\"renfort\"", "\"fighter\":\"allie\"", "n'est pas attendu"),
             (Renfort, "\"presence\":1", "\"presence\":0", "n'est pas attendu"),
             (Allie, "\"arrivedTick\":null", "\"arrivedTick\":10", "Bilan de présence"),
+            (Head, "[\"bastion\",50,1]", "[\"bastion\",50,2]", "par acteur et par tick"),
+            (Bastion, "\"nextTick\":60", "\"nextTick\":80", "échéance absente de la file"),
+            ("{\"entry\":9,", "\"instance\":1}", "\"instance\":0}", "Altération non numérotée"),
         });
+
+        // Abonnements d'un déclencheur permanent (riposte aux ticks de DOT) : la liste reçue doit être exactement celle des combattants.
+        CombatSetup riposte = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Bearer(new[] { Riposte(TriggerEvent.DotTick) }),
+            Hitter(Strike("entaille", 100, applies: Apply("bleed", "0.4"))) }, durationMs: 8000, rules: NoUpkeep);
+        var reacting = new CombatEngine(riposte, NullCombatLog.Instance);
+        while (reacting.CurrentTick < 5) reacting.Step();
+        text = reacting.Snapshot().Text;
+        string subscribed = text.Split('\n')[0];
+        int from = subscribed.IndexOf("\"subscribed\":[", StringComparison.Ordinal);
+        string list = subscribed.Substring(from, subscribed.IndexOf(']', from) - from + 1);
+        Assert.NotEqual("\"subscribed\":[]", list);
+        AssertRefused(reacting.CompletedSetup(), text, new[] { (Head, list, "\"subscribed\":[]", "Abonnements incohérents") });
     }
 
     [Fact]
