@@ -51,7 +51,7 @@ namespace EdS.Runtime
         /// <summary>
         /// Place prédite (en mètres) du joueur <paramref name="me"/> au moment <paramref name="now"/> (horloge du client, en secondes).
         /// <paramref name="progressSeconds"/> : temps écoulé depuis le dernier tick reçu ; <paramref name="leadSeconds"/> : délai entre la
-        /// saisie et son effet affiché (temps aller-retour et un tick), borné à <see cref="MaxLeadSeconds"/>.
+        /// saisie et son effet affiché (le temps aller-retour lissé ; le temps écoulé dans le tick est compté à part), borné à <see cref="MaxLeadSeconds"/>.
         /// </summary>
         public (double X, double Z) Predict(CombatantView me, CombatSpace space, IReadOnlyList<ConvexPolygon> obstacles, CombatRules rules, int? wished,
             double now, double leadSeconds, double progressSeconds)
