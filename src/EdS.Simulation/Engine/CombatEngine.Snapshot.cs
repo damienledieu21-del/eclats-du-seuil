@@ -559,6 +559,8 @@ namespace EdS.Simulation.Engine
             // encore entré (attendu, ou refusé à son arrivée) y est encore, champ pour champ ; le flux de tirage de chacun est celui du combat.
             var reference = new CombatEngine(_setup, NullCombatLog.Instance);
             var initial = reference._fighters.ToDictionary(x => x.Id, StringComparer.Ordinal);
+            // 21e tour : pas de générateur recoupés sur tout le combat (voir plus bas).
+            ulong drawBudget = checked(2UL * (ulong)_lastEid + 64UL), drawsSeen = 0;
             foreach (Fighter f in _fighters)
             {
                 string who = $"« {f.Id} »";
@@ -801,6 +803,17 @@ namespace EdS.Simulation.Engine
                     Require(!b.Moving || f.Character != null || f.Assailant != null, $"Marche de {who}, qui ne marche jamais.");
                     // Relecture d'ensemble (4) : une marche suit une commande move passée de ce combattant ; une cible sélectionnée, une commande
                     // select passée de ce combattant qui la désigne. Sous-lot 11.5 : un ennemi à comportement marche sans commande (placement).
+                    // 21e tour : un combattant présent et vivant a vu toutes ses commandes move et stop admises depuis son arrivée (seuls un mort,
+                    // un absent ou un mannequin sont refusés ; un stop sans marche ne change rien) : il marche si et seulement si la dernière est
+                    // un move, dans la direction (unitaire) de celui-ci (sauf un ennemi à comportement, mené par son placement).
+                    // Ordre de traitement : par tick, puis par rang dans le combat complété (les commandes du scénario ne sont pas triées).
+                    CombatCommand? lastMove = f.Out ? null : _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop)
+                        && c.Actor == f.Id && c.AtMs / _tickMs <= previous && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
+                    long moveX = 0, moveZ = 0;
+                    bool shouldMove = lastMove is { Action: CombatAction.Move, Direction: { } heading }
+                        && Planar.TryNormalize(heading.X.Raw, heading.Z.Raw, out moveX, out moveZ);
+                    Require(f.Out || f.Behavior != null || (b.Moving == shouldMove && (!b.Moving || (b.DirectionX == moveX && b.DirectionZ == moveZ))),
+                        $"Marche de {who} différente de sa dernière commande move ou stop.");
                     Require((!b.Moving || f.Behavior != null || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous))
                         && (b.Selected is not { } chosen || _setup.Commands.Any(c => c.Action == CombatAction.Select && c.Actor == f.Id && c.Target == chosen.Id
                             && c.AtMs / _tickMs <= previous)), $"Marche ou sélection de {who} sans commande à son origine.");
@@ -817,6 +830,13 @@ namespace EdS.Simulation.Engine
                     Require(f.Result.CommandsRejected >= 0 && string.Equals(WriteFighter(f), WriteFighter(start), StringComparison.Ordinal),
                         entered ? $"{who}, avant le premier tick, n'est plus dans son état de départ." : $"{who}, pas encore entré, n'est plus dans son état de départ.");
                 }
+                // 21e tour : le générateur n'avance que par les tirages de critique des compétences d'un personnage, d'un pas au moins chacun,
+                // et chaque tirage est suivi d'une ligne damage numérotée. Son état est donc à une distance nulle de celui du départ hors
+                // personnage, et la somme des distances tient dans deux pas par événement numéroté (un tirage rejeté, qui reprend un pas, a une
+                // chance sur 590 000 environ). Un état retouché est presque toujours à une distance astronomique.
+                ulong drawn = Pcg32.Distance(start.Random.Capture(), f.Random.Capture());
+                Require((f.Character != null || drawn == 0) && drawn <= drawBudget - drawsSeen, $"État du générateur de {who} hors d'atteinte depuis celui du combat.");
+                drawsSeen += drawn;
                 // Les tours d'un assaillant entré se déduisent de sa cadence : tours joués jusqu'à son dernier tick d'action (le précédent,
                 // ou celui de sa mort ou de son départ), attaque suivante de sa liste, tour suivant programmé s'il tombe avant la fin.
                 if (entered && f.Assailant is { } assailant)
@@ -846,6 +866,58 @@ namespace EdS.Simulation.Engine
             }
             Require(transferredTotal == redirectedTotal && receivedTotal >= dealtTotal,
                 $"Dégâts du bilan incohérents entre combattants : {dealtTotal} infligés, {receivedTotal} reçus, {transferredTotal} transférés, {redirectedTotal} redirigés.");
+
+            // 21e tour : une instance d'altération citée par la file (échéance, tick de DOT, déclencheur détaché d'une réaction reportée) garde
+            // son identité, active ou retirée : un seul porteur, une seule altération du catalogue, du genre de l'élément (échéance hors DOT,
+            // tick de DOT pour un DOT), une clé de cumul cohérente avec son cumul, une échéance à portée ; un seul tick de DOT par instance. Chaque renouvellement
+            // prend un rang d'application qui n'est pas une création d'instance : les générations (celle d'une instance active, la plus haute
+            // citée d'une instance retirée) tiennent dans ces rangs.
+            var identities = new Dictionary<long, (Fighter Owner, string State, StatusKey? Key, int Generation, bool Live)>();
+            foreach (Fighter f in _fightersById)
+                foreach (StatusInstance s in f.Statuses.Values) identities[s.Id] = (f, s.State, s.Key, s.Generation, true);
+            var dotInstances = new HashSet<long>();
+            void Cite(string at, Fighter owner, string state, StatusKey? key, long instance, int generation, bool? dot, long tick)
+            {
+                Require(_statusOrder.TryGetValue(state, out int order), $"{at} : altération inconnue.");
+                StatusDefinition definition = _statuses.Definitions[order];
+                // Posée (ou relancée) au plus tard au tick précédent : son échéance tombe au plus à sa plus longue durée, son tick de DOT au
+                // plus une période plus tard.
+                Require(dot is not bool timed || tick <= checked(CurrentTick - 1 + (timed ? definition.PeriodMs / _tickMs : MaxStatusTicks(owner, definition))),
+                    $"{at} : échéance au-delà de la plus longue durée de l'altération.");
+                Require((dot is not bool kind || definition.IsDot == kind) && (key is not StatusKey k
+                        || (definition.Stacking == StatusStacking.PerSourceKeepStronger ? k.Source is null || _byId.ContainsKey(k.Source) : k.Source is null)),
+                    $"{at} : altération ou clé de cumul d'un autre genre.");
+                if (identities.TryGetValue(instance, out var known))
+                {
+                    Require(known.Owner == owner && string.Equals(known.State, state, StringComparison.Ordinal)
+                        && (key is null || known.Key is null || known.Key.Value.Equals(key.Value)), $"{at} : instance {instance} citée avec une autre identité.");
+                    if (!known.Live && generation > known.Generation) identities[instance] = (owner, state, known.Key ?? key, generation, false);
+                }
+                else identities[instance] = (owner, state, key, generation, false);
+            }
+            foreach (var (tick, phase, sequence, item) in entries)
+            {
+                string at = $"Élément de file {sequence} ({item.GetType().Name}, tick {tick}, phase {phase})";
+                switch (item)
+                {
+                    case StateExpiry expiry:
+                        Cite(at, expiry.Fighter, expiry.Key.State, expiry.Key, expiry.Instance, expiry.Generation, false, tick);
+                        break;
+                    case DotTick dot:
+                        Cite(at, dot.Fighter, dot.Key.State, dot.Key, dot.Instance, 1, true, tick);
+                        Require(dotInstances.Add(dot.Instance), $"{at} : second tick de DOT de l'instance {dot.Instance}.");
+                        break;
+                    case ReactionItem { Slot: { Status: { } carrier } slot }
+                        when !(carrier.Owner.Statuses.TryGetValue(carrier.Key, out StatusInstance? current) && current == carrier):
+                        Require(!(identities.TryGetValue(carrier.Id, out var same) && same.Live), $"{at} : déclencheur détaché d'une altération encore active.");
+                        Cite(at, slot.Bearer, carrier.State, null, carrier.Id, carrier.Generation, null, tick);
+                        break;
+                }
+            }
+            long renewals = 0;
+            foreach (var cited in identities.Values) renewals = checked(renewals + Math.Max(0, cited.Generation - 1));
+            Require(renewals <= _lastApplication - _lastStatusInstance,
+                $"Générations d'altérations au-delà des rangs d'application : {renewals} renouvellements pour {_lastApplication - _lastStatusInstance} rangs.");
         }
 
         /// <summary>
@@ -865,7 +937,7 @@ namespace EdS.Simulation.Engine
 
         /// <summary>
         /// Revue Codex de la PR #32 (20e tour) : plus fort coefficient d'une application de l'altération <paramref name="status"/> posée par
-        /// <paramref name="source"/> : compétences de sa classe, attaques d'un assaillant, déclencheurs permanents à leur rang, déclencheurs
+        /// <paramref name="source"/> : compétences lançables de son build (21e tour), attaques d'un assaillant, déclencheurs permanents à leur rang, déclencheurs
         /// portés par une altération du catalogue (rang 1, posés au nom de leur porteur).
         /// </summary>
         private Fixed StrongestApplication(Fighter source, string status)
@@ -873,9 +945,10 @@ namespace EdS.Simulation.Engine
             Fixed coefficient = Fixed.Zero;
             foreach (StatusDefinition carrier in _statuses.Definitions)
                 foreach (TriggerDefinition trigger in carrier.Triggers) coefficient = Fixed.Max(coefficient, StrongestCoefficient(trigger, status, 1));
+            // 21e tour : seules les compétences lançables (actives équipées et ultime) ; les passives agissent par leurs déclencheurs actifs.
             if (source.Character is { } character)
                 foreach (SkillDefinition skill in character.Class.Skills)
-                    if (skill.Combat is { } combat) coefficient = Fixed.Max(coefficient, StrongestCoefficient(combat.Applies, status));
+                    if (source.Castable.Contains(skill.Id) && skill.Combat is { } combat) coefficient = Fixed.Max(coefficient, StrongestCoefficient(combat.Applies, status));
             if (source.Assailant is { } assailant)
                 foreach (AssailantAttack attack in assailant.Attacks) coefficient = Fixed.Max(coefficient, StrongestCoefficient(attack.Applies, status));
             foreach (TriggerSlot slot in source.Triggers) coefficient = Fixed.Max(coefficient, StrongestCoefficient(slot.Definition, status, slot.Rank));

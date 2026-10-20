@@ -43,6 +43,121 @@ public class Lot114dSnapshotTests
             copy.Result.Combatants.Select(c => (c.Id, c.DamageDealt, c.DamageTaken, c.Health, c.Presence)));
     }
 
+    /// <summary>Le texte avec un élément de file ajouté (ligne sans numéro), sous la prochaine séquence libre (en-tête mis à jour).</summary>
+    private static string WithEntry(string text, string body)
+    {
+        List<string> lines = text.Split('\n').ToList();
+        var head = System.Text.RegularExpressions.Regex.Match(lines[0], "\"next\":([0-9]+),\"count\":([0-9]+)");
+        long next = long.Parse(head.Groups[1].Value), count = long.Parse(head.Groups[2].Value);
+        lines[0] = lines[0].Replace(head.Value, $"\"next\":{next + 1},\"count\":{count + 1}");
+        var peak = System.Text.RegularExpressions.Regex.Match(lines[0], "\"peakPending\":([0-9]+)");
+        lines[0] = lines[0].Replace(peak.Value, $"\"peakPending\":{Math.Max(long.Parse(peak.Groups[1].Value), count + 1)}");
+        lines.Add("{\"entry\":" + next + "," + body);
+        // À sa place dans l'ordre de la file : tick, phase, séquence.
+        static (long, long, long) Order(string l) => (long.Parse(System.Text.RegularExpressions.Regex.Match(l, "\"tick\":([0-9]+)").Groups[1].Value),
+            long.Parse(System.Text.RegularExpressions.Regex.Match(l, "\"phase\":([0-9]+)").Groups[1].Value),
+            long.Parse(System.Text.RegularExpressions.Regex.Match(l, "^\\{\"entry\":([0-9]+)").Groups[1].Value));
+        List<string> entries = lines.Where(l => l.StartsWith("{\"entry\":", StringComparison.Ordinal)).OrderBy(Order).ToList();
+        return string.Join("\n", lines.Where(l => !l.StartsWith("{\"entry\":", StringComparison.Ordinal)).Concat(entries));
+    }
+
+    private static void AssertRefused(CombatSetup setup, string text, string message)
+    {
+        Exception? refused = Record.Exception(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance));
+        Assert.True(refused is FormatException && refused.Message.Contains(message, StringComparison.Ordinal), refused?.Message ?? "accepté");
+    }
+
+    [Fact]
+    public void Marche_generateur_instances_retirees_et_competences_non_equipees_refuses()
+    {
+        // Revue Codex de la PR #32 (21e tour). 1) Marche recoupée avec la dernière commande move ou stop : arrêté après un stop, puis en
+        // marche vers +x ; une marche retouchée ou une autre direction sont refusées.
+        const string Bastion = "{\"fighter\":\"bastion\"";
+        CombatSetup walk = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")),
+            Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("-5", "-5")),
+        }, new[] { Space.SpaceTestKit.Move(0, "bastion", "0", "1"), Space.SpaceTestKit.Stop(250, "bastion"), Space.SpaceTestKit.Move(500, "bastion", "1", "0") },
+            durationMs: 3000);
+        var walker = new CombatEngine(walk, NullCombatLog.Instance);
+        while (walker.CurrentTick < 8) walker.Step();
+        string stopped = walker.Snapshot().Text;
+        Assert.Equal(stopped, CombatEngine.Restore(walker.CompletedSetup(), CombatSnapshot.Parse(stopped), NullCombatLog.Instance).Snapshot().Text);
+        AssertRefused(walker.CompletedSetup(), stopped, new[] { (Bastion, "\"moving\":false", "\"moving\":true", "Marche de « bastion » différente") });
+        while (walker.CurrentTick < 12) walker.Step();
+        string moving = walker.Snapshot().Text;
+        AssertRefused(walker.CompletedSetup(), moving, new[]
+        {
+            (Bastion, "\"directionX\":10000,\"directionZ\":0", "\"directionX\":0,\"directionZ\":10000", "Marche de « bastion » différente"),
+            (Bastion, "\"moving\":true", "\"moving\":false", "Marche de « bastion » différente"),
+        });
+
+        // 2) Générateur : après quelques ticks (coups critiques possibles du Bastion), un état retouché est hors d'atteinte de celui du
+        // départ ; un assaillant ne tire jamais.
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 55) training.Step();
+        string text = training.Snapshot().Text;
+        CombatSetup setup = training.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        foreach (string who in new[] { "bastion", "assaillant" })
+        {
+            string prefix = "{\"fighter\":\"" + who + "\"";
+            string draw = System.Text.RegularExpressions.Regex.Match(text.Split('\n').First(l => l.StartsWith(prefix, StringComparison.Ordinal)), "\"random\":\\[\"[0-9a-f]").Value;
+            string redraw = draw.Substring(0, draw.Length - 1) + (draw[draw.Length - 1] == '0' ? '1' : '0');
+            AssertRefused(setup, text, new[] { (prefix, draw, redraw, $"État du générateur de « {who} »") });
+        }
+
+        // 3) Instances citées par la file : l'étourdissement de l'assaillant (actif) cité pour le Bastion ; un second tick du saignement ;
+        // une instance retirée citée sous deux altérations, ou avec une génération au-delà des rangs d'application.
+        string expiry = text.Split('\n').First(l => l.Contains("\"item\":\"expiry\"", StringComparison.Ordinal) && l.Contains("\"state\":\"stun\"", StringComparison.Ordinal));
+        string stun = expiry.Substring(expiry.IndexOf(',') + 1);
+        AssertRefused(setup, WithEntry(text, stun.Replace("\"fighter\":\"assaillant\"", "\"fighter\":\"bastion\"", StringComparison.Ordinal)), "citée avec une autre identité");
+        string dot = text.Split('\n').First(l => l.Contains("\"item\":\"dot\"", StringComparison.Ordinal));
+        string bleed = dot.Substring(dot.IndexOf(',') + 1);
+        string other = System.Text.RegularExpressions.Regex.Match(bleed, "\"fighter\":\"[a-z]+\"").Value;
+        AssertRefused(setup, WithEntry(text, bleed.Replace(other, other == "\"fighter\":\"bastion\"" ? "\"fighter\":\"allie\"" : "\"fighter\":\"bastion\"", StringComparison.Ordinal)),
+            "autre identité");
+        // Plus tard, une instance retirée que la file ne cite plus (au moins deux instances numérotées).
+        long gone = 0, lastInstance = 0, lastApplication = 0;
+        string late = text;
+        while (gone == 0 && !training.IsFinished)
+        {
+            training.Step();
+            late = training.Snapshot().Text;
+            lastInstance = long.Parse(System.Text.RegularExpressions.Regex.Match(late, "\"lastStatusInstance\":([0-9]+)").Groups[1].Value);
+            lastApplication = long.Parse(System.Text.RegularExpressions.Regex.Match(late, "\"lastApplication\":([0-9]+)").Groups[1].Value);
+            var live = System.Text.RegularExpressions.Regex.Matches(late, "\\{\"id\":([0-9]+),\"generation\"").Select(m => long.Parse(m.Groups[1].Value)).ToHashSet();
+            if (lastInstance >= 2)
+                gone = Enumerable.Range(1, (int)lastInstance).Select(i => (long)i).FirstOrDefault(i => !live.Contains(i)
+                    && !late.Contains("\"instance\":" + i + ",", StringComparison.Ordinal));
+        }
+        Assert.True(gone > 0, "instance retirée");
+        CombatSetup lateSetup = training.CompletedSetup();
+        long tick = training.CurrentTick + 5;
+        string Stale(string state, long generation) =>
+            $"\"tick\":{tick},\"phase\":1,\"item\":\"expiry\",\"fighter\":\"assaillant\",\"state\":\"{state}\",\"keySource\":null,\"instance\":{gone},\"generation\":{generation}}}";
+        string once = WithEntry(late, Stale("stun", 1));
+        Assert.Equal(once, CombatEngine.Restore(lateSetup, CombatSnapshot.Parse(once), NullCombatLog.Instance).Snapshot().Text);   // échéance périmée possible
+        AssertRefused(lateSetup, WithEntry(once, Stale("freeze", 2)), "autre identité");
+        AssertRefused(lateSetup, WithEntry(late, Stale("stun", lastApplication)), "au-delà des rangs d'application");
+        tick = training.CurrentTick + 100_000;
+        AssertRefused(lateSetup, WithEntry(late, Stale("stun", 1)), "au-delà de la plus longue durée");
+
+        // 4) Seules les compétences lançables comptent : le Bastion pose un saignement de coefficient 0,1 par son passif ; Entaille (0,5),
+        // non équipée, ne relève pas la borne de sa puissance.
+        var bleeding = new TriggerDefinition(TriggerEvent.SkillCast, new[] { TriggerEffect.ApplyStatus(TriggerTarget.EventTarget, "bleed", Fixed.Parse("0.1")) });
+        CombatSetup passive = Setup(new[] { Cmd(0, Gratuite, target: "assaillant") }, new CombatantSetup[] { Bearer(new[] { bleeding }), Hitter(Strike("coup", 10)) },
+            durationMs: 3000);
+        var bleeder = new CombatEngine(passive, NullCombatLog.Instance);
+        while (bleeder.CurrentTick < 5) bleeder.Step();
+        string bled = bleeder.Snapshot().Text;
+        Assert.Contains("\"state\":\"bleed\"", bled, StringComparison.Ordinal);
+        Assert.Equal(bled, CombatEngine.Restore(bleeder.CompletedSetup(), CombatSnapshot.Parse(bled), NullCombatLog.Instance).Snapshot().Text);
+        string tripled = new System.Text.RegularExpressions.Regex("(\"state\":\"bleed\"[^{}]*?\"power\":)([0-9]+)").Replace(bled,
+            m => m.Groups[1].Value + (long.Parse(m.Groups[2].Value) * 3), 1);
+        AssertRefused(bleeder.CompletedSetup(), tripled, "puissance au-delà du plus fort DOT possible");
+    }
+
     private static CombatSetup Training() => Setup(new[]
     {
         Cmd(0, Entaille, target: "assaillant"), GuardStart(1000), GuardStop(2500), Cmd(2600, Assommer, target: "assaillant"), Parry(3900),
@@ -129,6 +244,8 @@ public class Lot114dSnapshotTests
             NullCombatLog.Instance)).Message);
         Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":99,\"tick\":0,\"setup\":\"x\"}"));
         Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":1, \"tick\":0}"));
+        // 21e tour : une version hors de la plage des entiers 32 bits est un texte illisible, pas un débordement.
+        Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":9223372036854775807,\"tick\":0,\"setup\":\"x\"}"));
         // Un instantané refusé n'a rien écrit.
         var log = new MemoryCombatLog();
         Assert.Throws<FormatException>(() => CombatEngine.Restore(other, snapshot, log));
@@ -261,7 +378,7 @@ public class Lot114dSnapshotTests
             // 15e tour : un mannequin qui marche ; un numéro de ligne en deçà du dernier événement.
             (Cible, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "qui ne marche jamais"),
             // Relecture d'ensemble (4) : marche de l'ogre sans commande move ; cible sélectionnée par le Bastion sans commande select.
-            (Ogre, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "Marche ou sélection de « ogre »"),
+            (Ogre, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "Marche de « ogre »"),
             (Bastion, "\"selected\":null", "\"selected\":\"ogre\"", "Marche ou sélection de « bastion »"),
         });
         // 15e tour : numéro de ligne en deçà du dernier événement (chaque événement a pris une ligne).

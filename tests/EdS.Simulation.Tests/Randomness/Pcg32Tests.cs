@@ -109,4 +109,27 @@ public class Pcg32Tests
     [InlineData(10_001)]
     public void Chance_hors_bornes_refusee(int chance) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new Pcg32(1).RollBasisPoints(chance));
+
+    [Property(MaxTest = 300)]
+    public bool Distance_egale_au_nombre_de_pas(ulong seed, ulong stream, byte draws)
+    {
+        // Revue Codex de la PR #32 (21e tour) : la distance entre deux états du même flux est le nombre de pas qui les sépare.
+        var rng = new Pcg32(seed, stream);
+        Pcg32State start = rng.Capture();
+        for (int i = 0; i < draws; i++) rng.NextUInt();
+        return Pcg32.Distance(start, rng.Capture()) == draws && Pcg32.Distance(start, start) == 0;
+    }
+
+    [Fact]
+    public void Distance_d_un_etat_retouche_immense_et_flux_differents_refuses()
+    {
+        var rng = new Pcg32(42, 54);
+        Pcg32State start = rng.Capture();
+        for (int i = 0; i < 1000; i++) rng.NextUInt();
+        Pcg32State now = rng.Capture();
+        Assert.Equal(1000UL, Pcg32.Distance(start, now));
+        // Un état retouché (premier mot changé) est presque toujours à une distance astronomique.
+        Assert.True(Pcg32.Distance(start, new Pcg32State(now.State ^ 0xF000_0000_0000_0000UL, now.Increment)) > 1UL << 32);
+        Assert.Throws<ArgumentException>(() => Pcg32.Distance(start, new Pcg32(42, 55).Capture()));
+    }
 }
