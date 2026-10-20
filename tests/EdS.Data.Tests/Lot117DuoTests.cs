@@ -135,6 +135,7 @@ public class Lot117DuoTests
         game.Run(0.5);
         Assert.Contains(a.Combat.Others(), o => o.Id == "bastion2" && o.View.IsPresent && o.View.ArrivalTick == joined);
         Assert.Equal(1, a.Combat.Resyncs);   // l'arrivée a fait repartir le premier joueur de l'état courant
+        Assert.Equal(1, a.Combat.RosterVersion);   // revue Codex de la PR #35 : l'affichage du premier joueur sait qu'un combattant est arrivé
 
         game.RunUntil(() => a.Status == ClientStatus.Lobby && b.Status == ClientStatus.Lobby, 40);
         // Même combat que le serveur, de bout en bout, pour les deux (le second a commencé à l'état courant).

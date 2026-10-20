@@ -76,9 +76,9 @@ public class Lot104SessionTests
             return Task.FromResult<INetConnection>(connection);
         }
 
-        public NetworkSession Session(string name, string build, BuildChoice? bot = null)
+        public NetworkSession Session(string name, string build, BuildChoice? bot = null, double botDelay = 0)
         {
-            var session = new NetworkSession(ShippedData, Connect, name, new BuildChoice(build), null, bot is null ? null : Connect, bot);
+            var session = new NetworkSession(ShippedData, Connect, name, new BuildChoice(build), null, bot is null ? null : Connect, bot, botDelaySeconds: botDelay);
             Sessions.Add(session);
             return session;
         }
@@ -111,6 +111,25 @@ public class Lot104SessionTests
 
     private static IReadOnlyList<CombatCommand> ServerCommands(CombatRoom room) =>
         CombatLogReplayer.ReadSetup(room.LastJournal![0], ShippedData, out _)!.Commands;
+
+    [Fact]
+    public void Robot_en_retard_compte_son_delai_depuis_le_debut_du_combat()
+    {
+        // Sous-lot 11.7 (revue Codex de la PR #35) : le robot « qui arrive après 3 s de combat » ne part pas de la création de la salle :
+        // 5 s en salle d'attente ne le font pas venir ; il entre environ 3 s après le début du combat.
+        var lan = new Lan(Calm(30_000), new RoomOptions { JoinDuringCombat = true });
+        NetworkSession session = lan.Session("Dam", Rempart, bot: new BuildChoice(Gardien), botDelay: 3);
+        lan.Run(5);
+        Assert.Equal(ClientStatus.Lobby, session.Client!.Status);
+        Assert.Null(session.Bot);
+        Assert.Equal(3.0, session.BotArrivesIn);
+        session.Client.SetReady(true);
+        lan.RunUntil(() => session.Client.Status == ClientStatus.Combat, 3);
+        double start = session.Now;
+        lan.RunUntil(() => session.Bot?.Client.Status == ClientStatus.Combat, 6);
+        Assert.InRange(session.Now - start, 3.0, 4.0);
+        Assert.Contains(session.Client.Combat!.Others(), o => o.Id == "bastion2" && o.View.IsPresent);
+    }
 
     [Fact]
     public void Robot_refuse_erreur_visible_place_libre()

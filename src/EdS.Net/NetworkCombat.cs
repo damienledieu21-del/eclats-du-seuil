@@ -177,6 +177,12 @@ namespace EdS.Net
         /// <summary>Reprises réussies depuis l'état courant du serveur.</summary>
         public int Resyncs { get; private set; }
 
+        /// <summary>
+        /// Sous-lot 11.7 (revue Codex de la PR #35) : change à chaque état courant qui modifie la liste des combattants (un joueur arrivé
+        /// pendant l'affrontement, absent du combat de départ) ; l'affichage recrée alors ses corps.
+        /// </summary>
+        public int RosterVersion { get; private set; }
+
         /// <summary>Dernière divergence détectée.</summary>
         public string? LastDesync { get; private set; }
 
@@ -426,6 +432,8 @@ namespace EdS.Net
                 return false;
             }
             // L'en-tête du journal reste celui du début du combat (s'il est connu) : seul le combat complété change.
+            // Revue Codex de la PR #35 : un joueur arrivé pendant le combat ajoute un combattant ; l'affichage le voit à RosterVersion.
+            if (!_engine.CombatantIds.SequenceEqual(engine.CombatantIds, StringComparer.Ordinal)) RosterVersion++;
             Setup = setup;
             _obstacles = CombatDisplay.Obstacles(setup.Space);
             _engine = engine;
