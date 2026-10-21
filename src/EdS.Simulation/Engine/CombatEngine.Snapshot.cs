@@ -1068,19 +1068,104 @@ namespace EdS.Simulation.Engine
             if (slot.ReadyTick == 0) return true;
             long fired = checked(slot.ReadyTick - slot.Definition.CooldownMs / _tickMs);
             return fired >= 0 && fired <= CurrentTick - 1 && PresentAtCommands(slot.Bearer, fired) && _lastEid >= 1
-                && (fired < CurrentTick - 1 || LastTickEvents >= 1);
+                && (fired < CurrentTick - 1 || LastTickEvents >= 1) && CompatibleEffect(slot, fired);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (26e tour) : un effet compatible avec le déclencheur (type, rôle de son porteur) a pu survenir au tick
+        /// <paramref name="fired"/>, d'après ce que le combat complété et le bilan en gardent : un lancer est une commande de compétence (ou un
+        /// tour d'assaillant) de ce tick ; une mort, une mort de ce tick ; un blocage, une rupture ou une parade parfaite subis, un bilan qui
+        /// en compte et une garde (ou une parade) commandée à ce moment ; un coup porté, des coups au bilan. Les autres effets (coups subis,
+        /// altérations, ressources) ne laissent pas de trace par tick dans l'instantané : seule son empreinte les garantit.
+        /// </summary>
+        private bool CompatibleEffect(TriggerSlot slot, long fired)
+        {
+            Fighter bearer = slot.Bearer;
+            TriggerRole? role = slot.Definition.EffectiveRole;
+            bool source = role is null or TriggerRole.Self or TriggerRole.Source, target = role == TriggerRole.Target, ally = role == TriggerRole.Ally;
+            IEnumerable<CombatCommand> at = _setup.Commands.Where(c => c.AtMs / _tickMs == fired);
+            bool turnAt(Fighter g) => g.Assailant != null && g.NextTurn > 0 && Enumerable.Range(0, (int)Math.Min(g.NextTurn, int.MaxValue)).Any(n => TurnTick(g, n) == fired);
+            switch (slot.Definition.On)
+            {
+                case TriggerEvent.SkillCast:
+                    if (source) return bearer.Character != null ? at.Any(c => c.Action == CombatAction.UseSkill && c.Actor == bearer.Id) : turnAt(bearer);
+                    return at.Any(c => c.Action == CombatAction.UseSkill && c.Target is { } t
+                            && (target ? t == bearer.Id : ally && t != bearer.Id && _byId.TryGetValue(t, out Fighter? a) && a.Team == bearer.Team))
+                        || _fightersById.Any(g => g.Team != bearer.Team && turnAt(g));
+                case TriggerEvent.Death:
+                    return _fightersById.Any(g => g.Result.DeathTick == fired && (!ally || (g.Team == bearer.Team && g != bearer)));
+                case TriggerEvent.Block:
+                    return !target || bearer.Result.Blocks >= 1 && GuardCommandedAt(bearer, fired);
+                case TriggerEvent.GuardBroken:
+                    return !target || bearer.Result.GuardBreaks >= 1 && GuardCommandedAt(bearer, fired);
+                case TriggerEvent.PerfectParry:
+                    return !target || bearer.Result.PerfectParries >= 1 && _setup.Commands.Any(c => c.Action == CombatAction.Parry && c.Actor == bearer.Id
+                        && c.AtMs / _tickMs <= fired && c.AtMs / _tickMs >= checked(fired - bearer.Rules.ParryWindowMs / _tickMs));
+                case TriggerEvent.HitDealt:
+                case TriggerEvent.HitTaken:
+                    return !source || bearer.Result.Hits >= 1;
+                default:
+                    return true;
+            }
+        }
+
+        /// <summary>La dernière commande de garde de <paramref name="f"/> au plus tard au tick <paramref name="tick"/> la commence-t-elle ?</summary>
+        private bool GuardCommandedAt(Fighter f, long tick) =>
+            _setup.Commands.Where(c => (c.Action == CombatAction.GuardStart || c.Action == CombatAction.GuardStop) && c.Actor == f.Id && c.AtMs / _tickMs <= tick)
+                .OrderBy(c => c.AtMs / _tickMs).LastOrDefault()?.Action == CombatAction.GuardStart;
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (26e tour) : <paramref name="f"/> a-t-il pu, pendant un même tick, garder et avoir sélectionné un
+        /// combattant présent et vivant (autre que lui) ? C'est la seule rotation sans marche (<see cref="RunMovement"/>). Recalculé d'après
+        /// ses commandes de garde et de sélection admises, tick par tick de changement, et la présence de la cible.
+        /// </summary>
+        private bool GuardTurnPossible(Fighter f)
+        {
+            if (f.Character is null) return false;
+            long previous = CurrentTick - 1, arrived = f.ArrivedTick ?? 0;
+            var commands = _setup.Commands.Where(c => c.Actor == f.Id && c.AtMs / _tickMs >= arrived && c.AtMs / _tickMs <= previous
+                && (c.Action == CombatAction.GuardStart || c.Action == CombatAction.GuardStop || c.Action == CombatAction.Select)).OrderBy(c => c.AtMs / _tickMs).ToList();
+            bool guarding = false;
+            Fighter? selected = null;
+            for (int i = 0; i < commands.Count;)
+            {
+                long tick = commands[i].AtMs / _tickMs;
+                for (; i < commands.Count && commands[i].AtMs / _tickMs == tick; i++)
+                {
+                    CombatCommand c = commands[i];
+                    if (!PresentAtCommands(f, tick)) continue;
+                    if (c.Action == CombatAction.Select)
+                    {
+                        Fighter? chosen = c.Target is null ? null : _byId[c.Target];
+                        if (chosen is null || PresentAtCommands(chosen, tick)) selected = chosen;
+                    }
+                    else guarding = c.Action == CombatAction.GuardStart;
+                }
+                long until = i < commands.Count ? commands[i].AtMs / _tickMs - 1 : previous;
+                if (guarding && selected != null && selected != f && PresentOverlap(selected, tick, until) && PresentOverlap(f, tick, until)) return true;
+            }
+            return false;
+        }
+
+        /// <summary><paramref name="g"/> a-t-il été présent et vivant pendant au moins un tick de [<paramref name="from"/>, <paramref name="to"/>] ?</summary>
+        private static bool PresentOverlap(Fighter g, long from, long to)
+        {
+            if (g.Presence == Presence.Pending || g.Presence == Presence.Refused) return false;
+            long start = Math.Max(from, g.ArrivedTick ?? 0);
+            long end = Math.Min(to, Math.Min(g.Result.DeathTick ?? long.MaxValue, g.LeftTick ?? long.MaxValue));
+            return start <= end;
         }
 
         /// <summary>
         /// Revue Codex de la PR #32 (25e tour) : orientations possibles de <paramref name="f"/> quand rien d'autre que la marche n'a pu le
         /// tourner : celle de sa place de départ et les directions de ses commandes move (un pas tourne le combattant vers sa direction) ; null
-        /// s'il a pu se tourner vers une cible sélectionnée en garde (commande de garde et sélection d'un combattant passées).
+        /// s'il a pu se tourner vers une cible sélectionnée en garde (26e tour : garde et sélection admises au même tick, <see cref="GuardTurnPossible"/>).
         /// </summary>
         private HashSet<(long X, long Z)>? PossibleFacings(Fighter f)
         {
             long previous = CurrentTick - 1;
             IEnumerable<CombatCommand> past = _setup.Commands.Where(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
-            if (past.Any(c => c.Action == CombatAction.GuardStart) && past.Any(c => c.Action == CombatAction.Select && c.Target != null)) return null;
+            if (GuardTurnPossible(f)) return null;
             var facings = new HashSet<(long X, long Z)>();
             GroundVector start = f.Setup.Placement!.Facing;
             if (Planar.TryNormalize(start.X.Raw, start.Z.Raw, out long sx, out long sz)) facings.Add((sx, sz));

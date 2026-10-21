@@ -275,6 +275,35 @@ public class Lot114dSnapshotTests
             "\"upkeepRemainder\":" + (long.Parse(remainder.Substring(remainder.IndexOf(':') + 1)) + 1), "incohérent avec ses ticks gardés") });
     }
 
+    [Fact]
+    public void Activation_de_declencheur_et_rotation_de_garde_recoupees()
+    {
+        // Revue Codex de la PR #32 (26e tour). 1) Déclencheur sur ses propres lancers (recharge 3 s) : Gratuite au tick 0 seulement. Au tick
+        // 30, sa recharge (60) vient de ce lancer ; la décaler vers une activation au tick 10, où il n'a rien lancé, est refusé.
+        var echo = new TriggerDefinition(TriggerEvent.SkillCast, new[] { TriggerEffect.GainResource(TriggerResource.Resonance, Fixed.One) }, cooldownMs: 3000);
+        CombatSetup casting = Setup(new[] { Cmd(0, Gratuite, target: "assaillant") }, new CombatantSetup[] { Bearer(new[] { echo }), Hitter(Strike("coup", 10)) },
+            durationMs: 4000);
+        var engine = new CombatEngine(casting, NullCombatLog.Instance);
+        while (engine.CurrentTick < 30) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        AssertRefused(setup, text, new[] { ("{\"fighter\":\"bastion\"", "\"triggers\":[60]", "\"triggers\":[70]", "sans activation possible") });
+        // 2) Garde puis fin de garde, puis sélection hors garde : jamais les deux au même tick, le Bastion n'a pas pu se tourner ; une autre
+        // orientation est refusée.
+        CombatSetup turning = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(20), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")), Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("-5", "-5")),
+        }, new[] { GuardStart(0), GuardStop(100), CombatCommand.SelectTarget(250, "bastion", "cible") }, durationMs: 3000);
+        var turner = new CombatEngine(turning, NullCombatLog.Instance);
+        while (turner.CurrentTick < 10) turner.Step();
+        string turned = turner.Snapshot().Text;
+        string line = turned.Split('\n').First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        string facing = System.Text.RegularExpressions.Regex.Match(line, "\"facingX\":-?[0-9]+,\"facingZ\":-?[0-9]+").Value;
+        string other = facing == "\"facingX\":10000,\"facingZ\":0" ? "\"facingX\":0,\"facingZ\":10000" : "\"facingX\":10000,\"facingZ\":0";
+        AssertRefused(turner.CompletedSetup(), turned, new[] { ("{\"fighter\":\"bastion\"", facing, other, "Orientation de « bastion »") });
+    }
+
     private static CombatSetup Training() => Setup(new[]
     {
         Cmd(0, Entaille, target: "assaillant"), GuardStart(1000), GuardStop(2500), Cmd(2600, Assommer, target: "assaillant"), Parry(3900),
