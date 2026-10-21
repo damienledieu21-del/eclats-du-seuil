@@ -209,7 +209,10 @@ namespace EdS.Simulation.Engine
             // et 9) : l'immobilisation est lue après les coups et les applications de la bande (une application sur lui-même peut l'étourdir) ;
             // une charge immobilisée, déjà avant l'impact ou par lui, écrit chargeBlocked (diagnostic, avec la raison) au lieu de charged.
             bool charges = impact.Attack.Charge && impact.Zone != null;
-            ResolveAction(tick, action, targets, Cost.Op + Cost.Line + Cost.Enqueue.If(again) + Cost.Line.If(charges), dequeue: true, () =>
+            // Revue Codex de la PR #33 (tour 10) : la recherche du bout de la charge (sous-pas et contrôles de piège) est réservée avec
+            // l'impact, deux unités de travail par sous-pas, et consommée même si la charge est bloquée.
+            long chargeWork = charges ? checked(2 * ChargeSteps(impact.Assailant, impact.Zone!)) : 0;
+            ResolveAction(tick, action, targets, Cost.Op + Cost.Line + Cost.Enqueue.If(again) + Cost.Line.If(charges) + chargeWork * Cost.Op, dequeue: true, () =>
             {
                 Charge(1);
                 long landed = Emit(tick, CombatPhase.Resolution, "attackLanded", impact.Origin, w =>
@@ -229,6 +232,7 @@ namespace EdS.Simulation.Engine
             {
                 // Revue Codex de la PR #33 : la charge part après les coups de la bande (ligne réservée avec l'impact).
                 if (!charges) return;
+                Charge(chargeWork);
                 if ((impact.Assailant.Out ? OutReason(impact.Assailant, "actor") : BlockReason(impact.Assailant, StatusBlocks.Movement)) is { } stopped)
                 {
                     EmitDiagnostic(tick, CombatPhase.Resolution, "chargeBlocked", w => w

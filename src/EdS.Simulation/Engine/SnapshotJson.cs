@@ -59,7 +59,9 @@ namespace EdS.Simulation.Engine
 
         public long Long => Kind == SnapshotNodeKind.Number ? _number : throw new FormatException("Entier attendu.");
 
-        public int Int => checked((int)Long);
+        /// <summary>Entier 32 bits ; revue Codex de la PR #32 (21e tour) : hors de la plage, texte illisible (<see cref="FormatException"/>).</summary>
+        public int Int => Long is long value && value >= int.MinValue && value <= int.MaxValue ? (int)value
+            : throw new FormatException($"Entier 32 bits attendu, lu {Long}.");
 
         public long? NullableLong => IsNull ? (long?)null : Long;
 
