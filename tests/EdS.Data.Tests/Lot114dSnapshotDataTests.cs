@@ -89,6 +89,25 @@ public class Lot114dSnapshotDataTests
     }
 
     [Fact]
+    public void Recharge_de_declencheur_sans_activation_refusee()
+    {
+        // Revue Codex de la PR #32 (25e tour) : scénario entrainement_declencheurs, instantané après le tick 0 ; donner au premier
+        // déclencheur de l'assaillant une recharge en cours (activation inventée au tick 0, qui n'a écrit aucune ligne) est refusé.
+        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "scenarios", "entrainement_declencheurs.json"), ShippedData);
+        var engine = new CombatEngine(loaded.Setup!, NullCombatLog.Instance);
+        engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"assaillant\"", StringComparison.Ordinal));
+        var triggers = System.Text.RegularExpressions.Regex.Match(line, "\"triggers\":\\[0");
+        Assert.True(triggers.Success, line);
+        string tampered = text.Replace(line, line.Replace(triggers.Value, "\"triggers\":[40", StringComparison.Ordinal), StringComparison.Ordinal);
+        Exception? refused = Record.Exception(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tampered), NullCombatLog.Instance));
+        Assert.True(refused is FormatException && refused.Message.Contains("sans activation possible", StringComparison.Ordinal), refused?.Message ?? "accepté");
+    }
+
+    [Fact]
     public void Recharge_retouchee_refusee()
     {
         // Revue Codex de la PR #32 (4e tour) : une recharge en cours est celle d'une compétence du Bastion, et son échéance est en file une
