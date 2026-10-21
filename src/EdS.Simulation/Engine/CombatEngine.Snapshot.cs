@@ -538,6 +538,9 @@ namespace EdS.Simulation.Engine
                             && reaction.Slot.ReadyTick == checked(CurrentTick - 1 + reaction.Slot.Definition.CooldownMs / _tickMs),
                             $"{at} : réaction reportée incohérente avec son déclencheur ou l'effet observé.");
                         Require(ReactionOriginFits(reaction), $"{at} : provenance de réaction incohérente avec l'effet observé.");
+                        // 23e tour : la source de l'effet observé est celle de sa provenance (sauf un retrait d'altération, dont la source est
+                        // celle de l'altération retirée, et une rupture de garde sans auteur).
+                        Require(ObservedSourceFits(reaction.Event), $"{at} : source de l'effet observé différente de sa provenance.");
                         reactions++;
                         break;
                     default:
@@ -938,6 +941,18 @@ namespace EdS.Simulation.Engine
                         break;
                 }
             }
+            // 23e tour : chaque application (création ou renouvellement) prend un rang puis écrit aussitôt sa ligne stateApplied, dont le
+            // numéro devient la cause de l'origine de l'altération. Rangs et numéros vont donc dans le même ordre, et il y a au moins autant de
+            // numéros que de rangs avant la première application active, entre deux d'entre elles, et après la dernière.
+            long seqBefore = 0, eidBefore = 0;
+            foreach (StatusInstance s in _fightersById.SelectMany(f => f.Statuses.Values).OrderBy(s => s.AppliedSeq))
+            {
+                Require(s.Origin.Cause is long cause && checked(cause - eidBefore) >= checked(s.AppliedSeq - seqBefore),
+                    $"Rang d'application {s.AppliedSeq} de « {s.Owner.Id} » ({s.State}) incohérent avec la ligne qui l'a posée.");
+                seqBefore = s.AppliedSeq;
+                eidBefore = s.Origin.Cause!.Value;
+            }
+            Require(checked(_lastEid - eidBefore) >= checked(_lastApplication - seqBefore), "Rangs d'application au-delà des lignes écrites.");
             long renewals = 0;
             foreach (var cited in identities.Values) renewals = checked(renewals + Math.Max(0, cited.Generation - 1));
             Require(renewals <= _lastApplication - _lastStatusInstance,
@@ -1085,6 +1100,19 @@ namespace EdS.Simulation.Engine
         /// (<see cref="Provenance.ReactionTo"/> de l'effet observé : même racine, profondeur + 1, chaîne étendue de son déclencheur, absent
         /// avant, cause = effet observé, source = porteur ; instance de l'altération porteuse, à une génération déjà atteinte).
         /// </summary>
+        /// <summary>
+        /// Revue Codex de la PR #32 (23e tour) : la source d'un effet observé est celle de sa provenance (le lanceur, l'auteur du coup, la
+        /// source de l'altération posée, échue ou qui fait son tick, le porteur d'une ressource, l'auteur de l'effet mortel). Exceptions : un
+        /// retrait d'altération porte la source de l'altération retirée (sa provenance est celle du retrait), et une rupture de garde par
+        /// épuisement n'a pas d'auteur.
+        /// </summary>
+        private static bool ObservedSourceFits(ObservedEvent e) => e.Kind switch
+        {
+            TriggerEvent.StateRemoved => true,
+            TriggerEvent.GuardBroken => e.Source is null || string.Equals(e.Source, e.Provenance.Source, StringComparison.Ordinal),
+            _ => string.Equals(e.Source, e.Provenance.Source, StringComparison.Ordinal),
+        };
+
         private static bool ReactionOriginFits(ReactionItem reaction)
         {
             Provenance origin = reaction.Origin, observed = reaction.Event.Provenance;
