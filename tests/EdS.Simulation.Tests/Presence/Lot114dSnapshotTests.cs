@@ -222,6 +222,57 @@ public class Lot114dSnapshotTests
         AssertRefused(training.CompletedSetup(), swapped, "incohérent avec la ligne qui l'a posée");
     }
 
+    /// <summary>L'état PCG32 relu de <paramref name="who"/> avancé d'un pas (même flux).</summary>
+    private static string OneMoreStep(string text, string who)
+    {
+        string prefix = "{\"fighter\":\"" + who + "\"";
+        string line = text.Split('\n').First(l => l.StartsWith(prefix, StringComparison.Ordinal));
+        var m = System.Text.RegularExpressions.Regex.Match(line, "\"random\":\\[\"([0-9a-f]{16})\",\"([0-9a-f]{16})\"\\]");
+        ulong state = Convert.ToUInt64(m.Groups[1].Value, 16), increment = Convert.ToUInt64(m.Groups[2].Value, 16);
+        ulong next = unchecked(state * 6364136223846793005UL + increment);
+        return text.Replace(line, line.Replace(m.Value, $"\"random\":[\"{next:x16}\",\"{increment:x16}\"]", StringComparison.Ordinal), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Place_zone_generateur_et_entretien_rattaches_a_leur_histoire()
+    {
+        // Revue Codex de la PR #32 (24e tour). 1) Places : l'ours et le mannequin n'ont jamais marché ; déplacer l'un d'eux est refusé. 2) Zone qui reste autour du Bastion : verrouillée sur sa place (il n'a pas bougé depuis) ; une autre origine est
+        // refusée.
+        var persistent = new AssailantAttack("brasier", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Persistent,
+            1000, radius: Fixed.Parse("1.5"), persistentMs: 2000, pulseMs: 500);
+        CombatSetup zone = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(20), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")), Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("-5", "-5")),
+            new AssailantSetup("ours", "cibles", Fixed.Zero, Fixed.Zero, "bastion", 1000, 10_000, new[] { persistent }, placement: Space.SpaceTestKit.At("8", "0")),
+        }, new[] { CombatCommand.SelectTarget(0, "bastion", "ours") }, durationMs: 5000);
+        var engine = new CombatEngine(zone, NullCombatLog.Instance);
+        while (engine.CurrentTick < 45) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string impact = text.Split('\n').First(l => l.Contains("\"item\":\"impact\"", StringComparison.Ordinal));
+        AssertRefused(setup, text, new[]
+        {
+            ("{\"fighter\":\"ours\"", "\"x\":80000", "\"x\":79000", "Place de « ours » hors de portée"),
+            ("{\"fighter\":\"cible\"", "\"x\":-50000,", "\"x\":-40000,", "Place de « cible » hors de portée"),
+            (impact.Substring(0, impact.IndexOf(',')), "\"originX\":0,", "\"originX\":10000,", "zone loin de la place où son tour l'a verrouillée"),
+        });
+        // 3) Générateur : un état avancé d'un pas est refusé pour l'allié, qui n'a jamais frappé, et pour le Bastion, au tick 2 (une seule
+        // Entaille, un seul jet).
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 2) training.Step();
+        string early = training.Snapshot().Text;
+        AssertRefused(training.CompletedSetup(), OneMoreStep(early, "bastion"), "incohérent avec ses jets de critique");
+        while (training.CurrentTick < 55) training.Step();
+        string later = training.Snapshot().Text;
+        AssertRefused(training.CompletedSetup(), OneMoreStep(later, "allie"), "incohérent avec ses jets de critique");
+        // 4) Entretien : le Bastion a gardé de 1 s à 2,5 s à coût constant ; un reliquat retouché est refusé.
+        string bastion = later.Split('\n').First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        string remainder = System.Text.RegularExpressions.Regex.Match(bastion, "\"upkeepRemainder\":[0-9]+").Value;
+        AssertRefused(training.CompletedSetup(), later, new[] { ("{\"fighter\":\"bastion\"", remainder,
+            "\"upkeepRemainder\":" + (long.Parse(remainder.Substring(remainder.IndexOf(':') + 1)) + 1), "incohérent avec ses ticks gardés") });
+    }
+
     private static CombatSetup Training() => Setup(new[]
     {
         Cmd(0, Entaille, target: "assaillant"), GuardStart(1000), GuardStop(2500), Cmd(2600, Assommer, target: "assaillant"), Parry(3900),

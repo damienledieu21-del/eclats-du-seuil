@@ -522,6 +522,9 @@ namespace EdS.Simulation.Engine
                         // impact en file par tour. Le rang d'impulsion et le tick du premier impact ne se retouchent donc plus ensemble.
                         Require(AnnouncingTurn(impact) is long announcing && announcedTurns.Add((impact.Assailant, announcing)),
                             $"{at} : impact sans le tour d'assaillant qui l'a annoncé, ou annoncé deux fois.");
+                        // 24e tour : la zone a été verrouillée à ce tour, sur la place de l'assaillant (cercle autour de lui, cône, bande) ou
+                        // d'un adversaire (cercle autour de la cible) ; ils n'ont pu bouger depuis que de leurs pas de marche.
+                        Require(impact.Zone is null || ZoneFitsLock(impact, TurnTick(impact.Assailant, AnnouncingTurn(impact)!.Value)), $"{at} : zone loin de la place où son tour l'a verrouillée.");
                         ValidateZone(impact, at);
                         break;
                     case ReactionItem reaction:
@@ -730,6 +733,12 @@ namespace EdS.Simulation.Engine
                 // rupture n'en change aucun).
                 Require(f.GuardUpkeepRemainder >= 0 && f.GuardUpkeepRemainder < 1000 * Fixed.Scale && f.GuardUpkeepPaid >= 0
                     && f.GuardUpkeepPaid == f.GuardUpkeepDue && f.GuardUpkeepDue <= CounterCeiling, $"Entretien de la garde de {who} impossible.");
+                // 24e tour : l'entretien cumulé (dû × 1000 × échelle + reliquat) est la somme, sur les ticks gardés, du coût/s du moment × durée
+                // du tick ; ce coût est constant sans renforcement d'entretien au catalogue (cumul exact), sinon entre ses bornes.
+                var (slowest, fastest) = UpkeepRates(f);
+                decimal accrued = (decimal)f.GuardUpkeepDue * (1000 * Fixed.Scale) + f.GuardUpkeepRemainder;
+                Require(accrued >= (decimal)slowest * _tickMs * f.Result.GuardTicks && accrued <= (decimal)fastest * _tickMs * f.Result.GuardTicks,
+                    $"Entretien de la garde de {who} incohérent avec ses ticks gardés.");
                 CombatantResult r = f.Result;
                 Require(new[] { r.DamageDealt, r.DamageTaken, r.DamageAbsorbed, r.DamageTransferred, r.DamageRedirected, r.DamageMitigated, r.Hits,
                         r.CriticalHits, r.SkillsCast, r.UltimatesCast, r.CommandsRejected, r.Blocks, r.PerfectParries, r.FailedParries, r.GuardBreaks }
@@ -814,6 +823,11 @@ namespace EdS.Simulation.Engine
                         $"Place de {who} hors de l'aire.");
                     Require(!_obstacles.Any(o => o.OverlapsCircle(b.X, b.Z, b.Radius)), $"Place de {who} dans le décor.");
                     Require(IsUnit(b.FacingX, b.FacingZ) && (!b.Moving || IsUnit(b.DirectionX, b.DirectionZ)), $"Orientation ou direction de {who} non unitaire.");
+                    // 24e tour : la place d'un combattant est à portée de ses pas de marche depuis sa place de départ (ou d'arrivée) ; sans
+                    // aucun tick de marche, c'est exactement elle (un combattant pas encore entré est comparé plus bas à son état de départ).
+                    Require(f.Presence == Presence.Pending || f.Presence == Presence.Refused
+                        || f.Setup.Placement is { } placed && Reachable(f, 0, placed.Position.X.Raw, placed.Position.Z.Raw),
+                        $"Place de {who} hors de portée de ses pas de marche depuis sa place de départ.");
                     // 15e tour : seul un personnage ou un assaillant marche (un mannequin ne reçoit jamais move).
                     Require(!b.Moving || f.Character != null || f.Assailant != null, $"Marche de {who}, qui ne marche jamais.");
                     // Relecture d'ensemble (4) : une marche suit une commande move passée de ce combattant ; une cible sélectionnée, une commande
@@ -864,6 +878,10 @@ namespace EdS.Simulation.Engine
                 ulong drawn = Pcg32.Distance(start.Random.Capture(), f.Random.Capture());
                 Require((f.Character != null || drawn == 0) && drawn <= drawBudget - drawsSeen, $"État du générateur de {who} hors d'atteinte depuis celui du combat.");
                 drawsSeen += drawn;
+                // 24e tour : chaque tirage est un jet de critique entier (un pas, plus un par valeur rejetée), et un jet précède un coup compté
+                // au bilan : l'état est exactement celui d'après k jets, avec coups critiques ≤ k ≤ coups (sans coup, aucun pas).
+                Require(WholeRolls(start.Random.Capture(), drawn, f.Result.Hits) is long rolls && rolls >= f.Result.CriticalHits,
+                    $"État du générateur de {who} incohérent avec ses jets de critique.");
                 // Les tours d'un assaillant entré se déduisent de sa cadence : tours joués jusqu'à son dernier tick d'action (le précédent,
                 // ou celui de sa mort ou de son départ), attaque suivante de sa liste, tour suivant programmé s'il tombe avant la fin.
                 if (entered && f.Assailant is { } assailant)
@@ -995,6 +1013,137 @@ namespace EdS.Simulation.Engine
             bool fits = turnTick <= CurrentTick - 1 && ReferenceEquals(assailant.Attacks[(int)(turn % assailant.Attacks.Count)], impact.Attack)
                 && impact.ImpactTick == ImpactTickOf(turnTick, impact.Attack);
             return fits ? turn : (long?)null;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : nombre de jets de critique entiers (<see cref="Pcg32.RollBasisPoints"/>) qui font avancer le
+        /// générateur de <paramref name="start"/> d'exactement <paramref name="steps"/> pas, au plus <paramref name="maxRolls"/> ; null si
+        /// ces pas s'arrêtent au milieu d'un jet ou en demandent davantage. Chaque jet fait au moins un pas : au plus <paramref name="steps"/>
+        /// tours, et le contrôle de distance a déjà borné <paramref name="steps"/>.
+        /// </summary>
+        private static long? WholeRolls(Pcg32State start, ulong steps, long maxRolls)
+        {
+            Pcg32 rng = Pcg32.Restore(start);
+            ulong done = 0;
+            long rolls = 0;
+            while (done < steps)
+            {
+                if (rolls >= maxRolls) return null;
+                Pcg32State before = rng.Capture();
+                rng.RollBasisPoints(0);
+                done += Pcg32.Distance(before, rng.Capture());
+                rolls++;
+            }
+            return done == steps ? rolls : (long?)null;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : coûts/s bruts extrêmes de l'entretien de la garde de <paramref name="f"/> (voir
+        /// <see cref="UpkeepAfterTick"/>) : sans renforcement d'entretien au catalogue, le coût de ses règles ; sinon de 0 (renforcements qui
+        /// le baissent ou l'annulent) au coût avec tous les renforcements qui l'augmentent (un par source pour un cumul par source).
+        /// </summary>
+        private (long Slowest, long Fastest) UpkeepRates(Fighter f)
+        {
+            Fixed rate = f.Rules.GuardUpkeepPerSecondWith(Fixed.Zero);
+            Fixed raise = Fixed.Zero;
+            bool lowers = false;
+            foreach (StatusDefinition d in _statuses.Definitions.Where(d => d.IsBuff))
+            {
+                Fixed sum = d.ModifierSum(ModifierField.GuardUpkeepPerSecond);
+                if (sum < Fixed.Zero || d.ModifierSum(ModifierField.GuardNoUpkeep) > Fixed.Zero) lowers = true;
+                if (sum > Fixed.Zero) raise += sum * Fixed.FromInt(d.Stacking == StatusStacking.PerSourceKeepStronger ? _fightersById.Count : 1);
+            }
+            return (lowers ? 0 : rate.Raw, raise > Fixed.Zero ? f.Rules.GuardUpkeepPerSecondWith(raise).Raw : rate.Raw);
+        }
+
+        /// <summary>Tick du tour <paramref name="turn"/> d'un assaillant (cadence : arrivée + <c>firstAttackMs</c>, puis <c>intervalMs</c>).</summary>
+        private long TurnTick(Fighter f, long turn) =>
+            checked((f.ArrivedTick ?? 0) + f.Assailant!.FirstAttackMs / _tickMs + turn * (f.Assailant.IntervalMs / _tickMs));
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : nombre de ticks de [<paramref name="from"/>, tick précédent] où <paramref name="g"/> a pu
+        /// marcher : présent et vivant (de son arrivée à sa mort ou à son départ), et en marche d'après sa dernière commande move ou stop
+        /// (toutes admises tant qu'il est présent et vivant ; un mannequin ne marche jamais).
+        /// </summary>
+        private long MovingTicks(Fighter g, long from)
+        {
+            if (g.Body is null || (g.Character is null && g.Assailant is null) || g.Presence == Presence.Pending || g.Presence == Presence.Refused) return 0;
+            long arrived = g.ArrivedTick ?? 0;
+            long start = Math.Max(from, arrived);
+            long end = Math.Min(CurrentTick - 1, Math.Min(g.Result.DeathTick ?? long.MaxValue, g.LeftTick ?? long.MaxValue));
+            if (start > end) return 0;
+            var commands = _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop) && c.Actor == g.Id
+                && c.AtMs / _tickMs >= arrived && c.AtMs / _tickMs <= end).OrderBy(c => c.AtMs / _tickMs).ToList();
+            bool moving = false;
+            long count = 0, cursor = start;
+            int i = 0;
+            for (; i < commands.Count && commands[i].AtMs / _tickMs < start; i++) moving = commands[i].Action == CombatAction.Move;
+            while (cursor <= end)
+            {
+                long next = i < commands.Count ? commands[i].AtMs / _tickMs : checked(end + 1);
+                if (next > cursor)
+                {
+                    long until = Math.Min(next, checked(end + 1));
+                    if (moving) count = checked(count + until - cursor);
+                    cursor = until;
+                    continue;
+                }
+                for (; i < commands.Count && commands[i].AtMs / _tickMs == cursor; i++) moving = commands[i].Action == CombatAction.Move;
+                if (moving) count++;
+                cursor++;
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : plus grand déplacement de <paramref name="g"/> en un tick de marche : son pas (vitesse ×
+        /// durée du tick, × 1 + les accélérations positives du catalogue, chacune une fois, plafonné par la vitesse technique), deux fois
+        /// pour les dégagements le long du décor et des emprises, plus une marge d'arrondi.
+        /// </summary>
+        private long StepBound(Fighter g)
+        {
+            Fixed boost = Fixed.One;
+            foreach (StatusDefinition d in _statuses.Definitions)
+                if (d.MovementSpeedModifier > Fixed.Zero) boost += d.MovementSpeedModifier;
+            long step = Fixed.Multiply(Fixed.FromRaw(Domain.Numerics.IntMath.MulDiv(g.Body!.Speed, _tickMs, 1000, Domain.Numerics.RoundingMode.Floor)), boost,
+                Domain.Numerics.RoundingMode.Ceiling).Raw;
+            return checked(2 * Math.Min(step, _maxStep) + 16);
+        }
+
+        /// <summary>
+        /// Sous-lot 11.5 : un ennemi à comportement marche sans commande (placement), et une charge le porte d'un coup jusqu'au bout de sa
+        /// bande : ses pas ne se déduisent pas des commandes, sa place et l'axe de ses zones ne sont pas bornés ainsi.
+        /// </summary>
+        private static bool FreeMover(Fighter g) => g.Behavior != null || g.Assailant is { } a && a.Attacks.Any(attack => attack.Charge);
+
+        /// <summary>(x, z) est-il à portée de marche de <paramref name="g"/> depuis le tick <paramref name="from"/> ?</summary>
+        private bool Reachable(Fighter g, long from, long x, long z)
+        {
+            if (FreeMover(g)) return true;
+            long travel = checked(MovingTicks(g, from) * StepBound(g));
+            long dx = checked(x - g.Body!.X), dz = checked(z - g.Body.Z);
+            return travel == 0 ? dx == 0 && dz == 0 : (decimal)dx * dx + (decimal)dz * dz <= (decimal)travel * travel;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : la zone d'un impact a été verrouillée au tour <paramref name="turnTick"/>
+        /// (<see cref="LockZone"/>) : son origine est la place de l'assaillant (cercle autour de lui, cône, bande) ou celle d'un adversaire
+        /// présent à ce tour (cercle autour de la cible), chacun ne s'en étant écarté que de ses pas de marche depuis ; l'axe d'un cône ou
+        /// d'une bande va vers un adversaire (ou suit l'orientation de l'assaillant s'ils étaient confondus), contrôlé quand ni l'un ni
+        /// l'autre n'a marché depuis.
+        /// </summary>
+        private bool ZoneFitsLock(AttackImpact impact, long turnTick)
+        {
+            AttackZone zone = impact.Zone!;
+            Fighter a = impact.Assailant;
+            if (impact.Attack.Center == ShapeCenter.Target && zone.Shape is AttackShape.Circle or AttackShape.Persistent)
+                return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && Reachable(g, turnTick, zone.OriginX, zone.OriginZ));
+            if (!Reachable(a, turnTick, zone.OriginX, zone.OriginZ)) return false;
+            if (zone.Shape is AttackShape.Circle or AttackShape.Persistent || FreeMover(a) || MovingTicks(a, turnTick) > 0) return true;
+            return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && (FreeMover(g) || MovingTicks(g, turnTick) > 0
+                || (Planar.TryNormalize(checked(g.Body.X - zone.OriginX), checked(g.Body.Z - zone.OriginZ), out long ux, out long uz)
+                    ? ux == zone.AxisX && uz == zone.AxisZ
+                    : a.Body!.FacingX == zone.AxisX && a.Body.FacingZ == zone.AxisZ)));
         }
 
         /// <summary>
