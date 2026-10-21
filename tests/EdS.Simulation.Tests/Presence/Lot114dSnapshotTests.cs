@@ -158,6 +158,43 @@ public class Lot114dSnapshotTests
         AssertRefused(bleeder.CompletedSetup(), tripled, "puissance au-delà du plus fort DOT possible");
     }
 
+    [Fact]
+    public void Impulsion_et_selection_recoupees_avec_leur_origine()
+    {
+        // Revue Codex de la PR #32 (22e tour). 1) Zone qui reste (impacts aux ticks 40, 50, 60, 70) : après la première impulsion, l'impact
+        // en file porte pulse 1 et le tick du premier impact ; repartir de l'impulsion 0 au tick de l'entrée (les deux retouchés ensemble)
+        // est refusé : le tour qui l'a annoncée donne le premier impact.
+        var persistent = new AssailantAttack("brasier", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Persistent,
+            1000, radius: Fixed.Parse("1.5"), persistentMs: 2000, pulseMs: 500);
+        CombatSetup zone = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(20), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")), Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("-5", "-5")),
+            new AssailantSetup("ours", "cibles", Fixed.Zero, Fixed.Zero, "bastion", 1000, 10_000, new[] { persistent }, placement: Space.SpaceTestKit.At("8", "0")),
+        }, new[] { CombatCommand.SelectTarget(0, "bastion", "ours"), CombatCommand.SelectTarget(500, "bastion", "cible") }, durationMs: 5000);
+        var engine = new CombatEngine(zone, NullCombatLog.Instance);
+        while (engine.CurrentTick < 45) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string impact = text.Split('\n').First(l => l.Contains("\"item\":\"impact\"", StringComparison.Ordinal));
+        Assert.Contains("\"pulse\":1,\"impactTick\":40", impact, StringComparison.Ordinal);
+        Assert.Contains("\"tick\":50,", impact, StringComparison.Ordinal);
+        AssertRefused(setup, text, new[] { (impact.Substring(0, impact.IndexOf(',')), "\"pulse\":1,\"impactTick\":40", "\"pulse\":0,\"impactTick\":50",
+            "sans le tour d'assaillant qui l'a annoncé") });
+        // 2) Sélection : l'ours au tick 0, puis la cible au tick 10 ; remettre l'ours (sélectionné avant) ou rien est refusé.
+        const string Bastion = "{\"fighter\":\"bastion\"";
+        Assert.Contains("\"selected\":\"cible\"", text.Split('\n').First(l => l.StartsWith(Bastion, StringComparison.Ordinal)), StringComparison.Ordinal);
+        // 3) Relecture d'ensemble : le Bastion d'entraînement a fini sa garde (guardStop à 2,5 s) ; une garde retouchée au tick 55 est refusée.
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 55) training.Step();
+        AssertRefused(training.CompletedSetup(), training.Snapshot().Text, new[] { (Bastion, "\"guarding\":false", "\"guarding\":true", "Garde de « bastion » tenue après") });
+        AssertRefused(setup, text, new[]
+        {
+            (Bastion, "\"selected\":\"cible\"", "\"selected\":\"ours\"", "Sélection de « bastion » différente de sa dernière commande select admise"),
+            (Bastion, "\"selected\":\"cible\"", "\"selected\":null", "Sélection de « bastion » différente"),
+        });
+    }
+
     private static CombatSetup Training() => Setup(new[]
     {
         Cmd(0, Entaille, target: "assaillant"), GuardStart(1000), GuardStop(2500), Cmd(2600, Assommer, target: "assaillant"), Parry(3900),
@@ -379,7 +416,7 @@ public class Lot114dSnapshotTests
             (Cible, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "qui ne marche jamais"),
             // Relecture d'ensemble (4) : marche de l'ogre sans commande move ; cible sélectionnée par le Bastion sans commande select.
             (Ogre, "\"moving\":false,\"directionX\":0,\"directionZ\":0", "\"moving\":true,\"directionX\":10000,\"directionZ\":0", "Marche de « ogre »"),
-            (Bastion, "\"selected\":null", "\"selected\":\"ogre\"", "Marche ou sélection de « bastion »"),
+            (Bastion, "\"selected\":null", "\"selected\":\"ogre\"", "Sélection de « bastion »"),
         });
         // 15e tour : numéro de ligne en deçà du dernier événement (chaque événement a pris une ligne).
         string seq = System.Text.RegularExpressions.Regex.Match(text.Split('\n')[0], "\"seq\":[0-9]+").Value;

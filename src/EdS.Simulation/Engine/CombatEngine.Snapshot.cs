@@ -468,6 +468,7 @@ namespace EdS.Simulation.Engine
             var dotTicks = new HashSet<(Fighter, StatusKey, long)>();
             var parryEnds = new HashSet<(Fighter, long)>();
             var reacted = new HashSet<(TriggerSlot, long?, string)>();
+            var announcedTurns = new HashSet<(Fighter, long)>();
             foreach (var (tick, phase, sequence, item) in entries)
             {
                 string at = $"Élément de file {sequence} ({item.GetType().Name}, tick {tick}, phase {phase})";
@@ -516,6 +517,11 @@ namespace EdS.Simulation.Engine
                         Require(impact.Zone != null || (impact.Target is { } locked && locked.Team != impact.Assailant.Team), $"{at} : impact dirigé sans cible adverse.");
                         Require(impact.ImpactTick >= 0 && tick == checked(impact.ImpactTick + impact.Pulse * (impact.Attack.PulseMs / _tickMs)),
                             $"{at} : impulsion {impact.Pulse} hors de son tick (impact au tick {impact.ImpactTick}).");
+                        // 22e tour : l'impact vient du tour qui l'a annoncé (racine assailantTurn:<assaillant>:<n>) : un tour déjà joué, dont
+                        // l'attaque (n modulo le nombre d'attaques) est celle-ci, et premier impact au tick de ce tour plus l'annonce ; un seul
+                        // impact en file par tour. Le rang d'impulsion et le tick du premier impact ne se retouchent donc plus ensemble.
+                        Require(AnnouncingTurn(impact) is long announcing && announcedTurns.Add((impact.Assailant, announcing)),
+                            $"{at} : impact sans le tour d'assaillant qui l'a annoncé, ou annoncé deux fois.");
                         ValidateZone(impact, at);
                         break;
                     case ReactionItem reaction:
@@ -734,6 +740,12 @@ namespace EdS.Simulation.Engine
                         || _setup.Commands.Any(c => c.Action == CombatAction.GuardStart && c.Actor == f.Id && c.AtMs / _tickMs <= previous))
                     && (f.GuardUpkeepDue == 0 && f.GuardUpkeepRemainder == 0 || f.Result.GuardTicks >= 1),
                     $"Garde ou parade de {who} sans commande à son origine.");
+                // Relecture d'ensemble (22e tour) : une garde tenue suit une dernière commande de garde (par tick, puis par rang) qui la
+                // commence : un guardStop plus récent l'aurait finie, ou refusé faute de garde. Une garde peut finir sans commande (rupture,
+                // contrôle, mort, départ), jamais commencer.
+                CombatCommand? lastGuard = _setup.Commands.Where(c => (c.Action == CombatAction.GuardStart || c.Action == CombatAction.GuardStop)
+                    && c.Actor == f.Id && c.AtMs / _tickMs <= previous).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
+                Require(!f.Guarding || lastGuard?.Action == CombatAction.GuardStart, $"Garde de {who} tenue après sa dernière commande de fin de garde.");
                 // Relecture d'ensemble (3) : seuls les assaillants ont des tours ; une mort suit l'arrivée.
                 Require(f.Assailant != null || (f.NextTurn == 0 && f.NextAttack == 0 && f.NextAttackTick is null), $"Tours de {who}, qui n'attaque pas seul.");
                 Require(f.Result.DeathTick is not long died || died >= (f.ArrivedTick ?? 0), $"Mort de {who} avant son arrivée.");
@@ -814,9 +826,21 @@ namespace EdS.Simulation.Engine
                         && Planar.TryNormalize(heading.X.Raw, heading.Z.Raw, out moveX, out moveZ);
                     Require(f.Out || f.Behavior != null || (b.Moving == shouldMove && (!b.Moving || (b.DirectionX == moveX && b.DirectionZ == moveZ))),
                         $"Marche de {who} différente de sa dernière commande move ou stop.");
-                    Require((!b.Moving || f.Behavior != null || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous))
-                        && (b.Selected is not { } chosen || _setup.Commands.Any(c => c.Action == CombatAction.Select && c.Actor == f.Id && c.Target == chosen.Id
-                            && c.AtMs / _tickMs <= previous)), $"Marche ou sélection de {who} sans commande à son origine.");
+                    Require(!b.Moving || f.Behavior != null || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous),
+                        $"Marche ou sélection de {who} sans commande à son origine.");
+                    // 22e tour : la cible sélectionnée est celle de la dernière commande select admise (par tick, puis par rang), null compris.
+                    // Une sélection n'est admise que d'un personnage présent et vivant, vers rien ou vers un combattant présent et vivant ; elle
+                    // reste ensuite telle quelle (la mort ou le départ de l'un ou de l'autre ne l'efface pas).
+                    Fighter? expected = null;
+                    if (f.Character != null)
+                        foreach (CombatCommand select in _setup.Commands.Where(c => c.Action == CombatAction.Select && c.Actor == f.Id && c.AtMs / _tickMs <= previous)
+                            .OrderBy(c => c.AtMs / _tickMs))
+                        {
+                            long at = select.AtMs / _tickMs;
+                            Fighter? target = select.Target is null ? null : _byId[select.Target];
+                            if (PresentAtCommands(f, at) && (target is null || PresentAtCommands(target, at))) expected = target;
+                        }
+                    Require(b.Selected == expected, $"Sélection de {who} différente de sa dernière commande select admise ({expected?.Id ?? "aucune"}).");
                 }
                 Fighter start = initial[f.Id];
                 Require(f.Random.Capture().Increment == start.Random.Capture().Increment, $"Flux de tirage de {who} différent de celui du combat.");
@@ -934,6 +958,38 @@ namespace EdS.Simulation.Engine
             long ms = Math.Max(Math.Max(definition.DurationMs, floor), Math.Min(CombatRules.AbsoluteMaxDurationMs, checked(definition.DurationMs + added)));
             return ms / _tickMs;
         }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (22e tour) : numéro du tour d'assaillant qui a annoncé <paramref name="impact"/>, ou null si sa provenance
+        /// ne désigne pas un tour déjà joué de cet assaillant, dont l'attaque est celle de l'impact et dont le tick plus l'annonce donne son
+        /// premier impact. Cadence comme dans le contrôle des tours : premier tour à l'arrivée plus <c>firstAttackMs</c>, puis un tous les
+        /// <c>intervalMs</c>, sauts compris ; l'attaque du tour n est la n-ième de la liste, modulo sa longueur.
+        /// </summary>
+        private long? AnnouncingTurn(AttackImpact impact)
+        {
+            Fighter f = impact.Assailant;
+            if (f.Assailant is not { } assailant || impact.Origin.Depth != 0 || impact.Origin.Cause is null) return null;
+            string prefix = $"assailantTurn:{f.Id}:";
+            string root = impact.Origin.Root;
+            if (!root.StartsWith(prefix, StringComparison.Ordinal)
+                || !long.TryParse(root.Substring(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long turn)
+                || !string.Equals(turn.ToString(CultureInfo.InvariantCulture), root.Substring(prefix.Length), StringComparison.Ordinal)
+                || turn >= f.NextTurn) return null;
+            long first = checked((f.ArrivedTick ?? 0) + assailant.FirstAttackMs / _tickMs);
+            long turnTick = checked(first + turn * (assailant.IntervalMs / _tickMs));
+            bool fits = turnTick <= CurrentTick - 1 && ReferenceEquals(assailant.Attacks[(int)(turn % assailant.Attacks.Count)], impact.Attack)
+                && impact.ImpactTick == ImpactTickOf(turnTick, impact.Attack);
+            return fits ? turn : (long?)null;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (22e tour) : <paramref name="f"/> était-il présent et vivant pendant les commandes du tick
+        /// <paramref name="tick"/> (au plus le tick précédent) ? Une arrivée a lieu au début de son tick, un départ à la fin du sien, et une mort
+        /// jamais avant les commandes (résolution, ticks de DOT, fin de tick).
+        /// </summary>
+        private static bool PresentAtCommands(Fighter f, long tick) =>
+            f.Presence != Presence.Pending && f.Presence != Presence.Refused && tick >= (f.ArrivedTick ?? 0)
+            && (f.LeftTick is not long left || tick <= left) && (f.Result.DeathTick is not long died || tick <= died);
 
         /// <summary>
         /// Revue Codex de la PR #32 (20e tour) : plus fort coefficient d'une application de l'altération <paramref name="status"/> posée par
