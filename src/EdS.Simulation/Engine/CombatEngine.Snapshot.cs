@@ -48,7 +48,10 @@ namespace EdS.Simulation.Engine
 
         internal static CombatSnapshot Create(long tick, string text, string setup) => new CombatSnapshot(tick, text, setup);
 
-        /// <summary>Relit un instantané depuis son texte (première ligne : format, versions, tick) ; l'état n'est vérifié qu'à <see cref="CombatEngine.Restore"/>.</summary>
+        /// <summary>
+        /// Relit un instantané depuis son texte (première ligne : format, versions, tick) ; l'état n'est vérifié qu'à la reprise : exactement par
+        /// <see cref="CombatEngine.RestoreVerified"/> (rejeu), en cohérence seulement par <see cref="CombatEngine.Restore"/> (source de confiance).
+        /// </summary>
         /// <exception cref="FormatException">Texte illisible ou d'un autre format.</exception>
         public static CombatSnapshot Parse(string text)
         {
@@ -281,6 +284,9 @@ namespace EdS.Simulation.Engine
         /// rendu continue exactement comme l'original (mêmes lignes de journal, même résultat) ; il écrit dans <paramref name="log"/> la suite
         /// du journal, sans en-tête. Ses commandes soumises et arrivées pilotées repartent de zéro (celles d'avant sont dans
         /// <paramref name="setup"/>). L'instantané relu est réécrit et comparé au texte reçu : un texte non canonique est refusé.
+        /// Réservé à un instantané de confiance (produit par ce processus, ou reçu de l'autorité du combat, le serveur) : ses contrôles de
+        /// cohérence écartent les incohérences connues sans prouver qu'un état est atteignable. Un instantané reçu d'ailleurs se reprend avec
+        /// <see cref="RestoreVerified"/>, qui le compare au rejeu exact du combat (décision de Damien du 22 octobre 2026).
         /// </summary>
         /// <exception cref="FormatException">Instantané illisible, d'un autre moteur, d'un autre combat, ou incohérent.</exception>
         public static CombatEngine Restore(CombatSetup setup, CombatSnapshot snapshot, ICombatLog log)
@@ -307,6 +313,95 @@ namespace EdS.Simulation.Engine
             if (!string.Equals(again, snapshot.Text, StringComparison.Ordinal))
                 throw new FormatException("Instantané non canonique : relu puis réécrit, il ne redonne pas le même texte.");
             return engine;
+        }
+
+        /// <summary>
+        /// Décision de Damien du 22 octobre 2026 (revue Codex de la PR #32, option C) : reprise <b>vérifiée</b> d'un instantané reçu d'ailleurs
+        /// (fichier, autre processus, source qui n'est pas l'autorité du combat). Le combat complété <paramref name="setup"/> est rejoué depuis
+        /// le début, sans journal, jusqu'au tick de l'instantané ; l'instantané de ce rejeu doit être exactement <paramref name="snapshot"/>
+        /// (même texte, octet par octet), sinon refus. Le moteur rendu continue ensuite comme celui de <see cref="Restore"/>, dans
+        /// <paramref name="log"/>. Exact : un état que le combat n'atteint pas est toujours refusé. Coût : le calcul du passé (sans journal).
+        /// <see cref="Restore"/> reste la reprise sans rejeu d'un instantané de confiance (produit par ce processus, ou reçu de l'autorité du
+        /// combat, le serveur) ; ses contrôles de cohérence écartent les incohérences connues sans prouver qu'un état est atteignable.
+        /// </summary>
+        /// <exception cref="FormatException">Instantané illisible, d'un autre moteur, d'un autre combat, ou différent de l'état rejoué.</exception>
+        public static CombatEngine RestoreVerified(CombatSetup setup, CombatSnapshot snapshot, ICombatLog log)
+        {
+            if (setup is null) throw new ArgumentNullException(nameof(setup));
+            if (snapshot is null) throw new ArgumentNullException(nameof(snapshot));
+            if (log is null) throw new ArgumentNullException(nameof(log));
+            string expected = SetupFingerprint(setup);
+            if (snapshot.Setup != expected)
+                throw new FormatException($"Instantané d'un autre combat : en-tête {snapshot.Setup}, combat fourni {expected}.");
+            if (snapshot.Tick < 0) throw new FormatException($"Instantané au tick {snapshot.Tick} : impossible.");
+            var replay = new CombatEngine(setup, NullCombatLog.Instance);
+            while (replay.CurrentTick < snapshot.Tick)
+            {
+                if (replay.IsFinished)
+                    throw new FormatException($"Instantané au tick {snapshot.Tick}, après la fin du combat rejoué (tick {replay.CurrentTick}).");
+                replay.Step();
+            }
+            // Le compte des événements initiaux est un cache des admissions pilotées, calculé à la première soumission (-1 avant) : même valeur
+            // une fois calculé. Le rejeu, qui n'a rien soumis, le calcule si l'instantané l'avait déjà.
+            int end = snapshot.Text.IndexOf('\n');
+            if (SnapshotNode.Parse(end < 0 ? snapshot.Text : snapshot.Text.Substring(0, end))["initialEvents"].Long >= 0)
+                replay._initialEvents = replay._setup.InitialEventCount();
+            // Une commande soumise ou une arrivée pilotée est mise en file à son tick dans l'original, dès le début dans le rejeu : les
+            // numéros de file diffèrent, pas leur ordre (ni donc le combat), et la file du rejeu contient à chaque instant celle de
+            // l'original (son pic de taille est au moins le même). Les deux textes sont comparés numéros de file remplacés par leur rang et
+            // pic de file mis de côté (celui reçu au plus celui du rejeu) ; Restore relit ensuite le texte reçu tel quel.
+            string replayed = QueueRanked(replay.Snapshot().Text, out long replayedPeak), received = QueueRanked(snapshot.Text, out long receivedPeak);
+            if (!string.Equals(replayed, received, StringComparison.Ordinal) || receivedPeak > replayedPeak)
+                throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({FirstDifference(replayed, received)}).");
+            return Restore(setup, snapshot, log);
+        }
+
+        /// <summary>
+        /// Texte d'instantané dont chaque numéro de file (<c>entry</c>, et ses mentions dans <c>announced</c>) est remplacé par son rang dans
+        /// la file (les éléments sont écrits dans l'ordre de sortie), et le pic de file (<paramref name="peakPending"/>) mis de côté. Deux
+        /// files aux mêmes éléments dans le même ordre donnent le même texte.
+        /// </summary>
+        private static string QueueRanked(string text, out long peakPending)
+        {
+            string[] lines = text.Split('\n');
+            const string peak = "\"peakPending\":";
+            int p = lines[0].IndexOf(peak, StringComparison.Ordinal), stop = p < 0 ? -1 : lines[0].IndexOf(',', p);
+            peakPending = -1;
+            if (stop > p && long.TryParse(lines[0].Substring(p + peak.Length, stop - p - peak.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long value))
+            {
+                peakPending = value;
+                lines[0] = lines[0].Substring(0, p + peak.Length) + "?" + lines[0].Substring(stop);
+            }
+            var rank = new Dictionary<string, string>(StringComparer.Ordinal);
+            const string entry = "{\"entry\":";
+            for (int i = 1, k = 0; i < lines.Length; i++)
+            {
+                if (!lines[i].StartsWith(entry, StringComparison.Ordinal)) continue;
+                int comma = lines[i].IndexOf(',');
+                if (comma < 0) continue;
+                string r = (k++).ToString(CultureInfo.InvariantCulture);
+                rank[lines[i].Substring(entry.Length, comma - entry.Length)] = r;
+                lines[i] = entry + r + lines[i].Substring(comma);
+            }
+            const string announced = "\"announced\":[";
+            int at = lines[0].IndexOf(announced, StringComparison.Ordinal);
+            int close = at < 0 ? -1 : lines[0].IndexOf(']', at);
+            if (close > at)
+            {
+                string list = lines[0].Substring(at + announced.Length, close - at - announced.Length);
+                string ranked = list.Length == 0 ? "" : string.Join(",", list.Split(',').Select(n => rank.TryGetValue(n, out string? r) ? r : "?" + n));
+                lines[0] = lines[0].Substring(0, at + announced.Length) + ranked + lines[0].Substring(close);
+            }
+            return string.Join("\n", lines);
+        }
+
+        /// <summary>Première ligne où deux textes d'instantané diffèrent (numérotée à partir de 1), pour le message de refus.</summary>
+        private static string FirstDifference(string expected, string actual)
+        {
+            string[] a = expected.Split('\n'), b = actual.Split('\n');
+            for (int i = 0; i < Math.Min(a.Length, b.Length); i++)
+                if (!string.Equals(a[i], b[i], StringComparison.Ordinal)) return $"ligne {i + 1}";
+            return $"{b.Length} lignes au lieu de {a.Length}";
         }
 
         private void LoadSnapshot(CombatSnapshot snapshot)

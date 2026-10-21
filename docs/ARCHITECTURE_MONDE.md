@@ -58,6 +58,8 @@ Exigences retenues, reprises du cadrage :
    - rejouer seulement les derniers ticks pour corriger une prédiction ;
    - sauvegarder une zone sur le serveur (lot 13) ;
    - enquêter (rejeu à partir d'un instantané).
+
+   Décision de Damien du 22 octobre 2026 (revue Codex de la PR #32, option C) : un instantané reçu d'ailleurs (fichier, autre processus) se reprend avec `CombatEngine.RestoreVerified`, qui rejoue le combat complété jusqu'à son tick et exige le même état ; un instantané écrit par le serveur lui-même, ou reçu de lui par un client, se reprend sans rejeu (`Restore`). L'entrée d'un client (point 2) reste sans rejeu.
 2. **Entrée.** Le client reçoit l'état courant de ce qu'il a le droit de voir, puis des mises à jour à chaque tick. Il ne rejoue pas le passé et n'a pas de place réservée.
 3. **Contenu des mises à jour.** Deux façons possibles :
 
