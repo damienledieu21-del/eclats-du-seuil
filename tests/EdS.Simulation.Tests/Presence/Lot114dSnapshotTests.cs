@@ -195,6 +195,33 @@ public class Lot114dSnapshotTests
         });
     }
 
+    [Fact]
+    public void Source_observee_et_rangs_d_application_recoupes()
+    {
+        // Revue Codex de la PR #32 (23e tour). 1) Riposte reportée à un tick de saignement (le porteur est la cible, la frappe vise la source
+        // de l'effet) : changer la source de l'effet observé (l'assaillant) pour le Bastion lui-même est refusé.
+        CombatSetup riposte = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Bearer(new[] { Riposte(TriggerEvent.DotTick) }),
+            Hitter(Strike("entaille", 100, applies: Apply("bleed", "0.4"))) }, durationMs: 8000, rules: NoUpkeep);
+        var engine = new CombatEngine(riposte, NullCombatLog.Instance);
+        while (!engine.Snapshot().Text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal)) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        string reaction = text.Split('\n').First(l => l.Contains("\"item\":\"reaction\"", StringComparison.Ordinal));
+        AssertRefused(setup, text, new[] { (reaction.Substring(0, reaction.IndexOf(',')), "\"source\":\"assaillant\",\"target\":\"bastion\"",
+            "\"source\":\"bastion\",\"target\":\"bastion\"", "source de l'effet observé différente de sa provenance") });
+        // 2) Deux altérations actives (au tick 55 de l'entraînement) : échanger leurs rangs d'application est refusé.
+        var training = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (training.CurrentTick < 55) training.Step();
+        string snap = training.Snapshot().Text;
+        var seqs = System.Text.RegularExpressions.Regex.Matches(snap, "\"appliedSeq\":([0-9]+)").Select(m => m.Groups[1].Value).ToList();
+        Assert.True(seqs.Count >= 2, "deux altérations actives");
+        string swapped = snap.Replace("\"appliedSeq\":" + seqs[0] + ",", "\"appliedSeq\":X,", StringComparison.Ordinal)
+            .Replace("\"appliedSeq\":" + seqs[1] + ",", "\"appliedSeq\":" + seqs[0] + ",", StringComparison.Ordinal)
+            .Replace("\"appliedSeq\":X,", "\"appliedSeq\":" + seqs[1] + ",", StringComparison.Ordinal);
+        Assert.NotEqual(snap, swapped);
+        AssertRefused(training.CompletedSetup(), swapped, "incohérent avec la ligne qui l'a posée");
+    }
+
     private static CombatSetup Training() => Setup(new[]
     {
         Cmd(0, Entaille, target: "assaillant"), GuardStart(1000), GuardStop(2500), Cmd(2600, Assommer, target: "assaillant"), Parry(3900),
