@@ -21,13 +21,13 @@ public class Lot114dSnapshotTests
     /// Relit l'état de <paramref name="engine"/> dans un second moteur, puis avance les deux ensemble jusqu'à la fin : mêmes lignes, même
     /// instantané à chaque tick, même résultat.
     /// </summary>
-    internal static void AssertResumesIdentically(CombatEngine engine, MemoryCombatLog log)
+    internal static void AssertResumesIdentically(CombatEngine engine, MemoryCombatLog log, bool verified = false)
     {
         CombatSnapshot snapshot = engine.Snapshot();
         CombatSnapshot parsed = CombatSnapshot.Parse(snapshot.Text);
         Assert.Equal((snapshot.Tick, snapshot.Fingerprint, snapshot.Setup), (parsed.Tick, parsed.Fingerprint, parsed.Setup));
         var resumed = new MemoryCombatLog();
-        CombatEngine copy = CombatEngine.Restore(engine.CompletedSetup(), parsed, resumed);
+        CombatEngine copy = verified ? CombatEngine.RestoreVerified(engine.CompletedSetup(), parsed, resumed) : CombatEngine.Restore(engine.CompletedSetup(), parsed, resumed);
         Assert.Equal(engine.CurrentTick, copy.CurrentTick);
         int from = log.Lines.Count;
         while (true)
@@ -275,6 +275,35 @@ public class Lot114dSnapshotTests
             "\"upkeepRemainder\":" + (long.Parse(remainder.Substring(remainder.IndexOf(':') + 1)) + 1), "incohérent avec ses ticks gardés") });
     }
 
+    [Fact]
+    public void Activation_de_declencheur_et_rotation_de_garde_recoupees()
+    {
+        // Revue Codex de la PR #32 (26e tour). 1) Déclencheur sur ses propres lancers (recharge 3 s) : Gratuite au tick 0 seulement. Au tick
+        // 30, sa recharge (60) vient de ce lancer ; la décaler vers une activation au tick 10, où il n'a rien lancé, est refusé.
+        var echo = new TriggerDefinition(TriggerEvent.SkillCast, new[] { TriggerEffect.GainResource(TriggerResource.Resonance, Fixed.One) }, cooldownMs: 3000);
+        CombatSetup casting = Setup(new[] { Cmd(0, Gratuite, target: "assaillant") }, new CombatantSetup[] { Bearer(new[] { echo }), Hitter(Strike("coup", 10)) },
+            durationMs: 4000);
+        var engine = new CombatEngine(casting, NullCombatLog.Instance);
+        while (engine.CurrentTick < 30) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        AssertRefused(setup, text, new[] { ("{\"fighter\":\"bastion\"", "\"triggers\":[60]", "\"triggers\":[70]", "sans activation possible") });
+        // 2) Garde puis fin de garde, puis sélection hors garde : jamais les deux au même tick, le Bastion n'a pas pu se tourner ; une autre
+        // orientation est refusée.
+        CombatSetup turning = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(20), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")), Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("-5", "-5")),
+        }, new[] { GuardStart(0), GuardStop(100), CombatCommand.SelectTarget(250, "bastion", "cible") }, durationMs: 3000);
+        var turner = new CombatEngine(turning, NullCombatLog.Instance);
+        while (turner.CurrentTick < 10) turner.Step();
+        string turned = turner.Snapshot().Text;
+        string line = turned.Split('\n').First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        string facing = System.Text.RegularExpressions.Regex.Match(line, "\"facingX\":-?[0-9]+,\"facingZ\":-?[0-9]+").Value;
+        string other = facing == "\"facingX\":10000,\"facingZ\":0" ? "\"facingX\":0,\"facingZ\":10000" : "\"facingX\":10000,\"facingZ\":0";
+        AssertRefused(turner.CompletedSetup(), turned, new[] { ("{\"fighter\":\"bastion\"", facing, other, "Orientation de « bastion »") });
+    }
+
     private static CombatSetup Training() => Setup(new[]
     {
         Cmd(0, Entaille, target: "assaillant"), GuardStart(1000), GuardStop(2500), Cmd(2600, Assommer, target: "assaillant"), Parry(3900),
@@ -297,6 +326,61 @@ public class Lot114dSnapshotTests
             while (engine.CurrentTick < at) engine.Step();
             AssertResumesIdentically(engine, log);
         }
+    }
+
+    [Fact]
+    public void Reprise_verifiee_par_rejeu_accepte_l_etat_vrai_et_continue_a_l_identique()
+    {
+        // Décision de Damien du 22 octobre 2026 (option C) : un instantané reçu d'ailleurs se reprend après le rejeu exact du combat complété
+        // jusqu'à son tick ; l'état vrai est accepté et la suite est la même (départ, avant une arrivée, au milieu d'un DOT, après le départ).
+        foreach (long at in new long[] { 0, 1, 37, 80, 141, 179 })
+        {
+            var log = new MemoryCombatLog();
+            var engine = new CombatEngine(Training(), log);
+            while (engine.CurrentTick < at) engine.Step();
+            AssertResumesIdentically(engine, log, verified: true);
+        }
+        // Avec une commande soumise (et le cache des admissions pilotées déjà calculé) : elle est dans le combat complété, le rejeu la reprend.
+        var piloted = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (piloted.CurrentTick < 20) piloted.Step();
+        piloted.Submit(GuardStart(1000, "allie"));
+        while (piloted.CurrentTick < 40) piloted.Step();
+        CombatSnapshot state = piloted.Snapshot();
+        Assert.DoesNotContain("\"initialEvents\":-1", state.Text.Split('\n')[0], StringComparison.Ordinal);
+        CombatEngine copy = CombatEngine.RestoreVerified(piloted.CompletedSetup(), CombatSnapshot.Parse(state.Text), NullCombatLog.Instance);
+        Assert.Equal(state.Text, copy.Snapshot().Text);
+    }
+
+    [Fact]
+    public void Reprise_verifiee_refuse_tout_etat_que_le_combat_n_atteint_pas()
+    {
+        // Option C : un état cohérent mais différent de celui que le combat atteint, que la reprise de confiance accepte (l'ogre a pris un
+        // point de dégâts ; le Bastion un peu plus loin sur son chemin), est refusé par la reprise vérifiée. Un instantané d'un autre combat
+        // aussi.
+        CombatSetup spatial = Space.SpaceTestKit.Spatial(Space.SpaceTestKit.Arena(10), new CombatantSetup[]
+        {
+            Space.SpaceTestKit.Player("bastion", Space.SpaceTestKit.At("0", "0")),
+            Space.SpaceTestKit.Creature("ogre", Space.SpaceTestKit.At("3", "0"), health: 500, firstAttackMs: 500,
+                attacks: new AssailantAttack("onde", 10, shape: AttackShape.Circle, telegraphMs: 1500, radius: Fixed.Parse("2"))),
+            Space.SpaceTestKit.PlacedDummy("cible", Space.SpaceTestKit.At("-5", "-5")),
+        }, new[] { Space.SpaceTestKit.Move(0, "bastion", "0", "1") }, durationMs: 6000);
+        var engine = new CombatEngine(spatial, NullCombatLog.Instance);
+        while (engine.CurrentTick < 15) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.RestoreVerified(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string ogre = Tampered(Tampered(text, "{\"fighter\":\"ogre\"", "\"health\":500", "\"health\":499"), "{\"fighter\":\"ogre\"", "\"damageTaken\":0", "\"damageTaken\":1");
+        string bastion = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        long z = long.Parse(System.Text.RegularExpressions.Regex.Match(bastion, "\"z\":([0-9]+)").Groups[1].Value);
+        string further = Tampered(text, "{\"fighter\":\"bastion\"", "\"z\":" + z + ",", "\"z\":" + (z - 100) + ",");
+        foreach (string reachable in new[] { ogre, further })
+        {
+            Assert.Equal(reachable, CombatEngine.Restore(setup, CombatSnapshot.Parse(reachable), NullCombatLog.Instance).Snapshot().Text);
+            Assert.Contains("différent de l'état rejoué au tick 15 (ligne", Assert.Throws<FormatException>(() =>
+                CombatEngine.RestoreVerified(setup, CombatSnapshot.Parse(reachable), NullCombatLog.Instance)).Message);
+        }
+        Assert.Contains("autre combat", Assert.Throws<FormatException>(() =>
+            CombatEngine.RestoreVerified(Training(), CombatSnapshot.Parse(text), NullCombatLog.Instance)).Message);
     }
 
     [Fact]
@@ -1058,7 +1142,8 @@ public class Lot114dSnapshotTests
                 string text = engine.Snapshot().Text;
                 if (text.Contains("\"item\":\"impact\"")) withImpacts++;
                 if (text.Contains("\"presence\":1")) withPending++;
-                AssertResumesIdentically(engine, log);
+                // Option C : une reprise sur deux est vérifiée par rejeu (arrivées pilotées et commandes soumises comprises).
+                AssertResumesIdentically(engine, log, verified: resumed % 2 == 0);
                 resumed++;
             }
         }

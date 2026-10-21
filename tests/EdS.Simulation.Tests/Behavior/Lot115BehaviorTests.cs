@@ -337,6 +337,28 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Instantane_un_chargeur_qui_n_a_pas_encore_charge_garde_sa_place()
+    {
+        // Revue Codex de la PR #33 (tour 12) : un sanglier sans comportement, dont la première charge est annoncée à 3 s, n'a pas encore pu
+        // bouger au tick 10 : un instantané qui le déplace est refusé par la reprise de confiance (Restore) comme par la reprise vérifiée
+        // par rejeu (RestoreVerified, décision de Damien du 22 octobre 2026).
+        var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+            range: F("6"), width: F("1"), charge: true);
+        var boar = new AssailantSetup("sanglier", "meute", Fixed.Zero, Fixed.Zero, "bastion", 3000, 60_000, new[] { charge }, placement: At("0", "0"));
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("10", "0")), boar }, durationMs: 6000), NullCombatLog.Instance);
+        while (engine.CurrentTick < 10) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"sanglier\"", StringComparison.Ordinal));
+        string moved = text.Replace(line, line.Replace("\"x\":0,", "\"x\":40000,", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.NotEqual(text, moved);
+        Assert.Contains("Place de « sanglier » hors de portée", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(setup, CombatSnapshot.Parse(moved), NullCombatLog.Instance)).Message);
+        Assert.Contains("différent de l'état rejoué", Assert.Throws<FormatException>(() =>
+            CombatEngine.RestoreVerified(setup, CombatSnapshot.Parse(moved), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
     public void Une_charge_qui_l_etourdit_lui_meme_ne_fonce_pas()
     {
         // Revue Codex de la PR #33 (tour 8) : la bande pose un étourdissement sur le sanglier lui-même, avec ses coups. L'immobilisation est

@@ -41,7 +41,11 @@ public class Lot114dSnapshotDataTests
             // Une réaction reportée (entrainement_declencheurs) est dans la file entre deux ticks : la copie continue aussi depuis là.
             bool resume = resumeAt.Contains(tick) || text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal);
             var restoredLog = new MemoryCombatLog();
-            CombatEngine restored = CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog);
+            // Option C (décision de Damien du 22 octobre 2026) : aux points de reprise, la reprise vérifiée par rejeu accepte l'instantané
+            // vrai et continue de même.
+            CombatEngine restored = resumeAt.Contains(tick)
+                ? CombatEngine.RestoreVerified(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog)
+                : CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog);
             checkedSnapshots++;
             if (resume) copies.Add((restored, restoredLog, log.Lines.Count));
             engine.Step();
