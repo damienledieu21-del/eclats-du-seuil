@@ -247,6 +247,31 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Accelere_il_s_arrete_a_sa_place_d_anneau_sans_osciller()
+    {
+        // Revue Codex de la PR #33 (tour 11) : un loup encerclant se pose deux accélérations (+100 % chacune, vitesse triplée) par un cri
+        // annoncé 200 ms autour de lui (il attend pendant l'annonce) ; ensuite, son pas, trois fois la tolérance de sa place d'anneau,
+        // s'arrête sur elle (x = 2,5) au lieu de la dépasser et de repartir en sens inverse (avant : 2,9 et 2,15 en alternance).
+        var hate1 = new StatusDefinition("hate1", StatusCategory.Modifier, 60_000, StatusStacking.Refresh, movementSpeedModifier: Fixed.One);
+        var hate2 = new StatusDefinition("hate2", StatusCategory.Modifier, 60_000, StatusStacking.Refresh, movementSpeedModifier: Fixed.One);
+        var rules = new CombatRules { GuardUpkeepPerSecond = 0, TelegraphMinReactionMs = 0,
+            Statuses = new StatusCatalog(StatusCatalog.Provisional.Definitions.Concat(new[] { hate1, hate2 })) };
+        var cri = new AssailantAttack("cri", 1, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
+            new[] { new StatusApplication("hate1", target: ApplicationTarget.Self), new StatusApplication("hate2", target: ApplicationTarget.Self) },
+            AttackShape.Circle, 200, radius: F("0.5"), center: ShapeCenter.Self);
+        var (track, log, _) = Trace(Fight(new CombatantSetup[]
+        {
+            Player("bastion", At("0", "0")), Hunter("loup", At("6.65", "0"), "3", encircle: true, firstMs: 0, intervalMs: 60_000, attacks: cri),
+        }, durationMs: 3000, rules: rules));
+        Assert.Equal(2, Lines(log, "stateApplied").Count(a => a.Str("combatant") == "loup"));
+        Assert.NotEqual(track.After("loup", 6), track.After("loup", 7));   // il repart, accéléré
+        int still = Enumerable.Range(6, 52).First(t => track.After("loup", t) == track.After("loup", t + 1));
+        Assert.True(still < 30, $"arrêté au tick {still}");
+        for (int t = still; t < 59; t++) Assert.Equal(track.After("loup", still), track.After("loup", t));
+        Assert.Equal(Fixed.Parse("2.5"), track.After("loup", still).X);
+    }
+
+    [Fact]
     public void Il_s_arrete_pendant_l_annonce_de_son_attaque()
     {
         AssailantAttack rain = new("pluie", 10, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Circle, 1000, radius: F("1"));
