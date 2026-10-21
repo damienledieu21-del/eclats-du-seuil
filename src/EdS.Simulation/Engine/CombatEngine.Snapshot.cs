@@ -625,7 +625,12 @@ namespace EdS.Simulation.Engine
                     $"Parade de {who} incohérente avec ses commandes ou sa fenêtre.");
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
+                {
                     Require(slot.ReadyTick >= 0 && slot.ReadyTick <= Math.Max(0, previous + slot.Definition.CooldownMs / _tickMs), $"Recharge d'un déclencheur de {who} au-delà de sa durée.");
+                    // 25e tour : une recharge en cours vient d'une activation au tick (recharge − durée), pendant que son porteur était présent
+                    // et vivant, sur un effet observé de ce tick : au tick précédent, il y en a eu au moins un.
+                    Require(ActivationFits(slot), $"Recharge d'un déclencheur de {who} sans activation possible.");
+                }
                 // 13e tour : un lancer a toujours sa commande de compétence, de ce combattant et à son tick, dans le combat complété. La recharge
                 // globale part du dernier lancer (son tick + sa durée), chaque recharge de compétence de son lancer (au plus le dernier) ; sans
                 // lancer, ni l'une ni les autres.
@@ -828,6 +833,10 @@ namespace EdS.Simulation.Engine
                     Require(f.Presence == Presence.Pending || f.Presence == Presence.Refused
                         || f.Setup.Placement is { } placed && Reachable(f, 0, placed.Position.X.Raw, placed.Position.Z.Raw),
                         $"Place de {who} hors de portée de ses pas de marche depuis sa place de départ.");
+                    // 25e tour : sans garde tournée vers une cible sélectionnée, seule la marche tourne un combattant : son orientation est
+                    // celle de sa place de départ ou la direction d'une de ses commandes move.
+                    Require(f.Presence == Presence.Pending || f.Presence == Presence.Refused || PossibleFacings(f) is not { } facings
+                        || facings.Contains((b.FacingX, b.FacingZ)), $"Orientation de {who} qu'aucun de ses pas n'a pu lui donner.");
                     // 15e tour : seul un personnage ou un assaillant marche (un mannequin ne reçoit jamais move).
                     Require(!b.Moving || f.Character != null || f.Assailant != null, $"Marche de {who}, qui ne marche jamais.");
                     // Relecture d'ensemble (4) : une marche suit une commande move passée de ce combattant ; une cible sélectionnée, une commande
@@ -1054,6 +1063,38 @@ namespace EdS.Simulation.Engine
                 if (sum > Fixed.Zero) raise += sum * Fixed.FromInt(d.Stacking == StatusStacking.PerSourceKeepStronger ? _fightersById.Count : 1);
             }
             return (lowers ? 0 : rate.Raw, raise > Fixed.Zero ? f.Rules.GuardUpkeepPerSecondWith(raise).Raw : rate.Raw);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (25e tour) : une recharge de déclencheur en cours (<c>ReadyTick</c> &gt; 0) vient d'une activation au tick
+        /// t = recharge − durée de recharge (<see cref="ProcessNotify"/>), entre 0 et le tick précédent, son porteur présent et vivant pendant
+        /// ce tick, et sur un effet observé émis à ce tick : si t est le tick précédent, ce tick a écrit au moins une ligne.
+        /// </summary>
+        private bool ActivationFits(TriggerSlot slot)
+        {
+            if (slot.ReadyTick == 0) return true;
+            long fired = checked(slot.ReadyTick - slot.Definition.CooldownMs / _tickMs);
+            return fired >= 0 && fired <= CurrentTick - 1 && PresentAtCommands(slot.Bearer, fired) && _lastEid >= 1
+                && (fired < CurrentTick - 1 || LastTickEvents >= 1);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (25e tour) : orientations possibles de <paramref name="f"/> quand rien d'autre que la marche n'a pu le
+        /// tourner : celle de sa place de départ et les directions de ses commandes move (un pas tourne le combattant vers sa direction) ; null
+        /// s'il a pu se tourner vers une cible sélectionnée en garde (commande de garde et sélection d'un combattant passées).
+        /// </summary>
+        private HashSet<(long X, long Z)>? PossibleFacings(Fighter f)
+        {
+            long previous = CurrentTick - 1;
+            IEnumerable<CombatCommand> past = _setup.Commands.Where(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+            if (past.Any(c => c.Action == CombatAction.GuardStart) && past.Any(c => c.Action == CombatAction.Select && c.Target != null)) return null;
+            if (FreeMover(f)) return null;   // sous-lot 11.5 : un ennemi à comportement se tourne vers sa cible, une charge vers son axe
+            var facings = new HashSet<(long X, long Z)>();
+            GroundVector start = f.Setup.Placement!.Facing;
+            if (Planar.TryNormalize(start.X.Raw, start.Z.Raw, out long sx, out long sz)) facings.Add((sx, sz));
+            foreach (CombatCommand move in past.Where(c => c.Action == CombatAction.Move && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)))
+                if (move.Direction is { } d && Planar.TryNormalize(d.X.Raw, d.Z.Raw, out long ux, out long uz)) facings.Add((ux, uz));
+            return facings;
         }
 
         /// <summary>Tick du tour <paramref name="turn"/> d'un assaillant (cadence : arrivée + <c>firstAttackMs</c>, puis <c>intervalMs</c>).</summary>

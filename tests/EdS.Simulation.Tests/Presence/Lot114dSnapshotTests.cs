@@ -256,6 +256,8 @@ public class Lot114dSnapshotTests
             ("{\"fighter\":\"ours\"", "\"x\":80000", "\"x\":79000", "Place de « ours » hors de portée"),
             ("{\"fighter\":\"cible\"", "\"x\":-50000,", "\"x\":-40000,", "Place de « cible » hors de portée"),
             (impact.Substring(0, impact.IndexOf(',')), "\"originX\":0,", "\"originX\":10000,", "zone loin de la place où son tour l'a verrouillée"),
+            // 25e tour : l'ours, qui n'a jamais marché, garde l'orientation de sa place de départ.
+            ("{\"fighter\":\"ours\"", "\"facingX\":0,\"facingZ\":10000", "\"facingX\":10000,\"facingZ\":0", "Orientation de « ours »"),
         });
         // 3) Générateur : un état avancé d'un pas est refusé pour l'allié, qui n'a jamais frappé, et pour le Bastion, au tick 2 (une seule
         // Entaille, un seul jet).
