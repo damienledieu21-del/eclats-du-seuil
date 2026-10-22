@@ -81,6 +81,33 @@ public class Lot116SceneTests
     }
 
     [Fact]
+    public void Vue_jugee_entre_les_places_affichees_entre_deux_ticks()
+    {
+        // Revue Codex de la PR #34 : entre deux ticks, l'affichage glisse les corps ; la vue se juge entre les places glissées
+        // (InSightAt), pour qu'un ennemi qui contourne une paroi n'apparaisse pas du mauvais côté. Même règle que celle du moteur.
+        RealtimeCombat combat = Session().Start();
+        IReadOnlyList<ConvexPolygon>? obstacles = CombatDisplay.Obstacles(combat.Space);
+        GroundVector me = Position(combat);
+        foreach (OtherState other in combat.Others())
+        {
+            GroundVector p = other.View.Position!.Value;
+            Assert.Equal(other.InSight, CombatDisplay.InSightAt(me.X.Raw, me.Z.Raw, p.X.Raw, p.Z.Raw, obstacles));
+        }
+        // Un segment qui traverse le moulin est coupé ; le même sans décor ne l'est pas.
+        SpaceObstacle mill = combat.Space!.Obstacles.Single(o => o.Id == "moulin");
+        long minX = mill.Points.Min(q => q.X.Raw), maxX = mill.Points.Max(q => q.X.Raw);
+        long midZ = (mill.Points.Min(q => q.Z.Raw) + mill.Points.Max(q => q.Z.Raw)) / 2;
+        Assert.False(CombatDisplay.InSightAt(minX - 10_000, midZ, maxX + 10_000, midZ, obstacles));
+        Assert.True(CombatDisplay.InSightAt(minX - 10_000, midZ, maxX + 10_000, midZ, null));
+        Assert.True(CombatDisplay.InSightAt(minX - 20_000, midZ, minX - 10_000, midZ, obstacles));
+        // L'affichage Unity juge la vue sur les places glissées, plus sur celles du moteur.
+        string arena = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "ArenaView.cs"));
+        Assert.Contains("CombatDisplay.InSightAt(Raw(eye.x), Raw(eye.z), Raw(at.x), Raw(at.z), _obstacles)", arena, StringComparison.Ordinal);
+        Assert.Contains("shown[v.Id] = Vector3.Lerp(_from[v.Id], _to[v.Id], t);", arena, StringComparison.Ordinal);
+        Assert.DoesNotContain("other.InSight", arena, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Marche_simulee_par_le_moteur_une_commande_par_changement_de_cap()
     {
         RealtimeCombat combat = Session().Start();

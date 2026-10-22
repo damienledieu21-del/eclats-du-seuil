@@ -15,7 +15,7 @@ public class Lot93UnityPackageTests
     private static readonly string[] Tools = { "EdS.Tools", "EdS.Cli", "EdS.Server" };
 
     /// <summary>Racine du dépôt (dossier qui contient EdS.sln), retrouvée depuis le dossier des tests.</summary>
-    private static string Root
+    internal static string Root
     {
         get
         {
