@@ -90,8 +90,8 @@ namespace EdS.Simulation.Engine
         private string? EngageReason(Fighter f, AssailantBehavior behavior)
         {
             if (f.Struck || f.Result.DamageTaken > 0) return "hit";
-            foreach (StatusInstance status in f.Statuses.Values)
-                if (status.Definition.IsTaunt) return "taunt";
+            // Revue Codex de la PR #33 (tour 6) : la provocation reçue est mémorisée, même expirée ou retirée avant cette phase.
+            if (f.Taunted) return "taunt";
             long aggro = behavior.AggroRange!.Value.Raw;
             foreach (Fighter other in _fightersById)
                 if (!other.Out && other.Team != f.Team && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return "aggro";
@@ -172,6 +172,9 @@ namespace EdS.Simulation.Engine
                         intentions[i] = new Intention(false, 0, 0, j);
                         continue;
                     }
+                    // Revue Codex de la PR #33 (tour 11) : le pas s'arrête à sa place d'anneau. Accéléré (altérations de vitesse), un pas
+                    // plus long que la tolérance la dépasserait, puis repartirait en sens inverse au tick suivant.
+                    maxStep = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(gx, gz));
                 }
                 else
                 {
@@ -204,19 +207,25 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Place de <paramref name="i"/> dans l'anneau de sa meute autour de la cible <paramref name="j"/> : les ennemis qui encerclent la même
-        /// cible, rangés dans le sens trigonométrique à partir du premier (ordre angulaire, puis identifiant), se partagent le tour à angles
-        /// égaux ; le rayon de l'anneau met chacun au milieu de ses distances (bords).
+        /// Place de <paramref name="i"/> dans l'anneau de sa meute autour de la cible <paramref name="j"/> : les ennemis de son équipe qui
+        /// encerclent la même cible, rangés dans le sens trigonométrique à partir du premier (ordre angulaire, puis identifiant ; un ennemi au centre de la cible
+        /// d'abord), se partagent le tour à angles égaux ; le rayon de l'anneau met chacun au milieu de ses distances (bords).
         /// </summary>
         private (long X, long Z) RingSlot(int i, int j, int[] targets, long[] x, long[] z, AssailantBehavior behavior)
         {
+            // Revue Codex de la PR #33 (tour 7) : la meute est celle de son équipe ; deux équipes qui encerclent la même cible ont chacune
+            // leur anneau.
             var pack = new List<int>();
             for (int k = 0; k < targets.Length; k++)
-                if (targets[k] == j && _fightersById[k].Behavior is { Encircle: true }) pack.Add(k);
+                if (targets[k] == j && _fightersById[k].Behavior is { Encircle: true } && _fightersById[k].Team == _fightersById[i].Team) pack.Add(k);
             long tx = x[j], tz = z[j];
             pack.Sort((a, b) =>
             {
                 long ax = checked(x[a] - tx), az = checked(z[a] - tz), bx = checked(x[b] - tx), bz = checked(z[b] - tz);
+                // Revue Codex de la PR #33 (tour 6) : un ennemi au centre de la cible (vecteur nul, règle B) n'a pas d'angle ; il passe avant
+                // tous les autres (entre eux, par identifiant), ce qui garde l'ordre total et transitif.
+                bool za = ax == 0 && az == 0, zb = bx == 0 && bz == 0;
+                if (za || zb) return za && zb ? string.CompareOrdinal(_fightersById[a].Id, _fightersById[b].Id) : za ? -1 : 1;
                 int ha = az > 0 || (az == 0 && ax >= 0) ? 0 : 1, hb = bz > 0 || (bz == 0 && bx >= 0) ? 0 : 1;
                 if (ha != hb) return ha.CompareTo(hb);
                 long cross = Planar.Cross(ax, az, bx, bz);
@@ -257,17 +266,12 @@ namespace EdS.Simulation.Engine
                 x[k] = _fightersById[k].Body!.X;
                 z[k] = _fightersById[k].Body!.Z;
             }
-            // Revue Codex de la PR #33 : la charge va vers le bout de la bande verrouillée (origine + axe × longueur), depuis la place
-            // actuelle : une charge précédente qui a déjà porté l'ennemi plus loin ne le pousse pas au-delà de sa zone.
-            long endX = checked(zone.OriginX + Domain.Numerics.IntMath.MulDiv(zone.AxisX, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero));
-            long endZ = checked(zone.OriginZ + Domain.Numerics.IntMath.MulDiv(zone.AxisZ, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero));
+            var (endX, endZ) = ChargeTarget(zone);
             long dx = checked(endX - b.X), dz = checked(endZ - b.Z);
             var path = new List<(long X, long Z)> { (b.X, b.Z) };
-            if (Planar.Dot(dx, dz, zone.AxisX, zone.AxisZ) > 0)
+            long count = ChargeSteps(f, zone);
+            if (count > 0)
             {
-                long length = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(dx, dz));
-                long half = Math.Max(1, b.Radius / 2);
-                long count = Math.Max(1, (length + half - 1) / half);
                 for (long k = 1; k <= count; k++)
                 {
                     long cx = checked(b.X + Domain.Numerics.IntMath.MulDiv(dx, k, count, Domain.Numerics.RoundingMode.HalfAwayFromZero));
@@ -280,6 +284,30 @@ namespace EdS.Simulation.Engine
             for (int k = path.Count - 1; k > 0; k--)
                 if (f.Character != null || TrapPrevented(index, x, z, path[k].X, path[k].Z) is null) return path[k];
             return path[0];
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #33 : la charge va vers le bout de la bande verrouillée (origine + axe × longueur), depuis la place actuelle :
+        /// une charge précédente qui a déjà porté l'ennemi plus loin ne le pousse pas au-delà de sa zone.
+        /// </summary>
+        private static (long X, long Z) ChargeTarget(AttackZone zone) =>
+            (checked(zone.OriginX + Domain.Numerics.IntMath.MulDiv(zone.AxisX, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero)),
+             checked(zone.OriginZ + Domain.Numerics.IntMath.MulDiv(zone.AxisZ, zone.Reach, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero)));
+
+        /// <summary>
+        /// Revue Codex de la PR #33 (tour 10) : nombre de sous-pas de la recherche du bout de la charge (au plus la moitié du rayon chacun,
+        /// jusqu'au bout de la bande ; 0 si l'ennemi y est déjà ou au-delà). Chaque sous-pas et le contrôle de piège qui peut le suivre
+        /// coûtent chacun une unité de travail, réservées avec l'impact (<see cref="ProcessImpact"/>), même si la charge est bloquée.
+        /// </summary>
+        private static long ChargeSteps(Fighter f, AttackZone zone)
+        {
+            Body b = f.Body!;
+            var (endX, endZ) = ChargeTarget(zone);
+            long dx = checked(endX - b.X), dz = checked(endZ - b.Z);
+            if (Planar.Dot(dx, dz, zone.AxisX, zone.AxisZ) <= 0) return 0;
+            long length = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(dx, dz));
+            long half = Math.Max(1, b.Radius / 2);
+            return Math.Max(1, (length + half - 1) / half);
         }
 
         /// <summary>

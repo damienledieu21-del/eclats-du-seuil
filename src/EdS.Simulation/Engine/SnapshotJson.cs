@@ -34,8 +34,11 @@ namespace EdS.Simulation.Engine
 
         public static SnapshotNode Parse(string line)
         {
-            int position = 0;
-            SnapshotNode node = ReadValue(line, ref position, 0);
+            // Revue Codex de la PR #32 (27e tour) : un texte reçu d'ailleurs est borné avant d'être alloué : longueur d'une ligne et
+            // nombre de valeurs qu'elle contient (MaxDepth borne déjà l'imbrication).
+            if (line.Length > MaxLineLength) throw new FormatException($"Instantané illisible : ligne de {line.Length} caractères, au plus {MaxLineLength}.");
+            int position = 0, nodes = 0;
+            SnapshotNode node = ReadValue(line, ref position, 0, ref nodes);
             if (position != line.Length) throw Error(line, position, "texte en trop après la valeur");
             return node;
         }
@@ -59,7 +62,9 @@ namespace EdS.Simulation.Engine
 
         public long Long => Kind == SnapshotNodeKind.Number ? _number : throw new FormatException("Entier attendu.");
 
-        public int Int => checked((int)Long);
+        /// <summary>Entier 32 bits ; revue Codex de la PR #32 (21e tour) : hors de la plage, texte illisible (<see cref="FormatException"/>).</summary>
+        public int Int => Long is long value && value >= int.MinValue && value <= int.MaxValue ? (int)value
+            : throw new FormatException($"Entier 32 bits attendu, lu {Long}.");
 
         public long? NullableLong => IsNull ? (long?)null : Long;
 
@@ -75,12 +80,19 @@ namespace EdS.Simulation.Engine
 
         private const int MaxDepth = 32;
 
+        /// <summary>Revue Codex de la PR #32 (27e tour) : au plus 1 048 576 valeurs par ligne (comme un document de données, sous-lot 9.1).</summary>
+        public const int MaxNodes = 1 << 20;
+
+        /// <summary>Revue Codex de la PR #32 (27e tour) : au plus 16 Mi caractères par ligne.</summary>
+        public const int MaxLineLength = 1 << 24;
+
         private static FormatException Error(string text, int position, string message) =>
             new FormatException($"Instantané illisible (colonne {position}) : {message}.");
 
-        private static SnapshotNode ReadValue(string s, ref int i, int depth)
+        private static SnapshotNode ReadValue(string s, ref int i, int depth, ref int nodes)
         {
             if (depth > MaxDepth) throw Error(s, i, "imbrication trop profonde");
+            if (++nodes > MaxNodes) throw Error(s, i, $"plus de {MaxNodes} valeurs sur une ligne");
             if (i >= s.Length) throw Error(s, i, "valeur attendue");
             char c = s[i];
             switch (c)
@@ -101,7 +113,7 @@ namespace EdS.Simulation.Engine
                         if (i >= s.Length || s[i] != ':') throw Error(s, i, "« : » attendu");
                         i++;
                         if (fields.ContainsKey(name)) throw Error(s, i, $"champ « {name} » en double");
-                        fields[name] = ReadValue(s, ref i, depth + 1);
+                        fields[name] = ReadValue(s, ref i, depth + 1, ref nodes);
                         if (i < s.Length && s[i] == ',') { i++; continue; }
                         if (i < s.Length && s[i] == '}') { i++; return new SnapshotNode(SnapshotNodeKind.Object, fields: fields); }
                         throw Error(s, i, "« , » ou « } » attendu");
@@ -118,7 +130,7 @@ namespace EdS.Simulation.Engine
                     }
                     while (true)
                     {
-                        items.Add(ReadValue(s, ref i, depth + 1));
+                        items.Add(ReadValue(s, ref i, depth + 1, ref nodes));
                         if (i < s.Length && s[i] == ',') { i++; continue; }
                         if (i < s.Length && s[i] == ']') { i++; return new SnapshotNode(SnapshotNodeKind.Array, items: items); }
                         throw Error(s, i, "« , » ou « ] » attendu");
@@ -151,7 +163,8 @@ namespace EdS.Simulation.Engine
 
         private static void Expect(string s, ref int i, string word)
         {
-            if (string.CompareOrdinal(s, i, word, 0, word.Length) != 0) throw Error(s, i, $"« {word} » attendu");
+            // Revue Codex de la PR #32 (14e tour) : un texte tronqué au milieu du mot est illisible (FormatException), pas une erreur d'indice.
+            if (i + word.Length > s.Length || string.CompareOrdinal(s, i, word, 0, word.Length) != 0) throw Error(s, i, $"« {word} » attendu");
             i += word.Length;
         }
 

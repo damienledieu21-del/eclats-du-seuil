@@ -184,6 +184,12 @@ namespace EdS.Simulation.Engine
             /// </summary>
             public bool Struck;
 
+            /// <summary>
+            /// Sous-lot 11.5 (revue Codex de la PR #33, tour 6) : a reçu une provocation, même expirée ou retirée avant la phase d'engagement
+            /// (provocation d'un tick, source partie) ; un ennemi en attente s'engage alors (raison <c>taunt</c>).
+            /// </summary>
+            public bool Taunted;
+
             public AssailantBehavior? Behavior => Assailant?.Behavior;
 
             /// <summary>Hors du combat : mort ou absent. Remplace « mort » partout où un combattant ne doit plus compter.</summary>
@@ -1547,6 +1553,7 @@ namespace EdS.Simulation.Engine
                 return;
             }
             Charge(1);
+            if (definition.IsTaunt) target.Taunted = true;
             bool renewed = plan.Outcome == StatusOutcome.Renew;
             StatusInstance status = plan.Existing ?? new StatusInstance { Id = checked(++_lastStatusInstance), Definition = definition, Key = plan.Key, Owner = target };
             if (!renewed)
