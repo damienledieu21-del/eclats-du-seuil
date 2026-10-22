@@ -16,7 +16,8 @@ namespace EdS.Runtime
         /// <summary>
         /// Groupes de commandes, dans l'ordre : quitter la garde si l'on lance et lancer (un seul groupe : un lancer refusé à l'admission
         /// ne fait pas quitter la garde, revue Codex de la PR #13), sinon prendre ou quitter la garde selon le bouton ; puis parer. Rien
-        /// pour un combattant mort.
+        /// pour un combattant mort, ni pour un absent (attendu, refusé ou parti ; revue Codex de la PR #32, 28e tour : ses commandes seraient
+        /// refusées et prendraient le quota du tick, et une parade au tick même de l'arrivée passerait malgré <c>CanParry</c> faux).
         /// </summary>
         /// <param name="me">Vue du joueur au début du tick.</param>
         /// <param name="atMs">Instant du tick courant.</param>
@@ -27,7 +28,7 @@ namespace EdS.Runtime
             if (me is null) throw new ArgumentNullException(nameof(me));
             if (targetFor is null) throw new ArgumentNullException(nameof(targetFor));
             var groups = new List<CombatCommand[]>();
-            if (me.IsDead) return groups;
+            if (me.IsDead || !me.IsPresent) return groups;
             if (slot is int s && SkillAt(me, s) is { } skill)
             {
                 var cast = new CombatCommand(atMs, me.Id, skill.Id, targetFor(skill));
