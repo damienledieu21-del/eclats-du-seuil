@@ -783,7 +783,8 @@ namespace EdS.Net
         /// Revue Codex de la PR #19, sous-lot 11.7 : taille maximale d'un état courant (<see cref="StateMessage"/>), hors instantané, en
         /// octets : l'en-tête du combat complété au pire, c'est-à-dire avec le plafond de commandes des règles, chacune la plus longue
         /// possible (compétence aux identifiants les plus longs, ou marche), à l'instant le plus tardif. Majorant : un vrai en-tête est
-        /// toujours plus petit. L'instantané est contrôlé à l'envoi (<see cref="SendState"/>).
+        /// toujours plus petit. L'instantané est contrôlé à l'envoi (<see cref="SendState"/>). Les commandes déjà dans le combat sont comptées
+        /// telles quelles (revue Codex de la PR #35), le reste du plafond au pire.
         /// </summary>
         /// <summary>
         /// Revue Codex de la PR #35 (4e tour) : octets qu'un instantané ajoute à un état courant, par rapport à l'instantané factice
@@ -812,13 +813,18 @@ namespace EdS.Net
                 new CombatCommand(atMs, actor, new GroundVector(diagonal, diagonal)),
             };
             string hash = MessageCodec.HashPrefix + new string('f', 16);
-            long Size(params CombatCommand[] commands) => MessageCodec.Encode(new StateMessage(CombatLogHeader.Write(new CombatSetup(setup.Seed, setup.DurationMs,
-                setup.Stats, setup.Damage, setup.Progression, setup.Combat, setup.Combatants, commands, setup.Data, setup.Space)), "-", hash)).Length;
+            // Revue Codex de la PR #35 (tour suivant) : les commandes déjà dans le combat (scénario, ou soumises avant une arrivée) sont
+            // gardées telles quelles ; seules les places restantes sous le plafond sont comptées au pire (une commande pilotée vient
+            // toujours d'un personnage, d'où le choix de l'acteur et de la compétence parmi eux).
+            long Size(params CombatCommand[] added) => MessageCodec.Encode(new StateMessage(CombatLogHeader.Write(new CombatSetup(setup.Seed, setup.DurationMs,
+                setup.Stats, setup.Damage, setup.Progression, setup.Combat, setup.Combatants, setup.Commands.Concat(added).ToList(), setup.Data, setup.Space)),
+                "-", hash)).Length;
+            long remaining = Math.Max(0, (long)setup.Combat.MaxCommands - setup.Commands.Count);
+            if (remaining == 0) return Size();
             CombatCommand longest = worst.OrderByDescending(c => Size(c)).First();
             long one = Size(longest);
             long two = Size(longest, longest);
-            long commands = Math.Max(1, setup.Combat.MaxCommands);
-            return checked(one + (commands - 1) * (two - one));
+            return checked(one + (remaining - 1) * (two - one));
         }
 
         /// <summary>
