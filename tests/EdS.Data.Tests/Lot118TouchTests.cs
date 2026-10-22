@@ -37,6 +37,38 @@ public class Lot118TouchTests
     }
 
     [Fact]
+    public void Jeu_construit_emporte_son_shader_de_couleur_et_affiche_une_erreur_de_demarrage()
+    {
+        // Correctif après le premier essai sur le Galaxy Note8 : Unity n'emportait pas le shader des matériaux fabriqués au démarrage
+        // (Shader.Find ne trouvait rien sur Android), le jeu restait bloqué sur « Préparation des données du jeu… » avec un sol rose.
+        // Avant chaque construction, un matériau modèle du rendu actif est créé dans Resources (emporté avec son shader) puis retiré ;
+        // le jeu copie ce modèle ; sans shader, une erreur claire s'affiche au lieu de l'écran bloqué. Contrôle des sources (la
+        // construction Android elle-même ne s'essaie que dans Unity).
+        string game = Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS");
+        string build = File.ReadAllText(Path.Combine(game, "Editor", "EdsBuildShaders.cs"));
+        Assert.Contains("public sealed class EdsBuildShaders : IPreprocessBuildWithReport, IPostprocessBuildWithReport", build, StringComparison.Ordinal);
+        Assert.Contains("public const string TemplateName = \"EdsCouleur\";", build, StringComparison.Ordinal);
+        Assert.Contains("private const string Folder = \"Assets/EdS/Resources\";", build, StringComparison.Ordinal);
+        Assert.Contains("Shader.Find(\"Universal Render Pipeline/Lit\") : Shader.Find(\"Standard\")", build, StringComparison.Ordinal);
+        Assert.Contains("AssetDatabase.CreateAsset(new Material(shader), TemplatePath);", build, StringComparison.Ordinal);
+        Assert.Contains("public void OnPostprocessBuild(BuildReport report) => Clean();", build, StringComparison.Ordinal);
+        string arena = File.ReadAllText(Path.Combine(game, "Game", "ArenaView.cs"));
+        Assert.Contains("public const string TemplateName = \"EdsCouleur\";", arena, StringComparison.Ordinal);
+        Assert.Contains("_template = Resources.Load<Material>(TemplateName);", arena, StringComparison.Ordinal);
+        Assert.Contains("if (_template != null) material = new Material(_template);", arena, StringComparison.Ordinal);
+        Assert.Contains("throw new System.InvalidOperationException(\"aucun shader de couleur dans le jeu", arena, StringComparison.Ordinal);
+        string eds = File.ReadAllText(Path.Combine(game, "Game", "EdsGame.cs"));
+        Assert.Contains("_startupError = \"Démarrage du jeu impossible : \" + e.Message;", eds, StringComparison.Ordinal);
+        Assert.Contains("if (!_ready || _startupError != null) return;", eds, StringComparison.Ordinal);
+        Assert.True(eds.IndexOf("if (_startupError != null)", StringComparison.Ordinal) < eds.IndexOf("\"Préparation des données du jeu…\"", StringComparison.Ordinal),
+            "l'erreur de démarrage passe avant l'écran de préparation");
+        // Le modèle et la scène d'essai, créés sur le poste, ne partent pas dans git.
+        string ignore = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, ".gitignore"));
+        foreach (string line in new[] { "unity/Assets/EdS/Resources/", "unity/Assets/EdS/Resources.meta", "unity/Assets/Essai.unity", "unity/Assets/Essai.unity.meta" })
+            Assert.Contains("\n" + line + "\n", ignore.Replace("\r\n", "\n"), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Stick_du_pouce_gauche_depuis_l_endroit_ou_il_se_pose()
     {
         var g = new TouchGestures();

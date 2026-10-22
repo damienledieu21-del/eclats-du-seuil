@@ -110,6 +110,7 @@ Mode d'emploi : [UNITY.md](UNITY.md#7-jouer-sur-téléphone-sous-lot-118).
 - **Écran des talents et salle d'attente** : pensés pour la souris ; ils se touchent du doigt mais restent petits sur un téléphone. Les touches F1 à F5 (builds) n'ont pas d'équivalent tactile.
 - **Données emportées** : le jeu construit emporte `data/v0` et `scenarios` (copiés à la construction, recopiés au premier lancement sur Android, et à neuf quand l'empreinte du contenu change) ; une nouvelle version demande une nouvelle construction.
 - **iPhone** : pas de chaîne de compilation iOS (Mac et Xcode) ici ; non essayé.
+- **Premier essai sur le Note8 (22 octobre 2026)** : le jeu construit restait bloqué sur « Préparation des données du jeu… » avec un sol rose, Unity n'ayant pas emporté le shader des matériaux fabriqués au démarrage. Corrigé : un matériau modèle du rendu actif (URP Lit, sinon Standard) est créé le temps de chaque construction dans `Assets/EdS/Resources` (`EdsBuildShaders`) et copié par le jeu ; une erreur de démarrage s'affiche désormais au lieu d'un écran bloqué. La construction Android elle-même ne s'essaie que dans Unity : le correctif est contrôlé en CI par la compilation et les sources, validé par le prochain essai sur le téléphone.
 
 ## Sous-lot 11.5 : comportements des ennemis
 

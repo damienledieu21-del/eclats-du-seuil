@@ -506,6 +506,12 @@ unity/ProjectSettings/*
 unity/Assets/EdS/Settings/
 # Sous-lot 11.8 : données copiées dans le jeu construit (EdsBuildData), retirées après la construction.
 unity/Assets/StreamingAssets/
+# Correctif du sous-lot 11.8 : matériau modèle créé le temps d'une construction (EdsBuildShaders), et scène d'essai enregistrée à la
+# première construction pour téléphone (Assets/Essai.unity, docs/UNITY.md section 7).
+unity/Assets/EdS/Resources/
+unity/Assets/EdS/Resources.meta
+unity/Assets/Essai.unity
+unity/Assets/Essai.unity.meta
 unity/Assets/StreamingAssets.meta
 # Créés par URP à la première ouverture (profil de volume et réglages globaux par défaut), régénérés au besoin : non suivis.
 unity/Assets/DefaultVolumeProfile.asset
