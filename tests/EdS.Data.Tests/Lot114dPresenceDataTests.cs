@@ -114,7 +114,8 @@ public class Lot114dPresenceDataTests
         Assert.True(combat.Player().View.IsPresent);
         combat.Parry();
         combat.StepOnce();
-        Assert.Equal(new[] { CombatAction.GuardStart, CombatAction.Parry }, combat.SubmittedCommands.Select(c => c.Action));
+        // Sous-lot 11.6 : dans ce combat positionné, la cible sélectionnée part aussi, une fois le renfort présent.
+        Assert.Equal(new[] { CombatAction.GuardStart, CombatAction.Parry, CombatAction.Select }, combat.SubmittedCommands.Select(c => c.Action));
         Assert.All(combat.SubmittedCommands, c => Assert.Equal(61 * 50, c.AtMs));
     }
 
