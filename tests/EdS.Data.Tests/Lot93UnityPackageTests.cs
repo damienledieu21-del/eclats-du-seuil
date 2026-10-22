@@ -15,7 +15,7 @@ public class Lot93UnityPackageTests
     private static readonly string[] Tools = { "EdS.Tools", "EdS.Cli", "EdS.Server" };
 
     /// <summary>Racine du dépôt (dossier qui contient EdS.sln), retrouvée depuis le dossier des tests.</summary>
-    private static string Root
+    internal static string Root
     {
         get
         {
@@ -130,7 +130,7 @@ public class Lot93UnityPackageTests
         Assert.Equal(new[] { "Editor" }, editor["includePlatforms"]!.AsArray().Select(p => p!.GetValue<string>()));
         // Scénarios proposés par le prototype : tous présents dans le dépôt.
         string gameScript = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
-        foreach (string scenario in new[] { "entrainement_garde_parade.json", "mesures/s1_mannequin.json", "mesures/s2_duel.json", "mesures/s3_meute.json", "mesures/s4_protection.json", "mesures/s5_briseur.json" })
+        foreach (string scenario in new[] { "vallons_demo.json", "meute_a_vaincre.json", "entrainement_garde_parade.json", "mesures/s1_mannequin.json", "mesures/s2_duel.json", "mesures/s3_meute.json", "mesures/s4_protection.json", "mesures/s5_briseur.json" })
         {
             Assert.Contains($"\"{scenario}\"", gameScript, StringComparison.Ordinal);
             Assert.True(File.Exists(Path.Combine(Root, "scenarios", scenario)), scenario);
@@ -150,5 +150,19 @@ public class Lot93UnityPackageTests
             && guard < game.IndexOf("_arena.MovePlayer(delta, _playerYaw);", move, StringComparison.Ordinal), "garde d'absence avant le déplacement");
         Assert.Contains("if (me.IsPresent && other.IsEnemy", arena, StringComparison.Ordinal);
         Assert.Contains("_player.SetActive(me.IsPresent);", arena, StringComparison.Ordinal);
+        // Revue Codex de la PR #34 : en pause, la marche voulue d'un combat positionné n'est pas transmise.
+        int spatial = game.IndexOf("if (_arena.Spatial)", move, StringComparison.Ordinal);
+        Assert.True(spatial > 0 && game.IndexOf("if (_paused)", spatial, StringComparison.Ordinal) is int paused && paused > spatial
+            && paused < game.IndexOf("_combat.SetMove(wish.x, wish.z);", spatial, StringComparison.Ordinal), "pause avant la marche voulue");
+    }
+
+    [Fact]
+    public void Decor_coupe_ramene_a_12_cm_quelle_que_soit_sa_hauteur()
+    {
+        // Revue Codex de la PR #34 : un prisme coupé (mur, tronc, moulin) garde 0,12 m de haut, sous les annonces au sol (0,16 m) : l'échelle
+        // appliquée est cette hauteur rapportée à la sienne, pas 12 % de sa hauteur. Scripts Unity compilés seulement ; l'affichage, par l'essai.
+        string space = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("private const float CutHeight = 0.12f;", space, StringComparison.Ordinal);
+        Assert.Contains("o.Lower && height > CutHeight ? CutHeight / height : CutHeight", space, StringComparison.Ordinal);
     }
 }

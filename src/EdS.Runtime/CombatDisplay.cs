@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
+using EdS.Domain.Space;
 using EdS.Simulation.Engine;
 
 namespace EdS.Runtime
@@ -49,9 +50,11 @@ namespace EdS.Runtime
         /// la PR #23, tour 3 : le compte à rebours et la barre s'écoulent en continu entre deux ticks au lieu d'avancer par sauts de 50 ms).
         /// Seul l'affichage change : le moteur n'est pas touché. Sous-lot 11.4d (revue Codex de la PR #32, 16e tour) : la liste comprend aussi
         /// les absents (attendus, refusés, partis), pour que l'affichage prépare leur corps avant une arrivée ; chaque affichage les saute
-        /// (<c>View.IsPresent</c> faux) : corps cachés, ni barre ni fiche, jamais ciblés (<see cref="LivingEnemies"/>).
+        /// (<c>View.IsPresent</c> faux) : corps cachés, ni barre ni fiche, jamais ciblés (<see cref="LivingEnemies"/>). Sous-lot 11.6 : avec
+        /// le décor (<paramref name="obstacles"/>, combat positionné), chacun dit s'il est en vue du joueur (<see cref="OtherState.InSight"/>).
         /// </summary>
-        public static IReadOnlyList<OtherState> Others(CombatEngine engine, string playerId, double telegraphLeadSeconds = 0, double elapsedSeconds = 0)
+        public static IReadOnlyList<OtherState> Others(CombatEngine engine, string playerId, double telegraphLeadSeconds = 0, double elapsedSeconds = 0,
+            IReadOnlyList<ConvexPolygon>? obstacles = null)
         {
             if (engine is null) throw new ArgumentNullException(nameof(engine));
             if (double.IsNaN(telegraphLeadSeconds) || double.IsInfinity(telegraphLeadSeconds) || telegraphLeadSeconds < 0)
@@ -66,13 +69,44 @@ namespace EdS.Runtime
             {
                 CombatantView v = engine.View(id);
                 double? next = v.NextAttackTick is long n ? Math.Max(0, Math.Max(0, n - tick) * tickSeconds - shift) : (double?)null;
-                return new OtherState(v, v.Team != me.Team, next);
+                return new OtherState(v, v.Team != me.Team, next, InSight(me, v, obstacles));
             }).ToList();
         }
 
-        /// <summary>Ennemis vivants, dans l'ordre du scénario.</summary>
-        public static IEnumerable<OtherState> LivingEnemies(CombatEngine engine, string playerId) =>
-            Others(engine, playerId).Where(o => o.IsEnemy && !o.View.IsDead && o.View.IsPresent);   // sous-lot 11.4d : un absent ne s'affiche pas
+        /// <summary>
+        /// Sous-lot 11.6 : <paramref name="other"/> est-il en vue de <paramref name="me"/> ? Oui sans décor ou sans position ; sinon, aucun
+        /// obstacle ne touche le segment entre leurs centres (la règle de ligne de vue du moteur, sous-lot 11.4b).
+        /// </summary>
+        public static bool InSight(CombatantView me, CombatantView other, IReadOnlyList<ConvexPolygon>? obstacles)
+        {
+            if (me is null) throw new ArgumentNullException(nameof(me));
+            if (other is null) throw new ArgumentNullException(nameof(other));
+            if (obstacles is null || me.Position is not { } a || other.Position is not { } b) return true;
+            return InSightAt(a.X.Raw, a.Z.Raw, b.X.Raw, b.Z.Raw, obstacles);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #34 : ligne de vue entre deux places quelconques (en dix-millièmes de mètre), par exemple les places
+        /// affichées entre deux ticks ; oui sans décor. Même règle que <see cref="InSight(CombatantView, CombatantView, IReadOnlyList{ConvexPolygon}?)"/>.
+        /// </summary>
+        public static bool InSightAt(long ax, long az, long bx, long bz, IReadOnlyList<ConvexPolygon>? obstacles)
+        {
+            if (obstacles is null) return true;
+            foreach (ConvexPolygon obstacle in obstacles)
+                if (obstacle.IntersectsSegment(ax, az, bx, bz)) return false;
+            return true;
+        }
+
+        /// <summary>Décor d'un espace en polygones (null sans espace), à garder pour <see cref="Others"/>.</summary>
+        public static IReadOnlyList<ConvexPolygon>? Obstacles(CombatSpace? space) =>
+            space?.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToList();
+
+        /// <summary>
+        /// Ennemis vivants, dans l'ordre du scénario ; avec le décor (<paramref name="obstacles"/>), seulement ceux en vue du joueur
+        /// (revue Codex de la PR #34 : un ennemi caché ne s'affiche pas, il ne se cible donc pas non plus).
+        /// </summary>
+        public static IEnumerable<OtherState> LivingEnemies(CombatEngine engine, string playerId, IReadOnlyList<ConvexPolygon>? obstacles = null) =>
+            Others(engine, playerId, 0, 0, obstacles).Where(o => o.IsEnemy && !o.View.IsDead && o.View.IsPresent && o.InSight);   // 11.4d : un absent ne s'affiche pas
 
         /// <summary>Personnages alliés vivants autres que le joueur, dans l'ordre du scénario (coopération, lot 10).</summary>
         public static IEnumerable<OtherState> LivingAllies(CombatEngine engine, string playerId) =>

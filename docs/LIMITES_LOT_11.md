@@ -74,6 +74,19 @@ Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#arrivées-départs-et-instanta
 - **Pas de commande en ligne** : `eds` n'écrit ni ne relit encore d'instantané (essais et code seulement).
 - **Formats** : moteur 0.19.0, journal au format 13, scénarios en schéma 7, instantané au format 1 ; règles (schéma 12) et classes (schéma 9) inchangées. Un combat sans arrivée ni départ écrit les mêmes lignes qu'au moteur 0.18.0 (seize scénarios livrés comparés) ; un journal 0.18.0 est refusé au rejeu, sans migration.
 
+## Sous-lot 11.6 : scène de démonstration des Vallons
+
+Mode d'emploi et vérifications à faire : [UNITY.md](UNITY.md#4-jouer).
+
+- **Validation par l'essai** : la scène Unity n'est vérifiée en CI que par la compilation des scripts (contre des bouchons de l'API Unity) ; le pont temps réel, la marche, la ligne de vue de l'affichage et la scène elle-même (`scenarios/vallons_demo.json`) sont testés en .NET. Le rendu, la caméra et la coupe du décor ne le sont que par l'essai de Damien (11.6, rapport au 11.9).
+- **Un seul genre d'obstacle** : la rivière arrête la marche et aussi la vue (on ne tire pas par-dessus) ; un obstacle bas qui laisse passer la vue n'existe pas encore dans le moteur. Le toit de l'abri est un décor d'affichage seulement (il ne protège de rien) ; ses piliers sont des obstacles.
+- **Marche par caps** : la direction saisie est ramenée à l'un de 64 caps (5,6°) ; une commande ne part que quand la marche du moteur n'est pas celle voulue (changement de cap, ou commande du scénario qui l'a changée pendant que le joueur tient un cap ; revue Codex de la PR #34), dans la place laissée par le plafond de commandes du tick (sinon au tick suivant) ; de même, la cible sélectionnée est renvoyée quand celle du moteur diffère. Sans saisie, les commandes `move` et `stop` du scénario gardent la main. Pas de recherche de chemin.
+- **Vue du joueur** : un ennemi est montré s'il est en vue du centre du Bastion (segment entre les centres, règle des compétences) ; un ennemi qui sort à moitié d'un angle reste caché tant que son centre l'est. Entre deux ticks, la vue se juge entre les places affichées (glissées), pas entre celles du moteur : un ennemi qui contourne une paroi apparaît quand il en sort à l'écran, et la fiche de la cible (nom, PV, annonce) avec lui (revue Codex de la PR #34). Les annonces au sol d'un ennemi caché restent dessinées. Une cible perdue de vue est remplacée tout de suite par le premier ennemi en vue (pas de délai de grâce) : un loup qui passe derrière un tronc fait changer de cible (à juger à l'essai).
+- **Annonces au sol** : dessinées 16 cm au-dessus du sol (au-dessus du tablier du pont et de l'eau, pour rester visibles partout) ; une bande a les bouts arrondis, comme dans le moteur (revue Codex de la PR #34).
+- **Coupe du décor** : approchée par des boîtes (un décor dont la boîte touche le segment caméra–Bastion est abaissé ou effacé) ; un grand décor peut se couper un peu trop tôt.
+- **Caméra** : angles et distances des vues 1 et 2 provisoires (52° à 17 m, 16° à 6 m) ; rotation par huitième de tour ou à la souris. Pas encore de geste ni de bouton mobile (11.8).
+- **Réseau** : la coopération en réseau n'a pas de décor ; la marche n'y est pas transmise (11.7).
+
 ## Sous-lot 11.5 : comportements des ennemis
 
 Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#comportements-des-ennemis-sous-lot-115) ; données : [DONNEES.md](DONNEES.md#scénarios-et-jeu-de-données-lots-5-et-6).

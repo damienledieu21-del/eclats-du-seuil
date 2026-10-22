@@ -28,23 +28,31 @@ Pour essayer une PR avant sa fusion, choisir sa branche de la même façon (ongl
 
 ## 4. Jouer
 
-Appuyer sur **Play** (▶ en haut au centre). L'arène se construit, avec le Bastion (capsule bleue) face à la **meute à vaincre** (sous-lot 11.1) : deux loups et un hurleur qui ont des PV. Garde et parade sont nécessaires ; quand les trois sont morts, c'est la victoire (« Victoire : tous les ennemis sont vaincus ! ») ; si le Bastion tombe, c'est la défaite. Retour arrière pour recommencer, N pour les autres séances.
+Appuyer sur **Play** (▶ en haut au centre). La **scène de démonstration des Vallons** (sous-lot 11.6) se construit : un coin de campagne en formes simples, avec un moulin, une rivière et son pont, des arbres, un abri sous un toit et un passage étroit entre deux murs. Le Bastion (capsule bleue) part du sud-ouest ; une meute attend : trois loups derrière le moulin, un sanglier au-delà de la rivière, un archer derrière le passage étroit.
+
+- **Le déplacement est simulé par le moteur** : le décor arrête le Bastion, il ne traverse pas les ennemis, un étourdissement l'immobilise ; les portées et la ligne de vue des compétences comptent (une compétence hors de portée ou sans vue est refusée, avec la raison à l'écran).
+- **Un ennemi caché par le décor n'apparaît pas** tant que le Bastion ne le voit pas (même règle que la ligne de vue des compétences) : au départ, toute la meute est cachée. Il ne se cible pas non plus : Tab ne propose que des ennemis en vue, et une cible qui passe derrière le décor est remplacée par le premier ennemi en vue (ou lâchée s'il n'y en a aucun ; la garde ne se tourne alors vers personne).
+- Les ennemis attendent ; ils s'engagent quand on s'approche (ou qu'on les frappe), puis approchent, encerclent, gardent leurs distances (l'archer) ou chargent (le sanglier).
+- **Les attaques annoncées sont dessinées au sol** : contour orange de la zone, remplissage rouge qui grandit jusqu'à l'impact. Sortir de la zone avant l'impact l'esquive ; un coup dirigé annoncé est un cercle sous sa cible.
+- **Caméra** : la molette la règle en douceur de la **vue 1** (haute, de trois quarts) à la **vue 2** (derrière le personnage) ; **C** rappelle l'autre réglage (au départ : vue 1 ↔ vue 2) ; le réglage est gardé d'une partie à l'autre ; rien ne change de vue tout seul. Un mur, un arbre ou le toit qui cache le Bastion s'abaisse ou s'efface le temps qu'il passe.
+
+Garde et parade sont nécessaires ; quand tous les ennemis sont morts, c'est la victoire ; si le Bastion tombe, c'est la défaite. Retour arrière pour recommencer, N pour les autres séances (meute à vaincre, entraînement, S1 à S5 : sans décor, le déplacement y reste visuel).
 
 Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tableau donne les lettres d'un clavier **AZERTY**. En QWERTY, Z Q S D deviennent W A S D, A / E deviennent Q / E, et M reste M.
 
 | Touche | Action |
 |---|---|
-| Z Q S D ou flèches | se déplacer (déplacement visuel, voir les limites) |
+| Z Q S D ou flèches | se déplacer (simulé par le moteur dans les Vallons, visuel dans les séances sans décor) |
 | clic droit (ou Maj) maintenu | garde : un coup est bloqué (endurance) |
 | Espace | parade parfaite, juste avant l'impact |
 | 1, 2, 3, 4 | compétences des emplacements |
 | R | ultime (100 de Résonance) |
 | Tab | ennemi suivant comme cible |
-| C | caméra isométrique ↔ troisième personne (bases des vues 1 et 2 retenues par le [cadrage](CADRAGE.md#2-direction-générale-retenu)) |
-| A / E | tourner la caméra isométrique |
-| molette | zoom ; bouton du milieu maintenu : tourner la caméra en troisième personne |
+| C | rappel rapide de l'autre réglage de caméra (vue 1 ↔ vue 2, retenues par le [cadrage](CADRAGE.md#2-direction-générale-retenu)) |
+| A / E | tourner la caméra d'un huitième de tour |
+| molette | régler la caméra entre la vue 1 et la vue 2 (réglage gardé) ; bouton du milieu maintenu : tourner librement |
 | T | écran des talents (combat en pause) ; T ou Échap pour le fermer |
-| N | scénario suivant (meute à vaincre, entraînement, S1 à S5) |
+| N | scénario suivant (Vallons, meute à vaincre, entraînement, S1 à S5) |
 | F1 à F5 | build : Rempart, Contrecoup, Gardien, hybride, niveau 10 |
 | Retour arrière | recommencer la séance |
 | Échap | pause |
@@ -52,6 +60,17 @@ Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tablea
 | M | jeu en réseau à deux (voir la section 6) |
 
 À l'écran : barres de PV, d'endurance, de Résonance et de Charges en bas ; les compétences avec leur recharge ; au-dessus de chaque ennemi, sa barre de PV (« PV infinis » pour un ennemi d'entraînement) et une **barre de télégraphie** qui se remplit avant son coup ; un ennemi mort s'assombrit, n'attaque plus, et la cible passe au suivant (rouge vif : coup **imparable**, à encaisser sans garde ni parade) ; la fiche de la cible en haut à droite ; les textes de combat (dégâts, « Bloqué », « Parade parfaite ! »).
+
+### Ce que tu vérifies dans les Vallons (sous-lot 11.6)
+
+Les quatre vérifications de H14, à noter pour le rapport du 11.9 :
+
+1. **Même combat dans les deux vues** : jouer en vue 1, puis en vue 2 ; la caméra ne change ni les portées, ni les collisions, ni les règles.
+2. **Obstacles et passages** : passer le pont et le passage étroit, longer le moulin, entrer sous le toit ; se faire encercler par les loups près d'un arbre ou d'un mur (règle de contact A en place : le Bastion ne doit jamais rester coincé).
+3. **Commande et stabilité** : le personnage répond tout de suite, s'arrête net, ne tremble pas contre un mur ; la caméra ne saute pas.
+4. **Lisibilité et performances** : les annonces au sol se lisent dans les deux vues, un ennemi caché le reste vraiment, l'image reste fluide.
+
+Note aussi ce qui gêne (vitesse, caméra, taille des zones) : ce sont des réglages.
 
 ## 5. Talents
 
@@ -101,4 +120,4 @@ Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** o
 
 ## Ce qui est provisoire
 
-Graphismes en formes simples, interface IMGUI, déplacements sans effet sur le combat (le cœur n'a pas encore de positions), une seule touche par compétence. Détail : [LIMITES_LOT_9.md](LIMITES_LOT_9.md#sous-lot-93--projet-unity).
+Graphismes en formes simples, interface IMGUI, une seule touche par compétence. Le déplacement n'est simulé que dans la scène des Vallons (les autres séances et la coopération en réseau n'ont pas de décor ; le réseau dans l'espace vient au 11.7). Détail : [LIMITES_LOT_9.md](LIMITES_LOT_9.md#sous-lot-93--projet-unity) et [LIMITES_LOT_11.md](LIMITES_LOT_11.md#sous-lot-116--scène-de-démonstration-des-vallons).

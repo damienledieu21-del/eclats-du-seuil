@@ -74,11 +74,19 @@ namespace EdS.Runtime
         /// <summary>Secondes avant la prochaine attaque d'un assaillant ; null pour un mannequin, un personnage ou un assaillant sans tour à venir.</summary>
         public double? NextAttackSeconds { get; }
 
-        public OtherState(CombatantView view, bool isEnemy, double? nextAttackSeconds)
+        /// <summary>
+        /// Sous-lot 11.6 : en vue du joueur (aucun obstacle du décor sur le segment entre leurs centres, même règle que la ligne de vue des
+        /// compétences) ; toujours vrai sans espace. L'affichage ne montre pas un ennemi hors de vue : la caméra ne voit pas à travers les
+        /// parois.
+        /// </summary>
+        public bool InSight { get; }
+
+        public OtherState(CombatantView view, bool isEnemy, double? nextAttackSeconds, bool inSight = true)
         {
             View = view;
             IsEnemy = isEnemy;
             NextAttackSeconds = nextAttackSeconds;
+            InSight = inSight;
         }
     }
 

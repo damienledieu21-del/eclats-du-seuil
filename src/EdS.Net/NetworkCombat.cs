@@ -4,6 +4,7 @@ using System.Linq;
 using EdS.Data;
 using EdS.Data.Json;
 using EdS.Domain.Combat;
+using EdS.Domain.Space;
 using EdS.Runtime;
 using EdS.Simulation.Engine;
 
@@ -27,6 +28,7 @@ namespace EdS.Net
         private bool _parry;
         private int? _slot;
         private bool _inputDirty;
+        private readonly IReadOnlyList<ConvexPolygon>? _obstacles;
 
         // Revue Codex de la PR #20 (tour 4) : commandes des ticks acceptés (empreinte du serveur retrouvée), dans l'ordre, ticks vides
         // exclus ; elles servent à remettre le moteur au dernier tick accepté quand un tick rejoué est refusé.
@@ -41,7 +43,8 @@ namespace EdS.Net
             _log = new HashingCombatLog();
             _engine = new CombatEngine(setup, _log);
             _feedback = new FeedbackTracker(_engine);
-            TargetId = CombatDisplay.LivingEnemies(_engine, PlayerId).FirstOrDefault()?.Id;
+            _obstacles = CombatDisplay.Obstacles(setup.Space);
+            TargetId = CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).FirstOrDefault()?.Id;
             AllyId = CombatDisplay.LivingAllies(_engine, PlayerId).FirstOrDefault()?.Id;
         }
 
@@ -193,7 +196,7 @@ namespace EdS.Net
 
         public void NextTarget()
         {
-            List<OtherState> enemies = CombatDisplay.LivingEnemies(_engine, PlayerId).ToList();
+            List<OtherState> enemies = CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).ToList();
             string? next = enemies.Count == 0 ? null : enemies[(enemies.FindIndex(e => e.Id == TargetId) + 1) % enemies.Count].Id;
             SetTarget(next);
         }
@@ -201,7 +204,7 @@ namespace EdS.Net
         public void SelectTarget(string id)
         {
             if (AwaitingResync) return;
-            if (!CombatDisplay.LivingEnemies(_engine, PlayerId).Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant.", nameof(id));
+            if (!CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant en vue.", nameof(id));
             SetTarget(id);
         }
 
@@ -287,7 +290,23 @@ namespace EdS.Net
         /// Les autres combattants ; la télégraphie des assaillants est avancée de <see cref="TelegraphLeadSeconds"/> et s'écoule en
         /// continu dans le tick en cours (<see cref="TickProgress"/>, plafonné à un tick si le suivant tarde).
         /// </summary>
-        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, TelegraphLeadSeconds, TickProgress * TickSeconds);
+        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, TelegraphLeadSeconds, TickProgress * TickSeconds, _obstacles);
+
+        /// <summary>Sous-lot 11.6 : aire et décor du combat ; null sans espace (le combat en coopération du lot 10 n'en a pas).</summary>
+        public CombatSpace? Space => Setup.Space;
+
+        /// <summary>
+        /// Sous-lot 11.6 : sans effet en réseau pour l'instant. Le protocole du lot 10 ne transmet pas encore les déplacements : ils
+        /// viennent avec la démonstration réseau (sous-lot 11.7). Le combat en coopération livré n'a pas d'espace.
+        /// </summary>
+        public void SetMove(double x, double z)
+        {
+            if (double.IsNaN(x) || double.IsNaN(z) || double.IsInfinity(x) || double.IsInfinity(z))
+                throw new ArgumentOutOfRangeException(nameof(x), "Saisie de déplacement non finie.");
+        }
+
+        /// <summary>Sous-lot 11.6 : attaques annoncées du dernier tick reçu du serveur.</summary>
+        public IReadOnlyList<AnnouncedAttack> Announced() => _engine.Announced();
 
         // --- Commandes du serveur -------------------------------------------------------------------------------------------
 
@@ -471,8 +490,8 @@ namespace EdS.Net
         /// <summary>Cible et allié encore valides, sinon le premier vivant (même règle que le serveur).</summary>
         private void KeepTargets()
         {
-            if (TargetId is null || !CombatDisplay.LivingEnemies(_engine, PlayerId).Any(e => e.Id == TargetId))
-                SetTarget(CombatDisplay.LivingEnemies(_engine, PlayerId).FirstOrDefault()?.Id);
+            if (TargetId is null || !CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).Any(e => e.Id == TargetId))
+                SetTarget(CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).FirstOrDefault()?.Id);
             if (AllyId is null || !CombatDisplay.LivingAllies(_engine, PlayerId).Any(a => a.Id == AllyId))
                 SetAlly(CombatDisplay.LivingAllies(_engine, PlayerId).FirstOrDefault()?.Id);
         }

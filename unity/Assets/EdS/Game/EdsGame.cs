@@ -26,6 +26,7 @@ namespace EdS.Game
     {
         private static readonly string[] ScenarioFiles =
         {
+            "vallons_demo.json",      // sous-lot 11.6 : coin des Vallons, combat positionné (déplacement simulé par le moteur)
             "meute_a_vaincre.json",   // sous-lot 11.1 : loups mortels, le combat se gagne
             "entrainement_garde_parade.json",
             "mesures/s1_mannequin.json",
@@ -282,6 +283,7 @@ namespace EdS.Game
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+            _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
         }
 
         /// <summary>
@@ -496,24 +498,41 @@ namespace EdS.Game
             player = _combat.Player();
             _arena.Sync(_combat, player, combat?.AllyId);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+            _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
         }
 
         /// <summary>
-        /// Déplacement purement visuel, relatif à la caméra (ZQSD en AZERTY, WASD en QWERTY, ou flèches : voir <see cref="Keys"/>) ;
-        /// impossible hors de combat ou étourdi. Revue Codex de la PR #32 (30e tour) : un joueur absent (avant son arrivée, après son départ)
-        /// ne bouge ni ne se tourne : il réapparaît là où il était.
+        /// Déplacement relatif à la caméra (ZQSD en AZERTY, WASD en QWERTY, ou flèches : voir <see cref="Keys"/>). Sous-lot 11.6 : dans un
+        /// combat positionné, la direction est envoyée au moteur, qui déplace le personnage (décor, emprises, étourdissement ; rien pour un
+        /// absent) ; sinon le déplacement est purement visuel, impossible hors de combat ou étourdi. Revue Codex de la PR #32 (30e tour) : un
+        /// joueur absent (avant son arrivée, après son départ) ne bouge ni ne se tourne : il réapparaît là où il était.
         /// </summary>
         private void Move(PlayerState player)
         {
+            float x = (Input.GetKey(Keys.Right) || Input.GetKey(KeyCode.RightArrow) ? 1f : 0f)
+                - (Input.GetKey(Keys.Left) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
+            float z = (Input.GetKey(Keys.Forward) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
+                - (Input.GetKey(Keys.Back) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
+            if (_arena.Spatial)
+            {
+                // Revue Codex de la PR #34 : en pause, la marche voulue n'est pas touchée (les entrées de combat sont ignorées ; l'intention
+                // d'avant la pause reprend telle quelle).
+                if (_paused)
+                {
+                    _moving = false;
+                    return;
+                }
+                Vector3 wish = x != 0f || z != 0f ? Quaternion.Euler(0f, _camera.Yaw, 0f) * new Vector3(x, 0f, z).normalized : Vector3.zero;
+                _combat.SetMove(wish.x, wish.z);
+                _moving = player.View.IsPresent && !player.View.IsDead && (x != 0f || z != 0f);
+                if (player.View.Facing is EdS.Domain.Space.GroundVector f) _playerYaw = Mathf.Atan2(f.X.Raw, f.Z.Raw) * Mathf.Rad2Deg;
+                return;
+            }
             if (!player.View.IsPresent)
             {
                 _moving = false;
                 return;
             }
-            float x = (Input.GetKey(Keys.Right) || Input.GetKey(KeyCode.RightArrow) ? 1f : 0f)
-                - (Input.GetKey(Keys.Left) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
-            float z = (Input.GetKey(Keys.Forward) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
-                - (Input.GetKey(Keys.Back) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
             bool blocked = player.View.IsDead || player.View.States.Contains("stun") || _paused;
             _moving = !blocked && (x != 0f || z != 0f);
             Vector3 delta = Vector3.zero;
@@ -625,7 +644,8 @@ namespace EdS.Game
             }
 
             Hud.Player(player);
-            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent));
+            // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
+            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)));
             if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
                 Network ? NetworkBuildName() : BuildName(), _camera.Describe(), _paused, Network);
             if (Network) NetworkScreen.DrawCombat(_net, _shownCombat?.AllyId);
