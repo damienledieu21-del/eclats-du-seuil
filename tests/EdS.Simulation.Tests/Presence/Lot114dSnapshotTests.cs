@@ -407,6 +407,9 @@ public class Lot114dSnapshotTests
         Assert.Contains("ligne 1 de", Assert.Throws<FormatException>(() => CombatSnapshot.Parse(longLine + "\n" + lines[0])).Message);
         Assert.Contains("ligne 3 de", Assert.Throws<FormatException>(() => CombatSnapshot.Parse(lines[0] + "\n" + lines[1] + "\n" + longLine)).Message);
         Assert.Equal(text, CombatSnapshot.Parse(text).Text);
+        // 37e tour : Snapshot ne produit pas un texte que Parse refuserait ; la borne est éprouvée à la taille exacte de l'état.
+        Assert.Equal(text, engine.Snapshot(text.Length).Text);
+        Assert.Contains("État trop grand pour un instantané", Assert.Throws<InvalidOperationException>(() => engine.Snapshot(text.Length - 1)).Message);
         // 32e tour : la reprise vérifiée borne la taille du texte reçu par celle de l'état rejoué avant de le recopier pour comparer.
         string padded = lines[0] + "\n" + string.Join("\n", lines.Skip(1).Select((l, i) => i == 0 ? l.Replace("\"fighter\":\"bastion\"",
             "\"fighter\":\"bastion" + new string('x', 1_000_000) + "\"", StringComparison.Ordinal) : l));
