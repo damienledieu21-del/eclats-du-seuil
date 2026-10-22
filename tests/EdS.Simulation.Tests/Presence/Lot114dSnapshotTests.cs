@@ -352,6 +352,34 @@ public class Lot114dSnapshotTests
     }
 
     [Fact]
+    public void Reprise_verifiee_d_une_commande_soumise_au_tick_d_un_tour_d_assaillant()
+    {
+        // Revue Codex de la PR #32 (38e tour) : au tick 20, le tour de l'assaillant est en file avant la commande soumise à ce tick dans
+        // l'original, après elle dans le rejeu (les commandes du combat complété sont programmées avant les tours). RunCommands retrie le
+        // lot : l'instantané pris entre Submit et Step est authentique, la reprise vérifiée l'accepte et la suite est la même.
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(Training(), log);
+        while (engine.CurrentTick < 20) engine.Step();
+        engine.Submit(GuardStart(1000, "allie"));
+        string text = engine.Snapshot().Text;
+        List<string> batch = text.Split('\n').Where(l => l.Contains(",\"tick\":20,\"phase\":2,", StringComparison.Ordinal)).ToList();
+        int turn = batch.FindIndex(l => l.Contains("\"item\":\"turn\"", StringComparison.Ordinal));
+        int submitted = batch.FindIndex(l => l.Contains("\"item\":\"command\",\"index\":7", StringComparison.Ordinal));   // les sept commandes du scénario, puis celle soumise
+        Assert.True(turn >= 0 && submitted > turn, string.Join("\n", batch));
+        AssertResumesIdentically(engine, log, verified: true);
+        // Le lot reste comparé élément par élément : un tour retouché dans ce lot est refusé.
+        var again = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (again.CurrentTick < 20) again.Step();
+        again.Submit(GuardStart(1000, "allie"));
+        string state = again.Snapshot().Text;
+        string line = state.Split('\n')[Array.IndexOf(state.Split('\n'), batch[turn])];
+        string forged = state.Replace(line, line.Replace("\"turn\":0", "\"turn\":1", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.NotEqual(state, forged);
+        Assert.Contains("différent de l'état rejoué au tick 20", Assert.Throws<FormatException>(() =>
+            CombatEngine.RestoreVerified(again.CompletedSetup(), CombatSnapshot.Parse(forged), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
     public void Reprise_verifiee_refuse_tout_etat_que_le_combat_n_atteint_pas()
     {
         // Option C : un état cohérent mais différent de celui que le combat atteint, que la reprise de confiance accepte (l'ogre a pris un
