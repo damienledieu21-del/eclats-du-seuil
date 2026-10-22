@@ -87,12 +87,24 @@ namespace EdS.Game
         // Sous-lot 11.8 : commandes au doigt (téléphone, simulateur d'appareils de l'éditeur, F8 pour les forcer) ; données prêtes.
         private readonly TouchControls _touch = new TouchControls();
         private bool _ready;
+        private string _startupError;
 
         private IEnumerator Start()
         {
-            ApplyMobileSettings();
-            _camera = CameraRig.Create();
-            _arena = new ArenaView();
+            // Correctif du sous-lot 11.8 (essai sur le Note8) : une erreur de démarrage (shader absent du jeu construit…) s'affiche au lieu
+            // de laisser l'écran bloqué sur « Préparation des données du jeu… ».
+            try
+            {
+                ApplyMobileSettings();
+                _camera = CameraRig.Create();
+                _arena = new ArenaView();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                _startupError = "Démarrage du jeu impossible : " + e.Message;
+                yield break;
+            }
             // Sous-lot 11.8 : sur Android, les données emportées sont d'abord recopiées dans le dossier de l'application.
             string root = null, problem = null;
             yield return GameFiles.Prepare(FindRepoRoot(), (r, e) =>
@@ -273,7 +285,7 @@ namespace EdS.Game
 
         private void Update()
         {
-            if (!_ready) return;   // sous-lot 11.8 : données en préparation
+            if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
             _touch.Update(Network);
             // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran. En réseau,
@@ -672,6 +684,12 @@ namespace EdS.Game
         private void OnGUI()
         {
             Hud.Begin();
+            if (_startupError != null)
+            {
+                Hud.Fill(new Rect(40, 40, Hud.Width - 80, 260), new Color(0.3f, 0f, 0f, 0.85f));
+                Hud.Text(new Rect(60, 60, Hud.Width - 120, 220), _startupError);
+                return;
+            }
             if (!_ready)
             {
                 Hud.Centered(new Rect(Hud.Width / 2f - 300, Hud.VirtualHeight / 2f - 20, 600, 40), "Préparation des données du jeu…", Color.white);

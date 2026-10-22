@@ -44,7 +44,8 @@ namespace UnityEngine
     public enum ShadowQuality { Disable, HardOnly, All }
     public static class Debug { public static void Log(object m) { } public static void LogWarning(object m) { } public static void LogException(Exception e) { } }
     public sealed class Shader : Object { public static Shader Find(string n) => null; }
-    public class Material : Object { public Material(Shader s) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } }
+    public static class Resources { public static T Load<T>(string path) where T : Object => default; }
+    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } }
     public class Texture : Object { }
     public sealed class Texture2D : Texture { public static Texture2D whiteTexture => null; }
     public enum RuntimeInitializeLoadType { AfterSceneLoad, BeforeSceneLoad }
@@ -81,7 +82,7 @@ namespace UnityEditor
     [AttributeUsage(AttributeTargets.Class)] public sealed class InitializeOnLoadAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.Method)] public sealed class MenuItem : Attribute { public MenuItem(string p) { } }
     public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; }
-    public static class AssetDatabase { public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } }
+    public static class AssetDatabase { public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; }
 }
 namespace UnityEditor.Build.Reporting
 {

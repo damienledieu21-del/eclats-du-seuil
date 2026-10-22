@@ -42,6 +42,12 @@ namespace EdS.Game
         private readonly Dictionary<string, Vector3> _to = new Dictionary<string, Vector3>();
         private long _shownTick = -1;
 
+        /// <summary>Matériau modèle emporté par la construction (nom partagé avec <c>EdsBuildShaders.TemplateName</c>).</summary>
+        public const string TemplateName = "EdsCouleur";
+
+        private static Material _template;
+        private static bool _templateLoaded;
+
         public Transform Player => _player != null ? _player.transform : null;
 
         /// <summary>Combat positionné affiché (décor du scénario, places du moteur).</summary>
@@ -74,14 +80,32 @@ namespace EdS.Game
             _shieldBroken = MakeMaterial(new Color(0.75f, 0.15f, 0.12f));
         }
 
-        /// <summary>Matériau opaque compatible avec le rendu actif (URP si configuré, sinon le rendu intégré).</summary>
+        /// <summary>
+        /// Matériau opaque compatible avec le rendu actif (URP si configuré, sinon le rendu intégré). Correctif du sous-lot 11.8 : dans un
+        /// jeu construit, il copie le matériau modèle emporté par la construction (<c>Resources/EdsCouleur</c>, voir
+        /// <c>EdsBuildShaders</c>), seul moyen d'avoir le shader sur le téléphone ; dans l'éditeur, il le cherche par son nom comme avant.
+        /// Sans shader, une erreur claire plutôt qu'un matériau vide.
+        /// </summary>
         public static Material MakeMaterial(Color color)
         {
-            Shader shader = null;
-            if (GraphicsSettings.currentRenderPipeline != null) shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
-            var material = new Material(shader);
+            if (!_templateLoaded)
+            {
+                _template = Resources.Load<Material>(TemplateName);
+                _templateLoaded = true;
+            }
+            Material material;
+            if (_template != null) material = new Material(_template);
+            else
+            {
+                Shader shader = null;
+                if (GraphicsSettings.currentRenderPipeline != null) shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null) shader = Shader.Find("Standard");
+                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+                if (shader == null)
+                    throw new System.InvalidOperationException("aucun shader de couleur dans le jeu (URP Lit ou Standard) : reconstruire le jeu depuis "
+                        + "l'éditeur, rendu URP configuré.");
+                material = new Material(shader);
+            }
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
             if (material.HasProperty("_Color")) material.SetColor("_Color", color);
             return material;
