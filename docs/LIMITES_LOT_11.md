@@ -103,7 +103,8 @@ Détail : [RESEAU.md](RESEAU.md#protocole-2-et-démonstration-réseau-sous-lot-1
 
 Mode d'emploi : [UNITY.md](UNITY.md#7-jouer-sur-téléphone-sous-lot-118).
 
-- **Validation par l'essai** : les commandes au doigt, la copie des données sur Android et les réglages allégés ne sont vérifiés en CI que par la compilation des scripts (contre des bouchons de l'API Unity) ; le reste par l'essai de Damien (simulateur d'appareils, puis Note8).
+- **Validation par l'essai** : le traitement des doigts (stick, boutons tenus et touchés, regard, pincement, doigt perdu quand le jeu est suspendu) est dans `TouchGestures` (`EdS.Runtime`, sans Unity) et testé (`Lot118TouchTests`, revue Codex de la PR #36, 6e tour) ; la lecture des doigts de Unity, le dessin des boutons, la copie des données sur Android et les réglages allégés ne sont vérifiés en CI que par la compilation des scripts (contre des bouchons de l'API Unity) ; le reste par l'essai de Damien (simulateur d'appareils, puis Note8).
+- **Taille des boutons** : 140 pixels virtuels pour les petits (compétences, ultime, cible, vue, menu…), 150 pour garde et parade, soit environ 9,1 et 9,7 mm sur le Note8 (critère du plan : au moins 9 mm) ; d'autres écrans (plus petits ou plus denses) ne sont pas mesurés.
 - **Interface provisoire** : boutons carrés dessinés par l'interface IMGUI du lot 9, placés pour un téléphone tenu à l'horizontale (pas de réglage de disposition, pas de mode portrait) ; pas de retour haptique.
 - **Stick tout ou rien** : sous la zone morte, pas de marche ; au-delà, marche à pleine vitesse dans l'un des 64 caps (comme le clavier ; la marche lente n'existe pas dans le moteur).
 - **Écran des talents et salle d'attente** : pensés pour la souris ; ils se touchent du doigt mais restent petits sur un téléphone. Les touches F1 à F5 (builds) n'ont pas d'équivalent tactile.

@@ -16,7 +16,7 @@ public class Lot93UnityPackageTests
     private static readonly string[] Tools = { "EdS.Tools", "EdS.Cli", "EdS.Server" };
 
     /// <summary>Racine du dépôt (dossier qui contient EdS.sln), retrouvée depuis le dossier des tests.</summary>
-    private static string Root
+    internal static string Root
     {
         get
         {
@@ -195,7 +195,8 @@ public class Lot93UnityPackageTests
         string touch = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "TouchControls.cs"));
         Assert.Contains("private void OnApplicationPause(bool paused)", game, StringComparison.Ordinal);
         Assert.Contains("private void OnApplicationFocus(bool focus)", game, StringComparison.Ordinal);
-        Assert.Contains("Forget(fingers);", touch, StringComparison.Ordinal);
+        // Revue Codex de la PR #36 (6e tour) : le traitement des doigts (doigt perdu compris) est dans TouchGestures, testé par Lot118TouchTests.
+        Assert.Contains("_gestures.Update(Fingers(), _zones, Hud.Width);", touch, StringComparison.Ordinal);
         // Tout ce que le jeu ouvre est un .json de data/v0 ou de scenarios : la copie n'en oublie aucun.
         Assert.All(Directory.GetFiles(Path.Combine(Root, "scenarios"), "*", SearchOption.AllDirectories), f => Assert.EndsWith(".json", f, StringComparison.Ordinal));
     }
