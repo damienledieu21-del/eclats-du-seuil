@@ -515,6 +515,13 @@ namespace EdS.Game
                 - (Input.GetKey(Keys.Back) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
             if (_arena.Spatial)
             {
+                // Revue Codex de la PR #34 : en pause, la marche voulue n'est pas touchée (les entrées de combat sont ignorées ; l'intention
+                // d'avant la pause reprend telle quelle).
+                if (_paused)
+                {
+                    _moving = false;
+                    return;
+                }
                 Vector3 wish = x != 0f || z != 0f ? Quaternion.Euler(0f, _camera.Yaw, 0f) * new Vector3(x, 0f, z).normalized : Vector3.zero;
                 _combat.SetMove(wish.x, wish.z);
                 _moving = player.View.IsPresent && !player.View.IsDead && (x != 0f || z != 0f);
