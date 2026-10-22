@@ -416,8 +416,9 @@ namespace EdS.Simulation.Engine
         /// Compare deux textes d'instantané, numéros de file (<c>entry</c>) mis de côté (les éléments sont écrits dans l'ordre de sortie : deux
         /// files aux mêmes éléments dans le même ordre sont égales) et pic de file rendu à part. Revue Codex de la PR #32 (33e tour) : en flux,
         /// ligne à ligne et sur place, sans découper ni recopier les textes (seule la ligne d'en-tête est copiée, bornée à
-        /// <see cref="SnapshotNode.MaxLineLength"/>) ; 36e tour : le rang d'annonce d'un impact est sur sa ligne, comparé tel quel. Rend la
-        /// première ligne qui diffère (numérotée à partir de 1), ou null.
+        /// <see cref="SnapshotNode.MaxLineLength"/>) ; 36e tour : le rang d'annonce d'un impact est sur sa ligne, comparé tel quel ; 38e tour :
+        /// les éléments de la phase des commandes d'un même tick, que <c>RunCommands</c> retrie avant de les exécuter, sont comparés comme
+        /// un ensemble. Rend la première ligne qui diffère (numérotée à partir de 1), ou null.
         /// </summary>
         private static string? QueueDifference(string expected, string actual, out long expectedPeak, out long actualPeak)
         {
@@ -439,6 +440,25 @@ namespace EdS.Simulation.Engine
                     return $"ligne {line}";
                 }
                 int commaE = EntryComma(expected, se, le), commaA = EntryComma(actual, sa, la);
+                // Revue Codex de la PR #32 (38e tour) : les éléments de la phase des commandes d'un même tick s'exécutent dans l'ordre de
+                // RunCommands (initiative, identifiant, rang de la commande), pas dans celui de la file. Une commande soumise au tick courant
+                // est en file après le tour d'un assaillant du même tick dans l'original, avant lui dans le rejeu (toutes les commandes du
+                // combat complété sont programmées avant les tours) : ces lignes sont comparées comme un ensemble (triées), numéros mis de côté.
+                int keyE = commaE >= 0 ? CommandsKey(expected, commaE, se + le - commaE) : -1;
+                int keyA = commaA >= 0 ? CommandsKey(actual, commaA, sa + la - commaA) : -1;
+                if (keyE > 0 && keyE == keyA && string.CompareOrdinal(expected, commaE, actual, commaA, keyE) == 0)
+                {
+                    List<(int Start, int Length)> runE = Run(expected, ref pe, commaE, se + le - commaE, keyE);
+                    List<(int Start, int Length)> runA = Run(actual, ref pa, commaA, sa + la - commaA, keyA);
+                    if (runE.Count != runA.Count) return $"ligne {line}";
+                    runE.Sort((x, y) => CompareSpans(expected, x, y));
+                    runA.Sort((x, y) => CompareSpans(actual, x, y));
+                    for (int i = 0; i < runE.Count; i++)
+                        if (runE[i].Length != runA[i].Length || string.CompareOrdinal(expected, runE[i].Start, actual, runA[i].Start, runE[i].Length) != 0)
+                            return $"ligne {line}";
+                    line += runE.Count - 1;
+                    continue;
+                }
                 if (commaE >= 0 && commaA >= 0)
                 {
                     int restE = se + le - commaE, restA = sa + la - commaA;
@@ -451,6 +471,39 @@ namespace EdS.Simulation.Engine
             {
                 if (length < entry.Length || string.CompareOrdinal(text, start, entry, 0, entry.Length) != 0) return -1;
                 return text.IndexOf(',', start + entry.Length, length - entry.Length);
+            }
+
+            // Longueur du préfixe « ,"tick":N,"phase":2, » d'un élément de la phase des commandes (séparateur suivant compris), -1 sinon.
+            static int CommandsKey(string text, int comma, int length)
+            {
+                const string tick = ",\"tick\":", phase = ",\"phase\":2";
+                if (length < tick.Length || string.CompareOrdinal(text, comma, tick, 0, tick.Length) != 0) return -1;
+                int i = comma + tick.Length, stop = comma + length;
+                while (i < stop && text[i] >= '0' && text[i] <= '9') i++;
+                if (stop - i < phase.Length + 1 || string.CompareOrdinal(text, i, phase, 0, phase.Length) != 0) return -1;
+                i += phase.Length;
+                return text[i] == ',' || text[i] == '}' ? i + 1 - comma : -1;
+            }
+
+            // Lignes consécutives (à partir de la première, déjà lue) de même préfixe : la suite de l'élément après son numéro, sans copie.
+            static List<(int Start, int Length)> Run(string text, ref int position, int comma, int length, int key)
+            {
+                var run = new List<(int Start, int Length)> { (comma, length) };
+                while (true)
+                {
+                    int saved = position;
+                    if (!NextLine(text, ref position, out int start, out int count)) { position = saved; break; }
+                    int next = EntryComma(text, start, count);
+                    if (next < 0 || start + count - next < key || string.CompareOrdinal(text, comma, text, next, key) != 0) { position = saved; break; }
+                    run.Add((next, start + count - next));
+                }
+                return run;
+            }
+
+            static int CompareSpans(string text, (int Start, int Length) x, (int Start, int Length) y)
+            {
+                int c = string.CompareOrdinal(text, x.Start, text, y.Start, Math.Min(x.Length, y.Length));
+                return c != 0 ? c : x.Length.CompareTo(y.Length);
             }
         }
 
