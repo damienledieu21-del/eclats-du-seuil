@@ -287,12 +287,18 @@ namespace EdS.Net
             return input;
         }
 
-        /// <summary>Après une reconnexion : la garde du personnage a été relâchée par le serveur, les demandes ponctuelles sont périmées.</summary>
+        /// <summary>
+        /// Après une reconnexion : la garde et la marche du personnage ont été relâchées par le serveur, les demandes ponctuelles sont
+        /// périmées.
+        /// </summary>
         internal void PrepareReconnect()
         {
             // Revue Codex de la PR #21 : la garde tenue avant la coupure est oubliée (le serveur l'a relâchée) ; le jeu la redonne en
             // lisant la touche une fois le combat repris, au lieu de renvoyer une garde peut-être lâchée pendant l'absence.
             _guardHeld = false;
+            // Revue Codex de la PR #35 : de même, le cap de marche est oublié (le serveur a arrêté le personnage) ; le jeu le redonne en
+            // lisant la saisie, au lieu de renvoyer un cap peut-être lâché pendant la coupure.
+            _heading = null;
             _parry = false;
             _slot = null;
             _inputDirty = true;

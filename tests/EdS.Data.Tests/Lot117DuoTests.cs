@@ -166,6 +166,29 @@ public class Lot117DuoTests
     }
 
     [Fact]
+    public void Cap_de_marche_oublie_a_la_reconnexion()
+    {
+        // Revue Codex de la PR #35 : le joueur marche, la connexion se coupe et il lâche la touche pendant la coupure. Au retour, le cap
+        // d'avant la coupure n'est pas renvoyé (le serveur a arrêté le personnage) : le premier envoi est un arrêt, comme pour la garde, et
+        // le jeu redonne le cap en relisant la saisie.
+        var game = new Game(Vallons(20_000), new RoomOptions { JoinDuringCombat = true });
+        NetworkClient a = game.Join("Dam");
+        a.SetReady(true);
+        game.RunUntil(() => a.Status == ClientStatus.Combat, 5);
+        NetworkCombat combat = a.Combat!;
+        combat.SetMove(1, 0);
+        Assert.NotNull(combat.WishedHeading);
+        combat.PrepareReconnect();
+        Assert.Null(combat.WishedHeading);
+        InputMessage? first = combat.TakeInput();
+        Assert.NotNull(first);
+        Assert.Null(first!.Heading);
+        Assert.False(first.Guard);
+        combat.SetMove(1, 0);
+        Assert.NotNull(combat.TakeInput()!.Heading);
+    }
+
+    [Fact]
     public void Arrivee_sur_une_place_prise_decalee_a_cote()
     {
         // Le premier joueur se poste sur la place du second (2 m à l'est de la sienne) : le second entre à 1,5 m de là, sans chevauchement.
