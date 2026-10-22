@@ -250,7 +250,11 @@ public class Lot117DuoTests
                 : c);
             return new CombatSetup(base_.Seed, base_.DurationMs, base_.Stats, base_.Damage, base_.Progression, rules, combatants, base_.Commands, base_.Data, base_.Space);
         }
-        long Bound(int m, EdS.Domain.Builds.CharacterBuild second) => CombatRoom.StateBound(With(m, second, true), 50);
+        // 4e tour : l'instantané de départ (sans la place libre) s'ajoute au majorant, au début comme à l'arrivée.
+        long Extra(int m) => CombatRoom.SnapshotExtra(new CombatEngine(new CombatSetup(base_.Seed, base_.DurationMs, base_.Stats, base_.Damage,
+            base_.Progression, With(m, shortBuild.Build, false).Combat, With(m, shortBuild.Build, false).Combatants.Where(c => c.Id != "bastion2"),
+            base_.Commands, base_.Data, base_.Space), NullCombatLog.Instance).Snapshot().Text);
+        long Bound(int m, EdS.Domain.Builds.CharacterBuild second) => CombatRoom.StateBound(With(m, second, true), 50) + Extra(m);
         int lo = 1, hi = CombatRules.AbsoluteMaxCommands;
         while (lo < hi)
         {
