@@ -402,6 +402,11 @@ public class Lot114dSnapshotTests
         string tall = text + new string('\n', 100_001);
         Assert.Contains("lignes (combattants et file au plus)", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tall), NullCombatLog.Instance)).Message);
         Assert.Contains("lignes (combattants et file au plus)", Assert.Throws<FormatException>(() => CombatEngine.RestoreVerified(setup, CombatSnapshot.Parse(tall), NullCombatLog.Instance)).Message);
+        // 30e tour : une ligne trop longue (la première, ou n'importe quelle autre) est refusée à la lecture, avant d'être copiée.
+        string longLine = new string('x', SnapshotNode.MaxLineLength + 1);
+        Assert.Contains("ligne 1 de", Assert.Throws<FormatException>(() => CombatSnapshot.Parse(longLine + "\n" + lines[0])).Message);
+        Assert.Contains("ligne 3 de", Assert.Throws<FormatException>(() => CombatSnapshot.Parse(lines[0] + "\n" + lines[1] + "\n" + longLine)).Message);
+        Assert.Equal(text, CombatSnapshot.Parse(text).Text);
     }
 
     [Fact]
