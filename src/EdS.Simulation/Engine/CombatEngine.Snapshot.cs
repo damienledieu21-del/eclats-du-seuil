@@ -188,7 +188,7 @@ namespace EdS.Simulation.Engine
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
-                .Field("engaged", f.Engaged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
+                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -918,6 +918,10 @@ namespace EdS.Simulation.Engine
                     $"Échéances de {who} impossibles.");
                 // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
                 Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
+                // 16e tour de la PR #33 : un engagé a son tick d'engagement (0 d'emblée sans distance d'engagement, sinon un tick déjà joué).
+                Require(f.Engaged == (f.EngagedTick != null) && (f.EngagedTick is not long engagedAt
+                    || (f.Behavior?.AggroRange is null ? engagedAt == 0 : engagedAt >= (f.ArrivedTick ?? 0) && engagedAt <= CurrentTick - 1)),
+                    $"Tick d'engagement de {who} impossible.");
                 // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
                 // télégraphie) tombe au plus tôt à la fin du combat.
                 Require(!f.AnnouncedToEnd || AnnouncedToEndPossible(f), $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
@@ -1407,7 +1411,13 @@ namespace EdS.Simulation.Engine
             if (start > end) return 0;
             // Revue Codex de la PR #33 (13e tour) : un ennemi à comportement marche sans commande (placement), d'au plus un pas par tick,
             // seulement une fois engagé (l'engagement ne se perd pas) : tous ses ticks présents et vivants s'il l'est, aucun sinon.
-            if (g.Behavior != null) return g.Engaged ? checked(end - start + 1) : 0;
+            // 16e tour : depuis son engagement seulement.
+            if (g.Behavior != null)
+            {
+                if (!g.Engaged) return 0;
+                long since = Math.Max(start, g.EngagedTick ?? 0);
+                return since > end ? 0 : checked(end - since + 1);
+            }
             var commands = _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop) && c.Actor == g.Id
                 && c.AtMs / _tickMs >= arrived && c.AtMs / _tickMs <= end).OrderBy(c => c.AtMs / _tickMs).ToList();
             bool moving = false;
@@ -1750,6 +1760,7 @@ namespace EdS.Simulation.Engine
             if (f.Assailant != null && (f.NextAttack < 0 || f.NextAttack >= f.Assailant.Attacks.Count)) throw new FormatException($"Attaque suivante invalide pour « {f.Id} ».");
             f.NextAttackTick = n["nextAttackTick"].NullableLong;
             f.Engaged = n["engaged"].Bool;
+            f.EngagedTick = n["engagedTick"].NullableLong;
             f.AnnouncedToEnd = n["announcedToEnd"].Bool;
             f.Struck = n["struck"].Bool;
             f.Taunted = n["taunted"].Bool;

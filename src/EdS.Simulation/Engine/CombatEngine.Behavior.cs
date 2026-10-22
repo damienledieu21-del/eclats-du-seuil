@@ -79,6 +79,7 @@ namespace EdS.Simulation.Engine
                 Charge(1);
                 if (reason is null) continue;
                 f.Engaged = true;
+                f.EngagedTick = tick;
                 EmitDiagnostic(tick, CombatPhase.Commands, "engaged", w => w.Field("actor", f.Id).Field("target", target?.Id).Field("reason", reason));
             }
         }

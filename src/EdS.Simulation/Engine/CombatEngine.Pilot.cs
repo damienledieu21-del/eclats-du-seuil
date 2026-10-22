@@ -209,7 +209,9 @@ namespace EdS.Simulation.Engine
                 view.Facing = GroundVector.FromRaw(body.FacingX, body.FacingZ);
                 view.Radius = Fixed.FromRaw(body.Radius);
                 view.MoveDirection = body.Moving ? GroundVector.FromRaw(body.DirectionX, body.DirectionZ) : (GroundVector?)null;
-                view.CanMove = !f.Out && (f.Character != null || f.Assailant != null) && !Blocked(StatusBlocks.Movement);   // un mannequin ne marche pas
+                // Un mannequin ne marche pas ; revue Codex de la PR #33 (16e tour) : un ennemi à comportement non plus sur commande (move et stop
+                // lui sont refusés : il marche seul).
+                view.CanMove = !f.Out && (f.Character != null || f.Assailant != null) && f.Behavior is null && !Blocked(StatusBlocks.Movement);
                 view.SelectedTarget = body.Selected?.Id;
             }
             if (f.Assailant is { } assailant)
