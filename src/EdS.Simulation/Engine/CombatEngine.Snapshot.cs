@@ -876,9 +876,7 @@ namespace EdS.Simulation.Engine
                 Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
                 // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
                 // télégraphie) tombe au plus tôt à la fin du combat.
-                Require(!f.AnnouncedToEnd || f.Assailant is { } announcer && Enumerable.Range(0, (int)Math.Min(f.NextTurn, int.MaxValue))
-                    .Any(turn => TurnTick(f, turn) <= CurrentTick - 1 && ImpactTickOf(TurnTick(f, turn), announcer.Attacks[turn % announcer.Attacks.Count]) >= _durationTicks),
-                    $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
+                Require(!f.AnnouncedToEnd || AnnouncedToEndPossible(f), $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
                 // Revue Codex de la PR #33 (tour 6) : seul un assaillant est provoqué, et une provocation active a été reçue.
                 Require(f.Assailant != null || !f.Taunted, $"Provocation reçue par {who} impossible.");
                 Require(f.Taunted || !f.Statuses.Values.Any(s => s.Definition.IsTaunt), $"Provocation active de {who} non mémorisée.");
@@ -1413,11 +1411,36 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private bool FreeMover(Fighter g)
         {
-            if (g.Assailant is not { } a || !a.Attacks.Any(attack => attack.Charge)) return false;
-            for (long turn = 0; turn < g.NextTurn; turn++)
+            if (g.Assailant is not { } a) return false;
+            // Revue Codex de la PR #33 (14e tour) : sans parcourir l'historique des tours. Les tours d'une même attaque (rang j modulo le
+            // nombre d'attaques) tombent de plus en plus tard : le premier, le tour j, est le plus tôt.
+            for (int j = 0; j < a.Attacks.Count && j < g.NextTurn; j++)
+                if (a.Attacks[j].Charge && ImpactTickOf(TurnTick(g, j), a.Attacks[j]) <= CurrentTick - 1) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #33 (13e et 14e tours) : un tour déjà joué de <paramref name="f"/> (avant <see cref="Fighter.NextTurn"/>, au plus
+        /// au tick précédent) a-t-il annoncé une attaque dont l'impact tombe au plus tôt à la fin du combat ? Calculé par attaque (rang j modulo
+        /// le nombre d'attaques), sans parcourir l'historique des tours : plus petit tour de ce rang dont le tick est au moins la fin moins la
+        /// télégraphie de l'attaque, comparé au dernier tour joué.
+        /// </summary>
+        private bool AnnouncedToEndPossible(Fighter f)
+        {
+            if (f.Assailant is not { } a || f.NextTurn <= 0) return false;
+            long start = TurnTick(f, 0), interval = a.IntervalMs / _tickMs, previous = CurrentTick - 1;
+            // Dernier tour joué : avant NextTurn, et à un tick au plus le précédent.
+            long last = checked(f.NextTurn - 1);
+            if (previous < start) return false;
+            if (interval > 0) last = Math.Min(last, (previous - start) / interval);
+            int n = a.Attacks.Count;
+            for (int j = 0; j < n; j++)
             {
-                AssailantAttack attack = a.Attacks[(int)(turn % a.Attacks.Count)];
-                if (attack.Charge && ImpactTickOf(TurnTick(g, turn), attack) <= CurrentTick - 1) return true;
+                long threshold = checked(_durationTicks - a.Attacks[j].TelegraphMs / _tickMs);   // tick de tour à partir duquel l'impact tombe après la fin
+                long first = threshold <= start ? 0 : interval > 0 ? checked((threshold - start + interval - 1) / interval) : long.MaxValue;
+                if (first == long.MaxValue) continue;
+                long turn = checked(first + ((j - first % n) % n + n) % n);   // plus petit tour ≥ first de rang j
+                if (turn <= last) return true;
             }
             return false;
         }
