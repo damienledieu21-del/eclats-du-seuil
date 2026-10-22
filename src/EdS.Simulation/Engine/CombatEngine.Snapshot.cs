@@ -81,12 +81,30 @@ namespace EdS.Simulation.Engine
 
     public sealed partial class CombatEngine
     {
-        /// <summary>Empreinte <c>sha256:</c> d'un texte (UTF-8).</summary>
+        /// <summary>Taille des blocs encodés en UTF-8 puis hachés par <see cref="Sha256"/> (caractères).</summary>
+        internal const int HashChunk = 1 << 16;
+
+        /// <summary>
+        /// Empreinte <c>sha256:</c> d'un texte (UTF-8). Revue Codex de la PR #32 (31e tour) : le texte est encodé et haché par blocs de
+        /// <see cref="HashChunk"/> caractères (encodeur incrémental : une paire de substitution coupée entre deux blocs est encodée comme
+        /// d'un seul tenant), sans copie UTF-8 du texte entier ; même empreinte que <c>SHA256(UTF8.GetBytes(text))</c>.
+        /// </summary>
         internal static string Sha256(string text)
         {
             using (SHA256 sha = SHA256.Create())
             {
-                byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(text));
+                Encoder encoder = Encoding.UTF8.GetEncoder();
+                char[] chars = new char[Math.Min(HashChunk, Math.Max(1, text.Length))];
+                byte[] bytes = new byte[Encoding.UTF8.GetMaxByteCount(chars.Length)];
+                for (int start = 0; start < text.Length; start += chars.Length)
+                {
+                    int count = Math.Min(chars.Length, text.Length - start);
+                    text.CopyTo(start, chars, 0, count);
+                    int written = encoder.GetBytes(chars, 0, count, bytes, 0, start + count == text.Length);
+                    sha.TransformBlock(bytes, 0, written, null, 0);
+                }
+                sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+                byte[] hash = sha.Hash!;
                 var hex = new StringBuilder("sha256:", 7 + 64);
                 foreach (byte b in hash) hex.Append(b.ToString("x2", CultureInfo.InvariantCulture));
                 return hex.ToString();
