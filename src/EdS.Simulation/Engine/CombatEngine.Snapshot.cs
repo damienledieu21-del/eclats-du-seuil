@@ -395,49 +395,102 @@ namespace EdS.Simulation.Engine
                 if (c == '\n') replayedLines++;
             if (snapshot.Text.Length > checked(replayedText.Length + 48 * replayedLines + 64))
                 throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({snapshot.Text.Length} caractères, l'état rejoué en a {replayedText.Length}).");
-            string replayed = QueueRanked(replayedText, out long replayedPeak), received = QueueRanked(snapshot.Text, out long receivedPeak);
-            if (!string.Equals(replayed, received, StringComparison.Ordinal) || receivedPeak > replayedPeak)
-                throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({FirstDifference(replayed, received)}).");
+            string? difference = QueueDifference(replayedText, snapshot.Text, out long replayedPeak, out long receivedPeak);
+            if (difference is null && receivedPeak > replayedPeak) difference = "ligne 1, pic de file";
+            if (difference != null) throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({difference}).");
             return Restore(setup, snapshot, log);
         }
 
         /// <summary>
-        /// Texte d'instantané dont chaque numéro de file (<c>entry</c>, et ses mentions dans <c>announced</c>) est remplacé par son rang dans
-        /// la file (les éléments sont écrits dans l'ordre de sortie), et le pic de file (<paramref name="peakPending"/>) mis de côté. Deux
-        /// files aux mêmes éléments dans le même ordre donnent le même texte.
+        /// Compare deux textes d'instantané, numéros de file (<c>entry</c>, et leurs mentions dans <c>announced</c>) remplacés par leur rang
+        /// dans la file (les éléments sont écrits dans l'ordre de sortie) et pic de file mis de côté (rendus à part) : deux files aux mêmes
+        /// éléments dans le même ordre sont égales. Revue Codex de la PR #32 (33e tour) : comparaison en flux, ligne à ligne et sur place,
+        /// sans découper ni recopier les textes (seule la ligne d'en-tête est copiée, bornée à <see cref="SnapshotNode.MaxLineLength"/>) ;
+        /// seuls les rangs des numéros cités par <c>announced</c> sont retenus. Rend la première ligne qui diffère (numérotée à partir de 1),
+        /// ou null.
         /// </summary>
-        private static string QueueRanked(string text, out long peakPending)
+        private static string? QueueDifference(string expected, string actual, out long expectedPeak, out long actualPeak)
         {
-            string[] lines = text.Split('\n');
+            int pe = 0, pa = 0;
+            NextLine(expected, ref pe, out int se, out int le);
+            NextLine(actual, ref pa, out int sa, out int la);
+            string headE = MaskHead(expected.Substring(se, le), out expectedPeak, out List<string> announcedE);
+            string headA = MaskHead(actual.Substring(sa, la), out actualPeak, out List<string> announcedA);
+            if (!string.Equals(headE, headA, StringComparison.Ordinal)) return "ligne 1";
+            var wantedE = new HashSet<string>(announcedE, StringComparer.Ordinal);
+            var wantedA = new HashSet<string>(announcedA, StringComparer.Ordinal);
+            var rankE = new Dictionary<string, long>(StringComparer.Ordinal);
+            var rankA = new Dictionary<string, long>(StringComparer.Ordinal);
+            const string entry = "{\"entry\":";
+            long line = 1, rank = 0;
+            while (true)
+            {
+                bool moreE = NextLine(expected, ref pe, out se, out le), moreA = NextLine(actual, ref pa, out sa, out la);
+                line++;
+                if (!moreE || !moreA)
+                {
+                    if (moreE == moreA) break;
+                    return $"ligne {line}";
+                }
+                int commaE = EntryComma(expected, se, le), commaA = EntryComma(actual, sa, la);
+                if (commaE >= 0 && commaA >= 0)
+                {
+                    int restE = se + le - commaE, restA = sa + la - commaA;
+                    if (restE != restA || string.CompareOrdinal(expected, commaE, actual, commaA, restE) != 0) return $"ligne {line}";
+                    string numberE = expected.Substring(se + entry.Length, commaE - se - entry.Length);
+                    string numberA = actual.Substring(sa + entry.Length, commaA - sa - entry.Length);
+                    if (wantedE.Contains(numberE)) rankE[numberE] = rank;
+                    if (wantedA.Contains(numberA)) rankA[numberA] = rank;
+                    rank++;
+                }
+                else if (commaE >= 0 || commaA >= 0 || le != la || string.CompareOrdinal(expected, se, actual, sa, le) != 0) return $"ligne {line}";
+            }
+            string Ranked(string number, Dictionary<string, long> ranks) =>
+                ranks.TryGetValue(number, out long r) ? r.ToString(CultureInfo.InvariantCulture) : "?" + number;
+            return announcedE.Select(n => Ranked(n, rankE)).SequenceEqual(announcedA.Select(n => Ranked(n, rankA)), StringComparer.Ordinal) ? null : "ligne 1";
+
+            static int EntryComma(string text, int start, int length)
+            {
+                if (length < entry.Length || string.CompareOrdinal(text, start, entry, 0, entry.Length) != 0) return -1;
+                return text.IndexOf(',', start + entry.Length, length - entry.Length);
+            }
+        }
+
+        /// <summary>Ligne suivante de <paramref name="text"/> à partir de <paramref name="position"/> (comme <c>Split('\n')</c>, sans copie).</summary>
+        private static bool NextLine(string text, ref int position, out int start, out int length)
+        {
+            start = position;
+            length = 0;
+            if (position > text.Length) return false;
+            int newline = text.IndexOf('\n', position);
+            int stop = newline < 0 ? text.Length : newline;
+            length = stop - start;
+            position = stop + 1;
+            return true;
+        }
+
+        /// <summary>En-tête d'instantané, pic de file remplacé par <c>?</c> et liste <c>announced</c> vidée (rendue à part).</summary>
+        private static string MaskHead(string head, out long peakPending, out List<string> announcedList)
+        {
             const string peak = "\"peakPending\":";
-            int p = lines[0].IndexOf(peak, StringComparison.Ordinal), stop = p < 0 ? -1 : lines[0].IndexOf(',', p);
+            int p = head.IndexOf(peak, StringComparison.Ordinal), stop = p < 0 ? -1 : head.IndexOf(',', p);
             peakPending = -1;
-            if (stop > p && long.TryParse(lines[0].Substring(p + peak.Length, stop - p - peak.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long value))
+            if (stop > p && long.TryParse(head.Substring(p + peak.Length, stop - p - peak.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long value))
             {
                 peakPending = value;
-                lines[0] = lines[0].Substring(0, p + peak.Length) + "?" + lines[0].Substring(stop);
+                head = head.Substring(0, p + peak.Length) + "?" + head.Substring(stop);
             }
-            var rank = new Dictionary<string, string>(StringComparer.Ordinal);
-            const string entry = "{\"entry\":";
-            for (int i = 1, k = 0; i < lines.Length; i++)
-            {
-                if (!lines[i].StartsWith(entry, StringComparison.Ordinal)) continue;
-                int comma = lines[i].IndexOf(',');
-                if (comma < 0) continue;
-                string r = (k++).ToString(CultureInfo.InvariantCulture);
-                rank[lines[i].Substring(entry.Length, comma - entry.Length)] = r;
-                lines[i] = entry + r + lines[i].Substring(comma);
-            }
+            announcedList = new List<string>();
             const string announced = "\"announced\":[";
-            int at = lines[0].IndexOf(announced, StringComparison.Ordinal);
-            int close = at < 0 ? -1 : lines[0].IndexOf(']', at);
+            int at = head.IndexOf(announced, StringComparison.Ordinal);
+            int close = at < 0 ? -1 : head.IndexOf(']', at);
             if (close > at)
             {
-                string list = lines[0].Substring(at + announced.Length, close - at - announced.Length);
-                string ranked = list.Length == 0 ? "" : string.Join(",", list.Split(',').Select(n => rank.TryGetValue(n, out string? r) ? r : "?" + n));
-                lines[0] = lines[0].Substring(0, at + announced.Length) + ranked + lines[0].Substring(close);
+                string list = head.Substring(at + announced.Length, close - at - announced.Length);
+                if (list.Length > 0) announcedList.AddRange(list.Split(','));
+                head = head.Substring(0, at + announced.Length) + head.Substring(close);
             }
-            return string.Join("\n", lines);
+            return head;
         }
 
         /// <summary>
@@ -450,15 +503,6 @@ namespace EdS.Simulation.Engine
             foreach (char c in text)
                 if (c == '\n' && ++newlines > most)
                     throw new FormatException($"Instantané de plus de {most + 1} lignes (combattants et file au plus).");
-        }
-
-        /// <summary>Première ligne où deux textes d'instantané diffèrent (numérotée à partir de 1), pour le message de refus.</summary>
-        private static string FirstDifference(string expected, string actual)
-        {
-            string[] a = expected.Split('\n'), b = actual.Split('\n');
-            for (int i = 0; i < Math.Min(a.Length, b.Length); i++)
-                if (!string.Equals(a[i], b[i], StringComparison.Ordinal)) return $"ligne {i + 1}";
-            return $"{b.Length} lignes au lieu de {a.Length}";
         }
 
         private void LoadSnapshot(CombatSnapshot snapshot)
