@@ -384,6 +384,27 @@ public class Lot114dSnapshotTests
     }
 
     [Fact]
+    public void Instantane_trop_large_refuse_avant_d_etre_alloue()
+    {
+        // Revue Codex de la PR #32 (27e tour) : un texte reçu d'ailleurs est borné avant d'être analysé : valeurs par ligne, lignes par combat,
+        // listes de l'en-tête par combat.
+        var engine = new CombatEngine(Training(), NullCombatLog.Instance);
+        while (engine.CurrentTick < 10) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        string[] lines = text.Split('\n');
+        string Head(string list) => lines[0].Replace(System.Text.RegularExpressions.Regex.Match(lines[0], "\"commandsPerTick\":\\[[^\\]]*(\\][^\\]]*)*?\\]\\]|\"commandsPerTick\":\\[\\]").Value,
+            "\"commandsPerTick\":[" + list + "]", StringComparison.Ordinal);
+        string huge = string.Join(",", Enumerable.Repeat("[\"bastion\",20,1]", 300_000));
+        Assert.Contains("valeurs sur une ligne", Assert.Throws<FormatException>(() => CombatSnapshot.Parse(Head(huge))).Message);
+        string wide = string.Join("\n", new[] { Head(string.Join(",", Enumerable.Range(0, 1000).Select(k => $"[\"bastion\",{20 + k},1]"))) }.Concat(lines.Skip(1)));
+        Assert.Contains("Listes de l'en-tête", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(wide), NullCombatLog.Instance)).Message);
+        string tall = text + new string('\n', 100_001);
+        Assert.Contains("lignes (combattants et file au plus)", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tall), NullCombatLog.Instance)).Message);
+        Assert.Contains("lignes (combattants et file au plus)", Assert.Throws<FormatException>(() => CombatEngine.RestoreVerified(setup, CombatSnapshot.Parse(tall), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
     public void Meme_combat_meme_instantane_et_texte_canonique()
     {
         var a = new CombatEngine(Training(), NullCombatLog.Instance);

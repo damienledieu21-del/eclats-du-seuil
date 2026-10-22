@@ -23,6 +23,9 @@ namespace EdS.Simulation.Engine
     /// </summary>
     public sealed class CombatSnapshot
     {
+        /// <summary>Revue Codex de la PR #32 (27e tour) : au plus 256 Mi caractères (un combat aux limites par défaut, 100 000 éléments en file, tient largement dedans).</summary>
+        public const int MaxTextLength = 1 << 28;
+
         /// <summary>Version du format de l'instantané (indépendante de celle du journal).</summary>
         public const int FormatVersion = 1;
 
@@ -56,6 +59,9 @@ namespace EdS.Simulation.Engine
         public static CombatSnapshot Parse(string text)
         {
             if (text is null) throw new ArgumentNullException(nameof(text));
+            // Revue Codex de la PR #32 (27e tour) : taille bornée avant toute analyse ; chaque ligne l'est aussi (SnapshotNode), et la reprise
+            // borne le nombre de lignes par le combat (combattants + file).
+            if (text.Length > MaxTextLength) throw new FormatException($"Instantané illisible : {text.Length} caractères, au plus {MaxTextLength}.");
             int end = text.IndexOf('\n');
             SnapshotNode head = SnapshotNode.Parse(end < 0 ? text : text.Substring(0, end));
             if (head["snapshot"].Int != FormatVersion) throw new FormatException($"Instantané au format {head["snapshot"].Long}, ce moteur lit le format {FormatVersion}.");
@@ -334,6 +340,7 @@ namespace EdS.Simulation.Engine
             if (snapshot.Setup != expected)
                 throw new FormatException($"Instantané d'un autre combat : en-tête {snapshot.Setup}, combat fourni {expected}.");
             if (snapshot.Tick < 0) throw new FormatException($"Instantané au tick {snapshot.Tick} : impossible.");
+            CheckLineCount(snapshot.Text, setup.Combatants.Count, setup.Combat.MaxPendingEvents);
             var replay = new CombatEngine(setup, NullCombatLog.Instance);
             while (replay.CurrentTick < snapshot.Tick)
             {
@@ -395,6 +402,18 @@ namespace EdS.Simulation.Engine
             return string.Join("\n", lines);
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #32 (27e tour) : au plus une ligne d'en-tête, une par combattant et une par place de la file, comptées avant
+        /// de découper le texte.
+        /// </summary>
+        private static void CheckLineCount(string text, int fighters, int maxPending)
+        {
+            long newlines = 0, most = checked(fighters + (long)maxPending);
+            foreach (char c in text)
+                if (c == '\n' && ++newlines > most)
+                    throw new FormatException($"Instantané de plus de {most + 1} lignes (combattants et file au plus).");
+        }
+
         /// <summary>Première ligne où deux textes d'instantané diffèrent (numérotée à partir de 1), pour le message de refus.</summary>
         private static string FirstDifference(string expected, string actual)
         {
@@ -406,6 +425,7 @@ namespace EdS.Simulation.Engine
 
         private void LoadSnapshot(CombatSnapshot snapshot)
         {
+            CheckLineCount(snapshot.Text, _fighters.Count, _rules.MaxPendingEvents);
             string[] lines = snapshot.Text.Split('\n');
             SnapshotNode head = SnapshotNode.Parse(lines[0]);
             if (head["snapshot"].Int != CombatSnapshot.FormatVersion) throw new FormatException("Format d'instantané inconnu.");
@@ -425,6 +445,10 @@ namespace EdS.Simulation.Engine
             LastTickEvents = head["lastTickEvents"].Long;
             _commandCount = head["commandCount"].Int;
             _initialEvents = head["initialEvents"].Long;
+            // 27e tour : listes de l'en-tête bornées par le combat avant d'être parcourues.
+            if (head["subscribed"].Items.Count > _subscribed.Length || head["commandsPerTick"].Items.Count > _setup.Commands.Count
+                || head["announced"].Items.Count > _rules.MaxPendingEvents)
+                throw new FormatException("Listes de l'en-tête de l'instantané plus longues que le combat ne le permet.");
             var subscribed = new List<int>(head["subscribed"].Items.Select(k => k.Int));
             foreach (SnapshotNode e in head["commandsPerTick"].Items)
                 _commandsPerActorTick[(e.Items[0].String, e.Items[1].Long)] = e.Items[2].Int;
