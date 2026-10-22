@@ -179,6 +179,12 @@ namespace EdS.Simulation.Engine
             public bool Engaged;
 
             /// <summary>
+            /// Revue Codex de la PR #33 (13e tour) : a annoncé une attaque dont l'impact tombe après la fin du combat (jamais mis en file) ; un
+            /// ennemi à comportement reste arrêté jusqu'à la fin, comme pendant toute annonce.
+            /// </summary>
+            public bool AnnouncedToEnd;
+
+            /// <summary>
             /// Sous-lot 11.5 (revue Codex de la PR #33) : a reçu un impact ou un tick de DOT, même entièrement absorbé ou transféré ; un ennemi
             /// en attente s'engage alors (raison <c>hit</c>).
             /// </summary>
@@ -1039,6 +1045,7 @@ namespace EdS.Simulation.Engine
                 Schedule(impactTick, CombatPhase.Resolution, impact);
                 _announced.Add(impact);
             }
+            else assailant.AnnouncedToEnd = true;   // revue Codex de la PR #33 (13e tour) : annonce jusqu'à la fin
             return null;
         }
 
