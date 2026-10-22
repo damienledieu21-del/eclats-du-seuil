@@ -581,8 +581,9 @@ namespace EdS.Game
 
         /// <summary>
         /// Déplacement relatif à la caméra (ZQSD en AZERTY, WASD en QWERTY, ou flèches : voir <see cref="Keys"/>). Sous-lot 11.6 : dans un
-        /// combat positionné, la direction est envoyée au moteur, qui déplace le personnage (décor, emprises, étourdissement) ; sinon le
-        /// déplacement est purement visuel, impossible hors de combat ou étourdi.
+        /// combat positionné, la direction est envoyée au moteur, qui déplace le personnage (décor, emprises, étourdissement ; rien pour un
+        /// absent) ; sinon le déplacement est purement visuel, impossible hors de combat ou étourdi. Revue Codex de la PR #32 (30e tour) : un
+        /// joueur absent (avant son arrivée, après son départ) ne bouge ni ne se tourne : il réapparaît là où il était.
         /// </summary>
         private void Move(PlayerState player)
         {
@@ -606,8 +607,13 @@ namespace EdS.Game
             {
                 Vector3 wish = x != 0f || z != 0f ? Quaternion.Euler(0f, _camera.Yaw, 0f) * new Vector3(x, 0f, z).normalized : Vector3.zero;
                 _combat.SetMove(wish.x, wish.z);
-                _moving = !player.View.IsDead && (x != 0f || z != 0f);
+                _moving = player.View.IsPresent && !player.View.IsDead && (x != 0f || z != 0f);
                 if (player.View.Facing is EdS.Domain.Space.GroundVector f) _playerYaw = Mathf.Atan2(f.X.Raw, f.Z.Raw) * Mathf.Rad2Deg;
+                return;
+            }
+            if (!player.View.IsPresent)
+            {
+                _moving = false;
                 return;
             }
             bool blocked = player.View.IsDead || player.View.States.Contains("stun") || _paused;

@@ -200,4 +200,19 @@ public class Lot93UnityPackageTests
         // Tout ce que le jeu ouvre est un .json de data/v0 ou de scenarios : la copie n'en oublie aucun.
         Assert.All(Directory.GetFiles(Path.Combine(Root, "scenarios"), "*", SearchOption.AllDirectories), f => Assert.EndsWith(".json", f, StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Joueur_absent_ni_deplace_ni_vise_a_l_affichage()
+    {
+        // Revue Codex de la PR #32 (30e tour) : scripts Unity compilés seulement (contre des bouchons) ; le joueur absent (avant son
+        // arrivée, après son départ) ne bouge ni ne se tourne à l'affichage, et les ennemis ne se tournent pas vers lui. Essai : Damien.
+        string game = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        string arena = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "ArenaView.cs"));
+        int move = game.IndexOf("private void Move(PlayerState player)", StringComparison.Ordinal);
+        Assert.True(move > 0);
+        Assert.True(game.IndexOf("if (!player.View.IsPresent)", move, StringComparison.Ordinal) is int guard && guard > move
+            && guard < game.IndexOf("_arena.MovePlayer(delta, _playerYaw);", move, StringComparison.Ordinal), "garde d'absence avant le déplacement");
+        Assert.Contains("if (me.IsPresent && other.IsEnemy", arena, StringComparison.Ordinal);
+        Assert.Contains("_player.SetActive(me.IsPresent);", arena, StringComparison.Ordinal);
+    }
 }
