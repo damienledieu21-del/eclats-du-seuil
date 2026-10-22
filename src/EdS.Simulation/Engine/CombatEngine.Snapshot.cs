@@ -130,6 +130,18 @@ namespace EdS.Simulation.Engine
             CombatSetup completed = CompletedSetup();
             string setup = SetupFingerprint(completed);
             var lines = new List<string>();
+            // Revue Codex de la PR #32 (38e tour) : chaque ligne est mesurée au moment où elle est produite ; dès que le texte dépasserait les
+            // bornes du lecteur, l'instantané est refusé, sans sérialiser le reste.
+            long total = -1;
+            void Add(string line)
+            {
+                if (line.Length > SnapshotNode.MaxLineLength)
+                    throw new InvalidOperationException($"État trop grand pour un instantané : ligne de {line.Length} caractères, au plus {SnapshotNode.MaxLineLength}.");
+                total = checked(total + 1 + line.Length);
+                if (total > maxTextLength)
+                    throw new InvalidOperationException($"État trop grand pour un instantané : plus de {maxTextLength} caractères.");
+                lines.Add(line);
+            }
             List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)> entries = _queue.Entries();
             var cursor = _queue.Cursor;
             long effectiveInitial = _initialEvents < 0 ? -1 : checked(_initialEvents + _joined.Count + _submitted.Count);
@@ -150,26 +162,16 @@ namespace EdS.Simulation.Engine
             // la ligne d'en-tête, qui pouvait dépasser les bornes du lecteur).
             var announcedRank = new Dictionary<Scheduled, int>();
             for (int k = 0; k < _announced.Count; k++) announcedRank[_announced[k]] = k;
-            lines.Add(head.EndObject().ToString());
+            Add(head.EndObject().ToString());
 
-            foreach (Fighter f in _fighters) lines.Add(WriteFighter(f));
+            foreach (Fighter f in _fighters) Add(WriteFighter(f));
             foreach (var e in entries)
             {
                 var w = new JsonLineWriter().BeginObject().Field("entry", e.Sequence).Field("tick", e.Tick).Field("phase", (long)e.Phase);
                 WriteItem(w, e.Item);
                 if (e.Item is AttackImpact) w.Field("announced", announcedRank[e.Item]);
-                lines.Add(w.EndObject().ToString());
+                Add(w.EndObject().ToString());
             }
-            // 37e tour : un texte que Parse refuserait (trop long, ou une ligne trop longue) n'est pas produit.
-            long total = lines.Count - 1;
-            foreach (string line in lines)
-            {
-                if (line.Length > SnapshotNode.MaxLineLength)
-                    throw new InvalidOperationException($"État trop grand pour un instantané : ligne de {line.Length} caractères, au plus {SnapshotNode.MaxLineLength}.");
-                total = checked(total + line.Length);
-            }
-            if (total > maxTextLength)
-                throw new InvalidOperationException($"État trop grand pour un instantané : {total} caractères, au plus {maxTextLength}.");
             return CombatSnapshot.Create(CurrentTick, string.Join("\n", lines), setup);
         }
 
