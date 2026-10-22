@@ -397,6 +397,22 @@ public class Lot115BehaviorTests
         Assert.Equal(30, Lines(log, "attackStarted").Single(a => a.Str("actor") == "loup").Tick());
         Assert.NotEqual(track.After("loup", 28), track.After("loup", 29));   // encore en marche avant l'annonce
         for (int t = 31; t <= 39; t++) Assert.Equal(track.After("loup", 30), track.After("loup", t));
+        // L'instantané garde cette annonce (announcedToEnd) ; elle n'est admise qu'avec un tour déjà joué dont l'impact tombe après la fin
+        // (14e tour : calculé par attaque, sans parcourir l'historique des tours).
+        var fight = Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("loup", At("15", "0"), "0.5", firstMs: 1500, attacks: line) },
+            durationMs: 2000);
+        var engine2 = new CombatEngine(fight, NullCombatLog.Instance);
+        while (engine2.CurrentTick < 35) engine2.Step();
+        string late = engine2.Snapshot().Text;
+        Assert.Contains("\"announcedToEnd\":true", late, StringComparison.Ordinal);
+        Assert.Equal(late, CombatEngine.Restore(engine2.CompletedSetup(), CombatSnapshot.Parse(late), NullCombatLog.Instance).Snapshot().Text);
+        var engine3 = new CombatEngine(fight, NullCombatLog.Instance);
+        while (engine3.CurrentTick < 20) engine3.Step();
+        string early = engine3.Snapshot().Text;
+        string forged = early.Replace("\"announcedToEnd\":false", "\"announcedToEnd\":true", StringComparison.Ordinal);
+        Assert.NotEqual(early, forged);
+        Assert.Contains("sans tour qui la donne", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(engine3.CompletedSetup(), CombatSnapshot.Parse(forged), NullCombatLog.Instance)).Message);
     }
 
     [Fact]
