@@ -199,7 +199,11 @@ namespace EdS.Game
         private void AddOccluder(Transform transform, bool lower, Vector3 min, Vector3 max) =>
             _occluders.Add(new Occluder { Transform = transform, Renderer = transform.GetComponent<Renderer>(), Lower = lower, Min = min, Max = max });
 
-        /// <summary>Pont : tablier entre les deux bras de la rivière (« riviere_sud » et « riviere_nord »), s'ils existent.</summary>
+        /// <summary>
+        /// Pont : tablier entre les deux bras de la rivière (« riviere_sud » et « riviere_nord »), s'ils existent. La rivière coule suivant z
+        /// (bande x0..x1) ; le passage est la coupure entre ses deux bras (z0..z1), et le pont se traverse suivant x, d'une rive à l'autre
+        /// (revue Codex de la PR #34 : axes précisés). Les rambardes longent donc le passage suivant x, à z0 et z1, au bord des deux bras.
+        /// </summary>
         private void Bridge(CombatSpace space)
         {
             SpaceObstacle south = space.Obstacles.FirstOrDefault(o => o.Id == "riviere_sud");
