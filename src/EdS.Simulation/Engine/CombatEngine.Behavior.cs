@@ -172,6 +172,9 @@ namespace EdS.Simulation.Engine
                         intentions[i] = new Intention(false, 0, 0, j);
                         continue;
                     }
+                    // Revue Codex de la PR #33 (tour 11) : le pas s'arrête à sa place d'anneau. Accéléré (altérations de vitesse), un pas
+                    // plus long que la tolérance la dépasserait, puis repartirait en sens inverse au tick suivant.
+                    maxStep = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(gx, gz));
                 }
                 else
                 {
