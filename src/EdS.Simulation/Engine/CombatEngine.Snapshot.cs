@@ -118,8 +118,13 @@ namespace EdS.Simulation.Engine
         /// Sous-lot 11.4d : instantané de l'état courant, entre deux ticks (avant de simuler <see cref="CurrentTick"/>). Le même état donne
         /// le même texte, octet par octet. À relire avec <see cref="CompletedSetup"/> pris au même moment.
         /// </summary>
-        /// <exception cref="InvalidOperationException">Combat terminé.</exception>
-        public CombatSnapshot Snapshot()
+        /// <exception cref="InvalidOperationException">Combat terminé, ou état trop grand pour être relu (revue Codex de la PR #32, 37e tour :
+        /// texte au-delà de <see cref="CombatSnapshot.MaxTextLength"/> ou ligne au-delà de <see cref="SnapshotNode.MaxLineLength"/>, refusé
+        /// avant d'être assemblé plutôt que produit puis refusé à la relecture).</exception>
+        public CombatSnapshot Snapshot() => Snapshot(CombatSnapshot.MaxTextLength);
+
+        /// <summary>Instantané dont le texte est borné à <paramref name="maxTextLength"/> caractères (essais de la borne).</summary>
+        internal CombatSnapshot Snapshot(long maxTextLength)
         {
             if (IsFinished) throw new InvalidOperationException("Combat terminé : aucun instantané.");
             CombatSetup completed = CompletedSetup();
@@ -155,6 +160,16 @@ namespace EdS.Simulation.Engine
                 if (e.Item is AttackImpact) w.Field("announced", announcedRank[e.Item]);
                 lines.Add(w.EndObject().ToString());
             }
+            // 37e tour : un texte que Parse refuserait (trop long, ou une ligne trop longue) n'est pas produit.
+            long total = lines.Count - 1;
+            foreach (string line in lines)
+            {
+                if (line.Length > SnapshotNode.MaxLineLength)
+                    throw new InvalidOperationException($"État trop grand pour un instantané : ligne de {line.Length} caractères, au plus {SnapshotNode.MaxLineLength}.");
+                total = checked(total + line.Length);
+            }
+            if (total > maxTextLength)
+                throw new InvalidOperationException($"État trop grand pour un instantané : {total} caractères, au plus {maxTextLength}.");
             return CombatSnapshot.Create(CurrentTick, string.Join("\n", lines), setup);
         }
 
