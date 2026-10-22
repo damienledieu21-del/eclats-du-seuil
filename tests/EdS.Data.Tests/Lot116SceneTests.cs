@@ -64,6 +64,14 @@ public class Lot116SceneTests
         SpaceObstacle south = space.Obstacles.Single(o => o.Id == "riviere_sud"), north = space.Obstacles.Single(o => o.Id == "riviere_nord");
         // Le pont (entre les deux bras de la rivière) et le passage étroit (entre les deux murs) laissent passer le Bastion (1 m de large).
         Assert.Equal(Fixed.Parse("3.5"), north.Points.Min(p => p.Z) - south.Points.Max(p => p.Z));
+        // Revue Codex de la PR #34 : la rivière coule suivant z (bras longs en z, étroits en x, sur la même bande x) ; le pont se traverse
+        // donc suivant x, et ses rambardes (SpaceView.Bridge) longent le passage suivant x, à ses bords z0 et z1.
+        foreach (SpaceObstacle arm in new[] { south, north })
+            Assert.True(arm.Points.Max(p => p.Z) - arm.Points.Min(p => p.Z) > arm.Points.Max(p => p.X) - arm.Points.Min(p => p.X), arm.Id);
+        Assert.Equal((south.Points.Min(p => p.X), south.Points.Max(p => p.X)), (north.Points.Min(p => p.X), north.Points.Max(p => p.X)));
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("Block(\"Pont (rambarde sud)\", new Vector3((x0 + x1) / 2f, 0.5f, z0 + 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood);", view,
+            StringComparison.Ordinal);
         SpaceObstacle wallN = space.Obstacles.Single(o => o.Id == "mur_nord"), wallS = space.Obstacles.Single(o => o.Id == "mur_sud");
         Assert.Equal(Fixed.Parse("2"), wallN.Points.Min(p => p.Z) - wallS.Points.Max(p => p.Z));
         // Au départ, tous les ennemis sont cachés au Bastion : les loups derrière le moulin, le sanglier et l'archer derrière la rivière.
