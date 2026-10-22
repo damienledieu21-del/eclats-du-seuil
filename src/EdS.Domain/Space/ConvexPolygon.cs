@@ -105,6 +105,20 @@ namespace EdS.Domain.Space
         }
 
         /// <summary>
+        /// Revue Codex de la PR #33 : le disque de rayon <paramref name="r"/> (&gt; 0) balayé de A à B (une gélule) chevauche-t-il le
+        /// polygone ? Vrai si l'un des deux disques extrêmes le chevauche, si le segment le touche, ou si un sommet est à moins de r du
+        /// segment (la plus courte distance entre deux convexes disjoints du plan est atteinte en un sommet de l'un). Exact.
+        /// </summary>
+        public bool OverlapsCapsule(long ax, long az, long bx, long bz, long r)
+        {
+            if (Math.Max(ax, bx) + r <= MinX || Math.Min(ax, bx) - r >= MaxX || Math.Max(az, bz) + r <= MinZ || Math.Min(az, bz) - r >= MaxZ) return false;
+            if (OverlapsCircle(ax, az, r) || OverlapsCircle(bx, bz, r) || IntersectsSegment(ax, az, bx, bz)) return true;
+            for (int i = 0; i < _x.Length; i++)
+                if (Planar.SegmentOverlapsCircle(ax, az, bx, bz, _x[i], _z[i], r)) return true;
+            return false;
+        }
+
+        /// <summary>
         /// Sous-lot 11.4b (ligne de vue) : le segment fermé [A, B] touche-t-il le polygone (une extrémité dedans, ou une arête touchée) ?
         /// Exact ; frôler un sommet ou longer une face compte comme toucher.
         /// </summary>

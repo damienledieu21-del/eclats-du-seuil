@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "a2e4f1f55d94d72e7dbc9413e0c2b789913484e561daa629a42954dd4882c7e5")]
-    [InlineData("entrainement_rupture", "815a1420725445a11589155aea3cdd9f168ba62a6f5850c464c8adba3c75ccba")]
-    [InlineData("entrainement_alterations", "f70dc44fdea06d2b30f0d2a4eeecfae5c9cbdcfb588aecda51c61083fbcb2287")]
-    [InlineData("entrainement_declencheurs", "5b9fc2559e40a3b0972c64c3092d191dc428992b448ab491e7321ada49adbdde")]
+    [InlineData("entrainement_garde_parade", "ab85f25fee7231221691321eef993bef1a86afd37d184dea130959f7477cea54")]
+    [InlineData("entrainement_rupture", "d993261b202e71e7333e52d1b93e41b509daf7e4b8eecbbcc4b6a408c0cac04e")]
+    [InlineData("entrainement_alterations", "db0b19781dcff6b2d0b624c3364e709afc7517289723ba44e50eb6af536131c0")]
+    [InlineData("entrainement_declencheurs", "f4fafcb08de14b56930b8bcfe41284834d5cf7734c9c73a35ea3995636f484dd")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -132,7 +132,8 @@ public class TrainingScenarioTests
         // de la classe), corps identique à celui du moteur 0.16.0 ; référence dans Fixtures/reference-0.17.0-contenu-0.6.0. Sous-lot 11.4c :
         // moteur 0.18.0, format 12, règles 0.11.0 (arc du bouclier, réaction des annonces), scénarios en schéma 6 ; sans espace, seul
         // l'en-tête change ; référence dans Fixtures/reference-0.18.0-contenu-0.6.0. Sous-lot 11.4d : moteur 0.19.0, format 13, scénarios en
-        // schéma 7 ; sans arrivée ni départ, seul l'en-tête change ; référence dans Fixtures/reference-0.19.0-contenu-0.6.0.
+        // schéma 7 ; sans arrivée ni départ, seul l'en-tête change ; référence dans Fixtures/reference-0.19.0-contenu-0.6.0. Sous-lot 11.5 :
+        // moteur 0.20.0, format 14, schéma 8 ; sans comportement, seul l'en-tête change ; référence dans Fixtures/reference-0.20.0-contenu-0.6.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

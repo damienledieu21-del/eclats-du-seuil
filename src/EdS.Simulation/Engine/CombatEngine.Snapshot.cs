@@ -26,8 +26,8 @@ namespace EdS.Simulation.Engine
         /// <summary>Revue Codex de la PR #32 (27e tour) : au plus 256 Mi caractères (un combat aux limites par défaut, 100 000 éléments en file, tient largement dedans).</summary>
         public const int MaxTextLength = 1 << 28;
 
-        /// <summary>Version du format de l'instantané (indépendante de celle du journal).</summary>
-        public const int FormatVersion = 1;
+        /// <summary>Version du format de l'instantané (indépendante de celle du journal) : 2 depuis le sous-lot 11.5 (engagement des ennemis).</summary>
+        public const int FormatVersion = 2;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -204,7 +204,8 @@ namespace EdS.Simulation.Engine
                 .Field("parryOpen", f.ParryOpen).Field("parryStartTick", f.ParryStartTick).Field("parryEndTick", f.ParryEndTick)
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
-                .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick);
+                .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
+                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -652,7 +653,8 @@ namespace EdS.Simulation.Engine
         /// bornes ; ni altération, ni garde, ni parade, ni tour annoncé, ni marche chez un mort ou un absent ; altérations uniques, déjà
         /// numérotées, rangées sous la clé de leur cumul, pas encore échues ; place dans l'aire et hors du décor, orientation unitaire ;
         /// éléments de file à leur phase et d'un combattant du bon genre ; commandes à venir toutes en file, au tick de leur instant ;
-        /// réactions en file toutes reportées du tick précédent ; zones verrouillées aux dimensions de leur attaque.
+        /// réactions en file toutes reportées du tick précédent ; zones verrouillées aux dimensions de leur attaque ; sous-lot 11.5 :
+        /// engagement seulement d'un ennemi qui a un comportement, d'emblée sans distance d'engagement.
         /// </summary>
         /// <summary>
         /// Revue Codex de la PR #32 (7e tour) : plafond des compteurs cumulés relus (bilan, entretien, absorption, puissance) : très au-delà
@@ -973,6 +975,26 @@ namespace EdS.Simulation.Engine
                     $"Résonance, charges ou garde de {who} impossibles.");
                 Require(f.GlobalCooldownReadyTick >= 0 && f.RegenGranted >= 0 && f.NextTurn >= 0 && (f.NextAttackTick is null || f.NextAttackTick >= CurrentTick),
                     $"Échéances de {who} impossibles.");
+                // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
+                Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
+                // 16e tour de la PR #33 : un engagé a son tick d'engagement (0 d'emblée sans distance d'engagement, sinon un tick déjà joué).
+                Require(f.Engaged == (f.EngagedTick != null) && (f.EngagedTick is not long engagedAt
+                    || (f.Behavior?.AggroRange is null ? engagedAt == 0 : engagedAt >= (f.ArrivedTick ?? 0) && engagedAt <= CurrentTick - 1)),
+                    $"Tick d'engagement de {who} impossible.");
+                // Revue Codex de la PR #33 (18e tour) : un engagement après le départ a une cause possible à son tick (EngageReason) : coup ou
+                // provocation reçus (mémorisés), allié à comportement déjà engagé, ou ennemi présent qui a pu être à distance d'engagement
+                // (distance actuelle moins les pas que l'un et l'autre ont pu faire depuis).
+                Require(f.EngagedTick is not long engagedTick || f.Behavior?.AggroRange is null || EngagementPossible(f, engagedTick),
+                    $"Engagement de {who} au tick {f.EngagedTick} sans cause possible.");
+                // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
+                // télégraphie) tombe au plus tôt à la fin du combat.
+                Require(!f.AnnouncedToEnd || AnnouncedToEndPossible(f), $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
+                // 17e tour de la PR #33 : une charge réellement résolue vient d'un assaillant dont un tour de charge a pu tomber au plus au tick
+                // précédent (et, pour un ennemi à comportement, après son engagement).
+                Require(!f.Charged || ChargePossible(f), $"Charge de {who} sans tour de charge qui ait pu tomber.");
+                // Revue Codex de la PR #33 (tour 6) : seul un assaillant est provoqué, et une provocation active a été reçue.
+                Require(f.Assailant != null || !f.Taunted, $"Provocation reçue par {who} impossible.");
+                Require(f.Taunted || !f.Statuses.Values.Any(s => s.Definition.IsTaunt), $"Provocation active de {who} non mémorisée.");
                 // 7e tour : régénération accordée au plus ce que son délai permet jusqu'au tick précédent (sans régénération en cours, endurance
                 // pleine, l'ancienne valeur reste sans effet jusqu'à la prochaine dépense, qui la remet à zéro) ; entretien de la garde (reliquat sous
                 // l'unité, payé au plus le dû) ; compteurs du bilan positifs, sous un plafond qui laisse la marge de leurs incréments (vérifiés),
@@ -1092,19 +1114,21 @@ namespace EdS.Simulation.Engine
                     // 15e tour : seul un personnage ou un assaillant marche (un mannequin ne reçoit jamais move).
                     Require(!b.Moving || f.Character != null || f.Assailant != null, $"Marche de {who}, qui ne marche jamais.");
                     // Relecture d'ensemble (4) : une marche suit une commande move passée de ce combattant ; une cible sélectionnée, une commande
-                    // select passée de ce combattant qui la désigne.
+                    // select passée de ce combattant qui la désigne. Sous-lot 11.5 : un ennemi à comportement marche sans commande (placement).
                     // 21e tour : un combattant présent et vivant a vu toutes ses commandes move et stop admises depuis son arrivée (seuls un mort,
                     // un absent ou un mannequin sont refusés ; un stop sans marche ne change rien) : il marche si et seulement si la dernière est
-                    // un move, dans la direction (unitaire) de celui-ci.
+                    // un move, dans la direction (unitaire) de celui-ci (sauf un ennemi à comportement, mené par son placement).
                     // Ordre de traitement : par tick, puis par rang dans le combat complété (les commandes du scénario ne sont pas triées).
                     CombatCommand? lastMove = f.Out ? null : _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop)
                         && c.Actor == f.Id && c.AtMs / _tickMs <= previous && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
                     long moveX = 0, moveZ = 0;
                     bool shouldMove = lastMove is { Action: CombatAction.Move, Direction: { } heading }
                         && Planar.TryNormalize(heading.X.Raw, heading.Z.Raw, out moveX, out moveZ);
-                    Require(f.Out || (b.Moving == shouldMove && (!b.Moving || (b.DirectionX == moveX && b.DirectionZ == moveZ))),
+                    Require(f.Out || f.Behavior != null || (b.Moving == shouldMove && (!b.Moving || (b.DirectionX == moveX && b.DirectionZ == moveZ))),
                         $"Marche de {who} différente de sa dernière commande move ou stop.");
-                    Require(!b.Moving || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous),
+                    // Revue Codex de la PR #33 (13e tour) : un ennemi à comportement pas encore engagé ne marche pas.
+                    Require(f.Behavior is null || f.Engaged || !b.Moving, $"Marche de {who}, pas encore engagé.");
+                    Require(!b.Moving || f.Behavior != null || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous),
                         $"Marche ou sélection de {who} sans commande à son origine.");
                     // 22e tour : la cible sélectionnée est celle de la dernière commande select admise (par tick, puis par rang), null compris.
                     // Une sélection n'est admise que d'un personnage présent et vivant, vers rien ou vers un combattant présent et vivant ; elle
@@ -1425,6 +1449,9 @@ namespace EdS.Simulation.Engine
             long previous = CurrentTick - 1;
             IEnumerable<CombatCommand> past = _setup.Commands.Where(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
             if (GuardTurnPossible(f)) return null;
+            // Sous-lot 11.5 : un ennemi à comportement engagé se tourne vers sa cible, une charge vers son axe ; pas encore engagé, il n'a jamais
+            // bougé (revue Codex de la PR #33, 13e tour).
+            if (FreeMover(f) || f.Behavior != null && f.Engaged) return null;
             var facings = new HashSet<(long X, long Z)>();
             GroundVector start = f.Setup.Placement!.Facing;
             if (Planar.TryNormalize(start.X.Raw, start.Z.Raw, out long sx, out long sz)) facings.Add((sx, sz));
@@ -1449,6 +1476,15 @@ namespace EdS.Simulation.Engine
             long start = Math.Max(from, arrived);
             long end = Math.Min(CurrentTick - 1, Math.Min(g.Result.DeathTick ?? long.MaxValue, g.LeftTick ?? long.MaxValue));
             if (start > end) return 0;
+            // Revue Codex de la PR #33 (13e tour) : un ennemi à comportement marche sans commande (placement), d'au plus un pas par tick,
+            // seulement une fois engagé (l'engagement ne se perd pas) : tous ses ticks présents et vivants s'il l'est, aucun sinon.
+            // 16e tour : depuis son engagement seulement.
+            if (g.Behavior != null)
+            {
+                if (!g.Engaged) return 0;
+                long since = Math.Max(start, g.EngagedTick ?? 0);
+                return since > end ? 0 : checked(end - since + 1);
+            }
             var commands = _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop) && c.Actor == g.Id
                 && c.AtMs / _tickMs >= arrived && c.AtMs / _tickMs <= end).OrderBy(c => c.AtMs / _tickMs).ToList();
             bool moving = false;
@@ -1487,9 +1523,83 @@ namespace EdS.Simulation.Engine
             return checked(2 * Math.Min(step, _maxStep) + 16);
         }
 
+        /// <summary>
+        /// Sous-lot 11.5 : une charge porte un assaillant d'un coup jusqu'au bout de sa bande : sa place et l'axe de ses zones ne sont plus
+        /// bornés par ses pas une fois qu'une de ses charges a pu tomber (un tour déjà joué dont l'attaque est une charge, impact au plus au
+        /// tick précédent ; revue Codex de la PR #33). Revue Codex de la PR #33 (13e tour) : un ennemi à comportement n'est plus libre pour
+        /// autant : ses pas autonomes sont bornés comme les autres (<see cref="MovingTicks"/>). La reprise vérifiée par rejeu
+        /// (<see cref="RestoreVerified"/>) reste exacte dans tous les cas.
+        /// </summary>
+        private bool EngagementPossible(Fighter f, long tick)
+        {
+            if (f.Struck || f.Result.DamageTaken > 0 || f.Taunted) return true;
+            if (_fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null && a.EngagedTick is long at && at <= tick)) return true;
+            if (f.Body is null || FreeMover(f)) return true;
+            long aggro = f.Behavior!.AggroRange!.Value.Raw, own = checked(MovingTicks(f, tick) * StepBound(f));
+            foreach (Fighter g in _fightersById)
+            {
+                if (g.Team == f.Team || g.Body is null || !PresentAtCommands(g, tick)) continue;
+                if (FreeMover(g)) return true;
+                long reach = checked(aggro + own + MovingTicks(g, tick) * StepBound(g));
+                if (EdgeDistance(f.Body, g.Body) <= reach) return true;
+            }
+            return false;
+        }
+
+        private bool FreeMover(Fighter g) => g.Charged;   // 17e tour de la PR #33 : une charge réellement résolue, pas seulement planifiée
+
+        /// <summary>
+        /// Revue Codex de la PR #33 (13e et 14e tours) : un tour déjà joué de <paramref name="f"/> (avant <see cref="Fighter.NextTurn"/>, au plus
+        /// au tick précédent) a-t-il annoncé une attaque dont l'impact tombe au plus tôt à la fin du combat ? Calculé par attaque (rang j modulo
+        /// le nombre d'attaques), sans parcourir l'historique des tours : plus petit tour de ce rang dont le tick est au moins la fin moins la
+        /// télégraphie de l'attaque, comparé au dernier tour joué.
+        /// </summary>
+        private bool ChargePossible(Fighter g)
+        {
+            if (g.Assailant is not { } a) return false;
+            if (g.Behavior != null && g.EngagedTick is null) return false;
+            // Les tours d'une même attaque (rang j modulo le nombre d'attaques) tombent de plus en plus tard : le premier de ce rang qui suit
+            // l'engagement est le plus tôt possible.
+            long engaged = g.Behavior != null ? g.EngagedTick!.Value : long.MinValue, start = TurnTick(g, 0), interval = a.IntervalMs / _tickMs;
+            int n = a.Attacks.Count;
+            for (int j = 0; j < n; j++)
+            {
+                if (!a.Attacks[j].Charge) continue;
+                long first = engaged <= start ? 0 : interval > 0 ? checked((engaged - start + interval - 1) / interval) : long.MaxValue;
+                if (first == long.MaxValue) continue;
+                long turn = checked(first + ((j - first % n) % n + n) % n);
+                if (turn < g.NextTurn && ImpactTickOf(TurnTick(g, turn), a.Attacks[j]) <= CurrentTick - 1) return true;
+            }
+            return false;
+        }
+
+        private bool AnnouncedToEndPossible(Fighter f)
+        {
+            if (f.Assailant is not { } a || f.NextTurn <= 0) return false;
+            // 17e tour de la PR #33 : un ennemi à comportement n'annonce rien avant son engagement (attackSkipped).
+            if (f.Behavior != null && f.EngagedTick is null) return false;
+            long engagedAt = f.Behavior != null ? f.EngagedTick!.Value : long.MinValue;
+            long start = TurnTick(f, 0), interval = a.IntervalMs / _tickMs, previous = CurrentTick - 1;
+            // Dernier tour joué : avant NextTurn, et à un tick au plus le précédent.
+            long last = checked(f.NextTurn - 1);
+            if (previous < start) return false;
+            if (interval > 0) last = Math.Min(last, (previous - start) / interval);
+            int n = a.Attacks.Count;
+            for (int j = 0; j < n; j++)
+            {
+                long threshold = Math.Max(engagedAt, checked(_durationTicks - a.Attacks[j].TelegraphMs / _tickMs));   // tick de tour à partir duquel l'impact tombe après la fin (et après l'engagement)
+                long first = threshold <= start ? 0 : interval > 0 ? checked((threshold - start + interval - 1) / interval) : long.MaxValue;
+                if (first == long.MaxValue) continue;
+                long turn = checked(first + ((j - first % n) % n + n) % n);   // plus petit tour ≥ first de rang j
+                if (turn <= last) return true;
+            }
+            return false;
+        }
+
         /// <summary>(x, z) est-il à portée de marche de <paramref name="g"/> depuis le tick <paramref name="from"/> ?</summary>
         private bool Reachable(Fighter g, long from, long x, long z)
         {
+            if (FreeMover(g)) return true;
             long travel = checked(MovingTicks(g, from) * StepBound(g));
             long dx = checked(x - g.Body!.X), dz = checked(z - g.Body.Z);
             return travel == 0 ? dx == 0 && dz == 0 : (decimal)dx * dx + (decimal)dz * dz <= (decimal)travel * travel;
@@ -1509,8 +1619,8 @@ namespace EdS.Simulation.Engine
             if (impact.Attack.Center == ShapeCenter.Target && zone.Shape is AttackShape.Circle or AttackShape.Persistent)
                 return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && Reachable(g, turnTick, zone.OriginX, zone.OriginZ));
             if (!Reachable(a, turnTick, zone.OriginX, zone.OriginZ)) return false;
-            if (zone.Shape is AttackShape.Circle or AttackShape.Persistent || MovingTicks(a, turnTick) > 0) return true;
-            return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && (MovingTicks(g, turnTick) > 0
+            if (zone.Shape is AttackShape.Circle or AttackShape.Persistent || FreeMover(a) || MovingTicks(a, turnTick) > 0) return true;
+            return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && (FreeMover(g) || MovingTicks(g, turnTick) > 0
                 || (Planar.TryNormalize(checked(g.Body.X - zone.OriginX), checked(g.Body.Z - zone.OriginZ), out long ux, out long uz)
                     ? ux == zone.AxisX && uz == zone.AxisZ
                     : a.Body!.FacingX == zone.AxisX && a.Body.FacingZ == zone.AxisZ)));
@@ -1746,6 +1856,12 @@ namespace EdS.Simulation.Engine
             f.NextAttack = n["nextAttack"].Int;
             if (f.Assailant != null && (f.NextAttack < 0 || f.NextAttack >= f.Assailant.Attacks.Count)) throw new FormatException($"Attaque suivante invalide pour « {f.Id} ».");
             f.NextAttackTick = n["nextAttackTick"].NullableLong;
+            f.Engaged = n["engaged"].Bool;
+            f.EngagedTick = n["engagedTick"].NullableLong;
+            f.Charged = n["charged"].Bool;
+            f.AnnouncedToEnd = n["announcedToEnd"].Bool;
+            f.Struck = n["struck"].Bool;
+            f.Taunted = n["taunted"].Bool;
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),

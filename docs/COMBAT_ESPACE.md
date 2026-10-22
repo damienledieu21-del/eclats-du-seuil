@@ -123,6 +123,8 @@ Comme au 11.1, les journaux des scénarios livrés sans positions sont comparés
 
 **Réalisé au 11.4d** (combattants qui arrivent et partent, instantané d'état ; ARCHITECTURE_MONDE.md, sections 4 et 5) : moteur 0.19.0, journal au format 13, scénarios en schéma 7 (`arrivalMs`, action `leave`), scénario `espace_renfort`. Arrivée au début de son tick, refusée si une emprise solide occupe la place ; arrivée pilotée (`Join`) sans place réservée ; départ en fin de tick ; un absent n'agit pas et n'est pas ciblé ; instantané d'état canonique relu sans rejouer le passé, avec un test d'aller-retour exact sur tous les scénarios livrés. Le moteur spatial du 11.4 est complet. Détail : [MOTEUR.md](MOTEUR.md#arrivées-départs-et-instantané-détat-sous-lot-114d), limites : [LIMITES_LOT_11.md](LIMITES_LOT_11.md#sous-lot-114d--arrivées-départs-et-instantané-détat).
 
+**Réalisé au 11.5** (ennemis dans l'espace) : moteur 0.20.0, journal au format 14, scénarios en schéma 8 (`behavior` : `maxRange`, `minRange`, `aggroRange`, `encircle` ; `charge` d'une bande), scénario `espace_meute`. Cible déterministe (provocation, cible de scénario, sinon le plus proche), engagement à distance ou par la meute, approche, poursuite, recul, encerclement à parts égales, arrêt pendant l'annonce, charge le long de la bande. Détail : [MOTEUR.md](MOTEUR.md#comportements-des-ennemis-sous-lot-115), limites : [LIMITES_LOT_11.md](LIMITES_LOT_11.md#sous-lot-115--comportements-des-ennemis).
+
 ## 9. Preuves prévues
 
 - **Portée et esquive réelles** : au tick près, à la frontière exacte ; propriétés sur positions aléatoires ; en réseau, esquive mesurée de 0 à 200 ms d'un sens (11.7).

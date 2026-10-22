@@ -165,19 +165,24 @@ namespace EdS.Simulation.Engine
             }
             var plans = new MovePlan[n];
             bool any = false;
+            // Sous-lot 11.5 : intentions des ennemis à comportement, d'après les positions du début de la phase.
+            Intention?[] intentions = Intentions(x, z);
             for (int i = 0; i < n; i++)
             {
                 Fighter f = _fightersById[i];
                 Body b = f.Body!;
                 MovePlan plan = new MovePlan { X = b.X, Z = b.Z, FacingX = b.FacingX, FacingZ = b.FacingZ };
-                if (!f.Out && b.Moving)
+                bool moving = intentions[i] is { } intention ? intention.Moving : b.Moving;
+                long directionX = intentions[i]?.DirectionX ?? b.DirectionX, directionZ = intentions[i]?.DirectionZ ?? b.DirectionZ;
+                if (!f.Out && moving)
                 {
                     long step = StepLength(f, i, x, z);
+                    if (intentions[i] is { } bounded) step = Math.Min(step, bounded.MaxStep);   // revue Codex de la PR #33
                     if (step > 0)
                     {
-                        plan.FacingX = b.DirectionX;
-                        plan.FacingZ = b.DirectionZ;
-                        Planar.TryResize(b.DirectionX, b.DirectionZ, step, out long dx, out long dz);
+                        plan.FacingX = directionX;
+                        plan.FacingZ = directionZ;
+                        Planar.TryResize(directionX, directionZ, step, out long dx, out long dz);
                         var (nx, nz) = Travel(i, x, z, dx, dz, step);
                         // Un pas qui n'avance pas d'un huitième de sa longueur est annulé : pas de tremblement contre un angle ou entre
                         // deux contacts (les dégagements successifs y trouvent un point un peu différent à chaque tick).
@@ -216,6 +221,16 @@ namespace EdS.Simulation.Engine
                     plans[i].FacingZ = fz;
                 }
             }
+            // Sous-lot 11.5 : un ennemi à comportement arrêté se tourne vers sa cible (positions de fin de phase).
+            for (int i = 0; i < n; i++)
+            {
+                if (intentions[i] is not { Moving: false, Face: >= 0 } held) continue;
+                if (Planar.TryNormalize(checked(x[held.Face] - x[i]), checked(z[held.Face] - z[i]), out long hx, out long hz))
+                {
+                    plans[i].FacingX = hx;
+                    plans[i].FacingZ = hz;
+                }
+            }
             for (int i = 0; i < n; i++)
             {
                 Body b = _fightersById[i].Body!;
@@ -231,6 +246,12 @@ namespace EdS.Simulation.Engine
             {
                 if (!_fightersById[i].Absent) Charge(1);
                 Body b = _fightersById[i].Body!;
+                if (intentions[i] is { } next)
+                {
+                    b.Moving = next.Moving;
+                    b.DirectionX = next.DirectionX;
+                    b.DirectionZ = next.DirectionZ;
+                }
                 b.X = plans[i].X;
                 b.Z = plans[i].Z;
                 b.FacingX = plans[i].FacingX;

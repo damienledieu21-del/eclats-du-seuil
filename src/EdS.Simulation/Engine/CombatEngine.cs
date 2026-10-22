@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.19.0";
+        public const string Version = "0.20.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -77,10 +77,12 @@ namespace EdS.Simulation.Engine
         /// <c>combatantLeft</c> et <c>leaveCancelled</c> (diagnostics sauf <c>combatantJoined</c> et <c>combatantLeft</c>) ; raisons
         /// <c>actorAbsent</c>, <c>targetAbsent</c>, <c>bearerAbsent</c>, <c>alreadyLeaving</c>, <c>left</c> et <c>sourceLeft</c> ;
         /// <c>presence</c>, <c>arrivedTick</c> et <c>leftTick</c> sur <c>combatantSummary</c> d'un combattant arrivé en cours de route ou parti.
-        /// Un combat sans arrivée ni départ écrit exactement les mêmes lignes qu'au format 12. Un journal d'un autre format est refusé au
-        /// rejeu.
+        /// Un combat sans arrivée ni départ écrit exactement les mêmes lignes qu'au format 12. 14 (sous-lot 11.5) : comportements des
+        /// ennemis. L'en-tête peut porter <c>behavior</c> sur un assaillant et <c>charge</c> sur une attaque ; nouvelles lignes <c>engaged</c>
+        /// et <c>charged</c> (diagnostics) ; raisons <c>notEngaged</c> et <c>noTarget</c> (<c>attackSkipped</c>). Un combat sans comportement
+        /// ni charge écrit exactement les mêmes lignes qu'au format 13. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 13;
+        public const int LogFormatVersion = 14;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -172,6 +174,38 @@ namespace EdS.Simulation.Engine
             public int? LeaveCommand;
 
             public bool Absent => Presence != Presence.Present;
+
+            /// <summary>Sous-lot 11.5 : un ennemi qui a un comportement s'est engagé (il approche et attaque) ; vrai d'emblée sans <c>aggroRange</c>.</summary>
+            public bool Engaged;
+
+            /// <summary>
+            /// Revue Codex de la PR #33 (13e tour) : a annoncé une attaque dont l'impact tombe après la fin du combat (jamais mis en file) ; un
+            /// ennemi à comportement reste arrêté jusqu'à la fin, comme pendant toute annonce.
+            /// </summary>
+            public bool AnnouncedToEnd;
+
+            /// <summary>
+            /// Revue Codex de la PR #33 (16e tour) : tick de l'engagement (0 pour un ennemi engagé d'emblée) ; null tant qu'il ne l'est pas. Ses
+            /// pas autonomes partent de là.
+            /// </summary>
+            public long? EngagedTick;
+
+            /// <summary>Revue Codex de la PR #33 (17e tour) : une charge l'a réellement porté (ligne <c>charged</c>) ; sa place n'est plus bornée par ses pas.</summary>
+            public bool Charged;
+
+            /// <summary>
+            /// Sous-lot 11.5 (revue Codex de la PR #33) : a reçu un impact ou un tick de DOT, même entièrement absorbé ou transféré ; un ennemi
+            /// en attente s'engage alors (raison <c>hit</c>).
+            /// </summary>
+            public bool Struck;
+
+            /// <summary>
+            /// Sous-lot 11.5 (revue Codex de la PR #33, tour 6) : a reçu une provocation, même expirée ou retirée avant la phase d'engagement
+            /// (provocation d'un tick, source partie) ; un ennemi en attente s'engage alors (raison <c>taunt</c>).
+            /// </summary>
+            public bool Taunted;
+
+            public AssailantBehavior? Behavior => Assailant?.Behavior;
 
             /// <summary>Hors du combat : mort ou absent. Remplace « mort » partout où un combattant ne doit plus compter.</summary>
             public bool Out => IsDead || Presence != Presence.Present;
@@ -528,7 +562,9 @@ namespace EdS.Simulation.Engine
         private Fighter CreateFighter(CombatantSetup setup)
         {
             var f = new Fighter { Setup = setup, Random = new Pcg32(unchecked((ulong)_setup.Seed), StreamOf(setup.Id)), Body = CreateBody(setup),
-                Presence = setup.ArrivalMs is null ? Presence.Present : Presence.Pending };
+                Presence = setup.ArrivalMs is null ? Presence.Present : Presence.Pending,
+                Engaged = setup is AssailantSetup { Behavior: { AggroRange: null } } };   // sous-lot 11.5 : sans distance d'engagement, engagé d'emblée
+            if (f.Engaged) f.EngagedTick = 0;
             f.Result.Id = setup.Id;
             f.Result.Team = setup.Team;
             switch (setup)
@@ -586,6 +622,7 @@ namespace EdS.Simulation.Engine
             {
                 RunArrivals(tick);   // sous-lot 11.4d : combattants qui arrivent à ce tick
                 RunExpirations(tick);
+                RunEngagements(tick);   // sous-lot 11.5 : ennemis qui s'engagent
                 List<PendingAction> actions = RunCommands(tick);
                 RunMovement(tick);   // sous-lot 11.4 : combat positionné seulement
                 RunResolution(tick, actions);
@@ -737,8 +774,8 @@ namespace EdS.Simulation.Engine
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
-            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || (target is { Out: true } && UsesTarget(attack))
-                || DirectedReach(assailant, attack, target) != null;
+            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || IdleReason(assailant, attack, target) != null
+                || (target is { Out: true } && UsesTarget(attack)) || DirectedReach(assailant, attack, target) != null;
             // Sous-lot 11.4c : une attaque annoncée (ou une zone) programme son impact, s'il tombe avant la fin.
             bool impact = !skipped && Deferred(attack) && ImpactTickOf(tick, attack) < _durationTicks;
             return Cost.Enqueue.If(checked(tick + setup.IntervalMs / _tickMs) < _durationTicks) + (skipped ? Cost.Line : Observable(TriggerEvent.SkillCast))
@@ -974,6 +1011,13 @@ namespace EdS.Simulation.Engine
                     .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id).Field("reason", blocked));
                 return null;
             }
+            // Sous-lot 11.5 : un ennemi qui a un comportement attend d'être engagé, et n'attaque pas sans cible.
+            if (IdleReason(assailant, attack, target) is { } idle)
+            {
+                EmitDiagnostic(tick, CombatPhase.Commands, "attackSkipped", w => w
+                    .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id).Field("reason", idle));
+                return null;
+            }
             if (target is { Out: true })
             {
                 // Revue Codex de la PR #31 : une zone centrée sur l'assaillant ne dépend pas de sa cible ; elle part sans elle.
@@ -1011,6 +1055,7 @@ namespace EdS.Simulation.Engine
                 Schedule(impactTick, CombatPhase.Resolution, impact);
                 _announced.Add(impact);
             }
+            else assailant.AnnouncedToEnd = true;   // revue Codex de la PR #33 (13e tour) : annonce jusqu'à la fin
             return null;
         }
 
@@ -1019,12 +1064,17 @@ namespace EdS.Simulation.Engine
         /// application ou renouvellement), sinon la cible du scénario. Une provocation est retirée à la mort de sa source : la source
         /// retenue est toujours vivante.
         /// </summary>
-        private Fighter SingleTarget(Fighter assailant)
+        private Fighter? SingleTarget(Fighter assailant)
         {
             StatusInstance? taunt = null;
             foreach (StatusInstance status in assailant.Statuses.Values)
                 if (status.Definition.IsTaunt && (taunt is null || status.AppliedSeq > taunt.AppliedSeq)) taunt = status;
-            return taunt is null ? _byId[assailant.Assailant!.Target!] : _byId[taunt.Source!];
+            if (taunt != null) return _byId[taunt.Source!];
+            AssailantSetup setup = assailant.Assailant!;
+            Fighter? scripted = setup.Target is null ? null : _byId[setup.Target];
+            // Sous-lot 11.5 : un ennemi qui a un comportement vise sa cible de scénario si elle est là et vivante, sinon l'ennemi le plus proche.
+            if (setup.Behavior is null) return scripted;
+            return scripted is { Out: false } ? scripted : Nearest(assailant);
         }
 
         /// <summary>
@@ -1075,7 +1125,8 @@ namespace EdS.Simulation.Engine
         /// faits par <paramref name="afterReserve"/>). Les cibles d'impact étant distinctes, l'impact sur l'une ne change pas le coût prévu
         /// pour les suivantes ; les postures qu'une étape laisse à une cible sont reportées sur les étapes suivantes (Postures).
         /// </summary>
-        private void ResolveAction(long tick, PendingAction action, IReadOnlyList<Fighter> targets, Cost prefix, bool dequeue, System.Action? afterReserve)
+        private void ResolveAction(long tick, PendingAction action, IReadOnlyList<Fighter> targets, Cost prefix, bool dequeue, System.Action? afterReserve,
+            System.Action? afterResolve = null)
         {
             bool damaging = action.Damaging;
             bool resonance = damaging && targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
@@ -1098,6 +1149,7 @@ namespace EdS.Simulation.Engine
             if (resonance) Gain(tick, CombatPhase.Resolution, action.Actor, Resonance, action.Actor.Rules.ResonancePerDirectHit, "directHit", action.Origin);
             foreach (var (application, ownTargets) in own)
                 foreach (Fighter target in ownTargets) Apply(tick, CombatPhase.Resolution, action, application, target, action.Origin);
+            afterResolve?.Invoke();   // sous-lot 11.5 : la charge, après ses coups, dans la même réservation
         }
 
         /// <summary>
@@ -1210,6 +1262,7 @@ namespace EdS.Simulation.Engine
         private void Hit(long tick, CombatPhase phase, PendingAction action, Fighter target)
         {
             Charge(1);
+            target.Struck = true;
             Fighter actor = action.Actor;
             Provenance origin = action.Origin;
             long? parryEid = null, blockEid = null;
@@ -1517,6 +1570,7 @@ namespace EdS.Simulation.Engine
                 return;
             }
             Charge(1);
+            if (definition.IsTaunt && target.Assailant != null) target.Taunted = true;   // revue Codex de la PR #33 (17e tour) : mémoire d'un assaillant seulement
             bool renewed = plan.Outcome == StatusOutcome.Renew;
             StatusInstance status = plan.Existing ?? new StatusInstance { Id = checked(++_lastStatusInstance), Definition = definition, Key = plan.Key, Owner = target };
             if (!renewed)
@@ -2131,6 +2185,7 @@ namespace EdS.Simulation.Engine
             if (!IsCurrent(dot, out StatusInstance? status)) return;
             Charge(1);
             Fighter target = dot.Fighter;
+            target.Struck = true;
             StatusDefinition definition = status.Definition;
             // Sous-lot 8.1 : modificateurs de dégâts subis de la cible, lus sur son état au tick (réduction ≤ 85 %, sans garde ni
             // parade, A12). Sans modificateur, aucune réduction.

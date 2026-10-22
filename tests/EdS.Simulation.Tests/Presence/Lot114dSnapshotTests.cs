@@ -485,7 +485,7 @@ public class Lot114dSnapshotTests
         }
         // Une ligne d'en-tête, une par combattant, une par élément de la file.
         string[] lines = a.Snapshot().Text.Split('\n');
-        Assert.StartsWith("{\"snapshot\":1,\"engineVersion\":\"" + CombatEngine.Version + "\",\"formatVersion\":" + CombatEngine.LogFormatVersion, lines[0]);
+        Assert.StartsWith("{\"snapshot\":" + CombatSnapshot.FormatVersion + ",\"engineVersion\":\"" + CombatEngine.Version + "\",\"formatVersion\":" + CombatEngine.LogFormatVersion, lines[0]);
         Assert.Equal(new[] { "bastion", "allie", "renfort", "assaillant" },
             lines.Skip(1).Take(4).Select(l => l.Substring(12, l.IndexOf('"', 12) - 12)));
         Assert.All(lines.Skip(5), l => Assert.StartsWith("{\"entry\":", l));
@@ -526,7 +526,7 @@ public class Lot114dSnapshotTests
         string past = System.Text.RegularExpressions.Regex.Replace(firstEntry, "\"tick\":[0-9]+", "\"tick\":12");
         Assert.Contains("déjà passé", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(snapshot.Text.Replace(firstEntry, past)),
             NullCombatLog.Instance)).Message);
-        Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":2,\"tick\":0,\"setup\":\"x\"}"));
+        Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":99,\"tick\":0,\"setup\":\"x\"}"));
         Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":1, \"tick\":0}"));
         // 21e tour : une version hors de la plage des entiers 32 bits est un texte illisible, pas un débordement.
         Assert.Throws<FormatException>(() => CombatSnapshot.Parse("{\"snapshot\":9223372036854775807,\"tick\":0,\"setup\":\"x\"}"));
@@ -539,7 +539,7 @@ public class Lot114dSnapshotTests
     }
 
     /// <summary>Le texte avec, dans la première ligne qui commence par <paramref name="prefix"/>, la première occurrence de <paramref name="from"/> remplacée.</summary>
-    private static string Tampered(string text, string prefix, string from, string to)
+    internal static string Tampered(string text, string prefix, string from, string to)
     {
         string[] lines = text.Split('\n');
         int i = Array.FindIndex(lines, l => l.StartsWith(prefix, StringComparison.Ordinal));
@@ -579,7 +579,7 @@ public class Lot114dSnapshotTests
         return string.Join("\n", lines);
     }
 
-    private static void AssertRefused(CombatSetup setup, string text, IEnumerable<(string Prefix, string From, string To, string Message)> cases)
+    internal static void AssertRefused(CombatSetup setup, string text, IEnumerable<(string Prefix, string From, string To, string Message)> cases)
     {
         foreach (var (prefix, from, to, message) in cases)
         {
@@ -629,6 +629,7 @@ public class Lot114dSnapshotTests
             (Bastion, "\"resonance\":0", "\"resonance\":1000000", "Résonance, charges ou garde de « bastion »"),
             (Ogre, "\"resonance\":0", "\"resonance\":1", "Résonance, charges ou garde de « ogre »"),
             (Ogre, "\"guarding\":false", "\"guarding\":true", "Résonance, charges ou garde de « ogre »"),
+            (Ogre, "\"engaged\":false", "\"engaged\":true", "Engagement de « ogre »"),   // sous-lot 11.5 : sans comportement
             // Présence.
             (Bastion, "\"leaveCommand\":null", "\"leaveCommand\":0", "Départ de « bastion » encore demandé"),
             (Ogre, "\"presence\":0", "\"presence\":1", "de « ogre »"),   // refusé par ses tours (9e tour) ou par son arrivée absente

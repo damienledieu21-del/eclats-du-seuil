@@ -69,6 +69,7 @@ namespace EdS.Simulation.Engine
             }
             if (attack.GuardableOverride is { } guardable) w.Field("guardable", guardable);
             if (attack.ParryableOverride is { } parryable) w.Field("parryable", parryable);
+            if (attack.Charge) w.Field("charge", true);   // sous-lot 11.5 (format 14)
         }
 
         /// <summary>Sous-lot 11.4 : point ou direction sous la forme des fichiers de scénario, <c>[x, z]</c>.</summary>
@@ -236,6 +237,15 @@ namespace EdS.Simulation.Engine
                     if (assailant.Triggers.Count > 0) WriteTriggers(w, assailant.Triggers);
                     // Sous-lot 11.1 : PV d'un assaillant mortel, écrits seulement s'il en a (format 9), comme dans le fichier de scénario.
                     if (assailant.Health is long health) w.Field("health", health);
+                    // Sous-lot 11.5 (format 14) : comportement, seulement s'il en a un, sous la forme du fichier de scénario.
+                    if (assailant.Behavior is { } behavior)
+                    {
+                        w.Name("behavior").BeginObject().Field("maxRange", behavior.MaxRange);
+                        if (behavior.MinRange != Domain.Numerics.Fixed.Zero) w.Field("minRange", behavior.MinRange);
+                        if (behavior.AggroRange is { } aggro) w.Field("aggroRange", aggro);
+                        if (behavior.Encircle) w.Field("encircle", true);
+                        w.EndObject();
+                    }
                     break;
             }
             if (c.Placement is { } placement) WritePlacement(w, placement);

@@ -209,7 +209,9 @@ namespace EdS.Simulation.Engine
                 view.Facing = GroundVector.FromRaw(body.FacingX, body.FacingZ);
                 view.Radius = Fixed.FromRaw(body.Radius);
                 view.MoveDirection = body.Moving ? GroundVector.FromRaw(body.DirectionX, body.DirectionZ) : (GroundVector?)null;
-                view.CanMove = !f.Out && (f.Character != null || f.Assailant != null) && !Blocked(StatusBlocks.Movement);   // un mannequin ne marche pas
+                // Un mannequin ne marche pas ; revue Codex de la PR #33 (16e tour) : un ennemi à comportement non plus sur commande (move et stop
+                // lui sont refusés : il marche seul).
+                view.CanMove = !f.Out && (f.Character != null || f.Assailant != null) && f.Behavior is null && !Blocked(StatusBlocks.Movement);
                 view.SelectedTarget = body.Selected?.Id;
             }
             if (f.Assailant is { } assailant)
@@ -227,12 +229,16 @@ namespace EdS.Simulation.Engine
         /// Cible des attaques à cible unique vue au début du tick (<see cref="SingleTarget"/> après les expirations du tick) : la source de
         /// la provocation active la plus récente, sinon la cible du scénario (null si l'assaillant n'a que des attaques de zone).
         /// </summary>
-        private static string? ViewTarget(Fighter assailant, long tick)
+        private string? ViewTarget(Fighter assailant, long tick)
         {
             StatusInstance? taunt = null;
             foreach (StatusInstance status in assailant.Statuses.Values)
                 if (status.Definition.IsTaunt && status.UntilTick > tick && (taunt is null || status.AppliedSeq > taunt.AppliedSeq)) taunt = status;
-            return taunt?.Source ?? assailant.Assailant!.Target;
+            if (taunt?.Source is { } source) return source;
+            AssailantSetup setup = assailant.Assailant!;
+            // Sous-lot 11.5 : cible de scénario là et vivante, sinon l'ennemi le plus proche.
+            if (setup.Behavior is null || (setup.Target != null && !_byId[setup.Target].Out)) return setup.Target;
+            return Nearest(assailant)?.Id;
         }
 
         /// <summary>
@@ -255,7 +261,8 @@ namespace EdS.Simulation.Engine
         {
             if (commands is null) throw new ArgumentNullException(nameof(commands));
             if (IsFinished) throw new InvalidOperationException("Combat terminé : plus aucune commande.");
-            if (_initialEvents < 0) _initialEvents = _setup.InitialEventCount();
+            // Revue Codex de la PR #33 : calculé ici, retenu seulement si le groupe est admis (un refus ne change rien, instantané compris).
+            long initialEvents = _initialEvents >= 0 ? _initialEvents : _setup.InitialEventCount();
             var groupPerActor = new Dictionary<string, int>(StringComparer.Ordinal);
             for (int i = 0; i < commands.Count; i++)
             {
@@ -271,6 +278,10 @@ namespace EdS.Simulation.Engine
                     throw new ArgumentException("Action inconnue.", nameof(commands));
                 if ((command.Action == CombatAction.Move || command.Action == CombatAction.Stop) && _setup.Space is null)
                     throw new ArgumentException("Déplacement dans un combat sans espace (bloc space absent).", nameof(commands));
+                // Revue Codex de la PR #33 : un ennemi qui a un comportement se déplace seul ; le scénario complété refuserait sa marche
+                // pilotée (et l'intention autonome l'écraserait dans la même phase).
+                if ((command.Action == CombatAction.Move || command.Action == CombatAction.Stop) && _byId[command.Actor].Behavior != null)
+                    throw new ArgumentException("Un ennemi qui a un comportement se déplace seul (pas de move ni de stop).", nameof(commands));
                 // Sous-lot 11.4c : sélection seulement dans un combat positionné ; une cible seulement pour une compétence ou une sélection.
                 if (command.Action == CombatAction.Select && _setup.Space is null)
                     throw new ArgumentException("Sélection de cible dans un combat sans espace (bloc space absent).", nameof(commands));
@@ -289,10 +300,11 @@ namespace EdS.Simulation.Engine
                 // Revue Codex de la PR #10 : capacité de la file contrôlée avant toute modification. La file ne dépasse jamais sa capacité,
                 // et le scénario complété garde un nombre d'événements initiaux admissible (une entrée par commande, comme à la construction).
                 // Sous-lot 11.4d : le combat complété compte aussi une entrée par arrivée (Join).
-                if (checked(_queue.Count + i) >= _rules.MaxPendingEvents || checked(_initialEvents + _joined.Count + _submitted.Count + i + 1) > _rules.MaxPendingEvents)
+                if (checked(_queue.Count + i) >= _rules.MaxPendingEvents || checked(initialEvents + _joined.Count + _submitted.Count + i + 1) > _rules.MaxPendingEvents)
                     throw new InvalidOperationException($"File pleine : capacité {_rules.MaxPendingEvents} (combat.limits.maxPendingEvents).");
                 groupPerActor[command.Actor] = earlier + 1;
             }
+            _initialEvents = initialEvents;
             foreach (CombatCommand command in commands)
             {
                 CountSubmitted(command);

@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 7
+      "const": 8
     },
     "kind": {
       "const": "scenario"
@@ -249,6 +249,38 @@
           "minimum": 0.1,
           "maximum": 20,
           "description": "Assaillant d'un combat positionné : vitesse de marche propre, en m/s ; facultative (combat.movement.speed sinon)."
+        },
+        "behavior": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "maxRange"
+          ],
+          "properties": {
+            "maxRange": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Distance maximale à garder avec sa cible, entre les bords (m) : au-delà, l'ennemi approche."
+            },
+            "minRange": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Distance minimale (m) : en deçà, il recule ; 0 par défaut."
+            },
+            "aggroRange": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "description": "Distance d'engagement (m) : il attend qu'un ennemi y entre (ou qu'on le frappe, ou qu'on le provoque) ; absente : engagé dès le départ."
+            },
+            "encircle": {
+              "type": "boolean",
+              "description": "Se répartir autour de la cible avec la meute qui la vise."
+            }
+          },
+          "description": "Sous-lot 11.5 : comportement d'un assaillant d'un combat positionné (il se déplace seul : pas de move ni de stop pour lui ; cible : provocation, sinon sa target présente et vivante, sinon l'ennemi le plus proche)."
         },
         "arrivalMs": {
           "type": "integer",
@@ -589,6 +621,10 @@
         "parryable": {
           "type": "boolean",
           "description": "La parade parfaite s'applique-t-elle ? Défaut : oui pour un coup dirigé ou une attaque historique non imparable ; jamais pour une zone ni une attaque imparable."
+        },
+        "charge": {
+          "type": "boolean",
+          "description": "Sous-lot 11.5 : charge (bande seulement) : à l'impact, après ses coups, l'ennemi fonce le long de l'axe jusqu'au bout, au premier obstacle ou à la première emprise solide."
         }
       }
     },

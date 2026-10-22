@@ -16,8 +16,8 @@ namespace EdS.Data.Tests;
 /// supprimé à la deuxième occurrence dans une chaîne), brûlure posée par réaction à chaque saignement (2, DOT de réaction) et
 /// frappe sur chaque tick de DOT (3, reportée au tick suivant car la phase de résolution est passée). Les assertions métier
 /// ci-dessous ne dépendent pas de l'empreinte du journal ; la comparaison octet par octet se fait contre le journal figé
-/// <c>Fixtures/reference-0.19.0-contenu-0.6.0/entrainement_declencheurs.jsonl</c> (sous-lot 11.4d : moteur 0.19.0, format 13, règles 0.11.0,
-/// Bastion 0.6.0 ; les références 0.9.1 à 0.18.0-contenu-0.6.0 restent figées et refusées au rejeu ; le moteur reproduit les lignes
+/// <c>Fixtures/reference-0.20.0-contenu-0.6.0/entrainement_declencheurs.jsonl</c> (sous-lot 11.5 : moteur 0.20.0, format 14, règles 0.11.0,
+/// Bastion 0.6.0 ; les références 0.9.1 à 0.19.0-contenu-0.6.0 restent figées et refusées au rejeu ; le moteur reproduit les lignes
 /// d'événements des références 0.14.0, avec le contenu figé du 8.4, 0.14.0-contenu-0.4.0 avec celui du 8.5, et 0.14.0-contenu-0.5.0 avec
 /// le contenu livré). Un assaillant n'a pas de puissance : ses frappes et sa brûlure de réaction infligent 0. Sous-lot 8.4 : les assertions
 /// métier (mécanique des déclencheurs du correctif 7.3.1) se font sur le contenu historique du Bastion
@@ -35,8 +35,8 @@ public class Correctif731TriggerScenarioTests
     private const string Brulure = "assailant.assaillant/2@assaillant#0";
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
-    /// <summary>Sous-lot 11.4d : référence du contenu livré (moteur 0.19.0, format 13, Bastion 0.6.0, règles 0.11.0).</summary>
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.19.0-contenu-0.6.0", Name + ".jsonl");
+    /// <summary>Sous-lot 11.5 : référence du contenu livré (moteur 0.20.0, format 14, Bastion 0.6.0, règles 0.11.0).</summary>
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.20.0-contenu-0.6.0", Name + ".jsonl");
 
     /// <summary>
     /// En-tête sans ce qui distingue légitimement deux moteurs (format et version, sous-lot 11.1) ni, sur demande, l'identité des règles
@@ -391,6 +391,24 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((11, "0.17.0", "0.10.0-provisoire"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString(),
             before.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString()));
+    }
+
+    [Fact]
+    public void Reference_du_moteur_0_19_0_refusee_et_corps_reproduit_sans_comportement()
+    {
+        // Sous-lot 11.5 : la référence du sous-lot 11.4d (moteur 0.19.0, format 13) est refusée au rejeu ; le moteur 0.20.0 (format 14) en
+        // reproduit octet par octet les lignes d'événements : sans comportement ni charge, rien ne change. L'en-tête ne diffère que par le
+        // format et la version.
+        string[] frozen = File.ReadAllLines(FrozenPath("0.19.0-contenu-0.6.0"));
+        ReplayOutcome outcome = CombatLogReplayer.Replay(frozen, ShippedData);
+        Assert.Equal(ReplayStatus.Refused, outcome.Status);
+        Assert.Null(outcome.Comparison);
+        Assert.Contains(outcome.Problems, p => p.Contains("0.19.0", StringComparison.Ordinal));
+        string[] current = File.ReadAllLines(FixturePath);
+        Assert.Equal(frozen.Skip(1), current.Skip(1));
+        Assert.Equal(StableHeader(frozen[0]), StableHeader(current[0]));
+        JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
+        Assert.Equal((13, "0.19.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]

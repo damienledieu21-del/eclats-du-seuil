@@ -155,7 +155,7 @@ public class Lot114dPresenceDataTests
         Assert.Equal(3000L, scenario.GetProperty("combatants")[1].GetProperty("arrivalMs").GetInt64());
         Assert.False(scenario.GetProperty("combatants")[0].TryGetProperty("arrivalMs", out _));
         Assert.Contains(scenario.GetProperty("commands").EnumerateArray(), c => c.GetRawText() == "{\"atMs\":5000,\"actor\":\"renfort\",\"action\":\"leave\"}");
-        Assert.Equal(13, JsonDocument.Parse(log.Lines[0]).RootElement.GetProperty("formatVersion").GetInt32());
+        Assert.Equal(CombatEngine.LogFormatVersion, JsonDocument.Parse(log.Lines[0]).RootElement.GetProperty("formatVersion").GetInt32());
     }
 
     [Fact]
@@ -181,10 +181,10 @@ public class Lot114dPresenceDataTests
     [Fact]
     public void Schema_7_et_schema_JSON()
     {
-        Assert.Equal(7, ScenarioValidator.CurrentSchemaVersion);
+        Assert.Equal(8, ScenarioValidator.CurrentSchemaVersion);   // sous-lot 11.5 : 8 (comportements)
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Error(Mutated(root => root["schemaVersion"] = 6)).Path, Error(Mutated(root => root["schemaVersion"] = 6)).Code));
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(7, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(8, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Equal("integer", schema["$defs"]!["combatant"]!["properties"]!["arrivalMs"]!["type"]!.GetValue<string>());
         Assert.Contains("leave", schema["$defs"]!["command"]!["properties"]!["action"]!["enum"]!.AsArray().Select(x => x!.GetValue<string>()));
     }

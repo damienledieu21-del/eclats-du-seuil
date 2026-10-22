@@ -46,9 +46,11 @@ namespace EdS.Data.Scenarios
         /// d'assaillant (<c>shape</c>, <c>telegraphMs</c>, <c>range</c>, <c>radius</c>, <c>angle</c>, <c>width</c>, <c>center</c>,
         /// <c>persistentMs</c>, <c>tickMs</c>, <c>guardable</c>, <c>parryable</c>) et action <c>select</c> (avec <c>target</c> facultatif).
         /// Version 7 (sous-lot 11.4d) : <c>arrivalMs</c> facultatif sur un combattant (arrivée en cours de combat) et action <c>leave</c>
-        /// (départ, sans compétence ni cible). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
+        /// (départ, sans compétence ni cible). Version 8 (sous-lot 11.5) : <c>behavior</c> facultatif sur un assaillant (<c>maxRange</c>
+        /// obligatoire, <c>minRange</c>, <c>aggroRange</c>, <c>encircle</c>) et <c>charge</c> facultatif sur une attaque. Une version antérieure
+        /// est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 7;
+        public const int CurrentSchemaVersion = 8;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -57,7 +59,7 @@ namespace EdS.Data.Scenarios
         {
             ["character"] = new[] { "class", "build" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
-            ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed" },
+            ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior" },
         };
 
         /// <summary>Sous-lot 11.4 : champs de la place de départ, réservés aux combats positionnés (bloc <c>space</c>).</summary>
@@ -122,10 +124,12 @@ namespace EdS.Data.Scenarios
                     var attacks = c.Attacks!.Select(a => new AssailantAttack(a!.Id!, a.RawDamage!.Value, ClassValidator.DamageTypes[a.DamageType!],
                         ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, ClassValidator.Applications(a.Applies!),
                         a.Shape is null ? null : AttackShapeIds.Shapes[a.Shape], a.TelegraphMs ?? 0, a.Range, a.Radius, a.Angle, a.Width,
-                        a.Center is null ? ShapeCenter.Target : AttackShapeIds.Centers[a.Center], a.PersistentMs ?? 0, a.TickMs ?? 0, a.Guardable, a.Parryable));
+                        a.Center is null ? ShapeCenter.Target : AttackShapeIds.Centers[a.Center], a.PersistentMs ?? 0, a.TickMs ?? 0, a.Guardable, a.Parryable,
+                        a.Charge ?? false));
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
-                        Triggers.TriggerShape.Build(c.Triggers), c.Health, placement, c.ArrivalMs));
+                        Triggers.TriggerShape.Build(c.Triggers), c.Health, placement, c.ArrivalMs,
+                        c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false) : null));
                 }
                 else
                 {
@@ -252,10 +256,13 @@ namespace EdS.Data.Scenarios
                     default:
                         Present(c.Armor, path + ".armor", "nombre décimal");
                         Present(c.MagicResistance, path + ".magicResistance", "nombre décimal");
-                        if (!c.Present.Contains("target")) Present(null, path + ".target", "identifiant de la cible, ou null si toutes les attaques sont de zone");
+                        // Revue Codex de la PR #33 : avec un comportement, la cible est facultative (il prend le plus proche).
+                        if (!c.Present.Contains("target") && c.Behavior is null)
+                            Present(null, path + ".target", "identifiant de la cible, ou null si toutes les attaques sont de zone");
                         Present(c.FirstAttackMs, path + ".firstAttackMs", "instant de la première attaque, en millisecondes");
                         Present(c.IntervalMs, path + ".intervalMs", "intervalle entre deux attaques, en millisecondes");
                         Items(c.Attacks, path + ".attacks", "liste des attaques, jouées dans l'ordre puis en boucle", CheckAttack);
+                        if (c.Behavior is { } behavior) Present(behavior.MaxRange, path + ".behavior.maxRange", "distance maximale à la cible, en mètres");   // sous-lot 11.5
                         Triggers.TriggerShape.Check(c.Triggers, path + ".triggers", _report);
                         break;
                 }
