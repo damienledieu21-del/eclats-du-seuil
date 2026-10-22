@@ -583,10 +583,9 @@ public class Lot114dSnapshotTests
             Impact = "{\"entry\":3,", Turn = "{\"entry\":2,";
         AssertRefused(setup, text, new[]
         {
-            // Attaques annoncées : chacune un impact en file, une seule fois, toutes.
-            (Head, "\"announced\":[3]", "\"announced\":[3,3]", "Attaque annoncée 3"),
-            (Head, "\"announced\":[3]", "\"announced\":[2]", "Attaque annoncée 2"),
-            (Head, "\"announced\":[3]", "\"announced\":[]", "Impact en file absent"),
+            // Attaques annoncées (36e tour : rang d'annonce sur la ligne de chaque impact) : rangs de 0 au nombre d'impacts moins un.
+            (Impact, "\"announced\":0", "\"announced\":1", "Rang d'annonce 1"),
+            (Impact, "\"announced\":0", "\"announced\":-1", "Rang d'annonce -1"),
             // Points de vie et mort.
             (Ogre, "\"health\":500", "\"health\":-1", "Points de vie de « ogre »"),
             (Ogre, "\"health\":500", "\"health\":501", "Points de vie de « ogre »"),

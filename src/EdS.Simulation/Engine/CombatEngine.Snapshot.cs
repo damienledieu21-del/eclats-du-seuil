@@ -141,11 +141,10 @@ namespace EdS.Simulation.Engine
             head.EndArray();
             head.Name("queue").BeginObject().Field("started", cursor.Started).Field("tick", cursor.Tick).Field("phase", (long)cursor.Phase)
                 .Field("next", cursor.NextSequence).Field("count", entries.Count).EndObject();
-            var sequenceOf = new Dictionary<Scheduled, long>();
-            foreach (var e in entries) sequenceOf[e.Item] = e.Sequence;
-            head.Name("announced").BeginArray();
-            foreach (AttackImpact impact in _announced) head.Value(sequenceOf[impact]);
-            head.EndArray();
+            // Revue Codex de la PR #32 (36e tour) : le rang d'annonce de chaque impact est écrit sur sa ligne de file (et non plus en liste sur
+            // la ligne d'en-tête, qui pouvait dépasser les bornes du lecteur).
+            var announcedRank = new Dictionary<Scheduled, int>();
+            for (int k = 0; k < _announced.Count; k++) announcedRank[_announced[k]] = k;
             lines.Add(head.EndObject().ToString());
 
             foreach (Fighter f in _fighters) lines.Add(WriteFighter(f));
@@ -153,6 +152,7 @@ namespace EdS.Simulation.Engine
             {
                 var w = new JsonLineWriter().BeginObject().Field("entry", e.Sequence).Field("tick", e.Tick).Field("phase", (long)e.Phase);
                 WriteItem(w, e.Item);
+                if (e.Item is AttackImpact) w.Field("announced", announcedRank[e.Item]);
                 lines.Add(w.EndObject().ToString());
             }
             return CombatSnapshot.Create(CurrentTick, string.Join("\n", lines), setup);
@@ -381,7 +381,7 @@ namespace EdS.Simulation.Engine
             // l'original (son pic de taille est au moins le même). Les deux textes sont comparés numéros de file remplacés par leur rang et
             // pic de file mis de côté (celui reçu au plus celui du rejeu) ; Restore relit ensuite le texte reçu tel quel.
             // Revue Codex de la PR #32 (32e tour) : avant toute copie du texte reçu, sa taille est bornée par celle de l'état rejoué (écrit par
-            // ce moteur) : seuls les numéros de file (et leurs mentions dans announced) et le pic de file peuvent s'écrire avec d'autres
+            // ce moteur) : seuls les numéros de file et le pic de file peuvent s'écrire avec d'autres
             // chiffres, au plus 48 caractères par ligne de plus. Un texte plus grand ne peut pas être cet état.
             string replayedText = replay.Snapshot().Text;
             long replayedLines = 1;
@@ -396,34 +396,29 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Compare deux textes d'instantané, numéros de file (<c>entry</c>, et leurs mentions dans <c>announced</c>) remplacés par leur rang
-        /// dans la file (les éléments sont écrits dans l'ordre de sortie) et pic de file mis de côté (rendus à part) : deux files aux mêmes
-        /// éléments dans le même ordre sont égales. Revue Codex de la PR #32 (33e tour) : comparaison en flux, ligne à ligne et sur place,
-        /// sans découper ni recopier les textes (seule la ligne d'en-tête est copiée, bornée à <see cref="SnapshotNode.MaxLineLength"/>) ;
-        /// seuls les rangs des numéros cités par <c>announced</c> sont retenus. Rend la première ligne qui diffère (numérotée à partir de 1),
-        /// ou null.
+        /// Compare deux textes d'instantané, numéros de file (<c>entry</c>) mis de côté (les éléments sont écrits dans l'ordre de sortie : deux
+        /// files aux mêmes éléments dans le même ordre sont égales) et pic de file rendu à part. Revue Codex de la PR #32 (33e tour) : en flux,
+        /// ligne à ligne et sur place, sans découper ni recopier les textes (seule la ligne d'en-tête est copiée, bornée à
+        /// <see cref="SnapshotNode.MaxLineLength"/>) ; 36e tour : le rang d'annonce d'un impact est sur sa ligne, comparé tel quel. Rend la
+        /// première ligne qui diffère (numérotée à partir de 1), ou null.
         /// </summary>
         private static string? QueueDifference(string expected, string actual, out long expectedPeak, out long actualPeak)
         {
             int pe = 0, pa = 0;
             NextLine(expected, ref pe, out int se, out int le);
             NextLine(actual, ref pa, out int sa, out int la);
-            string headE = MaskHead(expected.Substring(se, le), out expectedPeak, out List<string> announcedE);
-            string headA = MaskHead(actual.Substring(sa, la), out actualPeak, out List<string> announcedA);
+            string headE = MaskHead(expected.Substring(se, le), out expectedPeak);
+            string headA = MaskHead(actual.Substring(sa, la), out actualPeak);
             if (!string.Equals(headE, headA, StringComparison.Ordinal)) return "ligne 1";
-            var wantedE = new HashSet<string>(announcedE, StringComparer.Ordinal);
-            var wantedA = new HashSet<string>(announcedA, StringComparer.Ordinal);
-            var rankE = new Dictionary<string, long>(StringComparer.Ordinal);
-            var rankA = new Dictionary<string, long>(StringComparer.Ordinal);
             const string entry = "{\"entry\":";
-            long line = 1, rank = 0;
+            long line = 1;
             while (true)
             {
                 bool moreE = NextLine(expected, ref pe, out se, out le), moreA = NextLine(actual, ref pa, out sa, out la);
                 line++;
                 if (!moreE || !moreA)
                 {
-                    if (moreE == moreA) break;
+                    if (moreE == moreA) return null;
                     return $"ligne {line}";
                 }
                 int commaE = EntryComma(expected, se, le), commaA = EntryComma(actual, sa, la);
@@ -431,17 +426,9 @@ namespace EdS.Simulation.Engine
                 {
                     int restE = se + le - commaE, restA = sa + la - commaA;
                     if (restE != restA || string.CompareOrdinal(expected, commaE, actual, commaA, restE) != 0) return $"ligne {line}";
-                    string numberE = expected.Substring(se + entry.Length, commaE - se - entry.Length);
-                    string numberA = actual.Substring(sa + entry.Length, commaA - sa - entry.Length);
-                    if (wantedE.Contains(numberE)) rankE[numberE] = rank;
-                    if (wantedA.Contains(numberA)) rankA[numberA] = rank;
-                    rank++;
                 }
                 else if (commaE >= 0 || commaA >= 0 || le != la || string.CompareOrdinal(expected, se, actual, sa, le) != 0) return $"ligne {line}";
             }
-            string Ranked(string number, Dictionary<string, long> ranks) =>
-                ranks.TryGetValue(number, out long r) ? r.ToString(CultureInfo.InvariantCulture) : "?" + number;
-            return announcedE.Select(n => Ranked(n, rankE)).SequenceEqual(announcedA.Select(n => Ranked(n, rankA)), StringComparer.Ordinal) ? null : "ligne 1";
 
             static int EntryComma(string text, int start, int length)
             {
@@ -463,8 +450,8 @@ namespace EdS.Simulation.Engine
             return true;
         }
 
-        /// <summary>En-tête d'instantané, pic de file remplacé par <c>?</c> et liste <c>announced</c> vidée (rendue à part).</summary>
-        private static string MaskHead(string head, out long peakPending, out List<string> announcedList)
+        /// <summary>En-tête d'instantané, pic de file remplacé par <c>?</c> (rendu à part).</summary>
+        private static string MaskHead(string head, out long peakPending)
         {
             const string peak = "\"peakPending\":";
             int p = head.IndexOf(peak, StringComparison.Ordinal), stop = p < 0 ? -1 : head.IndexOf(',', p);
@@ -473,16 +460,6 @@ namespace EdS.Simulation.Engine
             {
                 peakPending = value;
                 head = head.Substring(0, p + peak.Length) + "?" + head.Substring(stop);
-            }
-            announcedList = new List<string>();
-            const string announced = "\"announced\":[";
-            int at = head.IndexOf(announced, StringComparison.Ordinal);
-            int close = at < 0 ? -1 : head.IndexOf(']', at);
-            if (close > at)
-            {
-                string list = head.Substring(at + announced.Length, close - at - announced.Length);
-                if (list.Length > 0) announcedList.AddRange(list.Split(','));
-                head = head.Substring(0, at + announced.Length) + head.Substring(close);
             }
             return head;
         }
@@ -533,7 +510,7 @@ namespace EdS.Simulation.Engine
             _commandCount = head["commandCount"].Int;
             _initialEvents = head["initialEvents"].Long;
             // 27e tour : listes de l'en-tête bornées par le combat avant d'être parcourues.
-            if (head["subscribed"].Items.Count > _subscribed.Length || head["announced"].Items.Count > _rules.MaxPendingEvents)
+            if (head["subscribed"].Items.Count > _subscribed.Length)
                 throw new FormatException("Listes de l'en-tête de l'instantané plus longues que le combat ne le permet.");
             var subscribed = new List<int>(head["subscribed"].Items.Select(k => k.Int));
             // Revue Codex de la PR #32 (34e tour) : les commandes par acteur et par tick à venir ne sont plus écrites (jusqu'à un million de
@@ -560,6 +537,7 @@ namespace EdS.Simulation.Engine
 
             var entries = new List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)>();
             var bySequence = new Dictionary<long, Scheduled>();
+            var announcedRanks = new List<(long Rank, AttackImpact Impact)>();
             for (int i = 0; i < count; i++)
             {
                 SnapshotNode e = NextNode();
@@ -567,6 +545,7 @@ namespace EdS.Simulation.Engine
                 long sequence = e["entry"].Long;
                 entries.Add((e["tick"].Long, Phase(e["phase"].Int), sequence, item));
                 bySequence[sequence] = item;
+                if (item is AttackImpact announcedImpact) announcedRanks.Add((e["announced"].Long, announcedImpact));
             }
             // Revue Codex de la PR #32 : la file est relue telle qu'entre deux ticks. Curseur : jamais demandé avant le premier tick ; sinon
             // à la fin (endOfTick) du tick précédent. Éléments : tous à venir (tick repris ou suivants).
@@ -583,17 +562,16 @@ namespace EdS.Simulation.Engine
             foreach (var key in _commandsPerActorTick.Keys)
                 if (key.Tick < CurrentTick) throw new FormatException($"Commandes de « {key.Actor} » comptées au tick {key.Tick}, déjà passé.");
             _queue.Load(entries, started, cursorTick, cursorPhase, queue["next"].Long);
-            // Revue Codex de la PR #32 (2e tour) : chaque impact en file est une attaque annoncée, citée une seule fois, et inversement.
-            var impacts = new HashSet<long>(entries.Where(x => x.Item is AttackImpact).Select(x => x.Sequence));
-            var announced = new HashSet<long>();
-            foreach (SnapshotNode s in head["announced"].Items)
+            // Revue Codex de la PR #32 (2e tour) : chaque impact en file est une attaque annoncée, une seule fois, et inversement ; 36e tour :
+            // son rang d'annonce est sur sa ligne, les rangs vont exactement de 0 au nombre d'impacts moins un.
+            var byRank = new AttackImpact?[announcedRanks.Count];
+            foreach (var (rank, impact) in announcedRanks)
             {
-                long sequence = s.Long;
-                if (!impacts.Contains(sequence) || !announced.Add(sequence))
-                    throw new FormatException($"Attaque annoncée {sequence} : pas un impact en file, ou citée deux fois.");
-                _announced.Add((AttackImpact)bySequence[sequence]);
+                if (rank < 0 || rank >= byRank.Length || byRank[rank] != null)
+                    throw new FormatException($"Rang d'annonce {rank} : hors de [0, {byRank.Length - 1}] ou en double.");
+                byRank[rank] = impact;
             }
-            if (announced.Count != impacts.Count) throw new FormatException("Impact en file absent des attaques annoncées.");
+            foreach (AttackImpact? impact in byRank) _announced.Add(impact!);
             ValidateLoaded(entries);
         }
 
