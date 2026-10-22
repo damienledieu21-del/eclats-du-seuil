@@ -229,6 +229,57 @@ public class Lot117DuoTests
     }
 
     [Fact]
+    public void Arrivee_dont_le_build_ferait_deborder_l_etat_refusee_sans_toucher_au_combat()
+    {
+        // Revue Codex de la PR #35 (3e tour) : le majorant de l'état courant est vérifié au début avec le build du scénario pour la place
+        // libre ; un arrivant qui choisit un build plus long (plus de talents dans l'en-tête) le revérifie avant d'entrer. Plafond de
+        // commandes choisi pour que le combat commence avec le build court (niveau 10, pour les deux places) et déborde avec un long.
+        const string Short = "build.bastion.niveau_10", Long = "build.bastion.contrecoup";
+        Assert.True(ShippedData.TryGetBuild(Short, out EdS.Data.Builds.ReferenceBuild shortBuild));
+        Assert.True(ShippedData.TryGetBuild(Long, out EdS.Data.Builds.ReferenceBuild longBuild));
+        CombatSetup base_ = Vallons(20_000);
+        CombatSetup With(int maxCommands, EdS.Domain.Builds.CharacterBuild second, bool joinerAtEnd)
+        {
+            var rules = new CombatRules();
+            foreach (System.Reflection.PropertyInfo property in typeof(CombatRules).GetProperties().Where(p => p.CanWrite))
+                property.SetValue(rules, property.GetValue(base_.Combat));
+            typeof(CombatRules).GetProperty(nameof(CombatRules.MaxCommands))!.SetValue(rules, maxCommands);
+            IEnumerable<CombatantSetup> combatants = base_.Combatants.Select(c => c is CharacterSetup ch
+                ? new CharacterSetup(ch.Id, ch.Team, ch.Class, ch.Id == "bastion" ? shortBuild.Build : second, ch.Initiative, ch.Placement,
+                    ch.Id == "bastion2" && joinerAtEnd ? base_.DurationMs : ch.ArrivalMs)
+                : c);
+            return new CombatSetup(base_.Seed, base_.DurationMs, base_.Stats, base_.Damage, base_.Progression, rules, combatants, base_.Commands, base_.Data, base_.Space);
+        }
+        long Bound(int m, EdS.Domain.Builds.CharacterBuild second) => CombatRoom.StateBound(With(m, second, true), 50);
+        int lo = 1, hi = CombatRules.AbsoluteMaxCommands;
+        while (lo < hi)
+        {
+            int mid = lo + (hi - lo + 1) / 2;
+            if (Bound(mid, shortBuild.Build) <= Protocol.MaxServerMessageBytes) lo = mid;
+            else hi = mid - 1;
+        }
+        Assert.True(Bound(lo, longBuild.Build) > Protocol.MaxServerMessageBytes, $"plafond {lo} : le build long tient aussi");
+
+        var game = new Game(With(lo, shortBuild.Build, false), new RoomOptions { JoinDuringCombat = true });
+        NetworkClient a = game.Join("Dam", Short);
+        a.SetReady(true);
+        game.RunUntil(() => a.Status == ClientStatus.Combat, 5);
+        game.Run(0.5);
+        long tick = game.Room.Tick;
+        NetworkClient b = game.Join("Léa", Long);
+        game.Run(0.5);
+        Assert.NotEqual(ClientStatus.Combat, b.Status);
+        Assert.Contains("avec ce build", b.Error ?? "", StringComparison.Ordinal);
+        Assert.Equal(ClientStatus.Combat, a.Status);
+        Assert.Equal(RoomPhase.Combat, game.Room.Phase);
+        Assert.False(Views(a.Combat!).TryGetValue("bastion2", out CombatantView? second) && second.IsPresent);
+        Assert.True(game.Room.Tick > tick, "le combat continue");
+        // Le build court, lui, entre.
+        NetworkClient c = game.Join("Léa", Short);
+        game.RunUntil(() => c.Status == ClientStatus.Combat, 5);
+    }
+
+    [Fact]
     public void Esquive_mesuree_selon_la_latence()
     {
         // `eds reseau --esquive` : sans latence, le joueur parfait esquive tout ; à 200 ms d'un sens, plus rien n'arrive à temps

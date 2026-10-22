@@ -351,6 +351,19 @@ namespace EdS.Net
             CombatEngine engine = _engine!;
             CharacterSetup scenario = _scenario.Combatants.OfType<CharacterSetup>().Single(c => c.Id == seat.Id);
             long atMs = checked(engine.CurrentTick * TickMs);
+            // Revue Codex de la PR #35 (3e tour) : le majorant de l'état courant, vérifié au début du combat avec le build du scénario pour
+            // les places libres, est revérifié avec le build choisi par l'arrivant (et le build du scénario pour les autres places libres),
+            // avant de toucher au moteur : un build plus long qui le dépasserait est refusé ici, au lieu de couper tout le monde à l'envoi.
+            CombatSetup current = engine.CompletedSetup();
+            long lastMs = checked(Math.Max(1, current.DurationMs / TickMs) * TickMs);
+            IEnumerable<CombatantSetup> worst = _scenario.Combatants.OfType<CharacterSetup>()
+                .Where(c => (c.Id == seat.Id || _seats.Any(s => s.Id == c.Id && !s.Taken && !s.InCombat)) && !current.Combatants.Any(k => k.Id == c.Id))
+                .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Id == seat.Id ? build : c.Build, c.Initiative, c.Placement, lastMs));
+            long bound = StateBound(new CombatSetup(current.Seed, current.DurationMs, current.Stats, current.Damage, current.Progression, current.Combat,
+                current.Combatants.Concat(worst), current.Commands, current.Data, current.Space), TickMs);
+            if (bound > Protocol.MaxServerMessageBytes)
+                return $"entrée dans le combat refusée : avec ce build, un état courant pourrait atteindre {bound} octets, au-delà de la limite de " +
+                    $"{Protocol.MaxServerMessageBytes} octets du protocole.";
             var candidates = new List<CombatantPlacement?> { scenario.Placement };
             if (scenario.Placement is { } p && _scenario.Space is { } space)
             {
