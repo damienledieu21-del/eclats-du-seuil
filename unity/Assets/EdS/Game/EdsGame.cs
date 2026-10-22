@@ -740,7 +740,8 @@ namespace EdS.Game
             }
 
             Hud.Player(player);
-            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent));
+            // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
+            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)));
             if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
                 Network ? NetworkBuildName() : BuildName(), _camera.Describe(), _paused, Network);
             if (Network) NetworkScreen.DrawCombat(_net, _shownCombat?.AllyId);

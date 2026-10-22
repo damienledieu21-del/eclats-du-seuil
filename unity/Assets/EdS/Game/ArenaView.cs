@@ -169,6 +169,12 @@ namespace EdS.Game
         /// <summary>Position d'affichage d'un combattant (au-dessus de sa tête), ou null s'il n'est pas affiché.</summary>
         public Vector3? Head(string id) => _bodies.TryGetValue(id, out GameObject body) && body.activeSelf ? body.transform.position + Vector3.up * 1.3f : (Vector3?)null;
 
+        /// <summary>
+        /// Revue Codex de la PR #34 : le corps du combattant est-il affiché (présent et, pour un ennemi d'un combat positionné, en vue entre
+        /// les places glissées) ? La fiche de la cible suit le corps.
+        /// </summary>
+        public bool Shown(string id) => Head(id) != null;
+
         /// <summary>Position au sol d'un combattant affiché, ou null.</summary>
         public Vector3? Ground(string id)
         {
