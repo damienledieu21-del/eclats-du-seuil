@@ -190,6 +190,9 @@ namespace EdS.Simulation.Engine
             /// </summary>
             public long? EngagedTick;
 
+            /// <summary>Revue Codex de la PR #33 (17e tour) : une charge l'a réellement porté (ligne <c>charged</c>) ; sa place n'est plus bornée par ses pas.</summary>
+            public bool Charged;
+
             /// <summary>
             /// Sous-lot 11.5 (revue Codex de la PR #33) : a reçu un impact ou un tick de DOT, même entièrement absorbé ou transféré ; un ennemi
             /// en attente s'engage alors (raison <c>hit</c>).
@@ -1567,7 +1570,7 @@ namespace EdS.Simulation.Engine
                 return;
             }
             Charge(1);
-            if (definition.IsTaunt) target.Taunted = true;
+            if (definition.IsTaunt && target.Assailant != null) target.Taunted = true;   // revue Codex de la PR #33 (17e tour) : mémoire d'un assaillant seulement
             bool renewed = plan.Outcome == StatusOutcome.Renew;
             StatusInstance status = plan.Existing ?? new StatusInstance { Id = checked(++_lastStatusInstance), Definition = definition, Key = plan.Key, Owner = target };
             if (!renewed)

@@ -82,8 +82,18 @@ namespace EdS.Runtime
             if (me is null) throw new ArgumentNullException(nameof(me));
             if (other is null) throw new ArgumentNullException(nameof(other));
             if (obstacles is null || me.Position is not { } a || other.Position is not { } b) return true;
+            return InSightAt(a.X.Raw, a.Z.Raw, b.X.Raw, b.Z.Raw, obstacles);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #34 : ligne de vue entre deux places quelconques (en dix-millièmes de mètre), par exemple les places
+        /// affichées entre deux ticks ; oui sans décor. Même règle que <see cref="InSight(CombatantView, CombatantView, IReadOnlyList{ConvexPolygon}?)"/>.
+        /// </summary>
+        public static bool InSightAt(long ax, long az, long bx, long bz, IReadOnlyList<ConvexPolygon>? obstacles)
+        {
+            if (obstacles is null) return true;
             foreach (ConvexPolygon obstacle in obstacles)
-                if (obstacle.IntersectsSegment(a.X.Raw, a.Z.Raw, b.X.Raw, b.Z.Raw)) return false;
+                if (obstacle.IntersectsSegment(ax, az, bx, bz)) return false;
             return true;
         }
 

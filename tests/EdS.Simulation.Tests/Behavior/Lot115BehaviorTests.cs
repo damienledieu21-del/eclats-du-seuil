@@ -445,6 +445,104 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Provocation_posee_par_un_ennemi_sur_un_personnage_ne_casse_pas_l_instantane()
+    {
+        // Revue Codex de la PR #33 (17e tour) : une attaque d'ennemi peut viser un personnage d'une provocation (altération de catégorie
+        // taunt, admise par le scénario). Elle est refusée (notApplicable, sous-lot 8.3 : une provocation ne vise qu'un assaillant) et seuls
+        // les assaillants mémorisent la provocation reçue (taunted) : l'instantané du Bastion reste relisible.
+        var taunting = new AssailantAttack("defi", 1, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
+            new[] { new StatusApplication("bastionAbsoluteTaunt") }, AttackShape.Target, range: F("5"));
+        var engine = new CombatEngine(Fight(new CombatantSetup[]
+        {
+            EdS.Simulation.Tests.Space.Lot114bRangeTests.Hero("bastion", At("0", "0"), new[] { EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri }),
+            Hunter("loup", At("2", "0"), "5", firstMs: 0, attacks: taunting),
+        }, durationMs: 3000, rules: NoUpkeep), NullCombatLog.Instance);
+        var (_, tlog, _) = Trace(Fight(new CombatantSetup[]
+        {
+            EdS.Simulation.Tests.Space.Lot114bRangeTests.Hero("bastion", At("0", "0"), new[] { EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri }),
+            Hunter("loup", At("2", "0"), "5", firstMs: 0, attacks: taunting),
+        }, durationMs: 3000, rules: NoUpkeep));
+        JsonElement blocked = Lines(tlog, "stateBlocked").First(b => b.Str("combatant") == "bastion");
+        Assert.Equal(("bastionAbsoluteTaunt", "notApplicable", 0L), (blocked.Str("state"), blocked.Str("reason"), blocked.Tick()));
+        while (engine.CurrentTick < 5) engine.Step();
+        string text = engine.Snapshot().Text;
+        string bastion = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        Assert.Contains("\"taunted\":false", bastion, StringComparison.Ordinal);
+        Assert.Equal(text, CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+    }
+
+    [Fact]
+    public void Instantane_une_charge_bloquee_ne_libere_pas_la_place()
+    {
+        // Revue Codex de la PR #33 (17e tour) : un sanglier sans comportement s'étourdit lui-même avec sa charge (chargeBlocked au tick 20) :
+        // il n'a jamais foncé, sa place reste bornée par ses pas (aucun). Seule une charge réellement résolue (charged) la libère.
+        var stunning = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
+            new[] { new StatusApplication("stun", target: ApplicationTarget.Self) }, AttackShape.Line, 1000, range: F("6"), width: F("1"), charge: true);
+        var boar = new AssailantSetup("sanglier", "meute", Fixed.Zero, Fixed.Zero, "bastion", 0, 60_000, new[] { stunning }, placement: At("0", "0"));
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("4", "0")), boar }, durationMs: 3000), NullCombatLog.Instance);
+        while (engine.CurrentTick < 30) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Contains("\"charged\":false", text, StringComparison.Ordinal);
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"sanglier\"", StringComparison.Ordinal));
+        string moved = text.Replace(line, line.Replace("\"x\":0,", "\"x\":-40000,", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.NotEqual(text, moved);
+        Assert.Contains("Place de « sanglier » hors de portée", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(setup, CombatSnapshot.Parse(moved), NullCombatLog.Instance)).Message);
+        // Après une vraie charge, le champ est posé et relu ; une charge annoncée à 3 s ne peut pas être déjà résolue au tick 10.
+        var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+            range: F("6"), width: F("1"), charge: true);
+        var real = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("10", "0")),
+            new AssailantSetup("sanglier", "meute", Fixed.Zero, Fixed.Zero, "bastion", 0, 60_000, new[] { charge }, placement: At("0", "0")) }, durationMs: 3000),
+            NullCombatLog.Instance);
+        while (real.CurrentTick < 25) real.Step();
+        string charged = real.Snapshot().Text;
+        Assert.Contains("\"charged\":true", charged, StringComparison.Ordinal);
+        Assert.Equal(charged, CombatEngine.Restore(real.CompletedSetup(), CombatSnapshot.Parse(charged), NullCombatLog.Instance).Snapshot().Text);
+        var late = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("10", "0")),
+            new AssailantSetup("sanglier", "meute", Fixed.Zero, Fixed.Zero, "bastion", 3000, 60_000, new[] { charge }, placement: At("0", "0")) }, durationMs: 6000),
+            NullCombatLog.Instance);
+        while (late.CurrentTick < 10) late.Step();
+        string early = late.Snapshot().Text;
+        string boarLine = early.Split('\n').First(l => l.StartsWith("{\"fighter\":\"sanglier\"", StringComparison.Ordinal));
+        string forged = early.Replace(boarLine, boarLine.Replace("\"charged\":false", "\"charged\":true", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.NotEqual(early, forged);
+        Assert.Contains("Charge de « sanglier » sans tour de charge", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(late.CompletedSetup(), CombatSnapshot.Parse(forged), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
+    public void Instantane_annonce_terminale_sautee_avant_l_engagement_refusee()
+    {
+        // Revue Codex de la PR #33 (17e tour) : combat de 2 s, tour unique au tick 20 dont l'impact (tick 40) tombe après la fin. Le
+        // guetteur, pas encore engagé, saute ce tour (attackSkipped) puis s'engage quand le Bastion approche : il n'a rien annoncé, un
+        // instantané qui lui prête une annonce jusqu'à la fin (et l'immobiliserait) est refusé.
+        var line = new AssailantAttack("coup", 10, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+            range: F("6"), width: F("1"));
+        CombatSetup Setup() => Fight(new CombatantSetup[] { Player("bastion", At("0", "0")),
+            Hunter("guetteur", At(Distance, "0"), "0.5", aggro: "2", firstMs: 1000, intervalMs: 60_000, attacks: line) },
+            new[] { Move(0, "bastion", "1", "0") }, durationMs: 2000);
+        var (_, log, _) = Trace(Setup());
+        Assert.Contains(Lines(log, "attackSkipped"), a => a.Str("actor") == "guetteur" && a.Tick() == 20);
+        long engagedAt = Lines(log, "engaged").Single(e => e.Str("actor") == "guetteur").Tick();
+        Assert.InRange(engagedAt, 21, 37);
+        var engine = new CombatEngine(Setup(), NullCombatLog.Instance);
+        while (engine.CurrentTick < 38) engine.Step();
+        string text = engine.Snapshot().Text;
+        Assert.Contains("\"engagedTick\":" + engagedAt, text, StringComparison.Ordinal);
+        Assert.Equal(text, CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string guetteur = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"guetteur\"", StringComparison.Ordinal));
+        string forged = text.Replace(guetteur, guetteur.Replace("\"announcedToEnd\":false", "\"announcedToEnd\":true", StringComparison.Ordinal),
+            StringComparison.Ordinal);
+        Assert.NotEqual(text, forged);
+        Assert.Contains("sans tour qui la donne", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(forged), NullCombatLog.Instance)).Message);
+    }
+
+    private const string Distance = "11";
+
+    [Fact]
     public void Une_charge_qui_l_etourdit_lui_meme_ne_fonce_pas()
     {
         // Revue Codex de la PR #33 (tour 8) : la bande pose un étourdissement sur le sanglier lui-même, avec ses coups. L'immobilisation est

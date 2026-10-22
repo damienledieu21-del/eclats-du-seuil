@@ -284,6 +284,47 @@ public class Lot117DuoTests
     }
 
     [Fact]
+    public void Majorant_de_l_etat_compte_les_commandes_du_scenario_telles_quelles()
+    {
+        // Revue Codex de la PR #35 : un scénario peut porter des commandes plus longues que la pire commande pilotée (choisie parmi les
+        // personnages) : ici, un ennemi à l'identifiant très long qui sélectionne un autre ennemi au nom aussi long. Le majorant garde les
+        // commandes du scénario telles quelles et ne compte au pire que les places restantes sous le plafond : il couvre l'en-tête réel,
+        // plafond atteint ou non.
+        string far = "archer_" + new string('x', 400), other = "sanglier_" + new string('y', 400);
+        CombatSetup setup = Vallons(20_000, data =>
+        {
+            foreach (JsonNode? c in data["combatants"]!.AsArray())
+            {
+                if ((string?)c!["id"] == "archer") c["id"] = far;
+                else if ((string?)c!["id"] == "sanglier") c["id"] = other;
+            }
+            var commands = data["commands"]!.AsArray();
+            for (int i = 0; i < 12; i++)
+                commands.Add(new JsonObject { ["atMs"] = 1000 * i, ["actor"] = far, ["action"] = "select", ["target"] = other });
+        });
+        Assert.Equal(12, setup.Commands.Count);
+        CombatSetup Capped(int maxCommands)
+        {
+            var rules = new CombatRules();
+            foreach (System.Reflection.PropertyInfo property in typeof(CombatRules).GetProperties().Where(p => p.CanWrite))
+                property.SetValue(rules, property.GetValue(setup.Combat));
+            typeof(CombatRules).GetProperty(nameof(CombatRules.MaxCommands))!.SetValue(rules, maxCommands);
+            return new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, rules, setup.Combatants, setup.Commands,
+                setup.Data, setup.Space);
+        }
+        string hash = MessageCodec.HashPrefix + new string('f', 16);
+        long Real(CombatSetup s, params CombatCommand[] added) => MessageCodec.Encode(new StateMessage(CombatLogHeader.Write(new CombatSetup(s.Seed,
+            s.DurationMs, s.Stats, s.Damage, s.Progression, s.Combat, s.Combatants, s.Commands.Concat(added).ToList(), s.Data, s.Space)), "-", hash)).Length;
+        // Plafond atteint par le scénario : le majorant est l'en-tête exact.
+        CombatSetup full = Capped(12);
+        Assert.Equal(Real(full), CombatRoom.StateBound(full, 50));
+        // Deux places de plus : au moins l'en-tête avec deux commandes pilotées de plus.
+        CombatSetup more = Capped(14);
+        var piloted = new CombatCommand(19_950, "bastion", new GroundVector(Fixed.Parse("-0.7071"), Fixed.Parse("-0.7071")));
+        Assert.True(CombatRoom.StateBound(more, 50) >= Real(more, piloted, piloted));
+    }
+
+    [Fact]
     public void Esquive_mesuree_selon_la_latence()
     {
         // `eds reseau --esquive` : sans latence, le joueur parfait esquive tout ; à 200 ms d'un sens, plus rien n'arrive à temps
