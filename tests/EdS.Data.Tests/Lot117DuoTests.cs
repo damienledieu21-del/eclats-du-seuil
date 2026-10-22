@@ -189,6 +189,46 @@ public class Lot117DuoTests
     }
 
     [Fact]
+    public void Arrivee_du_scenario_au_meme_tick_reservee()
+    {
+        // Revue Codex de la PR #35 : un loup du scénario arrive, au tick même où le second joueur entre, sur la place de ce dernier.
+        // L'arrivée du loup est déjà en file et passe la première : la salle réserve sa place et le joueur entre à côté (sinon il recevait
+        // la place, puis son arrivée était refusée et il restait absent tout le combat).
+        long JoinTick(CombatSetup scenario, out Game game, out NetworkClient b)
+        {
+            game = new Game(scenario, new RoomOptions { JoinDuringCombat = true });
+            long joined = -1;
+            Game g = game;
+            game.Room.Trace = line => { if (line.Contains("pendant le combat", StringComparison.Ordinal)) joined = g.Room.Tick; };
+            NetworkClient a = game.Join("Dam");
+            a.SetReady(true);
+            game.RunUntil(() => a.Status == ClientStatus.Combat, 5);
+            game.Run(1);
+            b = game.Join("Léa", Gardien);
+            NetworkClient bb = b;
+            game.RunUntil(() => bb.Status == ClientStatus.Combat, 5);
+            game.Run(0.5);
+            return joined;
+        }
+        long tick = JoinTick(Vallons(20_000), out _, out _);
+        Assert.True(tick > 0, "entrée pendant le combat");
+        CombatSetup scenario = Vallons(20_000, data =>
+        {
+            JsonObject wolf = data["combatants"]!.AsArray().Select(n => n!.AsObject()).Single(c => (string)c["id"]! == "loup2");
+            wolf["position"] = new JsonArray(-16, -12);   // la place du scénario de bastion2
+            wolf["arrivalMs"] = tick * 50;
+        });
+        Assert.Equal(tick, JoinTick(scenario, out Game game2, out NetworkClient b2));
+        Dictionary<string, CombatantView> views = Views(b2.Combat!);
+        Assert.True(views["loup2"].IsPresent, "le loup est arrivé");
+        CombatantView me = b2.Combat!.Player().View;
+        Assert.True(me.IsPresent, "le second joueur est entré, à côté");
+        Assert.NotEqual(new GroundVector(Fixed.FromInt(-16), Fixed.FromInt(-12)), me.Position);
+        Assert.Equal(ClientStatus.Combat, b2.Status);
+        Assert.Equal(RoomPhase.Combat, game2.Room.Phase);
+    }
+
+    [Fact]
     public void Esquive_mesuree_selon_la_latence()
     {
         // `eds reseau --esquive` : sans latence, le joueur parfait esquive tout ; à 200 ms d'un sens, plus rien n'arrive à temps

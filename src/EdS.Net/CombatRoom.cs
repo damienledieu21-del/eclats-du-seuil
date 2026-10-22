@@ -342,7 +342,7 @@ namespace EdS.Net
 
         /// <summary>
         /// Sous-lot 11.7 : fait entrer le personnage de <paramref name="seat"/> dans le combat en cours, au tick courant : à sa place du
-        /// scénario si elle est libre (aucune emprise présente et vivante dessus), sinon à la plus proche place libre essayée (anneaux de
+        /// scénario si elle est libre (aucune emprise présente et vivante dessus, ni arrivée déjà en file à ce tick), sinon à la plus proche place libre essayée (anneaux de
         /// 1,5 m, 3 m puis 4,5 m, huit directions), toujours dans l'aire, hors du décor et acceptée par la validation du combat complété.
         /// Rend null si le personnage est entré, la raison sinon.
         /// </summary>
@@ -355,13 +355,20 @@ namespace EdS.Net
             if (scenario.Placement is { } p && _scenario.Space is { } space)
             {
                 IReadOnlyList<ConvexPolygon> obstacles = _obstacles!;
-                var occupied = engine.CombatantIds.Select(engine.View).Where(v => v.IsPresent && !v.IsDead && v.Position != null).ToList();
+                var occupied = engine.CombatantIds.Select(engine.View).Where(v => v.IsPresent && !v.IsDead && v.Position != null)
+                    .Select(v => (Center: v.Position!.Value, Radius: v.Radius!.Value)).ToList();
+                // Revue Codex de la PR #35 : une arrivée déjà en file pour ce tick (combattant du scénario, ou autre joueur entré à ce tick)
+                // passe avant celle-ci et prendrait la place : la sienne est réservée comme une place occupée.
+                foreach (CombatantSetup pending in engine.CompletedSetup().Combatants)
+                    if (pending.ArrivalMs is long arrivalMs && arrivalMs / TickMs == engine.CurrentTick && pending.Placement is { } at
+                        && !engine.View(pending.Id).IsPresent)
+                        occupied.Add((at.Position, at.Radius));
                 bool Free(GroundVector at)
                 {
                     long r = p.Radius.Raw, x = at.X.Raw, z = at.Z.Raw;
                     if (x - r < space.Min.X.Raw || x + r > space.Max.X.Raw || z - r < space.Min.Z.Raw || z + r > space.Max.Z.Raw) return false;
                     if (obstacles.Any(o => o.OverlapsCircle(x, z, r))) return false;
-                    return !occupied.Any(v => Planar.CirclesOverlap(x, z, r, v.Position!.Value.X.Raw, v.Position.Value.Z.Raw, v.Radius!.Value.Raw));
+                    return !occupied.Any(o => Planar.CirclesOverlap(x, z, r, o.Center.X.Raw, o.Center.Z.Raw, o.Radius.Raw));
                 }
                 candidates.Clear();
                 foreach (int ring in new[] { 0, 15_000, 30_000, 45_000 })
