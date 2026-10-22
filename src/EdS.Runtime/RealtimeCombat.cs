@@ -111,8 +111,9 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot 11.6 : direction de marche voulue (repère du sol), ramenée à un cap de <see cref="MoveInput"/> ; sous la zone morte,
-        /// arrêt. Au prochain tick, le pont envoie <c>move</c> (ou <c>stop</c>) seulement si le cap a changé depuis le dernier envoi. Sans
-        /// espace, sans effet.
+        /// arrêt. Au prochain tick, le pont envoie <c>move</c> seulement si la marche du moteur n'est pas déjà ce cap, et <c>stop</c>
+        /// seulement quand un cap tenu est relâché et que le personnage marche encore (revue Codex de la PR #34 : une commande du scénario
+        /// qui a changé la marche est corrigée tant que le joueur tient un cap ; sans saisie, elle garde la main). Sans espace, sans effet.
         /// </summary>
         public void SetMove(double x, double z)
         {
@@ -222,9 +223,10 @@ namespace EdS.Runtime
             int used = 0;
             foreach (CombatCommand[] group in groups)
                 if (TrySubmit(group)) used += group.Length;
-            // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles changent, dans
-            // la place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue
-            // sans remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
+            // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles diffèrent de
+            // celles du moteur (revue Codex de la PR #34 : une commande du scénario peut les avoir changées depuis le dernier envoi), dans la
+            // place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue sans
+            // remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
             _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, _setup.Combat.MaxCommandsPerActorPerTick - used, TrySubmit);
         }
 
