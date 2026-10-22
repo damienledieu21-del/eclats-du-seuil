@@ -33,11 +33,10 @@ namespace EdS.Runtime
         private bool _parryRequested;
         private int? _slotRequested;
 
-        // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage), cap voulu et dernier cap tenu que le moteur a suivi
-        // (null : arrêt ou rien ; il sert à savoir qu'un cap vient d'être relâché).
+        // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage) ; marche voulue et cible sélectionnée (sous-lot 11.7 :
+        // partagées avec la salle du serveur).
         private readonly IReadOnlyList<ConvexPolygon>? _obstacles;
-        private int? _wishedHeading;
-        private int? _sentHeading;
+        private readonly MovementIntent _movement = new MovementIntent();
 
         /// <summary>Ticks simulés au plus par appel à <see cref="Advance"/> : une image très lente ne fait pas rattraper des secondes d'un coup.</summary>
         public int MaxTicksPerAdvance { get; set; } = 5;
@@ -119,14 +118,17 @@ namespace EdS.Runtime
         public void SetMove(double x, double z)
         {
             int? heading = MoveInput.Heading(x, z);
-            _wishedHeading = _setup.Space is null ? null : heading;
+            _movement.Wished = _setup.Space is null ? null : heading;
         }
 
         /// <summary>Cap de marche voulu (null : arrêt), pour les essais et l'affichage.</summary>
-        public int? WishedHeading => _wishedHeading;
+        public int? WishedHeading => _movement.Wished;
 
         /// <summary>Sous-lot 11.6 : attaques annoncées en cours (formes au sol verrouillées, impact à venir), lecture seule.</summary>
         public IReadOnlyList<AnnouncedAttack> Announced() => _engine.Announced();
+
+        /// <summary>Sous-lot 11.7 : joué seul, rien n'est prédit (le moteur tourne sur place).</summary>
+        public (double X, double Z)? PredictedPosition() => null;
 
         /// <summary>Parade parfaite au prochain tick.</summary>
         public void Parry() => _parryRequested = true;
@@ -221,31 +223,11 @@ namespace EdS.Runtime
             int used = 0;
             foreach (CombatCommand[] group in groups)
                 if (TrySubmit(group)) used += group.Length;
-            if (_setup.Space is null || me.IsDead || !me.IsPresent) return;   // un absent n'agit pas : rien ne part avant son arrivée
             // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles diffèrent de
-            // celles du moteur, dans la place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une
-            // cible perdue de vue sans remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
-            // Revue Codex de la PR #34 : la comparaison se fait avec l'état du moteur, pas avec le dernier envoi, car une commande du
-            // scénario (move, stop ou select du joueur) peut l'avoir changé depuis.
-            long atMs = checked(_engine.CurrentTick * _tickMs);
-            int room = _setup.Combat.MaxCommandsPerActorPerTick - used;
-            bool needMove = _wishedHeading is int wished
-                ? me.MoveDirection != MoveInput.EngineDirection(wished)   // cap tenu que le moteur ne suit pas
-                : _sentHeading != null && me.MoveDirection != null;      // cap relâché, personnage encore en marche
-            if (!needMove) _sentHeading = _wishedHeading;
-            if (room > 0 && needMove)
-            {
-                CombatCommand move = _wishedHeading is int heading
-                    ? new CombatCommand(atMs, PlayerId, MoveInput.Direction(heading))
-                    : new CombatCommand(atMs, PlayerId, CombatAction.Stop);
-                if (TrySubmit(new[] { move }))
-                {
-                    _sentHeading = _wishedHeading;
-                    room--;
-                }
-            }
-            if (room > 0 && TargetId != me.SelectedTarget)
-                TrySubmit(new[] { CombatCommand.SelectTarget(atMs, PlayerId, TargetId) });
+            // celles du moteur (revue Codex de la PR #34 : une commande du scénario peut les avoir changées depuis le dernier envoi), dans la
+            // place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue sans
+            // remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
+            _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, _setup.Combat.MaxCommandsPerActorPerTick - used, TrySubmit);
         }
 
         /// <summary>Soumet un groupe tout ou rien ; plafond de commandes ou file pleine : abandonné en entier, le combat continue.</summary>

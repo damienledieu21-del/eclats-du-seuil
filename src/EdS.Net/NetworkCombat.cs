@@ -13,7 +13,7 @@ namespace EdS.Net
     /// <summary>
     /// Sous-lot 10.3 : combat vu par un client réseau. Le moteur local rejoue, tick après tick, les commandes admises par le serveur
     /// (<see cref="TickMessage"/>) et compare l'empreinte de son journal à celle du serveur : à la moindre divergence, ou à un tick manquant,
-    /// il demande l'historique complet et se reconstruit (<see cref="ResyncMessage"/>). Il ne prédit rien : l'affichage montre le dernier
+    /// il demande l'état courant et repart de lui (<see cref="StateMessage"/>, sous-lot 11.7 ; au lot 10, l'historique complet). Il ne prédit rien : l'affichage montre le dernier
     /// tick reçu du serveur, seul juge. Les intentions du joueur (garde, parade, compétence, cible, allié) partent vers le serveur par
     /// <see cref="NetworkClient"/>. Même interface que le combat solo (<see cref="ICombatClient"/>) : le même écran sert aux deux.
     /// </summary>
@@ -28,28 +28,68 @@ namespace EdS.Net
         private bool _parry;
         private int? _slot;
         private bool _inputDirty;
-        private readonly IReadOnlyList<ConvexPolygon>? _obstacles;
+        private IReadOnlyList<ConvexPolygon>? _obstacles;
+
+        // Sous-lot 11.7 : cap de marche voulu (envoyé au serveur quand il change) ; point de départ du moteur local (null : début du combat ;
+        // sinon l'état courant reçu, son instantané et l'empreinte à ce point) pour le reconstruire jusqu'au dernier tick accepté.
+        private readonly MovementPrediction _prediction = new MovementPrediction();
+        private int? _heading;
+        private CombatSnapshot? _baseSnapshot;
+        private string? _baseHash;
 
         // Revue Codex de la PR #20 (tour 4) : commandes des ticks acceptés (empreinte du serveur retrouvée), dans l'ordre, ticks vides
         // exclus ; elles servent à remettre le moteur au dernier tick accepté quand un tick rejoué est refusé.
         private readonly List<TickCommands> _accepted = new List<TickCommands>();
 
-        private NetworkCombat(NetworkClient client, string header, CombatSetup setup, string playerId)
+        private NetworkCombat(NetworkClient client, string header, CombatSetup setup, string playerId, StateMessage? state = null)
         {
             _client = client;
             Header = header;
             Setup = setup;
             PlayerId = playerId;
-            _log = new HashingCombatLog();
-            _engine = new CombatEngine(setup, _log);
+            if (state is null)
+            {
+                _log = new HashingCombatLog();
+                _engine = new CombatEngine(setup, _log);
+            }
+            else
+            {
+                _baseSnapshot = CombatSnapshot.Parse(state.Snapshot);
+                _baseHash = state.Hash;
+                _log = new HashingCombatLog(state.Hash);
+                _engine = CombatEngine.Restore(setup, _baseSnapshot, _log);
+            }
             _feedback = new FeedbackTracker(_engine);
             _obstacles = CombatDisplay.Obstacles(setup.Space);
             TargetId = CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).FirstOrDefault()?.Id;
             AllyId = CombatDisplay.LivingAllies(_engine, PlayerId).FirstOrDefault()?.Id;
         }
 
-        /// <summary>Combat lu dans l'en-tête de journal envoyé par le serveur ; null avec la raison s'il est illisible ou sans la place du joueur.</summary>
-        internal static NetworkCombat? Create(NetworkClient client, GameData data, string header, string playerId, out string? error)
+        /// <summary>
+        /// Combat lu dans l'en-tête de journal envoyé par le serveur ; null avec la raison s'il est illisible ou sans la place du joueur.
+        /// Sous-lot 11.7 : avec <paramref name="state"/>, l'en-tête est celui du combat complété et le moteur reprend à l'état courant reçu,
+        /// sans rien rejouer.
+        /// </summary>
+        internal static NetworkCombat? Create(NetworkClient client, GameData data, string header, string playerId, out string? error, StateMessage? state = null)
+        {
+            CombatSetup? setup = ReadSetup(data, header, playerId, out error);
+            if (setup is null) return null;
+            try
+            {
+                var combat = new NetworkCombat(client, header, setup, playerId, state);
+                error = null;
+                return combat;
+            }
+            catch (Exception e)
+            {
+                // Données reçues : aucune exception ne remonte au jeu.
+                error = (state is null ? "début de combat refusé par le moteur : " : "état courant refusé par le moteur : ") + e.Message;
+                return null;
+            }
+        }
+
+        /// <summary>Combat d'un en-tête reçu, avec la place du joueur et des identifiants compatibles avec le protocole ; null avec la raison sinon.</summary>
+        private static CombatSetup? ReadSetup(GameData data, string header, string playerId, out string? error)
         {
             CombatSetup? setup = CombatLogReplayer.ReadSetup(header, data, out IReadOnlyList<string> problems);
             if (setup is null)
@@ -71,24 +111,17 @@ namespace EdS.Net
                         $"{Protocol.MaxIdLength} caractères parmi a-z, A-Z, 0-9, « . », « _ », « - »).";
                     return null;
                 }
-            try
-            {
-                var combat = new NetworkCombat(client, header, setup, playerId);
-                error = null;
-                return combat;
-            }
-            catch (Exception e)
-            {
-                // Données reçues : aucune exception ne remonte au jeu.
-                error = "début de combat refusé par le moteur : " + e.Message;
-                return null;
-            }
+            error = null;
+            return setup;
         }
 
-        /// <summary>En-tête du journal du serveur (combat de départ, sans commande).</summary>
+        /// <summary>
+        /// En-tête du journal du serveur (combat de départ, sans commande) ; sous-lot 11.7 : pour un joueur arrivé pendant le combat, celui
+        /// du combat complété de l'état courant reçu à son arrivée.
+        /// </summary>
         public string Header { get; }
 
-        public CombatSetup Setup { get; }
+        public CombatSetup Setup { get; private set; }
 
         public string PlayerId { get; }
 
@@ -129,20 +162,26 @@ namespace EdS.Net
         /// <summary>Empreinte du journal local ; égale à celle du serveur au même tick.</summary>
         public string Hash => _log.Hash;
 
-        /// <summary>Historique demandé, en attente : les ticks reçus entre-temps sont ignorés (ils sont dans l'historique).</summary>
+        /// <summary>État courant demandé, en attente : les ticks reçus entre-temps sont ignorés (l'état courant les contient).</summary>
         public bool AwaitingResync { get; private set; }
 
-        /// <summary>Instant où redemander l'historique s'il n'est toujours pas arrivé (ou s'il n'a pas suffi).</summary>
+        /// <summary>Instant où redemander l'état courant s'il n'est toujours pas arrivé (ou s'il n'a pas suffi).</summary>
         internal double ResyncRetryAt { get; private set; }
 
-        /// <summary>Demandes d'historique consécutives restées sans accord d'empreinte.</summary>
+        /// <summary>Demandes d'état courant consécutives restées sans succès.</summary>
         internal int ResyncAttempts { get; private set; }
 
         /// <summary>Divergences détectées (empreinte différente, tick manquant, commande refusée localement).</summary>
         public int Desyncs { get; private set; }
 
-        /// <summary>Reconstructions réussies depuis l'historique du serveur.</summary>
+        /// <summary>Reprises réussies depuis l'état courant du serveur.</summary>
         public int Resyncs { get; private set; }
+
+        /// <summary>
+        /// Sous-lot 11.7 (revue Codex de la PR #35) : change à chaque état courant qui modifie la liste des combattants (un joueur arrivé
+        /// pendant l'affrontement, absent du combat de départ) ; l'affichage recrée alors ses corps.
+        /// </summary>
+        public int RosterVersion { get; private set; }
 
         /// <summary>Dernière divergence détectée.</summary>
         public string? LastDesync { get; private set; }
@@ -241,23 +280,29 @@ namespace EdS.Net
         internal InputMessage? TakeInput()
         {
             if (!_inputDirty || IsFinished) return null;
-            var input = new InputMessage(_guardHeld, _parry, _slot, TargetId, AllyId);
+            var input = new InputMessage(_guardHeld, _parry, _slot, TargetId, AllyId, _heading);
             _parry = false;
             _slot = null;
             _inputDirty = false;
             return input;
         }
 
-        /// <summary>Après une reconnexion : la garde du personnage a été relâchée par le serveur, les demandes ponctuelles sont périmées.</summary>
+        /// <summary>
+        /// Après une reconnexion : la garde et la marche du personnage ont été relâchées par le serveur, les demandes ponctuelles sont
+        /// périmées.
+        /// </summary>
         internal void PrepareReconnect()
         {
             // Revue Codex de la PR #21 : la garde tenue avant la coupure est oubliée (le serveur l'a relâchée) ; le jeu la redonne en
             // lisant la touche une fois le combat repris, au lieu de renvoyer une garde peut-être lâchée pendant l'absence.
             _guardHeld = false;
+            // Revue Codex de la PR #35 : de même, le cap de marche est oublié (le serveur a arrêté le personnage) ; le jeu le redonne en
+            // lisant la saisie, au lieu de renvoyer un cap peut-être lâché pendant la coupure.
+            _heading = null;
             _parry = false;
             _slot = null;
             _inputDirty = true;
-            // Le serveur renvoie l'historique de lui-même au retour ; s'il se perd, il est redemandé après le délai d'attente.
+            // Le serveur renvoie l'état courant de lui-même au retour ; s'il se perd, il est redemandé après le délai d'attente.
             AwaitingResync = true;
             ResyncRetryAt = _client.Now + _client.Options.ResyncTimeoutSeconds;
         }
@@ -296,21 +341,41 @@ namespace EdS.Net
         public CombatSpace? Space => Setup.Space;
 
         /// <summary>
-        /// Sous-lot 11.6 : sans effet en réseau pour l'instant. Le protocole du lot 10 ne transmet pas encore les déplacements : ils
-        /// viennent avec la démonstration réseau (sous-lot 11.7). Le combat en coopération livré n'a pas d'espace.
+        /// Sous-lot 11.7 : direction de marche voulue, ramenée à un cap de <see cref="MoveInput"/> et envoyée au serveur quand elle change
+        /// (le serveur envoie <c>move</c> ou <c>stop</c> au moteur, comme le pont solo). Sans espace, sans effet.
         /// </summary>
         public void SetMove(double x, double z)
         {
-            if (double.IsNaN(x) || double.IsNaN(z) || double.IsInfinity(x) || double.IsInfinity(z))
-                throw new ArgumentOutOfRangeException(nameof(x), "Saisie de déplacement non finie.");
+            int? heading = MoveInput.Heading(x, z);   // saisie non finie refusée, avec ou sans espace
+            if (Space is null) heading = null;
+            if (heading == _heading) return;
+            _heading = heading;
+            _inputDirty = true;
         }
+
+        /// <summary>Cap de marche voulu (null : arrêt).</summary>
+        public int? WishedHeading => _heading;
 
         /// <summary>Sous-lot 11.6 : attaques annoncées du dernier tick reçu du serveur.</summary>
         public IReadOnlyList<AnnouncedAttack> Announced() => _engine.Announced();
 
+        /// <summary>
+        /// Sous-lot 11.7 : place prédite du joueur (<see cref="MovementPrediction"/>), avec pour délai le temps aller-retour lissé : l'état
+        /// affiché a une demi-latence de retard sur le serveur, et une saisie met une autre demi-latence à l'atteindre (le temps écoulé dans
+        /// le tick s'y ajoute) ; null sans espace ou sans place.
+        /// </summary>
+        public (double X, double Z)? PredictedPosition()
+        {
+            if (Setup.Space is not { } space || _obstacles is null) return null;
+            CombatantView me = _engine.View(PlayerId);
+            if (me.Position is null) return null;
+            double lead = _client.SmoothedRttMs is double rtt ? Math.Max(0, rtt / 1000) : 0;
+            return _prediction.Predict(me, space, _obstacles, Setup.Combat, _heading, _client.Now, lead, Math.Min(1, TickProgress) * TickSeconds);
+        }
+
         // --- Commandes du serveur -------------------------------------------------------------------------------------------
 
-        /// <summary>Un tick du serveur ; rend vrai s'il a été rejoué. Un tick déjà connu est ignoré ; un trou ou une divergence demande l'historique.</summary>
+        /// <summary>Un tick du serveur ; rend vrai s'il a été rejoué. Un tick déjà connu est ignoré ; un trou ou une divergence demande l'état courant.</summary>
         internal bool ApplyTick(TickMessage message)
         {
             if (AwaitingResync || _engine.IsFinished) return false;
@@ -328,7 +393,7 @@ namespace EdS.Net
                 return false;
             }
             // Revue Codex de la PR #20 : l'empreinte est vérifiée avant de publier quoi que ce soit du tick. Un tick refusé ne produit ni
-            // retour (pas de dégâts fantômes), ni changement de cible ou d'allié ; l'affichage et les choix attendent l'historique.
+            // retour (pas de dégâts fantômes), ni changement de cible ou d'allié ; l'affichage et les choix attendent l'état courant.
             if (_log.Hash != message.Hash)
             {
                 string local = _log.Hash;
@@ -338,6 +403,7 @@ namespace EdS.Net
                 return false;
             }
             if (message.Commands.Commands.Count > 0) _accepted.Add(message.Commands);
+            ResyncAttempts = 0;   // sous-lot 11.7 : un tick accepté confirme l'état repris
             _feedback.Collect(_engine);
             _sinceTick = 0;
             KeepTargets();
@@ -345,45 +411,49 @@ namespace EdS.Net
         }
 
         /// <summary>
-        /// Historique complet : le combat est reconstruit depuis son début ; rend vrai si l'empreinte finale est celle du serveur, avec le
-        /// nombre de ticks rejoués (revue Codex de la PR #20 : compté dans ce que rend <see cref="NetworkClient.Advance"/>).
+        /// Sous-lot 11.7 : état courant du serveur (arrivée d'un joueur, retour, désynchronisation) : le moteur reprend à cet état sans rien
+        /// rejouer (<see cref="CombatEngine.Restore"/>), le journal reprend à son empreinte, et les retours repartent de là (aucun événement
+        /// passé n'est réattribué). Rend vrai si l'état est accepté ; un état illisible ou incohérent est une divergence (nouvelle demande).
         /// </summary>
-        internal bool ApplyResync(ResyncMessage message, out int replayed)
+        internal bool ApplyState(StateMessage message, GameData data)
         {
-            replayed = 0;
-            var log = new HashingCombatLog();
-            var engine = new CombatEngine(Setup, log);
-            var byTick = new Dictionary<long, TickCommands>();
-            foreach (TickCommands t in message.History) byTick[t.Tick] = t;
-            var empty = Array.Empty<CombatCommand>();
-            int count = 0;
-            // Borné par la durée du combat : un nombre de ticks démesuré s'arrête à la fin du moteur.
-            while (engine.CurrentTick < message.Ticks && !engine.IsFinished)
+            CombatSetup? setup = ReadSetup(data, message.Header, PlayerId, out string? error);
+            if (setup is null)
             {
-                TickCommands commands = byTick.TryGetValue(engine.CurrentTick, out TickCommands? t) ? t : new TickCommands(engine.CurrentTick, empty);
-                if (!Replay(engine, commands, out string? refused))
-                {
-                    ResyncFailed($"historique : commandes du tick {engine.CurrentTick} refusées par le moteur local ({refused}).");
-                    return false;
-                }
-                count = checked(count + 1);
-            }
-            if (engine.CurrentTick != message.Ticks || log.Hash != message.Hash)
-            {
-                ResyncFailed($"historique : tick {engine.CurrentTick} et empreinte {log.Hash}, le serveur annonce le tick {message.Ticks} et {message.Hash}.");
+                ResyncFailed("état courant : " + error);
                 return false;
             }
+            CombatEngine engine;
+            HashingCombatLog log;
+            CombatSnapshot snapshot;
+            try
+            {
+                snapshot = CombatSnapshot.Parse(message.Snapshot);
+                log = new HashingCombatLog(message.Hash);
+                engine = CombatEngine.Restore(setup, snapshot, log);
+            }
+            catch (Exception e)
+            {
+                ResyncFailed("état courant refusé par le moteur local : " + e.Message);
+                return false;
+            }
+            // L'en-tête du journal reste celui du début du combat (s'il est connu) : seul le combat complété change.
+            // Revue Codex de la PR #35 : un joueur arrivé pendant le combat ajoute un combattant ; l'affichage le voit à RosterVersion.
+            if (!_engine.CombatantIds.SequenceEqual(engine.CombatantIds, StringComparer.Ordinal)) RosterVersion++;
+            Setup = setup;
+            _obstacles = CombatDisplay.Obstacles(setup.Space);
             _engine = engine;
             _log = log;
+            _baseSnapshot = snapshot;
+            _baseHash = message.Hash;
             _accepted.Clear();
-            _accepted.AddRange(byTick.Values.Where(t => t.Tick < message.Ticks && t.Commands.Count > 0).OrderBy(t => t.Tick));   // ceux rejoués
             _feedback.Reset(_engine);
+            _prediction.Reset();
             _sinceTick = 0;
             AwaitingResync = false;
-            ResyncAttempts = 0;
+            // L'empreinte reçue ne se vérifie qu'au prochain tick accepté : c'est lui qui remet le compte des essais à zéro.
             Resyncs++;
             KeepTargets();
-            replayed = count;
             return true;
         }
 
@@ -443,11 +513,12 @@ namespace EdS.Net
         /// </summary>
         private void RestoreTo(long tick)
         {
-            var log = new HashingCombatLog();
+            // Sous-lot 11.7 : depuis le début du combat, ou depuis le dernier état courant reçu.
+            HashingCombatLog log = _baseHash is null ? new HashingCombatLog() : new HashingCombatLog(_baseHash);
             CombatEngine engine;
             try
             {
-                engine = new CombatEngine(Setup, log);
+                engine = _baseSnapshot is null ? new CombatEngine(Setup, log) : CombatEngine.Restore(Setup, _baseSnapshot, log);
             }
             catch (Exception)
             {

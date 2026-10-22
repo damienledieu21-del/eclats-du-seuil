@@ -214,17 +214,17 @@ public class Lot114aSpaceDataTests
     }
 
     [Fact]
-    public void Protocole_du_lot_10_ne_transmet_pas_les_deplacements()
+    public void Protocole_2_transmet_les_deplacements()
     {
+        // Sous-lot 11.7 : le protocole 2 transmet la marche (au lot 10, refusée) ; une marche sans direction est refusée à la lecture.
         var move = new TickMessage(new TickCommands(3, new[] { new CombatCommand(150, "bastion", GroundVector.Parse("1", "0")) }), "fnv1a64:0000000000000000");
-        ArgumentException refused = Assert.Throws<ArgumentException>(() => MessageCodec.Encode(move));
-        Assert.Contains("11.7", refused.Message);
-        // Un message bien formé dont la commande devient « move » est refusé à la lecture (action inconnue du protocole).
+        string text = MessageCodec.EncodeText(move);
+        var read = (TickMessage)MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(text), MessageDirection.ServerToClient, out string? error)!;
+        Assert.True(read != null, error);
+        Assert.Equal(GroundVector.Parse("1", "0"), Assert.Single(read!.Commands.Commands).Direction);
         var guard = new TickMessage(new TickCommands(3, new[] { new CombatCommand(150, "bastion", CombatAction.GuardStart) }), "fnv1a64:0000000000000000");
-        string text = MessageCodec.EncodeText(guard);
-        Assert.NotNull(MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(text), MessageDirection.ServerToClient, out _));
-        byte[] forged = System.Text.Encoding.UTF8.GetBytes(text.Replace("\"guardStart\"", "\"move\"", StringComparison.Ordinal));
-        Assert.Null(MessageCodec.Decode(forged, MessageDirection.ServerToClient, out string? error));
-        Assert.Contains("action inconnue", error);
+        byte[] forged = System.Text.Encoding.UTF8.GetBytes(MessageCodec.EncodeText(guard).Replace("\"guardStart\"", "\"move\"", StringComparison.Ordinal));
+        Assert.Null(MessageCodec.Decode(forged, MessageDirection.ServerToClient, out error));
+        Assert.Contains("« direction » obligatoire", error);
     }
 }

@@ -12,6 +12,8 @@ Le cœur est déterministe : mêmes commandes, même combat, octet par octet.
 2. Chaque **client** soumet exactement les mêmes commandes à son propre moteur, simule le même tick et compare l'empreinte. Une différence est une désynchronisation : le client demande l'historique et rejoue tout.
 3. Une **reconnexion** est une resynchronisation : l'historique complet (en-tête et commandes) suffit à reconstruire l'état exact.
 
+**Depuis le sous-lot 11.7 (protocole 2)** : une resynchronisation, un retour ou une arrivée en plein combat passent par l'**état courant** (instantané du moteur, sous-lot 11.4d) au lieu de l'historique : rien n'est rejoué. Les déplacements et la sélection de cible passent par le serveur. Détail : [protocole 2 et démonstration réseau](#protocole-2-et-démonstration-réseau-sous-lot-117).
+
 ## Protocole, version 1 (sous-lot 10.1)
 
 ### Messages encadrés
@@ -37,15 +39,15 @@ Chaque message passe par l'analyseur strict du sous-lot 9.1 (`MessageCodec`) : t
 | `reconnect` | C → S | `protocol`, `token` | retour d'un joueur déconnecté |
 | `build` | C → S | `build` | changement de build en salle d'attente |
 | `ready` | C → S | `ready` | prêt ou non |
-| `input` | C → S | `guard`, `parry`, `slot` (0 à 4 ou null), `target`, `ally` (ou null) | intentions pour le prochain tick |
+| `input` | C → S | `guard`, `parry`, `slot` (0 à 4 ou null), `target`, `ally` (ou null) ; protocole 2 : `heading` (0 à 63 ou null) | intentions pour le prochain tick |
 | `ping` | C → S | `clientTime` | mesure du temps aller-retour |
-| `resyncRequest` | C → S | — | demande de l'historique |
+| `resyncRequest` | C → S | — | demande de l'historique (protocole 2 : de l'état courant) |
 | `bye` | C → S | — | départ volontaire |
 | `welcome` | S → C | `protocol`, `seat`, `token`, `tickMs` | place attribuée (identifiant du personnage), jeton de reconnexion |
 | `lobby` | S → C | `phase` (`lobby`, `combat`, `ended`), `seats` [{ `id`, `player`, `connected`, `ready`, `build` }] | état de la salle à chaque changement |
 | `start` | S → C | `header` | ligne d'en-tête du journal : le client reconstruit le combat avec ses données, après les contrôles d'identité d'un rejeu |
 | `tick` | S → C | `tick`, `commands` [{ `atMs`, `actor`, `action`, `skill`, `target` }], `hash` | commandes admises d'un tick et empreinte |
-| `resync` | S → C | `header`, `ticks`, `history` [{ `tick`, `commands` }], `hash` | historique complet (ticks strictement croissants, inférieurs à `ticks`) |
+| `resync` | S → C | `header`, `ticks`, `history` [{ `tick`, `commands` }], `hash` | historique complet (ticks strictement croissants, inférieurs à `ticks`) ; **protocole 1 seulement**, remplacé par `state` |
 | `rejected` | S → C | `reason` | intention refusée à l'admission (rien n'a été soumis) |
 | `pong` | S → C | `clientTime` | réponse au ping |
 | `end` | S → C | `tick`, `reason` | fin du combat |
@@ -57,11 +59,11 @@ Exemple : `{"type":"input","guard":true,"parry":false,"slot":2,"target":"loup_a"
 
 `CombatRoom` est une salle de combat autoritaire, animée par des appels à `Advance(secondes)` : aucun fil ni horloge dans la salle, ce qui la rend testable en temps virtuel. `RoomHost` l'anime en temps réel sur un fil, avec une écoute TCP ; c'est ce qu'utilisent le serveur dédié et l'hôte Unity.
 
-- **Places** : une par personnage du scénario, dans l'ordre (`scenarios/coop/duo_meute.json` : `bastion` et `bastion2` contre deux loups et un hurleur). Un `hello` prend la première place libre ; la salle pleine, un protocole autre que 1 ou un build invalide sont refusés (`error`, puis fermeture). Le build demandé (référence et rangs de talents) est résolu et jugé par `BuildValidator` (`BuildChoices`) ; un build composé s'affiche « Personnalisé (Rempart) ».
+- **Places** : une par personnage du scénario, dans l'ordre (`scenarios/coop/duo_meute.json` : `bastion` et `bastion2` contre deux loups et un hurleur). Un `hello` prend la première place libre ; la salle pleine, un autre protocole que le sien (1 au lot 10, 2 depuis le sous-lot 11.7) ou un build invalide sont refusés (`error`, puis fermeture). Le build demandé (référence et rangs de talents) est résolu et jugé par `BuildValidator` (`BuildChoices`) ; un build composé s'affiche « Personnalisé (Rempart) ».
 - **Salle d'attente** : `build` change de build (prêt remis à faux), `ready` se déclare prêt. Le combat commence quand toutes les places sont prises, connectées et prêtes ; le serveur envoie à chacun l'en-tête du journal (`start`). On ne rejoint pas un combat commencé.
 - **Combat** : à chaque tick (50 ms), pour chaque place dans l'ordre, les intentions deviennent des groupes de commandes (`IntentionPlanner`, partagé avec le pont temps réel du 9.2 : quitter la garde et lancer forment un groupe) soumis tout ou rien ; un groupe refusé à l'admission vaut un `rejected` au joueur et rien n'est soumis. Une compétence visiblement indisponible (recharge, ressources, contrôle, aucune cible : `IntentionPlanner.Unavailable`, le même contrôle que le pont temps réel) n'est pas planifiée : refus motivé, et la garde n'est pas quittée, comme en solo. Puis le moteur simule le tick et chaque joueur reçoit `tick` (commandes admises, empreinte FNV-1a sur 64 bits du journal à ce point, `HashingCombatLog`). Cibles : celle choisie par le joueur si c'est un ennemi vivant (un allié vivant pour un soutien), sinon le premier ennemi vivant (l'autre joueur pour un soutien, soi-même à défaut).
 - **Déconnexion** (décision du 19/10/2026) : le combat continue ; la place reste réservée, le personnage est inactif (garde relâchée au tick suivant). Le joueur a 30 s pour revenir avec son jeton (`reconnect`) : il reçoit `welcome` puis l'historique complet (`resync`). Au-delà, la place est abandonnée. Un départ volontaire (`bye`) abandonne la place tout de suite. Si plus personne n'est présent ni attendu, le combat s'arrête.
-- **Protections** : présentation dans les 5 s, 60 messages par seconde (rafale de 120), un historique par seconde au plus, 16 connexions au plus, jetons de 128 bits comparés en temps constant. Les délais (présentation, retour en 30 s) sont appliqués au nouvel instant avant de lire les messages en attente : un message lu après l'échéance est refusé. Avant de commencer, la salle calcule un majorant de la taille de l'historique (plafond de commandes des règles, identifiants les plus longs) ; s'il dépasse les 4 Mio d'un message du serveur, le combat est refusé avec la raison plutôt que de couper un joueur à son retour (avec les règles livrées, il en est loin).
+- **Protections** : présentation dans les 5 s, 60 messages par seconde (rafale de 120), un historique par seconde au plus, 16 connexions au plus, jetons de 128 bits comparés en temps constant. Les délais (présentation, retour en 30 s) sont appliqués au nouvel instant avant de lire les messages en attente : un message lu après l'échéance est refusé. Avant de commencer, la salle calcule un majorant de la taille de l'historique (commandes du scénario telles quelles, puis le reste du plafond de commandes des règles avec les identifiants les plus longs des personnages) ; s'il dépasse les 4 Mio d'un message du serveur, le combat est refusé avec la raison plutôt que de couper un joueur à son retour (avec les règles livrées, il en est loin).
 - **Fin** : `end` (dernier tick simulé, raison), retour en salle d'attente (`ended`) ; une nouvelle partie commence quand tous sont de nouveau prêts. Le journal rejouable du combat (scénario complété des commandes admises, simulé de nouveau) est disponible (`LastJournal`, `CombatEnded`) ; ses lignes de combat sont exactement celles que les clients ont vérifiées. Le serveur dédié l'écrit avec `JournalFolder` (`combat-001.jsonl`, `combat-002.jsonl`…) : jamais d'écrasement, un serveur relancé sur le même dossier continue la numérotation, une erreur d'écriture est signalée sans arrêter la salle.
 - **Arrêt de l'hôte** : `RoomHost.Dispose` arrête la boucle et l'écoute, puis ferme les connexions des joueurs avec la raison (`error` « serveur arrêté. ») ; aucune connexion ni fil de lecture ne reste ouvert.
 
@@ -105,6 +107,35 @@ L'affichage a environ une latence de retard sur le serveur, et une parade met un
 - L'équipier robot (`BotPlayer`) pare sur le même affichage : il en profite aussi. Son seuil de parade passe de 0,15 à 0,1 s (le moment qui réussit en solo) : avec 0,15 s, il pressait trop tôt et ne réussissait qu'à la faveur du retard du réseau. Réseau simulé, 100 ms d'un sens : environ 37 parades parfaites pour 13 ratées avec l'avance, aucune parfaite pour 44 ratées sans.
 - Unity : le bandeau du combat en réseau affiche l'avance (« télégraphie avancée de … ms ») à côté du temps aller-retour.
 - Mesures : `eds reseau` mesure la parade « anticipée » avec cette télégraphie (le joueur scripté pare à vue, le client avance l'affichage) et la parade « à vue » sans elle ([RAPPORT_10_5.md](RAPPORT_10_5.md)).
+
+## Protocole 2 et démonstration réseau (sous-lot 11.7)
+
+Objet : [PLAN_LOT_11.md](PLAN_LOT_11.md), 11.7 (L11-D8). Le protocole passe à la **version 2** ; un client ou un serveur du protocole 1 est refusé à la présentation (« protocole 1 non pris en charge »).
+
+| Changement | Détail |
+|---|---|
+| `input.heading` | cap de marche voulu, de 0 à 63 (un des 64 caps de `MoveInput`, sous-lot 11.6), ou null : arrêt. Champ obligatoire. |
+| `tick.commands` | toutes les actions du moteur : `move` (avec `direction` [x, z], composantes dans [−1, 1] non toutes deux nulles), `stop`, `select` (avec `target`, ou null : sélection vidée), `leave`, en plus de la garde, de la parade et des compétences. |
+| `state` (remplace `resync`) | `header` (en-tête du combat **complété** jusqu'à ce tick : arrivées comprises), `snapshot` (instantané du moteur, lignes JSON canoniques), `hash` (empreinte du journal du serveur à ce point). |
+
+- **Marche et sélection par le serveur** : la salle tient, pour chaque place, la marche voulue (`MovementIntent`, partagé avec le pont solo) ; `move`, `stop` et `select` ne partent au moteur que quand la marche ou la sélection du moteur diffère de celle voulue (revue Codex de la PR #34 : comparée à l'état du moteur, pas au dernier envoi), dans la place laissée par le plafond de commandes du tick. Un joueur seul et un joueur en réseau produisent exactement les mêmes commandes. La cible d'un joueur est celle qu'il a choisie si elle est présente et vivante ; sinon le premier ennemi présent, vivant et en vue de lui (règle de ligne de vue du moteur) ; sinon aucune (sélection vidée).
+- **État courant au lieu de l'historique** : à une divergence, un retour après une coupure ou une arrivée, le serveur envoie `state`. Le client reconstruit le combat complété, reprend le moteur à l'instantané (`CombatEngine.Restore`, contrôlé par le moteur) et repart de l'empreinte reçue (`HashingCombatLog` amorcé par elle) ; les retours affichés repartent de là : **aucun événement passé n'est rejoué ni réattribué**. L'empreinte reçue ne se vérifie qu'au tick suivant ; après trois demandes sans tick accepté, le client abandonne (« désynchronisation persistante après 3 demandes d'état courant »). L'en-tête de début reste celui du client (l'empreinte finale se compare comme avant).
+- **Arrivée pendant l'affrontement** (`RoomOptions.JoinDuringCombat`) : le combat commence dès que les joueurs présents sont prêts ; les places libres restent hors du combat de départ. Un joueur qui arrive pendant le combat entre au tick courant (`CombatEngine.Join`) à la place de son personnage dans le scénario si elle est libre (aucune emprise présente et vivante, ni arrivée déjà en file à ce tick : revue Codex de la PR #35), sinon à la plus proche place libre essayée (anneaux de 1,5 m, 3 m et 4,5 m, huit directions, dans l'aire et hors du décor). Tout le monde reçoit alors l'état courant, qui contient le nouveau venu. Le majorant de taille d'un état compte les personnages des places libres. Revue Codex de la PR #35 (3e tour) : à l'arrivée, il est revérifié avec le build choisi par l'arrivant, avant de toucher au moteur ; un build qui le ferait dépasser est refusé (« entrée dans le combat refusée : avec ce build… »). 4e tour : le majorant compte aussi l'instantané courant (au début, celui de départ), et l'état réel qui suivrait l'arrivée est mesuré sur une copie du moteur avant de toucher au vrai ; la croissance de l'instantané en cours de combat (file d'événements) reste contrôlée à l'envoi, qui ferme la connexion au-delà de la limite.
+- **Prédiction du déplacement local** (`MovementPrediction`, affichage seulement) : quand le serveur applique déjà la marche voulue, le personnage est montré à la place du dernier tick avancée du temps écoulé dans le tick et du temps aller-retour lissé (ce dernier compté au plus 0,5 s) ; quand la saisie vient de changer, la place montrée part de la dernière et suit la saisie aussitôt (à l'arrêt, elle ne bouge plus) ; si le serveur ne suit pas en 1 s, la prédiction est abandonnée. Elle s'arrête au bord de l'aire et avant le décor ; Unity la rejoint en douceur.
+- **Unity** : deux entrées du menu réseau, « Héberger les Vallons à deux » (`scenarios/coop/vallons_duo.json`, l'autre joueur peut arriver en plein combat) et « Héberger les Vallons, robot qui arrive après 10 s de combat » (essai seul d'une arrivée ; le délai part du début du combat, `NetworkSession.BotArrivesIn`). Quand un état courant ajoute un combattant (`NetworkCombat.RosterVersion`), l'arène est repeuplée : l'arrivant a son corps chez l'autre joueur. Mode d'emploi : [UNITY.md](UNITY.md).
+- **Esquive selon la latence** (`eds reseau --esquive`, scénario `coop/esquive_duo`) : deux géants écrasent tour à tour la place de leur cible (cercle de 2 m annoncé 900 ms avant) ; le joueur scripté sort du cercle dès qu'il voit l'annonce (après 0 ou 250 ms de réaction), le serveur juge l'impact. Résultats ci-dessous.
+
+### Esquive mesurée (`eds reseau --esquive`, 60 s par ligne, 39 impacts)
+
+| Latence d'un sens | Réaction 0 ms | Réaction 250 ms |
+|---:|---:|---:|
+| 0 ms | 100 % | 100 % |
+| 50 ms | 100 % | 100 % |
+| 100 ms | 100 % | 28 % |
+| 150 ms | 97 % | 26 % |
+| 200 ms | 33 % | 18 % |
+
+Lecture : sortir d'un cercle de 2 m demande 0,5 s de marche ; sur les 900 ms de l'annonce, il reste environ 400 ms pour la réaction, l'aller-retour et le tick. Un joueur parfait esquive jusqu'à 150 ms d'un sens ; avec une réaction humaine de 250 ms, jusqu'à 50 ms (le réseau local et une bonne connexion). Au-delà, il faut des annonces plus longues ou des zones plus petites : c'est une donnée de réglage des attaques (`telegraphMs`, rayon), à trancher avec l'essai (11.9). Les empreintes des deux clients sont identiques à celles du serveur dans toutes les mesures, sans divergence.
 
 ## Réseau simulé
 

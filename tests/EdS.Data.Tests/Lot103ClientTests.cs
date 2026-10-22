@@ -17,8 +17,8 @@ namespace EdS.Data.Tests;
 [Trait("Category", "Network")]
 public class Lot103ClientTests
 {
-    private const string Rempart = "build.bastion.rempart";
-    private const string Gardien = "build.bastion.gardien";
+    internal const string Rempart = "build.bastion.rempart";
+    internal const string Gardien = "build.bastion.gardien";
     private const string BarrierSkill = "skill.bastion.barriere_d_acier";
 
     private static CombatSetup Duo => ScenarioJsonReader.ReadFile(ScenarioPath("coop/duo_meute"), ShippedData).Setup!;
@@ -39,7 +39,7 @@ public class Lot103ClientTests
     }
 
     /// <summary>Connexion intermédiaire qui modifie, retire ou remplace les messages du serveur avant le client (pannes provoquées).</summary>
-    private sealed class Tampering : INetConnection
+    internal sealed class Tampering : INetConnection
     {
         private readonly INetConnection _inner;
         private readonly Queue<byte[]> _injected = new();
@@ -84,7 +84,7 @@ public class Lot103ClientTests
     }
 
     /// <summary>Réseau simulé, salle et clients avancés ensemble par pas de temps virtuel.</summary>
-    private sealed class Game
+    internal sealed class Game
     {
         private int _tokens;
 
@@ -167,14 +167,14 @@ public class Lot103ClientTests
     }
 
     /// <summary>Le journal joué par le serveur, avec l'en-tête vu par le client : son empreinte est celle du client à la fin.</summary>
-    private static string ServerHash(Game game, NetworkCombat combat)
+    internal static string ServerHash(Game game, NetworkCombat combat)
     {
         Assert.NotNull(game.Room.LastJournal);
         return HashingCombatLog.Of(new[] { combat.Header }.Concat(game.Room.LastJournal!.Skip(1)));
     }
 
     /// <summary>Commandes admises par le serveur pendant le dernier combat (en-tête du journal rejouable).</summary>
-    private static IReadOnlyList<CombatCommand> ServerCommands(Game game)
+    internal static IReadOnlyList<CombatCommand> ServerCommands(Game game)
     {
         CombatSetup? setup = CombatLogReplayer.ReadSetup(game.Room.LastJournal![0], ShippedData, out IReadOnlyList<string> problems);
         Assert.True(setup != null, string.Join(" ; ", problems));
@@ -507,8 +507,10 @@ public class Lot103ClientTests
     }
 
     [Fact]
-    public void Historique_fausse_le_client_abandonne_apres_trois_essais()
+    public void Etat_courant_fausse_le_client_abandonne_apres_trois_essais()
     {
+        // Sous-lot 11.7 : l'empreinte d'un état courant ne se vérifie qu'au tick suivant ; un état faussé est repris, puis le tick suivant
+        // diverge ; après trois essais sans tick accepté, le client abandonne.
         var game = new Game(Calm(20_000));
         int ticks = 0;
         (NetworkClient a, NetworkClient b) = game.Start(wrapA: inner => new Tampering(inner)
@@ -516,14 +518,17 @@ public class Lot103ClientTests
             Alter = m => m switch
             {
                 TickMessage t when ++ticks == 10 => new TickMessage(t.Commands, "fnv1a64:0000000000000000"),
-                ResyncMessage r => new ResyncMessage(r.Header, r.Ticks, r.History, "fnv1a64:0000000000000000"),
+                StateMessage s => new StateMessage(s.Header, s.Snapshot, "fnv1a64:0000000000000000"),
                 _ => m,
             },
         });
         game.RunUntil(() => a.Status == ClientStatus.Failed, 15);
-        Assert.StartsWith("désynchronisation persistante après 3 historiques", a.Error);
-        Assert.Equal(4, a.Combat!.Desyncs);
-        Assert.Equal(0, a.Combat.Resyncs);
+        // Divergence du tick 10, état faussé repris, divergence au tick suivant, deuxième demande refusée par le serveur (au plus une par
+        // seconde) puis renvoyée après le délai d'attente, état repris, nouvelle divergence : trois demandes sans tick accepté.
+        Assert.StartsWith("désynchronisation persistante après 3 demandes d'état courant : tick ", a.Error);
+        Assert.Contains("empreinte fnv1a64:0000000000000000 au lieu de", a.Error);
+        Assert.Equal(3, a.Combat!.Desyncs);
+        Assert.Equal(2, a.Combat.Resyncs);
         // Le client a fermé sa connexion : le serveur garde sa place 30 s, le combat continue pour l'autre joueur.
         game.Run(0.5);
         Assert.Equal(ClientStatus.Combat, b.Status);
@@ -616,8 +621,8 @@ public class Lot103ClientTests
         Assert.Equal(ClientStatus.Combat, b.Status);
         Assert.True(b.Combat!.Tick > frozen + 50);
 
-        // Retour : même place, historique complet, le combat reprend au tick du serveur. Revue Codex de la PR #20 : Advance rend tous
-        // les ticks rejoués par l'historique, pas un seul.
+        // Retour : même place, état courant du serveur, le combat reprend à son tick sans rien rejouer (sous-lot 11.7 ; au lot 10,
+        // l'historique complet était rejoué).
         game.Reconnect(a, link);
         Assert.Equal(ClientStatus.Reconnecting, a.Status);
         // Revue Codex de la PR #20 (tour 5) : pas de seconde demande par-dessus la première (le serveur refuserait le jeton tant que
@@ -626,7 +631,7 @@ public class Lot103ClientTests
         Assert.Throws<InvalidOperationException>(() => a.Reconnect(extra));
         Assert.Equal(ClientStatus.Reconnecting, a.Status);
         extra.Close("essai terminé.");
-        // Pas à pas, pour lire ce que rend Advance au pas du retour : tous les ticks rejoués depuis le début (et les suivants reçus).
+        // Pas à pas, pour lire ce que rend Advance au pas du retour : aucun tick passé rejoué, seulement ceux reçus après l'état.
         for (int i = 0; i < 400 && a.Status != ClientStatus.Combat; i++)
         {
             game.Net.Advance(0.01);
@@ -634,7 +639,7 @@ public class Lot103ClientTests
             game.Room.Advance(0.01);
             b.Advance(0.01);
             int ticks = a.Advance(0.01);
-            if (a.Status == ClientStatus.Combat) Assert.Equal(a.Combat.Tick, ticks);
+            if (a.Status == ClientStatus.Combat) Assert.InRange(ticks, 0, 2);
             else Assert.Equal(0, ticks);
         }
         Assert.Equal(ClientStatus.Combat, a.Status);

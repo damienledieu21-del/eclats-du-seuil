@@ -191,9 +191,12 @@ public class Lot114dPresenceDataTests
     }
 
     [Fact]
-    public void Protocole_du_lot_10_ne_transmet_pas_le_depart()
+    public void Protocole_2_transmet_le_depart()
     {
+        // Sous-lot 11.7 : le protocole 2 transmet le départ (au lot 10, refusé).
         var leave = new TickMessage(new TickCommands(3, new[] { new CombatCommand(150, "bastion", CombatAction.Leave) }), "fnv1a64:0000000000000000");
-        Assert.Contains("11.7", Assert.Throws<ArgumentException>(() => MessageCodec.Encode(leave)).Message);
+        var read = (TickMessage?)MessageCodec.Decode(MessageCodec.Encode(leave), MessageDirection.ServerToClient, out string? error);
+        Assert.True(read != null, error);
+        Assert.Equal(CombatAction.Leave, Assert.Single(read!.Commands.Commands).Action);
     }
 }

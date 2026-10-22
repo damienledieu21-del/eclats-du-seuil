@@ -106,6 +106,13 @@ Touche **M** : le menu du réseau s'ouvre. On y tape son nom, puis on choisit un
 
 **d. Avec le serveur dédié** (outil .NET, pour les curieux) : `dotnet run --project src/EdS.Server -- --local --robot` dans un terminal ouvert dans le dépôt, puis dans Unity **M** → adresse `127.0.0.1` → **Rejoindre**.
 
+**e. Les Vallons à deux, arrivée en plein combat (sous-lot 11.7)** : le menu propose aussi **Héberger les Vallons à deux** et **Héberger les Vallons, robot qui arrive après 10 s de combat**. Dans les Vallons, on marche (ZQSD) et le serveur résout tout : déplacements, cible, attaques annoncées. Le combat commence dès que les joueurs présents sont prêts ; l'autre joueur (ou le robot, 10 s après le début) entre **pendant** l'affrontement, à sa place ou juste à côté si elle est prise. Ce que tu vérifies :
+
+1. **Seul avec le robot** : Play → **M** → **Héberger les Vallons, robot qui arrive après 10 s de combat** → **Je suis prêt**. Le bandeau sous le chrono compte les secondes avant le robot ; il apparaît en vert près de la place de départ, et le combat continue sans saccade.
+2. **Ta marche** : ton personnage part dès que tu appuies et s'arrête dès que tu lâches, même avec du ping (sa place est prédite, puis corrigée en douceur si le serveur en décide autrement). Il ne traverse ni le décor ni les ennemis.
+3. **À deux PC** (comme en **b**, mais avec **Héberger les Vallons à deux**) : l'un commence seul, l'autre rejoint quand il veut ; chacun voit l'autre marcher, les mêmes ennemis aux mêmes places, et un loup tué meurt chez les deux en même temps.
+4. **Coupure** : couper le Wi-Fi d'un PC quelques secondes : au retour, la partie reprend à l'état courant (pas de longue attente).
+
 Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** ouvre les talents (« Jouer ce build » envoie le build composé au serveur, qui le vérifie). En combat, le temps aller-retour (ping) s'affiche sous le chrono, avec l'avance de la télégraphie : en réseau, la barre orange au-dessus d'un assaillant se remplit en avance du ping (sous-lot 10.6), il suffit donc de parer « à vue », comme en solo ; en réseau local, l'avance ne dépasse pas quelques millisecondes. Pas de pause en réseau. **Quitter la partie** ramène au menu ; **Revenir au jeu solo** reprend l'entraînement.
 
 ## 7. En cas de problème
@@ -117,6 +124,7 @@ Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** o
 - Pour remettre le projet à zéro : fermer Unity et supprimer le dossier `unity/Library` (il est recréé à l'ouverture).
 - **Réseau : « connexion impossible »** : vérifier l'adresse, que l'autre PC héberge bien (salle d'attente affichée) et que le pare-feu Windows autorise Unity (ou le jeu construit) sur les réseaux privés, port 7777.
 - **Réseau : « désynchronisation persistante »** : ne devrait jamais arriver ; faire une capture et l'envoyer à Claude (c'est exactement ce que le lot 10 doit détecter).
+- **Réseau : « protocole 1 non pris en charge »** (ou 2) : les deux PC n'ont pas la même version du projet ; faire un *Pull* sur les deux (sous-lot 11.7 : protocole 2).
 
 ## Ce qui est provisoire
 

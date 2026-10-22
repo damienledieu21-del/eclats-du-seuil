@@ -6,6 +6,8 @@ using EdS.Data.Json;
 using EdS.Data.Json.Text;
 using EdS.Data.Validation;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 using EdS.Simulation.Engine;
 
 namespace EdS.Net
@@ -42,7 +44,8 @@ namespace EdS.Net
                     w.Field("ready", m.Ready);
                     break;
                 case InputMessage m:
-                    w.Field("guard", m.Guard).Field("parry", m.Parry).Field("slot", (long?)m.Slot).Field("target", m.Target).Field("ally", m.Ally);
+                    w.Field("guard", m.Guard).Field("parry", m.Parry).Field("slot", (long?)m.Slot).Field("target", m.Target).Field("ally", m.Ally)
+                        .Field("heading", (long?)m.Heading);
                     break;
                 case PingMessage m:
                     w.Field("clientTime", m.ClientTime);
@@ -68,15 +71,8 @@ namespace EdS.Net
                     WriteCommands(w.Name("commands"), m.Commands.Commands);
                     w.Field("hash", m.Hash);
                     break;
-                case ResyncMessage m:
-                    w.Field("header", m.Header).Field("ticks", m.Ticks).Name("history").BeginArray();
-                    foreach (TickCommands entry in m.History)
-                    {
-                        w.BeginObject().Field("tick", entry.Tick);
-                        WriteCommands(w.Name("commands"), entry.Commands);
-                        w.EndObject();
-                    }
-                    w.EndArray().Field("hash", m.Hash);
+                case StateMessage m:
+                    w.Field("header", m.Header).Field("snapshot", m.Snapshot).Field("hash", m.Hash);
                     break;
                 case RejectedMessage m:
                     w.Field("reason", m.Reason);
@@ -114,12 +110,11 @@ namespace EdS.Net
             w.BeginArray();
             foreach (CombatCommand c in commands)
             {
-                // Sous-lot 11.4 : le protocole du lot 10 (salle à places fixes, rejeu des commandes) ne transmet pas les déplacements ; le
-                // combat positionné en réseau suit le modèle retenu pour le monde (état filtré, démonstration du 11.7).
-                if (c.Action == CombatAction.Move || c.Action == CombatAction.Stop || c.Action == CombatAction.Select || c.Action == CombatAction.Leave)   // 11.4c : sélection ; 11.4d : départ
-                    throw new ArgumentException("Déplacement, sélection ou départ non transmis par le protocole du lot 10 (combat positionné en réseau : sous-lot 11.7).", nameof(commands));
+                // Sous-lot 11.7 (protocole 2) : déplacement (direction), arrêt, sélection (cible) et départ sont transmis.
                 w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor).Field("action", CombatActionIds.Of(c.Action));
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
+                else if (c.Action == CombatAction.Select) w.Field("target", c.Target);
+                else if (c.Action == CombatAction.Move) w.Name("direction").BeginArray().Value(c.Direction!.Value.X).Value(c.Direction.Value.Z).EndArray();
                 w.EndObject();
             }
             w.EndArray();
@@ -240,7 +235,7 @@ namespace EdS.Net
                     LobbyMessage.Id => ReadLobby(root),
                     StartMessage.Id => ReadStart(root),
                     TickMessage.Id => ReadTick(root),
-                    ResyncMessage.Id => ReadResync(root),
+                    StateMessage.Id => ReadState(root),
                     RejectedMessage.Id => ReadReason(root, r => new RejectedMessage(r)),
                     PongMessage.Id => ReadPong(root),
                     EndMessage.Id => ReadEnd(root),
@@ -253,7 +248,7 @@ namespace EdS.Net
             {
                 HelloMessage.Id or ReconnectMessage.Id or BuildMessage.Id or ReadyMessage.Id or InputMessage.Id or PingMessage.Id
                     or ResyncRequestMessage.Id or ByeMessage.Id => MessageDirection.ClientToServer,
-                WelcomeMessage.Id or LobbyMessage.Id or StartMessage.Id or TickMessage.Id or ResyncMessage.Id or RejectedMessage.Id
+                WelcomeMessage.Id or LobbyMessage.Id or StartMessage.Id or TickMessage.Id or StateMessage.Id or RejectedMessage.Id
                     or PongMessage.Id or EndMessage.Id or ErrorMessage.Id => MessageDirection.ServerToClient,
                 _ => null,
             };
@@ -333,12 +328,15 @@ namespace EdS.Net
                 return s;
             }
 
-            private string? Header(JsonElement v, string p)
+            private string? Header(JsonElement v, string p) => Block(v, p, "en-tête");
+
+            /// <summary>Texte d'un bloc transporté tel quel (en-tête du journal, instantané d'état) : ni vide, ni plus long qu'un message.</summary>
+            private string? Block(JsonElement v, string p, string what)
             {
                 string? s = _in.Text(v, p);
                 if (s != null && (s.Length == 0 || s.Length > Protocol.MaxServerMessageBytes))
                 {
-                    Fail(p, ValidationCode.InvalidValue, "en-tête vide ou trop long.");
+                    Fail(p, ValidationCode.InvalidValue, what + " vide ou trop long.");
                     return null;
                 }
                 return s;
@@ -455,11 +453,16 @@ namespace EdS.Net
             private NetMessage? ReadInput(JsonElement root)
             {
                 bool? guard = null, parry = null;
-                int? slot = null;
+                int? slot = null, heading = null;
                 string? target = null, ally = null;
-                bool hasSlot = false, hasTarget = false, hasAlly = false;
+                bool hasSlot = false, hasTarget = false, hasAlly = false, hasHeading = false;
                 if (!Fields(root, "$", new Dictionary<string, Action<JsonElement, string>>
                 {
+                    ["heading"] = (v, p) =>
+                    {
+                        hasHeading = true;
+                        if (v.ValueKind != JsonValueKind.Null) heading = Int(v, p, 0, EdS.Runtime.MoveInput.Headings - 1) ?? -1;
+                    },
                     ["guard"] = (v, p) => guard = _in.Boolean(v, p),
                     ["parry"] = (v, p) => parry = _in.Boolean(v, p),
                     ["slot"] = (v, p) =>
@@ -478,14 +481,14 @@ namespace EdS.Net
                         ally = Id(v, p, nullable: true);
                     },
                 })) return null;
-                if (guard is null || parry is null || !hasSlot || !hasTarget || !hasAlly)
+                if (guard is null || parry is null || !hasSlot || !hasTarget || !hasAlly || !hasHeading)
                 {
                     if (_in.Report.IsValid)
-                        Missing("$", guard is null ? "guard" : parry is null ? "parry" : !hasSlot ? "slot" : !hasTarget ? "target" : "ally");
+                        Missing("$", guard is null ? "guard" : parry is null ? "parry" : !hasSlot ? "slot" : !hasTarget ? "target" : !hasAlly ? "ally" : "heading");
                     return null;
                 }
-                if (slot == -1 || !_in.Report.IsValid) return null;
-                return new InputMessage(guard.Value, parry.Value, slot, target, ally);
+                if (slot == -1 || heading == -1 || !_in.Report.IsValid) return null;
+                return new InputMessage(guard.Value, parry.Value, slot, target, ally, heading);
             }
 
             private NetMessage? ReadPing(JsonElement root)
@@ -600,9 +603,15 @@ namespace EdS.Net
             {
                 long? atMs = null;
                 string? actor = null, action = null, skill = null, target = null;
-                bool hasSkill = false, hasTarget = false;
+                bool hasSkill = false, hasTarget = false, hasDirection = false;
+                GroundVector? direction = null;
                 if (!Fields(element, path, new Dictionary<string, Action<JsonElement, string>>
                 {
+                    ["direction"] = (v, p) =>
+                    {
+                        hasDirection = true;
+                        direction = Direction(v, p);
+                    },
                     ["atMs"] = (v, p) => atMs = Long(v, p, 0, long.MaxValue / 2),
                     ["actor"] = (v, p) => actor = Id(v, p),
                     ["action"] = (v, p) => action = _in.Text(v, p),
@@ -624,43 +633,48 @@ namespace EdS.Net
                 }
                 if (action == CombatActionIds.UseSkill)
                 {
-                    if (!hasSkill || !hasTarget)
+                    if (!hasSkill || !hasTarget || hasDirection)
                     {
-                        if (_in.Report.IsValid) Missing(path, !hasSkill ? "skill" : "target");
+                        if (_in.Report.IsValid)
+                        {
+                            if (hasDirection) Fail(path, ValidationCode.UnknownField, "« direction » réservée à l'action « move ».");
+                            else Missing(path, !hasSkill ? "skill" : "target");
+                        }
                         return null;
                     }
                     return skill is null ? null : new CombatCommand(atMs.Value, actor, skill, target);
                 }
-                if (!CombatActionIds.TryParseDefensive(action, out CombatAction defensive))
+                // Sous-lot 11.7 (protocole 2) : marche (direction), arrêt, sélection (cible, ou null), départ.
+                if (action == CombatActionIds.Move || action == CombatActionIds.Select)
                 {
-                    Fail(path + ".action", ValidationCode.UnknownReference, "action inconnue (skill, guardStart, guardStop, parry).");
+                    bool move = action == CombatActionIds.Move;
+                    if (hasSkill || (move ? hasTarget : hasDirection))
+                    {
+                        Fail(path, ValidationCode.UnknownField, move ? "« direction » seulement pour « move »." : "« target » seulement pour « select ».");
+                        return null;
+                    }
+                    if (move ? !hasDirection : !hasTarget)
+                    {
+                        if (_in.Report.IsValid) Missing(path, move ? "direction" : "target");
+                        return null;
+                    }
+                    if (!_in.Report.IsValid) return null;
+                    return move ? (direction is { } d ? new CombatCommand(atMs.Value, actor, d) : null) : CombatCommand.SelectTarget(atMs.Value, actor, target);
+                }
+                CombatAction plain;
+                if (action == CombatActionIds.Stop) plain = CombatAction.Stop;
+                else if (action == CombatActionIds.Leave) plain = CombatAction.Leave;
+                else if (!CombatActionIds.TryParseDefensive(action, out plain))
+                {
+                    Fail(path + ".action", ValidationCode.UnknownReference, "action inconnue (skill, guardStart, guardStop, parry, move, stop, select, leave).");
                     return null;
                 }
-                if (hasSkill || hasTarget)
+                if (hasSkill || hasTarget || hasDirection)
                 {
-                    Fail(path, ValidationCode.UnknownField, "« skill » et « target » réservés à l'action « skill ».");
+                    Fail(path, ValidationCode.UnknownField, "« skill », « target » et « direction » réservés aux actions « skill », « select » et « move ».");
                     return null;
                 }
-                return new CombatCommand(atMs.Value, actor, defensive);
-            }
-
-            private TickCommands? ReadTickCommands(JsonElement element, string path)
-            {
-                long? tick = null;
-                List<CombatCommand?>? commands = null;
-                if (!Fields(element, path, new Dictionary<string, Action<JsonElement, string>>
-                {
-                    ["tick"] = (v, p) => tick = Long(v, p, 0, long.MaxValue / 2),
-                    ["commands"] = (v, p) => commands = _in.ReadLimitedList(v, p, Protocol.MaxCommandsPerTick,
-                        n => $"{n} commandes, au plus {Protocol.MaxCommandsPerTick} par tick.", ReadCommand),
-                }, root: false)) return null;
-                if (tick is null || commands is null)
-                {
-                    if (_in.Report.IsValid) Missing(path, tick is null ? "tick" : "commands");
-                    return null;
-                }
-                if (commands.Any(c => c is null)) return null;
-                return new TickCommands(tick.Value, commands.Select(c => c!).ToArray());
+                return new CombatCommand(atMs.Value, actor, plain);
             }
 
             private NetMessage? ReadTick(JsonElement root)
@@ -684,37 +698,42 @@ namespace EdS.Net
                 return new TickMessage(new TickCommands(tick.Value, commands.Select(c => c!).ToArray()), hash);
             }
 
-            private NetMessage? ReadResync(JsonElement root)
+            /// <summary>Sous-lot 11.7 : direction d'un déplacement, [x, z] en décimaux de 4 chiffres au plus, composantes dans [−1, 1], non nulle.</summary>
+            private GroundVector? Direction(JsonElement v, string p)
             {
-                string? header = null, hash = null;
-                long? ticks = null;
-                List<TickCommands?>? history = null;
+                if (!_in.RequireKind(v, JsonValueKind.Array, p, "tableau [x, z]")) return null;
+                IReadOnlyList<JsonElement> items = v.EnumerateArray();
+                if (items.Count != 2)
+                {
+                    Fail(p, ValidationCode.InvalidValue, "direction attendue sous la forme [x, z].");
+                    return null;
+                }
+                Fixed? x = _in.Decimal(items[0], p + "[0]"), z = _in.Decimal(items[1], p + "[1]");
+                if (x is null || z is null) return null;
+                var direction = new GroundVector(x.Value, z.Value);
+                if (!SpaceLimits.IsDirection(direction))
+                {
+                    Fail(p, ValidationCode.OutOfRange, "direction : composantes dans [−1, 1], non toutes deux nulles.");
+                    return null;
+                }
+                return direction;
+            }
+
+            private NetMessage? ReadState(JsonElement root)
+            {
+                string? header = null, snapshot = null, hash = null;
                 if (!Fields(root, "$", new Dictionary<string, Action<JsonElement, string>>
                 {
                     ["header"] = (v, p) => header = Header(v, p),
-                    ["ticks"] = (v, p) => ticks = Long(v, p, 0, long.MaxValue / 2),
-                    ["history"] = (v, p) => history = _in.ReadList(v, p, ReadTickCommands),
+                    ["snapshot"] = (v, p) => snapshot = Block(v, p, "instantané"),
                     ["hash"] = (v, p) => hash = Hash(v, p),
                 })) return null;
-                if (header is null || ticks is null || history is null || hash is null)
+                if (header is null || snapshot is null || hash is null)
                 {
-                    if (_in.Report.IsValid) Missing("$", header is null ? "header" : ticks is null ? "ticks" : history is null ? "history" : "hash");
+                    if (_in.Report.IsValid) Missing("$", header is null ? "header" : snapshot is null ? "snapshot" : "hash");
                     return null;
                 }
-                if (history.Any(h => h is null)) return null;
-                // Ticks strictement croissants, tous avant le nombre de ticks simulés : le client rejoue dans l'ordre.
-                long previous = -1;
-                for (int i = 0; i < history.Count; i++)
-                {
-                    long tick = history[i]!.Tick;
-                    if (tick <= previous || tick >= ticks.Value)
-                    {
-                        Fail($"$.history[{i}].tick", ValidationCode.InvalidValue, "ticks strictement croissants et inférieurs à « ticks » attendus.");
-                        return null;
-                    }
-                    previous = tick;
-                }
-                return new ResyncMessage(header, ticks.Value, history.Select(h => h!).ToArray(), hash);
+                return new StateMessage(header, snapshot, hash);
             }
 
             private NetMessage? ReadReason(JsonElement root, Func<string, NetMessage> create)

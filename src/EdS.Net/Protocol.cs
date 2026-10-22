@@ -6,13 +6,15 @@ using EdS.Domain.Combat;
 namespace EdS.Net
 {
     /// <summary>
-    /// Lot 10 : constantes du protocole réseau (version 1). Un message est un objet JSON strict (analyseur du sous-lot 9.1) précédé de sa
-    /// longueur sur 4 octets (gros-boutiste). Les tailles sont bornées par sens : un client n'envoie que de petits messages (intentions,
-    /// présentation), le serveur peut envoyer l'historique d'un combat (resynchronisation). Détail : <c>docs/RESEAU.md</c>.
+    /// Lot 10 : constantes du protocole réseau. Un message est un objet JSON strict (analyseur du sous-lot 9.1) précédé de sa longueur sur
+    /// 4 octets (gros-boutiste). Les tailles sont bornées par sens : un client n'envoie que de petits messages (intentions, présentation),
+    /// le serveur peut envoyer l'état courant d'un combat. Version 2 depuis le sous-lot 11.7 : marche dans les intentions, déplacements et
+    /// sélections dans les commandes, état courant (<see cref="StateMessage"/>, instantané du moteur) à la place de l'historique.
+    /// Détail : <c>docs/RESEAU.md</c>.
     /// </summary>
     public static class Protocol
     {
-        public const int Version = 1;
+        public const int Version = 2;
 
         /// <summary>Port TCP par défaut du serveur (hôte Unity ou serveur dédié).</summary>
         public const int DefaultPort = 7777;
@@ -20,7 +22,7 @@ namespace EdS.Net
         /// <summary>Taille maximale d'un message reçu par le serveur (envoyé par un client) : 8 Kio.</summary>
         public const int MaxClientMessageBytes = 8 * 1024;
 
-        /// <summary>Taille maximale d'un message reçu par un client (envoyé par le serveur) : 4 Mio, assez pour l'historique d'un combat.</summary>
+        /// <summary>Taille maximale d'un message reçu par un client (envoyé par le serveur) : 4 Mio, assez pour l'état courant d'un combat.</summary>
         public const int MaxServerMessageBytes = 4 * 1024 * 1024;
 
         /// <summary>Longueur maximale d'un nom de joueur (caractères UTF-16).</summary>
@@ -168,8 +170,8 @@ namespace EdS.Net
 
     /// <summary>
     /// Intentions du joueur : garde tenue, parade demandée, compétence d'un emplacement (null : aucune), cible ennemie et allié visé
-    /// (null : choix du serveur). Le serveur les applique au prochain tick qu'il simule ; la garde est un état, parade et compétence des
-    /// demandes ponctuelles.
+    /// (null : choix du serveur), cap de marche (sous-lot 11.7). Le serveur les applique au prochain tick qu'il simule ; la garde et la
+    /// marche sont des états, parade et compétence des demandes ponctuelles.
     /// </summary>
     public sealed class InputMessage : NetMessage
     {
@@ -182,13 +184,17 @@ namespace EdS.Net
         public string? Target { get; }
         public string? Ally { get; }
 
-        public InputMessage(bool guard, bool parry, int? slot, string? target, string? ally)
+        /// <summary>Sous-lot 11.7 : cap de marche voulu (0 à 63, <c>MoveInput</c>), null : arrêt ; sans effet hors combat positionné.</summary>
+        public int? Heading { get; }
+
+        public InputMessage(bool guard, bool parry, int? slot, string? target, string? ally, int? heading = null)
         {
             Guard = guard;
             Parry = parry;
             Slot = slot;
             Target = target;
             Ally = ally;
+            Heading = heading;
         }
     }
 
@@ -341,24 +347,24 @@ namespace EdS.Net
     }
 
     /// <summary>
-    /// Historique complet du combat : en-tête, commandes des ticks qui en ont, nombre de ticks simulés et empreinte à ce point. Envoyé à
-    /// la reconnexion ou à la demande d'un client désynchronisé ; le client rejoue tout et retrouve exactement l'état du serveur.
+    /// Sous-lot 11.7 : état courant du combat, sans son passé : en-tête du combat complété à cet instant (scénario, arrivées et commandes
+    /// admises), instantané du moteur entre deux ticks (<c>CombatEngine.Snapshot</c>) et empreinte du journal à ce point. Envoyé à un joueur
+    /// qui arrive pendant le combat, à tous quand un joueur arrive, au retour d'un joueur et à la demande d'un client désynchronisé ; le
+    /// client reconstruit le moteur sans rien rejouer (<c>CombatEngine.Restore</c>) et ne réattribue aucun événement passé.
     /// </summary>
-    public sealed class ResyncMessage : NetMessage
+    public sealed class StateMessage : NetMessage
     {
-        public const string Id = "resync";
+        public const string Id = "state";
         public override string Type => Id;
         public override MessageDirection Direction => MessageDirection.ServerToClient;
         public string Header { get; }
-        public long Ticks { get; }
-        public IReadOnlyList<TickCommands> History { get; }
+        public string Snapshot { get; }
         public string Hash { get; }
 
-        public ResyncMessage(string header, long ticks, IReadOnlyList<TickCommands> history, string hash)
+        public StateMessage(string header, string snapshot, string hash)
         {
             Header = header ?? throw new ArgumentNullException(nameof(header));
-            Ticks = ticks;
-            History = Frozen.List(history, nameof(history));
+            Snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             Hash = hash ?? throw new ArgumentNullException(nameof(hash));
         }
     }

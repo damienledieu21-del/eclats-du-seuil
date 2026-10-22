@@ -150,6 +150,16 @@ public class Lot102ServerTests
             _engine = new CombatEngine(Setup, _log);
         }
 
+        /// <summary>Sous-lot 11.7 : réplique qui reprend à un état courant, sans rien rejouer.</summary>
+        public Replica(StateMessage state)
+        {
+            CombatSetup? setup = CombatLogReplayer.ReadSetup(state.Header, ShippedData, out IReadOnlyList<string> problems);
+            Assert.True(setup != null, string.Join(" ; ", problems));
+            Setup = setup!;
+            _log = new HashingCombatLog(state.Hash);
+            _engine = CombatEngine.Restore(Setup, CombatSnapshot.Parse(state.Snapshot), _log);
+        }
+
         public CombatSetup Setup { get; }
         public long Tick => _engine.CurrentTick;
         public string Hash => _log.Hash;
@@ -161,12 +171,6 @@ public class Lot102ServerTests
             _engine.Step();
         }
 
-        public void Resync(ResyncMessage resync)
-        {
-            var byTick = resync.History.ToDictionary(h => h.Tick);
-            while (_engine.CurrentTick < resync.Ticks)
-                Apply(byTick.TryGetValue(_engine.CurrentTick, out TickCommands? t) ? t : new TickCommands(_engine.CurrentTick, Array.Empty<CombatCommand>()));
-        }
     }
 
     private static void AssertTicksReplayed(Bot bot)
@@ -209,8 +213,9 @@ public class Lot102ServerTests
     }
 
     [Theory]
-    [InlineData(2, Rempart, "protocole 2 non pris en charge")]
-    [InlineData(1, "build.bastion.inconnu", "build de référence inconnu")]
+    [InlineData(1, Rempart, "protocole 1 non pris en charge")]   // sous-lot 11.7 : le protocole 1 (lot 10) n'est plus servi
+    [InlineData(3, Rempart, "protocole 3 non pris en charge")]
+    [InlineData(2, "build.bastion.inconnu", "build de référence inconnu")]
     public void Presentation_refusee(int protocol, string build, string expected)
     {
         var world = new World();
@@ -229,7 +234,7 @@ public class Lot102ServerTests
         // Trop de points : 30 au niveau 30 (29 disponibles).
         var tooMany = new Dictionary<string, int>(BuildOf(Rempart).TalentRanks) { ["talent.bastion.contrecoup.main_lourde"] = 1 };
         Bot refused = world.Connect();
-        refused.Send(new HelloMessage(1, "Dam", new BuildChoice(Rempart, tooMany)));
+        refused.Send(new HelloMessage(Protocol.Version, "Dam", new BuildChoice(Rempart, tooMany)));
         world.Run(0.05);
         Assert.Contains("build refusé", refused.Last<ErrorMessage>().Reason);
         Assert.Contains("TooManyPoints", refused.Last<ErrorMessage>().Reason);
@@ -433,26 +438,26 @@ public class Lot102ServerTests
         Assert.False(b.Last<LobbyMessage>().Seats[0].Connected);
         Assert.Equal("Dam", b.Last<LobbyMessage>().Seats[0].Player);
 
-        // Mauvais jeton refusé ; le bon rend la place et tout l'historique.
+        // Mauvais jeton refusé ; le bon rend la place et l'état courant (sous-lot 11.7 : au lot 10, tout l'historique).
         Bot intruder = world.Connect();
-        intruder.Send(new ReconnectMessage(1, "ffffffffffffffffffffffffffffffff"));
+        intruder.Send(new ReconnectMessage(Protocol.Version, "ffffffffffffffffffffffffffffffff"));
         world.Run(0.05);
         Assert.Equal("jeton inconnu ou expiré.", intruder.Last<ErrorMessage>().Reason);
 
         Bot back = world.Connect();
-        back.Send(new ReconnectMessage(1, token));
+        back.Send(new ReconnectMessage(Protocol.Version, token));
         world.Run(0.05);
         Assert.Equal(("bastion", token), (back.Welcome.Seat, back.Welcome.Token));
-        ResyncMessage resync = back.Last<ResyncMessage>();
-        // Revue Codex de la PR #19 : le majorant calculé avant le combat couvre bien un vrai historique.
-        Assert.True(MessageCodec.Encode(resync).Length <= CombatRoom.ResyncBound(replica0Setup(resync), resync.Header, 50));
-        var replica = new Replica(resync.Header);
-        replica.Resync(resync);
-        Assert.Equal(resync.Hash, replica.Hash);
+        StateMessage state = back.Last<StateMessage>();
+        // Revue Codex de la PR #19 : le majorant calculé avant le combat couvre bien un vrai en-tête (l'instantané est contrôlé à l'envoi).
+        Assert.True(MessageCodec.Encode(new StateMessage(state.Header, "-", state.Hash)).Length <= CombatRoom.StateBound(new Replica(state).Setup, 50));
+        var replica = new Replica(state);
+        Assert.Equal(state.Hash, replica.Hash);
+        long resumed = replica.Tick;
         // Puis les ticks suivants se rejouent à la suite.
-        int seen = back.All<TickMessage>().Count(t => t.Commands.Tick >= resync.Ticks);
+        int seen = back.All<TickMessage>().Count(t => t.Commands.Tick >= resumed);
         world.Run(0.5);
-        foreach (TickMessage tick in back.All<TickMessage>().Where(t => t.Commands.Tick >= resync.Ticks))
+        foreach (TickMessage tick in back.All<TickMessage>().Where(t => t.Commands.Tick >= resumed))
         {
             replica.Apply(tick.Commands);
             Assert.Equal(tick.Hash, replica.Hash);
@@ -460,11 +465,11 @@ public class Lot102ServerTests
         Assert.True(back.All<TickMessage>().Count() > seen);
         Assert.True(b.Last<LobbyMessage>().Seats[0].Connected);
 
-        // Une demande d'historique est servie, une seconde trop rapprochée est refusée.
+        // Une demande d'état courant est servie, une seconde trop rapprochée est refusée.
         back.Send(new ResyncRequestMessage());
         back.Send(new ResyncRequestMessage());
         world.Run(0.05);
-        Assert.Contains("historique déjà demandé", back.Last<RejectedMessage>().Reason);
+        Assert.Contains("état courant déjà demandé", back.Last<RejectedMessage>().Reason);
     }
 
     [Fact]
@@ -477,7 +482,7 @@ public class Lot102ServerTests
         world.Run(31);
         Assert.Equal(RoomPhase.Combat, world.Room.Phase);
         Bot back = world.Connect();
-        back.Send(new ReconnectMessage(1, token));
+        back.Send(new ReconnectMessage(Protocol.Version, token));
         world.Run(0.05);
         Assert.Equal("jeton inconnu ou expiré.", back.Last<ErrorMessage>().Reason);
 
@@ -586,7 +591,7 @@ public class Lot102ServerTests
         var host = new RoomHost(room, listener);
         host.Start();
         using TcpNetConnection a = await TcpNetConnection.ConnectAsync("127.0.0.1", listener.Port, Protocol.MaxServerMessageBytes, Protocol.MaxClientMessageBytes);
-        a.Send(new HelloMessage(1, "Dam", new BuildChoice(Rempart)));
+        a.Send(new HelloMessage(Protocol.Version, "Dam", new BuildChoice(Rempart)));
         var received = new List<NetMessage>();
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (!received.OfType<WelcomeMessage>().Any())
@@ -608,8 +613,6 @@ public class Lot102ServerTests
         Assert.Equal("connexion fermée par l'autre côté.", a.CloseReason);
         host.Dispose();   // sans effet la seconde fois
     }
-
-    private static CombatSetup replica0Setup(ResyncMessage resync) => new Replica(resync.Header).Setup;
 
     [Fact]
     public void Delais_appliques_avant_les_messages_en_attente()
@@ -644,13 +647,14 @@ public class Lot102ServerTests
     }
 
     [Fact]
-    public void Historique_trop_gros_pour_le_protocole_combat_refuse_avant_de_commencer()
+    public void Etat_courant_trop_gros_pour_le_protocole_combat_refuse_avant_de_commencer()
     {
-        // Revue Codex de la PR #19 : avec les règles livrées, l'historique d'un combat tient largement dans un message ; avec un plafond
-        // de commandes démesuré, le combat est refusé avant de commencer au lieu de couper un joueur à son retour.
+        // Revue Codex de la PR #19 (sous-lot 11.7 : état courant, au lot 10 l'historique) : avec les règles livrées, l'en-tête du combat
+        // complété tient largement dans un message ; avec un plafond de commandes démesuré, le combat est refusé avant de commencer au lieu
+        // de couper un joueur à son retour.
         var shipped = new World();
         (Bot a, _) = shipped.Start();
-        long bound = CombatRoom.ResyncBound(new Replica(a.Last<StartMessage>().Header).Setup, a.Last<StartMessage>().Header, 50);
+        long bound = CombatRoom.StateBound(new Replica(a.Last<StartMessage>().Header).Setup, 50);
         Assert.InRange(bound, 1, Protocol.MaxServerMessageBytes);
 
         var huge = new World(WithMaxCommands(Duo, CombatRules.AbsoluteMaxCommands));
@@ -661,7 +665,7 @@ public class Lot102ServerTests
         huge.Run(0.1);
         Assert.Equal(RoomPhase.Lobby, huge.Room.Phase);
         Assert.Empty(x.All<StartMessage>());
-        Assert.StartsWith("combat refusé : un historique pourrait atteindre", x.Last<RejectedMessage>().Reason);
+        Assert.StartsWith("combat refusé : un état courant pourrait atteindre", x.Last<RejectedMessage>().Reason);
         Assert.False(x.Last<LobbyMessage>().Seats[0].Ready);
     }
 
@@ -729,8 +733,8 @@ public class Lot102ServerTests
         host.Start();
         using TcpNetConnection a = await TcpNetConnection.ConnectAsync("127.0.0.1", listener.Port, Protocol.MaxServerMessageBytes, Protocol.MaxClientMessageBytes);
         using TcpNetConnection b = await TcpNetConnection.ConnectAsync("127.0.0.1", listener.Port, Protocol.MaxServerMessageBytes, Protocol.MaxClientMessageBytes);
-        a.Send(new HelloMessage(1, "Dam", new BuildChoice(Rempart)));
-        b.Send(new HelloMessage(1, "Léa", new BuildChoice(Gardien)));
+        a.Send(new HelloMessage(Protocol.Version, "Dam", new BuildChoice(Rempart)));
+        b.Send(new HelloMessage(Protocol.Version, "Léa", new BuildChoice(Gardien)));
         var receivedA = new List<NetMessage>();
         var receivedB = new List<NetMessage>();
         void Collect(INetConnection c, List<NetMessage> into)

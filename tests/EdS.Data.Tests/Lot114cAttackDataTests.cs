@@ -154,9 +154,15 @@ public class Lot114cAttackDataTests
     }
 
     [Fact]
-    public void Protocole_du_lot_10_ne_transmet_pas_la_selection()
+    public void Protocole_2_transmet_la_selection()
     {
-        var select = new TickMessage(new TickCommands(3, new[] { CombatCommand.SelectTarget(150, "bastion", "ogre") }), "fnv1a64:0000000000000000");
-        Assert.Contains("11.7", Assert.Throws<ArgumentException>(() => MessageCodec.Encode(select)).Message);
+        // Sous-lot 11.7 : le protocole 2 transmet la sélection de cible (au lot 10, refusée), sélection vide comprise.
+        var select = new TickMessage(new TickCommands(3, new[] { CombatCommand.SelectTarget(150, "bastion", "ogre"), CombatCommand.SelectTarget(150, "renfort", null) }),
+            "fnv1a64:0000000000000000");
+        string text = MessageCodec.EncodeText(select);
+        var read = (TickMessage)MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(text), MessageDirection.ServerToClient, out string? error)!;
+        Assert.True(read != null, error);
+        Assert.Equal(new[] { (CombatAction.Select, "ogre"), (CombatAction.Select, (string?)null) }, read!.Commands.Commands.Select(c => (c.Action, c.Target)));
+        Assert.Equal(text, MessageCodec.EncodeText(read));
     }
 }

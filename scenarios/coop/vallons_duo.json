@@ -1,0 +1,634 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 8,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 117,
+    "durationMs": 180000,
+    "space": {
+      "bounds": {
+        "min": [
+          -24,
+          -18
+        ],
+        "max": [
+          24,
+          18
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "moulin",
+          "points": [
+            [
+              -6,
+              6
+            ],
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              12
+            ],
+            [
+              -6,
+              12
+            ]
+          ]
+        },
+        {
+          "id": "riviere_sud",
+          "points": [
+            [
+              4,
+              -18
+            ],
+            [
+              7,
+              -18
+            ],
+            [
+              7,
+              -2
+            ],
+            [
+              4,
+              -2
+            ]
+          ]
+        },
+        {
+          "id": "riviere_nord",
+          "points": [
+            [
+              4,
+              1.5
+            ],
+            [
+              7,
+              1.5
+            ],
+            [
+              7,
+              18
+            ],
+            [
+              4,
+              18
+            ]
+          ]
+        },
+        {
+          "id": "arbre1",
+          "points": [
+            [
+              -12.4,
+              3.6
+            ],
+            [
+              -11.6,
+              3.6
+            ],
+            [
+              -11.6,
+              4.4
+            ],
+            [
+              -12.4,
+              4.4
+            ]
+          ]
+        },
+        {
+          "id": "arbre2",
+          "points": [
+            [
+              -14.4,
+              -2.4
+            ],
+            [
+              -13.6,
+              -2.4
+            ],
+            [
+              -13.6,
+              -1.6
+            ],
+            [
+              -14.4,
+              -1.6
+            ]
+          ]
+        },
+        {
+          "id": "arbre3",
+          "points": [
+            [
+              -9.4,
+              -6.4
+            ],
+            [
+              -8.6,
+              -6.4
+            ],
+            [
+              -8.6,
+              -5.6
+            ],
+            [
+              -9.4,
+              -5.6
+            ]
+          ]
+        },
+        {
+          "id": "arbre4",
+          "points": [
+            [
+              11.6,
+              9.6
+            ],
+            [
+              12.4,
+              9.6
+            ],
+            [
+              12.4,
+              10.4
+            ],
+            [
+              11.6,
+              10.4
+            ]
+          ]
+        },
+        {
+          "id": "arbre5",
+          "points": [
+            [
+              14.6,
+              -8.4
+            ],
+            [
+              15.4,
+              -8.4
+            ],
+            [
+              15.4,
+              -7.6
+            ],
+            [
+              14.6,
+              -7.6
+            ]
+          ]
+        },
+        {
+          "id": "mur_nord",
+          "points": [
+            [
+              17,
+              1.5
+            ],
+            [
+              18,
+              1.5
+            ],
+            [
+              18,
+              14
+            ],
+            [
+              17,
+              14
+            ]
+          ]
+        },
+        {
+          "id": "mur_sud",
+          "points": [
+            [
+              17,
+              -14
+            ],
+            [
+              18,
+              -14
+            ],
+            [
+              18,
+              -0.5
+            ],
+            [
+              17,
+              -0.5
+            ]
+          ]
+        },
+        {
+          "id": "pilier1",
+          "points": [
+            [
+              -16.25,
+              7.75
+            ],
+            [
+              -15.75,
+              7.75
+            ],
+            [
+              -15.75,
+              8.25
+            ],
+            [
+              -16.25,
+              8.25
+            ]
+          ]
+        },
+        {
+          "id": "pilier2",
+          "points": [
+            [
+              -12.25,
+              7.75
+            ],
+            [
+              -11.75,
+              7.75
+            ],
+            [
+              -11.75,
+              8.25
+            ],
+            [
+              -12.25,
+              8.25
+            ]
+          ]
+        },
+        {
+          "id": "pilier3",
+          "points": [
+            [
+              -16.25,
+              11.75
+            ],
+            [
+              -15.75,
+              11.75
+            ],
+            [
+              -15.75,
+              12.25
+            ],
+            [
+              -16.25,
+              12.25
+            ]
+          ]
+        },
+        {
+          "id": "pilier4",
+          "points": [
+            [
+              -12.25,
+              11.75
+            ],
+            [
+              -11.75,
+              11.75
+            ],
+            [
+              -11.75,
+              12.25
+            ],
+            [
+              -12.25,
+              12.25
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 30,
+          "attributes": {
+            "force": 30,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 30,
+            "volonte": 15,
+            "endurance": 20
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.rempart.peau_de_fer": 5,
+            "talent.bastion.rempart.souffle_du_roc": 4,
+            "talent.bastion.rempart.poids_du_rempart": 5,
+            "talent.bastion.rempart.rempart_eternel": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.gardien.vigilance": 5,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.onde_de_rupture"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.endurance_du_roc",
+            "skill.bastion.bouclier_lourd",
+            "skill.bastion.reserve_de_charges",
+            "skill.bastion.posture_de_fer"
+          ]
+        },
+        "position": [
+          -18,
+          -12
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.5
+      },
+      {
+        "id": "bastion2",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 30,
+          "attributes": {
+            "force": 30,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 30,
+            "volonte": 15,
+            "endurance": 20
+          },
+          "talents": {
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.gardien.lien_protecteur": 1,
+            "talent.bastion.gardien.vigilance": 5,
+            "talent.bastion.gardien.presence": 4,
+            "talent.bastion.gardien.rempart_vivant": 5,
+            "talent.bastion.gardien.serment_du_gardien": 1,
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.rempart.peau_de_fer": 5,
+            "talent.bastion.contrecoup.riposte_precise": 1
+          },
+          "activeSkills": [
+            "skill.bastion.provocation",
+            "skill.bastion.barriere_d_acier",
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.sentinelle",
+            "skill.bastion.posture_de_fer",
+            "skill.bastion.tenacite",
+            "skill.bastion.endurance_du_roc"
+          ]
+        },
+        "position": [
+          -16,
+          -12
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.5
+      },
+      {
+        "id": "loup1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 700,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -4,
+          15
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 6,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 700,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -2,
+          16
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 6,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 700,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1750,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -6,
+          16
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 6,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "sanglier",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 1200,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 140,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true
+          }
+        ],
+        "position": [
+          11,
+          -6
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10
+        }
+      },
+      {
+        "id": "archer",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 400,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "fleche",
+            "rawDamage": 35,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 10
+          },
+          {
+            "id": "pluie",
+            "rawDamage": 40,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2
+          }
+        ],
+        "position": [
+          21,
+          1
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 9,
+          "minRange": 6,
+          "aggroRange": 12
+        }
+      }
+    ],
+    "commands": []
+  }
+}

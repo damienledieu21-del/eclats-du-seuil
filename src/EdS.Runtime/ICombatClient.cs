@@ -66,5 +66,11 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot 11.6 : attaques annoncées en cours (formes au sol, impact à venir), pour l'affichage.</summary>
         IReadOnlyList<AnnouncedAttack> Announced();
+
+        /// <summary>
+        /// Sous-lot 11.7 : place du joueur à afficher (en mètres) quand elle est prédite (réseau, <see cref="MovementPrediction"/>) ; null :
+        /// la place du moteur, glissée entre deux ticks (combat joué seul, ou sans espace).
+        /// </summary>
+        (double X, double Z)? PredictedPosition();
     }
 }

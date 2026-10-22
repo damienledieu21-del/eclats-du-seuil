@@ -69,11 +69,14 @@ namespace EdS.Game
 
         // Sous-lot 10.4 : jeu en réseau. Session (null : solo), menu ouvert, combat affiché, build demandé au serveur.
         private const string CoopScenario = "coop/meute_a_vaincre.json";   // sous-lot 11.1 : la meute meurt, la coopération se gagne
+        private const string DuoScenario = "coop/vallons_duo.json";         // sous-lot 11.7 : les Vallons à deux, arrivée en plein combat
+        private const double BotDelaySeconds = 10;
         private const string RobotBuild = "build.bastion.gardien";
         private NetworkSession _net;
         private readonly NetworkScreen _netScreen = new NetworkScreen();
         private bool _menuOpen;
         private NetworkCombat _shownCombat;
+        private int _shownRoster;
         private string _netBuildId = "build.bastion.rempart";
         private bool _netTalentScreen;
         private string _lastCombat;
@@ -332,10 +335,14 @@ namespace EdS.Game
                 }
                 else
                 {
-                    ScenarioLoadResult coop = ScenarioJsonReader.ReadFile(Path.Combine(_repoRoot, "scenarios", CoopScenario), data);
+                    bool vallons = action == NetworkScreen.Action.HostVallons || action == NetworkScreen.Action.HostVallonsWithBot;
+                    bool bot = action == NetworkScreen.Action.HostWithBot || action == NetworkScreen.Action.HostVallonsWithBot;
+                    ScenarioLoadResult coop = ScenarioJsonReader.ReadFile(Path.Combine(_repoRoot, "scenarios", vallons ? DuoScenario : CoopScenario), data);
                     if (coop.Setup == null) throw new InvalidOperationException("scénario de coopération refusé : " + coop.Report);
-                    _net = NetworkSession.HostGame(data, coop.Setup, name, build, Protocol.DefaultPort, true,
-                        action == NetworkScreen.Action.HostWithBot ? new BuildChoice(RobotBuild) : null);
+                    // Sous-lot 11.7 : dans les Vallons, le combat commence dès que les joueurs présents sont prêts, et l'autre (ou le robot,
+                    // 10 s plus tard) le rejoint en cours.
+                    _net = NetworkSession.HostGame(data, coop.Setup, name, build, Protocol.DefaultPort, true, bot ? new BuildChoice(RobotBuild) : null,
+                        vallons ? new RoomOptions { JoinDuringCombat = true } : null, vallons && bot ? BotDelaySeconds : 0);
                 }
                 _menuOpen = false;
                 _paused = false;
@@ -458,11 +465,19 @@ namespace EdS.Game
                     Say("Combat commencé : écran des talents fermé, build inchangé.");
                 }
                 _shownCombat = combat;
+                _shownRoster = combat.RosterVersion;
                 _combat = combat;
                 _arena.Populate(combat);
                 _playerYaw = 0f;
                 _floating.Clear();
                 Say($"Combat en coopération : tu joues {client.SeatId}.");
+            }
+            else if (combat != null && combat.RosterVersion != _shownRoster)
+            {
+                // Revue Codex de la PR #35 : un joueur est arrivé pendant l'affrontement (état courant) : l'arène est repeuplée, pour
+                // qu'il ait son corps.
+                _shownRoster = combat.RosterVersion;
+                _arena.Populate(combat);
             }
             if (input && Input.GetKeyDown(KeyCode.C)) _camera.Toggle(_playerYaw);
             if (input && client != null && client.Status == ClientStatus.Lobby)
@@ -485,7 +500,9 @@ namespace EdS.Game
             else if (fighting) _combat.SetGuard(false);   // menu ou talents ouverts : garde relâchée, rien d'autre n'est envoyé
             // Revue Codex de la PR #21 : coupé ou en retour, la garde mémorisée est oubliée ; la touche est relue une fois le combat repris.
             else if (combat != null && !combat.IsFinished) combat.SetGuard(false);
-            Move(player);
+            // Sous-lot 11.7 : dans un combat positionné, la marche n'est lue qu'en jouant (menu, talents, coupure : arrêt demandé).
+            if (_arena.Spatial && !(input && fighting)) _combat.SetMove(0f, 0f);
+            else Move(player);
             foreach (CombatFeedback feedback in _combat.DrainFeedback()) Show(feedback);
             if (combat != null && combat.IsFinished && _lastCombat == null)
             {
@@ -591,7 +608,8 @@ namespace EdS.Game
             if (_menuOpen)
             {
                 NetworkScreen.Action menu = _netScreen.DrawMenu();
-                if (menu == NetworkScreen.Action.Host || menu == NetworkScreen.Action.HostWithBot || menu == NetworkScreen.Action.Join) StartNetwork(menu);
+                if (menu == NetworkScreen.Action.Host || menu == NetworkScreen.Action.HostWithBot || menu == NetworkScreen.Action.HostVallons
+                    || menu == NetworkScreen.Action.HostVallonsWithBot || menu == NetworkScreen.Action.Join) StartNetwork(menu);
                 else if (menu == NetworkScreen.Action.Solo)
                 {
                     _menuOpen = false;

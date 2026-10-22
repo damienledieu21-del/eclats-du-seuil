@@ -32,6 +32,10 @@ namespace EdS.Net
         private readonly BuildChoice? _botBuild;
         private Pending? _pending;
         private Pending? _pendingBot;
+        private double? _botAt;
+
+        /// <summary>Revue Codex de la PR #35 : délai du robot, armé au début du combat du joueur ; null une fois armé ou sans délai.</summary>
+        private double? _botDelay;
         private double _nextRetryAt;
         private bool _disposed;
 
@@ -43,7 +47,7 @@ namespace EdS.Net
         }
 
         internal NetworkSession(GameData data, Func<Task<INetConnection>> connect, string name, BuildChoice build, RoomHost? host,
-            Func<Task<INetConnection>>? connectBot = null, BuildChoice? botBuild = null, string? address = null)
+            Func<Task<INetConnection>>? connectBot = null, BuildChoice? botBuild = null, string? address = null, double botDelaySeconds = 0)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _connect = connect ?? throw new ArgumentNullException(nameof(connect));
@@ -55,16 +59,25 @@ namespace EdS.Net
             _connectBot = connectBot;
             _botBuild = botBuild;
             Address = address;
+            if (double.IsNaN(botDelaySeconds) || double.IsInfinity(botDelaySeconds) || botDelaySeconds < 0)
+                throw new ArgumentOutOfRangeException(nameof(botDelaySeconds), "Délai du robot : positif ou nul et fini.");
             _pending = Start(_connect);
-            if (_connectBot != null) _pendingBot = Start(_connectBot);
+            // Sous-lot 11.7 : le robot peut arriver plus tard (pendant le combat, si la salle l'accepte).
+            if (_connectBot != null)
+            {
+                if (botDelaySeconds > 0) _botDelay = botDelaySeconds;
+                else _pendingBot = Start(_connectBot);
+            }
         }
 
         /// <summary>
         /// Héberge une salle sur ce poste pour le scénario donné (deux places pour <c>coop/duo_meute</c>) et la rejoint. Avec
-        /// <paramref name="botBuild"/>, un équipier robot prend l'autre place. <paramref name="lan"/> faux : ce poste seulement.
+        /// <paramref name="botBuild"/>, un équipier robot prend l'autre place, après <paramref name="botDelaySeconds"/> secondes (sous-lot
+        /// 11.7 : avec <see cref="RoomOptions.JoinDuringCombat"/>, il arrive pendant le combat). <paramref name="lan"/> faux : ce poste
+        /// seulement.
         /// </summary>
         public static NetworkSession HostGame(GameData data, CombatSetup scenario, string name, BuildChoice build, int port = Protocol.DefaultPort,
-            bool lan = true, BuildChoice? botBuild = null, RoomOptions? options = null)
+            bool lan = true, BuildChoice? botBuild = null, RoomOptions? options = null, double botDelaySeconds = 0)
         {
             if (data is null) throw new ArgumentNullException(nameof(data));
             if (scenario is null) throw new ArgumentNullException(nameof(scenario));
@@ -76,7 +89,7 @@ namespace EdS.Net
                 host.Start();
                 int actual = listener.Port;
                 Func<Task<INetConnection>> loopback = () => Connect("127.0.0.1", actual);
-                return new NetworkSession(data, loopback, name, build, host, botBuild is null ? null : loopback, botBuild, "127.0.0.1:" + actual);
+                return new NetworkSession(data, loopback, name, build, host, botBuild is null ? null : loopback, botBuild, "127.0.0.1:" + actual, botDelaySeconds);
             }
             catch
             {
@@ -110,6 +123,12 @@ namespace EdS.Net
         /// <summary>Équipier robot ; null sans robot ou avant sa connexion.</summary>
         public BotPlayer? Bot { get; private set; }
 
+        /// <summary>
+        /// Sous-lot 11.7 : secondes avant l'arrivée prévue du robot (le délai entier tant que le combat du joueur n'a pas commencé : il
+        /// compte à partir de là) ; null s'il n'est pas attendu (aucun, ou déjà en route).
+        /// </summary>
+        public double? BotArrivesIn => _botAt is double at ? Math.Max(0, at - Now) : _botDelay;
+
         /// <summary>Temps écoulé de la session (somme des appels à <see cref="Advance"/>).</summary>
         public double Now { get; private set; }
 
@@ -141,10 +160,22 @@ namespace EdS.Net
             if (_disposed) return;
             Now += seconds;
             if (Host?.Error is Exception failure) Error = "salle hébergée arrêtée : " + failure.Message;
+            if (_botAt is double at && Now >= at && _connectBot != null)
+            {
+                _botAt = null;
+                _pendingBot = Start(_connectBot);
+            }
             PollPlayer();
             PollBot();
             Client?.Advance(seconds);
             Bot?.Advance(seconds);
+            // Revue Codex de la PR #35 : le délai du robot part du début du combat du joueur, pas de la création de la salle (un joueur qui
+            // reste en salle d'attente ne le consomme pas).
+            if (_botDelay is double delay && Client?.Status == ClientStatus.Combat)
+            {
+                _botAt = Now + delay;
+                _botDelay = null;
+            }
             if (Client != null && Client.Status == ClientStatus.Disconnected && _pending is null)
             {
                 if (!Client.CanReconnect) Error ??= "retour impossible : le serveur ne garde la place que " + Client.Options.ReconnectSeconds + " s.";
