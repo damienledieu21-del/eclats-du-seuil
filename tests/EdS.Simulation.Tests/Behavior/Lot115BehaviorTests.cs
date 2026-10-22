@@ -359,6 +359,47 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Instantane_pas_d_un_ennemi_a_comportement_borne()
+    {
+        // Revue Codex de la PR #33 (13e tour) : un ennemi à comportement n'est plus libre de toute place dans un instantané. Pas encore
+        // engagé (guetteur loin du Bastion), il n'a jamais bougé ; engagé, il a fait au plus un pas par tick depuis le début.
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("guetteur", At("15", "0"), "0.5", aggro: "2"),
+            Hunter("loup", At("-8", "0"), "0.5") }, durationMs: 6000), NullCombatLog.Instance);
+        while (engine.CurrentTick < 10) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string Moved(string id, string from, string to)
+        {
+            string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"" + id + "\"", StringComparison.Ordinal));
+            string changed = line.Replace(from, to, StringComparison.Ordinal);
+            Assert.NotEqual(line, changed);
+            return text.Replace(line, changed, StringComparison.Ordinal);
+        }
+        Assert.Contains("Place de « guetteur » hors de portée", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(setup, CombatSnapshot.Parse(Moved("guetteur", "\"x\":150000,", "\"x\":140000,")), NullCombatLog.Instance)).Message);
+        // Le loup engagé d'emblée a marché 10 ticks (au plus 2,5 m, bornés à deux pas par tick) : il ne peut pas être à 9 m de son départ.
+        string loup = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"loup\"", StringComparison.Ordinal));
+        string x = System.Text.RegularExpressions.Regex.Match(loup, "\"x\":(-?[0-9]+),").Groups[1].Value;
+        Assert.Contains("Place de « loup » hors de portée", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(setup, CombatSnapshot.Parse(Moved("loup", "\"x\":" + x + ",", "\"x\":10000,")), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
+    public void Annonce_qui_tombe_apres_la_fin_arrete_l_ennemi_jusqu_a_la_fin()
+    {
+        // Revue Codex de la PR #33 (13e tour) : combat de 2 s ; le loup, encore en approche, annonce au tick 30 une bande d'une seconde dont
+        // l'impact (tick 50) tombe après la fin : il s'arrête quand même jusqu'à la fin, comme pendant toute annonce.
+        var line = new AssailantAttack("coup", 10, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+            range: F("6"), width: F("1"));
+        var (track, log, engine) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("loup", At("15", "0"), "0.5", firstMs: 1500, attacks: line) },
+            durationMs: 2000));
+        Assert.Equal(30, Lines(log, "attackStarted").Single(a => a.Str("actor") == "loup").Tick());
+        Assert.NotEqual(track.After("loup", 28), track.After("loup", 29));   // encore en marche avant l'annonce
+        for (int t = 31; t <= 39; t++) Assert.Equal(track.After("loup", 30), track.After("loup", t));
+    }
+
+    [Fact]
     public void Une_charge_qui_l_etourdit_lui_meme_ne_fonce_pas()
     {
         // Revue Codex de la PR #33 (tour 8) : la bande pose un étourdissement sur le sanglier lui-même, avec ses coups. L'immobilisation est

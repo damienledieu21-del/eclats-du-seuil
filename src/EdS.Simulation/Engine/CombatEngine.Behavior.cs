@@ -139,7 +139,8 @@ namespace EdS.Simulation.Engine
             var intentions = new Intention?[n];
             if (!HasBehaviors) return intentions;
             var targets = new int[n];
-            var announcing = new HashSet<Fighter>(_announced.Where(a => a.Pulse == 0).Select(a => a.Assailant));
+            // Revue Codex de la PR #33 (13e tour) : une annonce dont l'impact tombe après la fin arrête aussi l'ennemi, jusqu'à la fin.
+            var announcing = new HashSet<Fighter>(_announced.Where(a => a.Pulse == 0).Select(a => a.Assailant).Concat(_fightersById.Where(f => f.AnnouncedToEnd)));
             for (int i = 0; i < n; i++)
             {
                 Fighter f = _fightersById[i];
