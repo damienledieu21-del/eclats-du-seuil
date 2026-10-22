@@ -193,7 +193,7 @@ namespace EdS.Simulation.Engine
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
-                .Field("engaged", f.Engaged).Field("struck", f.Struck).Field("taunted", f.Taunted);
+                .Field("engaged", f.Engaged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -386,7 +386,16 @@ namespace EdS.Simulation.Engine
             // numéros de file diffèrent, pas leur ordre (ni donc le combat), et la file du rejeu contient à chaque instant celle de
             // l'original (son pic de taille est au moins le même). Les deux textes sont comparés numéros de file remplacés par leur rang et
             // pic de file mis de côté (celui reçu au plus celui du rejeu) ; Restore relit ensuite le texte reçu tel quel.
-            string replayed = QueueRanked(replay.Snapshot().Text, out long replayedPeak), received = QueueRanked(snapshot.Text, out long receivedPeak);
+            // Revue Codex de la PR #32 (32e tour) : avant toute copie du texte reçu, sa taille est bornée par celle de l'état rejoué (écrit par
+            // ce moteur) : seuls les numéros de file (et leurs mentions dans announced) et le pic de file peuvent s'écrire avec d'autres
+            // chiffres, au plus 48 caractères par ligne de plus. Un texte plus grand ne peut pas être cet état.
+            string replayedText = replay.Snapshot().Text;
+            long replayedLines = 1;
+            foreach (char c in replayedText)
+                if (c == '\n') replayedLines++;
+            if (snapshot.Text.Length > checked(replayedText.Length + 48 * replayedLines + 64))
+                throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({snapshot.Text.Length} caractères, l'état rejoué en a {replayedText.Length}).");
+            string replayed = QueueRanked(replayedText, out long replayedPeak), received = QueueRanked(snapshot.Text, out long receivedPeak);
             if (!string.Equals(replayed, received, StringComparison.Ordinal) || receivedPeak > replayedPeak)
                 throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({FirstDifference(replayed, received)}).");
             return Restore(setup, snapshot, log);
@@ -865,6 +874,11 @@ namespace EdS.Simulation.Engine
                     $"Échéances de {who} impossibles.");
                 // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
                 Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
+                // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
+                // télégraphie) tombe au plus tôt à la fin du combat.
+                Require(!f.AnnouncedToEnd || f.Assailant is { } announcer && Enumerable.Range(0, (int)Math.Min(f.NextTurn, int.MaxValue))
+                    .Any(turn => TurnTick(f, turn) <= CurrentTick - 1 && ImpactTickOf(TurnTick(f, turn), announcer.Attacks[turn % announcer.Attacks.Count]) >= _durationTicks),
+                    $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
                 // Revue Codex de la PR #33 (tour 6) : seul un assaillant est provoqué, et une provocation active a été reçue.
                 Require(f.Assailant != null || !f.Taunted, $"Provocation reçue par {who} impossible.");
                 Require(f.Taunted || !f.Statuses.Values.Any(s => s.Definition.IsTaunt), $"Provocation active de {who} non mémorisée.");
@@ -999,6 +1013,8 @@ namespace EdS.Simulation.Engine
                         && Planar.TryNormalize(heading.X.Raw, heading.Z.Raw, out moveX, out moveZ);
                     Require(f.Out || f.Behavior != null || (b.Moving == shouldMove && (!b.Moving || (b.DirectionX == moveX && b.DirectionZ == moveZ))),
                         $"Marche de {who} différente de sa dernière commande move ou stop.");
+                    // Revue Codex de la PR #33 (13e tour) : un ennemi à comportement pas encore engagé ne marche pas.
+                    Require(f.Behavior is null || f.Engaged || !b.Moving, $"Marche de {who}, pas encore engagé.");
                     Require(!b.Moving || f.Behavior != null || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous),
                         $"Marche ou sélection de {who} sans commande à son origine.");
                     // 22e tour : la cible sélectionnée est celle de la dernière commande select admise (par tick, puis par rang), null compris.
@@ -1320,7 +1336,9 @@ namespace EdS.Simulation.Engine
             long previous = CurrentTick - 1;
             IEnumerable<CombatCommand> past = _setup.Commands.Where(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
             if (GuardTurnPossible(f)) return null;
-            if (FreeMover(f)) return null;   // sous-lot 11.5 : un ennemi à comportement se tourne vers sa cible, une charge vers son axe
+            // Sous-lot 11.5 : un ennemi à comportement engagé se tourne vers sa cible, une charge vers son axe ; pas encore engagé, il n'a jamais
+            // bougé (revue Codex de la PR #33, 13e tour).
+            if (FreeMover(f) || f.Behavior != null && f.Engaged) return null;
             var facings = new HashSet<(long X, long Z)>();
             GroundVector start = f.Setup.Placement!.Facing;
             if (Planar.TryNormalize(start.X.Raw, start.Z.Raw, out long sx, out long sz)) facings.Add((sx, sz));
@@ -1345,6 +1363,9 @@ namespace EdS.Simulation.Engine
             long start = Math.Max(from, arrived);
             long end = Math.Min(CurrentTick - 1, Math.Min(g.Result.DeathTick ?? long.MaxValue, g.LeftTick ?? long.MaxValue));
             if (start > end) return 0;
+            // Revue Codex de la PR #33 (13e tour) : un ennemi à comportement marche sans commande (placement), d'au plus un pas par tick,
+            // seulement une fois engagé (l'engagement ne se perd pas) : tous ses ticks présents et vivants s'il l'est, aucun sinon.
+            if (g.Behavior != null) return g.Engaged ? checked(end - start + 1) : 0;
             var commands = _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop) && c.Actor == g.Id
                 && c.AtMs / _tickMs >= arrived && c.AtMs / _tickMs <= end).OrderBy(c => c.AtMs / _tickMs).ToList();
             bool moving = false;
@@ -1384,14 +1405,14 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Sous-lot 11.5 : un ennemi à comportement marche sans commande (placement), et une charge le porte d'un coup jusqu'au bout de sa
-        /// bande : ses pas ne se déduisent pas des commandes, sa place et l'axe de ses zones ne sont pas bornés ainsi. Revue Codex de la PR
-        /// #33 : un assaillant sans comportement ne l'est qu'une fois qu'une de ses charges a pu tomber (un tour déjà joué dont l'attaque est une
-        /// charge, impact au plus au tick précédent). La reprise vérifiée par rejeu (<see cref="RestoreVerified"/>) reste exacte dans tous les cas.
+        /// Sous-lot 11.5 : une charge porte un assaillant d'un coup jusqu'au bout de sa bande : sa place et l'axe de ses zones ne sont plus
+        /// bornés par ses pas une fois qu'une de ses charges a pu tomber (un tour déjà joué dont l'attaque est une charge, impact au plus au
+        /// tick précédent ; revue Codex de la PR #33). Revue Codex de la PR #33 (13e tour) : un ennemi à comportement n'est plus libre pour
+        /// autant : ses pas autonomes sont bornés comme les autres (<see cref="MovingTicks"/>). La reprise vérifiée par rejeu
+        /// (<see cref="RestoreVerified"/>) reste exacte dans tous les cas.
         /// </summary>
         private bool FreeMover(Fighter g)
         {
-            if (g.Behavior != null) return true;
             if (g.Assailant is not { } a || !a.Attacks.Any(attack => attack.Charge)) return false;
             for (long turn = 0; turn < g.NextTurn; turn++)
             {
@@ -1662,6 +1683,7 @@ namespace EdS.Simulation.Engine
             if (f.Assailant != null && (f.NextAttack < 0 || f.NextAttack >= f.Assailant.Attacks.Count)) throw new FormatException($"Attaque suivante invalide pour « {f.Id} ».");
             f.NextAttackTick = n["nextAttackTick"].NullableLong;
             f.Engaged = n["engaged"].Bool;
+            f.AnnouncedToEnd = n["announcedToEnd"].Bool;
             f.Struck = n["struck"].Bool;
             f.Taunted = n["taunted"].Bool;
             f.LethalCause = ReadProvenance(n["lethalCause"]);
