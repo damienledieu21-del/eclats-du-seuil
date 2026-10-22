@@ -500,10 +500,16 @@ namespace EdS.Game
 
         /// <summary>
         /// Déplacement purement visuel, relatif à la caméra (ZQSD en AZERTY, WASD en QWERTY, ou flèches : voir <see cref="Keys"/>) ;
-        /// impossible hors de combat ou étourdi.
+        /// impossible hors de combat ou étourdi. Revue Codex de la PR #32 (30e tour) : un joueur absent (avant son arrivée, après son départ)
+        /// ne bouge ni ne se tourne : il réapparaît là où il était.
         /// </summary>
         private void Move(PlayerState player)
         {
+            if (!player.View.IsPresent)
+            {
+                _moving = false;
+                return;
+            }
             float x = (Input.GetKey(Keys.Right) || Input.GetKey(KeyCode.RightArrow) ? 1f : 0f)
                 - (Input.GetKey(Keys.Left) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
             float z = (Input.GetKey(Keys.Forward) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
