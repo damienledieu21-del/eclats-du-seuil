@@ -503,8 +503,19 @@ namespace EdS.Simulation.Engine
         private void LoadSnapshot(CombatSnapshot snapshot)
         {
             CheckLineCount(snapshot.Text, _fighters.Count, _rules.MaxPendingEvents);
-            string[] lines = snapshot.Text.Split('\n');
-            SnapshotNode head = SnapshotNode.Parse(lines[0]);
+            // Revue Codex de la PR #32 (35e tour) : lignes lues une à une sur place (comme QueueDifference), sans découper tout le texte ;
+            // chacune n'est copiée que le temps d'être analysée.
+            string text = snapshot.Text;
+            long lineCount = 1;
+            foreach (char c in text)
+                if (c == '\n') lineCount++;
+            int position = 0;
+            SnapshotNode NextNode()
+            {
+                if (!NextLine(text, ref position, out int start, out int length)) throw new FormatException("Instantané tronqué.");
+                return SnapshotNode.Parse(text.Substring(start, length));
+            }
+            SnapshotNode head = NextNode();
             if (head["snapshot"].Int != CombatSnapshot.FormatVersion) throw new FormatException("Format d'instantané inconnu.");
             if (head["engineVersion"].String != Version || head["formatVersion"].Int != LogFormatVersion)
                 throw new FormatException($"Instantané du moteur {head["engineVersion"].String} (format {head["formatVersion"].Long}), moteur actuel {Version} (format {LogFormatVersion}).");
@@ -536,8 +547,8 @@ namespace EdS.Simulation.Engine
             }
 
             int count = checked((int)head["queue"]["count"].Long);
-            if (lines.Length != 1 + _fighters.Count + count) throw new FormatException($"{lines.Length} lignes, {1 + _fighters.Count + count} attendues.");
-            for (int i = 0; i < _fighters.Count; i++) LoadFighter(_fighters[i], SnapshotNode.Parse(lines[1 + i]));
+            if (lineCount != 1 + _fighters.Count + (long)count) throw new FormatException($"{lineCount} lignes, {1 + _fighters.Count + count} attendues.");
+            for (int i = 0; i < _fighters.Count; i++) LoadFighter(_fighters[i], NextNode());
             // Revue Codex de la PR #32 (3e tour) : les abonnements se déduisent des combattants entrés (présents, morts compris, ou partis)
             // et du catalogue ; ils sont recalculés, et la liste reçue doit être exactement celle-là.
             Array.Clear(_subscribed, 0, _subscribed.Length);
@@ -552,7 +563,7 @@ namespace EdS.Simulation.Engine
             var bySequence = new Dictionary<long, Scheduled>();
             for (int i = 0; i < count; i++)
             {
-                SnapshotNode e = SnapshotNode.Parse(lines[1 + _fighters.Count + i]);
+                SnapshotNode e = NextNode();
                 Scheduled item = LoadItem(e);
                 long sequence = e["entry"].Long;
                 entries.Add((e["tick"].Long, Phase(e["phase"].Int), sequence, item));
