@@ -239,6 +239,7 @@ namespace EdS.Simulation.Engine
                     break;
             }
             if (c.Placement is { } placement) WritePlacement(w, placement);
+            if (c.ArrivalMs is long arrivalMs) w.Field("arrivalMs", arrivalMs);   // sous-lot 11.4d (format 13) : seulement s'il arrive en route
             w.EndObject();
         }
     }

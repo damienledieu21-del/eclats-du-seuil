@@ -152,15 +152,21 @@ namespace EdS.Game
         {
             CombatantView me = player.View;
             bool broken = me.States.Contains("guardBreak");
-            _shield.SetActive(me.Guarding || me.ParryOpen || broken);
+            // Revue Codex de la PR #32 (20e tour) : le joueur absent (avant son arrivée, après son départ) est caché, bouclier compris.
+            _player.SetActive(me.IsPresent);
+            _shield.SetActive(me.IsPresent && (me.Guarding || me.ParryOpen || broken));
             _shieldRenderer.sharedMaterial = me.ParryOpen ? _shieldParry : broken ? _shieldBroken : _shieldGuard;
 
             foreach (OtherState other in combat.Others())
             {
                 if (!_bodies.TryGetValue(other.Id, out GameObject body)) continue;
+                // Revue Codex de la PR #32 (16e tour) : un absent (attendu, refusé, parti) est caché ; il apparaît à son arrivée.
+                body.SetActive(other.View.IsPresent);
+                if (!other.View.IsPresent) continue;
                 Vector3 look = _player.transform.position;
                 look.y = body.transform.position.y;
-                if (other.IsEnemy && other.View.Kind != CombatantKind.Dummy && (look - body.transform.position).sqrMagnitude > 0.01f)
+                // Revue Codex de la PR #32 (30e tour) : pas vers un joueur caché (absent).
+                if (me.IsPresent && other.IsEnemy && other.View.Kind != CombatantKind.Dummy && (look - body.transform.position).sqrMagnitude > 0.01f)
                     body.transform.rotation = Quaternion.Slerp(body.transform.rotation, Quaternion.LookRotation(look - body.transform.position), 0.15f);
                 Tint(other.Id, other.View.IsDead, other.View.States.Contains("stun"));
             }

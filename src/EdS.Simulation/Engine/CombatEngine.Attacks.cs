@@ -70,7 +70,7 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private Defense DefenseOf(PendingAction action, Fighter target, bool parryOpen, bool guarding)
         {
-            if (target.Character is null || target.IsDead || !(parryOpen || guarding)) return Defense.None;
+            if (target.Character is null || target.Out || !(parryOpen || guarding)) return Defense.None;
             bool parry = parryOpen && action.Parryable, guard = guarding && action.Guardable;
             if (!parry && !guard) return Defense.Ignored;
             if (!FacesBlow(action, target)) return Defense.Behind;
@@ -163,7 +163,7 @@ namespace EdS.Simulation.Engine
         {
             if (impact.Zone is not { } zone) return new[] { impact.Target! };
             Fighter assailant = impact.Assailant;
-            return _fightersById.Where(f => f.Team != assailant.Team && !f.IsDead && zone.Touches(f.Body!.X, f.Body.Z, f.Body.Radius)).ToArray();
+            return _fightersById.Where(f => f.Team != assailant.Team && !f.Out && zone.Touches(f.Body!.X, f.Body.Z, f.Body.Radius)).ToArray();
         }
 
         private PendingAction ImpactAction(AttackImpact impact) => new PendingAction
@@ -180,8 +180,8 @@ namespace EdS.Simulation.Engine
         /// <summary>Motif d'annulation d'un impact : assaillant mort, ou cible d'un coup dirigé morte ; null s'il frappe.</summary>
         private static string? CancelReason(AttackImpact impact)
         {
-            if (impact.Assailant.IsDead) return "actorDead";
-            if (impact.Zone is null && impact.Target!.IsDead) return "targetDead";
+            if (impact.Assailant.Out) return OutReason(impact.Assailant, "actor");
+            if (impact.Zone is null && impact.Target!.Out) return OutReason(impact.Target, "target");
             return null;
         }
 
@@ -228,7 +228,7 @@ namespace EdS.Simulation.Engine
         /// Sous-lot 11.4c : attaques annoncées en cours, pour l'affichage (vues 1 et 2, réseau) : assaillant, attaque, forme verrouillée ou
         /// cible, tick d'impact et dernier tick d'effet. Lecture seule.
         /// </summary>
-        public IReadOnlyList<AnnouncedAttack> Announced() => _announced.Where(a => !a.Assailant.IsDead).Select(a => new AnnouncedAttack(a.Assailant.Id, a.Attack.Id, a.Attack.Shape!.Value,
+        public IReadOnlyList<AnnouncedAttack> Announced() => _announced.Where(a => !a.Assailant.Out).Select(a => new AnnouncedAttack(a.Assailant.Id, a.Attack.Id, a.Attack.Shape!.Value,
             a.Target?.Id, a.Zone, a.ImpactTick, checked(a.ImpactTick + (a.Attack.Pulses - 1) * (a.Attack.PulseMs / _tickMs)))).ToList();
     }
 

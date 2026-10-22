@@ -1,0 +1,1944 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using EdS.Domain.Builds;
+using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
+using EdS.Domain.Stats;
+using EdS.Simulation.Randomness;
+
+namespace EdS.Simulation.Engine
+{
+    /// <summary>
+    /// Sous-lot 11.4d : instantané d'état d'un combat entre deux ticks (ARCHITECTURE_MONDE.md, section 5). Texte canonique (lignes JSON
+    /// écrites par le moteur, entiers seulement), son empreinte, et le tick à simuler ensuite. Il contient tout l'état qui change en combat :
+    /// combattants (présence, ressources, garde, parade, recharges, déclencheurs, résultats, tirages aléatoires, place), altérations,
+    /// file d'événements (commandes et tours à venir, échéances, impacts annoncés, réactions reportées), compteurs. Ce qui se déduit du
+    /// scénario (statistiques, règles effectives, définitions) n'y est pas : il se relit avec le combat complété au moment de l'instantané
+    /// (<see cref="CombatEngine.CompletedSetup"/>), dont il porte l'empreinte.
+    /// </summary>
+    public sealed class CombatSnapshot
+    {
+        /// <summary>Revue Codex de la PR #32 (27e tour) : au plus 256 Mi caractères (un combat aux limites par défaut, 100 000 éléments en file, tient largement dedans).</summary>
+        public const int MaxTextLength = 1 << 28;
+
+        /// <summary>Version du format de l'instantané (indépendante de celle du journal).</summary>
+        public const int FormatVersion = 1;
+
+        /// <summary>Prochain tick à simuler.</summary>
+        public long Tick { get; }
+
+        /// <summary>Texte canonique, une ligne par élément, sans saut de ligne final.</summary>
+        public string Text { get; }
+
+        /// <summary>Empreinte du texte : <c>sha256:</c> suivi de 64 chiffres hexadécimaux.</summary>
+        public string Fingerprint { get; }
+
+        /// <summary>Empreinte de l'en-tête du combat complété à relire avec l'instantané (<see cref="CombatEngine.SetupFingerprint"/>).</summary>
+        public string Setup { get; }
+
+        private CombatSnapshot(long tick, string text, string setup)
+        {
+            Tick = tick;
+            Text = text;
+            Setup = setup;
+            Fingerprint = CombatEngine.Sha256(text);
+        }
+
+        internal static CombatSnapshot Create(long tick, string text, string setup) => new CombatSnapshot(tick, text, setup);
+
+        /// <summary>
+        /// Relit un instantané depuis son texte (première ligne : format, versions, tick) ; l'état n'est vérifié qu'à la reprise : exactement par
+        /// <see cref="CombatEngine.RestoreVerified"/> (rejeu), en cohérence seulement par <see cref="CombatEngine.Restore"/> (source de confiance).
+        /// </summary>
+        /// <exception cref="FormatException">Texte illisible ou d'un autre format.</exception>
+        public static CombatSnapshot Parse(string text)
+        {
+            if (text is null) throw new ArgumentNullException(nameof(text));
+            // Revue Codex de la PR #32 (27e tour) : taille bornée avant toute analyse ; chaque ligne l'est aussi (SnapshotNode), et la reprise
+            // borne le nombre de lignes par le combat (combattants + file).
+            if (text.Length > MaxTextLength) throw new FormatException($"Instantané illisible : {text.Length} caractères, au plus {MaxTextLength}.");
+            // Revue Codex de la PR #32 (30e tour) : chaque ligne est mesurée avant qu'aucune ne soit copiée (première ligne, découpage de la
+            // reprise) : une ligne trop longue est refusée sans allocation.
+            for (int i = 0, start = 0, line = 1; i <= text.Length; i++)
+                if (i == text.Length || text[i] == '\n')
+                {
+                    if (i - start > SnapshotNode.MaxLineLength)
+                        throw new FormatException($"Instantané illisible : ligne {line} de {i - start} caractères, au plus {SnapshotNode.MaxLineLength} (refusée avant d'être copiée).");
+                    start = i + 1;
+                    line++;
+                }
+            int end = text.IndexOf('\n');
+            SnapshotNode head = SnapshotNode.Parse(end < 0 ? text : text.Substring(0, end));
+            if (head["snapshot"].Int != FormatVersion) throw new FormatException($"Instantané au format {head["snapshot"].Long}, ce moteur lit le format {FormatVersion}.");
+            return new CombatSnapshot(head["tick"].Long, text, head["setup"].String);
+        }
+    }
+
+    public sealed partial class CombatEngine
+    {
+        /// <summary>Taille des blocs encodés en UTF-8 puis hachés par <see cref="Sha256"/> (caractères).</summary>
+        internal const int HashChunk = 1 << 16;
+
+        /// <summary>
+        /// Empreinte <c>sha256:</c> d'un texte (UTF-8). Revue Codex de la PR #32 (31e tour) : le texte est encodé et haché par blocs de
+        /// <see cref="HashChunk"/> caractères (encodeur incrémental : une paire de substitution coupée entre deux blocs est encodée comme
+        /// d'un seul tenant), sans copie UTF-8 du texte entier ; même empreinte que <c>SHA256(UTF8.GetBytes(text))</c>.
+        /// </summary>
+        internal static string Sha256(string text)
+        {
+            using (SHA256 sha = SHA256.Create())
+            {
+                Encoder encoder = Encoding.UTF8.GetEncoder();
+                char[] chars = new char[Math.Min(HashChunk, Math.Max(1, text.Length))];
+                byte[] bytes = new byte[Encoding.UTF8.GetMaxByteCount(chars.Length)];
+                for (int start = 0; start < text.Length; start += chars.Length)
+                {
+                    int count = Math.Min(chars.Length, text.Length - start);
+                    text.CopyTo(start, chars, 0, count);
+                    int written = encoder.GetBytes(chars, 0, count, bytes, 0, start + count == text.Length);
+                    sha.TransformBlock(bytes, 0, written, null, 0);
+                }
+                sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+                byte[] hash = sha.Hash!;
+                var hex = new StringBuilder("sha256:", 7 + 64);
+                foreach (byte b in hash) hex.Append(b.ToString("x2", CultureInfo.InvariantCulture));
+                return hex.ToString();
+            }
+        }
+
+        /// <summary>Sous-lot 11.4d : empreinte de l'en-tête de journal d'un combat (version du moteur et identité des données comprises).</summary>
+        public static string SetupFingerprint(CombatSetup setup) => Sha256(CombatLogHeader.Write(setup ?? throw new ArgumentNullException(nameof(setup))));
+
+        /// <summary>
+        /// Sous-lot 11.4d : instantané de l'état courant, entre deux ticks (avant de simuler <see cref="CurrentTick"/>). Le même état donne
+        /// le même texte, octet par octet. À relire avec <see cref="CompletedSetup"/> pris au même moment.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Combat terminé, ou état trop grand pour être relu (revue Codex de la PR #32, 37e tour :
+        /// texte au-delà de <see cref="CombatSnapshot.MaxTextLength"/> ou ligne au-delà de <see cref="SnapshotNode.MaxLineLength"/>, refusé
+        /// avant d'être assemblé plutôt que produit puis refusé à la relecture).</exception>
+        public CombatSnapshot Snapshot() => Snapshot(CombatSnapshot.MaxTextLength);
+
+        /// <summary>Instantané dont le texte est borné à <paramref name="maxTextLength"/> caractères (essais de la borne).</summary>
+        internal CombatSnapshot Snapshot(long maxTextLength)
+        {
+            if (IsFinished) throw new InvalidOperationException("Combat terminé : aucun instantané.");
+            CombatSetup completed = CompletedSetup();
+            string setup = SetupFingerprint(completed);
+            var lines = new List<string>();
+            // Revue Codex de la PR #32 (38e tour) : chaque ligne est mesurée au moment où elle est produite ; dès que le texte dépasserait les
+            // bornes du lecteur, l'instantané est refusé, sans sérialiser le reste.
+            long total = -1;
+            void Add(string line)
+            {
+                if (line.Length > SnapshotNode.MaxLineLength)
+                    throw new InvalidOperationException($"État trop grand pour un instantané : ligne de {line.Length} caractères, au plus {SnapshotNode.MaxLineLength}.");
+                total = checked(total + 1 + line.Length);
+                if (total > maxTextLength)
+                    throw new InvalidOperationException($"État trop grand pour un instantané : plus de {maxTextLength} caractères.");
+                lines.Add(line);
+            }
+            List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)> entries = _queue.Entries();
+            var cursor = _queue.Cursor;
+            long effectiveInitial = _initialEvents < 0 ? -1 : checked(_initialEvents + _joined.Count + _submitted.Count);
+            var head = new JsonLineWriter().BeginObject()
+                .Field("snapshot", CombatSnapshot.FormatVersion).Field("engineVersion", Version).Field("formatVersion", LogFormatVersion)
+                .Field("setup", setup).Field("tick", CurrentTick)
+                .Field("seq", _sequence).Field("lastEid", _lastEid).Field("lastStatusInstance", _lastStatusInstance).Field("lastApplication", _lastApplication)
+                .Field("deferredPending", _deferredPending).Field("peakWork", _peakWork).Field("peakEvents", _peakEvents).Field("peakPending", _peakPending)
+                .Field("lastTickWork", LastTickWork).Field("lastTickEvents", LastTickEvents)
+                .Field("commandCount", _commandCount).Field("initialEvents", effectiveInitial);
+            head.Name("subscribed").BeginArray();
+            for (int k = 0; k < _subscribed.Length; k++)
+                if (_subscribed[k]) head.Value(k);
+            head.EndArray();
+            head.Name("queue").BeginObject().Field("started", cursor.Started).Field("tick", cursor.Tick).Field("phase", (long)cursor.Phase)
+                .Field("next", cursor.NextSequence).Field("count", entries.Count).EndObject();
+            // Revue Codex de la PR #32 (36e tour) : le rang d'annonce de chaque impact est écrit sur sa ligne de file (et non plus en liste sur
+            // la ligne d'en-tête, qui pouvait dépasser les bornes du lecteur).
+            var announcedRank = new Dictionary<Scheduled, int>();
+            for (int k = 0; k < _announced.Count; k++) announcedRank[_announced[k]] = k;
+            Add(head.EndObject().ToString());
+
+            foreach (Fighter f in _fighters) Add(WriteFighter(f));
+            foreach (var e in entries)
+            {
+                var w = new JsonLineWriter().BeginObject().Field("entry", e.Sequence).Field("tick", e.Tick).Field("phase", (long)e.Phase);
+                WriteItem(w, e.Item);
+                if (e.Item is AttackImpact) w.Field("announced", announcedRank[e.Item]);
+                Add(w.EndObject().ToString());
+            }
+            return CombatSnapshot.Create(CurrentTick, string.Join("\n", lines), setup);
+        }
+
+        // --- Écriture ------------------------------------------------------------------------------------------------------------
+
+        private static void WriteProvenance(JsonLineWriter w, string name, Provenance? p)
+        {
+            w.Name(name);
+            if (p is null)
+            {
+                w.Value((string?)null);
+                return;
+            }
+            w.BeginObject().Field("root", p.Root).Field("depth", p.Depth);
+            w.Names("chain", p.ChainOldestFirst());
+            w.Field("trigger", p.Trigger).Field("cause", p.Cause).Field("source", p.Source).Field("instance", p.SourceInstance)
+                .Field("generation", p.SourceGeneration).EndObject();
+        }
+
+        private static string WriteFighter(Fighter f)
+        {
+            var w = new JsonLineWriter().BeginObject().Field("fighter", f.Id).Field("presence", (long)f.Presence)
+                .Field("arrivedTick", f.ArrivedTick).Field("leftTick", f.LeftTick).Field("leaveCommand", f.LeaveCommand)
+                .Field("dead", f.IsDead).Field("health", f.Health).Field("endurance", f.Endurance)
+                .Field("regenFromTick", f.RegenFromTick).Field("regenGranted", f.RegenGranted).Field("globalCooldownReadyTick", f.GlobalCooldownReadyTick);
+            w.Name("cooldowns").BeginArray();
+            foreach (var c in f.CooldownReadyTick.OrderBy(c => c.Key, StringComparer.Ordinal)) w.BeginArray().Value(c.Key).Value(c.Value).EndArray();
+            w.EndArray();
+            w.Field("guarding", f.Guarding).Field("upkeepDue", f.GuardUpkeepDue).Field("upkeepRemainder", f.GuardUpkeepRemainder).Field("upkeepPaid", f.GuardUpkeepPaid)
+                .Field("parryOpen", f.ParryOpen).Field("parryStartTick", f.ParryStartTick).Field("parryEndTick", f.ParryEndTick)
+                .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
+                .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
+                .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick);
+            WriteProvenance(w, "lethalCause", f.LethalCause);
+            Pcg32State random = f.Random.Capture();
+            w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
+                .Value(random.Increment.ToString("x16", CultureInfo.InvariantCulture)).EndArray();
+            w.Name("body");
+            if (f.Body is { } b)
+            {
+                w.BeginObject().Field("x", b.X).Field("z", b.Z).Field("facingX", b.FacingX).Field("facingZ", b.FacingZ).Field("moving", b.Moving)
+                    .Field("directionX", b.DirectionX).Field("directionZ", b.DirectionZ).Field("selected", b.Selected?.Id).EndObject();
+            }
+            else w.Value((string?)null);
+            w.Name("triggers").BeginArray();
+            foreach (TriggerSlot slot in f.Triggers) w.Value(slot.ReadyTick);
+            w.EndArray();
+            CombatantResult r = f.Result;
+            w.Name("result").BeginObject().Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken).Field("damageAbsorbed", r.DamageAbsorbed)
+                .Field("damageTransferred", r.DamageTransferred).Field("damageRedirected", r.DamageRedirected).Field("damageMitigated", r.DamageMitigated)
+                .Field("hits", r.Hits).Field("criticalHits", r.CriticalHits).Field("skillsCast", r.SkillsCast).Field("ultimatesCast", r.UltimatesCast)
+                .Field("commandsRejected", r.CommandsRejected).Field("blocks", r.Blocks).Field("perfectParries", r.PerfectParries)
+                .Field("failedParries", r.FailedParries).Field("guardBreaks", r.GuardBreaks).Field("guardTicks", r.GuardTicks)
+                .Field("deathTick", r.DeathTick).Field("arrivedTick", r.ArrivedTick).Field("leftTick", r.LeftTick).EndObject();
+            w.Name("statuses").BeginArray();
+            foreach (StatusInstance s in f.Statuses.Values.OrderBy(s => s.Id))
+            {
+                w.BeginObject().Field("id", s.Id).Field("generation", s.Generation).Field("state", s.State).Field("keySource", s.Key.Source)
+                    .Field("source", s.Source).Field("untilTick", s.UntilTick).Field("power", s.Power.Raw).Field("nextTick", s.NextTick)
+                    .Field("absorb", s.Absorb).Field("appliedSeq", s.AppliedSeq);
+                WriteProvenance(w, "depletedBy", s.DepletedBy);
+                WriteProvenance(w, "origin", s.Origin);
+                w.Name("slots");
+                if (s.Slots is null) w.Value((string?)null);
+                else
+                {
+                    w.BeginArray();
+                    foreach (TriggerSlot slot in s.Slots) w.Value(slot.ReadyTick);
+                    w.EndArray();
+                }
+                w.EndObject();
+            }
+            w.EndArray();
+            return w.EndObject().ToString();
+        }
+
+        private void WriteItem(JsonLineWriter w, Scheduled item)
+        {
+            switch (item)
+            {
+                case ArrivalItem a:
+                    w.Field("item", "arrival").Field("fighter", a.Fighter.Id);
+                    break;
+                case CommandItem c:
+                    w.Field("item", "command").Field("index", c.Index);
+                    break;
+                case AssailantTurn t:
+                    w.Field("item", "turn").Field("fighter", t.Fighter.Id).Field("turn", t.Turn);
+                    break;
+                case CooldownExpiry c:
+                    w.Field("item", "cooldown").Field("fighter", c.Fighter.Id).Field("skill", c.Skill);
+                    break;
+                case StateExpiry e:
+                    w.Field("item", "expiry").Field("fighter", e.Fighter.Id).Field("state", e.Key.State).Field("keySource", e.Key.Source)
+                        .Field("instance", e.Instance).Field("generation", e.Generation);
+                    break;
+                case DotTick d:
+                    w.Field("item", "dot").Field("fighter", d.Fighter.Id).Field("state", d.Key.State).Field("keySource", d.Key.Source).Field("instance", d.Instance);
+                    break;
+                case ParryWindowEnd p:
+                    w.Field("item", "parryEnd").Field("fighter", p.Fighter.Id).Field("startTick", p.StartTick);
+                    WriteProvenance(w, "origin", p.Origin);
+                    break;
+                case AttackImpact i:
+                    w.Field("item", "impact").Field("assailant", i.Assailant.Id).Field("attack", i.Attack.Id).Field("target", i.Target?.Id);
+                    w.Name("zone");
+                    if (i.Zone is { } z)
+                        w.BeginObject().Field("shape", (long)z.Shape).Field("originX", z.OriginX).Field("originZ", z.OriginZ).Field("axisX", z.AxisX)
+                            .Field("axisZ", z.AxisZ).Field("reach", z.Reach).Field("angle", z.Angle).Field("halfWidth", z.HalfWidth).EndObject();
+                    else w.Value((string?)null);
+                    w.Field("pulse", i.Pulse).Field("impactTick", i.ImpactTick);
+                    WriteProvenance(w, "origin", i.Origin);
+                    break;
+                case ReactionItem r:
+                    w.Field("item", "reaction");
+                    WriteSlot(w, r.Slot);
+                    WriteObserved(w, r.Event);
+                    WriteProvenance(w, "origin", r.Origin);
+                    w.Field("deferredFrom", r.DeferredFrom);
+                    break;
+                default:
+                    // Une notification est toujours traitée dans sa phase : elle ne reste jamais en file entre deux ticks.
+                    throw new InvalidOperationException($"Élément inattendu en file entre deux ticks : {item.GetType().Name}.");
+            }
+        }
+
+        /// <summary>
+        /// Déclencheur d'une réaction reportée : porteur, origine, définition, indice, instance ; pour un déclencheur porté par une instance
+        /// d'altération retirée depuis (réaction qui sera annulée, <c>originGone</c>), son rang et sa recharge aussi.
+        /// </summary>
+        private static void WriteSlot(JsonLineWriter w, TriggerSlot slot)
+        {
+            bool detached = slot.Status != null && !(slot.Status.Owner.Statuses.TryGetValue(slot.Status.Key, out StatusInstance? current) && current == slot.Status);
+            w.Name("slot").BeginObject().Field("bearer", slot.Bearer.Id).Field("origin", (long)slot.Origin).Field("definition", slot.DefinitionId)
+                .Field("index", slot.Index).Field("instance", slot.Instance).Field("detached", detached);
+            if (detached) w.Field("rank", slot.Rank).Field("readyTick", slot.ReadyTick).Field("generation", slot.Status!.Generation);
+            w.EndObject();
+        }
+
+        private static void WriteObserved(JsonLineWriter w, ObservedEvent e)
+        {
+            w.Name("event").BeginObject().Field("kind", (long)e.Kind).Field("also", e.Also is { } also ? (long)also : (long?)null)
+                .Field("source", e.Source).Field("target", e.Target).Field("skill", e.Skill).Field("state", e.State)
+                .Field("category", e.Category is { } c ? (long)c : (long?)null).Field("instance", e.Instance)
+                .Field("damageType", e.DamageType is { } d ? (long)d : (long?)null).Field("defense", (long)e.Defense).Field("renewed", e.Renewed)
+                .Field("resource", e.Resource is { } r ? (long)r : (long?)null).Field("eid", e.Eid).Field("tick", e.Tick).Field("phase", (long)e.Phase);
+            WriteProvenance(w, "provenance", e.Provenance);
+            w.EndObject();
+        }
+
+        // --- Lecture -------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Sous-lot 11.4d : reconstruit un moteur dans l'état de <paramref name="snapshot"/>, sans rejouer le passé. <paramref name="setup"/>
+        /// est le combat complété au moment de l'instantané (<see cref="CompletedSetup"/>) : même empreinte d'en-tête, sinon refus. Le moteur
+        /// rendu continue exactement comme l'original (mêmes lignes de journal, même résultat) ; il écrit dans <paramref name="log"/> la suite
+        /// du journal, sans en-tête. Ses commandes soumises et arrivées pilotées repartent de zéro (celles d'avant sont dans
+        /// <paramref name="setup"/>). L'instantané relu est réécrit et comparé au texte reçu : un texte non canonique est refusé.
+        /// Réservé à un instantané de confiance (produit par ce processus, ou reçu de l'autorité du combat, le serveur) : ses contrôles de
+        /// cohérence écartent les incohérences connues sans prouver qu'un état est atteignable. Un instantané reçu d'ailleurs se reprend avec
+        /// <see cref="RestoreVerified"/>, qui le compare au rejeu exact du combat (décision de Damien du 22 octobre 2026).
+        /// </summary>
+        /// <exception cref="FormatException">Instantané illisible, d'un autre moteur, d'un autre combat, ou incohérent.</exception>
+        public static CombatEngine Restore(CombatSetup setup, CombatSnapshot snapshot, ICombatLog log)
+        {
+            if (setup is null) throw new ArgumentNullException(nameof(setup));
+            if (snapshot is null) throw new ArgumentNullException(nameof(snapshot));
+            if (log is null) throw new ArgumentNullException(nameof(log));
+            string expected = SetupFingerprint(setup);
+            if (snapshot.Setup != expected)
+                throw new FormatException($"Instantané d'un autre combat : en-tête {snapshot.Setup}, combat fourni {expected}.");
+            CombatEngine engine;
+            try
+            {
+                // Rien n'est écrit au journal à la construction d'un moteur relu.
+                engine = new CombatEngine(setup, log, queueBound: true, numericLimits: true, snapshot);
+            }
+            // Un combat invalide reste une CombatSetupException (erreur de l'appelant) ; le reste vient du texte de l'instantané.
+            catch (Exception e) when (e is not CombatSetupException && (e is KeyNotFoundException || e is InvalidCastException
+                || e is IndexOutOfRangeException || e is ArgumentException || e is OverflowException || e is InvalidOperationException))
+            {
+                throw new FormatException($"Instantané incohérent avec le combat : {e.Message}", e);
+            }
+            string again = engine.Snapshot().Text;
+            if (!string.Equals(again, snapshot.Text, StringComparison.Ordinal))
+                throw new FormatException("Instantané non canonique : relu puis réécrit, il ne redonne pas le même texte.");
+            return engine;
+        }
+
+        /// <summary>
+        /// Décision de Damien du 22 octobre 2026 (revue Codex de la PR #32, option C) : reprise <b>vérifiée</b> d'un instantané reçu d'ailleurs
+        /// (fichier, autre processus, source qui n'est pas l'autorité du combat). Le combat complété <paramref name="setup"/> est rejoué depuis
+        /// le début, sans journal, jusqu'au tick de l'instantané ; l'instantané de ce rejeu doit être exactement <paramref name="snapshot"/>
+        /// (même texte, octet par octet), sinon refus. Le moteur rendu continue ensuite comme celui de <see cref="Restore"/>, dans
+        /// <paramref name="log"/>. Exact : un état que le combat n'atteint pas est toujours refusé. Coût : le calcul du passé (sans journal).
+        /// <see cref="Restore"/> reste la reprise sans rejeu d'un instantané de confiance (produit par ce processus, ou reçu de l'autorité du
+        /// combat, le serveur) ; ses contrôles de cohérence écartent les incohérences connues sans prouver qu'un état est atteignable.
+        /// </summary>
+        /// <exception cref="FormatException">Instantané illisible, d'un autre moteur, d'un autre combat, ou différent de l'état rejoué.</exception>
+        public static CombatEngine RestoreVerified(CombatSetup setup, CombatSnapshot snapshot, ICombatLog log)
+        {
+            if (setup is null) throw new ArgumentNullException(nameof(setup));
+            if (snapshot is null) throw new ArgumentNullException(nameof(snapshot));
+            if (log is null) throw new ArgumentNullException(nameof(log));
+            string expected = SetupFingerprint(setup);
+            if (snapshot.Setup != expected)
+                throw new FormatException($"Instantané d'un autre combat : en-tête {snapshot.Setup}, combat fourni {expected}.");
+            if (snapshot.Tick < 0) throw new FormatException($"Instantané au tick {snapshot.Tick} : impossible.");
+            CheckLineCount(snapshot.Text, setup.Combatants.Count, setup.Combat.MaxPendingEvents);
+            var replay = new CombatEngine(setup, NullCombatLog.Instance);
+            while (replay.CurrentTick < snapshot.Tick)
+            {
+                if (replay.IsFinished)
+                    throw new FormatException($"Instantané au tick {snapshot.Tick}, après la fin du combat rejoué (tick {replay.CurrentTick}).");
+                replay.Step();
+            }
+            // Le compte des événements initiaux est un cache des admissions pilotées, calculé à la première soumission (-1 avant) : même valeur
+            // une fois calculé. Le rejeu, qui n'a rien soumis, le calcule si l'instantané l'avait déjà.
+            int end = snapshot.Text.IndexOf('\n');
+            if (SnapshotNode.Parse(end < 0 ? snapshot.Text : snapshot.Text.Substring(0, end))["initialEvents"].Long >= 0)
+                replay._initialEvents = replay._setup.InitialEventCount();
+            // Une commande soumise ou une arrivée pilotée est mise en file à son tick dans l'original, dès le début dans le rejeu : les
+            // numéros de file diffèrent, pas leur ordre (ni donc le combat), et la file du rejeu contient à chaque instant celle de
+            // l'original (son pic de taille est au moins le même). Les deux textes sont comparés numéros de file remplacés par leur rang et
+            // pic de file mis de côté (celui reçu au plus celui du rejeu) ; Restore relit ensuite le texte reçu tel quel.
+            // Revue Codex de la PR #32 (32e tour) : avant toute copie du texte reçu, sa taille est bornée par celle de l'état rejoué (écrit par
+            // ce moteur) : seuls les numéros de file et le pic de file peuvent s'écrire avec d'autres
+            // chiffres, au plus 48 caractères par ligne de plus. Un texte plus grand ne peut pas être cet état.
+            string replayedText = replay.Snapshot().Text;
+            long replayedLines = 1;
+            foreach (char c in replayedText)
+                if (c == '\n') replayedLines++;
+            if (snapshot.Text.Length > checked(replayedText.Length + 48 * replayedLines + 64))
+                throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({snapshot.Text.Length} caractères, l'état rejoué en a {replayedText.Length}).");
+            string? difference = QueueDifference(replayedText, snapshot.Text, out long replayedPeak, out long receivedPeak);
+            if (difference is null && receivedPeak > replayedPeak) difference = "ligne 1, pic de file";
+            if (difference != null) throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({difference}).");
+            return Restore(setup, snapshot, log);
+        }
+
+        /// <summary>
+        /// Compare deux textes d'instantané, numéros de file (<c>entry</c>) mis de côté (les éléments sont écrits dans l'ordre de sortie : deux
+        /// files aux mêmes éléments dans le même ordre sont égales) et pic de file rendu à part. Revue Codex de la PR #32 (33e tour) : en flux,
+        /// ligne à ligne et sur place, sans découper ni recopier les textes (seule la ligne d'en-tête est copiée, bornée à
+        /// <see cref="SnapshotNode.MaxLineLength"/>) ; 36e tour : le rang d'annonce d'un impact est sur sa ligne, comparé tel quel ; 38e tour :
+        /// les éléments de la phase des commandes d'un même tick, que <c>RunCommands</c> retrie avant de les exécuter, sont comparés comme
+        /// un ensemble. Rend la première ligne qui diffère (numérotée à partir de 1), ou null.
+        /// </summary>
+        private static string? QueueDifference(string expected, string actual, out long expectedPeak, out long actualPeak)
+        {
+            int pe = 0, pa = 0;
+            NextLine(expected, ref pe, out int se, out int le);
+            NextLine(actual, ref pa, out int sa, out int la);
+            string headE = MaskHead(expected.Substring(se, le), out expectedPeak);
+            string headA = MaskHead(actual.Substring(sa, la), out actualPeak);
+            if (!string.Equals(headE, headA, StringComparison.Ordinal)) return "ligne 1";
+            const string entry = "{\"entry\":";
+            long line = 1;
+            while (true)
+            {
+                bool moreE = NextLine(expected, ref pe, out se, out le), moreA = NextLine(actual, ref pa, out sa, out la);
+                line++;
+                if (!moreE || !moreA)
+                {
+                    if (moreE == moreA) return null;
+                    return $"ligne {line}";
+                }
+                int commaE = EntryComma(expected, se, le), commaA = EntryComma(actual, sa, la);
+                // Revue Codex de la PR #32 (38e tour) : les éléments de la phase des commandes d'un même tick s'exécutent dans l'ordre de
+                // RunCommands (initiative, identifiant, rang de la commande), pas dans celui de la file. Une commande soumise au tick courant
+                // est en file après le tour d'un assaillant du même tick dans l'original, avant lui dans le rejeu (toutes les commandes du
+                // combat complété sont programmées avant les tours) : ces lignes sont comparées comme un ensemble (triées), numéros mis de côté.
+                int keyE = commaE >= 0 ? CommandsKey(expected, commaE, se + le - commaE) : -1;
+                int keyA = commaA >= 0 ? CommandsKey(actual, commaA, sa + la - commaA) : -1;
+                if (keyE > 0 && keyE == keyA && string.CompareOrdinal(expected, commaE, actual, commaA, keyE) == 0)
+                {
+                    List<(int Start, int Length)> runE = Run(expected, ref pe, commaE, se + le - commaE, keyE);
+                    List<(int Start, int Length)> runA = Run(actual, ref pa, commaA, sa + la - commaA, keyA);
+                    if (runE.Count != runA.Count) return $"ligne {line}";
+                    runE.Sort((x, y) => CompareSpans(expected, x, y));
+                    runA.Sort((x, y) => CompareSpans(actual, x, y));
+                    for (int i = 0; i < runE.Count; i++)
+                        if (runE[i].Length != runA[i].Length || string.CompareOrdinal(expected, runE[i].Start, actual, runA[i].Start, runE[i].Length) != 0)
+                            return $"ligne {line}";
+                    line += runE.Count - 1;
+                    continue;
+                }
+                if (commaE >= 0 && commaA >= 0)
+                {
+                    int restE = se + le - commaE, restA = sa + la - commaA;
+                    if (restE != restA || string.CompareOrdinal(expected, commaE, actual, commaA, restE) != 0) return $"ligne {line}";
+                }
+                else if (commaE >= 0 || commaA >= 0 || le != la || string.CompareOrdinal(expected, se, actual, sa, le) != 0) return $"ligne {line}";
+            }
+
+            static int EntryComma(string text, int start, int length)
+            {
+                if (length < entry.Length || string.CompareOrdinal(text, start, entry, 0, entry.Length) != 0) return -1;
+                return text.IndexOf(',', start + entry.Length, length - entry.Length);
+            }
+
+            // Longueur du préfixe « ,"tick":N,"phase":2, » d'un élément de la phase des commandes (séparateur suivant compris), -1 sinon.
+            static int CommandsKey(string text, int comma, int length)
+            {
+                const string tick = ",\"tick\":", phase = ",\"phase\":2";
+                if (length < tick.Length || string.CompareOrdinal(text, comma, tick, 0, tick.Length) != 0) return -1;
+                int i = comma + tick.Length, stop = comma + length;
+                while (i < stop && text[i] >= '0' && text[i] <= '9') i++;
+                if (stop - i < phase.Length + 1 || string.CompareOrdinal(text, i, phase, 0, phase.Length) != 0) return -1;
+                i += phase.Length;
+                return text[i] == ',' || text[i] == '}' ? i + 1 - comma : -1;
+            }
+
+            // Lignes consécutives (à partir de la première, déjà lue) de même préfixe : la suite de l'élément après son numéro, sans copie.
+            static List<(int Start, int Length)> Run(string text, ref int position, int comma, int length, int key)
+            {
+                var run = new List<(int Start, int Length)> { (comma, length) };
+                while (true)
+                {
+                    int saved = position;
+                    if (!NextLine(text, ref position, out int start, out int count)) { position = saved; break; }
+                    int next = EntryComma(text, start, count);
+                    if (next < 0 || start + count - next < key || string.CompareOrdinal(text, comma, text, next, key) != 0) { position = saved; break; }
+                    run.Add((next, start + count - next));
+                }
+                return run;
+            }
+
+            static int CompareSpans(string text, (int Start, int Length) x, (int Start, int Length) y)
+            {
+                int c = string.CompareOrdinal(text, x.Start, text, y.Start, Math.Min(x.Length, y.Length));
+                return c != 0 ? c : x.Length.CompareTo(y.Length);
+            }
+        }
+
+        /// <summary>Ligne suivante de <paramref name="text"/> à partir de <paramref name="position"/> (comme <c>Split('\n')</c>, sans copie).</summary>
+        private static bool NextLine(string text, ref int position, out int start, out int length)
+        {
+            start = position;
+            length = 0;
+            if (position > text.Length) return false;
+            int newline = text.IndexOf('\n', position);
+            int stop = newline < 0 ? text.Length : newline;
+            length = stop - start;
+            position = stop + 1;
+            return true;
+        }
+
+        /// <summary>En-tête d'instantané, pic de file remplacé par <c>?</c> (rendu à part).</summary>
+        private static string MaskHead(string head, out long peakPending)
+        {
+            const string peak = "\"peakPending\":";
+            int p = head.IndexOf(peak, StringComparison.Ordinal), stop = p < 0 ? -1 : head.IndexOf(',', p);
+            peakPending = -1;
+            if (stop > p && long.TryParse(head.Substring(p + peak.Length, stop - p - peak.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long value))
+            {
+                peakPending = value;
+                head = head.Substring(0, p + peak.Length) + "?" + head.Substring(stop);
+            }
+            return head;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (27e tour) : au plus une ligne d'en-tête, une par combattant et une par place de la file, comptées avant
+        /// de découper le texte.
+        /// </summary>
+        private static void CheckLineCount(string text, int fighters, int maxPending)
+        {
+            long newlines = 0, most = checked(fighters + (long)maxPending);
+            foreach (char c in text)
+                if (c == '\n' && ++newlines > most)
+                    throw new FormatException($"Instantané de plus de {most + 1} lignes (combattants et file au plus).");
+        }
+
+        private void LoadSnapshot(CombatSnapshot snapshot)
+        {
+            CheckLineCount(snapshot.Text, _fighters.Count, _rules.MaxPendingEvents);
+            // Revue Codex de la PR #32 (35e tour) : lignes lues une à une sur place (comme QueueDifference), sans découper tout le texte ;
+            // chacune n'est copiée que le temps d'être analysée.
+            string text = snapshot.Text;
+            long lineCount = 1;
+            foreach (char c in text)
+                if (c == '\n') lineCount++;
+            int position = 0;
+            SnapshotNode NextNode()
+            {
+                if (!NextLine(text, ref position, out int start, out int length)) throw new FormatException("Instantané tronqué.");
+                return SnapshotNode.Parse(text.Substring(start, length));
+            }
+            SnapshotNode head = NextNode();
+            if (head["snapshot"].Int != CombatSnapshot.FormatVersion) throw new FormatException("Format d'instantané inconnu.");
+            if (head["engineVersion"].String != Version || head["formatVersion"].Int != LogFormatVersion)
+                throw new FormatException($"Instantané du moteur {head["engineVersion"].String} (format {head["formatVersion"].Long}), moteur actuel {Version} (format {LogFormatVersion}).");
+            CurrentTick = head["tick"].Long;
+            if (CurrentTick < 0 || CurrentTick >= _durationTicks) throw new FormatException($"Tick {CurrentTick} hors du combat.");
+            _sequence = head["seq"].Long;
+            _lastEid = head["lastEid"].Long;
+            _lastStatusInstance = head["lastStatusInstance"].Long;
+            _lastApplication = head["lastApplication"].Long;
+            _deferredPending = head["deferredPending"].Long;
+            _peakWork = head["peakWork"].Long;
+            _peakEvents = head["peakEvents"].Long;
+            _peakPending = head["peakPending"].Long;
+            LastTickWork = head["lastTickWork"].Long;
+            LastTickEvents = head["lastTickEvents"].Long;
+            _commandCount = head["commandCount"].Int;
+            _initialEvents = head["initialEvents"].Long;
+            // 27e tour : listes de l'en-tête bornées par le combat avant d'être parcourues.
+            if (head["subscribed"].Items.Count > _subscribed.Length)
+                throw new FormatException("Listes de l'en-tête de l'instantané plus longues que le combat ne le permet.");
+            var subscribed = new List<int>(head["subscribed"].Items.Select(k => k.Int));
+            // Revue Codex de la PR #32 (34e tour) : les commandes par acteur et par tick à venir ne sont plus écrites (jusqu'à un million de
+            // couples sur la ligne d'en-tête, au-delà des bornes du lecteur) : elles se déduisent exactement du combat complété, qui porte
+            // toutes les commandes admises (3e tour).
+            foreach (CombatCommand command in _setup.Commands)
+            {
+                var key = (command.Actor, command.AtMs / _tickMs);
+                if (key.Item2 >= CurrentTick) _commandsPerActorTick[key] = _commandsPerActorTick.TryGetValue(key, out int n) ? n + 1 : 1;
+            }
+
+            int count = checked((int)head["queue"]["count"].Long);
+            if (lineCount != 1 + _fighters.Count + (long)count) throw new FormatException($"{lineCount} lignes, {1 + _fighters.Count + count} attendues.");
+            for (int i = 0; i < _fighters.Count; i++) LoadFighter(_fighters[i], NextNode());
+            // Revue Codex de la PR #32 (3e tour) : les abonnements se déduisent des combattants entrés (présents, morts compris, ou partis)
+            // et du catalogue ; ils sont recalculés, et la liste reçue doit être exactement celle-là.
+            Array.Clear(_subscribed, 0, _subscribed.Length);
+            foreach (Fighter f in _fighters)
+                if (f.Presence == Presence.Present || f.Presence == Presence.Left) AddSubscriptions(f);
+            foreach (StatusDefinition definition in _statuses.Definitions)
+                foreach (TriggerDefinition trigger in definition.Triggers) _subscribed[(int)trigger.On] = true;
+            if (!subscribed.SequenceEqual(Enumerable.Range(0, _subscribed.Length).Where(k => _subscribed[k])))
+                throw new FormatException("Abonnements incohérents avec les combattants entrés et le catalogue.");
+
+            var entries = new List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)>();
+            var bySequence = new Dictionary<long, Scheduled>();
+            var announcedRanks = new List<(long Rank, AttackImpact Impact)>();
+            for (int i = 0; i < count; i++)
+            {
+                SnapshotNode e = NextNode();
+                Scheduled item = LoadItem(e);
+                long sequence = e["entry"].Long;
+                entries.Add((e["tick"].Long, Phase(e["phase"].Int), sequence, item));
+                bySequence[sequence] = item;
+                if (item is AttackImpact announcedImpact) announcedRanks.Add((e["announced"].Long, announcedImpact));
+            }
+            // Revue Codex de la PR #32 : la file est relue telle qu'entre deux ticks. Curseur : jamais demandé avant le premier tick ; sinon
+            // à la fin (endOfTick) du tick précédent. Éléments : tous à venir (tick repris ou suivants).
+            SnapshotNode queue = head["queue"];
+            bool started = queue["started"].Bool;
+            long cursorTick = queue["tick"].Long;
+            CombatPhase cursorPhase = Phase(queue["phase"].Int);
+            bool boundary = CurrentTick == 0
+                ? !started && cursorTick == 0 && cursorPhase == CombatPhase.Setup
+                : started && cursorTick == CurrentTick - 1 && cursorPhase == CombatPhase.EndOfTick;
+            if (!boundary) throw new FormatException($"Curseur de file ({cursorTick}, {cursorPhase}) incohérent avec un instantané pris avant le tick {CurrentTick}.");
+            foreach (var (tick, _, sequence, _) in entries)
+                if (tick < CurrentTick) throw new FormatException($"Élément de file {sequence} au tick {tick}, déjà passé (instantané pris avant le tick {CurrentTick}).");
+            foreach (var key in _commandsPerActorTick.Keys)
+                if (key.Tick < CurrentTick) throw new FormatException($"Commandes de « {key.Actor} » comptées au tick {key.Tick}, déjà passé.");
+            _queue.Load(entries, started, cursorTick, cursorPhase, queue["next"].Long);
+            // Revue Codex de la PR #32 (2e tour) : chaque impact en file est une attaque annoncée, une seule fois, et inversement ; 36e tour :
+            // son rang d'annonce est sur sa ligne, les rangs vont exactement de 0 au nombre d'impacts moins un.
+            var byRank = new AttackImpact?[announcedRanks.Count];
+            foreach (var (rank, impact) in announcedRanks)
+            {
+                if (rank < 0 || rank >= byRank.Length || byRank[rank] != null)
+                    throw new FormatException($"Rang d'annonce {rank} : hors de [0, {byRank.Length - 1}] ou en double.");
+                byRank[rank] = impact;
+            }
+            foreach (AttackImpact? impact in byRank) _announced.Add(impact!);
+            ValidateLoaded(entries);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (2e tour) : un instantané retouché peut se réécrire à l'identique (contrôle canonique) tout en décrivant un
+        /// état que le moteur n'atteint jamais entre deux ticks ; il est refusé ici, avant tout tick. Contrôles : compteurs ; présence, arrivée
+        /// et départ ; points de vie (absents si et seulement si infinis, dans [0, max], nuls si et seulement si mort) ; ressources dans leurs
+        /// bornes ; ni altération, ni garde, ni parade, ni tour annoncé, ni marche chez un mort ou un absent ; altérations uniques, déjà
+        /// numérotées, rangées sous la clé de leur cumul, pas encore échues ; place dans l'aire et hors du décor, orientation unitaire ;
+        /// éléments de file à leur phase et d'un combattant du bon genre ; commandes à venir toutes en file, au tick de leur instant ;
+        /// réactions en file toutes reportées du tick précédent ; zones verrouillées aux dimensions de leur attaque.
+        /// </summary>
+        /// <summary>
+        /// Revue Codex de la PR #32 (7e tour) : plafond des compteurs cumulés relus (bilan, entretien, absorption, puissance) : très au-delà
+        /// de tout combat (2⁵³ environ), il laisse aux incréments, tous vérifiés, une marge de plus de mille fois sa valeur.
+        /// </summary>
+        private const long CounterCeiling = long.MaxValue / 1024;
+
+        /// <summary>
+        /// 9e tour : une échéance (ou un tick de DOT) cite une instance numérotée par le moteur ; si l'altération est encore là, c'est sa clé,
+        /// et une échéance n'en cite pas une génération à venir.
+        /// </summary>
+        private bool Numbered(Fighter f, StatusKey key, long instance, int? generation)
+        {
+            if (instance < 1 || instance > _lastStatusInstance || (generation is int g && g < 1)) return false;
+            StatusInstance? live = f.Statuses.Values.FirstOrDefault(s => s.Id == instance);
+            return live is null || (live.Key.Equals(key) && (generation is null || generation <= live.Generation));
+        }
+
+        private void ValidateLoaded(List<(long Tick, CombatPhase Phase, long Sequence, Scheduled Item)> entries)
+        {
+            static void Require(bool ok, string message)
+            {
+                if (!ok) throw new FormatException(message);
+            }
+
+            Require(_sequence >= 0 && _lastEid >= 0 && _lastStatusInstance >= 0 && _lastApplication >= 0 && _peakWork >= 0 && _peakEvents >= 0
+                && _peakPending >= entries.Count && entries.Count <= _rules.MaxPendingEvents && LastTickWork >= 0 && LastTickEvents >= 0
+                && (_initialEvents == -1 || _initialEvents == _setup.InitialEventCount()), "Compteurs de l'instantané impossibles.");
+            // 14e tour : les mesures de charge restent sous les budgets (une réserve qui les dépasserait arrête le combat avant de compter), et
+            // le dernier tick ne dépasse pas les pics (ils sont relevés avant lui).
+            Require(_peakWork <= _rules.MaxWorkPerTick && _peakEvents <= _rules.MaxEventsPerTick && _peakPending <= _rules.MaxPendingEvents
+                && LastTickWork <= _peakWork && LastTickEvents <= _peakEvents, "Mesures de charge de l'instantané au-delà des budgets.");
+            // Revue Codex de la PR #32 (6e tour) : chaque ligne écrite coûte au moins une unité de travail ; la suite du combat (ticks restants,
+            // plus la fin et une large marge) ne peut donc pas faire déborder les numéros de ligne, d'événement, d'altération et
+            // d'application. Un compteur plus grand est refusé ; les incréments sont de toute façon vérifiés.
+            long margin = checked((Math.Max(0, _durationTicks - CurrentTick) + 2) * Math.Max(_rules.MaxWorkPerTick, _rules.MaxEventsPerTick) + 1_000_000);
+            long ceiling = long.MaxValue - margin;
+            // 7e tour : le prochain numéro de la file aussi (chaque mise en file coûte une unité de travail).
+            Require(_sequence <= ceiling && _lastEid <= ceiling && _lastStatusInstance <= ceiling && _lastApplication <= ceiling
+                && _queue.Cursor.NextSequence <= ceiling, "Compteurs de l'instantané trop grands pour la suite du combat.");
+            // 15e tour : chaque numéro d'événement a pris une ligne : le numéro de ligne n'est jamais en deçà du dernier événement.
+            Require(_sequence >= _lastEid, $"Numéro de ligne {_sequence} en deçà du dernier événement {_lastEid}.");
+            // Chaque nouvelle instance d'altération prend aussi un rang d'application : il n'y a jamais plus d'instances que de rangs.
+            Require(_lastStatusInstance <= _lastApplication, $"{_lastStatusInstance} instances d'altération pour {_lastApplication} rangs d'application.");
+            // 11e tour : le prochain numéro de la file n'est jamais négatif, même file vide (EventQueue.Load ne le recoupe qu'avec ses éléments).
+            Require(_queue.Cursor.NextSequence >= 0, "Prochain numéro de la file négatif.");
+            // Revue Codex de la PR #32 (3e tour) : le combat complété porte toutes les commandes comptées ; leur nombre et leur compte par
+            // acteur et par tick à venir s'en déduisent exactement.
+            Require(_commandCount == _setup.Commands.Count, $"{_commandCount} commandes comptées, {_setup.Commands.Count} dans le combat complété.");
+            var expectedPerTick = new Dictionary<(string Actor, long Tick), int>();
+            foreach (CombatCommand command in _setup.Commands)
+            {
+                var key = (command.Actor, command.AtMs / _tickMs);
+                if (key.Item2 >= CurrentTick) expectedPerTick[key] = expectedPerTick.TryGetValue(key, out int n) ? n + 1 : 1;
+            }
+            Require(expectedPerTick.Count == _commandsPerActorTick.Count
+                && expectedPerTick.All(pair => _commandsPerActorTick.TryGetValue(pair.Key, out int n) && n == pair.Value),
+                "Commandes comptées par acteur et par tick incohérentes avec le combat complété.");
+            Require(_maxLoadedEid <= _lastEid && _maxLoadedInstance <= _lastStatusInstance,
+                $"Provenance citant l'événement {_maxLoadedEid} ou l'altération {_maxLoadedInstance}, au-delà des derniers numérotés.");
+
+            // File : chaque élément à sa phase, d'un combattant du bon genre.
+            var commands = new HashSet<int>();
+            long reactions = 0;
+            var arrivals = new List<Fighter>();
+            // Revue Codex de la PR #32 (9e tour) : une échéance périmée (altération renouvelée ou retirée, parade fermée plus tôt, tour d'un
+            // mort) reste en file sans effet, mais elle coûte du travail quand elle tombe : chacune est unique, et ses numéros sont de ceux
+            // que le moteur a donnés. Des copies ne peuvent donc pas gonfler la file.
+            var expiryKeys = new HashSet<(Fighter, StatusKey, long, int)>();
+            var dotTicks = new HashSet<(Fighter, StatusKey, long)>();
+            var parryEnds = new HashSet<(Fighter, long)>();
+            var reacted = new HashSet<(TriggerSlot, long?, string)>();
+            var announcedTurns = new HashSet<(Fighter, long)>();
+            foreach (var (tick, phase, sequence, item) in entries)
+            {
+                string at = $"Élément de file {sequence} ({item.GetType().Name}, tick {tick}, phase {phase})";
+                switch (item)
+                {
+                    case ArrivalItem arrival:
+                        Require(phase == CombatPhase.Setup && arrival.Fighter.Presence == Presence.Pending, $"{at} : arrivée d'un combattant qui n'est pas attendu.");
+                        // Revue Codex de la PR #32 (4e tour) : au tick prévu par le combat complété.
+                        Require(arrival.Fighter.Setup.ArrivalMs is long arrivalMs && tick == arrivalMs / _tickMs, $"{at} : arrivée hors du tick prévu par le combat.");
+                        arrivals.Add(arrival.Fighter);
+                        break;
+                    case CommandItem command:
+                        Require(phase == CombatPhase.Commands && tick == command.Command.AtMs / _tickMs && commands.Add(command.Index), $"{at} : commande hors de son tick ou en double.");
+                        break;
+                    case AssailantTurn turn:
+                        Require(phase == CombatPhase.Commands && turn.Fighter.Assailant != null && turn.Turn >= 0 && turn.Turn < turn.Fighter.NextTurn,
+                            $"{at} : tour impossible.");
+                        break;
+                    case CooldownExpiry cooldown:
+                        // Revue Codex de la PR #32 (8e tour) : entre deux ticks, chaque échéance de recharge est celle d'une recharge en cours
+                        // (une échéance périmée ne survit pas à son tick : relancer une compétence n'est possible qu'à partir de son échéance).
+                        Require(phase == CombatPhase.Expirations && cooldown.Fighter.Character != null
+                            && cooldown.Fighter.CooldownReadyTick.TryGetValue(cooldown.Skill, out long readyTick) && readyTick == tick,
+                            $"{at} : recharge impossible ou sans recharge en cours.");
+                        break;
+                    case ParryWindowEnd end:
+                        // Une fin de parade tombe à la fin de la fenêtre ouverte à son tick de départ (passé, au plus le dernier départ).
+                        Require(phase == CombatPhase.Expirations && end.Fighter.Character != null && end.StartTick < CurrentTick
+                            && end.StartTick <= end.Fighter.ParryStartTick && tick == checked(end.StartTick + end.Fighter.Rules.ParryWindowMs / _tickMs)
+                            && parryEnds.Add((end.Fighter, end.StartTick)), $"{at} : fin de parade impossible ou en double.");
+                        break;
+                    case StateExpiry expiry:
+                        Require(phase == CombatPhase.Expirations && Numbered(expiry.Fighter, expiry.Key, expiry.Instance, expiry.Generation)
+                            && expiryKeys.Add((expiry.Fighter, expiry.Key, expiry.Instance, expiry.Generation)), $"{at} : échéance d'altération impossible ou en double.");
+                        break;
+                    case DotTick dot:
+                        Require(phase == CombatPhase.Periodic && Numbered(dot.Fighter, dot.Key, dot.Instance, null) && dotTicks.Add((dot.Fighter, dot.Key, dot.Instance)),
+                            $"{at} : tick de DOT impossible ou en double.");
+                        break;
+                    case AttackImpact impact:
+                        Require(phase == CombatPhase.Resolution && impact.Pulse >= 0 && impact.Pulse < impact.Attack.Pulses,
+                            $"{at} : impact impossible.");
+                        // Revue Codex de la PR #32 (4e tour) : une attaque dirigée garde sa cible ; chaque impulsion tombe à son tick.
+                        // 9e tour : la cible verrouillée d'un coup dirigé est un adversaire de l'assaillant (l'annonce ne garde pas d'autre
+                        // preuve ; l'empreinte de l'instantané protège le reste).
+                        Require(impact.Zone != null || (impact.Target is { } locked && locked.Team != impact.Assailant.Team), $"{at} : impact dirigé sans cible adverse.");
+                        Require(impact.ImpactTick >= 0 && tick == checked(impact.ImpactTick + impact.Pulse * (impact.Attack.PulseMs / _tickMs)),
+                            $"{at} : impulsion {impact.Pulse} hors de son tick (impact au tick {impact.ImpactTick}).");
+                        // 22e tour : l'impact vient du tour qui l'a annoncé (racine assailantTurn:<assaillant>:<n>) : un tour déjà joué, dont
+                        // l'attaque (n modulo le nombre d'attaques) est celle-ci, et premier impact au tick de ce tour plus l'annonce ; un seul
+                        // impact en file par tour. Le rang d'impulsion et le tick du premier impact ne se retouchent donc plus ensemble.
+                        Require(AnnouncingTurn(impact) is long announcing && announcedTurns.Add((impact.Assailant, announcing)),
+                            $"{at} : impact sans le tour d'assaillant qui l'a annoncé, ou annoncé deux fois.");
+                        // 24e tour : la zone a été verrouillée à ce tour, sur la place de l'assaillant (cercle autour de lui, cône, bande) ou
+                        // d'un adversaire (cercle autour de la cible) ; ils n'ont pu bouger depuis que de leurs pas de marche.
+                        Require(impact.Zone is null || ZoneFitsLock(impact, TurnTick(impact.Assailant, AnnouncingTurn(impact)!.Value)), $"{at} : zone loin de la place où son tour l'a verrouillée.");
+                        ValidateZone(impact, at);
+                        break;
+                    case ReactionItem reaction:
+                        // Une réaction du tick est traitée dans son tick ; entre deux ticks, seules attendent les frappes reportées du précédent.
+                        Require(phase == CombatPhase.Resolution && tick == CurrentTick && reaction.DeferredFrom == CurrentTick - 1,
+                            $"{at} : réaction qui n'est pas reportée du tick précédent.");
+                        // 9e tour : un déclencheur ne réagit qu'une fois à un même effet observé.
+                        Require(reacted.Add((reaction.Slot, reaction.Origin.Cause, reaction.Origin.Root)), $"{at} : réaction en double.");
+                        // 10e tour : seule une frappe se reporte (une autre réaction s'exécute dans sa phase). Son déclencheur est abonné à
+                        // l'effet observé (type, rôle, filtre), émis au tick précédent après la résolution ; sa recharge interne est repartie de
+                        // ce tick ; sa provenance est exactement la réaction de ce déclencheur à cet effet.
+                        Require(reaction.Slot.Strikes && Subscribes(reaction.Slot, reaction.Event) && FilterAccepts(reaction.Slot.Definition.Filter, reaction.Event)
+                            && reaction.Event.Tick == CurrentTick - 1 && reaction.Event.Phase > CombatPhase.Resolution
+                            && reaction.Slot.ReadyTick == checked(CurrentTick - 1 + reaction.Slot.Definition.CooldownMs / _tickMs),
+                            $"{at} : réaction reportée incohérente avec son déclencheur ou l'effet observé.");
+                        Require(ReactionOriginFits(reaction), $"{at} : provenance de réaction incohérente avec l'effet observé.");
+                        // 23e tour : la source de l'effet observé est celle de sa provenance (sauf un retrait d'altération, dont la source est
+                        // celle de l'altération retirée, et une rupture de garde sans auteur).
+                        Require(ObservedSourceFits(reaction.Event), $"{at} : source de l'effet observé différente de sa provenance.");
+                        reactions++;
+                        break;
+                    default:
+                        Require(false, $"{at} : élément inattendu entre deux ticks.");
+                        break;
+                }
+            }
+            Require(_deferredPending == reactions, $"{_deferredPending} réactions reportées comptées, {reactions} en file.");
+            for (int i = 0; i < _setup.Commands.Count; i++)
+                Require(commands.Contains(i) == (_setup.Commands[i].AtMs / _tickMs >= CurrentTick), $"Commande {i} : en file si et seulement si elle est à venir.");
+
+            // 9e tour : deux emprises solides présentes ne se chevauchent jamais (placement, marche, arrivée et charge les en empêchent).
+            for (int i = 0; i < _fightersById.Count; i++)
+                for (int j = i + 1; j < _fightersById.Count; j++)
+                {
+                    Fighter a = _fightersById[i], b = _fightersById[j];
+                    if (a.Out || b.Out || a.Body is null || b.Body is null || !_solid[i, j]) continue;
+                    Require(!Planar.CirclesOverlap(a.Body.X, a.Body.Z, a.Body.Radius, b.Body.X, b.Body.Z, b.Body.Radius),
+                        $"Emprises de « {a.Id} » et « {b.Id} » qui se chevauchent.");
+                }
+
+            var instances = new HashSet<long>();
+            var appliedSeqs = new HashSet<long>();   // 11e tour : chaque rang d'application est donné une fois (++_lastApplication)
+            // Revue Codex de la PR #32 (5e tour) : un moteur neuf du même combat donne l'état de départ de chaque combattant. Un combattant pas
+            // encore entré (attendu, ou refusé à son arrivée) y est encore, champ pour champ ; le flux de tirage de chacun est celui du combat.
+            var reference = new CombatEngine(_setup, NullCombatLog.Instance);
+            var initial = reference._fighters.ToDictionary(x => x.Id, StringComparer.Ordinal);
+            // 21e tour : pas de générateur recoupés sur tout le combat (voir plus bas).
+            ulong drawBudget = checked(2UL * (ulong)_lastEid + 64UL), drawsSeen = 0;
+            foreach (Fighter f in _fighters)
+            {
+                string who = $"« {f.Id} »";
+                // Revue Codex de la PR #32 (3e tour) : un assaillant présent et vivant a exactement son tour à venir en file, au tick de
+                // NextAttackTick (aucun s'il n'en a plus) ; les tours d'un mort ou d'un absent sont périmés (sans effet).
+                if (f.Assailant != null && !f.Out)
+                {
+                    var turns = entries.Where(e => e.Item is AssailantTurn t && t.Fighter == f).ToList();
+                    Require(f.NextAttackTick is long next
+                        ? turns.Count == 1 && turns[0].Tick == next && ((AssailantTurn)turns[0].Item).Turn == f.NextTurn - 1
+                        : turns.Count == 0, $"Tours de {who} incohérents avec son prochain tour ({f.NextAttackTick?.ToString(CultureInfo.InvariantCulture) ?? "aucun"}).");
+                }
+                else if (f.Assailant != null)
+                {
+                    // 9e tour : un assaillant pas encore entré n'a aucun tour en file (le premier vient à son arrivée) ; un mort ou un parti en
+                    // garde au plus un, périmé : celui qui était programmé.
+                    var turns = entries.Where(e => e.Item is AssailantTurn t && t.Fighter == f).ToList();
+                    bool absent = f.Presence == Presence.Pending || f.Presence == Presence.Refused;
+                    Require(absent ? turns.Count == 0 : turns.Count <= 1 && turns.All(e => ((AssailantTurn)e.Item).Turn == f.NextTurn - 1),
+                        $"Tours de {who}, mort ou absent, impossibles.");
+                }
+                // Une parade ouverte, commencée à un tick passé, se ferme à la fin de sa fenêtre : sa fin est en file, une seule fois (4e tour).
+                if (f.ParryOpen)
+                {
+                    var ends = entries.Where(e => e.Item is ParryWindowEnd end && end.Fighter == f && end.StartTick == f.ParryStartTick).ToList();
+                    Require(f.ParryStartTick < CurrentTick && f.ParryEndTick >= CurrentTick && ends.Count == 1 && ends[0].Tick == f.ParryEndTick,
+                        $"Parade ouverte de {who} sans sa fin en file (ou en double).");
+                }
+                // Revue Codex de la PR #32 (4e tour) : une recharge en cours est celle d'une compétence du personnage, et son échéance est en
+                // file une seule fois à son tick (une échéance en double écrirait deux fois cooldownReady).
+                // 5e tour : une échéance ne tombe pas plus loin que sa durée à partir du tick précédent (recharge globale ou d'une compétence,
+                // récupération d'une parade ratée, recharge d'un déclencheur) ; une fenêtre de parade ouverte a sa durée.
+                long previous = CurrentTick - 1;
+                Require(f.GlobalCooldownReadyTick <= Math.Max(0, previous + _globalCooldownTicks)
+                    && f.ParryRecoveryUntilTick <= Math.Max(0, previous + f.Rules.ParryFailureRecoveryMs / _tickMs)
+                    && (!f.ParryOpen || f.ParryEndTick == f.ParryStartTick + f.Rules.ParryWindowMs / _tickMs),
+                    $"Recharge globale ou parade de {who} au-delà de sa durée.");
+                // 15e tour (relecture d'ensemble) : une parade réussie est comptée ; une récupération de parade ratée suppose une parade ratée.
+                Require((!f.ParrySucceeded || f.Result.PerfectParries >= 1) && (f.ParryRecoveryUntilTick == 0 || f.Result.FailedParries >= 1),
+                    $"Parade de {who} incohérente avec son bilan.");
+                // Relecture d'ensemble (avant le 19e tour) : la dernière parade a commencé à un tick passé et sa fenêtre a sa durée (aucune
+                // parade : tout à 0) ; une récupération de parade ratée part de la fin de cette fenêtre, sauf si une parade a été reprise
+                // après elle ; parades réussies et ratées au plus les commandes de parade passées.
+                long window = f.Rules.ParryWindowMs / _tickMs, recovery = f.Rules.ParryFailureRecoveryMs / _tickMs;
+                int parryCommands = _setup.Commands.Count(c => c.Action == CombatAction.Parry && c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                Require(f.ParryStartTick >= 0 && f.ParryStartTick <= Math.Max(0, previous)
+                    && (f.ParryEndTick == checked(f.ParryStartTick + window) || (f.ParryStartTick == 0 && f.ParryEndTick == 0 && !f.ParrySucceeded))
+                    && (f.ParryRecoveryUntilTick == 0 || f.ParryRecoveryUntilTick == checked(f.ParryEndTick + recovery) || f.ParryStartTick >= f.ParryRecoveryUntilTick)
+                    && checked(f.Result.PerfectParries + f.Result.FailedParries) <= parryCommands,
+                    $"Parade de {who} incohérente avec ses commandes ou sa fenêtre.");
+                // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
+                foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
+                {
+                    Require(slot.ReadyTick >= 0 && slot.ReadyTick <= Math.Max(0, previous + slot.Definition.CooldownMs / _tickMs), $"Recharge d'un déclencheur de {who} au-delà de sa durée.");
+                    // 25e tour : une recharge en cours vient d'une activation au tick (recharge − durée), pendant que son porteur était présent
+                    // et vivant, sur un effet observé de ce tick : au tick précédent, il y en a eu au moins un.
+                    Require(ActivationFits(slot), $"Recharge d'un déclencheur de {who} sans activation possible.");
+                }
+                // 13e tour : un lancer a toujours sa commande de compétence, de ce combattant et à son tick, dans le combat complété. La recharge
+                // globale part du dernier lancer (son tick + sa durée), chaque recharge de compétence de son lancer (au plus le dernier) ; sans
+                // lancer, ni l'une ni les autres.
+                var casts = new HashSet<(long Tick, string Skill)>();
+                foreach (CombatCommand command in _setup.Commands)
+                    if (command.Action == CombatAction.UseSkill && command.Actor == f.Id && command.AtMs / _tickMs <= previous) casts.Add((command.AtMs / _tickMs, command.Skill!));
+                long lastCast = checked(f.GlobalCooldownReadyTick - _globalCooldownTicks);
+                // 17e tour : chaque commande passée a été acceptée ou refusée (CommandsRejected) ; les lancers comptés (SkillsCast) ne
+                // dépassent donc pas les commandes de compétence passées, ni, avec les refus, l'ensemble des commandes passées. L'acceptation
+                // d'une commande précise n'est pas dans l'instantané : au-delà, c'est son empreinte qui fait foi.
+                int skillCommands = _setup.Commands.Count(c => c.Action == CombatAction.UseSkill && c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                int pastCommands = _setup.Commands.Count(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                Require(f.Result.SkillsCast <= skillCommands && checked(f.Result.SkillsCast + f.Result.CommandsRejected) <= pastCommands,
+                    $"Lancers ou refus de {who} au-delà de ses commandes passées.");
+                Require(f.Result.SkillsCast == 0
+                    ? f.GlobalCooldownReadyTick == 0 && f.CooldownReadyTick.Count == 0
+                    : f.Character != null && casts.Any(c => c.Tick == lastCast), $"Recharge globale de {who} sans lancer à son origine.");
+                foreach (var cooldown in f.CooldownReadyTick)
+                {
+                    long cooldownTicks = f.Character != null && f.Character.Class.TryGetSkill(cooldown.Key, out SkillDefinition skill) && skill.Combat is { } combat
+                        ? f.Rules.CooldownMs(skill, combat) / _tickMs
+                        : -1;
+                    Require(cooldownTicks >= 0 && cooldown.Value >= 0 && cooldown.Value <= Math.Max(0, previous + cooldownTicks),
+                        $"Recharge de {who} pour une compétence inconnue ou au-delà de sa durée : {cooldown.Key}.");
+                    long castAt = cooldown.Value - cooldownTicks;
+                    Require(castAt <= lastCast && casts.Contains((castAt, cooldown.Key)), $"Recharge de {who} ({cooldown.Key}) sans lancer à son origine.");
+                    if (cooldown.Value < CurrentTick) continue;
+                    int pending = entries.Count(e => e.Item is CooldownExpiry c && c.Fighter == f && c.Skill == cooldown.Key && e.Tick == cooldown.Value);
+                    Require(pending == 1, $"Recharge de {who} ({cooldown.Key}) : {pending} échéance(s) en file au tick {cooldown.Value}.");
+                }
+                // Présence : une arrivée en file pour un combattant attendu, aucune sinon ; départ et arrivée déjà passés.
+                Require(arrivals.Count(a => a == f) == (f.Presence == Presence.Pending ? 1 : 0), $"Arrivée de {who} incohérente avec sa présence.");
+                // 8e tour : un combattant attendu l'est jusqu'à son tick d'arrivée ; un refus d'arrivée n'existe qu'après ce tick.
+                long? arrivalTick = f.Setup.ArrivalMs is long due ? due / _tickMs : (long?)null;
+                Require(f.Presence switch
+                {
+                    Presence.Pending => arrivalTick is long awaited && awaited >= CurrentTick,
+                    Presence.Refused => arrivalTick is long refusedAt && refusedAt < CurrentTick,
+                    _ => arrivalTick is null || arrivalTick < CurrentTick,
+                }, $"Présence de {who} incohérente avec son tick d'arrivée.");
+                Require(f.LeaveCommand is null, $"Départ de {who} encore demandé entre deux ticks.");
+                // 16e tour : un refus d'arrivée n'existe que dans un combat positionné (place prise) ; un départ suit une commande leave de ce
+                // combattant, à son tick, dans le combat complété.
+                Require(f.Presence != Presence.Refused || _spatial, $"Arrivée de {who} refusée hors d'un combat positionné.");
+                Require(f.LeftTick is not long left || _setup.Commands.Any(c => c.Action == CombatAction.Leave && c.Actor == f.Id && c.AtMs / _tickMs == left),
+                    $"Départ de {who} sans commande de départ à son tick.");
+                // 18e tour : un mort ne part pas (le départ est annulé, leaveCancelled) et un parti ne meurt plus.
+                Require(!(f.IsDead && (f.Presence == Presence.Left || f.LeftTick != null)), $"{who}, mort, déclaré parti.");
+                // 17e tour : un départ suit l'admission (la commande leave n'est reçue que d'un combattant présent, arrivé au plus tard à ce tick).
+                Require(f.LeftTick is not long leftAt || leftAt >= (f.ArrivedTick ?? 0), $"Départ de {who} avant son arrivée.");
+                Require(f.ArrivedTick is null || (f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.ArrivedTick >= 0 && f.ArrivedTick < CurrentTick),
+                    $"Arrivée de {who} au tick {f.ArrivedTick} impossible.");
+                // 14e tour : un combattant admis est arrivé exactement à son tick prévu ; un combattant présent dès l'origine, attendu ou refusé
+                // n'a pas de tick d'arrivée.
+                bool admitted = f.Presence != Presence.Pending && f.Presence != Presence.Refused && f.Setup.ArrivalMs != null;
+                Require(f.ArrivedTick == (admitted ? f.Setup.ArrivalMs / _tickMs : null), $"Arrivée de {who} au tick {f.ArrivedTick} : pas celle de son combat.");
+                Require((f.LeftTick != null) == (f.Presence == Presence.Left) && (f.LeftTick is null || (f.LeftTick >= 0 && f.LeftTick < CurrentTick)),
+                    $"Départ de {who} au tick {f.LeftTick} impossible.");
+                Require(f.Result.ArrivedTick == f.ArrivedTick && f.Result.LeftTick == f.LeftTick, $"Bilan de présence de {who} incohérent.");
+                // Points de vie : absents si et seulement si infinis, dans [0, max] ; nuls si et seulement si mort (morts relevés en fin de tick).
+                Require((f.Health is null) == (f.MaxHealth is null) && (f.Health is null || (f.Health >= 0 && f.Health <= f.MaxHealth)),
+                    $"Points de vie de {who} impossibles : {f.Health?.ToString(CultureInfo.InvariantCulture) ?? "infinis"} (max {f.MaxHealth?.ToString(CultureInfo.InvariantCulture) ?? "infini"}).");
+                // Des points de vie nuls sans mort : seulement avant le premier relevé (tick 0) ou chez un combattant jamais entré.
+                bool unscanned = f.Presence == Presence.Pending || f.Presence == Presence.Refused || (CurrentTick == 0 && f.Presence == Presence.Present);
+                Require((f.IsDead ? f.Health == 0 && f.Presence != Presence.Pending && f.Presence != Presence.Refused : f.Health != 0 || unscanned)
+                    && f.IsDead == (f.Result.DeathTick != null) && (f.Result.DeathTick is null || (f.Result.DeathTick >= 0 && f.Result.DeathTick < CurrentTick)),
+                    $"Mort de {who} incohérente avec ses points de vie.");
+                // Relecture d'ensemble (après le 18e tour) : sans soin, les PV ne baissent que des dégâts subis (après boucliers et transferts,
+                // PrepareDamage) : un vivant a perdu exactement ses dégâts subis, un mort au moins ses PV maximaux (dégâts au-delà de 0).
+                if (f.Health is long hp && f.MaxHealth is long maxHp)
+                    Require(f.IsDead ? f.Result.DamageTaken >= maxHp - hp : f.Result.DamageTaken == maxHp - hp, $"Dégâts subis de {who} incohérents avec ses points de vie.");
+                // 11e tour : la cause mortelle est notée quand les PV tombent à 0, et la mort suit en fin du même tick : un vivant n'en a pas.
+                Require(f.IsDead || f.LethalCause is null, $"Cause mortelle de {who} vivant.");
+                // Ressources.
+                Require(f.Endurance >= 0 && f.Endurance <= f.MaxEndurance, $"Endurance de {who} hors de [0, {f.MaxEndurance}] : {f.Endurance}.");
+                // Relecture d'ensemble : l'endurance ne baisse que par une dépense, qui fixe la reprise de la régénération (et remet le cumul à
+                // 0) ; la reprise n'est effacée qu'endurance pleine. Une reprise à venir n'a encore rien accordé.
+                Require(f.RegenFromTick != null || f.Endurance == f.MaxEndurance, $"Endurance de {who} entamée sans reprise de régénération.");
+                Require(f.RegenFromTick is not long resume || resume < CurrentTick || f.RegenGranted == 0, $"Régénération de {who} accordée avant sa reprise.");
+                Require(f.Character is null
+                    ? f.Resonance == 0 && f.RampartCharges == 0 && !f.Guarding && !f.ParryOpen
+                    : f.Resonance >= 0 && f.Resonance <= _rules.ResonanceMax && f.RampartCharges >= 0 && f.RampartCharges <= f.Rules.RampartChargesMax,
+                    $"Résonance, charges ou garde de {who} impossibles.");
+                Require(f.GlobalCooldownReadyTick >= 0 && f.RegenGranted >= 0 && f.NextTurn >= 0 && (f.NextAttackTick is null || f.NextAttackTick >= CurrentTick),
+                    $"Échéances de {who} impossibles.");
+                // 7e tour : régénération accordée au plus ce que son délai permet jusqu'au tick précédent (sans régénération en cours, endurance
+                // pleine, l'ancienne valeur reste sans effet jusqu'à la prochaine dépense, qui la remet à zéro) ; entretien de la garde (reliquat sous
+                // l'unité, payé au plus le dû) ; compteurs du bilan positifs, sous un plafond qui laisse la marge de leurs incréments (vérifiés),
+                // ticks gardés au plus les ticks joués.
+                long grantable = f.RegenFromTick is long regenFrom && regenFrom <= previous
+                    ? IntMath.MulDiv(f.Rules.EnduranceRegenPerSecond.Raw, checked((previous - regenFrom + 1) * _tickMs), 1000 * Fixed.Scale, RoundingMode.Floor)
+                    : 0;
+                Require((f.RegenFromTick is null || (f.RegenFromTick >= 0 && f.RegenFromTick <= Math.Max(0, previous + _regenDelayTicks)))
+                    && f.RegenGranted <= (f.RegenFromTick is null ? CounterCeiling : Math.Max(0, grantable)), $"Régénération de {who} impossible.");
+                // 12e tour : un personnage vivant, présent, sans garde ni altération qui bloque la régénération, dont la régénération avait
+                // commencé au tick précédent, a reçu à ce tick tout ce que son délai permettait (RunRegeneration fixe le cumul accordé).
+                if (!f.Out && f.Character != null && !f.Guarding && BlockReason(f, StatusBlocks.Regeneration) is null && f.RegenFromTick is long started && started <= previous)
+                    Require(f.RegenGranted == grantable, $"Régénération de {who} impossible : {f.RegenGranted} accordés, {grantable} au tick précédent.");
+                // 12e tour : l'entretien payé suit toujours l'entretien dû (tous deux partent de 0, un tick gardé les fixe à la même valeur, une
+                // rupture n'en change aucun).
+                Require(f.GuardUpkeepRemainder >= 0 && f.GuardUpkeepRemainder < 1000 * Fixed.Scale && f.GuardUpkeepPaid >= 0
+                    && f.GuardUpkeepPaid == f.GuardUpkeepDue && f.GuardUpkeepDue <= CounterCeiling, $"Entretien de la garde de {who} impossible.");
+                // 24e tour : l'entretien cumulé (dû × 1000 × échelle + reliquat) est la somme, sur les ticks gardés, du coût/s du moment × durée
+                // du tick ; ce coût est constant sans renforcement d'entretien au catalogue (cumul exact), sinon entre ses bornes.
+                var (slowest, fastest) = UpkeepRates(f);
+                decimal accrued = (decimal)f.GuardUpkeepDue * (1000 * Fixed.Scale) + f.GuardUpkeepRemainder;
+                Require(accrued >= (decimal)slowest * _tickMs * f.Result.GuardTicks && accrued <= (decimal)fastest * _tickMs * f.Result.GuardTicks,
+                    $"Entretien de la garde de {who} incohérent avec ses ticks gardés.");
+                CombatantResult r = f.Result;
+                Require(new[] { r.DamageDealt, r.DamageTaken, r.DamageAbsorbed, r.DamageTransferred, r.DamageRedirected, r.DamageMitigated, r.Hits,
+                        r.CriticalHits, r.SkillsCast, r.UltimatesCast, r.CommandsRejected, r.Blocks, r.PerfectParries, r.FailedParries, r.GuardBreaks }
+                    .All(v => v >= 0 && v <= CounterCeiling) && r.GuardTicks >= 0 && r.GuardTicks <= CurrentTick
+                    // 18e tour : un coup critique est un coup, un ultime est une compétence lancée (le total est toujours compté avec lui).
+                    && r.CriticalHits <= r.Hits && r.UltimatesCast <= r.SkillsCast, $"Bilan de {who} impossible.");
+                // Relecture d'ensemble (3) : garde et parade ne commencent que sur commande. Une parade a sa commande à son tick de début ;
+                // une garde tenue (ou rompue) suppose une commande de garde passée ; l'entretien n'avance que sur des ticks gardés.
+                Require((f.ParryEndTick == 0 || _setup.Commands.Any(c => c.Action == CombatAction.Parry && c.Actor == f.Id && c.AtMs / _tickMs == f.ParryStartTick))
+                    && (!f.Guarding && f.Result.GuardBreaks == 0 && f.Result.GuardTicks == 0
+                        || _setup.Commands.Any(c => c.Action == CombatAction.GuardStart && c.Actor == f.Id && c.AtMs / _tickMs <= previous))
+                    && (f.GuardUpkeepDue == 0 && f.GuardUpkeepRemainder == 0 || f.Result.GuardTicks >= 1),
+                    $"Garde ou parade de {who} sans commande à son origine.");
+                // Relecture d'ensemble (22e tour) : une garde tenue suit une dernière commande de garde (par tick, puis par rang) qui la
+                // commence : un guardStop plus récent l'aurait finie, ou refusé faute de garde. Une garde peut finir sans commande (rupture,
+                // contrôle, mort, départ), jamais commencer.
+                CombatCommand? lastGuard = _setup.Commands.Where(c => (c.Action == CombatAction.GuardStart || c.Action == CombatAction.GuardStop)
+                    && c.Actor == f.Id && c.AtMs / _tickMs <= previous).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
+                Require(!f.Guarding || lastGuard?.Action == CombatAction.GuardStart, $"Garde de {who} tenue après sa dernière commande de fin de garde.");
+                // Relecture d'ensemble (3) : seuls les assaillants ont des tours ; une mort suit l'arrivée.
+                Require(f.Assailant != null || (f.NextTurn == 0 && f.NextAttack == 0 && f.NextAttackTick is null), $"Tours de {who}, qui n'attaque pas seul.");
+                Require(f.Result.DeathTick is not long died || died >= (f.ArrivedTick ?? 0), $"Mort de {who} avant son arrivée.");
+                // Un mort ou un absent n'a ni altération, ni garde, ni parade, ni tour annoncé, et ne marche pas.
+                if (f.Out)
+                    Require(f.Statuses.Count == 0 && !f.Guarding && !f.ParryOpen && f.NextAttackTick is null && f.Body is not { Moving: true },
+                        $"{who}, mort ou absent, garde un état actif.");
+                foreach (StatusInstance s in f.Statuses.Values)
+                {
+                    string status = $"Altération {s.Id} ({s.Definition.Id}) de {who}";
+                    // 11e tour : une altération active a été posée au moins une fois (génération ≥ 1), et chaque pose ou renouvellement prend un
+                    // rang d'application : sa génération ne dépasse pas le dernier rang, et deux altérations n'ont jamais le même rang.
+                    Require(s.Id >= 1 && s.Id <= _lastStatusInstance && instances.Add(s.Id) && s.Generation >= 1 && s.Generation <= _lastApplication,
+                        $"{status} : instance impossible ou en double.");
+                    Require(s.AppliedSeq >= 1 && s.AppliedSeq <= _lastApplication && appliedSeqs.Add(s.AppliedSeq), $"{status} : rang d'application impossible ou en double.");
+                    Require(string.Equals(s.Key.Source, s.Definition.Stacking == StatusStacking.PerSourceKeepStronger ? s.Source : null, StringComparison.Ordinal),
+                        $"{status} : clé de cumul incohérente avec sa source.");
+                    Require(s.UntilTick >= CurrentTick && (!s.Definition.IsDot || s.NextTick >= CurrentTick), $"{status} : déjà échue.");
+                    // 10e tour : posée au plus tard au tick précédent, elle ne dure pas plus que la plus longue durée qu'elle a pu recevoir (base,
+                    // plus grands ajouts positifs d'un auteur et de la cible, écrêtés à 24 h ; résistance et raccourcis ne font que réduire) ; le
+                    // prochain tick d'un DOT tombe au plus une période après le tick précédent.
+                    long longest = MaxStatusTicks(f, s.Definition);
+                    Require(s.Definition.IsDot
+                        ? s.NextTick <= checked(CurrentTick - 1 + s.Definition.PeriodMs / _tickMs) && s.UntilTick <= Math.Max(checked(CurrentTick - 1 + longest), s.NextTick)
+                        : s.UntilTick <= checked(CurrentTick - 1 + longest), $"{status} : échéance au-delà de sa plus longue durée possible.");
+                    // 11e tour : un bouclier épuisé est retiré en fin de tick (raison depleted) : entre deux ticks, un bouclier actif absorbe encore,
+                    // et aucune altération ne garde l'effet qui l'aurait épuisée.
+                    Require(s.Absorb >= 0 && s.Absorb <= CounterCeiling && (s.Definition.IsShield ? s.Absorb > 0 : s.Absorb == 0) && s.DepletedBy is null,
+                        $"{status} : absorption impossible.");
+                    // 20e tour : un bouclier absorbe au plus la valeur de la plus forte application possible de cette altération (l'absorption
+                    // ne fait ensuite que décroître, un renouvellement gardant la plus forte des deux valeurs).
+                    Require(!s.Definition.IsShield || s.Absorb <= MaxShieldAbsorb(s.Definition, s.Key.Source),
+                        $"{status} : absorption au-delà du plus fort bouclier possible.");
+                    // 19e tour : ApplyStatus fixe l'origine par WithSource(source).CausedBy(ligne).ForInstance(instance, génération) : même source,
+                    // même instance, même génération, une cause.
+                    Require(string.Equals(s.Origin.Source, s.Source, StringComparison.Ordinal) && s.Origin.SourceInstance == s.Id
+                        && s.Origin.SourceGeneration == s.Generation && s.Origin.Cause != null, $"{status} : provenance différente de l'altération.");
+                    // 7e tour : puissance d'un DOT positive (nulle pour une autre altération), sous le plafond.
+                    Require(s.Power.Raw >= 0 && s.Power.Raw <= CounterCeiling && (s.Definition.IsDot || (s.Power == Fixed.Zero && s.NextTick == 0)),
+                        $"{status} : puissance impossible.");
+                    // Relecture d'ensemble (20e tour) : au plus la puissance de la plus forte application possible de ce DOT.
+                    Require(!s.Definition.IsDot || s.Power <= MaxDotPower(s.Definition, s.Key.Source), $"{status} : puissance au-delà du plus fort DOT possible.");
+                    // Son échéance (ou, pour un DOT, son prochain tick) est en file, une seule fois et à son tick (revue Codex de la PR #32,
+                    // 4e tour : une échéance en double agirait) ; aucune échéance de l'autre genre ne la vise.
+                    var expiries = entries.Where(e => e.Item is StateExpiry x && x.Fighter == f && x.Key.Equals(s.Key) && x.Instance == s.Id && x.Generation == s.Generation).ToList();
+                    var dots = entries.Where(e => e.Item is DotTick d && d.Fighter == f && d.Key.Equals(s.Key) && d.Instance == s.Id).ToList();
+                    Require(s.Definition.IsDot
+                        ? expiries.Count == 0 && dots.Count == 1 && dots[0].Tick == s.NextTick
+                        : dots.Count == 0 && expiries.Count == 1 && expiries[0].Tick == s.UntilTick, $"{status} : échéance absente de la file, en double ou hors de son tick.");
+                    // La source d'une altération est un combattant du combat ; celle d'une provocation ou d'une protection est présente et vivante
+                    // (sa mort ou son départ les retire).
+                    Require(s.Source is null || _byId.ContainsKey(s.Source), $"{status} : source inconnue.");
+                    Require(!s.Definition.IsSourceBound || s.Source != null && !_byId[s.Source].Out, $"{status} : provocation ou protection sans source présente.");
+                    // Relecture d'ensemble : une provocation vient d'un adversaire de l'assaillant, une protection d'un allié du personnage, autre
+                    // que lui (SourceFits).
+                    Require(!s.Definition.IsSourceBound || (s.Definition.IsTaunt
+                        ? f.Assailant != null && _byId[s.Source!].Team != f.Team
+                        : f.Character != null && s.Source != f.Id && _byId[s.Source!].Team == f.Team), $"{status} : source qui ne convient pas.");
+                }
+                if (f.Body is { } b)
+                {
+                    Require(b.X >= checked(_minX + b.Radius) && b.X <= checked(_maxX - b.Radius) && b.Z >= checked(_minZ + b.Radius) && b.Z <= checked(_maxZ - b.Radius),
+                        $"Place de {who} hors de l'aire.");
+                    Require(!_obstacles.Any(o => o.OverlapsCircle(b.X, b.Z, b.Radius)), $"Place de {who} dans le décor.");
+                    Require(IsUnit(b.FacingX, b.FacingZ) && (!b.Moving || IsUnit(b.DirectionX, b.DirectionZ)), $"Orientation ou direction de {who} non unitaire.");
+                    // 24e tour : la place d'un combattant est à portée de ses pas de marche depuis sa place de départ (ou d'arrivée) ; sans
+                    // aucun tick de marche, c'est exactement elle (un combattant pas encore entré est comparé plus bas à son état de départ).
+                    Require(f.Presence == Presence.Pending || f.Presence == Presence.Refused
+                        || f.Setup.Placement is { } placed && Reachable(f, 0, placed.Position.X.Raw, placed.Position.Z.Raw),
+                        $"Place de {who} hors de portée de ses pas de marche depuis sa place de départ.");
+                    // 25e tour : sans garde tournée vers une cible sélectionnée, seule la marche tourne un combattant : son orientation est
+                    // celle de sa place de départ ou la direction d'une de ses commandes move.
+                    Require(f.Presence == Presence.Pending || f.Presence == Presence.Refused || PossibleFacings(f) is not { } facings
+                        || facings.Contains((b.FacingX, b.FacingZ)), $"Orientation de {who} qu'aucun de ses pas n'a pu lui donner.");
+                    // 15e tour : seul un personnage ou un assaillant marche (un mannequin ne reçoit jamais move).
+                    Require(!b.Moving || f.Character != null || f.Assailant != null, $"Marche de {who}, qui ne marche jamais.");
+                    // Relecture d'ensemble (4) : une marche suit une commande move passée de ce combattant ; une cible sélectionnée, une commande
+                    // select passée de ce combattant qui la désigne.
+                    // 21e tour : un combattant présent et vivant a vu toutes ses commandes move et stop admises depuis son arrivée (seuls un mort,
+                    // un absent ou un mannequin sont refusés ; un stop sans marche ne change rien) : il marche si et seulement si la dernière est
+                    // un move, dans la direction (unitaire) de celui-ci.
+                    // Ordre de traitement : par tick, puis par rang dans le combat complété (les commandes du scénario ne sont pas triées).
+                    CombatCommand? lastMove = f.Out ? null : _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop)
+                        && c.Actor == f.Id && c.AtMs / _tickMs <= previous && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
+                    long moveX = 0, moveZ = 0;
+                    bool shouldMove = lastMove is { Action: CombatAction.Move, Direction: { } heading }
+                        && Planar.TryNormalize(heading.X.Raw, heading.Z.Raw, out moveX, out moveZ);
+                    Require(f.Out || (b.Moving == shouldMove && (!b.Moving || (b.DirectionX == moveX && b.DirectionZ == moveZ))),
+                        $"Marche de {who} différente de sa dernière commande move ou stop.");
+                    Require(!b.Moving || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous),
+                        $"Marche ou sélection de {who} sans commande à son origine.");
+                    // 22e tour : la cible sélectionnée est celle de la dernière commande select admise (par tick, puis par rang), null compris.
+                    // Une sélection n'est admise que d'un personnage présent et vivant, vers rien ou vers un combattant présent et vivant ; elle
+                    // reste ensuite telle quelle (la mort ou le départ de l'un ou de l'autre ne l'efface pas).
+                    Fighter? expected = null;
+                    if (f.Character != null)
+                        foreach (CombatCommand select in _setup.Commands.Where(c => c.Action == CombatAction.Select && c.Actor == f.Id && c.AtMs / _tickMs <= previous)
+                            .OrderBy(c => c.AtMs / _tickMs))
+                        {
+                            long at = select.AtMs / _tickMs;
+                            Fighter? target = select.Target is null ? null : _byId[select.Target];
+                            if (PresentAtCommands(f, at) && (target is null || PresentAtCommands(target, at))) expected = target;
+                        }
+                    Require(b.Selected == expected, $"Sélection de {who} différente de sa dernière commande select admise ({expected?.Id ?? "aucune"}).");
+                }
+                Fighter start = initial[f.Id];
+                Require(f.Random.Capture().Increment == start.Random.Capture().Increment, $"Flux de tirage de {who} différent de celui du combat.");
+                bool entered = f.Presence != Presence.Pending && f.Presence != Presence.Refused;
+                // Revue Codex de la PR #33 (tour 4) : avant le premier tick, aucun combattant n'a encore rien fait (engagement compris).
+                if (!entered || CurrentTick == 0)
+                {
+                    // Seules différences possibles : sa présence (refusé) et ses commandes refusées (un absent n'agit pas).
+                    start.Presence = f.Presence;
+                    start.Result.CommandsRejected = f.Result.CommandsRejected;
+                    Require(f.Result.CommandsRejected >= 0 && string.Equals(WriteFighter(f), WriteFighter(start), StringComparison.Ordinal),
+                        entered ? $"{who}, avant le premier tick, n'est plus dans son état de départ." : $"{who}, pas encore entré, n'est plus dans son état de départ.");
+                }
+                // 21e tour : le générateur n'avance que par les tirages de critique des compétences d'un personnage, d'un pas au moins chacun,
+                // et chaque tirage est suivi d'une ligne damage numérotée. Son état est donc à une distance nulle de celui du départ hors
+                // personnage, et la somme des distances tient dans deux pas par événement numéroté (un tirage rejeté, qui reprend un pas, a une
+                // chance sur 590 000 environ). Un état retouché est presque toujours à une distance astronomique.
+                ulong drawn = Pcg32.Distance(start.Random.Capture(), f.Random.Capture());
+                Require((f.Character != null || drawn == 0) && drawn <= drawBudget - drawsSeen, $"État du générateur de {who} hors d'atteinte depuis celui du combat.");
+                drawsSeen += drawn;
+                // 24e tour : chaque tirage est un jet de critique entier (un pas, plus un par valeur rejetée), et un jet précède un coup compté
+                // au bilan : l'état est exactement celui d'après k jets, avec coups critiques ≤ k ≤ coups (sans coup, aucun pas).
+                Require(WholeRolls(start.Random.Capture(), drawn, f.Result.Hits) is long rolls && rolls >= f.Result.CriticalHits,
+                    $"État du générateur de {who} incohérent avec ses jets de critique.");
+                // Les tours d'un assaillant entré se déduisent de sa cadence : tours joués jusqu'à son dernier tick d'action (le précédent,
+                // ou celui de sa mort ou de son départ), attaque suivante de sa liste, tour suivant programmé s'il tombe avant la fin.
+                if (entered && f.Assailant is { } assailant)
+                {
+                    long first = checked((f.ArrivedTick ?? 0) + assailant.FirstAttackMs / _tickMs);
+                    long interval = assailant.IntervalMs / _tickMs;
+                    long last = Math.Min(f.Result.DeathTick ?? f.LeftTick ?? CurrentTick - 1, _durationTicks - 1);
+                    long played = interval <= 0 || first > last ? 0 : (last - first) / interval + 1;
+                    long next = checked(first + played * interval);
+                    bool scheduled = next < _durationTicks;
+                    Require(f.NextTurn == played + (scheduled ? 1 : 0) && f.NextAttack == played % assailant.Attacks.Count
+                        && f.NextAttackTick == (f.Out || !scheduled ? (long?)null : next),
+                        $"Tours de {who} incohérents avec sa cadence : {played} joués, prochain au tick {(scheduled ? next.ToString(CultureInfo.InvariantCulture) : "aucun")}.");
+                }
+            }
+            // 19e tour : chaque montant de dégâts est crédité à sa source et réparti chez sa cible entre dégâts subis, absorbés et transférés ;
+            // la part transférée est comptée redirigée chez le protecteur, qui en subit ou en absorbe au plus autant (sa garde peut réduire).
+            // Sur tout le combat : transferts = redirections, et reçus (subis + absorbés + transférés) au moins les dégâts infligés crédités.
+            long dealtTotal = 0, receivedTotal = 0, transferredTotal = 0, redirectedTotal = 0;
+            foreach (Fighter f in _fightersById)
+            {
+                CombatantResult r = f.Result;
+                dealtTotal = checked(dealtTotal + r.DamageDealt);
+                receivedTotal = checked(receivedTotal + r.DamageTaken + r.DamageAbsorbed + r.DamageTransferred);
+                transferredTotal = checked(transferredTotal + r.DamageTransferred);
+                redirectedTotal = checked(redirectedTotal + r.DamageRedirected);
+            }
+            Require(transferredTotal == redirectedTotal && receivedTotal >= dealtTotal,
+                $"Dégâts du bilan incohérents entre combattants : {dealtTotal} infligés, {receivedTotal} reçus, {transferredTotal} transférés, {redirectedTotal} redirigés.");
+
+            // 21e tour : une instance d'altération citée par la file (échéance, tick de DOT, déclencheur détaché d'une réaction reportée) garde
+            // son identité, active ou retirée : un seul porteur, une seule altération du catalogue, du genre de l'élément (échéance hors DOT,
+            // tick de DOT pour un DOT), une clé de cumul cohérente avec son cumul, une échéance à portée ; un seul tick de DOT par instance. Chaque renouvellement
+            // prend un rang d'application qui n'est pas une création d'instance : les générations (celle d'une instance active, la plus haute
+            // citée d'une instance retirée) tiennent dans ces rangs.
+            var identities = new Dictionary<long, (Fighter Owner, string State, StatusKey? Key, int Generation, bool Live)>();
+            foreach (Fighter f in _fightersById)
+                foreach (StatusInstance s in f.Statuses.Values) identities[s.Id] = (f, s.State, s.Key, s.Generation, true);
+            var dotInstances = new HashSet<long>();
+            void Cite(string at, Fighter owner, string state, StatusKey? key, long instance, int generation, bool? dot, long tick)
+            {
+                Require(_statusOrder.TryGetValue(state, out int order), $"{at} : altération inconnue.");
+                StatusDefinition definition = _statuses.Definitions[order];
+                // Posée (ou relancée) au plus tard au tick précédent : son échéance tombe au plus à sa plus longue durée, son tick de DOT au
+                // plus une période plus tard.
+                Require(dot is not bool timed || tick <= checked(CurrentTick - 1 + (timed ? definition.PeriodMs / _tickMs : MaxStatusTicks(owner, definition))),
+                    $"{at} : échéance au-delà de la plus longue durée de l'altération.");
+                Require((dot is not bool kind || definition.IsDot == kind) && (key is not StatusKey k
+                        || (definition.Stacking == StatusStacking.PerSourceKeepStronger ? k.Source is null || _byId.ContainsKey(k.Source) : k.Source is null)),
+                    $"{at} : altération ou clé de cumul d'un autre genre.");
+                if (identities.TryGetValue(instance, out var known))
+                {
+                    Require(known.Owner == owner && string.Equals(known.State, state, StringComparison.Ordinal)
+                        && (key is null || known.Key is null || known.Key.Value.Equals(key.Value)), $"{at} : instance {instance} citée avec une autre identité.");
+                    if (!known.Live && generation > known.Generation) identities[instance] = (owner, state, known.Key ?? key, generation, false);
+                }
+                else identities[instance] = (owner, state, key, generation, false);
+            }
+            foreach (var (tick, phase, sequence, item) in entries)
+            {
+                string at = $"Élément de file {sequence} ({item.GetType().Name}, tick {tick}, phase {phase})";
+                switch (item)
+                {
+                    case StateExpiry expiry:
+                        Cite(at, expiry.Fighter, expiry.Key.State, expiry.Key, expiry.Instance, expiry.Generation, false, tick);
+                        break;
+                    case DotTick dot:
+                        Cite(at, dot.Fighter, dot.Key.State, dot.Key, dot.Instance, 1, true, tick);
+                        Require(dotInstances.Add(dot.Instance), $"{at} : second tick de DOT de l'instance {dot.Instance}.");
+                        break;
+                    case ReactionItem { Slot: { Status: { } carrier } slot }
+                        when !(carrier.Owner.Statuses.TryGetValue(carrier.Key, out StatusInstance? current) && current == carrier):
+                        Require(!(identities.TryGetValue(carrier.Id, out var same) && same.Live), $"{at} : déclencheur détaché d'une altération encore active.");
+                        Cite(at, slot.Bearer, carrier.State, null, carrier.Id, carrier.Generation, null, tick);
+                        break;
+                }
+            }
+            // 23e tour : chaque application (création ou renouvellement) prend un rang puis écrit aussitôt sa ligne stateApplied, dont le
+            // numéro devient la cause de l'origine de l'altération. Rangs et numéros vont donc dans le même ordre, et il y a au moins autant de
+            // numéros que de rangs avant la première application active, entre deux d'entre elles, et après la dernière.
+            long seqBefore = 0, eidBefore = 0;
+            foreach (StatusInstance s in _fightersById.SelectMany(f => f.Statuses.Values).OrderBy(s => s.AppliedSeq))
+            {
+                Require(s.Origin.Cause is long cause && checked(cause - eidBefore) >= checked(s.AppliedSeq - seqBefore),
+                    $"Rang d'application {s.AppliedSeq} de « {s.Owner.Id} » ({s.State}) incohérent avec la ligne qui l'a posée.");
+                seqBefore = s.AppliedSeq;
+                eidBefore = s.Origin.Cause!.Value;
+            }
+            Require(checked(_lastEid - eidBefore) >= checked(_lastApplication - seqBefore), "Rangs d'application au-delà des lignes écrites.");
+            long renewals = 0;
+            foreach (var cited in identities.Values) renewals = checked(renewals + Math.Max(0, cited.Generation - 1));
+            Require(renewals <= _lastApplication - _lastStatusInstance,
+                $"Générations d'altérations au-delà des rangs d'application : {renewals} renouvellements pour {_lastApplication - _lastStatusInstance} rangs.");
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (10e tour) : plus longue durée, en ticks, qu'une application de <paramref name="definition"/> à
+        /// <paramref name="target"/> peut recevoir (<see cref="DurationTicks"/> sans résistance ni raccourci, avec les plus grands ajouts
+        /// positifs de la cible et d'un auteur quelconque du combat).
+        /// </summary>
+        private long MaxStatusTicks(Fighter target, StatusDefinition definition)
+        {
+            long dealt = 0;
+            foreach (Fighter dealer in _fightersById) dealt = Math.Max(dealt, dealer.Rules.DurationDealtMs(definition.Id));
+            long added = checked(Math.Max(0, target.Rules.DurationTakenMs(definition.Id)) + dealt);
+            long floor = definition.IsDot ? definition.PeriodMs : _tickMs;
+            long ms = Math.Max(Math.Max(definition.DurationMs, floor), Math.Min(CombatRules.AbsoluteMaxDurationMs, checked(definition.DurationMs + added)));
+            return ms / _tickMs;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (22e tour) : numéro du tour d'assaillant qui a annoncé <paramref name="impact"/>, ou null si sa provenance
+        /// ne désigne pas un tour déjà joué de cet assaillant, dont l'attaque est celle de l'impact et dont le tick plus l'annonce donne son
+        /// premier impact. Cadence comme dans le contrôle des tours : premier tour à l'arrivée plus <c>firstAttackMs</c>, puis un tous les
+        /// <c>intervalMs</c>, sauts compris ; l'attaque du tour n est la n-ième de la liste, modulo sa longueur.
+        /// </summary>
+        private long? AnnouncingTurn(AttackImpact impact)
+        {
+            Fighter f = impact.Assailant;
+            if (f.Assailant is not { } assailant || impact.Origin.Depth != 0 || impact.Origin.Cause is null) return null;
+            string prefix = $"assailantTurn:{f.Id}:";
+            string root = impact.Origin.Root;
+            if (!root.StartsWith(prefix, StringComparison.Ordinal)
+                || !long.TryParse(root.Substring(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out long turn)
+                || !string.Equals(turn.ToString(CultureInfo.InvariantCulture), root.Substring(prefix.Length), StringComparison.Ordinal)
+                || turn >= f.NextTurn) return null;
+            long first = checked((f.ArrivedTick ?? 0) + assailant.FirstAttackMs / _tickMs);
+            long turnTick = checked(first + turn * (assailant.IntervalMs / _tickMs));
+            bool fits = turnTick <= CurrentTick - 1 && ReferenceEquals(assailant.Attacks[(int)(turn % assailant.Attacks.Count)], impact.Attack)
+                && impact.ImpactTick == ImpactTickOf(turnTick, impact.Attack);
+            return fits ? turn : (long?)null;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : nombre de jets de critique entiers (<see cref="Pcg32.RollBasisPoints"/>) qui font avancer le
+        /// générateur de <paramref name="start"/> d'exactement <paramref name="steps"/> pas, au plus <paramref name="maxRolls"/> ; null si
+        /// ces pas s'arrêtent au milieu d'un jet ou en demandent davantage. Chaque jet fait au moins un pas : au plus <paramref name="steps"/>
+        /// tours, et le contrôle de distance a déjà borné <paramref name="steps"/>.
+        /// </summary>
+        private static long? WholeRolls(Pcg32State start, ulong steps, long maxRolls)
+        {
+            Pcg32 rng = Pcg32.Restore(start);
+            ulong done = 0;
+            long rolls = 0;
+            while (done < steps)
+            {
+                if (rolls >= maxRolls) return null;
+                Pcg32State before = rng.Capture();
+                rng.RollBasisPoints(0);
+                done += Pcg32.Distance(before, rng.Capture());
+                rolls++;
+            }
+            return done == steps ? rolls : (long?)null;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : coûts/s bruts extrêmes de l'entretien de la garde de <paramref name="f"/> (voir
+        /// <see cref="UpkeepAfterTick"/>) : sans renforcement d'entretien au catalogue, le coût de ses règles ; sinon de 0 (renforcements qui
+        /// le baissent ou l'annulent) au coût avec tous les renforcements qui l'augmentent (un par source pour un cumul par source).
+        /// </summary>
+        private (long Slowest, long Fastest) UpkeepRates(Fighter f)
+        {
+            Fixed rate = f.Rules.GuardUpkeepPerSecondWith(Fixed.Zero);
+            Fixed raise = Fixed.Zero;
+            bool lowers = false;
+            foreach (StatusDefinition d in _statuses.Definitions.Where(d => d.IsBuff))
+            {
+                Fixed sum = d.ModifierSum(ModifierField.GuardUpkeepPerSecond);
+                if (sum < Fixed.Zero || d.ModifierSum(ModifierField.GuardNoUpkeep) > Fixed.Zero) lowers = true;
+                if (sum > Fixed.Zero) raise += sum * Fixed.FromInt(d.Stacking == StatusStacking.PerSourceKeepStronger ? _fightersById.Count : 1);
+            }
+            return (lowers ? 0 : rate.Raw, raise > Fixed.Zero ? f.Rules.GuardUpkeepPerSecondWith(raise).Raw : rate.Raw);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (25e tour) : une recharge de déclencheur en cours (<c>ReadyTick</c> &gt; 0) vient d'une activation au tick
+        /// t = recharge − durée de recharge (<see cref="ProcessNotify"/>), entre 0 et le tick précédent, son porteur présent et vivant pendant
+        /// ce tick, et sur un effet observé émis à ce tick : si t est le tick précédent, ce tick a écrit au moins une ligne.
+        /// </summary>
+        private bool ActivationFits(TriggerSlot slot)
+        {
+            if (slot.ReadyTick == 0) return true;
+            long fired = checked(slot.ReadyTick - slot.Definition.CooldownMs / _tickMs);
+            return fired >= 0 && fired <= CurrentTick - 1 && PresentAtCommands(slot.Bearer, fired) && _lastEid >= 1
+                && (fired < CurrentTick - 1 || LastTickEvents >= 1) && CompatibleEffect(slot, fired);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (26e tour) : un effet compatible avec le déclencheur (type, rôle de son porteur) a pu survenir au tick
+        /// <paramref name="fired"/>, d'après ce que le combat complété et le bilan en gardent : un lancer est une commande de compétence (ou un
+        /// tour d'assaillant) de ce tick ; une mort, une mort de ce tick ; un blocage, une rupture ou une parade parfaite subis, un bilan qui
+        /// en compte et une garde (ou une parade) commandée à ce moment ; un coup porté, des coups au bilan. Les autres effets (coups subis,
+        /// altérations, ressources) ne laissent pas de trace par tick dans l'instantané : seule son empreinte les garantit.
+        /// </summary>
+        private bool CompatibleEffect(TriggerSlot slot, long fired)
+        {
+            Fighter bearer = slot.Bearer;
+            TriggerRole? role = slot.Definition.EffectiveRole;
+            bool source = role is null or TriggerRole.Self or TriggerRole.Source, target = role == TriggerRole.Target, ally = role == TriggerRole.Ally;
+            IEnumerable<CombatCommand> at = _setup.Commands.Where(c => c.AtMs / _tickMs == fired);
+            bool turnAt(Fighter g) => g.Assailant != null && g.NextTurn > 0 && Enumerable.Range(0, (int)Math.Min(g.NextTurn, int.MaxValue)).Any(n => TurnTick(g, n) == fired);
+            switch (slot.Definition.On)
+            {
+                case TriggerEvent.SkillCast:
+                    if (source) return bearer.Character != null ? at.Any(c => c.Action == CombatAction.UseSkill && c.Actor == bearer.Id) : turnAt(bearer);
+                    return at.Any(c => c.Action == CombatAction.UseSkill && c.Target is { } t
+                            && (target ? t == bearer.Id : ally && t != bearer.Id && _byId.TryGetValue(t, out Fighter? a) && a.Team == bearer.Team))
+                        || _fightersById.Any(g => g.Team != bearer.Team && turnAt(g));
+                case TriggerEvent.Death:
+                    return _fightersById.Any(g => g.Result.DeathTick == fired && (!ally || (g.Team == bearer.Team && g != bearer)));
+                case TriggerEvent.Block:
+                    return !target || bearer.Result.Blocks >= 1 && GuardCommandedAt(bearer, fired);
+                case TriggerEvent.GuardBroken:
+                    return !target || bearer.Result.GuardBreaks >= 1 && GuardCommandedAt(bearer, fired);
+                case TriggerEvent.PerfectParry:
+                    return !target || bearer.Result.PerfectParries >= 1 && _setup.Commands.Any(c => c.Action == CombatAction.Parry && c.Actor == bearer.Id
+                        && c.AtMs / _tickMs <= fired && c.AtMs / _tickMs >= checked(fired - bearer.Rules.ParryWindowMs / _tickMs));
+                case TriggerEvent.HitDealt:
+                case TriggerEvent.HitTaken:
+                    return !source || bearer.Result.Hits >= 1;
+                default:
+                    return true;
+            }
+        }
+
+        /// <summary>La dernière commande de garde de <paramref name="f"/> au plus tard au tick <paramref name="tick"/> la commence-t-elle ?</summary>
+        private bool GuardCommandedAt(Fighter f, long tick) =>
+            _setup.Commands.Where(c => (c.Action == CombatAction.GuardStart || c.Action == CombatAction.GuardStop) && c.Actor == f.Id && c.AtMs / _tickMs <= tick)
+                .OrderBy(c => c.AtMs / _tickMs).LastOrDefault()?.Action == CombatAction.GuardStart;
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (26e tour) : <paramref name="f"/> a-t-il pu, pendant un même tick, garder et avoir sélectionné un
+        /// combattant présent et vivant (autre que lui) ? C'est la seule rotation sans marche (<see cref="RunMovement"/>). Recalculé d'après
+        /// ses commandes de garde et de sélection admises, tick par tick de changement, et la présence de la cible.
+        /// </summary>
+        private bool GuardTurnPossible(Fighter f)
+        {
+            if (f.Character is null) return false;
+            long previous = CurrentTick - 1, arrived = f.ArrivedTick ?? 0;
+            var commands = _setup.Commands.Where(c => c.Actor == f.Id && c.AtMs / _tickMs >= arrived && c.AtMs / _tickMs <= previous
+                && (c.Action == CombatAction.GuardStart || c.Action == CombatAction.GuardStop || c.Action == CombatAction.Select)).OrderBy(c => c.AtMs / _tickMs).ToList();
+            bool guarding = false;
+            Fighter? selected = null;
+            for (int i = 0; i < commands.Count;)
+            {
+                long tick = commands[i].AtMs / _tickMs;
+                for (; i < commands.Count && commands[i].AtMs / _tickMs == tick; i++)
+                {
+                    CombatCommand c = commands[i];
+                    if (!PresentAtCommands(f, tick)) continue;
+                    if (c.Action == CombatAction.Select)
+                    {
+                        Fighter? chosen = c.Target is null ? null : _byId[c.Target];
+                        if (chosen is null || PresentAtCommands(chosen, tick)) selected = chosen;
+                    }
+                    else guarding = c.Action == CombatAction.GuardStart;
+                }
+                long until = i < commands.Count ? commands[i].AtMs / _tickMs - 1 : previous;
+                if (guarding && selected != null && selected != f && PresentOverlap(selected, tick, until) && PresentOverlap(f, tick, until)) return true;
+            }
+            return false;
+        }
+
+        /// <summary><paramref name="g"/> a-t-il été présent et vivant pendant au moins un tick de [<paramref name="from"/>, <paramref name="to"/>] ?</summary>
+        private static bool PresentOverlap(Fighter g, long from, long to)
+        {
+            if (g.Presence == Presence.Pending || g.Presence == Presence.Refused) return false;
+            long start = Math.Max(from, g.ArrivedTick ?? 0);
+            long end = Math.Min(to, Math.Min(g.Result.DeathTick ?? long.MaxValue, g.LeftTick ?? long.MaxValue));
+            return start <= end;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (25e tour) : orientations possibles de <paramref name="f"/> quand rien d'autre que la marche n'a pu le
+        /// tourner : celle de sa place de départ et les directions de ses commandes move (un pas tourne le combattant vers sa direction) ; null
+        /// s'il a pu se tourner vers une cible sélectionnée en garde (26e tour : garde et sélection admises au même tick, <see cref="GuardTurnPossible"/>).
+        /// </summary>
+        private HashSet<(long X, long Z)>? PossibleFacings(Fighter f)
+        {
+            long previous = CurrentTick - 1;
+            IEnumerable<CombatCommand> past = _setup.Commands.Where(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+            if (GuardTurnPossible(f)) return null;
+            var facings = new HashSet<(long X, long Z)>();
+            GroundVector start = f.Setup.Placement!.Facing;
+            if (Planar.TryNormalize(start.X.Raw, start.Z.Raw, out long sx, out long sz)) facings.Add((sx, sz));
+            foreach (CombatCommand move in past.Where(c => c.Action == CombatAction.Move && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)))
+                if (move.Direction is { } d && Planar.TryNormalize(d.X.Raw, d.Z.Raw, out long ux, out long uz)) facings.Add((ux, uz));
+            return facings;
+        }
+
+        /// <summary>Tick du tour <paramref name="turn"/> d'un assaillant (cadence : arrivée + <c>firstAttackMs</c>, puis <c>intervalMs</c>).</summary>
+        private long TurnTick(Fighter f, long turn) =>
+            checked((f.ArrivedTick ?? 0) + f.Assailant!.FirstAttackMs / _tickMs + turn * (f.Assailant.IntervalMs / _tickMs));
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : nombre de ticks de [<paramref name="from"/>, tick précédent] où <paramref name="g"/> a pu
+        /// marcher : présent et vivant (de son arrivée à sa mort ou à son départ), et en marche d'après sa dernière commande move ou stop
+        /// (toutes admises tant qu'il est présent et vivant ; un mannequin ne marche jamais).
+        /// </summary>
+        private long MovingTicks(Fighter g, long from)
+        {
+            if (g.Body is null || (g.Character is null && g.Assailant is null) || g.Presence == Presence.Pending || g.Presence == Presence.Refused) return 0;
+            long arrived = g.ArrivedTick ?? 0;
+            long start = Math.Max(from, arrived);
+            long end = Math.Min(CurrentTick - 1, Math.Min(g.Result.DeathTick ?? long.MaxValue, g.LeftTick ?? long.MaxValue));
+            if (start > end) return 0;
+            var commands = _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop) && c.Actor == g.Id
+                && c.AtMs / _tickMs >= arrived && c.AtMs / _tickMs <= end).OrderBy(c => c.AtMs / _tickMs).ToList();
+            bool moving = false;
+            long count = 0, cursor = start;
+            int i = 0;
+            for (; i < commands.Count && commands[i].AtMs / _tickMs < start; i++) moving = commands[i].Action == CombatAction.Move;
+            while (cursor <= end)
+            {
+                long next = i < commands.Count ? commands[i].AtMs / _tickMs : checked(end + 1);
+                if (next > cursor)
+                {
+                    long until = Math.Min(next, checked(end + 1));
+                    if (moving) count = checked(count + until - cursor);
+                    cursor = until;
+                    continue;
+                }
+                for (; i < commands.Count && commands[i].AtMs / _tickMs == cursor; i++) moving = commands[i].Action == CombatAction.Move;
+                if (moving) count++;
+                cursor++;
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : plus grand déplacement de <paramref name="g"/> en un tick de marche : son pas (vitesse ×
+        /// durée du tick, × 1 + les accélérations positives du catalogue, chacune une fois, plafonné par la vitesse technique), deux fois
+        /// pour les dégagements le long du décor et des emprises, plus une marge d'arrondi.
+        /// </summary>
+        private long StepBound(Fighter g)
+        {
+            Fixed boost = Fixed.One;
+            foreach (StatusDefinition d in _statuses.Definitions)
+                if (d.MovementSpeedModifier > Fixed.Zero) boost += d.MovementSpeedModifier;
+            long step = Fixed.Multiply(Fixed.FromRaw(Domain.Numerics.IntMath.MulDiv(g.Body!.Speed, _tickMs, 1000, Domain.Numerics.RoundingMode.Floor)), boost,
+                Domain.Numerics.RoundingMode.Ceiling).Raw;
+            return checked(2 * Math.Min(step, _maxStep) + 16);
+        }
+
+        /// <summary>(x, z) est-il à portée de marche de <paramref name="g"/> depuis le tick <paramref name="from"/> ?</summary>
+        private bool Reachable(Fighter g, long from, long x, long z)
+        {
+            long travel = checked(MovingTicks(g, from) * StepBound(g));
+            long dx = checked(x - g.Body!.X), dz = checked(z - g.Body.Z);
+            return travel == 0 ? dx == 0 && dz == 0 : (decimal)dx * dx + (decimal)dz * dz <= (decimal)travel * travel;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (24e tour) : la zone d'un impact a été verrouillée au tour <paramref name="turnTick"/>
+        /// (<see cref="LockZone"/>) : son origine est la place de l'assaillant (cercle autour de lui, cône, bande) ou celle d'un adversaire
+        /// présent à ce tour (cercle autour de la cible), chacun ne s'en étant écarté que de ses pas de marche depuis ; l'axe d'un cône ou
+        /// d'une bande va vers un adversaire (ou suit l'orientation de l'assaillant s'ils étaient confondus), contrôlé quand ni l'un ni
+        /// l'autre n'a marché depuis.
+        /// </summary>
+        private bool ZoneFitsLock(AttackImpact impact, long turnTick)
+        {
+            AttackZone zone = impact.Zone!;
+            Fighter a = impact.Assailant;
+            if (impact.Attack.Center == ShapeCenter.Target && zone.Shape is AttackShape.Circle or AttackShape.Persistent)
+                return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && Reachable(g, turnTick, zone.OriginX, zone.OriginZ));
+            if (!Reachable(a, turnTick, zone.OriginX, zone.OriginZ)) return false;
+            if (zone.Shape is AttackShape.Circle or AttackShape.Persistent || MovingTicks(a, turnTick) > 0) return true;
+            return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && (MovingTicks(g, turnTick) > 0
+                || (Planar.TryNormalize(checked(g.Body.X - zone.OriginX), checked(g.Body.Z - zone.OriginZ), out long ux, out long uz)
+                    ? ux == zone.AxisX && uz == zone.AxisZ
+                    : a.Body!.FacingX == zone.AxisX && a.Body.FacingZ == zone.AxisZ)));
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (22e tour) : <paramref name="f"/> était-il présent et vivant pendant les commandes du tick
+        /// <paramref name="tick"/> (au plus le tick précédent) ? Une arrivée a lieu au début de son tick, un départ à la fin du sien, et une mort
+        /// jamais avant les commandes (résolution, ticks de DOT, fin de tick).
+        /// </summary>
+        private static bool PresentAtCommands(Fighter f, long tick) =>
+            f.Presence != Presence.Pending && f.Presence != Presence.Refused && tick >= (f.ArrivedTick ?? 0)
+            && (f.LeftTick is not long left || tick <= left) && (f.Result.DeathTick is not long died || tick <= died);
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (20e tour) : plus fort coefficient d'une application de l'altération <paramref name="status"/> posée par
+        /// <paramref name="source"/> : compétences lançables de son build (21e tour), attaques d'un assaillant, déclencheurs permanents à leur rang, déclencheurs
+        /// portés par une altération du catalogue (rang 1, posés au nom de leur porteur).
+        /// </summary>
+        private Fixed StrongestApplication(Fighter source, string status)
+        {
+            Fixed coefficient = Fixed.Zero;
+            foreach (StatusDefinition carrier in _statuses.Definitions)
+                foreach (TriggerDefinition trigger in carrier.Triggers) coefficient = Fixed.Max(coefficient, StrongestCoefficient(trigger, status, 1));
+            // 21e tour : seules les compétences lançables (actives équipées et ultime) ; les passives agissent par leurs déclencheurs actifs.
+            if (source.Character is { } character)
+                foreach (SkillDefinition skill in character.Class.Skills)
+                    if (source.Castable.Contains(skill.Id) && skill.Combat is { } combat) coefficient = Fixed.Max(coefficient, StrongestCoefficient(combat.Applies, status));
+            if (source.Assailant is { } assailant)
+                foreach (AssailantAttack attack in assailant.Attacks) coefficient = Fixed.Max(coefficient, StrongestCoefficient(attack.Applies, status));
+            foreach (TriggerSlot slot in source.Triggers) coefficient = Fixed.Max(coefficient, StrongestCoefficient(slot.Definition, status, slot.Rank));
+            return coefficient;
+        }
+
+        /// <summary>
+        /// Sources possibles d'une altération : la source de sa clé pour un cumul par source, n'importe quel combattant sinon (un
+        /// renouvellement par une autre source garde la plus forte valeur).
+        /// </summary>
+        private IEnumerable<Fighter> PossibleSources(string? keySource) =>
+            keySource is null ? _fightersById : _fightersById.Where(f => string.Equals(f.Id, keySource, StringComparison.Ordinal));
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (20e tour) : plus forte absorption qu'un bouclier <paramref name="definition"/> a pu recevoir
+        /// (<see cref="ShieldAmount"/> de la plus forte application par une source possible).
+        /// </summary>
+        private long MaxShieldAbsorb(StatusDefinition definition, string? keySource)
+        {
+            long best = 0;
+            foreach (Fighter source in PossibleSources(keySource))
+                best = Math.Max(best, ShieldAmount(source, definition, StrongestApplication(source, definition.Id)));
+            return best;
+        }
+
+        /// <summary>
+        /// Relecture d'ensemble (20e tour) : plus forte puissance qu'un DOT <paramref name="definition"/> a pu recevoir (<see cref="DotPower"/> :
+        /// plus forte puissance du type de l'altération d'une source possible, toutes statistiques d'attaque comprises, × plus fort coefficient
+        /// de ses applications ; un renouvellement garde la plus forte des deux puissances).
+        /// </summary>
+        private Fixed MaxDotPower(StatusDefinition definition, string? keySource)
+        {
+            PowerType type = CombatantStats.PowerOf(definition.DamageType!.Value);
+            Fixed best = Fixed.Zero;
+            foreach (Fighter source in PossibleSources(keySource))
+            {
+                Fixed power = source.Stats.GetPower(type);
+                foreach (DerivedStats stats in source.AttackStats.Values) power = Fixed.Max(power, stats.GetPower(type));
+                best = Fixed.Max(best, Fixed.Max(Fixed.Zero, power) * StrongestApplication(source, definition.Id));
+            }
+            return best;
+        }
+
+        private static Fixed StrongestCoefficient(IReadOnlyList<StatusApplication> applies, string status)
+        {
+            Fixed best = Fixed.Zero;
+            foreach (StatusApplication a in applies)
+                if (a.Coefficient is { } c && string.Equals(a.Status, status, StringComparison.Ordinal)) best = Fixed.Max(best, c);
+            return best;
+        }
+
+        private static Fixed StrongestCoefficient(TriggerDefinition trigger, string status, int rank)
+        {
+            Fixed best = Fixed.Zero;
+            foreach (TriggerEffect e in trigger.Effects)
+                if (e.Kind == TriggerEffectKind.ApplyStatus && e.Coefficient is { } c && string.Equals(e.Status, status, StringComparison.Ordinal))
+                    best = Fixed.Max(best, c.At(rank));
+            return best;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (10e tour) : le déclencheur d'une réaction est abonné à l'effet observé et son porteur y tient le rôle
+        /// demandé (<see cref="Matches"/>, sans exiger qu'un allié visé soit encore vivant : il l'était à l'émission).
+        /// </summary>
+        private bool Subscribes(TriggerSlot slot, ObservedEvent e)
+        {
+            TriggerDefinition d = slot.Definition;
+            if (d.On != e.Kind && d.On != e.Also) return false;
+            if (d.EffectiveRole == TriggerRole.Ally)
+                return e.Target != null && !string.Equals(e.Target, slot.Bearer.Id, StringComparison.Ordinal)
+                    && _byId.TryGetValue(e.Target, out Fighter? ally) && ally.Team == slot.Bearer.Team;
+            string? holder = d.EffectiveRole == TriggerRole.Target ? e.Target : e.Source;
+            return string.Equals(holder, slot.Bearer.Id, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (10e tour) : la provenance d'une réaction est celle que <see cref="ProcessNotify"/> lui donne
+        /// (<see cref="Provenance.ReactionTo"/> de l'effet observé : même racine, profondeur + 1, chaîne étendue de son déclencheur, absent
+        /// avant, cause = effet observé, source = porteur ; instance de l'altération porteuse, à une génération déjà atteinte).
+        /// </summary>
+        /// <summary>
+        /// Revue Codex de la PR #32 (23e tour) : la source d'un effet observé est celle de sa provenance (le lanceur, l'auteur du coup, la
+        /// source de l'altération posée, échue ou qui fait son tick, le porteur d'une ressource, l'auteur de l'effet mortel). Exceptions : un
+        /// retrait d'altération porte la source de l'altération retirée (sa provenance est celle du retrait), et une rupture de garde par
+        /// épuisement n'a pas d'auteur.
+        /// </summary>
+        private static bool ObservedSourceFits(ObservedEvent e) => e.Kind switch
+        {
+            TriggerEvent.StateRemoved => true,
+            TriggerEvent.GuardBroken => e.Source is null || string.Equals(e.Source, e.Provenance.Source, StringComparison.Ordinal),
+            _ => string.Equals(e.Source, e.Provenance.Source, StringComparison.Ordinal),
+        };
+
+        private static bool ReactionOriginFits(ReactionItem reaction)
+        {
+            Provenance origin = reaction.Origin, observed = reaction.Event.Provenance;
+            TriggerSlot slot = reaction.Slot;
+            List<string> chain = observed.ChainOldestFirst();
+            if (chain.Contains(slot.Identity, StringComparer.Ordinal)) return false;   // cycle : jamais acceptée
+            chain.Add(slot.Identity);
+            bool instance = slot.Status is { } status
+                ? origin.SourceInstance == status.Id && origin.SourceGeneration is int generation && generation >= 1 && generation <= status.Generation
+                : origin.SourceInstance is null && origin.SourceGeneration is null;
+            return instance && string.Equals(origin.Root, observed.Root, StringComparison.Ordinal) && origin.Depth == checked(observed.Depth + 1)
+                && origin.ChainOldestFirst().SequenceEqual(chain, StringComparer.Ordinal) && string.Equals(origin.Trigger, slot.Identity, StringComparison.Ordinal)
+                && origin.Cause == reaction.Event.Eid && string.Equals(origin.Source, slot.Bearer.Id, StringComparison.Ordinal);
+        }
+
+        /// <summary>Vecteur unitaire à l'arrondi près (<see cref="Planar.TryNormalize"/> : au plus une unité brute d'erreur sur la longueur).</summary>
+        private static bool IsUnit(long x, long z)
+        {
+            if (Math.Abs(x) > Planar.Unit || Math.Abs(z) > Planar.Unit) return false;
+            long squared = Planar.LengthSquared(x, z);
+            return squared >= (Planar.Unit - 3) * (Planar.Unit - 3) && squared <= (Planar.Unit + 3) * (Planar.Unit + 3);
+        }
+
+        /// <summary>Zone verrouillée d'un impact : présente pour une attaque de zone seulement, à la forme et aux dimensions de l'attaque, dans l'aire.</summary>
+        private void ValidateZone(AttackImpact impact, string at)
+        {
+            AssailantAttack attack = impact.Attack;
+            if (impact.Zone is not { } z)
+            {
+                if (attack.IsZone) throw new FormatException($"{at} : zone absente.");
+                return;
+            }
+            bool round = attack.Shape is AttackShape.Circle or AttackShape.Persistent;
+            bool ok = attack.IsZone && impact.Target is null && z.Shape == attack.Shape
+                && z.OriginX >= _minX && z.OriginX <= _maxX && z.OriginZ >= _minZ && z.OriginZ <= _maxZ
+                && (round
+                    ? z.AxisX == 0 && z.AxisZ == 0 && z.Reach == attack.Radius!.Value.Raw && z.Angle == 0 && z.HalfWidth == 0
+                    : IsUnit(z.AxisX, z.AxisZ) && z.Reach == attack.Range!.Value.Raw && z.Angle == (attack.Angle ?? 0) && z.HalfWidth == (attack.Width?.Raw ?? 0) / 2);
+            if (!ok) throw new FormatException($"{at} : zone incohérente avec l'attaque {attack.Id}.");
+        }
+
+        private static CombatPhase Phase(int value) =>
+            Enum.IsDefined(typeof(CombatPhase), value) ? (CombatPhase)value : throw new FormatException($"Phase inconnue : {value}.");
+
+        /// <summary>Revue Codex de la PR #32 (2e tour) : valeur d'énumération relue, refusée si elle ne nomme aucun cas.</summary>
+        private static T Defined<T>(SnapshotNode n) where T : struct, Enum
+        {
+            int value = n.Int;
+            if (!Enum.IsDefined(typeof(T), value)) throw new FormatException($"{typeof(T).Name} inconnu : {value}.");
+            return (T)(object)value;
+        }
+
+        private static T? DefinedOrNull<T>(SnapshotNode n) where T : struct, Enum => n.IsNull ? (T?)null : Defined<T>(n);
+
+        private static Provenance Required(Provenance? provenance) => provenance ?? throw new FormatException("Provenance absente.");
+
+        private Fighter FighterOf(SnapshotNode id) => _byId[id.String];
+
+        // Revue Codex de la PR #32 (3e tour) : plus grand événement et plus grande instance d'altération cités par l'état relu.
+        private long _maxLoadedEid;
+        private long _maxLoadedInstance;
+
+        /// <summary>Instance d'altération citée par l'état relu (null : aucune) : numérotée, au plus la dernière.</summary>
+        private long? Instance(long? instance)
+        {
+            if (instance < 1) throw new FormatException($"Altération non numérotée citée : {instance}.");
+            _maxLoadedInstance = Math.Max(_maxLoadedInstance, instance ?? 0);
+            return instance;
+        }
+
+        private Provenance? ReadProvenance(SnapshotNode n)
+        {
+            if (n.IsNull) return null;
+            long? cause = n["cause"].NullableLong, instance = n["instance"].NullableLong;
+            if (cause < 1 || instance < 1) throw new FormatException("Provenance citant un événement ou une altération non numérotés.");
+            _maxLoadedEid = Math.Max(_maxLoadedEid, cause ?? 0);
+            _maxLoadedInstance = Math.Max(_maxLoadedInstance, instance ?? 0);
+            // Revue Codex de la PR #32 (10e tour) : une réaction n'est acceptée que sous la profondeur maximale des règles.
+            if (n["depth"].Int > _rules.MaxTriggerDepth) throw new FormatException($"Provenance au-delà de la profondeur maximale ({_rules.MaxTriggerDepth}).");
+            return Provenance.Restore(n["root"].String, n["depth"].Int, n["chain"].Items.Select(c => c.String).ToList(), n["trigger"].NullableString,
+                cause, n["source"].NullableString, instance, n["generation"].NullableInt);
+        }
+
+        private void LoadFighter(Fighter f, SnapshotNode n)
+        {
+            if (n["fighter"].String != f.Id) throw new FormatException($"Combattant « {n["fighter"].String} » à la place de « {f.Id} ».");
+            int presence = n["presence"].Int;
+            if (!Enum.IsDefined(typeof(Presence), presence)) throw new FormatException($"Présence inconnue : {presence}.");
+            f.Presence = (Presence)presence;
+            f.ArrivedTick = n["arrivedTick"].NullableLong;
+            f.LeftTick = n["leftTick"].NullableLong;
+            f.LeaveCommand = n["leaveCommand"].NullableInt;
+            f.IsDead = n["dead"].Bool;
+            f.Health = n["health"].NullableLong;
+            f.Endurance = n["endurance"].Long;
+            f.RegenFromTick = n["regenFromTick"].NullableLong;
+            f.RegenGranted = n["regenGranted"].Long;
+            f.GlobalCooldownReadyTick = n["globalCooldownReadyTick"].Long;
+            foreach (SnapshotNode c in n["cooldowns"].Items) f.CooldownReadyTick[c.Items[0].String] = c.Items[1].Long;
+            f.Guarding = n["guarding"].Bool;
+            f.GuardUpkeepDue = n["upkeepDue"].Long;
+            f.GuardUpkeepRemainder = n["upkeepRemainder"].Long;
+            f.GuardUpkeepPaid = n["upkeepPaid"].Long;
+            f.ParryOpen = n["parryOpen"].Bool;
+            f.ParryStartTick = n["parryStartTick"].Long;
+            f.ParryEndTick = n["parryEndTick"].Long;
+            f.ParrySucceeded = n["parrySucceeded"].Bool;
+            f.ParryRecoveryUntilTick = n["parryRecoveryUntilTick"].Long;
+            f.Resonance = n["resonance"].Int;
+            f.RampartCharges = n["rampartCharges"].Int;
+            f.NextTurn = n["nextTurn"].Long;
+            f.NextAttack = n["nextAttack"].Int;
+            if (f.Assailant != null && (f.NextAttack < 0 || f.NextAttack >= f.Assailant.Attacks.Count)) throw new FormatException($"Attaque suivante invalide pour « {f.Id} ».");
+            f.NextAttackTick = n["nextAttackTick"].NullableLong;
+            f.LethalCause = ReadProvenance(n["lethalCause"]);
+            IReadOnlyList<SnapshotNode> random = n["random"].Items;
+            f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),
+                ulong.Parse(random[1].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture)));
+            SnapshotNode body = n["body"];
+            if (body.IsNull != (f.Body is null)) throw new FormatException($"Place de « {f.Id} » incohérente avec le combat.");
+            if (f.Body is { } b)
+            {
+                b.X = body["x"].Long;
+                b.Z = body["z"].Long;
+                b.FacingX = body["facingX"].Long;
+                b.FacingZ = body["facingZ"].Long;
+                b.Moving = body["moving"].Bool;
+                b.DirectionX = body["directionX"].Long;
+                b.DirectionZ = body["directionZ"].Long;
+                b.Selected = body["selected"].IsNull ? null : FighterOf(body["selected"]);
+            }
+            IReadOnlyList<SnapshotNode> triggers = n["triggers"].Items;
+            if (triggers.Count != f.Triggers.Count) throw new FormatException($"Déclencheurs de « {f.Id} » incohérents avec le combat.");
+            for (int k = 0; k < triggers.Count; k++) f.Triggers[k].ReadyTick = triggers[k].Long;
+            SnapshotNode r = n["result"];
+            CombatantResult result = f.Result;
+            result.DamageDealt = r["damageDealt"].Long;
+            result.DamageTaken = r["damageTaken"].Long;
+            result.DamageAbsorbed = r["damageAbsorbed"].Long;
+            result.DamageTransferred = r["damageTransferred"].Long;
+            result.DamageRedirected = r["damageRedirected"].Long;
+            result.DamageMitigated = r["damageMitigated"].Long;
+            result.Hits = r["hits"].Long;
+            result.CriticalHits = r["criticalHits"].Long;
+            result.SkillsCast = r["skillsCast"].Long;
+            result.UltimatesCast = r["ultimatesCast"].Long;
+            result.CommandsRejected = r["commandsRejected"].Long;
+            result.Blocks = r["blocks"].Long;
+            result.PerfectParries = r["perfectParries"].Long;
+            result.FailedParries = r["failedParries"].Long;
+            result.GuardBreaks = r["guardBreaks"].Long;
+            result.GuardTicks = r["guardTicks"].Long;
+            result.DeathTick = r["deathTick"].NullableLong;
+            result.ArrivedTick = r["arrivedTick"].NullableLong;
+            result.LeftTick = r["leftTick"].NullableLong;
+            foreach (SnapshotNode s in n["statuses"].Items)
+            {
+                StatusDefinition definition = _statuses[s["state"].String];
+                var key = new StatusKey(definition.Id, s["keySource"].NullableString);
+                var status = new StatusInstance
+                {
+                    Id = s["id"].Long,
+                    Generation = s["generation"].Int,
+                    Definition = definition,
+                    Key = key,
+                    Owner = f,
+                    Source = s["source"].NullableString,
+                    UntilTick = s["untilTick"].Long,
+                    Power = Fixed.FromRaw(s["power"].Long),
+                    NextTick = s["nextTick"].Long,
+                    Absorb = s["absorb"].Long,
+                    DepletedBy = ReadProvenance(s["depletedBy"]),
+                    AppliedSeq = s["appliedSeq"].Long,
+                    Origin = ReadProvenance(s["origin"]) ?? throw new FormatException("Provenance d'altération absente."),
+                };
+                status.Slots = StatusSlots(f, status);
+                SnapshotNode slots = s["slots"];
+                if (slots.IsNull != (status.Slots is null) || (status.Slots != null && slots.Items.Count != status.Slots.Length))
+                    throw new FormatException($"Déclencheurs de l'altération {status.Id} incohérents avec le catalogue.");
+                if (status.Slots != null)
+                    for (int k = 0; k < status.Slots.Length; k++) status.Slots[k].ReadyTick = slots.Items[k].Long;
+                f.Statuses.Add(key, status);
+            }
+        }
+
+        private Scheduled LoadItem(SnapshotNode e)
+        {
+            switch (e["item"].String)
+            {
+                case "arrival":
+                    return new ArrivalItem { Fighter = FighterOf(e["fighter"]) };
+                case "command":
+                {
+                    int index = e["index"].Int;
+                    return new CommandItem { Index = index, Command = _setup.Commands[index] };
+                }
+                case "turn":
+                    return new AssailantTurn { Fighter = FighterOf(e["fighter"]), Turn = e["turn"].Long };
+                case "cooldown":
+                    return new CooldownExpiry { Fighter = FighterOf(e["fighter"]), Skill = e["skill"].String };
+                case "expiry":
+                    return new StateExpiry
+                    {
+                        Fighter = FighterOf(e["fighter"]), Key = new StatusKey(e["state"].String, e["keySource"].NullableString),
+                        Instance = Instance(e["instance"].Long)!.Value, Generation = e["generation"].Int,
+                    };
+                case "dot":
+                    return new DotTick { Fighter = FighterOf(e["fighter"]), Key = new StatusKey(e["state"].String, e["keySource"].NullableString), Instance = Instance(e["instance"].Long)!.Value };
+                case "parryEnd":
+                    return new ParryWindowEnd { Fighter = FighterOf(e["fighter"]), StartTick = e["startTick"].Long, Origin = Required(ReadProvenance(e["origin"])) };
+                case "impact":
+                {
+                    Fighter assailant = FighterOf(e["assailant"]);
+                    AssailantAttack attack = (assailant.Assailant ?? throw new FormatException($"Impact d'un combattant qui n'est pas un assaillant : « {assailant.Id} »."))
+                        .Attacks.Single(a => a.Id == e["attack"].String);
+                    SnapshotNode z = e["zone"];
+                    return new AttackImpact
+                    {
+                        Assailant = assailant,
+                        Attack = attack,
+                        Target = e["target"].IsNull ? null : FighterOf(e["target"]),
+                        Zone = z.IsNull ? null : new AttackZone(Defined<AttackShape>(z["shape"]), z["originX"].Long, z["originZ"].Long, z["axisX"].Long, z["axisZ"].Long,
+                            z["reach"].Long, z["angle"].Int, z["halfWidth"].Long),
+                        Pulse = e["pulse"].Long,
+                        ImpactTick = e["impactTick"].Long,
+                        Origin = Required(ReadProvenance(e["origin"])),
+                    };
+                }
+                case "reaction":
+                    return new ReactionItem
+                    {
+                        Slot = LoadSlot(e["slot"]),
+                        Event = LoadObserved(e["event"]),
+                        Origin = Required(ReadProvenance(e["origin"])),
+                        DeferredFrom = e["deferredFrom"].NullableLong,
+                    };
+                default:
+                    throw new FormatException($"Élément de file inconnu : {e["item"].String}.");
+            }
+        }
+
+        /// <summary>
+        /// Déclencheur d'une réaction reportée : permanent (liste du porteur), porté par une altération active (la même instance), ou porté
+        /// par une instance retirée depuis : il est alors recréé détaché, avec une instance hors du porteur, que <see cref="Live"/> refuse.
+        /// </summary>
+        private TriggerSlot LoadSlot(SnapshotNode n)
+        {
+            Fighter bearer = FighterOf(n["bearer"]);
+            TriggerOrigin origin = Defined<TriggerOrigin>(n["origin"]);
+            string definitionId = n["definition"].String;
+            int index = n["index"].Int;
+            long instance = n["instance"].Long;
+            if (instance != 0) Instance(instance);
+            if (instance == 0)
+                return bearer.Triggers.Single(s => s.Origin == origin && s.DefinitionId == definitionId && s.Index == index);
+            if (!n["detached"].Bool)
+            {
+                StatusInstance live = bearer.Statuses.Values.Single(s => s.Id == instance);
+                return live.Slots![index];
+            }
+            StatusDefinition definition = _statuses[definitionId];
+            // Revue Codex de la PR #32 (11e tour) : l'instance retirée avait été posée (génération ≥ 1), au plus au dernier rang d'application.
+            int generation = n["generation"].Int;
+            if (generation < 1 || generation > _lastApplication) throw new FormatException($"Génération impossible pour un déclencheur détaché de « {bearer.Id} » : {generation}.");
+            var gone = new StatusInstance
+            {
+                Id = instance, Generation = generation, Definition = definition, Key = new StatusKey(definitionId, null), Owner = bearer,
+                Origin = Provenance.NewRoot("detached", null),
+            };
+            TriggerSlot slot = Slot(bearer, origin, definitionId, index, n["rank"].Int, definition.Triggers[index], gone);
+            slot.ReadyTick = n["readyTick"].Long;
+            // Revue Codex de la PR #32 (7e tour) : mêmes bornes que les autres recharges de déclencheurs.
+            if (slot.ReadyTick < 0 || slot.ReadyTick > Math.Max(0, CurrentTick - 1 + slot.Definition.CooldownMs / _tickMs))
+                throw new FormatException($"Recharge d'un déclencheur détaché de « {bearer.Id} » au-delà de sa durée.");
+            return slot;
+        }
+
+        private ObservedEvent LoadObserved(SnapshotNode n)
+        {
+            foreach (string field in new[] { "source", "target" })
+                if (n[field].NullableString is string id && !_byId.ContainsKey(id)) throw new FormatException($"Événement observé citant un combattant inconnu : {id}.");
+            long eid = n["eid"].Long;
+            if (eid < 1) throw new FormatException($"Événement observé non numéroté : {eid}.");
+            _maxLoadedEid = Math.Max(_maxLoadedEid, eid);
+            Instance(n["instance"].NullableLong);
+            return Observed(n);
+        }
+
+        private ObservedEvent Observed(SnapshotNode n) => new ObservedEvent
+        {
+            Kind = Defined<TriggerEvent>(n["kind"]),
+            Also = DefinedOrNull<TriggerEvent>(n["also"]),
+            Source = n["source"].NullableString,
+            Target = n["target"].NullableString,
+            Skill = n["skill"].NullableString,
+            State = n["state"].NullableString,
+            Category = DefinedOrNull<StatusCategory>(n["category"]),
+            Instance = n["instance"].NullableLong,
+            DamageType = DefinedOrNull<Domain.Stats.DamageType>(n["damageType"]),
+            Defense = Defined<HitDefense>(n["defense"]),
+            Renewed = n["renewed"].Bool,
+            Resource = DefinedOrNull<TriggerResource>(n["resource"]),
+            Eid = n["eid"].Long,
+            Tick = n["tick"].Long,
+            Phase = Phase(n["phase"].Int),
+            Provenance = Required(ReadProvenance(n["provenance"])),
+            Candidates = new List<TriggerSlot>(),   // lus seulement à la notification, déjà traitée
+        };
+    }
+}

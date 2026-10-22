@@ -27,6 +27,14 @@ namespace EdS.Simulation.Engine
         public CombatantKind Kind { get; internal set; }
         public bool IsDead { get; internal set; }
 
+        /// <summary>
+        /// Sous-lot 11.4d : présent dans le combat (arrivé et pas parti). Un absent n'agit pas et n'est pas ciblé : un affichage ne le montre
+        /// pas. <see cref="ArrivalTick"/> : tick d'arrivée attendu ou passé d'un combattant qui arrive en cours de route ; null sinon.
+        /// </summary>
+        public bool IsPresent { get; internal set; } = true;
+        public long? ArrivalTick { get; internal set; }
+        public bool HasLeft { get; internal set; }
+
         /// <summary>PV ; null pour un mannequin ou un assaillant aux PV infinis.</summary>
         public long? Health { get; internal set; }
         public long? MaxHealth { get; internal set; }
@@ -46,7 +54,7 @@ namespace EdS.Simulation.Engine
         public long GlobalCooldownReadyTick { get; internal set; }
         public IReadOnlyDictionary<string, long> CooldownReadyTicks { get; internal set; } = new Dictionary<string, long>();
 
-        /// <summary>Compétences, garde et parade non bloquées par une altération encore active à ce tick.</summary>
+        /// <summary>Compétences, garde et parade non bloquées par une altération encore active à ce tick ; faux pour un absent ou un mort.</summary>
         public bool CanCast { get; internal set; }
         public bool CanGuard { get; internal set; }
         public bool CanParry { get; internal set; }
@@ -154,6 +162,9 @@ namespace EdS.Simulation.Engine
                 Team = f.Team,
                 Kind = f.Character != null ? CombatantKind.Character : f.Assailant != null ? CombatantKind.Assailant : CombatantKind.Dummy,
                 IsDead = f.IsDead,
+                IsPresent = !f.Absent,
+                ArrivalTick = f.Setup.ArrivalMs is long arrivalMs ? arrivalMs / _tickMs : (long?)null,
+                HasLeft = f.Presence == Presence.Left,
                 Health = f.Health,
                 MaxHealth = f.MaxHealth,
                 States = f.Statuses.Values.Where(s => s.UntilTick > tick).Select(s => s.State).Distinct().OrderBy(s => s, StringComparer.Ordinal).ToArray(),
@@ -187,9 +198,10 @@ namespace EdS.Simulation.Engine
                 view.ParryRecoveryUntilTick = f.ParryRecoveryUntilTick;
                 view.GlobalCooldownReadyTick = f.GlobalCooldownReadyTick;
                 view.CooldownReadyTicks = new Dictionary<string, long>(f.CooldownReadyTick, StringComparer.Ordinal);
-                view.CanCast = !Blocked(StatusBlocks.Skills);
-                view.CanGuard = !Blocked(StatusBlocks.Guard);
-                view.CanParry = !Blocked(StatusBlocks.Parry);
+                // Revue Codex de la PR #32 (16e tour) : un absent (attendu, refusé, parti) ou un mort n'agit pas, comme pour CanMove.
+                view.CanCast = !f.Out && !Blocked(StatusBlocks.Skills);
+                view.CanGuard = !f.Out && !Blocked(StatusBlocks.Guard);
+                view.CanParry = !f.Out && !Blocked(StatusBlocks.Parry);
             }
             if (f.Body is { } body)
             {
@@ -197,7 +209,7 @@ namespace EdS.Simulation.Engine
                 view.Facing = GroundVector.FromRaw(body.FacingX, body.FacingZ);
                 view.Radius = Fixed.FromRaw(body.Radius);
                 view.MoveDirection = body.Moving ? GroundVector.FromRaw(body.DirectionX, body.DirectionZ) : (GroundVector?)null;
-                view.CanMove = !f.IsDead && (f.Character != null || f.Assailant != null) && !Blocked(StatusBlocks.Movement);   // un mannequin ne marche pas
+                view.CanMove = !f.Out && (f.Character != null || f.Assailant != null) && !Blocked(StatusBlocks.Movement);   // un mannequin ne marche pas
                 view.SelectedTarget = body.Selected?.Id;
             }
             if (f.Assailant is { } assailant)
@@ -276,7 +288,8 @@ namespace EdS.Simulation.Engine
                     throw new InvalidOperationException($"Plus de {_rules.MaxCommands} commandes (combat.limits.maxCommands).");
                 // Revue Codex de la PR #10 : capacité de la file contrôlée avant toute modification. La file ne dépasse jamais sa capacité,
                 // et le scénario complété garde un nombre d'événements initiaux admissible (une entrée par commande, comme à la construction).
-                if (checked(_queue.Count + i) >= _rules.MaxPendingEvents || checked(_initialEvents + _submitted.Count + i + 1) > _rules.MaxPendingEvents)
+                // Sous-lot 11.4d : le combat complété compte aussi une entrée par arrivée (Join).
+                if (checked(_queue.Count + i) >= _rules.MaxPendingEvents || checked(_initialEvents + _joined.Count + _submitted.Count + i + 1) > _rules.MaxPendingEvents)
                     throw new InvalidOperationException($"File pleine : capacité {_rules.MaxPendingEvents} (combat.limits.maxPendingEvents).");
                 groupPerActor[command.Actor] = earlier + 1;
             }

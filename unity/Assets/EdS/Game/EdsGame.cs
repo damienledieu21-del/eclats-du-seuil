@@ -500,10 +500,16 @@ namespace EdS.Game
 
         /// <summary>
         /// Déplacement purement visuel, relatif à la caméra (ZQSD en AZERTY, WASD en QWERTY, ou flèches : voir <see cref="Keys"/>) ;
-        /// impossible hors de combat ou étourdi.
+        /// impossible hors de combat ou étourdi. Revue Codex de la PR #32 (30e tour) : un joueur absent (avant son arrivée, après son départ)
+        /// ne bouge ni ne se tourne : il réapparaît là où il était.
         /// </summary>
         private void Move(PlayerState player)
         {
+            if (!player.View.IsPresent)
+            {
+                _moving = false;
+                return;
+            }
             float x = (Input.GetKey(Keys.Right) || Input.GetKey(KeyCode.RightArrow) ? 1f : 0f)
                 - (Input.GetKey(Keys.Left) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
             float z = (Input.GetKey(Keys.Forward) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
@@ -601,6 +607,7 @@ namespace EdS.Game
             Camera camera = _camera.Camera;
             foreach (OtherState other in _combat.Others())
             {
+                if (!other.View.IsPresent) continue;   // revue Codex de la PR #32 (16e tour) : un absent n'a pas de barre
                 Vector3? head = _arena.Head(other.Id);
                 if (head != null) Hud.Overhead(camera.WorldToScreenPoint(head.Value), other, other.Id == player.TargetId);
             }
@@ -618,7 +625,7 @@ namespace EdS.Game
             }
 
             Hud.Player(player);
-            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId));
+            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent));
             if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
                 Network ? NetworkBuildName() : BuildName(), _camera.Describe(), _paused, Network);
             if (Network) NetworkScreen.DrawCombat(_net, _shownCombat?.AllyId);

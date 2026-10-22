@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 6
+      "const": 7
     },
     "kind": {
       "const": "scenario"
@@ -249,6 +249,11 @@
           "minimum": 0.1,
           "maximum": 20,
           "description": "Assaillant d'un combat positionné : vitesse de marche propre, en m/s ; facultative (combat.movement.speed sinon)."
+        },
+        "arrivalMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sous-lot 11.4d : arrivée en cours de combat, en millisecondes (multiple du tick, avant la fin) ; absente : présent dès le départ. Avant son arrivée, le combattant n'agit pas et n'est pas ciblé ; arrivée refusée si une emprise solide occupe sa place."
         }
       },
       "additionalProperties": false,
@@ -367,9 +372,10 @@
             "parry",
             "move",
             "stop",
-            "select"
+            "select",
+            "leave"
           ],
-          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible)."
+          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible) ; départ (leave, sous-lot 11.4d : effectif en fin de tick)."
         },
         "direction": {
           "$ref": "#/$defs/direction",

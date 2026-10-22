@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.18.0";
+        public const string Version = "0.19.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -71,10 +71,16 @@ namespace EdS.Simulation.Engine
         /// et des commandes <c>select</c> ; <c>attackStarted</c> d'une attaque qui a une forme décrit la forme verrouillée et son tick
         /// d'impact ; nouvelles lignes <c>attackLanded</c> (impact ou impulsion d'une zone, avec ses cibles), <c>attackCancelled</c>
         /// (diagnostic) et <c>targetSelected</c> ; défense <c>behind</c> (coup venu de dos) ; raisons de saut <c>targetOutOfRange</c> et
-        /// <c>noLineOfSight</c> (<c>attackSkipped</c>). Un combat sans espace écrit exactement les mêmes lignes qu'au format 11. Un journal
-        /// d'un autre format est refusé au rejeu.
+        /// <c>noLineOfSight</c> (<c>attackSkipped</c>). Un combat sans espace écrit exactement les mêmes lignes qu'au format 11. 13 (sous-lot
+        /// 11.4d) : combattants qui arrivent et partent. L'en-tête peut porter <c>arrivalMs</c> sur un combattant et des commandes
+        /// <c>leave</c> ; nouvelles lignes <c>combatantJoined</c> (phase <c>setup</c>, mêmes champs que <c>combatant</c>), <c>arrivalRefused</c>,
+        /// <c>combatantLeft</c> et <c>leaveCancelled</c> (diagnostics sauf <c>combatantJoined</c> et <c>combatantLeft</c>) ; raisons
+        /// <c>actorAbsent</c>, <c>targetAbsent</c>, <c>bearerAbsent</c>, <c>alreadyLeaving</c>, <c>left</c> et <c>sourceLeft</c> ;
+        /// <c>presence</c>, <c>arrivedTick</c> et <c>leftTick</c> sur <c>combatantSummary</c> d'un combattant arrivé en cours de route ou parti.
+        /// Un combat sans arrivée ni départ écrit exactement les mêmes lignes qu'au format 12. Un journal d'un autre format est refusé au
+        /// rejeu.
         /// </summary>
-        public const int LogFormatVersion = 12;
+        public const int LogFormatVersion = 13;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -151,12 +157,40 @@ namespace EdS.Simulation.Engine
             public Pcg32 Random = null!;
             public bool IsDead;
 
+            /// <summary>
+            /// Sous-lot 11.4d : présence dans le combat. Un combattant qui arrive en cours de route attend (<see cref="Presence.Pending"/>)
+            /// jusqu'au tick de son arrivée ; un départ (commande <c>leave</c>) le rend absent pour la suite. Un absent ne coûte rien, n'agit
+            /// pas, n'est ni ciblé, ni solide, ni compté dans un groupe.
+            /// </summary>
+            public Presence Presence;
+
+            /// <summary>Tick d'arrivée (arrivé en cours de combat) et tick de départ ; null sinon.</summary>
+            public long? ArrivedTick;
+            public long? LeftTick;
+
+            /// <summary>Départ accepté pendant ce tick (numéro de la commande <c>leave</c>), effectif en fin de tick ; null sinon.</summary>
+            public int? LeaveCommand;
+
+            public bool Absent => Presence != Presence.Present;
+
+            /// <summary>Hors du combat : mort ou absent. Remplace « mort » partout où un combattant ne doit plus compter.</summary>
+            public bool Out => IsDead || Presence != Presence.Present;
+
             /// <summary>Sous-lot 11.4 : état spatial dans un combat positionné ; null sinon.</summary>
             public Body? Body;
             public readonly CombatantResult Result = new CombatantResult();
 
             public string Id => Setup.Id;
             public string Team => Setup.Team;
+        }
+
+        /// <summary>Sous-lot 11.4d : présence d'un combattant (voir <see cref="Fighter.Presence"/>).</summary>
+        private enum Presence
+        {
+            Present = 0,
+            Pending = 1,
+            Left = 2,
+            Refused = 3,
         }
 
         /// <summary>Clé d'une instance d'altération sur une cible : la source n'y figure que pour un cumul par source (DOT, A13).</summary>
@@ -239,6 +273,12 @@ namespace EdS.Simulation.Engine
         {
             public int Index;
             public CombatCommand Command = null!;
+        }
+
+        /// <summary>Sous-lot 11.4d : arrivée d'un combattant au début d'un tick (phase <c>setup</c>).</summary>
+        private sealed class ArrivalItem : Scheduled
+        {
+            public Fighter Fighter = null!;
         }
 
         private sealed class AssailantTurn : Scheduled
@@ -422,7 +462,13 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Réservé aux tests (correctif 7.3.1) : <paramref name="numericLimits"/> faux omet le précontrôle numérique pour
         /// exercer l'arrêt <c>overflow</c> et vérifier qu'aucun impact n'est appliqué à moitié.</summary>
-        internal CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound, bool numericLimits)
+        internal CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound, bool numericLimits) : this(setup, log, queueBound, numericLimits, null) { }
+
+        /// <summary>
+        /// Sous-lot 11.4d : avec <paramref name="snapshot"/>, le moteur est reconstruit dans l'état de l'instantané (voir
+        /// <see cref="Restore"/>) : rien n'est mis en file ni écrit au journal à la construction.
+        /// </summary>
+        private CombatEngine(CombatSetup setup, ICombatLog log, bool queueBound, bool numericLimits, CombatSnapshot? snapshot)
         {
             _setup = setup ?? throw new ArgumentNullException(nameof(setup));
             _log = log ?? throw new ArgumentNullException(nameof(log));
@@ -444,14 +490,22 @@ namespace EdS.Simulation.Engine
             _byId = _fighters.ToDictionary(f => f.Id, StringComparer.Ordinal);
             BuildTriggerIndex();
             InitSpace();
+            if (snapshot != null)
+            {
+                LoadSnapshot(snapshot);
+                return;
+            }
 
+            // Sous-lot 11.4d : une arrivée par combattant qui arrive en cours de combat, dans l'ordre du scénario.
+            foreach (Fighter f in _fighters)
+                if (f.Setup.ArrivalMs is long arrivalMs) Schedule(arrivalMs / _tickMs, CombatPhase.Setup, new ArrivalItem { Fighter = f });
             for (int i = 0; i < setup.Commands.Count; i++)
             {
                 CombatCommand command = setup.Commands[i];
                 Schedule(command.AtMs / _tickMs, CombatPhase.Commands, new CommandItem { Index = i, Command = command });
             }
             foreach (Fighter f in _fighters)
-                if (f.Assailant is { } assailant && assailant.FirstAttackMs / _tickMs < _durationTicks)
+                if (!f.Absent && f.Assailant is { } assailant && assailant.FirstAttackMs / _tickMs < _durationTicks)
                 {
                     f.NextAttackTick = assailant.FirstAttackMs / _tickMs;
                     Schedule(f.NextAttackTick.Value, CombatPhase.Commands, new AssailantTurn { Fighter = f, Turn = f.NextTurn++ });
@@ -459,7 +513,8 @@ namespace EdS.Simulation.Engine
             for (int i = 0; i < setup.Commands.Count; i++) CountSubmitted(setup.Commands[i]);
 
             _log.Append(CombatLogHeader.Write(setup));
-            foreach (Fighter f in _fighters) LogCombatant(f);
+            foreach (Fighter f in _fighters)
+                if (!f.Absent) LogCombatant(f);
         }
 
         /// <summary>Simule un combat complet et renvoie son résultat.</summary>
@@ -472,7 +527,8 @@ namespace EdS.Simulation.Engine
 
         private Fighter CreateFighter(CombatantSetup setup)
         {
-            var f = new Fighter { Setup = setup, Random = new Pcg32(unchecked((ulong)_setup.Seed), StreamOf(setup.Id)), Body = CreateBody(setup) };
+            var f = new Fighter { Setup = setup, Random = new Pcg32(unchecked((ulong)_setup.Seed), StreamOf(setup.Id)), Body = CreateBody(setup),
+                Presence = setup.ArrivalMs is null ? Presence.Present : Presence.Pending };
             f.Result.Id = setup.Id;
             f.Result.Team = setup.Team;
             switch (setup)
@@ -528,6 +584,7 @@ namespace EdS.Simulation.Engine
             _countEvents = true;
             try
             {
+                RunArrivals(tick);   // sous-lot 11.4d : combattants qui arrivent à ce tick
                 RunExpirations(tick);
                 List<PendingAction> actions = RunCommands(tick);
                 RunMovement(tick);   // sous-lot 11.4 : combat positionné seulement
@@ -564,7 +621,7 @@ namespace EdS.Simulation.Engine
                 switch (item)
                 {
                     case CooldownExpiry expiry:
-                        if (expiry.Fighter.CooldownReadyTick.TryGetValue(expiry.Skill, out long ready) && ready == tick)
+                        if (!expiry.Fighter.Absent && expiry.Fighter.CooldownReadyTick.TryGetValue(expiry.Skill, out long ready) && ready == tick)
                             Emit(tick, CombatPhase.Expirations, "cooldownReady", Provenance.NewRoot($"cooldown:{expiry.Fighter.Id}:{expiry.Skill}:{tick}", expiry.Fighter.Id),
                                 w => w.Field("actor", expiry.Fighter.Id).Field("skill", expiry.Skill));
                         break;
@@ -584,7 +641,8 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private Cost ExpirationCost(long tick, Scheduled item) => item switch
         {
-            CooldownExpiry e => Cost.Line.If(e.Fighter.CooldownReadyTick.TryGetValue(e.Skill, out long ready) && ready == tick),
+            // Sous-lot 11.4d : un parti n'annonce plus ses recharges.
+            CooldownExpiry e => Cost.Line.If(!e.Fighter.Absent && e.Fighter.CooldownReadyTick.TryGetValue(e.Skill, out long ready) && ready == tick),
             ParryWindowEnd e => Cost.Line.If(e.Fighter.ParryOpen && e.Fighter.ParryStartTick == e.StartTick),
             StateExpiry e => IsCurrent(e, out StatusInstance? status) ? EndStatusCost(tick, status) : Cost.None,
             _ => Cost.None,
@@ -656,6 +714,8 @@ namespace EdS.Simulation.Engine
                 case CombatAction.Stop:
                 case CombatAction.Select:   // sous-lot 11.4c : targetSelected ou refus
                     return Cost.Line;
+                case CombatAction.Leave:    // sous-lot 11.4d : départ noté sans ligne (effectif en fin de tick) ou refus
+                    return Cost.Line.If(CheckLeave(actor) != null);
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
                 default:
@@ -673,11 +733,11 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private Cost AssailantTurnCost(long tick, Fighter assailant)
         {
-            if (assailant.IsDead) return Cost.None;   // sous-lot 11.1 : tour périmé, abandonné sans ligne (voir AssailantAttacks)
+            if (assailant.Out) return Cost.None;   // sous-lot 11.1 : tour périmé, abandonné sans ligne (voir AssailantAttacks) ; 11.4d : parti
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
-            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || (target is { IsDead: true } && UsesTarget(attack))
+            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || (target is { Out: true } && UsesTarget(attack))
                 || DirectedReach(assailant, attack, target) != null;
             // Sous-lot 11.4c : une attaque annoncée (ou une zone) programme son impact, s'il tombe avant la fin.
             bool impact = !skipped && Deferred(attack) && ImpactTickOf(tick, attack) < _durationTicks;
@@ -744,15 +804,32 @@ namespace EdS.Simulation.Engine
                 case CombatAction.Select:
                 {
                     Fighter? selected = command.Target is null ? null : _byId[command.Target];
-                    if (Reject(tick, item, actor, CheckAlive(actor) ?? (selected is { IsDead: true } ? "targetDead" : null))) return null;
+                    if (Reject(tick, item, actor, CheckAlive(actor) ?? (selected is { Out: true } ? OutReason(selected, "target") : null))) return null;
                     actor.Body!.Selected = selected;
                     Emit(tick, CombatPhase.Commands, "targetSelected", root, w => w.Field("actor", actor.Id).Field("command", item.Index).Field("target", selected?.Id));
                     return null;
                 }
 
+                // Sous-lot 11.4d : départ noté ; il prend effet en fin de tick, après les morts (RunDepartures).
+                case CombatAction.Leave:
+                    if (Reject(tick, item, actor, CheckLeave(actor))) return null;
+                    actor.LeaveCommand = item.Index;
+                    return null;
+
                 default:
                     return CastSkill(tick, item, actor, root);
             }
+        }
+
+        /// <summary>Sous-lot 11.4d : motif d'un combattant hors du combat, mort d'abord (<c>actorDead</c>), puis absent (<c>actorAbsent</c>).</summary>
+        private static string OutReason(Fighter f, string role) => f.IsDead ? role + "Dead" : role + "Absent";
+
+        /// <summary>Sous-lot 11.4d : un combattant présent et vivant peut partir, une fois par tick.</summary>
+        private static string? CheckLeave(Fighter actor)
+        {
+            if (actor.Out) return OutReason(actor, "actor");
+            if (actor.LeaveCommand != null) return "alreadyLeaving";
+            return null;
         }
 
         private PendingAction? CastSkill(long tick, CommandItem item, Fighter actor, Provenance root)
@@ -805,7 +882,7 @@ namespace EdS.Simulation.Engine
 
         private static string? CheckAlive(Fighter actor)
         {
-            if (actor.IsDead) return "actorDead";
+            if (actor.Out) return OutReason(actor, "actor");
             if (actor.Character is null) return "actorCannotAct";
             return null;
         }
@@ -855,14 +932,14 @@ namespace EdS.Simulation.Engine
                 case SkillTargeting.Enemy:
                     if (target is null) return "targetRequired";
                     if (target.Team == actor.Team) return "targetNotEnemy";
-                    if (target.IsDead) return "targetDead";
+                    if (target.Out) return OutReason(target, "target");
                     if (CheckReach(actor, target, combat) is { } farEnemy) return farEnemy;   // sous-lot 11.4b
                     break;
                 // Sous-lot 8.3 (X5) : un allié désigné, le lanceur compris ; un hostile ou un mort est refusé.
                 case SkillTargeting.Ally:
                     if (target is null) return "targetRequired";
                     if (target.Team != actor.Team) return "targetNotAlly";
-                    if (target.IsDead) return "targetDead";
+                    if (target.Out) return OutReason(target, "target");
                     if (CheckReach(actor, target, combat) is { } farAlly) return farAlly;   // sous-lot 11.4b
                     break;
                 default:   // tous les ennemis, soi, tous les alliés : aucune cible désignée
@@ -881,7 +958,7 @@ namespace EdS.Simulation.Engine
             Fighter assailant = turn.Fighter;
             // Sous-lot 11.1 : la mort arrête les tours. Le tour déjà programmé est périmé, comme une échéance d'état retiré : il n'agit
             // pas, n'écrit rien et ne programme pas de suivant.
-            if (assailant.IsDead) return null;
+            if (assailant.Out) return null;
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             assailant.NextAttack = (assailant.NextAttack + 1) % setup.Attacks.Count;
@@ -897,14 +974,15 @@ namespace EdS.Simulation.Engine
                     .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id).Field("reason", blocked));
                 return null;
             }
-            if (target is { IsDead: true })
+            if (target is { Out: true })
             {
                 // Revue Codex de la PR #31 : une zone centrée sur l'assaillant ne dépend pas de sa cible ; elle part sans elle.
                 if (!UsesTarget(attack)) target = null;
                 else
                 {
+                    string reason = OutReason(target, "target");   // sous-lot 11.4d : cible absente (pas encore arrivée, ou partie)
                     EmitDiagnostic(tick, CombatPhase.Commands, "attackSkipped", w => w
-                        .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target.Id).Field("reason", "targetDead"));
+                        .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target.Id).Field("reason", reason));
                     return null;
                 }
             }
@@ -959,8 +1037,8 @@ namespace EdS.Simulation.Engine
         {
             SkillTargeting.Enemy or SkillTargeting.Ally => new[] { action.Target! },
             SkillTargeting.Self => new[] { action.Actor },
-            SkillTargeting.AllAllies => WithinArea(action.Actor, _fightersById.Where(f => f.Team == action.Actor.Team && !f.IsDead).ToArray(), action.Range),
-            _ => WithinArea(action.Actor, _fightersById.Where(f => f.Team != action.Actor.Team && !f.IsDead).ToArray(), action.Range),
+            SkillTargeting.AllAllies => WithinArea(action.Actor, _fightersById.Where(f => f.Team == action.Actor.Team && !f.Out).ToArray(), action.Range),
+            _ => WithinArea(action.Actor, _fightersById.Where(f => f.Team != action.Actor.Team && !f.Out).ToArray(), action.Range),
         };
 
         /// <summary>
@@ -970,8 +1048,8 @@ namespace EdS.Simulation.Engine
         private IReadOnlyList<Fighter> OwnTargets(Fighter actor, StatusApplication application) => application.Target switch
         {
             ApplicationTarget.Self => new[] { actor },
-            ApplicationTarget.AllAllies => WithinArea(actor, _fightersById.Where(f => f.Team == actor.Team && !f.IsDead).ToArray(), application.Range),
-            _ => WithinArea(actor, _fightersById.Where(f => f.Team != actor.Team && !f.IsDead).ToArray(), application.Range),
+            ApplicationTarget.AllAllies => WithinArea(actor, _fightersById.Where(f => f.Team == actor.Team && !f.Out).ToArray(), application.Range),
+            _ => WithinArea(actor, _fightersById.Where(f => f.Team != actor.Team && !f.Out).ToArray(), application.Range),
         };
 
         /// <summary>Postures (garde, parade) d'une cible laissées par les étapes déjà comptées d'une même action : coût exact des suivantes.</summary>
@@ -1374,7 +1452,7 @@ namespace EdS.Simulation.Engine
         /// <summary>Sous-lot 8.3 : la source d'une provocation ou d'une protection convient-elle à sa cible ?</summary>
         private bool SourceFits(Fighter target, StatusDefinition definition, string? source)
         {
-            if (source is null || !_byId.TryGetValue(source, out Fighter? from) || from.IsDead) return false;
+            if (source is null || !_byId.TryGetValue(source, out Fighter? from) || from.Out) return false;
             return definition.IsTaunt
                 ? target.Assailant != null && from.Team != target.Team
                 : target.Character != null && from != target && from.Team == target.Team;
@@ -1440,7 +1518,7 @@ namespace EdS.Simulation.Engine
             }
             Charge(1);
             bool renewed = plan.Outcome == StatusOutcome.Renew;
-            StatusInstance status = plan.Existing ?? new StatusInstance { Id = ++_lastStatusInstance, Definition = definition, Key = plan.Key, Owner = target };
+            StatusInstance status = plan.Existing ?? new StatusInstance { Id = checked(++_lastStatusInstance), Definition = definition, Key = plan.Key, Owner = target };
             if (!renewed)
             {
                 target.Statuses[plan.Key] = status;
@@ -1448,7 +1526,7 @@ namespace EdS.Simulation.Engine
             }
             status.Generation = checked(status.Generation + 1);
             status.Source = source;
-            status.AppliedSeq = ++_lastApplication;   // sous-lot 8.3 : la provocation ou la protection la plus récente l'emporte
+            status.AppliedSeq = checked(++_lastApplication);   // sous-lot 8.3 : la provocation ou la protection la plus récente l'emporte
             if (definition.IsDot)
             {
                 status.Power = renewed ? Fixed.Max(status.Power, power) : power;
@@ -1706,6 +1784,7 @@ namespace EdS.Simulation.Engine
 
             foreach (Fighter f in _fightersById)
             {
+                if (f.Absent) continue;   // sous-lot 11.4d : un absent ne coûte rien
                 if (!f.Guarding || f.IsDead)
                 {
                     Reserve(Cost.Op);
@@ -2113,6 +2192,7 @@ namespace EdS.Simulation.Engine
         {
             foreach (Fighter f in _fightersById)
             {
+                if (f.Absent) continue;   // sous-lot 11.4d : un absent ne coûte rien
                 long regenTicks = f.RegenFromTick is long from ? tick - from + 1 : 0;
                 bool eligible = f.Character != null && !f.IsDead && f.RegenFromTick != null && !f.Guarding
                     && BlockReason(f, StatusBlocks.Regeneration) is null && regenTicks > 0;
@@ -2143,10 +2223,19 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private void RunEndOfTick(long tick)
         {
-            do ScanDeaths(tick);
-            while (DrainTriggers(tick, CombatPhase.EndOfTick) > 0);
+            // Sous-lot 11.4d (revue Codex de la PR #32) : les départs du tick n'ont lieu qu'une fois le point fixe des morts atteint (morts et
+            // réactions à ces morts) ; leurs retraits d'états peuvent à leur tour provoquer des réactions et des morts, d'où le nouveau tour.
+            while (true)
+            {
+                do ScanDeaths(tick);
+                while (DrainTriggers(tick, CombatPhase.EndOfTick) > 0);
+                if (!_fightersById.Any(f => f.LeaveCommand != null)) break;
+                RunDepartures(tick);
+            }
 
-            var aliveTeams = _fighters.Where(f => !f.IsDead).Select(f => f.Team).Distinct(StringComparer.Ordinal).ToList();
+            // Sous-lot 11.4d : une équipe compte tant qu'elle a un combattant présent vivant ou une arrivée encore attendue.
+            var aliveTeams = _fighters.Where(f => !f.IsDead && (f.Presence == Presence.Present || f.Presence == Presence.Pending))
+                .Select(f => f.Team).Distinct(StringComparer.Ordinal).ToList();
             if (aliveTeams.Count <= 1)
                 Finish(tick, CombatEndReason.TeamDefeated, null, aliveTeams.Count == 1 ? aliveTeams[0] : null);
             else if (tick >= _durationTicks - 1)
@@ -2157,6 +2246,7 @@ namespace EdS.Simulation.Engine
         {
             foreach (Fighter f in _fightersById)
             {
+                if (f.Absent) continue;   // sous-lot 11.4d : un absent ne coûte rien
                 bool dies = !f.IsDead && f.Health == 0;
                 // Sous-lot 8.2 (X4) : un bouclier épuisé est retiré ici, en fin de tick (raison depleted), dans l'ordre des instances ; chez un
                 // mort, il l'est avec les autres états (raison death).
@@ -2219,7 +2309,7 @@ namespace EdS.Simulation.Engine
             var bound = new List<StatusInstance>();
             foreach (Fighter f in _fightersById)
             {
-                if (f == source || f.IsDead) continue;
+                if (f == source || f.Out) continue;
                 foreach (StatusInstance status in f.Statuses.Values.Where(x => x.Definition.IsSourceBound && x.Source == source.Id).OrderBy(x => x.State, StringComparer.Ordinal))
                     bound.Add(status);
             }
@@ -2262,6 +2352,8 @@ namespace EdS.Simulation.Engine
                 if (f.Body is { } body) f.Result.Position = Domain.Space.GroundVector.FromRaw(body.X, body.Z);   // sous-lot 11.4
                 CombatantResult r = f.Result;
                 Body? placed = f.Body;
+                string? presence = PresenceId(f);
+                f.Result.Presence = presence;
                 EmitDiagnostic(tick, CombatPhase.EndOfTick, "combatantSummary", w =>
                 {
                     w.Field("combatant", r.Id).Field("team", r.Team).Field("damageDealt", r.DamageDealt).Field("damageTaken", r.DamageTaken)
@@ -2272,6 +2364,8 @@ namespace EdS.Simulation.Engine
                         .Field("health", r.Health).Field("endurance", r.Endurance)
                         .Field("resonance", r.Resonance).Field("rampartCharges", r.RampartCharges).Field("dead", r.IsDead);
                     if (placed != null) WriteVector(w, "position", placed.X, placed.Z);   // sous-lot 11.4 (format 10) : combat positionné
+                    // Sous-lot 11.4d (format 13) : présence, seulement pour un combattant arrivé en cours de route ou parti.
+                    if (presence != null) w.Field("presence", presence).Field("arrivedTick", r.ArrivedTick).Field("leftTick", r.LeftTick);
                 });
                 f.Resonance = 0;
                 f.RampartCharges = 0;
@@ -2293,12 +2387,14 @@ namespace EdS.Simulation.Engine
 
         // --- Journal -----------------------------------------------------------------------------
 
-        private void LogCombatant(Fighter f)
+        private void LogCombatant(Fighter f) => EmitDiagnostic(0, CombatPhase.Setup, "combatant", w => CombatantFields(w, f));
+
+        /// <summary>Champs d'un combattant (ligne <c>combatant</c> au départ ; sous-lot 11.4d, ligne <c>combatantJoined</c> à son arrivée).</summary>
+        private static void CombatantFields(JsonLineWriter w, Fighter f)
         {
             DerivedStats s = f.Stats;
             bool character = f.Character != null;
             string type = character ? "character" : f.Assailant != null ? "assailant" : "dummy";
-            EmitDiagnostic(0, CombatPhase.Setup, "combatant", w =>
             {
                 w.Field("combatant", f.Id).Field("team", f.Team).Field("type", type)
                     .Field("initiative", f.Setup.Initiative).Field("health", f.Health).Field("maxHealth", f.MaxHealth)
@@ -2317,7 +2413,7 @@ namespace EdS.Simulation.Engine
                     WriteVector(w, "facing", body.FacingX, body.FacingZ);
                     w.Field("radius", Fixed.FromRaw(body.Radius)).Field("speed", Fixed.FromRaw(body.Speed));
                 }
-            });
+            }
         }
 
         /// <summary>
@@ -2489,7 +2585,7 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private long Emit(long tick, CombatPhase phase, string kind, Provenance origin, ObservedEvent? observed, Action<JsonLineWriter> fields)
         {
-            long eid = ++_lastEid;
+            long eid = checked(++_lastEid);   // revue Codex de la PR #32 (6e tour) : aucun débordement silencieux
             WriteLine(tick, phase, kind, w =>
             {
                 w.Field("eid", eid).Field("cause", origin.Cause);
@@ -2525,7 +2621,7 @@ namespace EdS.Simulation.Engine
                     throw new InvalidOperationException($"Ligne écrite au-delà de la réserve ({_eventsThisTick} > {_scopeEvents}).");
             }
             var w = new JsonLineWriter().BeginObject()
-                .Field("tick", tick).Field("seq", _sequence++).Field("phase", PhaseId(phase)).Field("event", kind);
+                .Field("tick", tick).Field("seq", checked(_sequence++)).Field("phase", PhaseId(phase)).Field("event", kind);
             fields(w);
             _log.Append(w.EndObject().ToString());
         }

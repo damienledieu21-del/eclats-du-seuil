@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace EdS.Simulation.Engine
 {
@@ -93,5 +95,33 @@ namespace EdS.Simulation.Engine
         /// </summary>
         public Provenance ReactionTo(long eid, string trigger, string bearer, long? sourceInstance = null, int? sourceGeneration = null) =>
             new Provenance(Root, checked(Depth + 1), TriggerChain.Extend(Chain, trigger), trigger, eid, bearer, sourceInstance, sourceGeneration);
+
+        /// <summary>Sous-lot 11.4d : déclencheurs de la chaîne, du plus ancien au plus récent (instantané d'état).</summary>
+        public List<string> ChainOldestFirst()
+        {
+            var chain = new List<string>();
+            for (TriggerChain? link = Chain; link != null; link = link.Parent) chain.Add(link.Trigger);
+            chain.Reverse();
+            return chain;
+        }
+
+        /// <summary>Sous-lot 11.4d : provenance relue d'un instantané d'état, à l'identique.</summary>
+        public static Provenance Restore(string root, int depth, IReadOnlyList<string> chain, string? trigger, long? cause, string? source,
+            long? sourceInstance, int? sourceGeneration)
+        {
+            if (root is null) throw new ArgumentNullException(nameof(root));
+            if (depth < 0 || depth > TriggerChain.MaxLength) throw new FormatException($"Profondeur de provenance invalide : {depth}.");
+            // Revue Codex de la PR #32 (10e tour) : seules les formes que les constructeurs produisent. La profondeur est la longueur de la
+            // chaîne (une réaction ajoute un maillon et un niveau), le dernier déclencheur est son bout, aucun déclencheur n'y est deux fois
+            // (un cycle est supprimé), et une réaction a toujours une cause.
+            if (chain.Count != depth) throw new FormatException($"Profondeur de provenance {depth} pour une chaîne de {chain.Count} déclencheur(s).");
+            if (!string.Equals(trigger, chain.Count == 0 ? null : chain[chain.Count - 1], StringComparison.Ordinal))
+                throw new FormatException("Dernier déclencheur de provenance différent du bout de sa chaîne.");
+            if (chain.Distinct(StringComparer.Ordinal).Count() != chain.Count) throw new FormatException("Chaîne de provenance avec un déclencheur en double.");
+            if (depth > 0 && cause is null) throw new FormatException("Provenance de réaction sans cause.");
+            TriggerChain? links = null;
+            foreach (string link in chain) links = TriggerChain.Extend(links, link);
+            return new Provenance(root, depth, links, trigger, cause, source, sourceInstance, sourceGeneration);
+        }
     }
 }

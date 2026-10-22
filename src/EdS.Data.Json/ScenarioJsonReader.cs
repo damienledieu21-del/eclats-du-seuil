@@ -94,6 +94,7 @@ namespace EdS.Data.Json
                 ["facing"] = Track("facing", (v, p) => c.Facing = ReadPoint(input, v, p)),
                 ["radius"] = Track("radius", (v, p) => c.Radius = input.Decimal(v, p)),
                 ["speed"] = Track("speed", (v, p) => c.Speed = input.Decimal(v, p)),
+                ["arrivalMs"] = Track("arrivalMs", (v, p) => c.ArrivalMs = input.Int64(v, p)),   // sous-lot 11.4d (schéma 7)
             });
             return ok ? c : null;
         }

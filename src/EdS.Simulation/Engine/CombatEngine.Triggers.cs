@@ -183,19 +183,34 @@ namespace EdS.Simulation.Engine
             _fightersByInitiative = _fighters.OrderByDescending(f => f.Setup.Initiative).ThenBy(f => f.Id, StringComparer.Ordinal).ToList();
             foreach (Fighter f in _fighters)
             {
-                var slots = new List<TriggerSlot>();
-                if (f.Character is { } character)
-                    foreach (BoundTrigger bound in character.ActiveTriggers())
-                        slots.Add(Slot(f, bound.Origin, bound.DefinitionId, bound.Index, bound.Rank, bound.Definition));
-                if (f.Assailant is { } assailant)
-                    for (int k = 0; k < assailant.Triggers.Count; k++)
-                        slots.Add(Slot(f, TriggerOrigin.Assailant, assailant.TriggerDefinitionId, k, 1, assailant.Triggers[k]));
-                slots.Sort(CompareSlots);
-                f.Triggers = slots;
-                foreach (TriggerSlot slot in slots) _subscribed[(int)slot.Definition.On] = true;
+                f.Triggers = PermanentSlots(f);
+                if (!f.Absent) AddSubscriptions(f);   // sous-lot 11.4d : un combattant attendu s'abonne à son arrivée
             }
             foreach (StatusDefinition definition in _statuses.Definitions)
                 foreach (TriggerDefinition trigger in definition.Triggers) _subscribed[(int)trigger.On] = true;
+        }
+
+        /// <summary>Déclencheurs permanents d'un combattant, triés une fois pour toutes (§5.4).</summary>
+        private static List<TriggerSlot> PermanentSlots(Fighter f)
+        {
+            var slots = new List<TriggerSlot>();
+            if (f.Character is { } character)
+                foreach (BoundTrigger bound in character.ActiveTriggers())
+                    slots.Add(Slot(f, bound.Origin, bound.DefinitionId, bound.Index, bound.Rank, bound.Definition));
+            if (f.Assailant is { } assailant)
+                for (int k = 0; k < assailant.Triggers.Count; k++)
+                    slots.Add(Slot(f, TriggerOrigin.Assailant, assailant.TriggerDefinitionId, k, 1, assailant.Triggers[k]));
+            slots.Sort(CompareSlots);
+            return slots;
+        }
+
+        /// <summary>
+        /// Types d'abonnement possibles d'un combattant présent. Sous-lot 11.4d : appelé à la construction pour les présents, puis à chaque
+        /// arrivée ; jamais retiré (un départ laisse les types, ce qui ne change que le coût prévu d'une notification sans candidat).
+        /// </summary>
+        private void AddSubscriptions(Fighter f)
+        {
+            foreach (TriggerSlot slot in f.Triggers) _subscribed[(int)slot.Definition.On] = true;
         }
 
         /// <summary>Déclencheurs portés par une nouvelle instance d'altération (identité : instance), recharges internes à zéro.</summary>
@@ -225,7 +240,7 @@ namespace EdS.Simulation.Engine
             var candidates = new List<TriggerSlot>();
             foreach (Fighter f in _fightersByInitiative)
             {
-                if (f.IsDead) continue;
+                if (f.Out) continue;
                 int start = candidates.Count;
                 foreach (TriggerSlot slot in f.Triggers)
                     if (Matches(slot, e)) candidates.Add(slot);
@@ -250,7 +265,7 @@ namespace EdS.Simulation.Engine
         /// porteuse retirée entre-temps, est ignoré sans coût (§4.6).
         /// </summary>
         private static bool Live(TriggerSlot slot) =>
-            !slot.Bearer.IsDead && (slot.Status is not { } status || (status.Owner.Statuses.TryGetValue(status.Key, out StatusInstance? current) && current == status));
+            !slot.Bearer.Out && (slot.Status is not { } status || (status.Owner.Statuses.TryGetValue(status.Key, out StatusInstance? current) && current == status));
 
         /// <summary>
         /// Le déclencheur est-il abonné à ce type d'effet, avec un porteur qui tient le rôle demandé ? Sous-lot 8.3 (X9) : rôle allié, la
@@ -262,7 +277,7 @@ namespace EdS.Simulation.Engine
             if (d.On != e.Kind && d.On != e.Also) return false;
             if (d.EffectiveRole == TriggerRole.Ally)
                 return e.Target != null && !string.Equals(e.Target, slot.Bearer.Id, StringComparison.Ordinal)
-                    && _byId.TryGetValue(e.Target, out Fighter? ally) && ally.Team == slot.Bearer.Team && !ally.IsDead;
+                    && _byId.TryGetValue(e.Target, out Fighter? ally) && ally.Team == slot.Bearer.Team && !ally.Out;
             string? holder = d.EffectiveRole == TriggerRole.Target ? e.Target : e.Source;   // self et source : l'auteur
             return string.Equals(holder, slot.Bearer.Id, StringComparison.Ordinal);
         }
@@ -382,13 +397,13 @@ namespace EdS.Simulation.Engine
         private IReadOnlyList<Fighter> EffectTargetsIgnoringRange(TriggerEffect effect, TriggerSlot slot, ObservedEvent e)
         {
             Fighter bearer = slot.Bearer;
-            Fighter? One(string? id) => id != null && _byId.TryGetValue(id, out Fighter? f) && !f.IsDead ? f : null;
+            Fighter? One(string? id) => id != null && _byId.TryGetValue(id, out Fighter? f) && !f.Out ? f : null;
             IReadOnlyList<Fighter> targets = (effect.Target ?? TriggerTarget.Bearer) switch
             {
                 TriggerTarget.EventSource => One(e.Source) is { } source ? new[] { source } : Array.Empty<Fighter>(),
                 TriggerTarget.EventTarget => One(e.Target) is { } target ? new[] { target } : Array.Empty<Fighter>(),
-                TriggerTarget.AllEnemies => _fightersById.Where(f => f.Team != bearer.Team && !f.IsDead).ToArray(),
-                _ => bearer.IsDead ? Array.Empty<Fighter>() : new[] { bearer },
+                TriggerTarget.AllEnemies => _fightersById.Where(f => f.Team != bearer.Team && !f.Out).ToArray(),
+                _ => bearer.Out ? Array.Empty<Fighter>() : new[] { bearer },
             };
             if (effect.Kind == TriggerEffectKind.Strike && targets.Any(t => t.Team == bearer.Team))
                 targets = targets.Where(t => t.Team != bearer.Team).ToArray();
@@ -532,6 +547,7 @@ namespace EdS.Simulation.Engine
         {
             TriggerSlot slot = item.Slot;
             if (slot.Bearer.IsDead) return "bearerDead";
+            if (slot.Bearer.Absent) return "bearerAbsent";   // sous-lot 11.4d : parti avant sa réaction reportée
             if (slot.Status != null && !Live(slot)) return "originGone";
             return null;
         }

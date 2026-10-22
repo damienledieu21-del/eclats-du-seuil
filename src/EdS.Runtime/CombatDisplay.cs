@@ -47,7 +47,9 @@ namespace EdS.Runtime
         /// négatif) est diminué de <paramref name="telegraphLeadSeconds"/> (0 en solo ; en réseau, le temps aller-retour lissé : sous-lot
         /// 10.6, option B de la parade) et de <paramref name="elapsedSeconds"/>, le temps déjà écoulé dans le tick en cours (revue Codex de
         /// la PR #23, tour 3 : le compte à rebours et la barre s'écoulent en continu entre deux ticks au lieu d'avancer par sauts de 50 ms).
-        /// Seul l'affichage change : le moteur n'est pas touché.
+        /// Seul l'affichage change : le moteur n'est pas touché. Sous-lot 11.4d (revue Codex de la PR #32, 16e tour) : la liste comprend aussi
+        /// les absents (attendus, refusés, partis), pour que l'affichage prépare leur corps avant une arrivée ; chaque affichage les saute
+        /// (<c>View.IsPresent</c> faux) : corps cachés, ni barre ni fiche, jamais ciblés (<see cref="LivingEnemies"/>).
         /// </summary>
         public static IReadOnlyList<OtherState> Others(CombatEngine engine, string playerId, double telegraphLeadSeconds = 0, double elapsedSeconds = 0)
         {
@@ -70,11 +72,11 @@ namespace EdS.Runtime
 
         /// <summary>Ennemis vivants, dans l'ordre du scénario.</summary>
         public static IEnumerable<OtherState> LivingEnemies(CombatEngine engine, string playerId) =>
-            Others(engine, playerId).Where(o => o.IsEnemy && !o.View.IsDead);
+            Others(engine, playerId).Where(o => o.IsEnemy && !o.View.IsDead && o.View.IsPresent);   // sous-lot 11.4d : un absent ne s'affiche pas
 
         /// <summary>Personnages alliés vivants autres que le joueur, dans l'ordre du scénario (coopération, lot 10).</summary>
         public static IEnumerable<OtherState> LivingAllies(CombatEngine engine, string playerId) =>
-            Others(engine, playerId).Where(o => !o.IsEnemy && !o.View.IsDead && o.View.Kind == CombatantKind.Character);
+            Others(engine, playerId).Where(o => !o.IsEnemy && !o.View.IsDead && o.View.IsPresent && o.View.Kind == CombatantKind.Character);
     }
 
     /// <summary>
@@ -121,14 +123,23 @@ namespace EdS.Runtime
             return drained;
         }
 
-        /// <summary>Retours du tick qui vient d'être simulé (à appeler après chaque <see cref="CombatEngine.Step"/>).</summary>
+        /// <summary>
+        /// Retours du tick qui vient d'être simulé (à appeler après chaque <see cref="CombatEngine.Step"/>). Revue Codex de la PR #32 (29e
+        /// tour) : un combattant entré par <see cref="CombatEngine.Join"/> depuis la création du suivi est découvert ici ; il part de
+        /// compteurs nuls et vivant (son état à l'entrée), donc seuls ses vrais retours depuis son arrivée sont produits.
+        /// </summary>
         public void Collect(CombatEngine engine)
         {
             if (engine is null) throw new ArgumentNullException(nameof(engine));
             foreach (string id in engine.CombatantIds)
             {
                 CombatantView view = engine.View(id);
-                CombatantCounters before = _counters[id], after = view.Counters;
+                if (!_counters.TryGetValue(id, out CombatantCounters? before))
+                {
+                    before = new CombatantCounters();
+                    _dead[id] = false;
+                }
+                CombatantCounters after = view.Counters;
                 void Count(long b, long a, FeedbackKind kind)
                 {
                     if (a > b) Add(new CombatFeedback(kind, id, a - b, null));

@@ -63,11 +63,11 @@ namespace EdS.Simulation.Pilot
         {
             var commands = new List<CombatCommand>();
             CombatantView me = _engine.View(_actor);
-            if (me.IsDead || _engine.IsFinished) return commands;
+            if (me.IsDead || !me.IsPresent || _engine.IsFinished) return commands;   // sous-lot 11.4d : absent, rien à décider
             long tick = _engine.CurrentTick;
             long atMs = checked(tick * _engine.TickMilliseconds);
             List<CombatantView> others = _engine.CombatantIds.Where(id => id != _actor).Select(_engine.View).ToList();
-            List<CombatantView> enemies = others.Where(o => o.Team != me.Team && !o.IsDead).ToList();
+            List<CombatantView> enemies = others.Where(o => o.Team != me.Team && !o.IsDead && o.IsPresent).ToList();
 
             // Attaques qui frappent à ce tick : assaillants non contrôlés dont le tour tombe maintenant, qui le visent ou frappent en zone.
             List<CombatantView> incoming = enemies.Where(e => e.Kind == CombatantKind.Assailant && e.NextAttackTick == tick && !e.AttacksBlocked
@@ -142,7 +142,7 @@ namespace EdS.Simulation.Pilot
                         continue;   // contrôle sans dégâts ni provocation : aucune règle de cible, jamais lancé
                     case SkillTargeting.Ally:
                         // Rapports PV / PV max comparés en entiers (revue Codex de la PR #10 : pas de double dans un choix déterministe).
-                        CombatantView? ally = others.Where(o => o.Team == me.Team && !o.IsDead && o.Kind == CombatantKind.Character && o.MaxHealth > 0)
+                        CombatantView? ally = others.Where(o => o.Team == me.Team && !o.IsDead && o.IsPresent && o.Kind == CombatantKind.Character && o.MaxHealth > 0)
                             .OrderBy(o => o, MostDamagedFirst).FirstOrDefault();
                         return (id, ally?.Id ?? _actor);
                     default:
@@ -209,8 +209,7 @@ namespace EdS.Simulation.Pilot
                 foreach (CombatCommand command in pilot.Decide()) planning.Submit(command);
                 planning.Step();
             }
-            var setup = new CombatSetup(baseSetup.Seed, baseSetup.DurationMs, baseSetup.Stats, baseSetup.Damage, baseSetup.Progression, baseSetup.Combat,
-                baseSetup.Combatants, baseSetup.Commands.Concat(planning.SubmittedCommands), baseSetup.Data, baseSetup.Space);
+            CombatSetup setup = planning.CompletedSetup();   // sous-lot 11.4d : arrivées comprises (aucune ici)
             CombatResult result = CombatEngine.Run(setup, log);
             string? difference = Difference(planning.Result!, result);
             if (difference != null)

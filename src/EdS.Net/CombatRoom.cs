@@ -458,7 +458,7 @@ namespace EdS.Net
         {
             if (Phase == RoomPhase.Combat || !_seats.All(s => s.Taken && s.Client != null && s.Ready)) return;
             IEnumerable<CombatantSetup> combatants = _scenario.Combatants.Select(c => c is CharacterSetup ch && _seats.FirstOrDefault(s => s.Id == ch.Id) is { } seat
-                ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement)
+                ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement, ch.ArrivalMs)
                 : c);
             var setup = new CombatSetup(_scenario.Seed, _options.DurationMs ?? _scenario.DurationMs, _scenario.Stats, _scenario.Damage,
                 _scenario.Progression, _scenario.Combat, combatants, Array.Empty<CombatCommand>(), _scenario.Data, _scenario.Space);
@@ -573,7 +573,7 @@ namespace EdS.Net
             {
                 if (id is null || !engine.CombatantIds.Contains(id)) return false;
                 CombatantView view = engine.View(id);
-                return !view.IsDead && accept(view);
+                return !view.IsDead && view.IsPresent && accept(view);
             }
             switch (skill.Combat!.Targeting)
             {
@@ -595,9 +595,7 @@ namespace EdS.Net
             if (engine.Result is null) LastResult = null;
             else LastResult = engine.Result;
             // Journal rejouable : le combat de départ complété des commandes admises (les lignes, hors en-tête, sont celles du combat joué).
-            var setup = _setup!;
-            var completed = new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, setup.Combat, setup.Combatants,
-                setup.Commands.Concat(engine.SubmittedCommands), setup.Data, setup.Space);
+            CombatSetup completed = engine.CompletedSetup();   // sous-lot 11.4d : arrivées comprises
             var journal = new MemoryCombatLog();
             if (engine.IsFinished) CombatEngine.Run(completed, journal);
             LastJournal = engine.IsFinished ? journal.Lines : null;
