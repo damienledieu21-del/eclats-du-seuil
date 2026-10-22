@@ -151,4 +151,14 @@ public class Lot93UnityPackageTests
         Assert.Contains("if (me.IsPresent && other.IsEnemy", arena, StringComparison.Ordinal);
         Assert.Contains("_player.SetActive(me.IsPresent);", arena, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Decor_coupe_ramene_a_12_cm_quelle_que_soit_sa_hauteur()
+    {
+        // Revue Codex de la PR #34 : un prisme coupé (mur, tronc, moulin) garde 0,12 m de haut, sous les annonces au sol (0,16 m) : l'échelle
+        // appliquée est cette hauteur rapportée à la sienne, pas 12 % de sa hauteur. Scripts Unity compilés seulement ; l'affichage, par l'essai.
+        string space = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("private const float CutHeight = 0.12f;", space, StringComparison.Ordinal);
+        Assert.Contains("o.Lower && height > CutHeight ? CutHeight / height : CutHeight", space, StringComparison.Ordinal);
+    }
 }
