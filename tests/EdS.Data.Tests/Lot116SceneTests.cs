@@ -105,6 +105,10 @@ public class Lot116SceneTests
         Assert.Contains("CombatDisplay.InSightAt(Raw(eye.x), Raw(eye.z), Raw(at.x), Raw(at.z), _obstacles)", arena, StringComparison.Ordinal);
         Assert.Contains("shown[v.Id] = Vector3.Lerp(_from[v.Id], _to[v.Id], t);", arena, StringComparison.Ordinal);
         Assert.DoesNotContain("other.InSight", arena, StringComparison.Ordinal);
+        // La fiche de la cible suit le corps affiché (revue Codex de la PR #34, tour suivant).
+        Assert.Contains("public bool Shown(string id) => Head(id) != null;", arena, StringComparison.Ordinal);
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)", game, StringComparison.Ordinal);
     }
 
     [Fact]
