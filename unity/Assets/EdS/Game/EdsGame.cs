@@ -709,6 +709,7 @@ namespace EdS.Game
             Camera camera = _camera.Camera;
             foreach (OtherState other in _combat.Others())
             {
+                if (!other.View.IsPresent) continue;   // revue Codex de la PR #32 (16e tour) : un absent n'a pas de barre
                 Vector3? head = _arena.Head(other.Id);
                 if (head != null) Hud.Overhead(camera.WorldToScreenPoint(head.Value), other, other.Id == player.TargetId);
             }
@@ -726,7 +727,7 @@ namespace EdS.Game
             }
 
             Hud.Player(player);
-            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId));
+            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent));
             if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
                 Network ? NetworkBuildName() : BuildName(), _camera.Describe(), _paused, Network);
             if (Network) NetworkScreen.DrawCombat(_net, _shownCombat?.AllyId);

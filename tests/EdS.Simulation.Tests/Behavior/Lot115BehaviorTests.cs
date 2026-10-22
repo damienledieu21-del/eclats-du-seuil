@@ -140,6 +140,38 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Provocation_retiree_avant_la_phase_d_engagement_engage_quand_meme()
+    {
+        // Revue Codex de la PR #33 (tour 6) : le Bastion provoque le loup (Cri) et part dans le même tick ; la provocation est retirée en fin
+        // de tick (sourceLeft), avant la phase d'engagement du tick suivant. Le loup, provoqué, s'engage quand même (taunt) et vise l'allié.
+        var (_, log) = Run(Fight(new CombatantSetup[]
+        {
+            EdS.Simulation.Tests.Space.Lot114bRangeTests.Hero("bastion", At("0", "0"), new[] { EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri }),
+            Player("allie", At("-10", "0")),
+            Hunter("loup", At("10", "0"), "0.5", aggro: "2"),
+        }, new[] { Cmd(0, EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri, target: null), new CombatCommand(0, "bastion", CombatAction.Leave) },
+            durationMs: 1000, rules: NoUpkeep));
+        Assert.Contains(Lines(log, "stateRemoved"), r => r.Str("combatant") == "loup" && r.Str("reason") == "sourceLeft" && r.Tick() == 0);
+        JsonElement engaged = Assert.Single(Lines(log, "engaged"));
+        Assert.Equal(("taunt", "allie", 1L), (engaged.Str("reason"), engaged.Str("target"), engaged.Tick()));
+        // L'instantané porte la provocation reçue (taunted) ; une provocation active non mémorisée, ou reçue par un personnage, est refusée.
+        var engine = new CombatEngine(Fight(new CombatantSetup[]
+        {
+            EdS.Simulation.Tests.Space.Lot114bRangeTests.Hero("bastion", At("0", "0"), new[] { EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri }),
+            Hunter("loup", At("10", "0"), "0.5", aggro: "2"),
+        }, new[] { Cmd(0, EdS.Simulation.Tests.Space.Lot114bRangeTests.Cri, target: null) }, durationMs: 1000, rules: NoUpkeep), NullCombatLog.Instance);
+        engine.Step();
+        string text = engine.Snapshot().Text;
+        Assert.Contains("\"taunted\":true", text, StringComparison.Ordinal);
+        Assert.Equal(text, CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertRefused(engine.CompletedSetup(), text, new[]
+        {
+            ("{\"fighter\":\"loup\"", "\"taunted\":true", "\"taunted\":false", "Provocation active de « loup » non mémorisée"),
+            ("{\"fighter\":\"bastion\"", "\"taunted\":false", "\"taunted\":true", "Provocation reçue par « bastion » impossible"),
+        });
+    }
+
+    [Fact]
     public void Cible_de_scenario_puis_le_plus_proche_et_provocation_prioritaire()
     {
         // L'ours vise sa cible de scénario (« loin ») ; elle part : il prend le plus proche ; à distance égale, l'identifiant décide.
@@ -175,6 +207,68 @@ public class Lot115BehaviorTests
         }
         foreach (string id in new[] { "loup1", "loup2", "loup3", "loup4" })
             Assert.InRange(Edge(track.After(id, 119), bastion, 0.5, 0.5), 0, 0.75);
+    }
+
+    [Fact]
+    public void Un_ennemi_au_centre_de_la_cible_prend_la_premiere_place_de_l_anneau()
+    {
+        // Revue Codex de la PR #33 (tour 6) : règle B (traversée freinée), loup2 part du centre du Bastion (vecteur nul, sans angle). Le tri
+        // de l'anneau le range d'abord (ordre total, transitif) : il prend la place 0, prise sur l'axe x faute de direction, et part vers
+        // l'est. Avant (comparé par identifiant aux autres, qui se comparaient par angle : ordre non transitif), il partait vers le sud-ouest.
+        var rules = new CombatRules { GuardUpkeepPerSecond = 0, TelegraphMinReactionMs = 0, PlayerCreatureContact = ContactRule.SlowedCrossing };
+        var (track, _, _) = Trace(Fight(new CombatantSetup[]
+        {
+            Player("bastion", At("0", "0")),
+            Hunter("loup1", At("0.5", "3"), "0.5", encircle: true), Hunter("loup2", At("0", "0"), "0.5", encircle: true),
+            Hunter("loup3", At("3", "0.5"), "0.5", encircle: true),
+        }, durationMs: 500, rules: rules));
+        Assert.Equal(GroundVector.Parse("0", "0"), track.After("loup2", 0));   // place de départ
+        GroundVector first = track.After("loup2", 1);
+        Assert.True(first.X > Fixed.Zero && first.Z == Fixed.Zero, $"loup2 en {first}");
+    }
+
+    [Fact]
+    public void Deux_equipes_qui_encerclent_la_meme_cible_ont_chacune_leur_anneau()
+    {
+        // Revue Codex de la PR #33 (tour 7) : trois équipes ; le loup de la meute (est) et celui des rivaux (nord) encerclent le Bastion.
+        // Chacun est seul dans l'anneau de son équipe : il prend la place 0, dans sa propre direction, et descend tout droit (x = 0) ; dans
+        // un anneau partagé, le rival aurait pris la place opposée au loup (vers l'ouest).
+        var rival = new AssailantSetup("rival", "rivaux", Fixed.Zero, Fixed.Zero, null, 600_000, 1000, new[] { Bite() }, placement: At("0", "6"),
+            behavior: new AssailantBehavior(F("0.5"), null, null, true));
+        var (track, _, engine) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("loup", At("6", "0"), "0.5", encircle: true), rival },
+            durationMs: 1000));
+        Assert.Equal(("bastion", "bastion"), (engine.View("loup").CurrentTarget, engine.View("rival").CurrentTarget));
+        for (int t = 1; t <= 10; t++)
+        {
+            Assert.Equal(Fixed.Zero, track.After("rival", t).X);
+            Assert.Equal(Fixed.Zero, track.After("loup", t).Z);
+        }
+        Assert.True(track.After("rival", 10).Z < Fixed.Parse("6"));
+    }
+
+    [Fact]
+    public void Accelere_il_s_arrete_a_sa_place_d_anneau_sans_osciller()
+    {
+        // Revue Codex de la PR #33 (tour 11) : un loup encerclant se pose deux accélérations (+100 % chacune, vitesse triplée) par un cri
+        // annoncé 200 ms autour de lui (il attend pendant l'annonce) ; ensuite, son pas, trois fois la tolérance de sa place d'anneau,
+        // s'arrête sur elle (x = 2,5) au lieu de la dépasser et de repartir en sens inverse (avant : 2,9 et 2,15 en alternance).
+        var hate1 = new StatusDefinition("hate1", StatusCategory.Modifier, 60_000, StatusStacking.Refresh, movementSpeedModifier: Fixed.One);
+        var hate2 = new StatusDefinition("hate2", StatusCategory.Modifier, 60_000, StatusStacking.Refresh, movementSpeedModifier: Fixed.One);
+        var rules = new CombatRules { GuardUpkeepPerSecond = 0, TelegraphMinReactionMs = 0,
+            Statuses = new StatusCatalog(StatusCatalog.Provisional.Definitions.Concat(new[] { hate1, hate2 })) };
+        var cri = new AssailantAttack("cri", 1, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
+            new[] { new StatusApplication("hate1", target: ApplicationTarget.Self), new StatusApplication("hate2", target: ApplicationTarget.Self) },
+            AttackShape.Circle, 200, radius: F("0.5"), center: ShapeCenter.Self);
+        var (track, log, _) = Trace(Fight(new CombatantSetup[]
+        {
+            Player("bastion", At("0", "0")), Hunter("loup", At("6.65", "0"), "3", encircle: true, firstMs: 0, intervalMs: 60_000, attacks: cri),
+        }, durationMs: 3000, rules: rules));
+        Assert.Equal(2, Lines(log, "stateApplied").Count(a => a.Str("combatant") == "loup"));
+        Assert.NotEqual(track.After("loup", 6), track.After("loup", 7));   // il repart, accéléré
+        int still = Enumerable.Range(6, 52).First(t => track.After("loup", t) == track.After("loup", t + 1));
+        Assert.True(still < 30, $"arrêté au tick {still}");
+        for (int t = still; t < 59; t++) Assert.Equal(track.After("loup", still), track.After("loup", t));
+        Assert.Equal(Fixed.Parse("2.5"), track.After("loup", still).X);
     }
 
     [Fact]
@@ -222,6 +316,77 @@ public class Lot115BehaviorTests
         var (_, corner) = Run(Spatial(Arena(20, sliver), new CombatantSetup[]
             { Player("bastion", At("10", "0")), Hunter("sanglier", At("0", "0"), "20", firstMs: 0, attacks: Charge("6")) }, Array.Empty<CombatCommand>(), Rules, 2000));
         Assert.Equal("[2,0]", Assert.Single(Lines(corner, "charged")).GetProperty("position").GetRawText());
+    }
+
+    [Fact]
+    public void La_recherche_du_bout_de_la_charge_compte_son_travail()
+    {
+        // Revue Codex de la PR #33 (tour 10) : chaque sous-pas de la recherche (au plus la moitié du rayon, 0,25 m ici) et son contrôle de
+        // piège coûtent une unité de travail, réservée avec l'impact : une bande de 40 m coûte 2 × (160 − 24) unités de plus qu'une bande
+        // de 6 m au tick de l'impact (Bastion hors des deux bandes, à 50 m).
+        long WorkAtImpact(string range)
+        {
+            var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+                range: F(range), width: F("1"), charge: true);
+            var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("50", "0")), Hunter("sanglier", At("0", "0"), "60", firstMs: 0, attacks: charge) },
+                durationMs: 2000, space: Arena(60)), NullCombatLog.Instance);
+            while (engine.CurrentTick <= 20) engine.Step();
+            return engine.LastTickWork;
+        }
+        Assert.Equal(2 * (160 - 24), WorkAtImpact("40") - WorkAtImpact("6"));
+    }
+
+    [Fact]
+    public void Instantane_un_chargeur_qui_n_a_pas_encore_charge_garde_sa_place()
+    {
+        // Revue Codex de la PR #33 (tour 12) : un sanglier sans comportement, dont la première charge est annoncée à 3 s, n'a pas encore pu
+        // bouger au tick 10 : un instantané qui le déplace est refusé par la reprise de confiance (Restore) comme par la reprise vérifiée
+        // par rejeu (RestoreVerified, décision de Damien du 22 octobre 2026).
+        var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+            range: F("6"), width: F("1"), charge: true);
+        var boar = new AssailantSetup("sanglier", "meute", Fixed.Zero, Fixed.Zero, "bastion", 3000, 60_000, new[] { charge }, placement: At("0", "0"));
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("10", "0")), boar }, durationMs: 6000), NullCombatLog.Instance);
+        while (engine.CurrentTick < 10) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"sanglier\"", StringComparison.Ordinal));
+        string moved = text.Replace(line, line.Replace("\"x\":0,", "\"x\":40000,", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.NotEqual(text, moved);
+        Assert.Contains("Place de « sanglier » hors de portée", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(setup, CombatSnapshot.Parse(moved), NullCombatLog.Instance)).Message);
+        Assert.Contains("différent de l'état rejoué", Assert.Throws<FormatException>(() =>
+            CombatEngine.RestoreVerified(setup, CombatSnapshot.Parse(moved), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
+    public void Une_charge_qui_l_etourdit_lui_meme_ne_fonce_pas()
+    {
+        // Revue Codex de la PR #33 (tour 8) : la bande pose un étourdissement sur le sanglier lui-même, avec ses coups. L'immobilisation est
+        // relue après eux : il ne fonce pas, et la ligne réservée est chargeBlocked (raison de l'étourdissement) au lieu de charged.
+        var stunning = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
+            new[] { new StatusApplication("stun", target: ApplicationTarget.Self) }, AttackShape.Line, 1000, range: F("6"), width: F("1"), charge: true);
+        var (track, log, _) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("4", "0")), Hunter("sanglier", At("0", "0"), "20", firstMs: 0, attacks: stunning) },
+            durationMs: 2000));
+        Assert.Contains(Lines(log, "stateApplied"), s => s.Str("combatant") == "sanglier" && s.Str("state") == "stun" && s.Tick() == 20);
+        Assert.Empty(Lines(log, "charged"));
+        JsonElement blocked = Assert.Single(Lines(log, "chargeBlocked"));
+        Assert.Equal(("sanglier", "charge", 20L), (blocked.Str("actor"), blocked.Str("attack"), blocked.Tick()));
+        Assert.False(string.IsNullOrEmpty(blocked.Str("reason")));
+        Assert.Equal(track.After("sanglier", 19), track.After("sanglier", 21));
+        // Tour 9 : étourdi pendant l'annonce (par son attaque suivante, deux ticks après), donc déjà immobilisé à l'impact : la charge écrit
+        // aussi chargeBlocked.
+        var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
+            range: F("6"), width: F("1"), charge: true);
+        var cri = new AssailantAttack("cri", 1, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
+            new[] { new StatusApplication("stun", target: ApplicationTarget.Self) });
+        var (before, early, _) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("4", "0")),
+            Hunter("sanglier", At("0", "0"), "20", firstMs: 0, intervalMs: 100, attacks: new[] { charge, cri }) }, durationMs: 2000));
+        JsonElement stunned = Lines(early, "stateApplied").First(s => s.Str("combatant") == "sanglier" && s.Str("state") == "stun");
+        Assert.True(stunned.Tick() < 20, $"étourdi au tick {stunned.Tick()}");
+        Assert.Empty(Lines(early, "charged"));
+        JsonElement already = Assert.Single(Lines(early, "chargeBlocked"));
+        Assert.Equal(("sanglier", "charge", 20L), (already.Str("actor"), already.Str("attack"), already.Tick()));
+        Assert.Equal(before.After("sanglier", 19), before.After("sanglier", 21));
     }
 
     [Fact]
@@ -273,6 +438,7 @@ public class Lot115BehaviorTests
             ("{\"fighter\":\"bastion\"", "\"engaged\":false", "\"engaged\":true", "Engagement de « bastion »"),
             ("{\"fighter\":\"renfort\"", "\"struck\":false", "\"struck\":true", "« renfort », pas encore entré"),
             ("{\"fighter\":\"renfort\"", "\"engaged\":false", "\"engaged\":true", "« renfort », pas encore entré"),
+            ("{\"fighter\":\"renfort\"", "\"taunted\":false", "\"taunted\":true", "« renfort », pas encore entré"),
         });
         // Revue Codex de la PR #33 (tour 4) : avant le premier tick, le guetteur (distance d'engagement) n'est pas encore engagé.
         var fresh = new CombatEngine(setup, NullCombatLog.Instance);

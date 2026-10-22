@@ -175,6 +175,64 @@ public class Lot116SceneTests
     }
 
     [Fact]
+    public void Marche_et_cible_recalees_sur_le_moteur_apres_une_commande_du_scenario()
+    {
+        // Revue Codex de la PR #34 : un pont ouvert sur un scénario qui a ses propres commandes (la séance d'entraînement les retire,
+        // pas un RealtimeCombat construit sur le combat du scénario). Dans espace_annonces, le scénario fait marcher le Bastion vers le
+        // nord à 1 100 ms (tick 22) puis l'arrête à 1 650 ms (tick 33) ; un joueur qui tient l'est est remis sur son cap au tick qui suit
+        // chaque commande du scénario.
+        CombatSetup s = ScenarioJsonReader.ReadFile(ScenarioPath("espace_annonces"), ShippedData).Setup!;
+        GroundVector east = MoveInput.EngineDirection(0), north = GroundVector.FromRaw(0, 10_000);
+        var held = new RealtimeCombat(s, "bastion");
+        held.SetMove(1, 0);
+        while (held.Tick < 23) held.StepOnce();
+        Assert.Equal(north, held.Player().View.MoveDirection);   // la commande du scénario a pris la main
+        held.StepOnce();
+        Assert.Equal(MoveInput.Direction(0), Assert.Single(At(held, 23), c => c.Action == CombatAction.Move).Direction);
+        Assert.Equal(east, held.Player().View.MoveDirection);
+        while (held.Tick < 34) held.StepOnce();
+        Assert.Null(held.Player().View.MoveDirection);            // arrêt du scénario
+        held.StepOnce();
+        Assert.Single(At(held, 34), c => c.Action == CombatAction.Move);
+        Assert.Equal(east, held.Player().View.MoveDirection);
+        for (int i = 0; i < 10; i++) held.StepOnce();
+        Assert.Equal(new long[] { 0, 23, 34 }, held.SubmittedCommands.Where(c => c.Action is CombatAction.Move or CombatAction.Stop).Select(c => c.AtMs / 50));
+
+        // Sans saisie, les commandes du scénario gardent la main : ni marche ni arrêt envoyés, le Bastion marche puis s'arrête comme prévu.
+        var idle = new RealtimeCombat(s, "bastion");
+        while (idle.Tick < 30) idle.StepOnce();
+        Assert.Equal(north, idle.Player().View.MoveDirection);
+        while (idle.Tick < 40) idle.StepOnce();
+        Assert.Null(idle.Player().View.MoveDirection);
+        Assert.DoesNotContain(idle.SubmittedCommands, c => c.Action is CombatAction.Move or CombatAction.Stop);
+
+        // Un cap relâché alors que le scénario a déjà arrêté le Bastion : pas d'arrêt envoyé (il serait refusé : « notMoving »).
+        var released = new RealtimeCombat(s, "bastion");
+        released.SetMove(0, 1);   // le nord, comme le scénario : rien à corriger à 1 100 ms
+        while (released.Tick < 34) released.StepOnce();
+        Assert.Null(released.Player().View.MoveDirection);
+        released.DrainFeedback();
+        released.SetMove(0, 0);
+        released.StepOnce();
+        Assert.Equal(new long[] { 0 }, released.SubmittedCommands.Where(c => c.Action is CombatAction.Move or CombatAction.Stop).Select(c => c.AtMs / 50));
+        Assert.DoesNotContain(released.DrainFeedback(), f => f.Kind == FeedbackKind.Rejected);
+
+        // Sélection : le scénario sélectionne le loup à 500 ms (tick 10) ; la cible du joueur (l'ogre) est renvoyée au tick suivant.
+        var setup = new CombatSetup(s.Seed, s.DurationMs, s.Stats, s.Damage, s.Progression, s.Combat, s.Combatants,
+            s.Commands.Append(CombatCommand.SelectTarget(500, "bastion", "loup")), s.Data, s.Space);
+        var selecting = new RealtimeCombat(setup, "bastion");
+        while (selecting.Tick < 11) selecting.StepOnce();
+        Assert.Equal(("ogre", "loup"), (selecting.TargetId, selecting.Player().View.SelectedTarget));
+        selecting.StepOnce();
+        Assert.Equal("ogre", Assert.Single(At(selecting, 11), c => c.Action == CombatAction.Select).Target);
+        Assert.Equal("ogre", selecting.Player().View.SelectedTarget);
+        while (!selecting.IsFinished) selecting.StepOnce();
+        var log = new MemoryCombatLog();
+        selecting.WriteLog(log);
+        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(log.Lines.ToArray(), ShippedData).Status);
+    }
+
+    [Fact]
     public void Plafond_de_commandes_par_tick_respecte_la_marche_attend_le_tick_suivant()
     {
         RealtimeCombat combat = Session(scenario: "espace_annonces").Start();

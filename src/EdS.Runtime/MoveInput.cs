@@ -42,6 +42,18 @@ namespace EdS.Runtime
             return new GroundVector(Fixed.FromRaw(Cos(heading)), Fixed.FromRaw(Cos(heading - Headings / 4)));
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #34 : direction de marche que le moteur tient après une commande <c>move</c> vers le cap
+        /// <paramref name="heading"/> (<see cref="Direction"/> ramenée à l'unité comme le fait le moteur), pour comparer la marche voulue
+        /// à celle du moteur (<c>CombatantView.MoveDirection</c>).
+        /// </summary>
+        public static GroundVector EngineDirection(int heading)
+        {
+            GroundVector d = Direction(heading);
+            Planar.TryNormalize(d.X.Raw, d.Z.Raw, out long ux, out long uz);   // jamais nulle
+            return GroundVector.FromRaw(ux, uz);
+        }
+
         /// <summary>Cosinus du cap <paramref name="k"/> (tout entier) par symétrie du premier quart de tour.</summary>
         private static long Cos(int k)
         {

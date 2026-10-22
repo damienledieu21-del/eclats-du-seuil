@@ -41,7 +41,11 @@ public class Lot114dSnapshotDataTests
             // Une réaction reportée (entrainement_declencheurs) est dans la file entre deux ticks : la copie continue aussi depuis là.
             bool resume = resumeAt.Contains(tick) || text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal);
             var restoredLog = new MemoryCombatLog();
-            CombatEngine restored = CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog);
+            // Option C (décision de Damien du 22 octobre 2026) : aux points de reprise, la reprise vérifiée par rejeu accepte l'instantané
+            // vrai et continue de même.
+            CombatEngine restored = resumeAt.Contains(tick)
+                ? CombatEngine.RestoreVerified(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog)
+                : CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog);
             checkedSnapshots++;
             if (resume) copies.Add((restored, restoredLog, log.Lines.Count));
             engine.Step();
@@ -58,6 +62,53 @@ public class Lot114dSnapshotDataTests
             Assert.Equal(log.Lines.Skip(from), resumed.Lines);
             Assert.Equal((engine.Result!.EndReason, engine.Result.EndTick), (copy.Result!.EndReason, copy.Result.EndTick));
         }
+    }
+
+    [Fact]
+    public void Bouclier_epuise_ou_deja_vide_refuse()
+    {
+        // Revue Codex de la PR #32 (11e tour) : un bouclier épuisé est retiré en fin de tick ; entre deux ticks, un bouclier actif absorbe
+        // encore (absorb > 0) et ne garde pas l'effet qui l'aurait épuisé (depletedBy). Scénario entrainement_declencheurs (Barrière d'acier).
+        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "scenarios", "entrainement_declencheurs.json"), ShippedData);
+        var engine = new CombatEngine(loaded.Setup!, NullCombatLog.Instance);
+        var shield = new System.Text.RegularExpressions.Regex("(\"state\":\"(steelBarrier|reactiveAegis)\"[^{}]*?\"absorb\":)[1-9][0-9]*");
+        while (!engine.IsFinished && !shield.IsMatch(engine.Snapshot().Text)) engine.Step();
+        Assert.False(engine.IsFinished, "bouclier actif entre deux ticks");
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string drained = shield.Replace(text, "${1}0", 1);
+        Assert.NotEqual(text, drained);
+        Assert.Contains("absorption impossible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(drained),
+            NullCombatLog.Instance)).Message);
+        // 20e tour : une absorption au-delà de la plus forte application possible de ce bouclier est refusée.
+        string inflated = shield.Replace(text, "${1}999999999", 1);
+        Assert.Contains("absorption au-delà du plus fort bouclier possible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
+            CombatSnapshot.Parse(inflated), NullCombatLog.Instance)).Message);
+        var depleted = new System.Text.RegularExpressions.Regex("(\"state\":\"(steelBarrier|reactiveAegis)\"[^{}]*?\"depletedBy\":)null");
+        string marked = depleted.Replace(text, "${1}{\"root\":\"x\",\"depth\":0,\"chain\":[],\"trigger\":null,\"cause\":null,\"source\":null,\"instance\":null,\"generation\":null}", 1);
+        Assert.NotEqual(text, marked);
+        Assert.Contains("absorption impossible", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(marked),
+            NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
+    public void Recharge_de_declencheur_sans_activation_refusee()
+    {
+        // Revue Codex de la PR #32 (25e tour) : scénario entrainement_declencheurs, instantané après le tick 0 ; donner au premier
+        // déclencheur de l'assaillant une recharge en cours (activation inventée au tick 0, qui n'a écrit aucune ligne) est refusé.
+        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "scenarios", "entrainement_declencheurs.json"), ShippedData);
+        var engine = new CombatEngine(loaded.Setup!, NullCombatLog.Instance);
+        engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"assaillant\"", StringComparison.Ordinal));
+        var triggers = System.Text.RegularExpressions.Regex.Match(line, "\"triggers\":\\[0");
+        Assert.True(triggers.Success, line);
+        string tampered = text.Replace(line, line.Replace(triggers.Value, "\"triggers\":[40", StringComparison.Ordinal), StringComparison.Ordinal);
+        Exception? refused = Record.Exception(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tampered), NullCombatLog.Instance));
+        Assert.True(refused is FormatException && refused.Message.Contains("sans activation possible", StringComparison.Ordinal), refused?.Message ?? "accepté");
     }
 
     [Fact]
