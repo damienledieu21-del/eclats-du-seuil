@@ -214,6 +214,10 @@ public class Lot93UnityPackageTests
             && guard < game.IndexOf("_arena.MovePlayer(delta, _playerYaw);", move, StringComparison.Ordinal), "garde d'absence avant le déplacement");
         Assert.Contains("if (me.IsPresent && other.IsEnemy", arena, StringComparison.Ordinal);
         Assert.Contains("_player.SetActive(me.IsPresent);", arena, StringComparison.Ordinal);
+        // Revue Codex de la PR #34 : en pause, la marche voulue d'un combat positionné n'est pas transmise.
+        int spatial = game.IndexOf("if (_arena.Spatial)", move, StringComparison.Ordinal);
+        Assert.True(spatial > 0 && game.IndexOf("if (_paused)", spatial, StringComparison.Ordinal) is int paused && paused > spatial
+            && paused < game.IndexOf("_combat.SetMove(wish.x, wish.z);", spatial, StringComparison.Ordinal), "pause avant la marche voulue");
     }
 
     [Fact]

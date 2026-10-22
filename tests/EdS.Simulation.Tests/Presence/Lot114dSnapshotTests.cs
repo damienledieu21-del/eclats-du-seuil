@@ -393,11 +393,11 @@ public class Lot114dSnapshotTests
         string text = engine.Snapshot().Text;
         CombatSetup setup = engine.CompletedSetup();
         string[] lines = text.Split('\n');
-        string Head(string list) => lines[0].Replace(System.Text.RegularExpressions.Regex.Match(lines[0], "\"commandsPerTick\":\\[[^\\]]*(\\][^\\]]*)*?\\]\\]|\"commandsPerTick\":\\[\\]").Value,
-            "\"commandsPerTick\":[" + list + "]", StringComparison.Ordinal);
-        string huge = string.Join(",", Enumerable.Repeat("[\"bastion\",20,1]", 300_000));
+        string Head(string list) => lines[0].Replace(System.Text.RegularExpressions.Regex.Match(lines[0], "\"subscribed\":\\[[0-9,]*\\]").Value,
+            "\"subscribed\":[" + list + "]", StringComparison.Ordinal);
+        string huge = string.Join(",", Enumerable.Repeat("1", SnapshotNode.MaxNodes + 1));
         Assert.Contains("valeurs sur une ligne", Assert.Throws<FormatException>(() => CombatSnapshot.Parse(Head(huge))).Message);
-        string wide = string.Join("\n", new[] { Head(string.Join(",", Enumerable.Range(0, 1000).Select(k => $"[\"bastion\",{20 + k},1]"))) }.Concat(lines.Skip(1)));
+        string wide = string.Join("\n", new[] { Head(string.Join(",", Enumerable.Range(0, 1000))) }.Concat(lines.Skip(1)));
         Assert.Contains("Listes de l'en-tête", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(wide), NullCombatLog.Instance)).Message);
         string tall = text + new string('\n', 100_001);
         Assert.Contains("lignes (combattants et file au plus)", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tall), NullCombatLog.Instance)).Message);
@@ -615,7 +615,6 @@ public class Lot114dSnapshotTests
             (Turn, "\"fighter\":\"ogre\"", "\"fighter\":\"bastion\"", "tour impossible"),
             (Turn, "\"phase\":2", "\"phase\":3", "tour impossible"),
             // Compteurs.
-            (Head, "\"commandsPerTick\":[]", "\"commandsPerTick\":[[\"inconnu\",20,1]]", "Commandes comptées"),
             (Head, "\"initialEvents\":-1", "\"initialEvents\":5", "Compteurs"),
             (Head, "\"deferredPending\":0", "\"deferredPending\":1", "réactions reportées"),
             (Head, "\"lastEid\":2", "\"lastEid\":-1", "Compteurs"),
@@ -664,7 +663,6 @@ public class Lot114dSnapshotTests
             ("{\"entry\":0,", "\"fighter\":\"renfort\"", "\"fighter\":\"allie\"", "n'est pas attendu"),
             (Renfort, "\"presence\":1", "\"presence\":0", "n'est pas attendu"),
             (Allie, "\"arrivedTick\":null", "\"arrivedTick\":10", "pas celle de son combat"),   // 14e tour : présent dès l'origine, sans tick d'arrivée
-            (Head, "[\"bastion\",50,1]", "[\"bastion\",50,2]", "par acteur et par tick"),
             (Bastion, "\"nextTick\":60", "\"nextTick\":61", "échéance absente de la file"),
             (Bastion, "\"nextTick\":60", "\"nextTick\":80", "au-delà de sa plus longue durée possible"),   // 10e tour : plus d'une période après le tick 29
             ("{\"entry\":9,", "\"instance\":1}", "\"instance\":0}", "Altération non numérotée"),
