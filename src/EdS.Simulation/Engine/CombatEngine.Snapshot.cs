@@ -62,6 +62,16 @@ namespace EdS.Simulation.Engine
             // Revue Codex de la PR #32 (27e tour) : taille bornée avant toute analyse ; chaque ligne l'est aussi (SnapshotNode), et la reprise
             // borne le nombre de lignes par le combat (combattants + file).
             if (text.Length > MaxTextLength) throw new FormatException($"Instantané illisible : {text.Length} caractères, au plus {MaxTextLength}.");
+            // Revue Codex de la PR #32 (30e tour) : chaque ligne est mesurée avant qu'aucune ne soit copiée (première ligne, découpage de la
+            // reprise) : une ligne trop longue est refusée sans allocation.
+            for (int i = 0, start = 0, line = 1; i <= text.Length; i++)
+                if (i == text.Length || text[i] == '\n')
+                {
+                    if (i - start > SnapshotNode.MaxLineLength)
+                        throw new FormatException($"Instantané illisible : ligne {line} de {i - start} caractères, au plus {SnapshotNode.MaxLineLength} (refusée avant d'être copiée).");
+                    start = i + 1;
+                    line++;
+                }
             int end = text.IndexOf('\n');
             SnapshotNode head = SnapshotNode.Parse(end < 0 ? text : text.Substring(0, end));
             if (head["snapshot"].Int != FormatVersion) throw new FormatException($"Instantané au format {head["snapshot"].Long}, ce moteur lit le format {FormatVersion}.");
