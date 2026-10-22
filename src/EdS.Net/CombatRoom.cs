@@ -361,6 +361,7 @@ namespace EdS.Net
                 .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Id == seat.Id ? build : c.Build, c.Initiative, c.Placement, lastMs));
             long bound = StateBound(new CombatSetup(current.Seed, current.DurationMs, current.Stats, current.Damage, current.Progression, current.Combat,
                 current.Combatants.Concat(worst), current.Commands, current.Data, current.Space), TickMs);
+            bound = checked(bound + SnapshotExtra(engine.Snapshot().Text));   // 4e tour : avec l'instantané courant, comme au début
             if (bound > Protocol.MaxServerMessageBytes)
                 return $"entrée dans le combat refusée : avec ce build, un état courant pourrait atteindre {bound} octets, au-delà de la limite de " +
                     $"{Protocol.MaxServerMessageBytes} octets du protocole.";
@@ -395,10 +396,19 @@ namespace EdS.Net
                 if (candidates.Count == 0) return "aucune place libre autour de la place du scénario pour entrer dans le combat.";
             }
             string? last = null;
+            // Revue Codex de la PR #35 (4e tour) : l'état courant réel (en-tête et instantané) qui suivra l'arrivée est mesuré sur une copie
+            // du moteur (reprise de confiance de son propre instantané ; un refus d'arrivée n'y change rien), avant de toucher au vrai.
+            CombatEngine probe = CombatEngine.Restore(engine.CompletedSetup(), engine.Snapshot(), NullCombatLog.Instance);
             foreach (CombatantPlacement? placement in candidates)
                 try
                 {
-                    engine.Join(new CharacterSetup(scenario.Id, scenario.Team, scenario.Class, build, scenario.Initiative, placement, atMs));
+                    var joining = new CharacterSetup(scenario.Id, scenario.Team, scenario.Class, build, scenario.Initiative, placement, atMs);
+                    probe.Join(joining);
+                    long size = MessageCodec.Encode(new StateMessage(CombatLogHeader.Write(probe.CompletedSetup()), probe.Snapshot().Text, _log!.Hash)).Length;
+                    if (size > Protocol.MaxServerMessageBytes)
+                        return $"entrée dans le combat refusée : l'état courant atteindrait {size} octets, au-delà de la limite de " +
+                            $"{Protocol.MaxServerMessageBytes} octets du protocole.";
+                    engine.Join(joining);
                     seat.InCombat = true;
                     seat.Movement.Reset();
                     return null;
@@ -608,6 +618,9 @@ namespace EdS.Net
                     setup.Combatants.Concat(joiners), setup.Commands, setup.Data, setup.Space);
             }
             long bound = StateBound(bounded, TickMs);
+            // Revue Codex de la PR #35 (4e tour) : le majorant porte sur l'en-tête ; l'instantané de départ y est ajouté tel qu'il serait
+            // envoyé (sa croissance en cours de combat, avec la file, reste contrôlée à l'envoi).
+            bound = checked(bound + SnapshotExtra(engine.Snapshot().Text));
             if (bound > Protocol.MaxServerMessageBytes)
             {
                 Refuse($"un état courant pourrait atteindre {bound} octets, au-delà de la limite de {Protocol.MaxServerMessageBytes} octets du protocole " +
@@ -768,6 +781,16 @@ namespace EdS.Net
         /// possible (compétence aux identifiants les plus longs, ou marche), à l'instant le plus tardif. Majorant : un vrai en-tête est
         /// toujours plus petit. L'instantané est contrôlé à l'envoi (<see cref="SendState"/>).
         /// </summary>
+        /// <summary>
+        /// Revue Codex de la PR #35 (4e tour) : octets qu'un instantané ajoute à un état courant, par rapport à l'instantané factice
+        /// <c>-</c> de <see cref="StateBound"/> (texte tel qu'encodé dans le message).
+        /// </summary>
+        internal static long SnapshotExtra(string snapshot)
+        {
+            string hash = MessageCodec.HashPrefix + new string('f', 16);
+            return MessageCodec.Encode(new StateMessage("", snapshot, hash)).Length - MessageCodec.Encode(new StateMessage("", "-", hash)).Length;
+        }
+
         internal static long StateBound(CombatSetup setup, int tickMs)
         {
             if (setup is null) throw new ArgumentNullException(nameof(setup));
