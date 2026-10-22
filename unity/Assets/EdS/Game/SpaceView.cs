@@ -27,7 +27,10 @@ namespace EdS.Game
             public float Cut = 1f;
         }
 
-        /// <summary>Hauteur gardée par un prisme coupé (fraction de sa hauteur).</summary>
+        /// <summary>
+        /// Hauteur gardée par un prisme coupé, en mètres (sous les annonces au sol, dessinées à 0,16 m). Revue Codex de la PR #34 : le prisme
+        /// est mis à l'échelle de cette hauteur rapportée à la sienne (un mur de 3 m garde 0,12 m, pas 12 % de sa hauteur).
+        /// </summary>
         private const float CutHeight = 0.12f;
 
         private readonly GameObject _root;
@@ -238,7 +241,8 @@ namespace EdS.Game
             foreach (Occluder o in _occluders)
             {
                 bool masks = SegmentHitsBox(camera, head, o.Min, o.Max) || underRoof && o.Min.y >= 2.9f && Overlaps(o, _roofMin, _roofMax);
-                float target = masks ? CutHeight : 1f;
+                float height = o.Max.y - o.Min.y;
+                float target = !masks ? 1f : o.Lower && height > CutHeight ? CutHeight / height : CutHeight;
                 o.Cut = Mathf.MoveTowards(o.Cut, target, deltaTime * 4f);
                 if (o.Lower)
                 {
