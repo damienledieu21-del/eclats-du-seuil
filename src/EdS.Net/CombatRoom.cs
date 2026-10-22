@@ -334,7 +334,7 @@ namespace EdS.Net
             // Tout le monde repart de l'état courant, qui contient le nouveau venu (pas de place réservée d'avance dans le combat de départ).
             if (Phase == RoomPhase.Combat)
             {
-                StateMessage state = CurrentState();
+                StateMessage? state = CurrentState();
                 foreach (Seat other in _seats)
                     if (other.Client != null) SendState(other.Client, state);
             }
@@ -361,7 +361,10 @@ namespace EdS.Net
                 .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Id == seat.Id ? build : c.Build, c.Initiative, c.Placement, lastMs));
             long bound = StateBound(new CombatSetup(current.Seed, current.DurationMs, current.Stats, current.Damage, current.Progression, current.Combat,
                 current.Combatants.Concat(worst), current.Commands, current.Data, current.Space), TickMs);
-            bound = checked(bound + SnapshotExtra(engine.Snapshot().Text));   // 4e tour : avec l'instantané courant, comme au début
+            // 4e tour : avec l'instantané courant, comme au début ; un état trop grand pour un instantané (37e tour de la PR #32) refuse l'arrivée.
+            if (SnapshotText(engine) is not { } snapshotNow)
+                return "entrée dans le combat refusée : état du combat trop grand pour un instantané.";
+            bound = checked(bound + SnapshotExtra(snapshotNow));
             if (bound > Protocol.MaxServerMessageBytes)
                 return $"entrée dans le combat refusée : avec ce build, un état courant pourrait atteindre {bound} octets, au-delà de la limite de " +
                     $"{Protocol.MaxServerMessageBytes} octets du protocole.";
@@ -620,7 +623,8 @@ namespace EdS.Net
             long bound = StateBound(bounded, TickMs);
             // Revue Codex de la PR #35 (4e tour) : le majorant porte sur l'en-tête ; l'instantané de départ y est ajouté tel qu'il serait
             // envoyé (sa croissance en cours de combat, avec la file, reste contrôlée à l'envoi).
-            bound = checked(bound + SnapshotExtra(engine.Snapshot().Text));
+            string? startSnapshot = SnapshotText(engine);
+            bound = startSnapshot is null ? long.MaxValue : checked(bound + SnapshotExtra(startSnapshot));
             if (bound > Protocol.MaxServerMessageBytes)
             {
                 Refuse($"un état courant pourrait atteindre {bound} octets, au-delà de la limite de {Protocol.MaxServerMessageBytes} octets du protocole " +
@@ -821,17 +825,33 @@ namespace EdS.Net
         /// Sous-lot 11.7 : état courant du combat (en-tête du combat complété, instantané, empreinte du journal) ; refusé s'il ne tient pas
         /// dans un message du serveur (connexion fermée avec la raison).
         /// </summary>
-        private StateMessage CurrentState()
+        private StateMessage? CurrentState()
         {
             CombatEngine engine = _engine!;
-            return new StateMessage(CombatLogHeader.Write(engine.CompletedSetup()), engine.Snapshot().Text, _log!.Hash);
+            return SnapshotText(engine) is { } snapshot ? new StateMessage(CombatLogHeader.Write(engine.CompletedSetup()), snapshot, _log!.Hash) : null;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #32 (37e tour) : texte de l'instantané du moteur, ou null si l'état est trop grand pour un instantané relisible
+        /// (<c>CombatEngine.Snapshot</c> le refuse) : la salle refuse alors l'arrivée, le combat ou l'envoi, sans tomber.
+        /// </summary>
+        private static string? SnapshotText(CombatEngine engine)
+        {
+            try
+            {
+                return engine.Snapshot().Text;
+            }
+            catch (InvalidOperationException) when (!engine.IsFinished)
+            {
+                return null;
+            }
         }
 
         private void SendState(Client client, StateMessage? state = null)
         {
             client.LastResyncAt = Now;
             state ??= CurrentState();
-            if (MessageCodec.Encode(state).Length > Protocol.MaxServerMessageBytes)
+            if (state is null || MessageCodec.Encode(state).Length > Protocol.MaxServerMessageBytes)
             {
                 Fail(client, $"état courant du combat au-delà de la limite de {Protocol.MaxServerMessageBytes} octets du protocole.");
                 return;
