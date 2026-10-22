@@ -245,6 +245,7 @@ namespace EdS.Simulation.Engine
                 body.Z = cz;
                 body.FacingX = impact.Zone!.AxisX;
                 body.FacingZ = impact.Zone.AxisZ;
+                impact.Assailant.Charged = true;
                 EmitDiagnostic(tick, CombatPhase.Resolution, "charged", w =>
                 {
                     w.Field("actor", impact.Assailant.Id).Field("attack", impact.Attack.Id);

@@ -205,7 +205,7 @@ namespace EdS.Simulation.Engine
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
-                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
+                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -931,6 +931,9 @@ namespace EdS.Simulation.Engine
                 // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
                 // télégraphie) tombe au plus tôt à la fin du combat.
                 Require(!f.AnnouncedToEnd || AnnouncedToEndPossible(f), $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
+                // 17e tour de la PR #33 : une charge réellement résolue vient d'un assaillant dont un tour de charge a pu tomber au plus au tick
+                // précédent (et, pour un ennemi à comportement, après son engagement).
+                Require(!f.Charged || ChargePossible(f), $"Charge de {who} sans tour de charge qui ait pu tomber.");
                 // Revue Codex de la PR #33 (tour 6) : seul un assaillant est provoqué, et une provocation active a été reçue.
                 Require(f.Assailant != null || !f.Taunted, $"Provocation reçue par {who} impossible.");
                 Require(f.Taunted || !f.Statuses.Values.Any(s => s.Definition.IsTaunt), $"Provocation active de {who} non mémorisée.");
@@ -1469,15 +1472,7 @@ namespace EdS.Simulation.Engine
         /// autant : ses pas autonomes sont bornés comme les autres (<see cref="MovingTicks"/>). La reprise vérifiée par rejeu
         /// (<see cref="RestoreVerified"/>) reste exacte dans tous les cas.
         /// </summary>
-        private bool FreeMover(Fighter g)
-        {
-            if (g.Assailant is not { } a) return false;
-            // Revue Codex de la PR #33 (14e tour) : sans parcourir l'historique des tours. Les tours d'une même attaque (rang j modulo le
-            // nombre d'attaques) tombent de plus en plus tard : le premier, le tour j, est le plus tôt.
-            for (int j = 0; j < a.Attacks.Count && j < g.NextTurn; j++)
-                if (a.Attacks[j].Charge && ImpactTickOf(TurnTick(g, j), a.Attacks[j]) <= CurrentTick - 1) return true;
-            return false;
-        }
+        private bool FreeMover(Fighter g) => g.Charged;   // 17e tour de la PR #33 : une charge réellement résolue, pas seulement planifiée
 
         /// <summary>
         /// Revue Codex de la PR #33 (13e et 14e tours) : un tour déjà joué de <paramref name="f"/> (avant <see cref="Fighter.NextTurn"/>, au plus
@@ -1485,9 +1480,31 @@ namespace EdS.Simulation.Engine
         /// le nombre d'attaques), sans parcourir l'historique des tours : plus petit tour de ce rang dont le tick est au moins la fin moins la
         /// télégraphie de l'attaque, comparé au dernier tour joué.
         /// </summary>
+        private bool ChargePossible(Fighter g)
+        {
+            if (g.Assailant is not { } a) return false;
+            if (g.Behavior != null && g.EngagedTick is null) return false;
+            // Les tours d'une même attaque (rang j modulo le nombre d'attaques) tombent de plus en plus tard : le premier de ce rang qui suit
+            // l'engagement est le plus tôt possible.
+            long engaged = g.Behavior != null ? g.EngagedTick!.Value : long.MinValue, start = TurnTick(g, 0), interval = a.IntervalMs / _tickMs;
+            int n = a.Attacks.Count;
+            for (int j = 0; j < n; j++)
+            {
+                if (!a.Attacks[j].Charge) continue;
+                long first = engaged <= start ? 0 : interval > 0 ? checked((engaged - start + interval - 1) / interval) : long.MaxValue;
+                if (first == long.MaxValue) continue;
+                long turn = checked(first + ((j - first % n) % n + n) % n);
+                if (turn < g.NextTurn && ImpactTickOf(TurnTick(g, turn), a.Attacks[j]) <= CurrentTick - 1) return true;
+            }
+            return false;
+        }
+
         private bool AnnouncedToEndPossible(Fighter f)
         {
             if (f.Assailant is not { } a || f.NextTurn <= 0) return false;
+            // 17e tour de la PR #33 : un ennemi à comportement n'annonce rien avant son engagement (attackSkipped).
+            if (f.Behavior != null && f.EngagedTick is null) return false;
+            long engagedAt = f.Behavior != null ? f.EngagedTick!.Value : long.MinValue;
             long start = TurnTick(f, 0), interval = a.IntervalMs / _tickMs, previous = CurrentTick - 1;
             // Dernier tour joué : avant NextTurn, et à un tick au plus le précédent.
             long last = checked(f.NextTurn - 1);
@@ -1496,7 +1513,7 @@ namespace EdS.Simulation.Engine
             int n = a.Attacks.Count;
             for (int j = 0; j < n; j++)
             {
-                long threshold = checked(_durationTicks - a.Attacks[j].TelegraphMs / _tickMs);   // tick de tour à partir duquel l'impact tombe après la fin
+                long threshold = Math.Max(engagedAt, checked(_durationTicks - a.Attacks[j].TelegraphMs / _tickMs));   // tick de tour à partir duquel l'impact tombe après la fin (et après l'engagement)
                 long first = threshold <= start ? 0 : interval > 0 ? checked((threshold - start + interval - 1) / interval) : long.MaxValue;
                 if (first == long.MaxValue) continue;
                 long turn = checked(first + ((j - first % n) % n + n) % n);   // plus petit tour ≥ first de rang j
@@ -1767,6 +1784,7 @@ namespace EdS.Simulation.Engine
             f.NextAttackTick = n["nextAttackTick"].NullableLong;
             f.Engaged = n["engaged"].Bool;
             f.EngagedTick = n["engagedTick"].NullableLong;
+            f.Charged = n["charged"].Bool;
             f.AnnouncedToEnd = n["announcedToEnd"].Bool;
             f.Struck = n["struck"].Bool;
             f.Taunted = n["taunted"].Bool;
