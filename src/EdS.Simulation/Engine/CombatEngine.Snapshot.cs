@@ -141,11 +141,6 @@ namespace EdS.Simulation.Engine
             head.EndArray();
             head.Name("queue").BeginObject().Field("started", cursor.Started).Field("tick", cursor.Tick).Field("phase", (long)cursor.Phase)
                 .Field("next", cursor.NextSequence).Field("count", entries.Count).EndObject();
-            head.Name("commandsPerTick").BeginArray();
-            foreach (var entry in _commandsPerActorTick.Where(e => e.Key.Tick >= CurrentTick)
-                .OrderBy(e => e.Key.Tick).ThenBy(e => e.Key.Actor, StringComparer.Ordinal))
-                head.BeginArray().Value(entry.Key.Actor).Value(entry.Key.Tick).Value(entry.Value).EndArray();
-            head.EndArray();
             var sequenceOf = new Dictionary<Scheduled, long>();
             foreach (var e in entries) sequenceOf[e.Item] = e.Sequence;
             head.Name("announced").BeginArray();
@@ -527,12 +522,17 @@ namespace EdS.Simulation.Engine
             _commandCount = head["commandCount"].Int;
             _initialEvents = head["initialEvents"].Long;
             // 27e tour : listes de l'en-tête bornées par le combat avant d'être parcourues.
-            if (head["subscribed"].Items.Count > _subscribed.Length || head["commandsPerTick"].Items.Count > _setup.Commands.Count
-                || head["announced"].Items.Count > _rules.MaxPendingEvents)
+            if (head["subscribed"].Items.Count > _subscribed.Length || head["announced"].Items.Count > _rules.MaxPendingEvents)
                 throw new FormatException("Listes de l'en-tête de l'instantané plus longues que le combat ne le permet.");
             var subscribed = new List<int>(head["subscribed"].Items.Select(k => k.Int));
-            foreach (SnapshotNode e in head["commandsPerTick"].Items)
-                _commandsPerActorTick[(e.Items[0].String, e.Items[1].Long)] = e.Items[2].Int;
+            // Revue Codex de la PR #32 (34e tour) : les commandes par acteur et par tick à venir ne sont plus écrites (jusqu'à un million de
+            // couples sur la ligne d'en-tête, au-delà des bornes du lecteur) : elles se déduisent exactement du combat complété, qui porte
+            // toutes les commandes admises (3e tour).
+            foreach (CombatCommand command in _setup.Commands)
+            {
+                var key = (command.Actor, command.AtMs / _tickMs);
+                if (key.Item2 >= CurrentTick) _commandsPerActorTick[key] = _commandsPerActorTick.TryGetValue(key, out int n) ? n + 1 : 1;
+            }
 
             int count = checked((int)head["queue"]["count"].Long);
             if (lines.Length != 1 + _fighters.Count + count) throw new FormatException($"{lines.Length} lignes, {1 + _fighters.Count + count} attendues.");
