@@ -185,6 +185,12 @@ namespace EdS.Simulation.Engine
             public bool AnnouncedToEnd;
 
             /// <summary>
+            /// Revue Codex de la PR #33 (16e tour) : tick de l'engagement (0 pour un ennemi engagé d'emblée) ; null tant qu'il ne l'est pas. Ses
+            /// pas autonomes partent de là.
+            /// </summary>
+            public long? EngagedTick;
+
+            /// <summary>
             /// Sous-lot 11.5 (revue Codex de la PR #33) : a reçu un impact ou un tick de DOT, même entièrement absorbé ou transféré ; un ennemi
             /// en attente s'engage alors (raison <c>hit</c>).
             /// </summary>
@@ -555,6 +561,7 @@ namespace EdS.Simulation.Engine
             var f = new Fighter { Setup = setup, Random = new Pcg32(unchecked((ulong)_setup.Seed), StreamOf(setup.Id)), Body = CreateBody(setup),
                 Presence = setup.ArrivalMs is null ? Presence.Present : Presence.Pending,
                 Engaged = setup is AssailantSetup { Behavior: { AggroRange: null } } };   // sous-lot 11.5 : sans distance d'engagement, engagé d'emblée
+            if (f.Engaged) f.EngagedTick = 0;
             f.Result.Id = setup.Id;
             f.Result.Team = setup.Team;
             switch (setup)

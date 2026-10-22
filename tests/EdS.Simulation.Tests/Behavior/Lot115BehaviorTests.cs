@@ -386,6 +386,35 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Instantane_pas_d_un_ennemi_engage_tard_comptes_depuis_son_engagement()
+    {
+        // Revue Codex de la PR #33 (16e tour) : un guetteur (engagement à 2 m) attend que le Bastion approche ; juste après son engagement,
+        // il n'a pu faire qu'un ou deux pas : un instantané qui l'a déjà déplacé de 3 m est refusé (ses pas partent de son engagement, pas de
+        // son arrivée).
+        var (_, log, _) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("guetteur", At("6", "0"), "0.5", aggro: "2") },
+            new[] { Move(0, "bastion", "1", "0") }, durationMs: 3000));
+        long engagedAt = Lines(log, "engaged").Single(e => e.Str("actor") == "guetteur").Tick();
+        Assert.InRange(engagedAt, 5, 40);
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("guetteur", At("6", "0"), "0.5", aggro: "2") },
+            new[] { Move(0, "bastion", "1", "0") }, durationMs: 3000), NullCombatLog.Instance);
+        while (engine.CurrentTick <= engagedAt) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Contains("\"engagedTick\":" + engagedAt, text, StringComparison.Ordinal);
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"guetteur\"", StringComparison.Ordinal));
+        string x = System.Text.RegularExpressions.Regex.Match(line, "\"x\":(-?[0-9]+),").Groups[1].Value;
+        string moved = text.Replace(line, line.Replace("\"x\":" + x + ",", "\"x\":" + (long.Parse(x) + 30_000) + ",", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.NotEqual(text, moved);
+        Assert.Contains("Place de « guetteur » hors de portée", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(setup, CombatSnapshot.Parse(moved), NullCombatLog.Instance)).Message);
+        // Un tick d'engagement retouché (plus tôt que le vrai, pour élargir la borne) ne passe pas non plus inaperçu par la reprise vérifiée.
+        string earlier = text.Replace("\"engagedTick\":" + engagedAt, "\"engagedTick\":1", StringComparison.Ordinal);
+        Assert.Contains("différent de l'état rejoué", Assert.Throws<FormatException>(() =>
+            CombatEngine.RestoreVerified(setup, CombatSnapshot.Parse(earlier), NullCombatLog.Instance)).Message);
+    }
+
+    [Fact]
     public void Annonce_qui_tombe_apres_la_fin_arrete_l_ennemi_jusqu_a_la_fin()
     {
         // Revue Codex de la PR #33 (13e tour) : combat de 2 s ; le loup, encore en approche, annonce au tick 30 une bande d'une seconde dont
@@ -487,14 +516,17 @@ public class Lot115BehaviorTests
         while (engine.CurrentTick < 5) engine.Step();
         string text = engine.Snapshot().Text;
         CombatSetup completed = engine.CompletedSetup();
-        string guetteur = EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.Tampered(text, "{\"fighter\":\"guetteur\"", "\"engaged\":false", "\"engaged\":true");
+        string guetteur = EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.Tampered(text, "{\"fighter\":\"guetteur\"", "\"engaged\":false,\"engagedTick\":null", "\"engaged\":true,\"engagedTick\":4");
         Assert.Equal(guetteur, CombatEngine.Restore(completed, CombatSnapshot.Parse(guetteur), NullCombatLog.Instance).Snapshot().Text);
         EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertRefused(completed, text, new[]
         {
             ("{\"fighter\":\"loup\"", "\"engaged\":true", "\"engaged\":false", "Engagement de « loup »"),
             ("{\"fighter\":\"bastion\"", "\"engaged\":false", "\"engaged\":true", "Engagement de « bastion »"),
             ("{\"fighter\":\"renfort\"", "\"struck\":false", "\"struck\":true", "« renfort », pas encore entré"),
-            ("{\"fighter\":\"renfort\"", "\"engaged\":false", "\"engaged\":true", "« renfort », pas encore entré"),
+            ("{\"fighter\":\"renfort\"", "\"engaged\":false,\"engagedTick\":null", "\"engaged\":true,\"engagedTick\":0", "« renfort », pas encore entré"),
+            // 16e tour : un engagé sans tick d'engagement, ou à un tick pas encore joué.
+            ("{\"fighter\":\"guetteur\"", "\"engaged\":false", "\"engaged\":true", "Tick d'engagement de « guetteur »"),
+            ("{\"fighter\":\"guetteur\"", "\"engaged\":false,\"engagedTick\":null", "\"engaged\":true,\"engagedTick\":5", "Tick d'engagement de « guetteur »"),
             ("{\"fighter\":\"renfort\"", "\"taunted\":false", "\"taunted\":true", "« renfort », pas encore entré"),
         });
         // Revue Codex de la PR #33 (tour 4) : avant le premier tick, le guetteur (distance d'engagement) n'est pas encore engagé.
@@ -502,7 +534,7 @@ public class Lot115BehaviorTests
         string zero = fresh.Snapshot().Text;
         EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertRefused(fresh.CompletedSetup(), zero, new[]
         {
-            ("{\"fighter\":\"guetteur\"", "\"engaged\":false", "\"engaged\":true", "« guetteur », avant le premier tick"),
+            ("{\"fighter\":\"guetteur\"", "\"engaged\":false,\"engagedTick\":null", "\"engaged\":true,\"engagedTick\":0", "Tick d'engagement de « guetteur »"),
         });
         EdS.Simulation.Tests.Presence.Lot114dSnapshotTests.AssertResumesIdentically(engine, log);
     }
@@ -522,6 +554,9 @@ public class Lot115BehaviorTests
             Assert.Throws<ArgumentException>(() => engine.SubmitAll(new[] { Move(50, "bastion", "1", "0"), command }));
         }
         Assert.Equal(before, engine.Snapshot().Text);
+        // Revue Codex de la PR #33 (16e tour) : la vue le dit (CanMove faux pour un ennemi à comportement, vrai pour l'ours).
+        Assert.False(engine.View("loup").CanMove);
+        Assert.True(engine.View("ours").CanMove);
         engine.Submit(Move(50, "ours", "0", "1"));
         while (!engine.IsFinished) engine.Step();
         CombatSetup completed = engine.CompletedSetup();
