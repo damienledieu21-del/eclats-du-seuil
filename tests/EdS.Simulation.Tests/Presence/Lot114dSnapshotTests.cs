@@ -410,6 +410,27 @@ public class Lot114dSnapshotTests
     }
 
     [Fact]
+    public void Empreinte_hachee_par_blocs_identique_au_hachage_d_un_seul_tenant()
+    {
+        // Revue Codex de la PR #32 (31e tour) : l'empreinte d'un texte est calculée par blocs (sans copie UTF-8 du texte entier) ; elle est
+        // celle du texte encodé d'un seul tenant, paires de substitution coupées entre deux blocs et substitutions isolées comprises.
+        static string Whole(string text)
+        {
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            return "sha256:" + string.Concat(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(text)).Select(b => b.ToString("x2")));
+        }
+        int n = CombatEngine.HashChunk;
+        var random = new Random(31);
+        string Random(int length) => new string(Enumerable.Range(0, length).Select(_ => (char)random.Next(0x20, 0x2FF)).ToArray());
+        var texts = new List<string> { "", "a", "é", "\uD83D", "\uDE00x", Random(n - 1), Random(n), Random(n + 1), Random(3 * n + 7),
+            Random(n - 1) + "\uD83D\uDE00" + Random(10),   // paire coupée entre deux blocs
+            Random(n - 1) + "\uD83D" + Random(n),          // substitution haute isolée au bout d'un bloc
+            Random(2 * n - 1) + "\uD83D",                   // substitution haute isolée au bout du texte
+        };
+        foreach (string text in texts) Assert.Equal(Whole(text), CombatEngine.Sha256(text));
+    }
+
+    [Fact]
     public void Meme_combat_meme_instantane_et_texte_canonique()
     {
         var a = new CombatEngine(Training(), NullCombatLog.Instance);
