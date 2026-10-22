@@ -25,16 +25,23 @@ namespace UnityEngine
     public enum CameraClearFlags { Skybox = 1, SolidColor = 2 }
     public sealed class Camera : Behaviour { public static Camera main => null; public float fieldOfView { get; set; } public float nearClipPlane { get; set; } public float farClipPlane { get; set; } public CameraClearFlags clearFlags { get; set; } public Color backgroundColor { get; set; } public Vector3 WorldToScreenPoint(Vector3 p) => default; }
     public struct Color { public float r, g, b, a; public Color(float r, float g, float b) : this(r, g, b, 1) { } public Color(float r, float g, float b, float a) { this.r = r; this.g = g; this.b = b; this.a = a; } public static Color white => default; public static Color black => default; public static Color Lerp(Color a, Color b, float t) => a; }
-    public struct Vector2 { public float x, y; }
+    public struct Vector2 { public float x, y; public Vector2(float x, float y) { this.x = x; this.y = y; } public static Vector2 zero => default; public float magnitude => 0; public Vector2 normalized => default; public static float Distance(Vector2 a, Vector2 b) => 0; public static Vector2 operator +(Vector2 a, Vector2 b) => a; public static Vector2 operator -(Vector2 a, Vector2 b) => a; public static Vector2 operator *(Vector2 a, float f) => a; public static Vector2 operator /(Vector2 a, float f) => a; }
+    public enum TouchPhase { Began, Moved, Stationary, Ended, Canceled }
+    public struct Touch { public int fingerId => 0; public Vector2 position => default; public TouchPhase phase => default; }
     public struct Vector3 { public float x, y, z; public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; } public static Vector3 zero => default; public static Vector3 up => default; public static Vector3 forward => default; public float magnitude => 0; public float sqrMagnitude => 0; public Vector3 normalized => this; public static Vector3 Lerp(Vector3 a, Vector3 b, float t) => a; public static Vector3 Cross(Vector3 a, Vector3 b) => a; public static float Dot(Vector3 a, Vector3 b) => 0; public static Vector3 operator /(Vector3 a, float d) => a; public static Vector3 operator +(Vector3 a, Vector3 b) => a; public static Vector3 operator -(Vector3 a, Vector3 b) => a; public static Vector3 operator *(Vector3 a, float d) => a; public static Vector3 operator *(float d, Vector3 a) => a; }
     public struct Quaternion { public static Quaternion Euler(float x, float y, float z) => default; public static Quaternion Slerp(Quaternion a, Quaternion b, float t) => a; public static Quaternion LookRotation(Vector3 f) => default; public Vector3 eulerAngles => default; public static Vector3 operator *(Quaternion q, Vector3 v) => v; }
     public struct Rect { public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public float x, y, width, height; }
     public struct Matrix4x4 { public static Matrix4x4 Scale(Vector3 v) => default; }
     public static class Mathf { public static float Clamp(float v, float a, float b) => v; public static float Clamp01(float v) => v; public static float Lerp(float a, float b, float t) => a; public static float LerpAngle(float a, float b, float t) => a; public static float Exp(float p) => p; public static float Sin(float f) => f; public static float Cos(float f) => f; public static float Atan2(float y, float x) => y; public static float Abs(float f) => f; public static float Min(float a, float b) => a; public static float Max(float a, float b) => a; public static float MoveTowards(float current, float target, float maxDelta) => current; public const float PI = 3.14159274f; public const float Deg2Rad = 0.0174532924f; public const float Rad2Deg = 57.29578f; }
-    public enum KeyCode { None, Backspace, Tab, Escape, Space, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, A, C, D, E, G, H, M, N, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift }
-    public static class Input { public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; }
+    public enum KeyCode { None, Backspace, Tab, Escape, Space, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, F8, A, C, D, E, G, H, M, N, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift }
+    public static class Input { public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static bool GetMouseButtonDown(int b) => false; public static bool GetMouseButtonUp(int b) => false; public static Vector3 mousePosition => default; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; public static bool touchSupported => false; public static int touchCount => 0; public static Touch GetTouch(int i) => default; }
     public static class Time { public static float time => 0; public static float deltaTime => 0; }
-    public static class Application { public static string dataPath => ""; }
+    public enum RuntimePlatform { WindowsEditor, WindowsPlayer, Android, IPhonePlayer }
+    public static class Application { public static string dataPath => ""; public static string streamingAssetsPath => ""; public static string persistentDataPath => ""; public static bool isMobilePlatform => false; public static RuntimePlatform platform => default; public static int targetFrameRate { get; set; } }
+    public class AsyncOperation { }
+    public static class SleepTimeout { public const int NeverSleep = -1; }
+    public enum ScreenOrientation { Portrait = 1, LandscapeLeft = 3, AutoRotation = 5 }
+    public enum ShadowQuality { Disable, HardOnly, All }
     public static class Debug { public static void Log(object m) { } public static void LogWarning(object m) { } public static void LogException(Exception e) { } }
     public sealed class Shader : Object { public static Shader Find(string n) => null; }
     public class Material : Object { public Material(Shader s) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } }
@@ -49,8 +56,14 @@ namespace UnityEngine
     public sealed class GUISkin : Object { public GUIStyle label => null; public GUIStyle button => null; public GUIStyle textField => null; }
     public static class GUI { public static GUISkin skin => null; public static Color color { get; set; } public static Matrix4x4 matrix { get; set; } public static void DrawTexture(Rect r, Texture t) { } public static void Label(Rect r, string t, GUIStyle s) { } public static bool Button(Rect r, string t, GUIStyle s) => false; public static string TextField(Rect r, string t, int maxLength, GUIStyle s) => t; }
     public static class GUIUtility { public static int keyboardControl { get; set; } }
-    public static class Screen { public static int width => 0; public static int height => 0; }
-    public static class QualitySettings { public static UnityEngine.Rendering.RenderPipelineAsset renderPipeline { get; set; } }
+    public static class Screen { public static int width => 0; public static int height => 0; public static int sleepTimeout { get; set; } public static bool autorotateToPortrait { get; set; } public static bool autorotateToPortraitUpsideDown { get; set; } public static bool autorotateToLandscapeLeft { get; set; } public static bool autorotateToLandscapeRight { get; set; } public static ScreenOrientation orientation { get; set; } }
+    public static class QualitySettings { public static UnityEngine.Rendering.RenderPipelineAsset renderPipeline { get; set; } public static ShadowQuality shadows { get; set; } public static int antiAliasing { get; set; } }
+}
+namespace UnityEngine.Networking
+{
+    public sealed class DownloadHandler { public byte[] data => null; public string text => null; }
+    public sealed class UnityWebRequestAsyncOperation : UnityEngine.AsyncOperation { }
+    public sealed class UnityWebRequest : IDisposable { public enum Result { InProgress, Success, ConnectionError, ProtocolError, DataProcessingError } public static UnityWebRequest Get(string uri) => null; public UnityWebRequestAsyncOperation SendWebRequest() => null; public Result result => default; public string error => null; public DownloadHandler downloadHandler => null; public void Dispose() { } }
 }
 namespace UnityEngine.Rendering
 {
@@ -68,5 +81,16 @@ namespace UnityEditor
     [AttributeUsage(AttributeTargets.Class)] public sealed class InitializeOnLoadAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.Method)] public sealed class MenuItem : Attribute { public MenuItem(string p) { } }
     public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; }
-    public static class AssetDatabase { public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } }
+    public static class AssetDatabase { public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } }
+}
+namespace UnityEditor.Build.Reporting
+{
+    public sealed class BuildReport { }
+}
+namespace UnityEditor.Build
+{
+    public interface IOrderedCallback { int callbackOrder { get; } }
+    public interface IPreprocessBuildWithReport : IOrderedCallback { void OnPreprocessBuild(UnityEditor.Build.Reporting.BuildReport report); }
+    public interface IPostprocessBuildWithReport : IOrderedCallback { void OnPostprocessBuild(UnityEditor.Build.Reporting.BuildReport report); }
+    public class BuildFailedException : Exception { public BuildFailedException(string message) : base(message) { } }
 }

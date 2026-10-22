@@ -99,6 +99,18 @@ Détail : [RESEAU.md](RESEAU.md#protocole-2-et-démonstration-réseau-sous-lot-1
 - **Robot** : le robot du lot 10 joue (garde, parade, compétences, soutiens) mais ne marche pas ; dans les Vallons, il reste à sa place d'arrivée.
 - **Esquive mesurée par un joueur scripté** : réaction immédiate ou de 250 ms à l'affichage, sortie du cercle en ligne droite ; pas de gigue dans la mesure d'esquive (la mesure de la parade du lot 10 en a).
 
+## Sous-lot 11.8 : premier essai tactile
+
+Mode d'emploi : [UNITY.md](UNITY.md#7-jouer-sur-téléphone-sous-lot-118).
+
+- **Validation par l'essai** : le traitement des doigts (stick, boutons tenus et touchés, regard, pincement, doigt perdu quand le jeu est suspendu) est dans `TouchGestures` (`EdS.Runtime`, sans Unity) et testé (`Lot118TouchTests`, revue Codex de la PR #36, 6e tour) ; la lecture des doigts de Unity, le dessin des boutons, la copie des données sur Android et les réglages allégés ne sont vérifiés en CI que par la compilation des scripts (contre des bouchons de l'API Unity) ; le reste par l'essai de Damien (simulateur d'appareils, puis Note8).
+- **Taille des boutons** : 140 pixels virtuels pour les petits (compétences, ultime, cible, vue, menu…), 150 pour garde et parade, soit environ 9,1 et 9,7 mm sur le Note8 (critère du plan : au moins 9 mm) ; d'autres écrans (plus petits ou plus denses) ne sont pas mesurés.
+- **Interface provisoire** : boutons carrés dessinés par l'interface IMGUI du lot 9, placés pour un téléphone tenu à l'horizontale (pas de réglage de disposition, pas de mode portrait) ; pas de retour haptique.
+- **Stick tout ou rien** : sous la zone morte, pas de marche ; au-delà, marche à pleine vitesse dans l'un des 64 caps (comme le clavier ; la marche lente n'existe pas dans le moteur).
+- **Écran des talents et salle d'attente** : pensés pour la souris ; ils se touchent du doigt mais restent petits sur un téléphone. Les touches F1 à F5 (builds) n'ont pas d'équivalent tactile.
+- **Données emportées** : le jeu construit emporte `data/v0` et `scenarios` (copiés à la construction, recopiés au premier lancement sur Android, et à neuf quand l'empreinte du contenu change) ; une nouvelle version demande une nouvelle construction.
+- **iPhone** : pas de chaîne de compilation iOS (Mac et Xcode) ici ; non essayé.
+
 ## Sous-lot 11.5 : comportements des ennemis
 
 Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#comportements-des-ennemis-sous-lot-115) ; données : [DONNEES.md](DONNEES.md#scénarios-et-jeu-de-données-lots-5-et-6).

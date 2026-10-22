@@ -65,7 +65,7 @@ namespace EdS.Game
                 Light light = sun.AddComponent<Light>();
                 light.type = LightType.Directional;
                 light.intensity = 1.1f;
-                light.shadows = LightShadows.Soft;
+                light.shadows = Application.isMobilePlatform ? LightShadows.None : LightShadows.Soft;   // sous-lot 11.8 : allégé sur téléphone
                 sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             }
 

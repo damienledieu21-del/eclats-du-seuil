@@ -149,6 +149,8 @@ Sous-lot 11.6 (scène de démonstration, H14, à essayer) : au lancement de Unit
 
 Sous-lot 11.7 (démonstration réseau minimale) : le protocole passe à la version 2. La marche et la sélection de cible passent par le serveur ; une divergence, un retour après une coupure ou l'arrivée d'un joueur en plein affrontement font repartir chaque client de l'**état courant** (instantané du 11.4d), sans rien rejouer ni réattribuer d'événement ; la place du joueur est prédite à l'affichage. Dans Unity, **M** → « Héberger les Vallons à deux » (ou avec un robot qui arrive après 10 s). `eds reseau --esquive` mesure l'esquive d'une attaque annoncée de 0 à 200 ms de latence. Moteur et formats de données inchangés. Détail : [docs/RESEAU.md](docs/RESEAU.md#protocole-2-et-démonstration-réseau-sous-lot-117), limites : [docs/LIMITES_LOT_11.md](docs/LIMITES_LOT_11.md#sous-lot-117--démonstration-réseau-minimale).
 
+Sous-lot 11.8 (premier essai tactile, à essayer) : commandes au doigt dans Unity (stick du pouce gauche, garde, parade, compétences, cible, vue ; glisser pour tourner la vue, pincer pour passer de la vue 1 à la vue 2), visibles sur un écran tactile ou dans le simulateur d'appareils de l'éditeur (F8 au PC). Un jeu construit emporte les données et les scénarios du dépôt (recopiés au premier lancement sur Android) ; sur téléphone, ombres et anticrénelage sont coupés. Guide d'installation sur le Note8 : [docs/UNITY.md](docs/UNITY.md#7-jouer-sur-téléphone-sous-lot-118), limites : [docs/LIMITES_LOT_11.md](docs/LIMITES_LOT_11.md#sous-lot-118--premier-essai-tactile).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement

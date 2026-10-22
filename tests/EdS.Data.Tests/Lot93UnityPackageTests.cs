@@ -1,3 +1,4 @@
+using EdS.Runtime;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
 
@@ -141,6 +142,63 @@ public class Lot93UnityPackageTests
             Assert.Contains($"\"{scenario}\"", gameScript, StringComparison.Ordinal);
             Assert.True(File.Exists(Path.Combine(Root, "scenarios", scenario)), scenario);
         }
+    }
+
+    [Fact]
+    public void Donnees_emportees_dans_le_jeu_construit()
+    {
+        // Sous-lot 11.8 (revue Codex de la PR #36) : la copie de construction (BundledData.CopyTo, appelée par EdsBuildData avant la
+        // construction) est exercée pour de vrai : tous les .json de data/v0 et de scenarios, mêmes octets, liste avec l'empreinte du
+        // contenu, relue telle quelle par le jeu (BundledData.ParseIndex, dans GameFiles).
+        string target = Path.Combine(Path.GetTempPath(), "eds-emportees-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            IReadOnlyList<string> files = BundledData.CopyTo(Root, target);
+            List<string> expected = BundledData.Sources.SelectMany(s => Directory.GetFiles(Path.Combine(Root, s), "*.json", SearchOption.AllDirectories))
+                .Select(f => Path.GetRelativePath(Root, f).Replace('\\', '/')).OrderBy(f => f, StringComparer.Ordinal).ToList();
+            Assert.Equal(expected, files);
+            Assert.Contains("data/v0/rules.json", files);
+            Assert.Contains("scenarios/coop/vallons_duo.json", files);
+            foreach (string f in files) Assert.Equal(File.ReadAllBytes(Path.Combine(Root, f)), File.ReadAllBytes(Path.Combine(target, f)));
+            string index = File.ReadAllText(Path.Combine(target, BundledData.IndexFile));
+            Assert.Matches("^# empreinte [0-9a-f]{64}\n", index);
+            Assert.Equal(files, BundledData.ParseIndex(index));
+            // Même contenu, même liste ; un octet changé aux mêmes chemins, une autre liste (la copie Android est alors refaite).
+            Assert.Equal(index, BundledData.Index(files, f => File.ReadAllBytes(Path.Combine(Root, f))));
+            Assert.NotEqual(index, BundledData.Index(files, f => f == files[0] ? new byte[] { 1 } : File.ReadAllBytes(Path.Combine(Root, f))));
+            // Une nouvelle copie retire l'ancienne : un fichier retiré depuis ne reste pas.
+            File.WriteAllText(Path.Combine(target, "data", "v0", "retire.json"), "{}");
+            BundledData.CopyTo(Root, target);
+            Assert.False(File.Exists(Path.Combine(target, "data", "v0", "retire.json")));
+            // Une liste retouchée qui ferait écrire hors du dossier de l'application est refusée.
+            foreach (string bad in new[] { "../x.json", "/etc/x.json", "data\\v0\\x.json" })
+                Assert.Throws<FormatException>(() => BundledData.ParseIndex("# empreinte 00\n" + bad + "\n"));
+        }
+        finally
+        {
+            if (Directory.Exists(target)) Directory.Delete(target, true);
+        }
+        // La construction et le jeu passent par BundledData ; la copie dans le projet Unity n'est jamais suivie par git.
+        string build = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdsBuildData.cs"));
+        string gameFiles = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "GameFiles.cs"));
+        Assert.Contains("BundledData.CopyTo(Repo, Target)", build, StringComparison.Ordinal);
+        Assert.Contains("\"StreamingAssets\", BundledData.Folder", build, StringComparison.Ordinal);
+        Assert.Contains("BundledData.ParseIndex(index)", gameFiles, StringComparison.Ordinal);
+        Assert.Contains("Directory.Delete(target, true)", gameFiles, StringComparison.Ordinal);
+        Assert.Contains("\"EdS.Runtime\"", File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdS.Editor.asmdef")), StringComparison.Ordinal);
+        string ignore = File.ReadAllText(Path.Combine(Root, ".gitignore"));
+        Assert.Contains("unity/Assets/StreamingAssets/", ignore, StringComparison.Ordinal);
+        // Revue Codex de la PR #36 (2e tour) : une écriture impossible (stockage plein) est rendue comme une erreur ; les doigts posés sont
+        // oubliés quand le jeu est suspendu, et un doigt mémorisé qui n'est plus sur l'écran est relâché.
+        Assert.Contains("copie des données du jeu impossible", gameFiles, StringComparison.Ordinal);
+        string game = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        string touch = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "TouchControls.cs"));
+        Assert.Contains("private void OnApplicationPause(bool paused)", game, StringComparison.Ordinal);
+        Assert.Contains("private void OnApplicationFocus(bool focus)", game, StringComparison.Ordinal);
+        // Revue Codex de la PR #36 (6e tour) : le traitement des doigts (doigt perdu compris) est dans TouchGestures, testé par Lot118TouchTests.
+        Assert.Contains("_gestures.Update(Fingers(), _zones, Hud.Width);", touch, StringComparison.Ordinal);
+        // Tout ce que le jeu ouvre est un .json de data/v0 ou de scenarios : la copie n'en oublie aucun.
+        Assert.All(Directory.GetFiles(Path.Combine(Root, "scenarios"), "*", SearchOption.AllDirectories), f => Assert.EndsWith(".json", f, StringComparison.Ordinal));
     }
 
     [Fact]

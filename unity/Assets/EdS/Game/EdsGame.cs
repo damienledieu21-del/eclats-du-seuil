@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -83,12 +84,44 @@ namespace EdS.Game
 
         private bool Network => _net != null;
 
-        private void Start()
+        // Sous-lot 11.8 : commandes au doigt (téléphone, simulateur d'appareils de l'éditeur, F8 pour les forcer) ; données prêtes.
+        private readonly TouchControls _touch = new TouchControls();
+        private bool _ready;
+
+        private IEnumerator Start()
         {
-            _repoRoot = FindRepoRoot();
+            ApplyMobileSettings();
             _camera = CameraRig.Create();
             _arena = new ArenaView();
+            // Sous-lot 11.8 : sur Android, les données emportées sont d'abord recopiées dans le dossier de l'application.
+            string root = null, problem = null;
+            yield return GameFiles.Prepare(FindRepoRoot(), (r, e) =>
+            {
+                root = r;
+                problem = e;
+            });
+            _repoRoot = root ?? FindRepoRoot();
+            _ready = true;
             Load(0, null);
+            if (problem != null) _error = "Impossible de préparer les données du jeu : " + problem;
+        }
+
+        /// <summary>
+        /// Sous-lot 11.8 : réglages allégés sur téléphone : 60 images/s au plus, écran toujours allumé pendant le jeu, téléphone tenu à
+        /// l'horizontale (dans les deux sens), sans ombres ni anticrénelage.
+        /// </summary>
+        private static void ApplyMobileSettings()
+        {
+            if (!Application.isMobilePlatform) return;
+            Application.targetFrameRate = 60;
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
+            Screen.autorotateToPortrait = false;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = true;
+            Screen.autorotateToLandscapeRight = true;
+            Screen.orientation = ScreenOrientation.AutoRotation;
+            QualitySettings.shadows = ShadowQuality.Disable;
+            QualitySettings.antiAliasing = 0;
         }
 
         /// <summary>
@@ -224,8 +257,25 @@ namespace EdS.Game
             if (_messages.Count > 5) _messages.RemoveAt(0);
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #36 : jeu suspendu ou passé en arrière-plan (verrouillage, accueil, autre application) : les commandes au
+        /// doigt repartent de zéro, rien ne reste tenu (marche, garde) au retour.
+        /// </summary>
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) _touch.Reset();
+        }
+
+        private void OnApplicationFocus(bool focus)
+        {
+            if (!focus) _touch.Reset();
+        }
+
         private void Update()
         {
+            if (!_ready) return;   // sous-lot 11.8 : données en préparation
+            if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
+            _touch.Update(Network);
             // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran. En réseau,
             // la partie continue d'avancer (le serveur ne s'arrête pas), sans entrée de combat.
             if (_talents != null)
@@ -236,14 +286,14 @@ namespace EdS.Game
             }
             // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
             // Une lettre M tapée dans un champ du menu (nom, adresse) ne le ferme pas.
-            if (Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) _menuOpen = !_menuOpen;
+            if ((Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) || (_touch.MenuPressed && !_menuOpen)) _menuOpen = !_menuOpen;
             if (_menuOpen)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;
                 if (Network) UpdateNetwork(false);
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.H)) _help = !_help;
+            if (Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed) _help = !_help;
             if (Network)
             {
                 UpdateNetwork(true);
@@ -257,9 +307,15 @@ namespace EdS.Game
                 OpenTalents();
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.Escape)) _paused = !_paused;
-            if (Input.GetKeyDown(KeyCode.Backspace)) Restart();
-            if (Input.GetKeyDown(KeyCode.C)) _camera.Toggle(_playerYaw);
+            if (Input.GetKeyDown(KeyCode.Escape) || _touch.PausePressed) _paused = !_paused;
+            if (Input.GetKeyDown(KeyCode.Backspace) || _touch.RestartPressed) Restart();
+            if (_touch.NextScenePressed)
+            {
+                Load((_scenario + 1) % ScenarioFiles.Length, null);
+                if (_combat == null) return;
+            }
+            if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
+            _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
             IReadOnlyList<ReferenceBuild> builds = _session.AvailableBuilds();
             KeyCode[] buildKeys = { KeyCode.F1, KeyCode.F2, KeyCode.F3, KeyCode.F4, KeyCode.F5 };
             for (int i = 0; i < buildKeys.Length && i < builds.Count; i++)
@@ -303,8 +359,12 @@ namespace EdS.Game
 
         private void ReadCombatInput()
         {
-            _combat.SetGuard(Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
-            if (Input.GetKeyDown(KeyCode.Space)) _combat.Parry();
+            _combat.SetGuard(Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || _touch.GuardHeld);
+            if (Input.GetKeyDown(KeyCode.Space) || _touch.ParryPressed) _combat.Parry();
+            // Sous-lot 11.8 : boutons tactiles (compétences 1 à 4 et ultime, cible suivante, allié visé en réseau).
+            if (_touch.SlotPressed >= 0) _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed);
+            if (_touch.TargetPressed) _combat.NextTarget();
+            if (_touch.AllyPressed && _combat is NetworkCombat ally) ally.NextAlly();
             KeyCode[] slots = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4 };
             KeyCode[] pad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4 };
             for (int i = 0; i < slots.Length; i++)
@@ -479,7 +539,8 @@ namespace EdS.Game
                 _shownRoster = combat.RosterVersion;
                 _arena.Populate(combat);
             }
-            if (input && Input.GetKeyDown(KeyCode.C)) _camera.Toggle(_playerYaw);
+            if (input && (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed)) _camera.Toggle(_playerYaw);
+            if (input) _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
             if (input && client != null && client.Status == ClientStatus.Lobby)
             {
                 IReadOnlyList<ReferenceBuild> builds = _session.AvailableBuilds();
@@ -530,6 +591,18 @@ namespace EdS.Game
                 - (Input.GetKey(Keys.Left) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
             float z = (Input.GetKey(Keys.Forward) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
                 - (Input.GetKey(Keys.Back) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
+            // Sous-lot 11.8 : stick du pouce gauche (relatif à la caméra, comme le clavier) ; le clavier l'emporte s'il est utilisé.
+            if (x == 0f && z == 0f)
+            {
+                x = _touch.Move.x;
+                z = _touch.Move.y;
+            }
+            // Un pouce à peine posé (sous la zone morte du stick) ne marche pas ; au-delà, la marche est à pleine vitesse.
+            if (x * x + z * z < (float)(MoveInput.DeadZone * MoveInput.DeadZone))
+            {
+                x = 0f;
+                z = 0f;
+            }
             if (_arena.Spatial)
             {
                 // Revue Codex de la PR #34 : en pause, la marche voulue n'est pas touchée (les entrées de combat sont ignorées ; l'intention
@@ -599,6 +672,11 @@ namespace EdS.Game
         private void OnGUI()
         {
             Hud.Begin();
+            if (!_ready)
+            {
+                Hud.Centered(new Rect(Hud.Width / 2f - 300, Hud.VirtualHeight / 2f - 20, 600, 40), "Préparation des données du jeu…", Color.white);
+                return;
+            }
             if (_error != null && !Network)
             {
                 Hud.Fill(new Rect(40, 40, Hud.Width - 80, 260), new Color(0.3f, 0f, 0f, 0.85f));
@@ -680,6 +758,7 @@ namespace EdS.Game
 
             float elapsed = _combat.Tick * (float)_combat.TickSeconds;
             Hud.Centered(new Rect(Hud.Width / 2f - 150, 20, 300, 40), $"{(int)elapsed / 60}:{(int)elapsed % 60:00}", Color.white);
+            _touch.Draw(Network);   // sous-lot 11.8
         }
     }
 

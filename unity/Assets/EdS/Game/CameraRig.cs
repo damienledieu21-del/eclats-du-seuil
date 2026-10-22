@@ -19,6 +19,9 @@ namespace EdS.Game
         private float _yaw = 45f;
         private float _setting;
         private float _recall = 1f;
+        private float _manualUntil;
+        private bool _unsaved;
+        private float _savedAt;
 
         public Camera Camera => _camera;
 
@@ -68,6 +71,24 @@ namespace EdS.Game
             PlayerPrefs.SetFloat(SettingKey, _setting);
             PlayerPrefs.SetFloat(RecallKey, _recall);
             PlayerPrefs.Save();
+            _unsaved = false;
+            _savedAt = Time.time;
+        }
+
+        /// <summary>
+        /// Sous-lot 11.8 : rotation (degrés) et réglage entre les vues 1 et 2 demandés au doigt (glisser, pincer). La vue ne suit plus la
+        /// marche pendant une seconde après une rotation au doigt ; le réglage est gardé au plus deux fois par seconde.
+        /// </summary>
+        public void Nudge(float yawDegrees, float settingDelta)
+        {
+            if (yawDegrees != 0f)
+            {
+                _yaw += yawDegrees;
+                _manualUntil = Time.time + 1f;
+            }
+            if (settingDelta == 0f) return;
+            _setting = Mathf.Clamp01(_setting + settingDelta);
+            _unsaved = true;
         }
 
         /// <summary>Suit le joueur ; <paramref name="playerYaw"/> oriente la vue proche de la 2 quand la souris ne le fait pas.</summary>
@@ -83,7 +104,8 @@ namespace EdS.Game
             if (Input.GetKeyDown(Keys.TurnLeft)) _yaw -= 45f;
             if (Input.GetKeyDown(Keys.TurnRight)) _yaw += 45f;
             if (Input.GetMouseButton(2)) _yaw += Input.GetAxis("Mouse X") * 4f;
-            else if (playerMoving && _setting > 0.5f) _yaw = Mathf.LerpAngle(_yaw, playerYaw, 1f - Mathf.Exp(-2.5f * deltaTime));
+            else if (playerMoving && _setting > 0.5f && Time.time >= _manualUntil) _yaw = Mathf.LerpAngle(_yaw, playerYaw, 1f - Mathf.Exp(-2.5f * deltaTime));
+            if (_unsaved && Time.time - _savedAt >= 0.5f) Save();
 
             float s = _setting;
             float pitch = Mathf.Lerp(52f, 16f, s);

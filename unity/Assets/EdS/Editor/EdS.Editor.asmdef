@@ -3,7 +3,8 @@
     "rootNamespace": "EdS.Game.Editor",
     "references": [
         "Unity.RenderPipelines.Core.Runtime",
-        "Unity.RenderPipelines.Universal.Runtime"
+        "Unity.RenderPipelines.Universal.Runtime",
+        "EdS.Runtime"
     ],
     "includePlatforms": [
         "Editor"
