@@ -95,6 +95,30 @@ public class Lot114dPresenceDataTests
     }
 
     [Fact]
+    public void Aucune_intention_soumise_pour_un_joueur_absent()
+    {
+        // Revue Codex de la PR #32 (28e tour) : le renfort arrive au tick 60. Avant (et au tick même de son arrivée, où sa vue le dit
+        // encore absent), garde tenue, parade et compétence ne produisent aucune commande : ni refus actorAbsent, ni quota consommé, ni
+        // parade qui passerait au tick de l'arrivée. Une fois présent, ses intentions partent.
+        CombatSetup scenario = ScenarioJsonReader.ReadFile(ScenarioPath(Renfort), ShippedData).Setup!;
+        RealtimeCombat combat = TrainingSession.Create(ShippedData, scenario, "build.bastion.gardien", playerId: "renfort").Start();
+        combat.SetGuard(true);
+        while (combat.Tick <= 60)
+        {
+            Assert.False(combat.Player().View.IsPresent, $"tick {combat.Tick}");
+            combat.Parry();
+            combat.UseSlot(0);
+            combat.StepOnce();
+        }
+        Assert.Empty(combat.SubmittedCommands);
+        Assert.True(combat.Player().View.IsPresent);
+        combat.Parry();
+        combat.StepOnce();
+        Assert.Equal(new[] { CombatAction.GuardStart, CombatAction.Parry }, combat.SubmittedCommands.Select(c => c.Action));
+        Assert.All(combat.SubmittedCommands, c => Assert.Equal(61 * 50, c.AtMs));
+    }
+
+    [Fact]
     public void En_tete_du_journal_porte_les_arrivees_et_les_departs()
     {
         Simulate(ScenarioJsonReader.ReadFile(ScenarioPath(Renfort), ShippedData), out MemoryCombatLog log);
