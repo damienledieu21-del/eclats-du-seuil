@@ -33,12 +33,11 @@ namespace EdS.Runtime
         private bool _parryRequested;
         private int? _slotRequested;
 
-        // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage), cap voulu et dernier cap envoyé (null : arrêt ou rien),
-        // dernière cible sélectionnée envoyée au moteur.
+        // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage), cap voulu et dernier cap tenu que le moteur a suivi
+        // (null : arrêt ou rien ; il sert à savoir qu'un cap vient d'être relâché).
         private readonly IReadOnlyList<ConvexPolygon>? _obstacles;
         private int? _wishedHeading;
         private int? _sentHeading;
-        private string? _sentSelection;
 
         /// <summary>Ticks simulés au plus par appel à <see cref="Advance"/> : une image très lente ne fait pas rattraper des secondes d'un coup.</summary>
         public int MaxTicksPerAdvance { get; set; } = 5;
@@ -113,8 +112,9 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot 11.6 : direction de marche voulue (repère du sol), ramenée à un cap de <see cref="MoveInput"/> ; sous la zone morte,
-        /// arrêt. Au prochain tick, le pont envoie <c>move</c> (ou <c>stop</c>) seulement si le cap a changé depuis le dernier envoi. Sans
-        /// espace, sans effet.
+        /// arrêt. Au prochain tick, le pont envoie <c>move</c> seulement si la marche du moteur n'est pas déjà ce cap, et <c>stop</c>
+        /// seulement quand un cap tenu est relâché et que le personnage marche encore (revue Codex de la PR #34 : une commande du scénario
+        /// qui a changé la marche est corrigée tant que le joueur tient un cap ; sans saisie, elle garde la main). Sans espace, sans effet.
         /// </summary>
         public void SetMove(double x, double z)
         {
@@ -221,13 +221,19 @@ namespace EdS.Runtime
             int used = 0;
             foreach (CombatCommand[] group in groups)
                 if (TrySubmit(group)) used += group.Length;
-            if (_setup.Space is null || me.IsDead) return;
-            // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles changent, dans
-            // la place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue
-            // sans remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
+            if (_setup.Space is null || me.IsDead || !me.IsPresent) return;   // un absent n'agit pas : rien ne part avant son arrivée
+            // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles diffèrent de
+            // celles du moteur, dans la place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une
+            // cible perdue de vue sans remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
+            // Revue Codex de la PR #34 : la comparaison se fait avec l'état du moteur, pas avec le dernier envoi, car une commande du
+            // scénario (move, stop ou select du joueur) peut l'avoir changé depuis.
             long atMs = checked(_engine.CurrentTick * _tickMs);
             int room = _setup.Combat.MaxCommandsPerActorPerTick - used;
-            if (room > 0 && _wishedHeading != _sentHeading)
+            bool needMove = _wishedHeading is int wished
+                ? me.MoveDirection != MoveInput.EngineDirection(wished)   // cap tenu que le moteur ne suit pas
+                : _sentHeading != null && me.MoveDirection != null;      // cap relâché, personnage encore en marche
+            if (!needMove) _sentHeading = _wishedHeading;
+            if (room > 0 && needMove)
             {
                 CombatCommand move = _wishedHeading is int heading
                     ? new CombatCommand(atMs, PlayerId, MoveInput.Direction(heading))
@@ -238,8 +244,8 @@ namespace EdS.Runtime
                     room--;
                 }
             }
-            if (room > 0 && TargetId != _sentSelection && TrySubmit(new[] { CombatCommand.SelectTarget(atMs, PlayerId, TargetId) }))
-                _sentSelection = TargetId;
+            if (room > 0 && TargetId != me.SelectedTarget)
+                TrySubmit(new[] { CombatCommand.SelectTarget(atMs, PlayerId, TargetId) });
         }
 
         /// <summary>Soumet un groupe tout ou rien ; plafond de commandes ou file pleine : abandonné en entier, le combat continue.</summary>
