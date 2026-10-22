@@ -981,6 +981,11 @@ namespace EdS.Simulation.Engine
                 Require(f.Engaged == (f.EngagedTick != null) && (f.EngagedTick is not long engagedAt
                     || (f.Behavior?.AggroRange is null ? engagedAt == 0 : engagedAt >= (f.ArrivedTick ?? 0) && engagedAt <= CurrentTick - 1)),
                     $"Tick d'engagement de {who} impossible.");
+                // Revue Codex de la PR #33 (18e tour) : un engagement après le départ a une cause possible à son tick (EngageReason) : coup ou
+                // provocation reçus (mémorisés), allié à comportement déjà engagé, ou ennemi présent qui a pu être à distance d'engagement
+                // (distance actuelle moins les pas que l'un et l'autre ont pu faire depuis).
+                Require(f.EngagedTick is not long engagedTick || f.Behavior?.AggroRange is null || EngagementPossible(f, engagedTick),
+                    $"Engagement de {who} au tick {f.EngagedTick} sans cause possible.");
                 // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
                 // télégraphie) tombe au plus tôt à la fin du combat.
                 Require(!f.AnnouncedToEnd || AnnouncedToEndPossible(f), $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
@@ -1525,6 +1530,22 @@ namespace EdS.Simulation.Engine
         /// autant : ses pas autonomes sont bornés comme les autres (<see cref="MovingTicks"/>). La reprise vérifiée par rejeu
         /// (<see cref="RestoreVerified"/>) reste exacte dans tous les cas.
         /// </summary>
+        private bool EngagementPossible(Fighter f, long tick)
+        {
+            if (f.Struck || f.Result.DamageTaken > 0 || f.Taunted) return true;
+            if (_fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null && a.EngagedTick is long at && at <= tick)) return true;
+            if (f.Body is null || FreeMover(f)) return true;
+            long aggro = f.Behavior!.AggroRange!.Value.Raw, own = checked(MovingTicks(f, tick) * StepBound(f));
+            foreach (Fighter g in _fightersById)
+            {
+                if (g.Team == f.Team || g.Body is null || !PresentAtCommands(g, tick)) continue;
+                if (FreeMover(g)) return true;
+                long reach = checked(aggro + own + MovingTicks(g, tick) * StepBound(g));
+                if (EdgeDistance(f.Body, g.Body) <= reach) return true;
+            }
+            return false;
+        }
+
         private bool FreeMover(Fighter g) => g.Charged;   // 17e tour de la PR #33 : une charge réellement résolue, pas seulement planifiée
 
         /// <summary>

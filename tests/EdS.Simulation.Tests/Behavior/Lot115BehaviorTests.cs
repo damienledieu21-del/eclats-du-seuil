@@ -386,6 +386,29 @@ public class Lot115BehaviorTests
     }
 
     [Fact]
+    public void Instantane_engagement_sans_cause_possible_refuse()
+    {
+        // Revue Codex de la PR #33 (18e tour) : au tick 10, le guetteur (engagement à 2 m) est à 15 m du Bastion immobile et n'a reçu ni
+        // coup ni provocation : un instantané qui le dit engagé depuis le tick 0 (ou 5) est refusé, aucune cause n'a pu l'engager. Le loup,
+        // engagé d'emblée (sans distance d'engagement), et un vrai engagement tardif restent admis (autres tests).
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Hunter("guetteur", At("15", "0"), "0.5", aggro: "2") },
+            durationMs: 6000), NullCombatLog.Instance);
+        while (engine.CurrentTick < 10) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup setup = engine.CompletedSetup();
+        Assert.Equal(text, CombatEngine.Restore(setup, CombatSnapshot.Parse(text), NullCombatLog.Instance).Snapshot().Text);
+        string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"guetteur\"", StringComparison.Ordinal));
+        Assert.Contains("\"engaged\":false,\"engagedTick\":null", line, StringComparison.Ordinal);
+        foreach (int at in new[] { 0, 5, 9 })
+        {
+            string forged = text.Replace(line, line.Replace("\"engaged\":false,\"engagedTick\":null", "\"engaged\":true,\"engagedTick\":" + at,
+                StringComparison.Ordinal), StringComparison.Ordinal);
+            Assert.Contains("Engagement de « guetteur » au tick " + at + " sans cause possible", Assert.Throws<FormatException>(() =>
+                CombatEngine.Restore(setup, CombatSnapshot.Parse(forged), NullCombatLog.Instance)).Message);
+        }
+    }
+
+    [Fact]
     public void Instantane_pas_d_un_ennemi_engage_tard_comptes_depuis_son_engagement()
     {
         // Revue Codex de la PR #33 (16e tour) : un guetteur (engagement à 2 m) attend que le Bastion approche ; juste après son engagement,
@@ -406,7 +429,8 @@ public class Lot115BehaviorTests
         string x = System.Text.RegularExpressions.Regex.Match(line, "\"x\":(-?[0-9]+),").Groups[1].Value;
         string moved = text.Replace(line, line.Replace("\"x\":" + x + ",", "\"x\":" + (long.Parse(x) + 30_000) + ",", StringComparison.Ordinal), StringComparison.Ordinal);
         Assert.NotEqual(text, moved);
-        Assert.Contains("Place de « guetteur » hors de portée", Assert.Throws<FormatException>(() =>
+        // 18e tour : éloigné de 3 m, il n'a plus non plus de cause d'engagement possible à son tick ; l'un ou l'autre refus.
+        Assert.Matches("Place de « guetteur » hors de portée|Engagement de « guetteur » au tick [0-9]+ sans cause possible", Assert.Throws<FormatException>(() =>
             CombatEngine.Restore(setup, CombatSnapshot.Parse(moved), NullCombatLog.Instance)).Message);
         // Un tick d'engagement retouché (plus tôt que le vrai, pour élargir la borne) ne passe pas non plus inaperçu par la reprise vérifiée.
         string earlier = text.Replace("\"engagedTick\":" + engagedAt, "\"engagedTick\":1", StringComparison.Ordinal);
