@@ -205,7 +205,7 @@ namespace EdS.Simulation.Engine
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
-                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
+                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -417,8 +417,9 @@ namespace EdS.Simulation.Engine
         /// Compare deux textes d'instantané, numéros de file (<c>entry</c>) mis de côté (les éléments sont écrits dans l'ordre de sortie : deux
         /// files aux mêmes éléments dans le même ordre sont égales) et pic de file rendu à part. Revue Codex de la PR #32 (33e tour) : en flux,
         /// ligne à ligne et sur place, sans découper ni recopier les textes (seule la ligne d'en-tête est copiée, bornée à
-        /// <see cref="SnapshotNode.MaxLineLength"/>) ; 36e tour : le rang d'annonce d'un impact est sur sa ligne, comparé tel quel. Rend la
-        /// première ligne qui diffère (numérotée à partir de 1), ou null.
+        /// <see cref="SnapshotNode.MaxLineLength"/>) ; 36e tour : le rang d'annonce d'un impact est sur sa ligne, comparé tel quel ; 38e tour :
+        /// les éléments de la phase des commandes d'un même tick, que <c>RunCommands</c> retrie avant de les exécuter, sont comparés comme
+        /// un ensemble. Rend la première ligne qui diffère (numérotée à partir de 1), ou null.
         /// </summary>
         private static string? QueueDifference(string expected, string actual, out long expectedPeak, out long actualPeak)
         {
@@ -440,6 +441,25 @@ namespace EdS.Simulation.Engine
                     return $"ligne {line}";
                 }
                 int commaE = EntryComma(expected, se, le), commaA = EntryComma(actual, sa, la);
+                // Revue Codex de la PR #32 (38e tour) : les éléments de la phase des commandes d'un même tick s'exécutent dans l'ordre de
+                // RunCommands (initiative, identifiant, rang de la commande), pas dans celui de la file. Une commande soumise au tick courant
+                // est en file après le tour d'un assaillant du même tick dans l'original, avant lui dans le rejeu (toutes les commandes du
+                // combat complété sont programmées avant les tours) : ces lignes sont comparées comme un ensemble (triées), numéros mis de côté.
+                int keyE = commaE >= 0 ? CommandsKey(expected, commaE, se + le - commaE) : -1;
+                int keyA = commaA >= 0 ? CommandsKey(actual, commaA, sa + la - commaA) : -1;
+                if (keyE > 0 && keyE == keyA && string.CompareOrdinal(expected, commaE, actual, commaA, keyE) == 0)
+                {
+                    List<(int Start, int Length)> runE = Run(expected, ref pe, commaE, se + le - commaE, keyE);
+                    List<(int Start, int Length)> runA = Run(actual, ref pa, commaA, sa + la - commaA, keyA);
+                    if (runE.Count != runA.Count) return $"ligne {line}";
+                    runE.Sort((x, y) => CompareSpans(expected, x, y));
+                    runA.Sort((x, y) => CompareSpans(actual, x, y));
+                    for (int i = 0; i < runE.Count; i++)
+                        if (runE[i].Length != runA[i].Length || string.CompareOrdinal(expected, runE[i].Start, actual, runA[i].Start, runE[i].Length) != 0)
+                            return $"ligne {line}";
+                    line += runE.Count - 1;
+                    continue;
+                }
                 if (commaE >= 0 && commaA >= 0)
                 {
                     int restE = se + le - commaE, restA = sa + la - commaA;
@@ -452,6 +472,39 @@ namespace EdS.Simulation.Engine
             {
                 if (length < entry.Length || string.CompareOrdinal(text, start, entry, 0, entry.Length) != 0) return -1;
                 return text.IndexOf(',', start + entry.Length, length - entry.Length);
+            }
+
+            // Longueur du préfixe « ,"tick":N,"phase":2, » d'un élément de la phase des commandes (séparateur suivant compris), -1 sinon.
+            static int CommandsKey(string text, int comma, int length)
+            {
+                const string tick = ",\"tick\":", phase = ",\"phase\":2";
+                if (length < tick.Length || string.CompareOrdinal(text, comma, tick, 0, tick.Length) != 0) return -1;
+                int i = comma + tick.Length, stop = comma + length;
+                while (i < stop && text[i] >= '0' && text[i] <= '9') i++;
+                if (stop - i < phase.Length + 1 || string.CompareOrdinal(text, i, phase, 0, phase.Length) != 0) return -1;
+                i += phase.Length;
+                return text[i] == ',' || text[i] == '}' ? i + 1 - comma : -1;
+            }
+
+            // Lignes consécutives (à partir de la première, déjà lue) de même préfixe : la suite de l'élément après son numéro, sans copie.
+            static List<(int Start, int Length)> Run(string text, ref int position, int comma, int length, int key)
+            {
+                var run = new List<(int Start, int Length)> { (comma, length) };
+                while (true)
+                {
+                    int saved = position;
+                    if (!NextLine(text, ref position, out int start, out int count)) { position = saved; break; }
+                    int next = EntryComma(text, start, count);
+                    if (next < 0 || start + count - next < key || string.CompareOrdinal(text, comma, text, next, key) != 0) { position = saved; break; }
+                    run.Add((next, start + count - next));
+                }
+                return run;
+            }
+
+            static int CompareSpans(string text, (int Start, int Length) x, (int Start, int Length) y)
+            {
+                int c = string.CompareOrdinal(text, x.Start, text, y.Start, Math.Min(x.Length, y.Length));
+                return c != 0 ? c : x.Length.CompareTo(y.Length);
             }
         }
 
@@ -931,6 +984,9 @@ namespace EdS.Simulation.Engine
                 // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
                 // télégraphie) tombe au plus tôt à la fin du combat.
                 Require(!f.AnnouncedToEnd || AnnouncedToEndPossible(f), $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
+                // 17e tour de la PR #33 : une charge réellement résolue vient d'un assaillant dont un tour de charge a pu tomber au plus au tick
+                // précédent (et, pour un ennemi à comportement, après son engagement).
+                Require(!f.Charged || ChargePossible(f), $"Charge de {who} sans tour de charge qui ait pu tomber.");
                 // Revue Codex de la PR #33 (tour 6) : seul un assaillant est provoqué, et une provocation active a été reçue.
                 Require(f.Assailant != null || !f.Taunted, $"Provocation reçue par {who} impossible.");
                 Require(f.Taunted || !f.Statuses.Values.Any(s => s.Definition.IsTaunt), $"Provocation active de {who} non mémorisée.");
@@ -1469,15 +1525,7 @@ namespace EdS.Simulation.Engine
         /// autant : ses pas autonomes sont bornés comme les autres (<see cref="MovingTicks"/>). La reprise vérifiée par rejeu
         /// (<see cref="RestoreVerified"/>) reste exacte dans tous les cas.
         /// </summary>
-        private bool FreeMover(Fighter g)
-        {
-            if (g.Assailant is not { } a) return false;
-            // Revue Codex de la PR #33 (14e tour) : sans parcourir l'historique des tours. Les tours d'une même attaque (rang j modulo le
-            // nombre d'attaques) tombent de plus en plus tard : le premier, le tour j, est le plus tôt.
-            for (int j = 0; j < a.Attacks.Count && j < g.NextTurn; j++)
-                if (a.Attacks[j].Charge && ImpactTickOf(TurnTick(g, j), a.Attacks[j]) <= CurrentTick - 1) return true;
-            return false;
-        }
+        private bool FreeMover(Fighter g) => g.Charged;   // 17e tour de la PR #33 : une charge réellement résolue, pas seulement planifiée
 
         /// <summary>
         /// Revue Codex de la PR #33 (13e et 14e tours) : un tour déjà joué de <paramref name="f"/> (avant <see cref="Fighter.NextTurn"/>, au plus
@@ -1485,9 +1533,31 @@ namespace EdS.Simulation.Engine
         /// le nombre d'attaques), sans parcourir l'historique des tours : plus petit tour de ce rang dont le tick est au moins la fin moins la
         /// télégraphie de l'attaque, comparé au dernier tour joué.
         /// </summary>
+        private bool ChargePossible(Fighter g)
+        {
+            if (g.Assailant is not { } a) return false;
+            if (g.Behavior != null && g.EngagedTick is null) return false;
+            // Les tours d'une même attaque (rang j modulo le nombre d'attaques) tombent de plus en plus tard : le premier de ce rang qui suit
+            // l'engagement est le plus tôt possible.
+            long engaged = g.Behavior != null ? g.EngagedTick!.Value : long.MinValue, start = TurnTick(g, 0), interval = a.IntervalMs / _tickMs;
+            int n = a.Attacks.Count;
+            for (int j = 0; j < n; j++)
+            {
+                if (!a.Attacks[j].Charge) continue;
+                long first = engaged <= start ? 0 : interval > 0 ? checked((engaged - start + interval - 1) / interval) : long.MaxValue;
+                if (first == long.MaxValue) continue;
+                long turn = checked(first + ((j - first % n) % n + n) % n);
+                if (turn < g.NextTurn && ImpactTickOf(TurnTick(g, turn), a.Attacks[j]) <= CurrentTick - 1) return true;
+            }
+            return false;
+        }
+
         private bool AnnouncedToEndPossible(Fighter f)
         {
             if (f.Assailant is not { } a || f.NextTurn <= 0) return false;
+            // 17e tour de la PR #33 : un ennemi à comportement n'annonce rien avant son engagement (attackSkipped).
+            if (f.Behavior != null && f.EngagedTick is null) return false;
+            long engagedAt = f.Behavior != null ? f.EngagedTick!.Value : long.MinValue;
             long start = TurnTick(f, 0), interval = a.IntervalMs / _tickMs, previous = CurrentTick - 1;
             // Dernier tour joué : avant NextTurn, et à un tick au plus le précédent.
             long last = checked(f.NextTurn - 1);
@@ -1496,7 +1566,7 @@ namespace EdS.Simulation.Engine
             int n = a.Attacks.Count;
             for (int j = 0; j < n; j++)
             {
-                long threshold = checked(_durationTicks - a.Attacks[j].TelegraphMs / _tickMs);   // tick de tour à partir duquel l'impact tombe après la fin
+                long threshold = Math.Max(engagedAt, checked(_durationTicks - a.Attacks[j].TelegraphMs / _tickMs));   // tick de tour à partir duquel l'impact tombe après la fin (et après l'engagement)
                 long first = threshold <= start ? 0 : interval > 0 ? checked((threshold - start + interval - 1) / interval) : long.MaxValue;
                 if (first == long.MaxValue) continue;
                 long turn = checked(first + ((j - first % n) % n + n) % n);   // plus petit tour ≥ first de rang j
@@ -1767,6 +1837,7 @@ namespace EdS.Simulation.Engine
             f.NextAttackTick = n["nextAttackTick"].NullableLong;
             f.Engaged = n["engaged"].Bool;
             f.EngagedTick = n["engagedTick"].NullableLong;
+            f.Charged = n["charged"].Bool;
             f.AnnouncedToEnd = n["announcedToEnd"].Bool;
             f.Struck = n["struck"].Bool;
             f.Taunted = n["taunted"].Bool;

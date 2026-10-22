@@ -36,6 +36,7 @@ namespace EdS.Game
 
         // Sous-lot 11.6 : combat positionné (null sinon) ; places du tick précédent et du tick affiché, pour glisser entre les deux.
         private SpaceView _space;
+        private IReadOnlyList<ConvexPolygon> _obstacles;
         private GameObject _defaultGround;
         private readonly Dictionary<string, Vector3> _from = new Dictionary<string, Vector3>();
         private readonly Dictionary<string, Vector3> _to = new Dictionary<string, Vector3>();
@@ -98,6 +99,7 @@ namespace EdS.Game
             if (_allyRing != null) Object.Destroy(_allyRing);
             if (_space != null) _space.Destroy();
             _space = combat.Space != null ? new SpaceView(combat.Space, _root.transform) : null;
+            _obstacles = CombatDisplay.Obstacles(combat.Space);
             _defaultGround.SetActive(_space == null);
             _from.Clear();
             _to.Clear();
@@ -192,23 +194,28 @@ namespace EdS.Game
         /// <summary>
         /// Sous-lot 11.6 : places du moteur. Au changement de tick, la place affichée part de celle du tick précédent vers la nouvelle ;
         /// entre deux ticks, elle glisse selon <see cref="ICombatClient.TickProgress"/>. Un absent, ou un ennemi hors de vue du joueur,
-        /// n'est pas affiché. Sous-lot 11.7 : en réseau, le joueur est montré à sa place prédite (<see cref="ICombatClient.PredictedPosition"/>).
+        /// n'est pas affiché ; revue Codex de la PR #34 : la vue se juge entre les places affichées (glissées), pas entre celles du
+        /// moteur, pour qu'un ennemi qui contourne une paroi n'apparaisse qu'une fois réellement sorti de derrière elle. Sous-lot 11.7 : en
+        /// réseau, le joueur est montré à sa place prédite (<see cref="ICombatClient.PredictedPosition"/>), qui sert aussi d'œil pour la vue.
         /// </summary>
         private void Place(ICombatClient combat, bool snap)
         {
             CombatantView me = combat.Player().View;
             var views = new List<CombatantView> { me };
             // Revue Codex de la PR #32 (20e tour) : le joueur absent (avant son arrivée, après son départ) reste caché.
-            var visible = new Dictionary<string, bool> { [combat.PlayerId] = me.IsPresent };
+            var present = new Dictionary<string, bool> { [combat.PlayerId] = me.IsPresent };
+            var enemies = new HashSet<string>();
             foreach (OtherState other in combat.Others())
             {
                 views.Add(other.View);
-                visible[other.Id] = other.View.IsPresent && (!other.IsEnemy || other.InSight);
+                present[other.Id] = other.View.IsPresent;
+                if (other.IsEnemy) enemies.Add(other.Id);
             }
             bool newTick = combat.Tick != _shownTick;
             _shownTick = combat.Tick;
             float t = snap ? 1f : (float)combat.TickProgress;
             (double X, double Z)? predicted = combat.PredictedPosition();
+            var shown = new Dictionary<string, Vector3>();
             foreach (CombatantView v in views)
             {
                 if (!_bodies.TryGetValue(v.Id, out GameObject body)) continue;
@@ -229,19 +236,32 @@ namespace EdS.Game
                     _from[v.Id] = _to[v.Id];
                     _to[v.Id] = target;
                 }
-                Vector3 place = Vector3.Lerp(_from[v.Id], _to[v.Id], t) + Vector3.up;
+                shown[v.Id] = Vector3.Lerp(_from[v.Id], _to[v.Id], t);
+                Vector3 place = shown[v.Id] + Vector3.up;
                 // Sous-lot 11.7 : en réseau, le joueur est montré à sa place prédite, rejointe en douceur (un écart corrigé glisse).
                 if (v.Id == combat.PlayerId && predicted.HasValue)
                 {
                     Vector3 aim = new Vector3((float)predicted.Value.X, 1f, (float)predicted.Value.Z);
                     place = snap ? aim : Vector3.Lerp(body.transform.position, aim, 1f - Mathf.Exp(-18f * Time.deltaTime));
+                    shown[v.Id] = place - Vector3.up;
                 }
                 body.transform.position = place;
                 if (v.Facing is GroundVector f)
                     body.transform.rotation = Quaternion.Slerp(body.transform.rotation, Quaternion.Euler(0f, Yaw(f), 0f), snap ? 1f : 0.3f);
-                body.SetActive(visible.TryGetValue(v.Id, out bool shown) && shown);
+            }
+            bool meShown = shown.TryGetValue(combat.PlayerId, out Vector3 eye);
+            foreach (CombatantView v in views)
+            {
+                if (!_bodies.TryGetValue(v.Id, out GameObject body) || !shown.TryGetValue(v.Id, out Vector3 at)) continue;
+                bool visible = present.TryGetValue(v.Id, out bool here) && here;
+                if (visible && meShown && enemies.Contains(v.Id))
+                    visible = CombatDisplay.InSightAt(Raw(eye.x), Raw(eye.z), Raw(at.x), Raw(at.z), _obstacles);
+                body.SetActive(visible);
             }
         }
+
+        /// <summary>Mètres affichés en dix-millièmes de mètre (unité des places du moteur).</summary>
+        private static long Raw(float metres) => (long)System.Math.Round(metres * 10000.0);
 
         /// <summary>Sous-lot 11.6 : attaques annoncées au sol et coupe du décor qui cache le joueur (combat positionné seulement).</summary>
         public void SyncSpace(ICombatClient combat, Vector3 camera, float deltaTime)
