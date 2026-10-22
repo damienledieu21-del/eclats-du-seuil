@@ -386,7 +386,16 @@ namespace EdS.Simulation.Engine
             // numéros de file diffèrent, pas leur ordre (ni donc le combat), et la file du rejeu contient à chaque instant celle de
             // l'original (son pic de taille est au moins le même). Les deux textes sont comparés numéros de file remplacés par leur rang et
             // pic de file mis de côté (celui reçu au plus celui du rejeu) ; Restore relit ensuite le texte reçu tel quel.
-            string replayed = QueueRanked(replay.Snapshot().Text, out long replayedPeak), received = QueueRanked(snapshot.Text, out long receivedPeak);
+            // Revue Codex de la PR #32 (32e tour) : avant toute copie du texte reçu, sa taille est bornée par celle de l'état rejoué (écrit par
+            // ce moteur) : seuls les numéros de file (et leurs mentions dans announced) et le pic de file peuvent s'écrire avec d'autres
+            // chiffres, au plus 48 caractères par ligne de plus. Un texte plus grand ne peut pas être cet état.
+            string replayedText = replay.Snapshot().Text;
+            long replayedLines = 1;
+            foreach (char c in replayedText)
+                if (c == '\n') replayedLines++;
+            if (snapshot.Text.Length > checked(replayedText.Length + 48 * replayedLines + 64))
+                throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({snapshot.Text.Length} caractères, l'état rejoué en a {replayedText.Length}).");
+            string replayed = QueueRanked(replayedText, out long replayedPeak), received = QueueRanked(snapshot.Text, out long receivedPeak);
             if (!string.Equals(replayed, received, StringComparison.Ordinal) || receivedPeak > replayedPeak)
                 throw new FormatException($"Instantané différent de l'état rejoué au tick {snapshot.Tick} ({FirstDifference(replayed, received)}).");
             return Restore(setup, snapshot, log);

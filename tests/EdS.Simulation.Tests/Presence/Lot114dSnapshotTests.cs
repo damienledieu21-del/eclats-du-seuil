@@ -407,6 +407,11 @@ public class Lot114dSnapshotTests
         Assert.Contains("ligne 1 de", Assert.Throws<FormatException>(() => CombatSnapshot.Parse(longLine + "\n" + lines[0])).Message);
         Assert.Contains("ligne 3 de", Assert.Throws<FormatException>(() => CombatSnapshot.Parse(lines[0] + "\n" + lines[1] + "\n" + longLine)).Message);
         Assert.Equal(text, CombatSnapshot.Parse(text).Text);
+        // 32e tour : la reprise vérifiée borne la taille du texte reçu par celle de l'état rejoué avant de le recopier pour comparer.
+        string padded = lines[0] + "\n" + string.Join("\n", lines.Skip(1).Select((l, i) => i == 0 ? l.Replace("\"fighter\":\"bastion\"",
+            "\"fighter\":\"bastion" + new string('x', 1_000_000) + "\"", StringComparison.Ordinal) : l));
+        Assert.NotEqual(text.Length, padded.Length);
+        Assert.Contains("l'état rejoué en a", Assert.Throws<FormatException>(() => CombatEngine.RestoreVerified(setup, CombatSnapshot.Parse(padded), NullCombatLog.Instance)).Message);
     }
 
     [Fact]
