@@ -95,6 +95,59 @@ public class Lot114dPresenceDataTests
     }
 
     [Fact]
+    public void Aucune_intention_soumise_pour_un_joueur_absent()
+    {
+        // Revue Codex de la PR #32 (28e tour) : le renfort arrive au tick 60. Avant (et au tick même de son arrivée, où sa vue le dit
+        // encore absent), garde tenue, parade et compétence ne produisent aucune commande : ni refus actorAbsent, ni quota consommé, ni
+        // parade qui passerait au tick de l'arrivée. Une fois présent, ses intentions partent.
+        CombatSetup scenario = ScenarioJsonReader.ReadFile(ScenarioPath(Renfort), ShippedData).Setup!;
+        RealtimeCombat combat = TrainingSession.Create(ShippedData, scenario, "build.bastion.gardien", playerId: "renfort").Start();
+        combat.SetGuard(true);
+        while (combat.Tick <= 60)
+        {
+            Assert.False(combat.Player().View.IsPresent, $"tick {combat.Tick}");
+            combat.Parry();
+            combat.UseSlot(0);
+            combat.StepOnce();
+        }
+        Assert.Empty(combat.SubmittedCommands);
+        Assert.True(combat.Player().View.IsPresent);
+        combat.Parry();
+        combat.StepOnce();
+        Assert.Equal(new[] { CombatAction.GuardStart, CombatAction.Parry }, combat.SubmittedCommands.Select(c => c.Action));
+        Assert.All(combat.SubmittedCommands, c => Assert.Equal(61 * 50, c.AtMs));
+    }
+
+    [Fact]
+    public void Retours_suivis_pour_un_combattant_entre_par_Join()
+    {
+        // Revue Codex de la PR #32 (29e tour) : le suivi des retours, créé avant l'entrée d'un combattant par Join, le découvre au premier
+        // Collect qui suit (il levait KeyNotFoundException) ; il part de compteurs nuls : aucun faux retour, puis ses vrais retours.
+        CombatSetup scenario = ScenarioJsonReader.ReadFile(ScenarioPath(Renfort), ShippedData).Setup!;
+        CharacterSetup renfort = scenario.Combatants.OfType<CharacterSetup>().Single(c => c.Id == "renfort");
+        var setup = new CombatSetup(scenario.Seed, scenario.DurationMs, scenario.Stats, scenario.Damage, scenario.Progression, scenario.Combat,
+            scenario.Combatants.Where(c => c.Id != "renfort"), scenario.Commands.Where(c => c.Actor != "renfort"), scenario.Data, scenario.Space);
+        var engine = new CombatEngine(setup, NullCombatLog.Instance);
+        var tracker = new FeedbackTracker(engine);
+        while (engine.CurrentTick < 10)
+        {
+            engine.Step();
+            tracker.Collect(engine);
+        }
+        tracker.Drain();
+        engine.Join(new CharacterSetup(renfort.Id, renfort.Team, renfort.Class, renfort.Build, renfort.Initiative, renfort.Placement,
+            engine.CurrentTick * engine.TickMilliseconds));
+        engine.Step();
+        tracker.Collect(engine);
+        Assert.True(engine.View("renfort").IsPresent);
+        Assert.DoesNotContain(tracker.Drain(), f => f.CombatantId == "renfort");
+        engine.Submit(new CombatCommand(engine.CurrentTick * engine.TickMilliseconds, "renfort", CombatAction.Stop));   // refusé : il ne marche pas
+        engine.Step();
+        tracker.Collect(engine);
+        Assert.Equal(FeedbackKind.Rejected, Assert.Single(tracker.Drain(), f => f.CombatantId == "renfort").Kind);
+    }
+
+    [Fact]
     public void En_tete_du_journal_porte_les_arrivees_et_les_departs()
     {
         Simulate(ScenarioJsonReader.ReadFile(ScenarioPath(Renfort), ShippedData), out MemoryCombatLog log);

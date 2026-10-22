@@ -147,14 +147,23 @@ namespace EdS.Runtime
             return drained;
         }
 
-        /// <summary>Retours du tick qui vient d'être simulé (à appeler après chaque <see cref="CombatEngine.Step"/>).</summary>
+        /// <summary>
+        /// Retours du tick qui vient d'être simulé (à appeler après chaque <see cref="CombatEngine.Step"/>). Revue Codex de la PR #32 (29e
+        /// tour) : un combattant entré par <see cref="CombatEngine.Join"/> depuis la création du suivi est découvert ici ; il part de
+        /// compteurs nuls et vivant (son état à l'entrée), donc seuls ses vrais retours depuis son arrivée sont produits.
+        /// </summary>
         public void Collect(CombatEngine engine)
         {
             if (engine is null) throw new ArgumentNullException(nameof(engine));
             foreach (string id in engine.CombatantIds)
             {
                 CombatantView view = engine.View(id);
-                CombatantCounters before = _counters[id], after = view.Counters;
+                if (!_counters.TryGetValue(id, out CombatantCounters? before))
+                {
+                    before = new CombatantCounters();
+                    _dead[id] = false;
+                }
+                CombatantCounters after = view.Counters;
                 void Count(long b, long a, FeedbackKind kind)
                 {
                     if (a > b) Add(new CombatFeedback(kind, id, a - b, null));
