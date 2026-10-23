@@ -90,7 +90,7 @@ namespace EdS.World
             Npc = npc;
             Node = node;
             Text = text;
-            Options = options;
+            Options = (options ?? throw new ArgumentNullException(nameof(options))).ToList().AsReadOnly();
         }
     }
 
@@ -149,8 +149,9 @@ namespace EdS.World
             }
         }
 
-        public IReadOnlyCollection<string> Facts => _facts;
-        public IReadOnlyCollection<string> Discoveries => _discoveries;
+        // Vues en lecture seule : l'histoire ne change que par ses opérations.
+        public IReadOnlyCollection<string> Facts => _facts.ToList().AsReadOnly();
+        public IReadOnlyCollection<string> Discoveries => _discoveries.ToList().AsReadOnly();
         public int Trust(string npc) => _trust.TryGetValue(npc, out int t) ? t : 0;
         public bool Knows(string fact) => _facts.Contains(fact);
         public bool IsDone(string quest) => _quests.TryGetValue(quest, out var q) && q.Step < 0;

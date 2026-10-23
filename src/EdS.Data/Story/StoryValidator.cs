@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using EdS.Data.Items;
@@ -95,27 +96,28 @@ namespace EdS.Data.Story
             MaxDiscoveries = 256;
         public const long MaxTrust = 100, MaxCount = 999, MaxXp = 1_000_000, MaxDefeat = 1000;
 
-        public static IReadOnlyDictionary<string, ConditionKind> Conditions { get; } = new Dictionary<string, ConditionKind>(StringComparer.Ordinal)
+        // Tables globales réellement non modifiables (une table partagée modifiée changerait toutes les validations suivantes du processus).
+        public static IReadOnlyDictionary<string, ConditionKind> Conditions { get; } = new ReadOnlyDictionary<string, ConditionKind>(new Dictionary<string, ConditionKind>(StringComparer.Ordinal)
         {
             ["fact"] = ConditionKind.Fact, ["notFact"] = ConditionKind.NotFact, ["questNotStarted"] = ConditionKind.QuestNotStarted,
             ["questActive"] = ConditionKind.QuestActive, ["questAt"] = ConditionKind.QuestAt, ["questDone"] = ConditionKind.QuestDone,
             ["trustAtLeast"] = ConditionKind.TrustAtLeast, ["trustBelow"] = ConditionKind.TrustBelow, ["hasItem"] = ConditionKind.HasItem,
             ["phase"] = ConditionKind.Phase, ["inPlace"] = ConditionKind.InPlace, ["passageOpen"] = ConditionKind.PassageOpen,
-        };
+        });
 
-        public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new Dictionary<string, EffectKind>(StringComparer.Ordinal)
+        public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
         {
             ["setFact"] = EffectKind.SetFact, ["trust"] = EffectKind.Trust, ["startQuest"] = EffectKind.StartQuest, ["giveItem"] = EffectKind.GiveItem,
             ["takeItem"] = EffectKind.TakeItem, ["giveXp"] = EffectKind.GiveXp, ["openPassage"] = EffectKind.OpenPassage, ["discover"] = EffectKind.Discover,
-        };
+        });
 
-        public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
+        public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new ReadOnlyDictionary<string, ObjectiveKind>(new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
         {
             ["fact"] = ObjectiveKind.Fact, ["reach"] = ObjectiveKind.Reach, ["defeat"] = ObjectiveKind.Defeat, ["collect"] = ObjectiveKind.Collect,
             ["passage"] = ObjectiveKind.Passage,
-        };
+        });
 
-        public static readonly string[] Phases = { "dawn", "day", "dusk", "night" };
+        public static readonly IReadOnlyList<string> Phases = new ReadOnlyCollection<string>(new[] { "dawn", "day", "dusk", "night" });
 
         private static Regex Id(string prefix) => new Regex($@"^{prefix}(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
