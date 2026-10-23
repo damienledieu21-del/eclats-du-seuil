@@ -223,6 +223,14 @@ namespace EdS.Data.Saves
         /// </summary>
         public const int MaxCharacterIdLength = 64;
 
+        private static readonly Regex DataId = new Regex(@"^[a-z0-9_.]+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Revue Codex de la PR #43 : identifiant de données (classe, talent, compétence) tel que l'écriture le sérialise sans échappement :
+        /// minuscules ASCII, chiffres, « _ » et « . », 200 caractères au plus. La lecture exige le même format.
+        /// </summary>
+        public static bool IsDataId(string? id) => id != null && id.Length <= 200 && DataId.IsMatch(id);
+
         public static bool IsCharacterId(string? id) => id != null && id.Length <= MaxCharacterIdLength && CharacterId.IsMatch(id);
 
         public static bool IsZoneId(string? id) => id != null && id.Length <= 64 && ZoneId.IsMatch(id);
@@ -286,22 +294,28 @@ namespace EdS.Data.Saves
             const string path = "$.data.character";
             if (c.Id is null) Missing(report, path + ".id", "identifiant du personnage");
             else if (!IsCharacterId(c.Id)) report.Add(path + ".id", ValidationCode.InvalidValue, $"identifiant « {c.Id} » invalide : minuscules, chiffres et « _ », {MaxCharacterIdLength} caractères au plus.");
+            const string format = "minuscules, chiffres, « _ » et « . », 200 caractères au plus (format de l'écriture)";
             if (c.Class is null) Missing(report, path + ".class", "identifiant de classe");
+            else if (!IsDataId(c.Class)) report.Add(path + ".class", ValidationCode.InvalidValue, $"identifiant de classe « {c.Class} » invalide : {format}.");
             if (c.Xp is null) Missing(report, path + ".xp", "expérience cumulée");
             else if (c.Xp < 0 || c.Xp > MaxXp) report.Add(path + ".xp", ValidationCode.OutOfRange, $"expérience hors de [0, {MaxXp}].");
             if (c.Talents is null) Missing(report, path + ".talents", "rangs des talents, éventuellement vide");
             else
                 foreach (var t in c.Talents)
-                    if (t.Value is not int rank) Missing(report, path + ".talents." + t.Key, "rang");
+                    if (!IsDataId(t.Key)) report.Add(path + ".talents." + t.Key, ValidationCode.InvalidValue, $"identifiant de talent invalide : {format}.");
+                    else if (t.Value is not int rank) Missing(report, path + ".talents." + t.Key, "rang");
                     else if (rank < 0) report.Add(path + ".talents." + t.Key, ValidationCode.InvalidValue, "un rang ne peut pas être négatif.");
             void Names(List<string?>? list, string field)
             {
                 if (list is null) { Missing(report, $"{path}.{field}", "liste, éventuellement vide"); return; }
-                for (int i = 0; i < list.Count; i++) if (list[i] is null) Missing(report, $"{path}.{field}[{i}]", "identifiant de compétence");
+                for (int i = 0; i < list.Count; i++)
+                    if (list[i] is null) Missing(report, $"{path}.{field}[{i}]", "identifiant de compétence");
+                    else if (!IsDataId(list[i])) report.Add($"{path}.{field}[{i}]", ValidationCode.InvalidValue, $"identifiant de compétence « {list[i]} » invalide : {format}.");
             }
             Names(c.ActiveSkills, "activeSkills");
             // Revue Codex de la PR #43 : l'ultime est obligatoire (null s'il n'y en a pas), comme le dit le schéma.
             if (!c.HasUltimate) Missing(report, path + ".ultimate", "ultime, ou null");
+            else if (c.Ultimate != null && !IsDataId(c.Ultimate)) report.Add(path + ".ultimate", ValidationCode.InvalidValue, $"identifiant de compétence « {c.Ultimate} » invalide : {format}.");
             Names(c.PassiveSkills, "passiveSkills");
             // Sous-lot 12.3 (version 3) : inventaire et équipement. Leur cohérence avec le catalogue des objets (objets connus, piles, emplacements,
             // niveau requis) est vérifiée quand la partie reprend : la sauvegarde ne dépend pas des données du jeu.
