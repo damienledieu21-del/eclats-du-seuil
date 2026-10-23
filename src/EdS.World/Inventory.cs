@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using EdS.Data.Items;
 using EdS.Data.Saves;
@@ -42,11 +43,11 @@ namespace EdS.World
 
         public ItemCatalog Catalog => _catalog;
 
-        /// <summary>Places occupées, dans l'ordre.</summary>
-        public IReadOnlyList<ItemStack> Stacks => _stacks;
+        /// <summary>Places occupées, dans l'ordre (vue en lecture seule : on ne change l'inventaire que par ses opérations).</summary>
+        public IReadOnlyList<ItemStack> Stacks => _stacks.AsReadOnly();
 
-        /// <summary>Objet porté par emplacement (ordre ordinal).</summary>
-        public IReadOnlyDictionary<string, string> Equipped => _equipped;
+        /// <summary>Objet porté par emplacement (ordre ordinal ; vue en lecture seule).</summary>
+        public IReadOnlyDictionary<string, string> Equipped => new ReadOnlyDictionary<string, string>(_equipped);
 
         public int FreePlaces => _catalog.InventorySize - _stacks.Count;
 

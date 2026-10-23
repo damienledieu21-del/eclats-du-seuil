@@ -94,6 +94,17 @@ public class Lot125StoryTests
     // --- Données -----------------------------------------------------------------------------------
 
     [Fact]
+    public void Tables_et_vues_de_l_histoire_non_modifiables()
+    {
+        // Les tables globales du validateur et les vues de l'histoire ne se modifient pas par conversion (même règle que la revue Codex de la PR #44).
+        Assert.Throws<NotSupportedException>(() => ((IDictionary<string, ConditionKind>)StoryValidator.Conditions).Clear());
+        Assert.Throws<NotSupportedException>(() => ((IDictionary<string, EffectKind>)StoryValidator.Effects).Clear());
+        Assert.Throws<NotSupportedException>(() => ((IDictionary<string, ObjectiveKind>)StoryValidator.Objectives).Clear());
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)StoryValidator.Phases)[0] = "night");
+        Assert.Throws<NotSupportedException>(() => ((IDictionary<string, string>)Texts.Entries).Clear());
+    }
+
+    [Fact]
     public void Textes_et_histoire_livres()
     {
         TextsLoadResult texts = StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(DataDirectory));
