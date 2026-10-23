@@ -95,7 +95,9 @@ namespace EdS.World
             if (session < 1 || session > SaveValidator.MaxWorldTick) throw new ArgumentOutOfRangeException(nameof(session));
             // Revue Codex de la PR #42 : la session entière doit tenir sous la borne des sauvegardes (sa durée réservée d'avance), sinon
             // sa sauvegarde finale serait refusée à la lecture.
-            long sessionTicks = checked(setup.DurationMs / setup.Combat.TickMilliseconds + 1);
+            // Revue Codex de la PR #42 (4e tour) : une session de N ticks simule les ticks 0 à N-1 et avance le monde de N ticks exactement.
+            long tickMs = setup.Combat.TickMilliseconds;
+            long sessionTicks = checked((setup.DurationMs + tickMs - 1) / tickMs);
             if (startWorldTick < 0 || startWorldTick > SaveValidator.MaxWorldTick - sessionTicks)
                 throw new ArgumentOutOfRangeException(nameof(startWorldTick), startWorldTick,
                     $"Temps du monde de départ hors de [0, {SaveValidator.MaxWorldTick - sessionTicks}] : la session ({sessionTicks} ticks au plus) doit tenir sous {SaveValidator.MaxWorldTick}.");
