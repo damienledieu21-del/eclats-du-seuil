@@ -257,7 +257,7 @@ namespace EdS.Data.Story
         {
             Language = language;
             ContentVersion = contentVersion;
-            Entries = entries;
+            Entries = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>(entries ?? throw new ArgumentNullException(nameof(entries)), StringComparer.Ordinal));
         }
 
         public bool Has(string key) => Entries.ContainsKey(key ?? string.Empty);

@@ -50,6 +50,19 @@ public class Lot123ItemTests
     // --- Catalogue ---------------------------------------------------------------------------------
 
     [Fact]
+    public void Tables_des_raretes_et_des_types_non_modifiables()
+    {
+        // Revue Codex de la PR #44 (2e tour) : les tables globales ne se modifient pas par conversion.
+        Assert.Throws<NotSupportedException>(() => ((IDictionary<string, ItemRarity>)ItemValidator.Rarities).Clear());
+        Assert.Throws<NotSupportedException>(() => ((IDictionary<string, ItemType>)ItemValidator.Types)["equipment"] = ItemType.Material);
+        Assert.Equal(ItemRarity.Epic, ItemValidator.Rarities["epic"]);
+        // L'inventaire ne se modifie que par ses opérations : ses vues sont en lecture seule.
+        var inventory = new Inventory(ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!);
+        Assert.Throws<NotSupportedException>(() => ((IList<ItemStack>)inventory.Stacks).Add(new ItemStack("item.gambison", 1)));
+        Assert.Throws<NotSupportedException>(() => ((IDictionary<string, string>)inventory.Equipped).Add("weapon", "item.gambison"));
+    }
+
+    [Fact]
     public void Champs_du_bonus_d_equipement_non_modifiables()
     {
         // Revue Codex de la PR #44 : la liste des champs ne peut pas être réordonnée par un appelant ; nom, rang et indexeur restent alignés.

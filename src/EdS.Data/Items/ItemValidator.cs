@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using EdS.Data.Validation;
@@ -184,7 +185,9 @@ namespace EdS.Data.Items
         /// <summary>Plus grand bonus d'un objet : douze objets portés restent sous <see cref="GearBonus.MaxValue"/>.</summary>
         public const int MaxItemBonus = 50_000;
 
-        public static IReadOnlyDictionary<string, ItemRarity> Rarities { get; } = new Dictionary<string, ItemRarity>(StringComparer.Ordinal)
+        // Revue Codex de la PR #44 : tables globales réellement non modifiables (une table partagée modifiée changerait toutes les validations
+        // suivantes du processus).
+        public static IReadOnlyDictionary<string, ItemRarity> Rarities { get; } = new ReadOnlyDictionary<string, ItemRarity>(new Dictionary<string, ItemRarity>(StringComparer.Ordinal)
         {
             ["common"] = ItemRarity.Common,
             ["rare"] = ItemRarity.Rare,
@@ -192,14 +195,14 @@ namespace EdS.Data.Items
             ["epic"] = ItemRarity.Epic,
             ["legendary"] = ItemRarity.Legendary,
             ["mythic"] = ItemRarity.Mythic,
-        };
+        });
 
-        public static IReadOnlyDictionary<string, ItemType> Types { get; } = new Dictionary<string, ItemType>(StringComparer.Ordinal)
+        public static IReadOnlyDictionary<string, ItemType> Types { get; } = new ReadOnlyDictionary<string, ItemType>(new Dictionary<string, ItemType>(StringComparer.Ordinal)
         {
             ["equipment"] = ItemType.Equipment,
             ["material"] = ItemType.Material,
             ["consumable"] = ItemType.Consumable,
-        };
+        });
 
         public static string RarityId(ItemRarity rarity) => Rarities.First(r => r.Value == rarity).Key;
 
