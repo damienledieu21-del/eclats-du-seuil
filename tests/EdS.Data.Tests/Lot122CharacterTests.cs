@@ -126,7 +126,7 @@ public class Lot122CharacterTests
     public void Sauvegarde_du_personnage_lue_et_ecrite_a_l_identique()
     {
         string text = SaveJsonReader.Write(HeroSave());
-        Assert.Contains("\"schemaVersion\": 3,", text, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 4,", text, StringComparison.Ordinal);
         Assert.Contains("\"character\": {\n      \"id\": \"bastion\",\n      \"class\": \"class.bastion\",\n      \"xp\": 40,", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
@@ -157,7 +157,7 @@ public class Lot122CharacterTests
         Assert.Null(read.Save.Character);
         Assert.Equal((60L, 1L), (read.Save.WorldTick, read.Save.Sessions));
         string rewritten = SaveJsonReader.Write(read.Save);
-        Assert.Contains("\"schemaVersion\": 3,", rewritten, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 4,", rewritten, StringComparison.Ordinal);
         Assert.False(SaveJsonReader.Read(rewritten).Save!.Migrated);
         // Un personnage dans une sauvegarde de version 1 n'existe pas encore : champ inconnu.
         Assert.Equal("$.data.character", Assert.Single(SaveJsonReader.Read(v1.Replace("\"consumed\"", "\"character\": null, \"consumed\"")).Report.Errors).Path);
@@ -170,7 +170,7 @@ public class Lot122CharacterTests
     [InlineData("\"xp\": 40", "\"xp\": 1000000001", "$.data.character.xp")]
     [InlineData("\"talents\": {}", "\"talents\": {\"t.a\": -1}", "$.data.character.talents.t.a")]
     [InlineData("\"activeSkills\": [", "\"activeSkills\": [null, ", "$.data.character.activeSkills[0]")]
-    [InlineData("\"schemaVersion\": 3", "\"schemaVersion\": 4", "$.schemaVersion")]
+    [InlineData("\"schemaVersion\": 4", "\"schemaVersion\": 5", "$.schemaVersion")]
     public void Sauvegarde_du_personnage_invalide(string from, string to, string path)
     {
         string text = SaveJsonReader.Write(HeroSave());

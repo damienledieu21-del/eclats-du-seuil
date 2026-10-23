@@ -135,7 +135,7 @@ public class Lot125StoryTests
         Assert.Equal("$.data.quests[0].steps[1].objective.id", FirstError(Mutated(r => Step(r, 1)["objective"]!["id"] = "foret")));
         Assert.Equal("$.data.quests[0].steps[5].objective.id", FirstError(Mutated(r => Step(r, 5)["objective"]!["id"] = "ours")));
         Assert.Equal("$.data.quests[0].steps[5].objective.value", FirstError(Mutated(r => Step(r, 5)["objective"]!["value"] = 0)));
-        Assert.Equal("$.data.quests[0].steps[6].id", FirstError(Mutated(r => Step(r, 6)["id"] = "done")));                 // réservé
+        Assert.Equal("$.data.quests[0].steps[3].id", FirstError(Mutated(r => Step(r, 3)["id"] = "done")));                 // réservé
         Assert.Equal("$.data.quests[0].steps[1].id", FirstError(Mutated(r => Step(r, 1)["id"] = "enquete")));
         // Un fait attendu doit être appris quelque part.
         Assert.Equal("$.data.quests[0].steps[0].objective.id", FirstError(Mutated(r => Step(r, 0)["objective"]!["id"] = "fact.jamais.appris")));
@@ -250,6 +250,8 @@ public class Lot125StoryTests
             JsonObject rodeur = s["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => c["id"]!.GetValue<string>() == "rodeur");
             rodeur["health"] = 40;
             rodeur["position"] = new JsonArray(-16, -12);
+            rodeur["behavior"] = new JsonObject { ["maxRange"] = 0.5, ["aggroRange"] = 9, ["pack"] = false };   // au contact, inoffensif
+            foreach (JsonNode? a in rodeur["attacks"]!.AsArray()) a!["rawDamage"] = 1;
         });
         WorldSession hunt = Play(zone, Hero(At("rodeur")));
         var story = new List<StoryEvent>();
