@@ -96,7 +96,12 @@ namespace EdS.World
             if (setup is null) throw new ArgumentNullException(nameof(setup));
             if (!setup.Zone) throw new ArgumentException("Une zone se simule en mode zone (scénario « zone »: true).", nameof(setup));
             if (session < 1 || session > SaveValidator.MaxWorldTick) throw new ArgumentOutOfRangeException(nameof(session));
-            if (startWorldTick < 0 || startWorldTick > SaveValidator.MaxWorldTick) throw new ArgumentOutOfRangeException(nameof(startWorldTick));
+            // Revue Codex de la PR #42 : la session entière doit tenir sous la borne des sauvegardes (sa durée réservée d'avance), sinon
+            // sa sauvegarde finale serait refusée à la lecture.
+            long sessionTicks = checked(setup.DurationMs / setup.Combat.TickMilliseconds + 1);
+            if (startWorldTick < 0 || startWorldTick > SaveValidator.MaxWorldTick - sessionTicks)
+                throw new ArgumentOutOfRangeException(nameof(startWorldTick), startWorldTick,
+                    $"Temps du monde de départ hors de [0, {SaveValidator.MaxWorldTick - sessionTicks}] : la session ({sessionTicks} ticks au plus) doit tenir sous {SaveValidator.MaxWorldTick}.");
             Id = id;
             Setup = setup;
             Session = session;
