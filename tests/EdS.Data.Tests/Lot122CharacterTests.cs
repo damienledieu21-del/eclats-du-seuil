@@ -174,6 +174,10 @@ public class Lot122CharacterTests
     [InlineData("\"schemaVersion\": 5", "\"schemaVersion\": 6", "$.schemaVersion")]
     [InlineData("      \"ultimate\": null,\n", "", "$.data.character.ultimate")]                     // revue Codex de la PR #43 : obligatoire
     [InlineData("\"id\": \"bastion\"", "\"id\": \"b12345678901234567890123456789012345678901234567890123456789012345\"", "$.data.character.id")]   // 66 caractères
+    [InlineData("\"class\": \"class.bastion\"", "\"class\": \"Classe Bastion\"", "$.data.character.class")]   // revue Codex de la PR #43 : format de l'écriture
+    [InlineData("\"talents\": {}", "\"talents\": {\"Talent\": 1}", "$.data.character.talents.Talent")]
+    [InlineData("\"activeSkills\": [", "\"activeSkills\": [\"Frappe du rempart\", ", "$.data.character.activeSkills[0]")]
+    [InlineData("\"ultimate\": null", "\"ultimate\": \"Ultime\"", "$.data.character.ultimate")]
     public void Sauvegarde_du_personnage_invalide(string from, string to, string path)
     {
         string text = SaveJsonReader.Write(HeroSave());
@@ -275,6 +279,62 @@ public class Lot122CharacterTests
             gains.AddRange(session.Step().Experience);
         }
         return (session, gains, session.Zone.Engine.View("loup1").IsDead);
+    }
+
+    [Theory]
+    [InlineData("\"class\": \"class.bastion\"", "\"class\": \"Classe Bastion\"")]
+    [InlineData("\"talents\": {}", "\"talents\": {\"Talent\": 1}")]
+    [InlineData("\"activeSkills\": [", "\"activeSkills\": [\"Frappe du rempart\", ")]
+    [InlineData("\"ultimate\": null", "\"ultimate\": \"Ultime\"")]
+    [InlineData("\"id\": \"bastion\"", "\"id\": \"b12345678901234567890123456789012345678901234567890123456789012345\"")]
+    public void Schema_refuse_ce_que_la_lecture_refuse(string from, string to)
+    {
+        // Revue Codex de la PR #43 : le schéma JSON des sauvegardes suit le format exigé par la lecture.
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json"));
+        string text = SaveJsonReader.Write(HeroSave());
+        Assert.True(schema.IsValid(JsonDocument.Parse(text).RootElement));
+        string bad = text.Replace(from, to, StringComparison.Ordinal);
+        Assert.NotEqual(text, bad);
+        Assert.False(SaveJsonReader.Read(bad).IsValid);
+        Assert.False(schema.IsValid(JsonDocument.Parse(bad).RootElement));
+    }
+
+    [Fact]
+    public void Talents_ecrits_dans_l_ordre_ordinal()
+    {
+        // Revue Codex de la PR #43 : l'ordre d'écriture ne dépend pas de l'ordre d'énumération d'un dictionnaire.
+        var talents = new SortedDictionary<string, int>(Comparer<string>.Create((a, b) => -string.CompareOrdinal(a, b))) { ["t.a"] = 1, ["t.b"] = 2 };
+        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), new SavedCharacter("bastion", "class.bastion", 0, talents)));
+        Assert.Contains("\"talents\": {\"t.a\": 1, \"t.b\": 2},", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Mort_creditee_au_personnage_qui_part_au_meme_tick()
+    {
+        // Revue Codex de la PR #43 : le départ prend effet en fin de tick, après les morts : une créature tuée au tick du départ compte.
+        (WorldSession first, _, bool died) = KillWolf(0);
+        Assert.True(died);
+        long deathTick = first.Zone.Engine.CurrentTick - 1;   // la boucle s'arrête au tick qui suit la mort
+        ScenarioLoadResult loaded = ReadMutated(root =>
+        {
+            JsonObject wolf = root["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => c["id"]!.GetValue<string>() == "loup1");
+            wolf["health"] = 60;
+            wolf["position"] = new JsonArray(-16, -12);
+        }, scenario: "zones/vallons");
+        var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", Shipped)),
+            loaded.Setup!, ShippedData, Shipped, Items, new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5")));
+        var gains = new List<ExperienceGained>();
+        for (int i = 0; session.Zone.Engine.CurrentTick <= deathTick; i++)
+        {
+            if (i % 20 == 1)
+                try { session.Zone.Engine.Submit(new CombatCommand(session.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", "loup1")); }
+                catch (ArgumentException) { }
+            if (session.Zone.Engine.CurrentTick == deathTick) session.Zone.Leave("bastion");
+            gains.AddRange(session.Step().Experience);
+        }
+        Assert.True(session.Zone.Engine.View("loup1").IsDead);
+        Assert.True(session.Zone.Engine.View("bastion").HasLeft);
+        Assert.Equal("zone.vallons/1/death/loup1", Assert.Single(gains).Source.Key);
     }
 
     [Fact]
