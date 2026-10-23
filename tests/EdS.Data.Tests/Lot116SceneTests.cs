@@ -220,9 +220,17 @@ public class Lot116SceneTests
             Assert.True(combat.Others().Single(o => o.Id == combat.TargetId).InSight, combat.TargetId);
         }
 
-        // Retour vers le sud jusqu'à ne plus voir aucun ennemi : la cible est lâchée et la sélection vidée.
+        // Retour vers le sud jusqu'à ne plus voir aucun ennemi : la cible est gardée un court délai (sous-lot 11.9, une seconde), puis lâchée
+        // et la sélection vidée.
         combat.SetMove(0, -1);
         for (int i = 0; i < 200 && combat.Others().Any(o => o.IsEnemy && o.InSight); i++) combat.StepOnce();
+        Assert.DoesNotContain(combat.Others(), o => o.IsEnemy && o.InSight);
+        string? kept = combat.TargetId;
+        Assert.NotNull(kept);
+        combat.SetMove(0, 0);
+        for (int i = 0; i < 18; i++) combat.StepOnce();
+        Assert.Equal(kept, combat.TargetId);
+        for (int i = 0; i < 2; i++) combat.StepOnce();
         Assert.DoesNotContain(combat.Others(), o => o.IsEnemy && o.InSight);
         Assert.Null(combat.TargetId);
         combat.StepOnce();

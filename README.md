@@ -153,6 +153,8 @@ Sous-lot 11.8 (premier essai tactile, à essayer) : commandes au doigt dans Unit
 
 Sous-lot 11.9a (réglages après l'essai de Damien du 22 octobre 2026) : un obstacle peut être bas (`low` : il arrête la marche mais pas la vue ; la rivière des Vallons laisse voir le sanglier et l'archer), une bande peut repousser ce qu'elle touche (`push` : la charge du sanglier repousse de 2 m), un ennemi étourdi pendant l'annonce de son attaque la perd, l'arrêt pendant l'annonce (`holdPosition`) et l'entraînement par la meute (`pack`) se règlent par attaque et par ennemi, et un personnage peut reculer en regardant devant lui (`backward` d'une marche). Moteur 0.21.0, journal au format 15, scénarios en schéma 9, protocole réseau 3. Détail : [docs/MOTEUR.md](docs/MOTEUR.md#réglages-après-lessai-sous-lot-119), limites : [docs/LIMITES_LOT_11.md](docs/LIMITES_LOT_11.md#sous-lot-119a--réglages-du-moteur-après-lessai).
 
+Sous-lot 11.9b (réglages de Unity après l'essai, à essayer) : en vue 2, reculer fait marcher le Bastion à reculons en regardant devant lui ; une cible perdue de vue est remplacée après une seconde ; Unity crée une scène de démarrage (`Assets/EdS/Scenes/Jeu.unity`) et ne demande plus d'en enregistrer une. Limites : [docs/LIMITES_LOT_11.md](docs/LIMITES_LOT_11.md#sous-lot-119b--réglages-de-unity-après-lessai).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement

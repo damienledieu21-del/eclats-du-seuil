@@ -512,6 +512,9 @@ unity/Assets/EdS/Resources/
 unity/Assets/EdS/Resources.meta
 unity/Assets/Essai.unity
 unity/Assets/Essai.unity.meta
+# Sous-lot 11.9 : scène de démarrage créée par l'éditeur (EdsStartupScene).
+unity/Assets/EdS/Scenes/
+unity/Assets/EdS/Scenes.meta
 unity/Assets/StreamingAssets.meta
 # Créés par URP à la première ouverture (profil de volume et réglages globaux par défaut), régénérés au besoin : non suivis.
 unity/Assets/DefaultVolumeProfile.asset

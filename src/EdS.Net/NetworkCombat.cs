@@ -38,6 +38,7 @@ namespace EdS.Net
         private readonly MovementPrediction _prediction = new MovementPrediction();
         private int? _heading;
         private bool _backward;   // sous-lot 11.9
+        private readonly TargetKeeper _targets = new TargetKeeper();
         private CombatSnapshot? _baseSnapshot;
         private string? _baseHash;
 
@@ -568,11 +569,12 @@ namespace EdS.Net
             return true;
         }
 
-        /// <summary>Cible et allié encore valides, sinon le premier vivant (même règle que le serveur).</summary>
+        /// <summary>Cible (gardée un court délai si elle est perdue de vue) et allié encore valides, sinon le premier vivant.</summary>
         private void KeepTargets()
         {
-            if (TargetId is null || !CombatDisplay.LivingEnemies(_engine, PlayerId, _sightObstacles).Any(e => e.Id == TargetId))
-                SetTarget(CombatDisplay.LivingEnemies(_engine, PlayerId, _sightObstacles).FirstOrDefault()?.Id);
+            // Sous-lot 11.9 : une cible perdue de vue est remplacée après un court délai (TargetKeeper, comme le pont solo).
+            string? kept = _targets.Keep(_engine, PlayerId, _sightObstacles, TargetId);
+            if (kept != TargetId) SetTarget(kept);
             if (AllyId is null || !CombatDisplay.LivingAllies(_engine, PlayerId).Any(a => a.Id == AllyId))
                 SetAlly(CombatDisplay.LivingAllies(_engine, PlayerId).FirstOrDefault()?.Id);
         }
