@@ -87,7 +87,8 @@ public class Lot124ZoneTests
         Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil" }, z.Places.Select(p => p.Id));
         Assert.Equal(new[] { "village" }, z.PlacesAt(z.Entry.Position).Select(p => p.Id));
         Assert.Equal(10, z.Populations.Count);
-        Assert.Equal(z.Setup.Combatants.Select(c => c.Id), z.Populations.Select(p => p.Creature));   // chaque créature du scénario est peuplée
+        Assert.Equal(z.Setup.Combatants.Select(c => c.Id).OrderBy(i => i, StringComparer.Ordinal),
+            z.Populations.Select(p => p.Creature).OrderBy(i => i, StringComparer.Ordinal));   // chaque créature du scénario est peuplée
         Population wolf = z.PopulationOf("loup1")!;
         Assert.Equal((90_000L, Fixed.FromInt(20), "loot.loup"), (wolf.RespawnMs, wolf.LeashRange, wolf.Loot));
         Assert.Equal(("moulin", "porte_moulin"), (z.Passages[0].Id, z.Passages[0].Obstacle));
@@ -159,6 +160,7 @@ public class Lot124ZoneTests
         {
             Creature(s, "loup1")["health"] = 60;
             Creature(s, "loup1")["position"] = new JsonArray(-16, -12);
+            Creature(s, "loup1")["attacks"]![0]!["rawDamage"] = 1;   // le Bastion tient toute la chasse
         }).Zone!;
         var session = new WorldSession(NewGame(), z, ShippedData, Progression, Items);
         var population = new List<PopulationEvent>();
