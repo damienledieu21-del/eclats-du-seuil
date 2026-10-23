@@ -16,7 +16,7 @@
       "text.odile.recit.soupcon": "Votre fils ne sortirait-il pas la nuit ?",
       "text.odile.en_cours": "Alors, ces traces ?",
       "text.odile.en_cours.repartir": "J'y retourne.",
-      "text.odile.retour": "Tu reviens du Seuil ? Dis-moi tout.",
+      "text.odile.retour": "Tu reviens du Seuil ? On dit que le Gardien est tombé. Dis-moi tout.",
       "text.odile.retour.confiance": "Le rôdeur ne reviendra plus. Vos nuits seront calmes.",
       "text.odile.retour.froid": "C'est réglé.",
       "text.odile.apres": "Le moulin tourne de nouveau. Merci, et que l'aube te garde.",
@@ -46,7 +46,9 @@
       "text.recipe.potion_de_soin": "Potion de soin",
       "text.recipe.remede_de_l_aube": "Remède de l'aube",
       "text.maelle.ferrure.poser": "La ferrure tiendra : je la pose sur la porte du moulin.",
-      "text.maelle.forger_soi_meme": "Une ferrure pour la porte du moulin ? Forge-la toi-même à mon enclume : trois minerais de fer. La carrière en regorge."
+      "text.maelle.forger_soi_meme": "Une ferrure pour la porte du moulin ? Forge-la toi-même à mon enclume : trois minerais de fer. La carrière en regorge.",
+      "text.quest.traces.chef": "Au cœur des pierres dressées, le Gardien du Seuil veille sur la manifestation : le vaincre, sous toutes ses formes.",
+      "text.discovery.gardien": "Le Gardien du Seuil s'est relevé, éveillé, après sa chute : la manifestation le nourrissait."
     }
   }
 }

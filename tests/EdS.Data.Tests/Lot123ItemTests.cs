@@ -57,7 +57,7 @@ public class Lot123ItemTests
         ItemCatalog c = loaded.Catalog!;
         Assert.Equal(new[] { "weapon", "shield", "chest", "neck" }, c.Slots);   // quatre emplacements dont le bouclier (L11-D10)
         Assert.Equal(24, c.InventorySize);                                       // Q5
-        Assert.Equal(19, c.Items.Count);   // sous-lot 12.6 : herbe, ferrure, potion, remède
+        Assert.Equal(20, c.Items.Count);   // sous-lot 12.6 : herbe, ferrure, potion, remède ; 12.7 : lame du Seuil
         ItemDefinition shield = c.Item("item.ecu_de_chene");
         Assert.Equal((ItemType.Equipment, "shield", 1, ItemRarity.Common, 1, 60), (shield.Type, shield.Slot, shield.RequiredLevel, shield.Rarity, shield.Stack, shield.Bonus.Armor));
         // H5 : deux boucliers de même niveau, d'orientations différentes.

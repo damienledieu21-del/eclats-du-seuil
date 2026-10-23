@@ -43,6 +43,7 @@ public class Lot125StoryTests
             JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
             scenario(s);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
+            File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));   // sous-lot 12.7 : formes du chef
         }
         try
         {
@@ -105,8 +106,8 @@ public class Lot125StoryTests
         StoryBook book = story.Story!;
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard" }, book.Npcs.Select(n => n.Id));
         Quest mission = book.Quest(Mission);
-        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "manifestation", "rodeur", "retour" }, mission.Steps.Select(s => s.Id));
-        Assert.Equal(3, book.Discoveries.Count);
+        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "manifestation", "rodeur", "chef", "retour" }, mission.Steps.Select(s => s.Id));   // 12.7 : le chef
+        Assert.Equal(4, book.Discoveries.Count);
         // Chaque texte livré sert, et chaque clé employée existe (le validateur le garantit dans ce sens).
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));
         Assert.True(Schema("story.schema.json").IsValid(JsonDocument.Parse(File.ReadAllText(StoryPath)).RootElement));
@@ -263,7 +264,7 @@ public class Lot125StoryTests
             story.AddRange(hunt.Step().Story);
         }
         Assert.Equal("StepCompleted quest.traces_sous_le_moulin/rodeur", Assert.Single(story).ToString());
-        Assert.Equal("retour", hunt.Narrative!.CurrentStep(Mission)!.Id);
+        Assert.Equal("chef", hunt.Narrative!.CurrentStep(Mission)!.Id);   // sous-lot 12.7 : le chef avant le retour
     }
 
     // --- Sauvegarde, version 4 ---------------------------------------------------------------------

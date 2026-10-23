@@ -1,6 +1,6 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "zone",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -180,6 +180,22 @@
         "name": "Passage du moulin",
         "obstacle": "porte_moulin"
       }
-    ]
+    ],
+    "boss": {
+      "id": "gardien_du_seuil",
+      "scenario": "zones/vallons_chef",
+      "forms": [
+        "gardien_du_seuil",
+        "gardien_eveille"
+      ],
+      "fact": "fact.chef.vaincu",
+      "rewards": [
+        {
+          "item": "item.lame_du_seuil",
+          "count": 1
+        }
+      ],
+      "loot": "loot.gardien"
+    }
   }
 }

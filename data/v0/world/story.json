@@ -429,6 +429,20 @@
             "effects": []
           },
           {
+            "id": "chef",
+            "text": "text.quest.traces.chef",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.chef.vaincu"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.gardien"
+              }
+            ]
+          },
+          {
             "id": "retour",
             "text": "text.quest.traces.retour",
             "objective": {
@@ -458,6 +472,10 @@
       {
         "id": "discovery.manifestation",
         "text": "text.discovery.manifestation"
+      },
+      {
+        "id": "discovery.gardien",
+        "text": "text.discovery.gardien"
       }
     ]
   }

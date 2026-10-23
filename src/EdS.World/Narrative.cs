@@ -223,6 +223,14 @@ namespace EdS.World
 
         // --- Quêtes ------------------------------------------------------------------------------
 
+        /// <summary>Sous-lot 12.7 : fait appris par le monde (victoire sur le chef) ; faux s'il l'était déjà.</summary>
+        internal bool Learn(string fact, List<StoryEvent> events)
+        {
+            if (!_facts.Add(fact)) return false;
+            events.Add(new StoryEvent(StoryEventKind.FactLearned, fact));
+            return true;
+        }
+
         /// <summary>Une créature de cette population a été vaincue (mort attribuée) : compte pour les objectifs « defeat » en cours.</summary>
         internal void Defeated(string population)
         {

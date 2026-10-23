@@ -43,6 +43,7 @@ public class Lot124ZoneTests
             JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
             scenario(s);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
+            File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));   // sous-lot 12.7 : formes du chef
             return ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, Items);
         }
         finally
@@ -212,10 +213,11 @@ public class Lot124ZoneTests
         Assert.True(first.HasLeft && !first.IsDead);
         Assert.Empty(xp);
         Assert.Empty(session.Save().Consumed);
-        // Plafond : 64 combattants (10 créatures, le Bastion, puis 53 vies) ; une seule annonce, puis plus rien pour cette population.
+        // Plafond : 64 combattants (10 créatures, le Bastion, le chef — sous-lot 12.7 —, puis 52 vies) ; une seule annonce, puis plus rien
+        // pour cette population.
         int max = ShippedData.Rules.Combat.MaxCombatants;
         Assert.Equal(max, session.Zone.Engine.CombatantIds.Count);
-        Assert.Equal(max - 11, population.Count(e => e.Kind == PopulationEventKind.Respawned));
+        Assert.Equal(max - 12, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);
         for (int i = 0; i < 200; i++) Assert.Empty(session.Step().Population);
     }

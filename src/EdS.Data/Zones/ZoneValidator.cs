@@ -81,6 +81,29 @@ namespace EdS.Data.Zones
     }
 
     /// <summary>
+    /// Sous-lot 12.7 : chef de la zone. Ses formes se succèdent (quand une forme tombe, la suivante se relève à sa place) ; la première
+    /// victoire sur la dernière forme donne le fait et les récompenses, une seule fois (registre du monde, clé <see cref="VictoryKey"/>) ;
+    /// chaque victoire donne le butin.
+    /// </summary>
+    public sealed class Boss
+    {
+        public string Id { get; }
+        public IReadOnlyList<AssailantSetup> Forms { get; }
+        public string Fact { get; }
+        public IReadOnlyList<(string Item, int Count)> Rewards { get; }
+        public string? Loot { get; }
+
+        internal Boss(string id, IEnumerable<AssailantSetup> forms, string fact, IEnumerable<(string, int)> rewards, string? loot)
+        {
+            Id = id;
+            Forms = Frozen.List(forms, nameof(forms));
+            Fact = fact;
+            Rewards = Frozen.List(rewards, nameof(rewards));
+            Loot = loot;
+        }
+    }
+
+    /// <summary>
     /// Sous-lot 12.4 : zone du monde validée. Sa simulation (scénario de zone : espace, créatures de départ), ses points sûrs, ses lieux
     /// nommés, ses populations (réapparition, laisse, butin) et ses passages (obstacles qu'une étape du monde ouvre pour de bon). Valeurs
     /// provisoires de la tranche.
@@ -102,9 +125,16 @@ namespace EdS.Data.Zones
         public IReadOnlyList<Population> Populations { get; }
         public IReadOnlyList<Passage> Passages { get; }
 
+        /// <summary>Sous-lot 12.7 : chef de la zone, ou null.</summary>
+        public Boss? Boss { get; }
+
+        /// <summary>Clé du registre du monde de la première victoire sur le chef (<c>zone.vallons/boss/gardien_du_seuil</c>).</summary>
+        public string VictoryKey => Boss is { } b ? $"{Id}/boss/{b.Id}" : throw new InvalidOperationException("Zone sans chef.");
+
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
-            IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages)
+            IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null)
         {
+            Boss = boss;
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             Id = id;
@@ -150,8 +180,12 @@ namespace EdS.Data.Zones
     {
         public const string Kind = "zone";
 
-        /// <summary>Version 1 (sous-lot 12.4) : <c>id</c>, <c>name</c>, <c>scenario</c>, <c>entry</c>, <c>safePoints</c>, <c>places</c>, <c>populations</c>, <c>passages</c>.</summary>
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>
+        /// Version 1 (sous-lot 12.4) : <c>id</c>, <c>name</c>, <c>scenario</c>, <c>entry</c>, <c>safePoints</c>, <c>places</c>, <c>populations</c>,
+        /// <c>passages</c>. Version 2 (sous-lot 12.7) : <c>boss</c> facultatif (<c>id</c>, <c>scenario</c>, <c>forms</c>, <c>fact</c>, <c>rewards</c>,
+        /// <c>loot</c>).
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
 
         public const int MaxSafePoints = 32, MaxPlaces = 64, MaxPopulations = 256, MaxPassages = 32;
         public const long MinRespawnMs = 1000, MaxRespawnMs = 3_600_000;
@@ -166,7 +200,10 @@ namespace EdS.Data.Zones
         public static bool IsScenarioPath(string? path) => path != null && path.Length <= 200 && ScenarioPath.IsMatch(path);
 
         /// <param name="scenario">Simulation de la zone, chargée depuis <c>data.scenario</c> (null si elle n'a pas pu l'être : l'erreur est déjà au rapport).</param>
-        public static ZoneLoadResult Validate(ZoneDocument document, CombatSetup? scenario, ItemCatalog items, ValidationReport? report = null)
+        /// <param name="bossScenario">Sous-lot 12.7 : scénario des formes du chef, chargé depuis <c>data.boss.scenario</c> (null sans chef, ou s'il n'a
+        /// pas pu l'être : l'erreur est déjà au rapport).</param>
+        public static ZoneLoadResult Validate(ZoneDocument document, CombatSetup? scenario, ItemCatalog items, ValidationReport? report = null,
+            CombatSetup? bossScenario = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (items is null) throw new ArgumentNullException(nameof(items));
@@ -294,9 +331,50 @@ namespace EdS.Data.Zones
                 }
             }
 
+            Boss? boss = d.Boss is { } b ? CheckBoss(b, scenario, bossScenario, items, report) : null;
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages));
+                entry, safePoints, places, populations, passages, boss));
+        }
+
+        public const int MaxForms = 8, MaxRewards = 8;
+        private static readonly Regex FactId = new Regex(@"^fact(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
+        private static Boss? CheckBoss(BossData b, CombatSetup? scenario, CombatSetup? forms, ItemCatalog items, ValidationReport report)
+        {
+            const string path = "$.data.boss";
+            bool ok = true;
+            if (b.Id is null || b.Id.Length > 64 || !LocalId.IsMatch(b.Id)) { report.Add(path + ".id", ValidationCode.InvalidValue, $"identifiant « {b.Id} » mal formé."); ok = false; }
+            if (b.Scenario is null) { Missing(report, path + ".scenario", "scénario des formes du chef"); ok = false; }
+            else if (!IsScenarioPath(b.Scenario)) { report.Add(path + ".scenario", ValidationCode.InvalidValue, $"chemin de scénario « {b.Scenario} » invalide."); ok = false; }
+            var templates = new List<AssailantSetup>();
+            if (b.Forms is null || b.Forms.Count < 1 || b.Forms.Count > MaxForms) { report.Add(path + ".forms", ValidationCode.OutOfRange, $"de 1 à {MaxForms} formes."); ok = false; }
+            else if (forms != null)
+                for (int i = 0; i < b.Forms.Count; i++)
+                {
+                    string p = $"{path}.forms[{i}]";
+                    string? id = b.Forms[i];
+                    if (id is null || forms.Combatants.FirstOrDefault(c => c.Id == id) is not AssailantSetup form || form.Health is null || form.Placement is null)
+                    { report.Add(p, ValidationCode.UnknownReference, $"forme « {id} » absente du scénario du chef (assaillant mortel et placé attendu)."); ok = false; }
+                    else if (templates.Any(t => t.Id == id)) { report.Add(p, ValidationCode.DuplicateId, $"forme « {id} » déjà donnée."); ok = false; }
+                    else if (scenario != null && scenario.Combatants.Any(c => c.Id == id)) { report.Add(p, ValidationCode.DuplicateId, $"« {id} » est déjà une créature de la zone."); ok = false; }
+                    else if (LifeSuffix.IsMatch(id) || id.Length > 60) { report.Add(p, ValidationCode.InvalidValue, "identifiant réservé (« _v<nombre> » final) ou trop long."); ok = false; }
+                    else templates.Add(form);
+                }
+            if (b.Fact is null || b.Fact.Length > 200 || !FactId.IsMatch(b.Fact)) { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » mal formé : « fact.… »."); ok = false; }
+            var rewards = new List<(string, int)>();
+            if (b.Rewards is null) { Missing(report, path + ".rewards", "récompenses de la première victoire, éventuellement vide"); ok = false; }
+            else if (b.Rewards.Count > MaxRewards) { report.Add(path + ".rewards", ValidationCode.LimitExceeded, $"au plus {MaxRewards} récompenses."); ok = false; }
+            else
+                for (int i = 0; i < b.Rewards.Count; i++)
+                {
+                    string p = $"{path}.rewards[{i}]";
+                    if (b.Rewards[i]?.Item is not string item || !items.TryGetItem(item, out ItemDefinition def)) { report.Add(p + ".item", ValidationCode.UnknownReference, $"objet inconnu « {b.Rewards[i]?.Item} »."); ok = false; }
+                    else if (b.Rewards[i]!.Count is not int count || count < 1 || count > def.Stack) { report.Add(p + ".count", ValidationCode.OutOfRange, $"quantité hors de [1, {def.Stack}]."); ok = false; }
+                    else rewards.Add((item, count));
+                }
+            if (b.Loot != null && !items.TryGetLoot(b.Loot, out _)) { report.Add(path + ".loot", ValidationCode.UnknownReference, $"table de butin inconnue « {b.Loot} »."); ok = false; }
+            return ok && forms != null ? new Boss(b.Id!, templates, b.Fact!, rewards, b.Loot) : null;
         }
 
         private static bool CheckId(string? id, string path, IEnumerable<string> previous, ValidationReport report)
