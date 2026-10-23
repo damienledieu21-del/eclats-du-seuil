@@ -167,6 +167,26 @@ Toutes **Retenu** : validées par Damien le 20 octobre 2026, dans les termes de 
 | **L11-D11. Appareils** | **Samsung Galaxy Note8** et **iPhone 13**. Versions d'Android et d'iOS installées à relever (et référence exacte du Note8 en cas d'incompatibilité), sans les déduire des dernières versions disponibles. Note8 : d'abord installation et démarrage, puis commandes tactiles, lisibilité, deux vues, réglages graphiques allégés, sans le tenir pour représentatif de tous les Android. iPhone 13 : appareil de référence des premiers essais iOS. Accès à un Mac ou à une chaîne de compilation iOS à vérifier ; un essai Android ne valide pas iOS. Le simulateur d'appareils de l'éditeur aide pour les dispositions, mais un essai sur appareil réel est nécessaire. Le matériel minimal pris en charge n'est pas fixé par ces appareils |
 | **L11-D12. Budget, horizon, estimation** | Budget et horizon non fixés ; aucun achat décidé. Les 6 à 13 semaines étaient la somme des durées indicatives des lots 11 à 14, ni une estimation indépendante ni une date. Les hypothèses de disponibilité (essais sous 24 heures) sont à confirmer. Réévaluation après la première démonstration du combat dans l'espace en réseau et les premiers essais tactiles ; tant que positions et zone partagée ne sont pas éprouvées, le délai de l'alpha n'est pas attribué surtout au contenu et aux graphismes. Périmètre de l'alpha à définir : testeurs, boucle jouable, persistance, plateformes, contenu, critères de stabilité |
 
+## 5 bis. Choix de l'essai du 22 octobre 2026 (sous-lot 11.9)
+
+**Retenu** : choix de Damien dans la fiche d'essai du lot 11 ([ESSAI_LOT_11.md](ESSAI_LOT_11.md), rapport à la section 7).
+
+| Point | Ce qui est décidé |
+|---|---|
+| Contact joueur–créature (L11-D5) | **Règle A** : volumes solides sans poussée, avec le garde-fou contre le piège |
+| Ralentissement en garde (L11-D3) | **la moitié de la vitesse** (`combat.movement.guardSpeedFactor` 0,5) |
+| Vues 1 et 2 (H14) | angles et distances gardés (vue 1 : 52° à 17 m ; vue 2 : 16° à 6 m) ; en vue 2, le Bastion recule en regardant devant lui |
+| Rivière des Vallons | on voit par-dessus : « obstacle bas », qui arrête la marche mais pas la vue |
+| Garde tournée vers la cible | instantanée |
+| Provocation et zones visées | gardé : la provocation détourne aussi les zones visées |
+| Jugement du colosse | gardé : pas de Résonance si aucun ennemi à moins de 5 m n'est blessé |
+| Contrôle pendant une annonce | l'étourdissement annule l'attaque annoncée |
+| Arrêt pendant l'annonce, meute | « ça dépend des attaques et du type d'ennemi » : réglables par attaque et par ennemi |
+| Charge | elle repousse le joueur |
+| Retour au calme | une laisse au lot 12 : un ennemi assez distancé lâche |
+| Cible perdue de vue | remplacée après un court délai (une seconde) |
+| Esquive en réseau | reportée (reprise plus tard) |
+
 ## 6. Chiffres provisoires et paramètres
 
 | Valeur | Où | Statut | Périmètre |
@@ -182,7 +202,7 @@ Toutes **Retenu** : validées par Damien le 20 octobre 2026, dans les termes de 
 | Héritage actif : 1 | à créer | Recommandation (H7) | Final |
 | Groupe standard : 5 joueurs | à créer | Recommandation (Q31) | Final |
 | Réveil renforcé : 1 par expédition | à créer | Recommandation (H4) | Final |
-| Ralentissement en garde | à créer | Retenu dans son principe (L11-D3) ; valeur réglée par essais | Tranche |
+| Ralentissement en garde : moitié de la vitesse | `rules.json`, `combat.movement.guardSpeedFactor` (0,5) | Retenu (L11-D3, essai du 22 octobre 2026) | Tranche |
 | Combattants par combat : 64 (borne 256) | `rules.json`, `combat.limits.maxCombatants` | Paramètre technique | Moteur actuel |
 | Avance de la télégraphie en réseau : plafond 1 s | `NetworkClientOptions` | Paramètre (lot 10.6) | Réseau actuel |
 
@@ -211,14 +231,13 @@ Relevés le 19 octobre 2026 en confrontant le cadrage aux documents et au code, 
 
 - Budget : enveloppe ponctuelle pour ressources et outils ; plafond mensuel pour les services de test. Aucune dépense n'est autorisée tant que rien n'est fixé.
 - Horizon (Q40) : date souhaitée pour les premiers testeurs, ou jalons, avec une disponibilité approximative ; confirmation des hypothèses de disponibilité (essais sous 24 heures).
-- Téléphones : versions d'Android (Note8) et d'iOS (iPhone 13) installées ; accès à un Mac ou à une chaîne de compilation iOS.
+- Téléphones : version d'iOS (iPhone 13) installée ; accès à un Mac ou à une chaîne de compilation iOS. (Note8 : Android 9, relevé le 22 octobre 2026.)
 
 **À proposer par Claude, puis à valider par un essai ou par Damien**
 
-- Règle du contact entre joueurs et créatures (L11-D5) : deux règles candidates réalisées au 11.4, choix de Damien après l'essai du 11.6.
-- Valeur finale du ralentissement en garde (L11-D3) : réglée à l'essai 11.9 (départ : la moitié de la vitesse).
+- Esquive en réseau : durée des annonces face à la latence, rattrapage côté serveur, essai à deux postes (reporté à la demande de Damien, essai du 22 octobre 2026).
 
-Retenus le 20 octobre 2026 à 01 h 48 : la couverture du bouclier (180° de devant), l'orientation en garde vers la cible, le verrouillage au lancement, les portées du Bastion ([COMBAT_ESPACE.md](COMBAT_ESPACE.md#10-retenu-par-damien-le-20-octobre-2026)) et les quatre principes de l'architecture ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md#9-retenu-par-damien-le-20-octobre-2026)).
+Retenus le 22 octobre 2026 (essai du 11.9) : le contact joueur–créature (règle A) et le ralentissement en garde (la moitié de la vitesse), [section 5 bis](#5-bis-choix-de-lessai-du-22-octobre-2026-sous-lot-119). Retenus le 20 octobre 2026 à 01 h 48 : la couverture du bouclier (180° de devant), l'orientation en garde vers la cible, le verrouillage au lancement, les portées du Bastion ([COMBAT_ESPACE.md](COMBAT_ESPACE.md#10-retenu-par-damien-le-20-octobre-2026)) et les quatre principes de l'architecture ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md#9-retenu-par-damien-le-20-octobre-2026)).
 
 **Arbitrages de gameplay**
 
