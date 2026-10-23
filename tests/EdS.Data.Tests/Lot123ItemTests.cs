@@ -50,6 +50,23 @@ public class Lot123ItemTests
     // --- Catalogue ---------------------------------------------------------------------------------
 
     [Fact]
+    public void Champs_du_bonus_d_equipement_non_modifiables()
+    {
+        // Revue Codex de la PR #44 : la liste des champs ne peut pas être réordonnée par un appelant ; nom, rang et indexeur restent alignés.
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)GearBonus.Fields)[0] = "armor");
+        Assert.IsNotType<string[]>(GearBonus.Fields);
+        for (int i = 0; i < GearBonus.Fields.Count; i++)
+        {
+            int[] values = new int[GearBonus.Fields.Count];
+            values[i] = 7;
+            Assert.Equal(i, GearBonus.FieldIndex(GearBonus.Fields[i]));
+            Assert.Equal(7, GearBonus.FromValues(values)[i]);
+        }
+        Assert.Equal(-1, GearBonus.FieldIndex("inconnu"));
+        Assert.Equal(new GearBonus(armor: 7), GearBonus.FromValues(new[] { 0, 0, 0, 7, 0, 0, 0, 0 }));
+    }
+
+    [Fact]
     public void Catalogue_livre()
     {
         ItemCatalogLoadResult loaded = ItemJsonReader.ReadFile(CatalogPath, ShippedData);
