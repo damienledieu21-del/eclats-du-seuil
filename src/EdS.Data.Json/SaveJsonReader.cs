@@ -74,7 +74,11 @@ namespace EdS.Data.Json
                 ["xp"] = (v, p) => c.Xp = input.Int64(v, p),
                 ["talents"] = (v, p) => c.Talents = ScenarioJsonReader.ReadIntegerMap(input, v, p),
                 ["activeSkills"] = (v, p) => c.ActiveSkills = input.ReadLimitedList(v, p, 64, n => $"{n} compétences, au plus 64.", (e, ip) => input.Text(e, ip)),
-                ["ultimate"] = (v, p) => c.Ultimate = input.NullableText(v, p),
+                ["ultimate"] = (v, p) =>
+                {
+                    c.HasUltimate = true;
+                    c.Ultimate = input.NullableText(v, p);
+                },
                 ["passiveSkills"] = (v, p) => c.PassiveSkills = input.ReadLimitedList(v, p, 64, n => $"{n} compétences, au plus 64.", (e, ip) => input.Text(e, ip)),
                 ["inventory"] = (v, p) =>   // sous-lot 12.3 (version 3)
                 {
@@ -187,7 +191,13 @@ namespace EdS.Data.Json
                 b.Append("    ]\n");
             }
             b.Append("  }\n}\n");
-            return b.ToString();
+            string text = b.ToString();
+            // Revue Codex de la PR #43 : ce qui est écrit doit se relire (bornes du personnage comprises : expérience, rangs, identifiants),
+            // sinon une sauvegarde valide serait remplacée par un fichier illisible.
+            SaveLoadResult check = Read(text);
+            if (!check.IsValid)
+                throw new ArgumentException($"Sauvegarde invalide : {check.Report.Errors[0].Path} : {check.Report.Errors[0].Message}", nameof(save));
+            return text;
         }
 
         private static void WriteCharacter(StringBuilder b, SavedCharacter? c)

@@ -216,6 +216,15 @@ namespace EdS.Data.Saves
         private static readonly Regex EventKey = new Regex(@"^[a-z0-9_.]+(/[a-z0-9_.]+)+\z", RegexOptions.CultureInvariant);
 
         /// <summary>Identifiant de zone « zone.&lt;nom&gt; », 64 caractères au plus (revue Codex de la PR #42 : les clés d'événement restent bornées).</summary>
+        /// <summary>
+        /// Revue Codex de la PR #43 : longueur maximale de l'identifiant d'un personnage, pour que la clé de sa mort
+        /// (<c>&lt;zone&gt;/&lt;session&gt;/death/&lt;id&gt;</c>, zone de 64 caractères au plus, session de 9 chiffres au plus) tienne toujours
+        /// dans une clé d'événement.
+        /// </summary>
+        public const int MaxCharacterIdLength = 64;
+
+        public static bool IsCharacterId(string? id) => id != null && id.Length <= MaxCharacterIdLength && CharacterId.IsMatch(id);
+
         public static bool IsZoneId(string? id) => id != null && id.Length <= 64 && ZoneId.IsMatch(id);
 
         public static bool IsEventKey(string? key) => key != null && key.Length <= 200 && EventKey.IsMatch(key);
@@ -276,7 +285,7 @@ namespace EdS.Data.Saves
         {
             const string path = "$.data.character";
             if (c.Id is null) Missing(report, path + ".id", "identifiant du personnage");
-            else if (!CharacterId.IsMatch(c.Id)) report.Add(path + ".id", ValidationCode.InvalidValue, $"identifiant « {c.Id} » invalide : minuscules, chiffres et « _ ».");
+            else if (!IsCharacterId(c.Id)) report.Add(path + ".id", ValidationCode.InvalidValue, $"identifiant « {c.Id} » invalide : minuscules, chiffres et « _ », {MaxCharacterIdLength} caractères au plus.");
             if (c.Class is null) Missing(report, path + ".class", "identifiant de classe");
             if (c.Xp is null) Missing(report, path + ".xp", "expérience cumulée");
             else if (c.Xp < 0 || c.Xp > MaxXp) report.Add(path + ".xp", ValidationCode.OutOfRange, $"expérience hors de [0, {MaxXp}].");
@@ -291,6 +300,8 @@ namespace EdS.Data.Saves
                 for (int i = 0; i < list.Count; i++) if (list[i] is null) Missing(report, $"{path}.{field}[{i}]", "identifiant de compétence");
             }
             Names(c.ActiveSkills, "activeSkills");
+            // Revue Codex de la PR #43 : l'ultime est obligatoire (null s'il n'y en a pas), comme le dit le schéma.
+            if (!c.HasUltimate) Missing(report, path + ".ultimate", "ultime, ou null");
             Names(c.PassiveSkills, "passiveSkills");
             // Sous-lot 12.3 (version 3) : inventaire et équipement. Leur cohérence avec le catalogue des objets (objets connus, piles, emplacements,
             // niveau requis) est vérifiée quand la partie reprend : la sauvegarde ne dépend pas des données du jeu.
