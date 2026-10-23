@@ -277,11 +277,20 @@ namespace EdS.Data.Scenarios
                                 Present(x.CooldownMs, p + ".cooldownMs", "recharge partagée en ms");
                             });
                         // Sous-lot 12.3 : bonus d'équipement par champ connu ; leurs bornes sont vérifiées par la validation du combat.
+                        // Revue Codex de la PR #44 : un scénario construit sans le lecteur JSON (objets publics) est contrôlé de même : valeur
+                        // présente, un seul bonus par nom.
                         if (c.Gear is { } gear)
+                        {
+                            var seenGear = new HashSet<string>(StringComparer.Ordinal);
                             foreach (KeyValuePair<string, int?> entry in gear)
                                 if (GearBonus.FieldIndex(entry.Key) < 0)
                                     _report.Add($"{path}.gear.{entry.Key}", ValidationCode.UnknownReference,
                                         $"bonus d'équipement inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
+                                else if (!seenGear.Add(entry.Key))
+                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.DuplicateId, $"bonus « {entry.Key} » donné deux fois.");
+                                else if (entry.Value is null)
+                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.MissingField, "valeur du bonus attendue (entier).");
+                        }
                         break;
                     case "dummy":
                         Present(c.Armor, path + ".armor", "nombre décimal");
