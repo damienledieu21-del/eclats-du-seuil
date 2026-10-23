@@ -117,6 +117,22 @@ Objectif : un combat où se placer compte, résolu par le serveur, lisible dans 
 
 **Décision du 20 octobre 2026 à 03 h 38** (Damien : « oui », à la question de la PR #28) : **l'étourdissement immobilise**. Il bloque aussi le déplacement (blocage `movement` dans les données), en plus des compétences, de la garde, de la parade et des attaques.
 
+### Lot 12 — les Vallons d'Aube en solo
+
+Objectif : parcourir les Vallons seul, du niveau 1 au niveau 10, avec la mission « Les traces sous le moulin » jusqu'à un chef de fin. Détail : [PLAN_LOT_11.md](PLAN_LOT_11.md#lot-12--les-vallons-daube-en-solo) ; le monde : [MONDE.md](MONDE.md) ; limites : [LIMITES_LOT_12.md](LIMITES_LOT_12.md). Lancé par Damien le 23 octobre 2026 (« Go 12 fait le max tout seul » ; fusion autorisée quand la CI et la revue Codex sont vertes).
+
+| Sous-lot | Contenu | État |
+|---|---|---|
+| 12.1 | Monde : zone des Vallons, entités qui entrent et sortent, combats sur place, temps du monde, sauvegarde | En PR : projet `EdS.World` (session de zone, événements consommables à clé unique, rencontres, temps du monde provisoire de 2 h par journée, sauvegarde versionnée et atomique), mode zone du moteur (pas de fin quand une équipe tombe, jusqu'à 24 h), scénario `zones/vallons` ; moteur 0.22.0, journal au format 16, scénarios en schéma 10 |
+| 12.2 | Personnage : expérience et niveaux 1 à 10, attributs par classe et niveau, sauvegarde | à venir |
+| 12.3 | Objets, équipement, inventaire | à venir |
+| 12.4 | Les Vallons en données, populations et réapparitions, laisse | à venir |
+| 12.5 | PNJ, dialogues et quêtes | à venir |
+| 12.6 | Soin et métiers | à venir |
+| 12.7 | Chef de fin et récompenses | à venir |
+| 12.8 | Unity : la zone jouable, inventaire, quêtes, dialogues | à venir |
+| 12.9 | Essai complet et rapport | à venir |
+
 ## Décisions validées
 
 **A1 à A12** : pas de soin pour le Gardien au lot 8 (boucliers, protections, transferts, provocations) ; trois talents intermédiaires de cinq rangs par arbre (noms de travail) ; Fureur contenue dépend de la Résonance détenue ; Charges conservées (Rempart) ou dépensées (Contrecoup) selon le build ; une ultime commune, Bastion absolu ; les boucliers absorbent les DOT ; un bouclier par source, FIFO ; dégâts transférés jamais retransférés ni déclencheurs de réactions, garde du protecteur seulement dans le cadre de Serment ; provocation sur un personnage refusée `notApplicable` et journalisée ; attributs identiques pour les builds de comparaison ; deux PR de gameplay 8a puis 8b ; builds de référence livrés en données.

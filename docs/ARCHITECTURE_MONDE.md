@@ -111,7 +111,7 @@ Ordre de réalisation :
 
 1. **11.4** — entités qui entrent et sortent, positions, instantané d'état du moteur, avec un test d'aller-retour exact.
 2. **11.7** — démonstration réseau minimale sur ce modèle : un serveur local et deux clients ; le second arrive pendant un affrontement ; mort d'un ennemi cohérente ; retour à l'état courant sans réattribution ; latence artificielle ; prédiction du déplacement local.
-3. **12.1** — la zone des Vallons sur la même simulation, hébergée sur le poste en solo.
+3. **12.1** — la zone des Vallons sur la même simulation, hébergée sur le poste en solo. Réalisé : mode zone du moteur et projet `EdS.World` ([MONDE.md](MONDE.md)).
 4. **Lot 13** — serveur de zone, réplication filtrée complète, comptes de test, persistance.
 
 ## 9. Retenu par Damien le 20 octobre 2026

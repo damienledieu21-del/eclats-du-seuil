@@ -380,6 +380,18 @@ Demandés par Damien après son essai des Vallons (fiche d'essai du 22 octobre 2
 
 **Journal (format 15).** En-tête : `low` d'un obstacle, `push` et `holdPosition` d'une attaque, `pack` d'un comportement, `backward` d'une commande `move`, chacun seulement s'il s'écarte du défaut. Lignes `pushed` et `pushBlocked` (diagnostics) ; `backward: true` sur `moveStarted` à reculons. Scénario des Vallons : rivière basse, sanglier qui repousse de 2 m, sanglier et archer hors meute, pluie de flèches sans arrêt.
 
+## Mode zone (sous-lot 12.1)
+
+Une **zone** du monde ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md), section 4 : « un mode zone sans fin globale ») se simule avec le même moteur, en mode zone (`zone: true` dans le scénario, schéma 10). Moteur 0.22.0, journal au format 16. **Un combat fermé ne change pas** : le scénario de référence à déclencheurs garde le même corps de journal qu'au moteur 0.21.0 (référence `reference-0.22.0-contenu-0.6.0`).
+
+- **Pas de fin quand une équipe tombe** : une zone sans créature vivante, ou sans personnage, continue ; elle ne s'arrête qu'au bout de sa durée (`durationReached`).
+- **Durée** : jusqu'au plafond absolu de 24 h (`CombatRules.AbsoluteMaxDurationMs`) au lieu de `combat.limits.maxDurationMs` (10 min) ; une partie se joue en sessions de zone successives (scénario des Vallons : 1 h par session), le temps du monde continuant d'une session à l'autre.
+- **Composition** : une zone est un combat positionné (bloc `space` obligatoire) ; elle peut n'avoir qu'une équipe (ses créatures), ou aucun combattant : les personnages y entrent par l'arrivée pilotée (`Join`, sous-lot 11.4d) et en sortent par `leave`.
+- **Journal (format 16)** : `zone: true` dans l'en-tête (seulement pour une zone). L'instantané d'état est inchangé (format 2) : une zone se relit comme un combat.
+- **Vue du pilote** : `Engaged` (ennemi engagé, ou assaillant sans comportement) s'ajoute à `CombatantView`, pour que le monde reconnaisse les rencontres.
+
+Le monde lui-même (projet `EdS.World` : session de zone, temps du monde, événements consommables, rencontres, sauvegardes) est décrit dans [MONDE.md](MONDE.md).
+
 ## Limites
 
 - `combat.limits.maxDurationMs` (600 000) : durée maximale d'un scénario ; plafond absolu du format 86 400 000.
