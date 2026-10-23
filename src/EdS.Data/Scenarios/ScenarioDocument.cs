@@ -204,6 +204,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 11.4 : direction d'un « move ».</summary>
         public PointData? Direction { get; set; }
 
+        /// <summary>Sous-lot 11.9 : « move » à reculons (l'orientation ne suit pas la marche).</summary>
+        public bool? Backward { get; set; }
+
         /// <summary>Champs effectivement présents dans le fichier.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

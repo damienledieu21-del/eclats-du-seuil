@@ -89,6 +89,9 @@ namespace EdS.Simulation.Engine
         /// <summary>Direction de marche en cours (unitaire) ; null à l'arrêt.</summary>
         public GroundVector? MoveDirection { get; internal set; }
 
+        /// <summary>Sous-lot 11.9 : marche en cours à reculons (l'orientation ne suit pas la marche) ; faux à l'arrêt.</summary>
+        public bool MoveBackward { get; internal set; }
+
         /// <summary>Déplacement non bloqué par une altération encore active à ce tick (l'étourdissement immobilise) ; faux hors combat positionné.</summary>
         public bool CanMove { get; internal set; }
 
@@ -209,6 +212,7 @@ namespace EdS.Simulation.Engine
                 view.Facing = GroundVector.FromRaw(body.FacingX, body.FacingZ);
                 view.Radius = Fixed.FromRaw(body.Radius);
                 view.MoveDirection = body.Moving ? GroundVector.FromRaw(body.DirectionX, body.DirectionZ) : (GroundVector?)null;
+                view.MoveBackward = body.Moving && body.Backward;
                 // Un mannequin ne marche pas ; revue Codex de la PR #33 (16e tour) : un ennemi à comportement non plus sur commande (move et stop
                 // lui sont refusés : il marche seul).
                 view.CanMove = !f.Out && (f.Character != null || f.Assailant != null) && f.Behavior is null && !Blocked(StatusBlocks.Movement);

@@ -376,7 +376,9 @@ Demandés par Damien après son essai des Vallons (fiche d'essai du 22 octobre 2
 
 **Meute** (`pack` d'un comportement, vrai par défaut) : faux, un allié engagé ne l'entraîne pas ; il ne s'engage que pour lui-même (frappé, provoqué, ou un ennemi à sa distance d'engagement). L'instantané en tient compte.
 
-**Journal (format 15).** En-tête : `low` d'un obstacle, `push` et `holdPosition` d'une attaque, `pack` d'un comportement, chacun seulement s'il s'écarte du défaut. Lignes `pushed` et `pushBlocked` (diagnostics). Scénario des Vallons : rivière basse, sanglier qui repousse de 2 m, sanglier et archer hors meute, pluie de flèches sans arrêt.
+**Marche à reculons** (`backward` d'une commande `move`, essai de Damien : « le Bastion recule en regardant devant lui ») : le combattant marche dans la direction donnée sans se tourner vers elle ; il garde son orientation (la garde tournée vers sa cible sélectionnée l'emporte, comme pour une marche ordinaire). Un arrêt efface le recul. L'instantané (format 2 inchangé) ne l'écrit pas : à la relecture, il se déduit de la dernière commande `move` ou `stop` admise, et une marche à reculons ne compte pas parmi les orientations possibles. Unity l'envoie en vue 2 quand on recule (touche arrière, ou stick vers le bas) ; le protocole réseau passe à la version 3 ([RESEAU.md](RESEAU.md#protocole-3--marche-à-reculons-sous-lot-119)).
+
+**Journal (format 15).** En-tête : `low` d'un obstacle, `push` et `holdPosition` d'une attaque, `pack` d'un comportement, `backward` d'une commande `move`, chacun seulement s'il s'écarte du défaut. Lignes `pushed` et `pushBlocked` (diagnostics) ; `backward: true` sur `moveStarted` à reculons. Scénario des Vallons : rivière basse, sanglier qui repousse de 2 m, sanglier et archer hors meute, pluie de flèches sans arrêt.
 
 ## Limites
 

@@ -492,6 +492,7 @@ namespace EdS.Net
                     seat.Target = input.Target;
                     seat.Ally = input.Ally;
                     seat.Movement.Wished = input.Heading;   // sous-lot 11.7
+                    seat.Movement.Backward = input.Backward;   // sous-lot 11.9
                     break;
                 case PingMessage ping:
                     Send(client, new PongMessage(ping.ClientTime));

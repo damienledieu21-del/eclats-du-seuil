@@ -46,6 +46,7 @@ namespace EdS.Simulation.Engine
                 else w.Field("action", CombatActionIds.Of(c.Action));
                 if (c.Action == CombatAction.Select && c.Target != null) w.Field("target", c.Target);   // sous-lot 11.4c
                 if (c.Direction is { } direction) WritePoint(w.Name("direction"), direction);   // sous-lot 11.4 : telle que donnée
+                if (c.Backward) w.Field("backward", true);   // sous-lot 11.9 (format 15) : seulement à reculons
                 w.EndObject();
             }
             w.EndArray().EndObject();

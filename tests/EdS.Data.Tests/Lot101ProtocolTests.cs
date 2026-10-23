@@ -28,6 +28,7 @@ public class Lot101ProtocolTests
     private static readonly CombatCommand[] SpatialCommands =
     {
         new(550, "bastion", EdS.Domain.Space.GroundVector.Parse("-0.7071", "0.7071")),
+        new(550, "bastion2", EdS.Domain.Space.GroundVector.Parse("0", "-1"), backward: true),   // sous-lot 11.9
         new(550, "bastion2", CombatAction.Stop),
         CombatCommand.SelectTarget(550, "bastion", "loup_a"),
         CombatCommand.SelectTarget(550, "bastion2", null),
@@ -48,6 +49,7 @@ public class Lot101ProtocolTests
             new ReadyMessage(false),
             new InputMessage(true, false, null, null, null),
             new InputMessage(false, true, 4, "loup_a", "bastion2", 63),
+            new InputMessage(false, false, null, null, null, 32, backward: true),   // sous-lot 11.9
             new PingMessage(123_456_789),
             new ResyncRequestMessage(),
             new ByeMessage(),
@@ -85,12 +87,12 @@ public class Lot101ProtocolTests
     [Fact]
     public void Champs_des_messages_relus()
     {
-        var input = (InputMessage)Decode("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":2,\"target\":\"loup_a\",\"ally\":null,\"heading\":17}", MessageDirection.ClientToServer);
-        Assert.Equal((true, false, 2, "loup_a", (string?)null, (int?)17), (input.Guard, input.Parry, input.Slot, input.Target, input.Ally, input.Heading));
+        var input = (InputMessage)Decode("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":2,\"target\":\"loup_a\",\"ally\":null,\"heading\":17,\"backward\":true}", MessageDirection.ClientToServer);
+        Assert.Equal((true, false, 2, "loup_a", (string?)null, (int?)17, true), (input.Guard, input.Parry, input.Slot, input.Target, input.Ally, input.Heading, input.Backward));
         // Sous-lot 11.7 : les commandes de marche, d'arrêt, de sélection et de départ sont relues telles quelles.
         var spatial = (TickMessage)Decode(MessageCodec.EncodeText(new TickMessage(new TickCommands(11, SpatialCommands), Hash)), MessageDirection.ServerToClient);
-        Assert.Equal(SpatialCommands.Select(c => (c.AtMs, c.Actor, c.Action, c.Target, c.Direction)),
-            spatial.Commands.Commands.Select(c => (c.AtMs, c.Actor, c.Action, c.Target, c.Direction)));
+        Assert.Equal(SpatialCommands.Select(c => (c.AtMs, c.Actor, c.Action, c.Target, c.Direction, c.Backward)),
+            spatial.Commands.Commands.Select(c => (c.AtMs, c.Actor, c.Action, c.Target, c.Direction, c.Backward)));
         var tick = (TickMessage)Decode(MessageCodec.EncodeText(new TickMessage(new TickCommands(10, SampleCommands), Hash)), MessageDirection.ServerToClient);
         Assert.Equal(10, tick.Commands.Tick);
         Assert.Equal(SampleCommands.Select(c => (c.AtMs, c.Actor, c.Action, c.Skill, c.Target)),
@@ -136,6 +138,10 @@ public class Lot101ProtocolTests
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"heading\":null}", "« ally » obligatoire")]
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null}", "« heading » obligatoire")]
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":64}", "hors de [0, 63]")]
+    // Sous-lot 11.9 (protocole 3) : la marche à reculons est obligatoire dans les intentions, et seulement avec un cap.
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":3}", "« backward » obligatoire")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":true}", "seulement avec un cap")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":3,\"backward\":1}", "backward")]
     [InlineData("{\"type\":\"ready\",\"ready\":1}", "")]
     [InlineData("{\"type\":\"resyncRequest\",\"x\":1}", "champ inconnu")]
     public void Message_client_refuse_avec_sa_raison(string json, string expected) =>
@@ -153,6 +159,11 @@ public class Lot101ProtocolTests
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"move\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "« direction » obligatoire")]
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"stop\",\"target\":null}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "réservés aux actions")]
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"select\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "« target » obligatoire")]
+    // Sous-lot 11.9 (protocole 3) : « backward » seulement vrai, et seulement pour une marche.
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"move\",\"direction\":[1,0],\"backward\":false}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "seulement vrai")]
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"select\",\"target\":null,\"backward\":true}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "seulement pour « move »")]
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"stop\",\"backward\":true}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "réservés aux actions")]
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"b\",\"action\":\"skill\",\"skill\":\"s.a\",\"target\":null,\"backward\":true}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "réservés à l'action")]
     [InlineData("{\"type\":\"state\",\"header\":\"h\",\"hash\":\"fnv1a64:0123456789abcdef\"}", "« snapshot » obligatoire")]
     [InlineData("{\"type\":\"state\",\"header\":\"\",\"snapshot\":\"s\",\"hash\":\"fnv1a64:0123456789abcdef\"}", "en-tête vide")]
     [InlineData("{\"type\":\"state\",\"header\":\"h\",\"snapshot\":\"\",\"hash\":\"fnv1a64:0123456789abcdef\"}", "instantané vide")]

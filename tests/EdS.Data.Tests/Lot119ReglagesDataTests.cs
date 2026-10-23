@@ -5,6 +5,7 @@ using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
+using EdS.Runtime;
 using EdS.Simulation.Engine;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -150,5 +151,51 @@ public class Lot119ReglagesDataTests
         CombatSetup duo = ScenarioJsonReader.ReadFile(ScenarioPath("coop/vallons_duo"), ShippedData).Setup!;
         Assert.Equal(new[] { "riviere_sud", "riviere_nord" }, duo.Space!.Obstacles.Where(o => o.Low).Select(o => o.Id));
         Assert.Equal(Fixed.FromInt(2), duo.Combatants.OfType<AssailantSetup>().Single(a => a.Id == "sanglier").Attacks.Single().Push);
+    }
+
+    [Fact]
+    public void Marche_a_reculons_lue_ecrite_et_rejouee()
+    {
+        // Sous-lot 11.9 : « backward » sur un move du scénario ; refusé sur un arrêt ou une compétence ; écrit dans l'en-tête et rejoué.
+        ScenarioLoadResult loaded = Mutated(root =>
+        {
+            JsonObject move = DataOf(root)["commands"]!.AsArray().Select(c => c!.AsObject()).First(c => c["action"]?.GetValue<string>() == "move");
+            move["backward"] = true;
+        });
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        CombatCommand backward = loaded.Setup!.Commands.First(c => c.Action == CombatAction.Move);
+        Assert.True(backward.Backward);
+        var log = new MemoryCombatLog();
+        CombatEngine.Run(loaded.Setup, log);
+        Assert.Contains("\"backward\":true", log.Lines[0], StringComparison.Ordinal);
+        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(log.Lines.ToArray(), ShippedData).Status);
+        int stop = DataOf(JsonNode.Parse(File.ReadAllText(ScenarioPath(Meute)))!.AsObject())["commands"]!.AsArray()
+            .Select((c, k) => (c, k)).First(x => x.c!["action"]?.GetValue<string>() == "stop").k;
+        Assert.Equal($"$.data.commands[{stop}].backward", Error(Mutated(root => DataOf(root)["commands"]![stop]!.AsObject()["backward"] = true)).Path);
+        int skill = DataOf(JsonNode.Parse(File.ReadAllText(ScenarioPath(Meute)))!.AsObject())["commands"]!.AsArray()
+            .Select((c, k) => (c, k)).First(x => x.c!["skill"] != null).k;
+        Assert.Equal($"$.data.commands[{skill}].backward", Error(Mutated(root => DataOf(root)["commands"]![skill]!.AsObject()["backward"] = true)).Path);
+        JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
+        Assert.Contains("\"backward\"", schema.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Pont_temps_reel_a_reculons()
+    {
+        // Le pont envoie move à reculons ; changer seulement le recul (même cap) renvoie un move ; à l'arrêt, le recul est oublié.
+        RealtimeCombat combat = TrainingSession.Load(DataDirectory, ScenarioPath("vallons_demo"), "build.bastion.rempart", durationMs: 20_000).Start();
+        combat.SetMove(-1, 0, backward: true);
+        for (int i = 0; i < 10; i++) combat.StepOnce();
+        CombatCommand first = Assert.Single(combat.SubmittedCommands, c => c.Action == CombatAction.Move);
+        Assert.True(first.Backward);
+        Assert.True(combat.Player().View.MoveBackward);
+        Assert.Equal(new EdS.Domain.Space.GroundVector(Fixed.FromInt(1), Fixed.Zero), combat.Player().View.Facing);
+        combat.SetMove(-1, 0);
+        combat.StepOnce();
+        Assert.False(combat.SubmittedCommands.Last(c => c.Action == CombatAction.Move).Backward);
+        Assert.Equal(2, combat.SubmittedCommands.Count(c => c.Action == CombatAction.Move));
+        combat.SetMove(0, 0, backward: true);
+        combat.StepOnce();
+        Assert.Equal(CombatAction.Stop, combat.SubmittedCommands.Last(c => c.Action is CombatAction.Move or CombatAction.Stop).Action);
     }
 }

@@ -45,7 +45,7 @@ namespace EdS.Net
                     break;
                 case InputMessage m:
                     w.Field("guard", m.Guard).Field("parry", m.Parry).Field("slot", (long?)m.Slot).Field("target", m.Target).Field("ally", m.Ally)
-                        .Field("heading", (long?)m.Heading);
+                        .Field("heading", (long?)m.Heading).Field("backward", m.Backward);   // sous-lot 11.9 (protocole 3)
                     break;
                 case PingMessage m:
                     w.Field("clientTime", m.ClientTime);
@@ -114,7 +114,11 @@ namespace EdS.Net
                 w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor).Field("action", CombatActionIds.Of(c.Action));
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
                 else if (c.Action == CombatAction.Select) w.Field("target", c.Target);
-                else if (c.Action == CombatAction.Move) w.Name("direction").BeginArray().Value(c.Direction!.Value.X).Value(c.Direction.Value.Z).EndArray();
+                else if (c.Action == CombatAction.Move)
+                {
+                    w.Name("direction").BeginArray().Value(c.Direction!.Value.X).Value(c.Direction.Value.Z).EndArray();
+                    if (c.Backward) w.Field("backward", true);   // sous-lot 11.9 (protocole 3) : seulement à reculons
+                }
                 w.EndObject();
             }
             w.EndArray();
@@ -452,7 +456,7 @@ namespace EdS.Net
 
             private NetMessage? ReadInput(JsonElement root)
             {
-                bool? guard = null, parry = null;
+                bool? guard = null, parry = null, backward = null;
                 int? slot = null, heading = null;
                 string? target = null, ally = null;
                 bool hasSlot = false, hasTarget = false, hasAlly = false, hasHeading = false;
@@ -465,6 +469,7 @@ namespace EdS.Net
                     },
                     ["guard"] = (v, p) => guard = _in.Boolean(v, p),
                     ["parry"] = (v, p) => parry = _in.Boolean(v, p),
+                    ["backward"] = (v, p) => backward = _in.Boolean(v, p),   // sous-lot 11.9 (protocole 3)
                     ["slot"] = (v, p) =>
                     {
                         hasSlot = true;
@@ -481,14 +486,21 @@ namespace EdS.Net
                         ally = Id(v, p, nullable: true);
                     },
                 })) return null;
-                if (guard is null || parry is null || !hasSlot || !hasTarget || !hasAlly || !hasHeading)
+                if (guard is null || parry is null || !hasSlot || !hasTarget || !hasAlly || !hasHeading || backward is null)
                 {
                     if (_in.Report.IsValid)
-                        Missing("$", guard is null ? "guard" : parry is null ? "parry" : !hasSlot ? "slot" : !hasTarget ? "target" : !hasAlly ? "ally" : "heading");
+                        Missing("$", guard is null ? "guard" : parry is null ? "parry" : !hasSlot ? "slot" : !hasTarget ? "target" : !hasAlly ? "ally"
+                            : !hasHeading ? "heading" : "backward");
                     return null;
                 }
                 if (slot == -1 || heading == -1 || !_in.Report.IsValid) return null;
-                return new InputMessage(guard.Value, parry.Value, slot, target, ally, heading);
+                // Sous-lot 11.9 : à reculons seulement en marche.
+                if (backward.Value && heading is null)
+                {
+                    Fail("$.backward", ValidationCode.InvalidValue, "« backward » seulement avec un cap de marche (heading).");
+                    return null;
+                }
+                return new InputMessage(guard.Value, parry.Value, slot, target, ally, heading, backward.Value);
             }
 
             private NetMessage? ReadPing(JsonElement root)
@@ -603,7 +615,7 @@ namespace EdS.Net
             {
                 long? atMs = null;
                 string? actor = null, action = null, skill = null, target = null;
-                bool hasSkill = false, hasTarget = false, hasDirection = false;
+                bool hasSkill = false, hasTarget = false, hasDirection = false, hasBackward = false, backward = false;
                 GroundVector? direction = null;
                 if (!Fields(element, path, new Dictionary<string, Action<JsonElement, string>>
                 {
@@ -611,6 +623,11 @@ namespace EdS.Net
                     {
                         hasDirection = true;
                         direction = Direction(v, p);
+                    },
+                    ["backward"] = (v, p) =>   // sous-lot 11.9 (protocole 3) : seulement vrai, et seulement pour move
+                    {
+                        hasBackward = true;
+                        if (_in.Boolean(v, p) is { } b) backward = b;
                     },
                     ["atMs"] = (v, p) => atMs = Long(v, p, 0, long.MaxValue / 2),
                     ["actor"] = (v, p) => actor = Id(v, p),
@@ -633,11 +650,11 @@ namespace EdS.Net
                 }
                 if (action == CombatActionIds.UseSkill)
                 {
-                    if (!hasSkill || !hasTarget || hasDirection)
+                    if (!hasSkill || !hasTarget || hasDirection || hasBackward)
                     {
                         if (_in.Report.IsValid)
                         {
-                            if (hasDirection) Fail(path, ValidationCode.UnknownField, "« direction » réservée à l'action « move ».");
+                            if (hasDirection || hasBackward) Fail(path, ValidationCode.UnknownField, "« direction » et « backward » réservés à l'action « move ».");
                             else Missing(path, !hasSkill ? "skill" : "target");
                         }
                         return null;
@@ -648,6 +665,11 @@ namespace EdS.Net
                 if (action == CombatActionIds.Move || action == CombatActionIds.Select)
                 {
                     bool move = action == CombatActionIds.Move;
+                    if (hasBackward && (!move || !backward))
+                    {
+                        Fail(path + ".backward", ValidationCode.InvalidValue, "« backward » seulement pour « move », et seulement vrai.");
+                        return null;
+                    }
                     if (hasSkill || (move ? hasTarget : hasDirection))
                     {
                         Fail(path, ValidationCode.UnknownField, move ? "« direction » seulement pour « move »." : "« target » seulement pour « select ».");
@@ -659,7 +681,7 @@ namespace EdS.Net
                         return null;
                     }
                     if (!_in.Report.IsValid) return null;
-                    return move ? (direction is { } d ? new CombatCommand(atMs.Value, actor, d) : null) : CombatCommand.SelectTarget(atMs.Value, actor, target);
+                    return move ? (direction is { } d ? new CombatCommand(atMs.Value, actor, d, backward) : null) : CombatCommand.SelectTarget(atMs.Value, actor, target);
                 }
                 CombatAction plain;
                 if (action == CombatActionIds.Stop) plain = CombatAction.Stop;
@@ -669,9 +691,9 @@ namespace EdS.Net
                     Fail(path + ".action", ValidationCode.UnknownReference, "action inconnue (skill, guardStart, guardStop, parry, move, stop, select, leave).");
                     return null;
                 }
-                if (hasSkill || hasTarget || hasDirection)
+                if (hasSkill || hasTarget || hasDirection || hasBackward)
                 {
-                    Fail(path, ValidationCode.UnknownField, "« skill », « target » et « direction » réservés aux actions « skill », « select » et « move ».");
+                    Fail(path, ValidationCode.UnknownField, "« skill », « target », « direction » et « backward » réservés aux actions « skill », « select » et « move ».");
                     return null;
                 }
                 return new CombatCommand(atMs.Value, actor, plain);

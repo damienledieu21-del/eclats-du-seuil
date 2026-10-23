@@ -1119,8 +1119,7 @@ namespace EdS.Simulation.Engine
                     // un absent ou un mannequin sont refusés ; un stop sans marche ne change rien) : il marche si et seulement si la dernière est
                     // un move, dans la direction (unitaire) de celui-ci (sauf un ennemi à comportement, mené par son placement).
                     // Ordre de traitement : par tick, puis par rang dans le combat complété (les commandes du scénario ne sont pas triées).
-                    CombatCommand? lastMove = f.Out ? null : _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop)
-                        && c.Actor == f.Id && c.AtMs / _tickMs <= previous && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
+                    CombatCommand? lastMove = f.Out ? null : LastMoveOrStop(f);
                     long moveX = 0, moveZ = 0;
                     bool shouldMove = lastMove is { Action: CombatAction.Move, Direction: { } heading }
                         && Planar.TryNormalize(heading.X.Raw, heading.Z.Raw, out moveX, out moveZ);
@@ -1455,9 +1454,21 @@ namespace EdS.Simulation.Engine
             var facings = new HashSet<(long X, long Z)>();
             GroundVector start = f.Setup.Placement!.Facing;
             if (Planar.TryNormalize(start.X.Raw, start.Z.Raw, out long sx, out long sz)) facings.Add((sx, sz));
-            foreach (CombatCommand move in past.Where(c => c.Action == CombatAction.Move && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)))
+            // Sous-lot 11.9 : une marche à reculons ne tourne pas.
+            foreach (CombatCommand move in past.Where(c => c.Action == CombatAction.Move && !c.Backward && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)))
                 if (move.Direction is { } d && Planar.TryNormalize(d.X.Raw, d.Z.Raw, out long ux, out long uz)) facings.Add((ux, uz));
             return facings;
+        }
+
+        /// <summary>
+        /// Dernière commande move ou stop de <paramref name="f"/> traitée avant le tick courant, depuis son arrivée (par tick, puis par rang
+        /// dans le combat complété) ; null s'il n'en a reçu aucune.
+        /// </summary>
+        private CombatCommand? LastMoveOrStop(Fighter f)
+        {
+            long previous = CurrentTick - 1, arrived = f.ArrivedTick ?? 0;
+            return _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop) && c.Actor == f.Id
+                && c.AtMs / _tickMs <= previous && c.AtMs / _tickMs >= arrived).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
         }
 
         /// <summary>Tick du tour <paramref name="turn"/> d'un assaillant (cadence : arrivée + <c>firstAttackMs</c>, puis <c>intervalMs</c>).</summary>
@@ -1891,6 +1902,9 @@ namespace EdS.Simulation.Engine
                 b.Moving = body["moving"].Bool;
                 b.DirectionX = body["directionX"].Long;
                 b.DirectionZ = body["directionZ"].Long;
+                // Sous-lot 11.9 : la marche à reculons n'est pas écrite (instantané au format 2 inchangé) : elle se déduit de la dernière
+                // commande move ou stop admise, que les contrôles de cohérence comparent à la marche relue.
+                b.Backward = b.Moving && LastMoveOrStop(f) is { Action: CombatAction.Move, Backward: true };
                 b.Selected = body["selected"].IsNull ? null : FighterOf(body["selected"]);
             }
             IReadOnlyList<SnapshotNode> triggers = n["triggers"].Items;

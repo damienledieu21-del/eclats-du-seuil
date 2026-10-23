@@ -161,7 +161,7 @@ Premier essai tactile : la scène des Vallons au doigt, d'abord dans le **simula
 - Pour remettre le projet à zéro : fermer Unity et supprimer le dossier `unity/Library` (il est recréé à l'ouverture).
 - **Réseau : « connexion impossible »** : vérifier l'adresse, que l'autre PC héberge bien (salle d'attente affichée) et que le pare-feu Windows autorise Unity (ou le jeu construit) sur les réseaux privés, port 7777.
 - **Réseau : « désynchronisation persistante »** : ne devrait jamais arriver ; faire une capture et l'envoyer à Claude (c'est exactement ce que le lot 10 doit détecter).
-- **Réseau : « protocole 1 non pris en charge »** (ou 2) : les deux PC n'ont pas la même version du projet ; faire un *Pull* sur les deux (sous-lot 11.7 : protocole 2).
+- **Réseau : « protocole 1 non pris en charge »** (ou 2, ou 3) : les deux PC n'ont pas la même version du projet ; faire un *Pull* sur les deux (sous-lot 11.7 : protocole 2 ; sous-lot 11.9 : protocole 3).
 - **Téléphone non proposé dans *Run Device*** : câble de données (pas seulement de charge), débogage USB activé, autorisation acceptée sur le téléphone ; débrancher, rebrancher, *Refresh*.
 - **Téléphone : écran bloqué sur « Préparation des données du jeu… » avec un sol rose** (premier essai du 22 octobre 2026) : le jeu construit n'emportait pas son shader de couleur. Corrigé : chaque construction emporte un matériau modèle (`EdsBuildShaders`) ; faire un *Pull*, puis **Build And Run** à nouveau. Si un cadre rouge « Démarrage du jeu impossible » s'affiche, envoyer une photo à Claude.
 - **Téléphone : « Impossible de préparer les données du jeu »** : le jeu a été construit sans ses données (projet Unity déplacé hors du dépôt) ; reconstruire depuis le projet du dépôt.

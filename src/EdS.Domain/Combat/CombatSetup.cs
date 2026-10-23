@@ -491,6 +491,13 @@ namespace EdS.Domain.Combat
         /// </summary>
         public GroundVector? Direction { get; }
 
+        /// <summary>
+        /// Sous-lot 11.9 (essai de Damien du 22 octobre 2026 : « le Bastion recule en regardant devant lui ») : marche à reculons d'un
+        /// <see cref="CombatAction.Move"/> : le combattant garde son orientation au lieu de se tourner vers sa marche. Faux pour toute autre
+        /// commande.
+        /// </summary>
+        public bool Backward { get; }
+
         /// <summary>Commande « utiliser une compétence ».</summary>
         public CombatCommand(long atMs, string actor, string skill, string? target = null)
         {
@@ -511,13 +518,17 @@ namespace EdS.Domain.Combat
             Action = action;
         }
 
-        /// <summary>Sous-lot 11.4 : commande « marcher dans la direction <paramref name="direction"/> », jusqu'à un arrêt ou une autre direction.</summary>
-        public CombatCommand(long atMs, string actor, GroundVector direction)
+        /// <summary>
+        /// Sous-lot 11.4 : commande « marcher dans la direction <paramref name="direction"/> », jusqu'à un arrêt ou une autre direction.
+        /// Sous-lot 11.9 : <paramref name="backward"/>, à reculons (l'orientation ne suit pas la marche).
+        /// </summary>
+        public CombatCommand(long atMs, string actor, GroundVector direction, bool backward = false)
         {
             AtMs = atMs;
             Actor = actor ?? throw new ArgumentNullException(nameof(actor));
             Action = CombatAction.Move;
             Direction = direction;
+            Backward = backward;
         }
 
         private CombatCommand(long atMs, string actor, string? target, CombatAction action)

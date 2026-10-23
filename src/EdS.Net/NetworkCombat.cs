@@ -37,6 +37,7 @@ namespace EdS.Net
         // sinon l'état courant reçu, son instantané et l'empreinte à ce point) pour le reconstruire jusqu'au dernier tick accepté.
         private readonly MovementPrediction _prediction = new MovementPrediction();
         private int? _heading;
+        private bool _backward;   // sous-lot 11.9
         private CombatSnapshot? _baseSnapshot;
         private string? _baseHash;
 
@@ -284,7 +285,7 @@ namespace EdS.Net
         internal InputMessage? TakeInput()
         {
             if (!_inputDirty || IsFinished) return null;
-            var input = new InputMessage(_guardHeld, _parry, _slot, TargetId, AllyId, _heading);
+            var input = new InputMessage(_guardHeld, _parry, _slot, TargetId, AllyId, _heading, _backward);
             _parry = false;
             _slot = null;
             _inputDirty = false;
@@ -303,6 +304,7 @@ namespace EdS.Net
             // Revue Codex de la PR #35 : de même, le cap de marche est oublié (le serveur a arrêté le personnage) ; le jeu le redonne en
             // lisant la saisie, au lieu de renvoyer un cap peut-être lâché pendant la coupure.
             _heading = null;
+            _backward = false;
             _parry = false;
             _slot = null;
             _inputDirty = true;
@@ -348,12 +350,15 @@ namespace EdS.Net
         /// Sous-lot 11.7 : direction de marche voulue, ramenée à un cap de <see cref="MoveInput"/> et envoyée au serveur quand elle change
         /// (le serveur envoie <c>move</c> ou <c>stop</c> au moteur, comme le pont solo). Sans espace, sans effet.
         /// </summary>
-        public void SetMove(double x, double z)
+        /// <remarks>Sous-lot 11.9 : <paramref name="backward"/>, à reculons (le personnage garde son orientation).</remarks>
+        public void SetMove(double x, double z, bool backward = false)
         {
             int? heading = MoveInput.Heading(x, z);   // saisie non finie refusée, avec ou sans espace
             if (Space is null) heading = null;
-            if (heading == _heading) return;
+            backward = heading != null && backward;
+            if (heading == _heading && backward == _backward) return;
             _heading = heading;
+            _backward = backward;
             _inputDirty = true;
         }
 

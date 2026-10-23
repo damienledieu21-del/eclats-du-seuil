@@ -62,7 +62,8 @@ namespace EdS.Runtime
         /// <see cref="MoveInput"/>, arrêt. Sans espace, sans effet. Le déplacement est simulé par le moteur (commandes <c>move</c> et
         /// <c>stop</c>, envoyées seulement quand le cap change).
         /// </summary>
-        void SetMove(double x, double z);
+        /// <remarks>Sous-lot 11.9 : <paramref name="backward"/>, à reculons (le personnage garde son orientation ; vue 2, touche arrière).</remarks>
+        void SetMove(double x, double z, bool backward = false);
 
         /// <summary>Sous-lot 11.6 : attaques annoncées en cours (formes au sol, impact à venir), pour l'affichage.</summary>
         IReadOnlyList<AnnouncedAttack> Announced();

@@ -268,4 +268,88 @@ public class Lot119ReglagesTests
         Assert.Contains("Engagement de « loup2 » au tick 5 sans cause possible", Assert.Throws<FormatException>(() =>
             CombatEngine.Restore(completed, CombatSnapshot.Parse(forged), NullCombatLog.Instance)).Message);
     }
+
+    // --- Marche à reculons --------------------------------------------------------------------------
+
+    [Fact]
+    public void A_reculons_le_personnage_garde_son_orientation()
+    {
+        // Essai de Damien du 22 octobre 2026 : « le Bastion recule en regardant devant lui ». Face à l'est, il recule vers l'ouest : il
+        // avance de 5 m/s mais garde son orientation ; une marche ordinaire vers l'ouest le tourne. Ligne moveStarted : backward: true.
+        CombatSetup Walk(bool backward) => Fight(new CombatantSetup[] { Player("bastion", At("0", "0", facing: V("1", "0"))), PlacedDummy("mannequin", At("15", "15")) },
+            new[] { new CombatCommand(0, "bastion", V("-1", "0"), backward) });
+        var (track, log, engine) = Trace(Walk(true));
+        Assert.InRange(track.After("bastion", 20).X.Raw, -50_000, -45_000);
+        Assert.Equal(V("1", "0"), engine.View("bastion").Facing);
+        Assert.True(engine.View("bastion").MoveBackward);
+        JsonElement started = Assert.Single(Lines(log, "moveStarted"));
+        Assert.True(started.GetProperty("backward").GetBoolean());
+        Assert.Contains("\"backward\":true", log.Lines[0], StringComparison.Ordinal);   // en-tête : la commande
+        var (_, plain, turned) = Trace(Walk(false));
+        Assert.Equal(V("-1", "0"), turned.View("bastion").Facing);
+        Assert.False(turned.View("bastion").MoveBackward);
+        Assert.False(Assert.Single(Lines(plain, "moveStarted")).TryGetProperty("backward", out _));
+        Assert.DoesNotContain("backward", plain.Lines[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_reculons_puis_arret_puis_marche_ordinaire()
+    {
+        // L'arrêt efface le recul ; une marche ordinaire ensuite tourne de nouveau. Une marche à reculons dans une autre direction garde
+        // l'orientation d'avant (celle de la marche ordinaire).
+        var commands = new[]
+        {
+            new CombatCommand(0, "bastion", V("-1", "0"), backward: true), Stop(500, "bastion"),
+            new CombatCommand(1000, "bastion", V("0", "1")), new CombatCommand(1500, "bastion", V("0", "-1"), backward: true),
+        };
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("0", "0", facing: V("1", "0"))), PlacedDummy("mannequin", At("15", "15")) },
+            commands), NullCombatLog.Instance);
+        while (engine.CurrentTick < 15) engine.Step();
+        Assert.False(engine.View("bastion").MoveBackward);
+        Assert.Equal(V("1", "0"), engine.View("bastion").Facing);
+        while (engine.CurrentTick < 25) engine.Step();
+        Assert.Equal(V("0", "1"), engine.View("bastion").Facing);
+        while (engine.CurrentTick < 35) engine.Step();
+        Assert.Equal(V("0", "1"), engine.View("bastion").Facing);
+        Assert.True(engine.View("bastion").MoveBackward);
+    }
+
+    [Fact]
+    public void A_reculons_en_garde_le_personnage_se_tourne_vers_sa_cible()
+    {
+        // La garde tournée vers la cible sélectionnée (11.4c) l'emporte, comme pour une marche ordinaire.
+        var commands = new[]
+        {
+            CombatCommand.SelectTarget(0, "bastion", "mannequin"), new CombatCommand(0, "bastion", CombatAction.GuardStart),
+            new CombatCommand(0, "bastion", V("-1", "0"), backward: true),
+        };
+        var (_, _, engine) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0", facing: V("1", "0"))), PlacedDummy("mannequin", At("0", "10")) },
+            commands, durationMs: 500));
+        GroundVector facing = engine.View("bastion").Facing!.Value;
+        Assert.True(facing.Z.Raw > 9_000, $"orientation {facing}");
+    }
+
+    [Fact]
+    public void Instantane_d_une_marche_a_reculons_relu_et_controle()
+    {
+        // Le recul n'est pas écrit dans l'instantané (format 2 inchangé) : il se déduit de la dernière commande move. Relu en cours de recul,
+        // le combat continue à l'identique ; une orientation que seule une marche ordinaire aurait pu donner est refusée.
+        CombatSetup setup = Fight(new CombatantSetup[] { Player("bastion", At("0", "0", facing: V("1", "0"))), PlacedDummy("mannequin", At("15", "15")) },
+            new[] { new CombatCommand(0, "bastion", V("-1", "0"), backward: true) });
+        var engine = new CombatEngine(setup, NullCombatLog.Instance);
+        while (engine.CurrentTick < 10) engine.Step();
+        string text = engine.Snapshot().Text;
+        CombatSetup completed = engine.CompletedSetup();
+        CombatEngine restored = CombatEngine.Restore(completed, CombatSnapshot.Parse(text), NullCombatLog.Instance);
+        Assert.True(restored.View("bastion").MoveBackward);
+        while (engine.CurrentTick < 30) engine.Step();
+        while (restored.CurrentTick < 30) restored.Step();
+        Assert.Equal(engine.Snapshot().Text, restored.Snapshot().Text);
+        Assert.Equal(V("1", "0"), restored.View("bastion").Facing);
+        string line = text.Split('\n').First(l => l.StartsWith("{\"fighter\":\"bastion\"", StringComparison.Ordinal));
+        Assert.Contains("\"facingX\":10000,\"facingZ\":0,", line, StringComparison.Ordinal);
+        string turned = text.Replace(line, line.Replace("\"facingX\":10000,\"facingZ\":0,", "\"facingX\":-10000,\"facingZ\":0,", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("Orientation de « bastion »", Assert.Throws<FormatException>(() =>
+            CombatEngine.Restore(completed, CombatSnapshot.Parse(turned), NullCombatLog.Instance)).Message);
+    }
 }

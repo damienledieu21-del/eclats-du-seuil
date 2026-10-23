@@ -420,6 +420,10 @@
         "direction": {
           "$ref": "#/$defs/direction",
           "description": "Action move : direction de marche, jusqu'à un arrêt ou une autre direction."
+        },
+        "backward": {
+          "type": "boolean",
+          "description": "Sous-lot 11.9 (schéma 9) : action move à reculons, le combattant garde son orientation au lieu de se tourner vers sa marche (faux par défaut)."
         }
       },
       "oneOf": [
@@ -472,8 +476,17 @@
           },
           "else": {
             "not": {
-              "required": [
-                "direction"
+              "anyOf": [
+                {
+                  "required": [
+                    "direction"
+                  ]
+                },
+                {
+                  "required": [
+                    "backward"
+                  ]
+                }
               ]
             }
           }

@@ -237,6 +237,7 @@ namespace EdS.Data.Json
                 ["action"] = Track("action", (v, p) => c.Action = input.Text(v, p)),
                 ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
                 ["direction"] = Track("direction", (v, p) => c.Direction = ReadPoint(input, v, p)),   // sous-lot 11.4
+                ["backward"] = Track("backward", (v, p) => c.Backward = input.Boolean(v, p)),       // sous-lot 11.9 (schéma 9)
             });
             return ok ? c : null;
         }

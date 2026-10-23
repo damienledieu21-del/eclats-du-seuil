@@ -143,7 +143,7 @@ namespace EdS.Data.Scenarios
             var commands = scenario.Commands!.Select(c => !CombatActionIds.TryParseNamed(c!.Action, out CombatAction action)
                 ? new CombatCommand(c.AtMs!.Value, c.Actor!, c.Skill!, c.Target)
                 : action == CombatAction.Move
-                    ? new CombatCommand(c.AtMs!.Value, c.Actor!, Point(c.Direction!))
+                    ? new CombatCommand(c.AtMs!.Value, c.Actor!, Point(c.Direction!), c.Backward == true)
                     : action == CombatAction.Select   // sous-lot 11.4c
                         ? CombatCommand.SelectTarget(c.AtMs!.Value, c.Actor!, c.Target)
                         : new CombatCommand(c.AtMs!.Value, c.Actor!, action));
@@ -303,6 +303,8 @@ namespace EdS.Data.Scenarios
                     Present(c.Skill, path + ".skill", "identifiant de compétence, ou champ action (" + actions + ")");
                     if (c.Present.Contains("direction"))
                         _report.Add(path + ".direction", ValidationCode.InvalidValue, "seul un déplacement (action move) a une direction.");
+                    if (c.Present.Contains("backward"))
+                        _report.Add(path + ".backward", ValidationCode.InvalidValue, "seul un déplacement (action move) se fait à reculons.");
                     return;
                 }
                 CombatAction action = default;
@@ -322,6 +324,9 @@ namespace EdS.Data.Scenarios
                 if (action == CombatAction.Move) Present(c.Direction, path + ".direction", "direction de marche [x, z], composantes dans [−1, 1]");
                 else if (c.Present.Contains("direction"))
                     _report.Add(path + ".direction", ValidationCode.InvalidValue, "seul un déplacement (action move) a une direction.");
+                // Sous-lot 11.9 : la marche à reculons, seulement pour un déplacement.
+                if (action != CombatAction.Move && c.Present.Contains("backward"))
+                    _report.Add(path + ".backward", ValidationCode.InvalidValue, "seul un déplacement (action move) se fait à reculons.");
             }
         }
     }
