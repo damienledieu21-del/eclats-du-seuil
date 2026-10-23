@@ -124,3 +124,13 @@ Détail du fonctionnement : [MOTEUR.md](MOTEUR.md#comportements-des-ennemis-sous
 - **Engagement par la meute** : un allié engagé à distance d'engagement entraîne les autres, de proche en proche (question posée dans la PR : c'est ce qui fait venir toute la meute).
 - **Pilote de mesure** : `CombatPilot` ne déplace pas son personnage ; un scénario positionné mesuré par `eds report` laisse les ennemis venir à lui.
 - **Formats** : moteur 0.20.0, journal au format 14, scénarios en schéma 8, instantané au format 2 ; règles (schéma 12) et classes (schéma 9) inchangées. Un combat sans comportement ni charge écrit les mêmes lignes qu'au moteur 0.19.0 (dix-sept scénarios livrés comparés) ; un journal 0.19.0 est refusé au rejeu, sans migration.
+
+## Sous-lot 11.9a : réglages du moteur après l'essai
+
+Détail : [MOTEUR.md](MOTEUR.md#réglages-après-lessai-sous-lot-119).
+
+- **Obstacle bas tout ou rien** : un obstacle est haut (cache et arrête) ou bas (arrête seulement) ; pas de hauteur ni de demi-couvert. Un tireur voit et vise par-dessus une rivière basse, mais ne la traverse pas.
+- **Poussée simple** : une bande pousse de la même distance tout ce qu'elle touche, le long de son axe, sans tenir compte de la masse ni de la garde ; la poussée n'étourdit pas et ne fait pas tomber. Une cible poussée contre un mur s'arrête contre lui, sans dégâts de choc.
+- **Étourdissement et annonce** : seul un contrôle encore présent à l'impact annule l'attaque ; un étourdissement court posé puis terminé pendant l'annonce ne l'annule pas. Une zone persistante déjà tombée continue.
+- **Réglages par attaque et par ennemi** : `holdPosition` et `pack` se règlent dans le scénario ; les autres scénarios livrés gardent les défauts du 11.5 (arrêt pendant l'annonce, meute).
+- **Formats** : moteur 0.21.0, journal au format 15, scénarios en schéma 9, instantané au format 2 inchangé ; règles (schéma 12) et classes (schéma 9) inchangées. Un journal 0.20.0 est refusé au rejeu, sans migration ; les vingt et un scénarios livrés gardent le même corps de journal (comparaison à la main, le scénario à déclencheurs en CI).
