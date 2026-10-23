@@ -255,7 +255,7 @@ namespace EdS.Data.Json
             b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append("\n");
             b.Append("      },\n");
             // Sous-lot 12.6 (version 5) : expérience des métiers, sur une ligne.
-            if (c.Professions.Any(p => !SafeId.IsMatch(p.Key) || p.Value < 1 || p.Value > SaveValidator.MaxXp))
+            if (c.Professions.Any(p => !SaveValidator.IsDataId(p.Key) || p.Value < 1 || p.Value > SaveValidator.MaxXp))
                 throw new ArgumentException("Métiers hors du format des sauvegardes.", nameof(c));
             b.Append("      \"professions\": {").Append(string.Join(", ", c.Professions.Select(p => Quoted(p.Key) + ": " + p.Value.ToString(CultureInfo.InvariantCulture)))).Append("}\n");
             b.Append("    },\n");
