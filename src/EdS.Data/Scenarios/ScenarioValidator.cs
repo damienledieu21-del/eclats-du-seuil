@@ -111,8 +111,8 @@ namespace EdS.Data.Scenarios
         private static GearBonus Gear(List<KeyValuePair<string, int?>>? gear)
         {
             if (gear is null) return GearBonus.None;
-            var values = new int[GearBonus.Fields.Length];
-            foreach (KeyValuePair<string, int?> entry in gear) values[Array.IndexOf(GearBonus.Fields, entry.Key)] = entry.Value!.Value;
+            var values = new int[GearBonus.Fields.Count];
+            foreach (KeyValuePair<string, int?> entry in gear) values[GearBonus.FieldIndex(entry.Key)] = entry.Value!.Value;
             return GearBonus.FromValues(values);
         }
 
@@ -265,7 +265,7 @@ namespace EdS.Data.Scenarios
                         // Sous-lot 12.3 : bonus d'équipement par champ connu ; leurs bornes sont vérifiées par la validation du combat.
                         if (c.Gear is { } gear)
                             foreach (KeyValuePair<string, int?> entry in gear)
-                                if (Array.IndexOf(GearBonus.Fields, entry.Key) < 0)
+                                if (GearBonus.FieldIndex(entry.Key) < 0)
                                     _report.Add($"{path}.gear.{entry.Key}", ValidationCode.UnknownReference,
                                         $"bonus d'équipement inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
                         break;
