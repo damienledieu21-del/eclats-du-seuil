@@ -719,7 +719,7 @@ namespace EdS.Domain.Combat
                     case CharacterSetup character:
                         ValidateCharacter(character, path, tick, errors);
                         // Sous-lot 12.3 : bonus d'équipement entiers, de 0 à GearBonus.MaxValue.
-                        for (int g = 0; g < GearBonus.Fields.Length; g++)
+                        for (int g = 0; g < GearBonus.Fields.Count; g++)
                             if (character.Gear[g] < 0 || character.Gear[g] > GearBonus.MaxValue)
                                 errors.Add(new RuleViolation(
                                     $"bonus d'équipement {character.Gear[g]} hors de [0, {GearBonus.MaxValue}].", path + ".gear." + GearBonus.Fields[g]));

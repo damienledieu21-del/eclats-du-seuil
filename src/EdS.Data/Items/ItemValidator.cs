@@ -305,13 +305,13 @@ namespace EdS.Data.Items
                 report.Add(path + ".requiredLevel", ValidationCode.OutOfRange, $"niveau requis hors de [1, {maxLevel}] (progression.maxLevel des règles).");
                 ok = false;
             }
-            var values = new int[GearBonus.Fields.Length];
+            var values = new int[GearBonus.Fields.Count];
             if (item.Bonus is null) { Missing(report, path + ".bonus", "bonus aux statistiques, éventuellement vide"); ok = false; }
             else
                 foreach (KeyValuePair<string, int?> entry in item.Bonus)
                 {
                     string bonusPath = $"{path}.bonus.{entry.Key}";
-                    int field = Array.IndexOf(GearBonus.Fields, entry.Key);
+                    int field = GearBonus.FieldIndex(entry.Key);
                     if (field < 0)
                     {
                         report.Add(bonusPath, ValidationCode.UnknownReference, $"bonus inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");

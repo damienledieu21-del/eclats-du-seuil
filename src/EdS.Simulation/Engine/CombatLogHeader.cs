@@ -223,7 +223,7 @@ namespace EdS.Simulation.Engine
                     if (!character.Gear.IsNone)
                     {
                         w.Name("gear").BeginObject();
-                        for (int g = 0; g < Domain.Stats.GearBonus.Fields.Length; g++)
+                        for (int g = 0; g < Domain.Stats.GearBonus.Fields.Count; g++)
                             if (character.Gear[g] != 0) w.Field(Domain.Stats.GearBonus.Fields[g], character.Gear[g]);
                         w.EndObject();
                     }
