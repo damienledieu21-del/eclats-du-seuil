@@ -57,7 +57,7 @@ public class Lot123ItemTests
         ItemCatalog c = loaded.Catalog!;
         Assert.Equal(new[] { "weapon", "shield", "chest", "neck" }, c.Slots);   // quatre emplacements dont le bouclier (L11-D10)
         Assert.Equal(24, c.InventorySize);                                       // Q5
-        Assert.Equal(15, c.Items.Count);
+        Assert.Equal(19, c.Items.Count);   // sous-lot 12.6 : herbe, ferrure, potion, remède
         ItemDefinition shield = c.Item("item.ecu_de_chene");
         Assert.Equal((ItemType.Equipment, "shield", 1, ItemRarity.Common, 1, 60), (shield.Type, shield.Slot, shield.RequiredLevel, shield.Rarity, shield.Stack, shield.Bonus.Armor));
         // H5 : deux boucliers de même niveau, d'orientations différentes.
@@ -199,7 +199,7 @@ public class Lot123ItemTests
             new[] { new ItemStack("item.peau_de_loup", 12), new ItemStack("item.gambison", 1) },
             new Dictionary<string, string> { ["weapon"] = "item.epee_du_milicien", ["shield"] = "item.ecu_de_chene" });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), hero));
-        Assert.Contains("\"schemaVersion\": 4,", text, StringComparison.Ordinal);   // sous-lot 12.5 : version 4 (histoire)
+        Assert.Contains("\"schemaVersion\": 5,", text, StringComparison.Ordinal);   // sous-lot 12.6 : version 5 (métiers)
         Assert.Contains("      \"inventory\": [\n        {\"item\": \"item.peau_de_loup\", \"count\": 12},\n        {\"item\": \"item.gambison\", \"count\": 1}\n      ],\n"
             + "      \"equipment\": {\"shield\": \"item.ecu_de_chene\", \"weapon\": \"item.epee_du_milicien\"},\n", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
@@ -219,14 +219,14 @@ public class Lot123ItemTests
             int a = t.IndexOf(",\n      \"" + field + "\"", StringComparison.Ordinal), b = t.IndexOf("\n    },", a, StringComparison.Ordinal);
             return t.Remove(a, b - a);
         }
-        string v2 = CutFrom(text, "inventory").Replace("\"schemaVersion\": 4", "\"schemaVersion\": 2");
+        string v2 = CutFrom(text, "inventory").Replace("\"schemaVersion\": 5", "\"schemaVersion\": 2");
         SaveLoadResult migrated = SaveJsonReader.Read(v2);
         Assert.True(migrated.IsValid, migrated.Report.ToString() + "\n" + v2);
         Assert.True(migrated.Save!.Migrated);
         Assert.Empty(migrated.Save.Character!.Inventory);
         Assert.Empty(migrated.Save.Character.Equipment);
         Assert.Equal("$.data.character.inventory",
-            Assert.Single(SaveJsonReader.Read(CutFrom(text, "equipment").Replace("\"schemaVersion\": 4", "\"schemaVersion\": 2")).Report.Errors).Path);
+            Assert.Single(SaveJsonReader.Read(CutFrom(text, "equipment").Replace("\"schemaVersion\": 5", "\"schemaVersion\": 2")).Report.Errors).Path);
     }
 
     [Theory]

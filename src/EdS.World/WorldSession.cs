@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data;
 using EdS.Data.Characters;
+using EdS.Data.Crafting;
 using EdS.Data.Items;
 using EdS.Data.Saves;
 using EdS.Data.Story;
@@ -130,7 +131,16 @@ namespace EdS.World
                 _lootTables[entry.Key] = items.TryGetLoot(entry.Value, out LootTable table) ? table
                     : throw new ArgumentException($"Table de butin « {entry.Value} » ({entry.Key}) absente du catalogue.", nameof(lootTables));
             Inventory = Inventory.From(_character, items, Level);
-            CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear());
+            // Sous-lot 12.6 : objets de soin de l'inventaire emportés au combat, au plus une pile de chacun (recharge partagée).
+            var carried = new List<ConsumableSetup>();
+            foreach (string id in Inventory.Stacks.Select(st => st.Item).Distinct().OrderBy(i => i, StringComparer.Ordinal))
+                if (items.Item(id) is { Type: ItemType.Consumable } potion)
+                {
+                    int count = Math.Min(Inventory.Count(id), potion.Stack);
+                    carried.Add(new ConsumableSetup(id, potion.Heal, count, potion.CooldownMs));
+                    _carried[id] = count;
+                }
+            CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried);
             Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log);
             Zone.Enter(setup);
             EnteredLevel = setup.Build.Level;
@@ -138,6 +148,51 @@ namespace EdS.World
         }
 
         private readonly Dictionary<string, LootTable> _lootTables;
+
+        /// <summary>Sous-lot 12.6 : charges de chaque objet de soin emporté, telles que retirées de l'inventaire jusqu'ici.</summary>
+        private readonly Dictionary<string, int> _carried = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        /// <summary>Sous-lot 12.6 : récolte, fabrication et expérience des métiers (null sans métiers chargés).</summary>
+        public Workshop? Workshop { get; }
+
+        /// <summary>
+        /// Boit un objet de soin emporté (commande <c>consume</c> au tick courant, appliquée au prochain tick ; le moteur la refuse au besoin :
+        /// charges épuisées, recharge partagée, PV pleins, étourdi). L'inventaire perd l'objet quand le moteur l'a bu.
+        /// </summary>
+        /// <exception cref="ArgumentException">Objet non emporté, ou commande refusée par le pilote.</exception>
+        public void Drink(string item)
+        {
+            if (item is null || !_carried.ContainsKey(item)) throw new ArgumentException($"Objet de soin « {item} » non emporté.", nameof(item));
+            Zone.Engine.Submit(CombatCommand.Use(checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), _character.Id, item));
+        }
+
+        /// <summary>Sous-lot 12.6 : récolte un nœud à portée (3 m), s'il a repoussé et que l'objet tient.</summary>
+        public CraftRefusal Gather(string node, out CraftEvent? done) =>
+            (Workshop ?? throw new InvalidOperationException("Partie sans métiers.")).Gather(node, Zone.Engine.CurrentTick, Zone.Engine.TickMilliseconds,
+                ((INarrativeWorld)this).PlayerPosition, Inventory, out done);
+
+        /// <summary>Sous-lot 12.6 : fabrique une recette dans son atelier (lieu de la zone).</summary>
+        public CraftRefusal Craft(string recipe, out CraftEvent? done)
+        {
+            Workshop workshop = Workshop ?? throw new InvalidOperationException("Partie sans métiers.");
+            Recipe? r = workshop.Book.Recipes.FirstOrDefault(x => x.Id == recipe);
+            return workshop.Craft(recipe, r != null && ((INarrativeWorld)this).InPlace(r.Place), Inventory, out done);
+        }
+
+        /// <summary>Retire de l'inventaire les objets de soin que le moteur a bus depuis le dernier relevé.</summary>
+        private void SyncConsumables()
+        {
+            if (_carried.Count == 0) return;
+            CombatantView me = Zone.Engine.View(_character.Id);
+            foreach (string id in _carried.Keys.ToArray())
+            {
+                int now = me.ConsumableCharges.TryGetValue(id, out int left) ? left : _carried[id];
+                int drunk = _carried[id] - now;
+                if (drunk <= 0) continue;
+                Inventory.Remove(id, Math.Min(drunk, Inventory.Count(id)));
+                _carried[id] = now;
+            }
+        }
         private readonly ItemCatalog _items;
         private readonly ZonePopulations? _populations;
 
@@ -154,14 +209,16 @@ namespace EdS.World
         /// </summary>
         /// <exception cref="ArgumentException">Sauvegarde d'une autre zone, sans personnage, ou incohérente avec le catalogue.</exception>
         /// <param name="story">Sous-lot 12.5 : histoire de la zone (PNJ, dialogues, quêtes) ; sans elle, l'état narratif sauvegardé est gardé tel quel.</param>
+        /// <param name="crafting">Sous-lot 12.6 : métiers, recettes et nœuds de récolte ; sans eux, l'expérience des métiers sauvegardée est gardée.</param>
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
-            ICombatLog? log = null)
+            CraftingBook? crafting = null, ICombatLog? log = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
                 data, progression, items, new CombatantPlacement(zone.Entry.Position, CharacterRadius), null, log, CheckZone(save, zone))
         {
             Definition = zone;
             _populations = new ZonePopulations(zone);
             if (story != null) Narrative = new Narrative(story, _character.Story, this);
+            if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
         }
 
         /// <summary>Sous-lot 12.5 : histoire du personnage (null sans histoire chargée).</summary>
@@ -241,6 +298,7 @@ namespace EdS.World
         public SessionStep Step()
         {
             IReadOnlyList<ZoneEvent> events = Zone.Step();
+            SyncConsumables();
             IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone) ?? Array.Empty<PopulationEvent>();
             CombatantView me = Zone.Engine.View(_character.Id);
             var gains = new List<ExperienceGained>();
@@ -275,6 +333,7 @@ namespace EdS.World
             WorldSave world = Zone.Save();
             SavedCharacter character = Inventory.SaveInto(_character);
             if (Narrative != null) character = character.WithStory(Narrative.ToSaved());
+            if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character);
         }
     }

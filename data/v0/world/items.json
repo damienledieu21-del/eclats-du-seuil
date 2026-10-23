@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/items.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "items",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -162,6 +162,38 @@
         "type": "material",
         "rarity": "very_rare",
         "stack": 20
+      },
+      {
+        "id": "item.herbe_de_l_aube",
+        "name": "Herbe de l'aube",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.ferrure",
+        "name": "Ferrure",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5
+      },
+      {
+        "id": "item.potion_de_soin",
+        "name": "Potion de soin",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 5,
+        "heal": 300,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.remede_de_l_aube",
+        "name": "Remède de l'aube",
+        "type": "consumable",
+        "rarity": "rare",
+        "stack": 3,
+        "heal": 700,
+        "cooldownMs": 20000
       }
     ],
     "loot": [
@@ -191,7 +223,7 @@
           {
             "item": "item.minerai_de_fer",
             "count": 1,
-            "chancePercent": 60
+            "chancePercent": 25
           },
           {
             "item": "item.epee_de_garde",

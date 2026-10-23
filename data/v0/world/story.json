@@ -209,8 +209,8 @@
               },
               {
                 "if": "hasItem",
-                "id": "item.minerai_de_fer",
-                "value": 3
+                "id": "item.ferrure",
+                "value": 1
               }
             ],
             "node": "ferrure"
@@ -253,7 +253,7 @@
           },
           {
             "id": "minerai",
-            "text": "text.maelle.minerai",
+            "text": "text.maelle.forger_soi_meme",
             "choices": []
           },
           {
@@ -266,13 +266,13 @@
             "text": "text.maelle.ferrure",
             "choices": [
               {
-                "text": "text.maelle.ferrure.forger",
+                "text": "text.maelle.ferrure.poser",
                 "conditions": [],
                 "effects": [
                   {
                     "do": "takeItem",
-                    "id": "item.minerai_de_fer",
-                    "value": 3
+                    "id": "item.ferrure",
+                    "value": 1
                   },
                   {
                     "do": "openPassage",

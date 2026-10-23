@@ -80,6 +80,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 12.3 (schéma 11) : bonus d'équipement d'un personnage par identifiant (« armor »…) ; facultatif.</summary>
         public List<KeyValuePair<string, int?>>? Gear { get; set; }
 
+        /// <summary>Sous-lot 12.6 (schéma 12) : objets de soin emportés par un personnage ; facultatif.</summary>
+        public List<ConsumableData?>? Consumables { get; set; }
+
         // Mannequin et assaillant
         public Fixed? Armor { get; set; }
         public Fixed? MagicResistance { get; set; }
@@ -213,7 +216,19 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 11.9 : « move » à reculons (l'orientation ne suit pas la marche).</summary>
         public bool? Backward { get; set; }
 
+        /// <summary>Sous-lot 12.6 (schéma 12) : objet de soin d'un « consume ».</summary>
+        public string? Item { get; set; }
+
         /// <summary>Champs effectivement présents dans le fichier.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Sous-lot 12.6 : objet de soin emporté (identifiant, soin, charges, recharge partagée en ms).</summary>
+    public sealed class ConsumableData
+    {
+        public string? Id { get; set; }
+        public long? Heal { get; set; }
+        public int? Charges { get; set; }
+        public long? CooldownMs { get; set; }
     }
 }

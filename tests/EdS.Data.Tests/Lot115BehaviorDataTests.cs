@@ -103,10 +103,10 @@ public class Lot115BehaviorDataTests
     [Fact]
     public void Schema_8_et_schema_JSON()
     {
-        Assert.Equal(11, ScenarioValidator.CurrentSchemaVersion);   // sous-lot 11.9 : 9 (obstacle bas, poussée, arrêt pendant l'annonce, meute) ; 12.1 : 10 ; 12.3 : 11
+        Assert.Equal(12, ScenarioValidator.CurrentSchemaVersion);   // sous-lot 11.9 : 9 (obstacle bas, poussée, arrêt pendant l'annonce, meute) ; 12.1 : 10 ; 12.3 : 11 ; 12.6 : 12
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Error(Mutated(root => root["schemaVersion"] = 7)).Path, Error(Mutated(root => root["schemaVersion"] = 7)).Code));
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(11, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(12, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         JsonNode behavior = schema["$defs"]!["combatant"]!["properties"]!["behavior"]!;
         Assert.Equal(new[] { "maxRange", "minRange", "aggroRange", "encircle", "pack" }, behavior["properties"]!.AsObject().Select(p => p.Key));
         Assert.Equal("boolean", schema["$defs"]!["attack"]!["properties"]!["charge"]!["type"]!.GetValue<string>());

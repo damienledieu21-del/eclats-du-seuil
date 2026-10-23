@@ -152,5 +152,6 @@ public class CombatReplayTests
     // (ancienne empreinte 1754b668…). Sous-lot 11.9 : moteur 0.21.0, format 15, schéma 9 ; seul l'en-tête change (ancienne empreinte
     // 9d42464b…). Sous-lot 12.1 : moteur 0.22.0, format 16, schéma 10 ; seul l'en-tête change (ancienne empreinte a3025f2f…).
     // Sous-lot 12.3 : moteur 0.23.0, format 17, schéma 11 ; seul l'en-tête change (ancienne empreinte bcdf227b…).
-    internal const string MannequinLogHash = "6ace0ea27d844bdc293a1edbed348a133f3de5a30030c492b00833ce843d1dc1";
+    // Sous-lot 12.6 : moteur 0.24.0, format 18, schéma 12 ; seul l'en-tête change (ancienne empreinte 6ace0ea2…).
+    internal const string MannequinLogHash = "6cfd00e5ff717e2060bea1de173fe050684c47b854ef68b677caf313054e3934";
 }

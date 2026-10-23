@@ -82,6 +82,8 @@ namespace EdS.Data.Json
                 ["class"] = Track("class", (v, p) => c.Class = input.Text(v, p)),
                 ["build"] = Track("build", (v, p) => c.Build = ReadBuild(input, v, p)),
                 ["gear"] = Track("gear", (v, p) => c.Gear = ReadIntegerMap(input, v, p)),   // sous-lot 12.3 (schéma 11)
+                ["consumables"] = Track("consumables", (v, p) => c.Consumables = input.ReadLimitedList(v, p, CombatSetup.MaxConsumables,   // 12.6 (schéma 12)
+                    n => $"{n} objets de soin, au plus {CombatSetup.MaxConsumables}.", (e, ip) => ReadConsumable(input, e, ip))),
                 ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
                 ["magicResistance"] = Track("magicResistance", (v, p) => c.MagicResistance = input.Decimal(v, p)),
                 ["statusResistance"] = Track("statusResistance", (v, p) => c.StatusResistance = input.Decimal(v, p)),
@@ -240,6 +242,20 @@ namespace EdS.Data.Json
                 ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
                 ["direction"] = Track("direction", (v, p) => c.Direction = ReadPoint(input, v, p)),   // sous-lot 11.4
                 ["backward"] = Track("backward", (v, p) => c.Backward = input.Boolean(v, p)),       // sous-lot 11.9 (schéma 9)
+                ["item"] = Track("item", (v, p) => c.Item = input.Text(v, p)),                     // sous-lot 12.6 (schéma 12)
+            });
+            return ok ? c : null;
+        }
+
+        private static ConsumableData? ReadConsumable(JsonInput input, JsonElement element, string path)
+        {
+            var c = new ConsumableData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => c.Id = input.Text(v, p),
+                ["heal"] = (v, p) => c.Heal = input.Int64(v, p),
+                ["charges"] = (v, p) => c.Charges = input.Int32(v, p),
+                ["cooldownMs"] = (v, p) => c.CooldownMs = input.Int64(v, p),
             });
             return ok ? c : null;
         }

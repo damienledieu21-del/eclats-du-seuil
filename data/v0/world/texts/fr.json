@@ -22,9 +22,8 @@
       "text.odile.apres": "Le moulin tourne de nouveau. Merci, et que l'aube te garde.",
       "text.maelle.bonjour": "Le feu est chaud, mais je n'ai rien pour toi.",
       "text.maelle.minerai": "Une ferrure pour la porte du moulin ? Rapporte-moi trois minerais de fer.",
-      "text.maelle.indice": "Odile m'a parlé de toi. Il me faut trois minerais de fer : les sangliers de la carrière en avalent, va savoir pourquoi.",
-      "text.maelle.ferrure": "Trois minerais : de quoi forger une ferrure solide.",
-      "text.maelle.ferrure.forger": "Forgez-la, je la poserai.",
+      "text.maelle.indice": "Odile m'a parlé de toi. Forge la ferrure à mon enclume : trois minerais de fer, qu'on trouve sur les filons de la carrière, à l'est.",
+      "text.maelle.ferrure": "Belle ferrure. Tu veux que je la pose sur la porte du moulin ?",
       "text.maelle.faite": "Voilà. La porte du moulin s'ouvrira à ton prochain passage.",
       "text.gaspard.garde": "La carrière n'est pas sûre : des sangliers, et pire encore au nord-est.",
       "text.gaspard.rodeur": "Le rôdeur frappe de loin, puis se fige avant de lâcher une onde : sors du cercle à ce moment-là.",
@@ -32,14 +31,22 @@
       "text.quest.traces.name": "Les traces sous le moulin",
       "text.quest.traces.enquete": "Interroger Odile, la meunière, sur les traces autour de son moulin.",
       "text.quest.traces.traces": "Suivre les traces jusqu'à la vieille porte du moulin, dans la haie du nord.",
-      "text.quest.traces.passage": "La porte est condamnée : faire forger une ferrure par Maëlle avec trois minerais de fer.",
+      "text.quest.traces.passage": "La porte est condamnée : forger une ferrure (trois minerais de fer, à l'enclume du village) et la faire poser par Maëlle.",
       "text.quest.traces.pre": "Passer la porte du moulin et suivre les traces dans le pré des loups.",
       "text.quest.traces.manifestation": "Les traces filent vers les pierres dressées, au nord-est : trouver la manifestation du Seuil.",
       "text.quest.traces.rodeur": "Le rôdeur du Seuil se nourrit de la manifestation : le vaincre.",
       "text.quest.traces.retour": "Revenir chez Odile.",
       "text.discovery.traces_griffues": "Des traces griffues, trop longues pour un loup, partent de la porte du moulin.",
       "text.discovery.eclats_dans_le_pre": "Dans le pré, de minuscules éclats brillent là où les traces s'arrêtent.",
-      "text.discovery.manifestation": "Entre les pierres dressées, l'air se plie : une manifestation du Seuil."
+      "text.discovery.manifestation": "Entre les pierres dressées, l'air se plie : une manifestation du Seuil.",
+      "text.profession.forge": "Forge",
+      "text.profession.herboristerie": "Herboristerie",
+      "text.profession.minage": "Minage",
+      "text.recipe.ferrure": "Ferrure",
+      "text.recipe.potion_de_soin": "Potion de soin",
+      "text.recipe.remede_de_l_aube": "Remède de l'aube",
+      "text.maelle.ferrure.poser": "La ferrure tiendra : je la pose sur la porte du moulin.",
+      "text.maelle.forger_soi_meme": "Une ferrure pour la porte du moulin ? Forge-la toi-même à mon enclume : trois minerais de fer. La carrière en regorge."
     }
   }
 }

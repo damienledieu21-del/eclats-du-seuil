@@ -116,10 +116,10 @@ public class Lot114cAttackDataTests
     [Fact]
     public void Schema_6_et_schemas_JSON()
     {
-        Assert.Equal(11, ScenarioValidator.CurrentSchemaVersion);   // sous-lot 11.4d : 7 (arrivées, départ) ; 11.5 : 8 (comportements) ; 11.9 : 9 ; 12.1 : 10 ; 12.3 : 11
+        Assert.Equal(12, ScenarioValidator.CurrentSchemaVersion);   // sous-lot 11.4d : 7 (arrivées, départ) ; 11.5 : 8 (comportements) ; 11.9 : 9 ; 12.1 : 10 ; 12.3 : 11 ; 12.6 : 12
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Error(Mutated(root => root["schemaVersion"] = 5)).Path, Error(Mutated(root => root["schemaVersion"] = 5)).Code));
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(11, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(12, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         JsonNode attack = scenario["$defs"]!["attack"]!["properties"]!;
         Assert.Equal(new[] { "target", "cone", "circle", "line", "persistent" }, attack["shape"]!["enum"]!.AsArray().Select(x => x!.GetValue<string>()));
         Assert.All(new[] { "telegraphMs", "range", "radius", "angle", "width", "center", "persistentMs", "tickMs", "guardable", "parryable" }, f => Assert.NotNull(attack[f]));

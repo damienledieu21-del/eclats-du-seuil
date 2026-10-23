@@ -29,6 +29,12 @@ namespace EdS.Simulation.Engine
         /// </summary>
         public long DamageTaken { get; internal set; }
 
+        /// <summary>Sous-lot 12.6 : PV rendus par les objets de soin (les PV restants valent PV max − dégâts subis + soins, pour un vivant).</summary>
+        public long Healed { get; internal set; }
+
+        /// <summary>Sous-lot 12.6 : charges utilisées de chaque objet de soin (ordre ordinal) ; vide sans usage.</summary>
+        public IReadOnlyDictionary<string, int> ConsumablesUsed { get; internal set; } = new Dictionary<string, int>();
+
         /// <summary>Sous-lot 8.2 (X4) : dégâts subis absorbés par les boucliers de ce combattant.</summary>
         public long DamageAbsorbed { get; internal set; }
 

@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/crafting.schema.json",
+  "title": "Éclats du Seuil — métiers, recettes, récolte",
+  "description": "Sous-lot 12.6. Documentation. La validation qui fait foi est celle du programme (CraftingValidator), avec les textes, la zone et le catalogue des objets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "crafting"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxLevel",
+        "xpToLevel",
+        "professions",
+        "recipes",
+        "nodes"
+      ],
+      "properties": {
+        "maxLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "xpToLevel": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "professions": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^text(\\.[a-z0-9_]+)+$"
+              }
+            }
+          }
+        },
+        "recipes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "profession",
+              "requiredLevel",
+              "place",
+              "inputs",
+              "output",
+              "xp"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^recipe(\\.[a-z0-9_]+)+$"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^text(\\.[a-z0-9_]+)+$"
+              },
+              "profession": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "requiredLevel": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "place": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "inputs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "item",
+                    "count"
+                  ],
+                  "properties": {
+                    "item": {
+                      "type": "string",
+                      "pattern": "^item(\\.[a-z0-9_]+)+$"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 999
+                    }
+                  }
+                }
+              },
+              "output": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "item",
+                  "count"
+                ],
+                "properties": {
+                  "item": {
+                    "type": "string",
+                    "pattern": "^item(\\.[a-z0-9_]+)+$"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 999
+                  }
+                }
+              },
+              "xp": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000
+              }
+            }
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "profession",
+              "item",
+              "count",
+              "position",
+              "respawnMs",
+              "xp"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "profession": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "item": {
+                "type": "string",
+                "pattern": "^item(\\.[a-z0-9_]+)+$"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 999
+              },
+              "position": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "respawnMs": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 3600000
+              },
+              "xp": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "2c5978f6a2205fa64aee0bd0af4b6b2b13232c25341b2aad8fd4bd92b5691c6b")]
-    [InlineData("entrainement_rupture", "57b2f936a5a3ae53b6819e8dbc05b616a5f89b9ba6a125538dcdf43e30d93744")]
-    [InlineData("entrainement_alterations", "0ec4de5aa400dce9e152685be38330e63fef36f7497b76a0a320c099a2170c7b")]
-    [InlineData("entrainement_declencheurs", "af5a6ebb488a73af7a89c042bab575e2e91b325c5a861156ab5afd6679739cef")]
+    [InlineData("entrainement_garde_parade", "a70bb4a1cca5eea5f62d704947d342c7ef7a0391bef0c95a4666e0caf58c80d4")]
+    [InlineData("entrainement_rupture", "70f6a7aae5ef8ae9004328fad127d4045cc865c7fbb9186e829461fe285b8a05")]
+    [InlineData("entrainement_alterations", "9e70c3d802028a281d2dca2af26d6a55b2b88313beedf8bce395a5dae410fd77")]
+    [InlineData("entrainement_declencheurs", "9e534558fb23f57370bd46d1fe1c60855f59395c532f7f9e0e30a42242207b84")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -137,6 +137,7 @@ public class TrainingScenarioTests
         // Sous-lot 11.9 : moteur 0.21.0, format 15, schéma 9 ; seul l'en-tête change ; référence dans Fixtures/reference-0.21.0-contenu-0.6.0.
         // Sous-lot 12.1 : moteur 0.22.0, format 16, schéma 10 ; seul l'en-tête change ; référence dans Fixtures/reference-0.22.0-contenu-0.6.0.
         // Sous-lot 12.3 : moteur 0.23.0, format 17, schéma 11 ; seul l'en-tête change ; référence dans Fixtures/reference-0.23.0-contenu-0.6.0.
+        // Sous-lot 12.6 : moteur 0.24.0, format 18, schéma 12 ; seul l'en-tête change ; référence dans Fixtures/reference-0.24.0-contenu-0.6.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

@@ -48,6 +48,7 @@ namespace EdS.Simulation.Engine
                 if (c.Action == CombatAction.Select && c.Target != null) w.Field("target", c.Target);   // sous-lot 11.4c
                 if (c.Direction is { } direction) WritePoint(w.Name("direction"), direction);   // sous-lot 11.4 : telle que donnée
                 if (c.Backward) w.Field("backward", true);   // sous-lot 11.9 (format 15) : seulement à reculons
+                if (c.Item != null) w.Field("item", c.Item);   // sous-lot 12.6 (format 18) : objet de soin d'un consume
                 w.EndObject();
             }
             w.EndArray().EndObject();
@@ -219,6 +220,15 @@ namespace EdS.Simulation.Engine
                     w.Name("passiveSkills").BeginArray();
                     foreach (string skill in build.PassiveSkills) w.Value(skill);
                     w.EndArray().EndObject();
+                    // Sous-lot 12.6 (format 18) : objets de soin emportés, seulement s'il y en a.
+                    if (character.Consumables.Count > 0)
+                    {
+                        w.Name("consumables").BeginArray();
+                        foreach (ConsumableSetup consumable in character.Consumables)
+                            w.BeginObject().Field("id", consumable.Id).Field("heal", consumable.Heal).Field("charges", consumable.Charges)
+                                .Field("cooldownMs", consumable.CooldownMs).EndObject();
+                        w.EndArray();
+                    }
                     // Sous-lot 12.3 (format 17) : bonus de l'équipement porté, seulement ses champs non nuls, et seulement s'il y en a.
                     if (!character.Gear.IsNone)
                     {

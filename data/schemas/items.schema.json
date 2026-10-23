@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "items"
@@ -89,7 +89,8 @@
         "type": {
           "enum": [
             "equipment",
-            "material"
+            "material",
+            "consumable"
           ]
         },
         "rarity": {
@@ -107,7 +108,7 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 999,
-          "description": "Matériau seulement : taille d'une pile."
+          "description": "Matériau ou objet de soin : taille d'une pile (un objet de soin en emporte au plus une pile au combat)."
         },
         "slot": {
           "type": "string",
@@ -163,6 +164,18 @@
               "maximum": 50000
             }
           }
+        },
+        "heal": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000,
+          "description": "Objet de soin seulement (sous-lot 12.6) : PV rendus."
+        },
+        "cooldownMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3600000,
+          "description": "Objet de soin seulement : recharge partagée qui suit son usage, en ms (multiple de 50)."
         }
       }
     },

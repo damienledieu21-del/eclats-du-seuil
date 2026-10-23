@@ -87,6 +87,18 @@ namespace EdS.Data.Json
                     c.Present.Add("equipment");
                     c.Equipment = ReadEquipment(input, v, p);
                 },
+                ["professions"] = (v, p) =>   // sous-lot 12.6 (version 5)
+                {
+                    c.Present.Add("professions");
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « métier : expérience »")) return;
+                    var list = new List<KeyValuePair<string, long?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (list.Count >= 64) { input.Report.Add(p, ValidationCode.LimitExceeded, "au plus 64 métiers."); return; }
+                        list.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
+                    }
+                    c.Professions = list;
+                },
                 ["story"] = (v, p) =>   // sous-lot 12.5 (version 4)
                 {
                     c.Present.Add("story");
@@ -235,7 +247,11 @@ namespace EdS.Data.Json
                 + ", \"progress\": " + q.Value.Progress.ToString(CultureInfo.InvariantCulture) + "}"))).Append("},\n");
             b.Append("        \"trust\": {").Append(string.Join(", ", st.Trust.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append("\n");
-            b.Append("      }\n");
+            b.Append("      },\n");
+            // Sous-lot 12.6 (version 5) : expérience des métiers, sur une ligne.
+            if (c.Professions.Any(p => !SafeId.IsMatch(p.Key) || p.Value < 1 || p.Value > SaveValidator.MaxXp))
+                throw new ArgumentException("Métiers hors du format des sauvegardes.", nameof(c));
+            b.Append("      \"professions\": {").Append(string.Join(", ", c.Professions.Select(p => Quoted(p.Key) + ": " + p.Value.ToString(CultureInfo.InvariantCulture)))).Append("}\n");
             b.Append("    },\n");
         }
     }
