@@ -294,6 +294,48 @@ public class Lot121WorldTests
     }
 
     [Fact]
+    public void Ecriture_refuse_ce_que_la_lecture_refuserait()
+    {
+        // Revue Codex de la PR #42 : mêmes bornes à l'écriture qu'à la lecture.
+        Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", -1, 0, Array.Empty<string>())));
+        Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", SaveValidator.MaxWorldTick + 1, 0, Array.Empty<string>())));
+        Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", 0, -1, Array.Empty<string>())));
+        Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0,
+            Enumerable.Range(0, SaveValidator.MaxConsumed + 1).Select(i => $"zone.vallons/1/death/c{i}"))));
+        string edge = SaveJsonReader.Write(new WorldSave("zone.vallons", SaveValidator.MaxWorldTick, SaveValidator.MaxWorldTick, Array.Empty<string>()));
+        Assert.True(SaveJsonReader.Read(edge).IsValid);
+    }
+
+    [Fact]
+    public void Sauvegarde_pleine_lue_malgre_ses_seize_mio()
+    {
+        // Revue Codex de la PR #42 : 100 000 clés de 200 caractères (plus de 16 Mio) restent lisibles : la limite des sauvegardes (32 Mio)
+        // vaut jusqu'à l'analyseur.
+        string Key(int i) => "zone.vallons/" + i.ToString("D9") + "/" + new string('a', 200 - 23);
+        var save = new WorldSave("zone.vallons", 0, 0, Enumerable.Range(0, SaveValidator.MaxConsumed).Select(Key));
+        Assert.All(save.Consumed.Take(3), k => Assert.Equal(200, k.Length));
+        string text = SaveJsonReader.Write(save);
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(text) > InputLimits.MaxDataFileBytes);
+        SaveLoadResult read = SaveJsonReader.Read(text);
+        Assert.True(read.IsValid, read.Report.ToString());
+        Assert.Equal(SaveValidator.MaxConsumed, read.Save!.Consumed.Count);
+    }
+
+    [Fact]
+    public void Session_tient_sous_la_borne_du_temps_du_monde()
+    {
+        // Revue Codex de la PR #42 : la durée de la session est réservée d'avance sous la borne des sauvegardes.
+        CombatSetup setup = ZoneSetup(root => root["data"]!["durationMs"] = 3000);
+        long sessionTicks = 3000 / 50 + 1;
+        Zone last = NewZone(setup, start: SaveValidator.MaxWorldTick - sessionTicks);
+        Run(last, 1000);
+        Assert.True(last.IsOver);
+        Assert.InRange(last.WorldTick, SaveValidator.MaxWorldTick - 1, SaveValidator.MaxWorldTick);
+        Assert.True(SaveJsonReader.Read(SaveJsonReader.Write(last.Save())).IsValid);
+        Assert.Throws<ArgumentOutOfRangeException>(() => NewZone(setup, start: SaveValidator.MaxWorldTick - sessionTicks + 1));
+    }
+
+    [Fact]
     public void Versions_et_type_de_sauvegarde()
     {
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
