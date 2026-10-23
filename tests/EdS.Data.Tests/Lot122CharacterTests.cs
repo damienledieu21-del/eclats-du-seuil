@@ -11,6 +11,7 @@ using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Domain.Stats;
+using EdS.Simulation.Engine;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -252,6 +253,55 @@ public class Lot122CharacterTests
         Assert.Equal((3L, 2), (next.Zone.Session, next.EnteredLevel));
         next.Step();
         Assert.Equal(quick.ForClass("class.bastion").At(2).Vitalite, next.Zone.Engine.View("bastion").Character!.Build.Attributes.Vitalite);
+    }
+
+    /// <summary>Un loup de 60 PV au contact du Bastion, frappé jusqu'à sa mort ; rend la partie, les gains et la mort vue.</summary>
+    private static (WorldSession Session, List<ExperienceGained> Gains, bool Died) KillWolf(long xp, ICombatLog? log = null)
+    {
+        ScenarioLoadResult loaded = ReadMutated(root =>
+        {
+            JsonObject wolf = root["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => c["id"]!.GetValue<string>() == "loup1");
+            wolf["health"] = 60;
+            wolf["position"] = new JsonArray(-16, -12);
+        }, scenario: "zones/vallons");
+        var save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", Shipped).WithXp(xp));
+        var session = new WorldSession(save, loaded.Setup!, ShippedData, Shipped, Items, new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5")), log: log);
+        var gains = new List<ExperienceGained>();
+        for (int i = 0; i < 600 && !session.Zone.Engine.View("loup1").IsDead; i++)
+        {
+            if (i % 20 == 1)
+                try { session.Zone.Engine.Submit(new CombatCommand(session.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", "loup1")); }
+                catch (ArgumentException) { }
+            gains.AddRange(session.Step().Experience);
+        }
+        return (session, gains, session.Zone.Engine.View("loup1").IsDead);
+    }
+
+    [Fact]
+    public void Experience_annoncee_telle_qu_ajoutee_sous_le_plafond()
+    {
+        // Revue Codex de la PR #43 : près du plafond, seule l'expérience réellement ajoutée est annoncée ; au plafond, rien.
+        (WorldSession near, List<ExperienceGained> gains, bool died) = KillWolf(SaveValidator.MaxXp - 1);
+        Assert.True(died);
+        Assert.Equal(1L, Assert.Single(gains).Xp);
+        Assert.Equal(SaveValidator.MaxXp, near.Character.Xp);
+        (WorldSession full, List<ExperienceGained> none, bool diedToo) = KillWolf(SaveValidator.MaxXp);
+        Assert.True(diedToo);
+        Assert.Empty(none);
+        Assert.Equal(SaveValidator.MaxXp, full.Character.Xp);
+    }
+
+    [Fact]
+    public void Le_journal_de_la_session_decrit_le_personnage_des_l_en_tete()
+    {
+        // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ ; l'en-tête du journal le décrit
+        // (classe et build compris).
+        var log = new MemoryCombatLog();
+        (WorldSession session, _, bool died) = KillWolf(0, log);
+        Assert.True(died);
+        Assert.Contains("\"bastion\"", log.Lines[0], StringComparison.Ordinal);
+        Assert.Contains("class.bastion", log.Lines[0], StringComparison.Ordinal);
+        Assert.Contains(session.Zone.Engine.CompletedSetup().Combatants, c => c.Id == "bastion" && c.ArrivalMs == 0);
     }
 
     [Fact]
