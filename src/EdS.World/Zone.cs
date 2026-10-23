@@ -108,8 +108,18 @@ namespace EdS.World
             Clock = clock ?? new WorldClock(_engine.TickMilliseconds);
             if (Clock.TickMilliseconds != _engine.TickMilliseconds) throw new ArgumentException("Horloge du monde d'un autre tick que la zone.", nameof(clock));
             foreach (string combatant in _engine.CombatantIds)
+            {
+                // Revue Codex de la PR #42 : la clé de mort de chaque combattant doit tenir dans le format des sauvegardes.
+                if (!DeathKeyFits(combatant))
+                    throw new ArgumentException($"Clé de mort de « {combatant} » trop longue ou hors du format des sauvegardes.", nameof(setup));
+                _keyed.Add(combatant);
                 if (_engine.View(combatant).IsDead) _dead.Add(combatant);
+            }
         }
+
+        private readonly HashSet<string> _keyed = new HashSet<string>(StringComparer.Ordinal);
+
+        private bool DeathKeyFits(string combatant) => SaveValidator.IsEventKey(EventKey(ZoneEventKind.Death, combatant));
 
         /// <summary>Ticks déjà simulés dans cette session (le moteur ne compte plus après son dernier tick : il est compris ici).</summary>
         public long ElapsedTicks => _engine.IsFinished ? checked(_engine.CurrentTick + 1) : _engine.CurrentTick;
@@ -133,9 +143,23 @@ namespace EdS.World
         /// Simule un tick de la zone et rend ses événements consommables, dans l'ordre des identifiants ; aucun si la session est terminée.
         /// Chaque mort est inscrite au registre : <see cref="ZoneEvent.FirstTime"/> dit si elle l'est pour la première fois.
         /// </summary>
+        /// <exception cref="InvalidOperationException">Registre trop plein pour les morts possibles du tick, ou clé de mort d'un combattant arrivé
+        /// hors du format ; rien n'a bougé.</exception>
         public IReadOnlyList<ZoneEvent> Step()
         {
             if (_engine.IsFinished) return Array.Empty<ZoneEvent>();
+            // Revue Codex de la PR #42 : place réservée au registre avant le tick (chaque combattant pas encore mort peut mourir), et clé de mort
+            // vérifiée pour un combattant arrivé par le moteur ; sinon rien ne bouge, et la sauvegarde reste possible.
+            IReadOnlyList<string> ids = _engine.CombatantIds;
+            foreach (string combatant in ids)
+                if (!_keyed.Contains(combatant))
+                {
+                    if (!DeathKeyFits(combatant))
+                        throw new InvalidOperationException($"Clé de mort de « {combatant} » trop longue ou hors du format des sauvegardes.");
+                    _keyed.Add(combatant);
+                }
+            if (checked(_consumed.Count + ids.Count - _dead.Count) > SaveValidator.MaxConsumed)
+                throw new InvalidOperationException($"Registre des événements presque plein ({_consumed.Count} sur {SaveValidator.MaxConsumed}) : plus de place pour les morts possibles de ce tick.");
             long tick = _engine.CurrentTick;
             _engine.Step();
             var events = new List<ZoneEvent>();
@@ -158,6 +182,8 @@ namespace EdS.World
         public void Enter(CharacterSetup character)
         {
             if (character is null) throw new ArgumentNullException(nameof(character));
+            if (!DeathKeyFits(character.Id))
+                throw new ArgumentException($"Clé de mort de « {character.Id} » trop longue ou hors du format des sauvegardes.", nameof(character));
             long now = checked(_engine.CurrentTick * _engine.TickMilliseconds);
             _engine.Join(new CharacterSetup(character.Id, character.Team, character.Class, character.Build, character.Initiative, character.Placement, now, character.Gear));
         }
@@ -169,9 +195,13 @@ namespace EdS.World
                 CombatAction.Leave));
 
         /// <summary>Inscrit un événement au registre ; faux s'il y figurait déjà (une seule attribution).</summary>
+        /// <exception cref="InvalidOperationException">Registre plein (<see cref="SaveValidator.MaxConsumed"/>).</exception>
         public bool Consume(string key)
         {
             if (!SaveValidator.IsEventKey(key)) throw new ArgumentException($"Clé d'événement « {key} » invalide.", nameof(key));
+            if (_consumed.Contains(key)) return false;
+            if (_consumed.Count >= SaveValidator.MaxConsumed)
+                throw new InvalidOperationException($"Registre des événements plein ({SaveValidator.MaxConsumed}).");
             return _consumed.Add(key);
         }
 

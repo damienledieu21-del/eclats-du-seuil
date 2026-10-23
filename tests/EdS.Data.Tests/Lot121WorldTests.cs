@@ -336,6 +336,40 @@ public class Lot121WorldTests
     }
 
     [Fact]
+    public void Registre_jamais_au_dela_de_sa_borne()
+    {
+        // Revue Codex de la PR #42 (2e tour) : place réservée avant chaque tick pour toutes les morts possibles (5 créatures).
+        string Key(int i) => $"zone.vallons/0/death/c{i}";
+        int creatures = ZoneSetup().Combatants.Count;
+        Zone full = NewZone(consumed: Enumerable.Range(0, SaveValidator.MaxConsumed - creatures + 1).Select(Key));
+        Assert.Throws<InvalidOperationException>(() => full.Step());
+        Assert.Equal(0, full.Engine.CurrentTick);   // rien n'a bougé
+        Assert.True(SaveJsonReader.Read(SaveJsonReader.Write(full.Save())).IsValid);
+        Zone room = NewZone(consumed: Enumerable.Range(0, SaveValidator.MaxConsumed - creatures).Select(Key));
+        room.Step();
+        Assert.Equal(1, room.Engine.CurrentTick);
+        Assert.False(room.Consume(Key(0)));   // déjà là : pas de place nécessaire
+        Zone exact = NewZone(consumed: Enumerable.Range(0, SaveValidator.MaxConsumed).Select(Key));
+        Assert.Throws<InvalidOperationException>(() => exact.Consume("zone.vallons/1/quest/x"));
+        Assert.Equal(SaveValidator.MaxConsumed, exact.Save().Consumed.Count);
+    }
+
+    [Fact]
+    public void Cles_de_mort_toujours_dans_le_format()
+    {
+        // Revue Codex de la PR #42 (2e tour) : un identifiant de combattant ou de zone trop long ferait une clé hors du format.
+        string longId = "loup" + new string('x', 190);
+        CombatSetup setup = ZoneSetup(root => root["data"]!["combatants"]![0]!["id"] = longId);
+        Assert.Throws<ArgumentException>(() => NewZone(setup));
+        Assert.False(SaveValidator.IsZoneId("zone." + new string('a', 60)));
+        Assert.Throws<ArgumentException>(() => new Zone("zone." + new string('a', 60), ZoneSetup(), 1, 0));
+        Zone zone = NewZone();
+        CharacterSetup bastion = ScenarioJsonReader.ReadFile(ScenarioPath("vallons_demo"), ShippedData).Setup!.Combatants.OfType<CharacterSetup>().First();
+        var renamed = new CharacterSetup(longId, bastion.Team, bastion.Class, bastion.Build, 0, bastion.Placement);
+        Assert.Throws<ArgumentException>(() => zone.Enter(renamed));
+    }
+
+    [Fact]
     public void Versions_et_type_de_sauvegarde()
     {
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
