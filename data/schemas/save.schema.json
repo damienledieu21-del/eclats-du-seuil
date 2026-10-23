@@ -37,7 +37,8 @@
       "properties": {
         "zone": {
           "type": "string",
-          "pattern": "^zone\\.[a-z][a-z0-9_]*$"
+          "pattern": "^zone\\.[a-z][a-z0-9_]*$",
+          "maxLength": 64
         },
         "worldTick": {
           "type": "integer",
@@ -52,9 +53,11 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^[a-z0-9_.]+(/[a-z0-9_.]+)+$"
+            "pattern": "^[a-z0-9_.]+(/[a-z0-9_.]+)+$",
+            "maxLength": 200
           },
-          "description": "Événements consommés, triés, sans doublon."
+          "description": "Événements consommés, triés, sans doublon.",
+          "maxItems": 100000
         },
         "character": {
           "anyOf": [
@@ -78,10 +81,13 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[a-z][a-z0-9_]*$"
+                  "pattern": "^[a-z][a-z0-9_]*$",
+                  "maxLength": 64
                 },
                 "class": {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[a-z0-9_.]+$",
+                  "maxLength": 200
                 },
                 "xp": {
                   "type": "integer",
@@ -92,19 +98,29 @@
                   "type": "object",
                   "additionalProperties": {
                     "type": "integer",
-                    "minimum": 0
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z0-9_.]+$",
+                    "maxLength": 200
                   }
                 },
                 "activeSkills": {
                   "type": "array",
                   "items": {
-                    "type": "string"
-                  }
+                    "type": "string",
+                    "pattern": "^[a-z0-9_.]+$",
+                    "maxLength": 200
+                  },
+                  "maxItems": 64
                 },
                 "ultimate": {
                   "anyOf": [
                     {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[a-z0-9_.]+$",
+                      "maxLength": 200
                     },
                     {
                       "type": "null"
@@ -114,8 +130,11 @@
                 "passiveSkills": {
                   "type": "array",
                   "items": {
-                    "type": "string"
-                  }
+                    "type": "string",
+                    "pattern": "^[a-z0-9_.]+$",
+                    "maxLength": 200
+                  },
+                  "maxItems": 64
                 },
                 "inventory": {
                   "type": "array",

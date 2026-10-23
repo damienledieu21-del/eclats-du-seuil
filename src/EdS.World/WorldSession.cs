@@ -131,9 +131,12 @@ namespace EdS.World
         /// <summary>Simule un tick ; rend l'expérience et le butin gagnés à ce tick (créatures vaincues).</summary>
         public SessionStep Step()
         {
+            // Revue Codex de la PR #43 : un départ prend effet en fin de tick, après les morts : la présence se juge aussi au début du tick.
+            bool wasPresent = Zone.Engine.View(_character.Id).IsPresent;
             IReadOnlyList<ZoneEvent> events = Zone.Step();
             if (events.Count == 0) return SessionStep.Empty;
             CombatantView me = Zone.Engine.View(_character.Id);
+            bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
             var gains = new List<ExperienceGained>();
             var loot = new List<LootGained>();
             foreach (ZoneEvent e in events)
@@ -142,7 +145,7 @@ namespace EdS.World
                 CombatantView creature = Zone.Engine.View(e.Combatant);
                 if (creature.Kind != CombatantKind.Assailant || creature.MaxHealth is not long maxHealth) continue;
                 // Le personnage doit être là, et vivant, quand la créature tombe (solo : il est seul à pouvoir l'avoir vaincue).
-                if (!me.IsPresent || me.IsDead) continue;
+                if (!here) continue;
                 int before = Level;
                 // Revue Codex de la PR #43 : seule l'expérience réellement ajoutée (sous le plafond) est annoncée ; rien au plafond.
                 long total = Math.Min(SaveValidator.MaxXp, checked(_character.Xp + _progression.KillXp(maxHealth)));
