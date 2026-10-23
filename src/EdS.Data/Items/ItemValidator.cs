@@ -343,6 +343,9 @@ namespace EdS.Data.Items
             var values = new int[GearBonus.Fields.Count];
             if (item.Bonus is null) { Missing(report, path + ".bonus", "bonus aux statistiques, éventuellement vide"); ok = false; }
             else
+            {
+                // Revue Codex de la PR #44 : un bonus une seule fois (catalogue construit en objets publics), jamais écrasé par un second.
+                var seenBonus = new HashSet<string>(StringComparer.Ordinal);
                 foreach (KeyValuePair<string, int?> entry in item.Bonus)
                 {
                     string bonusPath = $"{path}.bonus.{entry.Key}";
@@ -352,10 +355,12 @@ namespace EdS.Data.Items
                         report.Add(bonusPath, ValidationCode.UnknownReference, $"bonus inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
                         ok = false;
                     }
+                    else if (!seenBonus.Add(entry.Key)) { report.Add(bonusPath, ValidationCode.DuplicateId, $"bonus « {entry.Key} » donné deux fois."); ok = false; }
                     else if (entry.Value is not int value) { Missing(report, bonusPath, "entier"); ok = false; }
                     else if (value < 0 || value > MaxItemBonus) { report.Add(bonusPath, ValidationCode.OutOfRange, $"bonus hors de [0, {MaxItemBonus}]."); ok = false; }
                     else values[field] = value;
                 }
+            }
             return ok ? new ItemDefinition(item.Id!, item.Name!, type, rarity, 1, item.Slot, item.RequiredLevel!.Value, GearBonus.FromValues(values)) : null;
         }
 
