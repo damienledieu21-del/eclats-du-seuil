@@ -55,8 +55,19 @@ Détail : [MONDE.md](MONDE.md#pnj-dialogues-et-quêtes-sous-lot-125).
 - **Textes provisoires** (question à Damien) : dialogues, noms, journal et découvertes sont une première écriture, à relire par Damien ; tout est dans `data/v0/world/texts/fr.json`. Pas encore d'anglais.
 - **Mission sans chef** : l'étape « vaincre le chef » viendra au 12.7, entre le rôdeur et le retour chez Odile. Pas de quête secrète ni de réveil renforcé dans la tranche pour l'instant (Q2 : à une étape identifiée).
 - **Une seule conséquence de PNJ** dans la mission (la confiance d'Odile : indice de Maëlle et amulette au retour). Le format en permet d'autres sans code.
-- **Minerai sur les sangliers** en attendant les nœuds de récolte et la forge (12.6) ; Maëlle « forge » la ferrure dans le dialogue.
+- **Minerai sur les sangliers** en attendant les nœuds de récolte et la forge (fait au 12.6 : le joueur forge la ferrure).
 - **Portée personnelle seulement** (H2) : rien de commun à plusieurs joueurs avant le lot 13.
 - **Passage ouvert à la session suivante** (comme au 12.4) : l'étape « pré des loups » se fait après une reprise.
 - **Pas d'écran** : dialogues et journal s'affichent au 12.8.
 - **Formats** : sauvegarde en version 4 (histoire ; les versions 1 à 3 sont mises à jour), histoire et textes en schéma 1 ; moteur et journal inchangés.
+
+## Sous-lot 12.6 : soin et métiers
+
+Détail : [MONDE.md](MONDE.md#soin-et-métiers-sous-lot-126), moteur : [MOTEUR.md](MOTEUR.md#soin-sous-lot-126).
+
+- **Valeurs provisoires** (question à Damien) : soins (300 et 700 PV), recharge partagée de 20 s, une pile emportée par objet, courbe d'expérience des métiers, recettes, repousse des nœuds (1 min), réduction de l'expérience triviale. Tout est dans les données.
+- **Pas de régénération des PV** hors des objets de soin ; une session suivante repart PV pleins.
+- **Soin réservé aux objets** : pas encore de compétence de soin de classe (le format du moteur s'y prête).
+- **Réseau** : la commande `consume` n'est pas encore transmise par le protocole du lot 10 (monde partagé : lot 13).
+- **Nœuds par session** : un nœud récolté repousse dans la session ; une nouvelle session les remet tous en place.
+- **Formats** : moteur 0.24.0, journal au format 18, scénarios en schéma 12, instantané au format 3, catalogue des objets en version 2, sauvegarde en version 5 (les versions 1 à 4 sont mises à jour), métiers en schéma 1. Sans objet de soin, un combat écrit les mêmes lignes qu'au moteur 0.23.0 ; un journal 0.23.0 est refusé au rejeu, sans migration.
