@@ -214,6 +214,18 @@ namespace EdS.Data.Items
 
         public static bool IsSlotId(string? id) => id != null && id.Length <= 64 && SlotId.IsMatch(id);
 
+        /// <summary>Le champ est-il renseigné dans l'objet (indépendamment du lecteur JSON) ?</summary>
+        private static bool IsSet(ItemData item, string field) => field switch
+        {
+            "slot" => item.Slot != null,
+            "requiredLevel" => item.RequiredLevel != null,
+            "bonus" => item.Bonus != null,
+            "stack" => item.Stack != null,
+            "heal" => item.Heal != null,
+            "cooldownMs" => item.CooldownMs != null,
+            _ => false,
+        };
+
         private static readonly string[] EquipmentFields = { "slot", "requiredLevel", "bonus" };
         private static readonly string[] MaterialFields = { "stack" };
         private static readonly string[] ConsumableFields = { "stack", "heal", "cooldownMs" };
@@ -305,7 +317,8 @@ namespace EdS.Data.Items
                 return null;
             }
             string[] own = type == ItemType.Equipment ? EquipmentFields : type == ItemType.Material ? MaterialFields : ConsumableFields;
-            foreach (string field in EquipmentFields.Concat(ConsumableFields).Distinct().Where(f => !own.Contains(f) && item.Present.Contains(f)))
+            // Revue Codex de la PR #44 : un champ d'un autre type est refusé qu'il vienne du lecteur JSON (Present) ou d'un objet public renseigné.
+            foreach (string field in EquipmentFields.Concat(ConsumableFields).Distinct().Where(f => !own.Contains(f) && (item.Present.Contains(f) || IsSet(item, f))))
             {
                 report.Add($"{path}.{field}", ValidationCode.InvalidValue, $"champ « {field} » sans objet pour le type {item.Type}.");
                 ok = false;
