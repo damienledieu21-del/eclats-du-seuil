@@ -158,6 +158,10 @@ namespace EdS.Data.Characters
                     if (d.Classes[i] is not ClassProgressionData c) { Missing(report, path, "progression d'une classe"); continue; }
                     if (CheckClass(c, path, max, data, seen, report) is { } loaded) classes.Add(loaded);
                 }
+                // Revue Codex de la PR #43 : chaque classe chargée a sa progression ; sinon l'erreur ne se verrait qu'à la création d'un personnage.
+                foreach (LoadedClass loaded in data.Classes)
+                    if (!seen.Contains(loaded.Definition.Id))
+                        report.Add("$.data.classes", ValidationCode.MissingField, $"progression absente pour la classe « {loaded.Definition.Id} ».");
             }
             if (!report.IsValid || document.ContentVersion is null || max == 0) return new ProgressionLoadResult(report, null);
             return new ProgressionLoadResult(report, new CharacterProgression(document.SchemaVersion!.Value, document.ContentVersion, max,
