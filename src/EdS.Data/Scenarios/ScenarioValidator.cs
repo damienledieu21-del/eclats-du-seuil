@@ -51,17 +51,18 @@ namespace EdS.Data.Scenarios
         /// 11.9, essai du 22 octobre 2026) : <c>low</c> facultatif sur un obstacle (bas : arrête la marche, pas la vue), <c>push</c> (poussée
         /// d'une bande) et <c>holdPosition</c> (arrêt pendant l'annonce) facultatifs sur une attaque, <c>pack</c> facultatif sur un comportement
         /// (entraîné par sa meute), <c>backward</c> facultatif sur un <c>move</c> (marche à reculons). Version 10 (sous-lot 12.1) :
-        /// <c>zone</c> facultatif (simulation d'une zone du monde, sans fin quand une équipe tombe, durée jusqu'à 24 h). Une version antérieure
+        /// <c>zone</c> facultatif (simulation d'une zone du monde, sans fin quand une équipe tombe, durée jusqu'à 24 h). Version 11 (sous-lot 12.3) :
+        /// <c>gear</c> facultatif sur un personnage (bonus de l'équipement porté, entiers de 0 à 10⁶). Une version antérieure
         /// est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 10;
+        public const int CurrentSchemaVersion = 11;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
         /// <summary>Champs propres à chaque type de combattant ; un champ d'un autre type est refusé.</summary>
         private static readonly Dictionary<string, string[]> TypeFields = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["character"] = new[] { "class", "build" },
+            ["character"] = new[] { "class", "build", "gear" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
             ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior" },
         };
@@ -106,6 +107,15 @@ namespace EdS.Data.Scenarios
             return new ScenarioLoadResult(report, report.IsValid ? setup : null);
         }
 
+        /// <summary>Sous-lot 12.3 : bonus d'équipement d'un personnage de scénario (champs absents à 0).</summary>
+        private static GearBonus Gear(List<KeyValuePair<string, int?>>? gear)
+        {
+            if (gear is null) return GearBonus.None;
+            var values = new int[GearBonus.Fields.Length];
+            foreach (KeyValuePair<string, int?> entry in gear) values[Array.IndexOf(GearBonus.Fields, entry.Key)] = entry.Value!.Value;
+            return GearBonus.FromValues(values);
+        }
+
         private static CombatSetup Build(ScenarioData scenario, GameData data)
         {
             var combatants = new List<CombatantSetup>();
@@ -121,7 +131,7 @@ namespace EdS.Data.Scenarios
                     data.TryGetClass(c.Class!, out LoadedClass loaded);
                     usedClasses[loaded.Definition.Id] = loaded;
                     CharacterBuild build = Builds.BuildShape.ToCharacterBuild(loaded.Definition.Id, c.Build!);
-                    combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement, c.ArrivalMs));
+                    combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement, c.ArrivalMs, Gear(c.Gear)));
                 }
                 else if (c.Type == "assailant")
                 {
@@ -252,6 +262,12 @@ namespace EdS.Data.Scenarios
                             _report.Add(path + ".class", ValidationCode.UnknownReference,
                                 $"classe inconnue « {c.Class} » ; classes chargées : {string.Join(", ", _data.Classes.Select(x => x.Definition.Id))}.");
                         if (Present(c.Build, path + ".build", "build du personnage")) Builds.BuildShape.Check(c.Build!, path + ".build", _report);
+                        // Sous-lot 12.3 : bonus d'équipement par champ connu ; leurs bornes sont vérifiées par la validation du combat.
+                        if (c.Gear is { } gear)
+                            foreach (KeyValuePair<string, int?> entry in gear)
+                                if (Array.IndexOf(GearBonus.Fields, entry.Key) < 0)
+                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.UnknownReference,
+                                        $"bonus d'équipement inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
                         break;
                     case "dummy":
                         Present(c.Armor, path + ".armor", "nombre décimal");

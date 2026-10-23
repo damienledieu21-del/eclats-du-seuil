@@ -154,7 +154,7 @@ public static class Measures
             ?? throw new ArgumentException($"Aucun personnage « {MeasuredId} » dans le scénario.", nameof(setup));
         if (bastion.Class.Id != build.Build.ClassId)
             throw new ArgumentException($"Build « {build.Id} » de la classe « {build.Build.ClassId} », personnage mesuré de la classe « {bastion.Class.Id} ».", nameof(build));
-        var combatants = setup.Combatants.Select(c => c == bastion ? new CharacterSetup(bastion.Id, bastion.Team, bastion.Class, build.Build, bastion.Initiative, bastion.Placement, bastion.ArrivalMs) : c);
+        var combatants = setup.Combatants.Select(c => c == bastion ? new CharacterSetup(bastion.Id, bastion.Team, bastion.Class, build.Build, bastion.Initiative, bastion.Placement, bastion.ArrivalMs, bastion.Gear) : c);
         return new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, setup.Combat, combatants, setup.Commands, setup.Data, setup.Space, setup.Zone);
     }
 

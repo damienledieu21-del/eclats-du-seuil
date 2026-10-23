@@ -154,7 +154,7 @@ namespace EdS.World
         {
             if (character is null) throw new ArgumentNullException(nameof(character));
             long now = checked(_engine.CurrentTick * _engine.TickMilliseconds);
-            _engine.Join(new CharacterSetup(character.Id, character.Team, character.Class, character.Build, character.Initiative, character.Placement, now));
+            _engine.Join(new CharacterSetup(character.Id, character.Team, character.Class, character.Build, character.Initiative, character.Placement, now, character.Gear));
         }
 
         /// <summary>Fait sortir un combattant (commande <c>leave</c> au tick courant, effective en fin de tick).</summary>

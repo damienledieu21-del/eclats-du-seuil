@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.22.0";
+        public const string Version = "0.23.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -86,9 +86,11 @@ namespace EdS.Simulation.Engine
         /// annoncée (<c>attackCancelled</c>, raison du contrôle). Un combat sans ces champs ni contrôle pendant une annonce écrit exactement
         /// les mêmes lignes qu'au format 14. 16 (sous-lot 12.1) : l'en-tête peut porter <c>zone: true</c> (simulation d'une zone du monde,
         /// sans fin quand une équipe tombe : pas de <c>teamDefeated</c>, seulement <c>durationReached</c>). Un combat fermé écrit exactement les
-        /// mêmes lignes qu'au format 15. Un journal d'un autre format est refusé au rejeu.
+        /// mêmes lignes qu'au format 15. 17 (sous-lot 12.3) : un personnage de l'en-tête peut porter <c>gear</c> (bonus de l'équipement porté,
+        /// champs non nuls seulement), compté dans ses statistiques. Un combat sans équipement écrit exactement les mêmes lignes qu'au format 16.
+        /// Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 16;
+        public const int LogFormatVersion = 17;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -579,7 +581,7 @@ namespace EdS.Simulation.Engine
                     f.Character = character;
                     // Sous-lot 8.1 : mêmes fonctions que la validation (précontrôle) : modificateurs agrégés, statistiques, règles.
                     ModifierSet modifiers = ModifierSet.For(character);
-                    f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build, modifiers);
+                    f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build, modifiers, character.Gear);
                     f.Rules = CombatantRules.For(_rules, modifiers);
                     f.MaxHealth = f.Stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                     f.Health = f.MaxHealth;

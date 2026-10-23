@@ -167,12 +167,12 @@ public class Lot114aSpaceDataTests
     {
         // Sous-lot 11.4c : schéma 6 (formes des attaques, action select) ; 11.4d : schéma 7 (arrivées, départ) ; le bloc space et les
         // places du schéma 5 restent.
-        Assert.Equal(10, ScenarioValidator.CurrentSchemaVersion);   // 11.5 : 8 (comportements, charge) ; 11.9 : 9 ; 12.1 : 10
+        Assert.Equal(11, ScenarioValidator.CurrentSchemaVersion);   // 11.5 : 8 (comportements, charge) ; 11.9 : 9 ; 12.1 : 10 ; 12.3 : 11
         ValidationError old = Error(Mutated(root => root["schemaVersion"] = 4));
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (old.Path, old.Code));
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement root = schema.RootElement, defs = root.GetProperty("$defs");
-        Assert.Equal(10, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
+        Assert.Equal(11, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
         Assert.Equal("#/$defs/space", root.GetProperty("properties").GetProperty("data").GetProperty("properties").GetProperty("space").GetProperty("$ref").GetString());
         JsonElement combatant = defs.GetProperty("combatant").GetProperty("properties");
         Assert.All(new[] { "position", "facing", "radius", "speed" }, f => Assert.True(combatant.TryGetProperty(f, out _), f));

@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 10
+      "const": 11
     },
     "kind": {
       "const": "scenario"
@@ -182,6 +182,53 @@
         },
         "build": {
           "$ref": "#/$defs/build"
+        },
+        "gear": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Sous-lot 12.3 (schéma 11) : bonus de l'équipement porté par un personnage, ajoutés à ses statistiques ; champs absents à 0.",
+          "properties": {
+            "physicalPower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "agilePower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "magicPower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "armor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "magicResistance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "maxHealth": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "maxEndurance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "statusResistance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            }
+          }
         },
         "armor": {
           "type": "number",

@@ -146,7 +146,7 @@ public class Lot86CounterTests
         // Aucun champ ajouté : le scénario de référence se rejoue toujours à l'identique contre le journal figé du moteur courant (contenu
         // livré : 0.5.0 depuis le sous-lot 8.7, 0.6.0 depuis le 11.4b ; moteur 0.15.0 depuis le sous-lot 11.1, 0.16.0 depuis le 11.4a, 0.17.0
         // depuis le 11.4b, 0.18.0 depuis le 11.4c).
-        string frozen = Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.22.0-contenu-0.6.0", "entrainement_declencheurs.jsonl");
+        string frozen = Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.23.0-contenu-0.6.0", "entrainement_declencheurs.jsonl");
         ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(ScenarioPath("entrainement_declencheurs"), ShippedData);
         var log = new MemoryCombatLog();
         CombatEngine.Run(loaded.Setup!, log);
