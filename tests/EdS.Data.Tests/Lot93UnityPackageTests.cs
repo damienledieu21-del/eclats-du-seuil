@@ -238,6 +238,8 @@ public class Lot93UnityPackageTests
         Assert.Contains("bool untitled = string.IsNullOrEmpty(active.path);", scene, StringComparison.Ordinal);
         Assert.Contains("if (untitled)", scene, StringComparison.Ordinal);
         Assert.DoesNotContain("enregistre d'abord la scène ouverte", scene, StringComparison.Ordinal);
+        // 2e tour : à une ouverture suivante, une scène sans nom qui n'a que les objets d'une scène neuve est remplacée par Jeu.unity.
+        Assert.Contains("active.GetRootGameObjects().All(g => DefaultObjects.Contains(g.name))", scene, StringComparison.Ordinal);
         Assert.Contains("EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) }", scene, StringComparison.Ordinal);
         string ignore = File.ReadAllText(Path.Combine(Root, ".gitignore"));
         Assert.Contains("unity/Assets/EdS/Scenes/", ignore, StringComparison.Ordinal);
