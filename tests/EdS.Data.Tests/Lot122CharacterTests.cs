@@ -284,6 +284,10 @@ public class Lot122CharacterTests
     [InlineData("\"activeSkills\": [", "\"activeSkills\": [\"Frappe du rempart\", ")]
     [InlineData("\"ultimate\": null", "\"ultimate\": \"Ultime\"")]
     [InlineData("\"id\": \"bastion\"", "\"id\": \"b12345678901234567890123456789012345678901234567890123456789012345\"")]
+    [InlineData("\"sessions\": 1,", "\"sessions\": 630720001,")]   // revue Codex de la PR #43 (5e tour) : même borne que le temps du monde
+    [InlineData("\"worldTick\": 1200,", "\"worldTick\": 630720001,")]
+    [InlineData("\"contentVersion\": \"", "\"contentVersion\": \"v")]
+    [InlineData("\"zone.vallons/1/death/loup1\"", "\"zone.vallons/1/death/loup1\", \"zone.vallons/1/death/loup1\"")]
     public void Schema_refuse_ce_que_la_lecture_refuse(string from, string to)
     {
         // Revue Codex de la PR #43 : le schéma JSON des sauvegardes suit le format exigé par la lecture.
