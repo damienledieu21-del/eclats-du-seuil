@@ -403,8 +403,9 @@ namespace EdS.Data.Saves
                 {
                     var (id, q) = st.Quests[i];
                     string p = $"{path}.quests.{id}";
-                    if (id.Length > 200 || !QuestId.IsMatch(id)) { report.Add(p, ValidationCode.InvalidValue, "quête mal formée."); continue; }
-                    if (i > 0 && string.CompareOrdinal(st.Quests[i - 1].Id, id) > 0) report.Add(p, ValidationCode.InvalidValue, "quêtes hors de l'ordre ordinal (forme canonique).");
+                    if (id is null || id.Length > 200 || !QuestId.IsMatch(id)) { report.Add(p, ValidationCode.InvalidValue, "quête mal formée."); continue; }
+                    // Même règle que la revue Codex de la PR #44 : une quête une seule fois (sauvegarde construite en objets publics).
+                    if (i > 0 && string.CompareOrdinal(st.Quests[i - 1].Id, id) >= 0) report.Add(p, ValidationCode.InvalidValue, "quêtes hors de l'ordre ordinal ou en double (forme canonique).");
                     if (q is null) { Missing(report, p, "avancement"); continue; }
                     if (q.Step is null) Missing(report, p + ".step", "étape en cours, ou « done »");
                     else if (q.Step.Length > 64 || !SlotId.IsMatch(q.Step)) report.Add(p + ".step", ValidationCode.InvalidValue, $"étape « {q.Step} » mal formée.");
@@ -418,10 +419,10 @@ namespace EdS.Data.Saves
                 {
                     var t = st.Trust[i];
                     string p = $"{path}.trust.{t.Key}";
-                    if (t.Key.Length > 200 || !NpcId.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "PNJ mal formé.");
+                    if (t.Key is null || t.Key.Length > 200 || !NpcId.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "PNJ mal formé.");
                     else if (t.Value is not int v) Missing(report, p, "entier");
                     else if (v == 0 || v < -MaxTrust || v > MaxTrust) report.Add(p, ValidationCode.OutOfRange, $"confiance hors de [−{MaxTrust}, {MaxTrust}] ou nulle (une confiance nulle n'est pas écrite).");
-                    else if (i > 0 && string.CompareOrdinal(st.Trust[i - 1].Key, t.Key) > 0) report.Add(p, ValidationCode.InvalidValue, "confiance hors de l'ordre ordinal.");
+                    else if (i > 0 && string.CompareOrdinal(st.Trust[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "confiance hors de l'ordre ordinal ou en double.");
                 }
             if (!report.IsValid) return null;
             return new SavedStory(st.Facts!.Select(f => f!), st.Quests!.ToDictionary(q => q.Id, q => new QuestProgress(q.Value!.Step!, q.Value.Progress!.Value), StringComparer.Ordinal),
