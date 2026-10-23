@@ -5,6 +5,7 @@ using EdS.Data;
 using EdS.Data.Characters;
 using EdS.Data.Items;
 using EdS.Data.Saves;
+using EdS.Data.Story;
 using EdS.Data.Zones;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
@@ -53,21 +54,28 @@ namespace EdS.World
         }
     }
 
-    /// <summary>Ce qu'un tick de la partie a rapporté au personnage, et ce qui a changé dans les populations de la zone (sous-lot 12.4).</summary>
+    /// <summary>
+    /// Ce qu'un tick de la partie a rapporté au personnage, ce qui a changé dans les populations de la zone (sous-lot 12.4) et dans son
+    /// histoire (sous-lot 12.5 : quêtes, faits, découvertes).
+    /// </summary>
     public sealed class SessionStep
     {
-        public static readonly SessionStep Empty = new SessionStep(Array.Empty<ExperienceGained>(), Array.Empty<LootGained>(), Array.Empty<PopulationEvent>());
+        public static readonly SessionStep Empty = new SessionStep(Array.Empty<ExperienceGained>(), Array.Empty<LootGained>(), Array.Empty<PopulationEvent>(),
+            Array.Empty<StoryEvent>());
 
         public IReadOnlyList<ExperienceGained> Experience { get; }
         public IReadOnlyList<LootGained> Loot { get; }
         public IReadOnlyList<PopulationEvent> Population { get; }
-        public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0;
+        public IReadOnlyList<StoryEvent> Story { get; }
+        public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0 && Story.Count == 0;
 
-        internal SessionStep(IReadOnlyList<ExperienceGained> experience, IReadOnlyList<LootGained> loot, IReadOnlyList<PopulationEvent> population)
+        internal SessionStep(IReadOnlyList<ExperienceGained> experience, IReadOnlyList<LootGained> loot, IReadOnlyList<PopulationEvent> population,
+            IReadOnlyList<StoryEvent> story)
         {
             Experience = experience;
             Loot = loot;
             Population = population;
+            Story = story;
         }
     }
 
@@ -80,7 +88,7 @@ namespace EdS.World
     /// dans les mêmes conditions donne aussi le butin de sa table (tiré par la clé de sa mort, donc une seule fois). Le personnage entre avec
     /// le bonus de son équipement ; un changement d'équipement prend effet, comme un niveau, à la prochaine entrée.
     /// </summary>
-    public sealed class WorldSession
+    public sealed class WorldSession : INarrativeWorld
     {
         private readonly CharacterProgression _progression;
         private SavedCharacter _character;
@@ -145,13 +153,51 @@ namespace EdS.World
         /// chaque créature donne le butin de sa population.
         /// </summary>
         /// <exception cref="ArgumentException">Sauvegarde d'une autre zone, sans personnage, ou incohérente avec le catalogue.</exception>
-        public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, ICombatLog? log = null)
+        /// <param name="story">Sous-lot 12.5 : histoire de la zone (PNJ, dialogues, quêtes) ; sans elle, l'état narratif sauvegardé est gardé tel quel.</param>
+        public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
+            ICombatLog? log = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
                 data, progression, items, new CombatantPlacement(zone.Entry.Position, CharacterRadius), null, log, CheckZone(save, zone))
         {
             Definition = zone;
             _populations = new ZonePopulations(zone);
+            if (story != null) Narrative = new Narrative(story, _character.Story, this);
         }
+
+        /// <summary>Sous-lot 12.5 : histoire du personnage (null sans histoire chargée).</summary>
+        public Narrative? Narrative { get; }
+
+        /// <summary>Parle à un PNJ (à portée, personnage présent et vivant).</summary>
+        /// <exception cref="InvalidOperationException">Partie sans histoire.</exception>
+        public DialogueRefusal Talk(string npc, out DialogueView? view) =>
+            (Narrative ?? throw new InvalidOperationException("Partie sans histoire.")).Talk(npc, out view);
+
+        /// <summary>Choisit une réponse du dialogue ouvert ; rend les événements de ses effets (rien en cas de refus).</summary>
+        public DialogueRefusal Choose(int index, out DialogueView? next, out IReadOnlyList<StoryEvent> events)
+        {
+            var list = new List<StoryEvent>();
+            DialogueRefusal refusal = (Narrative ?? throw new InvalidOperationException("Partie sans histoire.")).Choose(index, list, out next);
+            events = list;
+            return refusal;
+        }
+
+        // --- Monde vu par l'histoire (INarrativeWorld) ---
+
+        void INarrativeWorld.GiveXp(long xp) => _character = _character.WithXp(Math.Min(SaveValidator.MaxXp, checked(_character.Xp + xp)));
+
+        DayPhase INarrativeWorld.Phase => Zone.Time.Phase;
+
+        GroundVector? INarrativeWorld.PlayerPosition
+        {
+            get
+            {
+                CombatantView me = Zone.Engine.View(_character.Id);
+                return me.IsPresent && !me.IsDead ? me.Position : null;
+            }
+        }
+
+        bool INarrativeWorld.InPlace(string place) =>
+            Definition != null && ((INarrativeWorld)this).PlayerPosition is GroundVector p && Definition.PlacesAt(p).Any(x => x.Id == place);
 
         private static bool CheckZone(WorldSave save, ZoneDefinition zone) =>
             save.Zone == zone.Id ? true : throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
@@ -196,10 +242,10 @@ namespace EdS.World
         {
             IReadOnlyList<ZoneEvent> events = Zone.Step();
             IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone) ?? Array.Empty<PopulationEvent>();
-            if (events.Count == 0) return population.Count == 0 ? SessionStep.Empty : new SessionStep(Array.Empty<ExperienceGained>(), Array.Empty<LootGained>(), population);
             CombatantView me = Zone.Engine.View(_character.Id);
             var gains = new List<ExperienceGained>();
             var loot = new List<LootGained>();
+            var story = new List<StoryEvent>();
             foreach (ZoneEvent e in events)
             {
                 if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == _character.Id) continue;
@@ -215,15 +261,21 @@ namespace EdS.World
                 if (LootFor(e.Combatant) is LootTable table)
                     foreach (LootRoll roll in Loot.Roll(table, e.Key))
                         loot.Add(new LootGained(e, roll.Item, roll.Count, Inventory.Add(roll.Item, roll.Count) == InventoryRefusal.None));
+                // Sous-lot 12.5 : compte pour les objectifs « vaincre » de sa population.
+                Narrative?.Defeated(_populations?.Of(e.Combatant)?.Creature ?? e.Combatant);
             }
-            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 ? SessionStep.Empty : new SessionStep(gains, loot, population);
+            Narrative?.Step(story);
+            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 ? SessionStep.Empty
+                : new SessionStep(gains, loot, population, story);
         }
 
         /// <summary>Sauvegarde à ce tick : monde de la zone et personnage à jour.</summary>
         public WorldSave Save()
         {
             WorldSave world = Zone.Save();
-            return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, Inventory.SaveInto(_character));
+            SavedCharacter character = Inventory.SaveInto(_character);
+            if (Narrative != null) character = character.WithStory(Narrative.ToSaved());
+            return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character);
         }
     }
 }

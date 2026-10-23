@@ -1,0 +1,464 @@
+{
+  "$schema": "../../schemas/story.schema.json",
+  "schemaVersion": 1,
+  "kind": "story",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "npcs": [
+      {
+        "id": "npc.odile",
+        "name": "text.npc.odile.name",
+        "position": [
+          -8,
+          3
+        ],
+        "dialogue": "dialogue.odile"
+      },
+      {
+        "id": "npc.maelle",
+        "name": "text.npc.maelle.name",
+        "position": [
+          -20,
+          -4
+        ],
+        "dialogue": "dialogue.maelle"
+      },
+      {
+        "id": "npc.gaspard",
+        "name": "text.npc.gaspard.name",
+        "position": [
+          27,
+          -13
+        ],
+        "dialogue": "dialogue.gaspard"
+      }
+    ],
+    "dialogues": [
+      {
+        "id": "dialogue.odile",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              }
+            ],
+            "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "retour"
+              }
+            ],
+            "node": "retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.traces_sous_le_moulin"
+              }
+            ],
+            "node": "en_cours"
+          },
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.odile.accueil",
+            "choices": [
+              {
+                "text": "text.odile.accueil.raconter",
+                "conditions": [],
+                "effects": [],
+                "next": "recit"
+              }
+            ]
+          },
+          {
+            "id": "recit",
+            "text": "text.odile.recit",
+            "choices": [
+              {
+                "text": "text.odile.recit.aider",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.traces.recit"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.odile",
+                    "value": 1
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.odile.recit.soupcon",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.traces.recit"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.odile.vexee"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.odile",
+                    "value": -1
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "en_cours",
+            "text": "text.odile.en_cours",
+            "choices": [
+              {
+                "text": "text.odile.en_cours.repartir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.odile.retour",
+            "choices": [
+              {
+                "text": "text.odile.retour.confiance",
+                "conditions": [
+                  {
+                    "if": "trustAtLeast",
+                    "id": "npc.odile",
+                    "value": 1
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.odile.retour"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.amulette_de_l_aube",
+                    "value": 1
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.odile.retour.froid",
+                "conditions": [
+                  {
+                    "if": "trustBelow",
+                    "id": "npc.odile",
+                    "value": 1
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.odile.retour"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "apres",
+            "text": "text.odile.apres",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.maelle",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "passage"
+              },
+              {
+                "if": "hasItem",
+                "id": "item.minerai_de_fer",
+                "value": 3
+              }
+            ],
+            "node": "ferrure"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "passage"
+              },
+              {
+                "if": "trustAtLeast",
+                "id": "npc.odile",
+                "value": 1
+              }
+            ],
+            "node": "indice"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "passage"
+              }
+            ],
+            "node": "minerai"
+          },
+          {
+            "conditions": [],
+            "node": "bonjour"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "bonjour",
+            "text": "text.maelle.bonjour",
+            "choices": []
+          },
+          {
+            "id": "minerai",
+            "text": "text.maelle.minerai",
+            "choices": []
+          },
+          {
+            "id": "indice",
+            "text": "text.maelle.indice",
+            "choices": []
+          },
+          {
+            "id": "ferrure",
+            "text": "text.maelle.ferrure",
+            "choices": [
+              {
+                "text": "text.maelle.ferrure.forger",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "takeItem",
+                    "id": "item.minerai_de_fer",
+                    "value": 3
+                  },
+                  {
+                    "do": "openPassage",
+                    "id": "moulin"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.moulin.porte_ouverte"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.maelle",
+                    "value": 1
+                  }
+                ],
+                "next": "faite"
+              }
+            ]
+          },
+          {
+            "id": "faite",
+            "text": "text.maelle.faite",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.gaspard",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "rodeur"
+              }
+            ],
+            "node": "rodeur"
+          },
+          {
+            "conditions": [],
+            "node": "garde"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "garde",
+            "text": "text.gaspard.garde",
+            "choices": []
+          },
+          {
+            "id": "rodeur",
+            "text": "text.gaspard.rodeur",
+            "choices": [
+              {
+                "text": "text.gaspard.rodeur.merci",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "trust",
+                    "id": "npc.gaspard",
+                    "value": 1
+                  }
+                ],
+                "next": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "quest.traces_sous_le_moulin",
+        "name": "text.quest.traces.name",
+        "steps": [
+          {
+            "id": "enquete",
+            "text": "text.quest.traces.enquete",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.traces.recit"
+            },
+            "effects": []
+          },
+          {
+            "id": "traces",
+            "text": "text.quest.traces.traces",
+            "objective": {
+              "kind": "reach",
+              "id": "moulin"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.traces_griffues"
+              }
+            ]
+          },
+          {
+            "id": "passage",
+            "text": "text.quest.traces.passage",
+            "objective": {
+              "kind": "passage",
+              "id": "moulin"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "id": "pre",
+            "text": "text.quest.traces.pre",
+            "objective": {
+              "kind": "reach",
+              "id": "pre_nord"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.eclats_dans_le_pre"
+              }
+            ]
+          },
+          {
+            "id": "manifestation",
+            "text": "text.quest.traces.manifestation",
+            "objective": {
+              "kind": "reach",
+              "id": "seuil"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.manifestation"
+              },
+              {
+                "do": "setFact",
+                "id": "fact.manifestation.vue"
+              }
+            ]
+          },
+          {
+            "id": "rodeur",
+            "text": "text.quest.traces.rodeur",
+            "objective": {
+              "kind": "defeat",
+              "id": "rodeur",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.quest.traces.retour",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.odile.retour"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 300
+          }
+        ]
+      }
+    ],
+    "discoveries": [
+      {
+        "id": "discovery.traces_griffues",
+        "text": "text.discovery.traces_griffues"
+      },
+      {
+        "id": "discovery.eclats_dans_le_pre",
+        "text": "text.discovery.eclats_dans_le_pre"
+      },
+      {
+        "id": "discovery.manifestation",
+        "text": "text.discovery.manifestation"
+      }
+    ]
+  }
+}

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/save.schema.json",
   "title": "Éclats du Seuil — sauvegarde du monde",
-  "description": "Sous-lots 12.1 à 12.3. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 ou 2 est mise à jour à la lecture.",
+  "description": "Sous-lots 12.1 à 12.5. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1, 2 ou 3 est mise à jour à la lecture.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 3
+      "const": 4
     },
     "kind": {
       "const": "save"
@@ -73,7 +73,8 @@
                 "ultimate",
                 "passiveSkills",
                 "inventory",
-                "equipment"
+                "equipment",
+                "story"
               ],
               "properties": {
                 "id": {
@@ -147,6 +148,66 @@
                   "additionalProperties": {
                     "type": "string",
                     "pattern": "^item(\\.[a-z0-9_]+)+$"
+                  }
+                },
+                "story": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "facts",
+                    "quests",
+                    "trust",
+                    "discoveries"
+                  ],
+                  "description": "Sous-lot 12.5 (version 4) : état narratif personnel (faits appris, avancement des quêtes, confiance des PNJ, découvertes), trié.",
+                  "properties": {
+                    "facts": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^fact(\\.[a-z0-9_]+)+$"
+                      }
+                    },
+                    "quests": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "progress"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_]*$"
+                          },
+                          "progress": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          }
+                        }
+                      }
+                    },
+                    "trust": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": -100,
+                        "maximum": 100,
+                        "not": {
+                          "const": 0
+                        }
+                      }
+                    },
+                    "discoveries": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^discovery(\\.[a-z0-9_]+)+$"
+                      }
+                    }
                   }
                 }
               }

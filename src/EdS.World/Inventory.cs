@@ -173,6 +173,26 @@ namespace EdS.World
             return InventoryRefusal.None;
         }
 
+        /// <summary>Sous-lot 12.5 : copie indépendante (pour essayer des opérations avant de les appliquer pour de bon).</summary>
+        public Inventory Clone()
+        {
+            var copy = new Inventory(_catalog);
+            copy.CopyFrom(this);
+            return copy;
+        }
+
+        /// <summary>Prend les places et l'équipement d'un autre inventaire du même catalogue.</summary>
+        public void CopyFrom(Inventory other)
+        {
+            if (other is null) throw new ArgumentNullException(nameof(other));
+            if (!ReferenceEquals(other._catalog, _catalog)) throw new ArgumentException("Inventaire d'un autre catalogue.", nameof(other));
+            if (ReferenceEquals(other, this)) return;
+            _stacks.Clear();
+            _stacks.AddRange(other._stacks);
+            _equipped.Clear();
+            foreach (KeyValuePair<string, string> e in other._equipped) _equipped[e.Key] = e.Value;
+        }
+
         /// <summary>Personnage avec cet inventaire et cet équipement.</summary>
         public SavedCharacter SaveInto(SavedCharacter character) =>
             (character ?? throw new ArgumentNullException(nameof(character))).WithItems(_stacks, new Dictionary<string, string>(_equipped, StringComparer.Ordinal));

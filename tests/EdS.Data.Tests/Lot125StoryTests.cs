@@ -1,0 +1,314 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using EdS.Data.Characters;
+using EdS.Data.Items;
+using EdS.Data.Json;
+using EdS.Data.Saves;
+using EdS.Data.Story;
+using EdS.Data.Validation;
+using EdS.Data.Zones;
+using EdS.Domain.Combat;
+using EdS.World;
+using static EdS.Data.Tests.ScenarioTestData;
+
+namespace EdS.Data.Tests;
+
+/// <summary>
+/// Sous-lot 12.5 : PNJ, dialogues et quêtes. Textes par clés (Q37), histoire validée contre les textes, la zone et le catalogue ; PNJ qui se
+/// souviennent (confiance, H1) ; conditions durables et temporaires (H3) ; mission « Les traces sous le moulin » (Q2) ; état narratif
+/// personnel (H2) dans la sauvegarde en version 4.
+/// </summary>
+[Trait("Category", "World")]
+public class Lot125StoryTests
+{
+    private const string Mission = "quest.traces_sous_le_moulin";
+
+    private static string ScenariosDirectory => Path.Combine(AppContext.BaseDirectory, "scenarios");
+    private static ItemCatalog Items => ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+    private static CharacterProgression Progression => ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
+    private static TextCatalog Texts => StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(DataDirectory)).Texts!;
+    private static string StoryPath => StoryJsonReader.StoryPathIn(DataDirectory);
+
+    /// <summary>Zone des Vallons, point d'entrée déplacé, scénario retouché au besoin (copié dans un dossier temporaire).</summary>
+    private static ZoneDefinition Zone(double x = -18, double z = -12, Action<JsonObject>? scenario = null)
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        root["data"]!["safePoints"]![0]!["position"] = new JsonArray(x, z);
+        string directory = ScenariosDirectory;
+        string? temporary = null;
+        if (scenario != null)
+        {
+            temporary = directory = Path.Combine(Path.GetTempPath(), "eds_story_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Path.Combine(directory, "zones"));
+            JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+            scenario(s);
+            File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
+        }
+        try
+        {
+            ZoneLoadResult loaded = ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, Items);
+            Assert.True(loaded.IsValid, loaded.Report.ToString());
+            return loaded.Zone!;
+        }
+        finally
+        {
+            if (temporary != null) Directory.Delete(temporary, true);
+        }
+    }
+
+    private static StoryBook Book(ZoneDefinition zone) => StoryJsonReader.ReadStoryFile(StoryPath, Texts, zone, Items).Story!;
+
+    private static StoryLoadResult Mutated(Action<JsonObject> mutate)
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(StoryPath))!.AsObject();
+        mutate(root);
+        return StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), Items);
+    }
+
+    private static JsonObject Data(JsonObject root) => root["data"]!.AsObject();
+    private static JsonObject Dialogue(JsonObject root, int i) => Data(root)["dialogues"]![i]!.AsObject();
+    private static JsonObject Step(JsonObject root, int i) => Data(root)["quests"]![0]!["steps"]![i]!.AsObject();
+
+    private static string FirstError(StoryLoadResult r)
+    {
+        Assert.False(r.IsValid);
+        return r.Report.Errors[0].Path;
+    }
+
+    private static SavedCharacter Hero(SavedStory? story = null, params ItemStack[] items) =>
+        PlayerCharacters.Create("bastion", "class.bastion", Progression).WithItems(items, new Dictionary<string, string>()).WithStory(story ?? SavedStory.Empty);
+
+    private static SavedStory At(string step, long progress = 0, int odile = 0, params string[] facts) =>
+        new(facts, new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress(step, progress) },
+            odile == 0 ? null : new Dictionary<string, int> { ["npc.odile"] = odile });
+
+    /// <summary>Partie ouverte sur la zone, un tick simulé (le personnage est arrivé).</summary>
+    private static WorldSession Play(ZoneDefinition zone, SavedCharacter hero)
+    {
+        var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), zone, ShippedData, Progression, Items, Book(zone));
+        session.Step();
+        return session;
+    }
+
+    // --- Données -----------------------------------------------------------------------------------
+
+    [Fact]
+    public void Textes_et_histoire_livres()
+    {
+        TextsLoadResult texts = StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(DataDirectory));
+        Assert.True(texts.IsValid, texts.Report.ToString());
+        Assert.Equal("fr", texts.Texts!.Language);
+        Assert.Equal("Odile, la meunière", texts.Texts.Get("text.npc.odile.name"));
+        Assert.Equal("text.inconnu", texts.Texts.Get("text.inconnu"));   // jamais d'exception à l'affichage
+        StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryPath, texts.Texts, Zone(), Items);
+        Assert.True(story.IsValid, story.Report.ToString());
+        StoryBook book = story.Story!;
+        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard" }, book.Npcs.Select(n => n.Id));
+        Quest mission = book.Quest(Mission);
+        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "manifestation", "rodeur", "retour" }, mission.Steps.Select(s => s.Id));
+        Assert.Equal(3, book.Discoveries.Count);
+        // Chaque texte livré sert, et chaque clé employée existe (le validateur le garantit dans ce sens).
+        MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));
+        Assert.True(Schema("story.schema.json").IsValid(JsonDocument.Parse(File.ReadAllText(StoryPath)).RootElement));
+        Assert.True(Schema("texts.schema.json").IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory))).RootElement));
+    }
+
+    [Fact]
+    public void Histoire_invalide_refusee_avec_son_chemin()
+    {
+        Assert.Equal("$.data.npcs[0].name", FirstError(Mutated(r => Data(r)["npcs"]![0]!["name"] = "text.inconnu")));
+        Assert.Equal("$.data.npcs[0].dialogue", FirstError(Mutated(r => Data(r)["npcs"]![0]!["dialogue"] = "dialogue.inconnu")));
+        Assert.Equal("$.data.npcs[1].id", FirstError(Mutated(r => Data(r)["npcs"]![1]!["id"] = "npc.odile")));
+        Assert.Equal("$.data.npcs[0].position", FirstError(Mutated(r => Data(r)["npcs"]![0]!["position"] = new JsonArray(100, 0))));
+        Assert.Equal("$.data.dialogues[0].entries[0].node", FirstError(Mutated(r => Dialogue(r, 0)["entries"]![0]!["node"] = "nulle_part")));
+        Assert.Equal("$.data.dialogues[0].nodes[0].choices[0].next", FirstError(Mutated(r => Dialogue(r, 0)["nodes"]![0]!["choices"]![0]!["next"] = "nulle_part")));
+        Assert.Equal("$.data.dialogues[0].entries[0].conditions[0].if", FirstError(Mutated(r => Dialogue(r, 0)["entries"]![0]!["conditions"]![0]!["if"] = "chance")));
+        Assert.Equal("$.data.dialogues[0].entries[1].conditions[0].step", FirstError(Mutated(r => Dialogue(r, 0)["entries"]![1]!["conditions"]![0]!["step"] = "nulle_part")));
+        Assert.Equal("$.data.dialogues[1].entries[0].conditions[1].id", FirstError(Mutated(r => Dialogue(r, 1)["entries"]![0]!["conditions"]![1]!["id"] = "item.inconnu")));
+        Assert.Equal("$.data.dialogues[1].entries[0].conditions[1].value", FirstError(Mutated(r => Dialogue(r, 1)["entries"]![0]!["conditions"]![1]!["value"] = 0)));
+        Assert.Equal("$.data.dialogues[0].nodes[1].choices[0].effects[2].value",
+            FirstError(Mutated(r => Dialogue(r, 0)["nodes"]![1]!["choices"]![0]!["effects"]![2]!["value"] = 101)));
+        Assert.Equal("$.data.dialogues[0].nodes[1].choices[0].effects[0].id",
+            FirstError(Mutated(r => Dialogue(r, 0)["nodes"]![1]!["choices"]![0]!["effects"]![0]!["id"] = "quest.inconnue")));
+        Assert.Equal("$.data.dialogues[0].nodes[1].choices[0].effects[1].value",
+            FirstError(Mutated(r => Dialogue(r, 0)["nodes"]![1]!["choices"]![0]!["effects"]![1]!["value"] = 1)));   // setFact sans valeur
+        Assert.Equal("$.data.quests[0].steps[1].objective.id", FirstError(Mutated(r => Step(r, 1)["objective"]!["id"] = "foret")));
+        Assert.Equal("$.data.quests[0].steps[5].objective.id", FirstError(Mutated(r => Step(r, 5)["objective"]!["id"] = "ours")));
+        Assert.Equal("$.data.quests[0].steps[5].objective.value", FirstError(Mutated(r => Step(r, 5)["objective"]!["value"] = 0)));
+        Assert.Equal("$.data.quests[0].steps[6].id", FirstError(Mutated(r => Step(r, 6)["id"] = "done")));                 // réservé
+        Assert.Equal("$.data.quests[0].steps[1].id", FirstError(Mutated(r => Step(r, 1)["id"] = "enquete")));
+        // Un fait attendu doit être appris quelque part.
+        Assert.Equal("$.data.quests[0].steps[0].objective.id", FirstError(Mutated(r => Step(r, 0)["objective"]!["id"] = "fact.jamais.appris")));
+        Assert.Equal("$.kind", FirstError(Mutated(r => r["kind"] = "texts")));
+    }
+
+    // --- Dialogues et confiance (H1) ---------------------------------------------------------------
+
+    [Fact]
+    public void Dialogue_d_Odile_et_debut_de_la_mission()
+    {
+        Assert.Equal(DialogueRefusal.TooFar, Play(Zone(), Hero()).Talk("npc.odile", out _));   // place du village : trop loin
+        WorldSession session = Play(Zone(-9, 2), Hero());
+        Assert.Equal(DialogueRefusal.NothingToSay, session.Talk("npc.inconnu", out _));
+        Assert.Equal(DialogueRefusal.None, session.Talk("npc.odile", out DialogueView? accueil));
+        Assert.Equal(("accueil", "text.odile.accueil"), (accueil!.Node, accueil.Text));
+        Assert.Equal(DialogueRefusal.NoSuchChoice, session.Choose(3, out _, out _));
+        Assert.Equal(DialogueRefusal.None, session.Choose(0, out DialogueView? recit, out IReadOnlyList<StoryEvent> none));
+        Assert.Empty(none);
+        Assert.Equal(new[] { "text.odile.recit.aider", "text.odile.recit.soupcon" }, recit!.Options.Select(o => o.Text));
+        // La réponse soupçonneuse vexe Odile (confiance −1) : la mission commence quand même.
+        Assert.Equal(DialogueRefusal.None, session.Choose(1, out DialogueView? end, out IReadOnlyList<StoryEvent> events));
+        Assert.Null(end);
+        Assert.Null(session.Narrative!.Open);
+        Assert.Equal(new[] { "QuestStarted quest.traces_sous_le_moulin/enquete", "FactLearned fact.traces.recit", "FactLearned fact.odile.vexee",
+            "TrustChanged npc.odile -1" }, events.Select(e => e.ToString()));
+        // Au tick suivant, l'objectif de l'enquête (le récit appris) est rempli : étape suivante.
+        Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/enquete" }, session.Step().Story.Select(e => e.ToString()));
+        Assert.Equal("traces", session.Narrative.CurrentStep(Mission)!.Id);
+        session.Talk("npc.odile", out DialogueView? again);
+        Assert.Equal("en_cours", again!.Node);
+        // Tout est gardé dans la sauvegarde (version 4), et relu tel quel.
+        SavedStory saved = SaveJsonReader.Read(SaveJsonReader.Write(session.Save())).Save!.Character!.Story;
+        Assert.Equal(new[] { "fact.odile.vexee", "fact.traces.recit" }, saved.Facts);
+        Assert.Equal(new QuestProgress("traces"), saved.Quests[Mission]);
+        Assert.Equal(-1, saved.Trust["npc.odile"]);
+    }
+
+    [Fact]
+    public void Maelle_forge_la_ferrure_et_ouvre_le_passage()
+    {
+        ZoneDefinition zone = Zone(-19, -5);
+        // Sans minerai, Maëlle le demande ; si Odile a confiance, elle donne en plus un indice (conséquence d'un choix passé, H1).
+        Play(zone, Hero(At("passage", odile: -1))).Talk("npc.maelle", out DialogueView? demande);
+        Assert.Equal("minerai", demande!.Node);
+        Play(zone, Hero(At("passage", odile: 1))).Talk("npc.maelle", out DialogueView? indice);
+        Assert.Equal("indice", indice!.Node);
+        // Avec trois minerais : la ferrure, le passage du moulin ouvert pour de bon, l'étape franchie au tick suivant.
+        WorldSession session = Play(zone, Hero(At("passage"), new ItemStack("item.minerai_de_fer", 4)));
+        session.Talk("npc.maelle", out DialogueView? ferrure);
+        Assert.Equal("ferrure", ferrure!.Node);
+        Assert.Equal(DialogueRefusal.None, session.Choose(0, out DialogueView? faite, out IReadOnlyList<StoryEvent> events));
+        Assert.Equal("faite", faite!.Node);
+        Assert.Empty(faite.Options);
+        Assert.Contains(events, e => e.Kind == StoryEventKind.PassageOpened && e.Id == "moulin");
+        Assert.Equal(1, session.Inventory.Count("item.minerai_de_fer"));
+        Assert.True(session.IsPassageOpen("moulin"));
+        long xp = session.Character.Xp;
+        Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/passage", "XpGiven xp 60" }, session.Step().Story.Select(e => e.ToString()));
+        Assert.Equal(xp + 60, session.Character.Xp);
+        Assert.Contains("zone.vallons/passage/moulin", session.Save().Consumed);
+    }
+
+    [Fact]
+    public void Retour_chez_Odile_selon_sa_confiance()
+    {
+        ZoneDefinition zone = Zone(-9, 2);
+        // Confiance gagnée : l'amulette de l'aube en remerciement.
+        WorldSession warm = Play(zone, Hero(At("retour", odile: 1)));
+        warm.Talk("npc.odile", out DialogueView? retour);
+        Assert.Equal(new[] { "text.odile.retour.confiance" }, retour!.Options.Select(o => o.Text));
+        Assert.Equal(DialogueRefusal.None, warm.Choose(retour.Options[0].Index, out _, out IReadOnlyList<StoryEvent> given));
+        Assert.Contains(given, e => e.Kind == StoryEventKind.ItemGiven && e.Id == "item.amulette_de_l_aube");
+        Assert.Equal(1, warm.Inventory.Count("item.amulette_de_l_aube"));
+        Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/retour", "XpGiven xp 300", "QuestCompleted quest.traces_sous_le_moulin" },
+            warm.Step().Story.Select(e => e.ToString()));
+        Assert.True(warm.Narrative!.IsDone(Mission));
+        warm.Talk("npc.odile", out DialogueView? apres);
+        Assert.Equal("apres", apres!.Node);
+        Assert.Equal(QuestProgress.Done, warm.Save().Character!.Story.Quests[Mission].Step);
+
+        // Confiance perdue : un merci sec, pas d'amulette.
+        WorldSession cold = Play(zone, Hero(At("retour", odile: -1)));
+        cold.Talk("npc.odile", out DialogueView? froid);
+        Assert.Equal(new[] { "text.odile.retour.froid" }, froid!.Options.Select(o => o.Text));
+        cold.Choose(froid.Options[0].Index, out _, out _);
+        Assert.Equal(0, cold.Inventory.Count("item.amulette_de_l_aube"));
+
+        // Inventaire plein : la réponse est refusée en entier (ni fait, ni objet), le dialogue reste ouvert.
+        WorldSession full = Play(zone, Hero(At("retour", odile: 1), Enumerable.Repeat(new ItemStack("item.gambison", 1), 24).ToArray()));
+        full.Talk("npc.odile", out DialogueView? plein);
+        Assert.Equal(DialogueRefusal.NoRoom, full.Choose(plein!.Options[0].Index, out _, out IReadOnlyList<StoryEvent> nothing));
+        Assert.Empty(nothing);
+        Assert.False(full.Narrative!.Knows("fact.odile.retour"));
+        Assert.NotNull(full.Narrative.Open);
+    }
+
+    // --- Objectifs ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Atteindre_un_lieu_et_vaincre_une_creature()
+    {
+        // Entrée au moulin, étape « suivre les traces » : atteinte dès l'arrivée, avec sa découverte.
+        WorldSession moulin = new(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(At("traces"))), Zone(-8, 5), ShippedData, Progression, Items,
+            Book(Zone(-8, 5)));
+        List<StoryEvent> events = moulin.Step().Story.ToList();
+        Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/traces", "Discovered discovery.traces_griffues" }, events.Select(e => e.ToString()));
+
+        // Étape « rodeur » : le rôdeur affaibli près de l'entrée ; sa mort compte pour la population « rodeur ».
+        ZoneDefinition zone = Zone(-18, -12, s =>
+        {
+            JsonObject rodeur = s["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => c["id"]!.GetValue<string>() == "rodeur");
+            rodeur["health"] = 40;
+            rodeur["position"] = new JsonArray(-16, -12);
+        });
+        WorldSession hunt = Play(zone, Hero(At("rodeur")));
+        var story = new List<StoryEvent>();
+        for (int i = 0; i < 600 && story.Count == 0; i++)
+        {
+            if (i % 20 == 1)
+                try { hunt.Zone.Engine.Submit(new CombatCommand(hunt.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", "rodeur")); }
+                catch (ArgumentException) { }
+            story.AddRange(hunt.Step().Story);
+        }
+        Assert.Equal("StepCompleted quest.traces_sous_le_moulin/rodeur", Assert.Single(story).ToString());
+        Assert.Equal("retour", hunt.Narrative!.CurrentStep(Mission)!.Id);
+    }
+
+    // --- Sauvegarde, version 4 ---------------------------------------------------------------------
+
+    [Fact]
+    public void Sauvegarde_de_l_histoire()
+    {
+        var story = new SavedStory(new[] { "fact.traces.recit", "fact.odile.vexee" },
+            new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("rodeur", 0), ["quest.autre"] = new QuestProgress(QuestProgress.Done) },
+            new Dictionary<string, int> { ["npc.odile"] = -1, ["npc.maelle"] = 2, ["npc.gaspard"] = 0 }, new[] { "discovery.manifestation" });
+        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), Hero(story)));
+        Assert.Contains("\"schemaVersion\": 4,", text, StringComparison.Ordinal);
+        Assert.Contains("      \"story\": {\n        \"facts\": [\"fact.odile.vexee\", \"fact.traces.recit\"],\n"
+            + "        \"quests\": {\"quest.autre\": {\"step\": \"done\", \"progress\": 0}, \"quest.traces_sous_le_moulin\": {\"step\": \"rodeur\", \"progress\": 0}},\n"
+            + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"discoveries\": [\"discovery.manifestation\"]\n      }\n", text, StringComparison.Ordinal);
+        SaveLoadResult read = SaveJsonReader.Read(text);
+        Assert.True(read.IsValid, read.Report.ToString());
+        Assert.Equal(text, SaveJsonReader.Write(read.Save!));
+        Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
+        // Version 3 : mise à jour, histoire vierge ; une histoire en version 3 est un champ inconnu.
+        int s = text.IndexOf(",\n      \"story\"", StringComparison.Ordinal), e = text.IndexOf("      }\n    },", s, StringComparison.Ordinal) + "      }\n".Length;
+        string v3 = text.Remove(s, e - s).Insert(s, "\n").Replace("\"schemaVersion\": 4", "\"schemaVersion\": 3");
+        SaveLoadResult migrated = SaveJsonReader.Read(v3);
+        Assert.True(migrated.IsValid, migrated.Report + "\n" + v3);
+        Assert.True(migrated.Save!.Migrated);
+        Assert.Empty(migrated.Save.Character!.Story.Facts);
+        Assert.Equal("$.data.character.story", Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 4", "\"schemaVersion\": 3")).Report.Errors).Path);
+        // Une histoire sauvegardée doit aller avec les données : quête inconnue refusée à la reprise.
+        Assert.Throws<ArgumentException>(() => Play(Zone(), Hero(story)));
+    }
+
+    [Theory]
+    [InlineData("\"fact.odile.vexee\", \"fact.traces.recit\"", "\"fact.traces.recit\", \"fact.odile.vexee\"", "$.data.character.story.facts[1]")]
+    [InlineData("\"fact.odile.vexee\"", "\"odile\"", "$.data.character.story.facts[0]")]
+    [InlineData("{\"step\": \"rodeur\", \"progress\": 0}", "{\"step\": \"rodeur\", \"progress\": -1}", "$.data.character.story.quests.quest.traces_sous_le_moulin.progress")]
+    [InlineData("\"npc.odile\": -1", "\"npc.odile\": 101", "$.data.character.story.trust.npc.odile")]
+    [InlineData("\"npc.odile\": -1", "\"npc.odile\": 0", "$.data.character.story.trust.npc.odile")]
+    [InlineData("\"discoveries\": [\"discovery.manifestation\"]", "\"discoveries\": [\"manifestation\"]", "$.data.character.story.discoveries[0]")]
+    public void Sauvegarde_d_histoire_invalide(string from, string to, string path)
+    {
+        var story = new SavedStory(new[] { "fact.traces.recit", "fact.odile.vexee" },
+            new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("rodeur") }, new Dictionary<string, int> { ["npc.odile"] = -1 },
+            new[] { "discovery.manifestation" });
+        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), Hero(story)));
+        Assert.Contains(from, text, StringComparison.Ordinal);
+        SaveLoadResult read = SaveJsonReader.Read(text.Replace(from, to, StringComparison.Ordinal));
+        Assert.False(read.IsValid);
+        Assert.Equal(path, read.Report.Errors[0].Path);
+    }
+}

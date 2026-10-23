@@ -189,6 +189,11 @@
             "chancePercent": 50
           },
           {
+            "item": "item.minerai_de_fer",
+            "count": 1,
+            "chancePercent": 60
+          },
+          {
             "item": "item.epee_de_garde",
             "count": 1,
             "chancePercent": 5
