@@ -55,9 +55,37 @@ namespace EdS.Data.Json
                 ["sessions"] = (v, p) => data.Sessions = input.Int64(v, p),
                 ["consumed"] = (v, p) => data.Consumed = input.ReadLimitedList(v, p, SaveValidator.MaxConsumed,
                     n => $"{n} événements consommés, au plus {SaveValidator.MaxConsumed}.", (e, ip) => input.Text(e, ip)),
+                ["character"] = (v, p) =>   // sous-lot 12.2 (version 2) : null ou le personnage
+                {
+                    data.HasCharacter = true;
+                    if (v.ValueKind != JsonValueKind.Null) data.Character = ReadCharacter(input, v, p);
+                },
             });
             return ok ? data : null;
         }
+
+        private static CharacterData? ReadCharacter(JsonInput input, JsonElement element, string path)
+        {
+            var c = new CharacterData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => c.Id = input.Text(v, p),
+                ["class"] = (v, p) => c.Class = input.Text(v, p),
+                ["xp"] = (v, p) => c.Xp = input.Int64(v, p),
+                ["talents"] = (v, p) => c.Talents = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["activeSkills"] = (v, p) => c.ActiveSkills = input.ReadLimitedList(v, p, 64, n => $"{n} compétences, au plus 64.", (e, ip) => input.Text(e, ip)),
+                ["ultimate"] = (v, p) => c.Ultimate = input.NullableText(v, p),
+                ["passiveSkills"] = (v, p) => c.PassiveSkills = input.ReadLimitedList(v, p, 64, n => $"{n} compétences, au plus 64.", (e, ip) => input.Text(e, ip)),
+            });
+            return ok ? c : null;
+        }
+
+        // Identifiants écrits sans échappement : ASCII en minuscules, chiffres, « _ » et « . ».
+        private static readonly System.Text.RegularExpressions.Regex SafeId =
+            new System.Text.RegularExpressions.Regex(@"^[a-z0-9_.]+\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        private static string Quoted(string id) =>
+            SafeId.IsMatch(id) ? "\"" + id + "\"" : throw new ArgumentException($"Identifiant « {id} » hors du format des sauvegardes.", nameof(id));
 
         /// <summary>Texte canonique d'une sauvegarde (UTF-8, fins de ligne « \n », dernière ligne terminée).</summary>
         public static string Write(WorldSave save)
@@ -75,6 +103,7 @@ namespace EdS.Data.Json
             b.Append("    \"zone\": \"").Append(save.Zone).Append("\",\n");
             b.Append("    \"worldTick\": ").Append(save.WorldTick.ToString(CultureInfo.InvariantCulture)).Append(",\n");
             b.Append("    \"sessions\": ").Append(save.Sessions.ToString(CultureInfo.InvariantCulture)).Append(",\n");
+            WriteCharacter(b, save.Character);
             if (save.Consumed.Count == 0) b.Append("    \"consumed\": []\n");
             else
             {
@@ -85,6 +114,25 @@ namespace EdS.Data.Json
             }
             b.Append("  }\n}\n");
             return b.ToString();
+        }
+
+        private static void WriteCharacter(StringBuilder b, SavedCharacter? c)
+        {
+            if (c is null)
+            {
+                b.Append("    \"character\": null,\n");
+                return;
+            }
+            string List(IEnumerable<string> ids) => "[" + string.Join(", ", ids.Select(Quoted)) + "]";
+            b.Append("    \"character\": {\n");
+            b.Append("      \"id\": ").Append(Quoted(c.Id)).Append(",\n");
+            b.Append("      \"class\": ").Append(Quoted(c.ClassId)).Append(",\n");
+            b.Append("      \"xp\": ").Append(c.Xp.ToString(CultureInfo.InvariantCulture)).Append(",\n");
+            b.Append("      \"talents\": {").Append(string.Join(", ", c.Talents.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
+            b.Append("      \"activeSkills\": ").Append(List(c.ActiveSkills)).Append(",\n");
+            b.Append("      \"ultimate\": ").Append(c.Ultimate is null ? "null" : Quoted(c.Ultimate)).Append(",\n");
+            b.Append("      \"passiveSkills\": ").Append(List(c.PassiveSkills)).Append("\n");
+            b.Append("    },\n");
         }
     }
 }

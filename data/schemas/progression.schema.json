@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/progression.schema.json",
+  "title": "Éclats du Seuil — progression du personnage persistant",
+  "description": "Sous-lot 12.2. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ProgressionValidator, contre les règles et les classes).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "progression"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxLevel",
+        "xpToLevel",
+        "killXpPerHealth",
+        "classes"
+      ],
+      "properties": {
+        "maxLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Niveau maximal du parcours (cadrage Q3 : 10), au plus progression.maxLevel des règles."
+        },
+        "xpToLevel": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000
+          },
+          "description": "Expérience cumulée pour être à chaque niveau, du niveau 1 (0) au niveau maximal, strictement croissante."
+        },
+        "killXpPerHealth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000000,
+          "description": "Expérience d'une créature vaincue : 1 point par tranche de ces PV maximaux, au moins 1."
+        },
+        "classes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "class",
+              "attributes",
+              "startActiveSkills",
+              "startPassiveSkills"
+            ],
+            "properties": {
+              "class": {
+                "type": "string"
+              },
+              "attributes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "force",
+                    "dexterite",
+                    "intelligence",
+                    "vitalite",
+                    "volonte",
+                    "endurance"
+                  ],
+                  "properties": {
+                    "force": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000
+                    },
+                    "dexterite": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000
+                    },
+                    "intelligence": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000
+                    },
+                    "vitalite": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000
+                    },
+                    "volonte": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000
+                    },
+                    "endurance": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000
+                    }
+                  }
+                },
+                "description": "Attributs de base, du niveau 1 au niveau maximal (cadrage Q20), jamais en baisse."
+              },
+              "startActiveSkills": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "startPassiveSkills": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

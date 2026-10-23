@@ -245,8 +245,8 @@ public class Lot121WorldTests
     // --- Sauvegardes ------------------------------------------------------------------------------
 
     private static string SaveText(string zone = "\"zone.vallons\"", string tick = "1234", string sessions = "2", string consumed = "[\"zone.vallons/1/death/loup1\", \"zone.vallons/2/death/loup2\"]",
-        int version = 1, string kind = "save") =>
-        $"{{\"schemaVersion\": {version}, \"kind\": \"{kind}\", \"contentVersion\": \"0.1.0-provisoire\", \"data\": {{\"zone\": {zone}, \"worldTick\": {tick}, \"sessions\": {sessions}, \"consumed\": {consumed}}}}}";
+        int version = 2, string kind = "save") =>
+        $"{{\"schemaVersion\": {version}, \"kind\": \"{kind}\", \"contentVersion\": \"0.1.0-provisoire\", \"data\": {{\"zone\": {zone}, \"worldTick\": {tick}, \"sessions\": {sessions}, {(version >= 2 ? "\"character\": null, " : "")}\"consumed\": {consumed}}}}}";
 
     [Fact]
     public void Sauvegarde_lue_et_ecrite_a_l_identique()
@@ -297,7 +297,7 @@ public class Lot121WorldTests
     public void Versions_et_type_de_sauvegarde()
     {
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
-            (Assert.Single(SaveJsonReader.Read(SaveText(version: 2)).Report.Errors).Path, Assert.Single(SaveJsonReader.Read(SaveText(version: 2)).Report.Errors).Code));
+            (Assert.Single(SaveJsonReader.Read(SaveText(version: 3)).Report.Errors).Path, Assert.Single(SaveJsonReader.Read(SaveText(version: 3)).Report.Errors).Code));
         Assert.Equal("$.kind", Assert.Single(SaveJsonReader.Read(SaveText(kind: "scenario")).Report.Errors).Path);
         Assert.Equal("$.data.worldTick", Assert.Single(SaveJsonReader.Read(SaveText(tick: (SaveValidator.MaxWorldTick + 1).ToString())).Report.Errors).Path);
         Assert.Contains(SaveJsonReader.Read("{\"schemaVersion\": 1, \"kind\": \"save\", \"contentVersion\": \"0.1.0\", \"data\": {\"zone\": \"zone.vallons\", \"worldTick\": 0, \"sessions\": 0, \"consumed\": [], \"extra\": 1}}").Report.Errors,

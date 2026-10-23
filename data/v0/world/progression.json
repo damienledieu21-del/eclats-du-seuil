@@ -1,0 +1,116 @@
+{
+  "$schema": "../../schemas/progression.schema.json",
+  "schemaVersion": 1,
+  "kind": "progression",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "maxLevel": 10,
+    "xpToLevel": [
+      0,
+      100,
+      220,
+      360,
+      520,
+      700,
+      900,
+      1120,
+      1360,
+      1620
+    ],
+    "killXpPerHealth": 20,
+    "classes": [
+      {
+        "class": "class.bastion",
+        "attributes": [
+          {
+            "force": 12,
+            "dexterite": 6,
+            "intelligence": 4,
+            "vitalite": 12,
+            "volonte": 8,
+            "endurance": 6
+          },
+          {
+            "force": 13,
+            "dexterite": 6,
+            "intelligence": 4,
+            "vitalite": 13,
+            "volonte": 8,
+            "endurance": 6
+          },
+          {
+            "force": 13,
+            "dexterite": 6,
+            "intelligence": 4,
+            "vitalite": 13,
+            "volonte": 8,
+            "endurance": 7
+          },
+          {
+            "force": 14,
+            "dexterite": 6,
+            "intelligence": 4,
+            "vitalite": 14,
+            "volonte": 9,
+            "endurance": 7
+          },
+          {
+            "force": 14,
+            "dexterite": 7,
+            "intelligence": 4,
+            "vitalite": 14,
+            "volonte": 9,
+            "endurance": 8
+          },
+          {
+            "force": 15,
+            "dexterite": 7,
+            "intelligence": 4,
+            "vitalite": 15,
+            "volonte": 9,
+            "endurance": 8
+          },
+          {
+            "force": 16,
+            "dexterite": 7,
+            "intelligence": 4,
+            "vitalite": 16,
+            "volonte": 9,
+            "endurance": 9
+          },
+          {
+            "force": 16,
+            "dexterite": 7,
+            "intelligence": 4,
+            "vitalite": 16,
+            "volonte": 10,
+            "endurance": 9
+          },
+          {
+            "force": 17,
+            "dexterite": 7,
+            "intelligence": 5,
+            "vitalite": 17,
+            "volonte": 10,
+            "endurance": 10
+          },
+          {
+            "force": 18,
+            "dexterite": 7,
+            "intelligence": 5,
+            "vitalite": 18,
+            "volonte": 10,
+            "endurance": 10
+          }
+        ],
+        "startActiveSkills": [
+          "skill.bastion.frappe_du_rempart",
+          "skill.bastion.heurt_de_bouclier"
+        ],
+        "startPassiveSkills": [
+          "skill.bastion.endurance_du_roc"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/save.schema.json",
+  "title": "Éclats du Seuil — sauvegarde du monde",
+  "description": "Sous-lots 12.1 et 12.2. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 est mise à jour à la lecture.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "kind": {
+      "const": "save"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "zone",
+        "worldTick",
+        "sessions",
+        "consumed",
+        "character"
+      ],
+      "properties": {
+        "zone": {
+          "type": "string",
+          "pattern": "^zone\\.[a-z][a-z0-9_]*$"
+        },
+        "worldTick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 630720000
+        },
+        "sessions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consumed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_.]+(/[a-z0-9_.]+)+$"
+          },
+          "description": "Événements consommés, triés, sans doublon."
+        },
+        "character": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "class",
+                "xp",
+                "talents",
+                "activeSkills",
+                "ultimate",
+                "passiveSkills"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]*$"
+                },
+                "class": {
+                  "type": "string"
+                },
+                "xp": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000000
+                },
+                "talents": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "activeSkills": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "ultimate": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "passiveSkills": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Personnage du joueur (version 2), ou null tant qu'aucun n'a été créé."
+        }
+      }
+    }
+  }
+}
