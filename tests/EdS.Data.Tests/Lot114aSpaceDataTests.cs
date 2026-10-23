@@ -176,7 +176,7 @@ public class Lot114aSpaceDataTests
         Assert.Equal("#/$defs/space", root.GetProperty("properties").GetProperty("data").GetProperty("properties").GetProperty("space").GetProperty("$ref").GetString());
         JsonElement combatant = defs.GetProperty("combatant").GetProperty("properties");
         Assert.All(new[] { "position", "facing", "radius", "speed" }, f => Assert.True(combatant.TryGetProperty(f, out _), f));
-        Assert.Equal(new[] { "guardStart", "guardStop", "parry", "move", "stop", "select", "leave" },
+        Assert.Equal(new[] { "guardStart", "guardStop", "parry", "move", "stop", "select", "leave", "consume" },
             defs.GetProperty("command").GetProperty("properties").GetProperty("action").GetProperty("enum").EnumerateArray().Select(e => e.GetString()));
         Assert.Equal((5.0, 0.1), (combatant.GetProperty("radius").GetProperty("maximum").GetDouble(), combatant.GetProperty("radius").GetProperty("minimum").GetDouble()));
         Assert.Equal(16, defs.GetProperty("space").GetProperty("properties").GetProperty("obstacles").GetProperty("items").GetProperty("properties")
