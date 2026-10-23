@@ -58,7 +58,8 @@ public class Lot121WorldTests
         CombatSetup setup = ZoneSetup();
         Assert.True(setup.Zone);
         Assert.Equal(3_600_000, setup.DurationMs);   // une heure de jeu par session : au-delà de la limite des combats fermés (10 min)
-        Assert.Equal(new[] { "loup1", "loup2", "loup3", "sanglier", "archer" }, setup.Combatants.Select(c => c.Id));
+        Assert.Equal(new[] { "loup1", "loup2", "loup3", "sanglier", "archer", "loup4", "loup5", "sanglier2", "sanglier3", "rodeur" },
+            setup.Combatants.Select(c => c.Id));   // sous-lot 12.4 : la carte agrandie des Vallons
         Assert.Single(setup.Combatants.Select(c => c.Team).Distinct());   // une seule équipe : les joueurs entrent ensuite
         Assert.True(setup.Space!.Obstacles.Single(o => o.Id == "riviere_sud").Low);
     }
