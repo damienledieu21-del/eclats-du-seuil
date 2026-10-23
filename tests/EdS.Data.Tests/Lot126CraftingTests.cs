@@ -74,6 +74,21 @@ public class Lot126CraftingTests
         log.Lines.Select(l => JsonDocument.Parse(l).RootElement).Where(e => e.TryGetProperty("event", out JsonElement k) && k.GetString() == kind);
 
     [Fact]
+    public void Metiers_en_double_refuses_dans_une_sauvegarde_en_objets_publics()
+    {
+        // Même règle que la revue Codex de la PR #44 : un métier en double donne un rapport, pas une exception.
+        string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create("bastion", "class.bastion", Progression).WithProfessions(new Dictionary<string, long> { ["forge"] = 10 })));
+        var report = new ValidationReport();
+        var document = new SaveDocument();
+        JsonHeader header = JsonInput.Parse(JsonInput.Utf8(json, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
+        (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+        Assert.True(SaveValidator.Validate(document).IsValid);
+        document.Data!.Character!.Professions!.Add(new KeyValuePair<string, long?>("forge", 20));
+        Assert.Contains(SaveValidator.Validate(document).Report.Errors, e => e.Path == "$.data.character.professions.forge");
+    }
+
+    [Fact]
     public void Potion_bue_en_combat_charges_et_recharge_partagee()
     {
         ScenarioLoadResult loaded = Potions();
