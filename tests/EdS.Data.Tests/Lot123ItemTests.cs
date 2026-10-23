@@ -49,6 +49,82 @@ public class Lot123ItemTests
 
     // --- Catalogue ---------------------------------------------------------------------------------
 
+    /// <summary>Scénario lu en objets publics (sans validation), pour les retoucher comme le ferait un appelant.</summary>
+    private static ScenarioDocument Document(string scenario)
+    {
+        var report = new ValidationReport();
+        var document = new ScenarioDocument();
+        JsonHeader header = JsonInput.Parse(JsonInput.Utf8(File.ReadAllText(ScenarioPath(scenario)), report)!, report,
+            (input, element) => document.Data = ScenarioJsonReader.ReadData(input, element, "$.data", ShippedData.Rules.Combat));
+        (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+        return document;
+    }
+
+    [Theory]
+    [InlineData(true, "$.data.combatants[0].gear.armor", ValidationCode.MissingField)]
+    [InlineData(false, "$.data.combatants[0].gear.armor", ValidationCode.DuplicateId)]
+    public void Bonus_d_un_scenario_en_objets_publics_controle(bool nullValue, string path, ValidationCode code)
+    {
+        // Revue Codex de la PR #44 (3e tour) : une valeur absente ou un bonus en double donnent un rapport, pas une exception.
+        ScenarioDocument document = Document("vallons_demo");
+        CombatantData hero = document.Data!.Combatants!.First(c => c!.Type == "character")!;
+        Assert.Equal(0, document.Data.Combatants!.IndexOf(hero));
+        hero.Gear = nullValue
+            ? new List<KeyValuePair<string, int?>> { new("armor", null) }
+            : new List<KeyValuePair<string, int?>> { new("armor", 3), new("armor", 4) };
+        ScenarioLoadResult result = ScenarioValidator.Validate(document, ShippedData);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Report.Errors, e => e.Path == path && e.Code == code);
+    }
+
+    /// <summary>Sauvegarde lue en objets publics (sans validation), pour la retoucher comme le ferait un appelant.</summary>
+    private static SaveDocument SaveDocumentOf(string json)
+    {
+        var report = new ValidationReport();
+        var document = new SaveDocument();
+        JsonHeader header = JsonInput.Parse(JsonInput.Utf8(json, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
+        (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+        return document;
+    }
+
+    [Fact]
+    public void Sauvegarde_en_objets_publics_sans_doublon()
+    {
+        // Revue Codex de la PR #44 (4e tour) : emplacements et talents en double donnent un rapport, pas une exception.
+        var hero = new SavedCharacter("bastion", "class.bastion", 0, new Dictionary<string, int> { ["t.a"] = 1 }, inventory: Array.Empty<ItemStack>(),
+            equipment: new Dictionary<string, string> { ["shield"] = "item.ecu_de_chene" });
+        string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero));
+        SaveDocument twoShields = SaveDocumentOf(json);
+        twoShields.Data!.Character!.Equipment!.Add(new KeyValuePair<string, string?>("shield", "item.ecu_de_chene"));
+        SaveLoadResult a = SaveValidator.Validate(twoShields);
+        Assert.Contains(a.Report.Errors, e => e.Path == "$.data.character.equipment.shield" && e.Code == ValidationCode.DuplicateId);
+        SaveDocument twoRanks = SaveDocumentOf(json);
+        twoRanks.Data!.Character!.Talents!.Add(new KeyValuePair<string, int?>("t.a", 2));
+        SaveLoadResult b = SaveValidator.Validate(twoRanks);
+        Assert.Contains(b.Report.Errors, e => e.Path == "$.data.character.talents.t.a" && e.Code == ValidationCode.DuplicateId);
+        SaveDocument nullSlot = SaveDocumentOf(json);
+        nullSlot.Data!.Character!.Equipment!.Add(new KeyValuePair<string, string?>(null!, "item.gambison"));
+        Assert.False(SaveValidator.Validate(nullSlot).IsValid);
+    }
+
+    [Fact]
+    public void Bonus_d_objet_en_double_refuse()
+    {
+        // Revue Codex de la PR #44 (4e tour) : un catalogue construit en objets publics ne voit pas un bonus écraser le précédent.
+        var report = new ValidationReport();
+        var document = new ItemCatalogDocument();
+        JsonHeader header = JsonInput.Parse(JsonInput.Utf8(File.ReadAllText(ItemJsonReader.PathIn(DataDirectory)), report)!, report,
+            (input, element) => document.Data = ItemJsonReader.ReadData(input, element, "$.data"));
+        (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+        Assert.True(ItemValidator.Validate(document, ShippedData).IsValid);
+        int index = document.Data!.Items!.FindIndex(i => i!.Bonus is { Count: > 0 });
+        ItemData item = document.Data.Items[index]!;
+        item.Bonus!.Add(new KeyValuePair<string, int?>(item.Bonus[0].Key, 4));
+        ItemCatalogLoadResult result = ItemValidator.Validate(document, ShippedData);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Report.Errors, e => e.Path == $"$.data.items[{index}].bonus.{item.Bonus[0].Key}" && e.Code == ValidationCode.DuplicateId);
+    }
+
     [Fact]
     public void Tables_des_raretes_et_des_types_non_modifiables()
     {
