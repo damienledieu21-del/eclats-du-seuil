@@ -176,7 +176,7 @@ Indicative, non engagée. **Révisée le 23 octobre 2026**, après la démonstra
 
 **Ce que le lot 11 a montré.**
 
-- **Rythme** : les neuf sous-lots du lot 11 ont été fusionnés du 20 octobre (1 h 48) au 23 octobre (1 h 46), soit environ trois jours au lieu des deux à quatre semaines estimées. Le temps s'est surtout passé en revues Codex : la PR du 11.4d (instantané d'état) en a demandé une trentaine de tours, celles du 11.5 une vingtaine ; les PR sans format nouveau sont passées en quelques tours.
+- **Rythme** : les sous-lots 11.1 à 11.8 ont été fusionnés du 20 octobre (2 h 07) au 23 octobre (1 h 46, correctif #37 compris), soit environ trois jours au lieu des deux à quatre semaines estimées pour tout le lot ; les suites de l'essai (11.9a à 11.9c) sont en PR au moment de cette réestimation. Le temps s'est surtout passé en revues Codex : la PR du 11.4d (instantané d'état) en a demandé une trentaine de tours, celles du 11.5 une vingtaine ; les PR sans format nouveau sont passées en quelques tours.
 - **Essais** : Damien a essayé le 11.6, le 11.7 et le 11.8 le jour même (hypothèse « essais sous 24 heures » confirmée pour ce lot). Ce qui a coûté du temps, ce sont les installations (Android Build Support, place sur le disque, pare-feu, scène à enregistrer) et un défaut propre au jeu construit (shader non emporté, PR #37).
 - **Risques levés** : positions et zone partagée éprouvées en petit (moteur spatial, entrée par l'état courant, arrivée en plein combat, deux postes simulés, Note8). Restent neufs : sauvegarde persistante, contenu en quantité (quêtes, objets, PNJ), interface qui remplace l'IMGUI, hébergement sur Internet (dépense), iOS (pas de Mac).
 
@@ -184,7 +184,7 @@ Indicative, non engagée. **Révisée le 23 octobre 2026**, après la démonstra
 
 | Lot | Sous-lots | Dont grands | Durée indicative révisée | Avant (20 octobre) | Incertitude |
 |---|---|---|---|---|---|
-| 11 | 9 (+ correctif #37 et suites du 11.9) | 3 | fait en environ 3 jours | 2 à 4 semaines | — |
+| 11 | 9 (+ correctif #37 et suites du 11.9) | 3 | 11.1 à 11.8 en environ 3 jours ; 11.9 en PR | 2 à 4 semaines | faible : il reste à fusionner les suites de l'essai |
 | 12 | 9 | 3 (objets, quêtes, Unity) | 1 à 2 semaines | 2 à 4 semaines | moyenne : beaucoup de règles de jeu à faire valider (quêtes, objets, laisse), contenu en données ; la sauvegarde est le premier format persistant |
 | 13 | environ 6 | 2 (serveur de zone, persistance sur le serveur) | 1 à 2 semaines en réseau local | 2 à 4 semaines | moyenne : l'architecture est éprouvée (11.7) ; comptes, chiffrement et hébergement sur Internet restent neufs, et l'hébergement est une dépense à décider |
 | 14 | environ 4 | 2 (nouvelle interface, mesures sur appareils) | 1 à 2 semaines pour Android | 1 à 3 semaines | moyenne pour Android (commandes au doigt déjà essayées sur le Note8) ; **iOS non estimable** sans Mac ni chaîne de compilation |
