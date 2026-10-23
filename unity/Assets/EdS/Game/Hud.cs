@@ -167,22 +167,25 @@ namespace EdS.Game
             Centered(new Rect(x - 100, y - 70, 200, 26), (isTarget ? "» " : "") + other.Id, isTarget ? new Color(1f, 0.9f, 0.3f) : Color.white);
         }
 
-        public static void Help(string scenario, string build, string camera, bool paused, bool network)
+        /// <param name="adventure">Sous-lot 12.8 : touches de l'aventure (texte par clé), à la place de celles de l'entraînement ; null hors aventure.</param>
+        public static void Help(string scenario, string build, string camera, bool paused, bool network, string adventure = null)
         {
             float y = 20f;
-            Fill(new Rect(10, 10, 560, 348), new Color(0f, 0f, 0f, 0.4f));
+            Fill(new Rect(10, 10, 560, adventure != null ? 420 : 348), new Color(0f, 0f, 0f, 0.4f));
             Title(new Rect(20, y, 540, 34), "Éclats du Seuil — prototype");
-            Small(new Rect(20, y + 36, 540, 24), $"{(network ? "Réseau" : "Scénario")} : {scenario}  ·  Build : {build}");
+            Small(new Rect(20, y + 36, 540, 24), $"{(adventure != null ? "Aventure" : network ? "Réseau" : "Scénario")} : {scenario}  ·  {(adventure != null ? "" : "Build : ")}{build}");
             Small(new Rect(20, y + 60, 540, 24), $"Caméra : {camera}{(paused ? "  ·  <color=#ffd84a>PAUSE</color>" : "")}");
             // Sous-lot 10.4 : en réseau, pas de pause ni de scénario suivant (le serveur mène le combat) ; G vise l'autre joueur.
-            Small(new Rect(20, y + 92, 540, 254),
+            Small(new Rect(20, y + 92, 540, adventure != null ? 320 : 254),
                 "ZQSD (WASD en QWERTY) / flèches : se déplacer   ·   clic droit ou Maj : garde (maintenir)\n" +
                 "Espace : parade parfaite (juste avant l'impact)   ·   1 à 4 : compétences   ·   R : ultime\n" +
                 "Tab : changer de cible   ·   molette : de la vue 1 à la vue 2   ·   C : rappel de l'autre vue\n" +
                 "A / E (Q / E en QWERTY) : tourner   ·   bouton du milieu maintenu : tourner librement\n" +
-                (network
+                (adventure != null
+                    ? adventure + "\nÉchap : pause   ·   M : jeu en réseau   ·   H : masquer l'aide"
+                    : network
                     ? "G : allié visé par les soutiens   ·   F1 à F5 et T (salle d'attente) : build\nM : menu réseau   ·   H : masquer l'aide"
-                    : "N : scénario suivant   ·   F1 à F5 : build   ·   Retour arrière : recommencer\n" +
+                    : "N : scénario suivant (puis l'aventure)   ·   F1 à F5 : build   ·   Retour arrière : recommencer\n" +
                       "T : talents   ·   Échap : pause   ·   M : jeu en réseau   ·   H : masquer l'aide"));
         }
     }

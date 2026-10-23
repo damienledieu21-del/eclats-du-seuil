@@ -5,6 +5,8 @@
     <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
     <ProjectReference Include="..\EdS.Data\EdS.Data.csproj" />
     <ProjectReference Include="..\EdS.Data.Json\EdS.Data.Json.csproj" />
+    <!-- Sous-lot 12.8 : l'aventure dans une zone du monde (AdventureSession). -->
+    <ProjectReference Include="..\EdS.World\EdS.World.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

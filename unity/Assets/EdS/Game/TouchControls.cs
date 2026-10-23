@@ -13,7 +13,9 @@ namespace EdS.Game
     /// <b>Vue</b> (rappel entre les vues 1 et 2), <b>Allié</b> en réseau ;</item>
     /// <item>moitié droite hors des boutons : un doigt qui glisse <b>tourne la vue</b>, deux doigts qui s'écartent ou se rapprochent la
     /// <b>règlent entre les vues 1 et 2</b> ;</item>
-    /// <item>en haut à droite : <b>Menu</b> (réseau) et <b>Aide</b> ; seul, aussi <b>Pause</b>, <b>Rejouer</b> et <b>Scène</b> (suivante).</item>
+    /// <item>en haut à droite : <b>Menu</b> (réseau) et <b>Aide</b> ; seul, aussi <b>Pause</b>, <b>Rejouer</b> et <b>Scène</b> (suivante) ;</item>
+    /// <item>sous-lot 12.8, dans l'aventure : <b>Agir</b> (parler, récolter) et <b>Potion</b> au-dessus de la parade, <b>Sac</b>,
+    /// <b>Journal</b> et <b>Atelier</b> en haut, <b>Halte</b> à la place de « Rejouer ».</item>
     /// </list>
     /// Coordonnées dans l'écran virtuel de <see cref="Hud"/> (1080 de haut). Le traitement des doigts (stick, boutons tenus et touchés,
     /// regard, pincement, doigt perdu) est dans <see cref="TouchGestures"/> (sans Unity, testé) ; ce script lit les doigts, place et
@@ -26,7 +28,7 @@ namespace EdS.Game
         /// <summary>Taille des boutons d'action (pixels virtuels), au moins 9 mm sur l'écran d'un téléphone (<see cref="TouchGestures.SmallButton"/>).</summary>
         private const float Big = TouchGestures.BigButton, Small = TouchGestures.SmallButton;
 
-        private enum ButtonId { Guard, Parry, Skill1, Skill2, Skill3, Skill4, Ultimate, Target, View, Ally, Menu, Help, Pause, Restart, NextScene }
+        private enum ButtonId { Guard, Parry, Skill1, Skill2, Skill3, Skill4, Ultimate, Target, View, Ally, Menu, Help, Pause, Restart, NextScene, Act, Potion, Bag, Journal, Workshop }
 
         private sealed class Button
         {
@@ -63,6 +65,13 @@ namespace EdS.Game
         public bool RestartPressed => Tapped(ButtonId.Restart);
         public bool NextScenePressed => Tapped(ButtonId.NextScene);
 
+        // Sous-lot 12.8 : aventure (Rejouer y devient Halte : faire halte, ou reprendre après une défaite).
+        public bool ActPressed => Tapped(ButtonId.Act);
+        public bool PotionPressed => Tapped(ButtonId.Potion);
+        public bool BagPressed => Tapped(ButtonId.Bag);
+        public bool JournalPressed => Tapped(ButtonId.Journal);
+        public bool WorkshopPressed => Tapped(ButtonId.Workshop);
+
         private bool Tapped(ButtonId id) => _gestures.WasTapped((int)id);
 
         /// <summary>Emplacement de compétence touché à cette image (0 à 3, 4 : ultime), ou -1.</summary>
@@ -81,8 +90,11 @@ namespace EdS.Game
         /// <summary>Oublie les doigts posés (menu ouvert, perte du focus) : plus rien n'est tenu.</summary>
         public void Reset() => _gestures.Reset();
 
-        /// <summary>Place les boutons pour la taille d'écran courante ; <paramref name="network"/> : bouton Allié.</summary>
-        private void Layout(bool network)
+        /// <summary>
+        /// Place les boutons pour la taille d'écran courante ; <paramref name="network"/> : bouton Allié ; <paramref name="adventure"/>
+        /// (sous-lot 12.8) : Agir et Potion près du pouce droit, Sac, Journal et Atelier en haut.
+        /// </summary>
+        private void Layout(bool network, bool adventure)
         {
             _buttons.Clear();
             _zones.Clear();
@@ -104,6 +116,11 @@ namespace EdS.Game
             Add(ButtonId.Target, gx + (Big - Small) / 2, gy - 3 * (Small + m), Small, "Cible");
             Add(ButtonId.View, gx - Big - m + (Big - Small) / 2, gy - 3 * (Small + m), Small, "Vue");
             if (network) Add(ButtonId.Ally, gx - 2 * (Big + m) + (Big - Small), gy - Small - m, Small, "Allié");
+            if (adventure)
+            {
+                Add(ButtonId.Act, gx - 2 * (Big + m) + (Big - Small), gy - Small - m, Small, "Agir");
+                Add(ButtonId.Potion, gx - 2 * (Big + m) + (Big - Small), gy - 2 * (Small + m), Small, "Potion");
+            }
             // Revue Codex de la PR #36 (3e tour) : sous la fiche de la cible (Hud.Target : y de 14 à 146), pour ne pas cacher son compte à
             // rebours ni ses altérations.
             float top = 160f;
@@ -112,8 +129,14 @@ namespace EdS.Game
             if (!network)
             {
                 Add(ButtonId.Pause, w - 3 * (m + Small), top, Small, "Pause");
-                Add(ButtonId.Restart, w - 4 * (m + Small), top, Small, "Rejouer");
+                Add(ButtonId.Restart, w - 4 * (m + Small), top, Small, adventure ? "Halte" : "Rejouer");
                 Add(ButtonId.NextScene, w - 5 * (m + Small), top, Small, "Scène");
+            }
+            if (adventure)
+            {
+                Add(ButtonId.Bag, w - 6 * (m + Small), top, Small, "Sac");
+                Add(ButtonId.Journal, w - 7 * (m + Small), top, Small, "Journal");
+                Add(ButtonId.Workshop, w - 8 * (m + Small), top, Small, "Atelier");
             }
         }
 
@@ -155,22 +178,22 @@ namespace EdS.Game
         }
 
         /// <summary>Lit les doigts de cette image (à appeler une fois par image, avant de lire les commandes).</summary>
-        public void Update(bool network)
+        public void Update(bool network, bool adventure = false)
         {
             if (!Active)
             {
                 _gestures.Reset();
                 return;
             }
-            Layout(network);
+            Layout(network, adventure);
             _gestures.Update(Fingers(), _zones, Hud.Width);
         }
 
         /// <summary>Dessine le stick et les boutons (dans <c>OnGUI</c>, après <see cref="Hud.Begin"/>).</summary>
-        public void Draw(bool network)
+        public void Draw(bool network, bool adventure = false)
         {
             if (!Active) return;
-            Layout(network);
+            Layout(network, adventure);
             foreach (Button b in _buttons)
             {
                 bool held = _gestures.IsHeld((int)b.Id);

@@ -115,19 +115,32 @@ namespace EdS.World
         internal CraftRefusal Craft(string recipe, bool inPlace, Inventory inventory, out CraftEvent? done)
         {
             done = null;
-            Recipe? r = _book.Recipes.FirstOrDefault(x => x.Id == recipe);
-            if (r is null) return CraftRefusal.Unknown;
-            if (!inPlace) return CraftRefusal.NotHere;
-            int level = Level(r.Profession);
-            if (level < r.RequiredLevel) return CraftRefusal.LevelTooLow;
-            Inventory trial = inventory.Clone();
-            foreach ((string item, int count) in r.Inputs)
-                if (trial.Remove(item, count) != InventoryRefusal.None) return CraftRefusal.NotEnough;
-            if (trial.Add(r.Output.Item, r.Output.Count) != InventoryRefusal.None) return CraftRefusal.Full;
-            inventory.CopyFrom(trial);
+            CraftRefusal refusal = Prepare(recipe, inPlace, inventory, out Recipe? r, out Inventory? trial);
+            if (refusal != CraftRefusal.None) return refusal;
+            inventory.CopyFrom(trial!);
+            int level = Level(r!.Profession);
             int gap = level - r.RequiredLevel;
             long xp = Math.Max(1, gap >= 4 ? r.Xp / 4 : gap >= 2 ? r.Xp / 2 : r.Xp);
             done = Gain(CraftEventKind.Crafted, r.Id, r.Profession, r.Output.Item, r.Output.Count, xp);
+            return CraftRefusal.None;
+        }
+
+        /// <summary>Sous-lot 12.8 : refus qu'aurait la fabrication (rien ne change), pour l'affichage de l'atelier.</summary>
+        internal CraftRefusal Check(string recipe, bool inPlace, Inventory inventory) => Prepare(recipe, inPlace, inventory, out _, out _);
+
+        /// <summary>Contrôles de la fabrication, et l'inventaire qu'elle donnerait (sur une copie).</summary>
+        private CraftRefusal Prepare(string recipe, bool inPlace, Inventory inventory, out Recipe? r, out Inventory? trial)
+        {
+            trial = null;
+            r = _book.Recipes.FirstOrDefault(x => x.Id == recipe);
+            if (r is null) return CraftRefusal.Unknown;
+            if (!inPlace) return CraftRefusal.NotHere;
+            if (Level(r.Profession) < r.RequiredLevel) return CraftRefusal.LevelTooLow;
+            Inventory copy = inventory.Clone();
+            foreach ((string item, int count) in r.Inputs)
+                if (copy.Remove(item, count) != InventoryRefusal.None) return CraftRefusal.NotEnough;
+            if (copy.Add(r.Output.Item, r.Output.Count) != InventoryRefusal.None) return CraftRefusal.Full;
+            trial = copy;
             return CraftRefusal.None;
         }
 

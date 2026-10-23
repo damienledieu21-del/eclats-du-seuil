@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
 
@@ -39,6 +40,10 @@ namespace EdS.Runtime
         private readonly MovementIntent _movement = new MovementIntent();
         private readonly TargetKeeper _targets = new TargetKeeper();
 
+        // Sous-lot 12.8 : moteur tenu ailleurs (session de zone du monde), avancé par ce pas ; portée de choix de la cible.
+        private readonly Action? _step;
+        private readonly Fixed? _targetRange;
+
         /// <summary>Ticks simulés au plus par appel à <see cref="Advance"/> : une image très lente ne fait pas rattraper des secondes d'un coup.</summary>
         public int MaxTicksPerAdvance { get; set; } = 5;
 
@@ -56,6 +61,29 @@ namespace EdS.Runtime
             _tickMs = _engine.TickMilliseconds;
             _feedback = new FeedbackTracker(_engine);
             _obstacles = CombatDisplay.SightObstacles(setup.Space);   // sous-lot 11.9 : la vue (obstacles bas exclus)
+            TargetId = Enemies().FirstOrDefault()?.Id;
+        }
+
+        /// <summary>
+        /// Sous-lot 12.8 : pont sur un moteur tenu ailleurs : la session d'une zone du monde, dont <paramref name="step"/> simule un tick (le
+        /// moteur, les populations, l'histoire). Les intentions du joueur sont soumises avant chaque pas, comme en séance d'entraînement. La
+        /// cible se choisit parmi les ennemis en vue à <paramref name="targetRange"/> au plus, du plus proche au plus loin.
+        /// </summary>
+        /// <param name="setup">Simulation de la zone (aire, décor, règles) ; <paramref name="engine"/> doit la jouer.</param>
+        /// <exception cref="ArgumentException">Le joueur n'est pas un personnage du moteur.</exception>
+        public RealtimeCombat(CombatSetup setup, CombatEngine engine, string playerId, Action step, Fixed? targetRange)
+        {
+            _setup = setup ?? throw new ArgumentNullException(nameof(setup));
+            _engine = engine ?? throw new ArgumentNullException(nameof(engine));
+            _step = step ?? throw new ArgumentNullException(nameof(step));
+            PlayerId = playerId ?? throw new ArgumentNullException(nameof(playerId));
+            if (!_engine.CombatantIds.Contains(playerId) || _engine.View(playerId).Kind != CombatantKind.Character)
+                throw new ArgumentException($"« {playerId} » n'est pas un personnage.", nameof(playerId));
+            if (targetRange is Fixed r && r.Raw <= 0) throw new ArgumentOutOfRangeException(nameof(targetRange));
+            _targetRange = targetRange;
+            _tickMs = _engine.TickMilliseconds;
+            _feedback = new FeedbackTracker(_engine);
+            _obstacles = CombatDisplay.SightObstacles(setup.Space);
             TargetId = Enemies().FirstOrDefault()?.Id;
         }
 
@@ -161,7 +189,7 @@ namespace EdS.Runtime
             return true;
         }
 
-        /// <summary>Cible suivante parmi les ennemis vivants en vue (ordre des combattants du scénario).</summary>
+        /// <summary>Cible suivante parmi les ennemis vivants en vue (ordre des combattants du scénario ; sous-lot 12.8 : avec une portée, du plus proche au plus loin).</summary>
         public void NextTarget()
         {
             List<OtherState> enemies = Enemies().ToList();
@@ -212,9 +240,10 @@ namespace EdS.Runtime
         {
             if (IsFinished) return;
             SubmitIntentions();
-            _engine.Step();
+            if (_step != null) _step();   // sous-lot 12.8 : session de zone
+            else _engine.Step();
             _feedback.Collect(_engine);
-            TargetId = _targets.Keep(_engine, PlayerId, _obstacles, TargetId);   // sous-lot 11.9 : cible perdue remplacée après un court délai
+            TargetId = _targets.Keep(_engine, PlayerId, _obstacles, TargetId, _targetRange);   // sous-lot 11.9 : cible perdue remplacée après un court délai
         }
 
         private void SubmitIntentions()
@@ -277,6 +306,6 @@ namespace EdS.Runtime
         /// <summary>Les autres combattants (ennemis et alliés), dans l'ordre du scénario ; leur télégraphie s'écoule en continu dans le tick en cours (<see cref="TickProgress"/>).</summary>
         public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, 0, TickProgress * TickSeconds, _obstacles);
 
-        private IEnumerable<OtherState> Enemies() => CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles);
+        private IEnumerable<OtherState> Enemies() => CombatDisplay.NearbyEnemies(_engine, PlayerId, _obstacles, _targetRange);
     }
 }

@@ -5,7 +5,8 @@
         "EdS.Domain",
         "EdS.Simulation",
         "EdS.Data",
-        "EdS.Data.Json"
+        "EdS.Data.Json",
+        "EdS.World"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

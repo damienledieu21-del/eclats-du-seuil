@@ -21,7 +21,9 @@ namespace EdS.Game
     /// combat en temps réel avec le pont <see cref="RealtimeCombat"/> (sous-lot 9.2), transmet les touches, affiche l'arène, la caméra,
     /// l'interface et les retours. Le cœur reste seul juge du combat : cette classe ne calcule aucune règle. Sous-lot 10.4 : jeu en
     /// réseau (touche M) : héberger, avec un équipier robot si l'on veut, ou rejoindre ; le combat en coopération est mené par le serveur
-    /// (<see cref="NetworkSession"/>), le même écran l'affiche.
+    /// (<see cref="NetworkSession"/>), le même écran l'affiche. Sous-lot 12.8 : le jeu s'ouvre sur l'aventure dans les Vallons d'Aube
+    /// (<see cref="AdventureSession"/> : zone du monde, PNJ, quêtes, objets, métiers, chef, sauvegarde locale) ; N passe aux scènes
+    /// d'entraînement, puis revient à l'aventure.
     /// </summary>
     public sealed class EdsGame : MonoBehaviour
     {
@@ -84,6 +86,21 @@ namespace EdS.Game
 
         private bool Network => _net != null;
 
+        // Sous-lot 12.8 : aventure (null : entraînement ou réseau), ses écrans et ses repères, session de zone affichée.
+        private AdventureSession _adventure;
+        private readonly AdventureScreens _screens = new AdventureScreens();
+        private WorldMarkers _markers;
+        private int _shownSession;
+
+        /// <summary>Distance au-delà de laquelle une créature de l'aventure n'a pas de barre au-dessus d'elle.</summary>
+        private const float OverheadRange = 25f;
+
+        /// <summary>
+        /// Sauvegarde locale de l'aventure (cadrage Q10), hors du dossier des données recopiées au lancement sur Android (il est remplacé
+        /// quand le jeu change).
+        /// </summary>
+        private static string SavePath => Path.Combine(Application.persistentDataPath, "sauvegardes", "vallons.json");
+
         // Sous-lot 11.8 : commandes au doigt (téléphone, simulateur d'appareils de l'éditeur, F8 pour les forcer) ; données prêtes.
         private readonly TouchControls _touch = new TouchControls();
         private bool _ready;
@@ -114,8 +131,12 @@ namespace EdS.Game
             });
             _repoRoot = root ?? FindRepoRoot();
             _ready = true;
-            Load(0, null);
-            if (problem != null) _error = "Impossible de préparer les données du jeu : " + problem;
+            if (problem != null)
+            {
+                Load(0, null);
+                _error = "Impossible de préparer les données du jeu : " + problem;
+            }
+            else StartAdventure();
         }
 
         /// <summary>
@@ -154,7 +175,159 @@ namespace EdS.Game
 
         private void OnDestroy() => StopNetwork();
 
-        private void OnApplicationQuit() => StopNetwork();
+        private void OnApplicationQuit()
+        {
+            SaveAdventure(false);
+            StopNetwork();
+        }
+
+        // --- Aventure (sous-lot 12.8) --------------------------------------------------------------------------------------------
+
+        /// <summary>Ouvre l'aventure (sauvegarde reprise, ou nouvelle partie) ; si le monde ne se charge pas, l'entraînement à la place.</summary>
+        private void StartAdventure()
+        {
+            _error = null;
+            try
+            {
+                _adventure = AdventureSession.Load(Path.Combine(_repoRoot, "data", "v0"), Path.Combine(_repoRoot, "scenarios"), SavePath);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                _adventure = null;
+                Load(0, null);
+                Say("Aventure indisponible : " + e.Message);
+                return;
+            }
+            _markers = new WorldMarkers(_adventure);
+            ShowAdventureSession();
+            if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
+        }
+
+        /// <summary>Affiche la session de zone en cours (au départ, après une halte ou une reprise).</summary>
+        private void ShowAdventureSession()
+        {
+            _combat = _adventure.Combat;
+            _arena.Paint = id => _adventure != null && _adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null;
+            _arena.Populate(_combat);
+            _shownSession = _adventure.Opened;
+            _paused = false;
+            _floating.Clear();
+            _playerYaw = 0f;
+        }
+
+        /// <summary>Quitte l'aventure (sauvegardée) : l'entraînement ou le réseau prend la place.</summary>
+        private void LeaveAdventure()
+        {
+            if (_adventure == null) return;
+            SaveAdventure(false);
+            _markers?.Destroy();
+            _markers = null;
+            _adventure = null;
+            _screens.Close();
+            _arena.Paint = null;
+            _combat = null;
+        }
+
+        /// <summary>Sauvegarde l'aventure en cours (sauf après une défaite pas encore reprise : la reprise sauvegarde) ; une erreur s'affiche.</summary>
+        private void SaveAdventure(bool announce)
+        {
+            if (_adventure == null || _adventure.World.IsDefeated) return;
+            try
+            {
+                _adventure.Save();
+                if (announce) Say(_adventure.Text("text.ui.saved"));
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                Say("Sauvegarde impossible : " + e.Message);
+            }
+        }
+
+        /// <summary>Touche de chiffre 1 à 9 pressée à cette image (rang 0 à 8), ou -1.</summary>
+        private static int DigitPressed()
+        {
+            KeyCode[] digits = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4, KeyCode.Alpha5, KeyCode.Alpha6, KeyCode.Alpha7, KeyCode.Alpha8, KeyCode.Alpha9 };
+            KeyCode[] pad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4, KeyCode.Keypad5, KeyCode.Keypad6, KeyCode.Keypad7, KeyCode.Keypad8, KeyCode.Keypad9 };
+            for (int i = 0; i < digits.Length; i++)
+                if (Input.GetKeyDown(digits[i]) || Input.GetKeyDown(pad[i])) return i;
+            return -1;
+        }
+
+        /// <summary>
+        /// Une image de l'aventure. Le monde s'arrête (jeu en solo) pendant un dialogue, un écran ouvert, la pause ou après une défaite ;
+        /// sinon les touches de combat, la marche et les actions (F parler ou récolter, P potion) passent au cœur, et le temps avance.
+        /// </summary>
+        private void UpdateAdventure()
+        {
+            AdventureSession a = _adventure;
+            if (Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed)
+            {
+                LeaveAdventure();
+                Load(0, null);
+                return;
+            }
+            if (a.Dialogue != null)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape)) a.CloseDialogue();
+                else if (DigitPressed() is int answer && answer >= 0) a.Choose(answer);
+            }
+            else if (_screens.Open != AdventureScreens.Panel.None)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape)) _screens.Close();
+            }
+            else if (Input.GetKeyDown(KeyCode.Escape) || _touch.PausePressed) _paused = !_paused;
+            if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
+            if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
+            if (Input.GetKeyDown(KeyCode.K) || _touch.WorkshopPressed) _screens.Toggle(AdventureScreens.Panel.Crafting);
+            if (Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed)
+            {
+                if (a.MustContinue) a.Continue();
+                else if (!a.Rest()) Say(a.Text("text.ui.next_rest"));
+            }
+            if (a.Opened != _shownSession) ShowAdventureSession();
+            bool frozen = _paused || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue;
+            if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
+            if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed)) a.Drink();
+            if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
+            _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
+
+            PlayerState player = _combat.Player();
+            frozen = frozen || a.Dialogue != null;   // un dialogue ouvert par F à cette image
+            if (frozen)
+            {
+                _combat.SetGuard(false);
+                _combat.SetMove(0f, 0f);
+                _moving = false;
+            }
+            else
+            {
+                ReadCombatInput();
+                Move(player);
+                a.Advance(Time.deltaTime);
+                foreach (CombatFeedback feedback in _combat.DrainFeedback()) Show(feedback);
+            }
+            foreach (string message in a.DrainMessages()) Say(message);
+            _markers.Sync(a);
+            player = _combat.Player();
+            _arena.Sync(_combat, player, null);
+            if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+            _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
+        }
+
+        /// <summary>Indication de l'action possible ici (parler, récolter, faire halte, reprendre), ou null.</summary>
+        private string AdventureHint()
+        {
+            AdventureSession a = _adventure;
+            if (a.MustContinue) return string.Format(a.Text("text.ui.continue_hint"), a.LastSafePoint);
+            if (a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None) return null;
+            if (a.NpcInReach is EdS.Data.Story.Npc npc) return string.Format(a.Text("text.ui.talk_hint"), a.Text(npc.Name));
+            if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);
+            if (a.CanRest) return string.Format(a.Text("text.ui.rest_hint"), a.LastSafePoint);
+            return null;
+        }
 
         private void Load(int scenario, string buildId)
         {
@@ -176,6 +349,13 @@ namespace EdS.Game
                 _error = $"Impossible de charger le jeu : {e.Message}\n\nDépôt attendu : {_repoRoot}\n(le projet Unity doit rester dans le dossier unity/ du dépôt)";
                 Debug.LogException(e);
             }
+        }
+
+        /// <summary>Sous-lot 12.8 : scène d'entraînement suivante ; après la dernière, retour à l'aventure.</summary>
+        private void NextScene()
+        {
+            if (_scenario + 1 >= ScenarioFiles.Length) StartAdventure();
+            else Load(_scenario + 1, null);
         }
 
         private void Restart()
@@ -275,7 +455,9 @@ namespace EdS.Game
         /// </summary>
         private void OnApplicationPause(bool paused)
         {
-            if (paused) _touch.Reset();
+            if (!paused) return;
+            _touch.Reset();
+            SaveAdventure(false);   // sous-lot 12.8 : un téléphone peut fermer le jeu en arrière-plan sans prévenir
         }
 
         private void OnApplicationFocus(bool focus)
@@ -287,7 +469,7 @@ namespace EdS.Game
         {
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
-            _touch.Update(Network);
+            _touch.Update(Network, _adventure != null);
             // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran. En réseau,
             // la partie continue d'avancer (le serveur ne s'arrête pas), sans entrée de combat.
             if (_talents != null)
@@ -306,12 +488,21 @@ namespace EdS.Game
                 return;
             }
             if (Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed) _help = !_help;
+            if (_adventure != null)
+            {
+                UpdateAdventure();
+                return;
+            }
             if (Network)
             {
                 UpdateNetwork(true);
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.N)) Load((_scenario + 1) % ScenarioFiles.Length, null);
+            if (Input.GetKeyDown(KeyCode.N))
+            {
+                NextScene();
+                return;
+            }
             if (_combat == null) return;
 
             if (Input.GetKeyDown(KeyCode.T))
@@ -323,8 +514,8 @@ namespace EdS.Game
             if (Input.GetKeyDown(KeyCode.Backspace) || _touch.RestartPressed) Restart();
             if (_touch.NextScenePressed)
             {
-                Load((_scenario + 1) % ScenarioFiles.Length, null);
-                if (_combat == null) return;
+                NextScene();
+                return;
             }
             if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
             _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
@@ -392,6 +583,12 @@ namespace EdS.Game
         {
             StopNetwork();
             _netScreen.Message = null;
+            // Sous-lot 12.8 : l'aventure est sauvegardée et quittée ; le réseau part des données de l'entraînement.
+            if (_adventure != null)
+            {
+                LeaveAdventure();
+                if (_session == null) Load(0, null);
+            }
             try
             {
                 if (_session == null) throw new InvalidOperationException("données du jeu non chargées (voir le message d'erreur du solo).");
@@ -678,6 +875,27 @@ namespace EdS.Game
             });
         }
 
+        /// <summary>Sous-lot 12.8 : lieu et heure, indication d'action, défaite, dialogue et écrans de l'aventure.</summary>
+        private void DrawAdventure()
+        {
+            AdventureSession a = _adventure;
+            Hud.Centered(new Rect(Hud.Width / 2f - 300, 20, 600, 40), Hud.Plain(a.PlaceName) + " — " + a.TimeOfDay, Color.white);
+            if (a.MustContinue)
+            {
+                Hud.Fill(new Rect(Hud.Width / 2f - 420, Hud.VirtualHeight / 2f - 70, 840, 140), new Color(0.25f, 0f, 0f, 0.8f));
+                Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f - 60, 800, 50), a.Text("text.ui.defeated"), Color.white);
+            }
+            string hint = AdventureHint();
+            if (hint != null)
+                Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f + (a.MustContinue ? 0 : 120), 800, 40), Hud.Plain(hint), new Color(1f, 0.92f, 0.6f));
+            if (_paused && a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None)
+                Hud.Centered(new Rect(Hud.Width / 2f - 150, 64, 300, 40), "PAUSE", new Color(1f, 0.85f, 0.3f));
+            int answer = AdventureScreens.DrawDialogue(a);
+            if (answer >= 0) a.Choose(answer);
+            _screens.Draw(a);
+            _touch.Draw(false, true);
+        }
+
         private void DrawTalents()
         {
             TalentScreen.Action action = _talents.Draw();
@@ -746,6 +964,8 @@ namespace EdS.Game
             {
                 if (!other.View.IsPresent) continue;   // revue Codex de la PR #32 (16e tour) : un absent n'a pas de barre
                 Vector3? head = _arena.Head(other.Id);
+                // Sous-lot 12.8 : dans une zone du monde, seules les créatures proches ont leur barre.
+                if (_adventure != null && head != null && _arena.Player != null && (head.Value - _arena.Player.position).sqrMagnitude > OverheadRange * OverheadRange) continue;
                 if (head != null) Hud.Overhead(camera.WorldToScreenPoint(head.Value), other, other.Id == player.TargetId);
             }
 
@@ -761,10 +981,15 @@ namespace EdS.Game
                 Hud.Centered(new Rect(x - 150, y - 15, 300, 30), f.Text, color);
             }
 
+            if (_adventure != null && _arena.Player != null) _markers?.Labels(camera, _arena.Player.position);
             Hud.Player(player);
             // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
             Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)));
-            if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
+            if (_adventure != null)
+            {
+                if (_help) Hud.Help(Hud.Plain(_adventure.PlaceName), _adventure.TimeOfDay, _camera.Describe(), _paused, false, _adventure.Text("text.ui.help"));
+            }
+            else if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
                 Network ? NetworkBuildName() : BuildName(), _camera.Describe(), _paused, Network);
             if (Network) NetworkScreen.DrawCombat(_net, _shownCombat?.AllyId);
 
@@ -778,6 +1003,11 @@ namespace EdS.Game
                 return;
             }
 
+            if (_adventure != null)
+            {
+                DrawAdventure();
+                return;
+            }
             float elapsed = _combat.Tick * (float)_combat.TickSeconds;
             Hud.Centered(new Rect(Hud.Width / 2f - 150, 20, 300, 40), $"{(int)elapsed / 60}:{(int)elapsed % 60:00}", Color.white);
             _touch.Draw(Network);   // sous-lot 11.8

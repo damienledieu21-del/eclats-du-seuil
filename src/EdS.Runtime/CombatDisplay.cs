@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
 
@@ -114,6 +115,31 @@ namespace EdS.Runtime
         /// </summary>
         public static IEnumerable<OtherState> LivingEnemies(CombatEngine engine, string playerId, IReadOnlyList<ConvexPolygon>? obstacles = null) =>
             Others(engine, playerId, 0, 0, obstacles).Where(o => o.IsEnemy && !o.View.IsDead && o.View.IsPresent && o.InSight);   // 11.4d : un absent ne s'affiche pas
+
+        /// <summary>
+        /// Sous-lot 12.8 : ennemis vivants en vue, à <paramref name="range"/> mètres au plus du joueur (écart entre les centres), du plus
+        /// proche au plus loin (à égalité, ordre du scénario) ; sans portée, <see cref="LivingEnemies"/>. Une zone du monde compte des
+        /// dizaines de créatures : la cible se choisit parmi les proches. Calcul entier sur les places du moteur.
+        /// </summary>
+        public static IEnumerable<OtherState> NearbyEnemies(CombatEngine engine, string playerId, IReadOnlyList<ConvexPolygon>? obstacles, Fixed? range)
+        {
+            IEnumerable<OtherState> living = LivingEnemies(engine, playerId, obstacles);
+            if (range is not Fixed r) return living;
+            if (engine.View(playerId).Position is not GroundVector me) return living;
+            long limit = checked(r.Raw * r.Raw);
+            return living.Select(o => (o, d: Distance2(me, o.View.Position)))
+                .Where(x => x.d is long d && d <= limit)
+                .OrderBy(x => x.d!.Value)
+                .Select(x => x.o);
+        }
+
+        /// <summary>Carré de l'écart entre deux places (dix-millièmes de mètre au carré) ; null sans place.</summary>
+        private static long? Distance2(GroundVector a, GroundVector? b)
+        {
+            if (b is not GroundVector p) return null;
+            long dx = checked(p.X.Raw - a.X.Raw), dz = checked(p.Z.Raw - a.Z.Raw);
+            return checked(dx * dx + dz * dz);
+        }
 
         /// <summary>Personnages alliés vivants autres que le joueur, dans l'ordre du scénario (coopération, lot 10).</summary>
         public static IEnumerable<OtherState> LivingAllies(CombatEngine engine, string playerId) =>
