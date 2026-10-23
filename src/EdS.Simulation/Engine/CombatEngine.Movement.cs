@@ -64,6 +64,9 @@ namespace EdS.Simulation.Engine
 
         private bool _spatial;
         private ConvexPolygon[] _obstacles = Array.Empty<ConvexPolygon>();
+
+        /// <summary>Sous-lot 11.9 : obstacles qui arrêtent la vue (les obstacles bas en sont exclus ; ils arrêtent la marche).</summary>
+        private ConvexPolygon[] _sightObstacles = Array.Empty<ConvexPolygon>();
         private long _minX, _minZ, _maxX, _maxZ;
 
         /// <summary>Pas maximal par tick (vitesse technique maximale) et pas d'essai du garde-fou (vitesse de base des règles).</summary>
@@ -77,6 +80,7 @@ namespace EdS.Simulation.Engine
             if (_setup.Space is not { } space) return;
             _spatial = true;
             _obstacles = space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray();
+            _sightObstacles = space.Obstacles.Where(o => !o.Low).Select(o => new ConvexPolygon(o.Points)).ToArray();
             _minX = space.Min.X.Raw;
             _minZ = space.Min.Z.Raw;
             _maxX = space.Max.X.Raw;

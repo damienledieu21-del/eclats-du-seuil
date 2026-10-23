@@ -97,9 +97,16 @@ namespace EdS.Runtime
             return true;
         }
 
-        /// <summary>Décor d'un espace en polygones (null sans espace), à garder pour <see cref="Others"/>.</summary>
+        /// <summary>Décor d'un espace en polygones (null sans espace) : tout ce qui arrête la marche (place, prédiction du mouvement).</summary>
         public static IReadOnlyList<ConvexPolygon>? Obstacles(CombatSpace? space) =>
             space?.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToList();
+
+        /// <summary>
+        /// Sous-lot 11.9 : décor qui arrête la vue (null sans espace), à garder pour <see cref="Others"/> et <see cref="InSightAt"/> : les
+        /// obstacles bas (rivière) arrêtent la marche mais pas la vue, comme dans le moteur.
+        /// </summary>
+        public static IReadOnlyList<ConvexPolygon>? SightObstacles(CombatSpace? space) =>
+            space?.Obstacles.Where(o => !o.Low).Select(o => new ConvexPolygon(o.Points)).ToList();
 
         /// <summary>
         /// Ennemis vivants, dans l'ordre du scénario ; avec le décor (<paramref name="obstacles"/>), seulement ceux en vue du joueur

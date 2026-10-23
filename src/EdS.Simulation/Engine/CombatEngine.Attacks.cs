@@ -16,8 +16,8 @@ namespace EdS.Simulation.Engine
     /// ennemi de l'assaillant dont l'emprise la touche à ce moment-là (positions de la résolution, après les déplacements du tick).</item>
     /// <item><b>Annonce</b> : <c>telegraphMs</c> sépare le tour (<c>attackStarted</c>, qui décrit la forme et le tick d'impact) de l'impact
     /// (<c>attackLanded</c>, puis les dégâts) ; une zone persistante frappe encore toutes les <c>tickMs</c> pendant <c>persistentMs</c>. La
-    /// mort de l'assaillant annule ce qui reste (<c>attackCancelled</c>) ; un coup dirigé dont la cible est morte aussi. Un contrôle posé
-    /// pendant l'annonce ne l'interrompt pas.</item>
+    /// mort de l'assaillant annule ce qui reste (<c>attackCancelled</c>) ; un coup dirigé dont la cible est morte aussi. Sous-lot 11.9 : un
+    /// contrôle qui empêche d'attaquer (étourdissement), posé pendant l'annonce et encore là à l'impact, l'annule aussi.</item>
     /// <item><b>Bouclier</b> : garde et parade parfaite ne valent que contre un coup venu de l'arc frontal (<c>combat.guard.arcDegrees</c>,
     /// 180°) centré sur l'orientation du défenseur, et seulement si l'attaque les admet (<c>guardable</c>, <c>parryable</c>). Origine du
     /// coup : l'attaquant (coup dirigé, compétence, frappe de réaction), l'origine de la zone (l'assaillant pour un cône ou une bande, le
@@ -177,11 +177,16 @@ namespace EdS.Simulation.Engine
             FromZ = impact.Zone?.OriginZ,
         };
 
-        /// <summary>Motif d'annulation d'un impact : assaillant mort, ou cible d'un coup dirigé morte ; null s'il frappe.</summary>
-        private static string? CancelReason(AttackImpact impact)
+        /// <summary>
+        /// Motif d'annulation d'un impact : assaillant mort, ou cible d'un coup dirigé morte ; sous-lot 11.9 (essai de Damien du 22 octobre
+        /// 2026 : « l'étourdissement l'annule ») : assaillant encore empêché d'attaquer à l'impact (étourdi pendant l'annonce : raison du
+        /// contrôle, <c>stunned</c>), pour l'impact seulement (une zone persistante déjà tombée continue) ; null s'il frappe.
+        /// </summary>
+        private string? CancelReason(AttackImpact impact)
         {
             if (impact.Assailant.Out) return OutReason(impact.Assailant, "actor");
             if (impact.Zone is null && impact.Target!.Out) return OutReason(impact.Target, "target");
+            if (impact.Pulse == 0 && BlockReason(impact.Assailant, StatusBlocks.AssailantAttacks) is { } blocked) return blocked;
             return null;
         }
 
@@ -212,7 +217,15 @@ namespace EdS.Simulation.Engine
             // Revue Codex de la PR #33 (tour 10) : la recherche du bout de la charge (sous-pas et contrôles de piège) est réservée avec
             // l'impact, deux unités de travail par sous-pas, et consommée même si la charge est bloquée.
             long chargeWork = charges ? checked(2 * ChargeSteps(impact.Assailant, impact.Zone!)) : 0;
-            ResolveAction(tick, action, targets, Cost.Op + Cost.Line + Cost.Enqueue.If(again) + Cost.Line.If(charges) + chargeWork * Cost.Op, dequeue: true, () =>
+            // Sous-lot 11.9 (« la charge te repousse ») : une bande qui repousse écrit une ligne par ennemi touché (pushed, ou pushBlocked
+            // s'il est tombé à 0 PV sous ses coups, raison targetFallen) ; la recherche du bout de chaque poussée est réservée comme celle de la charge.
+            Fixed? push = impact.Zone != null ? impact.Attack.Push : null;
+            long pushWork = 0;
+            if (push is { } distance)
+                foreach (Fighter t in targets) pushWork = checked(pushWork + 2 * PushSteps(t, distance));
+            long pushLines = push is null ? 0 : targets.Count;
+            ResolveAction(tick, action, targets, Cost.Op + Cost.Line + Cost.Enqueue.If(again) + Cost.Line.If(charges) + chargeWork * Cost.Op
+                + pushLines * Cost.Line + pushWork * Cost.Op, dequeue: true, () =>
             {
                 Charge(1);
                 long landed = Emit(tick, CombatPhase.Resolution, "attackLanded", impact.Origin, w =>
@@ -230,6 +243,30 @@ namespace EdS.Simulation.Engine
                 else _announced.Remove(impact);
             }, () =>
             {
+                // Sous-lot 11.9 : les poussées, après les coups de la bande et avant la charge (qui part dans la place dégagée).
+                if (push is { } distance)
+                {
+                    Charge(pushWork);
+                    foreach (Fighter t in targets)
+                    {
+                        // Une cible tombée à 0 PV sous les coups de la bande (elle meurt en fin de tick) n'est pas repoussée.
+                        if (t.Out || t.Health == 0)
+                        {
+                            EmitDiagnostic(tick, CombatPhase.Resolution, "pushBlocked", w => w
+                                .Field("actor", impact.Assailant.Id).Field("attack", impact.Attack.Id).Field("target", t.Id)
+                                .Field("reason", t.Out ? OutReason(t, "target") : "targetFallen"));
+                            continue;
+                        }
+                        var (px, pz) = PushEnd(t, impact.Zone!, distance);
+                        t.Body!.X = px;
+                        t.Body.Z = pz;
+                        EmitDiagnostic(tick, CombatPhase.Resolution, "pushed", w =>
+                        {
+                            w.Field("actor", impact.Assailant.Id).Field("attack", impact.Attack.Id).Field("target", t.Id);
+                            WriteVector(w, "position", px, pz);
+                        });
+                    }
+                }
                 // Revue Codex de la PR #33 : la charge part après les coups de la bande (ligne réservée avec l'impact).
                 if (!charges) return;
                 Charge(chargeWork);

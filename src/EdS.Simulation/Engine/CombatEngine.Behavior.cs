@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 
 namespace EdS.Simulation.Engine
@@ -97,6 +98,8 @@ namespace EdS.Simulation.Engine
             foreach (Fighter other in _fightersById)
                 if (!other.Out && other.Team != f.Team && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return "aggro";
             // La meute : un allié à comportement déjà engagé, à distance d'engagement, l'entraîne (ordre des identifiants, de proche en proche).
+            // Sous-lot 11.9 : seulement un ennemi de meute (pack, vrai par défaut) ; un solitaire ne s'engage que pour lui-même.
+            if (!behavior.Pack) return null;
             foreach (Fighter ally in _fightersById)
                 if (ally != f && !ally.Out && ally.Team == f.Team && ally.Behavior != null && ally.Engaged && EdgeDistance(f.Body!, ally.Body!) <= aggro) return "pack";
             return null;
@@ -141,7 +144,9 @@ namespace EdS.Simulation.Engine
             if (!HasBehaviors) return intentions;
             var targets = new int[n];
             // Revue Codex de la PR #33 (13e tour) : une annonce dont l'impact tombe après la fin arrête aussi l'ennemi, jusqu'à la fin.
-            var announcing = new HashSet<Fighter>(_announced.Where(a => a.Pulse == 0).Select(a => a.Assailant).Concat(_fightersById.Where(f => f.AnnouncedToEnd)));
+            // Sous-lot 11.9 : seulement pour une attaque qui arrête l'ennemi (holdPosition, vrai par défaut).
+            var announcing = new HashSet<Fighter>(_announced.Where(a => a.Pulse == 0 && a.Attack.HoldPosition).Select(a => a.Assailant)
+                .Concat(_fightersById.Where(f => f.AnnouncedToEnd)));
             for (int i = 0; i < n; i++)
             {
                 Fighter f = _fightersById[i];
@@ -258,6 +263,39 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private (long X, long Z) ChargeEnd(Fighter f, AttackZone zone)
         {
+            var (endX, endZ) = ChargeTarget(zone);
+            return SlideEnd(f, endX, endZ, ChargeSteps(f, zone));
+        }
+
+        /// <summary>
+        /// Sous-lot 11.9 (« la charge te repousse ») : bout de la poussée de <paramref name="f"/> par une bande, de <paramref name="push"/>
+        /// le long de son axe, depuis sa place : mêmes règles que la charge (sous-pas, aire, décor, emprises solides, règle A pour un
+        /// non-personnage). Calculé sans rien modifier.
+        /// </summary>
+        private (long X, long Z) PushEnd(Fighter f, AttackZone zone, Fixed push)
+        {
+            Body b = f.Body!;
+            long endX = checked(b.X + Domain.Numerics.IntMath.MulDiv(zone.AxisX, push.Raw, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero));
+            long endZ = checked(b.Z + Domain.Numerics.IntMath.MulDiv(zone.AxisZ, push.Raw, Planar.Unit, Domain.Numerics.RoundingMode.HalfAwayFromZero));
+            return SlideEnd(f, endX, endZ, PushSteps(f, push));
+        }
+
+        /// <summary>
+        /// Sous-lot 11.9 : nombre de sous-pas d'une poussée (au plus la moitié du rayon chacun) ; ne dépend que du rayon et de la distance,
+        /// pas de la place : il se réserve avec l'impact, deux unités de travail par sous-pas comme la charge.
+        /// </summary>
+        private static long PushSteps(Fighter f, Fixed push)
+        {
+            long half = Math.Max(1, f.Body!.Radius / 2);
+            return Math.Max(1, (push.Raw + half - 1) / half);
+        }
+
+        /// <summary>
+        /// Glissement de <paramref name="f"/> vers (endX, endZ) en <paramref name="count"/> sous-pas : arrêt au dernier point libre, puis,
+        /// règle A, recul sous-pas par sous-pas tant que la place laisserait un joueur sans issue (pas pour un personnage).
+        /// </summary>
+        private (long X, long Z) SlideEnd(Fighter f, long endX, long endZ, long count)
+        {
             int index = _fightersById.IndexOf(f);
             Body b = f.Body!;
             int n = _fightersById.Count;
@@ -268,10 +306,8 @@ namespace EdS.Simulation.Engine
                 x[k] = _fightersById[k].Body!.X;
                 z[k] = _fightersById[k].Body!.Z;
             }
-            var (endX, endZ) = ChargeTarget(zone);
             long dx = checked(endX - b.X), dz = checked(endZ - b.Z);
             var path = new List<(long X, long Z)> { (b.X, b.Z) };
-            long count = ChargeSteps(f, zone);
             if (count > 0)
             {
                 for (long k = 1; k <= count; k++)

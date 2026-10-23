@@ -30,6 +30,9 @@ namespace EdS.Net
         private bool _inputDirty;
         private IReadOnlyList<ConvexPolygon>? _obstacles;
 
+        /// <summary>Sous-lot 11.9 : décor qui arrête la vue (obstacles bas exclus) ; <see cref="_obstacles"/> sert à la prédiction de la marche.</summary>
+        private IReadOnlyList<ConvexPolygon>? _sightObstacles;
+
         // Sous-lot 11.7 : cap de marche voulu (envoyé au serveur quand il change) ; point de départ du moteur local (null : début du combat ;
         // sinon l'état courant reçu, son instantané et l'empreinte à ce point) pour le reconstruire jusqu'au dernier tick accepté.
         private readonly MovementPrediction _prediction = new MovementPrediction();
@@ -61,7 +64,8 @@ namespace EdS.Net
             }
             _feedback = new FeedbackTracker(_engine);
             _obstacles = CombatDisplay.Obstacles(setup.Space);
-            TargetId = CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).FirstOrDefault()?.Id;
+            _sightObstacles = CombatDisplay.SightObstacles(setup.Space);
+            TargetId = CombatDisplay.LivingEnemies(_engine, PlayerId, _sightObstacles).FirstOrDefault()?.Id;
             AllyId = CombatDisplay.LivingAllies(_engine, PlayerId).FirstOrDefault()?.Id;
         }
 
@@ -235,7 +239,7 @@ namespace EdS.Net
 
         public void NextTarget()
         {
-            List<OtherState> enemies = CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).ToList();
+            List<OtherState> enemies = CombatDisplay.LivingEnemies(_engine, PlayerId, _sightObstacles).ToList();
             string? next = enemies.Count == 0 ? null : enemies[(enemies.FindIndex(e => e.Id == TargetId) + 1) % enemies.Count].Id;
             SetTarget(next);
         }
@@ -243,7 +247,7 @@ namespace EdS.Net
         public void SelectTarget(string id)
         {
             if (AwaitingResync) return;
-            if (!CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant en vue.", nameof(id));
+            if (!CombatDisplay.LivingEnemies(_engine, PlayerId, _sightObstacles).Any(e => e.Id == id)) throw new ArgumentException($"« {id} » n'est pas un ennemi vivant en vue.", nameof(id));
             SetTarget(id);
         }
 
@@ -335,7 +339,7 @@ namespace EdS.Net
         /// Les autres combattants ; la télégraphie des assaillants est avancée de <see cref="TelegraphLeadSeconds"/> et s'écoule en
         /// continu dans le tick en cours (<see cref="TickProgress"/>, plafonné à un tick si le suivant tarde).
         /// </summary>
-        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, TelegraphLeadSeconds, TickProgress * TickSeconds, _obstacles);
+        public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, TelegraphLeadSeconds, TickProgress * TickSeconds, _sightObstacles);
 
         /// <summary>Sous-lot 11.6 : aire et décor du combat ; null sans espace (le combat en coopération du lot 10 n'en a pas).</summary>
         public CombatSpace? Space => Setup.Space;
@@ -442,6 +446,7 @@ namespace EdS.Net
             if (!_engine.CombatantIds.SequenceEqual(engine.CombatantIds, StringComparer.Ordinal)) RosterVersion++;
             Setup = setup;
             _obstacles = CombatDisplay.Obstacles(setup.Space);
+            _sightObstacles = CombatDisplay.SightObstacles(setup.Space);
             _engine = engine;
             _log = log;
             _baseSnapshot = snapshot;
@@ -561,8 +566,8 @@ namespace EdS.Net
         /// <summary>Cible et allié encore valides, sinon le premier vivant (même règle que le serveur).</summary>
         private void KeepTargets()
         {
-            if (TargetId is null || !CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).Any(e => e.Id == TargetId))
-                SetTarget(CombatDisplay.LivingEnemies(_engine, PlayerId, _obstacles).FirstOrDefault()?.Id);
+            if (TargetId is null || !CombatDisplay.LivingEnemies(_engine, PlayerId, _sightObstacles).Any(e => e.Id == TargetId))
+                SetTarget(CombatDisplay.LivingEnemies(_engine, PlayerId, _sightObstacles).FirstOrDefault()?.Id);
             if (AllyId is null || !CombatDisplay.LivingAllies(_engine, PlayerId).Any(a => a.Id == AllyId))
                 SetAlly(CombatDisplay.LivingAllies(_engine, PlayerId).FirstOrDefault()?.Id);
         }

@@ -54,7 +54,7 @@ namespace EdS.Runtime
                 throw new ArgumentException($"« {playerId} » n'est pas un personnage.", nameof(playerId));
             _tickMs = _engine.TickMilliseconds;
             _feedback = new FeedbackTracker(_engine);
-            _obstacles = CombatDisplay.Obstacles(setup.Space);
+            _obstacles = CombatDisplay.SightObstacles(setup.Space);   // sous-lot 11.9 : la vue (obstacles bas exclus)
             TargetId = Enemies().FirstOrDefault()?.Id;
         }
 

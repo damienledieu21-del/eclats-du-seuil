@@ -1,6 +1,6 @@
 {
   "$schema": "../../data/schemas/scenario.schema.json",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "kind": "scenario",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -58,7 +58,8 @@
               4,
               -2
             ]
-          ]
+          ],
+          "low": true
         },
         {
           "id": "riviere_nord",
@@ -79,7 +80,8 @@
               4,
               18
             ]
-          ]
+          ],
+          "low": true
         },
         {
           "id": "arbre1",
@@ -559,7 +561,8 @@
             "range": 10,
             "width": 1.4,
             "guardable": true,
-            "charge": true
+            "charge": true,
+            "push": 2
           }
         ],
         "position": [
@@ -575,7 +578,8 @@
         "behavior": {
           "maxRange": 6,
           "minRange": 3,
-          "aggroRange": 10
+          "aggroRange": 10,
+          "pack": false
         }
       },
       {
@@ -609,7 +613,8 @@
             "applies": [],
             "shape": "circle",
             "telegraphMs": 1200,
-            "radius": 2
+            "radius": 2,
+            "holdPosition": false
           }
         ],
         "position": [
@@ -625,7 +630,8 @@
         "behavior": {
           "maxRange": 9,
           "minRange": 6,
-          "aggroRange": 12
+          "aggroRange": 12,
+          "pack": false
         }
       }
     ],

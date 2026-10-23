@@ -135,6 +135,9 @@ namespace EdS.Net
         private CombatEngine? _engine;
         private CombatSetup? _setup;
         private IReadOnlyList<ConvexPolygon>? _obstacles;
+
+        /// <summary>Sous-lot 11.9 : décor qui arrête la vue (obstacles bas exclus), pour la cible ; <see cref="_obstacles"/> pour les places.</summary>
+        private IReadOnlyList<ConvexPolygon>? _sightObstacles;
         private HashingCombatLog? _log;
         private double _accumulated;
 
@@ -633,6 +636,7 @@ namespace EdS.Net
             }
             _setup = setup;
             _obstacles = CombatDisplay.Obstacles(setup.Space);
+            _sightObstacles = CombatDisplay.SightObstacles(setup.Space);
             _log = log;
             _engine = engine;
             _accumulated = 0;
@@ -683,7 +687,7 @@ namespace EdS.Net
                 foreach (CombatCommand[] group in groups)
                     if (TrySubmit(group)) used += group.Length;
                 // Sous-lot 11.7 : marche et cible sélectionnée, comme le pont solo, dans la place qui reste au tick.
-                string? target = EnemyTarget(engine, seat, me, _obstacles);
+                string? target = EnemyTarget(engine, seat, me, _sightObstacles);
                 seat.Movement.Submit(me, _setup!.Space != null, atMs, target, _setup.Combat.MaxCommandsPerActorPerTick - used, TrySubmit);
             }
             engine.Step();
@@ -739,7 +743,7 @@ namespace EdS.Net
         private string? TargetFor(CombatEngine engine, Seat seat, CombatantView me, SkillDefinition skill)
         {
             bool Alive(string? id, Func<CombatantView, bool> accept) => CombatRoom.Alive(engine, id, accept);
-            IReadOnlyList<ConvexPolygon>? obstacles = _obstacles;
+            IReadOnlyList<ConvexPolygon>? obstacles = _sightObstacles;
             switch (skill.Combat!.Targeting)
             {
                 case SkillTargeting.Enemy:

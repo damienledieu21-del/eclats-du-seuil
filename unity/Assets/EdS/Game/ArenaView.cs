@@ -123,7 +123,7 @@ namespace EdS.Game
             if (_allyRing != null) Object.Destroy(_allyRing);
             if (_space != null) _space.Destroy();
             _space = combat.Space != null ? new SpaceView(combat.Space, _root.transform) : null;
-            _obstacles = CombatDisplay.Obstacles(combat.Space);
+            _obstacles = CombatDisplay.SightObstacles(combat.Space);   // sous-lot 11.9 : la vue (obstacles bas exclus)
             _defaultGround.SetActive(_space == null);
             _from.Clear();
             _to.Clear();

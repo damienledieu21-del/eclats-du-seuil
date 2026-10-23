@@ -15,10 +15,17 @@ namespace EdS.Domain.Space
         /// <summary>Sommets tels que donnés par les données, dans un sens ou dans l'autre (au moins 3, au plus 16).</summary>
         public IReadOnlyList<GroundVector> Points { get; }
 
-        public SpaceObstacle(string id, IEnumerable<GroundVector> points)
+        /// <summary>
+        /// Sous-lot 11.9 (essai de Damien du 22 octobre 2026) : obstacle bas (rivière, muret) : il arrête la marche et les charges comme
+        /// les autres, mais pas la vue (ligne de vue des compétences et des coups dirigés, affichage des ennemis). Faux par défaut.
+        /// </summary>
+        public bool Low { get; }
+
+        public SpaceObstacle(string id, IEnumerable<GroundVector> points, bool low = false)
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Points = Frozen.List(points, nameof(points));
+            Low = low;
         }
     }
 

@@ -1533,7 +1533,8 @@ namespace EdS.Simulation.Engine
         private bool EngagementPossible(Fighter f, long tick)
         {
             if (f.Struck || f.Result.DamageTaken > 0 || f.Taunted) return true;
-            if (_fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null && a.EngagedTick is long at && at <= tick)) return true;
+            // Sous-lot 11.9 : la meute n'entraîne qu'un ennemi de meute (pack).
+            if (f.Behavior!.Pack && _fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null && a.EngagedTick is long at && at <= tick)) return true;
             if (f.Body is null || FreeMover(f)) return true;
             long aggro = f.Behavior!.AggroRange!.Value.Raw, own = checked(MovingTicks(f, tick) * StepBound(f));
             foreach (Fighter g in _fightersById)
@@ -1546,7 +1547,12 @@ namespace EdS.Simulation.Engine
             return false;
         }
 
-        private bool FreeMover(Fighter g) => g.Charged;   // 17e tour de la PR #33 : une charge réellement résolue, pas seulement planifiée
+        /// <summary>
+        /// 17e tour de la PR #33 : une charge réellement résolue, pas seulement planifiée. Sous-lot 11.9 : ou une poussée possible (un ennemi
+        /// de <paramref name="g"/> a une bande qui repousse dont un impact a pu tomber au plus au tick précédent) : sa place n'est plus bornée
+        /// par ses pas. La reprise vérifiée par rejeu reste exacte.
+        /// </summary>
+        private bool FreeMover(Fighter g) => g.Charged || _fightersById.Any(a => a.Team != g.Team && AttackLandedPossible(a, at => at.Push != null));
 
         /// <summary>
         /// Revue Codex de la PR #33 (13e et 14e tours) : un tour déjà joué de <paramref name="f"/> (avant <see cref="Fighter.NextTurn"/>, au plus
@@ -1554,7 +1560,14 @@ namespace EdS.Simulation.Engine
         /// le nombre d'attaques), sans parcourir l'historique des tours : plus petit tour de ce rang dont le tick est au moins la fin moins la
         /// télégraphie de l'attaque, comparé au dernier tour joué.
         /// </summary>
-        private bool ChargePossible(Fighter g)
+        private bool ChargePossible(Fighter g) => AttackLandedPossible(g, at => at.Charge);
+
+        /// <summary>
+        /// Un tour déjà joué de l'assaillant <paramref name="g"/> (après son engagement pour un ennemi à comportement) a-t-il pu faire tomber,
+        /// au plus au tick précédent, l'impact d'une de ses attaques choisies par <paramref name="which"/> ? Calculé par attaque, sans
+        /// parcourir l'historique des tours.
+        /// </summary>
+        private bool AttackLandedPossible(Fighter g, System.Func<AssailantAttack, bool> which)
         {
             if (g.Assailant is not { } a) return false;
             if (g.Behavior != null && g.EngagedTick is null) return false;
@@ -1564,7 +1577,7 @@ namespace EdS.Simulation.Engine
             int n = a.Attacks.Count;
             for (int j = 0; j < n; j++)
             {
-                if (!a.Attacks[j].Charge) continue;
+                if (!which(a.Attacks[j])) continue;
                 long first = engaged <= start ? 0 : interval > 0 ? checked((engaged - start + interval - 1) / interval) : long.MaxValue;
                 if (first == long.MaxValue) continue;
                 long turn = checked(first + ((j - first % n) % n + n) % n);
@@ -1587,6 +1600,7 @@ namespace EdS.Simulation.Engine
             int n = a.Attacks.Count;
             for (int j = 0; j < n; j++)
             {
+                if (!a.Attacks[j].HoldPosition) continue;   // sous-lot 11.9 : une attaque qui n'arrête pas l'ennemi ne le fige pas jusqu'à la fin
                 long threshold = Math.Max(engagedAt, checked(_durationTicks - a.Attacks[j].TelegraphMs / _tickMs));   // tick de tour à partir duquel l'impact tombe après la fin (et après l'engagement)
                 long first = threshold <= start ? 0 : interval > 0 ? checked((threshold - start + interval - 1) / interval) : long.MaxValue;
                 if (first == long.MaxValue) continue;

@@ -25,7 +25,7 @@ jobs:
       - name: Scénario entrainement_declencheurs (simulation, comparaison, rejeu)
         run: |
           dotnet run --no-build -c Release --project src/EdS.Cli -- simulate scenarios/entrainement_declencheurs.json --out "$RUNNER_TEMP/declencheurs.jsonl"
-          cmp "$RUNNER_TEMP/declencheurs.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.20.0-contenu-0.6.0/entrainement_declencheurs.jsonl
+          cmp "$RUNNER_TEMP/declencheurs.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.21.0-contenu-0.6.0/entrainement_declencheurs.jsonl
           dotnet run --no-build -c Release --project src/EdS.Cli -- replay "$RUNNER_TEMP/declencheurs.jsonl"
       # Correctif 7.3.1 : Debug aussi, où les réserves de budget sont vérifiées exactes à chaque traitement.
       - run: dotnet build --no-restore -c Debug -warnaserror

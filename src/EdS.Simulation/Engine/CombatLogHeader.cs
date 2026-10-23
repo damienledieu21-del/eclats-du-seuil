@@ -70,6 +70,8 @@ namespace EdS.Simulation.Engine
             if (attack.GuardableOverride is { } guardable) w.Field("guardable", guardable);
             if (attack.ParryableOverride is { } parryable) w.Field("parryable", parryable);
             if (attack.Charge) w.Field("charge", true);   // sous-lot 11.5 (format 14)
+            if (attack.Push is { } push) w.Field("push", push);   // sous-lot 11.9 (format 15) : seulement les champs donnés
+            if (!attack.HoldPosition) w.Field("holdPosition", false);
         }
 
         /// <summary>Sous-lot 11.4 : point ou direction sous la forme des fichiers de scénario, <c>[x, z]</c>.</summary>
@@ -88,7 +90,9 @@ namespace EdS.Simulation.Engine
                 w.BeginObject().Field("id", obstacle.Id);
                 w.Name("points").BeginArray();
                 foreach (GroundVector p in obstacle.Points) WritePoint(w, p);
-                w.EndArray().EndObject();
+                w.EndArray();
+                if (obstacle.Low) w.Field("low", true);   // sous-lot 11.9 (format 15) : seulement s'il est bas
+                w.EndObject();
             }
             w.EndArray().EndObject();
         }
@@ -244,6 +248,7 @@ namespace EdS.Simulation.Engine
                         if (behavior.MinRange != Domain.Numerics.Fixed.Zero) w.Field("minRange", behavior.MinRange);
                         if (behavior.AggroRange is { } aggro) w.Field("aggroRange", aggro);
                         if (behavior.Encircle) w.Field("encircle", true);
+                        if (!behavior.Pack) w.Field("pack", false);   // sous-lot 11.9 (format 15)
                         w.EndObject();
                     }
                     break;
