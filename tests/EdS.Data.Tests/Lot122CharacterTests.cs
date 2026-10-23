@@ -278,6 +278,24 @@ public class Lot122CharacterTests
         return (session, gains, session.Zone.Engine.View("loup1").IsDead);
     }
 
+    [Theory]
+    [InlineData("\"class\": \"class.bastion\"", "\"class\": \"Classe Bastion\"")]
+    [InlineData("\"talents\": {}", "\"talents\": {\"Talent\": 1}")]
+    [InlineData("\"activeSkills\": [", "\"activeSkills\": [\"Frappe du rempart\", ")]
+    [InlineData("\"ultimate\": null", "\"ultimate\": \"Ultime\"")]
+    [InlineData("\"id\": \"bastion\"", "\"id\": \"b12345678901234567890123456789012345678901234567890123456789012345\"")]
+    public void Schema_refuse_ce_que_la_lecture_refuse(string from, string to)
+    {
+        // Revue Codex de la PR #43 : le schéma JSON des sauvegardes suit le format exigé par la lecture.
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json"));
+        string text = SaveJsonReader.Write(HeroSave());
+        Assert.True(schema.IsValid(JsonDocument.Parse(text).RootElement));
+        string bad = text.Replace(from, to, StringComparison.Ordinal);
+        Assert.NotEqual(text, bad);
+        Assert.False(SaveJsonReader.Read(bad).IsValid);
+        Assert.False(schema.IsValid(JsonDocument.Parse(bad).RootElement));
+    }
+
     [Fact]
     public void Talents_ecrits_dans_l_ordre_ordinal()
     {
