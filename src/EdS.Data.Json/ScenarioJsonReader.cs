@@ -110,6 +110,7 @@ namespace EdS.Data.Json
                 ["minRange"] = (v, p) => b.MinRange = input.Decimal(v, p),
                 ["aggroRange"] = (v, p) => b.AggroRange = input.Decimal(v, p),
                 ["encircle"] = (v, p) => b.Encircle = input.Boolean(v, p),
+                ["pack"] = (v, p) => b.Pack = input.Boolean(v, p),   // sous-lot 11.9 (schéma 9)
             });
             return ok ? b : null;
         }
@@ -160,6 +161,7 @@ namespace EdS.Data.Json
                 ["id"] = (v, p) => obstacle.Id = input.Text(v, p),
                 ["points"] = (v, p) => obstacle.Points = input.ReadLimitedList(v, p, SpaceLimits.MaxVertices,
                     n => $"{n} sommets, au plus {SpaceLimits.MaxVertices}.", (e, ip) => ReadPoint(input, e, ip)),
+                ["low"] = (v, p) => obstacle.Low = input.Boolean(v, p),   // sous-lot 11.9 (schéma 9)
             });
             return ok ? obstacle : null;
         }
@@ -213,6 +215,8 @@ namespace EdS.Data.Json
                 ["guardable"] = (v, p) => a.Guardable = input.Boolean(v, p),
                 ["parryable"] = (v, p) => a.Parryable = input.Boolean(v, p),
                 ["charge"] = (v, p) => a.Charge = input.Boolean(v, p),   // sous-lot 11.5 (schéma 8)
+                ["push"] = (v, p) => a.Push = input.Decimal(v, p),   // sous-lot 11.9 (schéma 9)
+                ["holdPosition"] = (v, p) => a.HoldPosition = input.Boolean(v, p),
             });
             return ok ? a : null;
         }
@@ -233,6 +237,7 @@ namespace EdS.Data.Json
                 ["action"] = Track("action", (v, p) => c.Action = input.Text(v, p)),
                 ["target"] = Track("target", (v, p) => c.Target = input.NullableText(v, p)),
                 ["direction"] = Track("direction", (v, p) => c.Direction = ReadPoint(input, v, p)),   // sous-lot 11.4
+                ["backward"] = Track("backward", (v, p) => c.Backward = input.Boolean(v, p)),       // sous-lot 11.9 (schéma 9)
             });
             return ok ? c : null;
         }

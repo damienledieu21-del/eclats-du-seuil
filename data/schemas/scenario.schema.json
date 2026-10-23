@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 8
+      "const": 9
     },
     "kind": {
       "const": "scenario"
@@ -135,6 +135,10 @@
                   "$ref": "#/$defs/point"
                 },
                 "description": "Sommets d'un polygone strictement convexe, dans un sens ou dans l'autre."
+              },
+              "low": {
+                "type": "boolean",
+                "description": "Sous-lot 11.9 (schéma 9) : obstacle bas (rivière, muret) : il arrête la marche et les charges, mais pas la vue. Faux par défaut."
               }
             }
           },
@@ -278,6 +282,10 @@
             "encircle": {
               "type": "boolean",
               "description": "Se répartir autour de la cible avec la meute qui la vise."
+            },
+            "pack": {
+              "type": "boolean",
+              "description": "Sous-lot 11.9 (schéma 9) : entraîné par l'engagement d'un allié à comportement à sa distance d'engagement (meute). Vrai par défaut ; faux : il ne s'engage que pour lui-même."
             }
           },
           "description": "Sous-lot 11.5 : comportement d'un assaillant d'un combat positionné (il se déplace seul : pas de move ni de stop pour lui ; cible : provocation, sinon sa target présente et vivante, sinon l'ennemi le plus proche)."
@@ -412,6 +420,10 @@
         "direction": {
           "$ref": "#/$defs/direction",
           "description": "Action move : direction de marche, jusqu'à un arrêt ou une autre direction."
+        },
+        "backward": {
+          "type": "boolean",
+          "description": "Sous-lot 11.9 (schéma 9) : action move à reculons, le combattant garde son orientation au lieu de se tourner vers sa marche (faux par défaut)."
         }
       },
       "oneOf": [
@@ -464,8 +476,17 @@
           },
           "else": {
             "not": {
-              "required": [
-                "direction"
+              "anyOf": [
+                {
+                  "required": [
+                    "direction"
+                  ]
+                },
+                {
+                  "required": [
+                    "backward"
+                  ]
+                }
               ]
             }
           }
@@ -625,6 +646,16 @@
         "charge": {
           "type": "boolean",
           "description": "Sous-lot 11.5 : charge (bande seulement) : à l'impact, après ses coups, l'ennemi fonce le long de l'axe jusqu'au bout, au premier obstacle ou à la première emprise solide."
+        },
+        "push": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100,
+          "description": "Sous-lot 11.9 (schéma 9) : poussée (m, bande seulement) : à l'impact, après ses coups, chaque ennemi touché est repoussé le long de l'axe, arrêté par l'aire, le décor et les emprises solides ; une charge part ensuite."
+        },
+        "holdPosition": {
+          "type": "boolean",
+          "description": "Sous-lot 11.9 (schéma 9) : un ennemi à comportement s'arrête-t-il de marcher pendant l'annonce de cette attaque ? Vrai par défaut."
         }
       }
     },

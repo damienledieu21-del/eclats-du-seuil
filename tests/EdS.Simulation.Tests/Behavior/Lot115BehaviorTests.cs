@@ -581,8 +581,9 @@ public class Lot115BehaviorTests
         Assert.Equal(("sanglier", "charge", 20L), (blocked.Str("actor"), blocked.Str("attack"), blocked.Tick()));
         Assert.False(string.IsNullOrEmpty(blocked.Str("reason")));
         Assert.Equal(track.After("sanglier", 19), track.After("sanglier", 21));
-        // Tour 9 : étourdi pendant l'annonce (par son attaque suivante, deux ticks après), donc déjà immobilisé à l'impact : la charge écrit
-        // aussi chargeBlocked.
+        // Tour 9 : étourdi pendant l'annonce (par son attaque suivante, deux ticks après), donc déjà immobilisé à l'impact. Sous-lot 11.9
+        // (essai de Damien du 22 octobre 2026 : « l'étourdissement l'annule ») : l'attaque entière est annulée (attackCancelled, avec la
+        // raison du contrôle) : ni coups, ni charge, ni chargeBlocked.
         var charge = new AssailantAttack("charge", 50, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false, null, AttackShape.Line, 1000,
             range: F("6"), width: F("1"), charge: true);
         var cri = new AssailantAttack("cri", 1, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false,
@@ -592,8 +593,11 @@ public class Lot115BehaviorTests
         JsonElement stunned = Lines(early, "stateApplied").First(s => s.Str("combatant") == "sanglier" && s.Str("state") == "stun");
         Assert.True(stunned.Tick() < 20, $"étourdi au tick {stunned.Tick()}");
         Assert.Empty(Lines(early, "charged"));
-        JsonElement already = Assert.Single(Lines(early, "chargeBlocked"));
-        Assert.Equal(("sanglier", "charge", 20L), (already.Str("actor"), already.Str("attack"), already.Tick()));
+        Assert.Empty(Lines(early, "chargeBlocked"));
+        Assert.DoesNotContain(Lines(early, "attackLanded"), l => l.Str("attack") == "charge");
+        JsonElement cancelled = Assert.Single(Lines(early, "attackCancelled"), c => c.Str("attack") == "charge");
+        Assert.Equal(("sanglier", 20L), (cancelled.Str("actor"), cancelled.Tick()));
+        Assert.False(string.IsNullOrEmpty(cancelled.Str("reason")));
         Assert.Equal(before.After("sanglier", 19), before.After("sanglier", 21));
     }
 

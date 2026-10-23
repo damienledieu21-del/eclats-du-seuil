@@ -44,12 +44,15 @@ namespace EdS.Simulation.Engine
         private static bool WithinCenterDistance(Body a, Body b, long reach) =>
             Planar.LengthSquared(checked(b.X - a.X), checked(b.Z - a.Z)) <= checked(reach * reach);
 
-        /// <summary>Vrai sans espace ; sinon, aucun obstacle ne touche le segment entre les centres de <paramref name="a"/> et <paramref name="b"/>.</summary>
+        /// <summary>
+        /// Vrai sans espace ; sinon, aucun obstacle ne touche le segment entre les centres de <paramref name="a"/> et <paramref name="b"/>.
+        /// Sous-lot 11.9 : un obstacle bas (rivière) n'arrête pas la vue.
+        /// </summary>
         private bool InSight(Fighter a, Fighter b)
         {
             if (!_spatial || ReferenceEquals(a, b)) return true;
             Body ba = a.Body!, bb = b.Body!;
-            foreach (ConvexPolygon obstacle in _obstacles)
+            foreach (ConvexPolygon obstacle in _sightObstacles)
                 if (obstacle.IntersectsSegment(ba.X, ba.Z, bb.X, bb.Z)) return false;
             return true;
         }

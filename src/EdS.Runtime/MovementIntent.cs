@@ -30,6 +30,12 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// Sous-lot 11.9 (« le Bastion recule en regardant devant lui ») : marche voulue à reculons, l'orientation ne suit pas la marche ;
+        /// sans effet à l'arrêt.
+        /// </summary>
+        public bool Backward { get; set; }
+
+        /// <summary>
         /// Dernier cap tenu que le moteur a suivi, envoyé ou constaté (null : arrêt, ou rien encore) ; il sert à savoir qu'un cap vient
         /// d'être relâché.
         /// </summary>
@@ -39,6 +45,7 @@ namespace EdS.Runtime
         public void Reset()
         {
             _wished = null;
+            Backward = false;
             SentHeading = null;
         }
 
@@ -54,13 +61,13 @@ namespace EdS.Runtime
             if (!positioned || me.IsDead || !me.IsPresent) return 0;
             int sent = 0;
             bool needMove = _wished is int wished
-                ? me.MoveDirection != MoveInput.EngineDirection(wished)   // cap tenu que le moteur ne suit pas
+                ? me.MoveDirection != MoveInput.EngineDirection(wished) || me.MoveBackward != Backward   // cap tenu que le moteur ne suit pas
                 : SentHeading != null && me.MoveDirection != null;       // cap relâché, personnage encore en marche
             if (!needMove) SentHeading = _wished;
             if (room > sent && needMove)
             {
                 CombatCommand move = _wished is int heading
-                    ? new CombatCommand(atMs, me.Id, MoveInput.Direction(heading))
+                    ? new CombatCommand(atMs, me.Id, MoveInput.Direction(heading), Backward)
                     : new CombatCommand(atMs, me.Id, CombatAction.Stop);
                 if (trySubmit(new[] { move }))
                 {

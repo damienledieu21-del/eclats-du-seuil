@@ -55,6 +55,9 @@ namespace EdS.Data.Scenarios
     {
         public string? Id { get; set; }
         public List<PointData?>? Points { get; set; }
+
+        /// <summary>Sous-lot 11.9 (schéma 9) : obstacle bas, qui arrête la marche mais pas la vue ; facultatif, faux par défaut.</summary>
+        public bool? Low { get; set; }
     }
 
     public sealed class CombatantData
@@ -164,6 +167,12 @@ namespace EdS.Data.Scenarios
 
         /// <summary>Sous-lot 11.5 (schéma 8) : charge d'une bande ; facultatif, faux par défaut.</summary>
         public bool? Charge { get; set; }
+
+        /// <summary>Sous-lot 11.9 (schéma 9) : poussée d'une bande (m) ; facultative.</summary>
+        public Domain.Numerics.Fixed? Push { get; set; }
+
+        /// <summary>Sous-lot 11.9 (schéma 9) : l'ennemi s'arrête pendant l'annonce ; facultatif, vrai par défaut.</summary>
+        public bool? HoldPosition { get; set; }
     }
 
     /// <summary>Sous-lot 11.5 : comportement d'un assaillant (distances en mètres).</summary>
@@ -173,6 +182,9 @@ namespace EdS.Data.Scenarios
         public Domain.Numerics.Fixed? MinRange { get; set; }
         public Domain.Numerics.Fixed? AggroRange { get; set; }
         public bool? Encircle { get; set; }
+
+        /// <summary>Sous-lot 11.9 (schéma 9) : entraîné par l'engagement de sa meute ; facultatif, vrai par défaut.</summary>
+        public bool? Pack { get; set; }
     }
 
     public sealed class CommandData
@@ -191,6 +203,9 @@ namespace EdS.Data.Scenarios
 
         /// <summary>Sous-lot 11.4 : direction d'un « move ».</summary>
         public PointData? Direction { get; set; }
+
+        /// <summary>Sous-lot 11.9 : « move » à reculons (l'orientation ne suit pas la marche).</summary>
+        public bool? Backward { get; set; }
 
         /// <summary>Champs effectivement présents dans le fichier.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();

@@ -47,10 +47,13 @@ namespace EdS.Data.Scenarios
         /// <c>persistentMs</c>, <c>tickMs</c>, <c>guardable</c>, <c>parryable</c>) et action <c>select</c> (avec <c>target</c> facultatif).
         /// Version 7 (sous-lot 11.4d) : <c>arrivalMs</c> facultatif sur un combattant (arrivée en cours de combat) et action <c>leave</c>
         /// (départ, sans compétence ni cible). Version 8 (sous-lot 11.5) : <c>behavior</c> facultatif sur un assaillant (<c>maxRange</c>
-        /// obligatoire, <c>minRange</c>, <c>aggroRange</c>, <c>encircle</c>) et <c>charge</c> facultatif sur une attaque. Une version antérieure
+        /// obligatoire, <c>minRange</c>, <c>aggroRange</c>, <c>encircle</c>) et <c>charge</c> facultatif sur une attaque. Version 9 (sous-lot
+        /// 11.9, essai du 22 octobre 2026) : <c>low</c> facultatif sur un obstacle (bas : arrête la marche, pas la vue), <c>push</c> (poussée
+        /// d'une bande) et <c>holdPosition</c> (arrêt pendant l'annonce) facultatifs sur une attaque, <c>pack</c> facultatif sur un comportement
+        /// (entraîné par sa meute). Une version antérieure
         /// est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 8;
+        public const int CurrentSchemaVersion = 9;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -125,11 +128,11 @@ namespace EdS.Data.Scenarios
                         ClassValidator.Targetings[a.Targeting!], a.Unblockable!.Value, ClassValidator.Applications(a.Applies!),
                         a.Shape is null ? null : AttackShapeIds.Shapes[a.Shape], a.TelegraphMs ?? 0, a.Range, a.Radius, a.Angle, a.Width,
                         a.Center is null ? ShapeCenter.Target : AttackShapeIds.Centers[a.Center], a.PersistentMs ?? 0, a.TickMs ?? 0, a.Guardable, a.Parryable,
-                        a.Charge ?? false));
+                        a.Charge ?? false, a.Push, a.HoldPosition ?? true));
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
                         Triggers.TriggerShape.Build(c.Triggers), c.Health, placement, c.ArrivalMs,
-                        c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false) : null));
+                        c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false, b.Pack ?? true) : null));
                 }
                 else
                 {
@@ -140,13 +143,13 @@ namespace EdS.Data.Scenarios
             var commands = scenario.Commands!.Select(c => !CombatActionIds.TryParseNamed(c!.Action, out CombatAction action)
                 ? new CombatCommand(c.AtMs!.Value, c.Actor!, c.Skill!, c.Target)
                 : action == CombatAction.Move
-                    ? new CombatCommand(c.AtMs!.Value, c.Actor!, Point(c.Direction!))
+                    ? new CombatCommand(c.AtMs!.Value, c.Actor!, Point(c.Direction!), c.Backward == true)
                     : action == CombatAction.Select   // sous-lot 11.4c
                         ? CombatCommand.SelectTarget(c.AtMs!.Value, c.Actor!, c.Target)
                         : new CombatCommand(c.AtMs!.Value, c.Actor!, action));
             CombatSpace? space = scenario.Space is { } s
                 ? new CombatSpace(Point(s.Bounds!.Min!), Point(s.Bounds.Max!),
-                    (s.Obstacles ?? new List<ObstacleData?>()).Select(o => new SpaceObstacle(o!.Id!, o.Points!.Select(p => Point(p!)))))
+                    (s.Obstacles ?? new List<ObstacleData?>()).Select(o => new SpaceObstacle(o!.Id!, o.Points!.Select(p => Point(p!)), o.Low ?? false)))
                 : null;
             var identity = new CombatDataIdentity(data.RulesIdentity, usedClasses.Values.Select(GameData.IdentityOf));
             var rules = data.Rules;
@@ -300,6 +303,8 @@ namespace EdS.Data.Scenarios
                     Present(c.Skill, path + ".skill", "identifiant de compétence, ou champ action (" + actions + ")");
                     if (c.Present.Contains("direction"))
                         _report.Add(path + ".direction", ValidationCode.InvalidValue, "seul un déplacement (action move) a une direction.");
+                    if (c.Present.Contains("backward"))
+                        _report.Add(path + ".backward", ValidationCode.InvalidValue, "seul un déplacement (action move) se fait à reculons.");
                     return;
                 }
                 CombatAction action = default;
@@ -319,6 +324,9 @@ namespace EdS.Data.Scenarios
                 if (action == CombatAction.Move) Present(c.Direction, path + ".direction", "direction de marche [x, z], composantes dans [−1, 1]");
                 else if (c.Present.Contains("direction"))
                     _report.Add(path + ".direction", ValidationCode.InvalidValue, "seul un déplacement (action move) a une direction.");
+                // Sous-lot 11.9 : la marche à reculons, seulement pour un déplacement.
+                if (action != CombatAction.Move && c.Present.Contains("backward"))
+                    _report.Add(path + ".backward", ValidationCode.InvalidValue, "seul un déplacement (action move) se fait à reculons.");
             }
         }
     }

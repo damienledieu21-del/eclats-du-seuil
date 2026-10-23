@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.20.0";
+        public const string Version = "0.21.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -80,9 +80,13 @@ namespace EdS.Simulation.Engine
         /// Un combat sans arrivée ni départ écrit exactement les mêmes lignes qu'au format 12. 14 (sous-lot 11.5) : comportements des
         /// ennemis. L'en-tête peut porter <c>behavior</c> sur un assaillant et <c>charge</c> sur une attaque ; nouvelles lignes <c>engaged</c>
         /// et <c>charged</c> (diagnostics) ; raisons <c>notEngaged</c> et <c>noTarget</c> (<c>attackSkipped</c>). Un combat sans comportement
-        /// ni charge écrit exactement les mêmes lignes qu'au format 13. Un journal d'un autre format est refusé au rejeu.
+        /// ni charge écrit exactement les mêmes lignes qu'au format 13. 15 (sous-lot 11.9, essai de Damien du 22 octobre 2026) : l'en-tête
+        /// peut porter <c>low</c> sur un obstacle, <c>push</c> et <c>holdPosition</c> sur une attaque, <c>pack</c> sur un comportement ;
+        /// nouvelles lignes <c>pushed</c> et <c>pushBlocked</c> (diagnostics) ; un étourdissement encore là à l'impact annule l'attaque
+        /// annoncée (<c>attackCancelled</c>, raison du contrôle). Un combat sans ces champs ni contrôle pendant une annonce écrit exactement
+        /// les mêmes lignes qu'au format 14. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 14;
+        public const int LogFormatVersion = 15;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -1055,7 +1059,8 @@ namespace EdS.Simulation.Engine
                 Schedule(impactTick, CombatPhase.Resolution, impact);
                 _announced.Add(impact);
             }
-            else assailant.AnnouncedToEnd = true;   // revue Codex de la PR #33 (13e tour) : annonce jusqu'à la fin
+            // Revue Codex de la PR #33 (13e tour) : annonce jusqu'à la fin ; sous-lot 11.9 : seulement pour une attaque qui arrête l'ennemi.
+            else if (attack.HoldPosition) assailant.AnnouncedToEnd = true;
             return null;
         }
 

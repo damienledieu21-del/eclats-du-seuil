@@ -234,10 +234,12 @@ namespace EdS.Domain.Combat
             SkillTargeting targeting = SkillTargeting.Enemy, bool unblockable = false, IEnumerable<StatusApplication>? applies = null,
             AttackShape? shape = null, long telegraphMs = 0, Fixed? range = null, Fixed? radius = null, int? angle = null, Fixed? width = null,
             ShapeCenter center = ShapeCenter.Target, long persistentMs = 0, long pulseMs = 0, bool? guardable = null, bool? parryable = null,
-            bool charge = false)
+            bool charge = false, Fixed? push = null, bool holdPosition = true)
         {
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Charge = charge;
+            Push = push;
+            HoldPosition = holdPosition;
             RawDamage = rawDamage;
             DamageType = damageType;
             Targeting = targeting;
@@ -264,6 +266,19 @@ namespace EdS.Domain.Combat
         /// fonce le long de son axe jusqu'au bout, ou jusqu'au premier obstacle ou à la première emprise solide (il s'arrête au contact).
         /// </summary>
         public bool Charge { get; }
+
+        /// <summary>
+        /// Sous-lot 11.9 (essai de Damien du 22 octobre 2026 : « la charge te repousse ») : distance dont une bande repousse, à l'impact et
+        /// après ses coups, chaque ennemi qu'elle a touché, le long de son axe (arrêtée par l'aire, le décor et les emprises solides) ;
+        /// null : aucune poussée. Une bande (<see cref="AttackShape.Line"/>) seulement ; une charge part ensuite dans la place dégagée.
+        /// </summary>
+        public Fixed? Push { get; }
+
+        /// <summary>
+        /// Sous-lot 11.9 (essai de Damien : l'arrêt pendant l'annonce « dépend des attaques et du type d'ennemi ») : un ennemi à comportement
+        /// s'arrête-t-il de marcher pendant l'annonce de cette attaque ? Vrai par défaut (comportement du sous-lot 11.5).
+        /// </summary>
+        public bool HoldPosition { get; }
     }
 
     /// <summary>
@@ -291,12 +306,20 @@ namespace EdS.Domain.Combat
         /// <summary>Borne technique des distances d'un comportement (m).</summary>
         public static readonly Fixed MaxDistance = Fixed.FromInt(100);
 
-        public AssailantBehavior(Fixed maxRange, Fixed? minRange = null, Fixed? aggroRange = null, bool encircle = false)
+        /// <summary>
+        /// Sous-lot 11.9 (essai de Damien : l'engagement de la meute « doit dépendre des situations ») : un allié engagé à distance
+        /// d'engagement entraîne-t-il cet ennemi ? Vrai par défaut (meute, sous-lot 11.5) ; faux : il ne s'engage que pour lui-même (vue
+        /// d'un ennemi, coup ou provocation reçus).
+        /// </summary>
+        public bool Pack { get; }
+
+        public AssailantBehavior(Fixed maxRange, Fixed? minRange = null, Fixed? aggroRange = null, bool encircle = false, bool pack = true)
         {
             MaxRange = maxRange;
             MinRange = minRange ?? Fixed.Zero;
             AggroRange = aggroRange;
             Encircle = encircle;
+            Pack = pack;
         }
     }
 
@@ -468,6 +491,13 @@ namespace EdS.Domain.Combat
         /// </summary>
         public GroundVector? Direction { get; }
 
+        /// <summary>
+        /// Sous-lot 11.9 (essai de Damien du 22 octobre 2026 : « le Bastion recule en regardant devant lui ») : marche à reculons d'un
+        /// <see cref="CombatAction.Move"/> : le combattant garde son orientation au lieu de se tourner vers sa marche. Faux pour toute autre
+        /// commande.
+        /// </summary>
+        public bool Backward { get; }
+
         /// <summary>Commande « utiliser une compétence ».</summary>
         public CombatCommand(long atMs, string actor, string skill, string? target = null)
         {
@@ -488,13 +518,17 @@ namespace EdS.Domain.Combat
             Action = action;
         }
 
-        /// <summary>Sous-lot 11.4 : commande « marcher dans la direction <paramref name="direction"/> », jusqu'à un arrêt ou une autre direction.</summary>
-        public CombatCommand(long atMs, string actor, GroundVector direction)
+        /// <summary>
+        /// Sous-lot 11.4 : commande « marcher dans la direction <paramref name="direction"/> », jusqu'à un arrêt ou une autre direction.
+        /// Sous-lot 11.9 : <paramref name="backward"/>, à reculons (l'orientation ne suit pas la marche).
+        /// </summary>
+        public CombatCommand(long atMs, string actor, GroundVector direction, bool backward = false)
         {
             AtMs = atMs;
             Actor = actor ?? throw new ArgumentNullException(nameof(actor));
             Action = CombatAction.Move;
             Direction = direction;
+            Backward = backward;
         }
 
         private CombatCommand(long atMs, string actor, string? target, CombatAction action)
@@ -1231,6 +1265,8 @@ namespace EdS.Domain.Combat
                 Forbidden(attack.PersistentMs != 0, "persistentMs", historical);
                 Forbidden(attack.PulseMs != 0, "tickMs", historical);
                 Forbidden(attack.Charge, "charge", historical);
+                Forbidden(attack.Push != null, "push", historical);
+                Forbidden(!attack.HoldPosition, "holdPosition", historical);
                 return;
             }
             if (!Enum.IsDefined(typeof(AttackShape), shape))
@@ -1274,6 +1310,9 @@ namespace EdS.Domain.Combat
             }
             if (attack.IsZone) Forbidden(attack.ParryableOverride == true, "parryable", "une zone ne se pare pas (seul un coup dirigé se pare).");
             Forbidden(attack.Charge && shape != AttackShape.Line, "charge", "seule une bande (shape line) peut être une charge (sous-lot 11.5).");
+            // Sous-lot 11.9 : poussée d'une bande, de 0,1 m à 100 m (bornes des distances d'une forme).
+            Forbidden(attack.Push != null && shape != AttackShape.Line, "push", "seule une bande (shape line) repousse (sous-lot 11.9).");
+            if (shape == AttackShape.Line) Length(attack.Push, "push", false, "poussée");
 
             // Annonce évitable : réaction minimale + sortie de la forme, au pas de base, pour le plus grand joueur.
             if (!attack.IsZone || errors.Count > before) return;

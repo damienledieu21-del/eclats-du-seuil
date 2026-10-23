@@ -9,12 +9,13 @@ namespace EdS.Net
     /// Lot 10 : constantes du protocole réseau. Un message est un objet JSON strict (analyseur du sous-lot 9.1) précédé de sa longueur sur
     /// 4 octets (gros-boutiste). Les tailles sont bornées par sens : un client n'envoie que de petits messages (intentions, présentation),
     /// le serveur peut envoyer l'état courant d'un combat. Version 2 depuis le sous-lot 11.7 : marche dans les intentions, déplacements et
-    /// sélections dans les commandes, état courant (<see cref="StateMessage"/>, instantané du moteur) à la place de l'historique.
+    /// sélections dans les commandes, état courant (<see cref="StateMessage"/>, instantané du moteur) à la place de l'historique. Version 3
+    /// depuis le sous-lot 11.9 : marche à reculons (<c>backward</c>) dans les intentions et les commandes de marche.
     /// Détail : <c>docs/RESEAU.md</c>.
     /// </summary>
     public static class Protocol
     {
-        public const int Version = 2;
+        public const int Version = 3;
 
         /// <summary>Port TCP par défaut du serveur (hôte Unity ou serveur dédié).</summary>
         public const int DefaultPort = 7777;
@@ -187,7 +188,10 @@ namespace EdS.Net
         /// <summary>Sous-lot 11.7 : cap de marche voulu (0 à 63, <c>MoveInput</c>), null : arrêt ; sans effet hors combat positionné.</summary>
         public int? Heading { get; }
 
-        public InputMessage(bool guard, bool parry, int? slot, string? target, string? ally, int? heading = null)
+        /// <summary>Sous-lot 11.9 (protocole 3) : marche à reculons (le personnage garde son orientation) ; faux à l'arrêt.</summary>
+        public bool Backward { get; }
+
+        public InputMessage(bool guard, bool parry, int? slot, string? target, string? ally, int? heading = null, bool backward = false)
         {
             Guard = guard;
             Parry = parry;
@@ -195,6 +199,7 @@ namespace EdS.Net
             Target = target;
             Ally = ally;
             Heading = heading;
+            Backward = heading != null && backward;
         }
     }
 

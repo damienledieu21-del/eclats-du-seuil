@@ -189,6 +189,30 @@ public class Lot117DuoTests
     }
 
     [Fact]
+    public void Marche_a_reculons_transmise_par_le_serveur()
+    {
+        // Sous-lot 11.9 (protocole 3) : le joueur recule (vers l'ouest) en regardant devant lui (l'est) ; l'intention porte backward, le
+        // serveur l'envoie au moteur (move à reculons), et les deux moteurs restent identiques. Changer seulement le recul renvoie un move.
+        var game = new Game(Vallons(20_000), new RoomOptions { JoinDuringCombat = true });
+        NetworkClient a = game.Join("Dam");
+        a.SetReady(true);
+        game.RunUntil(() => a.Status == ClientStatus.Combat, 5);
+        NetworkCombat combat = a.Combat!;
+        combat.SetMove(-1, 0, backward: true);
+        game.RunUntil(() => combat.Player().View.MoveBackward, 3);
+        game.Run(0.5);
+        Assert.Equal(new GroundVector(Fixed.FromInt(1), Fixed.Zero), combat.Player().View.Facing);
+        Assert.True(combat.Player().View.Position!.Value.X < Fixed.FromInt(-18));
+        combat.SetMove(-1, 0);
+        game.RunUntil(() => !combat.Player().View.MoveBackward, 3);
+        game.Run(0.3);
+        Assert.Equal(new GroundVector(Fixed.FromInt(-1), Fixed.Zero), combat.Player().View.Facing);
+        // À l'arrêt, le recul n'a pas de sens : il n'est pas transmis.
+        combat.SetMove(0, 0, backward: true);
+        Assert.False(combat.TakeInput()!.Backward);
+    }
+
+    [Fact]
     public void Arrivee_sur_une_place_prise_decalee_a_cote()
     {
         // Le premier joueur se poste sur la place du second (2 m à l'est de la sienne) : le second entre à 1,5 m de là, sans chevauchement.

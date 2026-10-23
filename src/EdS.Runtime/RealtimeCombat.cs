@@ -54,7 +54,7 @@ namespace EdS.Runtime
                 throw new ArgumentException($"« {playerId} » n'est pas un personnage.", nameof(playerId));
             _tickMs = _engine.TickMilliseconds;
             _feedback = new FeedbackTracker(_engine);
-            _obstacles = CombatDisplay.Obstacles(setup.Space);
+            _obstacles = CombatDisplay.SightObstacles(setup.Space);   // sous-lot 11.9 : la vue (obstacles bas exclus)
             TargetId = Enemies().FirstOrDefault()?.Id;
         }
 
@@ -115,10 +115,12 @@ namespace EdS.Runtime
         /// seulement quand un cap tenu est relâché et que le personnage marche encore (revue Codex de la PR #34 : une commande du scénario
         /// qui a changé la marche est corrigée tant que le joueur tient un cap ; sans saisie, elle garde la main). Sans espace, sans effet.
         /// </summary>
-        public void SetMove(double x, double z)
+        /// <remarks>Sous-lot 11.9 : <paramref name="backward"/>, à reculons (le personnage garde son orientation).</remarks>
+        public void SetMove(double x, double z, bool backward = false)
         {
             int? heading = MoveInput.Heading(x, z);
             _movement.Wished = _setup.Space is null ? null : heading;
+            _movement.Backward = _movement.Wished != null && backward;
         }
 
         /// <summary>Cap de marche voulu (null : arrêt), pour les essais et l'affichage.</summary>

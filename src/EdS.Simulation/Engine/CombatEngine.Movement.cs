@@ -40,6 +40,9 @@ namespace EdS.Simulation.Engine
             public bool Moving;
             public long DirectionX, DirectionZ;
 
+            /// <summary>Sous-lot 11.9 : marche à reculons (dernière commande move), l'orientation ne suit pas la marche.</summary>
+            public bool Backward;
+
             /// <summary>Sous-lot 11.4c : cible sélectionnée (commande <c>select</c>) ; en garde, le personnage se tourne vers elle.</summary>
             public Fighter? Selected;
         }
@@ -64,6 +67,9 @@ namespace EdS.Simulation.Engine
 
         private bool _spatial;
         private ConvexPolygon[] _obstacles = Array.Empty<ConvexPolygon>();
+
+        /// <summary>Sous-lot 11.9 : obstacles qui arrêtent la vue (les obstacles bas en sont exclus ; ils arrêtent la marche).</summary>
+        private ConvexPolygon[] _sightObstacles = Array.Empty<ConvexPolygon>();
         private long _minX, _minZ, _maxX, _maxZ;
 
         /// <summary>Pas maximal par tick (vitesse technique maximale) et pas d'essai du garde-fou (vitesse de base des règles).</summary>
@@ -77,6 +83,7 @@ namespace EdS.Simulation.Engine
             if (_setup.Space is not { } space) return;
             _spatial = true;
             _obstacles = space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray();
+            _sightObstacles = space.Obstacles.Where(o => !o.Low).Select(o => new ConvexPolygon(o.Points)).ToArray();
             _minX = space.Min.X.Raw;
             _minZ = space.Min.Z.Raw;
             _maxX = space.Max.X.Raw;
@@ -132,16 +139,19 @@ namespace EdS.Simulation.Engine
             body.Moving = true;
             body.DirectionX = ux;
             body.DirectionZ = uz;
+            body.Backward = item.Command.Backward;
             Emit(tick, CombatPhase.Commands, "moveStarted", root, w =>
             {
                 w.Field("actor", actor.Id).Field("command", item.Index);
                 WriteVector(w, "direction", ux, uz);
+                if (item.Command.Backward) w.Field("backward", true);   // sous-lot 11.9 (format 15) : seulement à reculons
             });
         }
 
         private void StopMoving(long tick, CommandItem item, Fighter actor, Provenance root)
         {
             actor.Body!.Moving = false;
+            actor.Body.Backward = false;
             Emit(tick, CombatPhase.Commands, "moveStopped", root, w => w.Field("actor", actor.Id).Field("command", item.Index));
         }
 
@@ -180,8 +190,12 @@ namespace EdS.Simulation.Engine
                     if (intentions[i] is { } bounded) step = Math.Min(step, bounded.MaxStep);   // revue Codex de la PR #33
                     if (step > 0)
                     {
-                        plan.FacingX = directionX;
-                        plan.FacingZ = directionZ;
+                        // Sous-lot 11.9 : à reculons, l'orientation ne suit pas la marche (seulement par commande, pas un ennemi qui se place).
+                        if (!(intentions[i] is null && b.Backward))
+                        {
+                            plan.FacingX = directionX;
+                            plan.FacingZ = directionZ;
+                        }
                         Planar.TryResize(directionX, directionZ, step, out long dx, out long dz);
                         var (nx, nz) = Travel(i, x, z, dx, dz, step);
                         // Un pas qui n'avance pas d'un huitième de sa longueur est annulé : pas de tremblement contre un angle ou entre

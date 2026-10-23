@@ -1119,8 +1119,7 @@ namespace EdS.Simulation.Engine
                     // un absent ou un mannequin sont refusés ; un stop sans marche ne change rien) : il marche si et seulement si la dernière est
                     // un move, dans la direction (unitaire) de celui-ci (sauf un ennemi à comportement, mené par son placement).
                     // Ordre de traitement : par tick, puis par rang dans le combat complété (les commandes du scénario ne sont pas triées).
-                    CombatCommand? lastMove = f.Out ? null : _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop)
-                        && c.Actor == f.Id && c.AtMs / _tickMs <= previous && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
+                    CombatCommand? lastMove = f.Out ? null : LastMoveOrStop(f);
                     long moveX = 0, moveZ = 0;
                     bool shouldMove = lastMove is { Action: CombatAction.Move, Direction: { } heading }
                         && Planar.TryNormalize(heading.X.Raw, heading.Z.Raw, out moveX, out moveZ);
@@ -1455,9 +1454,21 @@ namespace EdS.Simulation.Engine
             var facings = new HashSet<(long X, long Z)>();
             GroundVector start = f.Setup.Placement!.Facing;
             if (Planar.TryNormalize(start.X.Raw, start.Z.Raw, out long sx, out long sz)) facings.Add((sx, sz));
-            foreach (CombatCommand move in past.Where(c => c.Action == CombatAction.Move && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)))
+            // Sous-lot 11.9 : une marche à reculons ne tourne pas.
+            foreach (CombatCommand move in past.Where(c => c.Action == CombatAction.Move && !c.Backward && c.AtMs / _tickMs >= (f.ArrivedTick ?? 0)))
                 if (move.Direction is { } d && Planar.TryNormalize(d.X.Raw, d.Z.Raw, out long ux, out long uz)) facings.Add((ux, uz));
             return facings;
+        }
+
+        /// <summary>
+        /// Dernière commande move ou stop de <paramref name="f"/> traitée avant le tick courant, depuis son arrivée (par tick, puis par rang
+        /// dans le combat complété) ; null s'il n'en a reçu aucune.
+        /// </summary>
+        private CombatCommand? LastMoveOrStop(Fighter f)
+        {
+            long previous = CurrentTick - 1, arrived = f.ArrivedTick ?? 0;
+            return _setup.Commands.Where(c => (c.Action == CombatAction.Move || c.Action == CombatAction.Stop) && c.Actor == f.Id
+                && c.AtMs / _tickMs <= previous && c.AtMs / _tickMs >= arrived).OrderBy(c => c.AtMs / _tickMs).LastOrDefault();
         }
 
         /// <summary>Tick du tour <paramref name="turn"/> d'un assaillant (cadence : arrivée + <c>firstAttackMs</c>, puis <c>intervalMs</c>).</summary>
@@ -1533,7 +1544,8 @@ namespace EdS.Simulation.Engine
         private bool EngagementPossible(Fighter f, long tick)
         {
             if (f.Struck || f.Result.DamageTaken > 0 || f.Taunted) return true;
-            if (_fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null && a.EngagedTick is long at && at <= tick)) return true;
+            // Sous-lot 11.9 : la meute n'entraîne qu'un ennemi de meute (pack).
+            if (f.Behavior!.Pack && _fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null && a.EngagedTick is long at && at <= tick)) return true;
             if (f.Body is null || FreeMover(f)) return true;
             long aggro = f.Behavior!.AggroRange!.Value.Raw, own = checked(MovingTicks(f, tick) * StepBound(f));
             foreach (Fighter g in _fightersById)
@@ -1546,7 +1558,12 @@ namespace EdS.Simulation.Engine
             return false;
         }
 
-        private bool FreeMover(Fighter g) => g.Charged;   // 17e tour de la PR #33 : une charge réellement résolue, pas seulement planifiée
+        /// <summary>
+        /// 17e tour de la PR #33 : une charge réellement résolue, pas seulement planifiée. Sous-lot 11.9 : ou une poussée possible (un ennemi
+        /// de <paramref name="g"/> a une bande qui repousse dont un impact a pu tomber au plus au tick précédent) : sa place n'est plus bornée
+        /// par ses pas. La reprise vérifiée par rejeu reste exacte.
+        /// </summary>
+        private bool FreeMover(Fighter g) => g.Charged || _fightersById.Any(a => a.Team != g.Team && AttackLandedPossible(a, at => at.Push != null));
 
         /// <summary>
         /// Revue Codex de la PR #33 (13e et 14e tours) : un tour déjà joué de <paramref name="f"/> (avant <see cref="Fighter.NextTurn"/>, au plus
@@ -1554,7 +1571,14 @@ namespace EdS.Simulation.Engine
         /// le nombre d'attaques), sans parcourir l'historique des tours : plus petit tour de ce rang dont le tick est au moins la fin moins la
         /// télégraphie de l'attaque, comparé au dernier tour joué.
         /// </summary>
-        private bool ChargePossible(Fighter g)
+        private bool ChargePossible(Fighter g) => AttackLandedPossible(g, at => at.Charge);
+
+        /// <summary>
+        /// Un tour déjà joué de l'assaillant <paramref name="g"/> (après son engagement pour un ennemi à comportement) a-t-il pu faire tomber,
+        /// au plus au tick précédent, l'impact d'une de ses attaques choisies par <paramref name="which"/> ? Calculé par attaque, sans
+        /// parcourir l'historique des tours.
+        /// </summary>
+        private bool AttackLandedPossible(Fighter g, System.Func<AssailantAttack, bool> which)
         {
             if (g.Assailant is not { } a) return false;
             if (g.Behavior != null && g.EngagedTick is null) return false;
@@ -1564,7 +1588,7 @@ namespace EdS.Simulation.Engine
             int n = a.Attacks.Count;
             for (int j = 0; j < n; j++)
             {
-                if (!a.Attacks[j].Charge) continue;
+                if (!which(a.Attacks[j])) continue;
                 long first = engaged <= start ? 0 : interval > 0 ? checked((engaged - start + interval - 1) / interval) : long.MaxValue;
                 if (first == long.MaxValue) continue;
                 long turn = checked(first + ((j - first % n) % n + n) % n);
@@ -1587,6 +1611,7 @@ namespace EdS.Simulation.Engine
             int n = a.Attacks.Count;
             for (int j = 0; j < n; j++)
             {
+                if (!a.Attacks[j].HoldPosition) continue;   // sous-lot 11.9 : une attaque qui n'arrête pas l'ennemi ne le fige pas jusqu'à la fin
                 long threshold = Math.Max(engagedAt, checked(_durationTicks - a.Attacks[j].TelegraphMs / _tickMs));   // tick de tour à partir duquel l'impact tombe après la fin (et après l'engagement)
                 long first = threshold <= start ? 0 : interval > 0 ? checked((threshold - start + interval - 1) / interval) : long.MaxValue;
                 if (first == long.MaxValue) continue;
@@ -1877,6 +1902,9 @@ namespace EdS.Simulation.Engine
                 b.Moving = body["moving"].Bool;
                 b.DirectionX = body["directionX"].Long;
                 b.DirectionZ = body["directionZ"].Long;
+                // Sous-lot 11.9 : la marche à reculons n'est pas écrite (instantané au format 2 inchangé) : elle se déduit de la dernière
+                // commande move ou stop admise, que les contrôles de cohérence comparent à la marche relue.
+                b.Backward = b.Moving && LastMoveOrStop(f) is { Action: CombatAction.Move, Backward: true };
                 b.Selected = body["selected"].IsNull ? null : FighterOf(body["selected"]);
             }
             IReadOnlyList<SnapshotNode> triggers = n["triggers"].Items;

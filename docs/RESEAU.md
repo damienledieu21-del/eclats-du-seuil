@@ -39,7 +39,7 @@ Chaque message passe par l'analyseur strict du sous-lot 9.1 (`MessageCodec`) : t
 | `reconnect` | C → S | `protocol`, `token` | retour d'un joueur déconnecté |
 | `build` | C → S | `build` | changement de build en salle d'attente |
 | `ready` | C → S | `ready` | prêt ou non |
-| `input` | C → S | `guard`, `parry`, `slot` (0 à 4 ou null), `target`, `ally` (ou null) ; protocole 2 : `heading` (0 à 63 ou null) | intentions pour le prochain tick |
+| `input` | C → S | `guard`, `parry`, `slot` (0 à 4 ou null), `target`, `ally` (ou null) ; protocole 2 : `heading` (0 à 63 ou null) ; protocole 3 : `backward` | intentions pour le prochain tick |
 | `ping` | C → S | `clientTime` | mesure du temps aller-retour |
 | `resyncRequest` | C → S | — | demande de l'historique (protocole 2 : de l'état courant) |
 | `bye` | C → S | — | départ volontaire |
@@ -136,6 +136,17 @@ Objet : [PLAN_LOT_11.md](PLAN_LOT_11.md), 11.7 (L11-D8). Le protocole passe à l
 | 200 ms | 33 % | 18 % |
 
 Lecture : sortir d'un cercle de 2 m demande 0,5 s de marche ; sur les 900 ms de l'annonce, il reste environ 400 ms pour la réaction, l'aller-retour et le tick. Un joueur parfait esquive jusqu'à 150 ms d'un sens ; avec une réaction humaine de 250 ms, jusqu'à 50 ms (le réseau local et une bonne connexion). Au-delà, il faut des annonces plus longues ou des zones plus petites : c'est une donnée de réglage des attaques (`telegraphMs`, rayon), à trancher avec l'essai (11.9). Les empreintes des deux clients sont identiques à celles du serveur dans toutes les mesures, sans divergence.
+
+## Protocole 3 : marche à reculons (sous-lot 11.9)
+
+Essai de Damien du 22 octobre 2026 : « le Bastion recule en regardant devant lui ». Le protocole passe à la **version 3** ; un client ou un serveur du protocole 2 est refusé à la présentation (« protocole 2 non pris en charge »).
+
+| Changement | Détail |
+|---|---|
+| `input.backward` | booléen obligatoire : marche voulue à reculons (le personnage garde son orientation) ; vrai seulement avec un cap (`heading` non nul), sinon refus. |
+| `tick.commands` | `backward: true` sur un `move` à reculons (absent sinon ; faux, ou sur une autre action, refusé). |
+
+La salle tient le recul voulu avec le cap (`MovementIntent.Backward`) et renvoie un `move` quand seul le recul change. L'état courant n'écrit pas le recul : le moteur le déduit de la dernière commande `move` du combat complété ([MOTEUR.md](MOTEUR.md#réglages-après-lessai-sous-lot-119)).
 
 ## Réseau simulé
 
