@@ -382,10 +382,11 @@ namespace EdS.Data.Saves
                 {
                     var p = c.Professions[i];
                     string pp = $"{path}.professions.{p.Key}";
-                    if (p.Key.Length > 64 || !SlotId.IsMatch(p.Key)) report.Add(pp, ValidationCode.InvalidValue, "métier mal formé.");
+                    if (p.Key is null || p.Key.Length > 64 || !SlotId.IsMatch(p.Key)) report.Add(pp, ValidationCode.InvalidValue, "métier mal formé.");
                     else if (p.Value is not long xp) Missing(report, pp, "expérience");
                     else if (xp < 1 || xp > MaxXp) report.Add(pp, ValidationCode.OutOfRange, $"expérience de métier hors de [1, {MaxXp}] (une expérience nulle n'est pas écrite).");
-                    else if (i > 0 && string.CompareOrdinal(c.Professions[i - 1].Key, p.Key) > 0) report.Add(pp, ValidationCode.InvalidValue, "métiers hors de l'ordre ordinal.");
+                    // Même règle que la revue Codex de la PR #44 : un métier une seule fois (sauvegarde construite en objets publics).
+                    else if (i > 0 && string.CompareOrdinal(c.Professions[i - 1].Key, p.Key) >= 0) report.Add(pp, ValidationCode.InvalidValue, "métiers hors de l'ordre ordinal ou en double.");
                 }
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
