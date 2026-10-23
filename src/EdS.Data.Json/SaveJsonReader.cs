@@ -84,12 +84,9 @@ namespace EdS.Data.Json
             return ok ? c : null;
         }
 
-        // Identifiants écrits sans échappement : ASCII en minuscules, chiffres, « _ » et « . ».
-        private static readonly System.Text.RegularExpressions.Regex SafeId =
-            new System.Text.RegularExpressions.Regex(@"^[a-z0-9_.]+\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-
+        // Identifiants écrits sans échappement : le format de SaveValidator.IsDataId, exigé aussi à la lecture (revue Codex de la PR #43).
         private static string Quoted(string id) =>
-            SafeId.IsMatch(id) ? "\"" + id + "\"" : throw new ArgumentException($"Identifiant « {id} » hors du format des sauvegardes.", nameof(id));
+            SaveValidator.IsDataId(id) ? "\"" + id + "\"" : throw new ArgumentException($"Identifiant « {id} » hors du format des sauvegardes.", nameof(id));
 
         /// <summary>Texte canonique d'une sauvegarde (UTF-8, fins de ligne « \n », dernière ligne terminée).</summary>
         public static string Write(WorldSave save)
@@ -142,7 +139,7 @@ namespace EdS.Data.Json
             b.Append("      \"id\": ").Append(Quoted(c.Id)).Append(",\n");
             b.Append("      \"class\": ").Append(Quoted(c.ClassId)).Append(",\n");
             b.Append("      \"xp\": ").Append(c.Xp.ToString(CultureInfo.InvariantCulture)).Append(",\n");
-            b.Append("      \"talents\": {").Append(string.Join(", ", c.Talents.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
+            b.Append("      \"talents\": {").Append(string.Join(", ", c.Talents.OrderBy(t => t.Key, StringComparer.Ordinal).Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("      \"activeSkills\": ").Append(List(c.ActiveSkills)).Append(",\n");
             b.Append("      \"ultimate\": ").Append(c.Ultimate is null ? "null" : Quoted(c.Ultimate)).Append(",\n");
             b.Append("      \"passiveSkills\": ").Append(List(c.PassiveSkills)).Append("\n");
