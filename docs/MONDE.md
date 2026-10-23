@@ -81,8 +81,9 @@ L'histoire de la tranche est en données : `data/v0/world/story.json` (`kind` «
 3. **Rouvrir le passage** : récolter trois minerais de fer dans la carrière, forger une ferrure à l'enclume du village (12.6) ; Maëlle la pose et le passage du moulin s'ouvre pour de bon. Si Odile a confiance, Maëlle donne un indice sur le minerai.
 4. **Le pré des loups** : passer la porte, découvrir les éclats.
 5. **La manifestation** : atteindre la petite zone du Seuil ; découverte de la manifestation.
-6. **Le rôdeur du Seuil** : le vaincre (le chef de fin s'ajoutera au 12.7).
-7. **Revenir chez Odile** : si elle a confiance, elle offre l'**amulette de l'aube** ; sinon, un merci sec (conséquence observable liée à un PNJ, Q2). Récompense finale : 300 points d'expérience.
+6. **Le rôdeur du Seuil** : le vaincre.
+7. **Le Gardien du Seuil** (12.7) : vaincre le chef de fin, sous ses deux formes ; découverte du Gardien.
+8. **Revenir chez Odile** : si elle a confiance, elle offre l'**amulette de l'aube** ; sinon, un merci sec (conséquence observable liée à un PNJ, Q2). Récompense finale : 300 points d'expérience.
 
 Gaspard, le vieux garde du camp de la carrière, conseille contre le rôdeur pendant l'étape 6.
 
@@ -95,6 +96,26 @@ Gaspard, le vieux garde du camp de la carrière, conseille contre le rôdeur pen
 - **Récolte** (`Gather`) : six nœuds dans les Vallons (trois filons de fer dans la carrière, trois touffes d'herbe de l'aube au village, près de la rivière et dans le pré). À 3 m au plus ; un nœud récolté repousse au bout d'une minute (dans la session) ; l'objet doit tenir dans l'inventaire.
 - **Fabrication** (`Craft`) : à l'atelier de la recette (un lieu de la zone : le village), au niveau de métier requis, les entrées présentes et le produit qui tient — sinon rien ne change. Recettes : ferrure (3 minerais de fer, forge), potion de soin (2 herbes, herboristerie), remède de l'aube (3 herbes et un éclat de Seuil, herboristerie niveau 3). **Une fabrication triviale forme moins** : moitié de l'expérience à 2 niveaux d'écart, quart à 4.
 - **Mission** : la porte du moulin s'ouvre avec une **ferrure forgée par le joueur** (récolte du minerai, fabrication à l'enclume), que Maëlle pose. Le minerai tombe encore parfois des sangliers (25 %).
+
+## Chef de fin et récompenses (sous-lot 12.7)
+
+Le chef d'une zone est décrit dans la zone (schéma 2, bloc `boss`) ; ses formes sont des assaillants d'un scénario à part (`scenarios/zones/vallons_chef.json`), qui n'a que des combattants :
+
+```json
+"boss": {
+  "id": "gardien_du_seuil",
+  "scenario": "zones/vallons_chef",
+  "forms": ["gardien_du_seuil", "gardien_eveille"],
+  "fact": "fact.chef.vaincu",
+  "rewards": [{"item": "item.lame_du_seuil", "count": 1}],
+  "loot": "loot.gardien"
+}
+```
+
+- **Formes successives** (boss à phases) : la première forme arrive avec la session, au cœur des pierres dressées. Quand elle tombe, la forme suivante rejoint le combat à sa place prévue (nouvel essai chaque seconde si la place est occupée). Les Vallons : le **Gardien du Seuil** (3 000 PV, griffe, onde du Seuil annoncée), puis le **Gardien éveillé** (1 800 PV, plus rapide, ruée en ligne annoncée). Chaque forme vaincue donne son expérience ; le butin (`loot.gardien` : deux éclats de Seuil, parfois le talisman) suit la chute de la dernière forme, **à chaque victoire**.
+- **Première victoire récompensée une seule fois** (cadrage H4, plan : « récompenses attribuées une fois ») : la victoire est une clé du registre du monde, `zone.vallons/boss/gardien_du_seuil`. La récompense (la **lame du Seuil**, arme épique de niveau 8) et le fait `fact.chef.vaincu` sont donnés **ensemble ou pas du tout**, à un personnage présent et vivant, en consommant la clé. Une sauvegarde relue, une nouvelle session ou une seconde victoire ne la redonnent pas. Un inventaire plein fait attendre la récompense (`RewardBlocked`, annoncé une fois) jusqu'à ce qu'une place se libère dans la session.
+- **Défaite sans perte** (cadrage Q8) : quand le personnage tombe, la session le signale (`Defeated`, `IsDefeated`). Rien d'acquis n'est perdu : expérience, niveaux, objets, équipement, métiers, faits, quêtes, confiance et découvertes restent tels quels dans la sauvegarde ; seuls les objets de soin bus manquent. La partie reprend à la session suivante, au point sûr d'entrée, PV pleins ; le chef y est de nouveau entier.
+- **Mission** : l'étape « chef » (vaincre le Gardien : objectif `fact` sur `fact.chef.vaincu`) s'insère entre le rôdeur et le retour chez Odile.
 
 ## Sauvegarde
 
