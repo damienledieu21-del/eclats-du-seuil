@@ -94,6 +94,31 @@ public class Lot125StoryTests
     // --- Données -----------------------------------------------------------------------------------
 
     [Fact]
+    public void Recit_en_double_refuse_dans_une_sauvegarde_en_objets_publics()
+    {
+        // Même règle que la revue Codex de la PR #44 : une quête ou une confiance en double donne un rapport, pas une exception.
+        var story = new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("traces") },
+            new Dictionary<string, int> { ["npc.odile"] = 1 });
+        string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create("bastion", "class.bastion", Progression).WithStory(story)));
+        SaveDocument Document()
+        {
+            var report = new ValidationReport();
+            var document = new SaveDocument();
+            JsonHeader header = JsonInput.Parse(JsonInput.Utf8(json, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
+            (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+            return document;
+        }
+        SaveDocument quests = Document();
+        quests.Data!.Character!.Story!.Quests!.Add(("quest.traces_sous_le_moulin", new QuestProgressData { Step = "pre", Progress = 0 }));
+        Assert.Contains(SaveValidator.Validate(quests).Report.Errors, e => e.Path == "$.data.character.story.quests.quest.traces_sous_le_moulin");
+        SaveDocument trust = Document();
+        trust.Data!.Character!.Story!.Trust!.Add(new KeyValuePair<string, int?>("npc.odile", -1));
+        Assert.Contains(SaveValidator.Validate(trust).Report.Errors, e => e.Path == "$.data.character.story.trust.npc.odile");
+        Assert.True(SaveValidator.Validate(Document()).IsValid);
+    }
+
+    [Fact]
     public void Tables_et_vues_de_l_histoire_non_modifiables()
     {
         // Les tables globales du validateur et les vues de l'histoire ne se modifient pas par conversion (même règle que la revue Codex de la PR #44).
