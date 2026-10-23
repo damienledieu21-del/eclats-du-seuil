@@ -32,7 +32,8 @@ namespace EdS.World
     /// Sous-lot 12.1 (cadrage Q10, tranche : fichier local) : écriture atomique des sauvegardes. Le texte est d'abord écrit en entier dans un
     /// fichier voisin (<c>.tmp</c>), vidé sur le disque, puis il remplace la sauvegarde, dont la version précédente devient la copie de
     /// secours (<c>.bak</c>). Une coupure pendant l'écriture laisse donc toujours une sauvegarde complète : l'ancienne, ou sa copie.
-    /// À la lecture, une sauvegarde absente ou invalide est remplacée par sa copie de secours valide.
+    /// À la lecture, une sauvegarde absente ou invalide est remplacée par sa copie de secours valide ; à l'écriture, une principale invalide
+    /// ne devient jamais la copie de secours.
     /// </summary>
     public static class SaveStore
     {
@@ -58,15 +59,18 @@ namespace EdS.World
                 File.Move(temporary, path);
                 return;
             }
+            // Revue Codex de la PR #42 (3e tour) : seule une sauvegarde principale valide devient la copie de secours. Une principale abîmée
+            // (la lecture a repris la copie) est remplacée sans toucher à la copie, qui reste la dernière sauvegarde sûre.
+            bool mainValid = SaveJsonReader.ReadFile(path).IsValid;
             try
             {
-                File.Replace(temporary, path, backup);
+                File.Replace(temporary, path, mainValid ? backup : null);
             }
             catch (PlatformNotSupportedException)
             {
                 // Plateformes sans remplacement atomique (certains systèmes de fichiers mobiles) : la copie de secours est faite avant que
                 // la sauvegarde principale soit retirée ; la lecture la reprend si la suite est interrompue.
-                File.Copy(path, backup, true);
+                if (mainValid) File.Copy(path, backup, true);
                 File.Delete(path);
                 File.Move(temporary, path);
             }
