@@ -154,8 +154,8 @@ namespace EdS.World
                     _carried[id] = count;
                 }
             CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried);
-            Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log);
-            Zone.Enter(setup);
+            // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
+            Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
             EnteredGear = setup.Gear;
         }
@@ -351,9 +351,14 @@ namespace EdS.World
                 // Le personnage doit être là, et vivant, quand la créature tombe (solo : il est seul à pouvoir l'avoir vaincue).
                 if (!me.IsPresent || me.IsDead) continue;
                 int before = Level;
-                long xp = _progression.KillXp(maxHealth);
-                _character = _character.WithXp(Math.Min(SaveValidator.MaxXp, checked(_character.Xp + xp)));
-                gains.Add(new ExperienceGained(e, xp, before, Level));
+                // Revue Codex de la PR #43 : seule l'expérience réellement ajoutée (sous le plafond) est annoncée ; rien au plafond.
+                long total = Math.Min(SaveValidator.MaxXp, checked(_character.Xp + _progression.KillXp(maxHealth)));
+                long xp = total - _character.Xp;
+                if (xp > 0)
+                {
+                    _character = _character.WithXp(total);
+                    gains.Add(new ExperienceGained(e, xp, before, Level));
+                }
                 // Sous-lot 12.3 : butin de sa table, rangé en entier ou perdu (inventaire plein).
                 if (LootFor(e.Combatant) is LootTable table)
                     foreach (LootRoll roll in Loot.Roll(table, e.Key))
