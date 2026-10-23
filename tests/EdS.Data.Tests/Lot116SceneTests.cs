@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using EdS.Data.Json;
 using EdS.Data.Scenarios;
 using EdS.Domain.Combat;
@@ -23,6 +24,19 @@ public class Lot116SceneTests
 
     private static TrainingSession Session(long durationMs = 60_000, string scenario = Vallons) =>
         TrainingSession.Load(DataDirectory, ScenarioPath(scenario), "build.bastion.rempart", durationMs: durationMs);
+
+    /// <summary>
+    /// Sous-lot 11.9 : les Vallons avec la rivière remise haute (elle cache comme un mur) : au départ, aucun ennemi n'est en vue, comme au
+    /// sous-lot 11.6. Depuis l'essai de Damien du 22 octobre 2026, la rivière livrée est basse (on voit par-dessus).
+    /// </summary>
+    private static TrainingSession HighRiverSession(long durationMs = 60_000)
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath(Vallons)))!.AsObject();
+        foreach (JsonNode? o in root["data"]!["space"]!["obstacles"]!.AsArray()) o!.AsObject().Remove("low");
+        string path = Path.Combine(Path.GetTempPath(), "eds_vallons_riviere_haute_" + Guid.NewGuid().ToString("N") + ".json");
+        File.WriteAllText(path, root.ToJsonString());
+        return TrainingSession.Load(DataDirectory, path, "build.bastion.rempart", durationMs: durationMs);
+    }
 
     private static List<CombatCommand> At(RealtimeCombat combat, long tick) => combat.SubmittedCommands.Where(c => c.AtMs == tick * 50).ToList();
 
@@ -74,10 +88,15 @@ public class Lot116SceneTests
             StringComparison.Ordinal);
         SpaceObstacle wallN = space.Obstacles.Single(o => o.Id == "mur_nord"), wallS = space.Obstacles.Single(o => o.Id == "mur_sud");
         Assert.Equal(Fixed.Parse("2"), wallN.Points.Min(p => p.Z) - wallS.Points.Max(p => p.Z));
-        // Au départ, tous les ennemis sont cachés au Bastion : les loups derrière le moulin, le sanglier et l'archer derrière la rivière.
+        // Au départ, les loups sont cachés au Bastion derrière le moulin. Sous-lot 11.9 (essai de Damien du 22 octobre 2026) : la rivière
+        // est un obstacle bas, qui arrête la marche mais pas la vue : le sanglier et l'archer, au-delà, sont en vue.
+        Assert.True(south.Low && north.Low);
+        Assert.DoesNotContain(space.Obstacles.Where(o => !o.Id.StartsWith("riviere", StringComparison.Ordinal)), o => o.Low);
         List<OtherState> others = combat.Others().ToList();
         Assert.Equal(new[] { "loup1", "loup2", "loup3", "sanglier", "archer" }, others.Select(o => o.Id));
-        Assert.All(others, o => Assert.False(o.InSight, o.Id));
+        Assert.Equal(new[] { false, false, false, true, true }, others.Select(o => o.InSight));
+        // Rivière remise haute : tous cachés, comme au sous-lot 11.6.
+        Assert.All(HighRiverSession().Start().Others(), o => Assert.False(o.InSight, o.Id));
         // Sans espace, tout le monde est en vue et la marche est sans effet.
         RealtimeCombat flat = TrainingSession.Load(DataDirectory, ScenarioPath("entrainement_garde_parade"), durationMs: 5000).Start();
         Assert.Null(flat.Space);
@@ -94,7 +113,7 @@ public class Lot116SceneTests
         // Revue Codex de la PR #34 : entre deux ticks, l'affichage glisse les corps ; la vue se juge entre les places glissées
         // (InSightAt), pour qu'un ennemi qui contourne une paroi n'apparaisse pas du mauvais côté. Même règle que celle du moteur.
         RealtimeCombat combat = Session().Start();
-        IReadOnlyList<ConvexPolygon>? obstacles = CombatDisplay.Obstacles(combat.Space);
+        IReadOnlyList<ConvexPolygon>? obstacles = CombatDisplay.SightObstacles(combat.Space);   // sous-lot 11.9 : la rivière basse ne cache pas
         GroundVector me = Position(combat);
         foreach (OtherState other in combat.Others())
         {
@@ -113,6 +132,7 @@ public class Lot116SceneTests
         Assert.Contains("CombatDisplay.InSightAt(Raw(eye.x), Raw(eye.z), Raw(at.x), Raw(at.z), _obstacles)", arena, StringComparison.Ordinal);
         Assert.Contains("shown[v.Id] = Vector3.Lerp(_from[v.Id], _to[v.Id], t);", arena, StringComparison.Ordinal);
         Assert.DoesNotContain("other.InSight", arena, StringComparison.Ordinal);
+        Assert.Contains("CombatDisplay.SightObstacles(combat.Space)", arena, StringComparison.Ordinal);   // sous-lot 11.9
         // La fiche de la cible suit le corps affiché (revue Codex de la PR #34, tour suivant).
         Assert.Contains("public bool Shown(string id) => Head(id) != null;", arena, StringComparison.Ordinal);
         string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
@@ -122,11 +142,12 @@ public class Lot116SceneTests
     [Fact]
     public void Marche_simulee_par_le_moteur_une_commande_par_changement_de_cap()
     {
-        RealtimeCombat combat = Session().Start();
+        RealtimeCombat combat = HighRiverSession().Start();
         GroundVector start = Position(combat);
         combat.SetMove(1, 0);
         for (int i = 0; i < 20; i++) combat.StepOnce();
-        // Une seule commande de marche (vers l'est), au premier tick ; aucun ennemi n'est en vue au départ : pas de sélection à ce tick.
+        // Une seule commande de marche (vers l'est), au premier tick ; aucun ennemi n'est en vue au départ (rivière remise haute) : pas de
+        // sélection à ce tick.
         Assert.Equal(new[] { CombatAction.Move }, At(combat, 0).Select(c => c.Action));
         Assert.Equal(new[] { CombatAction.Move }, combat.SubmittedCommands.Where(c => c.Action != CombatAction.Select).Select(c => c.Action));
         Assert.Equal(MoveInput.Direction(0), combat.SubmittedCommands[0].Direction);
@@ -172,8 +193,8 @@ public class Lot116SceneTests
     public void Ennemi_cache_ni_cible_ni_selectionne()
     {
         // Revue Codex de la PR #34 : un ennemi hors de vue ne s'affiche pas ; il ne devient donc ni la cible (fiche, compte à rebours,
-        // compétences), ni la sélection envoyée au moteur (la garde ne se tourne pas vers lui).
-        RealtimeCombat combat = Session(durationMs: 20_000).Start();
+        // compétences), ni la sélection envoyée au moteur (la garde ne se tourne pas vers lui). Rivière remise haute (sous-lot 11.9).
+        RealtimeCombat combat = HighRiverSession(durationMs: 20_000).Start();
         Assert.Null(combat.TargetId);
         Assert.Null(combat.Player().TargetId);
         combat.NextTarget();
