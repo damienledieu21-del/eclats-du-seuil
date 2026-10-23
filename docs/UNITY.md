@@ -28,7 +28,7 @@ Pour essayer une PR avant sa fusion, choisir sa branche de la même façon (ongl
 
 ## 4. Jouer
 
-Appuyer sur **Play** (▶ en haut au centre). La **scène de démonstration des Vallons** (sous-lot 11.6) se construit : un coin de campagne en formes simples, avec un moulin, une rivière et son pont, des arbres, un abri sous un toit et un passage étroit entre deux murs. Le Bastion (capsule bleue) part du sud-ouest ; une meute attend : trois loups derrière le moulin, un sanglier au-delà de la rivière, un archer derrière le passage étroit.
+Appuyer sur **Play** (▶ en haut au centre). Depuis le sous-lot 12.8, le jeu s'ouvre sur **l'aventure dans les Vallons d'Aube** (section 4 bis) ; **N** passe aux séances d'entraînement, puis revient à l'aventure. La première séance est la **scène de démonstration des Vallons** (sous-lot 11.6) : elle se construit : un coin de campagne en formes simples, avec un moulin, une rivière et son pont, des arbres, un abri sous un toit et un passage étroit entre deux murs. Le Bastion (capsule bleue) part du sud-ouest ; une meute attend : trois loups derrière le moulin, un sanglier au-delà de la rivière, un archer derrière le passage étroit.
 
 - **Le déplacement est simulé par le moteur** : le décor arrête le Bastion, il ne traverse pas les ennemis, un étourdissement l'immobilise ; les portées et la ligne de vue des compétences comptent (une compétence hors de portée ou sans vue est refusée, avec la raison à l'écran).
 - **Un ennemi caché par le décor n'apparaît pas** tant que le Bastion ne le voit pas (même règle que la ligne de vue des compétences) : au départ, les loups sont cachés derrière le moulin ; le sanglier et l'archer se voient par-dessus la rivière, qui est basse (sous-lot 11.9). Il ne se cible pas non plus : Tab ne propose que des ennemis en vue. Une cible qui passe derrière le décor reste la cible **une seconde** (sous-lot 11.9 : un loup qui passe derrière un tronc ne fait plus changer de cible), puis elle est remplacée par le premier ennemi en vue, ou lâchée s'il n'y en a aucun (la garde ne se tourne alors vers personne). Une cible morte est remplacée aussitôt.
@@ -52,7 +52,7 @@ Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tablea
 | A / E | tourner la caméra d'un huitième de tour |
 | molette | régler la caméra entre la vue 1 et la vue 2 (réglage gardé) ; bouton du milieu maintenu : tourner librement |
 | T | écran des talents (combat en pause) ; T ou Échap pour le fermer |
-| N | scénario suivant (Vallons, meute à vaincre, entraînement, S1 à S5) |
+| N | scénario suivant (Vallons, meute à vaincre, entraînement, S1 à S5), puis retour à l'aventure |
 | F1 à F5 | build : Rempart, Contrecoup, Gardien, hybride, niveau 10 |
 | Retour arrière | recommencer la séance |
 | Échap | pause |
@@ -72,6 +72,32 @@ Les quatre vérifications de H14, à noter pour le rapport du 11.9 :
 4. **Lisibilité et performances** : les annonces au sol se lisent dans les deux vues, un ennemi caché le reste vraiment, l'image reste fluide.
 
 Note aussi ce qui gêne (vitesse, caméra, taille des zones) : ce sont des réglages.
+
+## 4 bis. L'aventure dans les Vallons d'Aube (sous-lot 12.8)
+
+Toute la zone en formes simples : le village, le moulin, la rivière, le pré des loups, les ruines, la carrière et la petite zone du Seuil ; les créatures réapparaissent, le Gardien du Seuil attend au cœur des pierres dressées. Les **PNJ** sont des capsules dorées (Odile au moulin, Maëlle à la forge du village, Gaspard au camp de la carrière), les **herbes** des boules vertes, les **filons** des cubes gris (cachés le temps de repousser), les **points sûrs** des disques bleus. Les noms s'affichent quand on s'approche ; une indication en bas dit ce qui est possible ici (« F : parler à Odile », « F : récolter… », « Entrée : faire halte »).
+
+La partie est **sauvegardée toute seule** (quelques secondes après chaque changement, à chaque halte, en quittant le jeu ou en le passant en arrière-plan sur téléphone) ; on la retrouve au lancement suivant. Pour repartir de zéro, supprimer le dossier `sauvegardes` du dossier de l'application (Unity : `Application.persistentDataPath`).
+
+| Touche | Action |
+|---|---|
+| F | parler au PNJ à portée (3 m), sinon récolter le nœud à portée |
+| 1 à 9 (ou clic) | choisir une réponse du dialogue ; Échap le ferme |
+| I | inventaire, équipement porté et métiers (porter, retirer) |
+| J | journal de quête et découvertes |
+| K | atelier : recettes, ce qu'il manque, fabriquer (à l'enclume du village) |
+| P | boire un objet de soin emporté (le plus petit d'abord) |
+| Entrée | faire halte près d'un point sûr (aucun ennemi proche) : sauvegarde, PV pleins ; après une défaite : reprendre au dernier point sûr |
+| F6 | sauvegarder maintenant |
+| N | quitter l'aventure (sauvegardée) pour l'entraînement |
+
+Les touches de combat sont celles de l'entraînement (garde, parade, compétences, Tab, caméra). La cible se choisit parmi les ennemis en vue à 20 m au plus, du plus proche au plus loin. Le monde **s'arrête** pendant un dialogue, un écran ouvert ou la pause (jeu en solo).
+
+**Niveau et équipement** gagnés ou changés en route prennent effet à la **halte** suivante (le combat en cours garde le build d'entrée). La **porte du moulin**, une fois ferrée par Maëlle, se franchit aussi après une halte. Une **défaite** ne fait rien perdre : Entrée reprend au dernier point sûr approché, PV pleins.
+
+Au doigt : **Agir** (F) et **Potion** au-dessus de la garde, **Sac**, **Journal** et **Atelier** en haut, **Halte** à la place de « Rejouer ».
+
+Ce que tu vérifies (essai du 12.9) : la mission d'Odile de bout en bout (traces, ferrure forgée, pré des loups, manifestation, rôdeur, Gardien, retour) ; la récolte et la fabrication ; l'inventaire et l'équipement ; une défaite et la reprise ; quitter puis relancer le jeu (la partie revient) ; la lisibilité des écrans sur PC et sur le Note8.
 
 ## 5. Talents
 

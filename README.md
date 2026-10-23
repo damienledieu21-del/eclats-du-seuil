@@ -169,6 +169,8 @@ Sous-lot 12.6 (soin et métiers) : le moteur sait soigner (commande `consume` : 
 
 Sous-lot 12.7 (chef de fin et récompenses) : le Gardien du Seuil, chef des Vallons, se relève éveillé après sa première chute (formes successives décrites dans la zone, schéma 2) ; la première victoire donne la lame du Seuil une seule fois (clé du registre du monde), le butin tombe à chaque victoire ; une défaite ne fait rien perdre et la partie reprend au point sûr. Détail : [docs/MONDE.md](docs/MONDE.md#chef-de-fin-et-récompenses-sous-lot-127).
 
+Sous-lot 12.8 (Unity, la zone jouable) : le jeu s'ouvre sur l'aventure dans les Vallons d'Aube : PNJ, dialogues, quêtes et journal, inventaire et équipement, récolte et atelier, potions, chef, halte au point sûr et reprise après une défaite, sauvegarde locale automatique ; textes de l'interface par clés. Touches : [docs/UNITY.md](docs/UNITY.md#4-bis-laventure-dans-les-vallons-daube-sous-lot-128).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
@@ -187,4 +189,4 @@ Les autres propositions de la section 6 du plan sont des valeurs initiales confi
 - [x] Lot 10 — serveur autoritaire à deux joueurs : 10.1 à 10.6 (PR #18 à #23) fusionnés le 19 octobre 2026 ; essayé par Damien dans Unity le 19 octobre au soir (combat à deux, option B de la parade, touches AZERTY)
 - [x] Cadrage du jeu complet (19 et 20 octobre 2026) : choix de Damien Q1 à Q40, systèmes H1 à H14 et décisions L11-D1 à L11-D12 dans [docs/CADRAGE.md](docs/CADRAGE.md) (retenu, recommandation, ouvert)
 - [x] Lot 11 — combat dans l'espace (ordre validé le 20 octobre 2026, [docs/PLAN_LOT_11.md](docs/PLAN_LOT_11.md)) : 11.1 à 11.9 fusionnés du 20 au 23 octobre 2026 (PR #25 à #40 : ennemis qui meurent, architecture du monde partagé, règles du combat dans l'espace, moteur spatial, comportements des ennemis, scène des Vallons en vues 1 et 2, démonstration réseau, essai tactile sur le Galaxy Note8, puis réglages après l'essai de Damien du 22 octobre 2026 et [rapport](docs/ESSAI_LOT_11.md#7-rapport-de-lessai-sous-lot-119)) ; terminé le 23 octobre 2026
-- [ ] Lot 12 — les Vallons d'Aube en solo ([plan](docs/PLAN_LOT_11.md#lot-12--les-vallons-daube-en-solo), estimation révisée : environ 1 à 2 semaines) : 12.1 le monde, 12.2 le personnage, 12.3 les objets, 12.4 les Vallons en données, 12.5 les quêtes, 12.6 le soin et les métiers et 12.7 le chef de fin en PR ; puis lot 13 monde partagé, lot 14 interface mobile, l'alpha
+- [ ] Lot 12 — les Vallons d'Aube en solo ([plan](docs/PLAN_LOT_11.md#lot-12--les-vallons-daube-en-solo), estimation révisée : environ 1 à 2 semaines) : 12.1 le monde, 12.2 le personnage, 12.3 les objets, 12.4 les Vallons en données, 12.5 les quêtes, 12.6 le soin et les métiers, 12.7 le chef de fin et 12.8 la zone jouable dans Unity en PR ; puis lot 13 monde partagé, lot 14 interface mobile, l'alpha
