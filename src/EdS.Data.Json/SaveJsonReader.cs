@@ -165,13 +165,9 @@ namespace EdS.Data.Json
             }
             return map;
         }
-
-        // Identifiants écrits sans échappement : ASCII en minuscules, chiffres, « _ » et « . ».
-        private static readonly System.Text.RegularExpressions.Regex SafeId =
-            new System.Text.RegularExpressions.Regex(@"^[a-z0-9_.]+\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-
+        // Identifiants écrits sans échappement : le format de SaveValidator.IsDataId, exigé aussi à la lecture (revue Codex de la PR #43).
         private static string Quoted(string id) =>
-            SafeId.IsMatch(id) ? "\"" + id + "\"" : throw new ArgumentException($"Identifiant « {id} » hors du format des sauvegardes.", nameof(id));
+            SaveValidator.IsDataId(id) ? "\"" + id + "\"" : throw new ArgumentException($"Identifiant « {id} » hors du format des sauvegardes.", nameof(id));
 
         /// <summary>Texte canonique d'une sauvegarde (UTF-8, fins de ligne « \n », dernière ligne terminée).</summary>
         public static string Write(WorldSave save)
@@ -224,7 +220,7 @@ namespace EdS.Data.Json
             b.Append("      \"id\": ").Append(Quoted(c.Id)).Append(",\n");
             b.Append("      \"class\": ").Append(Quoted(c.ClassId)).Append(",\n");
             b.Append("      \"xp\": ").Append(c.Xp.ToString(CultureInfo.InvariantCulture)).Append(",\n");
-            b.Append("      \"talents\": {").Append(string.Join(", ", c.Talents.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
+            b.Append("      \"talents\": {").Append(string.Join(", ", c.Talents.OrderBy(t => t.Key, StringComparer.Ordinal).Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("      \"activeSkills\": ").Append(List(c.ActiveSkills)).Append(",\n");
             b.Append("      \"ultimate\": ").Append(c.Ultimate is null ? "null" : Quoted(c.Ultimate)).Append(",\n");
             b.Append("      \"passiveSkills\": ").Append(List(c.PassiveSkills)).Append(",\n");
@@ -242,13 +238,13 @@ namespace EdS.Data.Json
                 }
                 b.Append("      ],\n");
             }
-            if (c.Equipment.Any(e => !SaveValidator.IsItemId(e.Value) || !SafeId.IsMatch(e.Key)))
+            if (c.Equipment.Any(e => !SaveValidator.IsItemId(e.Value) || !SaveValidator.IsDataId(e.Key)))
                 throw new ArgumentException("Équipement hors du format des sauvegardes.", nameof(c));
             b.Append("      \"equipment\": {").Append(string.Join(", ", c.Equipment.Select(e => Quoted(e.Key) + ": " + Quoted(e.Value)))).Append("},\n");
             // Sous-lot 12.5 (version 4) : état narratif, sur une ligne par rubrique, dans l'ordre ordinal.
             SavedStory st = c.Story;
             if (st.Facts.Concat(st.Discoveries).Concat(st.Quests.Keys).Concat(st.Trust.Keys).Any(id => !SaveValidator.IsStoryId(id))
-                || st.Quests.Values.Any(q => !SafeId.IsMatch(q.Step) || q.Progress < 0 || q.Progress > SaveValidator.MaxProgress)
+                || st.Quests.Values.Any(q => !SaveValidator.IsDataId(q.Step) || q.Progress < 0 || q.Progress > SaveValidator.MaxProgress)
                 || st.Trust.Values.Any(t => t < -SaveValidator.MaxTrust || t > SaveValidator.MaxTrust))
                 throw new ArgumentException("Histoire hors du format des sauvegardes.", nameof(c));
             b.Append("      \"story\": {\n");
@@ -259,7 +255,7 @@ namespace EdS.Data.Json
             b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append("\n");
             b.Append("      },\n");
             // Sous-lot 12.6 (version 5) : expérience des métiers, sur une ligne.
-            if (c.Professions.Any(p => !SafeId.IsMatch(p.Key) || p.Value < 1 || p.Value > SaveValidator.MaxXp))
+            if (c.Professions.Any(p => !SaveValidator.IsDataId(p.Key) || p.Value < 1 || p.Value > SaveValidator.MaxXp))
                 throw new ArgumentException("Métiers hors du format des sauvegardes.", nameof(c));
             b.Append("      \"professions\": {").Append(string.Join(", ", c.Professions.Select(p => Quoted(p.Key) + ": " + p.Value.ToString(CultureInfo.InvariantCulture)))).Append("}\n");
             b.Append("    },\n");
