@@ -83,6 +83,9 @@ namespace EdS.World
         /// <summary>Moteur de la zone, pour l'affichage et le pilotage (pont temps réel) ; ne pas le faire avancer à côté de <see cref="Step"/>.</summary>
         public CombatEngine Engine => _engine;
 
+        /// <summary>Simulation de départ de la session.</summary>
+        public CombatSetup Setup { get; }
+
         /// <param name="setup">Simulation de la zone (<see cref="CombatSetup.Zone"/> vrai) ; validée par le moteur.</param>
         /// <param name="consumed">Événements déjà consommés (sauvegarde) : une mort de même clé n'est pas attribuée une seconde fois.</param>
         /// <exception cref="ArgumentException">Identifiant de zone invalide, session ou temps hors bornes, ou combat fermé au lieu d'une zone.</exception>
@@ -95,6 +98,7 @@ namespace EdS.World
             if (session < 1 || session > SaveValidator.MaxWorldTick) throw new ArgumentOutOfRangeException(nameof(session));
             if (startWorldTick < 0 || startWorldTick > SaveValidator.MaxWorldTick) throw new ArgumentOutOfRangeException(nameof(startWorldTick));
             Id = id;
+            Setup = setup;
             Session = session;
             StartWorldTick = startWorldTick;
             _consumed = new HashSet<string>(consumed ?? Array.Empty<string>(), StringComparer.Ordinal);

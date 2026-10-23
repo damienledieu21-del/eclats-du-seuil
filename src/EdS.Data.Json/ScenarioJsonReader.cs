@@ -118,7 +118,7 @@ namespace EdS.Data.Json
         }
 
         /// <summary>Sous-lot 11.4 : point ou direction, tableau d'exactement deux nombres <c>[x, z]</c>.</summary>
-        private static PointData? ReadPoint(JsonInput input, JsonElement element, string path)
+        internal static PointData? ReadPoint(JsonInput input, JsonElement element, string path)
         {
             if (!input.RequireKind(element, JsonValueKind.Array, path, "tableau [x, z]")) return null;
             IReadOnlyList<JsonElement> items = element.EnumerateArray();
