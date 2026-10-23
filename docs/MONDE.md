@@ -17,19 +17,41 @@ Une **session de zone** (`Zone`) est une simulation de zone : le moteur de comba
 
 `WorldClock` tire l'heure du monde des ticks, jamais de l'horloge réelle (cadrage Q26). Valeurs **provisoires**, réglables : une journée du monde dure **2 h de jeu** ; le monde commence à **8 h** du jour 0. Moments de la journée : nuit de 21 h à 5 h, aube de 5 h à 7 h, jour de 7 h à 19 h, crépuscule de 19 h à 21 h. Tout est entier : un même tick donne toujours la même heure. Le temps du monde continue d'une session à l'autre (début de session = temps de la sauvegarde). Les effets du jour et de la nuit sur le jeu (créatures, traces, ressources, passages) viendront avec le contenu des Vallons.
 
+## Personnage (sous-lot 12.2)
+
+Le personnage persistant (cadrage Q3, Q20) : un identifiant, une classe, son **expérience**, ses talents et ses compétences choisies. Son **niveau** se déduit de l'expérience ; ses **attributs** viennent d'une table par classe et niveau (pas de points à répartir à la main) ; son build est validé contre la classe et le niveau par le validateur unique des builds avant chaque entrée en zone.
+
+- **Progression** : fichier `data/v0/world/progression.json` (`kind` « progression », schéma `data/schemas/progression.schema.json`, validé par `ProgressionValidator`). Valeurs **provisoires**, réglables dans les données :
+  - niveaux 1 à 10 ; expérience cumulée pour atteindre chaque niveau : 0, 100, 220, 360, 520, 700, 900, 1 120, 1 360, 1 620 ;
+  - expérience d'une créature vaincue : ses PV maximaux divisés par 20 (au moins 1) — un loup de 700 PV donne 35, un sanglier de 1 200 PV 60 ;
+  - attributs du Bastion du niveau 1 (force 12, dextérité 6, intelligence 4, vitalité 12, volonté 8, endurance 6) au niveau 10 (18, 7, 5, 18, 10, 10), jamais en baisse d'un niveau à l'autre ;
+  - build de départ du Bastion : Frappe du rempart et Heurt de bouclier, Endurance du roc ; aucun talent.
+- **Création** : `PlayerCharacters.Create(id, classe, progression)` donne un personnage de niveau 1 avec le build de départ de sa classe.
+- **Partie en solo** (`WorldSession`) : reprend la sauvegarde, ouvre la session de zone suivante au temps du monde sauvegardé, y fait entrer le personnage, et lui donne l'expérience de chaque créature vaincue **pour la première fois** (registre des événements consommés) pendant qu'il est présent et vivant. En solo, il est seul à pouvoir l'avoir vaincue ; le partage en groupe viendra avec le serveur (lot 13).
+- **Niveau gagné** : il prend effet à la **prochaine entrée** dans une zone (le combat en cours garde le build d'entrée, comme le reste du moteur qui ne change pas un build en route). Les points de talent du nouveau niveau se dépensent hors combat (écran du lot 12.8).
+
 ## Sauvegarde
 
-Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis) :
+Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 2 depuis le sous-lot 12.2 :
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "save",
   "contentVersion": "0.1.0-provisoire",
   "data": {
     "zone": "zone.vallons",
     "worldTick": 72000,
     "sessions": 2,
+    "character": {
+      "id": "bastion",
+      "class": "class.bastion",
+      "xp": 135,
+      "talents": {},
+      "activeSkills": ["skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier"],
+      "ultimate": null,
+      "passiveSkills": ["skill.bastion.endurance_du_roc"]
+    },
     "consumed": [
       "zone.vallons/1/death/loup1"
     ]
@@ -38,7 +60,8 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
 ```
 
 - `worldTick` : temps du monde en ticks (au plus un an de jeu) ; `sessions` : sessions déjà jouées ; `consumed` : registre des événements consommés, **trié** et sans doublon (forme canonique : l'écriture redonne toujours le même texte).
+- `character` : le personnage (`null` tant qu'il n'est pas créé). Identifiant en minuscules, expérience de 0 à un milliard, rangs de talent positifs. La validité du build contre la classe et le niveau est vérifiée à l'entrée en zone (la sauvegarde ne dépend pas des données du jeu).
 - **Écriture atomique** (`SaveStore`) : le texte est écrit en entier dans `<fichier>.tmp`, vidé sur le disque, puis il remplace la sauvegarde ; la version précédente devient `<fichier>.bak`. Une coupure laisse toujours une sauvegarde complète. À la lecture, une sauvegarde absente ou invalide est remplacée par sa copie valide ; aucune des deux : nouvelle partie (ou « illisible », avec le motif).
-- **Versions** : une autre version est refusée (pré-alpha, pas encore de joueurs à migrer). Le personnage (12.2), l'inventaire (12.3) et les quêtes (12.5) s'ajouteront en incrémentant la version.
+- **Versions** : la version 1 (12.1, sans personnage) est lue et **mise à jour** (`Migrated`, personnage absent) ; l'écriture donne toujours la version courante. Une version inconnue est refusée. L'inventaire (12.3) et les quêtes (12.5) s'ajouteront de la même façon.
 
 Limites : [LIMITES_LOT_12.md](LIMITES_LOT_12.md).
