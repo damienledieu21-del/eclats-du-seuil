@@ -215,7 +215,8 @@ namespace EdS.Data.Saves
         private static readonly Regex ZoneId = new Regex(@"^zone\.[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex EventKey = new Regex(@"^[a-z0-9_.]+(/[a-z0-9_.]+)+\z", RegexOptions.CultureInvariant);
 
-        public static bool IsZoneId(string? id) => id != null && ZoneId.IsMatch(id);
+        /// <summary>Identifiant de zone « zone.&lt;nom&gt; », 64 caractères au plus (revue Codex de la PR #42 : les clés d'événement restent bornées).</summary>
+        public static bool IsZoneId(string? id) => id != null && id.Length <= 64 && ZoneId.IsMatch(id);
 
         public static bool IsEventKey(string? key) => key != null && key.Length <= 200 && EventKey.IsMatch(key);
 
