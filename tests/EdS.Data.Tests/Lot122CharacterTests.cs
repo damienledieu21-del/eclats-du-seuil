@@ -171,6 +171,8 @@ public class Lot122CharacterTests
     [InlineData("\"talents\": {}", "\"talents\": {\"t.a\": -1}", "$.data.character.talents.t.a")]
     [InlineData("\"activeSkills\": [", "\"activeSkills\": [null, ", "$.data.character.activeSkills[0]")]
     [InlineData("\"schemaVersion\": 3", "\"schemaVersion\": 4", "$.schemaVersion")]
+    [InlineData("      \"ultimate\": null,\n", "", "$.data.character.ultimate")]                     // revue Codex de la PR #43 : obligatoire
+    [InlineData("\"id\": \"bastion\"", "\"id\": \"b12345678901234567890123456789012345678901234567890123456789012345\"", "$.data.character.id")]   // 66 caractères
     public void Sauvegarde_du_personnage_invalide(string from, string to, string path)
     {
         string text = SaveJsonReader.Write(HeroSave());
@@ -184,6 +186,28 @@ public class Lot122CharacterTests
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.False(read.IsValid);
         Assert.Equal(path, read.Report.Errors[0].Path);
+    }
+
+    [Fact]
+    public void Ecriture_refuse_un_personnage_qui_ne_se_relirait_pas()
+    {
+        // Revue Codex de la PR #43 : mêmes bornes qu'à la lecture, pour ne jamais remplacer une sauvegarde par un fichier illisible.
+        WorldSave With(SavedCharacter c) => new("zone.vallons", 0, 0, Array.Empty<string>(), c);
+        Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(With(new SavedCharacter("bastion", "class.bastion", -1))));
+        Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(With(new SavedCharacter("bastion", "class.bastion", SaveValidator.MaxXp + 1))));
+        Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(With(new SavedCharacter("bastion", "class.bastion", 0,
+            new Dictionary<string, int> { ["talent.x"] = -1 }))));
+        Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(With(new SavedCharacter(new string('b', SaveValidator.MaxCharacterIdLength + 1), "class.bastion", 0))));
+        Assert.True(SaveJsonReader.Read(SaveJsonReader.Write(With(new SavedCharacter(new string('b', SaveValidator.MaxCharacterIdLength), "class.bastion", 0)))).IsValid);
+    }
+
+    [Fact]
+    public void Progression_exigee_pour_chaque_classe()
+    {
+        // Revue Codex de la PR #43 : une classe chargée sans progression est refusée au chargement, pas à la création d'un personnage.
+        ProgressionLoadResult empty = Mutated(root => Data(root)["classes"] = new JsonArray());
+        Assert.False(empty.IsValid);
+        Assert.Equal("$.data.classes", Error(empty).Path);
     }
 
     // --- Partie en solo : expérience des créatures vaincues -----------------------------------------
