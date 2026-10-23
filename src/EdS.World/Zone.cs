@@ -108,6 +108,9 @@ namespace EdS.World
             StartWorldTick = startWorldTick;
             _consumed = new HashSet<string>(consumed ?? Array.Empty<string>(), StringComparer.Ordinal);
             if (_consumed.Any(k => !SaveValidator.IsEventKey(k))) throw new ArgumentException("Clé d'événement consommé invalide.", nameof(consumed));
+            // Revue Codex de la PR #42 (3e tour) : un registre au-delà de sa borne ne pourrait ni avancer ni être sauvegardé.
+            if (_consumed.Count > SaveValidator.MaxConsumed)
+                throw new ArgumentException($"{_consumed.Count} événements consommés, au plus {SaveValidator.MaxConsumed}.", nameof(consumed));
             _engine = new CombatEngine(setup, log ?? NullCombatLog.Instance);
             Clock = clock ?? new WorldClock(_engine.TickMilliseconds);
             if (Clock.TickMilliseconds != _engine.TickMilliseconds) throw new ArgumentException("Horloge du monde d'un autre tick que la zone.", nameof(clock));
@@ -122,6 +125,14 @@ namespace EdS.World
         }
 
         private readonly HashSet<string> _keyed = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>La mort de ce combattant à ce tick ajouterait-elle une clé au registre ?</summary>
+        private bool NewDeathPossible(string combatant)
+        {
+            if (_dead.Contains(combatant)) return false;
+            CombatantView view = _engine.View(combatant);
+            return !view.HasLeft && view.MaxHealth != null && !_consumed.Contains(EventKey(ZoneEventKind.Death, combatant));
+        }
 
         private bool DeathKeyFits(string combatant) => SaveValidator.IsEventKey(EventKey(ZoneEventKind.Death, combatant));
 
@@ -152,7 +163,7 @@ namespace EdS.World
         public IReadOnlyList<ZoneEvent> Step()
         {
             if (_engine.IsFinished) return Array.Empty<ZoneEvent>();
-            // Revue Codex de la PR #42 : place réservée au registre avant le tick (chaque combattant pas encore mort peut mourir), et clé de mort
+            // Revue Codex de la PR #42 : place réservée au registre avant le tick (chaque mort possible), et clé de mort
             // vérifiée pour un combattant arrivé par le moteur ; sinon rien ne bouge, et la sauvegarde reste possible.
             IReadOnlyList<string> ids = _engine.CombatantIds;
             foreach (string combatant in ids)
@@ -162,7 +173,9 @@ namespace EdS.World
                         throw new InvalidOperationException($"Clé de mort de « {combatant} » trop longue ou hors du format des sauvegardes.");
                     _keyed.Add(combatant);
                 }
-            if (checked(_consumed.Count + ids.Count - _dead.Count) > SaveValidator.MaxConsumed)
+            // Revue Codex de la PR #42 (3e tour) : seules les morts qui ajouteraient une clé comptent (combattant mortel, ni mort ni parti, clé
+            // pas encore au registre : une session rechargée garde les clés de ses morts).
+            if (checked(_consumed.Count + ids.Count(NewDeathPossible)) > SaveValidator.MaxConsumed)
                 throw new InvalidOperationException($"Registre des événements presque plein ({_consumed.Count} sur {SaveValidator.MaxConsumed}) : plus de place pour les morts possibles de ce tick.");
             long tick = _engine.CurrentTick;
             _engine.Step();
