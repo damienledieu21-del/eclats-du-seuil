@@ -190,7 +190,7 @@ Indicative, non engagée. **Révisée le 23 octobre 2026**, après la démonstra
 | 14 | environ 4 | 2 (nouvelle interface, mesures sur appareils) | 1 à 2 semaines pour Android | 1 à 3 semaines | moyenne pour Android (commandes au doigt déjà essayées sur le Note8) ; **iOS non estimable** sans Mac ni chaîne de compilation |
 | Alpha | à chiffrer | — | non estimée | non estimée | périmètre à définir (L11-D12) ; contenu et production artistique y pèsent désormais plus que la technique |
 
-Ces durées s'additionnent si les lots se suivent (environ 3 à 6 semaines pour les lots 12 à 14, contre 6 à 11 avant) ; leur somme n'est ni une estimation indépendante ni une date de livraison. Elles ne comptent ni les dépenses (hébergement, appareils, Mac), ni le temps de décision de Damien sur les règles de jeu, qui devient le facteur principal au lot 12.
+Ces durées s'additionnent si les lots se suivent (environ 3 à 6 semaines pour les lots 12 à 14, contre 5 à 11 avant : 2 à 4, 2 à 4 et 1 à 3) ; leur somme n'est ni une estimation indépendante ni une date de livraison. Elles ne comptent ni les dépenses (hébergement, appareils, Mac), ni le temps de décision de Damien sur les règles de jeu, qui devient le facteur principal au lot 12.
 
 ## 8. Décisions prises et points restants
 
