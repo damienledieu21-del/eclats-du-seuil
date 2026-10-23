@@ -113,27 +113,33 @@ namespace EdS.World
             // Revue Codex de la PR #42 (3e tour) : un registre au-delà de sa borne ne pourrait ni avancer ni être sauvegardé.
             if (_consumed.Count > SaveValidator.MaxConsumed)
                 throw new ArgumentException($"{_consumed.Count} événements consommés, au plus {SaveValidator.MaxConsumed}.", nameof(consumed));
-            _engine = new CombatEngine(setup, log ?? NullCombatLog.Instance);
-            Clock = clock ?? new WorldClock(_engine.TickMilliseconds);
-            if (Clock.TickMilliseconds != _engine.TickMilliseconds) throw new ArgumentException("Horloge du monde d'un autre tick que la zone.", nameof(clock));
-            foreach (string combatant in _engine.CombatantIds)
+            // Revue Codex de la PR #42 (5e tour) : horloge et clés de mort vérifiées avant de créer le moteur, qui écrit déjà l'en-tête dans
+            // le journal : une zone refusée n'y laisse rien.
+            Clock = clock ?? new WorldClock(tickMs);
+            if (Clock.TickMilliseconds != tickMs) throw new ArgumentException("Horloge du monde d'un autre tick que la zone.", nameof(clock));
+            foreach (CombatantSetup combatant in setup.Combatants)
             {
                 // Revue Codex de la PR #42 : la clé de mort de chaque combattant doit tenir dans le format des sauvegardes.
-                if (!DeathKeyFits(combatant))
-                    throw new ArgumentException($"Clé de mort de « {combatant} » trop longue ou hors du format des sauvegardes.", nameof(setup));
-                _keyed.Add(combatant);
-                if (_engine.View(combatant).IsDead) _dead.Add(combatant);
+                if (!DeathKeyFits(combatant.Id))
+                    throw new ArgumentException($"Clé de mort de « {combatant.Id} » trop longue ou hors du format des sauvegardes.", nameof(setup));
+                _keyed.Add(combatant.Id);
             }
+            _engine = new CombatEngine(setup, log ?? NullCombatLog.Instance);
+            foreach (string combatant in _engine.CombatantIds)
+                if (_engine.View(combatant).IsDead) _dead.Add(combatant);
         }
 
         private readonly HashSet<string> _keyed = new HashSet<string>(StringComparer.Ordinal);
 
-        /// <summary>La mort de ce combattant à ce tick ajouterait-elle une clé au registre ?</summary>
+        /// <summary>La mort de ce combattant à ce tick ajouterait-elle une clé au registre ? (mortel, présent ou arrivant à ce tick, ni mort ni
+        /// parti, clé pas encore inscrite)</summary>
         private bool NewDeathPossible(string combatant)
         {
             if (_dead.Contains(combatant)) return false;
             CombatantView view = _engine.View(combatant);
-            return !view.HasLeft && view.MaxHealth != null && !_consumed.Contains(EventKey(ZoneEventKind.Death, combatant));
+            // Revue Codex de la PR #42 (5e tour) : présent, ou dont l'arrivée est due à ce tick ; une arrivée future ou refusée ne meurt pas ce tick.
+            bool here = view.IsPresent || (!view.HasLeft && view.ArrivalTick == _engine.CurrentTick);
+            return here && !view.HasLeft && view.MaxHealth != null && !_consumed.Contains(EventKey(ZoneEventKind.Death, combatant));
         }
 
         private bool DeathKeyFits(string combatant) => SaveValidator.IsEventKey(EventKey(ZoneEventKind.Death, combatant));
