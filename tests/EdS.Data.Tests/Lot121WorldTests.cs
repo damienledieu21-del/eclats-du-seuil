@@ -356,6 +356,35 @@ public class Lot121WorldTests
     }
 
     [Fact]
+    public void Registre_initial_au_dela_de_la_borne_refuse()
+    {
+        // Revue Codex de la PR #42 (3e tour) : la zone n'admet pas un registre qu'elle ne pourrait ni faire avancer ni sauvegarder.
+        string Key(int i) => $"zone.vallons/0/death/c{i}";
+        Assert.Throws<ArgumentException>(() => NewZone(consumed: Enumerable.Range(0, SaveValidator.MaxConsumed + 1).Select(Key)));
+        Assert.Equal(SaveValidator.MaxConsumed, NewZone(consumed: Enumerable.Range(0, SaveValidator.MaxConsumed).Select(Key)).Consumed.Count);
+    }
+
+    [Fact]
+    public void Reserve_seulement_pour_les_morts_nouvelles()
+    {
+        // Revue Codex de la PR #42 (3e tour) : une session rechargée dont les morts sont déjà au registre avance avec un registre plein ;
+        // un combattant immortel ne réserve pas de place.
+        string Key(int i) => $"zone.vallons/0/death/c{i}";
+        CombatSetup setup = ZoneSetup();
+        string[] deaths = setup.Combatants.Select(c => $"{ZoneId}/1/death/{c.Id}").ToArray();
+        Zone reloaded = NewZone(consumed: deaths.Concat(Enumerable.Range(0, SaveValidator.MaxConsumed - deaths.Length).Select(Key)));
+        reloaded.Step();
+        Assert.Equal(1, reloaded.Engine.CurrentTick);
+        CombatSetup immortal = ZoneSetup(root =>
+        {
+            foreach (JsonNode? c in root["data"]!["combatants"]!.AsArray()) c!.AsObject().Remove("health");
+        });
+        Zone calm = NewZone(immortal, consumed: Enumerable.Range(0, SaveValidator.MaxConsumed).Select(Key));
+        calm.Step();
+        Assert.Equal(1, calm.Engine.CurrentTick);
+    }
+
+    [Fact]
     public void Cles_de_mort_toujours_dans_le_format()
     {
         // Revue Codex de la PR #42 (2e tour) : un identifiant de combattant ou de zone trop long ferait une clé hors du format.
@@ -406,6 +435,13 @@ public class Lot121WorldTests
             SaveReadResult recovered = SaveStore.Read(path);
             Assert.True(recovered.FromBackup);
             Assert.Equal(100, recovered.Save!.WorldTick);
+            // Revue Codex de la PR #42 (3e tour) : écrire après ce repli ne fait pas de la principale abîmée la copie de secours.
+            var third = new WorldSave("zone.vallons", 300, 3, new[] { "zone.vallons/1/death/loup1" });
+            SaveStore.Write(path, third);
+            Assert.Equal(SaveJsonReader.Write(first), File.ReadAllText(SaveStore.BackupPath(path)));
+            Assert.Equal(300, SaveStore.Read(path).Save!.WorldTick);
+            File.WriteAllText(path, "{ tronqué");
+            Assert.Equal(100, SaveStore.Read(path).Save!.WorldTick);
             File.Delete(path);
             Assert.True(SaveStore.Read(path).FromBackup);
             // Les deux abîmées : illisible, avec le motif.
