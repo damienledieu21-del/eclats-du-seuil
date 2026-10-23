@@ -107,6 +107,41 @@ public class Lot123ItemTests
         Assert.False(SaveValidator.Validate(nullSlot).IsValid);
     }
 
+    /// <summary>Catalogue livré lu en objets publics (sans validation).</summary>
+    private static ItemCatalogDocument CatalogDocument()
+    {
+        var report = new ValidationReport();
+        var document = new ItemCatalogDocument();
+        JsonHeader header = JsonInput.Parse(JsonInput.Utf8(File.ReadAllText(ItemJsonReader.PathIn(DataDirectory)), report)!, report,
+            (input, element) => document.Data = ItemJsonReader.ReadData(input, element, "$.data"));
+        (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+        return document;
+    }
+
+    [Theory]
+    [InlineData("material", "bonus")]
+    [InlineData("material", "slot")]
+    [InlineData("material", "requiredLevel")]
+    [InlineData("equipment", "stack")]
+    public void Champ_d_un_autre_type_refuse_sans_le_lecteur(string type, string field)
+    {
+        // Revue Codex de la PR #44 (5e tour) : un champ renseigné dans un objet public est refusé même si le lecteur JSON ne l'a pas noté.
+        ItemCatalogDocument document = CatalogDocument();
+        int index = document.Data!.Items!.FindIndex(i => i!.Type == type);
+        ItemData item = document.Data.Items[index]!;
+        Assert.DoesNotContain(field, item.Present);
+        switch (field)
+        {
+            case "bonus": item.Bonus = new List<KeyValuePair<string, int?>> { new("armor", 1) }; break;
+            case "slot": item.Slot = "weapon"; break;
+            case "requiredLevel": item.RequiredLevel = 1; break;
+            default: item.Stack = 2; break;
+        }
+        ItemCatalogLoadResult result = ItemValidator.Validate(document, ShippedData);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Report.Errors, e => e.Path == $"$.data.items[{index}].{field}");
+    }
+
     [Fact]
     public void Bonus_d_objet_en_double_refuse()
     {
