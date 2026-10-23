@@ -38,7 +38,7 @@ namespace EdS.Data.Json
             return ItemValidator.Validate(document, data, report);
         }
 
-        private static ItemCatalogData? ReadData(JsonInput input, JsonElement element, string path)
+        internal static ItemCatalogData? ReadData(JsonInput input, JsonElement element, string path)
         {
             var d = new ItemCatalogData();
             bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
