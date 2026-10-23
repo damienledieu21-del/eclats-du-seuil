@@ -40,8 +40,9 @@ public class Lot121WorldTests
     private static CharacterSetup At(CharacterSetup c, string x, string z) =>
         new(c.Id, c.Team, c.Class, c.Build, c.Initiative, new CombatantPlacement(GroundVector.Parse(x, z), c.Placement!.Radius, c.Placement.Facing), c.ArrivalMs);
 
-    private static Zone NewZone(CombatSetup? setup = null, long session = 1, long start = 0, IEnumerable<string>? consumed = null, ICombatLog? log = null) =>
-        new(ZoneId, setup ?? ZoneSetup(), session, start, consumed, log);
+    private static Zone NewZone(CombatSetup? setup = null, long session = 1, long start = 0, IEnumerable<string>? consumed = null, ICombatLog? log = null,
+        WorldClock? clock = null) =>
+        new(ZoneId, setup ?? ZoneSetup(), session, start, consumed, log, clock);
 
     private static List<ZoneEvent> Run(Zone zone, int ticks)
     {
@@ -385,6 +386,34 @@ public class Lot121WorldTests
         Zone calm = NewZone(immortal, consumed: Enumerable.Range(0, SaveValidator.MaxConsumed).Select(Key));
         calm.Step();
         Assert.Equal(1, calm.Engine.CurrentTick);
+    }
+
+    [Fact]
+    public void Reserve_sans_les_arrivees_futures()
+    {
+        // Revue Codex de la PR #42 (5e tour) : une créature qui n'arrivera que plus tard ne réserve pas de place au registre avant son tick.
+        string Key(int i) => $"zone.vallons/0/death/c{i}";
+        CombatSetup later = ZoneSetup(root =>
+        {
+            foreach (JsonNode? c in root["data"]!["combatants"]!.AsArray()) c!["arrivalMs"] = 1000;
+        });
+        Zone zone = NewZone(later, consumed: Enumerable.Range(0, SaveValidator.MaxConsumed).Select(Key));
+        zone.Step();
+        Assert.Equal(1, zone.Engine.CurrentTick);
+    }
+
+    [Fact]
+    public void Zone_refusee_sans_rien_ecrire_au_journal()
+    {
+        // Revue Codex de la PR #42 (5e tour) : horloge et clés vérifiées avant la création du moteur (qui écrit l'en-tête du journal).
+        var log = new MemoryCombatLog();
+        Assert.Throws<ArgumentException>(() => NewZone(log: log, clock: new WorldClock(100)));
+        Assert.Empty(log.Lines);
+        CombatSetup longId = ZoneSetup(root => root["data"]!["combatants"]![0]!["id"] = "loup" + new string('x', 190));
+        Assert.Throws<ArgumentException>(() => NewZone(longId, log: log));
+        Assert.Empty(log.Lines);
+        NewZone(log: log);
+        Assert.NotEmpty(log.Lines);
     }
 
     [Fact]
