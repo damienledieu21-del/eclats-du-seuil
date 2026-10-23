@@ -102,7 +102,7 @@ namespace UnityEditor.SceneManagement
 }
 namespace UnityEngine.SceneManagement
 {
-    public struct Scene { public string path => ""; public bool isDirty => false; }
+    public struct Scene { public string path => ""; public bool isDirty => false; public UnityEngine.GameObject[] GetRootGameObjects() => null; }
     public static class SceneManager { public static Scene GetActiveScene() => default; public static int sceneCount => 0; }
 }
 namespace UnityEditor.Build.Reporting

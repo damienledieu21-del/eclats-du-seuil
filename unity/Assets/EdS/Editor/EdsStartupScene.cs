@@ -12,14 +12,18 @@ namespace EdS.Game.Editor
     /// scène ; il en faut seulement une, enregistrée et inscrite dans la liste de construction. <c>Assets/EdS/Scenes/Jeu.unity</c> est
     /// créée une fois (fichier généré, non suivi par git) et placée en tête de la liste de construction. Revue Codex de la PR #39 : à la
     /// création, la scène sans nom ouverte est enregistrée sous ce nom, même marquée modifiée (Unity 6 marque ainsi une scène neuve) : rien
-    /// n'est perdu, elle est seulement enregistrée. Si <c>Jeu.unity</c> existe déjà, elle est ouverte à la place d'une scène sans nom
-    /// intacte ; une scène sans nom modifiée n'est pas fermée (la liste de construction suffit à construire). Relançable par le menu
+    /// n'est perdu, elle est seulement enregistrée. Si <c>Jeu.unity</c> existe déjà, elle est ouverte à la place d'une scène sans nom qui
+    /// n'a que les objets d'une scène neuve (2e tour : Unity 6 la marque modifiée à chaque ouverture) ; une scène sans nom où l'on a
+    /// ajouté quelque chose n'est jamais fermée (la liste de construction suffit alors à construire). Relançable par le menu
     /// « Éclats du Seuil → Créer la scène de démarrage ».
     /// </summary>
     [InitializeOnLoad]
     public static class EdsStartupScene
     {
         public const string ScenePath = "Assets/EdS/Scenes/Jeu.unity";
+
+        /// <summary>Objets d'une scène neuve de Unity (rendu intégré ou URP) : une scène sans nom qui n'a qu'eux n'a rien à perdre.</summary>
+        private static readonly string[] DefaultObjects = { "Main Camera", "Directional Light", "Global Volume" };
 
         static EdsStartupScene()
         {
@@ -36,7 +40,10 @@ namespace EdS.Game.Editor
             {
                 Scene active = SceneManager.GetActiveScene();
                 bool untitled = string.IsNullOrEmpty(active.path);
-                bool blank = untitled && !active.isDirty && SceneManager.sceneCount == 1;
+                // Revue Codex de la PR #39 (2e tour) : Unity 6 marque modifiée une scène neuve, à chaque ouverture ; une scène sans nom
+                // seule, intacte ou qui n'a que les objets d'une scène neuve, est remplacée par Jeu.unity (rien à perdre).
+                bool blank = untitled && SceneManager.sceneCount == 1
+                    && (!active.isDirty || active.GetRootGameObjects().All(g => DefaultObjects.Contains(g.name)));
                 if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) == null)
                 {
                     if (!AssetDatabase.IsValidFolder("Assets/EdS/Scenes")) AssetDatabase.CreateFolder("Assets/EdS", "Scenes");
