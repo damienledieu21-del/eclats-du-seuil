@@ -100,9 +100,9 @@ public class Lot119ReglagesDataTests
     [Fact]
     public void Schema_9_et_schema_JSON()
     {
-        Assert.Equal(9, ScenarioValidator.CurrentSchemaVersion);
+        Assert.Equal(10, ScenarioValidator.CurrentSchemaVersion);   // sous-lot 12.1 : 10 (zone)
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(9, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(10, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Equal("boolean", schema["$defs"]!["combatant"]!["properties"]!["behavior"]!["properties"]!["pack"]!["type"]!.GetValue<string>());
         Assert.Equal("boolean", schema["$defs"]!["attack"]!["properties"]!["holdPosition"]!["type"]!.GetValue<string>());
         JsonNode push = schema["$defs"]!["attack"]!["properties"]!["push"]!;
@@ -137,7 +137,7 @@ public class Lot119ReglagesDataTests
     public void Vallons_livres_avec_les_reglages_de_l_essai()
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath("vallons_demo")))!.AsObject();
-        Assert.Equal(9, root["schemaVersion"]!.GetValue<int>());
+        Assert.Equal(10, root["schemaVersion"]!.GetValue<int>());   // sous-lot 12.1 : schéma 10
         CombatSetup setup = ScenarioJsonReader.ReadFile(ScenarioPath("vallons_demo"), ShippedData).Setup!;
         Assert.Equal(new[] { "riviere_sud", "riviere_nord" }, setup.Space!.Obstacles.Where(o => o.Low).Select(o => o.Id));
         AssailantSetup boar = setup.Combatants.OfType<AssailantSetup>().Single(a => a.Id == "sanglier");

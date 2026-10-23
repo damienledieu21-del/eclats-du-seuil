@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sous-lot 12.1 : le monde (zones, temps du monde, sauvegardes), sans dépendance : netstandard2.1, C# 9, utilisable par Unity
+       (zone hébergée sur le poste en solo) et plus tard par le serveur de zone (lot 13). -->
+  <ItemGroup>
+    <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
+    <ProjectReference Include="..\EdS.Data\EdS.Data.csproj" />
+    <ProjectReference Include="..\EdS.Data.Json\EdS.Data.Json.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="EdS.Data.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+
+</Project>

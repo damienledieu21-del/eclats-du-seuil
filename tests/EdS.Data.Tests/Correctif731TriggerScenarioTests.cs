@@ -16,8 +16,8 @@ namespace EdS.Data.Tests;
 /// supprimé à la deuxième occurrence dans une chaîne), brûlure posée par réaction à chaque saignement (2, DOT de réaction) et
 /// frappe sur chaque tick de DOT (3, reportée au tick suivant car la phase de résolution est passée). Les assertions métier
 /// ci-dessous ne dépendent pas de l'empreinte du journal ; la comparaison octet par octet se fait contre le journal figé
-/// <c>Fixtures/reference-0.21.0-contenu-0.6.0/entrainement_declencheurs.jsonl</c> (sous-lot 11.9 : moteur 0.21.0, format 15, règles 0.11.0,
-/// Bastion 0.6.0 ; les références 0.9.1 à 0.20.0-contenu-0.6.0 restent figées et refusées au rejeu ; le moteur reproduit les lignes
+/// <c>Fixtures/reference-0.22.0-contenu-0.6.0/entrainement_declencheurs.jsonl</c> (sous-lot 12.1 : moteur 0.22.0, format 16, règles 0.11.0,
+/// Bastion 0.6.0 ; les références 0.9.1 à 0.21.0-contenu-0.6.0 restent figées et refusées au rejeu ; le moteur reproduit les lignes
 /// d'événements des références 0.14.0, avec le contenu figé du 8.4, 0.14.0-contenu-0.4.0 avec celui du 8.5, et 0.14.0-contenu-0.5.0 avec
 /// le contenu livré). Un assaillant n'a pas de puissance : ses frappes et sa brûlure de réaction infligent 0. Sous-lot 8.4 : les assertions
 /// métier (mécanique des déclencheurs du correctif 7.3.1) se font sur le contenu historique du Bastion
@@ -35,8 +35,8 @@ public class Correctif731TriggerScenarioTests
     private const string Brulure = "assailant.assaillant/2@assaillant#0";
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
-    /// <summary>Sous-lot 11.9 : référence du contenu livré (moteur 0.21.0, format 15, Bastion 0.6.0, règles 0.11.0).</summary>
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.21.0-contenu-0.6.0", Name + ".jsonl");
+    /// <summary>Sous-lot 12.1 : référence du contenu livré (moteur 0.22.0, format 16, Bastion 0.6.0, règles 0.11.0).</summary>
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.22.0-contenu-0.6.0", Name + ".jsonl");
 
     /// <summary>
     /// En-tête sans ce qui distingue légitimement deux moteurs (format et version, sous-lot 11.1) ni, sur demande, l'identité des règles
@@ -394,6 +394,26 @@ public class Correctif731TriggerScenarioTests
     }
 
     [Fact]
+    public void Reference_du_moteur_0_21_0_refusee_et_corps_reproduit_hors_zone()
+    {
+        // Sous-lot 12.1 : la référence du sous-lot 11.9 (moteur 0.21.0, format 15) est refusée au rejeu ; le moteur 0.22.0 (format 16) en
+        // reproduit octet par octet les lignes d'événements : un combat fermé (sans zone) ne change pas. L'en-tête ne diffère que par le
+        // format et la version.
+        string[] frozen = File.ReadAllLines(FrozenPath("0.21.0-contenu-0.6.0"));
+        ReplayOutcome outcome = CombatLogReplayer.Replay(frozen, ShippedData);
+        Assert.Equal(ReplayStatus.Refused, outcome.Status);
+        Assert.Null(outcome.Comparison);
+        Assert.Contains(outcome.Problems, p => p.Contains("0.21.0", StringComparison.Ordinal));
+        string[] current = File.ReadAllLines(FixturePath);
+        Assert.Equal(frozen.Skip(1), current.Skip(1));
+        Assert.Equal(StableHeader(frozen[0]), StableHeader(current[0]));
+        JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
+        Assert.Equal((15, "0.21.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
+        JsonElement after = JsonDocument.Parse(current[0]).RootElement;
+        Assert.Equal((16, "0.22.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+    }
+
+    [Fact]
     public void Reference_du_moteur_0_20_0_refusee_et_corps_reproduit_sans_reglage_11_9()
     {
         // Sous-lot 11.9 : la référence du sous-lot 11.5 (moteur 0.20.0, format 14) est refusée au rejeu ; le moteur 0.21.0 (format 15) en
@@ -410,7 +430,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((14, "0.20.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((15, "0.21.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((16, "0.22.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]
