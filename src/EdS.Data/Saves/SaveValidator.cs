@@ -11,6 +11,41 @@ namespace EdS.Data.Saves
     /// Sous-lot 12.1 (ARCHITECTURE_MONDE.md, section 6 ; cadrage Q10, tranche : fichier local) : sauvegarde du monde validée. Le personnage,
     /// l'inventaire et les quêtes s'y ajoutent aux sous-lots suivants (version de format incrémentée à chaque ajout).
     /// </summary>
+    /// <summary>
+    /// Sous-lot 12.2 : personnage persistant sauvegardé. Le niveau se déduit de l'expérience (progression du monde), les attributs de la
+    /// classe et du niveau (cadrage Q20) : ils ne sont pas écrits. Le build (talents, compétences) est validé contre la classe et le niveau
+    /// quand le personnage entre dans une zone.
+    /// </summary>
+    public sealed class SavedCharacter
+    {
+        public string Id { get; }
+        public string ClassId { get; }
+        public long Xp { get; }
+
+        /// <summary>Rangs des talents, par identifiant (ordre ordinal).</summary>
+        public IReadOnlyDictionary<string, int> Talents { get; }
+
+        public IReadOnlyList<string> ActiveSkills { get; }
+        public string? Ultimate { get; }
+        public IReadOnlyList<string> PassiveSkills { get; }
+
+        public SavedCharacter(string id, string classId, long xp, IReadOnlyDictionary<string, int>? talents = null, IEnumerable<string>? activeSkills = null,
+            string? ultimate = null, IEnumerable<string>? passiveSkills = null)
+        {
+            Id = id ?? throw new ArgumentNullException(nameof(id));
+            ClassId = classId ?? throw new ArgumentNullException(nameof(classId));
+            Xp = xp;
+            Talents = Frozen.Dictionary((talents ?? new Dictionary<string, int>()).OrderBy(t => t.Key, StringComparer.Ordinal)
+                .ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal), nameof(talents));
+            ActiveSkills = Frozen.List(activeSkills ?? Array.Empty<string>(), nameof(activeSkills));
+            Ultimate = ultimate;
+            PassiveSkills = Frozen.List(passiveSkills ?? Array.Empty<string>(), nameof(passiveSkills));
+        }
+
+        /// <summary>Même personnage avec une autre expérience.</summary>
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills);
+    }
+
     public sealed class WorldSave
     {
         /// <summary>Zone où se trouve le joueur.</summary>
@@ -25,8 +60,16 @@ namespace EdS.Data.Saves
         /// <summary>Clés des événements consommables déjà attribués, triées (ordre ordinal), sans doublon.</summary>
         public IReadOnlyList<string> Consumed { get; }
 
-        public WorldSave(string zone, long worldTick, long sessions, IEnumerable<string> consumed)
+        /// <summary>Sous-lot 12.2 : personnage du joueur ; null tant qu'aucun n'a été créé (nouvelle partie, ou sauvegarde de version 1).</summary>
+        public SavedCharacter? Character { get; }
+
+        /// <summary>La sauvegarde vient d'une version antérieure, mise à jour à la lecture (elle sera réécrite à la version courante).</summary>
+        public bool Migrated { get; }
+
+        public WorldSave(string zone, long worldTick, long sessions, IEnumerable<string> consumed, SavedCharacter? character = null, bool migrated = false)
         {
+            Character = character;
+            Migrated = migrated;
             Zone = zone ?? throw new ArgumentNullException(nameof(zone));
             WorldTick = worldTick;
             Sessions = sessions;
@@ -57,8 +100,18 @@ namespace EdS.Data.Saves
     {
         public const string Kind = "save";
 
-        /// <summary>Version 1 (sous-lot 12.1) : <c>data.zone</c>, <c>data.worldTick</c>, <c>data.sessions</c>, <c>data.consumed</c>.</summary>
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>
+        /// Version 1 (sous-lot 12.1) : <c>data.zone</c>, <c>data.worldTick</c>, <c>data.sessions</c>, <c>data.consumed</c>. Version 2 (sous-lot
+        /// 12.2) : <c>data.character</c> obligatoire (null ou le personnage : <c>id</c>, <c>class</c>, <c>xp</c>, <c>talents</c>,
+        /// <c>activeSkills</c>, <c>ultimate</c>, <c>passiveSkills</c>). Une sauvegarde de version 1 est mise à jour à la lecture (personnage
+        /// nul) ; une version postérieure est refusée.
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
+
+        /// <summary>Plus ancienne version lue (et mise à jour).</summary>
+        public const int OldestSchemaVersion = 1;
+
+        private static readonly Regex CharacterId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
         /// <summary>Plafond des événements consommés gardés dans une sauvegarde (enveloppe de la tranche).</summary>
         public const int MaxConsumed = 100_000;
@@ -71,6 +124,23 @@ namespace EdS.Data.Saves
         private static readonly Regex EventKey = new Regex(@"^[a-z0-9_.]+(/[a-z0-9_.]+)+\z", RegexOptions.CultureInvariant);
 
         /// <summary>Identifiant de zone « zone.&lt;nom&gt; », 64 caractères au plus (revue Codex de la PR #42 : les clés d'événement restent bornées).</summary>
+        /// <summary>
+        /// Revue Codex de la PR #43 : longueur maximale de l'identifiant d'un personnage, pour que la clé de sa mort
+        /// (<c>&lt;zone&gt;/&lt;session&gt;/death/&lt;id&gt;</c>, zone de 64 caractères au plus, session de 9 chiffres au plus) tienne toujours
+        /// dans une clé d'événement.
+        /// </summary>
+        public const int MaxCharacterIdLength = 64;
+
+        private static readonly Regex DataId = new Regex(@"^[a-z0-9_.]+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Revue Codex de la PR #43 : identifiant de données (classe, talent, compétence) tel que l'écriture le sérialise sans échappement :
+        /// minuscules ASCII, chiffres, « _ » et « . », 200 caractères au plus. La lecture exige le même format.
+        /// </summary>
+        public static bool IsDataId(string? id) => id != null && id.Length <= 200 && DataId.IsMatch(id);
+
+        public static bool IsCharacterId(string? id) => id != null && id.Length <= MaxCharacterIdLength && CharacterId.IsMatch(id);
+
         public static bool IsZoneId(string? id) => id != null && id.Length <= 64 && ZoneId.IsMatch(id);
 
         public static bool IsEventKey(string? key) => key != null && key.Length <= 200 && EventKey.IsMatch(key);
@@ -79,7 +149,10 @@ namespace EdS.Data.Saves
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             report ??= new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report))
+            // Sous-lot 12.2 : une sauvegarde de version 1 est lue comme telle, puis mise à jour (migration : personnage nul).
+            int version = document.SchemaVersion ?? CurrentSchemaVersion;
+            bool migrating = document.SchemaVersion != null && version >= OldestSchemaVersion && version < CurrentSchemaVersion;
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, migrating ? version : CurrentSchemaVersion, report))
                 return new SaveLoadResult(report, null);
             SaveData? data = document.Data;
             if (data is null)
@@ -112,9 +185,52 @@ namespace EdS.Data.Saves
                         report.Add(path, ValidationCode.InvalidValue, "événements consommés hors de l'ordre ordinal (forme canonique).");
                 }
             }
+            SavedCharacter? character = null;
+            if (migrating)
+            {
+                if (data.HasCharacter) report.Add("$.data.character", ValidationCode.UnknownField, $"champ inconnu en version {document.SchemaVersion} (personnage : version 2).");
+            }
+            else if (!data.HasCharacter) Missing(report, "$.data.character", "personnage du joueur, ou null");
+            else if (data.Character is CharacterData c) character = CheckCharacter(c, report);
             if (!report.IsValid || document.ContentVersion is null) return new SaveLoadResult(report, null);
-            return new SaveLoadResult(report, new WorldSave(data.Zone!, data.WorldTick!.Value, data.Sessions!.Value, data.Consumed!.Select(k => k!)));
+            return new SaveLoadResult(report, new WorldSave(data.Zone!, data.WorldTick!.Value, data.Sessions!.Value, data.Consumed!.Select(k => k!), character, migrating));
         }
+
+        private static SavedCharacter? CheckCharacter(CharacterData c, ValidationReport report)
+        {
+            const string path = "$.data.character";
+            if (c.Id is null) Missing(report, path + ".id", "identifiant du personnage");
+            else if (!IsCharacterId(c.Id)) report.Add(path + ".id", ValidationCode.InvalidValue, $"identifiant « {c.Id} » invalide : minuscules, chiffres et « _ », {MaxCharacterIdLength} caractères au plus.");
+            const string format = "minuscules, chiffres, « _ » et « . », 200 caractères au plus (format de l'écriture)";
+            if (c.Class is null) Missing(report, path + ".class", "identifiant de classe");
+            else if (!IsDataId(c.Class)) report.Add(path + ".class", ValidationCode.InvalidValue, $"identifiant de classe « {c.Class} » invalide : {format}.");
+            if (c.Xp is null) Missing(report, path + ".xp", "expérience cumulée");
+            else if (c.Xp < 0 || c.Xp > MaxXp) report.Add(path + ".xp", ValidationCode.OutOfRange, $"expérience hors de [0, {MaxXp}].");
+            if (c.Talents is null) Missing(report, path + ".talents", "rangs des talents, éventuellement vide");
+            else
+                foreach (var t in c.Talents)
+                    if (!IsDataId(t.Key)) report.Add(path + ".talents." + t.Key, ValidationCode.InvalidValue, $"identifiant de talent invalide : {format}.");
+                    else if (t.Value is not int rank) Missing(report, path + ".talents." + t.Key, "rang");
+                    else if (rank < 0) report.Add(path + ".talents." + t.Key, ValidationCode.InvalidValue, "un rang ne peut pas être négatif.");
+            void Names(List<string?>? list, string field)
+            {
+                if (list is null) { Missing(report, $"{path}.{field}", "liste, éventuellement vide"); return; }
+                for (int i = 0; i < list.Count; i++)
+                    if (list[i] is null) Missing(report, $"{path}.{field}[{i}]", "identifiant de compétence");
+                    else if (!IsDataId(list[i])) report.Add($"{path}.{field}[{i}]", ValidationCode.InvalidValue, $"identifiant de compétence « {list[i]} » invalide : {format}.");
+            }
+            Names(c.ActiveSkills, "activeSkills");
+            // Revue Codex de la PR #43 : l'ultime est obligatoire (null s'il n'y en a pas), comme le dit le schéma.
+            if (!c.HasUltimate) Missing(report, path + ".ultimate", "ultime, ou null");
+            else if (c.Ultimate != null && !IsDataId(c.Ultimate)) report.Add(path + ".ultimate", ValidationCode.InvalidValue, $"identifiant de compétence « {c.Ultimate} » invalide : {format}.");
+            Names(c.PassiveSkills, "passiveSkills");
+            if (!report.IsValid) return null;
+            return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
+                c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!));
+        }
+
+        /// <summary>Plafond technique de l'expérience d'un personnage.</summary>
+        public const long MaxXp = 1_000_000_000;
 
         private static void Missing(ValidationReport report, string path, string what)
         {

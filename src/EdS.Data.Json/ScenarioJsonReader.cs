@@ -183,7 +183,7 @@ namespace EdS.Data.Json
         }
 
         /// <summary>Objet « identifiant → entier » dont les clés sont libres (attributs, talents) ; ordre du fichier conservé.</summary>
-        private static List<KeyValuePair<string, int?>>? ReadIntegerMap(JsonInput input, JsonElement element, string path)
+        internal static List<KeyValuePair<string, int?>>? ReadIntegerMap(JsonInput input, JsonElement element, string path)
         {
             if (!input.RequireKind(element, JsonValueKind.Object, path, "objet")) return null;
             var map = new List<KeyValuePair<string, int?>>();

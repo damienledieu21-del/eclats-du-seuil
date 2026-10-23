@@ -24,5 +24,27 @@ namespace EdS.Data.Saves
 
         /// <summary>Événements consommables déjà attribués (morts, étapes, récompenses), par clé unique.</summary>
         public List<string?>? Consumed { get; set; }
+
+        /// <summary>Sous-lot 12.2 (version 2) : personnage du joueur ; null tant qu'aucun n'a été créé.</summary>
+        public CharacterData? Character { get; set; }
+
+        /// <summary>Le champ <c>character</c> est présent (null compris).</summary>
+        public bool HasCharacter { get; set; }
+    }
+
+    /// <summary>Sous-lot 12.2 : personnage persistant (le niveau se déduit de l'expérience, les attributs de la classe et du niveau).</summary>
+    public sealed class CharacterData
+    {
+        public string? Id { get; set; }
+        public string? Class { get; set; }
+        public long? Xp { get; set; }
+        public List<KeyValuePair<string, int?>>? Talents { get; set; }
+        public List<string?>? ActiveSkills { get; set; }
+        public string? Ultimate { get; set; }
+
+        /// <summary>Revue Codex de la PR #43 : le champ <c>ultimate</c> est présent (null explicite compris).</summary>
+        public bool HasUltimate { get; set; }
+
+        public List<string?>? PassiveSkills { get; set; }
     }
 }

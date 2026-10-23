@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/save.schema.json",
+  "title": "Éclats du Seuil — sauvegarde du monde",
+  "description": "Sous-lots 12.1 et 12.2. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 est mise à jour à la lecture.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "kind": {
+      "const": "save"
+    },
+    "contentVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "zone",
+        "worldTick",
+        "sessions",
+        "consumed",
+        "character"
+      ],
+      "properties": {
+        "zone": {
+          "type": "string",
+          "pattern": "^zone\\.[a-z][a-z0-9_]*$",
+          "maxLength": 64
+        },
+        "worldTick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 630720000
+        },
+        "sessions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 630720000
+        },
+        "consumed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_.]+(/[a-z0-9_.]+)+$",
+            "maxLength": 200
+          },
+          "description": "Événements consommés, triés, sans doublon.",
+          "maxItems": 100000,
+          "uniqueItems": true
+        },
+        "character": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "class",
+                "xp",
+                "talents",
+                "activeSkills",
+                "ultimate",
+                "passiveSkills"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]*$",
+                  "maxLength": 64
+                },
+                "class": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9_.]+$",
+                  "maxLength": 200
+                },
+                "xp": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000000
+                },
+                "talents": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z0-9_.]+$",
+                    "maxLength": 200
+                  }
+                },
+                "activeSkills": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_.]+$",
+                    "maxLength": 200
+                  },
+                  "maxItems": 64
+                },
+                "ultimate": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-z0-9_.]+$",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "passiveSkills": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_.]+$",
+                    "maxLength": 200
+                  },
+                  "maxItems": 64
+                }
+              }
+            }
+          ],
+          "description": "Personnage du joueur (version 2), ou null tant qu'aucun n'a été créé."
+        }
+      }
+    }
+  }
+}

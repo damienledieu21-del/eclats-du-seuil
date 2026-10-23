@@ -124,7 +124,7 @@ Objectif : parcourir les Vallons seul, du niveau 1 au niveau 10, avec la mission
 | Sous-lot | Contenu | État |
 |---|---|---|
 | 12.1 | Monde : zone des Vallons, entités qui entrent et sortent, combats sur place, temps du monde, sauvegarde | En PR : projet `EdS.World` (session de zone, événements consommables à clé unique, rencontres, temps du monde provisoire de 2 h par journée, sauvegarde versionnée et atomique), mode zone du moteur (pas de fin quand une équipe tombe, jusqu'à 24 h), scénario `zones/vallons` ; moteur 0.22.0, journal au format 16, scénarios en schéma 10 |
-| 12.2 | Personnage : expérience et niveaux 1 à 10, attributs par classe et niveau, sauvegarde | à venir |
+| 12.2 | Personnage : expérience et niveaux 1 à 10, attributs par classe et niveau, sauvegarde | En PR : progression en données (`world/progression.json`, valeurs provisoires), personnage persistant (niveau tiré de l'expérience, attributs de la table, build validé à l'entrée), partie en solo qui donne l'expérience des créatures vaincues, sauvegarde en version 2 (la version 1 est mise à jour) |
 | 12.3 | Objets, équipement, inventaire | à venir |
 | 12.4 | Les Vallons en données, populations et réapparitions, laisse | à venir |
 | 12.5 | PNJ, dialogues et quêtes | à venir |
