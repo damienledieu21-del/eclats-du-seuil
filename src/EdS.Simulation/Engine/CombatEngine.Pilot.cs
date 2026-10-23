@@ -72,6 +72,12 @@ namespace EdS.Simulation.Engine
         /// <summary>Cible actuelle de ses attaques à cible unique (provocation la plus récente comprise).</summary>
         public string? CurrentTarget { get; internal set; }
 
+        /// <summary>
+        /// Sous-lot 12.1 : ennemi à comportement engagé (il poursuit sa cible) ; vrai aussi pour un assaillant sans comportement, qui attaque
+        /// d'emblée ; faux pour un personnage ou un mannequin. Sert au monde pour reconnaître les rencontres en cours.
+        /// </summary>
+        public bool Engaged { get; internal set; }
+
         /// <summary>Ses attaques sont bloquées à ce tick (contrôle actif).</summary>
         public bool AttacksBlocked { get; internal set; }
 
@@ -224,6 +230,7 @@ namespace EdS.Simulation.Engine
                 view.NextAttackTick = f.NextAttackTick;
                 view.NextAttack = assailant.Attacks[f.NextAttack];
                 view.CurrentTarget = ViewTarget(f, tick);
+                view.Engaged = f.Behavior is null || f.Engaged;
                 view.AttacksBlocked = Blocked(StatusBlocks.AssailantAttacks);
             }
             return view;

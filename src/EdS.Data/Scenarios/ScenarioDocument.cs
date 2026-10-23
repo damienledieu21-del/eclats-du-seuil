@@ -22,6 +22,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 11.4 (schéma 5) : espace d'un combat positionné ; absent pour un combat sans positions.</summary>
         public SpaceData? Space { get; set; }
 
+        /// <summary>Sous-lot 12.1 (schéma 10) : simulation d'une zone du monde (sans fin quand une équipe tombe) ; absent : combat fermé.</summary>
+        public bool? Zone { get; set; }
+
         public List<CombatantData?>? Combatants { get; set; }
         public List<CommandData?>? Commands { get; set; }
 

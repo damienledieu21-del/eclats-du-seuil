@@ -50,10 +50,11 @@ namespace EdS.Data.Scenarios
         /// obligatoire, <c>minRange</c>, <c>aggroRange</c>, <c>encircle</c>) et <c>charge</c> facultatif sur une attaque. Version 9 (sous-lot
         /// 11.9, essai du 22 octobre 2026) : <c>low</c> facultatif sur un obstacle (bas : arrête la marche, pas la vue), <c>push</c> (poussée
         /// d'une bande) et <c>holdPosition</c> (arrêt pendant l'annonce) facultatifs sur une attaque, <c>pack</c> facultatif sur un comportement
-        /// (entraîné par sa meute). Une version antérieure
+        /// (entraîné par sa meute), <c>backward</c> facultatif sur un <c>move</c> (marche à reculons). Version 10 (sous-lot 12.1) :
+        /// <c>zone</c> facultatif (simulation d'une zone du monde, sans fin quand une équipe tombe, durée jusqu'à 24 h). Une version antérieure
         /// est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 9;
+        public const int CurrentSchemaVersion = 10;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -154,7 +155,7 @@ namespace EdS.Data.Scenarios
             var identity = new CombatDataIdentity(data.RulesIdentity, usedClasses.Values.Select(GameData.IdentityOf));
             var rules = data.Rules;
             return new CombatSetup(scenario.Seed!.Value, scenario.DurationMs!.Value, rules.Stats, rules.Damage, rules.Progression, rules.Combat,
-                combatants, commands, identity, space);
+                combatants, commands, identity, space, scenario.Zone ?? false);
         }
 
         private static GroundVector Point(PointData p) => new GroundVector(p.X!.Value, p.Z!.Value);

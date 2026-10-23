@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 9
+      "const": 10
     },
     "kind": {
       "const": "scenario"
@@ -42,10 +42,14 @@
         "durationMs": {
           "type": "integer",
           "minimum": 1,
-          "description": "Durée simulée, multiple du tick, au plus combat.limits.maxDurationMs."
+          "description": "Durée simulée, multiple du tick, au plus combat.limits.maxDurationMs (zone : au plus 86 400 000 ms, 24 h)."
         },
         "space": {
           "$ref": "#/$defs/space"
+        },
+        "zone": {
+          "type": "boolean",
+          "description": "Sous-lot 12.1 (schéma 10) : simulation d'une zone du monde (combat positionné, bloc space obligatoire) : elle ne s'arrête pas quand une équipe tombe, seulement au bout de sa durée (jusqu'à 86 400 000 ms, 24 h). Absent ou faux : combat fermé."
         },
         "combatants": {
           "type": "array",
