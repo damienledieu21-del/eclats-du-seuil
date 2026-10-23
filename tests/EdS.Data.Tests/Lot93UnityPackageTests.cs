@@ -12,7 +12,7 @@ namespace EdS.Data.Tests;
 [Trait("Category", "Runtime")]
 public class Lot93UnityPackageTests
 {
-    private static readonly string[] Portable = { "EdS.Domain", "EdS.Simulation", "EdS.Data", "EdS.Data.Json", "EdS.Runtime", "EdS.Net" };
+    private static readonly string[] Portable = { "EdS.Domain", "EdS.Simulation", "EdS.Data", "EdS.Data.Json", "EdS.Runtime", "EdS.Net", "EdS.World" };   // sous-lot 12.1 : EdS.World
     private static readonly string[] Tools = { "EdS.Tools", "EdS.Cli", "EdS.Server" };
 
     /// <summary>Racine du dépôt (dossier qui contient EdS.sln), retrouvée depuis le dossier des tests.</summary>
@@ -56,6 +56,7 @@ public class Lot93UnityPackageTests
     [InlineData("EdS.Data.Json")]
     [InlineData("EdS.Runtime")]
     [InlineData("EdS.Net")]
+    [InlineData("EdS.World")]
     public void Assemblage_Unity_conforme_au_projet_dotnet(string project)
     {
         JsonObject asmdef = Asmdef(project);

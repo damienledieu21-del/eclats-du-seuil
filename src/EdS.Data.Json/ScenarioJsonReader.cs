@@ -51,6 +51,7 @@ namespace EdS.Data.Json
             {
                 ["seed"] = (v, p) => data.Seed = input.Int64(v, p),
                 ["durationMs"] = (v, p) => data.DurationMs = input.Int64(v, p),
+                ["zone"] = (v, p) => data.Zone = input.Boolean(v, p),   // sous-lot 12.1 (schéma 10)
                 ["space"] = (v, p) =>   // sous-lot 11.4 (schéma 5)
                 {
                     data.Present.Add("space");

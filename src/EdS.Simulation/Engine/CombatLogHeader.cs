@@ -34,6 +34,7 @@ namespace EdS.Simulation.Engine
             w.Name("scenario").BeginObject()
                 .Field("seed", setup.Seed)
                 .Field("durationMs", setup.DurationMs);
+            if (setup.Zone) w.Field("zone", true);   // sous-lot 12.1 (format 16) : seulement pour une zone
             if (setup.Space is { } space) WriteSpace(w, space);   // sous-lot 11.4 (format 10) : combat positionné seulement
             w.Name("combatants").BeginArray();
             foreach (CombatantSetup c in setup.Combatants) WriteCombatant(w, c);

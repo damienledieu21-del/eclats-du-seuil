@@ -598,11 +598,20 @@ namespace EdS.Domain.Combat
         /// </summary>
         public CombatSpace? Space { get; }
 
+        /// <summary>
+        /// Sous-lot 12.1 (ARCHITECTURE_MONDE.md, section 4 : « un mode zone sans fin globale ») : simulation d'une zone du monde plutôt qu'un
+        /// combat fermé. Elle ne s'arrête pas quand une équipe tombe (pas de <c>teamDefeated</c>) : seulement au bout de sa durée, qui peut
+        /// aller jusqu'au plafond absolu (<see cref="CombatRules.AbsoluteMaxDurationMs"/>, 24 h) au lieu de la limite des combats
+        /// (<c>combat.limits.maxDurationMs</c>). Une zone est un combat positionné. Faux : combat fermé, exactement comme avant.
+        /// </summary>
+        public bool Zone { get; }
+
         public CombatSetup(long seed, long durationMs, StatRules stats, DamageRules damage, ProgressionRules progression,
             CombatRules combat, IEnumerable<CombatantSetup> combatants, IEnumerable<CombatCommand> commands, CombatDataIdentity data,
-            CombatSpace? space = null)
+            CombatSpace? space = null, bool zone = false)
         {
             Space = space;
+            Zone = zone;
             Seed = seed;
             DurationMs = durationMs;
             Stats = stats ?? throw new ArgumentNullException(nameof(stats));
@@ -670,10 +679,14 @@ namespace EdS.Domain.Combat
 
             long tick = Combat.TickMilliseconds;
             if (Seed < 0) errors.Add(new RuleViolation("la graine doit être positive ou nulle.", "seed"));
-            if (DurationMs <= 0 || DurationMs > Combat.MaxDurationMs)
-                errors.Add(new RuleViolation($"durée hors de ]0, {Combat.MaxDurationMs}] ms (limite des règles).", "durationMs"));
+            // Sous-lot 12.1 : une zone peut durer jusqu'au plafond absolu (24 h) ; elle exige un espace.
+            long maxDuration = Zone ? CombatRules.AbsoluteMaxDurationMs : Combat.MaxDurationMs;
+            if (DurationMs <= 0 || DurationMs > maxDuration)
+                errors.Add(new RuleViolation(Zone ? $"durée d'une zone hors de ]0, {maxDuration}] ms (24 h)." : $"durée hors de ]0, {maxDuration}] ms (limite des règles).",
+                    "durationMs"));
             else if (DurationMs % tick != 0)
                 errors.Add(new RuleViolation($"{DurationMs} ms n'est pas un multiple de la durée du tick ({tick} ms).", "durationMs"));
+            if (Zone && Space is null) errors.Add(new RuleViolation("une zone est un combat positionné (bloc space obligatoire).", "zone"));
 
             var ids = new Dictionary<string, int>(StringComparer.Ordinal);
             for (int i = 0; i < Combatants.Count; i++)
@@ -728,7 +741,8 @@ namespace EdS.Domain.Combat
             ValidateSpace(errors);
             if (errors.Count == 0) ValidateTriggerCount(errors);
             if (errors.Count == 0 && numericLimits) ValidateNumericLimits(errors);
-            if (Combatants.Select(c => c.Team).Distinct(StringComparer.Ordinal).Count() < 2)
+            // Sous-lot 12.1 : une zone peut n'avoir qu'une équipe (ses créatures), ou aucun combattant : les joueurs y entrent ensuite.
+            if (!Zone && Combatants.Select(c => c.Team).Distinct(StringComparer.Ordinal).Count() < 2)
                 errors.Add(new RuleViolation("un combat oppose au moins deux équipes.", "combatants"));
 
             var perActorTick = new Dictionary<(string Actor, long Tick), int>();
@@ -1145,7 +1159,7 @@ namespace EdS.Domain.Combat
         /// </summary>
         public CombatSetup Completed(IEnumerable<CombatantSetup> joined, IEnumerable<CombatCommand> submitted) =>
             new CombatSetup(Seed, DurationMs, Stats, Damage, Progression, Combat, Combatants.Concat(joined ?? throw new ArgumentNullException(nameof(joined))),
-                Commands.Concat(submitted ?? throw new ArgumentNullException(nameof(submitted))), Data, Space);
+                Commands.Concat(submitted ?? throw new ArgumentNullException(nameof(submitted))), Data, Space, Zone);
 
         /// <summary>
         /// Sous-lot 11.5 : comportement d'un ennemi, dans un combat positionné seulement : distances dans [0, 100] m (engagement dans

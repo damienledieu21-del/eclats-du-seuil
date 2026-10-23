@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.21.0";
+        public const string Version = "0.22.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -84,9 +84,11 @@ namespace EdS.Simulation.Engine
         /// peut porter <c>low</c> sur un obstacle, <c>push</c> et <c>holdPosition</c> sur une attaque, <c>pack</c> sur un comportement ;
         /// nouvelles lignes <c>pushed</c> et <c>pushBlocked</c> (diagnostics) ; un étourdissement encore là à l'impact annule l'attaque
         /// annoncée (<c>attackCancelled</c>, raison du contrôle). Un combat sans ces champs ni contrôle pendant une annonce écrit exactement
-        /// les mêmes lignes qu'au format 14. Un journal d'un autre format est refusé au rejeu.
+        /// les mêmes lignes qu'au format 14. 16 (sous-lot 12.1) : l'en-tête peut porter <c>zone: true</c> (simulation d'une zone du monde,
+        /// sans fin quand une équipe tombe : pas de <c>teamDefeated</c>, seulement <c>durationReached</c>). Un combat fermé écrit exactement les
+        /// mêmes lignes qu'au format 15. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 15;
+        public const int LogFormatVersion = 16;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -2296,7 +2298,8 @@ namespace EdS.Simulation.Engine
             // Sous-lot 11.4d : une équipe compte tant qu'elle a un combattant présent vivant ou une arrivée encore attendue.
             var aliveTeams = _fighters.Where(f => !f.IsDead && (f.Presence == Presence.Present || f.Presence == Presence.Pending))
                 .Select(f => f.Team).Distinct(StringComparer.Ordinal).ToList();
-            if (aliveTeams.Count <= 1)
+            // Sous-lot 12.1 : une zone ne s'arrête pas quand une équipe tombe (ARCHITECTURE_MONDE.md, section 4), seulement au bout de sa durée.
+            if (aliveTeams.Count <= 1 && !_setup.Zone)
                 Finish(tick, CombatEndReason.TeamDefeated, null, aliveTeams.Count == 1 ? aliveTeams[0] : null);
             else if (tick >= _durationTicks - 1)
                 Finish(tick, CombatEndReason.DurationReached, null, null);

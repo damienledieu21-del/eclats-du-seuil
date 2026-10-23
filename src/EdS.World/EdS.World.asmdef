@@ -1,0 +1,19 @@
+{
+    "name": "EdS.World",
+    "rootNamespace": "EdS.World",
+    "references": [
+        "EdS.Domain",
+        "EdS.Simulation",
+        "EdS.Data",
+        "EdS.Data.Json"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

@@ -104,13 +104,15 @@ namespace EdS.Data.Json
         /// Encode un texte JSON en UTF-8 après avoir vérifié sa taille, sans l'encoder d'abord : un texte de plus de
         /// <see cref="InputLimits.MaxDataFileBytes"/> octets est refusé (<see cref="ValidationCode.FileTooLarge"/>) et null est rendu.
         /// </summary>
-        public static byte[]? Utf8(string json, ValidationReport report)
+        /// <param name="maxBytes">Sous-lot 12.1 (revue Codex de la PR #42) : limite propre à un genre de fichier (sauvegarde : 32 Mio) ;
+        /// <see cref="InputLimits.MaxDataFileBytes"/> par défaut.</param>
+        public static byte[]? Utf8(string json, ValidationReport report, long maxBytes = InputLimits.MaxDataFileBytes)
         {
             // Chaque unité UTF-16 donne au moins un octet : une longueur au-delà de la limite suffit à refuser sans compter.
-            long bytes = json.Length > InputLimits.MaxDataFileBytes ? json.Length : Encoding.UTF8.GetByteCount(json);
-            if (bytes > InputLimits.MaxDataFileBytes)
+            long bytes = json.Length > maxBytes ? json.Length : Encoding.UTF8.GetByteCount(json);
+            if (bytes > maxBytes)
             {
-                TooLarge(report, bytes, InputLimits.MaxDataFileBytes, null);
+                TooLarge(report, bytes, maxBytes, null);
                 return null;
             }
             return Encoding.UTF8.GetBytes(json);
@@ -119,10 +121,12 @@ namespace EdS.Data.Json
         /// <summary>
         /// Analyse le texte puis lit l'en-tête commun ; <paramref name="readData"/> reçoit l'élément <c>data</c>.
         /// </summary>
-        public static JsonHeader Parse(byte[] utf8, ValidationReport report, Action<JsonInput, JsonElement> readData)
+        /// <param name="maxBytes">Limite de taille du texte (celle de la lecture qui l'a produit).</param>
+        public static JsonHeader Parse(byte[] utf8, ValidationReport report, Action<JsonInput, JsonElement> readData,
+            long maxBytes = InputLimits.MaxDataFileBytes)
         {
             var header = new JsonHeader();
-            ParseDocument(utf8, report, (input, root) => input.ReadRoot(root, header, readData));
+            ParseDocument(utf8, report, (input, root) => input.ReadRoot(root, header, readData), maxBytes);
             return header;
         }
 
@@ -133,11 +137,12 @@ namespace EdS.Data.Json
         }
 
         /// <summary>Analyse des octets UTF-8 (journal, fichiers sans en-tête commun) et confie la racine à <paramref name="readRoot"/>.</summary>
-        public static void ParseDocument(byte[] utf8, ValidationReport report, Action<JsonInput, JsonElement> readRoot)
+        public static void ParseDocument(byte[] utf8, ValidationReport report, Action<JsonInput, JsonElement> readRoot,
+            long maxBytes = InputLimits.MaxDataFileBytes)
         {
-            if (utf8.Length > InputLimits.MaxDataFileBytes)
+            if (utf8.Length > maxBytes)
             {
-                TooLarge(report, utf8.Length, InputLimits.MaxDataFileBytes, null);
+                TooLarge(report, utf8.Length, maxBytes, null);
                 return;
             }
             JsonDocument parsed;
