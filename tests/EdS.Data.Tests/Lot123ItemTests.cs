@@ -49,6 +49,34 @@ public class Lot123ItemTests
 
     // --- Catalogue ---------------------------------------------------------------------------------
 
+    /// <summary>Scénario lu en objets publics (sans validation), pour les retoucher comme le ferait un appelant.</summary>
+    private static ScenarioDocument Document(string scenario)
+    {
+        var report = new ValidationReport();
+        var document = new ScenarioDocument();
+        JsonHeader header = JsonInput.Parse(JsonInput.Utf8(File.ReadAllText(ScenarioPath(scenario)), report)!, report,
+            (input, element) => document.Data = ScenarioJsonReader.ReadData(input, element, "$.data", ShippedData.Rules.Combat));
+        (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+        return document;
+    }
+
+    [Theory]
+    [InlineData(true, "$.data.combatants[0].gear.armor", ValidationCode.MissingField)]
+    [InlineData(false, "$.data.combatants[0].gear.armor", ValidationCode.DuplicateId)]
+    public void Bonus_d_un_scenario_en_objets_publics_controle(bool nullValue, string path, ValidationCode code)
+    {
+        // Revue Codex de la PR #44 (3e tour) : une valeur absente ou un bonus en double donnent un rapport, pas une exception.
+        ScenarioDocument document = Document("vallons_demo");
+        CombatantData hero = document.Data!.Combatants!.First(c => c!.Type == "character")!;
+        Assert.Equal(0, document.Data.Combatants!.IndexOf(hero));
+        hero.Gear = nullValue
+            ? new List<KeyValuePair<string, int?>> { new("armor", null) }
+            : new List<KeyValuePair<string, int?>> { new("armor", 3), new("armor", 4) };
+        ScenarioLoadResult result = ScenarioValidator.Validate(document, ShippedData);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Report.Errors, e => e.Path == path && e.Code == code);
+    }
+
     [Fact]
     public void Tables_des_raretes_et_des_types_non_modifiables()
     {
