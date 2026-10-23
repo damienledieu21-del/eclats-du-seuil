@@ -41,6 +41,10 @@ namespace EdS.Data.Saves
         public List<KeyValuePair<string, int?>>? Talents { get; set; }
         public List<string?>? ActiveSkills { get; set; }
         public string? Ultimate { get; set; }
+
+        /// <summary>Revue Codex de la PR #43 : le champ <c>ultimate</c> est présent (null explicite compris).</summary>
+        public bool HasUltimate { get; set; }
+
         public List<string?>? PassiveSkills { get; set; }
 
         /// <summary>Sous-lot 12.3 (version 3) : places occupées de l'inventaire, dans l'ordre.</summary>
