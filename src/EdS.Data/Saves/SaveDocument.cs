@@ -42,5 +42,21 @@ namespace EdS.Data.Saves
         public List<string?>? ActiveSkills { get; set; }
         public string? Ultimate { get; set; }
         public List<string?>? PassiveSkills { get; set; }
+
+        /// <summary>Sous-lot 12.3 (version 3) : places occupées de l'inventaire, dans l'ordre.</summary>
+        public List<ItemStackData?>? Inventory { get; set; }
+
+        /// <summary>Sous-lot 12.3 (version 3) : objet porté par emplacement.</summary>
+        public List<KeyValuePair<string, string?>>? Equipment { get; set; }
+
+        /// <summary>Champs effectivement présents (selon la version).</summary>
+        public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Sous-lot 12.3 : pile d'objets d'une place de l'inventaire.</summary>
+    public sealed class ItemStackData
+    {
+        public string? Item { get; set; }
+        public int? Count { get; set; }
     }
 }

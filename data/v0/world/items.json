@@ -1,0 +1,220 @@
+{
+  "$schema": "../../schemas/items.schema.json",
+  "schemaVersion": 1,
+  "kind": "items",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "slots": [
+      "weapon",
+      "shield",
+      "chest",
+      "neck"
+    ],
+    "inventorySize": 24,
+    "items": [
+      {
+        "id": "item.epee_du_milicien",
+        "name": "Épée du milicien",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "weapon",
+        "requiredLevel": 1,
+        "bonus": {
+          "physicalPower": 10
+        }
+      },
+      {
+        "id": "item.epee_de_garde",
+        "name": "Épée de garde",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "weapon",
+        "requiredLevel": 4,
+        "bonus": {
+          "physicalPower": 22
+        }
+      },
+      {
+        "id": "item.marteau_du_carrier",
+        "name": "Marteau du carrier",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "weapon",
+        "requiredLevel": 7,
+        "bonus": {
+          "physicalPower": 34
+        }
+      },
+      {
+        "id": "item.ecu_de_chene",
+        "name": "Écu de chêne",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "shield",
+        "requiredLevel": 1,
+        "bonus": {
+          "armor": 60
+        }
+      },
+      {
+        "id": "item.pavois_du_moulin",
+        "name": "Pavois du moulin",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "shield",
+        "requiredLevel": 5,
+        "bonus": {
+          "armor": 120,
+          "maxHealth": 60
+        }
+      },
+      {
+        "id": "item.rondache_cerclee",
+        "name": "Rondache cerclée",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "shield",
+        "requiredLevel": 5,
+        "bonus": {
+          "armor": 80,
+          "statusResistance": 20
+        }
+      },
+      {
+        "id": "item.gambison",
+        "name": "Gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "chest",
+        "requiredLevel": 1,
+        "bonus": {
+          "armor": 40,
+          "maxHealth": 40
+        }
+      },
+      {
+        "id": "item.cotte_de_mailles",
+        "name": "Cotte de mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "chest",
+        "requiredLevel": 6,
+        "bonus": {
+          "armor": 110,
+          "maxHealth": 80
+        }
+      },
+      {
+        "id": "item.amulette_de_l_aube",
+        "name": "Amulette de l'aube",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "neck",
+        "requiredLevel": 3,
+        "bonus": {
+          "statusResistance": 25,
+          "maxEndurance": 10
+        }
+      },
+      {
+        "id": "item.talisman_du_seuil",
+        "name": "Talisman du Seuil",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "neck",
+        "requiredLevel": 8,
+        "bonus": {
+          "magicResistance": 60,
+          "maxHealth": 50
+        }
+      },
+      {
+        "id": "item.peau_de_loup",
+        "name": "Peau de loup",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.defense_de_sanglier",
+        "name": "Défense de sanglier",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.fleche_brisee",
+        "name": "Flèche brisée",
+        "type": "material",
+        "rarity": "common",
+        "stack": 50
+      },
+      {
+        "id": "item.minerai_de_fer",
+        "name": "Minerai de fer",
+        "type": "material",
+        "rarity": "common",
+        "stack": 50
+      },
+      {
+        "id": "item.eclat_de_seuil",
+        "name": "Éclat de Seuil",
+        "type": "material",
+        "rarity": "very_rare",
+        "stack": 20
+      }
+    ],
+    "loot": [
+      {
+        "id": "loot.loup",
+        "drops": [
+          {
+            "item": "item.peau_de_loup",
+            "count": 1,
+            "chancePercent": 60
+          },
+          {
+            "item": "item.gambison",
+            "count": 1,
+            "chancePercent": 4
+          }
+        ]
+      },
+      {
+        "id": "loot.sanglier",
+        "drops": [
+          {
+            "item": "item.defense_de_sanglier",
+            "count": 1,
+            "chancePercent": 50
+          },
+          {
+            "item": "item.epee_de_garde",
+            "count": 1,
+            "chancePercent": 5
+          }
+        ]
+      },
+      {
+        "id": "loot.archer",
+        "drops": [
+          {
+            "item": "item.fleche_brisee",
+            "count": 3,
+            "chancePercent": 70
+          },
+          {
+            "item": "item.amulette_de_l_aube",
+            "count": 1,
+            "chancePercent": 5
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 1,
+            "chancePercent": 2
+          }
+        ]
+      }
+    ]
+  }
+}

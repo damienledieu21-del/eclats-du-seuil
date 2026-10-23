@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using EdS.Data.Characters;
+using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Scenarios;
@@ -24,6 +25,8 @@ namespace EdS.Data.Tests;
 public class Lot122CharacterTests
 {
     private static string ProgressionPath => ProgressionJsonReader.PathIn(DataDirectory);
+
+    private static ItemCatalog Items => ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
 
     private static CharacterProgression Shipped => ProgressionJsonReader.ReadFile(ProgressionPath, ShippedData).Progression!;
 
@@ -123,7 +126,7 @@ public class Lot122CharacterTests
     public void Sauvegarde_du_personnage_lue_et_ecrite_a_l_identique()
     {
         string text = SaveJsonReader.Write(HeroSave());
-        Assert.Contains("\"schemaVersion\": 2,", text, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 3,", text, StringComparison.Ordinal);
         Assert.Contains("\"character\": {\n      \"id\": \"bastion\",\n      \"class\": \"class.bastion\",\n      \"xp\": 40,", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
@@ -154,7 +157,7 @@ public class Lot122CharacterTests
         Assert.Null(read.Save.Character);
         Assert.Equal((60L, 1L), (read.Save.WorldTick, read.Save.Sessions));
         string rewritten = SaveJsonReader.Write(read.Save);
-        Assert.Contains("\"schemaVersion\": 2,", rewritten, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 3,", rewritten, StringComparison.Ordinal);
         Assert.False(SaveJsonReader.Read(rewritten).Save!.Migrated);
         // Un personnage dans une sauvegarde de version 1 n'existe pas encore : champ inconnu.
         Assert.Equal("$.data.character", Assert.Single(SaveJsonReader.Read(v1.Replace("\"consumed\"", "\"character\": null, \"consumed\"")).Report.Errors).Path);
@@ -167,7 +170,7 @@ public class Lot122CharacterTests
     [InlineData("\"xp\": 40", "\"xp\": 1000000001", "$.data.character.xp")]
     [InlineData("\"talents\": {}", "\"talents\": {\"t.a\": -1}", "$.data.character.talents.t.a")]
     [InlineData("\"activeSkills\": [", "\"activeSkills\": [null, ", "$.data.character.activeSkills[0]")]
-    [InlineData("\"schemaVersion\": 2", "\"schemaVersion\": 3", "$.schemaVersion")]
+    [InlineData("\"schemaVersion\": 3", "\"schemaVersion\": 4", "$.schemaVersion")]
     public void Sauvegarde_du_personnage_invalide(string from, string to, string path)
     {
         string text = SaveJsonReader.Write(HeroSave());
@@ -202,7 +205,7 @@ public class Lot122CharacterTests
         }, scenario: "zones/vallons");
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         var save = new WorldSave("zone.vallons", 7200, 1, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", quick));
-        var session = new WorldSession(save, loaded.Setup!, ShippedData, quick, new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5")));
+        var session = new WorldSession(save, loaded.Setup!, ShippedData, quick, Items, new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5")));
         Assert.Equal((2L, 1, 1), (session.Zone.Session, session.EnteredLevel, session.Level));
         var gains = new List<ExperienceGained>();
         for (int i = 0; i < 600 && gains.Count == 0; i++)
@@ -210,7 +213,7 @@ public class Lot122CharacterTests
             if (i % 20 == 1)
                 try { session.Zone.Engine.Submit(new CombatCommand(session.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", "loup1")); }
                 catch (ArgumentException) { }
-            gains.AddRange(session.Step());
+            gains.AddRange(session.Step().Experience);
         }
         ExperienceGained gain = Assert.Single(gains);
         Assert.Equal(("zone.vallons/2/death/loup1", 60L, 1, 2, true), (gain.Source.Key, gain.Xp, gain.LevelBefore, gain.LevelAfter, gain.LeveledUp));
@@ -220,7 +223,7 @@ public class Lot122CharacterTests
         Assert.Contains("zone.vallons/2/death/loup1", after.Consumed);
         Assert.True(after.WorldTick > 7200);
         // Reprise : le personnage entre au niveau 2, avec les attributs de ce niveau.
-        var next = new WorldSession(SaveJsonReader.Read(SaveJsonReader.Write(after)).Save!, loaded.Setup!, ShippedData, quick,
+        var next = new WorldSession(SaveJsonReader.Read(SaveJsonReader.Write(after)).Save!, loaded.Setup!, ShippedData, quick, Items,
             new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5")));
         Assert.Equal((3L, 2), (next.Zone.Session, next.EnteredLevel));
         next.Step();
@@ -231,7 +234,7 @@ public class Lot122CharacterTests
     public void Partie_sans_personnage_refusee()
     {
         Assert.Throws<ArgumentException>(() => new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>()),
-            ScenarioJsonReader.ReadFile(ScenarioPath("zones/vallons"), ShippedData).Setup!, ShippedData, Shipped,
+            ScenarioJsonReader.ReadFile(ScenarioPath("zones/vallons"), ShippedData).Setup!, ShippedData, Shipped, Items,
             new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5"))));
     }
 }

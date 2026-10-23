@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/save.schema.json",
   "title": "Éclats du Seuil — sauvegarde du monde",
-  "description": "Sous-lots 12.1 et 12.2. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 est mise à jour à la lecture.",
+  "description": "Sous-lots 12.1 à 12.3. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 ou 2 est mise à jour à la lecture.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "kind": {
       "const": "save"
@@ -71,7 +71,9 @@
                 "talents",
                 "activeSkills",
                 "ultimate",
-                "passiveSkills"
+                "passiveSkills",
+                "inventory",
+                "equipment"
               ],
               "properties": {
                 "id": {
@@ -114,11 +116,43 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "inventory": {
+                  "type": "array",
+                  "maxItems": 200,
+                  "description": "Sous-lot 12.3 (version 3) : places occupées de l'inventaire, dans l'ordre.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "item",
+                      "count"
+                    ],
+                    "properties": {
+                      "item": {
+                        "type": "string",
+                        "pattern": "^item(\\.[a-z0-9_]+)+$"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 999
+                      }
+                    }
+                  }
+                },
+                "equipment": {
+                  "type": "object",
+                  "description": "Sous-lot 12.3 (version 3) : objet porté par emplacement, emplacements dans l'ordre ordinal.",
+                  "additionalProperties": {
+                    "type": "string",
+                    "pattern": "^item(\\.[a-z0-9_]+)+$"
+                  }
                 }
               }
             }
           ],
-          "description": "Personnage du joueur (version 2), ou null tant qu'aucun n'a été créé."
+          "description": "Personnage du joueur (version 2 ; inventaire et équipement : version 3), ou null tant qu'aucun n'a été créé."
         }
       }
     }

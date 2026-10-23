@@ -76,8 +76,42 @@ namespace EdS.Data.Json
                 ["activeSkills"] = (v, p) => c.ActiveSkills = input.ReadLimitedList(v, p, 64, n => $"{n} compétences, au plus 64.", (e, ip) => input.Text(e, ip)),
                 ["ultimate"] = (v, p) => c.Ultimate = input.NullableText(v, p),
                 ["passiveSkills"] = (v, p) => c.PassiveSkills = input.ReadLimitedList(v, p, 64, n => $"{n} compétences, au plus 64.", (e, ip) => input.Text(e, ip)),
+                ["inventory"] = (v, p) =>   // sous-lot 12.3 (version 3)
+                {
+                    c.Present.Add("inventory");
+                    c.Inventory = input.ReadLimitedList(v, p, SaveValidator.MaxInventory, n => $"{n} places, au plus {SaveValidator.MaxInventory}.",
+                        (e, ip) => ReadStack(input, e, ip));
+                },
+                ["equipment"] = (v, p) =>
+                {
+                    c.Present.Add("equipment");
+                    c.Equipment = ReadEquipment(input, v, p);
+                },
             });
             return ok ? c : null;
+        }
+
+        private static ItemStackData? ReadStack(JsonInput input, JsonElement element, string path)
+        {
+            var stack = new ItemStackData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["item"] = (v, p) => stack.Item = input.Text(v, p),
+                ["count"] = (v, p) => stack.Count = input.Int32(v, p),
+            });
+            return ok ? stack : null;
+        }
+
+        private static List<KeyValuePair<string, string?>>? ReadEquipment(JsonInput input, JsonElement element, string path)
+        {
+            if (!input.RequireKind(element, JsonValueKind.Object, path, "objet « emplacement : objet »")) return null;
+            var map = new List<KeyValuePair<string, string?>>();
+            foreach (JsonProperty property in input.UniqueProperties(element, path))
+            {
+                if (map.Count >= 64) { input.Report.Add(path, ValidationCode.LimitExceeded, "au plus 64 emplacements."); return null; }
+                map.Add(new KeyValuePair<string, string?>(property.Name, input.Text(property.Value, path + "." + property.Name)));
+            }
+            return map;
         }
 
         // Identifiants écrits sans échappement : ASCII en minuscules, chiffres, « _ » et « . ».
@@ -131,7 +165,24 @@ namespace EdS.Data.Json
             b.Append("      \"talents\": {").Append(string.Join(", ", c.Talents.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("      \"activeSkills\": ").Append(List(c.ActiveSkills)).Append(",\n");
             b.Append("      \"ultimate\": ").Append(c.Ultimate is null ? "null" : Quoted(c.Ultimate)).Append(",\n");
-            b.Append("      \"passiveSkills\": ").Append(List(c.PassiveSkills)).Append("\n");
+            b.Append("      \"passiveSkills\": ").Append(List(c.PassiveSkills)).Append(",\n");
+            // Sous-lot 12.3 (version 3) : une place occupée par ligne, dans l'ordre ; équipement dans l'ordre ordinal des emplacements.
+            if (c.Inventory.Count == 0) b.Append("      \"inventory\": [],\n");
+            else
+            {
+                b.Append("      \"inventory\": [\n");
+                for (int i = 0; i < c.Inventory.Count; i++)
+                {
+                    ItemStack stack = c.Inventory[i];
+                    if (!SaveValidator.IsItemId(stack.Item)) throw new ArgumentException($"Objet « {stack.Item} » hors du format des sauvegardes.", nameof(c));
+                    b.Append("        {\"item\": ").Append(Quoted(stack.Item)).Append(", \"count\": ").Append(stack.Count.ToString(CultureInfo.InvariantCulture))
+                        .Append(i + 1 < c.Inventory.Count ? "},\n" : "}\n");
+                }
+                b.Append("      ],\n");
+            }
+            if (c.Equipment.Any(e => !SaveValidator.IsItemId(e.Value) || !SafeId.IsMatch(e.Key)))
+                throw new ArgumentException("Équipement hors du format des sauvegardes.", nameof(c));
+            b.Append("      \"equipment\": {").Append(string.Join(", ", c.Equipment.Select(e => Quoted(e.Key) + ": " + Quoted(e.Value)))).Append("}\n");
             b.Append("    },\n");
         }
     }
