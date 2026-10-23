@@ -22,7 +22,8 @@
       "const": "save"
     },
     "contentVersion": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
     },
     "data": {
       "type": "object",
@@ -47,7 +48,8 @@
         },
         "sessions": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 630720000
         },
         "consumed": {
           "type": "array",
@@ -57,7 +59,8 @@
             "maxLength": 200
           },
           "description": "Événements consommés, triés, sans doublon.",
-          "maxItems": 100000
+          "maxItems": 100000,
+          "uniqueItems": true
         },
         "character": {
           "anyOf": [
