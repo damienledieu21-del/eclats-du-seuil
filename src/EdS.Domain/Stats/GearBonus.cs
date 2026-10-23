@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using EdS.Domain.Numerics;
 
 namespace EdS.Domain.Stats
@@ -37,9 +39,20 @@ namespace EdS.Domain.Stats
             StatusResistance = statusResistance;
         }
 
-        /// <summary>Identifiants (ceux des données) et valeurs, dans l'ordre fixe des fichiers et des journaux.</summary>
-        public static readonly string[] Fields =
-            { "physicalPower", "agilePower", "magicPower", "armor", "magicResistance", "maxHealth", "maxEndurance", "statusResistance" };
+        /// <summary>
+        /// Identifiants (ceux des données) et valeurs, dans l'ordre fixe des fichiers et des journaux. Revue Codex de la PR #44 : liste non
+        /// modifiable (un tableau public pourrait être trié par un appelant, et les noms ne correspondraient plus à l'indexeur).
+        /// </summary>
+        public static readonly IReadOnlyList<string> Fields = new ReadOnlyCollection<string>(new[]
+            { "physicalPower", "agilePower", "magicPower", "armor", "magicResistance", "maxHealth", "maxEndurance", "statusResistance" });
+
+        /// <summary>Rang d'un identifiant dans <see cref="Fields"/>, ou -1 s'il est inconnu.</summary>
+        public static int FieldIndex(string name)
+        {
+            for (int i = 0; i < Fields.Count; i++)
+                if (string.Equals(Fields[i], name, StringComparison.Ordinal)) return i;
+            return -1;
+        }
 
         public int this[int field] => field switch
         {
@@ -58,7 +71,7 @@ namespace EdS.Domain.Stats
         public static GearBonus FromValues(int[] values)
         {
             if (values is null) throw new ArgumentNullException(nameof(values));
-            if (values.Length != Fields.Length) throw new ArgumentException($"{Fields.Length} valeurs attendues.", nameof(values));
+            if (values.Length != Fields.Count) throw new ArgumentException($"{Fields.Count} valeurs attendues.", nameof(values));
             return new GearBonus(values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7]);
         }
 
@@ -66,7 +79,7 @@ namespace EdS.Domain.Stats
         {
             get
             {
-                for (int i = 0; i < Fields.Length; i++)
+                for (int i = 0; i < Fields.Count; i++)
                     if (this[i] != 0) return false;
                 return true;
             }
@@ -75,7 +88,7 @@ namespace EdS.Domain.Stats
         /// <summary>Somme champ par champ (arithmétique vérifiée).</summary>
         public static GearBonus operator +(GearBonus a, GearBonus b)
         {
-            var values = new int[Fields.Length];
+            var values = new int[Fields.Count];
             for (int i = 0; i < values.Length; i++) values[i] = checked(a[i] + b[i]);
             return FromValues(values);
         }
@@ -96,7 +109,7 @@ namespace EdS.Domain.Stats
         public bool Equals(GearBonus? other)
         {
             if (other is null) return false;
-            for (int i = 0; i < Fields.Length; i++)
+            for (int i = 0; i < Fields.Count; i++)
                 if (this[i] != other[i]) return false;
             return true;
         }
@@ -106,7 +119,7 @@ namespace EdS.Domain.Stats
         public override int GetHashCode()
         {
             int h = 17;
-            for (int i = 0; i < Fields.Length; i++) h = unchecked(h * 31 + this[i]);
+            for (int i = 0; i < Fields.Count; i++) h = unchecked(h * 31 + this[i]);
             return h;
         }
     }
