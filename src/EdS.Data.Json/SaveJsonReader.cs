@@ -244,7 +244,7 @@ namespace EdS.Data.Json
             // Sous-lot 12.5 (version 4) : état narratif, sur une ligne par rubrique, dans l'ordre ordinal.
             SavedStory st = c.Story;
             if (st.Facts.Concat(st.Discoveries).Concat(st.Quests.Keys).Concat(st.Trust.Keys).Any(id => !SaveValidator.IsStoryId(id))
-                || st.Quests.Values.Any(q => !SafeId.IsMatch(q.Step) || q.Progress < 0 || q.Progress > SaveValidator.MaxProgress)
+                || st.Quests.Values.Any(q => !SaveValidator.IsDataId(q.Step) || q.Progress < 0 || q.Progress > SaveValidator.MaxProgress)
                 || st.Trust.Values.Any(t => t < -SaveValidator.MaxTrust || t > SaveValidator.MaxTrust))
                 throw new ArgumentException("Histoire hors du format des sauvegardes.", nameof(c));
             b.Append("      \"story\": {\n");
