@@ -45,7 +45,7 @@ namespace EdS.Data.Json
             return SaveValidator.Validate(document, report);
         }
 
-        private static SaveData? ReadData(JsonInput input, JsonElement element, string path)
+        internal static SaveData? ReadData(JsonInput input, JsonElement element, string path)   // interne : tests en objets publics
         {
             var data = new SaveData();
             bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>

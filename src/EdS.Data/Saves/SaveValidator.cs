@@ -312,10 +312,15 @@ namespace EdS.Data.Saves
             else if (c.Xp < 0 || c.Xp > MaxXp) report.Add(path + ".xp", ValidationCode.OutOfRange, $"expérience hors de [0, {MaxXp}].");
             if (c.Talents is null) Missing(report, path + ".talents", "rangs des talents, éventuellement vide");
             else
+            {
+                // Revue Codex de la PR #44 : une sauvegarde construite en objets publics est contrôlée de même (un seul rang par talent).
+                var seenTalents = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var t in c.Talents)
                     if (!IsDataId(t.Key)) report.Add(path + ".talents." + t.Key, ValidationCode.InvalidValue, $"identifiant de talent invalide : {format}.");
                     else if (t.Value is not int rank) Missing(report, path + ".talents." + t.Key, "rang");
                     else if (rank < 0) report.Add(path + ".talents." + t.Key, ValidationCode.InvalidValue, "un rang ne peut pas être négatif.");
+                    else if (!seenTalents.Add(t.Key)) report.Add(path + ".talents." + t.Key, ValidationCode.DuplicateId, "talent donné deux fois.");
+            }
             void Names(List<string?>? list, string field)
             {
                 if (list is null) { Missing(report, $"{path}.{field}", "liste, éventuellement vide"); return; }
@@ -351,11 +356,14 @@ namespace EdS.Data.Saves
                 if (c.Equipment is null) Missing(report, path + ".equipment", "objet porté par emplacement, éventuellement vide");
                 else
                 {
+                    // Revue Codex de la PR #44 : un emplacement une seule fois (sauvegarde construite en objets publics).
+                    var seenSlots = new HashSet<string>(StringComparer.Ordinal);
                     for (int i = 0; i < c.Equipment.Count; i++)
                     {
                         KeyValuePair<string, string?> e = c.Equipment[i];
                         string slotPath = $"{path}.equipment.{e.Key}";
-                        if (!SlotId.IsMatch(e.Key) || e.Key.Length > 64) report.Add(slotPath, ValidationCode.InvalidValue, $"emplacement « {e.Key} » invalide.");
+                        if (e.Key is null || !SlotId.IsMatch(e.Key) || e.Key.Length > 64) report.Add(slotPath, ValidationCode.InvalidValue, $"emplacement « {e.Key} » invalide.");
+                        else if (!seenSlots.Add(e.Key)) report.Add(slotPath, ValidationCode.DuplicateId, $"emplacement « {e.Key} » donné deux fois.");
                         else if (e.Value is null) Missing(report, slotPath, "identifiant d'objet");
                         else if (!IsItemId(e.Value)) report.Add(slotPath, ValidationCode.InvalidValue, $"identifiant d'objet « {e.Value} » invalide.");
                         else if (i > 0 && string.CompareOrdinal(c.Equipment[i - 1].Key, e.Key) > 0)
@@ -432,8 +440,9 @@ namespace EdS.Data.Saves
                 {
                     var (id, q) = st.Quests[i];
                     string p = $"{path}.quests.{id}";
-                    if (id.Length > 200 || !QuestId.IsMatch(id)) { report.Add(p, ValidationCode.InvalidValue, "quête mal formée."); continue; }
-                    if (i > 0 && string.CompareOrdinal(st.Quests[i - 1].Id, id) > 0) report.Add(p, ValidationCode.InvalidValue, "quêtes hors de l'ordre ordinal (forme canonique).");
+                    if (id is null || id.Length > 200 || !QuestId.IsMatch(id)) { report.Add(p, ValidationCode.InvalidValue, "quête mal formée."); continue; }
+                    // Même règle que la revue Codex de la PR #44 : une quête une seule fois (sauvegarde construite en objets publics).
+                    if (i > 0 && string.CompareOrdinal(st.Quests[i - 1].Id, id) >= 0) report.Add(p, ValidationCode.InvalidValue, "quêtes hors de l'ordre ordinal ou en double (forme canonique).");
                     if (q is null) { Missing(report, p, "avancement"); continue; }
                     if (q.Step is null) Missing(report, p + ".step", "étape en cours, ou « done »");
                     else if (q.Step.Length > 64 || !SlotId.IsMatch(q.Step)) report.Add(p + ".step", ValidationCode.InvalidValue, $"étape « {q.Step} » mal formée.");
@@ -447,10 +456,10 @@ namespace EdS.Data.Saves
                 {
                     var t = st.Trust[i];
                     string p = $"{path}.trust.{t.Key}";
-                    if (t.Key.Length > 200 || !NpcId.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "PNJ mal formé.");
+                    if (t.Key is null || t.Key.Length > 200 || !NpcId.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "PNJ mal formé.");
                     else if (t.Value is not int v) Missing(report, p, "entier");
                     else if (v == 0 || v < -MaxTrust || v > MaxTrust) report.Add(p, ValidationCode.OutOfRange, $"confiance hors de [−{MaxTrust}, {MaxTrust}] ou nulle (une confiance nulle n'est pas écrite).");
-                    else if (i > 0 && string.CompareOrdinal(st.Trust[i - 1].Key, t.Key) > 0) report.Add(p, ValidationCode.InvalidValue, "confiance hors de l'ordre ordinal.");
+                    else if (i > 0 && string.CompareOrdinal(st.Trust[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "confiance hors de l'ordre ordinal ou en double.");
                 }
             if (!report.IsValid) return null;
             return new SavedStory(st.Facts!.Select(f => f!), st.Quests!.ToDictionary(q => q.Id, q => new QuestProgress(q.Value!.Step!, q.Value.Progress!.Value), StringComparer.Ordinal),
