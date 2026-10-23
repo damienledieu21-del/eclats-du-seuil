@@ -85,12 +85,15 @@ namespace EdS.World
 
         /// <param name="setup">Simulation de la zone (<see cref="CombatSetup.Zone"/> vrai) ; validée par le moteur.</param>
         /// <param name="consumed">Événements déjà consommés (sauvegarde) : une mort de même clé n'est pas attribuée une seconde fois.</param>
+        /// <param name="entering">Revue Codex de la PR #43 : personnages qui entrent avec la session (arrivée au tick 0, refusée si leur place est
+        /// occupée) ; ils font partie de la simulation de départ, donc de l'en-tête du journal (identité de leur classe comprise).</param>
         /// <exception cref="ArgumentException">Identifiant de zone invalide, session ou temps hors bornes, ou combat fermé au lieu d'une zone.</exception>
         public Zone(string id, CombatSetup setup, long session, long startWorldTick, IEnumerable<string>? consumed = null, ICombatLog? log = null,
-            WorldClock? clock = null)
+            WorldClock? clock = null, IEnumerable<CharacterSetup>? entering = null)
         {
             if (!SaveValidator.IsZoneId(id)) throw new ArgumentException($"Identifiant de zone « {id} » invalide : « zone.<nom> » attendu.", nameof(id));
             if (setup is null) throw new ArgumentNullException(nameof(setup));
+            if (entering != null) setup = setup.Completed(entering.Select(c => Arriving(c ?? throw new ArgumentNullException(nameof(entering)), 0)), Array.Empty<CombatCommand>());
             if (!setup.Zone) throw new ArgumentException("Une zone se simule en mode zone (scénario « zone »: true).", nameof(setup));
             if (session < 1 || session > SaveValidator.MaxWorldTick) throw new ArgumentOutOfRangeException(nameof(session));
             // Revue Codex de la PR #42 : la session entière doit tenir sous la borne des sauvegardes (sa durée réservée d'avance), sinon
@@ -206,8 +209,12 @@ namespace EdS.World
             if (!DeathKeyFits(character.Id))
                 throw new ArgumentException($"Clé de mort de « {character.Id} » trop longue ou hors du format des sauvegardes.", nameof(character));
             long now = checked(_engine.CurrentTick * _engine.TickMilliseconds);
-            _engine.Join(new CharacterSetup(character.Id, character.Team, character.Class, character.Build, character.Initiative, character.Placement, now, character.Gear));
+            _engine.Join(Arriving(character, now));
         }
+
+        /// <summary>Le personnage, arrivant à l'instant <paramref name="atMs"/>.</summary>
+        private static CharacterSetup Arriving(CharacterSetup c, long atMs) =>
+            new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, atMs, c.Gear);
 
         /// <summary>Fait sortir un combattant (commande <c>leave</c> au tick courant, effective en fin de tick).</summary>
         /// <exception cref="ArgumentException">Commande refusée par le pilote (combattant inconnu, plafond de commandes).</exception>
