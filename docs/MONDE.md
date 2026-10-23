@@ -30,13 +30,30 @@ Le personnage persistant (cadrage Q3, Q20) : un identifiant, une classe, son **e
 - **Partie en solo** (`WorldSession`) : reprend la sauvegarde, ouvre la session de zone suivante au temps du monde sauvegardé, y fait entrer le personnage, et lui donne l'expérience de chaque créature vaincue **pour la première fois** (registre des événements consommés) pendant qu'il est présent et vivant. En solo, il est seul à pouvoir l'avoir vaincue ; le partage en groupe viendra avec le serveur (lot 13).
 - **Niveau gagné** : il prend effet à la **prochaine entrée** dans une zone (le combat en cours garde le build d'entrée, comme le reste du moteur qui ne change pas un build en route). Les points de talent du nouveau niveau se dépensent hors combat (écran du lot 12.8).
 
+## Objets, équipement, inventaire (sous-lot 12.3)
+
+Catalogue en données (`data/v0/world/items.json`, `kind` « items », schéma `data/schemas/items.schema.json`, validé par `ItemValidator`). Valeurs **provisoires** :
+
+- **Emplacements** (cadrage Q4, tranche : quatre dont le bouclier) : `weapon` (arme), `shield` (bouclier), `chest` (torse), `neck` (pendentif). La liste est dans les données ; le jeu final en prévoit douze (recommandation).
+- **Inventaire** (Q5) : **24 places** ; une place tient une pile d'un même objet. Un équipement ne s'empile pas ; un matériau s'empile jusqu'à sa pile (20 ou 50 dans la tranche).
+- **Objets** : identifiant `item.…`, nom, type (`equipment` ou `material`), **rareté** à six rangs (Q30 : `common`, `rare`, `very_rare`, `epic`, `legendary`, `mythic` ; « Secret » est une origine, pas un rang). Un équipement a son emplacement, son **niveau requis** et son **bonus** (puissances, armure, résistance magique, PV max, endurance max, résistance aux altérations ; au plus 50 000 par objet). Les quatre notions de H5 restent distinctes : niveau requis, puissance, rareté et adéquation au build (deux boucliers de niveau 5, l'un pour les PV, l'autre pour la résistance aux altérations).
+- Tranche : 10 équipements (3 armes, 3 boucliers, 2 torses, 2 pendentifs, niveaux 1 à 8) et 5 matériaux (peau de loup, défense de sanglier, flèche brisée, minerai de fer, éclat de Seuil).
+
+**Inventaire et équipement** (`Inventory`) : chaque opération est **atomique** (refusée, elle ne change rien, avec son motif) :
+
+- `Add` range une quantité **en entier** : piles entamées du même objet d'abord, puis nouvelles places ; sinon `Full`. `Remove` retire en entier ou rien.
+- `Equip(place, niveau)` porte l'équipement de cette place si le niveau suffit ; l'objet porté avant prend sa place (échange, sans place de plus). `Unequip(emplacement)` le range s'il reste une place.
+- `Gear()` : somme des bonus des objets portés, comptée par le moteur à l'entrée du personnage dans une zone ([MOTEUR.md](MOTEUR.md#bonus-déquipement-sous-lot-123)). Un changement d'équipement prend effet à la prochaine entrée.
+
+**Butin** : tables `loot.…` du catalogue (un à seize objets, chacun avec sa quantité et sa chance en pour cent). La partie en solo reçoit la table de chaque créature de la zone (par identifiant de combattant ; les Vallons en données, 12.4, la donneront). Une créature vaincue **pour la première fois**, le personnage présent et vivant, donne le butin de sa table, **tiré par la clé de sa mort** (`Loot.Roll` : générateur PCG initialisé par l'empreinte FNV-1a de la clé) : le même événement donne toujours le même butin, et le registre des événements consommés empêche de l'attribuer deux fois. Chaque objet tombé est rangé en entier, ou **perdu** si l'inventaire n'a plus de place (`LootGained.Kept` faux).
+
 ## Sauvegarde
 
-Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 2 depuis le sous-lot 12.2 :
+Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 3 depuis le sous-lot 12.3 :
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "save",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -50,7 +67,12 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
       "talents": {},
       "activeSkills": ["skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier"],
       "ultimate": null,
-      "passiveSkills": ["skill.bastion.endurance_du_roc"]
+      "passiveSkills": ["skill.bastion.endurance_du_roc"],
+      "inventory": [
+        {"item": "item.peau_de_loup", "count": 3},
+        {"item": "item.gambison", "count": 1}
+      ],
+      "equipment": {"shield": "item.ecu_de_chene", "weapon": "item.epee_du_milicien"}
     },
     "consumed": [
       "zone.vallons/1/death/loup1"
@@ -62,6 +84,7 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
 - `worldTick` : temps du monde en ticks (au plus un an de jeu) ; `sessions` : sessions déjà jouées ; `consumed` : registre des événements consommés, **trié** et sans doublon (forme canonique : l'écriture redonne toujours le même texte).
 - `character` : le personnage (`null` tant qu'il n'est pas créé). Identifiant en minuscules, expérience de 0 à un milliard, rangs de talent positifs. La validité du build contre la classe et le niveau est vérifiée à l'entrée en zone (la sauvegarde ne dépend pas des données du jeu).
 - **Écriture atomique** (`SaveStore`) : le texte est écrit en entier dans `<fichier>.tmp`, vidé sur le disque, puis il remplace la sauvegarde ; la version précédente devient `<fichier>.bak`. Une coupure laisse toujours une sauvegarde complète. À la lecture, une sauvegarde absente ou invalide est remplacée par sa copie valide ; aucune des deux : nouvelle partie (ou « illisible », avec le motif).
-- **Versions** : la version 1 (12.1, sans personnage) est lue et **mise à jour** (`Migrated`, personnage absent) ; l'écriture donne toujours la version courante. Une version inconnue est refusée. L'inventaire (12.3) et les quêtes (12.5) s'ajouteront de la même façon.
+- `inventory` (12.3) : places occupées de l'inventaire, dans l'ordre, une pile par place (objet, quantité de 1 à 999) ; `equipment` : objet porté par emplacement, emplacements dans l'ordre ordinal. Objets, piles, emplacements et niveaux requis sont vérifiés contre le catalogue quand la partie reprend.
+- **Versions** : la version 1 (12.1, sans personnage) et la version 2 (12.2, sans inventaire ni équipement) sont lues et **mises à jour** (`Migrated` ; personnage absent, ou inventaire et équipement vides) ; l'écriture donne toujours la version courante. Une version inconnue est refusée. Les quêtes (12.5) s'ajouteront de la même façon.
 
 Limites : [LIMITES_LOT_12.md](LIMITES_LOT_12.md).

@@ -19,7 +19,7 @@
 | Chance de critique | 5 % | — | bornée à [0 %, 60 %] |
 | Multiplicateur critique | ×1,5 | — | borné à [×1, ×2,5] |
 
-L'équipement apporte trois puissances distinctes (physique, agile, magique) additionnées **avant** le coefficient de compétence.
+L'équipement apporte trois puissances distinctes (physique, agile, magique) additionnées **avant** le coefficient de compétence. Depuis le sous-lot 12.3, l'équipement porté apporte aussi armure, résistance magique, PV max, endurance max et résistance aux altérations, en contributions plates (`GearBonus`, [MOTEUR.md](MOTEUR.md#bonus-déquipement-sous-lot-123)).
 
 ## Dégâts (`DamageCalculator.Compute`)
 
