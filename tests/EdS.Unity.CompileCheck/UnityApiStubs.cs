@@ -81,8 +81,30 @@ namespace UnityEditor
 {
     [AttributeUsage(AttributeTargets.Class)] public sealed class InitializeOnLoadAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.Method)] public sealed class MenuItem : Attribute { public MenuItem(string p) { } }
-    public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; }
-    public static class AssetDatabase { public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; }
+    public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; public static bool isPlayingOrWillChangePlaymode => false; }
+    public sealed class SceneAsset : UnityEngine.Object { }
+    public static class BuildPipeline { public static bool isBuildingPlayer => false; }
+    public sealed class EditorBuildSettingsScene { public EditorBuildSettingsScene(string path, bool enabled) { } public string path => ""; public bool enabled => false; }
+    public static class EditorBuildSettings { public static EditorBuildSettingsScene[] scenes { get; set; } }
+    public static class AssetDatabase { public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; }
+}
+namespace UnityEditor.SceneManagement
+{
+    public enum NewSceneSetup { EmptyScene, DefaultGameObjects }
+    public enum NewSceneMode { Single, Additive }
+    public static class EditorSceneManager
+    {
+        public static UnityEngine.SceneManagement.Scene NewScene(NewSceneSetup setup, NewSceneMode mode) => default;
+        public static bool SaveScene(UnityEngine.SceneManagement.Scene scene, string path) => false;
+        public static bool CloseScene(UnityEngine.SceneManagement.Scene scene, bool remove) => false;
+        public static UnityEngine.SceneManagement.Scene OpenScene(string path) => default;
+        public static bool SaveCurrentModifiedScenesIfUserWantsTo() => false;
+    }
+}
+namespace UnityEngine.SceneManagement
+{
+    public struct Scene { public string path => ""; public bool isDirty => false; public UnityEngine.GameObject[] GetRootGameObjects() => null; }
+    public static class SceneManager { public static Scene GetActiveScene() => default; public static int sceneCount => 0; }
 }
 namespace UnityEditor.Build.Reporting
 {

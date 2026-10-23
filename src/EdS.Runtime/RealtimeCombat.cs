@@ -37,6 +37,7 @@ namespace EdS.Runtime
         // partagées avec la salle du serveur).
         private readonly IReadOnlyList<ConvexPolygon>? _obstacles;
         private readonly MovementIntent _movement = new MovementIntent();
+        private readonly TargetKeeper _targets = new TargetKeeper();
 
         /// <summary>Ticks simulés au plus par appel à <see cref="Advance"/> : une image très lente ne fait pas rattraper des secondes d'un coup.</summary>
         public int MaxTicksPerAdvance { get; set; } = 5;
@@ -62,7 +63,8 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Cible des compétences à cible ennemie unique : un ennemi vivant et, dans un combat positionné, en vue du joueur ; null s'il n'y en
-        /// a aucun. Une cible qui passe derrière le décor est remplacée par le premier ennemi en vue (ou par aucune).
+        /// a aucun. Une cible qui passe derrière le décor est remplacée par le premier ennemi en vue (ou par aucune) ; sous-lot 11.9, après
+        /// un court délai (<see cref="TargetKeeper"/>).
         /// </summary>
         public string? TargetId { get; private set; }
 
@@ -212,7 +214,7 @@ namespace EdS.Runtime
             SubmitIntentions();
             _engine.Step();
             _feedback.Collect(_engine);
-            if (TargetId is null || !Enemies().Any(e => e.Id == TargetId)) TargetId = Enemies().FirstOrDefault()?.Id;
+            TargetId = _targets.Keep(_engine, PlayerId, _obstacles, TargetId);   // sous-lot 11.9 : cible perdue remplacée après un court délai
         }
 
         private void SubmitIntentions()

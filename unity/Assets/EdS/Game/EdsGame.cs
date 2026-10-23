@@ -615,6 +615,10 @@ namespace EdS.Game
                 x = 0f;
                 z = 0f;
             }
+            // Sous-lot 11.9 (essai de Damien : « le Bastion recule en regardant devant lui ») : en vue 2 (caméra derrière le personnage),
+            // reculer (touche arrière, ou stick vers le bas, même en biais) le fait marcher à reculons sans se retourner ; la caméra reste
+            // derrière lui. En vue 1, il se tourne vers sa marche, comme avant.
+            bool backward = _camera.Setting > 0.5f && z < 0f;
             if (_arena.Spatial)
             {
                 // Revue Codex de la PR #34 : en pause, la marche voulue n'est pas touchée (les entrées de combat sont ignorées ; l'intention
@@ -625,7 +629,7 @@ namespace EdS.Game
                     return;
                 }
                 Vector3 wish = x != 0f || z != 0f ? Quaternion.Euler(0f, _camera.Yaw, 0f) * new Vector3(x, 0f, z).normalized : Vector3.zero;
-                _combat.SetMove(wish.x, wish.z);
+                _combat.SetMove(wish.x, wish.z, backward);
                 _moving = player.View.IsPresent && !player.View.IsDead && (x != 0f || z != 0f);
                 if (player.View.Facing is EdS.Domain.Space.GroundVector f) _playerYaw = Mathf.Atan2(f.X.Raw, f.Z.Raw) * Mathf.Rad2Deg;
                 return;
@@ -642,7 +646,7 @@ namespace EdS.Game
             {
                 Vector3 direction = Quaternion.Euler(0f, _camera.Yaw, 0f) * new Vector3(x, 0f, z).normalized;
                 delta = direction * MoveSpeed * Time.deltaTime;
-                _playerYaw = Quaternion.LookRotation(direction).eulerAngles.y;
+                if (!backward) _playerYaw = Quaternion.LookRotation(direction).eulerAngles.y;
             }
             else if (player.TargetId != null && _arena.Head(player.TargetId) is Vector3 target && _arena.Player != null)
             {

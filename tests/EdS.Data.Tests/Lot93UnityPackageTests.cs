@@ -217,7 +217,36 @@ public class Lot93UnityPackageTests
         // Revue Codex de la PR #34 : en pause, la marche voulue d'un combat positionné n'est pas transmise.
         int spatial = game.IndexOf("if (_arena.Spatial)", move, StringComparison.Ordinal);
         Assert.True(spatial > 0 && game.IndexOf("if (_paused)", spatial, StringComparison.Ordinal) is int paused && paused > spatial
-            && paused < game.IndexOf("_combat.SetMove(wish.x, wish.z);", spatial, StringComparison.Ordinal), "pause avant la marche voulue");
+            && paused < game.IndexOf("_combat.SetMove(wish.x, wish.z, backward);", spatial, StringComparison.Ordinal), "pause avant la marche voulue");
+    }
+
+    [Fact]
+    public void Recul_en_vue_2_et_scene_de_demarrage()
+    {
+        // Sous-lot 11.9 (essai de Damien du 22 octobre 2026) : scripts Unity compilés seulement (contre des bouchons) ; essai : Damien.
+        // En vue 2, reculer marche à reculons (le personnage garde son orientation) ; en vue 1, il se tourne vers sa marche.
+        string game = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("bool backward = _camera.Setting > 0.5f && z < 0f;", game, StringComparison.Ordinal);
+        Assert.Contains("_combat.SetMove(wish.x, wish.z, backward);", game, StringComparison.Ordinal);
+        Assert.Contains("if (!backward) _playerYaw = Quaternion.LookRotation(direction).eulerAngles.y;", game, StringComparison.Ordinal);
+        // Scène de démarrage créée à l'ouverture du projet, en tête de la liste de construction, fichier généré non suivi par git.
+        string scene = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdsStartupScene.cs"));
+        Assert.Contains("public const string ScenePath = \"Assets/EdS/Scenes/Jeu.unity\";", scene, StringComparison.Ordinal);
+        Assert.Contains("[InitializeOnLoad]", scene, StringComparison.Ordinal);
+        // Revue Codex de la PR #39 : la scène sans nom ouverte (Unity 6 la marque modifiée dès sa création) est enregistrée comme scène de
+        // démarrage, au lieu d'abandonner la préparation.
+        Assert.Contains("bool untitled = string.IsNullOrEmpty(active.path);", scene, StringComparison.Ordinal);
+        Assert.Contains("if (untitled)", scene, StringComparison.Ordinal);
+        Assert.DoesNotContain("enregistre d'abord la scène ouverte", scene, StringComparison.Ordinal);
+        // 3e tour (accord de Damien du 23 octobre 2026) : une scène sans nom modifiée n'est fermée qu'après la question de Unity ; un
+        // enregistrement qui échoue arrête la préparation avant d'inscrire la scène dans la liste de construction.
+        Assert.Contains("(!active.isDirty || EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())", scene, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetRootGameObjects", scene, StringComparison.Ordinal);
+        int failed = scene.IndexOf("if (!saved)", StringComparison.Ordinal);
+        Assert.True(failed > 0 && failed < scene.IndexOf("EditorBuildSettings.scenes = ", StringComparison.Ordinal), "échec d'enregistrement vérifié avant la liste de construction");
+        Assert.Contains("EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) }", scene, StringComparison.Ordinal);
+        string ignore = File.ReadAllText(Path.Combine(Root, ".gitignore"));
+        Assert.Contains("unity/Assets/EdS/Scenes/", ignore, StringComparison.Ordinal);
     }
 
     [Fact]
