@@ -93,7 +93,7 @@ Pour le contact entre un joueur et une créature, deux règles seront essayées 
 
 Dans les deux cas, les grandes créatures (chefs) restent solides et aucun déplacement forcé ne vient d'un simple contact : seulement d'attaques et de capacités identifiables (repousser, attirer).
 
-*Avis* : A, si l'essai montre que le garde-fou suffit ; B sinon. Le choix final revient à Damien après l'essai (11.9).
+*Avis* : A, si l'essai montre que le garde-fou suffit ; B sinon. Le choix final revient à Damien après l'essai (11.9). **Retenu le 22 octobre 2026 : A** (« garder : solide »).
 
 ## 5. Lots 12 à 14, alpha, jeu complet
 
@@ -104,7 +104,7 @@ Dans les deux cas, les grandes créatures (chefs) restent solides et aucun dépl
 | 12.1 | **Monde** (`EdS.World`, netstandard2.1, sans dépendance), sur l'architecture du 11.2 : la zone des Vallons, entités qui entrent et sortent, combats sur place, temps du monde tiré des ticks (Q26), formats de sauvegarde | moyenne |
 | 12.2 | **Personnage** : expérience et niveaux 1 à 10 (courbe provisoire), attributs par classe et niveau (Q20), déblocages ; sauvegarde locale versionnée, écriture atomique, migrations | moyenne |
 | 12.3 | **Objets, équipement, inventaire** : catalogue (niveau requis, puissance, rareté à six rangs, propriétés), quatre emplacements dont le bouclier, 24 places empilables, butin attribué une seule fois ; un premier effet spécial d'équipement si le temps le permet | grande |
-| 12.4 | **Les Vallons en données** : village, rivière, moulin, carrière, ruines, petite zone du Seuil ; points sûrs ; populations et réapparitions ; raccourci du moulin (état gardé) ; manifestation ; nœuds de récolte | moyenne |
+| 12.4 | **Les Vallons en données** : village, rivière, moulin, carrière, ruines, petite zone du Seuil ; points sûrs ; populations et réapparitions ; raccourci du moulin (état gardé) ; manifestation ; nœuds de récolte ; **laisse** des ennemis (retour au calme d'un ennemi assez distancé, retenu à l'essai du 22 octobre 2026) | moyenne |
 | 12.5 | **PNJ, dialogues et quêtes** : états narratifs (H1), conditions durables et temporaires (H3), journal des découvertes, portée personnelle des choix (H2) ; mission « Les traces sous le moulin » | grande |
 | 12.6 | **Soin et métiers** : catégorie d'effet « soin » dans le moteur (avant les remèdes), potions limitées à recharge partagée ; minerai et forge, plantes et remèdes, XP de métier séparée | moyenne |
 | 12.7 | **Chef de fin et récompenses** : boss à phases, défaite sans perte (retour au point sûr), registre des récompenses attribuées une seule fois ; quête secrète et réveil renforcé seulement s'ils entrent dans la tranche (Q2), sinon à une étape identifiée de l'alpha | moyenne |
@@ -172,23 +172,25 @@ Havre d'Ambre et les cinq régions, Cœur du Seuil, marchés régionaux et carav
 
 ## 7. Estimation
 
-Indicative, non engagée. Elle est à **refaire après la démonstration réseau (11.7) et le premier essai tactile (11.8)** (L11-D12).
+Indicative, non engagée. **Révisée le 23 octobre 2026**, après la démonstration réseau (11.7), le premier essai tactile (11.8) et l'essai du 11.9 (L11-D12). La première estimation (20 octobre) est gardée plus bas pour comparaison.
 
-Hypothèses :
+**Ce que le lot 11 a montré.**
 
-- le rythme des lots 9 et 10 : quatre à six sous-lots en un à deux jours, revues Codex comprises (jusqu'à sept tours pour certaines PR du lot 10) ; un sous-lot qui demande plus de tours prend plus longtemps ;
-- les essais de Damien dans Unity sous 24 heures (**hypothèse à confirmer**) ;
-- formes simples jusqu'à l'alpha, aucune dépense.
+- **Rythme** : les sous-lots 11.1 à 11.8 ont été fusionnés du 20 octobre (2 h 07) au 23 octobre (1 h 46, correctif #37 compris), soit environ trois jours au lieu des deux à quatre semaines estimées pour tout le lot ; les suites de l'essai (11.9a à 11.9c) sont en PR au moment de cette réestimation. Le temps s'est surtout passé en revues Codex : la PR du 11.4d (instantané d'état) en a demandé une trentaine de tours, celles du 11.5 une vingtaine ; les PR sans format nouveau sont passées en quelques tours.
+- **Essais** : Damien a essayé le 11.6, le 11.7 et le 11.8 le jour même (hypothèse « essais sous 24 heures » confirmée pour ce lot). Ce qui a coûté du temps, ce sont les installations (Android Build Support, place sur le disque, pare-feu, scène à enregistrer) et un défaut propre au jeu construit (shader non emporté, PR #37).
+- **Risques levés** : positions et zone partagée éprouvées en petit (moteur spatial, entrée par l'état courant, arrivée en plein combat, deux postes simulés, Note8). Restent neufs : sauvegarde persistante, contenu en quantité (quêtes, objets, PNJ), interface qui remplace l'IMGUI, hébergement sur Internet (dépense), iOS (pas de Mac).
 
-| Lot | Sous-lots | Dont grands | Durée indicative | Incertitude |
-|---|---|---|---|---|
-| 11 | 9 | 3 (moteur spatial, scène Unity, démonstration réseau) | 2 à 4 semaines | moyenne à forte : déplacement en réseau, entrée par l'état courant et version Android sont neufs |
-| 12 | 9 | 3 | 2 à 4 semaines | moyenne ; à réévaluer après le lot 11 |
-| 13 | environ 6 | 2 | 2 à 4 semaines | forte ; à réévaluer après le 11.7 |
-| 14 | environ 4 | 2 | 1 à 3 semaines | forte ; à réévaluer après le 11.8 |
-| Alpha | à chiffrer | — | non estimée | Tant que positions et zone partagée ne sont pas éprouvées, aucune durée n'est avancée |
+**Hypothèses** : le rythme du lot 11 (sous-lots fusionnés en quelques heures, revues comprises), sauf pour les sous-lots qui introduisent un format persistant ou de nombreuses règles (comptés comme le 11.4d) ; essais de Damien sous 24 heures ; formes simples jusqu'à l'alpha ; aucune dépense.
 
-Ces durées s'additionnent si les lots se suivent. Leur somme n'est ni une estimation indépendante ni une date de livraison.
+| Lot | Sous-lots | Dont grands | Durée indicative révisée | Avant (20 octobre) | Incertitude |
+|---|---|---|---|---|---|
+| 11 | 9 (+ correctif #37 et suites du 11.9) | 3 | 11.1 à 11.8 en environ 3 jours ; 11.9 en PR | 2 à 4 semaines | faible : il reste à fusionner les suites de l'essai |
+| 12 | 9 | 3 (objets, quêtes, Unity) | 1 à 2 semaines | 2 à 4 semaines | moyenne : beaucoup de règles de jeu à faire valider (quêtes, objets, laisse), contenu en données ; la sauvegarde est le premier format persistant |
+| 13 | environ 6 | 2 (serveur de zone, persistance sur le serveur) | 1 à 2 semaines en réseau local | 2 à 4 semaines | moyenne : l'architecture est éprouvée (11.7) ; comptes, chiffrement et hébergement sur Internet restent neufs, et l'hébergement est une dépense à décider |
+| 14 | environ 4 | 2 (nouvelle interface, mesures sur appareils) | 1 à 2 semaines pour Android | 1 à 3 semaines | moyenne pour Android (commandes au doigt déjà essayées sur le Note8) ; **iOS non estimable** sans Mac ni chaîne de compilation |
+| Alpha | à chiffrer | — | non estimée | non estimée | périmètre à définir (L11-D12) ; contenu et production artistique y pèsent désormais plus que la technique |
+
+Ces durées s'additionnent si les lots se suivent (environ 3 à 6 semaines pour les lots 12 à 14, contre 5 à 11 avant : 2 à 4, 2 à 4 et 1 à 3) ; leur somme n'est ni une estimation indépendante ni une date de livraison. Elles ne comptent ni les dépenses (hébergement, appareils, Mac), ni le temps de décision de Damien sur les règles de jeu, qui devient le facteur principal au lot 12.
 
 ## 8. Décisions prises et points restants
 
@@ -197,12 +199,12 @@ Ces durées s'additionnent si les lots se suivent. Leur somme n'est ni une estim
 **À proposer par Claude, puis à valider** :
 
 - **Architecture de référence** (11.2) et **règles du combat dans l'espace** (11.3) : validées par Damien le 20 octobre 2026 à 01 h 48 ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md), [COMBAT_ESPACE.md](COMBAT_ESPACE.md)).
-- **Contact joueur–créature** (section 4.1) : choisi par Damien après l'essai du 11.6 (rapport 11.9).
-- **Ralentissement en garde** : réglé par essais (11.9).
+- **Contact joueur–créature** (section 4.1) : **A retenu** par Damien à l'essai du 22 octobre 2026 ([rapport 11.9](ESSAI_LOT_11.md#7-rapport-de-lessai-sous-lot-119)).
+- **Ralentissement en garde** : **la moitié de la vitesse retenue** à l'essai du 22 octobre 2026.
 
 **Informations attendues de Damien**, sans bloquer les sous-lots 11.1 à 11.7 :
 
-- versions d'Android (Note8) et d'iOS (iPhone 13) installées ;
+- versions d'Android (Note8 : **Android 9**, relevé le 22 octobre 2026) et d'iOS (iPhone 13) installées ;
 - accès à un Mac ou à une chaîne de compilation iOS ;
 - disponibilité pour les essais ;
 - plus tard, budget et horizon.
