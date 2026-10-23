@@ -284,8 +284,17 @@ namespace EdS.Game
             if (Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed)
             {
-                if (a.MustContinue) a.Continue();
-                else if (!a.Rest()) Say(a.Text("text.ui.next_rest"));
+                // La halte et la reprise sauvegardent : un disque plein ou inaccessible s'affiche, la partie reste où elle en est.
+                try
+                {
+                    if (a.MustContinue) a.Continue();
+                    else if (!a.Rest()) Say(a.Text("text.ui.cannot_rest"));
+                }
+                catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is NotSupportedException)
+                {
+                    Debug.LogException(e);
+                    Say(string.Format(a.Text("text.ui.save_failed"), e.Message));
+                }
             }
             if (a.Opened != _shownSession) ShowAdventureSession();
             bool frozen = _paused || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue;
@@ -883,7 +892,8 @@ namespace EdS.Game
             if (a.MustContinue)
             {
                 Hud.Fill(new Rect(Hud.Width / 2f - 420, Hud.VirtualHeight / 2f - 70, 840, 140), new Color(0.25f, 0f, 0f, 0.8f));
-                Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f - 60, 800, 50), a.Text("text.ui.defeated"), Color.white);
+                string why = a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over";
+                Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f - 60, 800, 50), a.Text(why), Color.white);
             }
             string hint = AdventureHint();
             if (hint != null)

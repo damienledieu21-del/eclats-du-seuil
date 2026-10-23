@@ -124,7 +124,11 @@
       "text.ui.slot.shield": "Bouclier",
       "text.ui.slot.chest": "Torse",
       "text.ui.slot.neck": "Cou",
-      "text.ui.answer": "{0}. {1}"
+      "text.ui.answer": "{0}. {1}",
+      "text.ui.save_failed": "Sauvegarde impossible pour l'instant : {0}",
+      "text.ui.cannot_rest": "Halte impossible ici : approche-toi d'un point sûr, loin des ennemis.",
+      "text.ui.stranded": "Une créature occupe le point sûr : impossible d'y arriver pour l'instant.",
+      "text.ui.session_over": "Le temps de cette session est écoulé."
     }
   }
 }

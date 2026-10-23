@@ -125,7 +125,7 @@ Le chef d'une zone est décrit dans la zone (schéma 2, bloc `boss`) ; ses forme
 - **Actions hors combat** : parler au PNJ à portée, sinon récolter le nœud à portée ; dialogue (réponses traduites) ; fabriquer (l'atelier montre le refus qu'aurait chaque recette, sans rien changer) ; porter ou retirer un objet ; boire l'objet de soin emporté qui soigne le moins.
 - **Cible parmi les proches** : dans une zone, les ennemis en vue à 20 m au plus, du plus proche au plus loin (provisoire) ; une cible qui sort de cette portée compte comme perdue de vue.
 - **Halte** : à 5 m d'un point sûr, sans ennemi vivant à 12 m (provisoire) : sauvegarde, puis nouvelle session à ce point sûr (`WorldSession` reçoit le point sûr d'entrée). Niveau, équipement et passages ouverts y prennent effet, PV pleins.
-- **Défaite** (Q8) : plus rien n'avance jusqu'à la reprise, qui sauvegarde et rouvre une session au dernier point sûr approché (l'entrée au lancement). Une fin de session (une heure) se reprend de même.
+- **Défaite** (Q8) : plus rien n'avance jusqu'à la reprise, qui sauvegarde et rouvre une session au dernier point sûr approché (l'entrée au lancement). Une fin de session (une heure), ou une arrivée refusée (une créature sur le point sûr), se reprend de même. Une sauvegarde automatique impossible (disque plein) s'affiche et se réessaie 5 s plus tard, sans couper la partie.
 - **Sauvegarde automatique** : au plus toutes les 5 s de temps réel quand quelque chose a changé, à chaque halte ou reprise, en quittant ou en passant en arrière-plan ; jamais une partie tombée avant sa reprise.
 
 ## Sauvegarde

@@ -125,6 +125,7 @@ namespace EdS.Runtime
         private readonly List<string> _messages = new List<string>();
         private readonly Dictionary<string, int> _drunk = new Dictionary<string, int>(StringComparer.Ordinal);
         private bool _dirty;
+        private bool _strandedAnnounced;
         private double _sinceSave;
         private string _lastSafePoint;
 
@@ -193,6 +194,7 @@ namespace EdS.Runtime
             World = world;
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, PlayerId, () => Collect(world, world.Step()), TargetRange);
             _drunk.Clear();
+            _strandedAnnounced = false;
             foreach (KeyValuePair<string, int> c in world.Zone.Engine.View(PlayerId).ConsumableCharges) _drunk[c.Key] = c.Value;
             Opened = checked(Opened + 1);
         }
@@ -205,9 +207,21 @@ namespace EdS.Runtime
         /// </summary>
         public int Advance(double seconds)
         {
-            int steps = World.IsDefeated ? 0 : Combat.Advance(seconds);
+            int steps = MustContinue ? 0 : Combat.Advance(seconds);
             _sinceSave += seconds;
-            if (_dirty && _sinceSave >= AutosaveSeconds && !World.IsDefeated) Save();
+            if (_dirty && _sinceSave >= AutosaveSeconds && !World.IsDefeated)
+            {
+                // Un disque plein ou inaccessible ne coupe pas la partie : le motif s'affiche et l'essai reprend 5 s plus tard.
+                try
+                {
+                    Save();
+                }
+                catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is NotSupportedException)
+                {
+                    _sinceSave = 0;
+                    Say("text.ui.save_failed", e.Message);
+                }
+            }
             TrackSafePoint();
             return steps;
         }
@@ -238,6 +252,11 @@ namespace EdS.Runtime
         {
             if (!ReferenceEquals(world, World)) return;
             DrinkMessages();
+            if (Stranded && !_strandedAnnounced)
+            {
+                _strandedAnnounced = true;
+                Say("text.ui.stranded");
+            }
             if (step.IsEmpty) return;
             _dirty = true;
             foreach (ExperienceGained g in step.Experience)
@@ -535,8 +554,20 @@ namespace EdS.Runtime
         public bool CanRest => !World.IsDefeated && Me is GroundVector p && _zone.SafePoints.Any(s => Within(p, s.Position, RestRange))
             && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any() && Dialogue is null;
 
-        /// <summary>Il faut reprendre : défaite, ou fin de la session (durée maximale atteinte).</summary>
-        public bool MustContinue => World.IsDefeated || Combat.IsFinished;
+        /// <summary>
+        /// L'arrivée du personnage a été refusée (une créature occupait le point sûr) : il n'est pas dans la zone ; une reprise réessaie.
+        /// </summary>
+        public bool Stranded
+        {
+            get
+            {
+                CombatantView me = World.Zone.Engine.View(PlayerId);
+                return !me.IsPresent && !me.HasLeft && me.ArrivalTick is long t && t < World.Zone.Engine.CurrentTick;
+            }
+        }
+
+        /// <summary>Il faut reprendre : défaite, arrivée refusée, ou fin de la session (durée maximale atteinte).</summary>
+        public bool MustContinue => World.IsDefeated || Stranded || Combat.IsFinished;
 
         /// <summary>
         /// Halte au point sûr proche : sauvegarde, puis nouvelle session à ce point sûr (PV pleins ; niveau, équipement, passages ouverts
@@ -567,6 +598,7 @@ namespace EdS.Runtime
         }
 
         /// <summary>Sauvegarde l'état actuel (écriture atomique, copie de secours gardée).</summary>
+        /// <exception cref="IOException">Disque plein ou inaccessible (de même <see cref="UnauthorizedAccessException"/>).</exception>
         public void Save() => Write(World.Save());
 
         private void Write(WorldSave save)

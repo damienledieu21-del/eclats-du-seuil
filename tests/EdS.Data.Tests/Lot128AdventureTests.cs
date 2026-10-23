@@ -236,8 +236,8 @@ public class Lot128AdventureTests : IDisposable
         Assert.Null(SaveStore.Read(SavePath).Problem);
     }
 
-    /// <summary>Données copiées, un sanglier mortel posté près de l'entrée.</summary>
-    private (string Data, string Scenarios) DeadlyCopy()
+    /// <summary>Données copiées, un sanglier mortel posté près de l'entrée (ou sur elle).</summary>
+    private (string Data, string Scenarios) DeadlyCopy(double x = -14)
     {
         string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
         Copy(DataDirectory, data);
@@ -245,7 +245,7 @@ public class Lot128AdventureTests : IDisposable
         string zone = Path.Combine(scenarios, "zones", "vallons.json");
         JsonObject root = JsonNode.Parse(File.ReadAllText(zone))!.AsObject();
         JsonObject boar = root["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!.AsObject();
-        boar["position"] = new JsonArray(-14, -12);
+        boar["position"] = new JsonArray(x, -12);
         foreach (JsonNode? attack in boar["attacks"]!.AsArray()) attack!["rawDamage"] = 100_000;
         File.WriteAllText(zone, root.ToJsonString());
         return (data, scenarios);
@@ -281,6 +281,24 @@ public class Lot128AdventureTests : IDisposable
         Assert.False(me.IsDead);
         Assert.Equal(me.MaxHealth, me.Health);
         Assert.False(a.World.IsDefeated);
+    }
+
+    [Fact]
+    public void Arrivee_refusee_puis_nouvel_essai()
+    {
+        // Une créature sur le point sûr : le personnage n'arrive pas ; la partie le dit et une reprise réessaie.
+        (string data, string scenarios) = DeadlyCopy(x: -18);
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
+        a.Advance(0.05);
+        Assert.True(a.Stranded);
+        Assert.True(a.MustContinue);
+        Assert.False(a.World.IsDefeated);
+        Assert.Contains("Une créature occupe le point sûr : impossible d'y arriver pour l'instant.", a.DrainMessages());
+        Assert.Equal(0, a.Advance(1));
+        Assert.True(a.Continue());
+        Assert.Equal(2, a.Opened);
+        a.Advance(0.05);
+        Assert.True(a.Stranded);   // le sanglier revient à sa place : toujours occupé
     }
 
     [Fact]
