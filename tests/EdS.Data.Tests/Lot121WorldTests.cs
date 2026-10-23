@@ -326,11 +326,14 @@ public class Lot121WorldTests
     {
         // Revue Codex de la PR #42 : la durée de la session est réservée d'avance sous la borne des sauvegardes.
         CombatSetup setup = ZoneSetup(root => root["data"]!["durationMs"] = 3000);
-        long sessionTicks = 3000 / 50 + 1;
+        // Revue Codex de la PR #42 (4e tour) : une session de N ticks (ticks 0 à N-1) avance le monde de N ticks, pas de N+1 : celle qui
+        // finit exactement à la borne est admise.
+        long sessionTicks = 3000 / 50;
         Zone last = NewZone(setup, start: SaveValidator.MaxWorldTick - sessionTicks);
         Run(last, 1000);
         Assert.True(last.IsOver);
-        Assert.InRange(last.WorldTick, SaveValidator.MaxWorldTick - 1, SaveValidator.MaxWorldTick);
+        Assert.Equal(sessionTicks, last.ElapsedTicks);
+        Assert.Equal(SaveValidator.MaxWorldTick, last.WorldTick);
         Assert.True(SaveJsonReader.Read(SaveJsonReader.Write(last.Save())).IsValid);
         Assert.Throws<ArgumentOutOfRangeException>(() => NewZone(setup, start: SaveValidator.MaxWorldTick - sessionTicks + 1));
     }
