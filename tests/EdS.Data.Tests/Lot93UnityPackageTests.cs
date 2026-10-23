@@ -238,8 +238,12 @@ public class Lot93UnityPackageTests
         Assert.Contains("bool untitled = string.IsNullOrEmpty(active.path);", scene, StringComparison.Ordinal);
         Assert.Contains("if (untitled)", scene, StringComparison.Ordinal);
         Assert.DoesNotContain("enregistre d'abord la scène ouverte", scene, StringComparison.Ordinal);
-        // 2e tour : à une ouverture suivante, une scène sans nom qui n'a que les objets d'une scène neuve est remplacée par Jeu.unity.
-        Assert.Contains("active.GetRootGameObjects().All(g => DefaultObjects.Contains(g.name))", scene, StringComparison.Ordinal);
+        // 3e tour (accord de Damien du 23 octobre 2026) : une scène sans nom modifiée n'est fermée qu'après la question de Unity ; un
+        // enregistrement qui échoue arrête la préparation avant d'inscrire la scène dans la liste de construction.
+        Assert.Contains("(!active.isDirty || EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())", scene, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetRootGameObjects", scene, StringComparison.Ordinal);
+        int failed = scene.IndexOf("if (!saved)", StringComparison.Ordinal);
+        Assert.True(failed > 0 && failed < scene.IndexOf("EditorBuildSettings.scenes = ", StringComparison.Ordinal), "échec d'enregistrement vérifié avant la liste de construction");
         Assert.Contains("EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) }", scene, StringComparison.Ordinal);
         string ignore = File.ReadAllText(Path.Combine(Root, ".gitignore"));
         Assert.Contains("unity/Assets/EdS/Scenes/", ignore, StringComparison.Ordinal);

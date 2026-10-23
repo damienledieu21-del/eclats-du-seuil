@@ -98,6 +98,7 @@ namespace UnityEditor.SceneManagement
         public static bool SaveScene(UnityEngine.SceneManagement.Scene scene, string path) => false;
         public static bool CloseScene(UnityEngine.SceneManagement.Scene scene, bool remove) => false;
         public static UnityEngine.SceneManagement.Scene OpenScene(string path) => default;
+        public static bool SaveCurrentModifiedScenesIfUserWantsTo() => false;
     }
 }
 namespace UnityEngine.SceneManagement
