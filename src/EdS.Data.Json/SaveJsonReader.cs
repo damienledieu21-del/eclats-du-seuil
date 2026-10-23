@@ -31,14 +31,14 @@ namespace EdS.Data.Json
         public static SaveLoadResult Read(string json)
         {
             var report = new ValidationReport();
-            return Read(JsonInput.Utf8(json, report), report);
+            return Read(JsonInput.Utf8(json, report, MaxBytes), report);
         }
 
         private static SaveLoadResult Read(byte[]? json, ValidationReport report)
         {
             var document = new SaveDocument();
             if (json is null) return SaveValidator.Validate(document, report);
-            JsonHeader header = JsonInput.Parse(json, report, (input, element) => document.Data = ReadData(input, element, "$.data"));
+            JsonHeader header = JsonInput.Parse(json, report, (input, element) => document.Data = ReadData(input, element, "$.data"), MaxBytes);
             document.SchemaVersion = header.SchemaVersion;
             document.Kind = header.Kind;
             document.ContentVersion = header.ContentVersion;
@@ -94,6 +94,10 @@ namespace EdS.Data.Json
             // Les identifiants et les clés sont déjà validés (ASCII sans guillemet ni barre oblique inverse) : aucun échappement nécessaire.
             if (!SaveValidator.IsZoneId(save.Zone) || save.Consumed.Any(k => !SaveValidator.IsEventKey(k)))
                 throw new ArgumentException("Sauvegarde invalide : identifiant de zone ou clé d'événement hors du format.", nameof(save));
+            // Revue Codex de la PR #42 : mêmes bornes qu'à la lecture, pour ne jamais écrire une sauvegarde qui ne se relirait pas.
+            if (save.WorldTick < 0 || save.WorldTick > SaveValidator.MaxWorldTick || save.Sessions < 0 || save.Sessions > SaveValidator.MaxWorldTick
+                || save.Consumed.Count > SaveValidator.MaxConsumed)
+                throw new ArgumentException($"Sauvegarde invalide : temps du monde ou sessions hors de [0, {SaveValidator.MaxWorldTick}], ou plus de {SaveValidator.MaxConsumed} événements.", nameof(save));
             var b = new StringBuilder();
             b.Append("{\n");
             b.Append("  \"schemaVersion\": ").Append(SaveValidator.CurrentSchemaVersion.ToString(CultureInfo.InvariantCulture)).Append(",\n");
