@@ -233,6 +233,11 @@ public class Lot93UnityPackageTests
         string scene = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdsStartupScene.cs"));
         Assert.Contains("public const string ScenePath = \"Assets/EdS/Scenes/Jeu.unity\";", scene, StringComparison.Ordinal);
         Assert.Contains("[InitializeOnLoad]", scene, StringComparison.Ordinal);
+        // Revue Codex de la PR #39 : la scène sans nom ouverte (Unity 6 la marque modifiée dès sa création) est enregistrée comme scène de
+        // démarrage, au lieu d'abandonner la préparation.
+        Assert.Contains("bool untitled = string.IsNullOrEmpty(active.path);", scene, StringComparison.Ordinal);
+        Assert.Contains("if (untitled)", scene, StringComparison.Ordinal);
+        Assert.DoesNotContain("enregistre d'abord la scène ouverte", scene, StringComparison.Ordinal);
         Assert.Contains("EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) }", scene, StringComparison.Ordinal);
         string ignore = File.ReadAllText(Path.Combine(Root, ".gitignore"));
         Assert.Contains("unity/Assets/EdS/Scenes/", ignore, StringComparison.Ordinal);
