@@ -214,7 +214,7 @@ namespace EdS.World
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
             CraftingBook? crafting = null, ICombatLog? log = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
-                data, progression, items, new CombatantPlacement(zone.Entry.Position, CharacterRadius), null, log, CheckZone(save, zone))
+                data, progression, items, new CombatantPlacement(zone.Entry.Position, CharacterRadius), null, log, CheckZone(save, zone, story, crafting))
         {
             Definition = zone;
             _populations = new ZonePopulations(zone);
@@ -259,8 +259,20 @@ namespace EdS.World
         bool INarrativeWorld.InPlace(string place) =>
             Definition != null && ((INarrativeWorld)this).PlayerPosition is GroundVector p && Definition.PlacesAt(p).Any(x => x.Id == place);
 
-        private static bool CheckZone(WorldSave save, ZoneDefinition zone) =>
-            save.Zone == zone.Id ? true : throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
+        /// <summary>
+        /// Contrôles faits avant l'ouverture de la zone (aucun journal écrit pour une session refusée) : sauvegarde de cette zone, état narratif
+        /// et expérience des métiers qui vont avec l'histoire et les métiers chargés (revue Codex de la PR #47).
+        /// </summary>
+        private static bool CheckZone(WorldSave save, ZoneDefinition zone, StoryBook? story, CraftingBook? crafting)
+        {
+            if (save.Zone != zone.Id) throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
+            if (save.Character is SavedCharacter c)
+            {
+                if (story != null) Narrative.CheckSaved(story, c.Story);
+                if (crafting != null) Workshop.CheckSaved(crafting, c.Professions);
+            }
+            return true;
+        }
 
         /// <summary>Table de butin d'une créature : celle donnée à l'ouverture, sinon celle de sa population.</summary>
         private LootTable? LootFor(string combatant)

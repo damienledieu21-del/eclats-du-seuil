@@ -367,6 +367,31 @@ public class Lot126CraftingTests
         Assert.True(engine.CompletedSetup().Validate().Count == 0);
     }
 
+    [Fact]
+    public void Experience_de_metier_hors_bornes_refusee_avant_l_ouverture()
+    {
+        // Revue Codex de la PR #47 : un personnage construit hors du lecteur JSON (expérience négative, démesurée) ou un état narratif qui
+        // ne va pas avec l'histoire est refusé avant l'ouverture de la zone : aucune ligne de journal, aucune opération à moitié faite.
+        ZoneDefinition zone = Zone();
+        StoryBook story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, zone, Items).Story!;
+        void Refused(SavedCharacter hero)
+        {
+            var log = new MemoryCombatLog();
+            Assert.Throws<ArgumentException>(() => new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), zone, ShippedData, Progression,
+                Items, story, Book(zone), log));
+            Assert.Empty(log.Lines);
+        }
+        Refused(Hero(new Dictionary<string, long> { ["minage"] = -5 }));
+        Refused(Hero(new Dictionary<string, long> { ["minage"] = long.MaxValue }));
+        Refused(Hero(new Dictionary<string, long> { ["cuisine"] = 10 }));
+        Refused(Hero().WithStory(new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.inconnue"] = new QuestProgress("x") })));
+        // Au plafond, l'expérience annoncée est celle réellement ajoutée.
+        WorldSession capped = Play(Zone(), Hero(new Dictionary<string, long> { ["forge"] = CraftingValidator.MaxXp }, new ItemStack("item.minerai_de_fer", 3)));
+        Assert.Equal(CraftRefusal.None, capped.Craft("recipe.ferrure", out CraftEvent? done));
+        Assert.Equal(0L, done!.Xp);
+        Assert.Equal(CraftingValidator.MaxXp, capped.Workshop!.Xp("forge"));
+    }
+
     // --- Sauvegarde, version 5 ---------------------------------------------------------------------
 
     [Fact]
