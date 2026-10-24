@@ -670,10 +670,14 @@ namespace EdS.Game
             if (!(_combat is RealtimeCombat)) _combat = null;
         }
 
-        /// <summary>Quitte le réseau et reprend la séance solo du début.</summary>
+        /// <summary>
+        /// Quitte le réseau et reprend la séance solo du début. Revue Codex de la PR #49 : depuis l'aventure (le réseau la quitte toujours avant
+        /// de démarrer), le jeu solo est l'aventure elle-même : elle continue telle quelle, sans combat d'entraînement substitué en dessous.
+        /// </summary>
         private void BackToSolo()
         {
             StopNetwork();
+            if (_adventure != null) return;
             if (_session != null) Restart();
             else Load(_scenario, null);
         }

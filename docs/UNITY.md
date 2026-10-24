@@ -140,7 +140,7 @@ Touche **M** : le menu du réseau s'ouvre. On y tape son nom, puis on choisit un
 3. **À deux PC** (comme en **b**, mais avec **Héberger les Vallons à deux**) : l'un commence seul, l'autre rejoint quand il veut ; chacun voit l'autre marcher, les mêmes ennemis aux mêmes places, et un loup tué meurt chez les deux en même temps.
 4. **Coupure** : couper le Wi-Fi d'un PC quelques secondes : au retour, la partie reprend à l'état courant (pas de longue attente).
 
-Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** ouvre les talents (« Jouer ce build » envoie le build composé au serveur, qui le vérifie). En combat, le temps aller-retour (ping) s'affiche sous le chrono, avec l'avance de la télégraphie : en réseau, la barre orange au-dessus d'un assaillant se remplit en avance du ping (sous-lot 10.6), il suffit donc de parer « à vue », comme en solo ; en réseau local, l'avance ne dépasse pas quelques millisecondes. Pas de pause en réseau. **Quitter la partie** ramène au menu ; **Revenir au jeu solo** reprend l'entraînement.
+Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** ouvre les talents (« Jouer ce build » envoie le build composé au serveur, qui le vérifie). En combat, le temps aller-retour (ping) s'affiche sous le chrono, avec l'avance de la télégraphie : en réseau, la barre orange au-dessus d'un assaillant se remplit en avance du ping (sous-lot 10.6), il suffit donc de parer « à vue », comme en solo ; en réseau local, l'avance ne dépasse pas quelques millisecondes. Pas de pause en réseau. **Quitter la partie** ramène au menu ; **Revenir au jeu solo** reprend l'entraînement ; ouvert depuis l'aventure (M), il la laisse continuer telle quelle.
 
 ## 7. Jouer sur téléphone (sous-lot 11.8)
 
