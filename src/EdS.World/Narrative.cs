@@ -101,6 +101,9 @@ namespace EdS.World
         void GiveXp(long xp);
         bool OpenPassage(string passage);
         bool IsPassageOpen(string passage);
+
+        /// <summary>Passages qu'on peut encore ouvrir pour de bon (places libres au registre du monde).</summary>
+        int PassageRoom { get; }
         DayPhase Phase { get; }
 
         /// <summary>Position du personnage s'il est présent et vivant ; null sinon.</summary>
@@ -135,17 +138,31 @@ namespace EdS.World
         {
             _book = book ?? throw new ArgumentNullException(nameof(book));
             _world = world ?? throw new ArgumentNullException(nameof(world));
-            if (saved is null) throw new ArgumentNullException(nameof(saved));
+            CheckSaved(book, saved);
             _facts = new SortedSet<string>(saved.Facts, StringComparer.Ordinal);
             _trust = new SortedDictionary<string, int>(saved.Trust.ToDictionary(t => t.Key, t => t.Value), StringComparer.Ordinal);
             _discoveries = new SortedSet<string>(saved.Discoveries, StringComparer.Ordinal);
             foreach (KeyValuePair<string, QuestProgress> q in saved.Quests)
             {
+                int step = q.Value.IsDone ? -1 : book.Quest(q.Key).StepIndex(q.Value.Step);
+                _quests[q.Key] = (step, q.Value.Progress);
+            }
+        }
+
+        /// <summary>
+        /// L'état narratif sauvegardé va avec cette histoire : chaque quête existe, à une étape connue. Contrôlé avant l'ouverture de la
+        /// session (revue Codex de la PR #47 : une session refusée n'a rien écrit).
+        /// </summary>
+        /// <exception cref="ArgumentException">Sauvegarde qui ne va pas avec ces données.</exception>
+        internal static void CheckSaved(StoryBook book, SavedStory saved)
+        {
+            if (book is null) throw new ArgumentNullException(nameof(book));
+            if (saved is null) throw new ArgumentNullException(nameof(saved));
+            foreach (KeyValuePair<string, QuestProgress> q in saved.Quests)
+            {
                 // Une quête sauvegardée doit exister, à une étape connue : sinon la sauvegarde ne va pas avec ces données.
                 Quest quest = book.HasQuest(q.Key) ? book.Quest(q.Key) : throw new ArgumentException($"Quête sauvegardée « {q.Key} » absente de l'histoire.", nameof(saved));
-                int step = q.Value.IsDone ? -1 : quest.StepIndex(q.Value.Step);
-                if (step < 0 && !q.Value.IsDone) throw new ArgumentException($"Étape « {q.Value.Step} » inconnue de « {q.Key} ».", nameof(saved));
-                _quests[q.Key] = (step, q.Value.Progress);
+                if (!q.Value.IsDone && quest.StepIndex(q.Value.Step) < 0) throw new ArgumentException($"Étape « {q.Value.Step} » inconnue de « {q.Key} ».", nameof(saved));
             }
         }
 
@@ -305,11 +322,15 @@ namespace EdS.World
         };
 
         /// <summary>
-        /// Applique des effets en entier ou pas du tout : les objets sont d'abord essayés sur une copie de l'inventaire (retraits puis dons,
-        /// dans l'ordre) ; s'ils passent, tout est appliqué.
+        /// Applique des effets en entier ou pas du tout : les passages à ouvrir doivent trouver place au registre du monde, les objets sont
+        /// d'abord essayés sur une copie de l'inventaire (retraits puis dons, dans l'ordre) ; si tout passe, tout est appliqué.
         /// </summary>
         private bool Apply(IReadOnlyList<StoryEffect> effects, List<StoryEvent> events)
         {
+            // Revue Codex de la PR #46 : les passages à ouvrir réservent leur place au registre avant toute mutation (registre plein : rien
+            // n'est appliqué, ni retrait d'objets ni autre effet).
+            int passages = effects.Where(e => e.Kind == EffectKind.OpenPassage && !_world.IsPassageOpen(e.Id)).Select(e => e.Id).Distinct(StringComparer.Ordinal).Count();
+            if (passages > _world.PassageRoom) return false;
             Inventory trial = _world.Inventory.Clone();
             foreach (StoryEffect e in effects)
             {

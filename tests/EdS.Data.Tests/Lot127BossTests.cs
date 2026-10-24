@@ -5,8 +5,10 @@ using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Story;
+using EdS.Data.Validation;
 using EdS.Data.Zones;
 using EdS.Domain.Combat;
+using EdS.Simulation.Engine;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -26,7 +28,8 @@ public class Lot127BossTests
     private static TextCatalog Texts => StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(DataDirectory)).Texts!;
 
     /// <summary>Zone des Vallons ; formes du chef retouchées au besoin ; entrée déplacée ; créatures de la zone calmées au besoin.</summary>
-    private static ZoneLoadResult Load(Action<JsonObject>? zone = null, Action<JsonObject>? boss = null, double x = -18, double z = -12, bool calm = false)
+    private static ZoneLoadResult Load(Action<JsonObject>? zone = null, Action<JsonObject>? boss = null, double x = -18, double z = -12, bool calm = false,
+        Action<JsonObject>? zoneScenario = null, EdS.Data.GameData? data = null)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
         root["data"]!["safePoints"]![0]!["position"] = new JsonArray(x, z);
@@ -39,11 +42,12 @@ public class Lot127BossTests
             if (calm)   // créatures de la zone inoffensives (le rôdeur garde l'approche du chef)
                 foreach (JsonNode? c in population["data"]!["combatants"]!.AsArray())
                     foreach (JsonNode? a in c!["attacks"]!.AsArray()) a!["rawDamage"] = 1;
+            zoneScenario?.Invoke(population);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), population.ToJsonString());
             JsonObject forms = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons_chef")))!.AsObject();
             boss?.Invoke(forms);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons_chef.json"), forms.ToJsonString());
-            return ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, Items);
+            return ZoneJsonReader.Read(root.ToJsonString(), directory, data ?? ShippedData, Items);
         }
         finally
         {
@@ -52,14 +56,14 @@ public class Lot127BossTests
     }
 
     /// <summary>Chef affaibli (60 PV par forme), inoffensif ou mortel ; entrée à côté de lui ; le reste de la zone ne blesse pas.</summary>
-    private static ZoneDefinition Arena(long damage = 1, int health = 60) => Load(boss: f =>
+    private static ZoneDefinition Arena(long damage = 1, int health = 60, Action<JsonObject>? zoneScenario = null) => Load(boss: f =>
     {
         foreach (JsonNode? c in f["data"]!["combatants"]!.AsArray())
         {
             c!["health"] = health;
             foreach (JsonNode? a in c["attacks"]!.AsArray()) a!["rawDamage"] = damage;
         }
-    }, x: 51.5, z: 36, calm: true).Zone!;
+    }, x: 51.5, z: 36, calm: true, zoneScenario: zoneScenario).Zone!;
 
     private static string First(ZoneLoadResult r)
     {
@@ -115,6 +119,132 @@ public class Lot127BossTests
         Assert.Equal("$.data.boss.rewards[0].count", First(Load(z => B(z)["rewards"]![0]!["count"] = 2)));
         Assert.Equal("$.data.boss.loot", First(Load(z => B(z)["loot"] = "loot.inconnu")));
         Assert.Equal("$.data.boss.scenario", First(Load(z => B(z)["scenario"] = "zones/inconnu")));
+        // Avant la revue Codex : la place d'une forme doit tenir dans la simulation de la zone (ici, un rocher ajouté sur la place du
+        // chef), sinon son arrivée serait refusée.
+        Assert.Equal("$.data.boss.forms[0]", First(Load(zoneScenario: s => s["data"]!["space"]!["obstacles"]!.AsArray().Add(JsonNode.Parse(
+            "{\"id\": \"rocher_chef\", \"points\": [[53, 35], [55, 35], [55, 37], [53, 37]]}")))));
+        // Le schéma suit les identifiants des formes (réservés « _v<nombre> », uniques).
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        B(root)["forms"]![1] = "gardien_du_seuil";
+        Assert.False(schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement));
+        B(root)["forms"]![1] = "gardien_v2";
+        Assert.False(schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement));
+    }
+
+    [Fact]
+    public void Forme_sur_un_point_sur_refusee()
+    {
+        // Revue Codex de la PR #48 : une forme (solide pour le personnage : grande créature) sur un point sûr rendrait l'arrivée de l'un ou de
+        // l'autre impossible ; refusée au chargement, au chemin de la forme.
+        Assert.Equal("$.data.boss.forms[0]", First(Load(x: 54, z: 34.5)));
+        Assert.Equal("$.data.boss.forms[1]", First(Load(x: 56, z: 31.5)));
+    }
+
+    [Fact]
+    public void Forme_dont_la_cible_n_existe_que_dans_le_scenario_du_chef_refusee()
+    {
+        // Revue Codex de la PR #48 : la seconde forme vise un combattant présent seulement dans le scénario du chef (jamais importé dans la
+        // zone) : son arrivée serait refusée par le moteur ; la zone est refusée au chemin de la forme.
+        ZoneLoadResult r = Load(boss: f =>
+        {
+            JsonArray combatants = f["data"]!["combatants"]!.AsArray();
+            JsonObject extra = combatants[0]!.DeepClone().AsObject();
+            extra["id"] = "sbire";
+            extra["team"] = "sauvages";
+            extra["position"] = new JsonArray(45, 22);
+            combatants.Add(extra);
+            combatants[1]!["target"] = "sbire";
+        });
+        Assert.Equal("$.data.boss.forms[1]", First(r));
+        Assert.Contains("simulation de la zone", r.Report.Errors[0].Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Formes_qui_ne_tiennent_pas_dans_la_session_refusees() =>
+        // Revue Codex de la PR #48 (3e tour) : 10 créatures, le personnage et 2 formes ne tiennent pas sous un plafond de 12 combattants.
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 64", "\"maxCombatants\": 12"), directory =>
+        {
+            ZoneLoadResult r = Load(data: GameDataLoader.Load(directory).Data!);
+            Assert.Equal("$.data.boss.forms", First(r));
+            Assert.Equal(ValidationCode.LimitExceeded, r.Report.Errors[0].Code);
+            return 0;
+        });
+
+    [Fact]
+    public void Forme_suivante_attend_une_arrivee_du_meme_tick_sur_sa_place()
+    {
+        // Revue Codex de la PR #48 (3e tour) : une créature arrive sur la place de la seconde forme au tick même où celle-ci devait se
+        // relever ; la forme attend que la place se libère, puis arrive, et le chef reste vainqueur possible.
+        WorldSession reference = Play(Arena(), new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        long relief = Fight(reference).SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.FormArrived && b.Phase == 1).Tick;
+        ZoneDefinition crowded = Arena(zoneScenario: sc =>
+        {
+            JsonArray combatants = sc["data"]!["combatants"]!.AsArray();
+            JsonObject intruder = combatants.Select(c => c!.AsObject()).First(c => c["id"]!.GetValue<string>() == "loup1").DeepClone().AsObject();
+            intruder["id"] = "intrus";
+            intruder["position"] = new JsonArray(56, 33);
+            intruder["arrivalMs"] = relief * 50;
+            combatants.Add(intruder);
+        });
+        WorldSession session = Play(crowded, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        List<SessionStep> steps = Fight(session, 6000);
+        BossEvent second = steps.SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.FormArrived && b.Phase == 1);
+        Assert.True(second.Tick > relief);
+        Assert.Equal("gardien_eveille", second.Form);
+        Assert.True(session.BossDefeated);
+    }
+
+    [Fact]
+    public void Victoire_reconnue_si_le_personnage_part_au_meme_tick()
+    {
+        // Revue Codex de la PR #48 (4e tour) : le personnage quitte la zone au tick où la dernière forme tombe ; présent au début du tick et
+        // vivant, il reçoit la récompense unique et le fait, comme l'expérience.
+        WorldSession reference = Play(Arena(), new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        long end = Fight(reference).SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.Defeated).Tick;
+        WorldSession session = Play(Arena(), new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        var steps = new List<SessionStep>();
+        for (int i = 0; i < 3000 && !session.BossDefeated; i++)
+        {
+            if (i % 20 == 1 && session.BossForm is string form)
+                try { session.Zone.Engine.Submit(new CombatCommand(session.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", form)); }
+                catch (ArgumentException) { }
+            if (session.Zone.Engine.CurrentTick == end - 1) session.Zone.Leave("bastion");
+            steps.Add(session.Step());
+        }
+        Assert.True(session.BossDefeated);
+        Assert.True(session.Zone.Engine.View("bastion").HasLeft);
+        Assert.Equal(new[] { ("item.lame_du_seuil", 1) }, steps.SelectMany(s => s.Rewards));
+        Assert.Contains("zone.vallons/boss/gardien_du_seuil", session.Save().Consumed);
+    }
+
+    [Fact]
+    public void Victoire_au_dernier_tick_de_la_session_reconnue()
+    {
+        // Revue Codex de la PR #48 : la dernière forme tombe au tick qui termine la session : la victoire, la récompense unique et le fait
+        // comptent quand même.
+        WorldSession reference = Play(Arena(), new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        long end = Fight(reference).SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.Defeated).Tick;
+        ZoneDefinition shortened = Arena(zoneScenario: s => s["data"]!["durationMs"] = end * 50);
+        WorldSession session = Play(shortened, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        List<SessionStep> steps = Fight(session);
+        Assert.True(session.Zone.Engine.IsFinished);
+        Assert.True(session.BossDefeated);
+        Assert.Equal(new[] { ("item.lame_du_seuil", 1) }, steps.SelectMany(s => s.Rewards));
+        Assert.Contains("zone.vallons/boss/gardien_du_seuil", session.Save().Consumed);
+    }
+
+    [Fact]
+    public void Personnage_qui_porte_l_identite_du_chef_refuse_avant_l_ouverture()
+    {
+        // Le chef arrive avec la session sous l'identité de sa forme : un personnage du même nom est refusé avant l'ouverture de la zone
+        // (aucune ligne de journal).
+        ZoneDefinition arena = Arena();
+        var log = new MemoryCombatLog();
+        SavedCharacter hero = PlayerCharacters.Create("gardien_du_seuil", "class.bastion", Progression);
+        Assert.Throws<ArgumentException>(() => new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), arena, ShippedData,
+            Progression, Items, null, null, log));
+        Assert.Empty(log.Lines);
     }
 
     [Fact]

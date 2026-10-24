@@ -152,6 +152,7 @@ namespace EdS.World
                     int count = Math.Min(Inventory.Count(id), potion.Stack);
                     carried.Add(new ConsumableSetup(id, potion.Heal, count, potion.CooldownMs));
                     _carried[id] = count;
+                    Inventory.Reserve(id, count);   // revue Codex de la PR #47 : emportés, ils ne se retirent plus de l'inventaire avant d'être bus
                 }
             CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried);
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
@@ -162,7 +163,7 @@ namespace EdS.World
 
         private readonly Dictionary<string, LootTable> _lootTables;
 
-        /// <summary>Sous-lot 12.6 : charges de chaque objet de soin emporté, telles que retirées de l'inventaire jusqu'ici.</summary>
+        /// <summary>Sous-lot 12.6 : charges de chaque objet de soin emporté (réservées dans l'inventaire), telles qu'usées jusqu'ici.</summary>
         private readonly Dictionary<string, int> _carried = new Dictionary<string, int>(StringComparer.Ordinal);
 
         /// <summary>Sous-lot 12.6 : récolte, fabrication et expérience des métiers (null sans métiers chargés).</summary>
@@ -210,7 +211,7 @@ namespace EdS.World
                 int now = me.ConsumableCharges.TryGetValue(id, out int left) ? left : _carried[id];
                 int drunk = _carried[id] - now;
                 if (drunk <= 0) continue;
-                Inventory.Remove(id, Math.Min(drunk, Inventory.Count(id)));
+                Inventory.UseReserved(id, drunk);   // réservés à l'entrée : toujours là
                 _carried[id] = now;
             }
         }
@@ -221,7 +222,7 @@ namespace EdS.World
         public ZoneDefinition? Definition { get; }
 
         /// <summary>Rayon de l'emprise d'un personnage qui entre par un point sûr (provisoire, celui des scénarios).</summary>
-        public static readonly Fixed CharacterRadius = Fixed.Parse("0.5");
+        public static readonly Fixed CharacterRadius = ZoneValidator.CharacterRadius;
 
         /// <summary>
         /// Sous-lot 12.4 : partie dans une zone du monde. La session de zone part de sa simulation, passages ouverts retirés
@@ -235,7 +236,7 @@ namespace EdS.World
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
             CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
-                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint).Position, CharacterRadius), null, log, CheckZone(save, zone))
+                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint).Position, CharacterRadius), null, log, CheckZone(save, zone, story, crafting))
         {
             Definition = zone;
             _populations = new ZonePopulations(zone);
@@ -289,6 +290,8 @@ namespace EdS.World
 
         DayPhase INarrativeWorld.Phase => Zone.Time.Phase;
 
+        int INarrativeWorld.PassageRoom => Zone.RegistryRoom;
+
         GroundVector? INarrativeWorld.PlayerPosition
         {
             get
@@ -306,15 +309,31 @@ namespace EdS.World
             safePoint is null ? zone.Entry
             : zone.SafePoints.FirstOrDefault(p => p.Id == safePoint) ?? throw new ArgumentException($"Point sûr « {safePoint} » inconnu de {zone.Id}.", nameof(safePoint));
 
-        private static bool CheckZone(WorldSave save, ZoneDefinition zone) =>
-            save.Zone == zone.Id ? true : throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
+        /// <summary>
+        /// Contrôles faits avant l'ouverture de la zone (aucun journal écrit pour une session refusée) : sauvegarde de cette zone, état narratif
+        /// et expérience des métiers qui vont avec l'histoire et les métiers chargés (revue Codex de la PR #47).
+        /// </summary>
+        private static bool CheckZone(WorldSave save, ZoneDefinition zone, StoryBook? story, CraftingBook? crafting)
+        {
+            if (save.Zone != zone.Id) throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
+            if (save.Character is SavedCharacter c)
+            {
+                // Sous-lot 12.7 : le chef arrive avec la session sous l'identité de sa forme ; un personnage qui la porte rendrait son arrivée
+                // impossible (refusé ici, avant l'ouverture de la zone).
+                if (zone.Boss is { } boss && boss.Forms.Any(f => f.Id == c.Id))
+                    throw new ArgumentException($"Personnage « {c.Id} » : identité d'une forme du chef de {zone.Id}.", nameof(save));
+                if (story != null) Narrative.CheckSaved(story, c.Story);
+                if (crafting != null) Workshop.CheckSaved(crafting, c.Professions);
+            }
+            return true;
+        }
 
         /// <summary>Table de butin d'une créature : celle donnée à l'ouverture, sinon celle de sa population.</summary>
         private LootTable? LootFor(string combatant)
         {
             if (_lootTables.TryGetValue(combatant, out LootTable table)) return table;
             // Sous-lot 12.7 : la dernière forme du chef donne son butin.
-            if (Definition?.Boss is { Loot: string bossLoot } b && b.Forms[b.Forms.Count - 1].Id == combatant && _items.TryGetLoot(bossLoot, out LootTable bossTable))
+            if (Definition?.Boss is { Loot: string bossLoot } && _boss != null && _boss.IsFinalForm(combatant) && _items.TryGetLoot(bossLoot, out LootTable bossTable))
                 return bossTable;
             return _populations?.Of(combatant) is { Loot: string id } && _items.TryGetLoot(id, out LootTable found) ? found : null;
         }
@@ -354,12 +373,50 @@ namespace EdS.World
             bool wasPresent = Zone.Engine.View(_character.Id).IsPresent;
             IReadOnlyList<ZoneEvent> events = Zone.Step();
             SyncConsumables();
-            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone) ?? Array.Empty<PopulationEvent>();
+            IReadOnlyList<ExperienceGained> gains = Array.Empty<ExperienceGained>();
+            IReadOnlyList<LootGained> loot = Array.Empty<LootGained>();
+            if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
+            // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
+            // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
+            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _boss?.FormsToCome ?? 0) ?? Array.Empty<PopulationEvent>();
+            var story = new List<StoryEvent>();
+            CombatantView me = Zone.Engine.View(_character.Id);
+            // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
+            var boss = new List<BossEvent>();
+            if (_bossStart != null) { boss.Add(_bossStart); _bossStart = null; }
+            var rewards = new List<(string, int)>();
+            if (_boss != null)
+            {
+                foreach (BossEvent b in _boss.Step(Zone.Engine))
+                {
+                    boss.Add(b);
+                    // Victoire avec le personnage présent et vivant ; la première seulement est récompensée.
+                    // Revue Codex de la PR #48 (4e tour) : même présence que pour l'expérience : un départ prend effet en fin de tick, après
+                    // les morts ; le personnage présent au début du tick et vivant compte.
+                    bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
+                    if (b.Kind == BossEventKind.Defeated && here && !Zone.IsConsumed(Definition!.VictoryKey)) _rewardPending = true;
+                }
+                if (_rewardPending) GiveBossRewards(rewards, story);
+            }
+            bool defeated = false;
+            if (!_defeated && me.IsDead)
+            {
+                _defeated = true;
+                defeated = true;
+            }
+            // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
+            Narrative?.Step(story);
+            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated
+                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated);
+        }
+
+        /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
+        private void Reward(IReadOnlyList<ZoneEvent> events, bool wasPresent, out IReadOnlyList<ExperienceGained> experience, out IReadOnlyList<LootGained> rolls)
+        {
             CombatantView me = Zone.Engine.View(_character.Id);
             bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
             var gains = new List<ExperienceGained>();
             var loot = new List<LootGained>();
-            var story = new List<StoryEvent>();
             foreach (ZoneEvent e in events)
             {
                 if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == _character.Id) continue;
@@ -383,29 +440,8 @@ namespace EdS.World
                 // Sous-lot 12.5 : compte pour les objectifs « vaincre » de sa population.
                 Narrative?.Defeated(_populations?.Of(e.Combatant)?.Creature ?? e.Combatant);
             }
-            // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
-            var boss = new List<BossEvent>();
-            if (_bossStart != null) { boss.Add(_bossStart); _bossStart = null; }
-            var rewards = new List<(string, int)>();
-            if (_boss != null)
-            {
-                foreach (BossEvent b in _boss.Step(Zone.Engine))
-                {
-                    boss.Add(b);
-                    // Victoire avec le personnage présent et vivant ; la première seulement est récompensée.
-                    if (b.Kind == BossEventKind.Defeated && me.IsPresent && !me.IsDead && !Zone.IsConsumed(Definition!.VictoryKey)) _rewardPending = true;
-                }
-                if (_rewardPending) GiveBossRewards(rewards, story);
-            }
-            bool defeated = false;
-            if (!_defeated && me.IsDead)
-            {
-                _defeated = true;
-                defeated = true;
-            }
-            Narrative?.Step(story);
-            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated
-                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated);
+            experience = gains;
+            rolls = loot;
         }
 
         /// <summary>
@@ -416,8 +452,11 @@ namespace EdS.World
         {
             Boss b = Definition!.Boss!;
             Inventory trial = Inventory.Clone();
+            // Même règle que la revue Codex de la PR #46 : la clé de victoire réserve sa place au registre avant toute mutation (registre
+            // plein : les récompenses attendent, comme un inventaire plein).
+            bool room = Zone.RegistryRoom >= 1;
             foreach ((string item, int count) in b.Rewards)
-                if (trial.Add(item, count) != InventoryRefusal.None)
+                if (!room || trial.Add(item, count) != InventoryRefusal.None)
                 {
                     if (!_rewardAnnounced)
                     {

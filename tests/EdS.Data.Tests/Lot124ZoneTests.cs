@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EdS.Data;
 using EdS.Data.Characters;
 using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Saves;
+using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
 using EdS.Domain.Combat;
@@ -31,11 +33,12 @@ public class Lot124ZoneTests
     private static CharacterProgression Progression => ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
 
     /// <summary>Zone lue après retouches de son fichier et de son scénario (copié dans un dossier temporaire).</summary>
-    private static ZoneLoadResult Zone(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null)
+    private static ZoneLoadResult Zone(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null, GameData? data = null)
     {
+        data ??= ShippedData;
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZonePath))!.AsObject();
         zone?.Invoke(root);
-        if (scenario is null) return ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, ShippedData, Items);
+        if (scenario is null) return ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, data, Items);
         string directory = Path.Combine(Path.GetTempPath(), "eds_zone_" + Guid.NewGuid().ToString("N"));
         try
         {
@@ -44,7 +47,7 @@ public class Lot124ZoneTests
             scenario(s);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));   // sous-lot 12.7 : formes du chef
-            return ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, Items);
+            return ZoneJsonReader.Read(root.ToJsonString(), directory, data, Items);
         }
         finally
         {
@@ -189,6 +192,33 @@ public class Lot124ZoneTests
         Assert.Equal(pelts, session.Inventory.Count("item.peau_de_loup"));
     }
 
+    [Fact]
+    public void Reapparition_saute_une_identite_deja_prise()
+    {
+        // Revue Codex de la PR #45 : une créature du scénario hors population porte déjà « loup1_v2 » : la vie suivante de loup1 est
+        // « loup1_v3 », sans essai répété sur l'identité prise.
+        ZoneDefinition z = Zone(zone => Population(zone, "loup1")["respawnMs"] = 1000, s =>
+        {
+            Creature(s, "loup1")["health"] = 60;
+            Creature(s, "loup1")["position"] = new JsonArray(-16, -12);
+            Creature(s, "loup1")["attacks"]![0]!["rawDamage"] = 1;
+            JsonObject twin = Creature(s, "loup5").DeepClone().AsObject();
+            twin["id"] = "loup1_v2";
+            twin["position"] = new JsonArray(-20, 36);
+            s["data"]!["combatants"]!.AsArray().Add(twin);
+        }).Zone!;
+        var session = new WorldSession(NewGame(), z, ShippedData, Progression, Items);
+        var population = new List<PopulationEvent>();
+        for (int i = 0; i < 2000 && population.Count(e => e.Kind == PopulationEventKind.Respawned) < 2; i++)
+        {
+            if (i % 20 == 1) Strike(session, session.CurrentCreature("loup1"));
+            population.AddRange(session.Step().Population);
+        }
+        Assert.Equal(new[] { "loup1_v3", "loup1_v4" }, population.Where(e => e.Kind == PopulationEventKind.Respawned).Select(e => e.Creature));
+        Assert.Equal("loup1_v4", session.CurrentCreature("loup1"));
+        Assert.True(session.Zone.Engine.View("loup1_v2").IsPresent);   // la créature du scénario n'a pas bougé de chez elle
+    }
+
     // --- Laisse ------------------------------------------------------------------------------------
 
     [Fact]
@@ -213,13 +243,50 @@ public class Lot124ZoneTests
         Assert.True(first.HasLeft && !first.IsDead);
         Assert.Empty(xp);
         Assert.Empty(session.Save().Consumed);
-        // Plafond : 64 combattants (10 créatures, le Bastion, le chef — sous-lot 12.7 —, puis 52 vies) ; une seule annonce, puis plus rien
-        // pour cette population.
+        // Plafond : 64 combattants (10 créatures, le Bastion, le chef — sous-lot 12.7 —, puis 51 vies), une place gardée à la seconde forme
+        // du chef (revue Codex de la PR #48) ; une seule annonce, puis plus rien pour cette population.
         int max = ShippedData.Rules.Combat.MaxCombatants;
-        Assert.Equal(max, session.Zone.Engine.CombatantIds.Count);
-        Assert.Equal(max - 12, population.Count(e => e.Kind == PopulationEventKind.Respawned));
+        Assert.Equal(max - 1, session.Zone.Engine.CombatantIds.Count);
+        Assert.Equal(max - 13, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);
         for (int i = 0; i < 200; i++) Assert.Empty(session.Step().Population);
+    }
+
+    [Fact]
+    public void Laisse_refusee_par_le_pilote_ne_fait_pas_echouer_le_tick() =>
+        // Revue Codex de la PR #45 : plafond de commandes atteint (une seule admise, prise par le Bastion) : le départ du loup est refusé ;
+        // le tick n'échoue pas, la laisse est retentée aux ticks suivants, le loup reste dans la zone.
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCommands\": 20000", "\"maxCommands\": 1"), directory =>
+        {
+            GameData data = GameDataLoader.Load(directory).Data!;
+            ZoneDefinition z = Zone(zone => Population(zone, "loup1")["leashRange"] = 1,
+                s => Creature(s, "loup1")["position"] = new JsonArray(-16, -8), data).Zone!;
+            var session = new WorldSession(NewGame(), z, data, Progression, Items);
+            session.Zone.Engine.Submit(new CombatCommand(0, "bastion", CombatAction.GuardStart));
+            var population = new List<PopulationEvent>();
+            bool engaged = false;
+            for (int i = 0; i < 200; i++)
+            {
+                population.AddRange(session.Step().Population);
+                engaged |= session.Zone.Engine.View("loup1").Engaged;
+            }
+            Assert.True(engaged);
+            Assert.DoesNotContain(population, e => e.Kind == PopulationEventKind.Leashed);
+            CombatantView wolf = session.Zone.Engine.View("loup1");
+            Assert.False(wolf.HasLeft);
+            return 0;
+        });
+
+    [Fact]
+    public void Point_sur_inaccessible_au_personnage_refuse()
+    {
+        // Revue Codex de la PR #45 : l'emprise du personnage (0,5 m) doit tenir au point sûr : dans l'aire et hors des obstacles (les places
+        // des créatures de départ ne comptent que si elles lui sont solides : pas dans les Vallons, contact traversable).
+        JsonArray At(double x, double z) => new(x, z);
+        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-3, 9))));        // dans le moulin
+        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-23.75, -12))));  // au bord
+        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-6.25, 9))));     // contre le moulin
+        Assert.True(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-23.5, -12)).IsValid);                                        // bord exact
     }
 
     [Fact]
@@ -230,5 +297,79 @@ public class Lot124ZoneTests
         Assert.False(ZonePopulations.Beyond(a, r, b, r, Fixed.FromInt(9)));        // écart exact : 9 m, pas au-delà
         Assert.True(ZonePopulations.Beyond(a, r, b, r, Fixed.Parse("8.9999")));
         Assert.False(ZonePopulations.Beyond(a, r, GroundVector.Parse("6", "8"), r, Fixed.FromInt(9)));   // diagonale : 10 m entre centres
+    }
+
+    // --- Documents construits hors du lecteur JSON ----------------------------------------------------
+
+    private static CombatSetup ZoneScenario => ScenarioJsonReader.ReadFile(ScenarioPath("zones/vallons"), ShippedData).Setup!;
+
+    private static ZoneDocument Dto(Action<ZoneData>? edit = null)
+    {
+        var data = new ZoneData
+        {
+            Id = "zone.vallons",
+            Name = "Vallons",
+            Scenario = "zones/vallons",
+            Entry = "place",
+            SafePoints = new List<SafePointData?> { new() { Id = "place", Name = "Place", Position = new PointData { X = Fixed.FromInt(-18), Z = Fixed.FromInt(-12) } } },
+            Places = new List<PlaceData?>(),
+            Populations = new List<PopulationData?> { new() { Creature = "loup1", RespawnMs = 90000, LeashRange = Fixed.FromInt(20) } },
+            Passages = new List<PassageData?>(),
+        };
+        edit?.Invoke(data);
+        return new ZoneDocument { SchemaVersion = ZoneValidator.CurrentSchemaVersion, Kind = ZoneValidator.Kind, ContentVersion = "0.6.0", Data = data };
+    }
+
+    [Fact]
+    public void Document_construit_valide() => Assert.True(ZoneValidator.Validate(Dto(), ZoneScenario, Items).IsValid);
+
+    [Fact]
+    public void Point_sans_coordonnee_refuse_sans_exception()
+    {
+        ZoneLoadResult safe = ZoneValidator.Validate(Dto(d => d.SafePoints![0]!.Position = new PointData { X = Fixed.Zero }), ZoneScenario, Items);
+        Assert.Equal("$.data.safePoints[0].position", FirstError(safe));
+        ZoneLoadResult place = ZoneValidator.Validate(Dto(d => d.Places!.Add(new PlaceData
+        {
+            Id = "village", Name = "Village", Min = new PointData { Z = Fixed.Zero }, Max = new PointData { X = Fixed.FromInt(1), Z = Fixed.FromInt(1) },
+        })), ZoneScenario, Items);
+        Assert.Equal("$.data.places[0].min", FirstError(place));
+    }
+
+    [Fact]
+    public void Creature_reservee_refusee_meme_sans_scenario()
+    {
+        ZoneLoadResult result = ZoneValidator.Validate(Dto(d => d.Populations![0]!.Creature = "loup1_v2"), null, Items);
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.populations[0].creature" && e.Code == ValidationCode.InvalidValue);
+        ZoneLoadResult longName = ZoneValidator.Validate(Dto(d => d.Populations![0]!.Creature = new string('a', ZoneValidator.MaxCreatureLength + 1)), null, Items);
+        Assert.Contains(longName.Report.Errors, e => e.Path == "$.data.populations[0].creature" && e.Code == ValidationCode.InvalidValue);
+    }
+
+    [Fact]
+    public void Creature_en_double_refusee_meme_si_la_premiere_est_invalide()
+    {
+        ZoneLoadResult result = ZoneValidator.Validate(Dto(d =>
+        {
+            d.Populations![0]!.RespawnMs = 1;
+            d.Populations.Add(new PopulationData { Creature = "loup1", RespawnMs = 90000, LeashRange = Fixed.FromInt(20) });
+        }), ZoneScenario, Items);
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.populations[1].creature" && e.Code == ValidationCode.DuplicateId);
+    }
+
+    [Fact]
+    public void Schema_aligne_sur_le_validateur()
+    {
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
+        JsonObject Edited(Action<JsonObject> edit)
+        {
+            JsonObject root = JsonNode.Parse(File.ReadAllText(ZonePath))!.AsObject();
+            edit(root);
+            return root;
+        }
+        bool Valid(JsonObject root) => schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement);
+        Assert.False(Valid(Edited(r => Data(r)["populations"]![0]!["creature"] = "loup1_v2")));
+        Assert.False(Valid(Edited(r => Data(r)["populations"]![0]!["creature"] = new string('a', ZoneValidator.MaxCreatureLength + 1))));
+        Assert.False(Valid(Edited(r => Data(r)["safePoints"]![0]!["id"] = new string('a', 65))));
+        Assert.False(Valid(Edited(r => Data(r)["scenario"] = new string('a', 201))));
+        Assert.True(Valid(Edited(_ => { })));
     }
 }

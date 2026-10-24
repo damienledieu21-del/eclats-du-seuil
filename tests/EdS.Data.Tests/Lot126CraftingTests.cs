@@ -89,6 +89,72 @@ public class Lot126CraftingTests
     }
 
     [Fact]
+    public void Metiers_en_objets_publics_bornes_comme_a_la_lecture()
+    {
+        // Même règle que l'inventaire (revue Codex de la PR #44) et l'histoire : hors du lecteur JSON, des métiers renseignés en version 4
+        // sont un champ inconnu, et la liste garde sa borne ; le schéma suit les mêmes noms et la même borne.
+        string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create("bastion", "class.bastion", Progression).WithProfessions(new Dictionary<string, long> { ["forge"] = 10 })));
+        SaveDocument Document(string text)
+        {
+            var report = new ValidationReport();
+            var document = new SaveDocument();
+            JsonHeader header = JsonInput.Parse(JsonInput.Utf8(text, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
+            (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+            return document;
+        }
+        JsonObject root = JsonNode.Parse(json)!.AsObject();
+        root["schemaVersion"] = 4;
+        root["data"]!["character"]!.AsObject().Remove("professions");
+        string v4 = root.ToJsonString();
+        Assert.True(SaveJsonReader.Read(v4).IsValid);
+        SaveDocument old = Document(v4);
+        old.Data!.Character!.Professions = new List<KeyValuePair<string, long?>> { new("forge", 10) };
+        Assert.Contains(SaveValidator.Validate(old).Report.Errors, e => e.Path == "$.data.character.professions" && e.Code == ValidationCode.UnknownField);
+        SaveDocument many = Document(json);
+        many.Data!.Character!.Professions = Enumerable.Range(0, SaveValidator.MaxProfessions + 1).Select(i => new KeyValuePair<string, long?>($"m{i:D3}", 1)).ToList();
+        Assert.Contains(SaveValidator.Validate(many).Report.Errors, e => e.Path == "$.data.character.professions" && e.Code == ValidationCode.LimitExceeded);
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json"));
+        Assert.True(schema.IsValid(JsonDocument.Parse(json).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(json.Replace("{\"forge\": 10}", "{\"Forge\": 10}")).RootElement));
+    }
+
+    [Fact]
+    public void Metiers_construits_hors_du_lecteur_bornes_et_sans_exception()
+    {
+        // Même règle que la revue Codex de la PR #44 : un document en objets publics garde les bornes et les doublons du fichier, et un
+        // nœud sans l'une de ses coordonnées donne un champ manquant, pas une exception.
+        CraftingDocument Read()
+        {
+            var report = new ValidationReport();
+            CraftingDocument d = CraftingJsonReader.ReadDocument(JsonInput.Utf8(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)), report), report);
+            Assert.True(report.IsValid);
+            return d;
+        }
+        ZoneDefinition zone = Zone();
+        Assert.True(CraftingValidator.Validate(Read(), Texts, zone, Items).IsValid);
+        CraftingDocument many = Read();
+        while (many.Data!.Professions!.Count <= CraftingValidator.MaxProfessions) many.Data.Professions.Add(new ProfessionData { Id = $"m{many.Data.Professions.Count}", Name = many.Data.Professions[0]!.Name });
+        Assert.Contains(CraftingValidator.Validate(many, Texts, zone, Items).Report.Errors, e => e.Path == "$.data.professions" && e.Code == ValidationCode.LimitExceeded);
+        CraftingDocument twice = Read();
+        twice.Data!.Professions![0]!.Name = "text.inconnu";
+        twice.Data.Professions.Add(new ProfessionData { Id = twice.Data.Professions[0]!.Id, Name = twice.Data.Professions[1]!.Name });
+        Assert.Contains(CraftingValidator.Validate(twice, Texts, zone, Items).Report.Errors, e => e.Code == ValidationCode.DuplicateId);
+        CraftingDocument point = Read();
+        point.Data!.Nodes![0]!.Position = new PointData { X = EdS.Domain.Numerics.Fixed.Zero };
+        Assert.Contains(CraftingValidator.Validate(point, Texts, zone, Items).Report.Errors, e => e.Path == "$.data.nodes[0].position" && e.Code == ValidationCode.MissingField);
+        CraftingDocument levels = Read();
+        levels.Data!.MaxLevel = 0;
+        levels.Data.XpToLevel = Enumerable.Range(0, CraftingValidator.MaxLevels + 1).Select(i => (long?)i).ToList();
+        Assert.Contains(CraftingValidator.Validate(levels, Texts, zone, Items).Report.Errors, e => e.Path == "$.data.xpToLevel" && e.Code == ValidationCode.LimitExceeded);
+        // Le schéma suit les bornes des identifiants et des niveaux.
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "crafting.schema.json"));
+        JsonObject root = JsonNode.Parse(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)))!.AsObject();
+        root["data"]!["professions"]![0]!["id"] = new string('a', 65);
+        Assert.False(schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement));
+    }
+
+    [Fact]
     public void Potion_bue_en_combat_charges_et_recharge_partagee()
     {
         ScenarioLoadResult loaded = Potions();
@@ -263,6 +329,67 @@ public class Lot126CraftingTests
         session.Drink("item.potion_de_soin");   // PV pleins : refusée par le moteur, rien n'est retiré
         session.Step();
         Assert.Equal(7, session.Inventory.Count("item.potion_de_soin"));
+    }
+
+    [Fact]
+    public void Potions_emportees_reservees_jusqu_a_ce_qu_elles_soient_bues()
+    {
+        // Revue Codex de la PR #47 : les potions emportées ne se retirent plus de l'inventaire (recette, réponse de dialogue, API) avant
+        // d'être bues ; le moteur ne peut donc jamais soigner sans potion payée.
+        WorldSession session = Play(Zone(-4, 13), Hero(null, new ItemStack("item.potion_de_soin", 5), new ItemStack("item.potion_de_soin", 2)));
+        Assert.Equal((7, 5, 2), (session.Inventory.Count("item.potion_de_soin"), session.Inventory.Reserved("item.potion_de_soin"), session.Inventory.Available("item.potion_de_soin")));
+        Assert.Equal(InventoryRefusal.NotEnough, session.Inventory.Remove("item.potion_de_soin", 3));
+        Assert.Equal(InventoryRefusal.None, session.Inventory.Remove("item.potion_de_soin", 2));
+        Assert.Equal(5, session.Save().Character!.Inventory.Sum(st => st.Item == "item.potion_de_soin" ? st.Count : 0));   // réservées, toujours sauvegardées
+        // Le loup voisin blesse le Bastion ; la potion bue sort de la réserve et de l'inventaire.
+        for (int i = 0; i < 400 && session.Zone.Engine.View("bastion").Health == session.Zone.Engine.View("bastion").MaxHealth; i++) session.Step();
+        Assert.True(session.Zone.Engine.View("bastion").Health < session.Zone.Engine.View("bastion").MaxHealth);
+        session.Drink("item.potion_de_soin");
+        session.Step();
+        session.Step();
+        Assert.Equal(4, session.Zone.Engine.View("bastion").ConsumableCharges["item.potion_de_soin"]);
+        Assert.Equal((4, 4, 0), (session.Inventory.Count("item.potion_de_soin"), session.Inventory.Reserved("item.potion_de_soin"), session.Inventory.Available("item.potion_de_soin")));
+        // Une copie (essai d'une réponse de dialogue) garde la réserve.
+        Assert.Equal(InventoryRefusal.NotEnough, session.Inventory.Clone().Remove("item.potion_de_soin", 1));
+    }
+
+    [Fact]
+    public void Soin_pilote_refuse_s_il_nomme_un_objet_non_emporte()
+    {
+        // Revue Codex de la PR #47 : le pilote refuse à l'admission (rien ne change) le soin que le scénario complété refuserait, pour que
+        // la partie reste rejouable et restaurable.
+        WorldSession session = Play(Zone(), Hero(null, new ItemStack("item.potion_de_soin", 1)));
+        CombatEngine engine = session.Zone.Engine;
+        long at = engine.CurrentTick * engine.TickMilliseconds;
+        Assert.Throws<ArgumentException>(() => engine.Submit(CombatCommand.Use(at, "bastion", "item.remede_de_l_aube")));
+        Assert.Throws<ArgumentException>(() => engine.Submit(CombatCommand.Use(at, "loup1", "item.potion_de_soin")));
+        engine.Submit(CombatCommand.Use(at, "bastion", "item.potion_de_soin"));
+        Assert.True(engine.CompletedSetup().Validate().Count == 0);
+    }
+
+    [Fact]
+    public void Experience_de_metier_hors_bornes_refusee_avant_l_ouverture()
+    {
+        // Revue Codex de la PR #47 : un personnage construit hors du lecteur JSON (expérience négative, démesurée) ou un état narratif qui
+        // ne va pas avec l'histoire est refusé avant l'ouverture de la zone : aucune ligne de journal, aucune opération à moitié faite.
+        ZoneDefinition zone = Zone();
+        StoryBook story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, zone, Items).Story!;
+        void Refused(SavedCharacter hero)
+        {
+            var log = new MemoryCombatLog();
+            Assert.Throws<ArgumentException>(() => new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), zone, ShippedData, Progression,
+                Items, story, Book(zone), log));
+            Assert.Empty(log.Lines);
+        }
+        Refused(Hero(new Dictionary<string, long> { ["minage"] = -5 }));
+        Refused(Hero(new Dictionary<string, long> { ["minage"] = long.MaxValue }));
+        Refused(Hero(new Dictionary<string, long> { ["cuisine"] = 10 }));
+        Refused(Hero().WithStory(new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.inconnue"] = new QuestProgress("x") })));
+        // Au plafond, l'expérience annoncée est celle réellement ajoutée.
+        WorldSession capped = Play(Zone(), Hero(new Dictionary<string, long> { ["forge"] = CraftingValidator.MaxXp }, new ItemStack("item.minerai_de_fer", 3)));
+        Assert.Equal(CraftRefusal.None, capped.Craft("recipe.ferrure", out CraftEvent? done));
+        Assert.Equal(0L, done!.Xp);
+        Assert.Equal(CraftingValidator.MaxXp, capped.Workshop!.Xp("forge"));
     }
 
     // --- Sauvegarde, version 5 ---------------------------------------------------------------------

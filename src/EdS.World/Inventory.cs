@@ -41,6 +41,9 @@ namespace EdS.World
         private readonly List<ItemStack> _stacks = new List<ItemStack>();
         private readonly SortedDictionary<string, string> _equipped = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
+        /// <summary>Sous-lot 12.6 (revue Codex de la PR #47) : objets de soin emportés au combat, réservés jusqu'à ce qu'ils soient bus.</summary>
+        private readonly SortedDictionary<string, int> _reserved = new SortedDictionary<string, int>(StringComparer.Ordinal);
+
         public ItemCatalog Catalog => _catalog;
 
         /// <summary>Places occupées, dans l'ordre (vue en lecture seule : on ne change l'inventaire que par ses opérations).</summary>
@@ -101,6 +104,34 @@ namespace EdS.World
         /// <summary>Quantité de <paramref name="item"/> dans l'inventaire (objets portés exclus).</summary>
         public int Count(string item) => _stacks.Where(s => s.Item == item).Sum(s => s.Count);
 
+        /// <summary>
+        /// Sous-lot 12.6 : quantité réservée (objets de soin emportés au combat) : elle reste dans l'inventaire et la sauvegarde, mais
+        /// <see cref="Remove"/> ne peut pas la prendre ; seul le moteur l'use, quand le personnage boit.
+        /// </summary>
+        public int Reserved(string item) => item != null && _reserved.TryGetValue(item, out int n) ? n : 0;
+
+        /// <summary>Quantité que <see cref="Remove"/> peut prendre (hors réserve).</summary>
+        public int Available(string item) => Count(item) - Reserved(item);
+
+        /// <summary>Réserve <paramref name="count"/> <paramref name="item"/> déjà dans l'inventaire et non réservés.</summary>
+        /// <exception cref="ArgumentException">Quantité non positive ou absente (hors réserve).</exception>
+        internal void Reserve(string item, int count)
+        {
+            if (count < 1 || Available(item) < count) throw new ArgumentException($"Réserve de {count} « {item} » impossible.", nameof(count));
+            _reserved[item] = checked(Reserved(item) + count);
+        }
+
+        /// <summary>Use <paramref name="count"/> objets réservés : ils quittent l'inventaire et la réserve.</summary>
+        /// <exception cref="ArgumentException">Plus que la réserve.</exception>
+        internal void UseReserved(string item, int count)
+        {
+            int reserved = Reserved(item);
+            if (count < 1 || count > reserved) throw new ArgumentException($"{count} « {item} » à user, {reserved} réservés.", nameof(count));
+            if (count == reserved) _reserved.Remove(item);
+            else _reserved[item] = reserved - count;
+            Take(item, count);
+        }
+
         /// <summary>Peut-on ranger <paramref name="count"/> <paramref name="item"/> en entier ?</summary>
         public bool CanAdd(string item, int count) => Room(item, count) is int needed && needed <= FreePlaces;
 
@@ -131,10 +162,19 @@ namespace EdS.World
             return InventoryRefusal.None;
         }
 
-        /// <summary>Retire <paramref name="count"/> <paramref name="item"/> en entier, des dernières places vers les premières ; sinon rien.</summary>
+        /// <summary>
+        /// Retire <paramref name="count"/> <paramref name="item"/> en entier, des dernières places vers les premières ; sinon rien. Les objets
+        /// réservés (<see cref="Reserved"/>) ne se retirent pas.
+        /// </summary>
         public InventoryRefusal Remove(string item, int count)
         {
-            if (count < 1 || Count(item) < count) return InventoryRefusal.NotEnough;
+            if (count < 1 || Available(item) < count) return InventoryRefusal.NotEnough;
+            Take(item, count);
+            return InventoryRefusal.None;
+        }
+
+        private void Take(string item, int count)
+        {
             int left = count;
             for (int i = _stacks.Count - 1; i >= 0 && left > 0; i--)
                 if (_stacks[i].Item == item)
@@ -144,7 +184,6 @@ namespace EdS.World
                     else _stacks[i] = new ItemStack(item, _stacks[i].Count - take);
                     left -= take;
                 }
-            return InventoryRefusal.None;
         }
 
         /// <summary>
@@ -182,7 +221,7 @@ namespace EdS.World
             return copy;
         }
 
-        /// <summary>Prend les places et l'équipement d'un autre inventaire du même catalogue.</summary>
+        /// <summary>Prend les places, l'équipement et la réserve d'un autre inventaire du même catalogue.</summary>
         public void CopyFrom(Inventory other)
         {
             if (other is null) throw new ArgumentNullException(nameof(other));
@@ -192,6 +231,8 @@ namespace EdS.World
             _stacks.AddRange(other._stacks);
             _equipped.Clear();
             foreach (KeyValuePair<string, string> e in other._equipped) _equipped[e.Key] = e.Value;
+            _reserved.Clear();
+            foreach (KeyValuePair<string, int> r in other._reserved) _reserved[r.Key] = r.Value;
         }
 
         /// <summary>Personnage avec cet inventaire et cet équipement.</summary>

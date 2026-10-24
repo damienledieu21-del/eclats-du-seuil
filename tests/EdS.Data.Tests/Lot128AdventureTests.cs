@@ -237,7 +237,7 @@ public class Lot128AdventureTests : IDisposable
     }
 
     /// <summary>Données copiées, un sanglier mortel posté près de l'entrée (ou sur elle).</summary>
-    private (string Data, string Scenarios) DeadlyCopy(double x = -14)
+    private (string Data, string Scenarios) DeadlyCopy(double x = -14, bool arriving = false)
     {
         string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
         Copy(DataDirectory, data);
@@ -247,6 +247,9 @@ public class Lot128AdventureTests : IDisposable
         JsonObject boar = root["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!.AsObject();
         boar["position"] = new JsonArray(x, -12);
         foreach (JsonNode? attack in boar["attacks"]!.AsArray()) attack!["rawDamage"] = 100_000;
+        // Depuis la revue Codex de la PR #45, une créature de départ ne peut plus occuper un point sûr (zone refusée au chargement) ; une
+        // créature qui arrive au premier tick, elle, le peut : elle passe avant le personnage, dont l'arrivée est refusée.
+        if (arriving) boar["arrivalMs"] = 0;
         File.WriteAllText(zone, root.ToJsonString());
         return (data, scenarios);
     }
@@ -287,7 +290,7 @@ public class Lot128AdventureTests : IDisposable
     public void Arrivee_refusee_puis_nouvel_essai()
     {
         // Une créature sur le point sûr : le personnage n'arrive pas ; la partie le dit et une reprise réessaie.
-        (string data, string scenarios) = DeadlyCopy(x: -18);
+        (string data, string scenarios) = DeadlyCopy(x: -18, arriving: true);
         AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
         a.Advance(0.05);
         Assert.True(a.Stranded);

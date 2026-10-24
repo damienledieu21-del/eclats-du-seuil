@@ -84,7 +84,9 @@ namespace EdS.World
         public string CurrentOf(string population) => _lives.First(l => l.Population.Creature == population).Current;
 
         /// <summary>Après un tick de la zone : laisse, morts et départs à remplacer, arrivées dues au tick suivant.</summary>
-        public IReadOnlyList<PopulationEvent> Step(Zone zone)
+        /// <param name="reserved">Revue Codex de la PR #48 : places de combattants gardées pour d'autres arrivées (formes du chef encore à venir) :
+        /// les populations ne les prennent pas.</param>
+        public IReadOnlyList<PopulationEvent> Step(Zone zone, int reserved = 0)
         {
             CombatEngine engine = zone.Engine;
             if (engine.IsFinished) return Array.Empty<PopulationEvent>();
@@ -102,25 +104,29 @@ namespace EdS.World
                     else if (v.HasLeft || refused) life.RespawnAt = now;   // laisse (ou arrivée refusée) : une vie calme la remplace aussitôt
                     else if (!life.Leashing && v.IsPresent && v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
                     {
-                        zone.Leave(life.Current);
-                        life.Leashing = true;
-                        (events ??= new List<PopulationEvent>()).Add(new PopulationEvent(PopulationEventKind.Leashed, life.Population.Creature, life.Current, now));
+                        // Revue Codex de la PR #45 : un départ refusé par le pilote (plafond de commandes, refus atomique) ne fait pas échouer le
+                        // tick ; la laisse est retentée au tick suivant.
+                        if (TryLeave(zone, life.Current))
+                        {
+                            life.Leashing = true;
+                            (events ??= new List<PopulationEvent>()).Add(new PopulationEvent(PopulationEventKind.Leashed, life.Population.Creature, life.Current, now));
+                        }
                     }
                 }
                 if (life.RespawnAt is long due && due <= now)
                 {
-                    PopulationEvent? e = Respawn(zone, life, now, tickMs);
+                    PopulationEvent? e = Respawn(zone, life, now, tickMs, reserved);
                     if (e != null) (events ??= new List<PopulationEvent>()).Add(e);
                 }
             }
             return events ?? (IReadOnlyList<PopulationEvent>)Array.Empty<PopulationEvent>();
         }
 
-        private PopulationEvent? Respawn(Zone zone, Life life, long now, long tickMs)
+        private PopulationEvent? Respawn(Zone zone, Life life, long now, long tickMs, int reserved)
         {
             CombatEngine engine = zone.Engine;
             AssailantSetup t = life.Population.Template;
-            if (engine.CombatantIds.Count >= zone.Setup.Combat.MaxCombatants)
+            if (checked(engine.CombatantIds.Count + reserved) >= zone.Setup.Combat.MaxCombatants)
             {
                 life.Exhausted = true;
                 return new PopulationEvent(PopulationEventKind.Exhausted, t.Id, life.Current, now);
@@ -131,24 +137,43 @@ namespace EdS.World
                 life.RespawnAt = checked(now + Math.Max(1, 1000 / tickMs));
                 return null;
             }
-            string id = $"{t.Id}_v{life.Number + 1}";
+            // Revue Codex de la PR #45 : l'identité suivante est libre parmi tous les combattants du moteur (personnage, créature du scénario
+            // hors population) : une identité prise est sautée, jamais retentée.
+            var taken = new HashSet<string>(engine.CombatantIds, StringComparer.Ordinal);
+            int number = checked(life.Number + 1);
+            string id = $"{t.Id}_v{number}";
+            while (taken.Contains(id)) id = $"{t.Id}_v{number = checked(number + 1)}";
             var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
                 t.StatusResistance, t.Triggers, t.Health, t.Placement, checked(now * tickMs), t.Behavior);
             try
             {
                 engine.Join(setup);
             }
-            catch (ArgumentException)
+            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
+                // Arrivée refusée (place prise, file pleine : refus atomique) : nouvel essai une seconde plus tard.
                 life.RespawnAt = checked(now + Math.Max(1, 1000 / tickMs));
                 return null;
             }
-            life.Number++;
+            life.Number = number;
             life.Current = id;
             life.RespawnAt = null;
             life.Leashing = false;
             _byCreature[id] = life.Population;
             return new PopulationEvent(PopulationEventKind.Respawned, t.Id, id, now);
+        }
+
+        private static bool TryLeave(Zone zone, string combatant)
+        {
+            try
+            {
+                zone.Leave(combatant);
+                return true;
+            }
+            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+            {
+                return false;
+            }
         }
 
         private static bool Occupied(CombatEngine engine, CombatantPlacement place)
