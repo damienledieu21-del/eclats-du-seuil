@@ -91,8 +91,44 @@ namespace EdS.Data.Json
                     c.Present.Add("equipment");
                     c.Equipment = ReadEquipment(input, v, p);
                 },
+                ["story"] = (v, p) =>   // sous-lot 12.5 (version 4)
+                {
+                    c.Present.Add("story");
+                    c.Story = ReadStory(input, v, p);
+                },
             });
             return ok ? c : null;
+        }
+
+        private static StoryStateData? ReadStory(JsonInput input, JsonElement element, string path)
+        {
+            var st = new StoryStateData();
+            List<string?>? Ids(JsonElement v, string p) => input.ReadLimitedList(v, p, SaveValidator.MaxStoryEntries,
+                n => $"{n} entrées, au plus {SaveValidator.MaxStoryEntries}.", (e, ip) => input.Text(e, ip));
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["facts"] = (v, p) => st.Facts = Ids(v, p),
+                ["discoveries"] = (v, p) => st.Discoveries = Ids(v, p),
+                ["trust"] = (v, p) => st.Trust = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["quests"] = (v, p) =>
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « quête : avancement »")) return;
+                    var quests = new List<(string, QuestProgressData?)>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (quests.Count >= SaveValidator.MaxStoryEntries) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SaveValidator.MaxStoryEntries} quêtes."); return; }
+                        var q = new QuestProgressData();
+                        bool qok = input.ReadFields(property.Value, p + "." + property.Name, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["step"] = (qv, qp) => q.Step = input.Text(qv, qp),
+                            ["progress"] = (qv, qp) => q.Progress = input.Int64(qv, qp),
+                        });
+                        quests.Add((property.Name, qok ? q : null));
+                    }
+                    st.Quests = quests;
+                },
+            });
+            return ok ? st : null;
         }
 
         private static ItemStackData? ReadStack(JsonInput input, JsonElement element, string path)
@@ -192,7 +228,20 @@ namespace EdS.Data.Json
             }
             if (c.Equipment.Any(e => !SaveValidator.IsItemId(e.Value) || !SaveValidator.IsDataId(e.Key)))
                 throw new ArgumentException("Équipement hors du format des sauvegardes.", nameof(c));
-            b.Append("      \"equipment\": {").Append(string.Join(", ", c.Equipment.Select(e => Quoted(e.Key) + ": " + Quoted(e.Value)))).Append("}\n");
+            b.Append("      \"equipment\": {").Append(string.Join(", ", c.Equipment.Select(e => Quoted(e.Key) + ": " + Quoted(e.Value)))).Append("},\n");
+            // Sous-lot 12.5 (version 4) : état narratif, sur une ligne par rubrique, dans l'ordre ordinal.
+            SavedStory st = c.Story;
+            if (st.Facts.Concat(st.Discoveries).Concat(st.Quests.Keys).Concat(st.Trust.Keys).Any(id => !SaveValidator.IsStoryId(id))
+                || st.Quests.Values.Any(q => !SaveValidator.IsDataId(q.Step) || q.Progress < 0 || q.Progress > SaveValidator.MaxProgress)
+                || st.Trust.Values.Any(t => t < -SaveValidator.MaxTrust || t > SaveValidator.MaxTrust))
+                throw new ArgumentException("Histoire hors du format des sauvegardes.", nameof(c));
+            b.Append("      \"story\": {\n");
+            b.Append("        \"facts\": ").Append(List(st.Facts)).Append(",\n");
+            b.Append("        \"quests\": {").Append(string.Join(", ", st.Quests.Select(q => Quoted(q.Key) + ": {\"step\": " + Quoted(q.Value.Step)
+                + ", \"progress\": " + q.Value.Progress.ToString(CultureInfo.InvariantCulture) + "}"))).Append("},\n");
+            b.Append("        \"trust\": {").Append(string.Join(", ", st.Trust.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
+            b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append("\n");
+            b.Append("      }\n");
             b.Append("    },\n");
         }
     }

@@ -64,13 +64,36 @@ Une **zone du monde** est un fichier de données (`data/v0/world/zones/vallons.j
 - **Refus du moteur** : un départ (laisse) ou une arrivée (réapparition) refusé par le moteur (plafond de commandes, file pleine) ne fait pas échouer le tick : il est retenté au tick suivant (la laisse) ou une seconde plus tard (la réapparition). Les récompenses du tick (expérience, butin) sont attribuées avant la vie des populations.
 - **Plafond** : une session tient au plus 64 combattants (règles) ; une population qui n'a plus de place attend la session suivante (`Exhausted`).
 
+## PNJ, dialogues et quêtes (sous-lot 12.5)
+
+L'histoire de la tranche est en données : `data/v0/world/story.json` (`kind` « story », schéma `story.schema.json`, validé par `StoryValidator` contre les textes, la zone et le catalogue des objets) et les **textes par clés** `data/v0/world/texts/fr.json` (`kind` « texts », cadrage Q37 : français d'abord, anglais ensuite sans toucher au reste). Aucun texte affiché n'est écrit dans le code ni dans l'histoire : seulement des clés `text.…`.
+
+- **PNJ** : identifiant `npc.…`, nom (clé), position dans la zone, dialogue. On leur parle à **3 m** au plus (provisoire), présent et vivant.
+- **Dialogues** : des nœuds (texte, réponses) et des **entrées** : la première entrée dont les conditions sont réunies donne le nœud de départ. Chaque réponse a ses conditions (elle n'est proposée que si elles sont réunies), ses **effets** et son nœud suivant (ou la fin).
+- **Conditions** (H3) : acquis durables (`fact`, `notFact`, état d'une quête : `questNotStarted`, `questActive`, `questAt` une étape, `questDone` ; confiance d'un PNJ : `trustAtLeast`, `trustBelow`) et circonstances temporaires (`hasItem`, moment de la journée `phase`, lieu `inPlace`, `passageOpen`).
+- **Effets** : `setFact`, `trust` (H1 : les PNJ se souviennent ; de −100 à 100), `startQuest`, `giveItem`, `takeItem`, `giveXp`, `openPassage`, `discover` (journal des découvertes). Les effets d'une réponse s'appliquent **en entier ou pas du tout** : des objets qui ne tiennent pas ou qui manquent, ou un passage à ouvrir sans place au registre du monde, laissent tout inchangé (`NoRoom`). Une étape se franchit au tick suivant : une réponse récompensée porte donc sa propre garde (`notFact` sur le fait qu'elle apprend), pour ne pas se répéter d'ici là (amulette d'Odile, ferrure de Maëlle, merci de Gaspard).
+- **Quêtes** : des étapes successives, chacune avec un texte de journal, un **objectif** vérifié à chaque tick (`fact` appris, lieu atteint `reach`, créatures vaincues `defeat` pendant l'étape, objets détenus `collect`, `passage` ouvert) et ses effets ; la quête a ses récompenses finales. Des récompenses qui ne tiennent pas dans l'inventaire font attendre l'étape (`RewardBlocked`, annoncé une fois).
+- **Portée** (H2) : tout l'état narratif est **personnel** (faits, quêtes, confiance, découvertes), gardé avec le personnage. Les expéditions de groupe et les chapitres publics viendront avec le monde partagé (lot 13).
+
+**Mission « Les traces sous le moulin »** (Q2), valeurs et textes provisoires :
+
+1. **Enquêter** : Odile, la meunière, raconte les traces. Deux réponses : aider (confiance +1) ou la soupçonner (confiance −1) — la mission commence dans les deux cas.
+2. **Suivre les traces** jusqu'à la porte du moulin (lieu « moulin ») ; découverte des traces griffues.
+3. **Rouvrir le passage** : Maëlle, la forgeronne, forge une ferrure avec trois minerais de fer (portés par les sangliers de la carrière, en attendant la récolte du 12.6) ; le passage du moulin s'ouvre pour de bon. Si Odile a confiance, Maëlle donne un indice sur le minerai.
+4. **Le pré des loups** : passer la porte, découvrir les éclats.
+5. **La manifestation** : atteindre la petite zone du Seuil ; découverte de la manifestation.
+6. **Le rôdeur du Seuil** : le vaincre (le chef de fin s'ajoutera au 12.7).
+7. **Revenir chez Odile** : si elle a confiance, elle offre l'**amulette de l'aube** ; sinon, un merci sec (conséquence observable liée à un PNJ, Q2). Récompense finale : 300 points d'expérience.
+
+Gaspard, le vieux garde du camp de la carrière, conseille contre le rôdeur pendant l'étape 6.
+
 ## Sauvegarde
 
-Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 3 depuis le sous-lot 12.3 :
+Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 4 depuis le sous-lot 12.5 :
 
 ```json
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "kind": "save",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -89,7 +112,13 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
         {"item": "item.peau_de_loup", "count": 3},
         {"item": "item.gambison", "count": 1}
       ],
-      "equipment": {"shield": "item.ecu_de_chene", "weapon": "item.epee_du_milicien"}
+      "equipment": {"shield": "item.ecu_de_chene", "weapon": "item.epee_du_milicien"},
+      "story": {
+        "facts": ["fact.traces.recit"],
+        "quests": {"quest.traces_sous_le_moulin": {"step": "traces", "progress": 0}},
+        "trust": {"npc.odile": 1},
+        "discoveries": []
+      }
     },
     "consumed": [
       "zone.vallons/1/death/loup1"
@@ -103,6 +132,7 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
 - **Bornes** : une sauvegarde fait au plus 32 Mio (100 000 événements de 200 caractères au plus), limite appliquée jusqu'à l'analyseur JSON ; l'écriture refuse ce que la lecture refuserait (temps, sessions, nombre d'événements). Une session de zone ne démarre que si elle tient entière sous la borne du temps du monde (un an de jeu) et que son registre de départ tient sous la sienne ; avant chaque tick, elle vérifie qu'il reste une place pour chaque mort qui ajouterait une clé (combattant mortel, ni mort ni parti, mort pas encore inscrite).
 - **Écriture atomique** (`SaveStore`) : le texte est écrit en entier dans `<fichier>.tmp`, vidé sur le disque, puis il remplace la sauvegarde ; la version précédente devient `<fichier>.bak` si elle est valide (une principale abîmée est remplacée sans toucher à la copie). Une coupure laisse toujours une sauvegarde complète. À la lecture, une sauvegarde absente ou invalide est remplacée par sa copie valide ; aucune des deux : nouvelle partie (ou « illisible », avec le motif).
 - `inventory` (12.3) : places occupées de l'inventaire, dans l'ordre, une pile par place (objet, quantité de 1 à 999) ; `equipment` : objet porté par emplacement, emplacements dans l'ordre ordinal. Objets, piles, emplacements et niveaux requis sont vérifiés contre le catalogue quand la partie reprend.
-- **Versions** : la version 1 (12.1, sans personnage) et la version 2 (12.2, sans inventaire ni équipement) sont lues et **mises à jour** (`Migrated` ; personnage absent, ou inventaire et équipement vides) ; l'écriture donne toujours la version courante. Une version inconnue est refusée. Les quêtes (12.5) s'ajouteront de la même façon.
+- `story` (12.5) : état narratif personnel, trié : faits appris, avancement de chaque quête (étape en cours ou `done`, compteur de l'objectif), confiance non nulle des PNJ, découvertes. Il est vérifié contre l'histoire quand la partie reprend.
+- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement) et 3 (sans histoire) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
 
 Limites : [LIMITES_LOT_12.md](LIMITES_LOT_12.md).

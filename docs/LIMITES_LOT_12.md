@@ -47,3 +47,16 @@ Détail : [MONDE.md](MONDE.md#les-vallons-en-données-sous-lot-124).
 - **Passage ouvert à la session suivante** : l'espace d'une session ne change pas en route ; Unity (12.8) enchaînera une nouvelle session (sauvegarde puis reprise) quand le passage s'ouvre.
 - **Nœuds de récolte** : avec les métiers (12.6). **Manifestation** : avec les quêtes (12.5) et le chef (12.7).
 - **Format** : zone en schéma 1 ; scénario de zone agrandi (même schéma 11) ; moteur, journal, sauvegarde inchangés par le 12.4.
+
+## Sous-lot 12.5 : PNJ, dialogues et quêtes
+
+Détail : [MONDE.md](MONDE.md#pnj-dialogues-et-quêtes-sous-lot-125).
+
+- **Textes provisoires** (question à Damien) : dialogues, noms, journal et découvertes sont une première écriture, à relire par Damien ; tout est dans `data/v0/world/texts/fr.json`. Pas encore d'anglais.
+- **Mission sans chef** : l'étape « vaincre le chef » viendra au 12.7, entre le rôdeur et le retour chez Odile. Pas de quête secrète ni de réveil renforcé dans la tranche pour l'instant (Q2 : à une étape identifiée).
+- **Une seule conséquence de PNJ** dans la mission (la confiance d'Odile : indice de Maëlle et amulette au retour). Le format en permet d'autres sans code.
+- **Minerai sur les sangliers** en attendant les nœuds de récolte et la forge (12.6) ; Maëlle « forge » la ferrure dans le dialogue.
+- **Portée personnelle seulement** (H2) : rien de commun à plusieurs joueurs avant le lot 13.
+- **Passage ouvert à la session suivante** (comme au 12.4) : l'étape « pré des loups » se fait après une reprise.
+- **Pas d'écran** : dialogues et journal s'affichent au 12.8.
+- **Formats** : sauvegarde en version 4 (histoire ; les versions 1 à 3 sont mises à jour), histoire et textes en schéma 1 ; moteur et journal inchangés.

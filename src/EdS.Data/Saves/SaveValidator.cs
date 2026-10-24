@@ -25,6 +25,55 @@ namespace EdS.Data.Saves
         public override string ToString() => $"{Item} ×{Count}";
     }
 
+    /// <summary>Sous-lot 12.5 : avancement d'une quête (étape en cours, ou <see cref="Done"/> ; compteur de l'objectif).</summary>
+    public sealed class QuestProgress : IEquatable<QuestProgress>
+    {
+        /// <summary>Étape réservée d'une quête terminée.</summary>
+        public const string Done = "done";
+
+        public string Step { get; }
+
+        /// <summary>Compteur de l'objectif de l'étape (créatures vaincues pendant l'étape) ; 0 sinon.</summary>
+        public long Progress { get; }
+
+        public bool IsDone => Step == Done;
+
+        public QuestProgress(string step, long progress = 0)
+        {
+            Step = step ?? throw new ArgumentNullException(nameof(step));
+            Progress = progress;
+        }
+
+        public bool Equals(QuestProgress? other) => other != null && other.Step == Step && other.Progress == Progress;
+        public override bool Equals(object? obj) => Equals(obj as QuestProgress);
+        public override int GetHashCode() => unchecked(StringComparer.Ordinal.GetHashCode(Step) * 31 + Progress.GetHashCode());
+    }
+
+    /// <summary>
+    /// Sous-lot 12.5 (cadrage H1, H2, H3) : état narratif personnel du personnage : faits appris (acquis durables), avancement des quêtes,
+    /// confiance des PNJ, journal des découvertes. Tout est trié (forme canonique).
+    /// </summary>
+    public sealed class SavedStory
+    {
+        public static readonly SavedStory Empty = new SavedStory();
+
+        public IReadOnlyList<string> Facts { get; }
+        public IReadOnlyDictionary<string, QuestProgress> Quests { get; }
+        public IReadOnlyDictionary<string, int> Trust { get; }
+        public IReadOnlyList<string> Discoveries { get; }
+
+        public SavedStory(IEnumerable<string>? facts = null, IReadOnlyDictionary<string, QuestProgress>? quests = null,
+            IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null)
+        {
+            Facts = Frozen.List((facts ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).OrderBy(f => f, StringComparer.Ordinal), nameof(facts));
+            Quests = Frozen.Dictionary((quests ?? new Dictionary<string, QuestProgress>()).OrderBy(q => q.Key, StringComparer.Ordinal)
+                .ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal), nameof(quests));
+            Trust = Frozen.Dictionary((trust ?? new Dictionary<string, int>()).Where(t => t.Value != 0).OrderBy(t => t.Key, StringComparer.Ordinal)
+                .ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal), nameof(trust));
+            Discoveries = Frozen.List((discoveries ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).OrderBy(f => f, StringComparer.Ordinal), nameof(discoveries));
+        }
+    }
+
     /// <summary>
     /// Sous-lot 12.2 : personnage persistant sauvegardé. Le niveau se déduit de l'expérience (progression du monde), les attributs de la
     /// classe et du niveau (cadrage Q20) : ils ne sont pas écrits. Le build (talents, compétences) est validé contre la classe et le niveau
@@ -49,10 +98,14 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot 12.3 : objet porté par emplacement (ordre ordinal des emplacements).</summary>
         public IReadOnlyDictionary<string, string> Equipment { get; }
 
+        /// <summary>Sous-lot 12.5 : état narratif personnel (faits, quêtes, confiance, découvertes).</summary>
+        public SavedStory Story { get; }
+
         public SavedCharacter(string id, string classId, long xp, IReadOnlyDictionary<string, int>? talents = null, IEnumerable<string>? activeSkills = null,
             string? ultimate = null, IEnumerable<string>? passiveSkills = null, IEnumerable<ItemStack>? inventory = null,
-            IReadOnlyDictionary<string, string>? equipment = null)
+            IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null)
         {
+            Story = story ?? SavedStory.Empty;
             Inventory = Frozen.List(inventory ?? Array.Empty<ItemStack>(), nameof(inventory));
             Equipment = Frozen.Dictionary((equipment ?? new Dictionary<string, string>()).OrderBy(e => e.Key, StringComparer.Ordinal)
                 .ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal), nameof(equipment));
@@ -67,11 +120,15 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story);
 
         /// <summary>Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement.</summary>
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story);
+
+        /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
+        public SavedCharacter WithStory(SavedStory story) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story);
     }
 
     /// <summary>
@@ -138,9 +195,10 @@ namespace EdS.Data.Saves
         /// <c>activeSkills</c>, <c>ultimate</c>, <c>passiveSkills</c>). Une sauvegarde de version 1 est mise à jour à la lecture (personnage
         /// nul) ; une version postérieure est refusée. Version 3 (sous-lot 12.3) : <c>inventory</c> (places occupées : <c>item</c>,
         /// <c>count</c>) et <c>equipment</c> (objet par emplacement) obligatoires dans le personnage ; une sauvegarde de version 2 est mise à
-        /// jour (inventaire et équipement vides).
+        /// jour (inventaire et équipement vides). Version 4 (sous-lot 12.5) : <c>story</c> obligatoire dans le personnage (<c>facts</c>,
+        /// <c>quests</c>, <c>trust</c>, <c>discoveries</c>) ; une sauvegarde de version 3 est mise à jour (histoire vierge).
         /// </summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;
@@ -308,11 +366,84 @@ namespace EdS.Data.Saves
                     }
                 }
             }
+            // Sous-lot 12.5 (version 4) : état narratif personnel.
+            SavedStory? story = null;
+            if (version < 4)
+            {
+                // Comme l'inventaire et l'équipement (revue Codex de la PR #44) : refusé aussi quand il est renseigné hors du lecteur JSON.
+                if (c.Present.Contains("story") || c.Story != null)
+                    report.Add(path + ".story", ValidationCode.UnknownField, $"champ inconnu en version {version} (histoire : version 4).");
+            }
+            else if (c.Story is StoryStateData st) story = CheckStory(st, path + ".story", report);
+            else Missing(report, path + ".story", "faits, quêtes, confiance, découvertes");
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
                 version < 3 ? null : c.Inventory!.Select(st => new ItemStack(st!.Item!, st.Count!.Value)),
-                version < 3 ? null : c.Equipment!.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal));
+                version < 3 ? null : c.Equipment!.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal), story);
+        }
+
+        public const int MaxStoryEntries = 10_000;
+        public const int MaxTrust = 100;
+        public const long MaxProgress = 1_000_000;
+
+        private static readonly Regex FactId = new Regex(@"^fact(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex QuestId = new Regex(@"^quest(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex NpcId = new Regex(@"^npc(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex DiscoveryId = new Regex(@"^discovery(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
+        public static bool IsStoryId(string? id) => id != null && id.Length <= 200
+            && (FactId.IsMatch(id) || QuestId.IsMatch(id) || NpcId.IsMatch(id) || DiscoveryId.IsMatch(id) || SlotId.IsMatch(id));
+
+        private static SavedStory? CheckStory(StoryStateData st, string path, ValidationReport report)
+        {
+            void Sorted(List<string?>? list, string field, Regex pattern, string what)
+            {
+                if (list is null) { Missing(report, $"{path}.{field}", what + ", éventuellement vide"); return; }
+                if (list.Count > MaxStoryEntries) report.Add($"{path}.{field}", ValidationCode.LimitExceeded, $"au plus {MaxStoryEntries}.");
+                for (int i = 0; i < list.Count; i++)
+                {
+                    string p = $"{path}.{field}[{i}]";
+                    if (list[i] is not string id || id.Length > 200 || !pattern.IsMatch(id)) report.Add(p, ValidationCode.InvalidValue, $"{what} mal formé(e).");
+                    else if (i > 0 && list[i - 1] is string prev && string.CompareOrdinal(prev, id) >= 0)
+                        report.Add(p, ValidationCode.InvalidValue, "liste hors de l'ordre ordinal ou avec doublon (forme canonique).");
+                }
+            }
+            Sorted(st.Facts, "facts", FactId, "fait");
+            Sorted(st.Discoveries, "discoveries", DiscoveryId, "découverte");
+            if (st.Quests is null) Missing(report, path + ".quests", "quêtes, éventuellement vide");
+            else
+            {
+                if (st.Quests.Count > MaxStoryEntries) report.Add(path + ".quests", ValidationCode.LimitExceeded, $"au plus {MaxStoryEntries}.");
+                for (int i = 0; i < st.Quests.Count; i++)
+                {
+                    var (id, q) = st.Quests[i];
+                    string p = $"{path}.quests.{id}";
+                    if (id is null || id.Length > 200 || !QuestId.IsMatch(id)) { report.Add(p, ValidationCode.InvalidValue, "quête mal formée."); continue; }
+                    // Même règle que la revue Codex de la PR #44 : une quête une seule fois (sauvegarde construite en objets publics).
+                    if (i > 0 && string.CompareOrdinal(st.Quests[i - 1].Id, id) >= 0) report.Add(p, ValidationCode.InvalidValue, "quêtes hors de l'ordre ordinal ou en double (forme canonique).");
+                    if (q is null) { Missing(report, p, "avancement"); continue; }
+                    if (q.Step is null) Missing(report, p + ".step", "étape en cours, ou « done »");
+                    else if (q.Step.Length > 64 || !SlotId.IsMatch(q.Step)) report.Add(p + ".step", ValidationCode.InvalidValue, $"étape « {q.Step} » mal formée.");
+                    if (q.Progress is null) Missing(report, p + ".progress", "compteur");
+                    else if (q.Progress < 0 || q.Progress > MaxProgress) report.Add(p + ".progress", ValidationCode.OutOfRange, $"compteur hors de [0, {MaxProgress}].");
+                }
+            }
+            if (st.Trust is null) Missing(report, path + ".trust", "confiance des PNJ, éventuellement vide");
+            else if (st.Trust.Count > MaxStoryEntries) report.Add(path + ".trust", ValidationCode.LimitExceeded, $"au plus {MaxStoryEntries}.");
+            else
+                for (int i = 0; i < st.Trust.Count; i++)
+                {
+                    var t = st.Trust[i];
+                    string p = $"{path}.trust.{t.Key}";
+                    if (t.Key is null || t.Key.Length > 200 || !NpcId.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "PNJ mal formé.");
+                    else if (t.Value is not int v) Missing(report, p, "entier");
+                    else if (v == 0 || v < -MaxTrust || v > MaxTrust) report.Add(p, ValidationCode.OutOfRange, $"confiance hors de [−{MaxTrust}, {MaxTrust}] ou nulle (une confiance nulle n'est pas écrite).");
+                    else if (i > 0 && string.CompareOrdinal(st.Trust[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "confiance hors de l'ordre ordinal ou en double.");
+                }
+            if (!report.IsValid) return null;
+            return new SavedStory(st.Facts!.Select(f => f!), st.Quests!.ToDictionary(q => q.Id, q => new QuestProgress(q.Value!.Step!, q.Value.Progress!.Value), StringComparer.Ordinal),
+                st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!));
         }
 
         /// <summary>Sous-lot 12.3 : plus grand nombre de places d'un inventaire sauvegardé, et plus grande pile.</summary>

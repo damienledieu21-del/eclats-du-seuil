@@ -53,6 +53,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot 12.3 (version 3) : objet porté par emplacement.</summary>
         public List<KeyValuePair<string, string?>>? Equipment { get; set; }
 
+        /// <summary>Sous-lot 12.5 (version 4) : état narratif personnel.</summary>
+        public StoryStateData? Story { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -62,5 +65,20 @@ namespace EdS.Data.Saves
     {
         public string? Item { get; set; }
         public int? Count { get; set; }
+    }
+
+    /// <summary>Sous-lot 12.5 : état narratif lu, avant validation.</summary>
+    public sealed class StoryStateData
+    {
+        public List<string?>? Facts { get; set; }
+        public List<(string Id, QuestProgressData? Value)>? Quests { get; set; }
+        public List<KeyValuePair<string, int?>>? Trust { get; set; }
+        public List<string?>? Discoveries { get; set; }
+    }
+
+    public sealed class QuestProgressData
+    {
+        public string? Step { get; set; }
+        public long? Progress { get; set; }
     }
 }

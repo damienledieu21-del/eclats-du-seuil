@@ -159,6 +159,9 @@ namespace EdS.World
         public bool IsOver => _engine.IsFinished;
 
         /// <summary>Clés des événements consommés, dans l'ordre ordinal.</summary>
+        /// <summary>Places encore libres au registre des événements (<see cref="SaveValidator.MaxConsumed"/>).</summary>
+        public int RegistryRoom => SaveValidator.MaxConsumed - _consumed.Count;
+
         public IReadOnlyList<string> Consumed => _consumed.OrderBy(k => k, StringComparer.Ordinal).ToArray();
 
         /// <summary>Clé d'un événement de cette session (« zone.vallons/3/death/loup1 »).</summary>
