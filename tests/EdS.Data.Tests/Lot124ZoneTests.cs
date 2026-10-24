@@ -4,6 +4,7 @@ using EdS.Data.Characters;
 using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Saves;
+using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
 using EdS.Domain.Combat;
@@ -228,5 +229,79 @@ public class Lot124ZoneTests
         Assert.False(ZonePopulations.Beyond(a, r, b, r, Fixed.FromInt(9)));        // écart exact : 9 m, pas au-delà
         Assert.True(ZonePopulations.Beyond(a, r, b, r, Fixed.Parse("8.9999")));
         Assert.False(ZonePopulations.Beyond(a, r, GroundVector.Parse("6", "8"), r, Fixed.FromInt(9)));   // diagonale : 10 m entre centres
+    }
+
+    // --- Documents construits hors du lecteur JSON ----------------------------------------------------
+
+    private static CombatSetup ZoneScenario => ScenarioJsonReader.ReadFile(ScenarioPath("zones/vallons"), ShippedData).Setup!;
+
+    private static ZoneDocument Dto(Action<ZoneData>? edit = null)
+    {
+        var data = new ZoneData
+        {
+            Id = "zone.vallons",
+            Name = "Vallons",
+            Scenario = "zones/vallons",
+            Entry = "place",
+            SafePoints = new List<SafePointData?> { new() { Id = "place", Name = "Place", Position = new PointData { X = Fixed.FromInt(-18), Z = Fixed.FromInt(-12) } } },
+            Places = new List<PlaceData?>(),
+            Populations = new List<PopulationData?> { new() { Creature = "loup1", RespawnMs = 90000, LeashRange = Fixed.FromInt(20) } },
+            Passages = new List<PassageData?>(),
+        };
+        edit?.Invoke(data);
+        return new ZoneDocument { SchemaVersion = ZoneValidator.CurrentSchemaVersion, Kind = ZoneValidator.Kind, ContentVersion = "0.6.0", Data = data };
+    }
+
+    [Fact]
+    public void Document_construit_valide() => Assert.True(ZoneValidator.Validate(Dto(), ZoneScenario, Items).IsValid);
+
+    [Fact]
+    public void Point_sans_coordonnee_refuse_sans_exception()
+    {
+        ZoneLoadResult safe = ZoneValidator.Validate(Dto(d => d.SafePoints![0]!.Position = new PointData { X = Fixed.Zero }), ZoneScenario, Items);
+        Assert.Equal("$.data.safePoints[0].position", FirstError(safe));
+        ZoneLoadResult place = ZoneValidator.Validate(Dto(d => d.Places!.Add(new PlaceData
+        {
+            Id = "village", Name = "Village", Min = new PointData { Z = Fixed.Zero }, Max = new PointData { X = Fixed.FromInt(1), Z = Fixed.FromInt(1) },
+        })), ZoneScenario, Items);
+        Assert.Equal("$.data.places[0].min", FirstError(place));
+    }
+
+    [Fact]
+    public void Creature_reservee_refusee_meme_sans_scenario()
+    {
+        ZoneLoadResult result = ZoneValidator.Validate(Dto(d => d.Populations![0]!.Creature = "loup1_v2"), null, Items);
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.populations[0].creature" && e.Code == ValidationCode.InvalidValue);
+        ZoneLoadResult longName = ZoneValidator.Validate(Dto(d => d.Populations![0]!.Creature = new string('a', ZoneValidator.MaxCreatureLength + 1)), null, Items);
+        Assert.Contains(longName.Report.Errors, e => e.Path == "$.data.populations[0].creature" && e.Code == ValidationCode.InvalidValue);
+    }
+
+    [Fact]
+    public void Creature_en_double_refusee_meme_si_la_premiere_est_invalide()
+    {
+        ZoneLoadResult result = ZoneValidator.Validate(Dto(d =>
+        {
+            d.Populations![0]!.RespawnMs = 1;
+            d.Populations.Add(new PopulationData { Creature = "loup1", RespawnMs = 90000, LeashRange = Fixed.FromInt(20) });
+        }), ZoneScenario, Items);
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.populations[1].creature" && e.Code == ValidationCode.DuplicateId);
+    }
+
+    [Fact]
+    public void Schema_aligne_sur_le_validateur()
+    {
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
+        JsonObject Edited(Action<JsonObject> edit)
+        {
+            JsonObject root = JsonNode.Parse(File.ReadAllText(ZonePath))!.AsObject();
+            edit(root);
+            return root;
+        }
+        bool Valid(JsonObject root) => schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement);
+        Assert.False(Valid(Edited(r => Data(r)["populations"]![0]!["creature"] = "loup1_v2")));
+        Assert.False(Valid(Edited(r => Data(r)["populations"]![0]!["creature"] = new string('a', ZoneValidator.MaxCreatureLength + 1))));
+        Assert.False(Valid(Edited(r => Data(r)["safePoints"]![0]!["id"] = new string('a', 65))));
+        Assert.False(Valid(Edited(r => Data(r)["scenario"] = new string('a', 201))));
+        Assert.True(Valid(Edited(_ => { })));
     }
 }
