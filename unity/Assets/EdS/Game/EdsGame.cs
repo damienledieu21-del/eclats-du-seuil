@@ -271,7 +271,10 @@ namespace EdS.Game
                 Load(0, null);
                 return;
             }
-            if (a.Dialogue != null)
+            // Revue Codex de la PR #49 : une image où un dialogue était ouvert ne lit pas les commandes de combat, même si la réponse choisie
+            // l'a fermé (la touche 1 à 4 de la réponse ne lance pas aussi une compétence).
+            bool talking = a.Dialogue != null;
+            if (talking)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) a.CloseDialogue();
                 else if (DigitPressed() is int answer && answer >= 0) a.Choose(answer);
@@ -300,7 +303,7 @@ namespace EdS.Game
                 }
             }
             if (a.Opened != _shownSession) ShowAdventureSession();
-            bool frozen = _paused || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue;
+            bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue;
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed)) a.Drink();
             if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
