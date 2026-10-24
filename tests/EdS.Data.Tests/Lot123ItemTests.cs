@@ -143,6 +143,34 @@ public class Lot123ItemTests
     }
 
     [Fact]
+    public void Sauvegarde_en_objets_publics_bornee_comme_a_la_lecture()
+    {
+        // Revue Codex de la PR #44 (6e tour) : sans le lecteur JSON, un inventaire en version 2 est un champ inconnu, et l'inventaire, les
+        // emplacements et les compétences gardent leurs bornes.
+        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", Progression)));
+        // Version 2 : sans inventaire ni équipement (ni, depuis le sous-lot 12.5, état narratif).
+        JsonObject root = JsonNode.Parse(text)!.AsObject();
+        root["schemaVersion"] = 2;
+        JsonObject character = root["data"]!["character"]!.AsObject();
+        foreach (string field in new[] { "inventory", "equipment", "story" }) character.Remove(field);
+        string v2 = root.ToJsonString();
+        Assert.True(SaveJsonReader.Read(v2).IsValid);
+        SaveDocument old = SaveDocumentOf(v2);
+        old.Data!.Character!.Inventory = new List<ItemStackData?> { new ItemStackData { Item = "item.gambison", Count = 1 } };
+        Assert.Contains(SaveValidator.Validate(old).Report.Errors, e => e.Path == "$.data.character.inventory" && e.Code == ValidationCode.UnknownField);
+        SaveDocument full = SaveDocumentOf(text);
+        full.Data!.Character!.Inventory = Enumerable.Range(0, SaveValidator.MaxInventory + 1).Select(_ => (ItemStackData?)new ItemStackData { Item = "item.gambison", Count = 1 }).ToList();
+        Assert.Contains(SaveValidator.Validate(full).Report.Errors, e => e.Path == "$.data.character.inventory" && e.Code == ValidationCode.LimitExceeded);
+        SaveDocument skills = SaveDocumentOf(text);
+        skills.Data!.Character!.ActiveSkills = Enumerable.Range(0, SaveValidator.MaxSkills + 1).Select(i => (string?)("skill.x" + i)).ToList();
+        Assert.Contains(SaveValidator.Validate(skills).Report.Errors, e => e.Path == "$.data.character.activeSkills" && e.Code == ValidationCode.LimitExceeded);
+        // Le schéma JSON suit les mêmes bornes pour l'équipement.
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json"));
+        Assert.True(schema.IsValid(JsonDocument.Parse(text).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(text.Replace("\"equipment\": {}", "\"equipment\": {\"Bouclier\": \"item.ecu_de_chene\"}")).RootElement));
+    }
+
+    [Fact]
     public void Bonus_d_objet_en_double_refuse()
     {
         // Revue Codex de la PR #44 (4e tour) : un catalogue construit en objets publics ne voit pas un bonus écraser le précédent.
@@ -158,6 +186,24 @@ public class Lot123ItemTests
         ItemCatalogLoadResult result = ItemValidator.Validate(document, ShippedData);
         Assert.False(result.IsValid);
         Assert.Contains(result.Report.Errors, e => e.Path == $"$.data.items[{index}].bonus.{item.Bonus[0].Key}" && e.Code == ValidationCode.DuplicateId);
+    }
+
+    [Fact]
+    public void Bonus_sur_un_assaillant_refuse_sans_le_lecteur()
+    {
+        // Revue Codex de la PR #44 (7e tour) : des bonus renseignés sur un assaillant d'objet public sont refusés, pas ignorés.
+        ScenarioDocument document = Document("vallons_demo");
+        int index = document.Data!.Combatants!.FindIndex(c => c!.Type == "assailant");
+        CombatantData wolf = document.Data.Combatants[index]!;
+        Assert.DoesNotContain("gear", wolf.Present);
+        wolf.Gear = new List<KeyValuePair<string, int?>> { new("armor", 3) };
+        ScenarioLoadResult result = ScenarioValidator.Validate(document, ShippedData);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Report.Errors, e => e.Path == $"$.data.combatants[{index}].gear");
+        // Un personnage retouché de même reste admis (champ de son type).
+        ScenarioDocument ok = Document("vallons_demo");
+        ok.Data!.Combatants!.First(c => c!.Type == "character")!.Gear = new List<KeyValuePair<string, int?>> { new("armor", 3) };
+        Assert.True(ScenarioValidator.Validate(ok, ShippedData).IsValid);
     }
 
     [Fact]

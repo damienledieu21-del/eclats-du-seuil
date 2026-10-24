@@ -157,6 +157,12 @@ namespace EdS.Data.Zones
         public const long MinRespawnMs = 1000, MaxRespawnMs = 3_600_000;
         public static readonly Fixed MaxLeashRange = Fixed.FromInt(100);
 
+        /// <summary>Longueur maximale d'une créature peuplée (ses vies suivantes y ajoutent « _v&lt;nombre&gt; »).</summary>
+        public const int MaxCreatureLength = 60;
+
+        /// <summary>Rayon de l'emprise d'un personnage qui entre par un point sûr (provisoire, celui des scénarios).</summary>
+        public static readonly Fixed CharacterRadius = Fixed.Parse("0.5");
+
         private static readonly Regex LocalId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex ScenarioPath = new Regex(@"^[a-z0-9_]+(/[a-z0-9_]+)*\z", RegexOptions.CultureInvariant);
 
@@ -201,8 +207,10 @@ namespace EdS.Data.Zones
                     string path = $"$.data.safePoints[{i}]";
                     if (d.SafePoints[i] is not SafePointData s) { Missing(report, path, "point sûr"); continue; }
                     bool ok = CheckId(s.Id, path + ".id", safePoints.Select(x => x.Id), report) & CheckName(s.Name, path + ".name", report);
-                    if (s.Position is null) { Missing(report, path + ".position", "[x, z]"); ok = false; }
-                    else if (!Inside(Point(s.Position))) { report.Add(path + ".position", ValidationCode.OutOfRange, "point sûr hors de l'aire praticable de la zone."); ok = false; }
+                    if (!CheckPoint(s.Position, path + ".position", "[x, z]", report)) ok = false;
+                    else if (!Inside(Point(s.Position!))) { report.Add(path + ".position", ValidationCode.OutOfRange, "point sûr hors de l'aire praticable de la zone."); ok = false; }
+                    else if (scenario is { Zone: true } && space != null && Footprint(Point(s.Position!), scenario, space) is string why)
+                    { report.Add(path + ".position", ValidationCode.InvalidValue, why); ok = false; }
                     if (ok) safePoints.Add(new SafePoint(s.Id!, s.Name!, Point(s.Position!)));
                 }
             }
@@ -221,8 +229,8 @@ namespace EdS.Data.Zones
                     string path = $"$.data.places[{i}]";
                     if (d.Places[i] is not PlaceData p) { Missing(report, path, "lieu"); continue; }
                     bool ok = CheckId(p.Id, path + ".id", places.Select(x => x.Id), report) & CheckName(p.Name, path + ".name", report);
-                    if (p.Min is null) { Missing(report, path + ".min", "coin sud-ouest [x, z]"); ok = false; }
-                    if (p.Max is null) { Missing(report, path + ".max", "coin nord-est [x, z]"); ok = false; }
+                    if (!CheckPoint(p.Min, path + ".min", "coin sud-ouest [x, z]", report)) ok = false;
+                    if (!CheckPoint(p.Max, path + ".max", "coin nord-est [x, z]", report)) ok = false;
                     if (ok)
                     {
                         GroundVector min = Point(p.Min!), max = Point(p.Max!);
@@ -239,6 +247,7 @@ namespace EdS.Data.Zones
             {
                 if (d.Populations.Count > MaxPopulations) report.Add("$.data.populations", ValidationCode.LimitExceeded, $"{d.Populations.Count} populations, au plus {MaxPopulations}.");
                 long tick = scenario?.Combat.TickMilliseconds ?? 1;
+                var creatures = new HashSet<string>(StringComparer.Ordinal);
                 for (int i = 0; i < d.Populations.Count; i++)
                 {
                     string path = $"$.data.populations[{i}]";
@@ -246,7 +255,12 @@ namespace EdS.Data.Zones
                     bool ok = true;
                     AssailantSetup? template = null;
                     if (p.Creature is null) { Missing(report, path + ".creature", "créature du scénario"); ok = false; }
-                    else if (populations.Any(x => x.Creature == p.Creature)) { report.Add(path + ".creature", ValidationCode.DuplicateId, $"créature « {p.Creature} » déjà peuplée plus haut."); ok = false; }
+                    else if (LifeSuffix.IsMatch(p.Creature) || p.Creature.Length > MaxCreatureLength)
+                    {
+                        report.Add(path + ".creature", ValidationCode.InvalidValue, $"identifiant réservé : « _v<nombre> » final désigne les vies suivantes d'une créature ({MaxCreatureLength} caractères au plus).");
+                        ok = false;
+                    }
+                    else if (!creatures.Add(p.Creature)) { report.Add(path + ".creature", ValidationCode.DuplicateId, $"créature « {p.Creature} » déjà peuplée plus haut."); ok = false; }
                     else if (scenario != null)
                     {
                         template = scenario.Combatants.FirstOrDefault(c => c.Id == p.Creature) as AssailantSetup;
@@ -254,11 +268,6 @@ namespace EdS.Data.Zones
                         else if (template.Health is null || template.Placement is null)
                         {
                             report.Add(path + ".creature", ValidationCode.InvalidValue, "une créature peuplée est mortelle (health) et placée.");
-                            ok = false;
-                        }
-                        else if (LifeSuffix.IsMatch(p.Creature) || p.Creature.Length > 60)
-                        {
-                            report.Add(path + ".creature", ValidationCode.InvalidValue, "identifiant réservé : « _v<nombre> » final désigne les vies suivantes d'une créature (60 caractères au plus).");
                             ok = false;
                         }
                     }
@@ -312,6 +321,36 @@ namespace EdS.Data.Zones
             if (!string.IsNullOrWhiteSpace(name)) return true;
             Missing(report, path, "nom affiché");
             return false;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #45 : emprise d'un personnage (<see cref="CharacterRadius"/>) posée sur un point sûr, comme la simulation la
+        /// placera : entière dans l'aire praticable, hors de tout obstacle (passages fermés compris), sans chevaucher un combattant de départ
+        /// qui lui est solide (son arrivée serait refusée). Null si elle tient, sinon le motif.
+        /// </summary>
+        private static string? Footprint(GroundVector p, CombatSetup scenario, CombatSpace space)
+        {
+            Fixed r = CharacterRadius;
+            if (p.X - r < space.Min.X || p.X + r > space.Max.X || p.Z - r < space.Min.Z || p.Z + r > space.Max.Z)
+                return $"l'emprise d'un personnage ({r} m) déborde de l'aire praticable de la zone.";
+            foreach (SpaceObstacle o in space.Obstacles)
+                if (o.Points.Count >= 3 && ConvexPolygon.IsStrictlyConvex(o.Points, out _) && new ConvexPolygon(o.Points).OverlapsCircle(p.X.Raw, p.Z.Raw, r.Raw))
+                    return $"l'emprise d'un personnage ({r} m) chevauche l'obstacle « {o.Id} ».";
+            foreach (CombatantSetup c in scenario.Combatants)
+            {
+                if (c.ArrivalMs != null || c.Placement is not CombatantPlacement q) continue;
+                if (scenario.Combat.AreSolid(true, r, c is CharacterSetup, q.Radius)
+                    && Planar.CirclesOverlap(p.X.Raw, p.Z.Raw, r.Raw, q.Position.X.Raw, q.Position.Z.Raw, q.Radius.Raw))
+                    return $"l'emprise d'un personnage ({r} m) chevauche la place de « {c.Id} ».";
+            }
+            return null;
+        }
+
+        /// <summary>Point présent et complet (les deux coordonnées), y compris pour un document construit hors du lecteur JSON.</summary>
+        private static bool CheckPoint(PointData? p, string path, string what, ValidationReport report)
+        {
+            if (p is null || p.X is null || p.Z is null) { Missing(report, path, what); return false; }
+            return true;
         }
 
         private static GroundVector Point(PointData p) => new GroundVector(p.X!.Value, p.Z!.Value);

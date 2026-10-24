@@ -62,6 +62,7 @@ internal sealed class MiniJsonSchema
             case "propertyNames":   // revue Codex de la PR #43 (schéma des sauvegardes) : chaque nom de propriété valide le sous-schéma
                 return x.ValueKind != JsonValueKind.Object
                     || x.EnumerateObject().All(p => Valid(v, JsonDocument.Parse(JsonSerializer.Serialize(p.Name)).RootElement));
+            case "maxProperties": return x.ValueKind != JsonValueKind.Object || x.EnumerateObject().Count() <= v.GetInt32();
             case "minItems": return x.ValueKind != JsonValueKind.Array || x.GetArrayLength() >= v.GetInt32();
             case "maxItems": return x.ValueKind != JsonValueKind.Array || x.GetArrayLength() <= v.GetInt32();
             case "uniqueItems":
