@@ -184,6 +184,24 @@ public class Lot123ItemTests
     }
 
     [Fact]
+    public void Bonus_sur_un_assaillant_refuse_sans_le_lecteur()
+    {
+        // Revue Codex de la PR #44 (7e tour) : des bonus renseignés sur un assaillant d'objet public sont refusés, pas ignorés.
+        ScenarioDocument document = Document("vallons_demo");
+        int index = document.Data!.Combatants!.FindIndex(c => c!.Type == "assailant");
+        CombatantData wolf = document.Data.Combatants[index]!;
+        Assert.DoesNotContain("gear", wolf.Present);
+        wolf.Gear = new List<KeyValuePair<string, int?>> { new("armor", 3) };
+        ScenarioLoadResult result = ScenarioValidator.Validate(document, ShippedData);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Report.Errors, e => e.Path == $"$.data.combatants[{index}].gear");
+        // Un personnage retouché de même reste admis (champ de son type).
+        ScenarioDocument ok = Document("vallons_demo");
+        ok.Data!.Combatants!.First(c => c!.Type == "character")!.Gear = new List<KeyValuePair<string, int?>> { new("armor", 3) };
+        Assert.True(ScenarioValidator.Validate(ok, ShippedData).IsValid);
+    }
+
+    [Fact]
     public void Tables_des_raretes_et_des_types_non_modifiables()
     {
         // Revue Codex de la PR #44 (2e tour) : les tables globales ne se modifient pas par conversion.
