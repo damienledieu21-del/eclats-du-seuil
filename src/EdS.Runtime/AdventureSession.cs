@@ -535,7 +535,7 @@ namespace EdS.Runtime
         public string TimeOfDay => World.Zone.Time.ToString();
 
         /// <summary>Formes du chef de la zone (pour l'affichage).</summary>
-        public bool IsBoss(string combatant) => _zone.Boss is { } b && b.Forms.Any(f => f.Id == combatant);
+        public bool IsBoss(string combatant) => _zone.Boss is { } b && (b.Forms.Any(f => f.Id == combatant) || World.BossForm == combatant);   // forme revenue sous une nouvelle identité (revue Codex de la PR #48)
 
         // --- Halte, reprise, sauvegarde ---------------------------------------------------------------------------------
 
