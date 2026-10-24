@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "zone"
@@ -204,6 +204,85 @@
                 "type": "string",
                 "minLength": 1
               }
+            }
+          }
+        },
+        "boss": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "scenario",
+            "forms",
+            "fact",
+            "rewards"
+          ],
+          "description": "Sous-lot 12.7 (schéma 2) : chef à formes successives ; première victoire récompensée une seule fois.",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "maxLength": 64
+            },
+            "scenario": {
+              "type": "string",
+              "pattern": "^[a-z0-9_]+(/[a-z0-9_]+)*$",
+              "maxLength": 200
+            },
+            "forms": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 60,
+                "not": {
+                  "pattern": "_v[0-9]+$"
+                }
+              },
+              "uniqueItems": true
+            },
+            "fact": {
+              "type": "string",
+              "pattern": "^fact(\\.[a-z0-9_]+)+$",
+              "maxLength": 200
+            },
+            "rewards": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "item",
+                  "count"
+                ],
+                "properties": {
+                  "item": {
+                    "type": "string",
+                    "pattern": "^item(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 999
+                  }
+                }
+              }
+            },
+            "loot": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^loot(\\.[a-z0-9_]+)+$",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }

@@ -1,0 +1,651 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 12,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 117,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -24,
+          -18
+        ],
+        "max": [
+          60,
+          40
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "moulin",
+          "points": [
+            [
+              -6,
+              6
+            ],
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              12
+            ],
+            [
+              -6,
+              12
+            ]
+          ]
+        },
+        {
+          "id": "riviere_sud",
+          "points": [
+            [
+              4,
+              -18
+            ],
+            [
+              7,
+              -18
+            ],
+            [
+              7,
+              -2
+            ],
+            [
+              4,
+              -2
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "riviere_nord",
+          "points": [
+            [
+              4,
+              1.5
+            ],
+            [
+              7,
+              1.5
+            ],
+            [
+              7,
+              34
+            ],
+            [
+              4,
+              34
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "arbre1",
+          "points": [
+            [
+              -12.4,
+              3.6
+            ],
+            [
+              -11.6,
+              3.6
+            ],
+            [
+              -11.6,
+              4.4
+            ],
+            [
+              -12.4,
+              4.4
+            ]
+          ]
+        },
+        {
+          "id": "arbre2",
+          "points": [
+            [
+              -14.4,
+              -2.4
+            ],
+            [
+              -13.6,
+              -2.4
+            ],
+            [
+              -13.6,
+              -1.6
+            ],
+            [
+              -14.4,
+              -1.6
+            ]
+          ]
+        },
+        {
+          "id": "arbre3",
+          "points": [
+            [
+              -9.4,
+              -6.4
+            ],
+            [
+              -8.6,
+              -6.4
+            ],
+            [
+              -8.6,
+              -5.6
+            ],
+            [
+              -9.4,
+              -5.6
+            ]
+          ]
+        },
+        {
+          "id": "arbre4",
+          "points": [
+            [
+              11.6,
+              9.6
+            ],
+            [
+              12.4,
+              9.6
+            ],
+            [
+              12.4,
+              10.4
+            ],
+            [
+              11.6,
+              10.4
+            ]
+          ]
+        },
+        {
+          "id": "arbre5",
+          "points": [
+            [
+              14.6,
+              -8.4
+            ],
+            [
+              15.4,
+              -8.4
+            ],
+            [
+              15.4,
+              -7.6
+            ],
+            [
+              14.6,
+              -7.6
+            ]
+          ]
+        },
+        {
+          "id": "mur_nord",
+          "points": [
+            [
+              17,
+              1.5
+            ],
+            [
+              18,
+              1.5
+            ],
+            [
+              18,
+              14
+            ],
+            [
+              17,
+              14
+            ]
+          ]
+        },
+        {
+          "id": "mur_sud",
+          "points": [
+            [
+              17,
+              -14
+            ],
+            [
+              18,
+              -14
+            ],
+            [
+              18,
+              -0.5
+            ],
+            [
+              17,
+              -0.5
+            ]
+          ]
+        },
+        {
+          "id": "pilier1",
+          "points": [
+            [
+              -16.25,
+              7.75
+            ],
+            [
+              -15.75,
+              7.75
+            ],
+            [
+              -15.75,
+              8.25
+            ],
+            [
+              -16.25,
+              8.25
+            ]
+          ]
+        },
+        {
+          "id": "pilier2",
+          "points": [
+            [
+              -12.25,
+              7.75
+            ],
+            [
+              -11.75,
+              7.75
+            ],
+            [
+              -11.75,
+              8.25
+            ],
+            [
+              -12.25,
+              8.25
+            ]
+          ]
+        },
+        {
+          "id": "pilier3",
+          "points": [
+            [
+              -16.25,
+              11.75
+            ],
+            [
+              -15.75,
+              11.75
+            ],
+            [
+              -15.75,
+              12.25
+            ],
+            [
+              -16.25,
+              12.25
+            ]
+          ]
+        },
+        {
+          "id": "pilier4",
+          "points": [
+            [
+              -12.25,
+              11.75
+            ],
+            [
+              -11.75,
+              11.75
+            ],
+            [
+              -11.75,
+              12.25
+            ],
+            [
+              -12.25,
+              12.25
+            ]
+          ]
+        },
+        {
+          "id": "haie_ouest",
+          "points": [
+            [
+              -24,
+              19
+            ],
+            [
+              -6,
+              19
+            ],
+            [
+              -6,
+              20
+            ],
+            [
+              -24,
+              20
+            ]
+          ]
+        },
+        {
+          "id": "porte_moulin",
+          "points": [
+            [
+              -6,
+              19
+            ],
+            [
+              0,
+              19
+            ],
+            [
+              0,
+              20
+            ],
+            [
+              -6,
+              20
+            ]
+          ]
+        },
+        {
+          "id": "haie_est",
+          "points": [
+            [
+              0,
+              19
+            ],
+            [
+              17,
+              19
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        {
+          "id": "bloc1",
+          "points": [
+            [
+              32,
+              -10
+            ],
+            [
+              35,
+              -10
+            ],
+            [
+              35,
+              -7
+            ],
+            [
+              32,
+              -7
+            ]
+          ]
+        },
+        {
+          "id": "bloc2",
+          "points": [
+            [
+              40,
+              4
+            ],
+            [
+              43,
+              4
+            ],
+            [
+              43,
+              7
+            ],
+            [
+              40,
+              7
+            ]
+          ]
+        },
+        {
+          "id": "bloc3",
+          "points": [
+            [
+              50,
+              -14
+            ],
+            [
+              53,
+              -14
+            ],
+            [
+              53,
+              -11
+            ],
+            [
+              50,
+              -11
+            ]
+          ]
+        },
+        {
+          "id": "front_de_taille",
+          "points": [
+            [
+              56,
+              -18
+            ],
+            [
+              60,
+              -18
+            ],
+            [
+              60,
+              10
+            ],
+            [
+              56,
+              10
+            ]
+          ]
+        },
+        {
+          "id": "pierre_seuil1",
+          "points": [
+            [
+              44,
+              28
+            ],
+            [
+              45,
+              28
+            ],
+            [
+              45,
+              29
+            ],
+            [
+              44,
+              29
+            ]
+          ]
+        },
+        {
+          "id": "pierre_seuil2",
+          "points": [
+            [
+              52,
+              30
+            ],
+            [
+              53,
+              30
+            ],
+            [
+              53,
+              31
+            ],
+            [
+              52,
+              31
+            ]
+          ]
+        },
+        {
+          "id": "pierre_seuil3",
+          "points": [
+            [
+              48,
+              36
+            ],
+            [
+              49,
+              36
+            ],
+            [
+              49,
+              37
+            ],
+            [
+              48,
+              37
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "gardien_du_seuil",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 3000,
+        "armor": 40,
+        "magicResistance": 40,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 90,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 2
+          },
+          {
+            "id": "onde_du_seuil",
+            "rawDamage": 150,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1500,
+            "radius": 3,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          54,
+          36
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 1.2,
+        "speed": 3.5,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "gardien_eveille",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 1800,
+        "armor": 40,
+        "magicResistance": 40,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 110,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 2
+          },
+          {
+            "id": "ruee",
+            "rawDamage": 160,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "onde_du_seuil",
+            "rawDamage": 170,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 3.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          56,
+          33
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 1.2,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 10,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

@@ -210,6 +210,8 @@ namespace EdS.Data.Story
                     for (int i = 0; i < _d.Quests.Count; i++)
                         if (_d.Quests[i] is QuestData q && CheckQuest(q, $"$.data.quests[{i}]") is { } quest) quests.Add(quest);
 
+                // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait.
+                if (_zone.Boss is { } boss) _factsSet.Add(boss.Fact);
                 // Un fait attendu doit pouvoir être appris : sinon la condition ou l'objectif ne serait jamais rempli.
                 foreach (var (fact, path) in _factsNeeded)
                     if (!_factsSet.Contains(fact))

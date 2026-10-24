@@ -84,7 +84,9 @@ namespace EdS.World
         public string CurrentOf(string population) => _lives.First(l => l.Population.Creature == population).Current;
 
         /// <summary>Après un tick de la zone : laisse, morts et départs à remplacer, arrivées dues au tick suivant.</summary>
-        public IReadOnlyList<PopulationEvent> Step(Zone zone)
+        /// <param name="reserved">Revue Codex de la PR #48 : places de combattants gardées pour d'autres arrivées (formes du chef encore à venir) :
+        /// les populations ne les prennent pas.</param>
+        public IReadOnlyList<PopulationEvent> Step(Zone zone, int reserved = 0)
         {
             CombatEngine engine = zone.Engine;
             if (engine.IsFinished) return Array.Empty<PopulationEvent>();
@@ -113,18 +115,18 @@ namespace EdS.World
                 }
                 if (life.RespawnAt is long due && due <= now)
                 {
-                    PopulationEvent? e = Respawn(zone, life, now, tickMs);
+                    PopulationEvent? e = Respawn(zone, life, now, tickMs, reserved);
                     if (e != null) (events ??= new List<PopulationEvent>()).Add(e);
                 }
             }
             return events ?? (IReadOnlyList<PopulationEvent>)Array.Empty<PopulationEvent>();
         }
 
-        private PopulationEvent? Respawn(Zone zone, Life life, long now, long tickMs)
+        private PopulationEvent? Respawn(Zone zone, Life life, long now, long tickMs, int reserved)
         {
             CombatEngine engine = zone.Engine;
             AssailantSetup t = life.Population.Template;
-            if (engine.CombatantIds.Count >= zone.Setup.Combat.MaxCombatants)
+            if (checked(engine.CombatantIds.Count + reserved) >= zone.Setup.Combat.MaxCombatants)
             {
                 life.Exhausted = true;
                 return new PopulationEvent(PopulationEventKind.Exhausted, t.Id, life.Current, now);

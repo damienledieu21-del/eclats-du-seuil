@@ -68,15 +68,28 @@ namespace EdS.World
         public IReadOnlyList<LootGained> Loot { get; }
         public IReadOnlyList<PopulationEvent> Population { get; }
         public IReadOnlyList<StoryEvent> Story { get; }
-        public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0 && Story.Count == 0;
+
+        /// <summary>Sous-lot 12.7 : formes du chef arrivées, victoire.</summary>
+        public IReadOnlyList<BossEvent> Boss { get; }
+
+        /// <summary>Sous-lot 12.7 : récompenses de la première victoire sur le chef, données à ce tick.</summary>
+        public IReadOnlyList<(string Item, int Count)> Rewards { get; }
+
+        /// <summary>Sous-lot 12.7 : le personnage est tombé à ce tick (défaite : la partie reprend au point sûr, sans perte).</summary>
+        public bool Defeated { get; }
+
+        public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0 && Story.Count == 0 && Boss.Count == 0 && Rewards.Count == 0 && !Defeated;
 
         internal SessionStep(IReadOnlyList<ExperienceGained> experience, IReadOnlyList<LootGained> loot, IReadOnlyList<PopulationEvent> population,
-            IReadOnlyList<StoryEvent> story)
+            IReadOnlyList<StoryEvent> story, IReadOnlyList<BossEvent>? boss = null, IReadOnlyList<(string, int)>? rewards = null, bool defeated = false)
         {
             Experience = experience;
             Loot = loot;
             Population = population;
             Story = story;
+            Boss = boss ?? Array.Empty<BossEvent>();
+            Rewards = rewards ?? Array.Empty<(string, int)>();
+            Defeated = defeated;
         }
     }
 
@@ -220,7 +233,30 @@ namespace EdS.World
             _populations = new ZonePopulations(zone);
             if (story != null) Narrative = new Narrative(story, _character.Story, this);
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
+            // Sous-lot 12.7 : le chef arrive avec la session (sa première forme).
+            if (zone.Boss is { } boss)
+            {
+                _boss = new BossFight(boss);
+                _bossStart = _boss.Start(Zone.Engine);
+            }
         }
+
+        private readonly BossFight? _boss;
+        private BossEvent? _bossStart;
+        private bool _rewardPending, _rewardAnnounced, _defeated;
+
+        /// <summary>Sous-lot 12.7 : forme en cours du chef (combattant), ou null sans chef.</summary>
+        public string? BossForm => _boss?.CurrentForm;
+
+        /// <summary>Sous-lot 12.7 : le chef a été vaincu dans cette session.</summary>
+        public bool BossDefeated => _boss?.IsDefeated ?? false;
+
+        /// <summary>
+        /// Sous-lot 12.7 (cadrage Q8) : le personnage est tombé. La session ne lui rapporte plus rien ; la partie reprend au point sûr, PV pleins,
+        /// par une nouvelle session ouverte sur <see cref="Save"/> : rien de ce qui est acquis n'est perdu (niveau, expérience, objets, métiers,
+        /// étapes de quête) ; seuls les objets de soin bus manquent.
+        /// </summary>
+        public bool IsDefeated => _defeated;
 
         /// <summary>Sous-lot 12.5 : histoire du personnage (null sans histoire chargée).</summary>
         public Narrative? Narrative { get; }
@@ -268,6 +304,10 @@ namespace EdS.World
             if (save.Zone != zone.Id) throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
             if (save.Character is SavedCharacter c)
             {
+                // Sous-lot 12.7 : le chef arrive avec la session sous l'identité de sa forme ; un personnage qui la porte rendrait son arrivée
+                // impossible (refusé ici, avant l'ouverture de la zone).
+                if (zone.Boss is { } boss && boss.Forms.Any(f => f.Id == c.Id))
+                    throw new ArgumentException($"Personnage « {c.Id} » : identité d'une forme du chef de {zone.Id}.", nameof(save));
                 if (story != null) Narrative.CheckSaved(story, c.Story);
                 if (crafting != null) Workshop.CheckSaved(crafting, c.Professions);
             }
@@ -278,6 +318,9 @@ namespace EdS.World
         private LootTable? LootFor(string combatant)
         {
             if (_lootTables.TryGetValue(combatant, out LootTable table)) return table;
+            // Sous-lot 12.7 : la dernière forme du chef donne son butin.
+            if (Definition?.Boss is { Loot: string bossLoot } && _boss != null && _boss.IsFinalForm(combatant) && _items.TryGetLoot(bossLoot, out LootTable bossTable))
+                return bossTable;
             return _populations?.Of(combatant) is { Loot: string id } && _items.TryGetLoot(id, out LootTable found) ? found : null;
         }
 
@@ -321,12 +364,36 @@ namespace EdS.World
             if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
             // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
-            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone) ?? Array.Empty<PopulationEvent>();
-            // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre ») et les populations.
+            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _boss?.FormsToCome ?? 0) ?? Array.Empty<PopulationEvent>();
             var story = new List<StoryEvent>();
+            CombatantView me = Zone.Engine.View(_character.Id);
+            // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
+            var boss = new List<BossEvent>();
+            if (_bossStart != null) { boss.Add(_bossStart); _bossStart = null; }
+            var rewards = new List<(string, int)>();
+            if (_boss != null)
+            {
+                foreach (BossEvent b in _boss.Step(Zone.Engine))
+                {
+                    boss.Add(b);
+                    // Victoire avec le personnage présent et vivant ; la première seulement est récompensée.
+                    // Revue Codex de la PR #48 (4e tour) : même présence que pour l'expérience : un départ prend effet en fin de tick, après
+                    // les morts ; le personnage présent au début du tick et vivant compte.
+                    bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
+                    if (b.Kind == BossEventKind.Defeated && here && !Zone.IsConsumed(Definition!.VictoryKey)) _rewardPending = true;
+                }
+                if (_rewardPending) GiveBossRewards(rewards, story);
+            }
+            bool defeated = false;
+            if (!_defeated && me.IsDead)
+            {
+                _defeated = true;
+                defeated = true;
+            }
+            // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
-            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 ? SessionStep.Empty
-                : new SessionStep(gains, loot, population, story);
+            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated
+                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated);
         }
 
         /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
@@ -363,12 +430,47 @@ namespace EdS.World
             rolls = loot;
         }
 
+        /// <summary>
+        /// Récompenses de la première victoire, en entier ou pas du tout : si elles ne tiennent pas, elles attendent une place (annoncé une
+        /// fois) ; données, la clé de victoire entre au registre du monde et le fait du chef est appris.
+        /// </summary>
+        private void GiveBossRewards(List<(string, int)> given, List<StoryEvent> story)
+        {
+            Boss b = Definition!.Boss!;
+            Inventory trial = Inventory.Clone();
+            // Même règle que la revue Codex de la PR #46 : la clé de victoire réserve sa place au registre avant toute mutation (registre
+            // plein : les récompenses attendent, comme un inventaire plein).
+            bool room = Zone.RegistryRoom >= 1;
+            foreach ((string item, int count) in b.Rewards)
+                if (!room || trial.Add(item, count) != InventoryRefusal.None)
+                {
+                    if (!_rewardAnnounced)
+                    {
+                        _rewardAnnounced = true;
+                        story.Add(new StoryEvent(StoryEventKind.RewardBlocked, Definition.VictoryKey));
+                    }
+                    return;
+                }
+            Inventory.CopyFrom(trial);
+            Zone.Consume(Definition.VictoryKey);
+            given.AddRange(b.Rewards);
+            if (Narrative != null) Narrative.Learn(b.Fact, story);
+            else _pendingFacts.Add(b.Fact);
+            _rewardPending = false;
+        }
+
+        /// <summary>Faits du chef appris sans histoire chargée : gardés pour la sauvegarde.</summary>
+        private readonly List<string> _pendingFacts = new List<string>();
+
         /// <summary>Sauvegarde à ce tick : monde de la zone et personnage à jour.</summary>
         public WorldSave Save()
         {
             WorldSave world = Zone.Save();
             SavedCharacter character = Inventory.SaveInto(_character);
             if (Narrative != null) character = character.WithStory(Narrative.ToSaved());
+            else if (_pendingFacts.Count > 0)
+                character = character.WithStory(new SavedStory(character.Story.Facts.Concat(_pendingFacts), character.Story.Quests, character.Story.Trust,
+                    character.Story.Discoveries));
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character);
         }

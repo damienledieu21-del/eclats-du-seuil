@@ -71,3 +71,15 @@ Détail : [MONDE.md](MONDE.md#soin-et-métiers-sous-lot-126), moteur : [MOTEUR.m
 - **Réseau** : la commande `consume` n'est pas encore transmise par le protocole du lot 10 (monde partagé : lot 13).
 - **Nœuds par session** : un nœud récolté repousse dans la session ; une nouvelle session les remet tous en place.
 - **Formats** : moteur 0.24.0, journal au format 18, scénarios en schéma 12, instantané au format 3, catalogue des objets en version 2, sauvegarde en version 5 (les versions 1 à 4 sont mises à jour), métiers en schéma 1. Sans objet de soin, un combat écrit les mêmes lignes qu'au moteur 0.23.0 ; un journal 0.23.0 est refusé au rejeu, sans migration.
+
+## Sous-lot 12.7 : chef de fin et récompenses
+
+Détail : [MONDE.md](MONDE.md#chef-de-fin-et-récompenses-sous-lot-127).
+
+- **Valeurs provisoires** (question à Damien) : PV, attaques et places des deux formes, lame du Seuil (arme épique, niveau 8), butin du Gardien. Tout est dans `scenarios/zones/vallons_chef.json` et `data/v0/world/`.
+- **Pas de quête secrète ni de réveil renforcé** (Q2, H4) : hors de la tranche pour l'instant ; le format du registre (clé par victoire) permettra une clé de plus pour une suite renforcée.
+- **Phases par formes successives** : chaque phase est un nouveau combattant (nouvelle identité, PV pleins). Changer d'attaques au même combattant à un seuil de PV demanderait de toucher au moteur : à faire si l'essai le demande.
+- **Chef présent à chaque session** : vaincu, il revient à la session suivante (butin à chaque victoire, récompense une seule fois). Pas encore de délai de réapparition dans la session.
+- **Défaite annoncée, pas encore rejouée** : la session signale la défaite ; c'est Unity (12.8) qui enchaînera la reprise (sauvegarde puis nouvelle session au point sûr).
+- **Portée personnelle** : la victoire est une clé du registre de la sauvegarde du joueur ; le partage d'une victoire de groupe viendra au lot 13.
+- **Formats** : zone en schéma 2 (bloc `boss`) ; moteur, journal, scénarios, instantané et sauvegarde inchangés (la victoire est une clé de `consumed`).

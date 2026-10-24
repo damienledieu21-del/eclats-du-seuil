@@ -194,6 +194,18 @@
         "stack": 3,
         "heal": 700,
         "cooldownMs": 20000
+      },
+      {
+        "id": "item.lame_du_seuil",
+        "name": "Lame du Seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "weapon",
+        "requiredLevel": 8,
+        "bonus": {
+          "physicalPower": 48,
+          "magicResistance": 20
+        }
       }
     ],
     "loot": [
@@ -264,6 +276,21 @@
             "item": "item.talisman_du_seuil",
             "count": 1,
             "chancePercent": 5
+          }
+        ]
+      },
+      {
+        "id": "loot.gardien",
+        "drops": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2,
+            "chancePercent": 100
+          },
+          {
+            "item": "item.talisman_du_seuil",
+            "count": 1,
+            "chancePercent": 20
           }
         ]
       }

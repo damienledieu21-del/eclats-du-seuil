@@ -29,6 +29,36 @@ namespace EdS.Data.Zones
         public List<PlaceData?>? Places { get; set; }
         public List<PopulationData?>? Populations { get; set; }
         public List<PassageData?>? Passages { get; set; }
+
+        /// <summary>Sous-lot 12.7 (schéma 2) : chef de la zone ; facultatif.</summary>
+        public BossData? Boss { get; set; }
+    }
+
+    /// <summary>Sous-lot 12.7 : chef à formes successives et récompense de la première victoire.</summary>
+    public sealed class BossData
+    {
+        public string? Id { get; set; }
+
+        /// <summary>Scénario qui décrit les formes du chef (assaillants mortels et placés), chemin sous <c>scenarios/</c>.</summary>
+        public string? Scenario { get; set; }
+
+        /// <summary>Formes, dans l'ordre : quand l'une tombe, la suivante se relève à sa place.</summary>
+        public List<string?>? Forms { get; set; }
+
+        /// <summary>Fait appris à la première victoire (quêtes).</summary>
+        public string? Fact { get; set; }
+
+        /// <summary>Récompenses de la première victoire, attribuées une seule fois.</summary>
+        public List<RewardData?>? Rewards { get; set; }
+
+        /// <summary>Butin de chaque victoire (dernière forme) ; facultatif.</summary>
+        public string? Loot { get; set; }
+    }
+
+    public sealed class RewardData
+    {
+        public string? Item { get; set; }
+        public int? Count { get; set; }
     }
 
     /// <summary>Point sûr : lieu d'entrée et de retour (défaite, sous-lot 12.7).</summary>

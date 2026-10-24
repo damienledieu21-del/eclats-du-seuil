@@ -52,7 +52,17 @@ namespace EdS.Data.Json
                         $"scénario de zone « {name} » refusé : {loaded.Report.Errors.FirstOrDefault()?.ToString() ?? "illisible"}");
                 scenario = loaded.Setup;
             }
-            return ZoneValidator.Validate(document, scenario, items, report);
+            // Sous-lot 12.7 : scénario des formes du chef.
+            CombatSetup? bossScenario = null;
+            if (report.IsValid && document.Data?.Boss?.Scenario is string bossName && ZoneValidator.IsScenarioPath(bossName))
+            {
+                ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(System.IO.Path.Combine(scenariosDirectory, bossName + ".json"), data);
+                if (loaded.Setup is null)
+                    report.Add("$.data.boss.scenario", ValidationCode.InvalidValue,
+                        $"scénario du chef « {bossName} » refusé : {loaded.Report.Errors.FirstOrDefault()?.ToString() ?? "illisible"}");
+                bossScenario = loaded.Setup;
+            }
+            return ZoneValidator.Validate(document, scenario, items, report, bossScenario);
         }
 
         private static ZoneData? ReadData(JsonInput input, JsonElement element, string path)
@@ -72,6 +82,7 @@ namespace EdS.Data.Json
                     n => $"{n} populations, au plus {ZoneValidator.MaxPopulations}.", (e, ip) => ReadPopulation(input, e, ip)),
                 ["passages"] = (v, p) => d.Passages = input.ReadLimitedList(v, p, ZoneValidator.MaxPassages, n => $"{n} passages, au plus {ZoneValidator.MaxPassages}.",
                     (e, ip) => ReadPassage(input, e, ip)),
+                ["boss"] = (v, p) => d.Boss = ReadBoss(input, v, p),   // sous-lot 12.7 (schéma 2)
             });
             return ok ? d : null;
         }
@@ -112,6 +123,30 @@ namespace EdS.Data.Json
                 ["loot"] = (v, p) => population.Loot = input.NullableText(v, p),
             });
             return ok ? population : null;
+        }
+
+        private static BossData? ReadBoss(JsonInput input, JsonElement element, string path)
+        {
+            var b = new BossData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => b.Id = input.Text(v, p),
+                ["scenario"] = (v, p) => b.Scenario = input.Text(v, p),
+                ["forms"] = (v, p) => b.Forms = input.ReadLimitedList(v, p, ZoneValidator.MaxForms, n => $"{n} formes, au plus {ZoneValidator.MaxForms}.",
+                    (e, ip) => input.Text(e, ip)),
+                ["fact"] = (v, p) => b.Fact = input.Text(v, p),
+                ["rewards"] = (v, p) => b.Rewards = input.ReadLimitedList(v, p, ZoneValidator.MaxRewards, n => $"{n} récompenses, au plus {ZoneValidator.MaxRewards}.",
+                    (e, ip) =>
+                    {
+                        var r = new RewardData();
+                        return input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["item"] = (rv, rp) => r.Item = input.Text(rv, rp),
+                            ["count"] = (rv, rp) => r.Count = input.Int32(rv, rp),
+                        }) ? r : null;
+                    }),
+                ["loot"] = (v, p) => b.Loot = input.NullableText(v, p),
+            }) ? b : null;
         }
 
         private static PassageData? ReadPassage(JsonInput input, JsonElement element, string path)
