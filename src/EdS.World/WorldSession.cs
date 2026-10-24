@@ -304,6 +304,10 @@ namespace EdS.World
             if (save.Zone != zone.Id) throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
             if (save.Character is SavedCharacter c)
             {
+                // Sous-lot 12.7 : le chef arrive avec la session sous l'identité de sa forme ; un personnage qui la porte rendrait son arrivée
+                // impossible (refusé ici, avant l'ouverture de la zone).
+                if (zone.Boss is { } boss && boss.Forms.Any(f => f.Id == c.Id))
+                    throw new ArgumentException($"Personnage « {c.Id} » : identité d'une forme du chef de {zone.Id}.", nameof(save));
                 if (story != null) Narrative.CheckSaved(story, c.Story);
                 if (crafting != null) Workshop.CheckSaved(crafting, c.Professions);
             }
@@ -431,8 +435,11 @@ namespace EdS.World
         {
             Boss b = Definition!.Boss!;
             Inventory trial = Inventory.Clone();
+            // Même règle que la revue Codex de la PR #46 : la clé de victoire réserve sa place au registre avant toute mutation (registre
+            // plein : les récompenses attendent, comme un inventaire plein).
+            bool room = Zone.RegistryRoom >= 1;
             foreach ((string item, int count) in b.Rewards)
-                if (trial.Add(item, count) != InventoryRefusal.None)
+                if (!room || trial.Add(item, count) != InventoryRefusal.None)
                 {
                     if (!_rewardAnnounced)
                     {

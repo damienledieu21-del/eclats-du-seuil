@@ -93,8 +93,9 @@ namespace EdS.World
             {
                 engine.Join(Copy(next, engine));
             }
-            catch (ArgumentException)
+            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
+                // Arrivée refusée (place prise, file pleine : refus atomique) : nouvel essai une seconde plus tard (comme les populations).
                 _nextAt = checked(now + Math.Max(1, 1000 / engine.TickMilliseconds));
                 return Array.Empty<BossEvent>();
             }

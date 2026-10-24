@@ -368,6 +368,9 @@ namespace EdS.Data.Zones
                     else if (templates.Any(t => t.Id == id)) { report.Add(p, ValidationCode.DuplicateId, $"forme « {id} » déjà donnée."); ok = false; }
                     else if (scenario != null && scenario.Combatants.Any(c => c.Id == id)) { report.Add(p, ValidationCode.DuplicateId, $"« {id} » est déjà une créature de la zone."); ok = false; }
                     else if (LifeSuffix.IsMatch(id) || id.Length > 60) { report.Add(p, ValidationCode.InvalidValue, "identifiant réservé (« _v<nombre> » final) ou trop long."); ok = false; }
+                    // La forme arrive dans la simulation de la zone : sa place doit y tenir (aire, obstacles), sinon son arrivée serait refusée.
+                    else if (scenario?.Space is { } zoneSpace && Clear(form.Placement.Position, form.Placement.Radius, zoneSpace, $"de la forme « {id} »") is string why)
+                    { report.Add(p, ValidationCode.InvalidValue, why); ok = false; }
                     else templates.Add(form);
                 }
             if (b.Fact is null || b.Fact.Length > 200 || !FactId.IsMatch(b.Fact)) { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » mal formé : « fact.… »."); ok = false; }
@@ -409,11 +412,7 @@ namespace EdS.Data.Zones
         private static string? Footprint(GroundVector p, CombatSetup scenario, CombatSpace space)
         {
             Fixed r = CharacterRadius;
-            if (p.X - r < space.Min.X || p.X + r > space.Max.X || p.Z - r < space.Min.Z || p.Z + r > space.Max.Z)
-                return $"l'emprise d'un personnage ({r} m) déborde de l'aire praticable de la zone.";
-            foreach (SpaceObstacle o in space.Obstacles)
-                if (o.Points.Count >= 3 && ConvexPolygon.IsStrictlyConvex(o.Points, out _) && new ConvexPolygon(o.Points).OverlapsCircle(p.X.Raw, p.Z.Raw, r.Raw))
-                    return $"l'emprise d'un personnage ({r} m) chevauche l'obstacle « {o.Id} ».";
+            if (Clear(p, r, space, "d'un personnage") is string why) return why;
             foreach (CombatantSetup c in scenario.Combatants)
             {
                 if (c.ArrivalMs != null || c.Placement is not CombatantPlacement q) continue;
@@ -421,6 +420,17 @@ namespace EdS.Data.Zones
                     && Planar.CirclesOverlap(p.X.Raw, p.Z.Raw, r.Raw, q.Position.X.Raw, q.Position.Z.Raw, q.Radius.Raw))
                     return $"l'emprise d'un personnage ({r} m) chevauche la place de « {c.Id} ».";
             }
+            return null;
+        }
+
+        /// <summary>Emprise (centre, rayon) entière dans l'aire praticable et hors de tout obstacle (passages fermés compris) ; null si elle tient.</summary>
+        private static string? Clear(GroundVector p, Fixed r, CombatSpace space, string who)
+        {
+            if (p.X - r < space.Min.X || p.X + r > space.Max.X || p.Z - r < space.Min.Z || p.Z + r > space.Max.Z)
+                return $"l'emprise {who} ({r} m) déborde de l'aire praticable de la zone.";
+            foreach (SpaceObstacle o in space.Obstacles)
+                if (o.Points.Count >= 3 && ConvexPolygon.IsStrictlyConvex(o.Points, out _) && new ConvexPolygon(o.Points).OverlapsCircle(p.X.Raw, p.Z.Raw, r.Raw))
+                    return $"l'emprise {who} ({r} m) chevauche l'obstacle « {o.Id} ».";
             return null;
         }
 

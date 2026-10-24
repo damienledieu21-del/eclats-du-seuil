@@ -7,6 +7,7 @@ using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Zones;
 using EdS.Domain.Combat;
+using EdS.Simulation.Engine;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -26,7 +27,8 @@ public class Lot127BossTests
     private static TextCatalog Texts => StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(DataDirectory)).Texts!;
 
     /// <summary>Zone des Vallons ; formes du chef retouchées au besoin ; entrée déplacée ; créatures de la zone calmées au besoin.</summary>
-    private static ZoneLoadResult Load(Action<JsonObject>? zone = null, Action<JsonObject>? boss = null, double x = -18, double z = -12, bool calm = false)
+    private static ZoneLoadResult Load(Action<JsonObject>? zone = null, Action<JsonObject>? boss = null, double x = -18, double z = -12, bool calm = false,
+        Action<JsonObject>? zoneScenario = null)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
         root["data"]!["safePoints"]![0]!["position"] = new JsonArray(x, z);
@@ -39,6 +41,7 @@ public class Lot127BossTests
             if (calm)   // créatures de la zone inoffensives (le rôdeur garde l'approche du chef)
                 foreach (JsonNode? c in population["data"]!["combatants"]!.AsArray())
                     foreach (JsonNode? a in c!["attacks"]!.AsArray()) a!["rawDamage"] = 1;
+            zoneScenario?.Invoke(population);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), population.ToJsonString());
             JsonObject forms = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons_chef")))!.AsObject();
             boss?.Invoke(forms);
@@ -115,6 +118,30 @@ public class Lot127BossTests
         Assert.Equal("$.data.boss.rewards[0].count", First(Load(z => B(z)["rewards"]![0]!["count"] = 2)));
         Assert.Equal("$.data.boss.loot", First(Load(z => B(z)["loot"] = "loot.inconnu")));
         Assert.Equal("$.data.boss.scenario", First(Load(z => B(z)["scenario"] = "zones/inconnu")));
+        // Avant la revue Codex : la place d'une forme doit tenir dans la simulation de la zone (ici, un rocher ajouté sur la place du
+        // chef), sinon son arrivée serait refusée.
+        Assert.Equal("$.data.boss.forms[0]", First(Load(zoneScenario: s => s["data"]!["space"]!["obstacles"]!.AsArray().Add(JsonNode.Parse(
+            "{\"id\": \"rocher_chef\", \"points\": [[53, 35], [55, 35], [55, 37], [53, 37]]}")))));
+        // Le schéma suit les identifiants des formes (réservés « _v<nombre> », uniques).
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        B(root)["forms"]![1] = "gardien_du_seuil";
+        Assert.False(schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement));
+        B(root)["forms"]![1] = "gardien_v2";
+        Assert.False(schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement));
+    }
+
+    [Fact]
+    public void Personnage_qui_porte_l_identite_du_chef_refuse_avant_l_ouverture()
+    {
+        // Le chef arrive avec la session sous l'identité de sa forme : un personnage du même nom est refusé avant l'ouverture de la zone
+        // (aucune ligne de journal).
+        ZoneDefinition arena = Arena();
+        var log = new MemoryCombatLog();
+        SavedCharacter hero = PlayerCharacters.Create("gardien_du_seuil", "class.bastion", Progression);
+        Assert.Throws<ArgumentException>(() => new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), arena, ShippedData,
+            Progression, Items, null, null, log));
+        Assert.Empty(log.Lines);
     }
 
     [Fact]
