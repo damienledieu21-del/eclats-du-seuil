@@ -209,7 +209,9 @@ namespace EdS.Runtime
         {
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
             _sinceSave += seconds;
-            if (_dirty && _sinceSave >= AutosaveSeconds && !World.IsDefeated)
+            // Revue Codex de la PR #49 : la défaite ne perd rien (cadrage Q8) : les acquis d'avant la chute se sauvegardent encore
+            // (World.Save garde l'expérience, les objets, l'histoire ; jamais les PV du combat).
+            if (_dirty && _sinceSave >= AutosaveSeconds)
             {
                 // Un disque plein ou inaccessible ne coupe pas la partie : le motif s'affiche et l'essai reprend 5 s plus tard.
                 try

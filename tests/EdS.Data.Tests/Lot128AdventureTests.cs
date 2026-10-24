@@ -287,6 +287,22 @@ public class Lot128AdventureTests : IDisposable
     }
 
     [Fact]
+    public void Acquis_sauvegardes_apres_une_defaite_sans_reprise()
+    {
+        // Revue Codex de la PR #49 : tombé, le joueur quitte sans reprendre : la sauvegarde automatique garde ses acquis.
+        (string data, string scenarios) = DeadlyCopy();
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
+        for (int i = 0; i < 1200 && !a.World.IsDefeated; i++) a.Advance(0.05);
+        Assert.True(a.World.IsDefeated);
+        a.Advance(AdventureSession.AutosaveSeconds + 1);
+        WorldSave saved = SaveStore.Read(SavePath).Save!;
+        WorldSave now = a.World.Save();
+        Assert.Equal(now.WorldTick, saved.WorldTick);
+        Assert.Equal(now.Consumed, saved.Consumed);
+        Assert.Equal(now.Character!.Xp, saved.Character!.Xp);
+    }
+
+    [Fact]
     public void Arrivee_refusee_puis_nouvel_essai()
     {
         // Une créature sur le point sûr : le personnage n'arrive pas ; la partie le dit et une reprise réessaie.

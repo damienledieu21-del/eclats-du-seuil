@@ -229,10 +229,13 @@ namespace EdS.Game
             _combat = null;
         }
 
-        /// <summary>Sauvegarde l'aventure en cours (sauf après une défaite pas encore reprise : la reprise sauvegarde) ; une erreur s'affiche.</summary>
+        /// <summary>
+        /// Sauvegarde l'aventure en cours, même après une défaite pas encore reprise (revue Codex de la PR #49 : les acquis d'avant la chute
+        /// ne se perdent pas) ; une erreur s'affiche.
+        /// </summary>
         private void SaveAdventure(bool announce)
         {
-            if (_adventure == null || _adventure.World.IsDefeated) return;
+            if (_adventure == null) return;
             try
             {
                 _adventure.Save();
