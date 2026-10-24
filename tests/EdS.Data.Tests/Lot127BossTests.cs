@@ -55,14 +55,14 @@ public class Lot127BossTests
     }
 
     /// <summary>Chef affaibli (60 PV par forme), inoffensif ou mortel ; entrée à côté de lui ; le reste de la zone ne blesse pas.</summary>
-    private static ZoneDefinition Arena(long damage = 1, int health = 60) => Load(boss: f =>
+    private static ZoneDefinition Arena(long damage = 1, int health = 60, Action<JsonObject>? zoneScenario = null) => Load(boss: f =>
     {
         foreach (JsonNode? c in f["data"]!["combatants"]!.AsArray())
         {
             c!["health"] = health;
             foreach (JsonNode? a in c["attacks"]!.AsArray()) a!["rawDamage"] = damage;
         }
-    }, x: 51.5, z: 36, calm: true).Zone!;
+    }, x: 51.5, z: 36, calm: true, zoneScenario: zoneScenario).Zone!;
 
     private static string First(ZoneLoadResult r)
     {
@@ -129,6 +129,31 @@ public class Lot127BossTests
         Assert.False(schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement));
         B(root)["forms"]![1] = "gardien_v2";
         Assert.False(schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement));
+    }
+
+    [Fact]
+    public void Forme_sur_un_point_sur_refusee()
+    {
+        // Revue Codex de la PR #48 : une forme (solide pour le personnage : grande créature) sur un point sûr rendrait l'arrivée de l'un ou de
+        // l'autre impossible ; refusée au chargement, au chemin de la forme.
+        Assert.Equal("$.data.boss.forms[0]", First(Load(x: 54, z: 34.5)));
+        Assert.Equal("$.data.boss.forms[1]", First(Load(x: 56, z: 31.5)));
+    }
+
+    [Fact]
+    public void Victoire_au_dernier_tick_de_la_session_reconnue()
+    {
+        // Revue Codex de la PR #48 : la dernière forme tombe au tick qui termine la session : la victoire, la récompense unique et le fait
+        // comptent quand même.
+        WorldSession reference = Play(Arena(), new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        long end = Fight(reference).SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.Defeated).Tick;
+        ZoneDefinition shortened = Arena(zoneScenario: s => s["data"]!["durationMs"] = end * 50);
+        WorldSession session = Play(shortened, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        List<SessionStep> steps = Fight(session);
+        Assert.True(session.Zone.Engine.IsFinished);
+        Assert.True(session.BossDefeated);
+        Assert.Equal(new[] { ("item.lame_du_seuil", 1) }, steps.SelectMany(s => s.Rewards));
+        Assert.Contains("zone.vallons/boss/gardien_du_seuil", session.Save().Consumed);
     }
 
     [Fact]

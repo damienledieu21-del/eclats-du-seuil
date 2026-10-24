@@ -61,6 +61,9 @@ namespace EdS.World
         public int Phase => _phase;
         public bool IsDefeated => _over;
 
+        /// <summary>Revue Codex de la PR #48 : formes encore à venir (places de combattants à leur garder).</summary>
+        public int FormsToCome => _over ? 0 : _boss.Forms.Count - 1 - _phase;
+
         /// <summary>Fait arriver la première forme (début de session).</summary>
         public BossEvent Start(CombatEngine engine)
         {
@@ -70,8 +73,10 @@ namespace EdS.World
 
         public IReadOnlyList<BossEvent> Step(CombatEngine engine)
         {
-            if (_over || engine.IsFinished) return Array.Empty<BossEvent>();
+            if (_over) return Array.Empty<BossEvent>();
             long now = engine.CurrentTick;
+            // Revue Codex de la PR #48 : la mort de la dernière forme compte encore au tick qui termine la session ; seules les arrivées
+            // demandent un combat en cours.
             if (_nextAt is null)
             {
                 if (!engine.View(CurrentForm).IsDead) return Array.Empty<BossEvent>();
@@ -82,7 +87,7 @@ namespace EdS.World
                 }
                 _nextAt = now;
             }
-            if (_nextAt > now) return Array.Empty<BossEvent>();
+            if (engine.IsFinished || _nextAt > now) return Array.Empty<BossEvent>();
             AssailantSetup next = _boss.Forms[_phase + 1];
             if (Occupied(engine, next.Placement!))
             {

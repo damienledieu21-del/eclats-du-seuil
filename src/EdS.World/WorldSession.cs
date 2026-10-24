@@ -364,7 +364,7 @@ namespace EdS.World
             if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
             // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
-            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone) ?? Array.Empty<PopulationEvent>();
+            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _boss?.FormsToCome ?? 0) ?? Array.Empty<PopulationEvent>();
             var story = new List<StoryEvent>();
             CombatantView me = Zone.Engine.View(_character.Id);
             // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.

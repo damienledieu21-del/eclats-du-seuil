@@ -340,7 +340,7 @@ namespace EdS.Data.Zones
                 }
             }
 
-            Boss? boss = d.Boss is { } b ? CheckBoss(b, scenario, bossScenario, items, report) : null;
+            Boss? boss = d.Boss is { } b ? CheckBoss(b, scenario, bossScenario, items, report, safePoints) : null;
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
                 entry, safePoints, places, populations, passages, boss));
@@ -349,7 +349,8 @@ namespace EdS.Data.Zones
         public const int MaxForms = 8, MaxRewards = 8;
         private static readonly Regex FactId = new Regex(@"^fact(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
-        private static Boss? CheckBoss(BossData b, CombatSetup? scenario, CombatSetup? forms, ItemCatalog items, ValidationReport report)
+        private static Boss? CheckBoss(BossData b, CombatSetup? scenario, CombatSetup? forms, ItemCatalog items, ValidationReport report,
+            IReadOnlyList<SafePoint> safePoints)
         {
             const string path = "$.data.boss";
             bool ok = true;
@@ -371,6 +372,10 @@ namespace EdS.Data.Zones
                     // La forme arrive dans la simulation de la zone : sa place doit y tenir (aire, obstacles), sinon son arrivée serait refusée.
                     else if (scenario?.Space is { } zoneSpace && Clear(form.Placement.Position, form.Placement.Radius, zoneSpace, $"de la forme « {id} »") is string why)
                     { report.Add(p, ValidationCode.InvalidValue, why); ok = false; }
+                    // Revue Codex de la PR #48 : une forme n'occupe pas un point sûr (le personnage y entre ou y revient) ; la première, qui
+                    // arrive avec la session, ne chevauche pas non plus une créature de départ de la zone (son arrivée serait refusée).
+                    else if (scenario != null && Crowded(form, i == 0, scenario, safePoints) is string crowd)
+                    { report.Add(p, ValidationCode.InvalidValue, crowd); ok = false; }
                     else templates.Add(form);
                 }
             if (b.Fact is null || b.Fact.Length > 200 || !FactId.IsMatch(b.Fact)) { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » mal formé : « fact.… »."); ok = false; }
@@ -420,6 +425,24 @@ namespace EdS.Data.Zones
                     && Planar.CirclesOverlap(p.X.Raw, p.Z.Raw, r.Raw, q.Position.X.Raw, q.Position.Z.Raw, q.Radius.Raw))
                     return $"l'emprise d'un personnage ({r} m) chevauche la place de « {c.Id} ».";
             }
+            return null;
+        }
+
+        private static string? Crowded(AssailantSetup form, bool first, CombatSetup scenario, IReadOnlyList<SafePoint> safePoints)
+        {
+            CombatantPlacement f = form.Placement!;
+            foreach (SafePoint sp in safePoints)
+                if (scenario.Combat.AreSolid(true, CharacterRadius, false, f.Radius)
+                    && Planar.CirclesOverlap(sp.Position.X.Raw, sp.Position.Z.Raw, CharacterRadius.Raw, f.Position.X.Raw, f.Position.Z.Raw, f.Radius.Raw))
+                    return $"la place de la forme « {form.Id} » chevauche le point sûr « {sp.Id} ».";
+            if (first)
+                foreach (CombatantSetup c in scenario.Combatants)
+                {
+                    if (c.ArrivalMs != null || c.Placement is not CombatantPlacement q) continue;
+                    if (scenario.Combat.AreSolid(c is CharacterSetup, q.Radius, false, f.Radius)
+                        && Planar.CirclesOverlap(q.Position.X.Raw, q.Position.Z.Raw, q.Radius.Raw, f.Position.X.Raw, f.Position.Z.Raw, f.Radius.Raw))
+                        return $"la place de la première forme « {form.Id} » chevauche celle de « {c.Id} », présente au début de la session.";
+                }
             return null;
         }
 
