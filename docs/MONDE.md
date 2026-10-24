@@ -47,6 +47,23 @@ Catalogue en données (`data/v0/world/items.json`, `kind` « items », schéma `
 
 **Butin** : tables `loot.…` du catalogue (un à seize objets, chacun avec sa quantité et sa chance en pour cent). La partie en solo reçoit la table de chaque créature de la zone (par identifiant de combattant ; les Vallons en données, 12.4, la donneront). Une créature vaincue **pour la première fois**, le personnage présent et vivant, donne le butin de sa table, **tiré par la clé de sa mort** (`Loot.Roll` : générateur PCG initialisé par l'empreinte FNV-1a de la clé) : le même événement donne toujours le même butin, et le registre des événements consommés empêche de l'attribuer deux fois. Chaque objet tombé est rangé en entier, ou **perdu** si l'inventaire n'a plus de place (`LootGained.Kept` faux).
 
+## Les Vallons en données (sous-lot 12.4)
+
+Une **zone du monde** est un fichier de données (`data/v0/world/zones/vallons.json`, `kind` « zone », schéma `data/schemas/zone.schema.json`, validé par `ZoneValidator` contre son scénario et le catalogue des objets). Valeurs **provisoires** :
+
+- **Simulation** : le scénario de zone `scenarios/zones/vallons.json`, agrandi à 84 × 58 m (de [−24, −18] à [60, 40]) : le village et le moulin à l'ouest de la rivière (gué inchangé), la haie du nord percée au moulin par une porte, le pré des loups au-delà (la rivière s'arrête à z = 34 : on le rejoint aussi par un long détour à l'est puis au nord), les ruines au centre, la carrière à l'est (blocs, front de taille), la petite zone du Seuil au nord-est (pierres dressées). Dix créatures : cinq loups, trois sangliers, l'archer des ruines et un rôdeur du Seuil (attaques magiques).
+- **Points sûrs** : place du village (entrée), camp de la carrière. Le personnage entre au point d'entrée ; le retour après une défaite viendra avec le 12.7. Chaque point sûr doit pouvoir recevoir l'emprise d'un personnage (0,5 m) : entière dans l'aire praticable, hors de tout obstacle (porte du moulin fermée comprise), sans chevaucher la place d'une créature de départ qui lui serait solide.
+- **Lieux nommés** (rectangles) : village, moulin, rivière, pré des loups, ruines, carrière, petite zone du Seuil (`PlacesAt(point)`), pour les découvertes et les quêtes (12.5). La « manifestation » de la mission aura lieu dans la petite zone du Seuil.
+- **Populations** : chaque créature du scénario, avec son délai de réapparition (loups 90 s, sangliers et archer 2 min, rôdeur 3 min), sa laisse (18 à 20 m) et sa table de butin.
+- **Passage du moulin** : la porte `porte_moulin` ferme la haie ; `OpenPassage("moulin")` l'ouvre **pour de bon** (clé `zone.vallons/passage/moulin` au registre du monde, gardé dans la sauvegarde). L'obstacle disparaît à la **session suivante** (`ZoneSetups`).
+
+**Vie des populations** (`WorldSession` sur une zone du monde) :
+
+- **Réapparition** (section 2 de l'architecture : une identité n'est jamais réutilisée) : une créature morte revient après son délai, à sa place, **sous une nouvelle identité** (`loup1_v2`, `loup1_v3`… ; une identité déjà portée par un autre combattant de la session est sautée), calme et soignée. Sa mort garde sa clé unique : expérience et butin une seule fois par vie. Une place occupée retarde l'arrivée d'une seconde.
+- **Laisse** (essai du 22 octobre 2026) : une créature engagée dont l'écart à sa cible, entre les bords des emprises, dépasse sa laisse **lâche** : elle quitte la zone (ni mort, ni expérience, ni butin) et une vie calme et soignée la remplace à sa place au tick suivant.
+- **Refus du moteur** : un départ (laisse) ou une arrivée (réapparition) refusé par le moteur (plafond de commandes, file pleine) ne fait pas échouer le tick : il est retenté au tick suivant (la laisse) ou une seconde plus tard (la réapparition). Les récompenses du tick (expérience, butin) sont attribuées avant la vie des populations.
+- **Plafond** : une session tient au plus 64 combattants (règles) ; une population qui n'a plus de place attend la session suivante (`Exhausted`).
+
 ## Sauvegarde
 
 Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 3 depuis le sous-lot 12.3 :

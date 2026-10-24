@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Data;
 using EdS.Data.Characters;
 using EdS.Data.Items;
 using EdS.Data.Saves;
+using EdS.Data.Zones;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Domain.Stats;
 using EdS.Simulation.Engine;
@@ -50,19 +53,21 @@ namespace EdS.World
         }
     }
 
-    /// <summary>Ce qu'un tick de la partie a rapporté au personnage.</summary>
+    /// <summary>Ce qu'un tick de la partie a rapporté au personnage, et ce qui a changé dans les populations de la zone (sous-lot 12.4).</summary>
     public sealed class SessionStep
     {
-        public static readonly SessionStep Empty = new SessionStep(Array.Empty<ExperienceGained>(), Array.Empty<LootGained>());
+        public static readonly SessionStep Empty = new SessionStep(Array.Empty<ExperienceGained>(), Array.Empty<LootGained>(), Array.Empty<PopulationEvent>());
 
         public IReadOnlyList<ExperienceGained> Experience { get; }
         public IReadOnlyList<LootGained> Loot { get; }
-        public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0;
+        public IReadOnlyList<PopulationEvent> Population { get; }
+        public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0;
 
-        internal SessionStep(IReadOnlyList<ExperienceGained> experience, IReadOnlyList<LootGained> loot)
+        internal SessionStep(IReadOnlyList<ExperienceGained> experience, IReadOnlyList<LootGained> loot, IReadOnlyList<PopulationEvent> population)
         {
             Experience = experience;
             Loot = loot;
+            Population = population;
         }
     }
 
@@ -100,7 +105,14 @@ namespace EdS.World
         /// rien.</param>
         public WorldSession(WorldSave save, CombatSetup zoneSetup, GameData data, CharacterProgression progression, ItemCatalog items,
             CombatantPlacement placement, IReadOnlyDictionary<string, string>? lootTables = null, ICombatLog? log = null)
+            : this(save, zoneSetup, data, progression, items, placement, lootTables, log, true)
         {
+        }
+
+        private WorldSession(WorldSave save, CombatSetup zoneSetup, GameData data, CharacterProgression progression, ItemCatalog items,
+            CombatantPlacement placement, IReadOnlyDictionary<string, string>? lootTables, ICombatLog? log, bool _)
+        {
+            _items = items;
             if (save is null) throw new ArgumentNullException(nameof(save));
             _progression = progression ?? throw new ArgumentNullException(nameof(progression));
             if (items is null) throw new ArgumentNullException(nameof(items));
@@ -118,6 +130,57 @@ namespace EdS.World
         }
 
         private readonly Dictionary<string, LootTable> _lootTables;
+        private readonly ItemCatalog _items;
+        private readonly ZonePopulations? _populations;
+
+        /// <summary>Sous-lot 12.4 : zone du monde de la partie (null pour une partie sur une simulation donnée).</summary>
+        public ZoneDefinition? Definition { get; }
+
+        /// <summary>Rayon de l'emprise d'un personnage qui entre par un point sûr (provisoire, celui des scénarios).</summary>
+        public static readonly Fixed CharacterRadius = ZoneValidator.CharacterRadius;
+
+        /// <summary>
+        /// Sous-lot 12.4 : partie dans une zone du monde. La session de zone part de sa simulation, passages ouverts retirés
+        /// (<see cref="ZoneSetups"/>) ; le personnage entre au point sûr d'entrée ; les populations réapparaissent et tiennent leur laisse ;
+        /// chaque créature donne le butin de sa population.
+        /// </summary>
+        /// <exception cref="ArgumentException">Sauvegarde d'une autre zone, sans personnage, ou incohérente avec le catalogue.</exception>
+        public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, ICombatLog? log = null)
+            : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
+                data, progression, items, new CombatantPlacement(zone.Entry.Position, CharacterRadius), null, log, CheckZone(save, zone))
+        {
+            Definition = zone;
+            _populations = new ZonePopulations(zone);
+        }
+
+        private static bool CheckZone(WorldSave save, ZoneDefinition zone) =>
+            save.Zone == zone.Id ? true : throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
+
+        /// <summary>Table de butin d'une créature : celle donnée à l'ouverture, sinon celle de sa population.</summary>
+        private LootTable? LootFor(string combatant)
+        {
+            if (_lootTables.TryGetValue(combatant, out LootTable table)) return table;
+            return _populations?.Of(combatant) is { Loot: string id } && _items.TryGetLoot(id, out LootTable found) ? found : null;
+        }
+
+        /// <summary>
+        /// Sous-lot 12.4 : ouvre pour de bon un passage de la zone (raccourci du moulin) : sa clé entre au registre du monde, gardé dans la
+        /// sauvegarde. L'obstacle disparaît à la session suivante. Faux s'il était déjà ouvert.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Partie sans zone du monde.</exception>
+        /// <exception cref="ArgumentException">Passage inconnu de la zone.</exception>
+        public bool OpenPassage(string passage)
+        {
+            ZoneDefinition zone = Definition ?? throw new InvalidOperationException("Partie sans zone du monde.");
+            if (zone.Passages.All(p => p.Id != passage)) throw new ArgumentException($"Passage « {passage} » inconnu de {zone.Id}.", nameof(passage));
+            return Zone.Consume(zone.PassageKey(passage));
+        }
+
+        public bool IsPassageOpen(string passage) => Definition is { } zone && Zone.IsConsumed(zone.PassageKey(passage));
+
+        /// <summary>Vie en cours d'une population (<c>loup1</c>, puis <c>loup1_v2</c>…).</summary>
+        public string CurrentCreature(string population) =>
+            (_populations ?? throw new InvalidOperationException("Partie sans zone du monde.")).CurrentOf(population);
 
         /// <summary>Sous-lot 12.3 : inventaire et équipement du personnage (changements effectifs à la prochaine entrée).</summary>
         public Inventory Inventory { get; }
@@ -134,7 +197,18 @@ namespace EdS.World
             // Revue Codex de la PR #43 : un départ prend effet en fin de tick, après les morts : la présence se juge aussi au début du tick.
             bool wasPresent = Zone.Engine.View(_character.Id).IsPresent;
             IReadOnlyList<ZoneEvent> events = Zone.Step();
-            if (events.Count == 0) return SessionStep.Empty;
+            IReadOnlyList<ExperienceGained> gains = Array.Empty<ExperienceGained>();
+            IReadOnlyList<LootGained> loot = Array.Empty<LootGained>();
+            if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
+            // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
+            // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
+            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone) ?? Array.Empty<PopulationEvent>();
+            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 ? SessionStep.Empty : new SessionStep(gains, loot, population);
+        }
+
+        /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
+        private void Reward(IReadOnlyList<ZoneEvent> events, bool wasPresent, out IReadOnlyList<ExperienceGained> experience, out IReadOnlyList<LootGained> rolls)
+        {
             CombatantView me = Zone.Engine.View(_character.Id);
             bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
             var gains = new List<ExperienceGained>();
@@ -156,11 +230,12 @@ namespace EdS.World
                     gains.Add(new ExperienceGained(e, xp, before, Level));
                 }
                 // Sous-lot 12.3 : butin de sa table, rangé en entier ou perdu (inventaire plein).
-                if (_lootTables.TryGetValue(e.Combatant, out LootTable table))
+                if (LootFor(e.Combatant) is LootTable table)
                     foreach (LootRoll roll in Loot.Roll(table, e.Key))
                         loot.Add(new LootGained(e, roll.Item, roll.Count, Inventory.Add(roll.Item, roll.Count) == InventoryRefusal.None));
             }
-            return gains.Count == 0 && loot.Count == 0 ? SessionStep.Empty : new SessionStep(gains, loot);
+            experience = gains;
+            rolls = loot;
         }
 
         /// <summary>Sauvegarde à ce tick : monde de la zone et personnage à jour.</summary>

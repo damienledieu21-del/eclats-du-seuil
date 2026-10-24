@@ -214,6 +214,21 @@
             "chancePercent": 2
           }
         ]
+      },
+      {
+        "id": "loot.rodeur",
+        "drops": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 1,
+            "chancePercent": 40
+          },
+          {
+            "item": "item.talisman_du_seuil",
+            "count": 1,
+            "chancePercent": 5
+          }
+        ]
       }
     ]
   }

@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/zone.schema.json",
+  "title": "Éclats du Seuil — zone du monde",
+  "description": "Sous-lot 12.4. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ZoneValidator), avec le scénario de zone et le catalogue des objets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "zone"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "scenario",
+        "entry",
+        "safePoints",
+        "places",
+        "populations",
+        "passages"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^zone\\.[a-z][a-z0-9_]*$",
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenario": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+(/[a-z0-9_]+)*$",
+          "description": "Scénario de zone sous scenarios/, sans extension (zone: true, bloc space).",
+          "maxLength": 200
+        },
+        "entry": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 64
+        },
+        "safePoints": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "position"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "position": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "places": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "min",
+              "max"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "min": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "max": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "populations": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "creature",
+              "respawnMs",
+              "leashRange"
+            ],
+            "properties": {
+              "creature": {
+                "type": "string",
+                "description": "Assaillant mortel et placé du scénario ; ses vies suivantes : <créature>_v2, _v3…",
+                "minLength": 1,
+                "maxLength": 60,
+                "not": {
+                  "pattern": "_v[0-9]+$"
+                }
+              },
+              "respawnMs": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 3600000
+              },
+              "leashRange": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 100,
+                "description": "Écart à sa cible (entre les bords) au-delà duquel la créature lâche, en mètres."
+              },
+              "loot": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^loot(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "passages": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "obstacle"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "obstacle": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

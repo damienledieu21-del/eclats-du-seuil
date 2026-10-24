@@ -14,8 +14,8 @@
           -18
         ],
         "max": [
-          24,
-          18
+          60,
+          40
         ]
       },
       "obstacles": [
@@ -75,11 +75,11 @@
             ],
             [
               7,
-              18
+              34
             ],
             [
               4,
-              18
+              34
             ]
           ],
           "low": true
@@ -314,6 +314,216 @@
               12.25
             ]
           ]
+        },
+        {
+          "id": "haie_ouest",
+          "points": [
+            [
+              -24,
+              19
+            ],
+            [
+              -6,
+              19
+            ],
+            [
+              -6,
+              20
+            ],
+            [
+              -24,
+              20
+            ]
+          ]
+        },
+        {
+          "id": "porte_moulin",
+          "points": [
+            [
+              -6,
+              19
+            ],
+            [
+              0,
+              19
+            ],
+            [
+              0,
+              20
+            ],
+            [
+              -6,
+              20
+            ]
+          ]
+        },
+        {
+          "id": "haie_est",
+          "points": [
+            [
+              0,
+              19
+            ],
+            [
+              17,
+              19
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        {
+          "id": "bloc1",
+          "points": [
+            [
+              32,
+              -10
+            ],
+            [
+              35,
+              -10
+            ],
+            [
+              35,
+              -7
+            ],
+            [
+              32,
+              -7
+            ]
+          ]
+        },
+        {
+          "id": "bloc2",
+          "points": [
+            [
+              40,
+              4
+            ],
+            [
+              43,
+              4
+            ],
+            [
+              43,
+              7
+            ],
+            [
+              40,
+              7
+            ]
+          ]
+        },
+        {
+          "id": "bloc3",
+          "points": [
+            [
+              50,
+              -14
+            ],
+            [
+              53,
+              -14
+            ],
+            [
+              53,
+              -11
+            ],
+            [
+              50,
+              -11
+            ]
+          ]
+        },
+        {
+          "id": "front_de_taille",
+          "points": [
+            [
+              56,
+              -18
+            ],
+            [
+              60,
+              -18
+            ],
+            [
+              60,
+              10
+            ],
+            [
+              56,
+              10
+            ]
+          ]
+        },
+        {
+          "id": "pierre_seuil1",
+          "points": [
+            [
+              44,
+              28
+            ],
+            [
+              45,
+              28
+            ],
+            [
+              45,
+              29
+            ],
+            [
+              44,
+              29
+            ]
+          ]
+        },
+        {
+          "id": "pierre_seuil2",
+          "points": [
+            [
+              52,
+              30
+            ],
+            [
+              53,
+              30
+            ],
+            [
+              53,
+              31
+            ],
+            [
+              52,
+              31
+            ]
+          ]
+        },
+        {
+          "id": "pierre_seuil3",
+          "points": [
+            [
+              48,
+              36
+            ],
+            [
+              49,
+              36
+            ],
+            [
+              49,
+              37
+            ],
+            [
+              48,
+              37
+            ]
+          ]
         }
       ]
     },
@@ -529,6 +739,226 @@
           "maxRange": 9,
           "minRange": 6,
           "aggroRange": 12,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup4",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 700,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -12,
+          30
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 6,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup5",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 700,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -15,
+          32
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 6,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "sanglier2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 1200,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 140,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          38,
+          -4
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "sanglier3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 1200,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 140,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          46,
+          -12
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "rodeur",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 900,
+        "armor": 0,
+        "magicResistance": 20,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "eclat",
+            "rawDamage": 45,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 8
+          },
+          {
+            "id": "onde",
+            "rawDamage": 60,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 2.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          49,
+          32
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 7,
+          "minRange": 3,
+          "aggroRange": 9,
           "pack": false
         }
       }

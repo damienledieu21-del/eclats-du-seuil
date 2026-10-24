@@ -4,7 +4,7 @@
 
 Détail : [MONDE.md](MONDE.md).
 
-- **Pas encore de réapparition** : une créature tuée reste morte jusqu'à la fin de la session de zone ; la session suivante repart du scénario de zone (toutes les créatures vivantes). Populations et réapparitions : 12.4.
+- **Pas encore de réapparition** : une créature tuée reste morte jusqu'à la fin de la session de zone ; la session suivante repart du scénario de zone (toutes les créatures vivantes). Populations et réapparitions : 12.4 (fait).
 - **Pas encore de laisse ni de réinitialisation** : les rencontres sont reconnues (`Encounters`) mais rien n'en découle encore (12.4 : un ennemi assez distancé abandonne).
 - **Session de zone bornée** : une session dure au plus 24 h de jeu (une heure pour les Vallons) ; au-delà, une nouvelle session commence depuis la sauvegarde. Le combat en cours n'est pas gardé d'une session à l'autre : seuls le temps du monde et le registre des événements le sont (le personnage : 12.2).
 - **Sauvegarde minimale** : zone, temps du monde, sessions, événements consommés (le personnage s'y ajoute au 12.2, l'inventaire et les quêtes ensuite).
@@ -35,3 +35,15 @@ Détail : [MONDE.md](MONDE.md#objets-équipement-inventaire-sous-lot-123), moteu
 - **Pas de vente, d'achat, d'échange ni de destruction volontaire** : l'économie viendra plus tard ; `Remove` sert à la fabrication (12.6).
 - **Chances de butin par créature** : la table de chaque créature de zone est donnée à l'ouverture de la partie ; les Vallons en données (12.4) l'associeront aux populations.
 - **Formats** : moteur 0.23.0, journal au format 17, scénarios en schéma 11, sauvegarde en version 3 (les versions 1 et 2 sont mises à jour), catalogue des objets en schéma 1. Un combat sans équipement écrit les mêmes lignes qu'au moteur 0.22.0 ; un journal 0.22.0 est refusé au rejeu, sans migration.
+
+## Sous-lot 12.4 : les Vallons en données (lieux, populations, laisse, passage du moulin)
+
+Détail : [MONDE.md](MONDE.md#les-vallons-en-données-sous-lot-124).
+
+- **Carte provisoire** (question à Damien) : disposition, tailles, créatures, délais de réapparition et laisses sont des premières valeurs, à régler à l'essai (12.9). Tout est dans `scenarios/zones/vallons.json` et `data/v0/world/zones/vallons.json`.
+- **Laisse par téléportation** : la créature qui lâche disparaît et une vie calme et soignée réapparaît chez elle, au lieu de rentrer en marchant. Un retour à pied demanderait de toucher au moteur (désengagement) : à faire si l'essai le demande.
+- **Laisse mesurée à la cible** (l'écart entre la créature et le joueur qu'elle poursuit), pas à la distance de son point de départ : c'est ce que Damien a décrit à l'essai.
+- **Plafond de 64 combattants par session** : environ 53 réapparitions ou retours au calme par session d'une heure ; au-delà, la population attend la session suivante.
+- **Passage ouvert à la session suivante** : l'espace d'une session ne change pas en route ; Unity (12.8) enchaînera une nouvelle session (sauvegarde puis reprise) quand le passage s'ouvre.
+- **Nœuds de récolte** : avec les métiers (12.6). **Manifestation** : avec les quêtes (12.5) et le chef (12.7).
+- **Format** : zone en schéma 1 ; scénario de zone agrandi (même schéma 11) ; moteur, journal, sauvegarde inchangés par le 12.4.

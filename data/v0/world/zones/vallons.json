@@ -1,0 +1,185 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 1,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.vallons",
+    "name": "Vallons d'Aube",
+    "scenario": "zones/vallons",
+    "entry": "place_du_village",
+    "safePoints": [
+      {
+        "id": "place_du_village",
+        "name": "Place du village",
+        "position": [
+          -18,
+          -12
+        ]
+      },
+      {
+        "id": "camp_de_la_carriere",
+        "name": "Camp de la carrière",
+        "position": [
+          26,
+          -15
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "village",
+        "name": "Village",
+        "min": [
+          -24,
+          -18
+        ],
+        "max": [
+          4,
+          4
+        ]
+      },
+      {
+        "id": "moulin",
+        "name": "Moulin",
+        "min": [
+          -10,
+          4
+        ],
+        "max": [
+          4,
+          19
+        ]
+      },
+      {
+        "id": "riviere",
+        "name": "Rivière",
+        "min": [
+          4,
+          -18
+        ],
+        "max": [
+          7,
+          34
+        ]
+      },
+      {
+        "id": "pre_nord",
+        "name": "Pré des loups",
+        "min": [
+          -24,
+          20
+        ],
+        "max": [
+          4,
+          40
+        ]
+      },
+      {
+        "id": "ruines",
+        "name": "Ruines",
+        "min": [
+          14,
+          -14
+        ],
+        "max": [
+          24,
+          14
+        ]
+      },
+      {
+        "id": "carriere",
+        "name": "Carrière",
+        "min": [
+          28,
+          -18
+        ],
+        "max": [
+          60,
+          12
+        ]
+      },
+      {
+        "id": "seuil",
+        "name": "Petite zone du Seuil",
+        "min": [
+          40,
+          24
+        ],
+        "max": [
+          60,
+          40
+        ]
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup4",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup5",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "sanglier",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier2",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier3",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "archer",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.archer"
+      },
+      {
+        "creature": "rodeur",
+        "respawnMs": 180000,
+        "leashRange": 20,
+        "loot": "loot.rodeur"
+      }
+    ],
+    "passages": [
+      {
+        "id": "moulin",
+        "name": "Passage du moulin",
+        "obstacle": "porte_moulin"
+      }
+    ]
+  }
+}

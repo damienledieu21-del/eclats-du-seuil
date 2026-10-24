@@ -83,6 +83,9 @@ namespace EdS.World
         /// <summary>Moteur de la zone, pour l'affichage et le pilotage (pont temps réel) ; ne pas le faire avancer à côté de <see cref="Step"/>.</summary>
         public CombatEngine Engine => _engine;
 
+        /// <summary>Simulation de départ de la session.</summary>
+        public CombatSetup Setup { get; }
+
         /// <param name="setup">Simulation de la zone (<see cref="CombatSetup.Zone"/> vrai) ; validée par le moteur.</param>
         /// <param name="consumed">Événements déjà consommés (sauvegarde) : une mort de même clé n'est pas attribuée une seconde fois.</param>
         /// <param name="entering">Revue Codex de la PR #43 : personnages qui entrent avec la session (arrivée au tick 0, refusée si leur place est
@@ -105,6 +108,7 @@ namespace EdS.World
                 throw new ArgumentOutOfRangeException(nameof(startWorldTick), startWorldTick,
                     $"Temps du monde de départ hors de [0, {SaveValidator.MaxWorldTick - sessionTicks}] : la session ({sessionTicks} ticks au plus) doit tenir sous {SaveValidator.MaxWorldTick}.");
             Id = id;
+            Setup = setup;
             Session = session;
             StartWorldTick = startWorldTick;
             _consumed = new HashSet<string>(consumed ?? Array.Empty<string>(), StringComparer.Ordinal);
