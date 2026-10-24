@@ -360,6 +360,13 @@ namespace EdS.Data.Zones
             else if (!IsScenarioPath(b.Scenario)) { report.Add(path + ".scenario", ValidationCode.InvalidValue, $"chemin de scénario « {b.Scenario} » invalide."); ok = false; }
             var templates = new List<AssailantSetup>();
             if (b.Forms is null || b.Forms.Count < 1 || b.Forms.Count > MaxForms) { report.Add(path + ".forms", ValidationCode.OutOfRange, $"de 1 à {MaxForms} formes."); ok = false; }
+            // Revue Codex de la PR #48 (3e tour) : la session compte les créatures de la zone, le personnage qui entre et toutes les formes.
+            else if (scenario != null && checked(scenario.Combatants.Count + 1 + b.Forms.Count) > scenario.Combat.MaxCombatants)
+            {
+                report.Add(path + ".forms", ValidationCode.LimitExceeded,
+                    $"{scenario.Combatants.Count} créatures, le personnage et {b.Forms.Count} formes : plus que les {scenario.Combat.MaxCombatants} combattants d'une session.");
+                ok = false;
+            }
             else if (forms != null)
                 for (int i = 0; i < b.Forms.Count; i++)
                 {

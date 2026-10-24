@@ -319,7 +319,7 @@ namespace EdS.World
         {
             if (_lootTables.TryGetValue(combatant, out LootTable table)) return table;
             // Sous-lot 12.7 : la dernière forme du chef donne son butin.
-            if (Definition?.Boss is { Loot: string bossLoot } b && b.Forms[b.Forms.Count - 1].Id == combatant && _items.TryGetLoot(bossLoot, out LootTable bossTable))
+            if (Definition?.Boss is { Loot: string bossLoot } && _boss != null && _boss.IsFinalForm(combatant) && _items.TryGetLoot(bossLoot, out LootTable bossTable))
                 return bossTable;
             return _populations?.Of(combatant) is { Loot: string id } && _items.TryGetLoot(id, out LootTable found) ? found : null;
         }

@@ -52,23 +52,30 @@ namespace EdS.World
         private long? _nextAt;
         private bool _over;
 
+        /// <summary>Identité de la forme en cours dans le moteur (celle de la forme, ou <c>{forme}_v{n}</c> après une arrivée refusée).</summary>
+        private string _current;
+
         public BossFight(Boss boss)
         {
             _boss = boss ?? throw new ArgumentNullException(nameof(boss));
+            _current = boss.Forms[0].Id;
         }
 
-        public string CurrentForm => _boss.Forms[_phase].Id;
+        public string CurrentForm => _current;
         public int Phase => _phase;
         public bool IsDefeated => _over;
 
         /// <summary>Revue Codex de la PR #48 : formes encore à venir (places de combattants à leur garder).</summary>
-        public int FormsToCome => _over ? 0 : _boss.Forms.Count - 1 - _phase;
+        public int FormsToCome => _over ? 0 : _boss.Forms.Count - 1 - _phase + (_nextAt != null ? 1 : 0);
+
+        /// <summary>Le combattant est la dernière forme du chef (son butin).</summary>
+        public bool IsFinalForm(string combatant) => _phase == _boss.Forms.Count - 1 && combatant == _current;
 
         /// <summary>Fait arriver la première forme (début de session).</summary>
         public BossEvent Start(CombatEngine engine)
         {
-            engine.Join(Copy(_boss.Forms[0], engine));
-            return new BossEvent(BossEventKind.FormArrived, _boss.Id, _boss.Forms[0].Id, 0, engine.CurrentTick);
+            engine.Join(Copy(_boss.Forms[0], _current, engine));
+            return new BossEvent(BossEventKind.FormArrived, _boss.Id, _current, 0, engine.CurrentTick);
         }
 
         public IReadOnlyList<BossEvent> Step(CombatEngine engine)
@@ -79,24 +86,35 @@ namespace EdS.World
             // demandent un combat en cours.
             if (_nextAt is null)
             {
-                if (!engine.View(CurrentForm).IsDead) return Array.Empty<BossEvent>();
-                if (_phase + 1 == _boss.Forms.Count)
+                CombatantView v = engine.View(_current);
+                // Revue Codex de la PR #48 (3e tour) : une arrivée refusée par le moteur (place prise au moment d'arriver) n'est pas une forme
+                // en jeu : elle est retentée sous une nouvelle identité, la même forme, une seconde plus tard.
+                if (!v.IsPresent && !v.IsDead && !v.HasLeft && v.ArrivalTick is long at && at < now)
+                    _nextAt = checked(now + Math.Max(1, 1000 / engine.TickMilliseconds));
+                else
                 {
-                    _over = true;
-                    return new[] { new BossEvent(BossEventKind.Defeated, _boss.Id, CurrentForm, _phase, now) };
+                    if (!v.IsDead) return Array.Empty<BossEvent>();
+                    if (_phase + 1 == _boss.Forms.Count)
+                    {
+                        _over = true;
+                        return new[] { new BossEvent(BossEventKind.Defeated, _boss.Id, _current, _phase, now) };
+                    }
+                    _phase++;
+                    _current = _boss.Forms[_phase].Id;
+                    _nextAt = now;
                 }
-                _nextAt = now;
             }
             if (engine.IsFinished || _nextAt > now) return Array.Empty<BossEvent>();
-            AssailantSetup next = _boss.Forms[_phase + 1];
-            if (Occupied(engine, next.Placement!))
+            AssailantSetup form = _boss.Forms[_phase];
+            if (Occupied(engine, form.Placement!, now))
             {
                 _nextAt = checked(now + Math.Max(1, 1000 / engine.TickMilliseconds));
                 return Array.Empty<BossEvent>();
             }
+            string id = FreeIdentity(engine, form.Id);
             try
             {
-                engine.Join(Copy(next, engine));
+                engine.Join(Copy(form, id, engine));
             }
             catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
@@ -104,21 +122,36 @@ namespace EdS.World
                 _nextAt = checked(now + Math.Max(1, 1000 / engine.TickMilliseconds));
                 return Array.Empty<BossEvent>();
             }
-            _phase++;
+            _current = id;
             _nextAt = null;
-            return new[] { new BossEvent(BossEventKind.FormArrived, _boss.Id, next.Id, _phase, now) };
+            return new[] { new BossEvent(BossEventKind.FormArrived, _boss.Id, id, _phase, now) };
         }
 
-        private static AssailantSetup Copy(AssailantSetup t, CombatEngine engine) =>
-            new AssailantSetup(t.Id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
+        /// <summary>L'identité de la forme si elle est libre, sinon la première <c>{forme}_v{n}</c> libre (une identité n'est jamais réutilisée).</summary>
+        private static string FreeIdentity(CombatEngine engine, string form)
+        {
+            var taken = new HashSet<string>(engine.CombatantIds, StringComparer.Ordinal);
+            if (!taken.Contains(form)) return form;
+            int n = 2;
+            while (taken.Contains($"{form}_v{n}")) n = checked(n + 1);
+            return $"{form}_v{n}";
+        }
+
+        private static AssailantSetup Copy(AssailantSetup t, string id, CombatEngine engine) =>
+            new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
                 t.Triggers, t.Health, t.Placement, checked(engine.CurrentTick * engine.TickMilliseconds), t.Behavior);
 
-        private static bool Occupied(CombatEngine engine, CombatantPlacement place)
+        /// <summary>
+        /// Place prise par un combattant présent, ou par un combattant qui arrive à ce même tick (revue Codex de la PR #48 : une réapparition
+        /// programmée juste avant passerait d'abord et la forme serait refusée).
+        /// </summary>
+        private static bool Occupied(CombatEngine engine, CombatantPlacement place, long now)
         {
             foreach (string id in engine.CombatantIds)
             {
                 CombatantView v = engine.View(id);
-                if (!v.IsPresent || v.IsDead || v.Position is not GroundVector p || v.Radius is not Fixed r) continue;
+                bool arriving = !v.IsPresent && !v.IsDead && !v.HasLeft && v.ArrivalTick == now;
+                if ((!v.IsPresent && !arriving) || v.IsDead || v.Position is not GroundVector p || v.Radius is not Fixed r) continue;
                 if (!ZonePopulations.Beyond(p, r, place.Position, place.Radius, Fixed.Zero)) return true;
             }
             return false;

@@ -5,6 +5,7 @@ using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Story;
+using EdS.Data.Validation;
 using EdS.Data.Zones;
 using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
@@ -28,7 +29,7 @@ public class Lot127BossTests
 
     /// <summary>Zone des Vallons ; formes du chef retouchées au besoin ; entrée déplacée ; créatures de la zone calmées au besoin.</summary>
     private static ZoneLoadResult Load(Action<JsonObject>? zone = null, Action<JsonObject>? boss = null, double x = -18, double z = -12, bool calm = false,
-        Action<JsonObject>? zoneScenario = null)
+        Action<JsonObject>? zoneScenario = null, EdS.Data.GameData? data = null)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
         root["data"]!["safePoints"]![0]!["position"] = new JsonArray(x, z);
@@ -46,7 +47,7 @@ public class Lot127BossTests
             JsonObject forms = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons_chef")))!.AsObject();
             boss?.Invoke(forms);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons_chef.json"), forms.ToJsonString());
-            return ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, Items);
+            return ZoneJsonReader.Read(root.ToJsonString(), directory, data ?? ShippedData, Items);
         }
         finally
         {
@@ -157,6 +158,41 @@ public class Lot127BossTests
         });
         Assert.Equal("$.data.boss.forms[1]", First(r));
         Assert.Contains("simulation de la zone", r.Report.Errors[0].Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Formes_qui_ne_tiennent_pas_dans_la_session_refusees() =>
+        // Revue Codex de la PR #48 (3e tour) : 10 créatures, le personnage et 2 formes ne tiennent pas sous un plafond de 12 combattants.
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 64", "\"maxCombatants\": 12"), directory =>
+        {
+            ZoneLoadResult r = Load(data: GameDataLoader.Load(directory).Data!);
+            Assert.Equal("$.data.boss.forms", First(r));
+            Assert.Equal(ValidationCode.LimitExceeded, r.Report.Errors[0].Code);
+            return 0;
+        });
+
+    [Fact]
+    public void Forme_suivante_attend_une_arrivee_du_meme_tick_sur_sa_place()
+    {
+        // Revue Codex de la PR #48 (3e tour) : une créature arrive sur la place de la seconde forme au tick même où celle-ci devait se
+        // relever ; la forme attend que la place se libère, puis arrive, et le chef reste vainqueur possible.
+        WorldSession reference = Play(Arena(), new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        long relief = Fight(reference).SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.FormArrived && b.Phase == 1).Tick;
+        ZoneDefinition crowded = Arena(zoneScenario: sc =>
+        {
+            JsonArray combatants = sc["data"]!["combatants"]!.AsArray();
+            JsonObject intruder = combatants.Select(c => c!.AsObject()).First(c => c["id"]!.GetValue<string>() == "loup1").DeepClone().AsObject();
+            intruder["id"] = "intrus";
+            intruder["position"] = new JsonArray(56, 33);
+            intruder["arrivalMs"] = relief * 50;
+            combatants.Add(intruder);
+        });
+        WorldSession session = Play(crowded, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        List<SessionStep> steps = Fight(session, 6000);
+        BossEvent second = steps.SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.FormArrived && b.Phase == 1);
+        Assert.True(second.Tick > relief);
+        Assert.Equal("gardien_eveille", second.Form);
+        Assert.True(session.BossDefeated);
     }
 
     [Fact]
