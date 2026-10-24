@@ -194,8 +194,11 @@
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "pattern": "^fact(\\.[a-z0-9_]+)+$"
-                      }
+                        "pattern": "^fact(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
+                      },
+                      "maxItems": 10000,
+                      "uniqueItems": true
                     },
                     "quests": {
                       "type": "object",
@@ -209,7 +212,8 @@
                         "properties": {
                           "step": {
                             "type": "string",
-                            "pattern": "^[a-z][a-z0-9_]*$"
+                            "pattern": "^[a-z][a-z0-9_]*$",
+                            "maxLength": 64
                           },
                           "progress": {
                             "type": "integer",
@@ -217,6 +221,11 @@
                             "maximum": 1000000
                           }
                         }
+                      },
+                      "maxProperties": 10000,
+                      "propertyNames": {
+                        "pattern": "^quest(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
                       }
                     },
                     "trust": {
@@ -228,14 +237,22 @@
                         "not": {
                           "const": 0
                         }
+                      },
+                      "maxProperties": 10000,
+                      "propertyNames": {
+                        "pattern": "^npc(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
                       }
                     },
                     "discoveries": {
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "pattern": "^discovery(\\.[a-z0-9_]+)+$"
-                      }
+                        "pattern": "^discovery(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
+                      },
+                      "maxItems": 10000,
+                      "uniqueItems": true
                     }
                   }
                 }

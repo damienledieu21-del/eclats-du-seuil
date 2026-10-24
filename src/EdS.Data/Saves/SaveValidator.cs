@@ -370,10 +370,12 @@ namespace EdS.Data.Saves
             SavedStory? story = null;
             if (version < 4)
             {
-                if (c.Present.Contains("story")) report.Add(path + ".story", ValidationCode.UnknownField, $"champ inconnu en version {version} (histoire : version 4).");
+                // Comme l'inventaire et l'équipement (revue Codex de la PR #44) : refusé aussi quand il est renseigné hors du lecteur JSON.
+                if (c.Present.Contains("story") || c.Story != null)
+                    report.Add(path + ".story", ValidationCode.UnknownField, $"champ inconnu en version {version} (histoire : version 4).");
             }
-            else if (!c.Present.Contains("story")) Missing(report, path + ".story", "faits, quêtes, confiance, découvertes");
             else if (c.Story is StoryStateData st) story = CheckStory(st, path + ".story", report);
+            else Missing(report, path + ".story", "faits, quêtes, confiance, découvertes");
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
@@ -428,6 +430,7 @@ namespace EdS.Data.Saves
                 }
             }
             if (st.Trust is null) Missing(report, path + ".trust", "confiance des PNJ, éventuellement vide");
+            else if (st.Trust.Count > MaxStoryEntries) report.Add(path + ".trust", ValidationCode.LimitExceeded, $"au plus {MaxStoryEntries}.");
             else
                 for (int i = 0; i < st.Trust.Count; i++)
                 {

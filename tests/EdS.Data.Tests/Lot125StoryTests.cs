@@ -118,6 +118,41 @@ public class Lot125StoryTests
     }
 
     [Fact]
+    public void Histoire_en_objets_publics_bornee_comme_a_la_lecture()
+    {
+        // Même règle que la revue Codex de la PR #44 : hors du lecteur JSON, une histoire renseignée en version 3 est un champ inconnu,
+        // une histoire absente en version 4 manque (même marquée présente), la confiance garde sa borne ; le schéma suit les mêmes bornes.
+        string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", Progression)));
+        SaveDocument Document(string text)
+        {
+            var report = new ValidationReport();
+            var document = new SaveDocument();
+            JsonHeader header = JsonInput.Parse(JsonInput.Utf8(text, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
+            (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+            return document;
+        }
+        JsonObject root = JsonNode.Parse(json)!.AsObject();
+        root["schemaVersion"] = 3;
+        root["data"]!["character"]!.AsObject().Remove("story");
+        string v3 = root.ToJsonString();
+        Assert.True(SaveJsonReader.Read(v3).IsValid);
+        SaveDocument old = Document(v3);
+        old.Data!.Character!.Story = new StoryStateData { Facts = new List<string?>(), Quests = new List<(string, QuestProgressData?)>(), Trust = new List<KeyValuePair<string, int?>>(), Discoveries = new List<string?>() };
+        Assert.Contains(SaveValidator.Validate(old).Report.Errors, e => e.Path == "$.data.character.story" && e.Code == ValidationCode.UnknownField);
+        SaveDocument missing = Document(json);
+        missing.Data!.Character!.Story = null;
+        Assert.Contains(SaveValidator.Validate(missing).Report.Errors, e => e.Path == "$.data.character.story" && e.Code == ValidationCode.MissingField);
+        SaveDocument trust = Document(json);
+        trust.Data!.Character!.Story!.Trust = Enumerable.Range(0, SaveValidator.MaxStoryEntries + 1).Select(i => new KeyValuePair<string, int?>($"npc.p{i:D5}", 1)).ToList();
+        Assert.Contains(SaveValidator.Validate(trust).Report.Errors, e => e.Path == "$.data.character.story.trust" && e.Code == ValidationCode.LimitExceeded);
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json"));
+        Assert.True(schema.IsValid(JsonDocument.Parse(json).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(json.Replace("\"trust\": {}", "\"trust\": {\"odile\": 1}")).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(json.Replace("\"quests\": {}", "\"quests\": {\"traces\": {\"step\": \"pre\", \"progress\": 0}}")).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(json.Replace("\"facts\": []", "\"facts\": [\"fact.a\", \"fact.a\"]")).RootElement));
+    }
+
+    [Fact]
     public void Tables_et_vues_de_l_histoire_non_modifiables()
     {
         // Les tables globales du validateur et les vues de l'histoire ne se modifient pas par conversion (même règle que la revue Codex de la PR #44).
