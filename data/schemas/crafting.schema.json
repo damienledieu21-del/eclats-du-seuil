@@ -44,8 +44,11 @@
           "type": "array",
           "items": {
             "type": "integer",
-            "minimum": 0
-          }
+            "minimum": 0,
+            "maximum": 1000000000
+          },
+          "maxItems": 100,
+          "minItems": 1
         },
         "professions": {
           "type": "array",
@@ -60,11 +63,13 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
               },
               "name": {
                 "type": "string",
-                "pattern": "^text(\\.[a-z0-9_]+)+$"
+                "pattern": "^text(\\.[a-z0-9_]+)+$",
+                "maxLength": 200
               }
             }
           }
@@ -88,23 +93,28 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^recipe(\\.[a-z0-9_]+)+$"
+                "pattern": "^recipe(\\.[a-z0-9_]+)+$",
+                "maxLength": 200
               },
               "name": {
                 "type": "string",
-                "pattern": "^text(\\.[a-z0-9_]+)+$"
+                "pattern": "^text(\\.[a-z0-9_]+)+$",
+                "maxLength": 200
               },
               "profession": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
               },
               "requiredLevel": {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 1,
+                "maximum": 100
               },
               "place": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
               },
               "inputs": {
                 "type": "array",
@@ -120,7 +130,8 @@
                   "properties": {
                     "item": {
                       "type": "string",
-                      "pattern": "^item(\\.[a-z0-9_]+)+$"
+                      "pattern": "^item(\\.[a-z0-9_]+)+$",
+                      "maxLength": 200
                     },
                     "count": {
                       "type": "integer",
@@ -140,7 +151,8 @@
                 "properties": {
                   "item": {
                     "type": "string",
-                    "pattern": "^item(\\.[a-z0-9_]+)+$"
+                    "pattern": "^item(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
                   },
                   "count": {
                     "type": "integer",
@@ -175,15 +187,18 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
               },
               "profession": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
               },
               "item": {
                 "type": "string",
-                "pattern": "^item(\\.[a-z0-9_]+)+$"
+                "pattern": "^item(\\.[a-z0-9_]+)+$",
+                "maxLength": 200
               },
               "count": {
                 "type": "integer",
@@ -201,7 +216,8 @@
               "respawnMs": {
                 "type": "integer",
                 "minimum": 1000,
-                "maximum": 3600000
+                "maximum": 3600000,
+                "description": "Multiple de la durée du tick de la zone (50 ms)."
               },
               "xp": {
                 "type": "integer",

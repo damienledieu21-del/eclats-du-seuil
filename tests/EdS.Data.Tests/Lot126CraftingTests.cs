@@ -120,6 +120,41 @@ public class Lot126CraftingTests
     }
 
     [Fact]
+    public void Metiers_construits_hors_du_lecteur_bornes_et_sans_exception()
+    {
+        // Même règle que la revue Codex de la PR #44 : un document en objets publics garde les bornes et les doublons du fichier, et un
+        // nœud sans l'une de ses coordonnées donne un champ manquant, pas une exception.
+        CraftingDocument Read()
+        {
+            var report = new ValidationReport();
+            CraftingDocument d = CraftingJsonReader.ReadDocument(JsonInput.Utf8(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)), report), report);
+            Assert.True(report.IsValid);
+            return d;
+        }
+        ZoneDefinition zone = Zone();
+        Assert.True(CraftingValidator.Validate(Read(), Texts, zone, Items).IsValid);
+        CraftingDocument many = Read();
+        while (many.Data!.Professions!.Count <= CraftingValidator.MaxProfessions) many.Data.Professions.Add(new ProfessionData { Id = $"m{many.Data.Professions.Count}", Name = many.Data.Professions[0]!.Name });
+        Assert.Contains(CraftingValidator.Validate(many, Texts, zone, Items).Report.Errors, e => e.Path == "$.data.professions" && e.Code == ValidationCode.LimitExceeded);
+        CraftingDocument twice = Read();
+        twice.Data!.Professions![0]!.Name = "text.inconnu";
+        twice.Data.Professions.Add(new ProfessionData { Id = twice.Data.Professions[0]!.Id, Name = twice.Data.Professions[1]!.Name });
+        Assert.Contains(CraftingValidator.Validate(twice, Texts, zone, Items).Report.Errors, e => e.Code == ValidationCode.DuplicateId);
+        CraftingDocument point = Read();
+        point.Data!.Nodes![0]!.Position = new PointData { X = EdS.Domain.Numerics.Fixed.Zero };
+        Assert.Contains(CraftingValidator.Validate(point, Texts, zone, Items).Report.Errors, e => e.Path == "$.data.nodes[0].position" && e.Code == ValidationCode.MissingField);
+        CraftingDocument levels = Read();
+        levels.Data!.MaxLevel = 0;
+        levels.Data.XpToLevel = Enumerable.Range(0, CraftingValidator.MaxLevels + 1).Select(i => (long?)i).ToList();
+        Assert.Contains(CraftingValidator.Validate(levels, Texts, zone, Items).Report.Errors, e => e.Path == "$.data.xpToLevel" && e.Code == ValidationCode.LimitExceeded);
+        // Le schéma suit les bornes des identifiants et des niveaux.
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "crafting.schema.json"));
+        JsonObject root = JsonNode.Parse(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)))!.AsObject();
+        root["data"]!["professions"]![0]!["id"] = new string('a', 65);
+        Assert.False(schema.IsValid(JsonDocument.Parse(root.ToJsonString()).RootElement));
+    }
+
+    [Fact]
     public void Potion_bue_en_combat_charges_et_recharge_partagee()
     {
         ScenarioLoadResult loaded = Potions();
