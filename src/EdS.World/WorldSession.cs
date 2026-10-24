@@ -200,7 +200,7 @@ namespace EdS.World
         public ZoneDefinition? Definition { get; }
 
         /// <summary>Rayon de l'emprise d'un personnage qui entre par un point sûr (provisoire, celui des scénarios).</summary>
-        public static readonly Fixed CharacterRadius = Fixed.Parse("0.5");
+        public static readonly Fixed CharacterRadius = ZoneValidator.CharacterRadius;
 
         /// <summary>
         /// Sous-lot 12.4 : partie dans une zone du monde. La session de zone part de sa simulation, passages ouverts retirés
@@ -243,6 +243,8 @@ namespace EdS.World
         void INarrativeWorld.GiveXp(long xp) => _character = _character.WithXp(Math.Min(SaveValidator.MaxXp, checked(_character.Xp + xp)));
 
         DayPhase INarrativeWorld.Phase => Zone.Time.Phase;
+
+        int INarrativeWorld.PassageRoom => Zone.RegistryRoom;
 
         GroundVector? INarrativeWorld.PlayerPosition
         {
@@ -301,12 +303,26 @@ namespace EdS.World
             bool wasPresent = Zone.Engine.View(_character.Id).IsPresent;
             IReadOnlyList<ZoneEvent> events = Zone.Step();
             SyncConsumables();
+            IReadOnlyList<ExperienceGained> gains = Array.Empty<ExperienceGained>();
+            IReadOnlyList<LootGained> loot = Array.Empty<LootGained>();
+            if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
+            // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
+            // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
             IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone) ?? Array.Empty<PopulationEvent>();
+            // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre ») et les populations.
+            var story = new List<StoryEvent>();
+            Narrative?.Step(story);
+            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 ? SessionStep.Empty
+                : new SessionStep(gains, loot, population, story);
+        }
+
+        /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
+        private void Reward(IReadOnlyList<ZoneEvent> events, bool wasPresent, out IReadOnlyList<ExperienceGained> experience, out IReadOnlyList<LootGained> rolls)
+        {
             CombatantView me = Zone.Engine.View(_character.Id);
             bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
             var gains = new List<ExperienceGained>();
             var loot = new List<LootGained>();
-            var story = new List<StoryEvent>();
             foreach (ZoneEvent e in events)
             {
                 if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == _character.Id) continue;
@@ -330,9 +346,8 @@ namespace EdS.World
                 // Sous-lot 12.5 : compte pour les objectifs « vaincre » de sa population.
                 Narrative?.Defeated(_populations?.Of(e.Combatant)?.Creature ?? e.Combatant);
             }
-            Narrative?.Step(story);
-            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 ? SessionStep.Empty
-                : new SessionStep(gains, loot, population, story);
+            experience = gains;
+            rolls = loot;
         }
 
         /// <summary>Sauvegarde à ce tick : monde de la zone et personnage à jour.</summary>

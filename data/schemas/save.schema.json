@@ -155,7 +155,8 @@
                     "properties": {
                       "item": {
                         "type": "string",
-                        "pattern": "^item(\\.[a-z0-9_]+)+$"
+                        "pattern": "^item(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
                       },
                       "count": {
                         "type": "integer",
@@ -170,8 +171,14 @@
                   "description": "Sous-lot 12.3 (version 3) : objet porté par emplacement, emplacements dans l'ordre ordinal.",
                   "additionalProperties": {
                     "type": "string",
-                    "pattern": "^item(\\.[a-z0-9_]+)+$"
-                  }
+                    "pattern": "^item(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "maxLength": 64
+                  },
+                  "maxProperties": 64
                 },
                 "story": {
                   "type": "object",
@@ -188,8 +195,11 @@
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "pattern": "^fact(\\.[a-z0-9_]+)+$"
-                      }
+                        "pattern": "^fact(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
+                      },
+                      "maxItems": 10000,
+                      "uniqueItems": true
                     },
                     "quests": {
                       "type": "object",
@@ -203,7 +213,8 @@
                         "properties": {
                           "step": {
                             "type": "string",
-                            "pattern": "^[a-z][a-z0-9_]*$"
+                            "pattern": "^[a-z][a-z0-9_]*$",
+                            "maxLength": 64
                           },
                           "progress": {
                             "type": "integer",
@@ -211,6 +222,11 @@
                             "maximum": 1000000
                           }
                         }
+                      },
+                      "maxProperties": 10000,
+                      "propertyNames": {
+                        "pattern": "^quest(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
                       }
                     },
                     "trust": {
@@ -222,14 +238,22 @@
                         "not": {
                           "const": 0
                         }
+                      },
+                      "maxProperties": 10000,
+                      "propertyNames": {
+                        "pattern": "^npc(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
                       }
                     },
                     "discoveries": {
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "pattern": "^discovery(\\.[a-z0-9_]+)+$"
-                      }
+                        "pattern": "^discovery(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
+                      },
+                      "maxItems": 10000,
+                      "uniqueItems": true
                     }
                   }
                 },
@@ -240,7 +264,12 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 1000000000
-                  }
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "maxLength": 64
+                  },
+                  "maxProperties": 64
                 }
               }
             }

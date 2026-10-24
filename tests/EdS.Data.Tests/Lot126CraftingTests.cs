@@ -89,6 +89,37 @@ public class Lot126CraftingTests
     }
 
     [Fact]
+    public void Metiers_en_objets_publics_bornes_comme_a_la_lecture()
+    {
+        // Même règle que l'inventaire (revue Codex de la PR #44) et l'histoire : hors du lecteur JSON, des métiers renseignés en version 4
+        // sont un champ inconnu, et la liste garde sa borne ; le schéma suit les mêmes noms et la même borne.
+        string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create("bastion", "class.bastion", Progression).WithProfessions(new Dictionary<string, long> { ["forge"] = 10 })));
+        SaveDocument Document(string text)
+        {
+            var report = new ValidationReport();
+            var document = new SaveDocument();
+            JsonHeader header = JsonInput.Parse(JsonInput.Utf8(text, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
+            (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+            return document;
+        }
+        JsonObject root = JsonNode.Parse(json)!.AsObject();
+        root["schemaVersion"] = 4;
+        root["data"]!["character"]!.AsObject().Remove("professions");
+        string v4 = root.ToJsonString();
+        Assert.True(SaveJsonReader.Read(v4).IsValid);
+        SaveDocument old = Document(v4);
+        old.Data!.Character!.Professions = new List<KeyValuePair<string, long?>> { new("forge", 10) };
+        Assert.Contains(SaveValidator.Validate(old).Report.Errors, e => e.Path == "$.data.character.professions" && e.Code == ValidationCode.UnknownField);
+        SaveDocument many = Document(json);
+        many.Data!.Character!.Professions = Enumerable.Range(0, SaveValidator.MaxProfessions + 1).Select(i => new KeyValuePair<string, long?>($"m{i:D3}", 1)).ToList();
+        Assert.Contains(SaveValidator.Validate(many).Report.Errors, e => e.Path == "$.data.character.professions" && e.Code == ValidationCode.LimitExceeded);
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json"));
+        Assert.True(schema.IsValid(JsonDocument.Parse(json).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(json.Replace("{\"forge\": 10}", "{\"Forge\": 10}")).RootElement));
+    }
+
+    [Fact]
     public void Potion_bue_en_combat_charges_et_recharge_partagee()
     {
         ScenarioLoadResult loaded = Potions();

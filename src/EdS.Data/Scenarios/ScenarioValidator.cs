@@ -69,6 +69,26 @@ namespace EdS.Data.Scenarios
             ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior" },
         };
 
+        /// <summary>Le champ propre à un type est-il renseigné dans l'objet (indépendamment du lecteur JSON) ? Une cible nulle vaut absente.</summary>
+        private static bool IsSet(CombatantData c, string field) => field switch
+        {
+            "class" => c.Class != null,
+            "build" => c.Build != null,
+            "gear" => c.Gear != null,
+            "armor" => c.Armor != null,
+            "magicResistance" => c.MagicResistance != null,
+            "statusResistance" => c.StatusResistance != null,
+            "health" => c.Health != null,
+            "target" => c.Target != null,
+            "firstAttackMs" => c.FirstAttackMs != null,
+            "intervalMs" => c.IntervalMs != null,
+            "attacks" => c.Attacks != null,
+            "triggers" => c.Triggers != null,
+            "speed" => c.Speed != null,
+            "behavior" => c.Behavior != null,
+            _ => false,
+        };
+
         /// <summary>Sous-lot 11.4 : champs de la place de départ, réservés aux combats positionnés (bloc <c>space</c>).</summary>
         private static readonly string[] PlacementFields = { "position", "facing", "radius", "speed" };
 
@@ -256,7 +276,8 @@ namespace EdS.Data.Scenarios
                         $"type de combattant inconnu « {c.Type} » ; valeurs possibles : {string.Join(", ", CombatantTypes)}.");
                     return;
                 }
-                foreach (string field in TypeFields.Values.SelectMany(f => f).Distinct().Where(f => !own.Contains(f) && c.Present.Contains(f)))
+                // Revue Codex de la PR #44 : un champ d'un autre type est refusé qu'il vienne du lecteur JSON (Present) ou d'un objet public renseigné.
+                foreach (string field in TypeFields.Values.SelectMany(f => f).Distinct().Where(f => !own.Contains(f) && (c.Present.Contains(f) || IsSet(c, f))))
                     _report.Add($"{path}.{field}", ValidationCode.InvalidValue,
                         $"champ réservé aux types {string.Join(", ", TypeFields.Where(t => t.Value.Contains(field)).Select(t => t.Key))}.");
 

@@ -118,6 +118,90 @@ public class Lot125StoryTests
     }
 
     [Fact]
+    public void Histoire_en_objets_publics_bornee_comme_a_la_lecture()
+    {
+        // Même règle que la revue Codex de la PR #44 : hors du lecteur JSON, une histoire renseignée en version 3 est un champ inconnu,
+        // une histoire absente en version 4 manque (même marquée présente), la confiance garde sa borne ; le schéma suit les mêmes bornes.
+        string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", Progression)));
+        SaveDocument Document(string text)
+        {
+            var report = new ValidationReport();
+            var document = new SaveDocument();
+            JsonHeader header = JsonInput.Parse(JsonInput.Utf8(text, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
+            (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+            return document;
+        }
+        JsonObject root = JsonNode.Parse(json)!.AsObject();
+        root["schemaVersion"] = 3;
+        root["data"]!["character"]!.AsObject().Remove("story");
+        root["data"]!["character"]!.AsObject().Remove("professions");   // sous-lot 12.6 (version 5)
+        string v3 = root.ToJsonString();
+        Assert.True(SaveJsonReader.Read(v3).IsValid);
+        SaveDocument old = Document(v3);
+        old.Data!.Character!.Story = new StoryStateData { Facts = new List<string?>(), Quests = new List<(string, QuestProgressData?)>(), Trust = new List<KeyValuePair<string, int?>>(), Discoveries = new List<string?>() };
+        Assert.Contains(SaveValidator.Validate(old).Report.Errors, e => e.Path == "$.data.character.story" && e.Code == ValidationCode.UnknownField);
+        SaveDocument missing = Document(json);
+        missing.Data!.Character!.Story = null;
+        Assert.Contains(SaveValidator.Validate(missing).Report.Errors, e => e.Path == "$.data.character.story" && e.Code == ValidationCode.MissingField);
+        SaveDocument trust = Document(json);
+        trust.Data!.Character!.Story!.Trust = Enumerable.Range(0, SaveValidator.MaxStoryEntries + 1).Select(i => new KeyValuePair<string, int?>($"npc.p{i:D5}", 1)).ToList();
+        Assert.Contains(SaveValidator.Validate(trust).Report.Errors, e => e.Path == "$.data.character.story.trust" && e.Code == ValidationCode.LimitExceeded);
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json"));
+        Assert.True(schema.IsValid(JsonDocument.Parse(json).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(json.Replace("\"trust\": {}", "\"trust\": {\"odile\": 1}")).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(json.Replace("\"quests\": {}", "\"quests\": {\"traces\": {\"step\": \"pre\", \"progress\": 0}}")).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(json.Replace("\"facts\": []", "\"facts\": [\"fact.a\", \"fact.a\"]")).RootElement));
+    }
+
+    [Fact]
+    public void Textes_et_histoire_en_objets_publics_refuses_sans_exception()
+    {
+        // Même règle que la revue Codex de la PR #44 : une clé de texte en double est refusée ; un PNJ dont la position n'a qu'une
+        // coordonnée donne un champ manquant, pas une exception.
+        var texts = new TextsDocument
+        {
+            SchemaVersion = TextsValidator.CurrentSchemaVersion, Kind = TextsValidator.Kind, ContentVersion = "0.6.0",
+            Data = new TextsData { Language = "fr", Entries = new List<KeyValuePair<string, string?>> { new("text.a", "un"), new("text.a", "deux") } },
+        };
+        Assert.Contains(TextsValidator.Validate(texts).Report.Errors, e => e.Path == "$.data.entries.text.a" && e.Code == ValidationCode.DuplicateId);
+        var report = new ValidationReport();
+        StoryDocument story = StoryJsonReader.ReadStoryDocument(JsonInput.Utf8(File.ReadAllText(StoryPath), report), report);
+        Assert.True(report.IsValid);
+        story.Data!.Npcs![0]!.Position = new EdS.Data.Scenarios.PointData { X = EdS.Domain.Numerics.Fixed.Zero };
+        StoryLoadResult result = StoryValidator.Validate(story, Texts, Zone(), Items);
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.npcs[0].position" && e.Code == ValidationCode.MissingField);
+    }
+
+    [Fact]
+    public void Champ_d_une_autre_nature_refuse_meme_renseigne_hors_du_lecteur()
+    {
+        // Revue Codex de la PR #46 : une étape, une valeur ou un identifiant que la nature n'admet pas est refusé même sans « Present »
+        // (document en objets publics), comme dans le fichier.
+        StoryDocument Read()
+        {
+            var report = new ValidationReport();
+            StoryDocument d = StoryJsonReader.ReadStoryDocument(JsonInput.Utf8(File.ReadAllText(StoryPath), report), report);
+            Assert.True(report.IsValid);
+            return d;
+        }
+        TermData FirstCondition(StoryDocument d, string kind) => d.Data!.Dialogues!.SelectMany(x => x!.Entries!).SelectMany(e => e!.Conditions!).First(c => c!.Kind == kind)!;
+        TermData FirstEffect(StoryDocument d, string kind) =>
+            d.Data!.Dialogues!.SelectMany(x => x!.Nodes!).SelectMany(n => n!.Choices!).SelectMany(c => c!.Effects!).First(e => e!.Kind == kind)!;
+        ZoneDefinition zone = Zone();
+        StoryDocument step = Read();
+        FirstCondition(step, "questActive").Step = "retour";
+        Assert.Contains(StoryValidator.Validate(step, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".step", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        StoryDocument value = Read();
+        FirstEffect(value, "setFact").Value = 3;
+        Assert.Contains(StoryValidator.Validate(value, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".value", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        StoryDocument id = Read();
+        TermData xp = id.Data!.Quests!.SelectMany(q => q!.Steps!).SelectMany(s => s!.Effects!).First(r => r!.Kind == "giveXp")!;
+        xp.Id = "fact.x";
+        Assert.Contains(StoryValidator.Validate(id, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".id", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        Assert.True(StoryValidator.Validate(Read(), Texts, zone, Items).IsValid);
+    }
+
+    [Fact]
     public void Tables_et_vues_de_l_histoire_non_modifiables()
     {
         // Les tables globales du validateur et les vues de l'histoire ne se modifient pas par conversion (même règle que la revue Codex de la PR #44).
@@ -267,6 +351,52 @@ public class Lot125StoryTests
         Assert.Empty(nothing);
         Assert.False(full.Narrative!.Knows("fact.odile.retour"));
         Assert.NotNull(full.Narrative.Open);
+    }
+
+    [Fact]
+    public void Recompense_de_dialogue_donnee_une_seule_fois_avant_le_tick_suivant()
+    {
+        // Revue Codex de la PR #46 : l'étape se franchit au tick suivant ; d'ici là, reparler au PNJ ne redonne ni l'amulette, ni la
+        // ferrure, ni la confiance de Gaspard.
+        WorldSession odile = Play(Zone(-9, 2), Hero(At("retour", odile: 1)));
+        odile.Talk("npc.odile", out DialogueView? retour);
+        Assert.Equal(DialogueRefusal.None, odile.Choose(retour!.Options[0].Index, out _, out _));
+        odile.Talk("npc.odile", out DialogueView? encore);
+        Assert.Equal("en_cours", encore!.Node);
+        Assert.Equal(1, odile.Inventory.Count("item.amulette_de_l_aube"));
+
+        WorldSession maelle = Play(Zone(-19, -5), Hero(At("passage", odile: 1), new ItemStack("item.ferrure", 2)));
+        maelle.Talk("npc.maelle", out DialogueView? ferrure);
+        Assert.Equal("ferrure", ferrure!.Node);
+        Assert.Equal(DialogueRefusal.None, maelle.Choose(0, out _, out _));
+        maelle.Talk("npc.maelle", out DialogueView? apres);
+        Assert.Equal("bonjour", apres!.Node);
+        Assert.Equal(1, maelle.Inventory.Count("item.ferrure"));
+
+        WorldSession gaspard = Play(Zone(26, -13), Hero(At("rodeur")));
+        gaspard.Talk("npc.gaspard", out DialogueView? rodeur);
+        Assert.Equal("rodeur", rodeur!.Node);
+        Assert.Equal(DialogueRefusal.None, gaspard.Choose(rodeur.Options[0].Index, out _, out _));
+        gaspard.Talk("npc.gaspard", out DialogueView? garde);
+        Assert.Equal("garde", garde!.Node);
+        Assert.Equal(1, gaspard.Narrative!.Trust("npc.gaspard"));
+    }
+
+    [Fact]
+    public void Passage_sans_place_au_registre_refuse_en_entier()
+    {
+        // Revue Codex de la PR #46 : registre du monde plein, passage fermé : la ferrure est refusée en entier (ferrure gardée, passage
+        // fermé, aucun fait), le dialogue reste ouvert.
+        WorldSession session = Play(Zone(-19, -5), Hero(At("passage"), new ItemStack("item.ferrure", 1)));
+        for (int i = 0; session.Zone.RegistryRoom > 0; i++) session.Zone.Consume($"zone.vallons/test/k{i}");
+        session.Talk("npc.maelle", out DialogueView? ferrure);
+        Assert.Equal("ferrure", ferrure!.Node);
+        Assert.Equal(DialogueRefusal.NoRoom, session.Choose(0, out _, out IReadOnlyList<StoryEvent> nothing));
+        Assert.Empty(nothing);
+        Assert.Equal(1, session.Inventory.Count("item.ferrure"));
+        Assert.False(session.IsPassageOpen("moulin"));
+        Assert.False(session.Narrative!.Knows("fact.moulin.porte_ouverte"));
+        Assert.NotNull(session.Narrative.Open);
     }
 
     // --- Objectifs ---------------------------------------------------------------------------------
