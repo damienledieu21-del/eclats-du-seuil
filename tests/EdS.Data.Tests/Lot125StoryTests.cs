@@ -153,6 +153,25 @@ public class Lot125StoryTests
     }
 
     [Fact]
+    public void Textes_et_histoire_en_objets_publics_refuses_sans_exception()
+    {
+        // Même règle que la revue Codex de la PR #44 : une clé de texte en double est refusée ; un PNJ dont la position n'a qu'une
+        // coordonnée donne un champ manquant, pas une exception.
+        var texts = new TextsDocument
+        {
+            SchemaVersion = TextsValidator.CurrentSchemaVersion, Kind = TextsValidator.Kind, ContentVersion = "0.6.0",
+            Data = new TextsData { Language = "fr", Entries = new List<KeyValuePair<string, string?>> { new("text.a", "un"), new("text.a", "deux") } },
+        };
+        Assert.Contains(TextsValidator.Validate(texts).Report.Errors, e => e.Path == "$.data.entries.text.a" && e.Code == ValidationCode.DuplicateId);
+        var report = new ValidationReport();
+        StoryDocument story = StoryJsonReader.ReadStoryDocument(JsonInput.Utf8(File.ReadAllText(StoryPath), report), report);
+        Assert.True(report.IsValid);
+        story.Data!.Npcs![0]!.Position = new EdS.Data.Scenarios.PointData { X = EdS.Domain.Numerics.Fixed.Zero };
+        StoryLoadResult result = StoryValidator.Validate(story, Texts, Zone(), Items);
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.npcs[0].position" && e.Code == ValidationCode.MissingField);
+    }
+
+    [Fact]
     public void Tables_et_vues_de_l_histoire_non_modifiables()
     {
         // Les tables globales du validateur et les vues de l'histoire ne se modifient pas par conversion (même règle que la revue Codex de la PR #44).
