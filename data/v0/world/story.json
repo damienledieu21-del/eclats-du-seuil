@@ -52,6 +52,10 @@
                 "if": "questAt",
                 "id": "quest.traces_sous_le_moulin",
                 "step": "retour"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.odile.retour"
               }
             ],
             "node": "retour"
@@ -156,6 +160,10 @@
                     "if": "trustAtLeast",
                     "id": "npc.odile",
                     "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.odile.retour"
                   }
                 ],
                 "effects": [
@@ -178,6 +186,10 @@
                     "if": "trustBelow",
                     "id": "npc.odile",
                     "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.odile.retour"
                   }
                 ],
                 "effects": [
@@ -211,6 +223,10 @@
                 "if": "hasItem",
                 "id": "item.minerai_de_fer",
                 "value": 3
+              },
+              {
+                "if": "notFact",
+                "id": "fact.moulin.porte_ouverte"
               }
             ],
             "node": "ferrure"
@@ -226,6 +242,10 @@
                 "if": "trustAtLeast",
                 "id": "npc.odile",
                 "value": 1
+              },
+              {
+                "if": "notFact",
+                "id": "fact.moulin.porte_ouverte"
               }
             ],
             "node": "indice"
@@ -236,6 +256,10 @@
                 "if": "questAt",
                 "id": "quest.traces_sous_le_moulin",
                 "step": "passage"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.moulin.porte_ouverte"
               }
             ],
             "node": "minerai"
@@ -267,7 +291,12 @@
             "choices": [
               {
                 "text": "text.maelle.ferrure.forger",
-                "conditions": [],
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.moulin.porte_ouverte"
+                  }
+                ],
                 "effects": [
                   {
                     "do": "takeItem",
@@ -308,6 +337,10 @@
                 "if": "questAt",
                 "id": "quest.traces_sous_le_moulin",
                 "step": "rodeur"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.gaspard.merci"
               }
             ],
             "node": "rodeur"
@@ -329,8 +362,17 @@
             "choices": [
               {
                 "text": "text.gaspard.rodeur.merci",
-                "conditions": [],
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.gaspard.merci"
+                  }
+                ],
                 "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.gaspard.merci"
+                  },
                   {
                     "do": "trust",
                     "id": "npc.gaspard",

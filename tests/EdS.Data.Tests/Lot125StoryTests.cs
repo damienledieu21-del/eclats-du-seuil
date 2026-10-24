@@ -323,6 +323,51 @@ public class Lot125StoryTests
         Assert.NotNull(full.Narrative.Open);
     }
 
+    [Fact]
+    public void Recompense_de_dialogue_donnee_une_seule_fois_avant_le_tick_suivant()
+    {
+        // Revue Codex de la PR #46 : l'étape se franchit au tick suivant ; d'ici là, reparler au PNJ ne redonne ni l'amulette, ni la
+        // ferrure, ni la confiance de Gaspard.
+        WorldSession odile = Play(Zone(-9, 2), Hero(At("retour", odile: 1)));
+        odile.Talk("npc.odile", out DialogueView? retour);
+        Assert.Equal(DialogueRefusal.None, odile.Choose(retour!.Options[0].Index, out _, out _));
+        odile.Talk("npc.odile", out DialogueView? encore);
+        Assert.Equal("en_cours", encore!.Node);
+        Assert.Equal(1, odile.Inventory.Count("item.amulette_de_l_aube"));
+
+        WorldSession maelle = Play(Zone(-19, -5), Hero(At("passage", odile: 1), new ItemStack("item.minerai_de_fer", 6)));
+        maelle.Talk("npc.maelle", out DialogueView? ferrure);
+        Assert.Equal(DialogueRefusal.None, maelle.Choose(0, out _, out _));
+        maelle.Talk("npc.maelle", out DialogueView? apres);
+        Assert.Equal("bonjour", apres!.Node);
+        Assert.Equal(3, maelle.Inventory.Count("item.minerai_de_fer"));
+
+        WorldSession gaspard = Play(Zone(26, -13), Hero(At("rodeur")));
+        gaspard.Talk("npc.gaspard", out DialogueView? rodeur);
+        Assert.Equal("rodeur", rodeur!.Node);
+        Assert.Equal(DialogueRefusal.None, gaspard.Choose(rodeur.Options[0].Index, out _, out _));
+        gaspard.Talk("npc.gaspard", out DialogueView? garde);
+        Assert.Equal("garde", garde!.Node);
+        Assert.Equal(1, gaspard.Narrative!.Trust("npc.gaspard"));
+    }
+
+    [Fact]
+    public void Passage_sans_place_au_registre_refuse_en_entier()
+    {
+        // Revue Codex de la PR #46 : registre du monde plein, passage fermé : la ferrure est refusée en entier (minerais gardés, passage
+        // fermé, aucun fait), le dialogue reste ouvert.
+        WorldSession session = Play(Zone(-19, -5), Hero(At("passage"), new ItemStack("item.minerai_de_fer", 4)));
+        for (int i = 0; session.Zone.RegistryRoom > 0; i++) session.Zone.Consume($"zone.vallons/test/k{i}");
+        session.Talk("npc.maelle", out DialogueView? ferrure);
+        Assert.Equal("ferrure", ferrure!.Node);
+        Assert.Equal(DialogueRefusal.NoRoom, session.Choose(0, out _, out IReadOnlyList<StoryEvent> nothing));
+        Assert.Empty(nothing);
+        Assert.Equal(4, session.Inventory.Count("item.minerai_de_fer"));
+        Assert.False(session.IsPassageOpen("moulin"));
+        Assert.False(session.Narrative!.Knows("fact.moulin.porte_ouverte"));
+        Assert.NotNull(session.Narrative.Open);
+    }
+
     // --- Objectifs ---------------------------------------------------------------------------------
 
     [Fact]

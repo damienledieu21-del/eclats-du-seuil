@@ -187,6 +187,8 @@ namespace EdS.World
 
         DayPhase INarrativeWorld.Phase => Zone.Time.Phase;
 
+        int INarrativeWorld.PassageRoom => Zone.RegistryRoom;
+
         GroundVector? INarrativeWorld.PlayerPosition
         {
             get
