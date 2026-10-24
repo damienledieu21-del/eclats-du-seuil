@@ -26,8 +26,11 @@ namespace EdS.Simulation.Engine
         /// <summary>Revue Codex de la PR #32 (27e tour) : au plus 256 Mi caractères (un combat aux limites par défaut, 100 000 éléments en file, tient largement dedans).</summary>
         public const int MaxTextLength = 1 << 28;
 
-        /// <summary>Version du format de l'instantané (indépendante de celle du journal) : 2 depuis le sous-lot 11.5 (engagement des ennemis).</summary>
-        public const int FormatVersion = 2;
+        /// <summary>
+        /// Version du format de l'instantané (indépendante de celle du journal) : 2 depuis le sous-lot 11.5 (engagement des ennemis), 3 depuis
+        /// le sous-lot 12.6 (charges des objets de soin, recharge partagée, soins reçus).
+        /// </summary>
+        public const int FormatVersion = 3;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -200,6 +203,11 @@ namespace EdS.Simulation.Engine
             w.Name("cooldowns").BeginArray();
             foreach (var c in f.CooldownReadyTick.OrderBy(c => c.Key, StringComparer.Ordinal)) w.BeginArray().Value(c.Key).Value(c.Value).EndArray();
             w.EndArray();
+            // Sous-lot 12.6 (format 3) : charges restantes des objets de soin (ordre ordinal), recharge partagée.
+            w.Name("consumables").BeginArray();
+            foreach (var c in f.ConsumableCharges) w.BeginArray().Value(c.Key).Value(c.Value).EndArray();
+            w.EndArray();
+            w.Field("consumableReadyTick", f.ConsumableReadyTick);
             w.Field("guarding", f.Guarding).Field("upkeepDue", f.GuardUpkeepDue).Field("upkeepRemainder", f.GuardUpkeepRemainder).Field("upkeepPaid", f.GuardUpkeepPaid)
                 .Field("parryOpen", f.ParryOpen).Field("parryStartTick", f.ParryStartTick).Field("parryEndTick", f.ParryEndTick)
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
@@ -226,7 +234,7 @@ namespace EdS.Simulation.Engine
                 .Field("hits", r.Hits).Field("criticalHits", r.CriticalHits).Field("skillsCast", r.SkillsCast).Field("ultimatesCast", r.UltimatesCast)
                 .Field("commandsRejected", r.CommandsRejected).Field("blocks", r.Blocks).Field("perfectParries", r.PerfectParries)
                 .Field("failedParries", r.FailedParries).Field("guardBreaks", r.GuardBreaks).Field("guardTicks", r.GuardTicks)
-                .Field("deathTick", r.DeathTick).Field("arrivedTick", r.ArrivedTick).Field("leftTick", r.LeftTick).EndObject();
+                .Field("deathTick", r.DeathTick).Field("arrivedTick", r.ArrivedTick).Field("leftTick", r.LeftTick).Field("healed", r.Healed).EndObject();
             w.Name("statuses").BeginArray();
             foreach (StatusInstance s in f.Statuses.Values.OrderBy(s => s.Id))
             {
@@ -959,8 +967,19 @@ namespace EdS.Simulation.Engine
                     $"Mort de {who} incohérente avec ses points de vie.");
                 // Relecture d'ensemble (après le 18e tour) : sans soin, les PV ne baissent que des dégâts subis (après boucliers et transferts,
                 // PrepareDamage) : un vivant a perdu exactement ses dégâts subis, un mort au moins ses PV maximaux (dégâts au-delà de 0).
+                // Sous-lot 12.6 : les soins des objets emportés (Healed) remontent les PV d'autant ; seul un personnage qui en emporte en reçoit.
                 if (f.Health is long hp && f.MaxHealth is long maxHp)
-                    Require(f.IsDead ? f.Result.DamageTaken >= maxHp - hp : f.Result.DamageTaken == maxHp - hp, $"Dégâts subis de {who} incohérents avec ses points de vie.");
+                    Require(f.IsDead ? f.Result.DamageTaken - f.Result.Healed >= maxHp - hp : f.Result.DamageTaken - f.Result.Healed == maxHp - hp,
+                        $"Dégâts subis de {who} incohérents avec ses points de vie.");
+                Require(f.Result.Healed >= 0 && (f.Result.Healed == 0 || f.Character is { Consumables: { Count: > 0 } }), $"Soins de {who} impossibles.");
+                // Charges des objets de soin dans [0, emportées] ; la recharge partagée ne dépasse pas la plus longue après le dernier tick simulé.
+                if (f.Character is { } carrier)
+                    foreach (ConsumableSetup c in carrier.Consumables)
+                        Require(f.ConsumableCharges[c.Id] >= 0 && f.ConsumableCharges[c.Id] <= c.Charges, $"Charges de « {c.Id} » de {who} impossibles.");
+                long consumableSpan = f.Character?.Consumables.Select(c => c.CooldownMs / _tickMs).DefaultIfEmpty(0).Max() ?? 0;
+                bool used = f.Character != null && f.Character.Consumables.Any(c => f.ConsumableCharges[c.Id] < c.Charges);
+                Require(used ? f.ConsumableReadyTick >= 0 && f.ConsumableReadyTick <= CurrentTick - 1 + consumableSpan : f.ConsumableReadyTick == 0,
+                    $"Recharge des objets de soin de {who} impossible : {f.ConsumableReadyTick}.");
                 // 11e tour : la cause mortelle est notée quand les PV tombent à 0, et la mort suit en fin du même tick : un vivant n'en a pas.
                 Require(f.IsDead || f.LethalCause is null, $"Cause mortelle de {who} vivant.");
                 // Ressources.
@@ -1866,6 +1885,16 @@ namespace EdS.Simulation.Engine
             f.RegenGranted = n["regenGranted"].Long;
             f.GlobalCooldownReadyTick = n["globalCooldownReadyTick"].Long;
             foreach (SnapshotNode c in n["cooldowns"].Items) f.CooldownReadyTick[c.Items[0].String] = c.Items[1].Long;
+            var carried = new HashSet<string>(f.ConsumableCharges.Keys, StringComparer.Ordinal);
+            f.ConsumableCharges.Clear();
+            foreach (SnapshotNode c in n["consumables"].Items)
+            {
+                string id = c.Items[0].String;
+                if (!carried.Contains(id) || f.ConsumableCharges.ContainsKey(id)) throw new FormatException($"Objet de soin « {id} » inattendu pour {f.Id}.");
+                f.ConsumableCharges[id] = c.Items[1].Int;
+            }
+            if (f.ConsumableCharges.Count != carried.Count) throw new FormatException($"Objets de soin de {f.Id} incomplets.");
+            f.ConsumableReadyTick = n["consumableReadyTick"].Long;
             f.Guarding = n["guarding"].Bool;
             f.GuardUpkeepDue = n["upkeepDue"].Long;
             f.GuardUpkeepRemainder = n["upkeepRemainder"].Long;
@@ -1914,6 +1943,7 @@ namespace EdS.Simulation.Engine
             CombatantResult result = f.Result;
             result.DamageDealt = r["damageDealt"].Long;
             result.DamageTaken = r["damageTaken"].Long;
+            result.Healed = r["healed"].Long;   // sous-lot 12.6 (format 3)
             result.DamageAbsorbed = r["damageAbsorbed"].Long;
             result.DamageTransferred = r["damageTransferred"].Long;
             result.DamageRedirected = r["damageRedirected"].Long;

@@ -1,0 +1,169 @@
+{
+  "$schema": "../../schemas/crafting.schema.json",
+  "schemaVersion": 1,
+  "kind": "crafting",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "maxLevel": 10,
+    "xpToLevel": [
+      0,
+      40,
+      100,
+      180,
+      280,
+      400,
+      540,
+      700,
+      880,
+      1080
+    ],
+    "professions": [
+      {
+        "id": "forge",
+        "name": "text.profession.forge"
+      },
+      {
+        "id": "herboristerie",
+        "name": "text.profession.herboristerie"
+      },
+      {
+        "id": "minage",
+        "name": "text.profession.minage"
+      }
+    ],
+    "recipes": [
+      {
+        "id": "recipe.ferrure",
+        "name": "text.recipe.ferrure",
+        "profession": "forge",
+        "requiredLevel": 1,
+        "place": "village",
+        "inputs": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.ferrure",
+          "count": 1
+        },
+        "xp": 30
+      },
+      {
+        "id": "recipe.potion_de_soin",
+        "name": "text.recipe.potion_de_soin",
+        "profession": "herboristerie",
+        "requiredLevel": 1,
+        "place": "village",
+        "inputs": [
+          {
+            "item": "item.herbe_de_l_aube",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.potion_de_soin",
+          "count": 1
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.remede_de_l_aube",
+        "name": "text.recipe.remede_de_l_aube",
+        "profession": "herboristerie",
+        "requiredLevel": 3,
+        "place": "village",
+        "inputs": [
+          {
+            "item": "item.herbe_de_l_aube",
+            "count": 3
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.remede_de_l_aube",
+          "count": 1
+        },
+        "xp": 45
+      }
+    ],
+    "nodes": [
+      {
+        "id": "filon_ouest",
+        "profession": "minage",
+        "item": "item.minerai_de_fer",
+        "count": 1,
+        "position": [
+          31,
+          -14
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "filon_centre",
+        "profession": "minage",
+        "item": "item.minerai_de_fer",
+        "count": 1,
+        "position": [
+          44,
+          -2
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "filon_est",
+        "profession": "minage",
+        "item": "item.minerai_de_fer",
+        "count": 1,
+        "position": [
+          54,
+          4
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "herbes_village",
+        "profession": "herboristerie",
+        "item": "item.herbe_de_l_aube",
+        "count": 1,
+        "position": [
+          -22,
+          2
+        ],
+        "respawnMs": 60000,
+        "xp": 8
+      },
+      {
+        "id": "herbes_riviere",
+        "profession": "herboristerie",
+        "item": "item.herbe_de_l_aube",
+        "count": 1,
+        "position": [
+          2,
+          -14
+        ],
+        "respawnMs": 60000,
+        "xp": 8
+      },
+      {
+        "id": "herbes_pre",
+        "profession": "herboristerie",
+        "item": "item.herbe_de_l_aube",
+        "count": 1,
+        "position": [
+          -18,
+          26
+        ],
+        "respawnMs": 60000,
+        "xp": 8
+      }
+    ]
+  }
+}

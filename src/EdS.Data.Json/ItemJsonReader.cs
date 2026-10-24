@@ -72,6 +72,8 @@ namespace EdS.Data.Json
                 ["slot"] = Track("slot", (v, p) => item.Slot = input.Text(v, p)),
                 ["requiredLevel"] = Track("requiredLevel", (v, p) => item.RequiredLevel = input.Int32(v, p)),
                 ["bonus"] = Track("bonus", (v, p) => item.Bonus = ScenarioJsonReader.ReadIntegerMap(input, v, p)),
+                ["heal"] = Track("heal", (v, p) => item.Heal = input.Int64(v, p)),               // sous-lot 12.6 (version 2)
+                ["cooldownMs"] = Track("cooldownMs", (v, p) => item.CooldownMs = input.Int64(v, p)),
             });
             return ok ? item : null;
         }

@@ -47,6 +47,34 @@ namespace EdS.Domain.Combat
         }
     }
 
+    /// <summary>
+    /// Sous-lot 12.6 : objet de soin emporté par un personnage (commande <c>consume</c>) : PV rendus (au plus jusqu'au maximum), charges, et
+    /// recharge partagée par tous ses objets de soin, qui démarre à chaque usage.
+    /// </summary>
+    public sealed class ConsumableSetup
+    {
+        /// <summary>Plus grand soin d'un objet (10⁹) et plus grand nombre de charges (999).</summary>
+        public const long MaxHeal = 1_000_000_000;
+        public const int MaxCharges = 999;
+
+        /// <summary>Identifiant de l'objet (« item.… »).</summary>
+        public string Id { get; }
+
+        public long Heal { get; }
+        public int Charges { get; }
+
+        /// <summary>Recharge partagée qui suit un usage, en ms (multiple du tick).</summary>
+        public long CooldownMs { get; }
+
+        public ConsumableSetup(string id, long heal, int charges, long cooldownMs)
+        {
+            Id = id ?? throw new ArgumentNullException(nameof(id));
+            Heal = heal;
+            Charges = charges;
+            CooldownMs = cooldownMs;
+        }
+    }
+
     /// <summary>Personnage joué : sa classe et son build (attributs explicites, talents, compétences équipées).</summary>
     public sealed class CharacterSetup : CombatantSetup
     {
@@ -56,13 +84,20 @@ namespace EdS.Domain.Combat
         /// <summary>Sous-lot 12.3 : bonus de l'équipement porté (contributions plates aux statistiques) ; <see cref="GearBonus.None"/> sans équipement.</summary>
         public GearBonus Gear { get; }
 
+        /// <summary>
+        /// Sous-lot 12.6 : objets de soin emportés (potions, remèdes), chacun avec ses charges ; leur recharge est partagée (une seule pour
+        /// tous). Vide par défaut.
+        /// </summary>
+        public IReadOnlyList<ConsumableSetup> Consumables { get; }
+
         public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null,
-            long? arrivalMs = null, GearBonus? gear = null)
+            long? arrivalMs = null, GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null)
             : base(id, team, initiative, placement, arrivalMs)
         {
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
             Build = build ?? throw new ArgumentNullException(nameof(build));
             Gear = gear ?? GearBonus.None;
+            Consumables = Frozen.ListOrEmpty(consumables, nameof(consumables));
         }
 
         /// <summary>
@@ -415,6 +450,9 @@ namespace EdS.Domain.Combat
         /// pour la suite : ses états sont retirés (<c>left</c>), ses provocations et protections sur les autres aussi (<c>sourceLeft</c>).
         /// </summary>
         Leave = 7,
+
+        /// <summary>Sous-lot 12.6 : utiliser un objet de soin emporté (<see cref="CombatCommand.Item"/>).</summary>
+        Consume = 8,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -428,6 +466,7 @@ namespace EdS.Domain.Combat
         public const string Stop = "stop";
         public const string Select = "select";
         public const string Leave = "leave";
+        public const string Consume = "consume";
 
         /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
@@ -448,6 +487,7 @@ namespace EdS.Domain.Combat
             CombatAction.Stop => Stop,
             CombatAction.Select => Select,
             CombatAction.Leave => Leave,
+            CombatAction.Consume => Consume,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
@@ -502,6 +542,9 @@ namespace EdS.Domain.Combat
         /// </summary>
         public bool Backward { get; }
 
+        /// <summary>Sous-lot 12.6 : objet de soin d'un <see cref="CombatAction.Consume"/> ; null pour toute autre commande.</summary>
+        public string? Item { get; }
+
         /// <summary>Commande « utiliser une compétence ».</summary>
         public CombatCommand(long atMs, string actor, string skill, string? target = null)
         {
@@ -517,6 +560,7 @@ namespace EdS.Domain.Combat
         {
             if (action == CombatAction.UseSkill) throw new ArgumentException("Une compétence se lance avec le constructeur qui la nomme.", nameof(action));
             if (action == CombatAction.Move) throw new ArgumentException("Un déplacement se donne avec le constructeur qui porte sa direction.", nameof(action));
+            if (action == CombatAction.Consume) throw new ArgumentException("Un soin se donne avec CombatCommand.Use, qui nomme l'objet.", nameof(action));
             AtMs = atMs;
             Actor = actor ?? throw new ArgumentNullException(nameof(actor));
             Action = action;
@@ -545,6 +589,21 @@ namespace EdS.Domain.Combat
 
         /// <summary>Sous-lot 11.4c : commande « sélectionner <paramref name="target"/> » ; null efface la sélection.</summary>
         public static CombatCommand SelectTarget(long atMs, string actor, string? target) => new(atMs, actor, target, CombatAction.Select);
+
+        /// <summary>Sous-lot 12.6 : commande « utiliser l'objet de soin <paramref name="item"/> ».</summary>
+        public static CombatCommand Use(long atMs, string actor, string item)
+        {
+            var command = new CombatCommand(atMs, actor, null, CombatAction.Consume);
+            return new CombatCommand(command, item ?? throw new ArgumentNullException(nameof(item)));
+        }
+
+        private CombatCommand(CombatCommand c, string item)
+        {
+            AtMs = c.AtMs;
+            Actor = c.Actor;
+            Action = c.Action;
+            Item = item;
+        }
     }
 
     /// <summary>Identité d'un fichier de données utilisé (version de contenu et empreinte).</summary>
@@ -586,6 +645,11 @@ namespace EdS.Domain.Combat
     /// </summary>
     public sealed class CombatSetup
     {
+        /// <summary>Sous-lot 12.6 : objets de soin emportés par un personnage, au plus.</summary>
+        public const int MaxConsumables = 16;
+
+        private static readonly Regex ConsumableId = new Regex(@"^item(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
         public long Seed { get; }
         public long DurationMs { get; }
         public StatRules Stats { get; }
@@ -718,6 +782,23 @@ namespace EdS.Domain.Combat
                 {
                     case CharacterSetup character:
                         ValidateCharacter(character, path, tick, errors);
+                        // Sous-lot 12.6 : objets de soin emportés, identifiants uniques, soin, charges et recharge bornés.
+                        var consumableIds = new HashSet<string>(StringComparer.Ordinal);
+                        for (int k = 0; k < character.Consumables.Count; k++)
+                        {
+                            ConsumableSetup item = character.Consumables[k];
+                            string cp = $"{path}.consumables[{k}]";
+                            if (!ConsumableId.IsMatch(item.Id) || item.Id.Length > 200) errors.Add(new RuleViolation($"objet de soin « {item.Id} » mal nommé : « item.… ».", cp + ".id"));
+                            else if (!consumableIds.Add(item.Id)) errors.Add(new RuleViolation(RuleViolationKind.DuplicateId, $"objet de soin « {item.Id} » déjà emporté.", cp + ".id"));
+                            if (item.Heal < 1 || item.Heal > ConsumableSetup.MaxHeal) errors.Add(new RuleViolation($"soin {item.Heal} hors de [1, {ConsumableSetup.MaxHeal}].", cp + ".heal"));
+                            if (item.Charges < 1 || item.Charges > ConsumableSetup.MaxCharges) errors.Add(new RuleViolation($"{item.Charges} charges hors de [1, {ConsumableSetup.MaxCharges}].", cp + ".charges"));
+                            if (item.CooldownMs < 0 || item.CooldownMs > CombatRules.AbsoluteMaxDurationMs)
+                                errors.Add(new RuleViolation($"recharge {item.CooldownMs} ms hors de [0, {CombatRules.AbsoluteMaxDurationMs}].", cp + ".cooldownMs"));
+                            else if (item.CooldownMs % tick != 0)
+                                errors.Add(new RuleViolation($"{item.CooldownMs} ms n'est pas un multiple de la durée du tick ({tick} ms).", cp + ".cooldownMs"));
+                        }
+                        if (character.Consumables.Count > MaxConsumables)
+                            errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{character.Consumables.Count} objets de soin, au plus {MaxConsumables}.", path + ".consumables"));
                         // Sous-lot 12.3 : bonus d'équipement entiers, de 0 à GearBonus.MaxValue.
                         for (int g = 0; g < GearBonus.Fields.Count; g++)
                             if (character.Gear[g] < 0 || character.Gear[g] > GearBonus.MaxValue)
@@ -800,6 +881,16 @@ namespace EdS.Domain.Combat
                     errors.Add(new RuleViolation("un ennemi qui a un comportement se déplace seul (pas de move ni de stop).", path + ".action"));
                 if (command.Action == CombatAction.Select && Space is null)
                     errors.Add(new RuleViolation("sélection de cible dans un combat sans espace (bloc space absent).", path + ".action"));
+                // Sous-lot 12.6 : un soin nomme un objet de soin emporté par son personnage ; seule cette commande nomme un objet.
+                if (command.Action == CombatAction.Consume)
+                {
+                    if (command.Item is null) errors.Add(new RuleViolation("objet de soin obligatoire.", path + ".item"));
+                    else if (ids.TryGetValue(command.Actor, out int consumer)
+                        && !(Combatants[consumer] is CharacterSetup ch && ch.Consumables.Any(c => c.Id == command.Item)))
+                        errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"objet de soin « {command.Item} » absent de ce que « {command.Actor} » emporte.", path + ".item"));
+                }
+                else if (command.Item != null)
+                    errors.Add(new RuleViolation("seul un soin (consume) nomme un objet.", path + ".item"));
                 if (command.Action == CombatAction.Move)
                 {
                     if (command.Direction is not { } direction || !SpaceLimits.IsDirection(direction))

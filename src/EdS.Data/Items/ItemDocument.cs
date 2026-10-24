@@ -29,7 +29,7 @@ namespace EdS.Data.Items
         public string? Id { get; set; }
         public string? Name { get; set; }
 
-        /// <summary>« equipment » ou « material ».</summary>
+        /// <summary>« equipment », « material » ou « consumable » (sous-lot 12.6).</summary>
         public string? Type { get; set; }
 
         /// <summary>Rareté (« common »… « mythic »).</summary>
@@ -41,6 +41,10 @@ namespace EdS.Data.Items
         // Équipement
         public string? Slot { get; set; }
         public int? RequiredLevel { get; set; }
+
+        /// <summary>Sous-lot 12.6 : objet de soin, PV rendus et recharge partagée (ms).</summary>
+        public long? Heal { get; set; }
+        public long? CooldownMs { get; set; }
 
         /// <summary>Bonus aux statistiques par identifiant (« armor »…), dans l'ordre du fichier.</summary>
         public List<KeyValuePair<string, int?>>? Bonus { get; set; }

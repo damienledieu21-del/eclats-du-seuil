@@ -403,6 +403,16 @@ Un personnage porte un **bonus d'équipement** (`CharacterSetup.Gear`, type `Gea
 
 Objets, inventaire et butin (projet `EdS.World`) : [MONDE.md](MONDE.md#objets-équipement-inventaire-sous-lot-123).
 
+## Soin (sous-lot 12.6)
+
+Un personnage peut emporter des **objets de soin** (`CharacterSetup.Consumables` : identifiant `item.…`, PV rendus, charges, recharge en ms ; au plus 16). Moteur 0.24.0, journal au format 18, scénarios en schéma 12, instantané au format 3.
+
+- **Commande `consume`** (`CombatCommand.Use`, champ `item`) : à la phase des commandes, le personnage boit l'objet ; ses PV remontent d'au plus le soin, sans dépasser le maximum. Une charge est retirée et la **recharge partagée** démarre : aucun objet de soin ne sert avant `readyTick` (une seule recharge pour tous les objets, celle de l'objet bu).
+- **Refus**, dans cet ordre : mort ou absent, pas un personnage, objet non emporté (`itemNotCarried`), action bloquée comme une compétence (étourdissement), charges épuisées (`noCharges`), recharge en cours (`consumableCooldown`), PV déjà pleins (`healthFull`).
+- **Journal (format 18)** : `consumables` d'un personnage dans l'en-tête (s'il en emporte), `item` d'une commande `consume` ; ligne `consumed` (observable : `item`, `healed`, `health`, `charges`, `readyTick`) ; `healed` et `consumablesUsed` au bilan d'un personnage qui emporte des objets de soin. **Sans objet de soin, rien ne change** (référence `reference-0.24.0-contenu-0.6.0`, même corps qu'au 0.23.0).
+- **Instantané (format 3)** : charges restantes, recharge partagée, soins reçus. Contrôles : PV = PV max − dégâts subis + soins pour un vivant, charges dans [0, emportées], recharge au plus la plus longue après le dernier tick.
+- **Pilote** : `CombatantView.ConsumableCharges` et `ConsumableReadyTick` pour l'affichage.
+
 ## Limites
 
 - `combat.limits.maxDurationMs` (600 000) : durée maximale d'un scénario ; plafond absolu du format 86 400 000.

@@ -101,11 +101,16 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot 12.5 : état narratif personnel (faits, quêtes, confiance, découvertes).</summary>
         public SavedStory Story { get; }
 
+        /// <summary>Sous-lot 12.6 : expérience de chaque métier (séparée de celle du combat), non nulle, par identifiant (ordre ordinal).</summary>
+        public IReadOnlyDictionary<string, long> Professions { get; }
+
         public SavedCharacter(string id, string classId, long xp, IReadOnlyDictionary<string, int>? talents = null, IEnumerable<string>? activeSkills = null,
             string? ultimate = null, IEnumerable<string>? passiveSkills = null, IEnumerable<ItemStack>? inventory = null,
-            IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null)
+            IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null)
         {
             Story = story ?? SavedStory.Empty;
+            Professions = Frozen.Dictionary((professions ?? new Dictionary<string, long>()).Where(p => p.Value != 0).OrderBy(p => p.Key, StringComparer.Ordinal)
+                .ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal), nameof(professions));
             Inventory = Frozen.List(inventory ?? Array.Empty<ItemStack>(), nameof(inventory));
             Equipment = Frozen.Dictionary((equipment ?? new Dictionary<string, string>()).OrderBy(e => e.Key, StringComparer.Ordinal)
                 .ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal), nameof(equipment));
@@ -120,15 +125,19 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions);
 
         /// <summary>Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement.</summary>
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions);
+
+        /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
+        public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions);
     }
 
     /// <summary>
@@ -197,8 +206,10 @@ namespace EdS.Data.Saves
         /// <c>count</c>) et <c>equipment</c> (objet par emplacement) obligatoires dans le personnage ; une sauvegarde de version 2 est mise à
         /// jour (inventaire et équipement vides). Version 4 (sous-lot 12.5) : <c>story</c> obligatoire dans le personnage (<c>facts</c>,
         /// <c>quests</c>, <c>trust</c>, <c>discoveries</c>) ; une sauvegarde de version 3 est mise à jour (histoire vierge).
+        /// Version 5 (sous-lot 12.6) : <c>professions</c> obligatoire dans le personnage (expérience non nulle de chaque métier) ; une
+        /// sauvegarde de version 4 est mise à jour (aucun métier).
         /// </summary>
-        public const int CurrentSchemaVersion = 4;
+        public const int CurrentSchemaVersion = 5;
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;
@@ -376,11 +387,32 @@ namespace EdS.Data.Saves
             }
             else if (c.Story is StoryStateData st) story = CheckStory(st, path + ".story", report);
             else Missing(report, path + ".story", "faits, quêtes, confiance, découvertes");
+            // Sous-lot 12.6 (version 5) : expérience des métiers.
+            if (version < 5)
+            {
+                // Comme l'histoire : refusé aussi quand il est renseigné hors du lecteur JSON.
+                if (c.Present.Contains("professions") || c.Professions != null)
+                    report.Add(path + ".professions", ValidationCode.UnknownField, $"champ inconnu en version {version} (métiers : version 5).");
+            }
+            else if (c.Professions is null) Missing(report, path + ".professions", "expérience de chaque métier, éventuellement vide");
+            else if (c.Professions.Count > MaxProfessions) report.Add(path + ".professions", ValidationCode.LimitExceeded, $"{c.Professions.Count} métiers, au plus {MaxProfessions}.");
+            else
+                for (int i = 0; i < c.Professions.Count; i++)
+                {
+                    var p = c.Professions[i];
+                    string pp = $"{path}.professions.{p.Key}";
+                    if (p.Key is null || p.Key.Length > 64 || !SlotId.IsMatch(p.Key)) report.Add(pp, ValidationCode.InvalidValue, "métier mal formé.");
+                    else if (p.Value is not long xp) Missing(report, pp, "expérience");
+                    else if (xp < 1 || xp > MaxXp) report.Add(pp, ValidationCode.OutOfRange, $"expérience de métier hors de [1, {MaxXp}] (une expérience nulle n'est pas écrite).");
+                    // Même règle que la revue Codex de la PR #44 : un métier une seule fois (sauvegarde construite en objets publics).
+                    else if (i > 0 && string.CompareOrdinal(c.Professions[i - 1].Key, p.Key) >= 0) report.Add(pp, ValidationCode.InvalidValue, "métiers hors de l'ordre ordinal ou en double.");
+                }
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
                 version < 3 ? null : c.Inventory!.Select(st => new ItemStack(st!.Item!, st.Count!.Value)),
-                version < 3 ? null : c.Equipment!.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal), story);
+                version < 3 ? null : c.Equipment!.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal), story,
+                version < 5 ? null : c.Professions!.ToDictionary(p => p.Key, p => p.Value!.Value, StringComparer.Ordinal));
         }
 
         public const int MaxStoryEntries = 10_000;
@@ -451,6 +483,9 @@ namespace EdS.Data.Saves
 
         /// <summary>Emplacements d'équipement et compétences d'une liste, au plus (mêmes bornes que le lecteur JSON).</summary>
         public const int MaxEquipment = 64, MaxSkills = 64;
+
+        /// <summary>Sous-lot 12.6 : métiers d'une sauvegarde, au plus (même borne que le lecteur JSON).</summary>
+        public const int MaxProfessions = 64;
 
         public const int MaxStack = 999;
 

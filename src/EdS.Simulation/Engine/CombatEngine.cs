@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.23.0";
+        public const string Version = "0.24.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -88,9 +88,13 @@ namespace EdS.Simulation.Engine
         /// sans fin quand une équipe tombe : pas de <c>teamDefeated</c>, seulement <c>durationReached</c>). Un combat fermé écrit exactement les
         /// mêmes lignes qu'au format 15. 17 (sous-lot 12.3) : un personnage de l'en-tête peut porter <c>gear</c> (bonus de l'équipement porté,
         /// champs non nuls seulement), compté dans ses statistiques. Un combat sans équipement écrit exactement les mêmes lignes qu'au format 16.
+        /// 18 (sous-lot 12.6) : un personnage de l'en-tête peut porter <c>consumables</c> (objets de soin : <c>id</c>, <c>heal</c>,
+        /// <c>charges</c>, <c>cooldownMs</c>), une commande <c>consume</c> son <c>item</c> ; nouvelle ligne <c>consumed</c> (observable) ; raisons
+        /// <c>itemNotCarried</c>, <c>noCharges</c>, <c>consumableCooldown</c>, <c>healthFull</c> ; <c>healed</c> et <c>consumablesUsed</c> au
+        /// bilan d'un personnage qui emporte des objets de soin. Sans objet de soin, un combat écrit exactement les mêmes lignes qu'au format 17.
         /// Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 17;
+        public const int LogFormatVersion = 18;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -148,6 +152,12 @@ namespace EdS.Simulation.Engine
 
             public int Resonance;
             public int RampartCharges;
+
+            /// <summary>Sous-lot 12.6 : charges restantes de chaque objet de soin emporté (personnage).</summary>
+            public readonly SortedDictionary<string, int> ConsumableCharges = new SortedDictionary<string, int>(StringComparer.Ordinal);
+
+            /// <summary>Sous-lot 12.6 : tick à partir duquel un objet de soin peut de nouveau servir (recharge partagée) ; 0 au départ.</summary>
+            public long ConsumableReadyTick;
 
             /// <summary>Numéro du prochain tour d'un assaillant (racine <c>assailantTurn:&lt;id&gt;:&lt;n&gt;</c>), sauts compris.</summary>
             public long NextTurn;
@@ -587,6 +597,7 @@ namespace EdS.Simulation.Engine
                     f.Health = f.MaxHealth;
                     f.MaxEndurance = f.Stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
                     f.Endurance = f.MaxEndurance;
+                    foreach (ConsumableSetup consumable in character.Consumables) f.ConsumableCharges[consumable.Id] = consumable.Charges;   // sous-lot 12.6
                     foreach (string skill in character.Build.ActiveSkills) f.Castable.Add(skill);
                     if (character.Build.Ultimate != null) f.Castable.Add(character.Build.Ultimate);
                     break;
@@ -761,6 +772,8 @@ namespace EdS.Simulation.Engine
                     return Cost.Line;
                 case CombatAction.Leave:    // sous-lot 11.4d : départ noté sans ligne (effectif en fin de tick) ou refus
                     return Cost.Line.If(CheckLeave(actor) != null);
+                case CombatAction.Consume:   // sous-lot 12.6 : consumed ou refus
+                    return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
                 default:
@@ -861,6 +874,22 @@ namespace EdS.Simulation.Engine
                     actor.LeaveCommand = item.Index;
                     return null;
 
+                // Sous-lot 12.6 : soin d'un objet emporté, immédiat ; la recharge partagée démarre.
+                case CombatAction.Consume:
+                {
+                    ConsumableSetup? consumable = actor.Character?.Consumables.FirstOrDefault(c => c.Id == command.Item);
+                    if (Reject(tick, item, actor, CheckConsume(tick, actor, consumable))) return null;
+                    long healed = Math.Min(consumable!.Heal, checked(actor.MaxHealth!.Value - actor.Health!.Value));
+                    actor.Health = checked(actor.Health.Value + healed);
+                    actor.Result.Healed = checked(actor.Result.Healed + healed);
+                    int left = actor.ConsumableCharges[consumable.Id] - 1;
+                    actor.ConsumableCharges[consumable.Id] = left;
+                    actor.ConsumableReadyTick = checked(tick + consumable.CooldownMs / _tickMs);
+                    Emit(tick, CombatPhase.Commands, "consumed", root, w => w.Field("actor", actor.Id).Field("command", item.Index).Field("item", consumable.Id)
+                        .Field("healed", healed).Field("health", actor.Health).Field("charges", left).Field("readyTick", actor.ConsumableReadyTick));
+                    return null;
+                }
+
                 default:
                     return CastSkill(tick, item, actor, root);
             }
@@ -943,6 +972,21 @@ namespace EdS.Simulation.Engine
                 if ((status.Definition.Blocks & action) != 0 && (first is null || _statusOrder[status.State] < _statusOrder[first.Id]))
                     first = status.Definition;
             return first?.BlockReason;
+        }
+
+        /// <summary>
+        /// Sous-lot 12.6 : motif de refus d'un soin, dans un ordre fixe : mort ou absent, pas un personnage, objet non emporté, bloqué comme
+        /// une compétence (étourdissement), charges épuisées, recharge partagée, PV déjà pleins.
+        /// </summary>
+        private string? CheckConsume(long tick, Fighter actor, ConsumableSetup? consumable)
+        {
+            if (CheckAlive(actor) is { } reason) return reason;
+            if (consumable is null) return "itemNotCarried";
+            if (BlockReason(actor, StatusBlocks.Skills) is { } blocked) return blocked;
+            if (actor.ConsumableCharges[consumable.Id] <= 0) return "noCharges";
+            if (tick < actor.ConsumableReadyTick) return "consumableCooldown";
+            if (actor.Health >= actor.MaxHealth) return "healthFull";
+            return null;
         }
 
         private string? CheckGuardStart(long tick, Fighter actor)
@@ -2415,6 +2459,10 @@ namespace EdS.Simulation.Engine
                 f.Result.RampartCharges = character ? f.RampartCharges : (int?)null;
                 f.Result.IsDead = f.IsDead;
                 if (f.Body is { } body) f.Result.Position = Domain.Space.GroundVector.FromRaw(body.X, body.Z);   // sous-lot 11.4
+                bool carries = f.Character is { Consumables: { Count: > 0 } };
+                if (carries)
+                    f.Result.ConsumablesUsed = f.Character!.Consumables.Where(c => f.ConsumableCharges[c.Id] < c.Charges)
+                        .OrderBy(c => c.Id, StringComparer.Ordinal).ToDictionary(c => c.Id, c => c.Charges - f.ConsumableCharges[c.Id], StringComparer.Ordinal);
                 CombatantResult r = f.Result;
                 Body? placed = f.Body;
                 string? presence = PresenceId(f);
@@ -2431,6 +2479,13 @@ namespace EdS.Simulation.Engine
                     if (placed != null) WriteVector(w, "position", placed.X, placed.Z);   // sous-lot 11.4 (format 10) : combat positionné
                     // Sous-lot 11.4d (format 13) : présence, seulement pour un combattant arrivé en cours de route ou parti.
                     if (presence != null) w.Field("presence", presence).Field("arrivedTick", r.ArrivedTick).Field("leftTick", r.LeftTick);
+                    // Sous-lot 12.6 (format 18) : soins et charges utilisées, seulement pour un personnage qui emporte des objets de soin.
+                    if (carries)
+                    {
+                        w.Field("healed", r.Healed).Name("consumablesUsed").BeginObject();
+                        foreach (var used in r.ConsumablesUsed) w.Field(used.Key, used.Value);
+                        w.EndObject();
+                    }
                 });
                 f.Resonance = 0;
                 f.RampartCharges = 0;

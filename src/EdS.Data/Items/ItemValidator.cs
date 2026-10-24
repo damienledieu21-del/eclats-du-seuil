@@ -27,6 +27,9 @@ namespace EdS.Data.Items
 
         /// <summary>Matériau de fabrication ou butin ; s'empile.</summary>
         Material = 1,
+
+        /// <summary>Sous-lot 12.6 : objet de soin (potion, remède) ; s'empile, se boit en combat (recharge partagée).</summary>
+        Consumable = 2,
     }
 
     /// <summary>Objet du catalogue, validé et immuable.</summary>
@@ -49,8 +52,17 @@ namespace EdS.Data.Items
         /// <summary>Bonus aux statistiques quand il est porté (aucun pour un matériau).</summary>
         public GearBonus Bonus { get; }
 
-        internal ItemDefinition(string id, string name, ItemType type, ItemRarity rarity, int stack, string? slot, int requiredLevel, GearBonus bonus)
+        /// <summary>Sous-lot 12.6 : PV rendus par un objet de soin ; 0 sinon.</summary>
+        public long Heal { get; }
+
+        /// <summary>Sous-lot 12.6 : recharge partagée qui suit son usage, en ms ; 0 sinon.</summary>
+        public long CooldownMs { get; }
+
+        internal ItemDefinition(string id, string name, ItemType type, ItemRarity rarity, int stack, string? slot, int requiredLevel, GearBonus bonus,
+            long heal = 0, long cooldownMs = 0)
         {
+            Heal = heal;
+            CooldownMs = cooldownMs;
             Id = id;
             Name = name;
             Type = type;
@@ -154,8 +166,11 @@ namespace EdS.Data.Items
     {
         public const string Kind = "items";
 
-        /// <summary>Version 1 (sous-lot 12.3) : <c>slots</c>, <c>inventorySize</c>, <c>items[]</c>, <c>loot[]</c>.</summary>
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>
+        /// Version 1 (sous-lot 12.3) : <c>slots</c>, <c>inventorySize</c>, <c>items[]</c>, <c>loot[]</c>. Version 2 (sous-lot 12.6) : type
+        /// <c>consumable</c> (objet de soin : <c>stack</c>, <c>heal</c>, <c>cooldownMs</c>).
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
 
         public const int MaxSlots = 12;
         public const int MaxInventorySize = 200;
@@ -163,6 +178,9 @@ namespace EdS.Data.Items
         public const int MaxLootTables = 1024;
         public const int MaxDrops = 16;
         public const int MaxStack = 999;
+
+        /// <summary>Sous-lot 12.6 : plus grand soin d'un objet, plus longue recharge (une heure), durée du tick des données (multiple obligé).</summary>
+        public const long MaxHeal = 1_000_000, MaxCooldownMs = 3_600_000, TickMs = 50;
 
         /// <summary>Plus grand bonus d'un objet : douze objets portés restent sous <see cref="GearBonus.MaxValue"/>.</summary>
         public const int MaxItemBonus = 50_000;
@@ -183,6 +201,7 @@ namespace EdS.Data.Items
         {
             ["equipment"] = ItemType.Equipment,
             ["material"] = ItemType.Material,
+            ["consumable"] = ItemType.Consumable,
         });
 
         public static string RarityId(ItemRarity rarity) => Rarities.First(r => r.Value == rarity).Key;
@@ -202,11 +221,14 @@ namespace EdS.Data.Items
             "requiredLevel" => item.RequiredLevel != null,
             "bonus" => item.Bonus != null,
             "stack" => item.Stack != null,
+            "heal" => item.Heal != null,
+            "cooldownMs" => item.CooldownMs != null,
             _ => false,
         };
 
         private static readonly string[] EquipmentFields = { "slot", "requiredLevel", "bonus" };
         private static readonly string[] MaterialFields = { "stack" };
+        private static readonly string[] ConsumableFields = { "stack", "heal", "cooldownMs" };
 
         public static ItemCatalogLoadResult Validate(ItemCatalogDocument document, GameData data, ValidationReport? report = null)
         {
@@ -288,24 +310,36 @@ namespace EdS.Data.Items
                 report.Add(path + ".rarity", ValidationCode.UnknownReference, $"rareté inconnue « {item.Rarity} » ; valeurs possibles : {string.Join(", ", Rarities.Keys)}.");
                 ok = false;
             }
-            if (item.Type is null) { Missing(report, path + ".type", "equipment ou material"); return null; }
+            if (item.Type is null) { Missing(report, path + ".type", "equipment, material ou consumable"); return null; }
             if (!Types.TryGetValue(item.Type, out ItemType type))
             {
-                report.Add(path + ".type", ValidationCode.UnknownReference, $"type d'objet inconnu « {item.Type} » ; valeurs possibles : equipment, material.");
+                report.Add(path + ".type", ValidationCode.UnknownReference, $"type d'objet inconnu « {item.Type} » ; valeurs possibles : {string.Join(", ", Types.Keys)}.");
                 return null;
             }
-            string[] own = type == ItemType.Equipment ? EquipmentFields : MaterialFields;
+            string[] own = type == ItemType.Equipment ? EquipmentFields : type == ItemType.Material ? MaterialFields : ConsumableFields;
             // Revue Codex de la PR #44 : un champ d'un autre type est refusé qu'il vienne du lecteur JSON (Present) ou d'un objet public renseigné.
-            foreach (string field in EquipmentFields.Concat(MaterialFields).Where(f => !own.Contains(f) && (item.Present.Contains(f) || IsSet(item, f))))
+            foreach (string field in EquipmentFields.Concat(ConsumableFields).Distinct().Where(f => !own.Contains(f) && (item.Present.Contains(f) || IsSet(item, f))))
             {
-                report.Add($"{path}.{field}", ValidationCode.InvalidValue, $"champ réservé au type {(type == ItemType.Equipment ? "material" : "equipment")}.");
+                report.Add($"{path}.{field}", ValidationCode.InvalidValue, $"champ « {field} » sans objet pour le type {item.Type}.");
                 ok = false;
             }
-            if (type == ItemType.Material)
+            if (type != ItemType.Equipment)
             {
                 if (item.Stack is null) { Missing(report, path + ".stack", "taille d'une pile"); ok = false; }
                 else if (item.Stack < 1 || item.Stack > MaxStack) { report.Add(path + ".stack", ValidationCode.OutOfRange, $"pile hors de [1, {MaxStack}]."); ok = false; }
-                return ok ? new ItemDefinition(item.Id!, item.Name!, type, rarity, item.Stack!.Value, null, 1, GearBonus.None) : null;
+                long heal = 0, cooldown = 0;
+                if (type == ItemType.Consumable)
+                {
+                    // Sous-lot 12.6 : un objet de soin rend des PV (au plus jusqu'au maximum) et lance la recharge partagée.
+                    if (item.Heal is null) { Missing(report, path + ".heal", "PV rendus"); ok = false; }
+                    else if (item.Heal < 1 || item.Heal > MaxHeal) { report.Add(path + ".heal", ValidationCode.OutOfRange, $"soin hors de [1, {MaxHeal}]."); ok = false; }
+                    else heal = item.Heal.Value;
+                    if (item.CooldownMs is null) { Missing(report, path + ".cooldownMs", "recharge partagée en ms"); ok = false; }
+                    else if (item.CooldownMs < 0 || item.CooldownMs > MaxCooldownMs || item.CooldownMs % TickMs != 0)
+                    { report.Add(path + ".cooldownMs", ValidationCode.OutOfRange, $"recharge hors de [0, {MaxCooldownMs}] ms ou pas un multiple de {TickMs} ms."); ok = false; }
+                    else cooldown = item.CooldownMs.Value;
+                }
+                return ok ? new ItemDefinition(item.Id!, item.Name!, type, rarity, item.Stack!.Value, null, 1, GearBonus.None, heal, cooldown) : null;
             }
             if (item.Slot is null) { Missing(report, path + ".slot", "emplacement : " + string.Join(", ", slots)); ok = false; }
             else if (!slots.Contains(item.Slot))

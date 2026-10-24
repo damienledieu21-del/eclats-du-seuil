@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/save.schema.json",
   "title": "Éclats du Seuil — sauvegarde du monde",
-  "description": "Sous-lots 12.1 à 12.5. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1, 2 ou 3 est mise à jour à la lecture.",
+  "description": "Sous-lots 12.1 à 12.6. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 à 4 est mise à jour à la lecture.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 4
+      "const": 5
     },
     "kind": {
       "const": "save"
@@ -80,7 +80,8 @@
                 "passiveSkills",
                 "inventory",
                 "equipment",
-                "story"
+                "story",
+                "professions"
               ],
               "properties": {
                 "id": {
@@ -255,6 +256,20 @@
                       "uniqueItems": true
                     }
                   }
+                },
+                "professions": {
+                  "type": "object",
+                  "description": "Sous-lot 12.6 (version 5) : expérience non nulle de chaque métier, séparée de celle du combat.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "maxLength": 64
+                  },
+                  "maxProperties": 64
                 }
               }
             }

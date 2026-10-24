@@ -53,6 +53,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot 12.3 (version 3) : objet porté par emplacement.</summary>
         public List<KeyValuePair<string, string?>>? Equipment { get; set; }
 
+        /// <summary>Sous-lot 12.6 (version 5) : expérience de chaque métier.</summary>
+        public List<KeyValuePair<string, long?>>? Professions { get; set; }
+
         /// <summary>Sous-lot 12.5 (version 4) : état narratif personnel.</summary>
         public StoryStateData? Story { get; set; }
 

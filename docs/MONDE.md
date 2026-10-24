@@ -79,7 +79,7 @@ L'histoire de la tranche est en données : `data/v0/world/story.json` (`kind` «
 
 1. **Enquêter** : Odile, la meunière, raconte les traces. Deux réponses : aider (confiance +1) ou la soupçonner (confiance −1) — la mission commence dans les deux cas.
 2. **Suivre les traces** jusqu'à la porte du moulin (lieu « moulin ») ; découverte des traces griffues.
-3. **Rouvrir le passage** : Maëlle, la forgeronne, forge une ferrure avec trois minerais de fer (portés par les sangliers de la carrière, en attendant la récolte du 12.6) ; le passage du moulin s'ouvre pour de bon. Si Odile a confiance, Maëlle donne un indice sur le minerai.
+3. **Rouvrir le passage** : récolter trois minerais de fer dans la carrière, forger une ferrure à l'enclume du village (12.6) ; Maëlle la pose et le passage du moulin s'ouvre pour de bon. Si Odile a confiance, Maëlle donne un indice sur le minerai.
 4. **Le pré des loups** : passer la porte, découvrir les éclats.
 5. **La manifestation** : atteindre la petite zone du Seuil ; découverte de la manifestation.
 6. **Le rôdeur du Seuil** : le vaincre (le chef de fin s'ajoutera au 12.7).
@@ -87,13 +87,23 @@ L'histoire de la tranche est en données : `data/v0/world/story.json` (`kind` «
 
 Gaspard, le vieux garde du camp de la carrière, conseille contre le rôdeur pendant l'étape 6.
 
+## Soin et métiers (sous-lot 12.6)
+
+**Objets de soin** (catalogue des objets en version 2 : type `consumable`, `heal`, `cooldownMs`, `stack`) : potion de soin (300 PV, pile de 5) et remède de l'aube (700 PV, pile de 3), recharge partagée de 20 s. À l'entrée dans une zone, le personnage emporte **au plus une pile** de chaque objet de soin de son inventaire ([MOTEUR.md](MOTEUR.md#soin-sous-lot-126)). `Drink(objet)` le fait boire ; le moteur peut refuser (PV pleins, recharge, étourdi). Un objet bu quitte l'inventaire. Les objets emportés sont **réservés** (`Inventory.Reserved`, `Available`) : ils restent dans l'inventaire et la sauvegarde, mais aucune autre opération (recette, réponse de dialogue, retrait) ne peut les prendre avant qu'ils soient bus. Le pilote refuse à l'admission un soin qui nomme un objet non emporté.
+
+**Métiers** (`data/v0/world/crafting.json`, `kind` « crafting », validé par `CraftingValidator` contre les textes, la zone et le catalogue) : forge, herboristerie, minage, chacun avec **sa propre expérience** et ses niveaux 1 à 10 (provisoire : 40, 100, 180… points). Combattre ne forme aucun métier ; récolter et fabriquer ne donnent jamais d'expérience de combat.
+
+- **Récolte** (`Gather`) : six nœuds dans les Vallons (trois filons de fer dans la carrière, trois touffes d'herbe de l'aube au village, près de la rivière et dans le pré). À 3 m au plus ; un nœud récolté repousse au bout d'une minute (dans la session) ; l'objet doit tenir dans l'inventaire.
+- **Fabrication** (`Craft`) : à l'atelier de la recette (un lieu de la zone : le village), au niveau de métier requis, les entrées présentes et le produit qui tient — sinon rien ne change. Recettes : ferrure (3 minerais de fer, forge), potion de soin (2 herbes, herboristerie), remède de l'aube (3 herbes et un éclat de Seuil, herboristerie niveau 3). **Une fabrication triviale forme moins** : moitié de l'expérience à 2 niveaux d'écart, quart à 4.
+- **Mission** : la porte du moulin s'ouvre avec une **ferrure forgée par le joueur** (récolte du minerai, fabrication à l'enclume), que Maëlle pose. Le minerai tombe encore parfois des sangliers (25 %).
+
 ## Sauvegarde
 
-Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 4 depuis le sous-lot 12.5 :
+Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 5 depuis le sous-lot 12.6 :
 
 ```json
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "save",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -118,7 +128,8 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
         "quests": {"quest.traces_sous_le_moulin": {"step": "traces", "progress": 0}},
         "trust": {"npc.odile": 1},
         "discoveries": []
-      }
+      },
+      "professions": {"minage": 24}
     },
     "consumed": [
       "zone.vallons/1/death/loup1"
@@ -133,6 +144,7 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
 - **Écriture atomique** (`SaveStore`) : le texte est écrit en entier dans `<fichier>.tmp`, vidé sur le disque, puis il remplace la sauvegarde ; la version précédente devient `<fichier>.bak` si elle est valide (une principale abîmée est remplacée sans toucher à la copie). Une coupure laisse toujours une sauvegarde complète. À la lecture, une sauvegarde absente ou invalide est remplacée par sa copie valide ; aucune des deux : nouvelle partie (ou « illisible », avec le motif).
 - `inventory` (12.3) : places occupées de l'inventaire, dans l'ordre, une pile par place (objet, quantité de 1 à 999) ; `equipment` : objet porté par emplacement, emplacements dans l'ordre ordinal. Objets, piles, emplacements et niveaux requis sont vérifiés contre le catalogue quand la partie reprend.
 - `story` (12.5) : état narratif personnel, trié : faits appris, avancement de chaque quête (étape en cours ou `done`, compteur de l'objectif), confiance non nulle des PNJ, découvertes. Il est vérifié contre l'histoire quand la partie reprend.
-- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement) et 3 (sans histoire) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
+- `professions` (12.6) : expérience non nulle de chaque métier.
+- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement), 3 (sans histoire) et 4 (sans métiers) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
 
 Limites : [LIMITES_LOT_12.md](LIMITES_LOT_12.md).

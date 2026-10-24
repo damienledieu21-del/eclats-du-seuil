@@ -134,6 +134,7 @@ public class Lot125StoryTests
         JsonObject root = JsonNode.Parse(json)!.AsObject();
         root["schemaVersion"] = 3;
         root["data"]!["character"]!.AsObject().Remove("story");
+        root["data"]!["character"]!.AsObject().Remove("professions");   // sous-lot 12.6 (version 5)
         string v3 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v3).IsValid);
         SaveDocument old = Document(v3);
@@ -297,20 +298,20 @@ public class Lot125StoryTests
     public void Maelle_forge_la_ferrure_et_ouvre_le_passage()
     {
         ZoneDefinition zone = Zone(-19, -5);
-        // Sans minerai, Maëlle le demande ; si Odile a confiance, elle donne en plus un indice (conséquence d'un choix passé, H1).
+        // Sans ferrure, Maëlle dit de la forger ; si Odile a confiance, elle donne en plus un indice (conséquence d'un choix passé, H1).
         Play(zone, Hero(At("passage", odile: -1))).Talk("npc.maelle", out DialogueView? demande);
         Assert.Equal("minerai", demande!.Node);
         Play(zone, Hero(At("passage", odile: 1))).Talk("npc.maelle", out DialogueView? indice);
         Assert.Equal("indice", indice!.Node);
-        // Avec trois minerais : la ferrure, le passage du moulin ouvert pour de bon, l'étape franchie au tick suivant.
-        WorldSession session = Play(zone, Hero(At("passage"), new ItemStack("item.minerai_de_fer", 4)));
+        // Sous-lot 12.6 : avec une ferrure forgée, Maëlle la pose ; le passage du moulin est ouvert pour de bon, l'étape franchie au tick suivant.
+        WorldSession session = Play(zone, Hero(At("passage"), new ItemStack("item.ferrure", 1), new ItemStack("item.minerai_de_fer", 1)));
         session.Talk("npc.maelle", out DialogueView? ferrure);
         Assert.Equal("ferrure", ferrure!.Node);
         Assert.Equal(DialogueRefusal.None, session.Choose(0, out DialogueView? faite, out IReadOnlyList<StoryEvent> events));
         Assert.Equal("faite", faite!.Node);
         Assert.Empty(faite.Options);
         Assert.Contains(events, e => e.Kind == StoryEventKind.PassageOpened && e.Id == "moulin");
-        Assert.Equal(1, session.Inventory.Count("item.minerai_de_fer"));
+        Assert.Equal((0, 1), (session.Inventory.Count("item.ferrure"), session.Inventory.Count("item.minerai_de_fer")));
         Assert.True(session.IsPassageOpen("moulin"));
         long xp = session.Character.Xp;
         Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/passage", "XpGiven xp 60" }, session.Step().Story.Select(e => e.ToString()));
@@ -364,12 +365,13 @@ public class Lot125StoryTests
         Assert.Equal("en_cours", encore!.Node);
         Assert.Equal(1, odile.Inventory.Count("item.amulette_de_l_aube"));
 
-        WorldSession maelle = Play(Zone(-19, -5), Hero(At("passage", odile: 1), new ItemStack("item.minerai_de_fer", 6)));
+        WorldSession maelle = Play(Zone(-19, -5), Hero(At("passage", odile: 1), new ItemStack("item.ferrure", 2)));
         maelle.Talk("npc.maelle", out DialogueView? ferrure);
+        Assert.Equal("ferrure", ferrure!.Node);
         Assert.Equal(DialogueRefusal.None, maelle.Choose(0, out _, out _));
         maelle.Talk("npc.maelle", out DialogueView? apres);
         Assert.Equal("bonjour", apres!.Node);
-        Assert.Equal(3, maelle.Inventory.Count("item.minerai_de_fer"));
+        Assert.Equal(1, maelle.Inventory.Count("item.ferrure"));
 
         WorldSession gaspard = Play(Zone(26, -13), Hero(At("rodeur")));
         gaspard.Talk("npc.gaspard", out DialogueView? rodeur);
@@ -383,15 +385,15 @@ public class Lot125StoryTests
     [Fact]
     public void Passage_sans_place_au_registre_refuse_en_entier()
     {
-        // Revue Codex de la PR #46 : registre du monde plein, passage fermé : la ferrure est refusée en entier (minerais gardés, passage
+        // Revue Codex de la PR #46 : registre du monde plein, passage fermé : la ferrure est refusée en entier (ferrure gardée, passage
         // fermé, aucun fait), le dialogue reste ouvert.
-        WorldSession session = Play(Zone(-19, -5), Hero(At("passage"), new ItemStack("item.minerai_de_fer", 4)));
+        WorldSession session = Play(Zone(-19, -5), Hero(At("passage"), new ItemStack("item.ferrure", 1)));
         for (int i = 0; session.Zone.RegistryRoom > 0; i++) session.Zone.Consume($"zone.vallons/test/k{i}");
         session.Talk("npc.maelle", out DialogueView? ferrure);
         Assert.Equal("ferrure", ferrure!.Node);
         Assert.Equal(DialogueRefusal.NoRoom, session.Choose(0, out _, out IReadOnlyList<StoryEvent> nothing));
         Assert.Empty(nothing);
-        Assert.Equal(4, session.Inventory.Count("item.minerai_de_fer"));
+        Assert.Equal(1, session.Inventory.Count("item.ferrure"));
         Assert.False(session.IsPassageOpen("moulin"));
         Assert.False(session.Narrative!.Knows("fact.moulin.porte_ouverte"));
         Assert.NotNull(session.Narrative.Open);
@@ -439,22 +441,26 @@ public class Lot125StoryTests
             new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("rodeur", 0), ["quest.autre"] = new QuestProgress(QuestProgress.Done) },
             new Dictionary<string, int> { ["npc.odile"] = -1, ["npc.maelle"] = 2, ["npc.gaspard"] = 0 }, new[] { "discovery.manifestation" });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), Hero(story)));
-        Assert.Contains("\"schemaVersion\": 4,", text, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 5,", text, StringComparison.Ordinal);
         Assert.Contains("      \"story\": {\n        \"facts\": [\"fact.odile.vexee\", \"fact.traces.recit\"],\n"
             + "        \"quests\": {\"quest.autre\": {\"step\": \"done\", \"progress\": 0}, \"quest.traces_sous_le_moulin\": {\"step\": \"rodeur\", \"progress\": 0}},\n"
-            + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"discoveries\": [\"discovery.manifestation\"]\n      }\n", text, StringComparison.Ordinal);
+            + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"discoveries\": [\"discovery.manifestation\"]\n      },\n", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(text, SaveJsonReader.Write(read.Save!));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
         // Version 3 : mise à jour, histoire vierge ; une histoire en version 3 est un champ inconnu.
-        int s = text.IndexOf(",\n      \"story\"", StringComparison.Ordinal), e = text.IndexOf("      }\n    },", s, StringComparison.Ordinal) + "      }\n".Length;
-        string v3 = text.Remove(s, e - s).Insert(s, "\n").Replace("\"schemaVersion\": 4", "\"schemaVersion\": 3");
+        static string CutFrom(string t, string field)
+        {
+            int a = t.IndexOf(",\n      \"" + field + "\"", StringComparison.Ordinal), b = t.IndexOf("\n    },", a, StringComparison.Ordinal);
+            return t.Remove(a, b - a);
+        }
+        string v3 = CutFrom(text, "story").Replace("\"schemaVersion\": 5", "\"schemaVersion\": 3");
         SaveLoadResult migrated = SaveJsonReader.Read(v3);
         Assert.True(migrated.IsValid, migrated.Report + "\n" + v3);
         Assert.True(migrated.Save!.Migrated);
         Assert.Empty(migrated.Save.Character!.Story.Facts);
-        Assert.Equal("$.data.character.story", Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 4", "\"schemaVersion\": 3")).Report.Errors).Path);
+        Assert.Equal("$.data.character.story", Assert.Single(SaveJsonReader.Read(CutFrom(text, "professions").Replace("\"schemaVersion\": 5", "\"schemaVersion\": 3")).Report.Errors).Path);
         // Une histoire sauvegardée doit aller avec les données : quête inconnue refusée à la reprise.
         Assert.Throws<ArgumentException>(() => Play(Zone(), Hero(story)));
     }

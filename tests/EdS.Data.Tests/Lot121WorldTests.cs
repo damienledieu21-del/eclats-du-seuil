@@ -84,9 +84,9 @@ public class Lot121WorldTests
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
             (Assert.Single(ReadMutated(root => root["schemaVersion"] = 9, scenario: "zones/vallons").Report.Errors).Path,
              Assert.Single(ReadMutated(root => root["schemaVersion"] = 9, scenario: "zones/vallons").Report.Errors).Code));
-        Assert.Equal(11, ScenarioValidator.CurrentSchemaVersion);
+        Assert.Equal(12, ScenarioValidator.CurrentSchemaVersion);
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(11, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(12, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Equal("boolean", schema["properties"]!["data"]!["properties"]!["zone"]!["type"]!.GetValue<string>());
     }
 
@@ -435,7 +435,7 @@ public class Lot121WorldTests
     public void Versions_et_type_de_sauvegarde()
     {
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
-            (Assert.Single(SaveJsonReader.Read(SaveText(version: 5)).Report.Errors).Path, Assert.Single(SaveJsonReader.Read(SaveText(version: 5)).Report.Errors).Code));
+            (Assert.Single(SaveJsonReader.Read(SaveText(version: 6)).Report.Errors).Path, Assert.Single(SaveJsonReader.Read(SaveText(version: 6)).Report.Errors).Code));
         Assert.Equal("$.kind", Assert.Single(SaveJsonReader.Read(SaveText(kind: "scenario")).Report.Errors).Path);
         Assert.Equal("$.data.worldTick", Assert.Single(SaveJsonReader.Read(SaveText(tick: (SaveValidator.MaxWorldTick + 1).ToString())).Report.Errors).Path);
         Assert.Contains(SaveJsonReader.Read("{\"schemaVersion\": 1, \"kind\": \"save\", \"contentVersion\": \"0.1.0\", \"data\": {\"zone\": \"zone.vallons\", \"worldTick\": 0, \"sessions\": 0, \"consumed\": [], \"extra\": 1}}").Report.Errors,
