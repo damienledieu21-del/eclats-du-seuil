@@ -102,9 +102,13 @@ namespace EdS.World
                     else if (v.HasLeft || refused) life.RespawnAt = now;   // laisse (ou arrivée refusée) : une vie calme la remplace aussitôt
                     else if (!life.Leashing && v.IsPresent && v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
                     {
-                        zone.Leave(life.Current);
-                        life.Leashing = true;
-                        (events ??= new List<PopulationEvent>()).Add(new PopulationEvent(PopulationEventKind.Leashed, life.Population.Creature, life.Current, now));
+                        // Revue Codex de la PR #45 : un départ refusé par le pilote (plafond de commandes, refus atomique) ne fait pas échouer le
+                        // tick ; la laisse est retentée au tick suivant.
+                        if (TryLeave(zone, life.Current))
+                        {
+                            life.Leashing = true;
+                            (events ??= new List<PopulationEvent>()).Add(new PopulationEvent(PopulationEventKind.Leashed, life.Population.Creature, life.Current, now));
+                        }
                     }
                 }
                 if (life.RespawnAt is long due && due <= now)
@@ -138,8 +142,9 @@ namespace EdS.World
             {
                 engine.Join(setup);
             }
-            catch (ArgumentException)
+            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
+                // Arrivée refusée (place prise, file pleine : refus atomique) : nouvel essai une seconde plus tard.
                 life.RespawnAt = checked(now + Math.Max(1, 1000 / tickMs));
                 return null;
             }
@@ -149,6 +154,19 @@ namespace EdS.World
             life.Leashing = false;
             _byCreature[id] = life.Population;
             return new PopulationEvent(PopulationEventKind.Respawned, t.Id, id, now);
+        }
+
+        private static bool TryLeave(Zone zone, string combatant)
+        {
+            try
+            {
+                zone.Leave(combatant);
+                return true;
+            }
+            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+            {
+                return false;
+            }
         }
 
         private static bool Occupied(CombatEngine engine, CombatantPlacement place)

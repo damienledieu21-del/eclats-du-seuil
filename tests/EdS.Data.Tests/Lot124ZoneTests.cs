@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EdS.Data;
 using EdS.Data.Characters;
 using EdS.Data.Items;
 using EdS.Data.Json;
@@ -32,11 +33,12 @@ public class Lot124ZoneTests
     private static CharacterProgression Progression => ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
 
     /// <summary>Zone lue après retouches de son fichier et de son scénario (copié dans un dossier temporaire).</summary>
-    private static ZoneLoadResult Zone(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null)
+    private static ZoneLoadResult Zone(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null, GameData? data = null)
     {
+        data ??= ShippedData;
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZonePath))!.AsObject();
         zone?.Invoke(root);
-        if (scenario is null) return ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, ShippedData, Items);
+        if (scenario is null) return ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, data, Items);
         string directory = Path.Combine(Path.GetTempPath(), "eds_zone_" + Guid.NewGuid().ToString("N"));
         try
         {
@@ -44,7 +46,7 @@ public class Lot124ZoneTests
             JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
             scenario(s);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
-            return ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, Items);
+            return ZoneJsonReader.Read(root.ToJsonString(), directory, data, Items);
         }
         finally
         {
@@ -219,6 +221,43 @@ public class Lot124ZoneTests
         Assert.Equal(max - 11, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);
         for (int i = 0; i < 200; i++) Assert.Empty(session.Step().Population);
+    }
+
+    [Fact]
+    public void Laisse_refusee_par_le_pilote_ne_fait_pas_echouer_le_tick() =>
+        // Revue Codex de la PR #45 : plafond de commandes atteint (une seule admise, prise par le Bastion) : le départ du loup est refusé ;
+        // le tick n'échoue pas, la laisse est retentée aux ticks suivants, le loup reste dans la zone.
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCommands\": 20000", "\"maxCommands\": 1"), directory =>
+        {
+            GameData data = GameDataLoader.Load(directory).Data!;
+            ZoneDefinition z = Zone(zone => Population(zone, "loup1")["leashRange"] = 1,
+                s => Creature(s, "loup1")["position"] = new JsonArray(-16, -8), data).Zone!;
+            var session = new WorldSession(NewGame(), z, data, Progression, Items);
+            session.Zone.Engine.Submit(new CombatCommand(0, "bastion", CombatAction.GuardStart));
+            var population = new List<PopulationEvent>();
+            bool engaged = false;
+            for (int i = 0; i < 200; i++)
+            {
+                population.AddRange(session.Step().Population);
+                engaged |= session.Zone.Engine.View("loup1").Engaged;
+            }
+            Assert.True(engaged);
+            Assert.DoesNotContain(population, e => e.Kind == PopulationEventKind.Leashed);
+            CombatantView wolf = session.Zone.Engine.View("loup1");
+            Assert.False(wolf.HasLeft);
+            return 0;
+        });
+
+    [Fact]
+    public void Point_sur_inaccessible_au_personnage_refuse()
+    {
+        // Revue Codex de la PR #45 : l'emprise du personnage (0,5 m) doit tenir au point sûr : dans l'aire et hors des obstacles (les places
+        // des créatures de départ ne comptent que si elles lui sont solides : pas dans les Vallons, contact traversable).
+        JsonArray At(double x, double z) => new(x, z);
+        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-3, 9))));        // dans le moulin
+        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-23.75, -12))));  // au bord
+        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-6.25, 9))));     // contre le moulin
+        Assert.True(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-23.5, -12)).IsValid);                                        // bord exact
     }
 
     [Fact]

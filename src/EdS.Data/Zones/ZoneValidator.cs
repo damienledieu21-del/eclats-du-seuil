@@ -160,6 +160,9 @@ namespace EdS.Data.Zones
         /// <summary>Longueur maximale d'une créature peuplée (ses vies suivantes y ajoutent « _v&lt;nombre&gt; »).</summary>
         public const int MaxCreatureLength = 60;
 
+        /// <summary>Rayon de l'emprise d'un personnage qui entre par un point sûr (provisoire, celui des scénarios).</summary>
+        public static readonly Fixed CharacterRadius = Fixed.Parse("0.5");
+
         private static readonly Regex LocalId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex ScenarioPath = new Regex(@"^[a-z0-9_]+(/[a-z0-9_]+)*\z", RegexOptions.CultureInvariant);
 
@@ -206,6 +209,8 @@ namespace EdS.Data.Zones
                     bool ok = CheckId(s.Id, path + ".id", safePoints.Select(x => x.Id), report) & CheckName(s.Name, path + ".name", report);
                     if (!CheckPoint(s.Position, path + ".position", "[x, z]", report)) ok = false;
                     else if (!Inside(Point(s.Position!))) { report.Add(path + ".position", ValidationCode.OutOfRange, "point sûr hors de l'aire praticable de la zone."); ok = false; }
+                    else if (scenario is { Zone: true } && space != null && Footprint(Point(s.Position!), scenario, space) is string why)
+                    { report.Add(path + ".position", ValidationCode.InvalidValue, why); ok = false; }
                     if (ok) safePoints.Add(new SafePoint(s.Id!, s.Name!, Point(s.Position!)));
                 }
             }
@@ -316,6 +321,29 @@ namespace EdS.Data.Zones
             if (!string.IsNullOrWhiteSpace(name)) return true;
             Missing(report, path, "nom affiché");
             return false;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #45 : emprise d'un personnage (<see cref="CharacterRadius"/>) posée sur un point sûr, comme la simulation la
+        /// placera : entière dans l'aire praticable, hors de tout obstacle (passages fermés compris), sans chevaucher un combattant de départ
+        /// qui lui est solide (son arrivée serait refusée). Null si elle tient, sinon le motif.
+        /// </summary>
+        private static string? Footprint(GroundVector p, CombatSetup scenario, CombatSpace space)
+        {
+            Fixed r = CharacterRadius;
+            if (p.X - r < space.Min.X || p.X + r > space.Max.X || p.Z - r < space.Min.Z || p.Z + r > space.Max.Z)
+                return $"l'emprise d'un personnage ({r} m) déborde de l'aire praticable de la zone.";
+            foreach (SpaceObstacle o in space.Obstacles)
+                if (o.Points.Count >= 3 && ConvexPolygon.IsStrictlyConvex(o.Points, out _) && new ConvexPolygon(o.Points).OverlapsCircle(p.X.Raw, p.Z.Raw, r.Raw))
+                    return $"l'emprise d'un personnage ({r} m) chevauche l'obstacle « {o.Id} ».";
+            foreach (CombatantSetup c in scenario.Combatants)
+            {
+                if (c.ArrivalMs != null || c.Placement is not CombatantPlacement q) continue;
+                if (scenario.Combat.AreSolid(true, r, c is CharacterSetup, q.Radius)
+                    && Planar.CirclesOverlap(p.X.Raw, p.Z.Raw, r.Raw, q.Position.X.Raw, q.Position.Z.Raw, q.Radius.Raw))
+                    return $"l'emprise d'un personnage ({r} m) chevauche la place de « {c.Id} ».";
+            }
+            return null;
         }
 
         /// <summary>Point présent et complet (les deux coordonnées), y compris pour un document construit hors du lecteur JSON.</summary>

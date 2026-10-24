@@ -137,7 +137,7 @@ namespace EdS.World
         public ZoneDefinition? Definition { get; }
 
         /// <summary>Rayon de l'emprise d'un personnage qui entre par un point sûr (provisoire, celui des scénarios).</summary>
-        public static readonly Fixed CharacterRadius = Fixed.Parse("0.5");
+        public static readonly Fixed CharacterRadius = ZoneValidator.CharacterRadius;
 
         /// <summary>
         /// Sous-lot 12.4 : partie dans une zone du monde. La session de zone part de sa simulation, passages ouverts retirés
@@ -197,8 +197,18 @@ namespace EdS.World
             // Revue Codex de la PR #43 : un départ prend effet en fin de tick, après les morts : la présence se juge aussi au début du tick.
             bool wasPresent = Zone.Engine.View(_character.Id).IsPresent;
             IReadOnlyList<ZoneEvent> events = Zone.Step();
+            IReadOnlyList<ExperienceGained> gains = Array.Empty<ExperienceGained>();
+            IReadOnlyList<LootGained> loot = Array.Empty<LootGained>();
+            if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
+            // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
+            // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
             IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone) ?? Array.Empty<PopulationEvent>();
-            if (events.Count == 0) return population.Count == 0 ? SessionStep.Empty : new SessionStep(Array.Empty<ExperienceGained>(), Array.Empty<LootGained>(), population);
+            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 ? SessionStep.Empty : new SessionStep(gains, loot, population);
+        }
+
+        /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
+        private void Reward(IReadOnlyList<ZoneEvent> events, bool wasPresent, out IReadOnlyList<ExperienceGained> experience, out IReadOnlyList<LootGained> rolls)
+        {
             CombatantView me = Zone.Engine.View(_character.Id);
             bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
             var gains = new List<ExperienceGained>();
@@ -224,7 +234,8 @@ namespace EdS.World
                     foreach (LootRoll roll in Loot.Roll(table, e.Key))
                         loot.Add(new LootGained(e, roll.Item, roll.Count, Inventory.Add(roll.Item, roll.Count) == InventoryRefusal.None));
             }
-            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 ? SessionStep.Empty : new SessionStep(gains, loot, population);
+            experience = gains;
+            rolls = loot;
         }
 
         /// <summary>Sauvegarde à ce tick : monde de la zone et personnage à jour.</summary>
