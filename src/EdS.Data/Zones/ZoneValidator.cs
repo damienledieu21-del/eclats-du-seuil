@@ -6,6 +6,7 @@ using EdS.Data.Items;
 using EdS.Data.Saves;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
+using EdS.Domain;
 using EdS.Domain.Collections;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
@@ -376,6 +377,10 @@ namespace EdS.Data.Zones
                     // arrive avec la session, ne chevauche pas non plus une créature de départ de la zone (son arrivée serait refusée).
                     else if (scenario != null && Crowded(form, i == 0, scenario, safePoints) is string crowd)
                     { report.Add(p, ValidationCode.InvalidValue, crowd); ok = false; }
+                    // Revue Codex de la PR #48 : la forme arrive dans la simulation de la zone, qui revalide le combat complété : ses références
+                    // (cible, déclencheurs…) doivent exister dans la zone ou parmi les formes, pas seulement dans le scénario du chef.
+                    else if (scenario != null && ArrivalRefused(scenario, templates, form) is string refused)
+                    { report.Add(p, ValidationCode.InvalidValue, $"forme refusée par la simulation de la zone : {refused}"); ok = false; }
                     else templates.Add(form);
                 }
             if (b.Fact is null || b.Fact.Length > 200 || !FactId.IsMatch(b.Fact)) { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » mal formé : « fact.… »."); ok = false; }
@@ -426,6 +431,16 @@ namespace EdS.Data.Zones
                     return $"l'emprise d'un personnage ({r} m) chevauche la place de « {c.Id} ».";
             }
             return null;
+        }
+
+        /// <summary>Premier motif de refus du combat de la zone complété par les formes déjà admises et celle-ci (arrivées), ou null.</summary>
+        private static string? ArrivalRefused(CombatSetup scenario, IEnumerable<AssailantSetup> earlier, AssailantSetup form)
+        {
+            static AssailantSetup Arriving(AssailantSetup t) =>
+                new AssailantSetup(t.Id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
+                    t.Triggers, t.Health, t.Placement, 0, t.Behavior);
+            IReadOnlyList<RuleViolation> violations = scenario.Completed(earlier.Append(form).Select(Arriving), Array.Empty<CombatCommand>()).Validate();
+            return violations.Count == 0 ? null : $"{string.Join(", ", violations[0].Fields)} : {violations[0].Message}";
         }
 
         private static string? Crowded(AssailantSetup form, bool first, CombatSetup scenario, IReadOnlyList<SafePoint> safePoints)

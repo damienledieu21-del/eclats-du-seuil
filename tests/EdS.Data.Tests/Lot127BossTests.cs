@@ -141,6 +141,25 @@ public class Lot127BossTests
     }
 
     [Fact]
+    public void Forme_dont_la_cible_n_existe_que_dans_le_scenario_du_chef_refusee()
+    {
+        // Revue Codex de la PR #48 : la seconde forme vise un combattant présent seulement dans le scénario du chef (jamais importé dans la
+        // zone) : son arrivée serait refusée par le moteur ; la zone est refusée au chemin de la forme.
+        ZoneLoadResult r = Load(boss: f =>
+        {
+            JsonArray combatants = f["data"]!["combatants"]!.AsArray();
+            JsonObject extra = combatants[0]!.DeepClone().AsObject();
+            extra["id"] = "sbire";
+            extra["team"] = "sauvages";
+            extra["position"] = new JsonArray(45, 22);
+            combatants.Add(extra);
+            combatants[1]!["target"] = "sbire";
+        });
+        Assert.Equal("$.data.boss.forms[1]", First(r));
+        Assert.Contains("simulation de la zone", r.Report.Errors[0].Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Victoire_au_dernier_tick_de_la_session_reconnue()
     {
         // Revue Codex de la PR #48 : la dernière forme tombe au tick qui termine la session : la victoire, la récompense unique et le fait
