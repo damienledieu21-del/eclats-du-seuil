@@ -292,9 +292,9 @@ namespace EdS.Data.Saves
             SavedCharacter? character = null;
             if (version < 2)
             {
-                if (data.HasCharacter) report.Add("$.data.character", ValidationCode.UnknownField, $"champ inconnu en version {document.SchemaVersion} (personnage : version 2).");
+                if (data.HasCharacter || data.Character != null) report.Add("$.data.character", ValidationCode.UnknownField, $"champ inconnu en version {document.SchemaVersion} (personnage : version 2).");
             }
-            else if (!data.HasCharacter) Missing(report, "$.data.character", "personnage du joueur, ou null");
+            else if (!data.HasCharacter && data.Character == null) Missing(report, "$.data.character", "personnage du joueur, ou null");
             else if (data.Character is CharacterData c) character = CheckCharacter(c, version, report);
             if (!report.IsValid || document.ContentVersion is null) return new SaveLoadResult(report, null);
             return new SaveLoadResult(report, new WorldSave(data.Zone!, data.WorldTick!.Value, data.Sessions!.Value, data.Consumed!.Select(k => k!), character, migrating));
@@ -324,6 +324,7 @@ namespace EdS.Data.Saves
             void Names(List<string?>? list, string field)
             {
                 if (list is null) { Missing(report, $"{path}.{field}", "liste, éventuellement vide"); return; }
+                if (list.Count > MaxSkills) { report.Add($"{path}.{field}", ValidationCode.LimitExceeded, $"{list.Count} compétences, au plus {MaxSkills}."); return; }
                 for (int i = 0; i < list.Count; i++)
                     if (list[i] is null) Missing(report, $"{path}.{field}[{i}]", "identifiant de compétence");
                     else if (!IsDataId(list[i])) report.Add($"{path}.{field}[{i}]", ValidationCode.InvalidValue, $"identifiant de compétence « {list[i]} » invalide : {format}.");
@@ -337,12 +338,15 @@ namespace EdS.Data.Saves
             // niveau requis) est vérifiée quand la partie reprend : la sauvegarde ne dépend pas des données du jeu.
             if (version < 3)
             {
-                foreach (string field in new[] { "inventory", "equipment" }.Where(c.Present.Contains))
+                // Revue Codex de la PR #44 : refusés aussi quand ils sont seulement renseignés dans l'objet public (pas de perte silencieuse).
+                foreach (string field in new[] { "inventory", "equipment" }.Where(f => c.Present.Contains(f) || (f == "inventory" ? c.Inventory != null : c.Equipment != null)))
                     report.Add($"{path}.{field}", ValidationCode.UnknownField, $"champ inconnu en version {version} (inventaire et équipement : version 3).");
             }
             else
             {
                 if (c.Inventory is null) Missing(report, path + ".inventory", "places occupées de l'inventaire, éventuellement vide");
+                else if (c.Inventory.Count > MaxInventory)   // revue Codex de la PR #44 : même borne que le lecteur JSON
+                    report.Add(path + ".inventory", ValidationCode.LimitExceeded, $"{c.Inventory.Count} places, au plus {MaxInventory}.");
                 else
                     for (int i = 0; i < c.Inventory.Count; i++)
                     {
@@ -354,6 +358,8 @@ namespace EdS.Data.Saves
                         else if (stack.Count < 1 || stack.Count > MaxStack) report.Add(stackPath + ".count", ValidationCode.OutOfRange, $"quantité hors de [1, {MaxStack}].");
                     }
                 if (c.Equipment is null) Missing(report, path + ".equipment", "objet porté par emplacement, éventuellement vide");
+                else if (c.Equipment.Count > MaxEquipment)
+                    report.Add(path + ".equipment", ValidationCode.LimitExceeded, $"{c.Equipment.Count} emplacements, au plus {MaxEquipment}.");
                 else
                 {
                     // Revue Codex de la PR #44 : un emplacement une seule fois (sauvegarde construite en objets publics).
@@ -375,16 +381,21 @@ namespace EdS.Data.Saves
             SavedStory? story = null;
             if (version < 4)
             {
-                if (c.Present.Contains("story")) report.Add(path + ".story", ValidationCode.UnknownField, $"champ inconnu en version {version} (histoire : version 4).");
+                // Comme l'inventaire et l'équipement (revue Codex de la PR #44) : refusé aussi quand il est renseigné hors du lecteur JSON.
+                if (c.Present.Contains("story") || c.Story != null)
+                    report.Add(path + ".story", ValidationCode.UnknownField, $"champ inconnu en version {version} (histoire : version 4).");
             }
-            else if (!c.Present.Contains("story")) Missing(report, path + ".story", "faits, quêtes, confiance, découvertes");
             else if (c.Story is StoryStateData st) story = CheckStory(st, path + ".story", report);
+            else Missing(report, path + ".story", "faits, quêtes, confiance, découvertes");
             // Sous-lot 12.6 (version 5) : expérience des métiers.
             if (version < 5)
             {
-                if (c.Present.Contains("professions")) report.Add(path + ".professions", ValidationCode.UnknownField, $"champ inconnu en version {version} (métiers : version 5).");
+                // Comme l'histoire : refusé aussi quand il est renseigné hors du lecteur JSON.
+                if (c.Present.Contains("professions") || c.Professions != null)
+                    report.Add(path + ".professions", ValidationCode.UnknownField, $"champ inconnu en version {version} (métiers : version 5).");
             }
             else if (c.Professions is null) Missing(report, path + ".professions", "expérience de chaque métier, éventuellement vide");
+            else if (c.Professions.Count > MaxProfessions) report.Add(path + ".professions", ValidationCode.LimitExceeded, $"{c.Professions.Count} métiers, au plus {MaxProfessions}.");
             else
                 for (int i = 0; i < c.Professions.Count; i++)
                 {
@@ -451,6 +462,7 @@ namespace EdS.Data.Saves
                 }
             }
             if (st.Trust is null) Missing(report, path + ".trust", "confiance des PNJ, éventuellement vide");
+            else if (st.Trust.Count > MaxStoryEntries) report.Add(path + ".trust", ValidationCode.LimitExceeded, $"au plus {MaxStoryEntries}.");
             else
                 for (int i = 0; i < st.Trust.Count; i++)
                 {
@@ -468,6 +480,12 @@ namespace EdS.Data.Saves
 
         /// <summary>Sous-lot 12.3 : plus grand nombre de places d'un inventaire sauvegardé, et plus grande pile.</summary>
         public const int MaxInventory = 200;
+
+        /// <summary>Emplacements d'équipement et compétences d'une liste, au plus (mêmes bornes que le lecteur JSON).</summary>
+        public const int MaxEquipment = 64, MaxSkills = 64;
+
+        /// <summary>Sous-lot 12.6 : métiers d'une sauvegarde, au plus (même borne que le lecteur JSON).</summary>
+        public const int MaxProfessions = 64;
 
         public const int MaxStack = 999;
 

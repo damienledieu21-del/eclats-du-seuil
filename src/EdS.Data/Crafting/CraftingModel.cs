@@ -220,6 +220,7 @@ namespace EdS.Data.Crafting
             else if (d.MaxLevel < 1 || d.MaxLevel > MaxLevels) r.Add("$.data.maxLevel", ValidationCode.OutOfRange, $"niveau maximal hors de [1, {MaxLevels}].");
             else max = d.MaxLevel.Value;
             if (d.XpToLevel is null) Missing(r, "$.data.xpToLevel", "expérience cumulée de chaque niveau");
+            else if (d.XpToLevel.Count > MaxLevels) r.Add("$.data.xpToLevel", ValidationCode.LimitExceeded, $"au plus {MaxLevels} niveaux.");
             else
             {
                 if (max > 0 && d.XpToLevel.Count != max) r.Add("$.data.xpToLevel", ValidationCode.InvalidValue, $"{d.XpToLevel.Count} niveaux, {max} attendus.");
@@ -233,8 +234,12 @@ namespace EdS.Data.Crafting
                 }
             }
 
+            // Même règle que la revue Codex de la PR #44 : bornes et doublons contrôlés aussi pour un document en objets publics ; un
+            // identifiant déjà donné est en double même si sa première description est invalide.
             var professions = new List<Profession>();
+            var professionIds = new HashSet<string>(StringComparer.Ordinal);
             if (d.Professions is null) Missing(r, "$.data.professions", "métiers");
+            else if (d.Professions.Count > MaxProfessions) r.Add("$.data.professions", ValidationCode.LimitExceeded, $"au plus {MaxProfessions} métiers.");
             else
                 for (int i = 0; i < d.Professions.Count; i++)
                 {
@@ -242,7 +247,7 @@ namespace EdS.Data.Crafting
                     if (d.Professions[i] is not ProfessionData x) { Missing(r, p, "métier"); continue; }
                     bool ok = true;
                     if (!IsProfessionId(x.Id)) { r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {x.Id} » mal formé."); ok = false; }
-                    else if (professions.Any(q => q.Id == x.Id)) { r.Add(p + ".id", ValidationCode.DuplicateId, $"métier « {x.Id} » déjà décrit."); ok = false; }
+                    else if (!professionIds.Add(x.Id!)) { r.Add(p + ".id", ValidationCode.DuplicateId, $"métier « {x.Id} » déjà décrit."); ok = false; }
                     ok &= Text(texts, x.Name, p + ".name", r);
                     if (ok) professions.Add(new Profession(x.Id!, x.Name!));
                 }
@@ -263,6 +268,7 @@ namespace EdS.Data.Crafting
             }
 
             var recipes = new List<Recipe>();
+            var recipeIds = new HashSet<string>(StringComparer.Ordinal);
             if (d.Recipes is null) Missing(r, "$.data.recipes", "recettes");
             else
             {
@@ -273,7 +279,7 @@ namespace EdS.Data.Crafting
                     if (d.Recipes[i] is not RecipeData x) { Missing(r, p, "recette"); continue; }
                     bool ok = true;
                     if (x.Id is null || x.Id.Length > 200 || !RecipeId.IsMatch(x.Id)) { r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {x.Id} » mal formé : « recipe.… »."); ok = false; }
-                    else if (recipes.Any(q => q.Id == x.Id)) { r.Add(p + ".id", ValidationCode.DuplicateId, $"recette « {x.Id} » déjà décrite."); ok = false; }
+                    else if (!recipeIds.Add(x.Id)) { r.Add(p + ".id", ValidationCode.DuplicateId, $"recette « {x.Id} » déjà décrite."); ok = false; }
                     ok &= Text(texts, x.Name, p + ".name", r);
                     ok &= Known(x.Profession, p + ".profession");
                     if (x.RequiredLevel is null || x.RequiredLevel < 1 || (max > 0 && x.RequiredLevel > max))
@@ -299,6 +305,8 @@ namespace EdS.Data.Crafting
             }
 
             var nodes = new List<GatheringNode>();
+            var nodeIds = new HashSet<string>(StringComparer.Ordinal);
+            long tickMs = zone.Setup.Combat.TickMilliseconds;
             CombatSpace space = zone.Setup.Space!;
             if (d.Nodes is null) Missing(r, "$.data.nodes", "nœuds de récolte");
             else
@@ -310,19 +318,19 @@ namespace EdS.Data.Crafting
                     if (d.Nodes[i] is not NodeData x) { Missing(r, p, "nœud"); continue; }
                     bool ok = true;
                     if (x.Id is null || x.Id.Length > 64 || !LocalId.IsMatch(x.Id)) { r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {x.Id} » mal formé."); ok = false; }
-                    else if (nodes.Any(q => q.Id == x.Id)) { r.Add(p + ".id", ValidationCode.DuplicateId, $"nœud « {x.Id} » déjà décrit."); ok = false; }
+                    else if (!nodeIds.Add(x.Id)) { r.Add(p + ".id", ValidationCode.DuplicateId, $"nœud « {x.Id} » déjà décrit."); ok = false; }
                     ok &= Known(x.Profession, p + ".profession");
                     (string, int)? st = Stack(new StackData { Item = x.Item, Count = x.Count }, p);
                     if (st is null) ok = false;
-                    if (x.Position is null) { Missing(r, p + ".position", "[x, z]"); ok = false; }
+                    if (x.Position is null || x.Position.X is null || x.Position.Z is null) { Missing(r, p + ".position", "[x, z]"); ok = false; }
                     else
                     {
                         var pos = new GroundVector(x.Position.X!.Value, x.Position.Z!.Value);
                         if (pos.X < space.Min.X || pos.X > space.Max.X || pos.Z < space.Min.Z || pos.Z > space.Max.Z)
                         { r.Add(p + ".position", ValidationCode.OutOfRange, "nœud hors de l'aire praticable de la zone."); ok = false; }
                     }
-                    if (x.RespawnMs is null || x.RespawnMs < MinRespawnMs || x.RespawnMs > MaxRespawnMs || x.RespawnMs % 50 != 0)
-                    { r.Add(p + ".respawnMs", ValidationCode.OutOfRange, $"repousse hors de [{MinRespawnMs}, {MaxRespawnMs}] ms (multiple de 50)."); ok = false; }
+                    if (x.RespawnMs is null || x.RespawnMs < MinRespawnMs || x.RespawnMs > MaxRespawnMs || x.RespawnMs % tickMs != 0)
+                    { r.Add(p + ".respawnMs", ValidationCode.OutOfRange, $"repousse hors de [{MinRespawnMs}, {MaxRespawnMs}] ms (multiple du tick, {tickMs} ms)."); ok = false; }
                     if (x.Xp is null || x.Xp < 1 || x.Xp > MaxGainXp) { r.Add(p + ".xp", ValidationCode.OutOfRange, $"expérience de métier hors de [1, {MaxGainXp}]."); ok = false; }
                     if (ok) nodes.Add(new GatheringNode(x.Id!, x.Profession!, st!.Value.Item1, st.Value.Item2,
                         new GroundVector(x.Position!.X!.Value, x.Position.Z!.Value), x.RespawnMs!.Value, x.Xp!.Value));

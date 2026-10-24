@@ -29,10 +29,14 @@ namespace EdS.Data.Json
             return Read(JsonInput.Utf8(json, report), texts, zone, items, report);
         }
 
-        private static CraftingLoadResult Read(byte[]? json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport report)
+        private static CraftingLoadResult Read(byte[]? json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport report) =>
+            CraftingValidator.Validate(ReadDocument(json, report), texts, zone, items, report);
+
+        /// <summary>Document lu sans validation (tests : document retouché en objets publics, puis validé).</summary>
+        internal static CraftingDocument ReadDocument(byte[]? json, ValidationReport report)
         {
             var document = new CraftingDocument();
-            if (json is null) return CraftingValidator.Validate(document, texts, zone, items, report);
+            if (json is null) return document;
             JsonHeader header = JsonInput.Parse(json, report, (input, element) =>
             {
                 var d = new CraftingData();
@@ -52,7 +56,7 @@ namespace EdS.Data.Json
             document.SchemaVersion = header.SchemaVersion;
             document.Kind = header.Kind;
             document.ContentVersion = header.ContentVersion;
-            return CraftingValidator.Validate(document, texts, zone, items, report);
+            return document;
         }
 
         private static List<long?>? ReadLongs(JsonInput input, JsonElement element, string path)

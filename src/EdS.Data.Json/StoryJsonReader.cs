@@ -73,10 +73,14 @@ namespace EdS.Data.Json
             return ReadStory(JsonInput.Utf8(json, report), texts, zone, items, report);
         }
 
-        private static StoryLoadResult ReadStory(byte[]? json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport report)
+        private static StoryLoadResult ReadStory(byte[]? json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport report) =>
+            StoryValidator.Validate(ReadStoryDocument(json, report), texts, zone, items, report);
+
+        /// <summary>Document lu sans validation (tests : document retouché en objets publics, puis validé).</summary>
+        internal static StoryDocument ReadStoryDocument(byte[]? json, ValidationReport report)
         {
             var document = new StoryDocument();
-            if (json is null) return StoryValidator.Validate(document, texts, zone, items, report);
+            if (json is null) return document;
             JsonHeader header = JsonInput.Parse(json, report, (input, element) =>
             {
                 var d = new StoryData();
@@ -92,7 +96,7 @@ namespace EdS.Data.Json
             document.SchemaVersion = header.SchemaVersion;
             document.Kind = header.Kind;
             document.ContentVersion = header.ContentVersion;
-            return StoryValidator.Validate(document, texts, zone, items, report);
+            return document;
         }
 
         private static List<T?>? List<T>(JsonInput input, JsonElement element, string path, int max, Func<JsonInput, JsonElement, string, T?> read) where T : class =>

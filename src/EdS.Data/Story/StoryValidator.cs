@@ -70,6 +70,8 @@ namespace EdS.Data.Story
                     if (!IsKey(e.Key)) report.Add(path, ValidationCode.InvalidValue, "clé invalide : « text. » puis minuscules, chiffres, « _ » et « . ».");
                     else if (string.IsNullOrWhiteSpace(e.Value)) Missing(report, path, "texte");
                     else if (e.Value!.Length > MaxLength) report.Add(path, ValidationCode.OutOfRange, $"texte de plus de {MaxLength} caractères.");
+                    // Même règle que la revue Codex de la PR #44 : une clé une seule fois (catalogue construit en objets publics).
+                    else if (entries.ContainsKey(e.Key)) report.Add(path, ValidationCode.DuplicateId, $"clé « {e.Key} » déjà donnée plus haut.");
                     else entries[e.Key] = e.Value;
                 }
             }
@@ -191,7 +193,7 @@ namespace EdS.Data.Story
                         string path = $"$.data.npcs[{i}]";
                         if (_d.Npcs[i] is not NpcData n) continue;
                         bool ok = Text(n.Name, path + ".name");
-                        if (n.Position is null) { TextsValidator.Missing(_r, path + ".position", "[x, z]"); ok = false; }
+                        if (n.Position is null || n.Position.X is null || n.Position.Z is null) { TextsValidator.Missing(_r, path + ".position", "[x, z]"); ok = false; }
                         else if (!Inside(Point(n.Position))) { _r.Add(path + ".position", ValidationCode.OutOfRange, "PNJ hors de l'aire praticable de la zone."); ok = false; }
                         if (n.Dialogue is null) { TextsValidator.Missing(_r, path + ".dialogue", "dialogue du PNJ"); ok = false; }
                         else if (!_dialogues.Contains(n.Dialogue)) { _r.Add(path + ".dialogue", ValidationCode.UnknownReference, $"dialogue inconnu « {n.Dialogue} »."); ok = false; }
@@ -446,21 +448,21 @@ namespace EdS.Data.Story
 
             private bool NoValue(TermData t, string p)
             {
-                if (!t.Present.Contains("value")) return true;
+                if (!t.Present.Contains("value") && t.Value is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
                 _r.Add(p + ".value", ValidationCode.InvalidValue, "pas de valeur pour cette nature.");
                 return false;
             }
 
             private bool NoId(TermData t, string p)
             {
-                if (!t.Present.Contains("id")) return true;
+                if (!t.Present.Contains("id") && t.Id is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
                 _r.Add(p + ".id", ValidationCode.InvalidValue, "pas d'identifiant pour cette nature.");
                 return false;
             }
 
             private bool NoStep(TermData t, string p)
             {
-                if (!t.Present.Contains("step")) return true;
+                if (!t.Present.Contains("step") && t.Step is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
                 _r.Add(p + ".step", ValidationCode.InvalidValue, "seule la condition questAt a une étape.");
                 return false;
             }

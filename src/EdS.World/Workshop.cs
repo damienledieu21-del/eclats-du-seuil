@@ -85,9 +85,26 @@ namespace EdS.World
         internal Workshop(CraftingBook book, IReadOnlyDictionary<string, long> saved)
         {
             _book = book ?? throw new ArgumentNullException(nameof(book));
+            CheckSaved(book, saved);
             _xp = new SortedDictionary<string, long>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, long> p in saved) _xp[p.Key] = p.Value;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #47 : l'expérience sauvegardée va avec ces métiers (métier connu, expérience de 1 à
+        /// <see cref="CraftingValidator.MaxXp"/>), y compris pour un personnage construit hors du lecteur JSON ; contrôlé avant l'ouverture de
+        /// la session, pour qu'aucune récolte ni fabrication n'échoue à moitié.
+        /// </summary>
+        /// <exception cref="ArgumentException">Sauvegarde qui ne va pas avec ces métiers.</exception>
+        internal static void CheckSaved(CraftingBook book, IReadOnlyDictionary<string, long> saved)
+        {
+            if (book is null) throw new ArgumentNullException(nameof(book));
             foreach (KeyValuePair<string, long> p in saved ?? throw new ArgumentNullException(nameof(saved)))
-                _xp[p.Key] = book.HasProfession(p.Key) ? p.Value : throw new ArgumentException($"Métier sauvegardé « {p.Key} » absent des métiers.", nameof(saved));
+            {
+                if (!book.HasProfession(p.Key)) throw new ArgumentException($"Métier sauvegardé « {p.Key} » absent des métiers.", nameof(saved));
+                if (p.Value < 1 || p.Value > CraftingValidator.MaxXp)
+                    throw new ArgumentException($"Expérience du métier « {p.Key} » hors de [1, {CraftingValidator.MaxXp}] : {p.Value}.", nameof(saved));
+            }
         }
 
         public long Xp(string profession) => _xp.TryGetValue(profession, out long xp) ? xp : 0;
@@ -131,11 +148,14 @@ namespace EdS.World
             return CraftRefusal.None;
         }
 
+        /// <summary>Ajoute l'expérience (sous le plafond) ; l'événement annonce celle réellement ajoutée (comme le combat, revue Codex de la PR #43).</summary>
         private CraftEvent Gain(CraftEventKind kind, string source, string profession, string item, int count, long xp)
         {
             int before = Level(profession);
-            _xp[profession] = Math.Min(CraftingValidator.MaxXp, checked(Xp(profession) + xp));
-            return new CraftEvent(kind, source, profession, item, count, xp, before, Level(profession));
+            long had = Xp(profession);
+            long total = Math.Min(CraftingValidator.MaxXp, had + xp);   // had ≤ 10^9 et xp ≤ 10^6 : pas de débordement
+            if (total > had) _xp[profession] = total;
+            return new CraftEvent(kind, source, profession, item, count, total - had, before, Level(profession));
         }
     }
 }

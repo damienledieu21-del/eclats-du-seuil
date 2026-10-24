@@ -40,7 +40,8 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^zone\\.[a-z][a-z0-9_]*$"
+          "pattern": "^zone\\.[a-z][a-z0-9_]*$",
+          "maxLength": 64
         },
         "name": {
           "type": "string",
@@ -49,11 +50,13 @@
         "scenario": {
           "type": "string",
           "pattern": "^[a-z0-9_]+(/[a-z0-9_]+)*$",
-          "description": "Scénario de zone sous scenarios/, sans extension (zone: true, bloc space)."
+          "description": "Scénario de zone sous scenarios/, sans extension (zone: true, bloc space).",
+          "maxLength": 200
         },
         "entry": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$"
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 64
         },
         "safePoints": {
           "type": "array",
@@ -70,7 +73,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
               },
               "name": {
                 "type": "string",
@@ -102,7 +106,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
               },
               "name": {
                 "type": "string",
@@ -141,7 +146,12 @@
             "properties": {
               "creature": {
                 "type": "string",
-                "description": "Assaillant mortel et placé du scénario ; ses vies suivantes : <créature>_v2, _v3…"
+                "description": "Assaillant mortel et placé du scénario ; ses vies suivantes : <créature>_v2, _v3…",
+                "minLength": 1,
+                "maxLength": 60,
+                "not": {
+                  "pattern": "_v[0-9]+$"
+                }
               },
               "respawnMs": {
                 "type": "integer",
@@ -158,7 +168,8 @@
                 "anyOf": [
                   {
                     "type": "string",
-                    "pattern": "^loot(\\.[a-z0-9_]+)+$"
+                    "pattern": "^loot(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
                   },
                   {
                     "type": "null"
@@ -182,14 +193,16 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
               },
               "name": {
                 "type": "string",
                 "minLength": 1
               },
               "obstacle": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               }
             }
           }

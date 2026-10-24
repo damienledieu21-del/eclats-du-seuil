@@ -308,6 +308,15 @@ namespace EdS.Simulation.Engine
                     throw new ArgumentException(command.Action == CombatAction.Move
                         ? "Direction de déplacement : composantes dans [−1, 1], non toutes deux nulles."
                         : "Seul un déplacement (move) a une direction.", nameof(commands));
+                // Revue Codex de la PR #47 : même contrôle de l'objet d'un soin que CombatSetup.Validate, pour que le scénario complété reste
+                // valide (rejeu, restauration) : un soin nomme un objet de soin emporté par son personnage ; seule cette commande nomme un objet.
+                if (command.Action == CombatAction.Consume)
+                {
+                    if (command.Item is null) throw new ArgumentException("Soin (consume) sans objet.", nameof(commands));
+                    if (!(_byId[command.Actor].Setup is CharacterSetup carrier && carrier.Consumables.Any(c => c.Id == command.Item)))
+                        throw new ArgumentException($"Objet de soin « {command.Item} » absent de ce que « {command.Actor} » emporte.", nameof(commands));
+                }
+                else if (command.Item != null) throw new ArgumentException("Seul un soin (consume) nomme un objet.", nameof(commands));
                 int earlier = groupPerActor.TryGetValue(command.Actor, out int g) ? g : 0;
                 int already = _commandsPerActorTick.TryGetValue((command.Actor, CurrentTick), out int n) ? n : 0;
                 if (checked(already + earlier) >= _rules.MaxCommandsPerActorPerTick)
