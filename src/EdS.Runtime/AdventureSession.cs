@@ -395,10 +395,14 @@ namespace EdS.Runtime
         /// <summary>Réponses proposées (traduites), dans l'ordre de <see cref="Choose"/>.</summary>
         public IReadOnlyList<string> DialogueAnswers => Dialogue is DialogueView d ? d.Options.Select(o => Text(o.Text)).ToList() : (IReadOnlyList<string>)Array.Empty<string>();
 
-        /// <summary>Choisit la réponse de rang <paramref name="index"/> du dialogue ouvert.</summary>
+        /// <summary>
+        /// Choisit la réponse de rang <paramref name="index"/> parmi celles proposées (<see cref="DialogueAnswers"/>). Revue Codex de la PR #49 :
+        /// le rang affiché se traduit en indice réel de la réponse dans le nœud (une réponse dont les conditions manquent n'est pas affichée).
+        /// </summary>
         public DialogueRefusal Choose(int index)
         {
-            DialogueRefusal refusal = World.Choose(index, out _, out IReadOnlyList<StoryEvent> events);
+            if (!(Dialogue is DialogueView open) || index < 0 || index >= open.Options.Count) return DialogueRefusal.NoSuchChoice;
+            DialogueRefusal refusal = World.Choose(open.Options[index].Index, out _, out IReadOnlyList<StoryEvent> events);
             foreach (StoryEvent e in events) Story(e);
             if (events.Count > 0) _dirty = true;
             if (refusal == DialogueRefusal.NoRoom) Say("text.ui.no_room");

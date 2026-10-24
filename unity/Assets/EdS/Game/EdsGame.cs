@@ -909,6 +909,7 @@ namespace EdS.Game
                 Hud.Centered(new Rect(Hud.Width / 2f - 150, 64, 300, 40), "PAUSE", new Color(1f, 0.85f, 0.3f));
             int answer = AdventureScreens.DrawDialogue(a);
             if (answer >= 0) a.Choose(answer);
+            else if (answer == AdventureScreens.CloseDialogue) a.CloseDialogue();
             _screens.Draw(a);
             _touch.Draw(false, true);
         }

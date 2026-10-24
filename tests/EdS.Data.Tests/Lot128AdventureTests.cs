@@ -117,6 +117,27 @@ public class Lot128AdventureTests : IDisposable
     }
 
     [Fact]
+    public void Reponse_affichee_seule_choisie_par_son_rang()
+    {
+        // Revue Codex de la PR #49 : Odile méfiante (confiance −1) au retour : seule la seconde réponse du nœud est proposée, au rang 0 ;
+        // la choisir donne bien la réponse froide (indice réel 1).
+        var progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
+        var story = new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("retour") },
+            new Dictionary<string, int> { ["npc.odile"] = -1 });
+        Directory.CreateDirectory(Path.GetDirectoryName(SavePath)!);
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, progression).WithStory(story)));
+        AdventureSession a = AdventureSession.Load(DataDirectory, Scenarios, SavePath);
+        Assert.True(WalkTo(a, -8, 3, 2.5));
+        Assert.True(a.Interact());
+        Assert.Single(a.DialogueAnswers);
+        Assert.Equal(DialogueRefusal.None, a.Choose(0));
+        Assert.True(a.World.Narrative!.Knows("fact.odile.retour"));
+        Assert.Equal(0, a.World.Inventory.Count("item.amulette_de_l_aube"));
+        Assert.Equal(DialogueRefusal.NoSuchChoice, a.Choose(0));   // plus de dialogue ouvert
+    }
+
+    [Fact]
     public void Parler_a_Odile_commence_la_mission_et_sauvegarde()
     {
         AdventureSession a = New();

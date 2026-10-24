@@ -82,7 +82,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 | Touche | Action |
 |---|---|
 | F | parler au PNJ à portée (3 m), sinon récolter le nœud à portée |
-| 1 à 9 (ou clic) | choisir une réponse du dialogue ; Échap le ferme |
+| 1 à 9 (ou clic) | choisir une réponse du dialogue (parmi celles affichées) ; Échap ou le bouton Fermer (au doigt) le ferme |
 | I | inventaire, équipement porté et métiers (porter, retirer) |
 | J | journal de quête et découvertes |
 | K | atelier : recettes, ce qu'il manque, fabriquer (à l'enclume du village) |

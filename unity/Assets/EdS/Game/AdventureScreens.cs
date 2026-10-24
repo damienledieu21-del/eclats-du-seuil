@@ -139,15 +139,19 @@ namespace EdS.Game
             }
         }
 
+        /// <summary>Rang rendu par <see cref="DrawDialogue"/> quand le bouton Fermer est touché.</summary>
+        public const int CloseDialogue = -2;
+
         /// <summary>
-        /// Dialogue ouvert, en bas de l'écran : nom du PNJ, son texte, les réponses (boutons, ou touches 1 à 9). Rend le rang de la réponse
-        /// choisie au bouton, ou -1.
+        /// Dialogue ouvert, en bas de l'écran : nom du PNJ, son texte, les réponses (boutons, ou touches 1 à 9) et un bouton Fermer (revue Codex
+        /// de la PR #49 : au doigt, sans clavier, même un dialogue sans réponse se ferme). Rend le rang de la réponse choisie au bouton,
+        /// <see cref="CloseDialogue"/>, ou -1.
         /// </summary>
         public static int DrawDialogue(AdventureSession a)
         {
             if (a.Dialogue == null) return -1;
             IReadOnlyList<string> answers = a.DialogueAnswers;
-            float height = 150f + answers.Count * 48f;
+            float height = 200f + answers.Count * 48f;
             float x = Mathf.Max(10f, (Hud.Width - 1300f) / 2f), y = Hud.VirtualHeight - height - 30f;
             Hud.Fill(new Rect(x, y, 1300f, height), new Color(0.06f, 0.05f, 0.04f, 0.93f));
             Hud.Title(new Rect(x + 20f, y + 10f, 1260f, 36f), Hud.Plain(a.DialogueNpc));
@@ -156,6 +160,7 @@ namespace EdS.Game
             for (int i = 0; i < answers.Count; i++)
                 if (Hud.Button(new Rect(x + 40f, y + 140f + i * 48f, 1220f, 42f), Hud.Plain(string.Format(a.Text("text.ui.answer"), i + 1, answers[i])), true))
                     chosen = i;
+            if (Hud.Button(new Rect(x + 1300f - 280f, y + height - 50f, 260f, 42f), a.Text("text.ui.close"), true)) chosen = CloseDialogue;
             return chosen;
         }
     }
