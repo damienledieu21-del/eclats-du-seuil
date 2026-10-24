@@ -216,6 +216,9 @@ namespace EdS.Game
             _playerYaw = 0f;
         }
 
+        /// <summary>Un écran (sac, journal, atelier) ou un dialogue de l'aventure couvre les commandes tactiles (revue Codex de la PR #49).</summary>
+        private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null);
+
         /// <summary>Quitte l'aventure (sauvegardée) : l'entraînement ou le réseau prend la place.</summary>
         private void LeaveAdventure()
         {
@@ -484,7 +487,7 @@ namespace EdS.Game
         {
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
-            _touch.Update(Network, _adventure != null);
+            _touch.Update(Network, _adventure != null, AdventureCovered);
             // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran. En réseau,
             // la partie continue d'avancer (le serveur ne s'arrête pas), sans entrée de combat.
             if (_talents != null)
@@ -914,7 +917,7 @@ namespace EdS.Game
             if (answer >= 0) a.Choose(answer);
             else if (answer == AdventureScreens.CloseDialogue) a.CloseDialogue();
             _screens.Draw(a);
-            _touch.Draw(false, true);
+            _touch.Draw(false, true, AdventureCovered);
         }
 
         private void DrawTalents()

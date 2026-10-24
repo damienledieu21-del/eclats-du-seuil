@@ -91,7 +91,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 | F6 | sauvegarder maintenant |
 | N | quitter l'aventure (sauvegardée) pour l'entraînement |
 
-Les touches de combat sont celles de l'entraînement (garde, parade, compétences, Tab, caméra). La cible se choisit parmi les ennemis en vue à 20 m au plus, du plus proche au plus loin. Le monde **s'arrête** pendant un dialogue, un écran ouvert ou la pause (jeu en solo).
+Les touches de combat sont celles de l'entraînement (garde, parade, compétences, Tab, caméra). La cible se choisit parmi les ennemis en vue à 20 m au plus, du plus proche au plus loin. Le monde **s'arrête** pendant un dialogue, un écran ouvert ou la pause (jeu en solo). Au doigt, un écran ou un dialogue ouvert masque les boutons tactiles du jeu : seuls ses propres boutons (dont Fermer) répondent.
 
 **Niveau et équipement** gagnés ou changés en route prennent effet à la **halte** suivante (le combat en cours garde le build d'entrée). La **porte du moulin**, une fois ferrée par Maëlle, se franchit aussi après une halte. Une **défaite** ne fait rien perdre : Entrée reprend au dernier point sûr approché, PV pleins.
 

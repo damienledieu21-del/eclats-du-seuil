@@ -177,10 +177,14 @@ namespace EdS.Game
             }
         }
 
-        /// <summary>Lit les doigts de cette image (à appeler une fois par image, avant de lire les commandes).</summary>
-        public void Update(bool network, bool adventure = false)
+        /// <summary>
+        /// Lit les doigts de cette image (à appeler une fois par image, avant de lire les commandes). <paramref name="covered"/> (revue Codex
+        /// de la PR #49) : un panneau ou un dialogue de l'aventure couvre l'écran : aucun bouton ni geste n'est actif, les doigts vont à ses
+        /// propres boutons (dont Fermer).
+        /// </summary>
+        public void Update(bool network, bool adventure = false, bool covered = false)
         {
-            if (!Active)
+            if (!Active || covered)
             {
                 _gestures.Reset();
                 return;
@@ -189,10 +193,10 @@ namespace EdS.Game
             _gestures.Update(Fingers(), _zones, Hud.Width);
         }
 
-        /// <summary>Dessine le stick et les boutons (dans <c>OnGUI</c>, après <see cref="Hud.Begin"/>).</summary>
-        public void Draw(bool network, bool adventure = false)
+        /// <summary>Dessine le stick et les boutons (dans <c>OnGUI</c>, après <see cref="Hud.Begin"/>) ; rien quand un panneau les couvre.</summary>
+        public void Draw(bool network, bool adventure = false, bool covered = false)
         {
-            if (!Active) return;
+            if (!Active || covered) return;
             Layout(network, adventure);
             foreach (Button b in _buttons)
             {
