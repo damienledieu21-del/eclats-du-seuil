@@ -377,7 +377,10 @@ namespace EdS.World
                 {
                     boss.Add(b);
                     // Victoire avec le personnage présent et vivant ; la première seulement est récompensée.
-                    if (b.Kind == BossEventKind.Defeated && me.IsPresent && !me.IsDead && !Zone.IsConsumed(Definition!.VictoryKey)) _rewardPending = true;
+                    // Revue Codex de la PR #48 (4e tour) : même présence que pour l'expérience : un départ prend effet en fin de tick, après
+                    // les morts ; le personnage présent au début du tick et vivant compte.
+                    bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
+                    if (b.Kind == BossEventKind.Defeated && here && !Zone.IsConsumed(Definition!.VictoryKey)) _rewardPending = true;
                 }
                 if (_rewardPending) GiveBossRewards(rewards, story);
             }

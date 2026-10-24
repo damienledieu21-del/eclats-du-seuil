@@ -196,6 +196,29 @@ public class Lot127BossTests
     }
 
     [Fact]
+    public void Victoire_reconnue_si_le_personnage_part_au_meme_tick()
+    {
+        // Revue Codex de la PR #48 (4e tour) : le personnage quitte la zone au tick où la dernière forme tombe ; présent au début du tick et
+        // vivant, il reçoit la récompense unique et le fait, comme l'expérience.
+        WorldSession reference = Play(Arena(), new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        long end = Fight(reference).SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.Defeated).Tick;
+        WorldSession session = Play(Arena(), new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
+        var steps = new List<SessionStep>();
+        for (int i = 0; i < 3000 && !session.BossDefeated; i++)
+        {
+            if (i % 20 == 1 && session.BossForm is string form)
+                try { session.Zone.Engine.Submit(new CombatCommand(session.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", form)); }
+                catch (ArgumentException) { }
+            if (session.Zone.Engine.CurrentTick == end - 1) session.Zone.Leave("bastion");
+            steps.Add(session.Step());
+        }
+        Assert.True(session.BossDefeated);
+        Assert.True(session.Zone.Engine.View("bastion").HasLeft);
+        Assert.Equal(new[] { ("item.lame_du_seuil", 1) }, steps.SelectMany(s => s.Rewards));
+        Assert.Contains("zone.vallons/boss/gardien_du_seuil", session.Save().Consumed);
+    }
+
+    [Fact]
     public void Victoire_au_dernier_tick_de_la_session_reconnue()
     {
         // Revue Codex de la PR #48 : la dernière forme tombe au tick qui termine la session : la victoire, la récompense unique et le fait
