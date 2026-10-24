@@ -139,6 +139,7 @@ namespace EdS.World
                     int count = Math.Min(Inventory.Count(id), potion.Stack);
                     carried.Add(new ConsumableSetup(id, potion.Heal, count, potion.CooldownMs));
                     _carried[id] = count;
+                    Inventory.Reserve(id, count);   // revue Codex de la PR #47 : emportés, ils ne se retirent plus de l'inventaire avant d'être bus
                 }
             CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried);
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
@@ -149,7 +150,7 @@ namespace EdS.World
 
         private readonly Dictionary<string, LootTable> _lootTables;
 
-        /// <summary>Sous-lot 12.6 : charges de chaque objet de soin emporté, telles que retirées de l'inventaire jusqu'ici.</summary>
+        /// <summary>Sous-lot 12.6 : charges de chaque objet de soin emporté (réservées dans l'inventaire), telles qu'usées jusqu'ici.</summary>
         private readonly Dictionary<string, int> _carried = new Dictionary<string, int>(StringComparer.Ordinal);
 
         /// <summary>Sous-lot 12.6 : récolte, fabrication et expérience des métiers (null sans métiers chargés).</summary>
@@ -189,7 +190,7 @@ namespace EdS.World
                 int now = me.ConsumableCharges.TryGetValue(id, out int left) ? left : _carried[id];
                 int drunk = _carried[id] - now;
                 if (drunk <= 0) continue;
-                Inventory.Remove(id, Math.Min(drunk, Inventory.Count(id)));
+                Inventory.UseReserved(id, drunk);   // réservés à l'entrée : toujours là
                 _carried[id] = now;
             }
         }

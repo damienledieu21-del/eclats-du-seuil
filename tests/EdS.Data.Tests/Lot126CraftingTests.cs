@@ -331,6 +331,42 @@ public class Lot126CraftingTests
         Assert.Equal(7, session.Inventory.Count("item.potion_de_soin"));
     }
 
+    [Fact]
+    public void Potions_emportees_reservees_jusqu_a_ce_qu_elles_soient_bues()
+    {
+        // Revue Codex de la PR #47 : les potions emportées ne se retirent plus de l'inventaire (recette, réponse de dialogue, API) avant
+        // d'être bues ; le moteur ne peut donc jamais soigner sans potion payée.
+        WorldSession session = Play(Zone(-4, 13), Hero(null, new ItemStack("item.potion_de_soin", 5), new ItemStack("item.potion_de_soin", 2)));
+        Assert.Equal((7, 5, 2), (session.Inventory.Count("item.potion_de_soin"), session.Inventory.Reserved("item.potion_de_soin"), session.Inventory.Available("item.potion_de_soin")));
+        Assert.Equal(InventoryRefusal.NotEnough, session.Inventory.Remove("item.potion_de_soin", 3));
+        Assert.Equal(InventoryRefusal.None, session.Inventory.Remove("item.potion_de_soin", 2));
+        Assert.Equal(5, session.Save().Character!.Inventory.Sum(st => st.Item == "item.potion_de_soin" ? st.Count : 0));   // réservées, toujours sauvegardées
+        // Le loup voisin blesse le Bastion ; la potion bue sort de la réserve et de l'inventaire.
+        for (int i = 0; i < 400 && session.Zone.Engine.View("bastion").Health == session.Zone.Engine.View("bastion").MaxHealth; i++) session.Step();
+        Assert.True(session.Zone.Engine.View("bastion").Health < session.Zone.Engine.View("bastion").MaxHealth);
+        session.Drink("item.potion_de_soin");
+        session.Step();
+        session.Step();
+        Assert.Equal(4, session.Zone.Engine.View("bastion").ConsumableCharges["item.potion_de_soin"]);
+        Assert.Equal((4, 4, 0), (session.Inventory.Count("item.potion_de_soin"), session.Inventory.Reserved("item.potion_de_soin"), session.Inventory.Available("item.potion_de_soin")));
+        // Une copie (essai d'une réponse de dialogue) garde la réserve.
+        Assert.Equal(InventoryRefusal.NotEnough, session.Inventory.Clone().Remove("item.potion_de_soin", 1));
+    }
+
+    [Fact]
+    public void Soin_pilote_refuse_s_il_nomme_un_objet_non_emporte()
+    {
+        // Revue Codex de la PR #47 : le pilote refuse à l'admission (rien ne change) le soin que le scénario complété refuserait, pour que
+        // la partie reste rejouable et restaurable.
+        WorldSession session = Play(Zone(), Hero(null, new ItemStack("item.potion_de_soin", 1)));
+        CombatEngine engine = session.Zone.Engine;
+        long at = engine.CurrentTick * engine.TickMilliseconds;
+        Assert.Throws<ArgumentException>(() => engine.Submit(CombatCommand.Use(at, "bastion", "item.remede_de_l_aube")));
+        Assert.Throws<ArgumentException>(() => engine.Submit(CombatCommand.Use(at, "loup1", "item.potion_de_soin")));
+        engine.Submit(CombatCommand.Use(at, "bastion", "item.potion_de_soin"));
+        Assert.True(engine.CompletedSetup().Validate().Count == 0);
+    }
+
     // --- Sauvegarde, version 5 ---------------------------------------------------------------------
 
     [Fact]

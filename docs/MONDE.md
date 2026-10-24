@@ -89,7 +89,7 @@ Gaspard, le vieux garde du camp de la carrière, conseille contre le rôdeur pen
 
 ## Soin et métiers (sous-lot 12.6)
 
-**Objets de soin** (catalogue des objets en version 2 : type `consumable`, `heal`, `cooldownMs`, `stack`) : potion de soin (300 PV, pile de 5) et remède de l'aube (700 PV, pile de 3), recharge partagée de 20 s. À l'entrée dans une zone, le personnage emporte **au plus une pile** de chaque objet de soin de son inventaire ([MOTEUR.md](MOTEUR.md#soin-sous-lot-126)). `Drink(objet)` le fait boire ; le moteur peut refuser (PV pleins, recharge, étourdi). Un objet bu quitte l'inventaire.
+**Objets de soin** (catalogue des objets en version 2 : type `consumable`, `heal`, `cooldownMs`, `stack`) : potion de soin (300 PV, pile de 5) et remède de l'aube (700 PV, pile de 3), recharge partagée de 20 s. À l'entrée dans une zone, le personnage emporte **au plus une pile** de chaque objet de soin de son inventaire ([MOTEUR.md](MOTEUR.md#soin-sous-lot-126)). `Drink(objet)` le fait boire ; le moteur peut refuser (PV pleins, recharge, étourdi). Un objet bu quitte l'inventaire. Les objets emportés sont **réservés** (`Inventory.Reserved`, `Available`) : ils restent dans l'inventaire et la sauvegarde, mais aucune autre opération (recette, réponse de dialogue, retrait) ne peut les prendre avant qu'ils soient bus. Le pilote refuse à l'admission un soin qui nomme un objet non emporté.
 
 **Métiers** (`data/v0/world/crafting.json`, `kind` « crafting », validé par `CraftingValidator` contre les textes, la zone et le catalogue) : forge, herboristerie, minage, chacun avec **sa propre expérience** et ses niveaux 1 à 10 (provisoire : 40, 100, 180… points). Combattre ne forme aucun métier ; récolter et fabriquer ne donnent jamais d'expérience de combat.
 
