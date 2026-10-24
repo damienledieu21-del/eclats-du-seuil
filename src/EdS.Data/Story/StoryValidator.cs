@@ -446,21 +446,21 @@ namespace EdS.Data.Story
 
             private bool NoValue(TermData t, string p)
             {
-                if (!t.Present.Contains("value")) return true;
+                if (!t.Present.Contains("value") && t.Value is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
                 _r.Add(p + ".value", ValidationCode.InvalidValue, "pas de valeur pour cette nature.");
                 return false;
             }
 
             private bool NoId(TermData t, string p)
             {
-                if (!t.Present.Contains("id")) return true;
+                if (!t.Present.Contains("id") && t.Id is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
                 _r.Add(p + ".id", ValidationCode.InvalidValue, "pas d'identifiant pour cette nature.");
                 return false;
             }
 
             private bool NoStep(TermData t, string p)
             {
-                if (!t.Present.Contains("step")) return true;
+                if (!t.Present.Contains("step") && t.Step is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
                 _r.Add(p + ".step", ValidationCode.InvalidValue, "seule la condition questAt a une étape.");
                 return false;
             }

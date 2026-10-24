@@ -172,6 +172,35 @@ public class Lot125StoryTests
     }
 
     [Fact]
+    public void Champ_d_une_autre_nature_refuse_meme_renseigne_hors_du_lecteur()
+    {
+        // Revue Codex de la PR #46 : une étape, une valeur ou un identifiant que la nature n'admet pas est refusé même sans « Present »
+        // (document en objets publics), comme dans le fichier.
+        StoryDocument Read()
+        {
+            var report = new ValidationReport();
+            StoryDocument d = StoryJsonReader.ReadStoryDocument(JsonInput.Utf8(File.ReadAllText(StoryPath), report), report);
+            Assert.True(report.IsValid);
+            return d;
+        }
+        TermData FirstCondition(StoryDocument d, string kind) => d.Data!.Dialogues!.SelectMany(x => x!.Entries!).SelectMany(e => e!.Conditions!).First(c => c!.Kind == kind)!;
+        TermData FirstEffect(StoryDocument d, string kind) =>
+            d.Data!.Dialogues!.SelectMany(x => x!.Nodes!).SelectMany(n => n!.Choices!).SelectMany(c => c!.Effects!).First(e => e!.Kind == kind)!;
+        ZoneDefinition zone = Zone();
+        StoryDocument step = Read();
+        FirstCondition(step, "questActive").Step = "retour";
+        Assert.Contains(StoryValidator.Validate(step, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".step", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        StoryDocument value = Read();
+        FirstEffect(value, "setFact").Value = 3;
+        Assert.Contains(StoryValidator.Validate(value, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".value", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        StoryDocument id = Read();
+        TermData xp = id.Data!.Quests!.SelectMany(q => q!.Steps!).SelectMany(s => s!.Effects!).First(r => r!.Kind == "giveXp")!;
+        xp.Id = "fact.x";
+        Assert.Contains(StoryValidator.Validate(id, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".id", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        Assert.True(StoryValidator.Validate(Read(), Texts, zone, Items).IsValid);
+    }
+
+    [Fact]
     public void Tables_et_vues_de_l_histoire_non_modifiables()
     {
         // Les tables globales du validateur et les vues de l'histoire ne se modifient pas par conversion (même règle que la revue Codex de la PR #44).
