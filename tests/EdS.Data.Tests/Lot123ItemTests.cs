@@ -143,6 +143,29 @@ public class Lot123ItemTests
     }
 
     [Fact]
+    public void Sauvegarde_en_objets_publics_bornee_comme_a_la_lecture()
+    {
+        // Revue Codex de la PR #44 (6e tour) : sans le lecteur JSON, un inventaire en version 2 est un champ inconnu, et l'inventaire, les
+        // emplacements et les compétences gardent leurs bornes.
+        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", Progression)));
+        string v2 = text.Replace("\"schemaVersion\": 3", "\"schemaVersion\": 2").Replace("],\n      \"inventory\": [],\n      \"equipment\": {}\n", "]\n");
+        Assert.True(SaveJsonReader.Read(v2).IsValid);
+        SaveDocument old = SaveDocumentOf(v2);
+        old.Data!.Character!.Inventory = new List<ItemStackData?> { new ItemStackData { Item = "item.gambison", Count = 1 } };
+        Assert.Contains(SaveValidator.Validate(old).Report.Errors, e => e.Path == "$.data.character.inventory" && e.Code == ValidationCode.UnknownField);
+        SaveDocument full = SaveDocumentOf(text);
+        full.Data!.Character!.Inventory = Enumerable.Range(0, SaveValidator.MaxInventory + 1).Select(_ => (ItemStackData?)new ItemStackData { Item = "item.gambison", Count = 1 }).ToList();
+        Assert.Contains(SaveValidator.Validate(full).Report.Errors, e => e.Path == "$.data.character.inventory" && e.Code == ValidationCode.LimitExceeded);
+        SaveDocument skills = SaveDocumentOf(text);
+        skills.Data!.Character!.ActiveSkills = Enumerable.Range(0, SaveValidator.MaxSkills + 1).Select(i => (string?)("skill.x" + i)).ToList();
+        Assert.Contains(SaveValidator.Validate(skills).Report.Errors, e => e.Path == "$.data.character.activeSkills" && e.Code == ValidationCode.LimitExceeded);
+        // Le schéma JSON suit les mêmes bornes pour l'équipement.
+        MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json"));
+        Assert.True(schema.IsValid(JsonDocument.Parse(text).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(text.Replace("\"equipment\": {}", "\"equipment\": {\"Bouclier\": \"item.ecu_de_chene\"}")).RootElement));
+    }
+
+    [Fact]
     public void Bonus_d_objet_en_double_refuse()
     {
         // Revue Codex de la PR #44 (4e tour) : un catalogue construit en objets publics ne voit pas un bonus écraser le précédent.
