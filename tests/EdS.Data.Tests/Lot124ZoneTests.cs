@@ -191,6 +191,33 @@ public class Lot124ZoneTests
         Assert.Equal(pelts, session.Inventory.Count("item.peau_de_loup"));
     }
 
+    [Fact]
+    public void Reapparition_saute_une_identite_deja_prise()
+    {
+        // Revue Codex de la PR #45 : une créature du scénario hors population porte déjà « loup1_v2 » : la vie suivante de loup1 est
+        // « loup1_v3 », sans essai répété sur l'identité prise.
+        ZoneDefinition z = Zone(zone => Population(zone, "loup1")["respawnMs"] = 1000, s =>
+        {
+            Creature(s, "loup1")["health"] = 60;
+            Creature(s, "loup1")["position"] = new JsonArray(-16, -12);
+            Creature(s, "loup1")["attacks"]![0]!["rawDamage"] = 1;
+            JsonObject twin = Creature(s, "loup5").DeepClone().AsObject();
+            twin["id"] = "loup1_v2";
+            twin["position"] = new JsonArray(-20, 36);
+            s["data"]!["combatants"]!.AsArray().Add(twin);
+        }).Zone!;
+        var session = new WorldSession(NewGame(), z, ShippedData, Progression, Items);
+        var population = new List<PopulationEvent>();
+        for (int i = 0; i < 2000 && population.Count(e => e.Kind == PopulationEventKind.Respawned) < 2; i++)
+        {
+            if (i % 20 == 1) Strike(session, session.CurrentCreature("loup1"));
+            population.AddRange(session.Step().Population);
+        }
+        Assert.Equal(new[] { "loup1_v3", "loup1_v4" }, population.Where(e => e.Kind == PopulationEventKind.Respawned).Select(e => e.Creature));
+        Assert.Equal("loup1_v4", session.CurrentCreature("loup1"));
+        Assert.True(session.Zone.Engine.View("loup1_v2").IsPresent);   // la créature du scénario n'a pas bougé de chez elle
+    }
+
     // --- Laisse ------------------------------------------------------------------------------------
 
     [Fact]

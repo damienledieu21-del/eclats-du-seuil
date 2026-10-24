@@ -59,7 +59,7 @@ Une **zone du monde** est un fichier de données (`data/v0/world/zones/vallons.j
 
 **Vie des populations** (`WorldSession` sur une zone du monde) :
 
-- **Réapparition** (section 2 de l'architecture : une identité n'est jamais réutilisée) : une créature morte revient après son délai, à sa place, **sous une nouvelle identité** (`loup1_v2`, `loup1_v3`…), calme et soignée. Sa mort garde sa clé unique : expérience et butin une seule fois par vie. Une place occupée retarde l'arrivée d'une seconde.
+- **Réapparition** (section 2 de l'architecture : une identité n'est jamais réutilisée) : une créature morte revient après son délai, à sa place, **sous une nouvelle identité** (`loup1_v2`, `loup1_v3`… ; une identité déjà portée par un autre combattant de la session est sautée), calme et soignée. Sa mort garde sa clé unique : expérience et butin une seule fois par vie. Une place occupée retarde l'arrivée d'une seconde.
 - **Laisse** (essai du 22 octobre 2026) : une créature engagée dont l'écart à sa cible, entre les bords des emprises, dépasse sa laisse **lâche** : elle quitte la zone (ni mort, ni expérience, ni butin) et une vie calme et soignée la remplace à sa place au tick suivant.
 - **Refus du moteur** : un départ (laisse) ou une arrivée (réapparition) refusé par le moteur (plafond de commandes, file pleine) ne fait pas échouer le tick : il est retenté au tick suivant (la laisse) ou une seconde plus tard (la réapparition). Les récompenses du tick (expérience, butin) sont attribuées avant la vie des populations.
 - **Plafond** : une session tient au plus 64 combattants (règles) ; une population qui n'a plus de place attend la session suivante (`Exhausted`).

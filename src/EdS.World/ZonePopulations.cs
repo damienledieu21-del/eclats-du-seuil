@@ -135,7 +135,12 @@ namespace EdS.World
                 life.RespawnAt = checked(now + Math.Max(1, 1000 / tickMs));
                 return null;
             }
-            string id = $"{t.Id}_v{life.Number + 1}";
+            // Revue Codex de la PR #45 : l'identité suivante est libre parmi tous les combattants du moteur (personnage, créature du scénario
+            // hors population) : une identité prise est sautée, jamais retentée.
+            var taken = new HashSet<string>(engine.CombatantIds, StringComparer.Ordinal);
+            int number = checked(life.Number + 1);
+            string id = $"{t.Id}_v{number}";
+            while (taken.Contains(id)) id = $"{t.Id}_v{number = checked(number + 1)}";
             var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
                 t.StatusResistance, t.Triggers, t.Health, t.Placement, checked(now * tickMs), t.Behavior);
             try
@@ -148,7 +153,7 @@ namespace EdS.World
                 life.RespawnAt = checked(now + Math.Max(1, 1000 / tickMs));
                 return null;
             }
-            life.Number++;
+            life.Number = number;
             life.Current = id;
             life.RespawnAt = null;
             life.Leashing = false;
