@@ -73,13 +73,13 @@ namespace EdS.Data.Json
                 ["class"] = (v, p) => c.Class = input.Text(v, p),
                 ["xp"] = (v, p) => c.Xp = input.Int64(v, p),
                 ["talents"] = (v, p) => c.Talents = ScenarioJsonReader.ReadIntegerMap(input, v, p),
-                ["activeSkills"] = (v, p) => c.ActiveSkills = input.ReadLimitedList(v, p, 64, n => $"{n} compétences, au plus 64.", (e, ip) => input.Text(e, ip)),
+                ["activeSkills"] = (v, p) => c.ActiveSkills = input.ReadLimitedList(v, p, SaveValidator.MaxSkills, n => $"{n} compétences, au plus {SaveValidator.MaxSkills}.", (e, ip) => input.Text(e, ip)),
                 ["ultimate"] = (v, p) =>
                 {
                     c.HasUltimate = true;
                     c.Ultimate = input.NullableText(v, p);
                 },
-                ["passiveSkills"] = (v, p) => c.PassiveSkills = input.ReadLimitedList(v, p, 64, n => $"{n} compétences, au plus 64.", (e, ip) => input.Text(e, ip)),
+                ["passiveSkills"] = (v, p) => c.PassiveSkills = input.ReadLimitedList(v, p, SaveValidator.MaxSkills, n => $"{n} compétences, au plus {SaveValidator.MaxSkills}.", (e, ip) => input.Text(e, ip)),
                 ["inventory"] = (v, p) =>   // sous-lot 12.3 (version 3)
                 {
                     c.Present.Add("inventory");
@@ -112,7 +112,7 @@ namespace EdS.Data.Json
             var map = new List<KeyValuePair<string, string?>>();
             foreach (JsonProperty property in input.UniqueProperties(element, path))
             {
-                if (map.Count >= 64) { input.Report.Add(path, ValidationCode.LimitExceeded, "au plus 64 emplacements."); return null; }
+                if (map.Count >= SaveValidator.MaxEquipment) { input.Report.Add(path, ValidationCode.LimitExceeded, $"au plus {SaveValidator.MaxEquipment} emplacements."); return null; }
                 map.Add(new KeyValuePair<string, string?>(property.Name, input.Text(property.Value, path + "." + property.Name)));
             }
             return map;

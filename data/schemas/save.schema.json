@@ -153,7 +153,8 @@
                     "properties": {
                       "item": {
                         "type": "string",
-                        "pattern": "^item(\\.[a-z0-9_]+)+$"
+                        "pattern": "^item(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
                       },
                       "count": {
                         "type": "integer",
@@ -168,8 +169,14 @@
                   "description": "Sous-lot 12.3 (version 3) : objet porté par emplacement, emplacements dans l'ordre ordinal.",
                   "additionalProperties": {
                     "type": "string",
-                    "pattern": "^item(\\.[a-z0-9_]+)+$"
-                  }
+                    "pattern": "^item(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "maxLength": 64
+                  },
+                  "maxProperties": 64
                 }
               }
             }
