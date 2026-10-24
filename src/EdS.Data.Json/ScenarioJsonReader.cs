@@ -81,6 +81,7 @@ namespace EdS.Data.Json
                 ["initiative"] = (v, p) => c.Initiative = input.Int32(v, p),
                 ["class"] = Track("class", (v, p) => c.Class = input.Text(v, p)),
                 ["build"] = Track("build", (v, p) => c.Build = ReadBuild(input, v, p)),
+                ["gear"] = Track("gear", (v, p) => c.Gear = ReadIntegerMap(input, v, p)),   // sous-lot 12.3 (schéma 11)
                 ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
                 ["magicResistance"] = Track("magicResistance", (v, p) => c.MagicResistance = input.Decimal(v, p)),
                 ["statusResistance"] = Track("statusResistance", (v, p) => c.StatusResistance = input.Decimal(v, p)),

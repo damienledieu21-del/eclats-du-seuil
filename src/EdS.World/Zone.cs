@@ -214,7 +214,7 @@ namespace EdS.World
 
         /// <summary>Le personnage, arrivant à l'instant <paramref name="atMs"/>.</summary>
         private static CharacterSetup Arriving(CharacterSetup c, long atMs) =>
-            new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, atMs);
+            new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, atMs, c.Gear);
 
         /// <summary>Fait sortir un combattant (commande <c>leave</c> au tick courant, effective en fin de tick).</summary>
         /// <exception cref="ArgumentException">Commande refusée par le pilote (combattant inconnu, plafond de commandes).</exception>

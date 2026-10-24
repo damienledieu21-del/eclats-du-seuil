@@ -51,19 +51,40 @@ namespace EdS.Data.Scenarios
         /// 11.9, essai du 22 octobre 2026) : <c>low</c> facultatif sur un obstacle (bas : arrête la marche, pas la vue), <c>push</c> (poussée
         /// d'une bande) et <c>holdPosition</c> (arrêt pendant l'annonce) facultatifs sur une attaque, <c>pack</c> facultatif sur un comportement
         /// (entraîné par sa meute), <c>backward</c> facultatif sur un <c>move</c> (marche à reculons). Version 10 (sous-lot 12.1) :
-        /// <c>zone</c> facultatif (simulation d'une zone du monde, sans fin quand une équipe tombe, durée jusqu'à 24 h). Une version antérieure
+        /// <c>zone</c> facultatif (simulation d'une zone du monde, sans fin quand une équipe tombe, durée jusqu'à 24 h). Version 11 (sous-lot 12.3) :
+        /// <c>gear</c> facultatif sur un personnage (bonus de l'équipement porté, entiers de 0 à 10⁶). Une version antérieure
         /// est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 10;
+        public const int CurrentSchemaVersion = 11;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
         /// <summary>Champs propres à chaque type de combattant ; un champ d'un autre type est refusé.</summary>
         private static readonly Dictionary<string, string[]> TypeFields = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["character"] = new[] { "class", "build" },
+            ["character"] = new[] { "class", "build", "gear" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
             ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior" },
+        };
+
+        /// <summary>Le champ propre à un type est-il renseigné dans l'objet (indépendamment du lecteur JSON) ? Une cible nulle vaut absente.</summary>
+        private static bool IsSet(CombatantData c, string field) => field switch
+        {
+            "class" => c.Class != null,
+            "build" => c.Build != null,
+            "gear" => c.Gear != null,
+            "armor" => c.Armor != null,
+            "magicResistance" => c.MagicResistance != null,
+            "statusResistance" => c.StatusResistance != null,
+            "health" => c.Health != null,
+            "target" => c.Target != null,
+            "firstAttackMs" => c.FirstAttackMs != null,
+            "intervalMs" => c.IntervalMs != null,
+            "attacks" => c.Attacks != null,
+            "triggers" => c.Triggers != null,
+            "speed" => c.Speed != null,
+            "behavior" => c.Behavior != null,
+            _ => false,
         };
 
         /// <summary>Sous-lot 11.4 : champs de la place de départ, réservés aux combats positionnés (bloc <c>space</c>).</summary>
@@ -106,6 +127,15 @@ namespace EdS.Data.Scenarios
             return new ScenarioLoadResult(report, report.IsValid ? setup : null);
         }
 
+        /// <summary>Sous-lot 12.3 : bonus d'équipement d'un personnage de scénario (champs absents à 0).</summary>
+        private static GearBonus Gear(List<KeyValuePair<string, int?>>? gear)
+        {
+            if (gear is null) return GearBonus.None;
+            var values = new int[GearBonus.Fields.Count];
+            foreach (KeyValuePair<string, int?> entry in gear) values[GearBonus.FieldIndex(entry.Key)] = entry.Value!.Value;
+            return GearBonus.FromValues(values);
+        }
+
         private static CombatSetup Build(ScenarioData scenario, GameData data)
         {
             var combatants = new List<CombatantSetup>();
@@ -121,7 +151,7 @@ namespace EdS.Data.Scenarios
                     data.TryGetClass(c.Class!, out LoadedClass loaded);
                     usedClasses[loaded.Definition.Id] = loaded;
                     CharacterBuild build = Builds.BuildShape.ToCharacterBuild(loaded.Definition.Id, c.Build!);
-                    combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement, c.ArrivalMs));
+                    combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement, c.ArrivalMs, Gear(c.Gear)));
                 }
                 else if (c.Type == "assailant")
                 {
@@ -241,7 +271,8 @@ namespace EdS.Data.Scenarios
                         $"type de combattant inconnu « {c.Type} » ; valeurs possibles : {string.Join(", ", CombatantTypes)}.");
                     return;
                 }
-                foreach (string field in TypeFields.Values.SelectMany(f => f).Distinct().Where(f => !own.Contains(f) && c.Present.Contains(f)))
+                // Revue Codex de la PR #44 : un champ d'un autre type est refusé qu'il vienne du lecteur JSON (Present) ou d'un objet public renseigné.
+                foreach (string field in TypeFields.Values.SelectMany(f => f).Distinct().Where(f => !own.Contains(f) && (c.Present.Contains(f) || IsSet(c, f))))
                     _report.Add($"{path}.{field}", ValidationCode.InvalidValue,
                         $"champ réservé aux types {string.Join(", ", TypeFields.Where(t => t.Value.Contains(field)).Select(t => t.Key))}.");
 
@@ -252,6 +283,21 @@ namespace EdS.Data.Scenarios
                             _report.Add(path + ".class", ValidationCode.UnknownReference,
                                 $"classe inconnue « {c.Class} » ; classes chargées : {string.Join(", ", _data.Classes.Select(x => x.Definition.Id))}.");
                         if (Present(c.Build, path + ".build", "build du personnage")) Builds.BuildShape.Check(c.Build!, path + ".build", _report);
+                        // Sous-lot 12.3 : bonus d'équipement par champ connu ; leurs bornes sont vérifiées par la validation du combat.
+                        // Revue Codex de la PR #44 : un scénario construit sans le lecteur JSON (objets publics) est contrôlé de même : valeur
+                        // présente, un seul bonus par nom.
+                        if (c.Gear is { } gear)
+                        {
+                            var seenGear = new HashSet<string>(StringComparer.Ordinal);
+                            foreach (KeyValuePair<string, int?> entry in gear)
+                                if (GearBonus.FieldIndex(entry.Key) < 0)
+                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.UnknownReference,
+                                        $"bonus d'équipement inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
+                                else if (!seenGear.Add(entry.Key))
+                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.DuplicateId, $"bonus « {entry.Key} » donné deux fois.");
+                                else if (entry.Value is null)
+                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.MissingField, "valeur du bonus attendue (entier).");
+                        }
                         break;
                     case "dummy":
                         Present(c.Armor, path + ".armor", "nombre décimal");

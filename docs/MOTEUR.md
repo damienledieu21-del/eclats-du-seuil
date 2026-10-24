@@ -392,6 +392,17 @@ Une **zone** du monde ([ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md), section 4
 
 Le monde lui-même (projet `EdS.World` : session de zone, temps du monde, événements consommables, rencontres, sauvegardes) est décrit dans [MONDE.md](MONDE.md).
 
+## Bonus d'équipement (sous-lot 12.3)
+
+Un personnage porte un **bonus d'équipement** (`CharacterSetup.Gear`, type `GearBonus`) : la somme des objets qu'il porte, en entiers de 0 à 10⁶ pour huit statistiques (`physicalPower`, `agilePower`, `magicPower`, `armor`, `magicResistance`, `maxHealth`, `maxEndurance`, `statusResistance`). Moteur 0.23.0, journal au format 17, scénarios en schéma 11.
+
+- **Calcul** : contributions plates ajoutées aux statistiques dérivées (formules du lot 2 : l'équipement s'ajoute avant le coefficient des compétences), par la fonction partagée de la validation et du moteur (`CombatantStats.ForCharacter`). Le pourcentage de PV max des modificateurs permanents s'applique aux PV max équipement compris. Le précontrôle numérique compte l'équipement.
+- **Scénario (schéma 11)** : `gear` facultatif sur un personnage, champs absents à 0 ; un champ inconnu, une valeur hors de [0, 10⁶] ou un `gear` sur un mannequin ou un assaillant sont refusés avec leur chemin.
+- **Journal (format 17)** : `gear` dans l'en-tête, après le build, avec ses seuls champs non nuls, et seulement s'il y en a ; le rejeu reconstruit donc le même combat. **Sans équipement, rien ne change** : le scénario de référence à déclencheurs garde le même corps de journal qu'au moteur 0.22.0 (référence `reference-0.23.0-contenu-0.6.0`).
+- **En cours de combat** : le bonus est celui de l'entrée ; un changement d'équipement prend effet à la prochaine entrée (comme un niveau gagné).
+
+Objets, inventaire et butin (projet `EdS.World`) : [MONDE.md](MONDE.md#objets-équipement-inventaire-sous-lot-123).
+
 ## Limites
 
 - `combat.limits.maxDurationMs` (600 000) : durée maximale d'un scénario ; plafond absolu du format 86 400 000.

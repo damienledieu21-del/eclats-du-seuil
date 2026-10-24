@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/items.schema.json",
+  "title": "Éclats du Seuil — catalogue des objets",
+  "description": "Sous-lot 12.3. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ItemValidator).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "items"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slots",
+        "inventorySize",
+        "items",
+        "loot"
+      ],
+      "properties": {
+        "slots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "description": "Emplacements d'équipement (tranche : quatre, dont le bouclier)."
+        },
+        "inventorySize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Places de l'inventaire (tranche : 24)."
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        },
+        "loot": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "$ref": "#/$defs/lootTable"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "type",
+        "rarity"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^item(\\.[a-z0-9_]+)+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "equipment",
+            "material"
+          ]
+        },
+        "rarity": {
+          "enum": [
+            "common",
+            "rare",
+            "very_rare",
+            "epic",
+            "legendary",
+            "mythic"
+          ],
+          "description": "Six rangs (cadrage Q30) ; « Secret » est une origine, pas un rang."
+        },
+        "stack": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999,
+          "description": "Matériau seulement : taille d'une pile."
+        },
+        "slot": {
+          "type": "string",
+          "description": "Équipement seulement : un emplacement de slots."
+        },
+        "requiredLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Équipement seulement."
+        },
+        "bonus": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalPower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            },
+            "agilePower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            },
+            "magicPower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            },
+            "armor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            },
+            "magicResistance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            },
+            "maxHealth": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            },
+            "maxEndurance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            },
+            "statusResistance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            }
+          }
+        }
+      }
+    },
+    "lootTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "drops"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^loot(\\.[a-z0-9_]+)+$"
+        },
+        "drops": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "item",
+              "count",
+              "chancePercent"
+            ],
+            "properties": {
+              "item": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 999
+              },
+              "chancePercent": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -53,12 +53,16 @@ namespace EdS.Domain.Combat
         public ClassDefinition Class { get; }
         public CharacterBuild Build { get; }
 
+        /// <summary>Sous-lot 12.3 : bonus de l'équipement porté (contributions plates aux statistiques) ; <see cref="GearBonus.None"/> sans équipement.</summary>
+        public GearBonus Gear { get; }
+
         public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null,
-            long? arrivalMs = null)
+            long? arrivalMs = null, GearBonus? gear = null)
             : base(id, team, initiative, placement, arrivalMs)
         {
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
             Build = build ?? throw new ArgumentNullException(nameof(build));
+            Gear = gear ?? GearBonus.None;
         }
 
         /// <summary>
@@ -714,6 +718,11 @@ namespace EdS.Domain.Combat
                 {
                     case CharacterSetup character:
                         ValidateCharacter(character, path, tick, errors);
+                        // Sous-lot 12.3 : bonus d'équipement entiers, de 0 à GearBonus.MaxValue.
+                        for (int g = 0; g < GearBonus.Fields.Count; g++)
+                            if (character.Gear[g] < 0 || character.Gear[g] > GearBonus.MaxValue)
+                                errors.Add(new RuleViolation(
+                                    $"bonus d'équipement {character.Gear[g]} hors de [0, {GearBonus.MaxValue}].", path + ".gear." + GearBonus.Fields[g]));
                         break;
                     case DummySetup dummy:
                         Defense(dummy.Armor, "l'armure du mannequin", path + ".armor", errors);
@@ -1541,12 +1550,12 @@ namespace EdS.Domain.Combat
                             // permanents) ; coefficient effectif de chaque compétence ; bonus talent du pire impact direct (permanent et
                             // conditionnels positifs à leur facteur maximal), compétences et frappes de réaction.
                             ModifierSet modifiers = ModifierSet.For(character);
-                            DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, ModifierSet.Empty);
+                            DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, ModifierSet.Empty, character.Gear);
                             stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                             stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
                             overflowPath = path + ".class";
                             overflowMessage = "statistiques dérivées hors des limites numériques avec les modificateurs permanents de la classe (maxHealth, endurance.max, statusResistance).";
-                            stats = CombatantStats.ForCharacter(Stats, character.Build, modifiers);
+                            stats = CombatantStats.ForCharacter(Stats, character.Build, modifiers, character.Gear);
                             stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                             stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
                             overflowPath = path + ".build.attributes";

@@ -95,8 +95,9 @@ public class ReproducibilityTests
     // Sous-lot 11.5 : moteur 0.20.0, format 14 (comportements) ; seul l'en-tête change (ancienne empreinte b92f284c…).
     // Sous-lot 11.9 : moteur 0.21.0, format 15 (obstacle bas, poussée, arrêt pendant l'annonce, meute) ; seul l'en-tête change (ancienne
     // empreinte a35b9a5b…). Sous-lot 12.1 : moteur 0.22.0, format 16 (zone) ; combat fermé : seul l'en-tête change (ancienne empreinte
-    // cf174eb2…).
-    internal const string ReferenceHash = "2dc514da6df9952135a5ccfbac72a3d5d4b9dc492cefb8095ce249c6a77d61c5";
+    // cf174eb2…). Sous-lot 12.3 : moteur 0.23.0, format 17 (équipement) ; sans équipement : seul l'en-tête change (ancienne
+    // empreinte 2dc514da…).
+    internal const string ReferenceHash = "c6bb16151e11fec429999e44162ac6490db8e581f5a8e8fd66ff69c748687d3a";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

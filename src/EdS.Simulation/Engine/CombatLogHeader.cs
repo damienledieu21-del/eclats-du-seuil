@@ -219,6 +219,14 @@ namespace EdS.Simulation.Engine
                     w.Name("passiveSkills").BeginArray();
                     foreach (string skill in build.PassiveSkills) w.Value(skill);
                     w.EndArray().EndObject();
+                    // Sous-lot 12.3 (format 17) : bonus de l'équipement porté, seulement ses champs non nuls, et seulement s'il y en a.
+                    if (!character.Gear.IsNone)
+                    {
+                        w.Name("gear").BeginObject();
+                        for (int g = 0; g < Domain.Stats.GearBonus.Fields.Count; g++)
+                            if (character.Gear[g] != 0) w.Field(Domain.Stats.GearBonus.Fields[g], character.Gear[g]);
+                        w.EndObject();
+                    }
                     break;
                 case DummySetup dummy:
                     w.Field("type", "dummy").Field("team", c.Team).Field("initiative", c.Initiative)

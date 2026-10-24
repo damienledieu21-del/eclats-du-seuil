@@ -29,22 +29,32 @@ namespace EdS.Domain.Combat
         /// au plus proche ; le moteur et la validation en prennent ensuite la partie entière (plancher), comme avant. Sans modificateur,
         /// identique au calcul sans contribution. Fonction partagée par la validation et le moteur (M04).
         /// </summary>
-        public static DerivedStats ForCharacter(StatRules rules, CharacterBuild build, ModifierSet modifiers)
+        public static DerivedStats ForCharacter(StatRules rules, CharacterBuild build, ModifierSet modifiers) =>
+            ForCharacter(rules, build, modifiers, GearBonus.None);
+
+        /// <summary>
+        /// Sous-lot 12.3 : avec le bonus de l'équipement porté, contributions plates ajoutées comme celles des modificateurs ; le pourcentage
+        /// <c>maxHealth</c> des modificateurs s'applique aux PV max équipement compris. Sans équipement, identique à
+        /// <see cref="ForCharacter(StatRules, CharacterBuild, ModifierSet)"/>.
+        /// </summary>
+        public static DerivedStats ForCharacter(StatRules rules, CharacterBuild build, ModifierSet modifiers, GearBonus gear)
         {
             if (build is null) throw new ArgumentNullException(nameof(build));
             if (modifiers is null) throw new ArgumentNullException(nameof(modifiers));
+            if (gear is null) throw new ArgumentNullException(nameof(gear));
             Fixed endurance = modifiers.Sum(ModifierField.EnduranceMax), resistance = modifiers.Sum(ModifierField.StatusResistance);
-            StatContributions[]? flat = endurance == Fixed.Zero && resistance == Fixed.Zero ? null
-                : new[] { new StatContributions { MaxEndurance = endurance, StatusResistance = resistance } };
+            StatContributions? equipment = gear.IsNone ? null : gear.ToContributions();
+            StatContributions[]? flat = endurance == Fixed.Zero && resistance == Fixed.Zero
+                ? (equipment is null ? null : new[] { equipment })
+                : equipment is null ? new[] { new StatContributions { MaxEndurance = endurance, StatusResistance = resistance } }
+                : new[] { new StatContributions { MaxEndurance = endurance, StatusResistance = resistance }, equipment };
             DerivedStats stats = DerivedStats.Calculate(rules, build.Attributes, flat);
             Fixed percent = modifiers.Sum(ModifierField.MaxHealth);
             if (percent == Fixed.Zero) return stats;
             percent = Fixed.Clamp(percent, CombatantRules.MinMaxHealthPercent, CombatantRules.MaxMaxHealthPercent);
             Fixed extra = stats.MaxHealth * percent;
-            return DerivedStats.Calculate(rules, build.Attributes, new[]
-            {
-                new StatContributions { MaxEndurance = endurance, StatusResistance = resistance, MaxHealth = extra },
-            });
+            var withExtra = new StatContributions { MaxEndurance = endurance, StatusResistance = resistance, MaxHealth = extra };
+            return DerivedStats.Calculate(rules, build.Attributes, equipment is null ? new[] { withExtra } : new[] { withExtra, equipment });
         }
 
         /// <summary>

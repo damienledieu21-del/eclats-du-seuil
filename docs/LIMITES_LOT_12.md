@@ -22,4 +22,16 @@ Détail : [MONDE.md](MONDE.md#personnage-sous-lot-122).
 - **Niveau gagné en combat** : effet à la prochaine entrée en zone ; pas de montée de niveau en plein combat, ni de soin ou de PV supplémentaires immédiats.
 - **Talents et compétences** : gardés dans la sauvegarde et validés à l'entrée ; aucun écran ne les change encore (12.8). Un build devenu invalide (données changées) est refusé à l'entrée avec son motif, sans être corrigé automatiquement.
 - **Une seule classe jouable** (le Bastion) : la progression d'une autre classe s'ajoutera dans le même fichier.
-- **Formats** : sauvegarde en version 2 (la version 1 est mise à jour à la lecture), progression en schéma 1 ; moteur, journal, scénarios et règles inchangés par le 12.2.
+- **Formats** : sauvegarde en version 2 (la version 1 est mise à jour à la lecture ; version 3 au 12.3), progression en schéma 1 ; moteur, journal, scénarios et règles inchangés par le 12.2.
+
+## Sous-lot 12.3 : objets, équipement, inventaire
+
+Détail : [MONDE.md](MONDE.md#objets-équipement-inventaire-sous-lot-123), moteur : [MOTEUR.md](MOTEUR.md#bonus-déquipement-sous-lot-123).
+
+- **Valeurs provisoires** (questions à Damien) : les quatre emplacements de la tranche (arme, bouclier, torse, pendentif), les objets, leurs bonus et niveaux requis, les tables de butin et leurs chances. Tout est dans `data/v0/world/items.json`.
+- **Butin perdu quand l'inventaire est plein** (proposition, question à Damien) : un objet tombé qui ne tient pas en entier n'est pas rangé, et il est signalé (`Kept` faux). Autres choix possibles : le laisser au sol un moment, ou le garder dans une réserve.
+- **Pas encore d'effet spécial d'équipement** : les objets ne donnent que des bonus aux statistiques. Les déclencheurs d'équipement (L8-D6) et un premier objet remarquable viendront ensuite.
+- **Le bouclier ne change pas encore la garde** : la garde et le blocage du Bastion restent ceux de sa classe, même sans bouclier porté ; le bouclier n'apporte que ses bonus. Un Bastion sans bouclier (E8) reste une question ouverte.
+- **Pas de vente, d'achat, d'échange ni de destruction volontaire** : l'économie viendra plus tard ; `Remove` sert à la fabrication (12.6).
+- **Chances de butin par créature** : la table de chaque créature de zone est donnée à l'ouverture de la partie ; les Vallons en données (12.4) l'associeront aux populations.
+- **Formats** : moteur 0.23.0, journal au format 17, scénarios en schéma 11, sauvegarde en version 3 (les versions 1 et 2 sont mises à jour), catalogue des objets en schéma 1. Un combat sans équipement écrit les mêmes lignes qu'au moteur 0.22.0 ; un journal 0.22.0 est refusé au rejeu, sans migration.

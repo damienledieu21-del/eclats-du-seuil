@@ -77,6 +77,9 @@ namespace EdS.Data.Scenarios
         public string? Class { get; set; }
         public BuildData? Build { get; set; }
 
+        /// <summary>Sous-lot 12.3 (schéma 11) : bonus d'équipement d'un personnage par identifiant (« armor »…) ; facultatif.</summary>
+        public List<KeyValuePair<string, int?>>? Gear { get; set; }
+
         // Mannequin et assaillant
         public Fixed? Armor { get; set; }
         public Fixed? MagicResistance { get; set; }

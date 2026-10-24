@@ -7,10 +7,24 @@ using EdS.Domain.Collections;
 
 namespace EdS.Data.Saves
 {
-    /// <summary>
-    /// Sous-lot 12.1 (ARCHITECTURE_MONDE.md, section 6 ; cadrage Q10, tranche : fichier local) : sauvegarde du monde validée. Le personnage,
-    /// l'inventaire et les quêtes s'y ajoutent aux sous-lots suivants (version de format incrémentée à chaque ajout).
-    /// </summary>
+    /// <summary>Sous-lot 12.3 : pile d'objets d'une place de l'inventaire (identifiant d'objet, quantité).</summary>
+    public sealed class ItemStack : IEquatable<ItemStack>
+    {
+        public string Item { get; }
+        public int Count { get; }
+
+        public ItemStack(string item, int count)
+        {
+            Item = item ?? throw new ArgumentNullException(nameof(item));
+            Count = count;
+        }
+
+        public bool Equals(ItemStack? other) => other != null && other.Item == Item && other.Count == Count;
+        public override bool Equals(object? obj) => Equals(obj as ItemStack);
+        public override int GetHashCode() => unchecked(StringComparer.Ordinal.GetHashCode(Item) * 31 + Count);
+        public override string ToString() => $"{Item} ×{Count}";
+    }
+
     /// <summary>
     /// Sous-lot 12.2 : personnage persistant sauvegardé. Le niveau se déduit de l'expérience (progression du monde), les attributs de la
     /// classe et du niveau (cadrage Q20) : ils ne sont pas écrits. Le build (talents, compétences) est validé contre la classe et le niveau
@@ -29,9 +43,19 @@ namespace EdS.Data.Saves
         public string? Ultimate { get; }
         public IReadOnlyList<string> PassiveSkills { get; }
 
+        /// <summary>Sous-lot 12.3 : places occupées de l'inventaire, dans l'ordre (les places libres suivent).</summary>
+        public IReadOnlyList<ItemStack> Inventory { get; }
+
+        /// <summary>Sous-lot 12.3 : objet porté par emplacement (ordre ordinal des emplacements).</summary>
+        public IReadOnlyDictionary<string, string> Equipment { get; }
+
         public SavedCharacter(string id, string classId, long xp, IReadOnlyDictionary<string, int>? talents = null, IEnumerable<string>? activeSkills = null,
-            string? ultimate = null, IEnumerable<string>? passiveSkills = null)
+            string? ultimate = null, IEnumerable<string>? passiveSkills = null, IEnumerable<ItemStack>? inventory = null,
+            IReadOnlyDictionary<string, string>? equipment = null)
         {
+            Inventory = Frozen.List(inventory ?? Array.Empty<ItemStack>(), nameof(inventory));
+            Equipment = Frozen.Dictionary((equipment ?? new Dictionary<string, string>()).OrderBy(e => e.Key, StringComparer.Ordinal)
+                .ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal), nameof(equipment));
             Id = id ?? throw new ArgumentNullException(nameof(id));
             ClassId = classId ?? throw new ArgumentNullException(nameof(classId));
             Xp = xp;
@@ -43,9 +67,17 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment);
+
+        /// <summary>Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement.</summary>
+        public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment);
     }
 
+    /// <summary>
+    /// Sous-lot 12.1 (ARCHITECTURE_MONDE.md, section 6 ; cadrage Q10, tranche : fichier local) : sauvegarde du monde validée. Le personnage
+    /// (12.2), son inventaire et son équipement (12.3), puis les quêtes s'y ajoutent, la version de format incrémentée à chaque ajout.
+    /// </summary>
     public sealed class WorldSave
     {
         /// <summary>Zone où se trouve le joueur.</summary>
@@ -104,9 +136,11 @@ namespace EdS.Data.Saves
         /// Version 1 (sous-lot 12.1) : <c>data.zone</c>, <c>data.worldTick</c>, <c>data.sessions</c>, <c>data.consumed</c>. Version 2 (sous-lot
         /// 12.2) : <c>data.character</c> obligatoire (null ou le personnage : <c>id</c>, <c>class</c>, <c>xp</c>, <c>talents</c>,
         /// <c>activeSkills</c>, <c>ultimate</c>, <c>passiveSkills</c>). Une sauvegarde de version 1 est mise à jour à la lecture (personnage
-        /// nul) ; une version postérieure est refusée.
+        /// nul) ; une version postérieure est refusée. Version 3 (sous-lot 12.3) : <c>inventory</c> (places occupées : <c>item</c>,
+        /// <c>count</c>) et <c>equipment</c> (objet par emplacement) obligatoires dans le personnage ; une sauvegarde de version 2 est mise à
+        /// jour (inventaire et équipement vides).
         /// </summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;
@@ -149,7 +183,8 @@ namespace EdS.Data.Saves
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             report ??= new ValidationReport();
-            // Sous-lot 12.2 : une sauvegarde de version 1 est lue comme telle, puis mise à jour (migration : personnage nul).
+            // Sous-lot 12.2 : une sauvegarde de version 1 est lue comme telle, puis mise à jour (migration : personnage nul) ; sous-lot 12.3 :
+            // une sauvegarde de version 2, avec un inventaire et un équipement vides.
             int version = document.SchemaVersion ?? CurrentSchemaVersion;
             bool migrating = document.SchemaVersion != null && version >= OldestSchemaVersion && version < CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, migrating ? version : CurrentSchemaVersion, report))
@@ -186,17 +221,17 @@ namespace EdS.Data.Saves
                 }
             }
             SavedCharacter? character = null;
-            if (migrating)
+            if (version < 2)
             {
-                if (data.HasCharacter) report.Add("$.data.character", ValidationCode.UnknownField, $"champ inconnu en version {document.SchemaVersion} (personnage : version 2).");
+                if (data.HasCharacter || data.Character != null) report.Add("$.data.character", ValidationCode.UnknownField, $"champ inconnu en version {document.SchemaVersion} (personnage : version 2).");
             }
-            else if (!data.HasCharacter) Missing(report, "$.data.character", "personnage du joueur, ou null");
-            else if (data.Character is CharacterData c) character = CheckCharacter(c, report);
+            else if (!data.HasCharacter && data.Character == null) Missing(report, "$.data.character", "personnage du joueur, ou null");
+            else if (data.Character is CharacterData c) character = CheckCharacter(c, version, report);
             if (!report.IsValid || document.ContentVersion is null) return new SaveLoadResult(report, null);
             return new SaveLoadResult(report, new WorldSave(data.Zone!, data.WorldTick!.Value, data.Sessions!.Value, data.Consumed!.Select(k => k!), character, migrating));
         }
 
-        private static SavedCharacter? CheckCharacter(CharacterData c, ValidationReport report)
+        private static SavedCharacter? CheckCharacter(CharacterData c, int version, ValidationReport report)
         {
             const string path = "$.data.character";
             if (c.Id is null) Missing(report, path + ".id", "identifiant du personnage");
@@ -208,13 +243,19 @@ namespace EdS.Data.Saves
             else if (c.Xp < 0 || c.Xp > MaxXp) report.Add(path + ".xp", ValidationCode.OutOfRange, $"expérience hors de [0, {MaxXp}].");
             if (c.Talents is null) Missing(report, path + ".talents", "rangs des talents, éventuellement vide");
             else
+            {
+                // Revue Codex de la PR #44 : une sauvegarde construite en objets publics est contrôlée de même (un seul rang par talent).
+                var seenTalents = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var t in c.Talents)
                     if (!IsDataId(t.Key)) report.Add(path + ".talents." + t.Key, ValidationCode.InvalidValue, $"identifiant de talent invalide : {format}.");
                     else if (t.Value is not int rank) Missing(report, path + ".talents." + t.Key, "rang");
                     else if (rank < 0) report.Add(path + ".talents." + t.Key, ValidationCode.InvalidValue, "un rang ne peut pas être négatif.");
+                    else if (!seenTalents.Add(t.Key)) report.Add(path + ".talents." + t.Key, ValidationCode.DuplicateId, "talent donné deux fois.");
+            }
             void Names(List<string?>? list, string field)
             {
                 if (list is null) { Missing(report, $"{path}.{field}", "liste, éventuellement vide"); return; }
+                if (list.Count > MaxSkills) { report.Add($"{path}.{field}", ValidationCode.LimitExceeded, $"{list.Count} compétences, au plus {MaxSkills}."); return; }
                 for (int i = 0; i < list.Count; i++)
                     if (list[i] is null) Missing(report, $"{path}.{field}[{i}]", "identifiant de compétence");
                     else if (!IsDataId(list[i])) report.Add($"{path}.{field}[{i}]", ValidationCode.InvalidValue, $"identifiant de compétence « {list[i]} » invalide : {format}.");
@@ -224,10 +265,68 @@ namespace EdS.Data.Saves
             if (!c.HasUltimate) Missing(report, path + ".ultimate", "ultime, ou null");
             else if (c.Ultimate != null && !IsDataId(c.Ultimate)) report.Add(path + ".ultimate", ValidationCode.InvalidValue, $"identifiant de compétence « {c.Ultimate} » invalide : {format}.");
             Names(c.PassiveSkills, "passiveSkills");
+            // Sous-lot 12.3 (version 3) : inventaire et équipement. Leur cohérence avec le catalogue des objets (objets connus, piles, emplacements,
+            // niveau requis) est vérifiée quand la partie reprend : la sauvegarde ne dépend pas des données du jeu.
+            if (version < 3)
+            {
+                // Revue Codex de la PR #44 : refusés aussi quand ils sont seulement renseignés dans l'objet public (pas de perte silencieuse).
+                foreach (string field in new[] { "inventory", "equipment" }.Where(f => c.Present.Contains(f) || (f == "inventory" ? c.Inventory != null : c.Equipment != null)))
+                    report.Add($"{path}.{field}", ValidationCode.UnknownField, $"champ inconnu en version {version} (inventaire et équipement : version 3).");
+            }
+            else
+            {
+                if (c.Inventory is null) Missing(report, path + ".inventory", "places occupées de l'inventaire, éventuellement vide");
+                else if (c.Inventory.Count > MaxInventory)   // revue Codex de la PR #44 : même borne que le lecteur JSON
+                    report.Add(path + ".inventory", ValidationCode.LimitExceeded, $"{c.Inventory.Count} places, au plus {MaxInventory}.");
+                else
+                    for (int i = 0; i < c.Inventory.Count; i++)
+                    {
+                        string stackPath = $"{path}.inventory[{i}]";
+                        if (c.Inventory[i] is not ItemStackData stack) { Missing(report, stackPath, "pile d'objets"); continue; }
+                        if (stack.Item is null) Missing(report, stackPath + ".item", "identifiant d'objet");
+                        else if (!IsItemId(stack.Item)) report.Add(stackPath + ".item", ValidationCode.InvalidValue, $"identifiant d'objet « {stack.Item} » invalide.");
+                        if (stack.Count is null) Missing(report, stackPath + ".count", "quantité");
+                        else if (stack.Count < 1 || stack.Count > MaxStack) report.Add(stackPath + ".count", ValidationCode.OutOfRange, $"quantité hors de [1, {MaxStack}].");
+                    }
+                if (c.Equipment is null) Missing(report, path + ".equipment", "objet porté par emplacement, éventuellement vide");
+                else if (c.Equipment.Count > MaxEquipment)
+                    report.Add(path + ".equipment", ValidationCode.LimitExceeded, $"{c.Equipment.Count} emplacements, au plus {MaxEquipment}.");
+                else
+                {
+                    // Revue Codex de la PR #44 : un emplacement une seule fois (sauvegarde construite en objets publics).
+                    var seenSlots = new HashSet<string>(StringComparer.Ordinal);
+                    for (int i = 0; i < c.Equipment.Count; i++)
+                    {
+                        KeyValuePair<string, string?> e = c.Equipment[i];
+                        string slotPath = $"{path}.equipment.{e.Key}";
+                        if (e.Key is null || !SlotId.IsMatch(e.Key) || e.Key.Length > 64) report.Add(slotPath, ValidationCode.InvalidValue, $"emplacement « {e.Key} » invalide.");
+                        else if (!seenSlots.Add(e.Key)) report.Add(slotPath, ValidationCode.DuplicateId, $"emplacement « {e.Key} » donné deux fois.");
+                        else if (e.Value is null) Missing(report, slotPath, "identifiant d'objet");
+                        else if (!IsItemId(e.Value)) report.Add(slotPath, ValidationCode.InvalidValue, $"identifiant d'objet « {e.Value} » invalide.");
+                        else if (i > 0 && string.CompareOrdinal(c.Equipment[i - 1].Key, e.Key) > 0)
+                            report.Add(slotPath, ValidationCode.InvalidValue, "emplacements hors de l'ordre ordinal (forme canonique).");
+                    }
+                }
+            }
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
-                c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!));
+                c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
+                version < 3 ? null : c.Inventory!.Select(st => new ItemStack(st!.Item!, st.Count!.Value)),
+                version < 3 ? null : c.Equipment!.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal));
         }
+
+        /// <summary>Sous-lot 12.3 : plus grand nombre de places d'un inventaire sauvegardé, et plus grande pile.</summary>
+        public const int MaxInventory = 200;
+
+        /// <summary>Emplacements d'équipement et compétences d'une liste, au plus (mêmes bornes que le lecteur JSON).</summary>
+        public const int MaxEquipment = 64, MaxSkills = 64;
+
+        public const int MaxStack = 999;
+
+        private static readonly Regex ItemId = new Regex(@"^item(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex SlotId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
+
+        public static bool IsItemId(string? id) => id != null && id.Length <= 200 && ItemId.IsMatch(id);
 
         /// <summary>Plafond technique de l'expérience d'un personnage.</summary>
         public const long MaxXp = 1_000_000_000;
