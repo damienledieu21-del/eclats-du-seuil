@@ -50,6 +50,12 @@ namespace EdS.Game
 
         public Transform Player => _player != null ? _player.transform : null;
 
+        /// <summary>
+        /// Sous-lot 12.8 : couleur d'un combattant choisie par le jeu (le chef d'une zone, par exemple) ; null : couleur ordinaire (ennemi
+        /// rouge, allié vert, mannequin brun).
+        /// </summary>
+        public System.Func<string, Color?> Paint { get; set; }
+
         /// <summary>Combat positionné affiché (décor du scénario, places du moteur).</summary>
         public bool Spatial => _space != null;
 
@@ -150,13 +156,8 @@ namespace EdS.Game
                 Vector3 position = other.IsEnemy
                     ? Quaternion.Euler(0f, spread, 0f) * new Vector3(0f, 0f, 6f)
                     : new Vector3(2.5f * (i % 2 == 0 ? -1f : 1f), 0f, -1.5f);
-                PrimitiveType shape = other.View.Kind == CombatantKind.Dummy ? PrimitiveType.Cylinder : PrimitiveType.Capsule;
-                Color color = !other.IsEnemy ? new Color(0.3f, 0.8f, 0.4f)
-                    : other.View.Kind == CombatantKind.Dummy ? new Color(0.6f, 0.45f, 0.3f)
-                    : new Color(0.85f, 0.2f, 0.2f);
-                GameObject body = Body(other.Id, shape, color, position);
+                GameObject body = Body(other, position);
                 body.transform.LookAt(new Vector3(0f, body.transform.position.y, 0f));
-                Fit(body, other.View);
             }
             if (_space != null) Place(combat, true);
 
@@ -174,6 +175,28 @@ namespace EdS.Game
             _allyRing.transform.localScale = new Vector3(1.4f, 0.01f, 1.4f);
             _allyRing.GetComponent<Renderer>().sharedMaterial = MakeMaterial(new Color(0.3f, 0.9f, 0.45f));
             _allyRing.SetActive(false);
+        }
+
+        /// <summary>Corps d'un autre combattant (forme et couleur selon son genre et son camp), à sa taille.</summary>
+        private GameObject Body(OtherState other, Vector3 position)
+        {
+            PrimitiveType shape = other.View.Kind == CombatantKind.Dummy ? PrimitiveType.Cylinder : PrimitiveType.Capsule;
+            Color color = Paint?.Invoke(other.Id) ?? (!other.IsEnemy ? new Color(0.3f, 0.8f, 0.4f)
+                : other.View.Kind == CombatantKind.Dummy ? new Color(0.6f, 0.45f, 0.3f)
+                : new Color(0.85f, 0.2f, 0.2f));
+            GameObject body = Body(other.Id, shape, color, position);
+            Fit(body, other.View);
+            return body;
+        }
+
+        /// <summary>
+        /// Sous-lot 12.8 : une zone du monde fait entrer des combattants en cours de route (réapparitions, formes du chef) : chacun reçoit
+        /// son corps à sa première apparition dans le moteur, placé ensuite par <see cref="Place"/>.
+        /// </summary>
+        private void Discover(ICombatClient combat)
+        {
+            foreach (OtherState other in combat.Others())
+                if (!_bodies.ContainsKey(other.Id)) Body(other, Vector3.zero).SetActive(false);
         }
 
         private GameObject Body(string id, PrimitiveType shape, Color color, Vector3 position)
@@ -313,7 +336,11 @@ namespace EdS.Game
             _player.SetActive(me.IsPresent);
             _shield.SetActive(me.IsPresent && (me.Guarding || me.ParryOpen || broken));
             _shieldRenderer.sharedMaterial = me.ParryOpen ? _shieldParry : broken ? _shieldBroken : _shieldGuard;
-            if (_space != null) Place(combat, false);
+            if (_space != null)
+            {
+                Discover(combat);
+                Place(combat, false);
+            }
 
             foreach (OtherState other in combat.Others())
             {

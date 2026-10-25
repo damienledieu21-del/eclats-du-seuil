@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
 
@@ -27,16 +28,18 @@ namespace EdS.Runtime
         /// Cible à garder au tick <paramref name="tick"/> : <paramref name="current"/> si elle est en vue, ou vivante et perdue de vue depuis
         /// moins de <see cref="LostDelayMs"/> ; sinon le premier ennemi vivant en vue (ou null).
         /// </summary>
-        public string? Keep(CombatEngine engine, string playerId, IReadOnlyList<ConvexPolygon>? sight, string? current)
+        /// <param name="range">Sous-lot 12.8 : portée de choix (zone du monde) : la remplaçante est l'ennemi en vue le plus proche dans cette
+        /// portée, et une cible qui en sort compte comme perdue ; null : sans portée, ordre du scénario.</param>
+        public string? Keep(CombatEngine engine, string playerId, IReadOnlyList<ConvexPolygon>? sight, string? current, Fixed? range = null)
         {
-            List<OtherState> seen = CombatDisplay.LivingEnemies(engine, playerId, sight).ToList();
+            List<OtherState> seen = CombatDisplay.NearbyEnemies(engine, playerId, sight, range).ToList();
             if (current != null && seen.Any(e => e.Id == current))
             {
                 _lost = null;
                 return current;
             }
             long tick = engine.CurrentTick;
-            if (current != null && sight != null && CombatDisplay.LivingEnemies(engine, playerId, null).Any(e => e.Id == current))
+            if (current != null && (sight != null || range != null) && CombatDisplay.LivingEnemies(engine, playerId, null).Any(e => e.Id == current))
             {
                 if (_lost != current)
                 {

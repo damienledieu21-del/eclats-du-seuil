@@ -193,6 +193,14 @@ namespace EdS.World
             return workshop.Craft(recipe, r != null && ((INarrativeWorld)this).InPlace(r.Place), Inventory, out done);
         }
 
+        /// <summary>Sous-lot 12.8 : refus qu'aurait la fabrication de <paramref name="recipe"/> maintenant (rien ne change).</summary>
+        public CraftRefusal CanCraft(string recipe)
+        {
+            Workshop workshop = Workshop ?? throw new InvalidOperationException("Partie sans métiers.");
+            Recipe? r = workshop.Book.Recipes.FirstOrDefault(x => x.Id == recipe);
+            return workshop.Check(recipe, r != null && ((INarrativeWorld)this).InPlace(r.Place), Inventory);
+        }
+
         /// <summary>Retire de l'inventaire les objets de soin que le moteur a bus depuis le dernier relevé.</summary>
         private void SyncConsumables()
         {
@@ -224,10 +232,11 @@ namespace EdS.World
         /// <exception cref="ArgumentException">Sauvegarde d'une autre zone, sans personnage, ou incohérente avec le catalogue.</exception>
         /// <param name="story">Sous-lot 12.5 : histoire de la zone (PNJ, dialogues, quêtes) ; sans elle, l'état narratif sauvegardé est gardé tel quel.</param>
         /// <param name="crafting">Sous-lot 12.6 : métiers, recettes et nœuds de récolte ; sans eux, l'expérience des métiers sauvegardée est gardée.</param>
+        /// <param name="safePoint">Sous-lot 12.8 : point sûr où le personnage entre (halte, reprise après une défaite) ; null : l'entrée de la zone.</param>
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
-            CraftingBook? crafting = null, ICombatLog? log = null)
+            CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
-                data, progression, items, new CombatantPlacement(zone.Entry.Position, CharacterRadius), null, log, CheckZone(save, zone, story, crafting))
+                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint).Position, CharacterRadius), null, log, CheckZone(save, zone, story, crafting))
         {
             Definition = zone;
             _populations = new ZonePopulations(zone);
@@ -294,6 +303,11 @@ namespace EdS.World
 
         bool INarrativeWorld.InPlace(string place) =>
             Definition != null && ((INarrativeWorld)this).PlayerPosition is GroundVector p && Definition.PlacesAt(p).Any(x => x.Id == place);
+
+        /// <summary>Point sûr d'entrée : celui demandé, ou l'entrée de la zone.</summary>
+        private static SafePoint EntryOf(ZoneDefinition zone, string? safePoint) =>
+            safePoint is null ? zone.Entry
+            : zone.SafePoints.FirstOrDefault(p => p.Id == safePoint) ?? throw new ArgumentException($"Point sûr « {safePoint} » inconnu de {zone.Id}.", nameof(safePoint));
 
         /// <summary>
         /// Contrôles faits avant l'ouverture de la zone (aucun journal écrit pour une session refusée) : sauvegarde de cette zone, état narratif

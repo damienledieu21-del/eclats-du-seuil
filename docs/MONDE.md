@@ -119,6 +119,17 @@ Le chef d'une zone est décrit dans la zone (schéma 2, bloc `boss`) ; ses forme
 - **Défaite sans perte** (cadrage Q8) : quand le personnage tombe, la session le signale (`Defeated`, `IsDefeated`). Rien d'acquis n'est perdu : expérience, niveaux, objets, équipement, métiers, faits, quêtes, confiance et découvertes restent tels quels dans la sauvegarde ; seuls les objets de soin bus manquent. La partie reprend à la session suivante, au point sûr d'entrée, PV pleins ; le chef y est de nouveau entier.
 - **Mission** : l'étape « chef » (vaincre le Gardien : objectif `fact` sur `fact.chef.vaincu`) s'insère entre le rôdeur et le retour chez Odile.
 
+## L'aventure jouable (sous-lot 12.8)
+
+`AdventureSession` (`EdS.Runtime`) fait jouer la zone en temps réel par Unity : elle charge le monde (`data/v0/world/…`, `scenarios/zones/…`), reprend la sauvegarde locale (absente : nouveau Bastion ; illisible : nouvelle partie, motif affiché), ouvre une session (`WorldSession`) et la joue par le pont temps réel (`RealtimeCombat`, ici sur le moteur de la session). Détail des touches : [UNITY.md](UNITY.md#4-bis-laventure-dans-les-vallons-daube-sous-lot-128).
+
+- **Messages par clés** (cadrage Q37) : ce que la session rapporte (expérience, niveau, butin, quêtes, découvertes, confiance, chef, récompense, défaite, récolte, fabrication, refus) devient un texte de `texts/fr.json` (clés `text.ui.…`) ; les écrans aussi (titres, boutons, aide). Seuls les noms d'objets et de lieux restent dans leurs fichiers de données.
+- **Actions hors combat** : parler au PNJ à portée, sinon récolter le nœud à portée ; dialogue (réponses traduites) ; fabriquer (l'atelier montre le refus qu'aurait chaque recette, sans rien changer) ; porter ou retirer un objet ; boire l'objet de soin emporté qui soigne le moins.
+- **Cible parmi les proches** : dans une zone, les ennemis en vue à 20 m au plus, du plus proche au plus loin (provisoire) ; une cible qui sort de cette portée compte comme perdue de vue.
+- **Halte** : à 5 m d'un point sûr, sans ennemi vivant à 12 m (provisoire) : sauvegarde, puis nouvelle session à ce point sûr (`WorldSession` reçoit le point sûr d'entrée). Niveau, équipement et passages ouverts y prennent effet, PV pleins.
+- **Défaite** (Q8) : plus rien n'avance jusqu'à la reprise, qui sauvegarde et rouvre une session au dernier point sûr approché (l'entrée au lancement). Une fin de session (une heure), ou une arrivée refusée (une créature sur le point sûr), se reprend de même. Une sauvegarde automatique impossible (disque plein) s'affiche et se réessaie 5 s plus tard, sans couper la partie.
+- **Sauvegarde automatique** : au plus toutes les 5 s de temps réel quand quelque chose a changé, à chaque halte ou reprise, en quittant ou en passant en arrière-plan, y compris après une défaite pas encore reprise (les acquis d'avant la chute ne se perdent pas ; les PV du combat ne sont jamais sauvegardés).
+
 ## Sauvegarde
 
 Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 5 depuis le sous-lot 12.6 :

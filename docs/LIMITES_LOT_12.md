@@ -83,3 +83,17 @@ Détail : [MONDE.md](MONDE.md#chef-de-fin-et-récompenses-sous-lot-127).
 - **Défaite annoncée, pas encore rejouée** : la session signale la défaite ; c'est Unity (12.8) qui enchaînera la reprise (sauvegarde puis nouvelle session au point sûr).
 - **Portée personnelle** : la victoire est une clé du registre de la sauvegarde du joueur ; le partage d'une victoire de groupe viendra au lot 13.
 - **Formats** : zone en schéma 2 (bloc `boss`) ; moteur, journal, scénarios, instantané et sauvegarde inchangés (la victoire est une clé de `consumed`).
+
+## Sous-lot 12.8 : Unity, la zone jouable
+
+Détail : [MONDE.md](MONDE.md#laventure-jouable-sous-lot-128), touches : [UNITY.md](UNITY.md#4-bis-laventure-dans-les-vallons-daube-sous-lot-128).
+
+- **Pas essayé dans Unity ici** : les scripts sont compilés en CI contre les bouchons de l'API (`EdS.Unity.CompileCheck`) et le cœur de l'aventure (`AdventureSession`) est testé ; l'affichage, les écrans et le téléphone s'essaient au 12.9.
+- **Formes simples et écrans IMGUI provisoires** : PNJ, nœuds et points sûrs en primitives ; inventaire, journal, atelier et dialogue en panneaux simples ; pas de carte, pas d'icônes.
+- **Valeurs provisoires** (question à Damien) : portée de choix de la cible (20 m), halte (à 5 m d'un point sûr, sans ennemi à 12 m), sauvegarde automatique (5 s), barres des créatures jusqu'à 25 m.
+- **Le monde s'arrête** pendant un dialogue, un écran ou la pause (solo). Au lot 13 (monde partagé), il continuera.
+- **Changements à la halte** : niveau, équipement et passage ouvert prennent effet à la halte suivante (nouvelle session) ; pas encore de changement d'équipement en plein combat.
+- **Dernier point sûr non sauvegardé** : au lancement, la partie reprend à l'entrée de la zone (la sauvegarde ne garde pas la position).
+- **Talents** : l'écran des talents reste celui de l'entraînement ; le personnage de l'aventure garde ceux de sa sauvegarde.
+- **Noms d'objets et de lieux** dans leurs fichiers de données, pas encore par clés (Q37 : à faire avec l'anglais).
+- **Formats** : textes enrichis des clés `text.ui.…` (schéma inchangé) ; moteur, journal, scénarios et sauvegarde inchangés. `EdS.Runtime` dépend désormais de `EdS.World` (projet et définition d'assemblage).
