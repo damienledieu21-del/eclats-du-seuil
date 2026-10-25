@@ -114,4 +114,23 @@ public class Lot129MapTests : IDisposable
         Assert.InRange(goal.Z, seuil.MinZ, seuil.MaxZ);
         Assert.Contains(a.MapMarkers(), m => m.Kind == MapMarkerKind.Objective);
     }
+
+    [Fact]
+    public void Une_carte_par_session_et_par_aventure()
+    {
+        // Revue Codex de la PR #53 : l'image de Unity est gardée tant que la carte est la même ; une nouvelle session (halte) ou une nouvelle
+        // aventure (retour de l'entraînement, Opened repart à 1) donne une autre carte, donc une image refaite.
+        AdventureSession a = At(null);
+        AdventureMap first = a.Map;
+        Assert.Same(first, a.Map);
+        Assert.True(a.Rest());
+        Assert.NotSame(first, a.Map);
+        AdventureSession again = AdventureSession.Load(DataDirectory, Scenarios, SavePath);
+        Assert.Equal(1, again.Opened);
+        Assert.NotSame(first, again.Map);
+        string script = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "MiniMap.cs"));
+        Assert.Contains("if (_texture != null && ReferenceEquals(_source, map)) return _texture;", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("a.Opened", script, StringComparison.Ordinal);
+    }
 }
+

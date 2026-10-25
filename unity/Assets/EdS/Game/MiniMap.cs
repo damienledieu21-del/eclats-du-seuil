@@ -33,7 +33,9 @@ namespace EdS.Game
 
         private const int TextureWidth = 512;
         private Texture2D _texture;
-        private int _session = -1;
+
+        /// <summary>Carte dont la texture est l'image : une autre carte (nouvelle session, ou nouvelle aventure après l'entraînement) la refait.</summary>
+        private AdventureMap _source;
 
         private static readonly Color Frame = new Color(0f, 0f, 0f, 0.55f), You = new Color(1f, 0.9f, 0.2f), Goal = new Color(1f, 0.55f, 0.1f),
             Person = new Color(0.95f, 0.95f, 0.95f), Safe = new Color(0.35f, 0.9f, 0.45f), Forge = new Color(0.6f, 0.6f, 0.66f),
@@ -41,15 +43,16 @@ namespace EdS.Game
 
         private Texture2D Texture(AdventureSession a)
         {
-            if (_texture != null && _session == a.Opened) return _texture;
+            // Revue Codex de la PR #53 : la clé est la carte elle-même, pas le numéro de session (une nouvelle aventure repart à 1).
             AdventureMap map = a.Map;
+            if (_texture != null && ReferenceEquals(_source, map)) return _texture;
             int height = System.Math.Max(1, (int)(TextureWidth * map.Depth / map.Width));
             if (_texture != null) Object.Destroy(_texture);
             _texture = new Texture2D(TextureWidth, height, TextureFormat.RGBA32, false);
             _texture.filterMode = FilterMode.Bilinear;
             _texture.LoadRawTextureData(map.Render(TextureWidth, height));
             _texture.Apply();
-            _session = a.Opened;
+            _source = map;
             return _texture;
         }
 
