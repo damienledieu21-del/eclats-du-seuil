@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "progression"
@@ -63,7 +63,8 @@
               "class",
               "attributes",
               "startActiveSkills",
-              "startPassiveSkills"
+              "startPassiveSkills",
+              "skillUnlocks"
             ],
             "properties": {
               "class": {
@@ -127,6 +128,28 @@
                 "type": "array",
                 "items": {
                   "type": "string"
+                }
+              },
+              "skillUnlocks": {
+                "type": "array",
+                "maxItems": 64,
+                "description": "Sous-lot 12.9b (schéma 2) : compétences gagnées en montant de niveau, équipées d'elles-mêmes à la halte qui suit, dans l'ordre des niveaux. Chaque niveau doit garder un build valide (emplacements ouverts par les règles).",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "level",
+                    "skill"
+                  ],
+                  "properties": {
+                    "level": {
+                      "type": "integer",
+                      "minimum": 2
+                    },
+                    "skill": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
             }

@@ -5,12 +5,14 @@ using System.IO;
 using System.Linq;
 using EdS.Data;
 using EdS.Data.Characters;
+using EdS.Data.Classes;
 using EdS.Data.Crafting;
 using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Zones;
+using EdS.Domain.Builds;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
@@ -158,6 +160,7 @@ namespace EdS.Runtime
             if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, PlayerCharacters.Create(PlayerId, PlayerClass, progression));
             Open(save, null);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
+            AnnounceLearned();
         }
 
         /// <summary>
@@ -197,7 +200,21 @@ namespace EdS.Runtime
             _strandedAnnounced = false;
             foreach (KeyValuePair<string, int> c in world.Zone.Engine.View(PlayerId).ConsumableCharges) _drunk[c.Key] = c.Value;
             Opened = checked(Opened + 1);
+            if (world.Learned.Count > 0) _dirty = true;   // sous-lot 12.9b : les compétences gagnées vont à la prochaine sauvegarde
         }
+
+        /// <summary>Sous-lot 12.9b : annonce les compétences gagnées à l'ouverture de la session, avec leur touche.</summary>
+        private void AnnounceLearned()
+        {
+            foreach (SkillUnlock u in World.Learned)
+                if (u.Kind == SkillKind.Ultimate) Say("text.ui.ultimate_learned", SkillName(u.Skill));
+                else if (u.Kind == SkillKind.Active)
+                    Say("text.ui.skill_learned", SkillName(u.Skill), World.Character.ActiveSkills.ToList().IndexOf(u.Skill) + 1);
+                else Say("text.ui.passive_learned", SkillName(u.Skill));
+        }
+
+        private string SkillName(string skill) =>
+            _data.TryGetClass(PlayerClass, out LoadedClass c) && c.Definition.TryGetSkill(skill, out SkillDefinition d) ? d.Name : skill;
 
         // --- Temps et messages -------------------------------------------------------------------------------------------
 
@@ -264,7 +281,11 @@ namespace EdS.Runtime
             foreach (ExperienceGained g in step.Experience)
             {
                 Say("text.ui.xp", g.Xp);
-                if (g.LeveledUp) Say("text.ui.level", g.LevelAfter);
+                if (!g.LeveledUp) continue;
+                Say("text.ui.level", g.LevelAfter);
+                // Sous-lot 12.9b : ce que ce niveau fera gagner à la prochaine halte.
+                foreach (SkillUnlock u in _progression.ForClass(PlayerClass).SkillUnlocks)
+                    if (u.Level > g.LevelBefore && u.Level <= g.LevelAfter) Say("text.ui.skill_soon", SkillName(u.Skill));
             }
             foreach (LootGained l in step.Loot) Say(l.Kept ? "text.ui.loot" : "text.ui.loot_lost", ItemName(l.Item), l.Count);
             foreach (BossEvent b in step.Boss)
@@ -614,6 +635,7 @@ namespace EdS.Runtime
             Write(save);
             Open(save, _lastSafePoint);
             Say(message, LastSafePoint);
+            AnnounceLearned();
         }
 
         /// <summary>Sauvegarde l'état actuel (écriture atomique, copie de secours gardée).</summary>

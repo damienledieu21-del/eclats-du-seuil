@@ -104,3 +104,12 @@ Détail : [MONDE.md](MONDE.md#laventure-jouable-sous-lot-128), touches : [UNITY.
 - **Écarts avec le tableau approuvé** : le sanglier garde 180 PV et 25 dégâts (à 260 PV et 45 dégâts, le Bastion de niveau 1 perdait) ; le Gardien passe à 250 PV, puis 400 pour sa forme éveillée, plus forte que la première (demande de Damien, 25 octobre 2026), avec des dégâts plus bas (à 700 et 450 PV, le Bastion de niveau 10 perdait même avec ses potions).
 - **Une seule forge** : toutes les recettes, potions comprises, se fabriquent à la forge de Maëlle ; une herboristerie à part viendra si l'essai le demande.
 - **Formats** : données seulement (zone, recettes, progression, textes) ; moteur, journal, scénarios de référence et sauvegarde inchangés.
+
+## Sous-lot 12.9b : compétences gagnées en montant de niveau (25 octobre 2026)
+
+- **Choix de Damien** : « La 2 pour l'instant et la 3 après » : les compétences s'équipent d'elles-mêmes en montant de niveau (fait ici) ; un écran pour choisir ses compétences viendra ensuite. Niveaux et compétences choisis par Damien : Barrière d'acier au niveau 5, Onde de rupture et Bastion absolu au niveau 10, sur les emplacements déjà prévus par les règles (lot 4). Provocation et Contrecoup restent pour l'écran de choix.
+- **Pas d'écran de choix** : un personnage ne peut pas encore changer ses compétences ; quand l'écran viendra, une compétence retirée par le joueur serait rééquipée à la session suivante s'il reste une place : il faudra alors garder dans la sauvegarde les compétences déjà apprises.
+- **Effet à la halte** : comme le niveau, la compétence arrive à la prochaine halte (nouvelle session), pas en plein combat.
+- **Passifs** : le deuxième emplacement de passif s'ouvre au niveau 5 (règles) ; aucun passif n'est gagné pour l'instant.
+- **Formats** : progression en schéma 2 (`skillUnlocks` obligatoire, version 1 refusée) ; textes enrichis de quatre clés ; moteur, journal, scénarios et sauvegarde inchangés.
+

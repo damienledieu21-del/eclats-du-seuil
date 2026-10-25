@@ -74,8 +74,21 @@ namespace EdS.Data.Json
                     (e, ip) => ScenarioJsonReader.ReadIntegerMap(input, e, ip)),
                 ["startActiveSkills"] = (v, p) => c.StartActiveSkills = input.ReadList(v, p, (e, ip) => input.Text(e, ip)),
                 ["startPassiveSkills"] = (v, p) => c.StartPassiveSkills = input.ReadList(v, p, (e, ip) => input.Text(e, ip)),
+                ["skillUnlocks"] = (v, p) => c.SkillUnlocks = input.ReadLimitedList(v, p, ProgressionValidator.MaxSkillUnlocks,
+                    n => $"{n} compétences gagnées, au plus {ProgressionValidator.MaxSkillUnlocks}.", (e, ip) => ReadUnlock(input, e, ip)),
             });
             return ok ? c : null;
+        }
+
+        private static SkillUnlockData? ReadUnlock(JsonInput input, JsonElement element, string path)
+        {
+            var u = new SkillUnlockData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["level"] = (v, p) => u.Level = input.Int32(v, p),
+                ["skill"] = (v, p) => u.Skill = input.Text(v, p),
+            });
+            return ok ? u : null;
         }
     }
 }

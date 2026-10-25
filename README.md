@@ -173,6 +173,8 @@ Sous-lot 12.8 (Unity, la zone jouable) : le jeu s'ouvre sur l'aventure dans les 
 
 Sous-lot 12.9a (réglages de l'essai de Damien, 25 octobre 2026) : créatures et Gardien rééquilibrés pour un Bastion de niveau 1 à 10 (ils venaient de la démonstration du lot 11), expérience des créatures (PV ÷ 5) ; la forge de Maëlle devient un lieu visible du village (enclume) où se font toutes les fabrications. Détail : [docs/LIMITES_LOT_12.md](docs/LIMITES_LOT_12.md#sous-lot-129a--réglages-de-lessai-de-damien-25-octobre-2026).
 
+Sous-lot 12.9b (compétences gagnées en montant de niveau, choix de Damien du 25 octobre 2026) : le personnage gagne la Barrière d'acier au niveau 5, l'Onde de rupture et l'ultime Bastion absolu au niveau 10, équipées d'elles-mêmes à la halte ; progression en schéma 2. Un écran pour choisir ses compétences viendra ensuite. Détail : [docs/MONDE.md](docs/MONDE.md#personnage-sous-lot-122).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
