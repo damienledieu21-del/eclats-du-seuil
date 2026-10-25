@@ -116,6 +116,6 @@ public class Lot129BalanceTests
     {
         // Une dizaine de créatures pour les premiers niveaux ; le Gardien vaut une montée de niveau.
         CharacterProgression p = Progression;
-        Assert.Equal((30L, 36L, 24L, 44L, 80L, 50L), (p.KillXp(150), p.KillXp(180), p.KillXp(120), p.KillXp(220), p.KillXp(400), p.KillXp(250)));
+        Assert.Equal((30L, 36L, 24L, 44L, 50L, 80L), (p.KillXp(150), p.KillXp(180), p.KillXp(120), p.KillXp(220), p.KillXp(250), p.KillXp(400)));
     }
 }

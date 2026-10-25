@@ -101,6 +101,6 @@ Détail : [MONDE.md](MONDE.md#laventure-jouable-sous-lot-128), touches : [UNITY.
 ## Sous-lot 12.9a : réglages de l'essai de Damien (25 octobre 2026)
 
 - **Équilibrage provisoire** : PV et dégâts des créatures et du Gardien, et expérience des créatures (PV ÷ 5), réglés par combats simulés d'un Bastion qui joue simplement (compétences dès qu'elles sont prêtes, potion sous 40 % des PV). Un vrai joueur pare et esquive : à confirmer à l'essai. Les loups chassent en groupe, les combats simulés les prennent un par un.
-- **Écarts avec le tableau approuvé** : le sanglier garde 180 PV et 25 dégâts (à 260 PV et 45 dégâts, le Bastion de niveau 1 perdait) ; le Gardien passe à 400 puis 250 PV avec des dégâts plus bas (à 700 et 450 PV, le Bastion de niveau 10 perdait même avec ses potions).
+- **Écarts avec le tableau approuvé** : le sanglier garde 180 PV et 25 dégâts (à 260 PV et 45 dégâts, le Bastion de niveau 1 perdait) ; le Gardien passe à 250 PV, puis 400 pour sa forme éveillée, plus forte que la première (demande de Damien, 25 octobre 2026), avec des dégâts plus bas (à 700 et 450 PV, le Bastion de niveau 10 perdait même avec ses potions).
 - **Une seule forge** : toutes les recettes, potions comprises, se fabriquent à la forge de Maëlle ; une herboristerie à part viendra si l'essai le demande.
 - **Formats** : données seulement (zone, recettes, progression, textes) ; moteur, journal, scénarios de référence et sauvegarde inchangés.
