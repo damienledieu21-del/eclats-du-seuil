@@ -85,7 +85,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 | 1 à 9 (ou clic) | choisir une réponse du dialogue (parmi celles affichées) ; Échap ou le bouton Fermer (au doigt) le ferme |
 | I | inventaire, équipement porté et métiers (porter, retirer) |
 | J | journal de quête et découvertes |
-| K | atelier : recettes, ce qu'il manque, fabriquer (à la forge de Maëlle, au sud-ouest du village : enclume grise, « K : forger » s'affiche quand on y est) |
+| K | atelier : recettes, ce qu'il manque, fabriquer (à la forge de Maëlle, à l'ouest du village, juste au nord de la place : enclume grise, « K : forger » s'affiche quand on y est) |
 | P | boire un objet de soin emporté (le plus petit d'abord) |
 | Entrée | faire halte près d'un point sûr (aucun ennemi proche) : sauvegarde, PV pleins ; après une défaite : reprendre au dernier point sûr |
 | F6 | sauvegarder maintenant |

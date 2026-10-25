@@ -560,7 +560,7 @@
           -1
         ],
         "radius": 0.6,
-        "speed": 6,
+        "speed": 4,
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
@@ -599,7 +599,7 @@
           -1
         ],
         "radius": 0.6,
-        "speed": 6,
+        "speed": 4,
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
@@ -638,7 +638,7 @@
           -1
         ],
         "radius": 0.6,
-        "speed": 6,
+        "speed": 4,
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
@@ -774,7 +774,7 @@
           -1
         ],
         "radius": 0.6,
-        "speed": 6,
+        "speed": 4,
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
@@ -813,7 +813,7 @@
           -1
         ],
         "radius": 0.6,
-        "speed": 6,
+        "speed": 4,
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
