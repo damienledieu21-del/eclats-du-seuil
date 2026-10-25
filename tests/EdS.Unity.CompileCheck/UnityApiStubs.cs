@@ -33,7 +33,7 @@ namespace UnityEngine
     public struct Rect { public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public float x, y, width, height; }
     public struct Matrix4x4 { public static Matrix4x4 Scale(Vector3 v) => default; }
     public static class Mathf { public static float Clamp(float v, float a, float b) => v; public static float Clamp01(float v) => v; public static float Lerp(float a, float b, float t) => a; public static float LerpAngle(float a, float b, float t) => a; public static float Exp(float p) => p; public static float Sin(float f) => f; public static float Cos(float f) => f; public static float Atan2(float y, float x) => y; public static float Abs(float f) => f; public static float Min(float a, float b) => a; public static float Max(float a, float b) => a; public static float MoveTowards(float current, float target, float maxDelta) => current; public const float PI = 3.14159274f; public const float Deg2Rad = 0.0174532924f; public const float Rad2Deg = 57.29578f; }
-    public enum KeyCode { None, Backspace, Tab, Escape, Space, Return, KeypadEnter, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, F6, F8, A, C, D, E, F, G, H, I, J, K, M, N, P, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift }
+    public enum KeyCode { None, Backspace, Tab, Escape, Space, Return, KeypadEnter, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, F6, F8, A, C, D, E, F, G, H, I, J, K, L, M, N, P, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift }
     public static class Input { public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static bool GetMouseButtonDown(int b) => false; public static bool GetMouseButtonUp(int b) => false; public static Vector3 mousePosition => default; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; public static bool touchSupported => false; public static int touchCount => 0; public static Touch GetTouch(int i) => default; }
     public static class Time { public static float time => 0; public static float deltaTime => 0; }
     public enum RuntimePlatform { WindowsEditor, WindowsPlayer, Android, IPhonePlayer }
@@ -47,7 +47,9 @@ namespace UnityEngine
     public static class Resources { public static T Load<T>(string path) where T : Object => default; }
     public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } }
     public class Texture : Object { }
-    public sealed class Texture2D : Texture { public static Texture2D whiteTexture => null; }
+    public sealed class Texture2D : Texture { public Texture2D(int width, int height, TextureFormat format, bool mipChain) { } public static Texture2D whiteTexture => null; public FilterMode filterMode { get; set; } public void LoadRawTextureData(byte[] data) { } public void Apply() { } }
+    public enum TextureFormat { RGBA32 = 4 }
+    public enum FilterMode { Point, Bilinear, Trilinear }
     public enum RuntimeInitializeLoadType { AfterSceneLoad, BeforeSceneLoad }
     [AttributeUsage(AttributeTargets.Method)] public sealed class RuntimeInitializeOnLoadMethodAttribute : Attribute { public RuntimeInitializeOnLoadMethodAttribute(RuntimeInitializeLoadType t) { } }
     public enum TextAnchor { UpperLeft, MiddleCenter }

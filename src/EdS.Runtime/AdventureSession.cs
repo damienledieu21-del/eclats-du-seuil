@@ -13,6 +13,7 @@ using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Zones;
 using EdS.Domain.Builds;
+using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
@@ -563,6 +564,87 @@ namespace EdS.Runtime
             .Select(id => _zone.Places.FirstOrDefault(p => p.Id == id)).Where(p => p != null)
             .Select(p => new WorldMarker(p!.Id, p.Name, new GroundVector(Fixed.FromRaw((p.Min.X.Raw + p.Max.X.Raw) / 2), Fixed.FromRaw((p.Min.Z.Raw + p.Max.Z.Raw) / 2))))
             .ToList();
+
+        // --- Carte (sous-lot 12.9d) -------------------------------------------------------------------------------------
+
+        private AdventureMap? _map;
+        private int _mapSession = -1;
+
+        /// <summary>
+        /// Sous-lot 12.9d : carte de la zone pour la session ouverte (décor de son espace : une porte ouverte n'y est plus ; lieux nommés).
+        /// Recalculée à chaque nouvelle session.
+        /// </summary>
+        public AdventureMap Map
+        {
+            get
+            {
+                if (_map is null || _mapSession != Opened)
+                {
+                    _map = new AdventureMap(World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace."),
+                        _zone.Places.Select(p => new MapPlace(p.Id, p.Name, Meters(p.Min.X), Meters(p.Min.Z), Meters(p.Max.X), Meters(p.Max.Z))));
+                    _mapSession = Opened;
+                }
+                return _map;
+            }
+        }
+
+        private static double Meters(Fixed f) => f.Raw / 10000.0;
+
+        /// <summary>
+        /// Sous-lot 12.9d : repères fixes de la carte : PNJ, points sûrs, ateliers, nœuds de récolte, puis le personnage (s'il est dans la zone)
+        /// et l'objectif de l'étape en cours (<see cref="Objective"/>).
+        /// </summary>
+        public IReadOnlyList<MapMarker> MapMarkers()
+        {
+            var list = new List<MapMarker>();
+            list.AddRange(Npcs().Select(n => new MapMarker(MapMarkerKind.Npc, n.Name, n.X, n.Z)));
+            list.AddRange(SafePoints().Select(s => new MapMarker(MapMarkerKind.SafePoint, s.Name, s.X, s.Z)));
+            list.AddRange(Workshops().Select(w => new MapMarker(MapMarkerKind.Workshop, w.Name, w.X, w.Z)));
+            list.AddRange(Nodes().Select(n => new MapMarker(MapMarkerKind.Node, n.Name, n.X, n.Z)));
+            if (Me is GroundVector me) list.Add(new MapMarker(MapMarkerKind.Player, Text("text.ui.map.you"), Meters(me.X), Meters(me.Z)));
+            if (Objective is MapMarker objective) list.Add(objective);
+            return list;
+        }
+
+        /// <summary>
+        /// Sous-lot 12.9d : où mène l'étape en cours de la première quête active, d'après les données : lieu à atteindre (son centre),
+        /// créature à vaincre (sa place), fait appris d'un PNJ (le PNJ dont une réponse l'apprend) ou par la victoire sur le chef (sa première
+        /// forme), passage ouvert par un PNJ (celui dont une réponse l'ouvre). Null sans étape, ou sans lieu connu (objets à réunir).
+        /// </summary>
+        public MapMarker? Objective
+        {
+            get
+            {
+                Narrative? n = World.Narrative;
+                if (n is null) return null;
+                foreach (Quest q in _story.Quests.Where(q => n.IsActive(q.Id)))
+                {
+                    if (!(n.CurrentStep(q.Id) is QuestStep step)) continue;
+                    string label = Text("text.ui.map.objective");
+                    var o = step.Objective;
+                    switch (o.Kind)
+                    {
+                        case ObjectiveKind.Reach when _zone.Places.FirstOrDefault(p => p.Id == o.Id) is Place place:
+                            return new MapMarker(MapMarkerKind.Objective, label, (Meters(place.Min.X) + Meters(place.Max.X)) / 2,
+                                (Meters(place.Min.Z) + Meters(place.Max.Z)) / 2);
+                        case ObjectiveKind.Defeat when _zone.Populations.FirstOrDefault(p => p.Creature == o.Id)?.Template.Placement is CombatantPlacement at:
+                            return new MapMarker(MapMarkerKind.Objective, label, Meters(at.Position.X), Meters(at.Position.Z));
+                        case ObjectiveKind.Fact when NpcWith(EffectKind.SetFact, o.Id) is Npc npc:
+                            return new MapMarker(MapMarkerKind.Objective, label, Meters(npc.Position.X), Meters(npc.Position.Z));
+                        case ObjectiveKind.Fact when _zone.Boss is { } boss && boss.Fact == o.Id && boss.Forms[0].Placement is CombatantPlacement chef:
+                            return new MapMarker(MapMarkerKind.Objective, label, Meters(chef.Position.X), Meters(chef.Position.Z));
+                        case ObjectiveKind.Passage when NpcWith(EffectKind.OpenPassage, o.Id) is Npc opener:
+                            return new MapMarker(MapMarkerKind.Objective, label, Meters(opener.Position.X), Meters(opener.Position.Z));
+                    }
+                }
+                return null;
+            }
+        }
+
+        /// <summary>Premier PNJ (ordre de l'histoire) dont une réponse de dialogue a l'effet <paramref name="kind"/> sur <paramref name="id"/>.</summary>
+        private Npc? NpcWith(EffectKind kind, string id) => _story.Npcs.FirstOrDefault(npc =>
+            _story.Dialogues.FirstOrDefault(d => d.Id == npc.Dialogue) is Dialogue dialogue
+            && dialogue.Nodes.Any(node => node.Choices.Any(c => c.Effects.Any(e => e.Kind == kind && e.Id == id))));
 
         /// <summary>Atelier où se trouve le personnage (nom), ou null.</summary>
         public string? WorkshopHere => Me is GroundVector p

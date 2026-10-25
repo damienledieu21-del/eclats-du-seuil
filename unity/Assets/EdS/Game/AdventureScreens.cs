@@ -15,7 +15,13 @@ namespace EdS.Game
     /// </summary>
     public sealed class AdventureScreens
     {
-        public enum Panel { None, Inventory, Journal, Crafting }
+        public enum Panel { None, Inventory, Journal, Crafting, Map }
+
+        /// <summary>Sous-lot 12.9d : la carte (petite en haut à droite, grande dans cet écran).</summary>
+        public MiniMap Map { get; } = new MiniMap();
+
+        /// <summary>Ennemis en vue à montrer sur la carte (mis à jour par le jeu à chaque image).</summary>
+        public IReadOnlyList<MapEnemy> Enemies { get; set; } = new MapEnemy[0];
 
         private const float PanelWidth = 1200f, PanelHeight = 820f, Row = 34f;
 
@@ -41,6 +47,11 @@ namespace EdS.Game
             Frame(out float x, out float y);
             if (Open == Panel.Inventory) Inventory(a, x, y);
             else if (Open == Panel.Journal) Journal(a, x, y);
+            else if (Open == Panel.Map)
+            {
+                Hud.Title(new Rect(x + 20f, y + 12f, 600f, 40f), a.Text("text.ui.title.map"));
+                Map.DrawLarge(a, new Rect(x + 20f, y + 60f, PanelWidth - 40f, PanelHeight - 130f), Enemies);
+            }
             else Crafting(a, x, y);
             if (Hud.Button(new Rect(x + PanelWidth - 260f, y + PanelHeight - 56f, 240f, 42f), a.Text("text.ui.close"), true)) Close();
         }

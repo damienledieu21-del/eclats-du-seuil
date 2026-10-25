@@ -120,3 +120,11 @@ Détail : [MONDE.md](MONDE.md#laventure-jouable-sous-lot-128), touches : [UNITY.
 - **Garde levée en marchant au doigt** : avec le stick et Agir touchés ensemble, Unity simulait un clic droit, qui levait la garde. Le clic droit (et le bouton du milieu de la caméra) ne comptent plus quand un doigt est sur l'écran. Correction dans les scripts Unity, compilée en CI contre les bouchons de l'API, pas essayée sur le Note8 ici : à vérifier à la prochaine installation.
 - **Formats** : données (scénario de la zone, textes) et scripts Unity seulement ; moteur, journal, scénarios de référence et sauvegarde inchangés.
 
+## Sous-lot 12.9d : la carte (25 octobre 2026)
+
+- **Demande de Damien** : « J'aurais rajouté une mini carte en haut à droite qu'on puisse agrandir si besoin. » Petite carte en haut à droite, grande carte (L ou toucher la carte) avec les noms et la légende.
+- **Image calculée par le cœur** (`AdventureMap.Render`, testée) une fois par session : une porte ouverte disparaît de la carte à la halte suivante, comme dans la zone.
+- **Objectif tiré des données** (`AdventureSession.Objective`) : lieu à atteindre, créature à vaincre (sa place de départ), PNJ dont une réponse apprend le fait ou ouvre le passage, chef pour sa victoire. Une étape « réunir des objets » n'a pas de repère ; une seule quête est suivie (la première active).
+- **Provisoire** (interface du lot 14) : carte fixe nord en haut (elle ne tourne pas avec la caméra), pas de zoom ni de brouillard, dessin IMGUI ; tailles et couleurs à régler à l'essai. Essayée par les tests du cœur et compilée contre les bouchons de l'API Unity, pas encore vue dans Unity ni sur le Note8.
+- **Formats** : textes enrichis de cinq clés ; moteur, journal, scénarios, règles et sauvegarde inchangés.
+

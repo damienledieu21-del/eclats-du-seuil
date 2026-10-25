@@ -290,6 +290,7 @@ namespace EdS.Game
             if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
             if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
             if (Input.GetKeyDown(KeyCode.K) || _touch.WorkshopPressed) _screens.Toggle(AdventureScreens.Panel.Crafting);
+            if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
             if (Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed)
             {
@@ -917,6 +918,13 @@ namespace EdS.Game
                 Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f + (a.MustContinue ? 0 : 120), 800, 40), Hud.Plain(hint), new Color(1f, 0.92f, 0.6f));
             if (_paused && a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None)
                 Hud.Centered(new Rect(Hud.Width / 2f - 150, 64, 300, 40), "PAUSE", new Color(1f, 0.85f, 0.3f));
+            // Sous-lot 12.9d : la carte (ennemis en vue seulement, comme à l'écran) ; petite tant qu'aucun écran n'est ouvert.
+            var enemies = new List<MapEnemy>();
+            foreach (OtherState o in _combat.Others())
+                if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && _arena.Shown(o.Id) && o.View.Position is EdS.Domain.Space.GroundVector at)
+                    enemies.Add(new MapEnemy(at.X.Raw / 10000f, at.Z.Raw / 10000f, a.IsBoss(o.Id)));
+            _screens.Enemies = enemies;
+            if (_screens.Open == AdventureScreens.Panel.None && a.Dialogue == null) _screens.Map.DrawMini(a, enemies);
             int answer = AdventureScreens.DrawDialogue(a);
             if (answer >= 0) a.Choose(answer);
             else if (answer == AdventureScreens.CloseDialogue) a.CloseDialogue();
@@ -1012,7 +1020,8 @@ namespace EdS.Game
             if (_adventure != null && _arena.Player != null) _markers?.Labels(camera, _arena.Player.position);
             Hud.Player(player);
             // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
-            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)));
+            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)),
+                _adventure != null ? MiniMap.Width + 2f * MiniMap.Margin : 0f);   // sous-lot 12.9d : à gauche de la petite carte
             if (_adventure != null)
             {
                 if (_help) Hud.Help(Hud.Plain(_adventure.PlaceName), _adventure.TimeOfDay, _camera.Describe(), _paused, false, _adventure.Text("text.ui.help"));

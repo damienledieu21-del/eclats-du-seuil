@@ -134,10 +134,11 @@ namespace EdS.Game
         }
 
         /// <summary>Fiche de la cible, en haut à droite.</summary>
-        public static void Target(OtherState target)
+        /// <param name="right">Sous-lot 12.9d : place laissée à droite (la petite carte de l'aventure).</param>
+        public static void Target(OtherState target, float right = 0f)
         {
             if (target == null) return;
-            float x = Width - 380f, y = 20f;
+            float x = Width - 380f - right, y = 20f;
             Fill(new Rect(x - 10, y - 6, 370, 132), new Color(0f, 0f, 0f, 0.4f));
             Title(new Rect(x, y, 360, 34), "Cible : " + target.Id);
             CombatantView v = target.View;
