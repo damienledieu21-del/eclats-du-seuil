@@ -344,6 +344,7 @@ namespace EdS.Game
             if (a.NpcInReach is EdS.Data.Story.Npc npc) return string.Format(a.Text("text.ui.talk_hint"), a.Text(npc.Name));
             if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);
             if (a.CanRest) return string.Format(a.Text("text.ui.rest_hint"), a.LastSafePoint);
+            if (a.WorkshopHere is string workshop) return string.Format(a.Text("text.ui.craft_hint"), workshop);
             return null;
         }
 

@@ -59,7 +59,8 @@ public class Lot122CharacterTests
         Assert.Equal(10, p.MaxLevel);   // cadrage Q3 : niveaux 1 à 10
         Assert.Equal(new long[] { 0, 100, 220, 360, 520, 700, 900, 1120, 1360, 1620 }, p.XpToLevel);
         Assert.Equal((1, 1, 2, 9, 10, 10), (p.LevelFor(0), p.LevelFor(99), p.LevelFor(100), p.LevelFor(1619), p.LevelFor(1620), p.LevelFor(1_000_000)));
-        Assert.Equal((35L, 60L, 20L, 1L), (p.KillXp(700), p.KillXp(1200), p.KillXp(400), p.KillXp(5)));   // loup, sanglier, archer, 1 au moins
+        // Essai du 12.9 (25 octobre 2026) : 1 point d'expérience par tranche de 5 PV, pour les créatures rééquilibrées du niveau 1.
+        Assert.Equal((30L, 52L, 24L, 1L), (p.KillXp(150), p.KillXp(260), p.KillXp(120), p.KillXp(4)));   // loup, sanglier, archer, 1 au moins
         ClassProgression bastion = p.ForClass("class.bastion");
         Assert.Equal(new Attributes(12, 6, 4, 12, 8, 6), bastion.At(1));
         Assert.Equal(new Attributes(18, 7, 5, 18, 10, 10), bastion.At(10));

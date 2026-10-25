@@ -37,7 +37,7 @@
         "name": "text.recipe.ferrure",
         "profession": "forge",
         "requiredLevel": 1,
-        "place": "village",
+        "place": "forge",
         "inputs": [
           {
             "item": "item.minerai_de_fer",
@@ -55,7 +55,7 @@
         "name": "text.recipe.potion_de_soin",
         "profession": "herboristerie",
         "requiredLevel": 1,
-        "place": "village",
+        "place": "forge",
         "inputs": [
           {
             "item": "item.herbe_de_l_aube",
@@ -73,7 +73,7 @@
         "name": "text.recipe.remede_de_l_aube",
         "profession": "herboristerie",
         "requiredLevel": 3,
-        "place": "village",
+        "place": "forge",
         "inputs": [
           {
             "item": "item.herbe_de_l_aube",

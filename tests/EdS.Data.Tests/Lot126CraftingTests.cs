@@ -36,6 +36,9 @@ public class Lot126CraftingTests
         return ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, ShippedData, Items).Zone!;
     }
 
+    /// <summary>Essai du 12.9 : on fabrique à la forge de Maëlle (entrée posée devant elle).</summary>
+    private static (double X, double Z) Forge => (-19, -5);
+
     private static CraftingBook Book(ZoneDefinition zone) => CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, zone, Items).Book!;
 
     private static CraftingLoadResult Mutated(Action<JsonObject> mutate)
@@ -247,7 +250,7 @@ public class Lot126CraftingTests
         CraftingBook book = loaded.Book!;
         Assert.Equal(new[] { "forge", "herboristerie", "minage" }, book.Professions.Select(p => p.Id));
         Assert.Equal((1, 2, 10), (book.LevelFor(39), book.LevelFor(40), book.LevelFor(5000)));
-        Assert.Equal(("forge", "village", 3, "item.ferrure"), (book.Recipe("recipe.ferrure").Profession, book.Recipe("recipe.ferrure").Place,
+        Assert.Equal(("forge", "forge", 3, "item.ferrure"), (book.Recipe("recipe.ferrure").Profession, book.Recipe("recipe.ferrure").Place,
             book.Recipe("recipe.ferrure").Inputs[0].Count, book.Recipe("recipe.ferrure").Output.Item));
         Assert.Equal(6, book.Nodes.Count);
         ItemDefinition potion = Items.Item("item.potion_de_soin");
@@ -290,13 +293,13 @@ public class Lot126CraftingTests
         Assert.True(mine.Workshop.IsReady("filon_ouest", now + 1200));   // une minute : le filon a repoussé
         Assert.Equal(CraftRefusal.NotHere, mine.Gather("filon_centre", out _));   // trop loin
         Assert.Equal((1, 12L, 0L, 0L), (mine.Inventory.Count("item.minerai_de_fer"), mine.Workshop.Xp("minage"), mine.Workshop.Xp("forge"), mine.Character.Xp));
-        // Hors de l'atelier (le village), on ne forge pas.
+        // Hors de l'atelier (la forge de Maëlle, depuis l'essai du 12.9), on ne forge pas.
         Assert.Equal(CraftRefusal.NotHere, mine.Craft("recipe.ferrure", out _));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(mine.Save())).Save!;
         Assert.Equal(12L, saved.Character!.Professions["minage"]);
 
-        // Au village, avec trois minerais : la ferrure, l'expérience de forge, et rien pour le combat.
-        WorldSession forge = Play(Zone(), Hero(null, new ItemStack("item.minerai_de_fer", 5)));
+        // À la forge, avec trois minerais : la ferrure, l'expérience de forge, et rien pour le combat.
+        WorldSession forge = Play(Zone(Forge.X, Forge.Z), Hero(null, new ItemStack("item.minerai_de_fer", 5)));
         Assert.Equal(CraftRefusal.None, forge.Craft("recipe.ferrure", out CraftEvent? ferrure));
         Assert.Equal(("item.ferrure", 30L, 1, 1), (ferrure!.Item, ferrure.Xp, ferrure.LevelBefore, ferrure.LevelAfter));
         Assert.Equal((2, 1, 0L), (forge.Inventory.Count("item.minerai_de_fer"), forge.Inventory.Count("item.ferrure"), forge.Character.Xp));
@@ -304,14 +307,14 @@ public class Lot126CraftingTests
         Assert.Equal(2, forge.Inventory.Count("item.minerai_de_fer"));   // rien retiré
         Assert.Equal(CraftRefusal.LevelTooLow, forge.Craft("recipe.remede_de_l_aube", out _));
         // Une fabrication bien en dessous du niveau du métier forme moins.
-        WorldSession master = Play(Zone(), Hero(new Dictionary<string, long> { ["herboristerie"] = 400 }, new ItemStack("item.herbe_de_l_aube", 4)));
+        WorldSession master = Play(Zone(Forge.X, Forge.Z), Hero(new Dictionary<string, long> { ["herboristerie"] = 400 }, new ItemStack("item.herbe_de_l_aube", 4)));
         Assert.Equal(6, master.Workshop!.Level("herboristerie"));
         master.Craft("recipe.potion_de_soin", out CraftEvent? trivial);
         Assert.Equal(5L, trivial!.Xp);   // 20 / 4 à 5 niveaux d'écart
         // Inventaire plein : le produit ne tient pas, rien ne change.
-        WorldSession full = Play(Zone(), Hero(null, Enumerable.Repeat(new ItemStack("item.gambison", 1), 23).Append(new ItemStack("item.minerai_de_fer", 3)).ToArray()));
+        WorldSession full = Play(Zone(Forge.X, Forge.Z), Hero(null, Enumerable.Repeat(new ItemStack("item.gambison", 1), 23).Append(new ItemStack("item.minerai_de_fer", 3)).ToArray()));
         Assert.Equal(CraftRefusal.None, full.Craft("recipe.ferrure", out _));   // les minerais libèrent leur place
-        WorldSession packed = Play(Zone(), Hero(null, Enumerable.Repeat(new ItemStack("item.gambison", 1), 22)
+        WorldSession packed = Play(Zone(Forge.X, Forge.Z), Hero(null, Enumerable.Repeat(new ItemStack("item.gambison", 1), 22)
             .Append(new ItemStack("item.minerai_de_fer", 20)).Append(new ItemStack("item.minerai_de_fer", 20)).ToArray()));
         Assert.Equal(CraftRefusal.Full, packed.Craft("recipe.ferrure", out _));   // trois minerais de moins ne libèrent aucune place
         Assert.Equal(40, packed.Inventory.Count("item.minerai_de_fer"));
@@ -386,7 +389,7 @@ public class Lot126CraftingTests
         Refused(Hero(new Dictionary<string, long> { ["cuisine"] = 10 }));
         Refused(Hero().WithStory(new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.inconnue"] = new QuestProgress("x") })));
         // Au plafond, l'expérience annoncée est celle réellement ajoutée.
-        WorldSession capped = Play(Zone(), Hero(new Dictionary<string, long> { ["forge"] = CraftingValidator.MaxXp }, new ItemStack("item.minerai_de_fer", 3)));
+        WorldSession capped = Play(Zone(Forge.X, Forge.Z), Hero(new Dictionary<string, long> { ["forge"] = CraftingValidator.MaxXp }, new ItemStack("item.minerai_de_fer", 3)));
         Assert.Equal(CraftRefusal.None, capped.Craft("recipe.ferrure", out CraftEvent? done));
         Assert.Equal(0L, done!.Xp);
         Assert.Equal(CraftingValidator.MaxXp, capped.Workshop!.Xp("forge"));

@@ -17,7 +17,7 @@ Détail : [MONDE.md](MONDE.md).
 
 Détail : [MONDE.md](MONDE.md#personnage-sous-lot-122).
 
-- **Valeurs provisoires** (question à Damien) : courbe d'expérience (1 620 points pour le niveau 10), expérience des créatures (PV maximaux ÷ 20), table d'attributs du Bastion par niveau. Tout se règle dans `data/v0/world/progression.json`, sans toucher au code ; l'équilibrage se fera à l'essai (12.9), avec les quêtes qui donneront aussi de l'expérience (12.5).
+- **Valeurs provisoires** (question à Damien) : courbe d'expérience (1 620 points pour le niveau 10), expérience des créatures (PV maximaux ÷ 20, ÷ 5 depuis le 12.9a), table d'attributs du Bastion par niveau. Tout se règle dans `data/v0/world/progression.json`, sans toucher au code ; l'équilibrage se fera à l'essai (12.9), avec les quêtes qui donneront aussi de l'expérience (12.5).
 - **Un seul joueur crédité** : l'expérience va au personnage s'il est présent et vivant quand la créature tombe, quel que soit celui qui l'a frappée. Le partage entre joueurs viendra avec le serveur de zone (lot 13).
 - **Niveau gagné en combat** : effet à la prochaine entrée en zone ; pas de montée de niveau en plein combat, ni de soin ou de PV supplémentaires immédiats.
 - **Talents et compétences** : gardés dans la sauvegarde et validés à l'entrée ; aucun écran ne les change encore (12.8). Un build devenu invalide (données changées) est refusé à l'entrée avec son motif, sans être corrigé automatiquement.
@@ -97,3 +97,10 @@ Détail : [MONDE.md](MONDE.md#laventure-jouable-sous-lot-128), touches : [UNITY.
 - **Talents** : l'écran des talents reste celui de l'entraînement ; le personnage de l'aventure garde ceux de sa sauvegarde.
 - **Noms d'objets et de lieux** dans leurs fichiers de données, pas encore par clés (Q37 : à faire avec l'anglais).
 - **Formats** : textes enrichis des clés `text.ui.…` (schéma inchangé) ; moteur, journal, scénarios et sauvegarde inchangés. `EdS.Runtime` dépend désormais de `EdS.World` (projet et définition d'assemblage).
+
+## Sous-lot 12.9a : réglages de l'essai de Damien (25 octobre 2026)
+
+- **Équilibrage provisoire** : PV et dégâts des créatures et du Gardien, et expérience des créatures (PV ÷ 5), réglés par combats simulés d'un Bastion qui joue simplement (compétences dès qu'elles sont prêtes, potion sous 40 % des PV). Un vrai joueur pare et esquive : à confirmer à l'essai. Les loups chassent en groupe, les combats simulés les prennent un par un.
+- **Écarts avec le tableau approuvé** : le sanglier garde 180 PV et 25 dégâts (à 260 PV et 45 dégâts, le Bastion de niveau 1 perdait) ; le Gardien passe à 250 PV, puis 400 pour sa forme éveillée, plus forte que la première (demande de Damien, 25 octobre 2026), avec des dégâts plus bas (à 700 et 450 PV, le Bastion de niveau 10 perdait même avec ses potions).
+- **Une seule forge** : toutes les recettes, potions comprises, se fabriquent à la forge de Maëlle ; une herboristerie à part viendra si l'essai le demande.
+- **Formats** : données seulement (zone, recettes, progression, textes) ; moteur, journal, scénarios de référence et sauvegarde inchangés.

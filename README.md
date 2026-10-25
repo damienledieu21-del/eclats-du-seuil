@@ -171,6 +171,8 @@ Sous-lot 12.7 (chef de fin et récompenses) : le Gardien du Seuil, chef des Vall
 
 Sous-lot 12.8 (Unity, la zone jouable) : le jeu s'ouvre sur l'aventure dans les Vallons d'Aube : PNJ, dialogues, quêtes et journal, inventaire et équipement, récolte et atelier, potions, chef, halte au point sûr et reprise après une défaite, sauvegarde locale automatique ; textes de l'interface par clés. Touches : [docs/UNITY.md](docs/UNITY.md#4-bis-laventure-dans-les-vallons-daube-sous-lot-128).
 
+Sous-lot 12.9a (réglages de l'essai de Damien, 25 octobre 2026) : créatures et Gardien rééquilibrés pour un Bastion de niveau 1 à 10 (ils venaient de la démonstration du lot 11), expérience des créatures (PV ÷ 5) ; la forge de Maëlle devient un lieu visible du village (enclume) où se font toutes les fabrications. Détail : [docs/LIMITES_LOT_12.md](docs/LIMITES_LOT_12.md#sous-lot-129a--réglages-de-lessai-de-damien-25-octobre-2026).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
