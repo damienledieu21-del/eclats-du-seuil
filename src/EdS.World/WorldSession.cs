@@ -118,6 +118,9 @@ namespace EdS.World
         /// <summary>Niveau avec lequel il est entré dans la zone (son build de combat).</summary>
         public int EnteredLevel { get; }
 
+        /// <summary>Sous-lot 12.9b : compétences gagnées et équipées à l'entrée dans cette session (niveau atteint depuis la précédente).</summary>
+        public IReadOnlyList<SkillUnlock> Learned { get; }
+
         /// <param name="zoneSetup">Simulation de la zone (mode zone).</param>
         /// <param name="save">Sauvegarde reprise ; son personnage doit exister (sinon : <see cref="PlayerCharacters.Create"/> d'abord).</param>
         /// <param name="placement">Place d'entrée du personnage dans la zone.</param>
@@ -139,6 +142,10 @@ namespace EdS.World
             _progression = progression ?? throw new ArgumentNullException(nameof(progression));
             if (items is null) throw new ArgumentNullException(nameof(items));
             _character = save.Character ?? throw new ArgumentException("Sauvegarde sans personnage : le créer d'abord.", nameof(save));
+            // Sous-lot 12.9b : un niveau prend effet à l'entrée, avec les compétences qu'il fait gagner (gardées dans la sauvegarde).
+            if (data is null) throw new ArgumentNullException(nameof(data));
+            _character = PlayerCharacters.Learn(_character, _progression, data.Rules.Progression, out IReadOnlyList<SkillUnlock> learned);
+            Learned = learned;
             _lootTables = new Dictionary<string, LootTable>(StringComparer.Ordinal);
             foreach (KeyValuePair<string, string> entry in lootTables ?? new Dictionary<string, string>())
                 _lootTables[entry.Key] = items.TryGetLoot(entry.Value, out LootTable table) ? table

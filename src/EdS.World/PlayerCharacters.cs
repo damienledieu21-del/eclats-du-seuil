@@ -27,6 +27,48 @@ namespace EdS.World
             return new SavedCharacter(id, classId, 0, new Dictionary<string, int>(), p.StartActiveSkills, null, p.StartPassiveSkills);
         }
 
+        /// <summary>
+        /// Sous-lot 12.9b (essai du 25 octobre 2026, choix de Damien) : équipe les compétences gagnées jusqu'au niveau du personnage
+        /// (<see cref="ClassProgression.SkillUnlocks"/>) qu'il n'a pas encore, chacune s'il lui reste un emplacement de sa sorte ouvert à ce niveau
+        /// (règles : <see cref="ProgressionRules.ActiveSlotLevels"/>, <see cref="ProgressionRules.PassiveSlotLevels"/>,
+        /// <see cref="ProgressionRules.UltimateUnlockLevel"/>). Une active prend l'emplacement libre suivant. Rend le personnage tel quel s'il n'y
+        /// a rien à gagner ; <paramref name="learned"/> dit ce qui a été équipé, dans l'ordre de la progression.
+        /// </summary>
+        public static SavedCharacter Learn(SavedCharacter character, CharacterProgression progression, ProgressionRules rules,
+            out IReadOnlyList<SkillUnlock> learned)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            if (rules is null) throw new ArgumentNullException(nameof(rules));
+            int level = Level(character, progression);
+            var actives = character.ActiveSkills.ToList();
+            var passives = character.PassiveSkills.ToList();
+            string? ultimate = character.Ultimate;
+            int activeSlots = rules.ActiveSlotLevels.Count(l => l <= level), passiveSlots = rules.PassiveSlotLevels.Count(l => l <= level);
+            var gained = new List<SkillUnlock>();
+            foreach (SkillUnlock u in progression.ForClass(character.ClassId).SkillUnlocks)
+            {
+                if (u.Level > level || actives.Contains(u.Skill) || passives.Contains(u.Skill) || ultimate == u.Skill) continue;
+                switch (u.Kind)
+                {
+                    case SkillKind.Active when actives.Count < activeSlots:
+                        actives.Add(u.Skill);
+                        break;
+                    case SkillKind.Passive when passives.Count < passiveSlots:
+                        passives.Add(u.Skill);
+                        break;
+                    case SkillKind.Ultimate when ultimate is null && level >= rules.UltimateUnlockLevel:
+                        ultimate = u.Skill;
+                        break;
+                    default:
+                        continue;   // emplacement pris (choix futur du joueur) : la compétence attend
+                }
+                gained.Add(u);
+            }
+            learned = gained;
+            return gained.Count == 0 ? character : character.WithSkills(actives, ultimate, passives);
+        }
+
         public static int Level(SavedCharacter character, CharacterProgression progression) =>
             (progression ?? throw new ArgumentNullException(nameof(progression))).LevelFor((character ?? throw new ArgumentNullException(nameof(character))).Xp);
 

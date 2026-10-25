@@ -21,17 +21,37 @@ namespace EdS.Data.Characters
         public IReadOnlyList<string> StartActiveSkills { get; }
         public IReadOnlyList<string> StartPassiveSkills { get; }
 
-        internal ClassProgression(string classId, IEnumerable<Attributes> attributes, IEnumerable<string> actives, IEnumerable<string> passives)
+        /// <summary>Sous-lot 12.9b : compétences gagnées en montant de niveau, dans l'ordre des niveaux (ordre du fichier à niveau égal).</summary>
+        public IReadOnlyList<SkillUnlock> SkillUnlocks { get; }
+
+        internal ClassProgression(string classId, IEnumerable<Attributes> attributes, IEnumerable<string> actives, IEnumerable<string> passives,
+            IEnumerable<SkillUnlock> unlocks)
         {
             ClassId = classId;
             Attributes = Frozen.List(attributes, nameof(attributes));
             StartActiveSkills = Frozen.List(actives, nameof(actives));
             StartPassiveSkills = Frozen.List(passives, nameof(passives));
+            SkillUnlocks = Frozen.List(unlocks, nameof(unlocks));
         }
 
         /// <summary>Attributs de base au niveau <paramref name="level"/> (1 à <see cref="CharacterProgression.MaxLevel"/>).</summary>
         public Attributes At(int level) =>
             level >= 1 && level <= Attributes.Count ? Attributes[level - 1] : throw new ArgumentOutOfRangeException(nameof(level));
+    }
+
+    /// <summary>Sous-lot 12.9b : une compétence de la classe gagnée au niveau <see cref="Level"/>, avec sa sorte (active, ultime, passive).</summary>
+    public sealed class SkillUnlock
+    {
+        public int Level { get; }
+        public string Skill { get; }
+        public SkillKind Kind { get; }
+
+        internal SkillUnlock(int level, string skill, SkillKind kind)
+        {
+            Level = level;
+            Skill = skill;
+            Kind = kind;
+        }
     }
 
     /// <summary>
@@ -104,8 +124,14 @@ namespace EdS.Data.Characters
     {
         public const string Kind = "progression";
 
-        /// <summary>Version 1 (sous-lot 12.2) : <c>maxLevel</c>, <c>xpToLevel</c>, <c>killXpPerHealth</c>, <c>classes[]</c>.</summary>
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>
+        /// Version 1 (sous-lot 12.2) : <c>maxLevel</c>, <c>xpToLevel</c>, <c>killXpPerHealth</c>, <c>classes[]</c>. Version 2 (sous-lot 12.9b) :
+        /// <c>classes[].skillUnlocks</c> (compétences gagnées en montant de niveau).
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
+
+        /// <summary>Au plus 64 compétences gagnées par classe.</summary>
+        public const int MaxSkillUnlocks = 64;
 
         /// <summary>Plafond technique de l'expérience cumulée.</summary>
         public const long MaxXp = 1_000_000_000;
@@ -196,6 +222,7 @@ namespace EdS.Data.Characters
             }
             Names(c.StartActiveSkills, path + ".startActiveSkills", report);
             Names(c.StartPassiveSkills, path + ".startPassiveSkills", report);
+            if (c.SkillUnlocks is null) Missing(report, path + ".skillUnlocks", "compétences gagnées en montant de niveau, éventuellement aucune");
             if (loaded is null || !report.IsValid || levels.Count == 0) return null;
             // Le build de départ doit être valide au niveau 1 (emplacements, compétences de la classe).
             var start = new CharacterBuild(loaded.Definition.Id, 1, levels[0], new Dictionary<string, int>(),
@@ -204,7 +231,79 @@ namespace EdS.Data.Characters
                 report.Add(v.Subject.StartsWith("activeSkills", StringComparison.Ordinal) ? path + ".startActiveSkills"
                     : v.Subject.StartsWith("passiveSkills", StringComparison.Ordinal) ? path + ".startPassiveSkills" : path,
                     ValidationCode.InvalidValue, $"build de départ invalide au niveau 1 ({v.Subject}) : {v.Message} [{v.Code}]");
-            return report.IsValid ? new ClassProgression(loaded.Definition.Id, levels, c.StartActiveSkills!.Select(s => s!), c.StartPassiveSkills!.Select(s => s!)) : null;
+            if (!report.IsValid) return null;
+            List<SkillUnlock>? unlocks = CheckUnlocks(c, path + ".skillUnlocks", loaded, levels, data, report);
+            return unlocks != null && report.IsValid
+                ? new ClassProgression(loaded.Definition.Id, levels, c.StartActiveSkills!.Select(s => s!), c.StartPassiveSkills!.Select(s => s!), unlocks)
+                : null;
+        }
+
+        /// <summary>
+        /// Sous-lot 12.9b : chaque compétence gagnée est une compétence de la classe, pas déjà connue (départ ou gagnée plus tôt), à un niveau de
+        /// 2 au niveau maximal, au moins son niveau minimal, les niveaux dans l'ordre ; à chaque niveau, le build de départ et tout ce qui est
+        /// gagné jusque-là doit être valide pour le validateur des builds (emplacements ouverts, sans talent).
+        /// </summary>
+        private static List<SkillUnlock>? CheckUnlocks(ClassProgressionData c, string path, LoadedClass loaded, List<Attributes> levels, GameData data,
+            ValidationReport report)
+        {
+            var known = new HashSet<string>(c.StartActiveSkills!.Select(s => s!).Concat(c.StartPassiveSkills!.Select(s => s!)), StringComparer.Ordinal);
+            var unlocks = new List<SkillUnlock>();
+            int previous = 1;
+            for (int i = 0; i < c.SkillUnlocks!.Count; i++)
+            {
+                string at = $"{path}[{i}]";
+                if (c.SkillUnlocks[i] is not SkillUnlockData u) { Missing(report, at, "niveau et compétence"); continue; }
+                if (u.Level is null) Missing(report, at + ".level", "niveau où la compétence est gagnée");
+                if (u.Skill is null) Missing(report, at + ".skill", "identifiant de compétence");
+                if (u.Level is null || u.Skill is null) continue;
+                int lvl = u.Level.Value;
+                if (lvl < 2 || lvl > levels.Count)
+                {
+                    report.Add(at + ".level", ValidationCode.OutOfRange, $"niveau hors de [2, {levels.Count}] (le niveau 1 est le build de départ).");
+                    continue;
+                }
+                if (lvl < previous)
+                {
+                    report.Add(at + ".level", ValidationCode.InvalidValue, "les compétences gagnées suivent l'ordre des niveaux.");
+                    continue;
+                }
+                previous = lvl;
+                if (!loaded.Definition.TryGetSkill(u.Skill, out SkillDefinition skill))
+                {
+                    report.Add(at + ".skill", ValidationCode.UnknownReference, $"compétence inconnue de la classe « {u.Skill} ».");
+                    continue;
+                }
+                if (!known.Add(u.Skill))
+                {
+                    report.Add(at + ".skill", ValidationCode.DuplicateId, $"compétence « {u.Skill} » déjà connue (départ ou gagnée plus tôt).");
+                    continue;
+                }
+                if (lvl < skill.MinLevel)
+                {
+                    report.Add(at + ".level", ValidationCode.InvalidValue, $"« {u.Skill} » demande le niveau {skill.MinLevel}.");
+                    continue;
+                }
+                unlocks.Add(new SkillUnlock(lvl, u.Skill, skill.Kind));
+            }
+            if (!report.IsValid) return null;
+            for (int level = 2; level <= levels.Count; level++)
+            {
+                var gained = unlocks.Where(u => u.Level <= level).ToList();
+                if (gained.Count == 0 || gained.All(u => u.Level < level)) continue;   // rien de nouveau : déjà vérifié au niveau d'avant
+                string? ultimate = gained.Where(u => u.Kind == SkillKind.Ultimate).Select(u => u.Skill).FirstOrDefault();
+                if (gained.Count(u => u.Kind == SkillKind.Ultimate) > 1)
+                {
+                    report.Add(path, ValidationCode.InvalidValue, $"plus d'une ultime gagnée au niveau {level} (un seul emplacement d'ultime).");
+                    return null;
+                }
+                var build = new CharacterBuild(loaded.Definition.Id, level, levels[level - 1], new Dictionary<string, int>(),
+                    c.StartActiveSkills!.Select(s => s!).Concat(gained.Where(u => u.Kind == SkillKind.Active).Select(u => u.Skill)).ToArray(), ultimate,
+                    c.StartPassiveSkills!.Select(s => s!).Concat(gained.Where(u => u.Kind == SkillKind.Passive).Select(u => u.Skill)).ToArray());
+                foreach (BuildViolation v in BuildValidator.Validate(build, loaded.Definition, data.Rules.Progression))
+                    report.Add(path, ValidationCode.InvalidValue, $"build invalide au niveau {level} avec les compétences gagnées ({v.Subject}) : {v.Message} [{v.Code}]");
+                if (!report.IsValid) return null;
+            }
+            return unlocks;
         }
 
         private static Attributes? ToAttributes(List<KeyValuePair<string, int?>>? map, string path, ValidationReport report)

@@ -37,5 +37,15 @@ namespace EdS.Data.Characters
         public List<string?>? StartActiveSkills { get; set; }
 
         public List<string?>? StartPassiveSkills { get; set; }
+
+        /// <summary>Sous-lot 12.9b (schéma 2) : compétences gagnées en montant de niveau, équipées d'elles-mêmes.</summary>
+        public List<SkillUnlockData?>? SkillUnlocks { get; set; }
+    }
+
+    /// <summary>Sous-lot 12.9b : une compétence gagnée à un niveau.</summary>
+    public sealed class SkillUnlockData
+    {
+        public int? Level { get; set; }
+        public string? Skill { get; set; }
     }
 }

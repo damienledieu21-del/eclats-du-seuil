@@ -65,8 +65,12 @@ public class Lot129BalanceTests
             CombatantView me = e.View("bastion"), it = e.View(target);
             if (me.IsDead || session.BossDefeated || (!boss && it.IsDead)) break;
             long now = e.CurrentTick * 50;
-            foreach (string skill in new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier" })
-                try { e.Submit(new CombatCommand(now, "bastion", skill, target)); } catch (ArgumentException) { }
+            // Sous-lot 12.9b : toutes les compétences équipées (gagnées en montant de niveau comprises) ; la Barrière d'acier sur soi.
+            // Une compétence par tick, à tour de rôle (plafond de commandes par combattant et par tick).
+            string[] skills = session.Character.ActiveSkills.Append(session.Character.Ultimate).OfType<string>().ToArray();
+            string skill = skills[i % skills.Length];
+            try { e.Submit(new CombatCommand(now, "bastion", skill, skill == "skill.bastion.barriere_d_acier" ? "bastion" : target)); }
+            catch (ArgumentException) { }
             if (me.Position is GroundVector a && it.Position is GroundVector b && it.IsPresent)
             {
                 double dx = (b.X.Raw - a.X.Raw) / 1e4, dz = (b.Z.Raw - a.Z.Raw) / 1e4, d = Math.Sqrt(dx * dx + dz * dz);

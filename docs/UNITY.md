@@ -93,7 +93,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 
 Les touches de combat sont celles de l'entraînement (garde, parade, compétences, Tab, caméra). La cible se choisit parmi les ennemis en vue à 20 m au plus, du plus proche au plus loin. Le monde **s'arrête** pendant un dialogue, un écran ouvert ou la pause (jeu en solo). Au doigt, un écran ou un dialogue ouvert masque les boutons tactiles du jeu : seuls ses propres boutons (dont Fermer) répondent.
 
-**Niveau et équipement** gagnés ou changés en route prennent effet à la **halte** suivante (le combat en cours garde le build d'entrée). La **porte du moulin**, une fois ferrée par Maëlle, se franchit aussi après une halte. Une **défaite** ne fait rien perdre : Entrée reprend au dernier point sûr approché, PV pleins.
+**Niveau et équipement** gagnés ou changés en route prennent effet à la **halte** suivante (le combat en cours garde le build d'entrée). **Compétences gagnées** (12.9b) : Barrière d'acier au niveau 5 (touche 3, sur toi), Onde de rupture (touche 4) et l'ultime Bastion absolu (R) au niveau 10 ; le message du niveau annonce la compétence, la halte l'équipe et dit sa touche. La **porte du moulin**, une fois ferrée par Maëlle, se franchit aussi après une halte. Une **défaite** ne fait rien perdre : Entrée reprend au dernier point sûr approché, PV pleins.
 
 Au doigt : **Agir** (F) et **Potion** au-dessus de la garde, **Sac**, **Journal** et **Atelier** en haut, **Halte** à la place de « Rejouer ».
 

@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/progression.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "progression",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -109,6 +109,20 @@
         ],
         "startPassiveSkills": [
           "skill.bastion.endurance_du_roc"
+        ],
+        "skillUnlocks": [
+          {
+            "level": 5,
+            "skill": "skill.bastion.barriere_d_acier"
+          },
+          {
+            "level": 10,
+            "skill": "skill.bastion.onde_de_rupture"
+          },
+          {
+            "level": 10,
+            "skill": "skill.bastion.bastion_absolu"
+          }
         ]
       }
     ]

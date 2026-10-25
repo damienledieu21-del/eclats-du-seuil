@@ -92,7 +92,10 @@ public class Lot122CharacterTests
         Assert.Equal("$.data.classes[0].startPassiveSkills", Error(Mutated(r => Bastion(r)["startPassiveSkills"] = new JsonArray("skill.bastion.inconnue"))).Path);
         Assert.Equal("$.data.classes[1].class", Error(Mutated(r => Data(r)["classes"]!.AsArray().Add(Bastion(r).DeepClone()))).Path);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
-            (Error(Mutated(r => r["schemaVersion"] = 2)).Path, Error(Mutated(r => r["schemaVersion"] = 2)).Code));
+            (Error(Mutated(r => r["schemaVersion"] = 3)).Path, Error(Mutated(r => r["schemaVersion"] = 3)).Code));
+        // Sous-lot 12.9b : la version 1 (sans compétences gagnées) est refusée.
+        Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
+            (Error(Mutated(r => r["schemaVersion"] = 1)).Path, Error(Mutated(r => r["schemaVersion"] = 1)).Code));
     }
 
     // --- Personnage --------------------------------------------------------------------------------
