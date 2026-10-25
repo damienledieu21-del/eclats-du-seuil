@@ -175,6 +175,8 @@ Sous-lot 12.9a (réglages de l'essai de Damien, 25 octobre 2026) : créatures et
 
 Sous-lot 12.9b (compétences gagnées en montant de niveau, choix de Damien du 25 octobre 2026) : le personnage gagne la Barrière d'acier au niveau 5, l'Onde de rupture et l'ultime Bastion absolu au niveau 10, équipées d'elles-mêmes à la halte ; progression en schéma 2. Un écran pour choisir ses compétences viendra ensuite. Détail : [docs/MONDE.md](docs/MONDE.md#personnage-sous-lot-122).
 
+Sous-lot 12.9c (retours de la fiche d'essai) : loups plus lents que le Bastion (on peut les semer), étapes de la mission qui disent où aller, garde qui ne se lève plus en marchant et touchant Agir au doigt. Détail : [docs/LIMITES_LOT_12.md](docs/LIMITES_LOT_12.md#sous-lot-129c--retours-de-la-fiche-dessai-25-octobre-2026).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement

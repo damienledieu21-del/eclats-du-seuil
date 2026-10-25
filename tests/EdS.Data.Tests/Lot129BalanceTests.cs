@@ -89,6 +89,19 @@ public class Lot129BalanceTests
         return e.View("bastion").Health ?? 0;
     }
 
+    [Fact]
+    public void On_peut_semer_les_loups()
+    {
+        // Retour de Damien (fiche du 12.9) : « le loup est trop rapide je ne peux pas le fuir ». Les loups courent moins vite que le
+        // Bastion : l'écart grandit jusqu'à leur laisse (18 m), et ils lâchent.
+        JsonObject zone = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+        double player = (double)JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "rules.json")))!["data"]!["combat"]!["movement"]!["speed"]!;
+        var wolves = zone["data"]!["combatants"]!.AsArray().Where(c => ((string)c!["id"]!).StartsWith("loup", StringComparison.Ordinal)).ToList();
+        Assert.Equal(5, wolves.Count);
+        Assert.All(wolves, w => Assert.Equal(4.0, (double)w!["speed"]!));
+        Assert.Equal(5.0, player);
+    }
+
     [Theory]
     [InlineData("loup1", 0)]
     [InlineData("sanglier", 0)]

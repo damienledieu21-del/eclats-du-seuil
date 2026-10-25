@@ -113,3 +113,10 @@ Détail : [MONDE.md](MONDE.md#laventure-jouable-sous-lot-128), touches : [UNITY.
 - **Passifs** : le deuxième emplacement de passif s'ouvre au niveau 5 (règles) ; aucun passif n'est gagné pour l'instant.
 - **Formats** : progression en schéma 2 (`skillUnlocks` obligatoire, version 1 refusée) ; textes enrichis de quatre clés ; moteur, journal, scénarios et sauvegarde inchangés.
 
+## Sous-lot 12.9c : retours de la fiche d'essai (25 octobre 2026)
+
+- **Loups** : 4 m/s, moins vite que le Bastion (5 m/s) : on les sème ; l'écart doit encore atteindre leur laisse (18 m), soit une vingtaine de secondes de fuite.
+- **Mission plus détaillée** : chaque étape du journal dit où aller (direction, lieu, PNJ, touche). Pas encore de marqueur d'objectif à l'écran ni de carte (interface du lot 14).
+- **Garde levée en marchant au doigt** : avec le stick et Agir touchés ensemble, Unity simulait un clic droit, qui levait la garde. Le clic droit (et le bouton du milieu de la caméra) ne comptent plus quand un doigt est sur l'écran. Correction dans les scripts Unity, compilée en CI contre les bouchons de l'API, pas essayée sur le Note8 ici : à vérifier à la prochaine installation.
+- **Formats** : données (scénario de la zone, textes) et scripts Unity seulement ; moteur, journal, scénarios de référence et sauvegarde inchangés.
+

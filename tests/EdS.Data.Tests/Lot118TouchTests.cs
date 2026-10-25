@@ -174,4 +174,30 @@ public class Lot118TouchTests
         Assert.Throws<ArgumentOutOfRangeException>(() => g.Update(Array.Empty<FingerPoint>(), Buttons, 0));
         Assert.Throws<ArgumentNullException>(() => g.Update(null!, Buttons, Width));
     }
+
+    [Fact]
+    public void Deux_doigts_ne_levent_pas_la_garde()
+    {
+        // Essai du 12.9 (Damien) puis revue Codex de la PR #52 : un clic droit simulé par des doigts posés (stick et Agir) ne garde pas ;
+        // le bouton Garde tactile et le clic droit sans doigt gardent toujours, Maj aussi.
+        Assert.False(PointerInput.Guard(touchCount: 2, rightMouse: true, shift: false, touchGuard: false));
+        Assert.False(PointerInput.Guard(1, true, false, false));
+        Assert.True(PointerInput.Guard(2, true, false, true));    // le doigt est sur le bouton Garde
+        Assert.True(PointerInput.Guard(1, false, false, true));
+        Assert.True(PointerInput.Guard(0, true, false, false));   // PC : clic droit
+        Assert.True(PointerInput.Guard(0, false, true, false));   // PC : Maj
+        Assert.True(PointerInput.Guard(3, false, true, false));
+        Assert.False(PointerInput.Guard(0, false, false, false));
+        // Caméra : le bouton du milieu ne la tourne que sans doigt sur l'écran.
+        Assert.True(PointerInput.MouseLook(0, true));
+        Assert.False(PointerInput.MouseLook(3, true));
+        Assert.False(PointerInput.MouseLook(0, false));
+        // Les scripts Unity passent par cette décision, sans lire les boutons de souris à côté.
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        string camera = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "CameraRig.cs"));
+        Assert.Contains("_combat.SetGuard(PointerInput.Guard(Input.touchCount, Input.GetMouseButton(1),", game, StringComparison.Ordinal);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(game, @"GetMouseButton\(1\)"));
+        Assert.Contains("PointerInput.MouseLook(Input.touchCount, Input.GetMouseButton(2))", camera, StringComparison.Ordinal);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(camera, @"GetMouseButton\(2\)"));
+    }
 }

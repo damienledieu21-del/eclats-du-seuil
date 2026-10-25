@@ -1,3 +1,4 @@
+using EdS.Runtime;
 using UnityEngine;
 
 namespace EdS.Game
@@ -103,7 +104,8 @@ namespace EdS.Game
             // Par position : A / E en AZERTY, Q / E en QWERTY (voir Keys).
             if (Input.GetKeyDown(Keys.TurnLeft)) _yaw -= 45f;
             if (Input.GetKeyDown(Keys.TurnRight)) _yaw += 45f;
-            if (Input.GetMouseButton(2)) _yaw += Input.GetAxis("Mouse X") * 4f;
+            // Même cause que la garde (essai du 12.9) : un bouton du milieu simulé par des doigts ne tourne pas la caméra.
+            if (PointerInput.MouseLook(Input.touchCount, Input.GetMouseButton(2))) _yaw += Input.GetAxis("Mouse X") * 4f;
             else if (playerMoving && _setting > 0.5f && Time.time >= _manualUntil) _yaw = Mathf.LerpAngle(_yaw, playerYaw, 1f - Mathf.Exp(-2.5f * deltaTime));
             if (_unsaved && Time.time - _savedAt >= 0.5f) Save();
 
