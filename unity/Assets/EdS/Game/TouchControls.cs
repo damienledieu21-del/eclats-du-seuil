@@ -28,7 +28,7 @@ namespace EdS.Game
         /// <summary>Taille des boutons d'action (pixels virtuels), au moins 9 mm sur l'écran d'un téléphone (<see cref="TouchGestures.SmallButton"/>).</summary>
         private const float Big = TouchGestures.BigButton, Small = TouchGestures.SmallButton;
 
-        private enum ButtonId { Guard, Parry, Skill1, Skill2, Skill3, Skill4, Ultimate, Target, View, Ally, Menu, Help, Pause, Restart, NextScene, Act, Potion, Bag, Journal, Workshop }
+        private enum ButtonId { Guard, Parry, Skill1, Skill2, Skill3, Skill4, Ultimate, Target, View, Ally, Menu, Help, Pause, Restart, NextScene, Act, Potion, Bag, Journal, Workshop, Map }
 
         private sealed class Button
         {
@@ -71,6 +71,9 @@ namespace EdS.Game
         public bool BagPressed => Tapped(ButtonId.Bag);
         public bool JournalPressed => Tapped(ButtonId.Journal);
         public bool WorkshopPressed => Tapped(ButtonId.Workshop);
+
+        /// <summary>Sous-lot 12.9d : la petite carte touchée (l'ouvrir en grand).</summary>
+        public bool MapPressed => Tapped(ButtonId.Map);
 
         private bool Tapped(ButtonId id) => _gestures.WasTapped((int)id);
 
@@ -123,7 +126,10 @@ namespace EdS.Game
             }
             // Revue Codex de la PR #36 (3e tour) : sous la fiche de la cible (Hud.Target : y de 14 à 146), pour ne pas cacher son compte à
             // rebours ni ses altérations.
-            float top = 160f;
+            // Sous-lot 12.9d : dans l'aventure, la petite carte occupe le coin (MiniMap.MiniRect, jusqu'à y = 250 avec son aide) : la rangée
+            // descend dessous, et la carte elle-même est un bouton (l'agrandir).
+            float top = adventure ? 260f : 160f;
+            if (adventure) _zones.Add(new GestureButton((int)ButtonId.Map, MiniMap.MiniRect.x, MiniMap.MiniRect.y, MiniMap.Width, MiniMap.Height));
             Add(ButtonId.Menu, w - m - Small, top, Small, "Menu");
             Add(ButtonId.Help, w - 2 * (m + Small), top, Small, "Aide");
             if (!network)

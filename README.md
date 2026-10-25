@@ -177,6 +177,8 @@ Sous-lot 12.9b (compétences gagnées en montant de niveau, choix de Damien du 2
 
 Sous-lot 12.9c (retours de la fiche d'essai) : loups plus lents que le Bastion (on peut les semer), étapes de la mission qui disent où aller, garde qui ne se lève plus en marchant et touchant Agir au doigt. Détail : [docs/LIMITES_LOT_12.md](docs/LIMITES_LOT_12.md#sous-lot-129c--retours-de-la-fiche-dessai-25-octobre-2026).
 
+Sous-lot 12.9d (la carte, demande de Damien du 25 octobre 2026) : petite carte des Vallons en haut à droite (décor, toi, objectif de l'étape en cours, PNJ, points sûrs, forge, ennemis en vue), à agrandir avec L ou en la touchant. Détail : [docs/UNITY.md](docs/UNITY.md#4-bis-laventure-dans-les-vallons-daube-sous-lot-128).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement

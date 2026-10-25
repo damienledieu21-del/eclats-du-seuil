@@ -87,6 +87,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 | J | journal de quête et découvertes |
 | K | atelier : recettes, ce qu'il manque, fabriquer (à la forge de Maëlle, à l'ouest du village, juste au nord de la place : enclume grise, « K : forger » s'affiche quand on y est) |
 | P | boire un objet de soin emporté (le plus petit d'abord) |
+| L | carte en grand (noms des lieux, PNJ, points sûrs, objectif) ; L, Échap ou Fermer pour revenir. En petit, elle reste en haut à droite (12.9d) |
 | Entrée | faire halte près d'un point sûr (aucun ennemi proche) : sauvegarde, PV pleins ; après une défaite : reprendre au dernier point sûr |
 | F6 | sauvegarder maintenant |
 | N | quitter l'aventure (sauvegardée) pour l'entraînement |
@@ -96,6 +97,8 @@ Les touches de combat sont celles de l'entraînement (garde, parade, compétence
 **Niveau et équipement** gagnés ou changés en route prennent effet à la **halte** suivante (le combat en cours garde le build d'entrée). **Compétences gagnées** (12.9b) : Barrière d'acier au niveau 5 (touche 3, sur toi), Onde de rupture (touche 4) et l'ultime Bastion absolu (R) au niveau 10 ; le message du niveau annonce la compétence, la halte l'équipe et dit sa touche. La **porte du moulin**, une fois ferrée par Maëlle, se franchit aussi après une halte. Une **défaite** ne fait rien perdre : Entrée reprend au dernier point sûr approché, PV pleins.
 
 Au doigt : **Agir** (F) et **Potion** au-dessus de la garde, **Sac**, **Journal** et **Atelier** en haut, **Halte** à la place de « Rejouer ». Au doigt, seul le bouton **Garde** lève la garde (12.9c : marcher en touchant Agir ne la lève plus).
+
+**Carte** (12.9d, demande de Damien du 25 octobre 2026) : la petite carte des Vallons, nord en haut, est en haut à droite ; la fiche de la cible passe à sa gauche et, au doigt, la rangée Menu, Aide… descend sous elle. Elle montre le décor (rivière en bleu), toi (point jaune), l'**objectif de l'étape en cours** (étoile orange : le lieu à atteindre, le PNJ à qui parler, la créature à vaincre), les PNJ (blanc), les points sûrs (vert), la forge (gris), les filons et herbes (petits points) et les ennemis **en vue** seulement (rouge, violet pour le chef). Toucher la carte, ou L, l'ouvre en grand avec les noms ; le monde s'arrête pendant ce temps, comme pour les autres écrans.
 
 Ce que tu vérifies (essai du 12.9) : la mission d'Odile de bout en bout (traces, ferrure forgée, pré des loups, manifestation, rôdeur, Gardien, retour) ; la récolte et la fabrication ; l'inventaire et l'équipement ; une défaite et la reprise ; quitter puis relancer le jeu (la partie revient) ; la lisibilité des écrans sur PC et sur le Note8.
 
