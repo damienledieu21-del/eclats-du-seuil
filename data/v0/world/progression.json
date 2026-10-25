@@ -17,7 +17,7 @@
       1360,
       1620
     ],
-    "killXpPerHealth": 20,
+    "killXpPerHealth": 5,
     "classes": [
       {
         "class": "class.bastion",

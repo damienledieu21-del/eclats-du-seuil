@@ -197,7 +197,16 @@ public class Lot128AdventureTests : IDisposable
     {
         AdventureSession a = New();
         a.DrainMessages();
-        // Atelier du village : rien n'est faisable sans matériaux.
+        // Essai du 12.9 : on fabrique à la forge de Maëlle, visible dans la zone ; ailleurs, l'atelier dit où aller.
+        Assert.Equal(CraftRefusal.NotHere, a.Recipes().Single(r => r.Id == "recipe.ferrure").Refusal);
+        Assert.Equal(CraftRefusal.NotHere, a.Craft("recipe.ferrure"));
+        Assert.Equal(new[] { "Pas ici : approche-toi (forge de Maëlle, ou à 3 m du nœud)." }, a.DrainMessages());
+        Assert.Null(a.WorkshopHere);
+        WorldMarker forge = Assert.Single(a.Workshops());
+        Assert.Equal(("forge", "Forge de Maëlle", -20.0, -4.0), (forge.Id, forge.Name, forge.X, forge.Z));
+        Assert.True(WalkTo(a, forge.X, forge.Z + 1.5, 1));
+        Assert.Equal("Forge de Maëlle", a.WorkshopHere);
+        // À la forge, rien n'est faisable sans matériaux.
         RecipeEntry ferrure = a.Recipes().Single(r => r.Id == "recipe.ferrure");
         Assert.Equal("Ferrure", ferrure.Name);
         Assert.Equal("Forge", ferrure.Profession);

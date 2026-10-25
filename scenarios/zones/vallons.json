@@ -533,7 +533,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 700,
+        "health": 150,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -542,7 +542,7 @@
         "attacks": [
           {
             "id": "morsure",
-            "rawDamage": 25,
+            "rawDamage": 10,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -572,7 +572,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 700,
+        "health": 150,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -581,7 +581,7 @@
         "attacks": [
           {
             "id": "morsure",
-            "rawDamage": 25,
+            "rawDamage": 10,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -611,7 +611,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 700,
+        "health": 150,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -620,7 +620,7 @@
         "attacks": [
           {
             "id": "morsure",
-            "rawDamage": 25,
+            "rawDamage": 10,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -650,7 +650,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 1200,
+        "health": 180,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -659,7 +659,7 @@
         "attacks": [
           {
             "id": "charge",
-            "rawDamage": 140,
+            "rawDamage": 25,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -695,7 +695,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 400,
+        "health": 120,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -704,7 +704,7 @@
         "attacks": [
           {
             "id": "fleche",
-            "rawDamage": 35,
+            "rawDamage": 14,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -714,7 +714,7 @@
           },
           {
             "id": "pluie",
-            "rawDamage": 40,
+            "rawDamage": 16,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -747,7 +747,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 700,
+        "health": 150,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -756,7 +756,7 @@
         "attacks": [
           {
             "id": "morsure",
-            "rawDamage": 25,
+            "rawDamage": 10,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -786,7 +786,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 700,
+        "health": 150,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -795,7 +795,7 @@
         "attacks": [
           {
             "id": "morsure",
-            "rawDamage": 25,
+            "rawDamage": 10,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -825,7 +825,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 1200,
+        "health": 180,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -834,7 +834,7 @@
         "attacks": [
           {
             "id": "charge",
-            "rawDamage": 140,
+            "rawDamage": 25,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -870,7 +870,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 1200,
+        "health": 180,
         "armor": 0,
         "magicResistance": 0,
         "target": null,
@@ -879,7 +879,7 @@
         "attacks": [
           {
             "id": "charge",
-            "rawDamage": 140,
+            "rawDamage": 25,
             "damageType": "physique",
             "targeting": "enemy",
             "unblockable": false,
@@ -915,7 +915,7 @@
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
-        "health": 900,
+        "health": 220,
         "armor": 0,
         "magicResistance": 20,
         "target": null,
@@ -924,7 +924,7 @@
         "attacks": [
           {
             "id": "eclat",
-            "rawDamage": 45,
+            "rawDamage": 18,
             "damageType": "magique",
             "targeting": "enemy",
             "unblockable": false,
@@ -934,7 +934,7 @@
           },
           {
             "id": "onde",
-            "rawDamage": 60,
+            "rawDamage": 24,
             "damageType": "magique",
             "targeting": "enemy",
             "unblockable": false,

@@ -88,7 +88,7 @@ public class Lot124ZoneTests
         ZoneDefinition z = loaded.Zone!;
         Assert.Equal(("zone.vallons", "Vallons d'Aube", "zones/vallons"), (z.Id, z.Name, z.ScenarioName));
         Assert.Equal("place_du_village", z.Entry.Id);
-        Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil" }, z.Places.Select(p => p.Id));
+        Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "forge" }, z.Places.Select(p => p.Id));
         Assert.Equal(new[] { "village" }, z.PlacesAt(z.Entry.Position).Select(p => p.Id));
         Assert.Equal(10, z.Populations.Count);
         Assert.Equal(z.Setup.Combatants.Select(c => c.Id).OrderBy(i => i, StringComparer.Ordinal),

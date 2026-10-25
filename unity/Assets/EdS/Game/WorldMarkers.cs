@@ -7,7 +7,7 @@ namespace EdS.Game
     /// <summary>
     /// Sous-lot 12.8 : repères d'une zone du monde, en formes simples (provisoire) : les PNJ (capsules dorées), les nœuds de récolte
     /// (sphère verte pour une herbe, cube gris pour un filon ; cachés tant qu'ils repoussent) et les points sûrs (disques bleus au sol). Leurs
-    /// noms s'affichent au-dessus d'eux quand le joueur est assez près. Affichage seulement : portées et règles sont celles du cœur.
+    /// noms s'affichent au-dessus d'eux quand le joueur est assez près. Depuis l'essai du 12.9 : la forge (enclume sombre). Affichage seulement : portées et règles sont celles du cœur.
     /// </summary>
     public sealed class WorldMarkers
     {
@@ -40,6 +40,9 @@ namespace EdS.Game
             }
             foreach (WorldMarker safe in adventure.SafePoints())
                 Add(safe, PrimitiveType.Cylinder, new Vector3(3f, 0.02f, 3f), 0.02f, new Color(0.3f, 0.55f, 1f), 0.6f, SafeLabelRange);
+            // Essai du 12.9 : la forge (enclume sombre au centre de l'atelier), où l'on fabrique.
+            foreach (WorldMarker workshop in adventure.Workshops())
+                Add(workshop, PrimitiveType.Cube, new Vector3(1.2f, 0.8f, 0.7f), 0.4f, new Color(0.3f, 0.3f, 0.34f), 1.6f, NpcLabelRange);
         }
 
         private Marker Add(WorldMarker data, PrimitiveType shape, Vector3 scale, float y, Color color, float height, float range)

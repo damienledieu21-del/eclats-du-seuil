@@ -534,6 +534,19 @@ namespace EdS.Runtime
 
         public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();
 
+        /// <summary>
+        /// Essai du 12.9 (Damien, 25 octobre 2026) : ateliers où l'on fabrique (lieux des recettes, la forge de Maëlle), au centre de leur lieu,
+        /// pour qu'on les voie dans la zone.
+        /// </summary>
+        public IReadOnlyList<WorldMarker> Workshops() => _crafting.Recipes.Select(r => r.Place).Distinct(StringComparer.Ordinal)
+            .Select(id => _zone.Places.FirstOrDefault(p => p.Id == id)).Where(p => p != null)
+            .Select(p => new WorldMarker(p!.Id, p.Name, new GroundVector(Fixed.FromRaw((p.Min.X.Raw + p.Max.X.Raw) / 2), Fixed.FromRaw((p.Min.Z.Raw + p.Max.Z.Raw) / 2))))
+            .ToList();
+
+        /// <summary>Atelier où se trouve le personnage (nom), ou null.</summary>
+        public string? WorkshopHere => Me is GroundVector p
+            && _zone.PlacesAt(p).FirstOrDefault(place => _crafting.Recipes.Any(r => r.Place == place.Id)) is Place here ? here.Name : null;
+
         /// <summary>Lieu où se trouve le personnage (nom), ou le nom de la zone.</summary>
         public string PlaceName => Me is GroundVector p && _zone.PlacesAt(p).FirstOrDefault() is Place place ? place.Name : _zone.Name;
 

@@ -110,6 +110,18 @@
           60,
           40
         ]
+      },
+      {
+        "id": "forge",
+        "name": "Forge de Maëlle",
+        "min": [
+          -23,
+          -7
+        ],
+        "max": [
+          -17,
+          -1
+        ]
       }
     ],
     "populations": [

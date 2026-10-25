@@ -82,7 +82,7 @@
       "text.ui.profession_level": "{0} : niveau {1} !",
       "text.ui.craft.none": "C'est possible.",
       "text.ui.craft.unknown": "Recette ou nœud inconnu.",
-      "text.ui.craft.nothere": "Pas ici : approche-toi (atelier du village, ou à 3 m du nœud).",
+      "text.ui.craft.nothere": "Pas ici : approche-toi (forge de Maëlle, ou à 3 m du nœud).",
       "text.ui.craft.depleted": "Déjà récolté : il repousse.",
       "text.ui.craft.leveltoolow": "Niveau de métier insuffisant.",
       "text.ui.craft.notenough": "Il te manque des matériaux.",
@@ -128,7 +128,8 @@
       "text.ui.save_failed": "Sauvegarde impossible pour l'instant : {0}",
       "text.ui.cannot_rest": "Halte impossible ici : approche-toi d'un point sûr, loin des ennemis.",
       "text.ui.stranded": "Une créature occupe le point sûr : impossible d'y arriver pour l'instant.",
-      "text.ui.session_over": "Le temps de cette session est écoulé."
+      "text.ui.session_over": "Le temps de cette session est écoulé.",
+      "text.ui.craft_hint": "K : forger ({0})"
     }
   }
 }
