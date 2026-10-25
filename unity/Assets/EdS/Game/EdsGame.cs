@@ -581,7 +581,10 @@ namespace EdS.Game
 
         private void ReadCombatInput()
         {
-            _combat.SetGuard(Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || _touch.GuardHeld);
+            // Essai du 12.9 (Damien, 25 octobre 2026) : sur le téléphone, deux doigts posés (stick et Agir) font un « clic droit » simulé
+            // par Unity, qui levait la garde. Le clic droit ne compte que sans doigt sur l'écran ; au doigt, seul le bouton Garde garde.
+            bool mouseGuard = Input.touchCount == 0 && Input.GetMouseButton(1);
+            _combat.SetGuard(mouseGuard || Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || _touch.GuardHeld);
             if (Input.GetKeyDown(KeyCode.Space) || _touch.ParryPressed) _combat.Parry();
             // Sous-lot 11.8 : boutons tactiles (compétences 1 à 4 et ultime, cible suivante, allié visé en réseau).
             if (_touch.SlotPressed >= 0) _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed);

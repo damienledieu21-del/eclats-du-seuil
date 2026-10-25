@@ -95,7 +95,7 @@ Les touches de combat sont celles de l'entraînement (garde, parade, compétence
 
 **Niveau et équipement** gagnés ou changés en route prennent effet à la **halte** suivante (le combat en cours garde le build d'entrée). **Compétences gagnées** (12.9b) : Barrière d'acier au niveau 5 (touche 3, sur toi), Onde de rupture (touche 4) et l'ultime Bastion absolu (R) au niveau 10 ; le message du niveau annonce la compétence, la halte l'équipe et dit sa touche. La **porte du moulin**, une fois ferrée par Maëlle, se franchit aussi après une halte. Une **défaite** ne fait rien perdre : Entrée reprend au dernier point sûr approché, PV pleins.
 
-Au doigt : **Agir** (F) et **Potion** au-dessus de la garde, **Sac**, **Journal** et **Atelier** en haut, **Halte** à la place de « Rejouer ».
+Au doigt : **Agir** (F) et **Potion** au-dessus de la garde, **Sac**, **Journal** et **Atelier** en haut, **Halte** à la place de « Rejouer ». Au doigt, seul le bouton **Garde** lève la garde (12.9c : marcher en touchant Agir ne la lève plus).
 
 Ce que tu vérifies (essai du 12.9) : la mission d'Odile de bout en bout (traces, ferrure forgée, pré des loups, manifestation, rôdeur, Gardien, retour) ; la récolte et la fabrication ; l'inventaire et l'équipement ; une défaite et la reprise ; quitter puis relancer le jeu (la partie revient) ; la lisibilité des écrans sur PC et sur le Note8.
 
