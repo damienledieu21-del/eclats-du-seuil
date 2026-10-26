@@ -133,14 +133,30 @@ namespace EdS.Runtime
             return (int)(hash % (uint)count);
         }
 
-        /// <summary>Animation à jouer parmi celles du modèle (noms des clips), avec repli ; null si aucune ne convient.</summary>
+        /// <summary>
+        /// Animation à jouer parmi celles du modèle (noms des clips, « HumanArmature|Idle »), avec repli ; null si aucune ne convient. Pour
+        /// chaque mot, le nom exact l'emporte (« Idle » avant « Idle_swordLeft »), puis un nom qui commence par le mot, puis un nom qui le
+        /// contient.
+        /// </summary>
         public static string? Clip(IEnumerable<string> clips, StyleMotion motion)
         {
             var names = (clips ?? Array.Empty<string>()).ToList();
             foreach (StyleMotion m in new[] { motion }.Concat(Fallbacks[motion]))
                 foreach (string word in Clips[m])
-                    if (names.FirstOrDefault(n => Key(n).Contains(word)) is string found) return found;
+                {
+                    string? found = names.FirstOrDefault(n => Segment(n) == word) ?? names.FirstOrDefault(n => Segment(n).StartsWith(word, StringComparison.Ordinal))
+                        ?? names.FirstOrDefault(n => Key(n).Contains(word));
+                    if (found != null) return found;
+                }
             return null;
+        }
+
+        /// <summary>Dernier segment d'un nom de clip (après le dernier « | »), réduit.</summary>
+        private static string Segment(string clip)
+        {
+            string c = clip ?? string.Empty;
+            int bar = c.LastIndexOf('|');
+            return Key(bar >= 0 ? c.Substring(bar + 1) : c);
         }
 
         /// <summary>Animations qui tournent en boucle (attente, marche, course).</summary>

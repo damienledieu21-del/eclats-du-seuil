@@ -12,15 +12,18 @@ namespace EdS.Game
     public sealed class StyleBody
     {
         private readonly Animation _animation;
+        private readonly Transform _look;
         private readonly List<string> _clips = new List<string>();
+        private bool _fallen;
         private string _playing;
         private Vector3 _last;
         private bool _started;
         private float _speed;
         private float _attackUntil;
 
-        internal StyleBody(Animation animation)
+        internal StyleBody(Transform look, Animation animation)
         {
+            _look = look;
             _animation = animation;
             if (animation == null) return;
             foreach (AnimationState state in animation)
@@ -36,6 +39,15 @@ namespace EdS.Game
         /// <summary>À chaque image : allure d'après le déplacement affiché, puis l'animation qui va avec.</summary>
         public void Update(Vector3 position, bool dead, float deltaTime)
         {
+            // Un modèle sans animation de mort (le loup et le cochon des packs) se couche sur le flanc, immobile.
+            if (dead && (_animation == null || StyleRules.Clip(_clips, StyleMotion.Death) == null))
+            {
+                if (_fallen) return;
+                _fallen = true;
+                if (_animation != null) _animation.Stop();
+                _look.localRotation = _look.localRotation * Quaternion.Euler(0f, 0f, 90f);
+                return;
+            }
             if (_animation == null) return;
             if (_started && deltaTime > 0f)
             {
@@ -75,7 +87,7 @@ namespace EdS.Game
             look.transform.localRotation = Quaternion.Euler(0f, catalog.Yaw(slot), 0f);
             Renderer own = body.GetComponent<Renderer>();
             if (own != null) own.enabled = false;
-            return new StyleBody(look.GetComponentInChildren<Animation>());
+            return new StyleBody(look.transform, look.GetComponentInChildren<Animation>());
         }
 
         /// <summary>

@@ -76,6 +76,19 @@ public class StyleRulesTests
         Assert.Equal("Idle", StyleRules.Clip(wolf, StyleMotion.Attack));
         Assert.Equal("Dying", StyleRules.Clip(wolf, StyleMotion.Death));
         Assert.Null(StyleRules.Clip(new[] { "Jump" }, StyleMotion.Idle));
+        // Le chevalier livré (Lowpoly Animated Knight) : noms exacts d'abord ; le loup livré n'a que l'attente et la marche, le cochon
+        // que l'attente et le saut : pas d'animation de mort (le jeu couche alors le modèle).
+        var shipped = new[] { "HumanArmature|Idle_swordLeft", "HumanArmature|Death", "HumanArmature|Idle", "HumanArmature|Run_swordAttack",
+            "HumanArmature|Run", "HumanArmature|Walking", "HumanArmature|swordAttackJump" };
+        Assert.Equal("HumanArmature|Idle", StyleRules.Clip(shipped, StyleMotion.Idle));
+        Assert.Equal("HumanArmature|Walking", StyleRules.Clip(shipped, StyleMotion.Walk));
+        Assert.Equal("HumanArmature|Run", StyleRules.Clip(shipped, StyleMotion.Run));
+        Assert.Equal("HumanArmature|Run_swordAttack", StyleRules.Clip(shipped, StyleMotion.Attack));
+        Assert.False(StyleRules.Loops("HumanArmature|Run_swordAttack"));
+        var wolfShipped = new[] { "WolfArmature|Idle", "WolfArmature|Walking" };
+        Assert.Equal("WolfArmature|Walking", StyleRules.Clip(wolfShipped, StyleMotion.Run));
+        Assert.Null(StyleRules.Clip(wolfShipped, StyleMotion.Death));
+        Assert.Equal("Armature|Idle", StyleRules.Clip(new[] { "Armature|Idle", "Armature|Jump" }, StyleMotion.Walk));
         Assert.Null(StyleRules.Clip(null!, StyleMotion.Walk));
         // Boucles : attente, marche, course ; pas la mort ni l'attaque.
         Assert.True(StyleRules.Loops("Armature|Idle"));

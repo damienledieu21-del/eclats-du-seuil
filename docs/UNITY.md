@@ -192,6 +192,8 @@ Décision de Damien du 25 octobre 2026 : un petit essai de style après le 12.9,
 5. **Un modèle de travers** : dans `Assets/Style/Resources/StyleCatalog` (inspecteur), *Hero Yaw*, *Wolf Yaw* et *Boar Yaw* tournent le héros, le loup ou le sanglier (90, 180 ou −90) ; on peut aussi y glisser un autre modèle à la main.
 6. **Sur le téléphone** : Build And Run comme d'habitude (section 7) ; les packs partent dans le jeu construit.
 
+Limites des packs gratuits : le loup n'a que l'attente et la marche (il marche aussi quand il court), le cochon que l'attente (il glisse) ; sans animation de mort, ils se couchent sur le flanc. Le chevalier n'a pas d'épée en main ni de bouclier (le disque bleu de la garde reste). Les feuillages peuvent paraître pleins (matériaux importés sans transparence) : à régler si le style est gardé.
+
 Ce que tu regardes : si le style low poly te plaît sur PC et sur le Note8, si on voit mieux qui est qui, si les animations suivent (attente, marche, course, attaque quand tu lances une compétence, mort), si les sons aident, et si l'image reste fluide sur le téléphone. Les modèles ne changent rien au combat : les emprises et les obstacles du moteur restent les mêmes ; les plantes n'arrêtent rien.
 
 ## 8. En cas de problème
