@@ -142,8 +142,17 @@ public class StyleRulesTests
         Assert.Equal(StyleSlot.Wolf, StyleRules.ForCombatant("loup1", false));
         Assert.Equal(StyleSlot.Wolf, StyleRules.ForCombatant("loup4_v3", false));   // une vie suivante
         Assert.Equal(StyleSlot.Boar, StyleRules.ForCombatant("sanglier2", false));
-        Assert.Null(StyleRules.ForCombatant("archer", false));
-        Assert.Null(StyleRules.ForCombatant("gardien_du_seuil", false));
+        // Essai réaliste (demande de Damien du 26 octobre 2026) : les autres prennent leur personnage Mixamo (s'il existe dans le catalogue).
+        Assert.Equal(StyleSlot.Character, StyleRules.ForCombatant("archer", false));
+        Assert.Equal(StyleSlot.Character, StyleRules.ForCombatant("gardien_du_seuil", false));
+        Assert.Equal("archer", StyleRules.CharacterOf("archer"));
+        Assert.Equal("rodeur", StyleRules.CharacterOf("rodeur_v2"));
+        Assert.Equal("gardien", StyleRules.CharacterOf("gardien_du_seuil"));
+        Assert.Equal("gardien", StyleRules.CharacterOf("gardien_eveille"));
+        Assert.Equal("odile", StyleRules.CharacterOf("npc.odile"));
+        Assert.Equal("maelle", StyleRules.CharacterOf("npc.maelle"));
+        Assert.Equal(string.Empty, StyleRules.CharacterOf("42"));
+        Assert.Equal(string.Empty, StyleRules.CharacterOf(null!));
         Assert.Equal(StyleSlot.Tree, StyleRules.ForObstacle("arbre4"));
         Assert.Equal(StyleSlot.Rock, StyleRules.ForObstacle("bloc2"));
         Assert.Equal(StyleSlot.Rock, StyleRules.ForObstacle("pierre_seuil1"));
@@ -437,12 +446,123 @@ public class StyleRulesTests
         Assert.Contains("foreach (LODGroup group in look.GetComponentsInChildren<LODGroup>()) group.enabled = false;", look, StringComparison.Ordinal);
         Assert.Contains("else renderers[i].gameObject.SetActive(false);", look, StringComparison.Ordinal);
         // Essai du 26 octobre 2026 : paladin blanc (textures sorties de son fichier), image trop claire (réglages remis une fois par version).
-        Assert.Contains("EmbeddedTextures(hero, notes);", editor, StringComparison.Ordinal);
+        Assert.Contains("MixamoMaterials(hero, notes);", editor, StringComparison.Ordinal);
         Assert.Contains("if (catalog.AmbienceVersion < StyleCatalog.AmbienceDefaults)", editor, StringComparison.Ordinal);
         // L'outil de préparation rebranche les effets d'image d'URP (coupés par le renderer créé au sous-lot 9.3).
         Assert.Contains("renderer.postProcessData = data;", editor, StringComparison.Ordinal);
         Assert.Contains("Legacy(clip, true);", editor, StringComparison.Ordinal);
         // Dossier temporaire de Unity 6 vu chez Damien : jamais suivi.
         Assert.Contains("unity/[Uu]tmp/", Read(".gitignore"), StringComparison.Ordinal);
+    }
+    [Fact]
+    public void Personnages_de_Mixamo_par_dossier()
+    {
+        var models = new[]
+        {
+            "Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", "Assets/Style/Mixamo/Sword And Shield Idle.fbx",
+            "Assets/Style/Mixamo/Archer/Archer Walk.fbx", "Assets/Style/Mixamo/Archer/Archer Idle.fbx", "Assets/Style/Mixamo/Archer/Archer Death.fbx",
+            "Assets/Style/Mixamo/Odile/Odile Idle.fbx", "Assets/Style/Mixamo/Textures/x.fbx", "Assets/Style/Mixamo/Odile/notes.txt",
+            "Assets\\Style\\Mixamo\\Gardien\\Gardien Idle.fbx", "Assets/Style/Animals/Wolf.fbx",
+        };
+        IReadOnlyDictionary<string, IReadOnlyList<string>> characters = StyleRules.Characters(models);
+        Assert.Equal(new[] { "archer", "gardien", "odile" }, characters.Keys.OrderBy(k => k, StringComparer.Ordinal));
+        Assert.Equal(new[] { "Assets/Style/Mixamo/Archer/Archer Death.fbx", "Assets/Style/Mixamo/Archer/Archer Idle.fbx", "Assets/Style/Mixamo/Archer/Archer Walk.fbx" },
+            characters["archer"]);
+        Assert.Single(characters["odile"]);
+        Assert.Empty(StyleRules.Characters(null!));
+        // Les fichiers des personnages, nommés d'après leur mouvement, donnent leurs animations ; le héros n'en prend aucune.
+        Assert.DoesNotContain(StyleRules.Companions("Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", models), m => m.Contains("Archer"));
+        var archerClips = new[] { "Archer Idle", "Archer Walk", "Archer Death" };
+        Assert.Equal("Archer Idle", StyleRules.Clip(archerClips, StyleMotion.Idle));
+        Assert.Equal("Archer Walk", StyleRules.Clip(archerClips, StyleMotion.Run));
+        Assert.Equal("Archer Death", StyleRules.Clip(archerClips, StyleMotion.Death));
+        Assert.Equal("Archer Idle", StyleRules.Clip(archerClips, StyleMotion.Attack));   // pas d'attaque : l'attente
+        Assert.True(StyleRules.Loops("Archer Walk"));
+        Assert.True(StyleRules.Loops("Gardien Idle"));
+        Assert.False(StyleRules.Loops("Gardien Death"));
+        // « Gardien » contient « die » au milieu d'un mot : ce n'est pas une mort.
+        Assert.Null(StyleRules.Clip(new[] { "Gardien Idle", "Gardien Walk" }, StyleMotion.Death));
+        Assert.Equal("Gardien Walk", StyleRules.Clip(new[] { "Gardien Idle", "Gardien Walk" }, StyleMotion.Run));
+        // Textures des matériaux de Mixamo (noms tirés des fichiers livrés).
+        var archer = new[] { "Textures/Akai_DIFF.png", "Textures/Akai_NM.png", "Textures/Body_DIFF.jpg", "Textures/Body_NM.jpg", "Textures/Bow_DIFF.jpg", "Textures/Bow_NM.jpg" };
+        Assert.Equal("Textures/Body_DIFF.jpg", StyleRules.MaterialTexture("Body_MAT1", archer, false));
+        Assert.Equal("Textures/Body_NM.jpg", StyleRules.MaterialTexture("Body_MAT1", archer, true));
+        Assert.Equal("Textures/Bow_DIFF.jpg", StyleRules.MaterialTexture("Bow_MAT", archer, false));
+        Assert.Null(StyleRules.MaterialTexture("Cape_MAT", archer, false));                       // plusieurs textures, aucune à son nom
+        var warrok = new[] { "Textures/bear_diffuse.png", "Textures/bear_normal.png", "Textures/bear_specular.png" };
+        Assert.Equal("Textures/bear_diffuse.png", StyleRules.MaterialTexture("warrok_MAT", warrok, false));   // la seule couleur
+        Assert.Equal("Textures/bear_normal.png", StyleRules.MaterialTexture("warrok_MAT", warrok, true));
+        Assert.Equal("t/maria_diffuse.png", StyleRules.MaterialTexture("maria_M1", new[] { "t/maria_diffuse.png", "t/maria_normal.png", "t/other_diffuse.png" }, false));
+        Assert.False(StyleRules.IsColorMap("Nightshade_glow.png"));
+        Assert.True(StyleRules.IsNormalMap("Bow_NM.jpg"));
+        Assert.Null(StyleRules.MaterialTexture("x", null!, false));
+    }
+
+    [Fact]
+    public void Matieres_des_batiments()
+    {
+        var textures = new[]
+        {
+            "Assets/Style/PolyHaven/Surfaces/rustic_stone_wall_02_diff_1k.jpg", "Assets/Style/PolyHaven/Surfaces/rustic_stone_wall_02_nor_gl_1k.jpg",
+            "Assets/Style/PolyHaven/Surfaces/plastered_stone_wall_diff_1k.jpg", "Assets/Style/PolyHaven/Surfaces/clay_roof_tiles_02_diff_1k.jpg",
+            "Assets/Style/PolyHaven/Surfaces/weathered_brown_planks_diff_1k.jpg", "Assets/Style/PolyHaven/Surfaces/cobblestone_floor_04_diff_1k.jpg",
+            "Assets/Style/PolyHaven/Ground/rocky_trail_diff_1k.jpg",
+        };
+        Assert.Equal(StyleSurface.Stone, StyleRules.SurfaceOf(textures[0]));
+        Assert.Equal(StyleSurface.Plaster, StyleRules.SurfaceOf(textures[2]));   // « plastered_stone_wall » : du crépi
+        Assert.Equal(StyleSurface.Roof, StyleRules.SurfaceOf(textures[3]));
+        Assert.Equal(StyleSurface.Wood, StyleRules.SurfaceOf(textures[4]));
+        Assert.Equal(StyleSurface.Cobble, StyleRules.SurfaceOf(textures[5]));    // « cobblestone » : des pavés
+        Assert.Null(StyleRules.SurfaceOf(textures[6]));                          // un sol, pas un bâtiment
+        Assert.Null(StyleRules.SurfaceOf("Assets/Style/Surfaces/readme_1k.jpg"));
+        Assert.Equal(textures[0], StyleRules.SurfaceTexture(textures, StyleSurface.Stone, false));
+        Assert.Equal(textures[1], StyleRules.SurfaceTexture(textures, StyleSurface.Stone, true));
+        Assert.Null(StyleRules.SurfaceTexture(textures, StyleSurface.Roof, true));
+        Assert.Null(StyleRules.SurfaceTexture(null!, StyleSurface.Roof, false));
+        Assert.Equal(StyleSurface.Stone, StyleRules.SurfaceFor("mur_nord"));
+        Assert.Equal(StyleSurface.Wood, StyleRules.SurfaceFor("pilier3"));
+        Assert.Null(StyleRules.SurfaceFor("moulin"));
+        Assert.Null(StyleRules.SurfaceFor("riviere_sud"));
+    }
+
+    [Fact]
+    public void Camera_a_la_souris_libre()
+    {
+        // Choix de Damien du 26 octobre 2026 (« Souris libre (comme ESO) ») : sans clic, hors des écrans, Alt rend le curseur.
+        Assert.True(PointerInput.FreeLook(touchCount: 0, touchControls: false, alt: false, covered: false, focused: true));
+        Assert.False(PointerInput.FreeLook(0, false, true, false, true));    // Alt tenu : curseur pour cliquer
+        Assert.False(PointerInput.FreeLook(0, false, false, true, true));    // écran ou menu ouvert
+        Assert.False(PointerInput.FreeLook(0, true, false, false, true));    // commandes tactiles affichées
+        Assert.False(PointerInput.FreeLook(1, false, false, false, true));   // un doigt sur l'écran
+        Assert.False(PointerInput.FreeLook(0, false, false, false, false));  // fenêtre du jeu inactive
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        string rig = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "CameraRig.cs"));
+        Assert.Contains("Cursor.lockState = _freeLook ? CursorLockMode.Locked : CursorLockMode.None;", game, StringComparison.Ordinal);
+        Assert.Contains("bool covered = _talents != null || _menuOpen || _paused || AdventureCovered;", game, StringComparison.Ordinal);
+        Assert.Contains("_freeLook = PointerInput.FreeLook(Input.touchCount, _touch.Active, cursorWanted, covered, Application.isFocused);", game, StringComparison.Ordinal);
+        Assert.Contains("if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;", game, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"Time\.deltaTime, _freeLook\)").Count);
+        Assert.Contains("_yaw += Input.GetAxis(\"Mouse X\") * 3f;", rig, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Le_jeu_habille_personnages_batiments_et_riviere()
+    {
+        string Read(params string[] parts) => File.ReadAllText(Path.Combine(new[] { Lot93UnityPackageTests.Root }.Concat(parts).ToArray()));
+        string markers = Read("unity", "Assets", "EdS", "Game", "WorldMarkers.cs");
+        string view = Read("unity", "Assets", "EdS", "Game", "SpaceView.cs");
+        string look = Read("unity", "Assets", "EdS", "Game", "StyleLook.cs");
+        string editor = Read("unity", "Assets", "EdS", "Editor", "EdsStyle.cs");
+        Assert.Contains("StyleBody look = StyleLook.Dress(m.Body, StyleSlot.Character, npc.Id, 1.75f);", markers, StringComparison.Ordinal);
+        Assert.Contains("_water = StyleWorld.Water() ?? ArenaView.MakeMaterial(", view, StringComparison.Ordinal);
+        Assert.Contains("StyleWorld.AnimateWater(Time.time);", view, StringComparison.Ordinal);
+        Assert.Contains("mesh.uv = uvs.ToArray();", view, StringComparison.Ordinal);
+        foreach (string surface in new[] { "StyleSurface.Cobble", "StyleSurface.Plaster", "StyleSurface.Roof", "StyleSurface.Wood", "StyleSurface.Stone" })
+            Assert.Contains("Built(" + surface, view, StringComparison.Ordinal);
+        Assert.Contains("ArenaView.ApplyColor(m, slot == StyleSlot.Wolf ? catalog.WolfColor : catalog.BoarColor);", look, StringComparison.Ordinal);
+        Assert.Contains("AnimationClip[] clips = catalog.Clips(slot, id);", look, StringComparison.Ordinal);
+        Assert.Contains("foreach (KeyValuePair<string, IReadOnlyList<string>> folder in StyleRules.Characters(models))", editor, StringComparison.Ordinal);
+        Assert.Contains("MixamoMaterials(hero, notes);", editor, StringComparison.Ordinal);
+        Assert.Contains("AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);", editor, StringComparison.Ordinal);
     }
 }
