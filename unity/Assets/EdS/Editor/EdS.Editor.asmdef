@@ -4,7 +4,8 @@
     "references": [
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",
-        "EdS.Runtime"
+        "EdS.Runtime",
+        "EdS.Game"
     ],
     "includePlatforms": [
         "Editor"

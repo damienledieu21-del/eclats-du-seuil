@@ -181,6 +181,19 @@ Premier essai tactile : la scène des Vallons au doigt, d'abord dans le **simula
 5. **Lisibilité et fluidité** : annonces au sol, barres, textes lisibles ; image fluide (ombres et anticrénelage coupés sur téléphone).
 6. **En réseau** (si tu veux) : PC qui héberge les Vallons (section 6), téléphone sur le même Wi-Fi → **Menu** → adresse du PC → **Rejoindre**.
 
+## 7 bis. Essai de style (packs gratuits)
+
+Décision de Damien du 25 octobre 2026 : un petit essai de style après le 12.9, avant le lot 13, pour voir les Vallons avec de vrais modèles, tout en gratuit (licence CC0 : utilisables même dans un jeu vendu). Sans pack, le jeu garde ses formes simples : rien n'est obligatoire.
+
+1. **Télécharger** : [Lowpoly Animated Knight](https://quaternius.itch.io/lowpoly-animated-knight) (le héros), [Animated Animals Low Poly](https://opengameart.org/content/animated-animales-low-poly) (le loup), [Lowpoly Animated Farm Animal Pack](https://opengameart.org/content/lowpoly-animated-farm-animal-pack) (le cochon, en attendant un sanglier), [Stylized Nature MegaKit](https://quaternius.itch.io/stylized-nature-megakit) (arbres, rochers, plantes ; version gratuite), et les sons [Impact Sounds](https://kenney.nl/assets/impact-sounds) et [RPG Audio](https://kenney.nl/assets/rpg-audio) de Kenney.
+2. **Déposer** : dézipper chaque pack dans `unity/Assets/Style/` (un sous-dossier par pack, noms libres). Garder les dossiers **FBX** (et **Textures** s'il y en a) et les sons (`.ogg`) ; supprimer les dossiers **Blend** (Unity demanderait Blender), OBJ et glTF ne servent pas. Ce dossier n'est pas suivi par git : il ne part pas sur GitHub.
+3. **Préparer** : dans Unity, menu **Éclats du Seuil → Préparer l'essai de style**. Il trouve les modèles et les sons par leur nom, règle l'import des modèles animés et écrit le catalogue `Assets/Style/Resources/StyleCatalog` ; une fenêtre dit ce qu'il a trouvé (héros, loup, sanglier, nombre d'arbres, de rochers, de plantes et de sons).
+4. **Jouer** : Play. Le Bastion est un chevalier, les loups et les sangliers ont leur modèle, les arbres, les blocs de la carrière et les pierres du Seuil deviennent des arbres et des rochers, des plantes poussent sur le sol ; coups, blocages, parades, morts et potions ont un son. L'archer, le rôdeur, le Gardien et les PNJ gardent leur forme simple pour cet essai.
+5. **Un modèle de travers** : dans `Assets/Style/Resources/StyleCatalog` (inspecteur), *Hero Yaw*, *Wolf Yaw* et *Boar Yaw* tournent le héros, le loup ou le sanglier (90, 180 ou −90) ; on peut aussi y glisser un autre modèle à la main.
+6. **Sur le téléphone** : Build And Run comme d'habitude (section 7) ; les packs partent dans le jeu construit.
+
+Ce que tu regardes : si le style low poly te plaît sur PC et sur le Note8, si on voit mieux qui est qui, si les animations suivent (attente, marche, course, attaque quand tu lances une compétence, mort), si les sons aident, et si l'image reste fluide sur le téléphone. Les modèles ne changent rien au combat : les emprises et les obstacles du moteur restent les mêmes ; les plantes n'arrêtent rien.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

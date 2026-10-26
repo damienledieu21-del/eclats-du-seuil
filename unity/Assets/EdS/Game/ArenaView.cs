@@ -26,6 +26,10 @@ namespace EdS.Game
         private readonly Dictionary<string, Renderer> _renderers = new Dictionary<string, Renderer>();
         private readonly Dictionary<string, Color> _baseColors = new Dictionary<string, Color>();
         private GameObject _player;
+        private string _playerId;
+
+        /// <summary>Essai de style : corps habillés d'un modèle (aucun sans catalogue).</summary>
+        private readonly Dictionary<string, StyleBody> _looks = new Dictionary<string, StyleBody>();
         private GameObject _shield;
         private Renderer _shieldRenderer;
         private GameObject _targetRing;
@@ -122,6 +126,7 @@ namespace EdS.Game
         {
             foreach (GameObject body in _bodies.Values) Object.Destroy(body);
             _bodies.Clear();
+            _looks.Clear();
             _renderers.Clear();
             _baseColors.Clear();
             if (_player != null) Object.Destroy(_player);
@@ -136,7 +141,9 @@ namespace EdS.Game
             _shownTick = -1;
 
             _player = Body(combat.PlayerId, PrimitiveType.Capsule, new Color(0.25f, 0.45f, 0.95f), Vector3.zero);
+            _playerId = combat.PlayerId;
             Fit(_player, combat.Player().View);
+            Look(combat.PlayerId, _player, true);
             _shield = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             _shield.name = "Bouclier";
             Object.Destroy(_shield.GetComponent<Collider>());
@@ -186,7 +193,22 @@ namespace EdS.Game
                 : new Color(0.85f, 0.2f, 0.2f));
             GameObject body = Body(other.Id, shape, color, position);
             Fit(body, other.View);
+            Look(other.Id, body, false);
             return body;
+        }
+
+        /// <summary>Essai de style : habille le corps s'il a un modèle (le chevalier, les loups, les sangliers).</summary>
+        private void Look(string id, GameObject body, bool player)
+        {
+            if (!(StyleRules.ForCombatant(id, player) is StyleSlot slot)) return;
+            StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero ? 1.8f : 0.95f);
+            if (look != null) _looks[id] = look;
+        }
+
+        /// <summary>Essai de style : le joueur lance une compétence (son modèle joue l'attaque).</summary>
+        public void Strike()
+        {
+            if (_playerId != null && _looks.TryGetValue(_playerId, out StyleBody look)) look.Strike();
         }
 
         /// <summary>
@@ -362,6 +384,11 @@ namespace EdS.Game
                 Tint(other.Id, other.View.IsDead, other.View.States.Contains("stun"));
             }
             Tint(combat.PlayerId, me.IsDead, me.States.Contains("stun"));
+            // Essai de style : les modèles suivent l'allure affichée de leur corps.
+            if (_looks.TryGetValue(combat.PlayerId, out StyleBody mine)) mine.Update(_player.transform.position, me.IsDead, Time.deltaTime);
+            foreach (OtherState other in combat.Others())
+                if (_looks.TryGetValue(other.Id, out StyleBody look) && _bodies.TryGetValue(other.Id, out GameObject shown) && shown.activeSelf)
+                    look.Update(shown.transform.position, other.View.IsDead, Time.deltaTime);
 
             if (player.TargetId != null && _bodies.TryGetValue(player.TargetId, out GameObject target) && target.activeSelf)
             {

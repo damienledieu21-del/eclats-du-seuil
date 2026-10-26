@@ -309,7 +309,7 @@ namespace EdS.Game
             if (a.Opened != _shownSession) ShowAdventureSession();
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue;
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
-            if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed)) a.Drink();
+            if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed) && a.Drink()) StyleLook.Play(Audio, StyleSound.Potion);   // essai de style : son
             if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
             _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
 
@@ -588,14 +588,26 @@ namespace EdS.Game
                 Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), _touch.GuardHeld));
             if (Input.GetKeyDown(KeyCode.Space) || _touch.ParryPressed) _combat.Parry();
             // Sous-lot 11.8 : boutons tactiles (compétences 1 à 4 et ultime, cible suivante, allié visé en réseau).
-            if (_touch.SlotPressed >= 0) _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed);
+            if (_touch.SlotPressed >= 0)
+            {
+                _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed);
+                _arena.Strike();   // essai de style : le modèle du joueur attaque
+            }
             if (_touch.TargetPressed) _combat.NextTarget();
             if (_touch.AllyPressed && _combat is NetworkCombat ally) ally.NextAlly();
             KeyCode[] slots = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4 };
             KeyCode[] pad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4 };
             for (int i = 0; i < slots.Length; i++)
-                if (Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i])) _combat.UseSlot(i);
-            if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5)) _combat.UseSlot(RealtimeCombat.UltimateSlot);
+                if (Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i]))
+                {
+                    _combat.UseSlot(i);
+                    _arena.Strike();
+                }
+            if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5))
+            {
+                _combat.UseSlot(RealtimeCombat.UltimateSlot);
+                _arena.Strike();
+            }
             if (Input.GetKeyDown(KeyCode.Tab)) _combat.NextTarget();
             if (Input.GetKeyDown(KeyCode.G) && _combat is NetworkCombat network) network.NextAlly();
         }
@@ -881,8 +893,25 @@ namespace EdS.Game
             _arena.MovePlayer(delta, _playerYaw);
         }
 
+        /// <summary>Essai de style : source des sons, sur la caméra (créée au premier son).</summary>
+        private AudioSource _audio;
+
+        private AudioSource Audio
+        {
+            get
+            {
+                if (_audio == null && _camera != null && StyleCatalog.Loaded != null) _audio = _camera.Camera.gameObject.AddComponent<AudioSource>();
+                return _audio;
+            }
+        }
+
         private void Show(CombatFeedback feedback)
         {
+            // Essai de style : un son par retour de combat (rien sans catalogue).
+            if (feedback.Kind == FeedbackKind.DamageTaken) StyleLook.Play(Audio, StyleSound.Hit, 0.6f);
+            else if (feedback.Kind == FeedbackKind.Blocked) StyleLook.Play(Audio, StyleSound.Block);
+            else if (feedback.Kind == FeedbackKind.PerfectParry) StyleLook.Play(Audio, StyleSound.Parry, 1f);
+            else if (feedback.Kind == FeedbackKind.Died) StyleLook.Play(Audio, StyleSound.Death);
             if (feedback.Kind == FeedbackKind.Unavailable || feedback.Kind == FeedbackKind.Rejected)
             {
                 Say(feedback.Kind == FeedbackKind.Rejected ? "Refusé" + (feedback.Detail != null ? " : " + feedback.Detail : "") : feedback.Detail);
