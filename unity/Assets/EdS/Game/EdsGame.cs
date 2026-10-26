@@ -115,6 +115,7 @@ namespace EdS.Game
                 ApplyMobileSettings();
                 _camera = CameraRig.Create();
                 _arena = new ArenaView();
+                StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
             }
             catch (Exception e)
             {
@@ -488,6 +489,7 @@ namespace EdS.Game
         private void Update()
         {
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
+            if (Application.isEditor) StyleWorld.Refresh();   // essai réaliste : les curseurs du catalogue réglés pendant le jeu
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
             _touch.Update(Network, _adventure != null, AdventureCovered);
             // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran. En réseau,

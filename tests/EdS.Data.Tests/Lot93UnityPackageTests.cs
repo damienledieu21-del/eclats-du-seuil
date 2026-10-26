@@ -50,6 +50,8 @@ public class Lot93UnityPackageTests
         // premier, Unity refusait de compiler le jeu (essai de Damien du 26 octobre 2026, erreur CS1069 sur Animation).
         Assert.Equal("1.0.0", dependencies["com.unity.modules.animation"]!.GetValue<string>());
         Assert.Equal("1.0.0", dependencies["com.unity.modules.audio"]!.GetValue<string>());
+        // Essai réaliste (26 octobre 2026) : le sol en terrain (Terrain, TerrainData) demande le module intégré du terrain.
+        Assert.Equal("1.0.0", dependencies["com.unity.modules.terrain"]!.GetValue<string>());
         Assert.StartsWith("m_EditorVersion: 6000.3.", File.ReadAllText(Path.Combine(Root, "unity", "ProjectSettings", "ProjectVersion.txt")));
     }
 
@@ -130,7 +132,8 @@ public class Lot93UnityPackageTests
     public void Scripts_du_jeu_dans_un_assemblage_qui_reference_le_coeur()
     {
         JsonObject game = Json(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdS.Game.asmdef"));
-        Assert.Equal(Portable.OrderBy(n => n, StringComparer.Ordinal),
+        // Essai réaliste (26 octobre 2026) : le jeu règle aussi les couleurs de l'image (volume d'URP), d'où les deux assemblages d'URP.
+        Assert.Equal(Portable.Concat(new[] { "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime" }).OrderBy(n => n, StringComparer.Ordinal),
             game["references"]!.AsArray().Select(r => r!.GetValue<string>()).OrderBy(r => r, StringComparer.Ordinal));
         JsonObject editor = Json(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdS.Editor.asmdef"));
         Assert.Equal(new[] { "Editor" }, editor["includePlatforms"]!.AsArray().Select(p => p!.GetValue<string>()));

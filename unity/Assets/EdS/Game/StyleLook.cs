@@ -55,8 +55,17 @@ namespace EdS.Game
             _tinted = dead || stunned;
         }
 
-        /// <summary>Demande l'animation d'attaque pendant un court instant (compétence lancée par le joueur).</summary>
-        public void Strike() => _attackUntil = Time.time + 0.6f;
+        /// <summary>
+        /// Demande l'animation d'attaque pendant un court instant (compétence lancée par le joueur) : la durée de l'animation, entre 0,6 et
+        /// 1,2 seconde (essai réaliste : le coup d'épée de Mixamo dure 1,5 seconde, on n'en garde que le geste).
+        /// </summary>
+        public void Strike()
+        {
+            string clip = _animation != null ? StyleRules.Clip(_clips, StyleMotion.Attack) : null;
+            AnimationState state = clip != null ? _animation[clip] : null;
+            _attackUntil = Time.time + (state != null ? Mathf.Clamp(state.length, 0.6f, 1.2f) : 0.6f);
+            if (clip != null && clip == _playing) _animation.Rewind(clip);   // deux coups de suite : le geste recommence
+        }
 
         /// <summary>À chaque image : allure d'après le déplacement affiché, puis l'animation qui va avec.</summary>
         public void Update(Vector3 position, bool dead, float deltaTime)
@@ -87,6 +96,7 @@ namespace EdS.Game
         }
     }
 
+
     /// <summary>Essai de style : habillage des corps et du décor par les modèles du <see cref="StyleCatalog"/>.</summary>
     public static class StyleLook
     {
@@ -99,7 +109,7 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             GameObject prefab = catalog != null ? catalog.Model(slot, id) : null;
             if (prefab == null) return null;
-            GameObject look = Fit(prefab, height, 0f, out float bottom);
+            GameObject look = Fit(prefab, height, 0f, null, false, out float bottom, out GameObject model);
             Vector3 s = body.transform.localScale;
             look.transform.SetParent(body.transform, false);
             float k = look.transform.localScale.y;
@@ -109,19 +119,29 @@ namespace EdS.Game
             look.transform.localRotation = Quaternion.Euler(0f, catalog.Yaw(slot), 0f);
             Renderer own = body.GetComponent<Renderer>();
             if (own != null) own.enabled = false;
-            return new StyleBody(look.transform, look.GetComponentInChildren<Animation>());
+            Animation animation = look.GetComponentInChildren<Animation>();
+            // Essai réaliste : le héros de Mixamo arrive sans animation ; ses animations sont des fichiers à part (catalogue HeroClips),
+            // jouées par un composant Animation posé sur la racine du modèle (les chemins des os partent de là).
+            if (slot == StyleSlot.Hero && catalog.HeroClips != null && catalog.HeroClips.Length > 0)
+            {
+                if (animation == null) animation = model.AddComponent<Animation>();
+                foreach (AnimationClip clip in catalog.HeroClips)
+                    if (clip != null && animation.GetClip(clip.name) == null) animation.AddClip(clip, clip.name);
+            }
+            return new StyleBody(look.transform, animation);
         }
 
         /// <summary>
         /// Élément de décor du modèle de <paramref name="slot"/> posé au sol en <paramref name="center"/>, de hauteur <paramref name="height"/>
-        /// ou, si <paramref name="width"/> est positif, de largeur <paramref name="width"/> (rochers sur l'emprise de l'obstacle) ; null sinon.
+        /// ou, si <paramref name="width"/> est positif, de largeur <paramref name="width"/> (rochers sur l'emprise de l'obstacle), ou, si
+        /// <paramref name="natural"/>, à sa taille réelle quand elle est plausible (plantes) ; null sans catalogue ou sans modèle.
         /// </summary>
-        public static GameObject Decor(Transform parent, StyleSlot slot, string id, Vector3 center, float height, float width = 0f)
+        public static GameObject Decor(Transform parent, StyleSlot slot, string id, Vector3 center, float height, float width = 0f, bool natural = false)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             GameObject prefab = catalog != null ? catalog.Model(slot, id) : null;
             if (prefab == null) return null;
-            GameObject look = Fit(prefab, height, width, out float bottom);
+            GameObject look = Fit(prefab, height, width, id, natural, out float bottom, out GameObject model);
             float k = look.transform.localScale.y;
             look.name = id + " (essai de style)";
             look.transform.SetParent(parent, false);
@@ -130,35 +150,61 @@ namespace EdS.Game
             return look;
         }
 
-        /// <summary>Copie du modèle, sans collision, à l'échelle voulue ; <paramref name="bottom"/> : bas du modèle à l'échelle 1.</summary>
         /// <summary>
+        /// Copie du modèle, sans collision, à l'échelle voulue ; <paramref name="bottom"/> : bas du modèle à l'échelle 1 ;
+        /// <paramref name="model"/> : la copie, posée dans le support rendu.
+        /// <para>
         /// Essai de Damien du 26 octobre 2026 (le chevalier, les loups et les sangliers restaient invisibles) : le modèle importé garde la
         /// rotation et l'échelle de sa racine (un modèle venu de Blender est redressé par elle) ; il est posé dans un support vide, et c'est
         /// le support qu'on met à l'échelle, place et tourne. Les maillages animés sont calculés même hors champ (pas de disparition après
         /// la mise à l'échelle).
+        /// </para>
+        /// <para>
+        /// Essai réaliste : un élément de décor (<paramref name="part"/> non nul) tiré d'un lot de pièces séparées (les rochers et les
+        /// touffes d'herbe de Poly Haven sont livrés par lots, <see cref="StyleRules.IsCollection"/>) n'en garde qu'une, choisie d'après
+        /// l'identifiant, ramenée au centre du support. <paramref name="natural"/> : taille réelle si elle est plausible
+        /// (<see cref="StyleRules.NaturalScale"/>), légèrement variée.
+        /// </para>
         /// </summary>
-        private static GameObject Fit(GameObject prefab, float height, float width, out float bottom)
+        private static GameObject Fit(GameObject prefab, float height, float width, string part, bool natural, out float bottom, out GameObject model)
         {
             var look = new GameObject(prefab.name + " (essai de style)");
-            Object.Instantiate(prefab, look.transform, false);
+            model = Object.Instantiate(prefab, look.transform, false);
             foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             foreach (SkinnedMeshRenderer skin in look.GetComponentsInChildren<SkinnedMeshRenderer>()) skin.updateWhenOffscreen = true;
+            Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
+            if (part != null && renderers.Length > 1)
+            {
+                var boxes = new List<StyleBox>();
+                foreach (Renderer r in renderers) boxes.Add(new StyleBox(r.bounds.min.x, r.bounds.min.z, r.bounds.max.x, r.bounds.max.z));
+                if (StyleRules.IsCollection(boxes))
+                {
+                    int keep = StyleRules.Variant(part + "/piece", renderers.Length);
+                    for (int i = 0; i < renderers.Length; i++)
+                        if (i != keep) renderers[i].gameObject.SetActive(false);
+                    Vector3 center = renderers[keep].bounds.center;
+                    model.transform.localPosition = model.transform.localPosition - new Vector3(center.x, 0f, center.z);
+                    renderers = new[] { renderers[keep] };
+                }
+            }
             bool any = false;
             Bounds bounds = default;
-            foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
+            foreach (Renderer r in renderers)
             {
                 if (!any) bounds = r.bounds;
                 else bounds.Encapsulate(r.bounds);
                 any = true;
             }
             bottom = any ? bounds.min.y : 0f;
-            float k = width > 0f && any
-                ? (float)StyleRules.Scale(Mathf.Max(bounds.size.x, bounds.size.z), width)
-                : (float)StyleRules.Scale(any ? bounds.size.y : 0f, height);
+            float size = any ? bounds.size.y : 0f;
+            float k;
+            if (width > 0f && any) k = (float)StyleRules.Scale(Mathf.Max(bounds.size.x, bounds.size.z), width);
+            else if (natural) k = (float)StyleRules.NaturalScale(size, height) * (0.85f + 0.003f * StyleRules.Variant(part ?? prefab.name, 100));
+            else k = (float)StyleRules.Scale(size, height);
             look.transform.localScale = new Vector3(k, k, k);
             if (Logged.Add(prefab.name))
-                Debug.Log("Essai de style : " + prefab.name + " (hauteur importée " + (any ? bounds.size.y : 0f) + " m, largeur " + (any ? Mathf.Max(bounds.size.x, bounds.size.z) : 0f)
-                    + " m, bas " + bottom + ", échelle " + k + ")");
+                Debug.Log("Essai de style : " + prefab.name + " (hauteur importée " + size + " m, largeur " + (any ? Mathf.Max(bounds.size.x, bounds.size.z) : 0f)
+                    + " m, bas " + bottom + ", échelle " + k + (renderers.Length == 1 && part != null ? ", une pièce du lot" : "") + ")");
             return look;
         }
 

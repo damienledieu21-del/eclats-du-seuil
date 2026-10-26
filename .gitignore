@@ -488,6 +488,8 @@ $RECYCLE.BIN/
 !src/**/csc.rsp
 unity/[Ll]ibrary/
 unity/[Tt]emp/
+# Essai réaliste (26 octobre 2026) : dossier temporaire de Unity 6 (vu dans GitHub Desktop chez Damien), jamais suivi.
+unity/[Uu]tmp/
 unity/[Oo]bj/
 unity/[Bb]uild/
 unity/[Bb]uilds/
