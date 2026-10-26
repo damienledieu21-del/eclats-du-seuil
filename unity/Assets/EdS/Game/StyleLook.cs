@@ -131,13 +131,18 @@ namespace EdS.Game
         }
 
         /// <summary>Copie du modèle, sans collision, à l'échelle voulue ; <paramref name="bottom"/> : bas du modèle à l'échelle 1.</summary>
+        /// <summary>
+        /// Essai de Damien du 26 octobre 2026 (le chevalier, les loups et les sangliers restaient invisibles) : le modèle importé garde la
+        /// rotation et l'échelle de sa racine (un modèle venu de Blender est redressé par elle) ; il est posé dans un support vide, et c'est
+        /// le support qu'on met à l'échelle, place et tourne. Les maillages animés sont calculés même hors champ (pas de disparition après
+        /// la mise à l'échelle).
+        /// </summary>
         private static GameObject Fit(GameObject prefab, float height, float width, out float bottom)
         {
-            GameObject look = Object.Instantiate(prefab);
+            var look = new GameObject(prefab.name + " (essai de style)");
+            Object.Instantiate(prefab, look.transform, false);
             foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-            look.transform.position = Vector3.zero;
-            look.transform.rotation = Quaternion.identity;
-            look.transform.localScale = new Vector3(1f, 1f, 1f);
+            foreach (SkinnedMeshRenderer skin in look.GetComponentsInChildren<SkinnedMeshRenderer>()) skin.updateWhenOffscreen = true;
             bool any = false;
             Bounds bounds = default;
             foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
@@ -151,8 +156,14 @@ namespace EdS.Game
                 ? (float)StyleRules.Scale(Mathf.Max(bounds.size.x, bounds.size.z), width)
                 : (float)StyleRules.Scale(any ? bounds.size.y : 0f, height);
             look.transform.localScale = new Vector3(k, k, k);
+            if (Logged.Add(prefab.name))
+                Debug.Log("Essai de style : " + prefab.name + " (hauteur importée " + (any ? bounds.size.y : 0f) + " m, largeur " + (any ? Mathf.Max(bounds.size.x, bounds.size.z) : 0f)
+                    + " m, bas " + bottom + ", échelle " + k + ")");
             return look;
         }
+
+        /// <summary>Modèles déjà décrits dans le journal de Unity (une ligne par modèle, pour régler l'essai).</summary>
+        private static readonly HashSet<string> Logged = new HashSet<string>();
 
         /// <summary>Joue un son de l'essai (rien sans catalogue ou sans ce son).</summary>
         public static void Play(AudioSource source, StyleSound sound, float volume = 0.8f)

@@ -5,7 +5,7 @@
 using System;
 namespace UnityEngine
 {
-    public class Object { public string name { get; set; } public static void Destroy(Object o) { } public static T Instantiate<T>(T original) where T : Object => original; public static T FindFirstObjectByType<T>() where T : Object => default; public static implicit operator bool(Object o) => o != null; }
+    public class Object { public string name { get; set; } public static void Destroy(Object o) { } public static T Instantiate<T>(T original) where T : Object => original; public static T Instantiate<T>(T original, Transform parent, bool worldPositionStays) where T : Object => original; public static T FindFirstObjectByType<T>() where T : Object => default; public static implicit operator bool(Object o) => o != null; }
     public class Component : Object { public Transform transform => null; public GameObject gameObject => null; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; }
     public class Behaviour : Component { }
     public class MonoBehaviour : Behaviour { }
@@ -22,6 +22,7 @@ namespace UnityEngine
     public sealed class AudioSource : Behaviour { public void PlayOneShot(AudioClip clip, float volumeScale) { } }
     public sealed class AudioListener : Behaviour { }
     public sealed class MeshRenderer : Renderer { }
+    public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } }
     public sealed class MeshFilter : Component { public Mesh mesh { get; set; } }
     public sealed class Mesh : Object { public Mesh() { } public Vector3[] vertices { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }
     public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static void Save() { } }

@@ -185,4 +185,15 @@ public class StyleRulesTests
         Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(\)").Count);
         Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"&& _combat\.UseSlot\([^;]*\)\)\s*_arena\.Strike\(\);").Count);
     }
+
+    [Fact]
+    public void Les_modeles_gardent_leur_racine_importee()
+    {
+        // Essai de Damien du 26 octobre 2026 : le chevalier, les loups et les sangliers restaient invisibles : la racine du modèle importé
+        // (redressée par l'import depuis Blender) était remise à zéro. Le modèle est posé tel quel dans un support, qu'on met à l'échelle.
+        string look = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleLook.cs"));
+        Assert.Contains("Object.Instantiate(prefab, look.transform, false);", look, StringComparison.Ordinal);
+        Assert.DoesNotContain("look.transform.rotation = Quaternion.identity;", look, StringComparison.Ordinal);
+        Assert.Contains("skin.updateWhenOffscreen = true;", look, StringComparison.Ordinal);
+    }
 }
