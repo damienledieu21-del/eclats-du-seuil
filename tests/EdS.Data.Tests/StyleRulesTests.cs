@@ -338,23 +338,46 @@ public class StyleRulesTests
     }
 
     [Fact]
-    public void Lots_de_pieces_separees()
+    public void Une_variante_par_lot_de_Poly_Haven()
     {
-        // Lot de rochers de Poly Haven : pièces côte à côte.
-        Assert.True(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 1, 1), new StyleBox(1.5, 0, 2.5, 1), new StyleBox(3, 0, 4, 1.2) }));
-        Assert.True(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 1, 1), new StyleBox(1, 0, 2, 1) }));                // bords qui se touchent
-        Assert.True(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 1, 1), new StyleBox(0.9, 0, 2, 1) }));              // un dixième de recouvrement
-        // Un arbre : tronc dans le feuillage.
-        Assert.False(StyleRules.IsCollection(new[] { new StyleBox(-0.2, -0.2, 0.2, 0.2), new StyleBox(-2, -2, 2, 2) }));
-        Assert.False(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 1, 1) }));
-        Assert.False(StyleRules.IsCollection(null!));
-        Assert.False(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 0, 0), new StyleBox(0, 0, 0, 0) }));                // pièces plates : pas un lot
-        var flipped = new StyleBox(1, 1, 0, 0);
-        Assert.Equal(0, flipped.MinX);
-        Assert.Equal(1, flipped.Area);
-        Assert.Equal(1.0, StyleRules.NaturalScale(0.4, 0.8));     // touffe d'herbe de 40 cm : taille réelle
-        Assert.Equal(0.2, StyleRules.NaturalScale(4, 0.8), 9);    // plante de 4 m : ramenée à la hauteur voulue
+        // Essai de Damien du 26 octobre 2026 : rangées de pissenlits, arbustes alignés, arbres du MegaKit coupés. Noms tirés des fichiers
+        // livrés (Poly Haven, 1k).
+        var dandelion = new[]
+        {
+            "dandelion_01_a_LOD0", "dandelion_01_c_LOD0", "dandelion_01_d_LOD0", "dandelion_01_b_LOD0", "dandelion_01_e_LOD0",
+            "dandelion_01_a_LOD1", "dandelion_01_c_LOD1", "dandelion_01_d_LOD1", "dandelion_01_b_LOD1", "dandelion_01_e_LOD1",
+        };
+        IReadOnlyList<int>? keep = StyleRules.KeepParts("dandelion_01_1k", dandelion, "plante3");
+        Assert.NotNull(keep);
+        Assert.Single(keep!);
+        Assert.EndsWith("_LOD0", dandelion[keep![0]], StringComparison.Ordinal);   // le meilleur niveau de détail
+        Assert.Equal(keep, StyleRules.KeepParts("dandelion_01_1k", dandelion, "plante3"));   // même choix à chaque lancement
+        var chosen = new HashSet<string>();
+        for (int i = 0; i < 40; i++) chosen.Add(dandelion[StyleRules.KeepParts("dandelion_01_1k", dandelion, "plante" + i)![0]]);
+        Assert.True(chosen.Count >= 3, "les éléments du décor varient d'une variante à l'autre");
+        // Un rocher seul et ses niveaux de détail : le niveau 0 seulement.
+        var rock = new[] { "rock_07_LOD0", "rock_07_LOD1", "rock_07_LOD2", "rock_07_LOD3" };
+        Assert.Equal(new[] { 0 }, StyleRules.KeepParts("rock_07_1k", rock, "bloc1"));
+        // Un lot de rochers sans niveaux de détail : un rocher.
+        var set = new[] { "rock_moss_set_01_rock01", "rock_moss_set_01_rock02", "rock_moss_set_01_rock03", "rock_moss_set_01_rock04" };
+        Assert.Single(StyleRules.KeepParts("rock_moss_set_01_1k", set, "bloc2")!);
+        // Hors de Poly Haven (MegaKit, Mixamo) ou une seule pièce : tout garder.
+        Assert.Null(StyleRules.KeepParts("Pine_1", new[] { "Pine_1_Trunk", "Pine_1_Leaves" }, "arbre1"));
+        Assert.Null(StyleRules.KeepParts("dead_tree_trunk_1k", new[] { "dead_tree_trunk" }, "lisiere3"));
+        Assert.Null(StyleRules.KeepParts("dandelion_01_1k", null!, "x"));
+        Assert.True(StyleRules.IsPolyHavenName("shrub_02_1k"));
+        Assert.True(StyleRules.IsPolyHavenName("rock_07_4K"));
+        Assert.False(StyleRules.IsPolyHavenName("Pine_1"));
+        Assert.False(StyleRules.IsPolyHavenName("Paladin WProp J Nordstrom"));
+        // Tailles : la mousse (4 cm) et une touffe d'herbe gardent leur taille réelle ; une plante de 4 m est ramenée à la hauteur voulue.
+        Assert.Equal(1.0, StyleRules.NaturalScale(0.04, 0.8));
+        Assert.Equal(1.0, StyleRules.NaturalScale(0.4, 0.8));
+        Assert.Equal(0.2, StyleRules.NaturalScale(4, 0.8), 9);
         Assert.Equal(1.0, StyleRules.NaturalScale(0, 0.8));
+        // Textures de Mixamo : la carte spéculaire n'est pas une couleur.
+        Assert.False(StyleRules.IsColorMap("Paladin_specular.png"));
+        Assert.True(StyleRules.IsColorMap("Paladin_diffuse.png"));
+        Assert.True(StyleRules.IsNormalMap("Paladin_normal.png"));
     }
 
     [Fact]
@@ -408,8 +431,12 @@ public class StyleRulesTests
         Assert.Equal(2, (int)StyleGround.Grass);
         // Animations Mixamo ajoutées au héros ; une seule pièce d'un lot de Poly Haven.
         Assert.Contains("animation.AddClip(clip, clip.name);", look, StringComparison.Ordinal);
-        Assert.Contains("if (StyleRules.IsCollection(boxes))", look, StringComparison.Ordinal);
-        Assert.Contains("renderers[i].gameObject.SetActive(false);", look, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<int> keep = StyleRules.KeepParts(prefab.name, names, part);", look, StringComparison.Ordinal);
+        Assert.Contains("foreach (LODGroup group in look.GetComponentsInChildren<LODGroup>()) group.enabled = false;", look, StringComparison.Ordinal);
+        Assert.Contains("else renderers[i].gameObject.SetActive(false);", look, StringComparison.Ordinal);
+        // Essai du 26 octobre 2026 : paladin blanc (textures sorties de son fichier), image trop claire (réglages remis une fois par version).
+        Assert.Contains("EmbeddedTextures(hero, notes);", editor, StringComparison.Ordinal);
+        Assert.Contains("if (catalog.AmbienceVersion < StyleCatalog.AmbienceDefaults)", editor, StringComparison.Ordinal);
         // L'outil de préparation rebranche les effets d'image d'URP (coupés par le renderer créé au sous-lot 9.3).
         Assert.Contains("renderer.postProcessData = data;", editor, StringComparison.Ordinal);
         Assert.Contains("Legacy(clip, true);", editor, StringComparison.Ordinal);

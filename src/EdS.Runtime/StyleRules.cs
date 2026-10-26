@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace EdS.Runtime
 {
@@ -90,24 +91,6 @@ namespace EdS.Runtime
         public double Grass { get; }
 
         public double this[StyleGround ground] => ground == StyleGround.Soil ? Soil : ground == StyleGround.Rock ? Rock : Grass;
-    }
-
-    /// <summary>Emprise au sol (rectangle) d'une pièce d'un modèle, pour reconnaître un lot de pièces séparées.</summary>
-    public readonly struct StyleBox
-    {
-        public StyleBox(double minX, double minZ, double maxX, double maxZ)
-        {
-            MinX = Math.Min(minX, maxX);
-            MinZ = Math.Min(minZ, maxZ);
-            MaxX = Math.Max(minX, maxX);
-            MaxZ = Math.Max(minZ, maxZ);
-        }
-
-        public double MinX { get; }
-        public double MinZ { get; }
-        public double MaxX { get; }
-        public double MaxZ { get; }
-        public double Area => (MaxX - MinX) * (MaxZ - MinZ);
     }
 
     /// <summary>
@@ -278,7 +261,7 @@ namespace EdS.Runtime
         /// <summary>Carte de couleur : ni relief, ni rugosité, ni occlusion, ni hauteur, ni transparence.</summary>
         public static bool IsColorMap(string path) =>
             !IsNormalMap(path) && !Words(path).Any(w => w == "rough" || w == "roughness" || w == "ao" || w == "disp" || w == "height" || w == "arm"
-                || w == "spec" || w == "metal" || w == "alpha" || w == "opacity" || w == "mask");
+                || w == "spec" || w == "specular" || w == "metal" || w == "metallic" || w == "gloss" || w == "alpha" || w == "opacity" || w == "mask");
 
         /// <summary>Carte de transparence (« _alpha_ », « _opacity »).</summary>
         public static bool IsAlphaMap(string path) => Words(path).Any(w => w == "alpha" || w == "opacity");
@@ -373,31 +356,37 @@ namespace EdS.Runtime
             modelHeight > 1e-6 && height > 0 ? height / modelHeight : 1;
 
         /// <summary>
-        /// Échelle d'une plante : sa taille réelle si elle est plausible (entre 5 cm et 2 m : les modèles réalistes sont à l'échelle du
-        /// mètre), sinon la hauteur demandée.
+        /// Échelle d'une plante : sa taille réelle si elle est plausible (entre 2 cm et 2 m : les modèles réalistes sont à l'échelle du
+        /// mètre ; la mousse ne fait que quelques centimètres), sinon la hauteur demandée.
         /// </summary>
         public static double NaturalScale(double modelHeight, double height) =>
-            modelHeight >= 0.05 && modelHeight <= 2.0 ? 1 : Scale(modelHeight, height);
+            modelHeight >= 0.02 && modelHeight <= 2.0 ? 1 : Scale(modelHeight, height);
+
+        /// <summary>Modèle exporté par Poly Haven : nom de fichier terminé par sa résolution (« rock_07_1k »).</summary>
+        public static bool IsPolyHavenName(string model) => Regex.IsMatch(model ?? string.Empty, "_(1|2|4|8|16)k$", RegexOptions.IgnoreCase);
 
         /// <summary>
-        /// Un modèle fait de plusieurs pièces posées côte à côte (un lot de rochers, des touffes d'herbe) plutôt que d'un seul objet (un
-        /// tronc et son feuillage se recouvrent) : au moins deux pièces, et aucune paire dont le recouvrement au sol dépasse le cinquième de
-        /// la plus petite.
+        /// Pièces à garder d'un modèle de Poly Haven pour l'élément <paramref name="id"/> (essai de Damien du 26 octobre 2026 : des rangées
+        /// de pissenlits et des arbustes alignés). Poly Haven livre chaque modèle en lot de variantes posées côte à côte
+        /// (« dandelion_01_a_LOD0 », « dandelion_01_b_LOD0 »…), chacune avec ses niveaux de détail (« _LOD1 »…) : on garde une seule
+        /// variante, choisie d'après l'identifiant, à son meilleur niveau de détail. Null : tout garder (pas un modèle de Poly Haven, ou
+        /// une seule pièce).
         /// </summary>
-        public static bool IsCollection(IReadOnlyList<StyleBox> parts)
+        public static IReadOnlyList<int>? KeepParts(string model, IReadOnlyList<string> parts, string id)
         {
-            if (parts == null || parts.Count < 2) return false;
-            for (int i = 0; i < parts.Count; i++)
-                for (int j = i + 1; j < parts.Count; j++)
-                {
-                    StyleBox a = parts[i], b = parts[j];
-                    double w = Math.Min(a.MaxX, b.MaxX) - Math.Max(a.MinX, b.MinX);
-                    double d = Math.Min(a.MaxZ, b.MaxZ) - Math.Max(a.MinZ, b.MinZ);
-                    if (w < 0 || d < 0) continue;   // à l'écart (des bords qui se touchent ne se recouvrent pas)
-                    double smallest = Math.Min(a.Area, b.Area);
-                    if (smallest <= 1e-9 || w * d > smallest * 0.2) return false;   // une pièce plate posée sur l'autre : un seul objet
-                }
-            return true;
+            if (!IsPolyHavenName(model) || parts == null || parts.Count < 2) return null;
+            var named = parts.Select((p, i) => (Index: i, Variant: Regex.Replace(p ?? string.Empty, "_LOD[0-9]+$", "", RegexOptions.IgnoreCase),
+                Lod: Lod(p))).ToList();
+            List<string> variants = named.Select(n => n.Variant).Distinct().OrderBy(v => v, StringComparer.Ordinal).ToList();
+            string chosen = variants[Math.Max(0, Variant((id ?? string.Empty) + "/variante", variants.Count))];
+            int best = named.Where(n => n.Variant == chosen).Min(n => n.Lod);
+            return named.Where(n => n.Variant == chosen && n.Lod == best).Select(n => n.Index).ToList();
+        }
+
+        private static int Lod(string? part)
+        {
+            Match m = Regex.Match(part ?? string.Empty, "_LOD([0-9]+)$", RegexOptions.IgnoreCase);
+            return m.Success && int.TryParse(m.Groups[1].Value, out int lod) ? lod : 0;
         }
 
         /// <summary>

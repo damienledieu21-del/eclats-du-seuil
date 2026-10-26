@@ -53,27 +53,74 @@ namespace EdS.Game
         [Range(0, 300)] public int PlantCount = 140;
 
         [Header("Essai réaliste : lumière et couleurs (réglables pendant le jeu, dans l'éditeur)")]
-        public Color SunColor = new Color(1f, 0.93f, 0.8f);
-        [Range(0f, 3f)] public float SunIntensity = 1.5f;
+        public Color SunColor = DefaultSunColor;
+        [Range(0f, 3f)] public float SunIntensity = DefaultSunIntensity;
         [Tooltip("Hauteur du soleil (degrés au-dessus de l'horizon).")]
-        [Range(5f, 85f)] public float SunHeight = 40f;
+        [Range(5f, 85f)] public float SunHeight = DefaultSunHeight;
         [Tooltip("Direction du soleil (degrés).")]
-        [Range(-180f, 180f)] public float SunTurn = -35f;
-        public Color AmbientSky = new Color(0.6f, 0.7f, 0.86f);
-        public Color AmbientHorizon = new Color(0.62f, 0.62f, 0.55f);
-        public Color AmbientGround = new Color(0.32f, 0.29f, 0.23f);
-        public Color FogColor = new Color(0.74f, 0.81f, 0.87f);
-        [Range(0f, 200f)] public float FogStart = 30f;
-        [Range(10f, 400f)] public float FogEnd = 150f;
+        [Range(-180f, 180f)] public float SunTurn = DefaultSunTurn;
+        public Color AmbientSky = DefaultAmbientSky;
+        public Color AmbientHorizon = DefaultAmbientHorizon;
+        public Color AmbientGround = DefaultAmbientGround;
+        public Color FogColor = DefaultFogColor;
+        [Range(0f, 200f)] public float FogStart = DefaultFogStart;
+        [Range(10f, 400f)] public float FogEnd = DefaultFogEnd;
         [Tooltip("Luminosité générale.")]
-        [Range(-2f, 2f)] public float Exposure = 0.2f;
-        [Range(-50f, 50f)] public float Contrast = 8f;
+        [Range(-2f, 2f)] public float Exposure = DefaultExposure;
+        [Range(-50f, 50f)] public float Contrast = DefaultContrast;
         [Tooltip("Couleurs plus vives (positif) ou plus ternes (négatif).")]
-        [Range(-50f, 50f)] public float Saturation = 20f;
+        [Range(-50f, 50f)] public float Saturation = DefaultSaturation;
         [Tooltip("Halo autour des zones très claires (ordinateur seulement).")]
-        [Range(0f, 2f)] public float Bloom = 0.3f;
+        [Range(0f, 2f)] public float Bloom = DefaultBloom;
         [Tooltip("Bords de l'image assombris.")]
-        [Range(0f, 0.5f)] public float Vignette = 0.15f;
+        [Range(0f, 0.5f)] public float Vignette = DefaultVignette;
+
+        /// <summary>
+        /// Version des réglages par défaut de la lumière et des couleurs. Quand Claude change ces réglages (essai de Damien du 26 octobre
+        /// 2026 : image trop claire et jaune), le menu « Préparer l'essai de style » remet une fois les nouveaux ; les retouches faites
+        /// ensuite par Damien sont gardées.
+        /// </summary>
+        public const int AmbienceDefaults = 2;
+
+        [HideInInspector] public int AmbienceVersion;
+
+        private static readonly Color DefaultSunColor = new Color(1f, 0.95f, 0.87f);
+        private const float DefaultSunIntensity = 1.25f;
+        private const float DefaultSunHeight = 45f;
+        private const float DefaultSunTurn = -35f;
+        private static readonly Color DefaultAmbientSky = new Color(0.5f, 0.6f, 0.76f);
+        private static readonly Color DefaultAmbientHorizon = new Color(0.52f, 0.53f, 0.5f);
+        private static readonly Color DefaultAmbientGround = new Color(0.26f, 0.24f, 0.2f);
+        private static readonly Color DefaultFogColor = new Color(0.7f, 0.78f, 0.87f);
+        private const float DefaultFogStart = 40f;
+        private const float DefaultFogEnd = 170f;
+        private const float DefaultExposure = -0.1f;
+        private const float DefaultContrast = 15f;
+        private const float DefaultSaturation = 12f;
+        private const float DefaultBloom = 0.25f;
+        private const float DefaultVignette = 0.2f;
+
+        /// <summary>Remet la lumière et les couleurs aux réglages de l'essai (clic droit sur le catalogue dans l'inspecteur).</summary>
+        [ContextMenu("Remettre la lumière et les couleurs par défaut")]
+        public void ResetAmbience()
+        {
+            SunColor = DefaultSunColor;
+            SunIntensity = DefaultSunIntensity;
+            SunHeight = DefaultSunHeight;
+            SunTurn = DefaultSunTurn;
+            AmbientSky = DefaultAmbientSky;
+            AmbientHorizon = DefaultAmbientHorizon;
+            AmbientGround = DefaultAmbientGround;
+            FogColor = DefaultFogColor;
+            FogStart = DefaultFogStart;
+            FogEnd = DefaultFogEnd;
+            Exposure = DefaultExposure;
+            Contrast = DefaultContrast;
+            Saturation = DefaultSaturation;
+            Bloom = DefaultBloom;
+            Vignette = DefaultVignette;
+            AmbienceVersion = AmbienceDefaults;
+        }
 
         public AudioClip Hit;
         public AudioClip Block;

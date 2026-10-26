@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -160,9 +161,9 @@ namespace EdS.Game
         /// la mise à l'échelle).
         /// </para>
         /// <para>
-        /// Essai réaliste : un élément de décor (<paramref name="part"/> non nul) tiré d'un lot de pièces séparées (les rochers et les
-        /// touffes d'herbe de Poly Haven sont livrés par lots, <see cref="StyleRules.IsCollection"/>) n'en garde qu'une, choisie d'après
-        /// l'identifiant, ramenée au centre du support. <paramref name="natural"/> : taille réelle si elle est plausible
+        /// Essai réaliste : un élément de décor (<paramref name="part"/> non nul) tiré d'un modèle de Poly Haven, livré en lot de variantes
+        /// avec leurs niveaux de détail, n'en garde qu'une, choisie d'après l'identifiant, ramenée au centre du support
+        /// (<see cref="StyleRules.KeepParts"/>). <paramref name="natural"/> : taille réelle si elle est plausible
         /// (<see cref="StyleRules.NaturalScale"/>), légèrement variée.
         /// </para>
         /// </summary>
@@ -173,18 +174,26 @@ namespace EdS.Game
             foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             foreach (SkinnedMeshRenderer skin in look.GetComponentsInChildren<SkinnedMeshRenderer>()) skin.updateWhenOffscreen = true;
             Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
+            bool lot = false;
             if (part != null && renderers.Length > 1)
             {
-                var boxes = new List<StyleBox>();
-                foreach (Renderer r in renderers) boxes.Add(new StyleBox(r.bounds.min.x, r.bounds.min.z, r.bounds.max.x, r.bounds.max.z));
-                if (StyleRules.IsCollection(boxes))
+                var names = new List<string>();
+                foreach (Renderer r in renderers) names.Add(r.gameObject.name);
+                IReadOnlyList<int> keep = StyleRules.KeepParts(prefab.name, names, part);
+                if (keep != null && keep.Count > 0 && keep.Count < renderers.Length)
                 {
-                    int keep = StyleRules.Variant(part + "/piece", renderers.Length);
+                    // Les niveaux de détail importés ne choisissent plus : seule la pièce gardée s'affiche.
+                    foreach (LODGroup group in look.GetComponentsInChildren<LODGroup>()) group.enabled = false;
+                    var kept = new List<Renderer>();
                     for (int i = 0; i < renderers.Length; i++)
-                        if (i != keep) renderers[i].gameObject.SetActive(false);
-                    Vector3 center = renderers[keep].bounds.center;
+                        if (keep.Contains(i)) kept.Add(renderers[i]);
+                        else renderers[i].gameObject.SetActive(false);
+                    Bounds piece = kept[0].bounds;
+                    foreach (Renderer r in kept) piece.Encapsulate(r.bounds);
+                    Vector3 center = piece.center;
                     model.transform.localPosition = model.transform.localPosition - new Vector3(center.x, 0f, center.z);
-                    renderers = new[] { renderers[keep] };
+                    renderers = kept.ToArray();
+                    lot = true;
                 }
             }
             bool any = false;
@@ -204,7 +213,7 @@ namespace EdS.Game
             look.transform.localScale = new Vector3(k, k, k);
             if (Logged.Add(prefab.name))
                 Debug.Log("Essai de style : " + prefab.name + " (hauteur importée " + size + " m, largeur " + (any ? Mathf.Max(bounds.size.x, bounds.size.z) : 0f)
-                    + " m, bas " + bottom + ", échelle " + k + (renderers.Length == 1 && part != null ? ", une pièce du lot" : "") + ")");
+                    + " m, bas " + bottom + ", échelle " + k + (lot ? ", une variante du lot" : "") + ")");
             return look;
         }
 

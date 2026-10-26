@@ -39,6 +39,9 @@ namespace UnityEngine
     public sealed class Terrain : Behaviour { public TerrainData terrainData { get; set; } public Material materialTemplate { get; set; } public float basemapDistance { get; set; } public float heightmapPixelError { get; set; } public bool drawTreesAndFoliage { get; set; } }
     [AttributeUsage(AttributeTargets.Field)] public class PropertyAttribute : Attribute { }
     public sealed class HeaderAttribute : PropertyAttribute { public HeaderAttribute(string header) { } }
+    [AttributeUsage(AttributeTargets.Field)] public sealed class HideInInspector : Attribute { }
+    [AttributeUsage(AttributeTargets.Method)] public sealed class ContextMenu : Attribute { public ContextMenu(string itemName) { } }
+    public sealed class LODGroup : Component { public bool enabled { get; set; } }
     public sealed class TooltipAttribute : PropertyAttribute { public TooltipAttribute(string tooltip) { } }
     public sealed class RangeAttribute : PropertyAttribute { public RangeAttribute(float min, float max) { } }
     public enum CameraClearFlags { Skybox = 1, SolidColor = 2 }
@@ -131,7 +134,7 @@ namespace UnityEditor
     public sealed class TextureImporter : AssetImporter { public TextureImporterType textureType { get; set; } public bool mipmapEnabled { get; set; } public UnityEngine.TextureWrapMode wrapMode { get; set; } public bool isReadable { get; set; } public bool alphaIsTransparency { get; set; } }
     public enum ModelImporterAnimationType { None, Legacy, Generic, Human }
     public sealed class ModelImporterClipAnimation { public string name { get; set; } public bool loopTime { get; set; } public UnityEngine.WrapMode wrapMode { get; set; } }
-    public sealed class ModelImporter : AssetImporter { public ModelImporterAnimationType animationType { get; set; } public bool importAnimation { get; set; } public ModelImporterClipAnimation[] clipAnimations { get; set; } public ModelImporterClipAnimation[] defaultClipAnimations => null; }
+    public sealed class ModelImporter : AssetImporter { public ModelImporterAnimationType animationType { get; set; } public bool importAnimation { get; set; } public ModelImporterClipAnimation[] clipAnimations { get; set; } public ModelImporterClipAnimation[] defaultClipAnimations => null; public bool ExtractTextures(string folderPath) => false; }
     public static class EditorUtility { public static bool DisplayDialog(string title, string message, string ok) => false; public static void SetDirty(UnityEngine.Object o) { } }
     public static class AssetDatabase { public static string[] FindAssets(string filter, string[] folders) => null; public static string GUIDToAssetPath(string guid) => ""; public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; public static UnityEngine.Object[] LoadAllAssetsAtPath(string p) => null; public static void ImportAsset(string p) { } }
 }

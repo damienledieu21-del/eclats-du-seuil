@@ -58,6 +58,13 @@ namespace EdS.Game.Editor
 
             // Matériaux réalistes des modèles de Poly Haven (couleur, relief, transparence de l'herbe).
             foreach (string model in models.Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero)) RealisticMaterial(model, notes);
+            // Essai de Damien du 26 octobre 2026 : le paladin de Mixamo était tout blanc (ses textures restent dans son fichier) ; elles sont
+            // sorties à côté de lui, puis il reçoit le même matériau réaliste (couleur et relief).
+            if (hero != null && StyleRules.IsRealistic(hero))
+            {
+                EmbeddedTextures(hero, notes);
+                RealisticMaterial(hero, notes);
+            }
 
             if (!AssetDatabase.IsValidFolder(CatalogFolder)) AssetDatabase.CreateFolder(Root, "Resources");
             StyleCatalog catalog = AssetDatabase.LoadAssetAtPath<StyleCatalog>(CatalogPath);
@@ -89,6 +96,11 @@ namespace EdS.Game.Editor
             catalog.GrassColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Grass, false));
             catalog.GrassNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Grass, true));
             catalog.Sky = SkyMaterial(StyleRules.Sky(textures));
+            if (catalog.AmbienceVersion < StyleCatalog.AmbienceDefaults)
+            {
+                catalog.ResetAmbience();
+                notes.Add("Lumière et couleurs remises aux réglages de l'essai (version " + StyleCatalog.AmbienceDefaults + ").");
+            }
             catalog.Terrain = TerrainMaterial();
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
@@ -208,6 +220,24 @@ namespace EdS.Game.Editor
             foreach (Material embedded in AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>())
                 importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), material);
             importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Textures rangées dans le fichier d'un modèle (Mixamo les y met) : sorties une fois dans un dossier « Textures » à côté de lui,
+        /// réglées comme les autres (cartes de relief).
+        /// </summary>
+        private static void EmbeddedTextures(string modelPath, List<string> notes)
+        {
+            if (!(AssetImporter.GetAtPath(modelPath) is ModelImporter importer)) return;
+            string parent = Path.GetDirectoryName(modelPath).Replace('\\', '/');
+            string folder = parent + "/Textures";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder(parent, "Textures");
+            if (AssetDatabase.FindAssets("t:Texture2D", new[] { folder }).Length == 0 && importer.ExtractTextures(folder))
+            {
+                AssetDatabase.Refresh();
+                notes.Add("Textures de " + Path.GetFileName(modelPath) + " sorties dans " + folder + ".");
+            }
+            foreach (string texture in AssetDatabase.FindAssets("t:Texture2D", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath)) Texture(texture);
         }
 
         /// <summary>Texture de couleur avec la transparence d'une autre (même taille), écrite en PNG ; la couleur seule sinon.</summary>
