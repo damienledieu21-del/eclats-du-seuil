@@ -46,6 +46,10 @@ public class Lot93UnityPackageTests
         JsonObject dependencies = manifest["dependencies"]!.AsObject();
         Assert.Equal("file:../../src", dependencies["com.eclats.core"]!.GetValue<string>());
         Assert.True(dependencies.ContainsKey("com.unity.render-pipelines.universal"));
+        // Essai de style : les modèles animés (composant Animation) et les sons (AudioSource) demandent ces modules intégrés ; sans le
+        // premier, Unity refusait de compiler le jeu (essai de Damien du 26 octobre 2026, erreur CS1069 sur Animation).
+        Assert.Equal("1.0.0", dependencies["com.unity.modules.animation"]!.GetValue<string>());
+        Assert.Equal("1.0.0", dependencies["com.unity.modules.audio"]!.GetValue<string>());
         Assert.StartsWith("m_EditorVersion: 6000.3.", File.ReadAllText(Path.Combine(Root, "unity", "ProjectSettings", "ProjectVersion.txt")));
     }
 
