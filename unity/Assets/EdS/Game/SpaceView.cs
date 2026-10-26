@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Domain.Combat;
 using EdS.Domain.Space;
+using EdS.Runtime;
 using EdS.Simulation.Engine;
 using UnityEngine;
 
@@ -68,6 +69,7 @@ namespace EdS.Game
             Block("Bord nord", new Vector3((minX + maxX) / 2f, 0.25f, maxZ + 0.15f), new Vector3(maxX - minX, 0.5f, 0.3f), border);
 
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
+            Plants(space);
             Bridge(space);
             Roof(space);
         }
@@ -100,6 +102,13 @@ namespace EdS.Game
             }
             if (id.StartsWith("arbre"))
             {
+                // Essai de style : un arbre des packs à la place du tronc et de sa boule de feuillage (même emprise au moteur).
+                GameObject tree = StyleLook.Decor(_root.transform, StyleSlot.Tree, id, Center(points), 5f);
+                if (tree != null)
+                {
+                    AddModelOccluders(tree);
+                    return;
+                }
                 Prism(id, points, 2.4f, ArenaView.MakeMaterial(new Color(0.36f, 0.25f, 0.15f)), true);
                 Vector3 c = Center(points);
                 GameObject leaves = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -140,7 +149,45 @@ namespace EdS.Game
                 Prism(id, points, 3f, ArenaView.MakeMaterial(new Color(0.42f, 0.3f, 0.2f)), true);
                 return;
             }
+            // Essai de style : un rocher des packs sur l'emprise des blocs de la carrière et des pierres du Seuil.
+            if (StyleRules.ForObstacle(id) == StyleSlot.Rock)
+            {
+                float width = Mathf.Max(points.Max(p => p.x) - points.Min(p => p.x), points.Max(p => p.z) - points.Min(p => p.z));
+                GameObject rock = StyleLook.Decor(_root.transform, StyleSlot.Rock, id, Center(points), 0f, width * 1.1f);
+                if (rock != null)
+                {
+                    AddModelOccluders(rock);
+                    return;
+                }
+            }
             Prism(id, points, 2f, ArenaView.MakeMaterial(new Color(0.45f, 0.42f, 0.38f)), true);
+        }
+
+        /// <summary>
+        /// Essai de style : quelques plantes basses semées sur le sol praticable, hors des obstacles (simple décor : elles n'arrêtent rien,
+        /// le moteur ne les connaît pas). Places tirées d'une suite fixe : les mêmes à chaque lancement.
+        /// </summary>
+        private void Plants(CombatSpace space)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null || catalog.Plants == null || catalog.Plants.Length == 0) return;
+            float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
+            var boxes = space.Obstacles.Select(o => (MinX: Raw(o.Points.Min(p => p.X.Raw)) - 1f, MaxX: Raw(o.Points.Max(p => p.X.Raw)) + 1f,
+                MinZ: Raw(o.Points.Min(p => p.Z.Raw)) - 1f, MaxZ: Raw(o.Points.Max(p => p.Z.Raw)) + 1f)).ToList();
+            uint seed = 12345;
+            float Next()
+            {
+                seed = seed * 1664525u + 1013904223u;
+                return (seed >> 8) / 16777216f;
+            }
+            int placed = 0;
+            for (int i = 0; i < 400 && placed < 60; i++)
+            {
+                float x = Mathf.Lerp(minX + 1f, maxX - 1f, Next()), z = Mathf.Lerp(minZ + 1f, maxZ - 1f, Next());
+                if (boxes.Any(b => x >= b.MinX && x <= b.MaxX && z >= b.MinZ && z <= b.MaxZ)) continue;
+                StyleLook.Decor(_root.transform, StyleSlot.Plant, "plante" + placed, new Vector3(x, 0f, z), 0.6f + 0.4f * Next());
+                placed++;
+            }
         }
 
         private static Vector3 Center(List<Vector3> points) =>
@@ -198,6 +245,20 @@ namespace EdS.Game
 
         private void AddOccluder(Transform transform, bool lower, Vector3 min, Vector3 max) =>
             _occluders.Add(new Occluder { Transform = transform, Renderer = transform.GetComponent<Renderer>(), Lower = lower, Min = min, Max = max });
+
+        /// <summary>
+        /// Essai de style (revue Codex de la PR #55) : un arbre ou un rocher des packs garde la coupe du décor qu'il remplace : chacune de ses
+        /// parties est retirée tant que le modèle (sa boîte entière) se trouve entre la caméra et le joueur.
+        /// </summary>
+        private void AddModelOccluders(GameObject model)
+        {
+            Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
+            if (renderers == null || renderers.Length == 0) return;
+            Bounds box = renderers[0].bounds;
+            foreach (Renderer r in renderers) box.Encapsulate(r.bounds);
+            foreach (Renderer r in renderers)
+                _occluders.Add(new Occluder { Transform = r.transform, Renderer = r, Lower = false, Min = box.min, Max = box.max });
+        }
 
         /// <summary>
         /// Pont : tablier entre les deux bras de la rivière (« riviere_sud » et « riviere_nord »), s'ils existent. La rivière coule suivant z

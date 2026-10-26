@@ -519,3 +519,7 @@ unity/Assets/StreamingAssets.meta
 # Créés par URP à la première ouverture (profil de volume et réglages globaux par défaut), régénérés au besoin : non suivis.
 unity/Assets/DefaultVolumeProfile.asset
 unity/Assets/UniversalRenderPipelineGlobalSettings.asset
+
+# --- Essai de style (décision de Damien du 25 octobre 2026) : packs gratuits déposés par Damien pour son essai, non suivis ---
+unity/Assets/Style/
+unity/Assets/Style.meta

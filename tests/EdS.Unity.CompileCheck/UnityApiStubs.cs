@@ -5,16 +5,24 @@
 using System;
 namespace UnityEngine
 {
-    public class Object { public string name { get; set; } public static void Destroy(Object o) { } public static T FindFirstObjectByType<T>() where T : Object => default; public static implicit operator bool(Object o) => o != null; }
-    public class Component : Object { public Transform transform => null; public T GetComponent<T>() => default; }
+    public class Object { public string name { get; set; } public static void Destroy(Object o) { } public static T Instantiate<T>(T original) where T : Object => original; public static T Instantiate<T>(T original, Transform parent, bool worldPositionStays) where T : Object => original; public static T FindFirstObjectByType<T>() where T : Object => default; public static implicit operator bool(Object o) => o != null; }
+    public class Component : Object { public Transform transform => null; public GameObject gameObject => null; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; }
     public class Behaviour : Component { }
     public class MonoBehaviour : Behaviour { }
     public class ScriptableObject : Object { public static T CreateInstance<T>() where T : ScriptableObject => default; }
-    public sealed class GameObject : Object { public GameObject(string n) { } public Transform transform => null; public string tag { get; set; } public T AddComponent<T>() where T : Component => default; public T GetComponent<T>() => default; public void SetActive(bool b) { } public bool activeSelf => false; public static GameObject CreatePrimitive(PrimitiveType t) => null; }
+    public sealed class GameObject : Object { public GameObject(string n) { } public Transform transform => null; public string tag { get; set; } public T AddComponent<T>() where T : Component => default; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; public void SetActive(bool b) { } public bool activeSelf => false; public static GameObject CreatePrimitive(PrimitiveType t) => null; }
     public enum PrimitiveType { Sphere, Capsule, Cylinder, Cube, Plane, Quad }
     public class Transform : Component { public Vector3 position { get; set; } public Quaternion rotation { get; set; } public Vector3 localPosition { get; set; } public Quaternion localRotation { get; set; } public Vector3 localScale { get; set; } public void SetParent(Transform p, bool w) { } public void LookAt(Vector3 v) { } }
-    public class Renderer : Component { public Material sharedMaterial { get; set; } public Material material { get; set; } public bool enabled { get; set; } }
+    public class Renderer : Component { public Material sharedMaterial { get; set; } public Material material { get; set; } public bool enabled { get; set; } public Bounds bounds => default; public Material[] materials { get; set; } }
+    public struct Bounds { public Vector3 min => default; public Vector3 max => default; public Vector3 size => default; public Vector3 center => default; public void Encapsulate(Bounds b) { } }
+    public enum WrapMode { Default = 0, Once = 1, Loop = 2, PingPong = 4, ClampForever = 8 }
+    public sealed class AnimationState { public string name { get; set; } public WrapMode wrapMode { get; set; } }
+    public sealed class Animation : Behaviour, System.Collections.IEnumerable { public System.Collections.IEnumerator GetEnumerator() => null; public void CrossFade(string animation, float fadeLength) { } public bool Play(string animation) => false; public void Stop() { } }
+    public sealed class AudioClip : Object { }
+    public sealed class AudioSource : Behaviour { public void PlayOneShot(AudioClip clip, float volumeScale) { } }
+    public sealed class AudioListener : Behaviour { }
     public sealed class MeshRenderer : Renderer { }
+    public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } }
     public sealed class MeshFilter : Component { public Mesh mesh { get; set; } }
     public sealed class Mesh : Object { public Mesh() { } public Vector3[] vertices { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }
     public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static void Save() { } }
@@ -29,7 +37,7 @@ namespace UnityEngine
     public enum TouchPhase { Began, Moved, Stationary, Ended, Canceled }
     public struct Touch { public int fingerId => 0; public Vector2 position => default; public TouchPhase phase => default; }
     public struct Vector3 { public float x, y, z; public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; } public static Vector3 zero => default; public static Vector3 up => default; public static Vector3 forward => default; public float magnitude => 0; public float sqrMagnitude => 0; public Vector3 normalized => this; public static Vector3 Lerp(Vector3 a, Vector3 b, float t) => a; public static Vector3 Cross(Vector3 a, Vector3 b) => a; public static float Dot(Vector3 a, Vector3 b) => 0; public static Vector3 operator /(Vector3 a, float d) => a; public static Vector3 operator +(Vector3 a, Vector3 b) => a; public static Vector3 operator -(Vector3 a, Vector3 b) => a; public static Vector3 operator *(Vector3 a, float d) => a; public static Vector3 operator *(float d, Vector3 a) => a; }
-    public struct Quaternion { public static Quaternion Euler(float x, float y, float z) => default; public static Quaternion Slerp(Quaternion a, Quaternion b, float t) => a; public static Quaternion LookRotation(Vector3 f) => default; public Vector3 eulerAngles => default; public static Vector3 operator *(Quaternion q, Vector3 v) => v; }
+    public struct Quaternion { public static Quaternion identity => default; public static Quaternion Euler(float x, float y, float z) => default; public static Quaternion Slerp(Quaternion a, Quaternion b, float t) => a; public static Quaternion LookRotation(Vector3 f) => default; public Vector3 eulerAngles => default; public static Vector3 operator *(Quaternion q, Vector3 v) => v; public static Quaternion operator *(Quaternion a, Quaternion b) => a; }
     public struct Rect { public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public float x, y, width, height; }
     public struct Matrix4x4 { public static Matrix4x4 Scale(Vector3 v) => default; }
     public static class Mathf { public static float Clamp(float v, float a, float b) => v; public static float Clamp01(float v) => v; public static float Lerp(float a, float b, float t) => a; public static float LerpAngle(float a, float b, float t) => a; public static float Exp(float p) => p; public static float Sin(float f) => f; public static float Cos(float f) => f; public static float Atan2(float y, float x) => y; public static float Abs(float f) => f; public static float Min(float a, float b) => a; public static float Max(float a, float b) => a; public static float MoveTowards(float current, float target, float maxDelta) => current; public const float PI = 3.14159274f; public const float Deg2Rad = 0.0174532924f; public const float Rad2Deg = 57.29578f; }
@@ -45,7 +53,7 @@ namespace UnityEngine
     public static class Debug { public static void Log(object m) { } public static void LogWarning(object m) { } public static void LogException(Exception e) { } }
     public sealed class Shader : Object { public static Shader Find(string n) => null; }
     public static class Resources { public static T Load<T>(string path) where T : Object => default; }
-    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } }
+    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } public Color GetColor(string n) => default; }
     public class Texture : Object { }
     public sealed class Texture2D : Texture { public Texture2D(int width, int height, TextureFormat format, bool mipChain) { } public static Texture2D whiteTexture => null; public FilterMode filterMode { get; set; } public void LoadRawTextureData(byte[] data) { } public void Apply() { } }
     public enum TextureFormat { RGBA32 = 4 }
@@ -88,7 +96,12 @@ namespace UnityEditor
     public static class BuildPipeline { public static bool isBuildingPlayer => false; }
     public sealed class EditorBuildSettingsScene { public EditorBuildSettingsScene(string path, bool enabled) { } public string path => ""; public bool enabled => false; }
     public static class EditorBuildSettings { public static EditorBuildSettingsScene[] scenes { get; set; } }
-    public static class AssetDatabase { public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; }
+    public class AssetImporter : UnityEngine.Object { public static AssetImporter GetAtPath(string p) => null; public void SaveAndReimport() { } }
+    public enum ModelImporterAnimationType { None, Legacy, Generic, Human }
+    public sealed class ModelImporterClipAnimation { public string name { get; set; } public bool loopTime { get; set; } public UnityEngine.WrapMode wrapMode { get; set; } }
+    public sealed class ModelImporter : AssetImporter { public ModelImporterAnimationType animationType { get; set; } public bool importAnimation { get; set; } public ModelImporterClipAnimation[] clipAnimations { get; set; } public ModelImporterClipAnimation[] defaultClipAnimations => null; }
+    public static class EditorUtility { public static bool DisplayDialog(string title, string message, string ok) => false; public static void SetDirty(UnityEngine.Object o) { } }
+    public static class AssetDatabase { public static string[] FindAssets(string filter, string[] folders) => null; public static string GUIDToAssetPath(string guid) => ""; public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; }
 }
 namespace UnityEditor.SceneManagement
 {

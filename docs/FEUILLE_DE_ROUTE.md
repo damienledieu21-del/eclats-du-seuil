@@ -133,6 +133,10 @@ Objectif : parcourir les Vallons seul, du niveau 1 au niveau 10, avec la mission
 | 12.8 | Unity : la zone jouable, inventaire, quêtes, dialogues | **Fusionné** (PR #49, 25 octobre 2026). Le jeu s'ouvre sur l'aventure dans les Vallons (`AdventureSession` : monde, sauvegarde locale, pont temps réel sur la session de zone, cible parmi les proches), PNJ, nœuds et points sûrs à l'écran, dialogues, inventaire et équipement, journal et découvertes, atelier, potions, halte et reprise après défaite, sauvegarde automatique, messages et écrans par clés de texte ; boutons au doigt ; valeurs provisoires ; essayé par Damien le 25 octobre 2026 (12.9) |
 | 12.9 | Essai complet et rapport | **Fait** : suites fusionnées (PR #50 à #53, 25 et 26 octobre 2026). Essai de Damien des 25 et 26 octobre 2026 sur PC et sur le Note8, fiche de 33 points ; suites en quatre PR : 12.9a (#50) créatures et Gardien rééquilibrés, forge de Maëlle visible ; 12.9b (#51) compétences gagnées en montant de niveau ; 12.9c (#52) loups qu'on sème, mission détaillée, garde au doigt ; 12.9d (#53) la carte. Rapport : [ESSAI_LOT_12.md](ESSAI_LOT_12.md) |
 
+### Essai de style (entre le lot 12 et le lot 13)
+
+Décidé par Damien le 25 octobre 2026 : voir les Vallons avec des modèles et des sons gratuits (packs CC0) avant le lot 13. Le jeu choisit les modèles et les sons déposés par Damien dans `unity/Assets/Style` (non suivi par git), habille le Bastion, les loups, les sangliers, les arbres et les rochers, ajoute des plantes et des sons ; sans pack, rien ne change. Mode d'emploi : [UNITY.md](UNITY.md#7-bis-essai-de-style-packs-gratuits). État : en PR, à essayer par Damien.
+
 **Décisions du 25 octobre 2026** (essai du 12.9, rapport : [ESSAI_LOT_12.md](ESSAI_LOT_12.md#4-décisions-de-damien-pendant-lessai)) :
 
 - **Compétences** gagnées en montant de niveau (Barrière d'acier au niveau 5, Onde de rupture et Bastion absolu au niveau 10, aux emplacements des règles) ; un écran de choix des compétences viendra ensuite (« La 2 pour l'instant et la 3 après »).
