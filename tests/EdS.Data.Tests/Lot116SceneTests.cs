@@ -84,7 +84,8 @@ public class Lot116SceneTests
             Assert.True(arm.Points.Max(p => p.Z) - arm.Points.Min(p => p.Z) > arm.Points.Max(p => p.X) - arm.Points.Min(p => p.X), arm.Id);
         Assert.Equal((south.Points.Min(p => p.X), south.Points.Max(p => p.X)), (north.Points.Min(p => p.X), north.Points.Max(p => p.X)));
         string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
-        Assert.Contains("Block(\"Pont (rambarde sud)\", new Vector3((x0 + x1) / 2f, 0.5f, z0 + 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood);", view,
+        // Essai réaliste (26 octobre 2026) : même rambarde, en planches texturées (Box au lieu de Block).
+        Assert.Contains("Box(\"Pont (rambarde sud)\", new Vector3((x0 + x1) / 2f, 0.5f, z0 + 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood, tile);", view,
             StringComparison.Ordinal);
         SpaceObstacle wallN = space.Obstacles.Single(o => o.Id == "mur_nord"), wallS = space.Obstacles.Single(o => o.Id == "mur_sud");
         Assert.Equal(Fixed.Parse("2"), wallN.Points.Min(p => p.Z) - wallS.Points.Max(p => p.Z));
