@@ -196,6 +196,20 @@ Limites des packs gratuits : le loup n'a que l'attente et la marche (il marche a
 
 Ce que tu regardes : si le style low poly te plaît sur PC et sur le Note8, si on voit mieux qui est qui, si les animations suivent (attente, marche, course, attaque quand tu lances une compétence, mort), si les sons aident, et si l'image reste fluide sur le téléphone. Les modèles ne changent rien au combat : les emprises et les obstacles du moteur restent les mêmes ; les plantes n'arrêtent rien.
 
+### Essai réaliste (26 octobre 2026)
+
+Avis de Damien sur le premier essai : « bof j'aime pas trop je voulais quelque chose de vraiment réaliste ». Direction choisie : « un mélange de réaliste et de stylisé coloré », « lumineux, réaliste mais pas trop », « le plus réaliste possible ». Le même outil sert, avec des fichiers réalistes rangés par Claude dans `unity/Assets/Style` (toujours non suivi par git) :
+
+- `Mixamo/` : le paladin avec épée et bouclier (*Paladin W/Prop J Nordstrom*, avec sa peau) et cinq animations sans peau, « FBX for Unity », 30 images par seconde : attente, marche et course sur place, coup d'épée (*Downward Slash*), mort (*Falling Back Death*). Mixamo est gratuit avec un compte Adobe ; ses personnages et animations s'emploient dans un jeu.
+- `PolyHaven/` (licence CC0, textures en 1k) : le ciel (`Sky/`, *kloofendal 48d partly cloudy puresky*), les sols (`Ground/` : herbe, terre, roche, avec leur relief), des plantes (herbes, fougère, mousse, arbustes, ortie, ficaire, pissenlit), des rochers (dont des lots de plusieurs rochers) et du bois mort (souches, tronc couché).
+- Les arbres restent ceux du MegaKit : Poly Haven n'en a pas d'assez légers pour un jeu (70 à 700 Mo par arbre).
+
+1. **Préparer** : menu **Éclats du Seuil → Préparer l'essai de style** (relancer après chaque ajout de fichiers). En plus du catalogue, il règle les cartes de relief, crée les matériaux des modèles Poly Haven (avec la transparence des feuilles et de l'herbe), renomme les animations Mixamo d'après leur fichier, crée le ciel et le matériau du terrain dans `Assets/Style/Generated`, et active les effets d'image d'URP s'ils étaient coupés. La fenêtre de fin dit ce qu'il a trouvé (héros et nombre d'animations à part, sols, ciel, bois mort).
+2. **Jouer** : Play. Le sol devient un terrain peint (herbe, terre sous les arbres et par taches, roche autour des blocs, des pierres et des murs) qui déborde de l'aire, une forêt (et du bois mort) pousse autour, le ciel, le soleil, l'ambiance, la brume et les couleurs de l'image changent, le Bastion est le paladin, animé.
+3. **Régler pendant le jeu** : dans `Assets/Style/Resources/StyleCatalog` (inspecteur), partie *Lumière et couleurs* : couleur, force, hauteur et direction du soleil, couleurs d'ambiance, brume (début, fin, couleur), luminosité, contraste, couleurs plus vives, halo, bords assombris. Les changements se voient tout de suite dans l'éditeur (Play en cours) et sont gardés. Les textures de sol se changent aussi à la main (glisser une autre texture du dossier `Ground`). Le nombre d'arbres autour, de plantes, la largeur de la forêt et la taille des textures du sol comptent au prochain combat.
+
+Limites : les arbres restent dessinés (MegaKit) ; les loups et les sangliers restent ceux des packs low poly (choix de Damien : les animaux plus tard) ; sur le téléphone, la forêt est réduite au tiers, les plantes à la moitié et le halo coupé, mais l'essai réaliste n'est pas encore réglé pour le Note8 (à faire si le style est gardé) ; le terrain est plat comme le sol du moteur.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
