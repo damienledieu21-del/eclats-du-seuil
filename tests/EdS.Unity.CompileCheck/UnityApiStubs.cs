@@ -20,6 +20,7 @@ namespace UnityEngine
     public sealed class Animation : Behaviour, System.Collections.IEnumerable { public System.Collections.IEnumerator GetEnumerator() => null; public void CrossFade(string animation, float fadeLength) { } public bool Play(string animation) => false; public void Stop() { } }
     public sealed class AudioClip : Object { }
     public sealed class AudioSource : Behaviour { public void PlayOneShot(AudioClip clip, float volumeScale) { } }
+    public sealed class AudioListener : Behaviour { }
     public sealed class MeshRenderer : Renderer { }
     public sealed class MeshFilter : Component { public Mesh mesh { get; set; } }
     public sealed class Mesh : Object { public Mesh() { } public Vector3[] vertices { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }

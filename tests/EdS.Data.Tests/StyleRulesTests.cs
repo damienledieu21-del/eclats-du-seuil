@@ -155,4 +155,12 @@ public class StyleRulesTests
         Assert.Contains("AddModelOccluders(rock);", view, StringComparison.Ordinal);
         Assert.Contains("_occluders.Add(new Occluder { Transform = r.transform, Renderer = r, Lower = false, Min = box.min, Max = box.max });", view, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Les_sons_ont_un_ecouteur()
+    {
+        // Revue Codex de la PR #55 : la scène de démarrage est vide ; la caméra créée par le code reçoit un écouteur s'il n'y en a aucun.
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("if (UnityEngine.Object.FindFirstObjectByType<AudioListener>() == null) _camera.Camera.gameObject.AddComponent<AudioListener>();", game, StringComparison.Ordinal);
+    }
 }

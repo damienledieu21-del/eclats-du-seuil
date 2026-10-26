@@ -900,7 +900,13 @@ namespace EdS.Game
         {
             get
             {
-                if (_audio == null && _camera != null && StyleCatalog.Loaded != null) _audio = _camera.Camera.gameObject.AddComponent<AudioSource>();
+                if (_audio == null && _camera != null && StyleCatalog.Loaded != null)
+                {
+                    _audio = _camera.Camera.gameObject.AddComponent<AudioSource>();
+                    // Revue Codex de la PR #55 : la scène de démarrage est vide et la caméra du jeu est créée par le code : sans écouteur,
+                    // aucun son ne s'entendrait. Un seul écouteur : on n'en ajoute pas si la scène en a déjà un.
+                    if (UnityEngine.Object.FindFirstObjectByType<AudioListener>() == null) _camera.Camera.gameObject.AddComponent<AudioListener>();
+                }
                 return _audio;
             }
         }
