@@ -26,7 +26,7 @@ namespace UnityEngine
     public sealed class MeshRenderer : Renderer { }
     public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } }
     public sealed class MeshFilter : Component { public Mesh mesh { get; set; } }
-    public sealed class Mesh : Object { public Mesh() { } public Vector3[] vertices { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }
+    public sealed class Mesh : Object { public Mesh() { } public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }
     public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static void Save() { } }
     public class Collider : Component { }
     public enum LightType { Spot, Directional, Point }
@@ -46,7 +46,7 @@ namespace UnityEngine
     public sealed class RangeAttribute : PropertyAttribute { public RangeAttribute(float min, float max) { } }
     public enum CameraClearFlags { Skybox = 1, SolidColor = 2 }
     public sealed class Camera : Behaviour { public static Camera main => null; public float fieldOfView { get; set; } public float nearClipPlane { get; set; } public float farClipPlane { get; set; } public CameraClearFlags clearFlags { get; set; } public Color backgroundColor { get; set; } public Vector3 WorldToScreenPoint(Vector3 p) => default; }
-    public struct Color32 { public byte r, g, b, a; }
+    public struct Color32 { public byte r, g, b, a; public Color32(byte r, byte g, byte b, byte a) { this.r = r; this.g = g; this.b = b; this.a = a; } }
     public struct Color { public float r, g, b, a; public Color(float r, float g, float b) : this(r, g, b, 1) { } public Color(float r, float g, float b, float a) { this.r = r; this.g = g; this.b = b; this.a = a; } public static Color white => default; public static Color black => default; public static Color Lerp(Color a, Color b, float t) => a; }
     public struct Vector2 { public float x, y; public Vector2(float x, float y) { this.x = x; this.y = y; } public static Vector2 zero => default; public float magnitude => 0; public Vector2 normalized => default; public static float Distance(Vector2 a, Vector2 b) => 0; public static Vector2 operator +(Vector2 a, Vector2 b) => a; public static Vector2 operator -(Vector2 a, Vector2 b) => a; public static Vector2 operator *(Vector2 a, float f) => a; public static Vector2 operator /(Vector2 a, float f) => a; }
     public enum TouchPhase { Began, Moved, Stationary, Ended, Canceled }
@@ -56,11 +56,13 @@ namespace UnityEngine
     public struct Rect { public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public float x, y, width, height; }
     public struct Matrix4x4 { public static Matrix4x4 Scale(Vector3 v) => default; }
     public static class Mathf { public static float Clamp(float v, float a, float b) => v; public static float Clamp01(float v) => v; public static float Lerp(float a, float b, float t) => a; public static float LerpAngle(float a, float b, float t) => a; public static float Exp(float p) => p; public static float Sin(float f) => f; public static float Cos(float f) => f; public static float Atan2(float y, float x) => y; public static float Abs(float f) => f; public static float Min(float a, float b) => a; public static float Max(float a, float b) => a; public static float MoveTowards(float current, float target, float maxDelta) => current; public const float PI = 3.14159274f; public const float Deg2Rad = 0.0174532924f; public const float Rad2Deg = 57.29578f; }
-    public enum KeyCode { None, Backspace, Tab, Escape, Space, Return, KeypadEnter, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, F6, F8, A, C, D, E, F, G, H, I, J, K, L, M, N, P, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift }
+    public enum KeyCode { None, Backspace, Tab, Escape, Space, Return, KeypadEnter, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, F6, F8, A, C, D, E, F, G, H, I, J, K, L, M, N, P, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift, LeftAlt, RightAlt }
+    public enum CursorLockMode { None, Locked, Confined }
+    public static class Cursor { public static CursorLockMode lockState { get; set; } public static bool visible { get; set; } }
     public static class Input { public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static bool GetMouseButtonDown(int b) => false; public static bool GetMouseButtonUp(int b) => false; public static Vector3 mousePosition => default; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; public static bool touchSupported => false; public static int touchCount => 0; public static Touch GetTouch(int i) => default; }
     public static class Time { public static float time => 0; public static float deltaTime => 0; }
     public enum RuntimePlatform { WindowsEditor, WindowsPlayer, Android, IPhonePlayer }
-    public static class Application { public static bool isEditor => false; public static string dataPath => ""; public static string streamingAssetsPath => ""; public static string persistentDataPath => ""; public static bool isMobilePlatform => false; public static RuntimePlatform platform => default; public static int targetFrameRate { get; set; } }
+    public static class Application { public static bool isEditor => false; public static bool isFocused => false; public static string dataPath => ""; public static string streamingAssetsPath => ""; public static string persistentDataPath => ""; public static bool isMobilePlatform => false; public static RuntimePlatform platform => default; public static int targetFrameRate { get; set; } }
     public class AsyncOperation { }
     public static class SleepTimeout { public const int NeverSleep = -1; }
     public enum ScreenOrientation { Portrait = 1, LandscapeLeft = 3, AutoRotation = 5 }
@@ -68,10 +70,10 @@ namespace UnityEngine
     public static class Debug { public static void Log(object m) { } public static void LogWarning(object m) { } public static void LogException(Exception e) { } }
     public sealed class Shader : Object { public static Shader Find(string n) => null; }
     public static class Resources { public static T Load<T>(string path) where T : Object => default; }
-    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } public Color GetColor(string n) => default; public void SetTexture(string n, Texture t) { } public void SetFloat(string n, float f) { } public void EnableKeyword(string k) { } public int renderQueue { get; set; } }
-    public class Texture : Object { public int width => 0; public int height => 0; }
+    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } public Color GetColor(string n) => default; public void SetTexture(string n, Texture t) { } public Texture GetTexture(string n) => null; public void SetTextureOffset(string n, Vector2 v) { } public void SetTextureScale(string n, Vector2 v) { } public void SetFloat(string n, float f) { } public void EnableKeyword(string k) { } public int renderQueue { get; set; } }
+    public class Texture : Object { public int width => 0; public int height => 0; public TextureWrapMode wrapMode { get; set; } }
     public enum TextureWrapMode { Repeat, Clamp, Mirror, MirrorOnce }
-    public sealed class Texture2D : Texture { public Texture2D(int width, int height, TextureFormat format, bool mipChain) { } public static Texture2D whiteTexture => null; public FilterMode filterMode { get; set; } public void LoadRawTextureData(byte[] data) { } public void Apply() { } public Color32[] GetPixels32() => null; public void SetPixels32(Color32[] colors) { } public byte[] EncodeToPNG() => null; }
+    public sealed class Texture2D : Texture { public Texture2D(int width, int height, TextureFormat format, bool mipChain) { } public Texture2D(int width, int height, TextureFormat format, bool mipChain, bool linear) { } public void Apply(bool updateMipmaps) { } public static Texture2D whiteTexture => null; public FilterMode filterMode { get; set; } public void LoadRawTextureData(byte[] data) { } public void Apply() { } public Color32[] GetPixels32() => null; public void SetPixels32(Color32[] colors) { } public byte[] EncodeToPNG() => null; }
     public enum TextureFormat { RGBA32 = 4 }
     public enum FilterMode { Point, Bilinear, Trilinear }
     public enum RuntimeInitializeLoadType { AfterSceneLoad, BeforeSceneLoad }
@@ -130,13 +132,14 @@ namespace UnityEditor
     public sealed class EditorBuildSettingsScene { public EditorBuildSettingsScene(string path, bool enabled) { } public string path => ""; public bool enabled => false; }
     public static class EditorBuildSettings { public static EditorBuildSettingsScene[] scenes { get; set; } }
     public class AssetImporter : UnityEngine.Object { public struct SourceAssetIdentifier { public SourceAssetIdentifier(UnityEngine.Object asset) { } } public static AssetImporter GetAtPath(string p) => null; public void SaveAndReimport() { } public void AddRemap(SourceAssetIdentifier identifier, UnityEngine.Object externalObject) { } }
+    [System.Flags] public enum ImportAssetOptions { Default = 0, ForceUpdate = 1 }
     public enum TextureImporterType { Default = 0, NormalMap = 1 }
     public sealed class TextureImporter : AssetImporter { public TextureImporterType textureType { get; set; } public bool mipmapEnabled { get; set; } public UnityEngine.TextureWrapMode wrapMode { get; set; } public bool isReadable { get; set; } public bool alphaIsTransparency { get; set; } }
     public enum ModelImporterAnimationType { None, Legacy, Generic, Human }
     public sealed class ModelImporterClipAnimation { public string name { get; set; } public bool loopTime { get; set; } public UnityEngine.WrapMode wrapMode { get; set; } }
     public sealed class ModelImporter : AssetImporter { public ModelImporterAnimationType animationType { get; set; } public bool importAnimation { get; set; } public ModelImporterClipAnimation[] clipAnimations { get; set; } public ModelImporterClipAnimation[] defaultClipAnimations => null; public bool ExtractTextures(string folderPath) => false; }
     public static class EditorUtility { public static bool DisplayDialog(string title, string message, string ok) => false; public static void SetDirty(UnityEngine.Object o) { } }
-    public static class AssetDatabase { public static string[] FindAssets(string filter, string[] folders) => null; public static string GUIDToAssetPath(string guid) => ""; public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; public static UnityEngine.Object[] LoadAllAssetsAtPath(string p) => null; public static void ImportAsset(string p) { } }
+    public static class AssetDatabase { public static string[] FindAssets(string filter, string[] folders) => null; public static string GUIDToAssetPath(string guid) => ""; public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; public static UnityEngine.Object[] LoadAllAssetsAtPath(string p) => null; public static void ImportAsset(string p) { } public static void ImportAsset(string p, ImportAssetOptions options) { } }
 }
 namespace UnityEditor.SceneManagement
 {

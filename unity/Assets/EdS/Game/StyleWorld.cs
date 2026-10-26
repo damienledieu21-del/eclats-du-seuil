@@ -158,6 +158,88 @@ namespace EdS.Game
             Object.Destroy(terrain.terrainData);
         }
 
+        private static readonly Dictionary<StyleSurface, Material> SurfaceMaterials = new Dictionary<StyleSurface, Material>();
+        private static Material _water;
+
+        /// <summary>
+        /// Essai réaliste (demande de Damien du 26 octobre 2026 : « les bâtiments et la rivière sont à faire aussi ») : matériau d'une matière
+        /// de bâtiment (texture de couleur et de relief du catalogue) et taille d'une répétition ; null sans texture (couleur simple gardée).
+        /// </summary>
+        public static Material Surface(StyleSurface kind, out float tile)
+        {
+            tile = 2.5f;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            SurfaceLook look = catalog != null ? catalog.Surface(kind) : null;
+            if (look == null) return null;
+            tile = look.Tile > 0.1f ? look.Tile : 2.5f;
+            if (SurfaceMaterials.TryGetValue(kind, out Material cached) && cached != null) return cached;
+            Material material = ArenaView.MakeMaterial(Color.white);
+            material.SetTexture("_BaseMap", look.Color);
+            material.SetTexture("_MainTex", look.Color);
+            if (look.Normal != null)
+            {
+                material.SetTexture("_BumpMap", look.Normal);
+                material.EnableKeyword("_NORMALMAP");
+            }
+            material.SetFloat("_Smoothness", kind == StyleSurface.Roof ? 0.25f : 0.1f);
+            SurfaceMaterials[kind] = material;
+            return material;
+        }
+
+        /// <summary>
+        /// Eau de la rivière : couleur du catalogue, surface lisse qui reflète le ciel, petites vagues (carte de relief faite par le code,
+        /// sans fichier) qui glissent avec le temps (<see cref="AnimateWater"/>). Null sans catalogue.
+        /// </summary>
+        public static Material Water()
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null) return null;
+            if (_water != null) return _water;
+            _water = ArenaView.MakeMaterial(catalog.WaterColor);
+            _water.SetTexture("_BumpMap", Ripples(128));
+            _water.EnableKeyword("_NORMALMAP");
+            _water.SetFloat("_BumpScale", 0.5f);
+            _water.SetFloat("_Smoothness", 0.9f);
+            return _water;
+        }
+
+        /// <summary>Fait glisser les vagues de l'eau (toutes les cartes d'URP Lit suivent le décalage de la carte de couleur).</summary>
+        public static void AnimateWater(float time)
+        {
+            if (_water != null) _water.SetTextureOffset("_BaseMap", new Vector2(time * 0.03f, time * 0.05f));
+        }
+
+        /// <summary>
+        /// Carte de relief de petites vagues, qui se répète sans couture : somme d'ondes entières sur la case, pente convertie en normale
+        /// (x et y dans le rouge et le vert, alpha plein : lisible par le rendu sur ordinateur comme sur téléphone).
+        /// </summary>
+        private static Texture2D Ripples(int size)
+        {
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, true, true);
+            var pixels = new Color32[size * size];
+            float tau = 2f * Mathf.PI / size;
+            // Ondes à vecteurs entiers (kx, ky) et amplitude : la carte se répète sans couture.
+            int[] kx = { 3, 2, 7 }, ky = { 1, -5, 4 };
+            float[] amplitude = { 1f, 0.6f, 0.3f };
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = 0f, dy = 0f;
+                    for (int w = 0; w < kx.Length; w++)
+                    {
+                        float c = Mathf.Cos(tau * (kx[w] * x + ky[w] * y)) * amplitude[w];
+                        dx += kx[w] * c;
+                        dy += ky[w] * c;
+                    }
+                    var n = new Vector3(-dx * 0.06f, -dy * 0.06f, 1f).normalized;
+                    pixels[y * size + x] = new Color32((byte)(n.x * 127f + 128f), (byte)(n.y * 127f + 128f), (byte)(n.z * 127f + 128f), 255);
+                }
+            texture.SetPixels32(pixels);
+            texture.wrapMode = TextureWrapMode.Repeat;
+            texture.Apply(true);
+            return texture;
+        }
+
         private static Texture2D Pick(Texture2D wanted, Texture2D fallback) => wanted != null ? wanted : fallback;
 
         private static TerrainLayer Layer(Texture2D color, Texture2D normal, float tile)

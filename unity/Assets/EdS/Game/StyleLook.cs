@@ -110,6 +110,7 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             GameObject prefab = catalog != null ? catalog.Model(slot, id) : null;
             if (prefab == null) return null;
+            if (slot == StyleSlot.Character && catalog.Character(id) is CharacterLook character && character.Height > 0f) height = character.Height;
             GameObject look = Fit(prefab, height, 0f, null, false, out float bottom, out GameObject model);
             Vector3 s = body.transform.localScale;
             look.transform.SetParent(body.transform, false);
@@ -117,16 +118,24 @@ namespace EdS.Game
             look.transform.localScale = new Vector3(k / s.x, k / s.y, k / s.z);
             // Les pieds au sol : le bas de la capsule est à 1 m sous son centre (à l'échelle de hauteur du corps).
             look.transform.localPosition = new Vector3(0f, -1f - bottom * k / s.y, 0f);
-            look.transform.localRotation = Quaternion.Euler(0f, catalog.Yaw(slot), 0f);
+            look.transform.localRotation = Quaternion.Euler(0f, catalog.Yaw(slot, id), 0f);
             Renderer own = body.GetComponent<Renderer>();
             if (own != null) own.enabled = false;
+            // Essai du 26 octobre 2026 : les loups et les sangliers des packs n'ont pas de texture (couleur unique ou couleurs de sommets que
+            // le rendu n'affiche pas) et sortaient blancs ; leurs matériaux sans texture prennent la couleur du catalogue.
+            if (slot == StyleSlot.Wolf || slot == StyleSlot.Boar)
+                foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
+                    foreach (Material m in r.materials)
+                        if (!m.HasProperty("_BaseMap") || m.GetTexture("_BaseMap") == null)
+                            ArenaView.ApplyColor(m, slot == StyleSlot.Wolf ? catalog.WolfColor : catalog.BoarColor);
             Animation animation = look.GetComponentInChildren<Animation>();
-            // Essai réaliste : le héros de Mixamo arrive sans animation ; ses animations sont des fichiers à part (catalogue HeroClips),
-            // jouées par un composant Animation posé sur la racine du modèle (les chemins des os partent de là).
-            if (slot == StyleSlot.Hero && catalog.HeroClips != null && catalog.HeroClips.Length > 0)
+            // Essai réaliste : les personnages de Mixamo ont leurs animations dans des fichiers à part (catalogue), jouées par un composant
+            // Animation posé sur la racine du modèle (les chemins des os partent de là).
+            AnimationClip[] clips = catalog.Clips(slot, id);
+            if (clips != null && clips.Length > 0)
             {
                 if (animation == null) animation = model.AddComponent<Animation>();
-                foreach (AnimationClip clip in catalog.HeroClips)
+                foreach (AnimationClip clip in clips)
                     if (clip != null && animation.GetClip(clip.name) == null) animation.AddClip(clip, clip.name);
             }
             return new StyleBody(look.transform, animation);

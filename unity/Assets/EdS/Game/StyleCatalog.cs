@@ -1,8 +1,34 @@
+using System;
 using EdS.Runtime;
 using UnityEngine;
 
 namespace EdS.Game
 {
+    /// <summary>Essai réaliste : un personnage de Mixamo (son dossier), avec ses animations.</summary>
+    [Serializable]
+    public sealed class CharacterLook
+    {
+        /// <summary>Nom du dossier, réduit (« archer », « odile ») : <see cref="StyleRules.CharacterOf"/> d'un PNJ ou d'un ennemi.</summary>
+        public string Id;
+        public GameObject Model;
+        public AnimationClip[] Clips = new AnimationClip[0];
+        [Tooltip("Hauteur du personnage (m).")]
+        public float Height = 1.8f;
+        [Tooltip("Rotation ajoutée (degrés) si le modèle regarde de travers.")]
+        public float Yaw;
+    }
+
+    /// <summary>Essai réaliste : une matière de bâtiment (couleur, relief, taille d'une répétition).</summary>
+    [Serializable]
+    public sealed class SurfaceLook
+    {
+        public StyleSurface Kind;
+        public Texture2D Color;
+        public Texture2D Normal;
+        [Tooltip("Taille (m) d'une répétition de la texture.")]
+        public float Tile = 2.5f;
+    }
+
     /// <summary>
     /// Essai de style (décision de Damien du 25 octobre 2026) : les modèles et les sons choisis dans les packs gratuits déposés dans
     /// <c>Assets/Style</c>. Rempli par le menu « Éclats du Seuil → Préparer l'essai de style » (<c>Assets/Style/Resources/StyleCatalog.asset</c>),
@@ -23,6 +49,16 @@ namespace EdS.Game
 
         /// <summary>Essai réaliste : bois mort (souches, troncs couchés) posé dans la forêt autour de l'aire.</summary>
         public GameObject[] Debris = new GameObject[0];
+
+        [Header("Essai réaliste : personnages (dossiers de Mixamo) et bâtiments")]
+        public CharacterLook[] Characters = new CharacterLook[0];
+        public SurfaceLook[] Surfaces = new SurfaceLook[0];
+        [Tooltip("Couleur des loups (leur pack n'a pas de texture).")]
+        public Color WolfColor = new Color(0.45f, 0.42f, 0.38f);
+        [Tooltip("Couleur des sangliers (leur pack n'a pas de texture).")]
+        public Color BoarColor = new Color(0.33f, 0.24f, 0.17f);
+        [Tooltip("Couleur de l'eau de la rivière.")]
+        public Color WaterColor = new Color(0.1f, 0.24f, 0.27f);
 
         /// <summary>Rotation ajoutée (degrés) aux modèles qui ne regardent pas devant eux une fois importés.</summary>
         public float HeroYaw;
@@ -159,11 +195,36 @@ namespace EdS.Game
                 case StyleSlot.Rock: return Pick(Rocks, id);
                 case StyleSlot.Plant: return Pick(Plants, id);
                 case StyleSlot.Debris: return Pick(Debris, id);
+                case StyleSlot.Character: return Character(id)?.Model;
                 default: return null;
             }
         }
 
-        public float Yaw(StyleSlot slot) => slot == StyleSlot.Hero ? HeroYaw : slot == StyleSlot.Wolf ? WolfYaw : slot == StyleSlot.Boar ? BoarYaw : 0f;
+        public float Yaw(StyleSlot slot, string id = null) => slot == StyleSlot.Hero ? HeroYaw : slot == StyleSlot.Wolf ? WolfYaw : slot == StyleSlot.Boar ? BoarYaw
+            : slot == StyleSlot.Character ? Character(id)?.Yaw ?? 0f : 0f;
+
+        /// <summary>Personnage d'un PNJ ou d'un ennemi d'après son identifiant (« npc.odile », « gardien_eveille »), ou null.</summary>
+        public CharacterLook Character(string id)
+        {
+            string key = StyleRules.CharacterOf(id);
+            if (Characters == null || key.Length == 0) return null;
+            foreach (CharacterLook c in Characters)
+                if (c != null && c.Model != null && c.Id == key) return c;
+            return null;
+        }
+
+        /// <summary>Animations à part d'un modèle : celles du héros (Mixamo) ou d'un personnage ; vide sinon.</summary>
+        public AnimationClip[] Clips(StyleSlot slot, string id) =>
+            slot == StyleSlot.Hero ? HeroClips : slot == StyleSlot.Character ? Character(id)?.Clips : null;
+
+        /// <summary>Matière de bâtiment, ou null si elle n'a pas de texture.</summary>
+        public SurfaceLook Surface(StyleSurface kind)
+        {
+            if (Surfaces == null) return null;
+            foreach (SurfaceLook s in Surfaces)
+                if (s != null && s.Kind == kind && s.Color != null) return s;
+            return null;
+        }
 
         public AudioClip Sound(StyleSound sound)
         {
