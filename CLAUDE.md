@@ -66,7 +66,7 @@ Un push n'a lieu que si tout est vert localement. Après le push, vérifier le c
 2. Implémenter seulement les mécanismes du sous-lot, par commits cohérents aux messages explicites (`Lot 8.2 (n/m) : …`).
 3. Tests unitaires, adversariaux et de propriétés ; frontières numériques ; non-régression contre les journaux figés ; catégorie de tests dédiée si besoin (déclarée dans `ci.yml` et `scripts/test-category.sh`).
 4. Mettre à jour schémas, `docs/` et README (section décisions et avancement).
-5. Vérification complète, push, PR en brouillon, CI verte.
+5. Vérification complète, push, PR en brouillon, CI verte. À partir du lot 13 (décision de Damien du 25 octobre 2026) : avant chaque demande de revue Codex, une relecture par un agent indépendant (neuf, sans le contexte de la session, à qui l'on donne le code et non ses conclusions), une seule par PR ; ses remarques fondées sont traitées avant la demande. Elle n'est jamais présentée comme une revue Codex.
 6. Rapport dans la description de la PR : SHA, ce qui est fait, tests reproduits (chiffres), limites connues, questions pour Damien.
 
 ## Branches et PR
