@@ -50,7 +50,9 @@ Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tablea
 | Tab | ennemi suivant comme cible |
 | C | rappel rapide de l'autre réglage de caméra (vue 1 ↔ vue 2, retenues par le [cadrage](CADRAGE.md#2-direction-générale-retenu)) |
 | A / E | tourner la caméra d'un huitième de tour |
-| molette | régler la caméra entre la vue 1 et la vue 2 (réglage gardé) ; bouton du milieu maintenu : tourner librement |
+| souris (sans clic) | **caméra à la souris libre** (choix de Damien du 26 octobre 2026, comme ESO) : gauche-droite tourne la vue, haut-bas l'incline de la vue 1 à la vue 2 ; curseur caché hors des écrans et des menus |
+| Alt maintenu | rend le curseur (pour cliquer) ; **Échap** le rend aussi (pour arrêter le jeu dans l'éditeur), un clic dans le jeu le reprend |
+| molette | régler la caméra entre la vue 1 et la vue 2 (réglage gardé) ; bouton du milieu maintenu (curseur rendu) : tourner librement |
 | T | écran des talents (combat en pause) ; T ou Échap pour le fermer |
 | N | scénario suivant (Vallons, meute à vaincre, entraînement, S1 à S5), puis retour à l'aventure |
 | F1 à F5 | build : Rempart, Contrecoup, Gardien, hybride, niveau 10 |
@@ -209,6 +211,14 @@ Avis de Damien sur le premier essai : « bof j'aime pas trop je voulais quelque 
 3. **Régler pendant le jeu** : dans `Assets/Style/Resources/StyleCatalog` (inspecteur), partie *Lumière et couleurs* : couleur, force, hauteur et direction du soleil, couleurs d'ambiance, brume (début, fin, couleur), luminosité, contraste, couleurs plus vives, halo, bords assombris. Les changements se voient tout de suite dans l'éditeur (Play en cours) et sont gardés. Pour revenir aux réglages de l'essai : clic droit sur le titre du catalogue dans l'inspecteur → *Remettre la lumière et les couleurs par défaut* (le menu de préparation le fait aussi, une fois, quand Claude change ces réglages). Les textures de sol se changent aussi à la main (glisser une autre texture du dossier `Ground`). Le nombre d'arbres autour, de plantes, la largeur de la forêt et la taille des textures du sol comptent au prochain combat.
 
 Premier essai (26 octobre 2026, vidéo de Damien) et corrections : le paladin était tout blanc (textures restées dans le fichier Mixamo : elles sont maintenant sorties dans `Mixamo/Textures` et posées sur son matériau) ; image trop claire et jaune (soleil, ambiance et exposition baissés, contraste relevé : réglages version 2) ; rangées de pissenlits et arbustes alignés (Poly Haven livre chaque modèle en lot de variantes avec leurs niveaux de détail : une seule variante est gardée, d'après les noms des pièces) ; arbres du MegaKit coupés à tort (la règle des lots ne vise plus que les fichiers Poly Haven).
+
+**Demandes de Damien du 26 octobre 2026 au soir** (« les loups et les buissons sont tout blancs aussi, les PNJ, les bâtiments et la rivière sont à faire aussi, j'aimerais aussi qu'on puisse bouger la caméra avec la souris ») :
+
+- **Personnages** : un dossier par personnage dans `Mixamo/` (nom du dossier = celui du PNJ ou de l'ennemi, sans accent) : `Odile` (*Peasant Girl*), `Maelle` (*Maria J J Ong*), `Gaspard` (*Knight D Pelegrini*), `Archer` (*Erika Archer* avec arc), `Rodeur` (*Nightshade J Friedrich*), `Gardien` (*Warrok W Kurniawan*, les deux formes du Gardien). Dans chaque dossier, le fichier avec la peau et les animations, nommées d'après leur mouvement (« Archer Idle », « Archer Walk », « Archer Death »). Les PNJ respirent sur place ; l'archer, le rôdeur et le Gardien marchent, courent et meurent. Hauteur et rotation de chacun se règlent dans le catalogue (*Characters*).
+- **Bâtiments** (`PolyHaven/Surfaces`, CC0) : murs en pierre (*rustic stone wall*), moulin en crépi (*plastered stone wall*) avec un toit de tuiles (*clay roof tiles*) et des ailes en planches (*weathered brown planks*), piliers et pont en planches, toit des piliers en tuiles, murets du bord en pavés (*cobblestone floor*) ; textures à l'échelle du monde (taille d'une répétition réglable dans *Surfaces*).
+- **Rivière** : eau faite par le code (couleur réglable, surface lisse qui reflète, petites vagues qui glissent).
+- **Loups et sangliers** : leurs packs n'ont pas de texture ; ils prennent une couleur (*Wolf Color*, *Boar Color*). **Buissons blancs** : il manquait des textures du MegaKit (ajoutées depuis le zip de Damien) ; le menu réimporte les modèles dont un matériau est resté sans texture.
+- **Caméra à la souris libre** (choix de Damien : « comme ESO ») : voir le tableau des commandes ci-dessus.
 
 Limites : les arbres restent dessinés (MegaKit) ; les loups et les sangliers restent ceux des packs low poly (choix de Damien : les animaux plus tard) ; sur le téléphone, la forêt est réduite au tiers, les plantes à la moitié et le halo coupé, mais l'essai réaliste n'est pas encore réglé pour le Note8 (à faire si le style est gardé) ; le terrain est plat comme le sol du moteur.
 
