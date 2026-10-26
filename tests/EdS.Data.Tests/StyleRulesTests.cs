@@ -24,6 +24,20 @@ public class StyleRulesTests
     [InlineData("Assets/Style/Nature/FBX/Bush_Common.fbx", StyleSlot.Plant, true)]
     [InlineData("Assets/Style/Nature/FBX/Flower_3_Group.fbx", StyleSlot.Plant, true)]
     [InlineData("Assets/Style/Nature/FBX/Grass_Common_Tall.fbx", StyleSlot.Plant, false)]
+    // Essai réaliste (26 octobre 2026) : Mixamo et Poly Haven.
+    [InlineData("Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", StyleSlot.Hero, true)]
+    [InlineData("Assets/Style/Mixamo/Sword And Shield Idle.fbx", StyleSlot.Hero, false)]
+    [InlineData("Assets/Style/PolyHaven/rock_moss_set_02/rock_moss_set_02_1k.fbx", StyleSlot.Rock, true)]
+    [InlineData("Assets/Style/PolyHaven/grass_medium_01/grass_medium_01_1k.fbx", StyleSlot.Plant, true)]
+    [InlineData("Assets/Style/PolyHaven/tree_stump_01/tree_stump_01_1k.fbx", StyleSlot.Tree, false)]
+    [InlineData("Assets/Style/PolyHaven/pine_roots/pine_roots_1k.fbx", StyleSlot.Tree, false)]
+    [InlineData("Assets/Style/PolyHaven/tree_stump_01/tree_stump_01_1k.fbx", StyleSlot.Debris, true)]
+    [InlineData("Assets/Style/PolyHaven/dead_tree_trunk/dead_tree_trunk_1k.fbx", StyleSlot.Debris, true)]
+    [InlineData("Assets/Style/PolyHaven/dead_tree_trunk/dead_tree_trunk_1k.fbx", StyleSlot.Tree, false)]
+    [InlineData("Assets/Style/PolyHaven/rock_moss_set_01/rock_moss_set_01_1k.fbx", StyleSlot.Plant, false)]   // un rocher moussu n'est pas une plante
+    [InlineData("Assets/Style/PolyHaven/moss_01/moss_01_1k.fbx", StyleSlot.Plant, true)]
+    [InlineData("Assets/Style/PolyHaven/shrub_03/shrub_03_1k.fbx", StyleSlot.Plant, true)]
+    [InlineData("Assets/Style/PolyHaven/celandine_01/celandine_01_1k.fbx", StyleSlot.Plant, true)]
     public void Modeles_reconnus_par_leur_nom(string path, StyleSlot slot, bool expected)
     {
         Assert.Equal(expected, StyleRules.Matches(path, slot));
@@ -195,5 +209,211 @@ public class StyleRulesTests
         Assert.Contains("Object.Instantiate(prefab, look.transform, false);", look, StringComparison.Ordinal);
         Assert.DoesNotContain("look.transform.rotation = Quaternion.identity;", look, StringComparison.Ordinal);
         Assert.Contains("skin.updateWhenOffscreen = true;", look, StringComparison.Ordinal);
+    }
+    [Fact]
+    public void Les_modeles_realistes_passent_devant()
+    {
+        // Essai réaliste : le paladin de Mixamo avant le chevalier des packs, les rochers de Poly Haven seuls s'il y en a, les plantes
+        // réalistes d'abord puis celles des packs.
+        var models = new[]
+        {
+            "Assets/Style/Knight/KnightCharacter.fbx", "Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", "Assets/Style/Mixamo/Sword And Shield Idle.fbx",
+            "Assets/Style/Nature/FBX/Rock_Medium_1.fbx", "Assets/Style/PolyHaven/rock_moss_set_02/rock_moss_set_02_1k.fbx",
+            "Assets/Style/Nature/FBX/Bush_Common.fbx", "Assets/Style/PolyHaven/grass_medium_01/grass_medium_01_1k.fbx",
+        };
+        Assert.Equal("Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", StyleRules.Candidates(models, StyleSlot.Hero)[0]);
+        Assert.Equal(new[] { "Assets/Style/PolyHaven/rock_moss_set_02/rock_moss_set_02_1k.fbx" }, StyleRules.ForCatalog(models, StyleSlot.Rock, 6));
+        Assert.Equal(new[] { "Assets/Style/PolyHaven/grass_medium_01/grass_medium_01_1k.fbx", "Assets/Style/Nature/FBX/Bush_Common.fbx" },
+            StyleRules.ForCatalog(models, StyleSlot.Plant, 12));
+        Assert.Single(StyleRules.ForCatalog(models, StyleSlot.Plant, 1));
+        Assert.Empty(StyleRules.ForCatalog(models, StyleSlot.Plant, -3));
+        // Sans rocher réaliste, ceux des packs restent.
+        Assert.Equal(new[] { "Assets/Style/Nature/FBX/Rock_Medium_1.fbx" }, StyleRules.ForCatalog(models.Where(m => !m.Contains("PolyHaven")), StyleSlot.Rock, 6));
+        // Sans modèle réaliste : le paladin seul n'a pas d'avance sur un autre héros des packs, l'ordre des mots décide (paladin, knight).
+        Assert.Equal("Assets/Style/z/Paladin.fbx", StyleRules.Candidates(new[] { "Assets/Style/a/Knight.fbx", "Assets/Style/z/Paladin.fbx" }, StyleSlot.Hero)[0]);
+        Assert.True(StyleRules.IsRealistic("Assets\\Style\\Poly Haven\\x.fbx"));
+        Assert.False(StyleRules.IsRealistic("Assets/Style/Nature/FBX/Pine_1.fbx"));
+    }
+
+    [Fact]
+    public void Animations_de_Mixamo_a_cote_du_heros()
+    {
+        var models = new[]
+        {
+            "Assets/Style/Mixamo/Sword And Shield Walk.fbx", "Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", "Assets/Style/Mixamo/Sword And Shield Idle.fbx",
+            "Assets/Style/Mixamo/Sword And Shield Death.fbx", "Assets/Style/Mixamo/notes.txt", "Assets/Style/Animals/Wolf.fbx",
+            "Assets/Style/Mixamo/Sous/Sword And Shield Run.fbx",
+        };
+        Assert.Equal(new[] { "Assets/Style/Mixamo/Sword And Shield Death.fbx", "Assets/Style/Mixamo/Sword And Shield Idle.fbx", "Assets/Style/Mixamo/Sword And Shield Walk.fbx" },
+            StyleRules.Companions("Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", models));
+        Assert.Empty(StyleRules.Companions(null!, models));
+        Assert.Empty(StyleRules.Companions("Assets/Style/Animals/Wolf.fbx", models));
+        Assert.Equal("Sword And Shield Idle", StyleRules.ClipName("Assets/Style/Mixamo/Sword And Shield Idle.fbx"));
+        Assert.Equal("Sans extension", StyleRules.ClipName("Sans extension"));
+        // Les animations renommées d'après leur fichier : attente, marche et course en boucle, le coup d'épée pour l'attaque, la mort.
+        var clips = new[] { "Sword And Shield Idle", "Sword And Shield Walk", "Sword And Shield Run", "Sword And Shield Slash", "Sword And Shield Death", "mixamo.com" };
+        Assert.Equal("Sword And Shield Idle", StyleRules.Clip(clips, StyleMotion.Idle));
+        Assert.Equal("Sword And Shield Walk", StyleRules.Clip(clips, StyleMotion.Walk));
+        Assert.Equal("Sword And Shield Run", StyleRules.Clip(clips, StyleMotion.Run));
+        Assert.Equal("Sword And Shield Slash", StyleRules.Clip(clips, StyleMotion.Attack));
+        Assert.Equal("Sword And Shield Death", StyleRules.Clip(clips, StyleMotion.Death));
+        Assert.True(StyleRules.Loops("Sword And Shield Idle"));
+        Assert.True(StyleRules.Loops("Sword And Shield Walk"));
+        Assert.True(StyleRules.Loops("Sword And Shield Run"));
+        Assert.False(StyleRules.Loops("Sword And Shield Slash"));
+        Assert.False(StyleRules.Loops("Sword And Shield Death"));
+        Assert.False(StyleRules.Loops("mixamo.com"));
+    }
+
+    [Fact]
+    public void Textures_de_sol_et_ciel()
+    {
+        var textures = new[]
+        {
+            "Assets/Style/PolyHaven/Ground/forest_ground_04_diff_1k.jpg", "Assets/Style/PolyHaven/Ground/forest_ground_04_nor_gl_1k.jpg",
+            "Assets/Style/PolyHaven/Ground/rocky_trail_diff_1k.jpg", "Assets/Style/PolyHaven/Ground/rocky_trail_nor_gl_1k.jpg",
+            "Assets/Style/PolyHaven/Ground/rocky_trail_rough_1k.jpg", "Assets/Style/PolyHaven/rock_moss_set_02/textures/rock_moss_set_02_diff_1k.jpg",
+            "Assets/Style/PolyHaven/Sky/kloofendal_48d_partly_cloudy_puresky_1k.hdr", "Assets/Style/PolyHaven/grass_medium_01/textures/grass_medium_01_nor_gl_1k.exr",
+        };
+        Assert.Equal(StyleGround.Soil, StyleRules.GroundOf("Assets/Style/PolyHaven/Ground/forest_ground_04_diff_1k.jpg"));
+        Assert.Equal(StyleGround.Rock, StyleRules.GroundOf("Assets/Style/PolyHaven/Ground/rocky_trail_diff_1k.jpg"));
+        Assert.Equal(StyleGround.Grass, StyleRules.GroundOf("Assets/Style/PolyHaven/Ground/leafy_grass_diff_1k.jpg"));
+        Assert.Null(StyleRules.GroundOf("Assets/Style/PolyHaven/rock_moss_set_02/textures/rock_moss_set_02_diff_1k.jpg"));   // texture d'un modèle
+        Assert.Null(StyleRules.GroundOf("Assets/Style/Ground.jpg"));   // le dossier compte, pas le nom
+        Assert.Equal("Assets/Style/PolyHaven/Ground/forest_ground_04_diff_1k.jpg", StyleRules.GroundTexture(textures, StyleGround.Soil, false));
+        Assert.Equal("Assets/Style/PolyHaven/Ground/forest_ground_04_nor_gl_1k.jpg", StyleRules.GroundTexture(textures, StyleGround.Soil, true));
+        Assert.Equal("Assets/Style/PolyHaven/Ground/rocky_trail_diff_1k.jpg", StyleRules.GroundTexture(textures, StyleGround.Rock, false));
+        Assert.Equal("Assets/Style/PolyHaven/Ground/rocky_trail_nor_gl_1k.jpg", StyleRules.GroundTexture(textures, StyleGround.Rock, true));
+        Assert.Null(StyleRules.GroundTexture(textures, StyleGround.Grass, false));
+        Assert.Null(StyleRules.GroundTexture(null!, StyleGround.Grass, false));
+        Assert.True(StyleRules.IsNormalMap("grass_medium_01_nor_gl_1k.exr"));
+        Assert.True(StyleRules.IsNormalMap("Bark_NormalTree_Normal.png"));
+        Assert.False(StyleRules.IsNormalMap("Bark_NormalTree.png"));
+        Assert.False(StyleRules.IsColorMap("rocky_trail_rough_1k.jpg"));
+        Assert.False(StyleRules.IsColorMap("grass_medium_01_alpha_1k.png"));
+        Assert.True(StyleRules.IsColorMap("grass_medium_01_diff_1k.jpg"));
+        Assert.True(StyleRules.IsAlphaMap("grass_medium_01_alpha_1k.png"));
+        Assert.False(StyleRules.IsAlphaMap("grass_medium_01_diff_1k.jpg"));
+        Assert.Equal("Assets/Style/PolyHaven/Sky/kloofendal_48d_partly_cloudy_puresky_1k.hdr", StyleRules.Sky(textures));
+        Assert.False(StyleRules.IsSky("Assets/Style/PolyHaven/grass_medium_01/textures/grass_medium_01_nor_gl_1k.exr"));   // une carte, pas un ciel
+        Assert.True(StyleRules.IsSky("Assets/Style/Sky/meadow_2k.exr"));
+        Assert.False(StyleRules.IsSky("Assets/Style/Sky/sky.jpg"));
+        Assert.Null(StyleRules.Sky(null!));
+    }
+
+    [Fact]
+    public void Couches_du_sol()
+    {
+        var spots = new[] { new StyleSpot(0, 0, 2, StyleGround.Rock), new StyleSpot(20, 0, 1, StyleGround.Soil) };
+        for (double x = -30; x <= 50; x += 1.7)
+            for (double z = -30; z <= 30; z += 2.3)
+            {
+                StyleMix mix = StyleRules.GroundMix(x, z, spots);
+                Assert.Equal(1.0, mix.Soil + mix.Rock + mix.Grass, 9);
+                Assert.InRange(mix.Soil, 0, 1);
+                Assert.InRange(mix.Rock, 0, 1);
+                Assert.InRange(mix.Grass, 0, 1);
+                Assert.Equal(mix.Rock, StyleRules.GroundMix(x, z, spots).Rock);   // sans hasard
+            }
+        Assert.Equal(1.0, StyleRules.GroundMix(1, 1, spots).Rock);                 // dans le rayon : roche pleine
+        Assert.Equal(1.0, StyleRules.GroundMix(1, 1, spots)[StyleGround.Rock]);
+        Assert.InRange(StyleRules.GroundMix(3.5, 0, spots).Rock, 0.49, 0.51);       // à mi-chemin de l'effacement
+        Assert.Equal(0.0, StyleRules.GroundMix(6, 0, spots).Rock);                 // au-delà
+        Assert.True(StyleRules.GroundMix(20, 0.5, spots).Soil >= 0.85 - 1e-9);    // sous l'arbre : terre
+        // Loin de tout : surtout de l'herbe, avec quelques taches de terre.
+        double grass = 0, soilPatches = 0;
+        int n = 0;
+        for (double x = 100; x < 300; x += 1.3)
+            for (double z = 100; z < 300; z += 1.3)
+            {
+                StyleMix mix = StyleRules.GroundMix(x, z, null!);
+                grass += mix.Grass;
+                if (mix.Soil > 0.3) soilPatches++;
+                n++;
+            }
+        Assert.InRange(grass / n, 0.75, 0.99);
+        Assert.True(soilPatches > 0);
+        for (double x = -5; x < 5; x += 0.37)
+            Assert.InRange(StyleRules.Noise(x, x * 0.7), 0, 1);
+    }
+
+    [Fact]
+    public void Lots_de_pieces_separees()
+    {
+        // Lot de rochers de Poly Haven : pièces côte à côte.
+        Assert.True(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 1, 1), new StyleBox(1.5, 0, 2.5, 1), new StyleBox(3, 0, 4, 1.2) }));
+        Assert.True(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 1, 1), new StyleBox(1, 0, 2, 1) }));                // bords qui se touchent
+        Assert.True(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 1, 1), new StyleBox(0.9, 0, 2, 1) }));              // un dixième de recouvrement
+        // Un arbre : tronc dans le feuillage.
+        Assert.False(StyleRules.IsCollection(new[] { new StyleBox(-0.2, -0.2, 0.2, 0.2), new StyleBox(-2, -2, 2, 2) }));
+        Assert.False(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 1, 1) }));
+        Assert.False(StyleRules.IsCollection(null!));
+        Assert.False(StyleRules.IsCollection(new[] { new StyleBox(0, 0, 0, 0), new StyleBox(0, 0, 0, 0) }));                // pièces plates : pas un lot
+        var flipped = new StyleBox(1, 1, 0, 0);
+        Assert.Equal(0, flipped.MinX);
+        Assert.Equal(1, flipped.Area);
+        Assert.Equal(1.0, StyleRules.NaturalScale(0.4, 0.8));     // touffe d'herbe de 40 cm : taille réelle
+        Assert.Equal(0.2, StyleRules.NaturalScale(4, 0.8), 9);    // plante de 4 m : ramenée à la hauteur voulue
+        Assert.Equal(1.0, StyleRules.NaturalScale(0, 0.8));
+    }
+
+    [Fact]
+    public void Foret_autour_de_l_aire()
+    {
+        IReadOnlyList<(double X, double Z)> forest = StyleRules.Forest(-30, -20, 30, 20, 45, 110);
+        Assert.InRange(forest.Count, 60, 110);
+        foreach ((double x, double z) in forest)
+        {
+            Assert.False(x > -34 && x < 34 && z > -24 && z < 24, $"arbre dans l'aire ou trop près du bord : {x}, {z}");
+            Assert.InRange(x, -75, 75);
+            Assert.InRange(z, -65, 65);
+        }
+        for (int i = 0; i < forest.Count; i++)
+            for (int j = i + 1; j < forest.Count; j++)
+                Assert.True((forest[i].X - forest[j].X) * (forest[i].X - forest[j].X) + (forest[i].Z - forest[j].Z) * (forest[i].Z - forest[j].Z) >= 3.5 * 3.5 - 1e-9);
+        Assert.Equal(forest, StyleRules.Forest(-30, -20, 30, 20, 45, 110));   // mêmes places à chaque lancement
+        Assert.Empty(StyleRules.Forest(-30, -20, 30, 20, 45, 0));
+        Assert.Empty(StyleRules.Forest(-30, -20, 30, 20, 3, 50));             // bande plus étroite que l'écart au bord
+        Assert.Equal(StyleGround.Rock, StyleRules.GroundFor("bloc3"));
+        Assert.Equal(StyleGround.Rock, StyleRules.GroundFor("pierre_seuil2"));
+        Assert.Equal(StyleGround.Rock, StyleRules.GroundFor("mur_est"));
+        Assert.Equal(StyleGround.Rock, StyleRules.GroundFor("pilier1"));
+        Assert.Equal(StyleGround.Soil, StyleRules.GroundFor("arbre7"));
+        Assert.Equal(StyleGround.Soil, StyleRules.GroundFor("moulin"));
+        Assert.Null(StyleRules.GroundFor("riviere_nord"));
+    }
+
+    [Fact]
+    public void Le_jeu_branche_l_essai_realiste()
+    {
+        string Read(params string[] parts) => File.ReadAllText(Path.Combine(new[] { Lot93UnityPackageTests.Root }.Concat(parts).ToArray()));
+        string view = Read("unity", "Assets", "EdS", "Game", "SpaceView.cs");
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        string world = Read("unity", "Assets", "EdS", "Game", "StyleWorld.cs");
+        string look = Read("unity", "Assets", "EdS", "Game", "StyleLook.cs");
+        string editor = Read("unity", "Assets", "EdS", "Editor", "EdsStyle.cs");
+        // Le terrain remplace le sol simple (et ses données sont rendues), la forêt pousse seulement sur le terrain.
+        Assert.Contains("_terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space));", view, StringComparison.Ordinal);
+        Assert.Contains("if (terrain) Forest(space);", view, StringComparison.Ordinal);
+        Assert.Contains("if (debris && i % 4 == 3) StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true);", view, StringComparison.Ordinal);
+        Assert.Contains("StyleWorld.Release(_terrain);", view, StringComparison.Ordinal);
+        // Ambiance posée au démarrage, réglable pendant le jeu dans l'éditeur ; le halo seulement sur ordinateur.
+        Assert.Contains("StyleWorld.Ambience(_camera.Camera);", game, StringComparison.Ordinal);
+        Assert.Contains("if (Application.isEditor) StyleWorld.Refresh();", game, StringComparison.Ordinal);
+        Assert.Contains("_bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;", world, StringComparison.Ordinal);
+        // Les couches du terrain suivent l'ordre de StyleGround.
+        Assert.Contains("maps[row, col, (int)StyleGround.Soil] = (float)mix.Soil;", world, StringComparison.Ordinal);
+        Assert.Equal(0, (int)StyleGround.Soil);
+        Assert.Equal(1, (int)StyleGround.Rock);
+        Assert.Equal(2, (int)StyleGround.Grass);
+        // Animations Mixamo ajoutées au héros ; une seule pièce d'un lot de Poly Haven.
+        Assert.Contains("animation.AddClip(clip, clip.name);", look, StringComparison.Ordinal);
+        Assert.Contains("if (StyleRules.IsCollection(boxes))", look, StringComparison.Ordinal);
+        Assert.Contains("renderers[i].gameObject.SetActive(false);", look, StringComparison.Ordinal);
+        // L'outil de préparation rebranche les effets d'image d'URP (coupés par le renderer créé au sous-lot 9.3).
+        Assert.Contains("renderer.postProcessData = data;", editor, StringComparison.Ordinal);
+        Assert.Contains("Legacy(clip, true);", editor, StringComparison.Ordinal);
+        // Dossier temporaire de Unity 6 vu chez Damien : jamais suivi.
+        Assert.Contains("unity/[Uu]tmp/", Read(".gitignore"), StringComparison.Ordinal);
     }
 }
