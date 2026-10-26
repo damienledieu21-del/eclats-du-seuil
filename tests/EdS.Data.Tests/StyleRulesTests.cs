@@ -163,4 +163,16 @@ public class StyleRulesTests
         string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
         Assert.Contains("if (UnityEngine.Object.FindFirstObjectByType<AudioListener>() == null) _camera.Camera.gameObject.AddComponent<AudioListener>();", game, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Les_modeles_gardent_le_signal_d_etourdissement()
+    {
+        // Revue Codex de la PR #55 : un loup ou un sanglier habillé clignote en jaune quand il est étourdi (et s'assombrit mort), comme le
+        // corps simple, à partir des couleurs d'origine de son modèle.
+        string arena = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "ArenaView.cs"));
+        string look = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleLook.cs"));
+        Assert.Contains("if (_looks.TryGetValue(id, out StyleBody look)) look.Tint(dead, stunned);", arena, StringComparison.Ordinal);
+        Assert.Contains("ArenaView.ApplyColor(_materials[i], ArenaView.Shade(_colors[i], dead, stunned));", look, StringComparison.Ordinal);
+        Assert.Contains("foreach (Material m in r.materials)", look, StringComparison.Ordinal);
+    }
 }

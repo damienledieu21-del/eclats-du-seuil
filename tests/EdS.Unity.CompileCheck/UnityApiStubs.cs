@@ -13,7 +13,7 @@ namespace UnityEngine
     public sealed class GameObject : Object { public GameObject(string n) { } public Transform transform => null; public string tag { get; set; } public T AddComponent<T>() where T : Component => default; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; public void SetActive(bool b) { } public bool activeSelf => false; public static GameObject CreatePrimitive(PrimitiveType t) => null; }
     public enum PrimitiveType { Sphere, Capsule, Cylinder, Cube, Plane, Quad }
     public class Transform : Component { public Vector3 position { get; set; } public Quaternion rotation { get; set; } public Vector3 localPosition { get; set; } public Quaternion localRotation { get; set; } public Vector3 localScale { get; set; } public void SetParent(Transform p, bool w) { } public void LookAt(Vector3 v) { } }
-    public class Renderer : Component { public Material sharedMaterial { get; set; } public Material material { get; set; } public bool enabled { get; set; } public Bounds bounds => default; }
+    public class Renderer : Component { public Material sharedMaterial { get; set; } public Material material { get; set; } public bool enabled { get; set; } public Bounds bounds => default; public Material[] materials { get; set; } }
     public struct Bounds { public Vector3 min => default; public Vector3 max => default; public Vector3 size => default; public Vector3 center => default; public void Encapsulate(Bounds b) { } }
     public enum WrapMode { Default = 0, Once = 1, Loop = 2, PingPong = 4, ClampForever = 8 }
     public sealed class AnimationState { public string name { get; set; } public WrapMode wrapMode { get; set; } }
@@ -52,7 +52,7 @@ namespace UnityEngine
     public static class Debug { public static void Log(object m) { } public static void LogWarning(object m) { } public static void LogException(Exception e) { } }
     public sealed class Shader : Object { public static Shader Find(string n) => null; }
     public static class Resources { public static T Load<T>(string path) where T : Object => default; }
-    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } }
+    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } public Color GetColor(string n) => default; }
     public class Texture : Object { }
     public sealed class Texture2D : Texture { public Texture2D(int width, int height, TextureFormat format, bool mipChain) { } public static Texture2D whiteTexture => null; public FilterMode filterMode { get; set; } public void LoadRawTextureData(byte[] data) { } public void Apply() { } }
     public enum TextureFormat { RGBA32 = 4 }

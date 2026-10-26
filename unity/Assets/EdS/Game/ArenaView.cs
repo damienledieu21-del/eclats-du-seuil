@@ -409,11 +409,22 @@ namespace EdS.Game
 
         private void Tint(string id, bool dead, bool stunned)
         {
+            // Essai de style (revue Codex de la PR #55) : un corps habillé assombrit ou fait clignoter son modèle, à partir de ses couleurs.
+            if (_looks.TryGetValue(id, out StyleBody look)) look.Tint(dead, stunned);
             if (!_renderers.TryGetValue(id, out Renderer renderer)) return;
-            Color color = _baseColors[id];
-            if (dead) color = Color.Lerp(color, Color.black, 0.75f);
-            else if (stunned) color = Color.Lerp(color, new Color(1f, 1f, 0.4f), 0.5f + 0.5f * Mathf.Sin(Time.time * 12f));
-            Material material = renderer.material;
+            ApplyColor(renderer.material, Shade(_baseColors[id], dead, stunned));
+        }
+
+        /// <summary>Teinte d'un combattant : assombri s'il est mort, clignotant jaune s'il est étourdi, sinon sa couleur.</summary>
+        internal static Color Shade(Color color, bool dead, bool stunned)
+        {
+            if (dead) return Color.Lerp(color, Color.black, 0.75f);
+            if (stunned) return Color.Lerp(color, new Color(1f, 1f, 0.4f), 0.5f + 0.5f * Mathf.Sin(Time.time * 12f));
+            return color;
+        }
+
+        internal static void ApplyColor(Material material, Color color)
+        {
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
             if (material.HasProperty("_Color")) material.SetColor("_Color", color);
         }

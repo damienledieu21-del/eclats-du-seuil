@@ -16,6 +16,11 @@ namespace EdS.Game
         private readonly List<string> _clips = new List<string>();
         private bool _fallen;
         private string _playing;
+
+        /// <summary>Matériaux du modèle (copies propres à ce corps) et leur couleur d'origine, pour la teinte.</summary>
+        private readonly List<Material> _materials = new List<Material>();
+        private readonly List<Color> _colors = new List<Color>();
+        private bool _tinted;
         private Vector3 _last;
         private bool _started;
         private float _speed;
@@ -25,12 +30,29 @@ namespace EdS.Game
         {
             _look = look;
             _animation = animation;
+            foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
+                foreach (Material m in r.materials)
+                {
+                    _materials.Add(m);
+                    _colors.Add(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white);
+                }
             if (animation == null) return;
             foreach (AnimationState state in animation)
             {
                 _clips.Add(state.name);
                 state.wrapMode = StyleRules.Loops(state.name) ? WrapMode.Loop : WrapMode.ClampForever;
             }
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #55 : même signal que le corps simple : assombri mort, clignotant jaune étourdi (chaque image tant que
+        /// l'étourdissement dure), sinon les couleurs d'origine du modèle (rendues une fois au retour).
+        /// </summary>
+        public void Tint(bool dead, bool stunned)
+        {
+            if (!dead && !stunned && !_tinted) return;
+            for (int i = 0; i < _materials.Count; i++) ArenaView.ApplyColor(_materials[i], ArenaView.Shade(_colors[i], dead, stunned));
+            _tinted = dead || stunned;
         }
 
         /// <summary>Demande l'animation d'attaque pendant un court instant (compétence lancée par le joueur).</summary>
