@@ -175,4 +175,14 @@ public class StyleRulesTests
         Assert.Contains("ArenaView.ApplyColor(_materials[i], ArenaView.Shade(_colors[i], dead, stunned));", look, StringComparison.Ordinal);
         Assert.Contains("foreach (Material m in r.materials)", look, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Le_modele_n_attaque_que_si_la_competence_part()
+    {
+        // Revue Codex de la PR #55 : une compétence refusée (recharge, emplacement vide, étourdi) ne joue pas l'attaque ; les trois chemins
+        // d'entrée (doigt, touches 1 à 4, ultime) passent par le résultat de UseSlot.
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(\)").Count);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"&& _combat\.UseSlot\([^;]*\)\)\s*_arena\.Strike\(\);").Count);
+    }
 }

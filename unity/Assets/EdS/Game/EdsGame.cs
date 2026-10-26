@@ -588,26 +588,17 @@ namespace EdS.Game
                 Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), _touch.GuardHeld));
             if (Input.GetKeyDown(KeyCode.Space) || _touch.ParryPressed) _combat.Parry();
             // Sous-lot 11.8 : boutons tactiles (compétences 1 à 4 et ultime, cible suivante, allié visé en réseau).
-            if (_touch.SlotPressed >= 0)
-            {
-                _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed);
-                _arena.Strike();   // essai de style : le modèle du joueur attaque
-            }
+            // Essai de style : le modèle du joueur n'attaque que si la compétence part (revue Codex de la PR #55 : UseSlot rend faux pour une
+            // compétence en recharge, un emplacement vide ou un étourdissement, sans rien envoyer).
+            if (_touch.SlotPressed >= 0 && _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed)) _arena.Strike();
             if (_touch.TargetPressed) _combat.NextTarget();
             if (_touch.AllyPressed && _combat is NetworkCombat ally) ally.NextAlly();
             KeyCode[] slots = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4 };
             KeyCode[] pad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4 };
             for (int i = 0; i < slots.Length; i++)
-                if (Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i]))
-                {
-                    _combat.UseSlot(i);
-                    _arena.Strike();
-                }
-            if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5))
-            {
-                _combat.UseSlot(RealtimeCombat.UltimateSlot);
+                if ((Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i])) && _combat.UseSlot(i)) _arena.Strike();
+            if ((Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5)) && _combat.UseSlot(RealtimeCombat.UltimateSlot))
                 _arena.Strike();
-            }
             if (Input.GetKeyDown(KeyCode.Tab)) _combat.NextTarget();
             if (Input.GetKeyDown(KeyCode.G) && _combat is NetworkCombat network) network.NextAlly();
         }
