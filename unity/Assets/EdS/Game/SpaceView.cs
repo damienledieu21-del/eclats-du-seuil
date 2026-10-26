@@ -216,8 +216,12 @@ namespace EdS.Game
                 string id = "lisiere" + i;
                 var at = new Vector3((float)spots[i].X, 0f, (float)spots[i].Z);
                 // Une place sur quatre : du bois mort (souche, tronc couché) à sa taille réelle, s'il y en a.
-                if (debris && i % 4 == 3) StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true);
-                else StyleLook.Decor(_root.transform, StyleSlot.Tree, id, at, 5f + 0.035f * StyleRules.Variant(id, 100));
+                GameObject look = debris && i % 4 == 3
+                    ? StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true)
+                    : StyleLook.Decor(_root.transform, StyleSlot.Tree, id, at, 5f + 0.035f * StyleRules.Variant(id, 100));
+                // Revue Codex de la PR #56 : en vue 2, la caméra (6 m derrière le Bastion) peut entrer dans la lisière quand il longe le bord ;
+                // ces arbres sont coupés comme ceux des obstacles quand ils le cachent.
+                if (look != null) AddModelOccluders(look);
             }
         }
 

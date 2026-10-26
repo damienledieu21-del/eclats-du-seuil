@@ -418,7 +418,9 @@ public class StyleRulesTests
         // Le terrain remplace le sol simple (et ses données sont rendues), la forêt pousse seulement sur le terrain.
         Assert.Contains("_terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space));", view, StringComparison.Ordinal);
         Assert.Contains("if (terrain) Forest(space);", view, StringComparison.Ordinal);
-        Assert.Contains("if (debris && i % 4 == 3) StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true);", view, StringComparison.Ordinal);
+        Assert.Contains("? StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true)", view, StringComparison.Ordinal);
+        // Revue Codex de la PR #56 : les arbres de la lisière sont coupés devant le Bastion comme ceux des obstacles.
+        Assert.Contains("if (look != null) AddModelOccluders(look);", view, StringComparison.Ordinal);
         Assert.Contains("StyleWorld.Release(_terrain);", view, StringComparison.Ordinal);
         // Ambiance posée au démarrage, réglable pendant le jeu dans l'éditeur ; le halo seulement sur ordinateur.
         Assert.Contains("StyleWorld.Ambience(_camera.Camera);", game, StringComparison.Ordinal);
