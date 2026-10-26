@@ -145,4 +145,14 @@ public class StyleRulesTests
         Assert.Contains("unity/Assets/Style/", ignore, StringComparison.Ordinal);
         Assert.Contains("unity/Assets/Style.meta", ignore, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Les_modeles_du_decor_gardent_la_coupe_devant_le_joueur()
+    {
+        // Revue Codex de la PR #55 : un arbre ou un rocher des packs, entre la caméra et le Bastion, est retiré comme le décor simple.
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("AddModelOccluders(tree);", view, StringComparison.Ordinal);
+        Assert.Contains("AddModelOccluders(rock);", view, StringComparison.Ordinal);
+        Assert.Contains("_occluders.Add(new Occluder { Transform = r.transform, Renderer = r, Lower = false, Min = box.min, Max = box.max });", view, StringComparison.Ordinal);
+    }
 }

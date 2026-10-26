@@ -103,7 +103,12 @@ namespace EdS.Game
             if (id.StartsWith("arbre"))
             {
                 // Essai de style : un arbre des packs à la place du tronc et de sa boule de feuillage (même emprise au moteur).
-                if (StyleLook.Decor(_root.transform, StyleSlot.Tree, id, Center(points), 5f) != null) return;
+                GameObject tree = StyleLook.Decor(_root.transform, StyleSlot.Tree, id, Center(points), 5f);
+                if (tree != null)
+                {
+                    AddModelOccluders(tree);
+                    return;
+                }
                 Prism(id, points, 2.4f, ArenaView.MakeMaterial(new Color(0.36f, 0.25f, 0.15f)), true);
                 Vector3 c = Center(points);
                 GameObject leaves = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -148,7 +153,12 @@ namespace EdS.Game
             if (StyleRules.ForObstacle(id) == StyleSlot.Rock)
             {
                 float width = Mathf.Max(points.Max(p => p.x) - points.Min(p => p.x), points.Max(p => p.z) - points.Min(p => p.z));
-                if (StyleLook.Decor(_root.transform, StyleSlot.Rock, id, Center(points), 0f, width * 1.1f) != null) return;
+                GameObject rock = StyleLook.Decor(_root.transform, StyleSlot.Rock, id, Center(points), 0f, width * 1.1f);
+                if (rock != null)
+                {
+                    AddModelOccluders(rock);
+                    return;
+                }
             }
             Prism(id, points, 2f, ArenaView.MakeMaterial(new Color(0.45f, 0.42f, 0.38f)), true);
         }
@@ -235,6 +245,20 @@ namespace EdS.Game
 
         private void AddOccluder(Transform transform, bool lower, Vector3 min, Vector3 max) =>
             _occluders.Add(new Occluder { Transform = transform, Renderer = transform.GetComponent<Renderer>(), Lower = lower, Min = min, Max = max });
+
+        /// <summary>
+        /// Essai de style (revue Codex de la PR #55) : un arbre ou un rocher des packs garde la coupe du décor qu'il remplace : chacune de ses
+        /// parties est retirée tant que le modèle (sa boîte entière) se trouve entre la caméra et le joueur.
+        /// </summary>
+        private void AddModelOccluders(GameObject model)
+        {
+            Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
+            if (renderers == null || renderers.Length == 0) return;
+            Bounds box = renderers[0].bounds;
+            foreach (Renderer r in renderers) box.Encapsulate(r.bounds);
+            foreach (Renderer r in renderers)
+                _occluders.Add(new Occluder { Transform = r.transform, Renderer = r, Lower = false, Min = box.min, Max = box.max });
+        }
 
         /// <summary>
         /// Pont : tablier entre les deux bras de la rivière (« riviere_sud » et « riviere_nord »), s'ils existent. La rivière coule suivant z
