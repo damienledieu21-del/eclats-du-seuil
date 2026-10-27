@@ -26,7 +26,7 @@ namespace UnityEngine
     public sealed class MeshRenderer : Renderer { }
     public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } public Mesh sharedMesh { get; set; } }
     public sealed class MeshFilter : Component { public Mesh mesh { get; set; } public Mesh sharedMesh { get; set; } }
-    public sealed class Mesh : Object { public Mesh() { } public int vertexCount => 0; public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }
+    public sealed class Mesh : Object { public Mesh() { } public int vertexCount => 0; public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateTangents() { } public void RecalculateBounds() { } }
     public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static void Save() { } }
     public class Collider : Component { }
     public enum LightType { Spot, Directional, Point }

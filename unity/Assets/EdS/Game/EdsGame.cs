@@ -226,6 +226,13 @@ namespace EdS.Game
         /// <summary>Un écran (sac, journal, atelier) ou un dialogue de l'aventure couvre les commandes tactiles (revue Codex de la PR #49).</summary>
         private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null);
 
+        /// <summary>
+        /// Salle d'attente du réseau affichée (avant, entre et après les combats) : ses boutons (« Je suis prêt », « Quitter la partie »)
+        /// se cliquent, la caméra à la souris libre n'y prend pas le curseur (revue Codex de la PR #57). Même condition que son affichage.
+        /// </summary>
+        private bool LobbyShown => Network && _talents == null && (_net.Client == null || _net.Client.Status != ClientStatus.Combat
+            && _net.Client.Status != ClientStatus.Disconnected && _net.Client.Status != ClientStatus.Reconnecting);
+
         /// <summary>Quitte l'aventure (sauvegardée) : l'entraînement ou le réseau prend la place.</summary>
         private void LeaveAdventure()
         {
@@ -510,7 +517,7 @@ namespace EdS.Game
             // Caméra à la souris libre (choix de Damien du 26 octobre 2026, « comme ESO ») : hors des écrans et des menus, la souris tourne la
             // caméra, curseur caché ; Alt tenu rend le curseur pour cliquer.
             // Échap rend le curseur (dans l'éditeur, pour arrêter le jeu) ; un clic dans le jeu le reprend.
-            bool covered = _talents != null || _menuOpen || _paused || AdventureCovered;
+            bool covered = _talents != null || _menuOpen || _paused || AdventureCovered || LobbyShown;
             if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;
             else if (_cursorReleased && !covered && Input.GetMouseButtonDown(0)) _cursorReleased = false;
             bool cursorWanted = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt) || _cursorReleased;
@@ -1025,8 +1032,7 @@ namespace EdS.Game
                 else if (menu == NetworkScreen.Action.Close) _menuOpen = false;
                 return;
             }
-            if (Network && _talents == null && (_net.Client == null || _net.Client.Status != ClientStatus.Combat && _net.Client.Status != ClientStatus.Disconnected
-                && _net.Client.Status != ClientStatus.Reconnecting))
+            if (LobbyShown)
             {
                 // Salle d'attente (avant, entre et après les combats) ; l'arène du dernier combat reste visible derrière.
                 NetworkScreen.Action lobby = _netScreen.DrawLobby(_net, NetworkBuildName(), _lastCombat);
