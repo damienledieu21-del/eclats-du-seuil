@@ -81,7 +81,7 @@ namespace EdS.Game
         public void DrawMini(AdventureSession a, IReadOnlyList<MapEnemy> enemies)
         {
             Rect box = MiniRect;
-            Hud.Fill(new Rect(box.x - 4f, box.y - 4f, box.width + 8f, box.height + 8f), Frame);
+            Hud.Panel(new Rect(box.x - 4f, box.y - 4f, box.width + 8f, box.height + 8f), Frame);
             Draw(a, box, enemies, false);
         }
 
