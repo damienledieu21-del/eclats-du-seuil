@@ -744,6 +744,8 @@ public class StyleRulesTests
         // Pont, palissade, haie, moulin.
         Assert.Contains("StyleLook.Bridge(_root.transform,", view, StringComparison.Ordinal);
         Assert.Contains("Palisade(id, points);", view, StringComparison.Ordinal);
+        // Revue Codex de la PR #58 (3e tour) : la palissade calcule ses tangentes (relief de l'écorce).
+        Assert.Contains("mesh.RecalculateTangents();   // revue Codex de la PR #58 (3e tour)", view, StringComparison.Ordinal);
         Assert.Contains("if (fence == StyleFence.Hedge && Hedge(id, points)) return;", view, StringComparison.Ordinal);
         Assert.Contains("StyleLook.Building(_root.transform, StyleProp.Mill, id, Center(points), 0f, side);", view, StringComparison.Ordinal);
         Assert.Contains("_occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });", view, StringComparison.Ordinal);
