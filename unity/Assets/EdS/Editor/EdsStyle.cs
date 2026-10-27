@@ -4,6 +4,7 @@ using System.Linq;
 using EdS.Runtime;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace EdS.Game.Editor
@@ -42,11 +43,13 @@ namespace EdS.Game.Editor
             var notes = new List<string>();
 
             // Textures d'abord : cartes de relief, ciel (les matériaux et le terrain s'en servent).
-            List<string> textures = AssetDatabase.FindAssets("t:Texture2D", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath)
-                .Where(p => !p.StartsWith(Generated + "/")).Distinct().ToList();
+            // Essai réaliste 4 (choix de Damien du 27 octobre 2026) : un fichier de Poly Haven présent en plusieurs résolutions (1k de l'essai
+            // 3, 2k ou 8k de l'essai 4) ne compte qu'une fois, dans sa plus haute résolution.
+            List<string> textures = StyleRules.Highest(AssetDatabase.FindAssets("t:Texture2D", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => !p.StartsWith(Generated + "/")).Distinct()).ToList();
             foreach (string path in textures) Texture(path);
 
-            List<string> models = AssetDatabase.FindAssets("t:Model", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
+            List<string> models = StyleRules.Highest(AssetDatabase.FindAssets("t:Model", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath).Distinct()).ToList();
             List<string> sounds = AssetDatabase.FindAssets("t:AudioClip", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
 
             string hero = StyleRules.Candidates(models, StyleSlot.Hero).FirstOrDefault();
@@ -58,7 +61,17 @@ namespace EdS.Game.Editor
 
             // Matériaux réalistes des modèles de Poly Haven (couleur, relief, transparence de l'herbe). Les personnages de Mixamo ont les leurs
             // (MixamoMaterials) : à une deuxième préparation, leurs textures déjà sorties ne doivent pas les remplacer toutes par une seule.
-            foreach (string model in models.Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p))) RealisticMaterial(model, notes);
+            // Essai réaliste 4 : arbres, arbustes et plantes bougent au vent (shader « EdS/Feuillage »), les arbres moins que les herbes.
+            var wind = new Dictionary<string, float>();
+            foreach (string p in StyleRules.ForCatalog(models, StyleSlot.Plant, 16).Concat(StyleRules.PropCandidates(models, StyleProp.Herb))) wind[p] = 1f;
+            foreach (string p in StyleRules.ForCatalog(models, StyleSlot.Shrub, 6)) wind[p] = 0.6f;
+            foreach (string p in StyleRules.ForCatalog(models, StyleSlot.Tree, 8)) wind[p] = 0.25f;
+            // Arbres de Sketchfab (fichiers de Tree It, sans matière) : un modèle préparé par arbre, une matière par pièce (TreePrefab).
+            var trees = new Dictionary<string, string>();
+            foreach (string tree in StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Where(IsSketchfab))
+                if (TreePrefab(tree, notes) is string prefab) trees[tree] = prefab;
+            foreach (string model in models.Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p) && !trees.ContainsKey(p)))
+                RealisticMaterial(model, wind.TryGetValue(model, out float w) ? w : 0f, notes);
             // Essai de Damien du 26 octobre 2026 : le paladin de Mixamo était tout blanc (ses textures restent dans son fichier) ; elles sont
             // sorties à côté de lui, puis chaque matériau reçoit les siennes.
             if (hero != null && StyleRules.IsRealistic(hero)) MixamoMaterials(hero, notes);
@@ -95,7 +108,8 @@ namespace EdS.Game.Editor
             catalog.Wolf = Load(wolf);
             catalog.Boar = Load(boar);
             catalog.HeroClips = heroClips.SelectMany(Clips).ToArray();
-            catalog.Trees = StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Select(Load).Where(m => m != null).ToArray();
+            catalog.Trees = StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Select(p => trees.TryGetValue(p, out string prefab) ? prefab : p).Select(Load)
+                .Where(m => m != null).ToArray();
             catalog.Rocks = StyleRules.ForCatalog(models, StyleSlot.Rock, 6).Select(Load).Where(m => m != null).ToArray();
             catalog.Plants = StyleRules.ForCatalog(models, StyleSlot.Plant, 16).Select(Load).Where(m => m != null).ToArray();
             catalog.Debris = StyleRules.ForCatalog(models, StyleSlot.Debris, 6).Select(Load).Where(m => m != null).ToArray();
@@ -113,6 +127,7 @@ namespace EdS.Game.Editor
                     };
                 }).Where(p => p.Model != null).ToArray();
             catalog.Water = WaterMaterial(notes);
+            catalog.Grass = ShaderMaterial("EdS/Herbe", "Herbe", notes);
             // Les réglages faits à la main (hauteur, rotation) sont gardés d'une préparation à l'autre.
             catalog.Characters = characters.Select(c =>
             {
@@ -157,6 +172,9 @@ namespace EdS.Game.Editor
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
             PostProcessing(notes);
+            catalog.PhonePipeline = RenderQuality(notes);
+            EditorUtility.SetDirty(catalog);
+            AssetDatabase.SaveAssets();
 
             int found = new[] { catalog.Hit, catalog.Block, catalog.Parry, catalog.Death, catalog.Potion, catalog.Gather, catalog.Craft }.Count(c => c != null);
             int grounds = new[] { catalog.SoilColor, catalog.RockColor, catalog.GrassColor }.Count(t => t != null);
@@ -165,7 +183,8 @@ namespace EdS.Game.Editor
                 + "\nPersonnages : " + (catalog.Characters.Length == 0 ? "aucun" : string.Join(", ", catalog.Characters.Select(c => c.Id + " (" + c.Clips.Length + " animations)")))
                 + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 6, arbustes des haies : " + catalog.Shrubs.Length
                 + "\nObjets : " + (catalog.Props.Length == 0 ? "aucun" : string.Join(", ", catalog.Props.Select(p => PropName(p.Kind))))
-                + "\nEau : " + (catalog.Water != null ? "vraie eau" : "eau simple")
+                + "\nEau : " + (catalog.Water != null ? "vraie eau" : "eau simple") + ", herbe en brins : " + (catalog.Grass != null ? "oui" : "non")
+                + ", rendu du téléphone : " + (catalog.PhonePipeline != null ? "oui" : "non")
                 + "\nSons : " + found + " sur 7"
                 + "\nCiel : " + (catalog.Sky != null ? "oui" : "non") + ", sols : " + grounds + " sur 3"
                 + (notes.Count > 0 ? "\n\n" + string.Join("\n", notes) : "")
@@ -223,30 +242,61 @@ namespace EdS.Game.Editor
                 importer.wrapMode = TextureWrapMode.Clamp;
                 changed = true;
             }
+            changed |= PlatformSizes(importer, StyleRules.IsSky(path));
             if (changed) importer.SaveAndReimport();
         }
 
         /// <summary>
-        /// Matériau URP d'un modèle de Poly Haven, d'après ses textures (dossier « textures » à côté du modèle : couleur, relief,
-        /// transparence) ; l'herbe reçoit sa transparence (couleur et alpha réunis dans une texture de <c>Generated</c>), vue des deux
-        /// côtés. Tous les matériaux du modèle sont remplacés par celui-ci.
+        /// Essai réaliste 4 (demande de Damien du 27 octobre 2026 : « deux packs de textures, un pour le PC et un pour le téléphone ») : un
+        /// seul fichier, pleine taille sur ordinateur (le ciel jusqu'à 8k, le reste jusqu'à 2k), réduit par Unity à la construction pour
+        /// Android (1k, le ciel 2k). Rend vrai si un réglage a changé.
         /// </summary>
-        private static void RealisticMaterial(string modelPath, List<string> notes)
+        private static bool PlatformSizes(TextureImporter importer, bool sky)
+        {
+            bool changed = false;
+            int desktop = sky ? 8192 : 2048, phone = sky ? 2048 : 1024;
+            if (importer.maxTextureSize < desktop)
+            {
+                importer.maxTextureSize = desktop;
+                changed = true;
+            }
+            TextureImporterPlatformSettings android = importer.GetPlatformTextureSettings("Android");
+            if (!android.overridden || android.maxTextureSize != phone)
+            {
+                android.overridden = true;
+                android.maxTextureSize = phone;
+                importer.SetPlatformTextureSettings(android);
+                changed = true;
+            }
+            return changed;
+        }
+
+        /// <summary>
+        /// Matériau URP d'un modèle de Poly Haven ou de Sketchfab, d'après ses textures (dossier du modèle : couleur, relief, transparence) ;
+        /// l'herbe et les feuilles reçoivent leur transparence (couleur et alpha réunis dans une texture de <c>Generated</c>), vues des deux
+        /// côtés. Un modèle à plusieurs matières (le ponton : planches et pieux ; les arbres : écorce et feuilles) reçoit un matériau par
+        /// matière, fait des textures qui lui correspondent (<see cref="StyleRules.MaterialTexture"/>, <see cref="StyleRules.AlphaFor"/>).
+        /// Essai réaliste 4 : avec <paramref name="wind"/> positif (arbres, arbustes, plantes), le matériau prend le shader « EdS/Feuillage »
+        /// (vent, contre-jour), s'il se compile ; sinon URP Lit.
+        /// </summary>
+        private static void RealisticMaterial(string modelPath, float wind, List<string> notes)
         {
             if (!(AssetImporter.GetAtPath(modelPath) is ModelImporter importer)) return;
             string folder = Path.GetDirectoryName(modelPath).Replace('\\', '/');
             List<string> maps = AssetDatabase.FindAssets("t:Texture2D", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath).Distinct()
-                .OrderBy(p => p, System.StringComparer.Ordinal).ToList();
-            string color = maps.FirstOrDefault(p => StyleRules.IsColorMap(p) && !StyleRules.IsSky(p));
+                .Where(p => !StyleRules.IsSky(p)).OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            maps = StyleRules.Highest(maps).ToList();
+            string color = maps.FirstOrDefault(StyleRules.IsColorMap);
             if (color == null) return;
             string normal = maps.FirstOrDefault(StyleRules.IsNormalMap);
-            string alpha = maps.FirstOrDefault(StyleRules.IsAlphaMap);
+            string alpha = StyleRules.AlphaFor(color, maps) ?? (maps.Count(StyleRules.IsAlphaMap) == 1 ? maps.First(StyleRules.IsAlphaMap) : null);
             Shader lit = Shader.Find("Universal Render Pipeline/Lit");
             if (lit == null)
             {
                 notes.Add("Rendu URP absent : matériaux de Poly Haven laissés tels quels.");
                 return;
             }
+            Shader leaves = Shader.Find("EdS/Feuillage");
             string name = Path.GetFileNameWithoutExtension(modelPath);
             // Essai du 27 octobre 2026 : le ponton a deux matières (planches, pieux) ; chacune prend les textures à son nom.
             List<Material> embeddedMaterials = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().ToList();
@@ -257,11 +307,10 @@ namespace EdS.Game.Editor
                 Texture2D cutout = null;
                 foreach (Material embedded in embeddedMaterials)
                 {
-                    string own = StyleRules.MaterialTexture(embedded.name, maps.Where(p => !StyleRules.IsSky(p)), false) ?? color;
+                    string own = StyleRules.MaterialTexture(embedded.name, maps, false) ?? color;
                     string ownNormal = StyleRules.MaterialTexture(embedded.name, maps, true) ?? (own == color ? normal : null);
-                    bool ownAlpha = alpha != null && own == color;
-                    if (ownAlpha && cutout == null) cutout = WithAlpha(color, alpha, Generated + "/" + name + "_couleur_alpha.png", notes);
-                    Texture2D ownMap = ownAlpha ? cutout : Texture2DAt(own);
+                    // Transparence de même racine (feuilles), sinon celle du modèle pour les matières qui prennent sa couleur (toiles du moulin).
+                    string ownAlpha = StyleRules.AlphaFor(own, maps) ?? (own == color ? alpha : null);
                     string path = Generated + "/" + name + " " + embedded.name + ".mat";
                     Material part = AssetDatabase.LoadAssetAtPath<Material>(path);
                     if (part == null)
@@ -269,26 +318,33 @@ namespace EdS.Game.Editor
                         part = new Material(lit);
                         AssetDatabase.CreateAsset(part, path);
                     }
-                    part.SetTexture("_BaseMap", ownMap);
-                    part.SetTexture("_MainTex", ownMap);
-                    part.SetFloat("_Smoothness", 0.15f);
-                    if (ownNormal != null)
+                    // Couleur et alpha du modèle réunis une seule fois pour toutes les matières qui les partagent.
+                    Texture2D partMap;
+                    if (ownAlpha == null) partMap = Texture2DAt(own);
+                    else if (own == color && ownAlpha == alpha)
                     {
-                        part.SetTexture("_BumpMap", Texture2DAt(ownNormal));
-                        part.EnableKeyword("_NORMALMAP");
+                        if (cutout == null) cutout = WithAlpha(color, alpha, Generated + "/" + name + "_couleur_alpha.png", notes);
+                        partMap = cutout;
                     }
-                    if (ownAlpha)
-                    {
-                        part.SetFloat("_AlphaClip", 1f);
-                        part.SetFloat("_Cutoff", 0.45f);
-                        part.EnableKeyword("_ALPHATEST_ON");
-                        part.SetFloat("_Cull", 0f);
-                        part.renderQueue = 2450;
-                    }
-                    EditorUtility.SetDirty(part);
+                    else partMap = WithAlpha(own, ownAlpha, Generated + "/" + name + " " + embedded.name + "_couleur_alpha.png", notes);
+                    Configure(part, lit, leaves, wind, partMap, Texture2DAt(ownNormal), ownAlpha != null);
                     importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), part);
                 }
                 importer.SaveAndReimport();
+                return;
+            }
+            // Deuxième préparation d'un modèle à plusieurs matières (déjà reliées à leurs matériaux) : seuls le shader et le vent changent.
+            List<Material> parts = AssetDatabase.FindAssets("t:Material", new[] { Generated }).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => Path.GetFileName(p).StartsWith(name + " ", System.StringComparison.Ordinal)).Select(p => AssetDatabase.LoadAssetAtPath<Material>(p))
+                .Where(m => m != null).ToList();
+            if (embeddedMaterials.Count == 0 && parts.Count > 1)
+            {
+                foreach (Material part in parts)
+                {
+                    Texture2D partMap = part.GetTexture("_BaseMap") as Texture2D;
+                    Configure(part, lit, leaves, wind, partMap, part.GetTexture("_BumpMap") as Texture2D, part.GetFloat("_Cutoff") > 0f && partMap != null
+                        && AssetDatabase.GetAssetPath(partMap).StartsWith(Generated + "/", System.StringComparison.Ordinal));
+                }
                 return;
             }
             string materialPath = Generated + "/" + name + ".mat";
@@ -299,15 +355,38 @@ namespace EdS.Game.Editor
                 AssetDatabase.CreateAsset(material, materialPath);
             }
             Texture2D baseMap = alpha != null ? WithAlpha(color, alpha, Generated + "/" + name + "_couleur_alpha.png", notes) : Texture2DAt(color);
+            Configure(material, lit, leaves, wind, baseMap, Texture2DAt(normal), alpha != null);
+            foreach (Material embedded in embeddedMaterials)
+                importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), material);
+            importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Réglage d'un matériau réaliste : URP Lit, ou « EdS/Feuillage » pour ce que le vent fait bouger (<paramref name="wind"/> positif,
+        /// shader compilé). <paramref name="alpha"/> : transparence découpée, vue des deux côtés, feuilles qui frémissent.
+        /// </summary>
+        private static void Configure(Material material, Shader lit, Shader leaves, float wind, Texture2D baseMap, Texture2D normal, bool alpha)
+        {
+            bool foliage = wind > 0f && leaves != null && leaves.isSupported;
+            Shader shader = foliage ? leaves : lit;
+            if (material.shader != shader) material.shader = shader;
             material.SetTexture("_BaseMap", baseMap);
             material.SetTexture("_MainTex", baseMap);
             material.SetFloat("_Smoothness", 0.15f);
             if (normal != null)
             {
-                material.SetTexture("_BumpMap", Texture2DAt(normal));
+                material.SetTexture("_BumpMap", normal);
                 material.EnableKeyword("_NORMALMAP");
             }
-            if (alpha != null)
+            if (foliage)
+            {
+                material.SetFloat("_Wind", wind);
+                material.SetFloat("_Flutter", alpha ? 1f : 0f);
+                material.SetFloat("_Cutoff", alpha ? 0.45f : 0f);
+                material.enableInstancing = true;
+                material.renderQueue = 2450;
+            }
+            else if (alpha)
             {
                 material.SetFloat("_AlphaClip", 1f);
                 material.SetFloat("_Cutoff", 0.45f);
@@ -316,9 +395,6 @@ namespace EdS.Game.Editor
                 material.renderQueue = 2450;
             }
             EditorUtility.SetDirty(material);
-            foreach (Material embedded in AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>())
-                importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), material);
-            importer.SaveAndReimport();
         }
 
         /// <summary>
@@ -430,7 +506,8 @@ namespace EdS.Game.Editor
             AssetDatabase.ImportAsset(target);
             if (AssetImporter.GetAtPath(target) is TextureImporter importer)
             {
-                importer.alphaIsTransparency = true;
+                Cutout(importer);
+                PlatformSizes(importer, false);
                 importer.SaveAndReimport();
             }
             return Texture2DAt(target);
@@ -510,6 +587,61 @@ namespace EdS.Game.Editor
             AssetDatabase.SaveAssets();
         }
 
+        /// <summary>
+        /// Texture à transparence découpée (feuilles, herbes) : bords propres, et des réductions de loin (mipmaps) qui gardent la même part
+        /// de feuillage au seuil du shader, pour que les arbres ne se dégarnissent pas au loin. Rend vrai si un réglage a changé.
+        /// </summary>
+        private static bool Cutout(TextureImporter importer)
+        {
+            if (importer.alphaIsTransparency && importer.mipMapsPreserveCoverage && Mathf.Approximately(importer.alphaTestReferenceValue, 0.45f)) return false;
+            importer.alphaIsTransparency = true;
+            importer.mipMapsPreserveCoverage = true;
+            importer.alphaTestReferenceValue = 0.45f;
+            return true;
+        }
+
+        /// <summary>Fichier rangé dans un dossier « Sketchfab ».</summary>
+        private static bool IsSketchfab(string path) => ("/" + path.Replace('\\', '/').ToLowerInvariant()).Contains("/sketchfab/");
+
+        /// <summary>
+        /// Essai réaliste 4 : arbre de Sketchfab exporté par Tree It (FBX 6.1 sans matière : une texture posée sur chaque pièce). Un modèle
+        /// préparé est enregistré dans <c>Generated</c> : chaque pièce y reçoit son matériau « EdS/Feuillage » (écorce, ou feuillage à
+        /// transparence découpée qui frémit), d'après son nom (<see cref="StyleRules.PartTextures"/>). Rend son chemin, ou null.
+        /// </summary>
+        private static string TreePrefab(string modelPath, List<string> notes)
+        {
+            GameObject model = Load(modelPath);
+            Shader lit = Shader.Find("Universal Render Pipeline/Lit"), leaves = Shader.Find("EdS/Feuillage");
+            if (model == null || lit == null) return null;
+            string folder = Path.GetDirectoryName(modelPath).Replace('\\', '/');
+            List<string> maps = AssetDatabase.FindAssets("t:Texture2D", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
+            foreach (string map in maps.Where(m => StyleRules.IsFoliage(m) && StyleRules.IsColorMap(m)))
+                if (AssetImporter.GetAtPath(map) is TextureImporter importer && Cutout(importer)) importer.SaveAndReimport();
+            string name = Path.GetFileNameWithoutExtension(modelPath);
+            GameObject instance = Object.Instantiate(model);
+            int dressed = 0;
+            foreach (Renderer renderer in instance.GetComponentsInChildren<Renderer>())
+            {
+                if (!(StyleRules.PartTextures(renderer.gameObject.name, maps) is (string color, string normal))) continue;
+                bool foliage = StyleRules.IsFoliage(color);
+                string path = Generated + "/" + name + " " + Path.GetFileNameWithoutExtension(color) + ".mat";
+                Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (material == null)
+                {
+                    material = new Material(lit);
+                    AssetDatabase.CreateAsset(material, path);
+                }
+                Configure(material, lit, leaves, 0.25f, Texture2DAt(color), Texture2DAt(normal), foliage);
+                renderer.sharedMaterials = Enumerable.Repeat(material, Mathf.Max(1, renderer.sharedMaterials.Length)).ToArray();
+                dressed++;
+            }
+            string prefabPath = Generated + "/" + name + " (arbre).prefab";
+            PrefabUtility.SaveAsPrefabAsset(instance, prefabPath);
+            Object.DestroyImmediate(instance);
+            notes.Add("Arbre " + Path.GetFileName(modelPath) + " : " + dressed + " pièces habillées.");
+            return dressed > 0 ? prefabPath : null;
+        }
+
         /// <summary>Fichier rangé dans un dossier « Mixamo » (héros, personnages, leurs animations).</summary>
         private static bool IsMixamo(string path) => ("/" + path.Replace('\\', '/').ToLowerInvariant()).Contains("/mixamo/");
 
@@ -535,6 +667,126 @@ namespace EdS.Game.Editor
             else if (material.shader != shader) material.shader = shader;
             EditorUtility.SetDirty(material);
             return material;
+        }
+
+        /// <summary>
+        /// Matériau d'un shader du jeu (« EdS/Herbe »), créé une fois dans <c>Generated</c> ; ses réglages faits à la main sont gardés. Null
+        /// si le shader ne se compile pas.
+        /// </summary>
+        private static Material ShaderMaterial(string shaderName, string file, List<string> notes)
+        {
+            Shader shader = Shader.Find(shaderName);
+            if (shader == null || !shader.isSupported)
+            {
+                notes.Add("Shader « " + shaderName + " » indisponible.");
+                return null;
+            }
+            string path = Generated + "/" + file + ".mat";
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader);
+                AssetDatabase.CreateAsset(material, path);
+            }
+            else if (material.shader != shader) material.shader = shader;
+            material.enableInstancing = true;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        /// <summary>
+        /// Essai réaliste 4 (demande de Damien du 27 octobre 2026 : « le maximum de réalisme », réglages différents pour le PC et le
+        /// téléphone) : le rendu du projet devient celui de l'ordinateur (ombres fines sur 90 m en quatre cascades, ombres douces, lissage
+        /// des bords, occlusion ambiante de l'écran) ; un rendu léger est créé pour le téléphone dans <c>Generated</c> (ombres sur 35 m,
+        /// deux cascades, sans occlusion), choisi par le jeu au lancement sur Android. Rend ce rendu léger, ou null sans URP.
+        /// </summary>
+        private static RenderPipelineAsset RenderQuality(List<string> notes)
+        {
+            var pipelines = new[] { GraphicsSettings.defaultRenderPipeline, QualitySettings.renderPipeline }.OfType<UniversalRenderPipelineAsset>().Distinct().ToList();
+            if (pipelines.Count == 0)
+            {
+                notes.Add("Rendu URP absent : réglages de l'image laissés tels quels.");
+                return null;
+            }
+            foreach (UniversalRenderPipelineAsset pipeline in pipelines)
+                Tune(pipeline, 90f, 4, 4096, true, 4);
+            int ssao = 0;
+            foreach (string path in AssetDatabase.FindAssets("t:UniversalRendererData", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => !p.StartsWith(Generated + "/", System.StringComparison.Ordinal)))
+                if (AmbientOcclusion(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(path))) ssao++;
+            notes.Add("Rendu de l'ordinateur : ombres fines et douces, bords lissés" + (ssao > 0 ? ", occlusion ambiante ajoutée." : "."));
+
+            string rendererPath = Generated + "/EdS_Renderer_Telephone.asset", pipelinePath = Generated + "/EdS_URP_Telephone.asset";
+            UniversalRendererData phoneRenderer = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(rendererPath);
+            if (phoneRenderer == null)
+            {
+                phoneRenderer = ScriptableObject.CreateInstance<UniversalRendererData>();
+                AssetDatabase.CreateAsset(phoneRenderer, rendererPath);
+            }
+            UniversalRenderPipelineAsset phone = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(pipelinePath);
+            if (phone == null)
+            {
+                phone = UniversalRenderPipelineAsset.Create(phoneRenderer);
+                AssetDatabase.CreateAsset(phone, pipelinePath);
+            }
+            PostProcessData data = AssetDatabase.LoadAssetAtPath<PostProcessData>(PostProcessDataPath);
+            if (data != null && phoneRenderer.postProcessData == null)
+            {
+                phoneRenderer.postProcessData = data;
+                EditorUtility.SetDirty(phoneRenderer);
+            }
+            Tune(phone, 35f, 2, 1024, false, 2);
+            AssetDatabase.SaveAssets();
+            return phone;
+        }
+
+        /// <summary>Réglages d'ombres, de lissage et de lumières d'un rendu URP (champs absents de cette version d'URP : ignorés).</summary>
+        private static void Tune(UniversalRenderPipelineAsset pipeline, float shadowDistance, int cascades, int shadowResolution, bool softShadows, int msaa)
+        {
+            var so = new SerializedObject(pipeline);
+            void Set(string name, System.Action<SerializedProperty> apply)
+            {
+                SerializedProperty property = so.FindProperty(name);
+                if (property != null) apply(property);
+            }
+            Set("m_ShadowDistance", p => p.floatValue = shadowDistance);
+            Set("m_ShadowCascadeCount", p => p.intValue = cascades);
+            Set("m_MainLightShadowmapResolution", p => p.intValue = shadowResolution);
+            Set("m_MainLightShadowsSupported", p => p.boolValue = true);
+            Set("m_SoftShadowsSupported", p => p.boolValue = softShadows);
+            Set("m_SoftShadowQuality", p => p.intValue = softShadows ? 3 : 1);
+            Set("m_MSAA", p => p.intValue = msaa);
+            Set("m_SupportsHDR", p => p.boolValue = true);
+            Set("m_AdditionalLightsRenderingMode", p => p.intValue = 1);   // LightRenderingMode.PerPixel (1 ; PerVertex vaut 2)
+            Set("m_AdditionalLightsPerObjectLimit", p => p.intValue = 4);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(pipeline);
+        }
+
+        /// <summary>
+        /// Ajoute l'occlusion ambiante de l'écran d'URP (coins et pieds des objets assombris) au renderer, s'il ne l'a pas : comme le bouton
+        /// « Add Renderer Feature » de l'inspecteur (la fonction et son identifiant dans la liste du renderer). Rend vrai si elle a été ajoutée.
+        /// </summary>
+        private static bool AmbientOcclusion(UniversalRendererData renderer)
+        {
+            if (renderer == null) return false;
+            System.Type type = typeof(UniversalRendererData).Assembly.GetType("UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion");
+            if (type == null || renderer.rendererFeatures.Any(f => f != null && f.GetType() == type)) return false;
+            var feature = (ScriptableRendererFeature)ScriptableObject.CreateInstance(type);
+            feature.name = "ScreenSpaceAmbientOcclusion";
+            AssetDatabase.AddObjectToAsset(feature, renderer);
+            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out string _, out long localId);
+            var so = new SerializedObject(renderer);
+            SerializedProperty features = so.FindProperty("m_RendererFeatures"), map = so.FindProperty("m_RendererFeatureMap");
+            if (features == null || map == null) return false;
+            features.arraySize++;
+            features.GetArrayElementAtIndex(features.arraySize - 1).objectReferenceValue = feature;
+            map.arraySize++;
+            map.GetArrayElementAtIndex(map.arraySize - 1).longValue = localId;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(renderer);
+            AssetDatabase.SaveAssets();
+            return true;
         }
 
         private static string PropName(StyleProp kind)

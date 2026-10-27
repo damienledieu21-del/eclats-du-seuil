@@ -33,6 +33,8 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (camera == null || catalog == null || catalog.Sky == null) return false;
             _camera = camera;
+            // Essai réaliste 4 : sur téléphone, le rendu léger du catalogue (ombres et effets réduits) ; l'ordinateur garde celui du projet.
+            if (Application.isMobilePlatform && catalog.PhonePipeline != null) QualitySettings.renderPipeline = catalog.PhonePipeline;
             RenderSettings.skybox = catalog.Sky;
             camera.clearFlags = CameraClearFlags.Skybox;
             foreach (Light light in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
@@ -127,7 +129,7 @@ namespace EdS.Game
             var data = new TerrainData();
             // Assez fin pour une berge (environ 0,4 m entre deux points sur l'aire des Vallons) ; plus grossier sur téléphone.
             data.heightmapResolution = Application.isMobilePlatform ? 257 : 513;
-            data.alphamapResolution = 256;
+            data.alphamapResolution = Application.isMobilePlatform ? 256 : 512;
             data.size = new Vector3(width, TerrainHeight, depth);
             int hres = data.heightmapResolution;
             var heights = new float[hres, hres];
@@ -250,6 +252,42 @@ namespace EdS.Game
         public static void AnimateWater(float time)
         {
             if (_water != null && !_shaderWater) _water.SetTextureOffset("_BaseMap", new Vector2(time * 0.03f, time * 0.05f));
+            // Essai réaliste 4 : les reflets de la sonde, dès que sa texture existe (sinon le ciel seul).
+            if (_water != null && _shaderWater)
+            {
+                Texture reflections = _probe != null ? _probe.realtimeTexture : null;
+                _water.SetTexture("_ReflectionCube", reflections);
+                _water.SetFloat("_ProbeWeight", reflections != null ? 1f : 0f);
+            }
+        }
+
+        private static ReflectionProbe _probe;
+
+        /// <summary>
+        /// Essai réaliste 4 : sonde de reflets prise une fois au-dessus de l'eau (<paramref name="center"/>, sur <paramref name="size"/>), pour
+        /// que la vraie eau reflète les berges, les arbres et le moulin ; l'eau elle-même (<paramref name="water"/>, couche « TransparentFX »)
+        /// n'y est pas. Rien sans la vraie eau.
+        /// </summary>
+        public static ReflectionProbe Reflections(Transform parent, Vector3 center, Vector3 size, IEnumerable<GameObject> water)
+        {
+            if (!RealWater) return null;
+            const int WaterLayer = 1;   // TransparentFX, couche fournie par Unity
+            foreach (GameObject go in water) go.layer = WaterLayer;
+            var holder = new GameObject("Reflets de la rivière (essai réaliste)");
+            holder.transform.SetParent(parent, false);
+            holder.transform.position = center;
+            ReflectionProbe probe = holder.AddComponent<ReflectionProbe>();
+            probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
+            probe.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
+            probe.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.NoTimeSlicing;
+            probe.resolution = Application.isMobilePlatform ? 128 : 512;
+            probe.size = size;
+            probe.hdr = true;
+            probe.cullingMask = ~(1 << WaterLayer);
+            probe.clearFlags = UnityEngine.Rendering.ReflectionProbeClearFlags.Skybox;
+            probe.RenderProbe();
+            _probe = probe;
+            return probe;
         }
 
         /// <summary>L'eau vient du shader « EdS/Eau » (surface sous le sol, berges creusées).</summary>

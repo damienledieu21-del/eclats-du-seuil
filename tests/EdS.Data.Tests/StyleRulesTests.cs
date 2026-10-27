@@ -753,7 +753,7 @@ public class StyleRulesTests
         Assert.Contains("StyleLook.Decor(holder, StyleSlot.Rock, m.Data.Id, holder.position, 0f, 1.1f);", markers, StringComparison.Ordinal);
         Assert.Contains("_markers.Face(_arena.Player.position, Time.deltaTime);", game, StringComparison.Ordinal);
         // Une deuxième préparation ne remplace plus les matières des personnages de Mixamo par une seule.
-        Assert.Contains("&& !IsMixamo(p))) RealisticMaterial(model, notes);", editor, StringComparison.Ordinal);
+        Assert.Contains("p != hero && !IsMixamo(p) && !trees.ContainsKey(p)))", editor, StringComparison.Ordinal);   // les arbres de Sketchfab ont leur préfabriqué (essai 4)
     }
 
     [Fact]
@@ -788,11 +788,12 @@ public class StyleRulesTests
         int single = editor.IndexOf("string materialPath = Generated + \"/\" + name + \".mat\";", StringComparison.Ordinal);
         Assert.True(many > 0 && single > many);
         string parts = editor.Substring(many, single - many);
-        Assert.Contains("bool ownAlpha = alpha != null && own == color;", parts, StringComparison.Ordinal);
-        Assert.Contains("cutout = WithAlpha(color, alpha, Generated + \"/\" + name + \"_couleur_alpha.png\", notes);", parts, StringComparison.Ordinal);
-        Assert.Contains("part.SetTexture(\"_BaseMap\", ownMap);", parts, StringComparison.Ordinal);
-        Assert.Contains("part.EnableKeyword(\"_ALPHATEST_ON\");", parts, StringComparison.Ordinal);
-        Assert.Contains("part.SetFloat(\"_Cull\", 0f);", parts, StringComparison.Ordinal);
+        // Essai réaliste 4 : transparence de même racine d'abord (feuilles), réglages de découpe dans Configure.
+        Assert.Contains("string ownAlpha = StyleRules.AlphaFor(own, maps) ?? (own == color ? alpha : null);", parts, StringComparison.Ordinal);
+        Assert.Contains("if (cutout == null) cutout = WithAlpha(color, alpha, Generated + \"/\" + name + \"_couleur_alpha.png\", notes);", parts, StringComparison.Ordinal);
+        Assert.Contains("Configure(part, lit, leaves, wind, partMap, Texture2DAt(ownNormal), ownAlpha != null);", parts, StringComparison.Ordinal);
+        Assert.Contains("material.EnableKeyword(\"_ALPHATEST_ON\");", editor, StringComparison.Ordinal);
+        Assert.Contains("material.SetFloat(\"_Cull\", 0f);", editor, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -828,5 +829,185 @@ public class StyleRulesTests
         Assert.Equal(1, StyleRules.UnionDistance(3.5, 1, overlap, StyleRules.UnionBoundary(overlap)), 6);
         Assert.Empty(StyleRules.UnionBoundary(null!));
         Assert.True(double.IsNegativeInfinity(StyleRules.UnionDistance(0, 0, rivers, new List<(double, double, double, double)>())));
+    }
+
+    [Fact]
+    public void Plus_haute_resolution_et_textures_par_appareil()
+    {
+        // Essai réaliste 4 (choix de Damien du 27 octobre 2026) : les fichiers 2k et le ciel 8k remplacent ceux de l'essai 3, restés sur
+        // le disque ; ce qui n'a pas de résolution dans son nom reste.
+        var paths = new[]
+        {
+            "Assets/Style/PolyHaven/rock_07/rock_07_1k.fbx", "Assets/Style/PolyHaven2k/rock_07/rock_07_2k.fbx",
+            "Assets/Style/PolyHaven/Ground/leafy_grass_diff_1k.jpg", "Assets/Style/PolyHaven2k/Ground/leafy_grass_diff_2k.jpg",
+            "Assets/Style/PolyHaven/Sky/kloofendal_48d_partly_cloudy_puresky_1k.hdr", "Assets/Style/PolyHaven2k/Sky/kloofendal_48d_partly_cloudy_puresky_8k.hdr",
+            "Assets/Style/PolyHaven/barrel_03/barrel_03_1k.fbx", "Assets/Style/Sketchfab/Windmill/textures/Windmill_albedo.png",
+            "Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx",
+        };
+        Assert.Equal(new[]
+        {
+            "Assets/Style/PolyHaven2k/rock_07/rock_07_2k.fbx", "Assets/Style/PolyHaven2k/Ground/leafy_grass_diff_2k.jpg",
+            "Assets/Style/PolyHaven2k/Sky/kloofendal_48d_partly_cloudy_puresky_8k.hdr", "Assets/Style/PolyHaven/barrel_03/barrel_03_1k.fbx",
+            "Assets/Style/Sketchfab/Windmill/textures/Windmill_albedo.png", "Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx",
+        }, StyleRules.Highest(paths));
+        Assert.Equal("Assets/Style/PolyHaven2k/Sky/kloofendal_48d_partly_cloudy_puresky_8k.hdr", StyleRules.Sky(StyleRules.Highest(paths)));
+        Assert.Empty(StyleRules.Highest(null!));
+        // Les modèles 2k restent des modèles de Poly Haven (une variante par lot).
+        Assert.True(StyleRules.IsPolyHavenName("rock_07_2k"));
+        string editor = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs"));
+        Assert.Contains("int desktop = sky ? 8192 : 2048, phone = sky ? 2048 : 1024;", editor, StringComparison.Ordinal);
+        Assert.Contains("TextureImporterPlatformSettings android = importer.GetPlatformTextureSettings(\"Android\");", editor, StringComparison.Ordinal);
+        Assert.Contains("List<string> models = StyleRules.Highest(", editor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Arbres_realistes_ecorce_et_feuilles()
+    {
+        // Les arbres de Sketchfab d'evolveduk (chêne, pin, épicéa, bouleau) : réalistes, ils remplacent ceux du MegaKit.
+        var models = new[]
+        {
+            "Assets/Style/Sketchfab/Arbres/Oak/oak.fbx", "Assets/Style/Sketchfab/Arbres/Pine/Pine.fbx", "Assets/Style/Sketchfab/Arbres/Spruce/Spruce.fbx",
+            "Assets/Style/Sketchfab/Arbres/Birch/birch.fbx", "Assets/Style/Nature/FBX/CommonTree_1.fbx", "Assets/Style/PolyHaven/stone_fire_pit/stone_fire_pit_1k.fbx",
+        };
+        // Ordre des mots cherchés : pine, birch, oak, spruce ; le chêne commun du MegaKit n'y est plus.
+        Assert.Equal(new[] { models[1], models[3], models[0], models[2] }, StyleRules.ForCatalog(models, StyleSlot.Tree, 8));
+        Assert.False(StyleRules.Matches(models[5], StyleSlot.Tree));                 // « fir » dans « fire » : pas un sapin
+        // Matières nommées librement : la texture qui parle de la même chose.
+        var pine = new[] { "Pine/bark09.png", "Pine/bark09_normal.png", "Pine/pine branch.png", "Pine/pine branch_Normal.png", "Pine/pine branch_alpha.png",
+            "Pine/pine branch_Roughness.png", "Pine/pine branch_Transmission.png" };
+        Assert.Equal("Pine/pine branch.png", StyleRules.MaterialTexture("leaves", pine, false));
+        Assert.Equal("Pine/pine branch_Normal.png", StyleRules.MaterialTexture("Leaves_MAT", pine, true));
+        Assert.Equal("Pine/bark09.png", StyleRules.MaterialTexture("Bark", pine, false));
+        Assert.Equal("Pine/bark09_normal.png", StyleRules.MaterialTexture("trunk", pine, true));
+        Assert.Null(StyleRules.MaterialTexture("metal", pine, false));
+        // Transparence de même racine.
+        Assert.Equal("Pine/pine branch_alpha.png", StyleRules.AlphaFor("Pine/pine branch.png", pine));
+        Assert.Null(StyleRules.AlphaFor("Pine/bark09.png", pine));
+        Assert.Equal("t/oak_leaf_alpha.png", StyleRules.AlphaFor("t/oak leaf.png", new[] { "t/oak leaf.png", "t/oak_leaf_alpha.png", "t/mossybark02.png" }));
+        Assert.Equal("t/fern_02_alpha_2k.jpg", StyleRules.AlphaFor("t/fern_02_diff_2k.jpg", new[] { "t/fern_02_diff_2k.jpg", "t/fern_02_alpha_2k.jpg" }));
+        Assert.Equal("fern02", StyleRules.TextureStem("t/fern_02_diff_2k.jpg"));
+        Assert.Equal("branch06", StyleRules.TextureStem("Spruce/branch06_alpha.png"));
+        Assert.Null(StyleRules.AlphaFor("x.png", null!));
+    }
+
+    [Fact]
+    public void Pieces_des_arbres_de_Sketchfab()
+    {
+        // Les fichiers de Tree It n'ont pas de matière : une pièce par texture, nommée d'après elle (« oak leaf_1 ») ou « Tree_0 ».
+        // Les noms et les fichiers ci-dessous sont ceux des quatre arbres d'evolveduk téléchargés le 27 octobre 2026.
+        string[] Files(string folder, params string[] names) => names.Select(n => "Assets/Style/Sketchfab/Arbres/" + folder + "/" + n).ToArray();
+        string[] oak = Files("Oak", "mossybark02.png", "mossybark02_normal.png", "mossybark02_roughness.png", "oak leaf.png", "oak leaf_Normal.png",
+            "oak leaf_Roughness.png", "oak leaf_Translucency.png", "oak.fbx", "oak_leaf_alpha.png");
+        string[] pine = Files("Pine", "Pine.fbx", "bark09.png", "bark09_normal.png", "bark09_roughness.png", "pine branch.png", "pine branch_Normal.png",
+            "pine branch_Roughness.png", "pine branch_Transmission.png", "pine branch_alpha.png");
+        string[] spruce = Files("Spruce", "Spruce.fbx", "bark08.png", "bark08_normal.png", "bark08_roughness.png", "branch06.png", "branch06_alpha.png",
+            "branch06_normal.png", "branch06_roughness.png", "branch06_transmission.png", "spruce branch.png", "spruce branch_Normal.png",
+            "spruce branch_Roughness.png", "spruce branch_Transmission.png", "spruce_branch_alpha.png");
+        string[] birch = Files("Birch", "bark11.png", "bark11_normal.png", "bark11_roughness.png", "birch leaf.png", "birch leaf_Normal.png",
+            "birch leaf_Roughness.png", "birch.fbx", "birch_leaf_Translucency.png", "birch_leaf_alpha.png");
+
+        void Part(string part, string[] textures, string color, string normal, string? alpha)
+        {
+            (string Color, string? Normal)? found = StyleRules.PartTextures(part, textures);
+            Assert.NotNull(found);
+            Assert.Equal(color, Path.GetFileName(found!.Value.Color));
+            Assert.Equal(normal, Path.GetFileName(found.Value.Normal));
+            Assert.Equal(alpha, Path.GetFileName(StyleRules.AlphaFor(found.Value.Color, textures)));
+            Assert.Equal(alpha != null, StyleRules.IsFoliage(found.Value.Color));   // seul le feuillage est découpé
+        }
+
+        // Pièce nommée d'après sa texture.
+        Part("mossybark02_0", oak, "mossybark02.png", "mossybark02_normal.png", null);
+        Part("oak leaf_1", oak, "oak leaf.png", "oak leaf_Normal.png", "oak_leaf_alpha.png");
+        Part("bark11_0", birch, "bark11.png", "bark11_normal.png", null);
+        Part("birch leaf_1", birch, "birch leaf.png", "birch leaf_Normal.png", "birch_leaf_alpha.png");
+        Part("bark08_0", spruce, "bark08.png", "bark08_normal.png", null);
+        Part("spruce branch_1", spruce, "spruce branch.png", "spruce branch_Normal.png", "spruce_branch_alpha.png");
+        Part("branch06_2", spruce, "branch06.png", "branch06_normal.png", "branch06_alpha.png");
+        // Pin : pièces « Tree_0 » et « Tree_1 » : l'écorce pour la pièce 0, le feuillage pour les autres.
+        Part("Tree_0", pine, "bark09.png", "bark09_normal.png", null);
+        Part("Tree_1", pine, "pine branch.png", "pine branch_Normal.png", "pine branch_alpha.png");
+        // Sans numéro : comme la pièce 0 ; rien à proposer : null.
+        Part("Tree", pine, "bark09.png", "bark09_normal.png", null);
+        Assert.Null(StyleRules.PartTextures("Tree_0", new[] { "x/rock.fbx", "x/pine branch_alpha.png" }));
+        Assert.Null(StyleRules.PartTextures("Tree_1", null!));
+        Assert.Null(StyleRules.PartTextures(null!, Array.Empty<string>()));
+        // Les cartes de rugosité, de transparence et de translucidité ne sont jamais prises pour la couleur.
+        Assert.All(new[] { oak, pine, spruce, birch }.SelectMany(t => t).Where(t => t.EndsWith(".png")), t =>
+            Assert.Equal(!System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(t), "(?i)normal|rough|alpha|transl|transm"), StyleRules.IsColorMap(t)));
+    }
+
+    [Fact]
+    public void Herbe_en_brins()
+    {
+        // Essai réaliste 4 : touffes d'herbe en brins, environ « densité » par mètre carré, mêmes places à chaque lancement.
+        IReadOnlyList<StyleRules.GrassSpot> spots = StyleRules.GrassSpots(-24, -18, 60, 40, 4);
+        Assert.InRange(spots.Count, 84 * 58 * 4 * 0.95, 84 * 58 * 4 * 1.08);
+        Assert.All(spots, g =>
+        {
+            Assert.InRange(g.X, -24, 60);
+            Assert.InRange(g.Z, -18, 40);
+            Assert.InRange(g.Yaw, 0, 360);
+            Assert.InRange(g.Scale, 0.75, 1.3);
+        });
+        Assert.Equal(spots, StyleRules.GrassSpots(-24, -18, 60, 40, 4));
+        Assert.Empty(StyleRules.GrassSpots(0, 0, 10, 10, 0));
+        Assert.Empty(StyleRules.GrassSpots(0, 0, 0, 10, 4));
+        // Plafond : une grande emprise reçoit une herbe plus clairsemée, mais partout, jusqu'à ses bords.
+        IReadOnlyList<StyleRules.GrassSpot> capped = StyleRules.GrassSpots(0, 0, 100, 100, 50, 100);
+        Assert.InRange(capped.Count, 70, 100);
+        Assert.True(capped.Max(g => g.Z) > 85 && capped.Min(g => g.Z) < 15 && capped.Max(g => g.X) > 85 && capped.Min(g => g.X) < 15);
+        IReadOnlyList<StyleRules.GrassSpot> large = StyleRules.GrassSpots(-300, -300, 300, 300, 4);
+        Assert.InRange(large.Count, 150000, 200000);
+        Assert.True(large.Max(g => g.Z) > 290);
+        Assert.Empty(StyleRules.GrassSpots(0, 0, 10, 10, 4, 0));
+    }
+
+    [Fact]
+    public void Le_jeu_branche_l_essai_realiste_4()
+    {
+        string Read(params string[] parts) => File.ReadAllText(Path.Combine(new[] { Lot93UnityPackageTests.Root }.Concat(parts).ToArray()));
+        string leaves = Read("unity", "Assets", "EdS", "Game", "Feuillage.shader");
+        string grassShader = Read("unity", "Assets", "EdS", "Game", "Herbe.shader");
+        string grass = Read("unity", "Assets", "EdS", "Game", "StyleGrass.cs");
+        string view = Read("unity", "Assets", "EdS", "Game", "SpaceView.cs");
+        string world = Read("unity", "Assets", "EdS", "Game", "StyleWorld.cs");
+        string water = Read("unity", "Assets", "EdS", "Game", "Eau.shader");
+        string editor = Read("unity", "Assets", "EdS", "Editor", "EdsStyle.cs");
+        // Feuillages au vent, avec leurs ombres (le vent aussi dans l'ombre projetée) et l'occlusion ambiante.
+        Assert.Contains("Shader \"EdS/Feuillage\"", leaves, StringComparison.Ordinal);
+        foreach (string pass in new[] { "\"LightMode\" = \"UniversalForward\"", "\"LightMode\" = \"ShadowCaster\"", "\"LightMode\" = \"DepthOnly\"", "\"LightMode\" = \"DepthNormals\"" })
+            Assert.Contains(pass, leaves, StringComparison.Ordinal);
+        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(leaves, @"Windy\(TransformObjectToWorld").Count);
+        Assert.Contains("_SCREEN_SPACE_OCCLUSION", leaves, StringComparison.Ordinal);
+        Assert.Contains("RealisticMaterial(model, wind.TryGetValue(model, out float w) ? w : 0f, notes);", editor, StringComparison.Ordinal);
+        // Herbe en brins dessinée par paquets, près de la caméra seulement.
+        Assert.Contains("Shader \"EdS/Herbe\"", grassShader, StringComparison.Ordinal);
+        Assert.Contains("#pragma multi_compile_instancing", grassShader, StringComparison.Ordinal);
+        Assert.Contains("Graphics.RenderMeshInstanced(parameters, _mesh, 0, cell.Items);", grass, StringComparison.Ordinal);
+        Assert.Contains("_grass?.Draw(camera);", view, StringComparison.Ordinal);
+        Assert.Contains("if (terrain) Grass(space);", view, StringComparison.Ordinal);
+        Assert.Contains("catalog.Grass = ShaderMaterial(\"EdS/Herbe\", \"Herbe\", notes);", editor, StringComparison.Ordinal);
+        // Reflets des objets dans l'eau ; rendu du téléphone choisi au lancement ; ombres fines et occlusion ambiante sur ordinateur.
+        Assert.Contains("StyleWorld.Reflections(_root.transform,", view, StringComparison.Ordinal);
+        Assert.Contains("probe.cullingMask = ~(1 << WaterLayer);", world, StringComparison.Ordinal);
+        Assert.Contains("sky = lerp(sky, probe, _ProbeWeight);", water, StringComparison.Ordinal);
+        Assert.Contains("if (Application.isMobilePlatform && catalog.PhonePipeline != null) QualitySettings.renderPipeline = catalog.PhonePipeline;", world, StringComparison.Ordinal);
+        Assert.Contains("Tune(pipeline, 90f, 4, 4096, true, 4);", editor, StringComparison.Ordinal);
+        Assert.Contains("Tune(phone, 35f, 2, 1024, false, 2);", editor, StringComparison.Ordinal);
+        Assert.Contains("\"UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion\"", editor, StringComparison.Ordinal);
+        // Lumières des feux par pixel : LightRenderingMode.PerPixel vaut 1 (PerVertex vaut 2).
+        Assert.Contains("Set(\"m_AdditionalLightsRenderingMode\", p => p.intValue = 1);", editor, StringComparison.Ordinal);
+        // Les feuillages reçoivent aussi le feu de la forge en Forward+ (Unity 6.0, puis 6.1 et après).
+        Assert.Contains("#pragma multi_compile _ _FORWARD_PLUS _CLUSTER_LIGHT_LOOP", leaves, StringComparison.Ordinal);
+        // L'herbe écrit sa profondeur (sans quoi elle disparaîtrait quand URP prépare la profondeur) avec le même vent que son image.
+        foreach (string pass in new[] { "\"LightMode\" = \"UniversalForward\"", "\"LightMode\" = \"DepthOnly\"", "\"LightMode\" = \"DepthNormals\"" })
+            Assert.Contains(pass, grassShader, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(grassShader, @"Bent\(input\.positionOS\.xyz, input\.uv, pivot\)").Count);
+        // Feuilles découpées qui ne se dégarnissent pas au loin (réductions qui gardent la part de feuillage au seuil du shader).
+        Assert.Contains("importer.mipMapsPreserveCoverage = true;", editor, StringComparison.Ordinal);
+        Assert.Contains("importer.alphaTestReferenceValue = 0.45f;", editor, StringComparison.Ordinal);
+        // Le relief de l'écorce de la palissade a ses tangentes, comme les prismes.
+        Assert.Contains("mesh.RecalculateTangents();   // essai réaliste 4 : le relief de l'écorce", view, StringComparison.Ordinal);
     }
 }

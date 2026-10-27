@@ -88,6 +88,39 @@ namespace EdS.Game
             if (terrain) Forest(space);
             Bridge(space);
             Roof(space);
+            if (terrain) Grass(space);
+            // Essai réaliste 4 : la rivière reflète ce qui l'entoure (sonde prise une fois, tout le décor posé).
+            if (_waters.Count > 0)
+            {
+                float rx0 = _rivers.Min(r => r.Min(p => p.x)), rx1 = _rivers.Max(r => r.Max(p => p.x));
+                float rz0 = _rivers.Min(r => r.Min(p => p.z)), rz1 = _rivers.Max(r => r.Max(p => p.z));
+                StyleWorld.Reflections(_root.transform, new Vector3((rx0 + rx1) / 2f, 1.5f, (rz0 + rz1) / 2f),
+                    new Vector3(maxX - minX + 40f, 40f, maxZ - minZ + 40f), _waters);
+            }
+        }
+
+        /// <summary>Essai réaliste 4 : surfaces d'eau posées (pour la sonde de reflets, qui ne doit pas les voir).</summary>
+        private readonly List<GameObject> _waters = new List<GameObject>();
+
+        /// <summary>Essai réaliste 4 : herbe en brins (null sans son matériau).</summary>
+        private StyleGrass _grass;
+
+        /// <summary>
+        /// Essai réaliste 4 (demande de Damien du 27 octobre 2026 : « le maximum de réalisme ») : herbe en brins sur l'aire, là où le sol
+        /// est en herbe (<see cref="StyleRules.GroundMix"/>), hors des obstacles et loin de l'eau (<see cref="StyleGrass"/>).
+        /// </summary>
+        private void Grass(CombatSpace space)
+        {
+            float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
+            List<StyleSpot> spots = Spots(space);
+            var boxes = space.Obstacles.Select(o => (MinX: Raw(o.Points.Min(p => p.X.Raw)) - 0.4f, MaxX: Raw(o.Points.Max(p => p.X.Raw)) + 0.4f,
+                MinZ: Raw(o.Points.Min(p => p.Z.Raw)) - 0.4f, MaxZ: Raw(o.Points.Max(p => p.Z.Raw)) + 0.4f)).ToList();
+            var rivers = _rivers.Select(r => (IReadOnlyList<(double X, double Z)>)r.Select(p => ((double)p.x, (double)p.z)).ToList()).ToList();
+            var banks = StyleRules.UnionBoundary(rivers);
+            _grass = StyleGrass.Create(minX, minZ, maxX, maxZ, (x, z) =>
+                !boxes.Any(b => x >= b.MinX && x <= b.MaxX && z >= b.MinZ && z <= b.MaxZ)
+                && (banks.Count == 0 || StyleRules.UnionDistance(x, z, rivers, banks) < -0.7)
+                && StyleRules.GroundMix(x, z, spots).Grass >= 0.5);
         }
 
         private static float Raw(long raw) => raw / 10000f;
@@ -133,7 +166,8 @@ namespace EdS.Game
             if (id.StartsWith("arbre"))
             {
                 // Essai de style : un arbre des packs à la place du tronc et de sa boule de feuillage (même emprise au moteur).
-                GameObject tree = StyleLook.Decor(_root.transform, StyleSlot.Tree, id, Center(points), 5f);
+                // Essai réaliste 4 : hauteur des arbres réglée dans le catalogue (les arbres de Sketchfab sont grands).
+                GameObject tree = StyleLook.Decor(_root.transform, StyleSlot.Tree, id, Center(points), TreeHeight() * 0.8f);
                 if (tree != null)
                 {
                     AddModelOccluders(tree);
@@ -245,7 +279,7 @@ namespace EdS.Game
                 // Une place sur quatre : du bois mort (souche, tronc couché) à sa taille réelle, s'il y en a.
                 GameObject look = debris && i % 4 == 3
                     ? StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true)
-                    : StyleLook.Decor(_root.transform, StyleSlot.Tree, id, at, 5f + 0.035f * StyleRules.Variant(id, 100));
+                    : StyleLook.Decor(_root.transform, StyleSlot.Tree, id, at, TreeHeight() * (0.75f + 0.005f * StyleRules.Variant(id, 101)));
                 // Revue Codex de la PR #56 : en vue 2, la caméra (6 m derrière le Bastion) peut entrer dans la lisière quand il longe le bord ;
                 // ces arbres sont coupés comme ceux des obstacles quand ils le cachent.
                 if (look != null) AddModelOccluders(look);
@@ -269,6 +303,9 @@ namespace EdS.Game
             }
             return spots;
         }
+
+        /// <summary>Hauteur des arbres du catalogue (11 m sans catalogue).</summary>
+        private static float TreeHeight() => StyleCatalog.Loaded != null ? StyleCatalog.Loaded.TreeHeight : 11f;
 
         private static Vector3 Center(List<Vector3> points) =>
             new Vector3(points.Average(p => p.x), 0f, points.Average(p => p.z));
@@ -322,6 +359,7 @@ namespace EdS.Game
             go.transform.SetParent(_root.transform, false);
             go.AddComponent<MeshFilter>().mesh = mesh;
             go.AddComponent<MeshRenderer>().sharedMaterial = _water;
+            _waters.Add(go);
             return go;
         }
 
@@ -382,6 +420,7 @@ namespace EdS.Game
             mesh.uv = uvs.ToArray();
             mesh.triangles = triangles.ToArray();
             mesh.RecalculateNormals();
+            mesh.RecalculateTangents();   // essai réaliste 4 : le relief de l'écorce, comme celui des prismes (revue Codex de la PR #57)
             mesh.RecalculateBounds();
             var go = new GameObject(id + " (palissade)");
             go.transform.SetParent(_root.transform, false);
@@ -571,6 +610,7 @@ namespace EdS.Game
         /// </summary>
         public void Cut(Vector3 camera, Vector3 player, float deltaTime)
         {
+            _grass?.Draw(camera);   // essai réaliste 4 : l'herbe en brins proche de la caméra
             StyleWorld.AnimateWater(Time.time);   // essai réaliste : les vagues de la rivière glissent
             Vector3 head = player + Vector3.up * 1f;
             bool underRoof = _hasRoof && player.x >= _roofMin.x && player.x <= _roofMax.x && player.z >= _roofMin.z && player.z <= _roofMax.z;
@@ -656,6 +696,7 @@ namespace EdS.Game
         public void Destroy()
         {
             StyleWorld.Release(_terrain);   // essai réaliste : données du terrain créées par le code, rendues avec lui
+            _grass?.Destroy();
             Object.Destroy(_root);
         }
     }
