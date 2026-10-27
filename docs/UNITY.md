@@ -235,7 +235,33 @@ Premier essai (26 octobre 2026, vidéo de Damien) et corrections : le paladin é
 
 Objets téléchargés par Claude chez Damien (Poly Haven, CC0, 1k) : `PolyHaven/barrel_03`, `cross_pein_hammer`, `modular_wooden_pier`, `periwinkle_plant`, `stone_fire_pit`, `wooden_crate_02`, et `PolyHaven/Surfaces/bark_brown_02` ; de Sketchfab (compte de Damien, CC BY) : `Sketchfab/Windmill`. Le fort en pierre (*modular fort 01*, 44,7 Mo), téléchargé par erreur (Claude le croyait en bois), est resté dans le zip de `Téléchargements` et n'est pas déposé dans le projet.
 
-Limites : les arbres restent dessinés (MegaKit) ; les loups et les sangliers restent ceux des packs low poly (choix de Damien : les animaux plus tard) ; sur le téléphone, la forêt est réduite au tiers, les plantes à la moitié, les arbustes des haies espacés, le relief du terrain plus grossier et le halo coupé, mais l'essai réaliste n'est pas encore réglé pour le Note8 (à faire si le style est gardé) ; hors du lit de la rivière, le terrain est plat comme le sol du moteur ; l'eau n'a pas d'écume ni de reflets des objets (seulement du ciel).
+Limites de l'essai 3 (en partie levées par l'essai 4 ci-dessous) : les arbres restent dessinés (MegaKit) ; les loups et les sangliers restent ceux des packs low poly (choix de Damien : les animaux plus tard) ; sur le téléphone, la forêt est réduite au tiers, les plantes à la moitié, les arbustes des haies espacés, le relief du terrain plus grossier et le halo coupé, mais l'essai réaliste n'est pas encore réglé pour le Note8 (à faire si le style est gardé) ; hors du lit de la rivière, le terrain est plat comme le sol du moteur ; l'eau n'a pas d'écume ni de reflets des objets (seulement du ciel).
+
+### Essai réaliste 4 (27 octobre 2026)
+
+Demande de Damien : « je veux vraiment le plus réaliste possible dès maintenant, on ne pourrait pas faire 2 packs de textures différents, 1 pour le PC et 1 pour le téléphone ? », puis « je veux vraiment le max du réalisme ! ». Téléchargement accepté (« Oui, tout », environ 391 Mo), rangé par Claude dans `unity/Assets/Style` (toujours non suivi par git) :
+
+- `PolyHaven2k/` (CC0, en 2k au lieu de 1k) : les sols (`Ground/`, 12 textures), les matières des bâtiments et l'écorce (`Surfaces/`, 12 textures), et les 26 modèles déjà employés (plantes, rochers, bois mort, objets de la forge, ponton, pervenche, arbustes des haies).
+- `PolyHaven2k/Sky/` : le même ciel en 8k (75 Mo). **À déposer par Damien** (trop gros pour le transfert de Claude, limité à 30 Mo par fichier) : dans `Téléchargements`, clic droit sur `polyhaven-ciel-8k.zip` → *Extraire tout…* → destination `D:\eclats-du-seuil\unity\Assets\Style`. Sans lui, le ciel 1k reste.
+- `Sketchfab/Arbres/` (CC BY, de *evolveduk*, cité dans les [crédits](CREDITS.md)) : quatre vrais arbres, chêne (`Oak`), pin (`Pine`), épicéa (`Spruce`) et bouleau (`Birch`), avec leurs textures d'écorce et de feuillage (couleur, relief, transparence).
+
+Les anciens fichiers 1k peuvent rester : quand un fichier de Poly Haven est là en plusieurs résolutions, seule la plus haute compte.
+
+1. **Préparer** : menu **Éclats du Seuil → Préparer l'essai de style**. La première fois, Unity réimporte toutes les textures (plusieurs minutes). La fenêtre de fin dit en plus si l'herbe en brins et le rendu du téléphone sont prêts, et combien de pièces de chaque arbre ont été habillées (« Arbre oak.fbx : 2 pièces habillées »).
+2. **Jouer** : Play.
+
+Ce qui change :
+
+- **Arbres** : les quatre arbres de Sketchfab remplacent ceux du MegaKit (forêt et arbres de l'aire). Chaque arbre est préparé une fois dans `Assets/Style/Generated` (« oak (arbre) ») : écorce et feuillage reçoivent chacun leur matériau, les feuilles sont découpées et ne se dégarnissent pas au loin. Hauteur réglable dans le catalogue (*Tree Height*, 11 m ; les arbres de l'aire en font les quatre cinquièmes) ; emprises du moteur inchangées.
+- **Vent** : arbres, arbustes, plantes et herbe de l'Aube bougent au vent (shader `EdS/Feuillage` du jeu : balancement qui croît avec la hauteur, feuilles qui frémissent, lumière du soleil qui traverse les feuilles à contre-jour), les arbres moins que les herbes. Les ombres bougent avec eux.
+- **Herbe en brins** : de vraies touffes d'herbe (11 brins courbés, couleur du pied à la pointe, quelques brins secs) poussent sur le sol en herbe, environ 4 par m² (*Grass Density*), hors des obstacles, de la terre et de la rivière, dessinées jusqu'à 45 m de la caméra (*Grass Distance*). Couleurs et vent se règlent dans `Assets/Style/Generated/Herbe`. Shader `EdS/Herbe` du jeu.
+- **Reflets** : la rivière reflète maintenant les berges, les arbres, la palissade et le moulin (une sonde de reflets prise une fois au début du combat), plus le ciel.
+- **Rendu de l'ordinateur** : ombres fines sur 90 m en quatre cascades (carte 4096), ombres douces, bords lissés (MSAA ×4), occlusion ambiante de l'écran (les creux et les pieds des objets s'assombrissent), lumières des feux par pixel. Le menu règle le rendu URP du projet.
+- **Deux packs de textures, un seul dépôt** (réponse à la demande de Damien) : chaque texture est gardée une fois, en pleine taille pour le PC (2k, le ciel 8k) ; Unity la réduit lui-même pour Android à la construction (1k, le ciel 2k), sans second téléchargement. Le téléphone a aussi son rendu plus léger (`Assets/Style/Generated/EdS_URP_Telephone` : ombres sur 35 m, deux cascades, sans ombres douces ni occlusion), choisi par le jeu au lancement sur Android ; l'herbe y est cinq fois moins dense, en touffes de 6 brins, et dessinée à moitié moins loin.
+
+Ce que tu regardes : si les arbres et l'herbe font vrai de près comme de loin, si le vent est naturel (ni trop, ni trop peu : *Wind* dans les matériaux de `Generated`), si l'eau reflète bien ses berges, et si l'image reste fluide sur ton PC.
+
+Limites : la sonde de reflets est prise une fois (un personnage qui bouge n'apparaît pas dans l'eau) ; l'herbe en brins ne pousse que sur l'aire du combat (le terrain qui déborde garde sa texture d'herbe) et ne projette pas d'ombre ; les arbres de Sketchfab sont des fichiers anciens (FBX 6.1 de Tree It) : si Unity n'arrivait pas à les lire, les arbres du MegaKit resteraient (la fenêtre de fin dit combien de pièces de chaque arbre ont été habillées) ; le rendu du téléphone n'est pas encore essayé sur le Note8.
 
 ## 8. En cas de problème
 
