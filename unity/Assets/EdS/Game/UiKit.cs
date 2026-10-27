@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace EdS.Game
@@ -167,5 +168,94 @@ namespace EdS.Game
 
         /// <summary>Couleur avec une autre opacité.</summary>
         public static Color Alpha(Color c, float a) => new Color(c.r, c.g, c.b, a);
+
+        /// <summary>
+        /// Essai réaliste 6, étape 2 : système d'évènements de uGUI (clics et survol des écrans), créé une fois s'il n'y en a pas ; il lit
+        /// la souris et le doigt par l'ancien gestionnaire d'entrées, celui du jeu.
+        /// </summary>
+        public static void EnsureEvents()
+        {
+            if (EventSystem.current != null) return;
+            var go = new GameObject("Évènements de l'interface");
+            Object.DontDestroyOnLoad(go);
+            go.AddComponent<EventSystem>();
+            go.AddComponent<StandaloneInputModule>();
+        }
+
+        /// <summary>
+        /// Rend <paramref name="target"/> cliquable : clic (gauche ou doigt), clic droit, survol ; le graphisme reçoit les rayons (une image
+        /// transparente aussi).
+        /// </summary>
+        public static UiPointer Pointer(Graphic target)
+        {
+            target.raycastTarget = true;
+            UiPointer pointer = target.gameObject.GetComponent<UiPointer>();
+            return pointer != null ? pointer : target.gameObject.AddComponent<UiPointer>();
+        }
+
+        /// <summary>Bouton : dessin étiré en 9 parties, texte au milieu, action au clic ; plus clair au survol.</summary>
+        public static UiButton Button(Transform parent, string name, string sprite, string label, UiFace face, float size, Color textColor, System.Action click)
+        {
+            Image plate = Image(parent, name, Sprite(sprite, 12f), Color.white, UnityEngine.UI.Image.Type.Sliced);
+            UiText text = UiText.Create(plate.rectTransform, "Texte", face, size, textColor, TextAnchor.MiddleCenter, 10f, true);
+            Fill(text.Rect);
+            text.Value = label;
+            var button = new UiButton(plate, text);
+            UiPointer pointer = Pointer(plate);
+            pointer.Left = () =>
+            {
+                if (button.Enabled) click?.Invoke();
+            };
+            pointer.Enter = () => button.Hover(true);
+            pointer.Exit = () => button.Hover(false);
+            return button;
+        }
+    }
+
+    /// <summary>Essai réaliste 6, étape 2 : clic, clic droit et survol d'un élément de l'interface uGUI.</summary>
+    public sealed class UiPointer : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+    {
+        public System.Action Left, Right, Enter, Exit;
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData.button == PointerEventData.InputButton.Right) Right?.Invoke();
+            else if (eventData.button == PointerEventData.InputButton.Left) Left?.Invoke();
+        }
+
+        public void OnPointerEnter(PointerEventData eventData) => Enter?.Invoke();
+
+        public void OnPointerExit(PointerEventData eventData) => Exit?.Invoke();
+    }
+
+    /// <summary>Essai réaliste 6, étape 2 : un bouton de l'interface (plaque, texte, actif ou grisé, éclairci au survol).</summary>
+    public sealed class UiButton
+    {
+        private bool _hover;
+
+        public Image Plate { get; }
+        public UiText Text { get; }
+        public bool Enabled { get; private set; } = true;
+        public RectTransform Rect => Plate.rectTransform;
+
+        public UiButton(Image plate, UiText text)
+        {
+            Plate = plate;
+            Text = text;
+        }
+
+        public void Enable(bool enabled)
+        {
+            Enabled = enabled;
+            Paint();
+        }
+
+        public void Hover(bool hover)
+        {
+            _hover = hover;
+            Paint();
+        }
+
+        private void Paint() => Plate.color = !Enabled ? new Color(1f, 1f, 1f, 0.35f) : _hover ? new Color(1.15f, 1.15f, 1.15f, 1f) : Color.white;
     }
 }

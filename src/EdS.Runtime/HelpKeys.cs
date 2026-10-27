@@ -48,13 +48,14 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Aventure : combat, puis les touches des textes du monde (<paramref name="worldHelp"/>, éléments séparés par « · », la touche
-        /// d'abord), la carte, la pause, le réseau et l'aide. Un élément sans action est ignoré.
+        /// d'abord), la carte, les talents (essai réaliste 6, étape 2), la pause, le réseau et l'aide. Un élément sans action est ignoré.
         /// </summary>
         public static IReadOnlyList<HelpKey> Adventure(string worldHelp)
         {
             var list = new List<HelpKey>(Combat);
             foreach (HelpKey key in Parse(worldHelp)) list.Add(key);
             list.Add(new HelpKey("L", "Carte"));
+            list.Add(new HelpKey("T", "Talents"));
             list.Add(new HelpKey("Échap", "Pause"));
             list.Add(new HelpKey("M", "Jeu en réseau"));
             list.Add(new HelpKey("H", "Masquer l'aide"));

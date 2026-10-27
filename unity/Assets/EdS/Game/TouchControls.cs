@@ -28,7 +28,7 @@ namespace EdS.Game
         /// <summary>Taille des boutons d'action (pixels virtuels), au moins 9 mm sur l'écran d'un téléphone (<see cref="TouchGestures.SmallButton"/>).</summary>
         private const float Big = TouchGestures.BigButton, Small = TouchGestures.SmallButton;
 
-        private enum ButtonId { Guard, Parry, Skill1, Skill2, Skill3, Skill4, Ultimate, Target, View, Ally, Menu, Help, Pause, Restart, NextScene, Act, Potion, Bag, Journal, Workshop, Map }
+        private enum ButtonId { Guard, Parry, Skill1, Skill2, Skill3, Skill4, Ultimate, Target, View, Ally, Menu, Help, Pause, Restart, NextScene, Act, Potion, Bag, Journal, Workshop, Map, Talents }
 
         private sealed class Button
         {
@@ -71,6 +71,9 @@ namespace EdS.Game
         public bool BagPressed => Tapped(ButtonId.Bag);
         public bool JournalPressed => Tapped(ButtonId.Journal);
         public bool WorkshopPressed => Tapped(ButtonId.Workshop);
+
+        /// <summary>Essai réaliste 6, étape 2 : l'arbre des Éclats (talents) dans l'aventure.</summary>
+        public bool TalentsPressed => Tapped(ButtonId.Talents);
 
         /// <summary>Sous-lot 12.9d : la petite carte touchée (l'ouvrir en grand).</summary>
         public bool MapPressed => Tapped(ButtonId.Map);
@@ -145,6 +148,7 @@ namespace EdS.Game
                 Add(ButtonId.Bag, w - 6 * (m + Small), top, Small, "Sac");
                 Add(ButtonId.Journal, w - 7 * (m + Small), top, Small, "Journal");
                 Add(ButtonId.Workshop, w - 8 * (m + Small), top, Small, "Atelier");
+                Add(ButtonId.Talents, w - 9 * (m + Small), top, Small, "Talents");
             }
         }
 

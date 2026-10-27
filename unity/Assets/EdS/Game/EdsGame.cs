@@ -114,6 +114,9 @@ namespace EdS.Game
         // Essai réaliste 6 : l'interface en jeu en uGUI (« Fragments du Seuil »), et l'aide de l'aventure découpée en touches.
         private HudView _hud;
         private IReadOnlyList<HelpKey> _adventureHelp;
+
+        // Essai réaliste 6, étape 2 : l'arbre des Éclats (talents) ouvrable dans l'aventure (T).
+        private TalentTreeView _talentView;
         private string _startupError;
 
         private IEnumerator Start()
@@ -126,6 +129,7 @@ namespace EdS.Game
                 _camera = CameraRig.Create();
                 _arena = new ArenaView();
                 _hud = HudView.Create();
+                _talentView = TalentTreeView.Create();
                 StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
             }
             catch (Exception e)
@@ -230,7 +234,10 @@ namespace EdS.Game
         }
 
         /// <summary>Un écran (sac, journal, atelier) ou un dialogue de l'aventure couvre les commandes tactiles (revue Codex de la PR #49).</summary>
-        private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null);
+        private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null || TalentsOpen);
+
+        /// <summary>Essai réaliste 6, étape 2 : l'arbre des Éclats est ouvert.</summary>
+        private bool TalentsOpen => _talentView != null && _talentView.IsOpen;
 
         /// <summary>
         /// Salle d'attente du réseau affichée (avant, entre et après les combats) : ses boutons (« Je suis prêt », « Quitter la partie »)
@@ -247,6 +254,7 @@ namespace EdS.Game
             _markers?.Destroy();
             _markers = null;
             _adventure = null;
+            _talentView?.Close();
             PaintedMap.Forget();
             _screens.Close();
             _arena.Paint = null;
@@ -303,15 +311,38 @@ namespace EdS.Game
                 if (Input.GetKeyDown(KeyCode.Escape)) a.CloseDialogue();
                 else if (DigitPressed() is int answer && answer >= 0) a.Choose(answer);
             }
+            else if (TalentsOpen)
+            {
+                // Essai réaliste 6, étape 2 : T ou Échap ferme l'arbre sans garder les points.
+                if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) _talentView.Cancel();
+            }
             else if (_screens.Open != AdventureScreens.Panel.None)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _screens.Close();
             }
             else if (Input.GetKeyDown(KeyCode.Escape) || _touch.PausePressed) _paused = !_paused;
-            if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
-            if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
-            if (Input.GetKeyDown(KeyCode.K) || _touch.WorkshopPressed) _screens.Toggle(AdventureScreens.Panel.Crafting);
-            if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
+            if (!TalentsOpen)
+            {
+                if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
+                if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
+                if (Input.GetKeyDown(KeyCode.K) || _touch.WorkshopPressed) _screens.Toggle(AdventureScreens.Panel.Crafting);
+                if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
+                // Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») :
+                // T ouvre l'arbre des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
+                if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed))
+                {
+                    _screens.Close();
+                    try
+                    {
+                        _talentView.Open(a.CreateTalentEditor(), a.Text, a.SetTalents);
+                    }
+                    catch (ArgumentException e)
+                    {
+                        Debug.LogException(e);
+                        Say("Talents indisponibles : " + e.Message);
+                    }
+                }
+            }
             if (Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed)
             {
@@ -328,7 +359,7 @@ namespace EdS.Game
                 }
             }
             if (a.Opened != _shownSession) ShowAdventureSession();
-            bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue;
+            bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed) && a.Drink()) StyleLook.Play(Audio, StyleSound.Potion);   // essai de style : son
             if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
@@ -1001,7 +1032,9 @@ namespace EdS.Game
         private void LateUpdate()
         {
             if (_hud == null) return;
-            bool shown = _ready && _startupError == null && !(_error != null && !Network) && !_menuOpen && !LobbyShown && _talents == null && _combat != null;
+            bool shown = _ready && _startupError == null && !(_error != null && !Network) && !_menuOpen && !LobbyShown && _talents == null && _combat != null
+                && !TalentsOpen;
+            _talentView?.Update(Time.unscaledDeltaTime);
             if (!shown)
             {
                 _hud.Hide();

@@ -105,6 +105,14 @@ namespace UnityEngine
 namespace UnityEngine.EventSystems
 {
     public abstract class UIBehaviour : MonoBehaviour { public virtual bool IsActive() => false; }
+    public class EventSystem : UIBehaviour { public static EventSystem current => null; }
+    public abstract class BaseInputModule : UIBehaviour { }
+    public class StandaloneInputModule : BaseInputModule { }
+    public class PointerEventData { public enum InputButton { Left = 0, Right = 1, Middle = 2 } public InputButton button { get; set; } }
+    public interface IEventSystemHandler { }
+    public interface IPointerClickHandler : IEventSystemHandler { void OnPointerClick(PointerEventData eventData); }
+    public interface IPointerEnterHandler : IEventSystemHandler { void OnPointerEnter(PointerEventData eventData); }
+    public interface IPointerExitHandler : IEventSystemHandler { void OnPointerExit(PointerEventData eventData); }
 }
 namespace UnityEngine.UI
 {

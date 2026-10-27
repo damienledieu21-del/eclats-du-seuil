@@ -154,7 +154,8 @@ public class InterfaceStyleTests
         string view = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
         Assert.Contains("_hud = HudView.Create();", game, StringComparison.Ordinal);
         Assert.Contains("private void LateUpdate()", game, StringComparison.Ordinal);
-        Assert.Contains("!_menuOpen && !LobbyShown && _talents == null && _combat != null;", game, StringComparison.Ordinal);
+        Assert.Contains("!_menuOpen && !LobbyShown && _talents == null && _combat != null", game, StringComparison.Ordinal);
+        Assert.Contains("&& !TalentsOpen;", game, StringComparison.Ordinal);
         Assert.Contains("_hud.Player(player, _touch.Active, deltaTime);", game, StringComparison.Ordinal);
         Assert.Contains("_hud.Help(_help && open, a.PlaceName,", game, StringComparison.Ordinal);
         Assert.DoesNotContain("Hud.Player(", game, StringComparison.Ordinal);
@@ -197,5 +198,44 @@ public class InterfaceStyleTests
             Assert.Contains("_block.SetFloat(\"" + property + "\"", space, StringComparison.Ordinal);
         }
         Assert.Contains("if (other.View.NextAttack is { } next && next.Unblockable) unblockable.Add(other.Id + \"/\" + next.Id);", arena, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») : T ouvre
+    /// l'arbre des Éclats dans l'aventure (uGUI, clics et survol), sur les talents du personnage ; les points passent par l'éditeur (le
+    /// validateur unique) et se gardent par l'aventure (hors combat, effet à la halte).
+    /// </summary>
+    [Fact]
+    public void Arbre_des_eclats_ouvrable_dans_l_aventure()
+    {
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        string view = Read("unity", "Assets", "EdS", "Game", "TalentTreeView.cs");
+        string kit = Read("unity", "Assets", "EdS", "Game", "UiKit.cs");
+        Assert.Contains("_talentView.Open(a.CreateTalentEditor(), a.Text, a.SetTalents);", game, StringComparison.Ordinal);
+        Assert.Contains("if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed))", game, StringComparison.Ordinal);
+        Assert.Contains("if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) _talentView.Cancel();", game, StringComparison.Ordinal);
+        Assert.Contains("|| a.MustContinue || TalentsOpen;", game, StringComparison.Ordinal);
+        Assert.Contains("BuildViolation why = delta > 0 ? _editor.Add(node.Talent.Id) : _editor.Remove(node.Talent.Id);", view, StringComparison.Ordinal);
+        Assert.Contains("string refusal = _apply(_editor.Build);", view, StringComparison.Ordinal);
+        Assert.Contains("go.AddComponent<StandaloneInputModule>();", kit, StringComparison.Ordinal);
+        Assert.Contains("ButtonId.Talents", Read("unity", "Assets", "EdS", "Game", "TouchControls.cs"), StringComparison.Ordinal);
+        foreach (string sprite in new[] { "noeud_masque", "noeud_fond", "noeud_cadre", "noeud_cadre_sobre", "majeur_masque", "majeur_cadre", "anneau_progression",
+                     "graine", "pip_on", "pip_off" })
+            PngSize(Path.Combine(Root, Hud, sprite + ".png"));
+        // Chaque talent du Bastion a sa description dans les textes du monde, et chaque arbre sa devise.
+        using JsonDocument texts = JsonDocument.Parse(Read("data", "v0", "world", "texts", "fr.json"));
+        JsonElement entries = texts.RootElement.GetProperty("data").GetProperty("entries");
+        using JsonDocument bastion = JsonDocument.Parse(Read("data", "v0", "classes", "bastion.json"));
+        foreach (JsonElement tree in bastion.RootElement.GetProperty("data").GetProperty("trees").EnumerateArray())
+        {
+            string treeId = tree.GetProperty("id").GetString()!;
+            Assert.True(entries.TryGetProperty("text.tree." + treeId.Substring(treeId.LastIndexOf('.') + 1), out _), treeId);
+            foreach (JsonElement talent in tree.GetProperty("talents").EnumerateArray())
+            {
+                string id = talent.GetProperty("id").GetString()!;
+                Assert.True(entries.TryGetProperty("text.talent." + id.Substring(id.LastIndexOf('.') + 1), out JsonElement text), id);
+                Assert.True(text.GetString()!.Length > 10, id);
+            }
+        }
     }
 }

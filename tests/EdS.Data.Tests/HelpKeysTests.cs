@@ -28,7 +28,7 @@ public class HelpKeysTests
         string? help = Find(doc.RootElement, "text.ui.help");
         Assert.NotNull(help);
         IReadOnlyList<HelpKey> keys = HelpKeys.Adventure(help!);
-        foreach (string key in new[] { "Z Q S D", "Espace", "F", "I", "J", "K", "P", "Entrée", "F6", "L", "Échap", "H" })
+        foreach (string key in new[] { "Z Q S D", "Espace", "F", "I", "J", "K", "P", "Entrée", "F6", "L", "T", "Échap", "H" })
             Assert.Contains(keys, k => k.Key == key);
         Assert.Equal(keys.Count, keys.Select(k => k.Key).Distinct().Count());
         Assert.All(keys, k => Assert.True(char.IsUpper(k.Action[0]) || char.IsDigit(k.Action[0]), k.ToString()));

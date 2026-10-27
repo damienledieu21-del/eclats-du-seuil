@@ -306,7 +306,7 @@ Ce qui change :
   - en haut au milieu, la **cible** dans une barre fendue aux ailes dorées : son vrai nom (« Sanglier », plus « SANGLIER_V2 »), la part de vie perdue qui reste claire un instant, et l'**annonce du prochain coup** (« Charge · 2,5 s », « imparable » en rouge) ;
   - au-dessus des combattants : **nom et barre de vie**, et la barre du coup qui arrive ;
   - en haut à droite, la **carte peinte** de la zone (forêt, rivière, pont, toits, moulin, rochers), centrée sur toi, nord en haut. Ta flèche tourne avec toi ; elle montre les ennemis en vue, les PNJ, les points sûrs, l'atelier, les récoltes et l'objectif (ramené au bord s'il est loin). Dessous : le lieu, la zone et l'heure, puis la **quête en cours** et son avancée. **L** ouvre toujours la grande carte, maintenant peinte elle aussi ;
-  - l'**aide** (H) en dalle brisée, une touche par ligne ;
+  - l'**aide** (H) en dalle brisée, une touche par ligne (T : talents, dans l'aventure) ;
   - les messages, la pause, l'indication d'action (« F : parler à… ») et l'annonce de défaite au milieu de l'écran ;
   - effets : reflets qui passent, braises qui montent du sceau, éclats de lumière.
 - **Annonces des attaques au sol refaites** (la « charge rouge du sanglier », les ronds) :
@@ -323,8 +323,15 @@ Ce que tu regardes :
 - la carte en marchant (la flèche tourne, les repères bougent) ;
 - la garde : plus de disque.
 
+**Étape 2 : l'arbre des Éclats dans l'aventure.** **T** ouvre l'arbre des talents dans l'aventure. Avant, il ne s'ouvrait qu'à l'entraînement.
+- Une constellation par arbre : la graine de lumière en bas, les talents en éclats hexagonaux avec leurs icônes peintes et leurs rangs en losanges, la chaîne qui monte vers le **talent majeur**, entouré de l'anneau des points placés dans l'arbre.
+- **Clic** : un point. **Clic droit** : un point de moins. Au doigt, les boutons + et − de la fiche du talent ; la fiche dit aussi ce que fait le talent et ce qu'il exige.
+- **Valider les points** les garde : ils prennent effet à ta prochaine halte, comme l'équipement. **Annuler** (ou T, Échap) ferme sans rien garder.
+- Pas en plein combat : éloigne-toi d'abord des ennemis (12 m).
+- Sur téléphone, le bouton **Talents** est dans la rangée du haut.
+
 Limites de l'étape 1 :
-- les écrans (sac, journal, atelier, dialogues, talents, menus du réseau) gardent l'ancienne interface jusqu'à l'étape 2 ;
+- les écrans (sac, journal, atelier, dialogues, menus du réseau, talents de l'entraînement) gardent l'ancienne interface jusqu'à la fin de l'étape 2 ;
 - la mise en page n'a pas encore été essayée sur le Note8 ;
 - la grande carte garde ses anciens repères.
 
