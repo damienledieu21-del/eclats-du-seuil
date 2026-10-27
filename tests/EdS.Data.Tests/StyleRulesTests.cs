@@ -770,6 +770,18 @@ public class StyleRulesTests
         Assert.False(StyleRules.IsColorMap("textures/Windmill_AO.png"));
         string look = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleLook.cs"));
         Assert.Contains("IReadOnlyList<int> keep = StyleRules.Cluster(boxes, detail);", look, StringComparison.Ordinal);
+        // Revue Codex de la PR #58 (2e tour) : un modèle à plusieurs matières garde sa transparence (toiles du moulin) sur celles qui
+        // prennent sa texture de couleur : couleur et alpha réunis, découpe, vu des deux côtés.
+        string editor = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs"));
+        int many = editor.IndexOf("if (embeddedMaterials.Count > 1)", StringComparison.Ordinal);
+        int single = editor.IndexOf("string materialPath = Generated + \"/\" + name + \".mat\";", StringComparison.Ordinal);
+        Assert.True(many > 0 && single > many);
+        string parts = editor.Substring(many, single - many);
+        Assert.Contains("bool ownAlpha = alpha != null && own == color;", parts, StringComparison.Ordinal);
+        Assert.Contains("cutout = WithAlpha(color, alpha, Generated + \"/\" + name + \"_couleur_alpha.png\", notes);", parts, StringComparison.Ordinal);
+        Assert.Contains("part.SetTexture(\"_BaseMap\", ownMap);", parts, StringComparison.Ordinal);
+        Assert.Contains("part.EnableKeyword(\"_ALPHATEST_ON\");", parts, StringComparison.Ordinal);
+        Assert.Contains("part.SetFloat(\"_Cull\", 0f);", parts, StringComparison.Ordinal);
     }
 
     [Fact]

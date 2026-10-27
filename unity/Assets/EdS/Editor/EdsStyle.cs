@@ -252,10 +252,16 @@ namespace EdS.Game.Editor
             List<Material> embeddedMaterials = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().ToList();
             if (embeddedMaterials.Count > 1)
             {
+                // Revue Codex de la PR #58 (2e tour) : la carte de transparence du modèle (toiles du moulin) découpe aussi les matières qui
+                // prennent sa texture de couleur ; couleur et alpha réunis une seule fois pour toutes.
+                Texture2D cutout = null;
                 foreach (Material embedded in embeddedMaterials)
                 {
                     string own = StyleRules.MaterialTexture(embedded.name, maps.Where(p => !StyleRules.IsSky(p)), false) ?? color;
                     string ownNormal = StyleRules.MaterialTexture(embedded.name, maps, true) ?? (own == color ? normal : null);
+                    bool ownAlpha = alpha != null && own == color;
+                    if (ownAlpha && cutout == null) cutout = WithAlpha(color, alpha, Generated + "/" + name + "_couleur_alpha.png", notes);
+                    Texture2D ownMap = ownAlpha ? cutout : Texture2DAt(own);
                     string path = Generated + "/" + name + " " + embedded.name + ".mat";
                     Material part = AssetDatabase.LoadAssetAtPath<Material>(path);
                     if (part == null)
@@ -263,13 +269,21 @@ namespace EdS.Game.Editor
                         part = new Material(lit);
                         AssetDatabase.CreateAsset(part, path);
                     }
-                    part.SetTexture("_BaseMap", Texture2DAt(own));
-                    part.SetTexture("_MainTex", Texture2DAt(own));
+                    part.SetTexture("_BaseMap", ownMap);
+                    part.SetTexture("_MainTex", ownMap);
                     part.SetFloat("_Smoothness", 0.15f);
                     if (ownNormal != null)
                     {
                         part.SetTexture("_BumpMap", Texture2DAt(ownNormal));
                         part.EnableKeyword("_NORMALMAP");
+                    }
+                    if (ownAlpha)
+                    {
+                        part.SetFloat("_AlphaClip", 1f);
+                        part.SetFloat("_Cutoff", 0.45f);
+                        part.EnableKeyword("_ALPHATEST_ON");
+                        part.SetFloat("_Cull", 0f);
+                        part.renderQueue = 2450;
                     }
                     EditorUtility.SetDirty(part);
                     importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), part);
