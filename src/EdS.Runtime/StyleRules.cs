@@ -808,6 +808,110 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// Bord de la réunion de polygones convexes (les bras de la rivière et le passage sous le pont) : leurs côtés, privés des morceaux
+        /// qui touchent ou traversent un autre polygone (revue Codex de la PR #58 : deux polygones voisins gardaient leur côté commun comme
+        /// berge, et deux bandes de terre coupaient la rivière de part et d'autre du pont).
+        /// </summary>
+        public static IReadOnlyList<(double X0, double Z0, double X1, double Z1)> UnionBoundary(IReadOnlyList<IReadOnlyList<(double X, double Z)>> polygons)
+        {
+            var boundary = new List<(double X0, double Z0, double X1, double Z1)>();
+            if (polygons == null) return boundary;
+            for (int i = 0; i < polygons.Count; i++)
+            {
+                IReadOnlyList<(double X, double Z)> polygon = polygons[i];
+                if (polygon == null || polygon.Count < 3) continue;
+                double sign = Area(polygon) >= 0 ? 1 : -1;
+                for (int e = 0; e < polygon.Count; e++)
+                {
+                    var a = polygon[e];
+                    var b = polygon[(e + 1) % polygon.Count];
+                    double ex = b.X - a.X, ez = b.Z - a.Z, len = Math.Sqrt(ex * ex + ez * ez);
+                    if (len < 1e-9) continue;
+                    // Morceaux du côté (paramètre t de 0 à 1) qui ne sont pas un bord de la réunion : juste au-delà du côté (0,1 mm vers
+                    // l'extérieur), on est encore dans un autre polygone. Un côté commun à deux voisins disparaît ; deux côtés alignés du
+                    // même côté (polygones qui se chevauchent) restent.
+                    double ox = sign * ez / len * 1e-4, oz = -sign * ex / len * 1e-4;
+                    var covered = new List<(double T0, double T1)>();
+                    for (int j = 0; j < polygons.Count; j++)
+                        if (j != i && Clip((a.X + ox, a.Z + oz), (b.X + ox, b.Z + oz), polygons[j]) is (double t0, double t1) && t1 - t0 > 1e-9)
+                            covered.Add((t0, t1));
+                    double start = 0;
+                    foreach (var c in covered.OrderBy(c => c.T0))
+                    {
+                        if (c.T0 > start + 1e-9) boundary.Add(Lerp(a, b, start, c.T0));
+                        start = Math.Max(start, c.T1);
+                    }
+                    if (start < 1 - 1e-9) boundary.Add(Lerp(a, b, start, 1));
+                }
+            }
+            return boundary;
+        }
+
+        /// <summary>
+        /// Distance (m) d'un point au bord de la réunion de polygones convexes (<see cref="UnionBoundary"/>, calculé une fois) : positive
+        /// dedans, négative dehors.
+        /// </summary>
+        public static double UnionDistance(double x, double z, IReadOnlyList<IReadOnlyList<(double X, double Z)>> polygons,
+            IReadOnlyList<(double X0, double Z0, double X1, double Z1)> boundary)
+        {
+            if (polygons == null || boundary == null || boundary.Count == 0) return double.NegativeInfinity;
+            double nearest = double.PositiveInfinity;
+            foreach (var s in boundary)
+            {
+                double ex = s.X1 - s.X0, ez = s.Z1 - s.Z0, len2 = ex * ex + ez * ez;
+                double t = len2 < 1e-18 ? 0 : Math.Max(0, Math.Min(1, ((x - s.X0) * ex + (z - s.Z0) * ez) / len2));
+                double dx = x - (s.X0 + t * ex), dz = z - (s.Z0 + t * ez);
+                nearest = Math.Min(nearest, Math.Sqrt(dx * dx + dz * dz));
+            }
+            bool inside = polygons.Any(p => p != null && InsideDistance(x, z, p) >= 0);
+            return inside ? nearest : -nearest;
+        }
+
+        /// <summary>Morceau [t0, t1] du segment [a, b] dans le polygone convexe (bords compris, à 1 µm près), ou null.</summary>
+        private static (double T0, double T1)? Clip((double X, double Z) a, (double X, double Z) b, IReadOnlyList<(double X, double Z)> polygon)
+        {
+            if (polygon == null || polygon.Count < 3) return null;
+            double sign = Area(polygon) >= 0 ? 1 : -1, t0 = 0, t1 = 1;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var p = polygon[i];
+                var q = polygon[(i + 1) % polygon.Count];
+                double ex = q.X - p.X, ez = q.Z - p.Z, len = Math.Sqrt(ex * ex + ez * ez);
+                if (len < 1e-9) continue;
+                // Distance signée (positive dedans) le long du segment : f(t) = f0 + t * df, gardée là où f(t) >= -1e-6.
+                double f0 = sign * (ex * (a.Z - p.Z) - ez * (a.X - p.X)) / len;
+                double f1 = sign * (ex * (b.Z - p.Z) - ez * (b.X - p.X)) / len;
+                double df = f1 - f0;
+                if (Math.Abs(df) < 1e-12)
+                {
+                    if (f0 < -1e-6) return null;
+                    continue;
+                }
+                double t = (-1e-6 - f0) / df;
+                if (df > 0) t0 = Math.Max(t0, t);
+                else t1 = Math.Min(t1, t);
+                if (t0 > t1) return null;
+            }
+            return (t0, t1);
+        }
+
+        /// <summary>Double de l'aire signée (positive dans le sens où l'intérieur est à gauche des côtés, comme <see cref="InsideDistance"/>).</summary>
+        private static double Area(IReadOnlyList<(double X, double Z)> polygon)
+        {
+            double area = 0;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var p = polygon[i];
+                var q = polygon[(i + 1) % polygon.Count];
+                area += p.X * q.Z - q.X * p.Z;
+            }
+            return area;
+        }
+
+        private static (double X0, double Z0, double X1, double Z1) Lerp((double X, double Z) a, (double X, double Z) b, double t0, double t1) =>
+            (a.X + (b.X - a.X) * t0, a.Z + (b.Z - a.Z) * t0, a.X + (b.X - a.X) * t1, a.Z + (b.Z - a.Z) * t1);
+
+        /// <summary>
         /// Profondeur (m, positive) du lit de la rivière à <paramref name="inside"/> mètres en dedans de son bord : nulle au bord et dehors,
         /// puis la berge descend en douceur jusqu'à <see cref="RiverBed"/> sur <see cref="RiverBank"/> mètres.
         /// </summary>

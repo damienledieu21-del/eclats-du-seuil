@@ -109,8 +109,9 @@ namespace EdS.Game
         /// Sol réaliste d'un combat positionné : un terrain (hauteur 0 où l'on marche, comme le sol du moteur) qui couvre l'aire et
         /// <see cref="StyleCatalog.ForestMargin"/> mètres autour, peint en terre, roche et herbe d'après <paramref name="spots"/>
         /// (<see cref="StyleRules.GroundMix"/>). Essai de Damien du 27 octobre 2026 (« l'eau n'est pas du tout réaliste ») : le lit de la
-        /// rivière est creusé sous chaque polygone de <paramref name="rivers"/>, avec des berges en pente douce
-        /// (<see cref="StyleRules.ChannelDepth"/>) ; le sol hors de l'eau reste à 0. Null sans texture de sol dans le catalogue (le sol
+        /// rivière est creusé sous la réunion des polygones de <paramref name="rivers"/> (revue Codex de la PR #58 : un seul lit, sans
+        /// berge entre deux polygones voisins), avec des berges en pente douce (<see cref="StyleRules.ChannelDepth"/>) ; le sol hors de l'eau
+        /// reste à 0. Null sans texture de sol dans le catalogue (le sol
         /// simple reste).
         /// </summary>
         public static GameObject Ground(Transform parent, float minX, float minZ, float maxX, float maxZ, IReadOnlyList<StyleSpot> spots,
@@ -130,14 +131,12 @@ namespace EdS.Game
             data.size = new Vector3(width, TerrainHeight, depth);
             int hres = data.heightmapResolution;
             var heights = new float[hres, hres];
+            IReadOnlyList<(double X0, double Z0, double X1, double Z1)> banks = StyleRules.UnionBoundary(rivers);
             for (int row = 0; row < hres; row++)
                 for (int col = 0; col < hres; col++)
                 {
                     double x = x0 + col / (double)(hres - 1) * width, z = z0 + row / (double)(hres - 1) * depth;
-                    double dig = 0;
-                    if (rivers != null)
-                        foreach (IReadOnlyList<(double X, double Z)> river in rivers)
-                            dig = System.Math.Max(dig, StyleRules.ChannelDepth(StyleRules.InsideDistance(x, z, river)));
+                    double dig = banks.Count > 0 ? StyleRules.ChannelDepth(StyleRules.UnionDistance(x, z, rivers, banks)) : 0;
                     heights[row, col] = (float)((TerrainBase - dig) / TerrainHeight);
                 }
             data.SetHeights(0, 0, heights);
@@ -156,9 +155,7 @@ namespace EdS.Game
                 {
                     double x = x0 + (col + 0.5f) / res * width, z = z0 + (row + 0.5f) / res * depth;
                     StyleMix mix = StyleRules.GroundMix(x, z, spots);
-                    if (rivers != null)
-                        foreach (IReadOnlyList<(double X, double Z)> river in rivers)
-                            mix = StyleRules.RiverMix(mix, StyleRules.InsideDistance(x, z, river));
+                    if (banks.Count > 0) mix = StyleRules.RiverMix(mix, StyleRules.UnionDistance(x, z, rivers, banks));
                     maps[row, col, (int)StyleGround.Soil] = (float)mix.Soil;
                     maps[row, col, (int)StyleGround.Rock] = (float)mix.Rock;
                     maps[row, col, (int)StyleGround.Grass] = (float)mix.Grass;

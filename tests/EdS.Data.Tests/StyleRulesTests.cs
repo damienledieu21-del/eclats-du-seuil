@@ -725,7 +725,7 @@ public class StyleRulesTests
         Assert.Contains("\"RenderPipeline\" = \"UniversalPipeline\"", shader, StringComparison.Ordinal);
         Assert.Contains("\"LightMode\" = \"UniversalForward\"", shader, StringComparison.Ordinal);
         Assert.Contains("catalog.Water = WaterMaterial(notes);", editor, StringComparison.Ordinal);
-        Assert.Contains("dig = System.Math.Max(dig, StyleRules.ChannelDepth(StyleRules.InsideDistance(x, z, river)));", world, StringComparison.Ordinal);
+        Assert.Contains("double dig = banks.Count > 0 ? StyleRules.ChannelDepth(StyleRules.UnionDistance(x, z, rivers, banks)) : 0;", world, StringComparison.Ordinal);
         Assert.Contains("data.SetHeights(0, 0, heights);", world, StringComparison.Ordinal);
         Assert.Contains("layer.diffuseRemapMax = new Vector4(tint.r, tint.g, tint.b, 1f);", world, StringComparison.Ordinal);
         Assert.Contains("WaterSurface(id, points);", view, StringComparison.Ordinal);
@@ -770,5 +770,40 @@ public class StyleRulesTests
         Assert.False(StyleRules.IsColorMap("textures/Windmill_AO.png"));
         string look = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleLook.cs"));
         Assert.Contains("IReadOnlyList<int> keep = StyleRules.Cluster(boxes, detail);", look, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Un_seul_lit_sous_les_bras_de_la_riviere_et_le_pont()
+    {
+        // Revue Codex de la PR #58 : les deux bras de la rivière des Vallons et le passage sous le pont sont trois rectangles voisins ;
+        // creusés chacun pour soi, leurs côtés communs restaient des berges (deux bandes de terre en travers de la rivière).
+        var south = new List<(double X, double Z)> { (4, -18), (7, -18), (7, -2), (4, -2) };
+        var gap = new List<(double X, double Z)> { (4, -2), (7, -2), (7, 1.5), (4, 1.5) };
+        var north = new List<(double X, double Z)> { (4, 34), (4, 1.5), (7, 1.5), (7, 34) };   // autre sens des sommets
+        var rivers = new List<IReadOnlyList<(double X, double Z)>> { south, gap, north };
+        var banks = StyleRules.UnionBoundary(rivers);
+        // Le bord de la réunion est celui d'un seul rectangle de 3 m sur 52 m.
+        double length = banks.Sum(s => Math.Sqrt((s.X1 - s.X0) * (s.X1 - s.X0) + (s.Z1 - s.Z0) * (s.Z1 - s.Z0)));
+        Assert.Equal(2 * (3 + 52), length, 4);
+        foreach (double z in new[] { -2.0, -1.75, 0.0, 1.5, 1.25, -10.0, 20.0 })
+        {
+            Assert.Equal(1.5, StyleRules.UnionDistance(5.5, z, rivers, banks), 6);
+            Assert.Equal(StyleRules.RiverBed, StyleRules.ChannelDepth(StyleRules.UnionDistance(5.5, z, rivers, banks)), 6);   // lit continu
+        }
+        Assert.Equal(0.5, StyleRules.UnionDistance(4.5, -2, rivers, banks), 6);
+        Assert.Equal(-2, StyleRules.UnionDistance(2, -2, rivers, banks), 6);          // dehors : négatif
+        Assert.Equal(-1, StyleRules.UnionDistance(5.5, 35, rivers, banks), 6);        // au-delà du bout nord
+        // Un seul polygone : la même chose que sa distance au bord.
+        var alone = new List<IReadOnlyList<(double X, double Z)>> { south };
+        var aloneBanks = StyleRules.UnionBoundary(alone);
+        Assert.Equal(4, aloneBanks.Count);
+        Assert.Equal(StyleRules.InsideDistance(4.7, -9, south), StyleRules.UnionDistance(4.7, -9, alone, aloneBanks), 9);
+        // Polygones qui se chevauchent : le bord intérieur disparaît aussi.
+        var a = new List<(double X, double Z)> { (0, 0), (4, 0), (4, 2), (0, 2) };
+        var b = new List<(double X, double Z)> { (3, 0), (7, 0), (7, 2), (3, 2) };
+        var overlap = new List<IReadOnlyList<(double X, double Z)>> { a, b };
+        Assert.Equal(1, StyleRules.UnionDistance(3.5, 1, overlap, StyleRules.UnionBoundary(overlap)), 6);
+        Assert.Empty(StyleRules.UnionBoundary(null!));
+        Assert.True(double.IsNegativeInfinity(StyleRules.UnionDistance(0, 0, rivers, new List<(double, double, double, double)>())));
     }
 }
