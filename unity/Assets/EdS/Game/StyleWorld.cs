@@ -34,13 +34,21 @@ namespace EdS.Game
             if (camera == null || catalog == null || catalog.Sky == null) return false;
             _camera = camera;
             // Essai réaliste 4 : sur téléphone, le rendu léger du catalogue (ombres et effets réduits) ; l'ordinateur garde celui du projet.
-            if (Application.isMobilePlatform && catalog.PhonePipeline != null) QualitySettings.renderPipeline = catalog.PhonePipeline;
+            // Revue Codex de la PR #59 : les réglages du téléphone du sous-lot 11.8 coupent les ombres (qualité et soleil) ; avec le rendu
+            // léger, le soleil retrouve des ombres dures (35 m, deux cascades, réglées dans ce rendu).
+            bool phoneShadows = Application.isMobilePlatform && catalog.PhonePipeline != null;
+            if (phoneShadows)
+            {
+                QualitySettings.renderPipeline = catalog.PhonePipeline;
+                QualitySettings.shadows = ShadowQuality.HardOnly;
+            }
             RenderSettings.skybox = catalog.Sky;
             camera.clearFlags = CameraClearFlags.Skybox;
             foreach (Light light in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (light.type == LightType.Directional)
                 {
                     _sun = light;
+                    if (phoneShadows) light.shadows = LightShadows.Hard;
                     break;
                 }
             // Couleurs de l'image : volume global d'URP (tons, exposition, contraste, saturation, halo, vignette). Sans URP, rien.
