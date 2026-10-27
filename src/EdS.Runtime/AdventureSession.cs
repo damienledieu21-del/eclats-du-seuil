@@ -524,6 +524,29 @@ namespace EdS.Runtime
 
         public ItemDefinition Item(string id) => _items.Item(id);
 
+        /// <summary>
+        /// Essai réaliste 6 : expérience cumulée du niveau actuel et du suivant (null au niveau maximal), pour la barre de l'écran du
+        /// personnage.
+        /// </summary>
+        public (long From, long? To) LevelXp
+        {
+            get
+            {
+                int level = World.Level;
+                return (_progression.XpToLevel[level - 1], level < _progression.MaxLevel ? _progression.XpToLevel[level] : (long?)null);
+            }
+        }
+
+        /// <summary>Essai réaliste 6 : PV et endurance maximaux du personnage dans la session (bonus d'équipement compris).</summary>
+        public (long Health, long Endurance) Maxima
+        {
+            get
+            {
+                CombatantView me = World.Zone.Engine.View(PlayerId);
+                return (me.MaxHealth ?? 0, me.MaxEndurance);
+            }
+        }
+
         // --- Talents (essai réaliste 6) ---------------------------------------------------------------------------------
 
         /// <summary>

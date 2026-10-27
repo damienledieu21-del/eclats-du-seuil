@@ -128,9 +128,10 @@ public class Lot129MapTests : IDisposable
         AdventureSession again = AdventureSession.Load(DataDirectory, Scenarios, SavePath);
         Assert.Equal(1, again.Opened);
         Assert.NotSame(first, again.Map);
-        string script = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "MiniMap.cs"));
-        Assert.Contains("if (_texture != null && ReferenceEquals(_source, map)) return _texture;", script, StringComparison.Ordinal);
-        Assert.DoesNotContain("a.Opened", script, StringComparison.Ordinal);
+        // Essai réaliste 6 : la carte peinte (PaintedMap) remplace l'image du plan ; même clé (la carte elle-même).
+        string script = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "PaintedMap.cs"));
+        Assert.Contains("if (!ReferenceEquals(map, _source))", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Opened", script, StringComparison.Ordinal);
     }
 }
 

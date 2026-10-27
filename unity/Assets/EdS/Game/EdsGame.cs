@@ -115,8 +115,9 @@ namespace EdS.Game
         private HudView _hud;
         private IReadOnlyList<HelpKey> _adventureHelp;
 
-        // Essai réaliste 6, étape 2 : l'arbre des Éclats (talents) ouvrable dans l'aventure (T).
+        // Essai réaliste 6, étape 2 : l'arbre des Éclats (talents) ouvrable dans l'aventure (T), et les écrans de l'aventure en uGUI.
         private TalentTreeView _talentView;
+        private AdventureBook _book;
         private string _startupError;
 
         private IEnumerator Start()
@@ -130,6 +131,7 @@ namespace EdS.Game
                 _arena = new ArenaView();
                 _hud = HudView.Create();
                 _talentView = TalentTreeView.Create();
+                _book = AdventureBook.Create();
                 StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
             }
             catch (Exception e)
@@ -329,19 +331,7 @@ namespace EdS.Game
                 if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
                 // Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») :
                 // T ouvre l'arbre des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
-                if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed))
-                {
-                    _screens.Close();
-                    try
-                    {
-                        _talentView.Open(a.CreateTalentEditor(), a.Text, a.SetTalents);
-                    }
-                    catch (ArgumentException e)
-                    {
-                        Debug.LogException(e);
-                        Say("Talents indisponibles : " + e.Message);
-                    }
-                }
+                if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed)) OpenAdventureTalents(a);
             }
             if (Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed)
@@ -1001,18 +991,43 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Sous-lot 12.8 : dialogue et écrans de l'aventure (IMGUI). Essai réaliste 6 : le lieu, l'heure, l'indication d'action, la défaite,
-        /// la pause et la petite carte sont dans l'interface uGUI (<see cref="UpdateHud"/>).
+        /// Sous-lot 12.8 : commandes tactiles de l'aventure (IMGUI). Essai réaliste 6 : le lieu, l'heure, l'indication d'action, la défaite,
+        /// la pause et la petite carte sont dans l'interface uGUI (<see cref="UpdateHud"/>) ; les écrans et le dialogue aussi
+        /// (<see cref="AdventureBook"/>).
         /// </summary>
-        private void DrawAdventure()
+        private void DrawAdventure() => _touch.Draw(false, true, AdventureCovered);
+
+        /// <summary>Essai réaliste 6, étape 2 : écrans et dialogue de l'aventure (uGUI) ; un onglet peut ouvrir l'arbre des Éclats.</summary>
+        private void UpdateBook(float deltaTime, bool shown)
         {
-            AdventureSession a = _adventure;
-            _screens.Enemies = AdventureEnemies();
-            int answer = AdventureScreens.DrawDialogue(a);
-            if (answer >= 0) a.Choose(answer);
-            else if (answer == AdventureScreens.CloseDialogue) a.CloseDialogue();
-            _screens.Draw(a);
-            _touch.Draw(false, true, AdventureCovered);
+            if (_book == null) return;
+            if (!shown || _adventure == null || TalentsOpen)
+            {
+                _book.Hide();
+                return;
+            }
+            AdventureBook.Request request = _book.Update(_adventure, _screens, AdventureEnemies(), deltaTime);
+            if (request == AdventureBook.Request.Close) _screens.Close();
+            else if (request == AdventureBook.Request.Talents) OpenAdventureTalents(_adventure);
+        }
+
+        /// <summary>
+        /// Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») : l'arbre
+        /// des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
+        /// </summary>
+        private void OpenAdventureTalents(AdventureSession a)
+        {
+            if (a.Dialogue != null || a.MustContinue) return;
+            _screens.Close();
+            try
+            {
+                _talentView.Open(a.CreateTalentEditor(), a.Text, a.SetTalents);
+            }
+            catch (ArgumentException e)
+            {
+                Debug.LogException(e);
+                Say("Talents indisponibles : " + e.Message);
+            }
         }
 
         /// <summary>Sous-lot 12.9d : ennemis à montrer sur la carte (en vue seulement, comme à l'écran).</summary>
@@ -1035,6 +1050,8 @@ namespace EdS.Game
             bool shown = _ready && _startupError == null && !(_error != null && !Network) && !_menuOpen && !LobbyShown && _talents == null && _combat != null
                 && !TalentsOpen;
             _talentView?.Update(Time.unscaledDeltaTime);
+            bool screens = _ready && _startupError == null && !_menuOpen && !LobbyShown && _talents == null && _combat != null;
+            UpdateBook(Time.unscaledDeltaTime, screens);
             if (!shown)
             {
                 _hud.Hide();

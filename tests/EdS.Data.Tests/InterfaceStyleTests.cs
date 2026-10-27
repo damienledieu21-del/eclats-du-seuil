@@ -238,4 +238,31 @@ public class InterfaceStyleTests
             }
         }
     }
+
+    /// <summary>
+    /// Essai réaliste 6, étape 2 (« pareil pour l'inventaire, l'aide tout ces petits détails ») : les écrans de l'aventure (Personnage,
+    /// Journal, Atelier, Carte) et le dialogue sont en uGUI, dans un panneau à onglets dont l'un ouvre l'arbre des Éclats ; les actions
+    /// passent par l'aventure (donc par le cœur) ; l'ancienne carte en IMGUI est retirée.
+    /// </summary>
+    [Fact]
+    public void Ecrans_de_l_aventure_en_ugui()
+    {
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        string book = Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs");
+        string screens = Read("unity", "Assets", "EdS", "Game", "AdventureScreens.cs");
+        Assert.Contains("_book = AdventureBook.Create();", game, StringComparison.Ordinal);
+        Assert.Contains("AdventureBook.Request request = _book.Update(_adventure, _screens, AdventureEnemies(), deltaTime);", game, StringComparison.Ordinal);
+        Assert.Contains("else if (request == AdventureBook.Request.Talents) OpenAdventureTalents(_adventure);", game, StringComparison.Ordinal);
+        Assert.DoesNotContain("DrawDialogue", game, StringComparison.Ordinal);
+        Assert.DoesNotContain("Hud.", screens, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "MiniMap.cs")));
+        foreach (string action in new[] { "_session.Unequip(s);", "_session.Equip(place);", "_session.Craft(_recipeData[index].Id);", "_session?.Choose(index)",
+                     "_session?.CloseDialogue()" })
+            Assert.Contains(action, book, StringComparison.Ordinal);
+        Assert.Contains("_map.uvRect = PaintedMap.Area(map);", book, StringComparison.Ordinal);
+        using JsonDocument texts = JsonDocument.Parse(Read("data", "v0", "world", "texts", "fr.json"));
+        JsonElement entries = texts.RootElement.GetProperty("data").GetProperty("entries");
+        foreach (string key in new[] { "text.ui.tab.character", "text.ui.tab.talents", "text.ui.tab.journal", "text.ui.tab.crafting", "text.ui.tab.map" })
+            Assert.True(entries.TryGetProperty(key, out _), key);
+    }
 }

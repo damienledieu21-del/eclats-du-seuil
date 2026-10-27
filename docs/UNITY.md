@@ -330,10 +330,21 @@ Ce que tu regardes :
 - Pas en plein combat : éloigne-toi d'abord des ennemis (12 m).
 - Sur téléphone, le bouton **Talents** est dans la rangée du haut.
 
-Limites de l'étape 1 :
-- les écrans (sac, journal, atelier, dialogues, menus du réseau, talents de l'entraînement) gardent l'ancienne interface jusqu'à la fin de l'étape 2 ;
+**Étape 2 : les écrans de l'aventure.** Ils sont refaits dans le même style, en un grand panneau à onglets : **Personnage**, **Arbre des Éclats**, **Journal**, **Atelier**, **Carte**. Un clic sur l'onglet change d'écran.
+- **Personnage** (I) :
+  - l'équipement porté autour du sceau du Bastion : arme, bouclier, torse, cou ;
+  - le statut : attributs, PV, endurance, points d'Éclat à placer ;
+  - le **sac** en cases avec icônes : la fiche d'un objet s'ouvre au survol, avec ses bonus et son niveau requis. Clic : le porter. Clic sur un objet porté : le retirer ;
+  - la barre d'expérience et les métiers.
+- **Journal** (J) : les quêtes avec leur étape et leur avancée, et les découvertes.
+- **Atelier** (K) : les recettes en cartes, avec ce qu'il faut, ce qu'on obtient, pourquoi ce n'est pas possible ici, et le bouton **Fabriquer**.
+- **Carte** (L) : la carte peinte en grand, avec les noms des lieux, des PNJ et des points sûrs, l'objectif et les ennemis en vue.
+- **Dialogue** : en bas de l'écran, réponses en boutons. Les touches 1 à 9 marchent toujours.
+
+Limites des étapes 1 et 2 :
+- les menus du réseau et l'écran des talents de l'entraînement gardent l'ancienne interface ;
 - la mise en page n'a pas encore été essayée sur le Note8 ;
-- la grande carte garde ses anciens repères.
+- la flèche du joueur ne tourne pas encore sur la grande carte.
 
 ## 8. En cas de problème
 

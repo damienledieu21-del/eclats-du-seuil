@@ -107,4 +107,18 @@ public class Essai6TalentTests : IDisposable
         Assert.Equal("Pas en plein combat : éloigne-toi des ennemis pour changer tes talents.", a.SetTalents(editor.Build));
         Assert.Empty(a.World.Character.Talents);
     }
+
+    /// <summary>Écran du personnage : expérience du niveau et du suivant, PV et endurance maximaux.</summary>
+    [Fact]
+    public void Experience_et_maxima_du_personnage()
+    {
+        AdventureSession a = Start();
+        CharacterProgression progression = Shipped;
+        (long from, long? to) = a.LevelXp;
+        Assert.Equal(progression.XpToLevel[3], from);
+        Assert.Equal(progression.XpToLevel[4], to);
+        Assert.InRange(a.World.Character.Xp, from, to!.Value - 1);
+        (long health, long endurance) = a.Maxima;
+        Assert.True(health > 0 && endurance > 0);
+    }
 }

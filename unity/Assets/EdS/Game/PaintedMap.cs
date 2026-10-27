@@ -5,10 +5,25 @@ using UnityEngine;
 
 namespace EdS.Game
 {
+    /// <summary>Un ennemi à montrer sur la carte (en vue seulement : la carte ne montre pas ce que le Bastion ne voit pas).</summary>
+    public struct MapEnemy
+    {
+        public float X, Z;
+        public bool Boss;
+
+        public MapEnemy(float x, float z, bool boss)
+        {
+            X = x;
+            Z = z;
+            Boss = boss;
+        }
+    }
+
     /// <summary>
     /// Essai réaliste 6 (essai de Damien du 27 octobre 2026 : « la mini Map […] ça fait vraiment schéma ») : texture de la carte peinte
     /// d'une zone (<see cref="MapPainter"/>), calculée hors de l'image en cours (tâche de fond : le jeu ne se fige pas) puis envoyée à la
-    /// carte graphique ; partagée par la petite carte et la grande (L). Null tant qu'elle se calcule.
+    /// carte graphique ; partagée par la petite carte et la grande (L). Null tant qu'elle se calcule. Essai réaliste 6, étape 2 : l'ancienne
+    /// carte en IMGUI (MiniMap, plan du cœur) est retirée ; une autre carte (nouvelle session, ou nouvelle aventure) refait l'image.
     /// </summary>
     public static class PaintedMap
     {
