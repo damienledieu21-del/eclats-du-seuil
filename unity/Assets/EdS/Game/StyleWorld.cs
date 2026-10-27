@@ -40,7 +40,9 @@ namespace EdS.Game
             if (phoneShadows)
             {
                 QualitySettings.renderPipeline = catalog.PhonePipeline;
-                QualitySettings.shadows = ShadowQuality.HardOnly;
+                // Nom qualifié : URP a aussi un ShadowQuality (UnityEngine.Rendering.Universal) ; non qualifié, Unity refuse de compiler
+                // (essai de Damien du 27 octobre 2026 au soir).
+                QualitySettings.shadows = UnityEngine.ShadowQuality.HardOnly;
             }
             RenderSettings.skybox = catalog.Sky;
             camera.clearFlags = CameraClearFlags.Skybox;
