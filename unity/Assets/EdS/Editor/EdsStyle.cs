@@ -694,10 +694,21 @@ namespace EdS.Game.Editor
                 AssetDatabase.CreateAsset(material, path);
             }
             else if (material.shader != shader) material.shader = shader;
+            // Essai réaliste 5 : quand Claude change les réglages par défaut du shader (version « _Reglages »), le matériau les reprend une
+            // fois ; les réglages faits ensuite à la main sont gardés.
+            if (material.HasProperty("_Reglages") && material.GetFloat("_Reglages") < ShaderSettingsVersion)
+            {
+                material.CopyPropertiesFromMaterial(new Material(shader));
+                material.SetFloat("_Reglages", ShaderSettingsVersion);
+                notes.Add("Réglages de « " + file + " » remis à ceux de l'essai (version " + ShaderSettingsVersion + ").");
+            }
             material.enableInstancing = true;
             EditorUtility.SetDirty(material);
             return material;
         }
+
+        /// <summary>Version des réglages par défaut des shaders du jeu (essai réaliste 5 : herbe plus claire, fleurs, plaques sèches).</summary>
+        private const float ShaderSettingsVersion = 5f;
 
         /// <summary>
         /// Essai réaliste 4 (demande de Damien du 27 octobre 2026 : « le maximum de réalisme », réglages différents pour le PC et le

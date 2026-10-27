@@ -293,6 +293,49 @@ namespace EdS.Game
         /// <summary>L'eau vient du shader « EdS/Eau » (surface sous le sol, berges creusées).</summary>
         public static bool RealWater => _water != null && _shaderWater;
 
+        private static Material _rock;
+
+        /// <summary>
+        /// Essai réaliste 5 : matériau de pierre brute (texture de roche du sol du catalogue, avec son relief) pour le muret de pierres
+        /// sèches, les culées du pont et les socles de l'abri ; null sans elle. <paramref name="tile"/> : une répétition tous les 1,2 m.
+        /// </summary>
+        public static Material Rock(out float tile)
+        {
+            tile = 1.2f;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null || catalog.RockColor == null) return null;
+            if (_rock != null) return _rock;
+            _rock = ArenaView.MakeMaterial(Color.white);
+            _rock.SetTexture("_BaseMap", catalog.RockColor);
+            _rock.SetTexture("_MainTex", catalog.RockColor);
+            if (catalog.RockNormal != null)
+            {
+                _rock.SetTexture("_BumpMap", catalog.RockNormal);
+                _rock.EnableKeyword("_NORMALMAP");
+            }
+            _rock.SetFloat("_Smoothness", 0.08f);
+            return _rock;
+        }
+
+        private static float _deckX0, _deckZ0, _deckX1, _deckZ1, _deckRise;
+
+        /// <summary>Essai réaliste 5 : pont cintré posé (emprise du tablier et flèche) ; une flèche nulle l'enlève.</summary>
+        public static void Deck(float x0, float z0, float x1, float z1, float rise)
+        {
+            _deckX0 = x0;
+            _deckZ0 = z0;
+            _deckX1 = x1;
+            _deckZ1 = z1;
+            _deckRise = rise;
+        }
+
+        /// <summary>
+        /// Essai réaliste 5 : hauteur où se tient un personnage en (x, z) : sur le tablier bombé du pont, 0 ailleurs
+        /// (<see cref="StyleShapes.StandHeight"/>). Affichage seulement : le moteur ne connaît pas la hauteur.
+        /// </summary>
+        public static float StandHeight(float x, float z) =>
+            _deckRise > 0f ? (float)StyleShapes.StandHeight(x, z, _deckX0, _deckZ0, _deckX1, _deckZ1, _deckRise) : 0f;
+
         private static bool _shaderWater;
 
         /// <summary>

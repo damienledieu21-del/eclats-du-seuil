@@ -597,27 +597,35 @@ namespace EdS.Runtime
             return spots;
         }
 
-        /// <summary>Une touffe d'herbe en brins : place au sol, rotation (degrés) et échelle.</summary>
+        /// <summary>
+        /// Une touffe d'herbe en brins : place au sol, rotation (degrés) et échelle ; essai réaliste 5 : <see cref="Flowers"/> si la touffe
+        /// porte des fleurs.
+        /// </summary>
         public readonly struct GrassSpot
         {
-            public GrassSpot(double x, double z, double yaw, double scale)
+            public GrassSpot(double x, double z, double yaw, double scale, bool flowers = false)
             {
                 X = x;
                 Z = z;
                 Yaw = yaw;
                 Scale = scale;
+                Flowers = flowers;
             }
 
             public double X { get; }
             public double Z { get; }
             public double Yaw { get; }
             public double Scale { get; }
+            public bool Flowers { get; }
         }
+
+        /// <summary>Taille (m) des plaques d'herbe haute ou rase, et des coins fleuris (essai réaliste 5).</summary>
+        public const double MeadowPatch = 7.0;
 
         /// <summary>
         /// Essai réaliste 4 : places des touffes d'herbe en brins sur [minX, maxX] × [minZ, maxZ], environ <paramref name="density"/> par
         /// mètre carré : une par case d'une grille régulière, décalée au hasard dans sa case (suite fixe : les mêmes à chaque lancement),
-        /// tournée et d'échelle 0,75 à 1,3. Vide si la densité ou l'emprise est nulle. Au plus <paramref name="max"/> touffes : une grande
+        /// tournée, d'échelle 0,47 à 1,67 (plaques d'herbe haute ou rase), fleurie par endroits. Vide si la densité ou l'emprise est nulle. Au plus <paramref name="max"/> touffes : une grande
         /// emprise reçoit une herbe plus clairsemée, mais partout (pas seulement ses premières rangées).
         /// </summary>
         public static IReadOnlyList<GrassSpot> GrassSpots(double minX, double minZ, double maxX, double maxZ, double density, int max = 200000)
@@ -639,7 +647,12 @@ namespace EdS.Runtime
                 for (double x = minX; x < maxX && spots.Count < max; x += step)
                 {
                     double px = Math.Min(maxX, x + Next() * step), pz = Math.Min(maxZ, z + Next() * step);
-                    spots.Add(new GrassSpot(px, pz, Next() * 360, 0.75 + 0.55 * Next()));
+                    // Essai réaliste 5 (« l'herbe pourrait être encore mieux ») : un pré n'est pas tondu : des plaques d'herbe plus haute et
+                    // d'autres plus rases (bruit lissé), et des coins fleuris.
+                    double meadow = 0.55 + 0.9 * Noise(px / MeadowPatch, pz / MeadowPatch);
+                    double scale = meadow * (0.85 + 0.3 * Next()), yaw = Next() * 360, roll = Next();
+                    bool flowers = Noise(px / (MeadowPatch * 0.7) + 101.3, pz / (MeadowPatch * 0.7) - 57.1) > 0.6 && roll < 0.35;
+                    spots.Add(new GrassSpot(px, pz, yaw, scale, flowers));
                 }
             return spots;
         }

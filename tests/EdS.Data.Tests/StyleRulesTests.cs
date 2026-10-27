@@ -742,11 +742,12 @@ public class StyleRulesTests
         Assert.Contains("WaterSurface(id, points);", view, StringComparison.Ordinal);
         Assert.Contains("WaterSurface(\"Rivière (sous le pont)\"", view, StringComparison.Ordinal);
         // Pont, palissade, haie, moulin.
-        Assert.Contains("StyleLook.Bridge(_root.transform,", view, StringComparison.Ordinal);
+        // Essai réaliste 5 : le pont cintré fait par le code remplace le tronçon du ponton, le muret de pierres sèches la haie d'arbustes.
+        Assert.Contains("StyleBridgeShapes bridge = StyleShapes.Bridge(x0, z0, x1, z1, BridgeRise, \"pont\", woodTile, barkTile, stoneTile);", view, StringComparison.Ordinal);
         Assert.Contains("Palisade(id, points);", view, StringComparison.Ordinal);
         // Revue Codex de la PR #58 (3e tour) : la palissade calcule ses tangentes (relief de l'écorce).
         Assert.Contains("mesh.RecalculateTangents();   // revue Codex de la PR #58 (3e tour)", view, StringComparison.Ordinal);
-        Assert.Contains("if (fence == StyleFence.Hedge && Hedge(id, points)) return;", view, StringComparison.Ordinal);
+        Assert.Contains("DryStoneWall(id, points);", view, StringComparison.Ordinal);
         Assert.Contains("StyleLook.Building(_root.transform, StyleProp.Mill, id, Center(points), 0f, side);", view, StringComparison.Ordinal);
         Assert.Contains("_occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });", view, StringComparison.Ordinal);
         // Forge, herbe de l'Aube, filons ; les PNJ se tournent vers le joueur.
@@ -950,9 +951,12 @@ public class StyleRulesTests
             Assert.InRange(g.X, -24, 60);
             Assert.InRange(g.Z, -18, 40);
             Assert.InRange(g.Yaw, 0, 360);
-            Assert.InRange(g.Scale, 0.75, 1.3);
+            Assert.InRange(g.Scale, 0.46, 1.67);   // essai réaliste 5 : plaques d'herbe haute ou rase
         });
         Assert.Equal(spots, StyleRules.GrassSpots(-24, -18, 60, 40, 4));
+        // Essai réaliste 5 : un pré varié : des touffes hautes et rases, et quelques coins fleuris (ni partout, ni nulle part).
+        Assert.True(spots.Count(g => g.Scale > 1.2) > spots.Count / 20 && spots.Count(g => g.Scale < 0.8) > spots.Count / 20);
+        Assert.InRange(spots.Count(g => g.Flowers), spots.Count / 200, spots.Count / 5);
         Assert.Empty(StyleRules.GrassSpots(0, 0, 10, 10, 0));
         Assert.Empty(StyleRules.GrassSpots(0, 0, 0, 10, 4));
         // Plafond : une grande emprise reçoit une herbe plus clairsemée, mais partout, jusqu'à ses bords.
@@ -989,7 +993,7 @@ public class StyleRulesTests
         // Revue Codex de la PR #59 : paquets de 511 touffes au plus, échelle uniforme déclarée dans les trois passes.
         Assert.Contains("private const int Batch = 511;", grass, StringComparison.Ordinal);
         Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(grassShader, "#pragma instancing_options assumeuniformscaling").Count);
-        Assert.Contains("Graphics.RenderMeshInstanced(parameters, _mesh, 0, cell.Items);", grass, StringComparison.Ordinal);
+        Assert.Contains("Graphics.RenderMeshInstanced(parameters, cell.Flowers ? _flowers : _mesh, 0, cell.Items);", grass, StringComparison.Ordinal);   // essai 5 : touffes fleuries
         Assert.Contains("_grass?.Draw(camera);", view, StringComparison.Ordinal);
         Assert.Contains("if (terrain) Grass(space);", view, StringComparison.Ordinal);
         Assert.Contains("catalog.Grass = ShaderMaterial(\"EdS/Herbe\", \"Herbe\", notes);", editor, StringComparison.Ordinal);

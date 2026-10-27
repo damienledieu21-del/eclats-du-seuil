@@ -343,48 +343,6 @@ namespace EdS.Game
             if (VisibleBounds(look, out Bounds b)) look.transform.position += Vector3.up * (y - b.min.y);
         }
 
-        /// <summary>
-        /// Essai réaliste (demande de Damien du 27 octobre 2026 : « le pont n'est pas réaliste ») : pont fait d'un tronçon du ponton du
-        /// catalogue (<see cref="StyleRules.BridgeSection"/>), tourné pour franchir la rivière suivant x, mis à l'échelle de la longueur du
-        /// passage, son tablier (dessus des planches, <see cref="StyleRules.BridgeDeck"/>) à <paramref name="deck"/> mètres. Ses pieux
-        /// descendent dans le lit creusé. Null sans ponton.
-        /// </summary>
-        public static GameObject Bridge(Transform parent, Vector3 center, float length, float deck)
-        {
-            StyleCatalog catalog = StyleCatalog.Loaded;
-            PropLook prop = catalog != null ? catalog.Prop(StyleProp.Bridge) : null;
-            if (prop == null) return null;
-            var look = new GameObject("Pont (essai de style)");
-            GameObject model = Object.Instantiate(prop.Model, look.transform, false);
-            foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-            Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
-            var names = new List<string>();
-            foreach (Renderer r in renderers) names.Add(r.gameObject.name);
-            int section = StyleRules.BridgeSection(names), planks = StyleRules.BridgeDeck(names);
-            if (section < 0) return Discard(look);
-            // Hauteur du tablier dans le modèle : le dessus des planches (même hauteur pour tous les tronçons du ponton modulaire).
-            float deckTop = planks >= 0 ? renderers[planks].bounds.max.y : renderers[section].bounds.max.y;
-            float bottom = renderers[section].bounds.min.y;
-            Keep(look, model, renderers, new[] { section });
-            look.transform.SetParent(parent, false);
-            VisibleBounds(look, out Bounds b);
-            // Le plus long côté du tronçon franchit la rivière (suivant x).
-            float yaw = (b.size.z > b.size.x ? 90f : 0f) + prop.Yaw;
-            float k = length / Mathf.Max(0.1f, Mathf.Max(b.size.x, b.size.z)) * (prop.Scale > 0f ? prop.Scale : 1f);
-            look.transform.localScale = Vector3.one * k;
-            look.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
-            look.transform.position = center;
-            VisibleBounds(look, out Bounds placed);
-            look.transform.position += new Vector3(center.x - placed.center.x, deck - (placed.min.y + (deckTop - bottom) * k), center.z - placed.center.z);
-            return look;
-        }
-
-        private static GameObject Discard(GameObject look)
-        {
-            Object.Destroy(look);
-            return null;
-        }
-
         /// <summary>Modèles déjà décrits dans le journal de Unity (une ligne par modèle, pour régler l'essai).</summary>
         private static readonly HashSet<string> Logged = new HashSet<string>();
 

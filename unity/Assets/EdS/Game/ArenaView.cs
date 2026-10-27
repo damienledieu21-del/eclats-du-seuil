@@ -315,11 +315,13 @@ namespace EdS.Game
                     _to[v.Id] = target;
                 }
                 shown[v.Id] = Vector3.Lerp(_from[v.Id], _to[v.Id], t);
-                Vector3 place = shown[v.Id] + Vector3.up;
+                // Essai réaliste 5 : sur le pont cintré, le corps monte avec le tablier (affichage seulement).
+                Vector3 place = shown[v.Id] + Vector3.up * (1f + StyleWorld.StandHeight(shown[v.Id].x, shown[v.Id].z));
                 // Sous-lot 11.7 : en réseau, le joueur est montré à sa place prédite, rejointe en douceur (un écart corrigé glisse).
                 if (v.Id == combat.PlayerId && predicted.HasValue)
                 {
-                    Vector3 aim = new Vector3((float)predicted.Value.X, 1f, (float)predicted.Value.Z);
+                    Vector3 aim = new Vector3((float)predicted.Value.X, 1f + StyleWorld.StandHeight((float)predicted.Value.X, (float)predicted.Value.Z),
+                        (float)predicted.Value.Z);
                     place = snap ? aim : Vector3.Lerp(body.transform.position, aim, 1f - Mathf.Exp(-18f * Time.deltaTime));
                     shown[v.Id] = place - Vector3.up;
                 }
@@ -397,7 +399,7 @@ namespace EdS.Game
             {
                 _targetRing.SetActive(true);
                 Vector3 p = target.transform.position;
-                _targetRing.transform.position = new Vector3(p.x, 0.02f, p.z);
+                _targetRing.transform.position = new Vector3(p.x, p.y - 0.98f, p.z);   // au sol, ou sur le tablier du pont (essai réaliste 5)
             }
             else _targetRing.SetActive(false);
 
@@ -405,7 +407,7 @@ namespace EdS.Game
             {
                 _allyRing.SetActive(true);
                 Vector3 p = ally.transform.position;
-                _allyRing.transform.position = new Vector3(p.x, 0.015f, p.z);
+                _allyRing.transform.position = new Vector3(p.x, p.y - 0.985f, p.z);
             }
             else _allyRing.SetActive(false);
         }
