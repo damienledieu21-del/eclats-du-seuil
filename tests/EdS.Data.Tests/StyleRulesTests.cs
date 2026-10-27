@@ -1007,6 +1007,12 @@ public class StyleRulesTests
         // Feuilles découpées qui ne se dégarnissent pas au loin (réductions qui gardent la part de feuillage au seuil du shader).
         Assert.Contains("importer.mipMapsPreserveCoverage = true;", editor, StringComparison.Ordinal);
         Assert.Contains("importer.alphaTestReferenceValue = 0.45f;", editor, StringComparison.Ordinal);
+        // Revue Codex de la PR #59 : les arbres réunissent leur carte d'opacité à la couleur avant de régler le matériau.
+        int tree = editor.IndexOf("private static string TreePrefab(", StringComparison.Ordinal);
+        string treePrefab = editor.Substring(tree, editor.IndexOf("PrefabUtility.SaveAsPrefabAsset", tree, StringComparison.Ordinal) - tree);
+        Assert.Contains("string alpha = StyleRules.AlphaFor(color, maps);", treePrefab, StringComparison.Ordinal);
+        Assert.Contains("? WithAlpha(color, alpha, Generated + \"/\" + name + \" \" + Path.GetFileNameWithoutExtension(color) + \"_couleur_alpha.png\", notes)", treePrefab, StringComparison.Ordinal);
+        Assert.Contains("Configure(material, lit, leaves, 0.25f, baseMap, Texture2DAt(normal), foliage || alpha != null);", treePrefab, StringComparison.Ordinal);
         // Le relief de l'écorce de la palissade a ses tangentes, comme les prismes.
         Assert.Contains("mesh.RecalculateTangents();   // essai réaliste 4 : le relief de l'écorce", view, StringComparison.Ordinal);
     }

@@ -631,7 +631,12 @@ namespace EdS.Game.Editor
                     material = new Material(lit);
                     AssetDatabase.CreateAsset(material, path);
                 }
-                Configure(material, lit, leaves, 0.25f, Texture2DAt(color), Texture2DAt(normal), foliage);
+                // Revue Codex de la PR #59 : une opacité fournie à part (« oak_leaf_alpha.png ») est réunie à la couleur, que le shader découpe.
+                string alpha = StyleRules.AlphaFor(color, maps);
+                Texture2D baseMap = alpha != null
+                    ? WithAlpha(color, alpha, Generated + "/" + name + " " + Path.GetFileNameWithoutExtension(color) + "_couleur_alpha.png", notes)
+                    : Texture2DAt(color);
+                Configure(material, lit, leaves, 0.25f, baseMap, Texture2DAt(normal), foliage || alpha != null);
                 renderer.sharedMaterials = Enumerable.Repeat(material, Mathf.Max(1, renderer.sharedMaterials.Length)).ToArray();
                 dressed++;
             }
