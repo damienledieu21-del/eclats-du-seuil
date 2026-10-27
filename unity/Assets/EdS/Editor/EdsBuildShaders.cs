@@ -14,11 +14,25 @@ namespace EdS.Editor
     /// et le sol restait rose (shader manquant). Avant la construction, un matériau modèle du rendu actif (URP « Lit », sinon
     /// « Standard ») est créé dans <c>Assets/EdS/Resources</c> : Unity l'emporte avec son shader, et le jeu y copie ses couleurs. Après,
     /// il est retiré (le dossier est ignoré par git), comme les données de <see cref="EdsBuildData"/>.
+    /// <para>
+    /// Essai réaliste 6 : les polices de l'interface sont créées au lancement avec le shader « TextMeshPro/Mobile/Distance Field » ; un
+    /// second matériau modèle (<see cref="TextName"/>) l'emporte aussi, quand les ressources de TextMeshPro sont dans le projet. Les annonces
+    /// d'attaque au sol et les anneaux de la cible ont leur shader (« EdS/Annonce ») : un troisième matériau (<see cref="AnnonceName"/>),
+    /// que le jeu copie.
+    /// </para>
     /// </summary>
     public sealed class EdsBuildShaders : IPreprocessBuildWithReport, IPostprocessBuildWithReport
     {
         /// <summary>Nom du modèle, chargé par <c>ArenaView.MakeMaterial</c> (<c>Resources.Load</c>).</summary>
         public const string TemplateName = "EdsCouleur";
+
+        /// <summary>Matériau qui emporte le shader du texte de l'interface (TextMeshPro).</summary>
+        public const string TextName = "EdsTexte";
+
+        private const string TextShader = "TextMeshPro/Mobile/Distance Field";
+
+        /// <summary>Matériau des annonces au sol, chargé par le jeu (nom partagé avec <c>Annonces.MaterialName</c>).</summary>
+        public const string AnnonceName = "EdsAnnonce";
 
         private const string Folder = "Assets/EdS/Resources";
 
@@ -36,6 +50,13 @@ namespace EdS.Editor
                     + ") ; menu Éclats du Seuil → Configurer le rendu URP, puis reconstruire.");
             if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/EdS", "Resources");
             AssetDatabase.CreateAsset(new Material(shader), TemplatePath);
+            Shader text = Shader.Find(TextShader);
+            if (text != null) AssetDatabase.CreateAsset(new Material(text), Folder + "/" + TextName + ".mat");
+            else Debug.LogWarning("Éclats du Seuil : shader « " + TextShader + " » absent (menu Éclats du Seuil → Préparer l'interface) ; le jeu construit "
+                + "affichera le texte ordinaire.");
+            Shader annonce = Shader.Find("EdS/Annonce");
+            if (annonce != null) AssetDatabase.CreateAsset(new Material(annonce), Folder + "/" + AnnonceName + ".mat");
+            else Debug.LogWarning("Éclats du Seuil : shader « EdS/Annonce » absent ; le jeu construit dessinera les annonces en formes pleines.");
             AssetDatabase.SaveAssets();
             Debug.Log("Éclats du Seuil : matériau modèle « " + shader.name + " » emporté dans le jeu construit.");
         }

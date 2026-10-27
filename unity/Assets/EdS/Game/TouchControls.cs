@@ -124,12 +124,14 @@ namespace EdS.Game
                 Add(ButtonId.Act, gx - 2 * (Big + m) + (Big - Small), gy - Small - m, Small, "Agir");
                 Add(ButtonId.Potion, gx - 2 * (Big + m) + (Big - Small), gy - 2 * (Small + m), Small, "Potion");
             }
-            // Revue Codex de la PR #36 (3e tour) : sous la fiche de la cible (Hud.Target : y de 14 à 146), pour ne pas cacher son compte à
-            // rebours ni ses altérations.
-            // Sous-lot 12.9d : dans l'aventure, la petite carte occupe le coin (MiniMap.MiniRect, jusqu'à y = 250 avec son aide) : la rangée
-            // descend dessous, et la carte elle-même est un bouton (l'agrandir).
-            float top = adventure ? 260f : 160f;
-            if (adventure) _zones.Add(new GestureButton((int)ButtonId.Map, MiniMap.MiniRect.x, MiniMap.MiniRect.y, MiniMap.Width, MiniMap.Height));
+            // Revue Codex de la PR #36 (3e tour) : sous la fiche de la cible, pour ne pas cacher son compte à rebours ni ses altérations
+            // (essai réaliste 6 : la cible est en haut au milieu, le minuteur en haut à droite).
+            // Sous-lot 12.9d : dans l'aventure, la petite carte occupe le coin : la rangée descend dessous, et la carte elle-même est un bouton
+            // (l'agrandir). Essai réaliste 6 : la carte peinte (HudView, réduite quand les commandes tactiles sont là) et le lieu dessous,
+            // jusqu'à y = 300.
+            Rect map = HudView.MiniMapRect(w, true);
+            float top = adventure ? 300f : 160f;
+            if (adventure) _zones.Add(new GestureButton((int)ButtonId.Map, map.x, map.y, map.width, map.height));
             Add(ButtonId.Menu, w - m - Small, top, Small, "Menu");
             Add(ButtonId.Help, w - 2 * (m + Small), top, Small, "Aide");
             if (!network)

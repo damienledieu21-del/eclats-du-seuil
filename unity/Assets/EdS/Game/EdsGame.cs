@@ -110,6 +110,10 @@ namespace EdS.Game
         // Sous-lot 11.8 : commandes au doigt (téléphone, simulateur d'appareils de l'éditeur, F8 pour les forcer) ; données prêtes.
         private readonly TouchControls _touch = new TouchControls();
         private bool _ready;
+
+        // Essai réaliste 6 : l'interface en jeu en uGUI (« Fragments du Seuil »), et l'aide de l'aventure découpée en touches.
+        private HudView _hud;
+        private IReadOnlyList<HelpKey> _adventureHelp;
         private string _startupError;
 
         private IEnumerator Start()
@@ -121,6 +125,7 @@ namespace EdS.Game
                 ApplyMobileSettings();
                 _camera = CameraRig.Create();
                 _arena = new ArenaView();
+                _hud = HudView.Create();
                 StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
             }
             catch (Exception e)
@@ -207,6 +212,7 @@ namespace EdS.Game
                 return;
             }
             _markers = new WorldMarkers(_adventure);
+            _adventureHelp = null;
             ShowAdventureSession();
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
@@ -241,6 +247,7 @@ namespace EdS.Game
             _markers?.Destroy();
             _markers = null;
             _adventure = null;
+            PaintedMap.Forget();
             _screens.Close();
             _arena.Paint = null;
             _combat = null;
@@ -962,34 +969,98 @@ namespace EdS.Game
             });
         }
 
-        /// <summary>Sous-lot 12.8 : lieu et heure, indication d'action, défaite, dialogue et écrans de l'aventure.</summary>
+        /// <summary>
+        /// Sous-lot 12.8 : dialogue et écrans de l'aventure (IMGUI). Essai réaliste 6 : le lieu, l'heure, l'indication d'action, la défaite,
+        /// la pause et la petite carte sont dans l'interface uGUI (<see cref="UpdateHud"/>).
+        /// </summary>
         private void DrawAdventure()
         {
             AdventureSession a = _adventure;
-            Hud.Centered(new Rect(Hud.Width / 2f - 300, 20, 600, 40), Hud.Plain(a.PlaceName) + " — " + a.TimeOfDay, Color.white);
-            if (a.MustContinue)
-            {
-                Hud.Panel(new Rect(Hud.Width / 2f - 420, Hud.VirtualHeight / 2f - 70, 840, 140), new Color(0.25f, 0f, 0f, 0.8f));
-                string why = a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over";
-                Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f - 60, 800, 50), a.Text(why), Color.white);
-            }
-            string hint = AdventureHint();
-            if (hint != null)
-                Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f + (a.MustContinue ? 0 : 120), 800, 40), Hud.Plain(hint), new Color(1f, 0.92f, 0.6f));
-            if (_paused && a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None)
-                Hud.Centered(new Rect(Hud.Width / 2f - 150, 64, 300, 40), "PAUSE", new Color(1f, 0.85f, 0.3f));
-            // Sous-lot 12.9d : la carte (ennemis en vue seulement, comme à l'écran) ; petite tant qu'aucun écran n'est ouvert.
-            var enemies = new List<MapEnemy>();
-            foreach (OtherState o in _combat.Others())
-                if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && _arena.Shown(o.Id) && o.View.Position is EdS.Domain.Space.GroundVector at)
-                    enemies.Add(new MapEnemy(at.X.Raw / 10000f, at.Z.Raw / 10000f, a.IsBoss(o.Id)));
-            _screens.Enemies = enemies;
-            if (_screens.Open == AdventureScreens.Panel.None && a.Dialogue == null) _screens.Map.DrawMini(a, enemies);
+            _screens.Enemies = AdventureEnemies();
             int answer = AdventureScreens.DrawDialogue(a);
             if (answer >= 0) a.Choose(answer);
             else if (answer == AdventureScreens.CloseDialogue) a.CloseDialogue();
             _screens.Draw(a);
             _touch.Draw(false, true, AdventureCovered);
+        }
+
+        /// <summary>Sous-lot 12.9d : ennemis à montrer sur la carte (en vue seulement, comme à l'écran).</summary>
+        private List<MapEnemy> AdventureEnemies()
+        {
+            var enemies = new List<MapEnemy>();
+            foreach (OtherState o in _combat.Others())
+                if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && _arena.Shown(o.Id) && o.View.Position is EdS.Domain.Space.GroundVector at)
+                    enemies.Add(new MapEnemy(at.X.Raw / 10000f, at.Z.Raw / 10000f, _adventure.IsBoss(o.Id)));
+            return enemies;
+        }
+
+        /// <summary>
+        /// Essai réaliste 6 : l'interface en jeu (uGUI) suit l'état de cette image, après le déplacement et la caméra. Cachée sous ce qui
+        /// reste dessiné en plein écran par IMGUI : erreurs, préparation, menu et salle d'attente du réseau, écran des talents.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (_hud == null) return;
+            bool shown = _ready && _startupError == null && !(_error != null && !Network) && !_menuOpen && !LobbyShown && _talents == null && _combat != null;
+            if (!shown)
+            {
+                _hud.Hide();
+                return;
+            }
+            UpdateHud(Time.unscaledDeltaTime);
+        }
+
+        private void UpdateHud(float deltaTime)
+        {
+            _hud.Begin(deltaTime);
+            PlayerState player = _combat.Player();
+            Camera camera = _camera.Camera;
+            foreach (OtherState other in _combat.Others())
+            {
+                if (!other.View.IsPresent) continue;   // revue Codex de la PR #32 (16e tour) : un absent n'a pas de barre
+                Vector3? head = _arena.Head(other.Id);
+                if (head == null) continue;
+                // Sous-lot 12.8 : dans une zone du monde, seules les créatures proches ont leur barre.
+                if (_adventure != null && _arena.Player != null && (head.Value - _arena.Player.position).sqrMagnitude > OverheadRange * OverheadRange) continue;
+                _hud.Overhead(camera.WorldToScreenPoint(head.Value), other, other.Id == player.TargetId);
+            }
+            _floating.RemoveAll(f => Time.time - f.Born > FloatingSeconds);
+            foreach (Floating f in _floating)
+            {
+                float age = Time.time - f.Born;
+                _hud.Floating(camera.WorldToScreenPoint(f.World + Vector3.up * age * 0.9f), f.Text, f.Color, age / FloatingSeconds);
+            }
+            if (_adventure != null && _arena.Player != null) _markers?.Labels(camera, _arena.Player.position, _hud);
+            _hud.Player(player, _touch.Active, deltaTime);   // plus serré quand les commandes tactiles occupent les coins
+            // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
+            _hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)), deltaTime);
+            _messages.RemoveAll(m => Time.time - m.Key > MessageSeconds);
+            foreach (KeyValuePair<float, string> message in _messages) _hud.Message(message.Value);
+
+            if (_adventure != null)
+            {
+                AdventureSession a = _adventure;
+                bool open = a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None;
+                double facing = _arena.Player != null ? _arena.Player.eulerAngles.y : _playerYaw;
+                _hud.Adventure(a, AdventureEnemies(), facing, open, _touch.Active);
+                string notice = !a.MustContinue ? null
+                    : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
+                _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
+                _hud.Clock(null);
+                if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
+                _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);
+            }
+            else
+            {
+                _hud.Adventure(null, null, 0, false, _touch.Active);
+                float elapsed = _combat.Tick * (float)_combat.TickSeconds;
+                _hud.Center(_paused ? "Pause" : null, null, null);
+                _hud.Clock($"{(int)elapsed / 60}:{(int)elapsed % 60:00}");
+                if (Network)
+                    _hud.Help(_help, "Coopération", (_net.Host != null ? "Tu héberges" : _net.Address) + " · " + NetworkBuildName() + " · " + _camera.Describe(), HelpKeys.Network);
+                else _hud.Help(_help, ScenarioName(), "Build : " + BuildName() + " · " + _camera.Describe(), HelpKeys.Training);
+            }
+            _hud.End(deltaTime);
         }
 
         private void DrawTalents()
@@ -1053,45 +1124,8 @@ namespace EdS.Game
             }
             if (_combat == null) return;
 
-            PlayerState player = _combat.Player();
-            Camera camera = _camera.Camera;
-            foreach (OtherState other in _combat.Others())
-            {
-                if (!other.View.IsPresent) continue;   // revue Codex de la PR #32 (16e tour) : un absent n'a pas de barre
-                Vector3? head = _arena.Head(other.Id);
-                // Sous-lot 12.8 : dans une zone du monde, seules les créatures proches ont leur barre.
-                if (_adventure != null && head != null && _arena.Player != null && (head.Value - _arena.Player.position).sqrMagnitude > OverheadRange * OverheadRange) continue;
-                if (head != null) Hud.Overhead(camera.WorldToScreenPoint(head.Value), other, other.Id == player.TargetId);
-            }
-
-            _floating.RemoveAll(f => Time.time - f.Born > FloatingSeconds);
-            foreach (Floating f in _floating)
-            {
-                float age = Time.time - f.Born;
-                Vector3 screen = camera.WorldToScreenPoint(f.World + Vector3.up * age * 0.9f);
-                if (screen.z <= 0f) continue;
-                float x = screen.x / Hud.Scale, y = (Screen.height - screen.y) / Hud.Scale;
-                Color color = f.Color;
-                color.a = 1f - age / FloatingSeconds;
-                Hud.Centered(new Rect(x - 150, y - 15, 300, 30), f.Text, color);
-            }
-
-            if (_adventure != null && _arena.Player != null) _markers?.Labels(camera, _arena.Player.position);
-            Hud.Player(player, _touch.Active);   // essai réaliste 5 : plus serré quand les commandes tactiles occupent les coins
-            // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
-            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)),
-                _adventure != null ? MiniMap.Width + 2f * MiniMap.Margin : 0f);   // sous-lot 12.9d : à gauche de la petite carte
-            if (_adventure != null)
-            {
-                if (_help) Hud.Help(Hud.Plain(_adventure.PlaceName), _adventure.TimeOfDay, _camera.Describe(), _paused, false, _adventure.Text("text.ui.help"));
-            }
-            else if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
-                Network ? NetworkBuildName() : BuildName(), _camera.Describe(), _paused, Network);
+            // Essai réaliste 6 : barres, sceau, compétences, cible, aide, messages et textes flottants sont dans l'interface uGUI (LateUpdate).
             if (Network) NetworkScreen.DrawCombat(_net, _shownCombat?.AllyId);
-
-            _messages.RemoveAll(m => Time.time - m.Key > MessageSeconds);
-            for (int i = 0; i < _messages.Count; i++)
-                Hud.Centered(new Rect(Hud.Width / 2f - 400, 80 + i * 30, 800, 28), _messages[i].Value, new Color(1f, 0.95f, 0.8f));
 
             if (_talents != null)
             {
@@ -1104,8 +1138,6 @@ namespace EdS.Game
                 DrawAdventure();
                 return;
             }
-            float elapsed = _combat.Tick * (float)_combat.TickSeconds;
-            Hud.Centered(new Rect(Hud.Width / 2f - 150, 20, 300, 40), $"{(int)elapsed / 60}:{(int)elapsed % 60:00}", Color.white);
             _touch.Draw(Network);   // sous-lot 11.8
         }
     }

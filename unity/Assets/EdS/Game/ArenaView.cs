@@ -168,20 +168,50 @@ namespace EdS.Game
             }
             if (_space != null) Place(combat, true);
 
-            _targetRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            _targetRing.name = "Cible";
-            Object.Destroy(_targetRing.GetComponent<Collider>());
-            _targetRing.transform.SetParent(_root.transform, false);
-            _targetRing.transform.localScale = new Vector3(1.6f, 0.01f, 1.6f);
-            _targetRing.GetComponent<Renderer>().sharedMaterial = MakeMaterial(new Color(1f, 0.85f, 0.2f));
-
-            _allyRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            _allyRing.name = "Allié visé";
-            Object.Destroy(_allyRing.GetComponent<Collider>());
-            _allyRing.transform.SetParent(_root.transform, false);
-            _allyRing.transform.localScale = new Vector3(1.4f, 0.01f, 1.4f);
-            _allyRing.GetComponent<Renderer>().sharedMaterial = MakeMaterial(new Color(0.3f, 0.9f, 0.45f));
+            _targetRing = Ring("Cible", 0.85f, new Color(1f, 0.85f, 0.42f), new Color(1f, 0.6f, 0.75f));
+            _allyRing = Ring("Allié visé", 0.75f, new Color(0.56f, 0.96f, 0.91f), new Color(0.75f, 1f, 0.95f));
             _allyRing.SetActive(false);
+        }
+
+        /// <summary>
+        /// Anneau au sol sous la cible ou l'allié visé. Essai réaliste 6 (« Fragments du Seuil ») : un cercle de lumière (shader des
+        /// annonces : bord lumineux et ondes qui s'éloignent, aux couleurs de l'aube) ; sans ce shader, le disque plat d'avant.
+        /// </summary>
+        private static readonly Dictionary<string, (Mesh Mesh, Material Material)> RingLooks = new Dictionary<string, (Mesh Mesh, Material Material)>();
+
+        private GameObject Ring(string name, float radius, Color color, Color edge)
+        {
+            Material template = Annonces.Template;
+            if (template == null)
+            {
+                GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                disc.name = name;
+                Object.Destroy(disc.GetComponent<Collider>());
+                disc.transform.SetParent(_root.transform, false);
+                disc.transform.localScale = new Vector3(2f * radius, 0.01f, 2f * radius);
+                disc.GetComponent<Renderer>().sharedMaterial = MakeMaterial(color);
+                return disc;
+            }
+            var ring = new GameObject(name);
+            ring.transform.SetParent(_root.transform, false);
+            // Forme et matériau faits une fois par anneau (le combat suivant les reprend).
+            if (!RingLooks.TryGetValue(name, out (Mesh Mesh, Material Material) look))
+            {
+                look.Mesh = new Mesh();
+                Annonces.Fill(look.Mesh, TelegraphShapes.Circle(0, 0, radius), false);
+                look.Material = new Material(template);
+                look.Material.SetColor("_Color", color);
+                look.Material.SetColor("_Hot", edge);
+                look.Material.SetFloat("_Progress", 0f);
+                look.Material.SetFloat("_Opacity", 0.9f);
+                RingLooks[name] = look;
+            }
+            ring.AddComponent<MeshFilter>().sharedMesh = look.Mesh;
+            MeshRenderer renderer = ring.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = look.Material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return ring;
         }
 
         /// <summary>Corps d'un autre combattant (forme et couleur selon son genre et son camp), à sa taille.</summary>
@@ -347,7 +377,11 @@ namespace EdS.Game
         public void SyncSpace(ICombatClient combat, Vector3 camera, float deltaTime)
         {
             if (_space == null || _player == null) return;
-            _space.Zones(combat.Announced(), combat.Tick + combat.TickProgress, Ground);
+            // Essai réaliste 6 : une annonce d'attaque imparable est rouge vif et pulsée (attaque suivante de son auteur).
+            var unblockable = new HashSet<string>();
+            foreach (OtherState other in combat.Others())
+                if (other.View.NextAttack is { } next && next.Unblockable) unblockable.Add(other.Id + "/" + next.Id);
+            _space.Zones(combat.Announced(), combat.Tick + combat.TickProgress, Ground, (actor, attack) => unblockable.Contains(actor + "/" + attack));
             _space.Cut(camera, _player.transform.position - Vector3.up, deltaTime);
         }
 
@@ -361,7 +395,11 @@ namespace EdS.Game
             bool broken = me.States.Contains("guardBreak");
             // Revue Codex de la PR #32 (20e tour) : le joueur absent (avant son arrivée, après son départ) est caché, bouclier compris.
             _player.SetActive(me.IsPresent);
-            _shield.SetActive(me.IsPresent && (me.Guarding || me.ParryOpen || broken));
+            // Essai réaliste 6 (essai de Damien du 27 octobre 2026 : « Le bouclier se modélise comme ça quand je l'active c'est à corriger ») :
+            // le disque ne sert plus qu'au corps sans modèle ; le chevalier garde son vrai bouclier, joue sa garde (clip « Block » s'il est
+            // là) et l'interface affiche « Garde levée », « Parade » ou « Garde brisée ».
+            bool styled = _looks.ContainsKey(combat.PlayerId);
+            _shield.SetActive(!styled && me.IsPresent && (me.Guarding || me.ParryOpen || broken));
             _shieldRenderer.sharedMaterial = me.ParryOpen ? _shieldParry : broken ? _shieldBroken : _shieldGuard;
             if (_space != null)
             {
@@ -390,7 +428,7 @@ namespace EdS.Game
             }
             Tint(combat.PlayerId, me.IsDead, me.States.Contains("stun"));
             // Essai de style : les modèles suivent l'allure affichée de leur corps.
-            if (_looks.TryGetValue(combat.PlayerId, out StyleBody mine)) mine.Update(_player.transform.position, me.IsDead, Time.deltaTime);
+            if (_looks.TryGetValue(combat.PlayerId, out StyleBody mine)) mine.Update(_player.transform.position, me.IsDead, Time.deltaTime, me.Guarding || me.ParryOpen);
             foreach (OtherState other in combat.Others())
                 if (_looks.TryGetValue(other.Id, out StyleBody look) && _bodies.TryGetValue(other.Id, out GameObject shown) && shown.activeSelf)
                     look.Update(shown.transform.position, other.View.IsDead, Time.deltaTime);
@@ -399,7 +437,8 @@ namespace EdS.Game
             {
                 _targetRing.SetActive(true);
                 Vector3 p = target.transform.position;
-                _targetRing.transform.position = new Vector3(p.x, p.y - 0.98f, p.z);   // au sol, ou sur le tablier du pont (essai réaliste 5)
+                // Au sol, ou sur le tablier du pont (essai réaliste 5) ; essai réaliste 6 : à 8 cm, sous les annonces (16 cm).
+                _targetRing.transform.position = new Vector3(p.x, p.y - 0.92f, p.z);
             }
             else _targetRing.SetActive(false);
 
@@ -407,7 +446,7 @@ namespace EdS.Game
             {
                 _allyRing.SetActive(true);
                 Vector3 p = ally.transform.position;
-                _allyRing.transform.position = new Vector3(p.x, p.y - 0.985f, p.z);
+                _allyRing.transform.position = new Vector3(p.x, p.y - 0.93f, p.z);
             }
             else _allyRing.SetActive(false);
         }

@@ -20,16 +20,16 @@ namespace EdS.Game
 
     /// <summary>
     /// Sous-lot 12.9d (essai de Damien du 25 octobre 2026 : « une mini carte en haut à droite qu'on puisse agrandir si besoin ») : la carte
-    /// de la zone, nord en haut. En petit en haut à droite (sous elle, la fiche de la cible passe à sa gauche) ; L, ou toucher la carte,
-    /// l'ouvre en grand avec les noms des lieux, des PNJ et des points sûrs. L'image du décor est calculée par le cœur
-    /// (<see cref="AdventureMap.Render"/>) une fois par session ; les repères sont redessinés à chaque image.
+    /// de la zone, nord en haut ; L, ou toucher la carte, l'ouvre en grand avec les noms des lieux, des PNJ et des points sûrs. Les repères
+    /// sont redessinés à chaque image.
+    /// <para>
+    /// Essai réaliste 6 (essai de Damien du 27 octobre 2026 : « la mini Map […] ça fait vraiment schéma ») : la petite carte est dans
+    /// l'interface uGUI (<see cref="HudView.Adventure"/>) ; la grande montre la carte peinte (<see cref="PaintedMap"/>, sans sa marge de
+    /// forêt), ou le plan du cœur (<see cref="AdventureMap.Render"/>) le temps qu'elle se calcule.
+    /// </para>
     /// </summary>
     public sealed class MiniMap
     {
-        /// <summary>Cadre de la petite carte (écran virtuel de 1080 de haut), en haut à droite.</summary>
-        public const float Width = 300f, Height = 210f, Margin = 14f;
-
-        public static Rect MiniRect => new Rect(Hud.Width - Width - Margin, Margin, Width, Height);
 
         private const int TextureWidth = 512;
         private Texture2D _texture;
@@ -37,7 +37,7 @@ namespace EdS.Game
         /// <summary>Carte dont la texture est l'image : une autre carte (nouvelle session, ou nouvelle aventure après l'entraînement) la refait.</summary>
         private AdventureMap _source;
 
-        private static readonly Color Frame = new Color(0f, 0f, 0f, 0.55f), You = new Color(1f, 0.9f, 0.2f), Goal = new Color(1f, 0.55f, 0.1f),
+        private static readonly Color You = new Color(1f, 0.9f, 0.2f), Goal = new Color(1f, 0.55f, 0.1f),
             Person = new Color(0.95f, 0.95f, 0.95f), Safe = new Color(0.35f, 0.9f, 0.45f), Forge = new Color(0.6f, 0.6f, 0.66f),
             Gather = new Color(0.75f, 0.85f, 0.6f), Enemy = new Color(0.95f, 0.2f, 0.15f), Chief = new Color(0.75f, 0.35f, 1f), Name = new Color(1f, 1f, 1f, 0.85f);
 
@@ -77,14 +77,6 @@ namespace EdS.Game
 
         private static void Dot(Vector2 p, float size, Color color) => Hud.Fill(new Rect(p.x - size / 2f, p.y - size / 2f, size, size), color);
 
-        /// <summary>La petite carte, en haut à droite.</summary>
-        public void DrawMini(AdventureSession a, IReadOnlyList<MapEnemy> enemies)
-        {
-            Rect box = MiniRect;
-            Hud.Panel(new Rect(box.x - 4f, box.y - 4f, box.width + 8f, box.height + 8f), Frame);
-            Draw(a, box, enemies, false);
-        }
-
         /// <summary>La carte en grand, dans <paramref name="box"/>, avec les noms et la légende.</summary>
         public void DrawLarge(AdventureSession a, Rect box, IReadOnlyList<MapEnemy> enemies)
         {
@@ -96,7 +88,9 @@ namespace EdS.Game
         {
             AdventureMap map = a.Map;
             Rect image = Fit(box, map);
-            GUI.DrawTexture(image, Texture(a));
+            Texture2D painted = PaintedMap.For(map);
+            if (painted != null) GUI.DrawTextureWithTexCoords(image, painted, PaintedMap.Area(map));
+            else GUI.DrawTexture(image, Texture(a));
             float scale = large ? 2f : 1f;
             if (large)
                 foreach (MapPlace place in map.Places)

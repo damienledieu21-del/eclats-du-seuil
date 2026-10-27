@@ -156,19 +156,20 @@ namespace EdS.Game
             string ping = client.SmoothedRttMs is double rtt ? $"{rtt:0} ms" : "…";
             // Sous-lot 10.6 (option B de la parade) : la télégraphie des assaillants est avancée du temps aller-retour lissé.
             double lead = client.Combat != null ? client.Combat.TelegraphLeadSeconds * 1000 : 0;
-            float x = Hud.Width / 2f - 300f;
-            Hud.Panel(new Rect(x, 62, 600, 60), new Color(0.04f, 0.035f, 0.03f, 0.6f));
-            Hud.Small(new Rect(x + 10, 64, 580, 24), $"Réseau : temps aller-retour {ping}  ·  télégraphie avancée de {lead:0} ms");
+            // Essai réaliste 6 : en haut à droite, sous le minuteur (la cible occupe le haut du milieu).
+            float x = Hud.Width - 624f;
+            Hud.Panel(new Rect(x, 70, 600, 60), new Color(0.04f, 0.035f, 0.03f, 0.6f));
+            Hud.Small(new Rect(x + 10, 72, 580, 24), $"Réseau : temps aller-retour {ping}  ·  télégraphie avancée de {lead:0} ms");
             string robot = session.BotArrivesIn is double inSeconds ? $"  ·  robot dans {inSeconds:0} s" : "";
-            Hud.Small(new Rect(x + 10, 90, 580, 24), $"Place {client.SeatId}  ·  allié visé par les soutiens : {allyId ?? "aucun"} (G : changer){robot}");
+            Hud.Small(new Rect(x + 10, 98, 580, 24), $"Place {client.SeatId}  ·  allié visé par les soutiens : {allyId ?? "aucun"} (G : changer){robot}");
             if (client.Status == ClientStatus.Disconnected || client.Status == ClientStatus.Reconnecting)
             {
                 double left = client.Options.ReconnectSeconds - (client.DisconnectedSeconds ?? 0);
                 string text = client.Status == ClientStatus.Reconnecting ? "Retour dans la partie…"
                     : client.CanReconnect ? $"Connexion perdue — nouvelle tentative (encore {System.Math.Max(0, left):0} s)"
                     : "Connexion perdue — retour impossible.";
-                Hud.Panel(new Rect(Hud.Width / 2f - 360, 150, 720, 50), new Color(0.35f, 0.05f, 0.05f, 0.85f));
-                Hud.Centered(new Rect(Hud.Width / 2f - 360, 150, 720, 50), text, Color.white);
+                Hud.Panel(new Rect(Hud.Width / 2f - 360, 250, 720, 50), new Color(0.35f, 0.05f, 0.05f, 0.85f));
+                Hud.Centered(new Rect(Hud.Width / 2f - 360, 250, 720, 50), text, Color.white);
             }
         }
     }

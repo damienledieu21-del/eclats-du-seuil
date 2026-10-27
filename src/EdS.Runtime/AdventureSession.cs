@@ -653,6 +653,9 @@ namespace EdS.Runtime
         /// <summary>Lieu où se trouve le personnage (nom), ou le nom de la zone.</summary>
         public string PlaceName => Me is GroundVector p && _zone.PlacesAt(p).FirstOrDefault() is Place place ? place.Name : _zone.Name;
 
+        /// <summary>Essai réaliste 6 : nom de la zone (« Vallons d'Aube »), sous le nom du lieu près de la petite carte.</summary>
+        public string ZoneName => _zone.Name;
+
         /// <summary>Heure du monde (« jour 1, 08 h 30 »).</summary>
         public string TimeOfDay => World.Zone.Time.ToString();
 

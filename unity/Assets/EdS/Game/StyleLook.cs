@@ -69,7 +69,11 @@ namespace EdS.Game
         }
 
         /// <summary>À chaque image : allure d'après le déplacement affiché, puis l'animation qui va avec.</summary>
-        public void Update(Vector3 position, bool dead, float deltaTime)
+        /// <param name="guarding">
+        /// Essai réaliste 6 (essai de Damien du 27 octobre 2026 : le disque du bouclier « c'est à corriger ») : garde levée ou parade ;
+        /// immobile, le modèle joue son clip de garde (« Sword And Shield Block » de Mixamo), sinon il reste au repos.
+        /// </param>
+        public void Update(Vector3 position, bool dead, float deltaTime, bool guarding = false)
         {
             // Un modèle sans animation de mort (le loup et le cochon des packs) se couche sur le flanc, immobile.
             if (dead && (_animation == null || StyleRules.Clip(_clips, StyleMotion.Death) == null))
@@ -90,7 +94,7 @@ namespace EdS.Game
             }
             _last = position;
             _started = true;
-            string clip = StyleRules.Clip(_clips, StyleRules.Motion(_speed, dead, Time.time < _attackUntil));
+            string clip = StyleRules.Clip(_clips, StyleRules.Motion(_speed, dead, Time.time < _attackUntil, guarding));
             if (clip == null || clip == _playing) return;
             _playing = clip;
             _animation.CrossFade(clip, 0.15f);

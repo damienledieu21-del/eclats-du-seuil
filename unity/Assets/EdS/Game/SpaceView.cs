@@ -38,7 +38,6 @@ namespace EdS.Game
         private readonly List<Occluder> _occluders = new List<Occluder>();
         private readonly List<ZoneView> _zones = new List<ZoneView>();
         private readonly Dictionary<string, long> _firstSeen = new Dictionary<string, long>();
-        private readonly Material _outline;
         private readonly Material _fill;
         private readonly Material _water;
         private readonly GameObject _terrain;
@@ -53,8 +52,7 @@ namespace EdS.Game
         {
             _root = new GameObject("Décor");
             _root.transform.SetParent(parent, false);
-            _outline = ArenaView.MakeMaterial(new Color(1f, 0.6f, 0.12f));
-            _fill = ArenaView.MakeMaterial(new Color(0.85f, 0.16f, 0.1f));
+            _fill = ArenaView.MakeMaterial(new Color(0.85f, 0.16f, 0.1f));   // annonce sans le shader « EdS/Annonce »
             // Essai réaliste : l'eau de la rivière (vagues qui glissent) si le catalogue est là, sinon le bleu simple.
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
 
@@ -750,10 +748,13 @@ namespace EdS.Game
         // --- Attaques annoncées au sol -------------------------------------------------------------------------------------
 
         /// <summary>
-        /// Dessine les attaques annoncées : contour orange de la forme verrouillée, remplissage rouge qui grandit jusqu'à l'impact ; une
-        /// zone qui reste est pleine pendant ses impulsions. Une attaque dirigée annoncée (sans forme) est un cercle sous sa cible.
+        /// Dessine les attaques annoncées. Essai réaliste 6 (essai de Damien du 27 octobre 2026 : « la charge rouge du sanglier ou les rond
+        /// des autres personnages ») : une forme translucide au bord lumineux (shader « EdS/Annonce »), dont le front avance jusqu'au bout
+        /// au moment de l'impact, avec des chevrons ou des ondes ; rouge vif et pulsée si l'attaque est imparable ; une zone qui reste
+        /// pulse pendant ses impulsions. Une attaque dirigée annoncée (sans forme) est un cercle sous sa cible.
         /// </summary>
-        public void Zones(IReadOnlyList<AnnouncedAttack> announced, double now, System.Func<string, Vector3?> position)
+        public void Zones(IReadOnlyList<AnnouncedAttack> announced, double now, System.Func<string, Vector3?> position,
+            System.Func<string, string, bool> unblockable)
         {
             var seen = new HashSet<string>();
             int used = 0;
@@ -768,10 +769,12 @@ namespace EdS.Game
                 }
                 double span = System.Math.Max(1, attack.ImpactTick - first);
                 float progress = Mathf.Clamp01((float)((now - first) / span));
-                if (used == _zones.Count) _zones.Add(new ZoneView(_root.transform, _outline, _fill));
+                bool lingering = now >= attack.ImpactTick && attack.LastTick > attack.ImpactTick;
+                if (used == _zones.Count) _zones.Add(new ZoneView(_root.transform, _fill));
                 ZoneView zone = _zones[used++];
-                if (attack.Zone != null) zone.Show(attack.Zone, progress);
-                else if (attack.Target != null && position(attack.Target) is Vector3 p) zone.ShowCircle(p.x, p.z, 1.1f, progress);
+                bool danger = unblockable(attack.Actor, attack.Attack);
+                if (attack.Zone != null) zone.Show(attack.Zone, progress, danger, lingering);
+                else if (attack.Target != null && position(attack.Target) is Vector3 p) zone.ShowCircle(p.x, p.z, 1.1f, progress, danger, false);
                 else zone.Hide();
             }
             for (int i = used; i < _zones.Count; i++) _zones[i].Hide();
@@ -788,226 +791,126 @@ namespace EdS.Game
     }
 
     /// <summary>
-    /// Sous-lot 11.6 : une forme d'attaque annoncée au sol (contour et remplissage), maillages refaits à chaque image. Revue Codex de la
-    /// PR #34 : dessinée au-dessus de la plus haute surface où l'on marche (tablier du pont, eau, décor abaissé : 0,12 m), et une bande a
-    /// les bouts arrondis du moteur (distance au segment : deux demi-disques aux extrémités).
+    /// Essai réaliste 6 : matériau des annonces au sol (shader « EdS/Annonce ») : celui emporté par la construction
+    /// (<c>Resources/EdsAnnonce</c>, voir <c>EdsBuildShaders</c>), sinon le shader du projet ; null s'il manque (forme pleine ordinaire).
+    /// Sert aussi aux anneaux de la cible et de l'allié visé (<see cref="ArenaView"/>).
+    /// </summary>
+    internal static class Annonces
+    {
+        public const string MaterialName = "EdsAnnonce";
+        private static Material _template;
+        private static bool _loaded;
+
+        public static Material Template
+        {
+            get
+            {
+                if (_loaded) return _template;
+                _loaded = true;
+                _template = Resources.Load<Material>(MaterialName);
+                if (_template == null)
+                {
+                    Shader shader = Shader.Find("EdS/Annonce");
+                    if (shader != null && shader.isSupported) _template = new Material(shader);
+                }
+                return _template;
+            }
+        }
+
+        /// <summary>
+        /// Remplit <paramref name="mesh"/> avec la forme <paramref name="shape"/> : avancée et largeur dans les premières coordonnées de
+        /// texture, distance au bord et portée dans les secondes ; <paramref name="followDeck"/> : chaque sommet monte avec le tablier du
+        /// pont cintré (revue Codex de la PR #60 : une annonce qui touche le pont suit son tablier ; les cases d'environ 30 cm suffisent).
+        /// </summary>
+        public static void Fill(Mesh mesh, TelegraphMesh shape, bool followDeck)
+        {
+            int n = shape.Vertices.Count;
+            var vertices = new Vector3[n];
+            var uv = new Vector2[n];
+            var uv2 = new Vector2[n];
+            bool deck = followDeck && n > 0 && StyleWorld.OnDeck((float)shape.Vertices.Min(v => v.X), (float)shape.Vertices.Min(v => v.Z),
+                (float)shape.Vertices.Max(v => v.X), (float)shape.Vertices.Max(v => v.Z));
+            for (int i = 0; i < n; i++)
+            {
+                float x = (float)shape.Vertices[i].X, z = (float)shape.Vertices[i].Z;
+                vertices[i] = new Vector3(x, deck ? StyleWorld.StandHeight(x, z) : 0f, z);
+                uv[i] = new Vector2((float)shape.Progress[i], (float)shape.Side[i]);
+                uv2[i] = new Vector2((float)shape.Edge[i], (float)shape.Reach);
+            }
+            mesh.Clear();
+            mesh.vertices = vertices;
+            mesh.uv = uv;
+            mesh.uv2 = uv2;
+            mesh.triangles = shape.Triangles.ToArray();
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot 11.6 : une forme d'attaque annoncée au sol, refaite à chaque image ; dessinée au-dessus de la plus haute surface où l'on
+    /// marche (tablier du pont, eau, décor abaissé : 0,12 m), les bandes ont les bouts arrondis du moteur (revue Codex de la PR #34).
+    /// Essai réaliste 6 : une seule forme pleine (<see cref="TelegraphShapes"/>) dessinée par le shader « EdS/Annonce » (bord lumineux,
+    /// front qui avance jusqu'à l'impact, chevrons ou ondes, rouge pulsé si imparable) ; sans ce shader, la forme pleine ordinaire.
     /// </summary>
     internal sealed class ZoneView
     {
-        private const int Segments = 40;
-        private const int CapSegments = 16;
-        private const float Band = 0.12f;
         private const float Height = 0.16f;
-        private readonly GameObject _outline;
-        private readonly GameObject _fill;
-        private readonly Mesh _outlineMesh = new Mesh();
-        private readonly Mesh _fillMesh = new Mesh();
+        private readonly GameObject _body;
+        private readonly MeshRenderer _renderer;
+        private readonly Mesh _mesh = new Mesh();
+        private readonly MaterialPropertyBlock _block = new MaterialPropertyBlock();
+        private readonly bool _styled;
 
-        public ZoneView(Transform parent, Material outline, Material fill)
+        public ZoneView(Transform parent, Material plain)
         {
-            _outline = Part("Annonce (contour)", parent, outline, _outlineMesh, Height + 0.005f);
-            _fill = Part("Annonce", parent, fill, _fillMesh, Height);
+            _body = new GameObject("Annonce");
+            _body.transform.SetParent(parent, false);
+            _body.transform.position = new Vector3(0f, Height, 0f);
+            _body.AddComponent<MeshFilter>().mesh = _mesh;
+            _renderer = _body.AddComponent<MeshRenderer>();
+            Material template = Annonces.Template;
+            _styled = template != null;
+            _renderer.sharedMaterial = template ?? plain;
+            _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _renderer.receiveShadows = false;
         }
 
-        private static GameObject Part(string name, Transform parent, Material material, Mesh mesh, float height)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            go.transform.position = new Vector3(0f, height, 0f);
-            go.AddComponent<MeshFilter>().mesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = material;
-            return go;
-        }
+        public void Hide() => _body.SetActive(false);
 
-        public void Hide()
-        {
-            _outline.SetActive(false);
-            _fill.SetActive(false);
-        }
-
-        public void Show(AttackZone zone, float progress)
+        public void Show(AttackZone zone, float progress, bool unblockable, bool lingering)
         {
             float ox = zone.OriginX / 10000f, oz = zone.OriginZ / 10000f, reach = zone.Reach / 10000f;
             float ax = zone.AxisX / 10000f, az = zone.AxisZ / 10000f;
             switch (zone.Shape)
             {
                 case AttackShape.Cone:
-                {
-                    float axis = Mathf.Atan2(az, ax), half = zone.Angle * Mathf.Deg2Rad / 2f;
-                    ConeOutline(_outlineMesh, ox, oz, reach, axis - half, axis + half);
-                    Sector(_fillMesh, ox, oz, 0f, Mathf.Max(0.05f, reach * progress), axis - half, axis + half);
-                    break;
-                }
+                    Draw(TelegraphShapes.Cone(ox, oz, Mathf.Atan2(az, ax), zone.Angle * Mathf.Deg2Rad, reach), 1f, progress, unblockable, lingering);
+                    return;
                 case AttackShape.Line:
-                {
-                    float w = zone.HalfWidth / 10000f;
-                    Stadium(_outlineMesh, ox, oz, ax, az, reach, w, true);
-                    Stadium(_fillMesh, ox, oz, ax, az, Mathf.Max(0.05f, reach * progress), w, false);
-                    break;
-                }
+                    Draw(TelegraphShapes.Line(ox, oz, ax, az, reach, zone.HalfWidth / 10000f), 1f, progress, unblockable, lingering);
+                    return;
                 default:   // cercle, zone qui reste
-                    ShowCircle(ox, oz, reach, progress);
+                    ShowCircle(ox, oz, reach, progress, unblockable, lingering);
                     return;
             }
-            _outline.SetActive(true);
-            _fill.SetActive(true);
         }
 
-        public void ShowCircle(float x, float z, float radius, float progress)
-        {
-            Sector(_outlineMesh, x, z, radius - Band, radius, 0f, 2f * Mathf.PI);
-            Sector(_fillMesh, x, z, 0f, Mathf.Max(0.05f, radius * progress), 0f, 2f * Mathf.PI);
-            _outline.SetActive(true);
-            _fill.SetActive(true);
-        }
+        public void ShowCircle(float x, float z, float radius, float progress, bool unblockable, bool lingering) =>
+            Draw(TelegraphShapes.Circle(x, z, radius), 0f, progress, unblockable, lingering);
 
-        /// <summary>Couronne (ou disque, rayon intérieur nul) entre les angles <paramref name="from"/> et <paramref name="to"/>, face vers le haut.</summary>
-        private static void Sector(Mesh mesh, float x, float z, float inner, float outer, float from, float to)
+        private void Draw(TelegraphMesh shape, float kind, float progress, bool unblockable, bool lingering)
         {
-            var vertices = new Vector3[(Segments + 1) * 2];
-            var triangles = new int[Segments * 6];
-            for (int i = 0; i <= Segments; i++)
+            Annonces.Fill(_mesh, shape, true);
+            if (_styled)
             {
-                float a = Mathf.Lerp(from, to, i / (float)Segments);
-                float c = Mathf.Cos(a), s = Mathf.Sin(a);
-                vertices[2 * i] = new Vector3(x + c * Mathf.Max(0f, inner), 0f, z + s * Mathf.Max(0f, inner));
-                vertices[2 * i + 1] = new Vector3(x + c * outer, 0f, z + s * outer);
+                _block.SetFloat("_Progress", lingering ? 1f : progress);
+                _block.SetFloat("_Kind", kind);
+                _block.SetFloat("_Unblockable", unblockable ? 1f : 0f);
+                _block.SetFloat("_Linger", lingering ? 1f : 0f);
+                _renderer.SetPropertyBlock(_block);
             }
-            for (int i = 0; i < Segments; i++)
-            {
-                // Angles croissants (sens trigonométrique vu de dessus) : (intérieur, extérieur suivant, extérieur) regarde vers le haut.
-                int k = 6 * i, v = 2 * i;
-                triangles[k] = v;
-                triangles[k + 1] = v + 3;
-                triangles[k + 2] = v + 1;
-                triangles[k + 3] = v;
-                triangles[k + 4] = v + 2;
-                triangles[k + 5] = v + 3;
-            }
-            Set(mesh, vertices, triangles);
-        }
-
-        /// <summary>
-        /// Revue Codex de la PR #34 : contour d'un cône : l'arc au bout (couronne de largeur <see cref="Band"/>) et les deux rayons qui le
-        /// bornent (bandes de même largeur, à l'intérieur du cône), pour voir ses côtés avant que le remplissage ait grandi.
-        /// </summary>
-        private static void ConeOutline(Mesh mesh, float x, float z, float reach, float from, float to)
-        {
-            var vertices = new List<Vector3>();
-            var triangles = new List<int>();
-            for (int i = 0; i <= Segments; i++)
-            {
-                float a = Mathf.Lerp(from, to, i / (float)Segments);
-                float c = Mathf.Cos(a), s = Mathf.Sin(a);
-                vertices.Add(new Vector3(x + c * Mathf.Max(0f, reach - Band), 0f, z + s * Mathf.Max(0f, reach - Band)));
-                vertices.Add(new Vector3(x + c * reach, 0f, z + s * reach));
-            }
-            for (int i = 0; i < Segments; i++)
-            {
-                int v = 2 * i;
-                triangles.AddRange(new[] { v, v + 3, v + 1, v, v + 2, v + 3 });
-            }
-            // Côtés : du sommet au bout de chaque rayon, la bande décalée vers l'intérieur du cône (normale tournée vers l'autre rayon).
-            void Side(float angle, float inward)
-            {
-                float c = Mathf.Cos(angle), s = Mathf.Sin(angle), nx = -s * inward * Band, nz = c * inward * Band;
-                int b = vertices.Count;
-                vertices.Add(new Vector3(x, 0f, z));
-                vertices.Add(new Vector3(x + c * reach, 0f, z + s * reach));
-                vertices.Add(new Vector3(x + c * reach + nx, 0f, z + s * reach + nz));
-                vertices.Add(new Vector3(x + nx, 0f, z + nz));
-                // Les deux faces : l'ordre des coins dépend du côté, on garde le quadrilatère visible d'en haut dans les deux cas.
-                triangles.AddRange(inward > 0f ? new[] { b, b + 2, b + 1, b, b + 3, b + 2 } : new[] { b, b + 1, b + 2, b, b + 2, b + 3 });
-            }
-            Side(from, 1f);
-            Side(to, -1f);
-            Set(mesh, vertices.ToArray(), triangles.ToArray());
-        }
-
-        /// <summary>
-        /// Contour fermé d'une bande à bouts arrondis (« stade ») de longueur <paramref name="length"/> et de rayon <paramref name="r"/> le
-        /// long de l'axe, dans le sens trigonométrique vu de dessus : demi-cercle autour du bout, puis demi-cercle autour de l'origine.
-        /// </summary>
-        private static List<Vector3> StadiumLoop(float x, float z, float ax, float az, float length, float r)
-        {
-            var points = new List<Vector3>();
-            float axis = Mathf.Atan2(az, ax);
-            for (int i = 0; i <= CapSegments; i++)
-            {
-                float a = axis - Mathf.PI / 2f + Mathf.PI * i / CapSegments;
-                points.Add(new Vector3(x + ax * length + Mathf.Cos(a) * r, 0f, z + az * length + Mathf.Sin(a) * r));
-            }
-            for (int i = 0; i <= CapSegments; i++)
-            {
-                float a = axis + Mathf.PI / 2f + Mathf.PI * i / CapSegments;
-                points.Add(new Vector3(x + Mathf.Cos(a) * r, 0f, z + Mathf.Sin(a) * r));
-            }
-            return points;
-        }
-
-        /// <summary>
-        /// Bande de longueur <paramref name="length"/> et de demi-largeur <paramref name="half"/> le long de l'axe, bouts arrondis comme
-        /// dans le moteur ; contour (couronne de largeur <see cref="Band"/>) ou pleine (éventail depuis le milieu, la forme est convexe).
-        /// </summary>
-        private static void Stadium(Mesh mesh, float x, float z, float ax, float az, float length, float half, bool outline)
-        {
-            List<Vector3> outer = StadiumLoop(x, z, ax, az, length, half);
-            int n = outer.Count;
-            if (outline)
-            {
-                List<Vector3> inner = StadiumLoop(x, z, ax, az, length, Mathf.Max(0f, half - Band));
-                var vertices = new Vector3[2 * n];
-                var triangles = new int[6 * n];
-                for (int i = 0; i < n; i++)
-                {
-                    vertices[2 * i] = inner[i];
-                    vertices[2 * i + 1] = outer[i];
-                }
-                for (int i = 0; i < n; i++)
-                {
-                    // Comme une couronne de Sector : (intérieur, extérieur suivant, extérieur) et (intérieur, intérieur suivant, extérieur
-                    // suivant) regardent vers le haut ; le dernier quadrilatère referme le contour.
-                    int v = 2 * i, w = 2 * ((i + 1) % n), k = 6 * i;
-                    triangles[k] = v;
-                    triangles[k + 1] = w + 1;
-                    triangles[k + 2] = v + 1;
-                    triangles[k + 3] = v;
-                    triangles[k + 4] = w;
-                    triangles[k + 5] = w + 1;
-                }
-                Set(mesh, vertices, triangles);
-                return;
-            }
-            var fill = new Vector3[n + 1];
-            var fan = new int[3 * n];
-            fill[0] = new Vector3(x + ax * length / 2f, 0f, z + az * length / 2f);
-            for (int i = 0; i < n; i++) fill[i + 1] = outer[i];
-            for (int i = 0; i < n; i++)
-            {
-                fan[3 * i] = 0;
-                fan[3 * i + 1] = 1 + (i + 1) % n;
-                fan[3 * i + 2] = 1 + i;
-            }
-            Set(mesh, fill, fan);
-        }
-
-        private static void Set(Mesh mesh, Vector3[] vertices, int[] triangles)
-        {
-            // Essai réaliste 5 (revue Codex de la PR #60) : une annonce qui touche le pont cintré suit son tablier (redécoupée en petits
-            // triangles, chaque sommet rehaussé de la hauteur du tablier), au lieu de passer sous les planches.
-            if (vertices.Length > 0 && StyleWorld.OnDeck(vertices.Min(v => v.x), vertices.Min(v => v.z), vertices.Max(v => v.x), vertices.Max(v => v.z)))
-            {
-                (List<StyleVector> fine, List<int> fineTriangles) = StyleShapes.Subdivide(
-                    vertices.Select(v => new StyleVector(v.x, v.y, v.z)).ToList(), triangles, 0.3, 6, StyleWorld.Deck());
-                vertices = fine.Select(v => new Vector3((float)v.X, (float)v.Y + StyleWorld.StandHeight((float)v.X, (float)v.Z), (float)v.Z)).ToArray();
-                triangles = fineTriangles.ToArray();
-            }
-            mesh.Clear();
-            if (vertices.Length > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-            mesh.vertices = vertices;
-            mesh.triangles = triangles;
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
+            _body.SetActive(true);
         }
     }
 }
