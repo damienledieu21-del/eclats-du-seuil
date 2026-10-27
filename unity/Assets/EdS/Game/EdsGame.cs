@@ -78,6 +78,12 @@ namespace EdS.Game
         private NetworkSession _net;
         private readonly NetworkScreen _netScreen = new NetworkScreen();
         private bool _menuOpen;
+
+        /// <summary>Caméra à la souris libre (curseur capturé) à cette image.</summary>
+        private bool _freeLook;
+
+        /// <summary>Curseur rendu par Échap (pour quitter le jeu dans l'éditeur, par exemple) ; un clic dans le jeu le reprend.</summary>
+        private bool _cursorReleased;
         private NetworkCombat _shownCombat;
         private int _shownRoster;
         private string _netBuildId = "build.bastion.rempart";
@@ -220,6 +226,13 @@ namespace EdS.Game
         /// <summary>Un écran (sac, journal, atelier) ou un dialogue de l'aventure couvre les commandes tactiles (revue Codex de la PR #49).</summary>
         private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null);
 
+        /// <summary>
+        /// Salle d'attente du réseau affichée (avant, entre et après les combats) : ses boutons (« Je suis prêt », « Quitter la partie »)
+        /// se cliquent, la caméra à la souris libre n'y prend pas le curseur (revue Codex de la PR #57). Même condition que son affichage.
+        /// </summary>
+        private bool LobbyShown => Network && _talents == null && (_net.Client == null || _net.Client.Status != ClientStatus.Combat
+            && _net.Client.Status != ClientStatus.Disconnected && _net.Client.Status != ClientStatus.Reconnecting);
+
         /// <summary>Quitte l'aventure (sauvegardée) : l'entraînement ou le réseau prend la place.</summary>
         private void LeaveAdventure()
         {
@@ -333,7 +346,7 @@ namespace EdS.Game
             _markers.Sync(a);
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
-            if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+            if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
         }
 
@@ -486,12 +499,29 @@ namespace EdS.Game
             if (!focus) _touch.Reset();
         }
 
+        /// <summary>Le curseur est rendu quand le jeu s'arrête (caméra à la souris libre).</summary>
+        private void OnDisable()
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+
         private void Update()
         {
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             if (Application.isEditor) StyleWorld.Refresh();   // essai réaliste : les curseurs du catalogue réglés pendant le jeu
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
             _touch.Update(Network, _adventure != null, AdventureCovered);
+            // Caméra à la souris libre (choix de Damien du 26 octobre 2026, « comme ESO ») : hors des écrans et des menus, la souris tourne la
+            // caméra, curseur caché ; Alt tenu rend le curseur pour cliquer.
+            // Échap rend le curseur (dans l'éditeur, pour arrêter le jeu) ; un clic dans le jeu le reprend.
+            bool covered = _talents != null || _menuOpen || _paused || AdventureCovered || LobbyShown;
+            if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;
+            else if (_cursorReleased && !covered && Input.GetMouseButtonDown(0)) _cursorReleased = false;
+            bool cursorWanted = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt) || _cursorReleased;
+            _freeLook = PointerInput.FreeLook(Input.touchCount, _touch.Active, cursorWanted, covered, Application.isFocused);
+            Cursor.lockState = _freeLook ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !_freeLook;
             // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran. En réseau,
             // la partie continue d'avancer (le serveur ne s'arrête pas), sans entrée de combat.
             if (_talents != null)
@@ -566,7 +596,7 @@ namespace EdS.Game
 
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
-            if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+            if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
         }
 
@@ -816,7 +846,7 @@ namespace EdS.Game
 
             player = _combat.Player();
             _arena.Sync(_combat, player, combat?.AllyId);
-            if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime);
+            if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
         }
 
@@ -1000,8 +1030,7 @@ namespace EdS.Game
                 else if (menu == NetworkScreen.Action.Close) _menuOpen = false;
                 return;
             }
-            if (Network && _talents == null && (_net.Client == null || _net.Client.Status != ClientStatus.Combat && _net.Client.Status != ClientStatus.Disconnected
-                && _net.Client.Status != ClientStatus.Reconnecting))
+            if (LobbyShown)
             {
                 // Salle d'attente (avant, entre et après les combats) ; l'arène du dernier combat reste visible derrière.
                 NetworkScreen.Action lobby = _netScreen.DrawLobby(_net, NetworkBuildName(), _lastCombat);

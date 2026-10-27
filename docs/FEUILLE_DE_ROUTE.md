@@ -142,6 +142,8 @@ Décidé par Damien le 25 octobre 2026 : voir les Vallons avec des modèles et d
 - **Style low poly écarté** : « bof j'aime pas trop je voulais quelque chose de vraiment réaliste ».
 - **Direction : réalisme stylisé** : « un mélange de réaliste et de stylisé coloré », « lumineux, réaliste mais pas trop » (référence : The Elder Scrolls), et pour l'essai « le plus réaliste possible ». Fichiers réalistes gratuits : Poly Haven (CC0 : sols, plantes, rochers, bois mort, ciel) et Mixamo (le paladin et ses animations, compte Adobe de Damien).
 - **Animaux** : on peut rester sur des modèles gratuits pour l'instant (« si c'est seulement les textures qui sont impactées et pas le reste ») ; le jeu ne change pas, seul l'aspect change.
+- **Le soir, après l'essai** : PNJ, bâtiments et rivière à faire aussi ; personnages Mixamo pour les trois PNJ, l'archer, le rôdeur et le Gardien, textures Poly Haven pour les bâtiments (choix de Damien dans la conversation).
+- **Caméra à la souris libre, « comme ESO »** (choix de Damien parmi trois propositions) : sans clic, hors des écrans et des menus ; Alt tenu rend le curseur. La garde reste au clic droit.
 
 **Décisions du 25 octobre 2026** (essai du 12.9, rapport : [ESSAI_LOT_12.md](ESSAI_LOT_12.md#4-décisions-de-damien-pendant-lessai)) :
 

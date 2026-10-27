@@ -52,7 +52,8 @@ namespace EdS.Game
             _root.transform.SetParent(parent, false);
             _outline = ArenaView.MakeMaterial(new Color(1f, 0.6f, 0.12f));
             _fill = ArenaView.MakeMaterial(new Color(0.85f, 0.16f, 0.1f));
-            _water = ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
+            // Essai réaliste : l'eau de la rivière (vagues qui glissent) si le catalogue est là, sinon le bleu simple.
+            _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
 
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
             // Essai réaliste : un terrain peint (terre, roche, herbe) à la place du sol simple, s'il y a des textures de sol.
@@ -68,12 +69,12 @@ namespace EdS.Game
                 ground.transform.localScale = new Vector3(maxX - minX, 0.1f, maxZ - minZ);
                 ground.GetComponent<Renderer>().sharedMaterial = ArenaView.MakeMaterial(new Color(0.33f, 0.42f, 0.25f));
             }
-            // Bord de l'aire : quatre murets bas (on ne sort pas de l'aire, le moteur l'interdit).
-            Material border = ArenaView.MakeMaterial(new Color(0.3f, 0.27f, 0.22f));
-            Block("Bord ouest", new Vector3(minX - 0.15f, 0.25f, (minZ + maxZ) / 2f), new Vector3(0.3f, 0.5f, maxZ - minZ + 0.6f), border);
-            Block("Bord est", new Vector3(maxX + 0.15f, 0.25f, (minZ + maxZ) / 2f), new Vector3(0.3f, 0.5f, maxZ - minZ + 0.6f), border);
-            Block("Bord sud", new Vector3((minX + maxX) / 2f, 0.25f, minZ - 0.15f), new Vector3(maxX - minX, 0.5f, 0.3f), border);
-            Block("Bord nord", new Vector3((minX + maxX) / 2f, 0.25f, maxZ + 0.15f), new Vector3(maxX - minX, 0.5f, 0.3f), border);
+            // Bord de l'aire : quatre murets bas (on ne sort pas de l'aire, le moteur l'interdit). Essai réaliste : en pavés.
+            Material border = Built(StyleSurface.Cobble, new Color(0.3f, 0.27f, 0.22f), out float borderTile);
+            Box("Bord ouest", new Vector3(minX - 0.15f, 0.25f, (minZ + maxZ) / 2f), new Vector3(0.3f, 0.5f, maxZ - minZ + 0.6f), border, borderTile);
+            Box("Bord est", new Vector3(maxX + 0.15f, 0.25f, (minZ + maxZ) / 2f), new Vector3(0.3f, 0.5f, maxZ - minZ + 0.6f), border, borderTile);
+            Box("Bord sud", new Vector3((minX + maxX) / 2f, 0.25f, minZ - 0.15f), new Vector3(maxX - minX, 0.5f, 0.3f), border, borderTile);
+            Box("Bord nord", new Vector3((minX + maxX) / 2f, 0.25f, maxZ + 0.15f), new Vector3(maxX - minX, 0.5f, 0.3f), border, borderTile);
 
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             Plants(space);
@@ -105,7 +106,7 @@ namespace EdS.Game
             if (id.StartsWith("riviere"))
             {
                 // Eau : prisme bas (la rivière arrête la marche et, au 11.6, la vue : un seul genre d'obstacle dans le moteur).
-                Prism(id, points, 0.12f, _water, false);
+                Prism(id, points, 0.12f, _water, false, 4f);
                 return;
             }
             if (id.StartsWith("arbre"))
@@ -131,16 +132,18 @@ namespace EdS.Game
             }
             if (id.StartsWith("moulin"))
             {
-                Prism(id, points, 6f, ArenaView.MakeMaterial(new Color(0.62f, 0.58f, 0.5f)), true);
+                Material walls = Built(StyleSurface.Plaster, new Color(0.62f, 0.58f, 0.5f), out float wallTile);
+                Prism(id, points, 6f, walls, true, wallTile);
                 Vector3 c = Center(points);
                 float half = points.Max(p => Mathf.Max(Mathf.Abs(p.x - c.x), Mathf.Abs(p.z - c.z)));
-                GameObject roof = Block(id + " (toit)", c + Vector3.up * 6.6f, new Vector3(half * 2.2f, 1.2f, half * 2.2f), ArenaView.MakeMaterial(new Color(0.45f, 0.2f, 0.15f)));
+                Material tiles = Built(StyleSurface.Roof, new Color(0.45f, 0.2f, 0.15f), out float roofTile);
+                GameObject roof = Box(id + " (toit)", c + Vector3.up * 6.6f, new Vector3(half * 2.2f, 1.2f, half * 2.2f), tiles, roofTile);
                 AddOccluder(roof.transform, false, c + new Vector3(-half * 1.1f, 6f, -half * 1.1f), c + new Vector3(half * 1.1f, 7.2f, half * 1.1f));
-                // Ailes du moulin, sur la face sud.
-                Material wood = ArenaView.MakeMaterial(new Color(0.5f, 0.38f, 0.25f));
+                // Ailes du moulin, sur la face sud (essai réaliste : en planches).
+                Material wood = Built(StyleSurface.Wood, new Color(0.5f, 0.38f, 0.25f), out float sailTile);
                 Vector3 hub = new Vector3(c.x, 4.5f, c.z - half - 0.3f);
-                GameObject a = Block(id + " (aile 1)", hub, new Vector3(7f, 0.4f, 0.1f), wood);
-                GameObject b = Block(id + " (aile 2)", hub, new Vector3(0.4f, 7f, 0.1f), wood);
+                GameObject a = Block(id + " (aile 1)", hub, new Vector3(7f, 0.4f, 0.1f), Tiled(wood, 7f / sailTile, 0.4f / sailTile));
+                GameObject b = Block(id + " (aile 2)", hub, new Vector3(0.4f, 7f, 0.1f), Tiled(wood, 0.4f / sailTile, 7f / sailTile));
                 a.transform.rotation = Quaternion.Euler(0f, 0f, 20f);
                 b.transform.rotation = Quaternion.Euler(0f, 0f, 20f);
                 AddOccluder(a.transform, false, hub - new Vector3(3.5f, 3.5f, 0.2f), hub + new Vector3(3.5f, 3.5f, 0.2f));
@@ -149,12 +152,12 @@ namespace EdS.Game
             }
             if (id.StartsWith("mur"))
             {
-                Prism(id, points, 3f, ArenaView.MakeMaterial(new Color(0.48f, 0.47f, 0.45f)), true);
+                Prism(id, points, 3f, Built(StyleSurface.Stone, new Color(0.48f, 0.47f, 0.45f), out float stoneTile), true, stoneTile);
                 return;
             }
             if (id.StartsWith("pilier"))
             {
-                Prism(id, points, 3f, ArenaView.MakeMaterial(new Color(0.42f, 0.3f, 0.2f)), true);
+                Prism(id, points, 3f, Built(StyleSurface.Wood, new Color(0.42f, 0.3f, 0.2f), out float pillarTile), true, pillarTile);
                 return;
             }
             // Essai de style : un rocher des packs sur l'emprise des blocs de la carrière et des pierres du Seuil.
@@ -168,7 +171,7 @@ namespace EdS.Game
                     return;
                 }
             }
-            Prism(id, points, 2f, ArenaView.MakeMaterial(new Color(0.45f, 0.42f, 0.38f)), true);
+            Prism(id, points, 2f, Built(StyleSurface.Stone, new Color(0.45f, 0.42f, 0.38f), out float blockTile), true, blockTile);
         }
 
         /// <summary>
@@ -247,12 +250,20 @@ namespace EdS.Game
             new Vector3(points.Average(p => p.x), 0f, points.Average(p => p.z));
 
         /// <summary>Prisme droit de base <paramref name="points"/> (polygone convexe), de hauteur <paramref name="height"/>, faces vers l'extérieur.</summary>
-        private void Prism(string name, List<Vector3> points, float height, Material material, bool occludes)
+        /// <summary>
+        /// Prisme droit de base <paramref name="points"/> (polygone convexe, posé à la hauteur de ses points), de hauteur
+        /// <paramref name="height"/>, faces vers l'extérieur. Essai réaliste : coordonnées de texture à l'échelle du monde (une répétition
+        /// tous les <paramref name="tile"/> mètres ; dessus en x et z, flancs le long du bord et en hauteur), pour la pierre, le crépi, les
+        /// planches et l'eau.
+        /// </summary>
+        private GameObject Prism(string name, List<Vector3> points, float height, Material material, bool occludes, float tile = 2.5f)
         {
             Vector3 c = Center(points) + Vector3.up * (height / 2f);
             var vertices = new List<Vector3>();
+            var uvs = new List<Vector2>();
             var triangles = new List<int>();
-            void Triangle(Vector3 a, Vector3 b, Vector3 d, Vector3 outward)
+            float scale = 1f / Mathf.Max(0.1f, tile);
+            void Triangle(Vector3 a, Vector3 b, Vector3 d, Vector3 outward, System.Func<Vector3, Vector2> uv)
             {
                 // Face visible du côté de sa normale (produit vectoriel, comme Mesh.RecalculateNormals) : ordre corrigé vers l'extérieur.
                 Vector3 n = Vector3.Cross(b - a, d - a);
@@ -266,34 +277,73 @@ namespace EdS.Game
                 vertices.Add(a);
                 vertices.Add(b);
                 vertices.Add(d);
+                uvs.Add(uv(a) * scale);
+                uvs.Add(uv(b) * scale);
+                uvs.Add(uv(d) * scale);
                 triangles.Add(k);
                 triangles.Add(k + 1);
                 triangles.Add(k + 2);
             }
             Vector3 up = Vector3.up * height;
-            for (int i = 1; i + 1 < points.Count; i++) Triangle(points[0] + up, points[i] + up, points[i + 1] + up, Vector3.up);
+            System.Func<Vector3, Vector2> top = v => new Vector2(v.x, v.z);
+            for (int i = 1; i + 1 < points.Count; i++) Triangle(points[0] + up, points[i] + up, points[i + 1] + up, Vector3.up, top);
             for (int i = 0; i < points.Count; i++)
             {
                 Vector3 p = points[i], q = points[(i + 1) % points.Count];
                 Vector3 outward = (p + q) / 2f + Vector3.up * (height / 2f) - c;
                 outward.y = 0f;
-                Triangle(p, q, q + up, outward);
-                Triangle(p, q + up, p + up, outward);
+                Vector3 along = q - p;
+                along.y = 0f;
+                along = along.normalized;
+                System.Func<Vector3, Vector2> side = v => new Vector2(Vector3.Dot(v - p, along), v.y);
+                Triangle(p, q, q + up, outward, side);
+                Triangle(p, q + up, p + up, outward, side);
             }
             var mesh = new Mesh();
             mesh.vertices = vertices.ToArray();
+            mesh.uv = uvs.ToArray();
             mesh.triangles = triangles.ToArray();
             mesh.RecalculateNormals();
+            // Revue Codex de la PR #57 (2e tour) : les cartes de relief (murs, tuiles, planches, vagues) ont besoin des tangentes.
+            mesh.RecalculateTangents();
             mesh.RecalculateBounds();
             var go = new GameObject(name);
             go.transform.SetParent(_root.transform, false);
             go.AddComponent<MeshFilter>().mesh = mesh;
             MeshRenderer renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
-            if (!occludes) return;
+            if (!occludes) return go;
             var min = new Vector3(points.Min(p => p.x), 0f, points.Min(p => p.z));
             var max = new Vector3(points.Max(p => p.x), height, points.Max(p => p.z));
             _occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true, Min = min, Max = max });
+            return go;
+        }
+
+        /// <summary>
+        /// Essai réaliste : pavé droit aligné (centre, taille), en prisme pour avoir des textures à l'échelle du monde ; même place que le
+        /// bloc simple qu'il remplace.
+        /// </summary>
+        private GameObject Box(string name, Vector3 center, Vector3 size, Material material, float tile)
+        {
+            float y = center.y - size.y / 2f, hx = size.x / 2f, hz = size.z / 2f;
+            var points = new List<Vector3>
+            {
+                new Vector3(center.x - hx, y, center.z - hz), new Vector3(center.x + hx, y, center.z - hz),
+                new Vector3(center.x + hx, y, center.z + hz), new Vector3(center.x - hx, y, center.z + hz),
+            };
+            return Prism(name, points, size.y, material, false, tile);
+        }
+
+        /// <summary>Matériau d'une matière de bâtiment (textures du catalogue), ou la couleur simple sans elles.</summary>
+        private static Material Built(StyleSurface kind, Color color, out float tile) =>
+            StyleWorld.Surface(kind, out tile) ?? ArenaView.MakeMaterial(color);
+
+        /// <summary>Copie d'un matériau texturé répétée (u, v) fois sur un bloc simple (les ailes du moulin, tournées).</summary>
+        private static Material Tiled(Material material, float u, float v)
+        {
+            var copy = new Material(material);
+            copy.SetTextureScale("_BaseMap", new Vector2(Mathf.Max(0.05f, u), Mathf.Max(0.05f, v)));
+            return copy;
         }
 
         private void AddOccluder(Transform transform, bool lower, Vector3 min, Vector3 max) =>
@@ -325,10 +375,10 @@ namespace EdS.Game
             if (south == null || north == null) return;
             float x0 = Raw(south.Points.Min(p => p.X.Raw)) - 0.6f, x1 = Raw(south.Points.Max(p => p.X.Raw)) + 0.6f;
             float z0 = Raw(south.Points.Max(p => p.Z.Raw)), z1 = Raw(north.Points.Min(p => p.Z.Raw));
-            Material wood = ArenaView.MakeMaterial(new Color(0.55f, 0.4f, 0.24f));
-            Block("Pont", new Vector3((x0 + x1) / 2f, 0.06f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.12f, z1 - z0), wood);
-            Block("Pont (rambarde sud)", new Vector3((x0 + x1) / 2f, 0.5f, z0 + 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood);
-            Block("Pont (rambarde nord)", new Vector3((x0 + x1) / 2f, 0.5f, z1 - 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood);
+            Material wood = Built(StyleSurface.Wood, new Color(0.55f, 0.4f, 0.24f), out float tile);
+            Box("Pont", new Vector3((x0 + x1) / 2f, 0.06f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.12f, z1 - z0), wood, tile);
+            Box("Pont (rambarde sud)", new Vector3((x0 + x1) / 2f, 0.5f, z0 + 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood, tile);
+            Box("Pont (rambarde nord)", new Vector3((x0 + x1) / 2f, 0.5f, z1 - 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood, tile);
         }
 
         /// <summary>Toit : posé sur les piliers (« pilier… ») s'il y en a, il cache ce qui est dessous ; retiré quand le joueur y entre.</summary>
@@ -338,8 +388,8 @@ namespace EdS.Game
             if (pillars.Count < 2) return;
             float x0 = Raw(pillars.Min(o => o.Points.Min(p => p.X.Raw))) - 0.8f, x1 = Raw(pillars.Max(o => o.Points.Max(p => p.X.Raw))) + 0.8f;
             float z0 = Raw(pillars.Min(o => o.Points.Min(p => p.Z.Raw))) - 0.8f, z1 = Raw(pillars.Max(o => o.Points.Max(p => p.Z.Raw))) + 0.8f;
-            GameObject roof = Block("Toit", new Vector3((x0 + x1) / 2f, 3.2f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.35f, z1 - z0),
-                ArenaView.MakeMaterial(new Color(0.5f, 0.22f, 0.16f)));
+            Material tiles = Built(StyleSurface.Roof, new Color(0.5f, 0.22f, 0.16f), out float tile);
+            GameObject roof = Box("Toit", new Vector3((x0 + x1) / 2f, 3.2f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.35f, z1 - z0), tiles, tile);
             _roofMin = new Vector3(x0, 0f, z0);
             _roofMax = new Vector3(x1, 3.4f, z1);
             _hasRoof = true;
@@ -354,6 +404,7 @@ namespace EdS.Game
         /// </summary>
         public void Cut(Vector3 camera, Vector3 player, float deltaTime)
         {
+            StyleWorld.AnimateWater(Time.time);   // essai réaliste : les vagues de la rivière glissent
             Vector3 head = player + Vector3.up * 1f;
             bool underRoof = _hasRoof && player.x >= _roofMin.x && player.x <= _roofMax.x && player.z >= _roofMin.z && player.z <= _roofMax.z;
             foreach (Occluder o in _occluders)

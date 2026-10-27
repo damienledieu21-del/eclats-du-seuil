@@ -197,11 +197,14 @@ namespace EdS.Game
             return body;
         }
 
-        /// <summary>Essai de style : habille le corps s'il a un modèle (le chevalier, les loups, les sangliers).</summary>
+        /// <summary>
+        /// Essai de style : habille le corps s'il a un modèle (le chevalier, les loups, les sangliers ; depuis l'essai réaliste, l'archer, le
+        /// rôdeur et le Gardien s'ils ont leur personnage Mixamo, à la hauteur réglée dans le catalogue).
+        /// </summary>
         private void Look(string id, GameObject body, bool player)
         {
-            if (!(StyleRules.ForCombatant(id, player) is StyleSlot slot)) return;
-            StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero ? 1.8f : 0.95f);
+            StyleSlot slot = StyleRules.ForCombatant(id, player);
+            StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero || slot == StyleSlot.Character ? 1.8f : 0.95f);
             if (look != null) _looks[id] = look;
         }
 

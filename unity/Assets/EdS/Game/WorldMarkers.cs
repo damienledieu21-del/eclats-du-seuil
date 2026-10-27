@@ -30,7 +30,13 @@ namespace EdS.Game
         {
             _root = new GameObject("Repères");
             foreach (WorldMarker npc in adventure.Npcs())
-                Add(npc, PrimitiveType.Capsule, new Vector3(0.8f, 1f, 0.8f), 1f, new Color(0.95f, 0.78f, 0.3f), 2.3f, NpcLabelRange);
+            {
+                Marker m = Add(npc, PrimitiveType.Capsule, new Vector3(0.8f, 1f, 0.8f), 1f, new Color(0.95f, 0.78f, 0.3f), 2.3f, NpcLabelRange);
+                // Essai réaliste (demande de Damien du 26 octobre 2026) : le PNJ prend son personnage Mixamo (dossier Odile, Maelle,
+                // Gaspard) s'il existe, et respire en attendant (l'attente tourne en boucle sans autre mise à jour).
+                StyleBody look = StyleLook.Dress(m.Body, StyleSlot.Character, npc.Id, 1.75f);
+                if (look != null) look.Update(m.Body.transform.position, false, 0f);
+            }
             foreach (WorldMarker node in adventure.Nodes())
             {
                 bool herb = node.Profession == "herboristerie";

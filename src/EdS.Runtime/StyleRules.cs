@@ -17,6 +17,31 @@ namespace EdS.Runtime
 
         /// <summary>Essai réaliste : bois mort (souches, troncs couchés), posé dans la forêt autour de l'aire.</summary>
         Debris = 6,
+
+        /// <summary>
+        /// Essai réaliste (demande de Damien du 26 octobre 2026) : un personnage de Mixamo rangé dans son dossier
+        /// (<c>Mixamo/Archer</c>…), pour un PNJ ou un ennemi d'après son identifiant (<see cref="StyleRules.CharacterOf"/>).
+        /// </summary>
+        Character = 7,
+    }
+
+    /// <summary>Essai réaliste : matière d'un bâtiment (textures d'un dossier « Surfaces »).</summary>
+    public enum StyleSurface
+    {
+        /// <summary>Pierre (murs, piliers de pierre).</summary>
+        Stone = 0,
+
+        /// <summary>Crépi (murs du moulin).</summary>
+        Plaster = 1,
+
+        /// <summary>Tuiles (toits).</summary>
+        Roof = 2,
+
+        /// <summary>Planches (pont, ailes du moulin, piliers de bois).</summary>
+        Wood = 3,
+
+        /// <summary>Pavés (murets du bord de l'aire).</summary>
+        Cobble = 4,
     }
 
     /// <summary>Ce que fait un corps animé, pour choisir son animation.</summary>
@@ -256,12 +281,13 @@ namespace EdS.Runtime
         }
 
         /// <summary>Carte de relief (« _nor_gl_ », « _normal ») : un mot du nom de fichier.</summary>
-        public static bool IsNormalMap(string path) => Words(path).Any(w => w == "nor" || w == "normal" || w == "nrm");
+        public static bool IsNormalMap(string path) => Words(path).Any(w => w == "nor" || w == "normal" || w == "nrm" || w == "nm");
 
         /// <summary>Carte de couleur : ni relief, ni rugosité, ni occlusion, ni hauteur, ni transparence.</summary>
         public static bool IsColorMap(string path) =>
             !IsNormalMap(path) && !Words(path).Any(w => w == "rough" || w == "roughness" || w == "ao" || w == "disp" || w == "height" || w == "arm"
-                || w == "spec" || w == "specular" || w == "metal" || w == "metallic" || w == "gloss" || w == "alpha" || w == "opacity" || w == "mask");
+                || w == "spec" || w == "specular" || w == "metal" || w == "metallic" || w == "gloss" || w == "alpha" || w == "opacity" || w == "mask"
+                || w == "glow" || w == "emission" || w == "emissive");
 
         /// <summary>Carte de transparence (« _alpha_ », « _opacity »).</summary>
         public static bool IsAlphaMap(string path) => Words(path).Any(w => w == "alpha" || w == "opacity");
@@ -322,7 +348,7 @@ namespace EdS.Runtime
                 foreach (string word in Clips[m])
                 {
                     string? found = names.FirstOrDefault(n => Segment(n) == word) ?? names.FirstOrDefault(n => Segment(n).StartsWith(word, StringComparison.Ordinal))
-                        ?? names.FirstOrDefault(n => Key(n).Contains(word));
+                        ?? names.FirstOrDefault(n => HasWord(n, new[] { word }));
                     if (found != null) return found;
                 }
             return null;
@@ -337,12 +363,18 @@ namespace EdS.Runtime
         }
 
         /// <summary>Animations qui tournent en boucle (attente, marche, course).</summary>
-        public static bool Loops(string clip)
-        {
-            string key = Key(clip);
-            return new[] { StyleMotion.Idle, StyleMotion.Walk, StyleMotion.Run }.Any(m => Clips[m].Any(w => key.Contains(w)))
-                && !Clips[StyleMotion.Death].Any(w => key.Contains(w)) && !Clips[StyleMotion.Attack].Any(w => key.Contains(w));
-        }
+        public static bool Loops(string clip) =>
+            new[] { StyleMotion.Idle, StyleMotion.Walk, StyleMotion.Run }.Any(m => HasWord(clip, Clips[m]))
+                && !HasWord(clip, Clips[StyleMotion.Death]) && !HasWord(clip, Clips[StyleMotion.Attack]);
+
+        /// <summary>
+        /// Un mot du nom commence-t-il par l'un des mots cherchés ? Les mots sont coupés aux signes et aux majuscules (« Run_swordAttack » →
+        /// run, sword, attack). Essai du 26 octobre 2026 : « Gardien Idle » contient « die » au milieu d'un mot, et ne doit pas passer pour
+        /// une mort.
+        /// </summary>
+        private static bool HasWord(string clip, string[] wanted) =>
+            Regex.Matches(clip ?? string.Empty, "[A-Z]?[a-z]+|[A-Z]+(?![a-z])").Cast<Match>().Select(m => m.Value.ToLowerInvariant())
+                .Any(w => wanted.Any(x => w.StartsWith(x, StringComparison.Ordinal)));
 
         /// <summary>
         /// Allure d'après la vitesse au sol affichée (m/s) : attente sous 0,3, marche sous 3,5, course au-delà ; la mort l'emporte, puis
@@ -466,14 +498,98 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Ce qu'habille un combattant, d'après son identifiant (vies suivantes comprises : « loup1_v3 ») : le joueur en chevalier, les loups
-        /// et les sangliers ; les autres (archer, rôdeur, Gardien, PNJ) gardent leur forme simple pendant l'essai. Null : rien.
+        /// et les sangliers ; depuis l'essai réaliste (demande de Damien du 26 octobre 2026), les autres (archer, rôdeur, Gardien) prennent le
+        /// personnage de leur dossier Mixamo s'il existe (<see cref="CharacterOf"/>) ; sans lui, ils gardent leur forme simple.
         /// </summary>
-        public static StyleSlot? ForCombatant(string id, bool player)
+        public static StyleSlot ForCombatant(string id, bool player)
         {
             if (player) return StyleSlot.Hero;
             string key = Key(id);
             if (key.StartsWith("loup", StringComparison.Ordinal)) return StyleSlot.Wolf;
             if (key.StartsWith("sanglier", StringComparison.Ordinal)) return StyleSlot.Boar;
+            return StyleSlot.Character;
+        }
+
+        /// <summary>
+        /// Personnage d'un PNJ ou d'un ennemi : le premier mot de son identifiant, sans le préfixe « npc » ni les chiffres (« npc.odile » →
+        /// odile, « gardien_eveille » → gardien, « archer_v2 » → archer). C'est le nom du dossier du personnage dans <c>Assets/Style/Mixamo</c>,
+        /// réduit. Vide si l'identifiant n'a aucun mot.
+        /// </summary>
+        public static string CharacterOf(string id)
+        {
+            foreach (string word in Regex.Split(id ?? string.Empty, "[^A-Za-z]+"))
+            {
+                string w = Key(word);
+                if (w.Length == 0 || w == "npc" || w == "pnj") continue;
+                return w;
+            }
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Personnages rangés chacun dans un dossier de <c>Mixamo</c> (« Assets/Style/Mixamo/Archer/Archer Idle.fbx ») : nom du dossier
+        /// réduit → ses FBX dans l'ordre ordinal. Le héros, posé à la racine de <c>Mixamo</c>, et les dossiers « Textures » n'en sont pas.
+        /// </summary>
+        public static IReadOnlyDictionary<string, IReadOnlyList<string>> Characters(IEnumerable<string> paths)
+        {
+            var found = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+            foreach (string path in paths ?? Array.Empty<string>())
+            {
+                if (path == null || !path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) continue;
+                string[] parts = path.Replace('\\', '/').Split('/');
+                if (parts.Length < 3 || Key(parts[parts.Length - 3]) != "mixamo") continue;
+                string name = Key(parts[parts.Length - 2]);
+                if (name.Length == 0 || name == "textures") continue;
+                if (!found.TryGetValue(name, out List<string>? list)) found[name] = list = new List<string>();
+                list.Add(path);
+            }
+            return found.ToDictionary(e => e.Key, e => (IReadOnlyList<string>)e.Value.OrderBy(p => p, StringComparer.Ordinal).ToList(), StringComparer.Ordinal);
+        }
+
+        /// <summary>
+        /// Texture d'un matériau de Mixamo (couleur, ou relief si <paramref name="normal"/>) : celle dont le nom commence par celui du matériau
+        /// (« Body_MAT1 » → Body_DIFF.jpg, « maria_M1 » → maria_diffuse.png), sinon la seule texture de ce genre s'il n'y en a qu'une
+        /// (« warrok_MAT » → bear_diffuse.png) ; null sinon.
+        /// </summary>
+        public static string? MaterialTexture(string material, IEnumerable<string> textures, bool normal)
+        {
+            List<string> kind = (textures ?? Array.Empty<string>()).Where(t => t != null && (normal ? IsNormalMap(t) : IsColorMap(t)))
+                .OrderBy(t => t, StringComparer.Ordinal).ToList();
+            string stem = Regex.Replace(Key(material), "(mat|m)[0-9]*$", "");
+            if (stem.Length > 0 && kind.FirstOrDefault(t => Key(FileName(t)).StartsWith(stem, StringComparison.Ordinal)) is string named) return named;
+            return kind.Count == 1 ? kind[0] : null;
+        }
+
+        /// <summary>
+        /// Matière d'une texture de bâtiment : seulement les textures d'un dossier nommé « Surfaces » ; crépi, tuiles, planches, pavés ou
+        /// pierre d'après le nom (dans cet ordre : « plastered_stone_wall » est du crépi, « cobblestone » des pavés). Null sinon.
+        /// </summary>
+        public static StyleSurface? SurfaceOf(string path)
+        {
+            if (!Segments(path).Any(s => s == "surfaces")) return null;
+            string file = Key(FileName(path));
+            if (file.Contains("plaster")) return StyleSurface.Plaster;
+            if (file.Contains("roof") || file.Contains("tile")) return StyleSurface.Roof;
+            if (file.Contains("plank") || file.Contains("wood") || file.Contains("timber")) return StyleSurface.Wood;
+            if (file.Contains("cobble") || file.Contains("paving") || file.Contains("pavement")) return StyleSurface.Cobble;
+            if (file.Contains("stone") || file.Contains("brick") || file.Contains("wall") || file.Contains("rock")) return StyleSurface.Stone;
+            return null;
+        }
+
+        /// <summary>Texture de couleur (ou de relief) d'une matière de bâtiment, ou null ; ordre ordinal des chemins.</summary>
+        public static string? SurfaceTexture(IEnumerable<string> paths, StyleSurface surface, bool normal) =>
+            (paths ?? Array.Empty<string>()).Where(p => SurfaceOf(p) == surface && (normal ? IsNormalMap(p) : IsColorMap(p)))
+                .OrderBy(p => p, StringComparer.Ordinal).FirstOrDefault();
+
+        /// <summary>
+        /// Matière d'un obstacle bâti : pierre pour les murs, planches pour les piliers ; null pour les autres (le moulin a ses propres
+        /// matières : crépi, tuiles, planches ; la rivière son eau).
+        /// </summary>
+        public static StyleSurface? SurfaceFor(string id)
+        {
+            string key = Key(id);
+            if (key.StartsWith("mur", StringComparison.Ordinal)) return StyleSurface.Stone;
+            if (key.StartsWith("pilier", StringComparison.Ordinal)) return StyleSurface.Wood;
             return null;
         }
 

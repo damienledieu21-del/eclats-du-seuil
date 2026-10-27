@@ -92,8 +92,12 @@ namespace EdS.Game
             _unsaved = true;
         }
 
-        /// <summary>Suit le joueur ; <paramref name="playerYaw"/> oriente la vue proche de la 2 quand la souris ne le fait pas.</summary>
-        public void Follow(Vector3 player, float playerYaw, bool playerMoving, float deltaTime)
+        /// <summary>
+        /// Suit le joueur ; <paramref name="playerYaw"/> oriente la vue proche de la 2 quand la souris ne le fait pas. Caméra à la souris
+        /// libre (<paramref name="freeLook"/>, choix de Damien du 26 octobre 2026) : la souris tourne la vue (gauche-droite) et l'incline
+        /// (haut-bas : de la vue 1, haute, à la vue 2, derrière le Bastion), sans clic.
+        /// </summary>
+        public void Follow(Vector3 player, float playerYaw, bool playerMoving, float deltaTime, bool freeLook = false)
         {
             float scroll = Input.mouseScrollDelta.y;
             if (scroll != 0f)
@@ -105,7 +109,17 @@ namespace EdS.Game
             if (Input.GetKeyDown(Keys.TurnLeft)) _yaw -= 45f;
             if (Input.GetKeyDown(Keys.TurnRight)) _yaw += 45f;
             // Même cause que la garde (essai du 12.9) : un bouton du milieu simulé par des doigts ne tourne pas la caméra.
-            if (PointerInput.MouseLook(Input.touchCount, Input.GetMouseButton(2))) _yaw += Input.GetAxis("Mouse X") * 4f;
+            if (freeLook)
+            {
+                _yaw += Input.GetAxis("Mouse X") * 3f;
+                float tilt = Input.GetAxis("Mouse Y");
+                if (tilt != 0f)
+                {
+                    _setting = Mathf.Clamp01(_setting + tilt * 0.03f);
+                    _unsaved = true;
+                }
+            }
+            else if (PointerInput.MouseLook(Input.touchCount, Input.GetMouseButton(2))) _yaw += Input.GetAxis("Mouse X") * 4f;
             else if (playerMoving && _setting > 0.5f && Time.time >= _manualUntil) _yaw = Mathf.LerpAngle(_yaw, playerYaw, 1f - Mathf.Exp(-2.5f * deltaTime));
             if (_unsaved && Time.time - _savedAt >= 0.5f) Save();
 

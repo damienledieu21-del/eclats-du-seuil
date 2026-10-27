@@ -59,12 +59,25 @@ namespace EdS.Game.Editor
             // Matériaux réalistes des modèles de Poly Haven (couleur, relief, transparence de l'herbe).
             foreach (string model in models.Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero)) RealisticMaterial(model, notes);
             // Essai de Damien du 26 octobre 2026 : le paladin de Mixamo était tout blanc (ses textures restent dans son fichier) ; elles sont
-            // sorties à côté de lui, puis il reçoit le même matériau réaliste (couleur et relief).
-            if (hero != null && StyleRules.IsRealistic(hero))
+            // sorties à côté de lui, puis chaque matériau reçoit les siennes.
+            if (hero != null && StyleRules.IsRealistic(hero)) MixamoMaterials(hero, notes);
+            // Personnages de Mixamo rangés chacun dans son dossier (PNJ, archer, rôdeur, Gardien ; demande de Damien du 26 octobre 2026).
+            var characters = new List<(string Id, string Model, List<AnimationClip> Clips)>();
+            foreach (KeyValuePair<string, IReadOnlyList<string>> folder in StyleRules.Characters(models))
             {
-                EmbeddedTextures(hero, notes);
-                RealisticMaterial(hero, notes);
+                foreach (string file in folder.Value) Legacy(file, true);
+                string model = folder.Value.FirstOrDefault(f => Load(f) is GameObject g && g.GetComponentInChildren<SkinnedMeshRenderer>() != null);
+                if (model == null)
+                {
+                    notes.Add("Personnage « " + folder.Key + " » : aucun modèle avec sa peau dans son dossier.");
+                    continue;
+                }
+                MixamoMaterials(model, notes);
+                characters.Add((folder.Key, model, folder.Value.SelectMany(Clips).ToList()));
             }
+            // Essai du 26 octobre 2026 : des buissons du MegaKit sortaient blancs (textures manquantes, ajoutées depuis) ; un modèle des packs
+            // dont un matériau n'a pas de texture est réimporté, pour retrouver celles qui sont arrivées depuis.
+            foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && Untextured(p))) AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
 
             if (!AssetDatabase.IsValidFolder(CatalogFolder)) AssetDatabase.CreateFolder(Root, "Resources");
             StyleCatalog catalog = AssetDatabase.LoadAssetAtPath<StyleCatalog>(CatalogPath);
@@ -81,6 +94,26 @@ namespace EdS.Game.Editor
             catalog.Rocks = StyleRules.ForCatalog(models, StyleSlot.Rock, 6).Select(Load).Where(m => m != null).ToArray();
             catalog.Plants = StyleRules.ForCatalog(models, StyleSlot.Plant, 16).Select(Load).Where(m => m != null).ToArray();
             catalog.Debris = StyleRules.ForCatalog(models, StyleSlot.Debris, 6).Select(Load).Where(m => m != null).ToArray();
+            // Les réglages faits à la main (hauteur, rotation) sont gardés d'une préparation à l'autre.
+            catalog.Characters = characters.Select(c =>
+            {
+                CharacterLook old = (catalog.Characters ?? new CharacterLook[0]).FirstOrDefault(o => o != null && o.Id == c.Id);
+                return new CharacterLook
+                {
+                    Id = c.Id, Model = Load(c.Model), Clips = c.Clips.ToArray(),
+                    Height = old != null && old.Height > 0f ? old.Height : c.Id == "gardien" ? 2.7f : 1.8f, Yaw = old != null ? old.Yaw : 0f,
+                };
+            }).ToArray();
+            catalog.Surfaces = new[] { StyleSurface.Stone, StyleSurface.Plaster, StyleSurface.Roof, StyleSurface.Wood, StyleSurface.Cobble }
+                .Select(kind =>
+                {
+                    SurfaceLook old = (catalog.Surfaces ?? new SurfaceLook[0]).FirstOrDefault(o => o != null && o.Kind == kind);
+                    return new SurfaceLook
+                    {
+                        Kind = kind, Color = Texture2DAt(StyleRules.SurfaceTexture(textures, kind, false)),
+                        Normal = Texture2DAt(StyleRules.SurfaceTexture(textures, kind, true)), Tile = old != null && old.Tile > 0.1f ? old.Tile : 2.5f,
+                    };
+                }).Where(l => l.Color != null).ToArray();
             catalog.Hit = Sound(sounds, StyleSound.Hit);
             catalog.Block = Sound(sounds, StyleSound.Block);
             catalog.Parry = Sound(sounds, StyleSound.Parry);
@@ -110,6 +143,8 @@ namespace EdS.Game.Editor
             int grounds = new[] { catalog.SoilColor, catalog.RockColor, catalog.GrassColor }.Count(t => t != null);
             string report = "Héros : " + Name(hero) + " (" + catalog.HeroClips.Length + " animations à part)\nLoup : " + Name(wolf) + "\nSanglier : " + Name(boar)
                 + "\nArbres : " + catalog.Trees.Length + ", rochers : " + catalog.Rocks.Length + ", plantes : " + catalog.Plants.Length + ", bois mort : " + catalog.Debris.Length
+                + "\nPersonnages : " + (catalog.Characters.Length == 0 ? "aucun" : string.Join(", ", catalog.Characters.Select(c => c.Id + " (" + c.Clips.Length + " animations)")))
+                + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 5"
                 + "\nSons : " + found + " sur 7"
                 + "\nCiel : " + (catalog.Sky != null ? "oui" : "non") + ", sols : " + grounds + " sur 3"
                 + (notes.Count > 0 ? "\n\n" + string.Join("\n", notes) : "")
@@ -221,6 +256,76 @@ namespace EdS.Game.Editor
                 importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), material);
             importer.SaveAndReimport();
         }
+
+        /// <summary>
+        /// Matériaux d'un modèle de Mixamo (le paladin, les personnages) : textures sorties du fichier dans « Textures » à côté de lui, puis
+        /// modèle réimporté pour que Unity les relie ; un matériau resté sans texture reçoit un matériau d'URP fait de celles qui portent son
+        /// nom (<see cref="StyleRules.MaterialTexture"/>), dans <c>Generated</c>. Revue Codex de la PR #57 (2e tour) : un matériau texturé
+        /// mais resté sur un shader hors d'URP (il serait rose) est refait aussi, avec ses propres textures.
+        /// </summary>
+        private static void MixamoMaterials(string modelPath, List<string> notes)
+        {
+            if (!(AssetImporter.GetAtPath(modelPath) is ModelImporter importer)) return;
+            EmbeddedTextures(modelPath, notes);
+            if (Untextured(modelPath)) AssetDatabase.ImportAsset(modelPath, ImportAssetOptions.ForceUpdate);
+            Shader lit = Shader.Find("Universal Render Pipeline/Lit");
+            if (lit == null) return;
+            List<Material> redo = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().Where(m => !HasTexture(m) || !IsUrp(m.shader)).ToList();
+            if (redo.Count == 0) return;
+            string folder = Path.GetDirectoryName(modelPath).Replace('\\', '/');
+            List<string> textures = AssetDatabase.FindAssets("t:Texture2D", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
+            bool changed = false;
+            foreach (Material embedded in redo)
+            {
+                // Ses propres textures si Unity les a reliées, sinon celles qui portent son nom.
+                Texture2D color = OwnTexture(embedded, "_BaseMap", "_MainTex");
+                if (color == null && StyleRules.MaterialTexture(embedded.name, textures, false) is string named) color = Texture2DAt(named);
+                if (color == null) continue;
+                Texture2D normal = OwnTexture(embedded, "_BumpMap");
+                if (normal == null && StyleRules.MaterialTexture(embedded.name, textures, true) is string namedNormal) normal = Texture2DAt(namedNormal);
+                string path = Generated + "/" + Path.GetFileNameWithoutExtension(modelPath) + " " + embedded.name + ".mat";
+                Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (material == null)
+                {
+                    material = new Material(lit);
+                    AssetDatabase.CreateAsset(material, path);
+                }
+                material.SetTexture("_BaseMap", color);
+                material.SetTexture("_MainTex", color);
+                if (normal != null)
+                {
+                    material.SetTexture("_BumpMap", normal);
+                    material.EnableKeyword("_NORMALMAP");
+                }
+                material.SetFloat("_Smoothness", 0.25f);
+                EditorUtility.SetDirty(material);
+                importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), material);
+                changed = true;
+            }
+            if (changed)
+            {
+                importer.SaveAndReimport();
+                notes.Add("Matériaux de " + Path.GetFileName(modelPath) + " refaits avec leurs textures.");
+            }
+        }
+
+        /// <summary>Un matériau du modèle est-il sans texture de couleur ?</summary>
+        private static bool Untextured(string modelPath) => AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().Any(m => !HasTexture(m));
+
+        /// <summary>Shader d'URP, compilé pour ce rendu (un matériau Standard importé serait rose).</summary>
+        private static bool IsUrp(Shader shader) =>
+            shader != null && shader.isSupported && shader.name.StartsWith("Universal Render Pipeline/", System.StringComparison.Ordinal);
+
+        /// <summary>Première texture 2D posée sur l'une des propriétés du matériau, ou null.</summary>
+        private static Texture2D OwnTexture(Material m, params string[] properties)
+        {
+            foreach (string property in properties)
+                if (m.HasProperty(property) && m.GetTexture(property) is Texture2D texture) return texture;
+            return null;
+        }
+
+        private static bool HasTexture(Material m) =>
+            m.HasProperty("_BaseMap") && m.GetTexture("_BaseMap") != null || m.HasProperty("_MainTex") && m.GetTexture("_MainTex") != null;
 
         /// <summary>
         /// Textures rangées dans le fichier d'un modèle (Mixamo les y met) : sorties une fois dans un dossier « Textures » à côté de lui,
