@@ -145,6 +145,14 @@ Décidé par Damien le 25 octobre 2026 : voir les Vallons avec des modèles et d
 - **Le soir, après l'essai** : PNJ, bâtiments et rivière à faire aussi ; personnages Mixamo pour les trois PNJ, l'archer, le rôdeur et le Gardien, textures Poly Haven pour les bâtiments (choix de Damien dans la conversation).
 - **Caméra à la souris libre, « comme ESO »** (choix de Damien parmi trois propositions) : sans clic, hors des écrans et des menus ; Alt tenu rend le curseur. La garde reste au clic droit.
 
+**Décisions du 27 octobre 2026** (deuxième essai réaliste ; détail dans [UNITY.md](UNITY.md#essai-réaliste-26-octobre-2026)) :
+
+- **À faire réaliste** : forge, minerais, herbe de l'Aube, pont, bâtiments, eau ; Odile tournée vers le joueur ; buissons rouges retirés.
+- **Mur près de l'archer** : remplacé par une **palissade de rondins** faite par le code (choix de Damien parmi rondins, rempart de pierre et muret en ruine), écorce de Poly Haven.
+- **Moulin** : modèle de **Sketchfab** (choix de Damien entre Sketchfab et l'Asset Store), le moulin blanc *Windmill* de Tim0 (licence CC-BY : auteur cité dans les crédits).
+- **Téléchargements autorisés** : sept objets de Poly Haven (ponton, foyer, marteau, caisse, tonneau, pervenche, et le fort, finalement en pierre et non déposé) puis l'écorce *bark brown 02*.
+- Aspect seulement : emprises, obstacles, portées et règles du moteur inchangés.
+
 **Décisions du 25 octobre 2026** (essai du 12.9, rapport : [ESSAI_LOT_12.md](ESSAI_LOT_12.md#4-décisions-de-damien-pendant-lessai)) :
 
 - **Compétences** gagnées en montant de niveau (Barrière d'acier au niveau 5, Onde de rupture et Bastion absolu au niveau 10, aux emplacements des règles) ; un écran de choix des compétences viendra ensuite (« La 2 pour l'instant et la 3 après »).
