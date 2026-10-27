@@ -1,6 +1,6 @@
 // Essai réaliste (demande de Damien du 27 octobre 2026 : « l'eau n'est pas du tout réaliste ») : eau de la rivière pour URP.
-// Transparente (on devine le lit creusé sous elle), elle reflète le vrai ciel (le panorama du catalogue) d'autant plus qu'on la
-// regarde de biais, porte deux couches de vagues qui avancent dans deux directions, et renvoie l'éclat du soleil. Aucune texture à
+// Transparente (on devine le lit creusé sous elle), elle reflète le vrai ciel (le panorama du catalogue) et, depuis l'essai 4, les objets
+// alentour (sonde de reflets posée par le jeu), d'autant plus qu'on la regarde de biais, porte deux couches de vagues qui avancent dans deux directions, et renvoie l'éclat du soleil. Aucune texture à
 // fournir : les vagues sont faites par le code (StyleWorld.Ripples) et le ciel vient du catalogue. Affichage seulement.
 Shader "EdS/Eau"
 {
@@ -17,6 +17,8 @@ Shader "EdS/Eau"
         _Reflection ("Reflet du ciel (minimum)", Range(0, 1)) = 0.12
         _SkyBoost ("Luminosité du reflet", Range(0, 3)) = 1.0
         _Sparkle ("Éclat du soleil", Range(0, 10)) = 3.0
+        [HideInInspector] _ReflectionCube ("Reflets des objets (sonde, posée par le jeu)", Cube) = "" {}
+        [HideInInspector] _ProbeWeight ("Part de la sonde", Range(0, 1)) = 0
     }
 
     SubShader
@@ -43,6 +45,8 @@ Shader "EdS/Eau"
             SAMPLER(sampler_Ripples);
             TEXTURE2D(_SkyTex);
             SAMPLER(sampler_SkyTex);
+            TEXTURECUBE(_ReflectionCube);
+            SAMPLER(sampler_ReflectionCube);
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _Color;
@@ -56,6 +60,7 @@ Shader "EdS/Eau"
                 half _Reflection;
                 half _SkyBoost;
                 half _Sparkle;
+                half _ProbeWeight;
             CBUFFER_END
 
             struct Attributes
@@ -110,6 +115,9 @@ Shader "EdS/Eau"
                 half3 reflected = reflect(-view, normal);
                 reflected.y = abs(reflected.y);
                 half3 sky = SAMPLE_TEXTURE2D_LOD(_SkyTex, sampler_SkyTex, Panorama(reflected), 0).rgb * _SkyBoost;
+                // Essai réaliste 4 : la sonde de reflets prise au-dessus de la rivière ajoute les berges, les arbres et le moulin.
+                half3 probe = SAMPLE_TEXTURECUBE_LOD(_ReflectionCube, sampler_ReflectionCube, reflected, 0).rgb * _SkyBoost;
+                sky = lerp(sky, probe, _ProbeWeight);
 
                 // Corps de l'eau : plus sombre vue de haut, éclairé par le soleil et la lumière d'ambiance.
                 Light sun = GetMainLight();

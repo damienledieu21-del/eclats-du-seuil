@@ -81,6 +81,18 @@ namespace EdS.Game
         [Tooltip("Teinte de l'herbe du sol (blanc : couleur de la texture ; essai du 27 octobre 2026 : herbe trop jaune).")]
         public Color GrassTint = new Color(0.66f, 0.86f, 0.58f);
 
+        [Header("Essai réaliste 4 : herbe en brins, arbres, rendu du téléphone (27 octobre 2026)")]
+        [Tooltip("Matériau de l'herbe en brins (shader « EdS/Herbe », créé par le menu) ; couleurs et vent se changent dans Assets/Style/Generated/Herbe.")]
+        public Material Grass;
+        [Tooltip("Touffes d'herbe par mètre carré sur ordinateur (le cinquième sur téléphone).")]
+        [Range(0f, 12f)] public float GrassDensity = 4f;
+        [Tooltip("Distance (m) jusqu'où l'herbe en brins est dessinée sur ordinateur (la moitié sur téléphone).")]
+        [Range(10f, 120f)] public float GrassDistance = 45f;
+        [Tooltip("Hauteur (m) des arbres de la forêt (variée de plus ou moins un quart) ; les arbres de l'aire en font les quatre cinquièmes.")]
+        [Range(3f, 30f)] public float TreeHeight = 11f;
+        [Tooltip("Rendu plus léger pour le téléphone (ombres, effets), créé par le menu ; l'ordinateur garde le rendu du projet.")]
+        public UnityEngine.Rendering.RenderPipelineAsset PhonePipeline;
+
         /// <summary>Rotation ajoutée (degrés) aux modèles qui ne regardent pas devant eux une fois importés.</summary>
         public float HeroYaw;
         public float WolfYaw;

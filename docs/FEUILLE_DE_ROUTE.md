@@ -152,6 +152,7 @@ Décidé par Damien le 25 octobre 2026 : voir les Vallons avec des modèles et d
 - **Moulin** : modèle de **Sketchfab** (choix de Damien entre Sketchfab et l'Asset Store), le moulin blanc *Windmill* de Tim0 (licence CC-BY : auteur cité dans les crédits).
 - **Téléchargements autorisés** : sept objets de Poly Haven (ponton, foyer, marteau, caisse, tonneau, pervenche, et le fort, finalement en pierre et non déposé) puis l'écorce *bark brown 02*.
 - Aspect seulement : emprises, obstacles, portées et règles du moteur inchangés.
+- **Essai réaliste 4** (« je veux vraiment le max du réalisme ! » ; détail dans [UNITY.md](UNITY.md#essai-réaliste-4-27-octobre-2026)) : **deux qualités de textures** demandées par Damien (« 2 packs de textures, 1 pour le PC et un pour le téléphone ») : textures en 2k et ciel en 8k sur PC, réduites par Unity pour Android (1k, ciel 2k) à partir des mêmes fichiers ; rendu plus léger pour le téléphone. Vrais arbres de Sketchfab (*evolveduk*, CC BY), herbe en brins, vent dans les feuillages, reflets de la rivière, ombres et occlusion ambiante plus fines sur PC. **Téléchargement accepté** : « Oui, tout » (Poly Haven 2k, sols et bâtiments 93 Mo, 26 modèles 162 Mo, ciel 8k 75 Mo ; quatre arbres de Sketchfab 61 Mo).
 
 **Décisions du 25 octobre 2026** (essai du 12.9, rapport : [ESSAI_LOT_12.md](ESSAI_LOT_12.md#4-décisions-de-damien-pendant-lessai)) :
 

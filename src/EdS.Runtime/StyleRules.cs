@@ -205,8 +205,9 @@ namespace EdS.Runtime
             [StyleSlot.Hero] = (new[] { "paladin", "knight" }, new[] { "weapon", "sword", "shield" }),
             [StyleSlot.Wolf] = (new[] { "wolf" }, new string[0]),
             [StyleSlot.Boar] = (new[] { "boar", "pig" }, new string[0]),
-            [StyleSlot.Tree] = (new[] { "firtree", "pine", "commontree", "tree", "birch", "maple" },
-                new[] { "dead", "stump", "log", "leaves", "leaf", "trunk", "root", "bark", "branch" }),
+            // Essai réaliste 4 (27 octobre 2026) : les arbres de Sketchfab d'evolveduk s'appellent « oak », « Pine », « Spruce », « birch ».
+            [StyleSlot.Tree] = (new[] { "firtree", "pine", "commontree", "tree", "birch", "maple", "oak", "spruce", "beech", "fir" },
+                new[] { "dead", "stump", "log", "leaves", "leaf", "trunk", "root", "bark", "branch", "fire" }),
             // « stone_fire_pit » est le foyer de la forge, pas un rocher ; la pervenche est l'herbe de l'Aube, pas une plante du décor.
             [StyleSlot.Rock] = (new[] { "rock", "boulder", "stone" }, new[] { "path", "pebble", "small", "tiny", "fire", "pit" }),
             [StyleSlot.Plant] = (new[] { "bush", "fern", "grass", "flower", "plant", "clover", "shrub", "moss", "nettle", "celandine", "dandelion", "weed" },
@@ -329,7 +330,9 @@ namespace EdS.Runtime
         public static IReadOnlyList<string> ForCatalog(IEnumerable<string> paths, StyleSlot slot, int max)
         {
             IReadOnlyList<string> all = Candidates(paths, slot);
-            if ((slot == StyleSlot.Rock || slot == StyleSlot.Plant || slot == StyleSlot.Shrub) && all.Any(IsRealistic)) all = all.Where(IsRealistic).ToList();
+            // Essai réaliste 4 : les arbres aussi, dès qu'il y en a de réalistes (Sketchfab).
+            if ((slot == StyleSlot.Rock || slot == StyleSlot.Plant || slot == StyleSlot.Shrub || slot == StyleSlot.Tree) && all.Any(IsRealistic))
+                all = all.Where(IsRealistic).ToList();
             return all.Take(Math.Max(0, max)).ToList();
         }
 
@@ -594,6 +597,53 @@ namespace EdS.Runtime
             return spots;
         }
 
+        /// <summary>Une touffe d'herbe en brins : place au sol, rotation (degrés) et échelle.</summary>
+        public readonly struct GrassSpot
+        {
+            public GrassSpot(double x, double z, double yaw, double scale)
+            {
+                X = x;
+                Z = z;
+                Yaw = yaw;
+                Scale = scale;
+            }
+
+            public double X { get; }
+            public double Z { get; }
+            public double Yaw { get; }
+            public double Scale { get; }
+        }
+
+        /// <summary>
+        /// Essai réaliste 4 : places des touffes d'herbe en brins sur [minX, maxX] × [minZ, maxZ], environ <paramref name="density"/> par
+        /// mètre carré : une par case d'une grille régulière, décalée au hasard dans sa case (suite fixe : les mêmes à chaque lancement),
+        /// tournée et d'échelle 0,75 à 1,3. Vide si la densité ou l'emprise est nulle. Au plus <paramref name="max"/> touffes : une grande
+        /// emprise reçoit une herbe plus clairsemée, mais partout (pas seulement ses premières rangées).
+        /// </summary>
+        public static IReadOnlyList<GrassSpot> GrassSpots(double minX, double minZ, double maxX, double maxZ, double density, int max = 200000)
+        {
+            var spots = new List<GrassSpot>();
+            if (!(density > 0) || maxX <= minX || maxZ <= minZ || max <= 0) return spots;
+            double cells = (Math.Ceiling((maxX - minX) * Math.Sqrt(density)) + 1) * (Math.Ceiling((maxZ - minZ) * Math.Sqrt(density)) + 1);
+            if (cells > max) density *= max / cells;
+            double step = 1 / Math.Sqrt(density);
+            uint seed = 0x2545F491;
+            double Next()
+            {
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                return (seed >> 8) / 16777216.0;
+            }
+            for (double z = minZ; z < maxZ && spots.Count < max; z += step)
+                for (double x = minX; x < maxX && spots.Count < max; x += step)
+                {
+                    double px = Math.Min(maxX, x + Next() * step), pz = Math.Min(maxZ, z + Next() * step);
+                    spots.Add(new GrassSpot(px, pz, Next() * 360, 0.75 + 0.55 * Next()));
+                }
+            return spots;
+        }
+
         /// <summary>Bruit de valeur lissé dans [0, 1], fixe (empreinte entière des coins de la case).</summary>
         public static double Noise(double x, double z)
         {
@@ -678,7 +728,86 @@ namespace EdS.Runtime
                 .OrderBy(t => t, StringComparer.Ordinal).ToList();
             string stem = Regex.Replace(Key(material), "(mat|m)[0-9]*$", "");
             if (stem.Length > 0 && kind.FirstOrDefault(t => Key(FileName(t)).StartsWith(stem, StringComparison.Ordinal)) is string named) return named;
-            return kind.Count == 1 ? kind[0] : null;
+            if (kind.Count == 1) return kind[0];
+            // Essai réaliste 4 : les arbres ont une matière d'écorce et une de feuilles, nommées librement (« leaves », « Bark ») : la texture
+            // qui parle de la même chose (feuille, branche, aiguille ; écorce, tronc, bois).
+            foreach (string[] words in new[] { FoliageWords, BarkWords })
+                if (words.Any(w => Key(material).Contains(w)) && kind.FirstOrDefault(t => words.Any(w => Key(FileName(t)).Contains(w))) is string alike)
+                    return alike;
+            return null;
+        }
+
+        private static readonly string[] FoliageWords = { "leaf", "leaves", "branch", "needle", "foliage", "twig" };
+        private static readonly string[] BarkWords = { "bark", "trunk", "wood", "stem" };
+
+        /// <summary>
+        /// Racine d'une texture pour l'apparier à sa transparence : les mots du nom sans ceux du genre de carte ni la résolution
+        /// (« fern_02_diff_2k.jpg » et « fern_02_alpha_2k.jpg » → fern02 ; « oak leaf.png » et « oak_leaf_alpha.png » → oakleaf).
+        /// </summary>
+        public static string TextureStem(string path)
+        {
+            var words = Words(path).ToList();
+            if (words.Count > 1) words.RemoveAt(words.Count - 1);   // extension
+            return Key(string.Concat(words.Where(w => !MapWords.Contains(w) && !Regex.IsMatch(w, "^[0-9]+k$"))));
+        }
+
+        private static readonly HashSet<string> MapWords = new HashSet<string>(StringComparer.Ordinal)
+            { "diff", "diffuse", "albedo", "basecolor", "color", "col", "alpha", "opacity", "opass", "mask", "normal", "nor", "gl", "dx", "nrm", "nm" };
+
+        /// <summary>
+        /// Essai réaliste 4 : textures d'une pièce d'un arbre de Sketchfab (fichiers de Tree It : pas de matière, une texture par pièce,
+        /// pièces nommées « oak leaf_1 », « bark08_0 » ou « Tree_0 »). Couleur : celle dont la racine est le nom de la pièce sans son
+        /// numéro ; sinon l'écorce pour la pièce 0 et le feuillage pour les autres. Relief : celui de même racine que la couleur. Null s'il
+        /// n'y a rien.
+        /// </summary>
+        public static (string Color, string? Normal)? PartTextures(string part, IEnumerable<string> textures)
+        {
+            var all = (textures ?? Array.Empty<string>()).Where(t => t != null).OrderBy(t => t, StringComparer.Ordinal).ToList();
+            List<string> colors = all.Where(IsColorMap).ToList();
+            Match numbered = Regex.Match(part ?? string.Empty, "^(.*)_([0-9]+)$");
+            string name = numbered.Success ? numbered.Groups[1].Value : part ?? string.Empty;
+            int index = numbered.Success && int.TryParse(numbered.Groups[2].Value, out int i) ? i : 0;
+            string? color = colors.FirstOrDefault(t => TextureStem(t) == Key(name))
+                ?? (index == 0 ? colors.FirstOrDefault(t => BarkWords.Any(w => Key(FileName(t)).Contains(w)))
+                    : colors.FirstOrDefault(t => FoliageWords.Any(w => Key(FileName(t)).Contains(w))));
+            if (color == null) return null;
+            return (color, all.Where(IsNormalMap).FirstOrDefault(t => TextureStem(t) == TextureStem(color)));
+        }
+
+        /// <summary>Une texture de couleur de feuillage (feuille, branche, aiguille…), à transparence découpée.</summary>
+        public static bool IsFoliage(string texture) => FoliageWords.Any(w => Key(FileName(texture)).Contains(w));
+
+        /// <summary>
+        /// Transparence d'une texture de couleur : la carte de transparence de même racine (<see cref="TextureStem"/>), sinon null.
+        /// </summary>
+        public static string? AlphaFor(string color, IEnumerable<string> textures)
+        {
+            string stem = TextureStem(color);
+            return stem.Length == 0 ? null : (textures ?? Array.Empty<string>()).Where(t => t != null && IsAlphaMap(t) && TextureStem(t) == stem)
+                .OrderBy(t => t, StringComparer.Ordinal).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Essai réaliste 4 (choix de Damien du 27 octobre 2026 : textures 2k et ciel 8k) : quand un même fichier de Poly Haven est là en
+        /// plusieurs résolutions (« rock_07_1k.fbx » et « rock_07_2k.fbx », « …_puresky_1k.hdr » et « …_8k.hdr »), seule la plus haute reste ;
+        /// les fichiers sans résolution dans leur nom restent tous. Ordre d'origine gardé.
+        /// </summary>
+        public static IReadOnlyList<string> Highest(IEnumerable<string> paths)
+        {
+            var list = (paths ?? Array.Empty<string>()).Where(p => p != null).ToList();
+            var best = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (string p in list)
+                if (Resolution(p) is (string identity, int k) && (!best.TryGetValue(identity, out int b) || k > b)) best[identity] = k;
+            return list.Where(p => !(Resolution(p) is (string identity, int k)) || best[identity] == k).ToList();
+        }
+
+        /// <summary>Nom sans résolution (en minuscules) et résolution en k d'un fichier de Poly Haven, ou null sans résolution.</summary>
+        private static (string Identity, int K)? Resolution(string path)
+        {
+            Match m = Regex.Match(FileName(path), "_([0-9]+)k(?=[._])", RegexOptions.IgnoreCase);
+            if (!m.Success || !int.TryParse(m.Groups[1].Value, out int k)) return null;
+            string file = FileName(path);
+            return ((file.Substring(0, m.Index) + file.Substring(m.Index + m.Length)).ToLowerInvariant(), k);
         }
 
         /// <summary>
