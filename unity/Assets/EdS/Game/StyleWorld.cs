@@ -344,6 +344,14 @@ namespace EdS.Game
         public static float StandHeight(float x, float z) =>
             _deckRise > 0f ? (float)StyleShapes.StandHeight(x, z, _deckX0, _deckZ0, _deckX1, _deckZ1, _deckRise) : 0f;
 
+        /// <summary>Revue Codex de la PR #60 : emprise du tablier du pont cintré (x0, z0, x1, z1), ou null sans pont.</summary>
+        public static (double X0, double Z0, double X1, double Z1)? Deck() =>
+            _deckRise > 0f ? (_deckX0, _deckZ0, _deckX1, _deckZ1) : ((double, double, double, double)?)null;
+
+        /// <summary>Revue Codex de la PR #60 : la boîte [x0, x1] × [z0, z1] touche-t-elle le tablier du pont cintré ?</summary>
+        public static bool OnDeck(float x0, float z0, float x1, float z1) =>
+            _deckRise > 0f && x1 >= _deckX0 && x0 <= _deckX1 && z1 >= _deckZ0 && z0 <= _deckZ1;
+
         private static bool _shaderWater;
 
         /// <summary>

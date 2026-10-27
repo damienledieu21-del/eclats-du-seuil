@@ -993,7 +993,17 @@ namespace EdS.Game
 
         private static void Set(Mesh mesh, Vector3[] vertices, int[] triangles)
         {
+            // Essai réaliste 5 (revue Codex de la PR #60) : une annonce qui touche le pont cintré suit son tablier (redécoupée en petits
+            // triangles, chaque sommet rehaussé de la hauteur du tablier), au lieu de passer sous les planches.
+            if (vertices.Length > 0 && StyleWorld.OnDeck(vertices.Min(v => v.x), vertices.Min(v => v.z), vertices.Max(v => v.x), vertices.Max(v => v.z)))
+            {
+                (List<StyleVector> fine, List<int> fineTriangles) = StyleShapes.Subdivide(
+                    vertices.Select(v => new StyleVector(v.x, v.y, v.z)).ToList(), triangles, 0.3, 6, StyleWorld.Deck());
+                vertices = fine.Select(v => new Vector3((float)v.X, (float)v.Y + StyleWorld.StandHeight((float)v.X, (float)v.Z), (float)v.Z)).ToArray();
+                triangles = fineTriangles.ToArray();
+            }
             mesh.Clear();
+            if (vertices.Length > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.vertices = vertices;
             mesh.triangles = triangles;
             mesh.RecalculateNormals();

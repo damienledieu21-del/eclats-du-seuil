@@ -446,6 +446,56 @@ namespace EdS.Runtime
             return shapes;
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #60 : redécoupe des triangles (milieux des côtés) jusqu'à ce que leurs côtés mesurent au plus
+        /// <paramref name="maxEdge"/> en plan (x, z), en au plus <paramref name="maxDepth"/> découpes : une annonce d'attaque posée sur le pont
+        /// cintré peut alors suivre le tablier sommet par sommet sans passer sous les planches. Seuls les triangles qui touchent la zone
+        /// <paramref name="area"/> (x0, z0, x1, z1 ; toute la surface si null) sont redécoupés. L'ordre des sommets de chaque triangle (son
+        /// côté visible) est gardé.
+        /// </summary>
+        public static (List<StyleVector> Vertices, List<int> Triangles) Subdivide(IReadOnlyList<StyleVector> vertices, IReadOnlyList<int> triangles,
+            double maxEdge, int maxDepth = 6, (double X0, double Z0, double X1, double Z1)? area = null)
+        {
+            bool Touches(StyleVector a, StyleVector b, StyleVector c) =>
+                !(area is (double ax0, double az0, double ax1, double az1))
+                || Math.Max(a.X, Math.Max(b.X, c.X)) >= ax0 && Math.Min(a.X, Math.Min(b.X, c.X)) <= ax1
+                && Math.Max(a.Z, Math.Max(b.Z, c.Z)) >= az0 && Math.Min(a.Z, Math.Min(b.Z, c.Z)) <= az1;
+            var outVertices = new List<StyleVector>();
+            var outTriangles = new List<int>();
+            if (vertices == null || triangles == null) return (outVertices, outTriangles);
+            double Flat(StyleVector a, StyleVector b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Z - b.Z) * (a.Z - b.Z));
+            var work = new Stack<(StyleVector A, StyleVector B, StyleVector C, int Depth)>();
+            for (int i = 0; i + 2 < triangles.Count; i += 3)
+                work.Push((vertices[triangles[i]], vertices[triangles[i + 1]], vertices[triangles[i + 2]], 0));
+            var done = new List<(StyleVector A, StyleVector B, StyleVector C)>();
+            while (work.Count > 0)
+            {
+                (StyleVector a, StyleVector b, StyleVector c, int depth) = work.Pop();
+                if (depth >= maxDepth || !Touches(a, b, c) || Math.Max(Flat(a, b), Math.Max(Flat(b, c), Flat(c, a))) <= maxEdge)
+                {
+                    done.Add((a, b, c));
+                    continue;
+                }
+                StyleVector ab = (a + b) * 0.5, bc = (b + c) * 0.5, ca = (c + a) * 0.5;
+                work.Push((a, ab, ca, depth + 1));
+                work.Push((ab, b, bc, depth + 1));
+                work.Push((ca, bc, c, depth + 1));
+                work.Push((ab, bc, ca, depth + 1));
+            }
+            // Ordre stable : celui de l'entrée (la pile inverse l'ordre ; il est rétabli).
+            done.Reverse();
+            foreach ((StyleVector a, StyleVector b, StyleVector c) in done)
+            {
+                outTriangles.Add(outVertices.Count);
+                outVertices.Add(a);
+                outTriangles.Add(outVertices.Count);
+                outVertices.Add(b);
+                outTriangles.Add(outVertices.Count);
+                outVertices.Add(c);
+            }
+            return (outVertices, outTriangles);
+        }
+
         // --- Abri à poteaux ---------------------------------------------------------------------------------------------------
 
         /// <summary>Pente du toit de l'abri (tangente, environ 30°).</summary>

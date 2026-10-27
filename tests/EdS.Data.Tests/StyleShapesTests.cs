@@ -228,6 +228,9 @@ public class StyleShapesTests
         Assert.Contains("Vector3 place = shown[v.Id] + Vector3.up * (1f + StyleWorld.StandHeight(shown[v.Id].x, shown[v.Id].z));", arena, StringComparison.Ordinal);
         Assert.Contains("1f + StyleWorld.StandHeight((float)predicted.Value.X, (float)predicted.Value.Z)", arena, StringComparison.Ordinal);
         Assert.Contains("(float)StyleShapes.StandHeight(x, z, _deckX0, _deckZ0, _deckX1, _deckZ1, _deckRise)", world, StringComparison.Ordinal);
+        // Revue Codex de la PR #60 : les annonces d'attaque qui touchent le pont suivent son tablier.
+        Assert.Contains("vertices.Select(v => new StyleVector(v.x, v.y, v.z)).ToList(), triangles, 0.3, 6, StyleWorld.Deck());", view, StringComparison.Ordinal);
+        Assert.Contains("(float)v.Y + StyleWorld.StandHeight((float)v.X, (float)v.Z)", view, StringComparison.Ordinal);
         // Formes faites par le code : tangentes pour le relief, index 32 bits au besoin.
         Assert.Contains("if (shape.Vertices.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;", view, StringComparison.Ordinal);
         Assert.Contains("mesh.RecalculateTangents();", view, StringComparison.Ordinal);
@@ -237,5 +240,36 @@ public class StyleShapesTests
         Assert.Contains("positionWS = pivot + (positionWS - pivot) * float3(1.0, fade, 1.0);", shader, StringComparison.Ordinal);
         Assert.Contains("if (input.uv.y > 1.5)", shader, StringComparison.Ordinal);
         Assert.Contains("material.CopyPropertiesFromMaterial(new Material(shader));", editor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Annonce_redecoupee_pour_suivre_le_pont()
+    {
+        // Revue Codex de la PR #60 : une annonce qui touche le pont est redécoupée pour suivre son tablier sommet par sommet.
+        var vertices = new List<StyleVector> { new StyleVector(0, 0, 0), new StyleVector(0, 0, 4), new StyleVector(6, 0, 0) };
+        var triangles = new List<int> { 0, 1, 2 };
+        double Area(IReadOnlyList<StyleVector> v, IReadOnlyList<int> t)
+        {
+            double sum = 0;
+            for (int i = 0; i < t.Count; i += 3) sum += StyleVector.Cross(v[t[i + 1]] - v[t[i]], v[t[i + 2]] - v[t[i]]).Y / 2;
+            return sum;
+        }
+        (List<StyleVector> fine, List<int> fineTriangles) = StyleShapes.Subdivide(vertices, triangles, 0.3, 6, (-1, -1, 7, 5));
+        Assert.True(fineTriangles.Count / 3 > 100);
+        Assert.Equal(Area(vertices, triangles), Area(fine, fineTriangles), 9);   // même surface, même côté visible
+        for (int i = 0; i < fineTriangles.Count; i += 3)
+        {
+            StyleVector a = fine[fineTriangles[i]], b = fine[fineTriangles[i + 1]], c = fine[fineTriangles[i + 2]];
+            Assert.True(StyleVector.Cross(b - a, c - a).Y > 0);   // même sens que le triangle d'origine (normale vers le haut)
+            Assert.True((a - b).Length <= 0.3 + 1e-9 && (b - c).Length <= 0.3 + 1e-9 && (c - a).Length <= 0.3 + 1e-9);
+        }
+        // Loin du pont : rien n'est redécoupé ; sans zone : tout l'est ; profondeur bornée.
+        Assert.Single(Enumerable.Range(0, StyleShapes.Subdivide(vertices, triangles, 0.3, 6, (20, 20, 25, 25)).Triangles.Count / 3));
+        Assert.Equal(4 * 4, StyleShapes.Subdivide(vertices, triangles, 0.01, 2).Triangles.Count / 3);
+        Assert.Empty(StyleShapes.Subdivide(null!, triangles, 0.3).Vertices);
+        // Triangle à cheval sur le bord du pont : seuls les morceaux qui le touchent sont fins.
+        (List<StyleVector> half, List<int> halfTriangles) = StyleShapes.Subdivide(vertices, triangles, 0.3, 6, (-1, -1, 1, 5));
+        Assert.True(halfTriangles.Count < fineTriangles.Count);
+        Assert.Equal(Area(vertices, triangles), Area(half, halfTriangles), 9);
     }
 }
