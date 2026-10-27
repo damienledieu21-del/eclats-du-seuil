@@ -99,12 +99,22 @@ namespace EdS.Game
             }
         }
 
+        /// <summary>Le sol du terrain est à cette profondeur (m) sous son origine : de quoi creuser le lit de la rivière.</summary>
+        private const float TerrainBase = 3f;
+
+        /// <summary>Hauteur totale (m) que le terrain peut décrire.</summary>
+        private const float TerrainHeight = 10f;
+
         /// <summary>
-        /// Sol réaliste d'un combat positionné : un terrain plat (hauteur 0, comme le sol du moteur) qui couvre l'aire et
+        /// Sol réaliste d'un combat positionné : un terrain (hauteur 0 où l'on marche, comme le sol du moteur) qui couvre l'aire et
         /// <see cref="StyleCatalog.ForestMargin"/> mètres autour, peint en terre, roche et herbe d'après <paramref name="spots"/>
-        /// (<see cref="StyleRules.GroundMix"/>). Null sans texture de sol dans le catalogue (le sol simple reste).
+        /// (<see cref="StyleRules.GroundMix"/>). Essai de Damien du 27 octobre 2026 (« l'eau n'est pas du tout réaliste ») : le lit de la
+        /// rivière est creusé sous chaque polygone de <paramref name="rivers"/>, avec des berges en pente douce
+        /// (<see cref="StyleRules.ChannelDepth"/>) ; le sol hors de l'eau reste à 0. Null sans texture de sol dans le catalogue (le sol
+        /// simple reste).
         /// </summary>
-        public static GameObject Ground(Transform parent, float minX, float minZ, float maxX, float maxZ, IReadOnlyList<StyleSpot> spots)
+        public static GameObject Ground(Transform parent, float minX, float minZ, float maxX, float maxZ, IReadOnlyList<StyleSpot> spots,
+            IReadOnlyList<IReadOnlyList<(double X, double Z)>> rivers = null)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return null;
@@ -114,22 +124,41 @@ namespace EdS.Game
             float x0 = minX - margin, z0 = minZ - margin, width = maxX - minX + 2f * margin, depth = maxZ - minZ + 2f * margin;
 
             var data = new TerrainData();
-            data.heightmapResolution = 33;
+            // Assez fin pour une berge (environ 0,4 m entre deux points sur l'aire des Vallons) ; plus grossier sur téléphone.
+            data.heightmapResolution = Application.isMobilePlatform ? 257 : 513;
             data.alphamapResolution = 256;
-            data.size = new Vector3(width, 10f, depth);
-            // Couches dans l'ordre de StyleGround (terre, roche, herbe) ; une couche sans texture prend celle d'une autre.
+            data.size = new Vector3(width, TerrainHeight, depth);
+            int hres = data.heightmapResolution;
+            var heights = new float[hres, hres];
+            for (int row = 0; row < hres; row++)
+                for (int col = 0; col < hres; col++)
+                {
+                    double x = x0 + col / (double)(hres - 1) * width, z = z0 + row / (double)(hres - 1) * depth;
+                    double dig = 0;
+                    if (rivers != null)
+                        foreach (IReadOnlyList<(double X, double Z)> river in rivers)
+                            dig = System.Math.Max(dig, StyleRules.ChannelDepth(StyleRules.InsideDistance(x, z, river)));
+                    heights[row, col] = (float)((TerrainBase - dig) / TerrainHeight);
+                }
+            data.SetHeights(0, 0, heights);
+            // Couches dans l'ordre de StyleGround (terre, roche, herbe) ; une couche sans texture prend celle d'une autre. Essai du 27 octobre
+            // 2026 : l'herbe de Poly Haven sortait jaune ; elle prend la teinte du catalogue.
             data.terrainLayers = new[]
             {
-                Layer(Pick(catalog.SoilColor, any), Pick(catalog.SoilNormal, catalog.GrassNormal), catalog.GroundTile),
-                Layer(Pick(catalog.RockColor, any), catalog.RockNormal, catalog.GroundTile),
-                Layer(Pick(catalog.GrassColor, any), Pick(catalog.GrassNormal, catalog.SoilNormal), catalog.GroundTile),
+                Layer(Pick(catalog.SoilColor, any), Pick(catalog.SoilNormal, catalog.GrassNormal), catalog.GroundTile, Color.white),
+                Layer(Pick(catalog.RockColor, any), catalog.RockNormal, catalog.GroundTile, Color.white),
+                Layer(Pick(catalog.GrassColor, any), Pick(catalog.GrassNormal, catalog.SoilNormal), catalog.GroundTile, catalog.GrassTint),
             };
             int res = data.alphamapResolution;
             var maps = new float[res, res, 3];
             for (int row = 0; row < res; row++)
                 for (int col = 0; col < res; col++)
                 {
-                    StyleMix mix = StyleRules.GroundMix(x0 + (col + 0.5f) / res * width, z0 + (row + 0.5f) / res * depth, spots);
+                    double x = x0 + (col + 0.5f) / res * width, z = z0 + (row + 0.5f) / res * depth;
+                    StyleMix mix = StyleRules.GroundMix(x, z, spots);
+                    if (rivers != null)
+                        foreach (IReadOnlyList<(double X, double Z)> river in rivers)
+                            mix = StyleRules.RiverMix(mix, StyleRules.InsideDistance(x, z, river));
                     maps[row, col, (int)StyleGround.Soil] = (float)mix.Soil;
                     maps[row, col, (int)StyleGround.Rock] = (float)mix.Rock;
                     maps[row, col, (int)StyleGround.Grass] = (float)mix.Grass;
@@ -138,12 +167,13 @@ namespace EdS.Game
 
             var go = new GameObject("Sol (essai réaliste)");
             go.transform.SetParent(parent, false);
-            go.transform.position = new Vector3(x0, 0f, z0);
+            go.transform.position = new Vector3(x0, -TerrainBase, z0);
             Terrain terrain = go.AddComponent<Terrain>();
             terrain.terrainData = data;
             if (catalog.Terrain != null) terrain.materialTemplate = catalog.Terrain;
             terrain.basemapDistance = 400f;
-            terrain.heightmapPixelError = 8f;
+            // Berges fines sur ordinateur (le lit ne doit pas remonter au-dessus de l'eau au loin) ; moins de détail sur téléphone.
+            terrain.heightmapPixelError = Application.isMobilePlatform ? 8f : 3f;
             terrain.drawTreesAndFoliage = false;
             return go;
         }
@@ -187,14 +217,27 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Eau de la rivière : couleur du catalogue, surface lisse qui reflète le ciel, petites vagues (carte de relief faite par le code,
-        /// sans fichier) qui glissent avec le temps (<see cref="AnimateWater"/>). Null sans catalogue.
+        /// Eau de la rivière. Essai de Damien du 27 octobre 2026 (« l'eau n'est pas du tout réaliste ») : le matériau d'eau du catalogue
+        /// (shader « EdS/Eau » : transparente, reflet du vrai ciel selon l'angle de vue, deux couches de vagues qui avancent, éclat du
+        /// soleil), avec le ciel du catalogue pour ses reflets. Sans lui, comme avant : couleur du catalogue, surface lisse, petites vagues
+        /// (carte de relief faite par le code) qui glissent (<see cref="AnimateWater"/>). Null sans catalogue.
         /// </summary>
         public static Material Water()
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return null;
             if (_water != null) return _water;
+            if (catalog.Water != null && catalog.Water.shader != null && catalog.Water.shader.isSupported)
+            {
+                _water = new Material(catalog.Water);
+                _shaderWater = true;
+                // Vagues faites par le code (format lu tel quel par le shader, sur ordinateur comme sur téléphone).
+                if (_water.HasProperty("_Ripples")) _water.SetTexture("_Ripples", Ripples(256));
+                Texture sky = catalog.Sky != null && catalog.Sky.HasProperty("_MainTex") ? catalog.Sky.GetTexture("_MainTex") : null;
+                if (sky != null && _water.HasProperty("_SkyTex")) _water.SetTexture("_SkyTex", sky);
+                if (_water.HasProperty("_Color")) _water.SetColor("_Color", catalog.WaterColor);
+                return _water;
+            }
             _water = ArenaView.MakeMaterial(catalog.WaterColor);
             _water.SetTexture("_BumpMap", Ripples(128));
             _water.EnableKeyword("_NORMALMAP");
@@ -203,11 +246,19 @@ namespace EdS.Game
             return _water;
         }
 
-        /// <summary>Fait glisser les vagues de l'eau (toutes les cartes d'URP Lit suivent le décalage de la carte de couleur).</summary>
+        /// <summary>
+        /// Fait glisser les vagues de l'eau simple (toutes les cartes d'URP Lit suivent le décalage de la carte de couleur) ; l'eau du
+        /// shader « EdS/Eau » avance seule.
+        /// </summary>
         public static void AnimateWater(float time)
         {
-            if (_water != null) _water.SetTextureOffset("_BaseMap", new Vector2(time * 0.03f, time * 0.05f));
+            if (_water != null && !_shaderWater) _water.SetTextureOffset("_BaseMap", new Vector2(time * 0.03f, time * 0.05f));
         }
+
+        /// <summary>L'eau vient du shader « EdS/Eau » (surface sous le sol, berges creusées).</summary>
+        public static bool RealWater => _water != null && _shaderWater;
+
+        private static bool _shaderWater;
 
         /// <summary>
         /// Carte de relief de petites vagues, qui se répète sans couture : somme d'ondes entières sur la case, pente convertie en normale
@@ -219,8 +270,8 @@ namespace EdS.Game
             var pixels = new Color32[size * size];
             float tau = 2f * Mathf.PI / size;
             // Ondes à vecteurs entiers (kx, ky) et amplitude : la carte se répète sans couture.
-            int[] kx = { 3, 2, 7 }, ky = { 1, -5, 4 };
-            float[] amplitude = { 1f, 0.6f, 0.3f };
+            int[] kx = { 3, 2, 7, -5, 11 }, ky = { 1, -5, 4, 6, -3 };
+            float[] amplitude = { 1f, 0.6f, 0.3f, 0.25f, 0.12f };
             for (int y = 0; y < size; y++)
                 for (int x = 0; x < size; x++)
                 {
@@ -242,12 +293,15 @@ namespace EdS.Game
 
         private static Texture2D Pick(Texture2D wanted, Texture2D fallback) => wanted != null ? wanted : fallback;
 
-        private static TerrainLayer Layer(Texture2D color, Texture2D normal, float tile)
+        private static TerrainLayer Layer(Texture2D color, Texture2D normal, float tile, Color tint)
         {
             var layer = new TerrainLayer();
             layer.diffuseTexture = color;
             layer.normalMapTexture = normal;
             layer.tileSize = new Vector2(tile, tile);
+            // Le terrain d'URP multiplie la couleur de la couche par (max - min) : la teinte.
+            layer.diffuseRemapMin = Vector4.zero;
+            layer.diffuseRemapMax = new Vector4(tint.r, tint.g, tint.b, 1f);
             return layer;
         }
     }

@@ -339,6 +339,8 @@ namespace EdS.Game
             _markers.Sync(a);
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
+            // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
+            if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
         }
