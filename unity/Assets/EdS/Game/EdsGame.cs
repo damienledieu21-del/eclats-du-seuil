@@ -118,6 +118,9 @@ namespace EdS.Game
         // Essai réaliste 6, étape 2 : l'arbre des Éclats (talents) ouvrable dans l'aventure (T), et les écrans de l'aventure en uGUI.
         private TalentTreeView _talentView;
         private AdventureBook _book;
+
+        /// <summary>Essai réaliste 6, étape 3 : niveau du personnage à l'image précédente (l'annonce d'un niveau gagné), 0 : inconnu.</summary>
+        private int _shownLevel;
         private string _startupError;
 
         private IEnumerator Start()
@@ -219,6 +222,7 @@ namespace EdS.Game
             }
             _markers = new WorldMarkers(_adventure);
             _adventureHelp = null;
+            _shownLevel = 0;
             ShowAdventureSession();
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
@@ -1090,6 +1094,10 @@ namespace EdS.Game
             if (_adventure != null)
             {
                 AdventureSession a = _adventure;
+                // Étape 3 : un niveau gagné s'annonce en grand (il prend effet à la prochaine halte).
+                int level = a.World.Level;
+                if (_shownLevel > 0 && level > _shownLevel) _hud.LevelUp(level, level > a.World.EnteredLevel ? "Effet à ta prochaine halte" : "");
+                _shownLevel = level;
                 bool open = a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None;
                 double facing = _arena.Player != null ? _arena.Player.eulerAngles.y : _playerYaw;
                 _hud.Adventure(a, AdventureEnemies(), facing, open, _touch.Active);

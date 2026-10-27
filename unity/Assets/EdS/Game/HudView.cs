@@ -111,6 +111,17 @@ namespace EdS.Game
         private float _time;
         private bool _compact;
 
+        // Essai réaliste 6, étape 3 : finitions animées (niveau gagné, vie basse, coup reçu par la cible).
+        private RectTransform _levelUp;
+        private UiText _levelUpTitle, _levelUpSub;
+        private readonly List<Image> _levelUpRays = new List<Image>();
+        private float _levelUpAge = 99f;
+        private Image _dangerTop, _dangerBottom;
+        private float _danger;
+        private Image _targetFlash;
+        private float _targetFlashAlpha;
+        private float _lastTargetFraction = -1f;
+
         private HudView()
         {
             _canvas = UiKit.CreateCanvas("Interface (Fragments du Seuil)", 10);
@@ -286,6 +297,8 @@ namespace EdS.Game
             At(UiKit.Image(_top, "Cadre", UiKit.Sprite("cible_cadre"), Color.white), 380f, 48f, 620f, 52f, 0.5f, 0f);
             _targetChunk = Bar(_top, "Part perdue", UiKit.Alpha(new Color(1f, 0.95f, 0.85f), 0.9f));
             _targetFill = Bar(_top, "Vie", UiKit.Health);
+            _targetFlash = Bar(_top, "Coup reçu", UiKit.Alpha(Color.white, 0f));
+            _targetFlash.fillAmount = 1f;
             _targetHealth = UiText.Create(_top, "Points de vie", UiFace.Bold, 16f, UiKit.Ink, TextAnchor.MiddleCenter, 6f);
             At(_targetHealth.Rect, 380f, 75f, 600f, 22f, 0.5f, 0.5f);
             Image right = UiKit.Image(_top, "Aile droite", UiKit.Sprite("cible_aile"), Color.white);
@@ -395,6 +408,50 @@ namespace EdS.Game
             _hintPlate = UiKit.Image(_center, "Fond de l'indication", UiKit.Sprite("bouton_sobre", 12f), UiKit.Alpha(Color.white, 0.92f), Image.Type.Sliced);
             _hint = UiText.Create(_hintPlate.rectTransform, "Indication", UiFace.Bold, 21f, UiKit.Dawn, TextAnchor.MiddleCenter, 6f, true);
             UiKit.Fill(_hint.Rect);
+
+            // Étape 3 : niveau gagné (titre doré, rayons de lumière, éclats), puis bords rouges quand la vie est basse.
+            _levelUp = At(UiKit.Node(_center, "Niveau gagné"), 450f, 250f, 900f, 200f, 0.5f, 0.5f);
+            for (int i = 0; i < 10; i++)
+            {
+                Image ray = UiKit.Image(_levelUp, "Rayon", UiKit.Sprite("reflet"), UiKit.Alpha(i % 2 == 0 ? UiKit.Dawn : UiKit.Rose, 0f));
+                At(ray, 450f, 100f, 40f, 260f, 0.5f, 0f);
+                ray.rectTransform.localRotation = Quaternion.Euler(0f, 0f, i * 36f);
+                _levelUpRays.Add(ray);
+            }
+            Spark(_levelUp, 230f, 70f, 34f, 0.2f);
+            Spark(_levelUp, 680f, 120f, 26f, 1.3f);
+            Spark(_levelUp, 450f, 20f, 40f, 0.7f);
+            _levelUpTitle = UiText.Create(_levelUp, "Titre", UiFace.Title, 64f, Color.white, TextAnchor.MiddleCenter, 8f);
+            At(_levelUpTitle.Rect, 450f, 90f, 900f, 80f, 0.5f, 0.5f);
+            _levelUpTitle.Gold();
+            _levelUpSub = UiText.Create(_levelUp, "Sous-titre", UiFace.Bold, 20f, UiKit.Teal, TextAnchor.MiddleCenter, 14f, true);
+            At(_levelUpSub.Rect, 450f, 148f, 900f, 28f, 0.5f, 0.5f);
+            UiKit.Show(_levelUp, false);
+            _dangerTop = UiKit.Image(_canvas.transform, "Vie basse (haut)", UiKit.Sprite("voile_haut"), UiKit.Alpha(UiKit.Health, 0f));
+            _dangerTop.rectTransform.anchorMin = new Vector2(0f, 1f);
+            _dangerTop.rectTransform.anchorMax = new Vector2(1f, 1f);
+            _dangerTop.rectTransform.pivot = new Vector2(0.5f, 1f);
+            _dangerTop.rectTransform.sizeDelta = new Vector2(0f, 220f);
+            _dangerTop.rectTransform.anchoredPosition = new Vector2(0f, 60f);
+            _dangerBottom = UiKit.Image(_canvas.transform, "Vie basse (bas)", UiKit.Sprite("voile_bas"), UiKit.Alpha(UiKit.Health, 0f));
+            _dangerBottom.rectTransform.anchorMin = new Vector2(0f, 0f);
+            _dangerBottom.rectTransform.anchorMax = new Vector2(1f, 0f);
+            _dangerBottom.rectTransform.pivot = new Vector2(0.5f, 0f);
+            _dangerBottom.rectTransform.sizeDelta = new Vector2(0f, 300f);
+            _dangerBottom.rectTransform.SetAsFirstSibling();
+            _dangerTop.rectTransform.SetAsFirstSibling();
+        }
+
+        /// <summary>
+        /// Étape 3 : annonce d'un niveau gagné (« Niveau 5 », « Effet à ta prochaine halte ») : rayons de lumière qui tournent, titre doré
+        /// qui grossit puis s'efface en trois secondes.
+        /// </summary>
+        public void LevelUp(int level, string detail)
+        {
+            _levelUpAge = 0f;
+            _levelUpTitle.Value = "Niveau " + level;
+            _levelUpSub.Value = detail ?? "";
+            UiKit.Show(_levelUp, true);
         }
 
         // --- Mise à jour ------------------------------------------------------------------------------------------------------------
@@ -427,6 +484,7 @@ namespace EdS.Game
             float healthFraction = Mathf.Clamp01(health / (float)maxHealth);
             float enduranceFraction = Mathf.Clamp01(me.Endurance / (float)System.Math.Max(1, me.MaxEndurance));
             SetLevel(_healthLiquid, _healthWave, healthFraction);
+            _danger = me.IsDead || me.Health == null ? 0f : Mathf.Clamp01((0.3f - healthFraction) / 0.3f);
             SetLevel(_enduranceLiquid, _enduranceWave, enduranceFraction);
             _healthValue.Value = health.ToString();
             _healthMax.Value = "/ " + maxHealth;
@@ -553,6 +611,7 @@ namespace EdS.Game
             {
                 _targetId = target.Id;
                 _chunk = fraction;
+                _lastTargetFraction = -1f;
             }
             // La part perdue reste claire un instant, puis rejoint la barre.
             if (fraction < _chunk - 0.001f)
@@ -567,6 +626,9 @@ namespace EdS.Game
             }
             _targetFill.fillAmount = fraction;
             _targetChunk.fillAmount = _chunk;
+            // Étape 3 : la barre blanchit un instant quand la cible prend un coup.
+            if (_lastTargetFraction >= 0f && fraction < _lastTargetFraction - 0.0005f) _targetFlashAlpha = 0.65f;
+            _lastTargetFraction = fraction;
             bool announced = v.NextAttack != null && target.NextAttackSeconds is double && !v.IsDead;
             UiKit.Show(_chip, announced);
             if (announced)
@@ -808,9 +870,31 @@ namespace EdS.Game
             Animate(deltaTime);
         }
 
-        /// <summary>Effets : vagues, fissure qui palpite, reflets qui passent, braises, éclats de lumière.</summary>
+        /// <summary>Effets : vagues, fissure qui palpite, reflets qui passent, braises, éclats de lumière ; étape 3 : niveau gagné, vie basse, coup reçu.</summary>
         private void Animate(float deltaTime)
         {
+            _targetFlashAlpha = Mathf.Max(0f, _targetFlashAlpha - deltaTime * 3f);
+            _targetFlash.color = UiKit.Alpha(Color.white, _targetFlashAlpha);
+            float beat = 0.5f + 0.5f * Mathf.Sin(_time * (4f + 4f * _danger));
+            float alpha = _danger * (0.35f + 0.45f * beat);
+            _dangerTop.color = UiKit.Alpha(UiKit.Health, alpha * 0.7f);
+            _dangerBottom.color = UiKit.Alpha(UiKit.Health, alpha);
+            if (_levelUpAge < 3.2f)
+            {
+                _levelUpAge += deltaTime;
+                float t = _levelUpAge;
+                float appear = Mathf.Clamp01(t / 0.35f), fade = t > 2.4f ? Mathf.Clamp01(1f - (t - 2.4f) / 0.8f) : 1f;
+                float pop = 0.6f + 0.4f * appear + (t < 0.5f ? 0.15f * Mathf.Sin(t / 0.5f * Mathf.PI) : 0f);
+                _levelUp.localScale = new Vector3(pop, pop, 1f);
+                _levelUpTitle.Color = UiKit.Alpha(Color.white, appear * fade);
+                _levelUpSub.Color = UiKit.Alpha(UiKit.Teal, appear * fade);
+                for (int i = 0; i < _levelUpRays.Count; i++)
+                {
+                    _levelUpRays[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, i * 36f + t * 25f);
+                    _levelUpRays[i].color = UiKit.Alpha(i % 2 == 0 ? UiKit.Dawn : UiKit.Rose, 0.35f * appear * fade);
+                }
+                if (_levelUpAge >= 3.2f) UiKit.Show(_levelUp, false);
+            }
             foreach (RawImage wave in new[] { _healthWave, _enduranceWave })
             {
                 Rect uv = wave.uvRect;

@@ -265,4 +265,17 @@ public class InterfaceStyleTests
         foreach (string key in new[] { "text.ui.tab.character", "text.ui.tab.talents", "text.ui.tab.journal", "text.ui.tab.crafting", "text.ui.tab.map" })
             Assert.True(entries.TryGetProperty(key, out _), key);
     }
+
+    /// <summary>Essai réaliste 6, étape 3 : finitions animées (niveau gagné, vie basse, coup reçu par la cible, fondus).</summary>
+    [Fact]
+    public void Finitions_animees()
+    {
+        string hud = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        Assert.Contains("if (_shownLevel > 0 && level > _shownLevel) _hud.LevelUp(level,", game, StringComparison.Ordinal);
+        Assert.Contains("_danger = me.IsDead || me.Health == null ? 0f : Mathf.Clamp01((0.3f - healthFraction) / 0.3f);", hud, StringComparison.Ordinal);
+        Assert.Contains("if (_lastTargetFraction >= 0f && fraction < _lastTargetFraction - 0.0005f) _targetFlashAlpha = 0.65f;", hud, StringComparison.Ordinal);
+        Assert.Contains("_fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);", Read("unity", "Assets", "EdS", "Game", "TalentTreeView.cs"), StringComparison.Ordinal);
+        Assert.Contains("_fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);", Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs"), StringComparison.Ordinal);
+    }
 }

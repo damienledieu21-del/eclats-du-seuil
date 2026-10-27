@@ -341,7 +341,13 @@ Ce que tu regardes :
 - **Carte** (L) : la carte peinte en grand, avec les noms des lieux, des PNJ et des points sûrs, l'objectif et les ennemis en vue.
 - **Dialogue** : en bas de l'écran, réponses en boutons. Les touches 1 à 9 marchent toujours.
 
-Limites des étapes 1 et 2 :
+**Étape 3 : finitions animées.**
+- Un **niveau gagné** s'annonce en grand : titre doré, rayons de lumière qui tournent, « Effet à ta prochaine halte ».
+- Quand ta **vie passe sous 30 %**, les bords de l'écran rougissent et battent, de plus en plus vite.
+- La barre de la **cible blanchit** un instant à chaque coup qu'elle prend.
+- Le panneau des écrans et l'arbre des Éclats apparaissent **en fondu**.
+
+Limites des étapes 1 à 3 :
 - les menus du réseau et l'écran des talents de l'entraînement gardent l'ancienne interface ;
 - la mise en page n'a pas encore été essayée sur le Note8 ;
 - la flèche du joueur ne tourne pas encore sur la grande carte.

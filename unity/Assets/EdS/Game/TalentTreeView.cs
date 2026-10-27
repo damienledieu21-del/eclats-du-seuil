@@ -50,6 +50,7 @@ namespace EdS.Game
         }
 
         private readonly Canvas _canvas;
+        private readonly CanvasGroup _fade;
         private readonly RectTransform _content;
         private readonly List<Node> _nodes = new List<Node>();
         private readonly List<Link> _links = new List<Link>();
@@ -76,6 +77,7 @@ namespace EdS.Game
         {
             UiKit.EnsureEvents();
             _canvas = UiKit.CreateCanvas("Arbre des Éclats", 20);
+            _fade = _canvas.gameObject.AddComponent<CanvasGroup>();   // étape 3 : l'arbre apparaît en fondu
             Transform root = _canvas.transform;
             Image dim = UiKit.Image(root, "Voile", null, new Color(0.02f, 0.03f, 0.05f, 0.9f));
             UiKit.Fill(dim.rectTransform);
@@ -160,6 +162,8 @@ namespace EdS.Game
             _reset.Text.Value = text("text.ui.talents.reset");
             Say(text("text.ui.talents.controls") + " · " + text("text.ui.talents.next_rest"), false);
             _selected = _nodes.FirstOrDefault();
+            _fade.alpha = 0f;
+            _content.localScale = new Vector3(0.97f, 0.97f, 1f);
             UiKit.Show(_canvas, true);
         }
 
@@ -174,6 +178,9 @@ namespace EdS.Game
         {
             if (_editor == null) return Result.None;
             _time += deltaTime;
+            _fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);
+            float zoom = Mathf.Lerp(0.97f, 1f, _fade.alpha);
+            _content.localScale = new Vector3(zoom, zoom, 1f);
             if (!ReferenceEquals(_shownFor, _editor.Build)) Refresh();
             Animate(deltaTime);
             Result result = _result;

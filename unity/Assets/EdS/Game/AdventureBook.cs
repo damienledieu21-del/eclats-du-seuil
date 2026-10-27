@@ -42,7 +42,9 @@ namespace EdS.Game
         }
 
         private readonly Canvas _canvas;
+        private readonly CanvasGroup _fade;
         private readonly RectTransform _book, _panel;
+        private bool _bookShown;
         private readonly UiText _title, _subtitle, _close;
         private readonly List<UiText> _tabs = new List<UiText>();
         private readonly Dictionary<AdventureScreens.Panel, RectTransform> _pages = new Dictionary<AdventureScreens.Panel, RectTransform>();
@@ -97,6 +99,7 @@ namespace EdS.Game
             _canvas = UiKit.CreateCanvas("Écrans de l'aventure", 15);
             Transform root = _canvas.transform;
             _book = UiKit.Fill(UiKit.Node(root, "Livre"));
+            _fade = _book.gameObject.AddComponent<CanvasGroup>();
             Image dim = UiKit.Image(_book, "Voile", null, new Color(0.02f, 0.03f, 0.05f, 0.62f));
             UiKit.Fill(dim.rectTransform);
             dim.raycastTarget = true;
@@ -687,6 +690,12 @@ namespace EdS.Game
             bool talk = a != null && a.Dialogue != null;
             UiKit.Show(_canvas, book || talk);
             UiKit.Show(_book, book);
+            // Étape 3 : le panneau apparaît en fondu, légèrement grossi.
+            if (book && !_bookShown) _fade.alpha = 0f;
+            _bookShown = book;
+            _fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);
+            float zoom = Mathf.Lerp(0.97f, 1f, _fade.alpha);
+            _panel.localScale = new Vector3(zoom, zoom, 1f);
             UiKit.Show(_dialogue, talk);
             if (talk) RefreshDialogue(a);
             if (book)
