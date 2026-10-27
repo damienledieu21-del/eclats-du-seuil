@@ -29,6 +29,18 @@ namespace EdS.Game
         public float Tile = 2.5f;
     }
 
+    /// <summary>Essai réaliste (27 octobre 2026) : un objet de décor (forge, pont, herbe de l'Aube, moulin) et son modèle.</summary>
+    [Serializable]
+    public sealed class PropLook
+    {
+        public StyleProp Kind;
+        public GameObject Model;
+        [Tooltip("Échelle ajoutée (1 : taille réelle du modèle, ou taille réglée par le jeu pour le pont et le moulin).")]
+        public float Scale = 1f;
+        [Tooltip("Rotation ajoutée (degrés) si le modèle est posé de travers.")]
+        public float Yaw;
+    }
+
     /// <summary>
     /// Essai de style (décision de Damien du 25 octobre 2026) : les modèles et les sons choisis dans les packs gratuits déposés dans
     /// <c>Assets/Style</c>. Rempli par le menu « Éclats du Seuil → Préparer l'essai de style » (<c>Assets/Style/Resources/StyleCatalog.asset</c>),
@@ -59,6 +71,15 @@ namespace EdS.Game
         public Color BoarColor = new Color(0.33f, 0.24f, 0.17f);
         [Tooltip("Couleur de l'eau de la rivière.")]
         public Color WaterColor = new Color(0.1f, 0.24f, 0.27f);
+
+        [Header("Essai réaliste : forge, pont, herbe de l'Aube, moulin, eau (27 octobre 2026)")]
+        public PropLook[] Props = new PropLook[0];
+        [Tooltip("Matériau de l'eau (shader « EdS/Eau », créé par le menu) ; ses réglages se changent dans Assets/Style/Generated/Eau.")]
+        public Material Water;
+        [Tooltip("Arbustes des haies.")]
+        public GameObject[] Shrubs = new GameObject[0];
+        [Tooltip("Teinte de l'herbe du sol (blanc : couleur de la texture ; essai du 27 octobre 2026 : herbe trop jaune).")]
+        public Color GrassTint = new Color(0.66f, 0.86f, 0.58f);
 
         /// <summary>Rotation ajoutée (degrés) aux modèles qui ne regardent pas devant eux une fois importés.</summary>
         public float HeroYaw;
@@ -196,6 +217,7 @@ namespace EdS.Game
                 case StyleSlot.Plant: return Pick(Plants, id);
                 case StyleSlot.Debris: return Pick(Debris, id);
                 case StyleSlot.Character: return Character(id)?.Model;
+                case StyleSlot.Shrub: return Pick(Shrubs, id);
                 default: return null;
             }
         }
@@ -216,6 +238,15 @@ namespace EdS.Game
         /// <summary>Animations à part d'un modèle : celles du héros (Mixamo) ou d'un personnage ; vide sinon.</summary>
         public AnimationClip[] Clips(StyleSlot slot, string id) =>
             slot == StyleSlot.Hero ? HeroClips : slot == StyleSlot.Character ? Character(id)?.Clips : null;
+
+        /// <summary>Objet de décor, ou null s'il n'a pas de modèle.</summary>
+        public PropLook Prop(StyleProp kind)
+        {
+            if (Props == null) return null;
+            foreach (PropLook p in Props)
+                if (p != null && p.Kind == kind && p.Model != null) return p;
+            return null;
+        }
 
         /// <summary>Matière de bâtiment, ou null si elle n'a pas de texture.</summary>
         public SurfaceLook Surface(StyleSurface kind)

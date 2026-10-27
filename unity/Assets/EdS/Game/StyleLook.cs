@@ -191,17 +191,7 @@ namespace EdS.Game
                 IReadOnlyList<int> keep = StyleRules.KeepParts(prefab.name, names, part);
                 if (keep != null && keep.Count > 0 && keep.Count < renderers.Length)
                 {
-                    // Les niveaux de détail importés ne choisissent plus : seule la pièce gardée s'affiche.
-                    foreach (LODGroup group in look.GetComponentsInChildren<LODGroup>()) group.enabled = false;
-                    var kept = new List<Renderer>();
-                    for (int i = 0; i < renderers.Length; i++)
-                        if (keep.Contains(i)) kept.Add(renderers[i]);
-                        else renderers[i].gameObject.SetActive(false);
-                    Bounds piece = kept[0].bounds;
-                    foreach (Renderer r in kept) piece.Encapsulate(r.bounds);
-                    Vector3 center = piece.center;
-                    model.transform.localPosition = model.transform.localPosition - new Vector3(center.x, 0f, center.z);
-                    renderers = kept.ToArray();
+                    renderers = Keep(look, model, renderers, keep);
                     lot = true;
                 }
             }
@@ -224,6 +214,175 @@ namespace EdS.Game
                 Debug.Log("Essai de style : " + prefab.name + " (hauteur importée " + size + " m, largeur " + (any ? Mathf.Max(bounds.size.x, bounds.size.z) : 0f)
                     + " m, bas " + bottom + ", échelle " + k + (lot ? ", une variante du lot" : "") + ")");
             return look;
+        }
+
+        /// <summary>
+        /// Ne montre que les pièces <paramref name="keep"/> du modèle (une variante d'un lot de Poly Haven, un tronçon du ponton), ramenées au
+        /// centre du support ; rend leurs rendus.
+        /// </summary>
+        private static Renderer[] Keep(GameObject look, GameObject model, Renderer[] renderers, IReadOnlyList<int> keep)
+        {
+            // Les niveaux de détail importés ne choisissent plus : seule la pièce gardée s'affiche.
+            foreach (LODGroup group in look.GetComponentsInChildren<LODGroup>()) group.enabled = false;
+            var kept = new List<Renderer>();
+            for (int i = 0; i < renderers.Length; i++)
+                if (keep.Contains(i)) kept.Add(renderers[i]);
+                else renderers[i].gameObject.SetActive(false);
+            Bounds piece = kept[0].bounds;
+            foreach (Renderer r in kept) piece.Encapsulate(r.bounds);
+            Vector3 center = piece.center;
+            model.transform.localPosition = model.transform.localPosition - new Vector3(center.x, 0f, center.z);
+            return kept.ToArray();
+        }
+
+        /// <summary>Boîte des rendus actifs d'un objet (dans le monde) ; false s'il n'en a aucun.</summary>
+        public static bool VisibleBounds(GameObject go, out Bounds bounds)
+        {
+            bounds = default;
+            bool any = false;
+            foreach (Renderer r in go.GetComponentsInChildren<Renderer>())
+            {
+                if (!r.gameObject.activeInHierarchy) continue;
+                if (!any) bounds = r.bounds;
+                else bounds.Encapsulate(r.bounds);
+                any = true;
+            }
+            return any;
+        }
+
+        /// <summary>
+        /// Essai réaliste (27 octobre 2026) : objet de décor du catalogue (<see cref="StyleProp"/>) posé au sol en <paramref name="at"/>,
+        /// tourné de <paramref name="yaw"/> degrés, à sa taille réelle multipliée par <paramref name="scale"/> (et par l'échelle du
+        /// catalogue) ; <paramref name="oneVariant"/> : une seule variante d'un lot de Poly Haven (les pervenches). Null sans modèle.
+        /// </summary>
+        public static GameObject Prop(Transform parent, StyleProp kind, string id, Vector3 at, float yaw, float scale = 1f, bool oneVariant = false)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            PropLook prop = catalog != null ? catalog.Prop(kind) : null;
+            if (prop == null) return null;
+            var look = new GameObject(id + " (essai de style)");
+            GameObject model = Object.Instantiate(prop.Model, look.transform, false);
+            foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
+            if (oneVariant && renderers.Length > 1)
+            {
+                var names = new List<string>();
+                foreach (Renderer r in renderers) names.Add(r.gameObject.name);
+                IReadOnlyList<int> keep = StyleRules.KeepParts(prop.Model.name, names, id);
+                if (keep != null && keep.Count > 0 && keep.Count < renderers.Length) Keep(look, model, renderers, keep);
+            }
+            look.transform.SetParent(parent, false);
+            look.transform.localScale = Vector3.one * scale * (prop.Scale > 0f ? prop.Scale : 1f);
+            look.transform.rotation = Quaternion.Euler(0f, yaw + prop.Yaw, 0f);
+            look.transform.position = at;
+            Ground(look, at.y);
+            return look;
+        }
+
+        /// <summary>
+        /// Bâtiment du catalogue (le moulin de Sketchfab) posé sur une emprise carrée de <paramref name="width"/> mètres centrée en
+        /// <paramref name="at"/> : ce qui touche le sol (la tour, pas les ailes qui dépassent) prend la largeur de l'emprise et y est centré ;
+        /// son animation (les ailes du moulin) tourne en boucle s'il en a une. Null sans modèle.
+        /// </summary>
+        public static GameObject Building(Transform parent, StyleProp kind, string id, Vector3 at, float yaw, float width)
+        {
+            GameObject look = Prop(parent, kind, id, at, yaw);
+            if (look == null) return null;
+            // Le moulin de Sketchfab est livré avec sa version simplifiée posée à côté : seul l'exemplaire le plus détaillé reste.
+            Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 1)
+            {
+                var boxes = new List<(double, double, double, double, double, double)>();
+                var detail = new List<int>();
+                foreach (Renderer r in renderers)
+                {
+                    Bounds rb = r.bounds;
+                    boxes.Add((rb.min.x, rb.min.y, rb.min.z, rb.max.x, rb.max.y, rb.max.z));
+                    MeshFilter filter = r.GetComponent<MeshFilter>();
+                    SkinnedMeshRenderer skin = r as SkinnedMeshRenderer;
+                    Mesh mesh = filter != null ? filter.sharedMesh : skin != null ? skin.sharedMesh : null;
+                    detail.Add(mesh != null ? mesh.vertexCount : 0);
+                }
+                IReadOnlyList<int> keep = StyleRules.Cluster(boxes, detail);
+                if (keep.Count > 0 && keep.Count < renderers.Length) Keep(look, look.transform.GetChild(0).gameObject, renderers, keep);
+            }
+            if (Foot(look, out Bounds foot) && Mathf.Max(foot.size.x, foot.size.z) > 0.01f)
+            {
+                look.transform.localScale = look.transform.localScale * (width / Mathf.Max(foot.size.x, foot.size.z));
+                Ground(look, at.y);
+                Foot(look, out foot);
+                look.transform.position += new Vector3(at.x - foot.center.x, 0f, at.z - foot.center.z);
+            }
+            foreach (Animation animation in look.GetComponentsInChildren<Animation>())
+            {
+                foreach (AnimationState state in animation) state.wrapMode = WrapMode.Loop;
+                animation.Play();
+            }
+            return look;
+        }
+
+        /// <summary>Boîte des rendus actifs qui touchent le bas de l'objet (à 5 % de sa hauteur près) : la tour d'un moulin, sans ses ailes.</summary>
+        private static bool Foot(GameObject look, out Bounds foot)
+        {
+            foot = default;
+            if (!VisibleBounds(look, out Bounds all)) return false;
+            bool any = false;
+            foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
+            {
+                if (!r.gameObject.activeInHierarchy || r.bounds.min.y > all.min.y + 0.05f * all.size.y) continue;
+                if (!any) foot = r.bounds;
+                else foot.Encapsulate(r.bounds);
+                any = true;
+            }
+            return any;
+        }
+
+        /// <summary>Descend ou monte l'objet pour que le bas de ses rendus actifs soit à la hauteur <paramref name="y"/>.</summary>
+        public static void Ground(GameObject look, float y)
+        {
+            if (VisibleBounds(look, out Bounds b)) look.transform.position += Vector3.up * (y - b.min.y);
+        }
+
+        /// <summary>
+        /// Essai réaliste (demande de Damien du 27 octobre 2026 : « le pont n'est pas réaliste ») : pont fait d'un tronçon du ponton du
+        /// catalogue (<see cref="StyleRules.BridgeSection"/>), tourné pour franchir la rivière suivant x, mis à l'échelle de la longueur du
+        /// passage, son tablier (dessus des planches, <see cref="StyleRules.BridgeDeck"/>) à <paramref name="deck"/> mètres. Ses pieux
+        /// descendent dans le lit creusé. Null sans ponton.
+        /// </summary>
+        public static GameObject Bridge(Transform parent, Vector3 center, float length, float deck)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            PropLook prop = catalog != null ? catalog.Prop(StyleProp.Bridge) : null;
+            if (prop == null) return null;
+            var look = new GameObject("Pont (essai de style)");
+            GameObject model = Object.Instantiate(prop.Model, look.transform, false);
+            foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
+            var names = new List<string>();
+            foreach (Renderer r in renderers) names.Add(r.gameObject.name);
+            int section = StyleRules.BridgeSection(names), planks = StyleRules.BridgeDeck(names);
+            if (section < 0) return Discard(look);
+            // Hauteur du tablier dans le modèle : le dessus des planches (même hauteur pour tous les tronçons du ponton modulaire).
+            float deckTop = planks >= 0 ? renderers[planks].bounds.max.y : renderers[section].bounds.max.y;
+            float bottom = renderers[section].bounds.min.y;
+            Keep(look, model, renderers, new[] { section });
+            look.transform.SetParent(parent, false);
+            VisibleBounds(look, out Bounds b);
+            // Le plus long côté du tronçon franchit la rivière (suivant x).
+            float yaw = (b.size.z > b.size.x ? 90f : 0f) + prop.Yaw;
+            float k = length / Mathf.Max(0.1f, Mathf.Max(b.size.x, b.size.z)) * (prop.Scale > 0f ? prop.Scale : 1f);
+            look.transform.localScale = Vector3.one * k;
+            look.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            look.transform.position = center;
+            VisibleBounds(look, out Bounds placed);
+            look.transform.position += new Vector3(center.x - placed.center.x, deck - (placed.min.y + (deckTop - bottom) * k), center.z - placed.center.z);
+            return look;
+        }
+
+        private static GameObject Discard(GameObject look)
+        {
+            Object.Destroy(look);
+            return null;
         }
 
         /// <summary>Modèles déjà décrits dans le journal de Unity (une ligne par modèle, pour régler l'essai).</summary>

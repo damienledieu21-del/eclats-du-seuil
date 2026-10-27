@@ -42,6 +42,9 @@ namespace EdS.Game
         private readonly Material _fill;
         private readonly Material _water;
         private readonly GameObject _terrain;
+
+        /// <summary>Essai réaliste : polygones d'eau dont le lit est creusé dans le terrain (vide sans la vraie eau ou sans terrain).</summary>
+        private readonly List<List<Vector3>> _rivers;
         private Vector3 _roofMin;
         private Vector3 _roofMax;
         private bool _hasRoof;
@@ -56,9 +59,13 @@ namespace EdS.Game
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
 
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
-            // Essai réaliste : un terrain peint (terre, roche, herbe) à la place du sol simple, s'il y a des textures de sol.
-            _terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space));
+            // Essai réaliste : un terrain peint (terre, roche, herbe) à la place du sol simple, s'il y a des textures de sol. Essai du 27 octobre
+            // 2026 : avec la vraie eau, le lit de la rivière y est creusé (sous ses bras et sous le pont), l'eau coule sous le sol.
+            _rivers = StyleWorld.RealWater ? Rivers(space) : new List<List<Vector3>>();
+            _terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space),
+                _rivers.Select(r => (IReadOnlyList<(double X, double Z)>)r.Select(p => ((double)p.x, (double)p.z)).ToList()).ToList());
             bool terrain = _terrain != null;
+            if (!terrain) _rivers.Clear();
             if (!terrain)
             {
                 GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -105,10 +112,24 @@ namespace EdS.Game
             List<Vector3> points = obstacle.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList();
             if (id.StartsWith("riviere"))
             {
+                // Essai réaliste (27 octobre 2026) : la vraie eau coule sous le sol, entre ses berges (le lit est creusé dans le terrain).
+                if (_rivers.Count > 0)
+                {
+                    WaterSurface(id, points);
+                    return;
+                }
                 // Eau : prisme bas (la rivière arrête la marche et, au 11.6, la vue : un seul genre d'obstacle dans le moteur).
                 Prism(id, points, 0.12f, _water, false, 4f);
                 return;
             }
+            // Essai réaliste (27 octobre 2026) : palissade de rondins pour les murs et la porte, haie d'arbustes pour les haies.
+            StyleFence fence = StyleRules.FenceFor(id);
+            if (fence == StyleFence.Palisade)
+            {
+                Palisade(id, points);
+                return;
+            }
+            if (fence == StyleFence.Hedge && Hedge(id, points)) return;
             if (id.StartsWith("arbre"))
             {
                 // Essai de style : un arbre des packs à la place du tronc et de sa boule de feuillage (même emprise au moteur).
@@ -132,6 +153,14 @@ namespace EdS.Game
             }
             if (id.StartsWith("moulin"))
             {
+                // Essai réaliste (choix de Damien du 27 octobre 2026) : le moulin de Sketchfab, sa tour sur l'emprise, ses ailes qui tournent.
+                float side = Mathf.Min(points.Max(p => p.x) - points.Min(p => p.x), points.Max(p => p.z) - points.Min(p => p.z));
+                GameObject mill = StyleLook.Building(_root.transform, StyleProp.Mill, id, Center(points), 0f, side);
+                if (mill != null)
+                {
+                    AddModelOccluders(mill);
+                    return;
+                }
                 Material walls = Built(StyleSurface.Plaster, new Color(0.62f, 0.58f, 0.5f), out float wallTile);
                 Prism(id, points, 6f, walls, true, wallTile);
                 Vector3 c = Center(points);
@@ -148,11 +177,6 @@ namespace EdS.Game
                 b.transform.rotation = Quaternion.Euler(0f, 0f, 20f);
                 AddOccluder(a.transform, false, hub - new Vector3(3.5f, 3.5f, 0.2f), hub + new Vector3(3.5f, 3.5f, 0.2f));
                 AddOccluder(b.transform, false, hub - new Vector3(3.5f, 3.5f, 0.2f), hub + new Vector3(3.5f, 3.5f, 0.2f));
-                return;
-            }
-            if (id.StartsWith("mur"))
-            {
-                Prism(id, points, 3f, Built(StyleSurface.Stone, new Color(0.48f, 0.47f, 0.45f), out float stoneTile), true, stoneTile);
                 return;
             }
             if (id.StartsWith("pilier"))
@@ -248,6 +272,145 @@ namespace EdS.Game
 
         private static Vector3 Center(List<Vector3> points) =>
             new Vector3(points.Average(p => p.x), 0f, points.Average(p => p.z));
+
+        /// <summary>
+        /// Essai réaliste : l'eau à creuser dans le terrain : chaque bras de rivière (« riviere… »), et la coupure entre « riviere_sud » et
+        /// « riviere_nord » sous le pont (la rivière y coule aussi ; on la passe sur le pont, le moteur n'y met pas d'obstacle).
+        /// </summary>
+        private static List<List<Vector3>> Rivers(CombatSpace space)
+        {
+            var rivers = space.Obstacles.Where(o => o.Id.StartsWith("riviere"))
+                .Select(o => o.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList()).ToList();
+            if (BridgeGap(space) is (float x0, float z0, float x1, float z1))
+                rivers.Add(new List<Vector3> { new Vector3(x0, 0f, z0), new Vector3(x1, 0f, z0), new Vector3(x1, 0f, z1), new Vector3(x0, 0f, z1) });
+            return rivers;
+        }
+
+        /// <summary>Coupure entre les deux bras de la rivière (bande x0..x1 de la rivière, z0..z1 entre les bras), ou null.</summary>
+        private static (float X0, float Z0, float X1, float Z1)? BridgeGap(CombatSpace space)
+        {
+            SpaceObstacle south = space.Obstacles.FirstOrDefault(o => o.Id == "riviere_sud");
+            SpaceObstacle north = space.Obstacles.FirstOrDefault(o => o.Id == "riviere_nord");
+            if (south == null || north == null) return null;
+            float z0 = Raw(south.Points.Max(p => p.Z.Raw)), z1 = Raw(north.Points.Min(p => p.Z.Raw));
+            if (z1 <= z0) return null;
+            return (Raw(south.Points.Min(p => p.X.Raw)), z0, Raw(south.Points.Max(p => p.X.Raw)), z1);
+        }
+
+        /// <summary>
+        /// Essai réaliste (demande de Damien du 27 octobre 2026) : surface de l'eau, à <see cref="StyleRules.WaterLevel"/> sous le sol, sur
+        /// le polygone de la rivière (ses berges creusées l'entourent) ; matériau « EdS/Eau ».
+        /// </summary>
+        private GameObject WaterSurface(string name, List<Vector3> points)
+        {
+            float y = (float)StyleRules.WaterLevel;
+            var vertices = points.Select(p => new Vector3(p.x, y, p.z)).ToList();
+            var triangles = new List<int>();
+            for (int i = 1; i + 1 < vertices.Count; i++)
+            {
+                // Face vers le haut quel que soit le sens des sommets.
+                Vector3 n = Vector3.Cross(vertices[i] - vertices[0], vertices[i + 1] - vertices[0]);
+                if (n.y >= 0f) triangles.AddRange(new[] { 0, i, i + 1 });
+                else triangles.AddRange(new[] { 0, i + 1, i });
+            }
+            var mesh = new Mesh();
+            mesh.vertices = vertices.ToArray();
+            mesh.triangles = triangles.ToArray();
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            var go = new GameObject(name + " (eau)");
+            go.transform.SetParent(_root.transform, false);
+            go.AddComponent<MeshFilter>().mesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = _water;
+            return go;
+        }
+
+        /// <summary>
+        /// Essai réaliste (choix de Damien du 27 octobre 2026 : « Rondins faits par moi ») : palissade de rondins taillés en pointe sur
+        /// l'emprise d'un mur ou d'une porte (<see cref="StyleRules.Palisade"/>), un seul maillage, écorce du catalogue (planches à défaut).
+        /// Abaissée comme un mur quand elle cache le joueur.
+        /// </summary>
+        private void Palisade(string id, List<Vector3> points)
+        {
+            float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
+            IReadOnlyList<StyleLog> logs = StyleRules.Palisade(x0, z0, x1, z1, id);
+            Material bark = StyleWorld.Surface(StyleSurface.Bark, out float tile) ?? Built(StyleSurface.Wood, new Color(0.4f, 0.3f, 0.2f), out tile);
+            const int Sides = 10;
+            const float Tip = 0.38f;
+            var vertices = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var triangles = new List<int>();
+            float scale = 1f / Mathf.Max(0.1f, tile);
+            float top = 0f;
+            foreach (StyleLog log in logs)
+            {
+                float r = (float)log.Radius, h = (float)log.Height, cx = (float)log.X, cz = (float)log.Z;
+                top = Mathf.Max(top, h);
+                // Chaque rondin tourné autrement, pour que l'écorce ne se répète pas d'un rondin à l'autre.
+                float turn = StyleRules.Variant(id + "/" + vertices.Count, 360) * Mathf.Deg2Rad;
+                // Fût : anneaux du bas (sous le sol) et du haut, couture doublée pour la texture.
+                int start = vertices.Count;
+                for (int ring = 0; ring < 2; ring++)
+                    for (int s = 0; s <= Sides; s++)
+                    {
+                        float a = 2f * Mathf.PI * s / Sides + turn;
+                        float y = ring == 0 ? -0.2f : h - Tip;
+                        vertices.Add(new Vector3(cx + Mathf.Cos(a) * r, y, cz + Mathf.Sin(a) * r));
+                        uvs.Add(new Vector2(2f * Mathf.PI * r * s / Sides * scale, y * scale));
+                    }
+                for (int s = 0; s < Sides; s++)
+                {
+                    int a = start + s, b = start + s + 1, c = start + Sides + 1 + s, d = start + Sides + 2 + s;
+                    // Vu de dehors : (bas, haut, bas suivant) tourne dans le sens des aiguilles d'une montre (angles croissants).
+                    triangles.AddRange(new[] { a, c, b, b, c, d });
+                }
+                // Pointe taillée : un cône de l'anneau du haut jusqu'au sommet.
+                int apex = vertices.Count;
+                vertices.Add(new Vector3(cx, h, cz));
+                uvs.Add(new Vector2(Mathf.PI * r * scale, h * scale));
+                int ringTop = vertices.Count;
+                for (int s = 0; s <= Sides; s++)
+                {
+                    float a = 2f * Mathf.PI * s / Sides + turn;
+                    vertices.Add(new Vector3(cx + Mathf.Cos(a) * r, h - Tip, cz + Mathf.Sin(a) * r));
+                    uvs.Add(new Vector2(2f * Mathf.PI * r * s / Sides * scale, (h - Tip) * scale));
+                }
+                for (int s = 0; s < Sides; s++) triangles.AddRange(new[] { ringTop + s, apex, ringTop + s + 1 });
+            }
+            var mesh = new Mesh();
+            mesh.vertices = vertices.ToArray();
+            mesh.uv = uvs.ToArray();
+            mesh.triangles = triangles.ToArray();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();   // revue Codex de la PR #58 (3e tour) : le relief de l'écorce, comme celui des prismes
+            mesh.RecalculateBounds();
+            var go = new GameObject(id + " (palissade)");
+            go.transform.SetParent(_root.transform, false);
+            go.AddComponent<MeshFilter>().mesh = mesh;
+            MeshRenderer renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = bark;
+            _occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });
+        }
+
+        /// <summary>
+        /// Essai réaliste (27 octobre 2026) : haie d'arbustes réalistes le long d'une haie (jusque-là un bloc de pierre), un arbuste par
+        /// mètre environ (moins sur téléphone), retirés quand ils cachent le joueur. False sans arbuste dans le catalogue.
+        /// </summary>
+        private bool Hedge(string id, List<Vector3> points)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null || catalog.Shrubs == null || catalog.Shrubs.Length == 0) return false;
+            float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
+            var spots = StyleRules.Row(x0, z0, x1, z1, Application.isMobilePlatform ? 1.6 : 1.1);
+            for (int i = 0; i < spots.Count; i++)
+            {
+                string part = id + "/" + i;
+                GameObject shrub = StyleLook.Decor(_root.transform, StyleSlot.Shrub, part, new Vector3((float)spots[i].X, 0f, (float)spots[i].Z),
+                    1.6f + 0.004f * StyleRules.Variant(part, 100));
+                if (shrub != null) AddModelOccluders(shrub);
+            }
+            return true;
+        }
 
         /// <summary>Prisme droit de base <paramref name="points"/> (polygone convexe), de hauteur <paramref name="height"/>, faces vers l'extérieur.</summary>
         /// <summary>
@@ -375,6 +538,11 @@ namespace EdS.Game
             if (south == null || north == null) return;
             float x0 = Raw(south.Points.Min(p => p.X.Raw)) - 0.6f, x1 = Raw(south.Points.Max(p => p.X.Raw)) + 0.6f;
             float z0 = Raw(south.Points.Max(p => p.Z.Raw)), z1 = Raw(north.Points.Min(p => p.Z.Raw));
+            // Essai réaliste (demande de Damien du 27 octobre 2026 : « le pont n'est pas réaliste ») : la rivière coule sous le pont, et le
+            // pont est un tronçon du ponton de Poly Haven, tablier au ras du sol, pieux dans le lit.
+            if (_rivers.Count > 0 && BridgeGap(space) is (float gx0, float gz0, float gx1, float gz1))
+                WaterSurface("Rivière (sous le pont)", new List<Vector3> { new Vector3(gx0, 0f, gz0), new Vector3(gx1, 0f, gz0), new Vector3(gx1, 0f, gz1), new Vector3(gx0, 0f, gz1) });
+            if (StyleLook.Bridge(_root.transform, new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f), x1 - x0, 0.08f) != null) return;
             Material wood = Built(StyleSurface.Wood, new Color(0.55f, 0.4f, 0.24f), out float tile);
             Box("Pont", new Vector3((x0 + x1) / 2f, 0.06f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.12f, z1 - z0), wood, tile);
             Box("Pont (rambarde sud)", new Vector3((x0 + x1) / 2f, 0.5f, z0 + 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood, tile);

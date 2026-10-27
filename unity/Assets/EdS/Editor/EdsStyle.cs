@@ -56,8 +56,9 @@ namespace EdS.Game.Editor
             IReadOnlyList<string> heroClips = StyleRules.Companions(hero, models);
             foreach (string clip in heroClips) Legacy(clip, true);
 
-            // Matériaux réalistes des modèles de Poly Haven (couleur, relief, transparence de l'herbe).
-            foreach (string model in models.Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero)) RealisticMaterial(model, notes);
+            // Matériaux réalistes des modèles de Poly Haven (couleur, relief, transparence de l'herbe). Les personnages de Mixamo ont les leurs
+            // (MixamoMaterials) : à une deuxième préparation, leurs textures déjà sorties ne doivent pas les remplacer toutes par une seule.
+            foreach (string model in models.Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p))) RealisticMaterial(model, notes);
             // Essai de Damien du 26 octobre 2026 : le paladin de Mixamo était tout blanc (ses textures restent dans son fichier) ; elles sont
             // sorties à côté de lui, puis chaque matériau reçoit les siennes.
             if (hero != null && StyleRules.IsRealistic(hero)) MixamoMaterials(hero, notes);
@@ -79,6 +80,10 @@ namespace EdS.Game.Editor
             // dont un matériau n'a pas de texture est réimporté, pour retrouver celles qui sont arrivées depuis.
             foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && Untextured(p))) AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
 
+            // Le moulin de Sketchfab a ses ailes animées : animation « Legacy », jouée en boucle par le jeu.
+            string mill = StyleRules.PropCandidates(models, StyleProp.Mill).FirstOrDefault();
+            if (mill != null) Legacy(mill, false);
+
             if (!AssetDatabase.IsValidFolder(CatalogFolder)) AssetDatabase.CreateFolder(Root, "Resources");
             StyleCatalog catalog = AssetDatabase.LoadAssetAtPath<StyleCatalog>(CatalogPath);
             if (catalog == null)
@@ -94,6 +99,20 @@ namespace EdS.Game.Editor
             catalog.Rocks = StyleRules.ForCatalog(models, StyleSlot.Rock, 6).Select(Load).Where(m => m != null).ToArray();
             catalog.Plants = StyleRules.ForCatalog(models, StyleSlot.Plant, 16).Select(Load).Where(m => m != null).ToArray();
             catalog.Debris = StyleRules.ForCatalog(models, StyleSlot.Debris, 6).Select(Load).Where(m => m != null).ToArray();
+            // Essai réaliste (demandes de Damien du 27 octobre 2026) : arbustes des haies, objets de la forge, ponton, herbe de l'Aube, moulin,
+            // et le matériau de l'eau. L'échelle et la rotation réglées à la main sont gardées.
+            catalog.Shrubs = StyleRules.ForCatalog(models, StyleSlot.Shrub, 6).Select(Load).Where(m => m != null).ToArray();
+            catalog.Props = System.Enum.GetValues(typeof(StyleProp)).Cast<StyleProp>()
+                .Select(kind =>
+                {
+                    PropLook old = (catalog.Props ?? new PropLook[0]).FirstOrDefault(o => o != null && o.Kind == kind);
+                    return new PropLook
+                    {
+                        Kind = kind, Model = Load(StyleRules.PropCandidates(models, kind).FirstOrDefault()),
+                        Scale = old != null && old.Scale > 0f ? old.Scale : 1f, Yaw = old != null ? old.Yaw : 0f,
+                    };
+                }).Where(p => p.Model != null).ToArray();
+            catalog.Water = WaterMaterial(notes);
             // Les réglages faits à la main (hauteur, rotation) sont gardés d'une préparation à l'autre.
             catalog.Characters = characters.Select(c =>
             {
@@ -104,7 +123,7 @@ namespace EdS.Game.Editor
                     Height = old != null && old.Height > 0f ? old.Height : c.Id == "gardien" ? 2.7f : 1.8f, Yaw = old != null ? old.Yaw : 0f,
                 };
             }).ToArray();
-            catalog.Surfaces = new[] { StyleSurface.Stone, StyleSurface.Plaster, StyleSurface.Roof, StyleSurface.Wood, StyleSurface.Cobble }
+            catalog.Surfaces = new[] { StyleSurface.Stone, StyleSurface.Plaster, StyleSurface.Roof, StyleSurface.Wood, StyleSurface.Cobble, StyleSurface.Bark }
                 .Select(kind =>
                 {
                     SurfaceLook old = (catalog.Surfaces ?? new SurfaceLook[0]).FirstOrDefault(o => o != null && o.Kind == kind);
@@ -144,7 +163,9 @@ namespace EdS.Game.Editor
             string report = "Héros : " + Name(hero) + " (" + catalog.HeroClips.Length + " animations à part)\nLoup : " + Name(wolf) + "\nSanglier : " + Name(boar)
                 + "\nArbres : " + catalog.Trees.Length + ", rochers : " + catalog.Rocks.Length + ", plantes : " + catalog.Plants.Length + ", bois mort : " + catalog.Debris.Length
                 + "\nPersonnages : " + (catalog.Characters.Length == 0 ? "aucun" : string.Join(", ", catalog.Characters.Select(c => c.Id + " (" + c.Clips.Length + " animations)")))
-                + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 5"
+                + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 6, arbustes des haies : " + catalog.Shrubs.Length
+                + "\nObjets : " + (catalog.Props.Length == 0 ? "aucun" : string.Join(", ", catalog.Props.Select(p => PropName(p.Kind))))
+                + "\nEau : " + (catalog.Water != null ? "vraie eau" : "eau simple")
                 + "\nSons : " + found + " sur 7"
                 + "\nCiel : " + (catalog.Sky != null ? "oui" : "non") + ", sols : " + grounds + " sur 3"
                 + (notes.Count > 0 ? "\n\n" + string.Join("\n", notes) : "")
@@ -227,6 +248,49 @@ namespace EdS.Game.Editor
                 return;
             }
             string name = Path.GetFileNameWithoutExtension(modelPath);
+            // Essai du 27 octobre 2026 : le ponton a deux matières (planches, pieux) ; chacune prend les textures à son nom.
+            List<Material> embeddedMaterials = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().ToList();
+            if (embeddedMaterials.Count > 1)
+            {
+                // Revue Codex de la PR #58 (2e tour) : la carte de transparence du modèle (toiles du moulin) découpe aussi les matières qui
+                // prennent sa texture de couleur ; couleur et alpha réunis une seule fois pour toutes.
+                Texture2D cutout = null;
+                foreach (Material embedded in embeddedMaterials)
+                {
+                    string own = StyleRules.MaterialTexture(embedded.name, maps.Where(p => !StyleRules.IsSky(p)), false) ?? color;
+                    string ownNormal = StyleRules.MaterialTexture(embedded.name, maps, true) ?? (own == color ? normal : null);
+                    bool ownAlpha = alpha != null && own == color;
+                    if (ownAlpha && cutout == null) cutout = WithAlpha(color, alpha, Generated + "/" + name + "_couleur_alpha.png", notes);
+                    Texture2D ownMap = ownAlpha ? cutout : Texture2DAt(own);
+                    string path = Generated + "/" + name + " " + embedded.name + ".mat";
+                    Material part = AssetDatabase.LoadAssetAtPath<Material>(path);
+                    if (part == null)
+                    {
+                        part = new Material(lit);
+                        AssetDatabase.CreateAsset(part, path);
+                    }
+                    part.SetTexture("_BaseMap", ownMap);
+                    part.SetTexture("_MainTex", ownMap);
+                    part.SetFloat("_Smoothness", 0.15f);
+                    if (ownNormal != null)
+                    {
+                        part.SetTexture("_BumpMap", Texture2DAt(ownNormal));
+                        part.EnableKeyword("_NORMALMAP");
+                    }
+                    if (ownAlpha)
+                    {
+                        part.SetFloat("_AlphaClip", 1f);
+                        part.SetFloat("_Cutoff", 0.45f);
+                        part.EnableKeyword("_ALPHATEST_ON");
+                        part.SetFloat("_Cull", 0f);
+                        part.renderQueue = 2450;
+                    }
+                    EditorUtility.SetDirty(part);
+                    importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), part);
+                }
+                importer.SaveAndReimport();
+                return;
+            }
             string materialPath = Generated + "/" + name + ".mat";
             Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
             if (material == null)
@@ -444,6 +508,49 @@ namespace EdS.Game.Editor
                 notes.Add("Effets d'image activés dans " + Path.GetFileName(path) + ".");
             }
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>Fichier rangé dans un dossier « Mixamo » (héros, personnages, leurs animations).</summary>
+        private static bool IsMixamo(string path) => ("/" + path.Replace('\\', '/').ToLowerInvariant()).Contains("/mixamo/");
+
+        /// <summary>
+        /// Matériau de la vraie eau (shader « EdS/Eau » du dossier du jeu), créé une fois dans <c>Generated/Eau.mat</c> : ses réglages
+        /// (couleurs, vagues, reflet) se changent ensuite à la main et sont gardés. Null si le shader ne se compile pas (eau simple).
+        /// </summary>
+        private static Material WaterMaterial(List<string> notes)
+        {
+            Shader shader = Shader.Find("EdS/Eau");
+            if (shader == null || !shader.isSupported)
+            {
+                notes.Add("Shader de l'eau « EdS/Eau » indisponible : eau simple.");
+                return null;
+            }
+            string path = Generated + "/Eau.mat";
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader);
+                AssetDatabase.CreateAsset(material, path);
+            }
+            else if (material.shader != shader) material.shader = shader;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        private static string PropName(StyleProp kind)
+        {
+            switch (kind)
+            {
+                case StyleProp.FirePit: return "foyer";
+                case StyleProp.Hammer: return "marteau";
+                case StyleProp.Crate: return "caisse";
+                case StyleProp.Barrel: return "tonneau";
+                case StyleProp.Anvil: return "enclume";
+                case StyleProp.Bridge: return "ponton";
+                case StyleProp.Herb: return "herbe de l'Aube";
+                case StyleProp.Mill: return "moulin";
+                default: return kind.ToString();
+            }
         }
 
         private static GameObject Load(string path) => path != null ? AssetDatabase.LoadAssetAtPath<GameObject>(path) : null;

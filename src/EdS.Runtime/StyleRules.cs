@@ -23,6 +23,9 @@ namespace EdS.Runtime
         /// (<c>Mixamo/Archer</c>…), pour un PNJ ou un ennemi d'après son identifiant (<see cref="StyleRules.CharacterOf"/>).
         /// </summary>
         Character = 7,
+
+        /// <summary>Essai réaliste (27 octobre 2026) : arbuste des haies (« haie_ouest » était un bloc de pierre).</summary>
+        Shrub = 8,
     }
 
     /// <summary>Essai réaliste : matière d'un bâtiment (textures d'un dossier « Surfaces »).</summary>
@@ -42,6 +45,69 @@ namespace EdS.Runtime
 
         /// <summary>Pavés (murets du bord de l'aire).</summary>
         Cobble = 4,
+
+        /// <summary>Écorce (rondins de la palissade ; demande de Damien du 27 octobre 2026).</summary>
+        Bark = 5,
+    }
+
+    /// <summary>
+    /// Essai réaliste (demandes de Damien du 27 octobre 2026 : « la forge est à faire, les minerais et l'herbe de l'Aube aussi, le pont ») :
+    /// objet de décor rangé dans les packs, choisi par son nom (<see cref="StyleRules.PropCandidates"/>).
+    /// </summary>
+    public enum StyleProp
+    {
+        /// <summary>Foyer de la forge (« stone_fire_pit »).</summary>
+        FirePit = 0,
+
+        /// <summary>Marteau posé sur l'enclume.</summary>
+        Hammer = 1,
+
+        /// <summary>Caisse près de la forge.</summary>
+        Crate = 2,
+
+        /// <summary>Tonneau près de la forge.</summary>
+        Barrel = 3,
+
+        /// <summary>Enclume (sinon faite par le code).</summary>
+        Anvil = 4,
+
+        /// <summary>Tronçon de ponton en bois, pour le pont.</summary>
+        Bridge = 5,
+
+        /// <summary>Plante des nœuds d'herboristerie (herbe de l'Aube).</summary>
+        Herb = 6,
+
+        /// <summary>Moulin (modèle de Sketchfab choisi par Damien le 27 octobre 2026).</summary>
+        Mill = 7,
+    }
+
+    /// <summary>Clôture qu'habille un obstacle en longueur (<see cref="StyleRules.FenceFor"/>).</summary>
+    public enum StyleFence
+    {
+        None = 0,
+
+        /// <summary>Palissade de rondins taillés en pointe (murs, portes).</summary>
+        Palisade = 1,
+
+        /// <summary>Haie d'arbustes.</summary>
+        Hedge = 2,
+    }
+
+    /// <summary>Un rondin de palissade, posé debout : centre au sol, rayon et hauteur (m).</summary>
+    public readonly struct StyleLog
+    {
+        public StyleLog(double x, double z, double radius, double height)
+        {
+            X = x;
+            Z = z;
+            Radius = radius;
+            Height = height;
+        }
+
+        public double X { get; }
+        public double Z { get; }
+        public double Radius { get; }
+        public double Height { get; }
     }
 
     /// <summary>Ce que fait un corps animé, pour choisir son animation.</summary>
@@ -141,10 +207,27 @@ namespace EdS.Runtime
             [StyleSlot.Boar] = (new[] { "boar", "pig" }, new string[0]),
             [StyleSlot.Tree] = (new[] { "firtree", "pine", "commontree", "tree", "birch", "maple" },
                 new[] { "dead", "stump", "log", "leaves", "leaf", "trunk", "root", "bark", "branch" }),
-            [StyleSlot.Rock] = (new[] { "rock", "boulder", "stone" }, new[] { "path", "pebble", "small", "tiny" }),
+            // « stone_fire_pit » est le foyer de la forge, pas un rocher ; la pervenche est l'herbe de l'Aube, pas une plante du décor.
+            [StyleSlot.Rock] = (new[] { "rock", "boulder", "stone" }, new[] { "path", "pebble", "small", "tiny", "fire", "pit" }),
             [StyleSlot.Plant] = (new[] { "bush", "fern", "grass", "flower", "plant", "clover", "shrub", "moss", "nettle", "celandine", "dandelion", "weed" },
-                new[] { "big", "tall", "tree", "rock" }),
+                new[] { "big", "tall", "tree", "rock", "periwinkle" }),
             [StyleSlot.Debris] = (new[] { "stump", "log", "trunk", "root", "branch" }, new[] { "quiver" }),
+            [StyleSlot.Shrub] = (new[] { "shrub", "hedge", "bush" }, new[] { "dead", "berry", "flower" }),
+            // Les personnages sont rangés par dossier (StyleRules.Characters), pas reconnus par leur nom.
+            [StyleSlot.Character] = (new string[0], new string[0]),
+        };
+
+        /// <summary>Mots des objets de décor (nom du fichier), par ordre de préférence.</summary>
+        private static readonly Dictionary<StyleProp, (string[] Want, string[] Avoid)> PropWords = new Dictionary<StyleProp, (string[], string[])>
+        {
+            [StyleProp.FirePit] = (new[] { "firepit", "fireplace", "brazier", "hearth" }, new string[0]),
+            [StyleProp.Hammer] = (new[] { "hammer" }, new string[0]),
+            [StyleProp.Crate] = (new[] { "crate" }, new string[0]),
+            [StyleProp.Barrel] = (new[] { "barrel" }, new string[0]),
+            [StyleProp.Anvil] = (new[] { "anvil" }, new string[0]),
+            [StyleProp.Bridge] = (new[] { "pier", "bridge" }, new string[0]),
+            [StyleProp.Herb] = (new[] { "periwinkle", "herb" }, new string[0]),
+            [StyleProp.Mill] = (new[] { "windmill", "mill" }, new string[0]),
         };
 
         /// <summary>Mots cherchés dans les noms des sons, par ordre de préférence (noms des packs gratuits de Kenney d'abord).</summary>
@@ -182,8 +265,20 @@ namespace EdS.Runtime
             [StyleMotion.Death] = new StyleMotion[0],
         };
 
-        /// <summary>Sources réalistes : dossiers où sont rangés les fichiers de Poly Haven et de Mixamo.</summary>
-        private static readonly string[] Realistic = { "polyhaven", "mixamo" };
+        /// <summary>Sources réalistes : dossiers où sont rangés les fichiers de Poly Haven, de Mixamo et de Sketchfab.</summary>
+        private static readonly string[] Realistic = { "polyhaven", "mixamo", "sketchfab" };
+
+        /// <summary>Profondeur (m) du lit de la rivière sous le sol, une fois la berge descendue.</summary>
+        public const double RiverBed = 1.0;
+
+        /// <summary>Largeur (m) de la berge : le lit descend du bord de la rivière jusqu'à sa profondeur sur cette distance.</summary>
+        public const double RiverBank = 1.0;
+
+        /// <summary>Hauteur (m) de la surface de l'eau, sous le sol où l'on marche (berges visibles).</summary>
+        public const double WaterLevel = -0.3;
+
+        /// <summary>Distance (m) en deçà de laquelle un PNJ se tourne vers le joueur.</summary>
+        public const double FaceRange = 8.0;
 
         /// <summary>Mots des textures de sol (dans un dossier « Ground ») : roche, puis herbe ; le reste est de la terre.</summary>
         private static readonly string[] RockGround = { "rock", "trail", "stone", "gravel", "cliff" };
@@ -227,14 +322,40 @@ namespace EdS.Runtime
                 .ThenBy(p => p, StringComparer.Ordinal).ToList();
 
         /// <summary>
-        /// Modèles retenus pour le catalogue (au plus <paramref name="max"/>) : les candidats dans leur ordre ; pour les rochers, seulement
-        /// les réalistes s'il y en a (un rocher dessiné détonne sur le sol réaliste ; les plantes, elles, mélangent les deux).
+        /// Modèles retenus pour le catalogue (au plus <paramref name="max"/>) : les candidats dans leur ordre ; pour les rochers et les
+        /// plantes, seulement les réalistes s'il y en a (un rocher dessiné détonne sur le sol réaliste ; essai de Damien du 27 octobre 2026 :
+        /// « les espèces de buissons tout rouges » étaient des buissons d'automne du MegaKit, mêlés aux plantes de Poly Haven).
         /// </summary>
         public static IReadOnlyList<string> ForCatalog(IEnumerable<string> paths, StyleSlot slot, int max)
         {
             IReadOnlyList<string> all = Candidates(paths, slot);
-            if (slot == StyleSlot.Rock && all.Any(IsRealistic)) all = all.Where(IsRealistic).ToList();
+            if ((slot == StyleSlot.Rock || slot == StyleSlot.Plant || slot == StyleSlot.Shrub) && all.Any(IsRealistic)) all = all.Where(IsRealistic).ToList();
             return all.Take(Math.Max(0, max)).ToList();
+        }
+
+        /// <summary>
+        /// Modèles d'un objet de décor (<see cref="StyleProp"/>), dans l'ordre des <see cref="Candidates"/> : FBX d'abord, puis sources
+        /// réalistes, puis premier mot cherché, puis chemin ordinal.
+        /// </summary>
+        public static IReadOnlyList<string> PropCandidates(IEnumerable<string> paths, StyleProp prop)
+        {
+            (string[] want, string[] avoid) = PropWords[prop];
+            int Rank(string p)
+            {
+                string file = Key(FileName(p));
+                for (int i = 0; i < want.Length; i++)
+                    if (file.Contains(want[i])) return i;
+                return want.Length;
+            }
+            return (paths ?? Array.Empty<string>()).Where(p =>
+                {
+                    string file = Key(FileName(p));
+                    return want.Any(w => file.Contains(w)) && !avoid.Any(a => file.Contains(a));
+                })
+                .OrderBy(p => p.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(p => IsRealistic(p) ? 0 : 1)
+                .ThenBy(Rank)
+                .ThenBy(p => p, StringComparer.Ordinal).ToList();
         }
 
         private static int WantRank(string path, StyleSlot slot)
@@ -287,10 +408,10 @@ namespace EdS.Runtime
         public static bool IsColorMap(string path) =>
             !IsNormalMap(path) && !Words(path).Any(w => w == "rough" || w == "roughness" || w == "ao" || w == "disp" || w == "height" || w == "arm"
                 || w == "spec" || w == "specular" || w == "metal" || w == "metallic" || w == "gloss" || w == "alpha" || w == "opacity" || w == "mask"
-                || w == "glow" || w == "emission" || w == "emissive");
+                || w == "glow" || w == "emission" || w == "emissive" || w == "translucency" || w == "transmission" || w == "opass");
 
-        /// <summary>Carte de transparence (« _alpha_ », « _opacity »).</summary>
-        public static bool IsAlphaMap(string path) => Words(path).Any(w => w == "alpha" || w == "opacity");
+        /// <summary>Carte de transparence (« _alpha_ », « _opacity », « _opass » du moulin de Sketchfab).</summary>
+        public static bool IsAlphaMap(string path) => Words(path).Any(w => w == "alpha" || w == "opacity" || w == "opass");
 
         /// <summary>Texture de couleur (ou de relief) choisie pour une couche de sol, ou null ; ordre ordinal des chemins.</summary>
         public static string? GroundTexture(IEnumerable<string> paths, StyleGround ground, bool normal) =>
@@ -568,6 +689,7 @@ namespace EdS.Runtime
         {
             if (!Segments(path).Any(s => s == "surfaces")) return null;
             string file = Key(FileName(path));
+            if (file.Contains("bark")) return StyleSurface.Bark;
             if (file.Contains("plaster")) return StyleSurface.Plaster;
             if (file.Contains("roof") || file.Contains("tile")) return StyleSurface.Roof;
             if (file.Contains("plank") || file.Contains("wood") || file.Contains("timber")) return StyleSurface.Wood;
@@ -582,15 +704,307 @@ namespace EdS.Runtime
                 .OrderBy(p => p, StringComparer.Ordinal).FirstOrDefault();
 
         /// <summary>
-        /// Matière d'un obstacle bâti : pierre pour les murs, planches pour les piliers ; null pour les autres (le moulin a ses propres
-        /// matières : crépi, tuiles, planches ; la rivière son eau).
+        /// Matière d'un obstacle bâti : écorce pour les murs et les portes (palissade de rondins, choix de Damien du 27 octobre 2026),
+        /// planches pour les piliers ; null pour les autres (le moulin a ses propres matières : crépi, tuiles, planches ; la rivière son eau).
         /// </summary>
         public static StyleSurface? SurfaceFor(string id)
         {
-            string key = Key(id);
-            if (key.StartsWith("mur", StringComparison.Ordinal)) return StyleSurface.Stone;
-            if (key.StartsWith("pilier", StringComparison.Ordinal)) return StyleSurface.Wood;
+            if (FenceFor(id) == StyleFence.Palisade) return StyleSurface.Bark;
+            if (Key(id).StartsWith("pilier", StringComparison.Ordinal)) return StyleSurface.Wood;
             return null;
+        }
+
+        /// <summary>
+        /// Clôture qu'habille un obstacle en longueur : palissade de rondins pour les murs et les portes (« mur_nord », « porte_moulin ») ;
+        /// essai de Damien du 27 octobre 2026 : « le mur à côté de l'archer ne me plaît pas, peut-être mettre quelque chose d'autre » ; haie
+        /// d'arbustes pour les haies (« haie_ouest », jusque-là un bloc de pierre). Aucune pour les autres.
+        /// </summary>
+        public static StyleFence FenceFor(string id)
+        {
+            string key = Key(id);
+            if (key.StartsWith("mur", StringComparison.Ordinal) || key.StartsWith("porte", StringComparison.Ordinal)
+                || key.StartsWith("palissade", StringComparison.Ordinal)) return StyleFence.Palisade;
+            if (key.StartsWith("haie", StringComparison.Ordinal)) return StyleFence.Hedge;
+            return StyleFence.None;
+        }
+
+        /// <summary>Rayon (m) d'un rondin de palissade.</summary>
+        public const double LogRadius = 0.16;
+
+        /// <summary>
+        /// Rondins d'une palissade sur l'emprise rectangulaire [minX, maxX] × [minZ, maxZ] : alignés le long du grand côté, jointifs, en deux
+        /// rangs décalés si l'emprise est assez épaisse (sinon un seul, au milieu) ; hauteurs de 2,6 à 3,1 m, fixes d'après
+        /// l'identifiant (les mêmes à chaque lancement). Le moteur garde son emprise : la palissade n'en sort pas.
+        /// </summary>
+        public static IReadOnlyList<StyleLog> Palisade(double minX, double minZ, double maxX, double maxZ, string id)
+        {
+            var logs = new List<StyleLog>();
+            bool alongX = maxX - minX >= maxZ - minZ;
+            double length = alongX ? maxX - minX : maxZ - minZ, thickness = alongX ? maxZ - minZ : maxX - minX;
+            if (length < 2 * LogRadius || thickness <= 0) return logs;
+            double step = 2 * LogRadius * 0.92;
+            int count = (int)Math.Floor((length - 2 * LogRadius) / step) + 1;
+            double start = (alongX ? minX : minZ) + (length - (count - 1) * step) / 2;
+            double middle = alongX ? (minZ + maxZ) / 2 : (minX + maxX) / 2;
+            bool two = thickness >= 4 * LogRadius;
+            double offset = two ? Math.Min(0.14, thickness / 2 - LogRadius) : 0;
+            for (int row = 0; row < (two ? 2 : 1); row++)
+                for (int i = 0; i < count - (row == 1 ? 1 : 0); i++)
+                {
+                    double along = start + i * step + (row == 1 ? step / 2 : 0);
+                    double across = middle + (row == 0 ? offset : -offset);
+                    double height = 2.6 + 0.005 * Variant(id + "/" + row + "/" + i, 101);
+                    logs.Add(alongX ? new StyleLog(along, across, LogRadius, height) : new StyleLog(across, along, LogRadius, height));
+                }
+            return logs;
+        }
+
+        /// <summary>
+        /// Places régulières le long du grand côté de l'emprise [minX, maxX] × [minZ, maxZ], au milieu de sa largeur, tous les
+        /// <paramref name="spacing"/> mètres environ (au moins une ; les bouts à une demi-place du bord) : les arbustes d'une haie.
+        /// </summary>
+        public static IReadOnlyList<(double X, double Z)> Row(double minX, double minZ, double maxX, double maxZ, double spacing)
+        {
+            bool alongX = maxX - minX >= maxZ - minZ;
+            double length = alongX ? maxX - minX : maxZ - minZ;
+            int count = Math.Max(1, (int)Math.Round(length / Math.Max(0.1, spacing)));
+            double step = length / count;
+            var spots = new List<(double X, double Z)>();
+            for (int i = 0; i < count; i++)
+            {
+                double along = (alongX ? minX : minZ) + step * (i + 0.5);
+                spots.Add(alongX ? (along, (minZ + maxZ) / 2) : ((minX + maxX) / 2, along));
+            }
+            return spots;
+        }
+
+        /// <summary>
+        /// Distance (m) d'un point au bord d'un polygone convexe (sommets dans un sens ou dans l'autre) : positive dedans, négative dehors
+        /// (la plus petite des distances signées aux côtés). <see cref="double.NegativeInfinity"/> pour un polygone de moins de 3 sommets.
+        /// </summary>
+        public static double InsideDistance(double x, double z, IReadOnlyList<(double X, double Z)> polygon)
+        {
+            if (polygon == null || polygon.Count < 3) return double.NegativeInfinity;
+            double area = 0;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var a = polygon[i];
+                var b = polygon[(i + 1) % polygon.Count];
+                area += a.X * b.Z - b.X * a.Z;
+            }
+            double sign = area >= 0 ? 1 : -1;
+            double inside = double.PositiveInfinity;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var a = polygon[i];
+                var b = polygon[(i + 1) % polygon.Count];
+                double ex = b.X - a.X, ez = b.Z - a.Z, len = Math.Sqrt(ex * ex + ez * ez);
+                if (len < 1e-9) continue;
+                // Sens trigonométrique (aire positive) : l'intérieur est à gauche de chaque côté.
+                double d = sign * (ex * (z - a.Z) - ez * (x - a.X)) / len;
+                inside = Math.Min(inside, d);
+            }
+            return double.IsPositiveInfinity(inside) ? double.NegativeInfinity : inside;
+        }
+
+        /// <summary>
+        /// Bord de la réunion de polygones convexes (les bras de la rivière et le passage sous le pont) : leurs côtés, privés des morceaux
+        /// qui touchent ou traversent un autre polygone (revue Codex de la PR #58 : deux polygones voisins gardaient leur côté commun comme
+        /// berge, et deux bandes de terre coupaient la rivière de part et d'autre du pont).
+        /// </summary>
+        public static IReadOnlyList<(double X0, double Z0, double X1, double Z1)> UnionBoundary(IReadOnlyList<IReadOnlyList<(double X, double Z)>> polygons)
+        {
+            var boundary = new List<(double X0, double Z0, double X1, double Z1)>();
+            if (polygons == null) return boundary;
+            for (int i = 0; i < polygons.Count; i++)
+            {
+                IReadOnlyList<(double X, double Z)> polygon = polygons[i];
+                if (polygon == null || polygon.Count < 3) continue;
+                double sign = Area(polygon) >= 0 ? 1 : -1;
+                for (int e = 0; e < polygon.Count; e++)
+                {
+                    var a = polygon[e];
+                    var b = polygon[(e + 1) % polygon.Count];
+                    double ex = b.X - a.X, ez = b.Z - a.Z, len = Math.Sqrt(ex * ex + ez * ez);
+                    if (len < 1e-9) continue;
+                    // Morceaux du côté (paramètre t de 0 à 1) qui ne sont pas un bord de la réunion : juste au-delà du côté (0,1 mm vers
+                    // l'extérieur), on est encore dans un autre polygone. Un côté commun à deux voisins disparaît ; deux côtés alignés du
+                    // même côté (polygones qui se chevauchent) restent.
+                    double ox = sign * ez / len * 1e-4, oz = -sign * ex / len * 1e-4;
+                    var covered = new List<(double T0, double T1)>();
+                    for (int j = 0; j < polygons.Count; j++)
+                        if (j != i && Clip((a.X + ox, a.Z + oz), (b.X + ox, b.Z + oz), polygons[j]) is (double t0, double t1) && t1 - t0 > 1e-9)
+                            covered.Add((t0, t1));
+                    double start = 0;
+                    foreach (var c in covered.OrderBy(c => c.T0))
+                    {
+                        if (c.T0 > start + 1e-9) boundary.Add(Lerp(a, b, start, c.T0));
+                        start = Math.Max(start, c.T1);
+                    }
+                    if (start < 1 - 1e-9) boundary.Add(Lerp(a, b, start, 1));
+                }
+            }
+            return boundary;
+        }
+
+        /// <summary>
+        /// Distance (m) d'un point au bord de la réunion de polygones convexes (<see cref="UnionBoundary"/>, calculé une fois) : positive
+        /// dedans, négative dehors.
+        /// </summary>
+        public static double UnionDistance(double x, double z, IReadOnlyList<IReadOnlyList<(double X, double Z)>> polygons,
+            IReadOnlyList<(double X0, double Z0, double X1, double Z1)> boundary)
+        {
+            if (polygons == null || boundary == null || boundary.Count == 0) return double.NegativeInfinity;
+            double nearest = double.PositiveInfinity;
+            foreach (var s in boundary)
+            {
+                double ex = s.X1 - s.X0, ez = s.Z1 - s.Z0, len2 = ex * ex + ez * ez;
+                double t = len2 < 1e-18 ? 0 : Math.Max(0, Math.Min(1, ((x - s.X0) * ex + (z - s.Z0) * ez) / len2));
+                double dx = x - (s.X0 + t * ex), dz = z - (s.Z0 + t * ez);
+                nearest = Math.Min(nearest, Math.Sqrt(dx * dx + dz * dz));
+            }
+            bool inside = polygons.Any(p => p != null && InsideDistance(x, z, p) >= 0);
+            return inside ? nearest : -nearest;
+        }
+
+        /// <summary>Morceau [t0, t1] du segment [a, b] dans le polygone convexe (bords compris, à 1 µm près), ou null.</summary>
+        private static (double T0, double T1)? Clip((double X, double Z) a, (double X, double Z) b, IReadOnlyList<(double X, double Z)> polygon)
+        {
+            if (polygon == null || polygon.Count < 3) return null;
+            double sign = Area(polygon) >= 0 ? 1 : -1, t0 = 0, t1 = 1;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var p = polygon[i];
+                var q = polygon[(i + 1) % polygon.Count];
+                double ex = q.X - p.X, ez = q.Z - p.Z, len = Math.Sqrt(ex * ex + ez * ez);
+                if (len < 1e-9) continue;
+                // Distance signée (positive dedans) le long du segment : f(t) = f0 + t * df, gardée là où f(t) >= -1e-6.
+                double f0 = sign * (ex * (a.Z - p.Z) - ez * (a.X - p.X)) / len;
+                double f1 = sign * (ex * (b.Z - p.Z) - ez * (b.X - p.X)) / len;
+                double df = f1 - f0;
+                if (Math.Abs(df) < 1e-12)
+                {
+                    if (f0 < -1e-6) return null;
+                    continue;
+                }
+                double t = (-1e-6 - f0) / df;
+                if (df > 0) t0 = Math.Max(t0, t);
+                else t1 = Math.Min(t1, t);
+                if (t0 > t1) return null;
+            }
+            return (t0, t1);
+        }
+
+        /// <summary>Double de l'aire signée (positive dans le sens où l'intérieur est à gauche des côtés, comme <see cref="InsideDistance"/>).</summary>
+        private static double Area(IReadOnlyList<(double X, double Z)> polygon)
+        {
+            double area = 0;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var p = polygon[i];
+                var q = polygon[(i + 1) % polygon.Count];
+                area += p.X * q.Z - q.X * p.Z;
+            }
+            return area;
+        }
+
+        private static (double X0, double Z0, double X1, double Z1) Lerp((double X, double Z) a, (double X, double Z) b, double t0, double t1) =>
+            (a.X + (b.X - a.X) * t0, a.Z + (b.Z - a.Z) * t0, a.X + (b.X - a.X) * t1, a.Z + (b.Z - a.Z) * t1);
+
+        /// <summary>
+        /// Profondeur (m, positive) du lit de la rivière à <paramref name="inside"/> mètres en dedans de son bord : nulle au bord et dehors,
+        /// puis la berge descend en douceur jusqu'à <see cref="RiverBed"/> sur <see cref="RiverBank"/> mètres.
+        /// </summary>
+        public static double ChannelDepth(double inside) =>
+            inside <= 0 ? 0 : RiverBed * Smooth(Math.Min(1, inside / RiverBank));
+
+        /// <summary>Demi-largeur (m) de la bande de terre mouillée autour du bord de la rivière.</summary>
+        public const double RiverShore = 0.8;
+
+        /// <summary>
+        /// Couches du sol près de la rivière (<paramref name="inside"/> : distance en dedans de son bord, négative dehors) : la terre gagne
+        /// sur la berge et le lit (pas d'herbe sous l'eau), pleine à <see cref="RiverShore"/> mètres en dedans, sans effet à
+        /// <see cref="RiverShore"/> mètres dehors ; la somme reste 1.
+        /// </summary>
+        public static StyleMix RiverMix(StyleMix mix, double inside)
+        {
+            double wet = Math.Max(0, Math.Min(1, (inside + RiverShore) / (2 * RiverShore)));
+            return new StyleMix(mix.Soil * (1 - wet) + wet, mix.Rock * (1 - wet), mix.Grass * (1 - wet));
+        }
+
+        /// <summary>Angle (degrés, 0 vers +z, 90 vers +x, comme Unity) pour regarder de (fromX, fromZ) vers (toX, toZ).</summary>
+        public static double FaceYaw(double fromX, double fromZ, double toX, double toZ) =>
+            Math.Atan2(toX - fromX, toZ - fromZ) * 180 / Math.PI;
+
+        /// <summary>
+        /// Angle <paramref name="current"/> tourné vers <paramref name="target"/> d'au plus <paramref name="maxStep"/> degrés, par le plus
+        /// court chemin ; résultat dans ]-180, 180].
+        /// </summary>
+        public static double Turn(double current, double target, double maxStep)
+        {
+            double delta = Wrap(target - current);
+            double step = Math.Max(-Math.Abs(maxStep), Math.Min(Math.Abs(maxStep), delta));
+            return Wrap(current + step);
+        }
+
+        private static double Wrap(double angle)
+        {
+            double a = angle % 360;
+            if (a <= -180) a += 360;
+            if (a > 180) a -= 360;
+            return a;
+        }
+
+        /// <summary>
+        /// Pont fait d'un ponton modulaire (Poly Haven « modular_wooden_pier » : planches, pieux et tronçons) : la pièce montrée, le premier
+        /// tronçon dans l'ordre ordinal (« section_01 », tablier posé sur ses pieux), sinon la première pièce ; -1 s'il n'y a rien.
+        /// </summary>
+        public static int BridgeSection(IReadOnlyList<string> parts)
+        {
+            if (parts == null || parts.Count == 0) return -1;
+            var sections = parts.Select((p, i) => (Name: p ?? string.Empty, Index: i)).Where(p => Key(p.Name).Contains("section"))
+                .OrderBy(p => p.Name, StringComparer.Ordinal).ToList();
+            return sections.Count > 0 ? sections[0].Index : 0;
+        }
+
+        /// <summary>
+        /// Pièces d'un modèle livré en plusieurs exemplaires posés côte à côte (le moulin de Sketchfab : le moulin détaillé et sa version
+        /// simplifiée, à une vingtaine de mètres) : la pièce la plus détaillée (<paramref name="detail"/> le plus grand, la première à égalité)
+        /// et, de proche en proche, celles dont la boîte touche une pièce gardée (à <paramref name="margin"/> mètres près). Indices dans
+        /// l'ordre ; vide sans pièce.
+        /// </summary>
+        public static IReadOnlyList<int> Cluster(IReadOnlyList<(double MinX, double MinY, double MinZ, double MaxX, double MaxY, double MaxZ)> boxes,
+            IReadOnlyList<int> detail, double margin = 0.05)
+        {
+            if (boxes == null || boxes.Count == 0) return Array.Empty<int>();
+            int first = 0;
+            for (int i = 1; i < boxes.Count; i++)
+                if (detail != null && i < detail.Count && detail[i] > (first < detail.Count ? detail[first] : 0)) first = i;
+            var kept = new HashSet<int> { first };
+            bool grew = true;
+            while (grew)
+            {
+                grew = false;
+                for (int i = 0; i < boxes.Count; i++)
+                {
+                    if (kept.Contains(i)) continue;
+                    var b = boxes[i];
+                    if (!kept.Any(k => boxes[k].MinX - margin <= b.MaxX && b.MinX <= boxes[k].MaxX + margin && boxes[k].MinY - margin <= b.MaxY
+                        && b.MinY <= boxes[k].MaxY + margin && boxes[k].MinZ - margin <= b.MaxZ && b.MinZ <= boxes[k].MaxZ + margin)) continue;
+                    kept.Add(i);
+                    grew = true;
+                }
+            }
+            return kept.OrderBy(i => i).ToList();
+        }
+
+        /// <summary>Pièce qui donne la hauteur du tablier du ponton (« planks ») : le dessus des planches ; -1 s'il n'y en a pas.</summary>
+        public static int BridgeDeck(IReadOnlyList<string> parts)
+        {
+            if (parts == null) return -1;
+            for (int i = 0; i < parts.Count; i++)
+                if (Key(parts[i]).Contains("plank")) return i;
+            return -1;
         }
 
         /// <summary>Ce qu'habille un obstacle du décor : arbres, blocs de la carrière et pierres du Seuil. Null : il garde sa forme.</summary>
@@ -603,15 +1017,15 @@ namespace EdS.Runtime
         }
 
         /// <summary>
-        /// Couche de sol qu'appelle un obstacle autour de lui : la roche pour les blocs, les pierres du Seuil, les murs et les piliers, la
-        /// terre pour les arbres et le moulin ; null pour les autres (rivière…).
+        /// Couche de sol qu'appelle un obstacle autour de lui : la roche pour les blocs, les pierres du Seuil et les piliers, la terre pour
+        /// les arbres, le moulin et les clôtures (palissades, haies, portes : terre battue au pied) ; null pour les autres (rivière…).
         /// </summary>
         public static StyleGround? GroundFor(string id)
         {
             string key = Key(id);
-            if (ForObstacle(id) == StyleSlot.Rock || key.StartsWith("mur", StringComparison.Ordinal) || key.StartsWith("pilier", StringComparison.Ordinal))
-                return StyleGround.Rock;
-            if (key.StartsWith("arbre", StringComparison.Ordinal) || key.StartsWith("moulin", StringComparison.Ordinal)) return StyleGround.Soil;
+            if (ForObstacle(id) == StyleSlot.Rock || key.StartsWith("pilier", StringComparison.Ordinal)) return StyleGround.Rock;
+            if (key.StartsWith("arbre", StringComparison.Ordinal) || key.StartsWith("moulin", StringComparison.Ordinal) || FenceFor(id) != StyleFence.None)
+                return StyleGround.Soil;
             return null;
         }
 

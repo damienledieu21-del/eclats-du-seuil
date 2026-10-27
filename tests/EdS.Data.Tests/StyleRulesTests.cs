@@ -222,8 +222,8 @@ public class StyleRulesTests
     [Fact]
     public void Les_modeles_realistes_passent_devant()
     {
-        // Essai réaliste : le paladin de Mixamo avant le chevalier des packs, les rochers de Poly Haven seuls s'il y en a, les plantes
-        // réalistes d'abord puis celles des packs.
+        // Essai réaliste : le paladin de Mixamo avant le chevalier des packs, les rochers et les plantes de Poly Haven seuls s'il y en a
+        // (essai du 27 octobre 2026 : les buissons rouges du MegaKit détonnaient parmi les plantes réalistes).
         var models = new[]
         {
             "Assets/Style/Knight/KnightCharacter.fbx", "Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", "Assets/Style/Mixamo/Sword And Shield Idle.fbx",
@@ -232,8 +232,9 @@ public class StyleRulesTests
         };
         Assert.Equal("Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx", StyleRules.Candidates(models, StyleSlot.Hero)[0]);
         Assert.Equal(new[] { "Assets/Style/PolyHaven/rock_moss_set_02/rock_moss_set_02_1k.fbx" }, StyleRules.ForCatalog(models, StyleSlot.Rock, 6));
-        Assert.Equal(new[] { "Assets/Style/PolyHaven/grass_medium_01/grass_medium_01_1k.fbx", "Assets/Style/Nature/FBX/Bush_Common.fbx" },
-            StyleRules.ForCatalog(models, StyleSlot.Plant, 12));
+        Assert.Equal(new[] { "Assets/Style/PolyHaven/grass_medium_01/grass_medium_01_1k.fbx" }, StyleRules.ForCatalog(models, StyleSlot.Plant, 12));
+        // Sans plante réaliste, celles des packs restent.
+        Assert.Equal(new[] { "Assets/Style/Nature/FBX/Bush_Common.fbx" }, StyleRules.ForCatalog(models.Where(m => !m.Contains("PolyHaven")), StyleSlot.Plant, 12));
         Assert.Single(StyleRules.ForCatalog(models, StyleSlot.Plant, 1));
         Assert.Empty(StyleRules.ForCatalog(models, StyleSlot.Plant, -3));
         // Sans rocher réaliste, ceux des packs restent.
@@ -408,7 +409,8 @@ public class StyleRulesTests
         Assert.Empty(StyleRules.Forest(-30, -20, 30, 20, 3, 50));             // bande plus étroite que l'écart au bord
         Assert.Equal(StyleGround.Rock, StyleRules.GroundFor("bloc3"));
         Assert.Equal(StyleGround.Rock, StyleRules.GroundFor("pierre_seuil2"));
-        Assert.Equal(StyleGround.Rock, StyleRules.GroundFor("mur_est"));
+        Assert.Equal(StyleGround.Soil, StyleRules.GroundFor("mur_est"));          // palissade : terre battue au pied (27 octobre 2026)
+        Assert.Equal(StyleGround.Soil, StyleRules.GroundFor("haie_ouest"));
         Assert.Equal(StyleGround.Rock, StyleRules.GroundFor("pilier1"));
         Assert.Equal(StyleGround.Soil, StyleRules.GroundFor("arbre7"));
         Assert.Equal(StyleGround.Soil, StyleRules.GroundFor("moulin"));
@@ -425,7 +427,7 @@ public class StyleRulesTests
         string look = Read("unity", "Assets", "EdS", "Game", "StyleLook.cs");
         string editor = Read("unity", "Assets", "EdS", "Editor", "EdsStyle.cs");
         // Le terrain remplace le sol simple (et ses données sont rendues), la forêt pousse seulement sur le terrain.
-        Assert.Contains("_terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space));", view, StringComparison.Ordinal);
+        Assert.Contains("_terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space),", view, StringComparison.Ordinal);
         Assert.Contains("if (terrain) Forest(space);", view, StringComparison.Ordinal);
         Assert.Contains("? StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true)", view, StringComparison.Ordinal);
         // Revue Codex de la PR #56 : les arbres de la lisière sont coupés devant le Bastion comme ceux des obstacles.
@@ -519,7 +521,8 @@ public class StyleRulesTests
         Assert.Equal(textures[1], StyleRules.SurfaceTexture(textures, StyleSurface.Stone, true));
         Assert.Null(StyleRules.SurfaceTexture(textures, StyleSurface.Roof, true));
         Assert.Null(StyleRules.SurfaceTexture(null!, StyleSurface.Roof, false));
-        Assert.Equal(StyleSurface.Stone, StyleRules.SurfaceFor("mur_nord"));
+        Assert.Equal(StyleSurface.Bark, StyleRules.SurfaceFor("mur_nord"));       // palissade de rondins (choix de Damien du 27 octobre 2026)
+        Assert.Equal(StyleSurface.Bark, StyleRules.SurfaceFor("porte_moulin"));
         Assert.Equal(StyleSurface.Wood, StyleRules.SurfaceFor("pilier3"));
         Assert.Null(StyleRules.SurfaceFor("moulin"));
         Assert.Null(StyleRules.SurfaceFor("riviere_sud"));
@@ -575,5 +578,257 @@ public class StyleRulesTests
         Assert.DoesNotContain("if (!Untextured(modelPath)) return;", editor, StringComparison.Ordinal);
         Assert.Contains("mesh.RecalculateNormals();\n            // Revue Codex de la PR #57 (2e tour) : les cartes de relief (murs, tuiles, planches, vagues) ont besoin des tangentes.\n            mesh.RecalculateTangents();",
             view.Replace("\r\n", "\n"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Objets_de_la_forge_du_pont_et_de_l_herbe_de_l_Aube()
+    {
+        // Demandes de Damien du 27 octobre 2026 : forge, minerais, herbe de l'Aube, pont, moulin. Noms des fichiers téléchargés.
+        var models = new[]
+        {
+            "Assets/Style/PolyHaven/stone_fire_pit/stone_fire_pit_1k.fbx", "Assets/Style/PolyHaven/cross_pein_hammer/cross_pein_hammer_1k.fbx",
+            "Assets/Style/PolyHaven/wooden_crate_02/wooden_crate_02_1k.fbx", "Assets/Style/PolyHaven/barrel_03/barrel_03_1k.fbx",
+            "Assets/Style/PolyHaven/modular_wooden_pier/modular_wooden_pier_1k.fbx", "Assets/Style/PolyHaven/periwinkle_plant/periwinkle_plant_1k.fbx",
+            "Assets/Style/Sketchfab/Windmill/windmill.fbx", "Assets/Style/PolyHaven/rock_07/rock_07_1k.fbx", "Assets/Style/Nature/FBX/Bush_Common.fbx",
+            "Assets/Style/PolyHaven/shrub_02/shrub_02_1k.fbx",
+        };
+        Assert.Equal(new[] { models[0] }, StyleRules.PropCandidates(models, StyleProp.FirePit));
+        Assert.Equal(new[] { models[1] }, StyleRules.PropCandidates(models, StyleProp.Hammer));
+        Assert.Equal(new[] { models[2] }, StyleRules.PropCandidates(models, StyleProp.Crate));
+        Assert.Equal(new[] { models[3] }, StyleRules.PropCandidates(models, StyleProp.Barrel));
+        Assert.Equal(new[] { models[4] }, StyleRules.PropCandidates(models, StyleProp.Bridge));
+        Assert.Equal(new[] { models[5] }, StyleRules.PropCandidates(models, StyleProp.Herb));
+        Assert.Equal(new[] { models[6] }, StyleRules.PropCandidates(models, StyleProp.Mill));
+        Assert.Empty(StyleRules.PropCandidates(models, StyleProp.Anvil));     // pas d'enclume : faite par le code
+        Assert.Empty(StyleRules.PropCandidates(null!, StyleProp.Mill));
+        Assert.True(StyleRules.IsRealistic(models[6]));                         // Sketchfab : source réaliste
+        // Le foyer « stone_fire_pit » n'est pas un rocher ; la pervenche n'est pas une plante du décor.
+        Assert.Equal(new[] { models[7] }, StyleRules.ForCatalog(models, StyleSlot.Rock, 6));
+        Assert.DoesNotContain(models[5], StyleRules.ForCatalog(models, StyleSlot.Plant, 16));
+        // Arbustes des haies : ceux de Poly Haven seuls (pas le buisson rouge du MegaKit).
+        Assert.Equal(new[] { models[9] }, StyleRules.ForCatalog(models, StyleSlot.Shrub, 6));
+        Assert.Equal(new[] { models[8] }, StyleRules.ForCatalog(models.Where(m => !m.Contains("PolyHaven")), StyleSlot.Shrub, 6));
+        Assert.False(StyleRules.Matches("Assets/Style/Mixamo/Odile/Odile Idle.fbx", StyleSlot.Character));
+        // Textures du ponton (deux matières) et de la pervenche : la translucidité n'est pas une couleur.
+        var pier = new[]
+        {
+            "textures/modular_wooden_pier_planks_diff_1k.png", "textures/modular_wooden_pier_planks_nor_gl_1k.png", "textures/modular_wooden_pier_planks_rough_1k.png",
+            "textures/modular_wooden_pier_poles_diff_1k.png", "textures/modular_wooden_pier_poles_nor_gl_1k.png",
+        };
+        Assert.Equal(pier[3], StyleRules.MaterialTexture("modular_wooden_pier_poles", pier, false));
+        Assert.Equal(pier[1], StyleRules.MaterialTexture("modular_wooden_pier_planks", pier, true));
+        Assert.False(StyleRules.IsColorMap("periwinkle_plant_translucency_1k.png"));
+        Assert.Equal(StyleSurface.Bark, StyleRules.SurfaceOf("Assets/Style/PolyHaven/Surfaces/bark_brown_02_diff_1k.jpg"));
+        Assert.True(StyleRules.IsNormalMap("Assets/Style/PolyHaven/Surfaces/bark_brown_02_nor_gl_1k.jpg"));
+    }
+
+    [Fact]
+    public void Palissade_de_rondins_et_haie()
+    {
+        // Choix de Damien du 27 octobre 2026 : le mur près de l'archer devient une palissade de rondins taillés en pointe.
+        Assert.Equal(StyleFence.Palisade, StyleRules.FenceFor("mur_nord"));
+        Assert.Equal(StyleFence.Palisade, StyleRules.FenceFor("porte_moulin"));
+        Assert.Equal(StyleFence.Hedge, StyleRules.FenceFor("haie_est"));
+        Assert.Equal(StyleFence.None, StyleRules.FenceFor("moulin"));
+        Assert.Equal(StyleFence.None, StyleRules.FenceFor("pilier2"));
+        // « mur_nord » des Vallons : x 17..18, z 1,5..14 (1 m d'épaisseur, 12,5 m de long).
+        IReadOnlyList<StyleLog> logs = StyleRules.Palisade(17, 1.5, 18, 14, "mur_nord");
+        Assert.True(logs.Count > 70);
+        foreach (StyleLog log in logs)
+        {
+            Assert.InRange(log.X - log.Radius, 17 - 1e-9, 18 + 1e-9);                // dans l'emprise du moteur
+            Assert.InRange(log.Z - log.Radius, 1.5 - 1e-9, 14 + 1e-9);
+            Assert.InRange(log.Z + log.Radius, 1.5 - 1e-9, 14 + 1e-9);
+            Assert.InRange(log.Height, 2.6, 3.1 + 1e-9);
+        }
+        Assert.Equal(2, logs.Select(l => Math.Round(l.X, 6)).Distinct().Count());      // deux rangs décalés
+        Assert.Equal(logs, StyleRules.Palisade(17, 1.5, 18, 14, "mur_nord"));         // les mêmes à chaque lancement
+        // Emprise mince : un seul rang au milieu ; le long de x si c'est le grand côté ; rien si trop petite.
+        IReadOnlyList<StyleLog> thin = StyleRules.Palisade(0, 0, 6, 0.3, "porte");
+        Assert.All(thin, l => Assert.Equal(0.15, l.Z, 6));
+        Assert.Empty(StyleRules.Palisade(0, 0, 0.2, 0.2, "x"));
+        Assert.Empty(StyleRules.Palisade(0, 0, 5, 0, "x"));
+        // Haie : un arbuste par mètre environ, au milieu de l'emprise.
+        var row = StyleRules.Row(-24, 19, -6, 20, 1.1);
+        Assert.Equal(16, row.Count);
+        Assert.All(row, p => Assert.Equal(19.5, p.Z, 6));
+        Assert.InRange(row[0].X, -24, -23);
+        Assert.InRange(row[row.Count - 1].X, -7, -6);
+        Assert.Single(StyleRules.Row(0, 0, 0.5, 0.5, 2));
+    }
+
+    [Fact]
+    public void Lit_de_la_riviere_et_berges()
+    {
+        // Essai de Damien du 27 octobre 2026 (« l'eau n'est pas du tout réaliste ») : lit creusé sous la rivière, berges en pente douce.
+        var square = new List<(double X, double Z)> { (4, -18), (7, -18), (7, -2), (4, -2) };
+        var reversed = square.AsEnumerable().Reverse().ToList();
+        Assert.Equal(1.5, StyleRules.InsideDistance(5.5, -10, square), 9);
+        Assert.Equal(1.5, StyleRules.InsideDistance(5.5, -10, reversed), 9);     // sens des sommets indifférent
+        Assert.Equal(0.5, StyleRules.InsideDistance(4.5, -10, square), 9);
+        Assert.Equal(-2, StyleRules.InsideDistance(2, -10, square), 9);
+        Assert.True(double.IsNegativeInfinity(StyleRules.InsideDistance(0, 0, new List<(double X, double Z)> { (0, 0), (1, 0) })));
+        Assert.Equal(0, StyleRules.ChannelDepth(-1));
+        Assert.Equal(0, StyleRules.ChannelDepth(0));
+        Assert.Equal(StyleRules.RiverBed, StyleRules.ChannelDepth(StyleRules.RiverBank), 9);
+        Assert.Equal(StyleRules.RiverBed, StyleRules.ChannelDepth(5), 9);
+        double last = 0;
+        for (double d = 0; d <= StyleRules.RiverBank; d += 0.05)
+        {
+            Assert.True(StyleRules.ChannelDepth(d) >= last);
+            last = StyleRules.ChannelDepth(d);
+        }
+        // La surface de l'eau est sous le sol où l'on marche, au-dessus du lit.
+        Assert.InRange(StyleRules.WaterLevel, -StyleRules.RiverBed, -0.05);
+        // Terre mouillée sur la berge et dans le lit, sans effet loin du bord ; la somme reste 1.
+        var grass = new StyleMix(0, 0, 1);
+        Assert.Equal(1, StyleRules.RiverMix(grass, 2).Soil, 9);
+        Assert.Equal(1, StyleRules.RiverMix(grass, -2).Grass, 9);
+        StyleMix shore = StyleRules.RiverMix(new StyleMix(0.2, 0.3, 0.5), 0);
+        Assert.Equal(1, shore.Soil + shore.Rock + shore.Grass, 9);
+        Assert.True(shore.Soil > 0.2);
+    }
+
+    [Fact]
+    public void Les_PNJ_se_tournent_vers_le_joueur()
+    {
+        // Essai de Damien du 27 octobre 2026 : « Odile est tournée du mauvais côté ».
+        Assert.Equal(0, StyleRules.FaceYaw(0, 0, 0, 5), 9);       // +z
+        Assert.Equal(90, StyleRules.FaceYaw(0, 0, 3, 0), 9);      // +x
+        Assert.Equal(180, Math.Abs(StyleRules.FaceYaw(0, 0, 0, -1)), 9);
+        Assert.Equal(-90, StyleRules.FaceYaw(2, 2, 1, 2), 9);
+        Assert.Equal(30, StyleRules.Turn(0, 90, 30), 9);
+        Assert.Equal(90, StyleRules.Turn(80, 90, 30), 9);         // n'outrepasse pas la cible
+        Assert.Equal(-170, StyleRules.Turn(170, -170, 30), 9);    // par le plus court, à travers 180
+        Assert.Equal(180, StyleRules.Turn(-170, 170, 10), 9);     // -170 → 170 : 20 degrés par -180, pas 340 dans l'autre sens
+        Assert.Equal(-60, StyleRules.Turn(300, 0, 0), 9);         // ramené dans ]-180, 180]
+        Assert.True(StyleRules.FaceRange > 3);
+    }
+
+    [Fact]
+    public void Pont_fait_d_un_troncon_du_ponton()
+    {
+        var parts = new[]
+        {
+            "modular_wooden_pier_section_03", "modular_wooden_pier_planks", "modular_wooden_pier_section_01", "modular_wooden_pier_poles",
+            "modular_wooden_pier_section_05",
+        };
+        Assert.Equal(2, StyleRules.BridgeSection(parts));
+        Assert.Equal(1, StyleRules.BridgeDeck(parts));
+        Assert.Equal(0, StyleRules.BridgeSection(new[] { "deck", "rail" }));
+        Assert.Equal(-1, StyleRules.BridgeSection(new string[0]));
+        Assert.Equal(-1, StyleRules.BridgeDeck(new[] { "deck" }));
+        Assert.Equal(-1, StyleRules.BridgeSection(null!));
+    }
+
+    [Fact]
+    public void Le_jeu_habille_forge_pont_eau_et_palissade()
+    {
+        string Read(params string[] parts) => File.ReadAllText(Path.Combine(new[] { Lot93UnityPackageTests.Root }.Concat(parts).ToArray()));
+        string view = Read("unity", "Assets", "EdS", "Game", "SpaceView.cs");
+        string markers = Read("unity", "Assets", "EdS", "Game", "WorldMarkers.cs");
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        string world = Read("unity", "Assets", "EdS", "Game", "StyleWorld.cs");
+        string editor = Read("unity", "Assets", "EdS", "Editor", "EdsStyle.cs");
+        string shader = Read("unity", "Assets", "EdS", "Game", "Eau.shader");
+        // Vraie eau : shader d'URP, lit creusé, surface sous le sol, rivière sous le pont.
+        Assert.Contains("Shader \"EdS/Eau\"", shader, StringComparison.Ordinal);
+        Assert.Contains("\"RenderPipeline\" = \"UniversalPipeline\"", shader, StringComparison.Ordinal);
+        Assert.Contains("\"LightMode\" = \"UniversalForward\"", shader, StringComparison.Ordinal);
+        Assert.Contains("catalog.Water = WaterMaterial(notes);", editor, StringComparison.Ordinal);
+        Assert.Contains("double dig = banks.Count > 0 ? StyleRules.ChannelDepth(StyleRules.UnionDistance(x, z, rivers, banks)) : 0;", world, StringComparison.Ordinal);
+        Assert.Contains("data.SetHeights(0, 0, heights);", world, StringComparison.Ordinal);
+        Assert.Contains("layer.diffuseRemapMax = new Vector4(tint.r, tint.g, tint.b, 1f);", world, StringComparison.Ordinal);
+        Assert.Contains("WaterSurface(id, points);", view, StringComparison.Ordinal);
+        Assert.Contains("WaterSurface(\"Rivière (sous le pont)\"", view, StringComparison.Ordinal);
+        // Pont, palissade, haie, moulin.
+        Assert.Contains("StyleLook.Bridge(_root.transform,", view, StringComparison.Ordinal);
+        Assert.Contains("Palisade(id, points);", view, StringComparison.Ordinal);
+        // Revue Codex de la PR #58 (3e tour) : la palissade calcule ses tangentes (relief de l'écorce).
+        Assert.Contains("mesh.RecalculateTangents();   // revue Codex de la PR #58 (3e tour)", view, StringComparison.Ordinal);
+        Assert.Contains("if (fence == StyleFence.Hedge && Hedge(id, points)) return;", view, StringComparison.Ordinal);
+        Assert.Contains("StyleLook.Building(_root.transform, StyleProp.Mill, id, Center(points), 0f, side);", view, StringComparison.Ordinal);
+        Assert.Contains("_occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });", view, StringComparison.Ordinal);
+        // Forge, herbe de l'Aube, filons ; les PNJ se tournent vers le joueur.
+        Assert.Contains("StyleProp.FirePit", markers, StringComparison.Ordinal);
+        Assert.Contains("StyleLook.Prop(holder, StyleProp.Herb, m.Data.Id, holder.position,", markers, StringComparison.Ordinal);
+        Assert.Contains("StyleLook.Decor(holder, StyleSlot.Rock, m.Data.Id, holder.position, 0f, 1.1f);", markers, StringComparison.Ordinal);
+        Assert.Contains("_markers.Face(_arena.Player.position, Time.deltaTime);", game, StringComparison.Ordinal);
+        // Une deuxième préparation ne remplace plus les matières des personnages de Mixamo par une seule.
+        Assert.Contains("&& !IsMixamo(p))) RealisticMaterial(model, notes);", editor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Moulin_de_Sketchfab()
+    {
+        // « Windmill anim+LOD.fbx » de Tim0 : le moulin détaillé (tour et ailes) et sa version simplifiée, posée à 21 m.
+        Assert.Equal(new[] { "Assets/Style/Sketchfab/Windmill/Windmill anim+LOD.fbx" },
+            StyleRules.PropCandidates(new[] { "Assets/Style/Sketchfab/Windmill/Windmill anim+LOD.fbx", "Assets/Style/Nature/FBX/Rock_1.fbx" }, StyleProp.Mill));
+        var boxes = new List<(double MinX, double MinY, double MinZ, double MaxX, double MaxY, double MaxZ)>
+        {
+            (-5.2, 0, -6.2, 5.2, 16.7, 6.2),       // tour détaillée
+            (-26.7, 0, -15.5, -16.3, 16.7, -3.1),  // tour simplifiée
+            (-9.5, 9, 6, 9.6, 28, 6.5),            // ailes détaillées (touchent la tour)
+            (-31, 9, -3.4, -12, 28, -2.9),         // ailes simplifiées (touchent leur tour)
+        };
+        Assert.Equal(new[] { 0, 2 }, StyleRules.Cluster(boxes, new[] { 596, 390, 684, 302 }));
+        Assert.Equal(new[] { 1, 3 }, StyleRules.Cluster(boxes, new[] { 1, 900, 1, 1 }));
+        Assert.Equal(new[] { 0, 1, 2, 3 }, StyleRules.Cluster(boxes, new[] { 1, 1, 1, 1 }, 30));   // tout se touche à 30 m près
+        Assert.Equal(new[] { 0 }, StyleRules.Cluster(boxes.Take(1).ToList(), null!));
+        Assert.Empty(StyleRules.Cluster(null!, null!));
+        // Textures du moulin : « opass » est sa transparence (trous des toiles des ailes), pas une couleur.
+        Assert.True(StyleRules.IsAlphaMap("textures/Windmill_opass.png"));
+        Assert.False(StyleRules.IsColorMap("textures/Windmill_opass.png"));
+        Assert.True(StyleRules.IsColorMap("textures/Windmill_albedo.png"));
+        Assert.False(StyleRules.IsColorMap("textures/Windmill_AO.png"));
+        string look = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleLook.cs"));
+        Assert.Contains("IReadOnlyList<int> keep = StyleRules.Cluster(boxes, detail);", look, StringComparison.Ordinal);
+        // Revue Codex de la PR #58 (2e tour) : un modèle à plusieurs matières garde sa transparence (toiles du moulin) sur celles qui
+        // prennent sa texture de couleur : couleur et alpha réunis, découpe, vu des deux côtés.
+        string editor = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs"));
+        int many = editor.IndexOf("if (embeddedMaterials.Count > 1)", StringComparison.Ordinal);
+        int single = editor.IndexOf("string materialPath = Generated + \"/\" + name + \".mat\";", StringComparison.Ordinal);
+        Assert.True(many > 0 && single > many);
+        string parts = editor.Substring(many, single - many);
+        Assert.Contains("bool ownAlpha = alpha != null && own == color;", parts, StringComparison.Ordinal);
+        Assert.Contains("cutout = WithAlpha(color, alpha, Generated + \"/\" + name + \"_couleur_alpha.png\", notes);", parts, StringComparison.Ordinal);
+        Assert.Contains("part.SetTexture(\"_BaseMap\", ownMap);", parts, StringComparison.Ordinal);
+        Assert.Contains("part.EnableKeyword(\"_ALPHATEST_ON\");", parts, StringComparison.Ordinal);
+        Assert.Contains("part.SetFloat(\"_Cull\", 0f);", parts, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Un_seul_lit_sous_les_bras_de_la_riviere_et_le_pont()
+    {
+        // Revue Codex de la PR #58 : les deux bras de la rivière des Vallons et le passage sous le pont sont trois rectangles voisins ;
+        // creusés chacun pour soi, leurs côtés communs restaient des berges (deux bandes de terre en travers de la rivière).
+        var south = new List<(double X, double Z)> { (4, -18), (7, -18), (7, -2), (4, -2) };
+        var gap = new List<(double X, double Z)> { (4, -2), (7, -2), (7, 1.5), (4, 1.5) };
+        var north = new List<(double X, double Z)> { (4, 34), (4, 1.5), (7, 1.5), (7, 34) };   // autre sens des sommets
+        var rivers = new List<IReadOnlyList<(double X, double Z)>> { south, gap, north };
+        var banks = StyleRules.UnionBoundary(rivers);
+        // Le bord de la réunion est celui d'un seul rectangle de 3 m sur 52 m.
+        double length = banks.Sum(s => Math.Sqrt((s.X1 - s.X0) * (s.X1 - s.X0) + (s.Z1 - s.Z0) * (s.Z1 - s.Z0)));
+        Assert.Equal(2 * (3 + 52), length, 4);
+        foreach (double z in new[] { -2.0, -1.75, 0.0, 1.5, 1.25, -10.0, 20.0 })
+        {
+            Assert.Equal(1.5, StyleRules.UnionDistance(5.5, z, rivers, banks), 6);
+            Assert.Equal(StyleRules.RiverBed, StyleRules.ChannelDepth(StyleRules.UnionDistance(5.5, z, rivers, banks)), 6);   // lit continu
+        }
+        Assert.Equal(0.5, StyleRules.UnionDistance(4.5, -2, rivers, banks), 6);
+        Assert.Equal(-2, StyleRules.UnionDistance(2, -2, rivers, banks), 6);          // dehors : négatif
+        Assert.Equal(-1, StyleRules.UnionDistance(5.5, 35, rivers, banks), 6);        // au-delà du bout nord
+        // Un seul polygone : la même chose que sa distance au bord.
+        var alone = new List<IReadOnlyList<(double X, double Z)>> { south };
+        var aloneBanks = StyleRules.UnionBoundary(alone);
+        Assert.Equal(4, aloneBanks.Count);
+        Assert.Equal(StyleRules.InsideDistance(4.7, -9, south), StyleRules.UnionDistance(4.7, -9, alone, aloneBanks), 9);
+        // Polygones qui se chevauchent : le bord intérieur disparaît aussi.
+        var a = new List<(double X, double Z)> { (0, 0), (4, 0), (4, 2), (0, 2) };
+        var b = new List<(double X, double Z)> { (3, 0), (7, 0), (7, 2), (3, 2) };
+        var overlap = new List<IReadOnlyList<(double X, double Z)>> { a, b };
+        Assert.Equal(1, StyleRules.UnionDistance(3.5, 1, overlap, StyleRules.UnionBoundary(overlap)), 6);
+        Assert.Empty(StyleRules.UnionBoundary(null!));
+        Assert.True(double.IsNegativeInfinity(StyleRules.UnionDistance(0, 0, rivers, new List<(double, double, double, double)>())));
     }
 }
