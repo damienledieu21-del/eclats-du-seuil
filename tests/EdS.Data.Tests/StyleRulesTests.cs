@@ -538,7 +538,10 @@ public class StyleRulesTests
         string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
         string rig = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "CameraRig.cs"));
         Assert.Contains("Cursor.lockState = _freeLook ? CursorLockMode.Locked : CursorLockMode.None;", game, StringComparison.Ordinal);
-        Assert.Contains("bool covered = _talents != null || _menuOpen || _paused || AdventureCovered;", game, StringComparison.Ordinal);
+        Assert.Contains("bool covered = _talents != null || _menuOpen || _paused || AdventureCovered || LobbyShown;", game, StringComparison.Ordinal);
+        // Revue Codex de la PR #57 : la salle d'attente du réseau garde le curseur pour ses boutons ; même condition que son affichage.
+        Assert.Contains("if (LobbyShown)\n            {\n                // Salle d'attente", game.Replace("\r\n", "\n"), StringComparison.Ordinal);
+        Assert.Contains("private bool LobbyShown => Network && _talents == null && (_net.Client == null || _net.Client.Status != ClientStatus.Combat", game, StringComparison.Ordinal);
         Assert.Contains("_freeLook = PointerInput.FreeLook(Input.touchCount, _touch.Active, cursorWanted, covered, Application.isFocused);", game, StringComparison.Ordinal);
         Assert.Contains("if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;", game, StringComparison.Ordinal);
         Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"Time\.deltaTime, _freeLook\)").Count);
