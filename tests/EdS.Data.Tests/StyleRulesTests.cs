@@ -121,6 +121,15 @@ public class StyleRulesTests
         Assert.Equal(StyleMotion.Run, StyleRules.Motion(5, false, false));
         Assert.Equal(StyleMotion.Attack, StyleRules.Motion(5, false, true));
         Assert.Equal(StyleMotion.Death, StyleRules.Motion(5, true, true));
+        // Essai réaliste 6 : garde levée à l'arrêt ; en marchant, la marche l'emporte ; le blocage seulement pour la garde.
+        Assert.Equal(StyleMotion.Block, StyleRules.Motion(0.1, false, false, true));
+        Assert.Equal(StyleMotion.Walk, StyleRules.Motion(2.5, false, false, true));
+        Assert.Equal(StyleMotion.Attack, StyleRules.Motion(0.1, false, true, true));
+        string[] knight = { "Breathing Idle", "Sword And Shield Block (Idle)", "Walking", "Sword And Shield Slash" };
+        Assert.Equal("Breathing Idle", StyleRules.Clip(knight, StyleMotion.Idle));
+        Assert.Equal("Sword And Shield Block (Idle)", StyleRules.Clip(knight, StyleMotion.Block));
+        Assert.Equal("Breathing Idle", StyleRules.Clip(new[] { "Breathing Idle", "Walking" }, StyleMotion.Block));   // sans blocage : l'attente
+        Assert.True(StyleRules.Loops("Sword And Shield Block (Idle)"));
         Assert.Equal(0.9, StyleRules.Scale(2, 1.8), 6);
         Assert.Equal(1.0, StyleRules.Scale(0, 1.8));
         Assert.Equal(1.0, StyleRules.Scale(2, 0));

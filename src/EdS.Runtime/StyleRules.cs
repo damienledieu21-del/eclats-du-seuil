@@ -118,6 +118,12 @@ namespace EdS.Runtime
         Run = 2,
         Attack = 3,
         Death = 4,
+
+        /// <summary>
+        /// Essai réaliste 6 (essai de Damien du 27 octobre 2026 : le disque du bouclier est retiré, le chevalier garde son vrai bouclier) :
+        /// garde levée à l'arrêt, si le modèle a une animation de blocage (« Sword And Shield Block » de Mixamo) ; sinon l'attente.
+        /// </summary>
+        Block = 5,
     }
 
     /// <summary>Un son de l'essai de style.</summary>
@@ -254,6 +260,7 @@ namespace EdS.Runtime
             [StyleMotion.Run] = new[] { "run", "gallop", "sprint", "trot" },
             [StyleMotion.Attack] = new[] { "attack", "slash", "strike", "bite", "punch", "hit" },
             [StyleMotion.Death] = new[] { "death", "die", "dead", "dying" },
+            [StyleMotion.Block] = new[] { "block" },
         };
 
         /// <summary>Repli quand le modèle n'a pas l'animation demandée.</summary>
@@ -264,6 +271,7 @@ namespace EdS.Runtime
             [StyleMotion.Run] = new[] { StyleMotion.Walk, StyleMotion.Idle },
             [StyleMotion.Attack] = new[] { StyleMotion.Idle },
             [StyleMotion.Death] = new StyleMotion[0],
+            [StyleMotion.Block] = new[] { StyleMotion.Idle },
         };
 
         /// <summary>Sources réalistes : dossiers où sont rangés les fichiers de Poly Haven, de Mixamo et de Sketchfab.</summary>
@@ -467,10 +475,12 @@ namespace EdS.Runtime
         /// </summary>
         public static string? Clip(IEnumerable<string> clips, StyleMotion motion)
         {
-            var names = (clips ?? Array.Empty<string>()).ToList();
+            var all = (clips ?? Array.Empty<string>()).ToList();
             foreach (StyleMotion m in new[] { motion }.Concat(Fallbacks[motion]))
                 foreach (string word in Clips[m])
                 {
+                    // Essai réaliste 6 : « Sword And Shield Block (Idle) » ne sert qu'à la garde, pas à l'attente.
+                    var names = m == StyleMotion.Block ? all : all.Where(n => !HasWord(n, Clips[StyleMotion.Block])).ToList();
                     string? found = names.FirstOrDefault(n => Segment(n) == word) ?? names.FirstOrDefault(n => Segment(n).StartsWith(word, StringComparison.Ordinal))
                         ?? names.FirstOrDefault(n => HasWord(n, new[] { word }));
                     if (found != null) return found;
@@ -504,8 +514,12 @@ namespace EdS.Runtime
         /// Allure d'après la vitesse au sol affichée (m/s) : attente sous 0,3, marche sous 3,5, course au-delà ; la mort l'emporte, puis
         /// l'attaque.
         /// </summary>
-        public static StyleMotion Motion(double speed, bool dead, bool attacking) =>
-            dead ? StyleMotion.Death : attacking ? StyleMotion.Attack : speed < 0.3 ? StyleMotion.Idle : speed < 3.5 ? StyleMotion.Walk : StyleMotion.Run;
+        public static StyleMotion Motion(double speed, bool dead, bool attacking) => Motion(speed, dead, attacking, false);
+
+        /// <summary>Essai réaliste 6 : la garde levée à l'arrêt joue le blocage (en marchant, la marche l'emporte).</summary>
+        public static StyleMotion Motion(double speed, bool dead, bool attacking, bool guarding) =>
+            dead ? StyleMotion.Death : attacking ? StyleMotion.Attack : speed < 0.3 ? (guarding ? StyleMotion.Block : StyleMotion.Idle)
+                : speed < 3.5 ? StyleMotion.Walk : StyleMotion.Run;
 
         /// <summary>Facteur d'échelle uniforme qui donne au modèle la hauteur voulue (1 si sa hauteur est nulle ou inconnue).</summary>
         public static double Scale(double modelHeight, double height) =>
