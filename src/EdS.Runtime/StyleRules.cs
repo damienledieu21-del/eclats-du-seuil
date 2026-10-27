@@ -408,10 +408,10 @@ namespace EdS.Runtime
         public static bool IsColorMap(string path) =>
             !IsNormalMap(path) && !Words(path).Any(w => w == "rough" || w == "roughness" || w == "ao" || w == "disp" || w == "height" || w == "arm"
                 || w == "spec" || w == "specular" || w == "metal" || w == "metallic" || w == "gloss" || w == "alpha" || w == "opacity" || w == "mask"
-                || w == "glow" || w == "emission" || w == "emissive" || w == "translucency" || w == "transmission");
+                || w == "glow" || w == "emission" || w == "emissive" || w == "translucency" || w == "transmission" || w == "opass");
 
-        /// <summary>Carte de transparence (« _alpha_ », « _opacity »).</summary>
-        public static bool IsAlphaMap(string path) => Words(path).Any(w => w == "alpha" || w == "opacity");
+        /// <summary>Carte de transparence (« _alpha_ », « _opacity », « _opass » du moulin de Sketchfab).</summary>
+        public static bool IsAlphaMap(string path) => Words(path).Any(w => w == "alpha" || w == "opacity" || w == "opass");
 
         /// <summary>Texture de couleur (ou de relief) choisie pour une couche de sol, ou null ; ordre ordinal des chemins.</summary>
         public static string? GroundTexture(IEnumerable<string> paths, StyleGround ground, bool normal) =>
@@ -861,6 +861,37 @@ namespace EdS.Runtime
             var sections = parts.Select((p, i) => (Name: p ?? string.Empty, Index: i)).Where(p => Key(p.Name).Contains("section"))
                 .OrderBy(p => p.Name, StringComparer.Ordinal).ToList();
             return sections.Count > 0 ? sections[0].Index : 0;
+        }
+
+        /// <summary>
+        /// Pièces d'un modèle livré en plusieurs exemplaires posés côte à côte (le moulin de Sketchfab : le moulin détaillé et sa version
+        /// simplifiée, à une vingtaine de mètres) : la pièce la plus détaillée (<paramref name="detail"/> le plus grand, la première à égalité)
+        /// et, de proche en proche, celles dont la boîte touche une pièce gardée (à <paramref name="margin"/> mètres près). Indices dans
+        /// l'ordre ; vide sans pièce.
+        /// </summary>
+        public static IReadOnlyList<int> Cluster(IReadOnlyList<(double MinX, double MinY, double MinZ, double MaxX, double MaxY, double MaxZ)> boxes,
+            IReadOnlyList<int> detail, double margin = 0.05)
+        {
+            if (boxes == null || boxes.Count == 0) return Array.Empty<int>();
+            int first = 0;
+            for (int i = 1; i < boxes.Count; i++)
+                if (detail != null && i < detail.Count && detail[i] > (first < detail.Count ? detail[first] : 0)) first = i;
+            var kept = new HashSet<int> { first };
+            bool grew = true;
+            while (grew)
+            {
+                grew = false;
+                for (int i = 0; i < boxes.Count; i++)
+                {
+                    if (kept.Contains(i)) continue;
+                    var b = boxes[i];
+                    if (!kept.Any(k => boxes[k].MinX - margin <= b.MaxX && b.MinX <= boxes[k].MaxX + margin && boxes[k].MinY - margin <= b.MaxY
+                        && b.MinY <= boxes[k].MaxY + margin && boxes[k].MinZ - margin <= b.MaxZ && b.MinZ <= boxes[k].MaxZ + margin)) continue;
+                    kept.Add(i);
+                    grew = true;
+                }
+            }
+            return kept.OrderBy(i => i).ToList();
         }
 
         /// <summary>Pièce qui donne la hauteur du tablier du ponton (« planks ») : le dessus des planches ; -1 s'il n'y en a pas.</summary>

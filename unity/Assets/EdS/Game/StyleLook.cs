@@ -288,6 +288,24 @@ namespace EdS.Game
         {
             GameObject look = Prop(parent, kind, id, at, yaw);
             if (look == null) return null;
+            // Le moulin de Sketchfab est livré avec sa version simplifiée posée à côté : seul l'exemplaire le plus détaillé reste.
+            Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 1)
+            {
+                var boxes = new List<(double, double, double, double, double, double)>();
+                var detail = new List<int>();
+                foreach (Renderer r in renderers)
+                {
+                    Bounds rb = r.bounds;
+                    boxes.Add((rb.min.x, rb.min.y, rb.min.z, rb.max.x, rb.max.y, rb.max.z));
+                    MeshFilter filter = r.GetComponent<MeshFilter>();
+                    SkinnedMeshRenderer skin = r as SkinnedMeshRenderer;
+                    Mesh mesh = filter != null ? filter.sharedMesh : skin != null ? skin.sharedMesh : null;
+                    detail.Add(mesh != null ? mesh.vertexCount : 0);
+                }
+                IReadOnlyList<int> keep = StyleRules.Cluster(boxes, detail);
+                if (keep.Count > 0 && keep.Count < renderers.Length) Keep(look, look.transform.GetChild(0).gameObject, renderers, keep);
+            }
             if (Foot(look, out Bounds foot) && Mathf.Max(foot.size.x, foot.size.z) > 0.01f)
             {
                 look.transform.localScale = look.transform.localScale * (width / Mathf.Max(foot.size.x, foot.size.z));

@@ -13,7 +13,7 @@ namespace UnityEngine
     public sealed class GameObject : Object { public GameObject(string n) { } public Transform transform => null; public string tag { get; set; } public T AddComponent<T>() where T : Component => default; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; public void SetActive(bool b) { } public bool activeSelf => false; public bool activeInHierarchy => false; public static GameObject CreatePrimitive(PrimitiveType t) => null; }
     public enum FindObjectsSortMode { None, InstanceID }
     public enum PrimitiveType { Sphere, Capsule, Cylinder, Cube, Plane, Quad }
-    public class Transform : Component { public Vector3 position { get; set; } public Quaternion rotation { get; set; } public Vector3 localPosition { get; set; } public Quaternion localRotation { get; set; } public Vector3 localScale { get; set; } public Vector3 eulerAngles { get; set; } public void SetParent(Transform p, bool w) { } public void LookAt(Vector3 v) { } }
+    public class Transform : Component { public Vector3 position { get; set; } public Quaternion rotation { get; set; } public Vector3 localPosition { get; set; } public Quaternion localRotation { get; set; } public Vector3 localScale { get; set; } public Vector3 eulerAngles { get; set; } public void SetParent(Transform p, bool w) { } public Transform GetChild(int index) => null; public void LookAt(Vector3 v) { } }
     public class Renderer : Component { public Material sharedMaterial { get; set; } public Material material { get; set; } public bool enabled { get; set; } public Bounds bounds => default; public Material[] materials { get; set; } }
     public struct Bounds { public Vector3 min => default; public Vector3 max => default; public Vector3 size => default; public Vector3 center => default; public Vector3 extents => default; public void Encapsulate(Bounds b) { } }
     public enum WrapMode { Default = 0, Once = 1, Loop = 2, PingPong = 4, ClampForever = 8 }
@@ -24,9 +24,9 @@ namespace UnityEngine
     public sealed class AudioSource : Behaviour { public void PlayOneShot(AudioClip clip, float volumeScale) { } }
     public sealed class AudioListener : Behaviour { }
     public sealed class MeshRenderer : Renderer { }
-    public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } }
-    public sealed class MeshFilter : Component { public Mesh mesh { get; set; } }
-    public sealed class Mesh : Object { public Mesh() { } public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }
+    public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } public Mesh sharedMesh { get; set; } }
+    public sealed class MeshFilter : Component { public Mesh mesh { get; set; } public Mesh sharedMesh { get; set; } }
+    public sealed class Mesh : Object { public Mesh() { } public int vertexCount => 0; public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }
     public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static void Save() { } }
     public class Collider : Component { }
     public enum LightType { Spot, Directional, Point }

@@ -744,4 +744,31 @@ public class StyleRulesTests
         // Une deuxième préparation ne remplace plus les matières des personnages de Mixamo par une seule.
         Assert.Contains("&& !IsMixamo(p))) RealisticMaterial(model, notes);", editor, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Moulin_de_Sketchfab()
+    {
+        // « Windmill anim+LOD.fbx » de Tim0 : le moulin détaillé (tour et ailes) et sa version simplifiée, posée à 21 m.
+        Assert.Equal(new[] { "Assets/Style/Sketchfab/Windmill/Windmill anim+LOD.fbx" },
+            StyleRules.PropCandidates(new[] { "Assets/Style/Sketchfab/Windmill/Windmill anim+LOD.fbx", "Assets/Style/Nature/FBX/Rock_1.fbx" }, StyleProp.Mill));
+        var boxes = new List<(double MinX, double MinY, double MinZ, double MaxX, double MaxY, double MaxZ)>
+        {
+            (-5.2, 0, -6.2, 5.2, 16.7, 6.2),       // tour détaillée
+            (-26.7, 0, -15.5, -16.3, 16.7, -3.1),  // tour simplifiée
+            (-9.5, 9, 6, 9.6, 28, 6.5),            // ailes détaillées (touchent la tour)
+            (-31, 9, -3.4, -12, 28, -2.9),         // ailes simplifiées (touchent leur tour)
+        };
+        Assert.Equal(new[] { 0, 2 }, StyleRules.Cluster(boxes, new[] { 596, 390, 684, 302 }));
+        Assert.Equal(new[] { 1, 3 }, StyleRules.Cluster(boxes, new[] { 1, 900, 1, 1 }));
+        Assert.Equal(new[] { 0, 1, 2, 3 }, StyleRules.Cluster(boxes, new[] { 1, 1, 1, 1 }, 30));   // tout se touche à 30 m près
+        Assert.Equal(new[] { 0 }, StyleRules.Cluster(boxes.Take(1).ToList(), null!));
+        Assert.Empty(StyleRules.Cluster(null!, null!));
+        // Textures du moulin : « opass » est sa transparence (trous des toiles des ailes), pas une couleur.
+        Assert.True(StyleRules.IsAlphaMap("textures/Windmill_opass.png"));
+        Assert.False(StyleRules.IsColorMap("textures/Windmill_opass.png"));
+        Assert.True(StyleRules.IsColorMap("textures/Windmill_albedo.png"));
+        Assert.False(StyleRules.IsColorMap("textures/Windmill_AO.png"));
+        string look = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleLook.cs"));
+        Assert.Contains("IReadOnlyList<int> keep = StyleRules.Cluster(boxes, detail);", look, StringComparison.Ordinal);
+    }
 }
