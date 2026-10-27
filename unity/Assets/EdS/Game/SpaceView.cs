@@ -420,7 +420,7 @@ namespace EdS.Game
             mesh.uv = uvs.ToArray();
             mesh.triangles = triangles.ToArray();
             mesh.RecalculateNormals();
-            mesh.RecalculateTangents();   // essai réaliste 4 : le relief de l'écorce, comme celui des prismes (revue Codex de la PR #57)
+            mesh.RecalculateTangents();   // revue Codex de la PR #58 (3e tour) : le relief de l'écorce, comme celui des prismes
             mesh.RecalculateBounds();
             var go = new GameObject(id + " (palissade)");
             go.transform.SetParent(_root.transform, false);
