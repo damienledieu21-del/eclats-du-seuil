@@ -878,30 +878,45 @@ namespace EdS.Game
 
         public void Hide() => _body.SetActive(false);
 
+        /// <summary>Forme du maillage actuel : il n'est refait que si elle change (relecture de l'essai 6 : pas de maillage neuf à chaque image).</summary>
+        private string _shape;
+
         public void Show(AttackZone zone, float progress, bool unblockable, bool lingering)
         {
-            float ox = zone.OriginX / 10000f, oz = zone.OriginZ / 10000f, reach = zone.Reach / 10000f;
-            float ax = zone.AxisX / 10000f, az = zone.AxisZ / 10000f;
-            switch (zone.Shape)
+            string key = zone.Shape + "|" + zone.OriginX + "|" + zone.OriginZ + "|" + zone.AxisX + "|" + zone.AxisZ + "|" + zone.Reach + "|" + zone.Angle + "|"
+                + zone.HalfWidth;
+            if (key != _shape)
             {
-                case AttackShape.Cone:
-                    Draw(TelegraphShapes.Cone(ox, oz, Mathf.Atan2(az, ax), zone.Angle * Mathf.Deg2Rad, reach), 1f, progress, unblockable, lingering);
-                    return;
-                case AttackShape.Line:
-                    Draw(TelegraphShapes.Line(ox, oz, ax, az, reach, zone.HalfWidth / 10000f), 1f, progress, unblockable, lingering);
-                    return;
-                default:   // cercle, zone qui reste
-                    ShowCircle(ox, oz, reach, progress, unblockable, lingering);
-                    return;
+                _shape = key;
+                float ox = zone.OriginX / 10000f, oz = zone.OriginZ / 10000f, reach = zone.Reach / 10000f;
+                float ax = zone.AxisX / 10000f, az = zone.AxisZ / 10000f;
+                TelegraphMesh shape = zone.Shape == AttackShape.Cone ? TelegraphShapes.Cone(ox, oz, Mathf.Atan2(az, ax), zone.Angle * Mathf.Deg2Rad, reach)
+                    : zone.Shape == AttackShape.Line ? TelegraphShapes.Line(ox, oz, ax, az, reach, zone.HalfWidth / 10000f)
+                    : TelegraphShapes.Circle(ox, oz, reach);   // cercle, zone qui reste
+                Annonces.Fill(_mesh, shape, true);
             }
+            _body.transform.position = new Vector3(0f, Height, 0f);
+            Style(zone.Shape == AttackShape.Cone || zone.Shape == AttackShape.Line ? 1f : 0f, progress, unblockable, lingering);
         }
 
-        public void ShowCircle(float x, float z, float radius, float progress, bool unblockable, bool lingering) =>
-            Draw(TelegraphShapes.Circle(x, z, radius), 0f, progress, unblockable, lingering);
-
-        private void Draw(TelegraphMesh shape, float kind, float progress, bool unblockable, bool lingering)
+        /// <summary>
+        /// Cercle sous la cible d'une attaque dirigée : maillage centré, refait seulement si le rayon change ; l'annonce suit la cible
+        /// (rehaussée du tablier du pont sous son centre).
+        /// </summary>
+        public void ShowCircle(float x, float z, float radius, float progress, bool unblockable, bool lingering)
         {
-            Annonces.Fill(_mesh, shape, true);
+            string key = "cible|" + Mathf.RoundToInt(radius * 1000f);
+            if (key != _shape)
+            {
+                _shape = key;
+                Annonces.Fill(_mesh, TelegraphShapes.Circle(0, 0, radius), false);
+            }
+            _body.transform.position = new Vector3(x, Height + StyleWorld.StandHeight(x, z), z);
+            Style(0f, progress, unblockable, lingering);
+        }
+
+        private void Style(float kind, float progress, bool unblockable, bool lingering)
+        {
             if (_styled)
             {
                 _block.SetFloat("_Progress", lingering ? 1f : progress);

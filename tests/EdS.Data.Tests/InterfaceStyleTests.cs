@@ -278,4 +278,35 @@ public class InterfaceStyleTests
         Assert.Contains("_fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);", Read("unity", "Assets", "EdS", "Game", "TalentTreeView.cs"), StringComparison.Ordinal);
         Assert.Contains("_fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);", Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs"), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Relecture indépendante de l'essai 6 : icônes du sac visibles (bord sans centre), bords rouges de la vie basse sur une image blanche,
+    /// survol visible, ombre et contour par matériau partagé (variantes emportées par la construction), pas de menu par-dessus l'arbre,
+    /// annonces refaites seulement quand leur forme change, et aucun symbole absent des polices de l'interface (TextMeshPro les
+    /// afficherait en carrés).
+    /// </summary>
+    [Fact]
+    public void Corrections_de_la_relecture()
+    {
+        string book = Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs");
+        string hud = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
+        string text = Read("unity", "Assets", "EdS", "Game", "UiText.cs");
+        Assert.Contains("cell.Edge.fillCenter = false;", book, StringComparison.Ordinal);
+        Assert.Contains("UiKit.Sprite(\"bord_haut\")", hud, StringComparison.Ordinal);
+        Assert.Contains("UiKit.Sprite(\"bord_bas\")", hud, StringComparison.Ordinal);
+        Assert.Contains("material.EnableKeyword(\"OUTLINE_ON\");", text, StringComparison.Ordinal);
+        Assert.Contains("if (material != null) _tmp.fontSharedMaterial = material;", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("fontMaterial", text.Replace("fontSharedMaterial", ""), StringComparison.Ordinal);
+        Assert.Contains("outlined.EnableKeyword(\"OUTLINE_ON\");", Read("unity", "Assets", "EdS", "Editor", "EdsBuildShaders.cs"), StringComparison.Ordinal);
+        Assert.Contains("if (!TalentsOpen && ((Keys.MenuPressed", Read("unity", "Assets", "EdS", "Game", "EdsGame.cs"), StringComparison.Ordinal);
+        Assert.Contains("if (key != _shape)", Read("unity", "Assets", "EdS", "Game", "SpaceView.cs"), StringComparison.Ordinal);
+        foreach (string sprite in new[] { "bord_haut", "bord_bas" }) PngSize(Path.Combine(Root, Hud, sprite + ".png"));
+        // Symboles absents de Cinzel et de Barlow Condensed : interdits dans les textes de l'interface uGUI.
+        foreach (string file in new[] { "HudView.cs", "AdventureBook.cs", "TalentTreeView.cs", "UiKit.cs" })
+        {
+            string code = Read("unity", "Assets", "EdS", "Game", file);
+            foreach (char symbol in "◆◇●○✓→★■▲►")
+                Assert.False(code.Contains(symbol), $"{file} : « {symbol} »");
+        }
+    }
 }

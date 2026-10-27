@@ -427,13 +427,14 @@ namespace EdS.Game
             _levelUpSub = UiText.Create(_levelUp, "Sous-titre", UiFace.Bold, 20f, UiKit.Teal, TextAnchor.MiddleCenter, 14f, true);
             At(_levelUpSub.Rect, 450f, 148f, 900f, 28f, 0.5f, 0.5f);
             UiKit.Show(_levelUp, false);
-            _dangerTop = UiKit.Image(_canvas.transform, "Vie basse (haut)", UiKit.Sprite("voile_haut"), UiKit.Alpha(UiKit.Health, 0f));
+            // Relecture : voiles blancs (transparence seule) teintés de rouge ; les voiles sombres du bas et du haut restaient noirs.
+            _dangerTop = UiKit.Image(_canvas.transform, "Vie basse (haut)", UiKit.Sprite("bord_haut"), UiKit.Alpha(UiKit.Health, 0f));
             _dangerTop.rectTransform.anchorMin = new Vector2(0f, 1f);
             _dangerTop.rectTransform.anchorMax = new Vector2(1f, 1f);
             _dangerTop.rectTransform.pivot = new Vector2(0.5f, 1f);
             _dangerTop.rectTransform.sizeDelta = new Vector2(0f, 220f);
             _dangerTop.rectTransform.anchoredPosition = new Vector2(0f, 60f);
-            _dangerBottom = UiKit.Image(_canvas.transform, "Vie basse (bas)", UiKit.Sprite("voile_bas"), UiKit.Alpha(UiKit.Health, 0f));
+            _dangerBottom = UiKit.Image(_canvas.transform, "Vie basse (bas)", UiKit.Sprite("bord_bas"), UiKit.Alpha(UiKit.Health, 0f));
             _dangerBottom.rectTransform.anchorMin = new Vector2(0f, 0f);
             _dangerBottom.rectTransform.anchorMax = new Vector2(1f, 0f);
             _dangerBottom.rectTransform.pivot = new Vector2(0.5f, 0f);
@@ -568,7 +569,7 @@ namespace EdS.Game
 
         private void Guard(string text, Color color)
         {
-            _guard.Value = "◆ " + text;
+            _guard.Value = text;
             _guard.Color = color;
         }
 
@@ -654,7 +655,7 @@ namespace EdS.Game
             UiKit.Show(plate.Node, true);
             float k = UiKit.ReferenceHeight / Mathf.Max(1, Screen.height);
             At(plate.Node, screen.x * k, (Screen.height - screen.y) * k, 180f, 60f, 0.5f, 1f);
-            plate.Name.Value = (isTarget ? "◆ " : "") + DisplayNames.Of(other.Id);
+            plate.Name.Value = (isTarget ? "» " : "") + DisplayNames.Of(other.Id);
             plate.Name.Color = isTarget ? UiKit.Dawn : UiKit.Ink;
             CombatantView v = other.View;
             plate.Fill.fillAmount = v.Health is long h && v.MaxHealth is long max && max > 0 ? Mathf.Clamp01(h / (float)max) : 1f;

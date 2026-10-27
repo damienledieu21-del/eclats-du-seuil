@@ -120,7 +120,7 @@ namespace UnityEngine.UI
     using UnityEngine.EventSystems;
     public class Graphic : UIBehaviour { public virtual Color color { get; set; } public bool raycastTarget { get; set; } public RectTransform rectTransform => null; public virtual Material material { get; set; } }
     public class MaskableGraphic : Graphic { }
-    public class Image : MaskableGraphic { public enum Type { Simple, Sliced, Tiled, Filled } public enum FillMethod { Horizontal, Vertical, Radial90, Radial180, Radial360 } public enum OriginHorizontal { Left, Right } public enum OriginVertical { Bottom, Top } public enum Origin360 { Bottom, Right, Top, Left } public Sprite sprite { get; set; } public Type type { get; set; } public FillMethod fillMethod { get; set; } public int fillOrigin { get; set; } public float fillAmount { get; set; } public bool fillClockwise { get; set; } }
+    public class Image : MaskableGraphic { public enum Type { Simple, Sliced, Tiled, Filled } public enum FillMethod { Horizontal, Vertical, Radial90, Radial180, Radial360 } public enum OriginHorizontal { Left, Right } public enum OriginVertical { Bottom, Top } public enum Origin360 { Bottom, Right, Top, Left } public Sprite sprite { get; set; } public Type type { get; set; } public FillMethod fillMethod { get; set; } public int fillOrigin { get; set; } public float fillAmount { get; set; } public bool fillClockwise { get; set; } public bool fillCenter { get; set; } }
     public class RawImage : MaskableGraphic { public Texture texture { get; set; } public Rect uvRect { get; set; } }
     public enum HorizontalWrapMode { Wrap, Overflow }
     public enum VerticalWrapMode { Truncate, Overflow }
@@ -142,9 +142,9 @@ namespace TMPro
     public enum TextWrappingModes { NoWrap = 0, Normal = 1, PreserveWhitespace = 2, PreserveWhitespaceNoWrap = 3 }
     public struct VertexGradient { public VertexGradient(UnityEngine.Color topLeft, UnityEngine.Color topRight, UnityEngine.Color bottomLeft, UnityEngine.Color bottomRight) { } }
     public class TMP_Asset : UnityEngine.ScriptableObject { }
-    public class TMP_FontAsset : TMP_Asset { public static TMP_FontAsset CreateFontAsset(UnityEngine.Font font) => null; }
+    public class TMP_FontAsset : TMP_Asset { public static TMP_FontAsset CreateFontAsset(UnityEngine.Font font) => null; public UnityEngine.Material material { get; set; } }
     public class TMP_Settings : UnityEngine.ScriptableObject { }
-    public abstract class TMP_Text : UnityEngine.UI.MaskableGraphic { public virtual string text { get; set; } public TMP_FontAsset font { get; set; } public float fontSize { get; set; } public TextAlignmentOptions alignment { get; set; } public float characterSpacing { get; set; } public TextOverflowModes overflowMode { get; set; } public FontStyles fontStyle { get; set; } public bool richText { get; set; } public TextWrappingModes textWrappingMode { get; set; } public bool enableVertexGradient { get; set; } public VertexGradient colorGradient { get; set; } public UnityEngine.Color32 outlineColor { get; set; } public float outlineWidth { get; set; } public virtual UnityEngine.Material fontMaterial { get; set; } }
+    public abstract class TMP_Text : UnityEngine.UI.MaskableGraphic { public virtual string text { get; set; } public TMP_FontAsset font { get; set; } public float fontSize { get; set; } public TextAlignmentOptions alignment { get; set; } public float characterSpacing { get; set; } public TextOverflowModes overflowMode { get; set; } public FontStyles fontStyle { get; set; } public bool richText { get; set; } public TextWrappingModes textWrappingMode { get; set; } public bool enableVertexGradient { get; set; } public VertexGradient colorGradient { get; set; } public UnityEngine.Color32 outlineColor { get; set; } public float outlineWidth { get; set; } public virtual UnityEngine.Material fontMaterial { get; set; } public virtual UnityEngine.Material fontSharedMaterial { get; set; } public virtual void UpdateMeshPadding() { } }
     public class TextMeshProUGUI : TMP_Text { }
 }
 namespace UnityEngine.Networking

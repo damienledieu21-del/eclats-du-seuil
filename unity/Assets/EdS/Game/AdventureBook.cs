@@ -180,6 +180,7 @@ namespace EdS.Game
             cell.Icon = UiKit.Image(cell.Rect, "Icône", null, Color.white);
             UiKit.Fill(cell.Icon.rectTransform, size * 0.08f);
             cell.Edge = UiKit.Image(cell.Rect, "Bord", UiKit.Sprite("bouton_sobre", 12f), Color.white, Image.Type.Sliced);
+            cell.Edge.fillCenter = false;   // relecture : le centre opaque du dessin cachait l'icône
             UiKit.Fill(cell.Edge.rectTransform, -2f);
             cell.Count = UiText.Create(cell.Rect, "Nombre", UiFace.Bold, 17f, Color.white, TextAnchor.LowerRight);
             UiKit.Place(cell.Count.Rect, new Vector2(size - 6f, size - 4f), new Vector2(60f, 22f), new Vector2(1f, 1f));
@@ -521,14 +522,14 @@ namespace EdS.Game
                 JournalEntry q = quests[i];
                 _quests[i].Name.Value = q.Name + (q.Done ? " · " + a.Text("text.ui.quest_done_mark") : "");
                 _quests[i].Step.Value = q.Step ?? "";
-                _quests[i].Progress.Value = q.Progress ?? (q.Done ? "✓" : "");
+                _quests[i].Progress.Value = q.Progress ?? (q.Done ? "fait" : "");
                 _quests[i].Bar.fillAmount = q.Done ? 1f : HudView.Progress(q.Progress);
                 UiKit.Show(_quests[i].Bar, q.Progress != null || q.Done);
             }
             IReadOnlyList<string> found = a.Discoveries();
             _discoveriesTitle.Value = a.Text("text.ui.title.discoveries") + " · " + found.Count;
             for (int i = 0; i < _discoveries.Count; i++)
-                _discoveries[i].Value = i < found.Count ? "◆ " + found[i] : "";
+                _discoveries[i].Value = i < found.Count ? "– " + found[i] : "";
         }
 
         // --- Atelier ---------------------------------------------------------------------------------------------------------------
@@ -574,7 +575,7 @@ namespace EdS.Game
                 var card = _recipes[i];
                 card.Name.Value = r.Name;
                 card.Kind.Value = r.Profession + " · " + string.Format(a.Text("text.ui.level_required"), r.RequiredLevel);
-                card.Recipe.Value = r.Inputs + "  →  " + r.Output;
+                card.Recipe.Value = r.Inputs + "  »  " + r.Output;
                 card.State.Value = a.Text("text.ui.craft." + r.Refusal.ToString().ToLowerInvariant());
                 card.State.Color = possible ? UiKit.Teal : UiKit.Endurance;
                 card.Craft.Text.Value = a.Text("text.ui.craft");
@@ -649,7 +650,8 @@ namespace EdS.Game
                 UiKit.Place(_mapYou.rectTransform, p, new Vector2(22f, 26f), new Vector2(0.5f, 0.5f));
                 _mapYou.rectTransform.SetAsLastSibling();
             }
-            _legend.Value = "◆ toi   ◆ ennemi en vue   ● PNJ   ● point sûr (turquoise)   ● atelier (or)   ● récolte (vert)   ◇ objectif";
+            _legend.Value = "Flèche : toi  ·  losange : ennemi en vue  ·  rond blanc : PNJ  ·  turquoise : point sûr  ·  or : atelier  ·  vert : récolte  ·  "
+                + "losange doré : objectif";
         }
 
         private void Marker(string sprite, Vector2 p, float size, Color color)

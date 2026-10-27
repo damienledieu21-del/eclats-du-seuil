@@ -51,7 +51,18 @@ namespace EdS.Editor
             if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/EdS", "Resources");
             AssetDatabase.CreateAsset(new Material(shader), TemplatePath);
             Shader text = Shader.Find(TextShader);
-            if (text != null) AssetDatabase.CreateAsset(new Material(text), Folder + "/" + TextName + ".mat");
+            if (text != null)
+            {
+                // Relecture de l'essai 6 : l'ombre (UNDERLAY_ON) et le contour (OUTLINE_ON) sont des variantes optionnelles du shader, retirées
+                // de la construction si aucun matériau ne les emploie : un modèle par combinaison utilisée par l'interface.
+                var shadow = new Material(text);
+                shadow.EnableKeyword("UNDERLAY_ON");
+                AssetDatabase.CreateAsset(shadow, Folder + "/" + TextName + ".mat");
+                var outlined = new Material(text);
+                outlined.EnableKeyword("UNDERLAY_ON");
+                outlined.EnableKeyword("OUTLINE_ON");
+                AssetDatabase.CreateAsset(outlined, Folder + "/" + TextName + "Contour.mat");
+            }
             else Debug.LogWarning("Éclats du Seuil : shader « " + TextShader + " » absent (menu Éclats du Seuil → Préparer l'interface) ; le jeu construit "
                 + "affichera le texte ordinaire.");
             Shader annonce = Shader.Find("EdS/Annonce");

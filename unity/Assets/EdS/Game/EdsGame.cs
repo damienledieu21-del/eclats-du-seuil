@@ -566,7 +566,8 @@ namespace EdS.Game
             }
             // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
             // Une lettre M tapée dans un champ du menu (nom, adresse) ne le ferme pas.
-            if ((Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) || (_touch.MenuPressed && !_menuOpen)) _menuOpen = !_menuOpen;
+            // Relecture de l'essai 6 : pas de menu par-dessus l'arbre des Éclats (ses clics iraient aussi à l'arbre).
+            if (!TalentsOpen && ((Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) || (_touch.MenuPressed && !_menuOpen))) _menuOpen = !_menuOpen;
             if (_menuOpen)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;

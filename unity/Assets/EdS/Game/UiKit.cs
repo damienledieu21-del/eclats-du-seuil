@@ -201,6 +201,7 @@ namespace EdS.Game
             Fill(text.Rect);
             text.Value = label;
             var button = new UiButton(plate, text);
+            button.Enable(true);
             UiPointer pointer = Pointer(plate);
             pointer.Left = () =>
             {
@@ -256,6 +257,7 @@ namespace EdS.Game
             Paint();
         }
 
-        private void Paint() => Plate.color = !Enabled ? new Color(1f, 1f, 1f, 0.35f) : _hover ? new Color(1.15f, 1.15f, 1.15f, 1f) : Color.white;
+        // Relecture : uGUI ramène les couleurs à 1 (sommets en Color32) : un peu plus sombre au repos, pleine lumière au survol.
+        private void Paint() => Plate.color = !Enabled ? new Color(0.8f, 0.8f, 0.8f, 0.35f) : _hover ? Color.white : new Color(0.84f, 0.84f, 0.86f, 1f);
     }
 }

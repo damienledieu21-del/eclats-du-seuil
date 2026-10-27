@@ -31,6 +31,7 @@ namespace EdS.Game
         private static readonly string[] Files = { "EdsInterface/CinzelDecorative-Bold", "EdsInterface/Cinzel", "EdsInterface/BarlowCondensed-SemiBold", "EdsInterface/BarlowCondensed-Bold" };
         private static readonly Dictionary<UiFace, Font> Legacy = new Dictionary<UiFace, Font>();
         private static readonly Dictionary<UiFace, TMP_FontAsset> Assets = new Dictionary<UiFace, TMP_FontAsset>();
+        private static readonly Dictionary<string, Material> Materials = new Dictionary<string, Material>();
         private static int _tmp = -1;
 
         /// <summary>Nom du shader SDF de TextMeshPro employé par les polices créées au lancement.</summary>
@@ -68,6 +69,36 @@ namespace EdS.Game
             return font;
         }
 
+        /// <summary>
+        /// Relecture de l'essai 6 : matériau partagé d'une police (un par style, pas un par texte : les textes se dessinent ensemble et rien ne
+        /// fuit) : ombre douce toujours (<c>UNDERLAY_ON</c>), contour de couleur <paramref name="outline"/> et d'épaisseur
+        /// <paramref name="outlineWidth"/> si elle est positive (<c>OUTLINE_ON</c>, que le réglage du texte n'active pas avec le shader
+        /// mobile). Null sans police TextMeshPro.
+        /// </summary>
+        public static Material Material(UiFace face, Color outline, float outlineWidth)
+        {
+            TMP_FontAsset asset = Asset(face);
+            if (asset == null || asset.material == null) return null;
+            Color32 c = outline;
+            string key = (int)face + "|" + (outlineWidth > 0f ? Mathf.RoundToInt(outlineWidth * 1000f) + "|" + c.r + "," + c.g + "," + c.b + "," + c.a : "-");
+            if (Materials.TryGetValue(key, out Material known)) return known;
+            var material = new Material(asset.material);
+            material.EnableKeyword("UNDERLAY_ON");
+            material.SetColor("_UnderlayColor", new Color(0f, 0f, 0f, 0.85f));
+            material.SetFloat("_UnderlayOffsetX", 0.4f);
+            material.SetFloat("_UnderlayOffsetY", -0.6f);
+            material.SetFloat("_UnderlayDilate", 0.25f);
+            material.SetFloat("_UnderlaySoftness", 0.55f);
+            if (outlineWidth > 0f)
+            {
+                material.EnableKeyword("OUTLINE_ON");
+                material.SetColor("_OutlineColor", outline);
+                material.SetFloat("_OutlineWidth", outlineWidth);
+            }
+            Materials[key] = material;
+            return material;
+        }
+
         /// <summary>Police TextMeshPro créée au lancement d'après le fichier TTF (null si impossible : le texte ordinaire prend le relais).</summary>
         public static TMP_FontAsset Asset(UiFace face)
         {
@@ -96,16 +127,20 @@ namespace EdS.Game
         private readonly TextMeshProUGUI _tmp;
         private readonly Text _legacy;
         private readonly bool _upper;
+        private readonly UiFace _face;
+        private Color _outlineColor;
+        private float _outlineWidth;
         private string _value = "";
 
         public RectTransform Rect { get; }
 
-        private UiText(RectTransform rect, TextMeshProUGUI tmp, Text legacy, bool upper)
+        private UiText(RectTransform rect, TextMeshProUGUI tmp, Text legacy, bool upper, UiFace face)
         {
             Rect = rect;
             _tmp = tmp;
             _legacy = legacy;
             _upper = upper;
+            _face = face;
         }
 
         /// <summary>
@@ -129,8 +164,8 @@ namespace EdS.Game
                 tmp.richText = false;   // un nom contenant « < » s'affiche tel quel
                 tmp.textWrappingMode = TextWrappingModes.NoWrap;
                 if (upper) tmp.fontStyle = FontStyles.UpperCase;
-                var text = new UiText(rect, tmp, null, false);
-                text.Shadow(new Color(0f, 0f, 0f, 0.85f));
+                var text = new UiText(rect, tmp, null, false, face);
+                text.ApplyMaterial();
                 return text;
             }
             Text legacy = rect.gameObject.AddComponent<Text>();
@@ -145,7 +180,7 @@ namespace EdS.Game
             UnityEngine.UI.Shadow drop = rect.gameObject.AddComponent<UnityEngine.UI.Shadow>();
             drop.effectColor = new Color(0f, 0f, 0f, 0.85f);
             drop.effectDistance = new Vector2(1.5f, -2f);
-            return new UiText(rect, null, legacy, upper);
+            return new UiText(rect, null, legacy, upper, face);
         }
 
         private static TextAlignmentOptions Align(TextAnchor anchor)
@@ -224,8 +259,9 @@ namespace EdS.Game
         {
             if (_tmp != null)
             {
-                _tmp.outlineColor = color;
-                _tmp.outlineWidth = width;
+                _outlineColor = color;
+                _outlineWidth = width;
+                ApplyMaterial();
             }
             else
             {
@@ -236,19 +272,15 @@ namespace EdS.Game
             return this;
         }
 
-        /// <summary>Ombre douce sous le texte (TextMeshPro : « underlay » du shader ; texte ordinaire : ombre portée nette).</summary>
-        public UiText Shadow(Color color)
+        /// <summary>
+        /// Ombre douce et contour du texte TextMeshPro par le matériau partagé de son style (<see cref="UiFonts.Material"/>), puis la marge
+        /// autour des lettres recalculée pour que l'ombre ne soit pas coupée.
+        /// </summary>
+        private void ApplyMaterial()
         {
-            if (_tmp == null) return this;
-            Material material = _tmp.fontMaterial;
-            if (material == null) return this;
-            material.EnableKeyword("UNDERLAY_ON");
-            material.SetColor("_UnderlayColor", color);
-            material.SetFloat("_UnderlayOffsetX", 0.4f);
-            material.SetFloat("_UnderlayOffsetY", -0.6f);
-            material.SetFloat("_UnderlayDilate", 0.25f);
-            material.SetFloat("_UnderlaySoftness", 0.55f);
-            return this;
+            Material material = UiFonts.Material(_face, _outlineColor, _outlineWidth);
+            if (material != null) _tmp.fontSharedMaterial = material;
+            _tmp.UpdateMeshPadding();
         }
 
         /// <summary>Retour à la ligne dans la largeur du rectangle (texte sur plusieurs lignes).</summary>
