@@ -304,6 +304,8 @@ namespace EdS.Game
             mesh.uv = uvs.ToArray();
             mesh.triangles = triangles.ToArray();
             mesh.RecalculateNormals();
+            // Revue Codex de la PR #57 (2e tour) : les cartes de relief (murs, tuiles, planches, vagues) ont besoin des tangentes.
+            mesh.RecalculateTangents();
             mesh.RecalculateBounds();
             var go = new GameObject(name);
             go.transform.SetParent(_root.transform, false);

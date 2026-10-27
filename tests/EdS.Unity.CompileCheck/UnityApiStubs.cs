@@ -26,7 +26,7 @@ namespace UnityEngine
     public sealed class MeshRenderer : Renderer { }
     public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } }
     public sealed class MeshFilter : Component { public Mesh mesh { get; set; } }
-    public sealed class Mesh : Object { public Mesh() { } public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateBounds() { } }
+    public sealed class Mesh : Object { public Mesh() { } public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateTangents() { } public void RecalculateBounds() { } }
     public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static void Save() { } }
     public class Collider : Component { }
     public enum LightType { Spot, Directional, Point }
@@ -68,9 +68,9 @@ namespace UnityEngine
     public enum ScreenOrientation { Portrait = 1, LandscapeLeft = 3, AutoRotation = 5 }
     public enum ShadowQuality { Disable, HardOnly, All }
     public static class Debug { public static void Log(object m) { } public static void LogWarning(object m) { } public static void LogException(Exception e) { } }
-    public sealed class Shader : Object { public static Shader Find(string n) => null; }
+    public sealed class Shader : Object { public static Shader Find(string n) => null; public bool isSupported => false; }
     public static class Resources { public static T Load<T>(string path) where T : Object => default; }
-    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } public Color GetColor(string n) => default; public void SetTexture(string n, Texture t) { } public Texture GetTexture(string n) => null; public void SetTextureOffset(string n, Vector2 v) { } public void SetTextureScale(string n, Vector2 v) { } public void SetFloat(string n, float f) { } public void EnableKeyword(string k) { } public int renderQueue { get; set; } }
+    public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public Shader shader { get; set; } public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } public Color GetColor(string n) => default; public void SetTexture(string n, Texture t) { } public Texture GetTexture(string n) => null; public void SetTextureOffset(string n, Vector2 v) { } public void SetTextureScale(string n, Vector2 v) { } public void SetFloat(string n, float f) { } public void EnableKeyword(string k) { } public int renderQueue { get; set; } }
     public class Texture : Object { public int width => 0; public int height => 0; public TextureWrapMode wrapMode { get; set; } }
     public enum TextureWrapMode { Repeat, Clamp, Mirror, MirrorOnce }
     public sealed class Texture2D : Texture { public Texture2D(int width, int height, TextureFormat format, bool mipChain) { } public Texture2D(int width, int height, TextureFormat format, bool mipChain, bool linear) { } public void Apply(bool updateMipmaps) { } public static Texture2D whiteTexture => null; public FilterMode filterMode { get; set; } public void LoadRawTextureData(byte[] data) { } public void Apply() { } public Color32[] GetPixels32() => null; public void SetPixels32(Color32[] colors) { } public byte[] EncodeToPNG() => null; }

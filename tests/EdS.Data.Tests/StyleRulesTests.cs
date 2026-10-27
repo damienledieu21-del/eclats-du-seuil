@@ -567,5 +567,13 @@ public class StyleRulesTests
         Assert.Contains("foreach (KeyValuePair<string, IReadOnlyList<string>> folder in StyleRules.Characters(models))", editor, StringComparison.Ordinal);
         Assert.Contains("MixamoMaterials(hero, notes);", editor, StringComparison.Ordinal);
         Assert.Contains("AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);", editor, StringComparison.Ordinal);
+        // Revue Codex de la PR #57 (2e tour) : un matériau Mixamo texturé mais hors d'URP est refait aussi (il serait rose), avec ses
+        // propres textures ; les prismes texturés ont leurs tangentes (cartes de relief des murs et des vagues).
+        Assert.Contains("Where(m => !HasTexture(m) || !IsUrp(m.shader))", editor, StringComparison.Ordinal);
+        Assert.Contains("shader.isSupported && shader.name.StartsWith(\"Universal Render Pipeline/\", System.StringComparison.Ordinal)", editor, StringComparison.Ordinal);
+        Assert.Contains("Texture2D color = OwnTexture(embedded, \"_BaseMap\", \"_MainTex\");", editor, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (!Untextured(modelPath)) return;", editor, StringComparison.Ordinal);
+        Assert.Contains("mesh.RecalculateNormals();\n            // Revue Codex de la PR #57 (2e tour) : les cartes de relief (murs, tuiles, planches, vagues) ont besoin des tangentes.\n            mesh.RecalculateTangents();",
+            view.Replace("\r\n", "\n"), StringComparison.Ordinal);
     }
 }

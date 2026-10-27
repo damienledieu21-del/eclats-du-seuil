@@ -260,24 +260,29 @@ namespace EdS.Game.Editor
         /// <summary>
         /// Matériaux d'un modèle de Mixamo (le paladin, les personnages) : textures sorties du fichier dans « Textures » à côté de lui, puis
         /// modèle réimporté pour que Unity les relie ; un matériau resté sans texture reçoit un matériau d'URP fait de celles qui portent son
-        /// nom (<see cref="StyleRules.MaterialTexture"/>), dans <c>Generated</c>.
+        /// nom (<see cref="StyleRules.MaterialTexture"/>), dans <c>Generated</c>. Revue Codex de la PR #57 (2e tour) : un matériau texturé
+        /// mais resté sur un shader hors d'URP (il serait rose) est refait aussi, avec ses propres textures.
         /// </summary>
         private static void MixamoMaterials(string modelPath, List<string> notes)
         {
             if (!(AssetImporter.GetAtPath(modelPath) is ModelImporter importer)) return;
             EmbeddedTextures(modelPath, notes);
             if (Untextured(modelPath)) AssetDatabase.ImportAsset(modelPath, ImportAssetOptions.ForceUpdate);
-            if (!Untextured(modelPath)) return;
             Shader lit = Shader.Find("Universal Render Pipeline/Lit");
             if (lit == null) return;
+            List<Material> redo = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().Where(m => !HasTexture(m) || !IsUrp(m.shader)).ToList();
+            if (redo.Count == 0) return;
             string folder = Path.GetDirectoryName(modelPath).Replace('\\', '/');
             List<string> textures = AssetDatabase.FindAssets("t:Texture2D", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
             bool changed = false;
-            foreach (Material embedded in AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().Where(m => !HasTexture(m)))
+            foreach (Material embedded in redo)
             {
-                string color = StyleRules.MaterialTexture(embedded.name, textures, false);
+                // Ses propres textures si Unity les a reliées, sinon celles qui portent son nom.
+                Texture2D color = OwnTexture(embedded, "_BaseMap", "_MainTex");
+                if (color == null && StyleRules.MaterialTexture(embedded.name, textures, false) is string named) color = Texture2DAt(named);
                 if (color == null) continue;
-                string normal = StyleRules.MaterialTexture(embedded.name, textures, true);
+                Texture2D normal = OwnTexture(embedded, "_BumpMap");
+                if (normal == null && StyleRules.MaterialTexture(embedded.name, textures, true) is string namedNormal) normal = Texture2DAt(namedNormal);
                 string path = Generated + "/" + Path.GetFileNameWithoutExtension(modelPath) + " " + embedded.name + ".mat";
                 Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
                 if (material == null)
@@ -285,11 +290,11 @@ namespace EdS.Game.Editor
                     material = new Material(lit);
                     AssetDatabase.CreateAsset(material, path);
                 }
-                material.SetTexture("_BaseMap", Texture2DAt(color));
-                material.SetTexture("_MainTex", Texture2DAt(color));
+                material.SetTexture("_BaseMap", color);
+                material.SetTexture("_MainTex", color);
                 if (normal != null)
                 {
-                    material.SetTexture("_BumpMap", Texture2DAt(normal));
+                    material.SetTexture("_BumpMap", normal);
                     material.EnableKeyword("_NORMALMAP");
                 }
                 material.SetFloat("_Smoothness", 0.25f);
@@ -306,6 +311,18 @@ namespace EdS.Game.Editor
 
         /// <summary>Un matériau du modèle est-il sans texture de couleur ?</summary>
         private static bool Untextured(string modelPath) => AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().Any(m => !HasTexture(m));
+
+        /// <summary>Shader d'URP, compilé pour ce rendu (un matériau Standard importé serait rose).</summary>
+        private static bool IsUrp(Shader shader) =>
+            shader != null && shader.isSupported && shader.name.StartsWith("Universal Render Pipeline/", System.StringComparison.Ordinal);
+
+        /// <summary>Première texture 2D posée sur l'une des propriétés du matériau, ou null.</summary>
+        private static Texture2D OwnTexture(Material m, params string[] properties)
+        {
+            foreach (string property in properties)
+                if (m.HasProperty(property) && m.GetTexture(property) is Texture2D texture) return texture;
+            return null;
+        }
 
         private static bool HasTexture(Material m) =>
             m.HasProperty("_BaseMap") && m.GetTexture("_BaseMap") != null || m.HasProperty("_MainTex") && m.GetTexture("_MainTex") != null;
