@@ -986,6 +986,9 @@ public class StyleRulesTests
         // Herbe en brins dessinée par paquets, près de la caméra seulement.
         Assert.Contains("Shader \"EdS/Herbe\"", grassShader, StringComparison.Ordinal);
         Assert.Contains("#pragma multi_compile_instancing", grassShader, StringComparison.Ordinal);
+        // Revue Codex de la PR #59 : paquets de 511 touffes au plus, échelle uniforme déclarée dans les trois passes.
+        Assert.Contains("private const int Batch = 511;", grass, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(grassShader, "#pragma instancing_options assumeuniformscaling").Count);
         Assert.Contains("Graphics.RenderMeshInstanced(parameters, _mesh, 0, cell.Items);", grass, StringComparison.Ordinal);
         Assert.Contains("_grass?.Draw(camera);", view, StringComparison.Ordinal);
         Assert.Contains("if (terrain) Grass(space);", view, StringComparison.Ordinal);

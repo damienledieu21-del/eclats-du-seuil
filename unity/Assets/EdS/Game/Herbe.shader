@@ -66,6 +66,7 @@ Shader "EdS/Herbe"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
@@ -137,6 +138,7 @@ Shader "EdS/Herbe"
             #pragma vertex Vert
             #pragma fragment Frag
             #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling
 
             struct Attributes
             {
@@ -172,6 +174,7 @@ Shader "EdS/Herbe"
             #pragma fragment Frag
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
             #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling
 
             struct Attributes
             {

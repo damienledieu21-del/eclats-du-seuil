@@ -15,6 +15,9 @@ namespace EdS.Game
     {
         private const float CellSize = 8f;
 
+        /// <summary>Touffes par dessin répété : 511, limite de <c>Graphics.RenderMeshInstanced</c> avec les deux matrices.</summary>
+        private const int Batch = 511;
+
         private readonly Mesh _mesh;
         private readonly Material _material;
         private readonly List<Cell> _cells = new List<Cell>();
@@ -59,10 +62,11 @@ namespace EdS.Game
             foreach (KeyValuePair<(int, int), List<Matrix4x4>> cell in byCell)
             {
                 var center = new Vector3((cell.Key.Item1 + 0.5f) * CellSize, 0f, (cell.Key.Item2 + 0.5f) * CellSize);
-                // Par paquets de 1 023 au plus (limite d'un dessin répété).
-                for (int start = 0; start < cell.Value.Count; start += 1023)
+                // Par paquets de 511 au plus (revue Codex de la PR #59) : la limite d'un dessin répété quand le shader reçoit les deux
+                // matrices de chaque touffe ; le shader déclare aussi l'échelle uniforme des touffes.
+                for (int start = 0; start < cell.Value.Count; start += Batch)
                 {
-                    int count = Mathf.Min(1023, cell.Value.Count - start);
+                    int count = Mathf.Min(Batch, cell.Value.Count - start);
                     grass._cells.Add(new Cell
                     {
                         Center = center, Items = cell.Value.GetRange(start, count).ToArray(),
