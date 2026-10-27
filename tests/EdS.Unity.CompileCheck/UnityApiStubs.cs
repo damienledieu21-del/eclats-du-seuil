@@ -118,6 +118,9 @@ namespace UnityEngine.Rendering
 }
 namespace UnityEngine.Rendering.Universal
 {
+    // Correctif du 27 octobre 2026 (essai de Damien) : ce nom existe aussi dans UnityEngine ; avec les deux espaces de noms ouverts, il faut le
+    // qualifier, sinon Unity refuse de compiler (CS0104). Déclaré ici pour que la CI voie la même ambiguïté.
+    public enum ShadowQuality { Disabled, HardShadows, SoftShadows }
     public abstract class ScriptableRendererFeature : ScriptableObject { }
     public abstract class ScriptableRendererData : ScriptableObject { public System.Collections.Generic.List<ScriptableRendererFeature> rendererFeatures => null; }
     public sealed class UniversalRendererData : ScriptableRendererData { public PostProcessData postProcessData; }

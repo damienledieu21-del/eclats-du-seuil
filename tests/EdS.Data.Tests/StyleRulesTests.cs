@@ -1000,7 +1000,7 @@ public class StyleRulesTests
         // Revue Codex de la PR #59 : le rendu du téléphone rend aussi les ombres au soleil (coupées par les réglages du sous-lot 11.8).
         Assert.Contains("bool phoneShadows = Application.isMobilePlatform && catalog.PhonePipeline != null;", world, StringComparison.Ordinal);
         Assert.Contains("QualitySettings.renderPipeline = catalog.PhonePipeline;", world, StringComparison.Ordinal);
-        Assert.Contains("QualitySettings.shadows = ShadowQuality.HardOnly;", world, StringComparison.Ordinal);
+        Assert.Contains("QualitySettings.shadows = UnityEngine.ShadowQuality.HardOnly;", world, StringComparison.Ordinal);   // nom qualifié (URP a le sien)
         Assert.Contains("if (phoneShadows) light.shadows = LightShadows.Hard;", world, StringComparison.Ordinal);
         Assert.Contains("Tune(pipeline, 90f, 4, 4096, true, 4);", editor, StringComparison.Ordinal);
         Assert.Contains("Tune(phone, 35f, 2, 1024, false, 2);", editor, StringComparison.Ordinal);
