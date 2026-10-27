@@ -41,6 +41,7 @@ namespace EdS.Game
         private readonly Material _outline;
         private readonly Material _fill;
         private readonly Material _water;
+        private readonly GameObject _terrain;
         private Vector3 _roofMin;
         private Vector3 _roofMax;
         private bool _hasRoof;
@@ -54,13 +55,19 @@ namespace EdS.Game
             _water = ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
 
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
-            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            ground.name = "Sol";
-            Object.Destroy(ground.GetComponent<Collider>());
-            ground.transform.SetParent(_root.transform, false);
-            ground.transform.position = new Vector3((minX + maxX) / 2f, -0.05f, (minZ + maxZ) / 2f);
-            ground.transform.localScale = new Vector3(maxX - minX, 0.1f, maxZ - minZ);
-            ground.GetComponent<Renderer>().sharedMaterial = ArenaView.MakeMaterial(new Color(0.33f, 0.42f, 0.25f));
+            // Essai réaliste : un terrain peint (terre, roche, herbe) à la place du sol simple, s'il y a des textures de sol.
+            _terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space));
+            bool terrain = _terrain != null;
+            if (!terrain)
+            {
+                GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                ground.name = "Sol";
+                Object.Destroy(ground.GetComponent<Collider>());
+                ground.transform.SetParent(_root.transform, false);
+                ground.transform.position = new Vector3((minX + maxX) / 2f, -0.05f, (minZ + maxZ) / 2f);
+                ground.transform.localScale = new Vector3(maxX - minX, 0.1f, maxZ - minZ);
+                ground.GetComponent<Renderer>().sharedMaterial = ArenaView.MakeMaterial(new Color(0.33f, 0.42f, 0.25f));
+            }
             // Bord de l'aire : quatre murets bas (on ne sort pas de l'aire, le moteur l'interdit).
             Material border = ArenaView.MakeMaterial(new Color(0.3f, 0.27f, 0.22f));
             Block("Bord ouest", new Vector3(minX - 0.15f, 0.25f, (minZ + maxZ) / 2f), new Vector3(0.3f, 0.5f, maxZ - minZ + 0.6f), border);
@@ -70,6 +77,7 @@ namespace EdS.Game
 
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             Plants(space);
+            if (terrain) Forest(space);
             Bridge(space);
             Roof(space);
         }
@@ -180,14 +188,59 @@ namespace EdS.Game
                 seed = seed * 1664525u + 1013904223u;
                 return (seed >> 8) / 16777216f;
             }
+            // Essai réaliste : nombre réglé dans le catalogue (moitié sur téléphone), plantes à leur taille réelle quand elle est plausible.
+            int wanted = Application.isMobilePlatform ? catalog.PlantCount / 2 : catalog.PlantCount;
             int placed = 0;
-            for (int i = 0; i < 400 && placed < 60; i++)
+            for (int i = 0; i < wanted * 8 && placed < wanted; i++)
             {
                 float x = Mathf.Lerp(minX + 1f, maxX - 1f, Next()), z = Mathf.Lerp(minZ + 1f, maxZ - 1f, Next());
                 if (boxes.Any(b => x >= b.MinX && x <= b.MaxX && z >= b.MinZ && z <= b.MaxZ)) continue;
-                StyleLook.Decor(_root.transform, StyleSlot.Plant, "plante" + placed, new Vector3(x, 0f, z), 0.6f + 0.4f * Next());
+                StyleLook.Decor(_root.transform, StyleSlot.Plant, "plante" + placed, new Vector3(x, 0f, z), 0.6f + 0.4f * Next(), 0f, true);
                 placed++;
             }
+        }
+
+        /// <summary>
+        /// Essai réaliste : la forêt autour de l'aire (hors de l'aire : le moteur ne la connaît pas, elle n'arrête rien), sur le terrain qui
+        /// déborde de l'aire ; le tiers des arbres sur téléphone. Places fixes (<see cref="StyleRules.Forest"/>).
+        /// </summary>
+        private void Forest(CombatSpace space)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null || catalog.Trees == null || catalog.Trees.Length == 0) return;
+            int count = Application.isMobilePlatform ? catalog.ForestTrees / 3 : catalog.ForestTrees;
+            var spots = StyleRules.Forest(Raw(space.Min.X.Raw), Raw(space.Min.Z.Raw), Raw(space.Max.X.Raw), Raw(space.Max.Z.Raw), catalog.ForestMargin, count);
+            bool debris = catalog.Debris != null && catalog.Debris.Length > 0;
+            for (int i = 0; i < spots.Count; i++)
+            {
+                string id = "lisiere" + i;
+                var at = new Vector3((float)spots[i].X, 0f, (float)spots[i].Z);
+                // Une place sur quatre : du bois mort (souche, tronc couché) à sa taille réelle, s'il y en a.
+                GameObject look = debris && i % 4 == 3
+                    ? StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true)
+                    : StyleLook.Decor(_root.transform, StyleSlot.Tree, id, at, 5f + 0.035f * StyleRules.Variant(id, 100));
+                // Revue Codex de la PR #56 : en vue 2, la caméra (6 m derrière le Bastion) peut entrer dans la lisière quand il longe le bord ;
+                // ces arbres sont coupés comme ceux des obstacles quand ils le cachent.
+                if (look != null) AddModelOccluders(look);
+            }
+        }
+
+        /// <summary>
+        /// Essai réaliste : les endroits qui changent la couche du sol (roche autour des blocs, des pierres du Seuil, des murs et des
+        /// piliers ; terre autour des arbres et du moulin), d'après les obstacles (<see cref="StyleRules.GroundFor"/>).
+        /// </summary>
+        private static List<StyleSpot> Spots(CombatSpace space)
+        {
+            var spots = new List<StyleSpot>();
+            foreach (SpaceObstacle obstacle in space.Obstacles)
+            {
+                if (!(StyleRules.GroundFor(obstacle.Id) is StyleGround ground)) continue;
+                float x0 = Raw(obstacle.Points.Min(p => p.X.Raw)), x1 = Raw(obstacle.Points.Max(p => p.X.Raw));
+                float z0 = Raw(obstacle.Points.Min(p => p.Z.Raw)), z1 = Raw(obstacle.Points.Max(p => p.Z.Raw));
+                float radius = Mathf.Max(x1 - x0, z1 - z0) / 2f + (ground == StyleGround.Rock ? 1.5f : 1f);
+                spots.Add(new StyleSpot((x0 + x1) / 2f, (z0 + z1) / 2f, radius, ground));
+            }
+            return spots;
         }
 
         private static Vector3 Center(List<Vector3> points) =>
@@ -382,7 +435,11 @@ namespace EdS.Game
             foreach (string gone in _firstSeen.Keys.Where(k => !seen.Contains(k)).ToList()) _firstSeen.Remove(gone);
         }
 
-        public void Destroy() => Object.Destroy(_root);
+        public void Destroy()
+        {
+            StyleWorld.Release(_terrain);   // essai réaliste : données du terrain créées par le code, rendues avec lui
+            Object.Destroy(_root);
+        }
     }
 
     /// <summary>

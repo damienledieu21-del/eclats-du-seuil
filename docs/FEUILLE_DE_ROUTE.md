@@ -135,7 +135,13 @@ Objectif : parcourir les Vallons seul, du niveau 1 au niveau 10, avec la mission
 
 ### Essai de style (entre le lot 12 et le lot 13)
 
-Décidé par Damien le 25 octobre 2026 : voir les Vallons avec des modèles et des sons gratuits (packs CC0) avant le lot 13. Le jeu choisit les modèles et les sons déposés par Damien dans `unity/Assets/Style` (non suivi par git), habille le Bastion, les loups, les sangliers, les arbres et les rochers, ajoute des plantes et des sons ; sans pack, rien ne change. Mode d'emploi : [UNITY.md](UNITY.md#7-bis-essai-de-style-packs-gratuits). État : en PR, à essayer par Damien.
+Décidé par Damien le 25 octobre 2026 : voir les Vallons avec des modèles et des sons gratuits (packs CC0) avant le lot 13. Le jeu choisit les modèles et les sons déposés par Damien dans `unity/Assets/Style` (non suivi par git), habille le Bastion, les loups, les sangliers, les arbres et les rochers, ajoute des plantes et des sons ; sans pack, rien ne change. Mode d'emploi : [UNITY.md](UNITY.md#7-bis-essai-de-style-packs-gratuits). État : machinerie en PR (#55) ; essai réaliste en PR empilée, à essayer par Damien.
+
+**Décisions du 26 octobre 2026** (premier essai de style dans Unity) :
+
+- **Style low poly écarté** : « bof j'aime pas trop je voulais quelque chose de vraiment réaliste ».
+- **Direction : réalisme stylisé** : « un mélange de réaliste et de stylisé coloré », « lumineux, réaliste mais pas trop » (référence : The Elder Scrolls), et pour l'essai « le plus réaliste possible ». Fichiers réalistes gratuits : Poly Haven (CC0 : sols, plantes, rochers, bois mort, ciel) et Mixamo (le paladin et ses animations, compte Adobe de Damien).
+- **Animaux** : on peut rester sur des modèles gratuits pour l'instant (« si c'est seulement les textures qui sont impactées et pas le reste ») ; le jeu ne change pas, seul l'aspect change.
 
 **Décisions du 25 octobre 2026** (essai du 12.9, rapport : [ESSAI_LOT_12.md](ESSAI_LOT_12.md#4-décisions-de-damien-pendant-lessai)) :
 
