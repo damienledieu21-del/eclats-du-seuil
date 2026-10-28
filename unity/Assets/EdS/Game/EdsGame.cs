@@ -237,7 +237,13 @@ namespace EdS.Game
             _shownLevel = 0;
             _shownQuests = _adventure.QuestsAnnounced;
             _shownLoot = _adventure.LootAnnounced;
-            if (_music == null && _camera != null) _music = StyleAudio.Create(_camera.Camera.transform);   // essai réaliste 7
+            if (_music == null && _camera != null)
+            {
+                // Revue Codex de la PR #63 : la musique part dès l'ouverture de l'aventure ; l'écouteur de la caméra doit exister avant elle
+                // (sinon elle reste muette jusqu'au premier bruitage).
+                EnsureListener();
+                _music = StyleAudio.Create(_camera.Camera.transform);   // essai réaliste 7
+            }
             ShowAdventureSession();
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
@@ -1090,14 +1096,22 @@ namespace EdS.Game
                 if (_audio == null && _camera != null && StyleCatalog.Loaded != null)
                 {
                     _audio = _camera.Camera.gameObject.AddComponent<AudioSource>();
-                    // Revue Codex de la PR #55 : la scène de démarrage est vide et la caméra du jeu est créée par le code : sans écouteur,
-                    // aucun son ne s'entendrait. Un seul écouteur : on n'en ajoute pas si la scène en a déjà un (relecture de l'essai 7 : celui
-                    // posé par les sons de l'interface faute de caméra est retiré d'abord).
-                    UiSounds.ReleaseListener();
-                    if (UnityEngine.Object.FindFirstObjectByType<AudioListener>() == null) _camera.Camera.gameObject.AddComponent<AudioListener>();
+                    EnsureListener();
                 }
                 return _audio;
             }
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #55 : la scène de démarrage est vide et la caméra du jeu est créée par le code : sans écouteur, aucun son ne
+        /// s'entendrait. Un seul écouteur : on n'en ajoute pas si la scène en a déjà un (relecture de l'essai 7 : celui posé par les sons de
+        /// l'interface faute de caméra est retiré d'abord). Appelé au premier bruitage et, depuis la revue Codex de la PR #63, avant la musique.
+        /// </summary>
+        private void EnsureListener()
+        {
+            if (_camera == null) return;
+            UiSounds.ReleaseListener();
+            if (UnityEngine.Object.FindFirstObjectByType<AudioListener>() == null) _camera.Camera.gameObject.AddComponent<AudioListener>();
         }
 
         private void Show(CombatFeedback feedback)

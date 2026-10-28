@@ -369,6 +369,8 @@ public class InterfaceStyleTests
         string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
         Assert.Contains("_effects = Effects.Create();", game, StringComparison.Ordinal);
         Assert.Contains("_music = StyleAudio.Create(_camera.Camera.transform);", game, StringComparison.Ordinal);
+        // Revue Codex de la PR #63 : l'écouteur existe avant que la musique parte.
+        Assert.Contains("EnsureListener();\n                _music = StyleAudio.Create(_camera.Camera.transform);", game.Replace("\r\n", "\n"), StringComparison.Ordinal);
         Assert.Contains("_mood = a.Mood();", game, StringComparison.Ordinal);   // relecture : quatre fois par seconde
         Assert.Contains("_music.Update(_mood,", game, StringComparison.Ordinal);
         // Relecture de l'essai 7 : la musique est détruite en quittant l'aventure (la suivante la recrée, ambiances comprises).
