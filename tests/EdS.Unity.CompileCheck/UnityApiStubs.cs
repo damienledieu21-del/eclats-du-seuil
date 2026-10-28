@@ -217,6 +217,10 @@ namespace UnityEditor
     public static class EditorUtility { public static bool DisplayDialog(string title, string message, string ok) => false; public static void SetDirty(UnityEngine.Object o) { } }
     public static class AssetDatabase { public static string GetAssetPath(UnityEngine.Object o) => ""; public static void AddObjectToAsset(UnityEngine.Object o, UnityEngine.Object asset) { } public static bool TryGetGUIDAndLocalFileIdentifier(UnityEngine.Object o, out string guid, out long localId) { guid = ""; localId = 0; return false; } public static string[] FindAssets(string filter, string[] folders) => null; public static string GUIDToAssetPath(string guid) => ""; public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; public static UnityEngine.Object[] LoadAllAssetsAtPath(string p) => null; public static void ImportAsset(string p) { } public static void ImportAsset(string p, ImportAssetOptions options) { } public static void ImportPackage(string packagePath, bool interactive) { } }
 }
+namespace UnityEditor.PackageManager
+{
+    public sealed class PackageInfo { public static PackageInfo FindForAssetPath(string assetPath) => null; public string resolvedPath => ""; public string name => ""; }
+}
 namespace UnityEditor.SceneManagement
 {
     public enum NewSceneSetup { EmptyScene, DefaultGameObjects }

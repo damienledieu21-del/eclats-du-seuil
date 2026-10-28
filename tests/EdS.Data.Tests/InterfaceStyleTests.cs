@@ -175,6 +175,9 @@ public class InterfaceStyleTests
         // Projet : paquet uGUI, ressources de TextMeshPro importées par l'éditeur (non suivies), images importées à leur taille exacte.
         string setup = Read("unity", "Assets", "EdS", "Editor", "EdsInterfaceSetup.cs");
         Assert.Contains("AssetDatabase.ImportPackage(package, false);", setup, StringComparison.Ordinal);
+        // Revue Codex de la PR #62 : dossier physique du paquet demandé au gestionnaire de paquets, puis cache des paquets.
+        Assert.Contains("UnityEditor.PackageManager.PackageInfo.FindForAssetPath(\"Packages/\" + name)?.resolvedPath", setup, StringComparison.Ordinal);
+        Assert.Contains("Directory.GetDirectories(cache, name + \"@*\")", setup, StringComparison.Ordinal);
         Assert.Contains("importer.npotScale = TextureImporterNPOTScale.None;", setup, StringComparison.Ordinal);
         Assert.Contains("importer.mipmapEnabled = false;", setup, StringComparison.Ordinal);
         Assert.Contains("unity/Assets/TextMesh Pro/", File.ReadAllLines(Path.Combine(Root, ".gitignore")));

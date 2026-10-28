@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
@@ -49,26 +50,47 @@ namespace EdS.Game.Editor
 
         /// <summary>
         /// Fichier des ressources essentielles dans le paquet de Unity 6 (<c>com.unity.ugui</c>), ou dans l'ancien paquet de TextMeshPro ;
-        /// null s'il n'est nulle part.
+        /// null s'il n'est nulle part. Revue Codex de la PR #62 : le dossier physique du paquet est demandé au gestionnaire de paquets
+        /// (<c>resolvedPath</c> : dans <c>Library/PackageCache</c> pour un paquet du registre), puis, à défaut, au chemin virtuel
+        /// <c>Packages/…</c> et au cache des paquets lui-même.
         /// </summary>
         private static string FindEssentials()
         {
             foreach (string name in new[] { "com.unity.ugui", "com.unity.textmeshpro" })
-            {
-                string root;
-                try
+                foreach (string root in PackageFolders(name))
                 {
-                    root = Path.GetFullPath("Packages/" + name);   // Unity résout le dossier du paquet (cache des paquets)
+                    if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
+                    string found = Directory.GetFiles(root, EssentialsFile, SearchOption.AllDirectories).OrderBy(f => f, System.StringComparer.Ordinal).FirstOrDefault();
+                    if (found != null) return found;
                 }
-                catch (System.Exception)
-                {
-                    continue;
-                }
-                if (!Directory.Exists(root)) continue;
-                string found = Directory.GetFiles(root, EssentialsFile, SearchOption.AllDirectories).OrderBy(f => f, System.StringComparer.Ordinal).FirstOrDefault();
-                if (found != null) return found;
-            }
             return null;
+        }
+
+        /// <summary>Dossiers possibles du paquet <paramref name="name"/>, du plus sûr au moins sûr.</summary>
+        private static IEnumerable<string> PackageFolders(string name)
+        {
+            string resolved = null;
+            try
+            {
+                resolved = UnityEditor.PackageManager.PackageInfo.FindForAssetPath("Packages/" + name)?.resolvedPath;
+            }
+            catch (System.Exception)
+            {
+            }
+            yield return resolved;
+            string virtualPath = null;
+            try
+            {
+                virtualPath = Path.GetFullPath("Packages/" + name);
+            }
+            catch (System.Exception)
+            {
+            }
+            yield return virtualPath;
+            string cache = Path.Combine(ProjectRoot, "Library", "PackageCache");
+            if (Directory.Exists(cache))
+                foreach (string folder in Directory.GetDirectories(cache, name + "@*").OrderBy(f => f, System.StringComparer.Ordinal))
+                    yield return folder;
         }
     }
 
