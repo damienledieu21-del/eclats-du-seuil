@@ -203,11 +203,18 @@ namespace EdS.Game
             var button = new UiButton(plate, text);
             button.Enable(true);
             UiPointer pointer = Pointer(plate);
+            // Essai réaliste 7 : un clic sonne (un bouton grisé répond par l'erreur), le survol d'un bouton actif glisse doucement.
             pointer.Left = () =>
             {
+                UiSounds.Play(button.Enabled ? UiCue.Click : UiCue.Error);
                 if (button.Enabled) click?.Invoke();
             };
-            pointer.Enter = () => button.Hover(true);
+            pointer.Enter = () =>
+            {
+                // Relecture de l'essai 7 : au doigt, uGUI envoie le survol à l'appui ; seule la souris fait le son de survol.
+                if (button.Enabled && !pointer.Touch) UiSounds.Play(UiCue.Hover);
+                button.Hover(true);
+            };
             pointer.Exit = () => button.Hover(false);
             return button;
         }
@@ -218,13 +225,20 @@ namespace EdS.Game
     {
         public System.Action Left, Right, Enter, Exit;
 
+        /// <summary>Relecture de l'essai 7 : le dernier passage vient d'un doigt (identifiant de pointeur positif), pas de la souris.</summary>
+        public bool Touch { get; private set; }
+
         public void OnPointerClick(PointerEventData eventData)
         {
             if (eventData.button == PointerEventData.InputButton.Right) Right?.Invoke();
             else if (eventData.button == PointerEventData.InputButton.Left) Left?.Invoke();
         }
 
-        public void OnPointerEnter(PointerEventData eventData) => Enter?.Invoke();
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            Touch = eventData.pointerId >= 0;
+            Enter?.Invoke();
+        }
 
         public void OnPointerExit(PointerEventData eventData) => Exit?.Invoke();
     }

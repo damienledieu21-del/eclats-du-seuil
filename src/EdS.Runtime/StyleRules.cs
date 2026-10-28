@@ -124,6 +124,18 @@ namespace EdS.Runtime
         /// garde levée à l'arrêt, si le modèle a une animation de blocage (« Sword And Shield Block » de Mixamo) ; sinon l'attente.
         /// </summary>
         Block = 5,
+
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : « des clips Mixamo, garde, coups variés ») : sort ou soutien lancé
+        /// (« Sword And Shield Casting »), rugissement du Gardien ; sinon une attaque.
+        /// </summary>
+        Cast = 6,
+
+        /// <summary>Essai réaliste 7 : coup reçu sans garde (« Sword And Shield Impact », « Archer Impact ») ; sinon rien ne change.</summary>
+        Hurt = 7,
+
+        /// <summary>Essai réaliste 7 : coup reçu sur la garde (« Sword And Shield Guard Impact ») ; sinon la garde reste.</summary>
+        GuardHit = 8,
     }
 
     /// <summary>Un son de l'essai de style.</summary>
@@ -136,6 +148,48 @@ namespace EdS.Runtime
         Potion = 4,
         Gather = 5,
         Craft = 6,
+
+        /// <summary>Essai réaliste 7 : épée qui fend l'air (compétence lancée).</summary>
+        Swing = 7,
+
+        /// <summary>Essai réaliste 7 : sort ou soutien lancé.</summary>
+        Cast = 8,
+
+        /// <summary>Essai réaliste 7 : grognement d'un loup qui attaque.</summary>
+        Growl = 9,
+
+        /// <summary>Essai réaliste 7 : grognement d'un sanglier qui charge.</summary>
+        Grunt = 10,
+
+        /// <summary>Essai réaliste 7 : rugissement du Gardien et des grandes créatures.</summary>
+        Roar = 11,
+
+        /// <summary>Essai réaliste 7 : butin ramassé (pièces).</summary>
+        Coin = 12,
+    }
+
+    /// <summary>Essai réaliste 7 : musique de l'essai de style, d'après le lieu et le combat.</summary>
+    public enum StyleMusic
+    {
+        /// <summary>Hors du village, sans combat.</summary>
+        Exploration = 0,
+
+        /// <summary>Au village.</summary>
+        Village = 1,
+
+        /// <summary>En combat.</summary>
+        Combat = 2,
+
+        /// <summary>Face au Gardien.</summary>
+        Boss = 3,
+    }
+
+    /// <summary>Essai réaliste 7 : nappes d'ambiance (en boucle, mêlées).</summary>
+    public enum StyleAmbience
+    {
+        Birds = 0,
+        Wind = 1,
+        River = 2,
     }
 
     /// <summary>
@@ -247,6 +301,33 @@ namespace EdS.Runtime
             [StyleSound.Potion] = new[] { "bottle", "drink", "potion", "liquid", "handlesmallleather", "cloth" },
             [StyleSound.Gather] = new[] { "impactmining", "chop", "dig", "gather" },
             [StyleSound.Craft] = new[] { "anvil", "forge", "impactmetalheavy", "metalpot" },
+            // Essai réaliste 7 : packs CC0 d'OpenGameArt (artisticdude, rubberduck) et de Kenney.
+            [StyleSound.Swing] = new[] { "swish", "swing", "whoosh" },
+            [StyleSound.Cast] = new[] { "spell", "magic", "cast" },
+            [StyleSound.Growl] = new[] { "growl", "howl", "wolf", "barking" },
+            [StyleSound.Grunt] = new[] { "grunt", "boar", "pig", "oink" },
+            [StyleSound.Roar] = new[] { "roar", "troll", "monster" },
+            [StyleSound.Coin] = new[] { "coin" },
+        };
+
+        /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
+        private static readonly (StyleMusic Kind, string[] Words)[] MusicWords =
+        {
+            (StyleMusic.Exploration, new[] { "exploration", "explore", "woodland", "field" }),
+            (StyleMusic.Village, new[] { "village", "town", "festival" }),
+            (StyleMusic.Combat, new[] { "combat", "battle", "fight" }),
+            (StyleMusic.Boss, new[] { "boss", "heroic", "epic" }),
+        };
+
+        /// <summary>
+        /// Essai réaliste 7 : mots des ambiances (rangées dans un dossier « Ambience »), dans l'ordre où on les essaie. Relecture de l'essai 7 :
+        /// la rivière d'abord, puis le vent, les oiseaux en dernier (« forest_river » est une rivière, pas des oiseaux).
+        /// </summary>
+        private static readonly (StyleAmbience Kind, string[] Words)[] AmbienceWords =
+        {
+            (StyleAmbience.River, new[] { "riviere", "river", "stream", "water" }),
+            (StyleAmbience.Wind, new[] { "vent", "wind", "outdoor", "dehors" }),
+            (StyleAmbience.Birds, new[] { "oiseaux", "birds", "morning", "forest" }),
         };
 
         /// <summary>
@@ -261,7 +342,14 @@ namespace EdS.Runtime
             [StyleMotion.Attack] = new[] { "attack", "slash", "strike", "bite", "punch", "hit" },
             [StyleMotion.Death] = new[] { "death", "die", "dead", "dying" },
             [StyleMotion.Block] = new[] { "block" },
+            // Essai réaliste 7 : « power » n'en est pas (« Power Slash » est une attaque).
+            [StyleMotion.Cast] = new[] { "cast", "spell", "roar", "taunt" },
+            [StyleMotion.Hurt] = new[] { "impact", "hurt", "react", "damage" },
+            [StyleMotion.GuardHit] = new[] { "guard" },
         };
+
+        /// <summary>Essai réaliste 7 : animations réservées à leur mouvement (jamais prises pour l'attente, la marche ou une attaque).</summary>
+        private static readonly StyleMotion[] Reserved = { StyleMotion.Block, StyleMotion.Cast, StyleMotion.Hurt, StyleMotion.GuardHit };
 
         /// <summary>Repli quand le modèle n'a pas l'animation demandée.</summary>
         private static readonly Dictionary<StyleMotion, StyleMotion[]> Fallbacks = new Dictionary<StyleMotion, StyleMotion[]>
@@ -272,6 +360,9 @@ namespace EdS.Runtime
             [StyleMotion.Attack] = new[] { StyleMotion.Idle },
             [StyleMotion.Death] = new StyleMotion[0],
             [StyleMotion.Block] = new[] { StyleMotion.Idle },
+            [StyleMotion.Cast] = new[] { StyleMotion.Attack, StyleMotion.Idle },
+            [StyleMotion.Hurt] = new StyleMotion[0],
+            [StyleMotion.GuardHit] = new StyleMotion[0],
         };
 
         /// <summary>Sources réalistes : dossiers où sont rangés les fichiers de Poly Haven, de Mixamo et de Sketchfab.</summary>
@@ -446,10 +537,82 @@ namespace EdS.Runtime
         /// </summary>
         public static string? PickSound(IEnumerable<string> paths, StyleSound sound)
         {
-            var files = (paths ?? Array.Empty<string>()).OrderBy(p => p, StringComparer.Ordinal).ToList();
+            // Essai réaliste 7 : les musiques et les ambiances ne sont pas des bruitages.
+            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p))
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
             foreach (string word in Sounds[sound])
                 if (files.FirstOrDefault(p => Key(FileName(p)).Contains(word)) is string found) return found;
             return null;
+        }
+
+        /// <summary>
+        /// Essai réaliste 7 : variantes d'un son (jusqu'à <paramref name="max"/>) : les fichiers du premier mot qui en trouve, dans l'ordre
+        /// ordinal (« swish-1 », « swish-10 », …), pour qu'un même geste ne sonne pas toujours pareil. Les musiques et les ambiances
+        /// (dossiers « Music » et « Ambience ») n'en sont jamais.
+        /// </summary>
+        public static IReadOnlyList<string> PickSounds(IEnumerable<string> paths, StyleSound sound, int max)
+        {
+            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p))
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            foreach (string word in Sounds[sound])
+            {
+                List<string> found = files.Where(p => Key(FileName(p)).Contains(word)).Take(Math.Max(0, max)).ToList();
+                if (found.Count > 0) return found;
+            }
+            return Array.Empty<string>();
+        }
+
+        /// <summary>Essai réaliste 7 : musique d'un fichier rangé dans un dossier « Music » (ou « Musique »), d'après son nom ; null sinon.</summary>
+        public static StyleMusic? MusicOf(string path)
+        {
+            if (!InMusicFolder(path)) return null;
+            string file = Key(FileName(path));
+            foreach ((StyleMusic kind, string[] words) in MusicWords)
+                if (words.Any(w => file.Contains(w))) return kind;
+            return null;
+        }
+
+        /// <summary>Essai réaliste 7 : ambiance d'un fichier rangé dans un dossier « Ambience » (ou « Ambiance »), d'après son nom ; null sinon.</summary>
+        public static StyleAmbience? AmbienceOf(string path)
+        {
+            if (!InAmbienceFolder(path)) return null;
+            string file = Key(FileName(path));
+            foreach ((StyleAmbience kind, string[] words) in AmbienceWords)
+                if (words.Any(w => file.Contains(w))) return kind;
+            return null;
+        }
+
+        /// <summary>
+        /// Relecture de l'essai 7 : le fichier est-il rangé dans un dossier de musiques (« Music », « Musique ») ? Même si son nom n'est
+        /// pas reconnu : il n'est alors ni une musique jouée ni un bruitage, et Unity le lit en continu (pas décompressé en mémoire).
+        /// </summary>
+        public static bool InMusicFolder(string path) => Segments(path).Any(s => s == "music" || s == "musique" || s == "musiques");
+
+        /// <summary>Relecture de l'essai 7 : le fichier est-il rangé dans un dossier d'ambiances (« Ambience », « Ambiance ») ?</summary>
+        public static bool InAmbienceFolder(string path) => Segments(path).Any(s => s == "ambience" || s == "ambiance" || s == "ambiances");
+
+        /// <summary>
+        /// Essai réaliste 7 : musique à jouer. Le Gardien engagé l'emporte, puis le combat (un adversaire vivant tout proche), puis le
+        /// village, sinon l'exploration.
+        /// </summary>
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage) =>
+            bossEngaged ? StyleMusic.Boss : fighting ? StyleMusic.Combat : inVillage ? StyleMusic.Village : StyleMusic.Exploration;
+
+        /// <summary>
+        /// Essai réaliste 7 : volume d'une nappe d'ambiance (0 à 1) : la rivière d'après la distance à son lit (pleine à 4 m, éteinte à
+        /// 30 m), le vent un peu plus fort loin du village, les oiseaux partout, plus discrets en combat.
+        /// </summary>
+        public static double AmbienceVolume(StyleAmbience ambience, double riverDistance, bool inVillage, bool fighting)
+        {
+            double calm = fighting ? 0.5 : 1;
+            switch (ambience)
+            {
+                case StyleAmbience.River:
+                    if (double.IsNaN(riverDistance) || riverDistance < 0) return 0;
+                    return Math.Max(0, Math.Min(1, (30 - riverDistance) / 26.0));
+                case StyleAmbience.Wind: return (inVillage ? 0.35 : 0.6) * calm;
+                default: return (inVillage ? 0.7 : 1.0) * calm;
+            }
         }
 
         /// <summary>
@@ -473,20 +636,119 @@ namespace EdS.Runtime
         /// chaque mot, le nom exact l'emporte (« Idle » avant « Idle_swordLeft »), puis un nom qui commence par le mot, puis un nom qui le
         /// contient.
         /// </summary>
-        public static string? Clip(IEnumerable<string> clips, StyleMotion motion)
+        public static string? Clip(IEnumerable<string> clips, StyleMotion motion) => Clip(clips, motion, null, 0);
+
+        /// <summary>
+        /// Essai réaliste 7 : comme <see cref="Clip(IEnumerable{string}, StyleMotion)"/>, avec une préférence (<paramref name="prefer"/> : un
+        /// mot du nom, « hilt », ou la fin du nom réduit, « shieldslash ») puis, sans elle, une variante stable parmi toutes les animations
+        /// du mouvement (<paramref name="variant"/> positif : rang modulo leur nombre, dans l'ordre ordinal). Les animations réservées
+        /// (garde, sort, coup reçu) ne servent qu'à leur mouvement : « Sword And Shield Block Idle » n'est pas une attente,
+        /// « Idle_HitReact_Left » n'est pas une attaque.
+        /// </summary>
+        public static string? Clip(IEnumerable<string> clips, StyleMotion motion, string? prefer, int variant)
         {
             var all = (clips ?? Array.Empty<string>()).ToList();
+            // Relecture de l'essai 7 : « !mot » écarte les animations de ce mot (une attaque ordinaire n'est pas le saut du Gardien), sauf
+            // s'il ne reste qu'elles.
+            string? exclude = prefer != null && prefer.StartsWith("!", StringComparison.Ordinal) ? Key(prefer.Substring(1)) : null;
+            if (exclude != null) prefer = null;
             foreach (StyleMotion m in new[] { motion }.Concat(Fallbacks[motion]))
+            {
+                List<string> names = all.Where(n => Usable(n, m)).ToList();
+                if (m == motion && !string.IsNullOrEmpty(exclude))
+                {
+                    List<string> kept = names.Where(n => !HasWord(n, new[] { exclude! })).ToList();
+                    if (kept.Any(n => HasWord(n, Clips[m]))) names = kept;
+                }
+                if (m == motion && !string.IsNullOrEmpty(prefer))
+                {
+                    string want = Key(prefer);
+                    string? liked = names.Where(n => HasWord(n, Clips[m])).OrderBy(n => n, StringComparer.Ordinal)
+                        .FirstOrDefault(n => HasWord(n, new[] { want }) || Key(n).EndsWith(want, StringComparison.Ordinal));
+                    if (liked != null) return liked;
+                }
+                if (m == motion && variant > 0)
+                {
+                    List<string> every = names.Where(n => HasWord(n, Clips[m])).OrderBy(n => n, StringComparer.Ordinal).ToList();
+                    if (every.Count > 0) return every[variant % every.Count];
+                }
                 foreach (string word in Clips[m])
                 {
-                    // Essai réaliste 6 : « Sword And Shield Block (Idle) » ne sert qu'à la garde, pas à l'attente.
-                    var names = m == StyleMotion.Block ? all : all.Where(n => !HasWord(n, Clips[StyleMotion.Block])).ToList();
                     string? found = names.FirstOrDefault(n => Segment(n) == word) ?? names.FirstOrDefault(n => Segment(n).StartsWith(word, StringComparison.Ordinal))
                         ?? names.FirstOrDefault(n => HasWord(n, new[] { word }));
                     if (found != null) return found;
                 }
+            }
             return null;
         }
+
+        /// <summary>
+        /// L'animation <paramref name="clip"/> peut-elle servir au mouvement <paramref name="motion"/> ? Une animation réservée (garde,
+        /// sort, coup reçu, coup sur la garde) ne sert qu'au sien ; un coup reçu sur la garde n'est pas un coup reçu sans garde.
+        /// </summary>
+        private static bool Usable(string clip, StyleMotion motion)
+        {
+            foreach (StyleMotion reserved in Reserved)
+                if (reserved != motion && HasWord(clip, Clips[reserved]))
+                {
+                    // « Sword And Shield Guard Impact » : coup sur la garde (réservé), pas un coup reçu ni une garde.
+                    if (motion == StyleMotion.GuardHit && reserved == StyleMotion.Hurt) continue;
+                    return false;
+                }
+            return true;
+        }
+
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : « coups variés ») : animation d'une compétence du joueur. L'ultime et
+        /// les soutiens (Provocation, Barrière d'acier) sont des sorts ; chaque frappe du Bastion a son geste de Mixamo (Frappe du rempart :
+        /// le coup haut, Heurt de bouclier : le coup de garde, Contrecoup : la frappe puissante, Onde de rupture : la taille vers le sol) ;
+        /// une autre compétence prend une attaque variée d'après son identifiant. <c>Prefer</c> : voir <see cref="Clip(IEnumerable{string}, StyleMotion, string, int)"/>.
+        /// </summary>
+        public static (StyleMotion Motion, string? Prefer, int Variant) SkillAnimation(string skillId, bool ultimate)
+        {
+            if (ultimate) return (StyleMotion.Cast, null, 0);
+            // Relecture de l'essai 7 : mot à mot, sur le dernier segment de l'identifiant (« skill.bastion.defi » ne contient pas « onde »,
+            // ni « besoin » « soin »).
+            string[] words = IdWords(skillId);
+            foreach ((string word, StyleMotion motion, string? prefer) in SkillMoves)
+                if (words.Contains(word)) return (motion, prefer, 0);
+            return (StyleMotion.Attack, null, 1 + Variant(skillId, 997));
+        }
+
+        /// <summary>Mots du dernier segment d'un identifiant (« skill.bastion.onde_de_rupture » → onde, de, rupture), réduits.</summary>
+        private static string[] IdWords(string id)
+        {
+            string s = id ?? string.Empty;
+            int dot = s.LastIndexOf('.');
+            return s.Substring(dot + 1).Split(new[] { '_', '-', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(Key).Where(w => w.Length > 0).ToArray();
+        }
+
+        private static readonly (string Word, StyleMotion Motion, string? Prefer)[] SkillMoves =
+        {
+            ("provocation", StyleMotion.Cast, null), ("barriere", StyleMotion.Cast, null), ("soin", StyleMotion.Cast, null),
+            ("frappe", StyleMotion.Attack, "high"), ("heurt", StyleMotion.Attack, "hilt"), ("contrecoup", StyleMotion.Attack, "power"),
+            ("onde", StyleMotion.Attack, "shieldslash"),
+        };
+
+        /// <summary>
+        /// Essai réaliste 7 : animation d'une attaque d'un adversaire, d'après les mots de l'identifiant de l'attaque. Relecture de l'essai
+        /// 7 : d'après les vraies attaques des Vallons. Une onde ou une pluie (onde du Seuil, onde du rôdeur, pluie de flèches) est lancée
+        /// d'un cri (« Gardien Roar » ; sans geste de cri, une attaque) ; une ruée ou un bond est un saut (« Gardien Jump Attack ») ; les
+        /// autres (griffe, morsure, flèche, éclat, charge) prennent une attaque variée, stable pour cette attaque, jamais le saut.
+        /// </summary>
+        public static (StyleMotion Motion, string? Prefer, int Variant) AttackAnimation(string attackId)
+        {
+            string[] words = IdWords(attackId);
+            if (words.Any(w => CastAttackWords.Any(c => w.StartsWith(c, StringComparison.Ordinal)))) return (StyleMotion.Cast, null, 0);
+            if (words.Any(w => LeapAttackWords.Any(c => w.StartsWith(c, StringComparison.Ordinal)))) return (StyleMotion.Attack, "jump", 0);
+            return (StyleMotion.Attack, NotJump, 1 + Variant(attackId, 997));
+        }
+
+        private static readonly string[] CastAttackWords = { "onde", "pluie", "rugi", "roar", "hurle", "cri" };
+        private static readonly string[] LeapAttackWords = { "ruee", "bond", "saut", "jump", "ecras" };
+
+        /// <summary>Préférence spéciale de <see cref="AttackAnimation"/> : toute attaque sauf le saut.</summary>
+        public const string NotJump = "!jump";
 
         /// <summary>Dernier segment d'un nom de clip (après le dernier « | »), réduit.</summary>
         private static string Segment(string clip)
@@ -499,7 +761,8 @@ namespace EdS.Runtime
         /// <summary>Animations qui tournent en boucle (attente, marche, course).</summary>
         public static bool Loops(string clip) =>
             new[] { StyleMotion.Idle, StyleMotion.Walk, StyleMotion.Run }.Any(m => HasWord(clip, Clips[m]))
-                && !HasWord(clip, Clips[StyleMotion.Death]) && !HasWord(clip, Clips[StyleMotion.Attack]);
+                && !HasWord(clip, Clips[StyleMotion.Death]) && !HasWord(clip, Clips[StyleMotion.Attack])
+                && !HasWord(clip, Clips[StyleMotion.Hurt]) && !HasWord(clip, Clips[StyleMotion.Cast]);
 
         /// <summary>
         /// Un mot du nom commence-t-il par l'un des mots cherchés ? Les mots sont coupés aux signes et aux majuscules (« Run_swordAttack » →

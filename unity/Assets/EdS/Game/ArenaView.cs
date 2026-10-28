@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Domain.Combat;
 using EdS.Domain.Space;
 using EdS.Runtime;
 using EdS.Simulation.Engine;
@@ -242,6 +243,84 @@ namespace EdS.Game
         public void Strike()
         {
             if (_playerId != null && _looks.TryGetValue(_playerId, out StyleBody look)) look.Strike();
+        }
+
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : « coups variés ») : le joueur lance la compétence
+        /// <paramref name="skillId"/> ; son modèle joue le geste de cette compétence.
+        /// </summary>
+        public void Strike(string skillId, bool ultimate)
+        {
+            if (_playerId != null && _looks.TryGetValue(_playerId, out StyleBody look)) look.Strike(skillId, ultimate);
+        }
+
+        /// <summary>Essai réaliste 7 : le combattant <paramref name="id"/> reçoit un coup, gardé ou non (son modèle réagit s'il le peut).</summary>
+        public void Hurt(string id, bool guarded)
+        {
+            if (id != null && _looks.TryGetValue(id, out StyleBody look)) look.Hurt(guarded);
+        }
+
+        /// <summary>Essai réaliste 7 : pieds d'un combattant affiché (sur le tablier du pont s'il y est), ou null.</summary>
+        public Vector3? Feet(string id) => id != null && _bodies.TryGetValue(id, out GameObject body) && body.activeSelf ? body.transform.position - Vector3.up : (Vector3?)null;
+
+        /// <summary>Essai réaliste 7 : hauteur affichée d'un combattant (son modèle, sinon la capsule de 2 m).</summary>
+        public float Height(string id) => id != null && _looks.TryGetValue(id, out StyleBody look) ? look.Height : 2f;
+
+        /// <summary>Essai réaliste 7 : attaques déjà jouées par les modèles des adversaires (auteur, attaque, tick d'impact ou du tour).</summary>
+        private readonly HashSet<(string, string, long)> _struck = new HashSet<(string, string, long)>();
+
+        // Relecture de l'essai 7 : listes réutilisées d'une image à l'autre (rien d'alloué à chaque image pour les attaques).
+        private readonly HashSet<(string, string, long)> _live = new HashSet<(string, string, long)>();
+        private readonly List<(string Actor, string Attack)> _started = new List<(string Actor, string Attack)>();
+        private readonly Dictionary<string, CombatantView> _views = new Dictionary<string, CombatantView>();
+
+        /// <summary>Avance du geste d'un adversaire sur l'impact de son attaque (secondes).</summary>
+        private const double WindUp = 0.45;
+
+        /// <summary>
+        /// Essai réaliste 7 : jusqu'ici, les adversaires ne jouaient jamais leur attaque. Chaque attaque annoncée au sol fait jouer le
+        /// geste de son auteur un peu avant l'impact (<see cref="WindUp"/>), une seule fois. Relecture de l'essai 7 : les attaques
+        /// immédiates (morsure du loup, flèche, éclat, griffe), qui ne sont jamais annoncées, font jouer le leur un peu avant le tour de
+        /// l'assaillant si sa cible est à portée (<see cref="GameFeel.Imminent"/>). Le Gardien rugit pour son onde, bondit pour sa ruée
+        /// (<see cref="StyleRules.AttackAnimation"/>). Rend les attaques qui viennent de commencer (auteur, attaque), pour leurs cris et
+        /// leurs effets ; la liste rendue est réutilisée à l'appel suivant.
+        /// </summary>
+        public IReadOnlyList<(string Actor, string Attack)> PlayAttacks(ICombatClient combat)
+        {
+            _started.Clear();
+            _live.Clear();
+            double now = combat.Tick + combat.TickProgress;
+            double lead = WindUp / combat.TickSeconds;
+            foreach (AnnouncedAttack attack in combat.Announced())
+            {
+                if (attack.Actor == combat.PlayerId) continue;
+                var key = (attack.Actor, attack.Attack, attack.ImpactTick);
+                _live.Add(key);
+                double toImpact = attack.ImpactTick - now;
+                if (toImpact > lead || toImpact < -0.25 / combat.TickSeconds || !_struck.Add(key)) continue;
+                if (_looks.TryGetValue(attack.Actor, out StyleBody look)) look.Attack(attack.Attack);
+                _started.Add((attack.Actor, attack.Attack));
+            }
+            _views.Clear();
+            CombatantView me = combat.Player().View;
+            _views[me.Id] = me;
+            IReadOnlyList<OtherState> others = combat.Others();
+            foreach (OtherState other in others) _views[other.View.Id] = other.View;
+            foreach (OtherState other in others)
+            {
+                CombatantView view = other.View;
+                if (!other.IsEnemy || !(view.NextAttackTick is long tick)) continue;
+                CombatantView target = view.CurrentTarget != null && _views.TryGetValue(view.CurrentTarget, out CombatantView t) ? t : null;
+                if (!(GameFeel.Imminent(view, target, now, lead) is AssailantAttack attack)) continue;
+                var key = (view.Id, attack.Id, tick);
+                _live.Add(key);
+                if (!_struck.Add(key)) continue;
+                if (_looks.TryGetValue(view.Id, out StyleBody look)) look.Attack(attack.Id);
+                _started.Add((view.Id, attack.Id));
+            }
+            // Les attaques finies sont oubliées (la liste ne grandit pas pendant l'aventure) ; un tour encore à venir reste retenu.
+            _struck.RemoveWhere(k => !_live.Contains(k) && k.Item3 < now - 1);
+            return _started;
         }
 
         /// <summary>

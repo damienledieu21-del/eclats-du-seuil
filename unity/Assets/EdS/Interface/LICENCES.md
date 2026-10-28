@@ -24,3 +24,14 @@ Choix de Damien du 27 octobre 2026 (« je veux vraiment le meilleur »), identit
 
 Les icônes de l'essai 5 (`Resources/EdsInterface/Icones`) ne sont plus affichées par l'interface en jeu ; elles restent dans le projet jusqu'à l'étape 2 de l'essai 6 (écrans), qui les retirera avec l'ancienne interface IMGUI.
 
+## Essai réaliste 7 : sons de l'interface et particules
+
+Demandes de Damien du 28 octobre 2026 (« sons d'interface libres : clic, compétence prête, charge gagnée », « effets […] en particules faites dans Unity »).
+
+| Fichier | Source | Licence |
+| --- | --- | --- |
+| `Resources/EdsInterface/Sons/` : `clic`, `ouverture`, `fermeture`, `onglet`, `competence_prete`, `charge`, `talent`, `retrait`, `valide`, `erreur` | [« Interface Sounds »](https://kenney.nl/assets/interface-sounds) de **Kenney** (Kenney Vleugels, www.kenney.nl) | CC0 (texte de licence de Kenney : usage personnel et commercial permis, crédit apprécié mais pas obligatoire) ; renommés |
+| `Resources/EdsInterface/Sons/survol.ogg` | [« UI Audio »](https://kenney.nl/assets/ui-audio) de **Kenney** | CC0 ; renommé |
+| `Resources/EdsInterface/Sons/niveau.ogg`, `quete.ogg` | [« Music Jingles »](https://kenney.nl/assets/music-jingles) de **Kenney** (*jingles_STEEL02*, *jingles_PIZZI02*) | CC0 ; renommés |
+| `Resources/EdsInterface/Particules/*.png` | [« Particle Pack »](https://kenney.nl/assets/particle-pack) de **Kenney** (avec les modèles de filtres d'Indigo Ray, Craig Nisbet, Zoltan Erdokovy, Heliagon, ThreeDee, Killst4r et Tim2501) | CC0 ; réduites de 512 × 512 à 128 × 128 et renommées |
+

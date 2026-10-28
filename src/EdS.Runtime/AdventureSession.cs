@@ -21,6 +21,25 @@ using EdS.World;
 
 namespace EdS.Runtime
 {
+    /// <summary>Essai réaliste 7 : lieu et combat autour du personnage, pour la musique et les ambiances (voir <see cref="AdventureSession.Mood"/>).</summary>
+    public readonly struct AdventureMood
+    {
+        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance)
+        {
+            InVillage = inVillage;
+            Fighting = fighting;
+            BossEngaged = bossEngaged;
+            RiverDistance = riverDistance;
+        }
+
+        public bool InVillage { get; }
+        public bool Fighting { get; }
+        public bool BossEngaged { get; }
+
+        /// <summary>Distance au lit de la rivière (mètres) ; NaN sans rivière.</summary>
+        public double RiverDistance { get; }
+    }
+
     /// <summary>Un PNJ, un nœud de récolte ou un point sûr à montrer dans la zone (nom déjà traduit).</summary>
     public sealed class WorldMarker
     {
@@ -254,8 +273,19 @@ namespace EdS.Runtime
             return drained;
         }
 
+        /// <summary>
+        /// Essai réaliste 7 : quêtes accomplies annoncées depuis l'ouverture de l'aventure (la petite fanfare de l'interface suit ce
+        /// compteur). Affichage seulement.
+        /// </summary>
+        public int QuestsAnnounced { get; private set; }
+
+        /// <summary>Essai réaliste 7 : butins et objets reçus annoncés depuis l'ouverture de l'aventure (le bruit des pièces). Affichage seulement.</summary>
+        public int LootAnnounced { get; private set; }
+
         private void Say(string key, params object[] args)
         {
+            if (key == "text.ui.quest_done") QuestsAnnounced++;
+            if (key == "text.ui.loot" || key == "text.ui.item_given") LootAnnounced++;
             string text = Texts.Get(key);
             if (args.Length > 0) text = string.Format(CultureInfo.InvariantCulture, text, args);
             if (_messages.Count >= MaxMessages) _messages.RemoveAt(0);
@@ -716,6 +746,43 @@ namespace EdS.Runtime
 
         /// <summary>Heure du monde (« jour 1, 08 h 30 »).</summary>
         public string TimeOfDay => World.Zone.Time.ToString();
+
+        /// <summary>Essai réaliste 7 : portée où le Gardien vivant donne sa musique (mètres).</summary>
+        public static readonly Fixed BossMusicRange = Fixed.FromInt(25);
+
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : musique et ambiances) : ce qu'écoutent la musique et les nappes
+        /// d'ambiance de l'essai de style. Village : un lieu dont l'identifiant parle de village ; combat : un ennemi vivant à moins de
+        /// <see cref="RestSafety"/> (la règle de la halte) ; Gardien : une de ses formes vivante à moins de <see cref="BossMusicRange"/> ;
+        /// rivière : distance au lieu « riviere » (mètres, NaN sans ce lieu). Affichage seulement : rien ne change dans le monde.
+        /// </summary>
+        public AdventureMood Mood()
+        {
+            if (!(Me is GroundVector p) || World.IsDefeated) return new AdventureMood(false, false, false, double.NaN);
+            bool village = _zone.PlacesAt(p).Any(x => x.Id.IndexOf("village", StringComparison.Ordinal) >= 0);
+            // Relecture de l'essai 7 : une seule recherche (la plus large), puis la distance de chaque ennemi trouvé.
+            bool fighting = false, boss = false;
+            long rest2 = checked(RestSafety.Raw * RestSafety.Raw);
+            foreach (OtherState o in CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, BossMusicRange))
+            {
+                if (o.View.Position is GroundVector q)
+                {
+                    long dx = checked(q.X.Raw - p.X.Raw), dz = checked(q.Z.Raw - p.Z.Raw);
+                    if (checked(dx * dx + dz * dz) <= rest2) fighting = true;
+                }
+                if (IsBoss(o.Id)) boss = true;
+                if (boss && fighting) break;
+            }
+            double river = double.NaN;
+            foreach (Place place in _zone.Places.Where(x => x.Id.IndexOf("riviere", StringComparison.Ordinal) >= 0))
+            {
+                double dx = Math.Max(0, checked(Math.Max(place.Min.X.Raw - p.X.Raw, p.X.Raw - place.Max.X.Raw))) / 10000.0;
+                double dz = Math.Max(0, checked(Math.Max(place.Min.Z.Raw - p.Z.Raw, p.Z.Raw - place.Max.Z.Raw))) / 10000.0;
+                double d = Math.Sqrt(dx * dx + dz * dz);
+                river = double.IsNaN(river) ? d : Math.Min(river, d);
+            }
+            return new AdventureMood(village, fighting, boss, river);
+        }
 
         /// <summary>Formes du chef de la zone (pour l'affichage).</summary>
         public bool IsBoss(string combatant) => _zone.Boss is { } b && (b.Forms.Any(f => f.Id == combatant) || World.BossForm == combatant);   // forme revenue sous une nouvelle identité (revue Codex de la PR #48)

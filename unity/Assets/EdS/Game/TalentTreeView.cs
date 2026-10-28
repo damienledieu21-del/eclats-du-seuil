@@ -165,10 +165,12 @@ namespace EdS.Game
             _fade.alpha = 0f;
             _content.localScale = new Vector3(0.97f, 0.97f, 1f);
             UiKit.Show(_canvas, true);
+            UiSounds.Play(UiCue.Open);   // essai réaliste 7
         }
 
         public void Close()
         {
+            if (_editor != null) UiSounds.Play(UiCue.Close);   // essai réaliste 7
             _editor = null;
             UiKit.Show(_canvas, false);
         }
@@ -345,6 +347,8 @@ namespace EdS.Game
         {
             if (_editor == null || node == null) return;
             BuildViolation why = delta > 0 ? _editor.Add(node.Talent.Id) : _editor.Remove(node.Talent.Id);
+            // Essai réaliste 7 : un éclat placé sonne clair, un éclat retiré plus bas, un refus par l'erreur.
+            UiSounds.Play(why != null ? UiCue.Error : delta > 0 ? UiCue.TalentAdded : UiCue.TalentRemoved);
             if (why != null) Say(why.Message, true);
             else Say(string.Format(_text("text.ui.talents.rank"), node.Talent.Name, _editor.Rank(node.Talent.Id), node.Talent.MaxRank), false);
         }
@@ -360,6 +364,7 @@ namespace EdS.Game
         {
             if (_editor == null) return;
             string refusal = _apply(_editor.Build);
+            UiSounds.Play(refusal == null ? UiCue.Confirm : UiCue.Error);   // essai réaliste 7
             if (refusal == null) _result = Result.Validated;
             else Say(refusal, true);
         }

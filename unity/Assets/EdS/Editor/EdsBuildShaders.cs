@@ -20,6 +20,7 @@ namespace EdS.Editor
     /// d'attaque au sol et les anneaux de la cible ont leur shader (« EdS/Annonce ») : un troisième matériau (<see cref="AnnonceName"/>),
     /// que le jeu copie.
     /// </para>
+    /// <para>Essai réaliste 7 : les effets en particules ont le leur (« EdS/Particule ») : un quatrième matériau (<see cref="ParticuleName"/>).</para>
     /// </summary>
     public sealed class EdsBuildShaders : IPreprocessBuildWithReport, IPostprocessBuildWithReport
     {
@@ -33,6 +34,9 @@ namespace EdS.Editor
 
         /// <summary>Matériau des annonces au sol, chargé par le jeu (nom partagé avec <c>Annonces.MaterialName</c>).</summary>
         public const string AnnonceName = "EdsAnnonce";
+
+        /// <summary>Essai réaliste 7 : matériau des particules, chargé par le jeu (nom partagé avec <c>Effects.MaterialName</c>).</summary>
+        public const string ParticuleName = "EdsParticule";
 
         private const string Folder = "Assets/EdS/Resources";
 
@@ -68,6 +72,10 @@ namespace EdS.Editor
             Shader annonce = Shader.Find("EdS/Annonce");
             if (annonce != null) AssetDatabase.CreateAsset(new Material(annonce), Folder + "/" + AnnonceName + ".mat");
             else Debug.LogWarning("Éclats du Seuil : shader « EdS/Annonce » absent ; le jeu construit dessinera les annonces en formes pleines.");
+            // Essai réaliste 7 : effets en particules (impacts, parades, sorts) ; le jeu copie ce matériau pour chaque texture.
+            Shader particule = Shader.Find("EdS/Particule");
+            if (particule != null) AssetDatabase.CreateAsset(new Material(particule), Folder + "/" + ParticuleName + ".mat");
+            else Debug.LogWarning("Éclats du Seuil : shader « EdS/Particule » absent ; le jeu construit n'aura pas d'effets en particules.");
             AssetDatabase.SaveAssets();
             Debug.Log("Éclats du Seuil : matériau modèle « " + shader.name + " » emporté dans le jeu construit.");
         }

@@ -15,6 +15,12 @@ namespace EdS.Game
         private readonly Animation _animation;
         private readonly Transform _look;
         private readonly List<string> _clips = new List<string>();
+
+        /// <summary>
+        /// Relecture de l'essai 7 : animation choisie pour chaque demande (mouvement, préférence, variante), retenue : la liste des animations
+        /// ne change plus après la construction, et le choix (expressions régulières) coûtait à chaque image et pour chaque corps.
+        /// </summary>
+        private readonly Dictionary<(StyleMotion, string, int), string> _picked = new Dictionary<(StyleMotion, string, int), string>();
         private bool _fallen;
         private string _playing;
 
@@ -25,12 +31,20 @@ namespace EdS.Game
         private Vector3 _last;
         private bool _started;
         private float _speed;
-        private float _attackUntil;
 
-        internal StyleBody(Transform look, Animation animation)
+        // Essai réaliste 7 : geste en cours (attaque, sort, coup reçu) et sa fin.
+        private float _actionUntil;
+        private StyleMotion _actionMotion;
+        private string _actionClip;
+
+        /// <summary>Essai réaliste 7 : hauteur du modèle (mètres), pour placer les effets à hauteur de poitrine.</summary>
+        public float Height { get; }
+
+        internal StyleBody(Transform look, Animation animation, float height)
         {
             _look = look;
             _animation = animation;
+            Height = height;
             foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
                 foreach (Material m in r.materials)
                 {
@@ -60,12 +74,63 @@ namespace EdS.Game
         /// Demande l'animation d'attaque pendant un court instant (compétence lancée par le joueur) : la durée de l'animation, entre 0,6 et
         /// 1,2 seconde (essai réaliste : le coup d'épée de Mixamo dure 1,5 seconde, on n'en garde que le geste).
         /// </summary>
-        public void Strike()
+        public void Strike() => Act(StyleMotion.Attack, null, 0, 0.6f, 1.2f);
+
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : « coups variés ») : le geste de la compétence
+        /// <paramref name="skillId"/> (<see cref="StyleRules.SkillAnimation"/>) : chaque frappe a le sien, l'ultime et les soutiens sont des
+        /// sorts. Entre 0,6 et 1,4 seconde.
+        /// </summary>
+        public void Strike(string skillId, bool ultimate)
         {
-            string clip = _animation != null ? StyleRules.Clip(_clips, StyleMotion.Attack) : null;
-            AnimationState state = clip != null ? _animation[clip] : null;
-            _attackUntil = Time.time + (state != null ? Mathf.Clamp(state.length, 0.6f, 1.2f) : 0.6f);
-            if (clip != null && clip == _playing) _animation.Rewind(clip);   // deux coups de suite : le geste recommence
+            (StyleMotion motion, string prefer, int variant) = StyleRules.SkillAnimation(skillId ?? "", ultimate);
+            Act(motion, prefer, variant, 0.6f, 1.4f);
+        }
+
+        /// <summary>
+        /// Essai réaliste 7 : un adversaire porte l'attaque <paramref name="attackId"/> (annoncée au sol) : son geste
+        /// (<see cref="StyleRules.AttackAnimation"/>), entre 0,6 et 1,6 seconde. Jusqu'ici, les adversaires ne jouaient jamais leur attaque.
+        /// </summary>
+        public void Attack(string attackId)
+        {
+            (StyleMotion motion, string prefer, int variant) = StyleRules.AttackAnimation(attackId ?? "");
+            Act(motion, prefer, variant, 0.6f, 1.6f);
+        }
+
+        /// <summary>
+        /// Essai réaliste 7 : coup reçu, sur la garde (<paramref name="guarded"/>) ou non. Il n'interrompt ni une attaque ni un sort ; sans
+        /// animation de coup reçu, rien ne change.
+        /// </summary>
+        public void Hurt(bool guarded)
+        {
+            if (Time.time < _actionUntil && (_actionMotion == StyleMotion.Attack || _actionMotion == StyleMotion.Cast)) return;
+            Act(guarded ? StyleMotion.GuardHit : StyleMotion.Hurt, null, 0, 0.3f, 0.7f);
+        }
+
+        private void Act(StyleMotion motion, string prefer, int variant, float shortest, float longest)
+        {
+            if (_animation == null || _fallen) return;
+            string clip = Pick(motion, prefer, variant);
+            if (clip == null) return;
+            AnimationState state = _animation[clip];
+            _actionUntil = Time.time + (state != null ? Mathf.Clamp(state.length, shortest, longest) : shortest);
+            _actionMotion = motion;
+            _actionClip = clip;
+            // Deux coups de suite : le geste recommence. Relecture de l'essai 7 : toujours depuis le début, même redemandé pendant son fondu
+            // de sortie (il ne repart pas de sa dernière image).
+            if (state != null) state.time = 0f;
+        }
+
+        /// <summary>Animation pour cette demande (<see cref="StyleRules.Clip(IEnumerable{string}, StyleMotion, string, int)"/>), retenue.</summary>
+        private string Pick(StyleMotion motion, string prefer = null, int variant = 0)
+        {
+            var key = (motion, prefer ?? string.Empty, variant);
+            if (!_picked.TryGetValue(key, out string clip))
+            {
+                clip = StyleRules.Clip(_clips, motion, prefer, variant);
+                _picked[key] = clip;
+            }
+            return clip;
         }
 
         /// <summary>À chaque image : allure d'après le déplacement affiché, puis l'animation qui va avec.</summary>
@@ -76,7 +141,7 @@ namespace EdS.Game
         public void Update(Vector3 position, bool dead, float deltaTime, bool guarding = false)
         {
             // Un modèle sans animation de mort (le loup et le cochon des packs) se couche sur le flanc, immobile.
-            if (dead && (_animation == null || StyleRules.Clip(_clips, StyleMotion.Death) == null))
+            if (dead && (_animation == null || Pick(StyleMotion.Death) == null))
             {
                 if (_fallen) return;
                 _fallen = true;
@@ -94,10 +159,12 @@ namespace EdS.Game
             }
             _last = position;
             _started = true;
-            string clip = StyleRules.Clip(_clips, StyleRules.Motion(_speed, dead, Time.time < _attackUntil, guarding));
+            // Essai réaliste 7 : un geste en cours (attaque, sort, coup reçu) l'emporte sur l'allure, pas sur la mort.
+            bool acting = !dead && Time.time < _actionUntil && _actionClip != null;
+            string clip = acting ? _actionClip : Pick(StyleRules.Motion(_speed, dead, false, guarding));
             if (clip == null || clip == _playing) return;
             _playing = clip;
-            _animation.CrossFade(clip, 0.15f);
+            _animation.CrossFade(clip, acting ? (_actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit ? 0.06f : 0.1f) : 0.18f);
         }
     }
 
@@ -142,7 +209,7 @@ namespace EdS.Game
                 foreach (AnimationClip clip in clips)
                     if (clip != null && animation.GetClip(clip.name) == null) animation.AddClip(clip, clip.name);
             }
-            return new StyleBody(look.transform, animation);
+            return new StyleBody(look.transform, animation, height);
         }
 
         /// <summary>
@@ -350,11 +417,16 @@ namespace EdS.Game
         /// <summary>Modèles déjà décrits dans le journal de Unity (une ligne par modèle, pour régler l'essai).</summary>
         private static readonly HashSet<string> Logged = new HashSet<string>();
 
-        /// <summary>Joue un son de l'essai (rien sans catalogue ou sans ce son).</summary>
+        private static int _variant;
+
+        /// <summary>
+        /// Joue un son de l'essai (rien sans catalogue ou sans ce son). Essai réaliste 7 : une variante différente à chaque fois quand le
+        /// catalogue en a plusieurs.
+        /// </summary>
         public static void Play(AudioSource source, StyleSound sound, float volume = 0.8f)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            AudioClip clip = catalog != null ? catalog.Sound(sound) : null;
+            AudioClip clip = catalog != null ? catalog.Sound(sound, _variant++) : null;
             if (source != null && clip != null) source.PlayOneShot(clip, volume);
         }
     }

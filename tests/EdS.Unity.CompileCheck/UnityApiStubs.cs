@@ -28,11 +28,12 @@ namespace UnityEngine
     public class Renderer : Component { public UnityEngine.Rendering.ShadowCastingMode shadowCastingMode { get; set; } public bool receiveShadows { get; set; } public void SetPropertyBlock(MaterialPropertyBlock block) { } public Material[] sharedMaterials { get; set; } public Material sharedMaterial { get; set; } public Material material { get; set; } public bool enabled { get; set; } public Bounds bounds => default; public Material[] materials { get; set; } }
     public struct Bounds { public Bounds(Vector3 center, Vector3 size) { } public Vector3 min => default; public Vector3 max => default; public Vector3 size => default; public Vector3 center => default; public Vector3 extents => default; public void Encapsulate(Bounds b) { } }
     public enum WrapMode { Default = 0, Once = 1, Loop = 2, PingPong = 4, ClampForever = 8 }
-    public sealed class AnimationState { public string name { get; set; } public WrapMode wrapMode { get; set; } public float length => 0; }
+    public sealed class AnimationState { public string name { get; set; } public WrapMode wrapMode { get; set; } public float length => 0; public float time { get; set; } }
     public sealed class AnimationClip : Object { }
     public sealed class Animation : Behaviour, System.Collections.IEnumerable { public System.Collections.IEnumerator GetEnumerator() => null; public void AddClip(AnimationClip clip, string newName) { } public AnimationClip GetClip(string name) => null; public AnimationState this[string name] => null; public void Rewind(string name) { } public void CrossFade(string animation, float fadeLength) { } public bool Play(string animation) => false; public bool Play() => false; public void Stop() { } }
-    public sealed class AudioClip : Object { }
-    public sealed class AudioSource : Behaviour { public void PlayOneShot(AudioClip clip, float volumeScale) { } }
+    public enum AudioClipLoadType { DecompressOnLoad = 0, CompressedInMemory = 1, Streaming = 2 }
+    public sealed class AudioClip : Object { public float length => 0; }
+    public sealed class AudioSource : Behaviour { public void PlayOneShot(AudioClip clip, float volumeScale) { } public void PlayOneShot(AudioClip clip) { } public AudioClip clip { get; set; } public bool loop { get; set; } public float volume { get; set; } public float pitch { get; set; } public float spatialBlend { get; set; } public bool playOnAwake { get; set; } public bool isPlaying => false; public void Play() { } public void Stop() { } public void Pause() { } public void UnPause() { } public float time { get; set; } public bool ignoreListenerPause { get; set; } }
     public sealed class AudioListener : Behaviour { }
     public sealed class MeshRenderer : Renderer { }
     public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } public Mesh sharedMesh { get; set; } }
@@ -72,7 +73,37 @@ namespace UnityEngine
     public enum CursorLockMode { None, Locked, Confined }
     public static class Cursor { public static CursorLockMode lockState { get; set; } public static bool visible { get; set; } }
     public static class Input { public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static bool GetMouseButtonDown(int b) => false; public static bool GetMouseButtonUp(int b) => false; public static Vector3 mousePosition => default; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; public static bool touchSupported => false; public static int touchCount => 0; public static Touch GetTouch(int i) => default; }
-    public static class Time { public static float time => 0; public static float deltaTime => 0; public static float unscaledDeltaTime => 0; }
+    public static class Time { public static float time => 0; public static float deltaTime => 0; public static float unscaledDeltaTime => 0; public static float unscaledTime => 0; }
+    // Essai réaliste 7 : effets en particules (Effects).
+    public struct Keyframe { public Keyframe(float time, float value) { } }
+    public sealed class AnimationCurve { public AnimationCurve(params Keyframe[] keys) { } }
+    public struct GradientColorKey { public GradientColorKey(Color col, float time) { } }
+    public struct GradientAlphaKey { public GradientAlphaKey(float alpha, float time) { } }
+    public sealed class Gradient { public void SetKeys(GradientColorKey[] colorKeys, GradientAlphaKey[] alphaKeys) { } }
+    public enum ParticleSystemRenderMode { Billboard = 0, Stretch = 1, HorizontalBillboard = 2, VerticalBillboard = 3, Mesh = 4, None = 5 }
+    public enum ParticleSystemCullingMode { Automatic = 0, PauseAndCatchup = 1, Pause = 2, AlwaysSimulate = 3 }
+    public enum ParticleSystemSimulationSpace { Local = 0, World = 1, Custom = 2 }
+    public enum ParticleSystemStopBehavior { StopEmittingAndClear = 0, StopEmitting = 1 }
+    public sealed class ParticleSystemRenderer : Renderer { public ParticleSystemRenderMode renderMode { get; set; } public float velocityScale { get; set; } public float lengthScale { get; set; } }
+    public sealed class ParticleSystem : Component
+    {
+        public struct MinMaxCurve { public MinMaxCurve(float constant) { } public MinMaxCurve(float multiplier, AnimationCurve curve) { } public static implicit operator MinMaxCurve(float constant) => default; }
+        public struct MinMaxGradient { public MinMaxGradient(Gradient gradient) { } public MinMaxGradient(Color color) { } public static implicit operator MinMaxGradient(Color color) => default; }
+        public struct MainModule { public bool loop { get; set; } public bool playOnAwake { get; set; } public float duration { get; set; } public ParticleSystemSimulationSpace simulationSpace { get; set; } public int maxParticles { get; set; } public MinMaxCurve gravityModifier { get; set; } public MinMaxCurve startSpeed { get; set; } public ParticleSystemCullingMode cullingMode { get; set; } }
+        public struct EmissionModule { public bool enabled { get; set; } }
+        public struct ShapeModule { public bool enabled { get; set; } }
+        public struct ColorOverLifetimeModule { public bool enabled { get; set; } public MinMaxGradient color { get; set; } }
+        public struct SizeOverLifetimeModule { public bool enabled { get; set; } public MinMaxCurve size { get; set; } }
+        public struct EmitParams { public Vector3 position { get; set; } public Vector3 velocity { get; set; } public float startSize { get; set; } public float startLifetime { get; set; } public Color32 startColor { get; set; } public float rotation { get; set; } public bool applyShapeToPosition { get; set; } }
+        public MainModule main => default;
+        public EmissionModule emission => default;
+        public ShapeModule shape => default;
+        public ColorOverLifetimeModule colorOverLifetime => default;
+        public SizeOverLifetimeModule sizeOverLifetime => default;
+        public void Emit(EmitParams emitParams, int count) { }
+        public void Play() { }
+        public void Stop(bool withChildren, ParticleSystemStopBehavior stopBehavior) { }
+    }
     public enum RuntimePlatform { WindowsEditor, WindowsPlayer, Android, IPhonePlayer }
     public static class Application { public static bool isEditor => false; public static bool isFocused => false; public static string dataPath => ""; public static string streamingAssetsPath => ""; public static string persistentDataPath => ""; public static bool isMobilePlatform => false; public static RuntimePlatform platform => default; public static int targetFrameRate { get; set; } }
     public class AsyncOperation { }
@@ -109,7 +140,7 @@ namespace UnityEngine.EventSystems
     public class EventSystem : UIBehaviour { public static EventSystem current => null; }
     public abstract class BaseInputModule : UIBehaviour { }
     public class StandaloneInputModule : BaseInputModule { }
-    public class PointerEventData { public enum InputButton { Left = 0, Right = 1, Middle = 2 } public InputButton button { get; set; } }
+    public class PointerEventData { public enum InputButton { Left = 0, Right = 1, Middle = 2 } public InputButton button { get; set; } public int pointerId { get; set; } }
     public interface IEventSystemHandler { }
     public interface IPointerClickHandler : IEventSystemHandler { void OnPointerClick(PointerEventData eventData); }
     public interface IPointerEnterHandler : IEventSystemHandler { void OnPointerEnter(PointerEventData eventData); }
@@ -213,9 +244,12 @@ namespace UnityEditor
     public enum ModelImporterAnimationType { None, Legacy, Generic, Human }
     public sealed class ModelImporterClipAnimation { public string name { get; set; } public bool loopTime { get; set; } public UnityEngine.WrapMode wrapMode { get; set; } }
     public sealed class ModelImporter : AssetImporter { public ModelImporterAnimationType animationType { get; set; } public bool importAnimation { get; set; } public ModelImporterClipAnimation[] clipAnimations { get; set; } public ModelImporterClipAnimation[] defaultClipAnimations => null; public bool ExtractTextures(string folderPath) => false; }
+    public enum AudioCompressionFormat { PCM = 0, Vorbis = 1, ADPCM = 2 }
+    public struct AudioImporterSampleSettings { public UnityEngine.AudioClipLoadType loadType; public AudioCompressionFormat compressionFormat; public float quality; }
+    public sealed class AudioImporter : AssetImporter { public AudioImporterSampleSettings defaultSampleSettings { get; set; } public bool forceToMono { get; set; } public bool ContainsSampleSettingsOverride(string platform) => false; public bool ClearSampleSettingOverride(string platform) => false; }
     public static class PrefabUtility { public static UnityEngine.GameObject SaveAsPrefabAsset(UnityEngine.GameObject instance, string path) => null; }
     public static class EditorUtility { public static bool DisplayDialog(string title, string message, string ok) => false; public static void SetDirty(UnityEngine.Object o) { } }
-    public static class AssetDatabase { public static string GetAssetPath(UnityEngine.Object o) => ""; public static void AddObjectToAsset(UnityEngine.Object o, UnityEngine.Object asset) { } public static bool TryGetGUIDAndLocalFileIdentifier(UnityEngine.Object o, out string guid, out long localId) { guid = ""; localId = 0; return false; } public static string[] FindAssets(string filter, string[] folders) => null; public static string GUIDToAssetPath(string guid) => ""; public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; public static UnityEngine.Object[] LoadAllAssetsAtPath(string p) => null; public static void ImportAsset(string p) { } public static void ImportAsset(string p, ImportAssetOptions options) { } public static void ImportPackage(string packagePath, bool interactive) { } }
+    public static class AssetDatabase { public static string GetAssetPath(UnityEngine.Object o) => ""; public static void AddObjectToAsset(UnityEngine.Object o, UnityEngine.Object asset) { } public static bool TryGetGUIDAndLocalFileIdentifier(UnityEngine.Object o, out string guid, out long localId) { guid = ""; localId = 0; return false; } public static string[] FindAssets(string filter, string[] folders) => null; public static string GUIDToAssetPath(string guid) => ""; public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; public static UnityEngine.Object[] LoadAllAssetsAtPath(string p) => null; public static void ImportAsset(string p) { } public static void ImportAsset(string p, ImportAssetOptions options) { } public static void ImportPackage(string packagePath, bool interactive) { } public static void StartAssetEditing() { } public static void StopAssetEditing() { } }
 }
 namespace UnityEditor.PackageManager
 {

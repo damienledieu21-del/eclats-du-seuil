@@ -24,6 +24,12 @@ namespace EdS.Game
         private bool _unsaved;
         private float _savedAt;
 
+        // Essai réaliste 7 : choc des coups (0 à 1) et pose lissée de la caméra, sans le tremblement.
+        private double _shock;
+        private Vector3 _basePosition;
+        private Quaternion _baseRotation;
+        private bool _based;
+
         public Camera Camera => _camera;
 
         /// <summary>Orientation horizontale de la vue : les déplacements au clavier lui sont relatifs.</summary>
@@ -131,9 +137,26 @@ namespace EdS.Game
             Vector3 position = target - rotation * Vector3.forward * distance;
             float k = 1f - Mathf.Exp(-12f * deltaTime);
             Transform t = _camera.transform;
-            t.position = Vector3.Lerp(t.position, position, k);
-            t.rotation = Quaternion.Slerp(t.rotation, rotation, k);
+            if (!_based)
+            {
+                _basePosition = t.position;
+                _baseRotation = t.rotation;
+                _based = true;
+            }
+            _basePosition = Vector3.Lerp(_basePosition, position, k);
+            _baseRotation = Quaternion.Slerp(_baseRotation, rotation, k);
+            // Essai réaliste 7 : le tremblement s'ajoute à la pose lissée, sans s'y accumuler (GameFeel, testé dans le cœur).
+            _shock = GameFeel.Settle(_shock, deltaTime);
+            (double right, double up, double roll) = GameFeel.Offset(_shock, Time.time);
+            t.position = _basePosition + _baseRotation * new Vector3((float)right, (float)up, 0f);
+            t.rotation = _baseRotation * Quaternion.Euler(0f, 0f, (float)roll);
         }
+
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : une caméra qui réagit aux coups) : ajoute un choc (0 à 1) ; la caméra
+        /// tremble un instant, d'autant plus que le choc est fort, puis se calme toute seule.
+        /// </summary>
+        public void Shake(double shock) => _shock = GameFeel.Add(_shock, shock);
 
         public string Describe() =>
             _setting < 0.05f ? "vue 1" : _setting > 0.95f ? "vue 2" : $"entre les vues 1 et 2 ({_setting * 100f:0} %)";
