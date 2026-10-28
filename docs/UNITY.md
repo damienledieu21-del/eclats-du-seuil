@@ -299,7 +299,7 @@ L'essai 6 se fait en trois étapes : **1. l'interface en jeu** (cette branche), 
 
 Ce qui change :
 
-- **Plus de disque sur le bouclier** : le chevalier garde son vrai bouclier. Quand tu gardes, l'interface affiche « Garde levée » (turquoise), « Parade » (or) ou « Garde brisée » (rouge). Si tu ajoutes à son dossier l'animation Mixamo **« Sword And Shield Block »**, il lève aussi son bouclier quand il garde à l'arrêt (sans elle, il reste au repos). Le disque reste seulement pour le corps simple, sans modèle.
+- **Plus de disque sur le bouclier** : le chevalier garde son vrai bouclier. Quand tu gardes, l'interface affiche « Garde levée » (turquoise), « Parade » (or) ou « Garde brisée » (rouge). Si tu ajoutes à son dossier l'animation Mixamo **« Sword And Shield Block »** (à l'essai 7, Claude a déposé « Sword And Shield Block Idle », la garde tenue en boucle), il lève aussi son bouclier quand il garde à l'arrêt (sans elle, il reste au repos). Le disque reste seulement pour le corps simple, sans modèle.
 - **L'interface en jeu refaite en uGUI** (texte TextMeshPro, net à toute taille) :
   - en bas, le **sceau fendu** du Bastion : la vie à gauche (rouge), l'endurance à droite (ambre), en liquide qui ondule. La **Résonance** brille dans la fissure du milieu, et les **Charges** sont des éclats en arc au-dessus ;
   - les **compétences en éclats** flottants autour du sceau : icônes peintes, recharge en cercle avec le temps, coût d'endurance (rouge s'il en manque), touche dessous. Un éclair passe quand tu lances, une lueur quand elle revient ;
@@ -351,6 +351,58 @@ Limites des étapes 1 à 3 :
 - les menus du réseau et l'écran des talents de l'entraînement gardent l'ancienne interface ;
 - la mise en page n'a pas encore été essayée sur le Note8 ;
 - la flèche du joueur ne tourne pas encore sur la grande carte.
+
+### Essai réaliste 7 (28 octobre 2026)
+
+Avis de Damien sur l'essai 6 (photo du 28 octobre 2026, 1 h 41) : « Tout est bon les icônes sont juste trop gros faut tous les rétrécir, c'est quoi les petits trucs juste au dessus de la barre de vie ? Si c'est juste de l'esthétique tu peux les enlever. » Puis, pour la même correction : « Fait moi tout ça aussi » : sons d'interface libres, effets en particules, animations Mixamo (garde, coups variés), packs gratuits.
+
+**Préparer.** Claude a déposé les fichiers dans ton projet (dossier `Assets/Style`, non suivi par git) :
+- `Mixamo` : la garde « Sword And Shield Block Idle » et 7 gestes du chevalier (coup haut, coup de garde, coup de pied, frappe puissante, sort, coup reçu, coup sur la garde) ;
+- `Mixamo/Archer`, `Rodeur`, `Gardien` : l'attaque et le coup reçu de chacun, plus le bond et le rugissement du Gardien ;
+- `Music` : les musiques du village, de l'exploration, du combat et du Gardien ;
+- `Ambience` : les nappes des oiseaux, du vent et de la rivière ;
+- `Sounds/Combat`, `Sounds/Creatures`, `Sounds/Loot` : l'épée qui fend l'air, les sorts, les grognements, le rugissement, les pièces.
+
+Les sons de l'interface et les textures des particules viennent avec la branche. Menu **Éclats du Seuil → Préparer l'essai de style**, puis Play. La fenêtre de fin compte maintenant les bruitages variés, les musiques (sur 4) et les ambiances (sur 3).
+
+Ce qui change :
+- **Compétences plus petites** : les éclats sont réduits d'un quart et rapprochés du sceau ; la touche, le coût et la recharge restent lisibles.
+- **Les petits losanges au-dessus du sceau** sont tes **Charges de Rempart** (0 à 5) : tu en gagnes une à chaque parade parfaite, et Contrecoup les dépense. Ils n'apparaissent plus quand tu n'en as aucune. Ceux que tu détiens brillent en or, avec un halo qui bat ; les places libres restent pâles.
+- **Sons de l'interface** (Kenney, CC0) : clic et survol des boutons, ouverture et fermeture du livre et de l'arbre, onglets, compétence prête, Charge gagnée, éclat placé ou retiré, validation, erreur, fanfare du niveau et des quêtes.
+- **Effets en particules en 3D** (textures CC0 de Kenney, shader « EdS/Particule ») :
+  - coup reçu : étincelles et éclair, plus forts quand le coup fait mal ;
+  - coup gardé : étincelles turquoise ;
+  - parade parfaite : éclair d'or, emblème des Éclats, onde au sol ;
+  - garde brisée : éclats rouges et fumée ;
+  - compétence : arc de lumière devant l'épée, ou cercle tournant au sol pour un sort ;
+  - niveau gagné : colonne de lumière et étoiles ;
+  - potion : éclats verts ; mort : poussière ; Charge gagnée : éclat d'or.
+- **La caméra tremble** quand tu prends un gros coup, pares ou que ta garde casse, et quand le Gardien rugit ou meurt. Le tremblement est léger et se calme tout seul.
+- **Gestes variés** : chaque compétence du Bastion a son geste :
+  - Frappe du rempart : coup haut ;
+  - Heurt de bouclier : coup de garde ;
+  - Contrecoup : frappe puissante ;
+  - Onde de rupture : taille vers le sol ;
+  - Provocation, Barrière d'acier, Bastion absolu : sort.
+
+  Le chevalier accuse les coups, ou les encaisse sur son bouclier quand il garde.
+- **Les adversaires attaquent vraiment** : jusqu'ici, ils ne jouaient jamais leur attaque. Chaque attaque annoncée au sol fait jouer leur geste un peu avant l'impact, avec un cri : grognement du loup ou du sanglier, rugissement du Gardien. L'archer, le rôdeur et le Gardien accusent aussi les coups.
+- **Musique et ambiance** : la musique suit le lieu et le combat (village, exploration, combat, Gardien), en fondu enchaîné. Les oiseaux et le vent tournent en boucle, et la rivière s'entend en s'approchant de son lit. Tout baisse pendant la pause. Les volumes se règlent dans le catalogue (`MusicVolume`, `AmbienceVolume`).
+
+Ce que tu regardes :
+- les éclats plus petits ;
+- les Charges après une parade parfaite (Espace au bon moment) ;
+- les effets pendant un combat ;
+- les gestes des compétences 1 à 4 et R ;
+- le loup ou le Gardien qui attaque ;
+- la musique quand tu sors du village, puis quand tu combats ;
+- la rivière près du pont.
+
+Limites :
+- rien n'a encore été essayé dans Unity ni sur le Note8 ;
+- les animaux des packs (loup, sanglier) gardent leurs propres animations ;
+- la musique du village couvre tout le lieu « Village » ;
+- l'agrandissement de la zone de jeu se fait dans la PR suivante.
 
 ## 8. En cas de problème
 
