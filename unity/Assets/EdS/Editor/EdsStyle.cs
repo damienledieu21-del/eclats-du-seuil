@@ -184,6 +184,22 @@ namespace EdS.Game.Editor
                 .Where(b => b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f).ToArray();
             if (catalog.Buildings.Length > 0) notes.Add("Bâtiments de Sketchfab : " + catalog.Buildings.Length + " modèles (" + string.Join(", ",
                 catalog.Buildings.GroupBy(b => b.Kind).Select(g => g.Key + " " + g.Count())) + ").");
+            // Essai réaliste 8 : effets de combat des packs de l'Asset Store importés à la racine de Assets (Matthew Guz, Hovl Studio,
+            // Free Slash VFX), choisis par leur nom ; les réglages faits à la main (taille, rotation, durée) sont gardés.
+            List<string> prefabs = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
+            catalog.Vfx = System.Enum.GetValues(typeof(StyleVfx)).Cast<StyleVfx>()
+                .Select(kind =>
+                {
+                    VfxLook old = (catalog.Vfx ?? new VfxLook[0]).FirstOrDefault(o => o != null && o.Kind == kind);
+                    string path = StyleRules.VfxPrefab(prefabs, kind);
+                    return new VfxLook
+                    {
+                        Kind = kind, Prefab = path != null ? AssetDatabase.LoadAssetAtPath<GameObject>(path) : null,
+                        Scale = old != null && old.Scale > 0f ? old.Scale : 1f, Yaw = old != null ? old.Yaw : 0f,
+                        Life = old != null && old.Life > 0.1f ? old.Life : 2.5f,
+                    };
+                }).Where(v => v.Prefab != null).ToArray();
+            if (catalog.Vfx.Length > 0) notes.Add("Effets des packs : " + string.Join(", ", catalog.Vfx.Select(v => v.Kind + " (" + v.Prefab.name + ")")) + ".");
             catalog.RoadColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Road, false));
             catalog.RoadNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Road, true));
             catalog.FieldColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Field, false));

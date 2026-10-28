@@ -51,6 +51,50 @@ namespace EdS.Runtime
     }
 
     /// <summary>
+    /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : effets de combat des packs gratuits « Hit Effects FREE » de Matthew Guz,
+    /// « Magic Effects FREE » de Hovl Studio et « Free Slash VFX » de MaykerStudio) : un effet de combat dont le jeu prend le modèle
+    /// (prefab) d'un pack, choisi par son nom (<see cref="StyleRules.VfxPrefab"/>) ; sans lui, les particules faites par le jeu restent.
+    /// </summary>
+    public enum StyleVfx
+    {
+        /// <summary>Coup reçu.</summary>
+        Hit = 0,
+
+        /// <summary>Coup critique.</summary>
+        Crit = 1,
+
+        /// <summary>Coup gardé (bouclier).</summary>
+        Block = 2,
+
+        /// <summary>Parade parfaite.</summary>
+        Parry = 3,
+
+        /// <summary>Garde brisée.</summary>
+        GuardBroken = 4,
+
+        /// <summary>Taille d'épée.</summary>
+        Slash = 5,
+
+        /// <summary>Sort ou soutien lancé (cercle au sol).</summary>
+        Cast = 6,
+
+        /// <summary>Soin (potion bue).</summary>
+        Heal = 7,
+
+        /// <summary>Niveau gagné.</summary>
+        LevelUp = 8,
+
+        /// <summary>Mort (poussière).</summary>
+        Death = 9,
+
+        /// <summary>Frappe au sol d'un adversaire (onde du Gardien).</summary>
+        Slam = 10,
+
+        /// <summary>Charge de Rempart gagnée.</summary>
+        Charge = 11,
+    }
+
+    /// <summary>
     /// Essai réaliste (demandes de Damien du 27 octobre 2026 : « la forge est à faire, les minerais et l'herbe de l'Aube aussi, le pont ») :
     /// objet de décor rangé dans les packs, choisi par son nom (<see cref="StyleRules.PropCandidates"/>).
     /// </summary>
@@ -448,6 +492,40 @@ namespace EdS.Runtime
                 all = all.Where(IsRealistic).ToList();
             return all.Take(Math.Max(0, max)).ToList();
         }
+
+        /// <summary>
+        /// Essai réaliste 8 : modèle (prefab) d'un pack pour l'effet <paramref name="kind"/> : le premier, dans l'ordre de préférence, dont le
+        /// nom (sans extension, réduit) est l'un des noms connus (« Basic Hit 2 », « Holy hit », « Magic circle », « Slash VFX »…) ; null
+        /// sinon. Seuls les fichiers « .prefab » comptent.
+        /// </summary>
+        public static string? VfxPrefab(IEnumerable<string> paths, StyleVfx kind)
+        {
+            var prefabs = (paths ?? Array.Empty<string>()).Where(p => p != null && p.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            foreach (string name in VfxNames[kind])
+            {
+                string? found = prefabs.FirstOrDefault(p => Key(ClipName(p)) == name);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        /// <summary>Noms des effets des packs, par ordre de préférence (réduits : minuscules, sans espaces ni signes).</summary>
+        private static readonly Dictionary<StyleVfx, string[]> VfxNames = new Dictionary<StyleVfx, string[]>
+        {
+            [StyleVfx.Hit] = new[] { "basichit2", "basichit", "basichit7", "stoneshit" },
+            [StyleVfx.Crit] = new[] { "basichit8new", "starhit", "holyhit" },
+            [StyleVfx.Block] = new[] { "sparksexplodewhite", "sparksexplodeblue", "electrohit" },
+            [StyleVfx.Parry] = new[] { "holyhit", "sparksexplodeyellow", "starhit" },
+            [StyleVfx.GuardBroken] = new[] { "redenergyexplosion", "sparksexplodered", "stoneshit" },
+            [StyleVfx.Slash] = new[] { "slashvfx", "slashfirevfx", "chargeslashblue", "stoneslash" },
+            [StyleVfx.Cast] = new[] { "magiccircle", "magiccircle2", "healingcircle" },
+            [StyleVfx.Heal] = new[] { "healing", "healingcircle" },
+            [StyleVfx.LevelUp] = new[] { "buff", "staraura" },
+            [StyleVfx.Death] = new[] { "dustpuff", "smokepuff" },
+            [StyleVfx.Slam] = new[] { "dustground", "smokeground", "groundaoeexplosion" },
+            [StyleVfx.Charge] = new[] { "sparksflashingyellow", "sparksyellow" },
+        };
 
         /// <summary>
         /// Modèles d'un objet de décor (<see cref="StyleProp"/>), dans l'ordre des <see cref="Candidates"/> : FBX d'abord, puis sources

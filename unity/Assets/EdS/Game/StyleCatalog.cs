@@ -54,6 +54,23 @@ namespace EdS.Game
         public Vector2 Size;
     }
 
+    /// <summary>
+    /// Essai réaliste 8 : un effet de combat d'un pack de l'Asset Store (prefab de particules), sa taille, sa rotation et sa durée,
+    /// modifiables dans l'inspecteur.
+    /// </summary>
+    [Serializable]
+    public sealed class VfxLook
+    {
+        public StyleVfx Kind;
+        public GameObject Prefab;
+        [Tooltip("Échelle de l'effet (1 : taille du pack).")]
+        public float Scale = 1f;
+        [Tooltip("Rotation ajoutée (degrés) si l'effet est tourné de travers (la taille d'épée).")]
+        public float Yaw;
+        [Tooltip("Durée (s) avant que l'effet soit retiré.")]
+        public float Life = 2.5f;
+    }
+
     /// <summary>Essai réaliste 7 : les variantes d'un bruitage.</summary>
     [Serializable]
     public sealed class SoundSet
@@ -159,6 +176,8 @@ namespace EdS.Game
         public Texture2D FieldNormal;
         [Tooltip("Villageois au plus sur ordinateur (le tiers sur téléphone).")]
         [Range(0, 30)] public int Villagers = 14;
+        [Tooltip("Effets de combat des packs (Hit Effects FREE, Magic Effects FREE, Free Slash VFX), sur ordinateur ; sans eux, les particules du jeu.")]
+        public VfxLook[] Vfx = new VfxLook[0];
 
         [Header("Essai réaliste : décor (pris au lancement du combat)")]
         [Tooltip("Taille (m) d'une répétition des textures du sol.")]
@@ -300,6 +319,15 @@ namespace EdS.Game
             : slot == StyleSlot.Character ? Character(id)?.Yaw ?? 0f : 0f;
 
         /// <summary>Personnage d'un PNJ ou d'un ennemi d'après son identifiant (« npc.odile », « gardien_eveille »), ou null.</summary>
+        /// <summary>Essai réaliste 8 : l'effet de combat <paramref name="kind"/> d'un pack, ou null.</summary>
+        public VfxLook Effect(StyleVfx kind)
+        {
+            if (Vfx == null) return null;
+            foreach (VfxLook v in Vfx)
+                if (v != null && v.Kind == kind && v.Prefab != null) return v;
+            return null;
+        }
+
         /// <summary>Essai réaliste 8 : les modèles de bâtiment du genre <paramref name="kind"/>, mesurés (vide sans modèle).</summary>
         public System.Collections.Generic.List<BuildingLook> BuildingsOf(StyleBuilding kind)
         {

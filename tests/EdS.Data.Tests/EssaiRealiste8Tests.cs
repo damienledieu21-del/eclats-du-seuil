@@ -204,6 +204,49 @@ public class EssaiRealiste8Tests : IDisposable
     }
 
     [Fact]
+    public void Les_effets_de_combat_viennent_des_packs_par_leur_nom()
+    {
+        // Noms des prefabs livrés par les trois packs (contenu affiché sur l'Asset Store le 28 octobre 2026).
+        string[] prefabs =
+        {
+            "Assets/Matthew Guz/Hits Effects FREE/Prefab/Basic Hit .prefab",
+            "Assets/Matthew Guz/Hits Effects FREE/Prefab/Basic Hit 2.prefab",
+            "Assets/Matthew Guz/Hits Effects FREE/Prefab/1.2/Basic Hit 8 (NEW).prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Holy hit.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Red energy explosion.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Sparks/Sparks explode white.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Sparks/Sparks flashing yellow.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Magic circles/Magic circle.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Magic circles/Healing circle.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Character auras/Healing.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Character auras/Buff.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Smoke effects/Dust puff.prefab",
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Smoke effects/Dust ground.prefab",
+            "Assets/Free Slash VFX/Prefabs/Slash VFX.prefab",
+            "Assets/Free Slash VFX/Prefabs/Slash Fire VFX.prefab",
+            "Assets/Free Slash VFX/Model/Slash/Slash .fbx",
+        };
+        Assert.Equal(prefabs[1], StyleRules.VfxPrefab(prefabs, StyleVfx.Hit));
+        Assert.Equal(prefabs[2], StyleRules.VfxPrefab(prefabs, StyleVfx.Crit));
+        Assert.Equal(prefabs[5], StyleRules.VfxPrefab(prefabs, StyleVfx.Block));
+        Assert.Equal(prefabs[3], StyleRules.VfxPrefab(prefabs, StyleVfx.Parry));
+        Assert.Equal(prefabs[4], StyleRules.VfxPrefab(prefabs, StyleVfx.GuardBroken));
+        Assert.Equal(prefabs[13], StyleRules.VfxPrefab(prefabs, StyleVfx.Slash));
+        Assert.Equal(prefabs[7], StyleRules.VfxPrefab(prefabs, StyleVfx.Cast));
+        Assert.Equal(prefabs[9], StyleRules.VfxPrefab(prefabs, StyleVfx.Heal));
+        Assert.Equal(prefabs[10], StyleRules.VfxPrefab(prefabs, StyleVfx.LevelUp));
+        Assert.Equal(prefabs[11], StyleRules.VfxPrefab(prefabs, StyleVfx.Death));
+        Assert.Equal(prefabs[12], StyleRules.VfxPrefab(prefabs, StyleVfx.Slam));
+        Assert.Equal(prefabs[6], StyleRules.VfxPrefab(prefabs, StyleVfx.Charge));
+        // Sans le premier choix, le suivant ; rien d'autre qu'un prefab ; rien sans pack.
+        Assert.Equal(prefabs[0], StyleRules.VfxPrefab(prefabs.Where(p => !p.Contains("Hit 2")), StyleVfx.Hit));
+        Assert.Null(StyleRules.VfxPrefab(new[] { "Assets/Free Slash VFX/Model/Slash/Slash VFX.fbx" }, StyleVfx.Slash));
+        Assert.Null(StyleRules.VfxPrefab(Array.Empty<string>(), StyleVfx.Hit));
+        Assert.Null(StyleRules.VfxPrefab(null!, StyleVfx.Hit));
+        Assert.All(Enum.GetValues<StyleVfx>(), kind => Assert.NotNull(StyleRules.VfxPrefab(prefabs, kind)));
+    }
+
+    [Fact]
     public void Chemins_et_champs_ont_leur_couche_du_sol()
     {
         Assert.Equal(StyleGround.Road, StyleRules.GroundOf("Assets/Style/AmbientCG/Ground/chemin_terre_battue_diff_2k.jpg"));
