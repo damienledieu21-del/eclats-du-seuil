@@ -32,6 +32,26 @@ namespace EdS.Data.Zones
 
         /// <summary>Sous-lot 12.7 (schéma 2) : chef de la zone ; facultatif.</summary>
         public BossData? Boss { get; set; }
+
+        /// <summary>
+        /// Vallons agrandis (schéma 3, demande de Damien du 28 octobre 2026 : « des bâtiments, des routes ») : routes et chemins de la
+        /// zone, affichage seulement (le moteur ne les connaît pas) ; facultatif.
+        /// </summary>
+        public List<RoadData?>? Roads { get; set; }
+    }
+
+    /// <summary>Vallons agrandis (schéma 3) : une route ou un chemin, ligne brisée de largeur constante.</summary>
+    public sealed class RoadData
+    {
+        public string? Id { get; set; }
+
+        /// <summary>« terre » (chemin de terre battue) ou « pave » (rue pavée).</summary>
+        public string? Kind { get; set; }
+
+        /// <summary>Largeur en mètres.</summary>
+        public EdS.Domain.Numerics.Fixed? Width { get; set; }
+
+        public List<PointData?>? Points { get; set; }
     }
 
     /// <summary>Sous-lot 12.7 : chef à formes successives et récompense de la première victoire.</summary>

@@ -83,6 +83,8 @@ namespace EdS.Data.Json
                 ["passages"] = (v, p) => d.Passages = input.ReadLimitedList(v, p, ZoneValidator.MaxPassages, n => $"{n} passages, au plus {ZoneValidator.MaxPassages}.",
                     (e, ip) => ReadPassage(input, e, ip)),
                 ["boss"] = (v, p) => d.Boss = ReadBoss(input, v, p),   // sous-lot 12.7 (schéma 2)
+                ["roads"] = (v, p) => d.Roads = input.ReadLimitedList(v, p, ZoneValidator.MaxRoads, n => $"{n} routes, au plus {ZoneValidator.MaxRoads}.",
+                    (e, ip) => ReadRoad(input, e, ip)),   // Vallons agrandis (schéma 3)
             });
             return ok ? d : null;
         }
@@ -147,6 +149,20 @@ namespace EdS.Data.Json
                     }),
                 ["loot"] = (v, p) => b.Loot = input.NullableText(v, p),
             }) ? b : null;
+        }
+
+        private static RoadData? ReadRoad(JsonInput input, JsonElement element, string path)
+        {
+            var road = new RoadData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => road.Id = input.Text(v, p),
+                ["kind"] = (v, p) => road.Kind = input.Text(v, p),
+                ["width"] = (v, p) => road.Width = input.Decimal(v, p),
+                ["points"] = (v, p) => road.Points = input.ReadLimitedList(v, p, ZoneValidator.MaxRoadPoints,
+                    n => $"{n} points, au plus {ZoneValidator.MaxRoadPoints}.", (e, ip) => ScenarioJsonReader.ReadPoint(input, e, ip)),
+            });
+            return ok ? road : null;
         }
 
         private static PassageData? ReadPassage(JsonInput input, JsonElement element, string path)

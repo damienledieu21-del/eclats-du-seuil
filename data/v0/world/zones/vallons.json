@@ -1,8 +1,8 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "zone",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -23,6 +23,30 @@
         "position": [
           26,
           -15
+        ]
+      },
+      {
+        "id": "place_du_bourg",
+        "name": "Place du Bourg",
+        "position": [
+          -58,
+          -6
+        ]
+      },
+      {
+        "id": "ferme_des_champs",
+        "name": "Ferme des champs",
+        "position": [
+          -70,
+          -38
+        ]
+      },
+      {
+        "id": "hameau_de_la_carriere",
+        "name": "Hameau de la carrière",
+        "position": [
+          80,
+          -38
         ]
       }
     ],
@@ -122,6 +146,126 @@
           -17,
           -1
         ]
+      },
+      {
+        "id": "bourg",
+        "name": "Bourg d'Aube",
+        "min": [
+          -100,
+          -24
+        ],
+        "max": [
+          -24,
+          19
+        ]
+      },
+      {
+        "id": "champs",
+        "name": "Champs du sud",
+        "min": [
+          -100,
+          -70
+        ],
+        "max": [
+          -30,
+          -25
+        ]
+      },
+      {
+        "id": "lac",
+        "name": "Lac des Aubes",
+        "min": [
+          -14,
+          -70
+        ],
+        "max": [
+          26,
+          -42
+        ]
+      },
+      {
+        "id": "vergers",
+        "name": "Vergers",
+        "min": [
+          20,
+          -70
+        ],
+        "max": [
+          64,
+          -24
+        ]
+      },
+      {
+        "id": "hameau",
+        "name": "Hameau de la carrière",
+        "min": [
+          64,
+          -42
+        ],
+        "max": [
+          100,
+          -16
+        ]
+      },
+      {
+        "id": "plaine_est",
+        "name": "Plaine de l'est",
+        "min": [
+          64,
+          -70
+        ],
+        "max": [
+          140,
+          -43
+        ]
+      },
+      {
+        "id": "hautes_pierres",
+        "name": "Hautes pierres",
+        "min": [
+          64,
+          16
+        ],
+        "max": [
+          140,
+          62
+        ]
+      },
+      {
+        "id": "tour_de_guet",
+        "name": "Tour de guet",
+        "min": [
+          14,
+          54
+        ],
+        "max": [
+          44,
+          80
+        ]
+      },
+      {
+        "id": "camp_des_rodeurs",
+        "name": "Camp des rôdeurs",
+        "min": [
+          90,
+          64
+        ],
+        "max": [
+          140,
+          100
+        ]
+      },
+      {
+        "id": "foret_des_loups",
+        "name": "Forêt des Loups",
+        "min": [
+          -100,
+          41
+        ],
+        "max": [
+          4,
+          100
+        ]
       }
     ],
     "populations": [
@@ -184,6 +328,108 @@
         "respawnMs": 180000,
         "leashRange": 20,
         "loot": "loot.rodeur"
+      },
+      {
+        "creature": "loup6",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup7",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup8",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup9",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup10",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "sanglier4",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier5",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier6",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier7",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier8",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "archer2",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.archer"
+      },
+      {
+        "creature": "archer3",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.archer"
+      },
+      {
+        "creature": "loup11",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup12",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "rodeur2",
+        "respawnMs": 180000,
+        "leashRange": 20,
+        "loot": "loot.rodeur"
+      },
+      {
+        "creature": "rodeur3",
+        "respawnMs": 180000,
+        "leashRange": 20,
+        "loot": "loot.rodeur"
+      },
+      {
+        "creature": "archer4",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.archer"
       }
     ],
     "passages": [
@@ -191,6 +437,279 @@
         "id": "moulin",
         "name": "Passage du moulin",
         "obstacle": "porte_moulin"
+      }
+    ],
+    "roads": [
+      {
+        "id": "grand_rue",
+        "kind": "terre",
+        "width": 4.5,
+        "points": [
+          [
+            3.5,
+            0
+          ],
+          [
+            -8,
+            1
+          ],
+          [
+            -16,
+            1
+          ],
+          [
+            -24,
+            -1
+          ],
+          [
+            -50,
+            -1
+          ]
+        ]
+      },
+      {
+        "id": "chemin_de_la_place",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            -10,
+            1
+          ],
+          [
+            -11,
+            -5
+          ],
+          [
+            -16,
+            -10
+          ],
+          [
+            -18,
+            -11.5
+          ]
+        ]
+      },
+      {
+        "id": "place_du_bourg",
+        "kind": "pave",
+        "width": 13,
+        "points": [
+          [
+            -67,
+            -1
+          ],
+          [
+            -49,
+            -1
+          ]
+        ]
+      },
+      {
+        "id": "grand_rue_ouest",
+        "kind": "terre",
+        "width": 4.5,
+        "points": [
+          [
+            -66,
+            -1
+          ],
+          [
+            -80,
+            -1
+          ],
+          [
+            -99,
+            -1
+          ]
+        ]
+      },
+      {
+        "id": "chemin_des_champs",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            -60,
+            -8
+          ],
+          [
+            -62,
+            -26
+          ],
+          [
+            -70,
+            -36
+          ],
+          [
+            -78,
+            -46
+          ],
+          [
+            -77,
+            -58
+          ]
+        ]
+      },
+      {
+        "id": "chemin_du_moulin",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            -9,
+            1
+          ],
+          [
+            -10,
+            8
+          ],
+          [
+            -9,
+            13
+          ],
+          [
+            -3,
+            17
+          ],
+          [
+            -3,
+            24
+          ],
+          [
+            -12,
+            34
+          ],
+          [
+            -26,
+            44
+          ],
+          [
+            -40,
+            54
+          ]
+        ]
+      },
+      {
+        "id": "chemin_de_l_est",
+        "kind": "terre",
+        "width": 4,
+        "points": [
+          [
+            7.5,
+            0.5
+          ],
+          [
+            16,
+            0.5
+          ],
+          [
+            22,
+            -4
+          ],
+          [
+            26,
+            -12
+          ],
+          [
+            40,
+            -22
+          ],
+          [
+            60,
+            -26
+          ],
+          [
+            76,
+            -36
+          ],
+          [
+            100,
+            -46
+          ],
+          [
+            126,
+            -40
+          ]
+        ]
+      },
+      {
+        "id": "chemin_du_nord",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            34,
+            10
+          ],
+          [
+            42,
+            20
+          ],
+          [
+            40,
+            40
+          ],
+          [
+            32,
+            56
+          ],
+          [
+            40,
+            66
+          ],
+          [
+            64,
+            70
+          ],
+          [
+            90,
+            76
+          ],
+          [
+            100,
+            80
+          ]
+        ]
+      },
+      {
+        "id": "chemin_du_lac",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            24,
+            -16
+          ],
+          [
+            24,
+            -32
+          ],
+          [
+            26,
+            -48
+          ],
+          [
+            20,
+            -64
+          ],
+          [
+            0,
+            -66
+          ],
+          [
+            -20,
+            -64
+          ],
+          [
+            -50,
+            -56
+          ],
+          [
+            -66,
+            -50
+          ]
+        ]
       }
     ],
     "boss": {

@@ -162,8 +162,9 @@ public class Lot127BossTests
 
     [Fact]
     public void Formes_qui_ne_tiennent_pas_dans_la_session_refusees() =>
-        // Revue Codex de la PR #48 (3e tour) : 10 créatures, le personnage et 2 formes ne tiennent pas sous un plafond de 12 combattants.
-        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 64", "\"maxCombatants\": 12"), directory =>
+        // Revue Codex de la PR #48 (3e tour) : les créatures (27 depuis les Vallons agrandis), le personnage et 2 formes ne tiennent pas sous
+        // un plafond de 29 combattants (la zone seule, 28, y tient).
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 64", "\"maxCombatants\": 29"), directory =>
         {
             ZoneLoadResult r = Load(data: GameDataLoader.Load(directory).Data!);
             Assert.Equal("$.data.boss.forms", First(r));
