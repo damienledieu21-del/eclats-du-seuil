@@ -43,22 +43,33 @@ public class Lot129MapTests : IDisposable
     [Fact]
     public void Image_du_decor_nord_en_haut()
     {
-        AdventureMap map = At(null).Map;
-        Assert.Equal((-24.0, -18.0, 60.0, 40.0), (map.MinX, map.MinZ, map.MaxX, map.MaxZ));
-        // 84 × 58 m en 84 × 58 pixels : un pixel par mètre, la première ligne au sud.
-        byte[] image = map.Render(84, 58);
-        Assert.Equal(84 * 58 * 4, image.Length);
-        Assert.Equal(AdventureMap.Solid, Pixel(image, 84, -3 + 24, 9 + 18));            // le moulin, de [−6, 6] à [0, 12]
-        Assert.Equal(AdventureMap.Water, Pixel(image, 84, 5 + 24, 20 + 18));            // la rivière du nord
-        Assert.Equal(AdventureMap.Ground, Pixel(image, 84, -18 + 24, -12 + 18));        // la place du village
-        Assert.Equal(AdventureMap.Solid, Pixel(image, 84, 58 + 24, 0 + 18));            // le front de taille de la carrière
-        Assert.Equal(AdventureMap.Solid, Pixel(image, 84, -3 + 24, 19 + 18));           // la porte du moulin, fermée
+        AdventureMap map = this.At(null).Map;
+        // Vallons agrandis (28 octobre 2026) : 240 × 170 m.
+        Assert.Equal((-100.0, -70.0, 140.0, 100.0), (map.MinX, map.MinZ, map.MaxX, map.MaxZ));
+        // 240 × 170 m en 240 × 170 pixels : un pixel par mètre, la première ligne au sud.
+        byte[] image = map.Render(240, 170);
+        Assert.Equal(240 * 170 * 4, image.Length);
+        byte[] Cell(double x, double z) => Pixel(image, 240, (int)Math.Floor(x) + 100, (int)Math.Floor(z) + 70);
+        Assert.Equal(AdventureMap.Solid, Cell(-3, 9));            // le moulin, de [−6, 6] à [0, 12]
+        Assert.Equal(AdventureMap.Water, Cell(5, 20));            // la rivière du nord
+        Assert.Equal(AdventureMap.Ground, Cell(-18, -12));        // la place du village
+        Assert.Equal(AdventureMap.Solid, Cell(58, 0));            // le front de taille de la carrière
+        Assert.Equal(AdventureMap.Solid, Cell(-3, 19));           // la porte du moulin, fermée
+        Assert.Equal(AdventureMap.Solid, Cell(-30, 7));           // une maison du bourg
+        Assert.Equal(AdventureMap.Water, Cell(5, -54));           // le lac
+        Assert.Equal(AdventureMap.Ground, Cell(-58, -5));         // la place pavée du bourg
         // Coordonnées de la carte : 0 à 1, nord en haut.
-        Assert.Equal((0.0, 0.0), map.ToMap(-24, 40));
-        Assert.Equal((1.0, 1.0), map.ToMap(60, -18));
+        Assert.Equal((0.0, 0.0), map.ToMap(-100, 100));
+        Assert.Equal((1.0, 1.0), map.ToMap(140, -70));
         Assert.Throws<ArgumentOutOfRangeException>(() => map.Render(0, 10));
         Assert.Throws<ArgumentOutOfRangeException>(() => map.Render(10, 2049));
-        Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "forge" }, map.Places.Select(p => p.Id));
+        Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "forge", "bourg", "champs", "lac", "vergers",
+            "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" }, map.Places.Select(p => p.Id));
+        // Les routes viennent des données, dans leur ordre.
+        Assert.Equal(new[] { "grand_rue", "chemin_de_la_place", "place_du_bourg", "grand_rue_ouest", "chemin_des_champs", "chemin_du_moulin", "chemin_de_l_est",
+            "chemin_du_nord", "chemin_du_lac" }, map.Roads.Select(r => r.Id));
+        Assert.True(Assert.Single(map.Roads, r => r.Paved).Id == "place_du_bourg");
+        Assert.Contains(map.Clearings, p => p == (-18.0, -12.0));   // point sûr de la place du village
     }
 
     [Fact]
@@ -78,7 +89,7 @@ public class Lot129MapTests : IDisposable
         AdventureSession a = At(null);
         IReadOnlyList<MapMarker> markers = a.MapMarkers();
         Assert.Equal(new[] { "Odile", "Maëlle", "Gaspard" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));
-        Assert.Equal(2, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));
+        Assert.Equal(5, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // Vallons agrandis : bourg, ferme, hameau
         MapMarker forge = Assert.Single(markers, m => m.Kind == MapMarkerKind.Workshop);
         Assert.Equal((-20.0, -4.0), (forge.X, forge.Z));
         Assert.Contains(markers, m => m.Kind == MapMarkerKind.Node);

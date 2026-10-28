@@ -669,7 +669,11 @@ namespace EdS.Runtime
                 if (_map is null || _mapSession != Opened)
                 {
                     _map = new AdventureMap(World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace."),
-                        _zone.Places.Select(p => new MapPlace(p.Id, p.Name, Meters(p.Min.X), Meters(p.Min.Z), Meters(p.Max.X), Meters(p.Max.Z))));
+                        _zone.Places.Select(p => new MapPlace(p.Id, p.Name, Meters(p.Min.X), Meters(p.Min.Z), Meters(p.Max.X), Meters(p.Max.Z))),
+                        Roads(_zone),
+                        // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
+                        Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
+                            .Concat(Nodes().Select(n => (n.X, n.Z))));
                     _mapSession = Opened;
                 }
                 return _map;
@@ -677,6 +681,11 @@ namespace EdS.Runtime
         }
 
         private static double Meters(Fixed f) => f.Raw / 10000.0;
+
+        /// <summary>Vallons agrandis : routes de la zone, en mètres, pour la carte peinte et le décor.</summary>
+        public static IReadOnlyList<StyleRoad> Roads(ZoneDefinition zone) =>
+            (zone ?? throw new ArgumentNullException(nameof(zone))).Roads
+                .Select(r => new StyleRoad(r.Id, r.Points.Select(p => (Meters(p.X), Meters(p.Z))).ToList(), Meters(r.Width), r.Kind == RoadKind.Cobble)).ToList();
 
         /// <summary>
         /// Sous-lot 12.9d : repères fixes de la carte : PNJ, points sûrs, ateliers, nœuds de récolte, puis le personnage (s'il est dans la zone)
@@ -752,14 +761,16 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : musique et ambiances) : ce qu'écoutent la musique et les nappes
-        /// d'ambiance de l'essai de style. Village : un lieu dont l'identifiant parle de village ; combat : un ennemi vivant à moins de
-        /// <see cref="RestSafety"/> (la règle de la halte) ; Gardien : une de ses formes vivante à moins de <see cref="BossMusicRange"/> ;
-        /// rivière : distance au lieu « riviere » (mètres, NaN sans ce lieu). Affichage seulement : rien ne change dans le monde.
+        /// d'ambiance de l'essai de style. Village : un lieu habité (village, bourg, hameau : <see cref="TownRules.Inhabited"/>) ; combat : un
+        /// ennemi vivant à moins de <see cref="RestSafety"/> (la règle de la halte) ; Gardien : une de ses formes vivante à moins de
+        /// <see cref="BossMusicRange"/> ; rivière : distance à l'eau (obstacles « riviere… », lac compris ; mètres, 0 dedans, NaN sans eau).
+        /// Affichage seulement : rien ne change dans le monde.
         /// </summary>
         public AdventureMood Mood()
         {
             if (!(Me is GroundVector p) || World.IsDefeated) return new AdventureMood(false, false, false, double.NaN);
-            bool village = _zone.PlacesAt(p).Any(x => x.Id.IndexOf("village", StringComparison.Ordinal) >= 0);
+            // Vallons agrandis : le bourg et le hameau sont habités comme le village.
+            bool village = _zone.PlacesAt(p).Any(x => TownRules.Inhabited(x.Id));
             // Relecture de l'essai 7 : une seule recherche (la plus large), puis la distance de chaque ennemi trouvé.
             bool fighting = false, boss = false;
             long rest2 = checked(RestSafety.Raw * RestSafety.Raw);
@@ -773,12 +784,14 @@ namespace EdS.Runtime
                 if (IsBoss(o.Id)) boss = true;
                 if (boss && fighting) break;
             }
+            // Vallons agrandis : la distance à l'eau elle-même (bras de la rivière et lac, obstacles « riviere… »), et non plus au seul lieu
+            // « riviere » du village : la rivière s'entend sur toute sa longueur.
             double river = double.NaN;
-            foreach (Place place in _zone.Places.Where(x => x.Id.IndexOf("riviere", StringComparison.Ordinal) >= 0))
+            double x = p.X.Raw / 10000.0, z = p.Z.Raw / 10000.0;
+            foreach (SpaceObstacle water in World.Zone.Setup.Space?.Obstacles ?? Array.Empty<SpaceObstacle>())
             {
-                double dx = Math.Max(0, checked(Math.Max(place.Min.X.Raw - p.X.Raw, p.X.Raw - place.Max.X.Raw))) / 10000.0;
-                double dz = Math.Max(0, checked(Math.Max(place.Min.Z.Raw - p.Z.Raw, p.Z.Raw - place.Max.Z.Raw))) / 10000.0;
-                double d = Math.Sqrt(dx * dx + dz * dz);
+                if (!water.Id.StartsWith("riviere", StringComparison.Ordinal)) continue;
+                double d = Math.Max(0, -StyleRules.InsideDistance(x, z, water.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()));
                 river = double.IsNaN(river) ? d : Math.Min(river, d);
             }
             return new AdventureMood(village, fighting, boss, river);

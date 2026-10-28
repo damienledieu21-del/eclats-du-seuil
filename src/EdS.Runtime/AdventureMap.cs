@@ -74,7 +74,14 @@ namespace EdS.Runtime
         public IReadOnlyList<SpaceObstacle> Obstacles { get; }
         public IReadOnlyList<MapPlace> Places { get; }
 
-        public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places)
+        /// <summary>Vallons agrandis : routes et chemins de la zone (décor : on y marche comme ailleurs), vide sans routes.</summary>
+        public IReadOnlyList<StyleRoad> Roads { get; }
+
+        /// <summary>Vallons agrandis : places à garder dégagées des champs (PNJ, points sûrs, ateliers, nœuds de récolte), en mètres.</summary>
+        public IReadOnlyList<(double X, double Z)> Clearings { get; }
+
+        public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
+            IEnumerable<(double X, double Z)>? clearings = null)
         {
             if (space is null) throw new ArgumentNullException(nameof(space));
             MinX = Meters(space.Min.X.Raw);
@@ -83,6 +90,8 @@ namespace EdS.Runtime
             MaxZ = Meters(space.Max.Z.Raw);
             Obstacles = space.Obstacles;
             Places = (places ?? Array.Empty<MapPlace>()).ToList();
+            Roads = (roads ?? Array.Empty<StyleRoad>()).ToList();
+            Clearings = (clearings ?? Array.Empty<(double X, double Z)>()).ToList();
         }
 
         private static double Meters(long raw) => raw / 10000.0;
