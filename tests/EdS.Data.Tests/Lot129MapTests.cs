@@ -66,7 +66,7 @@ public class Lot129MapTests : IDisposable
         Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "forge", "bourg", "champs", "lac", "vergers",
             "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" }, map.Places.Select(p => p.Id));
         // Les routes viennent des données, dans leur ordre.
-        Assert.Equal(new[] { "grand_rue", "chemin_de_la_place", "place_du_bourg", "grand_rue_ouest", "chemin_des_champs", "chemin_du_moulin", "chemin_de_l_est",
+        Assert.Equal(new[] { "grand_rue", "chemin_de_la_place", "place_du_bourg", "grand_rue_ouest", "chemin_des_champs", "chemin_du_moulin", "passage_des_ruines", "chemin_de_l_est",
             "chemin_du_nord", "chemin_du_lac" }, map.Roads.Select(r => r.Id));
         Assert.True(Assert.Single(map.Roads, r => r.Paved).Id == "place_du_bourg");
         Assert.Contains(map.Clearings, p => p == (-18.0, -12.0));   // point sûr de la place du village
@@ -127,6 +127,21 @@ public class Lot129MapTests : IDisposable
     }
 
     [Fact]
+    public void Une_porte_ouverte_change_la_signature_de_la_carte()
+    {
+        // Vallons agrandis : la carte peinte est gardée d'une halte à l'autre tant que sa signature ne change pas ; la porte du moulin
+        // ouverte (passage gardé dans la sauvegarde) la retire de la carte, et l'image est repeinte.
+        string closed = At(null).Map.Signature;
+        var progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, new[] { "zone.vallons/passage/moulin" },
+            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, progression)));
+        AdventureMap open = AdventureSession.Load(DataDirectory, Scenarios, SavePath).Map;
+        Assert.DoesNotContain(open.Obstacles, o => o.Id == "porte_moulin");
+        Assert.NotEqual(closed, open.Signature);
+        Assert.Contains("porte_moulin", closed, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Une_carte_par_session_et_par_aventure()
     {
         // Revue Codex de la PR #53 : l'image de Unity est gardée tant que la carte est la même ; une nouvelle session (halte) ou une nouvelle
@@ -136,12 +151,15 @@ public class Lot129MapTests : IDisposable
         Assert.Same(first, a.Map);
         Assert.True(a.Rest());
         Assert.NotSame(first, a.Map);
+        // Vallons agrandis : la halte donne une autre carte, mais la même image (même signature : l'image n'est pas repeinte).
+        Assert.Equal(first.Signature, a.Map.Signature);
         AdventureSession again = AdventureSession.Load(DataDirectory, Scenarios, SavePath);
         Assert.Equal(1, again.Opened);
         Assert.NotSame(first, again.Map);
         // Essai réaliste 6 : la carte peinte (PaintedMap) remplace l'image du plan ; même clé (la carte elle-même).
         string script = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "PaintedMap.cs"));
         Assert.Contains("if (!ReferenceEquals(map, _source))", script, StringComparison.Ordinal);
+        Assert.Contains("map.Signature == _source.Signature", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Opened", script, StringComparison.Ordinal);
     }
 }

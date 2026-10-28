@@ -62,17 +62,17 @@ Une **zone du monde** est un fichier de données (`data/v0/world/zones/vallons.j
 
 **Vallons agrandis** (demande de Damien du 28 octobre 2026 : « un grand agrandissement, on pourrait mettre des bâtiments, des routes ou pleins d'autres choses », puis « fais le et on verra après ») ; valeurs provisoires :
 
-- **Aire** : 240 × 170 m, sept fois l'ancienne ; 59 obstacles (plafond : 64). Le village, le moulin, la carrière et le Seuil n'ont pas bougé : la mission se joue comme avant.
-- **Bourg d'Aube** (ouest) : dix maisons, l'auberge, la chapelle, une place pavée avec son puits et deux étals ; grand-rue de terre jusqu'au bord ouest. **Champs du sud** : grange, ferme et champs cultivés. **Lac des Aubes** au sud de la rivière (la rivière s'y jette). **Hameau de la carrière** à l'est, **tour de guet** au nord, **camp des rôdeurs** au nord-est (palissades, tentes), grands **bois** (forêt des Loups au nord-ouest, bois du nord-est et du sud-est).
-- **Routes** (zone de schéma 3, `data.roads`, ci-dessous) : neuf chemins de terre et la place pavée relient le village au bourg, aux champs, au lac, au hameau, à la tour et au camp. Les routes sont du **décor** : on y marche comme ailleurs, le moteur ne les connaît pas.
-- **Créatures** : dix-sept de plus, mêmes forces que les anciennes : sept loups (forêt des Loups, hautes pierres), cinq sangliers (champs, vergers, plaine), trois archers (tour de guet, camp) et deux rôdeurs (camp). Vingt-sept en tout ; la session tient sous le plafond de 64 combattants.
+- **Aire** : 240 × 170 m, plus de huit fois l'ancienne ; 59 obstacles (plafond : 64). Le village, le moulin, la carrière et le Seuil n'ont pas bougé : la mission se joue comme avant.
+- **Bourg d'Aube** (ouest) : huit maisons, l'auberge, la chapelle, une place pavée avec son puits et deux étals ; grand-rue de terre jusqu'au bord ouest. **Champs du sud** : grange, ferme et champs cultivés. **Lac des Aubes** au sud de la rivière (la rivière s'y jette). **Hameau de la carrière** à l'est, **tour de guet** au nord, **camp des rôdeurs** au nord-est (palissades, tentes), grands **bois** (forêt des Loups au nord-ouest, bois du nord-est et du sud-est).
+- **Routes** (zone de schéma 3, `data.roads`, format dans [DONNEES.md](DONNEES.md)) : neuf chemins de terre et la place pavée relient le village au bourg, aux champs, au lac, au hameau, à la tour et au camp ; le chemin de la tour passe à l'ouest du Seuil (loin du rôdeur de la mission). Les routes sont du **décor** : on y marche comme ailleurs, le moteur ne les connaît pas. Aucune ne passe dans un obstacle (toute sa largeur, sauf la porte du moulin, le puits et les étals de la place) ; aucune créature de départ n'attend à moins de 12 m d'une halte ni à portée d'engagement (`VallonsAgrandisTests`).
+- **Créatures** : dix-sept de plus, mêmes forces que les anciennes : sept loups (forêt des Loups, hautes pierres), cinq sangliers (champs, vergers, plaine), trois archers (tour de guet, camp) et deux rôdeurs (camp). Vingt-sept en tout. **Plafond** : une session ouvre avec 28 combattants (le personnage compris) et garde deux places pour le chef ; les morts et les créatures qui lâchent restent comptés, donc **34 réapparitions par session** (51 avant l'agrandissement) ; au-delà, les populations attendent la halte suivante (`Exhausted`). Question posée à Damien (relever le plafond, ou l'accepter).
 - **Nœuds de récolte** : herbes de la forêt, du lac et du verger ; filons des hautes pierres et de la tour (onze en tout).
 - **Affichage** (`TownRules`, `TownShapes`, `MapPainter`, sans Unity, testés par `VallonsAgrandisTests`) :
   - ce que représente un obstacle (maison, auberge, chapelle, grange, puits, étal, tour, tente, bois), d'après le début de son identifiant ;
-  - bâtiments faits par le code sur l'emprise exacte de l'obstacle (seuls les débords de toit, l'enseigne et l'auvent en sortent, au-dessus de la tête), porte vers la route la plus proche ;
+  - bâtiments faits par le code sur l'emprise de l'obstacle : sous 2 m, seuls les reliefs (appuis, colombages, volets, 12 cm au plus) et les marches devant les portes (34 cm, sous 50 cm de haut) en sortent ; plus haut, les débords de toit, l'enseigne et l'auvent ; porte vers la route la plus proche ;
   - bois pleins d'arbres, champs (blé mûr ou vert, labours) en dehors des routes, des obstacles et des haltes ;
   - terre battue sur les chemins, pavés sur la place ;
-  - mêmes règles pour la carte peinte et le décor de Unity.
+  - mêmes règles pour la carte peinte et le décor de Unity (couvertures, cheminées et clocher compris) ; la carte peinte n'est repeinte que si ce qu'elle montre change (une porte ouverte), pas à chaque halte.
 
 **Vie des populations** (`WorldSession` sur une zone du monde) :
 

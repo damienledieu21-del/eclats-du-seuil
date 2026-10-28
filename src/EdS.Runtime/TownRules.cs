@@ -21,7 +21,7 @@ namespace EdS.Runtime
         /// <summary>Chapelle (« chapelle… ») : pierre, toit d'ardoises, clocher.</summary>
         Chapel = 3,
 
-        /// <summary>Grange (« grange… ») : planches, grand portail, toit de chaume.</summary>
+        /// <summary>Grange (« grange… ») : planches, grand portail, toit de bardeaux.</summary>
         Barn = 4,
 
         /// <summary>Puits (« puits… ») : margelle de pierre, petit toit sur deux poteaux.</summary>
@@ -246,11 +246,10 @@ namespace EdS.Runtime
             if (roads == null) return new RoadHit(null, bestEdge, 0, 0, 1, 0);
             foreach (StyleRoad road in roads)
             {
-                if (x < road.MinX || x > road.MaxX || z < road.MinZ || z > road.MaxZ)
-                {
-                    // Hors de la boîte : la route est à plus d'une demi-largeur du point ; on ne la garde que s'il n'y a rien de mieux.
-                    if (best != null) continue;
-                }
+                // Relecture des Vallons agrandis : une route n'est sautée que si sa boîte (élargie) est déjà plus loin que le meilleur bord
+                // trouvé (l'écart à la boîte, moins la demi-largeur, ne dépasse jamais l'écart au bord) ; être hors de sa boîte ne suffit pas.
+                double bx = Math.Max(0, Math.Max(road.MinX - x, x - road.MaxX)), bz = Math.Max(0, Math.Max(road.MinZ - z, z - road.MaxZ));
+                if (Math.Sqrt(bx * bx + bz * bz) - road.Width / 2 >= bestEdge) continue;
                 double walked = 0;
                 for (int i = 0; i + 1 < road.Points.Count; i++)
                 {
@@ -386,7 +385,7 @@ namespace EdS.Runtime
                     foreach ((double w, double d) in sizes)
                     {
                         if (!Fits(x, z, x + w, z + d)) continue;
-                        string key = "champ" + Math.Round(x) + "_" + Math.Round(z);
+                        string key = FormattableString.Invariant($"champ{Math.Round(x)}_{Math.Round(z)}");
                         fields.Add(new StyleField(x, z, x + w, z + d, StyleRules.Variant(key, 2) == 0, StyleRules.Variant(key + "culture", 5) switch { 0 => 1, 1 => 2, _ => 0 }));
                         x += w + Gap - 1;
                         break;

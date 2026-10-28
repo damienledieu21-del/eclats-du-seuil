@@ -36,6 +36,8 @@ namespace EdS.Game
         public static Texture2D For(AdventureMap map)
         {
             if (map == null) return null;
+            // Vallons agrandis : une nouvelle carte de même signature (une halte) garde l'image ; une porte ouverte la fait repeindre.
+            if (!ReferenceEquals(map, _source) && _source != null && map.Signature == _source.Signature) _source = map;
             if (!ReferenceEquals(map, _source))
             {
                 _source = map;
@@ -54,7 +56,7 @@ namespace EdS.Game
                     _texture.filterMode = FilterMode.Bilinear;
                     _texture.wrapMode = TextureWrapMode.Clamp;
                     _texture.LoadRawTextureData(_work.Result);
-                    _texture.Apply(false);
+                    _texture.Apply(false, true);   // relecture des Vallons agrandis : pas de copie de l'image (7 Mo) gardée en mémoire
                 }
                 _work = null;
             }

@@ -40,7 +40,7 @@ namespace EdS.Runtime
             Plank = { 0.53, 0.38, 0.22 }, Log = { 0.42, 0.29, 0.17 }, WallStone = { 0.6, 0.58, 0.53 }, Tiles = { 0.63, 0.33, 0.18 },
             Plaster = { 0.86, 0.83, 0.76 }, Thatch = { 0.42, 0.3, 0.2 }, Leaves = { 0.17, 0.3, 0.12 }, LeavesLight = { 0.36, 0.5, 0.2 },
             Stone = { 0.5, 0.48, 0.45 }, Glow = { 0.75, 0.55, 1.0 }, Petal = { 0.98, 0.9, 0.62 }, PetalPink = { 0.98, 0.7, 0.8 },
-            Dirt = { 0.56, 0.46, 0.32 }, Cobble = { 0.55, 0.52, 0.48 }, TilesDark = { 0.52, 0.27, 0.17 }, Straw = { 0.62, 0.52, 0.32 },
+            Dirt = { 0.56, 0.46, 0.32 }, Cobble = { 0.55, 0.52, 0.48 }, TilesDark = { 0.52, 0.27, 0.17 }, Shingles = { 0.46, 0.35, 0.23 },
             Slate = { 0.34, 0.36, 0.41 }, Wheat = { 0.8, 0.68, 0.36 }, Sprouts = { 0.44, 0.56, 0.22 }, Plowed = { 0.4, 0.3, 0.2 },
             Canvas = { 0.84, 0.78, 0.64 }, CanvasDark = { 0.58, 0.5, 0.38 }, ClothRed = { 0.68, 0.2, 0.17 }, ClothBlue = { 0.2, 0.34, 0.58 },
             Cream = { 0.9, 0.85, 0.72 }, Well = { 0.07, 0.14, 0.19 };
@@ -238,7 +238,9 @@ namespace EdS.Runtime
 
             var pixels = new byte[checked(width * height * 4)];
             // Vallons agrandis : une ligne par tâche (chaque pixel ne dépend que de sa place : mêmes pixels, quel que soit l'ordre).
-            System.Threading.Tasks.Parallel.For(0, height, row =>
+            // Relecture : la moitié des cœurs au plus (la carte se peint pendant qu'on joue).
+            var options = new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2) };
+            System.Threading.Tasks.Parallel.For(0, height, options, row =>
             {
                 var c = new double[3];
                 double z = z0 + (row + 0.5) * d / height;
@@ -428,7 +430,8 @@ namespace EdS.Runtime
             if (road.Paved)
             {
                 if (hit.Edge > 0.1) return;
-                double v = hit.Across / 0.34, u = hit.Along / 0.46 + (Math.Floor(v) % 2 == 0 ? 0 : 0.5);
+                // Relecture : rangs de pavés dans le sens du tronçon, en coordonnées du monde (pas de motif en étoile aux bouts arrondis).
+                double v = (-x * hit.DirZ + z * hit.DirX) / 0.34, u = (x * hit.DirX + z * hit.DirZ) / 0.46 + (Math.Floor(v) % 2 == 0 ? 0 : 0.5);
                 double su = Math.Abs(u - Math.Round(u)), sv = Math.Abs(v - Math.Round(v));
                 Set(c, Cobble, (0.82 + 0.3 * Hash((int)Math.Floor(u) * 31, (int)Math.Floor(v) * 17)) * fine);
                 if (su < 0.08 || sv < 0.1) Darken(c, 0.38);
@@ -457,37 +460,29 @@ namespace EdS.Runtime
                 case StyleBuilding.Chapel:
                 {
                     if (x < b.RoofMinX || x > b.RoofMaxX || z < b.RoofMinZ || z > b.RoofMaxZ) return;
-                    double[] material = b.Kind == StyleBuilding.Chapel ? Slate : b.Kind == StyleBuilding.Barn ? Straw : b.Kind == StyleBuilding.Inn ? TilesDark
-                        : StyleRules.Variant(b.Id, 3) == 2 ? Straw : StyleRules.Variant(b.Id, 3) == 1 ? TilesDark : Tiles;
-                    bool thatch = ReferenceEquals(material, Straw);
-                    GableRoof(c, x, z, b.RoofMinX, b.RoofMinZ, b.RoofMaxX, b.RoofMaxZ, material, b.Kind == StyleBuilding.Chapel ? 0.22 : 0.32, thatch);
-                    bool alongX = b.RoofMaxX - b.RoofMinX >= b.RoofMaxZ - b.RoofMinZ;
-                    double length = alongX ? b.RoofMaxX - b.RoofMinX : b.RoofMaxZ - b.RoofMinZ;
-                    double depth = alongX ? b.RoofMaxZ - b.RoofMinZ : b.RoofMaxX - b.RoofMinX;
-                    double along = alongX ? x - b.RoofMinX : z - b.RoofMinZ, across = alongX ? z - (b.RoofMinZ + b.RoofMaxZ) / 2 : x - (b.RoofMinX + b.RoofMaxX) / 2;
-                    if (b.Kind == StyleBuilding.House || b.Kind == StyleBuilding.Inn)
+                    // Relecture : mêmes couvertures, cheminées et clocher que le décor (TownShapes).
+                    StyleRoofLook look = TownShapes.RoofLookOf(b.Kind, b.Id);
+                    double[] material = look == StyleRoofLook.Slate ? Slate : look == StyleRoofLook.Shingles ? Shingles : look == StyleRoofLook.DarkTiles ? TilesDark : Tiles;
+                    GableRoof(c, x, z, b.RoofMinX, b.RoofMinZ, b.RoofMaxX, b.RoofMaxZ, material, b.Kind == StyleBuilding.Chapel ? 0.22 : 0.32, false);
+                    if (TownShapes.ChimneyOf(b.Kind, b.Points, b.Id, b.Facing) is (double cx, double cz, double ch))
                     {
-                        // Cheminée de pierre au quart du faîte, un peu vers l'arrière.
-                        double cAlong = length * 0.25, cAcross = -depth * 0.18 * (b.Facing.X + b.Facing.Z >= 0 ? 1 : -1);
-                        if (Math.Abs(along - cAlong) < 0.45 && Math.Abs(across - cAcross) < 0.45)
+                        double ex = Math.Abs(x - cx), ez = Math.Abs(z - cz);
+                        if (ex < ch + 0.07 && ez < ch + 0.07)
                         {
                             Set(c, Stone, 0.75 + 0.2 * StyleRules.Noise(x * 4, z * 4));
-                            if (Math.Abs(along - cAlong) < 0.2 && Math.Abs(across - cAcross) < 0.2) Set(c, Well, 1);
+                            if (ex < ch - 0.1 && ez < ch - 0.1) Set(c, Well, 1);
                         }
                     }
-                    if (b.Kind == StyleBuilding.Chapel)
+                    if (TownShapes.BellTowerOf(b.Kind, b.Points, b.Facing) is (double tx, double tz, double th))
                     {
-                        // Clocher carré au bout du côté de l'entrée, toit en pyramide.
-                        double side = depth * 0.5;
-                        int end = (alongX ? b.Facing.X : b.Facing.Z) < 0 ? 0 : 1;
-                        double tAlong = end == 0 ? side * 0.6 : length - side * 0.6;
-                        double dx = along - tAlong, dz = across;
-                        if (Math.Abs(dx) < side / 2 && Math.Abs(dz) < side / 2)
+                        double dx = x - tx, dz = z - tz, side = th + 0.15;
+                        if (Math.Abs(dx) < side && Math.Abs(dz) < side)
                         {
+                            // Flèche à quatre pans : le pan nord ou ouest prend le soleil.
                             bool lit = Math.Abs(dz) > Math.Abs(dx) ? dz > 0 : dx < 0;
                             Set(c, Slate, lit ? 1.15 : 0.72);
                             if (Math.Abs(Math.Abs(dz) - Math.Abs(dx)) < 0.06) Darken(c, 0.3);
-                            if (Math.Max(Math.Abs(dx), Math.Abs(dz)) > side / 2 - 0.08) Darken(c, 0.35);
+                            if (Math.Max(Math.Abs(dx), Math.Abs(dz)) > side - 0.08) Darken(c, 0.35);
                         }
                     }
                     return;
@@ -555,7 +550,7 @@ namespace EdS.Runtime
             }
         }
 
-        /// <summary>Toit à deux pans sur [x0, x1] × [z0, z1] : faîte le long du grand côté, rangs de tuiles (ou chaume), pan au nord éclairé.</summary>
+        /// <summary>Toit à deux pans sur [x0, x1] × [z0, z1] : faîte le long du grand côté, rangs de tuiles (ou de bardeaux), pan au nord éclairé.</summary>
         private static void GableRoof(double[] c, double x, double z, double x0, double z0, double x1, double z1, double[] material, double rowSize, bool thatch)
         {
             bool ridgeAlongX = x1 - x0 >= z1 - z0;

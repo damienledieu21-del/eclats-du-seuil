@@ -80,6 +80,34 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// Cheminée d'une maison ou de l'auberge : centre au sol (x, z) et demi-côté, sur le pan arrière, au quart du faîte (côté tiré de
+        /// l'identifiant) ; null pour les autres bâtiments. Le décor et la carte peinte la placent au même endroit.
+        /// </summary>
+        public static (double X, double Z, double Half)? ChimneyOf(StyleBuilding kind, IReadOnlyList<(double X, double Z)> footprint, string id, (int X, int Z) facing)
+        {
+            if (kind != StyleBuilding.House && kind != StyleBuilding.Inn || footprint == null || footprint.Count < 3) return null;
+            var f = new Frame(footprint);
+            (_, int sideB) = f.Side(facing);
+            double back = sideB != 0 ? -sideB : 1;
+            StyleVector at = f.At(f.L * (StyleRules.Variant((id ?? string.Empty) + "/cheminee", 2) == 0 ? 0.45 : -0.45), 0, back * f.D * 0.4);
+            return (at.X, at.Z, 0.38);
+        }
+
+        /// <summary>
+        /// Clocher de la chapelle : centre au sol (x, z) et demi-côté de sa tour carrée, au bout opposé à l'entrée (chevet) ; null pour les
+        /// autres bâtiments. Le décor et la carte peinte le placent au même endroit.
+        /// </summary>
+        public static (double X, double Z, double Half)? BellTowerOf(StyleBuilding kind, IReadOnlyList<(double X, double Z)> footprint, (int X, int Z) facing)
+        {
+            if (kind != StyleBuilding.Chapel || footprint == null || footprint.Count < 3) return null;
+            var f = new Frame(footprint);
+            (int sideA, _) = f.Side(facing);
+            double half = Math.Min(f.D * 0.55, f.L * 0.45);
+            StyleVector at = f.At((sideA != 0 ? -sideA : 1) * (f.L - half - 0.05), 0, 0);
+            return (at.X, at.Z, half);
+        }
+
+        /// <summary>
         /// Bâtiment <paramref name="kind"/> sur l'emprise <paramref name="footprint"/> (polygone convexe de l'obstacle, mètres) ;
         /// <paramref name="facing"/> : côté de la porte (vecteur d'axe). Rien pour <see cref="StyleBuilding.None"/> ni pour un bois.
         /// </summary>
@@ -266,8 +294,8 @@ namespace EdS.Runtime
             // Cheminée (maisons, auberge) sur le pan arrière.
             if (kind == StyleBuilding.House || kind == StyleBuilding.Inn)
             {
-                double back = sideB != 0 ? -sideB : 1;
-                double ca = f.L * (StyleRules.Variant(id + "/cheminee", 2) == 0 ? 0.45 : -0.45), cb = back * f.D * 0.4;
+                (double cx, double cz, _) = ChimneyOf(kind, footprint, id, facing)!.Value;
+                double ca = StyleVector.Dot(new StyleVector(cx, 0, cz) - f.Origin, f.U), cb = StyleVector.Dot(new StyleVector(cx, 0, cz) - f.Origin, f.V);
                 StyleShapes.Box(shapes.Stone, f.At(ca, (wallTop + ridge + 1.0) / 2, cb), f.U * 0.38, StyleVector.Up * ((ridge + 1.0 - wallTop) / 2), f.V * 0.38, t.Stone);
                 StyleShapes.Box(shapes.Stone, f.At(ca, ridge + 1.06, cb), f.U * 0.45, StyleVector.Up * 0.06, f.V * 0.45, t.Stone);
                 shapes.Dark.Quad(f.At(ca - 0.28, ridge + 1.121, cb - 0.28), f.At(ca + 0.28, ridge + 1.121, cb - 0.28), f.At(ca + 0.28, ridge + 1.121, cb + 0.28),
@@ -289,8 +317,8 @@ namespace EdS.Runtime
             // Clocher de la chapelle : tour carrée au bout opposé à l'entrée (chevet), abat-sons, flèche d'ardoises.
             if (kind == StyleBuilding.Chapel)
             {
-                double half = Math.Min(f.D * 0.55, f.L * 0.45);
-                double ta = (sideA != 0 ? -sideA : 1) * (f.L - half - 0.05);
+                (double tx, double tz, double half) = BellTowerOf(kind, footprint, facing)!.Value;
+                double ta = StyleVector.Dot(new StyleVector(tx, 0, tz) - f.Origin, f.U);
                 double towerTop = ridge + 2.2;
                 StyleShapes.Box(shapes.Walls, f.At(ta, towerTop / 2, 0), f.U * half, StyleVector.Up * (towerTop / 2), f.V * half, WallTileOf(shapes.WallSurface, t));
                 foreach ((StyleVector outward, StyleVector along) in new[] { (f.U, f.V), (-f.U, f.V), (f.V, f.U), (-f.V, f.U) })
@@ -360,6 +388,14 @@ namespace EdS.Runtime
                 StyleVector back = at - outward * 0.12;
                 // Embrasure : fond sombre en retrait et ses joues.
                 WallQuad(shapes.Dark, back, along, outward, a0, a1, o.Bottom, o.Top, 1);
+                if (o.Door && o.Bottom > 0.1)
+                {
+                    // Relecture des Vallons agrandis : deux marches de pierre devant la porte (le seuil est sur le soubassement).
+                    StyleShapes.Box(shapes.Stone, at + along * o.Center + outward * 0.17 + StyleVector.Up * (o.Bottom / 4), along * (o.Width / 2 + 0.2),
+                        StyleVector.Up * (o.Bottom / 4), outward * 0.17, t.Stone);
+                    StyleShapes.Box(shapes.Stone, at + along * o.Center + outward * 0.085 + StyleVector.Up * (o.Bottom * 0.75), along * (o.Width / 2 + 0.12),
+                        StyleVector.Up * (o.Bottom / 4), outward * 0.085, t.Stone);
+                }
                 if (o.Door)
                 {
                     // Porte de planches fermée dans l'embrasure, avec ses pentures.

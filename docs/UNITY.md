@@ -418,10 +418,10 @@ Demande de Damien : « est-ce que tu peux aussi agrandir la map et l'améliorer 
 Ce qui change :
 - **La zone fait 240 × 170 m** (84 × 58 avant). Le village, le moulin, la carrière et le Seuil n'ont pas bougé.
 - **Bourg d'Aube**, à l'ouest :
-  - dix maisons à colombages (soubassement de pierre, fenêtres à volets, porte côté rue, cheminée) ;
+  - huit maisons à colombages (soubassement de pierre, fenêtres à volets, porte côté rue avec ses marches, cheminée) ;
   - une auberge à deux étages avec son enseigne, une chapelle de pierre au clocher d'ardoises ;
   - une place pavée avec son puits et deux étals à auvent rayé.
-- **Champs du sud** : grange, ferme, champs de blé (mûr ou vert) et labours.
+- **Champs du sud** : grange, ferme, champs de blé (mûr ou vert) et labours. Une maison de plus au hameau de la carrière.
 - **Autres lieux** :
   - le **lac des Aubes**, où se jette la rivière ;
   - le **hameau de la carrière** ;
@@ -433,7 +433,8 @@ Ce qui change :
 - **Trois haltes de plus** : place du bourg, ferme des champs, hameau de la carrière.
 - La **carte (L)** et la petite carte montrent tout : toits, routes, pavés, champs, bois, tentes.
 - La musique du village joue aussi dans le bourg et le hameau ; la rivière s'entend sur toute sa longueur et au bord du lac.
-- Une halte ne reconstruit plus le décor : elle est plus rapide.
+- Une halte ne reconstruit plus le décor ni ne repeint la carte : elle est plus rapide.
+- Sur téléphone : moins d'arbres dans les bois, de plantes et de blé, et le blé se dessine moins loin.
 
 Ce que tu regardes :
 - le chemin du village vers le bourg (grand-rue, à l'ouest du pont) ;

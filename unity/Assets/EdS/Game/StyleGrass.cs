@@ -90,7 +90,7 @@ namespace EdS.Game
         /// <summary>
         /// Vallons agrandis : blé d'un ou plusieurs champs, aux places <paramref name="spots"/> (<see cref="TownShapes.CropSpots"/>) : les
         /// touffes de l'herbe, deux fois plus hautes (40 cm à 1 m), couleurs du pied et de l'épi données, moins de vent ; dessiné jusqu'à
-        /// 90 m (60 sur téléphone) pour que les champs se voient de loin. Null sans place, sans matériau d'herbe ou sans son shader.
+        /// 90 m (40 sur téléphone) pour que les champs se voient de loin. Null sans place, sans matériau d'herbe ou sans son shader.
         /// </summary>
         public static StyleGrass CreateCrop(IReadOnlyList<(double X, double Z, double Yaw, double Scale)> spots, Color root, Color tip)
         {
@@ -99,7 +99,7 @@ namespace EdS.Game
                 return null;
             bool phone = Application.isMobilePlatform;
             var material = new Material(catalog.Grass) { enableInstancing = true };
-            float distance = phone ? 60f : 90f;
+            float distance = phone ? 40f : 90f;
             material.SetFloat("_FadeEnd", distance);
             material.SetFloat("_FadeStart", distance * 0.8f);
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", root);
@@ -108,7 +108,7 @@ namespace EdS.Game
             if (material.HasProperty("_Dryness")) material.SetFloat("_Dryness", 0.2f);
             if (material.HasProperty("_DryPatches")) material.SetFloat("_DryPatches", 0.1f);
             if (material.HasProperty("_Wind")) material.SetFloat("_Wind", 0.35f);
-            var crop = new StyleGrass(Clump(phone ? 6 : 9, 0), Clump(phone ? 6 : 9, 0), material, distance);
+            var crop = new StyleGrass(Clump(phone ? 6 : 9, 0), null, material, distance);   // une seule touffe (pas de fleurs)
             var byCell = new Dictionary<(int, int), List<Matrix4x4>>();
             foreach ((double x, double z, double yaw, double scale) in spots)
             {
@@ -148,7 +148,7 @@ namespace EdS.Game
         public void Destroy()
         {
             Object.Destroy(_mesh);
-            Object.Destroy(_flowers);
+            if (_flowers != null) Object.Destroy(_flowers);
             Object.Destroy(_material);
         }
 

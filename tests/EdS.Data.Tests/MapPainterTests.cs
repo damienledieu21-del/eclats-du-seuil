@@ -39,7 +39,9 @@ public class MapPainterTests
         string? dump = Environment.GetEnvironmentVariable("EDS_CARTE");
         if (!string.IsNullOrEmpty(dump)) File.WriteAllBytes(dump, image);
         Assert.Equal(image, MapPainter.Paint(map, width, height));   // sans hasard
-        Assert.All(Enumerable.Range(0, width * height), i => Assert.Equal(255, image[i * 4 + 3]));
+        int opaque = 0;
+        for (int i = 3; i < image.Length; i += 4) if (image[i] == 255) opaque++;
+        Assert.Equal(width * height, opaque);   // tout est opaque
 
         var river = At(image, width, height, map, 5.5, 20);           // milieu du bras nord
         Assert.True(river.B > river.R + 0.1 && river.B > river.G, $"rivière {river}");

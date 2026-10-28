@@ -112,11 +112,14 @@ public class VallonsAgrandisTests
     {
         ZoneDefinition zone = Zone();
         IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(zone);
-        Assert.Equal(9, roads.Count);
-        // Chaque point sûr est au bord d'une route (à 6 m au plus), et la grand-rue passe le pont.
+        Assert.Equal(10, roads.Count);
+        // Chaque point sûr est au bord d'une route (à 6 m au plus) ; la grand-rue et le passage des ruines arrivent aux deux têtes du pont.
         foreach (SafePoint s in zone.SafePoints)
             Assert.True(TownRules.RoadAt(s.Position.X.Raw / 10000.0, s.Position.Z.Raw / 10000.0, roads).Edge < 6, $"{s.Id} loin des routes");
-        Assert.True(TownRules.RoadAt(5.5, -0.3, roads).Edge < 0);
+        Assert.Equal("grand_rue", TownRules.RoadAt(3.3, -0.2, roads).Road!.Id);
+        Assert.True(TownRules.RoadAt(3.3, -0.2, roads).Edge < 0);
+        Assert.Equal("passage_des_ruines", TownRules.RoadAt(7.6, 0.5, roads).Road!.Id);
+        Assert.True(TownRules.RoadAt(7.6, 0.5, roads).Edge < 0);
         // Aucune route ne passe sous un bâtiment, un bois ou un rocher (le chemin longe ou contourne) ; seuls le puits et les étals sont posés
         // sur la place pavée.
         foreach ((string id, (double X, double Z)[] points) in Obstacles(zone).Where(o => TownRules.BuildingFor(o.Id) != StyleBuilding.None || StyleRules.ForObstacle(o.Id) != null))
@@ -175,6 +178,78 @@ public class VallonsAgrandisTests
         Assert.Empty(TownRules.Fields(0, 0, 60, 45, obstacles, new[] { road }, keep, (100.0, 100.0, 200.0, 200.0)));   // hors de l'aire
     }
 
+    [Fact]
+    public void La_route_la_plus_proche_parmi_plusieurs()
+    {
+        // Relecture des Vallons agrandis : une route hors de sa boîte n'était plus regardée dès qu'une autre avait été vue ; maison6 et
+        // maison8, au bout ouest du bourg, regardaient la grand-rue (à 37 m) au lieu de la grand-rue de l'ouest (à 3 m).
+        IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(Zone());
+        RoadHit hit = TownRules.RoadAt(-89.5, -6, roads);
+        Assert.Equal("grand_rue_ouest", hit.Road!.Id);
+        Assert.Equal(2.75, hit.Edge, 6);
+        // Même réponse qu'une recherche exhaustive, partout sur l'aire.
+        for (double x = -100; x <= 140; x += 2.9)
+            for (double z = -70; z <= 100; z += 2.3)
+            {
+                double best = roads.Min(r => TownRules.RoadAt(x, z, new[] { r }).Edge);
+                Assert.Equal(best, TownRules.RoadAt(x, z, roads).Edge, 9);
+            }
+        Assert.Equal((0, 1), TownRules.Facing(-93, -14, -86, -7, roads));    // maison6 : au nord, vers la grand-rue de l'ouest
+        Assert.Equal((0, -1), TownRules.Facing(-99, 5, -93, 11, roads));     // maison8 : au sud
+    }
+
+    [Fact]
+    public void Les_routes_ne_passent_ni_dans_un_obstacle_ni_dans_l_eau()
+    {
+        // Relecture des Vallons agrandis : toute la largeur de la route (pas seulement son axe), bouts arrondis compris ; seuls le puits et
+        // les étals sont posés sur la place pavée, et le chemin du moulin passe la porte (un passage : elle s'ouvre).
+        ZoneDefinition zone = Zone();
+        var gates = zone.Passages.Select(p => p.Obstacle).ToHashSet();
+        var obstacles = Obstacles(zone).Where(o => !gates.Contains(o.Id)).ToList();
+        foreach (StyleRoad road in AdventureSession.Roads(zone))
+        {
+            var samples = new List<(double X, double Z)>();
+            for (int i = 0; i + 1 < road.Points.Count; i++)
+            {
+                var a = road.Points[i];
+                var b = road.Points[i + 1];
+                double len = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Z - a.Z) * (b.Z - a.Z)), nx = -(b.Z - a.Z) / len, nz = (b.X - a.X) / len;
+                for (double t = 0; t <= len; t += 0.4)
+                    foreach (double k in new[] { -0.97, -0.5, 0, 0.5, 0.97 })
+                        samples.Add((a.X + (b.X - a.X) * t / len + nx * k * road.Width / 2, a.Z + (b.Z - a.Z) * t / len + nz * k * road.Width / 2));
+            }
+            foreach (var p in new[] { road.Points[0], road.Points[road.Points.Count - 1] })
+                for (int k = 0; k < 16; k++)
+                    samples.Add((p.X + Math.Cos(k * Math.PI / 8) * road.Width * 0.48, p.Z + Math.Sin(k * Math.PI / 8) * road.Width * 0.48));
+            foreach ((string id, (double X, double Z)[] points) in obstacles)
+            {
+                if (road.Paved && TownRules.BuildingFor(id) is StyleBuilding.Well or StyleBuilding.Stall) continue;
+                foreach (var s in samples)
+                    Assert.True(StyleRules.InsideDistance(s.X, s.Z, points) <= 0, $"{road.Id} passe dans {id} en ({s.X:0.##}, {s.Z:0.##})");
+            }
+        }
+    }
+
+    [Fact]
+    public void Aucune_creature_n_attend_sur_une_halte()
+    {
+        // Relecture des Vallons agrandis : sanglier4 attaquait dès l'arrivée à la ferme des champs. Chaque créature de départ est à plus de
+        // 12 m d'une halte (la règle de la halte) et hors de sa portée d'engagement (bord à bord, avec une marge d'un mètre).
+        ZoneDefinition zone = Zone();
+        var scenario = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!["data"]!["combatants"]!.AsArray();
+        foreach (SafePoint safe in zone.SafePoints)
+        {
+            double sx = safe.Position.X.Raw / 10000.0, sz = safe.Position.Z.Raw / 10000.0;
+            foreach (JsonNode? c in scenario)
+            {
+                double x = (double)c!["position"]![0]!, z = (double)c["position"]![1]!, radius = (double)c["radius"]!;
+                double aggro = c["behavior"]?["aggroRange"] is JsonNode a ? (double)a : 0;
+                double d = Math.Sqrt((x - sx) * (x - sx) + (z - sz) * (z - sz));
+                Assert.True(d > 12 && d - radius - 0.5 > aggro + 1, $"{c["id"]} à {d:0.#} m de la halte {safe.Id}");
+            }
+        }
+    }
+
     [Theory]
     [InlineData(0, -1)]
     [InlineData(1, 0)]
@@ -226,9 +301,11 @@ public class VallonsAgrandisTests
             foreach (StyleVector v in mesh.Vertices)
             {
                 // Sous 2 m (là où l'on marche), seuls les reliefs (appuis de fenêtre, colombages, volets) sortent de l'emprise de l'obstacle, de
-                // 12 cm au plus (moins que le rayon d'un corps, qui ne s'en approche pas plus) ; plus haut, les débords restent à 1,25 m au plus.
+                // 12 cm au plus (moins que le rayon d'un corps, qui ne s'en approche pas plus), et les marches devant les portes (34 cm, sous
+                // 50 cm de haut) ; plus haut, les débords restent à 1,25 m au plus.
                 double outside = -StyleRules.InsideDistance(v.X, v.Z, points);
-                Assert.True(v.Y > 2.0 ? outside < 1.25 : outside < 0.12, $"{id} : {v} sort de {outside:0.##} m de l'emprise");
+                double allowed = v.Y > 2.0 ? 1.25 : v.Y <= 0.5 && ReferenceEquals(mesh, shapes.Stone) ? 0.36 : 0.12;
+                Assert.True(outside < allowed, $"{id} : {v} sort de {outside:0.##} m de l'emprise");
             }
         }
         // Mêmes formes à chaque lancement.
@@ -325,7 +402,7 @@ public class VallonsAgrandisTests
         Assert.Equal(3, zone.SchemaVersion);
         Assert.Equal(ZoneValidator.CurrentSchemaVersion, zone.SchemaVersion);
         Road place = zone.Roads.Single(r => r.Kind == RoadKind.Cobble);
-        Assert.Equal(("place_du_bourg", 13.0), (place.Id, place.Width.Raw / 10000.0));
+        Assert.Equal(("place_du_bourg", 12.0), (place.Id, place.Width.Raw / 10000.0));
         Assert.All(zone.Roads, r => Assert.InRange(r.Points.Count, 2, ZoneValidator.MaxRoadPoints));
         // Sans routes : une zone valide, sans route.
         ZoneLoadResult none = WithZone(r => r["data"]!.AsObject().Remove("roads"));

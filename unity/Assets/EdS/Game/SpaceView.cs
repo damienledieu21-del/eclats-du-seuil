@@ -54,6 +54,13 @@ namespace EdS.Game
         private readonly SpotGrid _spots;
         private readonly List<StyleGrass> _crops = new List<StyleGrass>();
 
+        /// <summary>Relecture des Vallons agrandis : maillages faits par le code (rendus à la destruction du décor).</summary>
+        private readonly List<Mesh> _meshes = new List<Mesh>();
+
+        /// <summary>Obstacles en polygones avec leur boîte (herbe et plantes : hors du polygone, pas de sa boîte).</summary>
+        private readonly List<(float MinX, float MinZ, float MaxX, float MaxZ, List<(double X, double Z)> Points)> _shapes =
+            new List<(float MinX, float MinZ, float MaxX, float MaxZ, List<(double X, double Z)> Points)>();
+
         /// <summary>
         /// Vallons agrandis : clé du décor (aire, obstacles, routes). Le même espace et la même carte gardent le même décor : une halte ne le
         /// reconstruit plus (la zone est grande : terrain, bois, bourg) ; une porte ouverte change la clé, et le décor est refait.
@@ -74,6 +81,9 @@ namespace EdS.Game
         public SpaceView(CombatSpace space, Transform parent, AdventureMap map = null)
         {
             Key = KeyOf(space, map);
+            foreach (SpaceObstacle o in space.Obstacles)
+                _shapes.Add((Raw(o.Points.Min(p => p.X.Raw)), Raw(o.Points.Min(p => p.Z.Raw)), Raw(o.Points.Max(p => p.X.Raw)), Raw(o.Points.Max(p => p.Z.Raw)),
+                    o.Points.Select(p => ((double)Raw(p.X.Raw), (double)Raw(p.Z.Raw))).ToList()));
             _roads = map != null ? map.Roads : (IReadOnlyList<StyleRoad>)new List<StyleRoad>();
             _spots = new SpotGrid(Spots(space));
             if (map != null)
@@ -95,7 +105,8 @@ namespace EdS.Game
             // 2026 : avec la vraie eau, le lit de la rivière y est creusé (sous ses bras et sous le pont), l'eau coule sous le sol.
             _rivers = StyleWorld.RealWater ? Rivers(space) : new List<List<Vector3>>();
             _terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space),
-                _rivers.Select(r => (IReadOnlyList<(double X, double Z)>)r.Select(p => ((double)p.x, (double)p.z)).ToList()).ToList(), _roads, _fields);
+                _rivers.Select(r => (IReadOnlyList<(double X, double Z)>)r.Select(p => ((double)p.x, (double)p.z)).ToList()).ToList(), _roads, _fields,
+                _shapes.Where((o, i) => TownRules.BuildingFor(space.Obstacles[i].Id) == StyleBuilding.Woods).Select(o => (IReadOnlyList<(double X, double Z)>)o.Points).ToList());
             bool terrain = _terrain != null;
             if (!terrain) _rivers.Clear();
             if (!terrain)
@@ -146,13 +157,12 @@ namespace EdS.Game
         private void Grass(CombatSpace space)
         {
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
-            var boxes = space.Obstacles.Select(o => (MinX: Raw(o.Points.Min(p => p.X.Raw)) - 0.4f, MaxX: Raw(o.Points.Max(p => p.X.Raw)) + 0.4f,
-                MinZ: Raw(o.Points.Min(p => p.Z.Raw)) - 0.4f, MaxZ: Raw(o.Points.Max(p => p.Z.Raw)) + 0.4f)).ToList();
             var rivers = _rivers.Select(r => (IReadOnlyList<(double X, double Z)>)r.Select(p => ((double)p.x, (double)p.z)).ToList()).ToList();
             var banks = StyleRules.UnionBoundary(rivers);
-            // Vallons agrandis : ni sur les routes (terre battue), ni dans les champs (le blé y pousse).
+            // Vallons agrandis : ni sur les routes (terre battue), ni dans les champs (le blé y pousse) ; relecture : hors du polygone des
+            // obstacles (à 40 cm près), pas de leur boîte (l'herbe manquait autour des bois, du lac, de la tour et des tentes).
             _grass = StyleGrass.Create(minX, minZ, maxX, maxZ, (x, z) =>
-                !boxes.Any(b => x >= b.MinX && x <= b.MaxX && z >= b.MinZ && z <= b.MaxZ)
+                !InObstacle(x, z, 0.4f)
                 && !InField(x, z, 0.3f)
                 && (banks.Count == 0 || StyleRules.UnionDistance(x, z, rivers, banks) < -0.7)
                 && TownRules.RoadMix(_spots.Mix(x, z), x, z, TownRules.RoadAt(x, z, _roads)).Grass >= 0.5);
@@ -293,8 +303,6 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null || catalog.Plants == null || catalog.Plants.Length == 0) return;
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
-            var boxes = space.Obstacles.Select(o => (MinX: Raw(o.Points.Min(p => p.X.Raw)) - 1f, MaxX: Raw(o.Points.Max(p => p.X.Raw)) + 1f,
-                MinZ: Raw(o.Points.Min(p => p.Z.Raw)) - 1f, MaxZ: Raw(o.Points.Max(p => p.Z.Raw)) + 1f)).ToList();
             uint seed = 12345;
             float Next()
             {
@@ -305,13 +313,13 @@ namespace EdS.Game
             // Vallons agrandis : le nombre suit la surface (celle des premiers Vallons, 84 × 58 m, porte le nombre du catalogue ; quatre fois
             // au plus), ni sur les routes ni dans les champs.
             float area = (maxX - minX) * (maxZ - minZ);
-            int wanted = Mathf.RoundToInt((Application.isMobilePlatform ? catalog.PlantCount / 2 : catalog.PlantCount) * Mathf.Clamp(area / 4872f, 1f, 4f));
+            bool phone = Application.isMobilePlatform;
+            int wanted = Mathf.RoundToInt((phone ? catalog.PlantCount / 2 : catalog.PlantCount) * Mathf.Clamp(area / 4872f, 1f, phone ? 2f : 4f));
             int placed = 0;
             for (int i = 0; i < wanted * 8 && placed < wanted; i++)
             {
                 float x = Mathf.Lerp(minX + 1f, maxX - 1f, Next()), z = Mathf.Lerp(minZ + 1f, maxZ - 1f, Next());
-                if (boxes.Any(b => x >= b.MinX && x <= b.MaxX && z >= b.MinZ && z <= b.MaxZ)) continue;
-                if (InField(x, z, 1f) || TownRules.RoadAt(x, z, _roads).Edge < 0.6) continue;
+                if (InObstacle(x, z, 1f) || InField(x, z, 1f) || TownRules.RoadAt(x, z, _roads).Edge < 0.6) continue;
                 StyleLook.Decor(_root.transform, StyleSlot.Plant, "plante" + placed, new Vector3(x, 0f, z), 0.6f + 0.4f * Next(), 0f, true);
                 placed++;
             }
@@ -327,7 +335,8 @@ namespace EdS.Game
             if (catalog == null || catalog.Trees == null || catalog.Trees.Length == 0) return;
             // Vallons agrandis : le nombre d'arbres suit le tour de l'aire (celui des premiers Vallons, 284 m, porte le nombre du catalogue).
             float perimeter = 2f * (Raw(space.Max.X.Raw) - Raw(space.Min.X.Raw) + Raw(space.Max.Z.Raw) - Raw(space.Min.Z.Raw));
-            int count = Mathf.RoundToInt((Application.isMobilePlatform ? catalog.ForestTrees / 3 : catalog.ForestTrees) * Mathf.Clamp(perimeter / 284f, 1f, 3.5f));
+            bool phone = Application.isMobilePlatform;
+            int count = Mathf.RoundToInt((phone ? catalog.ForestTrees / 3 : catalog.ForestTrees) * Mathf.Clamp(perimeter / 284f, 1f, phone ? 2f : 3.5f));
             var spots = StyleRules.Forest(Raw(space.Min.X.Raw), Raw(space.Min.Z.Raw), Raw(space.Max.X.Raw), Raw(space.Max.Z.Raw), catalog.ForestMargin, count);
             bool debris = catalog.Debris != null && catalog.Debris.Length > 0;
             for (int i = 0; i < spots.Count; i++)
@@ -393,6 +402,25 @@ namespace EdS.Game
             return copy;
         }
 
+        private static Material _soil;
+
+        /// <summary>Terre des labours (texture de terre du catalogue, ou une couleur), partagée d'une construction du décor à l'autre.</summary>
+        private static Material Soil(StyleCatalog catalog)
+        {
+            if (_soil != null) return _soil;
+            bool textured = catalog != null && catalog.SoilColor != null;
+            _soil = ArenaView.MakeMaterial(textured ? Color.white : new Color(0.4f, 0.3f, 0.2f));
+            if (!textured) return _soil;
+            _soil.SetTexture("_BaseMap", catalog.SoilColor);
+            _soil.SetTexture("_MainTex", catalog.SoilColor);
+            if (catalog.SoilNormal != null)
+            {
+                _soil.SetTexture("_BumpMap", catalog.SoilNormal);
+                _soil.EnableKeyword("_NORMALMAP");
+            }
+            return _soil;
+        }
+
         /// <summary>Matériau d'une couleur unie (toiles, ouvertures), partagé.</summary>
         private static Material Plain(Color color)
         {
@@ -410,7 +438,8 @@ namespace EdS.Game
         /// <summary>
         /// Vallons agrandis : un bois, massif qu'on ne traverse pas (l'obstacle du moteur) : les arbres du catalogue serrés sur son emprise
         /// (<see cref="TownRules.WoodTrees"/>, comme la carte peinte), du bois mort au cœur ; les arbres de la lisière sont coupés quand ils
-        /// cachent le joueur. Un arbre du cœur sur deux sur téléphone. Sans arbre dans le catalogue, un bloc vert.
+        /// cachent le joueur. Un arbre du cœur sur trois sur téléphone (sous-bois de terre sombre en dessous). Sans arbre dans le catalogue, un
+        /// bloc vert.
         /// </summary>
         private void Woods(string id, List<Vector3> points)
         {
@@ -426,7 +455,7 @@ namespace EdS.Game
             for (int i = 0; i < trees.Count; i++)
             {
                 StyleWoodTree tree = trees[i];
-                if (phone && !tree.Edge && i % 2 == 1) continue;
+                if (phone && !tree.Edge && i % 3 != 0) continue;   // relecture : un arbre du cœur sur trois sur téléphone
                 string part = id + "/" + i;
                 var at = new Vector3((float)tree.X, 0f, (float)tree.Z);
                 GameObject look = debris && !tree.Edge && i % 6 == 5
@@ -454,30 +483,15 @@ namespace EdS.Game
         {
             if (_fields.Count == 0) return;
             StyleCatalog catalog = StyleCatalog.Loaded;
-            float step = Application.isMobilePlatform ? 0.5f : 0.32f;
+            float step = Application.isMobilePlatform ? 0.6f : 0.32f;   // relecture : moins de blé sur téléphone
             var ripe = new List<(double X, double Z, double Yaw, double Scale)>();
             var green = new List<(double X, double Z, double Yaw, double Scale)>();
-            Material soil = null;
-            float soilTile = 2f;
+            float soilTile = catalog != null && catalog.SoilColor != null ? catalog.GroundTile / 2f : 2f;
             foreach (StyleField field in _fields)
             {
                 if (field.Crop == 2)
                 {
-                    if (soil == null)
-                    {
-                        soil = ArenaView.MakeMaterial(catalog != null && catalog.SoilColor != null ? Color.white : new Color(0.4f, 0.3f, 0.2f));
-                        if (catalog != null && catalog.SoilColor != null)
-                        {
-                            soil.SetTexture("_BaseMap", catalog.SoilColor);
-                            soil.SetTexture("_MainTex", catalog.SoilColor);
-                            if (catalog.SoilNormal != null)
-                            {
-                                soil.SetTexture("_BumpMap", catalog.SoilNormal);
-                                soil.EnableKeyword("_NORMALMAP");
-                            }
-                            soilTile = catalog.GroundTile / 2f;
-                        }
-                    }
+                    Material soil = Soil(catalog);
                     Shape("Labour", TownShapes.Furrows(field, soilTile), soil);
                 }
                 else (field.Crop == 0 ? ripe : green).AddRange(TownShapes.CropSpots(field, step));
@@ -497,6 +511,15 @@ namespace EdS.Game
             // des bâtiments).
             TownRules.GroundSpots(space.Obstacles.Select(o => (o.Id, (double)Raw(o.Points.Min(p => p.X.Raw)), (double)Raw(o.Points.Min(p => p.Z.Raw)),
                 (double)Raw(o.Points.Max(p => p.X.Raw)), (double)Raw(o.Points.Max(p => p.Z.Raw)))));
+
+        /// <summary>Le point est-il dans un obstacle (son polygone, à <paramref name="margin"/> mètres près) ?</summary>
+        private bool InObstacle(float x, float z, float margin)
+        {
+            foreach (var o in _shapes)
+                if (x >= o.MinX - margin && x <= o.MaxX + margin && z >= o.MinZ - margin && z <= o.MaxZ + margin
+                    && StyleRules.InsideDistance(x, z, o.Points) > -margin) return true;
+            return false;
+        }
 
         /// <summary>Vallons agrandis : le point est-il dans un champ (à <paramref name="margin"/> mètres près) ?</summary>
         private bool InField(float x, float z, float margin)
@@ -553,6 +576,7 @@ namespace EdS.Game
                 else triangles.AddRange(new[] { 0, i + 1, i });
             }
             var mesh = new Mesh();
+            _meshes.Add(mesh);
             mesh.vertices = vertices.ToArray();
             mesh.triangles = triangles.ToArray();
             mesh.RecalculateNormals();
@@ -618,6 +642,7 @@ namespace EdS.Game
                 for (int s = 0; s < Sides; s++) triangles.AddRange(new[] { ringTop + s, apex, ringTop + s + 1 });
             }
             var mesh = new Mesh();
+            _meshes.Add(mesh);
             mesh.vertices = vertices.ToArray();
             mesh.uv = uvs.ToArray();
             mesh.triangles = triangles.ToArray();
@@ -695,6 +720,7 @@ namespace EdS.Game
         private GameObject Shape(string name, StyleMesh shape, Material material, Transform parent)
         {
             var mesh = new Mesh { name = name };
+            _meshes.Add(mesh);
             if (shape.Vertices.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.vertices = shape.Vertices.Select(v => new Vector3((float)v.X, (float)v.Y, (float)v.Z)).ToArray();
             mesh.uv = shape.Uvs.Select(uv => new Vector2((float)uv.U, (float)uv.V)).ToArray();
@@ -760,6 +786,7 @@ namespace EdS.Game
                 Triangle(p, q + up, p + up, outward, side);
             }
             var mesh = new Mesh();
+            _meshes.Add(mesh);
             mesh.vertices = vertices.ToArray();
             mesh.uv = uvs.ToArray();
             mesh.triangles = triangles.ToArray();
@@ -796,7 +823,7 @@ namespace EdS.Game
 
         /// <summary>Matériau d'une matière de bâtiment (textures du catalogue), ou la couleur simple sans elles.</summary>
         private static Material Built(StyleSurface kind, Color color, out float tile) =>
-            StyleWorld.Surface(kind, out tile) ?? ArenaView.MakeMaterial(color);
+            StyleWorld.Surface(kind, out tile) ?? Plain(color);   // relecture des Vallons agrandis : couleur simple partagée
 
         /// <summary>Copie d'un matériau texturé répétée (u, v) fois sur un bloc simple (les ailes du moulin, tournées).</summary>
         private static Material Tiled(Material material, float u, float v)
@@ -988,6 +1015,7 @@ namespace EdS.Game
             StyleWorld.Release(_terrain);   // essai réaliste : données du terrain créées par le code, rendues avec lui
             _grass?.Destroy();
             foreach (StyleGrass crop in _crops) crop.Destroy();
+            foreach (Mesh mesh in _meshes) Object.Destroy(mesh);   // relecture des Vallons agrandis : les maillages faits par le code
             StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);   // essai réaliste 5 : plus de pont cintré sous les pieds
             Object.Destroy(_root);
         }

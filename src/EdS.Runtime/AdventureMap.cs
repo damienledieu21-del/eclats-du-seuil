@@ -92,7 +92,27 @@ namespace EdS.Runtime
             Places = (places ?? Array.Empty<MapPlace>()).ToList();
             Roads = (roads ?? Array.Empty<StyleRoad>()).ToList();
             Clearings = (clearings ?? Array.Empty<(double X, double Z)>()).ToList();
+            var key = new System.Text.StringBuilder();
+            key.Append(FormattableString.Invariant($"{MinX}/{MinZ}/{MaxX}/{MaxZ}"));
+            foreach (SpaceObstacle o in Obstacles)
+            {
+                key.Append('|').Append(o.Id).Append(o.Low ? "~" : ":");
+                foreach (GroundVector p in o.Points) key.Append(p.X.Raw).Append(',').Append(p.Z.Raw).Append(';');
+            }
+            foreach (StyleRoad r in Roads)
+            {
+                key.Append('/').Append(r.Id).Append(r.Paved ? "#" : "=").Append(FormattableString.Invariant($"{r.Width}"));
+                foreach ((double x, double z) in r.Points) key.Append(FormattableString.Invariant($"{x},{z};"));
+            }
+            foreach ((double x, double z) in Clearings) key.Append(FormattableString.Invariant($"o{x},{z}"));
+            Signature = key.ToString();
         }
+
+        /// <summary>
+        /// Vallons agrandis : ce que la carte peinte montre (aire, obstacles, routes, places dégagées), en texte. Deux cartes de même signature
+        /// donnent la même image : une halte ne la repeint pas (elle prend quelques secondes sur la grande carte) ; une porte ouverte la change.
+        /// </summary>
+        public string Signature { get; }
 
         private static double Meters(long raw) => raw / 10000.0;
 

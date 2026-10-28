@@ -127,7 +127,8 @@ namespace EdS.Game
         /// simple reste).
         /// </summary>
         public static GameObject Ground(Transform parent, float minX, float minZ, float maxX, float maxZ, IReadOnlyList<StyleSpot> spots,
-            IReadOnlyList<IReadOnlyList<(double X, double Z)>> rivers = null, IReadOnlyList<StyleRoad> roads = null, IReadOnlyList<StyleField> fields = null)
+            IReadOnlyList<IReadOnlyList<(double X, double Z)>> rivers = null, IReadOnlyList<StyleRoad> roads = null, IReadOnlyList<StyleField> fields = null,
+            IReadOnlyList<IReadOnlyList<(double X, double Z)>> floors = null)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return null;
@@ -174,6 +175,15 @@ namespace EdS.Game
                     double x = x0 + (col + 0.5f) / res * width, z = z0 + (row + 0.5f) / res * depth;
                     StyleMix mix = grid.Mix(x, z);
                     if (roads != null && roads.Count > 0) mix = TownRules.RoadMix(mix, x, z, TownRules.RoadAt(x, z, roads));
+                    // Relecture des Vallons agrandis : sous-bois de terre sous les bois (comme la carte peinte), fondu sur un mètre et demi.
+                    if (floors != null)
+                        foreach (IReadOnlyList<(double X, double Z)> floor in floors)
+                        {
+                            double inside = StyleRules.InsideDistance(x, z, floor);
+                            if (inside <= -1.5) continue;
+                            double w = System.Math.Min(1, (inside + 1.5) / 3);
+                            mix = new StyleMix(mix.Soil * (1 - w) + w, mix.Rock * (1 - w), mix.Grass * (1 - w));
+                        }
                     if (fields != null)
                         foreach (StyleField f in fields)
                             if (x > f.MinX - 0.3 && x < f.MaxX + 0.3 && z > f.MinZ - 0.3 && z < f.MaxZ + 0.3)
