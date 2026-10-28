@@ -369,10 +369,17 @@ public class InterfaceStyleTests
         string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
         Assert.Contains("_effects = Effects.Create();", game, StringComparison.Ordinal);
         Assert.Contains("_music = StyleAudio.Create(_camera.Camera.transform);", game, StringComparison.Ordinal);
-        Assert.Contains("_music?.Update(a.Mood(),", game, StringComparison.Ordinal);
+        Assert.Contains("_mood = a.Mood();", game, StringComparison.Ordinal);   // relecture : quatre fois par seconde
+        Assert.Contains("_music.Update(_mood,", game, StringComparison.Ordinal);
+        // Relecture de l'essai 7 : la musique est détruite en quittant l'aventure (la suivante la recrée, ambiances comprises).
+        Assert.Contains("_music?.Destroy();\n            _music = null;", game.Replace("\r\n", "\n"), StringComparison.Ordinal);
         Assert.Contains("_arena.Strike(skill.SkillId, skill.IsUltimate);", game, StringComparison.Ordinal);
         Assert.Contains("double shock = GameFeel.Shock(feedback.Kind, mine, feedback.Amount, maxHealth, boss);", game, StringComparison.Ordinal);
-        Assert.Contains("foreach (EdS.Simulation.Engine.AnnouncedAttack attack in _arena.PlayAttacks(_combat))", game, StringComparison.Ordinal);
+        Assert.Contains("foreach ((string actor, string attackId) in _arena.PlayAttacks(_combat))", game, StringComparison.Ordinal);
+        // Relecture de l'essai 7 : les attaques immédiates (morsure…) font jouer leur geste avant le tour de l'assaillant.
+        string arena = Read("unity", "Assets", "EdS", "Game", "ArenaView.cs");
+        Assert.Contains("GameFeel.Imminent(view, target, now, lead)", arena, StringComparison.Ordinal);
+        Assert.Contains("main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;", effects, StringComparison.Ordinal);
         Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"SyncSpace\(_combat, _camera\.Camera\.transform\.position, Time\.deltaTime\);\s+SyncGestures\(\);").Count);
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(\);"));   // seulement pour une compétence introuvable
         Assert.Contains("(double right, double up, double roll) = GameFeel.Offset(_shock, Time.time);", Read("unity", "Assets", "EdS", "Game", "CameraRig.cs"), StringComparison.Ordinal);

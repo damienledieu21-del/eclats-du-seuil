@@ -680,12 +680,13 @@ namespace EdS.Game
         /// <summary>Cache les écrans (menus, entraînement, arbre des Éclats).</summary>
         public void Hide() => UiKit.Show(_canvas, false);
 
+        /// <summary>Essai réaliste 7 : panneau montré à l'image précédente (son d'onglet quand il change).</summary>
+        private AdventureScreens.Panel _shownPanel;
+
         /// <summary>
         /// Une image : l'écran ouvert (<paramref name="screens"/>) et le dialogue ; rend ce que le joueur demande (fermer, ouvrir l'arbre
         /// des Éclats).
         /// </summary>
-        private AdventureScreens.Panel _shownPanel;
-
         public Request Update(AdventureSession a, AdventureScreens screens, IReadOnlyList<MapEnemy> enemies, float deltaTime)
         {
             _session = a;

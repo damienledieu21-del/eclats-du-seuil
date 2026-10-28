@@ -52,6 +52,7 @@ namespace EdS.Game
         private static readonly Dictionary<UiCue, AudioClip> Clips = new Dictionary<UiCue, AudioClip>();
         private static readonly Dictionary<UiCue, float> Last = new Dictionary<UiCue, float>();
         private static AudioSource _source;
+        private static AudioListener _listener;
 
         /// <summary>Joue le son <paramref name="cue"/> (rien sans son fichier, ou s'il vient d'être joué).</summary>
         public static void Play(UiCue cue)
@@ -82,9 +83,21 @@ namespace EdS.Game
             _source.playOnAwake = false;
             _source.spatialBlend = 0f;
             _source.ignoreListenerPause = true;
-            // Le jeu crée son écouteur avec la caméra ; sans lui (menus avant la partie), un écouteur ici.
-            if (Object.FindFirstObjectByType<AudioListener>() == null) go.AddComponent<AudioListener>();
+            // Le jeu crée son écouteur avec la caméra ; sans lui (menus avant la partie), un écouteur ici, retiré quand la caméra prend le
+            // sien (ReleaseListener).
+            if (Object.FindFirstObjectByType<AudioListener>() == null) _listener = go.AddComponent<AudioListener>();
             return _source;
+        }
+
+        /// <summary>
+        /// Relecture de l'essai 7 : retire l'écouteur posé ici faute de caméra (un son d'interface joué avant le premier son du jeu), pour que
+        /// la caméra du jeu ait le sien. Sans effet s'il n'y en a pas.
+        /// </summary>
+        public static void ReleaseListener()
+        {
+            if (_listener == null) return;
+            Object.DestroyImmediate(_listener);
+            _listener = null;
         }
     }
 }

@@ -157,7 +157,16 @@ namespace EdS.Game.Editor
             catalog.Craft = Sound(sounds, StyleSound.Craft);
             // Essai réaliste 7 : variantes des bruitages, musiques (dossier « Music ») et ambiances (dossier « Ambience »), importées pour
             // le téléphone (musique lue en continu depuis le disque, ambiances compressées en mémoire, bruitages décompressés).
-            foreach (string path in sounds) AudioImport(path);
+            // Relecture de l'essai 7 : un seul passage d'import pour tous les sons (pas un par fichier).
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                foreach (string path in sounds) AudioImport(path);
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+            }
             catalog.SoundSets = System.Enum.GetValues(typeof(StyleSound)).Cast<StyleSound>()
                 .Select(kind => new SoundSet { Kind = kind, Clips = StyleRules.PickSounds(sounds, kind, 6).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).Where(c => c != null).ToArray() })
                 .Where(s => s.Clips.Length > 0).ToArray();
@@ -841,14 +850,19 @@ namespace EdS.Game.Editor
         /// <summary>
         /// Essai réaliste 7 : réglage d'import d'un son pour le téléphone. Une musique est lue en continu depuis le disque (quelques Mo de
         /// moins en mémoire), une ambiance reste compressée en mémoire, un bruitage court est décompressé au chargement (aucun retard).
+        /// À appeler entre <c>StartAssetEditing</c> et <c>StopAssetEditing</c>.
         /// </summary>
         private static void AudioImport(string path)
         {
             if (!(AssetImporter.GetAtPath(path) is AudioImporter importer)) return;
             AudioImporterSampleSettings settings = importer.defaultSampleSettings;
-            AudioClipLoadType load = StyleRules.MusicOf(path) != null ? AudioClipLoadType.Streaming
-                : StyleRules.AmbienceOf(path) != null ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
-            if (settings.loadType == load && settings.compressionFormat == AudioCompressionFormat.Vorbis) return;
+            // Relecture de l'essai 7 : d'après le dossier (un fichier de « Music » au nom non reconnu reste lu en continu, pas décompressé).
+            AudioClipLoadType load = StyleRules.InMusicFolder(path) ? AudioClipLoadType.Streaming
+                : StyleRules.InAmbienceFolder(path) ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
+            // Un réglage propre au téléphone (Android) masquerait celui-ci : il est retiré.
+            bool android = importer.ContainsSampleSettingsOverride("Android");
+            if (android) importer.ClearSampleSettingOverride("Android");
+            if (!android && settings.loadType == load && settings.compressionFormat == AudioCompressionFormat.Vorbis) return;
             settings.loadType = load;
             settings.compressionFormat = AudioCompressionFormat.Vorbis;
             settings.quality = load == AudioClipLoadType.DecompressOnLoad ? 0.7f : 0.5f;

@@ -1,6 +1,9 @@
 using System.Text.Json.Nodes;
+using EdS.Data.Json;
 using EdS.Data.Saves;
+using EdS.Domain.Combat;
 using EdS.Runtime;
+using EdS.Simulation.Engine;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -106,6 +109,8 @@ public class Essai7StyleTests
     }
 
     [Theory]
+    [InlineData("onde_du_seuil", "Gardien Roar")]          // vraies attaques du Gardien (relecture de l'essai 7)
+    [InlineData("ruee", "Gardien Jump Attack")]
     [InlineData("gardien.rugissement", "Gardien Roar")]
     [InlineData("gardien.bond", "Gardien Jump Attack")]
     [InlineData("gardien.ecrasement", "Gardien Jump Attack")]
@@ -116,16 +121,61 @@ public class Essai7StyleTests
     }
 
     [Fact]
-    public void Une_attaque_ordinaire_prend_un_geste_d_attaque_stable()
+    public void Une_attaque_ordinaire_prend_un_geste_d_attaque_stable_jamais_le_saut()
     {
-        foreach (string attack in new[] { "gardien.balayage", "gardien.coup", "loup.morsure", "sanglier.charge" })
+        var chosen = new HashSet<string>();
+        foreach (string attack in new[] { "griffe", "morsure", "fleche", "eclat", "charge", "gardien.coup", "gardien.balayage" })
         {
             (StyleMotion motion, string? prefer, int variant) = StyleRules.AttackAnimation(attack);
             Assert.Equal(StyleMotion.Attack, motion);
             string clip = StyleRules.Clip(Gardien, motion, prefer, variant)!;
-            Assert.Contains(clip, new[] { "Gardien Attack", "Gardien Attack 2", "Gardien Jump Attack" });
+            Assert.Contains(clip, new[] { "Gardien Attack", "Gardien Attack 2" });
+            (StyleMotion m2, string? p2, int v2) = StyleRules.AttackAnimation(attack);
+            Assert.Equal(clip, StyleRules.Clip(Gardien, m2, p2, v2));   // stable
+            chosen.Add(clip);
             Assert.Equal("AnimalArmature|Attack_Headbutt", StyleRules.Clip(Animal, motion, prefer, variant));
         }
+        Assert.Equal(2, chosen.Count);
+        // Le saut seul : on le garde plutôt que rien.
+        Assert.Equal("Gardien Jump Attack", StyleRules.Clip(new[] { "Gardien Idle", "Gardien Jump Attack" }, StyleMotion.Attack, StyleRules.NotJump, 3));
+    }
+
+    [Fact]
+    public void Chaque_attaque_des_Vallons_a_un_geste()
+    {
+        // Relecture de l'essai 7 : les identifiants des scénarios livrés, pas des noms inventés. Les ondes et la pluie sont des cris
+        // (l'archer et le rôdeur, sans cri, prennent leur attaque), la ruée un saut.
+        var attacks = new[] { "zones/vallons", "zones/vallons_chef" }
+            .SelectMany(f => JsonNode.Parse(File.ReadAllText(ScenarioPath(f)))!["data"]!["combatants"]!.AsArray())
+            .SelectMany(c => c!["attacks"]?.AsArray() ?? new JsonArray()).Select(a => (string)a!["id"]!).Distinct().OrderBy(a => a, StringComparer.Ordinal).ToList();
+        Assert.Equal(new[] { "charge", "eclat", "fleche", "griffe", "morsure", "onde", "onde_du_seuil", "pluie", "ruee" }, attacks);
+        var expected = new Dictionary<string, (StyleMotion, string?)>
+        {
+            ["charge"] = (StyleMotion.Attack, StyleRules.NotJump), ["eclat"] = (StyleMotion.Attack, StyleRules.NotJump),
+            ["fleche"] = (StyleMotion.Attack, StyleRules.NotJump), ["griffe"] = (StyleMotion.Attack, StyleRules.NotJump),
+            ["morsure"] = (StyleMotion.Attack, StyleRules.NotJump), ["onde"] = (StyleMotion.Cast, null), ["onde_du_seuil"] = (StyleMotion.Cast, null),
+            ["pluie"] = (StyleMotion.Cast, null), ["ruee"] = (StyleMotion.Attack, "jump"),
+        };
+        foreach (string attack in attacks)
+        {
+            (StyleMotion motion, string? prefer, _) = StyleRules.AttackAnimation(attack);
+            Assert.Equal(expected[attack], (motion, prefer));
+        }
+        // Sans geste de cri (rôdeur, archer), l'attaque.
+        string[] rodeur = { "Rodeur Attack", "Rodeur Attack 2", "Rodeur Idle", "Rodeur Impact", "Rodeur Walk" };
+        Assert.StartsWith("Rodeur Attack", StyleRules.Clip(rodeur, StyleMotion.Cast, null, 0));
+    }
+
+    [Theory]
+    [InlineData("skill.bastion.defi")]       // contient « onde » sans être l'Onde de rupture
+    [InlineData("skill.test.besoin")]        // contient « soin » sans être un soin
+    [InlineData("skill.test.refrapper")]
+    public void Une_competence_se_reconnait_mot_a_mot(string skill)
+    {
+        (StyleMotion motion, string? prefer, int variant) = StyleRules.SkillAnimation(skill, false);
+        Assert.Equal(StyleMotion.Attack, motion);
+        Assert.Null(prefer);
+        Assert.True(variant > 0);
     }
 
     [Fact]
@@ -175,10 +225,26 @@ public class Essai7StyleTests
     [InlineData("Assets/Style/Ambience/Ambiance Oiseaux.ogg", StyleAmbience.Birds)]
     [InlineData("Assets/Style/Ambience/Ambiance Vent.ogg", StyleAmbience.Wind)]
     [InlineData("Assets/Style/Ambiance/park_ambience_river.ogg", StyleAmbience.River)]
+    [InlineData("Assets/Style/Ambience/forest_river.ogg", StyleAmbience.River)]   // relecture de l'essai 7 : la rivière avant les oiseaux
+    [InlineData("Assets/Style/Ambience/forest_wind.ogg", StyleAmbience.Wind)]
     public void Les_ambiances_sont_reconnues_dans_leur_dossier(string path, StyleAmbience ambience)
     {
         Assert.Equal(ambience, StyleRules.AmbienceOf(path));
         Assert.Null(StyleRules.MusicOf(path));
+    }
+
+    [Fact]
+    public void Un_fichier_du_dossier_des_musiques_n_est_jamais_un_bruitage()
+    {
+        // Relecture de l'essai 7 : rangé avec les musiques mais au nom non reconnu, il n'est ni une musique jouée, ni un bruitage.
+        const string odd = "Assets/Style/Music/swish_theme_long.ogg";
+        Assert.Null(StyleRules.MusicOf(odd));
+        Assert.True(StyleRules.InMusicFolder(odd));
+        Assert.False(StyleRules.InAmbienceFolder(odd));
+        Assert.True(StyleRules.InAmbienceFolder("Assets/Style/Ambiance/inconnu.ogg"));
+        string[] files = { odd, "Assets/Style/Ambiance/swish_wind.ogg", "Assets/Style/Sounds/Combat/swish_1.ogg" };
+        Assert.Equal("Assets/Style/Sounds/Combat/swish_1.ogg", StyleRules.PickSound(files, StyleSound.Swing));
+        Assert.Equal(new[] { "Assets/Style/Sounds/Combat/swish_1.ogg" }, StyleRules.PickSounds(files, StyleSound.Swing, 6));
     }
 
     [Fact]
@@ -241,9 +307,13 @@ public class Essai7StyleTests
             Assert.InRange(Math.Abs(up), 0, GameFeel.MaxOffset);
             Assert.InRange(Math.Abs(roll), 0, GameFeel.MaxRoll);
             (double r2, _, _) = GameFeel.Offset(0.5, t);
-            Assert.Equal(right * 0.25, r2, 9);   // le carré du choc
+            Assert.Equal(right * 0.5, r2, 9);   // relecture de l'essai 7 : proportionnel au choc
         }
         Assert.Equal(GameFeel.Offset(1.7, 2), GameFeel.Offset(1, 2));   // borné à 1
+        // Relecture de l'essai 7 : un coup gardé se voit (plus de 2 cm au plus fort) et dure plus d'un dixième de seconde.
+        double guard = Enumerable.Range(0, 400).Max(i => Math.Abs(GameFeel.Offset(0.15, i * 0.01).Right));
+        Assert.True(guard > 0.02, $"coup gardé : {guard} m");
+        Assert.True(0.15 / GameFeel.ShockDecay > 0.1);
     }
 }
 
@@ -312,8 +382,76 @@ public class Essai7MoodTests : IDisposable
     [Fact]
     public void Les_annonces_comptent_les_quetes_et_les_butins()
     {
+        // Relecture de l'essai 7 : les compteurs avancent vraiment. Données copiées, le point d'arrivée à côté d'Odile ; la mission à son
+        // retour, Odile en confiance : l'amulette de l'aube (un objet donné), puis la mission finie.
+        string data = Path.Combine(_folder, "donnees");
+        foreach (string file in Directory.GetFiles(DataDirectory, "*", SearchOption.AllDirectories))
+        {
+            string to = Path.Combine(data, Path.GetRelativePath(DataDirectory, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Copy(file, to);
+        }
+        string zonePath = Path.Combine(data, "world", "zones", "vallons.json");
+        JsonObject zone = JsonNode.Parse(File.ReadAllText(zonePath))!.AsObject();
+        zone["data"]!["safePoints"]![0]!["position"] = new JsonArray(-9, 2);
+        File.WriteAllText(zonePath, zone.ToJsonString());
+        var progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(data), ShippedData).Progression!;
+        var story = new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("retour") },
+            new Dictionary<string, int> { ["npc.odile"] = 1 });
+        string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, progression).WithStory(story)));
+        AdventureSession a = AdventureSession.Load(data, Path.Combine(AppContext.BaseDirectory, "scenarios"), savePath);
+        a.Advance(0.05);
+        a.DrainMessages();
+        Assert.Equal((0, 0), (a.QuestsAnnounced, a.LootAnnounced));
+        Assert.True(a.Interact());
+        Assert.Equal(DialogueRefusal.None, a.Choose(0));
+        Assert.Equal(1, a.LootAnnounced);
+        a.Advance(0.05);
+        Assert.Equal(1, a.QuestsAnnounced);
+        Assert.Equal(1, a.LootAnnounced);
+    }
+
+    [Fact]
+    public void Le_loup_qui_va_mordre_se_voit_avant_le_coup()
+    {
+        // Relecture de l'essai 7 : la morsure n'est jamais annoncée ; son geste part avant le tour du loup, cible à portée, et le coup tombe
+        // bien à ce tour.
+        AdventureSession a = Start(true);
+        RealtimeCombat c = a.Combat;
+        double lead = 0.45 / c.TickSeconds;
+        long? bite = null;
+        for (int i = 0; i < 600 && bite is null; i++)
+        {
+            CombatantView wolf = c.Others().First(o => o.Id == "loup1").View;
+            if (GameFeel.Imminent(wolf, c.Player().View, c.Tick + c.TickProgress, lead) is AssailantAttack attack)
+            {
+                Assert.Equal("morsure", attack.Id);
+                bite = wolf.NextAttackTick;
+                Assert.InRange(bite!.Value - (c.Tick + c.TickProgress), 0, lead);
+            }
+            else a.Advance(0.05);
+        }
+        Assert.NotNull(bite);
+        long before = c.Player().View.Counters.DamageTaken;
+        while (c.Tick <= bite) a.Advance(0.05);
+        Assert.True(c.Player().View.Counters.DamageTaken > before, "le loup n'a pas mordu au tour annoncé par le geste");
+    }
+
+    [Fact]
+    public void Pas_de_geste_d_avance_pour_un_loup_loin_ni_pour_une_attaque_annoncee()
+    {
         AdventureSession a = Start(false);
-        Assert.Equal(0, a.QuestsAnnounced);
-        Assert.True(a.LootAnnounced >= 0);
+        RealtimeCombat c = a.Combat;
+        double now = c.Tick + c.TickProgress;
+        foreach (OtherState o in c.Others().Where(o => o.IsEnemy))
+        {
+            // Rien n'est engagé au départ, et rien n'est à portée du joueur au village.
+            Assert.Null(GameFeel.Imminent(o.View, c.Player().View, now, 1e9));
+            // La charge du sanglier (une ligne annoncée) a son geste par l'annonce, jamais par ce chemin.
+            if (o.Id.StartsWith("sanglier", StringComparison.Ordinal)) Assert.Null(GameFeel.Imminent(o.View, o.View, o.View.NextAttackTick ?? 0, 1e9, 1e9));
+        }
     }
 }

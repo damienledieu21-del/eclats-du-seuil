@@ -149,7 +149,7 @@ namespace EdS.Game
             Burst(Kind.Smoke, ground, 4, 0.3f, 0.8f, 0.8f, 1.4f, 0.9f, 1.3f, new Color(0.6f, 0.58f, 0.55f, 0.5f), 0f);
         }
 
-        /// <summary>Frappe au sol d'un adversaire (bond du Gardien, charge) : onde, poussière ; <paramref name="radius"/> en mètres.</summary>
+        /// <summary>Frappe au sol d'un adversaire (cri et onde du Gardien) : onde, poussière ; <paramref name="radius"/> en mètres.</summary>
         public void Slam(Vector3 feet, float radius)
         {
             Vector3 ground = Floor(feet);
@@ -171,6 +171,9 @@ namespace EdS.Game
             ParticleSystem.MainModule main = system.main;
             main.loop = true;
             main.playOnAwake = false;
+            // Relecture de l'essai 7 : un système en boucle hors de l'écran est mis en pause par défaut ; ceux-ci sont posés à l'origine et
+            // émettent ailleurs (coordonnées du monde) : toujours simulés, pour que leurs particules vivent où qu'elles soient.
+            main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
             main.duration = 1f;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = max;
@@ -207,6 +210,7 @@ namespace EdS.Game
             material.SetFloat("_SrcBlend", 5f);                       // SrcAlpha
             material.SetFloat("_DstBlend", additive ? 1f : 10f);      // One (additif) ou OneMinusSrcAlpha
             material.SetFloat("_Intensity", additive ? 1.6f : 1f);
+            material.SetFloat("_White", additive ? 0f : 1f);   // relecture de l'essai 7 : fondu sans bords sombres
             material.renderQueue = 3100;
             renderer.sharedMaterial = material;
             system.Play();

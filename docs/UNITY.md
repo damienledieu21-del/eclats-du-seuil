@@ -367,7 +367,7 @@ Les sons de l'interface et les textures des particules viennent avec la branche.
 
 Ce qui change :
 - **Compétences plus petites** : les éclats sont réduits d'un quart et rapprochés du sceau ; la touche, le coût et la recharge restent lisibles.
-- **Les petits losanges au-dessus du sceau** sont tes **Charges de Rempart** (0 à 5) : tu en gagnes une à chaque parade parfaite, et Contrecoup les dépense. Ils n'apparaissent plus quand tu n'en as aucune. Ceux que tu détiens brillent en or, avec un halo qui bat ; les places libres restent pâles.
+- **Les petits losanges au-dessus du sceau** sont tes **Charges de Rempart** (0 à 5) : tu en gagnes une à chaque parade parfaite, et Contrecoup les dépense. Ils n'apparaissent plus quand tu n'en as aucune. Ceux que tu détiens brillent en or, avec un halo ; les places libres restent pâles.
 - **Sons de l'interface** (Kenney, CC0) : clic et survol des boutons, ouverture et fermeture du livre et de l'arbre, onglets, compétence prête, Charge gagnée, éclat placé ou retiré, validation, erreur, fanfare du niveau et des quêtes.
 - **Effets en particules en 3D** (textures CC0 de Kenney, shader « EdS/Particule ») :
   - coup reçu : étincelles et éclair, plus forts quand le coup fait mal ;
@@ -376,8 +376,9 @@ Ce qui change :
   - garde brisée : éclats rouges et fumée ;
   - compétence : arc de lumière devant l'épée, ou cercle tournant au sol pour un sort ;
   - niveau gagné : colonne de lumière et étoiles ;
-  - potion : éclats verts ; mort : poussière ; Charge gagnée : éclat d'or.
-- **La caméra tremble** quand tu prends un gros coup, pares ou que ta garde casse, et quand le Gardien rugit ou meurt. Le tremblement est léger et se calme tout seul.
+  - potion : éclats verts ; mort : poussière ; Charge gagnée : éclat d'or ;
+  - coup critique : éclair et onde d'or sur ta cible ; onde du Gardien : onde et poussière à ses pieds.
+- **La caméra tremble** quand tu prends un coup, gardes, pares ou que ta garde casse, et quand le Gardien rugit ou meurt. Le tremblement suit la force du coup (quelques centimètres pour un coup gardé, une vingtaine pour un gros coup) et se calme en moins d'une seconde.
 - **Gestes variés** : chaque compétence du Bastion a son geste :
   - Frappe du rempart : coup haut ;
   - Heurt de bouclier : coup de garde ;
@@ -386,8 +387,12 @@ Ce qui change :
   - Provocation, Barrière d'acier, Bastion absolu : sort.
 
   Le chevalier accuse les coups, ou les encaisse sur son bouclier quand il garde.
-- **Les adversaires attaquent vraiment** : jusqu'ici, ils ne jouaient jamais leur attaque. Chaque attaque annoncée au sol fait jouer leur geste un peu avant l'impact, avec un cri : grognement du loup ou du sanglier, rugissement du Gardien. L'archer, le rôdeur et le Gardien accusent aussi les coups.
-- **Musique et ambiance** : la musique suit le lieu et le combat (village, exploration, combat, Gardien), en fondu enchaîné. Les oiseaux et le vent tournent en boucle, et la rivière s'entend en s'approchant de son lit. Tout baisse pendant la pause. Les volumes se règlent dans le catalogue (`MusicVolume`, `AmbienceVolume`).
+- **Les adversaires attaquent vraiment** : jusqu'ici, ils ne jouaient jamais leur attaque.
+  - Une attaque annoncée au sol (charge du sanglier, pluie de flèches, ondes) fait jouer leur geste un peu avant l'impact.
+  - Une attaque immédiate (morsure du loup, flèche, éclat, griffe du Gardien) fait jouer le sien un peu avant le coup, si sa cible est à portée.
+  - Avec un cri : grognement du loup ou du sanglier ; le Gardien rugit pour son onde et bondit pour sa ruée.
+  - L'archer, le rôdeur et le Gardien accusent aussi les coups.
+- **Musique et ambiance** : la musique suit le lieu et le combat (village, exploration, combat, Gardien), en fondu. Une musique quittée reprend où elle en était ; il faut rester quatre secondes dans un lieu pour que sa musique arrive (pas de va-et-vient au bord du village). Les oiseaux et le vent tournent en boucle, et la rivière s'entend en s'approchant de son lit. Tout baisse pendant la pause. Les volumes se règlent dans le catalogue (`MusicVolume`, `AmbienceVolume`).
 
 Ce que tu regardes :
 - les éclats plus petits ;

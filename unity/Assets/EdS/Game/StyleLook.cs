@@ -15,6 +15,12 @@ namespace EdS.Game
         private readonly Animation _animation;
         private readonly Transform _look;
         private readonly List<string> _clips = new List<string>();
+
+        /// <summary>
+        /// Relecture de l'essai 7 : animation choisie pour chaque demande (mouvement, préférence, variante), retenue : la liste des animations
+        /// ne change plus après la construction, et le choix (expressions régulières) coûtait à chaque image et pour chaque corps.
+        /// </summary>
+        private readonly Dictionary<(StyleMotion, string, int), string> _picked = new Dictionary<(StyleMotion, string, int), string>();
         private bool _fallen;
         private string _playing;
 
@@ -104,13 +110,27 @@ namespace EdS.Game
         private void Act(StyleMotion motion, string prefer, int variant, float shortest, float longest)
         {
             if (_animation == null || _fallen) return;
-            string clip = StyleRules.Clip(_clips, motion, prefer, variant);
+            string clip = Pick(motion, prefer, variant);
             if (clip == null) return;
             AnimationState state = _animation[clip];
             _actionUntil = Time.time + (state != null ? Mathf.Clamp(state.length, shortest, longest) : shortest);
             _actionMotion = motion;
             _actionClip = clip;
-            if (clip == _playing) _animation.Rewind(clip);   // deux coups de suite : le geste recommence
+            // Deux coups de suite : le geste recommence. Relecture de l'essai 7 : toujours depuis le début, même redemandé pendant son fondu
+            // de sortie (il ne repart pas de sa dernière image).
+            if (state != null) state.time = 0f;
+        }
+
+        /// <summary>Animation pour cette demande (<see cref="StyleRules.Clip(IEnumerable{string}, StyleMotion, string, int)"/>), retenue.</summary>
+        private string Pick(StyleMotion motion, string prefer = null, int variant = 0)
+        {
+            var key = (motion, prefer ?? string.Empty, variant);
+            if (!_picked.TryGetValue(key, out string clip))
+            {
+                clip = StyleRules.Clip(_clips, motion, prefer, variant);
+                _picked[key] = clip;
+            }
+            return clip;
         }
 
         /// <summary>À chaque image : allure d'après le déplacement affiché, puis l'animation qui va avec.</summary>
@@ -121,7 +141,7 @@ namespace EdS.Game
         public void Update(Vector3 position, bool dead, float deltaTime, bool guarding = false)
         {
             // Un modèle sans animation de mort (le loup et le cochon des packs) se couche sur le flanc, immobile.
-            if (dead && (_animation == null || StyleRules.Clip(_clips, StyleMotion.Death) == null))
+            if (dead && (_animation == null || Pick(StyleMotion.Death) == null))
             {
                 if (_fallen) return;
                 _fallen = true;
@@ -141,7 +161,7 @@ namespace EdS.Game
             _started = true;
             // Essai réaliste 7 : un geste en cours (attaque, sort, coup reçu) l'emporte sur l'allure, pas sur la mort.
             bool acting = !dead && Time.time < _actionUntil && _actionClip != null;
-            string clip = acting ? _actionClip : StyleRules.Clip(_clips, StyleRules.Motion(_speed, dead, false, guarding));
+            string clip = acting ? _actionClip : Pick(StyleRules.Motion(_speed, dead, false, guarding));
             if (clip == null || clip == _playing) return;
             _playing = clip;
             _animation.CrossFade(clip, acting ? (_actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit ? 0.06f : 0.1f) : 0.18f);

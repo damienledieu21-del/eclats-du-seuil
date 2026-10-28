@@ -311,20 +311,23 @@ namespace EdS.Runtime
         };
 
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
-        private static readonly Dictionary<StyleMusic, string[]> MusicWords = new Dictionary<StyleMusic, string[]>
+        private static readonly (StyleMusic Kind, string[] Words)[] MusicWords =
         {
-            [StyleMusic.Exploration] = new[] { "exploration", "explore", "woodland", "field" },
-            [StyleMusic.Village] = new[] { "village", "town", "festival" },
-            [StyleMusic.Combat] = new[] { "combat", "battle", "fight" },
-            [StyleMusic.Boss] = new[] { "boss", "heroic", "epic" },
+            (StyleMusic.Exploration, new[] { "exploration", "explore", "woodland", "field" }),
+            (StyleMusic.Village, new[] { "village", "town", "festival" }),
+            (StyleMusic.Combat, new[] { "combat", "battle", "fight" }),
+            (StyleMusic.Boss, new[] { "boss", "heroic", "epic" }),
         };
 
-        /// <summary>Essai réaliste 7 : mots des ambiances (rangées dans un dossier « Ambience »), par ordre de préférence.</summary>
-        private static readonly Dictionary<StyleAmbience, string[]> AmbienceWords = new Dictionary<StyleAmbience, string[]>
+        /// <summary>
+        /// Essai réaliste 7 : mots des ambiances (rangées dans un dossier « Ambience »), dans l'ordre où on les essaie. Relecture de l'essai 7 :
+        /// la rivière d'abord, puis le vent, les oiseaux en dernier (« forest_river » est une rivière, pas des oiseaux).
+        /// </summary>
+        private static readonly (StyleAmbience Kind, string[] Words)[] AmbienceWords =
         {
-            [StyleAmbience.Birds] = new[] { "oiseaux", "birds", "morning", "forest" },
-            [StyleAmbience.Wind] = new[] { "vent", "wind", "outdoor", "dehors" },
-            [StyleAmbience.River] = new[] { "riviere", "river", "stream", "water" },
+            (StyleAmbience.River, new[] { "riviere", "river", "stream", "water" }),
+            (StyleAmbience.Wind, new[] { "vent", "wind", "outdoor", "dehors" }),
+            (StyleAmbience.Birds, new[] { "oiseaux", "birds", "morning", "forest" }),
         };
 
         /// <summary>
@@ -535,7 +538,7 @@ namespace EdS.Runtime
         public static string? PickSound(IEnumerable<string> paths, StyleSound sound)
         {
             // Essai réaliste 7 : les musiques et les ambiances ne sont pas des bruitages.
-            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && MusicOf(p) == null && AmbienceOf(p) == null)
+            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p))
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
             foreach (string word in Sounds[sound])
                 if (files.FirstOrDefault(p => Key(FileName(p)).Contains(word)) is string found) return found;
@@ -549,7 +552,7 @@ namespace EdS.Runtime
         /// </summary>
         public static IReadOnlyList<string> PickSounds(IEnumerable<string> paths, StyleSound sound, int max)
         {
-            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && MusicOf(p) == null && AmbienceOf(p) == null)
+            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p))
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
             foreach (string word in Sounds[sound])
             {
@@ -562,26 +565,35 @@ namespace EdS.Runtime
         /// <summary>Essai réaliste 7 : musique d'un fichier rangé dans un dossier « Music » (ou « Musique »), d'après son nom ; null sinon.</summary>
         public static StyleMusic? MusicOf(string path)
         {
-            if (!Segments(path).Any(s => s == "music" || s == "musique" || s == "musiques")) return null;
+            if (!InMusicFolder(path)) return null;
             string file = Key(FileName(path));
-            foreach (KeyValuePair<StyleMusic, string[]> kind in MusicWords)
-                if (kind.Value.Any(w => file.Contains(w))) return kind.Key;
+            foreach ((StyleMusic kind, string[] words) in MusicWords)
+                if (words.Any(w => file.Contains(w))) return kind;
             return null;
         }
 
         /// <summary>Essai réaliste 7 : ambiance d'un fichier rangé dans un dossier « Ambience » (ou « Ambiance »), d'après son nom ; null sinon.</summary>
         public static StyleAmbience? AmbienceOf(string path)
         {
-            if (!Segments(path).Any(s => s == "ambience" || s == "ambiance" || s == "ambiances")) return null;
+            if (!InAmbienceFolder(path)) return null;
             string file = Key(FileName(path));
-            foreach (KeyValuePair<StyleAmbience, string[]> kind in AmbienceWords)
-                if (kind.Value.Any(w => file.Contains(w))) return kind.Key;
+            foreach ((StyleAmbience kind, string[] words) in AmbienceWords)
+                if (words.Any(w => file.Contains(w))) return kind;
             return null;
         }
 
         /// <summary>
-        /// Essai réaliste 7 : musique à jouer. Le Gardien engagé l'emporte, puis le combat (un adversaire vivant tout proche, ou un coup
-        /// reçu ou porté il y a peu), puis le village, sinon l'exploration.
+        /// Relecture de l'essai 7 : le fichier est-il rangé dans un dossier de musiques (« Music », « Musique ») ? Même si son nom n'est
+        /// pas reconnu : il n'est alors ni une musique jouée ni un bruitage, et Unity le lit en continu (pas décompressé en mémoire).
+        /// </summary>
+        public static bool InMusicFolder(string path) => Segments(path).Any(s => s == "music" || s == "musique" || s == "musiques");
+
+        /// <summary>Relecture de l'essai 7 : le fichier est-il rangé dans un dossier d'ambiances (« Ambience », « Ambiance ») ?</summary>
+        public static bool InAmbienceFolder(string path) => Segments(path).Any(s => s == "ambience" || s == "ambiance" || s == "ambiances");
+
+        /// <summary>
+        /// Essai réaliste 7 : musique à jouer. Le Gardien engagé l'emporte, puis le combat (un adversaire vivant tout proche), puis le
+        /// village, sinon l'exploration.
         /// </summary>
         public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage) =>
             bossEngaged ? StyleMusic.Boss : fighting ? StyleMusic.Combat : inVillage ? StyleMusic.Village : StyleMusic.Exploration;
@@ -636,9 +648,18 @@ namespace EdS.Runtime
         public static string? Clip(IEnumerable<string> clips, StyleMotion motion, string? prefer, int variant)
         {
             var all = (clips ?? Array.Empty<string>()).ToList();
+            // Relecture de l'essai 7 : « !mot » écarte les animations de ce mot (une attaque ordinaire n'est pas le saut du Gardien), sauf
+            // s'il ne reste qu'elles.
+            string? exclude = prefer != null && prefer.StartsWith("!", StringComparison.Ordinal) ? Key(prefer.Substring(1)) : null;
+            if (exclude != null) prefer = null;
             foreach (StyleMotion m in new[] { motion }.Concat(Fallbacks[motion]))
             {
                 List<string> names = all.Where(n => Usable(n, m)).ToList();
+                if (m == motion && !string.IsNullOrEmpty(exclude))
+                {
+                    List<string> kept = names.Where(n => !HasWord(n, new[] { exclude! })).ToList();
+                    if (kept.Any(n => HasWord(n, Clips[m]))) names = kept;
+                }
                 if (m == motion && !string.IsNullOrEmpty(prefer))
                 {
                     string want = Key(prefer);
@@ -685,11 +706,21 @@ namespace EdS.Runtime
         /// </summary>
         public static (StyleMotion Motion, string? Prefer, int Variant) SkillAnimation(string skillId, bool ultimate)
         {
-            string key = Key(skillId);
             if (ultimate) return (StyleMotion.Cast, null, 0);
+            // Relecture de l'essai 7 : mot à mot, sur le dernier segment de l'identifiant (« skill.bastion.defi » ne contient pas « onde »,
+            // ni « besoin » « soin »).
+            string[] words = IdWords(skillId);
             foreach ((string word, StyleMotion motion, string? prefer) in SkillMoves)
-                if (key.Contains(word)) return (motion, prefer, 0);
+                if (words.Contains(word)) return (motion, prefer, 0);
             return (StyleMotion.Attack, null, 1 + Variant(skillId, 997));
+        }
+
+        /// <summary>Mots du dernier segment d'un identifiant (« skill.bastion.onde_de_rupture » → onde, de, rupture), réduits.</summary>
+        private static string[] IdWords(string id)
+        {
+            string s = id ?? string.Empty;
+            int dot = s.LastIndexOf('.');
+            return s.Substring(dot + 1).Split(new[] { '_', '-', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(Key).Where(w => w.Length > 0).ToArray();
         }
 
         private static readonly (string Word, StyleMotion Motion, string? Prefer)[] SkillMoves =
@@ -700,16 +731,24 @@ namespace EdS.Runtime
         };
 
         /// <summary>
-        /// Essai réaliste 7 : animation d'une attaque d'un adversaire, d'après l'identifiant de l'attaque (« gardien.bond » → « Gardien
-        /// Jump Attack », « gardien.rugissement » → « Gardien Roar ») ; sinon une attaque variée, stable pour cette attaque.
+        /// Essai réaliste 7 : animation d'une attaque d'un adversaire, d'après les mots de l'identifiant de l'attaque. Relecture de l'essai
+        /// 7 : d'après les vraies attaques des Vallons. Une onde ou une pluie (onde du Seuil, onde du rôdeur, pluie de flèches) est lancée
+        /// d'un cri (« Gardien Roar » ; sans geste de cri, une attaque) ; une ruée ou un bond est un saut (« Gardien Jump Attack ») ; les
+        /// autres (griffe, morsure, flèche, éclat, charge) prennent une attaque variée, stable pour cette attaque, jamais le saut.
         /// </summary>
         public static (StyleMotion Motion, string? Prefer, int Variant) AttackAnimation(string attackId)
         {
-            string key = Key(attackId);
-            if (key.Contains("rugi") || key.Contains("roar") || key.Contains("hurle")) return (StyleMotion.Cast, null, 0);
-            if (key.Contains("bond") || key.Contains("saut") || key.Contains("jump") || key.Contains("ecras")) return (StyleMotion.Attack, "jump", 0);
-            return (StyleMotion.Attack, null, 1 + Variant(attackId, 997));
+            string[] words = IdWords(attackId);
+            if (words.Any(w => CastAttackWords.Any(c => w.StartsWith(c, StringComparison.Ordinal)))) return (StyleMotion.Cast, null, 0);
+            if (words.Any(w => LeapAttackWords.Any(c => w.StartsWith(c, StringComparison.Ordinal)))) return (StyleMotion.Attack, "jump", 0);
+            return (StyleMotion.Attack, NotJump, 1 + Variant(attackId, 997));
         }
+
+        private static readonly string[] CastAttackWords = { "onde", "pluie", "rugi", "roar", "hurle", "cri" };
+        private static readonly string[] LeapAttackWords = { "ruee", "bond", "saut", "jump", "ecras" };
+
+        /// <summary>Préférence spéciale de <see cref="AttackAnimation"/> : toute attaque sauf le saut.</summary>
+        public const string NotJump = "!jump";
 
         /// <summary>Dernier segment d'un nom de clip (après le dernier « | »), réduit.</summary>
         private static string Segment(string clip)

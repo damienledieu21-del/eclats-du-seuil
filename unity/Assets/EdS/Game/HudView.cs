@@ -537,7 +537,8 @@ namespace EdS.Game
                 bool lit = i < me.RampartCharges;
                 _charges[i].sprite = UiKit.Sprite(lit ? "losange_on" : "losange_off");
                 _charges[i].color = lit ? Color.white : UiKit.Alpha(Color.white, 0.45f);
-                _chargeGlows[i].color = UiKit.Alpha(UiKit.Dawn, lit ? 0.35f + 0.2f * Mathf.Sin(_time * 3f + i) : 0f);
+                // Relecture de l'essai 7 : halo fixe (une couleur qui change à chaque image refait le dessin de tout le bas de l'écran).
+                _chargeGlows[i].color = UiKit.Alpha(UiKit.Dawn, lit ? 0.45f : 0f);
                 if (lit && _shownCharges >= 0 && i >= _shownCharges) _chargePop[i] = 1f;
                 _chargePop[i] = Mathf.Max(0f, _chargePop[i] - deltaTime * 3.5f);
                 float pop = 1f + 0.8f * _chargePop[i];

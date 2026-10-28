@@ -127,6 +127,10 @@ namespace EdS.Game
         private Effects _effects;
         private StyleAudio _music;
         private int _shownCharges = -1;
+
+        /// <summary>Relecture de l'essai 7 : lieu et combat pour la musique, relus quatre fois par seconde.</summary>
+        private AdventureMood _mood;
+        private float _moodAge = 99f;
         private int _shownQuests, _shownLoot;
         private string _startupError;
 
@@ -245,6 +249,8 @@ namespace EdS.Game
             _arena.Paint = id => _adventure != null && _adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null;
             _arena.Populate(_combat);
             _shownSession = _adventure.Opened;
+            _shownCharges = -1;   // relecture de l'essai 7 : pas d'éclat d'or au début d'une session
+            _moodAge = 99f;
             _paused = false;
             _floating.Clear();
             _playerYaw = 0f;
@@ -271,7 +277,9 @@ namespace EdS.Game
             _markers?.Destroy();
             _markers = null;
             _adventure = null;
-            _music?.Stop();
+            // Relecture de l'essai 7 : la musique est détruite ; la prochaine aventure la recrée (ses ambiances comprises).
+            _music?.Destroy();
+            _music = null;
             _talentView?.Close();
             PaintedMap.Forget();
             _screens.Close();
@@ -404,8 +412,18 @@ namespace EdS.Game
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             SyncGestures();
-            // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert).
-            _music?.Update(a.Mood(), _paused || _screens.Open != AdventureScreens.Panel.None || TalentsOpen, Time.deltaTime);
+            // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert). Relecture :
+            // le lieu et le combat sont relus quatre fois par seconde (les fondus durent deux secondes et demie), les volumes à chaque image.
+            if (_music != null)
+            {
+                _moodAge += Time.deltaTime;
+                if (_moodAge >= 0.25f)
+                {
+                    _mood = a.Mood();
+                    _moodAge = 0f;
+                }
+                _music.Update(_mood, _paused || _screens.Open != AdventureScreens.Panel.None || TalentsOpen, Time.deltaTime);
+            }
         }
 
         /// <summary>Indication de l'action possible ici (parler, récolter, faire halte, reprendre), ou null.</summary>
@@ -718,22 +736,24 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Essai réaliste 7 : les adversaires jouent le geste de leurs attaques annoncées, avec leur cri (loup, sanglier, Gardien) ; un cri
-        /// du Gardien fait trembler la caméra. Puis l'éclat d'or d'une Charge de Rempart gagnée.
+        /// Essai réaliste 7 : les adversaires jouent le geste de leurs attaques (annoncées, ou immédiates à portée), avec leur cri (loup,
+        /// sanglier, Gardien) ; l'onde du Gardien (son cri) fait trembler la caméra et frapper le sol. Puis l'éclat d'or d'une Charge de
+        /// Rempart gagnée.
         /// </summary>
         private void SyncGestures()
         {
             if (_combat == null) return;
-            foreach (EdS.Simulation.Engine.AnnouncedAttack attack in _arena.PlayAttacks(_combat))
+            foreach ((string actor, string attackId) in _arena.PlayAttacks(_combat))
             {
-                StyleSlot slot = StyleRules.ForCombatant(attack.Actor, false);
-                bool boss = _adventure != null && _adventure.IsBoss(attack.Actor);
+                StyleSlot slot = StyleRules.ForCombatant(actor, false);
+                bool boss = _adventure != null && _adventure.IsBoss(actor);
                 if (slot == StyleSlot.Wolf) StyleLook.Play(Audio, StyleSound.Growl, 0.6f);
                 else if (slot == StyleSlot.Boar) StyleLook.Play(Audio, StyleSound.Grunt, 0.6f);
-                else if (boss)
+                else if (boss && StyleRules.AttackAnimation(attackId).Motion == StyleMotion.Cast)
                 {
                     StyleLook.Play(Audio, StyleSound.Roar, 0.8f);
-                    _camera.Shake(0.15);
+                    _camera.Shake(0.3);
+                    if (_effects != null && _arena.Feet(actor) is Vector3 at) _effects.Slam(at, 3f);
                 }
             }
             CombatantView me = _combat.Player().View;
@@ -1041,6 +1061,10 @@ namespace EdS.Game
             if (shock > 0) _camera.Shake(shock);
             if (feedback.Kind == FeedbackKind.DamageTaken) _arena.Hurt(id, false);
             else if (feedback.Kind == FeedbackKind.Blocked) _arena.Hurt(id, true);
+            // Relecture de l'essai 7 : un coup critique du joueur éclate en or sur sa cible (le retour est celui du joueur, pas de la cible).
+            if (feedback.Kind == FeedbackKind.CriticalHit && mine && _effects != null && _combat.TargetId is string target
+                && _arena.Feet(target) is Vector3 struck)
+                _effects.Hit(struck, _arena.Height(target), 0.5f, true);
             if (_effects == null || !(_arena.Feet(id) is Vector3 feet)) return;
             float height = _arena.Height(id);
             switch (feedback.Kind)
@@ -1067,7 +1091,9 @@ namespace EdS.Game
                 {
                     _audio = _camera.Camera.gameObject.AddComponent<AudioSource>();
                     // Revue Codex de la PR #55 : la scène de démarrage est vide et la caméra du jeu est créée par le code : sans écouteur,
-                    // aucun son ne s'entendrait. Un seul écouteur : on n'en ajoute pas si la scène en a déjà un.
+                    // aucun son ne s'entendrait. Un seul écouteur : on n'en ajoute pas si la scène en a déjà un (relecture de l'essai 7 : celui
+                    // posé par les sons de l'interface faute de caméra est retiré d'abord).
+                    UiSounds.ReleaseListener();
                     if (UnityEngine.Object.FindFirstObjectByType<AudioListener>() == null) _camera.Camera.gameObject.AddComponent<AudioListener>();
                 }
                 return _audio;

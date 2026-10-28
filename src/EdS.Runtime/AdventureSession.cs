@@ -760,8 +760,19 @@ namespace EdS.Runtime
         {
             if (!(Me is GroundVector p) || World.IsDefeated) return new AdventureMood(false, false, false, double.NaN);
             bool village = _zone.PlacesAt(p).Any(x => x.Id.IndexOf("village", StringComparison.Ordinal) >= 0);
-            bool fighting = CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any();
-            bool boss = CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, BossMusicRange).Any(o => IsBoss(o.Id));
+            // Relecture de l'essai 7 : une seule recherche (la plus large), puis la distance de chaque ennemi trouvé.
+            bool fighting = false, boss = false;
+            long rest2 = checked(RestSafety.Raw * RestSafety.Raw);
+            foreach (OtherState o in CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, BossMusicRange))
+            {
+                if (o.View.Position is GroundVector q)
+                {
+                    long dx = checked(q.X.Raw - p.X.Raw), dz = checked(q.Z.Raw - p.Z.Raw);
+                    if (checked(dx * dx + dz * dz) <= rest2) fighting = true;
+                }
+                if (IsBoss(o.Id)) boss = true;
+                if (boss && fighting) break;
+            }
             double river = double.NaN;
             foreach (Place place in _zone.Places.Where(x => x.Id.IndexOf("riviere", StringComparison.Ordinal) >= 0))
             {

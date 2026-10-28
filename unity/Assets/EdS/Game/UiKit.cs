@@ -211,7 +211,8 @@ namespace EdS.Game
             };
             pointer.Enter = () =>
             {
-                if (button.Enabled) UiSounds.Play(UiCue.Hover);
+                // Relecture de l'essai 7 : au doigt, uGUI envoie le survol à l'appui ; seule la souris fait le son de survol.
+                if (button.Enabled && !pointer.Touch) UiSounds.Play(UiCue.Hover);
                 button.Hover(true);
             };
             pointer.Exit = () => button.Hover(false);
@@ -224,13 +225,20 @@ namespace EdS.Game
     {
         public System.Action Left, Right, Enter, Exit;
 
+        /// <summary>Relecture de l'essai 7 : le dernier passage vient d'un doigt (identifiant de pointeur positif), pas de la souris.</summary>
+        public bool Touch { get; private set; }
+
         public void OnPointerClick(PointerEventData eventData)
         {
             if (eventData.button == PointerEventData.InputButton.Right) Right?.Invoke();
             else if (eventData.button == PointerEventData.InputButton.Left) Left?.Invoke();
         }
 
-        public void OnPointerEnter(PointerEventData eventData) => Enter?.Invoke();
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            Touch = eventData.pointerId >= 0;
+            Enter?.Invoke();
+        }
 
         public void OnPointerExit(PointerEventData eventData) => Exit?.Invoke();
     }
