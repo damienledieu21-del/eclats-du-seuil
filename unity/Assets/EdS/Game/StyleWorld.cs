@@ -127,7 +127,7 @@ namespace EdS.Game
         /// simple reste).
         /// </summary>
         public static GameObject Ground(Transform parent, float minX, float minZ, float maxX, float maxZ, IReadOnlyList<StyleSpot> spots,
-            IReadOnlyList<IReadOnlyList<(double X, double Z)>> rivers = null)
+            IReadOnlyList<IReadOnlyList<(double X, double Z)>> rivers = null, IReadOnlyList<StyleRoad> roads = null, IReadOnlyList<StyleField> fields = null)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return null;
@@ -137,9 +137,13 @@ namespace EdS.Game
             float x0 = minX - margin, z0 = minZ - margin, width = maxX - minX + 2f * margin, depth = maxZ - minZ + 2f * margin;
 
             var data = new TerrainData();
-            // Assez fin pour une berge (environ 0,4 m entre deux points sur l'aire des Vallons) ; plus grossier sur téléphone.
-            data.heightmapResolution = Application.isMobilePlatform ? 257 : 513;
-            data.alphamapResolution = Application.isMobilePlatform ? 256 : 512;
+            // Assez fin pour une berge (environ 0,4 m entre deux points sur l'aire des Vallons) ; plus grossier sur téléphone. Vallons
+            // agrandis : la finesse suit la taille du terrain (autant de points par mètre qu'avant, au plus 1025 sur ordinateur, 513 sur
+            // téléphone).
+            bool phone = Application.isMobilePlatform;
+            float side = Mathf.Max(width, depth);
+            data.heightmapResolution = Resolution(side / 0.34f, phone ? 512 : 1024, 256) + 1;
+            data.alphamapResolution = Resolution(side / 0.34f, phone ? 512 : 1024, 256);
             data.size = new Vector3(width, TerrainHeight, depth);
             int hres = data.heightmapResolution;
             var heights = new float[hres, hres];
@@ -162,11 +166,21 @@ namespace EdS.Game
             };
             int res = data.alphamapResolution;
             var maps = new float[res, res, 3];
+            // Vallons agrandis : taches rangées par cases, chemins de terre battue, terre sous les champs.
+            var grid = new SpotGrid(spots);
             for (int row = 0; row < res; row++)
                 for (int col = 0; col < res; col++)
                 {
                     double x = x0 + (col + 0.5f) / res * width, z = z0 + (row + 0.5f) / res * depth;
-                    StyleMix mix = StyleRules.GroundMix(x, z, spots);
+                    StyleMix mix = grid.Mix(x, z);
+                    if (roads != null && roads.Count > 0) mix = TownRules.RoadMix(mix, x, z, TownRules.RoadAt(x, z, roads));
+                    if (fields != null)
+                        foreach (StyleField f in fields)
+                            if (x > f.MinX - 0.3 && x < f.MaxX + 0.3 && z > f.MinZ - 0.3 && z < f.MaxZ + 0.3)
+                            {
+                                mix = new StyleMix(1, 0, 0);
+                                break;
+                            }
                     if (banks.Count > 0) mix = StyleRules.RiverMix(mix, StyleRules.UnionDistance(x, z, rivers, banks));
                     maps[row, col, (int)StyleGround.Soil] = (float)mix.Soil;
                     maps[row, col, (int)StyleGround.Rock] = (float)mix.Rock;
@@ -185,6 +199,14 @@ namespace EdS.Game
             terrain.heightmapPixelError = Application.isMobilePlatform ? 8f : 3f;
             terrain.drawTreesAndFoliage = false;
             return go;
+        }
+
+        /// <summary>Vallons agrandis : résolution d'une carte du terrain : la puissance de 2 qui approche <paramref name="wanted"/>, bornée.</summary>
+        private static int Resolution(float wanted, int max, int min)
+        {
+            int r = min;
+            while (r < max && r < wanted) r *= 2;
+            return Mathf.Min(max, r);
         }
 
         /// <summary>Rend les données d'un terrain créé par <see cref="Ground"/> (couches et carte), avant de le détruire.</summary>

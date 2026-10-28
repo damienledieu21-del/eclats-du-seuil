@@ -253,7 +253,7 @@ namespace EdS.Game
         {
             _combat = _adventure.Combat;
             _arena.Paint = id => _adventure != null && _adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null;
-            _arena.Populate(_combat);
+            _arena.Populate(_combat, _adventure.Map);   // Vallons agrandis : routes et champs du décor
             _shownSession = _adventure.Opened;
             _shownCharges = -1;   // relecture de l'essai 7 : pas d'éclat d'or au début d'une session
             _moodAge = 99f;

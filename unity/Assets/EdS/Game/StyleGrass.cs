@@ -87,6 +87,51 @@ namespace EdS.Game
             return grass;
         }
 
+        /// <summary>
+        /// Vallons agrandis : blé d'un ou plusieurs champs, aux places <paramref name="spots"/> (<see cref="TownShapes.CropSpots"/>) : les
+        /// touffes de l'herbe, deux fois plus hautes (40 cm à 1 m), couleurs du pied et de l'épi données, moins de vent ; dessiné jusqu'à
+        /// 90 m (60 sur téléphone) pour que les champs se voient de loin. Null sans place, sans matériau d'herbe ou sans son shader.
+        /// </summary>
+        public static StyleGrass CreateCrop(IReadOnlyList<(double X, double Z, double Yaw, double Scale)> spots, Color root, Color tip)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (spots == null || spots.Count == 0 || catalog == null || catalog.Grass == null || catalog.Grass.shader == null || !catalog.Grass.shader.isSupported)
+                return null;
+            bool phone = Application.isMobilePlatform;
+            var material = new Material(catalog.Grass) { enableInstancing = true };
+            float distance = phone ? 60f : 90f;
+            material.SetFloat("_FadeEnd", distance);
+            material.SetFloat("_FadeStart", distance * 0.8f);
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", root);
+            if (material.HasProperty("_TipColor")) material.SetColor("_TipColor", tip);
+            if (material.HasProperty("_DryColor")) material.SetColor("_DryColor", Color.Lerp(tip, root, 0.3f));
+            if (material.HasProperty("_Dryness")) material.SetFloat("_Dryness", 0.2f);
+            if (material.HasProperty("_DryPatches")) material.SetFloat("_DryPatches", 0.1f);
+            if (material.HasProperty("_Wind")) material.SetFloat("_Wind", 0.35f);
+            var crop = new StyleGrass(Clump(phone ? 6 : 9, 0), Clump(phone ? 6 : 9, 0), material, distance);
+            var byCell = new Dictionary<(int, int), List<Matrix4x4>>();
+            foreach ((double x, double z, double yaw, double scale) in spots)
+            {
+                var key = (Mathf.FloorToInt((float)x / CellSize), Mathf.FloorToInt((float)z / CellSize));
+                if (!byCell.TryGetValue(key, out List<Matrix4x4> items)) byCell[key] = items = new List<Matrix4x4>();
+                items.Add(Matrix4x4.TRS(new Vector3((float)x, 0f, (float)z), Quaternion.Euler(0f, (float)yaw, 0f), Vector3.one * (float)(2.0 * scale)));
+            }
+            foreach (KeyValuePair<(int, int), List<Matrix4x4>> cell in byCell)
+            {
+                var center = new Vector3((cell.Key.Item1 + 0.5f) * CellSize, 0f, (cell.Key.Item2 + 0.5f) * CellSize);
+                for (int start = 0; start < cell.Value.Count; start += Batch)
+                {
+                    int count = Mathf.Min(Batch, cell.Value.Count - start);
+                    crop._cells.Add(new Cell
+                    {
+                        Center = center, Items = cell.Value.GetRange(start, count).ToArray(), Flowers = false,
+                        Bounds = new Bounds(center + Vector3.up * 1.2f, new Vector3(CellSize + 2f, 3f, CellSize + 2f)),
+                    });
+                }
+            }
+            return crop;
+        }
+
         /// <summary>Dessine les cases proches de <paramref name="camera"/> (à appeler à chaque image).</summary>
         public void Draw(Vector3 camera)
         {
