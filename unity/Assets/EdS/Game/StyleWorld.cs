@@ -159,14 +159,24 @@ namespace EdS.Game
             data.SetHeights(0, 0, heights);
             // Couches dans l'ordre de StyleGround (terre, roche, herbe) ; une couche sans texture prend celle d'une autre. Essai du 27 octobre
             // 2026 : l'herbe de Poly Haven sortait jaune ; elle prend la teinte du catalogue.
-            data.terrainLayers = new[]
+            // Essai réaliste 8 : sur ordinateur, deux couches de plus s'il y a leurs textures : la terre battue des chemins et la terre
+            // labourée des champs (sinon ils prennent la terre, comme avant).
+            bool extra = !phone && (catalog.RoadColor != null || catalog.FieldColor != null);
+            var layers = new List<TerrainLayer>
             {
                 Layer(Pick(catalog.SoilColor, any), Pick(catalog.SoilNormal, catalog.GrassNormal), catalog.GroundTile, Color.white),
                 Layer(Pick(catalog.RockColor, any), catalog.RockNormal, catalog.GroundTile, Color.white),
                 Layer(Pick(catalog.GrassColor, any), Pick(catalog.GrassNormal, catalog.SoilNormal), catalog.GroundTile, catalog.GrassTint),
             };
+            if (extra)
+            {
+                Texture2D soil = Pick(catalog.SoilColor, any);
+                layers.Add(Layer(Pick(catalog.RoadColor, soil), catalog.RoadColor != null ? catalog.RoadNormal : catalog.SoilNormal, catalog.GroundTile * 0.8f, Color.white));
+                layers.Add(Layer(Pick(catalog.FieldColor, soil), catalog.FieldColor != null ? catalog.FieldNormal : catalog.SoilNormal, catalog.GroundTile * 0.6f, Color.white));
+            }
+            data.terrainLayers = layers.ToArray();
             int res = data.alphamapResolution;
-            var maps = new float[res, res, 3];
+            var maps = new float[res, res, extra ? 5 : 3];
             // Vallons agrandis : taches rangées par cases, chemins de terre battue, terre sous les champs.
             var grid = new SpotGrid(spots);
             for (int row = 0; row < res; row++)
@@ -174,7 +184,8 @@ namespace EdS.Game
                 {
                     double x = x0 + (col + 0.5f) / res * width, z = z0 + (row + 0.5f) / res * depth;
                     StyleMix mix = grid.Mix(x, z);
-                    if (roads != null && roads.Count > 0) mix = TownRules.RoadMix(mix, x, z, TownRules.RoadAt(x, z, roads));
+                    double road = roads != null && roads.Count > 0 ? TownRules.RoadWeight(x, z, TownRules.RoadAt(x, z, roads)) : 0;
+                    if (!extra && road > 0) mix = new StyleMix(mix.Soil * (1 - road) + road, mix.Rock * (1 - road), mix.Grass * (1 - road));
                     // Relecture des Vallons agrandis : sous-bois de terre sous les bois (comme la carte peinte), fondu sur un mètre et demi.
                     if (floors != null)
                         foreach (IReadOnlyList<(double X, double Z)> floor in floors)
@@ -184,17 +195,27 @@ namespace EdS.Game
                             double w = System.Math.Min(1, (inside + 1.5) / 3);
                             mix = new StyleMix(mix.Soil * (1 - w) + w, mix.Rock * (1 - w), mix.Grass * (1 - w));
                         }
+                    double field = 0;
                     if (fields != null)
                         foreach (StyleField f in fields)
                             if (x > f.MinX - 0.3 && x < f.MaxX + 0.3 && z > f.MinZ - 0.3 && z < f.MaxZ + 0.3)
                             {
-                                mix = new StyleMix(1, 0, 0);
+                                if (extra) field = 1;
+                                else mix = new StyleMix(1, 0, 0);
                                 break;
                             }
-                    if (banks.Count > 0) mix = StyleRules.RiverMix(mix, StyleRules.UnionDistance(x, z, rivers, banks));
-                    maps[row, col, (int)StyleGround.Soil] = (float)mix.Soil;
-                    maps[row, col, (int)StyleGround.Rock] = (float)mix.Rock;
-                    maps[row, col, (int)StyleGround.Grass] = (float)mix.Grass;
+                    if (field > 0) road = 0;
+                    // Chemin et champ prennent leur part ; la berge de la rivière reprend la terre partout (pas de chemin sous l'eau).
+                    double rest = extra ? 1 - road - field : 1;
+                    double wet = banks.Count > 0 ? StyleRules.RiverWet(StyleRules.UnionDistance(x, z, rivers, banks)) : 0;
+                    maps[row, col, (int)StyleGround.Soil] = (float)((mix.Soil * rest) * (1 - wet) + wet);
+                    maps[row, col, (int)StyleGround.Rock] = (float)(mix.Rock * rest * (1 - wet));
+                    maps[row, col, (int)StyleGround.Grass] = (float)(mix.Grass * rest * (1 - wet));
+                    if (extra)
+                    {
+                        maps[row, col, (int)StyleGround.Road] = (float)(road * (1 - wet));
+                        maps[row, col, (int)StyleGround.Field] = (float)(field * (1 - wet));
+                    }
                 }
             data.SetAlphamaps(0, 0, maps);
 

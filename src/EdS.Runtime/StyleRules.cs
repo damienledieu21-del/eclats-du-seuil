@@ -205,6 +205,15 @@ namespace EdS.Runtime
 
         /// <summary>Herbe (le reste du sol).</summary>
         Grass = 2,
+
+        /// <summary>
+        /// Essai réaliste 8 : terre battue des chemins (fichier « chemin… » ou « road… » d'un dossier « Ground ») ; sans elle, les chemins
+        /// prennent la terre.
+        /// </summary>
+        Road = 3,
+
+        /// <summary>Essai réaliste 8 : terre labourée des champs (fichier « champ… », « labour… », « field… ») ; sans elle, la terre.</summary>
+        Field = 4,
     }
 
     /// <summary>Un endroit du sol qui change sa couche autour de lui (un rocher appelle la roche, un arbre la terre).</summary>
@@ -241,7 +250,8 @@ namespace EdS.Runtime
         public double Rock { get; }
         public double Grass { get; }
 
-        public double this[StyleGround ground] => ground == StyleGround.Soil ? Soil : ground == StyleGround.Rock ? Rock : Grass;
+        public double this[StyleGround ground] =>
+            ground == StyleGround.Soil ? Soil : ground == StyleGround.Rock ? Rock : ground == StyleGround.Grass ? Grass : 0;
     }
 
     /// <summary>
@@ -384,6 +394,10 @@ namespace EdS.Runtime
         private static readonly string[] RockGround = { "rock", "trail", "stone", "gravel", "cliff" };
         private static readonly string[] GrassGround = { "grass", "meadow", "lawn", "moss" };
 
+        /// <summary>Essai réaliste 8 : début du nom d'une texture de chemin ou de champ (dossier « Ground »).</summary>
+        private static readonly string[] RoadGround = { "chemin", "road", "dirtroad" };
+        private static readonly string[] FieldGround = { "champ", "labour", "field", "plough", "plow", "tilled", "farmland" };
+
         /// <summary>Distance (m) sur laquelle la couche d'un endroit s'efface autour de son rayon.</summary>
         public const double SpotFade = 3.0;
 
@@ -498,6 +512,9 @@ namespace EdS.Runtime
         {
             if (!Segments(path).Any(s => s == "ground")) return null;
             string file = Key(FileName(path));
+            // Essai réaliste 8 : chemins et champs d'abord (« chemin_terre_battue », « champ_labour »).
+            if (RoadGround.Any(w => file.StartsWith(w, StringComparison.Ordinal))) return StyleGround.Road;
+            if (FieldGround.Any(w => file.StartsWith(w, StringComparison.Ordinal))) return StyleGround.Field;
             if (RockGround.Any(w => file.Contains(w))) return StyleGround.Rock;
             if (GrassGround.Any(w => file.Contains(w))) return StyleGround.Grass;
             return StyleGround.Soil;
@@ -1347,9 +1364,12 @@ namespace EdS.Runtime
         /// </summary>
         public static StyleMix RiverMix(StyleMix mix, double inside)
         {
-            double wet = Math.Max(0, Math.Min(1, (inside + RiverShore) / (2 * RiverShore)));
+            double wet = RiverWet(inside);
             return new StyleMix(mix.Soil * (1 - wet) + wet, mix.Rock * (1 - wet), mix.Grass * (1 - wet));
         }
+
+        /// <summary>Part de la terre mouillée près de la rivière (0 à 1), celle que <see cref="RiverMix"/> verse dans la terre.</summary>
+        public static double RiverWet(double inside) => Math.Max(0, Math.Min(1, (inside + RiverShore) / (2 * RiverShore)));
 
         /// <summary>Angle (degrés, 0 vers +z, 90 vers +x, comme Unity) pour regarder de (fromX, fromZ) vers (toX, toZ).</summary>
         public static double FaceYaw(double fromX, double fromZ, double toX, double toZ) =>

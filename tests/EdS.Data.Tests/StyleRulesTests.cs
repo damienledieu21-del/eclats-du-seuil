@@ -451,10 +451,14 @@ public class StyleRulesTests
         Assert.Contains("if (Application.isEditor) StyleWorld.Refresh();", game, StringComparison.Ordinal);
         Assert.Contains("_bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;", world, StringComparison.Ordinal);
         // Les couches du terrain suivent l'ordre de StyleGround.
-        Assert.Contains("maps[row, col, (int)StyleGround.Soil] = (float)mix.Soil;", world, StringComparison.Ordinal);
+        // Essai réaliste 8 : chemin et champ en quatrième et cinquième couches, sur ordinateur.
+        Assert.Contains("maps[row, col, (int)StyleGround.Soil] = (float)((mix.Soil * rest) * (1 - wet) + wet);", world, StringComparison.Ordinal);
+        Assert.Contains("maps[row, col, (int)StyleGround.Road] = (float)(road * (1 - wet));", world, StringComparison.Ordinal);
         Assert.Equal(0, (int)StyleGround.Soil);
         Assert.Equal(1, (int)StyleGround.Rock);
         Assert.Equal(2, (int)StyleGround.Grass);
+        Assert.Equal(3, (int)StyleGround.Road);
+        Assert.Equal(4, (int)StyleGround.Field);
         // Animations Mixamo ajoutées au héros ; une seule pièce d'un lot de Poly Haven.
         Assert.Contains("animation.AddClip(clip, clip.name);", look, StringComparison.Ordinal);
         Assert.Contains("IReadOnlyList<int> keep = StyleRules.KeepParts(prefab.name, names, part);", look, StringComparison.Ordinal);

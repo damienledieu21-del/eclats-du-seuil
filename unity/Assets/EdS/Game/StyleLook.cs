@@ -60,6 +60,27 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// Essai réaliste 8 : un villageois joue en boucle l'animation de son activité (<see cref="TownModels.VillagerClip"/>), commencée à
+        /// un moment propre à chacun (deux bavards ne bougent pas ensemble). Rend son nom, ou null s'il n'a pas d'animation.
+        /// </summary>
+        public string Loop(VillagerActivity activity, int variant)
+        {
+            if (_animation == null) return null;
+            string clip = TownModels.VillagerClip(_clips, activity, variant);
+            if (clip == null) return null;
+            if (clip == _playing) return clip;
+            AnimationState state = _animation[clip];
+            if (state != null)
+            {
+                state.wrapMode = WrapMode.Loop;
+                state.time = state.length * (Mathf.Abs(variant) % 10) / 10f;
+            }
+            _animation.CrossFade(clip, 0.25f);
+            _playing = clip;
+            return clip;
+        }
+
+        /// <summary>
         /// Revue Codex de la PR #55 : même signal que le corps simple : assombri mort, clignotant jaune étourdi (chaque image tant que
         /// l'étourdissement dure), sinon les couleurs d'origine du modèle (rendues une fois au retour).
         /// </summary>

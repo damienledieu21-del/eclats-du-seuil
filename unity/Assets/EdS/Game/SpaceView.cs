@@ -129,6 +129,7 @@ namespace EdS.Game
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             Pavements();
             Fields();
+            Villagers(map);   // essai réaliste 8 : les villageois du bourg
             Plants(space);
             if (terrain) Forest(space);
             Bridge(space);
@@ -364,6 +365,8 @@ namespace EdS.Game
         {
             float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
             (int, int) facing = TownRules.Facing(x0, z0, x1, z1, _roads);
+            // Essai réaliste 8 : le vrai bâtiment de Sketchfab s'il y en a un de ce genre dans le catalogue.
+            if (ModelBuilding(kind, id, x0, z0, x1, z1, facing)) return;
             Material plaster = Built(StyleSurface.Plaster, new Color(0.86f, 0.82f, 0.74f), out float plasterTile);
             Material stone = Built(StyleSurface.Stone, new Color(0.5f, 0.48f, 0.44f), out float stoneTile);
             Material wood = Built(StyleSurface.Wood, new Color(0.42f, 0.3f, 0.19f), out float woodTile);
@@ -382,6 +385,111 @@ namespace EdS.Game
             foreach ((StyleMesh mesh, Material material, string name) in parts)
                 if (mesh.Triangles.Count > 0) Shape(id + " (" + name + ")", mesh, material, go.transform);
             _occluders.Add(new Occluder { Transform = go.transform, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, (float)shapes.Top, z1) });
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : de vrais bâtiments en 3D) : un modèle de Sketchfab du genre
+        /// <paramref name="kind"/>, choisi et posé par <see cref="TownModels.Pick"/> (face vers la route, pied ajusté à l'emprise, étiré
+        /// d'un quart au plus), une maison sur deux en miroir ; abaissé comme un mur quand il cache le joueur. False sans modèle de ce genre
+        /// (le bâtiment fait par le code reste).
+        /// </summary>
+        private bool ModelBuilding(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, (int X, int Z) facing)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null) return false;
+            List<BuildingLook> models = catalog.BuildingsOf(kind);
+            if (models.Count == 0) return false;
+            var feet = models.Select(m => ((double)m.Size.x, (double)m.Size.y)).ToList();
+            (int index, (int X, int Z) face, ModelFit fit) = TownModels.Pick(id, x1 - x0, z1 - z0, facing, feet, TownModels.Overflow(kind));
+            if (index < 0) return false;
+            var center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
+            var go = new GameObject(id + " (bâtiment)");
+            go.transform.SetParent(_root.transform, false);
+            go.transform.position = center;
+            var turn = new GameObject(models[index].Model.name);
+            turn.transform.SetParent(go.transform, false);
+            turn.transform.localRotation = Quaternion.Euler(0f, (float)fit.Yaw, 0f);
+            // Échelles dans les axes du modèle : tourné d'un quart de tour, son x suit le z du monde.
+            bool across = face.X != 0;
+            float mirror = kind == StyleBuilding.House && TownModels.Mirrored(id) ? -1f : 1f;
+            turn.transform.localScale = new Vector3(mirror * (float)(across ? fit.ScaleZ : fit.ScaleX), (float)fit.ScaleY, (float)(across ? fit.ScaleX : fit.ScaleZ));
+            GameObject model = Object.Instantiate(models[index].Model, turn.transform, false);
+            foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            // Le pied du modèle au centre de l'emprise, le bas au sol.
+            if (StyleLook.VisibleBounds(model, out Bounds b))
+                model.transform.position += new Vector3(center.x - b.center.x, -b.min.y, center.z - b.center.z);
+            float top = StyleLook.VisibleBounds(go, out Bounds all) ? all.max.y : 8f;
+            _occluders.Add(new Occluder { Transform = go.transform, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });
+            return true;
+        }
+
+        /// <summary>Essai réaliste 8 : un villageois posé (son corps, son modèle) ; un marcheur garde son allée et son sens.</summary>
+        private sealed class Villager
+        {
+            public StyleVillager Data;
+            public Transform Body;
+            public StyleBody Look;
+            public float Along;
+            public bool Back;
+            public float Yaw;
+        }
+
+        private readonly List<Villager> _villagers = new List<Villager>();
+
+        /// <summary>Allure (m/s) des passants.</summary>
+        private const float WalkSpeed = 1.1f;
+
+        /// <summary>
+        /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : des villageois dans le bourg) : les villageois d'affichage
+        /// (<see cref="TownModels.Villagers"/>), habillés des personnages de Mixamo du catalogue (dossiers Paysan, Garde, Sentinelle), qui
+        /// bavardent, regardent autour d'eux, cueillent ou passent ; le tiers sur téléphone. Le moteur ne les connaît pas : ils n'arrêtent rien.
+        /// </summary>
+        private void Villagers(AdventureMap map)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (map == null || catalog == null || catalog.Villagers <= 0) return;
+            int max = Application.isMobilePlatform ? catalog.Villagers / 3 : catalog.Villagers;
+            foreach (StyleVillager v in TownModels.Villagers(map, _fields, max))
+            {
+                if (catalog.Character(v.Character) == null) continue;
+                GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                body.name = v.Id + " (villageois)";
+                Object.Destroy(body.GetComponent<Collider>());
+                body.transform.SetParent(_root.transform, false);
+                body.transform.position = new Vector3((float)v.X, 1f, (float)v.Z);
+                body.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
+                body.transform.rotation = Quaternion.Euler(0f, (float)v.Yaw, 0f);
+                StyleBody look = StyleLook.Dress(body, StyleSlot.Character, v.Character, 1.75f + 0.01f * (StyleRules.Variant(v.Id, 11) - 5));
+                if (look == null)
+                {
+                    Object.Destroy(body);
+                    continue;
+                }
+                look.Loop(v.Activity, StyleRules.Variant(v.Id, 97));
+                _villagers.Add(new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw });
+            }
+        }
+
+        /// <summary>Essai réaliste 8 : les passants vont et viennent le long de leur allée, et se retournent au bout.</summary>
+        private void Walk(float deltaTime)
+        {
+            foreach (Villager v in _villagers)
+            {
+                if (!v.Data.Walks || deltaTime <= 0f) continue;
+                float dx = (float)(v.Data.ToX - v.Data.X), dz = (float)(v.Data.ToZ - v.Data.Z);
+                float length = Mathf.Sqrt(dx * dx + dz * dz);
+                if (length < 0.1f) continue;
+                v.Along += (v.Back ? -1f : 1f) * WalkSpeed * deltaTime / length;
+                if (v.Along >= 1f || v.Along <= 0f)
+                {
+                    v.Along = Mathf.Clamp01(v.Along);
+                    v.Back = !v.Back;
+                }
+                float target = (float)StyleRules.FaceYaw(0, 0, v.Back ? -dx : dx, v.Back ? -dz : dz);
+                v.Yaw = (float)StyleRules.Turn(v.Yaw, target, 200f * deltaTime);
+                v.Body.position = new Vector3((float)v.Data.X + dx * v.Along, 1f, (float)v.Data.Z + dz * v.Along);
+                v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
+            }
         }
 
         private static readonly Dictionary<StyleRoofLook, Material> RoofMaterials = new Dictionary<StyleRoofLook, Material>();
@@ -922,6 +1030,7 @@ namespace EdS.Game
         public void Cut(Vector3 camera, Vector3 player, float deltaTime)
         {
             _grass?.Draw(camera);   // essai réaliste 4 : l'herbe en brins proche de la caméra
+            Walk(deltaTime);   // essai réaliste 8 : les passants du bourg
             foreach (StyleGrass crop in _crops) crop.Draw(camera);   // Vallons agrandis : le blé des champs
             StyleWorld.AnimateWater(Time.time);   // essai réaliste : les vagues de la rivière glissent
             Vector3 head = player + Vector3.up * 1f;

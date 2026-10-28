@@ -283,10 +283,21 @@ namespace EdS.Runtime
         /// </summary>
         public static StyleMix RoadMix(StyleMix mix, double x, double z, RoadHit hit)
         {
-            if (hit.Road is null || hit.Edge > RoadFade + 0.6) return mix;
-            double wobble = hit.Road.Paved ? 0 : 0.9 * (StyleRules.Noise(x * 0.45 + 31.7, z * 0.45 - 12.9) - 0.5);
-            double w = Math.Max(0, Math.Min(1, 0.5 - (hit.Edge + wobble) / RoadFade));
+            double w = RoadWeight(x, z, hit);
+            if (w <= 0) return mix;
             return new StyleMix(mix.Soil * (1 - w) + w, mix.Rock * (1 - w), mix.Grass * (1 - w));
+        }
+
+        /// <summary>
+        /// Part du chemin en (<paramref name="x"/>, <paramref name="z"/>) (0 à 1) : pleine sur la route, fondue sur <see cref="RoadFade"/>
+        /// au bord, bord irrégulier pour la terre (droit pour les pavés). Essai réaliste 8 : la couche « chemin » du terrain la prend telle
+        /// quelle ; <see cref="RoadMix"/> la verse dans la terre.
+        /// </summary>
+        public static double RoadWeight(double x, double z, RoadHit hit)
+        {
+            if (hit.Road is null || hit.Edge > RoadFade + 0.6) return 0;
+            double wobble = hit.Road.Paved ? 0 : 0.9 * (StyleRules.Noise(x * 0.45 + 31.7, z * 0.45 - 12.9) - 0.5);
+            return Math.Max(0, Math.Min(1, 0.5 - (hit.Edge + wobble) / RoadFade));
         }
 
         /// <summary>

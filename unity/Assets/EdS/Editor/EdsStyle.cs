@@ -177,6 +177,17 @@ namespace EdS.Game.Editor
                 .Select(kind => new AmbienceLook { Kind = kind, Clip = sounds.Where(p => StyleRules.AmbienceOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
                 .Where(a => a.Clip != null).ToArray();
 
+            // Essai réaliste 8 (demande de Damien du 28 octobre 2026) : bâtiments de Sketchfab rangés par genre, mesurés une fois ici ;
+            // terre battue des chemins et terre labourée des champs.
+            catalog.Buildings = models.Where(p => TownModels.KindOfModel(p) != StyleBuilding.None).OrderBy(p => p, System.StringComparer.Ordinal)
+                .Select(p => new BuildingLook { Kind = TownModels.KindOfModel(p), Model = Load(p), Size = Foot(Load(p)) })
+                .Where(b => b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f).ToArray();
+            if (catalog.Buildings.Length > 0) notes.Add("Bâtiments de Sketchfab : " + catalog.Buildings.Length + " modèles (" + string.Join(", ",
+                catalog.Buildings.GroupBy(b => b.Kind).Select(g => g.Key + " " + g.Count())) + ").");
+            catalog.RoadColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Road, false));
+            catalog.RoadNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Road, true));
+            catalog.FieldColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Field, false));
+            catalog.FieldNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Field, true));
             catalog.SoilColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Soil, false));
             catalog.SoilNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Soil, true));
             catalog.RockColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Rock, false));
@@ -242,6 +253,27 @@ namespace EdS.Game.Editor
             }
             importer.clipAnimations = clips;
             importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 : pied d'un modèle de bâtiment (m, le long de x et de z) à l'échelle 1 : une copie posée le temps de la mesurer.
+        /// </summary>
+        private static Vector2 Foot(GameObject model)
+        {
+            if (model == null) return Vector2.zero;
+            var copy = (GameObject)Object.Instantiate(model);
+            try
+            {
+                Renderer[] renderers = copy.GetComponentsInChildren<Renderer>();
+                if (renderers.Length == 0) return Vector2.zero;
+                Bounds b = renderers[0].bounds;
+                foreach (Renderer r in renderers) b.Encapsulate(r.bounds);
+                return new Vector2(b.size.x, b.size.z);
+            }
+            finally
+            {
+                Object.DestroyImmediate(copy);
+            }
         }
 
         /// <summary>Animations d'un fichier (sans les aperçus de l'éditeur).</summary>
