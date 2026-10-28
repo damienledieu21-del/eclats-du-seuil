@@ -233,7 +233,7 @@ public class Lot124ZoneTests
         var session = new WorldSession(NewGame(), z, ShippedData, Progression, Items);
         var population = new List<PopulationEvent>();
         var xp = new List<ExperienceGained>();
-        for (int i = 0; i < 3000 && !population.Any(e => e.Kind == PopulationEventKind.Exhausted); i++)
+        for (int i = 0; i < 12000 && !population.Any(e => e.Kind == PopulationEventKind.Exhausted); i++)
         {
             SessionStep step = session.Step();
             population.AddRange(step.Population);
@@ -245,9 +245,9 @@ public class Lot124ZoneTests
         Assert.True(first.HasLeft && !first.IsDead);
         Assert.Empty(xp);
         Assert.Empty(session.Save().Consumed);
-        // Plafond : 64 combattants (les créatures de la zone — 27 depuis les Vallons agrandis —, le Bastion, le chef — sous-lot 12.7 —, puis
-        // les vies suivantes), une place gardée à la seconde forme du chef (revue Codex de la PR #48) ; une seule annonce, puis plus rien
-        // pour cette population.
+        // Plafond : 128 combattants depuis les règles 0.12.0 (64 avant ; décision de Damien du 29 octobre 2026) : les créatures de la zone
+        // (27 depuis les Vallons agrandis), le Bastion, le chef (sous-lot 12.7), puis les vies suivantes ; une place gardée à la seconde
+        // forme du chef (revue Codex de la PR #48) ; une seule annonce, puis plus rien pour cette population.
         int max = ShippedData.Rules.Combat.MaxCombatants;
         int creatures = z.Setup.Combatants.Count;
         Assert.Equal(27, creatures);

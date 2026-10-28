@@ -2,7 +2,7 @@
   "$schema": "../schemas/rules.schema.json",
   "schemaVersion": 12,
   "kind": "rules",
-  "contentVersion": "0.11.0-provisoire",
+  "contentVersion": "0.12.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -72,7 +72,7 @@
       "limits": {
         "maxDurationMs": 600000,
         "maxEventsPerTick": 1000,
-        "maxCombatants": 64,
+        "maxCombatants": 128,
         "maxCommands": 20000,
         "maxCommandsPerActorPerTick": 4,
         "maxPendingEvents": 100000,
