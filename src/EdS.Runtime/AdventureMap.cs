@@ -16,6 +16,31 @@ namespace EdS.Runtime
 
         /// <summary>Où mène l'étape en cours de la mission (lieu à atteindre, PNJ à qui parler, créature à vaincre).</summary>
         Objective = 5,
+
+        /// <summary>Intérieurs : une porte vers une autre zone (auberge, chapelle, maison ; dans un intérieur, la sortie).</summary>
+        Door = 6,
+    }
+
+    /// <summary>Intérieurs : une porte de la carte (nom de ce qu'il y a derrière, bâtiment dont c'est la porte, place en mètres).</summary>
+    public sealed class MapDoor
+    {
+        public string Id { get; }
+        public string Name { get; }
+
+        /// <summary>Obstacle (bâtiment) dont c'est la porte, ou null.</summary>
+        public string? Building { get; }
+
+        public double X { get; }
+        public double Z { get; }
+
+        public MapDoor(string id, string name, string? building, double x, double z)
+        {
+            Id = id ?? throw new ArgumentNullException(nameof(id));
+            Name = name ?? throw new ArgumentNullException(nameof(name));
+            Building = building;
+            X = x;
+            Z = z;
+        }
     }
 
     /// <summary>Un repère de la carte : sorte, nom (traduit), position au sol en mètres.</summary>
@@ -80,8 +105,14 @@ namespace EdS.Runtime
         /// <summary>Vallons agrandis : places à garder dégagées des champs (PNJ, points sûrs, ateliers, nœuds de récolte), en mètres.</summary>
         public IReadOnlyList<(double X, double Z)> Clearings { get; }
 
+        /// <summary>Intérieurs : portes de la zone (vide sans porte).</summary>
+        public IReadOnlyList<MapDoor> Doors { get; }
+
+        /// <summary>Intérieurs : la zone est un intérieur (une pièce : l'aire en est le sol, ses bords les murs).</summary>
+        public bool Indoor { get; }
+
         public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
-            IEnumerable<(double X, double Z)>? clearings = null)
+            IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false)
         {
             if (space is null) throw new ArgumentNullException(nameof(space));
             MinX = Meters(space.Min.X.Raw);
@@ -92,7 +123,10 @@ namespace EdS.Runtime
             Places = (places ?? Array.Empty<MapPlace>()).ToList();
             Roads = (roads ?? Array.Empty<StyleRoad>()).ToList();
             Clearings = (clearings ?? Array.Empty<(double X, double Z)>()).ToList();
+            Doors = (doors ?? Array.Empty<MapDoor>()).ToList();
+            Indoor = indoor;
             var key = new System.Text.StringBuilder();
+            if (Indoor) key.Append("intérieur:");
             key.Append(FormattableString.Invariant($"{MinX}/{MinZ}/{MaxX}/{MaxZ}"));
             foreach (SpaceObstacle o in Obstacles)
             {
@@ -105,6 +139,7 @@ namespace EdS.Runtime
                 foreach ((double x, double z) in r.Points) key.Append(FormattableString.Invariant($"{x},{z};"));
             }
             foreach ((double x, double z) in Clearings) key.Append(FormattableString.Invariant($"o{x},{z}"));
+            foreach (MapDoor d in Doors) key.Append(FormattableString.Invariant($"+{d.Id}@{d.Building}:{d.X},{d.Z}"));
             Signature = key.ToString();
         }
 

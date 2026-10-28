@@ -120,7 +120,7 @@ namespace EdS.Runtime
                 {
                     Id = o.Id, Kind = kind, Points = o.Points, MinX = b.MinX, MinZ = b.MinZ, MaxX = b.MaxX, MaxZ = b.MaxZ,
                     CenterX = o.Points.Average(p => p.X), CenterZ = o.Points.Average(p => p.Z),
-                    Facing = TownRules.Facing(b.MinX, b.MinZ, b.MaxX, b.MaxZ, roads),
+                    Facing = TownRules.FacingOf(o.Id, b.MinX, b.MinZ, b.MaxX, b.MaxZ, roads, map.Doors),   // intérieurs : façade vers la porte
                 };
                 building.Radius = o.Points.Max(p => Math.Sqrt((p.X - building.CenterX) * (p.X - building.CenterX) + (p.Z - building.CenterZ) * (p.Z - building.CenterZ)));
                 double overhang = kind == StyleBuilding.Stall ? 0.3 : building.Round ? 0 : 0.5;

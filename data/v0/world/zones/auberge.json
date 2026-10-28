@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 4,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.auberge",
+    "name": "Auberge de l'Aube",
+    "scenario": "zones/auberge",
+    "indoor": true,
+    "entry": "coin_du_feu",
+    "safePoints": [
+      {
+        "id": "coin_du_feu",
+        "name": "Coin du feu",
+        "position": [
+          -5.4,
+          0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "auberge",
+        "name": "Auberge de l'Aube",
+        "min": [
+          -7,
+          -5
+        ],
+        "max": [
+          7,
+          5
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bourg d'Aube",
+        "position": [
+          0,
+          -4.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_auberge"
+      }
+    ]
+  }
+}

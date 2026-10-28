@@ -14,6 +14,27 @@ namespace EdS.Data.Json
     /// Sous-lot 12.4 : lecture stricte d'une zone du monde (<c>kind: "zone"</c>, <c>data/v0/world/zones/&lt;nom&gt;.json</c>). Le scénario de
     /// zone qu'elle nomme est lu et validé (dans <c>scenarios/</c>) ; le reste va au validateur unique <see cref="ZoneValidator"/>.
     /// </summary>
+    /// <summary>Intérieurs : zones reliées par leurs portes (<see cref="ZoneJsonReader.ReadLinked"/>).</summary>
+    public sealed class WorldZonesLoadResult
+    {
+        /// <summary>Zone dont <see cref="Report"/> est le rapport (la zone de départ si les portes ne se répondent pas).</summary>
+        public string Zone { get; }
+
+        public ValidationReport Report { get; }
+
+        /// <summary>Zones lues, celle de départ en premier ; vide si une zone est refusée ou si les portes ne se répondent pas.</summary>
+        public IReadOnlyList<ZoneDefinition> Zones { get; }
+
+        public bool IsValid => Zones.Count > 0;
+
+        public WorldZonesLoadResult(string zone, ValidationReport report, IReadOnlyList<ZoneDefinition> zones)
+        {
+            Zone = zone ?? throw new ArgumentNullException(nameof(zone));
+            Report = report ?? throw new ArgumentNullException(nameof(report));
+            Zones = zones ?? throw new ArgumentNullException(nameof(zones));
+        }
+    }
+
     public static class ZoneJsonReader
     {
         /// <summary>Chemin d'une zone dans un dossier de données (<c>data/v0</c>) : <c>world/zones/vallons.json</c> pour « zone.vallons ».</summary>
@@ -85,8 +106,62 @@ namespace EdS.Data.Json
                 ["boss"] = (v, p) => d.Boss = ReadBoss(input, v, p),   // sous-lot 12.7 (schéma 2)
                 ["roads"] = (v, p) => d.Roads = input.ReadLimitedList(v, p, ZoneValidator.MaxRoads, n => $"{n} routes, au plus {ZoneValidator.MaxRoads}.",
                     (e, ip) => ReadRoad(input, e, ip)),   // Vallons agrandis (schéma 3)
+                ["indoor"] = (v, p) => d.Indoor = input.Boolean(v, p),   // intérieurs (schéma 4)
+                ["doors"] = (v, p) => d.Doors = input.ReadLimitedList(v, p, ZoneValidator.MaxDoors, n => $"{n} portes, au plus {ZoneValidator.MaxDoors}.",
+                    (e, ip) => ReadDoor(input, e, ip)),
             });
             return ok ? d : null;
+        }
+
+        private static DoorData? ReadDoor(JsonInput input, JsonElement element, string path)
+        {
+            var door = new DoorData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => door.Id = input.Text(v, p),
+                ["name"] = (v, p) => door.Name = input.Text(v, p),
+                ["position"] = (v, p) => door.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["to"] = (v, p) => door.To = input.Text(v, p),
+                ["toDoor"] = (v, p) => door.ToDoor = input.Text(v, p),
+                ["building"] = (v, p) => door.Building = input.NullableText(v, p),
+            });
+            return ok ? door : null;
+        }
+
+        /// <summary>
+        /// Intérieurs : lit la zone <paramref name="start"/> et toutes celles où mènent ses portes, de proche en proche (dans l'ordre des
+        /// portes), puis vérifie que les portes se répondent (<see cref="ZoneValidator.CheckDoors"/>). La première zone rendue est
+        /// <paramref name="start"/>. Une zone refusée, ou des portes qui ne se répondent pas : <see cref="WorldZonesLoadResult.Zones"/> vide
+        /// et le premier rapport en faute.
+        /// </summary>
+        public static WorldZonesLoadResult ReadLinked(string dataDirectory, string start, string scenariosDirectory, GameData data, ItemCatalog items)
+        {
+            if (dataDirectory is null) throw new ArgumentNullException(nameof(dataDirectory));
+            if (start is null) throw new ArgumentNullException(nameof(start));
+            var zones = new List<ZoneDefinition>();
+            var queued = new List<string> { start };
+            for (int i = 0; i < queued.Count; i++)
+            {
+                if (zones.Count >= ZoneValidator.MaxLinkedZones)
+                {
+                    var limit = new ValidationReport();
+                    limit.Add("$", ValidationCode.LimitExceeded, $"plus de {ZoneValidator.MaxLinkedZones} zones reliées par des portes.");
+                    return new WorldZonesLoadResult(queued[i], limit, Array.Empty<ZoneDefinition>());
+                }
+                ZoneLoadResult loaded = ReadFile(PathIn(dataDirectory, queued[i]), scenariosDirectory, data, items);
+                if (loaded.Zone is null) return new WorldZonesLoadResult(queued[i], loaded.Report, Array.Empty<ZoneDefinition>());
+                if (loaded.Zone.Id != queued[i])
+                {
+                    var wrong = new ValidationReport();
+                    wrong.Add("$.data.id", ValidationCode.InvalidValue, $"le fichier de « {queued[i]} » décrit « {loaded.Zone.Id} ».");
+                    return new WorldZonesLoadResult(queued[i], wrong, Array.Empty<ZoneDefinition>());
+                }
+                zones.Add(loaded.Zone);
+                foreach (Door door in loaded.Zone.Doors)
+                    if (!queued.Contains(door.To)) queued.Add(door.To);
+            }
+            ValidationReport links = ZoneValidator.CheckDoors(zones);
+            return links.IsValid ? new WorldZonesLoadResult(start, links, zones) : new WorldZonesLoadResult(start, links, Array.Empty<ZoneDefinition>());
         }
 
         private static SafePointData? ReadSafePoint(JsonInput input, JsonElement element, string path)

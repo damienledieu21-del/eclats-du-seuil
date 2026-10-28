@@ -112,6 +112,33 @@ namespace EdS.Data.Zones
     }
 
     /// <summary>
+    /// Intérieurs (schéma 4, choix de Damien du 28 octobre 2026 : « on fait la façon 1 ») : une porte vers une autre zone. Le personnage s'y
+    /// tient pour passer (<see cref="Position"/>, à portée) et y arrive en venant de la porte <see cref="ToDoor"/> de la zone <see cref="To"/>,
+    /// qui ramène à celle-ci.
+    /// </summary>
+    public sealed class Door
+    {
+        public string Id { get; }
+        public string Name { get; }
+        public GroundVector Position { get; }
+        public string To { get; }
+        public string ToDoor { get; }
+
+        /// <summary>Bâtiment (obstacle du scénario) dont c'est la porte, ou null.</summary>
+        public string? Building { get; }
+
+        internal Door(string id, string name, GroundVector position, string to, string toDoor, string? building)
+        {
+            Id = id;
+            Name = name;
+            Position = position;
+            To = to;
+            ToDoor = toDoor;
+            Building = building;
+        }
+    }
+
+    /// <summary>
     /// Sous-lot 12.7 : chef de la zone. Ses formes se succèdent (quand une forme tombe, la suivante se relève à sa place) ; la première
     /// victoire sur la dernière forme donne le fait et les récompenses, une seule fois (registre du monde, clé <see cref="VictoryKey"/>) ;
     /// chaque victoire donne le butin.
@@ -162,15 +189,26 @@ namespace EdS.Data.Zones
         /// <summary>Vallons agrandis (schéma 3) : routes et chemins, dans l'ordre du fichier (vide sans routes).</summary>
         public IReadOnlyList<Road> Roads { get; }
 
+        /// <summary>Intérieurs (schéma 4) : la zone est un intérieur (une pièce, sans ciel). Affichage seulement.</summary>
+        public bool Indoor { get; }
+
+        /// <summary>Intérieurs (schéma 4) : portes vers d'autres zones, dans l'ordre du fichier (vide sans porte).</summary>
+        public IReadOnlyList<Door> Doors { get; }
+
+        /// <summary>Porte <paramref name="id"/> de la zone, ou null.</summary>
+        public Door? DoorOf(string id) => Doors.FirstOrDefault(d => d.Id == id);
+
         /// <summary>Clé du registre du monde de la première victoire sur le chef (<c>zone.vallons/boss/gardien_du_seuil</c>).</summary>
         public string VictoryKey => Boss is { } b ? $"{Id}/boss/{b.Id}" : throw new InvalidOperationException("Zone sans chef.");
 
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
-            IEnumerable<Road>? roads = null)
+            IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null)
         {
             Boss = boss;
             Roads = Frozen.List(roads ?? Array.Empty<Road>(), nameof(roads));
+            Indoor = indoor;
+            Doors = Frozen.List(doors ?? Array.Empty<Door>(), nameof(doors));
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             Id = id;
@@ -220,11 +258,19 @@ namespace EdS.Data.Zones
         /// Version 1 (sous-lot 12.4) : <c>id</c>, <c>name</c>, <c>scenario</c>, <c>entry</c>, <c>safePoints</c>, <c>places</c>, <c>populations</c>,
         /// <c>passages</c>. Version 2 (sous-lot 12.7) : <c>boss</c> facultatif (<c>id</c>, <c>scenario</c>, <c>forms</c>, <c>fact</c>, <c>rewards</c>,
         /// <c>loot</c>). Version 3 (Vallons agrandis, 28 octobre 2026) : <c>roads</c> facultatif (<c>id</c>, <c>kind</c> « terre » ou « pave »,
-        /// <c>width</c> de 1 à 20 m, <c>points</c> : de 2 à 32 points dans l'aire praticable).
+        /// <c>width</c> de 1 à 20 m, <c>points</c> : de 2 à 32 points dans l'aire praticable). Version 4 (intérieurs, 28 octobre 2026) :
+        /// <c>indoor</c> facultatif (booléen) et <c>doors</c> facultatif (<c>id</c>, <c>name</c>, <c>position</c>, <c>to</c>, <c>toDoor</c>,
+        /// <c>building</c> facultatif).
         /// </summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
 
         public const int MaxSafePoints = 32, MaxPlaces = 64, MaxPopulations = 256, MaxPassages = 32, MaxRoads = 32, MaxRoadPoints = 32;
+
+        /// <summary>Intérieurs : portes d'une zone, au plus ; zones reliées par des portes, au plus (<see cref="CheckDoors"/>).</summary>
+        public const int MaxDoors = 16, MaxLinkedZones = 64;
+
+        /// <summary>Intérieurs : écart au plus entre une porte et la boîte de son bâtiment (provisoire).</summary>
+        public static readonly Fixed MaxDoorGap = Fixed.FromInt(2);
         public static readonly Fixed MinRoadWidth = Fixed.One, MaxRoadWidth = Fixed.FromInt(20);
         public const long MinRespawnMs = 1000, MaxRespawnMs = 3_600_000;
         public static readonly Fixed MaxLeashRange = Fixed.FromInt(100);
@@ -413,10 +459,83 @@ namespace EdS.Data.Zones
                 }
             }
 
+            var doors = new List<Door>();
+            if (d.Doors != null)
+            {
+                if (d.Doors.Count > MaxDoors) report.Add("$.data.doors", ValidationCode.LimitExceeded, $"{d.Doors.Count} portes, au plus {MaxDoors}.");
+                for (int i = 0; i < d.Doors.Count; i++)
+                {
+                    string path = $"$.data.doors[{i}]";
+                    if (d.Doors[i] is not DoorData door) { Missing(report, path, "porte"); continue; }
+                    bool ok = CheckId(door.Id, path + ".id", doors.Select(x => x.Id), report) & CheckName(door.Name, path + ".name", report);
+                    if (!CheckPoint(door.Position, path + ".position", "place de la porte [x, z]", report)) ok = false;
+                    else if (!Inside(Point(door.Position!))) { report.Add(path + ".position", ValidationCode.OutOfRange, "porte hors de l'aire praticable de la zone."); ok = false; }
+                    // On arrive par la porte comme par un point sûr : l'emprise d'un personnage doit y tenir.
+                    else if (scenario is { Zone: true } && space != null && Footprint(Point(door.Position!), scenario, space) is string why)
+                    { report.Add(path + ".position", ValidationCode.InvalidValue, why); ok = false; }
+                    if (door.To is null) { Missing(report, path + ".to", "zone où mène la porte"); ok = false; }
+                    else if (!SaveValidator.IsZoneId(door.To)) { report.Add(path + ".to", ValidationCode.InvalidValue, $"identifiant de zone « {door.To} » invalide : « zone.<nom> » attendu."); ok = false; }
+                    else if (door.To == d.Id) { report.Add(path + ".to", ValidationCode.InvalidValue, "une porte mène à une autre zone."); ok = false; }
+                    if (door.ToDoor is null) { Missing(report, path + ".toDoor", "porte d'arrivée dans l'autre zone"); ok = false; }
+                    else if (door.ToDoor.Length > 64 || !LocalId.IsMatch(door.ToDoor)) { report.Add(path + ".toDoor", ValidationCode.InvalidValue, $"identifiant de porte « {door.ToDoor} » invalide."); ok = false; }
+                    if (door.Building != null)
+                    {
+                        SpaceObstacle? building = space?.Obstacles.FirstOrDefault(o => o.Id == door.Building);
+                        if (space != null && building is null) { report.Add(path + ".building", ValidationCode.UnknownReference, $"obstacle « {door.Building} » absent de l'espace du scénario."); ok = false; }
+                        else if (building != null && door.Position is { X: Fixed x, Z: Fixed z } && Gap(new GroundVector(x, z), building) > MaxDoorGap)
+                        { report.Add(path + ".position", ValidationCode.OutOfRange, $"porte à plus de {MaxDoorGap} m de son bâtiment « {door.Building} »."); ok = false; }
+                    }
+                    if (ok) doors.Add(new Door(door.Id!, door.Name!, Point(door.Position!), door.To!, door.ToDoor!, door.Building));
+                }
+            }
+
             Boss? boss = d.Boss is { } b ? CheckBoss(b, scenario, bossScenario, items, report, safePoints) : null;
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors));
+        }
+
+        /// <summary>Écart (m) entre un point et la boîte d'un obstacle (0 dedans ou sur le bord).</summary>
+        private static Fixed Gap(GroundVector p, SpaceObstacle o)
+        {
+            Fixed minX = o.Points.Min(q => q.X), maxX = o.Points.Max(q => q.X), minZ = o.Points.Min(q => q.Z), maxZ = o.Points.Max(q => q.Z);
+            long dx = Math.Max(0, Math.Max(checked(minX.Raw - p.X.Raw), checked(p.X.Raw - maxX.Raw)));
+            long dz = Math.Max(0, Math.Max(checked(minZ.Raw - p.Z.Raw), checked(p.Z.Raw - maxZ.Raw)));
+            // Écart réel arrondi par excès au dix-millième : comparé à MaxDoorGap sans racine en virgule flottante.
+            long d2 = checked(dx * dx + dz * dz);
+            long root = (long)Math.Sqrt(d2);
+            while (checked(root * root) < d2) root++;
+            while (root > 0 && checked((root - 1) * (root - 1)) >= d2) root--;
+            return Fixed.FromRaw(root);
+        }
+
+        /// <summary>
+        /// Intérieurs : les portes des zones reliées se répondent. Chaque porte mène à une zone de <paramref name="zones"/>, à une porte qui y
+        /// existe et qui ramène à elle (même zone, même porte) ; au plus <see cref="MaxLinkedZones"/> zones. Rend le rapport (valide s'il est vide).
+        /// </summary>
+        public static ValidationReport CheckDoors(IReadOnlyList<ZoneDefinition> zones, ValidationReport? report = null)
+        {
+            if (zones is null) throw new ArgumentNullException(nameof(zones));
+            report ??= new ValidationReport();
+            if (zones.Count > MaxLinkedZones) report.Add("$", ValidationCode.LimitExceeded, $"{zones.Count} zones reliées, au plus {MaxLinkedZones}.");
+            var byId = new Dictionary<string, ZoneDefinition>(StringComparer.Ordinal);
+            foreach (ZoneDefinition z in zones)
+                if (!byId.ContainsKey(z.Id)) byId.Add(z.Id, z);
+                else report.Add("$", ValidationCode.DuplicateId, $"zone « {z.Id} » donnée deux fois.");
+            foreach (ZoneDefinition z in zones)
+                for (int i = 0; i < z.Doors.Count; i++)
+                {
+                    Door door = z.Doors[i];
+                    string path = $"$.data.doors[{i}]";
+                    if (!byId.TryGetValue(door.To, out ZoneDefinition? target))
+                        report.Add(path + ".to", ValidationCode.UnknownReference, $"{z.Id}, porte « {door.Id} » : zone « {door.To} » inconnue.");
+                    else if (target.DoorOf(door.ToDoor) is not Door back)
+                        report.Add(path + ".toDoor", ValidationCode.UnknownReference, $"{z.Id}, porte « {door.Id} » : porte « {door.ToDoor} » absente de {target.Id}.");
+                    else if (back.To != z.Id || back.ToDoor != door.Id)
+                        report.Add(path + ".toDoor", ValidationCode.InvalidValue,
+                            $"{z.Id}, porte « {door.Id} » : la porte « {back.Id} » de {target.Id} mène à « {back.To} », porte « {back.ToDoor} », et non ici.");
+                }
+            return report;
         }
 
         public const int MaxForms = 8, MaxRewards = 8;

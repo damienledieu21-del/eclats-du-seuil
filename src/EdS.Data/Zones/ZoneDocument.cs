@@ -38,6 +38,40 @@ namespace EdS.Data.Zones
         /// zone, affichage seulement (le moteur ne les connaît pas) ; facultatif.
         /// </summary>
         public List<RoadData?>? Roads { get; set; }
+
+        /// <summary>
+        /// Intérieurs (schéma 4, choix de Damien du 28 octobre 2026 : « on fait la façon 1 », une porte qui mène à un intérieur séparé) :
+        /// la zone est un intérieur (une pièce : l'aire praticable en est le sol, ses bords les murs) ; facultatif, faux par défaut.
+        /// Affichage seulement.
+        /// </summary>
+        public bool? Indoor { get; set; }
+
+        /// <summary>Intérieurs (schéma 4) : portes vers d'autres zones ; facultatif.</summary>
+        public List<DoorData?>? Doors { get; set; }
+    }
+
+    /// <summary>
+    /// Intérieurs (schéma 4) : une porte, place où l'on se tient pour passer dans une autre zone, et où l'on arrive en venant d'elle. Elle
+    /// mène à la porte <see cref="ToDoor"/> de la zone <see cref="To"/>, qui ramène à celle-ci.
+    /// </summary>
+    public sealed class DoorData
+    {
+        public string? Id { get; set; }
+
+        /// <summary>Nom affiché de ce qu'il y a derrière (« Auberge du Pont »).</summary>
+        public string? Name { get; set; }
+
+        /// <summary>Place de la porte, où se tient le personnage (et où il arrive) : [x, z].</summary>
+        public PointData? Position { get; set; }
+
+        /// <summary>Zone où elle mène (« zone.auberge »).</summary>
+        public string? To { get; set; }
+
+        /// <summary>Porte de cette zone où l'on arrive.</summary>
+        public string? ToDoor { get; set; }
+
+        /// <summary>Obstacle du scénario (le bâtiment) dont c'est la porte ; facultatif. Affichage : la façade du bâtiment est tournée vers elle.</summary>
+        public string? Building { get; set; }
     }
 
     /// <summary>Vallons agrandis (schéma 3) : une route ou un chemin, ligne brisée de largeur constante.</summary>

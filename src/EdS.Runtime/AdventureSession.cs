@@ -24,15 +24,19 @@ namespace EdS.Runtime
     /// <summary>Essai réaliste 7 : lieu et combat autour du personnage, pour la musique et les ambiances (voir <see cref="AdventureSession.Mood"/>).</summary>
     public readonly struct AdventureMood
     {
-        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance)
+        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false)
         {
             InVillage = inVillage;
             Fighting = fighting;
             BossEngaged = bossEngaged;
             RiverDistance = riverDistance;
+            Indoors = indoors;
         }
 
         public bool InVillage { get; }
+
+        /// <summary>Intérieurs : le personnage est dans un intérieur (ni vent, ni oiseaux, ni rivière).</summary>
+        public bool Indoors { get; }
         public bool Fighting { get; }
         public bool BossEngaged { get; }
 
@@ -121,7 +125,11 @@ namespace EdS.Runtime
     {
         public const string PlayerId = "bastion";
         public const string PlayerClass = "class.bastion";
+        /// <summary>Zone de départ, celle de l'histoire et des métiers (ses PNJ, ses lieux, ses nœuds et ses ateliers).</summary>
         public const string ZoneId = "zone.vallons";
+
+        /// <summary>Intérieurs : distance d'une porte pour la passer (provisoire).</summary>
+        public static readonly Fixed DoorRange = Fixed.FromInt(2);
 
         /// <summary>Portée de choix de la cible (provisoire) : les ennemis en vue à 20 m au plus, du plus proche au plus loin.</summary>
         public static readonly Fixed TargetRange = Fixed.FromInt(20);
@@ -141,7 +149,11 @@ namespace EdS.Runtime
         private readonly GameData _data;
         private readonly CharacterProgression _progression;
         private readonly ItemCatalog _items;
-        private readonly ZoneDefinition _zone;
+        /// <summary>Intérieurs : zone où se trouve le personnage (la zone de départ, ou un intérieur).</summary>
+        private ZoneDefinition _zone;
+
+        /// <summary>Intérieurs : zones reliées par des portes, la zone de départ (<see cref="ZoneId"/>) en premier.</summary>
+        private readonly IReadOnlyList<ZoneDefinition> _zones;
         private readonly StoryBook _story;
         private readonly CraftingBook _crafting;
         private readonly List<string> _messages = new List<string>();
@@ -162,22 +174,27 @@ namespace EdS.Runtime
         /// <summary>La sauvegarde trouvée était illisible (ainsi que sa copie) : nouvelle partie, motif dans <see cref="SaveProblem"/>.</summary>
         public string? SaveProblem { get; }
 
-        private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, ZoneDefinition zone, TextCatalog texts,
+        private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
             StoryBook story, CraftingBook crafting, string savePath)
         {
             _data = data;
             _progression = progression;
             _items = items;
-            _zone = zone;
+            _zones = zones;
+            ZoneDefinition start = zones[0];
             Texts = texts;
             _story = story;
             _crafting = crafting;
             SavePath = savePath;
-            _lastSafePoint = zone.Entry.Id;
             SaveReadResult read = SaveStore.Read(savePath);
             SaveProblem = read.Problem;
-            WorldSave save = read.Save ?? new WorldSave(zone.Id, 0, 0, Array.Empty<string>(), PlayerCharacters.Create(PlayerId, PlayerClass, progression));
+            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), PlayerCharacters.Create(PlayerId, PlayerClass, progression));
             if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, PlayerCharacters.Create(PlayerId, PlayerClass, progression));
+            // Intérieurs : la partie reprend dans la zone de la sauvegarde (un intérieur : à son entrée) ; une zone que les données ne relient
+            // plus reprend à l'entrée de la zone de départ.
+            _zone = zones.FirstOrDefault(z => z.Id == save.Zone) ?? start;
+            if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character);
+            _lastSafePoint = _zone.Entry.Id;
             Open(save, null);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
             AnnounceLearned();
@@ -197,23 +214,28 @@ namespace EdS.Runtime
                 () => ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(dataDirectory), data).Report);
             ItemCatalogLoadResult items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(dataDirectory), data);
             ItemCatalog catalog = Need(items.Catalog, "objets", () => items.Report);
-            ZoneLoadResult zone = ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(dataDirectory, ZoneId), scenariosDirectory, data, catalog);
-            ZoneDefinition definition = Need(zone.Zone, "zone", () => zone.Report);
+            // Intérieurs : la zone de départ et toutes celles où mènent ses portes, de proche en proche ; les portes se répondent.
+            WorldZonesLoadResult zones = ZoneJsonReader.ReadLinked(dataDirectory, ZoneId, scenariosDirectory, data, catalog);
+            if (!zones.IsValid) throw new InvalidDataException($"Données du monde refusées (zone {zones.Zone}) : {zones.Report}");
+            ZoneDefinition definition = zones.Zones[0];
             TextsLoadResult texts = StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(dataDirectory));
             TextCatalog catalogTexts = Need(texts.Texts, "textes", () => texts.Report);
             StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog);
             CraftingLoadResult crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(dataDirectory), catalogTexts, definition, catalog);
-            return new AdventureSession(data, progression, catalog, definition, catalogTexts, Need(story.Story, "histoire", () => story.Report),
+            return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, Need(story.Story, "histoire", () => story.Report),
                 Need(crafting.Book, "métiers", () => crafting.Report), savePath);
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
             value ?? throw new InvalidDataException($"Données du monde refusées ({what}) : {report()}");
 
-        /// <summary>Ouvre une session de la zone sur <paramref name="save"/>, au point sûr <paramref name="safePoint"/> (null : l'entrée).</summary>
-        private void Open(WorldSave save, string? safePoint)
+        /// <summary>
+        /// Ouvre une session de la zone en cours sur <paramref name="save"/>, au point sûr <paramref name="safePoint"/> (null : l'entrée), ou à la
+        /// porte <paramref name="door"/> (intérieurs). L'histoire et les métiers restent ceux de la zone de départ.
+        /// </summary>
+        private void Open(WorldSave save, string? safePoint, string? door = null)
         {
-            WorldSession world = new WorldSession(save, _zone, _data, _progression, _items, _story, _crafting, null, safePoint);
+            WorldSession world = new WorldSession(save, _zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId);
             World = world;
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, PlayerId, () => Collect(world, world.Step()), TargetRange);
             _drunk.Clear();
@@ -403,11 +425,11 @@ namespace EdS.Runtime
         private static bool Within(GroundVector a, GroundVector b, Fixed range) => Distance2(a, b) <= checked(range.Raw * range.Raw);
 
         /// <summary>PNJ à qui parler (le plus proche à portée), ou null.</summary>
-        public Npc? NpcInReach => Me is GroundVector p
+        public Npc? NpcInReach => Me is GroundVector p && World.InStoryZone
             ? _story.Npcs.Where(n => Within(p, n.Position, Narrative.TalkRange)).OrderBy(n => Distance2(p, n.Position)).FirstOrDefault() : null;
 
         /// <summary>Nœud de récolte prêt le plus proche à portée, ou null.</summary>
-        public GatheringNode? NodeInReach => Me is GroundVector p
+        public GatheringNode? NodeInReach => Me is GroundVector p && World.InStoryZone
             ? _crafting.Nodes.Where(n => Within(p, n.Position, Workshop.GatherRange) && World.Workshop!.IsReady(n.Id, World.Zone.Engine.CurrentTick))
                 .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault() : null;
 
@@ -431,9 +453,72 @@ namespace EdS.Runtime
                 else Refused(refusal);
                 return refusal == CraftRefusal.None;
             }
+            if (DoorInReach != null) return UseDoor();
             Say("text.ui.nothing_here");
             return false;
         }
+
+        // --- Portes (intérieurs) ----------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Intérieurs (choix de Damien du 28 octobre 2026 : « on fait la façon 1 ») : porte de la zone à <see cref="DoorRange"/> du personnage
+        /// vivant (la plus proche), ou null.
+        /// </summary>
+        public Door? DoorInReach => Me is GroundVector p && !World.IsDefeated
+            ? _zone.Doors.Where(d => Within(p, d.Position, DoorRange)).OrderBy(d => Distance2(p, d.Position)).ThenBy(d => d.Id, StringComparer.Ordinal).FirstOrDefault()
+            : null;
+
+        /// <summary>
+        /// La porte à portée se passe : personnage vivant, aucun ennemi vivant à moins de <see cref="RestSafety"/> (on ne fuit pas un combat
+        /// par une porte, même règle que la halte), aucun dialogue ouvert.
+        /// </summary>
+        public bool CanUseDoor => DoorInReach != null && Dialogue is null && !MustContinue
+            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any();
+
+        /// <summary>
+        /// Passe la porte à portée : la partie est sauvegardée dans la zone où elle mène, puis une session de cette zone s'ouvre, le personnage
+        /// arrivant à la porte qui ramène ici (PV pleins ; niveau, équipement et talents pris en compte, comme à une halte). Rend faux, sans
+        /// rien changer, si la porte ne se passe pas (<see cref="CanUseDoor"/> ; un message dit pourquoi) ou si la sauvegarde échoue (disque
+        /// plein : le motif s'affiche).
+        /// </summary>
+        public bool UseDoor()
+        {
+            if (!(DoorInReach is Door door)) return false;
+            if (!CanUseDoor)
+            {
+                Say("text.ui.door_blocked");
+                return false;
+            }
+            ZoneDefinition target = _zones.First(z => z.Id == door.To);
+            WorldSave here = World.Save();
+            var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character);
+            try
+            {
+                Write(moved);
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is NotSupportedException)
+            {
+                Say("text.ui.save_failed", e.Message);
+                return false;
+            }
+            Door arrival = target.DoorOf(door.ToDoor)!;
+            _zone = target;
+            // La reprise après une défaite ou une fin de session se fait au point sûr de la zone le plus proche de la porte d'arrivée.
+            _lastSafePoint = target.SafePoints.OrderBy(sp => Distance2(sp.Position, arrival.Position)).ThenBy(sp => sp.Id, StringComparer.Ordinal).First().Id;
+            Open(moved, null, arrival.Id);
+            Say("text.ui.door_entered", target.Name);
+            AnnounceLearned();
+            return true;
+        }
+
+        /// <summary>Intérieurs : la zone en cours est un intérieur.</summary>
+        public bool Indoors => _zone.Indoor;
+
+        /// <summary>Intérieurs : identifiant de la zone en cours (« zone.vallons », « zone.auberge »).</summary>
+        public string CurrentZone => _zone.Id;
+
+        /// <summary>Intérieurs : portes de la zone en cours (nom de ce qu'il y a derrière), pour les montrer.</summary>
+        public IReadOnlyList<WorldMarker> Doors() => _zone.Doors.Select(d => new WorldMarker(d.Id, d.Name, d.Position)).ToList();
 
         /// <summary>Dialogue ouvert (clés de texte), ou null.</summary>
         public DialogueView? Dialogue => World.Narrative?.Open;
@@ -637,10 +722,14 @@ namespace EdS.Runtime
             return n is null ? Array.Empty<string>() : _story.Discoveries.Where(d => n.Discoveries.Contains(d.Id)).Select(d => Text(d.Text)).ToList();
         }
 
-        public IReadOnlyList<WorldMarker> Npcs() => _story.Npcs.Select(n => new WorldMarker(n.Id, Text(n.Name), n.Position)).ToList();
+        /// <summary>PNJ de l'histoire (dans la zone de l'histoire seulement : aucun dans un intérieur).</summary>
+        public IReadOnlyList<WorldMarker> Npcs() => World.InStoryZone
+            ? _story.Npcs.Select(n => new WorldMarker(n.Id, Text(n.Name), n.Position)).ToList() : (IReadOnlyList<WorldMarker>)Array.Empty<WorldMarker>();
 
-        public IReadOnlyList<WorldMarker> Nodes() => _crafting.Nodes
-            .Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.Workshop!.IsReady(n.Id, World.Zone.Engine.CurrentTick))).ToList();
+        /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
+        public IReadOnlyList<WorldMarker> Nodes() => World.InStoryZone
+            ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.Workshop!.IsReady(n.Id, World.Zone.Engine.CurrentTick))).ToList()
+            : (IReadOnlyList<WorldMarker>)Array.Empty<WorldMarker>();
 
         public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();
 
@@ -648,7 +737,7 @@ namespace EdS.Runtime
         /// Essai du 12.9 (Damien, 25 octobre 2026) : ateliers où l'on fabrique (lieux des recettes, la forge de Maëlle), au centre de leur lieu,
         /// pour qu'on les voie dans la zone.
         /// </summary>
-        public IReadOnlyList<WorldMarker> Workshops() => _crafting.Recipes.Select(r => r.Place).Distinct(StringComparer.Ordinal)
+        public IReadOnlyList<WorldMarker> Workshops() => !World.InStoryZone ? Array.Empty<WorldMarker>() : (IReadOnlyList<WorldMarker>)_crafting.Recipes.Select(r => r.Place).Distinct(StringComparer.Ordinal)
             .Select(id => _zone.Places.FirstOrDefault(p => p.Id == id)).Where(p => p != null)
             .Select(p => new WorldMarker(p!.Id, p.Name, new GroundVector(Fixed.FromRaw((p.Min.X.Raw + p.Max.X.Raw) / 2), Fixed.FromRaw((p.Min.Z.Raw + p.Max.Z.Raw) / 2))))
             .ToList();
@@ -673,7 +762,8 @@ namespace EdS.Runtime
                         Roads(_zone),
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
                         Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
-                            .Concat(Nodes().Select(n => (n.X, n.Z))));
+                            .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
+                        _zone.Doors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor);
                     _mapSession = Opened;
                 }
                 return _map;
@@ -698,6 +788,7 @@ namespace EdS.Runtime
             list.AddRange(SafePoints().Select(s => new MapMarker(MapMarkerKind.SafePoint, s.Name, s.X, s.Z)));
             list.AddRange(Workshops().Select(w => new MapMarker(MapMarkerKind.Workshop, w.Name, w.X, w.Z)));
             list.AddRange(Nodes().Select(n => new MapMarker(MapMarkerKind.Node, n.Name, n.X, n.Z)));
+            list.AddRange(Doors().Select(d => new MapMarker(MapMarkerKind.Door, d.Name, d.X, d.Z)));
             if (Me is GroundVector me) list.Add(new MapMarker(MapMarkerKind.Player, Text("text.ui.map.you"), Meters(me.X), Meters(me.Z)));
             if (Objective is MapMarker objective) list.Add(objective);
             return list;
@@ -718,6 +809,13 @@ namespace EdS.Runtime
                 {
                     if (!(n.CurrentStep(q.Id) is QuestStep step)) continue;
                     string label = Text("text.ui.map.objective");
+                    // Intérieurs : l'étape se joue dehors ; dans un intérieur, l'objectif est sa porte (la première).
+                    if (!World.InStoryZone)
+                    {
+                        if (step.Objective.Kind == ObjectiveKind.Collect || _zone.Doors.Count == 0) return null;
+                        Door exit = _zone.Doors[0];
+                        return new MapMarker(MapMarkerKind.Objective, label, Meters(exit.Position.X), Meters(exit.Position.Z));
+                    }
                     var o = step.Objective;
                     switch (o.Kind)
                     {
@@ -744,7 +842,7 @@ namespace EdS.Runtime
             && dialogue.Nodes.Any(node => node.Choices.Any(c => c.Effects.Any(e => e.Kind == kind && e.Id == id))));
 
         /// <summary>Atelier où se trouve le personnage (nom), ou null.</summary>
-        public string? WorkshopHere => Me is GroundVector p
+        public string? WorkshopHere => Me is GroundVector p && World.InStoryZone
             && _zone.PlacesAt(p).FirstOrDefault(place => _crafting.Recipes.Any(r => r.Place == place.Id)) is Place here ? here.Name : null;
 
         /// <summary>Lieu où se trouve le personnage (nom), ou le nom de la zone.</summary>
@@ -770,7 +868,7 @@ namespace EdS.Runtime
         {
             if (!(Me is GroundVector p) || World.IsDefeated) return new AdventureMood(false, false, false, double.NaN);
             // Vallons agrandis : le bourg et le hameau sont habités comme le village.
-            bool village = _zone.PlacesAt(p).Any(x => TownRules.Inhabited(x.Id));
+            bool village = _zone.Indoor || _zone.PlacesAt(p).Any(x => TownRules.Inhabited(x.Id));
             // Relecture de l'essai 7 : une seule recherche (la plus large), puis la distance de chaque ennemi trouvé.
             bool fighting = false, boss = false;
             long rest2 = checked(RestSafety.Raw * RestSafety.Raw);
@@ -794,7 +892,7 @@ namespace EdS.Runtime
                 double d = Math.Max(0, -StyleRules.InsideDistance(x, z, water.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()));
                 river = double.IsNaN(river) ? d : Math.Min(river, d);
             }
-            return new AdventureMood(village, fighting, boss, river);
+            return new AdventureMood(village, fighting, boss, river, _zone.Indoor);
         }
 
         /// <summary>Formes du chef de la zone (pour l'affichage).</summary>

@@ -481,9 +481,32 @@ namespace EdS.Runtime
         /// <summary>Le fichier (chemin ou nom) correspond-il à <paramref name="slot"/> ? On juge le nom du fichier, pas ses dossiers.</summary>
         public static bool Matches(string path, StyleSlot slot)
         {
+            // Intérieurs : les meubles et objets des intérieurs (dossier « Interieurs ») ne sont pas du décor des Vallons.
+            if (InteriorRules.IsInterior(path)) return false;
             string file = Key(FileName(path));
             (string[] want, string[] avoid) = Models[slot];
             return want.Any(w => file.Contains(w)) && !avoid.Any(a => file.Contains(a));
+        }
+
+        /// <summary>
+        /// Intérieurs : carte de métal de Poly Haven qui va avec la carte de couleur <paramref name="colorPath"/> (« …_diff_1k.jpg » →
+        /// « …_metal_1k.exr », ou « …_metallic_1k.exr » pour les meubles gothiques), parmi <paramref name="maps"/> ; null s'il n'y en a pas.
+        /// </summary>
+        public static string? MetalFor(string? colorPath, IEnumerable<string> maps)
+        {
+            if (colorPath is null || maps is null) return null;
+            string name = System.IO.Path.GetFileNameWithoutExtension(colorPath.Replace('\\', '/')).ToLowerInvariant();
+            int at = name.LastIndexOf("_diff", StringComparison.Ordinal);
+            if (at < 0) return null;
+            var names = maps.Where(m => m != null)
+                .Select(m => (path: m, name: System.IO.Path.GetFileNameWithoutExtension(m.Replace('\\', '/')).ToLowerInvariant())).ToList();
+            foreach (string word in new[] { "_metal", "_metallic" })
+            {
+                string want = name.Substring(0, at) + word + name.Substring(at + 5);
+                foreach (var map in names)
+                    if (map.name == want) return map.path;
+            }
+            return null;
         }
 
         /// <summary>Le fichier vient-il d'une source réaliste (rangé dans un dossier Poly Haven ou Mixamo) ?</summary>
@@ -706,7 +729,7 @@ namespace EdS.Runtime
             return (paths ?? Array.Empty<string>()).Where(p =>
                 {
                     string file = Key(FileName(p));
-                    return want.Any(w => file.Contains(w)) && !avoid.Any(a => file.Contains(a));
+                    return want.Any(w => file.Contains(w)) && !avoid.Any(a => file.Contains(a)) && !InteriorRules.IsInterior(p);
                 })
                 .OrderBy(p => p.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
                 .ThenBy(p => IsRealistic(p) ? 0 : 1)
@@ -768,6 +791,9 @@ namespace EdS.Runtime
             !IsNormalMap(path) && !Words(path).Any(w => w == "rough" || w == "roughness" || w == "ao" || w == "disp" || w == "height" || w == "arm"
                 || w == "spec" || w == "specular" || w == "metal" || w == "metallic" || w == "gloss" || w == "alpha" || w == "opacity" || w == "mask"
                 || w == "glow" || w == "emission" || w == "emissive" || w == "translucency" || w == "transmission" || w == "opass");
+
+        /// <summary>Intérieurs : carte de métal (« _metal_ », « _metallic_ »), une donnée que Unity lit sans correction de couleur.</summary>
+        public static bool IsMetalMap(string path) => Words(path).Any(w => w == "metal" || w == "metallic");
 
         /// <summary>Carte de transparence (« _alpha_ », « _opacity », « _opass » du moulin de Sketchfab).</summary>
         public static bool IsAlphaMap(string path) => Words(path).Any(w => w == "alpha" || w == "opacity" || w == "opass");

@@ -13,6 +13,20 @@ internal static class ScenarioTestData
     public static string MannequinJson => File.ReadAllText(MannequinPath);
     public static string ScenarioPath(string name) => Path.Combine(AppContext.BaseDirectory, "scenarios", name + ".json");
 
+    /// <summary>
+    /// Intérieurs (28 octobre 2026) : copie dans <paramref name="scenarios"/> les scénarios de zone livrés qui y manquent (les intérieurs
+    /// reliés aux Vallons par leurs portes, que l'aventure lit avec eux).
+    /// </summary>
+    public static void CopyMissingZoneScenarios(string scenarios)
+    {
+        Directory.CreateDirectory(Path.Combine(scenarios, "zones"));
+        foreach (string file in Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "scenarios", "zones"), "*.json"))
+        {
+            string target = Path.Combine(scenarios, "zones", Path.GetFileName(file));
+            if (!File.Exists(target)) File.Copy(file, target);
+        }
+    }
+
     public static GameData ShippedData { get; } = GameDataLoader.Load(DataDirectory).Data!;
 
     /// <summary>

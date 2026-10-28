@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 4,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.maison",
+    "name": "Maison du Bourg",
+    "scenario": "zones/maison",
+    "indoor": true,
+    "entry": "coin_du_feu",
+    "safePoints": [
+      {
+        "id": "coin_du_feu",
+        "name": "Coin du feu",
+        "position": [
+          -2.6,
+          0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "maison",
+        "name": "Maison du Bourg",
+        "min": [
+          -4,
+          -3
+        ],
+        "max": [
+          4,
+          3
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bourg d'Aube",
+        "position": [
+          0,
+          -2.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_maison"
+      }
+    ]
+  }
+}

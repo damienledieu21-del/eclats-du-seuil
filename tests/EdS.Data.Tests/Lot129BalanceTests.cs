@@ -43,6 +43,7 @@ public class Lot129BalanceTests
                     if ((string)c!["id"]! == creature) c["position"] = new JsonArray(-15, -12);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), zone.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));
+            CopyMissingZoneScenarios(directory);   // intérieurs : reliés aux Vallons par leurs portes
             ItemCatalog catalog = Items;
             ZoneDefinition z = ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, catalog).Zone!;
             SavedCharacter hero = PlayerCharacters.Create("bastion", "class.bastion", Progression).WithXp(xp).WithItems(items, new Dictionary<string, string>());

@@ -343,6 +343,7 @@ public class Essai7MoodTests : IDisposable
                 if ((string)c!["id"]! == "loup1") c["position"] = new JsonArray(-15, -12);
             File.WriteAllText(Path.Combine(scenarios, "zones", "vallons.json"), vallons.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(scenarios, "zones", "vallons_chef.json"));
+            CopyMissingZoneScenarios(scenarios);   // intérieurs : reliés aux Vallons par leurs portes
         }
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         AdventureSession a = AdventureSession.Load(DataDirectory, scenarios, savePath);

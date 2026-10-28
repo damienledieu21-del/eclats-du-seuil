@@ -428,6 +428,46 @@ namespace EdS.Runtime
             return best;
         }
 
+        /// <summary>
+        /// Intérieurs : façade d'un bâtiment <paramref name="id"/> : vers sa porte s'il en a une (<paramref name="doors"/> : on la voit où l'on
+        /// entre), sinon vers la route la plus proche (<see cref="Facing"/>).
+        /// </summary>
+        public static (int X, int Z) FacingOf(string id, double minX, double minZ, double maxX, double maxZ, IReadOnlyList<StyleRoad> roads,
+            IReadOnlyList<MapDoor>? doors)
+        {
+            MapDoor? door = doors?.FirstOrDefault(d => d.Building == id);
+            return door != null ? DoorSide(minX, minZ, maxX, maxZ, door.X, door.Z) : Facing(minX, minZ, maxX, maxZ, roads);
+        }
+
+        /// <summary>
+        /// Intérieurs : côté d'un bâtiment (boîte) le plus proche d'une porte en (<paramref name="x"/>, <paramref name="z"/>), en vecteur
+        /// unitaire le long d'un axe : la façade du bâtiment est tournée vers sa porte. À égalité : sud, nord, ouest, est.
+        /// </summary>
+        public static (int X, int Z) DoorSide(double minX, double minZ, double maxX, double maxZ, double x, double z)
+        {
+            static double Segment(double px, double pz, double ax, double az, double bx, double bz)
+            {
+                double cx = Math.Max(Math.Min(ax, bx), Math.Min(px, Math.Max(ax, bx))), cz = Math.Max(Math.Min(az, bz), Math.Min(pz, Math.Max(az, bz)));
+                return (px - cx) * (px - cx) + (pz - cz) * (pz - cz);
+            }
+            var sides = new[]
+            {
+                ((0, -1), Segment(x, z, minX, minZ, maxX, minZ)),
+                ((0, 1), Segment(x, z, minX, maxZ, maxX, maxZ)),
+                ((-1, 0), Segment(x, z, minX, minZ, minX, maxZ)),
+                ((1, 0), Segment(x, z, maxX, minZ, maxX, maxZ)),
+            };
+            (int X, int Z) best = sides[0].Item1;
+            double bestDistance = sides[0].Item2;
+            foreach (var (side, distance) in sides)
+                if (distance < bestDistance - 1e-9)
+                {
+                    best = side;
+                    bestDistance = distance;
+                }
+            return best;
+        }
+
         /// <summary>Le lieu <paramref name="placeId"/> est-il habité (bourg, village, hameau) ? Pour la musique et l'ambiance.</summary>
         public static bool Inhabited(string placeId)
         {

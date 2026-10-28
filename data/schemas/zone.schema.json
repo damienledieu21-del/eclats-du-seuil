@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/zone.schema.json",
   "title": "Éclats du Seuil — zone du monde",
-  "description": "Sous-lot 12.4. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ZoneValidator), avec le scénario de zone et le catalogue des objets. Schéma 3 (Vallons agrandis, 28 octobre 2026) : routes et chemins facultatifs (roads), affichage seulement.",
+  "description": "Sous-lot 12.4. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ZoneValidator), avec le scénario de zone et le catalogue des objets. Schéma 3 (Vallons agrandis, 28 octobre 2026) : routes et chemins facultatifs (roads), affichage seulement. Schéma 4 (intérieurs, 28 octobre 2026) : intérieur facultatif (indoor) et portes facultatives (doors) vers d'autres zones, qui se répondent.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 3
+      "const": 4
     },
     "kind": {
       "const": "zone"
@@ -330,6 +330,61 @@
                     "type": "number"
                   }
                 }
+              }
+            }
+          }
+        },
+        "indoor": {
+          "type": "boolean",
+          "description": "La zone est un intérieur (une pièce : l'aire en est le sol, ses bords les murs). Affichage seulement."
+        },
+        "doors": {
+          "type": "array",
+          "maxItems": 16,
+          "description": "Portes vers d'autres zones : on s'y tient pour passer, on y arrive en venant de la porte toDoor de la zone to, qui ramène ici.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "position",
+              "to",
+              "toDoor"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Ce qu'il y a derrière (« Auberge de l'Aube »)."
+              },
+              "position": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "to": {
+                "type": "string",
+                "pattern": "^zone\\.[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "toDoor": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "building": {
+                "type": "string",
+                "description": "Obstacle du scénario (le bâtiment) dont c'est la porte, à 2 m au plus ; sa façade est tournée vers elle.",
+                "pattern": "^[a-z][a-z0-9_]*$"
               }
             }
           }
