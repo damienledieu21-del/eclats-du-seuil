@@ -88,10 +88,27 @@ public class EssaiRealiste8Tests : IDisposable
         Assert.False(TownModels.Fit(7, 7, (0, 1), 16.57, 12.54, 1.06).Fits);
         // Une tour de 3 m sur 8 m serait grossie de plus de 1,4 : refusée.
         Assert.False(TownModels.Fit(8, 8, (0, 1), 3, 3, 1).Fits);
+        // Relecture indépendante : 82 % de la surface couverte mais 2,7 m de vide le long de x (le joueur buterait contre un mur
+        // invisible) : la pose ne tient pas ; tournée d'un quart de tour, elle couvre l'emprise jusqu'aux bords.
+        ModelFit gap = TownModels.Fit(12, 9, (0, 1), 7.8, 10, 1.06);
+        Assert.InRange(gap.Fill, TownModels.MinFill, 1);
+        Assert.InRange(gap.Cover, 0, TownModels.MinCover - 0.01);
+        Assert.False(gap.Fits);
+        ModelFit side = TownModels.Fit(12, 9, (1, 0), 7.8, 10, 1.06);
+        Assert.True(side.Fits);
+        Assert.InRange(side.Cover, 1, 1.07);
+        var inn = TownModels.Pick("auberge", 12, 9, (0, 1), new List<(double X, double Z)> { (7.8, 10) }, 1.06);
+        Assert.Equal(0, inn.Facing.Z);
+        Assert.True(inn.Fit.Fits);
         // Entrées absurdes : rien ne tient.
         Assert.False(TownModels.Fit(0, 6, (0, 1), 8, 8, 1).Fits);
         Assert.False(TownModels.Fit(8, 6, (0, 1), double.NaN, 8, 1).Fits);
         Assert.False(TownModels.Fit(8, 6, (0, 1), 8, 8, 0).Fits);
+        Assert.False(TownModels.Usable(TownModels.Fit(8, 6, (0, 1), 8, 8, 0)));
+        // Repli : montré s'il couvre les trois quarts de chaque axe sans être réduit ni grossi de plus de moitié.
+        Assert.True(TownModels.Usable(TownModels.Fit(8, 8, (0, 1), 13, 13, 1)));
+        Assert.False(TownModels.Usable(TownModels.Fit(8, 8, (0, 1), 3, 3, 1)));
+        Assert.False(TownModels.Usable(TownModels.Fit(7, 7, (0, 1), 16.57, 12.54, 1.06)));
     }
 
     [Fact]
@@ -132,6 +149,9 @@ public class EssaiRealiste8Tests : IDisposable
             Assert.InRange(pick.Model, 0, Delivered[kind].Length - 1);
             // La chapelle de Fagnolle (25 m de long) est la seule à être réduite sous l'échelle admise : elle reste la chapelle.
             if (kind != StyleBuilding.Chapel) Assert.True(pick.Fit.Fits, $"{o.Id} : aucun modèle ne tient");
+            Assert.True(TownModels.Usable(pick.Fit), $"{o.Id} : pose de repli trop déformée");
+            // Relecture indépendante : pas de vide de plus de 15 % le long d'un axe, où le joueur buterait contre un mur invisible.
+            if (kind != StyleBuilding.Chapel) Assert.True(pick.Fit.Cover >= TownModels.MinCover, $"{o.Id} : couverture {pick.Fit.Cover:0.00}");
             Assert.InRange(pick.Fit.ScaleY, 0.55, TownModels.MaxScale);
             if (kind == StyleBuilding.House)
             {
@@ -276,29 +296,75 @@ public class EssaiRealiste8Tests : IDisposable
         Assert.Equal(0.5, mix[StyleGround.Grass]);
     }
 
+    /// <summary>Formule du chemin avant l'essai 8 (TownRules.RoadMix des Vallons agrandis), recopiée telle quelle.</summary>
+    private static double OldRoadWeight(double x, double z, RoadHit hit)
+    {
+        if (hit.Road is null || hit.Edge > TownRules.RoadFade + 0.6) return 0;
+        double wobble = hit.Road.Paved ? 0 : 0.9 * (StyleRules.Noise(x * 0.45 + 31.7, z * 0.45 - 12.9) - 0.5);
+        return Math.Max(0, Math.Min(1, 0.5 - (hit.Edge + wobble) / TownRules.RoadFade));
+    }
+
     [Fact]
     public void La_part_du_chemin_et_de_la_berge_est_celle_d_avant()
     {
-        var road = new StyleRoad("r", new List<(double X, double Z)> { (0, 0), (20, 0) }, 4, false);
-        var roads = new List<StyleRoad> { road };
+        // Relecture indépendante : comparé à l'ancienne formule recopiée, pas à la nouvelle fonction qu'appelle RoadMix.
+        var roads = new List<StyleRoad>
+        {
+            new StyleRoad("terre", new List<(double X, double Z)> { (0, 0), (20, 0) }, 4, false),
+            new StyleRoad("pavee", new List<(double X, double Z)> { (0, 12), (20, 12) }, 5, true),
+        };
         var mix = new StyleMix(0.1, 0.2, 0.7);
-        for (double z = -5; z <= 5; z += 0.37)
+        for (double z = -5; z <= 17; z += 0.37)
             for (double x = -2; x <= 22; x += 1.3)
             {
                 RoadHit hit = TownRules.RoadAt(x, z, roads);
-                double w = TownRules.RoadWeight(x, z, hit);
-                Assert.InRange(w, 0, 1);
+                double old = OldRoadWeight(x, z, hit);
+                Assert.Equal(old, TownRules.RoadWeight(x, z, hit), 12);
                 StyleMix m = TownRules.RoadMix(mix, x, z, hit);
-                Assert.Equal(mix.Soil * (1 - w) + w, m.Soil, 12);
-                Assert.Equal(mix.Grass * (1 - w), m.Grass, 12);
+                Assert.Equal(mix.Soil * (1 - old) + old, m.Soil, 12);
+                Assert.Equal(mix.Rock * (1 - old), m.Rock, 12);
+                Assert.Equal(mix.Grass * (1 - old), m.Grass, 12);
             }
         Assert.Equal(1, TownRules.RoadWeight(10, 0, TownRules.RoadAt(10, 0, roads)), 9);
-        Assert.Equal(0, TownRules.RoadWeight(10, 9, TownRules.RoadAt(10, 9, roads)), 9);
-        for (double inside = -5; inside <= 5; inside += 0.5)
+        Assert.Equal(0, TownRules.RoadWeight(10, 6, TownRules.RoadAt(10, 6, roads)), 9);
+        for (double inside = -5; inside <= 5; inside += 0.25)
         {
-            double wet = StyleRules.RiverWet(inside);
+            // Formule de la berge avant l'essai 8 (StyleRules.RiverMix), recopiée.
+            double wet = Math.Max(0, Math.Min(1, (inside + StyleRules.RiverShore) / (2 * StyleRules.RiverShore)));
+            Assert.Equal(wet, StyleRules.RiverWet(inside), 12);
             Assert.Equal(mix.Soil * (1 - wet) + wet, StyleRules.RiverMix(mix, inside).Soil, 12);
+            Assert.Equal(mix.Grass * (1 - wet), StyleRules.RiverMix(mix, inside).Grass, 12);
         }
+    }
+
+    [Fact]
+    public void Les_cinq_couches_du_sol_font_toujours_un()
+    {
+        var mixes = new[] { new StyleMix(1, 0, 0), new StyleMix(0.1, 0.2, 0.7), new StyleMix(0, 0, 1), new StyleMix(0.3, 0.7, 0) };
+        double[] steps = { -0.5, 0, 0.25, 0.5, 0.75, 1, 1.5, double.NaN };
+        foreach (StyleMix mix in mixes)
+            foreach (double road in steps)
+                foreach (double field in steps)
+                    foreach (double wet in steps)
+                    {
+                        StyleLayers l = StyleRules.GroundLayers(mix, road, field, wet);
+                        foreach (double part in new[] { l.Soil, l.Rock, l.Grass, l.Road, l.Field }) Assert.InRange(part, 0, 1);
+                        Assert.Equal(1, l.Soil + l.Rock + l.Grass + l.Road + l.Field, 9);
+                    }
+        // Le champ l'emporte sur le chemin ; la berge reprend la terre, sans chemin ni champ sous l'eau.
+        StyleLayers both = StyleRules.GroundLayers(new StyleMix(0, 0, 1), 1, 1, 0);
+        Assert.Equal((0, 1), (both.Road, both.Field));
+        StyleLayers bank = StyleRules.GroundLayers(new StyleMix(0, 0, 1), 0.6, 0, 1);
+        Assert.Equal((1, 0, 0, 0, 0), (bank.Soil, bank.Rock, bank.Grass, bank.Road, bank.Field));
+        // Sans chemin ni champ (téléphone : le chemin est déjà dans le mélange), le mélange reste, la berge comme avant.
+        var plain = new StyleMix(0.1, 0.2, 0.7);
+        StyleLayers phone = StyleRules.GroundLayers(plain, 0, 0, 0.4);
+        Assert.Equal(plain.Soil * 0.6 + 0.4, phone.Soil, 12);
+        Assert.Equal(plain.Grass * 0.6, phone.Grass, 12);
+        Assert.Equal(0, phone.Road + phone.Field, 12);
+        // Un chemin à moitié sur l'herbe : la moitié de l'herbe devient chemin.
+        StyleLayers half = StyleRules.GroundLayers(new StyleMix(0, 0, 1), 0.5, 0, 0);
+        Assert.Equal((0.5, 0.5), (half.Grass, half.Road));
     }
 
     /// <summary>Prefabs importés chez Damien le 28 octobre 2026 (Viking Village, sa végétation du Book of the Dead, un pack d'effets).</summary>

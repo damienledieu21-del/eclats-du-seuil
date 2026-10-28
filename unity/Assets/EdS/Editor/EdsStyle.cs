@@ -114,18 +114,21 @@ namespace EdS.Game.Editor
             // Assets (rochers de Viking Village, fougères, herbes et buissons du Book of the Dead, végétation du Terrain Sample) d'abord ;
             // ceux de Poly Haven complètent.
             List<string> prefabs = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
-            catalog.Rocks = StyleRules.MergeDecor(StyleRules.SampleDecor(prefabs, StyleSlot.Rock, 6), StyleRules.ForCatalog(models, StyleSlot.Rock, 6), 6)
+            // Relecture indépendante : seuls les prefabs des exemples dont tous les matériaux se dessinent avec URP (pas une variante
+            // faite pour HDRP, qui sortirait rose).
+            List<string> samples = prefabs.Where(StyleRules.IsSample).Where(Renders).ToList();
+            catalog.Rocks = StyleRules.MergeDecor(StyleRules.SampleDecor(samples, StyleSlot.Rock, 6), StyleRules.ForCatalog(models, StyleSlot.Rock, 6), 6)
                 .Select(Load).Where(m => m != null).ToArray();
-            catalog.Plants = StyleRules.MergeDecor(StyleRules.SampleDecor(prefabs, StyleSlot.Plant, 12), StyleRules.ForCatalog(models, StyleSlot.Plant, 16), 20)
+            catalog.Plants = StyleRules.MergeDecor(StyleRules.SampleDecor(samples, StyleSlot.Plant, 12), StyleRules.ForCatalog(models, StyleSlot.Plant, 16), 20)
                 .Select(Load).Where(m => m != null).ToArray();
             catalog.Debris = StyleRules.ForCatalog(models, StyleSlot.Debris, 6).Select(Load).Where(m => m != null).ToArray();
             // Essai réaliste (demandes de Damien du 27 octobre 2026) : arbustes des haies, objets de la forge, ponton, herbe de l'Aube, moulin,
             // et le matériau de l'eau. L'échelle et la rotation réglées à la main sont gardées.
-            catalog.Shrubs = StyleRules.MergeDecor(StyleRules.SampleDecor(prefabs, StyleSlot.Shrub, 4), StyleRules.ForCatalog(models, StyleSlot.Shrub, 6), 8)
+            catalog.Shrubs = StyleRules.MergeDecor(StyleRules.SampleDecor(samples, StyleSlot.Shrub, 4), StyleRules.ForCatalog(models, StyleSlot.Shrub, 6), 8)
                 .Select(Load).Where(m => m != null).ToArray();
-            int sampleDecor = new[] { StyleSlot.Rock, StyleSlot.Plant, StyleSlot.Shrub }.Sum(s => StyleRules.SampleDecor(prefabs, s, 99).Count);
-            if (sampleDecor > 0) notes.Add("Décor des samples de Unity : " + StyleRules.SampleDecor(prefabs, StyleSlot.Rock, 6).Count + " rochers, "
-                + StyleRules.SampleDecor(prefabs, StyleSlot.Plant, 12).Count + " plantes, " + StyleRules.SampleDecor(prefabs, StyleSlot.Shrub, 4).Count + " buissons.");
+            int sampleDecor = new[] { StyleSlot.Rock, StyleSlot.Plant, StyleSlot.Shrub }.Sum(s => StyleRules.SampleDecor(samples, s, 99).Count);
+            if (sampleDecor > 0) notes.Add("Décor des samples de Unity : " + StyleRules.SampleDecor(samples, StyleSlot.Rock, 6).Count + " rochers, "
+                + StyleRules.SampleDecor(samples, StyleSlot.Plant, 12).Count + " plantes, " + StyleRules.SampleDecor(samples, StyleSlot.Shrub, 4).Count + " buissons.");
             catalog.Props = System.Enum.GetValues(typeof(StyleProp)).Cast<StyleProp>()
                 .Select(kind =>
                 {
@@ -353,7 +356,8 @@ namespace EdS.Game.Editor
 
         /// <summary>
         /// Un matériau de particules de l'ancien rendu passé sur <paramref name="urp"/> : texture et couleur (« _MainTex », « _Color » ou
-        /// « _TintColor » des anciens shaders, doublée comme eux), mode de mélange, mode de couleur, mélange des images d'une planche. Les
+        /// « _TintColor » des anciens shaders, doublée comme eux), mode de mélange, mode de couleur, mélange des images d'une planche, faces
+        /// dessinées (les deux pour les anciens shaders), relief et brillance des particules éclairées. Les
         /// particules douces et le fondu près de la caméra sont coupés (ils demandent la profondeur de l'image) ; une distorsion (l'air qui
         /// ondule, qui demande l'image opaque) devient invisible plutôt qu'un disque gris.
         /// </summary>
@@ -376,6 +380,11 @@ namespace EdS.Game.Editor
             bool distortion = m.HasProperty("_DistortionEnabled") && m.GetFloat("_DistortionEnabled") > 0.5f;
             bool emission = m.HasProperty("_EmissionEnabled") && m.GetFloat("_EmissionEnabled") > 0.5f;
             Color glow = emission && m.HasProperty("_EmissionColor") ? m.GetColor("_EmissionColor") : new Color(0f, 0f, 0f, 1f);
+            // Relecture indépendante de l'essai 8 : les anciens shaders de particules dessinent les deux faces sans le noter dans le
+            // matériau (pas de « _Cull ») ; URP n'en dessinerait qu'une. Relief et brillance des particules éclairées gardés.
+            float cull = m.HasProperty("_Cull") ? m.GetFloat("_Cull") : 0f;
+            bool bump = m.HasProperty("_BumpMap") && m.GetTexture("_BumpMap") != null;
+            float smoothness = m.HasProperty("_Glossiness") ? m.GetFloat("_Glossiness") : 0.5f;
 
             m.shader = urp;
             m.shaderKeywords = new string[0];
@@ -392,6 +401,9 @@ namespace EdS.Game.Editor
             m.SetFloat("_SrcBlendAlpha", blend.SrcAlpha);
             m.SetFloat("_DstBlendAlpha", blend.DstAlpha);
             m.SetFloat("_ZWrite", blend.ZWrite ? 1f : 0f);
+            m.SetFloat("_Cull", cull);
+            m.SetFloat("_Smoothness", smoothness);
+            if (bump) m.EnableKeyword("_NORMALMAP");
             m.SetOverrideTag("RenderType", blend.Surface == 1 ? "Transparent" : blend.AlphaClip ? "TransparentCutout" : "Opaque");
             if (blend.Surface == 1) m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             if (blend.Keyword != null) m.EnableKeyword(blend.Keyword);
@@ -415,6 +427,15 @@ namespace EdS.Game.Editor
             m.renderQueue = blend.Queue;
             EditorUtility.SetDirty(m);
         }
+
+        /// <summary>
+        /// Essai réaliste 8 (relecture indépendante) : le prefab se dessine-t-il avec le rendu du projet (tous ses matériaux sur un shader
+        /// compilé) ? Une variante faite pour HDRP ou pour l'ancien rendu sortirait rose.
+        /// </summary>
+        private static bool Renders(string path) =>
+            Load(path) is GameObject prefab && prefab.GetComponentsInChildren<Renderer>(true).Length > 0
+            && prefab.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials ?? new Material[0])
+                .All(m => m != null && m.shader != null && m.shader.isSupported);
 
         /// <summary>Animations d'un fichier (sans les aperçus de l'éditeur).</summary>
         private static IEnumerable<AnimationClip> Clips(string path) =>

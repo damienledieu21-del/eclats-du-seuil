@@ -298,6 +298,25 @@ namespace EdS.Runtime
             ground == StyleGround.Soil ? Soil : ground == StyleGround.Rock ? Rock : ground == StyleGround.Grass ? Grass : 0;
     }
 
+    /// <summary>Essai réaliste 8 : parts des cinq couches du terrain en un point (terre, roche, herbe, chemin, champ).</summary>
+    public readonly struct StyleLayers
+    {
+        public StyleLayers(double soil, double rock, double grass, double road, double field)
+        {
+            Soil = soil;
+            Rock = rock;
+            Grass = grass;
+            Road = road;
+            Field = field;
+        }
+
+        public double Soil { get; }
+        public double Rock { get; }
+        public double Grass { get; }
+        public double Road { get; }
+        public double Field { get; }
+    }
+
     /// <summary>
     /// Essai de style (décision de Damien du 25 octobre 2026 : « un petit essai de style » après le 12.9, avant le lot 13, avec des packs
     /// gratuits) : règles sans Unity, testées, pour habiller les Vallons avec des modèles et des sons déposés par Damien dans
@@ -1557,6 +1576,22 @@ namespace EdS.Runtime
 
         /// <summary>Part de la terre mouillée près de la rivière (0 à 1), celle que <see cref="RiverMix"/> verse dans la terre.</summary>
         public static double RiverWet(double inside) => Math.Max(0, Math.Min(1, (inside + RiverShore) / (2 * RiverShore)));
+
+        /// <summary>
+        /// Essai réaliste 8 (relecture indépendante : calcul sorti du terrain de Unity pour être testé) : parts des cinq couches du sol en un
+        /// point. Le chemin (<paramref name="road"/>) et le champ (<paramref name="field"/>) prennent leur part du mélange
+        /// <paramref name="mix"/>, le champ l'emporte sur le chemin, et la berge de la rivière (<paramref name="wet"/>) reprend la terre
+        /// partout (pas de chemin ni de champ sous l'eau). Parts bornées à [0, 1] ; la somme fait 1 quand celle du mélange fait 1.
+        /// </summary>
+        public static StyleLayers GroundLayers(StyleMix mix, double road, double field, double wet)
+        {
+            double Clamp(double v) => double.IsNaN(v) ? 0 : Math.Max(0, Math.Min(1, v));
+            field = Clamp(field);
+            road = field > 0 ? 0 : Clamp(road);
+            wet = Clamp(wet);
+            double rest = 1 - road - field, dry = 1 - wet;
+            return new StyleLayers(mix.Soil * rest * dry + wet, mix.Rock * rest * dry, mix.Grass * rest * dry, road * dry, field * dry);
+        }
 
         /// <summary>Angle (degrés, 0 vers +z, 90 vers +x, comme Unity) pour regarder de (fromX, fromZ) vers (toX, toZ).</summary>
         public static double FaceYaw(double fromX, double fromZ, double toX, double toZ) =>

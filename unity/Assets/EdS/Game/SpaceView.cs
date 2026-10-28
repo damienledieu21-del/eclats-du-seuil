@@ -401,7 +401,8 @@ namespace EdS.Game
             if (models.Count == 0) return false;
             var feet = models.Select(m => ((double)m.Size.x, (double)m.Size.y)).ToList();
             (int index, (int X, int Z) face, ModelFit fit) = TownModels.Pick(id, x1 - x0, z1 - z0, facing, feet, TownModels.Overflow(kind));
-            if (index < 0) return false;
+            // Relecture indépendante de l'essai 8 : une pose de repli trop déformée laisse le bâtiment fait par le code.
+            if (index < 0 || !TownModels.Usable(fit)) return false;
             var center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
             var go = new GameObject(id + " (bâtiment)");
             go.transform.SetParent(_root.transform, false);
@@ -432,6 +433,8 @@ namespace EdS.Game
             public float Along;
             public bool Back;
             public float Yaw;
+            /// <summary>Hauteur du centre du corps (m) : 1 m, fois la taille du villageois.</summary>
+            public float Height = 1f;
         }
 
         private readonly List<Villager> _villagers = new List<Villager>();
@@ -459,14 +462,19 @@ namespace EdS.Game
                 body.transform.position = new Vector3((float)v.X, 1f, (float)v.Z);
                 body.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
                 body.transform.rotation = Quaternion.Euler(0f, (float)v.Yaw, 0f);
-                StyleBody look = StyleLook.Dress(body, StyleSlot.Character, v.Character, 1.75f + 0.01f * (StyleRules.Variant(v.Id, 11) - 5));
+                StyleBody look = StyleLook.Dress(body, StyleSlot.Character, v.Character, 1.8f);
                 if (look == null)
                 {
                     Object.Destroy(body);
                     continue;
                 }
+                // Tailles variées (± 5 %) : la hauteur du personnage du catalogue l'emporte dans Dress (relecture indépendante de l'essai 8) ;
+                // le corps entier est donc mis à l'échelle après, les pieds restant au sol (bas de la capsule à 1 m sous son centre).
+                float size = 1f + 0.01f * (StyleRules.Variant(v.Id, 11) - 5);
+                body.transform.localScale = body.transform.localScale * size;
+                body.transform.position = new Vector3((float)v.X, size, (float)v.Z);
                 look.Loop(v.Activity, StyleRules.Variant(v.Id, 97));
-                _villagers.Add(new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw });
+                _villagers.Add(new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size });
             }
         }
 
@@ -487,7 +495,7 @@ namespace EdS.Game
                 }
                 float target = (float)StyleRules.FaceYaw(0, 0, v.Back ? -dx : dx, v.Back ? -dz : dz);
                 v.Yaw = (float)StyleRules.Turn(v.Yaw, target, 200f * deltaTime);
-                v.Body.position = new Vector3((float)v.Data.X + dx * v.Along, 1f, (float)v.Data.Z + dz * v.Along);
+                v.Body.position = new Vector3((float)v.Data.X + dx * v.Along, v.Height, (float)v.Data.Z + dz * v.Along);
                 v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
             }
         }

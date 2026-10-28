@@ -11,13 +11,14 @@ namespace EdS.Runtime
     /// </summary>
     public readonly struct ModelFit
     {
-        public ModelFit(double yaw, double scaleX, double scaleZ, double fill, bool fits)
+        public ModelFit(double yaw, double scaleX, double scaleZ, double fill, double cover, bool fits)
         {
             Yaw = yaw;
             ScaleX = scaleX;
             ScaleZ = scaleZ;
             ScaleY = Math.Sqrt(scaleX * scaleZ);
             Fill = fill;
+            Cover = cover;
             Fits = fits;
         }
 
@@ -36,7 +37,17 @@ namespace EdS.Runtime
         /// <summary>Part de l'emprise couverte par le pied du modèle (1 : toute ; plus de 1 : il déborde, avant-toits compris).</summary>
         public double Fill { get; }
 
-        /// <summary>Le modèle tient-il sur l'emprise sans être trop réduit, trop grossi ou trop déformé ?</summary>
+        /// <summary>
+        /// Relecture indépendante de l'essai 8 : part de l'emprise couverte le long de son axe le moins couvert (1 : jusqu'au bord ; pour le
+        /// puits et la tour, voulus plus petits que leur emprise, jusqu'à leur taille voulue). Une pose peut couvrir 70 % de la surface en
+        /// laissant plus d'un mètre de vide d'un côté : le joueur y buterait contre un mur invisible.
+        /// </summary>
+        public double Cover { get; }
+
+        /// <summary>
+        /// Le modèle tient-il sur l'emprise sans être trop réduit, trop grossi ou trop déformé, et jusqu'à ses bords
+        /// (<see cref="TownModels.MinCover"/>) ?
+        /// </summary>
         public bool Fits { get; }
     }
 
@@ -103,6 +114,12 @@ namespace EdS.Runtime
         /// <summary>Part de l'emprise qu'un modèle doit couvrir au moins.</summary>
         public const double MinFill = 0.7;
 
+        /// <summary>
+        /// Couverture minimale de l'emprise le long de chaque axe pour qu'une pose tienne (relecture indépendante de l'essai 8 : l'auberge,
+        /// porte vers la route, laissait 1,4 m de vide de chaque côté, où le joueur butait contre l'obstacle).
+        /// </summary>
+        public const double MinCover = 0.85;
+
         /// <summary>Distance (m) gardée entre un villageois et un obstacle.</summary>
         public const double VillagerMargin = 0.6;
 
@@ -163,7 +180,7 @@ namespace EdS.Runtime
         /// </summary>
         public static ModelFit Fit(double footX, double footZ, (int X, int Z) facing, double modelX, double modelZ, double overflow)
         {
-            if (!(footX > 0) || !(footZ > 0) || !(modelX > 0) || !(modelZ > 0) || !(overflow > 0)) return new ModelFit(0, 1, 1, 0, false);
+            if (!(footX > 0) || !(footZ > 0) || !(modelX > 0) || !(modelZ > 0) || !(overflow > 0)) return new ModelFit(0, 1, 1, 0, 0, false);
             double yaw = FacingYaw(facing);
             bool turned = facing.X != 0;
             double wx = turned ? modelZ : modelX, dz = turned ? modelX : modelZ;
@@ -172,17 +189,29 @@ namespace EdS.Runtime
             sx = Math.Min(sx, low * MaxStretch);
             sz = Math.Min(sz, low * MaxStretch);
             double fill = wx * sx * dz * sz / (footX * footZ);
-            bool fits = fill >= MinFill && Math.Min(sx, sz) >= MinScale && Math.Max(sx, sz) <= MaxScale;
-            return new ModelFit(yaw, sx, sz, fill, fits);
+            // Le puits rond et la tour carrée sont voulus un peu plus petits que leur emprise (Overflow) : leur couverture se juge par
+            // rapport à cette taille voulue.
+            double reach = Math.Min(overflow, 1);
+            double cover = Math.Min(wx * sx / (footX * reach), dz * sz / (footZ * reach));
+            bool fits = fill >= MinFill && cover >= MinCover && Math.Min(sx, sz) >= MinScale && Math.Max(sx, sz) <= MaxScale;
+            return new ModelFit(yaw, sx, sz, fill, cover, fits);
         }
 
         /// <summary>
-        /// Note d'une pose : celles qui tiennent passent devant ; sinon la plus couvrante, pénalisée si elle est trop réduite ou trop
-        /// grossie.
+        /// Note d'une pose : celles qui tiennent passent devant ; sinon la plus couvrante le long de son axe le moins couvert, pénalisée si
+        /// elle est trop réduite ou trop grossie.
         /// </summary>
         private static double Quality(ModelFit fit) =>
-            fit.Fits ? 2 + Math.Min(fit.Fill, 1)
-                : Math.Min(fit.Fill, 1) * Math.Min(1, Math.Min(fit.ScaleX, fit.ScaleZ) / MinScale) * Math.Min(1, MaxScale / Math.Max(fit.ScaleX, fit.ScaleZ));
+            fit.Fits ? 2 + Math.Min(fit.Cover, 1)
+                : Math.Min(fit.Cover, 1) * Math.Min(1, Math.Min(fit.ScaleX, fit.ScaleZ) / MinScale) * Math.Min(1, MaxScale / Math.Max(fit.ScaleX, fit.ScaleZ));
+
+        /// <summary>
+        /// Relecture indépendante de l'essai 8 : une pose de repli (aucun modèle ne tient) reste montrée si elle couvre au moins les trois
+        /// quarts de l'emprise le long de chaque axe sans être réduite ou grossie de plus de moitié ; sinon le bâtiment fait par le code reste
+        /// (un modèle de 3 m grossi trois fois sur une emprise de 8 m serait pire).
+        /// </summary>
+        public static bool Usable(ModelFit fit) =>
+            fit.Fits || fit.Cover >= 0.75 && Math.Min(fit.ScaleX, fit.ScaleZ) >= 0.5 && Math.Max(fit.ScaleX, fit.ScaleZ) <= 1.5;
 
         /// <summary>
         /// Choix stable du modèle d'un bâtiment <paramref name="id"/> parmi <paramref name="models"/> (pieds, m) et de sa face : d'abord

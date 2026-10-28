@@ -71,7 +71,7 @@ namespace EdS.Game
         /// <summary>
         /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : effets de combat des packs gratuits) : l'effet <paramref name="kind"/>
         /// d'un pack (catalogue), posé en <paramref name="at"/>, tourné de <paramref name="yaw"/> degrés, à l'échelle
-        /// <paramref name="scale"/> (particules comprises), retiré après sa durée. Sur ordinateur seulement ; false sans lui (les particules
+        /// <paramref name="scale"/> (particules comprises), éteint après sa durée (<see cref="PackEffect"/>). Sur ordinateur seulement ; false sans lui (les particules
         /// du jeu restent).
         /// </summary>
         private bool Pack(StyleVfx kind, Vector3 at, float yaw = 0f, float scale = 1f)
@@ -91,7 +91,8 @@ namespace EdS.Game
                     main.scalingMode = ParticleSystemScalingMode.Hierarchy;
                 }
             }
-            Object.Destroy(fx, Mathf.Max(0.3f, look.Life));
+            // Relecture indépendante : les auras en boucle cessent d'émettre à la fin de leur durée et s'éteignent, sans disparaître d'un coup.
+            fx.AddComponent<PackEffect>().Begin(look.Life);
             return true;
         }
 

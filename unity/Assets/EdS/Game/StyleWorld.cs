@@ -204,17 +204,16 @@ namespace EdS.Game
                                 else mix = new StyleMix(1, 0, 0);
                                 break;
                             }
-                    if (field > 0) road = 0;
                     // Chemin et champ prennent leur part ; la berge de la rivière reprend la terre partout (pas de chemin sous l'eau).
-                    double rest = extra ? 1 - road - field : 1;
                     double wet = banks.Count > 0 ? StyleRules.RiverWet(StyleRules.UnionDistance(x, z, rivers, banks)) : 0;
-                    maps[row, col, (int)StyleGround.Soil] = (float)((mix.Soil * rest) * (1 - wet) + wet);
-                    maps[row, col, (int)StyleGround.Rock] = (float)(mix.Rock * rest * (1 - wet));
-                    maps[row, col, (int)StyleGround.Grass] = (float)(mix.Grass * rest * (1 - wet));
+                    StyleLayers parts = StyleRules.GroundLayers(mix, extra ? road : 0, field, wet);
+                    maps[row, col, (int)StyleGround.Soil] = (float)parts.Soil;
+                    maps[row, col, (int)StyleGround.Rock] = (float)parts.Rock;
+                    maps[row, col, (int)StyleGround.Grass] = (float)parts.Grass;
                     if (extra)
                     {
-                        maps[row, col, (int)StyleGround.Road] = (float)(road * (1 - wet));
-                        maps[row, col, (int)StyleGround.Field] = (float)(field * (1 - wet));
+                        maps[row, col, (int)StyleGround.Road] = (float)parts.Road;
+                        maps[row, col, (int)StyleGround.Field] = (float)parts.Field;
                     }
                 }
             data.SetAlphamaps(0, 0, maps);
