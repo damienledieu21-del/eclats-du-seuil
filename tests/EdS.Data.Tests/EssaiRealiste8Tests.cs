@@ -245,6 +245,9 @@ public class EssaiRealiste8Tests : IDisposable
             "Assets/Free Slash VFX/Prefabs/Slash VFX.prefab",
             "Assets/Free Slash VFX/Prefabs/Slash Fire VFX.prefab",
             "Assets/Free Slash VFX/Model/Slash/Slash .fbx",
+            "Assets/UnityTechnologies/ParticlePack/EffectExamples/Fire & Explosion Effects/Prefabs/MediumFlames.prefab",
+            "Assets/UnityTechnologies/ParticlePack/EffectExamples/Fire & Explosion Effects/Prefabs/TinyFlames.prefab",
+            "Assets/UnityTechnologies/ParticlePack/EffectExamples/Smoke & Steam Effects/Prefabs/SmokeEffect.prefab",
         };
         Assert.Equal(prefabs[1], StyleRules.VfxPrefab(prefabs, StyleVfx.Hit));
         Assert.Equal(prefabs[2], StyleRules.VfxPrefab(prefabs, StyleVfx.Crit));
@@ -258,6 +261,9 @@ public class EssaiRealiste8Tests : IDisposable
         Assert.Equal(prefabs[11], StyleRules.VfxPrefab(prefabs, StyleVfx.Death));
         Assert.Equal(prefabs[12], StyleRules.VfxPrefab(prefabs, StyleVfx.Slam));
         Assert.Equal(prefabs[6], StyleRules.VfxPrefab(prefabs, StyleVfx.Charge));
+        Assert.Equal(prefabs[17], StyleRules.VfxPrefab(prefabs, StyleVfx.ForgeFire));
+        Assert.Equal(prefabs[18], StyleRules.VfxPrefab(prefabs, StyleVfx.ForgeSmoke));
+        Assert.Equal(prefabs[16], StyleRules.VfxPrefab(prefabs.Where(p => !p.Contains("TinyFlames")), StyleVfx.ForgeFire));
         // Sans le premier choix, le suivant ; rien d'autre qu'un prefab ; rien sans pack.
         Assert.Equal(prefabs[0], StyleRules.VfxPrefab(prefabs.Where(p => !p.Contains("Hit 2")), StyleVfx.Hit));
         Assert.Null(StyleRules.VfxPrefab(new[] { "Assets/Free Slash VFX/Model/Slash/Slash VFX.fbx" }, StyleVfx.Slash));
@@ -525,6 +531,50 @@ public class EssaiRealiste8Tests : IDisposable
         Assert.Equal(("_COLOROVERLAY_ON", 0f, 0f), ParticleRules.ColorMode(3));
         Assert.Equal(("_COLORCOLOR_ON", 0f, 0f), ParticleRules.ColorMode(4));
         Assert.Equal(("_COLORADDSUBDIFF_ON", -1f, 1f), ParticleRules.ColorMode(5));
+    }
+
+    [Fact]
+    public void Le_loup_realiste_du_pack_est_pris_dans_sa_variante_urp()
+    {
+        var prefabs = new[]
+        {
+            "Assets/Wolf/HDRP/Wolf/Prefab/Wolf_HDRP.prefab",
+            "Assets/Wolf/LRP(Built-in)/Wolf/Prefab/Wolf_LRP.prefab",
+            "Assets/Wolf/URP/Wolf/Prefab/Wolf_URP.prefab",
+            "Assets/Style/Generated/wolf (arbre).prefab",
+            "Assets/Matthew Guz/Hits Effects FREE/Prefab/Basic Hit 2.prefab",
+        };
+        Assert.Equal("Assets/Wolf/URP/Wolf/Prefab/Wolf_URP.prefab", StyleRules.PackAnimal(prefabs, StyleSlot.Wolf));
+        // Sans la variante URP, ni celle pour HDRP ni celle pour l'ancien rendu.
+        Assert.Null(StyleRules.PackAnimal(prefabs.Where(p => !p.Contains("Wolf_URP")), StyleSlot.Wolf));
+        Assert.Null(StyleRules.PackAnimal(prefabs, StyleSlot.Boar));
+        Assert.Null(StyleRules.PackAnimal(prefabs, StyleSlot.Rock));
+        Assert.Equal("Assets/Forest/Prefabs/Boar.prefab", StyleRules.PackAnimal(new[] { "Assets/Forest/Prefabs/Boar.prefab" }, StyleSlot.Boar));
+        Assert.Null(StyleRules.PackAnimal(null!, StyleSlot.Wolf));
+    }
+
+    [Fact]
+    public void Les_animations_du_loup_realiste_servent_au_bon_mouvement()
+    {
+        // Noms des animations de « Realistic Furry Wolf » (Wolf.fbx).
+        var clips = new[]
+        {
+            "AttackL (1)", "AttackR (1)", "dead (1)", "GetHit_1", "GetHit_2 (1)", "Idle_New (1)", "Jump_New (1)", "Running_New (1)",
+            "sitingIdle._New (1)", "sits down._New (1)", "Walking", "WolfHowl_New (1)",
+        };
+        Assert.Equal("Idle_New (1)", StyleRules.Clip(clips, StyleMotion.Idle));
+        Assert.Equal("Walking", StyleRules.Clip(clips, StyleMotion.Walk));
+        Assert.Equal("Running_New (1)", StyleRules.Clip(clips, StyleMotion.Run));
+        Assert.Equal("dead (1)", StyleRules.Clip(clips, StyleMotion.Death));
+        Assert.Equal("GetHit_1", StyleRules.Clip(clips, StyleMotion.Hurt));
+        Assert.Equal("WolfHowl_New (1)", StyleRules.Clip(clips, StyleMotion.Cast));
+        // Un coup reçu n'est jamais une attaque (« Hit » est un mot d'attaque) ; les attaques variées restent les deux morsures.
+        for (int v = 1; v < 12; v++) Assert.StartsWith("Attack", StyleRules.Clip(clips, StyleMotion.Attack, null, v));
+        Assert.True(StyleRules.Loops("Idle_New (1)"));
+        Assert.True(StyleRules.Loops("Walking"));
+        Assert.True(StyleRules.Loops("Running_New (1)"));
+        Assert.False(StyleRules.Loops("GetHit_1"));
+        Assert.False(StyleRules.Loops("WolfHowl_New (1)"));
     }
 
     [Fact]

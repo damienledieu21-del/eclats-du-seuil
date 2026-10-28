@@ -92,6 +92,12 @@ namespace EdS.Runtime
 
         /// <summary>Charge de Rempart gagnée.</summary>
         Charge = 11,
+
+        /// <summary>Essai réaliste 8 : flammes du foyer de la forge (Particle Pack de Unity), en continu.</summary>
+        ForgeFire = 12,
+
+        /// <summary>Essai réaliste 8 : fumée qui monte du foyer de la forge, en continu.</summary>
+        ForgeSmoke = 13,
     }
 
     /// <summary>
@@ -416,8 +422,9 @@ namespace EdS.Runtime
             [StyleMotion.Death] = new[] { "death", "die", "dead", "dying" },
             [StyleMotion.Block] = new[] { "block" },
             // Essai réaliste 7 : « power » n'en est pas (« Power Slash » est une attaque).
-            [StyleMotion.Cast] = new[] { "cast", "spell", "roar", "taunt" },
-            [StyleMotion.Hurt] = new[] { "impact", "hurt", "react", "damage" },
+            // Essai réaliste 8 : le loup réaliste de l'Asset Store hurle (« WolfHowl ») et encaisse (« GetHit_1 »).
+            [StyleMotion.Cast] = new[] { "cast", "spell", "roar", "taunt", "howl" },
+            [StyleMotion.Hurt] = new[] { "impact", "hurt", "react", "damage", "gethit" },
             [StyleMotion.GuardHit] = new[] { "guard" },
         };
 
@@ -541,6 +548,30 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// Essai réaliste 8 (point 6 de la demande de Damien : des loups réalistes ; « Realistic Furry Wolf », échantillon gratuit de
+        /// l'Asset Store) : prefab d'un animal (<paramref name="slot"/> : loup ou sanglier) d'un pack importé à la racine de Assets, prêt pour
+        /// URP (« Wolf_URP.prefab ») ; ses variantes pour HDRP et pour l'ancien rendu ne sont pas prises. Les prefabs rangés dans
+        /// <c>Assets/Style</c> (préparés par Claude) ne comptent pas ici. Null sans lui.
+        /// </summary>
+        public static string? PackAnimal(IEnumerable<string> paths, StyleSlot slot)
+        {
+            if (slot != StyleSlot.Wolf && slot != StyleSlot.Boar) return null;
+            return (paths ?? Array.Empty<string>())
+                .Where(p => p != null && p.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase)
+                    && !Segments(p).Skip(1).Take(1).Contains("style") && Matches(p, slot))
+                .Where(p =>
+                {
+                    string file = Key(ClipName(p));
+                    return !PackPipelineVariants.Any(v => file.Contains(v)) && !Segments(p).Any(s => PackPipelineVariants.Any(v => s.StartsWith(v, StringComparison.Ordinal)));
+                })
+                .OrderBy(p => Key(ClipName(p)).Contains("urp") || Segments(p).Contains("urp") ? 0 : 1)
+                .ThenBy(p => p, StringComparer.Ordinal).FirstOrDefault();
+        }
+
+        /// <summary>Essai réaliste 8 : variantes d'un pack faites pour un autre rendu qu'URP (dossiers ou noms).</summary>
+        private static readonly string[] PackPipelineVariants = { "hdrp", "lrp", "builtin", "standard" };
+
+        /// <summary>
         /// Essai réaliste 8 : rangé dans le dossier d'un sample de Unity (Viking Village, Terrain Sample, Production Ready Shaders) ? On juge
         /// les dossiers du chemin, réduits (« Assets/Viking Village/… », « Assets/TerrainSampleAssets/… »).
         /// </summary>
@@ -653,6 +684,9 @@ namespace EdS.Runtime
             [StyleVfx.Death] = new[] { "dustpuff", "smokepuff" },
             [StyleVfx.Slam] = new[] { "dustground", "smokeground", "groundaoeexplosion" },
             [StyleVfx.Charge] = new[] { "sparksflashingyellow", "sparksyellow" },
+            // Essai réaliste 8 : Particle Pack de Unity (gratuit, ajouté le 28 octobre 2026).
+            [StyleVfx.ForgeFire] = new[] { "tinyflames", "mediumflames" },
+            [StyleVfx.ForgeSmoke] = new[] { "smokeeffect", "risingsteam" },
         };
 
         /// <summary>
@@ -992,9 +1026,13 @@ namespace EdS.Runtime
         /// run, sword, attack). Essai du 26 octobre 2026 : « Gardien Idle » contient « die » au milieu d'un mot, et ne doit pas passer pour
         /// une mort.
         /// </summary>
-        private static bool HasWord(string clip, string[] wanted) =>
-            Regex.Matches(clip ?? string.Empty, "[A-Z]?[a-z]+|[A-Z]+(?![a-z])").Cast<Match>().Select(m => m.Value.ToLowerInvariant())
-                .Any(w => wanted.Any(x => w.StartsWith(x, StringComparison.Ordinal)));
+        private static bool HasWord(string clip, string[] wanted)
+        {
+            List<string> words = Regex.Matches(clip ?? string.Empty, "[A-Z]?[a-z]+|[A-Z]+(?![a-z])").Cast<Match>().Select(m => m.Value.ToLowerInvariant()).ToList();
+            // Essai réaliste 8 : deux mots qui se suivent comptent aussi ensemble (« GetHit » : get, hit, et gethit, un coup reçu).
+            IEnumerable<string> all = words.Concat(words.Zip(words.Skip(1), (a, b) => a + b));
+            return all.Any(w => wanted.Any(x => w.StartsWith(x, StringComparison.Ordinal)));
+        }
 
         /// <summary>
         /// Allure d'après la vitesse au sol affichée (m/s) : attente sous 0,3, marche sous 3,5, course au-delà ; la mort l'emporte, puis

@@ -55,7 +55,13 @@ namespace EdS.Game.Editor
             string hero = StyleRules.Candidates(models, StyleSlot.Hero).FirstOrDefault();
             string wolf = StyleRules.Candidates(models, StyleSlot.Wolf).FirstOrDefault();
             string boar = StyleRules.Candidates(models, StyleSlot.Boar).FirstOrDefault();
-            foreach (string animated in new[] { hero, wolf, boar }.Where(p => p != null)) Legacy(animated, false);
+            // Essai réaliste 8 (point 6) : un loup ou un sanglier réaliste d'un pack de l'Asset Store (prefab prêt pour URP, « Realistic Furry
+            // Wolf ») passe devant ceux des packs stylisés ; ses animations, lues comme les autres (« Legacy »), sont celles de son modèle.
+            List<string> allPrefabs = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
+            string packWolf = PackAnimal(allPrefabs, StyleSlot.Wolf, notes), packBoar = PackAnimal(allPrefabs, StyleSlot.Boar, notes);
+            foreach (string animated in new[] { hero, packWolf == null ? wolf : null, packBoar == null ? boar : null }.Where(p => p != null)) Legacy(animated, false);
+            if (packWolf != null) wolf = packWolf;
+            if (packBoar != null) boar = packBoar;
             IReadOnlyList<string> heroClips = StyleRules.Companions(hero, models);
             foreach (string clip in heroClips) Legacy(clip, true);
 
@@ -308,6 +314,27 @@ namespace EdS.Game.Editor
             {
                 Object.DestroyImmediate(copy);
             }
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 (point 6) : prefab réaliste de <paramref name="slot"/> d'un pack (<see cref="StyleRules.PackAnimal"/>) dont tous
+        /// les matériaux se dessinent avec URP ; le modèle qu'il habille passe en animations « Legacy » (le jeu les joue lui-même). Rend le
+        /// chemin du prefab, ou null.
+        /// </summary>
+        private static string PackAnimal(List<string> prefabs, StyleSlot slot, List<string> notes)
+        {
+            string path = StyleRules.PackAnimal(prefabs.Where(Renders), slot);
+            if (path == null) return null;
+            GameObject source = PrefabUtility.GetCorrespondingObjectFromSource(Load(path));
+            string model = source != null ? AssetDatabase.GetAssetPath(source) : null;
+            if (model == null || !(AssetImporter.GetAtPath(model) is ModelImporter))
+            {
+                notes.Add("Prefab " + Path.GetFileName(path) + " : aucun modèle animé derrière lui, il n'est pas pris.");
+                return null;
+            }
+            Legacy(model, false);
+            notes.Add((slot == StyleSlot.Wolf ? "Loup" : "Sanglier") + " réaliste du pack : " + Path.GetFileName(path) + " (animations de " + Path.GetFileName(model) + ").");
+            return path;
         }
 
         /// <summary>

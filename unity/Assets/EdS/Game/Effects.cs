@@ -96,6 +96,30 @@ namespace EdS.Game
             return true;
         }
 
+        /// <summary>
+        /// Essai réaliste 8 : effet continu d'un pack (flammes et fumée du foyer de la forge, Particle Pack de Unity) posé en
+        /// <paramref name="at"/> sous <paramref name="parent"/>, à l'échelle du catalogue ; il vit avec son parent. Sur ordinateur
+        /// seulement ; null sans lui.
+        /// </summary>
+        public static GameObject Ambient(StyleVfx kind, Transform parent, Vector3 at)
+        {
+            if (Application.isMobilePlatform) return null;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            VfxLook look = catalog != null ? catalog.Effect(kind) : null;
+            if (look == null) return null;
+            GameObject fx = Object.Instantiate(look.Prefab, at, Quaternion.Euler(0f, look.Yaw, 0f), parent);
+            if (Mathf.Abs(look.Scale - 1f) > 0.01f)
+            {
+                fx.transform.localScale = fx.transform.localScale * look.Scale;
+                foreach (ParticleSystem system in fx.GetComponentsInChildren<ParticleSystem>())
+                {
+                    ParticleSystem.MainModule main = system.main;
+                    main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+                }
+            }
+            return fx;
+        }
+
         /// <summary>Coup reçu : gerbe d'étincelles, éclair, gouttes sombres ; <paramref name="strength"/> de 0 à 1 (part de vie perdue).</summary>
         public void Hit(Vector3 feet, float height, float strength, bool critical)
         {
