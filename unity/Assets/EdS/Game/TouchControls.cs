@@ -207,7 +207,7 @@ namespace EdS.Game
             foreach (Button b in _buttons)
             {
                 bool held = _gestures.IsHeld((int)b.Id);
-                Hud.Fill(b.Rect, held ? new Color(1f, 0.85f, 0.3f, 0.55f) : new Color(0f, 0f, 0f, 0.35f));
+                Hud.Panel(b.Rect, held ? new Color(1f, 0.85f, 0.3f, 0.55f) : new Color(0f, 0f, 0f, 0.35f));
                 Hud.Centered(b.Rect, b.Label, Color.white);
             }
             if (_gestures.StickActive)

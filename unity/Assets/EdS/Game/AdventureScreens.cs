@@ -36,7 +36,7 @@ namespace EdS.Game
             x = Mathf.Max(10f, (Hud.Width - PanelWidth) / 2f);
             y = 90f;
             var frame = new Rect(x, y, PanelWidth, PanelHeight);
-            Hud.Fill(frame, new Color(0.05f, 0.05f, 0.08f, 0.93f));
+            Hud.Panel(frame, new Color(0.05f, 0.045f, 0.04f, 0.93f));
             return frame;
         }
 
@@ -164,7 +164,7 @@ namespace EdS.Game
             IReadOnlyList<string> answers = a.DialogueAnswers;
             float height = 200f + answers.Count * 48f;
             float x = Mathf.Max(10f, (Hud.Width - 1300f) / 2f), y = Hud.VirtualHeight - height - 30f;
-            Hud.Fill(new Rect(x, y, 1300f, height), new Color(0.06f, 0.05f, 0.04f, 0.93f));
+            Hud.Panel(new Rect(x, y, 1300f, height), new Color(0.06f, 0.05f, 0.04f, 0.93f));
             Hud.Title(new Rect(x + 20f, y + 10f, 1260f, 36f), Hud.Plain(a.DialogueNpc));
             Hud.Text(new Rect(x + 20f, y + 50f, 1260f, 90f), Hud.Plain(a.DialogueText));
             int chosen = -1;

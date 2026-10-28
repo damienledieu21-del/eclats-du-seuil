@@ -969,7 +969,7 @@ namespace EdS.Game
             Hud.Centered(new Rect(Hud.Width / 2f - 300, 20, 600, 40), Hud.Plain(a.PlaceName) + " — " + a.TimeOfDay, Color.white);
             if (a.MustContinue)
             {
-                Hud.Fill(new Rect(Hud.Width / 2f - 420, Hud.VirtualHeight / 2f - 70, 840, 140), new Color(0.25f, 0f, 0f, 0.8f));
+                Hud.Panel(new Rect(Hud.Width / 2f - 420, Hud.VirtualHeight / 2f - 70, 840, 140), new Color(0.25f, 0f, 0f, 0.8f));
                 string why = a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over";
                 Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f - 60, 800, 50), a.Text(why), Color.white);
             }
@@ -1004,7 +1004,7 @@ namespace EdS.Game
             Hud.Begin();
             if (_startupError != null)
             {
-                Hud.Fill(new Rect(40, 40, Hud.Width - 80, 260), new Color(0.3f, 0f, 0f, 0.85f));
+                Hud.Panel(new Rect(40, 40, Hud.Width - 80, 260), new Color(0.3f, 0f, 0f, 0.85f));
                 Hud.Text(new Rect(60, 60, Hud.Width - 120, 220), _startupError);
                 return;
             }
@@ -1015,7 +1015,7 @@ namespace EdS.Game
             }
             if (_error != null && !Network)
             {
-                Hud.Fill(new Rect(40, 40, Hud.Width - 80, 260), new Color(0.3f, 0f, 0f, 0.85f));
+                Hud.Panel(new Rect(40, 40, Hud.Width - 80, 260), new Color(0.3f, 0f, 0f, 0.85f));
                 Hud.Text(new Rect(60, 60, Hud.Width - 120, 220), _error);
                 return;
             }
@@ -1077,7 +1077,7 @@ namespace EdS.Game
             }
 
             if (_adventure != null && _arena.Player != null) _markers?.Labels(camera, _arena.Player.position);
-            Hud.Player(player);
+            Hud.Player(player, _touch.Active);   // essai réaliste 5 : plus serré quand les commandes tactiles occupent les coins
             // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
             Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)),
                 _adventure != null ? MiniMap.Width + 2f * MiniMap.Margin : 0f);   // sous-lot 12.9d : à gauche de la petite carte

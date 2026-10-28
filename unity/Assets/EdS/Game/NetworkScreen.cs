@@ -44,7 +44,7 @@ namespace EdS.Game
         public Action DrawMenu()
         {
             float w = 680f, x = Hud.Width / 2f - w / 2f, y = 120f;
-            Hud.Fill(new Rect(x - 16, y - 16, w + 32, 640), new Color(0.05f, 0.07f, 0.1f, 0.92f));
+            Hud.Panel(new Rect(x - 16, y - 16, w + 32, 640), new Color(0.05f, 0.045f, 0.04f, 0.92f));
             Hud.Title(new Rect(x, y, w, 36), "Jeu en réseau — deux Bastions contre la meute");
             Hud.Small(new Rect(x, y + 40, w, 24), "Coopération sur le réseau local. Échap ou M : fermer.");
 
@@ -72,7 +72,7 @@ namespace EdS.Game
         public Action DrawLobby(NetworkSession session, string buildName, string lastCombat)
         {
             float w = 760f, x = Hud.Width / 2f - w / 2f, y = 150f;
-            Hud.Fill(new Rect(x - 16, y - 16, w + 32, 560), new Color(0.05f, 0.07f, 0.1f, 0.9f));
+            Hud.Panel(new Rect(x - 16, y - 16, w + 32, 560), new Color(0.05f, 0.045f, 0.04f, 0.9f));
             Hud.Title(new Rect(x, y, w, 36), session.Host != null ? "Salle d'attente — tu héberges" : "Salle d'attente");
 
             float line = y + 44;
@@ -157,7 +157,7 @@ namespace EdS.Game
             // Sous-lot 10.6 (option B de la parade) : la télégraphie des assaillants est avancée du temps aller-retour lissé.
             double lead = client.Combat != null ? client.Combat.TelegraphLeadSeconds * 1000 : 0;
             float x = Hud.Width / 2f - 300f;
-            Hud.Fill(new Rect(x, 62, 600, 60), new Color(0f, 0f, 0f, 0.4f));
+            Hud.Panel(new Rect(x, 62, 600, 60), new Color(0.04f, 0.035f, 0.03f, 0.6f));
             Hud.Small(new Rect(x + 10, 64, 580, 24), $"Réseau : temps aller-retour {ping}  ·  télégraphie avancée de {lead:0} ms");
             string robot = session.BotArrivesIn is double inSeconds ? $"  ·  robot dans {inSeconds:0} s" : "";
             Hud.Small(new Rect(x + 10, 90, 580, 24), $"Place {client.SeatId}  ·  allié visé par les soutiens : {allyId ?? "aucun"} (G : changer){robot}");
@@ -167,7 +167,7 @@ namespace EdS.Game
                 string text = client.Status == ClientStatus.Reconnecting ? "Retour dans la partie…"
                     : client.CanReconnect ? $"Connexion perdue — nouvelle tentative (encore {System.Math.Max(0, left):0} s)"
                     : "Connexion perdue — retour impossible.";
-                Hud.Fill(new Rect(Hud.Width / 2f - 360, 150, 720, 50), new Color(0.35f, 0.05f, 0.05f, 0.85f));
+                Hud.Panel(new Rect(Hud.Width / 2f - 360, 150, 720, 50), new Color(0.35f, 0.05f, 0.05f, 0.85f));
                 Hud.Centered(new Rect(Hud.Width / 2f - 360, 150, 720, 50), text, Color.white);
             }
         }

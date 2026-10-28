@@ -77,7 +77,7 @@ namespace EdS.Game
         {
             Refresh();
             float x = Mathf.Max(10f, (Hud.Width - PanelWidth) / 2f), y = 70f;
-            Hud.Fill(new Rect(x, y, PanelWidth, 900f), new Color(0.05f, 0.05f, 0.08f, 0.92f));
+            Hud.Panel(new Rect(x, y, PanelWidth, 900f), new Color(0.05f, 0.045f, 0.04f, 0.92f));
             Hud.Title(new Rect(x + 20, y + 12, 900, 36), $"Talents — niveau {_editor.Level}");
             Hud.Text(new Rect(x + 20, y + 52, 1500, 28),
                 $"Points : {_editor.PointsSpent} / {_editor.PointsAvailable} dépensés  ·  <b>{_editor.PointsRemaining} restant(s)</b>  ·  " +

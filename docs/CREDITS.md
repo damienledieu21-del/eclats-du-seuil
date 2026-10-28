@@ -1,6 +1,6 @@
 # Crédits de l'essai de style
 
-Fichiers de tiers employés pour l'essai de style (décisions de Damien des 25, 26 et 27 octobre 2026). Ils sont déposés dans `unity/Assets/Style` chez Damien et ne sont pas suivis par git : aucun ne part sur GitHub. Le jeu ne dépend d'aucun d'eux (sans eux, il garde ses formes simples).
+Fichiers de tiers employés pour l'essai de style (décisions de Damien des 25, 26 et 27 octobre 2026). Sauf la police et les icônes de l'interface, ils sont déposés dans `unity/Assets/Style` chez Damien et ne sont pas suivis par git : aucun ne part sur GitHub. Le jeu ne dépend d'aucun d'eux (sans eux, il garde ses formes simples).
 
 | Source | Ce qui sert | Licence |
 | --- | --- | --- |
@@ -9,7 +9,9 @@ Fichiers de tiers employés pour l'essai de style (décisions de Damien des 25, 
 | [Quaternius](https://quaternius.com), *Stylized Nature MegaKit* | arbres (jusqu'à l'essai réaliste 4, et sans les arbres de Sketchfab) | CC0 |
 | [Kenney](https://kenney.nl), *Impact Sounds* et *RPG Audio* | sons | CC0 |
 | Packs low poly du premier essai (Quaternius, OpenGameArt) | loup, cochon | CC0 |
+| Police [Cinzel](https://github.com/NDISCOVER/Cinzel) de Natanael Gama, via Google Fonts (essai réaliste 5) | titres, chiffres des globes et des recharges, boutons ; suivie par git dans `unity/Assets/EdS/Interface` | SIL Open Font License 1.1 (texte joint) |
+| Icônes de [game-icons.net](https://game-icons.net) : Lorc (*broadsword*, *shouting*, *sword-clash*, *checked-shield*, *quake-stomp*, *crenulated-shield*, *bordered-shield*, *shield-reflect*, *sword-spin*) et Delapouite (*shield-bash*) (essai réaliste 5) | icônes des compétences, de la garde et de la parade ; suivies par git dans `unity/Assets/EdS/Interface` | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) : citer les auteurs |
 | [« Windmill »](https://sketchfab.com/3d-models/windmill-0730705327e045bd8cb98a888bd0f954) de Yury Misiyuk (Tim0), sur Sketchfab | le moulin | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) : citer l'auteur |
 | [« Oak tree »](https://sketchfab.com/3d-models/oak-tree-6468dd4d3eb240ef902b9057d9913606), [« Pine Tree »](https://sketchfab.com/3d-models/pine-tree-d45218a3fab349e5b1de040f29e7b6f9), [« Spruce »](https://sketchfab.com/3d-models/spruce-a50a5df3164246a5af97992cec33a143) et [« Birch tree »](https://sketchfab.com/3d-models/birch-tree-aa842dffd9654d33b8b91170ce83c172) de [evolveduk](https://sketchfab.com/evolveduk), sur Sketchfab | les arbres (chêne, pin, épicéa, bouleau ; essai réaliste 4) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) : citer l'auteur |
 
-Une licence CC BY demande de citer l'auteur là où le jeu est montré : ce fichier, et l'écran des crédits du jeu quand il existera.
+Une licence CC BY demande de citer l'auteur là où le jeu est montré : ce fichier, `unity/Assets/EdS/Interface/LICENCES.md`, et l'écran des crédits du jeu quand il existera.

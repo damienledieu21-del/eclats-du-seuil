@@ -5,10 +5,15 @@ Shader "EdS/Herbe"
 {
     Properties
     {
-        _BaseColor ("Couleur du pied", Color) = (0.13, 0.2, 0.06, 1)
-        _TipColor ("Couleur de la pointe", Color) = (0.45, 0.56, 0.24, 1)
-        _DryColor ("Couleur des brins secs", Color) = (0.55, 0.5, 0.3, 1)
-        _Dryness ("Part de brins secs", Range(0, 1)) = 0.25
+        _BaseColor ("Couleur du pied", Color) = (0.2, 0.28, 0.09, 1)
+        _TipColor ("Couleur de la pointe", Color) = (0.52, 0.62, 0.27, 1)
+        _DryColor ("Couleur des brins secs", Color) = (0.62, 0.56, 0.33, 1)
+        _Dryness ("Part de brins secs", Range(0, 1)) = 0.18
+        _DryPatches ("Plaques d'herbe sèche", Range(0, 1)) = 0.35
+        _Sheen ("Reflet des brins", Range(0, 1)) = 0.25
+        _FadeStart ("Début de l'abaissement au loin (m)", Float) = 32
+        _FadeEnd ("Fin de l'herbe (m)", Float) = 45
+        [HideInInspector] _Reglages ("Version des réglages (posée par le menu)", Float) = 0
         _Wind ("Force du vent", Range(0, 2)) = 0.6
         _WindSpeed ("Vitesse du vent", Range(0, 5)) = 1.6
         _Translucency ("Lumière à travers les brins", Range(0, 2)) = 0.5
@@ -26,6 +31,11 @@ Shader "EdS/Herbe"
             half4 _TipColor;
             half4 _DryColor;
             half _Dryness;
+            half _DryPatches;
+            half _Sheen;
+            float _FadeStart;
+            float _FadeEnd;
+            float _Reglages;
             float _Wind;
             float _WindSpeed;
             half _Translucency;
@@ -42,7 +52,10 @@ Shader "EdS/Herbe"
         {
             pivot = TransformObjectToWorld(float3(0.0, 0.0, 0.0));
             float3 positionWS = TransformObjectToWorld(positionOS);
-            float h = uv.y;
+            // Essai réaliste 5 : au loin, la touffe s'abaisse en douceur jusqu'à disparaître à la limite de dessin.
+            float fade = saturate((_FadeEnd - distance(pivot, _WorldSpaceCameraPos)) / max(0.01, _FadeEnd - _FadeStart));
+            positionWS = pivot + (positionWS - pivot) * float3(1.0, fade, 1.0);
+            float h = min(uv.y, 1.0);   // les têtes de fleurs (uv.y = 2) bougent comme les pointes
             float t = _Time.y * _WindSpeed;
             float gust = sin(t + pivot.x * 0.21 + pivot.z * 0.17) * 0.5 + 0.5;
             float shiver = sin(t * 4.1 + uv.x * 6.2831 + pivot.x * 1.3) * 0.15;
@@ -94,11 +107,23 @@ Shader "EdS/Herbe"
                 UNITY_SETUP_INSTANCE_ID(input);
                 float3 pivot;
                 float3 positionWS = Bent(input.positionOS.xyz, input.uv, pivot);
-                float h = input.uv.y;
+                float h = min(input.uv.y, 1.0);
                 float tint = Hash(pivot.xz);
                 half3 green = lerp(_BaseColor.rgb, _TipColor.rgb, h) * (0.85 + 0.3 * tint);
+                // Essai réaliste 5 : des plaques plus sèches (bruit doux sur le pré), en plus des brins secs épars.
+                float2 cell = floor(pivot.xz * 0.12);
+                float2 f = frac(pivot.xz * 0.12);
+                f = f * f * (3.0 - 2.0 * f);
+                float patch = lerp(lerp(Hash(cell), Hash(cell + float2(1, 0)), f.x), lerp(Hash(cell + float2(0, 1)), Hash(cell + float2(1, 1)), f.x), f.y);
+                green = lerp(green, lerp(green, _DryColor.rgb * lerp(0.7, 1.0, h), 0.55), saturate((patch - 0.55) * 3.0) * _DryPatches);
                 half dry = step(1.0 - _Dryness, Hash(pivot.xz + input.uv.x * 17.0));
                 output.color = lerp(green, _DryColor.rgb * lerp(0.6, 1.0, h), dry);
+                // Têtes de fleurs : blanc, jaune, violet ou bleu selon la tige.
+                if (input.uv.y > 1.5)
+                {
+                    float pick = Hash(pivot.xz * 3.1 + input.uv.x * 41.0);
+                    output.color = pick < 0.4 ? half3(0.93, 0.92, 0.86) : pick < 0.7 ? half3(0.96, 0.8, 0.22) : pick < 0.88 ? half3(0.6, 0.42, 0.82) : half3(0.38, 0.52, 0.92);
+                }
                 output.height = h;
                 output.positionWS = positionWS;
                 output.positionCS = TransformWorldToHClip(positionWS);
@@ -117,8 +142,11 @@ Shader "EdS/Herbe"
                 half diffuse = saturate(dot(normalWS, sun.direction)) * 0.8h + 0.2h;
                 half back = pow(saturate(dot(-view, sun.direction)), 3.0h) * _Translucency * input.height;
                 half3 light = sun.color * sun.shadowAttenuation * (diffuse + back) + SampleSH(normalWS);
-                // Le pied des touffes, à l'ombre des autres brins, est plus sombre.
-                half3 color = input.color * light * lerp(0.45h, 1.0h, input.height);
+                // Essai réaliste 5 : léger reflet du soleil sur les brins ; le pied des touffes, à l'ombre des autres brins, plus sombre
+                // (moins noir qu'avant).
+                half3 halfDir = normalize(sun.direction + view);
+                half sheen = pow(saturate(dot(normalWS, halfDir)), 24.0h) * _Sheen * input.height;
+                half3 color = input.color * light * lerp(0.62h, 1.0h, input.height) + sun.color * sun.shadowAttenuation * sheen * 0.35h;
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0h);
             }

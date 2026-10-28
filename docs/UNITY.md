@@ -263,6 +263,30 @@ Ce que tu regardes : si les arbres et l'herbe font vrai de près comme de loin, 
 
 Limites : la sonde de reflets est prise une fois (un personnage qui bouge n'apparaît pas dans l'eau) ; l'herbe en brins ne pousse que sur l'aire du combat (le terrain qui déborde garde sa texture d'herbe) et ne projette pas d'ombre ; les arbres de Sketchfab sont des fichiers anciens (FBX 6.1 de Tree It) : si Unity n'arrivait pas à les lire, les arbres du MegaKit resteraient (la fenêtre de fin dit combien de pièces de chaque arbre ont été habillées) ; le rendu du téléphone n'est pas encore essayé sur le Note8.
 
+### Essai réaliste 5 (27 octobre 2026)
+
+Avis de Damien sur l'essai 4 (vidéo du 27 octobre 2026 au matin) : « c'est déjà beaucoup mieux dans le global », puis : « il faudrait texturer le bâtiment », « l'herbe pourrait être encore mieux », « le gros bloc en brique, je ne sais pas trop à quoi il sert », « le pont, on pourrait l'améliorer », « le mur de feuilles derrière les loups, je ne suis pas fan », « je voudrais qu'on améliore complètement l'esthétisme de l'interface ». Ses choix : muret de pierres sèches, pont cintré fait par Claude, interface façon Diablo 4 (des icônes au lieu de texte), police et icônes gratuites.
+
+Rien à télécharger de plus : la police et les icônes viennent avec la branche (`unity/Assets/EdS/Interface`). Préparer comme d'habitude (menu **Éclats du Seuil → Préparer l'essai de style**), puis Play.
+
+Ce qui change :
+
+- **Abri à piliers** (près de la forge) : une vraie charpente faite par le code : poteaux de bois équarri sur des socles de pierre, sablières, entraits, aisseliers, poinçons, faîtage et chevrons, toit à deux pans couvert de tuiles posées en rangées parallèles au faîtage, avec une faîtière ronde et des débords tout autour. Le toit s'efface quand tu passes dessous.
+- **« Gros bloc en brique »** : c'était le *front de taille* de la carrière (la paroi d'où l'on tire les blocs). Il devient une paroi de gros rochers du catalogue, un second rang plus petit au pied et quelques blocs tombés, tous dans son emprise.
+- **Mur de feuilles** → **muret de pierres sèches** (ton choix) : assises de pierres irrégulières en quinconce, plus large en bas qu'en haut, pierres traversantes aux deux bouts, couronnement de pierres posées de chant ; pierre brute du sol (roche moussue de Poly Haven). Il s'abaisse comme un mur quand il te cache.
+- **Pont** → **pont cintré en bois** fait par le code (ton choix) : planches posées une à une (largeurs et jeux variés), trois longerons qui suivent le cintre, poteaux et deux lisses de rondins de chaque côté, culées de pierres sur les rives. Le tablier monte de 35 cm au milieu, et les personnages montent avec lui (affichage seulement : le combat ne change pas).
+- **Herbe** : brins plus fins et plus nombreux (16 par touffe, 8 sur téléphone), plaques d'herbe plus haute et plus rase, plaques plus sèches, coins fleuris (blanc, jaune, violet, bleu), léger reflet du soleil, pied moins sombre ; au loin, l'herbe s'abaisse en douceur au lieu d'apparaître d'un coup. Les nouvelles couleurs de `Assets/Style/Generated/Herbe` sont posées une fois par le menu ; tes réglages faits ensuite sont gardés.
+- **Interface façon Diablo 4** (ton choix) :
+  - globe de **vie** à gauche et d'**endurance** à droite (le liquide monte et descend), valeur au milieu ;
+  - **compétences en icônes** entre les deux : touche dans le coin (1 à 4, R pour l'ultime), recharge en arc avec le temps restant, coût d'endurance en bas (rouge s'il en manque), ultime qui luit quand elle est prête ;
+  - **Résonance** en barre fine et **Charges** en losanges au-dessus des compétences ; **garde** en icône de bouclier au-dessus du globe de vie (argent quand tu gardes, or pendant la parade) ;
+  - cadres d'or sur les panneaux (aide, cible, carte, écrans de l'aventure, du réseau et des talents), boutons et champs assortis, police **Cinzel** pour les titres, les noms et les chiffres ;
+  - sur téléphone, le tout est plus petit et plus serré quand les commandes tactiles sont affichées.
+
+Ce que tu regardes : l'abri et ses tuiles, le muret, le pont (traverse-le), la paroi de la carrière, l'herbe de près et de loin, et l'interface pendant un combat (recharges, globes, garde).
+
+Limites : les icônes ne couvrent que les compétences du Bastion (une icône d'épée pour les autres) ; la raison d'une compétence indisponible n'est plus écrite sous la case (la case s'assombrit, et le coût passe au rouge s'il manque d'endurance) ; l'interface n'est pas encore essayée sur le Note8 ; la sonde de reflets de l'eau est prise une fois.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

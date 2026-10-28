@@ -162,7 +162,12 @@ namespace EdS.Game
                 Palisade(id, points);
                 return;
             }
-            if (fence == StyleFence.Hedge && Hedge(id, points)) return;
+            // Essai réaliste 5 (choix de Damien du 27 octobre 2026 : « le mur de feuilles, je ne suis pas fan » → muret de pierres sèches).
+            if (fence == StyleFence.Hedge)
+            {
+                DryStoneWall(id, points);
+                return;
+            }
             if (id.StartsWith("arbre"))
             {
                 // Essai de style : un arbre des packs à la place du tronc et de sa boule de feuillage (même emprise au moteur).
@@ -213,11 +218,11 @@ namespace EdS.Game
                 AddOccluder(b.transform, false, hub - new Vector3(3.5f, 3.5f, 0.2f), hub + new Vector3(3.5f, 3.5f, 0.2f));
                 return;
             }
-            if (id.StartsWith("pilier"))
-            {
-                Prism(id, points, 3f, Built(StyleSurface.Wood, new Color(0.42f, 0.3f, 0.2f), out float pillarTile), true, pillarTile);
-                return;
-            }
+            // Essai réaliste 5 : les piliers sont les poteaux de l'abri, construits avec lui (Roof).
+            if (id.StartsWith("pilier")) return;
+            // Essai réaliste 5 (« le gros bloc en brique, je ne sais pas à quoi il sert » : c'est le front de taille de la carrière) : une
+            // paroi de gros rochers sur son emprise.
+            if (id.StartsWith("front_de_taille") && QuarryFace(id, points)) return;
             // Essai de style : un rocher des packs sur l'emprise des blocs de la carrière et des pierres du Seuil.
             if (StyleRules.ForObstacle(id) == StyleSlot.Rock)
             {
@@ -431,23 +436,78 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Essai réaliste (27 octobre 2026) : haie d'arbustes réalistes le long d'une haie (jusque-là un bloc de pierre), un arbuste par
-        /// mètre environ (moins sur téléphone), retirés quand ils cachent le joueur. False sans arbuste dans le catalogue.
+        /// Essai réaliste 5 (choix de Damien du 27 octobre 2026) : muret de pierres sèches sur l'emprise d'une haie
+        /// (<see cref="StyleShapes.DryStoneWall"/>), en pierre brute du catalogue (pierre des murs à défaut) ; abaissé comme un mur quand il
+        /// cache le joueur.
         /// </summary>
-        private bool Hedge(string id, List<Vector3> points)
+        private void DryStoneWall(string id, List<Vector3> points)
         {
-            StyleCatalog catalog = StyleCatalog.Loaded;
-            if (catalog == null || catalog.Shrubs == null || catalog.Shrubs.Length == 0) return false;
             float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
-            var spots = StyleRules.Row(x0, z0, x1, z1, Application.isMobilePlatform ? 1.6 : 1.1);
-            for (int i = 0; i < spots.Count; i++)
+            Material stone = Stone(out float tile);
+            StyleMesh wall = StyleShapes.DryStoneWall(x0, z0, x1, z1, id, tile);
+            GameObject go = Shape(id + " (muret de pierres sèches)", wall, stone);
+            float top = (float)wall.Bounds().Max.Y;
+            _occluders.Add(new Occluder { Transform = go.transform, Renderer = go.GetComponent<Renderer>(), Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });
+        }
+
+        /// <summary>Pierre brute du catalogue (muret, culées, socles), sinon la pierre des murs, sinon une couleur.</summary>
+        private static Material Stone(out float tile) =>
+            StyleWorld.Rock(out tile) ?? Built(StyleSurface.Stone, new Color(0.45f, 0.43f, 0.38f), out tile);
+
+        /// <summary>
+        /// Essai réaliste 5 : front de taille de la carrière en paroi de gros rochers du catalogue, serrés le long de son grand côté, un
+        /// second rang plus bas au pied et quelques blocs tombés devant. False sans rocher dans le catalogue (le bloc simple reste).
+        /// </summary>
+        private bool QuarryFace(string id, List<Vector3> points)
+        {
+            float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
+            bool alongX = x1 - x0 >= z1 - z0;
+            float length = alongX ? x1 - x0 : z1 - z0, depth = alongX ? z1 - z0 : x1 - x0;
+            int count = Mathf.Max(1, Mathf.CeilToInt(length / 3.2f));
+            int placed = 0;
+            for (int i = 0; i < count; i++)
             {
+                float s = (i + 0.5f) / count * length;
                 string part = id + "/" + i;
-                GameObject shrub = StyleLook.Decor(_root.transform, StyleSlot.Shrub, part, new Vector3((float)spots[i].X, 0f, (float)spots[i].Z),
-                    1.6f + 0.004f * StyleRules.Variant(part, 100));
-                if (shrub != null) AddModelOccluders(shrub);
+                float jitter = (StyleRules.Variant(part, 100) - 50) * 0.008f;
+                Vector3 at = alongX ? new Vector3(x0 + s, 0f, (z0 + z1) / 2f + jitter) : new Vector3((x0 + x1) / 2f + jitter, 0f, z0 + s);
+                GameObject rock = StyleLook.Decor(_root.transform, StyleSlot.Rock, part, at, 0f, depth * (1.0f + 0.003f * StyleRules.Variant(part + "/taille", 100)));
+                if (rock == null) continue;
+                AddModelOccluders(rock);
+                placed++;
+                // Second rang, plus petit, et un bloc tombé de temps en temps, dans l'emprise (côté de l'aire : vers le plus petit x ou z) :
+                // aucun rocher du décor ne fait croire à un obstacle là où l'on peut marcher.
+                string low = part + "/pied";
+                Vector3 foot = at + (alongX ? new Vector3(1.6f, 0f, -depth * 0.3f) : new Vector3(-depth * 0.3f, 0f, 1.6f));
+                GameObject small = StyleLook.Decor(_root.transform, StyleSlot.Rock, low, foot, 0f, depth * (0.45f + 0.003f * StyleRules.Variant(low, 100)));
+                if (small != null) AddModelOccluders(small);
+                if (i % 3 == 1)
+                {
+                    string fallen = part + "/eboulis";
+                    Vector3 front = at + (alongX ? new Vector3(-0.8f, 0f, -depth * 0.4f) : new Vector3(-depth * 0.4f, 0f, -0.8f));
+                    GameObject block = StyleLook.Decor(_root.transform, StyleSlot.Rock, fallen, front, 0f, 0.9f + 0.006f * StyleRules.Variant(fallen, 100));
+                    if (block != null) AddModelOccluders(block);
+                }
             }
-            return true;
+            return placed > 0;
+        }
+
+        /// <summary>Essai réaliste 5 : objet d'une forme faite par le code (<see cref="StyleMesh"/>), avec ses tangentes pour le relief.</summary>
+        private GameObject Shape(string name, StyleMesh shape, Material material)
+        {
+            var mesh = new Mesh { name = name };
+            if (shape.Vertices.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.vertices = shape.Vertices.Select(v => new Vector3((float)v.X, (float)v.Y, (float)v.Z)).ToArray();
+            mesh.uv = shape.Uvs.Select(uv => new Vector2((float)uv.U, (float)uv.V)).ToArray();
+            mesh.triangles = shape.Triangles.ToArray();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+            var go = new GameObject(name);
+            go.transform.SetParent(_root.transform, false);
+            go.AddComponent<MeshFilter>().mesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            return go;
         }
 
         /// <summary>Prisme droit de base <paramref name="points"/> (polygone convexe), de hauteur <paramref name="height"/>, faces vers l'extérieur.</summary>
@@ -564,10 +624,15 @@ namespace EdS.Game
                 _occluders.Add(new Occluder { Transform = r.transform, Renderer = r, Lower = false, Min = box.min, Max = box.max });
         }
 
+        /// <summary>Flèche (m) du pont cintré : le milieu du tablier est à 4 cm + 35 cm au-dessus du sol.</summary>
+        private const float BridgeRise = 0.35f;
+
         /// <summary>
-        /// Pont : tablier entre les deux bras de la rivière (« riviere_sud » et « riviere_nord »), s'ils existent. La rivière coule suivant z
-        /// (bande x0..x1) ; le passage est la coupure entre ses deux bras (z0..z1), et le pont se traverse suivant x, d'une rive à l'autre
-        /// (revue Codex de la PR #34 : axes précisés). Les rambardes longent donc le passage suivant x, à z0 et z1, au bord des deux bras.
+        /// Pont entre les deux bras de la rivière (« riviere_sud » et « riviere_nord »), s'ils existent. La rivière coule suivant z (bande
+        /// x0..x1) ; le passage est la coupure entre ses deux bras (z0..z1), et le pont se traverse suivant x, d'une rive à l'autre
+        /// (revue Codex de la PR #34 : axes précisés). Essai réaliste 5 (choix de Damien du 27 octobre 2026 : « pont cintré fait par moi ») :
+        /// pont de bois bombé fait par le code (<see cref="StyleShapes.Bridge"/>) : planches une à une, longerons, poteaux et lisses de
+        /// rondins, culées de pierres ; les personnages montent avec son tablier (<see cref="StyleWorld.StandHeight"/>).
         /// </summary>
         private void Bridge(CombatSpace space)
         {
@@ -576,30 +641,50 @@ namespace EdS.Game
             if (south == null || north == null) return;
             float x0 = Raw(south.Points.Min(p => p.X.Raw)) - 0.6f, x1 = Raw(south.Points.Max(p => p.X.Raw)) + 0.6f;
             float z0 = Raw(south.Points.Max(p => p.Z.Raw)), z1 = Raw(north.Points.Min(p => p.Z.Raw));
-            // Essai réaliste (demande de Damien du 27 octobre 2026 : « le pont n'est pas réaliste ») : la rivière coule sous le pont, et le
-            // pont est un tronçon du ponton de Poly Haven, tablier au ras du sol, pieux dans le lit.
+            if (z1 <= z0) return;
+            // Essai réaliste (demande de Damien du 27 octobre 2026 : « le pont n'est pas réaliste ») : la rivière coule sous le pont.
             if (_rivers.Count > 0 && BridgeGap(space) is (float gx0, float gz0, float gx1, float gz1))
                 WaterSurface("Rivière (sous le pont)", new List<Vector3> { new Vector3(gx0, 0f, gz0), new Vector3(gx1, 0f, gz0), new Vector3(gx1, 0f, gz1), new Vector3(gx0, 0f, gz1) });
-            if (StyleLook.Bridge(_root.transform, new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f), x1 - x0, 0.08f) != null) return;
-            Material wood = Built(StyleSurface.Wood, new Color(0.55f, 0.4f, 0.24f), out float tile);
-            Box("Pont", new Vector3((x0 + x1) / 2f, 0.06f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.12f, z1 - z0), wood, tile);
-            Box("Pont (rambarde sud)", new Vector3((x0 + x1) / 2f, 0.5f, z0 + 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood, tile);
-            Box("Pont (rambarde nord)", new Vector3((x0 + x1) / 2f, 0.5f, z1 - 0.05f), new Vector3(x1 - x0, 0.1f, 0.1f), wood, tile);
+            Material wood = Built(StyleSurface.Wood, new Color(0.55f, 0.4f, 0.24f), out float woodTile);
+            Material bark = StyleWorld.Surface(StyleSurface.Bark, out float barkTile) ?? wood;
+            Material stone = Stone(out float stoneTile);
+            StyleBridgeShapes bridge = StyleShapes.Bridge(x0, z0, x1, z1, BridgeRise, "pont", woodTile, barkTile, stoneTile);
+            Shape("Pont (planches et poutres)", bridge.Wood, wood);
+            Shape("Pont (rambardes)", bridge.Bark, bark);
+            Shape("Pont (culées)", bridge.Stone, stone);
+            StyleWorld.Deck(x0, z0, x1, z1, BridgeRise);
         }
 
-        /// <summary>Toit : posé sur les piliers (« pilier… ») s'il y en a, il cache ce qui est dessous ; retiré quand le joueur y entre.</summary>
+        /// <summary>
+        /// Abri sur les piliers (« pilier… ») s'il y en a : ses poteaux sont les piliers du moteur. Essai réaliste 5 (demande de Damien du
+        /// 27 octobre 2026 : « il faudrait texturer le bâtiment ») : vraie charpente faite par le code (<see cref="StyleShapes.Shelter"/>) :
+        /// poteaux sur socles de pierre, sablières, entraits, aisseliers, et toit à deux pans couvert de tuiles. Le toit (et ce qui est
+        /// dessous : chevrons, faîtage) cache ce qui est dessous et est retiré quand le joueur y entre.
+        /// </summary>
         private void Roof(CombatSpace space)
         {
             List<SpaceObstacle> pillars = space.Obstacles.Where(o => o.Id.StartsWith("pilier")).ToList();
             if (pillars.Count < 2) return;
+            var posts = pillars.Select(o => ((double)Raw((o.Points.Min(p => p.X.Raw) + o.Points.Max(p => p.X.Raw)) / 2),
+                (double)Raw((o.Points.Min(p => p.Z.Raw) + o.Points.Max(p => p.Z.Raw)) / 2))).ToList();
+            Material wood = Built(StyleSurface.Wood, new Color(0.42f, 0.3f, 0.2f), out float woodTile);
+            Material tiles = Built(StyleSurface.Roof, new Color(0.5f, 0.22f, 0.16f), out float roofTile);
+            Material stone = Stone(out float stoneTile);
+            StyleShelterShapes shelter = StyleShapes.Shelter(posts, "abri", woodTile, roofTile, stoneTile);
+            Shape("Abri (charpente)", shelter.Frame, wood);
+            Shape("Abri (socles)", shelter.Stone, stone);
+            GameObject roof = Shape("Toit", shelter.RoofTiles, tiles);
+            GameObject under = Shape("Toit (voliges et chevrons)", shelter.RoofWood, wood);
             float x0 = Raw(pillars.Min(o => o.Points.Min(p => p.X.Raw))) - 0.8f, x1 = Raw(pillars.Max(o => o.Points.Max(p => p.X.Raw))) + 0.8f;
             float z0 = Raw(pillars.Min(o => o.Points.Min(p => p.Z.Raw))) - 0.8f, z1 = Raw(pillars.Max(o => o.Points.Max(p => p.Z.Raw))) + 0.8f;
-            Material tiles = Built(StyleSurface.Roof, new Color(0.5f, 0.22f, 0.16f), out float tile);
-            GameObject roof = Box("Toit", new Vector3((x0 + x1) / 2f, 3.2f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.35f, z1 - z0), tiles, tile);
+            float top = (float)shelter.RoofTop;
             _roofMin = new Vector3(x0, 0f, z0);
-            _roofMax = new Vector3(x1, 3.4f, z1);
+            _roofMax = new Vector3(x1, top, z1);
             _hasRoof = true;
-            AddOccluder(roof.transform, false, new Vector3(x0, 3f, z0), new Vector3(x1, 3.4f, z1));
+            var min = new Vector3((float)shelter.X0, 3f, (float)shelter.Z0);
+            var max = new Vector3((float)shelter.X1, top, (float)shelter.Z1);
+            AddOccluder(roof.transform, false, min, max);
+            AddOccluder(under.transform, false, min, max);
         }
 
         // --- Coupe des décors qui cachent le joueur --------------------------------------------------------------------------
@@ -697,6 +782,7 @@ namespace EdS.Game
         {
             StyleWorld.Release(_terrain);   // essai réaliste : données du terrain créées par le code, rendues avec lui
             _grass?.Destroy();
+            StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);   // essai réaliste 5 : plus de pont cintré sous les pieds
             Object.Destroy(_root);
         }
     }
@@ -907,7 +993,17 @@ namespace EdS.Game
 
         private static void Set(Mesh mesh, Vector3[] vertices, int[] triangles)
         {
+            // Essai réaliste 5 (revue Codex de la PR #60) : une annonce qui touche le pont cintré suit son tablier (redécoupée en petits
+            // triangles, chaque sommet rehaussé de la hauteur du tablier), au lieu de passer sous les planches.
+            if (vertices.Length > 0 && StyleWorld.OnDeck(vertices.Min(v => v.x), vertices.Min(v => v.z), vertices.Max(v => v.x), vertices.Max(v => v.z)))
+            {
+                (List<StyleVector> fine, List<int> fineTriangles) = StyleShapes.Subdivide(
+                    vertices.Select(v => new StyleVector(v.x, v.y, v.z)).ToList(), triangles, 0.3, 6, StyleWorld.Deck());
+                vertices = fine.Select(v => new Vector3((float)v.X, (float)v.Y + StyleWorld.StandHeight((float)v.X, (float)v.Z), (float)v.Z)).ToArray();
+                triangles = fineTriangles.ToArray();
+            }
             mesh.Clear();
+            if (vertices.Length > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.vertices = vertices;
             mesh.triangles = triangles;
             mesh.RecalculateNormals();
