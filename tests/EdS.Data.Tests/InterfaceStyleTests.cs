@@ -56,29 +56,260 @@ public class InterfaceStyleTests
         }
     }
 
-    [Fact]
-    public void Interface_facon_Diablo_branchee()
+    private static readonly string Hud = Path.Combine(Folder, "Resources", "EdsInterface", "Hud");
+    private static readonly string Painted = Path.Combine(Folder, "Resources", "EdsInterface", "Peintes");
+
+    private static (int Width, int Height) PngSize(string path)
     {
-        string art = Read("unity", "Assets", "EdS", "Game", "HudArt.cs");
-        string hud = Read("unity", "Assets", "EdS", "Game", "Hud.cs");
+        byte[] png = File.ReadAllBytes(path);
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, png.Take(4).ToArray());
+        Assert.Equal(6, png[25]);   // couleurs avec transparence
+        return ((png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19], (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23]);
+    }
+
+    /// <summary>
+    /// Essai réaliste 6 (choix de Damien du 27 octobre 2026 : interface « Fragments du Seuil », « je veux vraiment le meilleur ») : polices,
+    /// dessins de l'interface et icônes peintes présents, avec leurs licences et leurs auteurs crédités.
+    /// </summary>
+    [Fact]
+    public void Fragments_du_Seuil_presents_avec_leurs_licences()
+    {
+        string resources = Path.Combine(Root, Folder, "Resources", "EdsInterface");
+        foreach (string font in new[] { "CinzelDecorative-Bold.ttf", "BarlowCondensed-SemiBold.ttf", "BarlowCondensed-Bold.ttf" })
+        {
+            byte[] bytes = File.ReadAllBytes(Path.Combine(resources, font));
+            Assert.Equal(new byte[] { 0, 1, 0, 0 }, bytes.Take(4).ToArray());
+            Assert.InRange(bytes.Length, 20_000, 600_000);
+        }
+        foreach (string licence in new[] { "CinzelDecorative-OFL.txt", "BarlowCondensed-OFL.txt" })
+            Assert.Contains("SIL Open Font License", Read(Folder.Split(Path.DirectorySeparatorChar).Append(licence).ToArray()), StringComparison.Ordinal);
+
+        // Chaque dessin demandé par l'interface existe, exporté au double de sa taille d'affichage (dimensions paires).
+        string code = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
+        string[] sprites = System.Text.RegularExpressions.Regex.Matches(code, "UiKit\\.Sprite\\(\"([a-z_0-9]+)\"")
+            .Select(m => m.Groups[1].Value).Concat(new[] { "eclat_1_masque", "eclat_5_cadre", "repere_ennemi", "repere_rond", "repere_objectif", "vague" })
+            .Distinct().ToArray();
+        Assert.True(sprites.Length >= 25, string.Join(", ", sprites));
+        foreach (string sprite in sprites)
+        {
+            (int w, int h) = PngSize(Path.Combine(Root, Hud, sprite + ".png"));
+            Assert.True(w % 2 == 0 && h % 2 == 0, sprite);
+        }
+        for (int i = 1; i <= 5; i++)
+            foreach (string part in new[] { "_masque", "_cadre" })
+                Assert.True(File.Exists(Path.Combine(Root, Hud, "eclat_" + i + part + ".png")), "eclat_" + i + part);
+
+        // Icônes peintes : chaque compétence active ou ultime, chaque objet et chaque talent du Bastion (nom = fin de l'identifiant ; « t_ »
+        // devant un talent), en 128 × 128.
+        var icons = Directory.GetFiles(Path.Combine(Root, Painted), "*.png").Select(f => Path.GetFileNameWithoutExtension(f)!).ToHashSet(StringComparer.Ordinal);
+        foreach (string icon in icons) Assert.Equal((128, 128), PngSize(Path.Combine(Root, Painted, icon + ".png")));
+        using JsonDocument bastion = JsonDocument.Parse(Read("data", "v0", "classes", "bastion.json"));
+        JsonElement data = bastion.RootElement.GetProperty("data");
+        foreach (JsonElement skill in data.GetProperty("skills").EnumerateArray())
+        {
+            string kind = skill.GetProperty("kind").GetString()!;
+            string id = skill.GetProperty("id").GetString()!;
+            if (kind == "active" || kind == "ultimate") Assert.Contains(id.Substring(id.LastIndexOf('.') + 1), icons);
+        }
+        foreach (JsonElement tree in data.GetProperty("trees").EnumerateArray())
+            foreach (JsonElement talent in tree.GetProperty("talents").EnumerateArray())
+            {
+                string id = talent.GetProperty("id").GetString()!;
+                Assert.Contains("t_" + id.Substring(id.LastIndexOf('.') + 1), icons);
+            }
+        using JsonDocument items = JsonDocument.Parse(Read("data", "v0", "world", "items.json"));
+        int itemCount = 0;
+        foreach (JsonElement item in items.RootElement.GetProperty("data").GetProperty("items").EnumerateArray())
+        {
+            string id = item.GetProperty("id").GetString()!;
+            Assert.Contains(id.Substring(id.LastIndexOf('.') + 1), icons);
+            itemCount++;
+        }
+        Assert.True(itemCount >= 20);
+        Assert.Contains("garde", icons);
+        Assert.Contains("parade", icons);
+
+        // Licences et crédits : chaque source citée (CC0, CC BY 3.0, OFL).
+        string licences = Read(Folder.Split(Path.DirectorySeparatorChar).Append("LICENCES.md").ToArray());
+        string credits = Read("docs", "CREDITS.md");
+        foreach (string source in new[] { "Drummyfish", "LudicArts", "J. W. Bjerk", "boar-tusks", "metal-bar", "animal-hide", "Cinzel Decorative", "Barlow Condensed" })
+        {
+            Assert.Contains(source, licences, StringComparison.Ordinal);
+            Assert.Contains(source, credits, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// Essai réaliste 6 : l'interface en jeu est en uGUI (canevas mis à l'échelle sur 1080 de haut, TextMeshPro si ses ressources sont
+    /// là, texte ordinaire sinon), mise à jour après la caméra, cachée sous les écrans dessinés en IMGUI ; l'ancienne interface en jeu est
+    /// retirée ; le disque du bouclier et les annonces au sol sont refaits (essai de Damien du 27 octobre 2026).
+    /// </summary>
+    [Fact]
+    public void Interface_ugui_branchee()
+    {
         string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
-        Assert.Contains("_font = Resources.Load<Font>(\"EdsInterface/Cinzel\");", art, StringComparison.Ordinal);
-        Assert.Contains("Texture2D icon = Resources.Load<Texture2D>(\"EdsInterface/Icones/\" + name);", art, StringComparison.Ordinal);
-        // Globes de vie et d'endurance, compétences en icônes avec recharge en arc, Résonance et Charges.
-        Assert.Contains("HudArt.Orb(left, radius, health / (float)System.Math.Max(1, maxHealth), HealthColor,", hud, StringComparison.Ordinal);
-        Assert.Contains("HudArt.Orb(right, radius, me.Endurance / (float)System.Math.Max(1, me.MaxEndurance), EnduranceColor,", hud, StringComparison.Ordinal);
-        Assert.Contains("HudArt.Slot(rect, HudArt.Icon(slot.SkillId), key, slot.RemainingSeconds, slot.CooldownSeconds,", hud, StringComparison.Ordinal);
-        Assert.Contains("GUI.DrawTexture(rect, _wipes[index]);", art, StringComparison.Ordinal);
-        Assert.Contains("HudArt.Diamond(", hud, StringComparison.Ordinal);
-        Assert.Contains("HudArt.Icon(me.ParryOpen ? \"parade\" : \"garde\")", hud, StringComparison.Ordinal);
-        // Plus serré sur téléphone (commandes tactiles dans les coins) ; boutons et champs habillés partout.
-        Assert.Contains("Hud.Player(player, _touch.Active);", game, StringComparison.Ordinal);
-        Assert.Contains("HudArt.StyleButton(_button);", hud, StringComparison.Ordinal);
-        Assert.Contains("HudArt.StyleField(_field);", hud, StringComparison.Ordinal);
-        // Les grands panneaux des écrans ont leur cadre d'or.
-        foreach (string screen in new[] { "AdventureScreens.cs", "NetworkScreen.cs", "TalentScreen.cs", "MiniMap.cs", "TouchControls.cs" })
-            Assert.Contains("Hud.Panel(", Read("unity", "Assets", "EdS", "Game", screen), StringComparison.Ordinal);
-        // Icône d'une compétence inconnue : l'icône générique.
-        Assert.Contains("return Icons.TryGetValue(\"competence\", out Texture2D any) ? any : null;", art, StringComparison.Ordinal);
+        string hud = Read("unity", "Assets", "EdS", "Game", "Hud.cs");
+        string kit = Read("unity", "Assets", "EdS", "Game", "UiKit.cs");
+        string text = Read("unity", "Assets", "EdS", "Game", "UiText.cs");
+        string view = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
+        Assert.Contains("_hud = HudView.Create();", game, StringComparison.Ordinal);
+        Assert.Contains("private void LateUpdate()", game, StringComparison.Ordinal);
+        Assert.Contains("!_menuOpen && !LobbyShown && _talents == null && _combat != null", game, StringComparison.Ordinal);
+        Assert.Contains("&& !TalentsOpen;", game, StringComparison.Ordinal);
+        Assert.Contains("_hud.Player(player, _touch.Active, deltaTime);", game, StringComparison.Ordinal);
+        Assert.Contains("_hud.Help(_help && open, a.PlaceName,", game, StringComparison.Ordinal);
+        Assert.DoesNotContain("Hud.Player(", game, StringComparison.Ordinal);
+        Assert.DoesNotContain("DrawMini", game, StringComparison.Ordinal);
+        Assert.DoesNotContain("public static void Player(", hud, StringComparison.Ordinal);
+        Assert.Contains("scaler.referenceResolution = new Vector2(ReferenceWidth, ReferenceHeight);", kit, StringComparison.Ordinal);
+        Assert.Contains("scaler.matchWidthOrHeight = 1f;", kit, StringComparison.Ordinal);
+        Assert.Contains("ready = Resources.Load<TMP_Settings>(\"TMP Settings\") != null && Shader.Find(TmpShader) != null;", text, StringComparison.Ordinal);
+        Assert.Contains("tmp.richText = false;", text, StringComparison.Ordinal);
+        // Noms montrés (plus de « SANGLIER_V2 »), aide en touches venues des textes du monde, carte peinte.
+        Assert.Contains("_targetName.Value = DisplayNames.Of(target.Id);", view, StringComparison.Ordinal);
+        Assert.Contains("_adventureHelp = HelpKeys.Adventure(a.Text(\"text.ui.help\"));", game, StringComparison.Ordinal);
+        Assert.Contains("Texture2D painted = PaintedMap.For(map);", view, StringComparison.Ordinal);
+        Assert.Contains("_mapImage.uvRect = PaintedMap.Window(map, cx, cz, MapRadius);", view, StringComparison.Ordinal);
+        Assert.Contains("_work = Task.Run(() => MapPainter.Paint(map, w, h));", Read("unity", "Assets", "EdS", "Game", "PaintedMap.cs"), StringComparison.Ordinal);
+
+        // Projet : paquet uGUI, ressources de TextMeshPro importées par l'éditeur (non suivies), images importées à leur taille exacte.
+        string setup = Read("unity", "Assets", "EdS", "Editor", "EdsInterfaceSetup.cs");
+        Assert.Contains("AssetDatabase.ImportPackage(package, false);", setup, StringComparison.Ordinal);
+        // Revue Codex de la PR #62 : dossier physique du paquet demandé au gestionnaire de paquets, puis cache des paquets.
+        Assert.Contains("UnityEditor.PackageManager.PackageInfo.FindForAssetPath(\"Packages/\" + name)?.resolvedPath", setup, StringComparison.Ordinal);
+        Assert.Contains("Directory.GetDirectories(cache, name + \"@*\")", setup, StringComparison.Ordinal);
+        Assert.Contains("importer.npotScale = TextureImporterNPOTScale.None;", setup, StringComparison.Ordinal);
+        Assert.Contains("importer.mipmapEnabled = false;", setup, StringComparison.Ordinal);
+        Assert.Contains("unity/Assets/TextMesh Pro/", File.ReadAllLines(Path.Combine(Root, ".gitignore")));
+        string build = Read("unity", "Assets", "EdS", "Editor", "EdsBuildShaders.cs");
+        Assert.Contains("Shader text = Shader.Find(TextShader);", build, StringComparison.Ordinal);
+        Assert.Contains("Shader annonce = Shader.Find(\"EdS/Annonce\");", build, StringComparison.Ordinal);
+
+        // Bouclier : plus de disque sur le chevalier ; sa garde se voit à son clip et dans l'interface.
+        string arena = Read("unity", "Assets", "EdS", "Game", "ArenaView.cs");
+        Assert.Contains("_shield.SetActive(!styled && me.IsPresent && (me.Guarding || me.ParryOpen || broken));", arena, StringComparison.Ordinal);
+        Assert.Contains("mine.Update(_player.transform.position, me.IsDead, Time.deltaTime, me.Guarding || me.ParryOpen);", arena, StringComparison.Ordinal);
+        Assert.Contains("StyleRules.Motion(_speed, dead, Time.time < _attackUntil, guarding)", Read("unity", "Assets", "EdS", "Game", "StyleLook.cs"), StringComparison.Ordinal);
+
+        // Annonces au sol : shader dédié, réglé par annonce ; imparable signalé.
+        string shader = Read("unity", "Assets", "EdS", "Game", "Annonce.shader");
+        string space = Read("unity", "Assets", "EdS", "Game", "SpaceView.cs");
+        Assert.Contains("Shader \"EdS/Annonce\"", shader, StringComparison.Ordinal);
+        foreach (string property in new[] { "_Progress", "_Kind", "_Unblockable", "_Linger" })
+        {
+            Assert.Contains(property, shader, StringComparison.Ordinal);
+            Assert.Contains("_block.SetFloat(\"" + property + "\"", space, StringComparison.Ordinal);
+        }
+        Assert.Contains("if (other.View.NextAttack is { } next && next.Unblockable) unblockable.Add(other.Id + \"/\" + next.Id);", arena, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») : T ouvre
+    /// l'arbre des Éclats dans l'aventure (uGUI, clics et survol), sur les talents du personnage ; les points passent par l'éditeur (le
+    /// validateur unique) et se gardent par l'aventure (hors combat, effet à la halte).
+    /// </summary>
+    [Fact]
+    public void Arbre_des_eclats_ouvrable_dans_l_aventure()
+    {
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        string view = Read("unity", "Assets", "EdS", "Game", "TalentTreeView.cs");
+        string kit = Read("unity", "Assets", "EdS", "Game", "UiKit.cs");
+        Assert.Contains("_talentView.Open(a.CreateTalentEditor(), a.Text, a.SetTalents);", game, StringComparison.Ordinal);
+        Assert.Contains("if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed))", game, StringComparison.Ordinal);
+        Assert.Contains("if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) _talentView.Cancel();", game, StringComparison.Ordinal);
+        Assert.Contains("|| a.MustContinue || TalentsOpen;", game, StringComparison.Ordinal);
+        Assert.Contains("BuildViolation why = delta > 0 ? _editor.Add(node.Talent.Id) : _editor.Remove(node.Talent.Id);", view, StringComparison.Ordinal);
+        Assert.Contains("string refusal = _apply(_editor.Build);", view, StringComparison.Ordinal);
+        Assert.Contains("go.AddComponent<StandaloneInputModule>();", kit, StringComparison.Ordinal);
+        Assert.Contains("ButtonId.Talents", Read("unity", "Assets", "EdS", "Game", "TouchControls.cs"), StringComparison.Ordinal);
+        foreach (string sprite in new[] { "noeud_masque", "noeud_fond", "noeud_cadre", "noeud_cadre_sobre", "majeur_masque", "majeur_cadre", "anneau_progression",
+                     "graine", "pip_on", "pip_off" })
+            PngSize(Path.Combine(Root, Hud, sprite + ".png"));
+        // Chaque talent du Bastion a sa description dans les textes du monde, et chaque arbre sa devise.
+        using JsonDocument texts = JsonDocument.Parse(Read("data", "v0", "world", "texts", "fr.json"));
+        JsonElement entries = texts.RootElement.GetProperty("data").GetProperty("entries");
+        using JsonDocument bastion = JsonDocument.Parse(Read("data", "v0", "classes", "bastion.json"));
+        foreach (JsonElement tree in bastion.RootElement.GetProperty("data").GetProperty("trees").EnumerateArray())
+        {
+            string treeId = tree.GetProperty("id").GetString()!;
+            Assert.True(entries.TryGetProperty("text.tree." + treeId.Substring(treeId.LastIndexOf('.') + 1), out _), treeId);
+            foreach (JsonElement talent in tree.GetProperty("talents").EnumerateArray())
+            {
+                string id = talent.GetProperty("id").GetString()!;
+                Assert.True(entries.TryGetProperty("text.talent." + id.Substring(id.LastIndexOf('.') + 1), out JsonElement text), id);
+                Assert.True(text.GetString()!.Length > 10, id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Essai réaliste 6, étape 2 (« pareil pour l'inventaire, l'aide tout ces petits détails ») : les écrans de l'aventure (Personnage,
+    /// Journal, Atelier, Carte) et le dialogue sont en uGUI, dans un panneau à onglets dont l'un ouvre l'arbre des Éclats ; les actions
+    /// passent par l'aventure (donc par le cœur) ; l'ancienne carte en IMGUI est retirée.
+    /// </summary>
+    [Fact]
+    public void Ecrans_de_l_aventure_en_ugui()
+    {
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        string book = Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs");
+        string screens = Read("unity", "Assets", "EdS", "Game", "AdventureScreens.cs");
+        Assert.Contains("_book = AdventureBook.Create();", game, StringComparison.Ordinal);
+        Assert.Contains("AdventureBook.Request request = _book.Update(_adventure, _screens, AdventureEnemies(), deltaTime);", game, StringComparison.Ordinal);
+        Assert.Contains("else if (request == AdventureBook.Request.Talents) OpenAdventureTalents(_adventure);", game, StringComparison.Ordinal);
+        Assert.DoesNotContain("DrawDialogue", game, StringComparison.Ordinal);
+        Assert.DoesNotContain("Hud.", screens, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "MiniMap.cs")));
+        foreach (string action in new[] { "_session.Unequip(s);", "_session.Equip(place);", "_session.Craft(_recipeData[index].Id);", "_session?.Choose(index)",
+                     "_session?.CloseDialogue()" })
+            Assert.Contains(action, book, StringComparison.Ordinal);
+        Assert.Contains("_map.uvRect = PaintedMap.Area(map);", book, StringComparison.Ordinal);
+        using JsonDocument texts = JsonDocument.Parse(Read("data", "v0", "world", "texts", "fr.json"));
+        JsonElement entries = texts.RootElement.GetProperty("data").GetProperty("entries");
+        foreach (string key in new[] { "text.ui.tab.character", "text.ui.tab.talents", "text.ui.tab.journal", "text.ui.tab.crafting", "text.ui.tab.map" })
+            Assert.True(entries.TryGetProperty(key, out _), key);
+    }
+
+    /// <summary>Essai réaliste 6, étape 3 : finitions animées (niveau gagné, vie basse, coup reçu par la cible, fondus).</summary>
+    [Fact]
+    public void Finitions_animees()
+    {
+        string hud = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        Assert.Contains("if (_shownLevel > 0 && level > _shownLevel) _hud.LevelUp(level,", game, StringComparison.Ordinal);
+        Assert.Contains("_danger = me.IsDead || me.Health == null ? 0f : Mathf.Clamp01((0.3f - healthFraction) / 0.3f);", hud, StringComparison.Ordinal);
+        Assert.Contains("if (_lastTargetFraction >= 0f && fraction < _lastTargetFraction - 0.0005f) _targetFlashAlpha = 0.65f;", hud, StringComparison.Ordinal);
+        Assert.Contains("_fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);", Read("unity", "Assets", "EdS", "Game", "TalentTreeView.cs"), StringComparison.Ordinal);
+        Assert.Contains("_fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);", Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Relecture indépendante de l'essai 6 : icônes du sac visibles (bord sans centre), bords rouges de la vie basse sur une image blanche,
+    /// survol visible, ombre et contour par matériau partagé (variantes emportées par la construction), pas de menu par-dessus l'arbre,
+    /// annonces refaites seulement quand leur forme change, et aucun symbole absent des polices de l'interface (TextMeshPro les
+    /// afficherait en carrés).
+    /// </summary>
+    [Fact]
+    public void Corrections_de_la_relecture()
+    {
+        string book = Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs");
+        string hud = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
+        string text = Read("unity", "Assets", "EdS", "Game", "UiText.cs");
+        Assert.Contains("cell.Edge.fillCenter = false;", book, StringComparison.Ordinal);
+        Assert.Contains("UiKit.Sprite(\"bord_haut\")", hud, StringComparison.Ordinal);
+        Assert.Contains("UiKit.Sprite(\"bord_bas\")", hud, StringComparison.Ordinal);
+        Assert.Contains("material.EnableKeyword(\"OUTLINE_ON\");", text, StringComparison.Ordinal);
+        Assert.Contains("if (material != null) _tmp.fontSharedMaterial = material;", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("fontMaterial", text.Replace("fontSharedMaterial", ""), StringComparison.Ordinal);
+        Assert.Contains("outlined.EnableKeyword(\"OUTLINE_ON\");", Read("unity", "Assets", "EdS", "Editor", "EdsBuildShaders.cs"), StringComparison.Ordinal);
+        Assert.Contains("if (!TalentsOpen && ((Keys.MenuPressed", Read("unity", "Assets", "EdS", "Game", "EdsGame.cs"), StringComparison.Ordinal);
+        Assert.Contains("if (key != _shape)", Read("unity", "Assets", "EdS", "Game", "SpaceView.cs"), StringComparison.Ordinal);
+        foreach (string sprite in new[] { "bord_haut", "bord_bas" }) PngSize(Path.Combine(Root, Hud, sprite + ".png"));
+        // Symboles absents de Cinzel et de Barlow Condensed : interdits dans les textes de l'interface uGUI.
+        foreach (string file in new[] { "HudView.cs", "AdventureBook.cs", "TalentTreeView.cs", "UiKit.cs" })
+        {
+            string code = Read("unity", "Assets", "EdS", "Game", file);
+            foreach (char symbol in "◆◇●○✓→★■▲►")
+                Assert.False(code.Contains(symbol), $"{file} : « {symbol} »");
+        }
     }
 }

@@ -228,9 +228,11 @@ public class StyleShapesTests
         Assert.Contains("Vector3 place = shown[v.Id] + Vector3.up * (1f + StyleWorld.StandHeight(shown[v.Id].x, shown[v.Id].z));", arena, StringComparison.Ordinal);
         Assert.Contains("1f + StyleWorld.StandHeight((float)predicted.Value.X, (float)predicted.Value.Z)", arena, StringComparison.Ordinal);
         Assert.Contains("(float)StyleShapes.StandHeight(x, z, _deckX0, _deckZ0, _deckX1, _deckZ1, _deckRise)", world, StringComparison.Ordinal);
-        // Revue Codex de la PR #60 : les annonces d'attaque qui touchent le pont suivent son tablier.
-        Assert.Contains("vertices.Select(v => new StyleVector(v.x, v.y, v.z)).ToList(), triangles, 0.3, 6, StyleWorld.Deck());", view, StringComparison.Ordinal);
-        Assert.Contains("(float)v.Y + StyleWorld.StandHeight((float)v.X, (float)v.Z)", view, StringComparison.Ordinal);
+        // Revue Codex de la PR #60 : les annonces d'attaque qui touchent le pont suivent son tablier. Essai réaliste 6 : elles sont
+        // découpées en cases d'environ 30 cm (TelegraphShapes), chaque sommet monte avec le tablier.
+        Assert.Contains("Annonces.Fill(_mesh, shape, true);", view, StringComparison.Ordinal);
+        Assert.Contains("vertices[i] = new Vector3(x, deck ? StyleWorld.StandHeight(x, z) : 0f, z);", view, StringComparison.Ordinal);
+        Assert.Equal(0.3, TelegraphShapes.Cell);
         // Formes faites par le code : tangentes pour le relief, index 32 bits au besoin.
         Assert.Contains("if (shape.Vertices.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;", view, StringComparison.Ordinal);
         Assert.Contains("mesh.RecalculateTangents();", view, StringComparison.Ordinal);

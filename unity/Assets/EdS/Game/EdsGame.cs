@@ -110,6 +110,17 @@ namespace EdS.Game
         // Sous-lot 11.8 : commandes au doigt (téléphone, simulateur d'appareils de l'éditeur, F8 pour les forcer) ; données prêtes.
         private readonly TouchControls _touch = new TouchControls();
         private bool _ready;
+
+        // Essai réaliste 6 : l'interface en jeu en uGUI (« Fragments du Seuil »), et l'aide de l'aventure découpée en touches.
+        private HudView _hud;
+        private IReadOnlyList<HelpKey> _adventureHelp;
+
+        // Essai réaliste 6, étape 2 : l'arbre des Éclats (talents) ouvrable dans l'aventure (T), et les écrans de l'aventure en uGUI.
+        private TalentTreeView _talentView;
+        private AdventureBook _book;
+
+        /// <summary>Essai réaliste 6, étape 3 : niveau du personnage à l'image précédente (l'annonce d'un niveau gagné), 0 : inconnu.</summary>
+        private int _shownLevel;
         private string _startupError;
 
         private IEnumerator Start()
@@ -121,6 +132,9 @@ namespace EdS.Game
                 ApplyMobileSettings();
                 _camera = CameraRig.Create();
                 _arena = new ArenaView();
+                _hud = HudView.Create();
+                _talentView = TalentTreeView.Create();
+                _book = AdventureBook.Create();
                 StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
             }
             catch (Exception e)
@@ -207,6 +221,8 @@ namespace EdS.Game
                 return;
             }
             _markers = new WorldMarkers(_adventure);
+            _adventureHelp = null;
+            _shownLevel = 0;
             ShowAdventureSession();
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
@@ -224,7 +240,10 @@ namespace EdS.Game
         }
 
         /// <summary>Un écran (sac, journal, atelier) ou un dialogue de l'aventure couvre les commandes tactiles (revue Codex de la PR #49).</summary>
-        private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null);
+        private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null || TalentsOpen);
+
+        /// <summary>Essai réaliste 6, étape 2 : l'arbre des Éclats est ouvert.</summary>
+        private bool TalentsOpen => _talentView != null && _talentView.IsOpen;
 
         /// <summary>
         /// Salle d'attente du réseau affichée (avant, entre et après les combats) : ses boutons (« Je suis prêt », « Quitter la partie »)
@@ -241,6 +260,8 @@ namespace EdS.Game
             _markers?.Destroy();
             _markers = null;
             _adventure = null;
+            _talentView?.Close();
+            PaintedMap.Forget();
             _screens.Close();
             _arena.Paint = null;
             _combat = null;
@@ -296,15 +317,26 @@ namespace EdS.Game
                 if (Input.GetKeyDown(KeyCode.Escape)) a.CloseDialogue();
                 else if (DigitPressed() is int answer && answer >= 0) a.Choose(answer);
             }
+            else if (TalentsOpen)
+            {
+                // Essai réaliste 6, étape 2 : T ou Échap ferme l'arbre sans garder les points.
+                if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) _talentView.Cancel();
+            }
             else if (_screens.Open != AdventureScreens.Panel.None)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _screens.Close();
             }
             else if (Input.GetKeyDown(KeyCode.Escape) || _touch.PausePressed) _paused = !_paused;
-            if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
-            if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
-            if (Input.GetKeyDown(KeyCode.K) || _touch.WorkshopPressed) _screens.Toggle(AdventureScreens.Panel.Crafting);
-            if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
+            if (!TalentsOpen)
+            {
+                if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
+                if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
+                if (Input.GetKeyDown(KeyCode.K) || _touch.WorkshopPressed) _screens.Toggle(AdventureScreens.Panel.Crafting);
+                if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
+                // Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») :
+                // T ouvre l'arbre des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
+                if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed)) OpenAdventureTalents(a);
+            }
             if (Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed)
             {
@@ -321,7 +353,7 @@ namespace EdS.Game
                 }
             }
             if (a.Opened != _shownSession) ShowAdventureSession();
-            bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue;
+            bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed) && a.Drink()) StyleLook.Play(Audio, StyleSound.Potion);   // essai de style : son
             if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
@@ -534,7 +566,8 @@ namespace EdS.Game
             }
             // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
             // Une lettre M tapée dans un champ du menu (nom, adresse) ne le ferme pas.
-            if ((Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) || (_touch.MenuPressed && !_menuOpen)) _menuOpen = !_menuOpen;
+            // Relecture de l'essai 6 : pas de menu par-dessus l'arbre des Éclats (ses clics iraient aussi à l'arbre).
+            if (!TalentsOpen && ((Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) || (_touch.MenuPressed && !_menuOpen))) _menuOpen = !_menuOpen;
             if (_menuOpen)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;
@@ -962,34 +995,131 @@ namespace EdS.Game
             });
         }
 
-        /// <summary>Sous-lot 12.8 : lieu et heure, indication d'action, défaite, dialogue et écrans de l'aventure.</summary>
-        private void DrawAdventure()
+        /// <summary>
+        /// Sous-lot 12.8 : commandes tactiles de l'aventure (IMGUI). Essai réaliste 6 : le lieu, l'heure, l'indication d'action, la défaite,
+        /// la pause et la petite carte sont dans l'interface uGUI (<see cref="UpdateHud"/>) ; les écrans et le dialogue aussi
+        /// (<see cref="AdventureBook"/>).
+        /// </summary>
+        private void DrawAdventure() => _touch.Draw(false, true, AdventureCovered);
+
+        /// <summary>Essai réaliste 6, étape 2 : écrans et dialogue de l'aventure (uGUI) ; un onglet peut ouvrir l'arbre des Éclats.</summary>
+        private void UpdateBook(float deltaTime, bool shown)
         {
-            AdventureSession a = _adventure;
-            Hud.Centered(new Rect(Hud.Width / 2f - 300, 20, 600, 40), Hud.Plain(a.PlaceName) + " — " + a.TimeOfDay, Color.white);
-            if (a.MustContinue)
+            if (_book == null) return;
+            if (!shown || _adventure == null || TalentsOpen)
             {
-                Hud.Panel(new Rect(Hud.Width / 2f - 420, Hud.VirtualHeight / 2f - 70, 840, 140), new Color(0.25f, 0f, 0f, 0.8f));
-                string why = a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over";
-                Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f - 60, 800, 50), a.Text(why), Color.white);
+                _book.Hide();
+                return;
             }
-            string hint = AdventureHint();
-            if (hint != null)
-                Hud.Centered(new Rect(Hud.Width / 2f - 400, Hud.VirtualHeight / 2f + (a.MustContinue ? 0 : 120), 800, 40), Hud.Plain(hint), new Color(1f, 0.92f, 0.6f));
-            if (_paused && a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None)
-                Hud.Centered(new Rect(Hud.Width / 2f - 150, 64, 300, 40), "PAUSE", new Color(1f, 0.85f, 0.3f));
-            // Sous-lot 12.9d : la carte (ennemis en vue seulement, comme à l'écran) ; petite tant qu'aucun écran n'est ouvert.
+            AdventureBook.Request request = _book.Update(_adventure, _screens, AdventureEnemies(), deltaTime);
+            if (request == AdventureBook.Request.Close) _screens.Close();
+            else if (request == AdventureBook.Request.Talents) OpenAdventureTalents(_adventure);
+        }
+
+        /// <summary>
+        /// Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») : l'arbre
+        /// des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
+        /// </summary>
+        private void OpenAdventureTalents(AdventureSession a)
+        {
+            if (a.Dialogue != null || a.MustContinue) return;
+            _screens.Close();
+            try
+            {
+                _talentView.Open(a.CreateTalentEditor(), a.Text, a.SetTalents);
+            }
+            catch (ArgumentException e)
+            {
+                Debug.LogException(e);
+                Say("Talents indisponibles : " + e.Message);
+            }
+        }
+
+        /// <summary>Sous-lot 12.9d : ennemis à montrer sur la carte (en vue seulement, comme à l'écran).</summary>
+        private List<MapEnemy> AdventureEnemies()
+        {
             var enemies = new List<MapEnemy>();
             foreach (OtherState o in _combat.Others())
                 if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && _arena.Shown(o.Id) && o.View.Position is EdS.Domain.Space.GroundVector at)
-                    enemies.Add(new MapEnemy(at.X.Raw / 10000f, at.Z.Raw / 10000f, a.IsBoss(o.Id)));
-            _screens.Enemies = enemies;
-            if (_screens.Open == AdventureScreens.Panel.None && a.Dialogue == null) _screens.Map.DrawMini(a, enemies);
-            int answer = AdventureScreens.DrawDialogue(a);
-            if (answer >= 0) a.Choose(answer);
-            else if (answer == AdventureScreens.CloseDialogue) a.CloseDialogue();
-            _screens.Draw(a);
-            _touch.Draw(false, true, AdventureCovered);
+                    enemies.Add(new MapEnemy(at.X.Raw / 10000f, at.Z.Raw / 10000f, _adventure.IsBoss(o.Id)));
+            return enemies;
+        }
+
+        /// <summary>
+        /// Essai réaliste 6 : l'interface en jeu (uGUI) suit l'état de cette image, après le déplacement et la caméra. Cachée sous ce qui
+        /// reste dessiné en plein écran par IMGUI : erreurs, préparation, menu et salle d'attente du réseau, écran des talents.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (_hud == null) return;
+            bool shown = _ready && _startupError == null && !(_error != null && !Network) && !_menuOpen && !LobbyShown && _talents == null && _combat != null
+                && !TalentsOpen;
+            _talentView?.Update(Time.unscaledDeltaTime);
+            bool screens = _ready && _startupError == null && !_menuOpen && !LobbyShown && _talents == null && _combat != null;
+            UpdateBook(Time.unscaledDeltaTime, screens);
+            if (!shown)
+            {
+                _hud.Hide();
+                return;
+            }
+            UpdateHud(Time.unscaledDeltaTime);
+        }
+
+        private void UpdateHud(float deltaTime)
+        {
+            _hud.Begin(deltaTime);
+            PlayerState player = _combat.Player();
+            Camera camera = _camera.Camera;
+            foreach (OtherState other in _combat.Others())
+            {
+                if (!other.View.IsPresent) continue;   // revue Codex de la PR #32 (16e tour) : un absent n'a pas de barre
+                Vector3? head = _arena.Head(other.Id);
+                if (head == null) continue;
+                // Sous-lot 12.8 : dans une zone du monde, seules les créatures proches ont leur barre.
+                if (_adventure != null && _arena.Player != null && (head.Value - _arena.Player.position).sqrMagnitude > OverheadRange * OverheadRange) continue;
+                _hud.Overhead(camera.WorldToScreenPoint(head.Value), other, other.Id == player.TargetId);
+            }
+            _floating.RemoveAll(f => Time.time - f.Born > FloatingSeconds);
+            foreach (Floating f in _floating)
+            {
+                float age = Time.time - f.Born;
+                _hud.Floating(camera.WorldToScreenPoint(f.World + Vector3.up * age * 0.9f), f.Text, f.Color, age / FloatingSeconds);
+            }
+            if (_adventure != null && _arena.Player != null) _markers?.Labels(camera, _arena.Player.position, _hud);
+            _hud.Player(player, _touch.Active, deltaTime);   // plus serré quand les commandes tactiles occupent les coins
+            // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
+            _hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)), deltaTime);
+            _messages.RemoveAll(m => Time.time - m.Key > MessageSeconds);
+            foreach (KeyValuePair<float, string> message in _messages) _hud.Message(message.Value);
+
+            if (_adventure != null)
+            {
+                AdventureSession a = _adventure;
+                // Étape 3 : un niveau gagné s'annonce en grand (il prend effet à la prochaine halte).
+                int level = a.World.Level;
+                if (_shownLevel > 0 && level > _shownLevel) _hud.LevelUp(level, level > a.World.EnteredLevel ? "Effet à ta prochaine halte" : "");
+                _shownLevel = level;
+                bool open = a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None;
+                double facing = _arena.Player != null ? _arena.Player.eulerAngles.y : _playerYaw;
+                _hud.Adventure(a, AdventureEnemies(), facing, open, _touch.Active);
+                string notice = !a.MustContinue ? null
+                    : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
+                _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
+                _hud.Clock(null);
+                if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
+                _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);
+            }
+            else
+            {
+                _hud.Adventure(null, null, 0, false, _touch.Active);
+                float elapsed = _combat.Tick * (float)_combat.TickSeconds;
+                _hud.Center(_paused ? "Pause" : null, null, null);
+                _hud.Clock($"{(int)elapsed / 60}:{(int)elapsed % 60:00}");
+                if (Network)
+                    _hud.Help(_help, "Coopération", (_net.Host != null ? "Tu héberges" : _net.Address) + " · " + NetworkBuildName() + " · " + _camera.Describe(), HelpKeys.Network);
+                else _hud.Help(_help, ScenarioName(), "Build : " + BuildName() + " · " + _camera.Describe(), HelpKeys.Training);
+            }
+            _hud.End(deltaTime);
         }
 
         private void DrawTalents()
@@ -1053,45 +1183,8 @@ namespace EdS.Game
             }
             if (_combat == null) return;
 
-            PlayerState player = _combat.Player();
-            Camera camera = _camera.Camera;
-            foreach (OtherState other in _combat.Others())
-            {
-                if (!other.View.IsPresent) continue;   // revue Codex de la PR #32 (16e tour) : un absent n'a pas de barre
-                Vector3? head = _arena.Head(other.Id);
-                // Sous-lot 12.8 : dans une zone du monde, seules les créatures proches ont leur barre.
-                if (_adventure != null && head != null && _arena.Player != null && (head.Value - _arena.Player.position).sqrMagnitude > OverheadRange * OverheadRange) continue;
-                if (head != null) Hud.Overhead(camera.WorldToScreenPoint(head.Value), other, other.Id == player.TargetId);
-            }
-
-            _floating.RemoveAll(f => Time.time - f.Born > FloatingSeconds);
-            foreach (Floating f in _floating)
-            {
-                float age = Time.time - f.Born;
-                Vector3 screen = camera.WorldToScreenPoint(f.World + Vector3.up * age * 0.9f);
-                if (screen.z <= 0f) continue;
-                float x = screen.x / Hud.Scale, y = (Screen.height - screen.y) / Hud.Scale;
-                Color color = f.Color;
-                color.a = 1f - age / FloatingSeconds;
-                Hud.Centered(new Rect(x - 150, y - 15, 300, 30), f.Text, color);
-            }
-
-            if (_adventure != null && _arena.Player != null) _markers?.Labels(camera, _arena.Player.position);
-            Hud.Player(player, _touch.Active);   // essai réaliste 5 : plus serré quand les commandes tactiles occupent les coins
-            // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
-            Hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)),
-                _adventure != null ? MiniMap.Width + 2f * MiniMap.Margin : 0f);   // sous-lot 12.9d : à gauche de la petite carte
-            if (_adventure != null)
-            {
-                if (_help) Hud.Help(Hud.Plain(_adventure.PlaceName), _adventure.TimeOfDay, _camera.Describe(), _paused, false, _adventure.Text("text.ui.help"));
-            }
-            else if (_help) Hud.Help(Network ? "coopération, " + (_net.Host != null ? "tu héberges" : _net.Address) : ScenarioName(),
-                Network ? NetworkBuildName() : BuildName(), _camera.Describe(), _paused, Network);
+            // Essai réaliste 6 : barres, sceau, compétences, cible, aide, messages et textes flottants sont dans l'interface uGUI (LateUpdate).
             if (Network) NetworkScreen.DrawCombat(_net, _shownCombat?.AllyId);
-
-            _messages.RemoveAll(m => Time.time - m.Key > MessageSeconds);
-            for (int i = 0; i < _messages.Count; i++)
-                Hud.Centered(new Rect(Hud.Width / 2f - 400, 80 + i * 30, 800, 28), _messages[i].Value, new Color(1f, 0.95f, 0.8f));
 
             if (_talents != null)
             {
@@ -1104,8 +1197,6 @@ namespace EdS.Game
                 DrawAdventure();
                 return;
             }
-            float elapsed = _combat.Tick * (float)_combat.TickSeconds;
-            Hud.Centered(new Rect(Hud.Width / 2f - 150, 20, 300, 40), $"{(int)elapsed / 60}:{(int)elapsed % 60:00}", Color.white);
             _touch.Draw(Network);   // sous-lot 11.8
         }
     }

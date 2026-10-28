@@ -52,6 +52,8 @@ public class Lot93UnityPackageTests
         Assert.Equal("1.0.0", dependencies["com.unity.modules.audio"]!.GetValue<string>());
         // Essai réaliste (26 octobre 2026) : le sol en terrain (Terrain, TerrainData) demande le module intégré du terrain.
         Assert.Equal("1.0.0", dependencies["com.unity.modules.terrain"]!.GetValue<string>());
+        // Essai réaliste 6 : l'interface en jeu en uGUI et TextMeshPro (paquet de Unity 6, version 2.0.0).
+        Assert.Equal("2.0.0", dependencies["com.unity.ugui"]!.GetValue<string>());
         Assert.StartsWith("m_EditorVersion: 6000.3.", File.ReadAllText(Path.Combine(Root, "unity", "ProjectSettings", "ProjectVersion.txt")));
     }
 
@@ -133,7 +135,9 @@ public class Lot93UnityPackageTests
     {
         JsonObject game = Json(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdS.Game.asmdef"));
         // Essai réaliste (26 octobre 2026) : le jeu règle aussi les couleurs de l'image (volume d'URP), d'où les deux assemblages d'URP.
-        Assert.Equal(Portable.Concat(new[] { "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime" }).OrderBy(n => n, StringComparer.Ordinal),
+        // Essai réaliste 6 : l'interface en jeu en uGUI et TextMeshPro (paquet com.unity.ugui).
+        Assert.Equal(Portable.Concat(new[] { "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime", "UnityEngine.UI", "Unity.TextMeshPro" })
+                .OrderBy(n => n, StringComparer.Ordinal),
             game["references"]!.AsArray().Select(r => r!.GetValue<string>()).OrderBy(r => r, StringComparer.Ordinal));
         JsonObject editor = Json(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdS.Editor.asmdef"));
         Assert.Equal(new[] { "Editor" }, editor["includePlatforms"]!.AsArray().Select(p => p!.GetValue<string>()));

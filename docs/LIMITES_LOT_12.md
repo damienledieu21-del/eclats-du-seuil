@@ -20,7 +20,7 @@ Détail : [MONDE.md](MONDE.md#personnage-sous-lot-122).
 - **Valeurs provisoires** (question à Damien) : courbe d'expérience (1 620 points pour le niveau 10), expérience des créatures (PV maximaux ÷ 20, ÷ 5 depuis le 12.9a), table d'attributs du Bastion par niveau. Tout se règle dans `data/v0/world/progression.json`, sans toucher au code ; l'équilibrage se fera à l'essai (12.9), avec les quêtes qui donneront aussi de l'expérience (12.5).
 - **Un seul joueur crédité** : l'expérience va au personnage s'il est présent et vivant quand la créature tombe, quel que soit celui qui l'a frappée. Le partage entre joueurs viendra avec le serveur de zone (lot 13).
 - **Niveau gagné en combat** : effet à la prochaine entrée en zone ; pas de montée de niveau en plein combat, ni de soin ou de PV supplémentaires immédiats.
-- **Talents et compétences** : gardés dans la sauvegarde et validés à l'entrée ; aucun écran ne les change encore (12.8). Un build devenu invalide (données changées) est refusé à l'entrée avec son motif, sans être corrigé automatiquement.
+- **Talents et compétences** : gardés dans la sauvegarde et validés à l'entrée ; aucun écran ne les change encore (12.8) — fait à l'essai réaliste 6 pour les talents (arbre des Éclats, T, effet à la halte) ; le choix des compétences viendra ensuite. Un build devenu invalide (données changées) est refusé à l'entrée avec son motif, sans être corrigé automatiquement.
 - **Une seule classe jouable** (le Bastion) : la progression d'une autre classe s'ajoutera dans le même fichier.
 - **Formats** : sauvegarde en version 2 (la version 1 est mise à jour à la lecture ; version 3 au 12.3), progression en schéma 1 ; moteur, journal, scénarios et règles inchangés par le 12.2.
 

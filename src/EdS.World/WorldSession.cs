@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data;
 using EdS.Data.Characters;
+using EdS.Data.Classes;
 using EdS.Data.Crafting;
 using EdS.Data.Items;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Zones;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
@@ -107,6 +109,10 @@ namespace EdS.World
         private readonly CharacterProgression _progression;
         private SavedCharacter _character;
 
+        /// <summary>Essai réaliste 6 : classe du personnage et règles de progression (jugement des talents choisis en route).</summary>
+        private readonly ClassDefinition? _class;
+        private readonly ProgressionRules _rules;
+
         public Zone Zone { get; }
 
         /// <summary>Personnage tel qu'il sera sauvegardé (expérience à jour).</summary>
@@ -117,6 +123,30 @@ namespace EdS.World
 
         /// <summary>Niveau avec lequel il est entré dans la zone (son build de combat).</summary>
         public int EnteredLevel { get; }
+
+        /// <summary>Essai réaliste 6 : build du personnage à son niveau actuel (d'après son expérience), talents et compétences gardés.</summary>
+        public CharacterBuild Build => PlayerCharacters.Build(_character, _progression);
+
+        /// <summary>Essai réaliste 6 : classe du personnage.</summary>
+        public ClassDefinition Class => _class ?? throw new InvalidOperationException("Classe du personnage absente des données.");
+
+        /// <summary>Essai réaliste 6 : règles de progression des builds (points de talent, seuil du majeur).</summary>
+        public ProgressionRules ProgressionRules => _rules;
+
+        /// <summary>
+        /// Essai réaliste 6 (essai de Damien du 27 octobre 2026 : l'arbre des talents, « je ne peux pas l'ouvrir ») : nouveaux rangs de talent
+        /// du personnage, jugés à son niveau actuel par le validateur unique des builds. Admis, ils sont gardés (sauvegarde) et prennent effet
+        /// à la prochaine entrée dans une zone, comme un niveau gagné ou un équipement changé (le combat en cours garde le build d'entrée) ;
+        /// refusés, rien ne change et le premier motif est rendu.
+        /// </summary>
+        public BuildViolation? SetTalents(IReadOnlyDictionary<string, int> ranks)
+        {
+            if (ranks is null) throw new ArgumentNullException(nameof(ranks));
+            SavedCharacter candidate = _character.WithTalents(ranks);
+            BuildViolation? why = BuildValidator.Validate(PlayerCharacters.Build(candidate, _progression), Class, _rules).FirstOrDefault();
+            if (why is null) _character = candidate;
+            return why;
+        }
 
         /// <summary>Sous-lot 12.9b : compétences gagnées et équipées à l'entrée dans cette session (niveau atteint depuis la précédente).</summary>
         public IReadOnlyList<SkillUnlock> Learned { get; }
@@ -146,6 +176,8 @@ namespace EdS.World
             if (data is null) throw new ArgumentNullException(nameof(data));
             _character = PlayerCharacters.Learn(_character, _progression, data.Rules.Progression, out IReadOnlyList<SkillUnlock> learned);
             Learned = learned;
+            _rules = data.Rules.Progression;
+            _class = data.TryGetClass(_character.ClassId, out LoadedClass loaded) ? loaded.Definition : null;   // absente : refusée à l'entrée (Setup)
             _lootTables = new Dictionary<string, LootTable>(StringComparer.Ordinal);
             foreach (KeyValuePair<string, string> entry in lootTables ?? new Dictionary<string, string>())
                 _lootTables[entry.Key] = items.TryGetLoot(entry.Value, out LootTable table) ? table

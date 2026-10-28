@@ -135,6 +135,14 @@ namespace EdS.Data.Saves
         public SavedCharacter WithStory(SavedStory story) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions);
 
+        /// <summary>
+        /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
+        /// validateur des builds, pas ici).
+        /// </summary>
+        public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
+            new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
+                Equipment, Story, Professions);
+
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions);

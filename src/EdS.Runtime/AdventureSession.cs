@@ -524,6 +524,64 @@ namespace EdS.Runtime
 
         public ItemDefinition Item(string id) => _items.Item(id);
 
+        /// <summary>
+        /// Essai réaliste 6 : expérience cumulée du niveau actuel et du suivant (null au niveau maximal), pour la barre de l'écran du
+        /// personnage.
+        /// </summary>
+        public (long From, long? To) LevelXp
+        {
+            get
+            {
+                int level = World.Level;
+                return (_progression.XpToLevel[level - 1], level < _progression.MaxLevel ? _progression.XpToLevel[level] : (long?)null);
+            }
+        }
+
+        /// <summary>Essai réaliste 6 : PV et endurance maximaux du personnage dans la session (bonus d'équipement compris).</summary>
+        public (long Health, long Endurance) Maxima
+        {
+            get
+            {
+                CombatantView me = World.Zone.Engine.View(PlayerId);
+                return (me.MaxHealth ?? 0, me.MaxEndurance);
+            }
+        }
+
+        // --- Talents (essai réaliste 6) ---------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Essai réaliste 6 (essai de Damien du 27 octobre 2026 : l'arbre des talents, « je ne peux pas l'ouvrir ») : éditeur des talents du
+        /// personnage à son niveau actuel (les points d'un niveau gagné en route se placent tout de suite).
+        /// </summary>
+        public TalentEditor CreateTalentEditor() => new TalentEditor(World.Build, World.Class, World.ProgressionRules);
+
+        /// <summary>
+        /// Les talents se changent hors combat (MONDE.md) : faux tant qu'un ennemi vivant est à moins de <see cref="RestSafety"/>, que le
+        /// personnage est tombé ou qu'un dialogue est ouvert.
+        /// </summary>
+        public bool CanChangeTalents => !World.IsDefeated && Dialogue is null
+            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any();
+
+        /// <summary>
+        /// Garde les talents de <paramref name="build"/> (jugés à son niveau par le validateur des builds) ; effet à la prochaine halte,
+        /// comme l'équipement. Rend null si c'est fait ; sinon rien ne change et le motif est rendu (et dit) : en plein combat
+        /// (<see cref="CanChangeTalents"/>), ou premier refus du validateur.
+        /// </summary>
+        public string? SetTalents(CharacterBuild build)
+        {
+            if (build is null) throw new ArgumentNullException(nameof(build));
+            if (!CanChangeTalents)
+            {
+                Say("text.ui.talents.in_combat");
+                return Text("text.ui.talents.in_combat");
+            }
+            BuildViolation? why = World.SetTalents(build.TalentRanks);
+            if (why != null) return why.Message;
+            _dirty = true;
+            Say("text.ui.talents.saved");
+            return null;
+        }
+
         // --- Journal, carte ---------------------------------------------------------------------------------------------
 
         /// <summary>Quêtes commencées : en cours d'abord (étape et avancement), puis accomplies.</summary>
@@ -652,6 +710,9 @@ namespace EdS.Runtime
 
         /// <summary>Lieu où se trouve le personnage (nom), ou le nom de la zone.</summary>
         public string PlaceName => Me is GroundVector p && _zone.PlacesAt(p).FirstOrDefault() is Place place ? place.Name : _zone.Name;
+
+        /// <summary>Essai réaliste 6 : nom de la zone (« Vallons d'Aube »), sous le nom du lieu près de la petite carte.</summary>
+        public string ZoneName => _zone.Name;
 
         /// <summary>Heure du monde (« jour 1, 08 h 30 »).</summary>
         public string TimeOfDay => World.Zone.Time.ToString();

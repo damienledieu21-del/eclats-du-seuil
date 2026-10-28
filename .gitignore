@@ -522,6 +522,10 @@ unity/Assets/StreamingAssets.meta
 unity/Assets/DefaultVolumeProfile.asset
 unity/Assets/UniversalRenderPipelineGlobalSettings.asset
 
+# Essai réaliste 6 : ressources essentielles de TextMeshPro, importées dans le projet par l'éditeur (EdsInterfaceSetup), non suivies.
+unity/Assets/TextMesh Pro/
+unity/Assets/TextMesh Pro.meta
+
 # --- Essai de style (décision de Damien du 25 octobre 2026) : packs gratuits déposés par Damien pour son essai, non suivis ---
 unity/Assets/Style/
 unity/Assets/Style.meta

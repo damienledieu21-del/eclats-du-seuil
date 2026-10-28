@@ -287,6 +287,71 @@ Ce que tu regardes : l'abri et ses tuiles, le muret, le pont (traverse-le), la p
 
 Limites : les icônes ne couvrent que les compétences du Bastion (une icône d'épée pour les autres) ; la raison d'une compétence indisponible n'est plus écrite sous la case (la case s'assombrit, et le coût passe au rouge s'il manque d'endurance) ; l'interface n'est pas encore essayée sur le Note8 ; la sonde de reflets de l'eau est prise une fois.
 
+### Essai réaliste 6 (27 octobre 2026)
+
+Interface « Fragments du Seuil », étape 1.
+
+Avis de Damien sur l'essai 5 (vidéo du 27 octobre 2026, 21 h 20) : « Le bouclier se modélise comme ça quand je l'active c'est à corriger », « je voudrais que la mini Map soit améliorée là ça fait vraiment schéma », « l'interface est mieux mais c'est pas ce que je préfère pareil pour l'inventaire, l'aide tout ces petits détails », puis (22 h 45) « Les attaques aussi des ennemis sont à changer c'est à dire la charge rouge du sanglier ou les rond des autres personnages ». Après plusieurs séries de maquettes (« quelque chose de plus futuriste », « qui fait vraiment plus jeux vidéo », « je veux vraiment qu'on crée quelque chose de nouveau »), il a choisi une identité créée pour le jeu, **« Fragments du Seuil »** (l'interface faite des éclats du Seuil, couleurs de l'aube : or, rose, turquoise), retouchée en vidéo (« Le mur de briques, l'animation de la parade avec le mur bleu j'aime pas faut le supprimer, le reste est bien »).
+
+L'essai 6 se fait en trois étapes : **1. l'interface en jeu** (cette branche), 2. les écrans (Personnage, Journal, Atelier, dialogues) et l'arbre des Éclats ouvrable dans l'aventure, 3. les finitions animées.
+
+**Préparer.** Rien à télécharger : polices, dessins et icônes viennent avec la branche. À la première ouverture, Unity ajoute le paquet *Unity UI* (uGUI) et l'éditeur importe tout seul les ressources de **TextMeshPro** (dossier `Assets/TextMesh Pro`, non suivi par git ; menu **Éclats du Seuil → Préparer l'interface (TextMeshPro)** pour le refaire). Sans elles, le jeu marche quand même, avec un texte moins net. Puis **Préparer l'essai de style** comme d'habitude, et Play.
+
+Ce qui change :
+
+- **Plus de disque sur le bouclier** : le chevalier garde son vrai bouclier. Quand tu gardes, l'interface affiche « Garde levée » (turquoise), « Parade » (or) ou « Garde brisée » (rouge). Si tu ajoutes à son dossier l'animation Mixamo **« Sword And Shield Block »**, il lève aussi son bouclier quand il garde à l'arrêt (sans elle, il reste au repos). Le disque reste seulement pour le corps simple, sans modèle.
+- **L'interface en jeu refaite en uGUI** (texte TextMeshPro, net à toute taille) :
+  - en bas, le **sceau fendu** du Bastion : la vie à gauche (rouge), l'endurance à droite (ambre), en liquide qui ondule. La **Résonance** brille dans la fissure du milieu, et les **Charges** sont des éclats en arc au-dessus ;
+  - les **compétences en éclats** flottants autour du sceau : icônes peintes, recharge en cercle avec le temps, coût d'endurance (rouge s'il en manque), touche dessous. Un éclair passe quand tu lances, une lueur quand elle revient ;
+  - en haut au milieu, la **cible** dans une barre fendue aux ailes dorées : son vrai nom (« Sanglier », plus « SANGLIER_V2 »), la part de vie perdue qui reste claire un instant, et l'**annonce du prochain coup** (« Charge · 2,5 s », « imparable » en rouge) ;
+  - au-dessus des combattants : **nom et barre de vie**, et la barre du coup qui arrive ;
+  - en haut à droite, la **carte peinte** de la zone (forêt, rivière, pont, toits, moulin, rochers), centrée sur toi, nord en haut. Ta flèche tourne avec toi ; elle montre les ennemis en vue, les PNJ, les points sûrs, l'atelier, les récoltes et l'objectif (ramené au bord s'il est loin). Dessous : le lieu, la zone et l'heure, puis la **quête en cours** et son avancée. **L** ouvre toujours la grande carte, maintenant peinte elle aussi ;
+  - l'**aide** (H) en dalle brisée, une touche par ligne (T : talents, dans l'aventure) ;
+  - les messages, la pause, l'indication d'action (« F : parler à… ») et l'annonce de défaite au milieu de l'écran ;
+  - effets : reflets qui passent, braises qui montent du sceau, éclats de lumière.
+- **Annonces des attaques au sol refaites** (la « charge rouge du sanglier », les ronds) :
+  - une forme translucide au bord lumineux, avec un front qui avance jusqu'au bout au moment du coup ;
+  - des chevrons qui filent vers l'avant pour une charge ou un cône, des ondes pour un cercle ;
+  - couleur ambre qui rougit à l'approche, rouge vif et pulsé si l'attaque est imparable ;
+  - les anneaux sous la cible (or) et l'allié visé (turquoise) prennent le même style.
+
+Ce que tu regardes :
+- le sceau pendant un combat : vie, endurance, Résonance, Charges ;
+- les recharges des éclats ;
+- la cible et son annonce ;
+- les annonces au sol du sanglier et des loups ;
+- la carte en marchant (la flèche tourne, les repères bougent) ;
+- la garde : plus de disque.
+
+**Étape 2 : l'arbre des Éclats dans l'aventure.** **T** ouvre l'arbre des talents dans l'aventure. Avant, il ne s'ouvrait qu'à l'entraînement.
+- Une constellation par arbre : la graine de lumière en bas, les talents en éclats hexagonaux avec leurs icônes peintes et leurs rangs en losanges, la chaîne qui monte vers le **talent majeur**, entouré de l'anneau des points placés dans l'arbre.
+- **Clic** : un point. **Clic droit** : un point de moins. Au doigt, les boutons + et − de la fiche du talent ; la fiche dit aussi ce que fait le talent et ce qu'il exige.
+- **Valider les points** les garde : ils prennent effet à ta prochaine halte, comme l'équipement. **Annuler** (ou T, Échap) ferme sans rien garder.
+- Pas en plein combat : éloigne-toi d'abord des ennemis (12 m).
+- Sur téléphone, le bouton **Talents** est dans la rangée du haut.
+
+**Étape 2 : les écrans de l'aventure.** Ils sont refaits dans le même style, en un grand panneau à onglets : **Personnage**, **Arbre des Éclats**, **Journal**, **Atelier**, **Carte**. Un clic sur l'onglet change d'écran.
+- **Personnage** (I) :
+  - l'équipement porté autour du sceau du Bastion : arme, bouclier, torse, cou ;
+  - le statut : attributs, PV, endurance, points d'Éclat à placer ;
+  - le **sac** en cases avec icônes : la fiche d'un objet s'ouvre au survol, avec ses bonus et son niveau requis. Clic : le porter. Clic sur un objet porté : le retirer ;
+  - la barre d'expérience et les métiers.
+- **Journal** (J) : les quêtes avec leur étape et leur avancée, et les découvertes.
+- **Atelier** (K) : les recettes en cartes, avec ce qu'il faut, ce qu'on obtient, pourquoi ce n'est pas possible ici, et le bouton **Fabriquer**.
+- **Carte** (L) : la carte peinte en grand, avec les noms des lieux, des PNJ et des points sûrs, l'objectif et les ennemis en vue.
+- **Dialogue** : en bas de l'écran, réponses en boutons. Les touches 1 à 9 marchent toujours.
+
+**Étape 3 : finitions animées.**
+- Un **niveau gagné** s'annonce en grand : titre doré, rayons de lumière qui tournent, « Effet à ta prochaine halte ».
+- Quand ta **vie passe sous 30 %**, les bords de l'écran rougissent et battent, de plus en plus vite.
+- La barre de la **cible blanchit** un instant à chaque coup qu'elle prend.
+- Le panneau des écrans et l'arbre des Éclats apparaissent **en fondu**.
+
+Limites des étapes 1 à 3 :
+- les menus du réseau et l'écran des talents de l'entraînement gardent l'ancienne interface ;
+- la mise en page n'a pas encore été essayée sur le Note8 ;
+- la flèche du joueur ne tourne pas encore sur la grande carte.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
@@ -299,8 +364,9 @@ Limites : les icônes ne couvrent que les compétences du Bastion (une icône d'
 - **Réseau : « protocole 1 non pris en charge »** (ou 2, ou 3) : les deux PC n'ont pas la même version du projet ; faire un *Pull* sur les deux (sous-lot 11.7 : protocole 2 ; sous-lot 11.9 : protocole 3).
 - **Téléphone non proposé dans *Run Device*** : câble de données (pas seulement de charge), débogage USB activé, autorisation acceptée sur le téléphone ; débrancher, rebrancher, *Refresh*.
 - **Téléphone : écran bloqué sur « Préparation des données du jeu… » avec un sol rose** (premier essai du 22 octobre 2026) : le jeu construit n'emportait pas son shader de couleur. Corrigé : chaque construction emporte un matériau modèle (`EdsBuildShaders`) ; faire un *Pull*, puis **Build And Run** à nouveau. Si un cadre rouge « Démarrage du jeu impossible » s'affiche, envoyer une photo à Claude.
+- **Essai 6 : textes de l'interface un peu flous ou sans ombre** : les ressources de TextMeshPro ne sont pas encore importées (message « ressources de TextMeshPro absentes » dans la Console). Menu **Éclats du Seuil → Préparer l'interface (TextMeshPro)**, puis relancer Play.
 - **Téléphone : « Impossible de préparer les données du jeu »** : le jeu a été construit sans ses données (projet Unity déplacé hors du dépôt) ; reconstruire depuis le projet du dépôt.
 
 ## Ce qui est provisoire
 
-Graphismes en formes simples, interface IMGUI, une seule touche par compétence. Le déplacement n'est simulé que dans la scène des Vallons (les autres séances et la coopération en réseau n'ont pas de décor ; le réseau dans l'espace vient au 11.7). Détail : [LIMITES_LOT_9.md](LIMITES_LOT_9.md#sous-lot-93--projet-unity) et [LIMITES_LOT_11.md](LIMITES_LOT_11.md#sous-lot-116--scène-de-démonstration-des-vallons).
+Graphismes en formes simples, écrans en IMGUI (l'interface en jeu est en uGUI depuis l'essai réaliste 6), une seule touche par compétence. Le déplacement n'est simulé que dans la scène des Vallons (les autres séances et la coopération en réseau n'ont pas de décor ; le réseau dans l'espace vient au 11.7). Détail : [LIMITES_LOT_9.md](LIMITES_LOT_9.md#sous-lot-93--projet-unity) et [LIMITES_LOT_11.md](LIMITES_LOT_11.md#sous-lot-116--scène-de-démonstration-des-vallons).

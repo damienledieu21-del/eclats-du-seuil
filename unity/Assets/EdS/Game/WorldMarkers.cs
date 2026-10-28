@@ -279,8 +279,8 @@ namespace EdS.Game
                 }
         }
 
-        /// <summary>Noms des repères proches du joueur (dans <c>OnGUI</c>, après <see cref="Hud.Begin"/>).</summary>
-        public void Labels(Camera camera, Vector3 player)
+        /// <summary>Noms des repères proches du joueur (essai réaliste 6 : dans l'interface uGUI, à chaque image).</summary>
+        public void Labels(Camera camera, Vector3 player, HudView hud)
         {
             foreach (Marker m in _markers)
             {
@@ -289,9 +289,7 @@ namespace EdS.Game
                 float dx = at.x - player.x, dz = at.z - player.z;
                 if (dx * dx + dz * dz > m.Range * m.Range) continue;
                 Vector3 screen = camera.WorldToScreenPoint(new Vector3(at.x, m.Height, at.z));
-                if (screen.z <= 0f) continue;
-                float x = screen.x / Hud.Scale, y = (Screen.height - screen.y) / Hud.Scale;
-                Hud.Centered(new Rect(x - 200f, y - 30f, 400f, 28f), Hud.Plain(m.Data.Name), Color.Lerp(m.Color, Color.white, 0.5f));
+                hud.Label(screen, m.Data.Name, Color.Lerp(m.Color, Color.white, 0.5f));   // essai réaliste 6 : interface uGUI
             }
         }
 
