@@ -451,6 +451,46 @@ Limites :
 - le bourg n'a pas encore d'habitants (pas de PNJ nouveaux) ;
 - on n'entre pas dans les bâtiments : ce sont des obstacles pleins.
 
+### Essai réaliste 8 (28 octobre 2026)
+
+Demande de Damien : « je veux que tu ajoutes les points 1 à 5 » (vrais bâtiments en 3D, villageois, eau, rochers et terrain des exemples de Unity, effets de combat, textures d'ambientCG), « on focus sur le PC pour l'instant ».
+
+**Déjà déposé par Claude dans `Assets/Style`** (non suivi par git) :
+- `Sketchfab/Batiments/<Genre>/<Modèle>/` : dix-sept bâtiments de Sketchfab, préparés dans Blender (porte vers +z, base au sol, textures 2k) : huit maisons, l'auberge, la chapelle de Fagnolle, la grange, le puits, trois étals, la tour de Fougères, la tente ;
+- `Mixamo/Paysan`, `Mixamo/Garde`, `Mixamo/Sentinelle` : trois villageois et leurs animations (attente, parler, regarder autour, cueillir, marcher) ;
+- `AmbientCG/Ground` (terre battue des chemins, terre labourée des champs) et `AmbientCG/Surfaces` (pavés de la place).
+
+**Importés dans Unity** le 28 octobre 2026 (Package Manager → My Assets ; ils restent à la racine de `Assets` et ne sont pas suivis par git) : Viking Village, Terrain Sample, Hit Effects FREE, Magic Effects FREE, Free Slash VFX ; et l'exemple « Production Ready Shaders » de Shader Graph (Package Manager → In Project → Shader Graph → Samples). À l'import :
+- toujours **Skip** quand Unity propose d'installer des dépendances (le Terrain Sample demande HDRP, Free Slash VFX une version plus ancienne d'URP) ;
+- dossiers de démo décochés : `Scene Demo` (Hit Effects), `Demo scene` (Magic Effects), `Demo` et `TextMesh Pro` (Free Slash VFX), `TerrainBrushes`, `Textures/Heightmaps` et le profil de HDRP de `Settings` (Terrain Sample, 1,6 Go sinon) ;
+- Viking Village : ses deux scripts de démonstration (`Scripts/ControlSwitch.cs`, `Scripts/FlyingRigidbodyFirstPersonController.cs`) demandaient le nouveau système de saisie et les Standard Assets et empêchaient Unity de compiler ; ils sont remplacés par des coquilles vides au même nom (le reste du pack ne s'en sert pas pour le jeu).
+
+**Préparer.** Menu **Éclats du Seuil → Préparer l'essai de style** (il mesure les bâtiments, prépare leurs matériaux, range les villageois et choisit les effets), puis Play.
+
+Ce qui change :
+- **Bourg** : chaque maison, l'auberge, la chapelle, la grange, le puits, les étals, la tour et les tentes prennent un vrai modèle 3D, porte vers la route, ajusté à son emprise (un peu étiré au besoin, jamais plus d'un quart) ; une maison sur deux en miroir. Sans modèle d'un genre, le bâtiment fait par le code reste.
+- **Villageois** (affichage seulement, ils n'arrêtent rien) : deux qui bavardent au puits, un marchand derrière chaque étal, deux gardes à la porte du moulin, une sentinelle devant l'auberge, des paysans qui cueillent dans les champs, un passant qui va et vient sur la place. Le tiers sur téléphone.
+- **Sol** : les chemins en terre battue, les champs en terre labourée (sur ordinateur) ; la place en vieux pavés.
+- **Combat** (sur ordinateur) : impacts, critiques, garde, parade (avec l'emblème des Éclats), taille d'épée, sorts, soin, niveau, mort et onde du Gardien prennent les effets des packs. Leur taille, leur rotation et leur durée se règlent dans le catalogue (`Assets/Style/Resources/StyleCatalog`, rubrique « Vfx »). Hit Effects FREE et Magic Effects FREE sont faits pour l'ancien rendu de Unity et sortiraient roses : la préparation passe les matériaux des effets choisis sur les shaders de particules d'URP (texture, couleur, mélange ; comme le convertisseur de Unity).
+- **Rochers, plantes et buissons** (point 3) : les rochers de Viking Village, les fougères, herbes, vivaces et buissons du Book of the Dead (dans Viking Village), du Terrain Sample et des Production Ready Shaders passent devant ceux de Poly Haven, qui complètent (chaque exemple donne les siens à tour de rôle). Les menhirs, piliers et buissons secs ne sont pas pris.
+- **Terrain** (point 3) : l'herbe, la terre et la roche du sol prennent les couches du Terrain Sample (`Grass_A`, `Muddy`, `Rock`) ; les chemins et les champs gardent ceux d'ambientCG. La teinte de l'herbe du catalogue (`GrassTint`) s'applique toujours : la remettre en blanc si l'herbe sort trop verte.
+- **Eau** (point 3, sur ordinateur) : la rivière prend l'eau de lac des Production Ready Shaders (rides, reflets, lit vu par transparence, couleur de la profondeur), réglable dans son matériau `WaterLake` ; la préparation garde pour cela l'image et la profondeur de la scène dans le rendu de l'ordinateur. Le téléphone garde l'eau « EdS/Eau ».
+
+Ce que tu regardes :
+- le bourg de près : maisons, porte côté rue, rien qui flotte ni ne s'enfonce ;
+- les villageois (animations, place, aucun dans un mur) ;
+- les chemins et les champs ;
+- un combat : effets bien placés, à la bonne taille, aucun rose ;
+- la rivière, les rochers, les fougères et les buissons, la couleur du sol ;
+- si le jeu reste fluide.
+
+Limites :
+- rien n'a encore été essayé en jeu (les packs sont importés et le projet compile chez Damien) ;
+- l'eau de ruisseau des Production Ready Shaders (qui coule) n'est pas prise : elle suit les coordonnées de texture du maillage, que la surface de la rivière n'a pas ; l'eau de lac ride sans courant ;
+- les emprises des maisons (6 à 8 m) sont petites pour les plus belles maisons de Sketchfab (11 à 16 m) : elles servent peu ; on peut agrandir les emprises si tu veux ;
+- villageois sans dialogue ni trajet libre (le passant fait l'aller-retour sur la place) ;
+- effets des packs sur ordinateur seulement.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

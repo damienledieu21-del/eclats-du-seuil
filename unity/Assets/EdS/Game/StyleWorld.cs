@@ -289,6 +289,16 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return null;
             if (_water != null) return _water;
+            // Essai réaliste 8 (point 3 de la demande de Damien du 28 octobre 2026 : l'eau des samples de Unity) : sur ordinateur, l'eau de
+            // lac des Production Ready Shaders (rides qui bougent, reflets, lit de la rivière vu par transparence, couleur de la profondeur),
+            // si la préparation l'a trouvée et que son shader se compile. Elle se règle dans son matériau (WaterLake). Le téléphone garde
+            // « EdS/Eau » (cette eau lit l'image et la profondeur de la scène, trop coûteuses pour lui).
+            if (!Application.isMobilePlatform && catalog.SampleWater != null && catalog.SampleWater.shader != null && catalog.SampleWater.shader.isSupported)
+            {
+                _water = new Material(catalog.SampleWater);
+                _shaderWater = true;
+                return _water;
+            }
             if (catalog.Water != null && catalog.Water.shader != null && catalog.Water.shader.isSupported)
             {
                 _water = new Material(catalog.Water);

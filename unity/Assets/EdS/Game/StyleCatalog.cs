@@ -178,6 +178,8 @@ namespace EdS.Game
         [Range(0, 30)] public int Villagers = 14;
         [Tooltip("Effets de combat des packs (Hit Effects FREE, Magic Effects FREE, Free Slash VFX), sur ordinateur ; sans eux, les particules du jeu.")]
         public VfxLook[] Vfx = new VfxLook[0];
+        [Tooltip("Eau de lac du sample Production Ready Shaders (rempli par le menu), sur ordinateur ; sans elle, l'eau « EdS/Eau ».")]
+        public Material SampleWater;
 
         [Header("Essai réaliste : décor (pris au lancement du combat)")]
         [Tooltip("Taille (m) d'une répétition des textures du sol.")]
@@ -318,7 +320,6 @@ namespace EdS.Game
         public float Yaw(StyleSlot slot, string id = null) => slot == StyleSlot.Hero ? HeroYaw : slot == StyleSlot.Wolf ? WolfYaw : slot == StyleSlot.Boar ? BoarYaw
             : slot == StyleSlot.Character ? Character(id)?.Yaw ?? 0f : 0f;
 
-        /// <summary>Personnage d'un PNJ ou d'un ennemi d'après son identifiant (« npc.odile », « gardien_eveille »), ou null.</summary>
         /// <summary>Essai réaliste 8 : l'effet de combat <paramref name="kind"/> d'un pack, ou null.</summary>
         public VfxLook Effect(StyleVfx kind)
         {
@@ -338,6 +339,7 @@ namespace EdS.Game
             return list;
         }
 
+        /// <summary>Personnage d'un PNJ ou d'un ennemi d'après son identifiant (« npc.odile », « gardien_eveille »), ou null.</summary>
         public CharacterLook Character(string id)
         {
             string key = StyleRules.CharacterOf(id);

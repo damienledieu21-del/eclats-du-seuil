@@ -494,6 +494,115 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// Essai réaliste 8 (point 3 de la demande de Damien du 28 octobre 2026 : rochers, terrain et eau des samples de Unity) : prefabs de
+        /// décor des samples importés à la racine de Assets (Viking Village et sa végétation du Book of the Dead, Terrain Sample,
+        /// Production Ready Shaders) pour <paramref name="slot"/> (rochers, plantes, arbustes), au plus <paramref name="max"/>. Seuls les
+        /// « .prefab » rangés dans le dossier d'un sample comptent (pas les effets de combat ni les prefabs faits par la préparation) ; le
+        /// nom du fichier décide (« pf_boulder_01 », « Fern_var01_Prefab », « GreenBush… »). Les samples donnent chacun leur tour (dans
+        /// l'ordre de leur dossier, chacun dans l'ordre ordinal de ses chemins), pour mêler les fougères du Terrain Sample et celles du
+        /// Book of the Dead plutôt que de ne prendre que le premier.
+        /// </summary>
+        public static IReadOnlyList<string> SampleDecor(IEnumerable<string> paths, StyleSlot slot, int max)
+        {
+            if (!SampleWords.TryGetValue(slot, out (string[] Want, string[] Avoid) words)) return Array.Empty<string>();
+            List<List<string>> bySample = (paths ?? Array.Empty<string>())
+                .Where(p => p != null && p.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase) && SampleOf(p) != null)
+                .Where(p =>
+                {
+                    string file = Key(ClipName(p));
+                    return words.Want.Any(w => file.Contains(w)) && !words.Avoid.Any(a => file.Contains(a)) && !SampleScenes.Any(a => file.Contains(a));
+                })
+                .Distinct().GroupBy(p => SampleOf(p)!, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal)
+                .Select(g => g.OrderBy(p => p, StringComparer.Ordinal).ToList()).ToList();
+            var picked = new List<string>();
+            for (int rank = 0; picked.Count < max && bySample.Any(s => rank < s.Count); rank++)
+                foreach (List<string> sample in bySample)
+                    if (rank < sample.Count && picked.Count < max) picked.Add(sample[rank]);
+            return picked;
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 : rangé dans le dossier d'un sample de Unity (Viking Village, Terrain Sample, Production Ready Shaders) ? On juge
+        /// les dossiers du chemin, réduits (« Assets/Viking Village/… », « Assets/TerrainSampleAssets/… »).
+        /// </summary>
+        public static bool IsSample(string path) => SampleOf(path) != null;
+
+        /// <summary>Essai réaliste 8 : le sample du chemin (début réduit de son dossier : « vikingvillage »…), ou null.</summary>
+        private static string? SampleOf(string path) =>
+            Segments(path).Select(s => Samples.FirstOrDefault(k => s.StartsWith(k, StringComparison.Ordinal))).FirstOrDefault(k => k != null);
+
+        /// <summary>
+        /// Essai réaliste 8 (point 3 : le terrain des samples) : couche de terrain d'un sample (« Grass_A_TerrainLayer.terrainlayer » du
+        /// Terrain Sample) pour <paramref name="ground"/> (herbe, terre, roche), d'après les mots de son nom dans l'ordre de préférence, puis
+        /// l'ordre ordinal ; null sinon (le sol garde les textures de Poly Haven). Les chemins et les champs gardent les leurs.
+        /// </summary>
+        public static string? SampleGround(IEnumerable<string> layers, StyleGround ground)
+        {
+            if (!SampleGroundWords.TryGetValue(ground, out (string[] Want, string[] Avoid) words)) return null;
+            var files = (layers ?? Array.Empty<string>()).Where(p => p != null && p.EndsWith(".terrainlayer", StringComparison.OrdinalIgnoreCase) && IsSample(p))
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            foreach (string word in words.Want)
+            {
+                string? found = files.FirstOrDefault(p =>
+                {
+                    string file = Key(ClipName(p));
+                    return file.StartsWith(word, StringComparison.Ordinal) && !words.Avoid.Any(a => file.Contains(a));
+                });
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 (point 3 : l'eau des samples) : matériau de l'eau de lac des Production Ready Shaders (« WaterLake.mat »), ou
+        /// null. L'eau de lac ride d'après la position dans le monde ; celle du ruisseau (« WaterStream ») coule le long des coordonnées de
+        /// texture du maillage, que la surface de la rivière n'a pas : elle n'est pas prise.
+        /// </summary>
+        public static string? SampleWater(IEnumerable<string> paths) =>
+            (paths ?? Array.Empty<string>()).Where(p => p != null && p.EndsWith(".mat", StringComparison.OrdinalIgnoreCase) && IsSample(p)
+                && Key(ClipName(p)) == "waterlake").OrderBy(p => p, StringComparer.Ordinal).FirstOrDefault();
+
+        /// <summary>
+        /// Essai réaliste 8 : début des noms des couches de terrain des samples, par ordre de préférence. L'herbe verte (pas la sèche), la
+        /// boue pour la terre (la terre caillouteuse à défaut), la roche nue (pas la terre caillouteuse).
+        /// </summary>
+        private static readonly Dictionary<StyleGround, (string[] Want, string[] Avoid)> SampleGroundWords = new Dictionary<StyleGround, (string[], string[])>
+        {
+            [StyleGround.Grass] = (new[] { "grassa", "grassmoss", "grassb", "grass" }, new[] { "dry", "soil", "sand" }),
+            [StyleGround.Soil] = (new[] { "muddy", "mud", "dirt", "soil", "grasssoil" }, new[] { "sand" }),
+            [StyleGround.Rock] = (new[] { "rock", "cliff", "stone" }, new[] { "soil", "sand" }),
+        };
+
+        /// <summary>
+        /// Essai réaliste 8 : prefabs de démonstration des samples (« PlatformRock », « TutorialStep5AddRocks » des Production Ready Shaders :
+        /// des scènes entières, pas des rochers).
+        /// </summary>
+        private static readonly string[] SampleScenes = { "platform", "tutorial", "demo", "levelcontent", "environment" };
+
+        /// <summary>Débuts des dossiers des samples de Unity (réduits).</summary>
+        private static readonly string[] Samples = { "vikingvillage", "terrainsample", "productionreadyshaders" };
+
+        /// <summary>
+        /// Essai réaliste 8 : mots des prefabs de décor des samples. Les menhirs, piliers et falaises ne sont pas des rochers (l'obstacle
+        /// donne leur largeur : un menhir à la largeur d'un bloc serait une tour) ; les buissons secs ne font pas une haie.
+        /// </summary>
+        private static readonly Dictionary<StyleSlot, (string[] Want, string[] Avoid)> SampleWords = new Dictionary<StyleSlot, (string[], string[])>
+        {
+            [StyleSlot.Rock] = (new[] { "boulder", "rock" }, new[] { "cliff", "pebble", "small", "tiny", "menhir", "pillar", "decal", "rocky" }),
+            [StyleSlot.Plant] = (new[] { "fern", "meadowgrass", "perennial", "grass", "plant", "heather", "clover", "flower", "weed" },
+                new[] { "bush", "shrub", "tree", "rock", "dead" }),
+            [StyleSlot.Shrub] = (new[] { "bush", "shrub" }, new[] { "dead", "dry", "berry" }),
+        };
+
+        /// <summary>
+        /// Essai réaliste 8 : liste du catalogue faite des prefabs des samples d'abord (<paramref name="samples"/>), complétée par les autres
+        /// modèles (<paramref name="others"/>, Poly Haven), sans doublon, au plus <paramref name="max"/>.
+        /// </summary>
+        public static IReadOnlyList<string> MergeDecor(IEnumerable<string> samples, IEnumerable<string> others, int max) =>
+            (samples ?? Array.Empty<string>()).Concat(others ?? Array.Empty<string>()).Where(p => p != null).Distinct()
+                .Take(Math.Max(0, max)).ToList();
+
+        /// <summary>
         /// Essai réaliste 8 : modèle (prefab) d'un pack pour l'effet <paramref name="kind"/> : le premier, dans l'ordre de préférence, dont le
         /// nom (sans extension, réduit) est l'un des noms connus (« Basic Hit 2 », « Holy hit », « Magic circle », « Slash VFX »…) ; null
         /// sinon. Seuls les fichiers « .prefab » comptent.

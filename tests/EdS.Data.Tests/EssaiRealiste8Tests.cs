@@ -300,4 +300,176 @@ public class EssaiRealiste8Tests : IDisposable
             Assert.Equal(mix.Soil * (1 - wet) + wet, StyleRules.RiverMix(mix, inside).Soil, 12);
         }
     }
+
+    /// <summary>Prefabs importés chez Damien le 28 octobre 2026 (Viking Village, sa végétation du Book of the Dead, un pack d'effets).</summary>
+    private static readonly string[] SamplePrefabs =
+    {
+        "Assets/Viking Village/Prefabs/Props/pf_boulder_01.prefab",
+        "Assets/Viking Village/Prefabs/Props/pf_boulder_01_040.prefab",
+        "Assets/Viking Village/Prefabs/Props/pf_boulder_02_025.prefab",
+        "Assets/Viking Village/Prefabs/Props/pf_menhir_01.prefab",
+        "Assets/Viking Village/Prefabs/Props/pf_pillar_03.prefab",
+        "Assets/Viking Village/Prefabs/Props/pf_barrel_01.prefab",
+        "Assets/Viking Village/Prefabs/Buildings/pf_build_small_house_01.prefab",
+        "Assets/Viking Village/Book of the Dead/Vegetation/Ferns/Fern_var01_Prefab.prefab",
+        "Assets/Viking Village/Book of the Dead/Vegetation/MeadowGrass_01/Meadow_Grass_01_Var1_Prefab.prefab",
+        "Assets/Viking Village/Book of the Dead/Vegetation/Plant_Perennials/PH_Plant_Perennials_a4_1x1x0_PF.prefab",
+        "Assets/Viking Village/Book of the Dead/Vegetation/GreenBush/GreenBush_Var01_Prefab.prefab",
+        "Assets/Viking Village/Book of the Dead/Vegetation/BroadleafShrub_01/Broadleaf_Shrub_01_Var4_Prefab.prefab",
+        "Assets/Viking Village/Book of the Dead/Vegetation/Ferns/Fern_var01.FBX",
+        "Assets/TerrainSampleAssets/Prefabs/Vegetation/BushDry.prefab",
+        "Assets/Matthew Guz/Hits Effects FREE/Prefab/Stones hit.prefab",
+        "Assets/Style/Generated/oak (arbre).prefab",
+        "Assets/Style/PolyHaven/rock_moss_set_01.prefab",
+        "Assets/Samples/Shader Graph/17.3.0/Production Ready Shaders/Prefabs/PlatformRock.prefab",
+        "Assets/Samples/Shader Graph/17.3.0/Production Ready Shaders/Prefabs/TutorialStep5AddRocks.prefab",
+        "Assets/Samples/Shader Graph/17.3.0/Production Ready Shaders/Prefabs/PlatformDetails.prefab",
+    };
+
+    [Fact]
+    public void Les_rochers_et_la_vegetation_des_samples_sont_reconnus()
+    {
+        Assert.Equal(new[]
+        {
+            "Assets/Viking Village/Prefabs/Props/pf_boulder_01.prefab",
+            "Assets/Viking Village/Prefabs/Props/pf_boulder_01_040.prefab",
+            "Assets/Viking Village/Prefabs/Props/pf_boulder_02_025.prefab",
+        }, StyleRules.SampleDecor(SamplePrefabs, StyleSlot.Rock, 6));
+        Assert.Equal(new[]
+        {
+            "Assets/Viking Village/Book of the Dead/Vegetation/Ferns/Fern_var01_Prefab.prefab",
+            "Assets/Viking Village/Book of the Dead/Vegetation/MeadowGrass_01/Meadow_Grass_01_Var1_Prefab.prefab",
+            "Assets/Viking Village/Book of the Dead/Vegetation/Plant_Perennials/PH_Plant_Perennials_a4_1x1x0_PF.prefab",
+        }, StyleRules.SampleDecor(SamplePrefabs, StyleSlot.Plant, 12));
+        // Le buisson sec du Terrain Sample n'est pas une haie.
+        Assert.Equal(new[]
+        {
+            "Assets/Viking Village/Book of the Dead/Vegetation/BroadleafShrub_01/Broadleaf_Shrub_01_Var4_Prefab.prefab",
+            "Assets/Viking Village/Book of the Dead/Vegetation/GreenBush/GreenBush_Var01_Prefab.prefab",
+        }, StyleRules.SampleDecor(SamplePrefabs, StyleSlot.Shrub, 4));
+        Assert.Single(StyleRules.SampleDecor(SamplePrefabs, StyleSlot.Rock, 1));
+        Assert.Empty(StyleRules.SampleDecor(SamplePrefabs, StyleSlot.Tree, 6));
+        Assert.Empty(StyleRules.SampleDecor(null!, StyleSlot.Rock, 6));
+        Assert.True(StyleRules.IsSample("Assets/TerrainSampleAssets/Prefabs/Vegetation/BushDry.prefab"));
+        Assert.True(StyleRules.IsSample("Assets/Samples/Shader Graph/17.3.0/Production Ready Shaders/Water/Stream.mat"));
+        Assert.False(StyleRules.IsSample("Assets/Style/PolyHaven/rock_moss_set_01.prefab"));
+        // Le nom du fichier ne suffit pas : il faut le dossier d'un sample.
+        Assert.False(StyleRules.IsSample("Viking Village.prefab"));
+    }
+
+    [Fact]
+    public void Les_samples_donnent_leurs_plantes_chacun_leur_tour()
+    {
+        var paths = new[]
+        {
+            "Assets/TerrainSampleAssets/Prefabs/Fern_A.prefab",
+            "Assets/TerrainSampleAssets/Prefabs/Fern_B.prefab",
+            "Assets/TerrainSampleAssets/Prefabs/Grass_A.prefab",
+            "Assets/TerrainSampleAssets/Prefabs/Bush_A.prefab",
+            "Assets/Viking Village/Book of the Dead/Vegetation/Ferns/Fern_var01_Prefab.prefab",
+            "Assets/Viking Village/Book of the Dead/Vegetation/Ferns/Fern_var02_Prefab.prefab",
+        };
+        Assert.Equal(new[]
+        {
+            "Assets/TerrainSampleAssets/Prefabs/Fern_A.prefab",
+            "Assets/Viking Village/Book of the Dead/Vegetation/Ferns/Fern_var01_Prefab.prefab",
+            "Assets/TerrainSampleAssets/Prefabs/Fern_B.prefab",
+            "Assets/Viking Village/Book of the Dead/Vegetation/Ferns/Fern_var02_Prefab.prefab",
+            "Assets/TerrainSampleAssets/Prefabs/Grass_A.prefab",
+        }, StyleRules.SampleDecor(paths, StyleSlot.Plant, 12));
+        Assert.Equal(paths.Take(1).Concat(paths.Skip(4).Take(1)), StyleRules.SampleDecor(paths, StyleSlot.Plant, 2));
+        Assert.Equal(new[] { "Assets/TerrainSampleAssets/Prefabs/Bush_A.prefab" }, StyleRules.SampleDecor(paths, StyleSlot.Shrub, 4));
+    }
+
+    [Fact]
+    public void Le_sol_prend_les_couches_de_terrain_du_terrain_sample()
+    {
+        string[] layers = new[] { "Black_Sand", "Grass_A", "Grass_B", "Grass_Dry", "Grass_Moss", "Grass_Soil", "Heather", "Muddy", "Pebbles_A", "Rock", "Sand", "Snow", "Soil_Rocks" }
+            .Select(n => "Assets/TerrainSampleAssets/TerrainLayers/" + n + "_TerrainLayer.terrainlayer").ToArray();
+        Assert.EndsWith("/Grass_A_TerrainLayer.terrainlayer", StyleRules.SampleGround(layers, StyleGround.Grass));
+        Assert.EndsWith("/Muddy_TerrainLayer.terrainlayer", StyleRules.SampleGround(layers, StyleGround.Soil));
+        Assert.EndsWith("/Rock_TerrainLayer.terrainlayer", StyleRules.SampleGround(layers, StyleGround.Rock));
+        // Sans l'herbe verte ni la boue : la mousse, puis la terre caillouteuse ; la roche n'est jamais la terre caillouteuse.
+        string[] fewer = layers.Where(l => !l.Contains("/Grass_A_") && !l.Contains("/Muddy_") && !l.Contains("/Rock_")).ToArray();
+        Assert.EndsWith("/Grass_Moss_TerrainLayer.terrainlayer", StyleRules.SampleGround(fewer, StyleGround.Grass));
+        Assert.EndsWith("/Soil_Rocks_TerrainLayer.terrainlayer", StyleRules.SampleGround(fewer, StyleGround.Soil));
+        Assert.Null(StyleRules.SampleGround(fewer, StyleGround.Rock));
+        // Les chemins et les champs gardent leurs textures ; une couche hors d'un sample ne compte pas.
+        Assert.Null(StyleRules.SampleGround(layers, StyleGround.Road));
+        Assert.Null(StyleRules.SampleGround(new[] { "Assets/Style/Generated/Rock_TerrainLayer.terrainlayer" }, StyleGround.Rock));
+        Assert.Null(StyleRules.SampleGround(null!, StyleGround.Grass));
+    }
+
+    [Fact]
+    public void L_eau_est_celle_du_lac_des_production_ready_shaders()
+    {
+        const string Water = "Assets/Samples/Shader Graph/17.3.0/Production Ready Shaders/Environment/Water/";
+        var materials = new[]
+        {
+            Water + "Water.mat", Water + "WaterMuseum.mat", Water + "WaterStream.mat", Water + "WaterStreamFalls.mat", Water + "WaterLake.mat",
+            "Assets/Viking Village/Materials/Effects/mat_fx_water_01.mat", "Assets/Style/Generated/Eau.mat",
+        };
+        Assert.Equal(Water + "WaterLake.mat", StyleRules.SampleWater(materials));
+        // Sans le lac, l'eau « EdS/Eau » reste (le ruisseau coulerait de travers sur la surface de la rivière).
+        Assert.Null(StyleRules.SampleWater(materials.Where(m => !m.EndsWith("WaterLake.mat"))));
+        Assert.Null(StyleRules.SampleWater(new[] { "Assets/Style/WaterLake.mat" }));
+        Assert.Null(StyleRules.SampleWater(null!));
+    }
+
+    [Fact]
+    public void Les_particules_de_l_ancien_rendu_passent_sur_urp_comme_avec_le_convertisseur()
+    {
+        // Tous les matériaux de Magic Effects FREE sont en « fondu » (_Mode 2) : mélange alpha d'URP.
+        ParticleBlend fade = ParticleRules.Blend(2);
+        Assert.Equal((1, 0, false), (fade.Surface, fade.Blend, fade.AlphaClip));
+        Assert.Equal((5, 10, 1, 10), (fade.Src, fade.Dst, fade.SrcAlpha, fade.DstAlpha));
+        Assert.False(fade.ZWrite);
+        Assert.Equal(ParticleRules.TransparentQueue, fade.Queue);
+        Assert.Null(fade.Keyword);
+        ParticleBlend opaque = ParticleRules.Blend(0);
+        Assert.Equal((0, 1, 0, true, ParticleRules.OpaqueQueue), (opaque.Surface, opaque.Src, opaque.Dst, opaque.ZWrite, opaque.Queue));
+        ParticleBlend cutout = ParticleRules.Blend(1);
+        Assert.True(cutout.AlphaClip);
+        Assert.Equal("_ALPHATEST_ON", cutout.Keyword);
+        Assert.Equal(ParticleRules.CutoutQueue, cutout.Queue);
+        Assert.Equal((1, "_ALPHAPREMULTIPLY_ON"), (ParticleRules.Blend(3).Blend, ParticleRules.Blend(3).Keyword));
+        Assert.Equal((2, 5, 1), (ParticleRules.Blend(4).Blend, ParticleRules.Blend(4).Src, ParticleRules.Blend(4).Dst));
+        Assert.Equal((3, 2, 0, "_ALPHAMODULATE_ON"), (ParticleRules.Blend(6).Blend, ParticleRules.Blend(6).Src, ParticleRules.Blend(6).Dst, ParticleRules.Blend(6).Keyword));
+        // URP n'a pas de mélange soustractif ; un mode inconnu est un fondu.
+        Assert.Equal(0, ParticleRules.Blend(5).Blend);
+        Assert.Equal(0, ParticleRules.Blend(42).Blend);
+
+        Assert.True(ParticleRules.IsBuiltInParticle("Particles/Standard Unlit"));
+        Assert.True(ParticleRules.IsBuiltInParticle("Legacy Shaders/Particles/Additive"));
+        Assert.True(ParticleRules.IsBuiltInParticle("Mobile/Particles/Alpha Blended"));
+        Assert.False(ParticleRules.IsBuiltInParticle("Universal Render Pipeline/Particles/Unlit"));
+        Assert.False(ParticleRules.IsBuiltInParticle("Shader Graphs/Slash"));
+        Assert.False(ParticleRules.IsBuiltInParticle(null!));
+        Assert.Equal("Universal Render Pipeline/Particles/Lit", ParticleRules.UrpShader("Particles/Standard Surface"));
+        Assert.Equal("Universal Render Pipeline/Particles/Unlit", ParticleRules.UrpShader("Particles/Standard Unlit"));
+
+        Assert.Equal(4, ParticleRules.LegacyMode("Legacy Shaders/Particles/Additive (Soft)"));
+        Assert.Equal(3, ParticleRules.LegacyMode("Legacy Shaders/Particles/Alpha Blended Premultiply"));
+        Assert.Equal(6, ParticleRules.LegacyMode("Legacy Shaders/Particles/Multiply"));
+        Assert.Equal(2, ParticleRules.LegacyMode("Legacy Shaders/Particles/Alpha Blended"));
+
+        Assert.Equal((null, 0f, 0f), ParticleRules.ColorMode(0));
+        Assert.Equal(("_COLORADDSUBDIFF_ON", 1f, 0f), ParticleRules.ColorMode(1));
+        Assert.Equal(("_COLORADDSUBDIFF_ON", -1f, 0f), ParticleRules.ColorMode(2));
+        Assert.Equal(("_COLOROVERLAY_ON", 0f, 0f), ParticleRules.ColorMode(3));
+        Assert.Equal(("_COLORCOLOR_ON", 0f, 0f), ParticleRules.ColorMode(4));
+        Assert.Equal(("_COLORADDSUBDIFF_ON", -1f, 1f), ParticleRules.ColorMode(5));
+    }
+
+    [Fact]
+    public void Les_samples_passent_devant_poly_haven_qui_complete()
+    {
+        var samples = new[] { "a.prefab", "b.prefab" };
+        var others = new[] { "b.prefab", "c.fbx", "d.fbx" };
+        Assert.Equal(new[] { "a.prefab", "b.prefab", "c.fbx" }, StyleRules.MergeDecor(samples, others, 3));
+        Assert.Equal(new[] { "a.prefab", "b.prefab", "c.fbx", "d.fbx" }, StyleRules.MergeDecor(samples, others, 10));
+        Assert.Equal(others, StyleRules.MergeDecor(Array.Empty<string>(), others, 10));
+        Assert.Empty(StyleRules.MergeDecor(samples, others, 0));
+        Assert.Equal(samples, StyleRules.MergeDecor(samples, null!, 5));
+    }
 }
