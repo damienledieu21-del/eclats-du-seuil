@@ -148,6 +148,8 @@ public class InterieursTests : IDisposable
     [InlineData("position", "[-69, 0]", "$.data.doors[0].position", ValidationCode.OutOfRange)]
     [InlineData("position", "[-69, 6]", "$.data.doors[0].position", ValidationCode.InvalidValue)]
     [InlineData("position", "[-300, 4]", "$.data.doors[0].position", ValidationCode.OutOfRange)]
+    [InlineData("position", "[400000, 4]", "$.data.doors[0].position", ValidationCode.OutOfRange)]   // relecture : plus de dépassement
+    [InlineData("position", "[-69, 400000]", "$.data.doors[0].position", ValidationCode.OutOfRange)]
     [InlineData("name", "\" \"", "$.data.doors[0].name", ValidationCode.MissingField)]
     [InlineData("id", "\"porte_auberge\"", "$.data.doors[0].id", ValidationCode.DuplicateId)]
     public void Porte_invalide_refusee_avec_son_chemin(string field, string json, string path, ValidationCode code)
@@ -216,6 +218,32 @@ public class InterieursTests : IDisposable
 
         // Zone donnée deux fois.
         Assert.Contains(ZoneValidator.CheckDoors(new[] { vallons, vallons }).Errors, e => e.Code == ValidationCode.DuplicateId);
+
+        // Relecture indépendante : le chargement des zones reliées rend le rapport de la zone dont une porte est en cause.
+        (string data, string scenarios) = Copy(files: d =>
+        {
+            string path = ZoneJsonReader.PathIn(d, "zone.auberge");
+            JsonObject root = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+            Door(root)["toDoor"] = "porte_chapelle";
+            File.WriteAllText(path, root.ToJsonString());
+        });
+        WorldZonesLoadResult linked = Linked(data, scenarios);
+        Assert.False(linked.IsValid);
+        Assert.Equal("zone.vallons", linked.Zone);   // la porte de l'auberge des Vallons n'a plus de réponse (première zone en cause)
+        Assert.All(linked.Report.Errors, e => Assert.StartsWith("zone.vallons,", e.Message, StringComparison.Ordinal));
+        Assert.Equal("$.data.doors[0].toDoor", Assert.Single(linked.Report.Errors).Path);
+    }
+
+    [Fact]
+    public void Forme_du_chef_sur_une_porte_refusee()
+    {
+        // Relecture indépendante : on arrive par une porte comme par un point sûr ; la première forme du chef n'y est pas posée.
+        JsonObject root = ZoneJson("zone.vallons");
+        Door(root).Remove("building");
+        Door(root)["position"] = new JsonArray(54, 36);
+        ZoneLoadResult result = Read(root);
+        Assert.Contains(result.Report.Errors, e => e.Path.StartsWith("$.data.boss.forms[0]", StringComparison.Ordinal)
+            && e.Message.Contains("chevauche la porte « porte_auberge »", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -225,8 +253,11 @@ public class InterieursTests : IDisposable
         WorldZonesLoadResult absent = Linked(data, scenarios);
         Assert.False(absent.IsValid);
         Assert.Empty(absent.Zones);
-        Assert.Equal("zone.cave", absent.Zone);
-        Assert.Contains(absent.Report.Errors, e => e.Code == ValidationCode.FileUnreadable);
+        // Relecture indépendante : une zone introuvable est signalée sur la porte qui y mène.
+        Assert.Equal("zone.vallons", absent.Zone);
+        ValidationError cave = Assert.Single(absent.Report.Errors);
+        Assert.Equal(("$.data.doors[2].to", ValidationCode.UnknownReference), (cave.Path, cave.Code));
+        Assert.Contains("porte « porte_maison » : zone « zone.cave » introuvable", cave.Message, StringComparison.Ordinal);
 
         Directory.Delete(_folder, true);
         (data, scenarios) = Copy(files: d =>
@@ -461,8 +492,30 @@ public class InterieursTests : IDisposable
                 Assert.InRange(p.Y + p.Height, 0, layout.WallHeight);
                 Assert.True(p.Fit > 0 || p.Height > 0, inside.Id + " : " + p.Id);
             }
-            // Lumières : le feu ou les bougies, bornées, dans la pièce.
+            // Lumières : le feu ou les bougies, bornées, dans la pièce ; chaque lanterne et chaque lustre a la sienne (relecture : les
+            // lumières du plafond passent avant les bougies des murs).
             Assert.InRange(layout.Lights.Count, 2, InteriorRules.MaxLights);
+            foreach (InteriorPiece lit in layout.Pieces.Where(p => p.Prop == InteriorProp.Lantern || p.Prop == InteriorProp.HangingLantern || p.Prop == InteriorProp.Chandelier))
+                Assert.True(layout.Lights.Any(l => Math.Abs(l.X - lit.X) < 0.6 && Math.Abs(l.Z - lit.Z) < 0.6), inside.Id + " : " + lit.Id + " sans lumière");
+            // Objets posés au sol à côté l'un de l'autre dans une même emprise : ils ne se chevauchent pas et restent dans l'emprise.
+            foreach (SpaceObstacle o in map.Obstacles)
+            {
+                double ox0 = o.Points.Min(q => q.X.Raw) / 10000.0, ox1 = o.Points.Max(q => q.X.Raw) / 10000.0;
+                double oz0 = o.Points.Min(q => q.Z.Raw) / 10000.0, oz1 = o.Points.Max(q => q.Z.Raw) / 10000.0;
+                var floor = layout.Pieces.Where(p => p.Id.StartsWith(o.Id + "/", StringComparison.Ordinal) && p.Parent == -1 && p.Y == 0 && p.Fit > 0
+                    && p.Prop is InteriorProp.Crate or InteriorProp.Barrel or InteriorProp.Bucket).ToList();
+                foreach (InteriorPiece p in floor)
+                    Assert.True(p.X - p.Fit / 2 >= ox0 - 0.03 && p.X + p.Fit / 2 <= ox1 + 0.03 && p.Z - p.Fit / 2 >= oz0 - 0.03 && p.Z + p.Fit / 2 <= oz1 + 0.03,
+                        inside.Id + " : " + p.Id + " hors de son emprise");
+                for (int i = 0; i < floor.Count; i++)
+                    for (int j = i + 1; j < floor.Count; j++)
+                        Assert.True(Math.Max(Math.Abs(floor[i].X - floor[j].X), Math.Abs(floor[i].Z - floor[j].Z)) >= (floor[i].Fit + floor[j].Fit) / 2 - 0.01,
+                            inside.Id + " : " + floor[i].Id + " chevauche " + floor[j].Id);
+            }
+            // Le siège du prêtre et la hachette de la cheminée sont hors des meubles.
+            foreach (InteriorPiece p in layout.Pieces.Where(p => p.Prop == InteriorProp.Throne || p.Prop == InteriorProp.Hatchet))
+                Assert.DoesNotContain(map.Obstacles, o => p.X > o.Points.Min(q => q.X.Raw) / 10000.0 - 0.3 && p.X < o.Points.Max(q => q.X.Raw) / 10000.0 + 0.3
+                    && p.Z > o.Points.Min(q => q.Z.Raw) / 10000.0 - 0.3 && p.Z < o.Points.Max(q => q.Z.Raw) / 10000.0 + 0.3 && !(p.Prop == InteriorProp.Hatchet && o.Id == "cheminee"));
             Assert.All(layout.Lights, l => Assert.True(l.X > map.MinX && l.X < map.MaxX && l.Z > map.MinZ && l.Z < map.MaxZ && l.Y > 0 && l.Y < layout.WallHeight));
             // Fenêtres sur les murs, jamais devant la porte ; poutres dans la pièce.
             Assert.NotEmpty(layout.Windows);
@@ -548,6 +601,42 @@ public class InterieursTests : IDisposable
         Assert.Equal(InteriorFurniture.Hearth, InteriorRules.FurnitureFor("cheminee_nord"));
         Assert.Equal(InteriorFurniture.Bed, InteriorRules.FurnitureFor("lit"));
         Assert.Equal(InteriorFurniture.None, InteriorRules.FurnitureFor("fenetre"));
+    }
+
+    [Fact]
+    public void Carte_peinte_d_une_piece()
+    {
+        // Relecture indépendante : la carte d'un intérieur est un plan (plancher, meubles, murs, porte), pas un pré.
+        ZoneDefinition auberge = Linked().Zones.Single(z => z.Id == "zone.auberge");
+        AdventureMap map = MapOf(auberge);
+        (int width, int height) = MapPainter.Size(map);
+        Assert.Equal(((int)Math.Ceiling((14 + 2 * MapPainter.IndoorMargin) * MapPainter.PixelsPerMeter), (int)Math.Ceiling((10 + 2 * MapPainter.IndoorMargin) * MapPainter.PixelsPerMeter)), (width, height));
+        byte[] image = MapPainter.Paint(map, width, height);
+        Assert.Equal(image, MapPainter.Paint(map, width, height));
+        (double R, double G, double B) At(double x, double z)
+        {
+            (double u, double v) = MapPainter.ToImage(map, x, z);
+            int col = Math.Min(width - 1, (int)(u * width)), row = Math.Min(height - 1, (int)((1 - v) * height));
+            int i = (row * width + col) * 4;
+            return (image[i] / 255.0, image[i + 1] / 255.0, image[i + 2] / 255.0);
+        }
+        var floor = At(-1.7, 0.4);   // entre les tables
+        var table = At(-3.5, -1.75);   // milieu de table1
+        var night = At(-8.5, 0);   // dehors
+        Assert.True(floor.R > floor.G && floor.G > floor.B && floor.R > 0.35, $"plancher {floor}");
+        Assert.True(table.R + table.G + table.B < floor.R + floor.G + floor.B, $"table {table}");
+        Assert.True(night.R + night.G + night.B < 0.3, $"dehors {night}");
+        Assert.Equal((0.5, 0.5), MapPainter.ToImage(map, 0, 0));
+    }
+
+    [Fact]
+    public void Ambiance_des_interieurs()
+    {
+        // Relecture indépendante : dans une pièce, ni oiseaux ni rivière ; le vent du dehors à peine.
+        Assert.Equal(0, StyleRules.AmbienceVolume(StyleAmbience.Birds, double.NaN, true, false, indoors: true));
+        Assert.Equal(0, StyleRules.AmbienceVolume(StyleAmbience.River, 2, true, false, indoors: true));
+        Assert.InRange(StyleRules.AmbienceVolume(StyleAmbience.Wind, double.NaN, true, false, indoors: true), 0.01, 0.2);
+        Assert.True(StyleRules.AmbienceVolume(StyleAmbience.Birds, double.NaN, true, false) > 0.5);
     }
 
     [Fact]

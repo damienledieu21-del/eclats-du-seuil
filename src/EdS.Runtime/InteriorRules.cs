@@ -322,11 +322,27 @@ namespace EdS.Runtime
                 double fx = b.CX + f.X * (b.Short / 2 + 0.35), fz = b.CZ + f.Z * (b.Short / 2 + 0.35);
                 Light(InteriorLightKind.Fire, fx, 0.6, fz, style == InteriorStyle.Tavern ? 10 : 7.5, 3.2);
                 Add(new InteriorPiece(b.Id + "/marmite", InteriorProp.Pot, b.CX + f.X * 0.05, b.CZ + f.Z * 0.05, Yaw(f), 0.42, y: 0.18));
-                // Hachette et bûches contre un bout de la cheminée (dans son emprise).
+                // Hachette posée au pied d'un bout de la cheminée, juste à côté du jambage (relecture : pas dedans, ni sur les bûches).
                 (int X, int Z) along = (f.Z, f.X);
-                double end = b.Long / 2 - 0.2;
-                Add(new InteriorPiece(b.Id + "/hachette", InteriorProp.Hatchet, b.CX + along.X * end + f.X * 0.15, b.CZ + along.Z * end + f.Z * 0.15,
+                double end = b.Long / 2 + 0.25;
+                Add(new InteriorPiece(b.Id + "/hachette", InteriorProp.Hatchet, b.CX + along.X * end + f.X * 0.2, b.CZ + along.Z * end + f.Z * 0.2,
                     Yaw(f) + 20, 0, height: 0.32, y: 0.0));
+            }
+
+            // Au plafond : lanternes suspendues (auberge, maison), lustres (chapelle), le long du milieu de la pièce. Leurs lumières passent
+            // avant celles des meubles et des murs (relecture : au-delà de MaxLights, seules des bougies murales restent sans lumière).
+            bool alongX = map.Width >= map.Depth;
+            double length = alongX ? map.Width : map.Depth;
+            int hanging = style == InteriorStyle.House ? 1 : 2;
+            for (int i = 0; i < hanging; i++)
+            {
+                double t = -length / 2 + length * (i + 0.5) / hanging;
+                double x = alongX ? cx + t : cx, z = alongX ? cz : cz + t;
+                InteriorProp prop = style == InteriorStyle.Chapel ? InteriorProp.Chandelier : InteriorProp.HangingLantern;
+                Add(new InteriorPiece($"plafond/{i}", prop, x, z, 0, 0, height: style == InteriorStyle.Chapel ? 1.2 : 0.9,
+                    y: height - (style == InteriorStyle.Chapel ? 2.4 : 1.25)));
+                Light(style == InteriorStyle.Chapel ? InteriorLightKind.Candle : InteriorLightKind.Lantern, x, height - (style == InteriorStyle.Chapel ? 2.2 : 1.1), z,
+                    style == InteriorStyle.Chapel ? 9 : 7, style == InteriorStyle.Chapel ? 1.8 : 1.5);
             }
 
             foreach (Box b in boxes)
@@ -420,15 +436,19 @@ namespace EdS.Runtime
                     }
                     case InteriorFurniture.Crates:
                     {
-                        // Deux caisses empilées, un tonneau à côté, un seau et un balai (dans l'emprise).
+                        // Deux caisses empilées contre un bout de l'emprise ; dans la place qui reste, un tonneau s'il tient, sinon un seau
+                        // (relecture : rien ne se chevauche ni ne passe dans le mur).
                         (double lx, double lz) = b.AlongX ? (1.0, 0.0) : (0.0, 1.0);
                         double half = b.Long / 2;
-                        int crate = Add(new InteriorPiece(b.Id + "/caisse1", InteriorProp.Crate, b.CX - lx * half * 0.4, b.CZ - lz * half * 0.4, Yaw(f), b.Short * 0.95));
-                        Add(new InteriorPiece(b.Id + "/caisse2", InteriorProp.Crate, b.CX - lx * half * 0.4, b.CZ - lz * half * 0.4, Yaw(f) + 14, b.Short * 0.75,
-                            parent: crate));
-                        Add(new InteriorPiece(b.Id + "/tonneau", InteriorProp.Barrel, b.CX + lx * half * 0.5, b.CZ + lz * half * 0.5, v % 360, b.Short * 0.8));
-                        Add(new InteriorPiece(b.Id + "/seau", InteriorProp.Bucket, b.CX + lx * half * 0.5 - f.X * 0.1, b.CZ + lz * half * 0.5 - f.Z * 0.1, 0, 0.32,
-                            parent: -1));
+                        double size = Math.Min(b.Short * 0.9, b.Long * 0.9);
+                        double at = -half + size / 2 + 0.02, rest = b.Long - size - 0.06;
+                        int crate = Add(new InteriorPiece(b.Id + "/caisse1", InteriorProp.Crate, b.CX + lx * at, b.CZ + lz * at, Yaw(f), size));
+                        Add(new InteriorPiece(b.Id + "/caisse2", InteriorProp.Crate, b.CX + lx * at, b.CZ + lz * at, Yaw(f) + 14, size * 0.8, parent: crate));
+                        double free = half - rest / 2 - 0.02;
+                        if (rest >= 0.6)
+                            Add(new InteriorPiece(b.Id + "/tonneau", InteriorProp.Barrel, b.CX + lx * free, b.CZ + lz * free, v % 360, Math.Min(b.Short * 0.8, rest)));
+                        else if (rest >= 0.2)
+                            Add(new InteriorPiece(b.Id + "/seau", InteriorProp.Bucket, b.CX + lx * free, b.CZ + lz * free, v % 360, Math.Min(0.32, rest)));
                         break;
                     }
                     case InteriorFurniture.Bed:
@@ -454,9 +474,9 @@ namespace EdS.Runtime
                         Add(new InteriorPiece(b.Id + "/bougie2", InteriorProp.Candlestick, b.CX - lx * b.Long * 0.42, b.CZ - lz * b.Long * 0.42, 0, 0, height: 0.3,
                             y: AltarHeight));
                         Light(InteriorLightKind.Candle, b.CX + f.X * 0.6, AltarHeight + 0.7, b.CZ + f.Z * 0.6, 6, 1.6);
-                        // Le siège du prêtre, de côté.
-                        Add(new InteriorPiece(b.Id + "/trone", InteriorProp.Throne, b.CX + lx * (b.Long / 2 + 0.9) - f.X * 0.1, b.CZ + lz * (b.Long / 2 + 0.9) - f.Z * 0.1,
-                            Yaw((-(int)lx, -(int)lz)), 0, height: 1.9));
+                        // Le siège du prêtre, derrière l'autel et de côté, tourné vers la nef (relecture : plus sur le pied d'un chandelier).
+                        Add(new InteriorPiece(b.Id + "/trone", InteriorProp.Throne, b.CX + lx * (b.Long / 2 + 0.5) - f.X * (b.Short / 2 + 0.9),
+                            b.CZ + lz * (b.Long / 2 + 0.5) - f.Z * (b.Short / 2 + 0.9), Yaw(f), 0, height: 1.9));
                         break;
                     }
                     case InteriorFurniture.Candelabra:
@@ -483,7 +503,8 @@ namespace EdS.Runtime
                 InteriorProp prop = decor[slot++ % decor.Length];
                 (double x, double z) = WallPoint(map, wall, t, 0.06);
                 double yaw = Math.Atan2(wall.X, wall.Z) * 180 / Math.PI;
-                string id = $"mur/{wall.X},{wall.Z}/{t:0.00}";
+                // Relecture indépendante : identifiant indépendant de la langue du système (il choisit le modèle de l'objet).
+                string id = FormattableString.Invariant($"mur/{wall.X},{wall.Z}/{t:0.00}");
                 switch (prop)
                 {
                     case InteriorProp.Lantern:
@@ -506,21 +527,6 @@ namespace EdS.Runtime
                         Add(new InteriorPiece(id, prop, x, z, yaw, 0, height: 0.8, y: WallDecorHeight - 0.3, onWall: true));
                         break;
                 }
-            }
-
-            // Au plafond : lanternes suspendues (auberge, maison), lustres (chapelle), le long du milieu de la pièce.
-            bool alongX = map.Width >= map.Depth;
-            double length = alongX ? map.Width : map.Depth;
-            int hanging = style == InteriorStyle.House ? 1 : 2;
-            for (int i = 0; i < hanging; i++)
-            {
-                double t = -length / 2 + length * (i + 0.5) / hanging;
-                double x = alongX ? cx + t : cx, z = alongX ? cz : cz + t;
-                InteriorProp prop = style == InteriorStyle.Chapel ? InteriorProp.Chandelier : InteriorProp.HangingLantern;
-                Add(new InteriorPiece($"plafond/{i}", prop, x, z, 0, 0, height: style == InteriorStyle.Chapel ? 1.2 : 0.9,
-                    y: height - (style == InteriorStyle.Chapel ? 2.4 : 1.25)));
-                Light(style == InteriorStyle.Chapel ? InteriorLightKind.Candle : InteriorLightKind.Lantern, x, height - (style == InteriorStyle.Chapel ? 2.2 : 1.1), z,
-                    style == InteriorStyle.Chapel ? 9 : 7, style == InteriorStyle.Chapel ? 1.8 : 1.5);
             }
 
             // La porte, côté intérieur, contre son mur.

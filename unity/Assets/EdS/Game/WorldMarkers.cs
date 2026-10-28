@@ -39,6 +39,7 @@ namespace EdS.Game
 
         private readonly GameObject _root;
         private readonly List<Marker> _markers = new List<Marker>();
+        private readonly List<Material> _owned = new List<Material>();
         private readonly Dictionary<string, Marker> _nodes = new Dictionary<string, Marker>();
         private Light _fire;
         private float _fireBase;
@@ -88,7 +89,7 @@ namespace EdS.Game
             foreach (WorldMarker door in adventure.Doors())
             {
                 Marker m = Add(door, PrimitiveType.Cylinder, new Vector3(1.3f, 0.015f, 1.3f), 0.015f, new Color(0.95f, 0.72f, 0.32f), 2.6f, DoorLabelRange);
-                Material sill = ArenaView.MakeMaterial(new Color(0.35f, 0.22f, 0.08f));
+                Material sill = Made(new Color(0.35f, 0.22f, 0.08f));
                 sill.EnableKeyword("_EMISSION");
                 sill.SetColor("_EmissionColor", new Color(0.9f, 0.55f, 0.18f));
                 m.Body.GetComponent<Renderer>().sharedMaterial = sill;
@@ -106,7 +107,7 @@ namespace EdS.Game
             body.transform.SetParent(_root.transform, false);
             body.transform.position = new Vector3((float)data.X, y, (float)data.Z);
             body.transform.localScale = scale;
-            body.GetComponent<Renderer>().sharedMaterial = ArenaView.MakeMaterial(color);
+            body.GetComponent<Renderer>().sharedMaterial = Made(color);
             var marker = new Marker { Data = data, Body = body, Height = height, Range = range, Color = color };
             _markers.Add(marker);
             return marker;
@@ -149,7 +150,7 @@ namespace EdS.Game
         /// Filon de fer : un rocher réaliste du catalogue (choisi d'après le nœud), d'un mètre de large, hérissé de quelques éclats de minerai
         /// rouille et métal.
         /// </summary>
-        private static void Ore(Marker m)
+        private void Ore(Marker m)
         {
             Transform holder = Holder(m);
             GameObject rock = StyleLook.Decor(holder, StyleSlot.Rock, m.Data.Id, holder.position, 0f, 1.1f);
@@ -160,7 +161,7 @@ namespace EdS.Game
             }
             Hide(m);
             StyleLook.VisibleBounds(rock, out Bounds b);
-            Material ore = ArenaView.MakeMaterial(new Color(0.42f, 0.27f, 0.2f));
+            Material ore = Made(new Color(0.42f, 0.27f, 0.2f));
             ore.SetFloat("_Metallic", 0.75f);
             ore.SetFloat("_Smoothness", 0.55f);
             for (int i = 0; i < 6; i++)
@@ -215,7 +216,7 @@ namespace EdS.Game
             embers.transform.SetParent(holder, false);
             embers.transform.position = new Vector3(b.center.x, b.min.y + 0.08f, b.center.z);
             embers.transform.localScale = new Vector3(b.size.x * 0.55f, 0.03f, b.size.z * 0.55f);
-            Material glow = ArenaView.MakeMaterial(new Color(0.25f, 0.06f, 0.02f));
+            Material glow = Made(new Color(0.25f, 0.06f, 0.02f));
             glow.EnableKeyword("_EMISSION");
             glow.SetColor("_EmissionColor", new Color(3.2f, 0.9f, 0.2f));
             embers.GetComponent<Renderer>().sharedMaterial = glow;
@@ -234,12 +235,12 @@ namespace EdS.Game
         }
 
         /// <summary>Enclume de fer sombre faite de quatre pavés (pied, taille, table, bigorne), d'environ 0,8 m de haut.</summary>
-        private static void Anvil(Transform holder, Vector3 c)
+        private void Anvil(Transform holder, Vector3 c)
         {
-            Material iron = ArenaView.MakeMaterial(new Color(0.16f, 0.16f, 0.18f));
+            Material iron = Made(new Color(0.16f, 0.16f, 0.18f));
             iron.SetFloat("_Metallic", 0.85f);
             iron.SetFloat("_Smoothness", 0.5f);
-            Material wood = StyleWorld.Surface(StyleSurface.Wood, out float _) ?? ArenaView.MakeMaterial(new Color(0.35f, 0.25f, 0.16f));
+            Material wood = StyleWorld.Surface(StyleSurface.Wood, out float _) ?? Made(new Color(0.35f, 0.25f, 0.16f));
             void Block(string name, Vector3 center, Vector3 size, Material material)
             {
                 GameObject b = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -308,6 +309,20 @@ namespace EdS.Game
             }
         }
 
-        public void Destroy() => Object.Destroy(_root);
+        /// <summary>Matériau fait pour les repères, détruit avec eux (relecture : les repères sont refaits à chaque porte).</summary>
+        private Material Made(Color color)
+        {
+            Material material = ArenaView.MakeMaterial(color);
+            _owned.Add(material);
+            return material;
+        }
+
+        public void Destroy()
+        {
+            Object.Destroy(_root);
+            foreach (Material material in _owned)
+                if (material != null) Object.Destroy(material);
+            _owned.Clear();
+        }
     }
 }

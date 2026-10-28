@@ -549,6 +549,8 @@ namespace EdS.Game
             holder.transform.position += new Vector3(target.x - b.center.x, target.y - b.min.y, target.z - b.center.z);
             if (piece.Prop == InteriorProp.Candlestick) Candle(holder, look == null);
             if (piece.Prop == InteriorProp.Lantern || piece.Prop == InteriorProp.HangingLantern) Lit(holder, 0.35f);
+            // Relecture indépendante : les lustres et les chandeliers de laiton brillent aussi (leurs bougies).
+            if (piece.Prop == InteriorProp.Chandelier || piece.Prop == InteriorProp.Candelabra) Lit(holder, 0.18f);
             if (b.size.y > 1.6f && !piece.OnWall) AddModelOccluders(holder);
             return holder;
         }
@@ -639,6 +641,14 @@ namespace EdS.Game
                 case InteriorProp.HangingLantern:
                     Add(new Vector3(0f, h * 0.45f, 0f), new Vector3(h * 0.45f, h * 0.8f, h * 0.45f), Plain(new Color(0.08f, 0.075f, 0.07f)));
                     break;
+                case InteriorProp.Chandelier:
+                {
+                    // Couronne de fer et sa chaîne (sans modèle).
+                    Material iron = Plain(new Color(0.08f, 0.075f, 0.07f));
+                    Add(new Vector3(0f, h * 0.15f, 0f), new Vector3(h * 0.8f, 0.05f, h * 0.8f), iron);
+                    Add(new Vector3(0f, h * 0.6f, 0f), new Vector3(0.03f, h * 0.9f, 0.03f), iron);
+                    break;
+                }
                 case InteriorProp.Door:
                     Add(new Vector3(0f, h / 2f, 0f), new Vector3(DoorWidth - 0.1f, h, 0.08f), dark);
                     break;

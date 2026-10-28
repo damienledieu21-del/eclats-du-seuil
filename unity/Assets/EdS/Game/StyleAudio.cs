@@ -120,7 +120,7 @@ namespace EdS.Game
             {
                 // Relecture de l'essai 7 : une nappe arrêtée (aventure quittée puis reprise) repart.
                 if (!layer.Value.isPlaying) layer.Value.Play();
-                float target = ambience * (float)StyleRules.AmbienceVolume(layer.Key, mood.RiverDistance, mood.InVillage, fighting);
+                float target = ambience * (float)StyleRules.AmbienceVolume(layer.Key, mood.RiverDistance, mood.InVillage, fighting, mood.Indoors);
                 layer.Value.volume = Mathf.MoveTowards(layer.Value.volume, target, deltaTime * 0.5f);
             }
         }

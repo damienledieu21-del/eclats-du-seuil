@@ -883,11 +883,13 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Essai réaliste 7 : volume d'une nappe d'ambiance (0 à 1) : la rivière d'après la distance à son lit (pleine à 4 m, éteinte à
-        /// 30 m), le vent un peu plus fort loin du village, les oiseaux partout, plus discrets en combat.
+        /// 30 m), le vent un peu plus fort loin du village, les oiseaux partout, plus discrets en combat. Intérieurs (relecture
+        /// indépendante) : ni oiseaux ni rivière, le vent du dehors à peine.
         /// </summary>
-        public static double AmbienceVolume(StyleAmbience ambience, double riverDistance, bool inVillage, bool fighting)
+        public static double AmbienceVolume(StyleAmbience ambience, double riverDistance, bool inVillage, bool fighting, bool indoors = false)
         {
             double calm = fighting ? 0.5 : 1;
+            if (indoors) return ambience == StyleAmbience.Wind ? 0.12 * calm : 0;
             switch (ambience)
             {
                 case StyleAmbience.River:

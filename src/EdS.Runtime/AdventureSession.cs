@@ -233,9 +233,14 @@ namespace EdS.Runtime
         /// Ouvre une session de la zone en cours sur <paramref name="save"/>, au point sûr <paramref name="safePoint"/> (null : l'entrée), ou à la
         /// porte <paramref name="door"/> (intérieurs). L'histoire et les métiers restent ceux de la zone de départ.
         /// </summary>
-        private void Open(WorldSave save, string? safePoint, string? door = null)
+        private void Open(WorldSave save, string? safePoint, string? door = null) => Commit(Build(save, _zone, safePoint, door));
+
+        /// <summary>Session de <paramref name="zone"/> prête à jouer, sans rien changer à l'aventure (<see cref="Commit"/> la met en jeu).</summary>
+        private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door) =>
+            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId);
+
+        private void Commit(WorldSession world)
         {
-            WorldSession world = new WorldSession(save, _zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId);
             World = world;
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, PlayerId, () => Collect(world, world.Step()), TargetRange);
             _drunk.Clear();
@@ -492,6 +497,10 @@ namespace EdS.Runtime
             ZoneDefinition target = _zones.First(z => z.Id == door.To);
             WorldSave here = World.Save();
             var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character);
+            Door arrival = target.DoorOf(door.ToDoor)!;
+            // Relecture indépendante : la session d'arrivée est construite avant d'écrire quoi que ce soit ; puis la sauvegarde ; l'aventure ne
+            // change qu'une fois les deux réussies.
+            WorldSession next = Build(moved, target, null, arrival.Id);
             try
             {
                 Write(moved);
@@ -501,11 +510,10 @@ namespace EdS.Runtime
                 Say("text.ui.save_failed", e.Message);
                 return false;
             }
-            Door arrival = target.DoorOf(door.ToDoor)!;
             _zone = target;
             // La reprise après une défaite ou une fin de session se fait au point sûr de la zone le plus proche de la porte d'arrivée.
             _lastSafePoint = target.SafePoints.OrderBy(sp => Distance2(sp.Position, arrival.Position)).ThenBy(sp => sp.Id, StringComparer.Ordinal).First().Id;
-            Open(moved, null, arrival.Id);
+            Commit(next);
             Say("text.ui.door_entered", target.Name);
             AnnounceLearned();
             return true;

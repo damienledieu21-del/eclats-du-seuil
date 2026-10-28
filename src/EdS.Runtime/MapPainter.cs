@@ -22,17 +22,28 @@ namespace EdS.Runtime
         /// <summary>Pixels par mètre de l'image (la petite carte en montre un peu plus de six par mètre).</summary>
         public const double PixelsPerMeter = 6.0;
 
+        /// <summary>Intérieurs : bande sombre peinte autour d'une pièce (m), au plus.</summary>
+        public const double IndoorMargin = 2.0;
+
+        /// <summary>Bande peinte autour de l'aire : celle demandée, au plus <see cref="IndoorMargin"/> autour d'une pièce.</summary>
+        private static double MarginOf(AdventureMap map, double margin) => map.Indoor ? Math.Min(margin, IndoorMargin) : margin;
+
         /// <summary>Taille de l'image d'une carte (au plus 2048 de côté, au moins 16).</summary>
         public static (int Width, int Height) Size(AdventureMap map, double pixelsPerMeter = PixelsPerMeter, double margin = Margin)
         {
             if (map is null) throw new ArgumentNullException(nameof(map));
+            margin = MarginOf(map, margin);
             int w = (int)Math.Ceiling((map.Width + 2 * margin) * pixelsPerMeter), h = (int)Math.Ceiling((map.Depth + 2 * margin) * pixelsPerMeter);
             return (Math.Max(16, Math.Min(2048, w)), Math.Max(16, Math.Min(2048, h)));
         }
 
         /// <summary>Place d'un point du sol dans l'image peinte, de 0 à 1 (U vers l'est, V vers le sud depuis le haut), marge comprise.</summary>
-        public static (double U, double V) ToImage(AdventureMap map, double x, double z, double margin = Margin) =>
-            ((x - (map.MinX - margin)) / (map.Width + 2 * margin), ((map.MaxZ + margin) - z) / (map.Depth + 2 * margin));
+        public static (double U, double V) ToImage(AdventureMap map, double x, double z, double margin = Margin)
+        {
+            if (map is null) throw new ArgumentNullException(nameof(map));
+            margin = MarginOf(map, margin);
+            return ((x - (map.MinX - margin)) / (map.Width + 2 * margin), ((map.MaxZ + margin) - z) / (map.Depth + 2 * margin));
+        }
 
         // Couleurs de base (0 à 1).
         private static readonly double[] GrassA = { 0.27, 0.38, 0.17 }, GrassB = { 0.42, 0.52, 0.22 }, Soil = { 0.45, 0.35, 0.23 }, Rock = { 0.56, 0.53, 0.47 },
@@ -78,6 +89,7 @@ namespace EdS.Runtime
             if (width < 1 || width > 2048) throw new ArgumentOutOfRangeException(nameof(width));
             if (height < 1 || height > 2048) throw new ArgumentOutOfRangeException(nameof(height));
             if (margin < 0 || margin > 100) throw new ArgumentOutOfRangeException(nameof(margin));
+            if (map.Indoor) return PaintIndoor(map, width, height, MarginOf(map, margin));
             double x0 = map.MinX - margin, z0 = map.MinZ - margin, w = map.Width + 2 * margin, d = map.Depth + 2 * margin;
 
             var obstacles = map.Obstacles.Select(o => (o.Id, o.Low, Points: o.Points.Select(p => (X: p.X.Raw / 10000.0, Z: p.Z.Raw / 10000.0)).ToArray())).ToList();
@@ -403,6 +415,57 @@ namespace EdS.Runtime
                     pixels[at + 3] = 255;
                 }
             });
+            return pixels;
+        }
+
+        private static readonly double[] Night = { 0.06, 0.05, 0.045 }, Beam = { 0.3, 0.2, 0.12 }, Furniture = { 0.33, 0.22, 0.13 };
+
+        /// <summary>
+        /// Intérieurs (relecture indépendante) : plan de la pièce : plancher de planches le long de la grande longueur, meubles plus sombres
+        /// bordés de noir, murs de colombages, ouverture claire de la porte ; dehors, la nuit.
+        /// </summary>
+        private static byte[] PaintIndoor(AdventureMap map, int width, int height, double margin)
+        {
+            double x0 = map.MinX - margin, z0 = map.MinZ - margin, w = map.Width + 2 * margin, d = map.Depth + 2 * margin;
+            var boxes = map.Obstacles.Select(o => (MinX: o.Points.Min(p => p.X.Raw) / 10000.0, MinZ: o.Points.Min(p => p.Z.Raw) / 10000.0,
+                MaxX: o.Points.Max(p => p.X.Raw) / 10000.0, MaxZ: o.Points.Max(p => p.Z.Raw) / 10000.0)).ToList();
+            bool alongX = map.Width >= map.Depth;
+            const double wall = 0.3, doorHalf = 0.8, edge = 0.06;
+            var pixels = new byte[checked(width * height * 4)];
+            var c = new double[3];
+            for (int row = 0; row < height; row++)
+                for (int col = 0; col < width; col++)
+                {
+                    double x = x0 + (col + 0.5) * w / width, z = z0 + (row + 0.5) * d / height;
+                    double outside = Math.Max(Math.Max(map.MinX - x, x - map.MaxX), Math.Max(map.MinZ - z, z - map.MaxZ));
+                    bool door = map.Doors.Any(o => Math.Abs(o.X - x) < doorHalf + 0.3 && Math.Abs(o.Z - z) < doorHalf + 0.3
+                        && (Math.Abs(o.X - x) < doorHalf || Math.Abs(o.Z - z) < doorHalf));
+                    if (outside > wall) Set(c, Night, 1);
+                    else if (outside > -0.02 && !door) Set(c, Beam, 0.85 + 0.15 * Hash((int)Math.Floor((alongX ? x : z) / 0.9), 3));
+                    else if (outside > -0.02) Set(c, Dirt, 1.05);
+                    else
+                    {
+                        // Planches : larges de 22 cm, de longueurs variées, joints sombres.
+                        double across = alongX ? z : x, along = alongX ? x : z;
+                        int plank = (int)Math.Floor(across / 0.22);
+                        double length = 1.6 + 1.2 * Hash(plank, 7), offset = Hash(plank, 11) * length;
+                        int piece = (int)Math.Floor((along + offset) / length);
+                        Set(c, Plank, 0.86 + 0.18 * Hash(plank, piece) + 0.05 * (StyleRules.Noise(x * 4, z * 4) - 0.5));
+                        if (across / 0.22 - plank < 0.08 || (along + offset) / length - piece < 0.02) Darken(c, 0.35);
+                        foreach (var b in boxes)
+                        {
+                            if (x < b.MinX || x > b.MaxX || z < b.MinZ || z > b.MaxZ) continue;
+                            bool rim = x - b.MinX < edge || b.MaxX - x < edge || z - b.MinZ < edge || b.MaxZ - z < edge;
+                            Set(c, rim ? Night : Furniture, rim ? 1 : 0.9 + 0.15 * StyleRules.Noise(x * 6, z * 6));
+                            break;
+                        }
+                    }
+                    int at = (row * width + col) * 4;
+                    pixels[at] = ToByte(c[0]);
+                    pixels[at + 1] = ToByte(c[1]);
+                    pixels[at + 2] = ToByte(c[2]);
+                    pixels[at + 3] = 255;
+                }
             return pixels;
         }
 

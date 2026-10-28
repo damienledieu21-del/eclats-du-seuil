@@ -384,6 +384,7 @@
               "building": {
                 "type": "string",
                 "description": "Obstacle du scénario (le bâtiment) dont c'est la porte, à 2 m au plus ; sa façade est tournée vers elle.",
+                "maxLength": 64,
                 "pattern": "^[a-z][a-z0-9_]*$"
               }
             }

@@ -10,14 +10,10 @@ using EdS.Domain.Combat;
 
 namespace EdS.Data.Json
 {
-    /// <summary>
-    /// Sous-lot 12.4 : lecture stricte d'une zone du monde (<c>kind: "zone"</c>, <c>data/v0/world/zones/&lt;nom&gt;.json</c>). Le scénario de
-    /// zone qu'elle nomme est lu et validé (dans <c>scenarios/</c>) ; le reste va au validateur unique <see cref="ZoneValidator"/>.
-    /// </summary>
     /// <summary>Intérieurs : zones reliées par leurs portes (<see cref="ZoneJsonReader.ReadLinked"/>).</summary>
     public sealed class WorldZonesLoadResult
     {
-        /// <summary>Zone dont <see cref="Report"/> est le rapport (la zone de départ si les portes ne se répondent pas).</summary>
+        /// <summary>Zone dont <see cref="Report"/> est le rapport : celle dont le fichier est refusé, ou dont une porte est en cause.</summary>
         public string Zone { get; }
 
         public ValidationReport Report { get; }
@@ -35,6 +31,10 @@ namespace EdS.Data.Json
         }
     }
 
+    /// <summary>
+    /// Sous-lot 12.4 : lecture stricte d'une zone du monde (<c>kind: "zone"</c>, <c>data/v0/world/zones/&lt;nom&gt;.json</c>). Le scénario de
+    /// zone qu'elle nomme est lu et validé (dans <c>scenarios/</c>) ; le reste va au validateur unique <see cref="ZoneValidator"/>.
+    /// </summary>
     public static class ZoneJsonReader
     {
         /// <summary>Chemin d'une zone dans un dossier de données (<c>data/v0</c>) : <c>world/zones/vallons.json</c> pour « zone.vallons ».</summary>
@@ -140,6 +140,8 @@ namespace EdS.Data.Json
             if (start is null) throw new ArgumentNullException(nameof(start));
             var zones = new List<ZoneDefinition>();
             var queued = new List<string> { start };
+            // Porte par laquelle chaque zone reliée a été trouvée (zone, rang de la porte, porte) : une zone introuvable est signalée sur elle.
+            var via = new Dictionary<string, (string Zone, int Index, string Door)>(StringComparer.Ordinal);
             for (int i = 0; i < queued.Count; i++)
             {
                 if (zones.Count >= ZoneValidator.MaxLinkedZones)
@@ -148,7 +150,15 @@ namespace EdS.Data.Json
                     limit.Add("$", ValidationCode.LimitExceeded, $"plus de {ZoneValidator.MaxLinkedZones} zones reliées par des portes.");
                     return new WorldZonesLoadResult(queued[i], limit, Array.Empty<ZoneDefinition>());
                 }
-                ZoneLoadResult loaded = ReadFile(PathIn(dataDirectory, queued[i]), scenariosDirectory, data, items);
+                string file = PathIn(dataDirectory, queued[i]);
+                if (via.TryGetValue(queued[i], out var from) && !System.IO.File.Exists(file))
+                {
+                    var absent = new ValidationReport();
+                    absent.Add($"$.data.doors[{from.Index}].to", ValidationCode.UnknownReference,
+                        $"{from.Zone}, porte « {from.Door} » : zone « {queued[i]} » introuvable (fichier {System.IO.Path.GetFileName(file)} absent).");
+                    return new WorldZonesLoadResult(from.Zone, absent, Array.Empty<ZoneDefinition>());
+                }
+                ZoneLoadResult loaded = ReadFile(file, scenariosDirectory, data, items);
                 if (loaded.Zone is null) return new WorldZonesLoadResult(queued[i], loaded.Report, Array.Empty<ZoneDefinition>());
                 if (loaded.Zone.Id != queued[i])
                 {
@@ -157,11 +167,23 @@ namespace EdS.Data.Json
                     return new WorldZonesLoadResult(queued[i], wrong, Array.Empty<ZoneDefinition>());
                 }
                 zones.Add(loaded.Zone);
-                foreach (Door door in loaded.Zone.Doors)
-                    if (!queued.Contains(door.To)) queued.Add(door.To);
+                for (int d = 0; d < loaded.Zone.Doors.Count; d++)
+                {
+                    Door door = loaded.Zone.Doors[d];
+                    if (queued.Contains(door.To)) continue;
+                    queued.Add(door.To);
+                    via.Add(door.To, (loaded.Zone.Id, d, door.Id));
+                }
             }
             ValidationReport links = ZoneValidator.CheckDoors(zones);
-            return links.IsValid ? new WorldZonesLoadResult(start, links, zones) : new WorldZonesLoadResult(start, links, Array.Empty<ZoneDefinition>());
+            if (links.IsValid) return new WorldZonesLoadResult(start, links, zones);
+            // Relecture indépendante : le rapport est celui de la première zone dont une porte est en cause (chemins de son fichier).
+            foreach (ZoneDefinition zone in zones)
+            {
+                ValidationReport own = ZoneValidator.CheckDoorsOf(zone, zones);
+                if (!own.IsValid) return new WorldZonesLoadResult(zone.Id, own, Array.Empty<ZoneDefinition>());
+            }
+            return new WorldZonesLoadResult(start, links, Array.Empty<ZoneDefinition>());
         }
 
         private static SafePointData? ReadSafePoint(JsonInput input, JsonElement element, string path)
