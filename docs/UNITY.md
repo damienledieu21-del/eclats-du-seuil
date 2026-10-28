@@ -409,6 +409,48 @@ Limites :
 - la musique du village couvre tout le lieu « Village » ;
 - l'agrandissement de la zone de jeu se fait dans la PR suivante.
 
+### Vallons agrandis (28 octobre 2026)
+
+Demande de Damien : « est-ce que tu peux aussi agrandir la map et l'améliorer ? je parle vraiment d'un grand agrandissement, on pourrait mettre des batiments, des routes ou pleins d'autres choses », puis « pas besoin de m'envoyer un plan fais le et on verra après ».
+
+**Préparer.** Rien à télécharger : tout est fait par le code avec les textures déjà dans `Assets/Style` (crépi, pierre, planches, tuiles, pavés, terre). Menu **Éclats du Seuil → Préparer l'essai de style**, puis Play.
+
+Ce qui change :
+- **La zone fait 240 × 170 m** (84 × 58 avant). Le village, le moulin, la carrière et le Seuil n'ont pas bougé.
+- **Bourg d'Aube**, à l'ouest :
+  - huit maisons à colombages (soubassement de pierre, fenêtres à volets, porte côté rue avec ses marches, cheminée) ;
+  - une auberge à deux étages avec son enseigne, une chapelle de pierre au clocher d'ardoises ;
+  - une place pavée avec son puits et deux étals à auvent rayé.
+- **Champs du sud** : grange, ferme, champs de blé (mûr ou vert) et labours. Une maison de plus au hameau de la carrière.
+- **Autres lieux** :
+  - le **lac des Aubes**, où se jette la rivière ;
+  - le **hameau de la carrière** ;
+  - la **tour de guet** crénelée, au nord ;
+  - le **camp des rôdeurs** (palissades, tentes), au nord-est ;
+  - de **grands bois**, dont la forêt des Loups.
+- **Routes** : chemins de terre battue et place pavée relient tous les lieux. On y marche comme ailleurs.
+- **Dix-sept créatures de plus** (loups, sangliers, archers, rôdeurs), et cinq nœuds de récolte de plus.
+- **Trois haltes de plus** : place du bourg, ferme des champs, hameau de la carrière.
+- La **carte (L)** et la petite carte montrent tout : toits, routes, pavés, champs, bois, tentes.
+- La musique du village joue aussi dans le bourg et le hameau ; la rivière s'entend sur toute sa longueur et au bord du lac.
+- Une halte ne reconstruit plus le décor ni ne repeint la carte : elle est plus rapide.
+- Sur téléphone : moins d'arbres dans les bois, de plantes et de blé, et le blé se dessine moins loin.
+
+Ce que tu regardes :
+- le chemin du village vers le bourg (grand-rue, à l'ouest du pont) ;
+- les maisons de près et la place pavée ;
+- les champs et la grange au sud du bourg ;
+- le lac au sud ;
+- la tour et le camp au nord-est ;
+- la carte (L) ;
+- si le jeu reste fluide (surtout sur le Note8).
+
+Limites :
+- rien n'a encore été essayé dans Unity ni sur le Note8 ;
+- les bâtiments sont faits par le code, sans modèle 3D : on peut les remplacer par des modèles de l'Asset Store si tu en veux ;
+- le bourg n'a pas encore d'habitants (pas de PNJ nouveaux) ;
+- on n'entre pas dans les bâtiments : ce sont des obstacles pleins.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

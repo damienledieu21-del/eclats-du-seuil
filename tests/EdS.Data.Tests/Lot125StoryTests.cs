@@ -240,7 +240,7 @@ public class Lot125StoryTests
         Assert.Equal("$.data.npcs[0].name", FirstError(Mutated(r => Data(r)["npcs"]![0]!["name"] = "text.inconnu")));
         Assert.Equal("$.data.npcs[0].dialogue", FirstError(Mutated(r => Data(r)["npcs"]![0]!["dialogue"] = "dialogue.inconnu")));
         Assert.Equal("$.data.npcs[1].id", FirstError(Mutated(r => Data(r)["npcs"]![1]!["id"] = "npc.odile")));
-        Assert.Equal("$.data.npcs[0].position", FirstError(Mutated(r => Data(r)["npcs"]![0]!["position"] = new JsonArray(100, 0))));
+        Assert.Equal("$.data.npcs[0].position", FirstError(Mutated(r => Data(r)["npcs"]![0]!["position"] = new JsonArray(150, 0))));   // hors de l'aire agrandie
         Assert.Equal("$.data.dialogues[0].entries[0].node", FirstError(Mutated(r => Dialogue(r, 0)["entries"]![0]!["node"] = "nulle_part")));
         Assert.Equal("$.data.dialogues[0].nodes[0].choices[0].next", FirstError(Mutated(r => Dialogue(r, 0)["nodes"]![0]!["choices"]![0]!["next"] = "nulle_part")));
         Assert.Equal("$.data.dialogues[0].entries[0].conditions[0].if", FirstError(Mutated(r => Dialogue(r, 0)["entries"]![0]!["conditions"]![0]!["if"] = "chance")));

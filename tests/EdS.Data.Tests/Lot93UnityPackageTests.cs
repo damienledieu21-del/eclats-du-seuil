@@ -52,6 +52,9 @@ public class Lot93UnityPackageTests
         Assert.Equal("1.0.0", dependencies["com.unity.modules.audio"]!.GetValue<string>());
         // Essai réaliste (26 octobre 2026) : le sol en terrain (Terrain, TerrainData) demande le module intégré du terrain.
         Assert.Equal("1.0.0", dependencies["com.unity.modules.terrain"]!.GetValue<string>());
+        // Essai réaliste 7 : les effets en particules (ParticleSystem) demandent le module intégré des particules ; sans lui, Unity refusait
+        // de compiler le jeu (essai de Damien du 28 octobre 2026, erreur CS1069 sur ParticleSystem).
+        Assert.Equal("1.0.0", dependencies["com.unity.modules.particlesystem"]!.GetValue<string>());
         // Essai réaliste 6 : l'interface en jeu en uGUI et TextMeshPro (paquet de Unity 6, version 2.0.0).
         Assert.Equal("2.0.0", dependencies["com.unity.ugui"]!.GetValue<string>());
         Assert.StartsWith("m_EditorVersion: 6000.3.", File.ReadAllText(Path.Combine(Root, "unity", "ProjectSettings", "ProjectVersion.txt")));

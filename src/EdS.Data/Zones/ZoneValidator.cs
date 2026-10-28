@@ -81,6 +81,36 @@ namespace EdS.Data.Zones
         }
     }
 
+    /// <summary>Vallons agrandis (schéma 3) : genre d'une route.</summary>
+    public enum RoadKind
+    {
+        /// <summary>Chemin de terre battue (« terre »).</summary>
+        Dirt = 0,
+
+        /// <summary>Rue pavée (« pave »).</summary>
+        Cobble = 1,
+    }
+
+    /// <summary>
+    /// Vallons agrandis (schéma 3, demande de Damien du 28 octobre 2026) : une route ou un chemin de la zone, ligne brisée de largeur
+    /// constante dans l'aire praticable. Affichage seulement : le moteur ne la connaît pas (on y marche comme ailleurs).
+    /// </summary>
+    public sealed class Road
+    {
+        public string Id { get; }
+        public RoadKind Kind { get; }
+        public Fixed Width { get; }
+        public IReadOnlyList<GroundVector> Points { get; }
+
+        internal Road(string id, RoadKind kind, Fixed width, IEnumerable<GroundVector> points)
+        {
+            Id = id;
+            Kind = kind;
+            Width = width;
+            Points = Frozen.List(points, nameof(points));
+        }
+    }
+
     /// <summary>
     /// Sous-lot 12.7 : chef de la zone. Ses formes se succèdent (quand une forme tombe, la suivante se relève à sa place) ; la première
     /// victoire sur la dernière forme donne le fait et les récompenses, une seule fois (registre du monde, clé <see cref="VictoryKey"/>) ;
@@ -129,13 +159,18 @@ namespace EdS.Data.Zones
         /// <summary>Sous-lot 12.7 : chef de la zone, ou null.</summary>
         public Boss? Boss { get; }
 
+        /// <summary>Vallons agrandis (schéma 3) : routes et chemins, dans l'ordre du fichier (vide sans routes).</summary>
+        public IReadOnlyList<Road> Roads { get; }
+
         /// <summary>Clé du registre du monde de la première victoire sur le chef (<c>zone.vallons/boss/gardien_du_seuil</c>).</summary>
         public string VictoryKey => Boss is { } b ? $"{Id}/boss/{b.Id}" : throw new InvalidOperationException("Zone sans chef.");
 
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
-            IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null)
+            IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
+            IEnumerable<Road>? roads = null)
         {
             Boss = boss;
+            Roads = Frozen.List(roads ?? Array.Empty<Road>(), nameof(roads));
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             Id = id;
@@ -184,11 +219,13 @@ namespace EdS.Data.Zones
         /// <summary>
         /// Version 1 (sous-lot 12.4) : <c>id</c>, <c>name</c>, <c>scenario</c>, <c>entry</c>, <c>safePoints</c>, <c>places</c>, <c>populations</c>,
         /// <c>passages</c>. Version 2 (sous-lot 12.7) : <c>boss</c> facultatif (<c>id</c>, <c>scenario</c>, <c>forms</c>, <c>fact</c>, <c>rewards</c>,
-        /// <c>loot</c>).
+        /// <c>loot</c>). Version 3 (Vallons agrandis, 28 octobre 2026) : <c>roads</c> facultatif (<c>id</c>, <c>kind</c> « terre » ou « pave »,
+        /// <c>width</c> de 1 à 20 m, <c>points</c> : de 2 à 32 points dans l'aire praticable).
         /// </summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
 
-        public const int MaxSafePoints = 32, MaxPlaces = 64, MaxPopulations = 256, MaxPassages = 32;
+        public const int MaxSafePoints = 32, MaxPlaces = 64, MaxPopulations = 256, MaxPassages = 32, MaxRoads = 32, MaxRoadPoints = 32;
+        public static readonly Fixed MinRoadWidth = Fixed.One, MaxRoadWidth = Fixed.FromInt(20);
         public const long MinRespawnMs = 1000, MaxRespawnMs = 3_600_000;
         public static readonly Fixed MaxLeashRange = Fixed.FromInt(100);
 
@@ -341,10 +378,45 @@ namespace EdS.Data.Zones
                 }
             }
 
+            var roads = new List<Road>();
+            if (d.Roads != null)
+            {
+                if (d.Roads.Count > MaxRoads) report.Add("$.data.roads", ValidationCode.LimitExceeded, $"{d.Roads.Count} routes, au plus {MaxRoads}.");
+                for (int i = 0; i < d.Roads.Count; i++)
+                {
+                    string path = $"$.data.roads[{i}]";
+                    if (d.Roads[i] is not RoadData r) { Missing(report, path, "route"); continue; }
+                    bool ok = CheckId(r.Id, path + ".id", roads.Select(x => x.Id), report);
+                    RoadKind kind = RoadKind.Dirt;
+                    if (r.Kind is null) { Missing(report, path + ".kind", "genre : « terre » ou « pave »"); ok = false; }
+                    else if (r.Kind == "terre") kind = RoadKind.Dirt;
+                    else if (r.Kind == "pave") kind = RoadKind.Cobble;
+                    else { report.Add(path + ".kind", ValidationCode.InvalidValue, $"genre de route « {r.Kind} » inconnu : « terre » ou « pave »."); ok = false; }
+                    if (r.Width is null) { Missing(report, path + ".width", "largeur en mètres"); ok = false; }
+                    else if (r.Width < MinRoadWidth || r.Width > MaxRoadWidth)
+                    { report.Add(path + ".width", ValidationCode.OutOfRange, $"largeur hors de [{MinRoadWidth}, {MaxRoadWidth}] m."); ok = false; }
+                    var points = new List<GroundVector>();
+                    if (r.Points is null) { Missing(report, path + ".points", "points de la route [x, z]"); ok = false; }
+                    else if (r.Points.Count < 2 || r.Points.Count > MaxRoadPoints)
+                    { report.Add(path + ".points", ValidationCode.OutOfRange, $"{r.Points.Count} points, de 2 à {MaxRoadPoints} attendus."); ok = false; }
+                    else
+                        for (int j = 0; j < r.Points.Count; j++)
+                        {
+                            string pp = $"{path}.points[{j}]";
+                            if (!CheckPoint(r.Points[j], pp, "[x, z]", report)) { ok = false; continue; }
+                            GroundVector point = Point(r.Points[j]!);
+                            if (!Inside(point)) { report.Add(pp, ValidationCode.OutOfRange, "point de route hors de l'aire praticable de la zone."); ok = false; }
+                            else if (points.Count > 0 && points[points.Count - 1] == point) { report.Add(pp, ValidationCode.InvalidValue, "deux points de suite confondus."); ok = false; }
+                            else points.Add(point);
+                        }
+                    if (ok) roads.Add(new Road(r.Id!, kind, r.Width!.Value, points));
+                }
+            }
+
             Boss? boss = d.Boss is { } b ? CheckBoss(b, scenario, bossScenario, items, report, safePoints) : null;
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss));
+                entry, safePoints, places, populations, passages, boss, roads));
         }
 
         public const int MaxForms = 8, MaxRewards = 8;

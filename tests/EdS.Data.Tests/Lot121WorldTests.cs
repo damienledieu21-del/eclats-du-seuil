@@ -59,8 +59,11 @@ public class Lot121WorldTests
         CombatSetup setup = ZoneSetup();
         Assert.True(setup.Zone);
         Assert.Equal(3_600_000, setup.DurationMs);   // une heure de jeu par session : au-delà de la limite des combats fermés (10 min)
-        Assert.Equal(new[] { "loup1", "loup2", "loup3", "sanglier", "archer", "loup4", "loup5", "sanglier2", "sanglier3", "rodeur" },
-            setup.Combatants.Select(c => c.Id));   // sous-lot 12.4 : la carte agrandie des Vallons
+        // Sous-lot 12.4 : la carte agrandie des Vallons ; Vallons agrandis (28 octobre 2026) : forêt des Loups, champs, vergers, plaine,
+        // tour de guet, hautes pierres et camp des rôdeurs peuplés à leur tour.
+        Assert.Equal(new[] { "loup1", "loup2", "loup3", "sanglier", "archer", "loup4", "loup5", "sanglier2", "sanglier3", "rodeur",
+            "loup6", "loup7", "loup8", "loup9", "loup10", "sanglier4", "sanglier5", "sanglier6", "sanglier7", "sanglier8", "archer2", "archer3",
+            "loup11", "loup12", "rodeur2", "rodeur3", "archer4" }, setup.Combatants.Select(c => c.Id));
         Assert.Single(setup.Combatants.Select(c => c.Team).Distinct());   // une seule équipe : les joueurs entrent ensuite
         Assert.True(setup.Space!.Obstacles.Single(o => o.Id == "riviere_sud").Low);
     }

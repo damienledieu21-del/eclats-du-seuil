@@ -252,7 +252,7 @@ public class Lot126CraftingTests
         Assert.Equal((1, 2, 10), (book.LevelFor(39), book.LevelFor(40), book.LevelFor(5000)));
         Assert.Equal(("forge", "forge", 3, "item.ferrure"), (book.Recipe("recipe.ferrure").Profession, book.Recipe("recipe.ferrure").Place,
             book.Recipe("recipe.ferrure").Inputs[0].Count, book.Recipe("recipe.ferrure").Output.Item));
-        Assert.Equal(6, book.Nodes.Count);
+        Assert.Equal(11, book.Nodes.Count);   // Vallons agrandis : herbes de la forêt, du lac, du verger ; filons des hautes pierres et de la tour
         ItemDefinition potion = Items.Item("item.potion_de_soin");
         Assert.Equal((ItemType.Consumable, 300L, 20_000L, 5), (potion.Type, potion.Heal, potion.CooldownMs, potion.Stack));
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));
@@ -274,7 +274,7 @@ public class Lot126CraftingTests
         Assert.Equal("$.data.recipes[0].inputs[0].item", First(Mutated(r => D(r)["recipes"]![0]!["inputs"]![0]!["item"] = "item.inconnu")));
         Assert.Equal("$.data.recipes[0].output.count", First(Mutated(r => D(r)["recipes"]![0]!["output"]!["count"] = 6)));
         Assert.Equal("$.data.recipes[1].id", First(Mutated(r => D(r)["recipes"]![1]!["id"] = "recipe.ferrure")));
-        Assert.Equal("$.data.nodes[0].position", First(Mutated(r => D(r)["nodes"]![0]!["position"] = new JsonArray(100, 0))));
+        Assert.Equal("$.data.nodes[0].position", First(Mutated(r => D(r)["nodes"]![0]!["position"] = new JsonArray(150, 0))));   // Vallons agrandis : hors de l'aire (x jusqu'à 140)
         Assert.Equal("$.data.nodes[0].respawnMs", First(Mutated(r => D(r)["nodes"]![0]!["respawnMs"] = 10)));
     }
 

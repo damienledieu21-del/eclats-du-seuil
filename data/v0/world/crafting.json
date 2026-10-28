@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 1,
   "kind": "crafting",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -163,6 +163,66 @@
         ],
         "respawnMs": 60000,
         "xp": 8
+      },
+      {
+        "id": "herbes_foret",
+        "profession": "herboristerie",
+        "item": "item.herbe_de_l_aube",
+        "count": 1,
+        "position": [
+          -66,
+          36
+        ],
+        "respawnMs": 60000,
+        "xp": 8
+      },
+      {
+        "id": "herbes_lac",
+        "profession": "herboristerie",
+        "item": "item.herbe_de_l_aube",
+        "count": 1,
+        "position": [
+          -14,
+          -62
+        ],
+        "respawnMs": 60000,
+        "xp": 8
+      },
+      {
+        "id": "herbes_verger",
+        "profession": "herboristerie",
+        "item": "item.herbe_de_l_aube",
+        "count": 1,
+        "position": [
+          54,
+          -40
+        ],
+        "respawnMs": 60000,
+        "xp": 8
+      },
+      {
+        "id": "filon_pierres",
+        "profession": "minage",
+        "item": "item.minerai_de_fer",
+        "count": 1,
+        "position": [
+          94,
+          52
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "filon_tour",
+        "profession": "minage",
+        "item": "item.minerai_de_fer",
+        "count": 1,
+        "position": [
+          36,
+          74
+        ],
+        "respawnMs": 60000,
+        "xp": 12
       }
     ]
   }

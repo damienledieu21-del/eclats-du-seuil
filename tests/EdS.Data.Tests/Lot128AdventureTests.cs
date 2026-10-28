@@ -79,9 +79,9 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard" }, a.Npcs().Select(n => n.Id));
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
-        Assert.Equal(6, a.Nodes().Count);
+        Assert.Equal(11, a.Nodes().Count);   // Vallons agrandis
         Assert.All(a.Nodes(), n => Assert.True(n.Ready));
-        Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere" }, a.SafePoints().Select(s => s.Id));
+        Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere" }, a.SafePoints().Select(s => s.Id));
         Assert.Empty(a.Journal());
         Assert.Empty(a.Discoveries());
         Assert.Equal("Village", a.PlaceName);

@@ -88,9 +88,11 @@ public class Lot124ZoneTests
         ZoneDefinition z = loaded.Zone!;
         Assert.Equal(("zone.vallons", "Vallons d'Aube", "zones/vallons"), (z.Id, z.Name, z.ScenarioName));
         Assert.Equal("place_du_village", z.Entry.Id);
-        Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "forge" }, z.Places.Select(p => p.Id));
+        Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "forge",
+            "bourg", "champs", "lac", "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" },
+            z.Places.Select(p => p.Id));   // Vallons agrandis : dix lieux de plus
         Assert.Equal(new[] { "village" }, z.PlacesAt(z.Entry.Position).Select(p => p.Id));
-        Assert.Equal(10, z.Populations.Count);
+        Assert.Equal(27, z.Populations.Count);
         Assert.Equal(z.Setup.Combatants.Select(c => c.Id).OrderBy(i => i, StringComparer.Ordinal),
             z.Populations.Select(p => p.Creature).OrderBy(i => i, StringComparer.Ordinal));   // chaque créature du scénario est peuplée
         Population wolf = z.PopulationOf("loup1")!;
@@ -105,10 +107,10 @@ public class Lot124ZoneTests
     public void Zone_invalide_refusee_avec_son_chemin()
     {
         Assert.Equal("$.data.entry", FirstError(Zone(z => Data(z)["entry"] = "nulle_part")));
-        Assert.Equal("$.data.safePoints[1].position", FirstError(Zone(z => Data(z)["safePoints"]![1]!["position"] = new JsonArray(70, 0))));
+        Assert.Equal("$.data.safePoints[1].position", FirstError(Zone(z => Data(z)["safePoints"]![1]!["position"] = new JsonArray(150, 0))));
         Assert.Equal("$.data.safePoints[1].id", FirstError(Zone(z => Data(z)["safePoints"]![1]!["id"] = "place_du_village")));
         Assert.Equal("$.data.places[0].max", FirstError(Zone(z => Data(z)["places"]![0]!["max"] = new JsonArray(-30, 4))));
-        Assert.Equal("$.data.places[0]", FirstError(Zone(z => Data(z)["places"]![0]!["max"] = new JsonArray(80, 4))));
+        Assert.Equal("$.data.places[0]", FirstError(Zone(z => Data(z)["places"]![0]!["max"] = new JsonArray(150, 4))));
         Assert.Equal("$.data.populations[0].creature", FirstError(Zone(z => Population(z, "loup1")["creature"] = "ours")));
         Assert.Equal("$.data.populations[1].creature", FirstError(Zone(z => Population(z, "loup2")["creature"] = "loup1")));
         Assert.Equal("$.data.populations[0].respawnMs", FirstError(Zone(z => Population(z, "loup1")["respawnMs"] = 1025)));
@@ -243,11 +245,14 @@ public class Lot124ZoneTests
         Assert.True(first.HasLeft && !first.IsDead);
         Assert.Empty(xp);
         Assert.Empty(session.Save().Consumed);
-        // Plafond : 64 combattants (10 créatures, le Bastion, le chef — sous-lot 12.7 —, puis 51 vies), une place gardée à la seconde forme
-        // du chef (revue Codex de la PR #48) ; une seule annonce, puis plus rien pour cette population.
+        // Plafond : 64 combattants (les créatures de la zone — 27 depuis les Vallons agrandis —, le Bastion, le chef — sous-lot 12.7 —, puis
+        // les vies suivantes), une place gardée à la seconde forme du chef (revue Codex de la PR #48) ; une seule annonce, puis plus rien
+        // pour cette population.
         int max = ShippedData.Rules.Combat.MaxCombatants;
+        int creatures = z.Setup.Combatants.Count;
+        Assert.Equal(27, creatures);
         Assert.Equal(max - 1, session.Zone.Engine.CombatantIds.Count);
-        Assert.Equal(max - 13, population.Count(e => e.Kind == PopulationEventKind.Respawned));
+        Assert.Equal(max - creatures - 3, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);
         for (int i = 0; i < 200; i++) Assert.Empty(session.Step().Population);
     }
@@ -284,9 +289,9 @@ public class Lot124ZoneTests
         // des créatures de départ ne comptent que si elles lui sont solides : pas dans les Vallons, contact traversable).
         JsonArray At(double x, double z) => new(x, z);
         Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-3, 9))));        // dans le moulin
-        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-23.75, -12))));  // au bord
+        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-99.75, -12))));  // au bord
         Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-6.25, 9))));     // contre le moulin
-        Assert.True(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-23.5, -12)).IsValid);                                        // bord exact
+        Assert.True(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-99.5, -12)).IsValid);                                        // bord exact
     }
 
     [Fact]

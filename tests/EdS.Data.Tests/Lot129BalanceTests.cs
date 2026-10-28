@@ -97,7 +97,7 @@ public class Lot129BalanceTests
         JsonObject zone = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
         double player = (double)JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "rules.json")))!["data"]!["combat"]!["movement"]!["speed"]!;
         var wolves = zone["data"]!["combatants"]!.AsArray().Where(c => ((string)c!["id"]!).StartsWith("loup", StringComparison.Ordinal)).ToList();
-        Assert.Equal(5, wolves.Count);
+        Assert.Equal(12, wolves.Count);   // Vallons agrandis : sept loups de plus (forêt des Loups, hautes pierres)
         Assert.All(wolves, w => Assert.Equal(4.0, (double)w!["speed"]!));
         Assert.Equal(5.0, player);
     }

@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 12,
   "kind": "scenario",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "seed": 116,
     "durationMs": 3600000,
@@ -10,12 +10,12 @@
     "space": {
       "bounds": {
         "min": [
-          -24,
-          -18
+          -100,
+          -70
         ],
         "max": [
-          60,
-          40
+          140,
+          100
         ]
       },
       "obstacles": [
@@ -45,11 +45,11 @@
           "points": [
             [
               4,
-              -18
+              -45.8
             ],
             [
               7,
-              -18
+              -45.8
             ],
             [
               7,
@@ -75,11 +75,11 @@
             ],
             [
               7,
-              34
+              100
             ],
             [
               4,
-              34
+              100
             ]
           ],
           "low": true
@@ -319,7 +319,7 @@
           "id": "haie_ouest",
           "points": [
             [
-              -24,
+              -100,
               19
             ],
             [
@@ -331,7 +331,7 @@
               20
             ],
             [
-              -24,
+              -100,
               20
             ]
           ]
@@ -522,6 +522,870 @@
             [
               48,
               37
+            ]
+          ]
+        },
+        {
+          "id": "maison1",
+          "points": [
+            [
+              -34,
+              4
+            ],
+            [
+              -26,
+              4
+            ],
+            [
+              -26,
+              10
+            ],
+            [
+              -34,
+              10
+            ]
+          ]
+        },
+        {
+          "id": "maison2",
+          "points": [
+            [
+              -46,
+              5
+            ],
+            [
+              -38,
+              5
+            ],
+            [
+              -38,
+              11
+            ],
+            [
+              -46,
+              11
+            ]
+          ]
+        },
+        {
+          "id": "maison3",
+          "points": [
+            [
+              -34,
+              -14
+            ],
+            [
+              -27,
+              -14
+            ],
+            [
+              -27,
+              -7
+            ],
+            [
+              -34,
+              -7
+            ]
+          ]
+        },
+        {
+          "id": "maison4",
+          "points": [
+            [
+              -46,
+              -15
+            ],
+            [
+              -39,
+              -15
+            ],
+            [
+              -39,
+              -8
+            ],
+            [
+              -46,
+              -8
+            ]
+          ]
+        },
+        {
+          "id": "puits",
+          "points": [
+            [
+              -56.8,
+              -0.5
+            ],
+            [
+              -57.5,
+              0.2
+            ],
+            [
+              -58.5,
+              0.2
+            ],
+            [
+              -59.2,
+              -0.5
+            ],
+            [
+              -59.2,
+              -1.5
+            ],
+            [
+              -58.5,
+              -2.2
+            ],
+            [
+              -57.5,
+              -2.2
+            ],
+            [
+              -56.8,
+              -1.5
+            ]
+          ]
+        },
+        {
+          "id": "etal1",
+          "points": [
+            [
+              -55,
+              5
+            ],
+            [
+              -52,
+              5
+            ],
+            [
+              -52,
+              7
+            ],
+            [
+              -55,
+              7
+            ]
+          ]
+        },
+        {
+          "id": "etal2",
+          "points": [
+            [
+              -64,
+              -9
+            ],
+            [
+              -61,
+              -9
+            ],
+            [
+              -61,
+              -7
+            ],
+            [
+              -64,
+              -7
+            ]
+          ]
+        },
+        {
+          "id": "auberge",
+          "points": [
+            [
+              -75,
+              5
+            ],
+            [
+              -63,
+              5
+            ],
+            [
+              -63,
+              14
+            ],
+            [
+              -75,
+              14
+            ]
+          ]
+        },
+        {
+          "id": "chapelle",
+          "points": [
+            [
+              -77,
+              -22
+            ],
+            [
+              -69,
+              -22
+            ],
+            [
+              -69,
+              -8
+            ],
+            [
+              -77,
+              -8
+            ]
+          ]
+        },
+        {
+          "id": "maison5",
+          "points": [
+            [
+              -88,
+              4
+            ],
+            [
+              -81,
+              4
+            ],
+            [
+              -81,
+              10
+            ],
+            [
+              -88,
+              10
+            ]
+          ]
+        },
+        {
+          "id": "maison6",
+          "points": [
+            [
+              -93,
+              -14
+            ],
+            [
+              -86,
+              -14
+            ],
+            [
+              -86,
+              -7
+            ],
+            [
+              -93,
+              -7
+            ]
+          ]
+        },
+        {
+          "id": "maison7",
+          "points": [
+            [
+              -58,
+              -21
+            ],
+            [
+              -51,
+              -21
+            ],
+            [
+              -51,
+              -14
+            ],
+            [
+              -58,
+              -14
+            ]
+          ]
+        },
+        {
+          "id": "maison8",
+          "points": [
+            [
+              -99,
+              5
+            ],
+            [
+              -93,
+              5
+            ],
+            [
+              -93,
+              11
+            ],
+            [
+              -99,
+              11
+            ]
+          ]
+        },
+        {
+          "id": "grange",
+          "points": [
+            [
+              -92,
+              -50
+            ],
+            [
+              -80,
+              -50
+            ],
+            [
+              -80,
+              -42
+            ],
+            [
+              -92,
+              -42
+            ]
+          ]
+        },
+        {
+          "id": "maison9",
+          "points": [
+            [
+              -74,
+              -52
+            ],
+            [
+              -67,
+              -52
+            ],
+            [
+              -67,
+              -46
+            ],
+            [
+              -74,
+              -46
+            ]
+          ]
+        },
+        {
+          "id": "riviere_lac",
+          "points": [
+            [
+              18.43,
+              -50.56
+            ],
+            [
+              10.86,
+              -45.69
+            ],
+            [
+              0.14,
+              -45.69
+            ],
+            [
+              -7.43,
+              -50.56
+            ],
+            [
+              -7.43,
+              -57.44
+            ],
+            [
+              0.14,
+              -62.31
+            ],
+            [
+              10.86,
+              -62.31
+            ],
+            [
+              18.43,
+              -57.44
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "bois_no1",
+          "points": [
+            [
+              -80,
+              48
+            ],
+            [
+              -60,
+              43
+            ],
+            [
+              -46,
+              50
+            ],
+            [
+              -44,
+              64
+            ],
+            [
+              -58,
+              76
+            ],
+            [
+              -78,
+              72
+            ]
+          ]
+        },
+        {
+          "id": "bois_no2",
+          "points": [
+            [
+              -32,
+              70
+            ],
+            [
+              -14,
+              64
+            ],
+            [
+              -6,
+              76
+            ],
+            [
+              -12,
+              92
+            ],
+            [
+              -28,
+              94
+            ],
+            [
+              -38,
+              82
+            ]
+          ]
+        },
+        {
+          "id": "bois_no3",
+          "points": [
+            [
+              -99,
+              78
+            ],
+            [
+              -86,
+              74
+            ],
+            [
+              -74,
+              84
+            ],
+            [
+              -76,
+              99
+            ],
+            [
+              -99,
+              99
+            ]
+          ]
+        },
+        {
+          "id": "bois_no4",
+          "points": [
+            [
+              -99,
+              24
+            ],
+            [
+              -88,
+              23
+            ],
+            [
+              -81,
+              33
+            ],
+            [
+              -88,
+              44
+            ],
+            [
+              -99,
+              44
+            ]
+          ]
+        },
+        {
+          "id": "tour",
+          "points": [
+            [
+              31.7,
+              69.53
+            ],
+            [
+              29.53,
+              71.7
+            ],
+            [
+              26.47,
+              71.7
+            ],
+            [
+              24.3,
+              69.53
+            ],
+            [
+              24.3,
+              66.47
+            ],
+            [
+              26.47,
+              64.3
+            ],
+            [
+              29.53,
+              64.3
+            ],
+            [
+              31.7,
+              66.47
+            ]
+          ]
+        },
+        {
+          "id": "bloc4",
+          "points": [
+            [
+              70,
+              30
+            ],
+            [
+              74,
+              30
+            ],
+            [
+              74,
+              34
+            ],
+            [
+              70,
+              34
+            ]
+          ]
+        },
+        {
+          "id": "bloc5",
+          "points": [
+            [
+              86,
+              45
+            ],
+            [
+              90,
+              45
+            ],
+            [
+              90,
+              49
+            ],
+            [
+              86,
+              49
+            ]
+          ]
+        },
+        {
+          "id": "bloc6",
+          "points": [
+            [
+              102,
+              26
+            ],
+            [
+              106,
+              26
+            ],
+            [
+              106,
+              30
+            ],
+            [
+              102,
+              30
+            ]
+          ]
+        },
+        {
+          "id": "palissade_camp1",
+          "points": [
+            [
+              92,
+              82
+            ],
+            [
+              93,
+              82
+            ],
+            [
+              93,
+              98
+            ],
+            [
+              92,
+              98
+            ]
+          ]
+        },
+        {
+          "id": "palissade_camp2",
+          "points": [
+            [
+              93,
+              66
+            ],
+            [
+              116,
+              66
+            ],
+            [
+              116,
+              67
+            ],
+            [
+              93,
+              67
+            ]
+          ]
+        },
+        {
+          "id": "tente1",
+          "points": [
+            [
+              114.4,
+              81.99
+            ],
+            [
+              112.99,
+              83.4
+            ],
+            [
+              111.01,
+              83.4
+            ],
+            [
+              109.6,
+              81.99
+            ],
+            [
+              109.6,
+              80.01
+            ],
+            [
+              111.01,
+              78.6
+            ],
+            [
+              112.99,
+              78.6
+            ],
+            [
+              114.4,
+              80.01
+            ]
+          ]
+        },
+        {
+          "id": "tente2",
+          "points": [
+            [
+              124.4,
+              74.99
+            ],
+            [
+              122.99,
+              76.4
+            ],
+            [
+              121.01,
+              76.4
+            ],
+            [
+              119.6,
+              74.99
+            ],
+            [
+              119.6,
+              73.01
+            ],
+            [
+              121.01,
+              71.6
+            ],
+            [
+              122.99,
+              71.6
+            ],
+            [
+              124.4,
+              73.01
+            ]
+          ]
+        },
+        {
+          "id": "tente3",
+          "points": [
+            [
+              126.4,
+              89.99
+            ],
+            [
+              124.99,
+              91.4
+            ],
+            [
+              123.01,
+              91.4
+            ],
+            [
+              121.6,
+              89.99
+            ],
+            [
+              121.6,
+              88.01
+            ],
+            [
+              123.01,
+              86.6
+            ],
+            [
+              124.99,
+              86.6
+            ],
+            [
+              126.4,
+              88.01
+            ]
+          ]
+        },
+        {
+          "id": "bois_ne1",
+          "points": [
+            [
+              40,
+              84
+            ],
+            [
+              56,
+              79
+            ],
+            [
+              68,
+              88
+            ],
+            [
+              62,
+              99
+            ],
+            [
+              42,
+              99
+            ]
+          ]
+        },
+        {
+          "id": "arbre6",
+          "points": [
+            [
+              31.6,
+              -36.4
+            ],
+            [
+              32.4,
+              -36.4
+            ],
+            [
+              32.4,
+              -35.6
+            ],
+            [
+              31.6,
+              -35.6
+            ]
+          ]
+        },
+        {
+          "id": "arbre7",
+          "points": [
+            [
+              45.6,
+              -48.4
+            ],
+            [
+              46.4,
+              -48.4
+            ],
+            [
+              46.4,
+              -47.6
+            ],
+            [
+              45.6,
+              -47.6
+            ]
+          ]
+        },
+        {
+          "id": "arbre8",
+          "points": [
+            [
+              36.6,
+              -60.4
+            ],
+            [
+              37.4,
+              -60.4
+            ],
+            [
+              37.4,
+              -59.6
+            ],
+            [
+              36.6,
+              -59.6
+            ]
+          ]
+        },
+        {
+          "id": "maison10",
+          "points": [
+            [
+              76,
+              -32
+            ],
+            [
+              83,
+              -32
+            ],
+            [
+              83,
+              -26
+            ],
+            [
+              76,
+              -26
+            ]
+          ]
+        },
+        {
+          "id": "bois_se1",
+          "points": [
+            [
+              90,
+              -67
+            ],
+            [
+              112,
+              -69
+            ],
+            [
+              130,
+              -62
+            ],
+            [
+              127,
+              -49
+            ],
+            [
+              100,
+              -50
             ]
           ]
         }
@@ -959,6 +1823,764 @@
           "maxRange": 7,
           "minRange": 3,
           "aggroRange": 9,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup6",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -40,
+          40
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup7",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -36,
+          45
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup8",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -60,
+          88
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup9",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -50,
+          92
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup10",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -90,
+          60
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "sanglier4",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 180,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          -48,
+          -46
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "sanglier5",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 180,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          -84,
+          -60
+        ],
+        "facing": [
+          0,
+          1
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "sanglier6",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 180,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          40,
+          -42
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "sanglier7",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 180,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          52,
+          -58
+        ],
+        "facing": [
+          0,
+          1
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "sanglier8",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 180,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          100,
+          -40
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "archer2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 120,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "fleche",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 10
+          },
+          {
+            "id": "pluie",
+            "rawDamage": 16,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          21,
+          62
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 9,
+          "minRange": 6,
+          "aggroRange": 12,
+          "pack": false
+        }
+      },
+      {
+        "id": "archer3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 120,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "fleche",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 10
+          },
+          {
+            "id": "pluie",
+            "rawDamage": 16,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          35,
+          64
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 9,
+          "minRange": 6,
+          "aggroRange": 12,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup11",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          80,
+          38
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup12",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          96,
+          36
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true
+        }
+      },
+      {
+        "id": "rodeur2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 220,
+        "armor": 0,
+        "magicResistance": 20,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "eclat",
+            "rawDamage": 18,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 8
+          },
+          {
+            "id": "onde",
+            "rawDamage": 24,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 2.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          108,
+          74
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 7,
+          "minRange": 3,
+          "aggroRange": 9,
+          "pack": false
+        }
+      },
+      {
+        "id": "rodeur3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 220,
+        "armor": 0,
+        "magicResistance": 20,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "eclat",
+            "rawDamage": 18,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 8
+          },
+          {
+            "id": "onde",
+            "rawDamage": 24,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 2.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          118,
+          84
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 7,
+          "minRange": 3,
+          "aggroRange": 9,
+          "pack": false
+        }
+      },
+      {
+        "id": "archer4",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 120,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "fleche",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 10
+          },
+          {
+            "id": "pluie",
+            "rawDamage": 16,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          104,
+          90
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 9,
+          "minRange": 6,
+          "aggroRange": 12,
           "pack": false
         }
       }

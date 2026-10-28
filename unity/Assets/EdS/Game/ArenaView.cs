@@ -122,8 +122,11 @@ namespace EdS.Game
             return material;
         }
 
-        /// <summary>Remplace les combattants affichés par ceux d'un nouveau combat.</summary>
-        public void Populate(ICombatClient combat)
+        /// <summary>
+        /// Remplace les combattants affichés par ceux d'un nouveau combat. Vallons agrandis : <paramref name="map"/> (carte de l'aventure) donne
+        /// les routes et les champs du décor ; un nouveau combat sur le même espace garde le décor (<see cref="SpaceView.Key"/>).
+        /// </summary>
+        public void Populate(ICombatClient combat, AdventureMap map = null)
         {
             foreach (GameObject body in _bodies.Values) Object.Destroy(body);
             _bodies.Clear();
@@ -133,8 +136,12 @@ namespace EdS.Game
             if (_player != null) Object.Destroy(_player);
             if (_targetRing != null) Object.Destroy(_targetRing);
             if (_allyRing != null) Object.Destroy(_allyRing);
-            if (_space != null) _space.Destroy();
-            _space = combat.Space != null ? new SpaceView(combat.Space, _root.transform) : null;
+            if (_space != null && combat.Space != null && _space.Key == SpaceView.KeyOf(combat.Space, map)) _space.Reset();
+            else
+            {
+                if (_space != null) _space.Destroy();
+                _space = combat.Space != null ? new SpaceView(combat.Space, _root.transform, map) : null;
+            }
             _obstacles = CombatDisplay.SightObstacles(combat.Space);   // sous-lot 11.9 : la vue (obstacles bas exclus)
             _defaultGround.SetActive(_space == null);
             _from.Clear();
