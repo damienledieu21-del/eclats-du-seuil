@@ -121,6 +121,13 @@ namespace EdS.Game
 
         /// <summary>Essai réaliste 6, étape 3 : niveau du personnage à l'image précédente (l'annonce d'un niveau gagné), 0 : inconnu.</summary>
         private int _shownLevel;
+
+        // Essai réaliste 7 (demandes de Damien du 28 octobre 2026) : effets en particules, musique et ambiances, Charges et quêtes vues à
+        // l'image précédente (l'éclat d'or, la fanfare).
+        private Effects _effects;
+        private StyleAudio _music;
+        private int _shownCharges = -1;
+        private int _shownQuests, _shownLoot;
         private string _startupError;
 
         private IEnumerator Start()
@@ -135,6 +142,7 @@ namespace EdS.Game
                 _hud = HudView.Create();
                 _talentView = TalentTreeView.Create();
                 _book = AdventureBook.Create();
+                _effects = Effects.Create();   // essai réaliste 7 : rien sans le shader des particules
                 StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
             }
             catch (Exception e)
@@ -223,6 +231,9 @@ namespace EdS.Game
             _markers = new WorldMarkers(_adventure);
             _adventureHelp = null;
             _shownLevel = 0;
+            _shownQuests = _adventure.QuestsAnnounced;
+            _shownLoot = _adventure.LootAnnounced;
+            if (_music == null && _camera != null) _music = StyleAudio.Create(_camera.Camera.transform);   // essai réaliste 7
             ShowAdventureSession();
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
@@ -260,6 +271,7 @@ namespace EdS.Game
             _markers?.Destroy();
             _markers = null;
             _adventure = null;
+            _music?.Stop();
             _talentView?.Close();
             PaintedMap.Forget();
             _screens.Close();
@@ -355,7 +367,11 @@ namespace EdS.Game
             if (a.Opened != _shownSession) ShowAdventureSession();
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
-            if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed) && a.Drink()) StyleLook.Play(Audio, StyleSound.Potion);   // essai de style : son
+            if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed) && a.Drink())
+            {
+                StyleLook.Play(Audio, StyleSound.Potion);   // essai de style : son
+                if (_arena.Feet(_combat.PlayerId) is Vector3 feet) _effects?.Healed(feet);   // essai réaliste 7 : éclats verts
+            }
             if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
             _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
 
@@ -375,6 +391,11 @@ namespace EdS.Game
                 foreach (CombatFeedback feedback in _combat.DrainFeedback()) Show(feedback);
             }
             foreach (string message in a.DrainMessages()) Say(message);
+            // Essai réaliste 7 : petite fanfare quand une quête est accomplie.
+            if (a.QuestsAnnounced > _shownQuests) UiSounds.Play(UiCue.QuestDone);
+            _shownQuests = a.QuestsAnnounced;
+            if (a.LootAnnounced > _shownLoot) StyleLook.Play(Audio, StyleSound.Coin, 0.6f);   // et le bruit des pièces pour un butin
+            _shownLoot = a.LootAnnounced;
             _markers.Sync(a);
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
@@ -382,6 +403,9 @@ namespace EdS.Game
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
+            SyncGestures();
+            // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert).
+            _music?.Update(a.Mood(), _paused || _screens.Open != AdventureScreens.Panel.None || TalentsOpen, Time.deltaTime);
         }
 
         /// <summary>Indication de l'action possible ici (parler, récolter, faire halte, reprendre), ou null.</summary>
@@ -633,6 +657,7 @@ namespace EdS.Game
             _arena.Sync(_combat, player, null);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
+            SyncGestures();
         }
 
         /// <summary>
@@ -657,17 +682,64 @@ namespace EdS.Game
             // Sous-lot 11.8 : boutons tactiles (compétences 1 à 4 et ultime, cible suivante, allié visé en réseau).
             // Essai de style : le modèle du joueur n'attaque que si la compétence part (revue Codex de la PR #55 : UseSlot rend faux pour une
             // compétence en recharge, un emplacement vide ou un étourdissement, sans rien envoyer).
-            if (_touch.SlotPressed >= 0 && _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed)) _arena.Strike();
+            if (_touch.SlotPressed >= 0 && _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed))
+                StrikeSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed);
             if (_touch.TargetPressed) _combat.NextTarget();
             if (_touch.AllyPressed && _combat is NetworkCombat ally) ally.NextAlly();
             KeyCode[] slots = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4 };
             KeyCode[] pad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4 };
             for (int i = 0; i < slots.Length; i++)
-                if ((Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i])) && _combat.UseSlot(i)) _arena.Strike();
+                if ((Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i])) && _combat.UseSlot(i)) StrikeSlot(i);
             if ((Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5)) && _combat.UseSlot(RealtimeCombat.UltimateSlot))
-                _arena.Strike();
+                StrikeSlot(RealtimeCombat.UltimateSlot);
             if (Input.GetKeyDown(KeyCode.Tab)) _combat.NextTarget();
             if (Input.GetKeyDown(KeyCode.G) && _combat is NetworkCombat network) network.NextAlly();
+        }
+
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : « coups variés », effets des compétences) : la compétence de
+        /// l'emplacement <paramref name="slot"/> est partie. Le modèle joue son geste ; une frappe fend l'air (arc de lumière, son de
+        /// l'épée), un sort ou un soutien dessine son cercle au sol (lueur, son du sort).
+        /// </summary>
+        private void StrikeSlot(int slot)
+        {
+            SkillSlot skill = _combat.Player().Slots.FirstOrDefault(s => slot == RealtimeCombat.UltimateSlot ? s.IsUltimate : !s.IsUltimate && s.Slot == slot);
+            if (skill == null)
+            {
+                _arena.Strike();
+                return;
+            }
+            _arena.Strike(skill.SkillId, skill.IsUltimate);
+            bool spell = StyleRules.SkillAnimation(skill.SkillId, skill.IsUltimate).Motion == StyleMotion.Cast;
+            StyleLook.Play(Audio, spell ? StyleSound.Cast : StyleSound.Swing, spell ? 0.7f : 0.55f);
+            if (_effects == null || !(_arena.Feet(_combat.PlayerId) is Vector3 feet)) return;
+            if (spell) _effects.Cast(feet, skill.IsUltimate ? Effects.Gold : Effects.Teal);
+            else _effects.Slash(feet, _arena.Height(_combat.PlayerId), _playerYaw, Effects.Hot);
+        }
+
+        /// <summary>
+        /// Essai réaliste 7 : les adversaires jouent le geste de leurs attaques annoncées, avec leur cri (loup, sanglier, Gardien) ; un cri
+        /// du Gardien fait trembler la caméra. Puis l'éclat d'or d'une Charge de Rempart gagnée.
+        /// </summary>
+        private void SyncGestures()
+        {
+            if (_combat == null) return;
+            foreach (EdS.Simulation.Engine.AnnouncedAttack attack in _arena.PlayAttacks(_combat))
+            {
+                StyleSlot slot = StyleRules.ForCombatant(attack.Actor, false);
+                bool boss = _adventure != null && _adventure.IsBoss(attack.Actor);
+                if (slot == StyleSlot.Wolf) StyleLook.Play(Audio, StyleSound.Growl, 0.6f);
+                else if (slot == StyleSlot.Boar) StyleLook.Play(Audio, StyleSound.Grunt, 0.6f);
+                else if (boss)
+                {
+                    StyleLook.Play(Audio, StyleSound.Roar, 0.8f);
+                    _camera.Shake(0.15);
+                }
+            }
+            CombatantView me = _combat.Player().View;
+            if (_shownCharges >= 0 && me.RampartCharges > _shownCharges && _effects != null && _arena.Feet(_combat.PlayerId) is Vector3 feet)
+                _effects.Charge(feet, _arena.Height(_combat.PlayerId));
+            _shownCharges = me.RampartCharges;
         }
 
         // --- Jeu en réseau (sous-lot 10.4) ---------------------------------------------------------------------------------------
@@ -883,6 +955,7 @@ namespace EdS.Game
             _arena.Sync(_combat, player, combat?.AllyId);
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
+            SyncGestures();
         }
 
         /// <summary>
@@ -951,6 +1024,38 @@ namespace EdS.Game
             _arena.MovePlayer(delta, _playerYaw);
         }
 
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : impacts, étincelles, caméra qui réagit) : ce qu'un retour de combat
+        /// fait sentir. Coup reçu : étincelles et éclair (plus forts selon la part de vie perdue), le modèle accuse le coup ; coup gardé :
+        /// étincelles froides, le bouclier encaisse ; parade parfaite : éclair d'or, emblème, onde ; garde brisée : éclats rouges ; mort :
+        /// poussière. La caméra tremble pour les coups que le joueur reçoit ou pare (<see cref="GameFeel.Shock"/>).
+        /// </summary>
+        private void Feel(CombatFeedback feedback)
+        {
+            string id = feedback.CombatantId;
+            bool mine = id == _combat.PlayerId;
+            bool boss = _adventure != null && _adventure.IsBoss(id);
+            long maxHealth = 0;
+            if (mine) maxHealth = _combat.Player().View.MaxHealth ?? 0;
+            double shock = GameFeel.Shock(feedback.Kind, mine, feedback.Amount, maxHealth, boss);
+            if (shock > 0) _camera.Shake(shock);
+            if (feedback.Kind == FeedbackKind.DamageTaken) _arena.Hurt(id, false);
+            else if (feedback.Kind == FeedbackKind.Blocked) _arena.Hurt(id, true);
+            if (_effects == null || !(_arena.Feet(id) is Vector3 feet)) return;
+            float height = _arena.Height(id);
+            switch (feedback.Kind)
+            {
+                case FeedbackKind.DamageTaken:
+                    float part = mine && maxHealth > 0 ? feedback.Amount / (float)maxHealth : Mathf.Clamp01(feedback.Amount / 120f);
+                    _effects.Hit(feet, height, Mathf.Clamp01(part * 3f), false);
+                    break;
+                case FeedbackKind.Blocked: _effects.Blocked(feet, height); break;
+                case FeedbackKind.PerfectParry: _effects.Parry(feet, height); break;
+                case FeedbackKind.GuardBroken: _effects.GuardBroken(feet, height); break;
+                case FeedbackKind.Died: _effects.Death(feet); break;
+            }
+        }
+
         /// <summary>Essai de style : source des sons, sur la caméra (créée au premier son).</summary>
         private AudioSource _audio;
 
@@ -976,8 +1081,10 @@ namespace EdS.Game
             else if (feedback.Kind == FeedbackKind.Blocked) StyleLook.Play(Audio, StyleSound.Block);
             else if (feedback.Kind == FeedbackKind.PerfectParry) StyleLook.Play(Audio, StyleSound.Parry, 1f);
             else if (feedback.Kind == FeedbackKind.Died) StyleLook.Play(Audio, StyleSound.Death);
+            Feel(feedback);
             if (feedback.Kind == FeedbackKind.Unavailable || feedback.Kind == FeedbackKind.Rejected)
             {
+                if (feedback.Kind == FeedbackKind.Rejected) UiSounds.Play(UiCue.Error);
                 Say(feedback.Kind == FeedbackKind.Rejected ? "Refusé" + (feedback.Detail != null ? " : " + feedback.Detail : "") : feedback.Detail);
                 return;
             }
@@ -1097,7 +1204,11 @@ namespace EdS.Game
                 AdventureSession a = _adventure;
                 // Étape 3 : un niveau gagné s'annonce en grand (il prend effet à la prochaine halte).
                 int level = a.World.Level;
-                if (_shownLevel > 0 && level > _shownLevel) _hud.LevelUp(level, level > a.World.EnteredLevel ? "Effet à ta prochaine halte" : "");
+                if (_shownLevel > 0 && level > _shownLevel)
+                {
+                    _hud.LevelUp(level, level > a.World.EnteredLevel ? "Effet à ta prochaine halte" : "");
+                    if (_arena.Feet(_combat.PlayerId) is Vector3 feet) _effects?.LevelUp(feet);   // essai réaliste 7 : colonne de lumière
+                }
                 _shownLevel = level;
                 bool open = a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None;
                 double facing = _arena.Player != null ? _arena.Player.eulerAngles.y : _playerYaw;

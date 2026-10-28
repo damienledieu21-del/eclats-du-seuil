@@ -203,11 +203,17 @@ namespace EdS.Game
             var button = new UiButton(plate, text);
             button.Enable(true);
             UiPointer pointer = Pointer(plate);
+            // Essai réaliste 7 : un clic sonne (un bouton grisé répond par l'erreur), le survol d'un bouton actif glisse doucement.
             pointer.Left = () =>
             {
+                UiSounds.Play(button.Enabled ? UiCue.Click : UiCue.Error);
                 if (button.Enabled) click?.Invoke();
             };
-            pointer.Enter = () => button.Hover(true);
+            pointer.Enter = () =>
+            {
+                if (button.Enabled) UiSounds.Play(UiCue.Hover);
+                button.Hover(true);
+            };
             pointer.Exit = () => button.Hover(false);
             return button;
         }

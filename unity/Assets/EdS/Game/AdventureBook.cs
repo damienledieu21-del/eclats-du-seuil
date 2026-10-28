@@ -684,6 +684,8 @@ namespace EdS.Game
         /// Une image : l'écran ouvert (<paramref name="screens"/>) et le dialogue ; rend ce que le joueur demande (fermer, ouvrir l'arbre
         /// des Éclats).
         /// </summary>
+        private AdventureScreens.Panel _shownPanel;
+
         public Request Update(AdventureSession a, AdventureScreens screens, IReadOnlyList<MapEnemy> enemies, float deltaTime)
         {
             _session = a;
@@ -692,8 +694,12 @@ namespace EdS.Game
             bool talk = a != null && a.Dialogue != null;
             UiKit.Show(_canvas, book || talk);
             UiKit.Show(_book, book);
-            // Étape 3 : le panneau apparaît en fondu, légèrement grossi.
+            // Étape 3 : le panneau apparaît en fondu, légèrement grossi. Essai réaliste 7 : il s'ouvre et se ferme en sonnant, et un
+            // changement d'onglet aussi.
             if (book && !_bookShown) _fade.alpha = 0f;
+            if (book != _bookShown) UiSounds.Play(book ? UiCue.Open : UiCue.Close);
+            else if (book && screens.Open != _shownPanel) UiSounds.Play(UiCue.Tab);
+            _shownPanel = book ? screens.Open : AdventureScreens.Panel.None;
             _bookShown = book;
             _fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);
             float zoom = Mathf.Lerp(0.97f, 1f, _fade.alpha);

@@ -245,6 +245,58 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : « coups variés ») : le joueur lance la compétence
+        /// <paramref name="skillId"/> ; son modèle joue le geste de cette compétence.
+        /// </summary>
+        public void Strike(string skillId, bool ultimate)
+        {
+            if (_playerId != null && _looks.TryGetValue(_playerId, out StyleBody look)) look.Strike(skillId, ultimate);
+        }
+
+        /// <summary>Essai réaliste 7 : le combattant <paramref name="id"/> reçoit un coup, gardé ou non (son modèle réagit s'il le peut).</summary>
+        public void Hurt(string id, bool guarded)
+        {
+            if (id != null && _looks.TryGetValue(id, out StyleBody look)) look.Hurt(guarded);
+        }
+
+        /// <summary>Essai réaliste 7 : pieds d'un combattant affiché (sur le tablier du pont s'il y est), ou null.</summary>
+        public Vector3? Feet(string id) => id != null && _bodies.TryGetValue(id, out GameObject body) && body.activeSelf ? body.transform.position - Vector3.up : (Vector3?)null;
+
+        /// <summary>Essai réaliste 7 : hauteur affichée d'un combattant (son modèle, sinon la capsule de 2 m).</summary>
+        public float Height(string id) => id != null && _looks.TryGetValue(id, out StyleBody look) ? look.Height : 2f;
+
+        /// <summary>Essai réaliste 7 : attaques déjà jouées par les modèles des adversaires (auteur, attaque, tick d'impact).</summary>
+        private readonly HashSet<string> _struck = new HashSet<string>();
+
+        /// <summary>Avance du geste d'un adversaire sur l'impact de son attaque annoncée (secondes).</summary>
+        private const double WindUp = 0.45;
+
+        /// <summary>
+        /// Essai réaliste 7 : jusqu'ici, les adversaires ne jouaient jamais leur attaque. Chaque attaque annoncée au sol fait jouer le
+        /// geste de son auteur un peu avant l'impact (<see cref="WindUp"/>), une seule fois ; le Gardien rugit pour un cri, bondit pour un
+        /// bond (<see cref="StyleRules.AttackAnimation"/>). Rend les attaques qui viennent de commencer, pour leurs effets.
+        /// </summary>
+        public List<AnnouncedAttack> PlayAttacks(ICombatClient combat)
+        {
+            var started = new List<AnnouncedAttack>();
+            double now = combat.Tick + combat.TickProgress;
+            var live = new HashSet<string>();
+            foreach (AnnouncedAttack attack in combat.Announced())
+            {
+                if (attack.Actor == combat.PlayerId) continue;
+                string key = attack.Actor + "/" + attack.Attack + "/" + attack.ImpactTick;
+                live.Add(key);
+                double toImpact = (attack.ImpactTick - now) * combat.TickSeconds;
+                if (toImpact > WindUp || toImpact < -0.25 || !_struck.Add(key)) continue;
+                if (_looks.TryGetValue(attack.Actor, out StyleBody look)) look.Attack(attack.Attack);
+                started.Add(attack);
+            }
+            // Les attaques finies sont oubliées (la liste ne grandit pas pendant l'aventure).
+            _struck.IntersectWith(live);
+            return started;
+        }
+
+        /// <summary>
         /// Sous-lot 12.8 : une zone du monde fait entrer des combattants en cours de route (réapparitions, formes du chef) : chacun reçoit
         /// son corps à sa première apparition dans le moteur, placé ensuite par <see cref="Place"/>.
         /// </summary>

@@ -214,8 +214,12 @@ public class StyleRulesTests
         // Revue Codex de la PR #55 : une compétence refusée (recharge, emplacement vide, étourdi) ne joue pas l'attaque ; les trois chemins
         // d'entrée (doigt, touches 1 à 4, ultime) passent par le résultat de UseSlot.
         string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(\)").Count);
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"&& _combat\.UseSlot\([^;]*\)\)\s*_arena\.Strike\(\);").Count);
+        // Essai réaliste 7 : le geste dépend de la compétence (StrikeSlot), toujours après UseSlot ; le geste ordinaire ne sert plus qu'à
+        // une compétence introuvable.
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"&& _combat\.UseSlot\([^;]*\)\)\s*StrikeSlot\(").Count);
+        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(game, @"StrikeSlot\(").Count);   // trois appels et la méthode
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(\)"));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(skill\.SkillId, skill\.IsUltimate\)"));
     }
 
     [Fact]

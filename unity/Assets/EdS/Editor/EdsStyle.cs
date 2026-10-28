@@ -155,6 +155,18 @@ namespace EdS.Game.Editor
             catalog.Potion = Sound(sounds, StyleSound.Potion);
             catalog.Gather = Sound(sounds, StyleSound.Gather);
             catalog.Craft = Sound(sounds, StyleSound.Craft);
+            // Essai réaliste 7 : variantes des bruitages, musiques (dossier « Music ») et ambiances (dossier « Ambience »), importées pour
+            // le téléphone (musique lue en continu depuis le disque, ambiances compressées en mémoire, bruitages décompressés).
+            foreach (string path in sounds) AudioImport(path);
+            catalog.SoundSets = System.Enum.GetValues(typeof(StyleSound)).Cast<StyleSound>()
+                .Select(kind => new SoundSet { Kind = kind, Clips = StyleRules.PickSounds(sounds, kind, 6).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).Where(c => c != null).ToArray() })
+                .Where(s => s.Clips.Length > 0).ToArray();
+            catalog.Music = System.Enum.GetValues(typeof(StyleMusic)).Cast<StyleMusic>()
+                .Select(kind => new MusicLook { Kind = kind, Clip = sounds.Where(p => StyleRules.MusicOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
+                .Where(m => m.Clip != null).ToArray();
+            catalog.Ambiences = System.Enum.GetValues(typeof(StyleAmbience)).Cast<StyleAmbience>()
+                .Select(kind => new AmbienceLook { Kind = kind, Clip = sounds.Where(p => StyleRules.AmbienceOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
+                .Where(a => a.Clip != null).ToArray();
 
             catalog.SoilColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Soil, false));
             catalog.SoilNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Soil, true));
@@ -185,7 +197,8 @@ namespace EdS.Game.Editor
                 + "\nObjets : " + (catalog.Props.Length == 0 ? "aucun" : string.Join(", ", catalog.Props.Select(p => PropName(p.Kind))))
                 + "\nEau : " + (catalog.Water != null ? "vraie eau" : "eau simple") + ", herbe en brins : " + (catalog.Grass != null ? "oui" : "non")
                 + ", rendu du téléphone : " + (catalog.PhonePipeline != null ? "oui" : "non")
-                + "\nSons : " + found + " sur 7"
+                + "\nSons : " + found + " sur 7, bruitages variés : " + catalog.SoundSets.Length + " sur " + System.Enum.GetValues(typeof(StyleSound)).Length
+                + ", musiques : " + catalog.Music.Length + " sur 4, ambiances : " + catalog.Ambiences.Length + " sur 3"
                 + "\nCiel : " + (catalog.Sky != null ? "oui" : "non") + ", sols : " + grounds + " sur 3"
                 + (notes.Count > 0 ? "\n\n" + string.Join("\n", notes) : "")
                 + "\n\n" + models.Count + " modèles, " + textures.Count + " textures et " + sounds.Count + " sons trouvés dans Assets/Style. Appuie sur Play."
@@ -824,6 +837,24 @@ namespace EdS.Game.Editor
         private static GameObject Load(string path) => path != null ? AssetDatabase.LoadAssetAtPath<GameObject>(path) : null;
 
         private static Texture2D Texture2DAt(string path) => path != null ? AssetDatabase.LoadAssetAtPath<Texture2D>(path) : null;
+
+        /// <summary>
+        /// Essai réaliste 7 : réglage d'import d'un son pour le téléphone. Une musique est lue en continu depuis le disque (quelques Mo de
+        /// moins en mémoire), une ambiance reste compressée en mémoire, un bruitage court est décompressé au chargement (aucun retard).
+        /// </summary>
+        private static void AudioImport(string path)
+        {
+            if (!(AssetImporter.GetAtPath(path) is AudioImporter importer)) return;
+            AudioImporterSampleSettings settings = importer.defaultSampleSettings;
+            AudioClipLoadType load = StyleRules.MusicOf(path) != null ? AudioClipLoadType.Streaming
+                : StyleRules.AmbienceOf(path) != null ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
+            if (settings.loadType == load && settings.compressionFormat == AudioCompressionFormat.Vorbis) return;
+            settings.loadType = load;
+            settings.compressionFormat = AudioCompressionFormat.Vorbis;
+            settings.quality = load == AudioClipLoadType.DecompressOnLoad ? 0.7f : 0.5f;
+            importer.defaultSampleSettings = settings;
+            importer.SaveAndReimport();
+        }
 
         private static AudioClip Sound(List<string> sounds, StyleSound sound) =>
             StyleRules.PickSound(sounds, sound) is string path ? AssetDatabase.LoadAssetAtPath<AudioClip>(path) : null;

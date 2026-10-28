@@ -41,6 +41,30 @@ namespace EdS.Game
         public float Yaw;
     }
 
+    /// <summary>Essai réaliste 7 : les variantes d'un bruitage.</summary>
+    [Serializable]
+    public sealed class SoundSet
+    {
+        public StyleSound Kind;
+        public AudioClip[] Clips;
+    }
+
+    /// <summary>Essai réaliste 7 : une musique (village, exploration, combat, Gardien).</summary>
+    [Serializable]
+    public sealed class MusicLook
+    {
+        public StyleMusic Kind;
+        public AudioClip Clip;
+    }
+
+    /// <summary>Essai réaliste 7 : une nappe d'ambiance en boucle (oiseaux, vent, rivière).</summary>
+    [Serializable]
+    public sealed class AmbienceLook
+    {
+        public StyleAmbience Kind;
+        public AudioClip Clip;
+    }
+
     /// <summary>
     /// Essai de style (décision de Damien du 25 octobre 2026) : les modèles et les sons choisis dans les packs gratuits déposés dans
     /// <c>Assets/Style</c>. Rempli par le menu « Éclats du Seuil → Préparer l'essai de style » (<c>Assets/Style/Resources/StyleCatalog.asset</c>),
@@ -199,6 +223,19 @@ namespace EdS.Game
         public AudioClip Gather;
         public AudioClip Craft;
 
+        /// <summary>
+        /// Essai réaliste 7 (demande de Damien du 28 octobre 2026 : « sons […] libres », musique) : variantes de chaque bruitage (un même
+        /// geste ne sonne pas toujours pareil), musiques et nappes d'ambiance, trouvées par la préparation dans <c>Assets/Style</c>.
+        /// </summary>
+        [Header("Essai réaliste 7 : sons, musique, ambiance")]
+        public SoundSet[] SoundSets;
+
+        public MusicLook[] Music;
+        public AmbienceLook[] Ambiences;
+
+        [Range(0f, 1f)] public float MusicVolume = 0.35f;
+        [Range(0f, 1f)] public float AmbienceVolume = 0.45f;
+
         private static StyleCatalog _loaded;
         private static bool _tried;
 
@@ -266,6 +303,37 @@ namespace EdS.Game
             if (Surfaces == null) return null;
             foreach (SurfaceLook s in Surfaces)
                 if (s != null && s.Kind == kind && s.Color != null) return s;
+            return null;
+        }
+
+        /// <summary>
+        /// Essai réaliste 7 : une variante du son <paramref name="sound"/> (rang <paramref name="variant"/> modulo leur nombre) ; sans
+        /// variantes, le son unique des essais précédents ; null sans son.
+        /// </summary>
+        public AudioClip Sound(StyleSound sound, int variant)
+        {
+            if (SoundSets != null)
+                foreach (SoundSet set in SoundSets)
+                    if (set != null && set.Kind == sound && set.Clips != null && set.Clips.Length > 0)
+                        return set.Clips[(variant % set.Clips.Length + set.Clips.Length) % set.Clips.Length];
+            return Sound(sound);
+        }
+
+        /// <summary>Essai réaliste 7 : la musique <paramref name="kind"/>, ou null.</summary>
+        public AudioClip MusicClip(StyleMusic kind)
+        {
+            if (Music == null) return null;
+            foreach (MusicLook m in Music)
+                if (m != null && m.Kind == kind && m.Clip != null) return m.Clip;
+            return null;
+        }
+
+        /// <summary>Essai réaliste 7 : la nappe d'ambiance <paramref name="kind"/>, ou null.</summary>
+        public AudioClip AmbienceClip(StyleAmbience kind)
+        {
+            if (Ambiences == null) return null;
+            foreach (AmbienceLook a in Ambiences)
+                if (a != null && a.Kind == kind && a.Clip != null) return a.Clip;
             return null;
         }
 

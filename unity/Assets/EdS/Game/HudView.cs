@@ -70,8 +70,11 @@ namespace EdS.Game
         private RawImage _healthWave, _enduranceWave;
         private Image _crack, _healthShine, _enduranceShine;
         private UiText _healthValue, _healthMax, _enduranceValue, _enduranceMax, _resonance, _guard, _states;
-        private readonly List<Image> _charges = new List<Image>();
+        private readonly List<Image> _charges = new List<Image>(), _chargeGlows = new List<Image>();
         private readonly List<float> _chargePop = new List<float>();
+
+        /// <summary>Essai réaliste 7 : les Charges de Rempart sont montrées (au moins une détenue).</summary>
+        public bool ChargesShown { get; private set; }
         private int _shownCharges = -1;
         private readonly List<Shard> _shards = new List<Shard>();
         private readonly List<Ember> _embers = new List<Ember>();
@@ -241,19 +244,28 @@ namespace EdS.Game
 
         private readonly List<float> _sparkPhase = new List<float>();
 
-        /// <summary>Places des éclats de compétence (coin haut gauche, taille, inclinaison), dans le groupe du bas.</summary>
+        /// <summary>
+        /// Places des éclats de compétence (centre, taille du dessin, inclinaison), dans le groupe du bas. Essai réaliste 7 (essai de
+        /// Damien du 28 octobre 2026 : « les icônes sont juste trop gros, faut tous les rétrécir ») : chaque éclat est dessiné à sa taille
+        /// d'origine puis réduit d'un quart (<see cref="ShardScale"/>), au plus près du sceau ; la touche, le coût et la recharge sont
+        /// dessinés plus gros pour rester lisibles une fois réduits.
+        /// </summary>
         private static readonly (float X, float Y, float Size, float Rot)[] ShardPlaces =
         {
-            (208f, 194f, 88f, -6f), (310f, 172f, 88f, 4f), (602f, 172f, 88f, -4f), (704f, 194f, 88f, 6f), (830f, 160f, 106f, 3f),
+            (268f, 232f, 88f, -6f), (350f, 214f, 88f, 4f), (650f, 214f, 88f, -4f), (732f, 232f, 88f, 6f), (848f, 214f, 106f, 3f),
         };
+
+        /// <summary>Réduction des éclats de compétence (essai réaliste 7).</summary>
+        public const float ShardScale = 0.74f;
 
         private Shard BuildShard(int index)
         {
             (float x, float y, float s, float rot) = ShardPlaces[System.Math.Min(index, ShardPlaces.Length - 1)];
             string shape = "eclat_" + (System.Math.Min(index, 4) + 1);
             var shard = new Shard { Phase = index * 0.7f };
-            shard.Node = At(UiKit.Node(_bottom, "Compétence " + (index + 1)), x + s / 2f, y + s / 2f, s, s, 0.5f, 0.5f);
+            shard.Node = At(UiKit.Node(_bottom, "Compétence " + (index + 1)), x, y, s, s, 0.5f, 0.5f);
             shard.Node.localRotation = Quaternion.Euler(0f, 0f, -rot);
+            shard.Node.localScale = new Vector3(ShardScale, ShardScale, 1f);
             Image glow = UiKit.Image(shard.Node, "Lueur", UiKit.Sprite("braise"), UiKit.Alpha(UiKit.Rose, 0.35f));
             UiKit.Fill(glow.rectTransform, -22f);
             RectTransform mask = UiKit.Fill(UiKit.Mask(shard.Node, "Forme", UiKit.Sprite(shape + "_masque")));
@@ -275,15 +287,15 @@ namespace EdS.Game
             UiKit.Fill(shard.Flash.rectTransform);
             Image frame = UiKit.Image(shard.Node, "Cadre", UiKit.Sprite(shape + "_cadre"), Color.white);
             UiKit.Fill(frame.rectTransform, -12f);
-            shard.Timer = UiText.Create(shard.Node, "Recharge", UiFace.Number, 28f, Color.white, TextAnchor.MiddleCenter);
+            shard.Timer = UiText.Create(shard.Node, "Recharge", UiFace.Number, 34f, Color.white, TextAnchor.MiddleCenter);
             UiKit.Fill(shard.Timer.Rect);
             shard.Timer.Rect.localRotation = Quaternion.Euler(0f, 0f, rot);
-            shard.Cost = UiText.Create(shard.Node, "Coût", UiFace.Bold, 16f, UiKit.Dawn, TextAnchor.UpperRight);
-            At(shard.Cost.Rect, s - 6f, 2f, 40f, 20f, 1f, 0f);
+            shard.Cost = UiText.Create(shard.Node, "Coût", UiFace.Bold, 20f, UiKit.Dawn, TextAnchor.UpperRight);
+            At(shard.Cost.Rect, s - 4f, 0f, 48f, 26f, 1f, 0f);
             Image plate = UiKit.Image(shard.Node, "Touche", UiKit.Sprite("touche", 6f), Color.white, Image.Type.Sliced);
-            At(plate, s / 2f, s + 6f, 30f, 22f, 0.5f, 0.5f);
+            At(plate, s / 2f, s + 8f, 36f, 28f, 0.5f, 0.5f);
             plate.rectTransform.localRotation = Quaternion.Euler(0f, 0f, rot);
-            shard.Key = UiText.Create(plate.rectTransform, "Lettre", UiFace.Bold, 16f, UiKit.Dawn, TextAnchor.MiddleCenter);
+            shard.Key = UiText.Create(plate.rectTransform, "Lettre", UiFace.Bold, 20f, UiKit.Dawn, TextAnchor.MiddleCenter);
             UiKit.Fill(shard.Key.Rect);
             return shard;
         }
@@ -453,6 +465,7 @@ namespace EdS.Game
             _levelUpTitle.Value = "Niveau " + level;
             _levelUpSub.Value = detail ?? "";
             UiKit.Show(_levelUp, true);
+            UiSounds.Play(UiCue.LevelUp);   // essai réaliste 7 : fanfare
         }
 
         // --- Mise à jour ------------------------------------------------------------------------------------------------------------
@@ -495,30 +508,42 @@ namespace EdS.Game
             _crack.fillAmount = (40f + 240f * resonance) / 320f;
             _resonance.Value = "Résonance " + me.Resonance;
 
-            // Charges de Rempart : éclats au-dessus du sceau, celui qui s'allume grossit un instant.
-            while (_charges.Count < state.RampartChargesMax)
+            // Charges de Rempart : éclats au-dessus du sceau, celui qui s'allume grossit un instant. Essai réaliste 7 (Damien, 28 octobre
+            // 2026 : « c'est quoi les petits trucs juste au-dessus de la barre de vie ? ») : éteints, ils passaient pour des débris ; ils
+            // n'apparaissent qu'avec au moins une Charge (gagnée par une parade parfaite), les Charges détenues brillent en or, les
+            // places libres restent pâles, et un halo doré bat derrière celles qui sont allumées.
+            int total = state.RampartChargesMax;
+            ChargesShown = total > 0 && me.RampartCharges > 0;
+            while (_charges.Count < total)
             {
                 int i = _charges.Count;
+                Image glow = UiKit.Image(_bottom, "Halo de la Charge " + (i + 1), UiKit.Sprite("braise"), UiKit.Alpha(UiKit.Dawn, 0f));
+                _chargeGlows.Add(glow);
                 Image charge = UiKit.Image(_bottom, "Charge " + (i + 1), UiKit.Sprite("losange_off"), Color.white);
                 _charges.Add(charge);
                 _chargePop.Add(0f);
             }
-            int total = state.RampartChargesMax;
             for (int i = 0; i < _charges.Count; i++)
             {
-                bool used = i < total;
+                bool used = ChargesShown && i < total;
                 UiKit.Show(_charges[i], used);
+                UiKit.Show(_chargeGlows[i], used);
                 if (!used) continue;
                 float a = Mathf.Deg2Rad * (total == 1 ? 0f : -40f + 80f * i / (total - 1));
-                At(_charges[i], 500f + Mathf.Sin(a) * 105f, 64f - Mathf.Cos(a) * 23f, 17f, 27f, 0.5f, 0.5f);
+                float cx = 500f + Mathf.Sin(a) * 105f, cy = 64f - Mathf.Cos(a) * 23f;
+                At(_charges[i], cx, cy, 17f, 27f, 0.5f, 0.5f);
+                At(_chargeGlows[i], cx, cy, 44f, 44f, 0.5f, 0.5f);
                 _charges[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, -a * Mathf.Rad2Deg);
                 bool lit = i < me.RampartCharges;
                 _charges[i].sprite = UiKit.Sprite(lit ? "losange_on" : "losange_off");
+                _charges[i].color = lit ? Color.white : UiKit.Alpha(Color.white, 0.45f);
+                _chargeGlows[i].color = UiKit.Alpha(UiKit.Dawn, lit ? 0.35f + 0.2f * Mathf.Sin(_time * 3f + i) : 0f);
                 if (lit && _shownCharges >= 0 && i >= _shownCharges) _chargePop[i] = 1f;
                 _chargePop[i] = Mathf.Max(0f, _chargePop[i] - deltaTime * 3.5f);
                 float pop = 1f + 0.8f * _chargePop[i];
                 _charges[i].rectTransform.localScale = new Vector3(pop, pop, 1f);
             }
+            if (_shownCharges >= 0 && me.RampartCharges > _shownCharges) UiSounds.Play(UiCue.ChargeGained);
             _shownCharges = me.RampartCharges;
 
             // Compétences : 1 à 4, puis l'ultime.
@@ -549,7 +574,11 @@ namespace EdS.Game
                 shard.Cost.Color = affordable ? UiKit.Dawn : UiKit.Danger;
                 // Lancée : la recharge repart ; revenue : elle s'arrête.
                 if (slot.RemainingSeconds > shard.LastRemaining + 0.2) shard.FlashAlpha = 0.9f;
-                if (shard.LastRemaining > 0.05 && slot.RemainingSeconds <= 0.05) shard.ReadyAlpha = 1f;
+                if (shard.LastRemaining > 0.05 && slot.RemainingSeconds <= 0.05)
+                {
+                    shard.ReadyAlpha = 1f;
+                    UiSounds.Play(UiCue.SkillReady);
+                }
                 shard.LastRemaining = slot.RemainingSeconds;
                 shard.FlashAlpha = Mathf.Max(0f, shard.FlashAlpha - deltaTime * 2.6f);
                 shard.ReadyAlpha = Mathf.Max(0f, shard.ReadyAlpha - deltaTime * 2f);

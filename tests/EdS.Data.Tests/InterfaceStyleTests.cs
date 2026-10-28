@@ -189,7 +189,7 @@ public class InterfaceStyleTests
         string arena = Read("unity", "Assets", "EdS", "Game", "ArenaView.cs");
         Assert.Contains("_shield.SetActive(!styled && me.IsPresent && (me.Guarding || me.ParryOpen || broken));", arena, StringComparison.Ordinal);
         Assert.Contains("mine.Update(_player.transform.position, me.IsDead, Time.deltaTime, me.Guarding || me.ParryOpen);", arena, StringComparison.Ordinal);
-        Assert.Contains("StyleRules.Motion(_speed, dead, Time.time < _attackUntil, guarding)", Read("unity", "Assets", "EdS", "Game", "StyleLook.cs"), StringComparison.Ordinal);
+        Assert.Contains("StyleRules.Motion(_speed, dead, false, guarding)", Read("unity", "Assets", "EdS", "Game", "StyleLook.cs"), StringComparison.Ordinal);
 
         // Annonces au sol : shader dédié, réglé par annonce ; imparable signalé.
         string shader = Read("unity", "Assets", "EdS", "Game", "Annonce.shader");
@@ -275,7 +275,8 @@ public class InterfaceStyleTests
     {
         string hud = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
         string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
-        Assert.Contains("if (_shownLevel > 0 && level > _shownLevel) _hud.LevelUp(level,", game, StringComparison.Ordinal);
+        Assert.Contains("if (_shownLevel > 0 && level > _shownLevel)", game, StringComparison.Ordinal);
+        Assert.Contains("_hud.LevelUp(level, level > a.World.EnteredLevel", game, StringComparison.Ordinal);
         Assert.Contains("_danger = me.IsDead || me.Health == null ? 0f : Mathf.Clamp01((0.3f - healthFraction) / 0.3f);", hud, StringComparison.Ordinal);
         Assert.Contains("if (_lastTargetFraction >= 0f && fraction < _lastTargetFraction - 0.0005f) _targetFlashAlpha = 0.65f;", hud, StringComparison.Ordinal);
         Assert.Contains("_fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);", Read("unity", "Assets", "EdS", "Game", "TalentTreeView.cs"), StringComparison.Ordinal);
@@ -305,11 +306,83 @@ public class InterfaceStyleTests
         Assert.Contains("if (key != _shape)", Read("unity", "Assets", "EdS", "Game", "SpaceView.cs"), StringComparison.Ordinal);
         foreach (string sprite in new[] { "bord_haut", "bord_bas" }) PngSize(Path.Combine(Root, Hud, sprite + ".png"));
         // Symboles absents de Cinzel et de Barlow Condensed : interdits dans les textes de l'interface uGUI.
-        foreach (string file in new[] { "HudView.cs", "AdventureBook.cs", "TalentTreeView.cs", "UiKit.cs" })
+        foreach (string file in new[] { "HudView.cs", "AdventureBook.cs", "TalentTreeView.cs", "UiKit.cs", "EdsGame.cs" })
         {
             string code = Read("unity", "Assets", "EdS", "Game", file);
             foreach (char symbol in "◆◇●○✓→★■▲►")
                 Assert.False(code.Contains(symbol), $"{file} : « {symbol} »");
         }
+    }
+
+    /// <summary>
+    /// Essai réaliste 7 (essai de Damien du 28 octobre 2026 : « les icônes sont juste trop gros, faut tous les rétrécir », « c'est quoi les
+    /// petits trucs juste au-dessus de la barre de vie ? », puis sons, effets, animations et musique) : éclats réduits, Charges cachées sans
+    /// Charge, sons de l'interface et textures des particules livrés (CC0) avec leurs licences, effets et musique branchés.
+    /// </summary>
+    [Fact]
+    public void Essai_7_branche()
+    {
+        string hud = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
+        Assert.Contains("public const float ShardScale = 0.74f;", hud, StringComparison.Ordinal);
+        Assert.Contains("shard.Node.localScale = new Vector3(ShardScale, ShardScale, 1f);", hud, StringComparison.Ordinal);
+        Assert.Contains("ChargesShown = total > 0 && me.RampartCharges > 0;", hud, StringComparison.Ordinal);
+        Assert.Contains("UiSounds.Play(UiCue.ChargeGained)", hud, StringComparison.Ordinal);
+        Assert.Contains("UiSounds.Play(UiCue.SkillReady)", hud, StringComparison.Ordinal);
+        Assert.Contains("UiSounds.Play(UiCue.LevelUp)", hud, StringComparison.Ordinal);
+
+        // Sons de l'interface : un fichier Ogg par son demandé par UiSounds.
+        string sons = Path.Combine(Root, Folder, "Resources", "EdsInterface", "Sons");
+        string sounds = Read("unity", "Assets", "EdS", "Game", "UiSounds.cs");
+        string[] names = System.Text.RegularExpressions.Regex.Matches(sounds, @"\[UiCue\.\w+\] = \(""(\w+)""").Select(m => m.Groups[1].Value).ToArray();
+        Assert.Equal(13, names.Length);
+        Assert.Equal(names.OrderBy(n => n, StringComparer.Ordinal), Directory.GetFiles(sons, "*.ogg").Select(f => Path.GetFileNameWithoutExtension(f)!).OrderBy(n => n, StringComparer.Ordinal));
+        foreach (string name in names)
+        {
+            byte[] ogg = File.ReadAllBytes(Path.Combine(sons, name + ".ogg"));
+            Assert.Equal("OggS"u8.ToArray(), ogg.Take(4).ToArray());
+            Assert.InRange(ogg.Length, 1_000, 80_000);
+        }
+
+        // Textures des particules : une par système d'Effects, PNG de 128 × 128.
+        string effects = Read("unity", "Assets", "EdS", "Game", "Effects.cs");
+        string[] textures = System.Text.RegularExpressions.Regex.Matches(effects, @"Make\(root, template, Kind\.\w+, ""(\w+)""").Select(m => m.Groups[1].Value).ToArray();
+        Assert.Equal(12, textures.Length);
+        string particules = Path.Combine(Root, Folder, "Resources", "EdsInterface", "Particules");
+        Assert.Equal(textures.OrderBy(n => n, StringComparer.Ordinal), Directory.GetFiles(particules, "*.png").Select(f => Path.GetFileNameWithoutExtension(f)!).OrderBy(n => n, StringComparer.Ordinal));
+        foreach (string texture in textures) Assert.Equal((128, 128), PngSize(Path.Combine(particules, texture + ".png")));
+        string shader = Read("unity", "Assets", "EdS", "Game", "Particule.shader");
+        Assert.Contains("Shader \"EdS/Particule\"", shader, StringComparison.Ordinal);
+        Assert.Contains("Blend [_SrcBlend] [_DstBlend]", shader, StringComparison.Ordinal);
+        Assert.Contains("Shader.Find(\"EdS/Particule\")", Read("unity", "Assets", "EdS", "Editor", "EdsBuildShaders.cs"), StringComparison.Ordinal);
+        Assert.Contains("public const string ParticuleName = \"EdsParticule\";", Read("unity", "Assets", "EdS", "Editor", "EdsBuildShaders.cs"), StringComparison.Ordinal);
+        Assert.Contains("public const string MaterialName = \"EdsParticule\";", effects, StringComparison.Ordinal);
+
+        string licences = Read(Folder.Split(Path.DirectorySeparatorChar).Append("LICENCES.md").ToArray());
+        Assert.Contains("Interface Sounds", licences, StringComparison.Ordinal);
+        Assert.Contains("Particle Pack", licences, StringComparison.Ordinal);
+        Assert.Contains("Music Jingles", licences, StringComparison.Ordinal);
+        string credits = Read("docs", "CREDITS.md");
+        Assert.Contains("Matthew Pablo", credits, StringComparison.Ordinal);
+        Assert.Contains("Kenney", credits, StringComparison.Ordinal);
+
+        // Branchements : gestes des compétences, coups reçus, attaques des adversaires, effets, caméra, musique, sons des écrans.
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        Assert.Contains("_effects = Effects.Create();", game, StringComparison.Ordinal);
+        Assert.Contains("_music = StyleAudio.Create(_camera.Camera.transform);", game, StringComparison.Ordinal);
+        Assert.Contains("_music?.Update(a.Mood(),", game, StringComparison.Ordinal);
+        Assert.Contains("_arena.Strike(skill.SkillId, skill.IsUltimate);", game, StringComparison.Ordinal);
+        Assert.Contains("double shock = GameFeel.Shock(feedback.Kind, mine, feedback.Amount, maxHealth, boss);", game, StringComparison.Ordinal);
+        Assert.Contains("foreach (EdS.Simulation.Engine.AnnouncedAttack attack in _arena.PlayAttacks(_combat))", game, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"SyncSpace\(_combat, _camera\.Camera\.transform\.position, Time\.deltaTime\);\s+SyncGestures\(\);").Count);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(\);"));   // seulement pour une compétence introuvable
+        Assert.Contains("(double right, double up, double roll) = GameFeel.Offset(_shock, Time.time);", Read("unity", "Assets", "EdS", "Game", "CameraRig.cs"), StringComparison.Ordinal);
+        Assert.Contains("UiSounds.Play(book ? UiCue.Open : UiCue.Close);", Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs"), StringComparison.Ordinal);
+        Assert.Contains("UiSounds.Play(button.Enabled ? UiCue.Click : UiCue.Error);", Read("unity", "Assets", "EdS", "Game", "UiKit.cs"), StringComparison.Ordinal);
+        Assert.Contains("UiSounds.Play(why != null ? UiCue.Error : delta > 0 ? UiCue.TalentAdded : UiCue.TalentRemoved);", Read("unity", "Assets", "EdS", "Game", "TalentTreeView.cs"), StringComparison.Ordinal);
+        string style = Read("unity", "Assets", "EdS", "Editor", "EdsStyle.cs");
+        Assert.Contains("catalog.SoundSets =", style, StringComparison.Ordinal);
+        Assert.Contains("catalog.Music =", style, StringComparison.Ordinal);
+        Assert.Contains("catalog.Ambiences =", style, StringComparison.Ordinal);
+        Assert.Contains("AudioClipLoadType.Streaming", style, StringComparison.Ordinal);
     }
 }
