@@ -207,6 +207,21 @@ namespace EdS.Game.Editor
                 .Where(b => b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f).ToArray();
             if (catalog.Buildings.Length > 0) notes.Add("Bâtiments de Sketchfab : " + catalog.Buildings.Length + " modèles (" + string.Join(", ",
                 catalog.Buildings.GroupBy(b => b.Kind).Select(g => g.Key + " " + g.Count())) + ").");
+            // Intérieurs (demande de Damien du 28 octobre 2026 : « de beaux intérieurs bien détaillés ») : meubles et objets de Poly Haven
+            // rangés dans « PolyHaven/Interieurs », reconnus par leur nom ; la rotation et l'échelle réglées à la main sont gardées.
+            InteriorLook[] oldFurniture = catalog.Furniture ?? new InteriorLook[0];
+            catalog.Furniture = models.Where(InteriorRules.IsInterior).Where(p => InteriorRules.PropOf(p) != InteriorProp.None).OrderBy(p => p, System.StringComparer.Ordinal)
+                .Select(p =>
+                {
+                    InteriorLook old = oldFurniture.FirstOrDefault(o => o != null && o.Model != null && AssetDatabase.GetAssetPath(o.Model) == p);
+                    return new InteriorLook
+                    {
+                        Kind = InteriorRules.PropOf(p), Model = Load(p), Yaw = old != null ? old.Yaw : (float)InteriorRules.DefaultYaw(InteriorRules.PropOf(p)),
+                        Scale = old != null && old.Scale > 0f ? old.Scale : 1f,
+                    };
+                }).Where(f => f.Model != null).ToArray();
+            if (catalog.Furniture.Length > 0) notes.Add("Intérieurs : " + catalog.Furniture.Length + " meubles et objets (" + string.Join(", ",
+                catalog.Furniture.GroupBy(f => f.Kind).Select(g => g.Key + (g.Count() > 1 ? " ×" + g.Count() : ""))) + ").");
             // Essai réaliste 8 : effets de combat des packs de l'Asset Store importés à la racine de Assets (Matthew Guz, Hovl Studio,
             // Free Slash VFX), choisis par leur nom ; les réglages faits à la main (taille, rotation, durée) sont gardés.
             catalog.Vfx = System.Enum.GetValues(typeof(StyleVfx)).Cast<StyleVfx>()
@@ -494,6 +509,12 @@ namespace EdS.Game.Editor
                 importer.textureType = TextureImporterType.NormalMap;
                 changed = true;
             }
+            // Intérieurs : la carte de métal des objets de Poly Haven est une donnée (0 ou 1), pas une couleur.
+            if (InteriorRules.IsInterior(path) && StyleRules.IsMetalMap(path) && importer.sRGBTexture)
+            {
+                importer.sRGBTexture = false;
+                changed = true;
+            }
             if (StyleRules.IsSky(path) && (importer.mipmapEnabled || importer.wrapMode != TextureWrapMode.Clamp))
             {
                 importer.mipmapEnabled = false;
@@ -586,6 +607,7 @@ namespace EdS.Game.Editor
                     }
                     else partMap = WithAlpha(own, ownAlpha, Generated + "/" + name + " " + embedded.name + "_couleur_alpha.png", notes);
                     Configure(part, lit, leaves, wind, partMap, Texture2DAt(ownNormal), ownAlpha != null);
+                    if (InteriorRules.IsInterior(modelPath)) Metal(part, Texture2DAt(StyleRules.MetalFor(own, maps)));
                     importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), part);
                 }
                 importer.SaveAndReimport();
@@ -614,6 +636,7 @@ namespace EdS.Game.Editor
             }
             Texture2D baseMap = alpha != null ? WithAlpha(color, alpha, Generated + "/" + name + "_couleur_alpha.png", notes) : Texture2DAt(color);
             Configure(material, lit, leaves, wind, baseMap, Texture2DAt(normal), alpha != null);
+            if (InteriorRules.IsInterior(modelPath)) Metal(material, Texture2DAt(StyleRules.MetalFor(color, maps)));
             foreach (Material embedded in embeddedMaterials)
                 importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), material);
             importer.SaveAndReimport();
@@ -652,6 +675,19 @@ namespace EdS.Game.Editor
                 material.SetFloat("_Cull", 0f);
                 material.renderQueue = 2450;
             }
+            EditorUtility.SetDirty(material);
+        }
+
+        /// <summary>
+        /// Intérieurs : la carte de métal de Poly Haven (laiton des gobelets et des chandeliers, ferrures des coffres) devient la carte
+        /// métallique d'URP ; un peu plus de brillant. Sans carte, rien ne change.
+        /// </summary>
+        private static void Metal(Material material, Texture2D metal)
+        {
+            if (metal == null || !material.HasProperty("_MetallicGlossMap")) return;
+            material.SetTexture("_MetallicGlossMap", metal);
+            material.EnableKeyword("_METALLICSPECGLOSSMAP");
+            material.SetFloat("_Smoothness", 0.35f);
             EditorUtility.SetDirty(material);
         }
 

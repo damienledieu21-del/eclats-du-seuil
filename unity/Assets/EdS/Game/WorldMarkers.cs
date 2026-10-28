@@ -84,7 +84,19 @@ namespace EdS.Game
             // Essai du 12.9 : la forge (enclume sombre au centre de l'atelier), où l'on fabrique.
             foreach (WorldMarker workshop in adventure.Workshops())
                 Forge(Add(workshop, PrimitiveType.Cube, new Vector3(1.2f, 0.8f, 0.7f), 0.4f, new Color(0.3f, 0.3f, 0.34f), 1.6f, NpcLabelRange));
+            // Intérieurs : chaque porte, un seuil doré au sol et le nom de ce qu'il y a derrière (« Auberge de l'Aube », « Bourg d'Aube »).
+            foreach (WorldMarker door in adventure.Doors())
+            {
+                Marker m = Add(door, PrimitiveType.Cylinder, new Vector3(1.3f, 0.015f, 1.3f), 0.015f, new Color(0.95f, 0.72f, 0.32f), 2.6f, DoorLabelRange);
+                Material sill = ArenaView.MakeMaterial(new Color(0.35f, 0.22f, 0.08f));
+                sill.EnableKeyword("_EMISSION");
+                sill.SetColor("_EmissionColor", new Color(0.9f, 0.55f, 0.18f));
+                m.Body.GetComponent<Renderer>().sharedMaterial = sill;
+            }
         }
+
+        /// <summary>Intérieurs : distance (m) d'où se lit le nom d'une porte.</summary>
+        private const float DoorLabelRange = 9f;
 
         private Marker Add(WorldMarker data, PrimitiveType shape, Vector3 scale, float y, Color color, float height, float range)
         {

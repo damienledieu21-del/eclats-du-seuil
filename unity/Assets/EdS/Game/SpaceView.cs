@@ -15,7 +15,7 @@ namespace EdS.Game
     /// caméra est coupé (abaissé, ou retiré pour un feuillage ou un toit). Affichage seulement : collisions, portées et ligne de vue sont
     /// celles du moteur, et la caméra ne change rien au combat.
     /// </summary>
-    public sealed class SpaceView
+    public sealed partial class SpaceView
     {
         /// <summary>Décor qui peut cacher le joueur : abaissé (prisme) ou retiré (feuillage, toit) tant qu'il le cache.</summary>
         private sealed class Occluder
@@ -50,6 +50,9 @@ namespace EdS.Game
 
         /// <summary>Vallons agrandis : routes et champs de la carte de l'aventure (vides hors aventure), taches du sol rangées par cases.</summary>
         private readonly IReadOnlyList<StyleRoad> _roads;
+
+        /// <summary>Intérieurs : portes de la zone (vide hors aventure).</summary>
+        private readonly IReadOnlyList<MapDoor> _doors;
         private readonly IReadOnlyList<StyleField> _fields;
         private readonly SpotGrid _spots;
         private readonly List<StyleGrass> _crops = new List<StyleGrass>();
@@ -85,6 +88,7 @@ namespace EdS.Game
                 _shapes.Add((Raw(o.Points.Min(p => p.X.Raw)), Raw(o.Points.Min(p => p.Z.Raw)), Raw(o.Points.Max(p => p.X.Raw)), Raw(o.Points.Max(p => p.Z.Raw)),
                     o.Points.Select(p => ((double)Raw(p.X.Raw), (double)Raw(p.Z.Raw))).ToList()));
             _roads = map != null ? map.Roads : (IReadOnlyList<StyleRoad>)new List<StyleRoad>();
+            _doors = map != null ? map.Doors : (IReadOnlyList<MapDoor>)new List<MapDoor>();
             _spots = new SpotGrid(Spots(space));
             if (map != null)
             {
@@ -100,6 +104,13 @@ namespace EdS.Game
             // Essai réaliste : l'eau de la rivière (vagues qui glissent) si le catalogue est là, sinon le bleu simple.
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
 
+            // Intérieurs : une pièce (plancher, murs, meubles, lumières), sans terrain, herbe ni ciel.
+            if (map != null && map.Indoor)
+            {
+                _rivers = new List<List<Vector3>>();
+                Interior(space, map);
+                return;
+            }
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
             // Essai réaliste : un terrain peint (terre, roche, herbe) à la place du sol simple, s'il y a des textures de sol. Essai du 27 octobre
             // 2026 : avec la vraie eau, le lit de la rivière y est creusé (sous ses bras et sous le pont), l'eau coule sous le sol.
@@ -364,9 +375,11 @@ namespace EdS.Game
         private void Building(StyleBuilding kind, string id, List<Vector3> points)
         {
             float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
-            (int, int) facing = TownRules.Facing(x0, z0, x1, z1, _roads);
+            // Intérieurs : un bâtiment qui a une porte tourne sa façade vers elle (on la voit où l'on entre) ; sinon vers la route.
+            bool hasDoor = _doors.Any(d => d.Building == id);
+            (int, int) facing = TownRules.FacingOf(id, x0, z0, x1, z1, _roads, _doors);
             // Essai réaliste 8 : le vrai bâtiment de Sketchfab s'il y en a un de ce genre dans le catalogue.
-            if (ModelBuilding(kind, id, x0, z0, x1, z1, facing)) return;
+            if (ModelBuilding(kind, id, x0, z0, x1, z1, facing, hasDoor)) return;
             Material plaster = Built(StyleSurface.Plaster, new Color(0.86f, 0.82f, 0.74f), out float plasterTile);
             Material stone = Built(StyleSurface.Stone, new Color(0.5f, 0.48f, 0.44f), out float stoneTile);
             Material wood = Built(StyleSurface.Wood, new Color(0.42f, 0.3f, 0.19f), out float woodTile);
@@ -393,14 +406,14 @@ namespace EdS.Game
         /// d'un quart au plus), une maison sur deux en miroir ; abaissé comme un mur quand il cache le joueur. False sans modèle de ce genre
         /// (le bâtiment fait par le code reste).
         /// </summary>
-        private bool ModelBuilding(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, (int X, int Z) facing)
+        private bool ModelBuilding(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, (int X, int Z) facing, bool locked = false)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return false;
             List<BuildingLook> models = catalog.BuildingsOf(kind);
             if (models.Count == 0) return false;
             var feet = models.Select(m => ((double)m.Size.x, (double)m.Size.y)).ToList();
-            (int index, (int X, int Z) face, ModelFit fit) = TownModels.Pick(id, x1 - x0, z1 - z0, facing, feet, TownModels.Overflow(kind));
+            (int index, (int X, int Z) face, ModelFit fit) = TownModels.Pick(id, x1 - x0, z1 - z0, facing, feet, TownModels.Overflow(kind), locked);
             // Relecture indépendante de l'essai 8 : une pose de repli trop déformée laisse le bâtiment fait par le code.
             if (index < 0 || !TownModels.Usable(fit)) return false;
             var center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
@@ -452,7 +465,15 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (map == null || catalog == null || catalog.Villagers <= 0) return;
             int max = Application.isMobilePlatform ? catalog.Villagers / 3 : catalog.Villagers;
-            foreach (StyleVillager v in TownModels.Villagers(map, _fields, max))
+            Villagers(TownModels.Villagers(map, _fields, max));
+        }
+
+        /// <summary>Habille et pose les villageois d'affichage <paramref name="villagers"/> (bourg ou intérieur).</summary>
+        private void Villagers(IEnumerable<StyleVillager> villagers)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null || catalog.Villagers <= 0) return;
+            foreach (StyleVillager v in villagers)
             {
                 if (catalog.Character(v.Character) == null) continue;
                 GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -1039,6 +1060,7 @@ namespace EdS.Game
         {
             _grass?.Draw(camera);   // essai réaliste 4 : l'herbe en brins proche de la caméra
             Walk(deltaTime);   // essai réaliste 8 : les passants du bourg
+            if (_indoor) Flicker();   // intérieurs : le feu, les bougies et les lanternes vacillent
             foreach (StyleGrass crop in _crops) crop.Draw(camera);   // Vallons agrandis : le blé des champs
             StyleWorld.AnimateWater(Time.time);   // essai réaliste : les vagues de la rivière glissent
             Vector3 head = player + Vector3.up * 1f;
@@ -1134,6 +1156,7 @@ namespace EdS.Game
             foreach (StyleGrass crop in _crops) crop.Destroy();
             foreach (Mesh mesh in _meshes) Object.Destroy(mesh);   // relecture des Vallons agrandis : les maillages faits par le code
             StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);   // essai réaliste 5 : plus de pont cintré sous les pieds
+            if (_indoor) StyleWorld.SetIndoors(false);   // intérieurs : le ciel, le soleil et la brume reviennent
             Object.Destroy(_root);
         }
 
