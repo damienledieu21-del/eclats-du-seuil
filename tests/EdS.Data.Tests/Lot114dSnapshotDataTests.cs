@@ -34,10 +34,13 @@ public class Lot114dSnapshotDataTests
         var engine = new CombatEngine(loaded.Setup, log);
         var copies = new List<(CombatEngine Copy, MemoryCombatLog Log, int From)>();
         int checkedSnapshots = 0;
+        // Tests plus rapides (29 octobre 2026), mêmes contrôles : l'instantané de l'original est écrit une seule fois par état (un même état
+        // donne le même texte, et l'écrire ne change rien), comparé à celui de chaque copie après le tick puis relu au tour suivant.
+        string? next = null;
         while (!engine.IsFinished)
         {
             long tick = engine.CurrentTick;
-            string text = engine.Snapshot().Text;
+            string text = next ?? engine.Snapshot().Text;
             // Une réaction reportée (entrainement_declencheurs) est dans la file entre deux ticks : la copie continue aussi depuis là.
             bool resume = resumeAt.Contains(tick) || text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal);
             var restoredLog = new MemoryCombatLog();
@@ -49,10 +52,11 @@ public class Lot114dSnapshotDataTests
             checkedSnapshots++;
             if (resume) copies.Add((restored, restoredLog, log.Lines.Count));
             engine.Step();
+            next = engine.IsFinished ? null : engine.Snapshot().Text;
             foreach (var (copy, _, _) in copies)
             {
                 copy.Step();
-                if (!engine.IsFinished) Assert.Equal(engine.Snapshot().Text, copy.Snapshot().Text);
+                if (!engine.IsFinished) Assert.Equal(next, copy.Snapshot().Text);
                 Assert.Equal(engine.IsFinished, copy.IsFinished);
             }
         }
