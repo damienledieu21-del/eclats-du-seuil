@@ -567,7 +567,7 @@ public class StyleRulesTests
         Assert.Contains("_freeLook = PointerInput.FreeLook(Input.touchCount, _touch.Active, cursorWanted, covered, Application.isFocused);", game, StringComparison.Ordinal);
         Assert.Contains("if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;", game, StringComparison.Ordinal);
         Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"Time\.deltaTime, _freeLook\)").Count);
-        Assert.Contains("_yaw += Input.GetAxis(\"Mouse X\") * 3f;", rig, StringComparison.Ordinal);
+        Assert.Contains("_yaw += Input.GetAxis(\"Mouse X\") * 3f * Sensitivity;", rig, StringComparison.Ordinal);   // essai réaliste 9 : sensibilité réglable
     }
 
     [Fact]

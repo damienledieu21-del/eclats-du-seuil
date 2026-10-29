@@ -144,6 +144,9 @@ namespace EdS.Game
                 _camera = CameraRig.Create();
                 _arena = new ArenaView();
                 _hud = HudView.Create();
+                // Essai réaliste 9 : réglages de la caméra dans la pause (souris libre ou clic maintenu, haut-bas inversé, sensibilité).
+                _hud.OnSettings(() => _camera.SetClickLook(!_camera.ClickLook), () => _camera.SetInvertY(!_camera.InvertY),
+                    step => _camera.SetSensitivity(_camera.Sensitivity + step));
                 _talentView = TalentTreeView.Create();
                 _book = AdventureBook.Create();
                 _effects = Effects.Create();   // essai réaliste 7 : rien sans le shader des particules
@@ -435,6 +438,7 @@ namespace EdS.Game
             _arena.Sync(_combat, player, null);
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
+            _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             SyncGestures();
@@ -1277,6 +1281,7 @@ namespace EdS.Game
                 string notice = !a.MustContinue ? null
                     : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
                 _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
+                _hud.Settings(_paused && open, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
                 _hud.Clock(null);
                 if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
                 _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);
@@ -1286,6 +1291,7 @@ namespace EdS.Game
                 _hud.Adventure(null, null, 0, false, _touch.Active);
                 float elapsed = _combat.Tick * (float)_combat.TickSeconds;
                 _hud.Center(_paused ? "Pause" : null, null, null);
+                _hud.Settings(_paused, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
                 _hud.Clock($"{(int)elapsed / 60}:{(int)elapsed % 60:00}");
                 if (Network)
                     _hud.Help(_help, "Coopération", (_net.Host != null ? "Tu héberges" : _net.Address) + " · " + NetworkBuildName() + " · " + _camera.Describe(), HelpKeys.Network);

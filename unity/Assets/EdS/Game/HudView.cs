@@ -19,7 +19,14 @@ namespace EdS.Game
     /// </summary>
     public sealed class HudView
     {
-        private const float CrestScale = 0.78f;
+        /// <summary>
+        /// Taille du sceau (dessin de 290 × 320). Essai réaliste 9 (Damien, 29 octobre 2026 : « la case où il y a les points de vie et
+        /// l'endurance est trop grande, elle cache le perso ») : réduit d'environ moitié (0,78 avant), collé au bas de l'écran.
+        /// </summary>
+        public const float CrestScale = 0.42f;
+
+        /// <summary>Haut du sceau dans le groupe du bas (320 de haut, mesuré depuis le haut du groupe) : les Charges sont juste au-dessus.</summary>
+        private const float CrestTop = 322f - 320f * CrestScale;
         private const float MapSize = 290f;
         private const float MapRadius = 20f;   // mètres montrés de chaque côté du joueur sur la petite carte
         private const float CompactMapScale = 0.8f;
@@ -143,6 +150,7 @@ namespace EdS.Game
             BuildRight();
             BuildHelp();
             BuildCenter();
+            BuildSettings();
         }
 
         /// <summary>L'interface en jeu (un canevas pour toute la partie).</summary>
@@ -167,9 +175,10 @@ namespace EdS.Game
 
         private void BuildBottom()
         {
-            At(UiKit.Image(_bottom, "Voile", UiKit.Sprite("voile_bas"), Color.white), 500f, 320f, 1000f, 320f, 0.5f, 1f);
+            // Essai réaliste 9 : voile plus bas, comme le sceau.
+            At(UiKit.Image(_bottom, "Voile", UiKit.Sprite("voile_bas"), Color.white), 500f, 320f, 1000f, 210f, 0.5f, 1f);
 
-            // Sceau : dessin de 290 × 320 (corps de 210 × 240 à 40 du bord), réduit pour laisser voir les jambes du chevalier.
+            // Sceau : dessin de 290 × 320 (corps de 210 × 240 à 40 du bord), réduit pour laisser voir le chevalier en entier.
             _crest = At(UiKit.Node(_bottom, "Sceau"), 500f, 322f, 290f, 320f, 0.5f, 1f);
             _crest.localScale = new Vector3(CrestScale, CrestScale, 1f);
             UiKit.Fill(UiKit.Image(_crest, "Fond", UiKit.Sprite("sceau_fond"), Color.white).rectTransform);
@@ -180,14 +189,15 @@ namespace EdS.Game
             _crack.fillMethod = Image.FillMethod.Vertical;
             _crack.fillOrigin = (int)Image.OriginVertical.Bottom;
             UiKit.Fill(UiKit.Image(_crest, "Contour", UiKit.Sprite("sceau_contour"), Color.white).rectTransform);
-            _healthValue = UiText.Create(_crest, "Vie", UiFace.Number, 38f, UiKit.Ink, TextAnchor.MiddleCenter);
-            At(_healthValue.Rect, 96f, 150f, 110f, 44f, 0.5f, 0.5f);
-            _healthMax = UiText.Create(_crest, "Vie maximale", UiFace.Body, 19f, UiKit.Alpha(UiKit.Ink, 0.75f), TextAnchor.MiddleCenter);
-            At(_healthMax.Rect, 96f, 184f, 110f, 24f, 0.5f, 0.5f);
-            _enduranceValue = UiText.Create(_crest, "Endurance", UiFace.Number, 38f, UiKit.Ink, TextAnchor.MiddleCenter);
-            At(_enduranceValue.Rect, 194f, 150f, 110f, 44f, 0.5f, 0.5f);
-            _enduranceMax = UiText.Create(_crest, "Endurance maximale", UiFace.Body, 19f, UiKit.Alpha(UiKit.Ink, 0.75f), TextAnchor.MiddleCenter);
-            At(_enduranceMax.Rect, 194f, 184f, 110f, 24f, 0.5f, 0.5f);
+            // Essai réaliste 9 : chiffres dessinés plus gros pour rester lisibles dans le sceau réduit.
+            _healthValue = UiText.Create(_crest, "Vie", UiFace.Number, 62f, UiKit.Ink, TextAnchor.MiddleCenter);
+            At(_healthValue.Rect, 96f, 152f, 150f, 70f, 0.5f, 0.5f);
+            _healthMax = UiText.Create(_crest, "Vie maximale", UiFace.Body, 32f, UiKit.Alpha(UiKit.Ink, 0.8f), TextAnchor.MiddleCenter);
+            At(_healthMax.Rect, 96f, 202f, 150f, 40f, 0.5f, 0.5f);
+            _enduranceValue = UiText.Create(_crest, "Endurance", UiFace.Number, 62f, UiKit.Ink, TextAnchor.MiddleCenter);
+            At(_enduranceValue.Rect, 194f, 152f, 150f, 70f, 0.5f, 0.5f);
+            _enduranceMax = UiText.Create(_crest, "Endurance maximale", UiFace.Body, 32f, UiKit.Alpha(UiKit.Ink, 0.8f), TextAnchor.MiddleCenter);
+            At(_enduranceMax.Rect, 194f, 202f, 150f, 40f, 0.5f, 0.5f);
             for (int i = 0; i < 16; i++)
             {
                 Image dot = UiKit.Image(_crest, "Braise", UiKit.Sprite("braise"), UiKit.Dawn);
@@ -202,7 +212,7 @@ namespace EdS.Game
             At(_resonance.Rect, 500f, 308f, 220f, 20f, 0.5f, 0.5f);
             _resonance.Gradient(UiKit.Dawn, UiKit.Teal);
             _states = UiText.Create(_bottom, "Altérations", UiFace.Body, 18f, UiKit.Dawn, TextAnchor.MiddleCenter);
-            At(_states.Rect, 500f, 18f, 900f, 26f, 0.5f, 0.5f);
+            At(_states.Rect, 500f, CrestTop - 44f, 900f, 26f, 0.5f, 0.5f);
             _guard = UiText.Create(_bottom, "Garde", UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 18f, true);
             At(_guard.Rect, 96f, 288f, 200f, 22f, 0f, 0.5f);
         }
@@ -248,11 +258,11 @@ namespace EdS.Game
         /// Places des éclats de compétence (centre, taille du dessin, inclinaison), dans le groupe du bas. Essai réaliste 7 (essai de
         /// Damien du 28 octobre 2026 : « les icônes sont juste trop gros, faut tous les rétrécir ») : chaque éclat est dessiné à sa taille
         /// d'origine puis réduit d'un quart (<see cref="ShardScale"/>), au plus près du sceau ; la touche, le coût et la recharge sont
-        /// dessinés plus gros pour rester lisibles une fois réduits.
+        /// dessinés plus gros pour rester lisibles une fois réduits. Essai réaliste 9 : resserrés contre le sceau réduit, plus bas.
         /// </summary>
         private static readonly (float X, float Y, float Size, float Rot)[] ShardPlaces =
         {
-            (268f, 232f, 88f, -6f), (350f, 214f, 88f, 4f), (650f, 214f, 88f, -4f), (732f, 232f, 88f, 6f), (848f, 214f, 106f, 3f),
+            (330f, 268f, 88f, -6f), (398f, 256f, 88f, 4f), (602f, 256f, 88f, -4f), (670f, 268f, 88f, 6f), (762f, 258f, 106f, 3f),
         };
 
         /// <summary>Réduction des éclats de compétence (essai réaliste 7).</summary>
@@ -403,6 +413,56 @@ namespace EdS.Game
             _helpLabels.Add(label);
         }
 
+        // --- Réglages (essai réaliste 9) -----------------------------------------------------------------------------------------
+
+        private RectTransform _settings;
+        private UiButton _mouseMode, _invertY;
+        private UiText _sensitivity;
+        private System.Action _toggleClickLook, _toggleInvert;
+        private System.Action<float> _stepSensitivity;
+
+        /// <summary>Actions des boutons des réglages : souris libre ou clic maintenu, haut-bas inversé, sensibilité (pas de ±0,25).</summary>
+        public void OnSettings(System.Action toggleClickLook, System.Action toggleInvert, System.Action<float> stepSensitivity)
+        {
+            _toggleClickLook = toggleClickLook;
+            _toggleInvert = toggleInvert;
+            _stepSensitivity = stepSensitivity;
+        }
+
+        /// <summary>
+        /// Essai réaliste 9 (Damien, 29 octobre 2026 : « sans clic comme maintenant mais on peut le changer dans les réglages ») : les
+        /// réglages de la caméra, montrés pendant la pause (le curseur y est rendu).
+        /// </summary>
+        public void Settings(bool shown, bool clickLook, bool invertY, float sensitivity)
+        {
+            UiKit.Show(_settings, shown);
+            if (!shown) return;
+            _mouseMode.Text.Value = clickLook ? "Caméra : clic gauche maintenu" : "Caméra : souris libre (sans clic)";
+            _invertY.Text.Value = invertY ? "Haut-bas : inversé" : "Haut-bas : normal";
+            _sensitivity.Value = "Sensibilité " + sensitivity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+        }
+
+        private void BuildSettings()
+        {
+            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 640f, 560f, 250f, 0.5f, 0.5f);
+            UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.Sprite("dalle", 40f), Color.white, Image.Type.Sliced).rectTransform);
+            UiText title = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
+            At(title.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
+            title.Gold();
+            title.Value = "Réglages";
+            _mouseMode = UiKit.Button(_settings, "Souris", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _toggleClickLook?.Invoke());
+            At(_mouseMode.Rect, 280f, 86f, 440f, 44f, 0.5f, 0.5f);
+            _invertY = UiKit.Button(_settings, "Haut-bas", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _toggleInvert?.Invoke());
+            At(_invertY.Rect, 280f, 140f, 440f, 44f, 0.5f, 0.5f);
+            UiButton slower = UiKit.Button(_settings, "Moins sensible", "bouton_sobre", "−", UiFace.Title, 24f, UiKit.Ink, () => _stepSensitivity?.Invoke(-0.25f));
+            At(slower.Rect, 120f, 196f, 52f, 44f, 0.5f, 0.5f);
+            _sensitivity = UiText.Create(_settings, "Sensibilité", UiFace.Bold, 18f, UiKit.Dawn, TextAnchor.MiddleCenter, 6f, true);
+            At(_sensitivity.Rect, 280f, 196f, 240f, 40f, 0.5f, 0.5f);
+            UiButton faster = UiKit.Button(_settings, "Plus sensible", "bouton", "+", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => _stepSensitivity?.Invoke(0.25f));
+            At(faster.Rect, 440f, 196f, 52f, 44f, 0.5f, 0.5f);
+            UiKit.Show(_settings, false);
+        }
+
         private void BuildCenter()
         {
             _banner = UiText.Create(_center, "Bandeau", UiFace.Title, 44f, Color.white, TextAnchor.MiddleCenter, 12f);
@@ -530,7 +590,8 @@ namespace EdS.Game
                 UiKit.Show(_chargeGlows[i], used);
                 if (!used) continue;
                 float a = Mathf.Deg2Rad * (total == 1 ? 0f : -40f + 80f * i / (total - 1));
-                float cx = 500f + Mathf.Sin(a) * 105f, cy = 64f - Mathf.Cos(a) * 23f;
+                // Essai réaliste 9 : en arc juste au-dessus du sceau réduit.
+                float cx = 500f + Mathf.Sin(a) * 105f * CrestScale / 0.78f, cy = CrestTop - 6f - Mathf.Cos(a) * 12f;
                 At(_charges[i], cx, cy, 17f, 27f, 0.5f, 0.5f);
                 At(_chargeGlows[i], cx, cy, 44f, 44f, 0.5f, 0.5f);
                 _charges[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, -a * Mathf.Rad2Deg);

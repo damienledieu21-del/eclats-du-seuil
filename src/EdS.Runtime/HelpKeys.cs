@@ -30,14 +30,14 @@ namespace EdS.Runtime
         {
             new HelpKey("Z Q S D", "Se déplacer"), new HelpKey("Clic droit", "Garde (maintenir)"), new HelpKey("Espace", "Parade parfaite"),
             new HelpKey("1 – 4", "Compétences"), new HelpKey("R", "Ultime"), new HelpKey("Tab", "Cible suivante"), new HelpKey("A / E", "Tourner la vue"),
-            new HelpKey("Molette", "Vue 1 ou 2"),
+            new HelpKey("Molette", "Rapprocher la vue"), new HelpKey("C", "Vue derrière toi"),   // essai réaliste 9 : caméra façon World of Warcraft
         };
 
         /// <summary>Entraînement : combat, puis scénario suivant, build, recommencer, talents, pause, réseau, aide.</summary>
         public static IReadOnlyList<HelpKey> Training { get; } = Combat.Concat(new[]
         {
             new HelpKey("N", "Scène suivante"), new HelpKey("F1 – F5", "Build"), new HelpKey("Retour", "Recommencer"), new HelpKey("T", "Talents"),
-            new HelpKey("Échap", "Pause"), new HelpKey("M", "Jeu en réseau"), new HelpKey("H", "Masquer l'aide"),
+            new HelpKey("Échap", "Pause et réglages"), new HelpKey("M", "Jeu en réseau"), new HelpKey("H", "Masquer l'aide"),
         }).ToList();
 
         /// <summary>Réseau : combat, puis l'allié visé par les soutiens, le menu et l'aide (pas de pause : le serveur mène le combat).</summary>
@@ -56,7 +56,7 @@ namespace EdS.Runtime
             foreach (HelpKey key in Parse(worldHelp)) list.Add(key);
             list.Add(new HelpKey("L", "Carte"));
             list.Add(new HelpKey("T", "Talents"));
-            list.Add(new HelpKey("Échap", "Pause"));
+            list.Add(new HelpKey("Échap", "Pause et réglages"));
             list.Add(new HelpKey("M", "Jeu en réseau"));
             list.Add(new HelpKey("H", "Masquer l'aide"));
             return list;
