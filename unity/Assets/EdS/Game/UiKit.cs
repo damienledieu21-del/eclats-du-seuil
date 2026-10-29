@@ -193,6 +193,25 @@ namespace EdS.Game
             return pointer != null ? pointer : target.gameObject.AddComponent<UiPointer>();
         }
 
+        /// <summary>
+        /// Sous-lot V1.5 : rend <paramref name="target"/> glissable (souris ou doigt) ; le graphisme reçoit les rayons. Un glissé ne compte
+        /// pas comme un clic (uGUI ne l'envoie pas).
+        /// </summary>
+        public static UiDrag Drag(Graphic target)
+        {
+            target.raycastTarget = true;
+            UiDrag drag = target.gameObject.GetComponent<UiDrag>();
+            return drag != null ? drag : target.gameObject.AddComponent<UiDrag>();
+        }
+
+        /// <summary>Sous-lot V1.5 : <paramref name="target"/> reçoit ce qu'on y lâche (un glissé qui finit dessus).</summary>
+        public static UiDrop Drop(Graphic target)
+        {
+            target.raycastTarget = true;
+            UiDrop drop = target.gameObject.GetComponent<UiDrop>();
+            return drop != null ? drop : target.gameObject.AddComponent<UiDrop>();
+        }
+
         /// <summary>Bouton : dessin étiré en 9 parties, texte au milieu, action au clic ; plus clair au survol.</summary>
         public static UiButton Button(Transform parent, string name, string sprite, string label, UiFace face, float size, Color textColor, System.Action click)
         {
@@ -241,6 +260,29 @@ namespace EdS.Game
         }
 
         public void OnPointerExit(PointerEventData eventData) => Exit?.Invoke();
+    }
+
+    /// <summary>
+    /// Sous-lot V1.5 : début, suite et fin d'un glissé (souris ou doigt), avec la place du pointeur à l'écran (pixels). Le lâcher sur une
+    /// cible passe par <see cref="UiDrop"/>, appelé avant la fin du glissé.
+    /// </summary>
+    public sealed class UiDrag : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+    {
+        public System.Action<Vector2> Begin, Move, End;
+
+        public void OnBeginDrag(PointerEventData eventData) => Begin?.Invoke(eventData.position);
+
+        public void OnDrag(PointerEventData eventData) => Move?.Invoke(eventData.position);
+
+        public void OnEndDrag(PointerEventData eventData) => End?.Invoke(eventData.position);
+    }
+
+    /// <summary>Sous-lot V1.5 : cible d'un glissé (une place de la barre des compétences).</summary>
+    public sealed class UiDrop : MonoBehaviour, IDropHandler
+    {
+        public System.Action Dropped;
+
+        public void OnDrop(PointerEventData eventData) => Dropped?.Invoke();
     }
 
     /// <summary>Essai réaliste 6, étape 2 : un bouton de l'interface (plaque, texte, actif ou grisé, éclairci au survol).</summary>
