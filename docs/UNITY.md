@@ -34,7 +34,7 @@ Appuyer sur **Play** (▶ en haut au centre). Depuis le sous-lot 12.8, le jeu s'
 - **Un ennemi caché par le décor n'apparaît pas** tant que le Bastion ne le voit pas (même règle que la ligne de vue des compétences) : au départ, les loups sont cachés derrière le moulin ; le sanglier et l'archer se voient par-dessus la rivière, qui est basse (sous-lot 11.9). Il ne se cible pas non plus : Tab ne propose que des ennemis en vue. Une cible qui passe derrière le décor reste la cible **une seconde** (sous-lot 11.9 : un loup qui passe derrière un tronc ne fait plus changer de cible), puis elle est remplacée par le premier ennemi en vue, ou lâchée s'il n'y en a aucun (la garde ne se tourne alors vers personne). Une cible morte est remplacée aussitôt.
 - Les ennemis attendent ; ils s'engagent quand on s'approche (ou qu'on les frappe), puis approchent, encerclent, gardent leurs distances (l'archer) ou chargent (le sanglier).
 - **Les attaques annoncées sont dessinées au sol** : contour orange de la zone, remplissage rouge qui grandit jusqu'à l'impact. Sortir de la zone avant l'impact l'esquive ; un coup dirigé annoncé est un cercle sous sa cible.
-- **Caméra** : la molette la règle en douceur de la **vue 1** (haute, de trois quarts) à la **vue 2** (derrière le personnage) ; **C** rappelle l'autre réglage (au départ : vue 1 ↔ vue 2) ; le réglage est gardé d'une partie à l'autre ; rien ne change de vue tout seul. En vue 2, reculer (S, ou le stick vers le bas) fait marcher le Bastion **à reculons** en regardant devant lui (sous-lot 11.9) ; en vue 1, il se tourne vers sa marche. Un mur, un arbre ou le toit qui cache le Bastion s'abaisse ou s'efface le temps qu'il passe.
+- **Caméra** (façon World of Warcraft depuis l'essai réaliste 9) : elle tourne autour du personnage ; la souris l'oriente et l'incline, la molette la rapproche (jusqu'à l'épaule) ou l'éloigne (24 m) ; elle ne tourne jamais toute seule ; **C** la remet derrière le personnage ; distance, inclinaison et réglages sont gardés d'une partie à l'autre. Caméra basse (derrière le personnage), reculer (S, ou le stick vers le bas) fait marcher le Bastion **à reculons** en regardant devant lui (sous-lot 11.9) ; caméra haute, il se tourne vers sa marche. Un mur, un arbre ou le toit qui cache le Bastion s'abaisse ou s'efface le temps qu'il passe.
 
 Garde et parade sont nécessaires ; quand tous les ennemis sont morts, c'est la victoire ; si le Bastion tombe, c'est la défaite. Retour arrière pour recommencer, N pour les autres séances (meute à vaincre, entraînement, S1 à S5 : sans décor, le déplacement y reste visuel).
 
@@ -48,16 +48,16 @@ Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tablea
 | 1, 2, 3, 4 | compétences des emplacements |
 | R | ultime (100 de Résonance) |
 | Tab | ennemi suivant comme cible |
-| C | rappel rapide de l'autre réglage de caméra (vue 1 ↔ vue 2, retenues par le [cadrage](CADRAGE.md#2-direction-générale-retenu)) |
-| A / E | tourner la caméra d'un huitième de tour |
-| souris (sans clic) | **caméra à la souris libre** (choix de Damien du 26 octobre 2026, comme ESO) : gauche-droite tourne la vue, haut-bas l'incline de la vue 1 à la vue 2 ; curseur caché hors des écrans et des menus |
+| C | remettre la caméra derrière le personnage |
+| A / E | tourner la caméra (en douceur, tant qu'on tient) |
+| souris (sans clic) | **caméra à la souris libre** (choix de Damien du 26 octobre 2026, comme ESO) : gauche-droite tourne la vue, haut-bas l'incline ; curseur caché hors des écrans et des menus. Réglage de la pause : **clic gauche maintenu** à la place, comme World of Warcraft (le curseur reste alors visible) |
 | Alt maintenu | rend le curseur (pour cliquer) ; **Échap** le rend aussi (pour arrêter le jeu dans l'éditeur), un clic dans le jeu le reprend |
-| molette | régler la caméra entre la vue 1 et la vue 2 (réglage gardé) ; bouton du milieu maintenu (curseur rendu) : tourner librement |
+| molette | rapprocher ou éloigner la caméra (1,6 à 24 m ; 8 m au plus dans une maison) ; bouton du milieu maintenu (curseur rendu) : tourner librement |
 | T | écran des talents (combat en pause) ; T ou Échap pour le fermer |
 | N | scénario suivant (Vallons, meute à vaincre, entraînement, S1 à S5), puis retour à l'aventure |
 | F1 à F5 | build : Rempart, Contrecoup, Gardien, hybride, niveau 10 |
 | Retour arrière | recommencer la séance |
-| Échap | pause |
+| Échap | pause et **réglages** (souris libre ou clic maintenu, haut-bas inversé, sensibilité de la souris) |
 | H | masquer ou afficher l'aide |
 | F8 | afficher ou cacher les commandes au doigt (essai au PC ; voir la section 7) |
 | M | jeu en réseau à deux (voir la section 6) |
@@ -519,6 +519,19 @@ Limites :
 - une pièce n'a qu'un niveau (l'escalier est un décor), les portes ne se ferment pas à clé ;
 - les gens des intérieurs ne parlent pas (l'histoire et les métiers restent dehors) ;
 - un objet sans modèle (Poly Haven absent) garde une forme simple faite par le code.
+
+### Essai réaliste 9 : interface et caméra (29 octobre 2026)
+
+Demandes de Damien : « la case où il y a les points de vie et l'endurance est trop grande, elle cache le perso, il faut la réduire » ; « je n'aime pas les vues de caméra, il faudrait les retravailler » (« elle bouge mal ») ; style choisi : **World of Warcraft** ; souris : « sans clic comme maintenant mais on peut le changer dans les réglages ».
+
+Ce qui change :
+- **Le sceau** de la vie et de l'endurance est réduit d'environ moitié et collé au bas de l'écran ; ses chiffres sont dessinés plus gros pour rester lisibles ; les compétences et les Charges se resserrent autour.
+- **La caméra** tourne autour du personnage : la souris l'oriente (gauche-droite) et l'incline (haut-bas) sans changer sa distance ; la molette la rapproche ou l'éloigne, du très près au loin ; **elle ne tourne plus jamais toute seule** (avant, elle suivait la marche du personnage) ; A / E la tournent en douceur ; **C** la remet derrière toi. Par en dessous, elle se rapproche pour ne pas passer sous le sol. Dans une maison, elle reste à 8 m au plus.
+- **Réglages** dans la pause (Échap) : souris libre (sans clic, comme avant) ou clic gauche maintenu (comme World of Warcraft), haut-bas inversé, sensibilité de la souris. Ils sont gardés d'une partie à l'autre.
+
+Ce que tu regardes : le personnage bien visible au-dessus du sceau ; la caméra qui répond tout de suite à la souris, sans à-coups ni rotation toute seule ; le zoom ; les réglages de la pause.
+
+Limites : rien n'a encore été essayé en jeu ; la caméra ne butte pas contre les murs (les murs qui cachent le personnage s'effacent, comme avant).
 
 ## 8. En cas de problème
 
