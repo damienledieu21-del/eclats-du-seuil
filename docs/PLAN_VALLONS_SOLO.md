@@ -16,7 +16,7 @@ Chaque sous-lot suit la méthode habituelle de [CLAUDE.md](../CLAUDE.md) : une b
 - un **équilibrage en difficulté normale**, des niveaux au-delà de 10, et des zones qui suivent ton niveau ;
 - **plus de 5 heures** de jeu pour tout faire (estimation, à mesurer pendant l'essai).
 
-Dix sous-lots, chacun une PR, dans l'ordre de la [section 3](#3-les-dix-sous-lots). Cinq questions pour toi dans la [section 6](#6-questions-pour-damien). Les vagues 2 à 4 (monde vivant, aventures, vie à côté du combat) viennent après ([section 7](#7-après-la-vague-1)).
+Dix sous-lots, chacun une PR, dans l'ordre de la [section 3](#3-les-dix-sous-lots). Quatre questions pour toi dans la [section 6](#6-questions-pour-damien) (la cinquième, la cape, est réglée : 18 places). Les vagues 2 à 4 (monde vivant, aventures, vie à côté du combat) viennent après ([section 7](#7-après-la-vague-1)).
 
 ## 1. Point de départ
 
@@ -25,7 +25,7 @@ Dix sous-lots, chacun une PR, dans l'ordre de la [section 3](#3-les-dix-sous-lot
 | Domaine | Ce qui existe | Ce que la vague 1 ajoute |
 |---|---|---|
 | **Personnage** | Niveaux 1 à 10 (`progression.json`), attributs par classe et niveau, compétences gagnées en montant (2 places au niveau 1, 3 au 5, 4 et l'ultime au 10), arbre des talents ouvrable dans l'aventure | Niveaux au-delà de 10 (les règles en permettent 30), places de la barre qui continuent de grandir, écran des compétences |
-| **Objets** | 4 emplacements (arme, bouclier, torse, pendentif), 24 places d'inventaire, six raretés, bonus fixes, 10 équipements, tables de butin tirées par la clé de la mort | Toutes les places, boucliers à garde propre, effets, ensembles, propriétés tirées, qualité, usure, comparaison, beaucoup d'objets |
+| **Objets** | 4 emplacements (arme, bouclier, torse, pendentif), 24 places d'inventaire, six raretés, bonus fixes, 10 équipements, tables de butin tirées par la clé de la mort | Les 18 places, boucliers à garde propre, effets, ensembles, propriétés tirées, qualité, usure, comparaison, beaucoup d'objets |
 | **Économie** | Rien : ni or ni marchand | Or, marchands, prix d'achat et de vente, réparation |
 | **Quêtes** | Une mission en huit étapes, trois PNJ, conditions et effets, objectifs `fact`, `reach`, `defeat`, `collect`, `passage`, plusieurs quêtes possibles à la fois | Journal par quêtes principales et secondaires, nouveaux objectifs et effets, PNJ des intérieurs qui parlent, cinq chapitres, une vingtaine de quêtes secondaires |
 | **Ennemis** | Loups, sangliers, archers, rôdeurs, le Gardien à deux formes ; 27 créatures, plafond de 128 combattants | Bandits, chef des bandits, une bête élite ; niveaux par lieu et montée au niveau du joueur |
@@ -59,7 +59,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 
 ### V1.2 — Équipement complet : places, boucliers, écran (L)
 
-- **Places** : les 12 du cadrage (deux mains : arme et bouclier ; tête, torse, épaules, mains, jambes, pieds, ceinture, pendentif, deux anneaux), plus la **cape** si Damien la veut ([question 1](#6-questions-pour-damien)). Le Bastion porte **toujours un bouclier** (refus de l'ôter sans en mettre un autre).
+- **Places** : **18** (choix de Damien du 29 octobre 2026, 4 h 47, [CADRAGE.md](CADRAGE.md) Q4) : 16 pour le combat (arme, bouclier, tête, épaules, cape, torse, brassards, mains, ceinture, jambes, pieds, pendentif, deux anneaux, deux reliques à effet), l'**Éclat du Seuil** du personnage (il grandit avec l'histoire) et un **outil de métier** (utile hors combat). Le Bastion porte **toujours un bouclier** (refus de l'ôter sans en mettre un autre).
 - **Boucliers qui changent la garde** : chaque bouclier porte ses valeurs de garde (part des dégâts bloquée, coût en endurance d'un blocage, fenêtre de parade un peu plus large ou plus étroite). Changement des règles et du moteur : versionné, avec un nouveau journal de référence figé (les anciens ne changent pas).
 - **Catalogue** : quelques dizaines d'objets pour les niveaux 1 à 20, plusieurs bons choix par tranche de niveau à rareté égale (H5) ; niveau requis, puissance, rareté et adéquation au build restent quatre notions distinctes.
 - **Inventaire** : 24 places gardées pour l'instant, avec des sacs plus tard (vague 4). Tri et filtres simples.
@@ -178,7 +178,7 @@ Mélange voulu par Damien : courtes et longues, faciles et difficiles, en plusie
 
 ## 6. Questions pour Damien
 
-1. **La cape** : tu veux voir sur le Bastion « l'arme, le bouclier et la cape d'abord », mais les 12 emplacements du cadrage n'ont pas de cape. Proposition : **une 13e place, la cape**. Autre choix : la cape remplace les épaules (on reste à 12).
+1. ~~**La cape**~~ : réglé le 29 octobre 2026 à 4 h 47, **18 places** dont la cape (voir V1.2).
 2. **Niveaux des chapitres** : 1 à 5, 5 à 9, 9 à 13, 13 à 17, 17 à 20 (proposition). Le Gardien serait alors à affronter vers le niveau 20.
 3. **Rangs de la guilde dans les Vallons** : G, F, E et D (proposition, D ouvre les métiers avancés). Les rangs C et plus arrivent avec les régions suivantes.
 4. **Petit jeu de forge** dès la vague 1 (trois frappes au bon moment) ou plus tard, avec les autres métiers (vague 4) ?
