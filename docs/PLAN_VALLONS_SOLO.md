@@ -11,12 +11,12 @@ Chaque sous-lot suit la méthode habituelle de [CLAUDE.md](../CLAUDE.md) : une b
 - une **quête principale en cinq chapitres** à travers tous les lieux des Vallons agrandis, du moulin au Gardien du Seuil, et une **vingtaine de quêtes secondaires** de toutes sortes ;
 - **l'équipement complet** : toutes les places du personnage, des boucliers qui changent la garde, des armes et des bijoux à effets, des ensembles, des objets aux propriétés tirées au hasard, l'usure et la réparation ;
 - **l'or et les marchands** du bourg, et le **voyage rapide** entre les points sûrs découverts ;
-- la **Guilde des aventuriers** : ta carte, les rangs G, F, E et D, les contrats et les épreuves de promotion ;
+- la **Guilde des aventuriers** : ta carte, les rangs G, F et E, les contrats et les épreuves de promotion ;
 - l'**écran des compétences** pour changer sa barre partout hors combat ;
 - un **équilibrage en difficulté normale**, des niveaux au-delà de 10, et des zones qui suivent ton niveau ;
 - **plus de 5 heures** de jeu pour tout faire (estimation, à mesurer pendant l'essai).
 
-Dix sous-lots, chacun une PR, dans l'ordre de la [section 3](#3-les-dix-sous-lots). Quatre questions pour toi dans la [section 6](#6-questions-pour-damien) (la cinquième, la cape, est réglée : 18 places). Les vagues 2 à 4 (monde vivant, aventures, vie à côté du combat) viennent après ([section 7](#7-après-la-vague-1)).
+Dix sous-lots, chacun une PR, dans l'ordre de la [section 3](#3-les-dix-sous-lots). Les cinq questions de la [section 6](#6-questions-pour-damien) sont réglées (29 octobre 2026, 4 h 47 et 5 h 19). Les vagues 2 à 4 (monde vivant, aventures, vie à côté du combat) viennent après ([section 7](#7-après-la-vague-1)).
 
 ## 1. Point de départ
 
@@ -42,7 +42,7 @@ Un tour de jeu, du début à la fin de la vague :
 5. Les combats usent l'équipement selon les dégâts reçus ; on le répare contre de l'or.
 6. On découvre les points sûrs (bourg, ferme, hameau, camp, tour) et on y voyage d'un coup, hors combat.
 7. Les chapitres mènent aux champs, au lac, au hameau attaqué, à la tour de guet, au camp des rôdeurs et des bandits, puis au Seuil et au Gardien. Les quêtes secondaires remplissent les trous.
-8. On passe les épreuves de promotion de la guilde jusqu'au rang D. Le rang D ouvre les contrats les plus durs des Vallons et, plus tard, les métiers avancés.
+8. On passe les épreuves de promotion de la guilde jusqu'au rang E, le plus haut des Vallons ; le rang D viendra avec la région suivante.
 
 ## 3. Les dix sous-lots
 
@@ -75,14 +75,14 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 ### V1.4 — Forge, qualité, usure (M)
 
 - **Recettes d'équipement** à la forge de Maëlle pour une partie des pièces (armes, boucliers, pièces de métal) ; les autres viennent du butin, des quêtes et des marchands (Q29).
-- **Qualité de fabrication** : normale, supérieure, chef-d'œuvre signé du nom du personnage. Décision du sujet des métiers : « des petits jeux, mais aussi une part de chance ». Proposition pour la vague 1 : un premier petit jeu de forge (frapper le métal au bon moment, trois frappes) qui fait monter la chance, le reste tiré au hasard ([question 4](#6-questions-pour-damien)). Une recette au-dessus de son niveau peut **rater**, avec une partie des matériaux rendue.
+- **Qualité de fabrication** : normale, supérieure, chef-d'œuvre signé du nom du personnage. Décision du sujet des métiers : « des petits jeux, mais aussi une part de chance ». **Dès la vague 1** (choix de Damien, 5 h 19) : un premier petit jeu de forge (frapper le métal au bon moment, trois frappes) qui fait monter la chance, le reste tiré au hasard. Une recette au-dessus de son niveau peut **rater**, avec une partie des matériaux rendue.
 - **Usure** : chaque combat use l'équipement porté **selon les dégâts reçus**. Une pièce usée à zéro ne donne plus ses bonus, sans se casser. **Réparation contre de l'or** chez l'armurier ou à la forge.
 - L'amélioration de +1 à +10, les pierres à sertir et les runes viennent avec la forge poussée (vague 4).
 
 ### V1.5 — Écran des compétences (S)
 
 - Changer ses compétences **partout hors combat** (décision de Damien), refusé tant qu'un ennemi est engagé ou à moins de 12 m ; pris en compte à l'entrée suivante, comme les talents (`AdventureSession.SetTalents`).
-- **Barre qui grandit** (sujet 3) : aujourd'hui 2 places au niveau 1, 3 au 5, 4 et l'ultime au 10. Proposition : une 5e place au niveau 13 et une 6e au niveau 17, ce qui équipe les six actives du Bastion. La 7e et la 8e viendront quand le Bastion aura plus de compétences (ascensions).
+- **Barre qui grandit** (sujet 3) : aujourd'hui 2 places au niveau 1, 3 au 5, 4 et l'ultime au 10. Proposition : une 5e place au niveau 15 et une 6e au niveau 20, ce qui équipe les six actives du Bastion avant le Gardien (niveau 25). La 7e et la 8e viendront quand le Bastion aura plus de compétences (ascensions).
 - **Unity** : écran avec les compétences apprises, glisser une compétence sur une place (au doigt aussi), description et recharge.
 
 ### V1.6 — Quêtes : le moteur (M)
@@ -97,7 +97,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 ### V1.7 — Guilde des aventuriers (M)
 
 - **Lieu** : la guilde au bourg (un bâtiment existant, avec son intérieur), sa maîtresse de guilde.
-- **Carte d'aventurier** : rang, points, contrats réussis, titres. Rangs **G, F, E, D** dans les Vallons ([question 3](#6-questions-pour-damien)) ; C, B, A, S, SS et SSS avec les régions suivantes.
+- **Carte d'aventurier** : rang, points, contrats réussis, titres. Rangs **G, F et E** dans les Vallons (choix de Damien, 5 h 19) ; D, C, B, A, S, SS et SSS avec les régions suivantes.
 - **Points** gagnés par les accomplissements (contrats, quêtes, créatures rares, découvertes). Assez de points ouvrent une **épreuve de promotion** (un combat ou une mission précise par rang).
 - **Contrats** : chasses (vaincre tant de loups), livraisons (apporter des herbes, du minerai), primes (un bandit nommé). Tirés chaque jour du monde, de façon déterministe, parmi une liste en données ; un rang plus haut donne des contrats plus durs et mieux payés.
 - **Les quatre avantages** décidés : contrats plus durs et mieux payés, accès à des lieux, **boutique de la guilde**, **titre**.
@@ -105,7 +105,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 
 ### V1.8 — Progression et équilibrage (M)
 
-- **Niveaux au-delà de 10** : pas de plafond voulu par Damien ; les données vont jusqu'au niveau 30 que les règles permettent déjà, avec des valeurs provisoires pour 21 à 30. La difficulté suit les chapitres de la quête principale ([question 2](#6-questions-pour-damien) : niveaux de chaque chapitre).
+- **Niveaux au-delà de 10** : pas de plafond voulu par Damien ; les données vont jusqu'au niveau 30 que les règles permettent déjà, avec des valeurs provisoires pour 21 à 30. La difficulté suit les chapitres de la quête principale : **du niveau 1 au niveau 25** dans les Vallons (choix de Damien, 5 h 19 : « plus long »).
 - **Zones en mélange** (sujet 4) : chaque lieu a un **niveau minimum** ; si le joueur est plus fort, ses créatures **montent à son niveau**, et un réglage les garde faciles pour se sentir puissant.
 - **Difficulté normale** (« on meurt parfois si on joue mal ; le Gardien demande garde et parade ») : combats simulés par le moteur pour chaque chapitre, comme `Lot129BalanceTests`, avec un build et un équipement typiques du niveau.
 - **Rythme rapide puis plus lent** (sujet 4) : courbe d'expérience réglée pour atteindre le niveau 5 vite, puis ralentir.
@@ -113,7 +113,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 
 ### V1.9 — Contenu : quête principale et quêtes secondaires (L)
 
-- Les textes sont **proposés par Claude et relus par Damien** (décision du 29 octobre 2026). Ils arrivent dans une PR à part, pour que Damien puisse les relire tranquillement.
+- Les textes sont **proposés par Claude et relus par Damien** (décision du 29 octobre 2026), **chapitre par chapitre** (choix de Damien, 5 h 19) : une PR de textes par chapitre, pour les relire tranquillement.
 - Squelette de la quête principale et liste des quêtes secondaires : [section 4](#4-la-quête-principale-et-les-quêtes-secondaires).
 - Tout passe par les validateurs (lieux, PNJ, objets, textes) et des tests qui jouent chaque quête de bout en bout avec le moteur (pilote scripté), comme la mission d'aujourd'hui.
 
@@ -130,13 +130,13 @@ Proposition, à relire par Damien. Elle relie les Vallons à l'histoire d'Orséd
 
 ### Quête principale : « Les Éclats de l'Aube », cinq chapitres
 
-| Chapitre | Niveaux (proposition) | Lieux | Ce qui se passe |
+| Chapitre | Niveaux (choix de Damien : 1 à 25) | Lieux | Ce qui se passe |
 |---|---|---|---|
 | 1. Les traces sous le moulin | 1 à 5 | Village, carrière, moulin, pré des loups | La mission d'aujourd'hui, jusqu'aux éclats du pré. Le premier Éclat fait **revivre un souvenir** de la Rupture (une courte scène, avant les souvenirs jouables de plus tard). Gaspard envoie au bourg. |
-| 2. Le bourg d'Aube | 5 à 9 | Bourg, chapelle, auberge, guilde | Sœur Albe, de l'Ordre de l'Aube, reconnaît l'Éclat. Des vols d'éclats au bourg ; Renart, le marchand ambrien, en sait plus qu'il ne dit. Inscription à la guilde. |
-| 3. Les champs et le hameau | 9 à 13 | Champs, lac, vergers, hameau de la carrière | Les bandits attaquent le hameau et volent les éclats pour quelqu'un. Défendre le hameau, suivre leur piste jusqu'au lac. |
-| 4. La tour et le camp | 13 à 17 | Tour de guet, camp des rôdeurs | La tour ne répond plus. Au camp, le **chef des bandits** travaille pour les **Rassembleurs** ; il parle du « Sans-Repos ». Premier choix : l'épargner ou non (le choix reste écrit dans les faits ; ses suites viendront avec la vague 3). |
-| 5. Le Seuil | 17 à 20 | Hautes pierres, petite zone du Seuil | La manifestation grandit, le rôdeur du Seuil, puis le **Gardien du Seuil** et sa forme éveillée. Retour chez Odile. Une voix de l'Envers murmure : « Celui-qui-Attend ». |
+| 2. Le bourg d'Aube | 5 à 10 | Bourg, chapelle, auberge, guilde | Sœur Albe, de l'Ordre de l'Aube, reconnaît l'Éclat. Des vols d'éclats au bourg ; Renart, le marchand ambrien, en sait plus qu'il ne dit. Inscription à la guilde. |
+| 3. Les champs et le hameau | 10 à 15 | Champs, lac, vergers, hameau de la carrière | Les bandits attaquent le hameau et volent les éclats pour quelqu'un. Défendre le hameau, suivre leur piste jusqu'au lac. |
+| 4. La tour et le camp | 15 à 20 | Tour de guet, camp des rôdeurs | La tour ne répond plus. Au camp, le **chef des bandits** travaille pour les **Rassembleurs** ; il parle du « Sans-Repos ». Premier choix : l'épargner ou non (le choix reste écrit dans les faits ; ses suites viendront avec la vague 3). |
+| 5. Le Seuil | 20 à 25 | Hautes pierres, petite zone du Seuil | La manifestation grandit, le rôdeur du Seuil, puis le **Gardien du Seuil** et sa forme éveillée. Retour chez Odile. Une voix de l'Envers murmure : « Celui-qui-Attend ». |
 
 ### Quêtes secondaires (une vingtaine)
 
@@ -178,11 +178,13 @@ Mélange voulu par Damien : courtes et longues, faciles et difficiles, en plusie
 
 ## 6. Questions pour Damien
 
-1. ~~**La cape**~~ : réglé le 29 octobre 2026 à 4 h 47, **18 places** dont la cape (voir V1.2).
-2. **Niveaux des chapitres** : 1 à 5, 5 à 9, 9 à 13, 13 à 17, 17 à 20 (proposition). Le Gardien serait alors à affronter vers le niveau 20.
-3. **Rangs de la guilde dans les Vallons** : G, F, E et D (proposition, D ouvre les métiers avancés). Les rangs C et plus arrivent avec les régions suivantes.
-4. **Petit jeu de forge** dès la vague 1 (trois frappes au bon moment) ou plus tard, avec les autres métiers (vague 4) ?
-5. **Relecture des textes** : je te les envoie par chapitre (une PR de textes à la fois), ou tout d'un coup ?
+Toutes réglées le 29 octobre 2026 :
+
+1. **La cape** (4 h 47) : **18 places** d'équipement, dont la cape, l'Éclat du Seuil et un outil de métier (V1.2).
+2. **Niveaux des chapitres** (5 h 19) : **1 à 25** (« plus long ») : chapitres de 1 à 5, 5 à 10, 10 à 15, 15 à 20 et 20 à 25 ; le Gardien vers le niveau 25.
+3. **Rangs de la guilde dans les Vallons** (5 h 19) : **G, F et E** ; le rang D vient avec la région suivante.
+4. **Petit jeu de forge** (5 h 19) : **dès la vague 1**.
+5. **Relecture des textes** (5 h 19) : **chapitre par chapitre**.
 
 ## 7. Après la vague 1
 
