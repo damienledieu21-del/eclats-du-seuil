@@ -113,7 +113,7 @@ namespace UnityEngine
     public enum ScreenOrientation { Portrait = 1, LandscapeLeft = 3, AutoRotation = 5 }
     public enum ShadowQuality { Disable, HardOnly, All }
     public static class Debug { public static void Log(object m) { } public static void LogWarning(object m) { } public static void LogException(Exception e) { } }
-    public sealed class Shader : Object { public static Shader Find(string n) => null; public bool isSupported => false; }
+    public sealed class Shader : Object { public static Shader Find(string n) => null; public bool isSupported => false; public int subshaderCount => 0; public UnityEngine.Rendering.ShaderTagId FindSubshaderTagValue(int subshaderIndex, UnityEngine.Rendering.ShaderTagId tagName) => default; }
     public static class Resources { public static T Load<T>(string path) where T : Object => default; public static T GetBuiltinResource<T>(string path) where T : Object => default; }
     public class Material : Object { public Material(Shader s) { } public Material(Material source) { } public void CopyPropertiesFromMaterial(Material m) { } public Shader shader { get; set; } public bool enableInstancing { get; set; } public float GetFloat(string n) => 0f; public bool HasProperty(string n) => false; public void SetColor(string n, Color c) { } public Color GetColor(string n) => default; public void SetTexture(string n, Texture t) { } public Texture GetTexture(string n) => null; public void SetTextureOffset(string n, Vector2 v) { } public void SetTextureScale(string n, Vector2 v) { } public void SetFloat(string n, float f) { } public void EnableKeyword(string k) { } public int renderQueue { get; set; } public Vector2 GetTextureScale(string n) => default; public Vector2 GetTextureOffset(string n) => default; public string[] shaderKeywords { get; set; } public void SetOverrideTag(string tag, string value) { } public void SetVector(string n, Vector4 v) { } }
     public class Texture : Object { public int width => 0; public int height => 0; public TextureWrapMode wrapMode { get; set; } }
@@ -188,6 +188,7 @@ namespace UnityEngine.Networking
 }
 namespace UnityEngine.Rendering
 {
+    public struct ShaderTagId { public ShaderTagId(string name) { } public string name => ""; }
     public enum IndexFormat { UInt16 = 0, UInt32 = 1 }
     public enum AmbientMode { Skybox = 0, Trilight = 1, Flat = 3, Custom = 4 }
     public class VolumeComponent : ScriptableObject { public bool active; }

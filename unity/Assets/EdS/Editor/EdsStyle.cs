@@ -457,12 +457,28 @@ namespace EdS.Game.Editor
 
         /// <summary>
         /// Essai réaliste 8 (relecture indépendante) : le prefab se dessine-t-il avec le rendu du projet (tous ses matériaux sur un shader
-        /// compilé) ? Une variante faite pour HDRP ou pour l'ancien rendu sortirait rose.
+        /// d'URP) ? Une variante faite pour HDRP ou pour l'ancien rendu sortirait rose.
         /// </summary>
         private static bool Renders(string path) =>
             Load(path) is GameObject prefab && prefab.GetComponentsInChildren<Renderer>(true).Length > 0
             && prefab.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials ?? new Material[0])
-                .All(m => m != null && m.shader != null && m.shader.isSupported);
+                .All(m => m != null && UrpShader(m.shader));
+
+        /// <summary>
+        /// Revue Codex de la PR #65 : <c>Shader.isSupported</c> ne dit que si la carte graphique sait le dessiner, pas si le rendu du projet
+        /// (URP) le prend. Un shader va avec URP s'il en fait partie (« Universal Render Pipeline/… ») ou si l'un de ses sous-shaders est
+        /// marqué pour lui (« RenderPipeline » = « UniversalPipeline » : Shader Graph et shaders des exemples faits pour URP). « Standard »
+        /// de l'ancien rendu, ou un shader de HDRP, ne l'est pas.
+        /// </summary>
+        private static bool UrpShader(Shader shader)
+        {
+            if (IsUrp(shader)) return true;
+            if (shader == null || !shader.isSupported) return false;
+            var pipeline = new UnityEngine.Rendering.ShaderTagId("RenderPipeline");
+            for (int i = 0; i < shader.subshaderCount; i++)
+                if (shader.FindSubshaderTagValue(i, pipeline).name == "UniversalPipeline") return true;
+            return false;
+        }
 
         /// <summary>Animations d'un fichier (sans les aperçus de l'éditeur).</summary>
         private static IEnumerable<AnimationClip> Clips(string path) =>

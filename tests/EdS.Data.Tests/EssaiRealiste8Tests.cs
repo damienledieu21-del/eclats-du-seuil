@@ -588,4 +588,18 @@ public class EssaiRealiste8Tests : IDisposable
         Assert.Empty(StyleRules.MergeDecor(samples, others, 0));
         Assert.Equal(samples, StyleRules.MergeDecor(samples, null!, 5));
     }
+
+    [Fact]
+    public void Prefabs_des_exemples_pris_seulement_s_ils_vont_avec_URP()
+    {
+        // Revue Codex de la PR #65 : Shader.isSupported ne dit que la carte graphique ; un shader « Standard » de l'ancien rendu passait.
+        // Un matériau des exemples doit être sur un shader d'URP, ou d'un sous-shader marqué pour URP (Shader Graph).
+        string editor = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs")).Replace("\r\n", "\n");
+        Assert.Contains(".All(m => m != null && UrpShader(m.shader));", editor, StringComparison.Ordinal);
+        Assert.DoesNotContain(".All(m => m != null && m.shader != null && m.shader.isSupported)", editor, StringComparison.Ordinal);
+        Assert.Contains("if (IsUrp(shader)) return true;", editor, StringComparison.Ordinal);
+        Assert.Contains("new UnityEngine.Rendering.ShaderTagId(\"RenderPipeline\")", editor, StringComparison.Ordinal);
+        Assert.Contains("shader.FindSubshaderTagValue(i, pipeline).name == \"UniversalPipeline\"", editor, StringComparison.Ordinal);
+        Assert.Contains("prefabs.Where(StyleRules.IsSample).Where(Renders)", editor, StringComparison.Ordinal);
+    }
 }
