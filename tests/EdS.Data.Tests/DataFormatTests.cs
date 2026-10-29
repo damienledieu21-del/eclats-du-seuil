@@ -11,5 +11,5 @@ public class DataFormatTests
     public void Version_de_schema_des_classes_du_lot_8() => Assert.Equal(9, DataFormat.ClassSchemaVersion);   // 5 : modificateurs (8.1) ; 6 : shield.potencyDealt (8.2) ; 7 : soutien et protections (8.3) ; 8 : Charges dépensées, guard.noUpkeep (8.4) ; 9 : portées (11.4b)
 
     [Fact]
-    public void Contenu_marque_provisoire() => Assert.Equal("0.11.0-provisoire", DataFormat.ProvisionalRulesContentVersion);   // 0.8.0 : altérations du Gardien (8.5) ; 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b) ; 0.11.0 : arc du bouclier, réaction des annonces (11.4c)
+    public void Contenu_marque_provisoire() => Assert.Equal("0.12.0-provisoire", DataFormat.ProvisionalRulesContentVersion);   // 0.12.0 : 128 combattants (29 octobre 2026) ; 0.8.0 : altérations du Gardien (8.5) ; 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b) ; 0.11.0 : arc du bouclier, réaction des annonces (11.4c)
 }

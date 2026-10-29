@@ -213,8 +213,8 @@ public class Lot71SizeLimitTests
     // --- Longueur des tableaux du scénario --------------------------------------------------
 
     [Theory]
-    [InlineData(63)]
-    [InlineData(64)]
+    [InlineData(127)]
+    [InlineData(128)]
     public void Tableau_de_combattants_jusqu_a_la_limite(int count)
     {
         ScenarioLoadResult result = ScenarioJsonReader.Read(Lot71Files.ToJson(Lot71Files.WithCombatants(count)), ShippedData);
@@ -225,10 +225,11 @@ public class Lot71SizeLimitTests
     [Fact]
     public void Tableau_de_combattants_trop_long_une_seule_erreur_localisee()
     {
-        ScenarioLoadResult result = ScenarioJsonReader.Read(Lot71Files.ToJson(Lot71Files.WithCombatants(65)), ShippedData);
+        ScenarioLoadResult result = ScenarioJsonReader.Read(Lot71Files.ToJson(Lot71Files.WithCombatants(129)), ShippedData);
         ValidationError e = Assert.Single(result.Report.Errors);
         Assert.Equal(("$.data.combatants", ValidationCode.LimitExceeded), (e.Path, e.Code));
-        Assert.Equal("65 combattants, au plus 64 (combat.limits.maxCombatants).", e.Message);
+        // Règles 0.12.0 (décision de Damien du 29 octobre 2026) : 128 combattants au plus (64 avant).
+        Assert.Equal("129 combattants, au plus 128 (combat.limits.maxCombatants).", e.Message);
         Assert.Equal(9, e.Line);   // ligne du nom « combatants » dans le fichier indenté
     }
 
@@ -374,7 +375,7 @@ public class Lot71CliLimitTests
 
     public static TheoryData<string, string, string> Refused => new()
     {
-        { Lot71Files.ToJson(Lot71Files.WithCombatants(65)), "$.data.combatants (ligne 9)", "65 combattants, au plus 64" },
+        { Lot71Files.ToJson(Lot71Files.WithCombatants(129)), "$.data.combatants (ligne 9)", "129 combattants, au plus 128" },   // 64 avant le 29 octobre 2026
         { Lot71Files.ToJson(Lot71Files.WithCommands(20_001)), "$.data.commands (ligne", "20001 commandes, au plus 20000" },
         { Lot71Files.ToJson(Lot71Files.WithSimultaneous(5)), "$.data.commands[4].atMs", "5ᵉ commande de « bastion »" },
     };

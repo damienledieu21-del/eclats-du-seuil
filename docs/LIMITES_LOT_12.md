@@ -43,7 +43,7 @@ Détail : [MONDE.md](MONDE.md#les-vallons-en-données-sous-lot-124).
 - **Carte provisoire** (question à Damien) : disposition, tailles, créatures, délais de réapparition et laisses sont des premières valeurs, à régler à l'essai (12.9). Tout est dans `scenarios/zones/vallons.json` et `data/v0/world/zones/vallons.json`.
 - **Laisse par téléportation** : la créature qui lâche disparaît et une vie calme et soignée réapparaît chez elle, au lieu de rentrer en marchant. Un retour à pied demanderait de toucher au moteur (désengagement) : à faire si l'essai le demande.
 - **Laisse mesurée à la cible** (l'écart entre la créature et le joueur qu'elle poursuit), pas à la distance de son point de départ : c'est ce que Damien a décrit à l'essai.
-- **Plafond de 64 combattants par session** : environ 53 réapparitions ou retours au calme par session d'une heure ; au-delà, la population attend la session suivante.
+- **Plafond de 64 combattants par session** : environ 53 réapparitions ou retours au calme par session d'une heure ; au-delà, la population attend la session suivante. Relevé à 128 le 29 octobre 2026 (décision de Damien) : 98 réapparitions par session avec les Vallons agrandis.
 - **Passage ouvert à la session suivante** : l'espace d'une session ne change pas en route ; Unity (12.8) enchaînera une nouvelle session (sauvegarde puis reprise) quand le passage s'ouvre.
 - **Nœuds de récolte** : avec les métiers (12.6). **Manifestation** : avec les quêtes (12.5) et le chef (12.7).
 - **Format** : zone en schéma 1 ; scénario de zone agrandi (même schéma 11) ; moteur, journal, sauvegarde inchangés par le 12.4.

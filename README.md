@@ -179,6 +179,8 @@ Sous-lot 12.9c (retours de la fiche d'essai) : loups plus lents que le Bastion (
 
 Sous-lot 12.9d (la carte, demande de Damien du 25 octobre 2026) : petite carte des Vallons en haut à droite (décor, toi, objectif de l'étape en cours, PNJ, points sûrs, forge, ennemis en vue), à agrandir avec L ou en la touchant. Détail : [docs/UNITY.md](docs/UNITY.md#4-bis-laventure-dans-les-vallons-daube-sous-lot-128).
 
+Plafond des combattants (décision de Damien du 29 octobre 2026, « relever le plafond ») : 128 combattants par combat ou par session au lieu de 64 (règles 0.12.0, schéma inchangé), soit 98 réapparitions par session dans les Vallons agrandis au lieu de 34 ; la forêt des Loups ne s'atteint que par la porte du moulin (choix gardé le même jour). Détail : [docs/MONDE.md](docs/MONDE.md#les-vallons-en-données-sous-lot-124).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
