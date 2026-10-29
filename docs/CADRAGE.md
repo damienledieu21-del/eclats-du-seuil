@@ -200,7 +200,7 @@ Toutes **Retenu** : validées par Damien le 20 octobre 2026, dans les termes de 
 | Raretés : 6 rangs, Secret à part | à créer | Retenu (Q30) | Final |
 | Livres actifs : 2 par configuration | à créer | Retenu (H6) | Final |
 | Héritage actif : 1 | à créer | Recommandation (H7) | Final |
-| Groupe standard : 5 joueurs | à créer | Recommandation (Q31) | Final |
+| Groupes de 2 à 6 joueurs ; raids de 10 à 20 | à créer | Retenu (Q31, Damien, 29 octobre 2026 ; remplace la recommandation de 5) | Final |
 | Réveil renforcé : 1 par expédition | à créer | Recommandation (H4) | Final |
 | Ralentissement en garde : moitié de la vitesse | `rules.json`, `combat.movement.guardSpeedFactor` (0,5) | Retenu (L11-D3, essai du 22 octobre 2026) | Tranche |
 | Combattants par combat : 128 (borne 256 ; 64 jusqu'au 29 octobre 2026) | `rules.json`, `combat.limits.maxCombatants` | Paramètre technique | Moteur actuel |
