@@ -63,6 +63,11 @@ public class Essai9CameraTests
         Assert.Equal(1, CameraRules.Behind(10));
         Assert.Equal(0, CameraRules.Behind(75));
         Assert.True(CameraRules.Behind(CameraRules.DefaultPitch) > 0.5, "au départ : derrière le personnage, reculer marche à reculons");
+        // Relecture : à peine sous l'horizontale, aucune contrainte (la caméra ne saute plus à 1,6 m).
+        Assert.Equal(12, CameraRules.GroundSafeDistance(12, -1e-8, 1.6));
+        Assert.Equal(CameraRules.MaxPitch, CameraRules.Incline(70, 30));
+        Assert.Equal(CameraRules.MinPitch, CameraRules.Incline(0, -30));
+        Assert.Equal(35, CameraRules.Incline(30, 5), 9);
         Assert.Equal(350, CameraRules.Wrap(-10));
         Assert.Equal(10, CameraRules.Wrap(370));
         Assert.Equal(0, CameraRules.Wrap(double.NaN));
@@ -79,13 +84,26 @@ public class Essai9CameraTests
         // Souris sans clic par défaut (choix du 26 octobre gardé), clic gauche maintenu au choix, hors de l'interface.
         Assert.Contains("ClickLook = PlayerPrefs.GetInt(ClickKey, 0) == 1;", rig, StringComparison.Ordinal);
         Assert.Contains("bool look = freeLook || _dragging || PointerInput.MouseLook(Input.touchCount, Input.GetMouseButton(2));", rig, StringComparison.Ordinal);
-        Assert.Contains("_dragging = Input.touchCount == 0 && !OverInterface();", rig, StringComparison.Ordinal);
+        Assert.Contains("_dragging = Input.touchCount == 0 && !Blocked && !OverInterface();", rig, StringComparison.Ordinal);
+        // Relecture : en « clic maintenu », le curseur reste visible (pas de regard libre) et n'est caché que pendant la rotation ; un clic
+        // dans un écran, un menu ou sur les commandes tactiles ne commence pas de rotation.
+        Assert.Contains("|| _cursorReleased || _camera.ClickLook;", game, StringComparison.Ordinal);
+        Assert.Contains("_camera.Blocked = covered || _touch.Active;", game, StringComparison.Ordinal);
+        Assert.Contains("bool hidden = _freeLook || _camera.Dragging;", game, StringComparison.Ordinal);
+        // Relecture : la hauteur visée se compte depuis les pieds (le joueur affiché est le milieu du corps, les pieds plus 1 m).
+        Assert.Contains("Vector3 aim = player - Vector3.up + Vector3.up * (float)CameraRules.TargetHeight(_shownDistance);", rig, StringComparison.Ordinal);
+        // Relecture : la distance de dehors est gardée à part dans une pièce, et l'aventure quittée la rend.
+        Assert.Contains("if (value && !_indoors) _indoorDistance = (float)CameraRules.Zoom(_distance, 0, true);", rig, StringComparison.Ordinal);
+        Assert.Contains("_camera.Indoors = false;", game, StringComparison.Ordinal);
+        // Relecture : au doigt, l'inclinaison se règle aussi.
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"_camera\.Nudge\(_touch\.YawDelta, _touch\.ViewDelta, _touch\.PitchDelta\);").Count);
         Assert.Contains("_pitch = (float)CameraRules.Tilt(_pitch, tilt, Sensitivity, InvertY);", rig, StringComparison.Ordinal);
-        Assert.Contains("_distance = (float)CameraRules.Zoom(_distance, scroll, _indoors);", rig, StringComparison.Ordinal);
+        Assert.Contains("if (scroll != 0f) Zoom(CameraRules.Zoom(Wanted, scroll, _indoors));", rig, StringComparison.Ordinal);
         // Réglages montrés pendant la pause, reliés à la caméra.
         Assert.Contains("_hud.OnSettings(() => _camera.SetClickLook(!_camera.ClickLook), () => _camera.SetInvertY(!_camera.InvertY),", game, StringComparison.Ordinal);
-        Assert.Contains("_hud.Settings(_paused && open, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);", game, StringComparison.Ordinal);
-        Assert.Contains("_hud.Settings(_paused, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);", game, StringComparison.Ordinal);
+        // Relecture : pas de réglages par-dessus une annonce (défaite, fin de session) ni sur l'écran de fin d'un combat d'entraînement.
+        Assert.Contains("_hud.Settings(_paused && open && notice == null, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);", game, StringComparison.Ordinal);
+        Assert.Contains("_hud.Settings(_paused && !_combat.IsFinished, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);", game, StringComparison.Ordinal);
         Assert.Contains("_camera.Indoors = a.Indoors;", game, StringComparison.Ordinal);
         // Reculer à reculons quand la caméra est derrière le personnage (comme avant en vue 2).
         Assert.Contains("bool backward = _camera.Setting > 0.5f && z < 0f;", game, StringComparison.Ordinal);
@@ -103,5 +121,24 @@ public class Essai9CameraTests
         Assert.Contains(HelpKeys.Training, k => k.Key == "C" && k.Action == "Vue derrière toi");
         Assert.Contains(HelpKeys.Adventure("F parler"), k => k.Key == "Échap" && k.Action == "Pause et réglages");
         Assert.DoesNotContain(HelpKeys.Training, k => k.Action.Contains("Vue 1", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Inclinaison_au_doigt()
+    {
+        // Relecture : le doigt de regard incline aussi la vue (descendre : la caméra monte) ; le pincement ne l'incline pas.
+        var g = new TouchGestures();
+        var buttons = Array.Empty<GestureButton>();
+        g.Update(new[] { new FingerPoint(1, 1400, 500, FingerPhase.Began) }, buttons, 1920);
+        g.Update(new[] { new FingerPoint(1, 1400, 550, FingerPhase.Moved) }, buttons, 1920);
+        Assert.Equal(50 * TouchGestures.PitchPerPixel, g.PitchDelta, 4);
+        Assert.Equal(0f, g.YawDelta);
+        g.Update(new[] { new FingerPoint(1, 1400, 550, FingerPhase.Stationary) }, buttons, 1920);
+        Assert.Equal(0f, g.PitchDelta);
+        g.Update(new[] { new FingerPoint(1, 1400, 550, FingerPhase.Stationary), new FingerPoint(2, 1600, 550, FingerPhase.Began) }, buttons, 1920);
+        g.Update(new[] { new FingerPoint(1, 1400, 500, FingerPhase.Moved), new FingerPoint(2, 1600, 600, FingerPhase.Moved) }, buttons, 1920);
+        Assert.Equal(0f, g.PitchDelta);
+        g.Reset();
+        Assert.Equal(0f, g.PitchDelta);
     }
 }

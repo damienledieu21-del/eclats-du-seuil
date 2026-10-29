@@ -81,7 +81,10 @@ namespace EdS.Runtime
         /// <summary>Degrés de rotation de la vue par pixel virtuel glissé.</summary>
         public const float YawPerPixel = 0.25f;
 
-        /// <summary>Écart (pixels virtuels) entre deux doigts qui fait passer de la vue 1 à la vue 2.</summary>
+        /// <summary>Degrés d'inclinaison de la vue par pixel virtuel glissé vers le haut ou le bas (essai réaliste 9).</summary>
+        public const float PitchPerPixel = 0.2f;
+
+        /// <summary>Écart (pixels virtuels) entre deux doigts qui fait passer de la caméra la plus lointaine à la plus proche.</summary>
         public const float PinchPixelsPerView = 600f;
 
         private readonly Dictionary<int, int> _pressed = new Dictionary<int, int>();
@@ -102,8 +105,14 @@ namespace EdS.Runtime
         /// <summary>Rotation de la vue demandée à cette image, en degrés.</summary>
         public float YawDelta { get; private set; }
 
-        /// <summary>Réglage de la vue demandé à cette image (positif : vers la vue 2).</summary>
+        /// <summary>Rapprochement de la vue demandé à cette image (positif : plus près ; une unité couvre toute la plage).</summary>
         public float ViewDelta { get; private set; }
+
+        /// <summary>
+        /// Essai réaliste 9 (relecture) : inclinaison de la vue demandée à cette image, en degrés (doigt qui descend : la caméra monte et
+        /// regarde de plus haut ; doigt qui monte : elle descend derrière le personnage).
+        /// </summary>
+        public float PitchDelta { get; private set; }
 
         /// <summary>Un doigt tient le stick ; son origine est alors (<see cref="StickOriginX"/>, <see cref="StickOriginY"/>).</summary>
         public bool StickActive => _stickFinger >= 0;
@@ -128,6 +137,7 @@ namespace EdS.Runtime
             _pinchLast = -1f;
             MoveX = MoveY = 0f;
             YawDelta = 0f;
+            PitchDelta = 0f;
             ViewDelta = 0f;
         }
 
@@ -143,6 +153,7 @@ namespace EdS.Runtime
             if (float.IsNaN(width) || float.IsInfinity(width) || width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
             _tapped.Clear();
             YawDelta = 0f;
+            PitchDelta = 0f;
             ViewDelta = 0f;
             float half = width / 2f;
             Forget(fingers);
@@ -181,6 +192,7 @@ namespace EdS.Runtime
                         else if (touch.Id == _lookFinger)
                         {
                             YawDelta += (touch.X - _lookLastX) * YawPerPixel;
+                            PitchDelta += (touch.Y - _lookLastY) * PitchPerPixel;
                             _lookLastX = touch.X;
                             _lookLastY = touch.Y;
                         }
@@ -193,7 +205,7 @@ namespace EdS.Runtime
                 if (touch.X >= half && !_pressed.ContainsKey(touch.Id) && touch.Id != _stickFinger
                     && touch.Phase != FingerPhase.Ended && touch.Phase != FingerPhase.Canceled) looking.Add(touch);
             }
-            // Deux doigts sur la moitié droite : l'écart règle la vue (s'écarter : vers la vue 2, plus proche).
+            // Deux doigts sur la moitié droite : l'écart règle la distance de la vue (s'écarter : plus près).
             if (looking.Count >= 2)
             {
                 float dx = looking[0].X - looking[1].X, dy = looking[0].Y - looking[1].Y;
@@ -201,6 +213,7 @@ namespace EdS.Runtime
                 if (_pinchLast >= 0f) ViewDelta = (spread - _pinchLast) / PinchPixelsPerView;
                 _pinchLast = spread;
                 YawDelta = 0f;
+                PitchDelta = 0f;
             }
             else _pinchLast = -1f;
             // Revue Codex de la PR #36 (4e tour) : le doigt de regard levé (fin d'un pincement), un autre doigt resté sur la moitié droite

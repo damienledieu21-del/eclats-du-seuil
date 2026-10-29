@@ -59,6 +59,10 @@ namespace EdS.Runtime
             return Clamp(pitch - mouseY * 2.0 * Sensitivity(sensitivity) * (invert ? -1 : 1), MinPitch, MaxPitch);
         }
 
+        /// <summary>Inclinaison après <paramref name="degrees"/> degrés demandés au doigt (positif : la caméra monte), bornée.</summary>
+        public static double Incline(double pitch, double degrees) =>
+            double.IsNaN(pitch) ? DefaultPitch : double.IsNaN(degrees) ? Clamp(pitch, MinPitch, MaxPitch) : Clamp(pitch + degrees, MinPitch, MaxPitch);
+
         /// <summary>Sensibilité bornée (1 si elle n'est pas un nombre).</summary>
         public static double Sensitivity(double sensitivity) =>
             double.IsNaN(sensitivity) ? 1.0 : Clamp(sensitivity, MinSensitivity, MaxSensitivity);
@@ -76,7 +80,8 @@ namespace EdS.Runtime
             if (pitch >= 0) return distance;
             double drop = Math.Sin(-pitch * Math.PI / 180.0);
             double room = targetHeight - GroundClearance;
-            if (drop <= 1e-9 || room <= 0) return Math.Min(distance, MinDistance);
+            if (drop <= 1e-9) return distance;   // relecture : à peine sous l'horizontale, aucune contrainte
+            if (room <= 0) return Math.Min(distance, MinDistance);
             return Math.Max(Math.Min(distance, MinDistance), Math.Min(distance, room / drop));
         }
 

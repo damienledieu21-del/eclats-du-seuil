@@ -10,9 +10,9 @@ namespace EdS.Game
     /// <list type="bullet">
     /// <item>moitié gauche : <b>stick</b> du pouce gauche, qui apparaît là où le pouce se pose (marche relative à la caméra) ;</item>
     /// <item>à droite : <b>Garde</b> (maintenir), <b>Parade</b>, les quatre compétences et l'<b>ultime</b>, <b>Cible</b> (suivante),
-    /// <b>Vue</b> (rappel entre les vues 1 et 2), <b>Allié</b> en réseau ;</item>
-    /// <item>moitié droite hors des boutons : un doigt qui glisse <b>tourne la vue</b>, deux doigts qui s'écartent ou se rapprochent la
-    /// <b>règlent entre les vues 1 et 2</b> ;</item>
+    /// <b>Vue</b> (caméra remise derrière le personnage), <b>Allié</b> en réseau ;</item>
+    /// <item>moitié droite hors des boutons : un doigt qui glisse <b>tourne et incline la vue</b>, deux doigts qui s'écartent ou se
+    /// rapprochent <b>rapprochent ou éloignent la caméra</b> (essai réaliste 9) ;</item>
     /// <item>en haut à droite : <b>Menu</b> (réseau) et <b>Aide</b> ; seul, aussi <b>Pause</b>, <b>Rejouer</b> et <b>Scène</b> (suivante) ;</item>
     /// <item>sous-lot 12.8, dans l'aventure : <b>Agir</b> (parler, récolter) et <b>Potion</b> au-dessus de la parade, <b>Sac</b>,
     /// <b>Journal</b> et <b>Atelier</b> en haut, <b>Halte</b> à la place de « Rejouer ».</item>
@@ -51,8 +51,11 @@ namespace EdS.Game
         /// <summary>Rotation de la vue demandée depuis la dernière image, en degrés.</summary>
         public float YawDelta => _gestures.YawDelta;
 
-        /// <summary>Réglage de la vue demandé depuis la dernière image (positif : vers la vue 2).</summary>
+        /// <summary>Rapprochement de la vue demandé depuis la dernière image (positif : plus près).</summary>
         public float ViewDelta => _gestures.ViewDelta;
+
+        /// <summary>Essai réaliste 9 : inclinaison de la vue demandée au doigt, en degrés.</summary>
+        public float PitchDelta => _gestures.PitchDelta;
 
         public bool GuardHeld => _gestures.IsHeld((int)ButtonId.Guard);
         public bool ParryPressed => Tapped(ButtonId.Parry);

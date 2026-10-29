@@ -159,9 +159,9 @@ Premier essai tactile : la scène des Vallons au doigt, d'abord dans le **simula
 | en bas à droite | maintenir **Garde** | garde |
 | en bas à droite | toucher **Parade** | parade parfaite |
 | au-dessus | **1**, **2**, **3**, **4**, **Ultime** | compétences |
-| au-dessus | **Cible**, **Vue** (et **Allié** en réseau) | ennemi suivant, rappel vue 1 ↔ vue 2, allié visé |
-| moitié droite, hors des boutons | glisser un doigt | tourner la vue |
-| moitié droite | écarter ou rapprocher deux doigts | régler la vue entre la 1 (haute) et la 2 (proche) |
+| au-dessus | **Cible**, **Vue** (et **Allié** en réseau) | ennemi suivant, caméra remise derrière le personnage, allié visé |
+| moitié droite, hors des boutons | glisser un doigt | tourner la vue (gauche-droite) et l'incliner (haut-bas) |
+| moitié droite | écarter ou rapprocher deux doigts | rapprocher ou éloigner la caméra |
 | à droite, sous la fiche de la cible | **Menu**, **Aide** ; seul : **Pause**, **Rejouer**, **Scène** | menu réseau, aide, pause, recommencer, scène suivante |
 
 **a. Dans l'éditeur, sans téléphone** : **Window → General → Device Simulator**. Dans l'onglet *Simulator* qui s'ouvre, choisir un téléphone (un Samsung Galaxy si la liste en propose un, sinon un téléphone Android récent), le tourner à l'horizontale (bouton de rotation), puis **Play** : la souris fait le doigt (un seul doigt : le pincement ne s'essaie que sur le vrai téléphone). Vérifier que les boutons ne cachent ni les barres ni la fiche de la cible. Au PC sans simulateur, **F8** affiche aussi les commandes (la souris fait un doigt).
@@ -179,7 +179,7 @@ Premier essai tactile : la scène des Vallons au doigt, d'abord dans le **simula
 1. **Installation et démarrage** : le jeu s'installe, démarre, garde l'écran allumé, tourne avec le téléphone (deux sens à l'horizontale).
 2. **Marche au pouce** : départ, arrêt, changement de direction ; la marche suit bien la caméra.
 3. **Boutons** : assez grands, bien placés pour les pouces ; garde maintenue et parade au bon moment.
-4. **Geste entre les deux vues** : pincer pour passer de la vue 1 à la vue 2, glisser pour tourner ; rien ne change tout seul.
+4. **Gestes de la caméra** : pincer pour rapprocher ou éloigner, glisser pour tourner et incliner ; rien ne tourne tout seul.
 5. **Lisibilité et fluidité** : annonces au sol, barres, textes lisibles ; image fluide (ombres et anticrénelage coupés sur téléphone).
 6. **En réseau** (si tu veux) : PC qui héberge les Vallons (section 6), téléphone sur le même Wi-Fi → **Menu** → adresse du PC → **Rejoindre**.
 

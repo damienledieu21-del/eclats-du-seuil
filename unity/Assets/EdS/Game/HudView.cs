@@ -190,14 +190,15 @@ namespace EdS.Game
             _crack.fillOrigin = (int)Image.OriginVertical.Bottom;
             UiKit.Fill(UiKit.Image(_crest, "Contour", UiKit.Sprite("sceau_contour"), Color.white).rectTransform);
             // Essai réaliste 9 : chiffres dessinés plus gros pour rester lisibles dans le sceau réduit.
-            _healthValue = UiText.Create(_crest, "Vie", UiFace.Number, 62f, UiKit.Ink, TextAnchor.MiddleCenter);
-            At(_healthValue.Rect, 96f, 152f, 150f, 70f, 0.5f, 0.5f);
-            _healthMax = UiText.Create(_crest, "Vie maximale", UiFace.Body, 32f, UiKit.Alpha(UiKit.Ink, 0.8f), TextAnchor.MiddleCenter);
-            At(_healthMax.Rect, 96f, 202f, 150f, 40f, 0.5f, 0.5f);
-            _enduranceValue = UiText.Create(_crest, "Endurance", UiFace.Number, 62f, UiKit.Ink, TextAnchor.MiddleCenter);
-            At(_enduranceValue.Rect, 194f, 152f, 150f, 70f, 0.5f, 0.5f);
-            _enduranceMax = UiText.Create(_crest, "Endurance maximale", UiFace.Body, 32f, UiKit.Alpha(UiKit.Ink, 0.8f), TextAnchor.MiddleCenter);
-            At(_enduranceMax.Rect, 194f, 202f, 150f, 40f, 0.5f, 0.5f);
+            // Relecture : 54 et 28, centres écartés, pour que « 2100 » et « 115 » ne se touchent pas de part et d'autre de la fissure.
+            _healthValue = UiText.Create(_crest, "Vie", UiFace.Number, 54f, UiKit.Ink, TextAnchor.MiddleCenter);
+            At(_healthValue.Rect, 88f, 152f, 130f, 64f, 0.5f, 0.5f);
+            _healthMax = UiText.Create(_crest, "Vie maximale", UiFace.Body, 28f, UiKit.Alpha(UiKit.Ink, 0.8f), TextAnchor.MiddleCenter);
+            At(_healthMax.Rect, 88f, 198f, 130f, 36f, 0.5f, 0.5f);
+            _enduranceValue = UiText.Create(_crest, "Endurance", UiFace.Number, 54f, UiKit.Ink, TextAnchor.MiddleCenter);
+            At(_enduranceValue.Rect, 202f, 152f, 130f, 64f, 0.5f, 0.5f);
+            _enduranceMax = UiText.Create(_crest, "Endurance maximale", UiFace.Body, 28f, UiKit.Alpha(UiKit.Ink, 0.8f), TextAnchor.MiddleCenter);
+            At(_enduranceMax.Rect, 202f, 198f, 130f, 36f, 0.5f, 0.5f);
             for (int i = 0; i < 16; i++)
             {
                 Image dot = UiKit.Image(_crest, "Braise", UiKit.Sprite("braise"), UiKit.Dawn);
@@ -209,10 +210,10 @@ namespace EdS.Game
             Spark(_crest, 145f, 36f, 30f, 0.5f);
 
             _resonance = UiText.Create(_bottom, "Résonance", UiFace.Bold, 14f, UiKit.Dawn, TextAnchor.MiddleCenter, 18f, true);
-            At(_resonance.Rect, 500f, 308f, 220f, 20f, 0.5f, 0.5f);
+            At(_resonance.Rect, 500f, 313f, 220f, 20f, 0.5f, 0.5f);   // essai réaliste 9 : sous le sceau réduit
             _resonance.Gradient(UiKit.Dawn, UiKit.Teal);
             _states = UiText.Create(_bottom, "Altérations", UiFace.Body, 18f, UiKit.Dawn, TextAnchor.MiddleCenter);
-            At(_states.Rect, 500f, CrestTop - 44f, 900f, 26f, 0.5f, 0.5f);
+            At(_states.Rect, 500f, CrestTop - 60f, 900f, 26f, 0.5f, 0.5f);   // au-dessus des Charges
             _guard = UiText.Create(_bottom, "Garde", UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 18f, true);
             At(_guard.Rect, 96f, 288f, 200f, 22f, 0f, 0.5f);
         }
@@ -444,7 +445,8 @@ namespace EdS.Game
 
         private void BuildSettings()
         {
-            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 640f, 560f, 250f, 0.5f, 0.5f);
+            // Relecture : entre le bandeau « Pause » et l'indication du bas ; montré seulement sans annonce (fin de combat, défaite).
+            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 500f, 560f, 250f, 0.5f, 0.5f);
             UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.Sprite("dalle", 40f), Color.white, Image.Type.Sliced).rectTransform);
             UiText title = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
             At(title.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);

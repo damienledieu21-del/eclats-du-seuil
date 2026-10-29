@@ -55,18 +55,34 @@ namespace EdS.Game
         /// <summary>Réglage : sensibilité de la souris (0,5 à 2).</summary>
         public float Sensitivity { get; private set; } = 1f;
 
-        /// <summary>Intérieurs : la caméra reste dans la pièce (distance bornée).</summary>
+        /// <summary>
+        /// Intérieurs : la caméra reste dans la pièce. Relecture : la distance choisie dehors est gardée à part ; dans une pièce, une
+        /// distance propre, bornée, part de la plus petite des deux.
+        /// </summary>
         public bool Indoors
         {
             get => _indoors;
             set
             {
+                if (value && !_indoors) _indoorDistance = (float)CameraRules.Zoom(_distance, 0, true);
                 _indoors = value;
-                _distance = (float)CameraRules.Zoom(_distance, 0, value);
             }
         }
 
         private bool _indoors;
+        private float _indoorDistance = (float)CameraRules.IndoorMaxDistance;
+
+        /// <summary>Distance demandée là où l'on est (dehors ou dans une pièce).</summary>
+        private float Wanted => _indoors ? _indoorDistance : _distance;
+
+        /// <summary>Clic gauche maintenu en cours (réglage « clic maintenu ») : le jeu cache alors le curseur, comme World of Warcraft.</summary>
+        public bool Dragging => _dragging;
+
+        /// <summary>
+        /// Relecture : un écran, un menu (même dessiné en IMGUI) ou les commandes tactiles sont ouverts ; un clic gauche n'y commence pas
+        /// de rotation.
+        /// </summary>
+        public bool Blocked { get; set; }
 
         private CameraRig(Camera camera)
         {
@@ -143,11 +159,24 @@ namespace EdS.Game
         /// Sous-lot 11.8 : rotation (degrés) et rapprochement demandés au doigt (glisser, pincer ; <paramref name="settingDelta"/> positif :
         /// plus près). Les réglages sont gardés au plus deux fois par seconde.
         /// </summary>
-        public void Nudge(float yawDegrees, float settingDelta)
+        public void Nudge(float yawDegrees, float settingDelta, float pitchDegrees = 0f)
         {
             if (yawDegrees != 0f) _yaw = (float)CameraRules.Wrap(_yaw + yawDegrees);
+            // Relecture : le doigt qui glisse vers le haut ou le bas incline aussi la vue (vue haute ou derrière le personnage).
+            if (pitchDegrees != 0f)
+            {
+                _pitch = (float)CameraRules.Incline(_pitch, pitchDegrees);
+                _unsaved = true;
+            }
             if (settingDelta == 0f) return;
-            _distance = (float)CameraRules.Pinch(_distance, settingDelta, _indoors);
+            Zoom(CameraRules.Pinch(Wanted, settingDelta, _indoors));
+        }
+
+        /// <summary>Nouvelle distance, là où l'on est : celle de dehors est gardée d'une partie à l'autre.</summary>
+        private void Zoom(double distance)
+        {
+            if (_indoors) _indoorDistance = (float)distance;
+            else _distance = (float)distance;
             _unsaved = true;
         }
 
@@ -159,18 +188,14 @@ namespace EdS.Game
         public void Follow(Vector3 player, float playerYaw, bool playerMoving, float deltaTime, bool freeLook = false)
         {
             float scroll = Input.mouseScrollDelta.y;
-            if (scroll != 0f)
-            {
-                _distance = (float)CameraRules.Zoom(_distance, scroll, _indoors);
-                _unsaved = true;
-            }
+            if (scroll != 0f) Zoom(CameraRules.Zoom(Wanted, scroll, _indoors));
             // Par position : A / E en AZERTY, Q / E en QWERTY (voir Keys) ; tenues, elles tournent en douceur.
             float turn = (float)CameraRules.TurnSpeed * deltaTime;
             if (Input.GetKey(Keys.TurnLeft)) _yaw -= turn;
             if (Input.GetKey(Keys.TurnRight)) _yaw += turn;
             // Clic gauche maintenu (réglage) : seulement s'il commence hors de l'interface (boutons, carte, écrans).
             if (!ClickLook || freeLook) _dragging = false;
-            else if (Input.GetMouseButtonDown(0)) _dragging = Input.touchCount == 0 && !OverInterface();
+            else if (Input.GetMouseButtonDown(0)) _dragging = Input.touchCount == 0 && !Blocked && !OverInterface();
             else if (!Input.GetMouseButton(0)) _dragging = false;
             // Même cause que la garde (essai du 12.9) : un bouton du milieu simulé par des doigts ne tourne pas la caméra.
             bool look = freeLook || _dragging || PointerInput.MouseLook(Input.touchCount, Input.GetMouseButton(2));
@@ -189,15 +214,17 @@ namespace EdS.Game
 
             // Le point visé suit le joueur en douceur ; l'orientation et l'inclinaison répondent tout de suite à la souris (plus de retard
             // sur la rotation), la distance glisse vers celle demandée.
-            Vector3 aim = player + Vector3.up * (float)CameraRules.TargetHeight(_shownDistance);
+            // Relecture : <paramref name="player"/> est le milieu du corps affiché (les pieds plus 1 m, comme ArenaView.Feet) ; la hauteur
+            // visée se compte depuis les pieds (la tête de près, la poitrine de loin).
+            Vector3 aim = player - Vector3.up + Vector3.up * (float)CameraRules.TargetHeight(_shownDistance);
             if (!_placed)
             {
                 _target = aim;
-                _shownDistance = _distance;
+                _shownDistance = Wanted;
                 _placed = true;
             }
             _target = Vector3.Lerp(_target, aim, 1f - Mathf.Exp(-14f * deltaTime));
-            _shownDistance = Mathf.Lerp(_shownDistance, _distance, 1f - Mathf.Exp(-10f * deltaTime));
+            _shownDistance = Mathf.Lerp(_shownDistance, Wanted, 1f - Mathf.Exp(-10f * deltaTime));
             float held = (float)CameraRules.GroundSafeDistance(_shownDistance, _pitch, _target.y);
             (double ox, double oy, double oz) = CameraRules.Offset(_yaw, _pitch, held);
             Vector3 position = _target + new Vector3((float)ox, (float)oy, (float)oz);
@@ -222,6 +249,6 @@ namespace EdS.Game
 
         /// <summary>Texte de l'aide : la distance de la caméra et la façon de la tourner.</summary>
         public string Describe() =>
-            "caméra à " + Mathf.RoundToInt(_distance) + " m · " + (ClickLook ? "clic gauche pour tourner" : "souris libre");
+            "caméra à " + Mathf.RoundToInt(Wanted) + " m · " + (ClickLook ? "clic gauche pour tourner" : "souris libre");
     }
 }

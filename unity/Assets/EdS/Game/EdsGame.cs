@@ -313,6 +313,7 @@ namespace EdS.Game
             _screens.Close();
             _arena.Paint = null;
             _combat = null;
+            _camera.Indoors = false;   // essai réaliste 9 (relecture) : l'entraînement et le réseau retrouvent la distance de dehors
         }
 
         /// <summary>
@@ -410,7 +411,7 @@ namespace EdS.Game
                 if (_arena.Feet(_combat.PlayerId) is Vector3 feet) _effects?.Healed(feet);   // essai réaliste 7 : éclats verts
             }
             if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
-            _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
+            _camera.Nudge(_touch.YawDelta, _touch.ViewDelta, _touch.PitchDelta);
 
             PlayerState player = _combat.Player();
             frozen = frozen || a.Dialogue != null;   // un dialogue ouvert par F à cette image
@@ -625,10 +626,14 @@ namespace EdS.Game
             bool covered = _talents != null || _menuOpen || _paused || AdventureCovered || LobbyShown;
             if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;
             else if (_cursorReleased && !covered && Input.GetMouseButtonDown(0)) _cursorReleased = false;
-            bool cursorWanted = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt) || _cursorReleased;
+            // Essai réaliste 9 (relecture) : réglage « clic maintenu » (World of Warcraft) : le curseur reste visible, il n'est caché que
+            // pendant que le clic gauche tourne la vue.
+            bool cursorWanted = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt) || _cursorReleased || _camera.ClickLook;
             _freeLook = PointerInput.FreeLook(Input.touchCount, _touch.Active, cursorWanted, covered, Application.isFocused);
-            Cursor.lockState = _freeLook ? CursorLockMode.Locked : CursorLockMode.None;
-            Cursor.visible = !_freeLook;
+            _camera.Blocked = covered || _touch.Active;
+            bool hidden = _freeLook || _camera.Dragging;
+            Cursor.lockState = hidden ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !hidden;
             // Écran des talents ouvert : le combat est en pause, seules T et Échap (fermer) comptent ; la souris sert à l'écran. En réseau,
             // la partie continue d'avancer (le serveur ne s'arrête pas), sans entrée de combat.
             if (_talents != null)
@@ -678,7 +683,7 @@ namespace EdS.Game
                 return;
             }
             if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
-            _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
+            _camera.Nudge(_touch.YawDelta, _touch.ViewDelta, _touch.PitchDelta);
             IReadOnlyList<ReferenceBuild> builds = _session.AvailableBuilds();
             KeyCode[] buildKeys = { KeyCode.F1, KeyCode.F2, KeyCode.F3, KeyCode.F4, KeyCode.F5 };
             for (int i = 0; i < buildKeys.Length && i < builds.Count; i++)
@@ -969,7 +974,7 @@ namespace EdS.Game
                 _arena.Populate(combat);
             }
             if (input && (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed)) _camera.Toggle(_playerYaw);
-            if (input) _camera.Nudge(_touch.YawDelta, _touch.ViewDelta);
+            if (input) _camera.Nudge(_touch.YawDelta, _touch.ViewDelta, _touch.PitchDelta);
             if (input && client != null && client.Status == ClientStatus.Lobby)
             {
                 IReadOnlyList<ReferenceBuild> builds = _session.AvailableBuilds();
@@ -1281,7 +1286,7 @@ namespace EdS.Game
                 string notice = !a.MustContinue ? null
                     : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
                 _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
-                _hud.Settings(_paused && open, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
+                _hud.Settings(_paused && open && notice == null, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
                 _hud.Clock(null);
                 if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
                 _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);
@@ -1291,7 +1296,7 @@ namespace EdS.Game
                 _hud.Adventure(null, null, 0, false, _touch.Active);
                 float elapsed = _combat.Tick * (float)_combat.TickSeconds;
                 _hud.Center(_paused ? "Pause" : null, null, null);
-                _hud.Settings(_paused, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
+                _hud.Settings(_paused && !_combat.IsFinished, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);   // pas sur l'écran de fin
                 _hud.Clock($"{(int)elapsed / 60}:{(int)elapsed % 60:00}");
                 if (Network)
                     _hud.Help(_help, "Coopération", (_net.Host != null ? "Tu héberges" : _net.Address) + " · " + NetworkBuildName() + " · " + _camera.Describe(), HelpKeys.Network);
