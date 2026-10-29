@@ -192,7 +192,7 @@ Découpage décidé (« Les Vallons en très grand », 29 octobre 2026) :
 - **Vague 3, les aventures** : les trois donjons (crypte sous la chapelle, mines de la carrière, grottes noyées du lac) avec pièges, énigmes, chef et réveil renforcé ; le boss du monde « le Grand Solitaire » ; créatures rares nommées ; chasses avec pistage ; cartes au trésor ; énigmes du Seuil ; arène du camp ; choix qui restent (chef des bandits, hameau).
 - **Vague 4, la vie à côté du combat** : cuisine et boulangerie (concours de pâtisserie), pêche et carnet, jeu de cartes à la taverne, tir à l'arc et courses, maison au bourg, compagnon, forge poussée (+1 à +10, sertissage, ensembles, arme légendaire), bestiaire, hauts faits et titres, livres à lire.
 
-Les huit grands sujets du jeu complet (classes, histoire, combat, progression, multijoueur, modèle économique, montures et voyages, identité) sont dans la feuille de route. Ils servent de cap : la vague 1 n'en prend que ce qu'il faut pour les Vallons en solo.
+Les quatorze grands sujets du jeu complet (classes, histoire, combat, progression, multijoueur et chat, modèle économique, montures et voyages, identité, régions, jeu après l'histoire, compagnons, fêtes et saisons, âme du jeu, réglages et accessibilité) sont dans la feuille de route. Ils servent de cap : la vague 1 n'en prend que ce qu'il faut pour les Vallons en solo.
 
 ## 8. Ordre de travail
 
