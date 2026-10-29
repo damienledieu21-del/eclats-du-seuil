@@ -275,7 +275,7 @@ namespace EdS.Game
         /// <summary>Intérieurs : zone affichée (une autre après une porte : repères refaits, fondu au noir).</summary>
         private string _shownZone;
 
-        /// <summary>Intérieurs : opacité du fondu au noir après une porte (1 → 0 en <see cref="FadeSeconds"/>).</summary>
+        /// <summary>Intérieurs : opacité du fondu au noir après une porte (de 1 à 0 en <see cref="FadeSeconds"/>).</summary>
         private float _fade;
 
         private const float FadeSeconds = 0.7f;
