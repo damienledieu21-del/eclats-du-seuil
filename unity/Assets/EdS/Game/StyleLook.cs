@@ -60,6 +60,27 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// Essai réaliste 8 : un villageois joue en boucle l'animation de son activité (<see cref="TownModels.VillagerClip"/>), commencée à
+        /// un moment propre à chacun (deux bavards ne bougent pas ensemble). Rend son nom, ou null s'il n'a pas d'animation.
+        /// </summary>
+        public string Loop(VillagerActivity activity, int variant)
+        {
+            if (_animation == null) return null;
+            string clip = TownModels.VillagerClip(_clips, activity, variant);
+            if (clip == null) return null;
+            if (clip == _playing) return clip;
+            AnimationState state = _animation[clip];
+            if (state != null)
+            {
+                state.wrapMode = WrapMode.Loop;
+                state.time = state.length * (Mathf.Abs(variant) % 10) / 10f;
+            }
+            _animation.CrossFade(clip, 0.25f);
+            _playing = clip;
+            return clip;
+        }
+
+        /// <summary>
         /// Revue Codex de la PR #55 : même signal que le corps simple : assombri mort, clignotant jaune étourdi (chaque image tant que
         /// l'étourdissement dure), sinon les couleurs d'origine du modèle (rendues une fois au retour).
         /// </summary>
@@ -194,12 +215,22 @@ namespace EdS.Game
             if (own != null) own.enabled = false;
             // Essai du 26 octobre 2026 : les loups et les sangliers des packs n'ont pas de texture (couleur unique ou couleurs de sommets que
             // le rendu n'affiche pas) et sortaient blancs ; leurs matériaux sans texture prennent la couleur du catalogue.
+            // Essai réaliste 8 : le loup réaliste de l'Asset Store a ses textures sur « _MainTex » ou sur d'autres propriétés (pelage) : il
+            // garde ses couleurs.
             if (slot == StyleSlot.Wolf || slot == StyleSlot.Boar)
                 foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
                     foreach (Material m in r.materials)
-                        if (!m.HasProperty("_BaseMap") || m.GetTexture("_BaseMap") == null)
+                        if (!Textured(m, "_BaseMap") && !Textured(m, "_MainTex") && !Textured(m, "_BaseColorMap"))
                             ArenaView.ApplyColor(m, slot == StyleSlot.Wolf ? catalog.WolfColor : catalog.BoarColor);
             Animation animation = look.GetComponentInChildren<Animation>();
+            // Essai réaliste 8 : un prefab de pack garde son Animator, qui ne sait pas jouer des animations « Legacy » : coupé, le
+            // composant Animation joue.
+            if (animation != null)
+                foreach (Animator animator in look.GetComponentsInChildren<Animator>())
+                {
+                    animator.enabled = false;
+                    Object.Destroy(animator);
+                }
             // Essai réaliste : les personnages de Mixamo ont leurs animations dans des fichiers à part (catalogue), jouées par un composant
             // Animation posé sur la racine du modèle (les chemins des os partent de là).
             AnimationClip[] clips = catalog.Clips(slot, id);
@@ -211,6 +242,9 @@ namespace EdS.Game
             }
             return new StyleBody(look.transform, animation, height);
         }
+
+        /// <summary>Le matériau a-t-il une texture sur <paramref name="property"/> ?</summary>
+        private static bool Textured(Material m, string property) => m.HasProperty(property) && m.GetTexture(property) != null;
 
         /// <summary>
         /// Élément de décor du modèle de <paramref name="slot"/> posé au sol en <paramref name="center"/>, de hauteur <paramref name="height"/>

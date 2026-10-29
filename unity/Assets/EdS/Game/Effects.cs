@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EdS.Runtime;
 using UnityEngine;
 
 namespace EdS.Game
@@ -25,8 +26,11 @@ namespace EdS.Game
         public static readonly Color Gold = new Color(1f, 0.78f, 0.35f), Teal = new Color(0.45f, 0.95f, 1f), Blood = new Color(0.75f, 0.08f, 0.06f),
             Hot = new Color(1f, 0.86f, 0.6f), Heal = new Color(0.45f, 1f, 0.55f), Arcane = new Color(0.72f, 0.55f, 1f);
 
+        private readonly Transform _root;
+
         private Effects(Transform root, Material template)
         {
+            _root = root;
             // Texture, mélange additif ou non, rendu, taille au fil de la vie (null : constante), gravité, plafond de particules.
             Make(root, template, Kind.Spark, "etincelle", true, ParticleSystemRenderMode.Stretch, Shrink(), 1.6f, 240);
             Make(root, template, Kind.Flash, "eclair", true, ParticleSystemRenderMode.Billboard, Grow(0.6f, 1.3f), 0f, 24);
@@ -64,11 +68,69 @@ namespace EdS.Game
 
         private static Vector3 Floor(Vector3 feet) => feet + Vector3.up * 0.06f;
 
+        /// <summary>
+        /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : effets de combat des packs gratuits) : l'effet <paramref name="kind"/>
+        /// d'un pack (catalogue), posé en <paramref name="at"/>, tourné de <paramref name="yaw"/> degrés, à l'échelle
+        /// <paramref name="scale"/> (particules comprises), éteint après sa durée (<see cref="PackEffect"/>). Sur ordinateur seulement ; false sans lui (les particules
+        /// du jeu restent).
+        /// </summary>
+        private bool Pack(StyleVfx kind, Vector3 at, float yaw = 0f, float scale = 1f)
+        {
+            if (Application.isMobilePlatform) return false;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            VfxLook look = catalog != null ? catalog.Effect(kind) : null;
+            if (look == null) return false;
+            GameObject fx = Object.Instantiate(look.Prefab, at, Quaternion.Euler(0f, yaw + look.Yaw, 0f), _root);
+            float k = look.Scale * scale;
+            if (Mathf.Abs(k - 1f) > 0.01f)
+            {
+                fx.transform.localScale = fx.transform.localScale * k;
+                foreach (ParticleSystem system in fx.GetComponentsInChildren<ParticleSystem>())
+                {
+                    ParticleSystem.MainModule main = system.main;
+                    main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+                }
+            }
+            // Relecture indépendante : les auras en boucle cessent d'émettre à la fin de leur durée et s'éteignent, sans disparaître d'un coup.
+            fx.AddComponent<PackEffect>().Begin(look.Life);
+            return true;
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 : effet continu d'un pack (flammes et fumée du foyer de la forge, Particle Pack de Unity) posé en
+        /// <paramref name="at"/> sous <paramref name="parent"/>, à l'échelle du catalogue ; il vit avec son parent. Sur ordinateur
+        /// seulement ; null sans lui.
+        /// </summary>
+        public static GameObject Ambient(StyleVfx kind, Transform parent, Vector3 at)
+        {
+            if (Application.isMobilePlatform) return null;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            VfxLook look = catalog != null ? catalog.Effect(kind) : null;
+            if (look == null) return null;
+            GameObject fx = Object.Instantiate(look.Prefab, at, Quaternion.Euler(0f, look.Yaw, 0f), parent);
+            if (Mathf.Abs(look.Scale - 1f) > 0.01f)
+            {
+                fx.transform.localScale = fx.transform.localScale * look.Scale;
+                foreach (ParticleSystem system in fx.GetComponentsInChildren<ParticleSystem>())
+                {
+                    ParticleSystem.MainModule main = system.main;
+                    main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+                }
+            }
+            return fx;
+        }
+
         /// <summary>Coup reçu : gerbe d'étincelles, éclair, gouttes sombres ; <paramref name="strength"/> de 0 à 1 (part de vie perdue).</summary>
         public void Hit(Vector3 feet, float height, float strength, bool critical)
         {
             Vector3 at = Chest(feet, height);
             float k = Mathf.Clamp01(strength);
+            // Essai réaliste 8 : l'impact du pack s'il y est (un peu de sang du jeu en plus).
+            if (Pack(critical ? StyleVfx.Crit : StyleVfx.Hit, at, 0f, 0.8f + 0.4f * k))
+            {
+                Burst(Kind.Star, at, 3 + (int)(5 * k), 0.8f, 2.2f, 0.06f, 0.14f, 0.3f, 0.6f, Blood, 0.6f);
+                return;
+            }
             Burst(Kind.Spark, at, 8 + (int)(14 * k), 3.5f, 7.5f, 0.05f, 0.09f, 0.22f, 0.42f, Hot, 1.2f);
             Burst(Kind.Flash, at, 1, 0f, 0f, 0.9f + 0.8f * k, 1.3f + k, 0.1f, 0.14f, critical ? Gold : Hot, 0f);
             Burst(Kind.Star, at, 3 + (int)(5 * k), 0.8f, 2.2f, 0.06f, 0.14f, 0.3f, 0.6f, Blood, 0.6f);
@@ -79,6 +141,7 @@ namespace EdS.Game
         public void Blocked(Vector3 feet, float height)
         {
             Vector3 at = Chest(feet, height);
+            if (Pack(StyleVfx.Block, at, 0f, 0.7f)) return;
             Burst(Kind.Spark, at, 14, 4f, 8f, 0.05f, 0.08f, 0.2f, 0.36f, Teal, 1.5f);
             Burst(Kind.Flash, at, 1, 0f, 0f, 1.1f, 1.4f, 0.1f, 0.12f, Teal, 0f);
         }
@@ -87,6 +150,12 @@ namespace EdS.Game
         public void Parry(Vector3 feet, float height)
         {
             Vector3 at = Chest(feet, height);
+            // Essai réaliste 8 : l'éclat sacré du pack, et toujours l'emblème des Éclats.
+            if (Pack(StyleVfx.Parry, at))
+            {
+                Burst(Kind.Emblem, at, 1, 0f, 0f, 1.6f, 1.6f, 0.45f, 0.45f, Gold, 0f);
+                return;
+            }
             Burst(Kind.Flash, at, 1, 0f, 0f, 2.4f, 2.8f, 0.16f, 0.16f, Gold, 0f);
             Burst(Kind.Emblem, at, 1, 0f, 0f, 1.6f, 1.6f, 0.45f, 0.45f, Gold, 0f);
             Burst(Kind.Ring, Floor(feet), 1, 0f, 0f, 3.6f, 3.6f, 0.45f, 0.45f, Gold, 0f);
@@ -98,6 +167,7 @@ namespace EdS.Game
         public void GuardBroken(Vector3 feet, float height)
         {
             Vector3 at = Chest(feet, height);
+            if (Pack(StyleVfx.GuardBroken, at, 0f, 0.6f)) return;
             Burst(Kind.Spark, at, 18, 3f, 7f, 0.06f, 0.1f, 0.25f, 0.45f, new Color(1f, 0.35f, 0.25f), 1.4f);
             Burst(Kind.Smoke, at, 4, 0.3f, 0.9f, 0.6f, 1f, 0.6f, 0.9f, new Color(0.25f, 0.22f, 0.22f, 0.7f), 0f);
         }
@@ -107,6 +177,7 @@ namespace EdS.Game
         {
             Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
             Vector3 front = Chest(feet, height) + forward * 0.9f;
+            if (Pack(StyleVfx.Slash, Chest(feet, height) + forward * 0.4f, yaw)) return;
             EmitOne(Kind.Slash, front, Vector3.zero, 1.9f, 0.2f, color, (float)(_random.NextDouble() * 60.0 - 30.0));
             Burst(Kind.Spark, front, 5, 1.5f, 3.5f, 0.04f, 0.07f, 0.15f, 0.25f, color, 0.8f);
         }
@@ -115,6 +186,7 @@ namespace EdS.Game
         public void Cast(Vector3 feet, Color color)
         {
             Vector3 ground = Floor(feet);
+            if (Pack(StyleVfx.Cast, ground)) return;
             EmitOne(Kind.Swirl, ground, Vector3.zero, 2.6f, 0.7f, color, (float)(_random.NextDouble() * 360.0));
             Burst(Kind.Ring, ground, 1, 0f, 0f, 3f, 3f, 0.5f, 0.5f, color, 0f);
             Burst(Kind.Glow, feet + Vector3.up * 1f, 1, 0f, 0f, 2.2f, 2.4f, 0.35f, 0.35f, color, 0f);
@@ -124,6 +196,7 @@ namespace EdS.Game
         /// <summary>Niveau gagné : colonne de lumière, onde dorée, étoiles qui montent.</summary>
         public void LevelUp(Vector3 feet)
         {
+            if (Pack(StyleVfx.LevelUp, feet)) return;
             EmitOne(Kind.Beam, feet + Vector3.up * 2.2f, Vector3.zero, 5f, 1.3f, Gold, 0f);
             Burst(Kind.Ring, Floor(feet), 1, 0f, 0f, 5f, 5f, 0.8f, 0.8f, Gold, 0f);
             Rise(Kind.Star, feet, 18, 0.9f, 0.12f, 0.26f, 0.9f, 1.4f, Gold);
@@ -134,17 +207,23 @@ namespace EdS.Game
         public void Charge(Vector3 feet, float height)
         {
             Vector3 at = Chest(feet, height);
+            if (Pack(StyleVfx.Charge, at, 0f, 0.5f)) return;
             Burst(Kind.Star, at, 1, 0f, 0f, 0.7f, 0.7f, 0.35f, 0.35f, Gold, 0f);
             Burst(Kind.Spark, at, 6, 1.5f, 3f, 0.04f, 0.06f, 0.2f, 0.3f, Gold, 0.4f);
         }
 
         /// <summary>Potion bue : éclats verts qui montent.</summary>
-        public void Healed(Vector3 feet) => Rise(Kind.Mote, feet, 18, 0.6f, 0.1f, 0.2f, 0.8f, 1.2f, Heal);
+        public void Healed(Vector3 feet)
+        {
+            if (Pack(StyleVfx.Heal, feet)) return;
+            Rise(Kind.Mote, feet, 18, 0.6f, 0.1f, 0.2f, 0.8f, 1.2f, Heal);
+        }
 
         /// <summary>Mort : nuage de poussière au sol.</summary>
         public void Death(Vector3 feet)
         {
             Vector3 ground = feet + Vector3.up * 0.2f;
+            if (Pack(StyleVfx.Death, feet)) return;
             Burst(Kind.Dust, ground, 8, 0.6f, 1.6f, 0.5f, 1f, 0.7f, 1.1f, new Color(0.55f, 0.48f, 0.38f, 0.75f), 0f);
             Burst(Kind.Smoke, ground, 4, 0.3f, 0.8f, 0.8f, 1.4f, 0.9f, 1.3f, new Color(0.6f, 0.58f, 0.55f, 0.5f), 0f);
         }
@@ -153,6 +232,7 @@ namespace EdS.Game
         public void Slam(Vector3 feet, float radius)
         {
             Vector3 ground = Floor(feet);
+            if (Pack(StyleVfx.Slam, ground, 0f, Mathf.Clamp(radius / 2.5f, 0.6f, 2.5f))) return;
             Burst(Kind.Ring, ground, 1, 0f, 0f, radius * 2f, radius * 2f, 0.4f, 0.4f, Hot, 0f);
             Burst(Kind.Dust, ground, 10, 1f, 3f, 0.4f, 0.9f, 0.6f, 1f, new Color(0.55f, 0.48f, 0.38f, 0.7f), 0f);
         }

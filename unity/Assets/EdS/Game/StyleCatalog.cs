@@ -41,6 +41,36 @@ namespace EdS.Game
         public float Yaw;
     }
 
+    /// <summary>
+    /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : de vrais bâtiments en 3D) : un modèle de bâtiment de Sketchfab, rangé par
+    /// genre (« Assets/Style/Sketchfab/Batiments/Maison/… »), et son pied (m, x et z, à l'échelle 1, face vers +z) mesuré par le menu.
+    /// </summary>
+    [Serializable]
+    public sealed class BuildingLook
+    {
+        public StyleBuilding Kind;
+        public GameObject Model;
+        [Tooltip("Pied du modèle (m) le long de x et de z, à l'échelle 1 (mesuré par le menu).")]
+        public Vector2 Size;
+    }
+
+    /// <summary>
+    /// Essai réaliste 8 : un effet de combat d'un pack de l'Asset Store (prefab de particules), sa taille, sa rotation et sa durée,
+    /// modifiables dans l'inspecteur.
+    /// </summary>
+    [Serializable]
+    public sealed class VfxLook
+    {
+        public StyleVfx Kind;
+        public GameObject Prefab;
+        [Tooltip("Échelle de l'effet (1 : taille du pack).")]
+        public float Scale = 1f;
+        [Tooltip("Rotation ajoutée (degrés) si l'effet est tourné de travers (la taille d'épée).")]
+        public float Yaw;
+        [Tooltip("Durée (s) avant que l'effet soit retiré.")]
+        public float Life = 2.5f;
+    }
+
     /// <summary>Essai réaliste 7 : les variantes d'un bruitage.</summary>
     [Serializable]
     public sealed class SoundSet
@@ -134,6 +164,22 @@ namespace EdS.Game
         public Texture2D RockNormal;
         public Texture2D GrassColor;
         public Texture2D GrassNormal;
+
+        [Header("Essai réaliste 8 : bâtiments de Sketchfab, chemins et champs (28 octobre 2026)")]
+        [Tooltip("Modèles des bâtiments, par genre (remplis par le menu) ; sans modèle d'un genre, le bâtiment fait par le code reste.")]
+        public BuildingLook[] Buildings = new BuildingLook[0];
+        [Tooltip("Terre battue des chemins (dossier « Ground », nom « chemin… »).")]
+        public Texture2D RoadColor;
+        public Texture2D RoadNormal;
+        [Tooltip("Terre labourée des champs (dossier « Ground », nom « champ… »).")]
+        public Texture2D FieldColor;
+        public Texture2D FieldNormal;
+        [Tooltip("Villageois au plus sur ordinateur (le tiers sur téléphone).")]
+        [Range(0, 30)] public int Villagers = 14;
+        [Tooltip("Effets de combat des packs (Hit Effects FREE, Magic Effects FREE, Free Slash VFX), sur ordinateur ; sans eux, les particules du jeu.")]
+        public VfxLook[] Vfx = new VfxLook[0];
+        [Tooltip("Eau de lac du sample Production Ready Shaders (rempli par le menu), sur ordinateur ; sans elle, l'eau « EdS/Eau ».")]
+        public Material SampleWater;
 
         [Header("Essai réaliste : décor (pris au lancement du combat)")]
         [Tooltip("Taille (m) d'une répétition des textures du sol.")]
@@ -273,6 +319,25 @@ namespace EdS.Game
 
         public float Yaw(StyleSlot slot, string id = null) => slot == StyleSlot.Hero ? HeroYaw : slot == StyleSlot.Wolf ? WolfYaw : slot == StyleSlot.Boar ? BoarYaw
             : slot == StyleSlot.Character ? Character(id)?.Yaw ?? 0f : 0f;
+
+        /// <summary>Essai réaliste 8 : l'effet de combat <paramref name="kind"/> d'un pack, ou null.</summary>
+        public VfxLook Effect(StyleVfx kind)
+        {
+            if (Vfx == null) return null;
+            foreach (VfxLook v in Vfx)
+                if (v != null && v.Kind == kind && v.Prefab != null) return v;
+            return null;
+        }
+
+        /// <summary>Essai réaliste 8 : les modèles de bâtiment du genre <paramref name="kind"/>, mesurés (vide sans modèle).</summary>
+        public System.Collections.Generic.List<BuildingLook> BuildingsOf(StyleBuilding kind)
+        {
+            var list = new System.Collections.Generic.List<BuildingLook>();
+            if (Buildings == null) return list;
+            foreach (BuildingLook b in Buildings)
+                if (b != null && b.Kind == kind && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) list.Add(b);
+            return list;
+        }
 
         /// <summary>Personnage d'un PNJ ou d'un ennemi d'après son identifiant (« npc.odile », « gardien_eveille »), ou null.</summary>
         public CharacterLook Character(string id)

@@ -55,7 +55,13 @@ namespace EdS.Game.Editor
             string hero = StyleRules.Candidates(models, StyleSlot.Hero).FirstOrDefault();
             string wolf = StyleRules.Candidates(models, StyleSlot.Wolf).FirstOrDefault();
             string boar = StyleRules.Candidates(models, StyleSlot.Boar).FirstOrDefault();
-            foreach (string animated in new[] { hero, wolf, boar }.Where(p => p != null)) Legacy(animated, false);
+            // Essai réaliste 8 (point 6) : un loup ou un sanglier réaliste d'un pack de l'Asset Store (prefab prêt pour URP, « Realistic Furry
+            // Wolf ») passe devant ceux des packs stylisés ; ses animations, lues comme les autres (« Legacy »), sont celles de son modèle.
+            List<string> allPrefabs = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
+            string packWolf = PackAnimal(allPrefabs, StyleSlot.Wolf, notes), packBoar = PackAnimal(allPrefabs, StyleSlot.Boar, notes);
+            foreach (string animated in new[] { hero, packWolf == null ? wolf : null, packBoar == null ? boar : null }.Where(p => p != null)) Legacy(animated, false);
+            if (packWolf != null) wolf = packWolf;
+            if (packBoar != null) boar = packBoar;
             IReadOnlyList<string> heroClips = StyleRules.Companions(hero, models);
             foreach (string clip in heroClips) Legacy(clip, true);
 
@@ -110,12 +116,25 @@ namespace EdS.Game.Editor
             catalog.HeroClips = heroClips.SelectMany(Clips).ToArray();
             catalog.Trees = StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Select(p => trees.TryGetValue(p, out string prefab) ? prefab : p).Select(Load)
                 .Where(m => m != null).ToArray();
-            catalog.Rocks = StyleRules.ForCatalog(models, StyleSlot.Rock, 6).Select(Load).Where(m => m != null).ToArray();
-            catalog.Plants = StyleRules.ForCatalog(models, StyleSlot.Plant, 16).Select(Load).Where(m => m != null).ToArray();
+            // Essai réaliste 8 (point 3 de la demande de Damien du 28 octobre 2026) : prefabs des samples de Unity importés à la racine de
+            // Assets (rochers de Viking Village, fougères, herbes et buissons du Book of the Dead, végétation du Terrain Sample) d'abord ;
+            // ceux de Poly Haven complètent.
+            List<string> prefabs = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
+            // Relecture indépendante : seuls les prefabs des exemples dont tous les matériaux se dessinent avec URP (pas une variante
+            // faite pour HDRP, qui sortirait rose).
+            List<string> samples = prefabs.Where(StyleRules.IsSample).Where(Renders).ToList();
+            catalog.Rocks = StyleRules.MergeDecor(StyleRules.SampleDecor(samples, StyleSlot.Rock, 6), StyleRules.ForCatalog(models, StyleSlot.Rock, 6), 6)
+                .Select(Load).Where(m => m != null).ToArray();
+            catalog.Plants = StyleRules.MergeDecor(StyleRules.SampleDecor(samples, StyleSlot.Plant, 12), StyleRules.ForCatalog(models, StyleSlot.Plant, 16), 20)
+                .Select(Load).Where(m => m != null).ToArray();
             catalog.Debris = StyleRules.ForCatalog(models, StyleSlot.Debris, 6).Select(Load).Where(m => m != null).ToArray();
             // Essai réaliste (demandes de Damien du 27 octobre 2026) : arbustes des haies, objets de la forge, ponton, herbe de l'Aube, moulin,
             // et le matériau de l'eau. L'échelle et la rotation réglées à la main sont gardées.
-            catalog.Shrubs = StyleRules.ForCatalog(models, StyleSlot.Shrub, 6).Select(Load).Where(m => m != null).ToArray();
+            catalog.Shrubs = StyleRules.MergeDecor(StyleRules.SampleDecor(samples, StyleSlot.Shrub, 4), StyleRules.ForCatalog(models, StyleSlot.Shrub, 6), 8)
+                .Select(Load).Where(m => m != null).ToArray();
+            int sampleDecor = new[] { StyleSlot.Rock, StyleSlot.Plant, StyleSlot.Shrub }.Sum(s => StyleRules.SampleDecor(samples, s, 99).Count);
+            if (sampleDecor > 0) notes.Add("Décor des samples de Unity : " + StyleRules.SampleDecor(samples, StyleSlot.Rock, 6).Count + " rochers, "
+                + StyleRules.SampleDecor(samples, StyleSlot.Plant, 12).Count + " plantes, " + StyleRules.SampleDecor(samples, StyleSlot.Shrub, 4).Count + " buissons.");
             catalog.Props = System.Enum.GetValues(typeof(StyleProp)).Cast<StyleProp>()
                 .Select(kind =>
                 {
@@ -127,6 +146,10 @@ namespace EdS.Game.Editor
                     };
                 }).Where(p => p.Model != null).ToArray();
             catalog.Water = WaterMaterial(notes);
+            // Essai réaliste 8 (point 3) : l'eau de lac des Production Ready Shaders, pour l'ordinateur.
+            catalog.SampleWater = StyleRules.SampleWater(AssetDatabase.FindAssets("t:Material", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath)) is string lake
+                ? AssetDatabase.LoadAssetAtPath<Material>(lake) : null;
+            if (catalog.SampleWater != null) notes.Add("Eau du sample : " + catalog.SampleWater.name + " (ordinateur).");
             catalog.Grass = ShaderMaterial("EdS/Herbe", "Herbe", notes);
             // Les réglages faits à la main (hauteur, rotation) sont gardés d'une préparation à l'autre.
             catalog.Characters = characters.Select(c =>
@@ -177,12 +200,40 @@ namespace EdS.Game.Editor
                 .Select(kind => new AmbienceLook { Kind = kind, Clip = sounds.Where(p => StyleRules.AmbienceOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
                 .Where(a => a.Clip != null).ToArray();
 
-            catalog.SoilColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Soil, false));
-            catalog.SoilNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Soil, true));
-            catalog.RockColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Rock, false));
-            catalog.RockNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Rock, true));
-            catalog.GrassColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Grass, false));
-            catalog.GrassNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Grass, true));
+            // Essai réaliste 8 (demande de Damien du 28 octobre 2026) : bâtiments de Sketchfab rangés par genre, mesurés une fois ici ;
+            // terre battue des chemins et terre labourée des champs.
+            catalog.Buildings = models.Where(p => TownModels.KindOfModel(p) != StyleBuilding.None).OrderBy(p => p, System.StringComparer.Ordinal)
+                .Select(p => new BuildingLook { Kind = TownModels.KindOfModel(p), Model = Load(p), Size = Foot(Load(p)) })
+                .Where(b => b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f).ToArray();
+            if (catalog.Buildings.Length > 0) notes.Add("Bâtiments de Sketchfab : " + catalog.Buildings.Length + " modèles (" + string.Join(", ",
+                catalog.Buildings.GroupBy(b => b.Kind).Select(g => g.Key + " " + g.Count())) + ").");
+            // Essai réaliste 8 : effets de combat des packs de l'Asset Store importés à la racine de Assets (Matthew Guz, Hovl Studio,
+            // Free Slash VFX), choisis par leur nom ; les réglages faits à la main (taille, rotation, durée) sont gardés.
+            catalog.Vfx = System.Enum.GetValues(typeof(StyleVfx)).Cast<StyleVfx>()
+                .Select(kind =>
+                {
+                    VfxLook old = (catalog.Vfx ?? new VfxLook[0]).FirstOrDefault(o => o != null && o.Kind == kind);
+                    string path = StyleRules.VfxPrefab(prefabs, kind);
+                    return new VfxLook
+                    {
+                        Kind = kind, Prefab = path != null ? AssetDatabase.LoadAssetAtPath<GameObject>(path) : null,
+                        Scale = old != null && old.Scale > 0f ? old.Scale : 1f, Yaw = old != null ? old.Yaw : 0f,
+                        Life = old != null && old.Life > 0.1f ? old.Life : 2.5f,
+                    };
+                }).Where(v => v.Prefab != null).ToArray();
+            if (catalog.Vfx.Length > 0) notes.Add("Effets des packs : " + string.Join(", ", catalog.Vfx.Select(v => v.Kind + " (" + v.Prefab.name + ")")) + ".");
+            int converted = UrpParticles(catalog.Vfx.Select(v => v.Prefab));
+            if (converted > 0) notes.Add("Effets des packs : " + converted + " matériaux de particules passés au rendu URP (faits pour l'ancien rendu, ils sortaient roses).");
+            catalog.RoadColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Road, false));
+            catalog.RoadNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Road, true));
+            catalog.FieldColor = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Field, false));
+            catalog.FieldNormal = Texture2DAt(StyleRules.GroundTexture(textures, StyleGround.Field, true));
+            // Essai réaliste 8 (point 3 : le terrain des samples) : herbe, terre et roche des couches de terrain du Terrain Sample d'abord,
+            // sinon celles de Poly Haven (dossier « Ground »).
+            List<string> layers = AssetDatabase.FindAssets("t:TerrainLayer", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
+            (catalog.SoilColor, catalog.SoilNormal) = Ground(textures, layers, StyleGround.Soil, notes);
+            (catalog.RockColor, catalog.RockNormal) = Ground(textures, layers, StyleGround.Rock, notes);
+            (catalog.GrassColor, catalog.GrassNormal) = Ground(textures, layers, StyleGround.Grass, notes);
             catalog.Sky = SkyMaterial(StyleRules.Sky(textures));
             if (catalog.AmbienceVersion < StyleCatalog.AmbienceDefaults)
             {
@@ -193,7 +244,7 @@ namespace EdS.Game.Editor
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
             PostProcessing(notes);
-            catalog.PhonePipeline = RenderQuality(notes);
+            catalog.PhonePipeline = RenderQuality(notes, catalog.SampleWater != null);
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
 
@@ -204,7 +255,7 @@ namespace EdS.Game.Editor
                 + "\nPersonnages : " + (catalog.Characters.Length == 0 ? "aucun" : string.Join(", ", catalog.Characters.Select(c => c.Id + " (" + c.Clips.Length + " animations)")))
                 + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 6, arbustes des haies : " + catalog.Shrubs.Length
                 + "\nObjets : " + (catalog.Props.Length == 0 ? "aucun" : string.Join(", ", catalog.Props.Select(p => PropName(p.Kind))))
-                + "\nEau : " + (catalog.Water != null ? "vraie eau" : "eau simple") + ", herbe en brins : " + (catalog.Grass != null ? "oui" : "non")
+                + "\nEau : " + (catalog.SampleWater != null ? "eau du sample (ordinateur)" : catalog.Water != null ? "vraie eau" : "eau simple") + ", herbe en brins : " + (catalog.Grass != null ? "oui" : "non")
                 + ", rendu du téléphone : " + (catalog.PhonePipeline != null ? "oui" : "non")
                 + "\nSons : " + found + " sur 7, bruitages variés : " + catalog.SoundSets.Length + " sur " + System.Enum.GetValues(typeof(StyleSound)).Length
                 + ", musiques : " + catalog.Music.Length + " sur 4, ambiances : " + catalog.Ambiences.Length + " sur 3"
@@ -242,6 +293,217 @@ namespace EdS.Game.Editor
             }
             importer.clipAnimations = clips;
             importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 : pied d'un modèle de bâtiment (m, le long de x et de z) à l'échelle 1 : une copie posée le temps de la mesurer.
+        /// </summary>
+        private static Vector2 Foot(GameObject model)
+        {
+            if (model == null) return Vector2.zero;
+            var copy = (GameObject)Object.Instantiate(model);
+            try
+            {
+                Renderer[] renderers = copy.GetComponentsInChildren<Renderer>();
+                if (renderers.Length == 0) return Vector2.zero;
+                Bounds b = renderers[0].bounds;
+                foreach (Renderer r in renderers) b.Encapsulate(r.bounds);
+                return new Vector2(b.size.x, b.size.z);
+            }
+            finally
+            {
+                Object.DestroyImmediate(copy);
+            }
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 (point 6) : prefab réaliste de <paramref name="slot"/> d'un pack (<see cref="StyleRules.PackAnimal"/>) dont tous
+        /// les matériaux se dessinent avec URP ; le modèle qu'il habille passe en animations « Legacy » (le jeu les joue lui-même). Rend le
+        /// chemin du prefab, ou null.
+        /// </summary>
+        private static string PackAnimal(List<string> prefabs, StyleSlot slot, List<string> notes)
+        {
+            string path = StyleRules.PackAnimal(prefabs.Where(Renders), slot);
+            if (path == null) return null;
+            string model = AnimatedModel(Load(path));
+            if (model == null)
+            {
+                notes.Add("Prefab " + Path.GetFileName(path) + " : aucun modèle animé derrière lui, il n'est pas pris.");
+                return null;
+            }
+            Legacy(model, false);
+            notes.Add((slot == StyleSlot.Wolf ? "Loup" : "Sanglier") + " réaliste du pack : " + Path.GetFileName(path) + " (animations de " + Path.GetFileName(model) + ").");
+            return path;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #65 : modèle importé (FBX) animé derrière <paramref name="prefab"/>. Le modèle n'est pas toujours la source
+        /// directe de la racine : le prefab peut le garder en enfant, ou être une variante d'un autre prefab. Chaque objet de la hiérarchie
+        /// remonte sa chaîne de sources (16 pas au plus) jusqu'à un fichier lu par un <see cref="ModelImporter"/> ; celui qui porte un
+        /// maillage animé passe devant (<see cref="StyleRules.AnimatedModel"/>). Rend son chemin, ou null.
+        /// </summary>
+        private static string AnimatedModel(GameObject prefab)
+        {
+            if (prefab == null) return null;
+            var models = new List<(string Path, bool Skinned)>();
+            var seen = new HashSet<string>();
+            foreach (Transform part in prefab.GetComponentsInChildren<Transform>(true))
+            {
+                GameObject source = part.gameObject;
+                for (int step = 0; step < 16 && source != null; step++)
+                {
+                    source = PrefabUtility.GetCorrespondingObjectFromSource(source);
+                    if (source == null) break;
+                    string file = AssetDatabase.GetAssetPath(source);
+                    if (string.IsNullOrEmpty(file) || !(AssetImporter.GetAtPath(file) is ModelImporter)) continue;
+                    if (seen.Add(file)) models.Add((file, source.GetComponentsInChildren<SkinnedMeshRenderer>(true).Length > 0));
+                    break;
+                }
+            }
+            return StyleRules.AnimatedModel(models);
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 : couleur et relief du sol <paramref name="ground"/> : ceux de la couche de terrain d'un sample
+        /// (<see cref="StyleRules.SampleGround"/>), sinon les textures du dossier « Ground » (Poly Haven).
+        /// </summary>
+        private static (Texture2D Color, Texture2D Normal) Ground(List<string> textures, List<string> layers, StyleGround ground, List<string> notes)
+        {
+            if (StyleRules.SampleGround(layers, ground) is string path && AssetDatabase.LoadAssetAtPath<TerrainLayer>(path) is TerrainLayer layer
+                && layer.diffuseTexture != null)
+            {
+                notes.Add("Sol « " + ground + " » : couche " + Path.GetFileNameWithoutExtension(path) + " du sample.");
+                return (layer.diffuseTexture, layer.normalMapTexture);
+            }
+            return (Texture2DAt(StyleRules.GroundTexture(textures, ground, false)), Texture2DAt(StyleRules.GroundTexture(textures, ground, true)));
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 : les effets de Hit Effects FREE et de Magic Effects FREE sont faits pour l'ancien rendu de Unity (shaders
+        /// « Particles/Standard Unlit » et « Particles/Standard Surface ») et sortiraient roses avec URP. Les matériaux de leurs particules
+        /// et de leurs traînées passent sur les shaders de particules d'URP, avec leur texture, leur couleur et leur mélange
+        /// (<see cref="ParticleRules"/>), comme le convertisseur de Unity. Les Shader Graph de Free Slash VFX ne changent pas. Une deuxième
+        /// préparation ne refait rien. Rend le nombre de matériaux convertis.
+        /// </summary>
+        private static int UrpParticles(IEnumerable<GameObject> prefabs)
+        {
+            var seen = new HashSet<Material>();
+            int converted = 0;
+            foreach (GameObject prefab in prefabs.Where(p => p != null))
+                foreach (Renderer renderer in prefab.GetComponentsInChildren<Renderer>(true))
+                {
+                    var materials = new List<Material>(renderer.sharedMaterials ?? new Material[0]);
+                    if (renderer is ParticleSystemRenderer particles) materials.Add(particles.trailMaterial);
+                    foreach (Material material in materials)
+                    {
+                        if (material == null || !seen.Add(material) || material.shader == null || !ParticleRules.IsBuiltInParticle(material.shader.name)) continue;
+                        Shader urp = Shader.Find(ParticleRules.UrpShader(material.shader.name)) ?? Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                        if (urp == null) return converted;
+                        ToUrpParticle(material, urp);
+                        converted++;
+                    }
+                }
+            if (converted > 0) AssetDatabase.SaveAssets();
+            return converted;
+        }
+
+        /// <summary>
+        /// Un matériau de particules de l'ancien rendu passé sur <paramref name="urp"/> : texture et couleur (« _MainTex », « _Color » ou
+        /// « _TintColor » des anciens shaders, doublée comme eux), mode de mélange, mode de couleur, mélange des images d'une planche, faces
+        /// dessinées (les deux pour les anciens shaders), relief et brillance des particules éclairées. Les
+        /// particules douces et le fondu près de la caméra sont coupés (ils demandent la profondeur de l'image) ; une distorsion (l'air qui
+        /// ondule, qui demande l'image opaque) devient invisible plutôt qu'un disque gris.
+        /// </summary>
+        private static void ToUrpParticle(Material m, Shader urp)
+        {
+            string old = m.shader.name;
+            Texture main = m.HasProperty("_MainTex") ? m.GetTexture("_MainTex") : null;
+            Vector2 scale = m.HasProperty("_MainTex") ? m.GetTextureScale("_MainTex") : new Vector2(1f, 1f);
+            Vector2 offset = m.HasProperty("_MainTex") ? m.GetTextureOffset("_MainTex") : Vector2.zero;
+            Color color = new Color(1f, 1f, 1f, 1f);
+            if (m.HasProperty("_Color")) color = m.GetColor("_Color");
+            else if (m.HasProperty("_TintColor"))
+            {
+                Color tint = m.GetColor("_TintColor");
+                color = new Color(tint.r * 2f, tint.g * 2f, tint.b * 2f, Mathf.Min(1f, tint.a * 2f));
+            }
+            double mode = m.HasProperty("_Mode") ? m.GetFloat("_Mode") : ParticleRules.LegacyMode(old);
+            double colorMode = m.HasProperty("_ColorMode") ? m.GetFloat("_ColorMode") : 0;
+            bool flipbook = m.HasProperty("_FlipbookMode") && m.GetFloat("_FlipbookMode") > 0.5f;
+            bool distortion = m.HasProperty("_DistortionEnabled") && m.GetFloat("_DistortionEnabled") > 0.5f;
+            bool emission = m.HasProperty("_EmissionEnabled") && m.GetFloat("_EmissionEnabled") > 0.5f;
+            Color glow = emission && m.HasProperty("_EmissionColor") ? m.GetColor("_EmissionColor") : new Color(0f, 0f, 0f, 1f);
+            // Relecture indépendante de l'essai 8 : les anciens shaders de particules dessinent les deux faces sans le noter dans le
+            // matériau (pas de « _Cull ») ; URP n'en dessinerait qu'une. Relief et brillance des particules éclairées gardés.
+            float cull = m.HasProperty("_Cull") ? m.GetFloat("_Cull") : 0f;
+            bool bump = m.HasProperty("_BumpMap") && m.GetTexture("_BumpMap") != null;
+            float smoothness = m.HasProperty("_Glossiness") ? m.GetFloat("_Glossiness") : 0.5f;
+
+            m.shader = urp;
+            m.shaderKeywords = new string[0];
+            m.SetTexture("_BaseMap", main);
+            m.SetTextureScale("_BaseMap", scale);
+            m.SetTextureOffset("_BaseMap", offset);
+            ParticleBlend blend = distortion ? ParticleRules.Transparent(0) : ParticleRules.Blend(mode);
+            m.SetColor("_BaseColor", distortion ? new Color(0f, 0f, 0f, 0f) : color);
+            m.SetFloat("_Surface", blend.Surface);
+            m.SetFloat("_Blend", blend.Blend);
+            m.SetFloat("_AlphaClip", blend.AlphaClip ? 1f : 0f);
+            m.SetFloat("_SrcBlend", blend.Src);
+            m.SetFloat("_DstBlend", blend.Dst);
+            m.SetFloat("_SrcBlendAlpha", blend.SrcAlpha);
+            m.SetFloat("_DstBlendAlpha", blend.DstAlpha);
+            m.SetFloat("_ZWrite", blend.ZWrite ? 1f : 0f);
+            m.SetFloat("_Cull", cull);
+            m.SetFloat("_Smoothness", smoothness);
+            if (bump) m.EnableKeyword("_NORMALMAP");
+            m.SetOverrideTag("RenderType", blend.Surface == 1 ? "Transparent" : blend.AlphaClip ? "TransparentCutout" : "Opaque");
+            if (blend.Surface == 1) m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            if (blend.Keyword != null) m.EnableKeyword(blend.Keyword);
+            (string colorKeyword, float x, float y) = ParticleRules.ColorMode(colorMode);
+            m.SetFloat("_ColorMode", (float)colorMode);
+            if (colorKeyword != null)
+            {
+                m.EnableKeyword(colorKeyword);
+                m.SetVector("_BaseColorAddSubDiff", new Vector4(x, y, 0f, 0f));
+            }
+            m.SetFloat("_FlipbookBlending", flipbook ? 1f : 0f);
+            if (flipbook) m.EnableKeyword("_FLIPBOOKBLENDING_ON");
+            m.SetFloat("_SoftParticlesEnabled", 0f);
+            m.SetFloat("_CameraFadingEnabled", 0f);
+            m.SetFloat("_DistortionEnabled", 0f);
+            if (emission)
+            {
+                m.SetColor("_EmissionColor", glow);
+                m.EnableKeyword("_EMISSION");
+            }
+            m.renderQueue = blend.Queue;
+            EditorUtility.SetDirty(m);
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 (relecture indépendante) : le prefab se dessine-t-il avec le rendu du projet (tous ses matériaux sur un shader
+        /// d'URP) ? Une variante faite pour HDRP ou pour l'ancien rendu sortirait rose.
+        /// </summary>
+        private static bool Renders(string path) =>
+            Load(path) is GameObject prefab && prefab.GetComponentsInChildren<Renderer>(true).Length > 0
+            && prefab.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials ?? new Material[0])
+                .All(m => m != null && UrpShader(m.shader));
+
+        /// <summary>
+        /// Revue Codex de la PR #65 : <c>Shader.isSupported</c> ne dit que si la carte graphique sait le dessiner, pas si le rendu du projet
+        /// (URP) le prend. Un shader va avec URP s'il en fait partie (« Universal Render Pipeline/… ») ou si l'un de ses sous-shaders est
+        /// marqué pour lui (« RenderPipeline » = « UniversalPipeline » : Shader Graph et shaders des exemples faits pour URP). « Standard »
+        /// de l'ancien rendu, ou un shader de HDRP, ne l'est pas.
+        /// </summary>
+        private static bool UrpShader(Shader shader)
+        {
+            if (IsUrp(shader)) return true;
+            if (shader == null || !shader.isSupported) return false;
+            var pipeline = new UnityEngine.Rendering.ShaderTagId("RenderPipeline");
+            for (int i = 0; i < shader.subshaderCount; i++)
+                if (shader.FindSubshaderTagValue(i, pipeline).name == "UniversalPipeline") return true;
+            return false;
         }
 
         /// <summary>Animations d'un fichier (sans les aperçus de l'éditeur).</summary>
@@ -738,7 +1000,7 @@ namespace EdS.Game.Editor
         /// des bords, occlusion ambiante de l'écran) ; un rendu léger est créé pour le téléphone dans <c>Generated</c> (ombres sur 35 m,
         /// deux cascades, sans occlusion), choisi par le jeu au lancement sur Android. Rend ce rendu léger, ou null sans URP.
         /// </summary>
-        private static RenderPipelineAsset RenderQuality(List<string> notes)
+        private static RenderPipelineAsset RenderQuality(List<string> notes, bool sceneTextures)
         {
             var pipelines = new[] { GraphicsSettings.defaultRenderPipeline, QualitySettings.renderPipeline }.OfType<UniversalRenderPipelineAsset>().Distinct().ToList();
             if (pipelines.Count == 0)
@@ -747,7 +1009,8 @@ namespace EdS.Game.Editor
                 return null;
             }
             foreach (UniversalRenderPipelineAsset pipeline in pipelines)
-                Tune(pipeline, 90f, 4, 4096, true, 4);
+                Tune(pipeline, 90f, 4, 4096, true, 4, sceneTextures);
+            if (sceneTextures) notes.Add("Rendu de l'ordinateur : image et profondeur de la scène gardées pour l'eau du sample (reflets, lit vu par transparence).");
             int ssao = 0;
             foreach (string path in AssetDatabase.FindAssets("t:UniversalRendererData", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath)
                 .Where(p => !p.StartsWith(Generated + "/", System.StringComparison.Ordinal)))
@@ -773,13 +1036,18 @@ namespace EdS.Game.Editor
                 phoneRenderer.postProcessData = data;
                 EditorUtility.SetDirty(phoneRenderer);
             }
-            Tune(phone, 35f, 2, 1024, false, 2);
+            Tune(phone, 35f, 2, 1024, false, 2, false);
             AssetDatabase.SaveAssets();
             return phone;
         }
 
-        /// <summary>Réglages d'ombres, de lissage et de lumières d'un rendu URP (champs absents de cette version d'URP : ignorés).</summary>
-        private static void Tune(UniversalRenderPipelineAsset pipeline, float shadowDistance, int cascades, int shadowResolution, bool softShadows, int msaa)
+        /// <summary>
+        /// Réglages d'ombres, de lissage et de lumières d'un rendu URP (champs absents de cette version d'URP : ignorés). Essai réaliste 8 :
+        /// <paramref name="sceneTextures"/> garde l'image et la profondeur de la scène, que l'eau des Production Ready Shaders lit (sinon
+        /// ces deux réglages restent tels quels).
+        /// </summary>
+        private static void Tune(UniversalRenderPipelineAsset pipeline, float shadowDistance, int cascades, int shadowResolution, bool softShadows, int msaa,
+            bool sceneTextures)
         {
             var so = new SerializedObject(pipeline);
             void Set(string name, System.Action<SerializedProperty> apply)
@@ -797,6 +1065,12 @@ namespace EdS.Game.Editor
             Set("m_SupportsHDR", p => p.boolValue = true);
             Set("m_AdditionalLightsRenderingMode", p => p.intValue = 1);   // LightRenderingMode.PerPixel (1 ; PerVertex vaut 2)
             Set("m_AdditionalLightsPerObjectLimit", p => p.intValue = 4);
+            // Seulement mis, jamais retirés (d'autres réglages du projet peuvent s'en servir).
+            if (sceneTextures)
+            {
+                Set("m_RequireDepthTexture", p => p.boolValue = true);
+                Set("m_RequireOpaqueTexture", p => p.boolValue = true);
+            }
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(pipeline);
         }

@@ -216,6 +216,9 @@ namespace EdS.Game
             light.intensity = 2.5f;
             _fire = light;
             _fireBase = light.intensity;
+            // Essai réaliste 8 : sur ordinateur, les flammes et la fumée du Particle Pack de Unity dans le foyer, s'il est importé.
+            Effects.Ambient(StyleVfx.ForgeFire, holder, new Vector3(b.center.x, b.min.y + 0.1f, b.center.z));
+            Effects.Ambient(StyleVfx.ForgeSmoke, holder, new Vector3(b.center.x, b.max.y + 0.2f, b.center.z));
         }
 
         /// <summary>Enclume de fer sombre faite de quatre pavés (pied, taille, table, bigorne), d'environ 0,8 m de haut.</summary>

@@ -529,3 +529,9 @@ unity/Assets/TextMesh Pro.meta
 # --- Essai de style (décision de Damien du 25 octobre 2026) : packs gratuits déposés par Damien pour son essai, non suivis ---
 unity/Assets/Style/
 unity/Assets/Style.meta
+
+# --- Essai réaliste 8 (28 octobre 2026) : packs de l'Asset Store importés par Damien (Viking Village, Terrain Sample, Hit Effects,
+# Magic Effects, Free Slash VFX) et exemples de Shader Graph (Assets/Samples), rangés par Unity à la racine de Assets : non suivis.
+# Seul Assets/EdS (le code du jeu) l'est.
+unity/Assets/*
+!unity/Assets/EdS/

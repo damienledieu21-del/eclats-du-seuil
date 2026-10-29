@@ -51,6 +51,56 @@ namespace EdS.Runtime
     }
 
     /// <summary>
+    /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : effets de combat des packs gratuits « Hit Effects FREE » de Matthew Guz,
+    /// « Magic Effects FREE » de Hovl Studio et « Free Slash VFX » de MaykerStudio) : un effet de combat dont le jeu prend le modèle
+    /// (prefab) d'un pack, choisi par son nom (<see cref="StyleRules.VfxPrefab"/>) ; sans lui, les particules faites par le jeu restent.
+    /// </summary>
+    public enum StyleVfx
+    {
+        /// <summary>Coup reçu.</summary>
+        Hit = 0,
+
+        /// <summary>Coup critique.</summary>
+        Crit = 1,
+
+        /// <summary>Coup gardé (bouclier).</summary>
+        Block = 2,
+
+        /// <summary>Parade parfaite.</summary>
+        Parry = 3,
+
+        /// <summary>Garde brisée.</summary>
+        GuardBroken = 4,
+
+        /// <summary>Taille d'épée.</summary>
+        Slash = 5,
+
+        /// <summary>Sort ou soutien lancé (cercle au sol).</summary>
+        Cast = 6,
+
+        /// <summary>Soin (potion bue).</summary>
+        Heal = 7,
+
+        /// <summary>Niveau gagné.</summary>
+        LevelUp = 8,
+
+        /// <summary>Mort (poussière).</summary>
+        Death = 9,
+
+        /// <summary>Frappe au sol d'un adversaire (onde du Gardien).</summary>
+        Slam = 10,
+
+        /// <summary>Charge de Rempart gagnée.</summary>
+        Charge = 11,
+
+        /// <summary>Essai réaliste 8 : flammes du foyer de la forge (Particle Pack de Unity), en continu.</summary>
+        ForgeFire = 12,
+
+        /// <summary>Essai réaliste 8 : fumée qui monte du foyer de la forge, en continu.</summary>
+        ForgeSmoke = 13,
+    }
+
+    /// <summary>
     /// Essai réaliste (demandes de Damien du 27 octobre 2026 : « la forge est à faire, les minerais et l'herbe de l'Aube aussi, le pont ») :
     /// objet de décor rangé dans les packs, choisi par son nom (<see cref="StyleRules.PropCandidates"/>).
     /// </summary>
@@ -205,6 +255,15 @@ namespace EdS.Runtime
 
         /// <summary>Herbe (le reste du sol).</summary>
         Grass = 2,
+
+        /// <summary>
+        /// Essai réaliste 8 : terre battue des chemins (fichier « chemin… » ou « road… » d'un dossier « Ground ») ; sans elle, les chemins
+        /// prennent la terre.
+        /// </summary>
+        Road = 3,
+
+        /// <summary>Essai réaliste 8 : terre labourée des champs (fichier « champ… », « labour… », « field… ») ; sans elle, la terre.</summary>
+        Field = 4,
     }
 
     /// <summary>Un endroit du sol qui change sa couche autour de lui (un rocher appelle la roche, un arbre la terre).</summary>
@@ -241,7 +300,27 @@ namespace EdS.Runtime
         public double Rock { get; }
         public double Grass { get; }
 
-        public double this[StyleGround ground] => ground == StyleGround.Soil ? Soil : ground == StyleGround.Rock ? Rock : Grass;
+        public double this[StyleGround ground] =>
+            ground == StyleGround.Soil ? Soil : ground == StyleGround.Rock ? Rock : ground == StyleGround.Grass ? Grass : 0;
+    }
+
+    /// <summary>Essai réaliste 8 : parts des cinq couches du terrain en un point (terre, roche, herbe, chemin, champ).</summary>
+    public readonly struct StyleLayers
+    {
+        public StyleLayers(double soil, double rock, double grass, double road, double field)
+        {
+            Soil = soil;
+            Rock = rock;
+            Grass = grass;
+            Road = road;
+            Field = field;
+        }
+
+        public double Soil { get; }
+        public double Rock { get; }
+        public double Grass { get; }
+        public double Road { get; }
+        public double Field { get; }
     }
 
     /// <summary>
@@ -343,8 +422,9 @@ namespace EdS.Runtime
             [StyleMotion.Death] = new[] { "death", "die", "dead", "dying" },
             [StyleMotion.Block] = new[] { "block" },
             // Essai réaliste 7 : « power » n'en est pas (« Power Slash » est une attaque).
-            [StyleMotion.Cast] = new[] { "cast", "spell", "roar", "taunt" },
-            [StyleMotion.Hurt] = new[] { "impact", "hurt", "react", "damage" },
+            // Essai réaliste 8 : le loup réaliste de l'Asset Store hurle (« WolfHowl ») et encaisse (« GetHit_1 »).
+            [StyleMotion.Cast] = new[] { "cast", "spell", "roar", "taunt", "howl" },
+            [StyleMotion.Hurt] = new[] { "impact", "hurt", "react", "damage", "gethit" },
             [StyleMotion.GuardHit] = new[] { "guard" },
         };
 
@@ -383,6 +463,10 @@ namespace EdS.Runtime
         /// <summary>Mots des textures de sol (dans un dossier « Ground ») : roche, puis herbe ; le reste est de la terre.</summary>
         private static readonly string[] RockGround = { "rock", "trail", "stone", "gravel", "cliff" };
         private static readonly string[] GrassGround = { "grass", "meadow", "lawn", "moss" };
+
+        /// <summary>Essai réaliste 8 : début du nom d'une texture de chemin ou de champ (dossier « Ground »).</summary>
+        private static readonly string[] RoadGround = { "chemin", "road", "dirtroad" };
+        private static readonly string[] FieldGround = { "champ", "labour", "field", "plough", "plow", "tilled", "farmland" };
 
         /// <summary>Distance (m) sur laquelle la couche d'un endroit s'efface autour de son rayon.</summary>
         public const double SpotFade = 3.0;
@@ -434,6 +518,187 @@ namespace EdS.Runtime
                 all = all.Where(IsRealistic).ToList();
             return all.Take(Math.Max(0, max)).ToList();
         }
+
+        /// <summary>
+        /// Essai réaliste 8 (point 3 de la demande de Damien du 28 octobre 2026 : rochers, terrain et eau des samples de Unity) : prefabs de
+        /// décor des samples importés à la racine de Assets (Viking Village et sa végétation du Book of the Dead, Terrain Sample,
+        /// Production Ready Shaders) pour <paramref name="slot"/> (rochers, plantes, arbustes), au plus <paramref name="max"/>. Seuls les
+        /// « .prefab » rangés dans le dossier d'un sample comptent (pas les effets de combat ni les prefabs faits par la préparation) ; le
+        /// nom du fichier décide (« pf_boulder_01 », « Fern_var01_Prefab », « GreenBush… »). Les samples donnent chacun leur tour (dans
+        /// l'ordre de leur dossier, chacun dans l'ordre ordinal de ses chemins), pour mêler les fougères du Terrain Sample et celles du
+        /// Book of the Dead plutôt que de ne prendre que le premier.
+        /// </summary>
+        public static IReadOnlyList<string> SampleDecor(IEnumerable<string> paths, StyleSlot slot, int max)
+        {
+            if (!SampleWords.TryGetValue(slot, out (string[] Want, string[] Avoid) words)) return Array.Empty<string>();
+            List<List<string>> bySample = (paths ?? Array.Empty<string>())
+                .Where(p => p != null && p.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase) && SampleOf(p) != null)
+                .Where(p =>
+                {
+                    string file = Key(ClipName(p));
+                    return words.Want.Any(w => file.Contains(w)) && !words.Avoid.Any(a => file.Contains(a)) && !SampleScenes.Any(a => file.Contains(a));
+                })
+                .Distinct().GroupBy(p => SampleOf(p)!, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal)
+                .Select(g => g.OrderBy(p => p, StringComparer.Ordinal).ToList()).ToList();
+            var picked = new List<string>();
+            for (int rank = 0; picked.Count < max && bySample.Any(s => rank < s.Count); rank++)
+                foreach (List<string> sample in bySample)
+                    if (rank < sample.Count && picked.Count < max) picked.Add(sample[rank]);
+            return picked;
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 (point 6 de la demande de Damien : des loups réalistes ; « Realistic Furry Wolf », échantillon gratuit de
+        /// l'Asset Store) : prefab d'un animal (<paramref name="slot"/> : loup ou sanglier) d'un pack importé à la racine de Assets, prêt pour
+        /// URP (« Wolf_URP.prefab ») ; ses variantes pour HDRP et pour l'ancien rendu ne sont pas prises. Les prefabs rangés dans
+        /// <c>Assets/Style</c> (préparés par Claude) ne comptent pas ici. Null sans lui.
+        /// </summary>
+        public static string? PackAnimal(IEnumerable<string> paths, StyleSlot slot)
+        {
+            if (slot != StyleSlot.Wolf && slot != StyleSlot.Boar) return null;
+            return (paths ?? Array.Empty<string>())
+                .Where(p => p != null && p.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase)
+                    && !Segments(p).Skip(1).Take(1).Contains("style") && Matches(p, slot))
+                .Where(p =>
+                {
+                    string file = Key(ClipName(p));
+                    return !PackPipelineVariants.Any(v => file.Contains(v)) && !Segments(p).Any(s => PackPipelineVariants.Any(v => s.StartsWith(v, StringComparison.Ordinal)));
+                })
+                .OrderBy(p => Key(ClipName(p)).Contains("urp") || Segments(p).Contains("urp") ? 0 : 1)
+                .ThenBy(p => p, StringComparer.Ordinal).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 (revue Codex de la PR #65) : modèle animé d'un prefab de pack parmi les modèles importés trouvés dans sa
+        /// hiérarchie, en remontant la chaîne des sources de chaque objet (le prefab peut être une variante, ou garder le modèle en
+        /// enfant) : le premier qui porte un maillage animé (os), sinon le premier ; null s'il n'y en a aucun.
+        /// </summary>
+        public static string? AnimatedModel(IEnumerable<(string Path, bool Skinned)> models)
+        {
+            var found = (models ?? Array.Empty<(string Path, bool Skinned)>()).Where(m => !string.IsNullOrEmpty(m.Path)).ToList();
+            return found.Where(m => m.Skinned).Select(m => m.Path).FirstOrDefault() ?? found.Select(m => m.Path).FirstOrDefault();
+        }
+
+        /// <summary>Essai réaliste 8 : variantes d'un pack faites pour un autre rendu qu'URP (dossiers ou noms).</summary>
+        private static readonly string[] PackPipelineVariants = { "hdrp", "lrp", "builtin", "standard" };
+
+        /// <summary>
+        /// Essai réaliste 8 : rangé dans le dossier d'un sample de Unity (Viking Village, Terrain Sample, Production Ready Shaders) ? On juge
+        /// les dossiers du chemin, réduits (« Assets/Viking Village/… », « Assets/TerrainSampleAssets/… »).
+        /// </summary>
+        public static bool IsSample(string path) => SampleOf(path) != null;
+
+        /// <summary>Essai réaliste 8 : le sample du chemin (début réduit de son dossier : « vikingvillage »…), ou null.</summary>
+        private static string? SampleOf(string path) =>
+            Segments(path).Select(s => Samples.FirstOrDefault(k => s.StartsWith(k, StringComparison.Ordinal))).FirstOrDefault(k => k != null);
+
+        /// <summary>
+        /// Essai réaliste 8 (point 3 : le terrain des samples) : couche de terrain d'un sample (« Grass_A_TerrainLayer.terrainlayer » du
+        /// Terrain Sample) pour <paramref name="ground"/> (herbe, terre, roche), d'après les mots de son nom dans l'ordre de préférence, puis
+        /// l'ordre ordinal ; null sinon (le sol garde les textures de Poly Haven). Les chemins et les champs gardent les leurs.
+        /// </summary>
+        public static string? SampleGround(IEnumerable<string> layers, StyleGround ground)
+        {
+            if (!SampleGroundWords.TryGetValue(ground, out (string[] Want, string[] Avoid) words)) return null;
+            var files = (layers ?? Array.Empty<string>()).Where(p => p != null && p.EndsWith(".terrainlayer", StringComparison.OrdinalIgnoreCase) && IsSample(p))
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            foreach (string word in words.Want)
+            {
+                string? found = files.FirstOrDefault(p =>
+                {
+                    string file = Key(ClipName(p));
+                    return file.StartsWith(word, StringComparison.Ordinal) && !words.Avoid.Any(a => file.Contains(a));
+                });
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Essai réaliste 8 (point 3 : l'eau des samples) : matériau de l'eau de lac des Production Ready Shaders (« WaterLake.mat »), ou
+        /// null. L'eau de lac ride d'après la position dans le monde ; celle du ruisseau (« WaterStream ») coule le long des coordonnées de
+        /// texture du maillage, que la surface de la rivière n'a pas : elle n'est pas prise.
+        /// </summary>
+        public static string? SampleWater(IEnumerable<string> paths) =>
+            (paths ?? Array.Empty<string>()).Where(p => p != null && p.EndsWith(".mat", StringComparison.OrdinalIgnoreCase) && IsSample(p)
+                && Key(ClipName(p)) == "waterlake").OrderBy(p => p, StringComparer.Ordinal).FirstOrDefault();
+
+        /// <summary>
+        /// Essai réaliste 8 : début des noms des couches de terrain des samples, par ordre de préférence. L'herbe verte (pas la sèche), la
+        /// boue pour la terre (la terre caillouteuse à défaut), la roche nue (pas la terre caillouteuse).
+        /// </summary>
+        private static readonly Dictionary<StyleGround, (string[] Want, string[] Avoid)> SampleGroundWords = new Dictionary<StyleGround, (string[], string[])>
+        {
+            [StyleGround.Grass] = (new[] { "grassa", "grassmoss", "grassb", "grass" }, new[] { "dry", "soil", "sand" }),
+            [StyleGround.Soil] = (new[] { "muddy", "mud", "dirt", "soil", "grasssoil" }, new[] { "sand" }),
+            [StyleGround.Rock] = (new[] { "rock", "cliff", "stone" }, new[] { "soil", "sand" }),
+        };
+
+        /// <summary>
+        /// Essai réaliste 8 : prefabs de démonstration des samples (« PlatformRock », « TutorialStep5AddRocks » des Production Ready Shaders :
+        /// des scènes entières, pas des rochers).
+        /// </summary>
+        private static readonly string[] SampleScenes = { "platform", "tutorial", "demo", "levelcontent", "environment" };
+
+        /// <summary>Débuts des dossiers des samples de Unity (réduits).</summary>
+        private static readonly string[] Samples = { "vikingvillage", "terrainsample", "productionreadyshaders" };
+
+        /// <summary>
+        /// Essai réaliste 8 : mots des prefabs de décor des samples. Les menhirs, piliers et falaises ne sont pas des rochers (l'obstacle
+        /// donne leur largeur : un menhir à la largeur d'un bloc serait une tour) ; les buissons secs ne font pas une haie.
+        /// </summary>
+        private static readonly Dictionary<StyleSlot, (string[] Want, string[] Avoid)> SampleWords = new Dictionary<StyleSlot, (string[], string[])>
+        {
+            [StyleSlot.Rock] = (new[] { "boulder", "rock" }, new[] { "cliff", "pebble", "small", "tiny", "menhir", "pillar", "decal", "rocky" }),
+            [StyleSlot.Plant] = (new[] { "fern", "meadowgrass", "perennial", "grass", "plant", "heather", "clover", "flower", "weed" },
+                new[] { "bush", "shrub", "tree", "rock", "dead" }),
+            [StyleSlot.Shrub] = (new[] { "bush", "shrub" }, new[] { "dead", "dry", "berry" }),
+        };
+
+        /// <summary>
+        /// Essai réaliste 8 : liste du catalogue faite des prefabs des samples d'abord (<paramref name="samples"/>), complétée par les autres
+        /// modèles (<paramref name="others"/>, Poly Haven), sans doublon, au plus <paramref name="max"/>.
+        /// </summary>
+        public static IReadOnlyList<string> MergeDecor(IEnumerable<string> samples, IEnumerable<string> others, int max) =>
+            (samples ?? Array.Empty<string>()).Concat(others ?? Array.Empty<string>()).Where(p => p != null).Distinct()
+                .Take(Math.Max(0, max)).ToList();
+
+        /// <summary>
+        /// Essai réaliste 8 : modèle (prefab) d'un pack pour l'effet <paramref name="kind"/> : le premier, dans l'ordre de préférence, dont le
+        /// nom (sans extension, réduit) est l'un des noms connus (« Basic Hit 2 », « Holy hit », « Magic circle », « Slash VFX »…) ; null
+        /// sinon. Seuls les fichiers « .prefab » comptent.
+        /// </summary>
+        public static string? VfxPrefab(IEnumerable<string> paths, StyleVfx kind)
+        {
+            var prefabs = (paths ?? Array.Empty<string>()).Where(p => p != null && p.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            foreach (string name in VfxNames[kind])
+            {
+                string? found = prefabs.FirstOrDefault(p => Key(ClipName(p)) == name);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        /// <summary>Noms des effets des packs, par ordre de préférence (réduits : minuscules, sans espaces ni signes).</summary>
+        private static readonly Dictionary<StyleVfx, string[]> VfxNames = new Dictionary<StyleVfx, string[]>
+        {
+            [StyleVfx.Hit] = new[] { "basichit2", "basichit", "basichit7", "stoneshit" },
+            [StyleVfx.Crit] = new[] { "basichit8new", "starhit", "holyhit" },
+            [StyleVfx.Block] = new[] { "sparksexplodewhite", "sparksexplodeblue", "electrohit" },
+            [StyleVfx.Parry] = new[] { "holyhit", "sparksexplodeyellow", "starhit" },
+            [StyleVfx.GuardBroken] = new[] { "redenergyexplosion", "sparksexplodered", "stoneshit" },
+            [StyleVfx.Slash] = new[] { "slashvfx", "slashfirevfx", "chargeslashblue", "stoneslash" },
+            [StyleVfx.Cast] = new[] { "magiccircle", "magiccircle2", "healingcircle" },
+            [StyleVfx.Heal] = new[] { "healing", "healingcircle" },
+            [StyleVfx.LevelUp] = new[] { "buff", "staraura" },
+            [StyleVfx.Death] = new[] { "dustpuff", "smokepuff" },
+            [StyleVfx.Slam] = new[] { "dustground", "smokeground", "groundaoeexplosion" },
+            [StyleVfx.Charge] = new[] { "sparksflashingyellow", "sparksyellow" },
+            // Essai réaliste 8 : Particle Pack de Unity (gratuit, ajouté le 28 octobre 2026).
+            [StyleVfx.ForgeFire] = new[] { "tinyflames", "mediumflames" },
+            [StyleVfx.ForgeSmoke] = new[] { "smokeeffect", "risingsteam" },
+        };
 
         /// <summary>
         /// Modèles d'un objet de décor (<see cref="StyleProp"/>), dans l'ordre des <see cref="Candidates"/> : FBX d'abord, puis sources
@@ -498,6 +763,9 @@ namespace EdS.Runtime
         {
             if (!Segments(path).Any(s => s == "ground")) return null;
             string file = Key(FileName(path));
+            // Essai réaliste 8 : chemins et champs d'abord (« chemin_terre_battue », « champ_labour »).
+            if (RoadGround.Any(w => file.StartsWith(w, StringComparison.Ordinal))) return StyleGround.Road;
+            if (FieldGround.Any(w => file.StartsWith(w, StringComparison.Ordinal))) return StyleGround.Field;
             if (RockGround.Any(w => file.Contains(w))) return StyleGround.Rock;
             if (GrassGround.Any(w => file.Contains(w))) return StyleGround.Grass;
             return StyleGround.Soil;
@@ -769,9 +1037,13 @@ namespace EdS.Runtime
         /// run, sword, attack). Essai du 26 octobre 2026 : « Gardien Idle » contient « die » au milieu d'un mot, et ne doit pas passer pour
         /// une mort.
         /// </summary>
-        private static bool HasWord(string clip, string[] wanted) =>
-            Regex.Matches(clip ?? string.Empty, "[A-Z]?[a-z]+|[A-Z]+(?![a-z])").Cast<Match>().Select(m => m.Value.ToLowerInvariant())
-                .Any(w => wanted.Any(x => w.StartsWith(x, StringComparison.Ordinal)));
+        private static bool HasWord(string clip, string[] wanted)
+        {
+            List<string> words = Regex.Matches(clip ?? string.Empty, "[A-Z]?[a-z]+|[A-Z]+(?![a-z])").Cast<Match>().Select(m => m.Value.ToLowerInvariant()).ToList();
+            // Essai réaliste 8 : deux mots qui se suivent comptent aussi ensemble (« GetHit » : get, hit, et gethit, un coup reçu).
+            IEnumerable<string> all = words.Concat(words.Zip(words.Skip(1), (a, b) => a + b));
+            return all.Any(w => wanted.Any(x => w.StartsWith(x, StringComparison.Ordinal)));
+        }
 
         /// <summary>
         /// Allure d'après la vitesse au sol affichée (m/s) : attente sous 0,3, marche sous 3,5, course au-delà ; la mort l'emporte, puis
@@ -1347,8 +1619,27 @@ namespace EdS.Runtime
         /// </summary>
         public static StyleMix RiverMix(StyleMix mix, double inside)
         {
-            double wet = Math.Max(0, Math.Min(1, (inside + RiverShore) / (2 * RiverShore)));
+            double wet = RiverWet(inside);
             return new StyleMix(mix.Soil * (1 - wet) + wet, mix.Rock * (1 - wet), mix.Grass * (1 - wet));
+        }
+
+        /// <summary>Part de la terre mouillée près de la rivière (0 à 1), celle que <see cref="RiverMix"/> verse dans la terre.</summary>
+        public static double RiverWet(double inside) => Math.Max(0, Math.Min(1, (inside + RiverShore) / (2 * RiverShore)));
+
+        /// <summary>
+        /// Essai réaliste 8 (relecture indépendante : calcul sorti du terrain de Unity pour être testé) : parts des cinq couches du sol en un
+        /// point. Le chemin (<paramref name="road"/>) et le champ (<paramref name="field"/>) prennent leur part du mélange
+        /// <paramref name="mix"/>, le champ l'emporte sur le chemin, et la berge de la rivière (<paramref name="wet"/>) reprend la terre
+        /// partout (pas de chemin ni de champ sous l'eau). Parts bornées à [0, 1] ; la somme fait 1 quand celle du mélange fait 1.
+        /// </summary>
+        public static StyleLayers GroundLayers(StyleMix mix, double road, double field, double wet)
+        {
+            double Clamp(double v) => double.IsNaN(v) ? 0 : Math.Max(0, Math.Min(1, v));
+            field = Clamp(field);
+            road = field > 0 ? 0 : Clamp(road);
+            wet = Clamp(wet);
+            double rest = 1 - road - field, dry = 1 - wet;
+            return new StyleLayers(mix.Soil * rest * dry + wet, mix.Rock * rest * dry, mix.Grass * rest * dry, road * dry, field * dry);
         }
 
         /// <summary>Angle (degrés, 0 vers +z, 90 vers +x, comme Unity) pour regarder de (fromX, fromZ) vers (toX, toZ).</summary>
