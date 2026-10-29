@@ -46,8 +46,9 @@ namespace EdS.Data
         /// <summary>
         /// Version de contenu des règles livrées : provisoires, non équilibrées. 0.7.0 : altérations du Bastion (sous-lot 8.4) ;
         /// 0.8.0 : altérations des talents du Gardien (sous-lot 8.5) ; 0.9.0 : déplacement et contact (sous-lot 11.4a) ; 0.10.0 :
-        /// portée du lien protecteur (sous-lot 11.4b) ; 0.11.0 : arc du bouclier et réaction minimale des annonces (sous-lot 11.4c).
+        /// portée du lien protecteur (sous-lot 11.4b) ; 0.11.0 : arc du bouclier et réaction minimale des annonces (sous-lot 11.4c) ;
+        /// 0.12.0 : 128 combattants au plus (décision de Damien du 29 octobre 2026 : plus de réapparitions par session dans les Vallons).
         /// </summary>
-        public const string ProvisionalRulesContentVersion = "0.11.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.12.0-provisoire";
     }
 }

@@ -602,4 +602,22 @@ public class EssaiRealiste8Tests : IDisposable
         Assert.Contains("shader.FindSubshaderTagValue(i, pipeline).name == \"UniversalPipeline\"", editor, StringComparison.Ordinal);
         Assert.Contains("prefabs.Where(StyleRules.IsSample).Where(Renders)", editor, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Modele_anime_du_pack_cherche_dans_la_hierarchie_et_la_chaine_des_sources()
+    {
+        // Revue Codex de la PR #65 : la source directe de la racine du prefab n'est pas toujours le modèle animé (prefab ordinaire qui le
+        // garde en enfant, variante d'un autre prefab). Le modèle au maillage animé passe devant les autres.
+        Assert.Equal("Assets/Wolf/Wolf.fbx", StyleRules.AnimatedModel(new[] { ("Assets/Wolf/Collier.fbx", false), ("Assets/Wolf/Wolf.fbx", true) }));
+        Assert.Equal("Assets/Wolf/Collier.fbx", StyleRules.AnimatedModel(new[] { ("", true), ("Assets/Wolf/Collier.fbx", false) }));
+        Assert.Null(StyleRules.AnimatedModel(new (string, bool)[0]));
+        Assert.Null(StyleRules.AnimatedModel(null!));
+        string editor = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs")).Replace("\r\n", "\n");
+        Assert.Contains("string model = AnimatedModel(Load(path));", editor, StringComparison.Ordinal);
+        Assert.Contains("foreach (Transform part in prefab.GetComponentsInChildren<Transform>(true))", editor, StringComparison.Ordinal);
+        Assert.Contains("for (int step = 0; step < 16 && source != null; step++)", editor, StringComparison.Ordinal);
+        Assert.Contains("source = PrefabUtility.GetCorrespondingObjectFromSource(source);", editor, StringComparison.Ordinal);
+        Assert.Contains("return StyleRules.AnimatedModel(models);", editor, StringComparison.Ordinal);
+        Assert.DoesNotContain("PrefabUtility.GetCorrespondingObjectFromSource(Load(path))", editor, StringComparison.Ordinal);
+    }
 }

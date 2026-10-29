@@ -203,7 +203,7 @@ Toutes **Retenu** : validées par Damien le 20 octobre 2026, dans les termes de 
 | Groupe standard : 5 joueurs | à créer | Recommandation (Q31) | Final |
 | Réveil renforcé : 1 par expédition | à créer | Recommandation (H4) | Final |
 | Ralentissement en garde : moitié de la vitesse | `rules.json`, `combat.movement.guardSpeedFactor` (0,5) | Retenu (L11-D3, essai du 22 octobre 2026) | Tranche |
-| Combattants par combat : 64 (borne 256) | `rules.json`, `combat.limits.maxCombatants` | Paramètre technique | Moteur actuel |
+| Combattants par combat : 128 (borne 256 ; 64 jusqu'au 29 octobre 2026) | `rules.json`, `combat.limits.maxCombatants` | Paramètre technique | Moteur actuel |
 | Avance de la télégraphie en réseau : plafond 1 s | `NetworkClientOptions` | Paramètre (lot 10.6) | Réseau actuel |
 
 ## 7. Écarts avec l'existant

@@ -57,7 +57,8 @@ public class Lot71RulesLimitsTests
     public void Valeurs_initiales_provisoires()
     {
         var rules = CombatRules.Provisional;
-        Assert.Equal((64, 20_000, 4, 100_000, 10_000, 1000),
+        // 128 combattants depuis le 29 octobre 2026 (décision de Damien), 64 avant.
+        Assert.Equal((128, 20_000, 4, 100_000, 10_000, 1000),
             (rules.MaxCombatants, rules.MaxCommands, rules.MaxCommandsPerActorPerTick, rules.MaxPendingEvents, rules.MaxWorkPerTick, rules.MaxEventsPerTick));
     }
 }
