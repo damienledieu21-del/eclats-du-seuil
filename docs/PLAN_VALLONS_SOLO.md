@@ -10,7 +10,7 @@ Chaque sous-lot suit la méthode habituelle de [CLAUDE.md](../CLAUDE.md) : une b
 
 - une **quête principale en cinq chapitres** à travers tous les lieux des Vallons agrandis, du moulin au Gardien du Seuil, et une **vingtaine de quêtes secondaires** de toutes sortes ;
 - **l'équipement complet** : toutes les places du personnage, des boucliers qui changent la garde, des armes et des bijoux à effets, des ensembles, des objets aux propriétés tirées au hasard, l'usure et la réparation ;
-- **l'or et les marchands** du bourg, et le **voyage rapide** entre les points sûrs découverts ;
+- **la monnaie (cuivre, argent, or) et les marchands** du bourg, et le **voyage rapide** entre les points sûrs découverts ;
 - la **Guilde des aventuriers** : ta carte, les rangs G, F et E, les contrats et les épreuves de promotion ;
 - l'**écran des compétences** pour changer sa barre partout hors combat ;
 - un **équilibrage en difficulté normale**, des niveaux au-delà de 10, et des zones qui suivent ton niveau ;
@@ -48,9 +48,9 @@ Un tour de jeu, du début à la fin de la vague :
 
 Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis les systèmes (compétences, quêtes, guilde), puis l'équilibrage, enfin le contenu écrit et l'essai. Les tailles sont relatives (S, M, L), pas des dates.
 
-### V1.1 — Or, marchands, voyage rapide (M)
+### V1.1 — Monnaie, marchands, voyage rapide (M)
 
-- **Or** : une somme gardée avec le personnage (sauvegarde), bornée, arithmétique vérifiée. Gagnée par les quêtes, les contrats, la vente ; jamais par l'argent réel (aucun jeton, sujet 6).
+- **Monnaie** : **cuivre, argent et or** (choix de Damien du 29 octobre 2026, 12 h 57 ; 100 cuivre font 1 argent, 100 argent font 1 or), gardée avec le personnage (sauvegarde) comme un seul nombre de pièces de cuivre, bornée, arithmétique vérifiée ; affichée « 3 or 45 argent 12 cuivre ». Gagnée par les quêtes, les contrats, la vente ; jamais par l'argent réel (aucun jeton, sujet 6).
 - **Marchands** en données (`merchants`, nouveau fichier ou bloc de l'histoire) : PNJ, objets en vente, prix, part du prix de base rendue à la vente. Au bourg : armurier, herboriste, épicier. Le stock change chaque jour du monde (tirage déterministe sur la clé du jour) ; le stock tournant poussé vient avec la vague 2.
 - **Achat, vente, rachat** : opérations atomiques (or et inventaire changent ensemble ou pas du tout), refus avec motif (or insuffisant, inventaire plein, objet porté ou réservé). Un objet vendu par erreur se rachète au même prix tant que la session dure.
 - **Voyage rapide** : entre les points sûrs **découverts** (clé au registre du monde), hors combat (aucun ennemi engagé, règle de la halte à 12 m). Le passage reprend le chemin d'une porte : sauvegarde, puis nouvelle session au point d'arrivée. Gratuit dans la vague 1 (le prix éventuel est un réglage d'équilibrage).
@@ -200,7 +200,7 @@ Les quatorze grands sujets du jeu complet (classes, histoire, combat, progressio
 
 | Sous-lot | Taille | Dépend de | Essai par Damien |
 |---|---|---|---|
-| V1.1 Or, marchands, voyage rapide | M | — | — |
+| V1.1 Monnaie, marchands, voyage rapide | M | — | — |
 | V1.2 Équipement complet | L | V1.1 (prix) | Oui, court (écran, boucliers) |
 | V1.3 Effets d'équipement | L | V1.2 | — |
 | V1.4 Forge, qualité, usure | M | V1.1, V1.3 | Oui, court (forge, réparation) |
