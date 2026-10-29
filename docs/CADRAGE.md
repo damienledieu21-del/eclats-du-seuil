@@ -86,7 +86,7 @@ Les chiffres d'une tranche ou d'une alpha (24 places, niveaux 1 à 10…) sont *
 | Q18 | Niveau maximal | **30 n'est pas un plafond final validé** ; il reste la configuration actuelle | Ouvert | Fixer courbe d'XP, paliers, arbres, livres et héritages avant le chiffre |
 | Q19 | Après le plafond | **Plusieurs progressions** : maîtrises, livres, héritages, connaissances, métiers, réputation, équipements, recherches, refuge ; Éclats encadrés (pas d'empilement illimité) | Retenu | — |
 | Q20 | Attributs | **Base fixée par la classe et le niveau**, modifiée par l'équipement et le build ; personnalisation par les arbres, les deux livres actifs et l'héritage ; pas de répartition manuelle | Retenu (20/10, L11-D10) | Un build peut garder un état résolu, et un scénario d'essai des valeurs explicites : besoin de simulation distinct de la source des caractéristiques du personnage persistant. Migration versionnée si nécessaire ; scénarios existants reproductibles selon leur version de règles (écart E6) |
-| Q21 | Changer de build | **Gratuit, en lieu sûr, hors combat** ; configurations sauvegardées ; un livre retiré rend ses points ; les livres appris restent | Retenu | Ne réinitialise ni décisions narratives, ni relations, ni serments. Changement d'héritage : Ouvert |
+| Q21 | Changer de build | Compétences de la barre : **partout hors combat** ; talents : **chez le maître de classe, gratuit les premières fois, puis payant en or** (Damien, 29 octobre 2026, à la question posée sur l'écart : remplace « gratuit, en lieu sûr, hors combat ») ; configurations sauvegardées ; un livre retiré rend ses points ; les livres appris restent | Retenu (29 octobre 2026) | Ne réinitialise ni décisions narratives, ni relations, ni serments. Prix en or et nombre de changements gratuits : à régler à l'équilibrage. Changement d'héritage : Ouvert |
 
 ### D. Monde
 
@@ -111,9 +111,9 @@ Les chiffres d'une tranche ou d'une alpha (24 places, niveaux 1 à 10…) sont *
 
 | Q | Sujet | Choix | Statut | Notes |
 |---|---|---|---|---|
-| Q31 | Taille des groupes | **Cinq joueurs** | Recommandation | Quatre évoqué auparavant ; aucune valeur validée. Compagnons comptés par une règle explicite ; capacité des instances selon les mesures |
+| Q31 | Taille des groupes | **De 2 à 6 joueurs au plus** (« au vu du nombre de classes différentes ») ; **raids de 10 à 20 joueurs**, réservés aux groupes et annoncés comme tels | Retenu (Damien, 29 octobre 2026 ; remplace la recommandation de cinq) | Compagnons comptés par une règle explicite ; capacité des instances selon les mesures |
 | Q32 | Guildes | **Oui** : identité, projets, contrats, expéditions, installations, transformations régionales ; facultatives | Retenu | — |
-| Q33 | Combat entre joueurs | **Volontaire, en arènes ou zones dédiées** ; progression principale en PvE ; pas de PvP permanent sur les routes ordinaires | Recommandation | Ses récompenses ne deviennent pas un passage obligé du PvE |
+| Q33 | Combat entre joueurs | **Toujours volontaire** : duels, arènes classées, zones de guerre (Lumière contre Ombre) et quelques **régions sauvages** où l'on peut s'attaquer librement, avec un meilleur butin, où l'on n'entre que si on le veut ; progression principale en PvE ; pas de PvP sur les routes ordinaires | Retenu (Damien, 29 octobre 2026) | Ses récompenses ne deviennent pas un passage obligé du PvE |
 | Q34 | Boss de monde | **Événements publics coopératifs facultatifs**, liés à la région ; contribution utile comptée (pas seulement le dernier coup) | Retenu | Nombre de joueurs et modalités : à mesurer |
 
 ### G. Produit
@@ -121,7 +121,7 @@ Les chiffres d'une tranche ou d'une alpha (24 places, niveaux 1 à 10…) sont *
 | Q | Sujet | Choix | Statut | Notes |
 |---|---|---|---|---|
 | Q35 | Plateformes | Final : **PC et mobile**, même personnage et même progression ; mobile pris en compte dès la conception (commandes, caméra, lisibilité, performances), **validation tactile assez tôt** | Retenu | Premiers essais sur PC (Recommandation) ; premier essai tactile pendant le lot 11 (L11-D1). Téléphones : **Samsung Galaxy Note8** (Android) et **iPhone 13** (20/10, L11-D11), versions des systèmes à relever |
-| Q36 | Modèle économique | Aucun modèle ni prix choisi | Ouvert | Aucun achat de puissance contre de l'argent réel (Recommandation). Les livres s'achètent en monnaie du jeu |
+| Q36 | Modèle économique | **Gratuit**, avec une **boutique** (apparences, passe de saison, confort) et un **abonnement facultatif de confort** ; **extensions gratuites** pour l'instant (à revoir « dans très longtemps ») ; **aucun jeton** d'or contre de l'argent réel | Retenu (Damien, 29 octobre 2026) | Aucun achat de puissance contre de l'argent réel. Prix : Ouvert. Les livres s'achètent en monnaie du jeu |
 | Q37 | Langues | **Français et anglais** ; rédaction en français, textes préparés pour la traduction | Recommandation | Énigmes et jeux de mots adaptés à chaque langue |
 | Q38 | Hébergement | Essais locaux, puis serveur adapté aux tests à distance et au jeu persistant | Recommandation | Budget, hébergeur, nombre de joueurs : Ouvert. Aucune dépense autorisée par ce cadrage. La machine d'un autre projet n'est pas présumée disponible |
 | Q39 | Graphismes | **Fantasy stylisée, vues 1 et 2** | Retenu | Méthode de production (formes simples, packs, artistes, IA) : Ouvert ; toute ressource payante est proposée avec son coût avant engagement |
