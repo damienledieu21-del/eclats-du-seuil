@@ -35,7 +35,7 @@ S'arrêter et poser la question à Damien (dans la PR et dans le rapport) seulem
 - Définitions immuables, état mutable dans le moteur seulement. Un seul validateur, erreurs avec chemin précis.
 - Tout changement de format (journal, schéma de règles ou de classes, empreinte) est versionné, documenté et testé. Les journaux de référence historiques ne sont jamais modifiés : on en fige de nouveaux.
 
-## Vérification (identique à la CI)
+## Vérification
 
 Installer .NET si `dotnet` est absent :
 
@@ -45,20 +45,16 @@ bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
 export PATH="$HOME/.dotnet:$PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 ```
 
-Puis, avant chaque push, toutes les étapes de `.github/workflows/ci.yml` :
+Avant chaque push (décision de Damien du 29 octobre 2026 : « une seule vérification ») : la construction et les tests touchés par la modification, verts en local :
 
 ```bash
 dotnet restore
 dotnet build --no-restore -c Release -warnaserror
-dotnet test --no-build -c Release
-bash scripts/test-category.sh -c Release <catégories listées dans ci.yml>
-# scénario de référence : simulate, cmp avec le journal figé, replay (voir ci.yml)
-dotnet build --no-restore -c Debug -warnaserror
-dotnet test --no-build -c Debug
-python3 -m unittest discover -s scripts -p 'test_ci_provenance.py' -v   # générateur du rapport CI non signé (PR #4)
+dotnet test --no-build -c Release --filter "<classes ou catégories touchées>"
+# scénario de référence (simulate, cmp avec le journal figé, replay) dès qu'une règle, une donnée ou le moteur change
 ```
 
-Un push n'a lieu que si tout est vert localement. Après le push, vérifier le check `build-test` de GitHub (`gh api repos/{owner}/{repo}/commits/{sha}/check-runs`). `gh pr` ne fonctionne pas dans les sessions cloud : utiliser `gh api` (REST).
+La **vérification complète** (toutes les étapes de `.github/workflows/ci.yml`, Release et Debug, catégories, scénario de référence, `test_ci_provenance.py`) est faite par la **CI** sur chaque commit poussé. **Aucune fusion sans le check `build-test` vert sur la tête de la PR** (`gh api repos/{owner}/{repo}/commits/{sha}/check-runs`) **et une revue Codex sans remarque** sur cette même tête. Un échec de la CI se corrige par un nouveau commit, avant toute autre chose. La vérification complète en local reste possible (par exemple pour un changement de format ou du moteur), avec les commandes de `ci.yml`. `gh pr` ne fonctionne pas dans les sessions cloud : utiliser `gh api` (REST).
 
 ## Méthode pour un sous-lot
 
@@ -66,7 +62,7 @@ Un push n'a lieu que si tout est vert localement. Après le push, vérifier le c
 2. Implémenter seulement les mécanismes du sous-lot, par commits cohérents aux messages explicites (`Lot 8.2 (n/m) : …`).
 3. Tests unitaires, adversariaux et de propriétés ; frontières numériques ; non-régression contre les journaux figés ; catégorie de tests dédiée si besoin (déclarée dans `ci.yml` et `scripts/test-category.sh`).
 4. Mettre à jour schémas, `docs/` et README (section décisions et avancement).
-5. Vérification complète, push, PR en brouillon, CI verte. À partir du lot 13 (décision de Damien du 25 octobre 2026) : avant chaque demande de revue Codex, une relecture par un agent indépendant (neuf, sans le contexte de la session, à qui l'on donne le code et non ses conclusions), une seule par PR ; ses remarques fondées sont traitées avant la demande. Elle n'est jamais présentée comme une revue Codex.
+5. Tests touchés verts en local, push, PR en brouillon, CI verte (vérification complète). À partir du lot 13 (décision de Damien du 25 octobre 2026) : avant chaque demande de revue Codex, une relecture par un agent indépendant (neuf, sans le contexte de la session, à qui l'on donne le code et non ses conclusions), une seule par PR ; ses remarques fondées sont traitées avant la demande. Elle n'est jamais présentée comme une revue Codex.
 6. Rapport dans la description de la PR : SHA, ce qui est fait, tests reproduits (chiffres), limites connues, questions pour Damien.
 
 ## Branches et PR
