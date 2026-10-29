@@ -325,9 +325,8 @@ namespace EdS.Game.Editor
         {
             string path = StyleRules.PackAnimal(prefabs.Where(Renders), slot);
             if (path == null) return null;
-            GameObject source = PrefabUtility.GetCorrespondingObjectFromSource(Load(path));
-            string model = source != null ? AssetDatabase.GetAssetPath(source) : null;
-            if (model == null || !(AssetImporter.GetAtPath(model) is ModelImporter))
+            string model = AnimatedModel(Load(path));
+            if (model == null)
             {
                 notes.Add("Prefab " + Path.GetFileName(path) + " : aucun modèle animé derrière lui, il n'est pas pris.");
                 return null;
@@ -335,6 +334,33 @@ namespace EdS.Game.Editor
             Legacy(model, false);
             notes.Add((slot == StyleSlot.Wolf ? "Loup" : "Sanglier") + " réaliste du pack : " + Path.GetFileName(path) + " (animations de " + Path.GetFileName(model) + ").");
             return path;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #65 : modèle importé (FBX) animé derrière <paramref name="prefab"/>. Le modèle n'est pas toujours la source
+        /// directe de la racine : le prefab peut le garder en enfant, ou être une variante d'un autre prefab. Chaque objet de la hiérarchie
+        /// remonte sa chaîne de sources (16 pas au plus) jusqu'à un fichier lu par un <see cref="ModelImporter"/> ; celui qui porte un
+        /// maillage animé passe devant (<see cref="StyleRules.AnimatedModel"/>). Rend son chemin, ou null.
+        /// </summary>
+        private static string AnimatedModel(GameObject prefab)
+        {
+            if (prefab == null) return null;
+            var models = new List<(string Path, bool Skinned)>();
+            var seen = new HashSet<string>();
+            foreach (Transform part in prefab.GetComponentsInChildren<Transform>(true))
+            {
+                GameObject source = part.gameObject;
+                for (int step = 0; step < 16 && source != null; step++)
+                {
+                    source = PrefabUtility.GetCorrespondingObjectFromSource(source);
+                    if (source == null) break;
+                    string file = AssetDatabase.GetAssetPath(source);
+                    if (string.IsNullOrEmpty(file) || !(AssetImporter.GetAtPath(file) is ModelImporter)) continue;
+                    if (seen.Add(file)) models.Add((file, source.GetComponentsInChildren<SkinnedMeshRenderer>(true).Length > 0));
+                    break;
+                }
+            }
+            return StyleRules.AnimatedModel(models);
         }
 
         /// <summary>

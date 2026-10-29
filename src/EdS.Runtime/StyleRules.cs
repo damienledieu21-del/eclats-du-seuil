@@ -568,6 +568,17 @@ namespace EdS.Runtime
                 .ThenBy(p => p, StringComparer.Ordinal).FirstOrDefault();
         }
 
+        /// <summary>
+        /// Essai réaliste 8 (revue Codex de la PR #65) : modèle animé d'un prefab de pack parmi les modèles importés trouvés dans sa
+        /// hiérarchie, en remontant la chaîne des sources de chaque objet (le prefab peut être une variante, ou garder le modèle en
+        /// enfant) : le premier qui porte un maillage animé (os), sinon le premier ; null s'il n'y en a aucun.
+        /// </summary>
+        public static string? AnimatedModel(IEnumerable<(string Path, bool Skinned)> models)
+        {
+            var found = (models ?? Array.Empty<(string Path, bool Skinned)>()).Where(m => !string.IsNullOrEmpty(m.Path)).ToList();
+            return found.Where(m => m.Skinned).Select(m => m.Path).FirstOrDefault() ?? found.Select(m => m.Path).FirstOrDefault();
+        }
+
         /// <summary>Essai réaliste 8 : variantes d'un pack faites pour un autre rendu qu'URP (dossiers ou noms).</summary>
         private static readonly string[] PackPipelineVariants = { "hdrp", "lrp", "builtin", "standard" };
 
