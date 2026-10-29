@@ -184,6 +184,22 @@ namespace EdS.Runtime
         /// <summary>Hauteur (m) du dessus d'un comptoir, d'un autel, du linteau d'une cheminée faits par le code.</summary>
         public const double CounterHeight = 1.05, AltarHeight = 1.0, MantelHeight = 1.45;
 
+        /// <summary>
+        /// Revue Codex de la PR #67 : places des montants d'un comptoir de longueur <paramref name="length"/> (m), le long de son grand
+        /// côté : à 0,1 m des bouts et environ tous les 0,9 m entre les deux, en nombre entier borné (65 au plus). Un comptoir de 0,2 m
+        /// ou moins n'a qu'un montant, au milieu (un pas nul faisait tourner la boucle sans fin) ; une longueur qui n'est pas un nombre
+        /// positif n'en a aucun.
+        /// </summary>
+        public static IReadOnlyList<double> CounterPosts(double length)
+        {
+            if (double.IsNaN(length) || double.IsInfinity(length) || length <= 0) return Array.Empty<double>();
+            if (length <= 0.2) return new[] { length / 2 };
+            int gaps = (int)Math.Min(64, Math.Max(1, Math.Round((length - 0.2) / 0.9)));
+            var posts = new double[gaps + 1];
+            for (int i = 0; i <= gaps; i++) posts[i] = 0.1 + (length - 0.2) * i / gaps;
+            return posts;
+        }
+
         /// <summary>Hauteur (m) où sont accrochés les objets aux murs.</summary>
         public const double WallDecorHeight = 1.75;
 
