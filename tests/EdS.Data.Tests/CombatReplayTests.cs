@@ -153,5 +153,6 @@ public class CombatReplayTests
     // 9d42464b…). Sous-lot 12.1 : moteur 0.22.0, format 16, schéma 10 ; seul l'en-tête change (ancienne empreinte a3025f2f…).
     // Sous-lot 12.3 : moteur 0.23.0, format 17, schéma 11 ; seul l'en-tête change (ancienne empreinte bcdf227b…).
     // Sous-lot 12.6 : moteur 0.24.0, format 18, schéma 12 ; seul l'en-tête change (ancienne empreinte 6ace0ea2…).
-    internal const string MannequinLogHash = "6cfd00e5ff717e2060bea1de173fe050684c47b854ef68b677caf313054e3934";
+    // 29 octobre 2026 : règles 0.12.0 (128 combattants au plus) ; seul l'en-tête change (ancienne empreinte 6cfd00e5…).
+    internal const string MannequinLogHash = "54db7080c6aefa08228de0764806b3a1ee9d60de5d069062519e59aa8939e140";
 }

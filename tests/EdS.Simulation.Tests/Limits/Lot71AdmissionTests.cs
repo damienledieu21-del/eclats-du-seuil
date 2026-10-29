@@ -39,19 +39,19 @@ public class Lot71AdmissionTests
     private static CombatantSetup[] WithDummies(int count) =>
         new CombatantSetup[] { Character() }.Concat(Enumerable.Range(1, count - 1).Select(i => (CombatantSetup)Dummy($"mannequin_{i:000}"))).ToArray();
 
-    // --- Combattants (valeur configurée initiale : 64) ---------------------------------------
+    // --- Combattants (valeur configurée initiale : 64 ; 128 depuis le 29 octobre 2026) ---------------------------------------
 
     [Theory]
-    [InlineData(63)]
-    [InlineData(64)]
+    [InlineData(127)]
+    [InlineData(128)]
     public void Combattants_jusqu_a_la_limite_acceptes(int count) =>
         AssertAcceptedAndSimulated(Make(WithDummies(count), new[] { Cmd(0, Onde, target: null) }));
 
     [Fact]
     public void Combattant_au_dela_de_la_limite_refuse_avant_journal()
     {
-        RuleViolation v = AssertRefusedBeforeLog(Make(WithDummies(65), new[] { Cmd(0, Onde, target: null) }), "combatants");
-        Assert.Contains("65 combattants, au plus 64", v.Message);
+        RuleViolation v = AssertRefusedBeforeLog(Make(WithDummies(129), new[] { Cmd(0, Onde, target: null) }), "combatants");
+        Assert.Contains("129 combattants, au plus 128", v.Message);
     }
 
     [Theory]
