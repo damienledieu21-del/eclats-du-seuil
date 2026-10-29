@@ -360,8 +360,10 @@ namespace EdS.Game
             Part(t, id + " (plateau)", c + Vector3.up * (h - 0.03f), new Vector3(x1 - x0 + 0.06f, 0.06f, z1 - z0 + 0.06f), wood, woodTile);
             bool alongX = x1 - x0 >= z1 - z0;
             float length = alongX ? x1 - x0 : z1 - z0;
-            for (float s = 0.1f; s <= length - 0.1f + 1e-3f; s += (length - 0.2f) / Mathf.Max(1, Mathf.Round((length - 0.2f) / 0.9f)))
+            // Revue Codex de la PR #67 : un nombre entier borné de montants (InteriorRules.CounterPosts), plus de pas nul possible.
+            foreach (double post in InteriorRules.CounterPosts(length))
             {
+                float s = (float)post;
                 Vector3 at = alongX ? new Vector3(x0 + s, (h - 0.06f) / 2f, c.z) : new Vector3(c.x, (h - 0.06f) / 2f, z0 + s);
                 Part(t, id + " (montant)", at, alongX ? new Vector3(0.1f, h - 0.06f, z1 - z0 - 0.02f) : new Vector3(x1 - x0 - 0.02f, h - 0.06f, 0.1f), wood, woodTile);
             }

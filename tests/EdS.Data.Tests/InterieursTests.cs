@@ -697,4 +697,26 @@ public class InterieursTests : IDisposable
         }
         return false;
     }
+
+    [Fact]
+    public void Montants_du_comptoir_en_nombre_borne()
+    {
+        // Revue Codex de la PR #67 : un comptoir de 0,2 m donnait un pas nul et une boucle sans fin dans Unity.
+        Assert.Equal(new[] { 0.1 }, InteriorRules.CounterPosts(0.2));
+        Assert.Equal(new[] { 0.05 }, InteriorRules.CounterPosts(0.1));
+        Assert.Empty(InteriorRules.CounterPosts(0));
+        Assert.Empty(InteriorRules.CounterPosts(-1));
+        Assert.Empty(InteriorRules.CounterPosts(double.NaN));
+        Assert.Empty(InteriorRules.CounterPosts(double.PositiveInfinity));
+        IReadOnlyList<double> posts = InteriorRules.CounterPosts(3.0);
+        Assert.Equal(4, posts.Count);
+        Assert.Equal(0.1, posts[0], 9);
+        Assert.Equal(2.9, posts[^1], 9);
+        Assert.True(posts.Zip(posts.Skip(1), (a, b) => b - a).All(d => d > 0.8 && d < 1.0));
+        Assert.Equal(65, InteriorRules.CounterPosts(1e9).Count);
+        Assert.Equal(2, InteriorRules.CounterPosts(0.21).Count);
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Interior.cs"));
+        Assert.Contains("foreach (double post in InteriorRules.CounterPosts(length))", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("s += (length - 0.2f)", view, StringComparison.Ordinal);
+    }
 }
