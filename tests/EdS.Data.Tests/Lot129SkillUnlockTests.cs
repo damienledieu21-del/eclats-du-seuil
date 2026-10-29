@@ -174,6 +174,7 @@ public class Lot129SkillUnlockTests : IDisposable
             }
         File.WriteAllText(Path.Combine(scenarios, "zones", "vallons.json"), vallons.ToJsonString());
         File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(scenarios, "zones", "vallons_chef.json"));
+        CopyMissingZoneScenarios(scenarios);   // intérieurs : reliés aux Vallons par leurs portes
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
         SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),

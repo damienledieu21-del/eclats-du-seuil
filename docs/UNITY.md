@@ -493,6 +493,33 @@ Limites :
 - villageois sans dialogue ni trajet libre (le passant fait l'aller-retour sur la place) ;
 - effets des packs sur ordinateur seulement.
 
+### Intérieurs (28 octobre 2026)
+
+Demande de Damien : entrer dans les maisons « comme dans une vraie maison », par une porte qui mène à une pièce à part (« on fait la façon 1 »), avec « de beaux intérieurs bien détaillés ». Fonctionnement : [MONDE.md](MONDE.md#intérieurs).
+
+**Déjà déposé par Claude** (non suivi par git) : `Assets/Style/PolyHaven/Interieurs/<modèle>/`, 46 meubles et objets de Poly Haven en 1k (lit, armoire, commode, tables, bancs, tabourets, chaises, étagères, coffre, caisses, tonneaux, seaux, lanternes, lustres, chandeliers, bougeoirs, vaisselle, bouteilles, jarres, paniers, pommes, oignons, bouclier, épée, marteau, hache, balai, tableau, rouet, porte, statue ; liste dans [CREDITS.md](CREDITS.md)).
+
+**Préparer.** Menu **Éclats du Seuil → Préparer l'essai de style**, puis Play. La préparation range les objets dans le catalogue (rubrique « Furniture » de `Assets/Style/Resources/StyleCatalog`) et leur donne leurs matières (couleur, relief, métal).
+
+Ce que tu fais :
+- trois portes au bourg, signalées par un disque doré : l'**auberge**, la **chapelle** et une **maison** ; approche-toi et appuie sur **F** (« F : passer la porte ») ;
+- l'écran passe au noir un instant, tu es dans la pièce, devant la porte ; la même touche te ramène au bourg, devant la maison ;
+- pas de passage si un ennemi est à moins de 12 m (le message le dit).
+
+Ce que tu regardes :
+- l'**auberge** : comptoir garni et aubergiste, quatre tables avec bancs, bougies et vaisselle, cheminée qui brûle, tonneaux, caisses, étagères, escalier, armes et lanternes aux murs, deux clients ;
+- la **chapelle** : bancs, autel avec chandeliers, statue, grandes fenêtres et leurs rayons de lumière, lustres, une fidèle ;
+- la **maison** : lit, coffre, armoire, rouet, table garnie, cheminée, l'habitant ;
+- la lumière (feu et bougies qui vacillent, pièce sombre autour), la taille et le sens des objets (rien qui flotte, rien de travers), les murs qui s'effacent quand ils te cachent.
+
+Réglages : la rotation (`Yaw`) et la taille (`Scale`) de chaque objet dans la rubrique « Furniture » du catalogue (gardées d'une préparation à l'autre) ; la lumière des intérieurs dans `IndoorAmbient`, `IndoorExposure` et `IndoorLights`.
+
+Limites :
+- rien n'a encore été essayé en jeu ;
+- une pièce n'a qu'un niveau (l'escalier est un décor), les portes ne se ferment pas à clé ;
+- les gens des intérieurs ne parlent pas (l'histoire et les métiers restent dehors) ;
+- un objet sans modèle (Poly Haven absent) garde une forme simple faite par le code.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

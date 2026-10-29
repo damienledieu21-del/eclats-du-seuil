@@ -218,11 +218,13 @@ namespace EdS.Runtime
         /// vers la route (<paramref name="preferred"/>), parmi les modèles qui y tiennent (<see cref="StyleRules.Variant"/> de l'identifiant) ;
         /// sinon de côté (une chapelle longue sur une emprise longue) ; sinon le modèle qui couvre le mieux. (-1, …) sans modèle.
         /// </summary>
+        /// <param name="locked">Intérieurs : la façade reste vers <paramref name="preferred"/> (le bâtiment a une porte, on doit la voir
+        /// où l'on entre) : ni de côté, ni le meilleur compromis d'un autre côté.</param>
         public static (int Model, (int X, int Z) Facing, ModelFit Fit) Pick(string id, double footX, double footZ, (int X, int Z) preferred,
-            IReadOnlyList<(double X, double Z)> models, double overflow)
+            IReadOnlyList<(double X, double Z)> models, double overflow, bool locked = false)
         {
             if (models == null || models.Count == 0) return (-1, preferred, default);
-            var facings = new List<(int X, int Z)> { preferred, (preferred.Z, -preferred.X), (-preferred.Z, preferred.X) };
+            var facings = locked ? new List<(int X, int Z)> { preferred } : new List<(int X, int Z)> { preferred, (preferred.Z, -preferred.X), (-preferred.Z, preferred.X) };
             foreach ((int X, int Z) facing in facings)
             {
                 var good = new List<int>();
@@ -290,7 +292,7 @@ namespace EdS.Runtime
             {
                 StyleBuilding kind = TownRules.BuildingFor(b.Id);
                 double cx = (b.MinX + b.MaxX) / 2, cz = (b.MinZ + b.MaxZ) / 2;
-                (int X, int Z) f = TownRules.Facing(b.MinX, b.MinZ, b.MaxX, b.MaxZ, map.Roads);
+                (int X, int Z) f = TownRules.FacingOf(b.Id, b.MinX, b.MinZ, b.MaxX, b.MaxZ, map.Roads, map.Doors);
                 (int X, int Z) side = (-f.Z, f.X);
                 double half = f.X != 0 ? (b.MaxX - b.MinX) / 2 : (b.MaxZ - b.MinZ) / 2;
                 double across = f.X != 0 ? (b.MaxZ - b.MinZ) / 2 : (b.MaxX - b.MinX) / 2;

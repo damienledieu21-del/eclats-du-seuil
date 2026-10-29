@@ -637,6 +637,7 @@ namespace EdS.Game
                     case MapMarkerKind.SafePoint: Marker("repere_rond", p, 16f, UiKit.Teal); break;
                     case MapMarkerKind.Workshop: Marker("repere_rond", p, 15f, UiKit.Dawn); break;
                     case MapMarkerKind.Node: Marker("repere_rond", p, 9f, new Color(0.65f, 0.95f, 0.55f)); continue;
+                    case MapMarkerKind.Door: Marker("repere_rond", p, 13f, new Color(0.95f, 0.66f, 0.28f)); break;   // intérieurs : une porte
                     case MapMarkerKind.Objective: Marker("repere_objectif", p, 30f, Color.white); Name(p, m.Name, 16f, UiKit.Dawn, -26f); continue;
                 }
                 Name(p, m.Name, 15f, UiKit.Ink, 18f);

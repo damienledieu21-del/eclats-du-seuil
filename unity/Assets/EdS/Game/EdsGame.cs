@@ -233,6 +233,7 @@ namespace EdS.Game
                 return;
             }
             _markers = new WorldMarkers(_adventure);
+            _shownZone = _adventure.CurrentZone;
             _adventureHelp = null;
             _shownLevel = 0;
             _shownQuests = _adventure.QuestsAnnounced;
@@ -251,6 +252,15 @@ namespace EdS.Game
         /// <summary>Affiche la session de zone en cours (au départ, après une halte ou une reprise).</summary>
         private void ShowAdventureSession()
         {
+            // Intérieurs : une autre zone (une porte passée) a ses propres repères ; un fondu au noir marque le passage.
+            if (_markers != null && _shownZone != _adventure.CurrentZone)
+            {
+                _markers.Destroy();
+                _markers = new WorldMarkers(_adventure);
+                PaintedMap.Forget();
+                if (_shownZone != null) _fade = 1f;
+            }
+            _shownZone = _adventure.CurrentZone;
             _combat = _adventure.Combat;
             _arena.Paint = id => _adventure != null && _adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null;
             _arena.Populate(_combat, _adventure.Map);   // Vallons agrandis : routes et champs du décor
@@ -261,6 +271,14 @@ namespace EdS.Game
             _floating.Clear();
             _playerYaw = 0f;
         }
+
+        /// <summary>Intérieurs : zone affichée (une autre après une porte : repères refaits, fondu au noir).</summary>
+        private string _shownZone;
+
+        /// <summary>Intérieurs : opacité du fondu au noir après une porte (de 1 à 0 en <see cref="FadeSeconds"/>).</summary>
+        private float _fade;
+
+        private const float FadeSeconds = 0.7f;
 
         /// <summary>Un écran (sac, journal, atelier) ou un dialogue de l'aventure couvre les commandes tactiles (revue Codex de la PR #49).</summary>
         private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null || TalentsOpen);
@@ -282,6 +300,7 @@ namespace EdS.Game
             SaveAdventure(false);
             _markers?.Destroy();
             _markers = null;
+            _shownZone = null;
             _adventure = null;
             // Relecture de l'essai 7 : la musique est détruite ; la prochaine aventure la recrée (ses ambiances comprises).
             _music?.Destroy();
@@ -379,6 +398,7 @@ namespace EdS.Game
                 }
             }
             if (a.Opened != _shownSession) ShowAdventureSession();
+            if (_fade > 0f) _fade = Mathf.Max(0f, _fade - Time.deltaTime / FadeSeconds);
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed) && a.Drink())
@@ -440,6 +460,7 @@ namespace EdS.Game
             if (a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None) return null;
             if (a.NpcInReach is EdS.Data.Story.Npc npc) return string.Format(a.Text("text.ui.talk_hint"), a.Text(npc.Name));
             if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);
+            if (a.DoorInReach is EdS.Data.Zones.Door door) return string.Format(a.Text("text.ui.door_hint"), door.Name);   // intérieurs
             if (a.CanRest) return string.Format(a.Text("text.ui.rest_hint"), a.LastSafePoint);
             if (a.WorkshopHere is string workshop) return string.Format(a.Text("text.ui.craft_hint"), workshop);
             return null;
@@ -1346,6 +1367,8 @@ namespace EdS.Game
             if (_adventure != null)
             {
                 DrawAdventure();
+                // Intérieurs : fondu au noir après une porte.
+                if (_fade > 0f) Hud.Fill(new Rect(0f, 0f, Hud.Width, Hud.VirtualHeight), new Color(0f, 0f, 0f, _fade));
                 return;
             }
             _touch.Draw(Network);   // sous-lot 11.8

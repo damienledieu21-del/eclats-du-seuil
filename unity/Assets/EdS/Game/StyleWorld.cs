@@ -82,7 +82,13 @@ namespace EdS.Game
         public static void Refresh()
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
+            if (Indoors)
+            {
+                IndoorLight(catalog);
+                return;
+            }
             if (!Active || catalog == null) return;
+            if (_camera != null && catalog.Sky != null) _camera.clearFlags = CameraClearFlags.Skybox;
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = catalog.AmbientSky;
             RenderSettings.ambientEquatorColor = catalog.AmbientHorizon;
@@ -108,6 +114,86 @@ namespace EdS.Game
                 // Le halo coûte cher sur téléphone (Note8) : seulement sur ordinateur.
                 _bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;
                 _bloom.intensity.value = catalog.Bloom;
+            }
+        }
+
+        /// <summary>
+        /// Intérieurs (choix de Damien du 28 octobre 2026 : une porte qui mène à un intérieur séparé) : le personnage est dans une pièce. Pas
+        /// de ciel ni de soleil ni de brume : le noir autour de la pièce, une ambiance sombre et chaude, et ce sont le feu, les bougies et les
+        /// lanternes qui éclairent (<see cref="SpaceView"/>). Rendu dehors, tout reprend les réglages du catalogue.
+        /// </summary>
+        public static bool Indoors { get; private set; }
+
+        /// <summary>Entre dans une pièce ou en sort (voir <see cref="Indoors"/>).</summary>
+        public static void SetIndoors(bool indoors)
+        {
+            if (Indoors == indoors) return;
+            Indoors = indoors;
+            if (_sun == null)
+                foreach (Light light in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+                    if (light.type == LightType.Directional)
+                    {
+                        _sun = light;
+                        break;
+                    }
+            Camera camera = _camera != null ? _camera : Camera.main;
+            if (indoors && camera != null)
+            {
+                _outdoorClear = camera.clearFlags;
+                _outdoorBackground = camera.backgroundColor;
+            }
+            if (indoors)
+                _outdoorAmbient = (RenderSettings.ambientMode, RenderSettings.ambientSkyColor, RenderSettings.ambientEquatorColor, RenderSettings.ambientGroundColor,
+                    RenderSettings.fog);
+            if (!indoors && !Active)
+            {
+                (RenderSettings.ambientMode, RenderSettings.ambientSkyColor, RenderSettings.ambientEquatorColor, RenderSettings.ambientGroundColor,
+                    RenderSettings.fog) = _outdoorAmbient;
+                if (_sun != null && _outdoorSun > 0f) _sun.intensity = _outdoorSun;
+                if (camera != null)
+                {
+                    camera.clearFlags = _outdoorClear;
+                    camera.backgroundColor = _outdoorBackground;
+                }
+            }
+            Refresh();
+        }
+
+        private static CameraClearFlags _outdoorClear = CameraClearFlags.Skybox;
+        private static (AmbientMode Mode, Color Sky, Color Horizon, Color Ground, bool Fog) _outdoorAmbient =
+            (AmbientMode.Skybox, new Color(0.5f, 0.6f, 0.76f), new Color(0.52f, 0.53f, 0.5f), new Color(0.26f, 0.24f, 0.2f), false);
+        private static Color _outdoorBackground;
+
+        /// <summary>Force du soleil avant la première entrée dans une pièce (sans catalogue, pour la lui rendre en sortant).</summary>
+        private static float _outdoorSun;
+
+        private static void IndoorLight(StyleCatalog catalog)
+        {
+            Color ambient = catalog != null ? catalog.IndoorAmbient : new Color(0.2f, 0.16f, 0.13f);
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = ambient;
+            RenderSettings.ambientEquatorColor = ambient * new Color(0.85f, 0.85f, 0.85f);
+            RenderSettings.ambientGroundColor = ambient * new Color(0.5f, 0.5f, 0.5f);
+            RenderSettings.fog = false;
+            if (_sun != null)
+            {
+                if (_outdoorSun <= 0f && _sun.intensity > 0f) _outdoorSun = _sun.intensity;
+                _sun.intensity = 0f;
+            }
+            Camera camera = _camera != null ? _camera : Camera.main;
+            if (camera != null)
+            {
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = new Color(0.01f, 0.008f, 0.006f);
+            }
+            if (_colors != null && catalog != null)
+            {
+                _colors.postExposure.value = catalog.Exposure + catalog.IndoorExposure;
+                _colors.contrast.value = catalog.Contrast;
+                _colors.saturation.value = catalog.Saturation;
+                _vignette.intensity.value = Mathf.Min(0.5f, catalog.Vignette + 0.12f);
+                _bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;
+                _bloom.intensity.value = catalog.Bloom * 1.4f;
             }
         }
 

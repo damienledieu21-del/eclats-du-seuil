@@ -71,6 +71,21 @@ namespace EdS.Game
         public float Life = 2.5f;
     }
 
+    /// <summary>
+    /// Intérieurs (demande de Damien du 28 octobre 2026 : « de beaux intérieurs bien détaillés ») : un meuble ou un objet d'intérieur de
+    /// Poly Haven (dossier « Assets/Style/PolyHaven/Interieurs »), reconnu par son nom ; rotation et échelle réglables dans l'inspecteur.
+    /// </summary>
+    [Serializable]
+    public sealed class InteriorLook
+    {
+        public InteriorProp Kind;
+        public GameObject Model;
+        [Tooltip("Rotation ajoutée (degrés) si le modèle regarde de travers.")]
+        public float Yaw;
+        [Tooltip("Échelle ajoutée à la taille donnée par le jeu (1 : celle du jeu).")]
+        public float Scale = 1f;
+    }
+
     /// <summary>Essai réaliste 7 : les variantes d'un bruitage.</summary>
     [Serializable]
     public sealed class SoundSet
@@ -180,6 +195,16 @@ namespace EdS.Game
         public VfxLook[] Vfx = new VfxLook[0];
         [Tooltip("Eau de lac du sample Production Ready Shaders (rempli par le menu), sur ordinateur ; sans elle, l'eau « EdS/Eau ».")]
         public Material SampleWater;
+
+        [Header("Intérieurs : meubles et objets (28 octobre 2026)")]
+        [Tooltip("Meubles et objets des intérieurs (Poly Haven, dossier « Interieurs »), remplis par le menu ; sans modèle, une forme simple.")]
+        public InteriorLook[] Furniture = new InteriorLook[0];
+        [Tooltip("Lumière d'ambiance des intérieurs (les feux, bougies et lanternes éclairent le reste).")]
+        public Color IndoorAmbient = new Color(0.2f, 0.16f, 0.13f);
+        [Tooltip("Luminosité générale des intérieurs.")]
+        [Range(-2f, 2f)] public float IndoorExposure = 0.15f;
+        [Tooltip("Force des feux, bougies et lanternes des intérieurs.")]
+        [Range(0f, 4f)] public float IndoorLights = 1f;
 
         [Header("Essai réaliste : décor (pris au lancement du combat)")]
         [Tooltip("Taille (m) d'une répétition des textures du sol.")]
@@ -337,6 +362,16 @@ namespace EdS.Game
             foreach (BuildingLook b in Buildings)
                 if (b != null && b.Kind == kind && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) list.Add(b);
             return list;
+        }
+
+        /// <summary>Intérieurs : un modèle de l'objet <paramref name="kind"/>, choisi de façon stable d'après <paramref name="id"/> ; null sans modèle.</summary>
+        public InteriorLook Interior(InteriorProp kind, string id)
+        {
+            if (Furniture == null) return null;
+            var list = new System.Collections.Generic.List<InteriorLook>();
+            foreach (InteriorLook f in Furniture)
+                if (f != null && f.Kind == kind && f.Model != null) list.Add(f);
+            return list.Count == 0 ? null : list[StyleRules.Variant(id ?? string.Empty, list.Count)];
         }
 
         /// <summary>Personnage d'un PNJ ou d'un ennemi d'après son identifiant (« npc.odile », « gardien_eveille »), ou null.</summary>

@@ -272,12 +272,18 @@ namespace EdS.World
         /// <param name="story">Sous-lot 12.5 : histoire de la zone (PNJ, dialogues, quêtes) ; sans elle, l'état narratif sauvegardé est gardé tel quel.</param>
         /// <param name="crafting">Sous-lot 12.6 : métiers, recettes et nœuds de récolte ; sans eux, l'expérience des métiers sauvegardée est gardée.</param>
         /// <param name="safePoint">Sous-lot 12.8 : point sûr où le personnage entre (halte, reprise après une défaite) ; null : l'entrée de la zone.</param>
+        /// <param name="door">Intérieurs : porte de la zone par où le personnage arrive (venant d'une autre zone) ; null : le point sûr. Pas
+        /// les deux à la fois.</param>
+        /// <param name="storyZone">Intérieurs : zone où vivent les PNJ de l'histoire, ses lieux et les nœuds et ateliers des métiers (celle
+        /// contre laquelle ils ont été validés) ; null : cette zone. Ailleurs (un intérieur), le personnage n'y est pas : on n'y parle à aucun
+        /// PNJ, on n'y atteint aucun lieu de l'histoire, on n'y récolte ni n'y fabrique ; le reste de l'histoire (faits, objets, journal) suit.</param>
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
-            CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null)
+            CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null, string? door = null, string? storyZone = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
-                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint).Position, CharacterRadius), null, log, CheckZone(save, zone, story, crafting))
+                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius), null, log, CheckZone(save, zone, story, crafting))
         {
             Definition = zone;
+            _storyZone = storyZone ?? zone.Id;
             _populations = new ZonePopulations(zone);
             if (story != null) Narrative = new Narrative(story, _character.Story, this);
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
@@ -335,6 +341,8 @@ namespace EdS.World
         {
             get
             {
+                // Intérieurs : hors de la zone de l'histoire (un intérieur), les PNJ, lieux, nœuds et ateliers ne sont pas là.
+                if (!InStoryZone) return null;
                 CombatantView me = Zone.Engine.View(_character.Id);
                 return me.IsPresent && !me.IsDead ? me.Position : null;
             }
@@ -343,10 +351,26 @@ namespace EdS.World
         bool INarrativeWorld.InPlace(string place) =>
             Definition != null && ((INarrativeWorld)this).PlayerPosition is GroundVector p && Definition.PlacesAt(p).Any(x => x.Id == place);
 
-        /// <summary>Point sûr d'entrée : celui demandé, ou l'entrée de la zone.</summary>
-        private static SafePoint EntryOf(ZoneDefinition zone, string? safePoint) =>
-            safePoint is null ? zone.Entry
-            : zone.SafePoints.FirstOrDefault(p => p.Id == safePoint) ?? throw new ArgumentException($"Point sûr « {safePoint} » inconnu de {zone.Id}.", nameof(safePoint));
+        /// <summary>Intérieurs : zone de l'histoire et des métiers (null pour une partie sur une simulation donnée).</summary>
+        private readonly string? _storyZone;
+
+        /// <summary>
+        /// Intérieurs : le personnage est dans la zone de l'histoire (celle de ses PNJ, de ses lieux, des nœuds et des ateliers) ; faux dans
+        /// un intérieur. Toujours vrai pour une partie sur une simulation donnée.
+        /// </summary>
+        public bool InStoryZone => Definition is null || Definition.Id == _storyZone;
+
+        /// <summary>Place d'entrée : la porte demandée, sinon le point sûr demandé, sinon l'entrée de la zone.</summary>
+        private static GroundVector EntryOf(ZoneDefinition zone, string? safePoint, string? door)
+        {
+            if (door != null)
+            {
+                if (safePoint != null) throw new ArgumentException("Entrée par une porte ou par un point sûr, pas les deux.", nameof(door));
+                return (zone.DoorOf(door) ?? throw new ArgumentException($"Porte « {door} » inconnue de {zone.Id}.", nameof(door))).Position;
+            }
+            return (safePoint is null ? zone.Entry
+                : zone.SafePoints.FirstOrDefault(p => p.Id == safePoint) ?? throw new ArgumentException($"Point sûr « {safePoint} » inconnu de {zone.Id}.", nameof(safePoint))).Position;
+        }
 
         /// <summary>
         /// Contrôles faits avant l'ouverture de la zone (aucun journal écrit pour une session refusée) : sauvegarde de cette zone, état narratif

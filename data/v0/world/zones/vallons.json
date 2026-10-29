@@ -1,6 +1,6 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "kind": "zone",
   "contentVersion": "0.2.0-provisoire",
   "data": {
@@ -742,6 +742,41 @@
         }
       ],
       "loot": "loot.gardien"
-    }
+    },
+    "doors": [
+      {
+        "id": "porte_auberge",
+        "name": "Auberge de l'Aube",
+        "position": [
+          -69,
+          4
+        ],
+        "to": "zone.auberge",
+        "toDoor": "sortie",
+        "building": "auberge"
+      },
+      {
+        "id": "porte_chapelle",
+        "name": "Chapelle du Bourg",
+        "position": [
+          -73,
+          -7
+        ],
+        "to": "zone.chapelle",
+        "toDoor": "sortie",
+        "building": "chapelle"
+      },
+      {
+        "id": "porte_maison",
+        "name": "Maison du Bourg",
+        "position": [
+          -84.5,
+          3
+        ],
+        "to": "zone.maison",
+        "toDoor": "sortie",
+        "building": "maison5"
+      }
+    ]
   }
 }

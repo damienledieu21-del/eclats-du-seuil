@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 4,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.chapelle",
+    "name": "Chapelle du Bourg",
+    "scenario": "zones/chapelle",
+    "indoor": true,
+    "entry": "choeur",
+    "safePoints": [
+      {
+        "id": "choeur",
+        "name": "Chœur",
+        "position": [
+          0,
+          3.8
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "chapelle",
+        "name": "Chapelle du Bourg",
+        "min": [
+          -4.5,
+          -8
+        ],
+        "max": [
+          4.5,
+          8
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bourg d'Aube",
+        "position": [
+          0,
+          -7.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_chapelle"
+      }
+    ]
+  }
+}
