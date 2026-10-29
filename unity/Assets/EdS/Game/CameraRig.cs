@@ -80,9 +80,20 @@ namespace EdS.Game
 
         /// <summary>
         /// Relecture : un écran, un menu (même dessiné en IMGUI) ou les commandes tactiles sont ouverts ; un clic gauche n'y commence pas
-        /// de rotation.
+        /// de rotation. Revue Codex de la PR #68 : un écran qui s'ouvre **annule** aussi la rotation en cours, sans attendre
+        /// <see cref="Follow"/> (qui n'est plus appelé tant que l'écran d'entraînement est ouvert) : le curseur revient pour l'écran.
         /// </summary>
-        public bool Blocked { get; set; }
+        public bool Blocked
+        {
+            get => _blocked;
+            set
+            {
+                _blocked = value;
+                if (value) _dragging = false;
+            }
+        }
+
+        private bool _blocked;
 
         private CameraRig(Camera camera)
         {

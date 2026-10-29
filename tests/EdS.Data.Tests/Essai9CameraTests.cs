@@ -141,4 +141,17 @@ public class Essai9CameraTests
         g.Reset();
         Assert.Equal(0f, g.PitchDelta);
     }
+
+    [Fact]
+    public void Un_ecran_qui_s_ouvre_annule_la_rotation_au_clic()
+    {
+        // Revue Codex de la PR #68 : avec le réglage « clic maintenu », ouvrir le menu M ou les talents T pendant une rotation laissait la
+        // rotation en cours (Follow n'est plus appelé), donc le curseur caché. Couvrir le jeu l'annule, avant le choix du curseur.
+        string rig = Unity("Game", "CameraRig.cs"), game = Unity("Game", "EdsGame.cs");
+        Assert.Contains("if (value) _dragging = false;", rig, StringComparison.Ordinal);
+        int blocked = game.IndexOf("_camera.Blocked = covered || _touch.Active;", StringComparison.Ordinal);
+        int hidden = game.IndexOf("bool hidden = _freeLook || _camera.Dragging;", StringComparison.Ordinal);
+        int talents = game.IndexOf("if (_talents != null)", hidden, StringComparison.Ordinal);
+        Assert.True(blocked > 0 && hidden > blocked && talents > hidden);
+    }
 }
