@@ -39,8 +39,11 @@ namespace EdS.Domain.Combat
         // Lot 7.1 : admission des scénarios et budgets d'exécution (docs/LIMITES_LOT_7.md). Valeurs configurées provisoires,
         // bornées par des plafonds techniques absolus.
 
-        /// <summary>Nombre maximal de combattants d'un scénario (refus à la validation).</summary>
-        public int MaxCombatants { get; init; } = 64;
+        /// <summary>
+        /// Nombre maximal de combattants d'un scénario (refus à la validation). 128 depuis le 29 octobre 2026 (décision de Damien : plus de
+        /// réapparitions par session dans les Vallons) ; 64 avant.
+        /// </summary>
+        public int MaxCombatants { get; init; } = 128;
 
         /// <summary>Nombre maximal de commandes d'un scénario (refus à la validation).</summary>
         public int MaxCommands { get; init; } = 20_000;
