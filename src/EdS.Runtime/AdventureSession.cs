@@ -705,6 +705,101 @@ namespace EdS.Runtime
             return null;
         }
 
+        // --- Compétences (sous-lot V1.5) ---------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Sous-lot V1.5 (décision de Damien : changer ses compétences « partout hors combat ») : faux tant que le personnage est tombé, qu'un
+        /// dialogue est ouvert, qu'un ennemi vivant est à moins de <see cref="RestSafety"/> (la règle des talents et de la halte), ou qu'un
+        /// ennemi engagé le vise, où qu'il soit (un archer qui tire de loin).
+        /// </summary>
+        public bool CanChangeSkills => CanChangeTalents && !EngagedOnMe;
+
+        /// <summary>Sous-lot V1.5 : un ennemi présent, vivant et engagé (<see cref="CombatantView.Engaged"/>) vise le personnage.</summary>
+        private bool EngagedOnMe
+        {
+            get
+            {
+                CombatEngine engine = World.Zone.Engine;
+                string team = engine.View(PlayerId).Team;
+                foreach (string id in engine.CombatantIds)
+                {
+                    if (id == PlayerId) continue;
+                    CombatantView v = engine.View(id);
+                    if (v.Team != team && v.IsPresent && !v.IsDead && v.Engaged && v.CurrentTarget == PlayerId) return true;
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 : l'écran des compétences : la barre telle qu'elle sera à la prochaine halte (<see cref="WorldSession.NextEntry"/>),
+        /// ses places ouvertes et fermées, les compétences apprises et celles à venir (descriptions : textes <c>text.skill.…</c>).
+        /// </summary>
+        public SkillBook Skills() => SkillBook.For(World.NextEntry, _progression, World.Class, World.ProgressionRules, CanChangeSkills,
+            id => Texts.Has(SkillTextKey(id)) ? Text(SkillTextKey(id)) : "");
+
+        /// <summary>Clé de la description d'une compétence : <c>text.skill.</c> suivi de la fin de son identifiant.</summary>
+        public static string SkillTextKey(string skill) =>
+            "text.skill." + (skill ?? throw new ArgumentNullException(nameof(skill))).Substring(skill.LastIndexOf('.') + 1);
+
+        /// <summary>
+        /// Sous-lot V1.5 : garde la barre <paramref name="actives"/>, <paramref name="ultimate"/>, <paramref name="passives"/>, jugée par
+        /// <see cref="WorldSession.SetSkills"/> ; effet à la prochaine halte, comme les talents. Rend null si c'est fait ; sinon rien ne change
+        /// et le motif est rendu : en plein combat (<see cref="CanChangeSkills"/>, motif dit aussi dans les messages), ou premier refus.
+        /// </summary>
+        public string? SetSkills(IReadOnlyList<string> actives, string? ultimate, IReadOnlyList<string> passives)
+        {
+            if (actives is null) throw new ArgumentNullException(nameof(actives));
+            if (passives is null) throw new ArgumentNullException(nameof(passives));
+            if (!CanChangeSkills)
+            {
+                Say("text.ui.skills.in_combat");
+                return Text("text.ui.skills.in_combat");
+            }
+            BuildViolation? why = World.SetSkills(actives, ultimate, passives);
+            if (why != null) return why.Message;
+            _dirty = true;
+            Say("text.ui.skills.saved");
+            return null;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 : met <paramref name="skill"/> à la place <paramref name="index"/> de la sorte <paramref name="kind"/> (0 pour
+        /// l'ultime), sur la barre de la prochaine halte (<see cref="SkillBar.Place"/> : échange avec une compétence déjà dans la barre, sinon
+        /// celle de la place retourne en réserve). Même jugement que <see cref="SetSkills"/>, et une place fermée est refusée avec le niveau
+        /// qui l'ouvre. Rend null si c'est fait (ou s'il n'y a rien à changer), sinon le motif ; rien ne change.
+        /// </summary>
+        public string? PlaceSkill(SkillKind kind, int index, string skill)
+        {
+            if (skill is null) throw new ArgumentNullException(nameof(skill));
+            if (index < 0 || (kind == SkillKind.Ultimate && index != 0)) throw new ArgumentOutOfRangeException(nameof(index), index, "Rang de place impossible.");
+            return Change(SkillBar.Of(World.NextEntry), bar => bar.Place(kind, index, skill), kind, index);
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 : retire la compétence de la place <paramref name="index"/> de la sorte <paramref name="kind"/> (les suivantes
+        /// avancent). Refusé tant qu'une compétence apprise de sa sorte attendrait (la barre reste pleine) ; même jugement que
+        /// <see cref="SetSkills"/>.
+        /// </summary>
+        public string? RemoveSkill(SkillKind kind, int index)
+        {
+            if (index < 0 || (kind == SkillKind.Ultimate && index != 0)) throw new ArgumentOutOfRangeException(nameof(index), index, "Rang de place impossible.");
+            return Change(SkillBar.Of(World.NextEntry), bar => bar.Remove(kind, index), kind, index);
+        }
+
+        private string? Change(SkillBar before, Func<SkillBar, SkillBar> change, SkillKind kind, int index)
+        {
+            if (!CanChangeSkills)
+            {
+                Say("text.ui.skills.in_combat");
+                return Text("text.ui.skills.in_combat");
+            }
+            if (PlayerCharacters.ClosedPlace(kind, index, World.Level, World.ProgressionRules) is BuildViolation closed) return closed.Message;
+            SkillBar after = change(before);
+            if (after.SameAs(before) && SkillBar.Of(World.Character).SameAs(before)) return null;   // rien à changer, ni à garder
+            return SetSkills(after.Actives, after.Ultimate, after.Passives);
+        }
+
         // --- Journal, carte ---------------------------------------------------------------------------------------------
 
         /// <summary>Quêtes commencées : en cours d'abord (étape et avancement), puis accomplies.</summary>

@@ -148,6 +148,29 @@ namespace EdS.World
             return why;
         }
 
+        /// <summary>
+        /// Sous-lot V1.5 (écran des compétences, décision de Damien : changer ses compétences « partout hors combat ») : nouvelle barre du
+        /// personnage, jugée à son niveau actuel par <see cref="PlayerCharacters.CheckSkills"/> (places ouvertes, compétences apprises,
+        /// validateur unique des builds, barre pleine). Admise, elle est gardée (sauvegarde) et prend effet à la prochaine entrée dans une
+        /// zone, comme les talents (le combat en cours garde le build d'entrée) ; refusée, rien ne change et le premier motif est rendu.
+        /// </summary>
+        /// <exception cref="ArgumentException">Une liste contient null.</exception>
+        public BuildViolation? SetSkills(IReadOnlyList<string> actives, string? ultimate, IReadOnlyList<string> passives)
+        {
+            if (actives is null) throw new ArgumentNullException(nameof(actives));
+            if (passives is null) throw new ArgumentNullException(nameof(passives));
+            BuildViolation? why = PlayerCharacters.CheckSkills(_character, actives, ultimate, passives, _progression, Class, _rules);
+            if (why is null) _character = _character.WithSkills(actives, ultimate, passives);
+            return why;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 : le personnage tel qu'il entrera dans la prochaine session : les compétences gagnées depuis cette entrée déjà
+        /// équipées dans les places libres (<see cref="PlayerCharacters.Learn"/>, sans rien changer ici). C'est la barre que montre et
+        /// que modifie l'écran des compétences.
+        /// </summary>
+        public SavedCharacter NextEntry => PlayerCharacters.Learn(_character, _progression, _rules, out _);
+
         /// <summary>Sous-lot 12.9b : compétences gagnées et équipées à l'entrée dans cette session (niveau atteint depuis la précédente).</summary>
         public IReadOnlyList<SkillUnlock> Learned { get; }
 

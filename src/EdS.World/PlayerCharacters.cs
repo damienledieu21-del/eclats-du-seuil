@@ -69,6 +69,138 @@ namespace EdS.World
             return gained.Count == 0 ? character : character.WithSkills(actives, ultimate, passives);
         }
 
+        /// <summary>
+        /// Sous-lot V1.5 (écran des compétences) : compétences apprises par le personnage à son niveau actuel (d'après son expérience) : celles
+        /// de départ de sa classe (actives puis passives), puis celles gagnées jusqu'à son niveau (<see cref="ClassProgression.SkillUnlocks"/>),
+        /// dans l'ordre de la progression, sans doublon.
+        /// </summary>
+        public static IReadOnlyList<string> Learned(SavedCharacter character, CharacterProgression progression)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            int level = Level(character, progression);
+            ClassProgression p = progression.ForClass(character.ClassId);
+            var learned = new List<string>();
+            foreach (string skill in p.StartActiveSkills.Concat(p.StartPassiveSkills).Concat(p.SkillUnlocks.Where(u => u.Level <= level).Select(u => u.Skill)))
+                if (!learned.Contains(skill)) learned.Add(skill);
+            return learned;
+        }
+
+        /// <summary>Sous-lot V1.5 : compétences que le personnage gagnera plus haut (au-delà de son niveau actuel), dans l'ordre de la progression.</summary>
+        public static IReadOnlyList<SkillUnlock> Upcoming(SavedCharacter character, CharacterProgression progression)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            int level = Level(character, progression);
+            return progression.ForClass(character.ClassId).SkillUnlocks.Where(u => u.Level > level).ToList();
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 : motif de refus d'une place fermée au niveau <paramref name="level"/> (rang <paramref name="index"/> dans sa sorte,
+        /// 0 pour l'ultime), avec le niveau qui l'ouvre ; null si la place est ouverte.
+        /// </summary>
+        public static BuildViolation? ClosedPlace(SkillKind kind, int index, int level, ProgressionRules rules)
+        {
+            if (rules is null) throw new ArgumentNullException(nameof(rules));
+            if (index < 0) throw new ArgumentOutOfRangeException(nameof(index), index, "Rang de place négatif.");
+            if (kind == SkillKind.Ultimate)
+            {
+                if (index != 0) throw new ArgumentOutOfRangeException(nameof(index), index, "Une seule place d'ultime (rang 0).");
+                return rules.IsUltimateUnlocked(level) ? null : new BuildViolation(BuildViolationCode.UltimateLocked, "ultimate",
+                    $"place de l'ultime fermée : elle s'ouvre au niveau {rules.UltimateUnlockLevel} (niveau actuel {level}).");
+            }
+            bool active = kind == SkillKind.Active;
+            IReadOnlyList<int> levels = active ? rules.ActiveSlotLevels : rules.PassiveSlotLevels;
+            int open = active ? rules.ActiveSlots(level) : rules.PassiveSlots(level);
+            if (index < open) return null;
+            string subject = (active ? "activeSkills" : "passiveSkills") + $"[{index}]", label = active ? "active" : "passive";
+            return new BuildViolation(BuildViolationCode.TooManySkills, subject, index < levels.Count
+                ? $"place {label} {index + 1} fermée : elle s'ouvre au niveau {levels[index]} (niveau actuel {level})."
+                : $"la barre n'a que {levels.Count} place(s) {label}(s).");
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 (écran des compétences, décision de Damien : changer ses compétences « partout hors combat ») : juge la barre
+        /// <paramref name="actives"/>, <paramref name="ultimate"/>, <paramref name="passives"/> pour le personnage à son niveau actuel (avec ses
+        /// talents) ; rend le premier motif de refus, ou null si elle est admise. Dans l'ordre :
+        /// <list type="number">
+        /// <item>une place fermée à ce niveau (<see cref="ClosedPlace"/>, avec le niveau qui l'ouvre) ;</item>
+        /// <item>une compétence ni apprise (<see cref="Learned"/>) ni déjà dans la barre du personnage (<see cref="BuildViolationCode.SkillNotLearned"/>) ;</item>
+        /// <item>le validateur unique des builds (sorte de la place, doublon, niveau minimal, talents exigés) ;</item>
+        /// <item>une place ouverte laissée vide alors qu'une compétence apprise de sa sorte attend (<see cref="BuildViolationCode.SlotLeftEmpty"/>) :
+        /// la barre reste pleine, comme <see cref="Learn"/> la remplit à l'entrée ; ainsi une barre admise ne change pas à la halte suivante.</item>
+        /// </list>
+        /// Rien n'est modifié ici.
+        /// </summary>
+        /// <exception cref="ArgumentException">Une liste contient null.</exception>
+        public static BuildViolation? CheckSkills(SavedCharacter character, IReadOnlyList<string> actives, string? ultimate, IReadOnlyList<string> passives,
+            CharacterProgression progression, ClassDefinition definition, ProgressionRules rules)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            if (actives is null) throw new ArgumentNullException(nameof(actives));
+            if (passives is null) throw new ArgumentNullException(nameof(passives));
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            if (definition is null) throw new ArgumentNullException(nameof(definition));
+            if (rules is null) throw new ArgumentNullException(nameof(rules));
+            if (actives.Any(s => s is null)) throw new ArgumentException("Compétence active nulle.", nameof(actives));
+            if (passives.Any(s => s is null)) throw new ArgumentException("Compétence passive nulle.", nameof(passives));
+
+            int level = Level(character, progression);
+            var build = new CharacterBuild(character.ClassId, level, progression.ForClass(character.ClassId).At(level), character.Talents, actives.ToArray(),
+                ultimate, passives.ToArray());
+            IReadOnlyList<BuildViolation> violations = BuildValidator.Validate(build, definition, rules);
+            // Règles incohérentes, autre classe, niveau impossible : rien d'autre ne peut se juger.
+            BuildViolation? fatal = violations.FirstOrDefault(v => v.Code == BuildViolationCode.InvalidProgressionRules || v.Code == BuildViolationCode.WrongClass
+                || v.Code == BuildViolationCode.LevelOutOfRange);
+            if (fatal != null) return fatal;
+
+            // 1. Places fermées : la première place de trop.
+            if (rules.ActiveSlots(level) < actives.Count && ClosedPlace(SkillKind.Active, rules.ActiveSlots(level), level, rules) is BuildViolation closedActive)
+                return closedActive;
+            if (ultimate != null && ClosedPlace(SkillKind.Ultimate, 0, level, rules) is BuildViolation closedUltimate) return closedUltimate;
+            if (rules.PassiveSlots(level) < passives.Count && ClosedPlace(SkillKind.Passive, rules.PassiveSlots(level), level, rules) is BuildViolation closedPassive)
+                return closedPassive;
+
+            // 2. Compétences apprises (ou déjà dans la barre du personnage).
+            IReadOnlyList<string> learned = Learned(character, progression);
+            var allowed = new HashSet<string>(learned.Concat(character.ActiveSkills).Concat(character.PassiveSkills), StringComparer.Ordinal);
+            if (character.Ultimate != null) allowed.Add(character.Ultimate);
+            IReadOnlyList<SkillUnlock> upcoming = Upcoming(character, progression);
+            BuildViolation? NotLearned(string skill, string subject)
+            {
+                if (allowed.Contains(skill)) return null;
+                string name = definition.TryGetSkill(skill, out SkillDefinition d) ? d.Name : skill;
+                SkillUnlock? later = upcoming.FirstOrDefault(u => u.Skill == skill);
+                return new BuildViolation(BuildViolationCode.SkillNotLearned, subject, later != null
+                    ? $"« {name} » n'est pas encore apprise : elle s'apprend au niveau {later.Level} (niveau actuel {level})."
+                    : $"« {name} » n'est pas apprise.");
+            }
+            for (int i = 0; i < actives.Count; i++)
+                if (NotLearned(actives[i], $"activeSkills[{i}]") is BuildViolation a) return a;
+            if (ultimate != null && NotLearned(ultimate, "ultimate") is BuildViolation u) return u;
+            for (int i = 0; i < passives.Count; i++)
+                if (NotLearned(passives[i], $"passiveSkills[{i}]") is BuildViolation p) return p;
+
+            // 3. Le validateur unique des builds.
+            if (violations.Count > 0) return violations[0];
+
+            // 4. Barre pleine : aucune place ouverte vide tant qu'une compétence apprise de sa sorte, équipable, attend.
+            var placed = new HashSet<string>(actives.Concat(passives), StringComparer.Ordinal);
+            if (ultimate != null) placed.Add(ultimate);
+            string? Waiting(SkillKind kind) => learned.FirstOrDefault(s => !placed.Contains(s) && definition.TryGetSkill(s, out SkillDefinition d) && d.Kind == kind
+                && d.MinLevel <= level && d.TalentRequirements.All(r => character.Talents.TryGetValue(r.TalentId, out int rank) && rank >= r.MinRank));
+            BuildViolation? Empty(SkillKind kind, int used, int open, string subject, string label)
+            {
+                if (used >= open || !(Waiting(kind) is string waiting)) return null;
+                string name = definition.TryGetSkill(waiting, out SkillDefinition d) ? d.Name : waiting;
+                return new BuildViolation(BuildViolationCode.SlotLeftEmpty, subject,
+                    $"{label} vide alors que « {name} » attend : une place ouverte ne reste pas vide.");
+            }
+            return Empty(SkillKind.Active, actives.Count, rules.ActiveSlots(level), $"activeSkills[{actives.Count}]", $"place active {actives.Count + 1}")
+                ?? Empty(SkillKind.Ultimate, ultimate is null ? 0 : 1, rules.IsUltimateUnlocked(level) ? 1 : 0, "ultimate", "place de l'ultime")
+                ?? Empty(SkillKind.Passive, passives.Count, rules.PassiveSlots(level), $"passiveSkills[{passives.Count}]", $"place passive {passives.Count + 1}");
+        }
+
         public static int Level(SavedCharacter character, CharacterProgression progression) =>
             (progression ?? throw new ArgumentNullException(nameof(progression))).LevelFor((character ?? throw new ArgumentNullException(nameof(character))).Xp);
 

@@ -29,6 +29,18 @@ namespace EdS.Domain.Builds
 
         /// <summary>Attribut hors de [0, <see cref="BuildValidator.MaxAttributeValue"/>] (correctif 6.1).</summary>
         AttributeOutOfRange,
+
+        /// <summary>
+        /// Sous-lot V1.5 (écran des compétences) : compétence pas encore apprise par le personnage. Jugé par la partie (EdS.World, qui
+        /// connaît la progression), jamais par ce validateur, qui ne connaît que la classe et les règles.
+        /// </summary>
+        SkillNotLearned,
+
+        /// <summary>
+        /// Sous-lot V1.5 : une place ouverte de la barre reste vide alors qu'une compétence apprise de sa sorte attend. Jugé par la partie
+        /// (EdS.World), comme <see cref="SkillNotLearned"/>.
+        /// </summary>
+        SlotLeftEmpty,
     }
 
     /// <summary>Une raison de refus, rattachée à l'élément concerné (talent, compétence, emplacement).</summary>
