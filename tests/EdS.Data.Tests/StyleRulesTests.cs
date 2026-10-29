@@ -559,7 +559,9 @@ public class StyleRulesTests
         Assert.False(PointerInput.FreeLook(0, false, false, false, false));  // fenêtre du jeu inactive
         string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
         string rig = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "CameraRig.cs"));
-        Assert.Contains("Cursor.lockState = _freeLook ? CursorLockMode.Locked : CursorLockMode.None;", game, StringComparison.Ordinal);
+        // Essai réaliste 9 : le curseur est aussi caché pendant que le clic gauche tourne la vue (réglage « clic maintenu »).
+        Assert.Contains("bool hidden = _freeLook || _camera.Dragging;", game, StringComparison.Ordinal);
+        Assert.Contains("Cursor.lockState = hidden ? CursorLockMode.Locked : CursorLockMode.None;", game, StringComparison.Ordinal);
         Assert.Contains("bool covered = _talents != null || _menuOpen || _paused || AdventureCovered || LobbyShown;", game, StringComparison.Ordinal);
         // Revue Codex de la PR #57 : la salle d'attente du réseau garde le curseur pour ses boutons ; même condition que son affichage.
         Assert.Contains("if (LobbyShown)\n            {\n                // Salle d'attente", game.Replace("\r\n", "\n"), StringComparison.Ordinal);
@@ -567,7 +569,7 @@ public class StyleRulesTests
         Assert.Contains("_freeLook = PointerInput.FreeLook(Input.touchCount, _touch.Active, cursorWanted, covered, Application.isFocused);", game, StringComparison.Ordinal);
         Assert.Contains("if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;", game, StringComparison.Ordinal);
         Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"Time\.deltaTime, _freeLook\)").Count);
-        Assert.Contains("_yaw += Input.GetAxis(\"Mouse X\") * 3f;", rig, StringComparison.Ordinal);
+        Assert.Contains("_yaw += Input.GetAxis(\"Mouse X\") * 3f * Sensitivity;", rig, StringComparison.Ordinal);   // essai réaliste 9 : sensibilité réglable
     }
 
     [Fact]

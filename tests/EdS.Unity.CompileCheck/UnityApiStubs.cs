@@ -40,7 +40,7 @@ namespace UnityEngine
     public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } public Mesh sharedMesh { get; set; } }
     public sealed class MeshFilter : Component { public Mesh mesh { get; set; } public Mesh sharedMesh { get; set; } }
     public sealed class Mesh : Object { public Mesh() { } public UnityEngine.Rendering.IndexFormat indexFormat { get; set; } public int vertexCount => 0; public Vector3[] normals { get; set; } public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public Vector2[] uv2 { get; set; } public Color[] colors { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateTangents() { } public void RecalculateBounds() { } }
-    public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static void Save() { } }
+    public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static int GetInt(string key, int defaultValue) => defaultValue; public static void SetInt(string key, int value) { } public static void Save() { } }
     public class Collider : Component { }
     public enum LightType { Spot, Directional, Point }
     public enum LightShadows { None, Hard, Soft }
@@ -139,7 +139,7 @@ namespace UnityEngine
 namespace UnityEngine.EventSystems
 {
     public abstract class UIBehaviour : MonoBehaviour { public virtual bool IsActive() => false; }
-    public class EventSystem : UIBehaviour { public static EventSystem current => null; }
+    public class EventSystem : UIBehaviour { public static EventSystem current => null; public bool IsPointerOverGameObject() => false; }
     public abstract class BaseInputModule : UIBehaviour { }
     public class StandaloneInputModule : BaseInputModule { }
     public class PointerEventData { public enum InputButton { Left = 0, Right = 1, Middle = 2 } public InputButton button { get; set; } public int pointerId { get; set; } }
