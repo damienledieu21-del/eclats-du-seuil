@@ -375,7 +375,7 @@ public class Lot71CliLimitTests
 
     public static TheoryData<string, string, string> Refused => new()
     {
-        { Lot71Files.ToJson(Lot71Files.WithCombatants(65)), "$.data.combatants (ligne 9)", "65 combattants, au plus 64" },
+        { Lot71Files.ToJson(Lot71Files.WithCombatants(129)), "$.data.combatants (ligne 9)", "129 combattants, au plus 128" },   // 64 avant le 29 octobre 2026
         { Lot71Files.ToJson(Lot71Files.WithCommands(20_001)), "$.data.commands (ligne", "20001 commandes, au plus 20000" },
         { Lot71Files.ToJson(Lot71Files.WithSimultaneous(5)), "$.data.commands[4].atMs", "5ᵉ commande de « bastion »" },
     };
