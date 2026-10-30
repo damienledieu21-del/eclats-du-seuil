@@ -264,6 +264,9 @@ namespace EdS.Game
                 if (_shownZone != null) _fade = 1f;
             }
             _shownZone = _adventure.CurrentZone;
+            // Sous-lot V1.1 : un voyage rapide passe aussi par un fondu au noir.
+            if (_adventure.Travels != _shownTravels) _fade = 1f;
+            _shownTravels = _adventure.Travels;
             _combat = _adventure.Combat;
             _arena.Paint = id => _adventure != null && _adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null;
             _arena.Populate(_combat, _adventure.Map);   // Vallons agrandis : routes et champs du décor
@@ -277,6 +280,9 @@ namespace EdS.Game
 
         /// <summary>Intérieurs : zone affichée (une autre après une porte : repères refaits, fondu au noir).</summary>
         private string _shownZone;
+
+        /// <summary>Sous-lot V1.1 : voyages rapides déjà montrés (un fondu au noir à chaque nouveau).</summary>
+        private int _shownTravels;
 
         /// <summary>Intérieurs : opacité du fondu au noir après une porte (de 1 à 0 en <see cref="FadeSeconds"/>).</summary>
         private float _fade;
@@ -405,8 +411,12 @@ namespace EdS.Game
             }
             if (a.Opened != _shownSession) ShowAdventureSession();
             if (_fade > 0f) _fade = Mathf.Max(0f, _fade - Time.deltaTime / FadeSeconds);
+            // Sous-lot V1.1 : la boutique suit l'écran (Échap, I, J, K, L la ferment) ; le bouton Parler la ferme pour le dialogue.
+            if (_screens.Open == AdventureScreens.Panel.Merchant && a.Shop == null) _screens.Close();
+            else if (_screens.Open != AdventureScreens.Panel.Merchant && a.Shop != null) a.CloseShop();
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
+            if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
             if (!frozen && (Input.GetKeyDown(KeyCode.P) || _touch.PotionPressed) && a.Drink())
             {
                 StyleLook.Play(Audio, StyleSound.Potion);   // essai de style : son
@@ -416,7 +426,7 @@ namespace EdS.Game
             _camera.Nudge(_touch.YawDelta, _touch.ViewDelta, _touch.PitchDelta);
 
             PlayerState player = _combat.Player();
-            frozen = frozen || a.Dialogue != null;   // un dialogue ouvert par F à cette image
+            frozen = frozen || a.Dialogue != null || a.Shop != null;   // un dialogue (ou, sous-lot V1.1, une boutique) ouvert par F à cette image
             if (frozen)
             {
                 _combat.SetGuard(false);
@@ -465,7 +475,7 @@ namespace EdS.Game
             AdventureSession a = _adventure;
             if (a.MustContinue) return string.Format(a.Text("text.ui.continue_hint"), a.LastSafePoint);
             if (a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None) return null;
-            if (a.NpcInReach is EdS.Data.Story.Npc npc) return string.Format(a.Text("text.ui.talk_hint"), a.Text(npc.Name));
+            if (a.NpcInReach is EdS.Data.Story.Npc npc) return string.Format(a.Text(a.IsMerchant(npc.Id) ? "text.ui.trade_hint" : "text.ui.talk_hint"), a.Text(npc.Name));
             if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);
             if (a.DoorInReach is EdS.Data.Zones.Door door) return string.Format(a.Text("text.ui.door_hint"), door.Name);   // intérieurs
             if (a.CanRest) return string.Format(a.Text("text.ui.rest_hint"), a.LastSafePoint);
