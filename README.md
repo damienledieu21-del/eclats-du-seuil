@@ -50,8 +50,9 @@ dotnet test --filter Category=Network     # protocole, transport TCP et réseau 
 scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
 # Comme la CI depuis le chantier « tests plus rapides » : l'exécution complète écrit ses résultats, et les recettes par catégorie les relisent
 # (liste filtrée de chaque catégorie, chaque test réussi dans l'exécution complète de la même construction) au lieu de relancer les tests.
-dotnet test --no-build -c Release --logger trx --results-directory /tmp/resultats-release
-scripts/test-category.sh -c Release --resultats /tmp/resultats-release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Space Presence Behavior Scene Duo World
+resultats=$(mktemp -d)   # dossier neuf à chaque fois : des résultats d'une exécution précédente y seraient refusés (un fichier par assemblage)
+dotnet test --no-build -c Release --logger trx --results-directory "$resultats"
+scripts/test-category.sh -c Release --resultats "$resultats" Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World
 python3 -m unittest discover -s scripts -p 'test_category_results.py' -v   # rapprochement des catégories (tests du script)
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
