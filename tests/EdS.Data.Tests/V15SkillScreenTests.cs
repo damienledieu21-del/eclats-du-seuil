@@ -376,6 +376,31 @@ public class V15SkillScreenTests : IDisposable
     }
 
     [Fact]
+    public void Pas_pendant_un_dialogue()
+    {
+        // CanChangeSkills est écrit à part de CanChangeTalents (les talents iront chez le maître de classe, cadrage Q21) : il garde
+        // pourtant le refus d'un dialogue ouvert.
+        AdventureSession a = Start(Level10);
+        for (int i = 0; i < 2000 && a.NpcInReach?.Id != "npc.odile"; i++)
+        {
+            EdS.Domain.Space.GroundVector p = a.World.Zone.Engine.View(AdventureSession.PlayerId).Position!.Value;
+            a.Combat.SetMove(-8 - p.X.Raw / 1e4, 3 - p.Z.Raw / 1e4);
+            a.Advance(0.05);
+        }
+        a.Combat.SetMove(0, 0);
+        Assert.True(a.Interact());
+        Assert.NotNull(a.Dialogue);
+        Assert.False(a.CanChangeSkills);
+        SavedCharacter before = a.World.Character;
+        Assert.Equal("Pas en plein combat : éloigne-toi des ennemis pour changer tes compétences.", a.PlaceSkill(SkillKind.Active, 0, Onde));
+        Assert.Same(before, a.World.Character);
+        a.CloseDialogue();
+        Assert.Null(a.Dialogue);
+        Assert.True(a.CanChangeSkills);
+        Assert.Null(a.PlaceSkill(SkillKind.Active, 0, Onde));
+    }
+
+    [Fact]
     public void Un_niveau_gagne_en_route_ouvre_sa_place_tout_de_suite_dans_l_ecran()
     {
         AdventureSession a = Start(Level4);

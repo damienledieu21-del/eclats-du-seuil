@@ -710,9 +710,11 @@ namespace EdS.Runtime
         /// <summary>
         /// Sous-lot V1.5 (décision de Damien : changer ses compétences « partout hors combat ») : faux tant que le personnage est tombé, qu'un
         /// dialogue est ouvert, qu'un ennemi vivant est à moins de <see cref="RestSafety"/> (la règle des talents et de la halte), ou qu'un
-        /// ennemi engagé le vise, où qu'il soit (un archer qui tire de loin).
+        /// ennemi engagé le vise, où qu'il soit (un archer qui tire de loin). Écrit à part de <see cref="CanChangeTalents"/> : les talents
+        /// iront chez le maître de classe (cadrage Q21, 29 octobre 2026), les compétences restent « partout hors combat ».
         /// </summary>
-        public bool CanChangeSkills => CanChangeTalents && !EngagedOnMe;
+        public bool CanChangeSkills => !World.IsDefeated && Dialogue is null
+            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any() && !EngagedOnMe;
 
         /// <summary>Sous-lot V1.5 : un ennemi présent, vivant et engagé (<see cref="CombatantView.Engaged"/>) vise le personnage.</summary>
         private bool EngagedOnMe

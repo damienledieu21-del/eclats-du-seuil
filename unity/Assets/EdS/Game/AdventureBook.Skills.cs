@@ -268,6 +268,18 @@ namespace EdS.Game
             if (_skillGhost != null) UiKit.Show(_skillGhost, false);
         }
 
+        /// <summary>
+        /// Écran quitté (fermé, ou autre onglet) : plus de glissé, de choix ni de survol, et le dernier message s'efface (un refus « Pas en
+        /// plein combat » ne reste pas affiché à la réouverture, loin des ennemis).
+        /// </summary>
+        private void LeaveSkills()
+        {
+            EndSkillDrag();
+            _selectedSkill = null;
+            _hoveredSkill = null;
+            _skillMessage = null;
+        }
+
         // --- Mise à jour ----------------------------------------------------------------------------------------------------------
 
         private void RefreshSkills(AdventureSession a)

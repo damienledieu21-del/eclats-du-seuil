@@ -686,7 +686,7 @@ namespace EdS.Game
         /// <summary>Cache les écrans (menus, entraînement, arbre des Éclats).</summary>
         public void Hide()
         {
-            EndSkillDrag();
+            LeaveSkills();
             UiKit.Show(_canvas, false);
         }
 
@@ -717,7 +717,7 @@ namespace EdS.Game
             _panel.localScale = new Vector3(zoom, zoom, 1f);
             UiKit.Show(_dialogue, talk);
             if (talk) RefreshDialogue(a);
-            if (!book || screens.Open != AdventureScreens.Panel.Skills) EndSkillDrag();   // sous-lot V1.5 : un glissé ne survit pas à l'écran
+            if (!book || screens.Open != AdventureScreens.Panel.Skills) LeaveSkills();   // sous-lot V1.5 : glissé, choix et message ne survivent pas à l'écran
             if (book)
             {
                 _title.Value = "Le Bastion";

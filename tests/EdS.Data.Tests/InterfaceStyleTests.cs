@@ -291,6 +291,9 @@ public class InterfaceStyleTests
         Assert.Contains("(AdventureScreens.Panel.Skills, \"text.ui.tab.skills\", 165f)", book, StringComparison.Ordinal);
         Assert.Contains("case AdventureScreens.Panel.Skills: RefreshSkills(a); break;", book, StringComparison.Ordinal);
         Assert.Contains("case AdventureScreens.Panel.Skills: return \"B\";", book, StringComparison.Ordinal);
+        // Écran quitté : plus de glissé ni de choix, et le dernier message (un refus en plein combat) ne reste pas à la réouverture.
+        Assert.Contains("if (!book || screens.Open != AdventureScreens.Panel.Skills) LeaveSkills();", book, StringComparison.Ordinal);
+        Assert.Contains("_skillMessage = null;", skills, StringComparison.Ordinal);
         foreach (string action in new[] { "Apply(_session.PlaceSkill(cell.Kind, cell.Index, skill));", "Apply(_session.RemoveSkill(cell.Kind, cell.Index));",
                      "UiKit.Drop(cell.Hit).Dropped = () => DropOn(c);", "UiDrag drag = UiKit.Drag(cell.Hit);", "UiDrag drag = UiKit.Drag(row.Slab);",
                      "RectTransformUtility.ScreenPointToLocalPointInRectangle(_panel, screen, null, out Vector2 local)" })
