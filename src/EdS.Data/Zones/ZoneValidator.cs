@@ -225,6 +225,12 @@ namespace EdS.Data.Zones
         /// <summary>Clé du registre du monde qui marque un passage ouvert (<c>zone.vallons/passage/moulin</c>).</summary>
         public string PassageKey(string passage) => $"{Id}/passage/{passage}";
 
+        /// <summary>
+        /// Sous-lot V1.1 : clé du registre du monde qui marque un point sûr découvert (<c>zone.vallons/safe/place_du_bourg</c>), destination
+        /// du voyage rapide.
+        /// </summary>
+        public string SafePointKey(string safePoint) => $"{Id}/safe/{safePoint}";
+
         public Population? PopulationOf(string creature) => Populations.FirstOrDefault(p => p.Creature == creature);
 
         /// <summary>Lieux qui contiennent ce point, dans l'ordre du fichier.</summary>

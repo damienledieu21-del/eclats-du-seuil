@@ -1,0 +1,198 @@
+{
+  "$schema": "../../schemas/merchants.schema.json",
+  "schemaVersion": 1,
+  "kind": "merchants",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "values": [
+      {
+        "item": "item.epee_du_milicien",
+        "value": 300
+      },
+      {
+        "item": "item.epee_de_garde",
+        "value": 1200
+      },
+      {
+        "item": "item.marteau_du_carrier",
+        "value": 2500
+      },
+      {
+        "item": "item.ecu_de_chene",
+        "value": 250
+      },
+      {
+        "item": "item.pavois_du_moulin",
+        "value": 1500
+      },
+      {
+        "item": "item.rondache_cerclee",
+        "value": 1400
+      },
+      {
+        "item": "item.gambison",
+        "value": 350
+      },
+      {
+        "item": "item.cotte_de_mailles",
+        "value": 2000
+      },
+      {
+        "item": "item.amulette_de_l_aube",
+        "value": 1000
+      },
+      {
+        "item": "item.talisman_du_seuil",
+        "value": 4000
+      },
+      {
+        "item": "item.lame_du_seuil",
+        "value": 8000
+      },
+      {
+        "item": "item.peau_de_loup",
+        "value": 40
+      },
+      {
+        "item": "item.defense_de_sanglier",
+        "value": 50
+      },
+      {
+        "item": "item.fleche_brisee",
+        "value": 5
+      },
+      {
+        "item": "item.minerai_de_fer",
+        "value": 20
+      },
+      {
+        "item": "item.eclat_de_seuil",
+        "value": 300
+      },
+      {
+        "item": "item.herbe_de_l_aube",
+        "value": 15
+      },
+      {
+        "item": "item.potion_de_soin",
+        "value": 40
+      },
+      {
+        "item": "item.remede_de_l_aube",
+        "value": 150
+      }
+    ],
+    "merchants": [
+      {
+        "id": "merchant.armurier",
+        "npc": "npc.armurier",
+        "greeting": "text.merchant.armurier.greeting",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 2,
+        "offers": [
+          {
+            "item": "item.epee_du_milicien",
+            "price": 400,
+            "always": true
+          },
+          {
+            "item": "item.ecu_de_chene",
+            "price": 350,
+            "always": true
+          },
+          {
+            "item": "item.gambison",
+            "price": 450,
+            "always": true
+          },
+          {
+            "item": "item.epee_de_garde",
+            "price": 1600,
+            "always": false
+          },
+          {
+            "item": "item.rondache_cerclee",
+            "price": 1800,
+            "always": false
+          },
+          {
+            "item": "item.pavois_du_moulin",
+            "price": 1900,
+            "always": false
+          },
+          {
+            "item": "item.cotte_de_mailles",
+            "price": 2600,
+            "always": false
+          },
+          {
+            "item": "item.marteau_du_carrier",
+            "price": 3200,
+            "always": false
+          }
+        ]
+      },
+      {
+        "id": "merchant.herboriste",
+        "npc": "npc.herboriste",
+        "greeting": "text.merchant.herboriste.greeting",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "offers": [
+          {
+            "item": "item.potion_de_soin",
+            "price": 60,
+            "always": true
+          },
+          {
+            "item": "item.herbe_de_l_aube",
+            "price": 22,
+            "always": true
+          },
+          {
+            "item": "item.remede_de_l_aube",
+            "price": 220,
+            "always": false
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "price": 450,
+            "always": false
+          }
+        ]
+      },
+      {
+        "id": "merchant.epicier",
+        "npc": "npc.epiciere",
+        "greeting": "text.merchant.epicier.greeting",
+        "sellPercent": 30,
+        "closed": [],
+        "daily": 1,
+        "offers": [
+          {
+            "item": "item.minerai_de_fer",
+            "price": 30,
+            "always": true
+          },
+          {
+            "item": "item.potion_de_soin",
+            "price": 70,
+            "always": true
+          },
+          {
+            "item": "item.herbe_de_l_aube",
+            "price": 25,
+            "always": false
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "price": 480,
+            "always": false
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ using EdS.Data.Classes;
 using EdS.Data.Crafting;
 using EdS.Data.Items;
 using EdS.Data.Json;
+using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Zones;
@@ -121,7 +122,7 @@ namespace EdS.Runtime
     /// une défaite ouvre une nouvelle session à ce point sûr : PV pleins, niveau, équipement et passages ouverts pris en compte. Le cœur reste
     /// seul juge : cette classe ne calcule aucune règle.
     /// </summary>
-    public sealed class AdventureSession
+    public sealed partial class AdventureSession
     {
         public const string PlayerId = "bastion";
         public const string PlayerClass = "class.bastion";
@@ -175,8 +176,9 @@ namespace EdS.Runtime
         public string? SaveProblem { get; }
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
-            StoryBook story, CraftingBook crafting, string savePath)
+            StoryBook story, CraftingBook crafting, MerchantBook merchants, string savePath)
         {
+            _market = new Market(merchants);   // sous-lot V1.1 : une seule instance, d'une session à l'autre (lots rachetables)
             _data = data;
             _progression = progression;
             _items = items;
@@ -222,8 +224,11 @@ namespace EdS.Runtime
             TextCatalog catalogTexts = Need(texts.Texts, "textes", () => texts.Report);
             StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog);
             CraftingLoadResult crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(dataDirectory), catalogTexts, definition, catalog);
-            return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, Need(story.Story, "histoire", () => story.Report),
-                Need(crafting.Book, "métiers", () => crafting.Report), savePath);
+            StoryBook storyBook = Need(story.Story, "histoire", () => story.Report);
+            // Sous-lot V1.1 : marchands et valeur des objets.
+            MerchantsLoadResult merchants = MerchantJsonReader.ReadFile(MerchantJsonReader.PathIn(dataDirectory), catalogTexts, storyBook, catalog);
+            return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, Need(crafting.Book, "métiers", () => crafting.Report),
+                Need(merchants.Book, "marchands", () => merchants.Report), savePath);
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -237,11 +242,13 @@ namespace EdS.Runtime
 
         /// <summary>Session de <paramref name="zone"/> prête à jouer, sans rien changer à l'aventure (<see cref="Commit"/> la met en jeu).</summary>
         private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door) =>
-            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId);
+            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market);
 
         private void Commit(WorldSession world)
         {
             World = world;
+            // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
+            Shop = null;
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, PlayerId, () => Collect(world, world.Step()), TargetRange);
             _drunk.Clear();
             _strandedAnnounced = false;
@@ -312,7 +319,7 @@ namespace EdS.Runtime
         private void Say(string key, params object[] args)
         {
             if (key == "text.ui.quest_done") QuestsAnnounced++;
-            if (key == "text.ui.loot" || key == "text.ui.item_given") LootAnnounced++;
+            if (key == "text.ui.loot" || key == "text.ui.item_given" || CoinKeys.Contains(key)) LootAnnounced++;   // sous-lot V1.1 : les pièces aussi
             string text = Texts.Get(key);
             if (args.Length > 0) text = string.Format(CultureInfo.InvariantCulture, text, args);
             if (_messages.Count >= MaxMessages) _messages.RemoveAt(0);
@@ -390,6 +397,15 @@ namespace EdS.Runtime
                 case StoryEventKind.RewardBlocked:
                     Say("text.ui.reward_blocked");
                     break;
+                case StoryEventKind.PurseFull:   // relecture de la PR #72 : la bourse, pas le sac
+                    Say("text.ui.reward_purse_full");
+                    break;
+                case StoryEventKind.MoneyGiven:   // sous-lot V1.1
+                    Say("text.ui.money_given", MoneyText(e.Value));
+                    break;
+                case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
+                    Say("text.ui.safe_point_found", _zone.SafePoints.FirstOrDefault(sp => sp.Id == e.Id)?.Name ?? e.Id);
+                    break;
             }
         }
 
@@ -447,6 +463,14 @@ namespace EdS.Runtime
             if (World.IsDefeated) return false;
             if (NpcInReach is Npc npc)
             {
+                // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ). Relecture de la PR #72 : boutique
+                // fermée (heure de fermeture), le marchand le dit et reste un PNJ comme les autres (son dialogue de l'histoire).
+                if (World.MerchantOf(npc.Id) is Merchant merchant)
+                {
+                    TradeRefusal shop = World.CanTrade(merchant.Id);
+                    if (shop == TradeRefusal.None) return OpenShop(merchant.Id);
+                    if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
+                }
                 DialogueRefusal refusal = World.Talk(npc.Id, out _);
                 if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(npc.Name));
                 return refusal == DialogueRefusal.None;
@@ -551,6 +575,7 @@ namespace EdS.Runtime
             foreach (StoryEvent e in events) Story(e);
             if (events.Count > 0) _dirty = true;
             if (refusal == DialogueRefusal.NoRoom) Say("text.ui.no_room");
+            else if (refusal == DialogueRefusal.PurseFull) Say("text.ui.purse_full");
             else if (refusal == DialogueRefusal.TooFar) Say("text.ui.too_far");
             return refusal;
         }
@@ -703,6 +728,116 @@ namespace EdS.Runtime
             _dirty = true;
             Say("text.ui.talents.saved");
             return null;
+        }
+
+        // --- Compétences (sous-lot V1.5) ---------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Sous-lot V1.5 (décision de Damien : changer ses compétences « partout hors combat ») : faux tant que le personnage est tombé, qu'un
+        /// dialogue est ouvert, qu'un ennemi vivant est à moins de <see cref="RestSafety"/> (la règle des talents et de la halte), ou qu'un
+        /// ennemi engagé le vise, où qu'il soit (un archer qui tire de loin). Écrit à part de <see cref="CanChangeTalents"/> : les talents
+        /// iront chez le maître de classe (cadrage Q21, 29 octobre 2026), les compétences restent « partout hors combat ».
+        /// </summary>
+        public bool CanChangeSkills => SkillsLockKey is null;
+
+        /// <summary>
+        /// Sous-lot V1.5 (relecture indépendante de la PR #71) : pourquoi les compétences ne se changent pas maintenant, un motif juste par
+        /// cas (tombé, dialogue ouvert, ennemi proche ou engagé) ; null si elles se changent (<see cref="CanChangeSkills"/>).
+        /// </summary>
+        public string? SkillsLocked => SkillsLockKey is string key ? Text(key) : null;
+
+        private string? SkillsLockKey =>
+            World.IsDefeated ? "text.ui.skills.defeated"
+            : Dialogue != null ? "text.ui.skills.in_dialogue"
+            : CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any() || EngagedOnMe ? "text.ui.skills.in_combat"
+            : null;
+
+        /// <summary>Sous-lot V1.5 : un ennemi présent, vivant et engagé (<see cref="CombatantView.Engaged"/>) vise le personnage.</summary>
+        private bool EngagedOnMe
+        {
+            get
+            {
+                CombatEngine engine = World.Zone.Engine;
+                string team = engine.View(PlayerId).Team;
+                foreach (string id in engine.CombatantIds)
+                {
+                    if (id == PlayerId) continue;
+                    CombatantView v = engine.View(id);
+                    if (v.Team != team && v.IsPresent && !v.IsDead && v.Engaged && v.CurrentTarget == PlayerId) return true;
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 : l'écran des compétences : la barre telle qu'elle sera à la prochaine halte (<see cref="WorldSession.NextEntry"/>),
+        /// ses places ouvertes et fermées, les compétences apprises et celles à venir (descriptions : textes <c>text.skill.…</c>).
+        /// </summary>
+        public SkillBook Skills() => SkillBook.For(World.NextEntry, _progression, World.Class, World.ProgressionRules, SkillsLocked,
+            id => Texts.Has(SkillTextKey(id)) ? Text(SkillTextKey(id)) : "");
+
+        /// <summary>Clé de la description d'une compétence : <c>text.skill.</c> suivi de la fin de son identifiant.</summary>
+        public static string SkillTextKey(string skill) =>
+            "text.skill." + (skill ?? throw new ArgumentNullException(nameof(skill))).Substring(skill.LastIndexOf('.') + 1);
+
+        /// <summary>
+        /// Sous-lot V1.5 : garde la barre <paramref name="actives"/>, <paramref name="ultimate"/>, <paramref name="passives"/>, jugée par
+        /// <see cref="WorldSession.SetSkills"/> ; effet à la prochaine halte, comme les talents. Rend null si c'est fait, ou s'il n'y a rien à
+        /// changer (la barre de la prochaine halte, <see cref="WorldSession.NextEntry"/> : rien n'est écrit ni dit, et une compétence gagnée
+        /// en route reste annoncée à la halte) ; sinon rien ne change et le motif est rendu : <see cref="SkillsLocked"/> (dit aussi dans
+        /// les messages), ou premier refus.
+        /// </summary>
+        public string? SetSkills(IReadOnlyList<string> actives, string? ultimate, IReadOnlyList<string> passives)
+        {
+            if (actives is null) throw new ArgumentNullException(nameof(actives));
+            if (passives is null) throw new ArgumentNullException(nameof(passives));
+            if (Locked() is string locked) return locked;
+            if (new SkillBar(actives, ultimate, passives).SameAs(SkillBar.Of(World.NextEntry))) return null;   // rien à changer, ni à garder
+            BuildViolation? why = World.SetSkills(actives, ultimate, passives);
+            if (why != null) return why.Message;
+            _dirty = true;
+            Say("text.ui.skills.saved");
+            return null;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 : met <paramref name="skill"/> à la place <paramref name="index"/> de la sorte <paramref name="kind"/> (0 pour
+        /// l'ultime), sur la barre de la prochaine halte (<see cref="SkillBar.Place"/> : échange avec une compétence déjà dans la barre, sinon
+        /// celle de la place retourne en réserve). Même jugement que <see cref="SetSkills"/>, et une place fermée est refusée avec le niveau
+        /// qui l'ouvre. Rend null si c'est fait (ou s'il n'y a rien à changer : rien n'est écrit ni dit), sinon le motif ; rien ne change.
+        /// </summary>
+        public string? PlaceSkill(SkillKind kind, int index, string skill)
+        {
+            if (skill is null) throw new ArgumentNullException(nameof(skill));
+            if (index < 0 || (kind == SkillKind.Ultimate && index != 0)) throw new ArgumentOutOfRangeException(nameof(index), index, "Rang de place impossible.");
+            return Change(bar => bar.Place(kind, index, skill), kind, index);
+        }
+
+        /// <summary>
+        /// Sous-lot V1.5 : retire la compétence de la place <paramref name="index"/> de la sorte <paramref name="kind"/> (les suivantes
+        /// avancent). Refusé si la barre devient pire (une compétence apprise de sa sorte attendrait) ; même jugement que
+        /// <see cref="SetSkills"/>.
+        /// </summary>
+        public string? RemoveSkill(SkillKind kind, int index)
+        {
+            if (index < 0 || (kind == SkillKind.Ultimate && index != 0)) throw new ArgumentOutOfRangeException(nameof(index), index, "Rang de place impossible.");
+            return Change(bar => bar.Remove(kind, index), kind, index);
+        }
+
+        private string? Change(Func<SkillBar, SkillBar> change, SkillKind kind, int index)
+        {
+            if (Locked() is string locked) return locked;
+            if (PlayerCharacters.ClosedPlace(kind, index, World.Level, World.ProgressionRules) is BuildViolation closed) return closed.Message;
+            SkillBar after = change(SkillBar.Of(World.NextEntry));
+            return SetSkills(after.Actives, after.Ultimate, after.Passives);
+        }
+
+        /// <summary>Motif de <see cref="SkillsLocked"/>, dit aussi dans les messages ; null si les compétences se changent.</summary>
+        private string? Locked()
+        {
+            if (!(SkillsLockKey is string key)) return null;
+            Say(key);
+            return Text(key);
         }
 
         // --- Journal, carte ---------------------------------------------------------------------------------------------

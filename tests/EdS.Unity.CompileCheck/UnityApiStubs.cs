@@ -19,6 +19,7 @@ namespace UnityEngine
     public enum PrimitiveType { Sphere, Capsule, Cylinder, Cube, Plane, Quad }
     public class Transform : Component { public Vector3 position { get; set; } public Quaternion rotation { get; set; } public Vector3 localPosition { get; set; } public Quaternion localRotation { get; set; } public Vector3 localScale { get; set; } public Vector3 eulerAngles { get; set; } public void SetParent(Transform p, bool w) { } public Transform GetChild(int index) => null; public void LookAt(Vector3 v) { } public void SetAsLastSibling() { } public void SetAsFirstSibling() { } public int GetSiblingIndex() => 0; public void SetSiblingIndex(int i) { } }
     public sealed class RectTransform : Transform { public Vector2 anchorMin { get; set; } public Vector2 anchorMax { get; set; } public Vector2 pivot { get; set; } public Vector2 sizeDelta { get; set; } public Vector2 anchoredPosition { get; set; } public Vector2 offsetMin { get; set; } public Vector2 offsetMax { get; set; } }
+    public static class RectTransformUtility { public static bool ScreenPointToLocalPointInRectangle(RectTransform rect, Vector2 screenPoint, Camera cam, out Vector2 localPoint) { localPoint = default; return false; } }
     public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }
     public sealed class Canvas : Behaviour { public RenderMode renderMode { get; set; } public int sortingOrder { get; set; } }
     public sealed class CanvasGroup : Behaviour { public float alpha { get; set; } public bool blocksRaycasts { get; set; } public bool interactable { get; set; } }
@@ -70,7 +71,7 @@ namespace UnityEngine
     public struct Rect { public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public float x, y, width, height; }
     public struct Matrix4x4 { public static Matrix4x4 Scale(Vector3 v) => default; public static Matrix4x4 TRS(Vector3 p, Quaternion q, Vector3 s) => default; }
     public static class Mathf { public static float Clamp(float v, float a, float b) => v; public static int Clamp(int v, int a, int b) => v; public static float Clamp01(float v) => v; public static float Lerp(float a, float b, float t) => a; public static float LerpAngle(float a, float b, float t) => a; public static float Exp(float p) => p; public static float Sin(float f) => f; public static float Cos(float f) => f; public static float Atan2(float y, float x) => y; public static float Abs(float f) => f; public static float Min(float a, float b) => a; public static int Min(int a, int b) => a; public static float Max(float a, float b) => a; public static int Max(int a, int b) => a; public static float MoveTowards(float current, float target, float maxDelta) => current; public static float PerlinNoise(float x, float y) => 0f; public static int FloorToInt(float f) => 0; public static int CeilToInt(float f) => 0; public static float Round(float f) => f; public static float Floor(float f) => f; public static int RoundToInt(float f) => 0; public static float Pow(float f, float p) => f; public static float Sqrt(float f) => f; public static bool Approximately(float a, float b) => a == b; public const float PI = 3.14159274f; public const float Deg2Rad = 0.0174532924f; public const float Rad2Deg = 57.29578f; }
-    public enum KeyCode { None, Backspace, Tab, Escape, Space, Return, KeypadEnter, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, F6, F8, A, C, D, E, F, G, H, I, J, K, L, M, N, P, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift, LeftAlt, RightAlt }
+    public enum KeyCode { None, Backspace, Tab, Escape, Space, Return, KeypadEnter, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9, UpArrow, DownArrow, RightArrow, LeftArrow, F1, F2, F3, F4, F5, F6, F8, A, B, C, D, E, F, G, H, I, J, K, L, M, N, P, Q, R, S, T, W, Z, Semicolon, LeftShift, RightShift, LeftAlt, RightAlt }
     public enum CursorLockMode { None, Locked, Confined }
     public static class Cursor { public static CursorLockMode lockState { get; set; } public static bool visible { get; set; } }
     public static class Input { public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static bool GetMouseButtonDown(int b) => false; public static bool GetMouseButtonUp(int b) => false; public static Vector3 mousePosition => default; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; public static bool touchSupported => false; public static int touchCount => 0; public static Touch GetTouch(int i) => default; }
@@ -142,11 +143,16 @@ namespace UnityEngine.EventSystems
     public class EventSystem : UIBehaviour { public static EventSystem current => null; public bool IsPointerOverGameObject() => false; }
     public abstract class BaseInputModule : UIBehaviour { }
     public class StandaloneInputModule : BaseInputModule { }
-    public class PointerEventData { public enum InputButton { Left = 0, Right = 1, Middle = 2 } public InputButton button { get; set; } public int pointerId { get; set; } }
+    public class PointerEventData { public enum InputButton { Left = 0, Right = 1, Middle = 2 } public InputButton button { get; set; } public int pointerId { get; set; } public Vector2 position { get; set; } public bool dragging { get; set; } }
     public interface IEventSystemHandler { }
     public interface IPointerClickHandler : IEventSystemHandler { void OnPointerClick(PointerEventData eventData); }
     public interface IPointerEnterHandler : IEventSystemHandler { void OnPointerEnter(PointerEventData eventData); }
     public interface IPointerExitHandler : IEventSystemHandler { void OnPointerExit(PointerEventData eventData); }
+    // Sous-lot V1.5 : glisser une compétence sur une place (souris et doigt).
+    public interface IBeginDragHandler : IEventSystemHandler { void OnBeginDrag(PointerEventData eventData); }
+    public interface IDragHandler : IEventSystemHandler { void OnDrag(PointerEventData eventData); }
+    public interface IEndDragHandler : IEventSystemHandler { void OnEndDrag(PointerEventData eventData); }
+    public interface IDropHandler : IEventSystemHandler { void OnDrop(PointerEventData eventData); }
 }
 namespace UnityEngine.UI
 {

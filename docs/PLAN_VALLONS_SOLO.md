@@ -56,6 +56,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - **Voyage rapide** : entre les points sûrs **découverts** (clé au registre du monde), hors combat (aucun ennemi engagé, règle de la halte à 12 m). Le passage reprend le chemin d'une porte : sauvegarde, puis nouvelle session au point d'arrivée. Gratuit dans la vague 1 (le prix éventuel est un réglage d'équilibrage).
 - **Unity** : écran du marchand (acheter, vendre, racheter), or affiché dans l'inventaire, carte qui propose le voyage.
 - **Formats** : sauvegarde (or, points sûrs découverts) et histoire ou données des marchands en nouvelle version ; schémas, `DONNEES.md`, tests de lecture et de refus.
+- **État** (30 octobre 2026, en PR) : fait. Bourse en cuivre dans la sauvegarde (version 6), effet `giveMoney` de l'histoire (schéma 2 : 50 cuivre, 1 argent 50 cuivre et 5 argent dans la mission d'Odile), marchands en données (`merchants.json`, schéma 1 : Garin l'armurier, Sauge l'herboriste, Bertille l'épicière), stock du jour déterministe, achat, vente (plusieurs lots d'un coup) et rachat atomiques, points sûrs découverts au registre du monde et voyage rapide hors combat ; écran du marchand, bourse dans l'inventaire et voyage depuis la carte dans Unity. Prix, parts de revente et récompenses provisoires (questions à Damien dans la PR). Détail : [MONDE.md](MONDE.md#monnaie-marchands-et-voyage-rapide-sous-lot-v11).
 
 ### V1.2 — Équipement complet : places, boucliers, écran (L)
 
@@ -84,6 +85,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - Changer ses compétences **partout hors combat** (décision de Damien), refusé tant qu'un ennemi est engagé ou à moins de 12 m ; pris en compte à l'entrée suivante, comme les talents (`AdventureSession.SetTalents`).
 - **Barre qui grandit** (sujet 3) : aujourd'hui 2 places au niveau 1, 3 au 5, 4 et l'ultime au 10. Proposition : une 5e place au niveau 15 et une 6e au niveau 20, ce qui équipe les six actives du Bastion avant le Gardien (niveau 25). La 7e et la 8e viendront quand le Bastion aura plus de compétences (ascensions).
 - **Unity** : écran avec les compétences apprises, glisser une compétence sur une place (au doigt aussi), description et recharge.
+- **État** (29 octobre 2026, en PR) : changer ses compétences hors combat (un seul juge, effet à la halte, gardé dans la sauvegarde) et l'écran (touche B, onglet Compétences : K est l'atelier) sont faits. Les 5e et 6e places ne le sont pas : le pont temps réel et le protocole du réseau réservent l'emplacement 4 à l'ultime, et la barre de combat, les touches et les boutons tactiles ont quatre places ; à faire avec les niveaux au-delà de 10 (V1.8). Détail : [MONDE.md](MONDE.md#personnage-sous-lot-122).
 
 ### V1.6 — Quêtes : le moteur (M)
 

@@ -59,6 +59,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot 12.5 (version 4) : état narratif personnel.</summary>
         public StoryStateData? Story { get; set; }
 
+        /// <summary>Sous-lot V1.1 (version 6) : bourse du personnage, en pièces de cuivre.</summary>
+        public long? Money { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

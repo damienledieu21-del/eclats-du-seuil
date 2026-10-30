@@ -77,7 +77,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(new[] { "Nouvelle partie : bienvenue dans les Vallons d'Aube." }, a.DrainMessages());
         Assert.Equal(1, a.Opened);
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
-        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard" }, a.Npcs().Select(n => n.Id));
+        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
         Assert.Equal(11, a.Nodes().Count);   // Vallons agrandis
         Assert.All(a.Nodes(), n => Assert.True(n.Ready));
