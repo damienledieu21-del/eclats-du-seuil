@@ -104,10 +104,18 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot 12.6 : expérience de chaque métier (séparée de celle du combat), non nulle, par identifiant (ordre ordinal).</summary>
         public IReadOnlyDictionary<string, long> Professions { get; }
 
+        /// <summary>
+        /// Sous-lot V1.1 : bourse du personnage, en pièces de cuivre (<see cref="Coins"/> : 100 cuivre font 1 argent, 100 argent font 1 or), de 0
+        /// à <see cref="Coins.Max"/>.
+        /// </summary>
+        public long Money { get; }
+
         public SavedCharacter(string id, string classId, long xp, IReadOnlyDictionary<string, int>? talents = null, IEnumerable<string>? activeSkills = null,
             string? ultimate = null, IEnumerable<string>? passiveSkills = null, IEnumerable<ItemStack>? inventory = null,
-            IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null)
+            IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null,
+            long money = 0)
         {
+            Money = money;
             Story = story ?? SavedStory.Empty;
             Professions = Frozen.Dictionary((professions ?? new Dictionary<string, long>()).Where(p => p.Value != 0).OrderBy(p => p.Key, StringComparer.Ordinal)
                 .ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal), nameof(professions));
@@ -125,15 +133,15 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money);
 
         /// <summary>Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement.</summary>
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money);
 
         /// <summary>
         /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
@@ -141,15 +149,22 @@ namespace EdS.Data.Saves
         /// </summary>
         public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
             new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
-                Equipment, Story, Professions);
+                Equipment, Story, Professions, Money);
 
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money);
 
         /// <summary>Sous-lot 12.9b : même personnage avec d'autres compétences équipées.</summary>
         public SavedCharacter WithSkills(IEnumerable<string> activeSkills, string? ultimate, IEnumerable<string> passiveSkills) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions);
+            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money);
+
+        /// <summary>
+        /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). La borne est vérifiée par l'écriture et la lecture des
+        /// sauvegardes ; les opérations du jeu passent par <see cref="Coins.TryAdd"/>, qui refuse un dépassement.
+        /// </summary>
+        public SavedCharacter WithMoney(long money) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money);
     }
 
     /// <summary>
@@ -219,9 +234,12 @@ namespace EdS.Data.Saves
         /// jour (inventaire et équipement vides). Version 4 (sous-lot 12.5) : <c>story</c> obligatoire dans le personnage (<c>facts</c>,
         /// <c>quests</c>, <c>trust</c>, <c>discoveries</c>) ; une sauvegarde de version 3 est mise à jour (histoire vierge).
         /// Version 5 (sous-lot 12.6) : <c>professions</c> obligatoire dans le personnage (expérience non nulle de chaque métier) ; une
-        /// sauvegarde de version 4 est mise à jour (aucun métier).
+        /// sauvegarde de version 4 est mise à jour (aucun métier). Version 6 (sous-lot V1.1) : <c>money</c> obligatoire dans le personnage
+        /// (bourse en pièces de cuivre, de 0 à <see cref="Coins.Max"/>) ; une sauvegarde de version 5 est mise à jour (bourse vide). Les points
+        /// sûrs découverts (voyage rapide) sont des clés du registre des événements consommés (<c>zone.vallons/safe/place_du_bourg</c>), déjà
+        /// gardé depuis la version 1.
         /// </summary>
-        public const int CurrentSchemaVersion = 5;
+        public const int CurrentSchemaVersion = 6;
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;
@@ -419,12 +437,22 @@ namespace EdS.Data.Saves
                     // Même règle que la revue Codex de la PR #44 : un métier une seule fois (sauvegarde construite en objets publics).
                     else if (i > 0 && string.CompareOrdinal(c.Professions[i - 1].Key, p.Key) >= 0) report.Add(pp, ValidationCode.InvalidValue, "métiers hors de l'ordre ordinal ou en double.");
                 }
+            // Sous-lot V1.1 (version 6) : bourse en pièces de cuivre.
+            if (version < 6)
+            {
+                // Comme les métiers : refusée aussi quand elle est renseignée hors du lecteur JSON (pas de perte silencieuse).
+                if (c.Present.Contains("money") || c.Money != null)
+                    report.Add(path + ".money", ValidationCode.UnknownField, $"champ inconnu en version {version} (bourse : version 6).");
+            }
+            else if (c.Money is null) Missing(report, path + ".money", "bourse en pièces de cuivre, 0 pour une bourse vide");
+            else if (!Coins.IsValid(c.Money.Value)) report.Add(path + ".money", ValidationCode.OutOfRange, $"bourse hors de [0, {Coins.Max}] cuivre.");
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
                 version < 3 ? null : c.Inventory!.Select(st => new ItemStack(st!.Item!, st.Count!.Value)),
                 version < 3 ? null : c.Equipment!.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal), story,
-                version < 5 ? null : c.Professions!.ToDictionary(p => p.Key, p => p.Value!.Value, StringComparer.Ordinal));
+                version < 5 ? null : c.Professions!.ToDictionary(p => p.Key, p => p.Value!.Value, StringComparer.Ordinal),
+                version < 6 ? 0 : c.Money!.Value);
         }
 
         public const int MaxStoryEntries = 10_000;

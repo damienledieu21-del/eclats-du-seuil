@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/merchants.schema.json",
+  "title": "Éclats du Seuil — marchands et valeur des objets",
+  "description": "Sous-lot V1.1. Documentation. La validation qui fait foi est celle du programme (MerchantValidator), avec les textes, l'histoire (PNJ) et le catalogue des objets : aucun objet vendu sous sa valeur de base, offres tirées chaque jour qui laissent toujours quelque chose en vente.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "merchants"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "values",
+        "merchants"
+      ],
+      "properties": {
+        "values": {
+          "type": "array",
+          "maxItems": 1024,
+          "description": "Valeur de base de chaque objet qui se vend ou s'achète, en pièces de cuivre (100 cuivre font 1 argent, 100 argent font 1 or). Un objet sans valeur ne se vend pas (objet de quête).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "item",
+              "value"
+            ],
+            "properties": {
+              "item": {
+                "type": "string",
+                "pattern": "^item(\\.[a-z0-9_]+)+$",
+                "maxLength": 200
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000000
+              }
+            }
+          }
+        },
+        "merchants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "npc",
+              "greeting",
+              "sellPercent",
+              "closed",
+              "daily",
+              "offers"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^merchant(\\.[a-z0-9_]+)+$",
+                "maxLength": 200
+              },
+              "npc": {
+                "type": "string",
+                "pattern": "^npc(\\.[a-z0-9_]+)+$",
+                "description": "PNJ de l'histoire qui tient la boutique : lui parler (F) l'ouvre."
+              },
+              "greeting": {
+                "type": "string",
+                "pattern": "^text(\\.[a-z0-9_]+)+$",
+                "description": "Clé du texte d'accueil de la boutique."
+              },
+              "sellPercent": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "description": "Part de la valeur de base payée au joueur qui vend (pour cent, arrondie au cuivre inférieur, au moins 1 cuivre)."
+              },
+              "closed": {
+                "type": "array",
+                "maxItems": 3,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "dawn",
+                    "day",
+                    "dusk",
+                    "night"
+                  ]
+                },
+                "description": "Moments de la journée où la boutique est fermée."
+              },
+              "daily": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 32,
+                "description": "Offres non permanentes tirées chaque jour du monde (tirage déterministe sur la clé du jour)."
+              },
+              "offers": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "item",
+                    "price",
+                    "always"
+                  ],
+                  "properties": {
+                    "item": {
+                      "type": "string",
+                      "pattern": "^item(\\.[a-z0-9_]+)+$",
+                      "maxLength": 200
+                    },
+                    "price": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100000000,
+                      "description": "Prix d'une unité en cuivre, au moins la valeur de base de l'objet."
+                    },
+                    "always": {
+                      "type": "boolean",
+                      "description": "Toujours en vente ; sinon, tirée certains jours."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

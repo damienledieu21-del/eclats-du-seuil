@@ -93,7 +93,16 @@ namespace EdS.Data.Story
     public static class StoryValidator
     {
         public const string Kind = "story";
-        public const int CurrentSchemaVersion = 1;
+
+        /// <summary>
+        /// Version 1 (sous-lot 12.5) : PNJ, dialogues, quêtes, découvertes. Version 2 (sous-lot V1.1) : effet <c>giveMoney</c> (pièces de
+        /// cuivre données à la bourse, de 1 à <see cref="MaxMoney"/>). Une version antérieure est refusée (pré-alpha : aucune migration des
+        /// fichiers de données).
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
+
+        /// <summary>Sous-lot V1.1 : pièces de cuivre données par un effet, au plus (10 000 or).</summary>
+        public const long MaxMoney = 100_000_000;
         public const int MaxNpcs = 64, MaxDialogues = 64, MaxNodes = 64, MaxChoices = 8, MaxEntries = 16, MaxQuests = 64, MaxSteps = 32, MaxTerms = 8,
             MaxDiscoveries = 256;
         public const long MaxTrust = 100, MaxCount = 999, MaxXp = 1_000_000, MaxDefeat = 1000;
@@ -111,6 +120,7 @@ namespace EdS.Data.Story
         {
             ["setFact"] = EffectKind.SetFact, ["trust"] = EffectKind.Trust, ["startQuest"] = EffectKind.StartQuest, ["giveItem"] = EffectKind.GiveItem,
             ["takeItem"] = EffectKind.TakeItem, ["giveXp"] = EffectKind.GiveXp, ["openPassage"] = EffectKind.OpenPassage, ["discover"] = EffectKind.Discover,
+            ["giveMoney"] = EffectKind.GiveMoney,
         });
 
         public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new ReadOnlyDictionary<string, ObjectiveKind>(new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
@@ -371,6 +381,7 @@ namespace EdS.Data.Story
                         EffectKind.StartQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p),
                         EffectKind.GiveItem or EffectKind.TakeItem => ItemRef(t, p) && Value(t, p, 1, MaxCount),
                         EffectKind.GiveXp => NoId(t, p) && Value(t, p, 1, MaxXp),
+                        EffectKind.GiveMoney => NoId(t, p) && Value(t, p, 1, MaxMoney),
                         EffectKind.OpenPassage => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p),
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };

@@ -108,6 +108,11 @@ namespace EdS.Data.Json
                     c.Present.Add("story");
                     c.Story = ReadStory(input, v, p);
                 },
+                ["money"] = (v, p) =>   // sous-lot V1.1 (version 6) : bourse en pièces de cuivre
+                {
+                    c.Present.Add("money");
+                    c.Money = input.Int64(v, p);
+                },
             });
             return ok ? c : null;
         }
@@ -257,7 +262,10 @@ namespace EdS.Data.Json
             // Sous-lot 12.6 (version 5) : expérience des métiers, sur une ligne.
             if (c.Professions.Any(p => !SaveValidator.IsDataId(p.Key) || p.Value < 1 || p.Value > SaveValidator.MaxXp))
                 throw new ArgumentException("Métiers hors du format des sauvegardes.", nameof(c));
-            b.Append("      \"professions\": {").Append(string.Join(", ", c.Professions.Select(p => Quoted(p.Key) + ": " + p.Value.ToString(CultureInfo.InvariantCulture)))).Append("}\n");
+            b.Append("      \"professions\": {").Append(string.Join(", ", c.Professions.Select(p => Quoted(p.Key) + ": " + p.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
+            // Sous-lot V1.1 (version 6) : bourse en pièces de cuivre, un seul nombre.
+            if (!Coins.IsValid(c.Money)) throw new ArgumentException($"Bourse hors de [0, {Coins.Max}] cuivre.", nameof(c));
+            b.Append("      \"money\": ").Append(c.Money.ToString(CultureInfo.InvariantCulture)).Append("\n");
             b.Append("    },\n");
         }
     }

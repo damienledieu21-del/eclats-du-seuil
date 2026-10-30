@@ -22,6 +22,14 @@ namespace EdS.World
 
         /// <summary>Objectif atteint, mais ses récompenses ne tiennent pas dans l'inventaire : l'étape attend une place (annoncé une fois).</summary>
         RewardBlocked = 10,
+
+        /// <summary>Sous-lot V1.1 : pièces données à la bourse (valeur en cuivre).</summary>
+        MoneyGiven = 11,
+
+        /// <summary>
+        /// Sous-lot V1.1 : point sûr découvert (identifiant du point sûr de la zone de la partie) ; le voyage rapide y mène désormais.
+        /// </summary>
+        SafePointDiscovered = 12,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -33,7 +41,7 @@ namespace EdS.World
         /// <summary>Étape (quête), ou null.</summary>
         public string? Step { get; }
 
-        /// <summary>Quantité (objets, expérience) ou changement de confiance ; 0 sinon.</summary>
+        /// <summary>Quantité (objets, expérience, pièces de cuivre) ou changement de confiance ; 0 sinon.</summary>
         public long Value { get; }
 
         internal StoryEvent(StoryEventKind kind, string id, string? step = null, long value = 0)
@@ -60,7 +68,10 @@ namespace EdS.World
         /// <summary>Pas de dialogue ouvert, ou réponse hors de la liste proposée.</summary>
         NoSuchChoice = 3,
 
-        /// <summary>Les objets donnés ne tiennent pas dans l'inventaire, ou ceux demandés manquent : rien n'a changé.</summary>
+        /// <summary>
+        /// Les objets donnés ne tiennent pas dans l'inventaire, ceux demandés manquent, ou les pièces données dépasseraient la bourse : rien
+        /// n'a changé.
+        /// </summary>
         NoRoom = 4,
     }
 
@@ -110,6 +121,12 @@ namespace EdS.World
         GroundVector? PlayerPosition { get; }
 
         bool InPlace(string place);
+
+        /// <summary>Sous-lot V1.1 : bourse du personnage, en pièces de cuivre.</summary>
+        long Money { get; }
+
+        /// <summary>Sous-lot V1.1 : ajoute des pièces à la bourse ; faux, sans rien changer, si elle dépasserait <see cref="Coins.Max"/>.</summary>
+        bool GiveMoney(long copper);
     }
 
     /// <summary>
@@ -322,8 +339,9 @@ namespace EdS.World
         };
 
         /// <summary>
-        /// Applique des effets en entier ou pas du tout : les passages à ouvrir doivent trouver place au registre du monde, les objets sont
-        /// d'abord essayés sur une copie de l'inventaire (retraits puis dons, dans l'ordre) ; si tout passe, tout est appliqué.
+        /// Applique des effets en entier ou pas du tout : les passages à ouvrir doivent trouver place au registre du monde, les pièces données
+        /// dans la bourse (sous-lot V1.1), les objets sont d'abord essayés sur une copie de l'inventaire (retraits puis dons, dans l'ordre) ;
+        /// si tout passe, tout est appliqué.
         /// </summary>
         private bool Apply(IReadOnlyList<StoryEffect> effects, List<StoryEvent> events)
         {
@@ -331,6 +349,12 @@ namespace EdS.World
             // n'est appliqué, ni retrait d'objets ni autre effet).
             int passages = effects.Where(e => e.Kind == EffectKind.OpenPassage && !_world.IsPassageOpen(e.Id)).Select(e => e.Id).Distinct(StringComparer.Ordinal).Count();
             if (passages > _world.PassageRoom) return false;
+            // Sous-lot V1.1 : les pièces données doivent tenir dans la bourse, toutes ensemble (sinon rien n'est appliqué). Chaque effet est
+            // borné par le validateur (au plus StoryValidator.MaxMoney, huit effets) : la somme ne déborde pas.
+            long money = 0;
+            foreach (StoryEffect e in effects)
+                if (e.Kind == EffectKind.GiveMoney) money = checked(money + e.Value);
+            if (money > 0 && !Coins.TryAdd(_world.Money, money, out _)) return false;
             Inventory trial = _world.Inventory.Clone();
             foreach (StoryEffect e in effects)
             {
@@ -370,6 +394,11 @@ namespace EdS.World
                         break;
                     case EffectKind.OpenPassage:
                         if (_world.OpenPassage(e.Id)) events.Add(new StoryEvent(StoryEventKind.PassageOpened, e.Id));
+                        break;
+                    case EffectKind.GiveMoney:
+                        // Place vérifiée plus haut pour la somme de tous les dons : celui-ci tient.
+                        if (!_world.GiveMoney(e.Value)) throw new InvalidOperationException("Bourse pleine après vérification.");
+                        events.Add(new StoryEvent(StoryEventKind.MoneyGiven, "money", null, e.Value));
                         break;
                     default:
                         if (_discoveries.Add(e.Id)) events.Add(new StoryEvent(StoryEventKind.Discovered, e.Id));

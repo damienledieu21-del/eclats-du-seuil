@@ -49,6 +49,9 @@ namespace EdS.Data.Story
 
         /// <summary>Inscrit une découverte au journal.</summary>
         Discover = 7,
+
+        /// <summary>Sous-lot V1.1 (histoire en schéma 2) : donne des pièces (valeur en cuivre) à la bourse du personnage.</summary>
+        GiveMoney = 8,
     }
 
     public enum ObjectiveKind

@@ -104,7 +104,7 @@ namespace EdS.World
     /// dans les mêmes conditions donne aussi le butin de sa table (tiré par la clé de sa mort, donc une seule fois). Le personnage entre avec
     /// le bonus de son équipement ; un changement d'équipement prend effet, comme un niveau, à la prochaine entrée.
     /// </summary>
-    public sealed class WorldSession : INarrativeWorld
+    public sealed partial class WorldSession : INarrativeWorld
     {
         private readonly CharacterProgression _progression;
         private SavedCharacter _character;
@@ -277,16 +277,21 @@ namespace EdS.World
         /// <param name="storyZone">Intérieurs : zone où vivent les PNJ de l'histoire, ses lieux et les nœuds et ateliers des métiers (celle
         /// contre laquelle ils ont été validés) ; null : cette zone. Ailleurs (un intérieur), le personnage n'y est pas : on n'y parle à aucun
         /// PNJ, on n'y atteint aucun lieu de l'histoire, on n'y récolte ni n'y fabrique ; le reste de l'histoire (faits, objets, journal) suit.</param>
+        /// <param name="market">Sous-lot V1.1 : marchands et lots rachetables (la même instance d'une session à l'autre) ; demande l'histoire
+        /// (les marchands sont ses PNJ). Null : partie sans commerce.</param>
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
-            CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null, string? door = null, string? storyZone = null)
+            CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null, string? door = null, string? storyZone = null, Market? market = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
-                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius), null, log, CheckZone(save, zone, story, crafting))
+                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius), null, log, CheckZone(save, zone, story, crafting, market))
         {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
             _populations = new ZonePopulations(zone);
             if (story != null) Narrative = new Narrative(story, _character.Story, this);
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
+            Market = market;
+            // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée.
+            if (door is null) Discover(safePoint ?? zone.Entry.Id);
             // Sous-lot 12.7 : le chef arrive avec la session (sa première forme).
             if (zone.Boss is { } boss)
             {
@@ -376,9 +381,12 @@ namespace EdS.World
         /// Contrôles faits avant l'ouverture de la zone (aucun journal écrit pour une session refusée) : sauvegarde de cette zone, état narratif
         /// et expérience des métiers qui vont avec l'histoire et les métiers chargés (revue Codex de la PR #47).
         /// </summary>
-        private static bool CheckZone(WorldSave save, ZoneDefinition zone, StoryBook? story, CraftingBook? crafting)
+        private static bool CheckZone(WorldSave save, ZoneDefinition zone, StoryBook? story, CraftingBook? crafting, Market? market)
         {
             if (save.Zone != zone.Id) throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
+            // Sous-lot V1.1 : les marchands sont des PNJ de l'histoire.
+            if (market != null && (story is null || market.Book.Merchants.Any(m => !story.HasNpc(m.Npc))))
+                throw new ArgumentException("Commerce sans l'histoire de ses PNJ.", nameof(market));
             if (save.Character is SavedCharacter c)
             {
                 // Sous-lot 12.7 : le chef arrive avec la session sous l'identité de sa forme ; un personnage qui la porte rendrait son arrivée
@@ -467,6 +475,8 @@ namespace EdS.World
                 _defeated = true;
                 defeated = true;
             }
+            // Sous-lot V1.1 : points sûrs approchés, découverts pour de bon (voyage rapide).
+            DiscoverSafePoints(story);
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
             return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated
