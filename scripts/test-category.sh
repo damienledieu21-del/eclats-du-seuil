@@ -7,18 +7,39 @@
 #   sortait sans bruit de son filtre ;
 # - un projet de tests qui déclare une catégorie demandée doit en exécuter au moins un test (une classe filtrée ou une
 #   déclaration morte ne passent plus inaperçues tant que les autres projets en ont).
-# Usage : scripts/test-category.sh [-c Release] Catégorie [Catégorie…]   (options dotnet test supplémentaires après --)
+# Tests plus rapides (décision de Damien du 29 octobre 2026) : avec --resultats DOSSIER, les tests ne sont pas relancés. Ils ont déjà
+# été exécutés par une exécution complète de la même construction, qui a écrit ses résultats TRX dans DOSSIER (« dotnet test --no-build
+# -c … --logger trx --results-directory DOSSIER ») ; pour chaque catégorie, la liste de ses tests (« dotnet test --list-tests --filter
+# Category=… », même filtre, sans rien exécuter) est rapprochée de ces résultats par scripts/category_results.py : résultats des mêmes
+# assemblages (mêmes chemins), écrits après leur dernière construction ; chaque test de la catégorie doit y avoir un résultat réussi ;
+# les comptes (total, par projet) sont ceux qu'aurait donnés le filtre. Mêmes contrôles de catégories, mêmes comptes, mêmes messages.
+# Sans --resultats, les tests de chaque catégorie sont exécutés comme avant.
+# Usage : scripts/test-category.sh [-c Release] [--resultats DOSSIER] Catégorie [Catégorie…]   (options dotnet test supplémentaires après --)
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
 configuration=Debug
-if [[ "${1:-}" == "-c" ]]; then configuration="$2"; shift 2; fi
+results=
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -c) configuration="$2"; shift 2 ;;
+    --resultats) results="$2"; shift 2 ;;
+    *) break ;;
+  esac
+done
 categories=()
 while [[ $# -gt 0 && "$1" != "--" ]]; do categories+=("$1"); shift; done
 [[ "${1:-}" == "--" ]] && shift
 if [[ ${#categories[@]} -eq 0 ]]; then
-  echo "Usage : $0 [-c Release] Catégorie [Catégorie…] [-- options dotnet test]" >&2
+  echo "Usage : $0 [-c Release] [--resultats DOSSIER] Catégorie [Catégorie…] [-- options dotnet test]" >&2
   exit 1
+fi
+if [[ -n "$results" ]]; then
+  if [[ ! -d "$results" ]]; then
+    echo "Échec : dossier de résultats « $results » introuvable." >&2
+    exit 1
+  fi
+  echo "Recettes par catégorie : tests listés par catégorie, rapprochés des résultats de l'exécution complète ($results)."
 fi
 
 known=(Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World)
@@ -39,9 +60,18 @@ for category in "${categories[@]}"; do
     status=1
     continue
   fi
-  output=$(dotnet test --no-build -c "$configuration" --filter "Category=$category" "$@" 2>&1) || { echo "$output"; echo "Échec : catégorie $category" >&2; status=1; continue; }
-  # Somme des « Total: N » de chaque projet de tests (projets sans test correspondant : aucune ligne).
-  total=$( (grep -oE 'Total: *[0-9]+' <<<"$output" || true) | (grep -oE '[0-9]+' || true) | awk '{s += $1} END {print s + 0}')
+  if [[ -z "$results" ]]; then
+    output=$(dotnet test --no-build -c "$configuration" --filter "Category=$category" "$@" 2>&1) || { echo "$output"; echo "Échec : catégorie $category" >&2; status=1; continue; }
+    # Somme des « Total: N » de chaque projet de tests (projets sans test correspondant : aucune ligne).
+    total=$( (grep -oE 'Total: *[0-9]+' <<<"$output" || true) | (grep -oE '[0-9]+' || true) | awk '{s += $1} END {print s + 0}')
+  else
+    listing=$(dotnet test --no-build -c "$configuration" --list-tests --filter "Category=$category" "$@" 2>&1) \
+      || { echo "$listing"; echo "Échec : catégorie $category (liste des tests)" >&2; status=1; continue; }
+    # Une ligne « Projet N » par projet de tests : résultats de la catégorie dans l'exécution complète.
+    output=$(python3 "$root/scripts/category_results.py" "$results" "$configuration" <<<"$listing" 2>&1) \
+      || { echo "$output" >&2; echo "Échec : catégorie $category" >&2; status=1; continue; }
+    total=$(awk '{s += $2} END {print s + 0}' <<<"$output")
+  fi
   if [[ "$total" -eq 0 ]]; then
     echo "Échec : aucun test dans la catégorie « $category »." >&2
     status=1
@@ -52,8 +82,12 @@ for category in "${categories[@]}"; do
   for project in "$root"/tests/*/; do
     name=$(basename "$project")
     grep -rqsF --include='*.cs' --exclude-dir=bin --exclude-dir=obj "Trait(\"Category\", \"$category\")" "$project" || continue
-    count=$( (grep -oE "Total: *[0-9]+, Duration: [^-]* - $name\.dll" <<<"$output" || true) | (grep -oE 'Total: *[0-9]+' || true) \
-      | (grep -oE '[0-9]+' || true) | awk '{s += $1} END {print s + 0}')
+    if [[ -z "$results" ]]; then
+      count=$( (grep -oE "Total: *[0-9]+, Duration: [^-]* - $name\.dll" <<<"$output" || true) | (grep -oE 'Total: *[0-9]+' || true) \
+        | (grep -oE '[0-9]+' || true) | awk '{s += $1} END {print s + 0}')
+    else
+      count=$(awk -v project="$name" '$1 == project {s += $2} END {print s + 0}' <<<"$output")
+    fi
     if [[ "$count" -eq 0 ]]; then
       echo "Échec : $name déclare la catégorie « $category » mais n'en exécute aucun test." >&2
       status=1
