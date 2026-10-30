@@ -85,7 +85,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 |---|---|
 | F | parler au PNJ à portée (3 m) — à un marchand : ouvrir sa boutique (V1.1) —, sinon récolter le nœud à portée |
 | 1 à 9 (ou clic) | choisir une réponse du dialogue (parmi celles affichées) ; Échap ou le bouton Fermer (au doigt) le ferme |
-| I | inventaire, équipement porté et métiers (porter, retirer) |
+| I | personnage : les 18 places d'équipement (V1.2), le sac avec ses filtres et son rangement, la comparaison au survol, les métiers (porter, retirer, échanger) |
 | J | journal de quête et découvertes |
 | K | atelier : recettes, ce qu'il manque, fabriquer (à la forge de Maëlle, à l'ouest du village, juste au nord de la place : enclume grise, « K : forger » s'affiche quand on y est) |
 | P | boire un objet de soin emporté (le plus petit d'abord) |
@@ -117,6 +117,18 @@ Ce que tu vérifies (essai du 12.9) : la mission d'Odile de bout en bout (traces
 - **Voyage rapide** : la carte (L) a une colonne **Voyage rapide** à gauche : un bouton par point sûr découvert (« Tu es ici » là où tu es). Un point sûr se découvre en passant à 5 m (« Point sûr découvert : … ») ; celui où tu commences l'est déjà. Hors combat seulement (aucun ennemi à 12 m, aucun ennemi qui te vise) : sinon les boutons sont grisés et la raison s'affiche sous eux. Le point où tu es reste grisé (« Tu es ici » : fais une halte). Plus de sept points sûrs : boutons **<** et **>** sous la liste. Le voyage sauvegarde, fait un fondu au noir et t'amène au point sûr, PV pleins, comme une halte. Gratuit.
 
 Ce que tu vérifies (V1.1) : la bourse dans l'écran du personnage ; la boutique de chaque marchand (acheter une potion chez Sauge, vendre une peau de loup chez Bertille, la racheter) ; un achat refusé sans assez d'or ; le stock de Garin qui change d'un jour du monde à l'autre (2 h de jeu) ; la découverte de la place du bourg, puis le voyage rapide vers la place du village depuis la carte, et le refus près d'un loup ; quitter et relancer le jeu (bourse et points sûrs gardés, rachats oubliés).
+
+### Équipement complet (sous-lot V1.2)
+
+Règles : [MONDE.md](MONDE.md#équipement-complet-sous-lot-v12). Aucune touche nouvelle : tout se fait dans l'écran du personnage (**I**, ou **Sac** au doigt).
+
+- **Les 18 places** autour du sceau du Bastion : à gauche la tête, les épaules, la cape, le torse, les brassards et les mains ; à droite la ceinture, les jambes, les pieds, le cou et les deux anneaux ; sur le sceau l'arme, le bouclier, les deux reliques, l'**Éclat du Seuil** au centre et l'**outil de métier** en bas. Chaque case dit sa place et l'objet porté (couleur de sa rareté).
+- **Porter** : clic sur un objet du sac (un anneau va au premier doigt libre). **Retirer** : clic sur l'objet porté ; le bouclier du Bastion et l'Éclat ne se retirent pas (« Cette place reste toujours occupée… ») : on en porte un autre à la place. **Échanger** les deux anneaux ou les deux reliques : clic droit sur l'un. En plein combat, tout est refusé (« En plein combat : change ton équipement hors combat. »). L'effet vient à ta prochaine halte.
+- **Comparaison** : au survol d'un objet, la fiche montre son niveau requis, l'arbre auquel il convient et ce qu'il remplacerait, puis chaque valeur « porté → nouveau » avec l'écart **en vert** (mieux) ou **en rouge** (moins bien) ; pour un bouclier : part bloquée en garde, endurance par blocage, fenêtre de parade. Elle marche aussi dans la boutique de Garin.
+- **Sac** : sous le sac, les filtres **Tout**, **Équipement**, **À ma portée** (ce que ton niveau permet), **Soins**, **Matériaux**, et le bouton **Ranger** (par sorte, puis par rareté, puis par niveau, à chaque clic).
+- **Sur le Bastion** se voient l'arme, le bouclier et la cape. Avec le paladin de Mixamo, son épée et son bouclier (dans le modèle) prennent la teinte de la rareté ; une masse, une hache ou un marteau cache l'épée et prend une **forme simple** dans la main droite ; la **cape** est une **forme simple** dans le dos (aucun modèle de cape dans les packs déposés, aucun achat sans l'accord de Damien). Sans modèle, arme et bouclier sont aussi des formes simples. Les pièces d'armure ne se voient pas : elles attendront des modèles en morceaux.
+
+Ce que tu vérifies (V1.2) : une nouvelle partie commence avec l'Éclat, l'épée et l'écu portés ; une ancienne partie reçoit l'Éclat (« Équipement mis à jour ») ; acheter la targe chez Garin, comparer (part bloquée en rouge, endurance et parade en vert), la porter, faire halte, puis essayer une parade un peu tôt ; le bouclier ne se retire pas, mais s'échange ; deux anneaux et leur échange au clic droit ; les filtres et Ranger ; la cape visible dans le dos (forme simple), et à quel point la teinte de l'épée et du bouclier du paladin se voit.
 
 ## 5. Talents
 

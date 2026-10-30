@@ -65,6 +65,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - **Catalogue** : quelques dizaines d'objets pour les niveaux 1 à 20, plusieurs bons choix par tranche de niveau à rareté égale (H5) ; niveau requis, puissance, rareté et adéquation au build restent quatre notions distinctes.
 - **Inventaire** : 24 places gardées pour l'instant, avec des sacs plus tard (vague 4). Tri et filtres simples.
 - **Unity** : écran du personnage avec toutes les places, **comparaison claire** (vert ou rouge, avec les chiffres) en survolant un objet. Visible sur le Bastion : l'arme, le bouclier et la cape d'abord (les pièces d'armure attendront des modèles en morceaux, sans achat sans l'accord de Damien).
+- **État** (30 octobre 2026, en PR) : fait. 18 places (catalogue en version 3), bouclier du Bastion et Éclat du Seuil toujours portés, garde propre de chaque bouclier (règles 0.13.0, moteur 0.25.0, nouvelle référence figée), 73 équipements des niveaux 1 à 20 avec leurs prix, équipement de départ, tri et filtres, sauvegarde en version 7, écran aux 18 places avec comparaison, arme, bouclier et cape visibles (formes simples pour la cape et les armes autres que l'épée du paladin). Les effets, les ensembles et les propriétés tirées restent pour V1.3. Détail : [MONDE.md](MONDE.md#équipement-complet-sous-lot-v12).
 
 ### V1.3 — Effets d'équipement : armes, bijoux, ensembles, propriétés tirées (L)
 
