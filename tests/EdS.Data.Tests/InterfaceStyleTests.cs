@@ -265,8 +265,61 @@ public class InterfaceStyleTests
         Assert.Contains("_map.uvRect = PaintedMap.Area(map);", book, StringComparison.Ordinal);
         using JsonDocument texts = JsonDocument.Parse(Read("data", "v0", "world", "texts", "fr.json"));
         JsonElement entries = texts.RootElement.GetProperty("data").GetProperty("entries");
-        foreach (string key in new[] { "text.ui.tab.character", "text.ui.tab.talents", "text.ui.tab.journal", "text.ui.tab.crafting", "text.ui.tab.map" })
+        foreach (string key in new[] { "text.ui.tab.character", "text.ui.tab.skills", "text.ui.tab.talents", "text.ui.tab.journal", "text.ui.tab.crafting", "text.ui.tab.map" })
             Assert.True(entries.TryGetProperty(key, out _), key);
+    }
+
+    /// <summary>
+    /// Sous-lot V1.5 : l'écran des compétences est un onglet du panneau de l'aventure, ouvert par B (K reste l'atelier, aucune autre
+    /// touche ne prend B) ; on y glisse une compétence sur une place (souris ou doigt) ou on la touche puis la place, et tout passe par
+    /// l'aventure (donc par le juge du cœur). Les API de glissé de Unity ont leurs bouchons.
+    /// </summary>
+    [Fact]
+    public void Ecran_des_competences_branche()
+    {
+        string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
+        string book = Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs");
+        string skills = Read("unity", "Assets", "EdS", "Game", "AdventureBook.Skills.cs");
+        string kit = Read("unity", "Assets", "EdS", "Game", "UiKit.cs");
+        string stubs = Read("tests", "EdS.Unity.CompileCheck", "UnityApiStubs.cs");
+        Assert.Contains("if (Input.GetKeyDown(KeyCode.B)) _screens.Toggle(AdventureScreens.Panel.Skills);", game, StringComparison.Ordinal);
+        Assert.Contains("if (Input.GetKeyDown(KeyCode.K) || _touch.WorkshopPressed) _screens.Toggle(AdventureScreens.Panel.Crafting);", game, StringComparison.Ordinal);
+        int bKeys = Directory.GetFiles(Path.Combine(Root, "unity", "Assets", "EdS"), "*.cs", SearchOption.AllDirectories)
+            .Sum(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), @"KeyCode\.B\b").Count);
+        Assert.Equal(1, bKeys);
+        Assert.Contains("public sealed partial class AdventureBook", book, StringComparison.Ordinal);
+        Assert.Contains("(AdventureScreens.Panel.Skills, \"text.ui.tab.skills\", 165f)", book, StringComparison.Ordinal);
+        Assert.Contains("case AdventureScreens.Panel.Skills: RefreshSkills(a); break;", book, StringComparison.Ordinal);
+        Assert.Contains("case AdventureScreens.Panel.Skills: return \"B\";", book, StringComparison.Ordinal);
+        // Écran quitté : plus de glissé ni de choix, et le dernier message (un refus en plein combat) ne reste pas à la réouverture.
+        Assert.Contains("if (!book || screens.Open != AdventureScreens.Panel.Skills) LeaveSkills();", book, StringComparison.Ordinal);
+        Assert.Contains("_skillMessage = null;", skills, StringComparison.Ordinal);
+        // Relecture indépendante de la PR #71 : la fin d'un glissé n'est pas un clic ; un lâcher sur la place de départ ne fait rien ; une
+        // action sans effet (le personnage n'a pas changé) n'affiche ni ne sonne rien ; le motif d'un refus vient du cœur (un par cas).
+        Assert.Contains("if (eventData.dragging) return;", kit, StringComparison.Ordinal);
+        Assert.Contains("bool home = ReferenceEquals(_dragSource, cell);", skills, StringComparison.Ordinal);
+        Assert.Contains("if (refusal == null && ReferenceEquals(before, _session.World.Character)) return;", skills, StringComparison.Ordinal);
+        Assert.Contains("_skillsStatus.Value = book.Locked ?? \"\";", skills, StringComparison.Ordinal);
+        Assert.DoesNotContain("text.ui.skills.in_combat", skills, StringComparison.Ordinal);
+        Assert.DoesNotContain("clic droit : vider", skills, StringComparison.Ordinal);
+        Assert.Contains("pointer.Enter = () => _hoveredSkill = _upcomingSkills[at];", skills, StringComparison.Ordinal);
+        Assert.Contains("book.HasReserve(cell.Kind) ? \"Libre\" : \"Rien à placer pour l'instant\"", skills, StringComparison.Ordinal);
+        foreach (string action in new[] { "Apply(() => _session.PlaceSkill(cell.Kind, cell.Index, skill));", "Apply(() => _session.RemoveSkill(cell.Kind, cell.Index));",
+                     "UiKit.Drop(cell.Hit).Dropped = () => DropOn(c);", "UiDrag drag = UiKit.Drag(cell.Hit);", "UiDrag drag = UiKit.Drag(row.Slab);",
+                     "RectTransformUtility.ScreenPointToLocalPointInRectangle(_panel, screen, null, out Vector2 local)" })
+            Assert.Contains(action, skills, StringComparison.Ordinal);
+        Assert.Contains("public sealed class UiDrag : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler", kit, StringComparison.Ordinal);
+        Assert.Contains("public sealed class UiDrop : MonoBehaviour, IDropHandler", kit, StringComparison.Ordinal);
+        foreach (string stub in new[] { "public interface IBeginDragHandler", "public interface IDragHandler", "public interface IEndDragHandler",
+                     "public interface IDropHandler", "public Vector2 position { get; set; }", "public bool dragging { get; set; }", "ScreenPointToLocalPointInRectangle(RectTransform rect, Vector2 screenPoint, Camera cam, out Vector2 localPoint)", " A, B, C," })
+            Assert.Contains(stub, stubs, StringComparison.Ordinal);
+        // Dessins de l'écran : ceux des places (éclats de la barre de combat, nœuds de l'arbre) et l'icône des compétences sans peinture.
+        foreach (string sprite in System.Text.RegularExpressions.Regex.Matches(skills, "UiKit\\.Sprite\\(\"([a-z_0-9]+)\"").Select(m => m.Groups[1].Value)
+                     .Concat(new[] { "noeud_fond", "noeud_masque", "noeud_cadre", "eclat_4_masque", "eclat_5_cadre" }).Distinct())
+            Assert.True(File.Exists(Path.Combine(Root, Hud, sprite + ".png")), sprite);
+        Assert.True(File.Exists(Path.Combine(Root, Painted, "eclat_de_seuil.png")));
+        string unity = Read("docs", "UNITY.md");
+        Assert.Contains("| B | écran des compétences", unity, StringComparison.Ordinal);
     }
 
     /// <summary>Essai réaliste 6, étape 3 : finitions animées (niveau gagné, vie basse, coup reçu par la cible, fondus).</summary>
@@ -306,7 +359,7 @@ public class InterfaceStyleTests
         Assert.Contains("if (key != _shape)", Read("unity", "Assets", "EdS", "Game", "SpaceView.cs"), StringComparison.Ordinal);
         foreach (string sprite in new[] { "bord_haut", "bord_bas" }) PngSize(Path.Combine(Root, Hud, sprite + ".png"));
         // Symboles absents de Cinzel et de Barlow Condensed : interdits dans les textes de l'interface uGUI.
-        foreach (string file in new[] { "HudView.cs", "AdventureBook.cs", "TalentTreeView.cs", "UiKit.cs", "EdsGame.cs" })
+        foreach (string file in new[] { "HudView.cs", "AdventureBook.cs", "AdventureBook.Skills.cs", "TalentTreeView.cs", "UiKit.cs", "EdsGame.cs" })
         {
             string code = Read("unity", "Assets", "EdS", "Game", file);
             foreach (char symbol in "◆◇●○✓→★■▲►")
