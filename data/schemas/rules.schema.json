@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 12
+      "const": 13
     },
     "kind": {
       "const": "rules"
@@ -738,6 +738,50 @@
                 "minReactionMs"
               ],
               "description": "Annonces des attaques au sol (sous-lot 11.4c, schéma 12)."
+            },
+            "shield": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "minDamageReduction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Part bloquée la plus faible d'un bouclier (0,45 livrés)."
+                },
+                "maxDamageReduction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Part bloquée la plus forte d'un bouclier, au plus combat.guard.maxDamageReduction (0,7 livrés)."
+                },
+                "minCostPerBlock": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Endurance d'un blocage la plus basse d'un bouclier (4 livrés)."
+                },
+                "maxCostPerBlock": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Endurance d'un blocage la plus haute d'un bouclier (20 livrés)."
+                },
+                "parryWindowShiftMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 500,
+                  "description": "Écart le plus grand (ms, multiple du tick) entre la fenêtre de parade d'un bouclier et combat.parry.windowMs (50 livrés : un tick)."
+                }
+              },
+              "required": [
+                "minDamageReduction",
+                "maxDamageReduction",
+                "minCostPerBlock",
+                "maxCostPerBlock",
+                "parryWindowShiftMs"
+              ],
+              "description": "Bornes de la garde propre des boucliers (sous-lot V1.2, schéma 13)."
             }
           },
           "required": [
@@ -753,7 +797,8 @@
             "resonance",
             "movement",
             "contact",
-            "telegraph"
+            "telegraph",
+            "shield"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         },

@@ -90,15 +90,25 @@ namespace EdS.Domain.Combat
         /// </summary>
         public IReadOnlyList<ConsumableSetup> Consumables { get; }
 
+        /// <summary>
+        /// Sous-lot V1.2 : garde du bouclier porté (part bloquée, coût d'un blocage, fenêtre de parade), qui remplace pour ce personnage les
+        /// valeurs de base des règles ; null sans bouclier (valeurs des règles, comme avant).
+        /// </summary>
+        public ShieldGuard? Shield { get; }
+
         public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null,
-            long? arrivalMs = null, GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null)
+            long? arrivalMs = null, GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null, ShieldGuard? shield = null)
             : base(id, team, initiative, placement, arrivalMs)
         {
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
             Build = build ?? throw new ArgumentNullException(nameof(build));
             Gear = gear ?? GearBonus.None;
             Consumables = Frozen.ListOrEmpty(consumables, nameof(consumables));
+            Shield = shield;
         }
+
+        /// <summary>Sous-lot V1.2 : règles effectives de ce personnage (modificateurs de son build, garde de son bouclier).</summary>
+        public CombatantRules EffectiveRules(CombatRules rules) => CombatantRules.For(rules, ModifierSet.For(this), Shield);
 
         /// <summary>
         /// Lot 7.3 : déclencheurs permanents actifs avec ce build : talents de rang ≥ 1 (valeurs à leur rang), passifs équipés,
@@ -804,6 +814,8 @@ namespace EdS.Domain.Combat
                             if (character.Gear[g] < 0 || character.Gear[g] > GearBonus.MaxValue)
                                 errors.Add(new RuleViolation(
                                     $"bonus d'équipement {character.Gear[g]} hors de [0, {GearBonus.MaxValue}].", path + ".gear." + GearBonus.Fields[g]));
+                        // Sous-lot V1.2 : garde du bouclier dans les bornes de jeu des règles (la même fonction que le catalogue des objets).
+                        if (character.Shield is { } shield) errors.AddRange(shield.Check(Combat, path + ".shield"));
                         break;
                     case DummySetup dummy:
                         Defense(dummy.Armor, "l'armure du mannequin", path + ".armor", errors);
@@ -1081,7 +1093,7 @@ namespace EdS.Domain.Combat
             // un raccourci ne fait que réduire. Les mannequins et assaillants n'ont pas de modificateur.
             var characterRules = new List<CombatantRules>();
             foreach (CombatantSetup c in Combatants)
-                if (c is CharacterSetup ch) characterRules.Add(CombatantRules.For(Combat, ModifierSet.For(ch)));
+                if (c is CharacterSetup ch) characterRules.Add(ch.EffectiveRules(Combat));
             long Window(StatusDefinition d)
             {
                 long dealt = 0, taken = 0;
@@ -1160,7 +1172,7 @@ namespace EdS.Domain.Combat
                     }
                     case CharacterSetup c:
                     {
-                        CombatantRules rules = CombatantRules.For(Combat, ModifierSet.For(c));
+                        CombatantRules rules = c.EffectiveRules(Combat);
                         foreach (string status in c.Class.Skills.Where(sk => sk.Combat != null).SelectMany(sk => sk.Combat!.Applies)
                                      .Select(x => x.Status).Distinct(StringComparer.Ordinal))
                         {
@@ -1652,7 +1664,7 @@ namespace EdS.Domain.Combat
                             overflowPath = path + ".build.attributes";
                             overflowMessage = "statistiques dérivées hors des limites numériques.";
                             defenses[i] = stats;
-                            CombatantRules rules = CombatantRules.For(Combat, modifiers);
+                            CombatantRules rules = CombatantRules.For(Combat, modifiers, character.Shield);
                             // Sous-lot 8.2 (X4) : valeur d'un bouclier posé par ce personnage, au coefficient maximal d'une application,
                             // avec sa puissance de boucliers (même fonction que le moteur).
                             if (Combat.Statuses.HasShields)

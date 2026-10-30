@@ -83,6 +83,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 12.6 (schéma 12) : objets de soin emportés par un personnage ; facultatif.</summary>
         public List<ConsumableData?>? Consumables { get; set; }
 
+        /// <summary>Sous-lot V1.2 (schéma 13) : garde du bouclier porté par un personnage ; facultative (absente : celle des règles).</summary>
+        public ShieldData? Shield { get; set; }
+
         // Mannequin et assaillant
         public Fixed? Armor { get; set; }
         public Fixed? MagicResistance { get; set; }
@@ -224,6 +227,14 @@ namespace EdS.Data.Scenarios
     }
 
     /// <summary>Sous-lot 12.6 : objet de soin emporté (identifiant, soin, charges, recharge partagée en ms).</summary>
+    /// <summary>Sous-lot V1.2 : garde d'un bouclier telle que lue (part bloquée, coût d'un blocage, fenêtre de parade en ms).</summary>
+    public sealed class ShieldData
+    {
+        public Fixed? DamageReduction { get; set; }
+        public int? CostPerBlock { get; set; }
+        public long? ParryWindowMs { get; set; }
+    }
+
     public sealed class ConsumableData
     {
         public string? Id { get; set; }

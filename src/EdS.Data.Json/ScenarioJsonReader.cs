@@ -84,6 +84,7 @@ namespace EdS.Data.Json
                 ["gear"] = Track("gear", (v, p) => c.Gear = ReadIntegerMap(input, v, p)),   // sous-lot 12.3 (schéma 11)
                 ["consumables"] = Track("consumables", (v, p) => c.Consumables = input.ReadLimitedList(v, p, CombatSetup.MaxConsumables,   // 12.6 (schéma 12)
                     n => $"{n} objets de soin, au plus {CombatSetup.MaxConsumables}.", (e, ip) => ReadConsumable(input, e, ip))),
+                ["shield"] = Track("shield", (v, p) => c.Shield = ReadShield(input, v, p)),   // sous-lot V1.2 (schéma 13)
                 ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
                 ["magicResistance"] = Track("magicResistance", (v, p) => c.MagicResistance = input.Decimal(v, p)),
                 ["statusResistance"] = Track("statusResistance", (v, p) => c.StatusResistance = input.Decimal(v, p)),
@@ -245,6 +246,19 @@ namespace EdS.Data.Json
                 ["item"] = Track("item", (v, p) => c.Item = input.Text(v, p)),                     // sous-lot 12.6 (schéma 12)
             });
             return ok ? c : null;
+        }
+
+        /// <summary>Sous-lot V1.2 : garde du bouclier porté par un personnage.</summary>
+        private static ShieldData? ReadShield(JsonInput input, JsonElement element, string path)
+        {
+            var s = new ShieldData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                [ShieldGuard.DamageReductionId] = (v, p) => s.DamageReduction = input.Decimal(v, p),
+                [ShieldGuard.CostPerBlockId] = (v, p) => s.CostPerBlock = input.Int32(v, p),
+                [ShieldGuard.ParryWindowMsId] = (v, p) => s.ParryWindowMs = input.Int64(v, p),
+            });
+            return ok ? s : null;
         }
 
         private static ConsumableData? ReadConsumable(JsonInput input, JsonElement element, string path)

@@ -83,17 +83,26 @@ namespace EdS.Domain.Combat
 
         private readonly long _tickMs;
 
-        private CombatantRules(CombatRules rules, ModifierSet m)
+        private CombatantRules(CombatRules rules, ModifierSet m, ShieldGuard? shield)
         {
             Modifiers = m;
+            Shield = shield;
             _tickMs = rules.TickMilliseconds;
             _maxGuardReduction = rules.MaxGuardDamageReduction;
             _maxTotalReduction = rules.MaxTotalDamageReduction;
-            GuardDamageReduction = Clamp(rules.GuardDamageReduction, m.Sum(ModifierField.GuardDamageReduction), Fixed.Zero, _maxGuardReduction);
+            // Sous-lot V1.2 : le bouclier porté remplace les trois valeurs de base de la garde et de la parade ; les modificateurs s'y
+            // ajoutent comme aux valeurs des règles, sous les mêmes écrêtages. Les valeurs du bouclier sont d'abord ramenées dans leurs
+            // intervalles de jeu (garde au plus son plafond, coût positif, fenêtre d'un tick à 500 ms) : à la différence d'une base des règles
+            // de test, un bouclier ne sort jamais des plafonds.
+            long cap = MaxParryWindowMs - MaxParryWindowMs % _tickMs;
+            Fixed guardBase = shield is null ? rules.GuardDamageReduction : Fixed.Clamp(shield.DamageReduction, Fixed.Zero, _maxGuardReduction);
+            long costBase = shield is null ? rules.GuardCostPerBlock : Math.Max(0, shield.CostPerBlock);
+            long windowBase = shield is null ? rules.ParryWindowMs : Math.Min(Math.Max(shield.ParryWindowMs, _tickMs), Math.Max(cap, _tickMs));
+            GuardDamageReduction = Clamp(guardBase, m.Sum(ModifierField.GuardDamageReduction), Fixed.Zero, _maxGuardReduction);
             GuardNoUpkeep = m.Flag(ModifierField.GuardNoUpkeep);
             GuardUpkeepPerSecond = GuardNoUpkeep ? Fixed.Zero
                 : Clamp(Fixed.FromInt(rules.GuardUpkeepPerSecond), m.Sum(ModifierField.GuardUpkeepPerSecond), Fixed.Zero, MaxInt);
-            GuardCostPerBlock = Whole(Clamp(Fixed.FromInt(rules.GuardCostPerBlock), m.Sum(ModifierField.GuardCostPerBlock), Fixed.Zero, MaxInt));
+            GuardCostPerBlock = Whole(Clamp(Fixed.FromInt(costBase), m.Sum(ModifierField.GuardCostPerBlock), Fixed.Zero, MaxInt));
             GuardNoUpkeepBreak = m.Flag(ModifierField.GuardNoUpkeepBreak);
             // Les deux combinaisons inertes du drapeau valent 0, pour que le journal ne les montre pas comme appliquées : la réduction à
             // 0 d'endurance ne sert que si la garde tient sans endurance (noUpkeepBreak) ; le raccourci de rupture, que si la garde peut
@@ -106,7 +115,7 @@ namespace EdS.Domain.Combat
             GuardBreakShortenPerChargeMs = GuardNoUpkeepBreak ? 0
                 : Whole(Clamp(Fixed.Zero, m.Sum(ModifierField.GuardBreakShortenPerCharge), Fixed.Zero, MaxDuration));
             long windowCap = MaxParryWindowMs - MaxParryWindowMs % _tickMs;
-            ParryWindowMs = Whole(Clamp(Fixed.FromInt(rules.ParryWindowMs), m.Sum(ModifierField.ParryWindowMs), Fixed.FromInt(_tickMs), Fixed.FromInt(windowCap)));
+            ParryWindowMs = Whole(Clamp(Fixed.FromInt(windowBase), m.Sum(ModifierField.ParryWindowMs), Fixed.FromInt(_tickMs), Fixed.FromInt(windowCap)));
             ParryFailureRecoveryMs = Whole(Clamp(Fixed.FromInt(rules.ParryFailureRecoveryMs), m.Sum(ModifierField.ParryFailureRecoveryMs), Fixed.Zero, MaxDuration));
             RampartChargesMax = (int)Whole(Clamp(Fixed.FromInt(rules.RampartChargesMax), m.Sum(ModifierField.RampartChargesMax), Fixed.Zero, Fixed.FromInt(MaxRampartCharges)));
             ResonancePerDirectHit = (int)Whole(Clamp(Fixed.FromInt(rules.ResonancePerDirectHit), m.Sum(ModifierField.ResonancePerDirectHit), Fixed.Zero, MaxInt));
@@ -135,8 +144,18 @@ namespace EdS.Domain.Combat
         private static readonly Fixed MaxDuration = Fixed.FromInt(CombatRules.AbsoluteMaxDurationMs);
 
         /// <summary>Règles effectives d'un combattant ; <see cref="ModifierSet.Empty"/> donne les règles de base.</summary>
-        public static CombatantRules For(CombatRules rules, ModifierSet modifiers) =>
-            new CombatantRules(rules ?? throw new ArgumentNullException(nameof(rules)), modifiers ?? throw new ArgumentNullException(nameof(modifiers)));
+        public static CombatantRules For(CombatRules rules, ModifierSet modifiers) => For(rules, modifiers, null);
+
+        /// <summary>
+        /// Sous-lot V1.2 : règles effectives d'un combattant qui porte le bouclier <paramref name="shield"/> (null : aucun, les valeurs des
+        /// règles). La garde du bouclier est supposée jouable (<see cref="ShieldGuard.Check"/>, appelée par la validation du combat) ; une
+        /// valeur hors des bornes de jeu reste écrêtée comme une base des règles de test.
+        /// </summary>
+        public static CombatantRules For(CombatRules rules, ModifierSet modifiers, ShieldGuard? shield) =>
+            new CombatantRules(rules ?? throw new ArgumentNullException(nameof(rules)), modifiers ?? throw new ArgumentNullException(nameof(modifiers)), shield);
+
+        /// <summary>Sous-lot V1.2 : garde du bouclier porté, ou null (valeurs des règles).</summary>
+        public ShieldGuard? Shield { get; }
 
         /// <summary>base + somme, écrêtée dans [min(bas, base), max(haut, base)].</summary>
         private static Fixed Clamp(Fixed @base, Fixed sum, Fixed low, Fixed high) =>

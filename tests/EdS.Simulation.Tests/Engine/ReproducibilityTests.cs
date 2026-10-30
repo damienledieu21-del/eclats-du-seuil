@@ -97,8 +97,9 @@ public class ReproducibilityTests
     // empreinte a35b9a5b…). Sous-lot 12.1 : moteur 0.22.0, format 16 (zone) ; combat fermé : seul l'en-tête change (ancienne empreinte
     // cf174eb2…). Sous-lot 12.3 : moteur 0.23.0, format 17 (équipement) ; sans équipement : seul l'en-tête change (ancienne
     // empreinte 2dc514da…). Sous-lot 12.6 : moteur 0.24.0, format 18 (soins) ; sans objet de soin : seul l'en-tête change (ancienne
-    // empreinte c6bb1615…).
-    internal const string ReferenceHash = "a2d199bfea864ccb694a2d7ed607982fc8a7ed69aa86400a4a7e5130e5ad494b";
+    // empreinte c6bb1615…). Sous-lot V1.2 : moteur 0.25.0, format 19 (garde du bouclier) ; sans bouclier : seul l'en-tête change (ancienne
+    // empreinte a2d199bf…).
+    internal const string ReferenceHash = "b2855b2b5aee099f111514f5d5de740e6b82094dc049cc900a3d62304ae4f072";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

@@ -1,0 +1,150 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 13,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 12,
+    "durationMs": 12000,
+    "combatants": [
+      {
+        "id": "bastion_lourd",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 10,
+          "attributes": {
+            "force": 14,
+            "dexterite": 8,
+            "intelligence": 6,
+            "vitalite": 40,
+            "volonte": 10,
+            "endurance": 12
+          },
+          "talents": {},
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.barriere_d_acier"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": []
+        },
+        "shield": {
+          "damageReduction": 0.7,
+          "costPerBlock": 14,
+          "parryWindowMs": 100
+        }
+      },
+      {
+        "id": "bastion_leger",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 10,
+          "attributes": {
+            "force": 14,
+            "dexterite": 8,
+            "intelligence": 6,
+            "vitalite": 40,
+            "volonte": 10,
+            "endurance": 12
+          },
+          "talents": {},
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.barriere_d_acier"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": []
+        },
+        "shield": {
+          "damageReduction": 0.5,
+          "costPerBlock": 6,
+          "parryWindowMs": 200
+        }
+      },
+      {
+        "id": "assaillant_lourd",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion_lourd",
+        "firstAttackMs": 1000,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "coup",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": []
+          }
+        ]
+      },
+      {
+        "id": "assaillant_leger",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion_leger",
+        "firstAttackMs": 1000,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "coup",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": []
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 0,
+        "actor": "bastion_leger",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 0,
+        "actor": "bastion_lourd",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 2850,
+        "actor": "bastion_leger",
+        "action": "parry"
+      },
+      {
+        "atMs": 2850,
+        "actor": "bastion_lourd",
+        "action": "parry"
+      },
+      {
+        "atMs": 4950,
+        "actor": "bastion_leger",
+        "action": "parry"
+      },
+      {
+        "atMs": 4950,
+        "actor": "bastion_lourd",
+        "action": "parry"
+      }
+    ]
+  }
+}

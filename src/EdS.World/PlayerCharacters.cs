@@ -233,8 +233,9 @@ namespace EdS.World
         /// </summary>
         /// <exception cref="ArgumentException">Classe inconnue, ou build invalide à ce niveau (premier motif et son chemin dans le message).</exception>
         /// <param name="gear">Sous-lot 12.3 : bonus de l'équipement porté (<see cref="Inventory.Gear"/>) ; aucun par défaut.</param>
+        /// <param name="shield">Sous-lot V1.2 : garde du bouclier porté (<see cref="Inventory.Shield"/>) ; aucune par défaut (celle des règles).</param>
         public static CharacterSetup Setup(SavedCharacter character, CharacterProgression progression, GameData data, CombatantPlacement placement,
-            string team = "joueurs", GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null)
+            string team = "joueurs", GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null, ShieldGuard? shield = null)
         {
             if (data is null) throw new ArgumentNullException(nameof(data));
             if (!data.TryGetClass(character.ClassId, out LoadedClass loaded))
@@ -243,7 +244,7 @@ namespace EdS.World
             IReadOnlyList<BuildViolation> violations = BuildValidator.Validate(build, loaded.Definition, data.Rules.Progression);
             if (violations.Count > 0)
                 throw new ArgumentException($"Build du personnage invalide au niveau {build.Level} : {violations[0].Subject} : {violations[0].Message}", nameof(character));
-            return new CharacterSetup(character.Id, team, loaded.Definition, build, 0, placement, null, gear, consumables);
+            return new CharacterSetup(character.Id, team, loaded.Definition, build, 0, placement, null, gear, consumables, shield);
         }
     }
 }

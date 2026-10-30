@@ -161,6 +161,12 @@ namespace EdS.Data.Rules
             // Sous-lot 11.4c (schéma 12) : arc du bouclier et réaction minimale des annonces.
             new RuleField("combat.guard.arcDegrees", RuleValueKind.Int32, C, nameof(CombatRules.GuardArcDegrees)),
             new RuleField("combat.telegraph.minReactionMs", RuleValueKind.Int64, C, nameof(CombatRules.TelegraphMinReactionMs)),
+            // Sous-lot V1.2 (schéma 13) : bornes de la garde des boucliers.
+            new RuleField("combat.shield.minDamageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.ShieldMinDamageReduction)),
+            new RuleField("combat.shield.maxDamageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.ShieldMaxDamageReduction)),
+            new RuleField("combat.shield.minCostPerBlock", RuleValueKind.Int32, C, nameof(CombatRules.ShieldMinCostPerBlock)),
+            new RuleField("combat.shield.maxCostPerBlock", RuleValueKind.Int32, C, nameof(CombatRules.ShieldMaxCostPerBlock)),
+            new RuleField("combat.shield.parryWindowShiftMs", RuleValueKind.Int64, C, nameof(CombatRules.ShieldParryWindowShiftMs)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

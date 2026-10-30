@@ -411,6 +411,8 @@ public class Lot81CombatantRulesAggregationTests
             nameof(CombatantRules.RampartChargesMax), nameof(CombatantRules.ResonancePerDirectHit), nameof(CombatantRules.EnduranceRegenPerSecond),
             nameof(CombatantRules.DamageDealt), nameof(CombatantRules.DamageTaken), nameof(CombatantRules.ShieldPotencyDealt),
             nameof(CombatantRules.ProtectionRedirectRatio), nameof(CombatantRules.ProtectionRedirectThroughGuard), nameof(CombatantRules.GuardNoUpkeep),
+            // Sous-lot V1.2 : la garde du bouclier porté, écrite dans l'en-tête du journal (ses effets sont dans les trois valeurs de garde).
+            nameof(CombatantRules.Shield),
         };
         Assert.Equal(covered.OrderBy(n => n, StringComparer.Ordinal),
             typeof(CombatantRules).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));

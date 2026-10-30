@@ -361,7 +361,7 @@ namespace EdS.Net
             long lastMs = checked(Math.Max(1, current.DurationMs / TickMs) * TickMs);
             IEnumerable<CombatantSetup> worst = _scenario.Combatants.OfType<CharacterSetup>()
                 .Where(c => (c.Id == seat.Id || _seats.Any(s => s.Id == c.Id && !s.Taken && !s.InCombat)) && !current.Combatants.Any(k => k.Id == c.Id))
-                .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Id == seat.Id ? build : c.Build, c.Initiative, c.Placement, lastMs, c.Gear, c.Consumables));
+                .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Id == seat.Id ? build : c.Build, c.Initiative, c.Placement, lastMs, c.Gear, c.Consumables, c.Shield));
             long bound = StateBound(new CombatSetup(current.Seed, current.DurationMs, current.Stats, current.Damage, current.Progression, current.Combat,
                 current.Combatants.Concat(worst), current.Commands, current.Data, current.Space, current.Zone), TickMs);
             // 4e tour : avec l'instantané courant, comme au début ; un état trop grand pour un instantané (37e tour de la PR #32) refuse l'arrivée.
@@ -408,7 +408,7 @@ namespace EdS.Net
             foreach (CombatantPlacement? placement in candidates)
                 try
                 {
-                    var joining = new CharacterSetup(scenario.Id, scenario.Team, scenario.Class, build, scenario.Initiative, placement, atMs, scenario.Gear, scenario.Consumables);
+                    var joining = new CharacterSetup(scenario.Id, scenario.Team, scenario.Class, build, scenario.Initiative, placement, atMs, scenario.Gear, scenario.Consumables, scenario.Shield);
                     probe.Join(joining);
                     long size = MessageCodec.Encode(new StateMessage(CombatLogHeader.Write(probe.CompletedSetup()), probe.Snapshot().Text, _log!.Hash)).Length;
                     if (size > Protocol.MaxServerMessageBytes)
@@ -588,7 +588,7 @@ namespace EdS.Net
             IEnumerable<CombatantSetup> combatants = _scenario.Combatants
                 .Where(c => !(c is CharacterSetup free && _seats.Any(s => s.Id == free.Id && !s.Taken)))
                 .Select(c => c is CharacterSetup ch && _seats.FirstOrDefault(s => s.Id == ch.Id) is { } seat
-                    ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement, ch.ArrivalMs, ch.Gear, ch.Consumables)
+                    ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement, ch.ArrivalMs, ch.Gear, ch.Consumables, ch.Shield)
                     : c);
             var setup = new CombatSetup(_scenario.Seed, _options.DurationMs ?? _scenario.DurationMs, _scenario.Stats, _scenario.Damage,
                 _scenario.Progression, _scenario.Combat, combatants, Array.Empty<CombatCommand>(), _scenario.Data, _scenario.Space, _scenario.Zone);
@@ -620,7 +620,7 @@ namespace EdS.Net
             {
                 long last = checked(Math.Max(1, setup.DurationMs / TickMs) * TickMs);
                 IEnumerable<CombatantSetup> joiners = _scenario.Combatants.OfType<CharacterSetup>().Where(c => _seats.Any(s => s.Id == c.Id && !s.Taken))
-                    .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, last, c.Gear, c.Consumables));
+                    .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, last, c.Gear, c.Consumables, c.Shield));
                 bounded = new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, setup.Combat,
                     setup.Combatants.Concat(joiners), setup.Commands, setup.Data, setup.Space, setup.Zone);
             }
