@@ -161,13 +161,45 @@ Dans une pièce, ni oiseaux ni rivière, le vent du dehors à peine ; la carte e
 
 Limites : une pièce n'a qu'un niveau (l'escalier de l'auberge est un décor) ; les portes ne se ferment pas à clé ; les PNJ des intérieurs sont du décor, sans dialogue. Passer une porte ouvre une nouvelle session, donc agit comme une halte (PV pleins, niveau et équipement appliqués) sans être près d'un point sûr : question posée à Damien. Ressortir reconstruit tout le décor des Vallons (un à-coup possible sur le téléphone).
 
+## Monnaie, marchands et voyage rapide (sous-lot V1.1)
+
+Premier sous-lot du lot « Vallons solo finis » ([PLAN_VALLONS_SOLO.md](PLAN_VALLONS_SOLO.md#v11--monnaie-marchands-voyage-rapide-m)). Valeurs **provisoires**.
+
+**Monnaie** (choix de Damien du 29 octobre 2026, 12 h 57) : trois pièces, **cuivre, argent et or** ; 100 cuivre font 1 argent, 100 argent font 1 or. La bourse est gardée avec le personnage (`SavedCharacter.Money`, sauvegarde en version 6) comme **un seul nombre de pièces de cuivre**, de 0 à 9 999 999 999 (999 999 or 99 argent 99 cuivre, `Coins.Max`). Toute somme passe par `Coins.TryAdd` et l'arithmétique `checked` : un dépassement (bourse vide ou pleine) est **refusé**, jamais tronqué. Affichage par les textes du monde : « 3 or 45 argent 12 cuivre » (pièces non nulles, de l'or au cuivre ; « 0 cuivre » pour une bourse vide). On gagne des pièces par les **quêtes** (effet `giveMoney` de l'histoire, en schéma 2) et par la **vente** ; les contrats de la guilde (V1.7) en donneront aussi. Jamais par l'argent réel (sujet 6). Mission d'Odile : 50 cuivre quand la porte du moulin s'ouvre, 1 argent 50 cuivre pour le rôdeur, 5 argent à la fin (en plus de l'expérience). Des pièces qui ne tiendraient pas dans la bourse font attendre la récompense, comme un inventaire plein (`RewardBlocked`) ; dans un dialogue, la réponse est refusée sans rien changer (`NoRoom`).
+
+**Marchands** (`data/v0/world/merchants.json`, `kind` « merchants », schéma 1, `data/schemas/merchants.schema.json`, validé par `MerchantValidator` contre les textes, l'histoire et le catalogue des objets) :
+
+- `values` : **valeur de base** de chaque objet qui s'achète ou se vend, en cuivre. Un objet sans valeur ne se vend pas (la ferrure, objet de la mission).
+- `merchants` : pour chacun, son **PNJ** (un PNJ de l'histoire : on lui parle pour ouvrir la boutique), son **accueil** (clé de texte), la **part de la valeur de base payée à la revente** (`sellPercent`, arrondie au cuivre inférieur, au moins 1 cuivre), ses **heures de fermeture** (`closed` : moments de la journée, aucun aujourd'hui), ses **offres** (objet, prix d'une unité, `always` : toujours en vente, sinon certains jours) et le nombre d'offres tirées chaque jour (`daily`).
+- **Contrat de l'économie**, vérifié par le validateur : aucune offre sous la valeur de base de son objet, et une part de revente d'au plus 100 % : acheter puis revendre ne fait jamais gagner d'argent.
+- Au **bourg d'Aube**, autour de la place : **Garin l'armurier** (au sud, devant la maison de la place ; armes, écus, gambison toujours ; épée de garde, rondache, pavois, cotte de mailles, marteau du carrier, deux par jour ; rachète à 25 %), **Sauge l'herboriste** (à côté de l'étal du sud ; **potions de soin** et herbe de l'aube toujours ; remède de l'aube ou éclat de Seuil, un par jour ; 25 %) et **Bertille l'épicière** (à côté de l'étal du nord ; minerai de fer et potions de soin, un peu plus chères, toujours ; herbe de l'aube ou éclat de Seuil, un par jour ; rachète un peu mieux, 30 %).
+- **Stock du jour** (`Market.Stock`) : les offres permanentes, plus `daily` offres tirées parmi les autres par un `Pcg32` initialisé par l'empreinte FNV-1a de la **clé du jour** (`merchant.armurier/day/3`, jour du monde tiré des ticks, jamais de l'horloge réelle) ; le même jour donne toujours le même stock, dans l'ordre du fichier. Le stock tournant poussé (quantités, arrivages) vient avec la vague 2.
+
+**Achat, vente, rachat** (`WorldSession.Buy`, `Sell`, `BuyBack`) : opérations **atomiques** (la bourse et l'inventaire changent ensemble, essayés d'abord sur une copie de l'inventaire, ou rien ne change) ; un refus rend son motif (`TradeRefusal`) :
+
+- boutique **trop loin** (à plus de 3 m du PNJ, ou personnage absent, tombé, dans un intérieur) ou **fermée** à ce moment de la journée ;
+- **objet inconnu** du catalogue, **pas en vente** aujourd'hui, **sans valeur** (il ne se vend pas), quantité impossible (moins de 1 ou plus de 999, vente vide) ;
+- **or insuffisant**, **inventaire plein**, **bourse pleine** (une vente qui la ferait déborder) ;
+- **objet porté** (l'équipement se retire d'abord) ou **réservé** (objets de soin emportés au combat, jusqu'à ce qu'ils soient bus) ; pas assez d'objets.
+
+Une vente peut porter sur **plusieurs lots d'un coup** (`Sell(marchand, lots)`, tout ou rien) : la vente rapide des objets moins bons (plus tard) s'y appuiera. Chaque lot vendu devient **rachetable au même prix** (`Market.Buyback`, le plus récent d'abord, 12 au plus) tant que dure la session de jeu : la même instance de `Market` passe d'une session de zone à l'autre (halte, porte, voyage, reprise) ; quitter le jeu les oublie (ils ne sont pas sauvegardés).
+
+**Voyage rapide** (`WorldSession.CanTravel`, `AdventureSession.Travel`) :
+
+- un **point sûr** d'une zone du dehors est **découvert** quand le personnage, présent et vivant, s'en approche à 5 m (la distance de la halte) ; celui où commence une session (entrée, halte, reprise, arrivée d'un voyage) l'est d'emblée, sans annonce. La découverte est une clé du **registre du monde** (`zone.vallons/safe/place_du_bourg`, `ZoneDefinition.SafePointKey`), gardé dans la sauvegarde comme les passages ouverts. Elle attend si le registre n'a plus la place des morts possibles d'un tick ;
+- on voyage vers un point sûr découvert, **hors combat** (`WorldSession.InCombat`, la règle de la halte et des talents) : aucun ennemi vivant à moins de 12 m, aucun ennemi **engagé qui vise le personnage**, même de plus loin ; pas de dialogue ouvert ni de reprise à faire (sinon `Unavailable`). Les intérieurs ne sont pas des destinations (on y entre par leur porte), mais on peut en partir ;
+- le voyage **reprend le chemin d'une porte** : la session d'arrivée est préparée, la partie est sauvegardée dans la zone d'arrivée, puis la session s'ouvre au point sûr (PV pleins ; niveau, équipement et talents pris en compte, comme à une halte) ; une sauvegarde impossible (disque plein) annule le voyage (`SaveFailed`) ;
+- **gratuit** dans la vague 1 (le prix éventuel sera un réglage d'équilibrage).
+
+Limites : les marchands n'ont ni quantités en stock ni prix qui varient ; les PNJ des marchands sont des capsules dorées tant qu'ils n'ont pas de personnage Mixamo (dossiers `Armurier`, `Herboriste`, `Epiciere`) ; les lots rachetables ne survivent pas à un redémarrage ; un point sûr se découvre en passant à 5 m, sans halte.
+
 ## Sauvegarde
 
-Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 5 depuis le sous-lot 12.6 :
+Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 6 depuis le sous-lot V1.1 :
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "kind": "save",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -193,10 +225,12 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
         "trust": {"npc.odile": 1},
         "discoveries": []
       },
-      "professions": {"minage": 24}
+      "professions": {"minage": 24},
+      "money": 34512
     },
     "consumed": [
-      "zone.vallons/1/death/loup1"
+      "zone.vallons/1/death/loup1",
+      "zone.vallons/safe/place_du_village"
     ]
   }
 }
@@ -209,6 +243,7 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
 - `inventory` (12.3) : places occupées de l'inventaire, dans l'ordre, une pile par place (objet, quantité de 1 à 999) ; `equipment` : objet porté par emplacement, emplacements dans l'ordre ordinal. Objets, piles, emplacements et niveaux requis sont vérifiés contre le catalogue quand la partie reprend.
 - `story` (12.5) : état narratif personnel, trié : faits appris, avancement de chaque quête (étape en cours ou `done`, compteur de l'objectif), confiance non nulle des PNJ, découvertes. Il est vérifié contre l'histoire quand la partie reprend.
 - `professions` (12.6) : expérience non nulle de chaque métier.
-- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement), 3 (sans histoire) et 4 (sans métiers) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
+- `money` (V1.1) : bourse du personnage, en pièces de cuivre, de 0 à 9 999 999 999 (« 3 or 45 argent 12 cuivre » : 34512). Les **points sûrs découverts** (voyage rapide) sont des clés du registre `consumed` (`zone.vallons/safe/place_du_bourg`), comme les passages ouverts ; les lots rachetables chez les marchands ne sont pas sauvegardés.
+- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement), 3 (sans histoire), 4 (sans métiers) et 5 (sans bourse : bourse vide) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
 
 Limites : [LIMITES_LOT_12.md](LIMITES_LOT_12.md).

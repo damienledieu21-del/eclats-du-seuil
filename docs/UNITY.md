@@ -83,7 +83,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 
 | Touche | Action |
 |---|---|
-| F | parler au PNJ à portée (3 m), sinon récolter le nœud à portée |
+| F | parler au PNJ à portée (3 m) — à un marchand : ouvrir sa boutique (V1.1) —, sinon récolter le nœud à portée |
 | 1 à 9 (ou clic) | choisir une réponse du dialogue (parmi celles affichées) ; Échap ou le bouton Fermer (au doigt) le ferme |
 | I | inventaire, équipement porté et métiers (porter, retirer) |
 | J | journal de quête et découvertes |
@@ -103,6 +103,15 @@ Au doigt : **Agir** (F) et **Potion** au-dessus de la garde, **Sac**, **Journal*
 **Carte** (12.9d, demande de Damien du 25 octobre 2026) : la petite carte des Vallons, nord en haut, est en haut à droite ; la fiche de la cible passe à sa gauche et, au doigt, la rangée Menu, Aide… descend sous elle. Elle montre le décor (rivière en bleu), toi (point jaune), l'**objectif de l'étape en cours** (étoile orange : le lieu à atteindre, le PNJ à qui parler, la créature à vaincre), les PNJ (blanc), les points sûrs (vert), la forge (gris), les filons et herbes (petits points) et les ennemis **en vue** seulement (rouge, violet pour le chef). Toucher la carte, ou L, l'ouvre en grand avec les noms ; le monde s'arrête pendant ce temps, comme pour les autres écrans.
 
 Ce que tu vérifies (essai du 12.9) : la mission d'Odile de bout en bout (traces, ferrure forgée, pré des loups, manifestation, rôdeur, Gardien, retour) ; la récolte et la fabrication ; l'inventaire et l'équipement ; une défaite et la reprise ; quitter puis relancer le jeu (la partie revient) ; la lisibilité des écrans sur PC et sur le Note8.
+
+**Monnaie, marchands et voyage rapide** (sous-lot V1.1 ; règles : [MONDE.md](MONDE.md#monnaie-marchands-et-voyage-rapide-sous-lot-v11)) :
+
+- **Bourse** : dans l'écran du personnage (I), à droite du titre du sac : « Bourse · 3 or 45 argent 12 cuivre ». Les quêtes et la vente en donnent ; le bruit des pièces sonne à chaque gain, achat ou rachat.
+- **Marchands du bourg** (capsules dorées tant qu'ils n'ont pas de personnage Mixamo : dossiers `Mixamo/Armurier`, `Mixamo/Herboriste`, `Mixamo/Epiciere`) : Garin l'armurier au sud de la place, Sauge l'herboriste près de l'étal du sud, Bertille l'épicière près de l'étal du nord. « F : commercer avec… » s'affiche à 3 m ; **F** ouvre la boutique (le monde s'arrête, comme pour les autres écrans ; Échap ou I, J, K, L la ferment).
+- **La boutique** : à gauche, ce qui est en vente aujourd'hui (prix, bouton **Acheter**, grisé quand l'or manque ou que le sac est plein ; le prix passe au rouge sans assez d'or) ; à droite, ton **sac** : **clic** vend un objet, **clic droit** toute la pile (au doigt : un toucher, un objet) ; la fiche au survol dit le prix de revente, « Ne se vend pas » pour un objet de quête ; un objet porté ou une potion emportée au combat ne se vendent pas (le message dit pourquoi). En dessous, **Rachat** : ce que tu as vendu depuis le lancement du jeu, au même prix (clic : racheter). En bas, la bourse et **Parler** (le dialogue du marchand). Chaque achat, vente ou refus s'écrit dans les messages.
+- **Voyage rapide** : la carte (L) a une colonne **Voyage rapide** à gauche : un bouton par point sûr découvert (« Tu es ici » là où tu es). Un point sûr se découvre en passant à 5 m (« Point sûr découvert : … ») ; celui où tu commences l'est déjà. Hors combat seulement (aucun ennemi à 12 m, aucun ennemi qui te vise) : sinon les boutons sont grisés et la raison s'affiche sous eux. Le voyage sauvegarde, fait un fondu au noir et t'amène au point sûr, PV pleins, comme une halte. Gratuit.
+
+Ce que tu vérifies (V1.1) : la bourse dans l'écran du personnage ; la boutique de chaque marchand (acheter une potion chez Sauge, vendre une peau de loup chez Bertille, la racheter) ; un achat refusé sans assez d'or ; le stock de Garin qui change d'un jour du monde à l'autre (2 h de jeu) ; la découverte de la place du bourg, puis le voyage rapide vers la place du village depuis la carte, et le refus près d'un loup ; quitter et relancer le jeu (bourse et points sûrs gardés, rachats oubliés).
 
 ## 5. Talents
 

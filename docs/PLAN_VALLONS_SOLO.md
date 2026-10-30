@@ -56,6 +56,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - **Voyage rapide** : entre les points sûrs **découverts** (clé au registre du monde), hors combat (aucun ennemi engagé, règle de la halte à 12 m). Le passage reprend le chemin d'une porte : sauvegarde, puis nouvelle session au point d'arrivée. Gratuit dans la vague 1 (le prix éventuel est un réglage d'équilibrage).
 - **Unity** : écran du marchand (acheter, vendre, racheter), or affiché dans l'inventaire, carte qui propose le voyage.
 - **Formats** : sauvegarde (or, points sûrs découverts) et histoire ou données des marchands en nouvelle version ; schémas, `DONNEES.md`, tests de lecture et de refus.
+- **État** (30 octobre 2026, en PR) : fait. Bourse en cuivre dans la sauvegarde (version 6), effet `giveMoney` de l'histoire (schéma 2 : 50 cuivre, 1 argent 50 cuivre et 5 argent dans la mission d'Odile), marchands en données (`merchants.json`, schéma 1 : Garin l'armurier, Sauge l'herboriste, Bertille l'épicière), stock du jour déterministe, achat, vente (plusieurs lots d'un coup) et rachat atomiques, points sûrs découverts au registre du monde et voyage rapide hors combat ; écran du marchand, bourse dans l'inventaire et voyage depuis la carte dans Unity. Prix, parts de revente et récompenses provisoires (questions à Damien dans la PR). Détail : [MONDE.md](MONDE.md#monnaie-marchands-et-voyage-rapide-sous-lot-v11).
 
 ### V1.2 — Équipement complet : places, boucliers, écran (L)
 
