@@ -50,15 +50,20 @@ namespace EdS.World
 
     /// <summary>
     /// Sous-lot 12.1 (cadrage Q26, ARCHITECTURE_MONDE.md, section 4) : temps du monde tiré des ticks de simulation, jamais de l'horloge
-    /// réelle. Une journée du monde dure <see cref="DayLengthMs"/> de jeu (valeur provisoire : 2 h, réglable) ; le monde commence à
+    /// réelle. Une journée du monde dure <see cref="DayLengthMs"/> de jeu (valeur provisoire : 3 h depuis la décision de Damien du 30 octobre
+    /// 2026, 2 h avant ; réglable) ; le monde commence à
     /// <see cref="StartMinute"/> du jour 0. Tout est entier : le même tick donne toujours la même heure.
     /// </summary>
     public sealed class WorldClock
     {
         public const int MinutesPerDay = 1440;
 
-        /// <summary>Durée provisoire d'une journée du monde : 2 h de jeu (cadrage Q26 : les occasions reviennent, pas d'heure réelle restrictive).</summary>
-        public const long DefaultDayLengthMs = 2L * 3600 * 1000;
+        /// <summary>
+        /// Durée provisoire d'une journée du monde : 3 h de jeu (décision de Damien du 30 octobre 2026, sujet 32 ; 2 h avant). Cadrage Q26 :
+        /// les occasions reviennent, pas d'heure réelle restrictive. Le temps du monde est gardé en ticks : une sauvegarde d'avant reprend au
+        /// même tick, donc à une autre heure (et un autre jour) du monde.
+        /// </summary>
+        public const long DefaultDayLengthMs = 3L * 3600 * 1000;
 
         /// <summary>Heure provisoire du début du monde : 8 h du matin.</summary>
         public const int DefaultStartMinute = 8 * 60;
