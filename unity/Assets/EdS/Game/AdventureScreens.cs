@@ -7,7 +7,7 @@ namespace EdS.Game
     /// </summary>
     public sealed class AdventureScreens
     {
-        public enum Panel { None, Inventory, Journal, Crafting, Map }
+        public enum Panel { None, Inventory, Journal, Crafting, Map, Merchant }   // sous-lot V1.1 : la boutique d'un marchand (F en lui parlant)
 
         public Panel Open { get; private set; }
 
