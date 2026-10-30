@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 """Tests plus rapides (octobre 2026) : recette d'une catégorie à partir des résultats d'une exécution complète.
 
-Usage : python3 scripts/category_results.py DOSSIER_RESULTATS CONFIGURATION < liste
+Usage : python3 -I scripts/category_results.py DOSSIER_RESULTATS CONFIGURATION < liste
 
-L'entrée standard est la sortie de « dotnet test --no-build -c CONFIGURATION --list-tests --filter Category=X » : une ligne
-« Test run for CHEMIN.dll (…) » par projet de tests, puis les tests de la catégorie, un par ligne, en retrait de quatre espaces.
+L'entrée standard est la sortie de « dotnet test --no-build -c CONFIGURATION -m:1 --list-tests --filter Category=X » : pour chaque
+projet de tests, une ligne « Test run for CHEMIN.dll (…) » puis les tests de la catégorie dans ce projet, un par ligne, en retrait de
+quatre espaces. « -m:1 » liste les projets l'un après l'autre : sans lui, ils sont listés en parallèle et leurs lignes s'entremêlent
+(un nom ne suit plus la ligne « Test run for » de son projet). Chaque nom listé est rapproché des résultats de son propre assemblage ;
+une méthode listée qui a des résultats dans plusieurs assemblages est refusée (ambiguë, aucun cas dans le dépôt).
 DOSSIER_RESULTATS contient les fichiers TRX écrits par l'exécution complète de la même construction (« dotnet test --no-build
 -c CONFIGURATION --logger trx --results-directory DOSSIER_RESULTATS »), un par projet de tests.
 
 Écrit, pour chaque projet de tests, une ligne « Projet N » : le nombre de résultats de la catégorie dans ce projet, c'est-à-dire ce
 que « dotnet test --filter Category=X » aurait exécuté (un filtre de catégorie choisit des méthodes : tous les cas d'une théorie
-ont les catégories de leur méthode). Échoue (code 1, message sur la sortie d'erreur) si les résultats sont absents, en double pour
-un projet, d'une autre construction que celle listée (autre chemin, autre configuration) ou plus anciens qu'elle, si un nom de test
-ne se rattache pas à sa méthode, si un test de la catégorie n'a pas de résultat, ou si un résultat de la catégorie n'a pas réussi.
+ont les catégories de leur méthode). Échoue (code 1, message sur la sortie d'erreur) si :
+- les résultats sont absents, illisibles, en double pour un projet, ou d'une autre construction que celle listée (autre chemin,
+  autre configuration) ;
+- un fichier du dossier de sortie d'un assemblage de tests (la DLL, ses dépendances, les données copiées à côté, sous-dossiers
+  compris) a été modifié après le début de l'exécution (résultats périmés) ;
+- un nom de test ne se rattache pas à sa méthode, un nom listé précède toute ligne « Test run for », ou une méthode de la
+  catégorie a des résultats dans plusieurs assemblages ;
+- un test de la catégorie n'a pas de résultat dans son assemblage, a été ignoré (Skip), ou n'a pas réussi.
 """
 from __future__ import annotations
 
@@ -25,8 +33,10 @@ import sys
 import xml.etree.ElementTree as ET
 
 NS = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
-# Issues acceptées : réussi, ou ignoré (« dotnet test » n'échoue pas sur un test ignoré ; aucun test du dépôt ne l'est).
-ACCEPTED = ("Passed", "NotExecuted")
+# Seule issue acceptée : réussi. Un test ignoré (« NotExecuted », Skip) est refusé : une recette exige des tests exécutés ; aucun test du
+# dépôt n'est ignoré (revue de la PR #73).
+PASSED = "Passed"
+SKIPPED = "NotExecuted"
 TEST_RUN = re.compile(r"^Test run for (.+?\.dll) \(")
 
 
@@ -60,7 +70,7 @@ def method_key(display_name: str) -> str:
 
 
 def run_start(root: ET.Element, file: Path) -> float:
-    """Début de l'exécution (élément Times, attribut start), en secondes depuis l'origine Unix."""
+    """Début de l'exécution (élément Times, attribut start, avec son fuseau), en secondes depuis l'origine Unix."""
     times = root.find("t:Times", NS)
     text = times.get("start") if times is not None else None
     if not text:
@@ -68,9 +78,12 @@ def run_start(root: ET.Element, file: Path) -> float:
     # Sept décimales dans les fichiers TRX : six suffisent (microsecondes) et toute version de Python 3 les lit.
     text = re.sub(r"(\.\d{6})\d+", r"\1", text)
     try:
-        return datetime.fromisoformat(text).timestamp()
+        start = datetime.fromisoformat(text)
     except ValueError:
         raise Refused(f"{file.name} : début de l'exécution illisible ({text}).") from None
+    if start.tzinfo is None:
+        raise Refused(f"{file.name} : début de l'exécution sans fuseau horaire ({text}).")
+    return start.timestamp()
 
 
 def read_results(directory: Path, configuration: str) -> dict[str, tuple[str, float, list[tuple[str, str, str]]]]:
@@ -84,7 +97,10 @@ def read_results(directory: Path, configuration: str) -> dict[str, tuple[str, fl
     segment = "/" + configuration.lower() + "/"
     assemblies: dict[str, tuple[str, float, list[tuple[str, str, str]]]] = {}
     for file in files:
-        root = ET.parse(file).getroot()
+        try:
+            root = ET.parse(file).getroot()
+        except ET.ParseError as error:
+            raise Refused(f"{file.name} : fichier de résultats illisible ({error}).") from None
         tests: dict[str, str] = {}
         paths: set[str] = set()
         for unit in root.iterfind(".//t:UnitTest", NS):
@@ -104,7 +120,10 @@ def read_results(directory: Path, configuration: str) -> dict[str, tuple[str, fl
         results = []
         for result in root.iterfind(".//t:UnitTestResult", NS):
             name, outcome = result.get("testName") or "", result.get("outcome") or ""
-            key = tests[result.get("testId") or ""]
+            test_id = result.get("testId") or ""
+            if test_id not in tests:
+                raise Refused(f"{file.name} : résultat « {name} » sans définition de test.")
+            key = tests[test_id]
             if name != key and not name.startswith(key + "("):
                 raise Refused(f"{file.name} : nom de test « {name} » sans rapport avec sa méthode {key}.")
             results.append((name, key, outcome))
@@ -112,21 +131,42 @@ def read_results(directory: Path, configuration: str) -> dict[str, tuple[str, fl
     return assemblies
 
 
-def parse_listing(listing: str) -> tuple[list[str], list[str]]:
-    """Assemblages (« Test run for CHEMIN.dll (…) ») et noms des tests (lignes en retrait de quatre espaces) d'une liste de tests."""
-    dlls, names = [], []
+def parse_listing(listing: str) -> list[tuple[str, list[str]]]:
+    """
+    Sections d'une liste de tests : assemblage (« Test run for CHEMIN.dll (…) ») et noms des tests listés après lui (lignes en retrait
+    de quatre espaces), jusqu'à la section suivante.
+    """
+    sections: list[tuple[str, list[str]]] = []
     for line in listing.split("\n"):
         line = line.rstrip("\r")
         match = TEST_RUN.match(line)
         if match:
-            dlls.append(match.group(1).replace("\\", "/"))
+            sections.append((match.group(1).replace("\\", "/"), []))
         elif line.startswith("    ") and line[4:5].strip():
-            names.append(line[4:])
-    return dlls, names
+            if not sections:
+                raise Refused(f"test « {line[4:]} » listé avant toute ligne « Test run for … ».")
+            sections[-1][1].append(line[4:])
+    return sections
+
+
+def newest_file(folder: Path) -> tuple[float, Path] | None:
+    """Fichier le plus récemment modifié du dossier, sous-dossiers compris (date de modification, chemin)."""
+    newest = None
+    for directory, _, files in os.walk(folder):
+        for name in files:
+            path = Path(directory) / name
+            modified = os.stat(path).st_mtime
+            if newest is None or modified > newest[0]:
+                newest = (modified, path)
+    return newest
 
 
 def check_same_build(assemblies: dict[str, tuple[str, float, list[tuple[str, str, str]]]], dlls: list[str]) -> None:
-    """Les résultats sont ceux des assemblages listés (mêmes chemins, aucun de plus ni de moins), écrits après leur construction."""
+    """
+    Les résultats sont ceux des assemblages listés (mêmes chemins, aucun de plus ni de moins), et rien n'a changé dans leurs dossiers de
+    sortie depuis le début de l'exécution : ni la DLL des tests, ni ses dépendances (une dépendance recompilée sans changer son
+    assemblage de référence ne fait pas recompiler la DLL des tests), ni les données copiées à côté (fichiers « PreserveNewest »).
+    """
     if not dlls:
         raise Refused("aucun assemblage de tests dans la liste (ligne « Test run for … » attendue).")
     listed = set(dlls)
@@ -137,33 +177,55 @@ def check_same_build(assemblies: dict[str, tuple[str, float, list[tuple[str, str
     if extra:
         raise Refused(f"résultats pour {extra[0]}, assemblage absent de la liste : résultats d'une autre construction ?")
     for path, (file, start, _) in sorted(assemblies.items()):
-        try:
-            built = os.stat(path).st_mtime
-        except OSError:
-            raise Refused(f"{file} : assemblage {path} introuvable.") from None
-        if built > start:
-            raise Refused(f"{file} : exécution commencée avant la dernière construction de {Path(path).name} (résultats périmés).")
+        if not os.path.isfile(path):
+            raise Refused(f"{file} : assemblage {path} introuvable.")
+        folder = Path(path).parent
+        found = newest_file(folder)
+        if found is None:
+            raise Refused(f"{file} : dossier de {Path(path).name} vide.")
+        modified, newest = found
+        if modified > start:
+            raise Refused(f"{file} : {newest.relative_to(folder)} (dossier de {Path(path).name}) modifié après le début de l'exécution "
+                          "(résultats périmés).")
 
 
 def recipe(directory: Path, configuration: str, listing: str) -> dict[str, int]:
     """Nombre de résultats de la catégorie listée par projet de tests (nom de l'assemblage sans « .dll ») ; lève Refused sinon."""
     assemblies = read_results(directory, configuration)
-    dlls, names = parse_listing(listing)
-    check_same_build(assemblies, dlls)
-    members = [as_in_trx(name) for name in names]
-    keys = {method_key(name) for name in members}
-    by_name = {name for _, _, results in assemblies.values() for name, _, _ in results}
-    by_key = {key for _, _, results in assemblies.values() for _, key, _ in results}
-    missing = [name for name in members if name not in by_name and name not in by_key]
+    sections = parse_listing(listing)
+    check_same_build(assemblies, [dll for dll, _ in sections])
+    where: dict[str, set[str]] = collections.defaultdict(set)    # méthode -> assemblages qui en ont des résultats
+    names_in: dict[str, set[str]] = collections.defaultdict(set)  # assemblage -> noms affichés de ses résultats
+    for path, (_, _, results) in assemblies.items():
+        for name, key, _ in results:
+            where[key].add(path)
+            names_in[path].add(name)
+    selected: set[tuple[str, str]] = set()   # (assemblage, méthode) de la catégorie
+    missing = []
+    for dll, names in sections:
+        for member in (as_in_trx(name) for name in names):
+            key = method_key(member)
+            if len(where.get(key, ())) > 1:
+                raise Refused(f"« {key} » a des résultats dans plusieurs assemblages "
+                              f"({', '.join(sorted(Path(p).stem for p in where[key]))}) : rapprochement ambigu.")
+            if dll not in where.get(key, ()) or (member != key and member not in names_in[dll]):
+                missing.append(f"{member} ({Path(dll).stem})")
+                continue
+            selected.add((dll, key))
     if missing:
         raise Refused(f"{len(missing)} test(s) de la catégorie sans résultat dans l'exécution complète, dont « {missing[0]} ».")
-    failed = [(name, outcome) for _, _, results in assemblies.values() for name, key, outcome in results
-              if key in keys and outcome not in ACCEPTED]
+    members = [(path, name, outcome) for path, (_, _, results) in assemblies.items() for name, key, outcome in results
+               if (path, key) in selected]
+    skipped = [name for _, name, outcome in members if outcome == SKIPPED]
+    if skipped:
+        raise Refused(f"{len(skipped)} test(s) de la catégorie ignoré(s) (Skip) dans l'exécution complète, dont « {skipped[0]} » : "
+                      "une recette exige des tests exécutés et réussis.")
+    failed = [(name, outcome) for _, name, outcome in members if outcome != PASSED]
     if failed:
         raise Refused(f"{len(failed)} test(s) de la catégorie sans réussite, dont « {failed[0][0]} » ({failed[0][1]}).")
-    counts: collections.Counter[str] = collections.Counter()
-    for path, (_, _, results) in assemblies.items():
-        counts[Path(path).stem] += sum(1 for _, key, _ in results if key in keys)
+    counts: collections.Counter[str] = collections.Counter({Path(path).stem: 0 for path in assemblies})
+    for path, _, _ in members:
+        counts[Path(path).stem] += 1
     return dict(sorted(counts.items()))
 
 
@@ -176,7 +238,7 @@ def main(argv: list[str]) -> int:
         for project, count in counts.items():
             print(f"{project} {count}")
         return 0
-    except (Refused, ET.ParseError, OSError, KeyError, UnicodeDecodeError) as error:
+    except (Refused, OSError, UnicodeDecodeError) as error:
         print(f"Résultats inutilisables : {error}", file=sys.stderr)
         return 1
 

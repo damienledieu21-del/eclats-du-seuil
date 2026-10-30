@@ -13,6 +13,8 @@
 # Category=… », même filtre, sans rien exécuter) est rapprochée de ces résultats par scripts/category_results.py : résultats des mêmes
 # assemblages (mêmes chemins), écrits après leur dernière construction ; chaque test de la catégorie doit y avoir un résultat réussi ;
 # les comptes (total, par projet) sont ceux qu'aurait donnés le filtre. Mêmes contrôles de catégories, mêmes comptes, mêmes messages.
+# Revue de la PR #73 : résultats périmés si un fichier du dossier de sortie d'un assemblage de tests (dépendances, données copiées)
+# a changé depuis le début de l'exécution ; test ignoré (Skip) refusé ; chaque test listé rapproché des résultats de son assemblage.
 # Sans --resultats, les tests de chaque catégorie sont exécutés comme avant.
 # Usage : scripts/test-category.sh [-c Release] [--resultats DOSSIER] Catégorie [Catégorie…]   (options dotnet test supplémentaires après --)
 set -euo pipefail
@@ -65,11 +67,14 @@ for category in "${categories[@]}"; do
     # Somme des « Total: N » de chaque projet de tests (projets sans test correspondant : aucune ligne).
     total=$( (grep -oE 'Total: *[0-9]+' <<<"$output" || true) | (grep -oE '[0-9]+' || true) | awk '{s += $1} END {print s + 0}')
   else
-    listing=$(dotnet test --no-build -c "$configuration" --list-tests --filter "Category=$category" "$@" 2>&1) \
+    # -m:1 : un projet de tests après l'autre, pour que chaque test listé suive la ligne « Test run for » de son assemblage (en
+    # parallèle, les lignes des projets s'entremêlent).
+    listing=$(dotnet test --no-build -c "$configuration" -m:1 --list-tests --filter "Category=$category" "$@" 2>&1) \
       || { echo "$listing"; echo "Échec : catégorie $category (liste des tests)" >&2; status=1; continue; }
-    # Une ligne « Projet N » par projet de tests : résultats de la catégorie dans l'exécution complète.
-    output=$(python3 "$root/scripts/category_results.py" "$results" "$configuration" <<<"$listing" 2>&1) \
-      || { echo "$output" >&2; echo "Échec : catégorie $category" >&2; status=1; continue; }
+    # Une ligne « Projet N » par projet de tests (sortie standard) : résultats de la catégorie dans l'exécution complète. Les messages
+    # d'erreur vont tels quels sur la sortie d'erreur, hors des comptes ; -I : Python isolé (ni dossier courant, ni variables PYTHON*).
+    output=$(python3 -I "$root/scripts/category_results.py" "$results" "$configuration" <<<"$listing") \
+      || { echo "Échec : catégorie $category" >&2; status=1; continue; }
     total=$(awk '{s += $2} END {print s + 0}' <<<"$output")
   fi
   if [[ "$total" -eq 0 ]]; then
