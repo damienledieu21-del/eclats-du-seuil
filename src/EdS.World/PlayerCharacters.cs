@@ -33,6 +33,9 @@ namespace EdS.World
         /// (règles : <see cref="ProgressionRules.ActiveSlotLevels"/>, <see cref="ProgressionRules.PassiveSlotLevels"/>,
         /// <see cref="ProgressionRules.UltimateUnlockLevel"/>). Une active prend l'emplacement libre suivant. Rend le personnage tel quel s'il n'y
         /// a rien à gagner ; <paramref name="learned"/> dit ce qui a été équipé, dans l'ordre de la progression.
+        /// Réponse de Damien du 30 octobre 2026 : seules les compétences qui viennent avec leur place (<see cref="SkillUnlock.WithPlace"/>)
+        /// sont équipées ainsi ; les autres (Provocation, Contrecoup) vont dans la réserve, même si la barre a de la place : le joueur les
+        /// place lui-même avec l'écran des compétences.
         /// </summary>
         public static SavedCharacter Learn(SavedCharacter character, CharacterProgression progression, ProgressionRules rules,
             out IReadOnlyList<SkillUnlock> learned)
@@ -48,7 +51,7 @@ namespace EdS.World
             var gained = new List<SkillUnlock>();
             foreach (SkillUnlock u in progression.ForClass(character.ClassId).SkillUnlocks)
             {
-                if (u.Level > level || actives.Contains(u.Skill) || passives.Contains(u.Skill) || ultimate == u.Skill) continue;
+                if (u.Level > level || !u.WithPlace || actives.Contains(u.Skill) || passives.Contains(u.Skill) || ultimate == u.Skill) continue;
                 switch (u.Kind)
                 {
                     case SkillKind.Active when actives.Count < activeSlots:

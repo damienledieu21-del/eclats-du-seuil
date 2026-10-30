@@ -348,9 +348,10 @@ namespace EdS.Runtime
                 Say("text.ui.xp", g.Xp);
                 if (!g.LeveledUp) continue;
                 Say("text.ui.level", g.LevelAfter);
-                // Sous-lot 12.9b : ce que ce niveau fera gagner à la prochaine halte.
+                // Sous-lot 12.9b : ce que ce niveau fera gagner à la prochaine halte. Réponse de Damien du 30 octobre 2026 : une compétence
+                // sans place à ce niveau est apprise tout de suite, dans la réserve (le joueur la place avec l'écran des compétences).
                 foreach (SkillUnlock u in _progression.ForClass(PlayerClass).SkillUnlocks)
-                    if (u.Level > g.LevelBefore && u.Level <= g.LevelAfter) Say("text.ui.skill_soon", SkillName(u.Skill));
+                    if (u.Level > g.LevelBefore && u.Level <= g.LevelAfter) Say(u.WithPlace ? "text.ui.skill_soon" : "text.ui.skill_reserve", SkillName(u.Skill));
             }
             foreach (LootGained l in step.Loot) Say(l.Kept ? "text.ui.loot" : "text.ui.loot_lost", ItemName(l.Item), l.Count);
             foreach (BossEvent b in step.Boss)

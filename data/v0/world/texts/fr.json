@@ -61,6 +61,7 @@
       "text.ui.map.hint": "L ou toucher la carte : agrandir",
       "text.ui.skill_soon": "À ta prochaine halte, nouvelle compétence : {0}.",
       "text.ui.skill_learned": "Nouvelle compétence : {0} (touche {1}).",
+      "text.ui.skill_reserve": "Nouvelle compétence en réserve : {0}. Place-la dans ta barre avec l'écran des compétences (B).",
       "text.ui.ultimate_learned": "Nouvelle ultime : {0} (touche R, à 100 de Résonance).",
       "text.ui.passive_learned": "Nouvelle compétence passive : {0}.",
       "text.ui.loot": "Butin : {0} ×{1}",

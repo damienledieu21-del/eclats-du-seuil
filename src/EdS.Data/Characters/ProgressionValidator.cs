@@ -46,11 +46,33 @@ namespace EdS.Data.Characters
         public string Skill { get; }
         public SkillKind Kind { get; }
 
-        internal SkillUnlock(int level, string skill, SkillKind kind)
+        /// <summary>
+        /// Réponse de Damien du 30 octobre 2026 : la compétence vient avec sa place (une place de sa sorte s'ouvre à son niveau dans les règles :
+        /// Barrière d'acier au niveau 5, Onde de rupture et Bastion absolu au niveau 10) et la halte l'y met d'elle-même (12.9b). Sinon
+        /// (Provocation au niveau 3, Contrecoup au niveau 7), elle va dans la réserve : le joueur la place lui-même avec l'écran des
+        /// compétences.
+        /// </summary>
+        public bool WithPlace { get; }
+
+        internal SkillUnlock(int level, string skill, SkillKind kind, bool withPlace)
         {
             Level = level;
             Skill = skill;
             Kind = kind;
+            WithPlace = withPlace;
+        }
+
+        /// <summary>Une place de la sorte <paramref name="kind"/> s'ouvre-t-elle au niveau <paramref name="level"/> (règles) ?</summary>
+        public static bool PlaceOpensAt(SkillKind kind, int level, ProgressionRules rules)
+        {
+            if (rules is null) throw new ArgumentNullException(nameof(rules));
+            return kind switch
+            {
+                SkillKind.Active => rules.ActiveSlotLevels.Contains(level),
+                SkillKind.Passive => rules.PassiveSlotLevels.Contains(level),
+                SkillKind.Ultimate => level == rules.UltimateUnlockLevel,
+                _ => false,
+            };
         }
     }
 
@@ -241,7 +263,9 @@ namespace EdS.Data.Characters
         /// <summary>
         /// Sous-lot 12.9b : chaque compétence gagnée est une compétence de la classe, pas déjà connue (départ ou gagnée plus tôt), à un niveau de
         /// 2 au niveau maximal, au moins son niveau minimal, les niveaux dans l'ordre ; à chaque niveau, le build de départ et tout ce qui est
-        /// gagné jusque-là doit être valide pour le validateur des builds (emplacements ouverts, sans talent).
+        /// gagné jusque-là <b>avec sa place</b> (<see cref="SkillUnlock.WithPlace"/>) doit être valide pour le validateur des builds
+        /// (emplacements ouverts, sans talent). Réponse de Damien du 30 octobre 2026 : une compétence gagnée à un niveau où aucune place de sa
+        /// sorte ne s'ouvre va dans la réserve ; elle n'a pas à tenir dans la barre.
         /// </summary>
         private static List<SkillUnlock>? CheckUnlocks(ClassProgressionData c, string path, LoadedClass loaded, List<Attributes> levels, GameData data,
             ValidationReport report)
@@ -283,12 +307,12 @@ namespace EdS.Data.Characters
                     report.Add(at + ".level", ValidationCode.InvalidValue, $"« {u.Skill} » demande le niveau {skill.MinLevel}.");
                     continue;
                 }
-                unlocks.Add(new SkillUnlock(lvl, u.Skill, skill.Kind));
+                unlocks.Add(new SkillUnlock(lvl, u.Skill, skill.Kind, SkillUnlock.PlaceOpensAt(skill.Kind, lvl, data.Rules.Progression)));
             }
             if (!report.IsValid) return null;
             for (int level = 2; level <= levels.Count; level++)
             {
-                var gained = unlocks.Where(u => u.Level <= level).ToList();
+                var gained = unlocks.Where(u => u.WithPlace && u.Level <= level).ToList();   // la réserve n'a pas à tenir dans la barre
                 if (gained.Count == 0 || gained.All(u => u.Level < level)) continue;   // rien de nouveau : déjà vérifié au niveau d'avant
                 string? ultimate = gained.Where(u => u.Kind == SkillKind.Ultimate).Select(u => u.Skill).FirstOrDefault();
                 if (gained.Count(u => u.Kind == SkillKind.Ultimate) > 1)

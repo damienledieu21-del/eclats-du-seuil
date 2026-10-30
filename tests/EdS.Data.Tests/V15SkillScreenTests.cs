@@ -50,10 +50,12 @@ public class V15SkillScreenTests : IDisposable
     public void Apprises_et_a_venir_selon_le_niveau()
     {
         Assert.Equal(new[] { Frappe, Heurt, Roc }, PlayerCharacters.Learned(Hero(Level1), Shipped));
-        Assert.Equal(new[] { Frappe, Heurt, Roc }, PlayerCharacters.Learned(Hero(Level4), Shipped));
-        Assert.Equal(new[] { Frappe, Heurt, Roc, Barriere }, PlayerCharacters.Learned(Hero(Level5), Shipped));
-        Assert.Equal(new[] { Frappe, Heurt, Roc, Barriere, Onde, Absolu }, PlayerCharacters.Learned(Hero(Level10), Shipped));
-        Assert.Equal(new[] { (5, Barriere), (10, Onde), (10, Absolu) }, PlayerCharacters.Upcoming(Hero(Level1), Shipped).Select(u => (u.Level, u.Skill)));
+        // Réponse de Damien du 30 octobre 2026 : Provocation au niveau 3, Contrecoup au niveau 7 (dans la réserve).
+        Assert.Equal(new[] { Frappe, Heurt, Roc, Provocation }, PlayerCharacters.Learned(Hero(Level4), Shipped));
+        Assert.Equal(new[] { Frappe, Heurt, Roc, Provocation, Barriere }, PlayerCharacters.Learned(Hero(Level5), Shipped));
+        Assert.Equal(new[] { Frappe, Heurt, Roc, Provocation, Barriere, Contrecoup, Onde, Absolu }, PlayerCharacters.Learned(Hero(Level10), Shipped));
+        Assert.Equal(new[] { (3, Provocation), (5, Barriere), (7, Contrecoup), (10, Onde), (10, Absolu) },
+            PlayerCharacters.Upcoming(Hero(Level1), Shipped).Select(u => (u.Level, u.Skill)));
         Assert.Equal(new[] { (10, Onde), (10, Absolu) }, PlayerCharacters.Upcoming(Hero(Level9), Shipped).Select(u => (u.Level, u.Skill)));
         Assert.Empty(PlayerCharacters.Upcoming(Hero(Level10), Shipped));
     }
@@ -104,9 +106,9 @@ public class V15SkillScreenTests : IDisposable
         Assert.Equal(BuildViolationCode.SkillNotLearned, later.Code);
         Assert.Equal("activeSkills[1]", later.Subject);
         Assert.Equal("« Barrière d'acier » n'est pas encore apprise : elle s'apprend au niveau 5 (niveau actuel 4).", later.Message);
-        BuildViolation never = Check(Hero(Level10), new[] { Frappe, Heurt, Barriere, Provocation }, Absolu, new[] { Roc })!;
+        BuildViolation never = Check(Hero(Level10), new[] { Frappe, Heurt, Barriere, Onde }, Absolu, new[] { Roc, BouclierLourd })!;
         Assert.Equal(BuildViolationCode.SkillNotLearned, never.Code);
-        Assert.Equal("« Provocation » n'est pas apprise.", never.Message);
+        Assert.Equal("« Bouclier lourd » n'est pas apprise.", never.Message);
         BuildViolation passive = Check(Hero(Level5), new[] { Frappe, Heurt, Barriere }, null, new[] { Roc, BouclierLourd })!;
         Assert.Equal(("passiveSkills[1]", BuildViolationCode.SkillNotLearned), (passive.Subject, passive.Code));
         BuildViolation unknown = Check(Hero(Level1), new[] { Frappe, "skill.bastion.inconnue" }, null, new[] { Roc })!;
@@ -129,7 +131,7 @@ public class V15SkillScreenTests : IDisposable
         BuildViolation active = Check(hero, new[] { Frappe, Heurt, Barriere }, Absolu, new[] { Roc })!;
         Assert.Equal(BuildViolationCode.SlotLeftEmpty, active.Code);
         Assert.Equal("activeSkills[3]", active.Subject);
-        Assert.Equal("place active 4 vide alors que « Onde de rupture » attend : une place ouverte ne se vide pas.", active.Message);
+        Assert.Equal("place active 4 vide alors que « Provocation » attend : une place ouverte ne se vide pas.", active.Message);
         BuildViolation ultimate = Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, null, new[] { Roc })!;
         Assert.Equal(("ultimate", BuildViolationCode.SlotLeftEmpty), (ultimate.Subject, ultimate.Code));
         BuildViolation passive = Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, Absolu, Array.Empty<string>())!;
@@ -199,8 +201,9 @@ public class V15SkillScreenTests : IDisposable
 
     /// <summary>
     /// Propriété, sur toutes les barres d'un petit univers (actives de 0 à 4 parmi cinq, ultime ou non, passives de 0 à 2) et à plusieurs
-    /// niveaux : le juge admet exactement les barres qui rangent toutes les compétences apprises de chaque sorte dans les places ouvertes
-    /// (un oracle écrit à part), et une barre admise ne change pas à la halte suivante (<see cref="PlayerCharacters.Learn"/> n'y ajoute rien).
+    /// niveaux : le juge admet exactement les barres qui remplissent les places ouvertes de compétences apprises distinctes (toutes, s'il y
+    /// en a moins que de places ; un oracle écrit à part), et une barre admise ne change pas à la halte suivante
+    /// (<see cref="PlayerCharacters.Learn"/> n'y ajoute rien).
     /// </summary>
     [Fact]
     public void Propriete_le_juge_admet_exactement_les_barres_pleines_d_apprises()
@@ -222,7 +225,8 @@ public class V15SkillScreenTests : IDisposable
                     foreach (string[] passives in passiveBars)
                     {
                         checkedBars++;
-                        bool expected = actives.OrderBy(s => s).SequenceEqual(learnedActives)
+                        bool expected = actives.Distinct().Count() == actives.Length && actives.All(learnedActives.Contains)
+                            && actives.Length == Math.Min(Rules.ActiveSlots(level), learnedActives.Length)
                             && ultimate == (level >= 10 ? Absolu : null)
                             && passives.SequenceEqual(new[] { Roc });
                         BuildViolation? why = Check(hero, actives, ultimate, passives);
@@ -235,7 +239,9 @@ public class V15SkillScreenTests : IDisposable
                     }
         }
         Assert.True(checkedBars > 15_000, checkedBars.ToString());
-        Assert.Equal(2 + 6 + 24, admitted);   // 2!, 3! et 4! ordres des actives apprises aux niveaux 1, 5 et 10
+        // Niveau 1 : 2 ordres de Frappe et Heurt ; niveau 5 : 3 places parmi 4 apprises (Provocation comprise), 4 × 3 × 2 = 24 ; niveau 10 :
+        // 4 places parmi les 5 apprises de l'univers, 5 × 4 × 3 × 2 = 120.
+        Assert.Equal(2 + 24 + 120, admitted);
     }
 
     // --- La barre et l'écran (EdS.Runtime) ---------------------------------------------------------------------------------------
@@ -271,7 +277,7 @@ public class V15SkillScreenTests : IDisposable
         Assert.Null(book.Locked);
         // La 2e place passive est ouverte, mais aucune passive n'attend : l'écran dit « rien à placer » (relecture de la PR #71).
         Assert.False(book.HasReserve(SkillKind.Passive));
-        Assert.False(book.HasReserve(SkillKind.Active));
+        Assert.True(book.HasReserve(SkillKind.Active));   // Provocation, apprise au niveau 3, attend dans la réserve
         Assert.False(SkillBook.For(Hero(Level5), Shipped, Bastion, Rules, "motif").CanChange);
         Assert.Equal(new[] { ("1", 1, true, Frappe), ("2", 1, true, Heurt), ("3", 5, true, Barriere), ("4", 10, false, (string?)null) },
             book.Places.Where(p => p.Kind == SkillKind.Active).Select(p => (p.Key, p.OpenLevel, p.IsOpen, p.Skill)));
@@ -279,14 +285,15 @@ public class V15SkillScreenTests : IDisposable
         Assert.Equal(("R", 10, false, (string?)null), (ultimate.Key, ultimate.OpenLevel, ultimate.IsOpen, ultimate.Skill));
         Assert.Equal(new[] { (1, true, Roc), (5, true, (string?)null), (20, false, null), (30, false, null) },
             book.Places.Where(p => p.Kind == SkillKind.Passive).Select(p => (p.OpenLevel, p.IsOpen, p.Skill)));
-        Assert.Equal(new[] { Frappe, Heurt, Roc, Barriere }, book.Learned.Select(c => c.Id));
-        Assert.All(book.Learned, c => Assert.True(c.Learned && c.Place != null));
-        Assert.Equal(new[] { (Onde, 10), (Absolu, 10) }, book.Upcoming.Select(c => (c.Id, c.Level)));
+        Assert.Equal(new[] { Frappe, Heurt, Roc, Provocation, Barriere }, book.Learned.Select(c => c.Id));
+        Assert.All(book.Learned, c => Assert.True(c.Learned && (c.Place != null) == (c.Id != Provocation)));
+        Assert.Equal(new[] { (Contrecoup, 7), (Onde, 10), (Absolu, 10) }, book.Upcoming.Select(c => (c.Id, c.Level)));
         Assert.All(book.Upcoming, c => Assert.True(!c.Learned && c.Place == null));
         SkillCard frappe = book.Card(Frappe)!;
         Assert.Equal(("Frappe du rempart", 10, 6.0, (double?)2.5, "description de " + Frappe), (frappe.Name, frappe.EnduranceCost, frappe.CooldownSeconds, frappe.RangeMeters, frappe.Description));
         Assert.Equal(5, book.Card(Barriere)!.Level);
-        Assert.Null(book.Card(Provocation));
+        Assert.Equal(3, book.Card(Provocation)!.Level);
+        Assert.Null(book.Card(BouclierLourd));
         Assert.Null(book.Place(SkillKind.Active, 4));
     }
 
@@ -365,10 +372,10 @@ public class V15SkillScreenTests : IDisposable
         string saved = File.ReadAllText(a.SavePath);
         Assert.Equal("place active 4 fermée : elle s'ouvre au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 3, Frappe));
         Assert.Equal("place de l'ultime fermée : elle s'ouvre au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Ultimate, 0, Absolu));
-        Assert.Equal("« Provocation » n'est pas apprise.", a.PlaceSkill(SkillKind.Active, 0, Provocation));
+        Assert.Equal("« Contrecoup » n'est pas encore apprise : elle s'apprend au niveau 7 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 0, Contrecoup));
         Assert.Equal("« Onde de rupture » n'est pas encore apprise : elle s'apprend au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 1, Onde));
         Assert.StartsWith("« Frappe du rempart » est une compétence active", a.PlaceSkill(SkillKind.Passive, 1, Frappe));
-        Assert.Equal("place active 3 vide alors que « Barrière d'acier » attend : une place ouverte ne se vide pas.", a.RemoveSkill(SkillKind.Active, 2));
+        Assert.Equal("place active 3 vide alors que « Provocation » attend : une place ouverte ne se vide pas.", a.RemoveSkill(SkillKind.Active, 2));
         Assert.Equal(BuildViolationCode.DuplicateSkill, a.World.SetSkills(new[] { Frappe, Frappe, Barriere }, null, new[] { Roc })!.Code);
         Assert.Same(before, a.World.Character);
         Assert.DoesNotContain("Compétences gardées : effet à ta prochaine halte.", a.DrainMessages());
