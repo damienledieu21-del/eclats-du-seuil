@@ -9,6 +9,7 @@ using EdS.Data.Classes;
 using EdS.Data.Crafting;
 using EdS.Data.Items;
 using EdS.Data.Json;
+using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Zones;
@@ -121,7 +122,7 @@ namespace EdS.Runtime
     /// une défaite ouvre une nouvelle session à ce point sûr : PV pleins, niveau, équipement et passages ouverts pris en compte. Le cœur reste
     /// seul juge : cette classe ne calcule aucune règle.
     /// </summary>
-    public sealed class AdventureSession
+    public sealed partial class AdventureSession
     {
         public const string PlayerId = "bastion";
         public const string PlayerClass = "class.bastion";
@@ -175,8 +176,9 @@ namespace EdS.Runtime
         public string? SaveProblem { get; }
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
-            StoryBook story, CraftingBook crafting, string savePath)
+            StoryBook story, CraftingBook crafting, MerchantBook merchants, string savePath)
         {
+            _market = new Market(merchants);   // sous-lot V1.1 : une seule instance, d'une session à l'autre (lots rachetables)
             _data = data;
             _progression = progression;
             _items = items;
@@ -222,8 +224,11 @@ namespace EdS.Runtime
             TextCatalog catalogTexts = Need(texts.Texts, "textes", () => texts.Report);
             StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog);
             CraftingLoadResult crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(dataDirectory), catalogTexts, definition, catalog);
-            return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, Need(story.Story, "histoire", () => story.Report),
-                Need(crafting.Book, "métiers", () => crafting.Report), savePath);
+            StoryBook storyBook = Need(story.Story, "histoire", () => story.Report);
+            // Sous-lot V1.1 : marchands et valeur des objets.
+            MerchantsLoadResult merchants = MerchantJsonReader.ReadFile(MerchantJsonReader.PathIn(dataDirectory), catalogTexts, storyBook, catalog);
+            return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, Need(crafting.Book, "métiers", () => crafting.Report),
+                Need(merchants.Book, "marchands", () => merchants.Report), savePath);
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -237,7 +242,7 @@ namespace EdS.Runtime
 
         /// <summary>Session de <paramref name="zone"/> prête à jouer, sans rien changer à l'aventure (<see cref="Commit"/> la met en jeu).</summary>
         private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door) =>
-            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId);
+            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market);
 
         private void Commit(WorldSession world)
         {
@@ -312,7 +317,7 @@ namespace EdS.Runtime
         private void Say(string key, params object[] args)
         {
             if (key == "text.ui.quest_done") QuestsAnnounced++;
-            if (key == "text.ui.loot" || key == "text.ui.item_given") LootAnnounced++;
+            if (key == "text.ui.loot" || key == "text.ui.item_given" || CoinKeys.Contains(key)) LootAnnounced++;   // sous-lot V1.1 : les pièces aussi
             string text = Texts.Get(key);
             if (args.Length > 0) text = string.Format(CultureInfo.InvariantCulture, text, args);
             if (_messages.Count >= MaxMessages) _messages.RemoveAt(0);
@@ -390,6 +395,12 @@ namespace EdS.Runtime
                 case StoryEventKind.RewardBlocked:
                     Say("text.ui.reward_blocked");
                     break;
+                case StoryEventKind.MoneyGiven:   // sous-lot V1.1
+                    Say("text.ui.money_given", MoneyText(e.Value));
+                    break;
+                case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
+                    Say("text.ui.safe_point_found", _zone.SafePoints.FirstOrDefault(sp => sp.Id == e.Id)?.Name ?? e.Id);
+                    break;
             }
         }
 
@@ -447,6 +458,8 @@ namespace EdS.Runtime
             if (World.IsDefeated) return false;
             if (NpcInReach is Npc npc)
             {
+                // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ).
+                if (World.MerchantOf(npc.Id) is Merchant merchant) return OpenShop(merchant.Id);
                 DialogueRefusal refusal = World.Talk(npc.Id, out _);
                 if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(npc.Name));
                 return refusal == DialogueRefusal.None;
