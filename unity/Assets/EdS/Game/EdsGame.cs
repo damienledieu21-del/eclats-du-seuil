@@ -382,6 +382,8 @@ namespace EdS.Game
                 if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
                 if (Input.GetKeyDown(KeyCode.K) || _touch.WorkshopPressed) _screens.Toggle(AdventureScreens.Panel.Crafting);
                 if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
+                // Sous-lot V1.5 : B ouvre l'écran des compétences (K est l'atelier) ; elles se changent hors combat, effet à la halte.
+                if (Input.GetKeyDown(KeyCode.B)) _screens.Toggle(AdventureScreens.Panel.Skills);
                 // Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») :
                 // T ouvre l'arbre des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
                 if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed)) OpenAdventureTalents(a);
