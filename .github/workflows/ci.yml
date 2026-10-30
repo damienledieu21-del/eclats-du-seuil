@@ -11,6 +11,8 @@ permissions:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    # Revue de la PR #73 : limite de durée (main a déjà pris 55 min ; sans limite, un test bloqué tiendrait le job six heures).
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -23,9 +25,10 @@ jobs:
       - run: dotnet test --no-build -c Release --logger "console;verbosity=normal" --logger trx --results-directory "$RUNNER_TEMP/resultats-release"
       # Recettes par catégorie : échec si une catégorie n'exécute aucun test (correctif 6.1). Tests plus rapides : chaque catégorie est
       # listée avec le même filtre et rapprochée des résultats de l'exécution complète (mêmes assemblages, chaque test réussi).
+      # Revue de la PR #73 : la catégorie Time, déclarée dans les tests et connue du script, est désormais contrôlée aussi.
       - name: Rapprochement des catégories, tests du script (hors ligne)
         run: python3 -m unittest discover -s scripts -p 'test_category_results.py' -v
-      - run: bash scripts/test-category.sh -c Release --resultats "$RUNNER_TEMP/resultats-release" Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Space Presence Behavior Scene Duo World
+      - run: bash scripts/test-category.sh -c Release --resultats "$RUNNER_TEMP/resultats-release" Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World
       # Correctif 7.3.1 (D4) : scénario de référence avec déclencheurs, simulé par la CLI, comparé octet par octet au journal figé, puis rejoué.
       - name: Scénario entrainement_declencheurs (simulation, comparaison, rejeu)
         run: |
