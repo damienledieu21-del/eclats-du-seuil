@@ -16,8 +16,9 @@ namespace EdS.Game
     /// l'inventaire, l'aide tout ces petits détails ») : les écrans de l'aventure en uGUI, dans le style « Fragments du Seuil ». Un grand
     /// panneau à onglets : **Personnage** (I : équipement autour du sceau du Bastion, statut, sac, expérience, métiers), **Arbre des
     /// Éclats** (ouvre l'arbre des talents), **Journal** (J : quêtes et découvertes), **Atelier** (K : recettes et métiers), **Carte**
-    /// (L : la carte peinte en grand, lieux et repères) ; et le dialogue avec un PNJ, en bas de l'écran. Toute action passe par
-    /// <see cref="AdventureSession"/>, donc par le cœur : un refus ne change rien et sa raison s'affiche (messages du jeu).
+    /// (L : la carte peinte en grand, lieux et repères) ; et le dialogue avec un PNJ, en bas de l'écran. Sous-lot V1.5 : l'onglet
+    /// **Compétences** (B, <c>AdventureBook.Skills.cs</c>). Toute action passe par <see cref="AdventureSession"/>, donc par le cœur : un
+    /// refus ne change rien et sa raison s'affiche (messages du jeu).
     /// </summary>
     public sealed partial class AdventureBook
     {
@@ -26,13 +27,16 @@ namespace EdS.Game
 
         private const float PanelWidth = 1500f, PanelHeight = 880f;
 
-        private static readonly AdventureScreens.Panel[] TabPanels =
+        /// <summary>
+        /// Onglets, de gauche à droite : écran ouvert (<see cref="AdventureScreens.Panel.None"/> : l'arbre des Éclats, qui s'ouvre à part),
+        /// clé du texte, largeur. Sous-lot V1.5 : les compétences à côté du personnage.
+        /// </summary>
+        private static readonly (AdventureScreens.Panel Panel, string Key, float Width)[] Tabs =
         {
-            AdventureScreens.Panel.Inventory, AdventureScreens.Panel.None, AdventureScreens.Panel.Journal, AdventureScreens.Panel.Crafting,
-            AdventureScreens.Panel.Map,
+            (AdventureScreens.Panel.Inventory, "text.ui.tab.character", 150f), (AdventureScreens.Panel.Skills, "text.ui.tab.skills", 165f),
+            (AdventureScreens.Panel.None, "text.ui.tab.talents", 210f), (AdventureScreens.Panel.Journal, "text.ui.tab.journal", 130f),
+            (AdventureScreens.Panel.Crafting, "text.ui.tab.crafting", 130f), (AdventureScreens.Panel.Map, "text.ui.tab.map", 120f),
         };
-
-        private static readonly string[] TabKeys = { "text.ui.tab.character", "text.ui.tab.talents", "text.ui.tab.journal", "text.ui.tab.crafting", "text.ui.tab.map" };
 
         private sealed class Cell
         {
@@ -113,16 +117,16 @@ namespace EdS.Game
             _title = Text(_panel, UiFace.Title, 40f, Color.white, TextAnchor.MiddleLeft, 60f, 62f, 600f, 50f, 0f, 0.5f, 3f);
             _title.Gold();
             _subtitle = Text(_panel, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 62f, 104f, 900f, 22f, 0f, 0.5f, 12f, true);
-            float tx = 600f;
-            for (int i = 0; i < TabKeys.Length; i++)
+            float tx = 540f;
+            for (int i = 0; i < Tabs.Length; i++)
             {
                 int index = i;
-                UiText tab = Text(_panel, UiFace.Bold, 18f, UiKit.Muted, TextAnchor.MiddleLeft, tx, 72f, 220f, 30f, 0f, 0.5f, 12f, true);
+                UiText tab = Text(_panel, UiFace.Bold, 18f, UiKit.Muted, TextAnchor.MiddleLeft, tx, 72f, Tabs[i].Width - 12f, 30f, 0f, 0.5f, 12f, true);
                 Image hit = UiKit.Image(tab.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
                 UiKit.Fill(hit.rectTransform, -6f);
                 UiKit.Pointer(hit).Left = () => Tab(index);
                 _tabs.Add(tab);
-                tx += i == 1 ? 210f : 150f;
+                tx += Tabs[i].Width;
             }
             _close = Text(_panel, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleRight, 1440f, 106f, 300f, 24f, 1f, 0.5f, 12f, true);
             Image closeHit = UiKit.Image(_close.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
@@ -136,6 +140,7 @@ namespace EdS.Game
             BuildJournal(Page(AdventureScreens.Panel.Journal));
             BuildCrafting(Page(AdventureScreens.Panel.Crafting));
             BuildMap(Page(AdventureScreens.Panel.Map));
+            BuildSkills(Page(AdventureScreens.Panel.Skills));   // sous-lot V1.5
             BuildTip();
 
             // Dialogue : en bas de l'écran, hors du panneau.
@@ -684,7 +689,11 @@ namespace EdS.Game
         // --- Mise à jour -----------------------------------------------------------------------------------------------------------
 
         /// <summary>Cache les écrans (menus, entraînement, arbre des Éclats).</summary>
-        public void Hide() => UiKit.Show(_canvas, false);
+        public void Hide()
+        {
+            LeaveSkills();
+            UiKit.Show(_canvas, false);
+        }
 
         /// <summary>Essai réaliste 7 : panneau montré à l'image précédente (son d'onglet quand il change).</summary>
         private AdventureScreens.Panel _shownPanel;
@@ -713,6 +722,7 @@ namespace EdS.Game
             _panel.localScale = new Vector3(zoom, zoom, 1f);
             UiKit.Show(_dialogue, talk);
             if (talk) RefreshDialogue(a);
+            if (!book || screens.Open != AdventureScreens.Panel.Skills) LeaveSkills();   // sous-lot V1.5 : glissé, choix et message ne survivent pas à l'écran
             if (book)
             {
                 _title.Value = "Le Bastion";
@@ -720,8 +730,8 @@ namespace EdS.Game
                 _close.Value = KeyOf(screens.Open) + " · " + a.Text("text.ui.close");
                 for (int i = 0; i < _tabs.Count; i++)
                 {
-                    _tabs[i].Value = a.Text(TabKeys[i]);
-                    bool active = TabPanels[i] == screens.Open && i != 1;
+                    _tabs[i].Value = a.Text(Tabs[i].Key);
+                    bool active = Tabs[i].Panel == screens.Open && Tabs[i].Panel != AdventureScreens.Panel.None;
                     _tabs[i].Color = active ? UiKit.Dawn : UiKit.Muted;
                 }
                 foreach (KeyValuePair<AdventureScreens.Panel, RectTransform> page in _pages) UiKit.Show(page.Value, page.Key == screens.Open);
@@ -733,14 +743,15 @@ namespace EdS.Game
                     case AdventureScreens.Panel.Journal: RefreshJournal(a); break;
                     case AdventureScreens.Panel.Crafting: RefreshCrafting(a); break;
                     case AdventureScreens.Panel.Map: RefreshMap(a, enemies); break;
+                    case AdventureScreens.Panel.Skills: RefreshSkills(a); break;
                 }
             }
             if (_pendingTab >= 0)
             {
                 int tab = _pendingTab;
                 _pendingTab = -1;
-                if (tab == 1) _request = Request.Talents;
-                else screens.Show(TabPanels[tab]);
+                if (Tabs[tab].Panel == AdventureScreens.Panel.None) _request = Request.Talents;
+                else screens.Show(Tabs[tab].Panel);
             }
             Request request = _request;
             _request = Request.None;
@@ -759,6 +770,7 @@ namespace EdS.Game
                 case AdventureScreens.Panel.Journal: return "J";
                 case AdventureScreens.Panel.Crafting: return "K";
                 case AdventureScreens.Panel.Map: return "L";
+                case AdventureScreens.Panel.Skills: return "B";
                 default: return "Échap";
             }
         }

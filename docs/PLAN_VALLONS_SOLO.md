@@ -85,6 +85,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - Changer ses compétences **partout hors combat** (décision de Damien), refusé tant qu'un ennemi est engagé ou à moins de 12 m ; pris en compte à l'entrée suivante, comme les talents (`AdventureSession.SetTalents`).
 - **Barre qui grandit** (sujet 3) : aujourd'hui 2 places au niveau 1, 3 au 5, 4 et l'ultime au 10. Proposition : une 5e place au niveau 15 et une 6e au niveau 20, ce qui équipe les six actives du Bastion avant le Gardien (niveau 25). La 7e et la 8e viendront quand le Bastion aura plus de compétences (ascensions).
 - **Unity** : écran avec les compétences apprises, glisser une compétence sur une place (au doigt aussi), description et recharge.
+- **État** (29 octobre 2026, en PR) : changer ses compétences hors combat (un seul juge, effet à la halte, gardé dans la sauvegarde) et l'écran (touche B, onglet Compétences : K est l'atelier) sont faits. Les 5e et 6e places ne le sont pas : le pont temps réel et le protocole du réseau réservent l'emplacement 4 à l'ultime, et la barre de combat, les touches et les boutons tactiles ont quatre places ; à faire avec les niveaux au-delà de 10 (V1.8). Détail : [MONDE.md](MONDE.md#personnage-sous-lot-122).
 
 ### V1.6 — Quêtes : le moteur (M)
 
