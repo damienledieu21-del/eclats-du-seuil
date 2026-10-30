@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "story",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -31,6 +31,33 @@
           -13
         ],
         "dialogue": "dialogue.gaspard"
+      },
+      {
+        "id": "npc.armurier",
+        "name": "text.npc.armurier.name",
+        "position": [
+          -54.5,
+          -12.6
+        ],
+        "dialogue": "dialogue.armurier"
+      },
+      {
+        "id": "npc.herboriste",
+        "name": "text.npc.herboriste.name",
+        "position": [
+          -65.2,
+          -8
+        ],
+        "dialogue": "dialogue.herboriste"
+      },
+      {
+        "id": "npc.epiciere",
+        "name": "text.npc.epiciere.name",
+        "position": [
+          -50.8,
+          6
+        ],
+        "dialogue": "dialogue.epiciere"
       }
     ],
     "dialogues": [
@@ -384,6 +411,54 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.armurier",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.armurier.accueil",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.herboriste",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.herboriste.accueil",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.epiciere",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.epiciere.accueil",
+            "choices": []
+          }
+        ]
       }
     ],
     "quests": [
@@ -425,6 +500,10 @@
               {
                 "do": "giveXp",
                 "value": 60
+              },
+              {
+                "do": "giveMoney",
+                "value": 50
               }
             ]
           },
@@ -468,7 +547,12 @@
               "id": "rodeur",
               "value": 1
             },
-            "effects": []
+            "effects": [
+              {
+                "do": "giveMoney",
+                "value": 150
+              }
+            ]
           },
           {
             "id": "chef",
@@ -498,6 +582,10 @@
           {
             "do": "giveXp",
             "value": 300
+          },
+          {
+            "do": "giveMoney",
+            "value": 500
           }
         ]
       }

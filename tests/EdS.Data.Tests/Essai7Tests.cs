@@ -412,7 +412,7 @@ public class Essai7MoodTests : IDisposable
         Assert.Equal(1, a.LootAnnounced);
         a.Advance(0.05);
         Assert.Equal(1, a.QuestsAnnounced);
-        Assert.Equal(1, a.LootAnnounced);
+        Assert.Equal(2, a.LootAnnounced);   // sous-lot V1.1 : la récompense finale donne aussi des pièces (le bruit des pièces)
     }
 
     [Fact]

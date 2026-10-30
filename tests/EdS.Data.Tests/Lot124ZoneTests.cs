@@ -244,7 +244,7 @@ public class Lot124ZoneTests
         CombatantView first = session.Zone.Engine.View("loup1");
         Assert.True(first.HasLeft && !first.IsDead);
         Assert.Empty(xp);
-        Assert.Empty(session.Save().Consumed);
+        Assert.Equal(new[] { "zone.vallons/safe/place_du_village" }, session.Save().Consumed);   // V1.1 : seul le point sûr d'entrée, découvert d'emblée
         // Plafond : 128 combattants depuis les règles 0.12.0 (64 avant ; décision de Damien du 29 octobre 2026) : les créatures de la zone
         // (27 depuis les Vallons agrandis), le Bastion, le chef (sous-lot 12.7), puis les vies suivantes ; une place gardée à la seconde
         // forme du chef (revue Codex de la PR #48) ; une seule annonce, puis plus rien pour cette population.

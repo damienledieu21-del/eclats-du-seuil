@@ -134,6 +134,7 @@ namespace EdS.Game
             UiKit.Pointer(closeHit).Left = () => _request = Request.Close;
             Image rule = UiKit.Image(_panel, "Filet", null, UiKit.Alpha(UiKit.Dawn, 0.55f));
             UiKit.Place(rule.rectTransform, new Vector2(40f, 132f), new Vector2(PanelWidth - 80f, 2f), Vector2.zero);
+            BuildMerchant(Page(AdventureScreens.Panel.Merchant));   // sous-lot V1.1 : la boutique (AdventureBook.Merchant.cs)
 
             BuildCharacter(Page(AdventureScreens.Panel.Inventory));
             BuildJournal(Page(AdventureScreens.Panel.Journal));
@@ -255,6 +256,7 @@ namespace EdS.Game
             (_health, _endurance, _points) = (values[0], values[1], values[2]);
 
             _bagTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 168f, 400f, 20f, 0f, 0.5f, 14f, true);
+            BuildPurse(page);   // sous-lot V1.1 : la bourse à droite du sac
             for (int i = 0; i < 24; i++)
             {
                 int place = i;
@@ -337,6 +339,7 @@ namespace EdS.Game
             }
             IReadOnlyList<ItemStack> stacks = w.Inventory.Stacks;
             _bagTitle.Value = $"Sac · {stacks.Count} / {w.Inventory.Catalog.InventorySize}";
+            RefreshPurse(a);
             for (int i = 0; i < _bag.Count; i++)
             {
                 Cell cell = _bag[i];
@@ -604,6 +607,7 @@ namespace EdS.Game
             UiKit.Place(_mapMarkers, Vector2.zero, new Vector2(MapW, MapH), Vector2.zero);
             _mapYou = UiKit.Image(area, "Toi", UiKit.Sprite("repere_joueur"), Color.white);
             _legend = Text(page, UiFace.Body, 16f, UiKit.Muted, TextAnchor.MiddleCenter, PanelWidth / 2f, 830f, 1400f, 22f, 0.5f, 0.5f);
+            BuildTravel(page);   // sous-lot V1.1 : voyage rapide (AdventureBook.Travel.cs)
         }
 
         private void RefreshMap(AdventureSession a, IReadOnlyList<MapEnemy> enemies)
@@ -658,6 +662,7 @@ namespace EdS.Game
             }
             _legend.Value = "Flèche : toi  ·  losange : ennemi en vue  ·  rond blanc : PNJ  ·  turquoise : point sûr  ·  or : atelier  ·  vert : récolte  ·  "
                 + "losange doré : objectif";
+            RefreshTravel(a);
         }
 
         private void Marker(string sprite, Vector2 p, float size, Color color)
@@ -730,7 +735,8 @@ namespace EdS.Game
                     _tabs[i].Color = active ? UiKit.Dawn : UiKit.Muted;
                 }
                 foreach (KeyValuePair<AdventureScreens.Panel, RectTransform> page in _pages) UiKit.Show(page.Value, page.Key == screens.Open);
-                if (screens.Open != AdventureScreens.Panel.Inventory) UiKit.Show(_tip, false);
+                if (screens.Open != AdventureScreens.Panel.Inventory && screens.Open != AdventureScreens.Panel.Merchant) UiKit.Show(_tip, false);
+                if (screens.Open == AdventureScreens.Panel.Merchant) RefreshMerchant(a);   // sous-lot V1.1
                 switch (screens.Open)
                 {
                     case AdventureScreens.Panel.Inventory: RefreshCharacter(a); break;
