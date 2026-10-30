@@ -2,10 +2,13 @@ using System;
 
 namespace EdS.World
 {
-    /// <summary>Moment de la journée du monde (cadrage Q26 : le jour et la nuit ont des effets sur le jeu, avec des règles apprenables).</summary>
+    /// <summary>
+    /// Moment de la journée du monde (cadrage Q26 : le jour et la nuit ont des effets sur le jeu, avec des règles apprenables). Décision de
+    /// Damien du 30 octobre 2026 (23 h 06) : la nuit commence à 22 h (21 h avant), le crépuscule va donc de 19 h à 22 h.
+    /// </summary>
     public enum DayPhase
     {
-        /// <summary>De 21 h à 5 h.</summary>
+        /// <summary>De 22 h à 5 h.</summary>
         Night = 0,
 
         /// <summary>De 5 h à 7 h.</summary>
@@ -14,7 +17,7 @@ namespace EdS.World
         /// <summary>De 7 h à 19 h.</summary>
         Day = 2,
 
-        /// <summary>De 19 h à 21 h.</summary>
+        /// <summary>De 19 h à 22 h.</summary>
         Dusk = 3,
     }
 
@@ -40,7 +43,7 @@ namespace EdS.World
         public int Hour => Minute / 60;
 
         public static DayPhase PhaseOf(int minute) =>
-            minute < 5 * 60 ? DayPhase.Night : minute < 7 * 60 ? DayPhase.Dawn : minute < 19 * 60 ? DayPhase.Day : minute < 21 * 60 ? DayPhase.Dusk : DayPhase.Night;
+            minute < 5 * 60 ? DayPhase.Night : minute < 7 * 60 ? DayPhase.Dawn : minute < 19 * 60 ? DayPhase.Day : minute < 22 * 60 ? DayPhase.Dusk : DayPhase.Night;
 
         public bool Equals(WorldTime other) => Day == other.Day && Minute == other.Minute;
         public override bool Equals(object? obj) => obj is WorldTime t && Equals(t);

@@ -231,8 +231,15 @@ public class Lot121WorldTests
         Assert.Equal(DayPhase.Night, clock.At(216_000 * 2 / 3).Phase);        // 8 h + 16 h : minuit
         Assert.Equal(new WorldTime(0, 23 * 60 + 59), clock.At(216_000 * 2 / 3 - 1));
         Assert.Equal(DayPhase.Dawn, new WorldTime(0, 5 * 60).Phase);
-        Assert.Equal(DayPhase.Dusk, new WorldTime(0, 20 * 60 + 59).Phase);
-        Assert.Equal(DayPhase.Night, new WorldTime(0, 21 * 60).Phase);
+        // Frontières des moments (nuit de 22 h à 5 h depuis la décision de Damien du 30 octobre 2026, 23 h 06 ; 21 h avant).
+        Assert.Equal(DayPhase.Night, new WorldTime(0, 4 * 60 + 59).Phase);
+        Assert.Equal(DayPhase.Dawn, new WorldTime(0, 6 * 60 + 59).Phase);
+        Assert.Equal(DayPhase.Day, new WorldTime(0, 7 * 60).Phase);
+        Assert.Equal(DayPhase.Day, new WorldTime(0, 18 * 60 + 59).Phase);
+        Assert.Equal(DayPhase.Dusk, new WorldTime(0, 19 * 60).Phase);
+        Assert.Equal(DayPhase.Dusk, new WorldTime(0, 21 * 60).Phase);
+        Assert.Equal(DayPhase.Dusk, new WorldTime(0, 21 * 60 + 59).Phase);
+        Assert.Equal(DayPhase.Night, new WorldTime(0, 22 * 60).Phase);
         Assert.Throws<ArgumentOutOfRangeException>(() => clock.At(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => new WorldClock(50, 59_950));
         Assert.Throws<ArgumentOutOfRangeException>(() => new WorldClock(50, 60_010));

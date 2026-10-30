@@ -64,6 +64,36 @@ public class V1ReponsesTests : IDisposable
         if (closesAtNight) Assert.Equal(before, Snapshot(night));
     }
 
+    /// <summary>Tick du monde où il est <paramref name="minute"/> au jour <paramref name="day"/> (le monde commence à 8 h du jour 0).</summary>
+    private static long TickAt(long day, int minute)
+    {
+        var clock = new WorldClock(50);
+        long tick = (day * WorldClock.MinutesPerDay + minute - WorldClock.DefaultStartMinute) * clock.TicksPerDay / WorldClock.MinutesPerDay;
+        Assert.Equal(new WorldTime(day, minute), clock.At(tick));
+        return tick;
+    }
+
+    /// <summary>Décision de Damien du 30 octobre 2026 (23 h 06) : la nuit va de 22 h à 5 h ; Garin et Bertille ferment à 22 h et rouvrent à 5 h.</summary>
+    [Theory]
+    [InlineData(0, 21 * 60 + 59, DayPhase.Dusk, true)]
+    [InlineData(0, 22 * 60, DayPhase.Night, false)]
+    [InlineData(1, 4 * 60 + 59, DayPhase.Night, false)]
+    [InlineData(1, 5 * 60, DayPhase.Dawn, true)]
+    public void Fermes_de_22_h_a_5_h(long day, int minute, DayPhase phase, bool open)
+    {
+        foreach (string merchant in new[] { "merchant.armurier", "merchant.epicier", "merchant.herboriste" })
+        {
+            (double x, double z) = Near(merchant);
+            ZoneDefinition zone = Zone(x, z);
+            var w = new WorldSession(new WorldSave("zone.vallons", TickAt(day, minute), 0, Array.Empty<string>(), Hero(1000)), zone, ShippedData, Progression,
+                ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+            w.Step();
+            Assert.Equal(phase, w.Zone.Time.Phase);
+            bool expected = open || merchant == "merchant.herboriste";
+            Assert.Equal(expected ? TradeRefusal.None : TradeRefusal.Closed, w.CanTrade(merchant));
+        }
+    }
+
     /// <summary>
     /// Depuis la relecture de la PR #72, un marchand fermé reste un PNJ : il dit « Boutique fermée à cette heure. » puis ouvre son
     /// dialogue. Vérifié ici sur les marchands livrés (seul le point d'entrée est déplacé près de chacun).
