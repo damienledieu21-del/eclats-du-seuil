@@ -34,28 +34,41 @@ public class Lot114dSnapshotDataTests
         var engine = new CombatEngine(loaded.Setup, log);
         var copies = new List<(CombatEngine Copy, MemoryCombatLog Log, int From)>();
         int checkedSnapshots = 0;
+        // Tests plus rapides (29 octobre 2026), mêmes contrôles : l'instantané de l'original est écrit une seule fois par état (un même état
+        // donne le même texte, et l'écrire ne change rien), comparé à celui de chaque copie après le tick puis relu au tour suivant. La relecture
+        // d'un tick sans reprise (contrôle seul : la copie relue n'est pas gardée) se fait sur un fil de fond pendant que le combat continue
+        // (BackgroundChecks : chaque relecture menée au bout, la première en échec fait échouer le test).
+        using var checks = new BackgroundChecks();
+        string? next = null;
         while (!engine.IsFinished)
         {
             long tick = engine.CurrentTick;
-            string text = engine.Snapshot().Text;
+            string text = next ?? engine.Snapshot().Text;
+            CombatSetup completed = engine.CompletedSetup();
             // Une réaction reportée (entrainement_declencheurs) est dans la file entre deux ticks : la copie continue aussi depuis là.
             bool resume = resumeAt.Contains(tick) || text.Contains("\"item\":\"reaction\"", StringComparison.Ordinal);
-            var restoredLog = new MemoryCombatLog();
-            // Option C (décision de Damien du 22 octobre 2026) : aux points de reprise, la reprise vérifiée par rejeu accepte l'instantané
-            // vrai et continue de même.
-            CombatEngine restored = resumeAt.Contains(tick)
-                ? CombatEngine.RestoreVerified(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog)
-                : CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text), restoredLog);
+            if (resume)
+            {
+                var restoredLog = new MemoryCombatLog();
+                // Option C (décision de Damien du 22 octobre 2026) : aux points de reprise, la reprise vérifiée par rejeu accepte l'instantané
+                // vrai et continue de même.
+                CombatEngine restored = resumeAt.Contains(tick)
+                    ? CombatEngine.RestoreVerified(completed, CombatSnapshot.Parse(text), restoredLog)
+                    : CombatEngine.Restore(completed, CombatSnapshot.Parse(text), restoredLog);
+                copies.Add((restored, restoredLog, log.Lines.Count));
+            }
+            else checks.Run(tick, () => CombatEngine.Restore(completed, CombatSnapshot.Parse(text), new MemoryCombatLog()));
             checkedSnapshots++;
-            if (resume) copies.Add((restored, restoredLog, log.Lines.Count));
             engine.Step();
+            next = engine.IsFinished ? null : engine.Snapshot().Text;
             foreach (var (copy, _, _) in copies)
             {
                 copy.Step();
-                if (!engine.IsFinished) Assert.Equal(engine.Snapshot().Text, copy.Snapshot().Text);
+                if (!engine.IsFinished) Assert.Equal(next, copy.Snapshot().Text);
                 Assert.Equal(engine.IsFinished, copy.IsFinished);
             }
         }
+        checks.Wait();   // toutes les relectures confiées menées au bout, sinon échec
         Assert.True(checkedSnapshots > 3);
         foreach (var (copy, resumed, from) in copies)
         {
