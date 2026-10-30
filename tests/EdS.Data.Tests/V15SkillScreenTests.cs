@@ -13,8 +13,9 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Sous-lot V1.5, écran des compétences (décisions de Damien : changer ses compétences « partout hors combat » ; la barre grandit avec le
 /// niveau). La barre se change hors combat (aucun ennemi à moins de 12 m, aucun ennemi engagé qui vise le personnage), jugée par un seul
-/// juge (<see cref="PlayerCharacters.CheckSkills"/> : places ouvertes, compétences apprises, validateur unique des builds, barre pas pire),
-/// gardée dans la sauvegarde et prise en compte à l'entrée suivante, comme les talents. Un refus ne change rien.
+/// juge (<see cref="PlayerCharacters.CheckSkills"/> : places ouvertes, compétences apprises, validateur unique des builds ; une place peut
+/// rester vide depuis la réponse de Damien du 30 octobre 2026), gardée dans la sauvegarde et prise en compte à l'entrée suivante, comme les
+/// talents. Un refus ne change rien.
 /// </summary>
 [Trait("Category", "World")]
 public class V15SkillScreenTests : IDisposable
@@ -124,52 +125,36 @@ public class V15SkillScreenTests : IDisposable
         Assert.Equal(BuildViolationCode.WrongSlotKind, Check(hero, new[] { Frappe, Heurt, Barriere, Absolu }, Onde, new[] { Roc })!.Code);
     }
 
+    /// <summary>Réponse de Damien du 30 octobre 2026 (« oui, permis ») : une place ouverte peut rester vide, même si une compétence attend.</summary>
     [Fact]
-    public void Une_place_ouverte_ne_reste_pas_vide_quand_une_competence_attend()
+    public void Une_place_ouverte_peut_rester_vide()
     {
         SavedCharacter hero = Hero(Level10);
-        BuildViolation active = Check(hero, new[] { Frappe, Heurt, Barriere }, Absolu, new[] { Roc })!;
-        Assert.Equal(BuildViolationCode.SlotLeftEmpty, active.Code);
-        Assert.Equal("activeSkills[3]", active.Subject);
-        Assert.Equal("place active 4 vide alors que « Provocation » attend : une place ouverte ne se vide pas.", active.Message);
-        BuildViolation ultimate = Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, null, new[] { Roc })!;
-        Assert.Equal(("ultimate", BuildViolationCode.SlotLeftEmpty), (ultimate.Subject, ultimate.Code));
-        BuildViolation passive = Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, Absolu, Array.Empty<string>())!;
-        Assert.Equal(("passiveSkills[0]", BuildViolationCode.SlotLeftEmpty), (passive.Subject, passive.Code));
-        // Rien n'attend : une place libre reste libre (passive 2 ouverte au niveau 5, aucune autre passive apprise).
-        Assert.Null(Check(Hero(Level5), new[] { Frappe, Heurt, Barriere }, null, new[] { Roc }));
+        Assert.Null(Check(hero, new[] { Frappe, Heurt, Barriere }, Absolu, new[] { Roc }));          // une active de moins
+        Assert.Null(Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, null, new[] { Roc }));      // sans ultime
+        Assert.Null(Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, Absolu, Array.Empty<string>()));   // sans passive
+        Assert.Null(Check(hero, Array.Empty<string>(), null, Array.Empty<string>()));                 // tout vide
+        Assert.Null(Check(Hero(Level1), new[] { Frappe }, null, new[] { Roc }));
+        Assert.Null(Check(Hero(Level5), new[] { Frappe, Heurt, Barriere }, null, new[] { Roc }));    // passive 2 libre, rien à y mettre
     }
 
     /// <summary>
     /// Relecture indépendante de la PR #71 : une barre trouée (sauvegarde d'avant, compétences de départ ou places changées dans les
-    /// données) se répare pas à pas : un changement n'est refusé que s'il rend la barre pire (plus de places vides qu'une compétence apprise
-    /// en attente pourrait remplir). <see cref="PlayerCharacters.Learn"/> ne remplit que les compétences gagnées en montant, pas celles de
-    /// départ : sans cette règle, une barre de niveau 1 sans active refusait tout.
+    /// données) se répare à l'écran ; <see cref="PlayerCharacters.Learn"/> ne remplit que les compétences gagnées avec leur place, pas celles
+    /// de départ. Depuis la réponse de Damien du 30 octobre 2026, elle peut aussi rester trouée.
     /// </summary>
     [Fact]
-    public void Une_barre_trouee_se_repare_pas_a_pas()
+    public void Une_barre_trouee_se_repare_ou_reste_trouee()
     {
         SavedCharacter empty = Hero(Level1).WithSkills(Array.Empty<string>(), null, Array.Empty<string>());
         Assert.Same(empty, PlayerCharacters.Learn(empty, Shipped, Rules, out _));   // la halte ne la répare pas
-        Assert.Null(Check(empty, new[] { Frappe }, null, Array.Empty<string>()));        // une active de plus : mieux
-        Assert.Null(Check(empty, Array.Empty<string>(), null, new[] { Roc }));           // la passive : mieux aussi
-        Assert.Null(Check(empty, new[] { Heurt, Frappe }, null, new[] { Roc }));         // tout d'un coup
-        Assert.Null(Check(empty, Array.Empty<string>(), null, Array.Empty<string>()));   // rien de changé : pas pire
-        SavedCharacter one = empty.WithSkills(new[] { Frappe }, null, Array.Empty<string>());
-        Assert.Null(Check(one, new[] { Heurt }, null, Array.Empty<string>()));           // remplacer : pas pire
-        BuildViolation worse = Check(one, Array.Empty<string>(), null, Array.Empty<string>())!;   // retirer la seule : pire
-        Assert.Equal(("activeSkills[0]", BuildViolationCode.SlotLeftEmpty), (worse.Subject, worse.Code));
-        Assert.Equal("place active 1 vide alors que « Frappe du rempart » attend : une place ouverte ne se vide pas.", worse.Message);
-        // Niveau 10 sans les compétences de départ (données changées) : la halte ne les remet pas ; elles se reposent une à une, et la
-        // barre ne se vide pas davantage.
+        Assert.Null(Check(empty, new[] { Frappe }, null, Array.Empty<string>()));
+        Assert.Null(Check(empty, new[] { Heurt, Frappe }, null, new[] { Roc }));
+        Assert.Null(Check(empty, Array.Empty<string>(), null, Array.Empty<string>()));
         SavedCharacter late = Hero(Level10).WithSkills(new[] { Barriere, Onde }, Absolu, new[] { Roc });
         Assert.Same(late, PlayerCharacters.Learn(late, Shipped, Rules, out _));
         Assert.Null(Check(late, new[] { Barriere, Onde, Frappe }, Absolu, new[] { Roc }));
-        Assert.Equal(BuildViolationCode.SlotLeftEmpty, Check(late, new[] { Barriere }, Absolu, new[] { Roc })!.Code);
-        // Une compétence gagnée en route que la halte placera compte déjà : la retirer de la barre montrée est pire.
-        SavedCharacter route = Hero(Level10).WithSkills(new[] { Frappe, Heurt, Barriere }, null, new[] { Roc });
-        Assert.Equal(BuildViolationCode.SlotLeftEmpty, Check(route, new[] { Frappe, Heurt, Barriere }, Absolu, new[] { Roc })!.Code);
-        Assert.Null(Check(route, new[] { Onde, Heurt, Barriere, Frappe }, Absolu, new[] { Roc }));
+        Assert.Null(Check(late, new[] { Barriere }, Absolu, new[] { Roc }));
     }
 
     [Fact]
@@ -201,12 +186,12 @@ public class V15SkillScreenTests : IDisposable
 
     /// <summary>
     /// Propriété, sur toutes les barres d'un petit univers (actives de 0 à 4 parmi cinq, ultime ou non, passives de 0 à 2) et à plusieurs
-    /// niveaux : le juge admet exactement les barres qui remplissent les places ouvertes de compétences apprises distinctes (toutes, s'il y
-    /// en a moins que de places ; un oracle écrit à part), et une barre admise ne change pas à la halte suivante
-    /// (<see cref="PlayerCharacters.Learn"/> n'y ajoute rien).
+    /// niveaux : le juge admet exactement les barres de compétences apprises distinctes, chacune dans une place ouverte de sa sorte, des
+    /// places pouvant rester vides (un oracle écrit à part) ; une fois les compétences gagnées données (clés au registre), une barre admise
+    /// ne change pas à la halte suivante (<see cref="PlayerCharacters.Learn"/> n'y ajoute rien).
     /// </summary>
     [Fact]
-    public void Propriete_le_juge_admet_exactement_les_barres_pleines_d_apprises()
+    public void Propriete_le_juge_admet_exactement_les_barres_d_apprises()
     {
         string[] pool = { Frappe, Heurt, Barriere, Onde, Provocation };
         var activeBars = new List<string[]> { Array.Empty<string>() };
@@ -226,22 +211,23 @@ public class V15SkillScreenTests : IDisposable
                     {
                         checkedBars++;
                         bool expected = actives.Distinct().Count() == actives.Length && actives.All(learnedActives.Contains)
-                            && actives.Length == Math.Min(Rules.ActiveSlots(level), learnedActives.Length)
-                            && ultimate == (level >= 10 ? Absolu : null)
-                            && passives.SequenceEqual(new[] { Roc });
+                            && actives.Length <= Rules.ActiveSlots(level)
+                            && (ultimate is null || level >= 10)
+                            && (passives.Length == 0 || passives.SequenceEqual(new[] { Roc }));
                         BuildViolation? why = Check(hero, actives, ultimate, passives);
                         Assert.True(expected == (why is null), $"niveau {level}, [{string.Join(", ", actives)}], {ultimate}, [{string.Join(", ", passives)}] : {why}");
                         if (why != null) continue;
                         admitted++;
                         SavedCharacter set = hero.WithSkills(actives, ultimate, passives);
-                        Assert.Same(set, PlayerCharacters.Learn(set, Shipped, Rules, out IReadOnlyList<SkillUnlock> gained));
+                        Assert.Same(set, PlayerCharacters.Learn(set, Shipped, Rules, _ => true, out IReadOnlyList<SkillUnlock> gained, out _));
                         Assert.Empty(gained);
                     }
         }
         Assert.True(checkedBars > 15_000, checkedBars.ToString());
-        // Niveau 1 : 2 ordres de Frappe et Heurt ; niveau 5 : 3 places parmi 4 apprises (Provocation comprise), 4 × 3 × 2 = 24 ; niveau 10 :
-        // 4 places parmi les 5 apprises de l'univers, 5 × 4 × 3 × 2 = 120.
-        Assert.Equal(2 + 24 + 120, admitted);
+        // Suites d'actives apprises distinctes, de 0 au nombre de places : niveau 1, 1 + 2 + 2 = 5 (2 apprises, 2 places) ; niveau 5,
+        // 1 + 4 + 12 + 24 = 41 (4 apprises, Provocation comprise, 3 places) ; niveau 10, 1 + 5 + 20 + 60 + 120 = 206 (5 apprises de l'univers,
+        // 4 places). Fois l'ultime (vide, ou Bastion absolu au niveau 10) et la passive (vide ou Endurance du roc).
+        Assert.Equal(5 * 1 * 2 + 41 * 1 * 2 + 206 * 2 * 2, admitted);
     }
 
     // --- La barre et l'écran (EdS.Runtime) ---------------------------------------------------------------------------------------
@@ -375,7 +361,6 @@ public class V15SkillScreenTests : IDisposable
         Assert.Equal("« Contrecoup » n'est pas encore apprise : elle s'apprend au niveau 7 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 0, Contrecoup));
         Assert.Equal("« Onde de rupture » n'est pas encore apprise : elle s'apprend au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 1, Onde));
         Assert.StartsWith("« Frappe du rempart » est une compétence active", a.PlaceSkill(SkillKind.Passive, 1, Frappe));
-        Assert.Equal("place active 3 vide alors que « Provocation » attend : une place ouverte ne se vide pas.", a.RemoveSkill(SkillKind.Active, 2));
         Assert.Equal(BuildViolationCode.DuplicateSkill, a.World.SetSkills(new[] { Frappe, Frappe, Barriere }, null, new[] { Roc })!.Code);
         Assert.Same(before, a.World.Character);
         Assert.DoesNotContain("Compétences gardées : effet à ta prochaine halte.", a.DrainMessages());
@@ -511,7 +496,7 @@ public class V15SkillScreenTests : IDisposable
 
     /// <summary>
     /// Relecture indépendante de la PR #71 : une sauvegarde de niveau 1 sans active (données de départ changées) se répare à l'écran,
-    /// une compétence à la fois ; une fois pleine, elle ne se vide plus.
+    /// une compétence à la fois ; depuis la réponse de Damien du 30 octobre 2026, une place peut aussi se revider.
     /// </summary>
     [Fact]
     public void Une_sauvegarde_a_barre_vide_se_repare_a_l_ecran()
@@ -524,9 +509,10 @@ public class V15SkillScreenTests : IDisposable
         Assert.Equal(new[] { Frappe }, a.World.Character.ActiveSkills);
         Assert.Null(a.PlaceSkill(SkillKind.Active, 1, Heurt));
         Assert.Equal(new[] { Frappe, Heurt }, a.World.Character.ActiveSkills);
-        Assert.Equal("place active 2 vide alors que « Heurt de bouclier » attend : une place ouverte ne se vide pas.", a.RemoveSkill(SkillKind.Active, 1));
+        Assert.Null(a.RemoveSkill(SkillKind.Active, 1));
+        Assert.Equal(new[] { Frappe }, a.World.Character.ActiveSkills);
         Assert.True(a.Rest());
-        Assert.Equal(new[] { Frappe, Heurt }, Engaged(a));
+        Assert.Equal(new[] { Frappe }, Engaged(a));
     }
 
     /// <summary>

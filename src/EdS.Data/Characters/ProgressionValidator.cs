@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Builds;
 using EdS.Data.Classes;
+using EdS.Data.Saves;
 using EdS.Data.Validation;
 using EdS.Domain.Builds;
 using EdS.Domain.Collections;
@@ -61,6 +62,16 @@ namespace EdS.Data.Characters
             Kind = kind;
             WithPlace = withPlace;
         }
+
+        /// <summary>
+        /// Réponse de Damien du 30 octobre 2026 (une place peut rester vide) : clé du registre du monde (événements consommés, gardé dans la
+        /// sauvegarde) qui dit que la halte a déjà donné cette compétence (placée, ou en réserve faute de place) ou que le joueur a changé sa
+        /// barre après l'avoir vue. La halte ne la remet plus d'office : une place vidée reste vide. Une sauvegarde a un seul personnage.
+        /// </summary>
+        public string GivenKey => GivenKeyPrefix + Skill;
+
+        /// <summary>Début des clés <see cref="GivenKey"/> (« character/skill/skill.bastion.barriere_d_acier »).</summary>
+        public const string GivenKeyPrefix = "character/skill/";
 
         /// <summary>Une place de la sorte <paramref name="kind"/> s'ouvre-t-elle au niveau <paramref name="level"/> (règles) ?</summary>
         public static bool PlaceOpensAt(SkillKind kind, int level, ProgressionRules rules)
@@ -307,7 +318,13 @@ namespace EdS.Data.Characters
                     report.Add(at + ".level", ValidationCode.InvalidValue, $"« {u.Skill} » demande le niveau {skill.MinLevel}.");
                     continue;
                 }
-                unlocks.Add(new SkillUnlock(lvl, u.Skill, skill.Kind, SkillUnlock.PlaceOpensAt(skill.Kind, lvl, data.Rules.Progression)));
+                var unlock = new SkillUnlock(lvl, u.Skill, skill.Kind, SkillUnlock.PlaceOpensAt(skill.Kind, lvl, data.Rules.Progression));
+                if (unlock.WithPlace && !SaveValidator.IsEventKey(unlock.GivenKey))
+                {
+                    report.Add(at + ".skill", ValidationCode.InvalidValue, $"identifiant trop long ou hors format pour la clé du registre « {unlock.GivenKey} ».");
+                    continue;
+                }
+                unlocks.Add(unlock);
             }
             if (!report.IsValid) return null;
             for (int level = 2; level <= levels.Count; level++)

@@ -185,6 +185,8 @@ Plafond des combattants (décision de Damien du 29 octobre 2026, « relever le p
 
 Sous-lot V1.5 (écran des compétences, lot « Vallons solo finis », décision de Damien : « partout hors combat ») : la barre (actives, ultime, passives) se change hors combat (aucun ennemi à moins de 12 m, aucun ennemi engagé qui vise le personnage), jugée par un seul juge (places ouvertes au niveau, compétences apprises, validateur des builds, barre qui ne se vide pas mais se répare pas à pas), gardée dans la sauvegarde (format inchangé) et prise en compte à la halte suivante ; dans Unity, touche B (K est l'atelier) ou onglet Compétences : glisser une compétence sur une place, à la souris ou au doigt. Les 5e et 6e places (proposition du plan : niveaux 15 et 20) attendent les niveaux au-delà de 10. Détail : [docs/MONDE.md](docs/MONDE.md#personnage-sous-lot-122).
 
+Réponses de Damien du 30 octobre 2026 (petit chantier « V1 réponses ») : Provocation s'apprend au niveau 3 et Contrecoup au niveau 7, dans la **réserve** (seule une compétence qui vient avec sa place, Barrière d'acier au 5, Onde de rupture et Bastion absolu au 10, est placée d'office à la halte) ; **une place de la barre peut rester vide** (règle « barre pas pire » retirée ; une compétence gagnée n'est donnée qu'une fois, clé au registre du monde, format de sauvegarde inchangé) ; **Garin et Bertille ferment la nuit**, Sauge jamais ; Bertille ne vend plus le **minerai de fer** (la ferrure demande d'aller miner) ; **une journée du monde dure 3 h de jeu** et **la nuit va de 22 h à 5 h**. Détail : [docs/MONDE.md](docs/MONDE.md).
+
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
 ## Avancement
