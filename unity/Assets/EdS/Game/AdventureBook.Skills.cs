@@ -13,7 +13,7 @@ namespace EdS.Game
     /// actives en éclats, comme en combat (touches 1 à 4), l'ultime (R), les passives en nœuds ; une place fermée montre le niveau qui
     /// l'ouvre. À droite, les compétences apprises (avec leur place, ou en réserve) et celles à apprendre plus haut. On glisse une
     /// compétence sur une place, à la souris ou au doigt, ou on la touche puis on touche la place ; deux places s'échangent de même ; clic
-    /// droit sur une place : la vider. Tout passe par <see cref="AdventureSession.PlaceSkill"/> et <see cref="AdventureSession.RemoveSkill"/>,
+    /// droit sur une place : la vider (refusé tant qu'une compétence apprise attend). Tout passe par <see cref="AdventureSession.PlaceSkill"/> et <see cref="AdventureSession.RemoveSkill"/>,
     /// donc par le juge unique du cœur : un refus ne change rien et son motif s'affiche sous la barre.
     /// </summary>
     public sealed partial class AdventureBook
@@ -45,6 +45,7 @@ namespace EdS.Game
         private readonly List<SkillCell> _skillCells = new List<SkillCell>();
         private readonly List<SkillRow> _skillRows = new List<SkillRow>();
         private readonly List<UiText> _upcoming = new List<UiText>();
+        private readonly List<string> _upcomingSkills = new List<string>();
         private UiText _skillsLearned, _skillsUpcoming, _skillsStatus;
         private RectTransform _skillDetail;
         private Image _skillDetailIcon;
@@ -57,6 +58,9 @@ namespace EdS.Game
         private long _skillBookTick = -1;
 
         private string _selectedSkill, _hoveredSkill, _draggedSkill, _skillMessage;
+
+        /// <summary>Place ou ligne d'où part le glissé : un lâcher sur elle-même ne fait rien (relecture indépendante de la PR #71).</summary>
+        private object _dragSource;
         private bool _skillMessageError;
 
         private void BuildSkills(RectTransform page)
@@ -65,7 +69,7 @@ namespace EdS.Game
             Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 168f, 500f, 20f, 0f, 0.5f, 14f, true).Value = "Barre de combat";
             Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 392f, 500f, 20f, 0f, 0.5f, 14f, true).Value = "Passives";
             Text(page, UiFace.Body, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 586f, SkillBarWidth, 22f, 0f, 0.5f).Value =
-                "Glisse une compétence sur une place (ou touche-la, puis la place) · clic droit : vider · effet à la halte.";
+                "Glisse une compétence sur une place (ou touche-la, puis la place) : deux compétences s'échangent · effet à la halte.";
             _skillsStatus = Text(page, UiFace.Bold, 17f, UiKit.Teal, TextAnchor.MiddleLeft, 60f, 614f, SkillBarWidth, 24f, 0f, 0.5f);
 
             // Fiche de la compétence survolée, glissée ou choisie.
@@ -87,7 +91,22 @@ namespace EdS.Game
             for (int i = 0; i < SkillRows; i++) _skillRows.Add(MakeSkillRow(page, 880f, 192f + i * 72f));
             _skillsUpcoming = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 880f, 712f, 560f, 20f, 0f, 0.5f, 14f, true);
             for (int i = 0; i < UpcomingLines; i++)
-                _upcoming.Add(Text(page, UiFace.Body, 17f, UiKit.Ink, TextAnchor.MiddleLeft, 880f, 740f + i * 26f, 560f, 24f, 0f, 0.5f));
+            {
+                UiText line = Text(page, UiFace.Body, 17f, UiKit.Ink, TextAnchor.MiddleLeft, 880f, 740f + i * 26f, 560f, 24f, 0f, 0.5f);
+                _upcoming.Add(line);
+                _upcomingSkills.Add(null);
+                // Une compétence à apprendre se survole (souris) ou se touche (doigt) : la fiche dit ce qu'elle fera et à quel niveau.
+                int at = i;
+                Image hit = UiKit.Image(line.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
+                UiKit.Fill(hit.rectTransform, -1f);
+                UiPointer pointer = UiKit.Pointer(hit);
+                pointer.Left = () => Select(_upcomingSkills[at]);
+                pointer.Enter = () => _hoveredSkill = _upcomingSkills[at];
+                pointer.Exit = () =>
+                {
+                    if (_hoveredSkill == _upcomingSkills[at]) _hoveredSkill = null;
+                };
+            }
 
             // L'icône qui suit le pointeur pendant un glissé, au-dessus de tout le panneau.
             _skillGhost = UiKit.Image(_panel, "Compétence glissée", null, UiKit.Alpha(Color.white, 0.85f));
@@ -161,7 +180,7 @@ namespace EdS.Game
             };
             UiKit.Drop(cell.Hit).Dropped = () => DropOn(c);
             UiDrag drag = UiKit.Drag(cell.Hit);
-            drag.Begin = p => BeginSkillDrag(c.Skill, p);
+            drag.Begin = p => BeginSkillDrag(c.Skill, c, p);
             drag.Move = MoveSkillDrag;
             drag.End = p => EndSkillDrag();
             return cell;
@@ -192,7 +211,7 @@ namespace EdS.Game
                 if (_hoveredSkill == r.Skill) _hoveredSkill = null;
             };
             UiDrag drag = UiKit.Drag(row.Slab);
-            drag.Begin = p => BeginSkillDrag(r.Skill, p);
+            drag.Begin = p => BeginSkillDrag(r.Skill, r, p);
             drag.Move = MoveSkillDrag;
             drag.End = p => EndSkillDrag();
             return row;
@@ -215,7 +234,7 @@ namespace EdS.Game
             {
                 string skill = _selectedSkill;
                 _selectedSkill = null;
-                Apply(_session.PlaceSkill(cell.Kind, cell.Index, skill));
+                Apply(() => _session.PlaceSkill(cell.Kind, cell.Index, skill));
             }
             else if (cell.Skill != null) Select(cell.Skill);
         }
@@ -224,31 +243,44 @@ namespace EdS.Game
         {
             if (_session == null || cell.Skill == null) return;
             _selectedSkill = null;
-            Apply(_session.RemoveSkill(cell.Kind, cell.Index));
+            Apply(() => _session.RemoveSkill(cell.Kind, cell.Index));
         }
 
+        /// <summary>
+        /// Lâcher sur une place. Sur la place d'où part le glissé, rien (relecture indépendante de la PR #71 : uGUI envoie aussi le lâcher
+        /// quand le doigt se lève sur l'image de départ ; le choix en cours reste).
+        /// </summary>
         private void DropOn(SkillCell cell)
         {
             if (_session == null || _draggedSkill == null) return;
+            bool home = ReferenceEquals(_dragSource, cell);
             string skill = _draggedSkill;
             EndSkillDrag();
+            if (home) return;
             _selectedSkill = null;
-            Apply(_session.PlaceSkill(cell.Kind, cell.Index, skill));
+            Apply(() => _session.PlaceSkill(cell.Kind, cell.Index, skill));
         }
 
-        /// <summary>Résultat d'un changement : null, gardé (effet à la halte) ; sinon le motif du refus.</summary>
-        private void Apply(string refusal)
+        /// <summary>
+        /// Fait un changement par le cœur. Gardé (le personnage a changé) : message et son ; refusé : le motif ; sans effet (rien à changer) :
+        /// ni message, ni son (relecture indépendante de la PR #71).
+        /// </summary>
+        private void Apply(System.Func<string> change)
         {
+            object before = _session.World.Character;
+            string refusal = change();
+            _skillBook = null;   // à recalculer
+            if (refusal == null && ReferenceEquals(before, _session.World.Character)) return;
             _skillMessage = refusal ?? _session.Text("text.ui.skills.saved");
             _skillMessageError = refusal != null;
             UiSounds.Play(refusal == null ? UiCue.Confirm : UiCue.Error);
-            _skillBook = null;   // à recalculer
         }
 
-        private void BeginSkillDrag(string skill, Vector2 screen)
+        private void BeginSkillDrag(string skill, object source, Vector2 screen)
         {
             if (skill == null) return;
             _draggedSkill = skill;
+            _dragSource = source;
             _skillGhost.sprite = SkillIcon(skill);
             UiKit.Show(_skillGhost, true);
             _skillGhost.rectTransform.SetAsLastSibling();
@@ -265,6 +297,7 @@ namespace EdS.Game
         private void EndSkillDrag()
         {
             _draggedSkill = null;
+            _dragSource = null;
             if (_skillGhost != null) UiKit.Show(_skillGhost, false);
         }
 
@@ -308,7 +341,8 @@ namespace EdS.Game
                 cell.Hit.color = open ? new Color(0.09f, 0.12f, 0.17f, 0.95f) : new Color(0.05f, 0.06f, 0.08f, 0.9f);
                 cell.Lock.Value = open ? "" : "Niv. " + p?.OpenLevel;
                 if (cell.Key != null) cell.Key.Value = p?.Key ?? "";
-                cell.Name.Value = !open ? "Fermée" : card != null ? card.Name : cell.Skill ?? "Libre";
+                // Une place ouverte vide sans compétence apprise de sa sorte en réserve (aujourd'hui la 2e passive au niveau 5) le dit.
+                cell.Name.Value = !open ? "Fermée" : card != null ? card.Name : cell.Skill ?? (book.HasReserve(cell.Kind) ? "Libre" : "Rien à placer pour l'instant");
                 cell.Name.Color = card != null ? UiKit.Ink : UiKit.Muted;
                 // La place de la compétence choisie luit ; les places ouvertes de sa sorte s'éclairent un peu (là où elle peut aller).
                 float glow = cell.Skill != null && cell.Skill == highlighted ? 0.55f : open && moving != null && moving.Kind == cell.Kind ? 0.22f : 0f;
@@ -341,6 +375,8 @@ namespace EdS.Game
             {
                 bool used = i < book.Upcoming.Count;
                 _upcoming[i].Value = used ? $"Niveau {book.Upcoming[i].Level} · {book.Upcoming[i].Name} · {KindName(book.Upcoming[i].Kind)}" : "";
+                _upcomingSkills[i] = used ? book.Upcoming[i].Id : null;
+                _upcoming[i].Color = used && book.Upcoming[i].Id == (_hoveredSkill ?? _selectedSkill) ? UiKit.Dawn : UiKit.Ink;
             }
 
             if (_skillMessage != null)
@@ -350,7 +386,7 @@ namespace EdS.Game
             }
             else
             {
-                _skillsStatus.Value = book.CanChange ? "" : a.Text("text.ui.skills.in_combat");
+                _skillsStatus.Value = book.Locked ?? "";
                 _skillsStatus.Color = UiKit.Endurance;
             }
             RefreshSkillDetail(book, _hoveredSkill ?? _draggedSkill ?? _selectedSkill);

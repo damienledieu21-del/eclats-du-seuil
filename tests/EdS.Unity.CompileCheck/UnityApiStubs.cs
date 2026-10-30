@@ -143,7 +143,7 @@ namespace UnityEngine.EventSystems
     public class EventSystem : UIBehaviour { public static EventSystem current => null; public bool IsPointerOverGameObject() => false; }
     public abstract class BaseInputModule : UIBehaviour { }
     public class StandaloneInputModule : BaseInputModule { }
-    public class PointerEventData { public enum InputButton { Left = 0, Right = 1, Middle = 2 } public InputButton button { get; set; } public int pointerId { get; set; } public Vector2 position { get; set; } }
+    public class PointerEventData { public enum InputButton { Left = 0, Right = 1, Middle = 2 } public InputButton button { get; set; } public int pointerId { get; set; } public Vector2 position { get; set; } public bool dragging { get; set; } }
     public interface IEventSystemHandler { }
     public interface IPointerClickHandler : IEventSystemHandler { void OnPointerClick(PointerEventData eventData); }
     public interface IPointerEnterHandler : IEventSystemHandler { void OnPointerEnter(PointerEventData eventData); }

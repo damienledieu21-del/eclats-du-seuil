@@ -127,8 +127,11 @@ namespace EdS.World
         /// <item>une place fermée à ce niveau (<see cref="ClosedPlace"/>, avec le niveau qui l'ouvre) ;</item>
         /// <item>une compétence ni apprise (<see cref="Learned"/>) ni déjà dans la barre du personnage (<see cref="BuildViolationCode.SkillNotLearned"/>) ;</item>
         /// <item>le validateur unique des builds (sorte de la place, doublon, niveau minimal, talents exigés) ;</item>
-        /// <item>une place ouverte laissée vide alors qu'une compétence apprise de sa sorte attend (<see cref="BuildViolationCode.SlotLeftEmpty"/>) :
-        /// la barre reste pleine, comme <see cref="Learn"/> la remplit à l'entrée ; ainsi une barre admise ne change pas à la halte suivante.</item>
+        /// <item>la barre ne devient pas pire (<see cref="BuildViolationCode.SlotLeftEmpty"/>) : pour chaque sorte, le nombre de places
+        /// ouvertes vides qu'une compétence apprise de cette sorte, équipable, pourrait remplir ne monte pas par rapport à la barre que le
+        /// personnage aura à la prochaine halte (<see cref="Learn"/>). Une barre pleine ne se vide donc pas (comme <see cref="Learn"/> la
+        /// remplit à l'entrée, elle ne change pas à la halte suivante), et une barre trouée (sauvegarde d'avant, données changées) se répare
+        /// pas à pas, une compétence à la fois (relecture indépendante de la PR #71).</item>
         /// </list>
         /// Rien n'est modifié ici.
         /// </summary>
@@ -184,21 +187,33 @@ namespace EdS.World
             // 3. Le validateur unique des builds.
             if (violations.Count > 0) return violations[0];
 
-            // 4. Barre pleine : aucune place ouverte vide tant qu'une compétence apprise de sa sorte, équipable, attend.
-            var placed = new HashSet<string>(actives.Concat(passives), StringComparer.Ordinal);
-            if (ultimate != null) placed.Add(ultimate);
-            string? Waiting(SkillKind kind) => learned.FirstOrDefault(s => !placed.Contains(s) && definition.TryGetSkill(s, out SkillDefinition d) && d.Kind == kind
-                && d.MinLevel <= level && d.TalentRequirements.All(r => character.Talents.TryGetValue(r.TalentId, out int rank) && rank >= r.MinRank));
-            BuildViolation? Empty(SkillKind kind, int used, int open, string subject, string label)
+            // 4. Barre pas pire : par sorte, les places ouvertes vides qu'une compétence apprise en attente (équipable) pourrait remplir ne
+            //    sont pas plus nombreuses qu'avant le changement (avant : la barre de la prochaine halte, compétences gagnées en route placées).
+            SavedCharacter shown = Learn(character, progression, rules, out _);
+            bool Equipable(string skill, SkillKind kind) => definition.TryGetSkill(skill, out SkillDefinition d) && d.Kind == kind && d.MinLevel <= level
+                && d.TalentRequirements.All(r => character.Talents.TryGetValue(r.TalentId, out int rank) && rank >= r.MinRank);
+            List<string> WaitingFor(SkillKind kind, IEnumerable<string> bar)
             {
-                if (used >= open || !(Waiting(kind) is string waiting)) return null;
-                string name = definition.TryGetSkill(waiting, out SkillDefinition d) ? d.Name : waiting;
-                return new BuildViolation(BuildViolationCode.SlotLeftEmpty, subject,
-                    $"{label} vide alors que « {name} » attend : une place ouverte ne reste pas vide.");
+                var placed = new HashSet<string>(bar, StringComparer.Ordinal);
+                return learned.Where(s => !placed.Contains(s) && Equipable(s, kind)).ToList();
             }
-            return Empty(SkillKind.Active, actives.Count, rules.ActiveSlots(level), $"activeSkills[{actives.Count}]", $"place active {actives.Count + 1}")
-                ?? Empty(SkillKind.Ultimate, ultimate is null ? 0 : 1, rules.IsUltimateUnlocked(level) ? 1 : 0, "ultimate", "place de l'ultime")
-                ?? Empty(SkillKind.Passive, passives.Count, rules.PassiveSlots(level), $"passiveSkills[{passives.Count}]", $"place passive {passives.Count + 1}");
+            IEnumerable<string> Bar(IEnumerable<string> a, string? u, IEnumerable<string> p) => u is null ? a.Concat(p) : a.Concat(p).Append(u);
+            IEnumerable<string> after = Bar(actives, ultimate, passives).ToList(), before = Bar(shown.ActiveSkills, shown.Ultimate, shown.PassiveSkills).ToList();
+            BuildViolation? Worse(SkillKind kind, int used, int usedBefore, int open, string subject, string label)
+            {
+                List<string> waiting = WaitingFor(kind, after);
+                int holes = Math.Min(Math.Max(0, open - used), waiting.Count);
+                int holesBefore = Math.Min(Math.Max(0, open - usedBefore), WaitingFor(kind, before).Count);
+                if (holes <= holesBefore) return null;
+                string name = definition.TryGetSkill(waiting[0], out SkillDefinition d) ? d.Name : waiting[0];
+                return new BuildViolation(BuildViolationCode.SlotLeftEmpty, subject,
+                    $"{label} vide alors que « {name} » attend : une place ouverte ne se vide pas.");
+            }
+            int openActives = rules.ActiveSlots(level), openUltimate = rules.IsUltimateUnlocked(level) ? 1 : 0, openPassives = rules.PassiveSlots(level);
+            return Worse(SkillKind.Active, actives.Count, shown.ActiveSkills.Count, openActives, $"activeSkills[{actives.Count}]", $"place active {actives.Count + 1}")
+                ?? Worse(SkillKind.Ultimate, ultimate is null ? 0 : 1, shown.Ultimate is null ? 0 : 1, openUltimate, "ultimate", "place de l'ultime")
+                ?? Worse(SkillKind.Passive, passives.Count, shown.PassiveSkills.Count, openPassives, $"passiveSkills[{passives.Count}]",
+                    $"place passive {passives.Count + 1}");
         }
 
         public static int Level(SavedCharacter character, CharacterProgression progression) =>

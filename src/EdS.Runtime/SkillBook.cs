@@ -93,7 +93,10 @@ namespace EdS.Runtime
         public int Level { get; }
 
         /// <summary>Les compétences se changent maintenant (hors combat, <see cref="AdventureSession.CanChangeSkills"/>).</summary>
-        public bool CanChange { get; }
+        public bool CanChange => Locked is null;
+
+        /// <summary>Pourquoi elles ne se changent pas maintenant (<see cref="AdventureSession.SkillsLocked"/>), ou null.</summary>
+        public string? Locked { get; }
 
         /// <summary>Places de la barre : actives, l'ultime, puis les passives, chacune dans l'ordre de ses rangs.</summary>
         public IReadOnlyList<SkillPlace> Places { get; }
@@ -104,10 +107,10 @@ namespace EdS.Runtime
         /// <summary>Compétences à apprendre plus haut, dans l'ordre des niveaux.</summary>
         public IReadOnlyList<SkillCard> Upcoming { get; }
 
-        private SkillBook(int level, bool canChange, IReadOnlyList<SkillPlace> places, IReadOnlyList<SkillCard> learned, IReadOnlyList<SkillCard> upcoming)
+        private SkillBook(int level, string? locked, IReadOnlyList<SkillPlace> places, IReadOnlyList<SkillCard> learned, IReadOnlyList<SkillCard> upcoming)
         {
             Level = level;
-            CanChange = canChange;
+            Locked = locked;
             Places = places;
             Learned = learned;
             Upcoming = upcoming;
@@ -116,14 +119,21 @@ namespace EdS.Runtime
         /// <summary>Carte d'une compétence (apprise ou à venir), ou null.</summary>
         public SkillCard? Card(string skill) => Learned.Concat(Upcoming).FirstOrDefault(c => c.Id == skill);
 
+        /// <summary>
+        /// Relecture indépendante de la PR #71 : une compétence apprise de la sorte <paramref name="kind"/> attend en réserve ; sinon, une place
+        /// libre de cette sorte n'a rien à recevoir pour l'instant (aujourd'hui la 2e passive, au niveau 5).
+        /// </summary>
+        public bool HasReserve(SkillKind kind) => Learned.Any(c => c.Place == null && c.Kind == kind);
+
         /// <summary>Place de rang <paramref name="index"/> de la sorte <paramref name="kind"/>, ou null.</summary>
         public SkillPlace? Place(SkillKind kind, int index) => Places.FirstOrDefault(p => p.Kind == kind && p.Index == index);
 
         /// <summary>
-        /// Écran de <paramref name="next"/> (le personnage à la prochaine halte) ; <paramref name="describe"/> donne la description d'une
-        /// compétence d'après son identifiant (vide si aucune).
+        /// Écran de <paramref name="next"/> (le personnage à la prochaine halte) ; <paramref name="locked"/> : pourquoi les compétences ne se
+        /// changent pas maintenant, null si elles se changent ; <paramref name="describe"/> donne la description d'une compétence d'après son
+        /// identifiant (vide si aucune).
         /// </summary>
-        public static SkillBook For(SavedCharacter next, CharacterProgression progression, ClassDefinition definition, ProgressionRules rules, bool canChange,
+        public static SkillBook For(SavedCharacter next, CharacterProgression progression, ClassDefinition definition, ProgressionRules rules, string? locked,
             Func<string, string>? describe = null)
         {
             if (next is null) throw new ArgumentNullException(nameof(next));
@@ -154,7 +164,7 @@ namespace EdS.Runtime
             var upcoming = new List<SkillCard>();
             foreach (SkillUnlock u in PlayerCharacters.Upcoming(next, progression))
                 if (definition.TryGetSkill(u.Skill, out SkillDefinition skill)) upcoming.Add(new SkillCard(skill, u.Level, false, null, Describe(u.Skill)));
-            return new SkillBook(level, canChange, places, learned, upcoming);
+            return new SkillBook(level, locked, places, learned, upcoming);
         }
     }
 

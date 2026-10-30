@@ -294,14 +294,24 @@ public class InterfaceStyleTests
         // Écran quitté : plus de glissé ni de choix, et le dernier message (un refus en plein combat) ne reste pas à la réouverture.
         Assert.Contains("if (!book || screens.Open != AdventureScreens.Panel.Skills) LeaveSkills();", book, StringComparison.Ordinal);
         Assert.Contains("_skillMessage = null;", skills, StringComparison.Ordinal);
-        foreach (string action in new[] { "Apply(_session.PlaceSkill(cell.Kind, cell.Index, skill));", "Apply(_session.RemoveSkill(cell.Kind, cell.Index));",
+        // Relecture indépendante de la PR #71 : la fin d'un glissé n'est pas un clic ; un lâcher sur la place de départ ne fait rien ; une
+        // action sans effet (le personnage n'a pas changé) n'affiche ni ne sonne rien ; le motif d'un refus vient du cœur (un par cas).
+        Assert.Contains("if (eventData.dragging) return;", kit, StringComparison.Ordinal);
+        Assert.Contains("bool home = ReferenceEquals(_dragSource, cell);", skills, StringComparison.Ordinal);
+        Assert.Contains("if (refusal == null && ReferenceEquals(before, _session.World.Character)) return;", skills, StringComparison.Ordinal);
+        Assert.Contains("_skillsStatus.Value = book.Locked ?? \"\";", skills, StringComparison.Ordinal);
+        Assert.DoesNotContain("text.ui.skills.in_combat", skills, StringComparison.Ordinal);
+        Assert.DoesNotContain("clic droit : vider", skills, StringComparison.Ordinal);
+        Assert.Contains("pointer.Enter = () => _hoveredSkill = _upcomingSkills[at];", skills, StringComparison.Ordinal);
+        Assert.Contains("book.HasReserve(cell.Kind) ? \"Libre\" : \"Rien à placer pour l'instant\"", skills, StringComparison.Ordinal);
+        foreach (string action in new[] { "Apply(() => _session.PlaceSkill(cell.Kind, cell.Index, skill));", "Apply(() => _session.RemoveSkill(cell.Kind, cell.Index));",
                      "UiKit.Drop(cell.Hit).Dropped = () => DropOn(c);", "UiDrag drag = UiKit.Drag(cell.Hit);", "UiDrag drag = UiKit.Drag(row.Slab);",
                      "RectTransformUtility.ScreenPointToLocalPointInRectangle(_panel, screen, null, out Vector2 local)" })
             Assert.Contains(action, skills, StringComparison.Ordinal);
         Assert.Contains("public sealed class UiDrag : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler", kit, StringComparison.Ordinal);
         Assert.Contains("public sealed class UiDrop : MonoBehaviour, IDropHandler", kit, StringComparison.Ordinal);
         foreach (string stub in new[] { "public interface IBeginDragHandler", "public interface IDragHandler", "public interface IEndDragHandler",
-                     "public interface IDropHandler", "public Vector2 position { get; set; }", "ScreenPointToLocalPointInRectangle(RectTransform rect, Vector2 screenPoint, Camera cam, out Vector2 localPoint)", " A, B, C," })
+                     "public interface IDropHandler", "public Vector2 position { get; set; }", "public bool dragging { get; set; }", "ScreenPointToLocalPointInRectangle(RectTransform rect, Vector2 screenPoint, Camera cam, out Vector2 localPoint)", " A, B, C," })
             Assert.Contains(stub, stubs, StringComparison.Ordinal);
         // Dessins de l'écran : ceux des places (éclats de la barre de combat, nœuds de l'arbre) et l'icône des compétences sans peinture.
         foreach (string sprite in System.Text.RegularExpressions.Regex.Matches(skills, "UiKit\\.Sprite\\(\"([a-z_0-9]+)\"").Select(m => m.Groups[1].Value)

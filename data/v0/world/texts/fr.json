@@ -120,6 +120,8 @@
       "text.ui.tab.skills": "Compétences",
       "text.ui.skills.saved": "Compétences gardées : effet à ta prochaine halte.",
       "text.ui.skills.in_combat": "Pas en plein combat : éloigne-toi des ennemis pour changer tes compétences.",
+      "text.ui.skills.in_dialogue": "Finis d'abord la conversation pour changer tes compétences.",
+      "text.ui.skills.defeated": "Tu es tombé : reprends au dernier point sûr pour changer tes compétences.",
       "text.tree.rempart": "Tenir la ligne",
       "text.tree.contrecoup": "Rendre chaque coup",
       "text.tree.gardien": "Protéger les autres",

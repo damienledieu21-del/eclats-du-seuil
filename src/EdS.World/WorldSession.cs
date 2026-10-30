@@ -151,7 +151,7 @@ namespace EdS.World
         /// <summary>
         /// Sous-lot V1.5 (écran des compétences, décision de Damien : changer ses compétences « partout hors combat ») : nouvelle barre du
         /// personnage, jugée à son niveau actuel par <see cref="PlayerCharacters.CheckSkills"/> (places ouvertes, compétences apprises,
-        /// validateur unique des builds, barre pleine). Admise, elle est gardée (sauvegarde) et prend effet à la prochaine entrée dans une
+        /// validateur unique des builds, barre pas pire). Admise, elle est gardée (sauvegarde) et prend effet à la prochaine entrée dans une
         /// zone, comme les talents (le combat en cours garde le build d'entrée) ; refusée, rien ne change et le premier motif est rendu.
         /// </summary>
         /// <exception cref="ArgumentException">Une liste contient null.</exception>

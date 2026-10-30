@@ -13,7 +13,7 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Sous-lot V1.5, écran des compétences (décisions de Damien : changer ses compétences « partout hors combat » ; la barre grandit avec le
 /// niveau). La barre se change hors combat (aucun ennemi à moins de 12 m, aucun ennemi engagé qui vise le personnage), jugée par un seul
-/// juge (<see cref="PlayerCharacters.CheckSkills"/> : places ouvertes, compétences apprises, validateur unique des builds, barre pleine),
+/// juge (<see cref="PlayerCharacters.CheckSkills"/> : places ouvertes, compétences apprises, validateur unique des builds, barre pas pire),
 /// gardée dans la sauvegarde et prise en compte à l'entrée suivante, comme les talents. Un refus ne change rien.
 /// </summary>
 [Trait("Category", "World")]
@@ -129,13 +129,45 @@ public class V15SkillScreenTests : IDisposable
         BuildViolation active = Check(hero, new[] { Frappe, Heurt, Barriere }, Absolu, new[] { Roc })!;
         Assert.Equal(BuildViolationCode.SlotLeftEmpty, active.Code);
         Assert.Equal("activeSkills[3]", active.Subject);
-        Assert.Equal("place active 4 vide alors que « Onde de rupture » attend : une place ouverte ne reste pas vide.", active.Message);
+        Assert.Equal("place active 4 vide alors que « Onde de rupture » attend : une place ouverte ne se vide pas.", active.Message);
         BuildViolation ultimate = Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, null, new[] { Roc })!;
         Assert.Equal(("ultimate", BuildViolationCode.SlotLeftEmpty), (ultimate.Subject, ultimate.Code));
         BuildViolation passive = Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, Absolu, Array.Empty<string>())!;
         Assert.Equal(("passiveSkills[0]", BuildViolationCode.SlotLeftEmpty), (passive.Subject, passive.Code));
         // Rien n'attend : une place libre reste libre (passive 2 ouverte au niveau 5, aucune autre passive apprise).
         Assert.Null(Check(Hero(Level5), new[] { Frappe, Heurt, Barriere }, null, new[] { Roc }));
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #71 : une barre trouée (sauvegarde d'avant, compétences de départ ou places changées dans les
+    /// données) se répare pas à pas : un changement n'est refusé que s'il rend la barre pire (plus de places vides qu'une compétence apprise
+    /// en attente pourrait remplir). <see cref="PlayerCharacters.Learn"/> ne remplit que les compétences gagnées en montant, pas celles de
+    /// départ : sans cette règle, une barre de niveau 1 sans active refusait tout.
+    /// </summary>
+    [Fact]
+    public void Une_barre_trouee_se_repare_pas_a_pas()
+    {
+        SavedCharacter empty = Hero(Level1).WithSkills(Array.Empty<string>(), null, Array.Empty<string>());
+        Assert.Same(empty, PlayerCharacters.Learn(empty, Shipped, Rules, out _));   // la halte ne la répare pas
+        Assert.Null(Check(empty, new[] { Frappe }, null, Array.Empty<string>()));        // une active de plus : mieux
+        Assert.Null(Check(empty, Array.Empty<string>(), null, new[] { Roc }));           // la passive : mieux aussi
+        Assert.Null(Check(empty, new[] { Heurt, Frappe }, null, new[] { Roc }));         // tout d'un coup
+        Assert.Null(Check(empty, Array.Empty<string>(), null, Array.Empty<string>()));   // rien de changé : pas pire
+        SavedCharacter one = empty.WithSkills(new[] { Frappe }, null, Array.Empty<string>());
+        Assert.Null(Check(one, new[] { Heurt }, null, Array.Empty<string>()));           // remplacer : pas pire
+        BuildViolation worse = Check(one, Array.Empty<string>(), null, Array.Empty<string>())!;   // retirer la seule : pire
+        Assert.Equal(("activeSkills[0]", BuildViolationCode.SlotLeftEmpty), (worse.Subject, worse.Code));
+        Assert.Equal("place active 1 vide alors que « Frappe du rempart » attend : une place ouverte ne se vide pas.", worse.Message);
+        // Niveau 10 sans les compétences de départ (données changées) : la halte ne les remet pas ; elles se reposent une à une, et la
+        // barre ne se vide pas davantage.
+        SavedCharacter late = Hero(Level10).WithSkills(new[] { Barriere, Onde }, Absolu, new[] { Roc });
+        Assert.Same(late, PlayerCharacters.Learn(late, Shipped, Rules, out _));
+        Assert.Null(Check(late, new[] { Barriere, Onde, Frappe }, Absolu, new[] { Roc }));
+        Assert.Equal(BuildViolationCode.SlotLeftEmpty, Check(late, new[] { Barriere }, Absolu, new[] { Roc })!.Code);
+        // Une compétence gagnée en route que la halte placera compte déjà : la retirer de la barre montrée est pire.
+        SavedCharacter route = Hero(Level10).WithSkills(new[] { Frappe, Heurt, Barriere }, null, new[] { Roc });
+        Assert.Equal(BuildViolationCode.SlotLeftEmpty, Check(route, new[] { Frappe, Heurt, Barriere }, Absolu, new[] { Roc })!.Code);
+        Assert.Null(Check(route, new[] { Onde, Heurt, Barriere, Frappe }, Absolu, new[] { Roc }));
     }
 
     [Fact]
@@ -233,8 +265,14 @@ public class V15SkillScreenTests : IDisposable
     [Fact]
     public void L_ecran_montre_places_apprises_et_a_venir()
     {
-        SkillBook book = SkillBook.For(Hero(Level5), Shipped, Bastion, Rules, true, id => "description de " + id);
+        SkillBook book = SkillBook.For(Hero(Level5), Shipped, Bastion, Rules, null, id => "description de " + id);
         Assert.Equal(5, book.Level);
+        Assert.True(book.CanChange);
+        Assert.Null(book.Locked);
+        // La 2e place passive est ouverte, mais aucune passive n'attend : l'écran dit « rien à placer » (relecture de la PR #71).
+        Assert.False(book.HasReserve(SkillKind.Passive));
+        Assert.False(book.HasReserve(SkillKind.Active));
+        Assert.False(SkillBook.For(Hero(Level5), Shipped, Bastion, Rules, "motif").CanChange);
         Assert.Equal(new[] { ("1", 1, true, Frappe), ("2", 1, true, Heurt), ("3", 5, true, Barriere), ("4", 10, false, (string?)null) },
             book.Places.Where(p => p.Kind == SkillKind.Active).Select(p => (p.Key, p.OpenLevel, p.IsOpen, p.Skill)));
         SkillPlace ultimate = book.Place(SkillKind.Ultimate, 0)!;
@@ -330,7 +368,7 @@ public class V15SkillScreenTests : IDisposable
         Assert.Equal("« Provocation » n'est pas apprise.", a.PlaceSkill(SkillKind.Active, 0, Provocation));
         Assert.Equal("« Onde de rupture » n'est pas encore apprise : elle s'apprend au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 1, Onde));
         Assert.StartsWith("« Frappe du rempart » est une compétence active", a.PlaceSkill(SkillKind.Passive, 1, Frappe));
-        Assert.Equal("place active 3 vide alors que « Barrière d'acier » attend : une place ouverte ne reste pas vide.", a.RemoveSkill(SkillKind.Active, 2));
+        Assert.Equal("place active 3 vide alors que « Barrière d'acier » attend : une place ouverte ne se vide pas.", a.RemoveSkill(SkillKind.Active, 2));
         Assert.Equal(BuildViolationCode.DuplicateSkill, a.World.SetSkills(new[] { Frappe, Frappe, Barriere }, null, new[] { Roc })!.Code);
         Assert.Same(before, a.World.Character);
         Assert.DoesNotContain("Compétences gardées : effet à ta prochaine halte.", a.DrainMessages());
@@ -349,7 +387,7 @@ public class V15SkillScreenTests : IDisposable
     [Fact]
     public void Pas_pres_d_un_ennemi()
     {
-        AdventureSession a = Start(Level10, wolf: (-15, -12));   // à 3 m du point sûr d'entrée
+        AdventureSession a = Start(Level10, wolf: (-15, -12));   // à 3 m du point sûr d'entrée, engagé dès le premier tick (la règle des 12 m seule : La_regle_des_12_m_seule)
         Assert.False(a.CanChangeSkills);
         Assert.False(a.Skills().CanChange);
         SavedCharacter before = a.World.Character;
@@ -391,13 +429,120 @@ public class V15SkillScreenTests : IDisposable
         Assert.True(a.Interact());
         Assert.NotNull(a.Dialogue);
         Assert.False(a.CanChangeSkills);
+        Assert.Equal("Finis d'abord la conversation pour changer tes compétences.", a.SkillsLocked);
+        Assert.Equal(a.SkillsLocked, a.Skills().Locked);
         SavedCharacter before = a.World.Character;
-        Assert.Equal("Pas en plein combat : éloigne-toi des ennemis pour changer tes compétences.", a.PlaceSkill(SkillKind.Active, 0, Onde));
+        Assert.Equal("Finis d'abord la conversation pour changer tes compétences.", a.PlaceSkill(SkillKind.Active, 0, Onde));
         Assert.Same(before, a.World.Character);
         a.CloseDialogue();
         Assert.Null(a.Dialogue);
         Assert.True(a.CanChangeSkills);
+        Assert.Null(a.SkillsLocked);
         Assert.Null(a.PlaceSkill(SkillKind.Active, 0, Onde));
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #71 : la règle des 12 m seule. Un loup à 8 m qui ne s'engage qu'à 1 m (donc pas engagé) refuse le
+    /// changement ; à 14 m, il est permis.
+    /// </summary>
+    [Theory]
+    [InlineData(-10, false)]   // 8 m du point sûr d'entrée (-18, -12)
+    [InlineData(-4, true)]     // 14 m
+    public void La_regle_des_12_m_seule(int x, bool allowed)
+    {
+        AdventureSession a = Start(Level10, wolf: (x, -12), aggro: 1);
+        var wolf = a.World.Zone.Engine.View(a.World.CurrentCreature("loup1"));
+        Assert.False(wolf.Engaged);
+        Assert.Equal(allowed, a.CanChangeSkills);
+        SavedCharacter before = a.World.Character;
+        string? why = a.PlaceSkill(SkillKind.Active, 0, Onde);
+        if (allowed)
+        {
+            Assert.Null(why);
+            Assert.Equal(new[] { Onde, Heurt, Barriere, Frappe }, a.World.Character.ActiveSkills);
+        }
+        else
+        {
+            Assert.Equal("Pas en plein combat : éloigne-toi des ennemis pour changer tes compétences.", why);
+            Assert.Same(before, a.World.Character);
+        }
+    }
+
+    [Fact]
+    public void Pas_une_fois_tombe()
+    {
+        // Le sanglier rendu mortel sur le chemin, comme Lot128AdventureTests.Defaite_puis_reprise_au_dernier_point_sur.
+        string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
+        CopyTree(DataDirectory, data);
+        CopyTree(Path.Combine(AppContext.BaseDirectory, "scenarios"), scenarios);
+        string zone = Path.Combine(scenarios, "zones", "vallons.json");
+        JsonObject root = JsonNode.Parse(File.ReadAllText(zone))!.AsObject();
+        JsonObject boar = root["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!.AsObject();
+        boar["position"] = new JsonArray(-14, -12);
+        foreach (JsonNode? attack in boar["attacks"]!.AsArray()) attack!["rawDamage"] = 100_000;
+        File.WriteAllText(zone, root.ToJsonString());
+        string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(Level10)));
+        AdventureSession a = AdventureSession.Load(data, scenarios, savePath);
+        for (int i = 0; i < 1200 && !a.World.IsDefeated; i++) a.Advance(0.05);
+        Assert.True(a.World.IsDefeated);
+        a.DrainMessages();
+        SavedCharacter before = a.World.Character;
+        Assert.Equal("Tu es tombé : reprends au dernier point sûr pour changer tes compétences.", a.PlaceSkill(SkillKind.Active, 0, Onde));
+        Assert.Contains("Tu es tombé : reprends au dernier point sûr pour changer tes compétences.", a.DrainMessages());
+        Assert.Same(before, a.World.Character);
+    }
+
+    private static void CopyTree(string from, string to)
+    {
+        foreach (string dir in Directory.GetDirectories(from, "*", SearchOption.AllDirectories)) Directory.CreateDirectory(dir.Replace(from, to));
+        Directory.CreateDirectory(to);
+        foreach (string file in Directory.GetFiles(from, "*", SearchOption.AllDirectories)) File.Copy(file, file.Replace(from, to));
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #71 : une sauvegarde de niveau 1 sans active (données de départ changées) se répare à l'écran,
+    /// une compétence à la fois ; une fois pleine, elle ne se vide plus.
+    /// </summary>
+    [Fact]
+    public void Une_sauvegarde_a_barre_vide_se_repare_a_l_ecran()
+    {
+        SavedCharacter hero = PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped)
+            .WithSkills(Array.Empty<string>(), null, new[] { Roc });
+        AdventureSession a = Start(Level1, character: hero);
+        Assert.Empty(a.World.Character.ActiveSkills);
+        Assert.Null(a.PlaceSkill(SkillKind.Active, 0, Frappe));
+        Assert.Equal(new[] { Frappe }, a.World.Character.ActiveSkills);
+        Assert.Null(a.PlaceSkill(SkillKind.Active, 1, Heurt));
+        Assert.Equal(new[] { Frappe, Heurt }, a.World.Character.ActiveSkills);
+        Assert.Equal("place active 2 vide alors que « Heurt de bouclier » attend : une place ouverte ne se vide pas.", a.RemoveSkill(SkillKind.Active, 1));
+        Assert.True(a.Rest());
+        Assert.Equal(new[] { Frappe, Heurt }, Engaged(a));
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #71 : une action sans effet n'écrit rien et ne dit rien ; après un niveau gagné en route, la halte
+    /// annonce donc toujours la compétence et sa touche (12.9b).
+    /// </summary>
+    [Fact]
+    public void Une_action_sans_effet_garde_l_annonce_de_la_halte()
+    {
+        AdventureSession a = Start(Level4);
+        ((INarrativeWorld)a.World).GiveXp(1);   // niveau 5 en route
+        SavedCharacter before = a.World.Character;
+        Assert.Equal(new[] { Frappe, Heurt }, before.ActiveSkills);
+        a.DrainMessages();
+        Assert.Null(a.PlaceSkill(SkillKind.Active, 2, Barriere));   // sur sa propre place (barre de la prochaine halte)
+        Assert.Equal("la barre n'a que 4 place(s) active(s).", a.PlaceSkill(SkillKind.Active, 7, Barriere));   // refus : rien d'écrit
+        Assert.Null(a.SetSkills(new[] { Frappe, Heurt, Barriere }, null, new[] { Roc }));   // la même barre
+        Assert.Null(a.RemoveSkill(SkillKind.Passive, 1));   // place vide : rien à retirer
+        Assert.Same(before, a.World.Character);
+        Assert.Empty(a.DrainMessages());
+        Assert.True(a.Rest());
+        Assert.Equal(new[] { Barriere }, a.World.Learned.Select(u => u.Skill));
+        Assert.Contains(a.DrainMessages(), m => m.StartsWith("Nouvelle compétence : Barrière d'acier (touche 3", StringComparison.Ordinal));
     }
 
     [Fact]

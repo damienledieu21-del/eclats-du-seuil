@@ -195,7 +195,8 @@ namespace EdS.Game
 
         /// <summary>
         /// Sous-lot V1.5 : rend <paramref name="target"/> glissable (souris ou doigt) ; le graphisme reçoit les rayons. Un glissé ne compte
-        /// pas comme un clic (uGUI ne l'envoie pas).
+        /// pas comme un clic : uGUI envoie le clic quand le doigt se lève sur l'image de départ, même après un glissé, et
+        /// <see cref="UiPointer"/> l'ignore alors (relecture indépendante de la PR #71).
         /// </summary>
         public static UiDrag Drag(Graphic target)
         {
@@ -249,6 +250,9 @@ namespace EdS.Game
 
         public void OnPointerClick(PointerEventData eventData)
         {
+            // Sous-lot V1.5 (relecture indépendante de la PR #71) : la fin d'un glissé n'est pas un clic (uGUI envoie les deux quand le doigt
+            // se lève sur l'image d'où il est parti).
+            if (eventData.dragging) return;
             if (eventData.button == PointerEventData.InputButton.Right) Right?.Invoke();
             else if (eventData.button == PointerEventData.InputButton.Left) Left?.Invoke();
         }
