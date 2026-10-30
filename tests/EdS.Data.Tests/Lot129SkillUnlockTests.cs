@@ -96,22 +96,39 @@ public class Lot129SkillUnlockTests : IDisposable
         PlayerCharacters.Setup(learned, Shipped, ShippedData, new CombatantPlacement(GroundVector.Parse("0", "0"), Fixed.Parse("0.5")));
     }
 
+    /// <summary>
+    /// Un emplacement déjà pris : rien n'est remplacé. Avec le registre du monde (la forme qu'utilise la partie), la compétence va dans la
+    /// réserve pour de bon : elle est donnée, la halte ne la placera plus (relecture indépendante de la PR #74). La forme sans registre
+    /// (<see cref="PlayerCharacters.Learn(SavedCharacter, CharacterProgression, ProgressionRules, out IReadOnlyList{SkillUnlock})"/>) ne
+    /// se souvient de rien : elle la placerait dès qu'une place se libère.
+    /// </summary>
     [Fact]
-    public void Un_emplacement_deja_pris_fait_attendre_la_competence()
+    public void Un_emplacement_deja_pris_met_la_competence_dans_la_reserve()
     {
-        // Personnage qui a choisi lui-même sa troisième active (écran de choix à venir) : la Barrière attend, rien n'est remplacé.
+        // Personnage qui a choisi lui-même sa troisième active : la Barrière ne remplace rien.
         var chosen = new SavedCharacter("bastion", "class.bastion", 520, null,
             new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier", "skill.bastion.provocation" }, null,
             new[] { "skill.bastion.endurance_du_roc" });
-        Assert.Same(chosen, PlayerCharacters.Learn(chosen, Shipped, Rules, out IReadOnlyList<SkillUnlock> none));
+        var registry = new HashSet<string>(StringComparer.Ordinal);
+        Assert.Same(chosen, PlayerCharacters.Learn(chosen, Shipped, Rules, registry.Contains, out IReadOnlyList<SkillUnlock> none,
+            out IReadOnlyList<SkillUnlock> handed));
+        Assert.Empty(none);
+        Assert.Equal(new[] { Barriere }, handed.Select(u => u.Skill));   // donnée : en réserve
+        foreach (SkillUnlock u in handed) registry.Add(u.GivenKey);
+        // Au niveau 10, avec le registre : la Barrière reste dans la réserve, l'Onde prend la quatrième place, l'ultime arrive.
+        SavedCharacter tenGiven = PlayerCharacters.Learn(chosen.WithXp(1620), Shipped, Rules, registry.Contains, out IReadOnlyList<SkillUnlock> placed, out _);
+        Assert.Equal(new[] { Onde, Absolu }, placed.Select(u => u.Skill));
+        Assert.Equal(new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier", "skill.bastion.provocation", Onde }, tenGiven.ActiveSkills);
+        // Sans registre (la fonction seule) :
+        Assert.Same(chosen, PlayerCharacters.Learn(chosen, Shipped, Rules, out none));
         Assert.Empty(none);
         // Déjà équipée ailleurs : pas en double.
         var already = new SavedCharacter("bastion", "class.bastion", 520, null, new[] { Barriere, "skill.bastion.heurt_de_bouclier" }, null,
             new[] { "skill.bastion.endurance_du_roc" });
         Assert.Same(already, PlayerCharacters.Learn(already, Shipped, Rules, out none));
         Assert.Empty(none);
-        // Au niveau 10, dans l'ordre de la progression : la Barrière prend la quatrième place, l'Onde attend, l'ultime arrive ; Contrecoup
-        // (réserve) n'est jamais placé d'office.
+        // Sans registre, au niveau 10, dans l'ordre de la progression : la Barrière prend la quatrième place, l'Onde ne trouve plus de place,
+        // l'ultime arrive ; Contrecoup (réserve) n'est jamais placé d'office.
         SavedCharacter ten = PlayerCharacters.Learn(chosen.WithXp(1620), Shipped, Rules, out IReadOnlyList<SkillUnlock> gained);
         Assert.Equal(new[] { Barriere, Absolu }, gained.Select(u => u.Skill));
         Assert.Equal(new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier", "skill.bastion.provocation", Barriere }, ten.ActiveSkills);

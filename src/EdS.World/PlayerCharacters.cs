@@ -32,7 +32,9 @@ namespace EdS.World
         /// (<see cref="ClassProgression.SkillUnlocks"/>) qu'il n'a pas encore, chacune s'il lui reste un emplacement de sa sorte ouvert à ce niveau
         /// (règles : <see cref="ProgressionRules.ActiveSlotLevels"/>, <see cref="ProgressionRules.PassiveSlotLevels"/>,
         /// <see cref="ProgressionRules.UltimateUnlockLevel"/>). Une active prend l'emplacement libre suivant. Rend le personnage tel quel s'il n'y
-        /// a rien à gagner ; <paramref name="learned"/> dit ce qui a été équipé, dans l'ordre de la progression.
+        /// a rien à gagner ; <paramref name="learned"/> dit ce qui a été équipé, dans l'ordre de la progression. Cette forme ne connaît pas le
+        /// registre du monde : elle place toute compétence avec sa place qui manque, à chaque appel ; la partie utilise la forme avec le
+        /// registre, où une compétence sans place libre va dans la réserve pour de bon (donnée).
         /// Réponse de Damien du 30 octobre 2026 : seules les compétences qui viennent avec leur place (<see cref="SkillUnlock.WithPlace"/>)
         /// sont équipées ainsi ; les autres (Provocation, Contrecoup) vont dans la réserve, même si la barre a de la place : le joueur les
         /// place lui-même avec l'écran des compétences.
@@ -79,7 +81,7 @@ namespace EdS.World
                         ultimate = u.Skill;
                         break;
                     default:
-                        continue;   // emplacement pris (choix futur du joueur) : la compétence attend
+                        continue;   // emplacement pris : la compétence va dans la réserve (donnée, la halte ne la placera plus)
                 }
                 gained.Add(u);
             }

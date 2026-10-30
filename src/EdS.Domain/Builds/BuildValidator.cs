@@ -41,6 +41,12 @@ namespace EdS.Domain.Builds
         /// depuis la réponse de Damien du 30 octobre 2026 (une place peut rester vide) ; gardé pour ne pas déplacer les valeurs du code.
         /// </summary>
         SlotLeftEmpty,
+
+        /// <summary>
+        /// Relecture indépendante de la PR #74 : le registre du monde n'a plus la place des compétences à donner avec ce changement de barre
+        /// (et des morts possibles d'un tick) ; le changement entier est refusé. Jugé par la partie (EdS.World).
+        /// </summary>
+        RegistryFull,
     }
 
     /// <summary>Une raison de refus, rattachée à l'élément concerné (talent, compétence, emplacement).</summary>

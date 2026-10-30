@@ -795,7 +795,7 @@ namespace EdS.Runtime
             if (Locked() is string locked) return locked;
             if (new SkillBar(actives, ultimate, passives).SameAs(SkillBar.Of(World.NextEntry))) return null;   // rien à changer, ni à garder
             BuildViolation? why = World.SetSkills(actives, ultimate, passives);
-            if (why != null) return why.Message;
+            if (why != null) return why.Code == BuildViolationCode.RegistryFull ? Text("text.ui.skills.registry_full") : why.Message;
             _dirty = true;
             Say("text.ui.skills.saved");
             return null;
@@ -816,7 +816,7 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V1.5 : retire la compétence de la place <paramref name="index"/> de la sorte <paramref name="kind"/> (les suivantes
-        /// avancent). Refusé si la barre devient pire (une compétence apprise de sa sorte attendrait) ; même jugement que
+        /// avancent) ; elle retourne dans la réserve. Une place peut rester vide (réponse de Damien du 30 octobre 2026) ; même jugement que
         /// <see cref="SetSkills"/>.
         /// </summary>
         public string? RemoveSkill(SkillKind kind, int index)

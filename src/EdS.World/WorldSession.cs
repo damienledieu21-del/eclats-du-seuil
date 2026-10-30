@@ -166,21 +166,43 @@ namespace EdS.World
                 // Réponse de Damien du 30 octobre 2026 (une place peut rester vide) : le joueur a changé la barre de la prochaine halte, où
                 // les compétences gagnées en route sont déjà placées ; elles sont données pour de bon, et la halte ne remet pas celle qu'il
                 // vient de retirer.
+                // Relecture indépendante de la PR #74 : tout ou rien. Sans la place de toutes les clés au registre, le changement entier est
+                // refusé (sinon une compétence retirée reviendrait à la halte et serait annoncée de nouveau).
                 PlayerCharacters.Learn(_character, _progression, _rules, Zone.IsConsumed, out _, out IReadOnlyList<SkillUnlock> handed);
+                if (!CanGive(handed))
+                    return new BuildViolation(BuildViolationCode.RegistryFull, "skills",
+                        "Le registre du monde est plein : ce changement de compétences ne peut pas être gardé.");
                 _character = _character.WithSkills(actives, ultimate, passives);
                 Give(handed);
             }
             return why;
         }
 
+        /// <summary>Clés <see cref="SkillUnlock.GivenKey"/> de <paramref name="handed"/> pas encore au registre, sans doublon.</summary>
+        private List<string> ToGive(IEnumerable<SkillUnlock> handed) =>
+            handed.Select(u => u.GivenKey).Distinct(StringComparer.Ordinal).Where(k => !Zone.IsConsumed(k)).ToList();
+
         /// <summary>
-        /// Inscrit au registre du monde les compétences données (<see cref="SkillUnlock.GivenKey"/>), comme la découverte d'un point sûr :
-        /// seulement s'il reste au registre la place des morts possibles d'un tick (sinon la compétence pourra être redonnée plus tard).
+        /// Le registre a la place de toutes les clés à donner, en gardant celle des morts possibles d'un tick (la règle de la découverte d'un
+        /// point sûr) ; vrai s'il n'y a rien à donner.
         /// </summary>
-        private void Give(IEnumerable<SkillUnlock> handed)
+        private bool CanGive(IEnumerable<SkillUnlock> handed)
         {
-            foreach (SkillUnlock u in handed)
-                if (!Zone.IsConsumed(u.GivenKey) && Zone.RegistryRoom > Zone.Engine.CombatantIds.Count) Zone.Consume(u.GivenKey);
+            int count = ToGive(handed).Count;
+            return count == 0 || Zone.RegistryRoom - count >= Zone.Engine.CombatantIds.Count;
+        }
+
+        /// <summary>
+        /// Inscrit au registre du monde les compétences données (<see cref="SkillUnlock.GivenKey"/>), <b>toutes ou aucune</b> (relecture
+        /// indépendante de la PR #74) : seulement s'il reste au registre, après elles, la place des morts possibles d'un tick ; sinon rien
+        /// n'est inscrit (à l'entrée, elles seront données à une halte suivante ; un changement de barre est refusé avant, par
+        /// <see cref="CanGive"/>). Rend vrai si tout est inscrit.
+        /// </summary>
+        private bool Give(IEnumerable<SkillUnlock> handed)
+        {
+            if (!CanGive(handed)) return false;
+            foreach (string key in ToGive(handed)) Zone.Consume(key);
+            return true;
         }
 
         /// <summary>Compétences données à l'entrée de cette session (<see cref="Give"/>), inscrites quand la session est prête.</summary>

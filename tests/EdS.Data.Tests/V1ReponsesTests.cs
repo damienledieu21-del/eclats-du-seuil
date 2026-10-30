@@ -89,7 +89,7 @@ public class V1ReponsesTests : IDisposable
         AdventureSession a = KillWeakWolf(Level3 - 1);
         IReadOnlyList<string> messages = a.DrainMessages();
         Assert.Contains("Niveau 3 ! Il prendra effet à ta prochaine halte.", messages);
-        Assert.Contains("Nouvelle compétence en réserve : Provocation. Place-la dans ta barre avec l'écran des compétences (B).", messages);
+        Assert.Contains("Nouvelle compétence en réserve : Provocation. Place-la dans ta barre depuis l'écran des compétences.", messages);
         Assert.DoesNotContain(messages, m => m.StartsWith("À ta prochaine halte, nouvelle compétence", StringComparison.Ordinal));
         SkillBook book = a.Skills();
         Assert.True(book.HasReserve(SkillKind.Active));
@@ -227,6 +227,107 @@ public class V1ReponsesTests : IDisposable
         Assert.Equal(new[] { Frappe, Heurt, Onde }, some.ActiveSkills);
         Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, placed.ActiveSkills);
         Assert.Throws<ArgumentNullException>(() => PlayerCharacters.Learn(hero, Progression, Rules, null!, out _, out _));
+    }
+
+    // --- Relecture indépendante de la PR #74 ------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Sonde de la relecture, devenue test : registre presque plein. Avant la correction, la clé de l'ultime ne s'inscrivait pas ; retirée,
+    /// elle réapparaissait dans la barre de la prochaine halte, revenait à chaque halte et « Nouvelle ultime » était annoncée de nouveau ; et
+    /// l'inscription pouvait n'être que partielle. Désormais : à l'entrée, toutes les clés ou aucune ; un changement de barre qui demande des
+    /// clés sans la place est refusé en entier, rien ne change.
+    /// </summary>
+    [Theory]
+    [InlineData(2, false)]   // place pour 2 clés sur 3 (plus les morts possibles d'un tick) : aucune inscrite
+    [InlineData(3, true)]    // place pour les 3 : toutes inscrites
+    public void Registre_presque_plein_tout_ou_rien(int extra, bool given)
+    {
+        SavedCharacter hero = Player(Level10);
+        string safeKey = Zone().SafePointKey(Zone().Entry.Id);   // point d'entrée déjà découvert : sa clé ne prend pas de place
+        int combatants = Load(hero, new[] { safeKey }).World.Zone.Engine.CombatantIds.Count;
+        string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - extra - 1).Select(i => $"probe/k{i:D6}").Append(safeKey).ToArray();
+        AdventureSession a = Load(hero, keys);
+        Assert.Equal(new[] { Barriere, Onde, Absolu }, a.World.Learned.Select(u => u.Skill));   // placées à l'entrée dans tous les cas
+        string[] skillKeys = new[] { Barriere, Onde, Absolu }.Select(k => "character/skill/" + k).ToArray();
+        Assert.All(skillKeys, k => Assert.Equal(given, a.World.Zone.IsConsumed(k)));   // toutes ou aucune
+        SavedCharacter before = a.World.Character;
+        string? why = a.RemoveSkill(SkillKind.Ultimate, 0);
+        if (given)
+        {
+            Assert.Null(why);
+            Assert.Null(a.World.NextEntry.Ultimate);
+            return;
+        }
+        Assert.Equal("Le registre du monde est plein : ce changement de compétences ne peut pas être gardé.", why);
+        Assert.Same(before, a.World.Character);
+        Assert.Equal(Absolu, a.World.NextEntry.Ultimate);
+        Assert.Equal(BuildViolationCode.RegistryFull, a.World.SetSkills(new[] { Frappe, Heurt, Barriere, Onde }, null, new[] { Roc })!.Code);
+        Assert.Same(before, a.World.Character);
+        Assert.All(skillKeys, k => Assert.False(a.World.Zone.IsConsumed(k)));
+        // À la halte : l'ultime est toujours là, et rien n'est annoncé de nouveau.
+        a.DrainMessages();
+        Assert.True(a.Rest());
+        Assert.Equal(Absolu, EngagedUltimate(a));
+        Assert.Empty(a.World.Learned);
+        Assert.DoesNotContain(a.DrainMessages(), m => m.StartsWith("Nouvelle", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Propriété (relecture indépendante de la PR #74), avec le vrai registre : après tout changement de barre admis, la barre de la
+    /// prochaine halte est exactement celle que le joueur a gardée ; et une halte (session suivante) l'engage telle quelle, sans rien
+    /// annoncer. 300 barres tirées au hasard (graine fixe) dans un petit univers, depuis cinq départs (niveaux gagnés en route compris).
+    /// </summary>
+    [Fact]
+    public void Propriete_apres_un_changement_admis_la_halte_garde_la_barre()
+    {
+        string[] actives = { Frappe, Heurt, Barriere, Onde, Provocation, Contrecoup };
+        string[] passives = { Roc, "skill.bastion.bouclier_lourd" };
+        var random = new Random(74);
+        ZoneDefinition zone = Zone();
+        int admitted = 0;
+        foreach ((long xp, bool enRoute) in new[] { (0L, false), (Level5 - 1, true), (Level5, false), (Level10 - 1, true), (Level10, false) })
+        {
+            WorldSession w = Play(zone, Player(xp));
+            if (enRoute) ((INarrativeWorld)w).GiveXp(1);
+            SkillBar? last = null;
+            for (int i = 0; i < 60; i++)
+            {
+                string[] a = actives.OrderBy(_ => random.Next()).Take(random.Next(0, 5)).ToArray();
+                string? u = random.Next(3) == 0 ? null : Absolu;
+                string[] p = passives.OrderBy(_ => random.Next()).Take(random.Next(0, 3)).ToArray();
+                if (w.SetSkills(a, u, p) != null) continue;
+                admitted++;
+                last = new SkillBar(a, u, p);
+                Assert.True(last.SameAs(SkillBar.Of(w.NextEntry)), $"{xp} : [{string.Join(",", a)}] {u} [{string.Join(",", p)}]");
+                Assert.True(last.SameAs(SkillBar.Of(w.Character)));
+            }
+            if (last is null) continue;
+            var next = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+            Assert.Empty(next.Learned);
+            Assert.True(last.SameAs(SkillBar.Of(next.Character)));
+            Assert.True(last.SameAs(SkillBar.Of(next.NextEntry)));
+        }
+        Assert.True(admitted >= 30, admitted.ToString());
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #74 : une boutique ouverte au crépuscule, quand la nuit tombe, dit « fermée » sur chaque offre
+    /// (comme l'achat), au lieu de proposer des achats refusés.
+    /// </summary>
+    [Fact]
+    public void Offres_d_une_boutique_fermee_entre_temps()
+    {
+        (string data, string scenarios) = DataCopy(Near("merchant.armurier"));
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", TickAt(0, 21 * 60 + 58), 0, Array.Empty<string>(), Hero(100_000)));
+        AdventureSession a = Adventure(SavePath, data, scenarios);
+        Assert.True(a.OpenShop("merchant.armurier"));
+        Assert.All(a.ShopOffers(), o => Assert.Equal(TradeRefusal.None, o.Refusal));
+        for (int i = 0; i < 600 && a.World.Zone.Time.Phase != DayPhase.Night; i++) a.Advance(0.05);
+        Assert.Equal(DayPhase.Night, a.World.Zone.Time.Phase);
+        Assert.Equal("merchant.armurier", a.Shop);
+        Assert.NotEmpty(a.ShopOffers());
+        Assert.All(a.ShopOffers(), o => Assert.Equal(TradeRefusal.Closed, o.Refusal));
+        Assert.Equal(TradeRefusal.Closed, a.Buy(a.ShopOffers()[0].Item));
     }
 
     /// <summary>Partie à <paramref name="xp"/> près d'un loup affaibli (1 PV : 1 point d'expérience), tué par le Bastion.</summary>
