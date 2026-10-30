@@ -449,6 +449,7 @@ namespace EdS.Game
             _markers.Sync(a);
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
+            _arena.ShowGear(GearLooks.For(a.World.Inventory));   // sous-lot V1.2 : arme, bouclier et cape portés
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison

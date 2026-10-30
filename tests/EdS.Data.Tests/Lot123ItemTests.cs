@@ -246,9 +246,11 @@ public class Lot123ItemTests
         ItemCatalogLoadResult loaded = ItemJsonReader.ReadFile(CatalogPath, ShippedData);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         ItemCatalog c = loaded.Catalog!;
-        Assert.Equal(new[] { "weapon", "shield", "chest", "neck" }, c.Slots);   // quatre emplacements dont le bouclier (L11-D10)
-        Assert.Equal(24, c.InventorySize);                                       // Q5
-        Assert.Equal(20, c.Items.Count);   // sous-lot 12.6 : herbe, ferrure, potion, remède ; 12.7 : lame du Seuil
+        // Sous-lot V1.2 : les 18 places (cadrage Q4, choix de Damien du 29 octobre 2026) ; les quatre de la tranche gardent leur nom.
+        Assert.Equal(new[] { "weapon", "shield", "head", "shoulders", "cloak", "chest", "bracers", "hands", "belt", "legs", "feet", "neck",
+            "ring_1", "ring_2", "relic_1", "relic_2", "shard", "tool" }, c.Slots);
+        Assert.Equal(24, c.InventorySize);                                       // Q5 : 24 places gardées (les sacs viendront plus tard)
+        Assert.Equal(82, c.Items.Count);   // V1.2 : 73 équipements, puis les 9 matériaux et objets de soin d'avant
         ItemDefinition shield = c.Item("item.ecu_de_chene");
         Assert.Equal((ItemType.Equipment, "shield", 1, ItemRarity.Common, 1, 60), (shield.Type, shield.Slot, shield.RequiredLevel, shield.Rarity, shield.Stack, shield.Bonus.Armor));
         // H5 : deux boucliers de même niveau, d'orientations différentes.
@@ -268,20 +270,21 @@ public class Lot123ItemTests
     [Fact]
     public void Catalogue_invalide_refuse_avec_son_chemin()
     {
-        Assert.Equal("$.data.slots[1]", FirstError(Mutated(r => Data(r)["slots"]![1] = "weapon")));
-        Assert.Equal("$.data.slots[0]", FirstError(Mutated(r => Data(r)["slots"]![0] = "Arme")));
+        Assert.Equal("$.data.slots[1].id", FirstError(Mutated(r => Data(r)["slots"]![1]!["id"] = "weapon")));
+        Assert.Equal("$.data.slots[0].id", FirstError(Mutated(r => Data(r)["slots"]![0]!["id"] = "Arme")));
         Assert.Equal("$.data.inventorySize", FirstError(Mutated(r => Data(r)["inventorySize"] = 0)));
         Assert.Equal("$.data.items[1].id", FirstError(Mutated(r => ItemAt(r, 1)["id"] = "item.epee_du_milicien")));
         Assert.Equal("$.data.items[0].id", FirstError(Mutated(r => ItemAt(r, 0)["id"] = "epee")));
         Assert.Equal("$.data.items[0].rarity", FirstError(Mutated(r => ItemAt(r, 0)["rarity"] = "secret")));   // Q30 : une origine, pas un rang
         Assert.Equal("$.data.items[0].type", FirstError(Mutated(r => ItemAt(r, 0)["type"] = "potion")));
-        Assert.Equal("$.data.items[0].slot", FirstError(Mutated(r => ItemAt(r, 0)["slot"] = "feet")));
+        Assert.Equal("$.data.items[0].slot", FirstError(Mutated(r => ItemAt(r, 0)["slot"] = "pieds")));
         Assert.Equal("$.data.items[0].requiredLevel", FirstError(Mutated(r => ItemAt(r, 0)["requiredLevel"] = 31)));
         Assert.Equal("$.data.items[0].bonus.chance", FirstError(Mutated(r => ItemAt(r, 0)["bonus"]!["chance"] = 1)));
         Assert.Equal("$.data.items[0].bonus.physicalPower", FirstError(Mutated(r => ItemAt(r, 0)["bonus"]!["physicalPower"] = ItemValidator.MaxItemBonus + 1)));
         Assert.Equal("$.data.items[0].stack", FirstError(Mutated(r => ItemAt(r, 0)["stack"] = 2)));        // un équipement ne s'empile pas
-        Assert.Equal("$.data.items[10].slot", FirstError(Mutated(r => ItemAt(r, 10)["slot"] = "neck")));  // un matériau ne se porte pas
-        Assert.Equal("$.data.items[10].stack", FirstError(Mutated(r => ItemAt(r, 10)["stack"] = 1000)));
+        int pelt = Catalog.Items.ToList().FindIndex(i => i.Id == "item.peau_de_loup");
+        Assert.Equal($"$.data.items[{pelt}].slot", FirstError(Mutated(r => ItemAt(r, pelt)["slot"] = "neck")));  // un matériau ne se porte pas
+        Assert.Equal($"$.data.items[{pelt}].stack", FirstError(Mutated(r => ItemAt(r, pelt)["stack"] = 1000)));
         Assert.Equal("$.data.loot[0].drops[0].item", FirstError(Mutated(r => Data(r)["loot"]![0]!["drops"]![0]!["item"] = "item.inconnu")));
         Assert.Equal("$.data.loot[0].drops[0].count", FirstError(Mutated(r => Data(r)["loot"]![0]!["drops"]![0]!["count"] = 21)));   // plus d'une pile
         Assert.Equal("$.data.loot[0].drops[1].chancePercent", FirstError(Mutated(r => Data(r)["loot"]![0]!["drops"]![1]!["chancePercent"] = 0)));
@@ -390,7 +393,7 @@ public class Lot123ItemTests
             new[] { new ItemStack("item.peau_de_loup", 12), new ItemStack("item.gambison", 1) },
             new Dictionary<string, string> { ["weapon"] = "item.epee_du_milicien", ["shield"] = "item.ecu_de_chene" });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), hero));
-        Assert.Contains("\"schemaVersion\": 6,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse)
+        Assert.Contains("\"schemaVersion\": 7,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places)
         Assert.Contains("      \"inventory\": [\n        {\"item\": \"item.peau_de_loup\", \"count\": 12},\n        {\"item\": \"item.gambison\", \"count\": 1}\n      ],\n"
             + "      \"equipment\": {\"shield\": \"item.ecu_de_chene\", \"weapon\": \"item.epee_du_milicien\"},\n", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
@@ -410,14 +413,14 @@ public class Lot123ItemTests
             int a = t.IndexOf(",\n      \"" + field + "\"", StringComparison.Ordinal), b = t.IndexOf("\n    },", a, StringComparison.Ordinal);
             return t.Remove(a, b - a);
         }
-        string v2 = CutFrom(text, "inventory").Replace("\"schemaVersion\": 6", "\"schemaVersion\": 2");
+        string v2 = CutFrom(text, "inventory").Replace("\"schemaVersion\": 7", "\"schemaVersion\": 2");
         SaveLoadResult migrated = SaveJsonReader.Read(v2);
         Assert.True(migrated.IsValid, migrated.Report.ToString() + "\n" + v2);
         Assert.True(migrated.Save!.Migrated);
         Assert.Empty(migrated.Save.Character!.Inventory);
         Assert.Empty(migrated.Save.Character.Equipment);
         Assert.Equal("$.data.character.inventory",
-            Assert.Single(SaveJsonReader.Read(CutFrom(text, "equipment").Replace("\"schemaVersion\": 6", "\"schemaVersion\": 2")).Report.Errors).Path);
+            Assert.Single(SaveJsonReader.Read(CutFrom(text, "equipment").Replace("\"schemaVersion\": 7", "\"schemaVersion\": 2")).Report.Errors).Path);
     }
 
     [Theory]

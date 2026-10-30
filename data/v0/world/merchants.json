@@ -10,16 +10,56 @@
         "value": 300
       },
       {
+        "item": "item.hachette_du_bucheron",
+        "value": 350
+      },
+      {
         "item": "item.epee_de_garde",
         "value": 1200
+      },
+      {
+        "item": "item.masse_du_bourg",
+        "value": 1850
       },
       {
         "item": "item.marteau_du_carrier",
         "value": 2500
       },
       {
+        "item": "item.lame_du_seuil",
+        "value": 8000
+      },
+      {
+        "item": "item.epee_longue_d_aube",
+        "value": 3100
+      },
+      {
+        "item": "item.masse_benite",
+        "value": 3100
+      },
+      {
+        "item": "item.fleau_du_hameau",
+        "value": 3850
+      },
+      {
+        "item": "item.epee_du_capitaine",
+        "value": 8000
+      },
+      {
+        "item": "item.marteau_des_hautes_pierres",
+        "value": 9200
+      },
+      {
+        "item": "item.lame_de_la_tour",
+        "value": 9200
+      },
+      {
         "item": "item.ecu_de_chene",
         "value": 250
+      },
+      {
+        "item": "item.targe_d_osier",
+        "value": 350
       },
       {
         "item": "item.pavois_du_moulin",
@@ -30,12 +70,160 @@
         "value": 1400
       },
       {
+        "item": "item.ecu_du_garde",
+        "value": 1850
+      },
+      {
+        "item": "item.bouclier_de_la_tour",
+        "value": 3600
+      },
+      {
+        "item": "item.rondache_du_lac",
+        "value": 3600
+      },
+      {
+        "item": "item.ecu_de_l_aube",
+        "value": 3600
+      },
+      {
+        "item": "item.pavois_des_hautes_pierres",
+        "value": 9200
+      },
+      {
+        "item": "item.bouclier_a_pointes",
+        "value": 9200
+      },
+      {
+        "item": "item.coiffe_de_cuir",
+        "value": 250
+      },
+      {
+        "item": "item.casque_de_fer",
+        "value": 2100
+      },
+      {
+        "item": "item.heaume_du_guetteur",
+        "value": 2100
+      },
+      {
+        "item": "item.heaume_de_la_tour",
+        "value": 7600
+      },
+      {
+        "item": "item.epaulieres_de_cuir",
+        "value": 450
+      },
+      {
+        "item": "item.spalieres_de_fer",
+        "value": 2850
+      },
+      {
+        "item": "item.spalieres_du_veneur",
+        "value": 2850
+      },
+      {
+        "item": "item.mantelet_du_capitaine",
+        "value": 8400
+      },
+      {
+        "item": "item.cape_de_laine",
+        "value": 250
+      },
+      {
+        "item": "item.cape_de_voyageur",
+        "value": 2350
+      },
+      {
+        "item": "item.cape_de_l_ordre",
+        "value": 3600
+      },
+      {
+        "item": "item.cape_du_seuil",
+        "value": 16400
+      },
+      {
         "item": "item.gambison",
         "value": 350
       },
       {
         "item": "item.cotte_de_mailles",
         "value": 2000
+      },
+      {
+        "item": "item.brigandine",
+        "value": 3350
+      },
+      {
+        "item": "item.cuirasse_du_veneur",
+        "value": 3350
+      },
+      {
+        "item": "item.plastron_de_la_tour",
+        "value": 8800
+      },
+      {
+        "item": "item.brassards_de_cuir",
+        "value": 350
+      },
+      {
+        "item": "item.brassards_cloutes",
+        "value": 2600
+      },
+      {
+        "item": "item.brassards_de_garde",
+        "value": 4350
+      },
+      {
+        "item": "item.gants_de_cuir",
+        "value": 250
+      },
+      {
+        "item": "item.gantelets_de_fer",
+        "value": 2350
+      },
+      {
+        "item": "item.gants_de_duel",
+        "value": 3850
+      },
+      {
+        "item": "item.ceinture_de_corde",
+        "value": 350
+      },
+      {
+        "item": "item.ceinturon_du_soldat",
+        "value": 2600
+      },
+      {
+        "item": "item.ceinture_du_capitaine",
+        "value": 8400
+      },
+      {
+        "item": "item.braies_de_toile",
+        "value": 250
+      },
+      {
+        "item": "item.jambieres_de_mailles",
+        "value": 2350
+      },
+      {
+        "item": "item.jambieres_du_veneur",
+        "value": 2350
+      },
+      {
+        "item": "item.cuissards_de_la_tour",
+        "value": 8400
+      },
+      {
+        "item": "item.bottes_de_cuir",
+        "value": 250
+      },
+      {
+        "item": "item.bottes_du_renard",
+        "value": 2100
+      },
+      {
+        "item": "item.solerets_de_fer",
+        "value": 3600
       },
       {
         "item": "item.amulette_de_l_aube",
@@ -46,8 +234,64 @@
         "value": 4000
       },
       {
-        "item": "item.lame_du_seuil",
-        "value": 8000
+        "item": "item.pendentif_du_lac",
+        "value": 4100
+      },
+      {
+        "item": "item.medaillon_du_capitaine",
+        "value": 9600
+      },
+      {
+        "item": "item.anneau_de_cuivre",
+        "value": 350
+      },
+      {
+        "item": "item.anneau_de_fer",
+        "value": 650
+      },
+      {
+        "item": "item.anneau_du_guetteur",
+        "value": 2850
+      },
+      {
+        "item": "item.anneau_de_force",
+        "value": 2850
+      },
+      {
+        "item": "item.chevaliere_du_bourg",
+        "value": 4350
+      },
+      {
+        "item": "item.anneau_du_seuil",
+        "value": 17000
+      },
+      {
+        "item": "item.relique_de_la_chapelle",
+        "value": 1600
+      },
+      {
+        "item": "item.dent_de_loup",
+        "value": 3100
+      },
+      {
+        "item": "item.pierre_gravee",
+        "value": 3100
+      },
+      {
+        "item": "item.relique_de_l_ordre",
+        "value": 8800
+      },
+      {
+        "item": "item.pioche_du_carrier",
+        "value": 250
+      },
+      {
+        "item": "item.faucille_de_l_herboriste",
+        "value": 250
+      },
+      {
+        "item": "item.marteau_de_forge",
+        "value": 1350
       },
       {
         "item": "item.peau_de_loup",
@@ -130,6 +374,56 @@
             "item": "item.marteau_du_carrier",
             "price": 3200,
             "always": false
+          },
+          {
+            "item": "item.targe_d_osier",
+            "price": 460,
+            "always": true
+          },
+          {
+            "item": "item.coiffe_de_cuir",
+            "price": 320,
+            "always": true
+          },
+          {
+            "item": "item.bottes_de_cuir",
+            "price": 320,
+            "always": true
+          },
+          {
+            "item": "item.cape_de_laine",
+            "price": 320,
+            "always": true
+          },
+          {
+            "item": "item.ecu_du_garde",
+            "price": 2400,
+            "always": false
+          },
+          {
+            "item": "item.casque_de_fer",
+            "price": 2730,
+            "always": false
+          },
+          {
+            "item": "item.jambieres_de_mailles",
+            "price": 3060,
+            "always": false
+          },
+          {
+            "item": "item.cape_de_voyageur",
+            "price": 3060,
+            "always": false
+          },
+          {
+            "item": "item.gantelets_de_fer",
+            "price": 3060,
+            "always": false
+          },
+          {
+            "item": "item.anneau_de_fer",
+            "price": 840,
+            "always": false
           }
         ]
       },
@@ -160,6 +454,11 @@
             "item": "item.eclat_de_seuil",
             "price": 450,
             "always": false
+          },
+          {
+            "item": "item.faucille_de_l_herboriste",
+            "price": 320,
+            "always": true
           }
         ]
       },
@@ -190,6 +489,11 @@
             "item": "item.eclat_de_seuil",
             "price": 480,
             "always": false
+          },
+          {
+            "item": "item.pioche_du_carrier",
+            "price": 320,
+            "always": true
           }
         ]
       }

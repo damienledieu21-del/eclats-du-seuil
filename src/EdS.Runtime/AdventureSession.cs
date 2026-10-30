@@ -190,12 +190,14 @@ namespace EdS.Runtime
             SavePath = savePath;
             SaveReadResult read = SaveStore.Read(savePath);
             SaveProblem = read.Problem;
-            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), PlayerCharacters.Create(PlayerId, PlayerClass, progression));
-            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, PlayerCharacters.Create(PlayerId, PlayerClass, progression));
+            // Sous-lot V1.2 : un nouveau personnage porte son équipement de départ (l'Éclat du Seuil ; pour le Bastion, l'épée et l'écu).
+            SavedCharacter Fresh() => Inventory.Outfit(PlayerCharacters.Create(PlayerId, PlayerClass, progression), items);
+            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), Fresh());
+            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh());
             // Intérieurs : la partie reprend dans la zone de la sauvegarde (un intérieur : à son entrée) ; une zone que les données ne relient
             // plus reprend à l'entrée de la zone de départ.
             _zone = zones.FirstOrDefault(z => z.Id == save.Zone) ?? start;
-            if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character);
+            if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character, save.Migrated);
             _lastSafePoint = _zone.Entry.Id;
             Open(save, null);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
@@ -255,11 +257,14 @@ namespace EdS.Runtime
             foreach (KeyValuePair<string, int> c in world.Zone.Engine.View(PlayerId).ConsumableCharges) _drunk[c.Key] = c.Value;
             Opened = checked(Opened + 1);
             if (world.Learned.Count > 0) _dirty = true;   // sous-lot 12.9b : les compétences gagnées vont à la prochaine sauvegarde
+            if (world.Restored.Count > 0) _dirty = true;   // sous-lot V1.2 : places obligatoires remplies, à garder
         }
 
         /// <summary>Sous-lot 12.9b : annonce les compétences gagnées à l'ouverture de la session, avec leur touche.</summary>
         private void AnnounceLearned()
         {
+            // Sous-lot V1.2 : places obligatoires remplies à la reprise d'une ancienne sauvegarde (Éclat du Seuil, bouclier du Bastion).
+            if (World.Restored.Count > 0) Say("text.ui.inventory.restored", string.Join(", ", World.Restored.Select(ItemName)));
             foreach (SkillUnlock u in World.Learned)
                 if (u.Kind == SkillKind.Ultimate) Say("text.ui.ultimate_learned", SkillName(u.Skill));
                 else if (u.Kind == SkillKind.Active)
@@ -657,14 +662,41 @@ namespace EdS.Runtime
             return refusal;
         }
 
-        /// <summary>Retire l'objet porté à l'emplacement <paramref name="slot"/> (effet à la prochaine halte).</summary>
-        public InventoryRefusal Unequip(string slot)
+        /// <summary>
+        /// Retire l'objet porté à l'emplacement <paramref name="slot"/> (effet à la prochaine halte). Sous-lot V1.2 : hors combat, et jamais
+        /// d'une place obligatoire (l'Éclat du Seuil, le bouclier du Bastion).
+        /// </summary>
+        public InventoryRefusal Unequip(string slot) => Done(World.Unequip(slot), "text.ui.unequipped");
+
+        /// <summary>Sous-lot V1.2 : porte l'objet de la place <paramref name="place"/> du sac à la place d'équipement <paramref name="slot"/>.</summary>
+        public InventoryRefusal EquipTo(int place, string slot) => Done(World.EquipTo(place, slot), "text.ui.equipped");
+
+        /// <summary>Sous-lot V1.2 : échange deux places d'une même sorte (les anneaux, les reliques).</summary>
+        public InventoryRefusal Swap(string first, string second) => Done(World.Swap(first, second), "text.ui.inventory.swapped");
+
+        /// <summary>Sous-lot V1.2 : range le sac (sans condition : rien ne change au combat) ; gardé à la prochaine sauvegarde.</summary>
+        public void SortInventory(InventorySort order)
         {
-            InventoryRefusal refusal = World.Inventory.Unequip(slot);
+            World.Inventory.Sort(order);
+            _dirty = true;
+            Say("text.ui.inventory.sorted");
+        }
+
+        /// <summary>Sous-lot V1.2 : places du sac qui passent le filtre, au niveau actuel du personnage.</summary>
+        public IReadOnlyList<int> InventoryPlaces(InventoryFilter filter) => World.Inventory.Filter(filter, World.Level);
+
+        /// <summary>
+        /// Sous-lot V1.2 : comparaison de l'objet <paramref name="item"/> avec ce qui est porté à sa place (null s'il ne se porte pas) ;
+        /// <paramref name="wornPlace"/> : la place où il est porté, s'il l'est.
+        /// </summary>
+        public ItemComparison? Compare(string item, string? wornPlace = null) => ItemComparison.For(World.Inventory, item, wornPlace);
+
+        private InventoryRefusal Done(InventoryRefusal refusal, string done)
+        {
             if (refusal == InventoryRefusal.None)
             {
                 _dirty = true;
-                Say("text.ui.unequipped");
+                Say(done);
             }
             else Say("text.ui.inventory." + refusal.ToString().ToLowerInvariant());
             return refusal;

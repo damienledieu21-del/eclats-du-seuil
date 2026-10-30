@@ -241,9 +241,13 @@ namespace EdS.Data.Saves
         /// sauvegarde de version 4 est mise à jour (aucun métier). Version 6 (sous-lot V1.1) : <c>money</c> obligatoire dans le personnage
         /// (bourse en pièces de cuivre, de 0 à <see cref="Coins.Max"/>) ; une sauvegarde de version 5 est mise à jour (bourse vide). Les points
         /// sûrs découverts (voyage rapide) sont des clés du registre des événements consommés (<c>zone.vallons/safe/place_du_bourg</c>), déjà
-        /// gardé depuis la version 1.
+        /// gardé depuis la version 1. Version 7 (sous-lot V1.2) : l'équipement suit les 18 places du catalogue (deux anneaux <c>ring_1</c> et
+        /// <c>ring_2</c>, deux reliques, l'Éclat du Seuil <c>shard</c>, l'outil <c>tool</c>…), forme inchangée ; une sauvegarde de version 6
+        /// est lue telle quelle (ses emplacements <c>weapon</c>, <c>shield</c>, <c>chest</c>, <c>neck</c> gardent leur nom) et mise à jour : à la
+        /// reprise, ses places obligatoires vides reçoivent leur objet (<c>Inventory.FillRequired</c>). Le numéro change pour qu'un programme
+        /// antérieur refuse d'emblée une sauvegarde aux nouvelles places au lieu de la croire incohérente.
         /// </summary>
-        public const int CurrentSchemaVersion = 6;
+        public const int CurrentSchemaVersion = 7;
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;

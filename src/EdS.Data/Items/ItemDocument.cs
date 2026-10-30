@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EdS.Domain.Numerics;
 
 namespace EdS.Data.Items
 {
@@ -13,15 +14,60 @@ namespace EdS.Data.Items
 
     public sealed class ItemCatalogData
     {
-        /// <summary>Emplacements d'équipement (tranche : quatre, dont le bouclier).</summary>
-        public List<string?>? Slots { get; set; }
+        /// <summary>Sous-lot V1.2 (version 3) : places d'équipement du personnage (18 dans les Vallons), dans l'ordre de l'écran.</summary>
+        public List<SlotData?>? Slots { get; set; }
 
         /// <summary>Places de l'inventaire (tranche : 24).</summary>
         public int? InventorySize { get; set; }
 
+        /// <summary>Sous-lot V1.2 (version 3) : équipement de départ d'un nouveau personnage, porté d'emblée.</summary>
+        public List<StartingItemData?>? Starting { get; set; }
+
         public List<ItemData?>? Items { get; set; }
 
         public List<LootTableData?>? Loot { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.2 : une place d'équipement telle que lue.</summary>
+    public sealed class SlotData
+    {
+        /// <summary>Identifiant de la place (« weapon », « ring_1 »…).</summary>
+        public string? Id { get; set; }
+
+        /// <summary>Sorte d'objet qu'elle reçoit (« ring » pour les deux places d'anneau) ; absente : son identifiant.</summary>
+        public string? Accepts { get; set; }
+
+        /// <summary>« combat » (par défaut), « shard » (l'Éclat du Seuil) ou « tool » (outil de métier, sans effet en combat).</summary>
+        public string? Group { get; set; }
+
+        /// <summary>Place toujours occupée, pour tous les personnages : on échange l'objet, on ne l'ôte pas.</summary>
+        public bool? Required { get; set; }
+
+        /// <summary>Classes pour lesquelles la place est toujours occupée (le bouclier du Bastion).</summary>
+        public List<string?>? RequiredBy { get; set; }
+
+        /// <summary>La place porte la garde du personnage : ses objets ont une garde propre (le bouclier).</summary>
+        public bool? Guard { get; set; }
+
+        /// <summary>Champs effectivement présents.</summary>
+        public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Sous-lot V1.2 : objet de départ, pour toutes les classes ou pour une seule.</summary>
+    public sealed class StartingItemData
+    {
+        public string? Item { get; set; }
+
+        /// <summary>Classe qui le reçoit ; absente : toutes.</summary>
+        public string? Class { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.2 : garde propre d'un bouclier telle que lue.</summary>
+    public sealed class ItemGuardData
+    {
+        public Fixed? DamageReduction { get; set; }
+        public int? CostPerBlock { get; set; }
+        public long? ParryWindowMs { get; set; }
     }
 
     public sealed class ItemData
@@ -39,7 +85,9 @@ namespace EdS.Data.Items
         public int? Stack { get; set; }
 
         // Équipement
+        /// <summary>Sorte de place où il se porte (« weapon », « ring »…).</summary>
         public string? Slot { get; set; }
+
         public int? RequiredLevel { get; set; }
 
         /// <summary>Sous-lot 12.6 : objet de soin, PV rendus et recharge partagée (ms).</summary>
@@ -48,6 +96,15 @@ namespace EdS.Data.Items
 
         /// <summary>Bonus aux statistiques par identifiant (« armor »…), dans l'ordre du fichier.</summary>
         public List<KeyValuePair<string, int?>>? Bonus { get; set; }
+
+        /// <summary>Sous-lot V1.2 : garde propre d'un bouclier (obligatoire pour un objet d'une place qui porte la garde, interdite ailleurs).</summary>
+        public ItemGuardData? Guard { get; set; }
+
+        /// <summary>Sous-lot V1.2 : arbres de talents auxquels l'objet convient (adéquation au build, H5), éventuellement aucun.</summary>
+        public List<string?>? Fits { get; set; }
+
+        /// <summary>Sous-lot V1.2 : icône peinte de l'objet (nom de fichier sans extension) ; absente : la fin de son identifiant.</summary>
+        public string? Icon { get; set; }
 
         /// <summary>Champs effectivement présents, pour refuser ceux d'un autre type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();

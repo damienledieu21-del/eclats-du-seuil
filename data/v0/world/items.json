@@ -1,16 +1,90 @@
 {
   "$schema": "../../schemas/items.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "items",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "slots": [
-      "weapon",
-      "shield",
-      "chest",
-      "neck"
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "shield",
+        "requiredBy": [
+          "class.bastion"
+        ],
+        "guard": true
+      },
+      {
+        "id": "head"
+      },
+      {
+        "id": "shoulders"
+      },
+      {
+        "id": "cloak"
+      },
+      {
+        "id": "chest"
+      },
+      {
+        "id": "bracers"
+      },
+      {
+        "id": "hands"
+      },
+      {
+        "id": "belt"
+      },
+      {
+        "id": "legs"
+      },
+      {
+        "id": "feet"
+      },
+      {
+        "id": "neck"
+      },
+      {
+        "id": "ring_1",
+        "accepts": "ring"
+      },
+      {
+        "id": "ring_2",
+        "accepts": "ring"
+      },
+      {
+        "id": "relic_1",
+        "accepts": "relic"
+      },
+      {
+        "id": "relic_2",
+        "accepts": "relic"
+      },
+      {
+        "id": "shard",
+        "group": "shard",
+        "required": true
+      },
+      {
+        "id": "tool",
+        "group": "tool"
+      }
     ],
     "inventorySize": 24,
+    "starting": [
+      {
+        "item": "item.eclat_du_seuil_endormi"
+      },
+      {
+        "item": "item.epee_du_milicien",
+        "class": "class.bastion"
+      },
+      {
+        "item": "item.ecu_de_chene",
+        "class": "class.bastion"
+      }
+    ],
     "items": [
       {
         "id": "item.epee_du_milicien",
@@ -24,6 +98,21 @@
         }
       },
       {
+        "id": "item.hachette_du_bucheron",
+        "name": "Hachette du bûcheron",
+        "icon": "marteau_du_carrier",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "weapon",
+        "requiredLevel": 2,
+        "bonus": {
+          "physicalPower": 12
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
         "id": "item.epee_de_garde",
         "name": "Épée de garde",
         "type": "equipment",
@@ -33,6 +122,22 @@
         "bonus": {
           "physicalPower": 22
         }
+      },
+      {
+        "id": "item.masse_du_bourg",
+        "name": "Masse du bourg",
+        "icon": "marteau_du_carrier",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "weapon",
+        "requiredLevel": 5,
+        "bonus": {
+          "physicalPower": 18,
+          "statusResistance": 10
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
       },
       {
         "id": "item.marteau_du_carrier",
@@ -46,6 +151,111 @@
         }
       },
       {
+        "id": "item.lame_du_seuil",
+        "name": "Lame du Seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "weapon",
+        "requiredLevel": 8,
+        "bonus": {
+          "physicalPower": 48,
+          "magicResistance": 20
+        }
+      },
+      {
+        "id": "item.epee_longue_d_aube",
+        "name": "Épée longue d'Aube",
+        "icon": "epee_de_garde",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "weapon",
+        "requiredLevel": 10,
+        "bonus": {
+          "physicalPower": 40
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.masse_benite",
+        "name": "Masse bénite",
+        "icon": "marteau_du_carrier",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "weapon",
+        "requiredLevel": 10,
+        "bonus": {
+          "physicalPower": 32,
+          "maxHealth": 60
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.fleau_du_hameau",
+        "name": "Fléau du hameau",
+        "icon": "marteau_du_carrier",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "weapon",
+        "requiredLevel": 13,
+        "bonus": {
+          "physicalPower": 48
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.epee_du_capitaine",
+        "name": "Épée du capitaine",
+        "icon": "epee_de_garde",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "weapon",
+        "requiredLevel": 15,
+        "bonus": {
+          "physicalPower": 58,
+          "armor": 20
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.marteau_des_hautes_pierres",
+        "name": "Marteau des hautes pierres",
+        "icon": "marteau_du_carrier",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "weapon",
+        "requiredLevel": 18,
+        "bonus": {
+          "physicalPower": 70
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.lame_de_la_tour",
+        "name": "Lame de la tour",
+        "icon": "epee_de_garde",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "weapon",
+        "requiredLevel": 18,
+        "bonus": {
+          "physicalPower": 62,
+          "maxEndurance": 15
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
         "id": "item.ecu_de_chene",
         "name": "Écu de chêne",
         "type": "equipment",
@@ -54,7 +264,33 @@
         "requiredLevel": 1,
         "bonus": {
           "armor": 60
+        },
+        "guard": {
+          "damageReduction": 0.6,
+          "costPerBlock": 10,
+          "parryWindowMs": 150
         }
+      },
+      {
+        "id": "item.targe_d_osier",
+        "name": "Targe d'osier",
+        "icon": "rondache_cerclee",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "shield",
+        "requiredLevel": 2,
+        "bonus": {
+          "armor": 40,
+          "maxEndurance": 5
+        },
+        "guard": {
+          "damageReduction": 0.5,
+          "costPerBlock": 6,
+          "parryWindowMs": 200
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
       },
       {
         "id": "item.pavois_du_moulin",
@@ -66,7 +302,15 @@
         "bonus": {
           "armor": 120,
           "maxHealth": 60
-        }
+        },
+        "guard": {
+          "damageReduction": 0.7,
+          "costPerBlock": 14,
+          "parryWindowMs": 100
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
       },
       {
         "id": "item.rondache_cerclee",
@@ -78,6 +322,317 @@
         "bonus": {
           "armor": 80,
           "statusResistance": 20
+        },
+        "guard": {
+          "damageReduction": 0.5,
+          "costPerBlock": 6,
+          "parryWindowMs": 200
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.ecu_du_garde",
+        "name": "Écu du garde",
+        "icon": "ecu_de_chene",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "shield",
+        "requiredLevel": 5,
+        "bonus": {
+          "armor": 100,
+          "maxHealth": 40
+        },
+        "guard": {
+          "damageReduction": 0.6,
+          "costPerBlock": 10,
+          "parryWindowMs": 150
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.bouclier_de_la_tour",
+        "name": "Bouclier de la tour",
+        "icon": "pavois_du_moulin",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "shield",
+        "requiredLevel": 12,
+        "bonus": {
+          "armor": 180,
+          "maxHealth": 100
+        },
+        "guard": {
+          "damageReduction": 0.65,
+          "costPerBlock": 12,
+          "parryWindowMs": 150
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.rondache_du_lac",
+        "name": "Rondache du lac",
+        "icon": "rondache_cerclee",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "shield",
+        "requiredLevel": 12,
+        "bonus": {
+          "armor": 140,
+          "maxEndurance": 15
+        },
+        "guard": {
+          "damageReduction": 0.55,
+          "costPerBlock": 8,
+          "parryWindowMs": 200
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.ecu_de_l_aube",
+        "name": "Écu de l'Aube",
+        "icon": "ecu_de_chene",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "shield",
+        "requiredLevel": 12,
+        "bonus": {
+          "armor": 160,
+          "magicResistance": 40
+        },
+        "guard": {
+          "damageReduction": 0.6,
+          "costPerBlock": 10,
+          "parryWindowMs": 150
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.pavois_des_hautes_pierres",
+        "name": "Pavois des hautes pierres",
+        "icon": "pavois_du_moulin",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "shield",
+        "requiredLevel": 18,
+        "bonus": {
+          "armor": 260,
+          "maxHealth": 160
+        },
+        "guard": {
+          "damageReduction": 0.7,
+          "costPerBlock": 16,
+          "parryWindowMs": 100
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.bouclier_a_pointes",
+        "name": "Bouclier à pointes",
+        "icon": "rondache_cerclee",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "shield",
+        "requiredLevel": 18,
+        "bonus": {
+          "armor": 200,
+          "physicalPower": 20
+        },
+        "guard": {
+          "damageReduction": 0.55,
+          "costPerBlock": 8,
+          "parryWindowMs": 200
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.coiffe_de_cuir",
+        "name": "Coiffe de cuir",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "head",
+        "requiredLevel": 1,
+        "bonus": {
+          "armor": 15
+        }
+      },
+      {
+        "id": "item.casque_de_fer",
+        "name": "Casque de fer",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "head",
+        "requiredLevel": 6,
+        "bonus": {
+          "armor": 45,
+          "maxHealth": 30
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.heaume_du_guetteur",
+        "name": "Heaume du guetteur",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "head",
+        "requiredLevel": 6,
+        "bonus": {
+          "armor": 35,
+          "statusResistance": 15
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.heaume_de_la_tour",
+        "name": "Heaume de la tour",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "head",
+        "requiredLevel": 14,
+        "bonus": {
+          "armor": 80,
+          "maxHealth": 60
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.epaulieres_de_cuir",
+        "name": "Épaulières de cuir",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "shoulders",
+        "requiredLevel": 3,
+        "bonus": {
+          "armor": 20
+        }
+      },
+      {
+        "id": "item.spalieres_de_fer",
+        "name": "Spalières de fer",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "shoulders",
+        "requiredLevel": 9,
+        "bonus": {
+          "armor": 50
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.spalieres_du_veneur",
+        "name": "Spalières du veneur",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "shoulders",
+        "requiredLevel": 9,
+        "bonus": {
+          "armor": 30,
+          "physicalPower": 6
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.mantelet_du_capitaine",
+        "name": "Mantelet du capitaine",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "shoulders",
+        "requiredLevel": 16,
+        "bonus": {
+          "armor": 70,
+          "magicResistance": 30
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.cape_de_laine",
+        "name": "Cape de laine",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "cloak",
+        "requiredLevel": 1,
+        "bonus": {
+          "magicResistance": 10,
+          "maxHealth": 20
+        }
+      },
+      {
+        "id": "item.cape_de_voyageur",
+        "name": "Cape de voyageur",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "cloak",
+        "requiredLevel": 7,
+        "bonus": {
+          "magicResistance": 25,
+          "maxEndurance": 10
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.cape_de_l_ordre",
+        "name": "Cape de l'Ordre de l'Aube",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "cloak",
+        "requiredLevel": 12,
+        "bonus": {
+          "magicResistance": 50,
+          "statusResistance": 20
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.cape_du_seuil",
+        "name": "Cape du Seuil",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "cloak",
+        "requiredLevel": 19,
+        "bonus": {
+          "magicResistance": 90,
+          "maxHealth": 80
         }
       },
       {
@@ -105,6 +660,284 @@
         }
       },
       {
+        "id": "item.brigandine",
+        "name": "Brigandine",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "chest",
+        "requiredLevel": 11,
+        "bonus": {
+          "armor": 160,
+          "maxHealth": 100
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.cuirasse_du_veneur",
+        "name": "Cuirasse du veneur",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "chest",
+        "requiredLevel": 11,
+        "bonus": {
+          "armor": 120,
+          "physicalPower": 12
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.plastron_de_la_tour",
+        "name": "Plastron de la tour",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "chest",
+        "requiredLevel": 17,
+        "bonus": {
+          "armor": 230,
+          "maxHealth": 150
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.brassards_de_cuir",
+        "name": "Brassards de cuir",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "bracers",
+        "requiredLevel": 2,
+        "bonus": {
+          "armor": 12
+        }
+      },
+      {
+        "id": "item.brassards_cloutes",
+        "name": "Brassards cloutés",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "bracers",
+        "requiredLevel": 8,
+        "bonus": {
+          "armor": 30,
+          "physicalPower": 6
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.brassards_de_garde",
+        "name": "Brassards de garde",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "bracers",
+        "requiredLevel": 15,
+        "bonus": {
+          "armor": 55,
+          "maxEndurance": 12
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.gants_de_cuir",
+        "name": "Gants de cuir",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "hands",
+        "requiredLevel": 1,
+        "bonus": {
+          "armor": 10
+        }
+      },
+      {
+        "id": "item.gantelets_de_fer",
+        "name": "Gantelets de fer",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "hands",
+        "requiredLevel": 7,
+        "bonus": {
+          "armor": 30
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.gants_de_duel",
+        "name": "Gants de duel",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "hands",
+        "requiredLevel": 13,
+        "bonus": {
+          "armor": 20,
+          "physicalPower": 14
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.ceinture_de_corde",
+        "name": "Ceinture de corde",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "belt",
+        "requiredLevel": 2,
+        "bonus": {
+          "maxEndurance": 5
+        }
+      },
+      {
+        "id": "item.ceinturon_du_soldat",
+        "name": "Ceinturon du soldat",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "belt",
+        "requiredLevel": 8,
+        "bonus": {
+          "maxEndurance": 12,
+          "maxHealth": 30
+        }
+      },
+      {
+        "id": "item.ceinture_du_capitaine",
+        "name": "Ceinture du capitaine",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "belt",
+        "requiredLevel": 16,
+        "bonus": {
+          "maxEndurance": 20,
+          "maxHealth": 60
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.braies_de_toile",
+        "name": "Braies de toile",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "legs",
+        "requiredLevel": 1,
+        "bonus": {
+          "armor": 15
+        }
+      },
+      {
+        "id": "item.jambieres_de_mailles",
+        "name": "Jambières de mailles",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "legs",
+        "requiredLevel": 7,
+        "bonus": {
+          "armor": 55
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.jambieres_du_veneur",
+        "name": "Jambières du veneur",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "legs",
+        "requiredLevel": 7,
+        "bonus": {
+          "armor": 35,
+          "maxEndurance": 8
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.cuissards_de_la_tour",
+        "name": "Cuissards de la tour",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "legs",
+        "requiredLevel": 16,
+        "bonus": {
+          "armor": 100,
+          "maxHealth": 50
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.bottes_de_cuir",
+        "name": "Bottes de cuir",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "feet",
+        "requiredLevel": 1,
+        "bonus": {
+          "armor": 10
+        }
+      },
+      {
+        "id": "item.bottes_du_renard",
+        "name": "Bottes du Renard",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "feet",
+        "requiredLevel": 6,
+        "bonus": {
+          "armor": 20,
+          "maxEndurance": 8
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.solerets_de_fer",
+        "name": "Solerets de fer",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "feet",
+        "requiredLevel": 12,
+        "bonus": {
+          "armor": 50
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
         "id": "item.amulette_de_l_aube",
         "name": "Amulette de l'aube",
         "type": "equipment",
@@ -127,6 +960,220 @@
           "magicResistance": 60,
           "maxHealth": 50
         }
+      },
+      {
+        "id": "item.pendentif_du_lac",
+        "name": "Pendentif du lac",
+        "icon": "amulette_de_l_aube",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "neck",
+        "requiredLevel": 14,
+        "bonus": {
+          "magicResistance": 50,
+          "maxHealth": 50
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.medaillon_du_capitaine",
+        "name": "Médaillon du capitaine",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "neck",
+        "requiredLevel": 19,
+        "bonus": {
+          "statusResistance": 40,
+          "maxHealth": 100
+        }
+      },
+      {
+        "id": "item.anneau_de_cuivre",
+        "name": "Anneau de cuivre",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "ring",
+        "requiredLevel": 2,
+        "bonus": {
+          "maxHealth": 15
+        }
+      },
+      {
+        "id": "item.anneau_de_fer",
+        "name": "Anneau de fer",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "ring",
+        "requiredLevel": 5,
+        "bonus": {
+          "armor": 15
+        }
+      },
+      {
+        "id": "item.anneau_du_guetteur",
+        "name": "Anneau du guetteur",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "ring",
+        "requiredLevel": 9,
+        "bonus": {
+          "statusResistance": 20
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.anneau_de_force",
+        "name": "Anneau de force",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "ring",
+        "requiredLevel": 9,
+        "bonus": {
+          "physicalPower": 8
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.chevaliere_du_bourg",
+        "name": "Chevalière du bourg",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "ring",
+        "requiredLevel": 15,
+        "bonus": {
+          "maxHealth": 70
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.anneau_du_seuil",
+        "name": "Anneau du Seuil",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "ring",
+        "requiredLevel": 20,
+        "bonus": {
+          "magicResistance": 40,
+          "physicalPower": 15
+        }
+      },
+      {
+        "id": "item.relique_de_la_chapelle",
+        "name": "Relique de la chapelle",
+        "icon": "eclat_de_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "relic",
+        "requiredLevel": 4,
+        "bonus": {
+          "statusResistance": 15,
+          "maxHealth": 25
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.dent_de_loup",
+        "name": "Dent de loup",
+        "icon": "eclat_de_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "relic",
+        "requiredLevel": 10,
+        "bonus": {
+          "physicalPower": 10
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ]
+      },
+      {
+        "id": "item.pierre_gravee",
+        "name": "Pierre gravée",
+        "icon": "eclat_de_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "relic",
+        "requiredLevel": 10,
+        "bonus": {
+          "armor": 30,
+          "maxEndurance": 8
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ]
+      },
+      {
+        "id": "item.relique_de_l_ordre",
+        "name": "Relique de l'Ordre",
+        "icon": "eclat_de_seuil",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "relic",
+        "requiredLevel": 17,
+        "bonus": {
+          "maxHealth": 80,
+          "magicResistance": 30
+        },
+        "fits": [
+          "tree.bastion.gardien"
+        ]
+      },
+      {
+        "id": "item.eclat_du_seuil_endormi",
+        "name": "Éclat du Seuil endormi",
+        "icon": "eclat_de_seuil",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "shard",
+        "requiredLevel": 1,
+        "bonus": {}
+      },
+      {
+        "id": "item.pioche_du_carrier",
+        "name": "Pioche du carrier",
+        "icon": "minerai_de_fer",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "tool",
+        "requiredLevel": 1,
+        "bonus": {}
+      },
+      {
+        "id": "item.faucille_de_l_herboriste",
+        "name": "Faucille de l'herboriste",
+        "icon": "herbe_de_l_aube",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "tool",
+        "requiredLevel": 1,
+        "bonus": {}
+      },
+      {
+        "id": "item.marteau_de_forge",
+        "name": "Marteau de forge",
+        "icon": "marteau_du_carrier",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "tool",
+        "requiredLevel": 3,
+        "bonus": {}
       },
       {
         "id": "item.peau_de_loup",
@@ -194,18 +1241,6 @@
         "stack": 3,
         "heal": 700,
         "cooldownMs": 20000
-      },
-      {
-        "id": "item.lame_du_seuil",
-        "name": "Lame du Seuil",
-        "type": "equipment",
-        "rarity": "epic",
-        "slot": "weapon",
-        "requiredLevel": 8,
-        "bonus": {
-          "physicalPower": 48,
-          "magicResistance": 20
-        }
       }
     ],
     "loot": [

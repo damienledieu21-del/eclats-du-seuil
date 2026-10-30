@@ -209,6 +209,9 @@ namespace EdS.World
                 _lootTables[entry.Key] = items.TryGetLoot(entry.Value, out LootTable table) ? table
                     : throw new ArgumentException($"Table de butin « {entry.Value} » ({entry.Key}) absente du catalogue.", nameof(lootTables));
             Inventory = Inventory.From(_character, items, Level);
+            // Sous-lot V1.2 : une sauvegarde mise à jour depuis une version antérieure (avant les 18 places) reçoit ses places obligatoires :
+            // l'Éclat du Seuil, et pour le Bastion un bouclier (le sien s'il en a un dans l'inventaire, sinon l'écu de départ).
+            Restored = save.Migrated ? Inventory.FillRequired(Level) : Array.Empty<string>();
             // Sous-lot 12.6 : objets de soin de l'inventaire emportés au combat, au plus une pile de chacun (recharge partagée).
             var carried = new List<ConsumableSetup>();
             foreach (string id in Inventory.Stacks.Select(st => st.Item).Distinct().OrderBy(i => i, StringComparer.Ordinal))
@@ -219,7 +222,8 @@ namespace EdS.World
                     _carried[id] = count;
                     Inventory.Reserve(id, count);   // revue Codex de la PR #47 : emportés, ils ne se retirent plus de l'inventaire avant d'être bus
                 }
-            CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried);
+            CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried,
+                shield: Inventory.Shield);   // sous-lot V1.2 : garde du bouclier porté
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
             Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
@@ -461,8 +465,29 @@ namespace EdS.World
         /// <summary>Bonus d'équipement avec lequel il est entré dans la zone.</summary>
         public GearBonus EnteredGear { get; }
 
-        /// <summary>Porte l'équipement de la place <paramref name="place"/>, au niveau actuel du personnage.</summary>
-        public InventoryRefusal Equip(int place) => Inventory.Equip(place, Level);
+        /// <summary>
+        /// Sous-lot V1.2 : objets mis aux places obligatoires à l'entrée (sauvegarde mise à jour depuis une version antérieure) ; vide sinon.
+        /// </summary>
+        public IReadOnlyList<string> Restored { get; }
+
+        /// <summary>Sous-lot V1.2 : garde du bouclier avec lequel il est entré dans la zone (null : celle des règles).</summary>
+        public ShieldGuard? EnteredShield => Zone.Engine.View(_character.Id).Rules?.Shield;
+
+        /// <summary>
+        /// Porte l'équipement de la place <paramref name="place"/> de l'inventaire, au niveau actuel du personnage, à la place où il va
+        /// (<see cref="Inventory.PlaceFor"/>). Sous-lot V1.2 : hors combat seulement (<see cref="InCombat"/>, la règle de la halte, des talents
+        /// et du voyage) ; sinon <see cref="InventoryRefusal.InCombat"/> et rien ne change.
+        /// </summary>
+        public InventoryRefusal Equip(int place) => InCombat ? InventoryRefusal.InCombat : Inventory.Equip(place, Level);
+
+        /// <summary>Sous-lot V1.2 : porte l'objet de la place <paramref name="place"/> à la place d'équipement <paramref name="slot"/>, hors combat.</summary>
+        public InventoryRefusal EquipTo(int place, string slot) => InCombat ? InventoryRefusal.InCombat : Inventory.EquipTo(place, slot, Level);
+
+        /// <summary>Sous-lot V1.2 : ôte l'objet porté à <paramref name="slot"/>, hors combat (jamais d'une place obligatoire).</summary>
+        public InventoryRefusal Unequip(string slot) => InCombat ? InventoryRefusal.InCombat : Inventory.Unequip(slot);
+
+        /// <summary>Sous-lot V1.2 : échange deux places d'une même sorte (les anneaux, les reliques), hors combat.</summary>
+        public InventoryRefusal Swap(string first, string second) => InCombat ? InventoryRefusal.InCombat : Inventory.Swap(first, second);
 
         /// <summary>Simule un tick ; rend l'expérience et le butin gagnés à ce tick (créatures vaincues).</summary>
         public SessionStep Step()

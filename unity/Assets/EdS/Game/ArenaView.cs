@@ -55,6 +55,12 @@ namespace EdS.Game
 
         public Transform Player => _player != null ? _player.transform : null;
 
+        /// <summary>Sous-lot V1.2 : l'équipement visible du joueur (arme, bouclier, cape).</summary>
+        private GearLook _gear;
+
+        /// <summary>Sous-lot V1.2 : montre l'arme, le bouclier et la cape portés par le joueur (rien ne se refait s'ils n'ont pas changé).</summary>
+        public void ShowGear(VisibleGear gear) => _gear?.Show(gear);
+
         /// <summary>
         /// Sous-lot 12.8 : couleur d'un combattant choisie par le jeu (le chef d'une zone, par exemple) ; null : couleur ordinaire (ennemi
         /// rouge, allié vert, mannequin brun).
@@ -152,6 +158,7 @@ namespace EdS.Game
             _playerId = combat.PlayerId;
             Fit(_player, combat.Player().View);
             Look(combat.PlayerId, _player, true);
+            _gear = new GearLook(_player.transform, _looks.ContainsKey(combat.PlayerId));   // sous-lot V1.2 : arme, bouclier et cape visibles
             _shield = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             _shield.name = "Bouclier";
             Object.Destroy(_shield.GetComponent<Collider>());

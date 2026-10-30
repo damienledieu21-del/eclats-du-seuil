@@ -443,7 +443,7 @@ public class Lot125StoryTests
             new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("rodeur", 0), ["quest.autre"] = new QuestProgress(QuestProgress.Done) },
             new Dictionary<string, int> { ["npc.odile"] = -1, ["npc.maelle"] = 2, ["npc.gaspard"] = 0 }, new[] { "discovery.manifestation" });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), Hero(story)));
-        Assert.Contains("\"schemaVersion\": 6,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse)
+        Assert.Contains("\"schemaVersion\": 7,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places)
         Assert.Contains("      \"story\": {\n        \"facts\": [\"fact.odile.vexee\", \"fact.traces.recit\"],\n"
             + "        \"quests\": {\"quest.autre\": {\"step\": \"done\", \"progress\": 0}, \"quest.traces_sous_le_moulin\": {\"step\": \"rodeur\", \"progress\": 0}},\n"
             + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"discoveries\": [\"discovery.manifestation\"]\n      },\n", text, StringComparison.Ordinal);
@@ -457,12 +457,12 @@ public class Lot125StoryTests
             int a = t.IndexOf(",\n      \"" + field + "\"", StringComparison.Ordinal), b = t.IndexOf("\n    },", a, StringComparison.Ordinal);
             return t.Remove(a, b - a);
         }
-        string v3 = CutFrom(text, "story").Replace("\"schemaVersion\": 6", "\"schemaVersion\": 3");
+        string v3 = CutFrom(text, "story").Replace("\"schemaVersion\": 7", "\"schemaVersion\": 3");
         SaveLoadResult migrated = SaveJsonReader.Read(v3);
         Assert.True(migrated.IsValid, migrated.Report + "\n" + v3);
         Assert.True(migrated.Save!.Migrated);
         Assert.Empty(migrated.Save.Character!.Story.Facts);
-        Assert.Equal("$.data.character.story", Assert.Single(SaveJsonReader.Read(CutFrom(text, "professions").Replace("\"schemaVersion\": 6", "\"schemaVersion\": 3")).Report.Errors).Path);
+        Assert.Equal("$.data.character.story", Assert.Single(SaveJsonReader.Read(CutFrom(text, "professions").Replace("\"schemaVersion\": 7", "\"schemaVersion\": 3")).Report.Errors).Path);
         // Une histoire sauvegardée doit aller avec les données : quête inconnue refusée à la reprise.
         Assert.Throws<ArgumentException>(() => Play(Zone(), Hero(story)));
     }
