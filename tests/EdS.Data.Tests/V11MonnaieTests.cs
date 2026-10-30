@@ -160,8 +160,9 @@ public class V11MonnaieTests
     [Fact]
     public void Bourse_hors_bornes_jamais_ecrite()
     {
+        // Relecture de la PR #72 : refusée dès la construction du personnage (ArgumentOutOfRangeException), donc jamais écrite.
         foreach (long money in new[] { -1L, Coins.Max + 1, long.MaxValue, long.MinValue })
-            Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(money))));
+            Assert.Throws<ArgumentOutOfRangeException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(money))));
     }
 
     // --- Histoire, schéma 2 : giveMoney ---------------------------------------------------------------------------------
@@ -232,7 +233,8 @@ public class V11MonnaieTests
         long xp = full.Character.Xp;
         var events = new List<StoryEvent>();
         for (int i = 0; i < 5; i++) events.AddRange(full.Step().Story);
-        Assert.Equal(new[] { "RewardBlocked quest.traces_sous_le_moulin/retour" }, events.Select(e => e.ToString()));
+        // Relecture de la PR #72 : la bourse pleine a son propre événement (pas « inventaire plein »).
+        Assert.Equal(new[] { "PurseFull quest.traces_sous_le_moulin/retour" }, events.Select(e => e.ToString()));
         Assert.Equal((Coins.Max - 499, xp), (full.Money, full.Character.Xp));
         Assert.Equal("retour", full.Narrative!.CurrentStep("quest.traces_sous_le_moulin")!.Id);
 
@@ -264,7 +266,7 @@ public class V11MonnaieTests
             return session;
         }
         WorldSession full = Talk(Coins.Max - 24);
-        Assert.Equal(DialogueRefusal.NoRoom, full.Choose(0, out _, out IReadOnlyList<StoryEvent> none));
+        Assert.Equal(DialogueRefusal.PurseFull, full.Choose(0, out _, out IReadOnlyList<StoryEvent> none));
         Assert.Empty(none);
         Assert.Equal((Coins.Max - 24, 0, false, 0), (full.Money, full.Inventory.Count("item.potion_de_soin"), full.Narrative!.Knows("fact.gaspard.merci"),
             full.Narrative.Trust("npc.gaspard")));

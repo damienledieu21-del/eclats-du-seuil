@@ -255,7 +255,10 @@
       "text.ui.travel.unknownplace": "Destination inconnue.",
       "text.ui.travel.notdiscovered": "Point sûr pas encore découvert : va d'abord jusqu'à lui.",
       "text.ui.travel.unavailable": "Voyage impossible pour l'instant.",
-      "text.ui.travel.savefailed": "Sauvegarde impossible : tu restes où tu es."
+      "text.ui.travel.savefailed": "Sauvegarde impossible : tu restes où tu es.",
+      "text.ui.travel.alreadyhere": "Tu es déjà à ce point sûr : fais plutôt une halte.",
+      "text.ui.reward_purse_full": "Bourse pleine : dépense des pièces pour recevoir ta récompense.",
+      "text.ui.purse_full": "Ta bourse est pleine : ces pièces n'y tiendraient pas."
     }
   }
 }

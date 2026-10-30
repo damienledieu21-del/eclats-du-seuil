@@ -27,6 +27,12 @@ namespace EdS.World
 
         /// <summary>La sauvegarde du départ a échoué (disque plein) : on reste où l'on est.</summary>
         SaveFailed = 5,
+
+        /// <summary>
+        /// Le personnage est déjà à ce point sûr (même zone, à <see cref="WorldSession.DiscoverRange"/>) : le voyage n'y mènerait nulle part
+        /// et ne servirait qu'à rendre les PV (la halte est faite pour cela).
+        /// </summary>
+        AlreadyHere = 6,
     }
 
     /// <summary>
@@ -99,15 +105,31 @@ namespace EdS.World
         }
 
         /// <summary>
+        /// Le personnage, présent et vivant, est au point sûr <paramref name="safePoint"/> de <paramref name="zone"/> : zone de la partie, à
+        /// <see cref="DiscoverRange"/> du point (écart entre les centres). Faux pour un point inconnu ou une autre zone.
+        /// </summary>
+        public bool IsAt(ZoneDefinition zone, string safePoint)
+        {
+            if (zone is null || Definition is null || zone.Id != Definition.Id) return false;
+            SafePoint? s = Definition.SafePoints.FirstOrDefault(x => x.Id == safePoint);
+            if (s is null) return false;
+            CombatantView me = Zone.Engine.View(_character.Id);
+            return me.IsPresent && !me.IsDead && me.Position is GroundVector p && !ZonePopulations.Beyond(p, Fixed.Zero, s.Position, Fixed.Zero, DiscoverRange);
+        }
+
+        /// <summary>
         /// Le voyage rapide vers le point sûr <paramref name="safePoint"/> de <paramref name="zone"/> est possible maintenant : zone du dehors
-        /// et point sûr connus, découvert, personnage présent et vivant (sinon <see cref="TravelRefusal.Unavailable"/>), hors combat.
+        /// et point sûr connus, découvert, personnage présent et vivant (sinon <see cref="TravelRefusal.Unavailable"/>), hors combat, pas déjà
+        /// à ce point (<see cref="TravelRefusal.AlreadyHere"/>, relecture de la PR #72 : le voyage n'est pas une halte gratuite ; vient en
+        /// dernier, car il ne concerne que cette destination).
         /// </summary>
         public TravelRefusal CanTravel(ZoneDefinition zone, string safePoint)
         {
             if (zone is null || zone.Indoor || safePoint is null || zone.SafePoints.All(s => s.Id != safePoint)) return TravelRefusal.UnknownPlace;
             if (!IsDiscovered(zone, safePoint)) return TravelRefusal.NotDiscovered;
             if (_defeated || !Zone.Engine.View(_character.Id).IsPresent || Zone.Engine.View(_character.Id).IsDead) return TravelRefusal.Unavailable;
-            return InCombat ? TravelRefusal.InCombat : TravelRefusal.None;
+            if (InCombat) return TravelRefusal.InCombat;
+            return IsAt(zone, safePoint) ? TravelRefusal.AlreadyHere : TravelRefusal.None;
         }
     }
 }

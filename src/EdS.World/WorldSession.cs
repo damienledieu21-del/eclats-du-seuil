@@ -195,6 +195,9 @@ namespace EdS.World
             _progression = progression ?? throw new ArgumentNullException(nameof(progression));
             if (items is null) throw new ArgumentNullException(nameof(items));
             _character = save.Character ?? throw new ArgumentException("Sauvegarde sans personnage : le créer d'abord.", nameof(save));
+            // Relecture de la PR #72 : bourse dans ses bornes (déjà vérifiée à la construction du personnage ; le contrat de la partie est
+            // dit ici aussi, la bourse affichée ne peut pas sortir de [0, Coins.Max]).
+            if (!Coins.IsValid(_character.Money)) throw new ArgumentException($"Bourse hors de [0, {Coins.Max}] cuivre.", nameof(save));
             // Sous-lot 12.9b : un niveau prend effet à l'entrée, avec les compétences qu'il fait gagner (gardées dans la sauvegarde).
             if (data is null) throw new ArgumentNullException(nameof(data));
             _character = PlayerCharacters.Learn(_character, _progression, data.Rules.Progression, out IReadOnlyList<SkillUnlock> learned);
@@ -313,14 +316,15 @@ namespace EdS.World
             if (story != null) Narrative = new Narrative(story, _character.Story, this);
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
             Market = market;
-            // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée.
-            if (door is null) Discover(safePoint ?? zone.Entry.Id);
             // Sous-lot 12.7 : le chef arrive avec la session (sa première forme).
             if (zone.Boss is { } boss)
             {
                 _boss = new BossFight(boss);
                 _bossStart = _boss.Start(Zone.Engine);
             }
+            // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée. Après l'arrivée du
+            // chef : sa première forme compte alors parmi les combattants, et la découverte lui laisse la place de sa mort dans le registre.
+            if (door is null) Discover(safePoint ?? zone.Entry.Id);
         }
 
         private readonly BossFight? _boss;

@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using EdS.Data.Saves;
 using EdS.Data.Zones;
-using EdS.Domain.Space;
 using EdS.World;
 
 namespace EdS.Runtime
@@ -18,7 +17,8 @@ namespace EdS.Runtime
         public double X { get; }
         public double Z { get; }
 
-        /// <summary>Le personnage y est (même zone, à la distance de la halte).</summary>
+        /// <summary>Le personnage y est (même zone, à <see cref="WorldSession.DiscoverRange"/>) : le voyage y est refusé
+        /// (<see cref="TravelRefusal.AlreadyHere"/>).</summary>
         public bool Here { get; }
 
         internal TravelDestination(string zone, string safePoint, string name, double x, double z, bool here)
@@ -47,20 +47,19 @@ namespace EdS.Runtime
         public IReadOnlyList<TravelDestination> TravelDestinations()
         {
             var list = new List<TravelDestination>();
-            GroundVector? me = Me;
             foreach (ZoneDefinition zone in _zones.Where(z => !z.Indoor))
                 foreach (SafePoint s in zone.SafePoints)
                 {
                     if (!World.IsDiscovered(zone, s.Id)) continue;
-                    bool here = me is GroundVector p && zone.Id == _zone.Id && Within(p, s.Position, RestRange);
-                    list.Add(new TravelDestination(zone.Id, s.Id, s.Name, s.Position.X.Raw / 10000.0, s.Position.Z.Raw / 10000.0, here));
+                    list.Add(new TravelDestination(zone.Id, s.Id, s.Name, s.Position.X.Raw / 10000.0, s.Position.Z.Raw / 10000.0, World.IsAt(zone, s.Id)));
                 }
             return list;
         }
 
         /// <summary>
         /// Refus qu'aurait le voyage vers le point sûr <paramref name="safePoint"/> de la zone <paramref name="zone"/> maintenant (rien ne
-        /// change) : destination inconnue ou pas découverte, personnage tombé, dialogue ouvert ou reprise à faire, en plein combat.
+        /// change) : destination inconnue ou pas découverte, personnage tombé, dialogue ouvert ou reprise à faire, déjà à ce point sûr, en
+        /// plein combat.
         /// </summary>
         public TravelRefusal CanTravel(string zone, string safePoint)
         {
@@ -102,7 +101,6 @@ namespace EdS.Runtime
             }
             _zone = target;
             _lastSafePoint = safePoint;
-            Shop = null;
             Travels = checked(Travels + 1);
             Commit(next);
             Say("text.ui.travel.arrived", target.SafePoints.First(s => s.Id == safePoint).Name);

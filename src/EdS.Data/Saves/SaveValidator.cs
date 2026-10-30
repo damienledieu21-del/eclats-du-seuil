@@ -115,6 +115,9 @@ namespace EdS.Data.Saves
             IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null,
             long money = 0)
         {
+            // Relecture de la PR #72 : une bourse hors bornes est refusée dès la construction (comme à la lecture d'une sauvegarde) ; une
+            // partie ne peut donc jamais en porter une, et son affichage (Coins.Format) ne peut pas échouer.
+            if (!Coins.IsValid(money)) throw new ArgumentOutOfRangeException(nameof(money), money, $"Bourse hors de [0, {Coins.Max}] cuivre.");
             Money = money;
             Story = story ?? SavedStory.Empty;
             Professions = Frozen.Dictionary((professions ?? new Dictionary<string, long>()).Where(p => p.Value != 0).OrderBy(p => p.Key, StringComparer.Ordinal)
@@ -160,8 +163,9 @@ namespace EdS.Data.Saves
             new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money);
 
         /// <summary>
-        /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). La borne est vérifiée par l'écriture et la lecture des
-        /// sauvegardes ; les opérations du jeu passent par <see cref="Coins.TryAdd"/>, qui refuse un dépassement.
+        /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). Hors de [0, <see cref="Coins.Max"/>] : refusée
+        /// (<see cref="ArgumentOutOfRangeException"/>, relecture de la PR #72) ; les opérations du jeu passent par <see cref="Coins.TryAdd"/>,
+        /// qui refuse un dépassement.
         /// </summary>
         public SavedCharacter WithMoney(long money) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money);

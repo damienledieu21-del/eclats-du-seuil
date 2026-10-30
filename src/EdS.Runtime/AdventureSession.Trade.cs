@@ -152,13 +152,19 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Vend à la boutique ouverte la pile de la place <paramref name="place"/> du sac, ou <paramref name="count"/> de ses objets (null :
-        /// toute la pile) ; un message dit le résultat ou le refus.
+        /// toute la pile) ; un message dit le résultat ou le refus. Relecture de la PR #72 : seule la part vendable de cet objet part (hors
+        /// objets de soin emportés au combat, <see cref="Inventory.Reserved"/>) ; refus seulement si elle est nulle. Les objets d'un même
+        /// identifiant sont identiques : la vente en retire le nombre exact (des dernières places, comme tout retrait), tout ou rien.
         /// </summary>
         public TradeRefusal SellPlace(int place, int? count = null)
         {
             if (place < 0 || place >= World.Inventory.Stacks.Count) return Refused(TradeRefusal.NotEnough);
             ItemStack stack = World.Inventory.Stacks[place];
-            return Sell(stack.Item, count ?? stack.Count);
+            int wanted = count ?? stack.Count;
+            if (wanted < 1) return Sell(stack.Item, wanted);   // quantité impossible : le motif vient du monde
+            int sellable = Math.Min(Math.Min(wanted, stack.Count), World.Inventory.Available(stack.Item));
+            // Rien de vendable (toute la quantité est emportée au combat) : le monde dit pourquoi, sans rien changer.
+            return Sell(stack.Item, sellable > 0 ? sellable : Math.Min(wanted, stack.Count));
         }
 
         /// <summary>Vend <paramref name="count"/> <paramref name="item"/> à la boutique ouverte ; un message dit le résultat ou le refus.</summary>

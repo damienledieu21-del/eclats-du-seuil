@@ -13,7 +13,7 @@ namespace EdS.Game
     /// au marchand (F). À gauche, ce qu'il vend aujourd'hui (prix, bouton Acheter, grisé avec la raison quand l'achat n'est pas possible) ;
     /// à droite, le sac (clic : vendre un objet, clic droit : toute la pile ; la fiche dit le prix de revente) et les lots à racheter au même
     /// prix ; en bas, la bourse et le bouton Parler. Tout passe par <see cref="AdventureSession"/> : un refus ne change rien et sa raison
-    /// s'affiche dans les messages du jeu.
+    /// s'affiche dans les messages du jeu. Relecture de la PR #72 : au-delà de neuf offres (un marchand peut en avoir 32), des pages.
     /// </summary>
     public sealed partial class AdventureBook
     {
@@ -30,6 +30,8 @@ namespace EdS.Game
         private IReadOnlyList<ShopLot> _lots = new ShopLot[0];
         private UiText _shopPurse, _shopBagTitle, _shopBuybackEmpty, _shopNote;
         private UiButton _shopTalk;
+        private Pager _offerPager;
+        private string _offerShop;
         private ShopTip _shopTip;
         private int _shopTipIndex;
 
@@ -38,7 +40,8 @@ namespace EdS.Game
 
         private void BuildMerchant(RectTransform page)
         {
-            Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 168f, 600f, 20f, 0f, 0.5f, 14f, true).Value = "En vente aujourd'hui";
+            Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 168f, 480f, 20f, 0f, 0.5f, 14f, true).Value = "En vente aujourd'hui";
+            _offerPager = new Pager(page, OfferRows, 620f, 168f, 30f);
             for (int i = 0; i < OfferRows; i++)
             {
                 int index = i;
@@ -47,7 +50,7 @@ namespace EdS.Game
                 Image back = UiKit.Image(row, "Fond", UiKit.Sprite("bouton_sobre", 12f), new Color(1f, 1f, 1f, 0.55f), Image.Type.Sliced);
                 UiKit.Fill(back.rectTransform);
                 UiPointer pointer = UiKit.Pointer(back);
-                pointer.Enter = () => ShowShopTip(ShopTip.Offer, index, row);
+                pointer.Enter = () => ShowShopTip(ShopTip.Offer, _offerPager.First + index, row);
                 pointer.Exit = () => HideTip(row);
                 Image icon = UiKit.Image(row, "Icône", null, Color.white);
                 UiKit.Place(icon.rectTransform, new Vector2(8f, 5f), new Vector2(48f, 48f), Vector2.zero);
@@ -95,8 +98,10 @@ namespace EdS.Game
             UiKit.Place(_shopTalk.Rect, new Vector2(1440f, 834f), new Vector2(200f, 44f), new Vector2(1f, 0.5f));
         }
 
-        private void BuyOffer(int index)
+        /// <summary>Bouton Acheter de la ligne <paramref name="row"/> de la page affichée.</summary>
+        private void BuyOffer(int row)
         {
+            int index = _offerPager.First + row;
             if (_session != null && index < _offers.Count) _session.Buy(_offers[index].Item);
         }
 
@@ -130,13 +135,20 @@ namespace EdS.Game
             _title.Value = a.ShopName;
             _subtitle.Value = a.ShopGreeting;
             _offers = a.ShopOffers();
+            if (_offerShop != a.Shop)
+            {
+                _offerShop = a.Shop;
+                _offerPager.Reset();   // une autre boutique s'ouvre à sa première page
+            }
+            _offerPager.Refresh(_offers.Count);
             for (int i = 0; i < _offerRows.Count; i++)
             {
                 var row = _offerRows[i];
-                bool used = i < _offers.Count;
+                int index = _offerPager.First + i;
+                bool used = index < _offers.Count;
                 UiKit.Show(row.Row, used);
                 if (!used) continue;
-                ShopOffer o = _offers[i];
+                ShopOffer o = _offers[index];
                 ItemDefinition item = a.Item(o.Item);
                 row.Icon.sprite = UiKit.Icon(ShortId(o.Item));
                 UiKit.Show(row.Icon, row.Icon.sprite != null);
@@ -238,6 +250,57 @@ namespace EdS.Game
             _shopTipAnchor = null;
             _shopTip = ShopTip.None;
             UiKit.Show(_tip, false);
+        }
+
+        /// <summary>
+        /// Relecture de la PR #72 : pages d'une liste plus longue que ses lignes (offres d'un marchand, points sûrs du voyage rapide) : boutons
+        /// précédente et suivante autour de « 2 / 4 », montrés seulement quand il y a plus d'une page. À la souris, sans touche de plus.
+        /// </summary>
+        private sealed class Pager
+        {
+            private readonly int _rows;
+            private readonly UiButton _previous, _next;
+            private readonly UiText _label;
+            private int _pages = 1;
+
+            /// <summary>Page affichée (0 : la première).</summary>
+            public int Page { get; private set; }
+
+            /// <summary>Rang, dans la liste, de la première ligne de la page affichée.</summary>
+            public int First => Page * _rows;
+
+            /// <summary>Contrôles centrés en (<paramref name="x"/>, <paramref name="y"/>), boutons de hauteur <paramref name="height"/>.</summary>
+            public Pager(Transform parent, int rows, float x, float y, float height)
+            {
+                _rows = rows;
+                _previous = UiKit.Button(parent, "Page précédente", "bouton_sobre", "<", UiFace.Bold, 16f, UiKit.Ink, () => Turn(-1));
+                UiKit.Place(_previous.Rect, new Vector2(x - 36f, y), new Vector2(44f, height), new Vector2(1f, 0.5f));
+                _label = Text(parent, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleCenter, x, y, 64f, height, 0.5f, 0.5f);
+                _next = UiKit.Button(parent, "Page suivante", "bouton_sobre", ">", UiFace.Bold, 16f, UiKit.Ink, () => Turn(1));
+                UiKit.Place(_next.Rect, new Vector2(x + 36f, y), new Vector2(44f, height), new Vector2(0f, 0.5f));
+            }
+
+            private void Turn(int by)
+            {
+                int page = Page + by;
+                if (page >= 0 && page < _pages) Page = page;
+            }
+
+            public void Reset() => Page = 0;
+
+            /// <summary>Ajuste la page à une liste de <paramref name="count"/> entrées (la dernière si la liste a raccourci).</summary>
+            public void Refresh(int count)
+            {
+                _pages = count <= 0 ? 1 : (count + _rows - 1) / _rows;
+                if (Page >= _pages) Page = _pages - 1;
+                bool shown = _pages > 1;
+                UiKit.Show(_previous.Rect, shown);
+                UiKit.Show(_next.Rect, shown);
+                UiKit.Show(_label.Rect, shown);
+                _label.Value = (Page + 1) + " / " + _pages;
+                _previous.Enable(Page > 0);
+                _next.Enable(Page + 1 < _pages);
+            }
         }
     }
 }

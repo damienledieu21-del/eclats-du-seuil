@@ -194,10 +194,11 @@ public class V11VoyageTests : IDisposable
         Assert.True(distance > 12, distance.ToString(System.Globalization.CultureInfo.InvariantCulture));
         Assert.True(w.InCombat);
         Assert.Equal(TravelRefusal.InCombat, w.CanTravel(zone, "place_du_village"));
-        // Le même archer, calme et loin : hors combat.
-        WorldSession calm = Play(Zone(), Hero());
+        // Le même archer, calme et loin : hors combat (vers le bourg découvert ; le village est le point où l'on est, relecture de la PR #72).
+        WorldSession calm = Play(Zone(), Hero(), consumed: new[] { "zone.vallons/safe/place_du_bourg" });
         Assert.False(calm.InCombat);
-        Assert.Equal(TravelRefusal.None, calm.CanTravel(calm.Definition!, "place_du_village"));
+        Assert.Equal(TravelRefusal.None, calm.CanTravel(calm.Definition!, "place_du_bourg"));
+        Assert.Equal(TravelRefusal.AlreadyHere, calm.CanTravel(calm.Definition!, "place_du_village"));
     }
 
     [Fact]
@@ -246,7 +247,8 @@ public class V11VoyageTests : IDisposable
         Assert.NotNull(talk.Dialogue);
         Assert.Equal(TravelRefusal.Unavailable, talk.CanTravel("zone.vallons", "place_du_village"));
         talk.CloseDialogue();
-        Assert.Equal(TravelRefusal.None, talk.CanTravel("zone.vallons", "place_du_village"));
+        // Dialogue fermé : seul reste le refus du point où l'on est (relecture de la PR #72 : le voyage n'est pas une halte gratuite).
+        Assert.Equal(TravelRefusal.AlreadyHere, talk.CanTravel("zone.vallons", "place_du_village"));
         Directory.Delete(_folder, true);
 
         // Tombé : le voyage attend la reprise (Entrée), qui ramène au dernier point sûr.
@@ -268,14 +270,19 @@ public class V11VoyageTests : IDisposable
     [Fact]
     public void Sauvegarde_impossible_on_reste_ou_l_on_est()
     {
+        // Partie au village, le bourg déjà découvert (relecture de la PR #72 : pas de voyage vers le point où l'on est).
+        Directory.CreateDirectory(Path.GetDirectoryName(SavePath)!);
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 1, new[] { "zone.vallons/safe/place_du_bourg", "zone.vallons/safe/place_du_village" }, Hero()));
+        string before = File.ReadAllText(SavePath);
         AdventureSession a = Adventure(SavePath);
         a.DrainMessages();
         // Un dossier à la place du fichier temporaire : l'écriture échoue.
         Directory.CreateDirectory(SaveStore.TemporaryPath(SavePath));
-        Assert.Equal(TravelRefusal.SaveFailed, a.Travel("zone.vallons", "place_du_village"));
+        Assert.Equal(TravelRefusal.SaveFailed, a.Travel("zone.vallons", "place_du_bourg"));
         Assert.StartsWith("Sauvegarde impossible", a.DrainMessages().Last(), StringComparison.Ordinal);
         Assert.Equal((1, 0), (a.Opened, a.Travels));
-        Assert.False(File.Exists(SavePath));
+        Assert.Equal(before, File.ReadAllText(SavePath));
+        Assert.Equal("zone.vallons", a.CurrentZone);
     }
 
     [Fact]
@@ -291,8 +298,12 @@ public class V11VoyageTests : IDisposable
         // Une nouvelle session sur la sauvegarde : déjà découverts, aucun nouvel événement.
         var again = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
         Assert.Empty(Enumerable.Range(0, 5).SelectMany(_ => again.Step().Story));
-        // Registre presque plein : la découverte attend (la place des morts possibles d'un tick reste gardée). Avec juste une place de
-        // plus que les combattants à l'ouverture, le point d'entrée est découvert ; ensuite, plus rien tant que la place manque.
+        // Registre presque plein : la découverte attend, la place des morts possibles d'un tick (une par combattant, chef compris) reste
+        // gardée. Relecture de la PR #72 : à l'ouverture, la découverte du point de départ se fait après l'arrivée du chef, qui compte donc
+        // (avant, elle se faisait sans lui : avec autant de places que de combattants, le point était découvert et le premier tick levait
+        // « Registre des événements presque plein »). Avec une place de plus que les combattants (chef compris), le point d'entrée est
+        // découvert ; ensuite, plus rien tant que la place manque. Le cas limite (autant de places que de combattants) est dans
+        // V11RelectureTests.Decouverte_du_depart_laisse_au_chef_sa_place_au_registre.
         int combatants = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()), zone, ShippedData, Progression, ItemsCatalog,
             Book(zone)).Zone.Engine.CombatantIds.Count;
         string[] full = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - 1).Select(i => $"zone.vallons/test/k{i}").ToArray();

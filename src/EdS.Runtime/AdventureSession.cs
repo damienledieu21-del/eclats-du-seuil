@@ -247,6 +247,8 @@ namespace EdS.Runtime
         private void Commit(WorldSession world)
         {
             World = world;
+            // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
+            Shop = null;
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, PlayerId, () => Collect(world, world.Step()), TargetRange);
             _drunk.Clear();
             _strandedAnnounced = false;
@@ -395,6 +397,9 @@ namespace EdS.Runtime
                 case StoryEventKind.RewardBlocked:
                     Say("text.ui.reward_blocked");
                     break;
+                case StoryEventKind.PurseFull:   // relecture de la PR #72 : la bourse, pas le sac
+                    Say("text.ui.reward_purse_full");
+                    break;
                 case StoryEventKind.MoneyGiven:   // sous-lot V1.1
                     Say("text.ui.money_given", MoneyText(e.Value));
                     break;
@@ -458,8 +463,14 @@ namespace EdS.Runtime
             if (World.IsDefeated) return false;
             if (NpcInReach is Npc npc)
             {
-                // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ).
-                if (World.MerchantOf(npc.Id) is Merchant merchant) return OpenShop(merchant.Id);
+                // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ). Relecture de la PR #72 : boutique
+                // fermée (heure de fermeture), le marchand le dit et reste un PNJ comme les autres (son dialogue de l'histoire).
+                if (World.MerchantOf(npc.Id) is Merchant merchant)
+                {
+                    TradeRefusal shop = World.CanTrade(merchant.Id);
+                    if (shop == TradeRefusal.None) return OpenShop(merchant.Id);
+                    if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
+                }
                 DialogueRefusal refusal = World.Talk(npc.Id, out _);
                 if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(npc.Name));
                 return refusal == DialogueRefusal.None;
@@ -564,6 +575,7 @@ namespace EdS.Runtime
             foreach (StoryEvent e in events) Story(e);
             if (events.Count > 0) _dirty = true;
             if (refusal == DialogueRefusal.NoRoom) Say("text.ui.no_room");
+            else if (refusal == DialogueRefusal.PurseFull) Say("text.ui.purse_full");
             else if (refusal == DialogueRefusal.TooFar) Say("text.ui.too_far");
             return refusal;
         }

@@ -30,6 +30,12 @@ namespace EdS.World
         /// Sous-lot V1.1 : point sûr découvert (identifiant du point sûr de la zone de la partie) ; le voyage rapide y mène désormais.
         /// </summary>
         SafePointDiscovered = 12,
+
+        /// <summary>
+        /// Relecture de la PR #72 : objectif atteint, mais les pièces de ses récompenses dépasseraient la bourse (<see cref="Coins.Max"/>) :
+        /// l'étape attend (annoncé une fois, comme <see cref="RewardBlocked"/>).
+        /// </summary>
+        PurseFull = 13,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -69,10 +75,13 @@ namespace EdS.World
         NoSuchChoice = 3,
 
         /// <summary>
-        /// Les objets donnés ne tiennent pas dans l'inventaire, ceux demandés manquent, ou les pièces données dépasseraient la bourse : rien
-        /// n'a changé.
+        /// Les objets donnés ne tiennent pas dans l'inventaire, ceux demandés manquent, ou un passage n'a plus sa place au registre : rien n'a
+        /// changé.
         /// </summary>
         NoRoom = 4,
+
+        /// <summary>Relecture de la PR #72 : les pièces données dépasseraient la bourse (<see cref="Coins.Max"/>) : rien n'a changé.</summary>
+        PurseFull = 5,
     }
 
     /// <summary>Réponse proposée : son rang dans le nœud et la clé de son texte.</summary>
@@ -237,7 +246,8 @@ namespace EdS.World
             }
             if (index < 0 || index >= o.Node.Choices.Count || !All(o.Node.Choices[index].Conditions)) return DialogueRefusal.NoSuchChoice;
             DialogueChoice choice = o.Node.Choices[index];
-            if (!Apply(choice.Effects, events)) return DialogueRefusal.NoRoom;
+            DialogueRefusal applied = Apply(choice.Effects, events);
+            if (applied != DialogueRefusal.None) return applied;
             if (choice.Next is null) _open = null;
             else
             {
@@ -287,9 +297,12 @@ namespace EdS.World
                 bool last = step + 1 == quest.Steps.Count;
                 var effects = last ? s.Effects.Concat(quest.Effects).ToArray() : s.Effects.ToArray();
                 var applied = new List<StoryEvent>();
-                if (!Apply(effects, applied))
+                DialogueRefusal blocked = Apply(effects, applied);
+                if (blocked != DialogueRefusal.None)
                 {
-                    if (_blocked.Add(id + "/" + s.Id)) events.Add(new StoryEvent(StoryEventKind.RewardBlocked, id, s.Id));
+                    // Relecture de la PR #72 : une bourse pleine a son propre message (pas « inventaire plein »).
+                    StoryEventKind kind = blocked == DialogueRefusal.PurseFull ? StoryEventKind.PurseFull : StoryEventKind.RewardBlocked;
+                    if (_blocked.Add(id + "/" + s.Id)) events.Add(new StoryEvent(kind, id, s.Id));
                     continue;
                 }
                 _blocked.Remove(id + "/" + s.Id);
@@ -341,25 +354,26 @@ namespace EdS.World
         /// <summary>
         /// Applique des effets en entier ou pas du tout : les passages à ouvrir doivent trouver place au registre du monde, les pièces données
         /// dans la bourse (sous-lot V1.1), les objets sont d'abord essayés sur une copie de l'inventaire (retraits puis dons, dans l'ordre) ;
-        /// si tout passe, tout est appliqué.
+        /// si tout passe, tout est appliqué. Rend le motif d'un refus : <see cref="DialogueRefusal.PurseFull"/> pour la bourse,
+        /// <see cref="DialogueRefusal.NoRoom"/> pour le reste.
         /// </summary>
-        private bool Apply(IReadOnlyList<StoryEffect> effects, List<StoryEvent> events)
+        private DialogueRefusal Apply(IReadOnlyList<StoryEffect> effects, List<StoryEvent> events)
         {
             // Revue Codex de la PR #46 : les passages à ouvrir réservent leur place au registre avant toute mutation (registre plein : rien
             // n'est appliqué, ni retrait d'objets ni autre effet).
             int passages = effects.Where(e => e.Kind == EffectKind.OpenPassage && !_world.IsPassageOpen(e.Id)).Select(e => e.Id).Distinct(StringComparer.Ordinal).Count();
-            if (passages > _world.PassageRoom) return false;
+            if (passages > _world.PassageRoom) return DialogueRefusal.NoRoom;
             // Sous-lot V1.1 : les pièces données doivent tenir dans la bourse, toutes ensemble (sinon rien n'est appliqué). Chaque effet est
             // borné par le validateur (au plus StoryValidator.MaxMoney, huit effets) : la somme ne déborde pas.
             long money = 0;
             foreach (StoryEffect e in effects)
                 if (e.Kind == EffectKind.GiveMoney) money = checked(money + e.Value);
-            if (money > 0 && !Coins.TryAdd(_world.Money, money, out _)) return false;
+            if (money > 0 && !Coins.TryAdd(_world.Money, money, out _)) return DialogueRefusal.PurseFull;
             Inventory trial = _world.Inventory.Clone();
             foreach (StoryEffect e in effects)
             {
-                if (e.Kind == EffectKind.TakeItem && trial.Remove(e.Id, (int)e.Value) != InventoryRefusal.None) return false;
-                if (e.Kind == EffectKind.GiveItem && trial.Add(e.Id, (int)e.Value) != InventoryRefusal.None) return false;
+                if (e.Kind == EffectKind.TakeItem && trial.Remove(e.Id, (int)e.Value) != InventoryRefusal.None) return DialogueRefusal.NoRoom;
+                if (e.Kind == EffectKind.GiveItem && trial.Add(e.Id, (int)e.Value) != InventoryRefusal.None) return DialogueRefusal.NoRoom;
             }
             _world.Inventory.CopyFrom(trial);
             foreach (StoryEffect e in effects)
@@ -404,7 +418,7 @@ namespace EdS.World
                         if (_discoveries.Add(e.Id)) events.Add(new StoryEvent(StoryEventKind.Discovered, e.Id));
                         break;
                 }
-            return true;
+            return DialogueRefusal.None;
         }
     }
 }

@@ -10,15 +10,17 @@ namespace EdS.Game
     /// Sous-lot V1.1 : la carte (L) propose le voyage rapide vers un point sûr découvert. Une colonne à gauche de la carte peinte : un bouton
     /// par point sûr découvert (grisé là où l'on est, ou en plein combat, avec la raison), dans l'ordre des données. Le voyage passe par
     /// <see cref="AdventureSession.Travel"/> (sauvegarde, puis nouvelle session au point d'arrivée) ; réussi, le panneau se ferme.
+    /// Relecture de la PR #72 : au-delà de sept points sûrs (une zone peut en avoir 32), des pages.
     /// </summary>
     public sealed partial class AdventureBook
     {
-        private const int TravelButtons = 8;
+        private const int TravelButtons = 7;
 
         private readonly List<UiButton> _travel = new List<UiButton>();
         private IReadOnlyList<TravelDestination> _destinations = new TravelDestination[0];
         private RectTransform _travelPanel;
         private UiText _travelTitle, _travelHint, _travelState;
+        private Pager _travelPager;
 
         private void BuildTravel(RectTransform page)
         {
@@ -36,12 +38,15 @@ namespace EdS.Game
                 UiKit.Place(go.Rect, new Vector2(118f, 104f + i * 50f), new Vector2(204f, 42f), new Vector2(0.5f, 0f));
                 _travel.Add(go);
             }
+            _travelPager = new Pager(_travelPanel, TravelButtons, 118f, 104f + TravelButtons * 50f + 18f, 36f);
             _travelState = Text(_travelPanel, UiFace.Body, 14f, UiKit.Endurance, TextAnchor.UpperLeft, 18f, 510f, 204f, 90f, 0f, 0f);
             _travelState.Wrap();
         }
 
-        private void Travel(int index)
+        /// <summary>Bouton de rang <paramref name="row"/> de la page affichée.</summary>
+        private void Travel(int row)
         {
+            int index = _travelPager.First + row;
             if (_session == null || index >= _destinations.Count) return;
             TravelDestination d = _destinations[index];
             if (_session.Travel(d.Zone, d.SafePoint) == TravelRefusal.None) _request = Request.Close;
@@ -54,16 +59,19 @@ namespace EdS.Game
             _travelTitle.Value = a.Text("text.ui.travel.title");
             _travelHint.Value = a.Text("text.ui.travel.hint");
             TravelRefusal blocked = TravelRefusal.None;
+            _travelPager.Refresh(_destinations.Count);
             for (int i = 0; i < _travel.Count; i++)
             {
-                bool used = i < _destinations.Count;
+                int index = _travelPager.First + i;
+                bool used = index < _destinations.Count;
                 UiKit.Show(_travel[i].Rect, used);
                 if (!used) continue;
-                TravelDestination d = _destinations[i];
+                TravelDestination d = _destinations[index];
                 TravelRefusal refusal = a.CanTravel(d.Zone, d.SafePoint);
-                if (refusal != TravelRefusal.None && blocked == TravelRefusal.None) blocked = refusal;
+                // Le point où l'on est (« Tu es ici ») est grisé sans raison affichée : seule une raison qui bloque les autres s'affiche.
+                if (refusal != TravelRefusal.None && refusal != TravelRefusal.AlreadyHere && blocked == TravelRefusal.None) blocked = refusal;
                 _travel[i].Text.Value = d.Here ? d.Name + " · " + a.Text("text.ui.travel.here") : d.Name;
-                _travel[i].Enable(refusal == TravelRefusal.None && !d.Here);
+                _travel[i].Enable(refusal == TravelRefusal.None);
             }
             _travelState.Value = blocked == TravelRefusal.None ? "" : a.Text("text.ui.travel." + blocked.ToString().ToLowerInvariant());
         }
