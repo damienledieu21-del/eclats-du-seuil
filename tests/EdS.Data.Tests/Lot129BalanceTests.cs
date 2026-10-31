@@ -48,7 +48,8 @@ public class Lot129BalanceTests
             ItemCatalog catalog = Items;
             ZoneDefinition z = ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, catalog).Zone!;
             SavedCharacter hero = PlayerCharacters.Create("bastion", "class.bastion", Progression).WithXp(xp).WithItems(items, new Dictionary<string, string>());
-            return new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), z, ShippedData, Progression, catalog);
+            // Sauvegarde de V1.8 (relecture de la PR #82) : le personnage a atteint son niveau après V1.8.
+            return new WorldSession(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), z, ShippedData, Progression, catalog);
         }
         finally
         {

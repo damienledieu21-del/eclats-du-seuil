@@ -180,6 +180,12 @@ namespace EdS.Data.Zones
         /// d'une session : elle a une chance d'apparaître chaque nuit du monde, après un signe.
         /// </summary>
         public NightData? Night { get; set; }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #83 (schéma 7) : niveau propre de la créature, à la place du niveau minimum de son lieu ; facultatif.
+        /// Le loup blanc reste une bête du chapitre 1 et le Borgne un chef du chapitre 2, même dans un lieu d'un chapitre plus haut.
+        /// </summary>
+        public int? Level { get; set; }
     }
 
     /// <summary>Schéma 6 : apparition d'une créature rare de la nuit (chance par nuit, délai entre le signe et l'arrivée, texte du signe).</summary>

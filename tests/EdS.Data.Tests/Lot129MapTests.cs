@@ -106,7 +106,7 @@ public class Lot129MapTests : IDisposable
     [InlineData("passage", -20.0, -4.0)]   // la porte : Maëlle la pose
     [InlineData("pre", -10.0, 30.0)]       // le pré des loups
     [InlineData("manifestation", 50.0, 32.0)]
-    [InlineData("rodeur", 49.0, 32.0)]     // la place du rôdeur
+    [InlineData("rodeur", 42.0, 26.0)]     // la place du rôdeur (relecture de la PR #83 : éloigné du Gardien)
     [InlineData("retour", -8.0, 3.0)]      // revenir chez Odile
     public void L_objectif_suit_l_etape_de_la_mission(string step, double x, double z)
     {

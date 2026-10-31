@@ -187,6 +187,11 @@
                 "maxLength": 64,
                 "description": "Sous-lot V1.6 : famille (objectifs defeatFamily) ; absente : la créature sans ses chiffres finaux."
               },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Schéma 7 (relecture de la PR #83) : niveau propre de la créature (zones en mélange), à la place du niveau minimum de son lieu ; elle monte quand même jusqu'à easeLevels niveaux sous un joueur plus fort. Le loup blanc reste au niveau du chapitre 1 et le Borgne au niveau du chapitre 2."
+              },
               "night": {
                 "type": "object",
                 "additionalProperties": false,

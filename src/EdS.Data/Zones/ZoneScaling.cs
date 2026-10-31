@@ -40,8 +40,9 @@ namespace EdS.Data.Zones
 
         /// <summary>
         /// La créature <paramref name="creature"/>, faite pour le niveau <paramref name="from"/>, portée au niveau <paramref name="to"/> : PV et
-        /// dégâts bruts de chaque attaque multipliés (arrondi vers le bas, au plus <see cref="AssailantSetup.MaxHealth"/> PV). La même
-        /// créature si rien ne change.
+        /// dégâts bruts de chaque attaque multipliés (arrondi vers le bas, au plus <see cref="AssailantSetup.MaxHealth"/> PV et
+        /// <see cref="CombatantStats.MaxRawDamage"/> dégâts bruts : relecture de la PR #83, le validateur de la zone refuse déjà ce qui
+        /// dépasserait au niveau maximal). La même créature si rien ne change.
         /// </summary>
         public AssailantSetup Scale(AssailantSetup creature, int from, int to)
         {
@@ -49,7 +50,7 @@ namespace EdS.Data.Zones
             if (to <= from || (HealthPerLevelPercent == 0 && DamagePerLevelPercent == 0)) return creature;
             long hp = Percent(HealthPerLevelPercent, from, to), dmg = Percent(DamagePerLevelPercent, from, to);
             long? health = creature.Health is long h ? Math.Min(AssailantSetup.MaxHealth, checked(h * hp) / 100) : (long?)null;
-            var attacks = creature.Attacks.Select(a => new AssailantAttack(a.Id, checked(a.RawDamage * dmg) / 100, a.DamageType, a.Targeting, a.Unblockable,
+            var attacks = creature.Attacks.Select(a => new AssailantAttack(a.Id, Math.Min(CombatantStats.MaxRawDamage, checked(a.RawDamage * dmg) / 100), a.DamageType, a.Targeting, a.Unblockable,
                 a.Applies, a.Shape, a.TelegraphMs, a.Range, a.Radius, a.Angle, a.Width, a.Center, a.PersistentMs, a.PulseMs, a.GuardableOverride,
                 a.ParryableOverride, a.Charge, a.Push, a.HoldPosition)).ToList();
             return new AssailantSetup(creature.Id, creature.Team, creature.Armor, creature.MagicResistance, creature.Target, creature.FirstAttackMs,

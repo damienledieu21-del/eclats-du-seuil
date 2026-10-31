@@ -486,6 +486,7 @@
       },
       {
         "creature": "loup_blanc",
+        "level": 1,
         "respawnMs": 600000,
         "leashRange": 25,
         "loot": "loot.loup_blanc",
@@ -498,6 +499,7 @@
       },
       {
         "creature": "le_borgne",
+        "level": 6,
         "respawnMs": 300000,
         "leashRange": 20,
         "loot": "loot.bandit",

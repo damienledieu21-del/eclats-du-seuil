@@ -73,8 +73,16 @@ namespace EdS.Data.Zones
         /// </summary>
         public NightSpawn? Night { get; }
 
-        internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null, NightSpawn? night = null)
+        /// <summary>
+        /// Relecture indépendante de la PR #83 (schéma 7) : niveau propre de la créature (zones en mélange), à la place du niveau minimum de
+        /// son lieu ; null : celui du lieu. Elle monte quand même jusqu'à <see cref="ZoneScaling.EaseLevels"/> niveaux sous un joueur plus fort.
+        /// </summary>
+        public int? Level { get; }
+
+        internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null, NightSpawn? night = null,
+            int? level = null)
         {
+            Level = level;
             Night = night;
             Family = family ?? DefaultFamily(creature);
             Creature = creature;
@@ -291,6 +299,13 @@ namespace EdS.Data.Zones
         public ZoneScaling? Scaling { get; }
 
         /// <summary>
+        /// Relecture indépendante de la PR #83 : niveau minimum de la créature <paramref name="creature"/> placée en <paramref name="point"/> :
+        /// le niveau propre de sa population (<see cref="Population.Level"/>) s'il y en a un, sinon celui du lieu (<see cref="MinLevelAt"/>).
+        /// </summary>
+        public int OwnMinLevel(string creature, GroundVector point) =>
+            Populations.FirstOrDefault(p => p.Creature == creature)?.Level ?? MinLevelAt(point);
+
+        /// <summary>
         /// Sous-lot V1.8 : niveau minimum en ce point : le plus haut des lieux qui le contiennent (un lieu dangereux dans un lieu calme
         /// l'emporte), 1 hors de tout lieu.
         /// </summary>
@@ -313,7 +328,7 @@ namespace EdS.Data.Zones
             if (Scaling is not ZoneScaling s) return this;
             AssailantSetup One(AssailantSetup a, bool boss) =>
                 a.Placement is CombatantPlacement at
-                    ? s.Scale(a, boss ? s.BossBaseLevel : s.BaseLevel, s.CreatureLevel(MinLevelAt(at.Position), playerLevel))
+                    ? s.Scale(a, boss ? s.BossBaseLevel : s.BaseLevel, s.CreatureLevel(OwnMinLevel(a.Id, at.Position), playerLevel))
                     : a;
             var bossForms = new HashSet<string>(Bosses.SelectMany(b => b.Forms).Select(f => f.Id), StringComparer.Ordinal);
             var scaled = new Dictionary<string, AssailantSetup>(StringComparer.Ordinal);
@@ -322,7 +337,7 @@ namespace EdS.Data.Zones
             CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
                 Setup.Combatants.Select(c => c is AssailantSetup a ? scaled[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone);
             var populations = Populations.Select(p => new Population(p.Creature, scaled.TryGetValue(p.Template.Id, out AssailantSetup t) ? t : One(p.Template, false),
-                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night)).ToList();
+                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
                 ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling);
@@ -541,7 +556,11 @@ namespace EdS.Data.Zones
                         if (nok) night = new NightSpawn((int)n.ChancePercent!.Value, n.SignMs!.Value, n.Sign!);
                         else ok = false;
                     }
-                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night));
+                    // Relecture de la PR #83 (schéma 7) : niveau propre, de 1 au niveau maximal des règles.
+                    int maxPopulationLevel = scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit;
+                    if (p.Level is int pl && (pl < 1 || pl > maxPopulationLevel))
+                    { report.Add(path + ".level", ValidationCode.OutOfRange, $"niveau propre hors de [1, {maxPopulationLevel}]."); ok = false; }
+                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night, p.Level));
                 }
             }
 
@@ -657,7 +676,8 @@ namespace EdS.Data.Zones
                 }
             }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
-            ZoneScaling? scaling = d.Scaling is null ? null : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, report);
+            ZoneScaling? scaling = d.Scaling is null ? null
+                : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, scenario, (boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(chiefs).SelectMany(x => x.Forms), report);
             if (!report.IsValid) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
                 entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling));
@@ -872,9 +892,14 @@ namespace EdS.Data.Zones
             return null;
         }
 
-        /// <summary>Point présent et complet (les deux coordonnées), y compris pour un document construit hors du lecteur JSON.</summary>
-        /// <summary>Sous-lot V1.8 (schéma 7) : zones en mélange (niveaux de 1 au niveau maximal des règles, pour cent et facilité bornés).</summary>
-        private static ZoneScaling? CheckScaling(ZoneScalingData d, int maxLevel, ValidationReport report)
+        /// <summary>
+        /// Sous-lot V1.8 (schéma 7) : zones en mélange (niveaux de 1 au niveau maximal des règles, pour cent et facilité bornés). Relecture
+        /// indépendante de la PR #83 : précontrôle numérique : chaque créature placée du scénario et chaque forme de chef (<paramref name="bossForms"/>),
+        /// portée de son niveau de base au niveau maximal, garde ses PV sous <see cref="AssailantSetup.MaxHealth"/> et les dégâts bruts de chaque
+        /// attaque sous <see cref="CombatantStats.MaxRawDamage"/> ; sinon une erreur sur <c>$.data.scaling</c> nomme la créature.
+        /// </summary>
+        private static ZoneScaling? CheckScaling(ZoneScalingData d, int maxLevel, CombatSetup scenario, IEnumerable<AssailantSetup> bossForms,
+            ValidationReport report)
         {
             const string path = "$.data.scaling";
             int? Read(int? value, string field, string what, int min, int max)
@@ -888,7 +913,31 @@ namespace EdS.Data.Zones
             int? health = Read(d.HealthPerLevelPercent, "healthPerLevelPercent", "PV en plus par niveau (pour cent)", 0, ZoneScaling.MaxPercentPerLevel);
             int? damage = Read(d.DamagePerLevelPercent, "damagePerLevelPercent", "dégâts en plus par niveau (pour cent)", 0, ZoneScaling.MaxPercentPerLevel);
             int? ease = Read(d.EaseLevels, "easeLevels", "niveaux sous le joueur", 0, ZoneScaling.MaxEaseLevels);
-            return baseLevel is int b && bossLevel is int bb && health is int h && damage is int dm && ease is int e ? new ZoneScaling(b, bb, h, dm, e) : null;
+            if (!(baseLevel is int b && bossLevel is int bb && health is int h && damage is int dm && ease is int e)) return null;
+            var scaling = new ZoneScaling(b, bb, h, dm, e);
+            var forms = bossForms.ToList();
+            var formIds = new HashSet<string>(forms.Select(f => f.Id), StringComparer.Ordinal);
+            IEnumerable<(AssailantSetup Creature, int From)> all = scenario.Combatants.OfType<AssailantSetup>()
+                .Where(a => a.Placement != null && !formIds.Contains(a.Id)).Select(a => (a, b)).Concat(forms.Select(f => (f, bb)));
+            bool ok = true;
+            foreach ((AssailantSetup creature, int from) in all)
+            {
+                long hp = ZoneScaling.Percent(h, from, maxLevel), dmg = ZoneScaling.Percent(dm, from, maxLevel);
+                if (creature.Health is long life && checked(life * hp) / 100 > AssailantSetup.MaxHealth)
+                {
+                    report.Add(path + ".healthPerLevelPercent", ValidationCode.OutOfRange,
+                        $"« {creature.Id} » au niveau {maxLevel} aurait plus de {AssailantSetup.MaxHealth} PV.");
+                    ok = false;
+                }
+                foreach (AssailantAttack attack in creature.Attacks)
+                    if (checked(attack.RawDamage * dmg) / 100 > CombatantStats.MaxRawDamage)
+                    {
+                        report.Add(path + ".damagePerLevelPercent", ValidationCode.OutOfRange,
+                            $"« {creature.Id} » au niveau {maxLevel} : l'attaque « {attack.Id} » dépasserait {CombatantStats.MaxRawDamage} dégâts bruts.");
+                        ok = false;
+                    }
+            }
+            return ok ? scaling : null;
         }
 
         private static bool CheckPoint(PointData? p, string path, string what, ValidationReport report)

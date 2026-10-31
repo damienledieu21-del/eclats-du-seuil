@@ -253,6 +253,7 @@ namespace EdS.Data.Json
                 ["loot"] = (v, p) => population.Loot = input.NullableText(v, p),
                 ["family"] = (v, p) => population.Family = input.Text(v, p),   // sous-lot V1.6 (schéma 5)
                 ["night"] = (v, p) => population.Night = ReadNight(input, v, p),   // réponses du 31 octobre 2026 (schéma 6)
+                ["level"] = (v, p) => population.Level = input.Int32(v, p),   // relecture de la PR #83 (schéma 7) : niveau propre
             });
             return ok ? population : null;
         }
