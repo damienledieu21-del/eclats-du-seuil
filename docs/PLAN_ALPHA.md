@@ -708,6 +708,10 @@ Et pour chaque PR hors de la vague 1 : **l'accord de fusion**, PR par PR, tant q
 
 ## Questions pour Damien
 
+**Réponses de Damien (31 octobre 2026, vers 13 h 45)** : 1. les quatre classes **pendant le lot 13**, avec un second agent ; 2. le **Bastion passe aussi à environ 14 compétences** en alpha ; 3. la **page Steam s'ouvre pendant l'alpha**, avec de vraies images du jeu (frais de Steam : décision d'argent de Damien) ; 4. l'accord de fusion « CI verte et Codex sans remarque » **vaut aussi pour les vagues 2 à 4** ; **le lot 13 et les classes se fusionnent PR par PR**, avec l'accord explicite de Damien à chaque fois ; 5. ordre des classes : **Liturge de l'Aube, Veilleur, Ombrelame, puis Tisse-Seuil**.
+
+Questions posées (gardées pour mémoire) :
+
 1. **Les quatre classes : pendant le lot 13 ou après ?** Proposition de Claude : **pendant**, avec un second agent. Le moteur des classes et le serveur touchent des formats différents, et les classes sortent ainsi du chemin critique (environ un mois de gagné). Après le lot 13, c'est plus simple à suivre, mais l'alpha glisse vers juin ou après.
 2. **Combien de compétences en alpha ?** Le périmètre propose environ 14 par classe (chiffre de Claude, pas encore une décision). Le plan le prend pour les quatre nouvelles classes. Le **Bastion** passe-t-il aussi à environ 14 (deux ou trois chantiers de plus), ou garde-t-il ses 6 compétences et son ultime pour l'alpha ?
 3. **La page Steam : quand ?** Le sujet 17 dit « page Steam tôt » (pour la liste de souhaits) ; le périmètre la range au lancement. Proposition : la préparer pendant l'alpha (n° 86) et l'ouvrir quand des vidéos montrent le jeu, après la marque. Frais de Steam à décider au moment de l'ouvrir.
