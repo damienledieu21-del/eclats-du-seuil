@@ -15,13 +15,18 @@ namespace EdS.Data.Rules
         public string? Token { get; }
         public IReadOnlyList<long>? List { get; }
 
-        private RuleValue(RuleValueKind kind, Fixed decimalValue, long integer, string? token, IReadOnlyList<long>? list = null)
+        /// <summary>Relecture de la PR #78 : identifiants d'une liste d'identifiants (<see cref="RuleValueKind.TokenList"/>).</summary>
+        public IReadOnlyList<string>? Tokens { get; }
+
+        private RuleValue(RuleValueKind kind, Fixed decimalValue, long integer, string? token, IReadOnlyList<long>? list = null,
+            IReadOnlyList<string>? tokens = null)
         {
             Kind = kind;
             Decimal = decimalValue;
             Integer = integer;
             Token = token;
             List = list;
+            Tokens = tokens;
         }
 
         public static RuleValue FromDecimal(Fixed value) => new RuleValue(RuleValueKind.Decimal, value, 0, null);
@@ -30,6 +35,8 @@ namespace EdS.Data.Rules
             new RuleValue(RuleValueKind.Token, Fixed.Zero, 0, value ?? throw new ArgumentNullException(nameof(value)));
         public static RuleValue FromIntegerList(IEnumerable<long> values) =>
             new RuleValue(RuleValueKind.Int32List, Fixed.Zero, 0, null, EdS.Domain.Collections.Frozen.List(values, nameof(values)));
+        public static RuleValue FromTokenList(IEnumerable<string> values) =>
+            new RuleValue(RuleValueKind.TokenList, Fixed.Zero, 0, null, null, EdS.Domain.Collections.Frozen.List(values, nameof(values)));
 
         /// <summary>Écriture canonique, utilisée par l'empreinte : indépendante de la mise en forme du fichier.</summary>
         public string ToCanonicalString()
@@ -40,6 +47,9 @@ namespace EdS.Data.Rules
                 case RuleValueKind.Int32:
                 case RuleValueKind.Int64: return Integer.ToString(CultureInfo.InvariantCulture);
                 case RuleValueKind.Int32List: return "[" + string.Join(",", List!.Select(v => v.ToString(CultureInfo.InvariantCulture))) + "]";
+                // Relecture de la PR #78 : chaque identifiant entre guillemets (« \ » et « " » échappés), dans l'ordre du fichier.
+                case RuleValueKind.TokenList:
+                    return "[" + string.Join(",", Tokens!.Select(t => "\"" + t.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"")) + "]";
                 default: return Token!;
             }
         }

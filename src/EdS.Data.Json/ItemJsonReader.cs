@@ -52,8 +52,77 @@ namespace EdS.Data.Json
                     (e, ip) => ReadItem(input, e, ip)),
                 ["loot"] = (v, p) => d.Loot = input.ReadLimitedList(v, p, ItemValidator.MaxLootTables, n => $"{n} tables, au plus {ItemValidator.MaxLootTables}.",
                     (e, ip) => ReadTable(input, e, ip)),
+                ["sets"] = (v, p) => d.Sets = input.ReadLimitedList(v, p, ItemValidator.MaxSets, n => $"{n} ensembles, au plus {ItemValidator.MaxSets}.",
+                    (e, ip) => ReadSet(input, e, ip)),   // sous-lot V1.3 (version 4)
+                ["properties"] = (v, p) => d.Properties = ReadProperties(input, v, p),
             });
             return ok ? d : null;
+        }
+
+        /// <summary>Sous-lot V1.3 : un ensemble.</summary>
+        private static SetData? ReadSet(JsonInput input, JsonElement element, string path)
+        {
+            var set = new SetData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => set.Id = input.Text(v, p),
+                ["name"] = (v, p) => set.Name = input.Text(v, p),
+                ["bonuses"] = (v, p) => set.Bonuses = input.ReadLimitedList(v, p, ItemValidator.MaxSetBonuses, n => $"{n} paliers, au plus {ItemValidator.MaxSetBonuses}.",
+                    (e, ip) => ReadSetBonus(input, e, ip)),
+            });
+            return ok ? set : null;
+        }
+
+        private static SetBonusData? ReadSetBonus(JsonInput input, JsonElement element, string path)
+        {
+            var b = new SetBonusData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["pieces"] = (v, p) => b.Pieces = input.Int32(v, p),
+                ["text"] = (v, p) => b.Text = input.Text(v, p),
+                ["bonus"] = (v, p) => b.Bonus = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["effects"] = (v, p) => b.Effects = EquipmentEffectJsonReader.Read(input, v, p, withId: false, withText: false),
+            });
+            return ok ? b : null;
+        }
+
+        /// <summary>Sous-lot V1.3 : tables des propriétés tirées.</summary>
+        private static PropertyTablesData? ReadProperties(JsonInput input, JsonElement element, string path)
+        {
+            var t = new PropertyTablesData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["rarities"] = (v, p) => t.Rarities = input.ReadLimitedList(v, p, 16, n => $"{n} raretés, au plus 16.", (e, ip) =>
+                {
+                    var r = new RarityRollData();
+                    bool rok = input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["rarity"] = (rv, rp) => r.Rarity = input.Text(rv, rp),
+                        ["count"] = (rv, rp) => r.Count = input.Int32(rv, rp),
+                        ["scalePercent"] = (rv, rp) => r.ScalePercent = input.Int32(rv, rp),
+                    });
+                    return rok ? r : null;
+                }),
+                ["list"] = (v, p) => t.List = input.ReadLimitedList(v, p, ItemValidator.MaxProperties, n => $"{n} propriétés, au plus {ItemValidator.MaxProperties}.",
+                    (e, ip) =>
+                    {
+                        var d = new PropertyData();
+                        bool dok = input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["id"] = (pv, pp) => d.Id = input.Text(pv, pp),
+                            ["name"] = (pv, pp) => d.Name = input.Text(pv, pp),
+                            ["stat"] = (pv, pp) => d.Stat = input.Text(pv, pp),
+                            ["min"] = (pv, pp) => d.Min = input.Int32(pv, pp),
+                            ["max"] = (pv, pp) => d.Max = input.Int32(pv, pp),
+                            ["minPerLevel"] = (pv, pp) => d.MinPerLevel = input.Int32(pv, pp),
+                            ["maxPerLevel"] = (pv, pp) => d.MaxPerLevel = input.Int32(pv, pp),
+                            ["slots"] = (pv, pp) => d.Slots = input.ReadLimitedList(pv, pp, ItemValidator.MaxSlots, n => $"{n} sortes, au plus {ItemValidator.MaxSlots}.",
+                                (se, sp) => input.Text(se, sp)),
+                        });
+                        return dok ? d : null;
+                    }),
+            });
+            return ok ? t : null;
         }
 
         private static ItemData? ReadItem(JsonInput input, JsonElement element, string path)
@@ -80,6 +149,9 @@ namespace EdS.Data.Json
                 ["icon"] = (v, p) => item.Icon = input.Text(v, p),
                 ["fits"] = Track("fits", (v, p) => item.Fits = input.ReadLimitedList(v, p, ItemValidator.MaxFits, n => $"{n} arbres, au plus {ItemValidator.MaxFits}.",
                     (e, ip) => input.Text(e, ip))),
+                ["named"] = Track("named", (v, p) => item.Named = input.Boolean(v, p)),   // sous-lot V1.3 (version 4)
+                ["set"] = Track("set", (v, p) => item.Set = input.Text(v, p)),
+                ["effects"] = Track("effects", (v, p) => item.Effects = EquipmentEffectJsonReader.Read(input, v, p, withId: false)),
             });
             return ok ? item : null;
         }
@@ -101,6 +173,7 @@ namespace EdS.Data.Json
                 ["required"] = Track("required", (v, p) => slot.Required = input.Boolean(v, p)),
                 ["requiredBy"] = Track("requiredBy", (v, p) => slot.RequiredBy = input.ReadLimitedList(v, p, 64, n => $"{n} classes, au plus 64.", (e, ip) => input.Text(e, ip))),
                 ["guard"] = Track("guard", (v, p) => slot.Guard = input.Boolean(v, p)),
+                ["effects"] = Track("effects", (v, p) => slot.Effects = input.Boolean(v, p)),   // sous-lot V1.3 (version 4)
             });
             return ok ? slot : null;
         }

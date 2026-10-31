@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "4673009e5cc325e945fd805def9ecf44001b2d8e167fb78ba3d3c5305274b9c2")]
-    [InlineData("entrainement_rupture", "197582fbf1cbbc8fd043d2a7c90bb64cd001b93809cdc945dfd33f258ac32e19")]
-    [InlineData("entrainement_alterations", "12b27118b80f95ed94f89398f42ba9e608a1f96672012c6fe15020ab50c4a752")]
-    [InlineData("entrainement_declencheurs", "4d847c01c5375767ffc14e3747ee57a1829b7c7d07ace54350c39e83fcd34b9f")]
+    [InlineData("entrainement_garde_parade", "e947091de43306ef334ad3c3218b2852e0b49e1596d879da09dcdd681468fcdd")]
+    [InlineData("entrainement_rupture", "7fb85206f93053636823ce13b2778297bf6fafd8e2a75e2440f9d6df565f23fd")]
+    [InlineData("entrainement_alterations", "5a19899569b6bc96a60a1d4fee4e01a740f8718ecbcdb6a9bc034ea0a9bb1e2a")]
+    [InlineData("entrainement_declencheurs", "63d5ad67c68e3d1cc55cabdbc599df5348dab472c6d400d10e2e80968afa3c00")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -142,6 +142,10 @@ public class TrainingScenarioTests
         // référence dans Fixtures/reference-0.24.0-contenu-0.6.0-regles-0.12.0.
         // Sous-lot V1.2 : moteur 0.25.0, format 19, règles 0.13.0 (schéma 13, bornes de la garde des boucliers), scénarios en schéma 13 ;
         // aucun scénario d'entraînement n'a de bouclier : seul l'en-tête change ; référence dans Fixtures/reference-0.25.0-contenu-0.6.0-regles-0.13.0.
+        // Sous-lot V1.3 : moteur 0.26.0, format 20, règles 0.14.0 (schéma 14, bornes des effets d'équipement), scénarios en schéma 14 ; aucun de
+        // ces scénarios n'a d'effet d'équipement : seul l'en-tête change ; référence dans Fixtures/reference-0.26.0-contenu-0.6.0-regles-0.14.0.
+        // Relecture de la PR #78 : combat.equipment.allowedStatuses (vide) change l'empreinte des règles 0.14.0 (non fusionnées) : seule
+        // l'empreinte de l'en-tête change ; la référence 0.26.0, elle aussi non fusionnée, est regénérée.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

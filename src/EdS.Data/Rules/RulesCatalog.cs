@@ -167,6 +167,17 @@ namespace EdS.Data.Rules
             new RuleField("combat.shield.minCostPerBlock", RuleValueKind.Int32, C, nameof(CombatRules.ShieldMinCostPerBlock)),
             new RuleField("combat.shield.maxCostPerBlock", RuleValueKind.Int32, C, nameof(CombatRules.ShieldMaxCostPerBlock)),
             new RuleField("combat.shield.parryWindowShiftMs", RuleValueKind.Int64, C, nameof(CombatRules.ShieldParryWindowShiftMs)),
+            // Sous-lot V1.3 (schéma 14) : bornes des effets d'équipement.
+            new RuleField("combat.equipment.maxDamageDealt", RuleValueKind.Decimal, C, nameof(CombatRules.EquipmentMaxDamageDealt)),
+            new RuleField("combat.equipment.maxDamageTaken", RuleValueKind.Decimal, C, nameof(CombatRules.EquipmentMaxDamageTaken)),
+            new RuleField("combat.equipment.maxHealthPercent", RuleValueKind.Decimal, C, nameof(CombatRules.EquipmentMaxHealthPercent)),
+            new RuleField("combat.equipment.maxEnduranceRegen", RuleValueKind.Decimal, C, nameof(CombatRules.EquipmentMaxEnduranceRegen)),
+            new RuleField("combat.equipment.maxStatusDurationMs", RuleValueKind.Int64, C, nameof(CombatRules.EquipmentMaxStatusDurationMs)),
+            new RuleField("combat.equipment.maxStrikeCoefficient", RuleValueKind.Decimal, C, nameof(CombatRules.EquipmentMaxStrikeCoefficient)),
+            new RuleField("combat.equipment.maxGain", RuleValueKind.Int32, C, nameof(CombatRules.EquipmentMaxGain)),
+            new RuleField("combat.equipment.minTriggerCooldownMs", RuleValueKind.Int64, C, nameof(CombatRules.EquipmentMinTriggerCooldownMs)),
+            // Relecture de la PR #78 (schéma 14) : altérations que l'équipement peut poser.
+            new RuleField("combat.equipment.allowedStatuses", RuleValueKind.TokenList, C, nameof(CombatRules.EquipmentStatuses)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

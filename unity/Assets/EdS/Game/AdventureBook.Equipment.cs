@@ -11,7 +11,9 @@ namespace EdS.Game
     /// Sous-lot V1.2 : l'écran du personnage aux 18 places (16 du combat autour du sceau, l'Éclat du Seuil au centre, l'outil de métier en
     /// dessous), les filtres et le rangement du sac, et la comparaison au survol d'un objet : chaque bonus et, pour un bouclier, la garde
     /// (part bloquée, endurance par blocage, fenêtre de parade), avec l'écart en vert (mieux) ou en rouge (moins bien). Clic sur un objet
-    /// porté : l'ôter ; clic droit sur un anneau ou une relique : l'échanger avec l'autre place de sa sorte.
+    /// porté : l'ôter ; clic droit sur un anneau ou une relique : l'échanger avec l'autre place de sa sorte. Sous-lot V1.3 : la fiche compte
+    /// les propriétés tirées de l'instance survolée et montre ses détails : propriétés, effet, ensemble (pièces portées sur le total) et
+    /// paliers, en vert ou en rouge selon ce que le port changerait.
     /// </summary>
     public sealed partial class AdventureBook
     {
@@ -42,6 +44,19 @@ namespace EdS.Game
         /// <summary>Lignes de la comparaison dans la fiche : libellé, valeurs, écart.</summary>
         private readonly List<(UiText Label, UiText Values, UiText Delta)> _compareRows = new List<(UiText, UiText, UiText)>();
         private UiText _tipNotions;
+
+        /// <summary>
+        /// Sous-lot V1.3 : lignes de détail de la fiche : propriétés tirées, effet (vert s'il s'ajoute, rouge s'il se perd), ensemble (pièces
+        /// portées sur le total) et ses paliers (atténués tant qu'ils ne valent pas).
+        /// </summary>
+        private readonly List<UiText> _detailRows = new List<UiText>();
+
+        /// <summary>Largeur utile d'une ligne de détail et nombre de caractères qui y tiennent environ (police de 14).</summary>
+        private const float DetailWidth = 422f;
+        private const int DetailCharsPerLine = 58;
+
+        /// <summary>Relecture de la PR #78 : lignes de détail de la fiche (la dernière annonce « … et N de plus » s'il en manque).</summary>
+        private const int DetailRows = 14;
 
         private static readonly Color Better = new Color(0.45f, 0.9f, 0.5f), Worse = new Color(0.95f, 0.38f, 0.33f);
 
@@ -137,15 +152,28 @@ namespace EdS.Game
                 UiText delta = Text(_tip, UiFace.Bold, 15f, Color.white, TextAnchor.MiddleRight, 376f, 0f, 70f, 20f, 1f, 0.5f);
                 _compareRows.Add((label, values, delta));
             }
+            for (int i = 0; i < DetailRows; i++)
+            {
+                UiText detail = Text(_tip, UiFace.Body, 14f, UiKit.Ink, TextAnchor.UpperLeft, 24f, 0f, DetailWidth, 20f, 0f, 0f);
+                detail.Wrap();
+                _detailRows.Add(detail);
+            }
         }
 
         /// <summary>
         /// Remplit la comparaison de <paramref name="item"/> (porté à <paramref name="wornPlace"/>, ou dans le sac) ; rend la hauteur occupée
         /// sous la ligne des notions, ou −1 s'il n'y a rien à comparer (l'objet ne se porte pas).
         /// </summary>
-        private float RefreshCompare(AdventureSession a, string item, string wornPlace, float top)
+        private float RefreshCompare(AdventureSession a, string item, string wornPlace, int bagPlace, float top)
         {
-            ItemComparison c = item != null ? a.Compare(item, wornPlace) : null;
+            // Sous-lot V1.3 : l'instance elle-même (propriétés tirées comprises), au sac ou portée ; sinon l'objet de base (offre, rachat).
+            ItemComparison c = null;
+            if (item != null)
+            {
+                if (wornPlace != null) c = a.CompareInstance(-1, wornPlace);
+                else if (bagPlace >= 0 && bagPlace < a.World.Inventory.Stacks.Count && a.World.Inventory.Stacks[bagPlace].Item == item) c = a.CompareInstance(bagPlace);
+                if (c == null || c.Candidate.Id != item) c = a.Compare(item, wornPlace);
+            }
             int shown = 0;
             if (c != null)
             {
@@ -178,7 +206,33 @@ namespace EdS.Game
                 _compareRows[i].Values.Show(false);
                 _compareRows[i].Delta.Show(false);
             }
-            return c == null ? -1f : 40f + shown * 22f;
+            // Sous-lot V1.3 : détails sous les écarts (propriétés, effets, ensemble), en vert ou en rouge comme la comparaison.
+            // Relecture de la PR #78 : au-delà des lignes de la fiche, la dernière dit combien de détails ne sont pas montrés (rien n'est
+            // coupé sans prévenir).
+            float detailsHeight = 0f;
+            int details = 0;
+            if (c != null)
+            {
+                int total = c.Details.Count;
+                int room = total > _detailRows.Count ? _detailRows.Count - 1 : total;
+                for (int k = 0; k <= room && k < total; k++)
+                {
+                    bool more = k == room;
+                    string text = more ? string.Format("… et {0} de plus", total - room) : c.Details[k].Text;
+                    UiText row = _detailRows[details++];
+                    float lines = Mathf.Ceil(Mathf.Max(1, text.Length) / (float)DetailCharsPerLine);
+                    float h = 18f * lines + 2f;
+                    row.Show(true);
+                    UiKit.Place(row.Rect, new Vector2(24f, top + 44f + shown * 22f + detailsHeight), new Vector2(DetailWidth, h), Vector2.zero);
+                    row.Value = text;
+                    DetailLine line = more ? null : c.Details[k];
+                    row.Color = line == null ? UiKit.Muted
+                        : line.Trend == CompareTrend.Better ? Better : line.Trend == CompareTrend.Worse ? Worse : line.Active ? UiKit.Ink : UiKit.Muted;
+                    detailsHeight += h;
+                }
+            }
+            for (int i = details; i < _detailRows.Count; i++) _detailRows[i].Show(false);
+            return c == null ? -1f : 40f + shown * 22f + (details > 0 ? detailsHeight + 6f : 0f);
         }
 
         /// <summary>Nom montré d'un arbre de talents (« tree.bastion.rempart » → « Rempart »).</summary>

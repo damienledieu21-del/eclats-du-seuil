@@ -86,6 +86,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot V1.2 (schéma 13) : garde du bouclier porté par un personnage ; facultative (absente : celle des règles).</summary>
         public ShieldData? Shield { get; set; }
 
+        /// <summary>Sous-lot V1.3 (schéma 14) : effets de l'équipement porté par un personnage (objets nommés, ensembles) ; facultatifs.</summary>
+        public List<Equipment.EquipmentEffectData?>? Equipment { get; set; }
+
         // Mannequin et assaillant
         public Fixed? Armor { get; set; }
         public Fixed? MagicResistance { get; set; }

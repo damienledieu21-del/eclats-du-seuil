@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdS.Domain.Builds;
 using EdS.Domain.Numerics;
 using EdS.Domain.Time;
 
@@ -214,6 +215,44 @@ namespace EdS.Domain.Combat
         /// <summary>Plafond technique des coûts de blocage d'un bouclier.</summary>
         public const int MaxShieldCostPerBlock = 1_000_000;
 
+        // Sous-lot V1.3 (schéma de règles 14, bloc combat.equipment) : bornes de jeu des effets d'équipement (EquipmentEffect : objets nommés,
+        // paliers d'ensemble). Une seule fonction les vérifie (EquipmentEffect.Check), pour le catalogue des objets et pour la validation du
+        // combat. Valeurs provisoires, réglées à l'équilibrage (V1.8).
+
+        /// <summary>Bonus de dégâts infligés d'un modificateur d'équipement, au plus (<c>combat.equipment.maxDamageDealt</c>, 0,25).</summary>
+        public Fixed EquipmentMaxDamageDealt { get; init; } = Fixed.FromRatio(1, 4);
+
+        /// <summary>Réduction des dégâts subis d'un modificateur d'équipement, au plus (<c>combat.equipment.maxDamageTaken</c>, 0,15).</summary>
+        public Fixed EquipmentMaxDamageTaken { get; init; } = Fixed.FromRatio(15, 100);
+
+        /// <summary>Pourcentage de PV maximaux d'un modificateur d'équipement, au plus (<c>combat.equipment.maxHealthPercent</c>, 0,15).</summary>
+        public Fixed EquipmentMaxHealthPercent { get; init; } = Fixed.FromRatio(15, 100);
+
+        /// <summary>Régénération d'endurance ajoutée par un modificateur d'équipement, au plus par seconde (<c>combat.equipment.maxEnduranceRegen</c>, 3).</summary>
+        public Fixed EquipmentMaxEnduranceRegen { get; init; } = Fixed.FromInt(3);
+
+        /// <summary>Allongement d'une altération posée (<c>status.&lt;id&gt;.durationDealt</c>), au plus (<c>combat.equipment.maxStatusDurationMs</c>, 1 000 ms).</summary>
+        public long EquipmentMaxStatusDurationMs { get; init; } = 1000;
+
+        /// <summary>Coefficient d'une frappe de réaction d'équipement, au plus (<c>combat.equipment.maxStrikeCoefficient</c>, 1).</summary>
+        public Fixed EquipmentMaxStrikeCoefficient { get; init; } = Fixed.One;
+
+        /// <summary>Gain de ressource d'une réaction d'équipement, au plus (<c>combat.equipment.maxGain</c>, 2).</summary>
+        public int EquipmentMaxGain { get; init; } = 2;
+
+        /// <summary>Recharge interne d'un déclencheur d'équipement, au moins (<c>combat.equipment.minTriggerCooldownMs</c>, 1 000 ms).</summary>
+        public long EquipmentMinTriggerCooldownMs { get; init; } = 1000;
+
+        /// <summary>Relecture de la PR #78 : altérations admises pour l'équipement, au plus.</summary>
+        public const int MaxEquipmentStatuses = 32;
+
+        /// <summary>
+        /// Relecture de la PR #78 : altérations que l'effet <c>applyStatus</c> d'un déclencheur d'équipement a le droit de poser
+        /// (<c>combat.equipment.allowedStatuses</c>, identifiants du catalogue des altérations, sans doublon, au plus
+        /// <see cref="MaxEquipmentStatuses"/>). Vide par défaut et dans les règles livrées : aucun objet livré ne pose d'altération.
+        /// </summary>
+        public IReadOnlyList<string> EquipmentStatuses { get; init; } = Array.Empty<string>();
+
         /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
@@ -358,6 +397,39 @@ namespace EdS.Domain.Combat
             // (ShieldGuard.Check), si bien que des règles d'essai à un autre tick restent valides.
             if (ShieldParryWindowShiftMs < 0 || ShieldParryWindowShiftMs > CombatantRules.MaxParryWindowMs)
                 errors.Add(new RuleViolation($"doit être compris entre 0 et {CombatantRules.MaxParryWindowMs} ms (fenêtre de parade la plus large).", nameof(ShieldParryWindowShiftMs)));
+            // Sous-lot V1.3 : bornes des effets d'équipement (enveloppes techniques : celles des clés de modificateur et des déclencheurs).
+            void Bounded(Fixed value, Fixed max, string name)
+            {
+                if (value < Fixed.Zero || value > max)
+                    errors.Add(new RuleViolation($"doit être compris entre 0 et {max} (plafond technique).", name));
+            }
+            Bounded(EquipmentMaxDamageDealt, Fixed.FromInt(10), nameof(EquipmentMaxDamageDealt));
+            Fraction(EquipmentMaxDamageTaken, nameof(EquipmentMaxDamageTaken));
+            Bounded(EquipmentMaxHealthPercent, Fixed.FromInt(10), nameof(EquipmentMaxHealthPercent));
+            Bounded(EquipmentMaxEnduranceRegen, Fixed.FromInt(1_000_000), nameof(EquipmentMaxEnduranceRegen));
+            Bounded(EquipmentMaxStrikeCoefficient, SkillCombatDefinition.MaxCoefficient, nameof(EquipmentMaxStrikeCoefficient));
+            Range(EquipmentMaxGain, 0, SkillCombatDefinition.MaxCost, nameof(EquipmentMaxGain));
+            foreach (var (value, name) in new[] { (EquipmentMaxStatusDurationMs, nameof(EquipmentMaxStatusDurationMs)),
+                (EquipmentMinTriggerCooldownMs, nameof(EquipmentMinTriggerCooldownMs)) })
+                if (value < 0 || value > AbsoluteMaxDurationMs)
+                    errors.Add(new RuleViolation($"doit être compris entre 0 et {AbsoluteMaxDurationMs} ms (24 h).", name));
+            // Relecture de la PR #78 : altérations admises pour l'équipement, connues du catalogue, sans doublon.
+            if (EquipmentStatuses is null)
+                errors.Add(new RuleViolation("liste obligatoire (vide si l'équipement ne pose aucune altération).", nameof(EquipmentStatuses)));
+            else if (EquipmentStatuses.Count > MaxEquipmentStatuses)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{EquipmentStatuses.Count} altérations, au plus {MaxEquipmentStatuses}.", nameof(EquipmentStatuses)));
+            else
+            {
+                var seenStatuses = new HashSet<string>(StringComparer.Ordinal);
+                for (int i = 0; i < EquipmentStatuses.Count; i++)
+                {
+                    string? id = EquipmentStatuses[i];
+                    if (id is null || (Statuses != null && !Statuses.TryGet(id, out _)))
+                        errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"altération inconnue « {id} » (rang {i}).", nameof(EquipmentStatuses)));
+                    else if (!seenStatuses.Add(id))
+                        errors.Add(new RuleViolation(RuleViolationKind.DuplicateId, $"altération « {id} » donnée deux fois (rang {i}).", nameof(EquipmentStatuses)));
+                }
+            }
             return errors;
         }
     }

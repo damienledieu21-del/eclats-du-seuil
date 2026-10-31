@@ -56,16 +56,18 @@ namespace EdS.Data.Scenarios
         /// <c>consumables</c> facultatif sur un personnage (objets de soin : <c>id</c>, <c>heal</c>, <c>charges</c>, <c>cooldownMs</c>) et action
         /// <c>consume</c> avec son <c>item</c>. Version 13 (sous-lot V1.2) : <c>shield</c> facultatif sur un personnage (garde du bouclier porté :
         /// <c>damageReduction</c>, <c>costPerBlock</c>, <c>parryWindowMs</c>, toutes obligatoires, bornées par <c>combat.shield</c> des
-        /// règles). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
+        /// règles). Version 14 (sous-lot V1.3) : <c>equipment</c> facultatif sur un personnage (effets de l'équipement porté : <c>id</c> de la
+        /// source « item.… » ou « set.… », <c>modifiers</c> et <c>triggers</c>, bornés par <c>combat.equipment</c> des règles). Une version
+        /// antérieure est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 13;
+        public const int CurrentSchemaVersion = 14;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
         /// <summary>Champs propres à chaque type de combattant ; un champ d'un autre type est refusé.</summary>
         private static readonly Dictionary<string, string[]> TypeFields = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["character"] = new[] { "class", "build", "gear", "consumables", "shield" },
+            ["character"] = new[] { "class", "build", "gear", "consumables", "shield", "equipment" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
             ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior" },
         };
@@ -78,6 +80,7 @@ namespace EdS.Data.Scenarios
             "gear" => c.Gear != null,
             "consumables" => c.Consumables != null,
             "shield" => c.Shield != null,
+            "equipment" => c.Equipment != null,
             "armor" => c.Armor != null,
             "magicResistance" => c.MagicResistance != null,
             "statusResistance" => c.StatusResistance != null,
@@ -158,7 +161,8 @@ namespace EdS.Data.Scenarios
                     CharacterBuild build = Builds.BuildShape.ToCharacterBuild(loaded.Definition.Id, c.Build!);
                     combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement, c.ArrivalMs, Gear(c.Gear),
                         c.Consumables?.Select(x => new ConsumableSetup(x!.Id!, x.Heal!.Value, x.Charges!.Value, x.CooldownMs!.Value)),
-                        c.Shield is { } shield ? new ShieldGuard(shield.DamageReduction!.Value, shield.CostPerBlock!.Value, shield.ParryWindowMs!.Value) : null));
+                        c.Shield is { } shield ? new ShieldGuard(shield.DamageReduction!.Value, shield.CostPerBlock!.Value, shield.ParryWindowMs!.Value) : null,
+                        c.Equipment?.Select(e => Equipment.EquipmentEffectShape.Build(e!))));
                 }
                 else if (c.Type == "assailant")
                 {
@@ -309,6 +313,10 @@ namespace EdS.Data.Scenarios
                             Present(shield.CostPerBlock, path + ".shield." + ShieldGuard.CostPerBlockId, "endurance d'un blocage");
                             Present(shield.ParryWindowMs, path + ".shield." + ShieldGuard.ParryWindowMsId, "fenêtre de parade en ms");
                         }
+                        // Sous-lot V1.3 : effets de l'équipement, forme seulement ; leurs bornes (combat.equipment des règles) et leurs références
+                        // sont vérifiées par la validation du combat (EquipmentEffect.CheckList).
+                        if (c.Equipment is { } equipment)
+                            Items(equipment, path + ".equipment", "effets de l'équipement porté", (e, p) => Equipment.EquipmentEffectShape.Check(e, p, withId: true, _report));
                         // Sous-lot 12.3 : bonus d'équipement par champ connu ; leurs bornes sont vérifiées par la validation du combat.
                         // Revue Codex de la PR #44 : un scénario construit sans le lecteur JSON (objets publics) est contrôlé de même : valeur
                         // présente, un seul bonus par nom.

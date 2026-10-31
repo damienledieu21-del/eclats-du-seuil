@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EdS.Data.Equipment;
 using EdS.Domain.Numerics;
 
 namespace EdS.Data.Items
@@ -26,6 +27,68 @@ namespace EdS.Data.Items
         public List<ItemData?>? Items { get; set; }
 
         public List<LootTableData?>? Loot { get; set; }
+
+        /// <summary>Sous-lot V1.3 (version 4) : ensembles (bonus à 2, 4 et 6 pièces portées).</summary>
+        public List<SetData?>? Sets { get; set; }
+
+        /// <summary>Sous-lot V1.3 (version 4) : tables des propriétés tirées (nombre par rareté, propriétés et leurs bornes par niveau).</summary>
+        public PropertyTablesData? Properties { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.3 : un ensemble tel que lu.</summary>
+    public sealed class SetData
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public List<SetBonusData?>? Bonuses { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.3 : bonus d'un ensemble à un nombre de pièces portées.</summary>
+    public sealed class SetBonusData
+    {
+        public int? Pieces { get; set; }
+
+        /// <summary>Texte montré au joueur, relu par Damien.</summary>
+        public string? Text { get; set; }
+
+        /// <summary>Bonus aux statistiques par identifiant ; facultatif.</summary>
+        public List<KeyValuePair<string, int?>>? Bonus { get; set; }
+
+        /// <summary>Effets (modificateurs, déclencheurs) ; facultatifs.</summary>
+        public EquipmentEffectData? Effects { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.3 : tables des propriétés tirées telles que lues.</summary>
+    public sealed class PropertyTablesData
+    {
+        public List<RarityRollData?>? Rarities { get; set; }
+        public List<PropertyData?>? List { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.3 : nombre de propriétés tirées et échelle des bornes pour une rareté.</summary>
+    public sealed class RarityRollData
+    {
+        public string? Rarity { get; set; }
+        public int? Count { get; set; }
+        public int? ScalePercent { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.3 : une propriété qui peut être tirée, telle que lue.</summary>
+    public sealed class PropertyData
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+
+        /// <summary>Statistique augmentée (un champ du bonus d'équipement, « maxHealth »…).</summary>
+        public string? Stat { get; set; }
+
+        public int? Min { get; set; }
+        public int? Max { get; set; }
+        public int? MinPerLevel { get; set; }
+        public int? MaxPerLevel { get; set; }
+
+        /// <summary>Sortes de place où elle peut être tirée ; absente : toutes les places du combat.</summary>
+        public List<string?>? Slots { get; set; }
     }
 
     /// <summary>Sous-lot V1.2 : une place d'équipement telle que lue.</summary>
@@ -48,6 +111,9 @@ namespace EdS.Data.Items
 
         /// <summary>La place porte la garde du personnage : ses objets ont une garde propre (le bouclier).</summary>
         public bool? Guard { get; set; }
+
+        /// <summary>Sous-lot V1.3 (version 4) : ses objets peuvent porter des effets (armes et bijoux).</summary>
+        public bool? Effects { get; set; }
 
         /// <summary>Champs effectivement présents.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
@@ -105,6 +171,15 @@ namespace EdS.Data.Items
 
         /// <summary>Sous-lot V1.2 : icône peinte de l'objet (nom de fichier sans extension) ; absente : la fin de son identifiant.</summary>
         public string? Icon { get; set; }
+
+        /// <summary>Sous-lot V1.3 (version 4) : objet nommé fait à la main (boss, quête, légendaire) : il ne tire aucune propriété.</summary>
+        public bool? Named { get; set; }
+
+        /// <summary>Sous-lot V1.3 (version 4) : ensemble dont l'objet est une pièce (« set.… ») ; facultatif.</summary>
+        public string? Set { get; set; }
+
+        /// <summary>Sous-lot V1.3 (version 4) : effets d'un objet nommé (texte, modificateurs, déclencheurs) ; facultatifs.</summary>
+        public EquipmentEffectData? Effects { get; set; }
 
         /// <summary>Champs effectivement présents, pour refuser ceux d'un autre type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();

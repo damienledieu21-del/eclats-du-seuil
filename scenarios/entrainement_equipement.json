@@ -1,0 +1,217 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 14,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 13,
+    "durationMs": 8000,
+    "combatants": [
+      {
+        "id": "bastion_equipe",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 10,
+          "attributes": {
+            "force": 14,
+            "dexterite": 8,
+            "intelligence": 6,
+            "vitalite": 40,
+            "volonte": 10,
+            "endurance": 12
+          },
+          "talents": {},
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.barriere_d_acier"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": []
+        },
+        "shield": {
+          "damageReduction": 0.6,
+          "costPerBlock": 10,
+          "parryWindowMs": 150
+        },
+        "equipment": [
+          {
+            "id": "item.lame_du_seuil",
+            "modifiers": [
+              {
+                "key": "damageDealt",
+                "add": 0.1,
+                "conditions": [
+                  "targetStunned"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "item.amulette_de_l_aube",
+            "triggers": [
+              {
+                "on": "onPerfectParry",
+                "role": "target",
+                "cooldownMs": 1000,
+                "effects": [
+                  {
+                    "type": "gainResource",
+                    "resource": "rampartCharges",
+                    "amount": 1
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "set.garde_de_la_tour.2",
+            "modifiers": [
+              {
+                "key": "damageTaken",
+                "add": -0.05,
+                "conditions": [
+                  "whileGuarding"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bastion_nu",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 10,
+          "attributes": {
+            "force": 14,
+            "dexterite": 8,
+            "intelligence": 6,
+            "vitalite": 40,
+            "volonte": 10,
+            "endurance": 12
+          },
+          "talents": {},
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.barriere_d_acier"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": []
+        },
+        "shield": {
+          "damageReduction": 0.6,
+          "costPerBlock": 10,
+          "parryWindowMs": 150
+        }
+      },
+      {
+        "id": "assaillant_equipe",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion_equipe",
+        "firstAttackMs": 1000,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "coup",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": []
+          }
+        ]
+      },
+      {
+        "id": "assaillant_nu",
+        "type": "assailant",
+        "team": "cibles",
+        "initiative": 0,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": "bastion_nu",
+        "firstAttackMs": 1000,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "coup",
+            "rawDamage": 100,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": []
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 500,
+        "actor": "bastion_equipe",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "assaillant_equipe"
+      },
+      {
+        "atMs": 500,
+        "actor": "bastion_nu",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "assaillant_nu"
+      },
+      {
+        "atMs": 1500,
+        "actor": "bastion_equipe",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "assaillant_equipe"
+      },
+      {
+        "atMs": 1500,
+        "actor": "bastion_nu",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "assaillant_nu"
+      },
+      {
+        "atMs": 2500,
+        "actor": "bastion_equipe",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 2500,
+        "actor": "bastion_nu",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 2900,
+        "actor": "bastion_equipe",
+        "action": "parry"
+      },
+      {
+        "atMs": 2900,
+        "actor": "bastion_nu",
+        "action": "parry"
+      },
+      {
+        "atMs": 7500,
+        "actor": "bastion_equipe",
+        "action": "guardStop"
+      },
+      {
+        "atMs": 7500,
+        "actor": "bastion_nu",
+        "action": "guardStop"
+      }
+    ]
+  }
+}

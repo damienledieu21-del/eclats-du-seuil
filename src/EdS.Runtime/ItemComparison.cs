@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Data.Items;
+using EdS.Data.Saves;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
@@ -45,6 +47,26 @@ namespace EdS.Runtime
     }
 
     /// <summary>
+    /// Sous-lot V1.3 : une ligne de détail de la fiche d'un objet : propriété tirée, effet, ensemble ou palier d'ensemble. Le sens dit ce que
+    /// le port de l'objet changerait (vert : gagné, rouge : perdu) ; <see cref="Active"/> faux : un palier d'ensemble qui ne vaudrait pas.
+    /// </summary>
+    public sealed class DetailLine
+    {
+        public string Text { get; }
+        public CompareTrend Trend { get; }
+        public bool Active { get; }
+
+        internal DetailLine(string text, CompareTrend trend, bool active = true)
+        {
+            Text = text;
+            Trend = trend;
+            Active = active;
+        }
+
+        public override string ToString() => Text;
+    }
+
+    /// <summary>
     /// Sous-lot V1.2 (« comparaison claire, vert ou rouge, avec les chiffres ») : ce que changerait le port d'un objet à la place où il irait
     /// (<see cref="Inventory.PlaceFor"/>), contre l'objet qui y est porté. Une ligne par bonus aux statistiques que l'un ou l'autre donne,
     /// puis, pour un bouclier, la garde : part bloquée (plus haut : mieux), coût d'un blocage (plus bas : mieux) et fenêtre de parade (plus
@@ -66,13 +88,30 @@ namespace EdS.Runtime
         /// <summary>L'objet survolé est celui qui est porté (rien à comparer).</summary>
         public bool IsWorn { get; }
 
-        private ItemComparison(string place, ItemDefinition? worn, ItemDefinition candidate, IReadOnlyList<CompareLine> lines, bool isWorn)
+        /// <summary>Sous-lot V1.3 : instance survolée (propriétés tirées comprises).</summary>
+        public ItemStack CandidateInstance { get; }
+
+        /// <summary>Sous-lot V1.3 : instance portée à cette place, ou null.</summary>
+        public ItemStack? WornInstance { get; }
+
+        /// <summary>
+        /// Sous-lot V1.3 : détails de l'objet survolé : ses propriétés tirées, son effet (vert s'il s'ajoute), l'effet de l'objet porté qui serait
+        /// perdu (rouge), son ensemble (pièces portées sur le total, avant et après) et chaque palier (vert s'il s'ouvre, rouge s'il se ferme),
+        /// et l'ensemble de l'objet porté qui perdrait une pièce.
+        /// </summary>
+        public IReadOnlyList<DetailLine> Details { get; }
+
+        private ItemComparison(string place, ItemDefinition? worn, ItemDefinition candidate, IReadOnlyList<CompareLine> lines, bool isWorn,
+            ItemStack candidateInstance, ItemStack? wornInstance, IReadOnlyList<DetailLine> details)
         {
             Place = place;
             Worn = worn;
             Candidate = candidate;
             Lines = lines;
             IsWorn = isWorn;
+            CandidateInstance = candidateInstance;
+            WornInstance = wornInstance;
+            Details = details;
         }
 
         /// <summary>Libellés des bonus, dans l'ordre de <see cref="GearBonus.Fields"/>.</summary>
@@ -90,15 +129,31 @@ namespace EdS.Runtime
         public static ItemComparison? For(Inventory inventory, string item, string? wornPlace = null)
         {
             if (inventory is null) throw new ArgumentNullException(nameof(inventory));
-            if (!inventory.Catalog.TryGetItem(item, out ItemDefinition candidate) || candidate.Type != ItemType.Equipment) return null;
-            string? place = wornPlace ?? inventory.PlaceFor(item);
+            if (item is null) return null;
+            ItemStack instance = wornPlace != null && inventory.WornInstanceAt(wornPlace) is { } w && w.Item == item ? w : new ItemStack(item, 1);
+            return For(inventory, instance, wornPlace);
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 : comparaison d'une instance (propriétés tirées comprises) avec l'équipement de <paramref name="inventory"/> : les
+        /// bonus comptent les propriétés tirées des deux objets ; les détails disent les effets, les ensembles et leurs paliers.
+        /// </summary>
+        public static ItemComparison? For(Inventory inventory, ItemStack instance, string? wornPlace = null)
+        {
+            if (inventory is null) throw new ArgumentNullException(nameof(inventory));
+            if (instance is null) throw new ArgumentNullException(nameof(instance));
+            ItemCatalog catalog = inventory.Catalog;
+            if (!catalog.TryGetItem(instance.Item, out ItemDefinition candidate) || candidate.Type != ItemType.Equipment) return null;
+            string? place = wornPlace ?? inventory.PlaceFor(instance.Item);
             if (place is null) return null;
             bool isWorn = wornPlace != null;
-            ItemDefinition? worn = !isWorn && inventory.Equipped.TryGetValue(place, out string id) ? inventory.Catalog.Item(id) : null;
+            ItemStack? wornInstance = !isWorn ? inventory.WornInstanceAt(place) : null;
+            ItemDefinition? worn = wornInstance is null ? null : catalog.Item(wornInstance.Item);
+            GearBonus candidateBonus = catalog.BonusOf(instance), wornBonus = wornInstance is null ? GearBonus.None : catalog.BonusOf(wornInstance);
             var lines = new List<CompareLine>();
             for (int f = 0; f < GearBonus.Fields.Count; f++)
             {
-                int before = worn?.Bonus[f] ?? 0, after = candidate.Bonus[f];
+                int before = wornBonus[f], after = candidateBonus[f];
                 if (before == 0 && after == 0) continue;
                 lines.Add(Line(BonusLabels[f], worn is null ? "–" : before.ToString(), after.ToString(), after - before, "", higherIsBetter: true));
             }
@@ -112,7 +167,43 @@ namespace EdS.Runtime
                 lines.Add(Line("Fenêtre de parade", w is null ? "–" : w.ParryWindowMs + " ms", g.ParryWindowMs + " ms",
                     w is null ? 0 : g.ParryWindowMs - w.ParryWindowMs, " ms", true));
             }
-            return new ItemComparison(place, worn, candidate, lines, isWorn);
+            return new ItemComparison(place, worn, candidate, lines, isWorn, instance, wornInstance, BuildDetails(inventory, candidate, instance, worn, place, isWorn));
+        }
+
+        /// <summary>Sous-lot V1.3 : lignes de détail (propriétés tirées, effets, ensembles), voir <see cref="Details"/>.</summary>
+        private static IReadOnlyList<DetailLine> BuildDetails(Inventory inventory, ItemDefinition candidate, ItemStack instance, ItemDefinition? worn, string place,
+            bool isWorn)
+        {
+            ItemCatalog catalog = inventory.Catalog;
+            var details = new List<DetailLine>();
+            foreach (RolledProperty r in instance.Properties)
+                if (catalog.TryGetProperty(r.Id, out PropertyDefinition property))
+                    details.Add(new DetailLine($"{property.Name} : +{r.Value} {BonusLabels[property.Stat].ToLowerInvariant()}", CompareTrend.Same));
+            // Objets portés après l'échange (une même pièce à deux places compte une fois).
+            var now = new HashSet<string>(inventory.Equipped.Values, StringComparer.Ordinal);
+            var after = new HashSet<string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, string> e in inventory.Equipped)
+                if (isWorn || e.Key != place) after.Add(e.Value);
+            after.Add(candidate.Id);
+            if (candidate.Effect is ItemEffect effect)
+                details.Add(new DetailLine("Effet : " + effect.Text, isWorn || now.Contains(candidate.Id) ? CompareTrend.Same : CompareTrend.Better));
+            if (!isWorn && worn?.Effect is ItemEffect lost && !after.Contains(worn.Id))
+                details.Add(new DetailLine("Effet perdu : " + lost.Text, CompareTrend.Worse));
+            void SetLines(ItemSet set)
+            {
+                int before = set.Pieces.Count(now.Contains), later = set.Pieces.Count(after.Contains);
+                CompareTrend trend = later == before ? CompareTrend.Same : later > before ? CompareTrend.Better : CompareTrend.Worse;
+                string count = isWorn || later == before ? $"{later}/{set.Pieces.Count}" : $"{before} → {later}/{set.Pieces.Count}";
+                details.Add(new DetailLine($"Ensemble « {set.Name} » : {count} pièces", trend));
+                foreach (SetBonus bonus in set.Bonuses)
+                {
+                    bool was = bonus.Pieces <= before, will = bonus.Pieces <= later;
+                    details.Add(new DetailLine($"({bonus.Pieces}) {bonus.Text}", was == will ? CompareTrend.Same : will ? CompareTrend.Better : CompareTrend.Worse, will));
+                }
+            }
+            if (candidate.Set is string setId && catalog.TryGetSet(setId, out ItemSet candidateSet)) SetLines(candidateSet);
+            if (!isWorn && worn?.Set is string wornSet && wornSet != candidate.Set && catalog.TryGetSet(wornSet, out ItemSet lostSet)) SetLines(lostSet);
+            return details;
         }
 
         /// <summary>Part en pour cent entiers (0,65 → 65), arrondie au plus proche.</summary>

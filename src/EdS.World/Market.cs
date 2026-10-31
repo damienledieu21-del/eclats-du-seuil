@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using EdS.Data.Merchants;
+using EdS.Data.Saves;
+using EdS.Domain.Collections;
 using EdS.Simulation.Randomness;
 
 namespace EdS.World
@@ -61,11 +63,18 @@ namespace EdS.World
         /// <summary>Pièces reçues pour ce lot (cuivre) : le prix de son rachat.</summary>
         public long Paid { get; }
 
-        internal SoldLot(string item, int count, long paid)
+        /// <summary>
+        /// Sous-lot V1.3 : instances vendues, avec leurs propriétés tirées, rendues telles quelles au rachat ; vide pour un lot d'objets de base
+        /// (le rachat rend alors <see cref="Count"/> <see cref="Item"/>).
+        /// </summary>
+        public IReadOnlyList<ItemStack> Stacks { get; }
+
+        internal SoldLot(string item, int count, long paid, IEnumerable<ItemStack>? stacks = null)
         {
             Item = item;
             Count = count;
             Paid = paid;
+            Stacks = Frozen.ListOrEmpty(stacks, nameof(stacks));
         }
     }
 

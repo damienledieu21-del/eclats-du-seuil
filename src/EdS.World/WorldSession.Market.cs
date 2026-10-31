@@ -124,11 +124,45 @@ namespace EdS.World
             }
             if (!Coins.TryAdd(Money, gain, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();
-            foreach ((string item, int count) in lots)
-                if (trial.Remove(item, count) != InventoryRefusal.None) return TradeRefusal.NotEnough;
+            var removed = new IReadOnlyList<ItemStack>[lots.Count];
+            for (int i = 0; i < lots.Count; i++)
+                if (trial.Remove(lots[i].Item, lots[i].Count, out removed[i]) != InventoryRefusal.None) return TradeRefusal.NotEnough;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(after);
-            for (int i = 0; i < lots.Count; i++) market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i]));
+            // Sous-lot V1.3 : un lot qui emporte des instances aux propriétés tirées les garde pour le rachat.
+            for (int i = 0; i < lots.Count; i++)
+                market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i], removed[i].Any(x => x.IsRolled) ? removed[i] : null));
+            return TradeRefusal.None;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 : vend à <paramref name="merchant"/> <paramref name="count"/> objets de la place <paramref name="place"/> de
+        /// l'inventaire, au prix de l'objet. Relecture de la PR #78 : toujours <b>de cette place exacte</b>, jamais d'une autre place du même
+        /// objet : une instance aux propriétés tirées part elle-même (quantité 1), une pile d'objets de base perd <paramref name="count"/>
+        /// objets (toute la pile ou une partie) sans qu'une instance tirée du même objet ailleurs dans l'inventaire ne parte à sa place.
+        /// Refus : boutique fermée ou trop loin, quantité hors de [1, pile] (<see cref="TradeRefusal.InvalidCount"/>, ou
+        /// <see cref="TradeRefusal.NotEnough"/> au-delà de la pile de base), objet sans valeur, quantité qui entamerait les objets emportés au
+        /// combat (<see cref="TradeRefusal.Reserved"/>), bourse pleine. Tout ou rien ; rachetable (une instance tirée, avec ses propriétés).
+        /// </summary>
+        /// <exception cref="ArgumentException">Marchand inconnu.</exception>
+        public TradeRefusal SellPlace(string merchant, int place, int count)
+        {
+            if (place < 0 || place >= Inventory.Stacks.Count) return TradeRefusal.NotEnough;
+            ItemStack stack = Inventory.Stacks[place];
+            TradeRefusal open = CanTrade(merchant);
+            if (open != TradeRefusal.None) return open;
+            Market market = NeedMarket();
+            if (count < 1 || count > Market.MaxCount || (stack.IsRolled && count != 1)) return TradeRefusal.InvalidCount;
+            if (count > stack.Count) return TradeRefusal.NotEnough;
+            if (!market.Book.TryGetValue(stack.Item, out _)) return TradeRefusal.NoValue;
+            if (Inventory.Available(stack.Item) < count) return TradeRefusal.Reserved;
+            long paid = checked(market.UnitPrice(merchant, stack.Item) * count);
+            if (!Coins.TryAdd(Money, paid, out long after)) return TradeRefusal.PurseFull;
+            Inventory trial = Inventory.Clone();
+            if (trial.RemoveAt(place, count, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;
+            Inventory.CopyFrom(trial);
+            _character = _character.WithMoney(after);
+            market.Record(new SoldLot(stack.Item, count, paid, removed.IsRolled ? new[] { removed } : null));
             return TradeRefusal.None;
         }
 
@@ -146,7 +180,13 @@ namespace EdS.World
             SoldLot lot = market.Buyback[index];
             if (!Coins.TryAdd(Money, -lot.Paid, out long left)) return TradeRefusal.NotEnoughMoney;
             Inventory trial = Inventory.Clone();
-            if (trial.Add(lot.Item, lot.Count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
+            // Sous-lot V1.3 : les instances vendues reviennent telles quelles (propriétés tirées comprises).
+            if (lot.Stacks.Count > 0)
+            {
+                foreach (ItemStack stack in lot.Stacks)
+                    if (trial.Add(stack) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
+            }
+            else if (trial.Add(lot.Item, lot.Count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(left);
             market.Forget(index);

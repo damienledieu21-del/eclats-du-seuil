@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.25.0";
+        public const string Version = "0.26.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -95,9 +95,13 @@ namespace EdS.Simulation.Engine
         /// 19 (sous-lot V1.2) : un personnage de l'en-tête peut porter <c>shield</c> (garde du bouclier porté : <c>damageReduction</c>,
         /// <c>costPerBlock</c>, <c>parryWindowMs</c>), qui remplace pour lui les valeurs de base de la garde et de la parade ; ses règles
         /// effectives (<c>rules</c> de la ligne <c>combatant</c>) en tiennent compte. Sans bouclier, un combat écrit exactement les mêmes lignes
-        /// qu'au format 18. Un journal d'un autre format est refusé au rejeu.
+        /// qu'au format 18. 20 (sous-lot V1.3) : un personnage de l'en-tête peut porter <c>equipment</c> (effets de l'équipement porté :
+        /// <c>id</c> de la source, <c>modifiers</c>, <c>triggers</c>), qui s'ajoutent à ceux de son build : déclencheurs d'origine
+        /// <c>equipment</c> (identité <c>source/indice@porteur#0</c>) et modificateurs dans ses règles effectives ; nouvelle condition
+        /// <c>targetStunned</c> des modificateurs (cible de l'impact étourdie). Sans effet d'équipement, un combat écrit exactement les mêmes
+        /// lignes qu'au format 19. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 19;
+        public const int LogFormatVersion = 20;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -965,6 +969,17 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
+        /// Sous-lot V1.3 : le combattant est-il étourdi, c'est-à-dire porte-t-il une altération active qui bloque ses compétences ou ses
+        /// attaques d'assaillant (condition <c>targetStunned</c> des modificateurs) ? Lecture seule, sans ligne ni coût.
+        /// </summary>
+        private static bool Stunned(Fighter f)
+        {
+            foreach (StatusInstance status in f.Statuses.Values)
+                if ((status.Definition.Blocks & (StatusBlocks.Skills | StatusBlocks.AssailantAttacks)) != 0) return true;
+            return false;
+        }
+
+        /// <summary>
         /// Lot 7.2 (D11) : motif de refus d'une action bloquée par une altération active, juste après les motifs de mort ; si
         /// plusieurs altérations bloquent l'action, la première dans l'ordre du catalogue l'emporte (étourdissement avant rupture).
         /// </summary>
@@ -1386,7 +1401,8 @@ namespace EdS.Simulation.Engine
             if (defense != "parry")
                 mitigation = target.Rules.TotalReduction(mitigation,
                     target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance, BuffSum(target, ModifierField.DamageTaken)));
-            Fixed dealt = actor.Rules.DamageDealtAt(actor.Guarding, actor.RampartCharges, actor.Resonance);
+            // Sous-lot V1.3 : condition targetStunned, lue sur l'état de la cible de cet impact (sans ligne, sans coût).
+            Fixed dealt = actor.Rules.DamageDealtAt(actor.Guarding, actor.RampartCharges, actor.Resonance, Stunned(target));
             if (dealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Talent, dealt);
 
             DerivedStats attacker = AttackerStats(action);

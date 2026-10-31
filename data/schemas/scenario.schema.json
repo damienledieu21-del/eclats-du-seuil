@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 13
+      "const": 14
     },
     "kind": {
       "const": "scenario"
@@ -406,6 +406,14 @@
               "minimum": 1
             }
           }
+        },
+        "equipment": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "$ref": "#/$defs/equipmentEffect"
+          },
+          "description": "Sous-lot V1.3 (schéma 14) : effets de l'équipement porté par un personnage (objets nommés, paliers d'ensemble), au plus 40 sources ; bornes : combat.equipment des règles."
         }
       },
       "additionalProperties": false,
@@ -983,6 +991,75 @@
         "effects"
       ],
       "description": "Déclencheur (lot 7.3) : 1 à 4 effets exécutés comme une seule réaction."
+    },
+    "equipmentEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(item|set)(\\.[a-z0-9_]+)+$",
+          "maxLength": 200,
+          "description": "Source : objet nommé (item.…) ou palier d'ensemble (set.….<pièces>)."
+        },
+        "modifiers": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "add"
+            ],
+            "properties": {
+              "key": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "damageDealt",
+                      "damageTaken",
+                      "maxHealth",
+                      "endurance.regenPerSecond"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^status\\.[A-Za-z][A-Za-z0-9_]*\\.durationDealt$"
+                  }
+                ]
+              },
+              "add": {
+                "type": "number"
+              },
+              "conditions": {
+                "type": "array",
+                "maxItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "whileGuarding",
+                    "targetStunned"
+                  ]
+                },
+                "description": "Tout ou rien seulement ; targetStunned (cible étourdie) pour damageDealt."
+              }
+            }
+          }
+        },
+        "triggers": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/trigger"
+          },
+          "description": "Déclencheurs d'origine equipment ; recharge interne d'au moins combat.equipment.minTriggerCooldownMs ; portée facultative des effets."
+        }
+      },
+      "description": "Sous-lot V1.3 : un effet d'équipement (au moins un modificateur ou un déclencheur)."
     }
   }
 }

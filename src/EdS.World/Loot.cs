@@ -13,10 +13,17 @@ namespace EdS.World
         public string Item { get; }
         public int Count { get; }
 
-        internal LootRoll(string item, int count)
+        /// <summary>
+        /// Relecture de la PR #78 : rang de l'objet dans sa table de butin (ordre du fichier, à partir de 0), qu'il soit tombé ou non avec
+        /// d'autres : le flux du tirage de ses propriétés (<see cref="ItemRolls.Roll"/>) ne dépend que de lui.
+        /// </summary>
+        public int Rank { get; }
+
+        internal LootRoll(string item, int count, int rank)
         {
             Item = item;
             Count = count;
+            Rank = rank;
         }
     }
 
@@ -34,8 +41,11 @@ namespace EdS.World
             if (!SaveValidator.IsEventKey(eventKey)) throw new ArgumentException($"Clé d'événement « {eventKey} » hors du format.", nameof(eventKey));
             var random = new Pcg32(Fnv1a(eventKey), StreamOf(table.Id));
             var rolls = new List<LootRoll>();
-            foreach (LootDrop drop in table.Drops)
-                if (random.RollBasisPoints(drop.ChancePercent * 100)) rolls.Add(new LootRoll(drop.Item, drop.Count));
+            for (int rank = 0; rank < table.Drops.Count; rank++)
+            {
+                LootDrop drop = table.Drops[rank];
+                if (random.RollBasisPoints(drop.ChancePercent * 100)) rolls.Add(new LootRoll(drop.Item, drop.Count, rank));
+            }
             return rolls;
         }
 

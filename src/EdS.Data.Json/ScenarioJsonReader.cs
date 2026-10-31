@@ -85,6 +85,8 @@ namespace EdS.Data.Json
                 ["consumables"] = Track("consumables", (v, p) => c.Consumables = input.ReadLimitedList(v, p, CombatSetup.MaxConsumables,   // 12.6 (schéma 12)
                     n => $"{n} objets de soin, au plus {CombatSetup.MaxConsumables}.", (e, ip) => ReadConsumable(input, e, ip))),
                 ["shield"] = Track("shield", (v, p) => c.Shield = ReadShield(input, v, p)),   // sous-lot V1.2 (schéma 13)
+                ["equipment"] = Track("equipment", (v, p) => c.Equipment = input.ReadLimitedList(v, p, EquipmentEffect.MaxPerCharacter,   // V1.3 (schéma 14)
+                    n => $"{n} sources d'effets, au plus {EquipmentEffect.MaxPerCharacter}.", (e, ip) => EquipmentEffectJsonReader.Read(input, e, ip, withId: true))),
                 ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
                 ["magicResistance"] = Track("magicResistance", (v, p) => c.MagicResistance = input.Decimal(v, p)),
                 ["statusResistance"] = Track("statusResistance", (v, p) => c.StatusResistance = input.Decimal(v, p)),

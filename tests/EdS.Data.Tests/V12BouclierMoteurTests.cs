@@ -24,8 +24,9 @@ namespace EdS.Data.Tests;
 public class V12BouclierMoteurTests
 {
     private const string Bouclier = "entrainement_bouclier";
+    // Sous-lot V1.3 : la référence courante est celle du moteur 0.26.0 (règles 0.14.0) ; celle du moteur 0.25.0 reste figée (V13EffetsMoteurTests).
     private static string Reference(string name) =>
-        Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.25.0-contenu-0.6.0-regles-0.13.0", name + ".jsonl");
+        Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.26.0-contenu-0.6.0-regles-0.14.0", name + ".jsonl");
     private static string Frozen(string version, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-" + version, name + ".jsonl");
 
     private static CombatSetup Load(string name)
@@ -55,10 +56,11 @@ public class V12BouclierMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.25.0", 19), (CombatEngine.Version, CombatEngine.LogFormatVersion));
-        Assert.Equal((13, "0.13.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));
-        Assert.Equal(13, ScenarioValidator.CurrentSchemaVersion);
-        Assert.Equal("0.13.0-provisoire", ShippedData.Rules.ContentVersion);
+        // Sous-lot V1.3 : moteur 0.26.0, format 20, règles 0.14.0 (schéma 14), scénarios en schéma 14 ; le bloc combat.shield ne change pas.
+        Assert.Equal(("0.26.0", 20), (CombatEngine.Version, CombatEngine.LogFormatVersion));
+        Assert.Equal((14, "0.14.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));
+        Assert.Equal(14, ScenarioValidator.CurrentSchemaVersion);
+        Assert.Equal("0.14.0-provisoire", ShippedData.Rules.ContentVersion);
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.Parse("0.45"), Fixed.Parse("0.7"), 4, 20, 50L), (rules.ShieldMinDamageReduction, rules.ShieldMaxDamageReduction,
             rules.ShieldMinCostPerBlock, rules.ShieldMaxCostPerBlock, rules.ShieldParryWindowShiftMs));
@@ -68,7 +70,7 @@ public class V12BouclierMoteurTests
     public void Regles_au_schema_12_refusees_et_bloc_shield_obligatoire()
     {
         string rules = File.ReadAllText(Path.Combine(DataDirectory, "rules.json"));
-        RulesLoadResult old = RulesJsonReader.Read(rules.Replace("\"schemaVersion\": 13", "\"schemaVersion\": 12"));
+        RulesLoadResult old = RulesJsonReader.Read(rules.Replace("\"schemaVersion\": 14", "\"schemaVersion\": 12"));
         Assert.False(old.IsValid);
         JsonObject root = JsonNode.Parse(rules)!.AsObject();
         root["data"]!["combat"]!.AsObject().Remove("shield");
@@ -196,7 +198,7 @@ public class V12BouclierMoteurTests
         Assert.Equal(frozen.Skip(1), current.Skip(1));
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
         Assert.Equal((18, "0.24.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
-        Assert.Equal((19, "0.25.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((20, "0.26.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
         Assert.Equal(before.GetProperty("scenario").GetRawText(), after.GetProperty("scenario").GetRawText());
         Assert.Equal(before.GetProperty("data").GetProperty("classes").GetRawText(), after.GetProperty("data").GetProperty("classes").GetRawText());
     }

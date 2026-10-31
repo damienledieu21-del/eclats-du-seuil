@@ -183,10 +183,11 @@ public class V11RelectureTests : IDisposable
         Assert.True(a.Interact());
         a.DrainMessages();
 
-        // Clic droit sur la première pile (5, toutes « réservées » à l'œil) : la part libre (3) se vend, retirée des dernières places.
+        // Clic droit sur la première pile (5, toutes « réservées » à l'œil) : la part libre (3) se vend. Relecture de la PR #78 : retirée de
+        // cette place même (la réserve est un nombre d'objets, pas une place : il en reste 5, tous emportés).
         Assert.Equal(TradeRefusal.None, a.SellPlace(0));
         Assert.Equal("Vendu : Potion de soin ×3 pour 30 cuivre.", Assert.Single(a.DrainMessages()));
-        Assert.Equal(new[] { "item.potion_de_soin x5", "item.peau_de_loup x3" }, bag.Stacks.Select(s => $"{s.Item} x{s.Count}"));
+        Assert.Equal(new[] { "item.potion_de_soin x2", "item.peau_de_loup x3", "item.potion_de_soin x3" }, bag.Stacks.Select(s => $"{s.Item} x{s.Count}"));
         Assert.Equal((5, 5, 0, 130L), (bag.Count("item.potion_de_soin"), bag.Reserved("item.potion_de_soin"), bag.Available("item.potion_de_soin"), a.Money));
         Assert.Equal(("item.potion_de_soin", 3, 30L), (a.Market.Buyback[0].Item, a.Market.Buyback[0].Count, a.Market.Buyback[0].Paid));
 
@@ -199,9 +200,9 @@ public class V11RelectureTests : IDisposable
 
         // Une potion achetée maintenant n'est pas emportée : elle se vend, même par un clic sur la pile réservée.
         Assert.Equal(TradeRefusal.None, a.Buy("item.potion_de_soin"));
-        Assert.Equal(new[] { "item.potion_de_soin x5", "item.peau_de_loup x3", "item.potion_de_soin x1" }, bag.Stacks.Select(s => $"{s.Item} x{s.Count}"));
-        Assert.Equal(TradeRefusal.None, a.SellPlace(0));   // toute la pile demandée : seule la potion libre part
-        Assert.Equal(new[] { "item.potion_de_soin x5", "item.peau_de_loup x3" }, bag.Stacks.Select(s => $"{s.Item} x{s.Count}"));
+        Assert.Equal(new[] { "item.potion_de_soin x3", "item.peau_de_loup x3", "item.potion_de_soin x3" }, bag.Stacks.Select(s => $"{s.Item} x{s.Count}"));
+        Assert.Equal(TradeRefusal.None, a.SellPlace(0));   // toute la pile demandée : seule la potion libre part (de cette place)
+        Assert.Equal(new[] { "item.potion_de_soin x2", "item.peau_de_loup x3", "item.potion_de_soin x3" }, bag.Stacks.Select(s => $"{s.Item} x{s.Count}"));
         Assert.Equal(5, bag.Reserved("item.potion_de_soin"));
 
         // Quantités et places impossibles : refus sans rien changer.
