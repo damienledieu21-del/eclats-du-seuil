@@ -59,7 +59,7 @@ public class V13EquipementTests
     public void Catalogue_en_version_4_avec_objets_nommes_ensembles_et_proprietes()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((4, "0.3.0-provisoire"), (c.SchemaVersion, c.ContentVersion));
+        Assert.Equal((5, "0.4.0-provisoire"), (c.SchemaVersion, c.ContentVersion));   // sous-lot V1.4 : version 5 (qualité, usure)
         Assert.Equal(new[] { "weapon", "neck", "ring_1", "ring_2", "relic_1", "relic_2" }, c.Places.Where(p => p.Effects).Select(p => p.Id));
         Assert.Equal(new[] { "item.lame_du_seuil", "item.amulette_de_l_aube", "item.talisman_du_seuil" }, c.Items.Where(i => i.Effect != null).Select(i => i.Id));
         Assert.Equal("Les coups sur un ennemi étourdi infligent 10 % de dégâts en plus.", c.Item("item.lame_du_seuil").Effect!.Text);
@@ -274,7 +274,7 @@ public class V13EquipementTests
         SavedCharacter hero = Hero(10, new[] { boots, new ItemStack("item.peau_de_loup", 4) }, new Dictionary<string, string> { ["weapon"] = sword.Item },
             new Dictionary<string, IReadOnlyList<RolledProperty>> { ["weapon"] = sword.Properties });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), hero));
-        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
         Assert.Contains($"{{\"item\": \"item.bottes_du_renard\", \"count\": 1, \"properties\": [{{\"id\": \"{boots.Properties[0].Id}\", \"value\": {boots.Properties[0].Value}}}]}}",
             text, StringComparison.Ordinal);
         Assert.Contains($"\"weapon\": {{\"item\": \"item.epee_de_garde\", \"properties\": [", text, StringComparison.Ordinal);
@@ -297,7 +297,7 @@ public class V13EquipementTests
         string props = $"[{{\"id\": \"{boots.Properties[0].Id}\", \"value\": {boots.Properties[0].Value}}}]";
         ValidationError Only(string json) => Assert.Single(SaveJsonReader.Read(json).Report.Errors);
         // Version antérieure : les propriétés n'existaient pas.
-        Assert.Equal("$.data.character.inventory[0].properties", Only(text.Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 7")).Path);
+        Assert.Equal("$.data.character.inventory[0].properties", Only(SaveV11.Older(text).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 7")).Path);
         // Quantité, liste vide, doublon, valeur, identifiant.
         Assert.Equal("$.data.character.inventory[0].count", Only(text.Replace("\"count\": 1, \"properties\"", "\"count\": 2, \"properties\"")).Path);
         Assert.Equal("$.data.character.inventory[0].properties", Only(text.Replace(props, "[]")).Path);
@@ -305,10 +305,14 @@ public class V13EquipementTests
         Assert.Equal("$.data.character.inventory[0].properties[0].id", Only(text.Replace(props, "[{\"id\": \"vigueur\", \"value\": 3}]")).Path);
         Assert.Equal("$.data.character.inventory[0].properties[1].id",
             Only(text.Replace(props, $"[{{\"id\": \"property.souffle\", \"value\": 3}}, {{\"id\": \"property.souffle\", \"value\": 4}}]")).Path);
-        // Qualité et usure : réservées au sous-lot V1.4.
+        // Qualité et usure : réservées au sous-lot V1.3, utilisées depuis le sous-lot V1.4 (version 11) : une qualité inconnue est refusée,
+        // et en version 9 le champ est inconnu.
         ValidationError quality = Only(text.Replace("\"count\": 1, \"properties\"", "\"count\": 1, \"quality\": \"superieure\", \"properties\""));
-        Assert.Equal(("$.data.character.inventory[0].quality", ValidationCode.UnknownField), (quality.Path, quality.Code));
-        Assert.Contains("V1.4", quality.Message, StringComparison.Ordinal);
+        Assert.Equal(("$.data.character.inventory[0].quality", ValidationCode.InvalidValue), (quality.Path, quality.Code));
+        ValidationError old = Only(SaveV11.Older(text).Replace(SaveVersion.Current, "\"schemaVersion\": 9")
+            .Replace("\"count\": 1, \"properties\"", "\"count\": 1, \"quality\": \"superior\", \"properties\""));
+        Assert.Equal(("$.data.character.inventory[0].quality", ValidationCode.UnknownField), (old.Path, old.Code));
+        Assert.Contains("version 11", old.Message, StringComparison.Ordinal);
         // Équipement : la forme d'instance exige ses propriétés.
         string worn = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), Hero(10, Array.Empty<ItemStack>(),
             new Dictionary<string, string> { ["feet"] = boots.Item }, new Dictionary<string, IReadOnlyList<RolledProperty>> { ["feet"] = boots.Properties })));
