@@ -505,6 +505,15 @@
           {
             "conditions": [
               {
+                "if": "questReward",
+                "id": "quest.peaux_pour_l_auberge"
+              }
+            ],
+            "node": "recompense"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questAt",
                 "id": "quest.peaux_pour_l_auberge",
                 "step": "peaux"
@@ -602,6 +611,18 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "recompense",
+            "text": "text.aubergiste.recompense",
+            "choices": [
+              {
+                "text": "text.aubergiste.recompense.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -616,6 +637,15 @@
               }
             ],
             "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.bete_blanche"
+              }
+            ],
+            "node": "recompense"
           },
           {
             "conditions": [
@@ -769,6 +799,18 @@
             "choices": [
               {
                 "text": "text.pretre.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "recompense",
+            "text": "text.pretre.recompense",
+            "choices": [
+              {
+                "text": "text.pretre.recompense.partir",
                 "conditions": [],
                 "effects": [],
                 "next": null

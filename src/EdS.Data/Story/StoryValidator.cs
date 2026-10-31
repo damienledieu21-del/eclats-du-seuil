@@ -123,7 +123,7 @@ namespace EdS.Data.Story
             ["questActive"] = ConditionKind.QuestActive, ["questAt"] = ConditionKind.QuestAt, ["questDone"] = ConditionKind.QuestDone,
             ["trustAtLeast"] = ConditionKind.TrustAtLeast, ["trustBelow"] = ConditionKind.TrustBelow, ["hasItem"] = ConditionKind.HasItem,
             ["phase"] = ConditionKind.Phase, ["inPlace"] = ConditionKind.InPlace, ["passageOpen"] = ConditionKind.PassageOpen,
-            ["levelAtLeast"] = ConditionKind.LevelAtLeast,
+            ["levelAtLeast"] = ConditionKind.LevelAtLeast, ["questReward"] = ConditionKind.QuestReward,
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -249,6 +249,7 @@ namespace EdS.Data.Story
                     for (int i = 0; i < _d.Quests.Count; i++)
                         if (_d.Quests[i] is QuestData q && CheckQuest(q, $"$.data.quests[{i}]") is { } quest) quests.Add(quest);
 
+                CheckRequirementCycles(quests);
                 // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait ; sous-lot V1.6 : celle sur chaque chef aussi.
                 foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);
                 // Un fait attendu doit pouvoir être appris : sinon la condition ou l'objectif ne serait jamais rempli.
@@ -271,6 +272,43 @@ namespace EdS.Data.Story
                     if (value is null) TextsValidator.Missing(_r, p + ".id", "identifiant");
                     else if (value.Length > 200 || !pattern.IsMatch(value)) _r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {value} » mal formé.");
                     else if (!ids.Add(value)) _r.Add(p + ".id", ValidationCode.DuplicateId, $"identifiant « {value} » déjà donné plus haut.");
+                }
+            }
+
+            /// <summary>
+            /// Relecture de la PR #76 : les conditions d'ouverture « après une autre quête » (questDone, questActive, questAt, questReward) ne
+            /// forment pas de cycle (A s'ouvre après B, B après A : aucune ne s'ouvrirait). Chaque condition d'un cycle est refusée, à son
+            /// chemin <c>quests[i].requires[j]</c>.
+            /// </summary>
+            private void CheckRequirementCycles(IReadOnlyList<Quest> quests)
+            {
+                static bool Gate(StoryCondition c) => c.Kind is ConditionKind.QuestDone or ConditionKind.QuestActive or ConditionKind.QuestAt or ConditionKind.QuestReward;
+                var edges = quests.ToDictionary(q => q.Id, q => q.Requires.Where(Gate).Select(c => c.Id).Where(t => t != q.Id).Distinct(StringComparer.Ordinal).ToList(),
+                    StringComparer.Ordinal);
+                bool Reaches(string from, string to)
+                {
+                    var seen = new HashSet<string>(StringComparer.Ordinal);
+                    var stack = new Stack<string>();
+                    stack.Push(from);
+                    while (stack.Count > 0)
+                    {
+                        string q = stack.Pop();
+                        if (q == to) return true;
+                        if (!seen.Add(q) || !edges.TryGetValue(q, out List<string> next)) continue;
+                        foreach (string n in next) stack.Push(n);
+                    }
+                    return false;
+                }
+                if (_d.Quests is null) return;
+                for (int i = 0; i < _d.Quests.Count; i++)
+                {
+                    if (_d.Quests[i]?.Id is not string id || quests.FirstOrDefault(q => q.Id == id) is not Quest quest) continue;
+                    for (int j = 0; j < quest.Requires.Count; j++)
+                    {
+                        StoryCondition c = quest.Requires[j];
+                        if (Gate(c) && c.Id != id && Reaches(c.Id, id))
+                            _r.Add($"$.data.quests[{i}].requires[{j}]", ValidationCode.InvalidValue, $"cycle d'ouverture : « {c.Id} » s'ouvre elle-même après « {id} ».");
+                    }
                 }
             }
 
@@ -365,6 +403,11 @@ namespace EdS.Data.Story
                 else if (!Categories.TryGetValue(q.Category, out category))
                 { _r.Add(path + ".category", ValidationCode.InvalidValue, $"catégorie inconnue « {q.Category} » ; possibles : {string.Join(", ", Categories.Keys)}."); ok = false; }
                 List<StoryCondition>? requires = q.Requires is null ? new List<StoryCondition>() : ConditionsOf(q.Requires, path + ".requires");
+                // Relecture de la PR #76 : une quête ne s'ouvre pas sur son propre état (elle ne s'ouvrirait jamais).
+                if (requires != null && q.Id != null)
+                    for (int j = 0; j < requires.Count; j++)
+                        if (requires[j].Id == q.Id && requires[j].Kind is ConditionKind.QuestDone or ConditionKind.QuestActive or ConditionKind.QuestAt or ConditionKind.QuestReward)
+                        { _r.Add($"{path}.requires[{j}].id", ValidationCode.InvalidValue, "une quête ne s'ouvre pas sur son propre état : elle ne s'ouvrirait jamais."); ok = false; }
                 var choices = new List<RewardChoice>();
                 if (q.RewardChoice != null)
                 {
@@ -405,7 +448,8 @@ namespace EdS.Data.Story
                     {
                         ConditionKind.LevelAtLeast => NoId(t, p) && Value(t, p, 1, MaxLevel) && NoStep(t, p),
                         ConditionKind.Fact or ConditionKind.NotFact => Fact(t, p, needed: kind == ConditionKind.Fact) && NoValue(t, p) && NoStep(t, p),
-                        ConditionKind.QuestNotStarted or ConditionKind.QuestActive or ConditionKind.QuestDone => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.QuestNotStarted or ConditionKind.QuestActive or ConditionKind.QuestDone or ConditionKind.QuestReward =>
+                            Ref(t, p, _quests.Keys, "quête") && NoValue(t, p) && NoStep(t, p),
                         ConditionKind.QuestAt => Ref(t, p, _quests.Keys, "quête") && QuestStepRef(t, p) && NoValue(t, p),
                         ConditionKind.TrustAtLeast or ConditionKind.TrustBelow => Ref(t, p, _npcs, "PNJ") && Value(t, p, -MaxTrust, MaxTrust) && NoStep(t, p),
                         ConditionKind.HasItem => ItemRef(t, p) && Value(t, p, 1, MaxCount) && NoStep(t, p),

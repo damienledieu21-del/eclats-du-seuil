@@ -176,6 +176,12 @@ namespace EdS.World
         /// <summary>Sous-lot V1.6 : niveau du personnage d'après son expérience.</summary>
         int Level { get; }
 
+        /// <summary>
+        /// Relecture de la PR #76 : niveau qu'aurait le personnage avec <paramref name="xp"/> points d'expérience de plus (plafonnés comme un
+        /// vrai gain) ; sert à juger l'ouverture d'une quête commencée par les mêmes effets qu'un gain d'expérience.
+        /// </summary>
+        int LevelWith(long xp);
+
         /// <summary>Sous-lot V1.6 : l'objet est porté (équipement).</summary>
         bool IsEquipped(string item);
 
@@ -211,6 +217,21 @@ namespace EdS.World
 
         /// <summary>Sous-lot V1.6 : événements des livraisons et des objectifs « parler à », rendus au tick suivant (<see cref="Step"/>).</summary>
         private readonly List<StoryEvent> _queued = new List<StoryEvent>();
+
+        /// <summary>Relecture de la PR #76 : expérience que donnent les effets jugés (l'ouverture d'une quête se juge après elle).</summary>
+        private long _bonusXp;
+
+        /// <summary>
+        /// Relecture de la PR #76 : objectifs « parler à » et « livrer à » remplis par le dernier <see cref="Talk"/> (l'interface ne dit pas « rien
+        /// à dire » à un PNJ qui vient d'en remplir un).
+        /// </summary>
+        public int LastTalkFilled { get; private set; }
+
+        /// <summary>
+        /// Relecture de la PR #76 : compteur qui change à chaque changement de l'état narratif (l'interface garde son journal tant qu'il ne
+        /// bouge pas).
+        /// </summary>
+        public long Revision { get; private set; }
 
         public StoryBook Book => _book;
 
@@ -287,6 +308,7 @@ namespace EdS.World
         {
             if (quest != null && !IsActive(quest)) return false;
             _tracked = quest;
+            Revision++;
             return true;
         }
 
@@ -358,8 +380,26 @@ namespace EdS.World
             new DialogueView(npc, node.Id, node.Text, node.Choices.Select((c, i) => (c, i)).Where(x => All(x.c.Conditions) && !StartsLocked(x.c.Effects))
                 .Select(x => new DialogueOption(x.i, x.c.Text)).ToArray());
 
-        private bool StartsLocked(IReadOnlyList<StoryEffect> effects) =>
-            effects.Any(e => e.Kind == EffectKind.StartQuest && !_quests.ContainsKey(e.Id) && !All(_book.Quest(e.Id).Requires));
+        /// <summary>
+        /// Une quête à commencer par ces effets est encore fermée. Relecture de la PR #76 : jugé après l'expérience que donnent ces mêmes effets
+        /// (une réponse qui donne le niveau 3 et commence une quête du niveau 3 passe).
+        /// </summary>
+        private bool StartsLocked(IReadOnlyList<StoryEffect> effects)
+        {
+            if (!effects.Any(e => e.Kind == EffectKind.StartQuest)) return false;
+            long xp = 0;
+            foreach (StoryEffect e in effects)
+                if (e.Kind == EffectKind.GiveXp) xp = checked(xp + e.Value);   // au plus huit effets bornés par le validateur
+            _bonusXp = xp;
+            try
+            {
+                return effects.Any(e => e.Kind == EffectKind.StartQuest && !_quests.ContainsKey(e.Id) && !All(_book.Quest(e.Id).Requires));
+            }
+            finally
+            {
+                _bonusXp = 0;
+            }
+        }
 
         private bool InRange(Npc n) =>
             _world.PlayerPositionIn(n.Zone) is GroundVector p && !ZonePopulations.Beyond(p, EdS.Domain.Numerics.Fixed.Zero, n.Position, EdS.Domain.Numerics.Fixed.Zero, TalkRange);
@@ -371,21 +411,21 @@ namespace EdS.World
         /// </summary>
         private void Spoke(string npc)
         {
+            LastTalkFilled = 0;
             foreach (string id in _quests.Keys.ToArray())
             {
                 if (!(CurrentStep(id) is QuestStep s) || _quests[id].Progress >= 1) continue;
                 Objective o = s.Objective;
-                if (o.Kind == ObjectiveKind.Talk && o.Id == npc)
-                {
-                    _quests[id] = (_quests[id].Step, 1L);
-                    _queued.Add(new StoryEvent(StoryEventKind.ObjectiveDone, id, s.Id));
-                }
-                else if (o.Kind == ObjectiveKind.Deliver && o.Npc == npc && _world.Inventory.Remove(o.Id, (int)o.Value) == InventoryRefusal.None)
-                {
-                    _quests[id] = (_quests[id].Step, 1L);
-                    _queued.Add(new StoryEvent(StoryEventKind.ItemTaken, o.Id, null, o.Value));
-                    _queued.Add(new StoryEvent(StoryEventKind.ObjectiveDone, id, s.Id));
-                }
+                // Relecture de la PR #76 : rien n'est pris en parlant. Les objets à livrer, s'ils sont là et libres, sont promis ; ils sont
+                // remis au tick suivant avec les effets de l'étape, en une seule application atomique (tout ou rien : une étape refusée ne garde
+                // jamais les objets).
+                bool filled = (o.Kind == ObjectiveKind.Talk && o.Id == npc)
+                    || (o.Kind == ObjectiveKind.Deliver && o.Npc == npc && _world.Inventory.Available(o.Id) >= o.Value);
+                if (!filled) continue;
+                _quests[id] = (_quests[id].Step, 1L);
+                _queued.Add(new StoryEvent(StoryEventKind.ObjectiveDone, id, s.Id));
+                LastTalkFilled++;
+                Revision++;
             }
         }
 
@@ -403,6 +443,7 @@ namespace EdS.World
             RewardChoice c = choices[index];
             if (_world.Inventory.Add(c.Item, c.Count) != InventoryRefusal.None) return DialogueRefusal.NoRoom;
             _quests[quest] = (-1, 0L);
+            Revision++;
             if (_tracked == quest) _tracked = null;
             events.Add(new StoryEvent(StoryEventKind.ItemGiven, c.Item, null, c.Count));
             events.Add(new StoryEvent(StoryEventKind.QuestCompleted, quest));
@@ -415,6 +456,7 @@ namespace EdS.World
         internal bool Learn(string fact, List<StoryEvent> events)
         {
             if (!_facts.Add(fact)) return false;
+            Revision++;
             events.Add(new StoryEvent(StoryEventKind.FactLearned, fact));
             return true;
         }
@@ -429,7 +471,10 @@ namespace EdS.World
                 if (CurrentStep(id) is { Objective: { } o }
                     && ((o.Kind == ObjectiveKind.Defeat && o.Id == population) || (o.Kind == ObjectiveKind.DefeatFamily && family != null && o.Id == family))
                     && _quests[id].Progress < o.Value)
+                {
                     _quests[id] = (_quests[id].Step, checked(_quests[id].Progress + 1));
+                    Revision++;
+                }
         }
 
         /// <summary>Vérifie l'objectif de l'étape en cours de chaque quête (ordre ordinal) ; une étape au plus par quête et par tick.</summary>
@@ -444,11 +489,24 @@ namespace EdS.World
                 Quest quest = _book.Quest(id);
                 if (step < 0 || step >= quest.Steps.Count) continue;
                 QuestStep s = quest.Steps[step];
+                // Relecture de la PR #76 : des objets promis qui ne sont plus là (vendus, réservés depuis) : la livraison est à refaire.
+                if (s.Objective.Kind == ObjectiveKind.Deliver && progress >= 1 && _world.Inventory.Available(s.Objective.Id) < s.Objective.Value)
+                {
+                    _quests[id] = (step, 0L);
+                    Revision++;
+                    continue;
+                }
                 if (!Reached(s.Objective, progress)) continue;
                 bool last = step + 1 == quest.Steps.Count;
-                var effects = last ? s.Effects.Concat(quest.Effects).ToArray() : s.Effects.ToArray();
+                bool choose = last && quest.RewardChoices.Count > 0;
+                // Relecture de la PR #76 : les objets livrés sont pris avec les effets de l'étape, dans la même application atomique.
+                var effects = s.Objective.Delivery.Concat(s.Effects).Concat(last ? quest.Effects : Array.Empty<StoryEffect>()).ToArray();
                 var applied = new List<StoryEvent>();
+                // Relecture de la PR #76 : les effets se jugent dans l'état d'après l'étape (une quête qui en commence une autre ouverte « après
+                // elle », questDone, la commence) ; refusés, la quête revient à son état.
+                _quests[id] = last ? (-1, 0L) : (step + 1, 0L);
                 DialogueRefusal blocked = Apply(effects, applied);
+                _quests[id] = (step, progress);
                 if (blocked != DialogueRefusal.None)
                 {
                     // Relecture de la PR #72 : une bourse pleine a son propre message (pas « inventaire plein ») ; sous-lot V1.6 : une bourse trop
@@ -466,7 +524,7 @@ namespace EdS.World
                 _blocked.Remove(id + "/" + s.Id);
                 // L'étape est franchie avant ses effets dans le journal ; un effet qui relance la même quête est sans objet.
                 // Sous-lot V1.6 : après sa dernière étape, une quête à récompense au choix attend ce choix (elle reste en cours).
-                bool choose = last && quest.RewardChoices.Count > 0;
+                Revision++;
                 _quests[id] = choose ? (quest.Steps.Count, 0L) : last ? (-1, 0L) : (step + 1, 0L);
                 if (last && !choose && _tracked == id) _tracked = null;
                 events.Add(new StoryEvent(StoryEventKind.StepCompleted, id, s.Id));
@@ -498,7 +556,9 @@ namespace EdS.World
             ConditionKind.Fact => _facts.Contains(c.Id),
             ConditionKind.NotFact => !_facts.Contains(c.Id),
             ConditionKind.QuestNotStarted => !_quests.ContainsKey(c.Id),
-            ConditionKind.QuestActive => IsActive(c.Id),
+            // Relecture de la PR #76 : une quête qui attend le choix de sa récompense n'est plus « en cours » pour les dialogues (questReward).
+            ConditionKind.QuestActive => IsActive(c.Id) && !IsChoosingReward(c.Id),
+            ConditionKind.QuestReward => IsChoosingReward(c.Id),
             ConditionKind.QuestAt => CurrentStep(c.Id)?.Id == c.Step,
             ConditionKind.QuestDone => IsDone(c.Id),
             ConditionKind.TrustAtLeast => Trust(c.Id) >= c.Value,
@@ -506,7 +566,7 @@ namespace EdS.World
             ConditionKind.HasItem => _world.Inventory.Count(c.Id) >= c.Value,
             ConditionKind.Phase => PhaseId(_world.Phase) == c.Id,
             ConditionKind.InPlace => _world.InPlace(c.Id),
-            ConditionKind.LevelAtLeast => _world.Level >= c.Value,   // sous-lot V1.6
+            ConditionKind.LevelAtLeast => (_bonusXp > 0 ? _world.LevelWith(_bonusXp) : _world.Level) >= c.Value,   // sous-lot V1.6
             _ => _world.IsPassageOpen(c.Id),
         };
 
@@ -551,6 +611,7 @@ namespace EdS.World
                 if (e.Kind == EffectKind.GiveItem && trial.Add(e.Id, (int)e.Value) != InventoryRefusal.None) return DialogueRefusal.NoRoom;
             }
             _world.Inventory.CopyFrom(trial);
+            Revision++;
             if (take > 0)
             {
                 // Vérifiée plus haut : la bourse a ces pièces.

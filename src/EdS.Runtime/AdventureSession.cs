@@ -429,6 +429,9 @@ namespace EdS.Runtime
                     Say("text.ui.money_given", MoneyText(e.Value));
                     break;
                 // Sous-lot V1.6.
+                case StoryEventKind.ObjectiveDone:   // relecture de la PR #76 : parler à ou livrer à un PNJ
+                    if (_story.Quest(e.Id).Steps.FirstOrDefault(st => st.Id == e.Step) is QuestStep done) Say("text.ui.objective_done", Text(done.Text));
+                    break;
                 case StoryEventKind.MoneyTaken:
                     Say("text.ui.money_taken", MoneyText(e.Value));
                     break;
@@ -516,6 +519,9 @@ namespace EdS.Runtime
                     if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
                 }
                 DialogueRefusal refusal = World.Talk(npc.Id, out _);
+                // Relecture de la PR #76 : un PNJ sans rien à dire, mais à qui l'on vient de parler ou de livrer pour une quête : l'objectif
+                // rempli s'annonce (au tick suivant), pas « rien à dire ».
+                if (refusal == DialogueRefusal.NothingToSay && World.Narrative?.LastTalkFilled > 0) return true;
                 if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(npc.Name));
                 return refusal == DialogueRefusal.None;
             }
@@ -895,8 +901,27 @@ namespace EdS.Runtime
         public IReadOnlyList<JournalEntry> Journal(QuestCategory? category = null)
         {
             Narrative? n = World.Narrative;
+            if (n is null) return Array.Empty<JournalEntry>();
+            // Relecture de la PR #76 : le journal se recalcule seulement quand l'histoire change (l'interface le lit à chaque image).
+            if (!(ReferenceEquals(_journalOf, n) && _journalRevision == n.Revision)) _journal.Clear();
+            _journalOf = n;
+            _journalRevision = n.Revision;
+            if (_journal.TryGetValue(category?.ToString() ?? "", out IReadOnlyList<JournalEntry> cached)) return cached;
+            IReadOnlyList<JournalEntry> built = BuildJournal(n, category);
+            _journal[category?.ToString() ?? ""] = built;
+            return built;
+        }
+
+        private Narrative? _journalOf;
+        private long _journalRevision = -1;
+        private readonly Dictionary<string, IReadOnlyList<JournalEntry>> _journal = new Dictionary<string, IReadOnlyList<JournalEntry>>(StringComparer.Ordinal);
+
+        /// <summary>Relecture de la PR #76 : un onglet a une quête qui attend le choix de sa récompense (un repère sur l'onglet).</summary>
+        public bool RewardWaiting(QuestCategory category) => Journal(category).Any(q => q.ChoosingReward);
+
+        private IReadOnlyList<JournalEntry> BuildJournal(Narrative n, QuestCategory? category)
+        {
             var list = new List<JournalEntry>();
-            if (n is null) return list;
             IEnumerable<Quest> quests = _story.Quests.Where(q => category is null || q.Category == category);
             foreach (Quest q in quests.Where(q => n.IsActive(q.Id)))
             {

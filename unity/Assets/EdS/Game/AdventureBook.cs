@@ -575,8 +575,9 @@ namespace EdS.Game
 
         private void RefreshJournal(AdventureSession a)
         {
-            _mainTab.Value = a.Text("text.ui.journal.main");
-            _sideTab.Value = a.Text("text.ui.journal.side");
+            // Relecture de la PR #76 : un repère sur l'onglet où une quête attend le choix de sa récompense (visible depuis l'autre onglet).
+            _mainTab.Value = a.Text("text.ui.journal.main") + (a.RewardWaiting(QuestCategory.Main) ? " •" : "");
+            _sideTab.Value = a.Text("text.ui.journal.side") + (a.RewardWaiting(QuestCategory.Side) ? " •" : "");
             _mainTab.Color = _journalTab == QuestCategory.Main ? UiKit.Dawn : UiKit.Muted;
             _sideTab.Color = _journalTab == QuestCategory.Side ? UiKit.Dawn : UiKit.Muted;
             IReadOnlyList<JournalEntry> quests = a.Journal(_journalTab);

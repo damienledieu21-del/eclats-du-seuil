@@ -134,8 +134,8 @@ public class V16QuetesTests
             r => r["data"]!["dialogues"]![7]!["nodes"]![0]!["choices"]![0]!["effects"]![0]!["value"] = 0);
         yield return Case("$.data.dialogues[7].nodes[0].choices[0].effects[0].id", ValidationCode.InvalidValue,
             r => r["data"]!["dialogues"]![7]!["nodes"]![0]!["choices"]![0]!["effects"]![0]!["id"] = "npc.pretre");
-        yield return Case("$.data.dialogues[7].entries[3].conditions[1].value", ValidationCode.MissingField,
-            r => r["data"]!["dialogues"]![7]!["entries"]![3]!["conditions"]![1]!.AsObject().Remove("value"));
+        yield return Case("$.data.dialogues[7].entries[4].conditions[1].value", ValidationCode.MissingField,
+            r => r["data"]!["dialogues"]![7]!["entries"]![4]!["conditions"]![1]!.AsObject().Remove("value"));
         // PNJ des intérieurs.
         yield return Case("$.data.npcs[6].zone", ValidationCode.UnknownReference, r => Npc(r, "npc.aubergiste")["zone"] = "zone.cave");
         yield return Case("$.data.npcs[6].zone", ValidationCode.InvalidValue, r => Npc(r, "npc.aubergiste")["zone"] = "zone.vallons");
@@ -252,9 +252,11 @@ public class V16QuetesTests
         WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 4)), Peaux, "peaux", 0, Peaux));
         long xp = w.Character.Xp;
         Assert.Equal(DialogueRefusal.None, w.Talk("npc.aubergiste", out _));
-        Assert.Equal(1, w.Inventory.Count("item.peau_de_loup"));
-        Assert.Equal(new[] { "ItemTaken item.peau_de_loup 3", $"ObjectiveDone {Peaux}/peaux", $"StepCompleted {Peaux}/peaux", "XpGiven xp 60",
+        // Relecture de la PR #76 : promises en parlant, les peaux sont prises au tick suivant avec les effets de l'étape (tout ou rien).
+        Assert.Equal(4, w.Inventory.Count("item.peau_de_loup"));
+        Assert.Equal(new[] { $"ObjectiveDone {Peaux}/peaux", $"StepCompleted {Peaux}/peaux", "ItemTaken item.peau_de_loup 3", "XpGiven xp 60",
             "MoneyGiven money 150", $"RewardToChoose {Peaux}" }, Steps(w));
+        Assert.Equal(1, w.Inventory.Count("item.peau_de_loup"));
         Assert.Equal((xp + 60, 150L), (w.Character.Xp, w.Money));
         Assert.True(w.Narrative!.IsActive(Peaux) && w.Narrative.IsChoosingReward(Peaux) && !w.Narrative.IsDone(Peaux));
         Assert.Null(w.Narrative.CurrentStep(Peaux));

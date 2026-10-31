@@ -215,8 +215,8 @@ Sixième sous-lot de la vague 1 ([PLAN_VALLONS_SOLO.md](PLAN_VALLONS_SOLO.md#v16
 
 **Objectifs** (en plus de `fact`, `reach`, `defeat`, `collect`, `passage`) :
 
-- `talk` : parler au PNJ pendant l'étape (à 3 m, dans sa zone) ;
-- `deliver` : livrer des objets à un PNJ (`npc`) : en lui parlant, s'ils sont dans l'inventaire et libres (pas réservés pour le combat), ils lui sont remis **d'un coup** (tous ou aucun) ; il en manque : rien n'est remis, l'étape attend ;
+- `talk` : parler au PNJ pendant l'étape (à 3 m, dans sa zone), même s'il n'a rien à dire à ce moment : l'interface annonce alors l'objectif rempli (« Fait : … »), pas « rien à dire » ;
+- `deliver` : livrer des objets à un PNJ (`npc`) : en lui parlant, s'ils sont dans l'inventaire et libres (pas réservés pour le combat), ils sont promis, puis remis **d'un coup** au tick suivant **avec les effets de l'étape**, dans une seule application atomique (relecture de la PR #76) : si un effet est refusé (bourse trop légère, sac plein, quête fermée), rien n'est pris et l'étape attend ; il en manque, ou ils ont quitté le sac entre-temps : rien n'est remis, la livraison est à refaire ;
 - `defeat` : une créature précise (une population, comme avant) ; `defeatFamily` : un nombre de créatures d'une **famille** (champ `family` des populations ; par défaut la créature sans ses chiffres : `loup1` à `loup12` sont des « loup », les quatre bandits des « bandit », le loup blanc à part) ; le compteur s'arrête au nombre demandé ;
 - `equipped` : porter un objet (qui se porte).
 
@@ -224,9 +224,13 @@ Une étape se franchit au tick suivant, avec ses effets ; parler ou livrer s'ann
 
 **Effets** : `giveMoney` (V1.1) et **`takeMoney`** : les pièces prises doivent être dans la bourse, toutes ensemble, avant les dons (une réponse qui prend 10 et donne 4 passe avec 10 cuivre) ; sinon **rien** n'est appliqué (`DialogueRefusal.NotEnoughMoney`, « Ta bourse est trop légère pour ça. » ; une étape attend, `MoneyShort`, annoncé une fois). Exemple : l'offrande de 10 cuivre au prêtre.
 
-**Quêtes qui s'ouvrent** (`requires`, conditions de dialogue, dont la nouvelle `levelAtLeast`) : un `startQuest` sur une quête encore fermée est refusé en entier (`Locked` ; une étape attend, `QuestLocked`) et une réponse qui la commencerait **n'est pas proposée**. « Après une autre quête » s'écrit `questDone`.
+**Quêtes qui s'ouvrent** (`requires`, conditions de dialogue, dont la nouvelle `levelAtLeast`) : un `startQuest` sur une quête encore fermée est refusé en entier (`Locked` ; une étape attend, `QuestLocked`) et une réponse qui la commencerait **n'est pas proposée**. « Après une autre quête » s'écrit `questDone`. Relecture de la PR #76 :
 
-**Récompenses au choix** (`rewardChoice` : deux ou trois objets) : quand la dernière étape est franchie, ses effets et ceux de la quête sont donnés (expérience, pièces), puis la quête **attend le choix** (étape réservée `reward`, gardée dans la sauvegarde) ; le journal montre un bouton par objet. Le choix est atomique : un sac plein le refuse sans rien changer (`NoRoom`) ; une fois choisi, la quête est finie, et l'on ne choisit qu'une fois.
+- les effets d'une étape se jugent **dans l'état d'après l'étape** : une quête dont la fin commence la suivante, ouverte « après elle » (`questDone`), la commence bien ;
+- l'ouverture se juge **après l'expérience donnée par les mêmes effets** : une réponse qui donne le niveau 3 et commence une quête du niveau 3 est proposée et passe (piège d'écriture évité : l'ordre des effets ne compte pas) ;
+- le validateur refuse une quête qui s'ouvre sur son propre état (`questDone`, `questActive`, `questAt`, `questReward` sur elle-même) et les **cycles** d'ouverture (A après B, B après A), à leur chemin `quests[i].requires[j]`.
+
+**Récompenses au choix** (`rewardChoice` : deux ou trois objets) : quand la dernière étape est franchie, ses effets et ceux de la quête sont donnés (expérience, pièces), puis la quête **attend le choix** (étape réservée `reward`, gardée dans la sauvegarde) ; le journal montre un bouton par objet, et un repère « • » sur l'onglet où une récompense attend. Pendant l'attente, la quête n'est plus « en cours » pour les dialogues (`questActive` faux) ; la condition `questReward` la reconnaît (Mathurin et Frère Anselme en parlent). Le choix est atomique : un sac plein le refuse sans rien changer (`NoRoom`) ; une fois choisi, la quête est finie, et l'on ne choisit qu'une fois.
 
 **PNJ des intérieurs** : un PNJ peut vivre dans un intérieur (`zone` : `zone.auberge`, `zone.chapelle`, `zone.maison`), sa position étant dans la pièce. On lui parle quand on y est, comme dehors (F) ; le décor de la pièce lui donne un corps de villageois à sa place, tourné vers le milieu de la pièce. Livrés : **Mathurin l'aubergiste** (derrière son comptoir), **Frère Anselme** (près de l'autel) et **Rosalie** (dans la maison du bourg). L'objectif sur la carte d'un PNJ d'intérieur est, dehors, la porte de sa pièce.
 
@@ -241,7 +245,9 @@ Une étape se franchit au tick suivant, avec ses effets ; parler ou livrer s'ann
 - **le chef des bandits**, au fond du camp, **à deux formes** comme le Gardien (zone en schéma 5, `chiefs`, scénario `zones/vallons_bandits`) : 320 PV (taille, charge annoncée en ligne), puis furieux, 380 PV (plus rapide, charge et tourbillon annoncés) ; sa première victoire apprend `fact.chef_des_bandits.vaincu` et donne une rondache cerclée, une seule fois (`zone.vallons/boss/chef_des_bandits`) ; butin `loot.chef_des_bandits` à chaque victoire ;
 - **le loup blanc**, bête élite au fond de la forêt des Loups : 450 PV, bond annoncé en ligne et hurlement annoncé en cercle, plus rapide que les loups mais moins que le Bastion (on peut le semer) ; butin `loot.loup_blanc` (trois peaux, parfois le talisman).
 
-Limites : le rang de guilde (objectif) et les points de guilde (effet) attendent la guilde (V1.7), qui en fixera le format ; les quêtes de la vague (V1.9) ne sont pas écrites ; les bandits, leur chef et le loup blanc gardent la forme simple (ou le loup) tant qu'ils n'ont pas de personnage Mixamo (dossiers `Bandit`, `Chef`) ; le loup blanc a le modèle du loup, sans teinte ; les quêtes n'ont pas encore de temps imparti (sujet 29) ni de signe au-dessus des PNJ ; parler à un PNJ remplit son objectif même s'il n'a rien à dire dans son dialogue.
+La clé de victoire d'un chef réserve sa place au registre avec les morts possibles d'un tick, comme les autres clés (registre presque plein : la récompense attend, annoncé une fois) ; aucune forme d'un chef ne se pose sur la première forme d'un autre chef.
+
+Limites : le rang de guilde (objectif) et les points de guilde (effet) attendent la guilde (V1.7), qui en fixera le format ; les quêtes de la vague (V1.9) ne sont pas écrites ; les bandits, leur chef et le loup blanc gardent la forme simple (ou le loup) tant qu'ils n'ont pas de personnage Mixamo (dossiers `Bandit`, `Chef`) ; le loup blanc a le modèle du loup, sans teinte ; les quêtes n'ont pas encore de temps imparti (sujet 29) ni de signe au-dessus des PNJ .
 
 ## Sauvegarde
 

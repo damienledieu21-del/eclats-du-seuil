@@ -314,7 +314,12 @@
       "text.ui.journal.track": "Suivre",
       "text.ui.journal.tracked": "Suivie",
       "text.ui.journal.choose_reward": "Choisis ta récompense.",
-      "text.ui.journal.empty_tab": "Aucune quête dans cet onglet."
+      "text.ui.journal.empty_tab": "Aucune quête dans cet onglet.",
+      "text.aubergiste.recompense": "Les peaux sont parfaites ! Choisis ce qui te fait plaisir, c'est la maison qui offre.",
+      "text.aubergiste.recompense.partir": "Je choisis tout de suite.",
+      "text.pretre.recompense": "L'Aube te doit bien ça. Prends ce qui te servira le mieux sur la route.",
+      "text.pretre.recompense.partir": "Merci, frère.",
+      "text.ui.objective_done": "Fait : {0}"
     }
   }
 }

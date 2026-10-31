@@ -223,7 +223,7 @@ namespace EdS.Data.Zones
         {
             Boss = boss;
             Chiefs = Frozen.List(chiefs ?? Array.Empty<Boss>(), nameof(chiefs));
-            Bosses = Frozen.List((boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(Chiefs), nameof(chiefs));
+            Bosses = Frozen.List((boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(Chiefs), nameof(boss));
             Roads = Frozen.List(roads ?? Array.Empty<Road>(), nameof(roads));
             Indoor = indoor;
             Doors = Frozen.List(doors ?? Array.Empty<Door>(), nameof(doors));
@@ -645,9 +645,11 @@ namespace EdS.Data.Zones
                     if (id is null || forms.Combatants.FirstOrDefault(c => c.Id == id) is not AssailantSetup form || form.Health is null || form.Placement is null)
                     { report.Add(p, ValidationCode.UnknownReference, $"forme « {id} » absente du scénario du chef (assaillant mortel et placé attendu)."); ok = false; }
                     else if (templates.Any(t => t.Id == id) || others.Any(o => o.Forms.Any(f => f.Id == id))) { report.Add(p, ValidationCode.DuplicateId, $"forme « {id} » déjà donnée."); ok = false; }
-                    // Sous-lot V1.6 : la première forme de chaque chef arrive avec la session ; elles ne se chevauchent pas.
-                    else if (i == 0 && others.FirstOrDefault(o => Overlap(o.Forms[0].Placement!, form.Placement)) is Boss near)
-                    { report.Add(p, ValidationCode.InvalidValue, $"la place de la première forme « {id} » chevauche celle du chef « {near.Id} »."); ok = false; }
+                    // Sous-lot V1.6 : la première forme de chaque chef arrive avec la session et y reste tant qu'on ne la combat pas. Relecture de la
+                    // PR #76 : aucune forme d'un chef ne se pose sur la première forme d'un chef déjà admis (son arrivée serait refusée) ; la
+                    // première forme ne se pose sur aucune forme d'un chef déjà admis.
+                    else if (others.FirstOrDefault(o => (i == 0 ? o.Forms : o.Forms.Take(1)).Any(f => Overlap(f.Placement!, form.Placement))) is Boss near)
+                    { report.Add(p, ValidationCode.InvalidValue, $"la place de la forme « {id} » chevauche celle d'une forme du chef « {near.Id} »."); ok = false; }
                     else if (scenario != null && scenario.Combatants.Any(c => c.Id == id)) { report.Add(p, ValidationCode.DuplicateId, $"« {id} » est déjà une créature de la zone."); ok = false; }
                     else if (LifeSuffix.IsMatch(id) || id.Length > 60) { report.Add(p, ValidationCode.InvalidValue, "identifiant réservé (« _v<nombre> » final) ou trop long."); ok = false; }
                     // La forme arrive dans la simulation de la zone : sa place doit y tenir (aire, obstacles), sinon son arrivée serait refusée.
@@ -659,7 +661,8 @@ namespace EdS.Data.Zones
                     { report.Add(p, ValidationCode.InvalidValue, crowd); ok = false; }
                     // Revue Codex de la PR #48 : la forme arrive dans la simulation de la zone, qui revalide le combat complété : ses références
                     // (cible, déclencheurs…) doivent exister dans la zone ou parmi les formes, pas seulement dans le scénario du chef.
-                    else if (scenario != null && ArrivalRefused(scenario, templates, form) is string refused)
+                    // Relecture de la PR #76 : avec les formes de tous les chefs déjà admis.
+                    else if (scenario != null && ArrivalRefused(scenario, others.SelectMany(o => o.Forms).Concat(templates), form) is string refused)
                     { report.Add(p, ValidationCode.InvalidValue, $"forme refusée par la simulation de la zone : {refused}"); ok = false; }
                     else templates.Add(form);
                 }

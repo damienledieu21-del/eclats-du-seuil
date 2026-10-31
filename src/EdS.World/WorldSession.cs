@@ -469,6 +469,8 @@ namespace EdS.World
 
         int INarrativeWorld.Level => Level;
 
+        int INarrativeWorld.LevelWith(long xp) => _progression.LevelFor(Math.Min(SaveValidator.MaxXp, checked(_character.Xp + Math.Max(0, xp))));
+
         bool INarrativeWorld.IsEquipped(string item) => Inventory.Equipped.Values.Contains(item);
 
         bool INarrativeWorld.InPlace(string place) =>
@@ -649,7 +651,8 @@ namespace EdS.World
             Inventory trial = Inventory.Clone();
             // Même règle que la revue Codex de la PR #46 : la clé de victoire réserve sa place au registre avant toute mutation (registre
             // plein : les récompenses attendent, comme un inventaire plein).
-            bool room = Zone.RegistryRoom >= 1;
+            // Relecture de la PR #76 : même règle que les autres clés du registre : la clé de victoire et les morts possibles d'un tick.
+            bool room = Zone.RegistryRoom - 1 >= Zone.Engine.CombatantIds.Count;
             foreach ((string item, int count) in b.Rewards)
                 if (!room || trial.Add(item, count) != InventoryRefusal.None)
                 {

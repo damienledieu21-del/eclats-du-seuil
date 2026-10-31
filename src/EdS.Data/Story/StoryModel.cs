@@ -36,6 +36,12 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.6 (histoire en schéma 3) : le personnage a au moins ce niveau (d'après son expérience).</summary>
         LevelAtLeast = 12,
+
+        /// <summary>
+        /// Relecture de la PR #76 : la quête a franchi toutes ses étapes et attend le choix de sa récompense (elle n'est plus alors
+        /// <see cref="QuestActive"/> pour les dialogues).
+        /// </summary>
+        QuestReward = 13,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>
@@ -90,12 +96,15 @@ namespace EdS.Data.Story
         /// <summary>Un passage est ouvert.</summary>
         Passage = 4,
 
-        /// <summary>Sous-lot V1.6 : parler à un PNJ pendant l'étape (un dialogue s'ouvre).</summary>
+        /// <summary>
+        /// Sous-lot V1.6 : parler à un PNJ pendant l'étape (à portée, dans sa zone) ; rempli même si son dialogue n'a rien à dire à ce
+        /// moment (l'interface annonce alors l'objectif rempli, pas « rien à dire »).
+        /// </summary>
         Talk = 5,
 
         /// <summary>
-        /// Sous-lot V1.6 : livrer des objets à un PNJ (<see cref="Objective.Npc"/>) : en lui parlant, s'ils sont dans l'inventaire et libres,
-        /// ils lui sont remis d'un coup.
+        /// Sous-lot V1.6 : livrer des objets à un PNJ (<see cref="Objective.Npc"/>) : en lui parlant, s'ils sont dans l'inventaire et libres
+        /// (pas réservés), ils sont promis ; ils lui sont remis d'un coup au tick suivant, avec les effets de l'étape, en entier ou pas du tout.
         /// </summary>
         Deliver = 6,
 
@@ -150,12 +159,19 @@ namespace EdS.Data.Story
         /// <summary>Sous-lot V1.6 : PNJ à qui livrer (<see cref="ObjectiveKind.Deliver"/>) ; null sinon.</summary>
         public string? Npc { get; }
 
+        /// <summary>
+        /// Relecture de la PR #76 : effet qui remet les objets livrés (<see cref="ObjectiveKind.Deliver"/> : <c>takeItem</c> de l'objet et de
+        /// son nombre), appliqué avec les effets de l'étape ; vide pour les autres objectifs.
+        /// </summary>
+        public IReadOnlyList<StoryEffect> Delivery { get; }
+
         internal Objective(ObjectiveKind kind, string id, long value, string? npc = null)
         {
             Kind = kind;
             Id = id;
             Value = value;
             Npc = npc;
+            Delivery = Frozen.List(kind == ObjectiveKind.Deliver ? new[] { new StoryEffect(EffectKind.TakeItem, id, value) } : Array.Empty<StoryEffect>(), "delivery");
         }
     }
 
