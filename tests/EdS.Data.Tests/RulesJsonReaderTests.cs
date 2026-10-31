@@ -121,8 +121,9 @@ public class RulesJsonReaderTests
         // Décision de Damien du 29 octobre 2026 : contenu 0.12.0, schéma inchangé : combat.limits.maxCombatants de 64 à 128.
         // Sous-lot V1.2 : schéma 13, contenu 0.13.0 : combat.shield (bornes de la garde des boucliers ; ancienne empreinte 81d40127…).
         // Sous-lot V1.3 : schéma 14, contenu 0.14.0 : combat.equipment (bornes des effets d'équipement ; ancienne empreinte d6dd1953…).
+        // Relecture de la PR #78 : combat.equipment.allowedStatuses (liste vide), schéma 14 et contenu 0.14.0 gardés (non fusionnés ; empreinte de la PR avant : 358fc35a…).
         Assert.Equal(
-            "sha256:358fc35af7834e17f587c23a83d6bd6703b00c7c0ad6eca538d8d3b07c8b74f7",
+            "sha256:0413744ac77641fff7ad7b45c86d46f2b2ee048e3ad48f3374236950e43866c9",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 

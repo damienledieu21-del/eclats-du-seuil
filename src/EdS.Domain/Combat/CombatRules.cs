@@ -243,6 +243,16 @@ namespace EdS.Domain.Combat
         /// <summary>Recharge interne d'un déclencheur d'équipement, au moins (<c>combat.equipment.minTriggerCooldownMs</c>, 1 000 ms).</summary>
         public long EquipmentMinTriggerCooldownMs { get; init; } = 1000;
 
+        /// <summary>Relecture de la PR #78 : altérations admises pour l'équipement, au plus.</summary>
+        public const int MaxEquipmentStatuses = 32;
+
+        /// <summary>
+        /// Relecture de la PR #78 : altérations que l'effet <c>applyStatus</c> d'un déclencheur d'équipement a le droit de poser
+        /// (<c>combat.equipment.allowedStatuses</c>, identifiants du catalogue des altérations, sans doublon, au plus
+        /// <see cref="MaxEquipmentStatuses"/>). Vide par défaut et dans les règles livrées : aucun objet livré ne pose d'altération.
+        /// </summary>
+        public IReadOnlyList<string> EquipmentStatuses { get; init; } = Array.Empty<string>();
+
         /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
@@ -403,6 +413,23 @@ namespace EdS.Domain.Combat
                 (EquipmentMinTriggerCooldownMs, nameof(EquipmentMinTriggerCooldownMs)) })
                 if (value < 0 || value > AbsoluteMaxDurationMs)
                     errors.Add(new RuleViolation($"doit être compris entre 0 et {AbsoluteMaxDurationMs} ms (24 h).", name));
+            // Relecture de la PR #78 : altérations admises pour l'équipement, connues du catalogue, sans doublon.
+            if (EquipmentStatuses is null)
+                errors.Add(new RuleViolation("liste obligatoire (vide si l'équipement ne pose aucune altération).", nameof(EquipmentStatuses)));
+            else if (EquipmentStatuses.Count > MaxEquipmentStatuses)
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{EquipmentStatuses.Count} altérations, au plus {MaxEquipmentStatuses}.", nameof(EquipmentStatuses)));
+            else
+            {
+                var seenStatuses = new HashSet<string>(StringComparer.Ordinal);
+                for (int i = 0; i < EquipmentStatuses.Count; i++)
+                {
+                    string? id = EquipmentStatuses[i];
+                    if (id is null || (Statuses != null && !Statuses.TryGet(id, out _)))
+                        errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"altération inconnue « {id} » (rang {i}).", nameof(EquipmentStatuses)));
+                    else if (!seenStatuses.Add(id))
+                        errors.Add(new RuleViolation(RuleViolationKind.DuplicateId, $"altération « {id} » donnée deux fois (rang {i}).", nameof(EquipmentStatuses)));
+                }
+            }
             return errors;
         }
     }

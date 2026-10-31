@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "a9f5a2c2ec41f2fc8a48204748f2b9499fa4fc65636f90f955464dd662a9eaab")]
-    [InlineData("entrainement_rupture", "ba04e3e2f1998dcf00955f5e6a0c204867b1bea65305f9e5700dabde6e7f7adf")]
-    [InlineData("entrainement_alterations", "88ff19eca89f213f2c20eb65b7b3649234f9e8294a191abf696a00c70bf87902")]
-    [InlineData("entrainement_declencheurs", "df43db86da9ca5e96e41629ba66c90f2fcfd73a15a5bddd42ea076ac11ee65e9")]
+    [InlineData("entrainement_garde_parade", "e947091de43306ef334ad3c3218b2852e0b49e1596d879da09dcdd681468fcdd")]
+    [InlineData("entrainement_rupture", "7fb85206f93053636823ce13b2778297bf6fafd8e2a75e2440f9d6df565f23fd")]
+    [InlineData("entrainement_alterations", "5a19899569b6bc96a60a1d4fee4e01a740f8718ecbcdb6a9bc034ea0a9bb1e2a")]
+    [InlineData("entrainement_declencheurs", "63d5ad67c68e3d1cc55cabdbc599df5348dab472c6d400d10e2e80968afa3c00")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -144,6 +144,8 @@ public class TrainingScenarioTests
         // aucun scénario d'entraînement n'a de bouclier : seul l'en-tête change ; référence dans Fixtures/reference-0.25.0-contenu-0.6.0-regles-0.13.0.
         // Sous-lot V1.3 : moteur 0.26.0, format 20, règles 0.14.0 (schéma 14, bornes des effets d'équipement), scénarios en schéma 14 ; aucun de
         // ces scénarios n'a d'effet d'équipement : seul l'en-tête change ; référence dans Fixtures/reference-0.26.0-contenu-0.6.0-regles-0.14.0.
+        // Relecture de la PR #78 : combat.equipment.allowedStatuses (vide) change l'empreinte des règles 0.14.0 (non fusionnées) : seule
+        // l'empreinte de l'en-tête change ; la référence 0.26.0, elle aussi non fusionnée, est regénérée.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

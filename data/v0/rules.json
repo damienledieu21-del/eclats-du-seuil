@@ -136,7 +136,8 @@
         "maxStatusDurationMs": 1000,
         "maxStrikeCoefficient": 1,
         "maxGain": 2,
-        "minTriggerCooldownMs": 1000
+        "minTriggerCooldownMs": 1000,
+        "allowedStatuses": []
       }
     },
     "statuses": [

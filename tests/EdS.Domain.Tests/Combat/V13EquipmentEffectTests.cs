@@ -53,6 +53,40 @@ public class V13EquipmentEffectTests
         Assert.Empty(Fields(new CombatRules { EquipmentMaxDamageDealt = Fixed.Zero, EquipmentMaxGain = 0 }));
     }
 
+    // --- Relecture de la PR #78 : altérations posées par l'équipement ------------------------------------------------------
+
+    private static TriggerDefinition Poser(string status) => new(TriggerEvent.Block,
+        new[] { TriggerEffect.ApplyStatus(TriggerTarget.EventSource, status) }, TriggerRole.Target, cooldownMs: 2000);
+
+    [Fact]
+    public void Alteration_posee_par_l_equipement_bornee_par_les_regles()
+    {
+        // Règles livrées : aucune altération admise (aucun objet livré n'en pose).
+        Assert.Empty(Rules.EquipmentStatuses);
+        IReadOnlyList<RuleViolation> refused = Effect(triggers: new[] { Riposte("0.5"), Poser("fragility") }).Check(Rules, "e");
+        RuleViolation v = Assert.Single(refused);
+        Assert.Equal(new[] { "e.triggers[1].effects[0].status" }, v.Fields);
+        Assert.Equal(RuleViolationKind.UnknownReference, v.Kind);
+        Assert.Contains("combat.equipment.allowedStatuses", v.Message, StringComparison.Ordinal);
+        // Admise par les règles : acceptée ; une autre reste refusée.
+        var allowing = new CombatRules { EquipmentStatuses = new[] { "fragility" } };
+        Assert.Empty(allowing.Validate());
+        Assert.Empty(Effect(triggers: new[] { Poser("fragility") }).Check(allowing, "e"));
+        Assert.Equal(new[] { "e.triggers[0].effects[0].status" }, Effect(triggers: new[] { Poser("stun") }).Check(allowing, "e").SelectMany(x => x.Fields));
+    }
+
+    [Fact]
+    public void Liste_des_alterations_de_l_equipement_verifiee()
+    {
+        string[] Fields(CombatRules r) => r.Validate().SelectMany(v => v.Fields).ToArray();
+        Assert.Equal(new[] { nameof(CombatRules.EquipmentStatuses) }, Fields(new CombatRules { EquipmentStatuses = new[] { "inconnue" } }));
+        Assert.Equal(new[] { nameof(CombatRules.EquipmentStatuses) }, Fields(new CombatRules { EquipmentStatuses = new[] { "burn", "burn" } }));
+        Assert.Equal(new[] { nameof(CombatRules.EquipmentStatuses) }, Fields(new CombatRules { EquipmentStatuses = null! }));
+        Assert.Equal(new[] { nameof(CombatRules.EquipmentStatuses) },
+            Fields(new CombatRules { EquipmentStatuses = Enumerable.Repeat("burn", CombatRules.MaxEquipmentStatuses + 1).ToArray() }));
+        Assert.Empty(Fields(new CombatRules { EquipmentStatuses = new[] { "burn", "bleed", "fragility" } }));
+    }
+
     // --- Validateur unique -------------------------------------------------------------------------------------------------
 
     [Fact]

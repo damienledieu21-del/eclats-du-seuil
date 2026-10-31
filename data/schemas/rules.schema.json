@@ -834,6 +834,16 @@
                   "minimum": 0,
                   "maximum": 86400000,
                   "description": "Recharge interne d'un déclencheur d'équipement, au moins (ms, multiple du tick ; 1 000 livrés)."
+                },
+                "allowedStatuses": {
+                  "type": "array",
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "Altérations (identifiants du bloc statuses) que l'effet applyStatus d'un déclencheur d'équipement peut poser ; vide livré : aucun objet ne pose d'altération (relecture de la PR #78)."
                 }
               },
               "required": [
@@ -844,7 +854,8 @@
                 "maxStatusDurationMs",
                 "maxStrikeCoefficient",
                 "maxGain",
-                "minTriggerCooldownMs"
+                "minTriggerCooldownMs",
+                "allowedStatuses"
               ],
               "description": "Bornes des effets d'équipement (objets nommés, paliers d'ensemble ; sous-lot V1.3, schéma 14), vérifiées par EquipmentEffect.Check."
             }

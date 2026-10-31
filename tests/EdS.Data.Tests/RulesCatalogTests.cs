@@ -84,6 +84,7 @@ public class RulesCatalogTests
                 ContactRule c => RuleValue.FromToken(ContactRuleIds.Of(c)),   // sous-lot 11.4a
                 string s => RuleValue.FromToken(s),
                 IReadOnlyList<int> list => RuleValue.FromIntegerList(list.Select(x => (long)x)),
+                IReadOnlyList<string> tokens => RuleValue.FromTokenList(tokens),   // relecture de la PR #78
                 _ => throw new InvalidOperationException(field.Path),
             });
         }

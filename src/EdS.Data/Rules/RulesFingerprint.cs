@@ -20,7 +20,12 @@ namespace EdS.Data.Rules
             w.Value("canonical", CanonicalWriter.Version);   // correctif 7.3.1 (A73-M02)
             w.Value("schemaVersion", schemaVersion);
             foreach (RuleField field in RulesCatalog.Fields)
-                w.Value(field.Path, document.Values[field.Path].ToCanonicalString());
+            {
+                RuleValue value = document.Values[field.Path];
+                // Relecture de la PR #78 : une liste d'identifiants suit le contrat canonique 2 des listes (chemin.count=n, chemin[i]=…).
+                if (value.Kind == RuleValueKind.TokenList) w.List(field.Path, value.Tokens!);
+                else w.Value(field.Path, value.ToCanonicalString());
+            }
             if (document.Statuses != null) StatusShape.AppendCanonical(text, StatusShape.Build(document.Statuses));
             return text.ToString();
         }

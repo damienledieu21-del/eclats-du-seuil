@@ -159,6 +159,20 @@ namespace EdS.Data.Json
                     }
                     if (ok) document.Set(field.Path, RuleValue.FromIntegerList(items));
                     break;
+                case RuleValueKind.TokenList:
+                    // Relecture de la PR #78 : liste d'identifiants texte (éventuellement vide).
+                    if (!input.RequireKind(value, JsonValueKind.Array, path, "liste d'identifiants")) break;
+                    var tokens = new List<string>();
+                    bool allRead = true;
+                    int rank = 0;
+                    foreach (JsonElement item in value.EnumerateArray())
+                    {
+                        if (input.TryReadString(item, $"{path}[{rank}]", out string? id)) tokens.Add(id!);
+                        else allRead = false;
+                        rank++;
+                    }
+                    if (allRead) document.Set(field.Path, RuleValue.FromTokenList(tokens));
+                    break;
             }
         }
     }

@@ -69,7 +69,8 @@ namespace EdS.Domain.Combat
         /// (<see cref="ModifierDefinition.ValidateReferences"/>) et de valeurs positives bornées par <c>combat.equipment</c> (réduction pour
         /// <c>damageTaken</c>) ; déclencheurs bien formés (<see cref="TriggerDefinition.ValidateList"/>, sans rang), de références connues
         /// (<see cref="TriggerDefinition.ValidateReferences"/>), de recharge interne d'au moins
-        /// <see cref="CombatRules.EquipmentMinTriggerCooldownMs"/>, de frappes et de gains bornés. Chemins : <paramref name="path"/> suivi
+        /// <see cref="CombatRules.EquipmentMinTriggerCooldownMs"/>, de frappes et de gains bornés, d'altérations posées admises par
+        /// <see cref="CombatRules.EquipmentStatuses"/> (relecture de la PR #78, chemin <c>.triggers[i].effects[k].status</c>). Chemins : <paramref name="path"/> suivi
         /// de <c>.id</c>, <c>.modifiers[i]…</c>, <c>.triggers[i]…</c>. Vide si l'effet est jouable.
         /// </summary>
         public IReadOnlyList<RuleViolation> Check(CombatRules rules, string path)
@@ -165,6 +166,11 @@ namespace EdS.Domain.Combat
                     if (e.Kind == TriggerEffectKind.Strike && e.Coefficient is { } c && c.Base > rules.EquipmentMaxStrikeCoefficient)
                         errors.Add(new RuleViolation($"coefficient {c.Base} au-dessus de {rules.EquipmentMaxStrikeCoefficient} pour l'équipement " +
                             "(combat.equipment.maxStrikeCoefficient des règles).", ep + ".coefficient"));
+                    // Relecture de la PR #78 : une altération posée par l'équipement doit être admise par les règles.
+                    if (e.Kind == TriggerEffectKind.ApplyStatus && (e.Status is null || !rules.EquipmentStatuses.Contains(e.Status)))
+                        errors.Add(new RuleViolation(RuleViolationKind.UnknownReference,
+                            $"altération « {e.Status} » non admise pour l'équipement ; admises : {(rules.EquipmentStatuses.Count == 0 ? "aucune" : string.Join(", ", rules.EquipmentStatuses))} " +
+                            "(combat.equipment.allowedStatuses des règles).", ep + ".status"));
                     if (e.Kind == TriggerEffectKind.GainResource && e.Amount is { } a && a.Base > Fixed.FromInt(rules.EquipmentMaxGain))
                         errors.Add(new RuleViolation($"gain {a.Base} au-dessus de {rules.EquipmentMaxGain} pour l'équipement (combat.equipment.maxGain des règles).",
                             ep + ".amount"));

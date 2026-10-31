@@ -20,5 +20,11 @@ namespace EdS.Data.Rules
 
         /// <summary>Liste d'entiers 32 bits (ex. niveaux de déblocage).</summary>
         Int32List,
+
+        /// <summary>
+        /// Relecture de la PR #78 (schéma 14) : liste d'identifiants texte, éventuellement vide, dont les références sont vérifiées par le
+        /// domaine (ex. <c>combat.equipment.allowedStatuses</c>, des altérations).
+        /// </summary>
+        TokenList,
     }
 }
