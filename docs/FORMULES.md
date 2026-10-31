@@ -70,6 +70,18 @@ La rareté fixe le **nombre** de propriétés (commun 0, rare 1, très rare 2, �
 
 Étapes intermédiaires à 4 décimales ; l'étape de défense est calculée exactement (produit-quotient 128 bits).
 
+## Forge, qualité et usure (sous-lot V1.4)
+
+Hors du moteur de combat (aucune règle ni aucun journal ne change). Valeurs livrées entre parenthèses, provisoires.
+
+- **Adresse** : moyenne des notes des frappes du petit jeu (de 0 à 100 chacune, trois frappes), arrondie vers le bas.
+- **Chance de rater** une recette à `gap` niveaux de métier au-dessus du sien (au plus `failure.maxLevels`, 2) : `gap × percentPerLevel − skillReduction × adresse / 100`, de 0 à 100 % (35 et 25 : 35 % à un niveau, 10 % avec des frappes parfaites ; 70 % à deux niveaux, 45 % avec des frappes parfaites). Ratée, la recette prend ses entrées et rend `⌊nombre × refundPercent / 100⌋` de chacune (50 %) ; rien n'est fabriqué ni appris.
+- **Qualité** d'une recette à qualité réussie, `n` = niveaux du métier au-dessus du requis : chef-d'œuvre `M = min(100, base + perSkill × adresse / 100 + perLevel × n)` (0, 12, 2), qualité supérieure `min(100 − M, …)` de même (15, 45, 5), qualité normale pour le reste. Au niveau requis : 12 % de chef-d'œuvre et 60 % de qualité supérieure avec trois frappes parfaites ; 0 % et 15 % sans adresse.
+- **Tirages** : `Pcg32` initialisé par l'empreinte FNV-1a 64 bits de la clé `<personnage>/craft/<recette>/day/<jour du monde>/<compteur des fabrications>`, flux `craft:<recette>` ; d'abord l'échec (`NextBounded(100) < chance`), puis la qualité (`r < M` : chef-d'œuvre ; `r < M + S` : supérieure), toujours dans cet ordre. Le compteur avance à chaque tentative admise (réussie ou ratée), gardé dans la sauvegarde.
+- **Bonus de qualité** : pour chaque statistique non nulle du bonus de base `b`, `max(1, ⌊b × p / 100⌋)`, `p` = 10 % (supérieure) ou 20 % (chef-d'œuvre). Exemple : l'épée de garde (22 de puissance physique) donne 24 en qualité supérieure, 26 en chef-d'œuvre.
+- **Usure** : à la fin d'un combat (le personnage n'est plus en combat, ou il est tombé), chaque pièce portée qui s'use perd `⌊(dégâts reçus × perFullHealth + reste) / PV maximaux⌋` points de solidité (10 ; solidité 100), le reste gardé pour le combat suivant de la session. Les dégâts reçus sont la somme des baisses des PV du personnage d'un tick au suivant (un soin ne les efface pas).
+- **Prix d'une réparation** (une pièce) : `⌈valeur × percent × manque / (100 × solidité)⌉`, au moins `minimum` (30 % ; 5 cuivre), `valeur` celle des marchands (0 sans valeur). Exemple : l'épée du milicien (300 cuivre) à 40 / 100 coûte 54 cuivre.
+
 ## Exemple vérifiable (test `Exemple_1_coup_critique_physique_detaille`)
 
 Bastion Force 50 + arme +40, compétence ×1,2, bonus compétence +20 %, talent +10 % −5 %, altération +10 %, coup critique, cible armure 500 :
