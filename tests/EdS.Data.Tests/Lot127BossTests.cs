@@ -47,6 +47,7 @@ public class Lot127BossTests
             JsonObject forms = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons_chef")))!.AsObject();
             boss?.Invoke(forms);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons_chef.json"), forms.ToJsonString());
+            File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6
             return ZoneJsonReader.Read(root.ToJsonString(), directory, data ?? ShippedData, Items);
         }
         finally
@@ -75,7 +76,7 @@ public class Lot127BossTests
         PlayerCharacters.Create("bastion", "class.bastion", Progression).WithItems(items, new Dictionary<string, string>()).WithStory(story ?? SavedStory.Empty);
 
     private static WorldSession Play(ZoneDefinition zone, WorldSave save) =>
-        new(save, zone, ShippedData, Progression, Items, StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, zone, Items).Story!);
+        new(save, zone, ShippedData, Progression, Items, StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, zone, Items, V16TestData.Interiors).Story!);
 
     /// <summary>Frappe la forme en cours du chef jusqu'à sa dernière chute (ou la fin du budget).</summary>
     private static List<SessionStep> Fight(WorldSession session, int ticks = 3000)
@@ -162,9 +163,9 @@ public class Lot127BossTests
 
     [Fact]
     public void Formes_qui_ne_tiennent_pas_dans_la_session_refusees() =>
-        // Revue Codex de la PR #48 (3e tour) : les créatures (27 depuis les Vallons agrandis), le personnage et 2 formes ne tiennent pas sous
-        // un plafond de 29 combattants (la zone seule, 28, y tient).
-        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 128", "\"maxCombatants\": 29"), directory =>
+        // Revue Codex de la PR #48 (3e tour) : les créatures (32 depuis le sous-lot V1.6), le personnage et les formes de tous les chefs (2 du
+        // Gardien, 2 du chef des bandits) ne tiennent pas sous un plafond de 36 combattants (la zone seule, 33, y tient).
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 128", "\"maxCombatants\": 36"), directory =>
         {
             ZoneLoadResult r = Load(data: GameDataLoader.Load(directory).Data!);
             Assert.Equal("$.data.boss.forms", First(r));
@@ -256,7 +257,7 @@ public class Lot127BossTests
             new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("chef") })));
         WorldSession first = Play(arena, start);
         List<SessionStep> steps = Fight(first);
-        BossEvent[] boss = steps.SelectMany(s => s.Boss).ToArray();
+        BossEvent[] boss = steps.SelectMany(s => s.Boss).Where(b => b.Boss == "gardien_du_seuil").ToArray();   // sous-lot V1.6 : le chef des bandits arrive aussi
         Assert.Equal(new[] { (BossEventKind.FormArrived, "gardien_du_seuil", 0), (BossEventKind.FormArrived, "gardien_eveille", 1), (BossEventKind.Defeated, "gardien_eveille", 1) },
             boss.Select(b => (b.Kind, b.Form, b.Phase)));
         Assert.Equal(new[] { ("item.lame_du_seuil", 1) }, steps.SelectMany(s => s.Rewards));

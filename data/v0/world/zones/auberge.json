@@ -1,6 +1,6 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "zone",
   "contentVersion": "0.2.0-provisoire",
   "data": {

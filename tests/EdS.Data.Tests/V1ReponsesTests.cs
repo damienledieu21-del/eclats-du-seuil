@@ -344,6 +344,7 @@ public class V1ReponsesTests : IDisposable
             }
         File.WriteAllText(Path.Combine(scenarios, "zones", "vallons.json"), vallons.ToJsonString());
         File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(scenarios, "zones", "vallons_chef.json"));
+        File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(scenarios, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
         CopyMissingZoneScenarios(scenarios);
         Directory.CreateDirectory(Path.GetDirectoryName(SavePath)!);
         SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),

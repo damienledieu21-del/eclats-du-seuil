@@ -202,6 +202,7 @@ public class Lot129SkillUnlockTests : IDisposable
             }
         File.WriteAllText(Path.Combine(scenarios, "zones", "vallons.json"), vallons.ToJsonString());
         File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(scenarios, "zones", "vallons_chef.json"));
+        File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(scenarios, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
         CopyMissingZoneScenarios(scenarios);   // intérieurs : reliés aux Vallons par leurs portes
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
