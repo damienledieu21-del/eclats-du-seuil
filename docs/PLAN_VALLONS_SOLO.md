@@ -217,3 +217,5 @@ Les quatorze grands sujets du jeu complet (classes, histoire, combat, progressio
 | V1.10 Places des maisons et essai | S | Tout | **Oui, la partie complète** |
 
 Les branches s'empilent tant que la précédente n'est pas fusionnée. V1.5 peut se faire à tout moment. Avant de commencer : fusionner l'essai réaliste 8 (#65), les intérieurs (#67) et l'essai 9, puis faire l'essai des intérieurs et de la caméra dans Unity.
+
+La suite, chantier par chantier jusqu'à l'alpha fermée sur PC (fin de la vague 1, vagues 2 à 4, lot 13, classes, préparation) : [PLAN_ALPHA.md](PLAN_ALPHA.md) (proposition à relire par Damien).
