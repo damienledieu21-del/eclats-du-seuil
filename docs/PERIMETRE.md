@@ -27,7 +27,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Classes : 1 dans les Vallons, 5 en alpha, 8 au lancement, 20 plus tard | Alpha | Nombre décidé par Damien pour chaque jalon | 22, 1 |
 | Les 4 classes ajoutées en alpha (avec le Bastion) : Liturge de l'Aube, Veilleur, Ombrelame, Tisse-Seuil | Alpha | Un peu de tout : soin, distance, agilité, magie | 22 |
 | Ressource propre, 3 arbres de talents, rôle principal et secondaire par classe | Alpha | Cœur de l'identité ; chaque classe finit seule l'histoire | 1, 22, Q14 |
-| Compétences : 6 dans les Vallons, ~14 en alpha (chiffre proposé par Claude), ~24 au lancement | Lancement | 24 avec les ascensions ; l'alpha garde le tronc | 22 |
+| Compétences : 6 dans les Vallons, ~14 en alpha (décision de Damien du 31 octobre 2026, Bastion compris), ~24 au lancement | Lancement | 24 avec les ascensions ; l'alpha garde le tronc | 22 |
 | Barre : 6 places dans les Vallons, 8 + ultime au lancement | Lancement | 5e et 6e places prévues en V1.8 | 3 |
 | Ascensions (une par classe au lancement, la seconde plus tard) | Lancement | Gros travail par classe | 1, 22 |
 | Plusieurs armes par classe, attaque propre à chaque arme | Lancement | Beaucoup d'animations | 1, VSF |
@@ -365,7 +365,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Prix en euros, achats par les magasins utiles partout, limites pour les jeunes | Lancement | Boutique honnête | 6, 54 |
 | Frais des magasins (Apple, Google, Steam) | Lancement | Décision d'argent de Damien | 17 |
 | Promesse : 6 mois de préavis, version hors ligne visée, relue par un juriste | Lancement | Texte public | 44 |
-| Page Steam, bêtas, démo au Next Fest | Lancement | Chemin vers le lancement | 17 |
+| Page Steam, bêtas, démo au Next Fest | Lancement | Chemin vers le lancement ; la **page Steam s'ouvre pendant l'alpha**, avec de vraies images (réponse 3 de Damien, 31 octobre 2026, [plan jusqu'à l'alpha](PLAN_ALPHA.md#questions-pour-damien)) | 17 |
 | Programme créateurs, kit presse, site, bande-annonce, Jour de la Rupture | Lancement | Préparer la sortie | 17, 12 |
 | Passe de saison, atelier des joueurs, cadeaux, parrainage | Plus tard | Arrivent avec les saisons | 6, 43 |
 | Pack fondateur, financement participatif | Plus tard | Décision d'argent de Damien | 6 |
