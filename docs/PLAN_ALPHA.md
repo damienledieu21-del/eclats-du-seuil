@@ -10,7 +10,7 @@ Plan de Claude du 31 octobre 2026, **relu par Damien** : ses réponses aux 5 que
 
 - **vagues 1 à 4** (n° 1 à 30) : chaque PR est fusionnée dès que sa CI est verte et que Codex n'a aucune remarque (vague 1 : sujet 18, 29 octobre 2026, 21 h 01 ; vagues 2 à 4 : réponse 4 du 31 octobre 2026) ;
 - **lot 13 et classes** (n° 31 à 69) : fusion **PR par PR**, avec l'accord explicite de Damien à chaque fois (réponse 4) ;
-- **blocs 6 à 8** (P, B, M, G, A ; n° 70 à 90) : la réponse 4 ne les couvre pas, donc **PR par PR par défaut**, avec l'accord explicite de Damien ([question 6](#questions-pour-damien), ouverte).
+- **blocs 6 à 8** (P, B, M, G, A ; n° 70 à 90) : **même règle que les vagues** : fusion dès que la CI est verte et que Codex n'a aucune remarque (réponse de Damien à la [question 6](#questions-pour-damien), 31 octobre 2026) ; les démarches qui engagent Damien (entreprise, marque, page Steam) restent à lui.
 
 Ces accords sont notés dans la [feuille de route](FEUILLE_DE_ROUTE.md) (sujet 18 pour la vague 1) et dans ce plan (réponses de Damien, dans les [questions](#questions-pour-damien)). Un changement de format (sauvegarde, règles, histoire, protocole) est toujours versionné, documenté et testé, avec de nouveaux journaux de référence figés ; les anciens ne changent jamais. Deux agents ne travaillent jamais en même temps sur le même format.
 
@@ -742,7 +742,7 @@ Dans l'ordre, avec le moment estimé (mêmes fourchettes que les jalons).
 | Pendant l'alpha (après J5) | Ouverture de la page Steam, avec de vraies images, et ses frais (n° 88) | **Décision d'argent de Damien** |
 | Pendant l'alpha | Premier rendez-vous avec un comptable ou la CCI, avant toute vente (n° 87) | Décision de Damien |
 
-Et **l'accord de fusion**, PR par PR, pour chaque PR du lot 13 et des classes (n° 31 à 69, réponse 4), et pour chaque PR des blocs 6 à 8 (n° 70 à 90) tant que la [question 6](#questions-pour-damien) n'est pas réglée. Les PR des vagues 1 à 4 (n° 1 à 30) sont fusionnées dès que leur CI est verte et que Codex n'a aucune remarque.
+Et **l'accord de fusion**, PR par PR, pour chaque PR du lot 13 et des classes (n° 31 à 69, réponse 4), Les PR des vagues 1 à 4 (n° 1 à 30) et des blocs 6 à 8 (n° 70 à 90, réponse à la [question 6](#questions-pour-damien)) sont fusionnées dès que leur CI est verte et que Codex n'a aucune remarque.
 
 ## Questions pour Damien
 
@@ -750,7 +750,7 @@ Et **l'accord de fusion**, PR par PR, pour chaque PR du lot 13 et des classes (n
 
 **Question ouverte :**
 
-6. **Les fusions des blocs 6 à 8.** La réponse 4 couvre les vagues 1 à 4 (fusion dès la CI verte et Codex sans remarque), le lot 13 et les classes (PR par PR). Elle ne dit rien des premières minutes, des livres de build, du cheval, des guildes simples et de la préparation de l'alpha (P, B, M, G, A ; n° 70 à 90). En attendant : **PR par PR par défaut**, avec l'accord explicite de Damien. Damien garde-t-il cela, ou applique-t-il la règle « CI verte et Codex sans remarque » à une partie de ces chantiers (par exemple ceux qui ne touchent ni le serveur, ni la base, ni le protocole) ?
+6. **Les fusions des blocs 6 à 8** (réglée : « même règle que les vagues », 31 octobre 2026). La réponse 4 couvre les vagues 1 à 4 (fusion dès la CI verte et Codex sans remarque), le lot 13 et les classes (PR par PR). Elle ne dit rien des premières minutes, des livres de build, du cheval, des guildes simples et de la préparation de l'alpha (P, B, M, G, A ; n° 70 à 90). En attendant : **PR par PR par défaut**, avec l'accord explicite de Damien. Damien garde-t-il cela, ou applique-t-il la règle « CI verte et Codex sans remarque » à une partie de ces chantiers (par exemple ceux qui ne touchent ni le serveur, ni la base, ni le protocole) ?
 
 Questions posées le 31 octobre 2026 (gardées pour mémoire, réglées par les réponses ci-dessus) :
 
