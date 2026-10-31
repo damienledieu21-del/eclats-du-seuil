@@ -332,7 +332,9 @@
         "npc": "npc.armurier",
         "greeting": "text.merchant.armurier.greeting",
         "sellPercent": 25,
-        "closed": [],
+        "closed": [
+          "night"
+        ],
         "daily": 2,
         "offers": [
           {
@@ -467,14 +469,11 @@
         "npc": "npc.epiciere",
         "greeting": "text.merchant.epicier.greeting",
         "sellPercent": 30,
-        "closed": [],
+        "closed": [
+          "night"
+        ],
         "daily": 1,
         "offers": [
-          {
-            "item": "item.minerai_de_fer",
-            "price": 30,
-            "always": true
-          },
           {
             "item": "item.potion_de_soin",
             "price": 70,

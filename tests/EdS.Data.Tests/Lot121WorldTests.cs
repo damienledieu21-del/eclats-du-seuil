@@ -222,29 +222,38 @@ public class Lot121WorldTests
     [Fact]
     public void Temps_du_monde_tire_des_ticks()
     {
-        var clock = new WorldClock(50);   // journée provisoire de 2 h de jeu, début à 8 h
+        var clock = new WorldClock(50);   // journée provisoire de 3 h de jeu (décision de Damien du 30 octobre 2026), début à 8 h
         Assert.Equal(new WorldTime(0, 8 * 60), clock.At(0));
         Assert.Equal(DayPhase.Day, clock.At(0).Phase);
-        Assert.Equal(144_000, clock.TicksPerDay);
-        Assert.Equal(new WorldTime(0, 14 * 60), clock.At(144_000 / 4));        // 30 min de jeu : un quart de journée
-        Assert.Equal(new WorldTime(1, 8 * 60), clock.At(144_000));            // deux heures : le lendemain à la même heure
-        Assert.Equal(DayPhase.Night, clock.At(144_000 * 2 / 3).Phase);        // 8 h + 16 h : minuit
-        Assert.Equal(new WorldTime(0, 23 * 60 + 59), clock.At(144_000 * 2 / 3 - 1));
+        Assert.Equal(216_000, clock.TicksPerDay);
+        Assert.Equal(new WorldTime(0, 14 * 60), clock.At(216_000 / 4));        // 45 min de jeu : un quart de journée
+        Assert.Equal(new WorldTime(1, 8 * 60), clock.At(216_000));            // trois heures : le lendemain à la même heure
+        Assert.Equal(DayPhase.Night, clock.At(216_000 * 2 / 3).Phase);        // 8 h + 16 h : minuit
+        Assert.Equal(new WorldTime(0, 23 * 60 + 59), clock.At(216_000 * 2 / 3 - 1));
         Assert.Equal(DayPhase.Dawn, new WorldTime(0, 5 * 60).Phase);
-        Assert.Equal(DayPhase.Dusk, new WorldTime(0, 20 * 60 + 59).Phase);
-        Assert.Equal(DayPhase.Night, new WorldTime(0, 21 * 60).Phase);
+        // Frontières des moments (nuit de 22 h à 5 h depuis la décision de Damien du 30 octobre 2026, 23 h 06 ; 21 h avant).
+        Assert.Equal(DayPhase.Night, new WorldTime(0, 4 * 60 + 59).Phase);
+        Assert.Equal(DayPhase.Dawn, new WorldTime(0, 6 * 60 + 59).Phase);
+        Assert.Equal(DayPhase.Day, new WorldTime(0, 7 * 60).Phase);
+        Assert.Equal(DayPhase.Day, new WorldTime(0, 18 * 60 + 59).Phase);
+        Assert.Equal(DayPhase.Dusk, new WorldTime(0, 19 * 60).Phase);
+        Assert.Equal(DayPhase.Dusk, new WorldTime(0, 21 * 60).Phase);
+        Assert.Equal(DayPhase.Dusk, new WorldTime(0, 21 * 60 + 59).Phase);
+        Assert.Equal(DayPhase.Night, new WorldTime(0, 22 * 60).Phase);
         Assert.Throws<ArgumentOutOfRangeException>(() => clock.At(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => new WorldClock(50, 59_950));
         Assert.Throws<ArgumentOutOfRangeException>(() => new WorldClock(50, 60_010));
         Assert.Throws<ArgumentOutOfRangeException>(() => new WorldClock(50, startMinute: 1440));
-        Assert.Equal(new WorldTime(SaveValidator.MaxWorldTick / 144_000, 8 * 60), clock.At(SaveValidator.MaxWorldTick / 144_000 * 144_000));
-        // La zone compte le temps du monde depuis le début de la partie : une session reprise à 1 h 30 de jeu (trois quarts de journée)
+        Assert.Equal(new WorldTime(SaveValidator.MaxWorldTick / 216_000, 8 * 60), clock.At(SaveValidator.MaxWorldTick / 216_000 * 216_000));
+        // La journée d'avant (2 h) reste possible en réglage : même calcul entier.
+        Assert.Equal(new WorldTime(1, 8 * 60), new WorldClock(50, 2L * 3600 * 1000).At(144_000));
+        // La zone compte le temps du monde depuis le début de la partie : une session reprise à 2 h 15 de jeu (trois quarts de journée)
         // commence le lendemain à 2 h du matin.
-        Zone zone = NewZone(start: 108_000);
+        Zone zone = NewZone(start: 162_000);
         Assert.Equal(new WorldTime(1, 2 * 60), zone.Time);
-        Run(zone, 2400);   // deux minutes de jeu : 24 minutes du monde
-        Assert.Equal(110_400, zone.WorldTick);
-        Assert.Equal(new WorldTime(1, 2 * 60 + 24), zone.Time);
+        Run(zone, 2400);   // deux minutes de jeu : 16 minutes du monde
+        Assert.Equal(164_400, zone.WorldTick);
+        Assert.Equal(new WorldTime(1, 2 * 60 + 16), zone.Time);
     }
 
     // --- Sauvegardes ------------------------------------------------------------------------------

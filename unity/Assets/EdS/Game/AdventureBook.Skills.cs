@@ -13,7 +13,7 @@ namespace EdS.Game
     /// actives en éclats, comme en combat (touches 1 à 4), l'ultime (R), les passives en nœuds ; une place fermée montre le niveau qui
     /// l'ouvre. À droite, les compétences apprises (avec leur place, ou en réserve) et celles à apprendre plus haut. On glisse une
     /// compétence sur une place, à la souris ou au doigt, ou on la touche puis on touche la place ; deux places s'échangent de même ; clic
-    /// droit sur une place : la vider (refusé tant qu'une compétence apprise attend). Tout passe par <see cref="AdventureSession.PlaceSkill"/> et <see cref="AdventureSession.RemoveSkill"/>,
+    /// droit sur une place : la vider (permis depuis la réponse de Damien du 30 octobre 2026). Tout passe par <see cref="AdventureSession.PlaceSkill"/> et <see cref="AdventureSession.RemoveSkill"/>,
     /// donc par le juge unique du cœur : un refus ne change rien et son motif s'affiche sous la barre.
     /// </summary>
     public sealed partial class AdventureBook

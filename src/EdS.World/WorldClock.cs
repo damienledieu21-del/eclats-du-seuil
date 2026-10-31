@@ -2,10 +2,13 @@ using System;
 
 namespace EdS.World
 {
-    /// <summary>Moment de la journée du monde (cadrage Q26 : le jour et la nuit ont des effets sur le jeu, avec des règles apprenables).</summary>
+    /// <summary>
+    /// Moment de la journée du monde (cadrage Q26 : le jour et la nuit ont des effets sur le jeu, avec des règles apprenables). Décision de
+    /// Damien du 30 octobre 2026 (23 h 06) : la nuit commence à 22 h (21 h avant), le crépuscule va donc de 19 h à 22 h.
+    /// </summary>
     public enum DayPhase
     {
-        /// <summary>De 21 h à 5 h.</summary>
+        /// <summary>De 22 h à 5 h.</summary>
         Night = 0,
 
         /// <summary>De 5 h à 7 h.</summary>
@@ -14,7 +17,7 @@ namespace EdS.World
         /// <summary>De 7 h à 19 h.</summary>
         Day = 2,
 
-        /// <summary>De 19 h à 21 h.</summary>
+        /// <summary>De 19 h à 22 h.</summary>
         Dusk = 3,
     }
 
@@ -40,7 +43,7 @@ namespace EdS.World
         public int Hour => Minute / 60;
 
         public static DayPhase PhaseOf(int minute) =>
-            minute < 5 * 60 ? DayPhase.Night : minute < 7 * 60 ? DayPhase.Dawn : minute < 19 * 60 ? DayPhase.Day : minute < 21 * 60 ? DayPhase.Dusk : DayPhase.Night;
+            minute < 5 * 60 ? DayPhase.Night : minute < 7 * 60 ? DayPhase.Dawn : minute < 19 * 60 ? DayPhase.Day : minute < 22 * 60 ? DayPhase.Dusk : DayPhase.Night;
 
         public bool Equals(WorldTime other) => Day == other.Day && Minute == other.Minute;
         public override bool Equals(object? obj) => obj is WorldTime t && Equals(t);
@@ -50,15 +53,20 @@ namespace EdS.World
 
     /// <summary>
     /// Sous-lot 12.1 (cadrage Q26, ARCHITECTURE_MONDE.md, section 4) : temps du monde tiré des ticks de simulation, jamais de l'horloge
-    /// réelle. Une journée du monde dure <see cref="DayLengthMs"/> de jeu (valeur provisoire : 2 h, réglable) ; le monde commence à
+    /// réelle. Une journée du monde dure <see cref="DayLengthMs"/> de jeu (valeur provisoire : 3 h depuis la décision de Damien du 30 octobre
+    /// 2026, 2 h avant ; réglable) ; le monde commence à
     /// <see cref="StartMinute"/> du jour 0. Tout est entier : le même tick donne toujours la même heure.
     /// </summary>
     public sealed class WorldClock
     {
         public const int MinutesPerDay = 1440;
 
-        /// <summary>Durée provisoire d'une journée du monde : 2 h de jeu (cadrage Q26 : les occasions reviennent, pas d'heure réelle restrictive).</summary>
-        public const long DefaultDayLengthMs = 2L * 3600 * 1000;
+        /// <summary>
+        /// Durée provisoire d'une journée du monde : 3 h de jeu (décision de Damien du 30 octobre 2026, sujet 32 ; 2 h avant). Cadrage Q26 :
+        /// les occasions reviennent, pas d'heure réelle restrictive. Le temps du monde est gardé en ticks : une sauvegarde d'avant reprend au
+        /// même tick, donc à une autre heure (et un autre jour) du monde.
+        /// </summary>
+        public const long DefaultDayLengthMs = 3L * 3600 * 1000;
 
         /// <summary>Heure provisoire du début du monde : 8 h du matin.</summary>
         public const int DefaultStartMinute = 8 * 60;
