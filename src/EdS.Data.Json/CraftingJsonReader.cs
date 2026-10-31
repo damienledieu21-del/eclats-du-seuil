@@ -50,6 +50,9 @@ namespace EdS.Data.Json
                         n => $"{n} recettes, au plus {CraftingValidator.MaxRecipes}.", (e, ip) => ReadRecipe(input, e, ip)),
                     ["nodes"] = (v, p) => d.Nodes = input.ReadLimitedList(v, p, CraftingValidator.MaxNodes,
                         n => $"{n} nœuds, au plus {CraftingValidator.MaxNodes}.", (e, ip) => ReadNode(input, e, ip)),
+                    ["forge"] = (v, p) => d.Forge = ReadForge(input, v, p),   // sous-lot V1.4 (version 2)
+                    ["failure"] = (v, p) => d.Failure = ReadFailure(input, v, p),
+                    ["repair"] = (v, p) => d.Repair = ReadRepair(input, v, p),
                 });
                 document.Data = ok ? d : null;
             });
@@ -106,6 +109,56 @@ namespace EdS.Data.Json
                     (e, ip) => ReadStack(input, e, ip)),
                 ["output"] = (v, p) => x.Output = ReadStack(input, v, p),
                 ["xp"] = (v, p) => x.Xp = input.Int64(v, p),
+                ["quality"] = (v, p) => x.Quality = input.Boolean(v, p),   // sous-lot V1.4 (version 2)
+            }) ? x : null;
+        }
+
+        /// <summary>Sous-lot V1.4 : chance d'une qualité.</summary>
+        private static ChanceData? ReadChance(JsonInput input, JsonElement element, string path)
+        {
+            var x = new ChanceData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["base"] = (v, p) => x.Base = input.Int32(v, p),
+                ["perSkill"] = (v, p) => x.PerSkill = input.Int32(v, p),
+                ["perLevel"] = (v, p) => x.PerLevel = input.Int32(v, p),
+            }) ? x : null;
+        }
+
+        private static ForgeData? ReadForge(JsonInput input, JsonElement element, string path)
+        {
+            var x = new ForgeData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["strikes"] = (v, p) => x.Strikes = input.Int32(v, p),
+                ["superior"] = (v, p) => x.Superior = ReadChance(input, v, p),
+                ["masterwork"] = (v, p) => x.Masterwork = ReadChance(input, v, p),
+            }) ? x : null;
+        }
+
+        private static FailureData? ReadFailure(JsonInput input, JsonElement element, string path)
+        {
+            var x = new FailureData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["maxLevels"] = (v, p) => x.MaxLevels = input.Int32(v, p),
+                ["percentPerLevel"] = (v, p) => x.PercentPerLevel = input.Int32(v, p),
+                ["skillReduction"] = (v, p) => x.SkillReduction = input.Int32(v, p),
+                ["refundPercent"] = (v, p) => x.RefundPercent = input.Int32(v, p),
+            }) ? x : null;
+        }
+
+        private static RepairData? ReadRepair(JsonInput input, JsonElement element, string path)
+        {
+            var x = new RepairData();
+            List<string?>? Ids(JsonElement v, string p) => input.ReadLimitedList(v, p, CraftingValidator.MaxRepairSpots,
+                n => $"{n} entrées, au plus {CraftingValidator.MaxRepairSpots}.", (e, ip) => input.Text(e, ip));
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["percent"] = (v, p) => x.Percent = input.Int32(v, p),
+                ["minimum"] = (v, p) => x.Minimum = input.Int64(v, p),
+                ["places"] = (v, p) => x.Places = Ids(v, p),
+                ["merchants"] = (v, p) => x.Merchants = Ids(v, p),
             }) ? x : null;
         }
 

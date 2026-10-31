@@ -333,7 +333,7 @@ public class V17GuildeTests : IDisposable
     {
         string text = SaveJsonReader.Write(new WorldSave("zone.guilde", 10, 1, Array.Empty<string>(), FullHero));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
-        Assert.Equal(10, SaveValidator.CurrentSchemaVersion);
+        Assert.Equal(SaveValidator.GuildCardSince, 10);   // la carte entre en version 10 ; la version courante est 11 depuis V1.4
         Assert.Contains("        \"tracked\": null,\n        \"hunted\": [\"loup_blanc\"],\n        \"guild\": {\"rank\": \"f\", \"points\": 140, \"contracts\": 3, "
             + "\"titles\": [\"title.guilde.eclaireur\", \"title.guilde.recrue\"], \"title\": \"title.guilde.eclaireur\", \"active\": {\"contract.grande_battue\": 2, "
             + "\"contract.loups_du_pre\": 0}, \"day\": 4, \"taken\": [\"contract.grande_battue\", \"contract.loups_du_pre\"]}\n      },\n", text, StringComparison.Ordinal);
@@ -365,14 +365,14 @@ public class V17GuildeTests : IDisposable
         string hunted = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithStory(new SavedStory(hunted: new[] { "loup_blanc" }))));
         foreach (int version in new[] { 9, 8 })
         {
-            ValidationError beast = Assert.Single(SaveJsonReader.Read(hunted.Replace(SaveVersion.Current, $"\"schemaVersion\": {version}")).Report.Errors);
+            ValidationError beast = Assert.Single(SaveJsonReader.Read(SaveV11.Older(hunted).Replace(SaveVersion.Current, $"\"schemaVersion\": {version}")).Report.Errors);
             Assert.Equal(("$.data.character.story.hunted", ValidationCode.UnknownField), (beast.Path, beast.Code));
-            SaveLoadResult old = SaveJsonReader.Read(none.Replace(SaveVersion.Current, $"\"schemaVersion\": {version}"));
+            SaveLoadResult old = SaveJsonReader.Read(SaveV11.Older(none).Replace(SaveVersion.Current, $"\"schemaVersion\": {version}"));
             Assert.True(old.IsValid, old.Report.ToString());
             Assert.True(old.Save!.Migrated);
             Assert.Null(old.Save.Character!.Story.Guild);
             Assert.Equal(none, SaveJsonReader.Write(old.Save));
-            ValidationError unknown = Assert.Single(SaveJsonReader.Read(card.Replace(SaveVersion.Current, $"\"schemaVersion\": {version}")).Report.Errors);
+            ValidationError unknown = Assert.Single(SaveJsonReader.Read(SaveV11.Older(card).Replace(SaveVersion.Current, $"\"schemaVersion\": {version}")).Report.Errors);
             Assert.Equal(("$.data.character.story.guild", ValidationCode.UnknownField), (unknown.Path, unknown.Code));
             Assert.Contains("version 10", unknown.Message, StringComparison.Ordinal);
         }

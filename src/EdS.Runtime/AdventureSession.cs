@@ -123,8 +123,21 @@ namespace EdS.Runtime
         /// <summary>Refus qu'aurait la fabrication maintenant (<see cref="CraftRefusal.None"/> : faisable).</summary>
         public CraftRefusal Refusal { get; }
 
-        internal RecipeEntry(string id, string name, string profession, int level, string inputs, string output, CraftRefusal refusal)
+        /// <summary>Sous-lot V1.4 : recette à qualité : elle se fait par le petit jeu de forge (<see cref="AdventureSession.Forge"/>).</summary>
+        public bool Quality { get; }
+
+        /// <summary>Sous-lot V1.4 : niveaux de métier qui manquent (0 : le niveau suffit) ; au-dessus de son niveau, la recette peut rater.</summary>
+        public int LevelGap { get; }
+
+        /// <summary>Sous-lot V1.4 : chance de rater sans adresse, et avec des frappes parfaites (pour cent ; 0 quand le niveau suffit).</summary>
+        public (int Worst, int Best) Fail { get; }
+
+        internal RecipeEntry(string id, string name, string profession, int level, string inputs, string output, CraftRefusal refusal, bool quality = false,
+            int levelGap = 0, (int, int) fail = default)
         {
+            Quality = quality;
+            LevelGap = levelGap;
+            Fail = fail;
             Id = id;
             Name = name;
             Profession = profession;
@@ -400,6 +413,8 @@ namespace EdS.Runtime
             foreach ((string item, int count) in step.Rewards) Say("text.ui.reward", ItemName(item), count);
             foreach (StoryEvent e in step.Story) Story(e);
             if (step.Defeated) Say("text.ui.defeated");
+            // Sous-lot V1.4 : une pièce usée à zéro par ce combat ne donne plus ses bonus (à réparer).
+            if (step.Wear is WearReport wear && wear.WornOut.Count > 0) Say("text.ui.worn_out", string.Join(", ", wear.WornOut.Select(ItemName)));
         }
 
         private void Story(StoryEvent e)
@@ -700,8 +715,11 @@ namespace EdS.Runtime
             {
                 string inputs = string.Join(", ", r.Inputs.Select(i => $"{ItemName(i.Item)} {World.Inventory.Count(i.Item)}/{i.Count}"));
                 CraftRefusal refusal = World.CanCraft(r.Id);
+                Workshop shop = World.Workshop!;
                 list.Add(new RecipeEntry(r.Id, Text(r.Name), Text(_crafting.Professions.First(p => p.Id == r.Profession).Name), r.RequiredLevel, inputs,
-                    $"{ItemName(r.Output.Item)} ×{r.Output.Count}", refusal));
+                    // Relecture indépendante de la PR #80 : sans petit jeu, l'adresse ne change rien (le meilleur cas est le pire).
+                    $"{ItemName(r.Output.Item)} ×{r.Output.Count}", refusal, r.Quality, shop.LevelGap(r),
+                    (shop.Chances(r, 0).Fail, r.Quality ? shop.Chances(r, 100).Fail : shop.Chances(r, 0).Fail)));
             }
             return list;
         }
@@ -719,6 +737,15 @@ namespace EdS.Runtime
         {
             _dirty = true;
             string profession = Text(_crafting.Professions.First(p => p.Id == done.Profession).Name);
+            // Sous-lot V1.4 : une recette ratée rend une partie des matériaux ; une réussite à qualité dit sa qualité.
+            if (done.Kind == CraftEventKind.Failed)
+            {
+                Say("text.ui.craft_failed", ItemName(done.Item), done.Refunded.Count == 0 ? Text("text.ui.craft_nothing_back")
+                    : string.Join(", ", done.Refunded.Select(x => $"{ItemName(x.Item)} ×{x.Count}")));
+                return;
+            }
+            if (done.Kind == CraftEventKind.Crafted && done.Quality != ItemQuality.Normal)
+                Say(done.Quality == ItemQuality.Masterwork ? "text.ui.crafted_masterwork" : "text.ui.crafted_superior", ItemName(done.Item));
             Say(done.Kind == CraftEventKind.Gathered ? "text.ui.gathered" : "text.ui.crafted", ItemName(done.Item), done.Count, done.Xp, profession);
             if (done.LeveledUp) Say("text.ui.profession_level", profession, done.LevelAfter);
         }

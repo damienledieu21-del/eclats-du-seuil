@@ -110,6 +110,7 @@ public class Lot126CraftingTests
         root["schemaVersion"] = 4;
         root["data"]!["character"]!.AsObject().Remove("professions");
         root["data"]!["character"]!.AsObject().Remove("money");   // sous-lot V1.1 (version 6)
+        root["data"]!["character"]!.AsObject().Remove("crafts");   // sous-lot V1.4 (version 11)
         root["data"]!["character"]!["story"]!.AsObject().Remove("tracked");   // sous-lot V1.6 (version 7)
         string v4 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v4).IsValid);
@@ -307,7 +308,8 @@ public class Lot126CraftingTests
         Assert.Equal((2, 1, 0L), (forge.Inventory.Count("item.minerai_de_fer"), forge.Inventory.Count("item.ferrure"), forge.Character.Xp));
         Assert.Equal(CraftRefusal.NotEnough, forge.Craft("recipe.ferrure", out _));
         Assert.Equal(2, forge.Inventory.Count("item.minerai_de_fer"));   // rien retiré
-        Assert.Equal(CraftRefusal.LevelTooLow, forge.Craft("recipe.remede_de_l_aube", out _));
+        // Sous-lot V1.4 : une recette jusqu'à deux niveaux au-dessus du métier se tente (elle peut rater) ; ici, il manque les herbes.
+        Assert.Equal(CraftRefusal.NotEnough, forge.Craft("recipe.remede_de_l_aube", out _));
         // Une fabrication bien en dessous du niveau du métier forme moins.
         WorldSession master = Play(Zone(Forge.X, Forge.Z), Hero(new Dictionary<string, long> { ["herboristerie"] = 400 }, new ItemStack("item.herbe_de_l_aube", 4)));
         Assert.Equal(6, master.Workshop!.Level("herboristerie"));
@@ -404,17 +406,17 @@ public class Lot126CraftingTests
     {
         SavedCharacter hero = Hero(new Dictionary<string, long> { ["minage"] = 24, ["forge"] = 30, ["herboristerie"] = 0 });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), hero));
-        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie)
-        Assert.Contains("      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0\n    },", text, StringComparison.Ordinal);
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
+        Assert.Contains("      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0,\n      \"crafts\": 0\n    },", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(text, SaveJsonReader.Write(read.Save!));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
-        string v4 = text.Replace(",\n      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 4");
+        string v4 = SaveV11.Older(text).Replace(",\n      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 4");
         SaveLoadResult migrated = SaveJsonReader.Read(v4);
         Assert.True(migrated.IsValid, migrated.Report + "\n" + v4);
         Assert.Empty(migrated.Save!.Character!.Professions);
-        Assert.Equal("$.data.character.professions", Assert.Single(SaveJsonReader.Read(text.Replace(",\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 4")).Report.Errors).Path);
+        Assert.Equal("$.data.character.professions", Assert.Single(SaveJsonReader.Read(SaveV11.Older(text).Replace(",\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 4")).Report.Errors).Path);
         Assert.Equal("$.data.character.professions.forge", SaveJsonReader.Read(text.Replace("\"forge\": 30", "\"forge\": 0")).Report.Errors[0].Path);
         Assert.Equal("$.data.character.professions.forge", SaveJsonReader.Read(text.Replace("{\"forge\": 30, \"minage\": 24}", "{\"minage\": 24, \"forge\": 30}")).Report.Errors[0].Path);
         // Un métier sauvegardé doit exister dans les données.

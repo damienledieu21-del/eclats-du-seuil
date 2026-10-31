@@ -96,6 +96,7 @@ namespace EdS.Game
             _shopNote.Wrap();
             _shopTalk = UiKit.Button(page, "Parler", "bouton_sobre", "", UiFace.Bold, 16f, UiKit.Ink, () => _session?.TalkToShopkeeper());
             UiKit.Place(_shopTalk.Rect, new Vector2(1440f, 834f), new Vector2(200f, 44f), new Vector2(1f, 0.5f));
+            BuildShopRepair(page);   // sous-lot V1.4 : réparer chez l'armurier (AdventureBook.Forge.cs)
         }
 
         /// <summary>Bouton Acheter de la ligne <paramref name="row"/> de la page affichée.</summary>
@@ -200,6 +201,7 @@ namespace EdS.Game
             _shopPurse.Value = a.Purse;
             _shopNote.Value = a.Text("text.ui.shop.bag_hint");
             _shopTalk.Text.Value = a.Text("text.ui.shop.talk");
+            RefreshRepairButton(a, _shopRepair, true);
             RefreshShopTip(a);
         }
 

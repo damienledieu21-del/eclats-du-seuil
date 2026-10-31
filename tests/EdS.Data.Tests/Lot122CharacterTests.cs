@@ -131,7 +131,7 @@ public class Lot122CharacterTests
     public void Sauvegarde_du_personnage_lue_et_ecrite_a_l_identique()
     {
         string text = SaveJsonReader.Write(HeroSave());
-        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie)
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
         Assert.Contains("\"character\": {\n      \"id\": \"bastion\",\n      \"class\": \"class.bastion\",\n      \"xp\": 40,", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
@@ -184,7 +184,7 @@ public class Lot122CharacterTests
     [InlineData("\"ultimate\": null", "\"ultimate\": \"Ultime\"", "$.data.character.ultimate")]
     public void Sauvegarde_du_personnage_invalide(string from, string to, string path)
     {
-        (from, to) = (SaveVersion.Expand(from), SaveVersion.Expand(to));   // sous-lot V1.7 : version courante tirée de la constante
+        (from, to) = (SaveVersion.Expand(from), SaveVersion.Expand(to));
         string text = SaveJsonReader.Write(HeroSave());
         if (from == "\"character\": null, ")
             text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>())).Replace("    \"character\": null,\n", "");

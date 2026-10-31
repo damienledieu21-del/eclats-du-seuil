@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/crafting.schema.json",
   "title": "Éclats du Seuil — métiers, recettes, récolte",
-  "description": "Sous-lot 12.6. Documentation. La validation qui fait foi est celle du programme (CraftingValidator), avec les textes, la zone et le catalogue des objets.",
+  "description": "Sous-lot 12.6, version 2 au sous-lot V1.4 (recettes à qualité, petit jeu de forge, recette au-dessus de son niveau, réparation). Documentation. La validation qui fait foi est celle du programme (CraftingValidator), avec les textes, la zone et le catalogue des objets.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "crafting"
@@ -32,7 +32,10 @@
         "xpToLevel",
         "professions",
         "recipes",
-        "nodes"
+        "nodes",
+        "forge",
+        "failure",
+        "repair"
       ],
       "properties": {
         "maxLevel": {
@@ -165,6 +168,10 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 1000000
+              },
+              "quality": {
+                "type": "boolean",
+                "description": "Sous-lot V1.4 : recette à qualité (petit jeu des trois frappes, puis qualité normale, supérieure ou chef-d'œuvre) ; produit : un seul équipement des places du combat, non nommé."
               }
             }
           }
@@ -226,6 +233,162 @@
               }
             }
           }
+        },
+        "forge": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "strikes",
+            "superior",
+            "masterwork"
+          ],
+          "properties": {
+            "strikes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Frappes du petit jeu de forge (trois)."
+            },
+            "superior": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "base",
+                "perSkill",
+                "perLevel"
+              ],
+              "properties": {
+                "base": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Chance de base, en pour cent."
+                },
+                "perSkill": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Chance ajoutée par une adresse parfaite (trois frappes parfaites), au prorata de l'adresse."
+                },
+                "perLevel": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Chance ajoutée par niveau de métier au-dessus du niveau requis."
+                }
+              }
+            },
+            "masterwork": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "base",
+                "perSkill",
+                "perLevel"
+              ],
+              "properties": {
+                "base": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Chance de base, en pour cent."
+                },
+                "perSkill": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Chance ajoutée par une adresse parfaite (trois frappes parfaites), au prorata de l'adresse."
+                },
+                "perLevel": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Chance ajoutée par niveau de métier au-dessus du niveau requis."
+                }
+              }
+            }
+          },
+          "description": "Sous-lot V1.4 : petit jeu de forge et chances des qualités ; le chef-d'œuvre est tiré d'abord, la qualité supérieure dans ce qui reste."
+        },
+        "failure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "maxLevels",
+            "percentPerLevel",
+            "skillReduction",
+            "refundPercent"
+          ],
+          "properties": {
+            "maxLevels": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Niveaux de métier au-dessus du sien qu'une recette peut demander, au plus."
+            },
+            "percentPerLevel": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Chance de rater par niveau manquant."
+            },
+            "skillReduction": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Chance de rater retirée par une adresse parfaite."
+            },
+            "refundPercent": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Part de chaque matériau rendue en cas d'échec (arrondie vers le bas)."
+            }
+          },
+          "description": "Sous-lot V1.4 : une recette au-dessus de son niveau peut rater ; une partie des matériaux est rendue."
+        },
+        "repair": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "percent",
+            "minimum",
+            "places",
+            "merchants"
+          ],
+          "properties": {
+            "percent": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Prix d'une réparation complète, en pour cent de la valeur de l'objet (au prorata de la solidité qui manque, arrondi vers le haut)."
+            },
+            "minimum": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "description": "Prix minimal d'une pièce entamée, en cuivre."
+            },
+            "places": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "description": "Lieux de la zone où l'on répare (la forge)."
+            },
+            "merchants": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "pattern": "^merchant(\\.[a-z0-9_]+)+$"
+              },
+              "description": "Marchands qui réparent (l'armurier)."
+            }
+          },
+          "description": "Sous-lot V1.4 : réparation de l'équipement usé contre de l'or, en une opération atomique."
         }
       }
     }

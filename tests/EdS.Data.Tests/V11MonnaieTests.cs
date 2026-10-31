@@ -91,7 +91,7 @@ public class V11MonnaieTests
     {
         string text = SaveWith(34512);
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
-        Assert.Contains("      \"professions\": {},\n      \"money\": 34512\n    },", text, StringComparison.Ordinal);
+        Assert.Contains("      \"professions\": {},\n      \"money\": 34512,\n      \"crafts\": 0\n    },", text, StringComparison.Ordinal);
         Assert.Contains("\"consumed\": [\n      \"zone.vallons/safe/place_du_bourg\"\n    ]", text, StringComparison.Ordinal);   // point sûr découvert
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
@@ -103,7 +103,7 @@ public class V11MonnaieTests
         Assert.True(schema.IsValid(JsonDocument.Parse(text).RootElement));
         Assert.True(schema.IsValid(JsonDocument.Parse(SaveWith(Coins.Max)).RootElement));
         Assert.False(schema.IsValid(JsonDocument.Parse(text.Replace("\"money\": 34512", "\"money\": 10000000000")).RootElement));
-        Assert.False(schema.IsValid(JsonDocument.Parse(text.Replace("      \"money\": 34512\n", "      \"z\": 0\n")).RootElement));
+        Assert.False(schema.IsValid(JsonDocument.Parse(text.Replace("      \"money\": 34512,\n", "      \"z\": 0,\n")).RootElement));
         // Les copies du personnage gardent la bourse.
         SavedCharacter hero = Hero(77);
         Assert.Equal(77, hero.WithXp(5).WithTalents(new Dictionary<string, int>()).WithStory(SavedStory.Empty).WithProfessions(new Dictionary<string, long>())
@@ -117,11 +117,11 @@ public class V11MonnaieTests
     [InlineData("\"money\": 34512", "\"money\": 1.5", "$.data.character.money", ValidationCode.InvalidNumber)]
     [InlineData("\"money\": 34512", "\"money\": \"3 or\"", "$.data.character.money", ValidationCode.WrongType)]
     [InlineData("\"money\": 34512", "\"money\": null", "$.data.character.money", ValidationCode.WrongType)]
-    [InlineData(",\n      \"money\": 34512\n", "\n", "$.data.character.money", ValidationCode.MissingField)]
+    [InlineData("\n      \"money\": 34512,\n", "\n", "$.data.character.money", ValidationCode.MissingField)]
     [InlineData("\"schemaVersion\": {current}", "\"schemaVersion\": {future}", "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion)]
     public void Bourse_invalide_refusee_avec_son_chemin(string from, string to, string path, ValidationCode code)
     {
-        (from, to) = (SaveVersion.Expand(from), SaveVersion.Expand(to));   // sous-lot V1.7 : version courante tirée de la constante
+        (from, to) = (SaveVersion.Expand(from), SaveVersion.Expand(to));
         string text = SaveWith(34512);
         Assert.Contains(from, text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text.Replace(from, to, StringComparison.Ordinal));
@@ -133,7 +133,7 @@ public class V11MonnaieTests
     public void Ancienne_sauvegarde_lue_avec_une_bourse_vide()
     {
         string text = SaveWith(34512);
-        string v5 = text.Replace(",\n      \"money\": 34512\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 5");
+        string v5 = SaveV11.Older(text).Replace(",\n      \"money\": 34512\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 5");
         SaveLoadResult read = SaveJsonReader.Read(v5);
         Assert.True(read.IsValid, read.Report + "\n" + v5);
         Assert.True(read.Save!.Migrated);
@@ -142,11 +142,11 @@ public class V11MonnaieTests
         // Réécrite à la version courante, avec la bourse.
         string rewritten = SaveJsonReader.Write(read.Save);
         Assert.Contains(SaveVersion.Current + ",", rewritten, StringComparison.Ordinal);
-        Assert.Contains("\"money\": 0\n", rewritten, StringComparison.Ordinal);
+        Assert.Contains("\"money\": 0,\n", rewritten, StringComparison.Ordinal);
         // Une bourse dans une sauvegarde de version 5 n'existe pas encore : champ inconnu (en JSON comme en objets publics).
         Assert.Equal(("$.data.character.money", ValidationCode.UnknownField),
-            (Assert.Single(SaveJsonReader.Read(text.Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 5")).Report.Errors).Path,
-             Assert.Single(SaveJsonReader.Read(text.Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 5")).Report.Errors).Code));
+            (Assert.Single(SaveJsonReader.Read(SaveV11.Older(text).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 5")).Report.Errors).Path,
+             Assert.Single(SaveJsonReader.Read(SaveV11.Older(text).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 5")).Report.Errors).Code));
         var report = new ValidationReport();
         var document = new SaveDocument();
         JsonHeader header = JsonInput.Parse(JsonInput.Utf8(v5, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));

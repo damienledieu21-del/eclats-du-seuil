@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/crafting.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "crafting",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -89,6 +89,121 @@
           "count": 1
         },
         "xp": 45
+      },
+      {
+        "id": "recipe.epee_de_garde",
+        "name": "text.recipe.epee_de_garde",
+        "profession": "forge",
+        "requiredLevel": 2,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 4
+          },
+          {
+            "item": "item.ferrure",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.epee_de_garde",
+          "count": 1
+        },
+        "xp": 50,
+        "quality": true
+      },
+      {
+        "id": "recipe.casque_de_fer",
+        "name": "text.recipe.casque_de_fer",
+        "profession": "forge",
+        "requiredLevel": 3,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 5
+          },
+          {
+            "item": "item.ferrure",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.casque_de_fer",
+          "count": 1
+        },
+        "xp": 60,
+        "quality": true
+      },
+      {
+        "id": "recipe.ecu_du_garde",
+        "name": "text.recipe.ecu_du_garde",
+        "profession": "forge",
+        "requiredLevel": 3,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 6
+          },
+          {
+            "item": "item.ferrure",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.ecu_du_garde",
+          "count": 1
+        },
+        "xp": 70,
+        "quality": true
+      },
+      {
+        "id": "recipe.gantelets_de_fer",
+        "name": "text.recipe.gantelets_de_fer",
+        "profession": "forge",
+        "requiredLevel": 4,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 4
+          },
+          {
+            "item": "item.ferrure",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.gantelets_de_fer",
+          "count": 1
+        },
+        "xp": 80,
+        "quality": true
+      },
+      {
+        "id": "recipe.cotte_de_mailles",
+        "name": "text.recipe.cotte_de_mailles",
+        "profession": "forge",
+        "requiredLevel": 5,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 8
+          },
+          {
+            "item": "item.ferrure",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.cotte_de_mailles",
+          "count": 1
+        },
+        "xp": 100,
+        "quality": true
       }
     ],
     "nodes": [
@@ -224,6 +339,35 @@
         "respawnMs": 60000,
         "xp": 12
       }
-    ]
+    ],
+    "forge": {
+      "strikes": 3,
+      "superior": {
+        "base": 15,
+        "perSkill": 45,
+        "perLevel": 5
+      },
+      "masterwork": {
+        "base": 0,
+        "perSkill": 12,
+        "perLevel": 2
+      }
+    },
+    "failure": {
+      "maxLevels": 2,
+      "percentPerLevel": 35,
+      "skillReduction": 25,
+      "refundPercent": 50
+    },
+    "repair": {
+      "percent": 30,
+      "minimum": 5,
+      "places": [
+        "forge"
+      ],
+      "merchants": [
+        "merchant.armurier"
+      ]
+    }
   }
 }

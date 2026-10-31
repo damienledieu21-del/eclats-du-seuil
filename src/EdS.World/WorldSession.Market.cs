@@ -138,7 +138,7 @@ namespace EdS.World
             _character = _character.WithMoney(after);
             // Sous-lot V1.3 : un lot qui emporte des instances aux propriétés tirées les garde pour le rachat.
             for (int i = 0; i < lots.Count; i++)
-                market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i], removed[i].Any(x => x.IsRolled) ? removed[i] : null));
+                market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i], removed[i].Any(x => x.IsUnique) ? removed[i] : null));
             return TradeRefusal.None;
         }
 
@@ -159,7 +159,7 @@ namespace EdS.World
             TradeRefusal open = CanTrade(merchant);
             if (open != TradeRefusal.None) return open;
             Market market = NeedMarket();
-            if (count < 1 || count > Market.MaxCount || (stack.IsRolled && count != 1)) return TradeRefusal.InvalidCount;
+            if (count < 1 || count > Market.MaxCount || (stack.IsUnique && count != 1)) return TradeRefusal.InvalidCount;
             if (count > stack.Count) return TradeRefusal.NotEnough;
             if (!market.Book.TryGetValue(stack.Item, out _)) return TradeRefusal.NoValue;
             if (Inventory.Available(stack.Item) < count) return TradeRefusal.Reserved;
@@ -169,7 +169,7 @@ namespace EdS.World
             if (trial.RemoveAt(place, count, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(after);
-            market.Record(new SoldLot(stack.Item, count, paid, removed.IsRolled ? new[] { removed } : null));
+            market.Record(new SoldLot(stack.Item, count, paid, removed.IsUnique ? new[] { removed } : null));
             return TradeRefusal.None;
         }
 

@@ -156,7 +156,7 @@ public class Lot123ItemTests
         JsonObject root = JsonNode.Parse(text)!.AsObject();
         root["schemaVersion"] = 2;
         JsonObject character = root["data"]!["character"]!.AsObject();
-        foreach (string field in new[] { "inventory", "equipment", "story", "professions", "money" }) character.Remove(field);   // V1.1 : bourse
+        foreach (string field in new[] { "inventory", "equipment", "story", "professions", "money", "crafts" }) character.Remove(field);   // V1.1 : bourse
         string v2 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v2).IsValid);
         SaveDocument old = SaveDocumentOf(v2);
@@ -393,7 +393,7 @@ public class Lot123ItemTests
             new[] { new ItemStack("item.peau_de_loup", 12), new ItemStack("item.gambison", 1) },
             new Dictionary<string, string> { ["weapon"] = "item.epee_du_milicien", ["shield"] = "item.ecu_de_chene" });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), hero));
-        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie)
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
         Assert.Contains("      \"inventory\": [\n        {\"item\": \"item.peau_de_loup\", \"count\": 12},\n        {\"item\": \"item.gambison\", \"count\": 1}\n      ],\n"
             + "      \"equipment\": {\"shield\": \"item.ecu_de_chene\", \"weapon\": \"item.epee_du_milicien\"},\n", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
@@ -525,7 +525,9 @@ public class Lot123ItemTests
         Assert.Equal(InventoryRefusal.None, session.Inventory.Unequip("chest"));
         Assert.Equal(withGambison, session.Zone.Engine.View("bastion").MaxHealth);
         WorldSave after = session.Save();
-        Assert.Equal(new[] { new ItemStack("item.peau_de_loup", 1), new ItemStack("item.gambison", 1) }, after.Character!.Inventory);
+        // Sous-lot V1.4 : le gambison, porté pendant le combat, en revient un peu usé (selon les dégâts reçus).
+        Assert.Equal(new[] { "item.peau_de_loup", "item.gambison" }, after.Character!.Inventory.Select(s => s.Item));
+        Assert.InRange(after.Character.Inventory[1].Wear ?? catalog.WearMax, 1, catalog.WearMax);
         Assert.Equal(new[] { "shard", "shield" }, after.Character.Equipment.Keys.OrderBy(k => k, StringComparer.Ordinal));   // le gambison ôté
         var next = new WorldSession(SaveJsonReader.Read(SaveJsonReader.Write(after)).Save!, loaded.Setup!, ShippedData, Progression, catalog, placement,
             new Dictionary<string, string> { ["loup1"] = "loot.loup" });
