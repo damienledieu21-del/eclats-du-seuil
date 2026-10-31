@@ -95,6 +95,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - **PNJ des intérieurs** qui parlent (aubergiste, prêtre, habitant) : la limite « ni dialogue dans une pièce » des intérieurs saute.
 - **Nouveaux ennemis** : bandits (épée, arc), chef des bandits (à formes, comme le Gardien), une bête élite (« le loup blanc »), avec leurs attaques annoncées et leur butin.
 - **Formats** : histoire en nouvelle version (objectifs, effets, catégories de quête), validateur étendu, tests de chaque objectif et de chaque refus.
+- **État** (31 octobre 2026, en PR) : fait, sauf le rang de guilde (objectif) et les points de guilde (effet), laissés à la guilde (V1.7) qui en fixera le format. Histoire en schéma 3 (catégories, conditions d'ouverture dont `levelAtLeast`, récompenses au choix, objectifs `talk`, `deliver`, `defeatFamily`, `equipped`, effet `takeMoney`, PNJ des intérieurs), sauvegarde en version 7 (quête suivie, récompense en attente), zones en schéma 5 (autres chefs à formes, familles) ; journal à onglets, suivi, récompenses au choix et dialogue des PNJ d'intérieur dans Unity ; bandits, chef des bandits à deux formes et loup blanc par les données de zone seulement (règles et journaux de référence inchangés) ; deux quêtes d'exemple à l'auberge et à la chapelle (textes à relire). L'effet « donner de l'or » s'appelle `giveMoney` (V1.1). Détail : [MONDE.md](MONDE.md#quêtes--le-moteur-sous-lot-v16).
 
 ### V1.7 — Guilde des aventuriers (M)
 
