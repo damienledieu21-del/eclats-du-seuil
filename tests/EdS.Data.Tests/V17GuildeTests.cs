@@ -111,7 +111,7 @@ public class V17GuildeTests : IDisposable
     public void Guilde_livree()
     {
         GuildBook g = Guild;
-        Assert.Equal((1, Mistress, 3, 2), (g.SchemaVersion, g.Npc, g.MaxActive, g.Daily));
+        Assert.Equal((2, Mistress, 3, 2, 1), (g.SchemaVersion, g.Npc, g.MaxActive, g.Daily, g.RushDaily));   // 2 : contrats pressés (31 octobre 2026)
         // Les dix rangs, dans l'ordre ; G, F et E ouverts dans les Vallons (choix de Damien), les autres fermés, prêts pour les régions suivantes.
         Assert.Equal(GuildRanks.Ids, g.Ranks.Select(r => r.Id));
         Assert.Equal(new[] { "g", "f", "e" }, g.Ranks.Where(r => r.Open).Select(r => r.Id));
@@ -121,7 +121,8 @@ public class V17GuildeTests : IDisposable
         Assert.Equal(g.Ranks.Count, g.Titles.Count);
         Assert.All(g.Ranks, r => Assert.True(g.TryGetTitle(r.Title, out _)));
         // Contrats : chasses, livraisons, primes ; chaque rang ouvert en a au moins autant que le tirage du jour ; plus haut, mieux payé.
-        Assert.Equal(new[] { 4, 4, 4 }, new[] { "g", "f", "e" }.Select(r => g.Contracts.Count(c => c.Rank == r)));
+        Assert.Equal(new[] { 4, 4, 4 }, new[] { "g", "f", "e" }.Select(r => g.Contracts.Count(c => c.Rank == r && !c.Rush)));
+        Assert.Equal(new[] { 2, 2, 2 }, new[] { "g", "f", "e" }.Select(r => g.Contracts.Count(c => c.Rank == r && c.Rush)));   // pressés
         Assert.Contains(g.Contracts, c => c.Kind == ContractKind.Hunt);
         Assert.Contains(g.Contracts, c => c.Kind == ContractKind.Delivery && c.Objective.Npc == Mistress);
         GuildContract bounty = Assert.Single(g.Contracts, c => c.Kind == ContractKind.Bounty);
@@ -151,7 +152,7 @@ public class V17GuildeTests : IDisposable
     public static IEnumerable<object[]> Mauvaises_guildes()
     {
         object[] Case(string path, ValidationCode code, Action<JsonObject> change) => new object[] { path, code, change };
-        yield return Case("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion, r => r["schemaVersion"] = 2);
+        yield return Case("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion, r => r["schemaVersion"] = 1);   // schéma 2 depuis le 31 octobre 2026
         yield return Case("$.kind", ValidationCode.WrongKind, r => r["kind"] = "story");
         yield return Case("$.data.npc", ValidationCode.UnknownReference, r => r["data"]!["npc"] = "npc.personne");
         yield return Case("$.data.npc", ValidationCode.MissingField, r => r["data"]!.AsObject().Remove("npc"));
@@ -185,10 +186,10 @@ public class V17GuildeTests : IDisposable
         yield return Case("$.data.contracts[0].rank", ValidationCode.InvalidValue, r => Contract(r, 0)["rank"] = "d");
         yield return Case("$.data.contracts[0].kind", ValidationCode.InvalidValue, r => Contract(r, 0)["kind"] = "escorte");
         yield return Case("$.data.contracts[0].objective.kind", ValidationCode.InvalidValue, r => Contract(r, 0)["kind"] = "delivery");
-        yield return Case("$.data.contracts[7].objective.kind", ValidationCode.InvalidValue, r => Contract(r, 7)["objective"]!["kind"] = "defeatFamily");
+        yield return Case("$.data.contracts[9].objective.kind", ValidationCode.InvalidValue, r => Contract(r, 9)["objective"]!["kind"] = "defeatFamily");   // la prime (après les contrats pressés de G)
         yield return Case("$.data.contracts[0].objective.kind", ValidationCode.InvalidValue, r => Contract(r, 0)["objective"]!["kind"] = "collect");
         yield return Case("$.data.contracts[0].objective.id", ValidationCode.UnknownReference, r => Contract(r, 0)["objective"]!["id"] = "dragon");
-        yield return Case("$.data.contracts[7].objective.id", ValidationCode.UnknownReference, r => Contract(r, 7)["objective"]!["id"] = "le_sans_nom");
+        yield return Case("$.data.contracts[9].objective.id", ValidationCode.UnknownReference, r => Contract(r, 9)["objective"]!["id"] = "le_sans_nom");
         yield return Case("$.data.contracts[2].objective.id", ValidationCode.UnknownReference, r => Contract(r, 2)["objective"]!["id"] = "item.inconnu");
         yield return Case("$.data.contracts[2].objective.npc", ValidationCode.UnknownReference, r => Contract(r, 2)["objective"]!["npc"] = "npc.personne");
         yield return Case("$.data.contracts[0].objective.npc", ValidationCode.InvalidValue, r => Contract(r, 0)["objective"]!["npc"] = Mistress);
@@ -488,8 +489,10 @@ public class V17GuildeTests : IDisposable
         {
             IReadOnlyList<GuildContract> board = GuildBoard.Of(g, 2, day);
             Assert.Equal(board.Select(c => c.Id), GuildBoard.Of(g, 2, day).Select(c => c.Id));
-            Assert.Equal(new[] { "g", "g", "f", "f", "e", "e" }, board.Select(c => c.Rank));
-            Assert.Equal(board.Take(2).Select(c => c.Id), GuildBoard.Of(g, 0, day).Select(c => c.Id));   // un rang plus haut garde ceux d'en dessous
+            // Réponses du 31 octobre 2026 : pour chaque rang, ses deux contrats normaux puis un contrat pressé.
+            Assert.Equal(new[] { "g", "g", "g", "f", "f", "f", "e", "e", "e" }, board.Select(c => c.Rank));
+            Assert.Equal(new[] { false, false, true, false, false, true, false, false, true }, board.Select(c => c.Rush));
+            Assert.Equal(board.Take(3).Select(c => c.Id), GuildBoard.Of(g, 0, day).Select(c => c.Id));   // un rang plus haut garde ceux d'en dessous
             // Dans l'ordre du fichier, sans doublon.
             Assert.Equal(board.Select(c => g.Contracts.ToList().IndexOf(c)).OrderBy(i => i), board.Select(c => g.Contracts.ToList().IndexOf(c)));
         }
@@ -508,10 +511,12 @@ public class V17GuildeTests : IDisposable
     public void Contrats_pris_abandonnes_et_bornes()
     {
         WorldSession w = InGuild(WithCard(Hero(), Card("e", 400, "title.guilde.lame", null, 0, null, "title.guilde.recrue", "title.guilde.eclaireur", "title.guilde.lame")));
-        IReadOnlyList<GuildContract> board = w.Board();
+        IReadOnlyList<GuildContract> all = w.Board();
+        Assert.Equal(9, all.Count);   // réponses du 31 octobre 2026 : six contrats normaux et trois pressés
+        IReadOnlyList<GuildContract> board = all.Where(c => !c.Rush).ToList();
         Assert.Equal(6, board.Count);
         Assert.Equal(GuildRefusal.NotOnBoard, w.TakeContract("contract.inconnu", out _));
-        string offBoard = Guild.Contracts.First(c => board.All(b => b.Id != c.Id)).Id;
+        string offBoard = Guild.Contracts.First(c => all.All(b => b.Id != c.Id)).Id;
         Assert.Equal(GuildRefusal.NotOnBoard, w.TakeContract(offBoard, out _));
         Assert.Equal(GuildRefusal.None, w.TakeContract(board[0].Id, out IReadOnlyList<StoryEvent> taken));
         Assert.Equal(new[] { $"ContractTaken {board[0].Id}" }, taken.Select(e => e.ToString()));
@@ -630,7 +635,7 @@ public class V17GuildeTests : IDisposable
         Assert.Equal(new[] { "title.guilde.eclaireur", "title.guilde.recrue" }, n.Titles);
         Assert.Equal(100, n.GuildPoints);   // les points restent ; l'épreuve n'en donne pas (elle donne le rang)
         Assert.Equal(GuildRefusal.NotEnoughPoints, w.CanStartTrial());   // E demande 300
-        Assert.Equal(4, w.Board().Count);   // le tableau du rang F : ceux de G et de F
+        Assert.Equal(6, w.Board().Count);   // le tableau du rang F : ceux de G et de F (deux normaux et un pressé chacun)
     }
 
     [Fact]
@@ -707,18 +712,20 @@ public class V17GuildeTests : IDisposable
         w.Narrative.Learn("fact.chef.vaincu", list);
         Assert.Equal(new[] { "FactLearned fact.chef.vaincu", "GuildPoints fact.chef.vaincu 60" }, list.Select(e => e.ToString()));
         Assert.Equal(85, w.Narrative.GuildPoints);
-        // Pas inscrit : rien n'est compté. Relecture de la PR #79 (P5) : la créature rare est gardée comme déjà vaincue, et ne rapporte rien
-        // non plus après l'inscription ; rien de ce qui est fait avant l'inscription ne compte jamais.
+        // Pas inscrit : rien n'est compté sur le moment ; la créature rare est gardée comme déjà vaincue (relecture de la PR #79, P5).
+        // Réponses de Damien du 31 octobre 2026 : à l'inscription, ces exploits comptent, une seule fois (25 + 60).
         WorldSession outsider = InGuild(Hero());
         outsider.Narrative!.Defeated("loup_blanc", "loup_blanc");
         outsider.Narrative.Learn("fact.chef.vaincu", new List<StoryEvent>());
         Assert.Empty(Steps(outsider));
         Assert.Null(outsider.Save().Character!.Story.Guild);
         Assert.Equal(new[] { "loup_blanc" }, outsider.Save().Character!.Story.Hunted);
-        Assert.Equal(GuildRefusal.None, outsider.JoinGuild(out _));
+        Assert.Equal(GuildRefusal.None, outsider.JoinGuild(out IReadOnlyList<StoryEvent> joined));
+        Assert.Equal(new[] { "GuildJoined g", "GuildReputation g 85" }, joined.Select(e => e.ToString()));
         outsider.Narrative.Defeated("loup_blanc", "loup_blanc");
+        outsider.Narrative.Learn("fact.chef.vaincu", new List<StoryEvent>());
         Assert.Empty(Steps(outsider));
-        Assert.Equal(0, outsider.Narrative.GuildPoints);
+        Assert.Equal(85, outsider.Narrative.GuildPoints);
         // Plafond de la carte : le gain s'arrête, jamais de dépassement.
         WorldSession top = InGuild(WithCard(Hero(), Card("g", SavedGuildCard.MaxPoints - 10)));
         top.Narrative!.Learn("fact.chef.vaincu", new List<StoryEvent>());
@@ -794,7 +801,9 @@ public class V17GuildeTests : IDisposable
         Assert.Equal("Points de guilde : 0 / 100 pour le Rang F", card.PointsText);
         Assert.Equal("Recrue de la Guilde", a.ShownTitle);
         IReadOnlyList<ContractEntry> board = a.GuildBoard();
-        Assert.Equal(2, board.Count);
+        Assert.Equal(3, board.Count);   // deux contrats normaux et un pressé (réponses du 31 octobre 2026)
+        Assert.Equal(new[] { false, false, true }, board.Select(c => c.Rush));
+        Assert.EndsWith(" · pressé, avant minuit", board[2].Kind, StringComparison.Ordinal);
         Assert.All(board, c => Assert.Equal(GuildRefusal.None, c.Refusal));
         Assert.Equal(GuildRefusal.None, a.TakeContract(board[0].Id));
         Assert.Equal(GuildRefusal.AlreadyTaken, a.GuildBoard()[0].Refusal);
@@ -908,8 +917,9 @@ public class V17GuildeTests : IDisposable
     public void P4_contrat_d_un_autre_jour_abandonne_ne_se_reprend_pas_le_jour_meme()
     {
         GuildBook g = Guild;
-        long d = Enumerable.Range(0, 200).First(x => GuildBoard.Of(g, 0, x).Intersect(GuildBoard.Of(g, 0, x + 1)).Any());
-        string id = GuildBoard.Of(g, 0, d).Intersect(GuildBoard.Of(g, 0, d + 1)).First().Id;
+        // Un contrat normal (un contrat pressé d'hier est perdu : réponses du 31 octobre 2026).
+        long d = Enumerable.Range(0, 200).First(x => GuildBoard.Of(g, 0, x).Intersect(GuildBoard.Of(g, 0, x + 1)).Any(c => !c.Rush));
+        string id = GuildBoard.Of(g, 0, d).Intersect(GuildBoard.Of(g, 0, d + 1)).First(c => !c.Rush).Id;
         WorldSession w = InGuild(WithCard(Hero(), Card("g")), tick: d * DayTicks);
         Assert.Equal(GuildRefusal.None, w.TakeContract(id, out _));
         WorldSession next = InGuild(w.Save().Character!, tick: (d + 1) * DayTicks);
@@ -923,15 +933,16 @@ public class V17GuildeTests : IDisposable
     }
 
     [Fact]
-    public void P5_creature_rare_avant_inscription_ne_compte_jamais()
+    public void P5_creature_rare_avant_inscription_comptee_une_fois_a_l_inscription()
     {
         WorldSession w = InGuild(Hero());
         w.Narrative!.Defeated("loup_blanc", "loup_blanc");
         Assert.Empty(Steps(w));
-        // Gardée dans la sauvegarde, relue à la session suivante, où l'inscription ne la fait pas compter.
+        // Gardée dans la sauvegarde, relue à la session suivante ; réponses de Damien du 31 octobre 2026 : l'inscription la fait compter, une fois.
         WorldSession later = InGuild(w.Save().Character!);
         Assert.Equal(new[] { "loup_blanc" }, later.Narrative!.Hunted);
-        Assert.Equal(GuildRefusal.None, later.JoinGuild(out _));
+        Assert.Equal(GuildRefusal.None, later.JoinGuild(out IReadOnlyList<StoryEvent> joined));
+        Assert.Contains("GuildReputation g 25", joined.Select(e => e.ToString()));
         later.Narrative.Defeated("loup_blanc", "loup_blanc");
         later.Narrative.Defeated("le_borgne", "bandit");   // une autre créature rare, vaincue après l'inscription : elle compte
         Assert.Equal(new[] { "GuildPoints le_borgne 20" }, Steps(later));
@@ -940,7 +951,7 @@ public class V17GuildeTests : IDisposable
     [Fact]
     public void P6_le_Borgne_compte_pour_la_prime_et_pour_la_bande()
     {
-        // Comportement voulu pour l'instant (question à Damien) : une victoire sur le Borgne avance la prime et la chasse de la famille « bandit ».
+        // Voulu (réponse de Damien du 31 octobre 2026) : une victoire sur le Borgne avance d'un coup la prime et la chasse de la famille « bandit ».
         GuildBook g = Guild;
         long d = Enumerable.Range(0, 400).First(x => GuildBoard.Of(g, 2, x).Any(c => c.Id == "contract.bande_du_camp")
             && GuildBoard.Of(g, 2, x).Any(c => c.Id == "contract.prime_du_borgne"));

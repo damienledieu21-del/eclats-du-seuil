@@ -2,7 +2,10 @@ using System.Text.Json.Nodes;
 using EdS.Data.Characters;
 using EdS.Data.Items;
 using EdS.Data.Json;
+using EdS.Data.Guild;
 using EdS.Data.Merchants;
+using EdS.Data.Story;
+using EdS.Data.Validation;
 using EdS.Data.Saves;
 using EdS.Data.Zones;
 using EdS.Domain.Combat;
@@ -330,5 +333,226 @@ public class V1Reponses2Tests
             (long b, long rolled, long sets) = ItemsCatalog.WornBound(stat);
             Assert.True(b + rolled + sets <= GearBonus.MaxValue, GearBonus.Fields[stat]);
         }
+    }
+}
+
+/// <summary>
+/// Réponses de Damien du 31 octobre 2026 (vers 18 h 20), guilde : les exploits d'avant l'inscription comptent à l'inscription, une fois ; des
+/// contrats pressés, mieux payés, à finir avant la fin de la journée du monde ; le loup blanc vient pour un contrat en cours.
+/// </summary>
+[Trait("Category", "World")]
+public class V1Reponses2GuildeTests
+{
+    private const string Mistress = "npc.maitresse_guilde";
+
+    private static readonly Lazy<ZoneDefinition> Vallons = new(() => Zone());
+
+    private static IReadOnlyList<ZoneDefinition> AllZones => new[] { Vallons.Value }.Concat(V16TestData.Interiors).ToList();
+
+    private static ZoneDefinition Inside(string id) => V16TestData.Interiors.Single(z => z.Id == id);
+
+    private static JsonObject GuildJson() => JsonNode.Parse(File.ReadAllText(GuildJsonReader.PathIn(DataDirectory)))!.AsObject();
+
+    private static readonly Lazy<StoryBook> ShippedStory = new(() => Book(Vallons.Value));
+
+    /// <summary>L'histoire livrée, la maîtresse à 1,6 m de la porte de la guilde (où l'on arrive).</summary>
+    private static readonly Lazy<StoryBook> NearDoor = new(() =>
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!.AsObject();
+        foreach (JsonNode? n in root["data"]!["npcs"]!.AsArray())
+            if ((string)n!["id"]! == Mistress) n["position"] = new JsonArray(0, -1.6);
+        StoryLoadResult r = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Vallons.Value, ItemsCatalog, V16TestData.Interiors);
+        Assert.True(r.IsValid, r.Report.ToString());
+        return r.Story!;
+    });
+
+    private static GuildLoadResult ReadGuild(JsonObject root) =>
+        GuildJsonReader.Read(root.ToJsonString(), Texts, ShippedStory.Value, Vallons.Value, AllZones, ItemsCatalog, ShippedMerchants);
+
+    private static readonly Lazy<GuildBook> ShippedGuild = new(() =>
+    {
+        GuildLoadResult r = ReadGuild(GuildJson());
+        Assert.True(r.IsValid, r.Report.ToString());
+        return r.Book!;
+    });
+
+    private static GuildBook Guild => ShippedGuild.Value;
+
+    private static long DayTicks => WorldClock.DefaultDayLengthMs / 50;
+
+    private static SavedGuildCard Card(string rank, IReadOnlyDictionary<string, long>? active = null, long day = 0, IEnumerable<string>? taken = null) =>
+        new SavedGuildCard(rank, 0, 0, new[] { "title.guilde.recrue" }, null, active, day, taken);
+
+    private static WorldSession InGuild(SavedCharacter hero, long tick = 0)
+    {
+        var session = new WorldSession(new WorldSave("zone.guilde", tick, 0, Array.Empty<string>(), hero), Inside("zone.guilde"), ShippedData, Progression,
+            ItemsCatalog, NearDoor.Value, door: "sortie", storyZone: "zone.vallons", guild: Guild);
+        session.Step();
+        return session;
+    }
+
+    private static List<string> Steps(WorldSession w, int ticks = 3)
+    {
+        var events = new List<string>();
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        return events;
+    }
+
+    // --- 7. Les exploits d'avant l'inscription ------------------------------------------------------------------------------
+
+    [Fact]
+    public void A_l_inscription_les_exploits_d_avant_comptent_une_seule_fois()
+    {
+        var quests = new Dictionary<string, QuestProgress>
+        {
+            ["quest.traces_sous_le_moulin"] = new QuestProgress(QuestProgress.Done),   // principale : 40
+            ["quest.peaux_pour_l_auberge"] = new QuestProgress(QuestProgress.Done),    // secondaire : 20
+            ["quest.bete_blanche"] = new QuestProgress("temoin"),                      // en cours : rien
+        };
+        SavedCharacter hero = Hero().WithStory(new SavedStory(new[] { "fact.chef_des_bandits.vaincu", "fact.traces.recit" }, quests,
+            discoveries: new[] { "discovery.traces_griffues", "discovery.eclats_dans_le_pre" }, hunted: new[] { "loup_blanc" }));
+        WorldSession w = InGuild(hero);
+        long expected = 40 + 20 + 2 * Guild.DiscoveryPoints + Guild.RarePoints["loup_blanc"] + Guild.FactPoints["fact.chef_des_bandits.vaincu"];
+        Assert.Equal(expected, w.Narrative!.ReputationPoints());
+        Assert.Equal(GuildRefusal.None, w.JoinGuild(out IReadOnlyList<StoryEvent> joined));
+        Assert.Equal(new[] { "GuildJoined g", $"GuildReputation g {expected}" }, joined.Select(e => e.ToString()));
+        Assert.Equal(expected, w.Narrative.GuildPoints);
+        // Une seule fois : pas de seconde inscription ; les mêmes exploits ne se refont pas (fait déjà su, créature déjà vaincue).
+        Assert.Equal(GuildRefusal.AlreadyMember, w.JoinGuild(out IReadOnlyList<StoryEvent> again));
+        Assert.Empty(again);
+        w.Narrative.Learn("fact.chef_des_bandits.vaincu", new List<StoryEvent>());
+        w.Narrative.Defeated("loup_blanc", "loup_blanc");
+        Assert.Empty(Steps(w));
+        Assert.Equal(expected, w.Narrative.GuildPoints);
+        // Gardés dans la carte : relus à la session suivante, sans rien compter de nouveau.
+        WorldSession later = InGuild(w.Save().Character!);
+        Assert.Equal(expected, later.Narrative!.GuildPoints);
+        Assert.Empty(Steps(later));
+        // Une épreuve finie ne compte pas (elle donne un rang), une nouvelle recrue sans exploit n'a pas de message.
+        var trial = new Dictionary<string, QuestProgress> { ["quest.epreuve_rang_f"] = new QuestProgress(QuestProgress.Done) };
+        Assert.Equal(0, InGuild(Hero().WithStory(new SavedStory(quests: trial))).Narrative!.ReputationPoints());
+        WorldSession fresh = InGuild(Hero());
+        Assert.Equal(GuildRefusal.None, fresh.JoinGuild(out IReadOnlyList<StoryEvent> plain));
+        Assert.Equal(new[] { "GuildJoined g" }, plain.Select(e => e.ToString()));
+        // La réplique de la maîtresse, à relire.
+        Assert.Contains("Ta réputation te précède", Texts.Get("text.ui.guild.reputation"), StringComparison.Ordinal);
+    }
+
+    // --- 8. Contrats pressés ------------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Contrats_presses_tires_chaque_jour_et_mieux_payes()
+    {
+        Assert.Equal((2, 2, 1), (Guild.SchemaVersion, Guild.Daily, Guild.RushDaily));
+        foreach (string rank in new[] { "g", "f", "e" })
+        {
+            List<GuildContract> normal = Guild.Contracts.Where(c => c.Rank == rank && !c.Rush).ToList();
+            List<GuildContract> rush = Guild.Contracts.Where(c => c.Rank == rank && c.Rush).ToList();
+            Assert.Equal(2, rush.Count);
+            Assert.All(rush, c => Assert.True(c.Money > normal.Max(n => n.Money) && c.Points > normal.Max(n => n.Points), c.Id));
+        }
+        Assert.Equal("guild/e/rush/day/3", GuildBoard.RushKey("e", 3));
+        for (long day = 0; day < 40; day++)
+        {
+            IReadOnlyList<GuildContract> board = GuildBoard.Of(Guild, 2, day);
+            Assert.Equal(new[] { "g", "f", "e" }, board.Where(c => c.Rush).Select(c => c.Rank));
+            Assert.Equal(board.Select(c => c.Id), GuildBoard.Of(Guild, 2, day).Select(c => c.Id));   // même jour, même tableau
+        }
+        // Chaque contrat pressé finit par venir.
+        Assert.All(Guild.Contracts.Where(c => c.Rush), c => Assert.Contains(Enumerable.Range(0, 60).SelectMany(d => GuildBoard.Of(Guild, 2, d)), x => x.Id == c.Id));
+        Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "guild.schema.json"))
+            .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(GuildJsonReader.PathIn(DataDirectory))).RootElement));
+        foreach (GuildContract c in Guild.Contracts.Where(c => c.Rush)) Assert.True(Texts.Has(c.Name) && Texts.Has(c.Text), c.Id);
+    }
+
+    [Fact]
+    public void Un_contrat_presse_non_fini_a_minuit_est_perdu_sans_penalite()
+    {
+        long day = Enumerable.Range(1, 60).First(d => GuildBoard.Of(Guild, 0, d).Any(c => c.Rush && c.Kind == ContractKind.Hunt));
+        GuildContract rush = GuildBoard.Of(Guild, 0, day).First(c => c.Rush);
+        WorldSession w = InGuild(Hero().WithStory(new SavedStory(guild: Card("g"))).WithMoney(100), day * DayTicks);
+        Assert.Equal(GuildRefusal.None, w.TakeContract(rush.Id, out _));
+        w.Narrative!.Defeated("loup1", "loup");   // une seule créature : pas fini
+        SavedCharacter hero = w.Save().Character!;
+        // Le lendemain : perdu au premier tick, sans pénalité (bourse, points, contrats réussis inchangés), et rien d'autre.
+        WorldSession next = new(new WorldSave("zone.guilde", (day + 1) * DayTicks, 0, Array.Empty<string>(), hero), Inside("zone.guilde"), ShippedData,
+            Progression, ItemsCatalog, NearDoor.Value, door: "sortie", storyZone: "zone.vallons", guild: Guild);
+        Assert.Equal(new[] { $"ContractExpired {rush.Id}" }, next.Step().Story.Select(e => e.ToString()));
+        Assert.Empty(next.Narrative!.ActiveContracts);
+        Assert.Equal((100L, 0L, 0L), (next.Money, next.Narrative.GuildPoints, next.Narrative.ContractsDone));
+        Assert.Empty(Steps(next));
+        // Il ne s'abandonne pas une fois la journée finie (rien à abandonner).
+        WorldSession late = new(new WorldSave("zone.guilde", (day + 1) * DayTicks, 0, Array.Empty<string>(), hero), Inside("zone.guilde"), ShippedData,
+            Progression, ItemsCatalog, NearDoor.Value, door: "sortie", storyZone: "zone.vallons", guild: Guild);
+        Assert.Equal(GuildRefusal.NotActive, late.AbandonContract(rush.Id, out IReadOnlyList<StoryEvent> none));
+        Assert.Empty(none);
+        // Fini le même jour : réussi comme un autre contrat, avec ses récompenses.
+        WorldSession done = InGuild(Hero().WithStory(new SavedStory(guild: Card("g"))), day * DayTicks);
+        Assert.Equal(GuildRefusal.None, done.TakeContract(rush.Id, out _));
+        for (int i = 0; i < rush.Objective.Value; i++) done.Narrative!.Defeated("loup" + (i + 1), "loup");
+        Assert.Contains($"ContractDone {rush.Id}", Steps(done));
+        Assert.Equal(rush.Money, done.Money);
+    }
+
+    [Fact]
+    public void Trois_contrats_en_cours_au_plus_presses_compris()
+    {
+        long day = Enumerable.Range(0, 60).First(d => GuildBoard.Of(Guild, 0, d).Any(c => c.Rush));
+        IReadOnlyList<GuildContract> board = GuildBoard.Of(Guild, 1, day);
+        WorldSession w = InGuild(Hero().WithStory(new SavedStory(guild: Card("f"))), day * DayTicks);
+        List<GuildContract> normal = board.Where(c => !c.Rush).Take(2).ToList();
+        List<GuildContract> rush = board.Where(c => c.Rush).ToList();
+        Assert.Equal(GuildRefusal.None, w.TakeContract(normal[0].Id, out _));
+        Assert.Equal(GuildRefusal.None, w.TakeContract(rush[0].Id, out _));
+        Assert.Equal(GuildRefusal.None, w.TakeContract(normal[1].Id, out _));
+        Assert.Equal(GuildRefusal.TooManyContracts, w.CanTakeContract(rush[1].Id));
+        Assert.Equal(GuildRefusal.TooManyContracts, w.TakeContract(rush[1].Id, out IReadOnlyList<StoryEvent> refused));
+        Assert.Empty(refused);
+        Assert.Equal(3, w.Narrative!.ActiveContracts.Count);
+    }
+
+    [Fact]
+    public void Guilde_au_schema_2_refusee_avec_son_chemin()
+    {
+        void Refused(string path, ValidationCode code, Action<JsonObject> change)
+        {
+            JsonObject root = GuildJson();
+            change(root);
+            GuildLoadResult r = ReadGuild(root);
+            Assert.False(r.IsValid);
+            Assert.Contains(r.Report.Errors, e => e.Path == path && e.Code == code);
+        }
+        Refused("$.data.rushDaily", ValidationCode.MissingField, r => r["data"]!.AsObject().Remove("rushDaily"));
+        Refused("$.data.rushDaily", ValidationCode.OutOfRange, r => r["data"]!["rushDaily"] = 9);
+        Refused("$.data.rushDaily", ValidationCode.OutOfRange, r => r["data"]!["rushDaily"] = -1);
+        Refused("$.data.contracts", ValidationCode.OutOfRange, r => r["data"]!["rushDaily"] = 3);   // deux contrats pressés par rang seulement
+        Refused("$.data.contracts", ValidationCode.OutOfRange, r =>
+        {
+            foreach (JsonNode? c in r["data"]!["contracts"]!.AsArray())
+                if ((string)c!["rank"]! == "g" && c["rush"] is null) c["rush"] = true;   // plus de contrat normal au rang G
+        });
+        Refused("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion, r => r["schemaVersion"] = 1);
+        // Sans contrat pressé (rushDaily 0) : valide, le tableau n'en tire pas.
+        JsonObject none = GuildJson();
+        none["data"]!["rushDaily"] = 0;
+        GuildBook plain = ReadGuild(none).Book!;
+        Assert.DoesNotContain(GuildBoard.Of(plain, 2, 3), c => c.Rush);
+    }
+
+    // --- 4. Le loup blanc vient pour un contrat en cours -------------------------------------------------------------------
+
+    [Fact]
+    public void Le_contrat_du_loup_blanc_le_fait_venir()
+    {
+        var active = new Dictionary<string, long> { ["contract.loup_blanc"] = 0 };
+        SavedCharacter hero = Hero().WithStory(new SavedStory(guild: Card("e", active)));
+        ZoneDefinition z = Vallons.Value;
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), z, ShippedData, Progression, ItemsCatalog,
+            ShippedStory.Value, guild: Guild);
+        Assert.Single(w.Step().Population, e => e.Kind == PopulationEventKind.Sign);
+        // Sans le contrat, à 8 h du jour 0 : rien.
+        var plain = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithStory(new SavedStory(guild: Card("e")))), z,
+            ShippedData, Progression, ItemsCatalog, ShippedStory.Value, guild: Guild);
+        Assert.DoesNotContain(plain.Step().Population, e => e.Kind == PopulationEventKind.Sign);
     }
 }

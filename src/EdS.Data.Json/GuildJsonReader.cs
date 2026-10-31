@@ -46,6 +46,7 @@ namespace EdS.Data.Json
                     ["npc"] = (v, p) => d.Npc = input.Text(v, p),
                     ["maxActive"] = (v, p) => d.MaxActive = input.Int32(v, p),
                     ["daily"] = (v, p) => d.Daily = input.Int32(v, p),
+                    ["rushDaily"] = (v, p) => d.RushDaily = input.Int32(v, p),   // réponses du 31 octobre 2026 (schéma 2)
                     ["ranks"] = (v, p) => d.Ranks = input.ReadLimitedList(v, p, 16, n => $"{n} rangs, au plus 16.", (e, ip) => ReadRank(input, e, ip)),
                     ["titles"] = (v, p) => d.Titles = input.ReadLimitedList(v, p, GuildValidator.MaxTitles,
                         n => $"{n} titres, au plus {GuildValidator.MaxTitles}.", (e, ip) => ReadTitle(input, e, ip)),
@@ -106,6 +107,7 @@ namespace EdS.Data.Json
                 ["money"] = (v, p) => x.Money = input.Int64(v, p),
                 ["points"] = (v, p) => x.Points = input.Int64(v, p),
                 ["xp"] = (v, p) => x.Xp = input.Int64(v, p),
+                ["rush"] = (v, p) => x.Rush = input.Boolean(v, p),   // réponses du 31 octobre 2026 (schéma 2)
             }) ? x : null;
         }
 

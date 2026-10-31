@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/guild.schema.json",
   "title": "Éclats du Seuil — Guilde des aventuriers",
-  "description": "Sous-lot V1.7. Documentation. La validation qui fait foi est celle du programme (GuildValidator), avec les textes, l'histoire (PNJ, quêtes des épreuves, faits), la zone de l'histoire (populations, familles), les zones reliées (portes), le catalogue des objets et les marchands : les dix rangs dans l'ordre, seuils croissants, rangs ouverts d'abord (G, F, E dans les Vallons), une épreuve par rang ouvert au-dessus de G, au moins « daily » contrats par rang ouvert.",
+  "description": "Sous-lot V1.7. Documentation. La validation qui fait foi est celle du programme (GuildValidator), avec les textes, l'histoire (PNJ, quêtes des épreuves, faits), la zone de l'histoire (populations, familles), les zones reliées (portes), le catalogue des objets et les marchands : les dix rangs dans l'ordre, seuils croissants, rangs ouverts d'abord (G, F, E dans les Vallons), une épreuve par rang ouvert au-dessus de G, au moins « daily » contrats par rang ouvert. Schéma 2 (réponses de Damien du 31 octobre 2026) : rushDaily (contrats pressés tirés en plus chaque jour) et rush facultatif sur un contrat.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "guild"
@@ -31,6 +31,7 @@
         "npc",
         "maxActive",
         "daily",
+        "rushDaily",
         "ranks",
         "titles",
         "contracts",
@@ -54,6 +55,12 @@
           "minimum": 1,
           "maximum": 8,
           "description": "Contrats tirés chaque jour du monde pour chaque rang ouvert (Pcg32 sur la clé du jour)."
+        },
+        "rushDaily": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8,
+          "description": "Schéma 2 : contrats pressés tirés en plus chaque jour pour chaque rang ouvert (0 : aucun)."
         },
         "ranks": {
           "type": "array",
@@ -248,6 +255,10 @@
                 "minimum": 0,
                 "maximum": 1000000,
                 "description": "Expérience."
+              },
+              "rush": {
+                "type": "boolean",
+                "description": "Schéma 2 : contrat pressé, mieux payé, à finir avant la fin de la journée du monde où il est pris (sinon perdu, sans pénalité)."
               }
             }
           }

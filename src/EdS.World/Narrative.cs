@@ -85,6 +85,18 @@ namespace EdS.World
 
         /// <summary>Sous-lot V1.7 : titre affiché choisi (identifiant du titre ; vide : plus aucun).</summary>
         TitleShown = 25,
+
+        /// <summary>
+        /// Réponses de Damien du 31 octobre 2026 : un contrat pressé pas fini à la fin de la journée du monde où il a été pris est perdu, sans
+        /// pénalité (identifiant du contrat).
+        /// </summary>
+        ContractExpired = 26,
+
+        /// <summary>
+        /// Réponses du 31 octobre 2026 : à l'inscription, les exploits d'avant (quêtes finies, découvertes, créatures rares vaincues, faits)
+        /// comptent, une seule fois (valeur : points réellement ajoutés). La maîtresse le remarque : « Ta réputation te précède… ».
+        /// </summary>
+        GuildReputation = 27,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -231,6 +243,9 @@ namespace EdS.World
         /// l'histoire) ; null sinon. Sert à parler aux PNJ, qui vivent dehors ou dans un intérieur.
         /// </summary>
         GroundVector? PlayerPositionIn(string? zone);
+
+        /// <summary>Réponses du 31 octobre 2026 : jour du monde (fin des contrats pressés).</summary>
+        long Day { get; }
     }
 
     /// <summary>
@@ -507,7 +522,8 @@ namespace EdS.World
                     list.Add((q.Key, false, o));
             if (_card != null && _guild != null)
                 foreach (KeyValuePair<string, long> a in _card.Active)
-                    if (_guild.Contract(a.Key).Objective is { Kind: ObjectiveKind.Deliver } o && o.Npc == npc && a.Value < 1 && _world.Inventory.Available(o.Id) >= o.Value)
+                    if (_guild.Contract(a.Key).Objective is { Kind: ObjectiveKind.Deliver } o && o.Npc == npc && a.Value < 1 && _world.Inventory.Available(o.Id) >= o.Value
+                        && !Expired(a.Key, _world.Day))
                         list.Add((a.Key, true, o));
             return list;
         }
@@ -785,17 +801,69 @@ namespace EdS.World
             return GuildRefusal.None;
         }
 
-        /// <summary>Inscription : la carte au rang G, avec le titre de ce rang (affiché). Refusée sans guilde, ou déjà inscrit.</summary>
+        /// <summary>
+        /// Inscription : la carte au rang G, avec le titre de ce rang (affiché). Refusée sans guilde, ou déjà inscrit. Réponses de Damien du
+        /// 31 octobre 2026 : les exploits d'avant l'inscription comptent, comme s'ils avaient été faits après (<see cref="ReputationPoints"/>),
+        /// en un seul événement (<see cref="StoryEventKind.GuildReputation"/>) ; ils ne comptent qu'une fois : l'inscription n'a lieu qu'une fois,
+        /// et ces exploits ne se refont pas (une quête finie, une découverte, une créature rare ou un fait ne rapportent qu'à leur première fois).
+        /// </summary>
         internal GuildRefusal Join(List<StoryEvent> events)
         {
             if (_guild is null) return GuildRefusal.NoGuild;
             if (_card != null) return GuildRefusal.AlreadyMember;
             GuildRank g = _guild.Ranks[0];
+            long reputation = ReputationPoints();
             _card = new GuildCard { Rank = 0, Title = g.Title };
             _card.Titles.Add(g.Title);
             Revision++;
             events.Add(new StoryEvent(StoryEventKind.GuildJoined, g.Id));
+            long added = _card.Add(reputation);
+            if (added > 0) events.Add(new StoryEvent(StoryEventKind.GuildReputation, g.Id, null, added));
             return GuildRefusal.None;
+        }
+
+        /// <summary>
+        /// Réponses du 31 octobre 2026 : points de guilde des exploits déjà faits : chaque quête finie (sauf une épreuve, qui donne un rang)
+        /// selon sa catégorie, chaque découverte, chaque créature rare de la guilde déjà vaincue (<c>story.hunted</c>), chaque fait qui rapporte
+        /// des points. 0 sans guilde. Chaque gain est borné par le validateur et les listes par la sauvegarde : la somme ne déborde pas.
+        /// </summary>
+        public long ReputationPoints()
+        {
+            if (_guild is null) return 0;
+            long total = 0;
+            foreach (KeyValuePair<string, (int Step, long Progress)> q in _quests)
+                if (q.Value.Step < 0 && _guild.TrialOf(q.Key) is null)
+                    total = checked(total + (_book.Quest(q.Key).Category == QuestCategory.Main ? _guild.MainQuestPoints : _guild.SideQuestPoints));
+            total = checked(total + _discoveries.Count * _guild.DiscoveryPoints);
+            foreach (string creature in _hunted)
+                if (_guild.RarePoints.TryGetValue(creature, out long rare)) total = checked(total + rare);
+            foreach (string fact in _facts)
+                if (_guild.FactPoints.TryGetValue(fact, out long points)) total = checked(total + points);
+            return total;
+        }
+
+        /// <summary>
+        /// Réponses du 31 octobre 2026 : le contrat en cours <paramref name="contract"/> est un contrat pressé d'un jour passé (pris le jour de la
+        /// carte, avant <paramref name="day"/>) : il est perdu, même s'il n'a pas encore été retiré.
+        /// </summary>
+        private bool Expired(string contract, long day) => _card != null && _guild != null && day > _card.Day && _guild.Contract(contract).Rush;
+
+        /// <summary>
+        /// Réponses du 31 octobre 2026 : un contrat pressé est à finir avant la fin de la journée du monde où il a été pris. Il a toujours été
+        /// pris le jour de la carte (<see cref="GuildCard.Day"/>) : la carte ne passe à un autre jour qu'après ce retrait. Le jour venu, chaque
+        /// contrat pressé en cours est perdu, sans pénalité (rien n'est pris ; ses objets promis restent dans le sac).
+        /// </summary>
+        private void ExpireRush(long day, List<StoryEvent> events)
+        {
+            if (_card is null || _guild is null) return;
+            foreach (string id in _card.Active.Keys.ToArray())
+            {
+                if (!Expired(id, day)) continue;
+                _card.Active.Remove(id);
+                _blocked.Remove("contract/" + id);
+                Revision++;
+                events.Add(new StoryEvent(StoryEventKind.ContractExpired, id));
+            }
         }
 
         /// <summary>
@@ -807,8 +875,12 @@ namespace EdS.World
             if (_guild is null) return GuildRefusal.NoGuild;
             if (_card is null) return GuildRefusal.NotMember;
             if (contract is null || GuildBoard.Of(_guild, _card.Rank, day).All(c => c.Id != contract)) return GuildRefusal.NotOnBoard;
-            if (_card.Active.ContainsKey(contract) || TakenOn(contract, day)) return GuildRefusal.AlreadyTaken;
-            if (_card.Active.Count >= Math.Min(_guild.MaxActive, SavedGuildCard.MaxActive)) return GuildRefusal.TooManyContracts;
+            // Réponses du 31 octobre 2026 : les contrats pressés d'un jour passé ne comptent plus (ils sont perdus) ; la limite des contrats en
+            // cours vaut pour tous les contrats confondus, pressés compris.
+            if ((_card.Active.ContainsKey(contract) && !Expired(contract, day)) || TakenOn(contract, day)) return GuildRefusal.AlreadyTaken;
+            if (_card.Active.Keys.Count(a => !Expired(a, day)) >= Math.Min(_guild.MaxActive, SavedGuildCard.MaxActive)) return GuildRefusal.TooManyContracts;
+            if (day == _card.Day && _card.Taken.Count >= SavedGuildCard.MaxTaken) return GuildRefusal.TooManyContracts;   // MarkTaken refuserait
+            ExpireRush(day, events);
             if (!_card.MarkTaken(contract, day)) return GuildRefusal.TooManyContracts;
             _card.Active[contract] = 0;
             Revision++;
@@ -825,7 +897,9 @@ namespace EdS.World
         {
             if (_guild is null) return GuildRefusal.NoGuild;
             if (_card is null) return GuildRefusal.NotMember;
-            if (contract is null || !_card.Active.ContainsKey(contract)) return GuildRefusal.NotActive;
+            if (contract is null || !_card.Active.ContainsKey(contract) || Expired(contract, day)) return GuildRefusal.NotActive;   // pressé d'hier : perdu
+            if (day == _card.Day && !_card.Taken.Contains(contract) && _card.Taken.Count >= SavedGuildCard.MaxTaken) return GuildRefusal.TooManyContracts;
+            ExpireRush(day, events);
             if (!_card.MarkTaken(contract, day)) return GuildRefusal.TooManyContracts;
             _card.Active.Remove(contract);
             _blocked.Remove("contract/" + contract);
@@ -896,6 +970,7 @@ namespace EdS.World
         private void StepContracts(List<StoryEvent> events)
         {
             if (_card is null || _guild is null) return;
+            ExpireRush(_world.Day, events);   // réponses du 31 octobre 2026 : avant toute réussite
             foreach (string id in _card.Active.Keys.ToArray())
             {
                 GuildContract contract = _guild.Contract(id);

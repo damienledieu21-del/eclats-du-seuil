@@ -69,9 +69,15 @@ namespace EdS.World
         public static string DayKey(string rank, long day) =>
             "guild/" + (rank ?? throw new ArgumentNullException(nameof(rank))) + "/day/" + day.ToString(CultureInfo.InvariantCulture);
 
+        /// <summary>Réponses de Damien du 31 octobre 2026 : clé du tirage des contrats pressés d'un rang un jour du monde (<c>guild/f/rush/day/3</c>).</summary>
+        public static string RushKey(string rank, long day) =>
+            "guild/" + (rank ?? throw new ArgumentNullException(nameof(rank))) + "/rush/day/" + day.ToString(CultureInfo.InvariantCulture);
+
         /// <summary>
         /// Contrats du tableau le jour <paramref name="day"/> pour un personnage du rang d'indice <paramref name="rank"/> (0 : G) : ceux de
-        /// chaque rang ouvert jusqu'au sien, du plus bas au plus haut, chaque rang dans l'ordre du fichier.
+        /// chaque rang ouvert jusqu'au sien, du plus bas au plus haut, chaque rang dans l'ordre du fichier. Réponses de Damien du 31 octobre
+        /// 2026 : pour chaque rang, ses contrats normaux (<see cref="GuildBook.Daily"/>, clé <see cref="DayKey"/>), puis ses contrats pressés
+        /// (<see cref="GuildBook.RushDaily"/>, tirés à part sur la clé <see cref="RushKey"/>), mieux payés, à finir avant la fin du jour.
         /// </summary>
         public static IReadOnlyList<GuildContract> Of(GuildBook book, int rank, long day)
         {
@@ -80,20 +86,28 @@ namespace EdS.World
             var board = new List<GuildContract>();
             foreach (GuildRank r in book.Ranks.Where(x => x.Open && x.Index <= rank))
             {
-                List<GuildContract> pool = book.Contracts.Where(c => c.Rank == r.Id).ToList();
-                int take = Math.Min(book.Daily, pool.Count);
-                var chosen = new HashSet<GuildContract>();
-                var random = new Pcg32(Loot.Fnv1a(DayKey(r.Id, day)), Loot.Fnv1a("guild:" + r.Id));
-                var shuffled = pool.ToList();
-                for (int i = 0; i < take; i++)
-                {
-                    int j = i + (int)random.NextBounded((uint)(shuffled.Count - i));
-                    (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
-                    chosen.Add(shuffled[i]);
-                }
-                board.AddRange(pool.Where(chosen.Contains));
+                board.AddRange(Draw(book.Contracts.Where(c => c.Rank == r.Id && !c.Rush).ToList(), book.Daily,
+                    new Pcg32(Loot.Fnv1a(DayKey(r.Id, day)), Loot.Fnv1a("guild:" + r.Id))));
+                if (book.RushDaily > 0)
+                    board.AddRange(Draw(book.Contracts.Where(c => c.Rank == r.Id && c.Rush).ToList(), book.RushDaily,
+                        new Pcg32(Loot.Fnv1a(RushKey(r.Id, day)), Loot.Fnv1a("guild:rush:" + r.Id))));
             }
             return board.AsReadOnly();
+        }
+
+        /// <summary><paramref name="count"/> contrats tirés de <paramref name="pool"/> (mélange partiel), rendus dans l'ordre du fichier.</summary>
+        private static IEnumerable<GuildContract> Draw(List<GuildContract> pool, int count, Pcg32 random)
+        {
+            int take = Math.Min(count, pool.Count);
+            var chosen = new HashSet<GuildContract>();
+            var shuffled = pool.ToList();
+            for (int i = 0; i < take; i++)
+            {
+                int j = i + (int)random.NextBounded((uint)(shuffled.Count - i));
+                (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
+                chosen.Add(shuffled[i]);
+            }
+            return pool.Where(chosen.Contains);
         }
     }
 

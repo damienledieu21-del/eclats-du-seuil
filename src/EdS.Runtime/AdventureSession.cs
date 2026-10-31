@@ -469,6 +469,8 @@ namespace EdS.Runtime
                 case StoryEventKind.ContractAbandoned:
                 case StoryEventKind.ContractDone:
                 case StoryEventKind.TitleShown:
+                case StoryEventKind.ContractExpired:   // réponses du 31 octobre 2026
+                case StoryEventKind.GuildReputation:
                     GuildMessage(e);
                     break;
                 case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais

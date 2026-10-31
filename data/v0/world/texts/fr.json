@@ -506,7 +506,22 @@
       "text.ui.guild.trial_locked": "L'épreuve du {0} n'est pas encore ouverte : sa quête demande autre chose (niveau, quête…).",
       "text.zone.loup_blanc.signe": "Un hurlement glacé monte du pré…",
       "text.dialogue.livrer": "Voici : {1} ×{0}.",
-      "text.dialogue.livraison": "Tu as quelque chose pour moi ?"
+      "text.dialogue.livraison": "Tu as quelque chose pour moi ?",
+      "text.contract.presse_loups_du_soir.name": "Pressé : loups avant la nuit",
+      "text.contract.presse_loups_du_soir.text": "Deux loups rôdent trop près des fermes. Abats-les avant la fin du jour.",
+      "text.contract.presse_herbes_du_jour.name": "Pressé : herbes fraîches",
+      "text.contract.presse_herbes_du_jour.text": "Sauge a besoin de deux herbes de l'aube aujourd'hui même. Apporte-les-moi avant minuit.",
+      "text.contract.presse_sangliers.name": "Pressé : sangliers dans les blés",
+      "text.contract.presse_sangliers.text": "Trois sangliers ravagent les champs. La moisson n'attendra pas demain.",
+      "text.contract.presse_peaux.name": "Pressé : peaux pour le tanneur",
+      "text.contract.presse_peaux.text": "Un tanneur de passage repart ce soir. Il lui faut trois peaux de loup avant minuit.",
+      "text.contract.presse_rodeurs.name": "Pressé : rôdeurs sur la route",
+      "text.contract.presse_rodeurs.text": "Trois rôdeurs guettent la route du bourg. Chasse-les avant la fin du jour.",
+      "text.contract.presse_bandits.name": "Pressé : bandits en maraude",
+      "text.contract.presse_bandits.text": "Trois bandits du camp pillent les fermes ce jour. Arrête-les avant minuit.",
+      "text.ui.guild.contract_expired": "Contrat pressé perdu, la journée est finie : {0}.",
+      "text.ui.guild.reputation": "Dame Brunehilde : « Ta réputation te précède… Tes exploits comptent déjà pour la guilde. » (+{0} points de guilde)",
+      "text.ui.guild.rush": " · pressé, avant minuit"
     }
   }
 }
