@@ -237,6 +237,10 @@ namespace EdS.Simulation.Engine
                             if (character.Gear[g] != 0) w.Field(Domain.Stats.GearBonus.Fields[g], character.Gear[g]);
                         w.EndObject();
                     }
+                    // Sous-lot V1.2 (format 19) : garde du bouclier porté, seulement s'il y en a un, sous la forme du fichier de scénario.
+                    if (character.Shield is { } shield)
+                        w.Name("shield").BeginObject().Field(ShieldGuard.DamageReductionId, shield.DamageReduction)
+                            .Field(ShieldGuard.CostPerBlockId, shield.CostPerBlock).Field(ShieldGuard.ParryWindowMsId, shield.ParryWindowMs).EndObject();
                     break;
                 case DummySetup dummy:
                     w.Field("type", "dummy").Field("team", c.Team).Field("initiative", c.Initiative)

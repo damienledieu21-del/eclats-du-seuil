@@ -473,9 +473,10 @@ public class V1ReponsesTests : IDisposable
             Assert.DoesNotContain(m.Offers, o => o.Item == "item.minerai_de_fer");
         // Il se revend toujours (valeur de base gardée) : un minerai miné rapporte quelques pièces.
         Assert.Equal(6, new Market(ShippedMerchants).UnitPrice("merchant.epicier", "item.minerai_de_fer"));
-        // Bertille garde de quoi vendre chaque jour : les potions de soin, plus une offre tirée parmi deux.
+        // Bertille garde de quoi vendre chaque jour : les potions de soin (et, depuis le sous-lot V1.2, la pioche du carrier), plus une
+        // offre tirée parmi deux.
         Merchant bertille = ShippedMerchants.Merchant("merchant.epicier");
-        Assert.Equal(new[] { "item.potion_de_soin" }, bertille.Offers.Where(o => o.Always).Select(o => o.Item));
+        Assert.Equal(new[] { "item.potion_de_soin", "item.pioche_du_carrier" }, bertille.Offers.Where(o => o.Always).Select(o => o.Item));
         Assert.Equal((1, 2), (bertille.Daily, bertille.Offers.Count(o => !o.Always)));
     }
 

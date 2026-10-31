@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/save.schema.json",
   "title": "Éclats du Seuil — sauvegarde du monde",
-  "description": "Sous-lots 12.1 à 12.6, V1.1 et V1.6. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 à 6 est mise à jour à la lecture.",
+  "description": "Sous-lots 12.1 à 12.6, V1.1, V1.2 et V1.6. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 à 7 est mise à jour à la lecture.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 7
+      "const": 8
     },
     "kind": {
       "const": "save"
@@ -169,7 +169,7 @@
                 },
                 "equipment": {
                   "type": "object",
-                  "description": "Sous-lot 12.3 (version 3) : objet porté par emplacement, emplacements dans l'ordre ordinal.",
+                  "description": "Sous-lot 12.3 (version 3) : objet porté par emplacement, emplacements dans l'ordre ordinal. Version 7 (sous-lot V1.2) : les 18 places du catalogue des objets (weapon, shield, head, shoulders, cloak, chest, bracers, hands, belt, legs, feet, neck, ring_1, ring_2, relic_1, relic_2, shard, tool).",
                   "additionalProperties": {
                     "type": "string",
                     "pattern": "^item(\\.[a-z0-9_]+)+$",
@@ -191,7 +191,7 @@
                     "discoveries",
                     "tracked"
                   ],
-                  "description": "Sous-lot 12.5 (version 4) : état narratif personnel (faits appris, avancement des quêtes, confiance des PNJ, découvertes), trié. Sous-lot V1.6 (version 7) : quête suivie (tracked, ou null) ; étape réservée « reward » (récompense au choix en attente).",
+                  "description": "Sous-lot 12.5 (version 4) : état narratif personnel (faits appris, avancement des quêtes, confiance des PNJ, découvertes), trié. Sous-lot V1.6 (version 8) : quête suivie (tracked, ou null) ; étape réservée « reward » (récompense au choix en attente). Une sauvegarde de version 7 ou antérieure n'a ni l'un ni l'autre (aucune quête suivie à la lecture).",
                   "properties": {
                     "facts": {
                       "type": "array",

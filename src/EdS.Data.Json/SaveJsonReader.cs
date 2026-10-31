@@ -126,7 +126,7 @@ namespace EdS.Data.Json
             {
                 ["facts"] = (v, p) => st.Facts = Ids(v, p),
                 ["discoveries"] = (v, p) => st.Discoveries = Ids(v, p),
-                ["tracked"] = (v, p) =>   // sous-lot V1.6 (version 7)
+                ["tracked"] = (v, p) =>   // sous-lot V1.6 (version 8)
                 {
                     st.HasTracked = true;
                     st.Tracked = input.NullableText(v, p);
@@ -264,7 +264,7 @@ namespace EdS.Data.Json
                 + ", \"progress\": " + q.Value.Progress.ToString(CultureInfo.InvariantCulture) + "}"))).Append("},\n");
             b.Append("        \"trust\": {").Append(string.Join(", ", st.Trust.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append(",\n");
-            // Sous-lot V1.6 (version 7) : quête suivie, ou null.
+            // Sous-lot V1.6 (version 8) : quête suivie, ou null.
             b.Append("        \"tracked\": ").Append(st.Tracked is null ? "null" : Quoted(st.Tracked)).Append("\n");
             b.Append("      },\n");
             // Sous-lot 12.6 (version 5) : expérience des métiers, sur une ligne.

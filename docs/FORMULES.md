@@ -33,6 +33,23 @@ puissance         = puissance du type de la compétence (physique pour le Bastio
 = arrondi final   au plus proche, moitié loin de zéro ; minimum 1 si le montant est > 0, 0 sinon
 ```
 
+Garde (0,6) et parade (fenêtre de 150 ms) sont les valeurs de base des règles ; un bouclier porté les remplace (ci-dessous).
+
+## Garde du bouclier (sous-lot V1.2)
+
+Un bouclier porté apporte sa garde ; elle remplace les valeurs de base des règles pour son porteur, puis les modificateurs s'y ajoutent sous les mêmes plafonds qu'avant :
+
+```
+réduction de garde = borne(part du bouclier + Σ modificateurs guard.damageReduction, 0, combat.guard.maxDamageReduction = 0,75)
+coût d'un blocage  = max(0, coût du bouclier + Σ modificateurs guard.costPerBlock)
+fenêtre de parade  = borne(fenêtre du bouclier + Σ modificateurs parry.windowMs, 1 tick, 500 ms ramenés au multiple du tick)
+sans bouclier      : les mêmes formules avec combat.guard.damageReduction (0,6), combat.guard.costPerBlock (10), combat.parry.windowMs (150 ms)
+```
+
+Bornes d'un bouclier (`combat.shield` des règles, [DONNEES.md](DONNEES.md#garde-des-boucliers-sous-lot-v12)) : part bloquée de 0,45 à 0,7, coût de 4 à 20, fenêtre de 100 à 200 ms. Boucliers livrés : l'écu de chêne (0,6 ; 10 ; 150 ms : exactement les valeurs des règles), les boucliers légers (0,5 ; 6 ; 200 ms, ou 0,55 ; 8 ; 200 ms) et les pavois (0,7 ; 14 à 16 ; 100 ms).
+
+Exemple vérifiable (scénario `entrainement_bouclier`, coups de 100 dégâts physiques, armure 0, Bastion sans talent) : un coup gardé avec le pavois (0,7) fait 100 × (1 − 0,7) = **30** et coûte 14 d'endurance ; avec la rondache (0,5), **50** pour 6 d'endurance. Une parade lancée 150 ms avant le coup le pare avec la rondache (fenêtre de 200 ms, 4 ticks) mais pas avec le pavois (100 ms, 2 ticks).
+
 Étapes intermédiaires à 4 décimales ; l'étape de défense est calculée exactement (produit-quotient 128 bits).
 
 ## Exemple vérifiable (test `Exemple_1_coup_critique_physique_detaille`)
