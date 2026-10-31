@@ -166,6 +166,17 @@ namespace EdS.Runtime
             if (place < 0 || place >= World.Inventory.Stacks.Count) return Refused(TradeRefusal.NotEnough);
             ItemStack stack = World.Inventory.Stacks[place];
             int wanted = count ?? stack.Count;
+            // Sous-lot V1.3 : une instance aux propriétés tirées se vend elle-même (pas une autre du même objet).
+            if (stack.IsRolled)
+            {
+                if (!(Shop is string shop)) return Refused(TradeRefusal.TooFar);
+                long before = World.Money;
+                TradeRefusal sold = World.SellPlace(shop, place, wanted);
+                if (sold != TradeRefusal.None) return Refused(sold);
+                _dirty = true;
+                Say("text.ui.trade.sold", ItemName(stack.Item), 1, MoneyText(World.Money - before));
+                return sold;
+            }
             if (wanted < 1) return Sell(stack.Item, wanted);   // quantité impossible : le motif vient du monde
             int sellable = Math.Min(Math.Min(wanted, stack.Count), World.Inventory.Available(stack.Item));
             // Rien de vendable (toute la quantité est emportée au combat) : le monde dit pourquoi, sans rien changer.

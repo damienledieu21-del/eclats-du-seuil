@@ -117,11 +117,41 @@ namespace EdS.World
             }
             if (!Coins.TryAdd(Money, gain, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();
-            foreach ((string item, int count) in lots)
-                if (trial.Remove(item, count) != InventoryRefusal.None) return TradeRefusal.NotEnough;
+            var removed = new IReadOnlyList<ItemStack>[lots.Count];
+            for (int i = 0; i < lots.Count; i++)
+                if (trial.Remove(lots[i].Item, lots[i].Count, out removed[i]) != InventoryRefusal.None) return TradeRefusal.NotEnough;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(after);
-            for (int i = 0; i < lots.Count; i++) market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i]));
+            // Sous-lot V1.3 : un lot qui emporte des instances aux propriétés tirées les garde pour le rachat.
+            for (int i = 0; i < lots.Count; i++)
+                market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i], removed[i].Any(x => x.IsRolled) ? removed[i] : null));
+            return TradeRefusal.None;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 : vend à <paramref name="merchant"/> la place <paramref name="place"/> de l'inventaire telle qu'elle est : une instance
+        /// aux propriétés tirées part elle-même (pas une autre du même objet), au prix de l'objet ; une pile d'objets de base, comme
+        /// <see cref="Sell(string, string, int)"/>. Mêmes refus, tout ou rien ; rachetable avec ses propriétés.
+        /// </summary>
+        /// <exception cref="ArgumentException">Marchand inconnu.</exception>
+        public TradeRefusal SellPlace(string merchant, int place, int count)
+        {
+            if (place < 0 || place >= Inventory.Stacks.Count) return TradeRefusal.NotEnough;
+            ItemStack stack = Inventory.Stacks[place];
+            if (!stack.IsRolled) return Sell(merchant, stack.Item, count);
+            TradeRefusal open = CanTrade(merchant);
+            if (open != TradeRefusal.None) return open;
+            Market market = NeedMarket();
+            if (count != 1) return TradeRefusal.InvalidCount;
+            if (!market.Book.TryGetValue(stack.Item, out _)) return TradeRefusal.NoValue;
+            if (Inventory.Available(stack.Item) < 1) return TradeRefusal.Reserved;
+            long paid = market.UnitPrice(merchant, stack.Item);
+            if (!Coins.TryAdd(Money, paid, out long after)) return TradeRefusal.PurseFull;
+            Inventory trial = Inventory.Clone();
+            if (trial.RemoveAt(place, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;
+            Inventory.CopyFrom(trial);
+            _character = _character.WithMoney(after);
+            market.Record(new SoldLot(stack.Item, 1, paid, new[] { removed }));
             return TradeRefusal.None;
         }
 
@@ -139,7 +169,13 @@ namespace EdS.World
             SoldLot lot = market.Buyback[index];
             if (!Coins.TryAdd(Money, -lot.Paid, out long left)) return TradeRefusal.NotEnoughMoney;
             Inventory trial = Inventory.Clone();
-            if (trial.Add(lot.Item, lot.Count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
+            // Sous-lot V1.3 : les instances vendues reviennent telles quelles (propriétés tirées comprises).
+            if (lot.Stacks.Count > 0)
+            {
+                foreach (ItemStack stack in lot.Stacks)
+                    if (trial.Add(stack) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
+            }
+            else if (trial.Add(lot.Item, lot.Count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(left);
             market.Forget(index);

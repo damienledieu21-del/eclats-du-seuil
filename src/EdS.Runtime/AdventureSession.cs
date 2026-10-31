@@ -692,6 +692,17 @@ namespace EdS.Runtime
         /// </summary>
         public ItemComparison? Compare(string item, string? wornPlace = null) => ItemComparison.For(World.Inventory, item, wornPlace);
 
+        /// <summary>
+        /// Sous-lot V1.3 : comparaison de l'instance de la place <paramref name="bagPlace"/> du sac (propriétés tirées comprises), ou de l'objet
+        /// porté à <paramref name="wornPlace"/> ; null s'il n'y a rien à comparer.
+        /// </summary>
+        public ItemComparison? CompareInstance(int bagPlace, string? wornPlace = null)
+        {
+            if (wornPlace != null)
+                return World.Inventory.WornInstanceAt(wornPlace) is { } worn ? ItemComparison.For(World.Inventory, worn, wornPlace) : null;
+            return bagPlace >= 0 && bagPlace < World.Inventory.Stacks.Count ? ItemComparison.For(World.Inventory, World.Inventory.Stacks[bagPlace]) : null;
+        }
+
         private InventoryRefusal Done(InventoryRefusal refusal, string done)
         {
             if (refusal == InventoryRefusal.None)

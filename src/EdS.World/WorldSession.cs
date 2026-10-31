@@ -48,12 +48,16 @@ namespace EdS.World
         /// <summary>Rangé dans l'inventaire ; faux : inventaire plein, le butin est perdu (rien n'est rangé en partie).</summary>
         public bool Kept { get; }
 
-        internal LootGained(ZoneEvent source, string item, int count, bool kept)
+        /// <summary>Sous-lot V1.3 : propriétés tirées de l'objet tombé (vide pour un objet de base ou nommé).</summary>
+        public IReadOnlyList<RolledProperty> Properties { get; }
+
+        internal LootGained(ZoneEvent source, string item, int count, bool kept, IReadOnlyList<RolledProperty>? properties = null)
         {
             Source = source;
             Item = item;
             Count = count;
             Kept = kept;
+            Properties = properties ?? Array.Empty<RolledProperty>();
         }
     }
 
@@ -273,11 +277,13 @@ namespace EdS.World
                     Inventory.Reserve(id, count);   // revue Codex de la PR #47 : emportés, ils ne se retirent plus de l'inventaire avant d'être bus
                 }
             CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried,
-                shield: Inventory.Shield);   // sous-lot V1.2 : garde du bouclier porté
+                shield: Inventory.Shield,   // sous-lot V1.2 : garde du bouclier porté
+                equipment: Inventory.Effects());   // sous-lot V1.3 : effets des objets nommés et des ensembles
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
             Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
             EnteredGear = setup.Gear;
+            EnteredEffects = setup.Equipment;
         }
 
         private readonly Dictionary<string, LootTable> _lootTables;
@@ -517,6 +523,9 @@ namespace EdS.World
         /// <summary>Bonus d'équipement avec lequel il est entré dans la zone.</summary>
         public GearBonus EnteredGear { get; }
 
+        /// <summary>Sous-lot V1.3 : effets de l'équipement porté à l'entrée (objets nommés, paliers d'ensemble), ceux du combat de cette session.</summary>
+        public IReadOnlyList<EquipmentEffect> EnteredEffects { get; }
+
         /// <summary>
         /// Sous-lot V1.2 : objets mis aux places obligatoires vides à l'entrée (sauvegarde d'une version antérieure, ou de version 7 aux places
         /// obligatoires vides) ; vide sinon.
@@ -612,9 +621,16 @@ namespace EdS.World
                     gains.Add(new ExperienceGained(e, xp, before, Level));
                 }
                 // Sous-lot 12.3 : butin de sa table, rangé en entier ou perdu (inventaire plein).
+                // Sous-lot V1.3 : un équipement qui en tire reçoit ses propriétés, tirées par la même clé (flux propre à l'objet et à son rang).
                 if (LootFor(e.Combatant) is LootTable table)
-                    foreach (LootRoll roll in Loot.Roll(table, e.Key))
-                        loot.Add(new LootGained(e, roll.Item, roll.Count, Inventory.Add(roll.Item, roll.Count) == InventoryRefusal.None));
+                {
+                    IReadOnlyList<LootRoll> rolled = Loot.Roll(table, e.Key);
+                    for (int r = 0; r < rolled.Count; r++)
+                    {
+                        ItemStack stack = ItemRolls.Roll(_items, rolled[r].Item, rolled[r].Count, e.Key, r);
+                        loot.Add(new LootGained(e, stack.Item, stack.Count, Inventory.Add(stack) == InventoryRefusal.None, stack.Properties));
+                    }
+                }
                 // Sous-lot 12.5 : compte pour les objectifs « vaincre » de sa population.
                 Narrative?.Defeated(_populations?.Of(e.Combatant)?.Creature ?? e.Combatant);
             }

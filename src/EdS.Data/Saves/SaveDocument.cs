@@ -53,6 +53,12 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot 12.3 (version 3) : objet porté par emplacement.</summary>
         public List<KeyValuePair<string, string?>>? Equipment { get; set; }
 
+        /// <summary>
+        /// Sous-lot V1.3 (version 9) : propriétés tirées des objets portés, par emplacement (un objet porté écrit sous sa forme d'instance,
+        /// <c>{ "item": …, "properties": […] }</c>) ; les emplacements écrits sous la forme simple n'y figurent pas.
+        /// </summary>
+        public List<KeyValuePair<string, ItemStackData>>? EquipmentInstances { get; set; }
+
         /// <summary>Sous-lot 12.6 (version 5) : expérience de chaque métier.</summary>
         public List<KeyValuePair<string, long?>>? Professions { get; set; }
 
@@ -66,11 +72,24 @@ namespace EdS.Data.Saves
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
 
-    /// <summary>Sous-lot 12.3 : pile d'objets d'une place de l'inventaire.</summary>
+    /// <summary>Sous-lot 12.3 : pile d'objets d'une place de l'inventaire. Sous-lot V1.3 (version 9) : instance d'objet, propriétés tirées.</summary>
     public sealed class ItemStackData
     {
         public string? Item { get; set; }
         public int? Count { get; set; }
+
+        /// <summary>Sous-lot V1.3 (version 9) : propriétés tirées ; absentes pour un objet de base.</summary>
+        public List<PropertyRollData?>? Properties { get; set; }
+
+        /// <summary>Champs réservés à une version suivante rencontrés (<c>quality</c>, <c>wear</c> : sous-lot V1.4), refusés avec leur motif.</summary>
+        public List<string> Reserved { get; } = new List<string>();
+    }
+
+    /// <summary>Sous-lot V1.3 : propriété tirée d'une instance d'objet, telle que lue.</summary>
+    public sealed class PropertyRollData
+    {
+        public string? Id { get; set; }
+        public int? Value { get; set; }
     }
 
     /// <summary>Sous-lot 12.5 : état narratif lu, avant validation.</summary>

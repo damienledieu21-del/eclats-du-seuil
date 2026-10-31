@@ -1,12 +1,13 @@
 {
   "$schema": "../../schemas/items.schema.json",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "kind": "items",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "slots": [
       {
-        "id": "weapon"
+        "id": "weapon",
+        "effects": true
       },
       {
         "id": "shield",
@@ -43,23 +44,28 @@
         "id": "feet"
       },
       {
-        "id": "neck"
+        "id": "neck",
+        "effects": true
       },
       {
         "id": "ring_1",
-        "accepts": "ring"
+        "accepts": "ring",
+        "effects": true
       },
       {
         "id": "ring_2",
-        "accepts": "ring"
+        "accepts": "ring",
+        "effects": true
       },
       {
         "id": "relic_1",
-        "accepts": "relic"
+        "accepts": "relic",
+        "effects": true
       },
       {
         "id": "relic_2",
-        "accepts": "relic"
+        "accepts": "relic",
+        "effects": true
       },
       {
         "id": "shard",
@@ -160,6 +166,19 @@
         "bonus": {
           "physicalPower": 48,
           "magicResistance": 20
+        },
+        "named": true,
+        "effects": {
+          "text": "Les coups sur un ennemi étourdi infligent 10 % de dégâts en plus.",
+          "modifiers": [
+            {
+              "key": "damageDealt",
+              "add": 0.1,
+              "conditions": [
+                "targetStunned"
+              ]
+            }
+          ]
         }
       },
       {
@@ -253,7 +272,9 @@
         },
         "fits": [
           "tree.bastion.rempart"
-        ]
+        ],
+        "named": true,
+        "set": "set.garde_de_la_tour"
       },
       {
         "id": "item.ecu_de_chene",
@@ -372,7 +393,9 @@
         },
         "fits": [
           "tree.bastion.rempart"
-        ]
+        ],
+        "named": true,
+        "set": "set.garde_de_la_tour"
       },
       {
         "id": "item.rondache_du_lac",
@@ -516,7 +539,9 @@
         },
         "fits": [
           "tree.bastion.rempart"
-        ]
+        ],
+        "named": true,
+        "set": "set.garde_de_la_tour"
       },
       {
         "id": "item.epaulieres_de_cuir",
@@ -559,7 +584,9 @@
         },
         "fits": [
           "tree.bastion.contrecoup"
-        ]
+        ],
+        "named": true,
+        "set": "set.tenue_du_veneur"
       },
       {
         "id": "item.mantelet_du_capitaine",
@@ -689,7 +716,9 @@
         },
         "fits": [
           "tree.bastion.contrecoup"
-        ]
+        ],
+        "named": true,
+        "set": "set.tenue_du_veneur"
       },
       {
         "id": "item.plastron_de_la_tour",
@@ -705,7 +734,9 @@
         },
         "fits": [
           "tree.bastion.rempart"
-        ]
+        ],
+        "named": true,
+        "set": "set.garde_de_la_tour"
       },
       {
         "id": "item.brassards_de_cuir",
@@ -795,6 +826,42 @@
         ]
       },
       {
+        "id": "item.gants_du_veneur",
+        "name": "Gants du veneur",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "hands",
+        "requiredLevel": 8,
+        "bonus": {
+          "armor": 18,
+          "physicalPower": 6
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ],
+        "named": true,
+        "set": "set.tenue_du_veneur"
+      },
+      {
+        "id": "item.gantelets_de_la_tour",
+        "name": "Gantelets de la tour",
+        "icon": "cotte_de_mailles",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "hands",
+        "requiredLevel": 15,
+        "bonus": {
+          "armor": 45,
+          "maxHealth": 30
+        },
+        "fits": [
+          "tree.bastion.rempart"
+        ],
+        "named": true,
+        "set": "set.garde_de_la_tour"
+      },
+      {
         "id": "item.ceinture_de_corde",
         "name": "Ceinture de corde",
         "icon": "gambison",
@@ -876,7 +943,9 @@
         },
         "fits": [
           "tree.bastion.contrecoup"
-        ]
+        ],
+        "named": true,
+        "set": "set.tenue_du_veneur"
       },
       {
         "id": "item.cuissards_de_la_tour",
@@ -892,7 +961,9 @@
         },
         "fits": [
           "tree.bastion.rempart"
-        ]
+        ],
+        "named": true,
+        "set": "set.garde_de_la_tour"
       },
       {
         "id": "item.bottes_de_cuir",
@@ -947,6 +1018,24 @@
         "bonus": {
           "statusResistance": 25,
           "maxEndurance": 10
+        },
+        "named": true,
+        "effects": {
+          "text": "Une parade parfaite donne une Charge de rempart de plus (au plus une fois par seconde).",
+          "triggers": [
+            {
+              "on": "onPerfectParry",
+              "role": "target",
+              "cooldownMs": 1000,
+              "effects": [
+                {
+                  "type": "gainResource",
+                  "resource": "rampartCharges",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
         }
       },
       {
@@ -959,6 +1048,24 @@
         "bonus": {
           "magicResistance": 60,
           "maxHealth": 50
+        },
+        "named": true,
+        "effects": {
+          "text": "Un coup bloqué rend 2 points de Résonance (au plus une fois par seconde).",
+          "triggers": [
+            {
+              "on": "onBlock",
+              "role": "target",
+              "cooldownMs": 1000,
+              "effects": [
+                {
+                  "type": "gainResource",
+                  "resource": "resonance",
+                  "amount": 2
+                }
+              ]
+            }
+          ]
         }
       },
       {
@@ -1329,6 +1436,226 @@
           }
         ]
       }
-    ]
+    ],
+    "sets": [
+      {
+        "id": "set.tenue_du_veneur",
+        "name": "Tenue du veneur",
+        "bonuses": [
+          {
+            "pieces": 2,
+            "text": "+8 puissance physique.",
+            "bonus": {
+              "physicalPower": 8
+            }
+          },
+          {
+            "pieces": 4,
+            "text": "Les coups sur un ennemi étourdi infligent 5 % de dégâts en plus ; +1 point d'endurance par seconde.",
+            "effects": {
+              "modifiers": [
+                {
+                  "key": "damageDealt",
+                  "add": 0.05,
+                  "conditions": [
+                    "targetStunned"
+                  ]
+                },
+                {
+                  "key": "endurance.regenPerSecond",
+                  "add": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "set.garde_de_la_tour",
+        "name": "Garde de la tour",
+        "bonuses": [
+          {
+            "pieces": 2,
+            "text": "+60 armure.",
+            "bonus": {
+              "armor": 60
+            }
+          },
+          {
+            "pieces": 4,
+            "text": "En garde, les dégâts subis baissent de 5 %.",
+            "effects": {
+              "modifiers": [
+                {
+                  "key": "damageTaken",
+                  "add": -0.05,
+                  "conditions": [
+                    "whileGuarding"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "pieces": 6,
+            "text": "+5 % de PV maximaux ; un coup bloqué rend une Charge de rempart (au plus toutes les 3 secondes).",
+            "effects": {
+              "modifiers": [
+                {
+                  "key": "maxHealth",
+                  "add": 0.05
+                }
+              ],
+              "triggers": [
+                {
+                  "on": "onBlock",
+                  "role": "target",
+                  "cooldownMs": 3000,
+                  "effects": [
+                    {
+                      "type": "gainResource",
+                      "resource": "rampartCharges",
+                      "amount": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "properties": {
+      "rarities": [
+        {
+          "rarity": "common",
+          "count": 0,
+          "scalePercent": 100
+        },
+        {
+          "rarity": "rare",
+          "count": 1,
+          "scalePercent": 100
+        },
+        {
+          "rarity": "very_rare",
+          "count": 2,
+          "scalePercent": 110
+        },
+        {
+          "rarity": "epic",
+          "count": 3,
+          "scalePercent": 120
+        },
+        {
+          "rarity": "legendary",
+          "count": 3,
+          "scalePercent": 135
+        },
+        {
+          "rarity": "mythic",
+          "count": 4,
+          "scalePercent": 150
+        }
+      ],
+      "list": [
+        {
+          "id": "property.force",
+          "name": "Force",
+          "stat": "physicalPower",
+          "min": 1,
+          "max": 3,
+          "minPerLevel": 1,
+          "maxPerLevel": 2,
+          "slots": [
+            "weapon",
+            "hands",
+            "bracers",
+            "ring",
+            "relic"
+          ]
+        },
+        {
+          "id": "property.solidite",
+          "name": "Solidité",
+          "stat": "armor",
+          "min": 3,
+          "max": 6,
+          "minPerLevel": 2,
+          "maxPerLevel": 4,
+          "slots": [
+            "shield",
+            "head",
+            "shoulders",
+            "chest",
+            "bracers",
+            "hands",
+            "legs",
+            "feet"
+          ]
+        },
+        {
+          "id": "property.vigueur",
+          "name": "Vigueur",
+          "stat": "maxHealth",
+          "min": 5,
+          "max": 10,
+          "minPerLevel": 3,
+          "maxPerLevel": 6
+        },
+        {
+          "id": "property.souffle",
+          "name": "Souffle",
+          "stat": "maxEndurance",
+          "min": 1,
+          "max": 3,
+          "minPerLevel": 0,
+          "maxPerLevel": 1,
+          "slots": [
+            "shoulders",
+            "cloak",
+            "belt",
+            "legs",
+            "feet",
+            "neck",
+            "ring"
+          ]
+        },
+        {
+          "id": "property.garde_mystique",
+          "name": "Garde mystique",
+          "stat": "magicResistance",
+          "min": 2,
+          "max": 5,
+          "minPerLevel": 2,
+          "maxPerLevel": 3,
+          "slots": [
+            "shield",
+            "head",
+            "cloak",
+            "neck",
+            "ring",
+            "relic"
+          ]
+        },
+        {
+          "id": "property.tenacite",
+          "name": "Ténacité",
+          "stat": "statusResistance",
+          "min": 2,
+          "max": 4,
+          "minPerLevel": 1,
+          "maxPerLevel": 2,
+          "slots": [
+            "head",
+            "cloak",
+            "belt",
+            "neck",
+            "ring",
+            "relic"
+          ]
+        }
+      ]
+    }
   }
 }

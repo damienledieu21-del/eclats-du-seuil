@@ -90,7 +90,7 @@ public class V11MonnaieTests
     public void Bourse_sauvegardee_en_version_6()
     {
         string text = SaveWith(34512);
-        Assert.Contains("\"schemaVersion\": 7,", text, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);
         Assert.Contains("      \"professions\": {},\n      \"money\": 34512\n    },", text, StringComparison.Ordinal);
         Assert.Contains("\"consumed\": [\n      \"zone.vallons/safe/place_du_bourg\"\n    ]", text, StringComparison.Ordinal);   // point sûr découvert
         SaveLoadResult read = SaveJsonReader.Read(text);
@@ -118,7 +118,7 @@ public class V11MonnaieTests
     [InlineData("\"money\": 34512", "\"money\": \"3 or\"", "$.data.character.money", ValidationCode.WrongType)]
     [InlineData("\"money\": 34512", "\"money\": null", "$.data.character.money", ValidationCode.WrongType)]
     [InlineData(",\n      \"money\": 34512\n", "\n", "$.data.character.money", ValidationCode.MissingField)]
-    [InlineData("\"schemaVersion\": 7", "\"schemaVersion\": 8", "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion)]
+    [InlineData("\"schemaVersion\": 9", "\"schemaVersion\": 10", "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion)]
     public void Bourse_invalide_refusee_avec_son_chemin(string from, string to, string path, ValidationCode code)
     {
         string text = SaveWith(34512);
@@ -132,7 +132,7 @@ public class V11MonnaieTests
     public void Ancienne_sauvegarde_lue_avec_une_bourse_vide()
     {
         string text = SaveWith(34512);
-        string v5 = text.Replace(",\n      \"money\": 34512\n", "\n").Replace("\"schemaVersion\": 7", "\"schemaVersion\": 5");
+        string v5 = text.Replace(",\n      \"money\": 34512\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5");
         SaveLoadResult read = SaveJsonReader.Read(v5);
         Assert.True(read.IsValid, read.Report + "\n" + v5);
         Assert.True(read.Save!.Migrated);
@@ -140,12 +140,12 @@ public class V11MonnaieTests
         Assert.Equal(new[] { "zone.vallons/safe/place_du_bourg" }, read.Save.Consumed);
         // Réécrite à la version courante, avec la bourse.
         string rewritten = SaveJsonReader.Write(read.Save);
-        Assert.Contains("\"schemaVersion\": 7,", rewritten, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 9,", rewritten, StringComparison.Ordinal);
         Assert.Contains("\"money\": 0\n", rewritten, StringComparison.Ordinal);
         // Une bourse dans une sauvegarde de version 5 n'existe pas encore : champ inconnu (en JSON comme en objets publics).
         Assert.Equal(("$.data.character.money", ValidationCode.UnknownField),
-            (Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 7", "\"schemaVersion\": 5")).Report.Errors).Path,
-             Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 7", "\"schemaVersion\": 5")).Report.Errors).Code));
+            (Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5")).Report.Errors).Path,
+             Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5")).Report.Errors).Code));
         var report = new ValidationReport();
         var document = new SaveDocument();
         JsonHeader header = JsonInput.Parse(JsonInput.Utf8(v5, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
