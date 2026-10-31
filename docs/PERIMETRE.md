@@ -36,7 +36,9 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Enchaînements, jauge d'équilibre, exécution, interruption, points faibles, coup plongeant | Lancement | Profondeur du combat, après la base | 3 |
 | Éléments et réactions (feu, glace, foudre, Lumière, Ombre, Seuil) | Lancement | Liés aux six résistances et aux régions | 3, 34 |
 | Analyse après le combat, salle d'entraînement contre les boss vaincus | Lancement | Facile avec le moteur, pas indispensable aux testeurs | 3, 33 |
-| Combinaisons entre classes, quête, mentor et secrets de classe | Lancement | Les premiers combos dès 8 classes | 1, H8 |
+| Combinaisons entre classes (plus de 40, livre des combos), ordre et quête de classe en chapitres, secrets | Lancement | Les premiers combos dès 8 classes | 1, 22, H8 |
+| Rythme, signature (couleur, son, symbole) et silhouette propres à chaque classe | Alpha | Les 5 classes doivent se reconnaître d'un coup d'œil | 22 |
+| Quête légendaire et arme unique par classe, essai gratuit à la Salle des Héros, hall des grands maîtres | Plus tard | Contenu d'après l'histoire | 22 |
 | Roue des classes, réglages séparés arène et monstres, agent « équilibreur », page publique | Lancement | Sert quand il y a l'arène et 8 classes | 37 |
 | Boss à phases qui s'adaptent, Gardien qui apprend ta façon de jouer | Lancement | Premiers boss qui s'adaptent dès le lancement | 3, VSF |
 | Double classe, changement de classe, classes légendaires cachées | Plus tard | Demande beaucoup de classes finies | 1 |
@@ -150,7 +152,8 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Mort : retour au dernier point sûr, sans perte | Vallons | Déjà fait | 33, Q8 |
 | Plafond qui monte : 25 en alpha, relevé à chaque extension | Alpha | Décidé ; chiffre du lancement à fixer | 54 |
 | Refonte des arbres ; talents changés chez le maître de classe | Alpha | Proposée pour l'alpha (L11-D1) | Q18, Q21 |
-| 7 caractéristiques (avec la Constitution), 2 points par niveau, écran détaillé | Alpha | Personnages des testeurs stables | 34 |
+| 7 caractéristiques (avec la Constitution), 2 points par niveau, effet exact de chaque point, rendements décroissants | Alpha | Personnages des testeurs stables | 34 |
+| Seuils tous les 50 points, caractéristiques visibles sur le personnage, répartitions enregistrées | Lancement | Façons de jouer en plus, après la base | 34 |
 | Relever un allié, relevés limités pendant un boss | Alpha | Indispensable dès qu'on joue à plusieurs | 33 |
 | Barre de consommables à part ; bonus gardés à la mort, arrêtés hors ligne | Alpha | Combat à plusieurs classes, règle du serveur | 36 |
 | Création du personnage après le souvenir (simple en alpha, très poussée au lancement) | Alpha | Ordre des premières minutes | 21, 8 |
@@ -275,7 +278,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Clin d'œil caché du maître boulanger | Lancement | Signature du créateur, peu cher | 13 |
 | Saisons visibles, traces des joueurs | Plus tard | Avec les saisons du monde | 49 |
 | Chansons de taverne, juke-box de la maison | Plus tard | Vie du serveur | 48 |
-| Concept-artists, artiste pour le Bastion, les Gardiens et les boss | Plus tard | Décision d'argent de Damien | 49, 18 |
+| Équipe payée (d'abord un artiste 3D et animateur), concept-artists | Plus tard | Décision d'argent de Damien | 49, 18, 54 |
 | Capture de mouvement, loups et sangliers payants | Plus tard | Décision d'argent de Damien | 49, VSF |
 | Compositeur, orchestre, concerts, chœurs de l'Envers | Plus tard | Décision d'argent de Damien | 18, 48, 13 |
 | Voix des grandes scènes (comédiens ou voix générées) | Plus tard | Décision d'argent de Damien | 13, 48 |
@@ -333,10 +336,10 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 
 | Élément | Étape | Pourquoi | Sujet |
 |---|---|---|---|
-| Licences des ressources dans `CREDITS.md` | Vallons | Déjà tenu | 18, 23 |
+| Licences et origine de chaque contenu (`CREDITS.md`, registre Claude, Damien, gratuit, acheté) | Vallons | Déjà tenu ; sert à la déclaration de l'IA | 18, 23, 54 |
 | Marque à l'INPI avant de montrer le jeu | Alpha | Avant les vidéos ; dépense à confirmer par Damien | 23, 54 |
 | Données au strict minimum, serveurs en Europe, confidentialité courte | Alpha | Dès qu'il y a des comptes | 23 |
-| Discord, comptes des réseaux créés par Damien | Alpha | Testeurs et annonces | 16, 17 |
+| Discord, comptes des réseaux et nom de domaine réservés par Damien | Alpha | Testeurs et annonces ; réserver tôt | 16, 17, 54 |
 | Vidéos du journal de développement | Alpha | Après l'INPI, chaque publication avec l'accord de Damien | 17 |
 | Programme de testeurs « Pionnier de l'Alpha » | Alpha | C'est l'alpha | 17 |
 | Langues : français en alpha, français et anglais au lancement | Lancement | Décidé par Damien | 52 |
@@ -345,6 +348,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Marque en Europe (EUIPO), entreprise avant la première vente | Lancement | Avant l'anglais et la boutique ; dépenses à confirmer | 54, 23 |
 | Conditions et mentions légales relues par un professionnel, accord parental | Lancement | Dépense à décider ; jeu dès 12 ans | 23 |
 | PEGI par IARC, déclaration honnête de l'IA sur Steam | Lancement | Liste du lancement | 54 |
+| Feuille de route de l'entreprise (compte et assurance pros), aides publiques (CNC, crédit d'impôt, Bpifrance), DSA | Lancement | Avant la première vente, à vérifier avec un professionnel | 54 |
 | Jeu gratuit, boutique d'apparences et de confort, abonnement de confort | Lancement | Modèle décidé | 6 |
 | Aucune puissance vendue, aucun coffre au hasard, aucune publicité, prestige non vendu | Lancement | Promesse publique | 6, 44 |
 | Prix en euros, achats par les magasins utiles partout, limites pour les jeunes | Lancement | Boutique honnête | 6, 54 |
@@ -363,10 +367,11 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Élément | Étape | Pourquoi | Sujet |
 |---|---|---|---|
 | Agents en parallèle, une seule vérification, tests plus rapides | Vallons | Décidé pour aller plus vite | 18 |
-| Testeurs amis dès la vague 1, Damien au moins 25 h par semaine | Vallons | Essais et relectures | 18, 54 |
+| Testeurs amis dès la vague 1, Damien au moins 25 h par semaine, un jour sans le jeu | Vallons | Essais et relectures groupés | 18, 54 |
 | Sauvegarde du dossier des ressources, bouton « Préparer et lancer l'essai » | Vallons | Gagne du temps à chaque essai | 18 |
 | Fiche par achat possible, point chaque semaine | Vallons | Règle des dépenses | 18 |
 | Équipe à trois jusqu'à l'alpha ; agent neuf avant Codex dès le lot 13 | Alpha | Décidé | 18 |
+| Tableau de bord du projet, plafond de dépenses mensuel, sauvegardes en trois copies, plan de secours | Alpha | Les premières dépenses arrivent avec le serveur | 54 |
 | Éditeur interne (quêtes, dialogues, créatures, bouton « Essayer ») | Alpha | Décidé au lot 13-14, avant les centaines de quêtes | 54 |
 | Carnet d'essai dans le jeu, bug envoyé avec le journal du combat | Alpha | Sert aux testeurs | 18, 25 |
 | Statistiques sans nom, désactivables : difficulté, parcours, économie, technique | Alpha | Le but de l'alpha | 25 |
