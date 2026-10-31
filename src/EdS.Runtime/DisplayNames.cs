@@ -28,6 +28,7 @@ namespace EdS.Runtime
             ["chef_des_bandits"] = "Chef des bandits",
             ["chef_des_bandits_furieux"] = "Chef des bandits furieux",
             ["loup_blanc"] = "Loup blanc",
+            ["le_borgne"] = "Le Borgne",   // sous-lot V1.7 : le bandit nommé (prime et épreuve de la guilde)
         };
 
         private static readonly Dictionary<string, string> Attacks = new Dictionary<string, string>(StringComparer.Ordinal)

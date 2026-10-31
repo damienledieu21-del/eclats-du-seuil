@@ -7,6 +7,7 @@ using EdS.Data;
 using EdS.Data.Characters;
 using EdS.Data.Classes;
 using EdS.Data.Crafting;
+using EdS.Data.Guild;
 using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Merchants;
@@ -198,9 +199,10 @@ namespace EdS.Runtime
         public string? SaveProblem { get; }
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
-            StoryBook story, CraftingBook crafting, MerchantBook merchants, string savePath)
+            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath)
         {
             _market = new Market(merchants);   // sous-lot V1.1 : une seule instance, d'une session à l'autre (lots rachetables)
+            _guild = guild;   // sous-lot V1.7
             _data = data;
             _progression = progression;
             _items = items;
@@ -253,8 +255,11 @@ namespace EdS.Runtime
             StoryBook storyBook = Need(story.Story, "histoire", () => story.Report);
             // Sous-lot V1.1 : marchands et valeur des objets.
             MerchantsLoadResult merchants = MerchantJsonReader.ReadFile(MerchantJsonReader.PathIn(dataDirectory), catalogTexts, storyBook, catalog);
+            MerchantBook merchantBook = Need(merchants.Book, "marchands", () => merchants.Report);
+            // Sous-lot V1.7 : la Guilde des aventuriers (rangs, contrats, épreuves, portes, boutique).
+            GuildLoadResult guild = GuildJsonReader.ReadFile(GuildJsonReader.PathIn(dataDirectory), catalogTexts, storyBook, definition, zones.Zones, catalog, merchantBook);
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, Need(crafting.Book, "métiers", () => crafting.Report),
-                Need(merchants.Book, "marchands", () => merchants.Report), savePath);
+                merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath);
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -268,13 +273,14 @@ namespace EdS.Runtime
 
         /// <summary>Session de <paramref name="zone"/> prête à jouer, sans rien changer à l'aventure (<see cref="Commit"/> la met en jeu).</summary>
         private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door) =>
-            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market);
+            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market, _guild);
 
         private void Commit(WorldSession world)
         {
             World = world;
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
             Shop = null;
+            GuildOpen = false;   // sous-lot V1.7 : et le tableau de la guilde
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, PlayerId, () => Collect(world, world.Step()), TargetRange);
             _drunk.Clear();
             _strandedAnnounced = false;
@@ -449,6 +455,16 @@ namespace EdS.Runtime
                 case StoryEventKind.RewardToChoose:
                     Say("text.ui.reward_to_choose", Text(_story.Quest(e.Id).Name));
                     break;
+                // Sous-lot V1.7 : la Guilde des aventuriers.
+                case StoryEventKind.GuildJoined:
+                case StoryEventKind.GuildPoints:
+                case StoryEventKind.GuildPromoted:
+                case StoryEventKind.ContractTaken:
+                case StoryEventKind.ContractAbandoned:
+                case StoryEventKind.ContractDone:
+                case StoryEventKind.TitleShown:
+                    GuildMessage(e);
+                    break;
                 case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
                     Say("text.ui.safe_point_found", _zone.SafePoints.FirstOrDefault(sp => sp.Id == e.Id)?.Name ?? e.Id);
                     break;
@@ -522,7 +538,10 @@ namespace EdS.Runtime
                     TradeRefusal shop = World.CanTrade(merchant.Id);
                     if (shop == TradeRefusal.None) return OpenShop(merchant.Id);
                     if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
+                    if (shop == TradeRefusal.RankTooLow) Say("text.ui.trade.ranktoolow");   // sous-lot V1.7 : la réserve de la guilde
                 }
+                // Sous-lot V1.7 : parler à la maîtresse de guilde ouvre son tableau (inscription, contrats, épreuve).
+                if (IsGuildmistress(npc.Id)) return OpenGuild();
                 DialogueRefusal refusal = World.Talk(npc.Id, out _);
                 // Relecture de la PR #76 : un PNJ sans rien à dire, mais à qui l'on vient de parler ou de livrer pour une quête : l'objectif
                 // rempli s'annonce (au tick suivant), pas « rien à dire ».
@@ -571,6 +590,12 @@ namespace EdS.Runtime
             if (!CanUseDoor)
             {
                 Say("text.ui.door_blocked");
+                return false;
+            }
+            // Sous-lot V1.7 : une porte gardée par un rang de la guilde (les archives de la guilde au rang F).
+            if (World.DoorNeedsRank(door.Id) is string rank)
+            {
+                Say("text.ui.guild.door_rank", RankName(rank));
                 return false;
             }
             ZoneDefinition target = _zones.First(z => z.Id == door.To);
@@ -1114,6 +1139,9 @@ namespace EdS.Runtime
                 if (npc != null && npc.Zone == (World.InStoryZone ? null : _zone.Id)) return At(npc.Position);
                 // Intérieurs : le PNJ vit dans une pièce dont une porte est ici ; sinon, dans une pièce, la porte de sortie.
                 if (npc?.Zone != null && _zone.Doors.FirstOrDefault(d => d.To == npc.Zone) is Door toNpc) return At(toNpc.Position);
+                // Sous-lot V1.7 : une pièce derrière une autre (les archives, derrière la guilde) : la porte de la pièce qui y mène.
+                if (npc?.Zone != null && _zone.Doors.FirstOrDefault(d => _zones.FirstOrDefault(z => z.Id == d.To)?.Doors.Any(x => x.To == npc.Zone) == true) is Door via)
+                    return At(via.Position);
                 if (!World.InStoryZone)
                 {
                     if (o.Kind == ObjectiveKind.Collect || o.Kind == ObjectiveKind.Equipped || _zone.Doors.Count == 0) return null;
