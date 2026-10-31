@@ -89,6 +89,51 @@ public class V16RelectureTests
     }
 
     [Fact]
+    public void Quete_a_recompense_au_choix_ouvre_la_suivante_sur_questReward()
+    {
+        // Revue Codex de la PR #76 : l'état d'après la dernière étape d'une quête à récompense au choix est l'attente du choix. La suivante,
+        // ouverte sur questReward, commence ; ouverte sur questDone, elle ne commence pas trop tôt (l'étape attend, rien n'est pris).
+        WorldSession Play(string gate)
+        {
+            StoryBook book = NearDoor("npc.aubergiste", r =>
+            {
+                Quest(r, Bete)["requires"] = new JsonArray(new JsonObject { ["if"] = gate, ["id"] = Peaux });
+                Quest(r, Peaux)["effects"]!.AsArray().Add(new JsonObject { ["do"] = "startQuest", ["id"] = Bete });
+            });
+            WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 3)), Peaux, "peaux"));
+            w.Talk("npc.aubergiste", out _);
+            return w;
+        }
+        WorldSession reward = Play("questReward");
+        List<string> events = Steps(reward, 10);
+        Assert.Contains($"QuestStarted {Bete}/temoin", events);
+        Assert.Contains($"RewardToChoose {Peaux}", events);
+        Assert.True(reward.Narrative!.IsChoosingReward(Peaux) && reward.Narrative.IsActive(Bete));
+        Assert.Equal(0, reward.Inventory.Count("item.peau_de_loup"));
+
+        WorldSession done = Play("questDone");
+        Assert.Equal(new[] { $"ObjectiveDone {Peaux}/peaux", $"QuestLocked {Peaux}/peaux" }, Steps(done, 10));
+        Assert.False(done.Narrative!.IsActive(Bete) || done.Narrative.IsChoosingReward(Peaux));
+        Assert.Equal(3, done.Inventory.Count("item.peau_de_loup"));
+    }
+
+    [Fact]
+    public void Quete_donnee_deux_fois_refusee_sans_exception()
+    {
+        // Revue Codex de la PR #76 : un identifiant de quête en double (avec des conditions d'ouverture) est un refus précis, jamais une
+        // exception avant le rapport.
+        JsonObject root = StoryJson();
+        Quest(root, Bete)["requires"] = new JsonArray(new JsonObject { ["if"] = "questDone", ["id"] = Peaux });
+        root["data"]!["quests"]!.AsArray().Add(Quest(root, Peaux).DeepClone());
+        root["data"]!["quests"]!.AsArray().Add(Quest(root, Bete).DeepClone());
+        StoryLoadResult r = Read(root);
+        Assert.False(r.IsValid);
+        Assert.Contains(r.Report.Errors, e => e.Path == "$.data.quests[3].id" && e.Code == ValidationCode.DuplicateId);
+        Assert.Contains(r.Report.Errors, e => e.Path == "$.data.quests[4].id" && e.Code == ValidationCode.DuplicateId);
+        Assert.DoesNotContain(r.Report.Errors, e => e.Path.Contains("requires", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Etape_finale_refusee_ne_prend_jamais_les_objets()
     {
         // La dernière étape prend aussi 50 cuivre : la bourse est vide, l'étape attend, et les peaux restent dans le sac (rien n'est pris

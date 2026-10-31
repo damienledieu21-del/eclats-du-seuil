@@ -504,7 +504,9 @@ namespace EdS.World
                 var applied = new List<StoryEvent>();
                 // Relecture de la PR #76 : les effets se jugent dans l'état d'après l'étape (une quête qui en commence une autre ouverte « après
                 // elle », questDone, la commence) ; refusés, la quête revient à son état.
-                _quests[id] = last ? (-1, 0L) : (step + 1, 0L);
+                // Revue Codex de la PR #76 : avec une récompense au choix, l'état d'après est l'attente du choix (questReward vrai, questDone
+                // faux), pas la quête finie.
+                _quests[id] = choose ? (quest.Steps.Count, 0L) : last ? (-1, 0L) : (step + 1, 0L);
                 DialogueRefusal blocked = Apply(effects, applied);
                 _quests[id] = (step, progress);
                 if (blocked != DialogueRefusal.None)

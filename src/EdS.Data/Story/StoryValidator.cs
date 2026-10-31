@@ -283,8 +283,12 @@ namespace EdS.Data.Story
             private void CheckRequirementCycles(IReadOnlyList<Quest> quests)
             {
                 static bool Gate(StoryCondition c) => c.Kind is ConditionKind.QuestDone or ConditionKind.QuestActive or ConditionKind.QuestAt or ConditionKind.QuestReward;
-                var edges = quests.ToDictionary(q => q.Id, q => q.Requires.Where(Gate).Select(c => c.Id).Where(t => t != q.Id).Distinct(StringComparer.Ordinal).ToList(),
-                    StringComparer.Ordinal);
+                // Revue Codex de la PR #76 : un identifiant de quête donné deux fois est déjà refusé (Declare) ; seule sa première quête compte
+                // ici (jamais d'exception avant le rapport).
+                var edges = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                foreach (Quest q in quests)
+                    if (!edges.ContainsKey(q.Id))
+                        edges[q.Id] = q.Requires.Where(Gate).Select(c => c.Id).Where(t => t != q.Id).Distinct(StringComparer.Ordinal).ToList();
                 bool Reaches(string from, string to)
                 {
                     var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -303,6 +307,7 @@ namespace EdS.Data.Story
                 for (int i = 0; i < _d.Quests.Count; i++)
                 {
                     if (_d.Quests[i]?.Id is not string id || quests.FirstOrDefault(q => q.Id == id) is not Quest quest) continue;
+                    if (_d.Quests.Take(i).Any(earlier => earlier?.Id == id)) continue;   // doublon : déjà refusé à son identifiant
                     for (int j = 0; j < quest.Requires.Count; j++)
                     {
                         StoryCondition c = quest.Requires[j];

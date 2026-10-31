@@ -226,7 +226,7 @@ Une étape se franchit au tick suivant, avec ses effets ; parler ou livrer s'ann
 
 **Quêtes qui s'ouvrent** (`requires`, conditions de dialogue, dont la nouvelle `levelAtLeast`) : un `startQuest` sur une quête encore fermée est refusé en entier (`Locked` ; une étape attend, `QuestLocked`) et une réponse qui la commencerait **n'est pas proposée**. « Après une autre quête » s'écrit `questDone`. Relecture de la PR #76 :
 
-- les effets d'une étape se jugent **dans l'état d'après l'étape** : une quête dont la fin commence la suivante, ouverte « après elle » (`questDone`), la commence bien ;
+- les effets d'une étape se jugent **dans l'état d'après l'étape** : une quête dont la fin commence la suivante, ouverte « après elle » (`questDone`), la commence bien ; pour une quête à récompense au choix, l'état d'après est **l'attente du choix** (revue Codex de la PR #76) : la suivante s'ouvre alors sur `questReward`, pas sur `questDone` (qui ne serait vrai qu'après le choix : une telle fin attendrait, `QuestLocked`) ;
 - l'ouverture se juge **après l'expérience donnée par les mêmes effets** : une réponse qui donne le niveau 3 et commence une quête du niveau 3 est proposée et passe (piège d'écriture évité : l'ordre des effets ne compte pas) ;
 - le validateur refuse une quête qui s'ouvre sur son propre état (`questDone`, `questActive`, `questAt`, `questReward` sur elle-même) et les **cycles** d'ouverture (A après B, B après A), à leur chemin `quests[i].requires[j]`.
 
