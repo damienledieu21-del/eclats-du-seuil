@@ -1,0 +1,147 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 13,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 118,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          88,
+          60
+        ],
+        "max": [
+          140,
+          100
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [
+      {
+        "id": "chef_des_bandits",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 320,
+        "armor": 30,
+        "magicResistance": 20,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 17,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.8
+          },
+          {
+            "id": "charge_du_chef",
+            "rawDamage": 24,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 8,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 1.5
+          }
+        ],
+        "position": [
+          132,
+          92
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.7,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "chef_des_bandits_furieux",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 380,
+        "armor": 30,
+        "magicResistance": 20,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1700,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.8
+          },
+          {
+            "id": "charge_du_chef",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 9,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "tourbillon",
+            "rawDamage": 24,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 3,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          130,
+          90
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.7,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 10,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

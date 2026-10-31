@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/story.schema.json",
   "title": "Éclats du Seuil — PNJ, dialogues, quêtes",
-  "description": "Sous-lot 12.5 ; sous-lot V1.1 (schéma 2) : effet giveMoney. Documentation. La validation qui fait foi est celle du programme (StoryValidator), avec les textes, la zone et le catalogue des objets.",
+  "description": "Sous-lot 12.5 ; sous-lot V1.1 (schéma 2) : effet giveMoney ; sous-lot V1.6 (schéma 3) : catégorie de quête (category), conditions d'ouverture (requires), récompenses au choix (rewardChoice), objectifs talk, deliver (npc), defeatFamily, equipped, effet takeMoney, condition levelAtLeast, zone d'un PNJ (intérieur). Documentation. La validation qui fait foi est celle du programme (StoryValidator), avec les textes, la zone, ses intérieurs et le catalogue des objets.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "kind": {
       "const": "story"
@@ -65,6 +65,11 @@
               },
               "dialogue": {
                 "type": "string"
+              },
+              "zone": {
+                "type": "string",
+                "pattern": "^zone\\.[a-z][a-z0-9_]*$",
+                "description": "Sous-lot V1.6 : intérieur où vit le PNJ (absent : la zone de l'histoire)."
               }
             }
           }
@@ -98,42 +103,7 @@
                   ],
                   "properties": {
                     "conditions": {
-                      "type": "array",
-                      "maxItems": 8,
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "if"
-                        ],
-                        "properties": {
-                          "if": {
-                            "enum": [
-                              "fact",
-                              "notFact",
-                              "questNotStarted",
-                              "questActive",
-                              "questAt",
-                              "questDone",
-                              "trustAtLeast",
-                              "trustBelow",
-                              "hasItem",
-                              "phase",
-                              "inPlace",
-                              "passageOpen"
-                            ]
-                          },
-                          "id": {
-                            "type": "string"
-                          },
-                          "value": {
-                            "type": "integer"
-                          },
-                          "step": {
-                            "type": "string"
-                          }
-                        }
-                      }
+                      "$ref": "#/$defs/conditions"
                     },
                     "node": {
                       "type": "string"
@@ -180,74 +150,10 @@
                             "pattern": "^text(\\.[a-z0-9_]+)+$"
                           },
                           "conditions": {
-                            "type": "array",
-                            "maxItems": 8,
-                            "items": {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": [
-                                "if"
-                              ],
-                              "properties": {
-                                "if": {
-                                  "enum": [
-                                    "fact",
-                                    "notFact",
-                                    "questNotStarted",
-                                    "questActive",
-                                    "questAt",
-                                    "questDone",
-                                    "trustAtLeast",
-                                    "trustBelow",
-                                    "hasItem",
-                                    "phase",
-                                    "inPlace",
-                                    "passageOpen"
-                                  ]
-                                },
-                                "id": {
-                                  "type": "string"
-                                },
-                                "value": {
-                                  "type": "integer"
-                                },
-                                "step": {
-                                  "type": "string"
-                                }
-                              }
-                            }
+                            "$ref": "#/$defs/conditions"
                           },
                           "effects": {
-                            "type": "array",
-                            "maxItems": 8,
-                            "items": {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": [
-                                "do"
-                              ],
-                              "properties": {
-                                "do": {
-                                  "enum": [
-                                    "setFact",
-                                    "trust",
-                                    "startQuest",
-                                    "giveItem",
-                                    "takeItem",
-                                    "giveXp",
-                                    "giveMoney",
-                                    "openPassage",
-                                    "discover"
-                                  ]
-                                },
-                                "id": {
-                                  "type": "string"
-                                },
-                                "value": {
-                                  "type": "integer"
-                                }
-                              }
-                            }
+                            "$ref": "#/$defs/effects"
                           },
                           "next": {
                             "anyOf": [
@@ -277,6 +183,7 @@
             "required": [
               "id",
               "name",
+              "category",
               "steps",
               "effects"
             ],
@@ -305,7 +212,13 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "pattern": "^[a-z][a-z0-9_]*$"
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "not": {
+                        "enum": [
+                          "done",
+                          "reward"
+                        ]
+                      }
                     },
                     "text": {
                       "type": "string",
@@ -325,7 +238,11 @@
                             "reach",
                             "defeat",
                             "collect",
-                            "passage"
+                            "passage",
+                            "talk",
+                            "deliver",
+                            "defeatFamily",
+                            "equipped"
                           ]
                         },
                         "id": {
@@ -334,72 +251,52 @@
                         "value": {
                           "type": "integer",
                           "minimum": 1
+                        },
+                        "npc": {
+                          "type": "string"
                         }
                       }
                     },
                     "effects": {
-                      "type": "array",
-                      "maxItems": 8,
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "do"
-                        ],
-                        "properties": {
-                          "do": {
-                            "enum": [
-                              "setFact",
-                              "trust",
-                              "startQuest",
-                              "giveItem",
-                              "takeItem",
-                              "giveXp",
-                              "giveMoney",
-                              "openPassage",
-                              "discover"
-                            ]
-                          },
-                          "id": {
-                            "type": "string"
-                          },
-                          "value": {
-                            "type": "integer"
-                          }
-                        }
-                      }
+                      "$ref": "#/$defs/effects"
                     }
                   }
                 }
               },
               "effects": {
+                "$ref": "#/$defs/effects"
+              },
+              "category": {
+                "enum": [
+                  "main",
+                  "side"
+                ]
+              },
+              "requires": {
+                "$ref": "#/$defs/conditions"
+              },
+              "rewardChoice": {
                 "type": "array",
-                "maxItems": 8,
+                "minItems": 2,
+                "maxItems": 3,
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
                   "required": [
-                    "do"
+                    "do",
+                    "id",
+                    "value"
                   ],
                   "properties": {
                     "do": {
-                      "enum": [
-                        "setFact",
-                        "trust",
-                        "startQuest",
-                        "giveItem",
-                        "takeItem",
-                        "giveXp",
-                        "giveMoney",
-                        "openPassage",
-                        "discover"
-                      ]
+                      "const": "giveItem"
                     },
                     "id": {
                       "type": "string"
                     },
                     "value": {
-                      "type": "integer"
+                      "type": "integer",
+                      "minimum": 1
                     }
                   }
                 }
@@ -429,6 +326,87 @@
             }
           }
         }
+      }
+    }
+  },
+  "$defs": {
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "if"
+      ],
+      "properties": {
+        "if": {
+          "enum": [
+            "fact",
+            "notFact",
+            "questNotStarted",
+            "questActive",
+            "questAt",
+            "questDone",
+            "trustAtLeast",
+            "trustBelow",
+            "hasItem",
+            "phase",
+            "inPlace",
+            "passageOpen",
+            "levelAtLeast",
+            "questReward"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "value": {
+          "type": "integer"
+        },
+        "step": {
+          "type": "string"
+        }
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/condition"
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "do"
+      ],
+      "properties": {
+        "do": {
+          "enum": [
+            "setFact",
+            "trust",
+            "startQuest",
+            "giveItem",
+            "takeItem",
+            "giveXp",
+            "giveMoney",
+            "takeMoney",
+            "openPassage",
+            "discover"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "value": {
+          "type": "integer"
+        }
+      }
+    },
+    "effects": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/effect"
       }
     }
   }

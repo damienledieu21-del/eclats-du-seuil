@@ -658,6 +658,10 @@ namespace EdS.Runtime
                 if (Free(x, z)) list.Add(new StyleVillager(id, who, activity, x, z, yaw));
             }
             double cx = (map.MinX + map.MaxX) / 2, cz = (map.MinZ + map.MaxZ) / 2;
+            // Sous-lot V1.6 : les PNJ qui parlent (aubergiste, prêtre, habitant) ont leur corps à leur place, tourné vers le milieu de la pièce,
+            // avant les villageois de décor (qui ne se posent pas sur eux).
+            foreach ((string id, double x, double z) in map.Speakers)
+                list.Add(new StyleVillager(id, "paysan", VillagerActivity.Talk, x, z, Math.Atan2(cx - x, cz - z) * 180 / Math.PI));
             foreach (Box b in boxes)
             {
                 switch (b.Kind)

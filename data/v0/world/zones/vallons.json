@@ -1,6 +1,6 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "zone",
   "contentVersion": "0.2.0-provisoire",
   "data": {
@@ -430,6 +430,41 @@
         "respawnMs": 120000,
         "leashRange": 20,
         "loot": "loot.archer"
+      },
+      {
+        "creature": "bandit_epee1",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_epee2",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc1",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit_arc",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc2",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit_arc",
+        "family": "bandit"
+      },
+      {
+        "creature": "loup_blanc",
+        "respawnMs": 600000,
+        "leashRange": 25,
+        "loot": "loot.loup_blanc",
+        "family": "loup_blanc"
       }
     ],
     "passages": [
@@ -776,6 +811,24 @@
         "to": "zone.maison",
         "toDoor": "sortie",
         "building": "maison5"
+      }
+    ],
+    "chiefs": [
+      {
+        "id": "chef_des_bandits",
+        "scenario": "zones/vallons_bandits",
+        "forms": [
+          "chef_des_bandits",
+          "chef_des_bandits_furieux"
+        ],
+        "fact": "fact.chef_des_bandits.vaincu",
+        "rewards": [
+          {
+            "item": "item.rondache_cerclee",
+            "count": 1
+          }
+        ],
+        "loot": "loot.chef_des_bandits"
       }
     ]
   }

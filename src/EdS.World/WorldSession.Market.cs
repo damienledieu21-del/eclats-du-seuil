@@ -32,6 +32,13 @@ namespace EdS.World
             return true;
         }
 
+        bool INarrativeWorld.TakeMoney(long copper)
+        {
+            if (copper < 0 || copper > _character.Money) return false;
+            _character = _character.WithMoney(checked(_character.Money - copper));
+            return true;
+        }
+
         private Market NeedMarket() => Market ?? throw new InvalidOperationException("Partie sans commerce.");
 
         /// <summary>Marchand tenu par le PNJ <paramref name="npc"/>, ou null (ou sans commerce).</summary>

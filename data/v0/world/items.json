@@ -1328,6 +1328,66 @@
             "chancePercent": 20
           }
         ]
+      },
+      {
+        "id": "loot.bandit",
+        "drops": [
+          {
+            "item": "item.potion_de_soin",
+            "count": 1,
+            "chancePercent": 30
+          },
+          {
+            "item": "item.cotte_de_mailles",
+            "count": 1,
+            "chancePercent": 3
+          }
+        ]
+      },
+      {
+        "id": "loot.bandit_arc",
+        "drops": [
+          {
+            "item": "item.fleche_brisee",
+            "count": 2,
+            "chancePercent": 70
+          },
+          {
+            "item": "item.potion_de_soin",
+            "count": 1,
+            "chancePercent": 20
+          }
+        ]
+      },
+      {
+        "id": "loot.chef_des_bandits",
+        "drops": [
+          {
+            "item": "item.potion_de_soin",
+            "count": 2,
+            "chancePercent": 100
+          },
+          {
+            "item": "item.epee_de_garde",
+            "count": 1,
+            "chancePercent": 25
+          }
+        ]
+      },
+      {
+        "id": "loot.loup_blanc",
+        "drops": [
+          {
+            "item": "item.peau_de_loup",
+            "count": 3,
+            "chancePercent": 100
+          },
+          {
+            "item": "item.talisman_du_seuil",
+            "count": 1,
+            "chancePercent": 10
+          }
+        ]
       }
     ]
   }

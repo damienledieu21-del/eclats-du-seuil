@@ -44,6 +44,7 @@ public class Lot125StoryTests
             scenario(s);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));   // sous-lot 12.7 : formes du chef
+            File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
         }
         try
         {
@@ -57,13 +58,13 @@ public class Lot125StoryTests
         }
     }
 
-    private static StoryBook Book(ZoneDefinition zone) => StoryJsonReader.ReadStoryFile(StoryPath, Texts, zone, Items).Story!;
+    private static StoryBook Book(ZoneDefinition zone) => StoryJsonReader.ReadStoryFile(StoryPath, Texts, zone, Items, V16TestData.Interiors).Story!;
 
     private static StoryLoadResult Mutated(Action<JsonObject> mutate)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(StoryPath))!.AsObject();
         mutate(root);
-        return StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), Items);
+        return StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), Items, V16TestData.Interiors);
     }
 
     private static JsonObject Data(JsonObject root) => root["data"]!.AsObject();
@@ -170,7 +171,7 @@ public class Lot125StoryTests
         StoryDocument story = StoryJsonReader.ReadStoryDocument(JsonInput.Utf8(File.ReadAllText(StoryPath), report), report);
         Assert.True(report.IsValid);
         story.Data!.Npcs![0]!.Position = new EdS.Data.Scenarios.PointData { X = EdS.Domain.Numerics.Fixed.Zero };
-        StoryLoadResult result = StoryValidator.Validate(story, Texts, Zone(), Items);
+        StoryLoadResult result = StoryValidator.Validate(story, Texts, Zone(), Items, null, V16TestData.Interiors);
         Assert.Contains(result.Report.Errors, e => e.Path == "$.data.npcs[0].position" && e.Code == ValidationCode.MissingField);
     }
 
@@ -192,15 +193,15 @@ public class Lot125StoryTests
         ZoneDefinition zone = Zone();
         StoryDocument step = Read();
         FirstCondition(step, "questActive").Step = "retour";
-        Assert.Contains(StoryValidator.Validate(step, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".step", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        Assert.Contains(StoryValidator.Validate(step, Texts, zone, Items, null, V16TestData.Interiors).Report.Errors, e => e.Path.EndsWith(".step", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
         StoryDocument value = Read();
         FirstEffect(value, "setFact").Value = 3;
-        Assert.Contains(StoryValidator.Validate(value, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".value", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        Assert.Contains(StoryValidator.Validate(value, Texts, zone, Items, null, V16TestData.Interiors).Report.Errors, e => e.Path.EndsWith(".value", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
         StoryDocument id = Read();
         TermData xp = id.Data!.Quests!.SelectMany(q => q!.Steps!).SelectMany(s => s!.Effects!).First(r => r!.Kind == "giveXp")!;
         xp.Id = "fact.x";
-        Assert.Contains(StoryValidator.Validate(id, Texts, zone, Items).Report.Errors, e => e.Path.EndsWith(".id", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
-        Assert.True(StoryValidator.Validate(Read(), Texts, zone, Items).IsValid);
+        Assert.Contains(StoryValidator.Validate(id, Texts, zone, Items, null, V16TestData.Interiors).Report.Errors, e => e.Path.EndsWith(".id", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue);
+        Assert.True(StoryValidator.Validate(Read(), Texts, zone, Items, null, V16TestData.Interiors).IsValid);
     }
 
     [Fact]
@@ -222,10 +223,12 @@ public class Lot125StoryTests
         Assert.Equal("fr", texts.Texts!.Language);
         Assert.Equal("Odile, la meunière", texts.Texts.Get("text.npc.odile.name"));
         Assert.Equal("text.inconnu", texts.Texts.Get("text.inconnu"));   // jamais d'exception à l'affichage
-        StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryPath, texts.Texts, Zone(), Items);
+        StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryPath, texts.Texts, Zone(), Items, V16TestData.Interiors);
         Assert.True(story.IsValid, story.Report.ToString());
         StoryBook book = story.Story!;
-        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere" }, book.Npcs.Select(n => n.Id));   // V1.1 : les marchands du bourg
+        // V1.1 : les marchands du bourg ; V1.6 : l'aubergiste, le prêtre et l'habitante, dans leurs intérieurs.
+        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant" },
+            book.Npcs.Select(n => n.Id));
         Quest mission = book.Quest(Mission);
         Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "manifestation", "rodeur", "chef", "retour" }, mission.Steps.Select(s => s.Id));   // 12.7 : le chef
         Assert.Equal(4, book.Discoveries.Count);
@@ -443,10 +446,11 @@ public class Lot125StoryTests
             new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("rodeur", 0), ["quest.autre"] = new QuestProgress(QuestProgress.Done) },
             new Dictionary<string, int> { ["npc.odile"] = -1, ["npc.maelle"] = 2, ["npc.gaspard"] = 0 }, new[] { "discovery.manifestation" });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), Hero(story)));
-        Assert.Contains("\"schemaVersion\": 7,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places)
+        Assert.Contains("\"schemaVersion\": 8,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie)
         Assert.Contains("      \"story\": {\n        \"facts\": [\"fact.odile.vexee\", \"fact.traces.recit\"],\n"
             + "        \"quests\": {\"quest.autre\": {\"step\": \"done\", \"progress\": 0}, \"quest.traces_sous_le_moulin\": {\"step\": \"rodeur\", \"progress\": 0}},\n"
-            + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"discoveries\": [\"discovery.manifestation\"]\n      },\n", text, StringComparison.Ordinal);
+            + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"discoveries\": [\"discovery.manifestation\"],\n"
+            + "        \"tracked\": null\n      },\n", text, StringComparison.Ordinal);   // sous-lot V1.6 : quête suivie
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(text, SaveJsonReader.Write(read.Save!));
@@ -457,12 +461,12 @@ public class Lot125StoryTests
             int a = t.IndexOf(",\n      \"" + field + "\"", StringComparison.Ordinal), b = t.IndexOf("\n    },", a, StringComparison.Ordinal);
             return t.Remove(a, b - a);
         }
-        string v3 = CutFrom(text, "story").Replace("\"schemaVersion\": 7", "\"schemaVersion\": 3");
+        string v3 = CutFrom(text, "story").Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 8", "\"schemaVersion\": 3");
         SaveLoadResult migrated = SaveJsonReader.Read(v3);
         Assert.True(migrated.IsValid, migrated.Report + "\n" + v3);
         Assert.True(migrated.Save!.Migrated);
         Assert.Empty(migrated.Save.Character!.Story.Facts);
-        Assert.Equal("$.data.character.story", Assert.Single(SaveJsonReader.Read(CutFrom(text, "professions").Replace("\"schemaVersion\": 7", "\"schemaVersion\": 3")).Report.Errors).Path);
+        Assert.Equal("$.data.character.story", Assert.Single(SaveJsonReader.Read(CutFrom(text, "professions").Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 8", "\"schemaVersion\": 3")).Report.Errors).Path);
         // Une histoire sauvegardée doit aller avec les données : quête inconnue refusée à la reprise.
         Assert.Throws<ArgumentException>(() => Play(Zone(), Hero(story)));
     }

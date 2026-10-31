@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Items;
 using EdS.Data.Saves;
+using EdS.Data.Story;
 using EdS.Domain.Builds;
 using EdS.Domain.Stats;
 using EdS.Runtime;
@@ -70,10 +71,22 @@ namespace EdS.Game
         private string _tipItem;
         private RectTransform _tipAnchor;
 
-        // Journal.
-        private readonly List<(RectTransform Block, UiText Name, UiText Step, Image Bar, UiText Progress)> _quests = new List<(RectTransform, UiText, UiText, Image, UiText)>();
+        // Journal (sous-lot V1.6 : deux onglets, suivi d'une quête, récompenses au choix).
+        private sealed class QuestBlock
+        {
+            public RectTransform Block;
+            public UiText Name, Step, Progress;
+            public Image Bar;
+            public UiButton Track;
+            public readonly List<UiButton> Rewards = new List<UiButton>();
+            public string Quest;
+        }
+
+        private readonly List<QuestBlock> _quests = new List<QuestBlock>();
         private readonly List<UiText> _discoveries = new List<UiText>();
         private UiText _journalEmpty, _discoveriesTitle;
+        private UiText _mainTab, _sideTab;
+        private QuestCategory _journalTab = QuestCategory.Main;
 
         // Atelier.
         private readonly List<(RectTransform Card, Image Icon, UiText Name, UiText Kind, UiText Recipe, UiText State, UiButton Craft)> _recipes =
@@ -488,11 +501,14 @@ namespace EdS.Game
 
         private void BuildJournal(RectTransform page)
         {
-            Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 168f, 400f, 20f, 0f, 0.5f, 14f, true).Value = "Quêtes";
+            // Sous-lot V1.6 : deux onglets, principales et secondaires (clic ou toucher ; aucune touche de plus que J).
+            _mainTab = JournalTab(page, 60f, QuestCategory.Main);
+            _sideTab = JournalTab(page, 260f, QuestCategory.Side);
             _journalEmpty = Text(page, UiFace.Body, 19f, UiKit.Muted, TextAnchor.UpperLeft, 60f, 196f, 800f, 60f, 0f, 0f);
             _journalEmpty.Wrap();
             for (int i = 0; i < 6; i++)
             {
+                var q = new QuestBlock();
                 RectTransform block = UiKit.Node(page, "Quête");
                 UiKit.Place(block, new Vector2(60f, 196f + i * 108f), new Vector2(840f, 100f), Vector2.zero);
                 Image edge = UiKit.Image(block, "Liseré", null, UiKit.Alpha(UiKit.Dawn, 0.8f));
@@ -507,7 +523,24 @@ namespace EdS.Game
                 UiKit.Place(bar.rectTransform, new Vector2(680f, 44f), new Vector2(150f, 10f), Vector2.zero);
                 bar.fillMethod = Image.FillMethod.Horizontal;
                 UiText progress = Text(block, UiFace.Bold, 17f, UiKit.Dawn, TextAnchor.MiddleRight, 830f, 28f, 120f, 22f, 1f, 0.5f);
-                _quests.Add((block, name, step, bar, progress));
+                // Suivre cette quête (son objectif sur la carte).
+                UiButton follow = UiKit.Button(block, "Suivre", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Muted, () => FollowQuest(q));
+                UiKit.Place(follow.Rect, new Vector2(830f, 92f), new Vector2(130f, 32f), new Vector2(1f, 1f));
+                // Récompenses au choix : un bouton par objet proposé (au plus trois).
+                for (int r = 0; r < 3; r++)
+                {
+                    int reward = r;
+                    UiButton pick = UiKit.Button(block, "Récompense", "bouton", "", UiFace.Bold, 14f, new Color(0.1f, 0.05f, 0.02f), () => PickReward(q, reward));
+                    UiKit.Place(pick.Rect, new Vector2(18f + r * 214f, 96f), new Vector2(206f, 34f), new Vector2(0f, 1f));
+                    q.Rewards.Add(pick);
+                }
+                q.Block = block;
+                q.Name = name;
+                q.Step = step;
+                q.Bar = bar;
+                q.Progress = progress;
+                q.Track = follow;
+                _quests.Add(q);
             }
             _discoveriesTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 960f, 168f, 400f, 20f, 0f, 0.5f, 14f, true);
             for (int i = 0; i < 9; i++)
@@ -518,21 +551,59 @@ namespace EdS.Game
             }
         }
 
+        private UiText JournalTab(RectTransform page, float x, QuestCategory category)
+        {
+            UiText tab = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, x, 168f, 190f, 24f, 0f, 0.5f, 14f, true);
+            Image hit = UiKit.Image(tab.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
+            UiKit.Fill(hit.rectTransform, -6f);
+            UiKit.Pointer(hit).Left = () => _journalTab = category;
+            return tab;
+        }
+
+        private void FollowQuest(QuestBlock q)
+        {
+            if (_session == null || q.Quest == null) return;
+            // Une quête déjà suivie ne l'est plus (la carte montre alors la première principale en cours).
+            bool tracked = _session.World.Narrative != null && _session.World.Narrative.Tracked == q.Quest;
+            _session.Track(tracked ? null : q.Quest);
+        }
+
+        private void PickReward(QuestBlock q, int index)
+        {
+            if (_session != null && q.Quest != null) _session.ChooseReward(q.Quest, index);
+        }
+
         private void RefreshJournal(AdventureSession a)
         {
-            IReadOnlyList<JournalEntry> quests = a.Journal();
-            _journalEmpty.Value = quests.Count == 0 ? a.Text("text.ui.journal_empty") : "";
+            // Relecture de la PR #76 : un repère sur l'onglet où une quête attend le choix de sa récompense (visible depuis l'autre onglet).
+            _mainTab.Value = a.Text("text.ui.journal.main") + (a.RewardWaiting(QuestCategory.Main) ? " •" : "");
+            _sideTab.Value = a.Text("text.ui.journal.side") + (a.RewardWaiting(QuestCategory.Side) ? " •" : "");
+            _mainTab.Color = _journalTab == QuestCategory.Main ? UiKit.Dawn : UiKit.Muted;
+            _sideTab.Color = _journalTab == QuestCategory.Side ? UiKit.Dawn : UiKit.Muted;
+            IReadOnlyList<JournalEntry> quests = a.Journal(_journalTab);
+            _journalEmpty.Value = quests.Count > 0 ? "" : a.Journal().Count == 0 ? a.Text("text.ui.journal_empty") : a.Text("text.ui.journal.empty_tab");
             for (int i = 0; i < _quests.Count; i++)
             {
+                QuestBlock block = _quests[i];
                 bool used = i < quests.Count;
-                UiKit.Show(_quests[i].Block, used);
+                UiKit.Show(block.Block, used);
                 if (!used) continue;
                 JournalEntry q = quests[i];
-                _quests[i].Name.Value = q.Name + (q.Done ? " · " + a.Text("text.ui.quest_done_mark") : "");
-                _quests[i].Step.Value = q.Step ?? "";
-                _quests[i].Progress.Value = q.Progress ?? (q.Done ? "fait" : "");
-                _quests[i].Bar.fillAmount = q.Done ? 1f : HudView.Progress(q.Progress);
-                UiKit.Show(_quests[i].Bar, q.Progress != null || q.Done);
+                block.Quest = q.Id;
+                block.Name.Value = q.Name + (q.Done ? " · " + a.Text("text.ui.quest_done_mark") : "");
+                block.Step.Value = q.Step ?? "";
+                block.Progress.Value = q.Progress ?? (q.Done ? "fait" : "");
+                block.Bar.fillAmount = q.Done ? 1f : HudView.Progress(q.Progress);
+                UiKit.Show(block.Bar, q.Progress != null || q.Done);
+                UiKit.Show(block.Track.Rect, !q.Done);
+                block.Track.Text.Value = a.Text(q.Tracked ? "text.ui.journal.tracked" : "text.ui.journal.track");
+                block.Track.Text.Color = q.Tracked ? UiKit.Dawn : UiKit.Muted;
+                for (int r = 0; r < block.Rewards.Count; r++)
+                {
+                    bool offered = r < q.RewardChoices.Count;
+                    UiKit.Show(block.Rewards[r].Rect, offered);
+                    if (offered) block.Rewards[r].Text.Value = q.RewardChoices[r];
+                }
             }
             IReadOnlyList<string> found = a.Discoveries();
             _discoveriesTitle.Value = a.Text("text.ui.title.discoveries") + " · " + found.Count;

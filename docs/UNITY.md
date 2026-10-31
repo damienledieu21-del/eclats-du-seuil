@@ -86,7 +86,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 | F | parler au PNJ à portée (3 m) — à un marchand : ouvrir sa boutique (V1.1) —, sinon récolter le nœud à portée |
 | 1 à 9 (ou clic) | choisir une réponse du dialogue (parmi celles affichées) ; Échap ou le bouton Fermer (au doigt) le ferme |
 | I | personnage : les 18 places d'équipement (V1.2), le sac avec ses filtres et son rangement, la comparaison au survol, les métiers (porter, retirer, échanger) |
-| J | journal de quête et découvertes |
+| J | journal de quête et découvertes : onglets **Principales** et **Secondaires**, bouton **Suivre** (la quête suivie est sous la petite carte et son objectif sur la carte), boutons des **récompenses au choix** (V1.6) |
 | K | atelier : recettes, ce qu'il manque, fabriquer (à la forge de Maëlle, à l'ouest du village, juste au nord de la place : enclume grise, « K : forger » s'affiche quand on y est) |
 | P | boire un objet de soin emporté (le plus petit d'abord) |
 | L | carte en grand (noms des lieux, PNJ, points sûrs, objectif) ; L, Échap ou Fermer pour revenir. En petit, elle reste en haut à droite (12.9d) |
@@ -362,7 +362,7 @@ Ce que tu regardes :
   - le statut : attributs, PV, endurance, points d'Éclat à placer ;
   - le **sac** en cases avec icônes : la fiche d'un objet s'ouvre au survol, avec ses bonus et son niveau requis. Clic : le porter. Clic sur un objet porté : le retirer ;
   - la barre d'expérience et les métiers.
-- **Journal** (J) : les quêtes avec leur étape et leur avancée, et les découvertes.
+- **Journal** (J) : les quêtes avec leur étape et leur avancée, et les découvertes. Sous-lot V1.6 : deux onglets (principales, secondaires, au clic ou au doigt), « Suivre » sur chaque quête en cours, et un bouton par objet quand une quête attend le choix de sa récompense ; aucune touche de plus que J.
 - **Atelier** (K) : les recettes en cartes, avec ce qu'il faut, ce qu'on obtient, pourquoi ce n'est pas possible ici, et le bouton **Fabriquer**.
 - **Carte** (L) : la carte peinte en grand, avec les noms des lieux, des PNJ et des points sûrs, l'objectif et les ennemis en vue.
 - **Dialogue** : en bas de l'écran, réponses en boutons. Les touches 1 à 9 marchent toujours.

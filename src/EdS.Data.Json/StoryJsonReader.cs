@@ -61,20 +61,22 @@ namespace EdS.Data.Json
             return map;
         }
 
-        public static StoryLoadResult ReadStoryFile(string path, TextCatalog texts, ZoneDefinition zone, ItemCatalog items)
+        /// <param name="interiors">Sous-lot V1.6 : autres zones du monde (intérieurs reliés par des portes), où peuvent vivre des PNJ.</param>
+        public static StoryLoadResult ReadStoryFile(string path, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, IReadOnlyList<ZoneDefinition>? interiors = null)
         {
             var report = new ValidationReport();
-            return ReadStory(JsonInput.ReadFile(path, report), texts, zone, items, report);
+            return ReadStory(JsonInput.ReadFile(path, report), texts, zone, items, report, interiors);
         }
 
-        public static StoryLoadResult ReadStory(string json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items)
+        public static StoryLoadResult ReadStory(string json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, IReadOnlyList<ZoneDefinition>? interiors = null)
         {
             var report = new ValidationReport();
-            return ReadStory(JsonInput.Utf8(json, report), texts, zone, items, report);
+            return ReadStory(JsonInput.Utf8(json, report), texts, zone, items, report, interiors);
         }
 
-        private static StoryLoadResult ReadStory(byte[]? json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport report) =>
-            StoryValidator.Validate(ReadStoryDocument(json, report), texts, zone, items, report);
+        private static StoryLoadResult ReadStory(byte[]? json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport report,
+            IReadOnlyList<ZoneDefinition>? interiors) =>
+            StoryValidator.Validate(ReadStoryDocument(json, report), texts, zone, items, report, interiors);
 
         /// <summary>Document lu sans validation (tests : document retouché en objets publics, puis validé).</summary>
         internal static StoryDocument ReadStoryDocument(byte[]? json, ValidationReport report)
@@ -111,6 +113,7 @@ namespace EdS.Data.Json
                 ["name"] = (v, p) => n.Name = input.Text(v, p),
                 ["position"] = (v, p) => n.Position = ScenarioJsonReader.ReadPoint(input, v, p),
                 ["dialogue"] = (v, p) => n.Dialogue = input.Text(v, p),
+                ["zone"] = (v, p) => n.Zone = input.Text(v, p),   // sous-lot V1.6 (schéma 3)
             }) ? n : null;
         }
 
@@ -171,6 +174,10 @@ namespace EdS.Data.Json
                 ["name"] = (v, p) => q.Name = input.Text(v, p),
                 ["steps"] = (v, p) => q.Steps = List(input, v, p, StoryValidator.MaxSteps, ReadStep),
                 ["effects"] = (v, p) => q.Effects = Terms(input, v, p, "do"),
+                // Sous-lot V1.6 (schéma 3) : onglet du journal, conditions d'ouverture, récompenses au choix.
+                ["category"] = (v, p) => q.Category = input.Text(v, p),
+                ["requires"] = (v, p) => q.Requires = Terms(input, v, p, "if"),
+                ["rewardChoice"] = (v, p) => q.RewardChoice = Terms(input, v, p, "do"),
             }) ? q : null;
         }
 
@@ -210,6 +217,7 @@ namespace EdS.Data.Json
                 ["id"] = (v, p) => { t.Present.Add("id"); t.Id = input.Text(v, p); },
                 ["value"] = (v, p) => { t.Present.Add("value"); t.Value = input.Int64(v, p); },
                 ["step"] = (v, p) => { t.Present.Add("step"); t.Step = input.Text(v, p); },
+                ["npc"] = (v, p) => { t.Present.Add("npc"); t.Npc = input.Text(v, p); },   // sous-lot V1.6 : objectif deliver
             }) ? t : null;
         }
     }

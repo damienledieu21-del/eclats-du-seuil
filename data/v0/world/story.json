@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "story",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -58,6 +58,36 @@
           6
         ],
         "dialogue": "dialogue.epiciere"
+      },
+      {
+        "id": "npc.aubergiste",
+        "name": "text.npc.aubergiste.name",
+        "position": [
+          3.75,
+          3.55
+        ],
+        "dialogue": "dialogue.aubergiste",
+        "zone": "zone.auberge"
+      },
+      {
+        "id": "npc.pretre",
+        "name": "text.npc.pretre.name",
+        "position": [
+          -2,
+          4.6
+        ],
+        "dialogue": "dialogue.pretre",
+        "zone": "zone.chapelle"
+      },
+      {
+        "id": "npc.habitant",
+        "name": "text.npc.habitant.name",
+        "position": [
+          -1.8,
+          -1.6
+        ],
+        "dialogue": "dialogue.habitant",
+        "zone": "zone.maison"
       }
     ],
     "dialogues": [
@@ -459,12 +489,387 @@
             "choices": []
           }
         ]
+      },
+      {
+        "id": "dialogue.aubergiste",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.peaux_pour_l_auberge"
+              }
+            ],
+            "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.peaux_pour_l_auberge"
+              }
+            ],
+            "node": "recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.peaux_pour_l_auberge",
+                "step": "peaux"
+              }
+            ],
+            "node": "peaux"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.peaux_pour_l_auberge"
+              }
+            ],
+            "node": "en_cours"
+          },
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.aubergiste.accueil",
+            "choices": [
+              {
+                "text": "text.aubergiste.accueil.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.peaux_pour_l_auberge"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.peaux_pour_l_auberge"
+                  }
+                ],
+                "next": "accepte"
+              },
+              {
+                "text": "text.aubergiste.accueil.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "accepte",
+            "text": "text.aubergiste.accepte",
+            "choices": [
+              {
+                "text": "text.aubergiste.accepte.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "en_cours",
+            "text": "text.aubergiste.en_cours",
+            "choices": [
+              {
+                "text": "text.aubergiste.en_cours.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "peaux",
+            "text": "text.aubergiste.peaux",
+            "choices": [
+              {
+                "text": "text.aubergiste.peaux.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "apres",
+            "text": "text.aubergiste.apres",
+            "choices": [
+              {
+                "text": "text.aubergiste.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "recompense",
+            "text": "text.aubergiste.recompense",
+            "choices": [
+              {
+                "text": "text.aubergiste.recompense.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.pretre",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.bete_blanche"
+              }
+            ],
+            "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.bete_blanche"
+              }
+            ],
+            "node": "recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.bete_blanche",
+                "step": "retour"
+              }
+            ],
+            "node": "retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.bete_blanche"
+              }
+            ],
+            "node": "en_cours"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.bete_blanche"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 3
+              }
+            ],
+            "node": "demande"
+          },
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.pretre.accueil",
+            "choices": [
+              {
+                "text": "text.pretre.accueil.offrande",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.pretre.offrande"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeMoney",
+                    "value": 10
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.pretre.offrande"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.pretre",
+                    "value": 1
+                  }
+                ],
+                "next": "merci"
+              },
+              {
+                "text": "text.pretre.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "merci",
+            "text": "text.pretre.merci",
+            "choices": [
+              {
+                "text": "text.pretre.merci.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "demande",
+            "text": "text.pretre.demande",
+            "choices": [
+              {
+                "text": "text.pretre.demande.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.bete_blanche"
+                  }
+                ],
+                "next": "accepte"
+              },
+              {
+                "text": "text.pretre.demande.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "accepte",
+            "text": "text.pretre.accepte",
+            "choices": [
+              {
+                "text": "text.pretre.accepte.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "en_cours",
+            "text": "text.pretre.en_cours",
+            "choices": [
+              {
+                "text": "text.pretre.en_cours.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.pretre.retour",
+            "choices": [
+              {
+                "text": "text.pretre.retour.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "apres",
+            "text": "text.pretre.apres",
+            "choices": [
+              {
+                "text": "text.pretre.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "recompense",
+            "text": "text.pretre.recompense",
+            "choices": [
+              {
+                "text": "text.pretre.recompense.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.habitant",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.bete_blanche",
+                "step": "temoin"
+              }
+            ],
+            "node": "temoin"
+          },
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.habitant.accueil",
+            "choices": [
+              {
+                "text": "text.habitant.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "temoin",
+            "text": "text.habitant.temoin",
+            "choices": [
+              {
+                "text": "text.habitant.temoin.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
       }
     ],
     "quests": [
       {
         "id": "quest.traces_sous_le_moulin",
         "name": "text.quest.traces.name",
+        "category": "main",
         "steps": [
           {
             "id": "enquete",
@@ -586,6 +991,138 @@
           {
             "do": "giveMoney",
             "value": 500
+          }
+        ]
+      },
+      {
+        "id": "quest.peaux_pour_l_auberge",
+        "name": "text.quest.peaux.name",
+        "category": "side",
+        "steps": [
+          {
+            "id": "chasse",
+            "text": "text.quest.peaux.chasse",
+            "objective": {
+              "kind": "defeatFamily",
+              "id": "loup",
+              "value": 3
+            },
+            "effects": []
+          },
+          {
+            "id": "peaux",
+            "text": "text.quest.peaux.peaux",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.peau_de_loup",
+              "value": 3,
+              "npc": "npc.aubergiste"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 60
+          },
+          {
+            "do": "giveMoney",
+            "value": 150
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.potion_de_soin",
+            "value": 3
+          },
+          {
+            "do": "giveItem",
+            "id": "item.remede_de_l_aube",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.bete_blanche",
+        "name": "text.quest.bete.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 3
+          }
+        ],
+        "steps": [
+          {
+            "id": "temoin",
+            "text": "text.quest.bete.temoin",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.habitant"
+            },
+            "effects": []
+          },
+          {
+            "id": "armure",
+            "text": "text.quest.bete.armure",
+            "objective": {
+              "kind": "equipped",
+              "id": "item.gambison"
+            },
+            "effects": []
+          },
+          {
+            "id": "chasse",
+            "text": "text.quest.bete.chasse",
+            "objective": {
+              "kind": "defeat",
+              "id": "loup_blanc",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.quest.bete.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.pretre"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 250
+          },
+          {
+            "do": "giveMoney",
+            "value": 300
+          },
+          {
+            "do": "trust",
+            "id": "npc.pretre",
+            "value": 1
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.talisman_du_seuil",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.cotte_de_mailles",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.epee_de_garde",
+            "value": 1
           }
         ]
       }

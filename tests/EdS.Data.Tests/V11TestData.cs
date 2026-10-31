@@ -38,6 +38,7 @@ internal static class V11TestData
             scenario(s);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));
+            File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
         }
         try
         {
@@ -51,7 +52,7 @@ internal static class V11TestData
         }
     }
 
-    public static StoryBook Book(ZoneDefinition zone) => StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, zone, ItemsCatalog).Story!;
+    public static StoryBook Book(ZoneDefinition zone) => StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, zone, ItemsCatalog, V16TestData.Interiors).Story!;
 
     public static JsonObject MerchantsJson() => JsonNode.Parse(File.ReadAllText(MerchantsPath))!.AsObject();
 
