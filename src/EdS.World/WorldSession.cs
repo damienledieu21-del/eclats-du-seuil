@@ -260,7 +260,8 @@ namespace EdS.World
             foreach (KeyValuePair<string, string> entry in lootTables ?? new Dictionary<string, string>())
                 _lootTables[entry.Key] = items.TryGetLoot(entry.Value, out LootTable table) ? table
                     : throw new ArgumentException($"Table de butin « {entry.Value} » ({entry.Key}) absente du catalogue.", nameof(lootTables));
-            Inventory = Inventory.From(_character, items, Level);
+            Inventory = Inventory.From(_character, items, Level, out IReadOnlyList<string> adjusted);
+            Adjusted = adjusted;   // relecture de la PR #78 : propriétés tirées accordées au catalogue actuel
             // Sous-lot V1.2 : les places obligatoires vides sont remplies : l'Éclat du Seuil, et pour le Bastion un bouclier (le sien s'il en a
             // un dans l'inventaire, sinon l'écu de départ). Relecture de la PR #75 : à chaque chargement, pas seulement pour une sauvegarde mise
             // à jour depuis une version antérieure (une sauvegarde de version 7 aux places obligatoires vides est réparée elle aussi).
@@ -576,6 +577,13 @@ namespace EdS.World
         /// </summary>
         public IReadOnlyList<string> Restored { get; }
 
+        /// <summary>
+        /// Relecture de la PR #78 : compte rendu des propriétés tirées accordées au catalogue actuel à l'entrée (valeur ramenée dans ses
+        /// bornes, propriété inconnue retirée : <see cref="EdS.Data.Items.ItemCatalog.Settle"/>), dans l'ordre du sac puis des places ; vide
+        /// si rien n'a changé. Les changements vont à la prochaine sauvegarde.
+        /// </summary>
+        public IReadOnlyList<string> Adjusted { get; }
+
         /// <summary>Sous-lot V1.2 : garde du bouclier avec lequel il est entré dans la zone (null : celle des règles).</summary>
         public ShieldGuard? EnteredShield => Zone.Engine.View(_character.Id).Rules?.Shield;
 
@@ -666,13 +674,14 @@ namespace EdS.World
                     gains.Add(new ExperienceGained(e, xp, before, Level));
                 }
                 // Sous-lot 12.3 : butin de sa table, rangé en entier ou perdu (inventaire plein).
-                // Sous-lot V1.3 : un équipement qui en tire reçoit ses propriétés, tirées par la même clé (flux propre à l'objet et à son rang).
+                // Sous-lot V1.3 : un équipement qui en tire reçoit ses propriétés, tirées par la même clé (flux propre à l'objet et à son rang
+                // dans la table : relecture de la PR #78, les propriétés d'un objet ne dépendent pas des autres objets tombés).
                 if (LootFor(e.Combatant) is LootTable table)
                 {
                     IReadOnlyList<LootRoll> rolled = Loot.Roll(table, e.Key);
                     for (int r = 0; r < rolled.Count; r++)
                     {
-                        ItemStack stack = ItemRolls.Roll(_items, rolled[r].Item, rolled[r].Count, e.Key, r);
+                        ItemStack stack = ItemRolls.Roll(_items, rolled[r].Item, rolled[r].Count, e.Key, rolled[r].Rank);
                         loot.Add(new LootGained(e, stack.Item, stack.Count, Inventory.Add(stack) == InventoryRefusal.None, stack.Properties));
                     }
                 }

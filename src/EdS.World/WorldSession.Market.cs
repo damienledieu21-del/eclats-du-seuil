@@ -136,29 +136,33 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Sous-lot V1.3 : vend à <paramref name="merchant"/> la place <paramref name="place"/> de l'inventaire telle qu'elle est : une instance
-        /// aux propriétés tirées part elle-même (pas une autre du même objet), au prix de l'objet ; une pile d'objets de base, comme
-        /// <see cref="Sell(string, string, int)"/>. Mêmes refus, tout ou rien ; rachetable avec ses propriétés.
+        /// Sous-lot V1.3 : vend à <paramref name="merchant"/> <paramref name="count"/> objets de la place <paramref name="place"/> de
+        /// l'inventaire, au prix de l'objet. Relecture de la PR #78 : toujours <b>de cette place exacte</b>, jamais d'une autre place du même
+        /// objet : une instance aux propriétés tirées part elle-même (quantité 1), une pile d'objets de base perd <paramref name="count"/>
+        /// objets (toute la pile ou une partie) sans qu'une instance tirée du même objet ailleurs dans l'inventaire ne parte à sa place.
+        /// Refus : boutique fermée ou trop loin, quantité hors de [1, pile] (<see cref="TradeRefusal.InvalidCount"/>, ou
+        /// <see cref="TradeRefusal.NotEnough"/> au-delà de la pile de base), objet sans valeur, quantité qui entamerait les objets emportés au
+        /// combat (<see cref="TradeRefusal.Reserved"/>), bourse pleine. Tout ou rien ; rachetable (une instance tirée, avec ses propriétés).
         /// </summary>
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
         public TradeRefusal SellPlace(string merchant, int place, int count)
         {
             if (place < 0 || place >= Inventory.Stacks.Count) return TradeRefusal.NotEnough;
             ItemStack stack = Inventory.Stacks[place];
-            if (!stack.IsRolled) return Sell(merchant, stack.Item, count);
             TradeRefusal open = CanTrade(merchant);
             if (open != TradeRefusal.None) return open;
             Market market = NeedMarket();
-            if (count != 1) return TradeRefusal.InvalidCount;
+            if (count < 1 || count > Market.MaxCount || (stack.IsRolled && count != 1)) return TradeRefusal.InvalidCount;
+            if (count > stack.Count) return TradeRefusal.NotEnough;
             if (!market.Book.TryGetValue(stack.Item, out _)) return TradeRefusal.NoValue;
-            if (Inventory.Available(stack.Item) < 1) return TradeRefusal.Reserved;
-            long paid = market.UnitPrice(merchant, stack.Item);
+            if (Inventory.Available(stack.Item) < count) return TradeRefusal.Reserved;
+            long paid = checked(market.UnitPrice(merchant, stack.Item) * count);
             if (!Coins.TryAdd(Money, paid, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();
-            if (trial.RemoveAt(place, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;
+            if (trial.RemoveAt(place, count, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(after);
-            market.Record(new SoldLot(stack.Item, 1, paid, new[] { removed }));
+            market.Record(new SoldLot(stack.Item, count, paid, removed.IsRolled ? new[] { removed } : null));
             return TradeRefusal.None;
         }
 

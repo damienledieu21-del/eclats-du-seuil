@@ -18,7 +18,8 @@ namespace EdS.World
     public static class ItemRolls
     {
         /// <summary>
-        /// Instance de <paramref name="itemId"/> tombée de l'événement <paramref name="eventKey"/>, au rang <paramref name="drop"/> de sa table :
+        /// Instance de <paramref name="itemId"/> tombée de l'événement <paramref name="eventKey"/>, au rang <paramref name="drop"/> de sa table
+        /// (<see cref="LootRoll.Rank"/> : le rang dans le fichier, pas parmi les objets tombés ; relecture de la PR #78) :
         /// aux propriétés tirées si l'objet en tire, sinon l'objet de base (quantité <paramref name="count"/>). Une instance aux propriétés
         /// tirées a toujours la quantité 1 et passe toujours <see cref="ItemCatalog.CheckInstance"/>.
         /// </summary>

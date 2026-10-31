@@ -125,9 +125,20 @@ namespace EdS.World
         /// de version 6 a ses quatre emplacements (arme, bouclier, torse, cou), qui gardent leur nom parmi les 18 places.
         /// </summary>
         /// <exception cref="ArgumentException">Sauvegarde incohérente avec le catalogue (premier motif dans le message).</exception>
-        public static Inventory From(SavedCharacter character, ItemCatalog catalog, int level)
+        public static Inventory From(SavedCharacter character, ItemCatalog catalog, int level) => From(character, catalog, level, out _);
+
+        /// <summary>
+        /// Comme <see cref="From(SavedCharacter, ItemCatalog, int)"/>. Relecture de la PR #78 : les propriétés tirées des instances (sac et
+        /// objets portés) sont d'abord accordées au catalogue actuel (<see cref="ItemCatalog.Settle"/> : valeur ramenée dans ses bornes,
+        /// propriété inconnue retirée) : un réglage du catalogue ne rend jamais une partie illisible. <paramref name="adjusted"/> rend le
+        /// compte rendu de ces changements (vide si rien n'a changé) ; la prochaine sauvegarde les garde.
+        /// </summary>
+        public static Inventory From(SavedCharacter character, ItemCatalog catalog, int level, out IReadOnlyList<string> adjusted)
         {
             if (character is null) throw new ArgumentNullException(nameof(character));
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            var notes = new List<string>();
+            adjusted = notes;
             var inventory = new Inventory(catalog, character.ClassId);
             if (character.Inventory.Count > catalog.InventorySize)
                 throw new ArgumentException($"Inventaire de {character.Inventory.Count} places, au plus {catalog.InventorySize}.", nameof(character));
@@ -138,7 +149,10 @@ namespace EdS.World
                     throw new ArgumentException($"Inventaire, place {i} : objet « {stack.Item} » absent du catalogue.", nameof(character));
                 if (stack.Count < 1 || stack.Count > item.Stack)
                     throw new ArgumentException($"Inventaire, place {i} : {stack.Count} « {stack.Item} », pile de 1 à {item.Stack}.", nameof(character));
-                // Sous-lot V1.3 : propriétés tirées dans les bornes du catalogue (le validateur unique des instances).
+                // Sous-lot V1.3 : propriétés tirées dans les bornes du catalogue (le validateur unique des instances), après leur accord au
+                // catalogue actuel (relecture de la PR #78).
+                stack = catalog.Settle(stack, out IReadOnlyList<string> settled);
+                notes.AddRange(settled);
                 if (catalog.CheckInstance(stack) is string problem) throw new ArgumentException($"Inventaire, place {i} : {problem}", nameof(character));
                 inventory._stacks.Add(stack);
             }
@@ -152,6 +166,8 @@ namespace EdS.World
                 if (item.RequiredLevel > level)
                     throw new ArgumentException($"Équipement « {e.Key} » : « {e.Value} » demande le niveau {item.RequiredLevel} (personnage niveau {level}).", nameof(character));
                 var worn = new ItemStack(e.Value, 1, character.EquipmentProperties.TryGetValue(e.Key, out IReadOnlyList<RolledProperty>? rolled) ? rolled : null);
+                worn = catalog.Settle(worn, out IReadOnlyList<string> settledWorn);
+                notes.AddRange(settledWorn);
                 if (catalog.CheckInstance(worn) is string problem) throw new ArgumentException($"Équipement « {e.Key} » : {problem}", nameof(character));
                 inventory._equipped[e.Key] = worn;
             }
@@ -340,7 +356,9 @@ namespace EdS.World
 
         /// <summary>
         /// Retire <paramref name="count"/> <paramref name="item"/> en entier, des dernières places vers les premières ; sinon rien. Les objets
-        /// réservés (<see cref="Reserved"/>) ne se retirent pas.
+        /// réservés (<see cref="Reserved"/>) ne se retirent pas. Relecture de la PR #78 : les copies de base (sans propriété tirée) partent
+        /// d'abord ; une instance aux propriétés tirées n'est prise que si les copies de base ne suffisent pas (fabrication, objet pris par
+        /// une quête, livraison, vente par identifiant).
         /// </summary>
         public InventoryRefusal Remove(string item, int count) => Remove(item, count, out _);
 
@@ -364,26 +382,43 @@ namespace EdS.World
         {
             removed = null;
             if (place < 0 || place >= _stacks.Count) return InventoryRefusal.NothingThere;
+            return RemoveAt(place, _stacks[place].Count, out removed);
+        }
+
+        /// <summary>
+        /// Relecture de la PR #78 : retire <paramref name="count"/> objets de <b>la place exacte</b> <paramref name="place"/> de l'inventaire
+        /// (la pile entière, ou seulement une partie : la place garde le reste), jamais d'une autre place du même objet. Tout ou rien : refusé
+        /// si la place est vide (<see cref="InventoryRefusal.NothingThere"/>), si la quantité est hors de [1, pile] ou si elle entamerait la
+        /// réserve (<see cref="InventoryRefusal.NotEnough"/>). Rend l'instance retirée (propriétés tirées comprises), à la quantité retirée.
+        /// </summary>
+        public InventoryRefusal RemoveAt(int place, int count, out ItemStack? removed)
+        {
+            removed = null;
+            if (place < 0 || place >= _stacks.Count) return InventoryRefusal.NothingThere;
             ItemStack stack = _stacks[place];
-            if (Available(stack.Item) < stack.Count) return InventoryRefusal.NotEnough;
-            _stacks.RemoveAt(place);
-            removed = stack;
+            if (count < 1 || count > stack.Count || Available(stack.Item) < count) return InventoryRefusal.NotEnough;
+            if (count == stack.Count) _stacks.RemoveAt(place);
+            else _stacks[place] = stack.WithCount(stack.Count - count);
+            removed = stack.WithCount(count);
             return InventoryRefusal.None;
         }
 
+        // Relecture de la PR #78 : deux passes, des dernières places vers les premières : les copies de base d'abord, puis seulement s'il en
+        // manque les instances aux propriétés tirées (une instance tirée ne part jamais quand les copies de base suffisent).
         private IReadOnlyList<ItemStack> Take(string item, int count)
         {
             var removed = new List<ItemStack>();
             int left = count;
-            for (int i = _stacks.Count - 1; i >= 0 && left > 0; i--)
-                if (_stacks[i].Item == item)
-                {
-                    int take = Math.Min(left, _stacks[i].Count);
-                    removed.Add(_stacks[i].WithCount(take));
-                    if (take == _stacks[i].Count) _stacks.RemoveAt(i);
-                    else _stacks[i] = _stacks[i].WithCount(_stacks[i].Count - take);
-                    left -= take;
-                }
+            foreach (bool rolled in new[] { false, true })
+                for (int i = _stacks.Count - 1; i >= 0 && left > 0; i--)
+                    if (_stacks[i].Item == item && _stacks[i].IsRolled == rolled)
+                    {
+                        int take = Math.Min(left, _stacks[i].Count);
+                        removed.Add(_stacks[i].WithCount(take));
+                        if (take == _stacks[i].Count) _stacks.RemoveAt(i);
+                        else _stacks[i] = _stacks[i].WithCount(_stacks[i].Count - take);
+                        left -= take;
+                    }
             return removed;
         }
 

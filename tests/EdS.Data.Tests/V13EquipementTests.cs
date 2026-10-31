@@ -313,11 +313,15 @@ public class V13EquipementTests
         string worn = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), Hero(10, Array.Empty<ItemStack>(),
             new Dictionary<string, string> { ["feet"] = boots.Item }, new Dictionary<string, IReadOnlyList<RolledProperty>> { ["feet"] = boots.Properties })));
         Assert.Equal("$.data.character.equipment.feet.properties", Only(worn.Replace(", \"properties\": " + props, "")).Path);
-        // Des propriétés hors des bornes du catalogue : refusées à la reprise de la partie.
+        // Des propriétés hors des bornes du catalogue : relecture de la PR #78, ramenées dans les bornes à la reprise de la partie (jamais
+        // d'exception : voir V13RelectureTests).
         string far = text.Replace(props, $"[{{\"id\": \"{boots.Properties[0].Id}\", \"value\": 9999}}]");
         SaveLoadResult loaded = SaveJsonReader.Read(far);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
-        Assert.Throws<ArgumentException>(() => Inventory.From(loaded.Save!.Character!, ItemsCatalog, 10));
+        Inventory settled = Inventory.From(loaded.Save!.Character!, ItemsCatalog, 10, out IReadOnlyList<string> adjusted);
+        Assert.Single(adjusted);
+        Assert.True(ItemsCatalog.TryGetProperty(boots.Properties[0].Id, out PropertyDefinition farProperty));
+        Assert.Equal(ItemsCatalog.Bounds(farProperty, ItemsCatalog.Item(boots.Item)).Max, settled.Stacks[0].Properties[0].Value);
     }
 
     // --- Butin, vente et rachat --------------------------------------------------------------------------------------------

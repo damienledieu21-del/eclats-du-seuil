@@ -431,9 +431,10 @@ namespace EdS.Data.Items
 
         /// <summary>
         /// Sous-lot V1.3 : validateur unique d'une instance d'objet contre le catalogue (sauvegarde relue, tirage du butin). Un objet de base
-        /// (sans propriété) est toujours admis. Aux propriétés tirées : un objet qui en tire (<see cref="IsRollable"/>), quantité 1, exactement
-        /// <see cref="RollCount"/> propriétés, connues, distinctes, admises pour sa sorte de place, chacune dans ses bornes (<see cref="Bounds"/>).
-        /// Rend le premier motif de refus, ou null.
+        /// (sans propriété) est toujours admis. Aux propriétés tirées : un objet qui en tire (<see cref="IsRollable"/>), quantité 1, de 1 à
+        /// <see cref="RollCount"/> propriétés (le tirage en donne exactement <see cref="RollCount"/> ; relecture de la PR #78 : une instance
+        /// relue après un réglage du catalogue peut en avoir perdu, voir <see cref="Settle"/>), connues, distinctes, admises pour sa sorte de
+        /// place, chacune dans ses bornes (<see cref="Bounds"/>). Rend le premier motif de refus, ou null.
         /// </summary>
         public string? CheckInstance(ItemStack stack)
         {
@@ -443,7 +444,7 @@ namespace EdS.Data.Items
             if (!IsRollable(item)) return $"« {item.Id} » ne tire pas de propriété (objet nommé, pièce d'ensemble, rareté ou place sans tirage).";
             if (stack.Count != 1) return $"« {item.Id} » aux propriétés tirées : quantité 1 (il ne s'empile pas).";
             int count = RollCount(item.Rarity);
-            if (stack.Properties.Count != count) return $"« {item.Id} » ({RarityId(item.Rarity)}) tire {count} propriété(s), {stack.Properties.Count} données.";
+            if (stack.Properties.Count > count) return $"« {item.Id} » ({RarityId(item.Rarity)}) tire au plus {count} propriété(s), {stack.Properties.Count} données.";
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (RolledProperty r in stack.Properties)
             {
@@ -454,6 +455,47 @@ namespace EdS.Data.Items
                 if (r.Value < low || r.Value > high) return $"propriété « {r.Id} » : {r.Value} hors de [{low}, {high}] pour « {item.Id} ».";
             }
             return null;
+        }
+
+        /// <summary>
+        /// Relecture de la PR #78 : accorde une instance relue d'une sauvegarde au catalogue <b>actuel</b>, qui a pu être réglé depuis le
+        /// tirage (bornes, propriétés, rareté). Règle sûre, sans exception ni partie perdue : une valeur hors des bornes actuelles est
+        /// <b>ramenée dans les bornes</b> (à la borne la plus proche) ; une propriété absente du catalogue, qui ne va plus à cette sorte de
+        /// place ou tirée deux fois est <b>retirée</b> ; au-delà du nombre de propriétés de la rareté, les dernières sont retirées ; un objet
+        /// qui ne tire plus de propriété (devenu nommé, pièce d'ensemble, rareté sans tirage) redevient l'objet de base. Chaque changement
+        /// est rendu dans <paramref name="changes"/> (compte rendu en clair, dans l'ordre des propriétés) ; vide si l'instance était déjà
+        /// accordée (elle est alors rendue telle quelle). Un objet absent du catalogue ou une quantité incohérente ne se règlent pas ici
+        /// (<see cref="CheckInstance"/> les refuse toujours). Une instance accordée passe <see cref="CheckInstance"/> à ces deux motifs près.
+        /// </summary>
+        public ItemStack Settle(ItemStack stack, out IReadOnlyList<string> changes)
+        {
+            if (stack is null) throw new ArgumentNullException(nameof(stack));
+            changes = Array.Empty<string>();
+            if (!stack.IsRolled || !TryGetItem(stack.Item, out ItemDefinition item)) return stack;
+            var notes = new List<string>();
+            if (!IsRollable(item))
+            {
+                notes.Add($"{item.Name} : ne tire plus de propriété, {stack.Properties.Count} retirée(s).");
+                changes = notes;
+                return new ItemStack(item.Id, stack.Count);
+            }
+            int room = RollCount(item.Rarity);
+            var kept = new List<RolledProperty>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (RolledProperty r in stack.Properties)
+            {
+                if (!TryGetProperty(r.Id, out PropertyDefinition property)) { notes.Add($"{item.Name} : propriété « {r.Id} » retirée (absente du catalogue)."); continue; }
+                if (!seen.Add(r.Id)) { notes.Add($"{item.Name} : {property.Name} retirée (tirée deux fois)."); continue; }
+                if (!property.FitsKind(item.Slot)) { notes.Add($"{item.Name} : {property.Name} retirée (impossible sur « {item.Slot} »)."); continue; }
+                if (kept.Count >= room) { notes.Add($"{item.Name} : {property.Name} retirée (au plus {room} propriété(s) pour sa rareté)."); continue; }
+                (int low, int high) = Bounds(property, item);
+                int value = Math.Min(Math.Max(r.Value, low), high);
+                if (value != r.Value) notes.Add($"{item.Name} : {property.Name} ramenée de {r.Value} à {value} (bornes [{low}, {high}]).");
+                kept.Add(value == r.Value ? r : new RolledProperty(r.Id, value));
+            }
+            if (notes.Count == 0) return stack;
+            changes = notes;
+            return new ItemStack(item.Id, stack.Count, kept);
         }
 
         /// <summary>Sous-lot V1.3 : bonus d'une instance : celui de l'objet, plus ses propriétés tirées (supposées valides).</summary>
