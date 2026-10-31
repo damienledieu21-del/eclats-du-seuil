@@ -467,6 +467,7 @@ namespace EdS.Data.Guild
                 List<GuildGate> gates = CheckGates(d.Gates, open);
                 CheckPoints(d.Points, out long main, out long side, out long discovery, out var rare, out var facts);
                 if (merchants != null) CheckMerchants(merchants, open);
+                if (ranks.Count == GuildRanks.Ids.Count) CheckStoryRanks(open, ranks);
                 if (!ok || !_r.IsValid || contentVersion is null) return null;
                 return new GuildBook(schemaVersion, contentVersion, d.Npc!, d.MaxActive!.Value, d.Daily!.Value, ranks, titles, contracts, gates, main, side,
                     discovery, rare, facts);
@@ -710,6 +711,55 @@ namespace EdS.Data.Guild
                 IEnumerable<StoryEffect> effects = _story.Dialogues.SelectMany(d => d.Nodes).SelectMany(n => n.Choices).SelectMany(c => c.Effects)
                     .Concat(_story.Quests.SelectMany(q => q.Effects.Concat(q.Steps.SelectMany(s => s.Effects))));
                 return effects.Any(e => e.Kind == EffectKind.SetFact && e.Id == fact);
+            }
+
+            /// <summary>
+            /// Relecture de la PR #79 : les rangs que nomme l'histoire. Un objectif <c>guildRank</c> ou une condition <c>guildRankAtLeast</c> sur un
+            /// rang fermé ne serait jamais rempli ; dans l'épreuve du rang R, un objectif <c>guildRank</c> de R ou au-dessus (ou une condition
+            /// d'ouverture <c>guildRankAtLeast</c> de R ou au-dessus) bloquerait l'épreuve pour toujours (le rang ne vient qu'à sa fin). Chaque
+            /// erreur est donnée au chemin de l'histoire (<c>story.json</c>).
+            /// </summary>
+            private void CheckStoryRanks(HashSet<string> open, List<GuildRank> ranks)
+            {
+                void Closed(string rank, string path, string what)
+                {
+                    if (!open.Contains(rank))
+                        _r.Add(path, ValidationCode.InvalidValue, $"histoire (story.json) : {what} du rang fermé « {rank} », jamais rempli(e) dans le jeu actuel.");
+                }
+                void Conditions(IReadOnlyList<StoryCondition> conditions, string path, GuildRank? trial)
+                {
+                    for (int k = 0; k < conditions.Count; k++)
+                    {
+                        if (conditions[k].Kind != ConditionKind.GuildRankAtLeast) continue;
+                        string p = $"{path}[{k}].id";
+                        Closed(conditions[k].Id, p, "condition guildRankAtLeast");
+                        if (trial != null && open.Contains(conditions[k].Id) && GuildRanks.IndexOf(conditions[k].Id) >= trial.Index)
+                            _r.Add(p, ValidationCode.InvalidValue, $"histoire (story.json) : l'épreuve du rang « {trial.Id} » ne s'ouvrirait jamais (rang « {conditions[k].Id} » demandé, gagné à sa fin).");
+                    }
+                }
+                for (int i = 0; i < _story.Quests.Count; i++)
+                {
+                    Quest q = _story.Quests[i];
+                    GuildRank? trial = ranks.FirstOrDefault(r => r.Trial == q.Id);
+                    Conditions(q.Requires, $"$.data.quests[{i}].requires", trial);
+                    for (int j = 0; j < q.Steps.Count; j++)
+                    {
+                        Objective o = q.Steps[j].Objective;
+                        if (o.Kind != ObjectiveKind.GuildRank) continue;
+                        string p = $"$.data.quests[{i}].steps[{j}].objective.id";
+                        Closed(o.Id, p, "objectif guildRank");
+                        if (trial != null && open.Contains(o.Id) && GuildRanks.IndexOf(o.Id) >= trial.Index)
+                            _r.Add(p, ValidationCode.InvalidValue, $"histoire (story.json) : dans l'épreuve du rang « {trial.Id} », l'objectif « rang {o.Id} » ne serait jamais atteint (le rang vient à la fin de l'épreuve).");
+                    }
+                }
+                for (int i = 0; i < _story.Dialogues.Count; i++)
+                {
+                    Dialogue d = _story.Dialogues[i];
+                    for (int j = 0; j < d.Entries.Count; j++) Conditions(d.Entries[j].Conditions, $"$.data.dialogues[{i}].entries[{j}].conditions", null);
+                    for (int j = 0; j < d.Nodes.Count; j++)
+                        for (int k = 0; k < d.Nodes[j].Choices.Count; k++)
+                            Conditions(d.Nodes[j].Choices[k].Conditions, $"$.data.dialogues[{i}].nodes[{j}].choices[{k}].conditions", null);
+                }
             }
 
             /// <summary>Une boutique (ou une offre) qui demande un rang demande un rang ouvert (sinon elle ne s'ouvrirait jamais).</summary>

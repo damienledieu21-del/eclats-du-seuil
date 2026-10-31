@@ -187,6 +187,7 @@ namespace EdS.Runtime
                 GuildRefusal.None => Format("text.ui.guild.trial_ready", Text(next!.Name)),
                 GuildRefusal.TrialActive => Format("text.ui.guild.trial_running", Text(_story.Quest(next!.Trial!).Name)),
                 GuildRefusal.NotEnoughPoints => Format("text.ui.guild.trial_points", next!.Points, Text(next.Name)),
+                GuildRefusal.Locked => Format("text.ui.guild.trial_locked", Text(next!.Name)),   // relecture de la PR #79 : conditions de la quête
                 _ => Text("text.ui.guild.trial_top"),
             };
             var titles = n.Titles.Select(id => new TitleEntry(id, _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id, n.ShownTitle == id)).ToList();

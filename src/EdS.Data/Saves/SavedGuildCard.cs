@@ -8,8 +8,9 @@ namespace EdS.Data.Saves
     /// <summary>
     /// Sous-lot V1.7 (sauvegarde en version 10) : la carte d'aventurier du personnage, gardée avec son histoire (<see cref="SavedStory.Guild"/>) :
     /// rang, points de guilde, contrats réussis, titres gagnés et titre affiché, contrats en cours (avec leur avancement), contrats déjà pris
-    /// le jour <see cref="Day"/> du monde (un contrat du tableau se prend une fois par jour) et créatures rares déjà comptées. Tout est trié
-    /// (forme canonique). Absente : le personnage n'est pas inscrit.
+    /// le jour <see cref="Day"/> du monde (un contrat du tableau se prend une fois par jour). Tout est trié (forme canonique). Absente : le
+    /// personnage n'est pas inscrit. Les créatures rares déjà vaincues sont dans l'histoire (<see cref="SavedStory.Hunted"/>, relecture de la
+    /// PR #79 : comptées aussi avant l'inscription, pour ne jamais rapporter de points plus tard).
     /// </summary>
     public sealed class SavedGuildCard
     {
@@ -19,8 +20,8 @@ namespace EdS.Data.Saves
         /// <summary>Contrats réussis comptés, au plus.</summary>
         public const long MaxContracts = 10_000_000;
 
-        /// <summary>Titres, contrats pris dans la journée et créatures rares comptées d'une carte, au plus.</summary>
-        public const int MaxTitles = 64, MaxTaken = 128, MaxHunted = 256;
+        /// <summary>Titres et contrats pris dans la journée d'une carte, au plus.</summary>
+        public const int MaxTitles = 64, MaxTaken = 128;
 
         /// <summary>Contrats en cours, au plus (borne du fichier de la guilde : <c>maxActive</c>).</summary>
         public const int MaxActive = 8;
@@ -42,11 +43,8 @@ namespace EdS.Data.Saves
         /// <summary>Contrats pris ce jour-là (en cours, réussis ou abandonnés) : ils ne se reprennent pas avant le lendemain.</summary>
         public IReadOnlyList<string> Taken { get; }
 
-        /// <summary>Créatures rares (populations) dont la première victoire a déjà donné ses points.</summary>
-        public IReadOnlyList<string> Hunted { get; }
-
         public SavedGuildCard(string rank, long points = 0, long contracts = 0, IEnumerable<string>? titles = null, string? title = null,
-            IReadOnlyDictionary<string, long>? active = null, long day = 0, IEnumerable<string>? taken = null, IEnumerable<string>? hunted = null)
+            IReadOnlyDictionary<string, long>? active = null, long day = 0, IEnumerable<string>? taken = null)
         {
             Rank = rank ?? throw new ArgumentNullException(nameof(rank));
             if (points < 0 || points > MaxPoints) throw new ArgumentOutOfRangeException(nameof(points), points, $"Points hors de [0, {MaxPoints}].");
@@ -62,7 +60,6 @@ namespace EdS.Data.Saves
             if (Active.Values.Any(p => p < 0 || p > SaveValidator.MaxProgress)) throw new ArgumentOutOfRangeException(nameof(active), "Avancement hors bornes.");
             Day = day;
             Taken = Frozen.List(Sorted(taken), nameof(taken));
-            Hunted = Frozen.List(Sorted(hunted), nameof(hunted));
         }
 
         private static IEnumerable<string> Sorted(IEnumerable<string>? ids) =>

@@ -33,7 +33,7 @@ namespace EdS.Game
         private UiButton _boardJoin, _boardTrialButton, _boardTalk;
         private readonly List<ContractRow> _boardRows = new List<ContractRow>();
         private readonly List<ContractRow> _boardActive = new List<ContractRow>();
-        private Pager _boardPager;
+        private Pager _boardPager, _boardActivePager, _cardActivePager;
         private IReadOnlyList<ContractEntry> _boardData = new ContractEntry[0];
 
         // Carte d'aventurier (onglet du journal).
@@ -66,6 +66,8 @@ namespace EdS.Game
             UiKit.Place(_boardTrialButton.Rect, new Vector2(320f, 390f), new Vector2(260f, 44f), new Vector2(0f, 0f));
 
             _boardActiveTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 470f, 620f, 20f, 0f, 0.5f, 14f, true);
+            // Relecture de la PR #79 : la guilde peut permettre jusqu'à 8 contrats en cours : trois par page.
+            _boardActivePager = new Pager(page, ActiveRows, 600f, 470f, 26f);
             for (int i = 0; i < ActiveRows; i++)
             {
                 int index = i;
@@ -142,7 +144,7 @@ namespace EdS.Game
 
             IReadOnlyList<ContractEntry> active = a.ActiveContracts();
             _boardActiveTitle.Value = string.Format(a.Text("text.ui.guild.active"), active.Count, a.Guild.MaxActive);
-            FillActive(a, _boardActive, active);
+            FillActive(a, _boardActive, active, _boardActivePager);
 
             _boardData = a.GuildBoard();
             _boardPager.Refresh(_boardData.Count);
@@ -174,16 +176,19 @@ namespace EdS.Game
             row.Reward.Value = c.Reward;
         }
 
-        private void FillActive(AdventureSession a, List<ContractRow> rows, IReadOnlyList<ContractEntry> active)
+        /// <summary>Contrats en cours, une page à la fois (<paramref name="pager"/>).</summary>
+        private void FillActive(AdventureSession a, List<ContractRow> rows, IReadOnlyList<ContractEntry> active, Pager pager)
         {
+            pager.Refresh(active.Count);
             for (int i = 0; i < rows.Count; i++)
             {
                 ContractRow row = rows[i];
-                bool used = i < active.Count;
+                int index = pager.First + i;
+                bool used = index < active.Count;
                 UiKit.Show(row.Row, used);
-                row.Contract = used ? active[i].Id : null;
+                row.Contract = used ? active[index].Id : null;
                 if (!used) continue;
-                ContractEntry c = active[i];
+                ContractEntry c = active[index];
                 Fill(row, c);
                 UiKit.Show(row.Bar, true);
                 row.Bar.fillAmount = (float)c.Fraction;
@@ -226,6 +231,7 @@ namespace EdS.Game
                 _cardTitles.Add((name, show, null));
             }
             _cardActiveTitle = Text(_card, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 900f, 168f, 500f, 20f, 0f, 0.5f, 14f, true);
+            _cardActivePager = new Pager(_card, ActiveRows, 1360f, 168f, 26f);
             for (int i = 0; i < ActiveRows; i++)
             {
                 int index = i;
@@ -272,7 +278,7 @@ namespace EdS.Game
             IReadOnlyList<ContractEntry> active = a.ActiveContracts();
             _cardActiveTitle.Value = card.Member
                 ? (active.Count == 0 ? a.Text("text.ui.guild.active_none") : string.Format(a.Text("text.ui.guild.active"), active.Count, a.Guild.MaxActive)) : "";
-            FillActive(a, _cardActive, active);
+            FillActive(a, _cardActive, active, _cardActivePager);
         }
     }
 }

@@ -92,6 +92,9 @@ namespace EdS.Data.Saves
 
         /// <summary>Le champ <c>guild</c> est présent (null compris : refusé, la carte est absente tant qu'on n'est pas inscrit).</summary>
         public bool HasGuild { get; set; }
+
+        /// <summary>Sous-lot V1.7 (version 10, relecture de la PR #79) : créatures rares déjà vaincues, ou null (absent).</summary>
+        public List<string?>? Hunted { get; set; }
     }
 
     /// <summary>Sous-lot V1.7 : carte d'aventurier lue, avant validation.</summary>
@@ -111,7 +114,6 @@ namespace EdS.Data.Saves
 
         public long? Day { get; set; }
         public List<string?>? Taken { get; set; }
-        public List<string?>? Hunted { get; set; }
     }
 
     public sealed class QuestProgressData

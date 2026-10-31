@@ -271,12 +271,19 @@ namespace EdS.World
         /// <summary>Sous-lot V1.7 : carte sauvegardée d'une partie sans guilde, rendue telle quelle à la sauvegarde.</summary>
         private readonly SavedGuildCard? _keptCard;
 
+        /// <summary>
+        /// Relecture de la PR #79 : créatures rares de la guilde déjà vaincues, inscrit ou non (une victoire d'avant l'inscription ne rapporte
+        /// jamais de points plus tard).
+        /// </summary>
+        private readonly SortedSet<string> _hunted;
+
         internal Narrative(StoryBook book, SavedStory saved, INarrativeWorld world, GuildBook? guild = null)
         {
             _book = book ?? throw new ArgumentNullException(nameof(book));
             _world = world ?? throw new ArgumentNullException(nameof(world));
             CheckSaved(book, saved, guild);
             _guild = guild;
+            _hunted = new SortedSet<string>(saved.Hunted, StringComparer.Ordinal);
             if (saved.Guild != null)
             {
                 if (guild is null) _keptCard = saved.Guild;
@@ -380,7 +387,7 @@ namespace EdS.World
             _quests.ToDictionary(q => q.Key, q => new QuestProgress(q.Value.Step < 0 ? QuestProgress.Done
                     : q.Value.Step == _book.Quest(q.Key).Steps.Count ? QuestProgress.Reward : _book.Quest(q.Key).Steps[q.Value.Step].Id, q.Value.Progress),
                 StringComparer.Ordinal),
-            _trust, _discoveries, _tracked, _card?.ToSaved() ?? _keptCard);
+            _trust, _discoveries, _tracked, _card?.ToSaved() ?? _keptCard, _hunted);
 
         // --- Dialogues ---------------------------------------------------------------------------
 
@@ -556,9 +563,16 @@ namespace EdS.World
                     _quests[id] = (_quests[id].Step, checked(_quests[id].Progress + 1));
                     Revision++;
                 }
-            // Sous-lot V1.7 : les contrats de chasse et les primes en cours comptent de même ; la première victoire sur une créature rare donne
-            // ses points de guilde (annoncés au tick, avec les quêtes).
-            if (_card is null || _guild is null) return;
+            // Sous-lot V1.7 : la première victoire sur une créature rare de la guilde est gardée, inscrit ou non (relecture de la PR #79 : avant
+            // l'inscription, elle ne rapporte rien, ni alors ni plus tard) ; une fois inscrit, elle donne ses points (annoncés au tick).
+            if (_guild is null) return;
+            if (_guild.RarePoints.TryGetValue(population, out long rare) && _hunted.Count < SavedStory.MaxHunted && _hunted.Add(population))
+            {
+                Revision++;
+                Award(rare, population, _queued);
+            }
+            // Les contrats de chasse et les primes en cours comptent comme les quêtes.
+            if (_card is null) return;
             foreach (string id in _card.Active.Keys.ToArray())
             {
                 Objective o = _guild.Contract(id).Objective;
@@ -568,12 +582,10 @@ namespace EdS.World
                     Revision++;
                 }
             }
-            if (_guild.RarePoints.TryGetValue(population, out long rare) && _card.Hunted.Count < SavedGuildCard.MaxHunted && _card.Hunted.Add(population))
-            {
-                Revision++;
-                Award(rare, population, _queued);
-            }
         }
+
+        /// <summary>Relecture de la PR #79 : créatures rares de la guilde déjà vaincues (ordre ordinal).</summary>
+        public IReadOnlyList<string> Hunted => _hunted.ToList().AsReadOnly();
 
         /// <summary>Vérifie l'objectif de l'étape en cours de chaque quête (ordre ordinal) ; une étape au plus par quête et par tick.</summary>
         internal void Step(List<StoryEvent> events)
@@ -683,6 +695,8 @@ namespace EdS.World
             if (!(NextRank is GuildRank next) || !next.Open || next.Trial is null) return GuildRefusal.TopRank;
             if (_quests.ContainsKey(next.Trial)) return IsDone(next.Trial) ? GuildRefusal.Locked : GuildRefusal.TrialActive;
             if (_card.Points < next.Points) return GuildRefusal.NotEnoughPoints;
+            // Relecture de la PR #79 : les conditions d'ouverture de la quête de l'épreuve comptent aussi (niveau, autre quête…).
+            if (!All(_book.Quest(next.Trial).Requires)) return GuildRefusal.Locked;
             return GuildRefusal.None;
         }
 
@@ -710,21 +724,25 @@ namespace EdS.World
             if (contract is null || GuildBoard.Of(_guild, _card.Rank, day).All(c => c.Id != contract)) return GuildRefusal.NotOnBoard;
             if (_card.Active.ContainsKey(contract) || TakenOn(contract, day)) return GuildRefusal.AlreadyTaken;
             if (_card.Active.Count >= Math.Min(_guild.MaxActive, SavedGuildCard.MaxActive)) return GuildRefusal.TooManyContracts;
-            if (_card.Day == day && _card.Taken.Count >= SavedGuildCard.MaxTaken) return GuildRefusal.TooManyContracts;
-            _card.Today(day);
-            _card.Taken.Add(contract);
+            if (!_card.MarkTaken(contract, day)) return GuildRefusal.TooManyContracts;
             _card.Active[contract] = 0;
             Revision++;
             events.Add(new StoryEvent(StoryEventKind.ContractTaken, contract));
             return GuildRefusal.None;
         }
 
-        /// <summary>Abandonne un contrat en cours (sans perte ; il ne se reprend pas avant le lendemain).</summary>
-        internal GuildRefusal AbandonContract(string contract, List<StoryEvent> events)
+        /// <summary>
+        /// Abandonne un contrat en cours (sans perte ; il ne se reprend pas avant le lendemain). Relecture de la PR #79 : l'abandon compte comme
+        /// une prise du jour <paramref name="day"/>, même pour un contrat pris un autre jour (sinon il se reprendrait aussitôt) ; si la liste du
+        /// jour est pleine, l'abandon est refusé sans rien changer.
+        /// </summary>
+        internal GuildRefusal AbandonContract(string contract, long day, List<StoryEvent> events)
         {
             if (_guild is null) return GuildRefusal.NoGuild;
             if (_card is null) return GuildRefusal.NotMember;
-            if (contract is null || !_card.Active.Remove(contract)) return GuildRefusal.NotActive;
+            if (contract is null || !_card.Active.ContainsKey(contract)) return GuildRefusal.NotActive;
+            if (!_card.MarkTaken(contract, day)) return GuildRefusal.TooManyContracts;
+            _card.Active.Remove(contract);
             _blocked.Remove("contract/" + contract);
             Revision++;
             events.Add(new StoryEvent(StoryEventKind.ContractAbandoned, contract));

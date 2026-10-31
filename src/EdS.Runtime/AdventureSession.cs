@@ -1144,7 +1144,8 @@ namespace EdS.Runtime
                     return At(via.Position);
                 if (!World.InStoryZone)
                 {
-                    if (o.Kind == ObjectiveKind.Collect || o.Kind == ObjectiveKind.Equipped || _zone.Doors.Count == 0) return null;
+                    // Relecture de la PR #79 : un rang de guilde à atteindre n'est nulle part (pas d'étoile sur la porte).
+                    if (o.Kind == ObjectiveKind.Collect || o.Kind == ObjectiveKind.Equipped || o.Kind == ObjectiveKind.GuildRank || _zone.Doors.Count == 0) return null;
                     return At(_zone.Doors[0].Position);
                 }
                 switch (o.Kind)

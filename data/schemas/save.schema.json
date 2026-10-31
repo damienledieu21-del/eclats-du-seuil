@@ -272,7 +272,7 @@
                     "guild": {
                       "type": "object",
                       "additionalProperties": false,
-                      "description": "Sous-lot V1.7 (version 10) : carte d'aventurier de la Guilde ; absente tant que le personnage n'est pas inscrit. Rang, points, contrats réussis, titres gagnés et titre affiché, contrats en cours (avancement), contrats pris le jour « day » du monde, créatures rares déjà comptées. Listes triées sans doublon.",
+                      "description": "Sous-lot V1.7 (version 10) : carte d'aventurier de la Guilde ; absente tant que le personnage n'est pas inscrit. Rang, points, contrats réussis, titres gagnés et titre affiché, contrats en cours (avancement), contrats pris (ou abandonnés) le jour « day » du monde. Listes triées sans doublon.",
                       "required": [
                         "rank",
                         "points",
@@ -281,8 +281,7 @@
                         "title",
                         "active",
                         "day",
-                        "taken",
-                        "hunted"
+                        "taken"
                       ],
                       "properties": {
                         "rank": {
@@ -357,18 +356,20 @@
                           },
                           "maxItems": 128,
                           "uniqueItems": true
-                        },
-                        "hunted": {
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "pattern": "^[a-z][a-z0-9_]*$",
-                            "maxLength": 64
-                          },
-                          "maxItems": 256,
-                          "uniqueItems": true
                         }
                       }
+                    },
+                    "hunted": {
+                      "type": "array",
+                      "description": "Sous-lot V1.7 (version 10, relecture de la PR #79) : créatures rares de la guilde déjà vaincues, inscrit ou non (absent : aucune). Une victoire d'avant l'inscription ne rapporte jamais de points.",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*$",
+                        "maxLength": 64
+                      },
+                      "minItems": 1,
+                      "maxItems": 256,
+                      "uniqueItems": true
                     }
                   }
                 },

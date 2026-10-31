@@ -77,7 +77,7 @@ namespace EdS.World
         public GuildRefusal AbandonContract(string contract, out IReadOnlyList<StoryEvent> events)
         {
             var list = new List<StoryEvent>();
-            GuildRefusal refusal = Narrative is null ? GuildRefusal.NoGuild : Narrative.AbandonContract(contract, list);
+            GuildRefusal refusal = Narrative is null ? GuildRefusal.NoGuild : Narrative.AbandonContract(contract, Day, list);
             events = list;
             return refusal;
         }

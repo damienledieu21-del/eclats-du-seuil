@@ -77,11 +77,22 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V1.7 (version 10) : carte d'aventurier de la Guilde ; null tant que le personnage n'est pas inscrit.</summary>
         public SavedGuildCard? Guild { get; }
 
+        /// <summary>
+        /// Sous-lot V1.7 (version 10, relecture de la PR #79) : créatures rares de la guilde déjà vaincues (populations), inscrit ou non ; leur
+        /// première victoire ne donne des points qu'une fois, et jamais plus tard si elle a eu lieu avant l'inscription. Ordre ordinal.
+        /// </summary>
+        public IReadOnlyList<string> Hunted { get; }
+
+        /// <summary>Créatures rares gardées au plus.</summary>
+        public const int MaxHunted = 256;
+
         public SavedStory(IEnumerable<string>? facts = null, IReadOnlyDictionary<string, QuestProgress>? quests = null,
-            IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null, string? tracked = null, SavedGuildCard? guild = null)
+            IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null, string? tracked = null, SavedGuildCard? guild = null,
+            IEnumerable<string>? hunted = null)
         {
             Tracked = tracked;
             Guild = guild;
+            Hunted = Frozen.List((hunted ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).OrderBy(h => h, StringComparer.Ordinal), nameof(hunted));
             Facts = Frozen.List((facts ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).OrderBy(f => f, StringComparer.Ordinal), nameof(facts));
             Quests = Frozen.Dictionary((quests ?? new Dictionary<string, QuestProgress>()).OrderBy(q => q.Key, StringComparer.Ordinal)
                 .ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal), nameof(quests));
@@ -574,9 +585,29 @@ namespace EdS.Data.Saves
             }
             else if (st.Guild != null) guild = CheckGuild(st.Guild, path + ".guild", report);
             else if (st.HasGuild) report.Add(path + ".guild", ValidationCode.WrongType, "carte d'aventurier attendue (champ absent tant que le personnage n'est pas inscrit).");
+            // Relecture de la PR #79 (version 10) : créatures rares déjà vaincues, facultatif (absent : aucune ; jamais une liste vide).
+            if (version < GuildCardSince)
+            {
+                if (st.Hunted != null) report.Add(path + ".hunted", ValidationCode.UnknownField, $"champ inconnu en version {version} (créatures rares : version {GuildCardSince}).");
+            }
+            else if (st.Hunted != null)
+            {
+                if (st.Hunted.Count < 1 || st.Hunted.Count > SavedStory.MaxHunted)
+                    report.Add(path + ".hunted", st.Hunted.Count < 1 ? ValidationCode.OutOfRange : ValidationCode.LimitExceeded,
+                        $"de 1 à {SavedStory.MaxHunted} créatures (absent quand il n'y en a aucune).");
+                else
+                    for (int i = 0; i < st.Hunted.Count; i++)
+                    {
+                        string p = $"{path}.hunted[{i}]";
+                        if (st.Hunted[i] is not string id || id.Length > 64 || !SlotId.IsMatch(id)) report.Add(p, ValidationCode.InvalidValue, "créature mal formée.");
+                        else if (i > 0 && st.Hunted[i - 1] is string prev && string.CompareOrdinal(prev, id) >= 0)
+                            report.Add(p, ValidationCode.InvalidValue, "liste hors de l'ordre ordinal ou avec doublon (forme canonique).");
+                    }
+            }
             if (!report.IsValid) return null;
             return new SavedStory(st.Facts!.Select(f => f!), st.Quests!.ToDictionary(q => q.Id, q => new QuestProgress(q.Value!.Step!, q.Value.Progress!.Value), StringComparer.Ordinal),
-                st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!), version < 8 ? null : st.Tracked, guild);
+                st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!), version < 8 ? null : st.Tracked, guild,
+                st.Hunted?.Select(h => h!));
         }
 
         private static readonly Regex TitleId = new Regex(@"^title(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
@@ -627,10 +658,9 @@ namespace EdS.Data.Saves
             if (g.Day is null) Missing(report, path + ".day", "jour du tableau des contrats pris");
             else if (g.Day < 0 || g.Day > MaxWorldTick) report.Add(path + ".day", ValidationCode.OutOfRange, $"jour hors de [0, {MaxWorldTick}].");
             Sorted(g.Taken, "taken", id => id.Length <= 200 && ContractId.IsMatch(id), SavedGuildCard.MaxTaken, "contrat « contract.… »");
-            Sorted(g.Hunted, "hunted", id => id.Length <= 64 && SlotId.IsMatch(id), SavedGuildCard.MaxHunted, "créature");
             if (report.Errors.Count > errors) return null;
             return new SavedGuildCard(g.Rank!, g.Points!.Value, g.Contracts!.Value, g.Titles!.Select(t => t!), g.Title,
-                g.Active!.ToDictionary(a => a.Key, a => a.Value!.Value, StringComparer.Ordinal), g.Day!.Value, g.Taken!.Select(t => t!), g.Hunted!.Select(h => h!));
+                g.Active!.ToDictionary(a => a.Key, a => a.Value!.Value, StringComparer.Ordinal), g.Day!.Value, g.Taken!.Select(t => t!));
         }
 
         /// <summary>Sous-lot 12.3 : plus grand nombre de places d'un inventaire sauvegardé, et plus grande pile.</summary>

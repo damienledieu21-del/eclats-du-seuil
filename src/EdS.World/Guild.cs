@@ -108,7 +108,6 @@ namespace EdS.World
         public readonly SortedDictionary<string, long> Active = new SortedDictionary<string, long>(StringComparer.Ordinal);
         public long Day;
         public readonly SortedSet<string> Taken = new SortedSet<string>(StringComparer.Ordinal);
-        public readonly SortedSet<string> Hunted = new SortedSet<string>(StringComparer.Ordinal);
 
         public static GuildCard From(SavedGuildCard saved)
         {
@@ -123,12 +122,11 @@ namespace EdS.World
             card.Titles.UnionWith(saved.Titles);
             foreach (KeyValuePair<string, long> a in saved.Active) card.Active[a.Key] = a.Value;
             card.Taken.UnionWith(saved.Taken);
-            card.Hunted.UnionWith(saved.Hunted);
             return card;
         }
 
         public SavedGuildCard ToSaved() =>
-            new SavedGuildCard(GuildRanks.Ids[Rank], Points, Contracts, Titles, Title, new Dictionary<string, long>(Active, StringComparer.Ordinal), Day, Taken, Hunted);
+            new SavedGuildCard(GuildRanks.Ids[Rank], Points, Contracts, Titles, Title, new Dictionary<string, long>(Active, StringComparer.Ordinal), Day, Taken);
 
         /// <summary>Ajoute des points, arrêtés au plafond de la carte ; rend ceux réellement ajoutés.</summary>
         public long Add(long points)
@@ -138,6 +136,18 @@ namespace EdS.World
             long added = after - Points;
             Points = after;
             return added;
+        }
+
+        /// <summary>
+        /// Garde le contrat comme pris le jour <paramref name="day"/> (passé au tableau de ce jour d'abord) ; faux, sans rien changer, si la
+        /// liste du jour est pleine (<see cref="SavedGuildCard.MaxTaken"/>).
+        /// </summary>
+        public bool MarkTaken(string contract, long day)
+        {
+            if (day == Day && !Taken.Contains(contract) && Taken.Count >= SavedGuildCard.MaxTaken) return false;
+            Today(day);
+            Taken.Add(contract);
+            return true;
         }
 
         /// <summary>Passe au tableau du jour <paramref name="day"/> : les contrats pris un autre jour se reprennent.</summary>

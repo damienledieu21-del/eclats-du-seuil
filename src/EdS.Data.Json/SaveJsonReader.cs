@@ -132,6 +132,8 @@ namespace EdS.Data.Json
                     st.Tracked = input.NullableText(v, p);
                 },
                 ["trust"] = (v, p) => st.Trust = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["hunted"] = (v, p) => st.Hunted = input.ReadLimitedList(v, p, SavedStory.MaxHunted,   // relecture de la PR #79 (version 10)
+                    n => $"{n} créatures, au plus {SavedStory.MaxHunted}.", (e, ip) => input.Text(e, ip)),
                 ["guild"] = (v, p) =>   // sous-lot V1.7 (version 10) : carte d'aventurier
                 {
                     st.HasGuild = true;
@@ -187,7 +189,6 @@ namespace EdS.Data.Json
                 },
                 ["day"] = (v, p) => g.Day = input.Int64(v, p),
                 ["taken"] = (v, p) => g.Taken = Ids(v, p, SavedGuildCard.MaxTaken),
-                ["hunted"] = (v, p) => g.Hunted = Ids(v, p, SavedGuildCard.MaxHunted),
             });
             return ok ? g : null;
         }
@@ -222,7 +223,7 @@ namespace EdS.Data.Json
                 + ", \"contracts\": " + g.Contracts.ToString(CultureInfo.InvariantCulture) + ", \"titles\": " + List(g.Titles)
                 + ", \"title\": " + (g.Title is null ? "null" : Quoted(g.Title))
                 + ", \"active\": {" + string.Join(", ", g.Active.Select(a => Quoted(a.Key) + ": " + a.Value.ToString(CultureInfo.InvariantCulture))) + "}"
-                + ", \"day\": " + g.Day.ToString(CultureInfo.InvariantCulture) + ", \"taken\": " + List(g.Taken) + ", \"hunted\": " + List(g.Hunted) + "}";
+                + ", \"day\": " + g.Day.ToString(CultureInfo.InvariantCulture) + ", \"taken\": " + List(g.Taken) + "}";
         }
 
         // Identifiants écrits sans échappement : le format de SaveValidator.IsDataId, exigé aussi à la lecture (revue Codex de la PR #43).
@@ -315,8 +316,15 @@ namespace EdS.Data.Json
             b.Append("        \"trust\": {").Append(string.Join(", ", st.Trust.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append(",\n");
             // Sous-lot V1.6 (version 8) : quête suivie, ou null.
-            b.Append("        \"tracked\": ").Append(st.Tracked is null ? "null" : Quoted(st.Tracked)).Append(st.Guild is null ? "\n" : ",\n");
-            // Sous-lot V1.7 (version 10) : carte d'aventurier, sur une ligne ; absente tant que le personnage n'est pas inscrit.
+            b.Append("        \"tracked\": ").Append(st.Tracked is null ? "null" : Quoted(st.Tracked)).Append(st.Guild is null && st.Hunted.Count == 0 ? "\n" : ",\n");
+            // Sous-lot V1.7 (version 10) : créatures rares déjà vaincues (absent s'il n'y en a aucune), puis la carte d'aventurier, sur une ligne
+            // chacune ; la carte est absente tant que le personnage n'est pas inscrit.
+            if (st.Hunted.Count > 0)
+            {
+                if (st.Hunted.Count > SavedStory.MaxHunted || st.Hunted.Any(h => h.Length > 64 || !SaveValidator.IsDataId(h)))
+                    throw new ArgumentException("Créatures rares hors du format des sauvegardes.", nameof(c));
+                b.Append("        \"hunted\": ").Append(List(st.Hunted)).Append(st.Guild is null ? "\n" : ",\n");
+            }
             if (st.Guild is SavedGuildCard g) b.Append("        \"guild\": ").Append(Guild(g)).Append("\n");
             b.Append("      },\n");
             // Sous-lot 12.6 (version 5) : expérience des métiers, sur une ligne.

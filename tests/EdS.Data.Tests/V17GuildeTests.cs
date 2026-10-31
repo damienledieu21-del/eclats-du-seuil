@@ -323,18 +323,20 @@ public class V17GuildeTests : IDisposable
     // --- Sauvegarde en version 10 -------------------------------------------------------------------------------------
 
     private static SavedGuildCard FullCard => new SavedGuildCard("f", 140, 3, new[] { "title.guilde.recrue", "title.guilde.eclaireur" }, "title.guilde.eclaireur",
-        new Dictionary<string, long> { ["contract.grande_battue"] = 2, ["contract.loups_du_pre"] = 0 }, 4, new[] { "contract.loups_du_pre", "contract.grande_battue" },
-        new[] { "loup_blanc" });
+        new Dictionary<string, long> { ["contract.grande_battue"] = 2, ["contract.loups_du_pre"] = 0 }, 4, new[] { "contract.loups_du_pre", "contract.grande_battue" });
+
+    /// <summary>Le héros avec la carte complète et une créature rare déjà vaincue (relecture de la PR #79 : gardée dans l'histoire).</summary>
+    private static SavedCharacter FullHero => Hero().WithStory(new SavedStory(guild: FullCard, hunted: new[] { "loup_blanc" }));
 
     [Fact]
     public void Carte_sauvegardee_en_version_10()
     {
-        string text = SaveJsonReader.Write(new WorldSave("zone.guilde", 10, 1, Array.Empty<string>(), WithCard(Hero(), FullCard)));
+        string text = SaveJsonReader.Write(new WorldSave("zone.guilde", 10, 1, Array.Empty<string>(), FullHero));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
         Assert.Equal(10, SaveValidator.CurrentSchemaVersion);
-        Assert.Contains("        \"tracked\": null,\n        \"guild\": {\"rank\": \"f\", \"points\": 140, \"contracts\": 3, \"titles\": [\"title.guilde.eclaireur\", "
-            + "\"title.guilde.recrue\"], \"title\": \"title.guilde.eclaireur\", \"active\": {\"contract.grande_battue\": 2, \"contract.loups_du_pre\": 0}, \"day\": 4, "
-            + "\"taken\": [\"contract.grande_battue\", \"contract.loups_du_pre\"], \"hunted\": [\"loup_blanc\"]}\n      },\n", text, StringComparison.Ordinal);
+        Assert.Contains("        \"tracked\": null,\n        \"hunted\": [\"loup_blanc\"],\n        \"guild\": {\"rank\": \"f\", \"points\": 140, \"contracts\": 3, "
+            + "\"titles\": [\"title.guilde.eclaireur\", \"title.guilde.recrue\"], \"title\": \"title.guilde.eclaireur\", \"active\": {\"contract.grande_battue\": 2, "
+            + "\"contract.loups_du_pre\": 0}, \"day\": 4, \"taken\": [\"contract.grande_battue\", \"contract.loups_du_pre\"]}\n      },\n", text, StringComparison.Ordinal);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
@@ -342,7 +344,12 @@ public class V17GuildeTests : IDisposable
         SavedGuildCard card = read.Save.Character!.Story.Guild!;
         Assert.Equal(("f", 140L, 3L, "title.guilde.eclaireur", 4L), (card.Rank, card.Points, card.Contracts, card.Title, card.Day));
         Assert.Equal(2, card.Active["contract.grande_battue"]);
+        Assert.Equal(new[] { "loup_blanc" }, read.Save.Character.Story.Hunted);
         Assert.Equal(text, SaveJsonReader.Write(read.Save));
+        // Créatures rares sans carte (vaincues avant l'inscription) : la ligne « hunted » seule.
+        string before = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithStory(new SavedStory(hunted: new[] { "loup_blanc" }))));
+        Assert.Contains("        \"tracked\": null,\n        \"hunted\": [\"loup_blanc\"]\n      },\n", before, StringComparison.Ordinal);
+        Assert.Equal(before, SaveJsonReader.Write(SaveJsonReader.Read(before).Save!));
         // Sans carte : pas de ligne « guild » (le personnage n'est pas inscrit) ; le reste ne change pas.
         string none = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
         Assert.DoesNotContain("guild", none, StringComparison.Ordinal);
@@ -355,8 +362,11 @@ public class V17GuildeTests : IDisposable
         // Version 8 (V1.6) et 9 (V1.3) : même forme sans carte, lues et mises à jour ; une carte y est un champ inconnu, avec sa version.
         string none = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
         string card = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), WithCard(Hero(), FullCard)));
+        string hunted = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithStory(new SavedStory(hunted: new[] { "loup_blanc" }))));
         foreach (int version in new[] { 9, 8 })
         {
+            ValidationError beast = Assert.Single(SaveJsonReader.Read(hunted.Replace(SaveVersion.Current, $"\"schemaVersion\": {version}")).Report.Errors);
+            Assert.Equal(("$.data.character.story.hunted", ValidationCode.UnknownField), (beast.Path, beast.Code));
             SaveLoadResult old = SaveJsonReader.Read(none.Replace(SaveVersion.Current, $"\"schemaVersion\": {version}"));
             Assert.True(old.IsValid, old.Report.ToString());
             Assert.True(old.Save!.Migrated);
@@ -383,12 +393,14 @@ public class V17GuildeTests : IDisposable
     [InlineData("\"contract.grande_battue\": 2", "\"contrat.battue\": 2", "$.data.character.story.guild.active.contrat.battue", ValidationCode.InvalidValue)]
     [InlineData("\"contract.grande_battue\": 2", "\"contract.grande_battue\": -2", "$.data.character.story.guild.active.contract.grande_battue", ValidationCode.OutOfRange)]
     [InlineData("\"day\": 4", "\"day\": -1", "$.data.character.story.guild.day", ValidationCode.OutOfRange)]
-    [InlineData("[\"loup_blanc\"]", "[\"Loup blanc\"]", "$.data.character.story.guild.hunted[0]", ValidationCode.InvalidValue)]
-    [InlineData("\"hunted\": [\"loup_blanc\"]", "\"hunted\": [\"loup_blanc\"], \"extra\": 1", "$.data.character.story.guild.extra", ValidationCode.UnknownField)]
+    [InlineData("[\"loup_blanc\"]", "[\"Loup blanc\"]", "$.data.character.story.hunted[0]", ValidationCode.InvalidValue)]
+    [InlineData("[\"loup_blanc\"]", "[]", "$.data.character.story.hunted", ValidationCode.OutOfRange)]
+    [InlineData("[\"loup_blanc\"]", "[\"loup_blanc\", \"loup_blanc\"]", "$.data.character.story.hunted[1]", ValidationCode.InvalidValue)]
+    [InlineData("\"day\": 4", "\"day\": 4, \"extra\": 1", "$.data.character.story.guild.extra", ValidationCode.UnknownField)]
     [InlineData("\"guild\": {", "\"guild\": null, \"x\": {", "$.data.character.story.guild", ValidationCode.WrongType)]
     public void Carte_invalide_refusee_avec_son_chemin(string from, string to, string path, ValidationCode code)
     {
-        string text = SaveJsonReader.Write(new WorldSave("zone.guilde", 10, 1, Array.Empty<string>(), WithCard(Hero(), FullCard)));
+        string text = SaveJsonReader.Write(new WorldSave("zone.guilde", 10, 1, Array.Empty<string>(), FullHero));
         Assert.Contains(from, text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text.Replace(from, to, StringComparison.Ordinal));
         Assert.False(read.IsValid);
@@ -409,7 +421,7 @@ public class V17GuildeTests : IDisposable
             Trust = new List<KeyValuePair<string, int?>>(), HasTracked = true, HasGuild = true,
             Guild = new GuildCardData
             {
-                Rank = "g", Points = 0, Contracts = 0, Titles = new List<string?>(), HasTitle = true, Day = 0, Taken = new List<string?>(), Hunted = new List<string?>(),
+                Rank = "g", Points = 0, Contracts = 0, Titles = new List<string?>(), HasTitle = true, Day = 0, Taken = new List<string?>(),
                 Active = Enumerable.Range(0, 9).Select(n => new KeyValuePair<string, long?>("contract.c" + n, 0)).ToList(),
             },
         };
@@ -431,12 +443,12 @@ public class V17GuildeTests : IDisposable
         Assert.Throws<ArgumentException>(() => InGuild(WithCard(Hero(), new SavedGuildCard("g", titles: new[] { "title.inconnu" }))));
         Assert.Throws<ArgumentException>(() => InGuild(WithCard(Hero(), new SavedGuildCard("g", active: new Dictionary<string, long> { ["contract.inconnu"] = 0 }))));
         // Sans guilde chargée, la carte est gardée telle quelle.
-        var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), WithCard(Hero(), FullCard)), Vallons.Value, ShippedData, Progression,
+        var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), FullHero), Vallons.Value, ShippedData, Progression,
             ItemsCatalog, ShippedStory.Value);
         Assert.Null(session.Guild);
         SavedGuildCard kept = session.Save().Character!.Story.Guild!;
-        Assert.Equal((FullCard.Rank, FullCard.Points, FullCard.Title, FullCard.Active.Count, FullCard.Hunted.Count),
-            (kept.Rank, kept.Points, kept.Title, kept.Active.Count, kept.Hunted.Count));
+        Assert.Equal((FullCard.Rank, FullCard.Points, FullCard.Title, FullCard.Active.Count), (kept.Rank, kept.Points, kept.Title, kept.Active.Count));
+        Assert.Equal(new[] { "loup_blanc" }, session.Save().Character!.Story.Hunted);
         Assert.Equal(GuildRefusal.NoGuild, session.CanUseGuild());
     }
 
@@ -527,7 +539,8 @@ public class V17GuildeTests : IDisposable
         Assert.Equal(GuildRefusal.None, tomorrow.AbandonContract(board[1].Id, out _));
         string again = tomorrow.Board().Select(c => c.Id).First(id => tomorrow.Narrative!.ActiveContracts.All(a => a.Contract != id));
         Assert.Equal(GuildRefusal.None, tomorrow.TakeContract(again, out _));
-        Assert.Equal(new[] { again }, tomorrow.Save().Character!.Story.Guild!.Taken);
+        // Relecture de la PR #79 : l'abandon compte comme une prise du jour (il ne se reprend pas avant le lendemain).
+        Assert.Equal(new[] { board[1].Id, again }.OrderBy(i => i, StringComparer.Ordinal), tomorrow.Save().Character!.Story.Guild!.Taken);
     }
 
     [Fact]
@@ -682,17 +695,24 @@ public class V17GuildeTests : IDisposable
         w.Narrative.Defeated("loup_blanc_v2", "loup_blanc");
         w.Narrative.Defeated("loup_blanc", "loup_blanc");
         Assert.Equal(new[] { "GuildPoints loup_blanc 25" }, Steps(w));
-        Assert.Equal(new[] { "loup_blanc" }, w.Save().Character!.Story.Guild!.Hunted);
+        Assert.Equal(new[] { "loup_blanc" }, w.Save().Character!.Story.Hunted);
         // Fait d'un chef, découverte et effet de l'histoire (l'archiviste) ; une quête secondaire finie.
         var list = new List<StoryEvent>();
         w.Narrative.Learn("fact.chef.vaincu", list);
         Assert.Equal(new[] { "FactLearned fact.chef.vaincu", "GuildPoints fact.chef.vaincu 60" }, list.Select(e => e.ToString()));
         Assert.Equal(85, w.Narrative.GuildPoints);
-        // Pas inscrit : rien n'est compté, ni la créature rare (elle comptera plus tard).
+        // Pas inscrit : rien n'est compté. Relecture de la PR #79 (P5) : la créature rare est gardée comme déjà vaincue, et ne rapporte rien
+        // non plus après l'inscription ; rien de ce qui est fait avant l'inscription ne compte jamais.
         WorldSession outsider = InGuild(Hero());
         outsider.Narrative!.Defeated("loup_blanc", "loup_blanc");
+        outsider.Narrative.Learn("fact.chef.vaincu", new List<StoryEvent>());
         Assert.Empty(Steps(outsider));
         Assert.Null(outsider.Save().Character!.Story.Guild);
+        Assert.Equal(new[] { "loup_blanc" }, outsider.Save().Character!.Story.Hunted);
+        Assert.Equal(GuildRefusal.None, outsider.JoinGuild(out _));
+        outsider.Narrative.Defeated("loup_blanc", "loup_blanc");
+        Assert.Empty(Steps(outsider));
+        Assert.Equal(0, outsider.Narrative.GuildPoints);
         // Plafond de la carte : le gain s'arrête, jamais de dépassement.
         WorldSession top = InGuild(WithCard(Hero(), Card("g", SavedGuildCard.MaxPoints - 10)));
         top.Narrative!.Learn("fact.chef.vaincu", new List<StoryEvent>());
@@ -719,7 +739,7 @@ public class V17GuildeTests : IDisposable
         SavedCharacter hero = session.Save().Character!;
         SavedStory st = hero.Story;
         var promoted = new SavedStory(st.Facts, st.Quests, st.Trust, st.Discoveries, st.Tracked,
-            new SavedGuildCard("e", st.Guild!.Points, 0, new[] { "title.guilde.recrue" }, null, null, 0, null, null));
+            new SavedGuildCard("e", st.Guild!.Points, 0, new[] { "title.guilde.recrue" }, null, null, 0, null));
         var again = new WorldSession(new WorldSave("zone.archives", 0, 0, Array.Empty<string>(), hero.WithStory(promoted)), Inside("zone.archives"), ShippedData, Progression,
             ItemsCatalog, near, door: "sortie", storyZone: "zone.vallons", guild: Guild);
         Assert.Contains("StepCompleted quest.registres_de_l_archiviste/rang_e", again.Step().Story.Select(e => e.ToString()));
@@ -807,5 +827,122 @@ public class V17GuildeTests : IDisposable
         MapMarker objective = a.Objective!;
         Door door = Vallons.Value.DoorOf("porte_guilde")!;
         Assert.Equal((door.Position.X.Raw / 10000.0, door.Position.Z.Raw / 10000.0), (objective.X, objective.Z));
+    }
+
+    // --- Relecture de la PR #79 : régressions des sondes P1 à P6 ------------------------------------------------------------
+
+    private static int QuestIndex(JsonObject story, string id) => story["data"]!["quests"]!.AsArray().ToList().FindIndex(q => (string)q!["id"]! == id);
+
+    private static JsonObject QuestOf(JsonObject story, string id) => story["data"]!["quests"]![QuestIndex(story, id)]!.AsObject();
+
+    private static GuildLoadResult GuildWithStory(Action<JsonObject> change)
+    {
+        JsonObject story = StoryJson();
+        change(story);
+        return ReadGuild(GuildJson(), ReadStory(story));
+    }
+
+    [Fact]
+    public void P1_rang_ferme_dans_l_histoire_refuse_a_son_chemin()
+    {
+        // Objectif guildRank d'un rang fermé : jamais atteint. L'histoire seule l'accepte (le rang existe) ; la guilde le refuse.
+        JsonObject story = StoryJson();
+        int q = QuestIndex(story, "quest.registres_de_l_archiviste");
+        GuildLoadResult r = GuildWithStory(s => QuestOf(s, "quest.registres_de_l_archiviste")["steps"]![0]!["objective"]!["id"] = "d");
+        ValidationError e = Assert.Single(r.Report.Errors);
+        Assert.Equal(($"$.data.quests[{q}].steps[0].objective.id", ValidationCode.InvalidValue), (e.Path, e.Code));
+        Assert.Contains("story.json", e.Message, StringComparison.Ordinal);
+        // Condition guildRankAtLeast d'un rang fermé, dans un dialogue et dans des conditions d'ouverture.
+        int d = story["data"]!["dialogues"]!.AsArray().ToList().FindIndex(x => (string)x!["id"]! == "dialogue.maitresse_guilde");
+        r = GuildWithStory(s => s["data"]!["dialogues"]![d]!["entries"]![0]!["conditions"]![0]!["id"] = "d");
+        Assert.Equal(($"$.data.dialogues[{d}].entries[0].conditions[0].id", ValidationCode.InvalidValue), (Assert.Single(r.Report.Errors).Path, r.Report.Errors[0].Code));
+        r = GuildWithStory(s => QuestOf(s, "quest.registres_de_l_archiviste")["requires"] = new JsonArray(new JsonObject { ["if"] = "guildRankAtLeast", ["id"] = "sss" }));
+        Assert.Equal($"$.data.quests[{q}].requires[0].id", Assert.Single(r.Report.Errors).Path);
+    }
+
+    [Fact]
+    public void P2_epreuve_qui_demande_son_propre_rang_refusee()
+    {
+        // Dans l'épreuve du rang F, un objectif « rang F » (ou plus) ne serait jamais atteint : le rang vient à la fin de l'épreuve.
+        int q = QuestIndex(StoryJson(), TrialF);
+        GuildLoadResult r = GuildWithStory(s => QuestOf(s, TrialF)["steps"]![0]!["objective"] = new JsonObject { ["kind"] = "guildRank", ["id"] = "f" });
+        ValidationError e = Assert.Single(r.Report.Errors);
+        Assert.Equal(($"$.data.quests[{q}].steps[0].objective.id", ValidationCode.InvalidValue), (e.Path, e.Code));
+        Assert.Single(GuildWithStory(s => QuestOf(s, TrialF)["steps"]![1]!["objective"] = new JsonObject { ["kind"] = "guildRank", ["id"] = "e" }).Report.Errors);
+        // Un rang en dessous (G) ne bloque rien.
+        Assert.True(GuildWithStory(s => QuestOf(s, TrialF)["steps"]![0]!["objective"] = new JsonObject { ["kind"] = "guildRank", ["id"] = "g" }).IsValid);
+        // Même règle pour ses conditions d'ouverture : l'épreuve ne s'ouvrirait jamais.
+        r = GuildWithStory(s => QuestOf(s, TrialF)["requires"] = new JsonArray(new JsonObject { ["if"] = "guildRankAtLeast", ["id"] = "f" }));
+        Assert.Equal(($"$.data.quests[{q}].requires[0].id", ValidationCode.InvalidValue), (Assert.Single(r.Report.Errors).Path, r.Report.Errors[0].Code));
+    }
+
+    [Fact]
+    public void P3_conditions_d_ouverture_de_l_epreuve_respectees()
+    {
+        JsonObject story = StoryJson();
+        foreach (JsonNode? n in story["data"]!["npcs"]!.AsArray())
+            if ((string)n!["id"]! == Mistress) n["position"] = new JsonArray(0, -1.6);
+        QuestOf(story, TrialF)["requires"] = new JsonArray(new JsonObject { ["if"] = "levelAtLeast", ["value"] = 99 });
+        StoryBook book = ReadStory(story);
+        GuildLoadResult g = ReadGuild(GuildJson(), book);
+        Assert.True(g.IsValid, g.Report.ToString());
+        var session = new WorldSession(new WorldSave("zone.guilde", 0, 0, Array.Empty<string>(), WithCard(Hero(), Card("g", 100))), Inside("zone.guilde"), ShippedData,
+            Progression, ItemsCatalog, book, door: "sortie", storyZone: "zone.vallons", guild: g.Book);
+        session.Step();
+        Assert.False(session.Narrative!.IsOpen(TrialF));
+        Assert.Equal(GuildRefusal.Locked, session.Narrative.CanStartTrial());
+        Assert.Equal(GuildRefusal.Locked, session.CanStartTrial());
+        Assert.Equal(GuildRefusal.Locked, session.StartTrial(out IReadOnlyList<StoryEvent> none));
+        Assert.Empty(none);
+        Assert.False(session.Narrative.IsActive(TrialF));
+        Assert.True(Texts.Has("text.ui.guild.trial_locked"));
+    }
+
+    [Fact]
+    public void P4_contrat_d_un_autre_jour_abandonne_ne_se_reprend_pas_le_jour_meme()
+    {
+        GuildBook g = Guild;
+        long d = Enumerable.Range(0, 200).First(x => GuildBoard.Of(g, 0, x).Intersect(GuildBoard.Of(g, 0, x + 1)).Any());
+        string id = GuildBoard.Of(g, 0, d).Intersect(GuildBoard.Of(g, 0, d + 1)).First().Id;
+        WorldSession w = InGuild(WithCard(Hero(), Card("g")), tick: d * DayTicks);
+        Assert.Equal(GuildRefusal.None, w.TakeContract(id, out _));
+        WorldSession next = InGuild(w.Save().Character!, tick: (d + 1) * DayTicks);
+        Assert.Equal(GuildRefusal.None, next.AbandonContract(id, out _));
+        Assert.Equal(GuildRefusal.AlreadyTaken, next.CanTakeContract(id));
+        Assert.Equal(GuildRefusal.AlreadyTaken, next.TakeContract(id, out _));
+        SavedGuildCard card = next.Save().Character!.Story.Guild!;
+        Assert.Equal(next.Day, card.Day);
+        Assert.Equal(new[] { id }, card.Taken);
+        Assert.Empty(card.Active);
+    }
+
+    [Fact]
+    public void P5_creature_rare_avant_inscription_ne_compte_jamais()
+    {
+        WorldSession w = InGuild(Hero());
+        w.Narrative!.Defeated("loup_blanc", "loup_blanc");
+        Assert.Empty(Steps(w));
+        // Gardée dans la sauvegarde, relue à la session suivante, où l'inscription ne la fait pas compter.
+        WorldSession later = InGuild(w.Save().Character!);
+        Assert.Equal(new[] { "loup_blanc" }, later.Narrative!.Hunted);
+        Assert.Equal(GuildRefusal.None, later.JoinGuild(out _));
+        later.Narrative.Defeated("loup_blanc", "loup_blanc");
+        later.Narrative.Defeated("le_borgne", "bandit");   // une autre créature rare, vaincue après l'inscription : elle compte
+        Assert.Equal(new[] { "GuildPoints le_borgne 20" }, Steps(later));
+    }
+
+    [Fact]
+    public void P6_le_Borgne_compte_pour_la_prime_et_pour_la_bande()
+    {
+        // Comportement voulu pour l'instant (question à Damien) : une victoire sur le Borgne avance la prime et la chasse de la famille « bandit ».
+        GuildBook g = Guild;
+        long d = Enumerable.Range(0, 400).First(x => GuildBoard.Of(g, 2, x).Any(c => c.Id == "contract.bande_du_camp")
+            && GuildBoard.Of(g, 2, x).Any(c => c.Id == "contract.prime_du_borgne"));
+        WorldSession w = InGuild(WithCard(Hero(), Card("e", 300, null, null, 0, null, "title.guilde.recrue")), tick: d * DayTicks);
+        Assert.Equal(GuildRefusal.None, w.TakeContract("contract.bande_du_camp", out _));
+        Assert.Equal(GuildRefusal.None, w.TakeContract("contract.prime_du_borgne", out _));
+        w.Narrative!.Defeated("le_borgne", "bandit");
+        Assert.Equal(1, w.Narrative.ActiveContracts.Single(a => a.Contract == "contract.bande_du_camp").Progress);
+        Assert.Contains($"ContractDone contract.prime_du_borgne", Steps(w));
     }
 }
