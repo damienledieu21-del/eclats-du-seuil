@@ -4,7 +4,7 @@ Tri de toutes les décisions de la [feuille de route](FEUILLE_DE_ROUTE.md) (suje
 
 ## Comment lire ce document
 
-Ce tri est une **proposition de Claude, à relire par Damien**. Rien n'y est encore décidé : Damien peut **déplacer chaque ligne** d'une étape à l'autre, d'un simple mot (« ligne X en alpha »). Une décision rangée « Plus tard » n'est **pas abandonnée** : elle reste dans la feuille de route et arrive après. Le tri ne change aucune décision de gameplay ; il dit seulement **dans quel ordre** on les fait.
+Ce tri est une **proposition de Claude, relue par Damien**. Damien a tranché les 10 points où Claude hésitait le 31 octobre 2026 à 1 h 20 (voir « Points tranchés » en bas). Il peut toujours **déplacer chaque ligne** d'une étape à l'autre, d'un simple mot (« ligne X en alpha »). Une décision rangée « Plus tard » n'est **pas abandonnée** : elle reste dans la feuille de route et arrive après. Le tri ne change aucune décision de gameplay ; il dit seulement **dans quel ordre** on les fait.
 
 Les quatre étapes :
 
@@ -12,8 +12,8 @@ Les quatre étapes :
 |---|---|
 | **Vallons** | Les quatre vagues du lot « Vallons solo finis », avant le lot 13 : ce qui est déjà prévu dans [PLAN_VALLONS_SOLO.md](PLAN_VALLONS_SOLO.md). |
 | **Alpha** | Alpha fermée sur PC, visée au printemps 2027 (sujet 20) : une poignée de testeurs joue plusieurs heures dans le monde partagé. Petite et solide. |
-| **Lancement** | Sortie du jeu : PC et téléphone, français et anglais (sujet 52), environ 8 classes et 10 régions. Les bêtas fermée et ouverte (sujet 17) sont le chemin vers cette étape. |
-| **Plus tard** | Après le lancement : saisons, extensions, consoles, autres langues, et tout ce qui attend une **décision d'argent de Damien**. |
+| **Lancement** | Sortie du jeu **sur PC**, français et anglais (sujet 52), environ 8 classes et 10 régions. Le téléphone arrive juste après (quelques mois), dans le même monde. Les bêtas fermée et ouverte (sujet 17) sont le chemin vers cette étape. |
+| **Plus tard** | Après le lancement : d'abord le téléphone (quelques mois après, même monde, point 1), puis saisons, extensions, consoles, autres langues, et tout ce qui attend une **décision d'argent de Damien**. |
 
 Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renvoie aux décisions du lot « Vallons solo finis » du 29 octobre 2026 (équipement au max, « Les Vallons en très grand », « Du jamais vu », « Encore plus », métiers) ; « Q » et « H » renvoient aux questions et aux systèmes du [cadrage](CADRAGE.md) ; « L11 » aux décisions du 20 octobre 2026 ; « — » à une décision d'un lot déjà fait. Une ligne vaut pour son étape **et les suivantes** : ce qui est fait dans les Vallons reste au lancement.
 
@@ -32,7 +32,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Roulade qui coûte de l'endurance | Alpha | Les classes agiles en ont besoin | 3 |
 | Animations soumises au moteur (impact et annulation décidés par le moteur) | Alpha | Garde le combat déterministe pour 5 classes | 54 |
 | Banc d'essai d'équilibrage sur le moteur (5 % par rôle) | Alpha | 5 classes à équilibrer avant les testeurs | 37 |
-| Mode Action (viser là où on regarde) et aides au réglage du téléphone | Lancement | Second mode complet, utile surtout au téléphone | 3, 19 |
+| Mode Action (viser là où on regarde) | Lancement | Second mode complet ; ses aides au téléphone arrivent avec le téléphone | 3, 19 |
 | Enchaînements, jauge d'équilibre, exécution, interruption, points faibles, coup plongeant | Lancement | Profondeur du combat, après la base | 3 |
 | Éléments et réactions (feu, glace, foudre, Lumière, Ombre, Seuil) | Lancement | Liés aux six résistances et aux régions | 3, 34 |
 | Analyse après le combat, salle d'entraînement contre les boss vaincus | Lancement | Facile avec le moteur, pas indispensable aux testeurs | 3, 33 |
@@ -55,7 +55,8 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Contrats, primes et tâches du jour tirés parmi des modèles | Vallons | Guilde des aventuriers (V1.7) | 29, VSF |
 | Premiers choix qui restent (chef des bandits, hameau) | Vallons | Vague 3 | VSF, 29 |
 | Histoire de l'alpha : les chapitres des Vallons, premier arc d'Orsédia | Alpha | Une seule histoire, finie | 2 |
-| Souvenir jouable de la Rupture, puis réveil au village | Alpha | Les testeurs jugent les premières minutes | 21 |
+| Souvenir jouable de la Rupture en version courte, puis réveil au village | Alpha | Les testeurs jugent les premières minutes (point 5) | 21 |
+| Grande mise en scène du souvenir de la Rupture (Galeran, Ysolde) | Lancement | Modèles et mise en scène lourds, après l'alpha (point 5) | 21 |
 | Tutoriel dans l'histoire, premier combat en moins de 2 min, récompense en moins de 10 | Alpha | Les testeurs ne doivent pas être perdus | 21 |
 | Étapes de quête partagées en groupe | Alpha | Nécessaire dès qu'on joue à deux | 29, Q9 |
 | Histoire sur 10 régions : arcs régionaux, méchants reliés, un souvenir par Éclat | Lancement | Un arc par région | 2, 29 |
@@ -85,10 +86,10 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Événements du monde, fêtes au bourg, Seuil qui grandit | Vallons | Vague 2 | VSF |
 | Trois donjons des Vallons : pièges, énigmes, secrets, réveil renforcé | Vallons | Vague 3 | 27, VSF, H4 |
 | Trésors, pierres gravées, cartes au trésor, énigmes du Seuil, chasses, arène du camp | Vallons | Vague 3 | 30, VSF |
-| Jeu de cartes à la taverne, tir à l'arc et courses | Vallons | Vague 4 | VSF |
+| Jeu de cartes à la taverne, tir à l'arc et courses | Alpha | Décalé après le lot 13, ajouté pendant l'alpha (point 3) | VSF |
 | Carte peinte (faite) qui se dessine en explorant | Vallons | Le brouillard s'ajoute ensuite | 30 |
 | Donjons faits seul (avec compagnon) ou de 2 à 6 | Alpha | Les donjons des Vallons s'ouvrent aux groupes | 27 |
-| Régions : Vallons en alpha, 10 au lancement, d'autres avec les saisons | Lancement | Chiffre décidé par Damien | 9 |
+| Régions : Vallons en alpha, 10 au lancement, d'autres avec les saisons | Lancement | Chiffre décidé par Damien ; l'alpha garde les Vallons seuls, sans morceau d'Havre d'Ambre (point 2) | 9 |
 | Havre d'Ambre, Aubefort et Fêlune ; passages avec un court chargement | Lancement | Capitales des 10 régions | 9 |
 | Spécialités, montures, climat et météo propres à chaque région | Lancement | Font l'intérêt de chaque région | 9, 32 |
 | Donjons : 3 dans les Vallons, 1 à 2 par région au lancement (~15), quelques-uns ouverts | Lancement | Chiffre décidé | 27 |
@@ -99,11 +100,13 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Lune fendue (25 h en vrai) et ses phases, dormir à l'auberge | Lancement | Calendrier, Éclats, expérience reposée | 32 |
 | Intérieurs des autres maisons, étages, portes à clé | Lancement | Gardés pour plus tard dans la décision | VSF |
 | Conversations entre PNJ, rumeurs de taverne | Lancement | Donne vie aux villes | 31 |
-| Montures : première à la fin du premier chapitre, familles voyage et collecte | Lancement | Les Vallons se découvrent à pied | 7 |
+| Première monture : un seul cheval simple, à la fin du premier chapitre | Alpha | Une seule monture en alpha (point 6) | 7 |
+| Autres montures, familles voyage et collecte | Lancement | Les autres viennent au lancement (point 6) | 7 |
 | Transports du monde (diligences, passeurs, griffons de poste) | Lancement | Avec les régions | 7 |
 | Défis du jour et de la semaine sans pression | Lancement | Contrats du jour déjà dans les Vallons | 10 |
 | Décor comme arme (poix, ponts de corde, herbe qui brûle) | Lancement | Quelques-uns dans les donjons | VSF |
-| L'Envers en miroir de chaque région (et des Vallons) | Plus tard | Double presque le monde ; quelques failles au lancement | 9, VSF |
+| L'Envers en miroir des Vallons | Lancement | Cœur de l'histoire, un seul Envers au lancement (point 7) | 9, VSF |
+| L'Envers en miroir de chaque autre région | Plus tard | Un Envers par région avec les saisons (point 7) | 9, VSF |
 | Tour de l'Envers, expéditions dans l'Envers, chemin de l'Écho, raids de légende | Plus tard | Fin de jeu des saisons | 10 |
 | Donjons à étages, de métier, de classe, donjons vivants | Plus tard | Contenu en plus | 27 |
 | Escalade et vol plané, bateaux et combats en mer | Plus tard | Change le décor et les collisions | 7 |
@@ -148,7 +151,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Amélioration +1 à +10, pierres, runes, arme légendaire | Vallons | Vague 4 (forge poussée) | VSF |
 | Visible sur le Bastion : arme, bouclier, cape | Vallons | Décidé pour la vague 1 | VSF |
 | Hauts faits, titres, trophées de boss | Vallons | Vague 4 | VSF |
-| Fioles qui se remplissent, trois places de bonus (plat, élixir, huile) | Vallons | Potions faites ; cuisine en vague 4 | 36 |
+| Fioles qui se remplissent, trois places de bonus (plat, élixir, huile) | Vallons | Potions faites ; la cuisine arrive après le lot 13 (point 3) | 36 |
 | Mort : retour au dernier point sûr, sans perte | Vallons | Déjà fait | 33, Q8 |
 | Plafond qui monte : 25 en alpha, relevé à chaque extension | Alpha | Décidé ; chiffre du lancement à fixer | 54 |
 | Refonte des arbres ; talents changés chez le maître de classe | Alpha | Proposée pour l'alpha (L11-D1) | Q18, Q21 |
@@ -158,15 +161,17 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Barre de consommables à part ; bonus gardés à la mort, arrêtés hors ligne | Alpha | Combat à plusieurs classes, règle du serveur | 36 |
 | Création du personnage après le souvenir (simple en alpha, très poussée au lancement) | Alpha | Ordre des premières minutes | 21, 8 |
 | Peuples : Valloniens en alpha, 7 au lancement | Lancement | Un peuple par région | 1, 8 |
-| Deux livres de build actifs | Lancement | Collection et butin à concevoir | 22, H6 |
+| Deux livres de build actifs | Alpha | Éprouvés tôt par les testeurs (point 8) | 22, H6 |
 | 21 secondaires, six résistances | Lancement | Une partie dès l'alpha | 34 |
 | Constellation du Seuil, pouvoirs de l'Éveillé, écran du chemin | Lancement | Progression d'après l'histoire | 4, 54 |
 | Réputation des factions, voie de la Lumière ou de l'Ombre | Lancement | Avec les régions et les capitales | 4, VSF |
-| Hauts faits : ceux des Vallons en alpha, 2 000 au lancement, paliers et cachés | Lancement | Chiffre décidé, gros travail d'écriture | 53 |
+| Hauts faits : ceux des Vallons en alpha, ~500 au lancement, paliers et cachés | Lancement | Écriture plus sûre que 2 000 d'un coup (point 10) | 53 |
+| Hauts faits : le reste, saison après saison, jusqu'aux 2 000 | Plus tard | Chiffre visé gardé, étalé (point 10) | 53 |
 | Gamme d'équipement par niveau, métier, guilde ou voie ; effets légendaires | Lancement | Gamme énorme | VSF |
 | Garde-robe, teintures, lueurs et auras des légendaires | Lancement | Apparences, utiles avec la boutique | VSF, 49 |
 | Assurance de butin, gros butin des raids une fois par semaine | Lancement | Juste avec la fin de jeu | VSF, 54 |
-| Armure visible pièce par pièce | Lancement | Selon le prix ; aucun achat sans l'accord de Damien | 54 |
+| Armure visible pièce par pièce, avec un système acheté | Lancement | Si un système à acheter est abordable ; aucun achat sans l'accord de Damien (point 9) | 54 |
+| Armure visible pièce par pièce, fabriquée par nous | Plus tard | Si aucun système n'est abordable, on le fabrique pour après (point 9) | 54 |
 | Sacs à rareté (jusqu'à 136 places), banque partagée, sac à matériaux | Lancement | Sacs simples en vague 4 | 35 |
 | Parchemins, bombes, pièges, feu de camp, tente, huiles contre une famille | Lancement | Avec l'alchimie | 36 |
 | Retour en Écho, Larme d'Aube, compteur de tentatives et aide | Lancement | Second choix de retour, confort | 33 |
@@ -182,10 +187,11 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Élément | Étape | Pourquoi | Sujet |
 |---|---|---|---|
 | Forge, herboristerie, minage ; petit jeu de forge | Vallons | Faits, et V1.4 | Q6, VSF |
-| Cuisine et boulangerie, pêche, concours de pâtisserie | Vallons | Vague 4 | VSF |
+| Pêche | Vallons | Vague 4 | VSF |
+| Cuisine et boulangerie, concours de pâtisserie | Alpha | Décalés après le lot 13, ajoutés pendant l'alpha (point 3) | VSF |
 | Fabrication qui peut rater, matériaux en partie rendus | Vallons | V1.4 | VSF |
 | Cuivre, argent, or ; marchands, achat, vente, rachat | Vallons | V1.1 | 15 |
-| Maison au bourg (une chambre à soi), placement libre des meubles | Vallons | Vague 4 | VSF, 8 |
+| Maison au bourg (une chambre à soi), placement libre des meubles | Alpha | Décalée après le lot 13, ajoutée pendant l'alpha (point 3) | VSF, 8 |
 | Ressources partagées entre joueurs, communes qui réapparaissent vite | Alpha | Dès le monde partagé | VSF |
 | Marché simple : échanges directs par la fenêtre officielle, un tableau de ventes | Alpha | Décidé pour l'alpha (lot 13) | VSF, 15, 16 |
 | Tout s'échange sauf les légendaires et mythiques liés | Alpha | Règle décidée pour le lot 13 | VSF |
@@ -212,13 +218,15 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Le jeu solo tourne sur le serveur | Alpha | Aucune triche sur le butin dès les testeurs | 54 |
 | Groupes de 2 à 6, liste d'amis, invitations | Alpha | Décidé pour l'alpha | 5, Q31 |
 | Chat : près de toi, région, groupe, messages privés | Alpha | Décidé pour l'alpha | 5 |
-| Chat : guilde, raid, commerce, entraide ; bulles, liens, marqueurs | Lancement | Avec ces systèmes | 5 |
-| Courrier, émotes, roue de phrases au téléphone | Lancement | Confort | 5, 19 |
+| Chat : raid, commerce, entraide ; bulles, liens, marqueurs | Lancement | Avec ces systèmes ; le canal de guilde est en alpha | 5 |
+| Courrier, émotes | Lancement | Confort | 5 |
+| Roue de phrases au téléphone | Plus tard | Téléphone juste après le lancement sur PC (point 1) | 5, 19 |
 | Niveau synchronisé, recherche de groupe, appel à l'aide | Lancement | Jouer avec ses amis et en donjon | 5 |
-| Guildes : 50 membres puis 200 par contributions, rangs, blason, coffre | Lancement | Facultatives ; l'alpha a les groupes | 40 |
+| Guildes simples : créer, inviter, canal de guilde | Alpha | Peu cher, les testeurs la demanderont (point 4) | 40 |
+| Guildes complètes : 50 membres puis 200 par contributions, rangs, blason, coffre | Lancement | Le reste des guildes vient au lancement (point 4) | 40 |
 | Tableau de recrutement par capitale | Lancement | Aide les joueurs seuls | 40 |
 | Duels sur demande, arène classée 1c1, 2c2, 3c3, équipement égalisé | Lancement | JcJ promis au lancement | 38 |
-| Files PC et téléphone séparées en arène | Lancement | Va avec le téléphone | 38 |
+| Files PC et téléphone séparées en arène | Plus tard | Téléphone juste après le lancement sur PC (point 1) | 38 |
 | Jeu de rôle : 100 gestes, s'asseoir, serveurs dédiés, canal « en rôle » | Lancement | Décidé ; ~30 gestes d'abord | 46 |
 | Fiche de personnage écrite, modérée | Lancement | Comme le chat | 46, 8 |
 | Fort de guilde, alliances, rivalités, défis de la semaine | Plus tard | Système lourd | 5, 40 |
@@ -295,15 +303,15 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Sauvegardes toutes les heures, en double | Alpha | Ne pas perdre les personnages des testeurs | 24 |
 | PC minimum de 2018, 60 images sur le PC conseillé | Alpha | Les testeurs n'ont pas tous un gros PC | 42 |
 | Ce qui compte au combat ne disparaît jamais ; rapport de lenteur | Alpha | Règle à tenir dès le début | 42 |
-| Interface mobile complète (lot 14) | Lancement | L'alpha est sur PC | 19 |
-| Android (Note8 à 30 images par seconde) | Lancement | Promesse du téléphone | 42 |
-| iPhone (iPhone 13 à 60 images par seconde) | Lancement | Décision d'argent de Damien (Mac, compte Apple) | 42 |
-| Même personnage partout, paysage pour jouer, menus en portrait | Lancement | Promesse du jeu | 19, 43 |
-| Toucher pour aller, barre en arc, boutons déplaçables, vibrations | Lancement | Interface du téléphone | 19 |
-| Reprise instantanée, mode économie, notifications choisies | Lancement | Batterie et respect du joueur | 19 |
+| Interface mobile complète (lot 14) | Plus tard | Téléphone juste après le lancement sur PC (point 1) ; l'alpha et le lancement sont sur PC | 19 |
+| Android (Note8 à 30 images par seconde) | Plus tard | Téléphone juste après le lancement sur PC (point 1) | 42 |
+| iPhone (iPhone 13 à 60 images par seconde) | Plus tard | Téléphone juste après le lancement sur PC (point 1) ; décision d'argent de Damien (Mac, compte Apple) | 42 |
+| Même personnage partout, paysage pour jouer, menus en portrait | Plus tard | Téléphone juste après le lancement sur PC (point 1), dans le même monde | 19, 43 |
+| Toucher pour aller, barre en arc, boutons déplaçables, vibrations, aides au réglage du mode Action | Plus tard | Téléphone juste après le lancement sur PC (point 1) | 3, 19 |
+| Reprise instantanée, mode économie, notifications choisies | Plus tard | Téléphone juste après le lancement sur PC (point 1) ; batterie et respect du joueur | 19 |
 | Préréglages, résolution dynamique, mode foule | Lancement | Grand public | 42 |
 | Régions chargées en continu, téléchargement au choix | Lancement | Avec les régions | 42 |
-| Banc d'essai de fluidité à chaque mise à jour | Lancement | PC minimum, Note8, iPhone 13 | 42 |
+| Banc d'essai de fluidité à chaque mise à jour | Lancement | PC minimum au lancement ; Note8 et iPhone 13 avec le téléphone | 42 |
 | Copies de zone, file d'attente, page d'état, protection contre les attaques | Lancement | Grand public | 24 |
 | Serveur de test public, alertes, retour à une heure précise | Lancement | Incidents et mises à jour | 24, 26 |
 | Mode faible connexion | Lancement | Gardé avec le solo sur le serveur | 54 |
@@ -320,7 +328,8 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Charte au premier lancement, filtre, bloquer, signaler | Alpha | Modération de base de l'alpha | 16, 5 |
 | Sanctions graduées appliquées à la main, avertissement sur les liens | Alpha | Décidé par Damien | 16 |
 | Bouton d'aide dans le jeu (bug avec capture) | Alpha | Les testeurs signalent | 16 |
-| Connexion par Google, Apple ou Steam, QR code PC vers téléphone | Lancement | Grand public | 43 |
+| Connexion par Google, Apple ou Steam | Lancement | Grand public | 43 |
+| QR code PC vers téléphone | Plus tard | Téléphone juste après le lancement sur PC (point 1) | 43 |
 | Contenu partagé du compte (apparences, montures, coffre) | Lancement | Avec ces systèmes | 43 |
 | Double vérification avec cadeau, alertes, code du coffre, compte volé restauré | Lancement | Sécurité | 43, 16 |
 | Contrôle parental, compte familial, chat filtré des jeunes | Lancement | Jeu dès 12 ans | 43, 5 |
@@ -383,20 +392,18 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Cahier des charges pour un compositeur | Plus tard | Avec la décision d'argent | 18 |
 | Atelier du Seuil (les joueurs créent quêtes et donjons) | Plus tard | Après l'éditeur interne | VSF |
 
-## Points à trancher par Damien
+## Points tranchés par Damien (31 octobre 2026, 1 h 20)
 
-Les lignes où Claude hésite vraiment entre deux étapes :
-
-1. **Téléphone au lancement ou juste après ?** Le sujet 17 dit « PC d'abord, téléphones ensuite » ; la demande de ce tri dit « lancement sur PC et téléphone ». Proposition rangée : téléphone au lancement. Sortir sur PC d'abord ferait gagner plusieurs mois.
-2. **Une deuxième région en alpha ?** Rangé : les Vallons seuls. Une petite partie de Havre d'Ambre (marché, banque) rendrait le marché entre joueurs plus vivant, pour environ 4 à 6 sous-lots de plus.
-3. **Les vagues 3 et 4 entières avant le lot 13 ?** Rangé : oui, comme prévu dans le plan. Les faire passer en partie après le lot 13 (cuisine, cartes, tir à l'arc, maison) avancerait l'alpha d'environ un mois.
-4. **Les guildes en alpha ?** Rangé : au lancement. Une guilde simple (nom, membres, canal) coûte peu, et les testeurs la demanderont.
-5. **Le souvenir jouable de la Rupture en alpha ?** Rangé : en alpha, parce que les testeurs jugent les premières minutes. Il demande des modèles de Galeran et d'Ysolde et une mise en scène, ce qui pèse lourd pour une alpha.
-6. **La première monture en alpha ?** Elle est prévue à la fin du premier chapitre (sujet 7), donc dans les Vallons. Rangée au lancement, parce que les Vallons sont petits et qu'un cheval demande modèle, animations et règles de montée.
-7. **L'Envers en miroir de chaque région au lancement ?** Rangé : plus tard (quelques failles seulement au lancement). C'est le cœur de l'histoire, mais il double presque le monde à construire.
-8. **Les livres de build en alpha ou au lancement ?** Rangé : refonte des arbres en alpha, livres au lancement. Les mettre en alpha permettrait de les éprouver tôt, pour 3 à 4 sous-lots de plus.
-9. **L'armure visible pièce par pièce au lancement ?** Rangée au lancement, « selon le prix » (sujet 54). Si les systèmes à acheter sont trop chers et qu'on la fait nous-mêmes, elle peut glisser plus tard.
-10. **2 000 hauts faits au lancement ?** C'est le chiffre décidé. Il demande beaucoup d'écriture ; 500 au lancement et le reste avec les saisons serait plus sûr.
+1. **Téléphone** : juste après le lancement. Lancement sur PC, téléphone quelques mois après, dans le même monde.
+2. **Alpha** : les Vallons seuls, sans morceau d'Havre d'Ambre.
+3. **Vagues 3 et 4 des Vallons** : une partie est décalée après le lot 13 (monde partagé) ; l'alpha y gagne environ un mois.
+4. **Guildes en alpha** : une version simple (créer, inviter, canal de guilde) ; le reste au lancement.
+5. **Souvenir jouable de la Rupture** : une version courte en alpha, la grande mise en scène au lancement.
+6. **Première monture** : une seule en alpha, un cheval simple ; les autres au lancement.
+7. **L'Envers en miroir** : celui des Vallons au lancement, puis un Envers par région avec les saisons.
+8. **Livres de build** : en alpha.
+9. **Armure visible pièce par pièce** : au lancement si un système à acheter est abordable, sinon on le fabrique pour après.
+10. **Hauts faits** : environ 500 au lancement, puis le reste saison après saison jusqu'aux 2 000.
 
 ## Calcul de charge
 
@@ -408,16 +415,20 @@ Les lignes où Claude hésite vraiment entre deux étapes :
 |---|---|
 | Vague 1, ce qui reste (V1.2 à V1.4, V1.6 à V1.10) | ~8 |
 | Vague 2, le monde vivant | ~8 |
-| Vague 3, les aventures (trois donjons, Grand Solitaire, arène…) | ~10 |
-| Vague 4, la vie à côté du combat (cuisine, pêche, maison, forge poussée…) | ~10 |
-| Lot 13 : serveur de zone, solo sur le serveur, comptes, chat, groupes, marché simple, modération, hébergement | ~12 |
+| Vagues 3 et 4, la part gardée avant le lot 13 (trois donjons, Grand Solitaire, arène, pêche, forge poussée, hauts faits…) | ~10 |
+| Lot 13 : serveur de zone, solo sur le serveur, comptes, chat, groupes, guildes simples, marché simple, modération, hébergement | ~14 |
 | Quatre classes nouvelles (mécanique, ~14 compétences, 3 arbres, animations, équilibrage) | ~20 |
-| Premières minutes, création simple, caractéristiques et refonte des arbres | ~7 |
+| Premières minutes (souvenir court), création simple, caractéristiques et refonte des arbres | ~6 |
+| Deux livres de build actifs | ~4 |
+| Un cheval simple (modèle gratuit, animations, règles de montée) | ~3 |
 | Éditeur interne, carnet d'essai, mesures, préparation des testeurs | ~6 |
-| **Total** | **environ 80 sous-lots** |
+| **Total avant l'ouverture de l'alpha** | **environ 80 sous-lots** |
+| Décalé après le lot 13, ajouté pendant l'alpha (cuisine et boulangerie, concours de pâtisserie, cartes, tir à l'arc et courses, maison) | ~10, hors total |
+
+Ce que dit le tableau, honnêtement : le décalage d'une partie des vagues 3 et 4 retire **environ 10 sous-lots** avant l'alpha (environ un mois avec les essais et les relectures, comme prévu au point 3). Mais les versions simples demandées en alpha en ajoutent **environ 9** : livres de build (~4), cheval (~3), guildes simples (~2), moins un peu de travail sur le souvenir court. Le total reste donc **environ 80 sous-lots** : le mois gagné est presque entièrement repris. L'alpha y gagne surtout en sûreté (moins de contenu de vie à finir avant le lot 13, des testeurs qui ont guildes, cheval et livres).
 
 À 1 sous-lot par jour, cela fait environ 80 jours de travail, soit **fin février 2027 au plus tôt**. Il faut ajouter : les relectures de Damien (5 chapitres, une vingtaine de quêtes, les fiches de 4 classes), les essais dans Unity, les PR à format nouveau qui demandent beaucoup de tours de revue (une trentaine pour le 11.4d), les modèles et animations gratuites des 4 classes, et les jours sans travail. Avec ces retards, la fourchette réaliste est **mars à juin 2027**.
 
-**Verdict** : l'alpha au **printemps 2027 est tenable, mais serrée**. Elle est tenable surtout pour la fin du printemps (mai-juin), si les agents en parallèle tiennent leur rythme et si Damien relit vite. Mars 2027 ne paraît pas tenable sans alléger les Vallons (point 3 ci-dessus). Les quatre classes et le lot 13 sont les plus gros risques ; le contenu écrit vient juste après.
+**Verdict** : l'alpha au **printemps 2027 est tenable, mais serrée**. Elle est tenable surtout pour la fin du printemps (mai-juin), si les agents en parallèle tiennent leur rythme et si Damien relit vite. Mars 2027 ne paraît pas tenable : l'allègement des Vallons (point 3) est compensé par les versions simples (points 4, 6 et 8). Pour retrouver vraiment le mois, il faudrait reporter une partie des versions simples (les livres de build d'abord), ce que Damien n'a pas choisi. Les quatre classes et le lot 13 sont les plus gros risques ; le contenu écrit vient juste après.
 
-**Pour le lancement**, à titre indicatif : 9 régions de plus, avec chacune environ 15 à 25 sous-lots (zone, histoire, ~25 quêtes, ~30 créatures, 1 à 2 donjons, Gardien, boss du monde), 3 classes de plus, l'interface du téléphone, l'anglais, la boutique, le droit et la fin de jeu. Cela fait **plusieurs centaines de sous-lots**, et une bonne part des modèles 3D dépendra de dépenses pas encore décidées. Au rythme actuel, le lancement ne paraît **pas possible avant 2028**. Il faudra le réestimer après l'alpha, avec de vraies mesures.
+**Pour le lancement**, à titre indicatif : 9 régions de plus, avec chacune environ 15 à 25 sous-lots (zone, histoire, ~25 quêtes, ~30 créatures, 1 à 2 donjons, Gardien, boss du monde), 3 classes de plus, l'Envers des Vallons, la grande mise en scène de la Rupture, ~500 hauts faits, la part décalée des Vallons si elle n'est pas finie pendant l'alpha, l'anglais, la boutique, le droit et la fin de jeu. Cela fait **plusieurs centaines de sous-lots**, et une bonne part des modèles 3D dépendra de dépenses pas encore décidées. Au rythme actuel, le lancement ne paraît **pas possible avant 2028**. Le téléphone (interface mobile, Android, iPhone) vient ensuite, quelques mois après : sortir sur PC d'abord retire ces sous-lots du chemin du lancement. Il faudra le réestimer après l'alpha, avec de vraies mesures.
