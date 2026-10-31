@@ -56,7 +56,7 @@ namespace EdS.Data
         /// 0.12.0 : 128 combattants au plus (décision de Damien du 29 octobre 2026 : plus de réapparitions par session dans les Vallons) ;
         /// 0.13.0 : bornes de la garde des boucliers (sous-lot V1.2, schéma 13) ; 0.14.0 : bornes des effets d'équipement (sous-lot V1.3,
         /// schéma 14) ; 0.15.0 : barre de combat « 4 + ultime dès le début » (sous-lot V1.8, décision de Damien) : places actives aux niveaux
-        /// 1, 1, 1, 1, 10 et 20, place de l'ultime au niveau 1 (schéma inchangé : six places actives au plus, borne du domaine
+        /// 1, 1, 1, 1, 10 et 20, place de l'ultime au niveau 1 (schéma inchangé : huit places actives au plus, borne du domaine
         /// <c>ProgressionRules.MaxActiveSlots</c>, comme le plafond des combattants de la version 0.12.0).
         /// </summary>
         public const string ProvisionalRulesContentVersion = "0.15.0-provisoire";

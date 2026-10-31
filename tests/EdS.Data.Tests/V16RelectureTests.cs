@@ -359,7 +359,9 @@ public class V16RelectureTests
 
     private static WorldSession Play(ZoneDefinition zone, SavedCharacter hero, IEnumerable<string>? consumed = null)
     {
-        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, (consumed ?? Array.Empty<string>()).OrderBy(k => k, StringComparer.Ordinal).ToArray(), hero),
+        // Sauvegarde de V1.8 (relecture de la PR #82) : PlayerCharacters.PlacesKey déjà au registre.
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, (consumed ?? Array.Empty<string>()).Append(PlayerCharacters.PlacesKey)
+                .Distinct(StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal).ToArray(), hero),
             zone, ShippedData, Progression, ItemsCatalog, Book(zone));
         w.Step();
         return w;
@@ -413,7 +415,8 @@ public class V16RelectureTests
         string safe = z.SafePointKey(z.Entry.Id);
         int combatants = Play(z, Hero(), new[] { safe }).Zone.Engine.CombatantIds.Count;
         // Avant la mort du chef : combattants + extra places ; sa mort en prend une.
-        string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - extra - 1).Select(i => $"probe/k{i:D6}").Append(safe).ToArray();
+        // Une clé de moins pour PlayerCharacters.PlacesKey (ajoutée par Play).
+        string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - extra - 2).Select(i => $"probe/k{i:D6}").Append(safe).ToArray();
         WorldSession w = Play(z, Hero(), keys);
         List<SessionStep> steps = BeatBandit(w);
         for (int i = 0; i < 20; i++) steps.Add(w.Step());

@@ -613,8 +613,10 @@ namespace EdS.Game
             if (_shownCharges >= 0 && me.RampartCharges > _shownCharges) UiSounds.Play(UiCue.ChargeGained);
             _shownCharges = me.RampartCharges;
 
-            // Compétences : 1 à 6, puis l'ultime. Sous-lot V1.8 : chaque éclat a sa place fixe (la place 3 vide laisse un trou, l'ultime
-            // reste au bout).
+            // Compétences : les six places actives ouvertes par les règles 0.15.0 (touches 1 à 6), puis l'ultime (R), chacune à sa place
+            // fixe (sous-lot V1.8 : la place 3 vide laisse un trou, l'ultime reste au bout). La 7e et la 8e place (emplacements 6 et 7 du
+            // pont temps réel, réponse de Damien du 31 octobre 2026) n'ont pas encore d'éclat : aucune règle ne les ouvre. L'ultime se
+            // reconnaît à IsUltimate (emplacement RealtimeCombat.UltimateSlot, 8), pas à son rang.
             while (_shards.Count < ShardPlaces.Length) _shards.Add(BuildShard(_shards.Count));
             for (int i = 0; i < _shards.Count; i++)
             {

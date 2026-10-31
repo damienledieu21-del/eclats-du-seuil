@@ -45,7 +45,7 @@ Les touches sont lues **par leur position** sur le clavier (Unity 6) : le tablea
 | Z Q S D ou flèches | se déplacer (simulé par le moteur dans les Vallons, visuel dans les séances sans décor) |
 | clic droit (ou Maj) maintenu | garde : un coup est bloqué (endurance) |
 | Espace | parade parfaite, juste avant l'impact |
-| 1, 2, 3, 4 | compétences des emplacements |
+| 1 à 6 | compétences des places actives (sous-lot V1.8 ; les touches 7 et 8 ne servent pas encore : aucune règle n'ouvre la 7e ni la 8e place) |
 | R | ultime (100 de Résonance) |
 | Tab | ennemi suivant comme cible |
 | C | remettre la caméra derrière le personnage |
@@ -97,7 +97,7 @@ La partie est **sauvegardée toute seule** (quelques secondes après chaque chan
 
 Les touches de combat sont celles de l'entraînement (garde, parade, compétences, Tab, caméra). La cible se choisit parmi les ennemis en vue à 20 m au plus, du plus proche au plus loin. Le monde **s'arrête** pendant un dialogue, un écran ouvert ou la pause (jeu en solo). Au doigt, un écran ou un dialogue ouvert masque les boutons tactiles du jeu : seuls ses propres boutons (dont Fermer) répondent.
 
-**Niveau et équipement** gagnés ou changés en route prennent effet à la **halte** suivante (le combat en cours garde le build d'entrée). **Compétences gagnées** (12.9b) : Barrière d'acier au niveau 5 (touche 3, sur toi), Onde de rupture (touche 4) et l'ultime Bastion absolu (R) au niveau 10 ; le message du niveau annonce la compétence, la halte l'équipe et dit sa touche. La **porte du moulin**, une fois ferrée par Maëlle, se franchit aussi après une halte. Une **défaite** ne fait rien perdre : Entrée reprend au dernier point sûr approché, PV pleins.
+**Niveau et équipement** gagnés ou changés en route prennent effet à la **halte** suivante (le combat en cours garde le build d'entrée). **Compétences gagnées** (12.9b, barre de V1.8) : Provocation au niveau 3 (touche 3), Barrière d'acier au niveau 5 (touche 4, sur toi), Onde de rupture (touche 5, la 5e place s'ouvre avec elle) et l'ultime Bastion absolu (R, place ouverte dès le niveau 1) au niveau 10 ; Contrecoup (niveau 7) va dans la réserve. Le message du niveau annonce la compétence, la halte l'équipe et dit sa touche. Une ancienne sauvegarde garde sa barre : une compétence déjà connue avant V1.8 n'est pas placée d'office (elle reste dans la réserve). La **porte du moulin**, une fois ferrée par Maëlle, se franchit aussi après une halte. Une **défaite** ne fait rien perdre : Entrée reprend au dernier point sûr approché, PV pleins.
 
 **Compétences** (sous-lot V1.5, décision de Damien : « partout hors combat ») : B, ou l'onglet **Compétences** du panneau (au doigt : **Sac**, puis l'onglet). À gauche, la barre telle qu'elle sera à ta prochaine halte : les places actives en éclats (touches 1 à 6), l'ultime (R), les passives en nœuds ; une place fermée dit le niveau qui l'ouvre (sous-lot V1.8 : 4 actives et l'ultime dès le niveau 1, 5e au niveau 10, 6e au niveau 20 ; passives aux niveaux 1, 5, 20 et 30). À droite, les compétences apprises (leur touche, ou « Réserve ») et celles à apprendre plus haut. **Glisse** une compétence sur une place (souris ou doigt), ou **touche-la puis touche la place** ; deux compétences de la barre s'échangent ainsi (un glissé qui revient sur sa place ne fait rien). La fiche du bas dit ce que fait la compétence (coût, recharge, portée, effet) ; une compétence à apprendre se survole ou se touche aussi. Refusé (motif sous la barre) tant qu'un ennemi est à moins de 12 m ou qu'un ennemi engagé te vise, même de loin, pendant une conversation ou si tu es tombé ; une place fermée ou une compétence pas encore apprise aussi ; à la souris, le **clic droit** sur une place la vide (réponse de Damien du 30 octobre 2026 : une place peut rester vide ; la halte ne la remplit plus). Une action qui ne change rien ne dit rien. Ce qui est gardé prend effet à la **halte** suivante (le combat en cours garde sa barre). Depuis V1.8, **Provocation** (niveau 3) prend la 3e place d'elle-même ; **Contrecoup** (niveau 7) arrive dans la **réserve** (barre pleine) : à toi de le placer, par exemple dans la 6e place au niveau 20. Si la boutique ferme pendant qu'elle est ouverte (la nuit qui tombe), le cœur rend ses offres non achetables (motif `Closed`) : leur bouton « Acheter » se grise. Une seule passive est apprise pour 2 places à partir du niveau 5 : la 2e affiche « Rien à placer pour l'instant ».
 
@@ -432,7 +432,7 @@ Ce que tu regardes :
 - les éclats plus petits ;
 - les Charges après une parade parfaite (Espace au bon moment) ;
 - les effets pendant un combat ;
-- les gestes des compétences 1 à 6 et R (7 aussi pour l'ultime ; la touche 5 n'est plus l'ultime depuis V1.8) ;
+- les gestes des compétences 1 à 6 et R (la touche 5 n'est plus l'ultime depuis V1.8 ; 7 et 8 ne font rien pour l'instant) ;
 - le loup ou le Gardien qui attaque ;
 - la musique quand tu sors du village, puis quand tu combats ;
 - la rivière près du pont.

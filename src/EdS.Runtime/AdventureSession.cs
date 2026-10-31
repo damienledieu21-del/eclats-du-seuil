@@ -263,7 +263,7 @@ namespace EdS.Runtime
             TextCatalog catalogTexts = Need(texts.Texts, "textes", () => texts.Report);
             // Sous-lot V1.6 : les PNJ des intérieurs vivent dans les zones reliées par des portes.
             StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog,
-                zones.Zones.Skip(1).ToList());
+                zones.Zones.Skip(1).ToList(), progression.LevelCap);
             CraftingLoadResult crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(dataDirectory), catalogTexts, definition, catalog);
             StoryBook storyBook = Need(story.Story, "histoire", () => story.Report);
             // Sous-lot V1.1 : marchands et valeur des objets.

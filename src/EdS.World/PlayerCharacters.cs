@@ -91,6 +91,33 @@ namespace EdS.World
         }
 
         /// <summary>
+        /// Relecture indépendante de la PR #82 : clé du registre du monde qui dit que la sauvegarde suit déjà la barre de V1.8 (règles
+        /// 0.15.0). Absente, la sauvegarde vient d'avant (ou d'un personnage qui n'est encore jamais entré dans une zone) : au premier
+        /// chargement, les compétences déjà connues sont données sans être placées (<see cref="KnownBeforePlaces"/>), puis la clé est
+        /// inscrite. Une sauvegarde a un seul personnage.
+        /// </summary>
+        public const string PlacesKey = "character/skill_places_v18";
+
+        /// <summary>
+        /// Relecture indépendante de la PR #82 (règle de la V1.5 : « la halte ne remplit plus une place vidée ») : compétences avec leur
+        /// place (<see cref="SkillUnlock.WithPlace"/>) que le personnage connaît déjà à son niveau (niveau atteint ≥ leur niveau de
+        /// déblocage) sans que la halte les ait données (clé <see cref="SkillUnlock.GivenKey"/> absente). Pour une sauvegarde d'avant V1.8
+        /// (sans <see cref="PlacesKey"/>), elles sont inscrites comme données <b>sans être placées</b> : avec les anciennes règles, Provocation
+        /// allait dans la réserve, et une place vidée par le joueur ne doit pas se remplir ni annoncer une « nouvelle compétence » connue
+        /// depuis longtemps. Seul un personnage qui atteint ce niveau après V1.8 la reçoit dans la barre. Rend une liste vide si
+        /// <paramref name="given"/> connaît déjà <see cref="PlacesKey"/>. Rien n'est modifié ici.
+        /// </summary>
+        public static IReadOnlyList<SkillUnlock> KnownBeforePlaces(SavedCharacter character, CharacterProgression progression, Func<string, bool> given)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            if (given is null) throw new ArgumentNullException(nameof(given));
+            if (given(PlacesKey)) return Array.Empty<SkillUnlock>();
+            int level = Level(character, progression);
+            return progression.ForClass(character.ClassId).SkillUnlocks.Where(u => u.WithPlace && u.Level <= level && !given(u.GivenKey)).ToList();
+        }
+
+        /// <summary>
         /// Sous-lot V1.5 (écran des compétences) : compétences apprises par le personnage à son niveau actuel (d'après son expérience) : celles
         /// de départ de sa classe (actives puis passives), puis celles gagnées jusqu'à son niveau (<see cref="ClassProgression.SkillUnlocks"/>),
         /// dans l'ordre de la progression, sans doublon.

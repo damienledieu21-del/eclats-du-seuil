@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using EdS.Data.Characters;
 using EdS.Data.Json;
 using EdS.Data.Saves;
+using EdS.Data.Story;
 using EdS.Data.Validation;
 using EdS.Domain.Builds;
 using EdS.Net;
@@ -182,11 +183,84 @@ public class V18ProgressionTests : IDisposable
         Assert.Equal("$.data.classes[0].startActiveSkills", Error(r).Path);
     }
 
+    // --- Relecture indépendante de la PR #82 : ordre des déblocages, réserve, plafond ------------------------------------------
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Deblocages_d_un_meme_niveau_ranges_par_sorte_puis_identifiant(bool reversed)
+    {
+        // Contrecoup avancé au niveau 5, avec la Barrière : une seule place libre (Provocation a pris la 3e). Quel que soit l'ordre du
+        // fichier, la Barrière (identifiant plus petit) prend la place et Contrecoup va dans la réserve, avec un avertissement.
+        ProgressionLoadResult r = Mutated(root =>
+        {
+            JsonArray unlocks = root["data"]!["classes"]![0]!["skillUnlocks"]!.AsArray();
+            JsonNode counter = unlocks.First(u => (string)u!["skill"]! == Contrecoup)!;
+            counter["level"] = 5;
+            unlocks.Remove(counter);
+            int at = unlocks.IndexOf(unlocks.First(u => (string)u!["skill"]! == Barriere)) + (reversed ? 0 : 1);
+            unlocks.Insert(at, counter);
+        });
+        Assert.True(r.IsValid, r.Report.ToString());
+        IReadOnlyList<SkillUnlock> got = r.Progression!.ForClass("class.bastion").SkillUnlocks;
+        Assert.Equal(new[] { (3, Provocation, true), (5, Barriere, true), (5, Contrecoup, false) },
+            got.Take(3).Select(u => (u.Level, u.Skill, u.WithPlace)));
+        // Niveau 10 : l'active (Onde) avant l'ultime (Bastion absolu), même si le fichier les donne dans l'autre ordre.
+        Assert.Equal(new[] { Onde, Absolu }, got.Where(u => u.Level == 10).Select(u => u.Skill));
+        Assert.Contains(r.Report.Warnings, w => w.Message.Contains(Contrecoup, StringComparison.Ordinal) && w.Message.Contains("réserve", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Competence_sans_place_et_niveau_au_dessus_du_plafond_avertis()
+    {
+        // Données livrées : Contrecoup (niveau 7) arrive sans place libre : avertissement, pas d'erreur.
+        ProgressionLoadResult shipped = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData);
+        Assert.True(shipped.IsValid);
+        ValidationError reserve = Assert.Single(shipped.Report.Warnings);
+        Assert.Equal(("$.data.classes[0].skillUnlocks[2].skill", ValidationCode.InvalidValue), (reserve.Path, reserve.Code));
+        // Une compétence gagnée au niveau 26, au-dessus du plafond (25) : chargée, avec un avertissement.
+        ProgressionLoadResult high = Mutated(root =>
+        {
+            JsonArray unlocks = root["data"]!["classes"]![0]!["skillUnlocks"]!.AsArray();
+            JsonNode counter = unlocks.First(u => (string)u!["skill"]! == Contrecoup)!;
+            unlocks.Remove(counter);
+            counter["level"] = 26;
+            unlocks.Add(counter);   // les niveaux restent dans l'ordre
+        });
+        Assert.True(high.IsValid, high.Report.ToString());
+        Assert.Contains(high.Report.Warnings, w => w.Code == ValidationCode.OutOfRange && w.Path.EndsWith(".level", StringComparison.Ordinal)
+            && w.Message.Contains("plafond actuel (25)", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Condition_de_niveau_au_dessus_du_plafond_avertie()
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!.AsObject();
+        static JsonObject? FirstLevel(JsonNode? node) => node switch
+        {
+            JsonObject o when (string?)o["if"] == "levelAtLeast" => o,
+            JsonObject o => o.Select(p => FirstLevel(p.Value)).FirstOrDefault(x => x != null),
+            JsonArray a => a.Select(FirstLevel).FirstOrDefault(x => x != null),
+            _ => null,
+        };
+        StoryLoadResult shipped = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), ItemsCatalog, V16TestData.Interiors, Progression.LevelCap);
+        Assert.True(shipped.IsValid, shipped.Report.ToString());
+        Assert.DoesNotContain(shipped.Report.Warnings, w => w.Message.Contains("plafond", StringComparison.Ordinal));
+        FirstLevel(root)!["value"] = 26;
+        StoryLoadResult high = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), ItemsCatalog, V16TestData.Interiors, Progression.LevelCap);
+        Assert.True(high.IsValid, high.Report.ToString());
+        Assert.Contains(high.Report.Warnings, w => w.Code == ValidationCode.OutOfRange && w.Message.Contains("plafond actuel (25)", StringComparison.Ordinal));
+        // Sans plafond donné, aucun contrôle (comme avant).
+        Assert.DoesNotContain(StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), ItemsCatalog, V16TestData.Interiors).Report.Warnings,
+            w => w.Message.Contains("plafond", StringComparison.Ordinal));
+    }
+
     private AdventureSession Start(long xp, IEnumerable<string>? consumed = null, SavedCharacter? hero = null)
     {
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
-        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, consumed ?? Array.Empty<string>(),
+        // Sauvegarde de V1.8 (relecture de la PR #82) : le personnage a atteint son niveau après V1.8.
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, (consumed ?? Array.Empty<string>()).Append(PlayerCharacters.PlacesKey),
             hero ?? PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Progression).WithXp(xp)));
         AdventureSession a = AdventureSession.Load(DataDirectory, ScenariosDirectory, savePath);
         a.DrainMessages();
@@ -210,13 +284,19 @@ public class V18ProgressionTests : IDisposable
         Assert.Equal(new[] { (0, Frappe), (1, Heurt), (2, Provocation), (3, Barriere), (4, Onde), (5, Contrecoup), (RealtimeCombat.UltimateSlot, Absolu) },
             me.Slots.Select(s => (s.Slot, s.SkillId)));
         Assert.Equal(new[] { false, false, false, false, false, false, true }, me.Slots.Select(s => s.IsUltimate));
-        Assert.Equal((6, 6, 6), (RealtimeCombat.UltimateSlot, RealtimeCombat.MaxActiveSlots, Protocol.MaxSlot));
+        // Réponse de Damien du 31 octobre 2026 : huit actives (0 à 7) et l'ultime (8) dans le pont temps réel et le protocole.
+        Assert.Equal((8, 8, 8), (RealtimeCombat.UltimateSlot, RealtimeCombat.MaxActiveSlots, Protocol.MaxSlot));
         // Hors de combat, aucune compétence ne part, mais chaque emplacement est reconnu (pas « emplacement vide »).
         a.Combat.DrainFeedback();
         foreach (int slot in new[] { 4, 5, RealtimeCombat.UltimateSlot }) a.Combat.UseSlot(slot);
         Assert.DoesNotContain(a.Combat.DrainFeedback(), f => f.Detail == "emplacement vide");
-        a.Combat.UseSlot(7);
-        Assert.Contains(a.Combat.DrainFeedback(), f => f.Detail == "emplacement vide");
+        // La 7e et la 8e place (6 et 7) existent dans le pont, mais les règles ne les ouvrent pas : elles restent vides.
+        foreach (int slot in new[] { 6, 7 })
+        {
+            a.Combat.UseSlot(slot);
+            Assert.Contains(a.Combat.DrainFeedback(), f => f.Detail == "emplacement vide");
+        }
+        Assert.Equal(6, Rules.ActiveSlots(25));
     }
 
     [Fact]
@@ -237,19 +317,21 @@ public class V18ProgressionTests : IDisposable
     // --- Protocole 4 ------------------------------------------------------------------------------------------------------------
 
     [Fact]
-    public void Protocole_4_six_actives_et_l_ultime()
+    public void Protocole_4_huit_actives_et_l_ultime()
     {
+        // Réponse de Damien du 31 octobre 2026 : le protocole accepte huit actives (0 à 7) et l'ultime à l'emplacement 8, sans changer de
+        // numéro (le protocole 4 n'est pas encore fusionné).
         Assert.Equal(4, Protocol.Version);
-        foreach (int slot in new[] { 0, 4, 5, 6 })
+        foreach (int slot in new[] { 0, 4, 5, 6, 7, 8 })
         {
             string json = $"{{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":{slot},\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false}}";
             NetMessage? m = MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(json), MessageDirection.ClientToServer, out string? error);
             Assert.True(error is null, error);
             Assert.Equal(slot, Assert.IsType<InputMessage>(m).Slot);
         }
-        string seven = "{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":7,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false}";
-        Assert.Null(MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(seven), MessageDirection.ClientToServer, out string? refused));
-        Assert.Contains("hors de [0, 6]", refused);
+        string nine = "{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":9,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false}";
+        Assert.Null(MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(nine), MessageDirection.ClientToServer, out string? refused));
+        Assert.Contains("hors de [0, 8]", refused);
     }
 
     // --- Références figées ------------------------------------------------------------------------------------------------------

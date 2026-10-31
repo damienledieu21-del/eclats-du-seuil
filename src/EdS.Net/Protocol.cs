@@ -11,8 +11,8 @@ namespace EdS.Net
     /// le serveur peut envoyer l'état courant d'un combat. Version 2 depuis le sous-lot 11.7 : marche dans les intentions, déplacements et
     /// sélections dans les commandes, état courant (<see cref="StateMessage"/>, instantané du moteur) à la place de l'historique. Version 3
     /// depuis le sous-lot 11.9 : marche à reculons (<c>backward</c>) dans les intentions et les commandes de marche. Version 4 depuis le
-    /// sous-lot V1.8 : six places actives et l'ultime (<see cref="MaxSlot"/> 6 : l'emplacement 4 est désormais la 5e active, plus
-    /// l'ultime) ; un client d'une autre version est refusé dès la présentation.
+    /// sous-lot V1.8 : huit places actives et l'ultime (<see cref="MaxSlot"/> 8 : l'emplacement 4 est désormais la 5e active, plus
+    /// l'ultime ; les règles 0.15.0 n'ouvrent que six actives) ; un client d'une autre version est refusé dès la présentation.
     /// Détail : <c>docs/RESEAU.md</c>.
     /// </summary>
     public static class Protocol
@@ -53,8 +53,10 @@ namespace EdS.Net
         public const int MaxReasonLength = 512;
 
         /// <summary>
-        /// Emplacement le plus haut d'une compétence (actives 0 à 5, ultime 6 : <c>RealtimeCombat.UltimateSlot</c>). Protocole 4 (sous-lot
-        /// V1.8) : six actives et l'ultime ; au protocole 3, 4 était l'ultime (un client de cette version est refusé à la présentation).
+        /// Emplacement le plus haut d'une compétence (actives 0 à 7, ultime 8 : <c>RealtimeCombat.UltimateSlot</c>). Protocole 4 (sous-lot
+        /// V1.8, réponse de Damien du 31 octobre 2026) : huit actives et l'ultime, pour ne plus changer le protocole quand la 7e et la 8e
+        /// place s'ouvriront (les règles 0.15.0 n'en ouvrent que six) ; au protocole 3, 4 était l'ultime (un client de cette version est
+        /// refusé à la présentation).
         /// </summary>
         public const int MaxSlot = EdS.Runtime.RealtimeCombat.UltimateSlot;
 

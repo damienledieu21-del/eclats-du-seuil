@@ -132,9 +132,9 @@ public class Lot101ProtocolTests
     [InlineData("{\"type\":\"hello\",\"protocol\":1,\"name\":\"Dam\",\"build\":{\"reference\":\"b.r\",\"talents\":[]}}", "objet attendu")]
     [InlineData("{\"type\":\"reconnect\",\"protocol\":1,\"token\":\"0123456789ABCDEF0123456789ABCDEF\"}", "jeton invalide")]
     [InlineData("{\"type\":\"reconnect\",\"protocol\":1,\"token\":\"0123\"}", "jeton invalide")]
-    // Protocole 4 (sous-lot V1.8) : six actives (0 à 5) et l'ultime (6).
-    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":7,\"target\":null,\"ally\":null,\"heading\":null}", "hors de [0, 6]")]
-    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":-1,\"target\":null,\"ally\":null,\"heading\":null}", "hors de [0, 6]")]
+    // Protocole 4 (sous-lot V1.8, réponse de Damien du 31 octobre 2026) : huit actives (0 à 7) et l'ultime (8).
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":9,\"target\":null,\"ally\":null,\"heading\":null}", "hors de [0, 8]")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":-1,\"target\":null,\"ally\":null,\"heading\":null}", "hors de [0, 8]")]
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":\"a\\\"b\",\"ally\":null,\"heading\":null}", "identifiant invalide")]
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"heading\":null}", "« ally » obligatoire")]
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null}", "« heading » obligatoire")]

@@ -330,7 +330,8 @@ public class V15SkillScreenTests : IDisposable
         }
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
-        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+        // Sauvegarde de V1.8 (relecture de la PR #82) : le personnage a atteint son niveau après V1.8.
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
             character ?? PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(xp)));
         AdventureSession a = AdventureSession.Load(DataDirectory, scenarios, savePath);
         a.DrainMessages();
@@ -490,7 +491,8 @@ public class V15SkillScreenTests : IDisposable
         File.WriteAllText(zone, root.ToJsonString());
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
-        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+        // Sauvegarde de V1.8 (relecture de la PR #82) : le personnage a atteint son niveau après V1.8.
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
             PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(Level10)));
         AdventureSession a = AdventureSession.Load(data, scenarios, savePath);
         for (int i = 0; i < 1200 && !a.World.IsDefeated; i++) a.Advance(0.05);

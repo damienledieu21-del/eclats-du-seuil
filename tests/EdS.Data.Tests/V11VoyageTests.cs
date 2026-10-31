@@ -294,7 +294,7 @@ public class V11VoyageTests : IDisposable
         var events = new List<StoryEvent>();
         for (int i = 0; i < 5; i++) events.AddRange(w.Step().Story);
         Assert.Equal(new[] { "SafePointDiscovered place_du_bourg" }, events.Select(e => e.ToString()));
-        Assert.Equal(new[] { "zone.vallons/safe/place_du_bourg", "zone.vallons/safe/place_du_village" }, w.Save().Consumed);
+        Assert.Equal(new[] { PlayerCharacters.PlacesKey, "zone.vallons/safe/place_du_bourg", "zone.vallons/safe/place_du_village" }, w.Save().Consumed);   // V1.8 : barre de V1.8 notée
         // Une nouvelle session sur la sauvegarde : déjà découverts, aucun nouvel événement.
         var again = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
         Assert.Empty(Enumerable.Range(0, 5).SelectMany(_ => again.Step().Story));

@@ -119,11 +119,17 @@ public class V1ReponsesTests : IDisposable
 
     // --- Une place de la barre peut rester vide ------------------------------------------------------------------------------
 
-    /// <summary>Aventure sur les données livrées, depuis une sauvegarde de ce personnage (premier tick joué).</summary>
-    private AdventureSession Load(SavedCharacter hero, IEnumerable<string>? consumed = null)
+    /// <summary>
+    /// Aventure sur les données livrées, depuis une sauvegarde de ce personnage (premier tick joué). Sauf <paramref name="old"/>, la
+    /// sauvegarde suit déjà la barre de V1.8 (<see cref="PlayerCharacters.PlacesKey"/> au registre) : le personnage a atteint son niveau
+    /// après V1.8. Avec <paramref name="old"/>, c'est une sauvegarde d'avant V1.8 (relecture indépendante de la PR #82).
+    /// </summary>
+    private AdventureSession Load(SavedCharacter hero, IEnumerable<string>? consumed = null, bool old = false)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(SavePath)!);
-        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, consumed ?? Array.Empty<string>(), hero));
+        IEnumerable<string> keys = consumed ?? Array.Empty<string>();
+        if (!old) keys = keys.Append(PlayerCharacters.PlacesKey);
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, keys, hero));
         AdventureSession a = AdventureSession.Load(DataDirectory, ScenariosDirectory, SavePath);
         a.DrainMessages();
         a.Advance(0.05);
@@ -205,33 +211,99 @@ public class V1ReponsesTests : IDisposable
     }
 
     /// <summary>
-    /// Sauvegarde d'avant (aucune clé « compétence donnée ») : à la première entrée, les compétences avec leur place déjà dans la barre
-    /// sont données sans rien changer ni annoncer ; une qui manquait (place libre) est placée une dernière fois, comme avant.
+    /// Sauvegarde d'avant V1.8 (relecture indépendante de la PR #82 ; aucune clé <see cref="PlayerCharacters.PlacesKey"/>) : à la première
+    /// entrée, les compétences avec leur place que le personnage connaît déjà sont données <b>sans être placées</b> ni annoncées, la barre
+    /// ne change pas (règle de la V1.5 : la halte ne remplit plus une place vidée) ; puis la clé est inscrite.
     /// </summary>
     [Fact]
     public void Sauvegarde_d_avant()
     {
-        SavedCharacter full = PlayerCharacters.Learn(Player(Level10), Progression, Rules, out _);
-        AdventureSession a = Load(full);
+        // Niveau 10 avec la barre des anciennes règles (Barrière, Onde, Bastion absolu placés ; Provocation et Contrecoup en réserve).
+        SavedCharacter old = Bastion(Level10, new[] { Frappe, Heurt, Barriere, Onde }).WithSkills(new[] { Frappe, Heurt, Barriere, Onde }, Absolu, new[] { Roc });
+        AdventureSession a = Load(old, old: true);
         Assert.Empty(a.World.Learned);
-        Assert.Equal(full.ActiveSkills, a.World.Character.ActiveSkills);
+        Assert.Equal(new[] { Provocation, Barriere, Onde, Absolu }, a.World.KnownBefore.Select(u => u.Skill));
+        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, Engaged(a));
         Assert.All(new[] { Provocation, Barriere, Onde, Absolu }, s => Assert.True(a.World.Zone.IsConsumed("character/skill/" + s), s));
         Assert.False(a.World.Zone.IsConsumed("character/skill/" + Contrecoup));   // la réserve n'a pas de clé : jamais placée d'office
+        Assert.True(a.World.Zone.IsConsumed(PlayerCharacters.PlacesKey));
+        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, a.World.NextEntry.ActiveSkills);   // la 5e place reste libre
         a.Save();
-        Assert.Contains("character/skill/" + Barriere, SaveStore.Read(SavePath).Save!.Consumed);
-        // Niveau 5 sans la Barrière, place libre, pas de clé : elle est placée à l'entrée (Provocation aussi : sous-lot V1.8).
-        AdventureSession b = Load(Bastion(Level5, new[] { Frappe, Heurt, Provocation }));
-        Assert.Equal(new[] { Barriere }, b.World.Learned.Select(u => u.Skill));
-        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere }, Engaged(b));
-        // Avec la clé (elle a déjà été donnée, puis retirée) : la place reste vide.
+        IReadOnlyList<string> saved = SaveStore.Read(SavePath).Save!.Consumed;
+        Assert.Contains("character/skill/" + Provocation, saved);
+        Assert.Contains(PlayerCharacters.PlacesKey, saved);
+        // Recharger la sauvegarde de V1.8 ne refait rien.
+        AdventureSession again = AdventureSession.Load(DataDirectory, ScenariosDirectory, SavePath);
+        again.Advance(0.05);
+        Assert.Empty(again.World.KnownBefore);
+        Assert.Empty(again.World.Learned);
+        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, Engaged(again));
+        // Avec la clé d'une compétence (déjà donnée, puis retirée) : la place reste vide, dans une sauvegarde d'avant comme de V1.8.
         AdventureSession c = Load(Bastion(Level5, new[] { Frappe, Heurt, Provocation }), new[] { "character/skill/" + Barriere });
         Assert.Empty(c.World.Learned);
         Assert.Equal(new[] { Frappe, Heurt, Provocation }, Engaged(c));
-        // Sauvegarde d'avant V1.8 au niveau 3 : Provocation y avait été mise dans la réserve, sans clé (aucune place ne s'ouvrait). Avec
-        // les places libres de V1.8, la première entrée l'y place une fois.
-        AdventureSession d = Load(Bastion(Level3, new[] { Frappe, Heurt }));
-        Assert.Equal(new[] { Provocation }, d.World.Learned.Select(u => u.Skill));
-        Assert.Equal(new[] { Frappe, Heurt, Provocation }, Engaged(d));
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #82 (cas de la sonde) : sauvegardes d'avant V1.8 aux niveaux 4, 7 et 12, dont le joueur a vidé une
+    /// place. Avec les anciennes règles, Provocation allait dans la réserve, sans clé. Au premier chargement, elle est inscrite comme
+    /// donnée sans être placée : la place vidée reste vide, et aucune « nouvelle compétence » n'est annoncée.
+    /// </summary>
+    [Theory]
+    [InlineData(4)]
+    [InlineData(7)]
+    [InlineData(12)]
+    public void Ancienne_sauvegarde_la_halte_ne_remplit_pas_une_place_videe(int level)
+    {
+        // Barre des anciennes règles à ce niveau, puis le joueur a vidé la 2e place (Heurt de bouclier retiré).
+        string[] bar = level >= 10 ? new[] { Frappe, Barriere, Onde } : level >= 5 ? new[] { Frappe, Barriere } : new[] { Frappe };
+        string? ultimate = level >= 10 ? Absolu : null;
+        var keys = new List<string>();
+        if (level >= 5) keys.Add("character/skill/" + Barriere);
+        if (level >= 10) keys.AddRange(new[] { "character/skill/" + Onde, "character/skill/" + Absolu });
+        SavedCharacter old = Player(Progression.XpToLevel[level - 1]).WithSkills(bar, ultimate, new[] { Roc });
+        AdventureSession a = Load(old, keys, old: true);
+        Assert.Equal(level, a.World.Level);
+        Assert.Empty(a.World.Learned);
+        Assert.Equal(new[] { Provocation }, a.World.KnownBefore.Select(u => u.Skill));
+        Assert.Equal(bar, Engaged(a));
+        Assert.Equal(bar, a.World.NextEntry.ActiveSkills);
+        Assert.True(a.World.Zone.IsConsumed("character/skill/" + Provocation));
+        Assert.DoesNotContain(a.DrainMessages(), m => m.Contains("Provocation", StringComparison.Ordinal));
+        // Provocation reste apprise : dans la réserve, le joueur peut la placer lui-même.
+        Assert.True(a.Skills().HasReserve(SkillKind.Active));
+        Assert.Null(a.Skills().Card(Provocation)!.Place);
+        // À la halte suivante, rien ne change ni ne s'annonce.
+        Assert.True(a.Rest());
+        Assert.Empty(a.World.Learned);
+        Assert.Equal(bar, Engaged(a));
+        Assert.DoesNotContain(a.DrainMessages(), m => m.StartsWith("Nouvelle compétence", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #82 : un nouveau personnage (sauvegarde de V1.8) qui atteint le niveau 3 reçoit Provocation dans
+    /// la barre à la halte (réponse de Damien du 31 octobre 2026 : elle va directement dans la barre).
+    /// </summary>
+    [Fact]
+    public void Nouveau_personnage_au_niveau_3_recoit_Provocation_dans_la_barre()
+    {
+        string savePath = SavePath;
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+        if (File.Exists(savePath)) File.Delete(savePath);
+        AdventureSession a = AdventureSession.Load(DataDirectory, ScenariosDirectory, savePath);   // nouvelle partie
+        a.Advance(0.05);
+        Assert.Equal(1, a.World.Level);
+        Assert.True(a.World.Zone.IsConsumed(PlayerCharacters.PlacesKey));   // inscrite dès la première entrée
+        a.Save();
+        // Le même personnage, monté au niveau 3 (expérience gagnée en route), revient à une halte.
+        WorldSave save = SaveStore.Read(savePath).Save!;
+        SaveStore.Write(savePath, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, save.Character!.WithXp(Progression.XpToLevel[2])));
+        AdventureSession b = AdventureSession.Load(DataDirectory, ScenariosDirectory, savePath);
+        b.Advance(0.05);
+        Assert.Equal(3, b.World.Level);
+        Assert.Empty(b.World.KnownBefore);
+        Assert.Equal(new[] { Provocation }, b.World.Learned.Select(u => u.Skill));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, Engaged(b));
     }
 
     [Fact]
@@ -268,7 +340,8 @@ public class V1ReponsesTests : IDisposable
         SavedCharacter hero = Player(Level10);
         string safeKey = Zone().SafePointKey(Zone().Entry.Id);   // point d'entrée déjà découvert : sa clé ne prend pas de place
         int combatants = Load(hero, new[] { safeKey }).World.Zone.Engine.CombatantIds.Count;
-        string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - extra - 1).Select(i => $"probe/k{i:D6}").Append(safeKey).ToArray();
+        // Une clé de moins pour la place de PlayerCharacters.PlacesKey, ajoutée par Load (sauvegarde de V1.8).
+        string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - extra - 2).Select(i => $"probe/k{i:D6}").Append(safeKey).ToArray();
         AdventureSession a = Load(hero, keys);
         Assert.Equal(new[] { Provocation, Barriere, Onde, Absolu }, a.World.Learned.Select(u => u.Skill));   // placées à l'entrée dans tous les cas
         string[] skillKeys = new[] { Provocation, Barriere, Onde, Absolu }.Select(k => "character/skill/" + k).ToArray();
@@ -370,7 +443,8 @@ public class V1ReponsesTests : IDisposable
         File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(scenarios, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
         CopyMissingZoneScenarios(scenarios);
         Directory.CreateDirectory(Path.GetDirectoryName(SavePath)!);
-        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+        // Sauvegarde de V1.8 (relecture de la PR #82) : le personnage a atteint son niveau après V1.8.
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
             PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Progression).WithXp(xp)));
         AdventureSession a = AdventureSession.Load(DataDirectory, scenarios, SavePath);
         a.DrainMessages();
