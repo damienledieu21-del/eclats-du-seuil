@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "merchants"
@@ -109,6 +109,21 @@
                 },
                 "description": "Moments de la journée où la boutique est fermée."
               },
+              "rank": {
+                "enum": [
+                  "g",
+                  "f",
+                  "e",
+                  "d",
+                  "c",
+                  "b",
+                  "a",
+                  "s",
+                  "ss",
+                  "sss"
+                ],
+                "description": "Sous-lot V1.7 (schéma 2) : rang de la Guilde des aventuriers demandé pour ouvrir la boutique (la boutique de la guilde) ; facultatif."
+              },
               "daily": {
                 "type": "integer",
                 "minimum": 0,
@@ -132,6 +147,21 @@
                       "type": "string",
                       "pattern": "^item(\\.[a-z0-9_]+)+$",
                       "maxLength": 200
+                    },
+                    "rank": {
+                      "enum": [
+                        "g",
+                        "f",
+                        "e",
+                        "d",
+                        "c",
+                        "b",
+                        "a",
+                        "s",
+                        "ss",
+                        "sss"
+                      ],
+                      "description": "Sous-lot V1.7 (schéma 2) : rang de la guilde demandé pour acheter cette offre ; facultatif."
                     },
                     "price": {
                       "type": "integer",

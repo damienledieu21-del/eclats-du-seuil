@@ -40,12 +40,14 @@ public class V11MarchandsTests : IDisposable
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         MerchantBook book = loaded.Book!;
         Assert.Equal(MerchantValidator.CurrentSchemaVersion, book.SchemaVersion);
-        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier" }, book.Merchants.Select(m => m.Id));
-        Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere" }, book.Merchants.Select(m => m.Npc));
-        // Les trois au bourg d'Aube, chacun à un PNJ de l'histoire.
+        // Sous-lot V1.7 : et la réserve de la guilde, tenue par l'intendant dans la Maison de la Guilde.
+        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", "merchant.guilde" }, book.Merchants.Select(m => m.Id));
+        Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde" }, book.Merchants.Select(m => m.Npc));
+        // Les trois du dehors au bourg d'Aube, chacun à un PNJ de l'histoire ; celui de la guilde dans sa pièce.
         ZoneDefinition zone = Zone();
         StoryBook story = Book(zone);
-        Assert.All(book.Merchants, m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "bourg"));
+        Assert.All(book.Merchants.Where(m => story.Npc(m.Npc).Zone is null), m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "bourg"));
+        Assert.Equal("zone.guilde", story.Npc(book.Merchant("merchant.guilde").Npc).Zone);
         // L'herboriste vend toujours des potions de soin.
         Assert.Contains(book.Merchant("merchant.herboriste").Offers, o => o.Item == "item.potion_de_soin" && o.Always);
         // Contrat de l'économie : rien sous sa valeur de base, revente au plus la valeur : acheter puis revendre ne rapporte jamais.
@@ -122,7 +124,7 @@ public class V11MarchandsTests : IDisposable
         while (offers.Count <= MerchantValidator.MaxOffers) offers.Add(offers[0]!.DeepClone());
         Assert.Contains(Errors(ReadMerchants(many)), e => e.Path == "$.data.merchants[0].offers" && e.Code == ValidationCode.LimitExceeded);
         JsonObject future = MerchantsJson();
-        future["schemaVersion"] = 2;
+        future["schemaVersion"] = MerchantValidator.CurrentSchemaVersion + 1;   // sous-lot V1.7 : version 2 courante (rang de la boutique)
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Assert.Single(Errors(ReadMerchants(future))).Path, Errors(ReadMerchants(future))[0].Code));
         JsonObject kind = MerchantsJson();
         kind["kind"] = "story";

@@ -465,6 +465,13 @@
         "leashRange": 25,
         "loot": "loot.loup_blanc",
         "family": "loup_blanc"
+      },
+      {
+        "creature": "le_borgne",
+        "respawnMs": 300000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
       }
     ],
     "passages": [
@@ -811,6 +818,17 @@
         "to": "zone.maison",
         "toDoor": "sortie",
         "building": "maison5"
+      },
+      {
+        "id": "porte_guilde",
+        "name": "Maison de la Guilde",
+        "position": [
+          -89.5,
+          -6
+        ],
+        "to": "zone.guilde",
+        "toDoor": "sortie",
+        "building": "maison6"
       }
     ],
     "chiefs": [

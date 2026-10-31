@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 5,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.archives",
+    "name": "Archives de la Guilde",
+    "scenario": "zones/archives",
+    "indoor": true,
+    "entry": "lutrin",
+    "safePoints": [
+      {
+        "id": "lutrin",
+        "name": "Lutrin",
+        "position": [
+          -1.2,
+          0.6
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "archives",
+        "name": "Archives de la Guilde",
+        "min": [
+          -3.5,
+          -2.5
+        ],
+        "max": [
+          3.5,
+          2.5
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Maison de la Guilde",
+        "position": [
+          -2.8,
+          0
+        ],
+        "to": "zone.guilde",
+        "toDoor": "archives"
+      }
+    ]
+  }
+}

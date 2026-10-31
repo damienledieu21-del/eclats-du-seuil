@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/merchants.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "merchants",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "values": [
       {
@@ -493,6 +493,63 @@
             "item": "item.pioche_du_carrier",
             "price": 320,
             "always": true
+          }
+        ]
+      },
+      {
+        "id": "merchant.guilde",
+        "npc": "npc.intendant_guilde",
+        "greeting": "text.merchant.guilde.greeting",
+        "sellPercent": 30,
+        "closed": [],
+        "daily": 2,
+        "rank": "g",
+        "offers": [
+          {
+            "item": "item.potion_de_soin",
+            "price": 50,
+            "always": true
+          },
+          {
+            "item": "item.remede_de_l_aube",
+            "price": 190,
+            "always": true
+          },
+          {
+            "item": "item.heaume_du_guetteur",
+            "price": 2420,
+            "always": true,
+            "rank": "f"
+          },
+          {
+            "item": "item.anneau_du_guetteur",
+            "price": 3280,
+            "always": true,
+            "rank": "f"
+          },
+          {
+            "item": "item.spalieres_du_veneur",
+            "price": 3280,
+            "always": false,
+            "rank": "f"
+          },
+          {
+            "item": "item.jambieres_du_veneur",
+            "price": 2700,
+            "always": false,
+            "rank": "f"
+          },
+          {
+            "item": "item.cuirasse_du_veneur",
+            "price": 3850,
+            "always": true,
+            "rank": "e"
+          },
+          {
+            "item": "item.dent_de_loup",
+            "price": 3570,
+            "always": false,
+            "rank": "e"
           }
         ]
       }

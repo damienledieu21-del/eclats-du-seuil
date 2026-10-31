@@ -2855,6 +2855,57 @@
           "aggroRange": 10,
           "encircle": true
         }
+      },
+      {
+        "id": "le_borgne",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 320,
+        "armor": 15,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1700,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 18,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1100,
+            "radius": 2.4,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          114,
+          94
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 10,
+          "pack": false
+        }
       }
     ],
     "commands": []

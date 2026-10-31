@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using EdS.Data.Guild;
 using EdS.Data.Validation;
 using EdS.Domain.Collections;
 
@@ -73,10 +74,14 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V1.6 (version 8) : quête suivie (son objectif sur la carte), ou null.</summary>
         public string? Tracked { get; }
 
+        /// <summary>Sous-lot V1.7 (version 10) : carte d'aventurier de la Guilde ; null tant que le personnage n'est pas inscrit.</summary>
+        public SavedGuildCard? Guild { get; }
+
         public SavedStory(IEnumerable<string>? facts = null, IReadOnlyDictionary<string, QuestProgress>? quests = null,
-            IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null, string? tracked = null)
+            IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null, string? tracked = null, SavedGuildCard? guild = null)
         {
             Tracked = tracked;
+            Guild = guild;
             Facts = Frozen.List((facts ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).OrderBy(f => f, StringComparer.Ordinal), nameof(facts));
             Quests = Frozen.Dictionary((quests ?? new Dictionary<string, QuestProgress>()).OrderBy(q => q.Key, StringComparer.Ordinal)
                 .ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal), nameof(quests));
@@ -260,9 +265,15 @@ namespace EdS.Data.Saves
         /// antérieur refuse d'emblée une sauvegarde aux nouvelles places au lieu de la croire incohérente. Version 8 (sous-lot V1.6) :
         /// <c>tracked</c> obligatoire dans l'histoire (quête suivie, en cours, ou null) et étape réservée <c>reward</c> (récompense au choix en
         /// attente, <see cref="QuestProgress.Reward"/>) ; une sauvegarde de version 7 ou antérieure est mise à jour (aucune quête suivie) et
-        /// n'a pas d'étape <c>reward</c> (refusée à <c>quests.&lt;id&gt;.step</c>, comme <c>tracked</c>).
+        /// n'a pas d'étape <c>reward</c> (refusée à <c>quests.&lt;id&gt;.step</c>, comme <c>tracked</c>). Version 9 : celle du sous-lot V1.3
+        /// (instances d'objets, PR #78). Version 10 (sous-lot V1.7, <see cref="GuildCardSince"/>) : <c>guild</c> facultatif dans l'histoire
+        /// (la carte d'aventurier ; absent tant que le personnage n'est pas inscrit) ; une sauvegarde de version 9 ou antérieure est mise à
+        /// jour (pas de carte) et n'a pas de <c>guild</c> (refusé, champ inconnu).
         /// </summary>
-        public const int CurrentSchemaVersion = 8;
+        public const int CurrentSchemaVersion = 10;
+
+        /// <summary>Sous-lot V1.7 : version où la carte d'aventurier (<c>story.guild</c>) entre dans la sauvegarde.</summary>
+        public const int GuildCardSince = 10;
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;
@@ -553,9 +564,73 @@ namespace EdS.Data.Saves
                 else if (st.Quests is null || !st.Quests.Any(q => q.Id == st.Tracked && q.Value?.Step != null && q.Value.Step != QuestProgress.Done))
                     report.Add(path + ".tracked", ValidationCode.UnknownReference, $"quête suivie « {st.Tracked} » absente des quêtes en cours.");
             }
+            // Sous-lot V1.7 (version 10) : carte d'aventurier, facultative (absente : pas encore inscrit).
+            SavedGuildCard? guild = null;
+            if (version < GuildCardSince)
+            {
+                // Comme la quête suivie : refusée aussi quand elle est renseignée hors du lecteur JSON (pas de perte silencieuse).
+                if (st.HasGuild || st.Guild != null)
+                    report.Add(path + ".guild", ValidationCode.UnknownField, $"champ inconnu en version {version} (carte d'aventurier : version {GuildCardSince}).");
+            }
+            else if (st.Guild != null) guild = CheckGuild(st.Guild, path + ".guild", report);
+            else if (st.HasGuild) report.Add(path + ".guild", ValidationCode.WrongType, "carte d'aventurier attendue (champ absent tant que le personnage n'est pas inscrit).");
             if (!report.IsValid) return null;
             return new SavedStory(st.Facts!.Select(f => f!), st.Quests!.ToDictionary(q => q.Id, q => new QuestProgress(q.Value!.Step!, q.Value.Progress!.Value), StringComparer.Ordinal),
-                st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!), version < 8 ? null : st.Tracked);
+                st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!), version < 8 ? null : st.Tracked, guild);
+        }
+
+        private static readonly Regex TitleId = new Regex(@"^title(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex ContractId = new Regex(@"^contract(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Sous-lot V1.7 : forme de la carte d'aventurier (rang connu, points et contrats bornés, listes triées sans doublon, titre affiché parmi
+        /// les titres, contrats en cours bornés). Son accord avec les données de la guilde (rang ouvert, titres et contrats connus) est vérifié
+        /// quand la partie reprend, comme les quêtes.
+        /// </summary>
+        private static SavedGuildCard? CheckGuild(GuildCardData g, string path, ValidationReport report)
+        {
+            int errors = report.Errors.Count;
+            if (g.Rank is null) Missing(report, path + ".rank", "rang (g, f, e…)");
+            else if (!GuildRanks.IsRank(g.Rank)) report.Add(path + ".rank", ValidationCode.InvalidValue, $"rang « {g.Rank} » inconnu ; possibles : {GuildRanks.Known}.");
+            if (g.Points is null) Missing(report, path + ".points", "points de guilde");
+            else if (g.Points < 0 || g.Points > SavedGuildCard.MaxPoints) report.Add(path + ".points", ValidationCode.OutOfRange, $"points hors de [0, {SavedGuildCard.MaxPoints}].");
+            if (g.Contracts is null) Missing(report, path + ".contracts", "contrats réussis");
+            else if (g.Contracts < 0 || g.Contracts > SavedGuildCard.MaxContracts) report.Add(path + ".contracts", ValidationCode.OutOfRange, $"contrats hors de [0, {SavedGuildCard.MaxContracts}].");
+            void Sorted(List<string?>? list, string field, Func<string, bool> valid, int max, string what)
+            {
+                if (list is null) { Missing(report, $"{path}.{field}", what + ", éventuellement aucun"); return; }
+                if (list.Count > max) { report.Add($"{path}.{field}", ValidationCode.LimitExceeded, $"{list.Count} entrées, au plus {max}."); return; }
+                for (int i = 0; i < list.Count; i++)
+                {
+                    string p = $"{path}.{field}[{i}]";
+                    if (list[i] is not string id || !valid(id)) report.Add(p, ValidationCode.InvalidValue, $"{what} mal formé(e).");
+                    else if (i > 0 && list[i - 1] is string prev && string.CompareOrdinal(prev, id) >= 0)
+                        report.Add(p, ValidationCode.InvalidValue, "liste hors de l'ordre ordinal ou avec doublon (forme canonique).");
+                }
+            }
+            Sorted(g.Titles, "titles", id => id.Length <= 200 && TitleId.IsMatch(id), SavedGuildCard.MaxTitles, "titre « title.… »");
+            if (!g.HasTitle) Missing(report, path + ".title", "titre affiché, ou null");
+            else if (g.Title != null && (g.Titles is null || !g.Titles.Contains(g.Title)))
+                report.Add(path + ".title", ValidationCode.UnknownReference, $"titre affiché « {g.Title} » absent des titres gagnés.");
+            if (g.Active is null) Missing(report, path + ".active", "contrats en cours, éventuellement aucun");
+            else if (g.Active.Count > SavedGuildCard.MaxActive) report.Add(path + ".active", ValidationCode.LimitExceeded, $"{g.Active.Count} contrats en cours, au plus {SavedGuildCard.MaxActive}.");
+            else
+                for (int i = 0; i < g.Active.Count; i++)
+                {
+                    var a = g.Active[i];
+                    string p = $"{path}.active.{a.Key}";
+                    if (a.Key is null || a.Key.Length > 200 || !ContractId.IsMatch(a.Key)) report.Add(p, ValidationCode.InvalidValue, "contrat mal formé : « contract.… ».");
+                    else if (a.Value is not long progress) Missing(report, p, "avancement");
+                    else if (progress < 0 || progress > MaxProgress) report.Add(p, ValidationCode.OutOfRange, $"avancement hors de [0, {MaxProgress}].");
+                    else if (i > 0 && string.CompareOrdinal(g.Active[i - 1].Key, a.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "contrats hors de l'ordre ordinal ou en double.");
+                }
+            if (g.Day is null) Missing(report, path + ".day", "jour du tableau des contrats pris");
+            else if (g.Day < 0 || g.Day > MaxWorldTick) report.Add(path + ".day", ValidationCode.OutOfRange, $"jour hors de [0, {MaxWorldTick}].");
+            Sorted(g.Taken, "taken", id => id.Length <= 200 && ContractId.IsMatch(id), SavedGuildCard.MaxTaken, "contrat « contract.… »");
+            Sorted(g.Hunted, "hunted", id => id.Length <= 64 && SlotId.IsMatch(id), SavedGuildCard.MaxHunted, "créature");
+            if (report.Errors.Count > errors) return null;
+            return new SavedGuildCard(g.Rank!, g.Points!.Value, g.Contracts!.Value, g.Titles!.Select(t => t!), g.Title,
+                g.Active!.ToDictionary(a => a.Key, a => a.Value!.Value, StringComparer.Ordinal), g.Day!.Value, g.Taken!.Select(t => t!), g.Hunted!.Select(h => h!));
         }
 
         /// <summary>Sous-lot 12.3 : plus grand nombre de places d'un inventaire sauvegardé, et plus grande pile.</summary>

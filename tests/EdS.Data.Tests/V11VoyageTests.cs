@@ -226,14 +226,14 @@ public class V11VoyageTests : IDisposable
         // Une sauvegarde de version 5 (avant les points sûrs) : seul le point d'arrivée de la session est découvert, la bourse est vide.
         Directory.CreateDirectory(Path.GetDirectoryName(SavePath)!);
         string v6 = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), Hero()));
-        File.WriteAllText(SavePath, v6.Replace(",\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 8", "\"schemaVersion\": 5"));
+        File.WriteAllText(SavePath, v6.Replace(",\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 5"));
         AdventureSession a = Adventure(SavePath);
         Assert.Equal("Partie reprise.", a.DrainMessages().First());
         Assert.Equal("place_du_village", Assert.Single(a.TravelDestinations()).SafePoint);
         Assert.Equal(0, a.Money);
         Assert.Equal("0 cuivre", a.Purse);
         a.Save();
-        Assert.Contains("\"schemaVersion\": 8,", File.ReadAllText(SavePath), StringComparison.Ordinal);
+        Assert.Contains(SaveVersion.Current + ",", File.ReadAllText(SavePath), StringComparison.Ordinal);
         Assert.Contains("zone.vallons/safe/place_du_village", SaveStore.Read(SavePath).Save!.Consumed);
     }
 
