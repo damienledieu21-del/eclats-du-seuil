@@ -216,6 +216,12 @@ namespace EdS.Data.Story
                         if (q?.Id is string id && questIds.Contains(id) && !_quests.ContainsKey(id))
                             _quests[id] = (q.Steps ?? new List<QuestStepData?>()).Select(s => s?.Id ?? string.Empty).ToList();
                 Declare(_d.Discoveries, "$.data.discoveries", MaxDiscoveries, x => x?.Id, DiscoveryId, _discoveries);
+                // Relecture de la PR #81 : le signe d'une créature rare de la nuit (zones en schéma 6) est un texte du jeu : il doit exister,
+                // comme les autres clés de texte. La zone est validée sans les textes ; l'histoire, qui les a, vérifie ses signes (chemin dans
+                // le fichier de la zone, précédé de son identifiant).
+                for (int i = 0; i < _zone.Populations.Count; i++)
+                    if (_zone.Populations[i].Night is NightSpawn night)
+                        Text(night.Sign, $"{_zone.Id}:$.data.populations[{i}].night.sign");
 
                 var discoveries = new List<Discovery>();
                 if (_d.Discoveries != null)

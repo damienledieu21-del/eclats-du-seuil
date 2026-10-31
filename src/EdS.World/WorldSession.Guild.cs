@@ -22,6 +22,9 @@ namespace EdS.World
         /// <summary>Jour du monde (tableau des contrats).</summary>
         public long Day => Zone.Time.Day;
 
+        /// <summary>Relecture de la PR #81 : jour du monde du tick qui vient d'être simulé (avant le premier tick : <see cref="Day"/>).</summary>
+        public long SimulatedDay => Zone.ElapsedTicks > 0 ? Zone.Clock.At(checked(Zone.WorldTick - 1)).Day : Day;
+
         /// <summary>
         /// La maîtresse de guilde est à portée : guilde chargée, personnage présent et vivant dans la zone de la maîtresse, à
         /// <see cref="Narrative.TalkRange"/> d'elle.
@@ -36,8 +39,9 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// On s'adresse à la maîtresse de guilde (son tableau) : à portée, ses objectifs « parler à » et « livrer à » (quêtes et contrats) sont
-        /// remplis comme en lui parlant ; rend le refus de <see cref="CanUseGuild"/>.
+        /// On s'adresse à la maîtresse de guilde (son tableau) : à portée, ses objectifs « parler à » sont remplis comme en lui parlant ; les
+        /// livraisons (quêtes et contrats) se font par la réponse « Voici : … » de son dialogue (réponses du 31 octobre 2026) ; rend le refus de
+        /// <see cref="CanUseGuild"/>.
         /// </summary>
         public GuildRefusal VisitGuild()
         {
@@ -58,12 +62,8 @@ namespace EdS.World
         {
             GuildRefusal open = CanUseGuild();
             if (open != GuildRefusal.None) return open;
-            Narrative n = Narrative!;
-            if (!n.IsMember) return GuildRefusal.NotMember;
-            if (contract is null || Board().All(c => c.Id != contract)) return GuildRefusal.NotOnBoard;
-            if (n.ActiveContracts.Any(a => a.Contract == contract) || n.TakenOn(contract, Day)) return GuildRefusal.AlreadyTaken;
-            if (n.ActiveContracts.Count >= Guild!.MaxActive) return GuildRefusal.TooManyContracts;
-            return GuildRefusal.None;
+            // Relecture de la PR #81 : la même vérification, à blanc, que la prise (contrats pressés d'un jour passé, liste du jour, limites).
+            return Narrative!.CanTakeContract(contract, Day);
         }
 
         /// <summary>Prend un contrat du tableau du jour, auprès de la maîtresse.</summary>

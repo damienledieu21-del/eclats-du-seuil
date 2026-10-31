@@ -318,6 +318,146 @@ public class V1Reponses2Tests
         Assert.DoesNotContain(none.Population, e => e.Kind == PopulationEventKind.Sign);
     }
 
+    // --- Relecture de la PR #81 : loup blanc ---------------------------------------------------------------------------------
+
+    private static string? WolfId(WorldSession w) =>
+        w.Zone.Engine.CombatantIds.LastOrDefault(id => id.StartsWith(WhiteWolf + "_v", StringComparison.Ordinal));
+
+    [Fact]
+    public void Une_laisse_quand_il_n_est_plus_voulu_vaut_un_depart()
+    {
+        // De jour, pour « La bête blanche » : il vient ; puis l'objectif est rempli au moment où il lâche sa cible (laisse).
+        SavedCharacter hero = Hero().WithStory(new SavedStory(quests: new Dictionary<string, QuestProgress> { ["quest.bete_blanche"] = new QuestProgress("chasse") }));
+        WorldSession w = VallonsAt(Tick(2, 12), hero, out _);
+        for (int i = 0; i < 302; i++) w.Step();
+        string wolf = WolfId(w)!;
+        Assert.True(w.Zone.Engine.View(wolf).IsPresent);
+        w.Narrative!.Defeated(WhiteWolf, WhiteWolf);   // plus voulu
+        w.Zone.Leave(wolf);                           // il part comme sur une laisse
+        var events = new List<PopulationEvent>();
+        for (int i = 0; i < 400; i++) events.AddRange(w.Step().Population);
+        Assert.DoesNotContain(events, e => e.Population == WhiteWolf && e.Kind == PopulationEventKind.Respawned);
+        Assert.False(WolfHere(w));
+    }
+
+    [Fact]
+    public void A_l_aube_il_reste_tant_qu_il_se_bat()
+    {
+        var (yes, _) = Nights();
+        // Le Bastion attend près de sa place (à 4 m) : le loup arrive à 4 h 57 et l'engage ; l'aube passe pendant le combat.
+        ZoneDefinition z = Zone(-70, 86);
+        var w = new WorldSession(new WorldSave("zone.vallons", Tick(yes + 1, 4, 55), 0, Array.Empty<string>(), Hero().WithXp(1620)), z, ShippedData,
+            Progression, ItemsCatalog, Book(z));
+        bool engagedAtDawn = false;
+        for (int i = 0; i < 1200; i++)
+        {
+            SessionStep step = w.Step();
+            string? wolf = WolfId(w);
+            bool engaged = wolf != null && w.Zone.Engine.View(wolf).IsPresent && w.Zone.Engine.View(wolf).Engaged;
+            if (w.Zone.Time.Phase != DayPhase.Night && engaged) engagedAtDawn = true;
+            // Jamais de départ tant qu'il est engagé (le départ part d'un loup au calme).
+            if (step.Population.Any(e => e.Kind == PopulationEventKind.Withdrew)) Assert.False(engaged);
+        }
+        Assert.True(engagedAtDawn);   // il était encore là, engagé, après 5 h
+    }
+
+    /// <summary>
+    /// Une nuit tirée, le Bastion (niveau 10) à 2 m de la place du loup blanc, loup à 1 PV : frappé dès qu'il est là. Rend la partie, et le
+    /// nombre de combattants du moteur au tick de sa mort (0 s'il n'est pas mort).
+    /// </summary>
+    private static (WorldSession Session, int Combatants) KillWolf(long night, Func<ZoneDefinition, IEnumerable<string>> consumed)
+    {
+        ZoneDefinition z = Zone(-70, 88, scenario: s =>
+            s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == WhiteWolf)!["health"] = 1);
+        var w = new WorldSession(new WorldSave("zone.vallons", Tick(night, 23), 0, consumed(z).OrderBy(k => k, StringComparer.Ordinal).ToArray(),
+            Hero().WithXp(1620)), z, ShippedData, Progression, ItemsCatalog, Book(z));
+        for (int i = 0; i < 900; i++)
+        {
+            if (WolfId(w) is string wolf && w.Zone.Engine.View(wolf).IsPresent && !w.Zone.Engine.View(wolf).IsDead && i % 10 == 0)
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", wolf)); }
+                catch (ArgumentException) { }
+            SessionStep step = w.Step();
+            if (step.Experience.Any(g => g.Source.Combatant.StartsWith(WhiteWolf, StringComparison.Ordinal))) return (w, w.Zone.Engine.CombatantIds.Count);
+        }
+        return (w, 0);
+    }
+
+    [Fact]
+    public void Vaincu_la_nuit_la_cle_de_la_nuit_est_ecrite_par_la_recompense()
+    {
+        var (yes, _) = Nights();
+        string key = NightCreatures.Key("zone.vallons", yes, WhiteWolf);
+        (WorldSession w, int combatants) = KillWolf(yes, z => new[] { z.SafePointKey(z.Entry.Id) });
+        Assert.True(combatants > 0);
+        Assert.True(w.Zone.IsConsumed(key));
+        Assert.Contains(key, w.Save().Consumed);
+        // Registre presque plein : la clé de la nuit n'est gardée que s'il reste la place des morts possibles d'un tick après elle.
+        IEnumerable<string> Probes(ZoneDefinition z, int free) =>
+            Enumerable.Range(0, SaveValidator.MaxConsumed - free - 1).Select(i => $"probe/k{i:D6}").Append(z.SafePointKey(z.Entry.Id));
+        // Les compétences gagnées données à l'entrée (niveau 10) prennent aussi leurs places au registre.
+        int given = w.Zone.Consumed.Count(k => k.StartsWith("character/", StringComparison.Ordinal));
+        (WorldSession tight, int c1) = KillWolf(yes, z => Probes(z, given + combatants + 1));   // la mort prend une place, il en reste C : pas la clé
+        Assert.Equal(combatants, c1);
+        Assert.False(tight.Zone.IsConsumed(key));
+        (WorldSession roomy, int c2) = KillWolf(yes, z => Probes(z, given + combatants + 2));   // juste la place
+        Assert.Equal(combatants, c2);
+        Assert.True(roomy.Zone.IsConsumed(key));
+    }
+
+    [Fact]
+    public void Creature_de_la_nuit_invalide_refusee_avec_son_chemin()
+    {
+        JsonObject Root() => JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        int index = Root()["data"]!["populations"]!.AsArray().Select(p => (string)p!["creature"]!).ToList().IndexOf(WhiteWolf);
+        string path = $"$.data.populations[{index}].night";
+        void Refused(string at, ValidationCode code, Action<JsonObject> change)
+        {
+            JsonObject root = Root();
+            change(root["data"]!["populations"]![index]!["night"]!.AsObject());
+            ZoneLoadResult r = ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, ShippedData, ItemsCatalog);
+            Assert.False(r.IsValid);
+            Assert.Contains(r.Report.Errors, e => e.Path == at && e.Code == code);
+        }
+        Refused(path + ".chancePercent", ValidationCode.MissingField, n => n.Remove("chancePercent"));
+        Refused(path + ".signMs", ValidationCode.MissingField, n => n.Remove("signMs"));
+        Refused(path + ".sign", ValidationCode.MissingField, n => n.Remove("sign"));
+        Refused(path + ".chancePercent", ValidationCode.OutOfRange, n => n["chancePercent"] = 0);
+        Refused(path + ".chancePercent", ValidationCode.OutOfRange, n => n["chancePercent"] = 101);
+        Refused(path + ".signMs", ValidationCode.InvalidValue, n => n["signMs"] = 15010);   // pas un multiple du tick (50 ms)
+        Refused(path + ".signMs", ValidationCode.OutOfRange, n => n["signMs"] = ZoneValidator.MaxSignMs + 50);
+        Refused(path + ".sign", ValidationCode.InvalidValue, n => n["sign"] = "Un hurlement");
+        // Un fichier de schéma 5 est refusé (créature de la nuit au schéma 6).
+        JsonObject old = Root();
+        old["schemaVersion"] = 5;
+        ZoneLoadResult five = ZoneJsonReader.Read(old.ToJsonString(), ScenariosDirectory, ShippedData, ItemsCatalog);
+        Assert.Contains(five.Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
+        // Un signe bien formé mais absent des textes : refusé par l'histoire (qui a les textes), au chemin de la zone.
+        JsonObject missing = Root();
+        missing["data"]!["populations"]![index]!["night"]!["sign"] = "text.zone.loup_blanc.absent";
+        ZoneLoadResult zone = ZoneJsonReader.Read(missing.ToJsonString(), ScenariosDirectory, ShippedData, ItemsCatalog);
+        Assert.True(zone.IsValid, zone.Report.ToString());
+        StoryLoadResult story = StoryJsonReader.ReadStory(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)), Texts, zone.Zone!, ItemsCatalog, V16TestData.Interiors);
+        Assert.False(story.IsValid);
+        Assert.Contains(story.Report.Errors, e => e.Path == $"zone.vallons:{path}.sign" && e.Code == ValidationCode.UnknownReference);
+    }
+
+    [Fact]
+    public void La_riposte_de_la_rondache_part_sur_un_coup_bloque()
+    {
+        // Le scénario d'entraînement à l'équipement : le Bastion équipé porte la rondache (à la place de l'amulette) et garde contre les coups.
+        JsonNode effect = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(JsonNode.Parse(File.ReadAllText(ItemJsonReader.PathIn(DataDirectory)))!
+            ["data"]!["items"]!.AsArray().Single(i => (string)i!["id"]! == Rondache)!["effects"]!["triggers"]))!;
+        EdS.Data.Scenarios.ScenarioLoadResult loaded = ReadMutated(r =>
+            Combatant(r, 0)["equipment"]![1] = new JsonObject { ["id"] = Rondache, ["triggers"] = effect }, scenario: "entrainement_equipement");
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        var log = new EdS.Simulation.Engine.MemoryCombatLog();
+        EdS.Simulation.Engine.CombatEngine.Run(loaded.Setup!, log);
+        string[] riposte = log.Lines.Where(l => l.Contains($"\"trigger\":\"{Rondache}/0@bastion_equipe#0\"", StringComparison.Ordinal)).ToArray();
+        Assert.NotEmpty(riposte);
+        Assert.Contains(riposte, l => l.Contains("\"event\":\"damage\"", StringComparison.Ordinal) && l.Contains("assaillant_equipe", StringComparison.Ordinal));
+        Assert.DoesNotContain(log.Lines, l => l.Contains(Rondache + "/0@bastion_nu", StringComparison.Ordinal));
+    }
+
     // --- 6. Propriétés tirées par rareté : 0, 1, 2, 3, 4, 5 --------------------------------------------------------------------
 
     [Fact]
@@ -537,6 +677,92 @@ public class V1Reponses2GuildeTests
         none["data"]!["rushDaily"] = 0;
         GuildBook plain = ReadGuild(none).Book!;
         Assert.DoesNotContain(GuildBoard.Of(plain, 2, 3), c => c.Rush);
+    }
+
+    // --- Relecture de la PR #81 --------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Deux_livraisons_du_meme_objet_ne_promettent_pas_les_memes_objets()
+    {
+        // Les herbes pour Sauge (3, contrat normal) et les herbes du jour (2, contrat pressé), tous deux à la maîtresse, le même jour.
+        GuildContract normal = Guild.Contract("contract.herbes_pour_sauge"), rush = Guild.Contract("contract.presse_herbes_du_jour");
+        long day = Enumerable.Range(0, 200).First(d => GuildBoard.Of(Guild, 0, d).Contains(normal) && GuildBoard.Of(Guild, 0, d).Contains(rush));
+        WorldSession w = InGuild(Hero(0, new ItemStack("item.herbe_de_l_aube", 3)).WithStory(new SavedStory(guild: Card("g"))), day * DayTicks);
+        Assert.Equal(GuildRefusal.None, w.TakeContract(normal.Id, out _));
+        Assert.Equal(GuildRefusal.None, w.TakeContract(rush.Id, out _));
+        Assert.Equal(DialogueRefusal.None, w.Talk(Mistress, out DialogueView? view));
+        Assert.Equal(new[] { normal.Id, rush.Id }, view!.Options.Where(o => o.Delivery != null).Select(o => o.Delivery));
+        // Le joueur choisit d'abord le contrat pressé (2 herbes) : il n'en reste qu'une de libre, le contrat normal n'est plus proposé.
+        Assert.Equal(DialogueRefusal.None, w.Choose(view.Options.Single(o => o.Delivery == rush.Id).Index, out DialogueView? next, out _));
+        Assert.DoesNotContain(next!.Options, o => o.Delivery != null);
+        Assert.Equal(new[] { (normal.Id, 0L), (rush.Id, 1L) }, w.Narrative!.ActiveContracts);
+        // Deux herbes de plus : il est de nouveau proposé (5 dans le sac, 2 promises).
+        w.Inventory.Add("item.herbe_de_l_aube", 2);
+        Assert.Equal(DialogueRefusal.None, w.Talk(Mistress, out DialogueView? more));
+        Assert.Equal(new[] { normal.Id }, more!.Options.Where(o => o.Delivery != null).Select(o => o.Delivery));
+        // Les deux sont remises au tick suivant, chacune avec ses herbes ; aucune promesse ne disparaît.
+        Assert.Equal(DialogueRefusal.None, w.Choose(more.Options.Single(o => o.Delivery == normal.Id).Index, out _, out _));
+        List<string> events = Steps(w);
+        Assert.Contains($"ContractDone {normal.Id}", events);
+        Assert.Contains($"ContractDone {rush.Id}", events);
+        Assert.Equal(0, w.Inventory.Count("item.herbe_de_l_aube"));
+        Assert.Empty(w.Narrative.ActiveContracts);
+        // Le choix du joueur est gardé : avec 3 herbes, le pressé promis est remis, le normal attend (rien de promis pour lui).
+        WorldSession few = InGuild(Hero(0, new ItemStack("item.herbe_de_l_aube", 3)).WithStory(new SavedStory(guild: Card("g"))), day * DayTicks);
+        few.TakeContract(normal.Id, out _);
+        few.TakeContract(rush.Id, out _);
+        few.Talk(Mistress, out DialogueView? v);
+        few.Choose(v!.Options.Single(o => o.Delivery == rush.Id).Index, out _, out _);
+        Assert.Contains($"ContractDone {rush.Id}", Steps(few));
+        Assert.Equal((1, 0L), (few.Inventory.Count("item.herbe_de_l_aube"), few.Narrative!.ActiveContracts.Single().Progress));
+    }
+
+    /// <summary>Tick du monde à minuit, à la fin du jour <paramref name="day"/> (le monde commence à 8 h du jour 0).</summary>
+    private static long Midnight(long day) => day * DayTicks + DayTicks * 16 / 24;
+
+    [Fact]
+    public void Un_contrat_presse_fini_au_dernier_tick_avant_minuit_est_reussi()
+    {
+        GuildContract rush = Guild.Contract("contract.presse_loups_du_soir");
+        long day = Enumerable.Range(0, 200).First(d => GuildBoard.Of(Guild, 0, d).Contains(rush));
+        // Le premier tick finit une avant minuit ; le suivant est le dernier du jour.
+        WorldSession w = InGuild(Hero().WithStory(new SavedStory(guild: Card("g"))), Midnight(day) - 2);
+        Assert.Equal(day, w.Day);
+        Assert.Equal(GuildRefusal.None, w.TakeContract(rush.Id, out _));
+        w.Narrative!.Defeated("loup1", "loup");
+        w.Narrative.Defeated("loup2", "loup");
+        SessionStep last = w.Step();
+        Assert.Equal(day + 1, w.Day);   // minuit passé après ce tick, mais il a été joué le jour du contrat
+        Assert.Contains($"ContractDone {rush.Id}", last.Story.Select(e => e.ToString()));
+        Assert.DoesNotContain(last.Story, e => e.Kind == StoryEventKind.ContractExpired);
+        // Un tick plus tard (minuit) : perdu.
+        WorldSession late = InGuild(Hero().WithStory(new SavedStory(guild: Card("g"))), Midnight(day) - 2);
+        late.TakeContract(rush.Id, out _);
+        late.Narrative!.Defeated("loup1", "loup");
+        late.Step();
+        late.Narrative.Defeated("loup2", "loup");
+        Assert.Equal(new[] { $"ContractExpired {rush.Id}" }, late.Step().Story.Select(e => e.ToString()));
+    }
+
+    [Fact]
+    public void Prendre_et_pouvoir_prendre_disent_la_meme_chose()
+    {
+        // Trois contrats en cours, dont un pressé pris la veille, pas encore retiré (la session commence au dernier tick du jour) : il est
+        // perdu, il ne compte plus dans la limite.
+        GuildContract rush = Guild.Contract("contract.presse_loups_du_soir");
+        long day = Enumerable.Range(0, 200).First(d => GuildBoard.Of(Guild, 0, d).Contains(rush));
+        List<GuildContract> normal = Guild.Contracts.Where(c => c.Rank == "g" && !c.Rush).Take(2).ToList();
+        var active = new Dictionary<string, long> { [rush.Id] = 0, [normal[0].Id] = 0, [normal[1].Id] = 0 };
+        WorldSession w = InGuild(Hero().WithStory(new SavedStory(guild: Card("g", active, day, new[] { rush.Id }))), Midnight(day) - 1);
+        Assert.Equal(day + 1, w.Day);
+        Assert.Equal(3, w.Narrative!.ActiveContracts.Count);   // pas encore retiré
+        string next = w.Board().First(c => !active.ContainsKey(c.Id)).Id;
+        Assert.Equal(GuildRefusal.None, w.CanTakeContract(next));
+        Assert.Equal(GuildRefusal.None, w.TakeContract(next, out IReadOnlyList<StoryEvent> taken));
+        Assert.Equal(new[] { $"ContractExpired {rush.Id}", $"ContractTaken {next}" }, taken.Select(e => e.ToString()));
+        // Pour chaque contrat du tableau, la session (à portée de la maîtresse) rend le refus de la même vérification que la prise.
+        foreach (GuildContract c in w.Board()) Assert.Equal(w.Narrative.CanTakeContract(c.Id, w.Day), w.CanTakeContract(c.Id));
+        Assert.Equal(GuildRefusal.TooManyContracts, w.CanTakeContract(w.Board().First(c => w.Narrative.ActiveContracts.All(a => a.Contract != c.Id) && !w.Narrative.TakenOn(c.Id, w.Day)).Id));
     }
 
     // --- 4. Le loup blanc vient pour un contrat en cours -------------------------------------------------------------------

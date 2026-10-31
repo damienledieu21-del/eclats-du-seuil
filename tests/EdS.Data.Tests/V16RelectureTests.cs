@@ -167,8 +167,9 @@ public class V16RelectureTests
         StoryBook book = NearDoor("npc.aubergiste", r => Quest(r, Peaux)["steps"]![1]!["objective"]!["id"] = "item.potion_de_soin");
         WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.potion_de_soin", 3)), Peaux, "peaux"));
         Assert.Equal(3, w.Inventory.Reserved("item.potion_de_soin"));
-        Deliver(w, "npc.aubergiste");   // réponses du 31 octobre 2026 : la livraison est une réponse du dialogue
-        Assert.Equal(0, w.Narrative!.LastTalkFilled);
+        // Réponses du 31 octobre 2026 : la réponse de livraison n'est pas proposée (rien de libre), rien n'est promis.
+        Assert.Equal(DialogueRefusal.NoSuchChoice, Deliver(w, "npc.aubergiste"));
+        Assert.DoesNotContain(w.Narrative!.Open!.Options, o => o.Delivery != null);
         Assert.Empty(Steps(w, 3));
         Assert.Equal((3, 0L), (w.Inventory.Count("item.potion_de_soin"), w.Narrative.Progress(Peaux)));
     }

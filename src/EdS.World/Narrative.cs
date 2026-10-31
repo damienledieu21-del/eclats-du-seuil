@@ -246,6 +246,9 @@ namespace EdS.World
 
         /// <summary>Réponses du 31 octobre 2026 : jour du monde (fin des contrats pressés).</summary>
         long Day { get; }
+
+        /// <summary>Relecture de la PR #81 : jour du monde du tick qui vient d'être simulé (avant le premier tick : <see cref="Day"/>).</summary>
+        long SimulatedDay { get; }
     }
 
     /// <summary>
@@ -494,7 +497,10 @@ namespace EdS.World
             next = null;
             IReadOnlyList<(string Id, bool Contract, Objective Objective)> list = Deliveries(npc);
             if (k < 0 || k >= list.Count) return DialogueRefusal.NoSuchChoice;
-            (string id, bool contract, _) = list[k];
+            (string id, bool contract, Objective objective) = list[k];
+            // Relecture de la PR #81 : jamais plus d'objets promis que d'objets libres (deux livraisons du même objet, une quête et un contrat
+            // ou un contrat normal et un pressé) ; sinon, rien n'est promis.
+            if (checked(Promised(objective.Id) + objective.Value) > _world.Inventory.Available(objective.Id)) return DialogueRefusal.NoRoom;
             if (contract) _card!.Active[id] = 1;
             else
             {
@@ -511,21 +517,37 @@ namespace EdS.World
         /// <summary>
         /// Réponses du 31 octobre 2026 : livraisons qu'on peut faire maintenant à <paramref name="npc"/> : étapes en cours « livrer à » lui (ordre
         /// ordinal des quêtes), puis contrats de livraison en cours à lui (ordre ordinal), pas encore promises, les objets dans le sac et libres
-        /// (pas réservés pour le combat).
+        /// (pas réservés pour le combat). Relecture de la PR #81 : les objets déjà promis à une autre livraison (à n'importe quel PNJ) ne sont plus
+        /// libres pour celle-ci (<see cref="Promised"/>) : deux livraisons du même objet ne se promettent pas les mêmes objets.
         /// </summary>
         internal IReadOnlyList<(string Id, bool Contract, Objective Objective)> Deliveries(string npc)
         {
             var list = new List<(string, bool, Objective)>();
+            bool Free(Objective o) => _world.Inventory.Available(o.Id) - Promised(o.Id) >= o.Value;
             foreach (KeyValuePair<string, (int Step, long Progress)> q in _quests)
-                if (CurrentStep(q.Key) is { Objective: { Kind: ObjectiveKind.Deliver } o } && o.Npc == npc && q.Value.Progress < 1
-                    && _world.Inventory.Available(o.Id) >= o.Value)
+                if (CurrentStep(q.Key) is { Objective: { Kind: ObjectiveKind.Deliver } o } && o.Npc == npc && q.Value.Progress < 1 && Free(o))
                     list.Add((q.Key, false, o));
             if (_card != null && _guild != null)
                 foreach (KeyValuePair<string, long> a in _card.Active)
-                    if (_guild.Contract(a.Key).Objective is { Kind: ObjectiveKind.Deliver } o && o.Npc == npc && a.Value < 1 && _world.Inventory.Available(o.Id) >= o.Value
-                        && !Expired(a.Key, _world.Day))
+                    if (_guild.Contract(a.Key).Objective is { Kind: ObjectiveKind.Deliver } o && o.Npc == npc && a.Value < 1 && Free(o) && !Expired(a.Key, _world.Day))
                         list.Add((a.Key, true, o));
             return list;
+        }
+
+        /// <summary>
+        /// Relecture de la PR #81 : objets <paramref name="item"/> déjà promis à des livraisons en cours (étapes « livrer à » et contrats de
+        /// livraison remplis, pas encore remis), remis au tick suivant.
+        /// </summary>
+        private long Promised(string item)
+        {
+            long n = 0;
+            foreach (KeyValuePair<string, (int Step, long Progress)> q in _quests)
+                if (q.Value.Progress >= 1 && CurrentStep(q.Key) is { Objective: { Kind: ObjectiveKind.Deliver } o } && o.Id == item) n = checked(n + o.Value);
+            if (_card != null && _guild != null)
+                foreach (KeyValuePair<string, long> a in _card.Active)
+                    if (a.Value >= 1 && _guild.Contract(a.Key).Objective is { Kind: ObjectiveKind.Deliver } o && o.Id == item && !Expired(a.Key, _world.Day))
+                        n = checked(n + o.Value);
+            return n;
         }
 
         /// <summary>
@@ -648,8 +670,9 @@ namespace EdS.World
                     _quests[id] = (_quests[id].Step, checked(_quests[id].Progress + 1));
                     Revision++;
                 }
-            // Sous-lot V1.7 : la première victoire sur une créature rare de la guilde est gardée, inscrit ou non (relecture de la PR #79 : avant
-            // l'inscription, elle ne rapporte rien, ni alors ni plus tard) ; une fois inscrit, elle donne ses points (annoncés au tick).
+            // Sous-lot V1.7 : la première victoire sur une créature rare de la guilde est gardée, inscrit ou non (relecture de la PR #79) ; une fois
+            // inscrit, elle donne ses points (annoncés au tick) ; avant l'inscription, rien sur le moment : elle comptera une fois, à l'inscription
+            // (réponses de Damien du 31 octobre 2026, ReputationPoints).
             if (_guild is null) return;
             if (_guild.RarePoints.TryGetValue(population, out long rare) && _hunted.Count < SavedStory.MaxHunted && _hunted.Add(population))
             {
@@ -867,6 +890,22 @@ namespace EdS.World
         }
 
         /// <summary>
+        /// Relecture de la PR #81 : refus qu'aurait la prise du contrat <paramref name="contract"/> le jour <paramref name="day"/>, sans rien
+        /// changer (la même vérification que <see cref="TakeContract"/>) : inscrit ; contrat au tableau ; pas déjà pris ce jour ; moins de
+        /// contrats en cours que la limite (tous confondus, sans les contrats pressés d'un jour passé, déjà perdus) ; place dans la liste du jour.
+        /// </summary>
+        internal GuildRefusal CanTakeContract(string contract, long day)
+        {
+            if (_guild is null) return GuildRefusal.NoGuild;
+            if (_card is null) return GuildRefusal.NotMember;
+            if (contract is null || GuildBoard.Of(_guild, _card.Rank, day).All(c => c.Id != contract)) return GuildRefusal.NotOnBoard;
+            if ((_card.Active.ContainsKey(contract) && !Expired(contract, day)) || TakenOn(contract, day)) return GuildRefusal.AlreadyTaken;
+            if (_card.Active.Keys.Count(a => !Expired(a, day)) >= Math.Min(_guild.MaxActive, SavedGuildCard.MaxActive)) return GuildRefusal.TooManyContracts;
+            if (day == _card.Day && _card.Taken.Count >= SavedGuildCard.MaxTaken) return GuildRefusal.TooManyContracts;   // MarkTaken refuserait
+            return GuildRefusal.None;
+        }
+
+        /// <summary>
         /// Prend le contrat <paramref name="contract"/> du tableau du jour <paramref name="day"/> : inscrit ; contrat au tableau ; pas déjà pris ce
         /// jour ; moins de <see cref="GuildBook.MaxActive"/> contrats en cours. Son avancement part de zéro. Tout ou rien.
         /// </summary>
@@ -874,12 +913,8 @@ namespace EdS.World
         {
             if (_guild is null) return GuildRefusal.NoGuild;
             if (_card is null) return GuildRefusal.NotMember;
-            if (contract is null || GuildBoard.Of(_guild, _card.Rank, day).All(c => c.Id != contract)) return GuildRefusal.NotOnBoard;
-            // Réponses du 31 octobre 2026 : les contrats pressés d'un jour passé ne comptent plus (ils sont perdus) ; la limite des contrats en
-            // cours vaut pour tous les contrats confondus, pressés compris.
-            if ((_card.Active.ContainsKey(contract) && !Expired(contract, day)) || TakenOn(contract, day)) return GuildRefusal.AlreadyTaken;
-            if (_card.Active.Keys.Count(a => !Expired(a, day)) >= Math.Min(_guild.MaxActive, SavedGuildCard.MaxActive)) return GuildRefusal.TooManyContracts;
-            if (day == _card.Day && _card.Taken.Count >= SavedGuildCard.MaxTaken) return GuildRefusal.TooManyContracts;   // MarkTaken refuserait
+            GuildRefusal can = CanTakeContract(contract, day);
+            if (can != GuildRefusal.None) return can;
             ExpireRush(day, events);
             if (!_card.MarkTaken(contract, day)) return GuildRefusal.TooManyContracts;
             _card.Active[contract] = 0;
@@ -970,7 +1005,9 @@ namespace EdS.World
         private void StepContracts(List<StoryEvent> events)
         {
             if (_card is null || _guild is null) return;
-            ExpireRush(_world.Day, events);   // réponses du 31 octobre 2026 : avant toute réussite
+            // Réponses du 31 octobre 2026 : les contrats pressés d'un jour passé sont perdus avant toute réussite. Relecture de la PR #81 : le
+            // jour est celui du tick qui vient d'être simulé (un contrat fini au dernier tick avant minuit est réussi).
+            ExpireRush(_world.SimulatedDay, events);
             foreach (string id in _card.Active.Keys.ToArray())
             {
                 GuildContract contract = _guild.Contract(id);

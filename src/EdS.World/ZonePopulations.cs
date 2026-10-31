@@ -195,11 +195,13 @@ namespace EdS.World
             }
             if (v.HasLeft || refused)
             {
-                if (life.Withdrawing || refused)
+                if (life.Withdrawing || refused || !want)
                 {
-                    // Partie d'elle-même (ou arrivée refusée) : absente jusqu'à ce qu'on la veuille de nouveau.
+                    // Partie d'elle-même (ou arrivée refusée) : absente jusqu'à ce qu'on la veuille de nouveau. Relecture de la PR #81 : une
+                    // laisse quand elle n'est plus voulue (le jour levé, l'objectif rempli) compte comme un départ, pas comme une vie à remplacer.
                     life.Dormant = true;
                     life.Withdrawing = false;
+                    life.Leashing = false;
                     life.RespawnAt = null;
                     return null;
                 }

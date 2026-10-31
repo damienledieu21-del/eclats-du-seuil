@@ -344,8 +344,10 @@ namespace EdS.Data.Zones
         private static readonly Regex LocalId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex ScenarioPath = new Regex(@"^[a-z0-9_]+(/[a-z0-9_]+)*\z", RegexOptions.CultureInvariant);
 
-        /// <summary>Suffixe réservé aux vies suivantes d'une créature (<c>_v2</c>…).</summary>
+        /// <summary>Schéma 6 : clé de texte du signe d'une créature de la nuit (« text.… »).</summary>
         private static readonly Regex TextKey = new Regex(@"^text(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>Suffixe réservé aux vies suivantes d'une créature (<c>_v2</c>…).</summary>
         private static readonly Regex LifeSuffix = new Regex(@"_v[0-9]+\z", RegexOptions.CultureInvariant);
 
         public static bool IsScenarioPath(string? path) => path != null && path.Length <= 200 && ScenarioPath.IsMatch(path);
