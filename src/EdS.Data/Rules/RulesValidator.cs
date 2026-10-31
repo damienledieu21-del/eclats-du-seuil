@@ -70,7 +70,8 @@ namespace EdS.Data.Rules
             {
                 if (!document.Values.TryGetValue(field.Path, out RuleValue value))
                 {
-                    if (!report.HasErrorAtOrAbove(field.JsonPath))
+                    // Relecture de la PR #78 : une liste dont un élément est déjà refusé (chemin « champ[i] ») n'est pas dite absente en plus.
+                    if (!report.HasErrorAtOrAbove(field.JsonPath) && !report.Errors.Any(e => e.Path.StartsWith(field.JsonPath + "[", StringComparison.Ordinal)))
                         report.Add(field.JsonPath, ValidationCode.MissingField, $"champ obligatoire absent ({Describe(field)}).");
                     continue;
                 }
@@ -94,6 +95,10 @@ namespace EdS.Data.Rules
                         else if (value.List!.Any(v => v < int.MinValue || v > int.MaxValue))
                             report.Add(field.JsonPath, ValidationCode.OutOfRange, "une valeur dépasse la plage d'un entier 32 bits.");
                         break;
+                    case RuleValueKind.TokenList:
+                        if (value.Kind != RuleValueKind.TokenList)
+                            report.Add(field.JsonPath, ValidationCode.WrongType, "liste d'identifiants attendue.");
+                        break;
                     case RuleValueKind.Token:
                         if (value.Kind != RuleValueKind.Token)
                             report.Add(field.JsonPath, ValidationCode.WrongType, "identifiant texte attendu.");
@@ -116,6 +121,7 @@ namespace EdS.Data.Rules
                 RuleValueKind.Int32 => "entier",
                 RuleValueKind.Int64 => "entier",
                 RuleValueKind.Int32List => "liste d'entiers",
+                RuleValueKind.TokenList => "liste d'identifiants",
                 _ => field.AllowedTokens.Count == 0 ? "identifiant" : "un parmi : " + string.Join(", ", field.AllowedTokens),
             };
 
@@ -238,6 +244,15 @@ namespace EdS.Data.Rules
                 ShieldMinCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.ShieldMinCostPerBlock))),
                 ShieldMaxCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.ShieldMaxCostPerBlock))),
                 ShieldParryWindowShiftMs = Int(d, P(c, nameof(CombatRules.ShieldParryWindowShiftMs))),
+                EquipmentMaxDamageDealt = Dec(d, P(c, nameof(CombatRules.EquipmentMaxDamageDealt))),
+                EquipmentMaxDamageTaken = Dec(d, P(c, nameof(CombatRules.EquipmentMaxDamageTaken))),
+                EquipmentMaxHealthPercent = Dec(d, P(c, nameof(CombatRules.EquipmentMaxHealthPercent))),
+                EquipmentMaxEnduranceRegen = Dec(d, P(c, nameof(CombatRules.EquipmentMaxEnduranceRegen))),
+                EquipmentMaxStatusDurationMs = Int(d, P(c, nameof(CombatRules.EquipmentMaxStatusDurationMs))),
+                EquipmentMaxStrikeCoefficient = Dec(d, P(c, nameof(CombatRules.EquipmentMaxStrikeCoefficient))),
+                EquipmentMaxGain = (int)Int(d, P(c, nameof(CombatRules.EquipmentMaxGain))),
+                EquipmentMinTriggerCooldownMs = Int(d, P(c, nameof(CombatRules.EquipmentMinTriggerCooldownMs))),
+                EquipmentStatuses = d.Values[P(c, nameof(CombatRules.EquipmentStatuses))].Tokens!,
                 Statuses = statuses,
             };
         }

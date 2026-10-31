@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 3
+      "const": 4
     },
     "kind": {
       "const": "items"
@@ -32,7 +32,9 @@
         "inventorySize",
         "starting",
         "items",
-        "loot"
+        "loot",
+        "sets",
+        "properties"
       ],
       "properties": {
         "slots": {
@@ -85,6 +87,124 @@
           "items": {
             "$ref": "#/$defs/lootTable"
           }
+        },
+        "sets": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/set"
+          },
+          "description": "Sous-lot V1.3 (version 4) : ensembles."
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rarities",
+            "list"
+          ],
+          "properties": {
+            "rarities": {
+              "type": "array",
+              "minItems": 6,
+              "maxItems": 6,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "rarity",
+                  "count",
+                  "scalePercent"
+                ],
+                "properties": {
+                  "rarity": {
+                    "enum": [
+                      "common",
+                      "rare",
+                      "very_rare",
+                      "epic",
+                      "legendary",
+                      "mythic"
+                    ]
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 8
+                  },
+                  "scalePercent": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  }
+                }
+              }
+            },
+            "list": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "name",
+                  "stat",
+                  "min",
+                  "max",
+                  "minPerLevel",
+                  "maxPerLevel"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^property(\\.[a-z0-9_]+)+$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "stat": {
+                    "enum": [
+                      "physicalPower",
+                      "agilePower",
+                      "magicPower",
+                      "armor",
+                      "magicResistance",
+                      "maxHealth",
+                      "maxEndurance",
+                      "statusResistance"
+                    ]
+                  },
+                  "min": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "minPerLevel": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "maxPerLevel": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "slots": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "description": "Sous-lot V1.3 (version 4) : propriétés tirées au hasard sur le butin non nommé. Bornes d'une propriété au niveau N de l'objet : (min + minPerLevel × (N − 1)) et (max + maxPerLevel × (N − 1)), × l'échelle de la rareté."
         }
       }
     }
@@ -128,6 +248,10 @@
         "guard": {
           "type": "boolean",
           "description": "La place porte la garde : ses objets ont une garde propre (le bouclier), une seule place."
+        },
+        "effects": {
+          "type": "boolean",
+          "description": "Sous-lot V1.3 (version 4) : ses objets peuvent porter des effets (armes et bijoux) ; place du combat seulement."
         }
       }
     },
@@ -278,6 +402,46 @@
             "type": "string"
           },
           "description": "Équipement seulement : arbres de talents auxquels l'objet convient (adéquation au build, H5)."
+        },
+        "named": {
+          "type": "boolean",
+          "description": "Sous-lot V1.3 : objet nommé fait à la main (boss, quête, légendaire) : il ne tire aucune propriété."
+        },
+        "set": {
+          "type": "string",
+          "pattern": "^set(\\.[a-z0-9_]+)+$",
+          "description": "Sous-lot V1.3 : ensemble dont l'objet est une pièce (objet nommé)."
+        },
+        "effects": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Texte montré au joueur (objet nommé ; relu par Damien)."
+            },
+            "modifiers": {
+              "type": "array",
+              "maxItems": 4,
+              "items": {
+                "type": "object"
+              },
+              "description": "Modificateurs (clés admises : damageDealt, damageTaken, maxHealth, endurance.regenPerSecond, status.<id>.durationDealt ; conditions whileGuarding, targetStunned)."
+            },
+            "triggers": {
+              "type": "array",
+              "maxItems": 2,
+              "items": {
+                "type": "object"
+              },
+              "description": "Déclencheurs d'origine equipment, même forme que ceux des classes."
+            }
+          },
+          "description": "Sous-lot V1.3 : effets, bornés par combat.equipment des règles (EquipmentEffect.Check).",
+          "required": [
+            "text"
+          ]
         }
       }
     },
@@ -323,6 +487,122 @@
           }
         }
       }
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "bonuses"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^set(\\.[a-z0-9_]+)+$",
+          "maxLength": 190
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bonuses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pieces",
+              "text"
+            ],
+            "properties": {
+              "pieces": {
+                "enum": [
+                  2,
+                  4,
+                  6
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "bonus": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "physicalPower": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000
+                  },
+                  "agilePower": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000
+                  },
+                  "magicPower": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000
+                  },
+                  "armor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000
+                  },
+                  "magicResistance": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000
+                  },
+                  "maxHealth": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000
+                  },
+                  "maxEndurance": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000
+                  },
+                  "statusResistance": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000
+                  }
+                }
+              },
+              "effects": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "modifiers": {
+                    "type": "array",
+                    "maxItems": 4,
+                    "items": {
+                      "type": "object"
+                    },
+                    "description": "Modificateurs (clés admises : damageDealt, damageTaken, maxHealth, endurance.regenPerSecond, status.<id>.durationDealt ; conditions whileGuarding, targetStunned)."
+                  },
+                  "triggers": {
+                    "type": "array",
+                    "maxItems": 2,
+                    "items": {
+                      "type": "object"
+                    },
+                    "description": "Déclencheurs d'origine equipment, même forme que ceux des classes."
+                  }
+                },
+                "description": "Sous-lot V1.3 : effets, bornés par combat.equipment des règles (EquipmentEffect.Check)."
+              }
+            }
+          }
+        }
+      },
+      "description": "Sous-lot V1.3 : ensemble de 2 à 6 pièces (les objets qui le citent), bonus à 2, 4 et 6 pièces portées."
     }
   }
 }

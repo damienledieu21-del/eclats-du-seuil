@@ -60,7 +60,7 @@ public class V12EquipementTests
     public void Dix_huit_places_et_leurs_regles()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((3, 18, 24), (c.SchemaVersion, c.Places.Count, c.InventorySize));
+        Assert.Equal((4, 18, 24), (c.SchemaVersion, c.Places.Count, c.InventorySize));   // V1.3 : catalogue en version 4
         Assert.Equal(16, c.Places.Count(p => p.Group == PlaceGroup.Combat));   // arme, bouclier, dix pièces, deux anneaux, deux reliques
         Assert.Equal(("shard", PlaceGroup.Shard, true), (c.Places[16].Id, c.Places[16].Group, c.Places[16].Required));
         Assert.Equal(("tool", PlaceGroup.Tool), (c.Places[17].Id, c.Places[17].Group));

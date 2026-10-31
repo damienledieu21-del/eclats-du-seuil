@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using EdS.Data.Equipment;
+using EdS.Data.Saves;
 using EdS.Data.Validation;
 using EdS.Domain;
 using EdS.Domain.Collections;
@@ -68,7 +70,10 @@ namespace EdS.Data.Items
 
         public bool Guard { get; }
 
-        internal EquipmentPlace(string id, string accepts, PlaceGroup group, bool required, IEnumerable<string> requiredBy, bool guard)
+        /// <summary>Sous-lot V1.3 : ses objets peuvent porter des effets (armes et bijoux).</summary>
+        public bool Effects { get; }
+
+        internal EquipmentPlace(string id, string accepts, PlaceGroup group, bool required, IEnumerable<string> requiredBy, bool guard, bool effects = false)
         {
             Id = id;
             Accepts = accepts;
@@ -76,6 +81,7 @@ namespace EdS.Data.Items
             Required = required;
             RequiredBy = Frozen.List(requiredBy, nameof(requiredBy));
             Guard = guard;
+            Effects = effects;
         }
 
         /// <summary>La place est-elle toujours occupée pour un personnage de la classe <paramref name="classId"/> ?</summary>
@@ -135,9 +141,22 @@ namespace EdS.Data.Items
         /// <summary>Sous-lot V1.2 : icône peinte (nom de fichier sans extension) : celle du fichier, sinon la fin de l'identifiant.</summary>
         public string Icon { get; }
 
+        /// <summary>Sous-lot V1.3 : objet nommé fait à la main (boss, quête, légendaire) : il ne tire jamais de propriété.</summary>
+        public bool Named { get; }
+
+        /// <summary>Sous-lot V1.3 : ensemble dont l'objet est une pièce, ou null.</summary>
+        public string? Set { get; }
+
+        /// <summary>Sous-lot V1.3 : effets de l'objet (texte, modificateurs, déclencheurs), ou null.</summary>
+        public ItemEffect? Effect { get; }
+
         internal ItemDefinition(string id, string name, ItemType type, ItemRarity rarity, int stack, string? slot, int requiredLevel, GearBonus bonus,
-            long heal = 0, long cooldownMs = 0, ShieldGuard? guard = null, IEnumerable<string>? fits = null, string? icon = null)
+            long heal = 0, long cooldownMs = 0, ShieldGuard? guard = null, IEnumerable<string>? fits = null, string? icon = null, bool named = false,
+            string? set = null, ItemEffect? effect = null)
         {
+            Named = named;
+            Set = set;
+            Effect = effect;
             Icon = icon ?? id.Substring(id.LastIndexOf('.') + 1);
             Heal = heal;
             CooldownMs = cooldownMs;
@@ -183,6 +202,114 @@ namespace EdS.Data.Items
         }
     }
 
+    /// <summary>Sous-lot V1.3 : effets d'un objet nommé : texte montré au joueur et effets de combat (source : l'identifiant de l'objet).</summary>
+    public sealed class ItemEffect
+    {
+        public string Text { get; }
+        public EquipmentEffect Effect { get; }
+
+        internal ItemEffect(string text, EquipmentEffect effect)
+        {
+            Text = text;
+            Effect = effect;
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot V1.3 : bonus d'un ensemble quand au moins <see cref="Pieces"/> de ses pièces sont portées : texte, bonus aux statistiques et
+    /// effets de combat (source « set.….&lt;pièces&gt; »), l'un ou l'autre ou les deux.
+    /// </summary>
+    public sealed class SetBonus
+    {
+        public int Pieces { get; }
+        public string Text { get; }
+        public GearBonus Bonus { get; }
+        public EquipmentEffect? Effect { get; }
+
+        internal SetBonus(int pieces, string text, GearBonus bonus, EquipmentEffect? effect)
+        {
+            Pieces = pieces;
+            Text = text;
+            Bonus = bonus;
+            Effect = effect;
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot V1.3 (feuille de route, « équipement au max » : ensembles de 2, 4 et 6 pièces) : un ensemble, ses pièces (objets nommés qui le
+    /// citent, dans l'ordre du catalogue) et ses bonus à 2, 4 et 6 pièces portées, dans l'ordre croissant.
+    /// </summary>
+    public sealed class ItemSet
+    {
+        public string Id { get; }
+        public string Name { get; }
+        public IReadOnlyList<string> Pieces { get; }
+        public IReadOnlyList<SetBonus> Bonuses { get; }
+
+        internal ItemSet(string id, string name, IEnumerable<string> pieces, IEnumerable<SetBonus> bonuses)
+        {
+            Id = id;
+            Name = name;
+            Pieces = Frozen.List(pieces, nameof(pieces));
+            Bonuses = Frozen.List(bonuses, nameof(bonuses));
+        }
+
+        /// <summary>Source des effets du palier à <paramref name="pieces"/> pièces (« set.garde_de_la_tour.4 »).</summary>
+        public string SourceOf(int pieces) => Id + "." + pieces.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Sous-lot V1.3 (cadrage Q30 : « identité définie et variations bornées ; la rareté n'est pas le hasard des caractéristiques ») : une
+    /// propriété qui peut être tirée sur un objet du butin : la statistique qu'elle augmente et ses bornes, qui montent avec le niveau de
+    /// l'objet (<see cref="ItemCatalog.Bounds"/>), dans les sortes de place où elle peut sortir.
+    /// </summary>
+    public sealed class PropertyDefinition
+    {
+        public string Id { get; }
+        public string Name { get; }
+
+        /// <summary>Rang de la statistique dans <see cref="GearBonus.Fields"/>.</summary>
+        public int Stat { get; }
+
+        public int Min { get; }
+        public int Max { get; }
+        public int MinPerLevel { get; }
+        public int MaxPerLevel { get; }
+
+        /// <summary>Sortes de place où elle peut être tirée ; vide : toutes les places du combat.</summary>
+        public IReadOnlyList<string> Slots { get; }
+
+        internal PropertyDefinition(string id, string name, int stat, int min, int max, int minPerLevel, int maxPerLevel, IEnumerable<string> slots)
+        {
+            Id = id;
+            Name = name;
+            Stat = stat;
+            Min = min;
+            Max = max;
+            MinPerLevel = minPerLevel;
+            MaxPerLevel = maxPerLevel;
+            Slots = Frozen.List(slots, nameof(slots));
+        }
+
+        /// <summary>Peut-elle sortir sur un objet de la sorte de place <paramref name="kind"/> ?</summary>
+        public bool FitsKind(string? kind) => Slots.Count == 0 || (kind != null && Slots.Contains(kind));
+    }
+
+    /// <summary>Sous-lot V1.3 : nombre de propriétés tirées et échelle des bornes (en pour cent) d'une rareté.</summary>
+    public sealed class RarityRoll
+    {
+        public ItemRarity Rarity { get; }
+        public int Count { get; }
+        public int ScalePercent { get; }
+
+        internal RarityRoll(ItemRarity rarity, int count, int scalePercent)
+        {
+            Rarity = rarity;
+            Count = count;
+            ScalePercent = scalePercent;
+        }
+    }
+
     /// <summary>
     /// Sous-lot 12.3 (cadrage Q4, Q5, Q30, H5) : catalogue validé des objets, places d'équipement, taille de l'inventaire et tables de butin.
     /// Sous-lot V1.2 : 18 places (cadrage Q4, choix de Damien du 29 octobre 2026), garde des boucliers, équipement de départ. Valeurs
@@ -213,9 +340,27 @@ namespace EdS.Data.Items
         private readonly Dictionary<string, LootTable> _loot;
         private readonly Dictionary<string, EquipmentPlace> _places;
 
+        /// <summary>Sous-lot V1.3 : ensembles, dans l'ordre du fichier.</summary>
+        public IReadOnlyList<ItemSet> Sets { get; }
+
+        /// <summary>Sous-lot V1.3 : propriétés qui peuvent être tirées, dans l'ordre du fichier (celui du tirage).</summary>
+        public IReadOnlyList<PropertyDefinition> Properties { get; }
+
+        /// <summary>Sous-lot V1.3 : nombre de propriétés et échelle par rareté, dans l'ordre des raretés.</summary>
+        public IReadOnlyList<RarityRoll> RarityRolls { get; }
+
+        private readonly Dictionary<string, ItemSet> _sets;
+        private readonly Dictionary<string, PropertyDefinition> _properties;
+
         internal ItemCatalog(int schemaVersion, string contentVersion, IEnumerable<EquipmentPlace> places, int inventorySize, IEnumerable<StartingItem> starting,
-            IEnumerable<ItemDefinition> items, IEnumerable<LootTable> loot)
+            IEnumerable<ItemDefinition> items, IEnumerable<LootTable> loot, IEnumerable<ItemSet>? sets = null, IEnumerable<PropertyDefinition>? properties = null,
+            IEnumerable<RarityRoll>? rarityRolls = null)
         {
+            Sets = Frozen.ListOrEmpty(sets, nameof(sets));
+            Properties = Frozen.ListOrEmpty(properties, nameof(properties));
+            RarityRolls = Frozen.List((rarityRolls ?? Array.Empty<RarityRoll>()).OrderBy(r => (int)r.Rarity), nameof(rarityRolls));
+            _sets = Sets.ToDictionary(x => x.Id, StringComparer.Ordinal);
+            _properties = Properties.ToDictionary(x => x.Id, StringComparer.Ordinal);
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             Places = Frozen.List(places, nameof(places));
@@ -246,6 +391,159 @@ namespace EdS.Data.Items
 
         /// <summary>Objets de départ d'un personnage de la classe <paramref name="classId"/>, dans l'ordre du fichier.</summary>
         public IEnumerable<string> StartingFor(string classId) => Starting.Where(s => s.Class is null || s.Class == classId).Select(s => s.Item);
+
+        public bool TryGetSet(string id, out ItemSet set) => _sets.TryGetValue(id ?? string.Empty, out set!);
+
+        public bool TryGetProperty(string id, out PropertyDefinition property) => _properties.TryGetValue(id ?? string.Empty, out property!);
+
+        /// <summary>Sous-lot V1.3 : nombre de propriétés tirées sur un objet de cette rareté (0 si la rareté n'en tire pas).</summary>
+        public int RollCount(ItemRarity rarity) => RarityRolls.FirstOrDefault(r => r.Rarity == rarity)?.Count ?? 0;
+
+        /// <summary>
+        /// Sous-lot V1.3 : l'objet tire-t-il des propriétés quand il tombe du butin ? Un équipement des places du combat, non nommé (ni pièce
+        /// d'ensemble, ni objet fait à la main), d'une rareté qui en tire.
+        /// </summary>
+        public bool IsRollable(ItemDefinition item) =>
+            item is { Type: ItemType.Equipment, Named: false, Set: null } && PlacesFor(item.Slot).FirstOrDefault() is { Group: PlaceGroup.Combat }
+            && RollCount(item.Rarity) > 0;
+
+        /// <summary>Sous-lot V1.3 : propriétés qui peuvent sortir sur cet objet (sa sorte de place), dans l'ordre du catalogue.</summary>
+        public IReadOnlyList<PropertyDefinition> PropertiesFor(ItemDefinition item) =>
+            item is null ? throw new ArgumentNullException(nameof(item)) : Properties.Where(p => p.FitsKind(item.Slot)).ToList();
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #78 : plus grande valeur que peut atteindre la statistique <paramref name="stat"/>
+        /// (<see cref="GearBonus.Fields"/>) dans le bonus de l'équipement porté (<c>Inventory.Gear</c>), quoi que porte le personnage. Pour
+        /// chaque place, l'objet qui y va au pire cas : son bonus de base plus ses propriétés tirées les plus fortes sur cette statistique
+        /// (au plus <see cref="RollCount"/> propriétés distinctes, chacune à la borne haute de <see cref="Bounds"/>) ; plus tous les paliers de
+        /// tous les ensembles. Une borne sûre (le vrai total ne la dépasse jamais) : <c>Base</c> pour les bonus de base, <c>Rolled</c> pour les
+        /// propriétés tirées, <c>Sets</c> pour les ensembles. Arithmétique sur 64 bits, sans débordement pour un catalogue validé.
+        /// </summary>
+        public (long Base, long Rolled, long Sets) WornBound(int stat)
+        {
+            if (stat < 0 || stat >= GearBonus.Fields.Count) throw new ArgumentOutOfRangeException(nameof(stat));
+            long sum = 0, rolledSum = 0, setSum = 0;
+            foreach (EquipmentPlace place in Places)
+            {
+                long bestBase = 0, bestRolled = 0;
+                foreach (ItemDefinition item in Items)
+                {
+                    if (item.Type != ItemType.Equipment || item.Slot != place.Accepts) continue;
+                    long rolled = 0;
+                    if (IsRollable(item))
+                        rolled = PropertiesFor(item).Where(p => p.Stat == stat).Select(p => (long)Bounds(p, item).Max)
+                            .OrderByDescending(v => v).Take(RollCount(item.Rarity)).Sum();
+                    if (item.Bonus[stat] + rolled > bestBase + bestRolled) { bestBase = item.Bonus[stat]; bestRolled = rolled; }
+                }
+                sum = checked(sum + bestBase);
+                rolledSum = checked(rolledSum + bestRolled);
+            }
+            foreach (ItemSet set in Sets)
+                foreach (SetBonus bonus in set.Bonuses)
+                    setSum = checked(setSum + bonus.Bonus[stat]);
+            return (sum, rolledSum, setSum);
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 : bornes d'une propriété tirée sur <paramref name="item"/> : celles de la propriété au niveau requis de l'objet
+        /// (min + minPerLevel × (niveau − 1), de même pour max), multipliées par l'échelle de sa rareté (pour cent, arrondi vers le bas), au
+        /// moins 1. La rareté fixe le nombre et l'échelle ; le hasard ne choisit qu'à l'intérieur de ces bornes (Q30). Arithmétique vérifiée.
+        /// </summary>
+        public (int Min, int Max) Bounds(PropertyDefinition property, ItemDefinition item)
+        {
+            if (property is null) throw new ArgumentNullException(nameof(property));
+            if (item is null) throw new ArgumentNullException(nameof(item));
+            long scale = RarityRolls.FirstOrDefault(r => r.Rarity == item.Rarity)?.ScalePercent ?? 100;
+            long steps = Math.Max(0, item.RequiredLevel - 1);
+            long low = checked((property.Min + property.MinPerLevel * steps) * scale / 100);
+            long high = checked((property.Max + property.MaxPerLevel * steps) * scale / 100);
+            low = Math.Max(1, low);
+            high = Math.Max(low, high);
+            return ((int)Math.Min(low, int.MaxValue), (int)Math.Min(high, int.MaxValue));
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 : validateur unique d'une instance d'objet contre le catalogue (sauvegarde relue, tirage du butin). Un objet de base
+        /// (sans propriété) est toujours admis. Aux propriétés tirées : un objet qui en tire (<see cref="IsRollable"/>), quantité 1, de 1 à
+        /// <see cref="RollCount"/> propriétés (le tirage en donne exactement <see cref="RollCount"/> ; relecture de la PR #78 : une instance
+        /// relue après un réglage du catalogue peut en avoir perdu, voir <see cref="Settle"/>), connues, distinctes, admises pour sa sorte de
+        /// place, chacune dans ses bornes (<see cref="Bounds"/>). Rend le premier motif de refus, ou null.
+        /// </summary>
+        public string? CheckInstance(ItemStack stack)
+        {
+            if (stack is null) throw new ArgumentNullException(nameof(stack));
+            if (!TryGetItem(stack.Item, out ItemDefinition item)) return $"objet « {stack.Item} » absent du catalogue.";
+            if (!stack.IsRolled) return null;
+            if (!IsRollable(item)) return $"« {item.Id} » ne tire pas de propriété (objet nommé, pièce d'ensemble, rareté ou place sans tirage).";
+            if (stack.Count != 1) return $"« {item.Id} » aux propriétés tirées : quantité 1 (il ne s'empile pas).";
+            int count = RollCount(item.Rarity);
+            if (stack.Properties.Count > count) return $"« {item.Id} » ({RarityId(item.Rarity)}) tire au plus {count} propriété(s), {stack.Properties.Count} données.";
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (RolledProperty r in stack.Properties)
+            {
+                if (!TryGetProperty(r.Id, out PropertyDefinition property)) return $"propriété « {r.Id} » absente du catalogue.";
+                if (!seen.Add(r.Id)) return $"propriété « {r.Id} » tirée deux fois.";
+                if (!property.FitsKind(item.Slot)) return $"propriété « {r.Id} » impossible sur « {item.Slot} ».";
+                (int low, int high) = Bounds(property, item);
+                if (r.Value < low || r.Value > high) return $"propriété « {r.Id} » : {r.Value} hors de [{low}, {high}] pour « {item.Id} ».";
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Relecture de la PR #78 : accorde une instance relue d'une sauvegarde au catalogue <b>actuel</b>, qui a pu être réglé depuis le
+        /// tirage (bornes, propriétés, rareté). Règle sûre, sans exception ni partie perdue : une valeur hors des bornes actuelles est
+        /// <b>ramenée dans les bornes</b> (à la borne la plus proche) ; une propriété absente du catalogue, qui ne va plus à cette sorte de
+        /// place ou tirée deux fois est <b>retirée</b> ; au-delà du nombre de propriétés de la rareté, les dernières sont retirées ; un objet
+        /// qui ne tire plus de propriété (devenu nommé, pièce d'ensemble, rareté sans tirage) redevient l'objet de base. Chaque changement
+        /// est rendu dans <paramref name="changes"/> (compte rendu en clair, dans l'ordre des propriétés) ; vide si l'instance était déjà
+        /// accordée (elle est alors rendue telle quelle). Un objet absent du catalogue ou une quantité incohérente ne se règlent pas ici
+        /// (<see cref="CheckInstance"/> les refuse toujours). Une instance accordée passe <see cref="CheckInstance"/> à ces deux motifs près.
+        /// </summary>
+        public ItemStack Settle(ItemStack stack, out IReadOnlyList<string> changes)
+        {
+            if (stack is null) throw new ArgumentNullException(nameof(stack));
+            changes = Array.Empty<string>();
+            if (!stack.IsRolled || !TryGetItem(stack.Item, out ItemDefinition item)) return stack;
+            var notes = new List<string>();
+            if (!IsRollable(item))
+            {
+                notes.Add($"{item.Name} : ne tire plus de propriété, {stack.Properties.Count} retirée(s).");
+                changes = notes;
+                return new ItemStack(item.Id, stack.Count);
+            }
+            int room = RollCount(item.Rarity);
+            var kept = new List<RolledProperty>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (RolledProperty r in stack.Properties)
+            {
+                if (!TryGetProperty(r.Id, out PropertyDefinition property)) { notes.Add($"{item.Name} : propriété « {r.Id} » retirée (absente du catalogue)."); continue; }
+                if (!seen.Add(r.Id)) { notes.Add($"{item.Name} : {property.Name} retirée (tirée deux fois)."); continue; }
+                if (!property.FitsKind(item.Slot)) { notes.Add($"{item.Name} : {property.Name} retirée (impossible sur « {item.Slot} »)."); continue; }
+                if (kept.Count >= room) { notes.Add($"{item.Name} : {property.Name} retirée (au plus {room} propriété(s) pour sa rareté)."); continue; }
+                (int low, int high) = Bounds(property, item);
+                int value = Math.Min(Math.Max(r.Value, low), high);
+                if (value != r.Value) notes.Add($"{item.Name} : {property.Name} ramenée de {r.Value} à {value} (bornes [{low}, {high}]).");
+                kept.Add(value == r.Value ? r : new RolledProperty(r.Id, value));
+            }
+            if (notes.Count == 0) return stack;
+            changes = notes;
+            return new ItemStack(item.Id, stack.Count, kept);
+        }
+
+        /// <summary>Sous-lot V1.3 : bonus d'une instance : celui de l'objet, plus ses propriétés tirées (supposées valides).</summary>
+        public GearBonus BonusOf(ItemStack stack)
+        {
+            if (stack is null) throw new ArgumentNullException(nameof(stack));
+            GearBonus bonus = Item(stack.Item).Bonus;
+            if (!stack.IsRolled) return bonus;
+            var values = new int[GearBonus.Fields.Count];
+            foreach (RolledProperty r in stack.Properties)
+                if (TryGetProperty(r.Id, out PropertyDefinition property)) values[property.Stat] = checked(values[property.Stat] + r.Value);
+            return bonus + GearBonus.FromValues(values);
+        }
+
+        private static string RarityId(ItemRarity rarity) => ItemValidator.RarityId(rarity);
     }
 
     public sealed class ItemCatalogLoadResult
@@ -276,11 +574,25 @@ namespace EdS.Data.Items
         /// Version 1 (sous-lot 12.3) : <c>slots</c>, <c>inventorySize</c>, <c>items[]</c>, <c>loot[]</c>. Version 2 (sous-lot 12.6) : type
         /// <c>consumable</c> (objet de soin : <c>stack</c>, <c>heal</c>, <c>cooldownMs</c>). Version 3 (sous-lot V1.2) : les places deviennent des
         /// objets (<c>id</c>, <c>accepts</c>, <c>group</c>, <c>required</c>, <c>requiredBy</c>, <c>guard</c>), <c>starting[]</c> (équipement de
-        /// départ), <c>guard</c> (garde d'un bouclier) et <c>fits</c> (arbres de talents) sur un équipement. Une version antérieure est refusée :
-        /// le fichier se met à jour à la main. Les effets, les ensembles et les propriétés tirées (sous-lot V1.3) viendront avec une version
-        /// suivante, en champs nouveaux d'un objet : la forme actuelle n'a rien à casser pour les accueillir.
+        /// départ), <c>guard</c> (garde d'un bouclier) et <c>fits</c> (arbres de talents) sur un équipement. Version 4 (sous-lot V1.3) :
+        /// <c>effects</c> sur une place (ses objets peuvent porter des effets : armes et bijoux) ; <c>named</c> (objet nommé fait à la main),
+        /// <c>set</c> (pièce d'un ensemble) et <c>effects</c> (texte, modificateurs, déclencheurs) sur un équipement ; <c>sets[]</c> (ensembles :
+        /// bonus à 2, 4 et 6 pièces portées) et <c>properties</c> (tables des propriétés tirées : nombre et échelle par rareté, propriétés et
+        /// leurs bornes par niveau). Une version antérieure est refusée : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
+
+        /// <summary>Sous-lot V1.3 : ensembles, paliers d'un ensemble, propriétés qui peuvent être tirées, au plus.</summary>
+        public const int MaxSets = 64, MaxSetBonuses = 3, MaxProperties = 256;
+
+        /// <summary>Sous-lot V1.3 : pièces d'un ensemble (de 2 à 6) et paliers admis.</summary>
+        public const int MinSetPieces = 2, MaxSetPieces = 6;
+
+        private static readonly Regex SetId = new Regex(@"^set(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex PropertyIdPattern = new Regex(@"^property(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>Identifiant d'ensemble valide : « set. » puis minuscules, chiffres, « _ » et « . », 190 caractères au plus (la source d'un palier y ajoute « .6 »).</summary>
+        public static bool IsSetId(string? id) => id != null && id.Length <= 190 && SetId.IsMatch(id);
 
         /// <summary>Places au plus : vingt objets au bonus maximal restent sous <see cref="GearBonus.MaxValue"/>.</summary>
         public const int MaxSlots = 20;
@@ -347,10 +659,13 @@ namespace EdS.Data.Items
             "stack" => item.Stack != null,
             "heal" => item.Heal != null,
             "cooldownMs" => item.CooldownMs != null,
+            "named" => item.Named != null,
+            "set" => item.Set != null,
+            "effects" => item.Effects != null,
             _ => false,
         };
 
-        private static readonly string[] EquipmentFields = { "slot", "requiredLevel", "bonus", "guard", "fits" };
+        private static readonly string[] EquipmentFields = { "slot", "requiredLevel", "bonus", "guard", "fits", "named", "set", "effects" };
         private static readonly string[] MaterialFields = { "stack" };
         private static readonly string[] ConsumableFields = { "stack", "heal", "cooldownMs" };
 
@@ -421,9 +736,243 @@ namespace EdS.Data.Items
                     if (CheckLoot(table, path, byId, ids, tables, report) is { } checkedTable) loot.Add(checkedTable);
                 }
             }
+            // Sous-lot V1.3 : ensembles, puis tables des propriétés tirées.
+            var sets = new List<ItemSet>();
+            if (d.Sets is null) Missing(report, "$.data.sets", "ensembles, éventuellement vide");
+            else CheckSets(d.Sets, d.Items, items, data.Rules.Combat, sets, report);
+            var properties = new List<PropertyDefinition>();
+            var rolls = new List<RarityRoll>();
+            if (d.Properties is null) Missing(report, "$.data.properties", "tables des propriétés tirées : rarities, list");
+            else CheckProperties(d.Properties, places, maxLevel, properties, rolls, report);
             if (!report.IsValid || document.ContentVersion is null) return new ItemCatalogLoadResult(report, null);
-            return new ItemCatalogLoadResult(report, new ItemCatalog(document.SchemaVersion!.Value, document.ContentVersion, places, d.InventorySize!.Value,
-                starting, items, loot));
+            var catalog = new ItemCatalog(document.SchemaVersion!.Value, document.ContentVersion, places, d.InventorySize!.Value, starting, items, loot, sets,
+                properties, rolls);
+            // Chaque objet qui tire des propriétés en a assez de possibles pour sa sorte de place.
+            for (int i = 0; i < d.Items!.Count; i++)
+                if (d.Items[i] is { Id: string id } && catalog.TryGetItem(id, out ItemDefinition item) && catalog.IsRollable(item)
+                    && catalog.PropertiesFor(item).Count < catalog.RollCount(item.Rarity))
+                    report.Add($"$.data.items[{i}].rarity", ValidationCode.InvalidValue,
+                        $"« {id} » tire {catalog.RollCount(item.Rarity)} propriété(s), {catalog.PropertiesFor(item).Count} possible(s) pour « {item.Slot} ».");
+            // Remarque de Codex sur la PR #78 : le pire cumul de l'équipement porté (bonus de base, propriétés tirées, ensembles) reste dans la
+            // limite du combat (CombatSetup.Validate : chaque bonus d'équipement de 0 à GearBonus.MaxValue), sinon le personnage qui le porte
+            // ne pourrait plus entrer dans un combat.
+            for (int stat = 0; stat < GearBonus.Fields.Count; stat++)
+            {
+                (long baseBound, long rolledBound, long setBound) = catalog.WornBound(stat);
+                long total = checked(baseBound + rolledBound + setBound);
+                if (total <= GearBonus.MaxValue) continue;
+                report.Add(WornBoundPath(d, catalog, stat, rolledBound, setBound), ValidationCode.LimitExceeded,
+                    $"pire cumul de « {GearBonus.Fields[stat]} » sur l'équipement porté : {total} (objets {baseBound}, propriétés tirées {rolledBound}, " +
+                    $"ensembles {setBound}), au plus {GearBonus.MaxValue} (limite du combat).");
+            }
+            return report.IsValid ? new ItemCatalogLoadResult(report, catalog) : new ItemCatalogLoadResult(report, null);
+        }
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #78 : chemin d'un pire cumul trop fort, vers sa plus grande cause : la propriété tirée la plus forte sur
+        /// cette statistique (<c>properties.list[k].max</c>) si les propriétés tirées dominent, sinon le palier d'ensemble le plus fort si les
+        /// ensembles dominent, sinon l'objet au plus fort bonus de base (<c>items[i].bonus.&lt;stat&gt;</c>).
+        /// </summary>
+        private static string WornBoundPath(ItemCatalogData d, ItemCatalog catalog, int stat, long rolled, long sets)
+        {
+            string field = GearBonus.Fields[stat];
+            (long baseBound, _, _) = catalog.WornBound(stat);
+            if (rolled >= baseBound && rolled >= sets && rolled > 0)
+            {
+                int best = -1;
+                long top = -1;
+                for (int k = 0; k < catalog.Properties.Count; k++)
+                {
+                    PropertyDefinition p = catalog.Properties[k];
+                    if (p.Stat != stat) continue;
+                    foreach (ItemDefinition item in catalog.Items)
+                        if (catalog.IsRollable(item) && p.FitsKind(item.Slot) && catalog.Bounds(p, item).Max > top) { top = catalog.Bounds(p, item).Max; best = k; }
+                }
+                if (best >= 0)
+                    for (int k = 0; d.Properties?.List != null && k < d.Properties.List.Count; k++)
+                        if (d.Properties.List[k]?.Id == catalog.Properties[best].Id) return $"$.data.properties.list[{k}].max";
+            }
+            if (sets >= baseBound && sets > 0)
+                for (int s = 0; d.Sets != null && s < d.Sets.Count; s++)
+                    if (d.Sets[s]?.Id is string id && catalog.TryGetSet(id, out ItemSet set))
+                        for (int b = 0; b < set.Bonuses.Count; b++)
+                            if (set.Bonuses[b].Bonus[stat] > 0 && set.Bonuses[b].Bonus[stat] == catalog.Sets.SelectMany(x => x.Bonuses).Max(x => x.Bonus[stat]))
+                                return $"$.data.sets[{s}].bonuses[{b}].bonus.{field}";
+            int strongest = -1, value = -1;
+            for (int i = 0; d.Items != null && i < d.Items.Count; i++)
+                if (d.Items[i]?.Id is string id && catalog.TryGetItem(id, out ItemDefinition item) && item.Bonus[stat] > value)
+                { value = item.Bonus[stat]; strongest = i; }
+            return strongest >= 0 ? $"$.data.items[{strongest}].bonus.{field}" : "$.data.items";
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 : ensembles. Identifiant « set.… » unique, nom, de 2 à 6 pièces (les objets qui le citent, tous nommés), 1 à 3 paliers
+        /// à 2, 4 ou 6 pièces, croissants et au plus le nombre de pièces, chacun avec son texte et un bonus aux statistiques ou des effets
+        /// (bornés par <c>combat.equipment</c>, <see cref="EquipmentEffect.Check"/>). Un objet qui cite un ensemble inconnu est refusé.
+        /// </summary>
+        private static void CheckSets(List<SetData?> list, List<ItemData?>? rawItems, List<ItemDefinition> items, CombatRules rules, List<ItemSet> sets,
+            ValidationReport report)
+        {
+            if (list.Count > MaxSets) report.Add("$.data.sets", ValidationCode.LimitExceeded, $"{list.Count} ensembles, au plus {MaxSets}.");
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < list.Count; i++)
+            {
+                string path = $"$.data.sets[{i}]";
+                if (list[i] is not SetData set) { Missing(report, path, "ensemble"); continue; }
+                bool ok = true;
+                if (set.Id is null) { Missing(report, path + ".id", "identifiant « set.… »"); ok = false; }
+                else if (!IsSetId(set.Id)) { report.Add(path + ".id", ValidationCode.InvalidValue, "identifiant invalide : « set. » puis minuscules, chiffres, « _ » et « . »."); ok = false; }
+                else if (!ids.Add(set.Id)) { report.Add(path + ".id", ValidationCode.DuplicateId, $"ensemble « {set.Id} » déjà décrit plus haut."); ok = false; }
+                if (string.IsNullOrWhiteSpace(set.Name)) { Missing(report, path + ".name", "nom affiché"); ok = false; }
+                var pieces = set.Id is null ? new List<string>() : items.Where(x => x.Set == set.Id).Select(x => x.Id).ToList();
+                if (set.Id != null && (pieces.Count < MinSetPieces || pieces.Count > MaxSetPieces))
+                {
+                    report.Add(path + ".id", ValidationCode.InvalidValue, $"« {set.Id} » a {pieces.Count} pièce(s) : de {MinSetPieces} à {MaxSetPieces}.");
+                    ok = false;
+                }
+                var bonuses = new List<SetBonus>();
+                if (set.Bonuses is null) { Missing(report, path + ".bonuses", "paliers à 2, 4 ou 6 pièces"); ok = false; }
+                else
+                {
+                    if (set.Bonuses.Count < 1 || set.Bonuses.Count > MaxSetBonuses)
+                    { report.Add(path + ".bonuses", ValidationCode.OutOfRange, $"{set.Bonuses.Count} paliers, de 1 à {MaxSetBonuses}."); ok = false; }
+                    int last = 0;
+                    for (int k = 0; k < set.Bonuses.Count; k++)
+                    {
+                        string bp = $"{path}.bonuses[{k}]";
+                        if (set.Bonuses[k] is not SetBonusData b) { Missing(report, bp, "palier"); ok = false; continue; }
+                        if (b.Pieces is null) { Missing(report, bp + ".pieces", "nombre de pièces : 2, 4 ou 6"); ok = false; continue; }
+                        int n = b.Pieces.Value;
+                        if (n != 2 && n != 4 && n != 6) { report.Add(bp + ".pieces", ValidationCode.InvalidValue, "palier à 2, 4 ou 6 pièces."); ok = false; }
+                        else if (n <= last) { report.Add(bp + ".pieces", ValidationCode.InvalidValue, "paliers dans l'ordre croissant, chacun une fois."); ok = false; }
+                        else if (set.Id != null && n > pieces.Count) { report.Add(bp + ".pieces", ValidationCode.OutOfRange, $"palier à {n} pièces pour {pieces.Count} pièce(s)."); ok = false; }
+                        last = Math.Max(last, n);
+                        if (string.IsNullOrWhiteSpace(b.Text)) { Missing(report, bp + ".text", "texte montré au joueur"); ok = false; }
+                        int[] values = CheckBonusMap(b.Bonus ?? new List<KeyValuePair<string, int?>>(), bp + ".bonus", report, ref ok);
+                        EquipmentEffect? effect = null;
+                        if (b.Effects is { } e)
+                        {
+                            int before = report.Errors.Count;
+                            EquipmentEffectShape.Check(e, bp + ".effects", withId: false, report);
+                            if (report.Errors.Count == before && set.Id != null)
+                            {
+                                effect = EquipmentEffectShape.Build(e, set.Id + "." + n.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                                if (!EquipmentEffectShape.Report(effect.Check(rules, bp + ".effects"), report)) ok = false;
+                            }
+                            else ok = false;
+                        }
+                        if (b.Bonus is null && b.Effects is null) { Missing(report, bp + ".bonus", "bonus aux statistiques ou effets"); ok = false; }
+                        if (ok) bonuses.Add(new SetBonus(n, b.Text!, GearBonus.FromValues(values), effect));
+                    }
+                }
+                if (ok) sets.Add(new ItemSet(set.Id!, set.Name!, pieces, bonuses));
+            }
+            // Un objet qui cite un ensemble inconnu.
+            if (rawItems != null)
+                for (int i = 0; i < rawItems.Count; i++)
+                    if (rawItems[i] is { Set: string setId } && IsSetId(setId) && !ids.Contains(setId))
+                        report.Add($"$.data.items[{i}].set", ValidationCode.UnknownReference, $"ensemble inconnu « {setId} ».");
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 : tables des propriétés tirées. Chaque rareté une fois (nombre de 0 à <see cref="SaveValidator.MaxProperties"/>, échelle de
+        /// 1 à 1 000 %) ; chaque propriété : identifiant « property.… » unique, nom, statistique du bonus d'équipement, bornes au niveau 1
+        /// (1 ≤ min ≤ max) et par niveau (0 ≤ minPerLevel ≤ maxPerLevel), sortes de place du combat ; au niveau maximal et à la plus grande
+        /// échelle, la borne haute reste sous <see cref="SaveValidator.MaxPropertyValue"/>.
+        /// </summary>
+        private static void CheckProperties(PropertyTablesData t, List<EquipmentPlace> places, int maxLevel, List<PropertyDefinition> properties,
+            List<RarityRoll> rolls, ValidationReport report)
+        {
+            const string path = "$.data.properties";
+            int maxScale = 100;
+            if (t.Rarities is null) Missing(report, path + ".rarities", "nombre de propriétés par rareté");
+            else
+            {
+                for (int i = 0; i < t.Rarities.Count; i++)
+                {
+                    string rp = $"{path}.rarities[{i}]";
+                    if (t.Rarities[i] is not RarityRollData r) { Missing(report, rp, "rareté"); continue; }
+                    bool ok = true;
+                    ItemRarity rarity = default;
+                    if (r.Rarity is null) { Missing(report, rp + ".rarity", string.Join(", ", Rarities.Keys)); ok = false; }
+                    else if (!Rarities.TryGetValue(r.Rarity, out rarity)) { report.Add(rp + ".rarity", ValidationCode.UnknownReference, $"rareté inconnue « {r.Rarity} »."); ok = false; }
+                    else if (rolls.Any(x => x.Rarity == rarity)) { report.Add(rp + ".rarity", ValidationCode.DuplicateId, $"rareté « {r.Rarity} » déjà donnée."); ok = false; }
+                    if (r.Count is null) { Missing(report, rp + ".count", "nombre de propriétés tirées"); ok = false; }
+                    else if (r.Count < 0 || r.Count > SaveValidator.MaxProperties) { report.Add(rp + ".count", ValidationCode.OutOfRange, $"nombre hors de [0, {SaveValidator.MaxProperties}]."); ok = false; }
+                    if (r.ScalePercent is null) { Missing(report, rp + ".scalePercent", "échelle des bornes, en pour cent"); ok = false; }
+                    else if (r.ScalePercent < 1 || r.ScalePercent > 1000) { report.Add(rp + ".scalePercent", ValidationCode.OutOfRange, "échelle hors de [1, 1000] %."); ok = false; }
+                    if (ok)
+                    {
+                        rolls.Add(new RarityRoll(rarity, r.Count!.Value, r.ScalePercent!.Value));
+                        maxScale = Math.Max(maxScale, r.ScalePercent.Value);
+                    }
+                }
+                foreach (KeyValuePair<string, ItemRarity> rarity in Rarities)
+                    if (report.IsValid && !rolls.Any(x => x.Rarity == rarity.Value))
+                        report.Add(path + ".rarities", ValidationCode.MissingField, $"rareté « {rarity.Key} » absente (chaque rareté une fois).");
+            }
+            if (t.List is null) { Missing(report, path + ".list", "propriétés qui peuvent être tirées"); return; }
+            if (t.List.Count > MaxProperties) report.Add(path + ".list", ValidationCode.LimitExceeded, $"{t.List.Count} propriétés, au plus {MaxProperties}.");
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            var kinds = new HashSet<string>(places.Where(p => p.Group == PlaceGroup.Combat).Select(p => p.Accepts), StringComparer.Ordinal);
+            for (int i = 0; i < t.List.Count; i++)
+            {
+                string pp = $"{path}.list[{i}]";
+                if (t.List[i] is not PropertyData d) { Missing(report, pp, "propriété"); continue; }
+                bool ok = true;
+                if (d.Id is null) { Missing(report, pp + ".id", "identifiant « property.… »"); ok = false; }
+                else if (d.Id.Length > 200 || !PropertyIdPattern.IsMatch(d.Id)) { report.Add(pp + ".id", ValidationCode.InvalidValue, "identifiant invalide : « property. » puis minuscules, chiffres, « _ » et « . »."); ok = false; }
+                else if (!ids.Add(d.Id)) { report.Add(pp + ".id", ValidationCode.DuplicateId, $"propriété « {d.Id} » déjà décrite plus haut."); ok = false; }
+                if (string.IsNullOrWhiteSpace(d.Name)) { Missing(report, pp + ".name", "nom affiché"); ok = false; }
+                int stat = -1;
+                if (d.Stat is null) { Missing(report, pp + ".stat", string.Join(", ", GearBonus.Fields)); ok = false; }
+                else if ((stat = GearBonus.FieldIndex(d.Stat)) < 0) { report.Add(pp + ".stat", ValidationCode.UnknownReference, $"statistique inconnue « {d.Stat} » ; possibles : {string.Join(", ", GearBonus.Fields)}."); ok = false; }
+                if (d.Min is null) { Missing(report, pp + ".min", "borne basse au niveau 1"); ok = false; }
+                if (d.Max is null) { Missing(report, pp + ".max", "borne haute au niveau 1"); ok = false; }
+                if (d.MinPerLevel is null) { Missing(report, pp + ".minPerLevel", "hausse de la borne basse par niveau"); ok = false; }
+                if (d.MaxPerLevel is null) { Missing(report, pp + ".maxPerLevel", "hausse de la borne haute par niveau"); ok = false; }
+                if (ok)
+                {
+                    if (d.Min < 1 || d.Max < d.Min) { report.Add(pp + ".max", ValidationCode.OutOfRange, "bornes au niveau 1 : 1 ≤ min ≤ max."); ok = false; }
+                    if (d.MinPerLevel < 0 || d.MaxPerLevel < d.MinPerLevel) { report.Add(pp + ".maxPerLevel", ValidationCode.OutOfRange, "hausses par niveau : 0 ≤ minPerLevel ≤ maxPerLevel."); ok = false; }
+                    long top = ((long)d.Max!.Value + (long)d.MaxPerLevel!.Value * Math.Max(0, maxLevel - 1)) * maxScale / 100;
+                    if (ok && top > SaveValidator.MaxPropertyValue)
+                    { report.Add(pp + ".max", ValidationCode.OutOfRange, $"borne haute {top} au niveau {maxLevel} (échelle {maxScale} %), au plus {SaveValidator.MaxPropertyValue}."); ok = false; }
+                }
+                var slots = new List<string>();
+                if (d.Slots != null)
+                    for (int k = 0; k < d.Slots.Count; k++)
+                    {
+                        string sp = $"{pp}.slots[{k}]";
+                        if (d.Slots[k] is not string kind) { Missing(report, sp, "sorte de place"); ok = false; }
+                        else if (!kinds.Contains(kind)) { report.Add(sp, ValidationCode.UnknownReference, $"sorte de place du combat inconnue « {kind} »."); ok = false; }
+                        else if (slots.Contains(kind)) { report.Add(sp, ValidationCode.DuplicateId, $"sorte « {kind} » déjà donnée."); ok = false; }
+                        else slots.Add(kind);
+                    }
+                if (ok) properties.Add(new PropertyDefinition(d.Id!, d.Name!, stat, d.Min!.Value, d.Max!.Value, d.MinPerLevel!.Value, d.MaxPerLevel!.Value, slots));
+            }
+        }
+
+        /// <summary>Bonus aux statistiques par identifiant (objet, palier d'ensemble) : champs connus, une fois chacun, de 0 à <see cref="MaxItemBonus"/>.</summary>
+        private static int[] CheckBonusMap(List<KeyValuePair<string, int?>> bonus, string path, ValidationReport report, ref bool ok)
+        {
+            var values = new int[GearBonus.Fields.Count];
+            var seenBonus = new HashSet<string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, int?> entry in bonus)
+            {
+                string bonusPath = $"{path}.{entry.Key}";
+                int field = GearBonus.FieldIndex(entry.Key);
+                if (field < 0)
+                {
+                    report.Add(bonusPath, ValidationCode.UnknownReference, $"bonus inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
+                    ok = false;
+                }
+                else if (!seenBonus.Add(entry.Key)) { report.Add(bonusPath, ValidationCode.DuplicateId, $"bonus « {entry.Key} » donné deux fois."); ok = false; }
+                else if (entry.Value is not int value) { Missing(report, bonusPath, "entier"); ok = false; }
+                else if (value < 0 || value > MaxItemBonus) { report.Add(bonusPath, ValidationCode.OutOfRange, $"bonus hors de [0, {MaxItemBonus}]."); ok = false; }
+                else values[field] = value;
+            }
+            return values;
         }
 
         private static EquipmentPlace? CheckPlace(SlotData slot, string path, List<EquipmentPlace> before, GameData data, ValidationReport report)
@@ -444,7 +993,7 @@ namespace EdS.Data.Items
                 report.Add(path + ".group", ValidationCode.UnknownReference, $"groupe inconnu « {slot.Group} » ; groupes : {string.Join(", ", Groups.Keys)}.");
                 ok = false;
             }
-            bool required = slot.Required ?? false, guard = slot.Guard ?? false;
+            bool required = slot.Required ?? false, guard = slot.Guard ?? false, effects = slot.Effects ?? false;
             var requiredBy = new List<string>();
             if (slot.RequiredBy != null)
                 for (int k = 0; k < slot.RequiredBy.Count; k++)
@@ -465,13 +1014,19 @@ namespace EdS.Data.Items
                 report.Add(path + ".guard", ValidationCode.InvalidValue, "la garde se porte à une place du combat.");
                 ok = false;
             }
-            // Les places d'une même sorte sont interchangeables : même groupe, même garde.
-            if (before.FirstOrDefault(p => p.Accepts == accepts) is { } same && (same.Group != group || same.Guard != guard))
+            // Sous-lot V1.3 : des effets seulement à une place du combat.
+            if (effects && group != PlaceGroup.Combat)
             {
-                report.Add(path + ".accepts", ValidationCode.InvalidValue, $"la place « {same.Id} » reçoit déjà « {accepts} » avec un autre groupe ou une autre garde.");
+                report.Add(path + ".effects", ValidationCode.InvalidValue, "des effets seulement à une place du combat.");
                 ok = false;
             }
-            return ok ? new EquipmentPlace(slot.Id!, accepts, group, required, requiredBy, guard) : null;
+            // Les places d'une même sorte sont interchangeables : même groupe, même garde, mêmes effets.
+            if (before.FirstOrDefault(p => p.Accepts == accepts) is { } same && (same.Group != group || same.Guard != guard || same.Effects != effects))
+            {
+                report.Add(path + ".accepts", ValidationCode.InvalidValue, $"la place « {same.Id} » reçoit déjà « {accepts} » avec un autre groupe, une autre garde ou d'autres effets.");
+                ok = false;
+            }
+            return ok ? new EquipmentPlace(slot.Id!, accepts, group, required, requiredBy, guard, effects) : null;
         }
 
         private static ItemDefinition? CheckItem(ItemData item, string path, List<EquipmentPlace> places, int maxLevel, HashSet<string> trees, CombatRules rules,
@@ -545,21 +1100,7 @@ namespace EdS.Data.Items
             else
             {
                 // Revue Codex de la PR #44 : un bonus une seule fois (catalogue construit en objets publics), jamais écrasé par un second.
-                var seenBonus = new HashSet<string>(StringComparer.Ordinal);
-                foreach (KeyValuePair<string, int?> entry in item.Bonus)
-                {
-                    string bonusPath = $"{path}.bonus.{entry.Key}";
-                    int field = GearBonus.FieldIndex(entry.Key);
-                    if (field < 0)
-                    {
-                        report.Add(bonusPath, ValidationCode.UnknownReference, $"bonus inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
-                        ok = false;
-                    }
-                    else if (!seenBonus.Add(entry.Key)) { report.Add(bonusPath, ValidationCode.DuplicateId, $"bonus « {entry.Key} » donné deux fois."); ok = false; }
-                    else if (entry.Value is not int value) { Missing(report, bonusPath, "entier"); ok = false; }
-                    else if (value < 0 || value > MaxItemBonus) { report.Add(bonusPath, ValidationCode.OutOfRange, $"bonus hors de [0, {MaxItemBonus}]."); ok = false; }
-                    else values[field] = value;
-                }
+                values = CheckBonusMap(item.Bonus, path + ".bonus", report, ref ok);
                 // Sous-lot V1.2 : l'outil de métier sert hors combat ; il n'a aucun bonus de combat.
                 if (place?.Group == PlaceGroup.Tool && values.Any(v => v != 0))
                 {
@@ -604,7 +1145,32 @@ namespace EdS.Data.Items
                     else fits.Add(tree);
                 }
             }
-            return ok ? new ItemDefinition(item.Id!, item.Name!, type, rarity, 1, item.Slot, item.RequiredLevel!.Value, GearBonus.FromValues(values), guard: guard, fits: fits, icon: item.Icon) : null;
+            // Sous-lot V1.3 : objet nommé, pièce d'ensemble, effets. Une pièce d'ensemble et un objet à effets sont nommés (faits à la main) ; des
+            // effets seulement à une place qui les admet (armes et bijoux), avec leur texte, bornés par combat.equipment des règles.
+            bool named = item.Named ?? false;
+            if (item.Set != null && !IsSetId(item.Set)) { report.Add(path + ".set", ValidationCode.InvalidValue, "ensemble invalide : « set. » puis minuscules, chiffres, « _ » et « . »."); ok = false; }
+            else if (item.Set != null && !named) { report.Add(path + ".named", ValidationCode.InvalidValue, "une pièce d'ensemble est un objet nommé (named: true)."); ok = false; }
+            ItemEffect? effect = null;
+            if (item.Effects is { } e)
+            {
+                if (place != null && !place.Effects) { report.Add(path + ".effects", ValidationCode.InvalidValue, $"pas d'effet à la place « {place.Accepts} » (armes et bijoux seulement)."); ok = false; }
+                else if (!named) { report.Add(path + ".named", ValidationCode.InvalidValue, "un objet à effets est un objet nommé (named: true)."); ok = false; }
+                else if (string.IsNullOrWhiteSpace(e.Text)) { Missing(report, path + ".effects.text", "texte montré au joueur"); ok = false; }
+                else
+                {
+                    int before = report.Errors.Count;
+                    EquipmentEffectShape.Check(e, path + ".effects", withId: false, report);
+                    if (report.Errors.Count == before && item.Id != null)
+                    {
+                        EquipmentEffect built = EquipmentEffectShape.Build(e, item.Id);
+                        if (EquipmentEffectShape.Report(built.Check(rules, path + ".effects"), report)) effect = new ItemEffect(e.Text!, built);
+                        else ok = false;
+                    }
+                    else ok = false;
+                }
+            }
+            return ok ? new ItemDefinition(item.Id!, item.Name!, type, rarity, 1, item.Slot, item.RequiredLevel!.Value, GearBonus.FromValues(values), guard: guard,
+                fits: fits, icon: item.Icon, named: named, set: item.Set, effect: effect) : null;
         }
 
         /// <summary>

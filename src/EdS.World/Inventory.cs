@@ -39,6 +39,12 @@ namespace EdS.World
 
         /// <summary>Sous-lot V1.2 : en plein combat (<see cref="WorldSession.InCombat"/>) : l'équipement se change hors combat.</summary>
         InCombat = 8,
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #78 : porté, l'objet mènerait un bonus d'équipement au-delà de la limite du combat
+        /// (<see cref="GearBonus.MaxValue"/>) ; le combat refuserait le personnage. Un catalogue validé ne le permet pas (pire cumul borné).
+        /// </summary>
+        GearLimit = 9,
     }
 
     /// <summary>Sous-lot V1.2 : ordre du rangement de l'inventaire (<see cref="Inventory.Sort"/>).</summary>
@@ -79,13 +85,16 @@ namespace EdS.World
     /// L'équipement porté donne son bonus (<see cref="Gear"/>) et la garde de son bouclier (<see cref="Shield"/>) au prochain combat où le
     /// personnage entre (le combat en cours garde les siens). Sous-lot V1.2 : les 18 places du catalogue (deux anneaux, deux reliques, l'Éclat
     /// du Seuil, l'outil de métier), les places obligatoires (on échange, on n'ôte pas), l'échange entre deux places d'une même sorte, le
-    /// rangement et les filtres.
+    /// rangement et les filtres. Sous-lot V1.3 : chaque place de l'inventaire et chaque objet porté est une <b>instance d'objet</b>
+    /// (<see cref="ItemStack"/>, avec ses propriétés tirées) ; une instance aux propriétés tirées ne s'empile pas et garde ses propriétés quand
+    /// elle est portée, ôtée, échangée ou rangée. L'équipement porté donne aussi ses effets (<see cref="Effects"/> : objets nommés, paliers
+    /// d'ensemble) et les bonus de ses ensembles.
     /// </summary>
     public sealed class Inventory
     {
         private readonly ItemCatalog _catalog;
         private readonly List<ItemStack> _stacks = new List<ItemStack>();
-        private readonly SortedDictionary<string, string> _equipped = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        private readonly SortedDictionary<string, ItemStack> _equipped = new SortedDictionary<string, ItemStack>(StringComparer.Ordinal);
 
         /// <summary>Sous-lot 12.6 (revue Codex de la PR #47) : objets de soin emportés au combat, réservés jusqu'à ce qu'ils soient bus.</summary>
         private readonly SortedDictionary<string, int> _reserved = new SortedDictionary<string, int>(StringComparer.Ordinal);
@@ -98,11 +107,15 @@ namespace EdS.World
         /// <summary>Places occupées, dans l'ordre (vue en lecture seule : on ne change l'inventaire que par ses opérations).</summary>
         public IReadOnlyList<ItemStack> Stacks => _stacks.AsReadOnly();
 
-        /// <summary>Objet porté par place (ordre ordinal ; vue en lecture seule).</summary>
-        public IReadOnlyDictionary<string, string> Equipped => new ReadOnlyDictionary<string, string>(_equipped);
+        /// <summary>Objet porté par place (ordre ordinal ; vue en lecture seule, une copie).</summary>
+        public IReadOnlyDictionary<string, string> Equipped =>
+            new ReadOnlyDictionary<string, string>(_equipped.ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal));
 
         /// <summary>Relecture de la PR #75 : objet porté à la place <paramref name="place"/>, ou null (sans allouer de vue, pour l'affichage à chaque image).</summary>
-        public string? WornAt(string place) => place != null && _equipped.TryGetValue(place, out string id) ? id : null;
+        public string? WornAt(string place) => place != null && _equipped.TryGetValue(place, out ItemStack worn) ? worn.Item : null;
+
+        /// <summary>Sous-lot V1.3 : instance portée à la place <paramref name="place"/> (avec ses propriétés tirées), ou null.</summary>
+        public ItemStack? WornInstanceAt(string place) => place != null && _equipped.TryGetValue(place, out ItemStack worn) ? worn : null;
 
         public int FreePlaces => _catalog.InventorySize - _stacks.Count;
 
@@ -118,9 +131,20 @@ namespace EdS.World
         /// de version 6 a ses quatre emplacements (arme, bouclier, torse, cou), qui gardent leur nom parmi les 18 places.
         /// </summary>
         /// <exception cref="ArgumentException">Sauvegarde incohérente avec le catalogue (premier motif dans le message).</exception>
-        public static Inventory From(SavedCharacter character, ItemCatalog catalog, int level)
+        public static Inventory From(SavedCharacter character, ItemCatalog catalog, int level) => From(character, catalog, level, out _);
+
+        /// <summary>
+        /// Comme <see cref="From(SavedCharacter, ItemCatalog, int)"/>. Relecture de la PR #78 : les propriétés tirées des instances (sac et
+        /// objets portés) sont d'abord accordées au catalogue actuel (<see cref="ItemCatalog.Settle"/> : valeur ramenée dans ses bornes,
+        /// propriété inconnue retirée) : un réglage du catalogue ne rend jamais une partie illisible. <paramref name="adjusted"/> rend le
+        /// compte rendu de ces changements (vide si rien n'a changé) ; la prochaine sauvegarde les garde.
+        /// </summary>
+        public static Inventory From(SavedCharacter character, ItemCatalog catalog, int level, out IReadOnlyList<string> adjusted)
         {
             if (character is null) throw new ArgumentNullException(nameof(character));
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            var notes = new List<string>();
+            adjusted = notes;
             var inventory = new Inventory(catalog, character.ClassId);
             if (character.Inventory.Count > catalog.InventorySize)
                 throw new ArgumentException($"Inventaire de {character.Inventory.Count} places, au plus {catalog.InventorySize}.", nameof(character));
@@ -131,6 +155,11 @@ namespace EdS.World
                     throw new ArgumentException($"Inventaire, place {i} : objet « {stack.Item} » absent du catalogue.", nameof(character));
                 if (stack.Count < 1 || stack.Count > item.Stack)
                     throw new ArgumentException($"Inventaire, place {i} : {stack.Count} « {stack.Item} », pile de 1 à {item.Stack}.", nameof(character));
+                // Sous-lot V1.3 : propriétés tirées dans les bornes du catalogue (le validateur unique des instances), après leur accord au
+                // catalogue actuel (relecture de la PR #78).
+                stack = catalog.Settle(stack, out IReadOnlyList<string> settled);
+                notes.AddRange(settled);
+                if (catalog.CheckInstance(stack) is string problem) throw new ArgumentException($"Inventaire, place {i} : {problem}", nameof(character));
                 inventory._stacks.Add(stack);
             }
             foreach (KeyValuePair<string, string> e in character.Equipment)
@@ -142,8 +171,17 @@ namespace EdS.World
                     throw new ArgumentException($"Équipement « {e.Key} » : « {e.Value} » ne se porte pas à cet emplacement.", nameof(character));
                 if (item.RequiredLevel > level)
                     throw new ArgumentException($"Équipement « {e.Key} » : « {e.Value} » demande le niveau {item.RequiredLevel} (personnage niveau {level}).", nameof(character));
-                inventory._equipped[e.Key] = e.Value;
+                var worn = new ItemStack(e.Value, 1, character.EquipmentProperties.TryGetValue(e.Key, out IReadOnlyList<RolledProperty>? rolled) ? rolled : null);
+                worn = catalog.Settle(worn, out IReadOnlyList<string> settledWorn);
+                notes.AddRange(settledWorn);
+                if (catalog.CheckInstance(worn) is string problem) throw new ArgumentException($"Équipement « {e.Key} » : {problem}", nameof(character));
+                inventory._equipped[e.Key] = worn;
             }
+            // Remarque de Codex sur la PR #78 : un équipement relu au-delà de la limite du combat (impossible avec un catalogue validé) est
+            // plafonné par Gear() ; le compte rendu le dit.
+            GearBonus raw = inventory.RawGear();
+            for (int g = 0; g < GearBonus.Fields.Count; g++)
+                if (raw[g] > GearBonus.MaxValue) notes.Add($"bonus d'équipement « {GearBonus.Fields[g]} » de {raw[g]} ramené à {GearBonus.MaxValue} (limite du combat).");
             return inventory;
         }
 
@@ -157,7 +195,7 @@ namespace EdS.World
             if (character is null) throw new ArgumentNullException(nameof(character));
             var inventory = From(character, catalog, int.MaxValue);
             foreach (string id in catalog.StartingFor(character.ClassId))
-                if (inventory.FreePlaceFor(catalog.Item(id)) is EquipmentPlace place) inventory._equipped[place.Id] = id;
+                if (inventory.FreePlaceFor(catalog.Item(id)) is EquipmentPlace place) inventory._equipped[place.Id] = new ItemStack(id, 1);
             return inventory.SaveInto(character);
         }
 
@@ -177,32 +215,106 @@ namespace EdS.World
                 int found = _stacks.FindIndex(s => _catalog.Item(s.Item) is { Type: ItemType.Equipment } i && i.Slot == place.Accepts && i.RequiredLevel <= level);
                 if (found >= 0)
                 {
-                    string id = _stacks[found].Item;
+                    ItemStack instance = _stacks[found];
                     _stacks.RemoveAt(found);
-                    _equipped[place.Id] = id;
-                    done.Add(id);
+                    _equipped[place.Id] = instance;
+                    done.Add(instance.Item);
                     continue;
                 }
                 // Objet de départ de la classe (ou de toutes : StartingFor d'une classe inconnue n'en rend que celles-là).
                 string? start = _catalog.StartingFor(ClassId ?? "").FirstOrDefault(s => _catalog.Item(s).Slot == place.Accepts);
                 if (start is null) continue;
-                _equipped[place.Id] = start;
+                _equipped[place.Id] = new ItemStack(start, 1);
                 done.Add(start);
             }
             return done;
         }
 
-        /// <summary>Somme des bonus des objets portés (l'outil de métier n'en a pas).</summary>
+        /// <summary>
+        /// Somme des bonus des objets portés (l'outil de métier n'en a pas). Sous-lot V1.3 : avec leurs propriétés tirées et les bonus aux
+        /// statistiques des paliers d'ensemble atteints.
+        /// </summary>
         public GearBonus Gear()
         {
+            // Remarque de Codex sur la PR #78 : jamais au-delà de la limite du combat (dernier recours : un catalogue validé borne déjà le pire
+            // cumul, et EquipTo refuse ce qui la dépasserait).
+            GearBonus total = RawGear();
+            if (WithinCombatLimit(total)) return total;
+            var values = new int[GearBonus.Fields.Count];
+            for (int i = 0; i < values.Length; i++) values[i] = Math.Min(total[i], GearBonus.MaxValue);
+            return GearBonus.FromValues(values);
+        }
+
+        /// <summary>Somme des bonus portés, sans plafond.</summary>
+        private GearBonus RawGear()
+        {
             GearBonus total = GearBonus.None;
-            foreach (string item in _equipped.Values) total += _catalog.Item(item).Bonus;
+            foreach (ItemStack worn in _equipped.Values) total += _catalog.BonusOf(worn);
+            foreach ((ItemSet set, int count) in WornSets())
+                foreach (SetBonus bonus in set.Bonuses)
+                    if (bonus.Pieces <= count) total += bonus.Bonus;
             return total;
+        }
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #78 : chaque champ du bonus dans la limite que le combat admet (<c>CombatSetup.Validate</c> : de 0 à
+        /// <see cref="GearBonus.MaxValue"/>).
+        /// </summary>
+        public static bool WithinCombatLimit(GearBonus gear)
+        {
+            if (gear is null) throw new ArgumentNullException(nameof(gear));
+            for (int i = 0; i < GearBonus.Fields.Count; i++)
+                if (gear[i] < 0 || gear[i] > GearBonus.MaxValue) return false;
+            return true;
+        }
+
+        /// <summary>Remarque de Codex sur la PR #78 : le bonus porté, sans plafond, est-il dans la limite du combat ?</summary>
+        public bool GearWithinCombatLimit => WithinCombatLimit(RawGear());
+
+        /// <summary>
+        /// Sous-lot V1.3 : ensembles dont au moins une pièce est portée, dans l'ordre du catalogue, avec le nombre de pièces différentes portées
+        /// (une même pièce à deux places ne compte qu'une fois).
+        /// </summary>
+        public IReadOnlyList<(ItemSet Set, int Worn)> WornSets()
+        {
+            var worn = new List<(ItemSet, int)>();
+            foreach (ItemSet set in _catalog.Sets)
+            {
+                int count = _equipped.Values.Select(x => x.Item).Distinct(StringComparer.Ordinal).Count(id => set.Pieces.Contains(id));
+                if (count > 0) worn.Add((set, count));
+            }
+            return worn;
+        }
+
+        /// <summary>Sous-lot V1.3 : pièces de l'ensemble <paramref name="setId"/> portées (0 si aucune ou ensemble inconnu).</summary>
+        public int WornPieces(string setId)
+        {
+            foreach ((ItemSet set, int count) in WornSets())
+                if (set.Id == setId) return count;
+            return 0;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 : effets de l'équipement porté, pour le prochain combat : ceux des objets nommés, dans l'ordre des places du
+        /// catalogue (un même objet à deux places ne compte qu'une fois), puis ceux des paliers d'ensemble atteints, dans l'ordre des
+        /// ensembles et des paliers.
+        /// </summary>
+        public IReadOnlyList<EquipmentEffect> Effects()
+        {
+            var effects = new List<EquipmentEffect>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (EquipmentPlace place in _catalog.Places)
+                if (_equipped.TryGetValue(place.Id, out ItemStack worn) && _catalog.Item(worn.Item).Effect is ItemEffect effect && seen.Add(worn.Item))
+                    effects.Add(effect.Effect);
+            foreach ((ItemSet set, int count) in WornSets())
+                foreach (SetBonus bonus in set.Bonuses)
+                    if (bonus.Pieces <= count && bonus.Effect is EquipmentEffect setEffect) effects.Add(setEffect);
+            return effects;
         }
 
         /// <summary>Sous-lot V1.2 : garde du bouclier porté (place qui porte la garde), ou null : celle des règles.</summary>
         public ShieldGuard? Shield =>
-            _catalog.GuardPlace is { } place && _equipped.TryGetValue(place.Id, out string id) ? _catalog.Item(id).Guard : null;
+            _catalog.GuardPlace is { } place && _equipped.TryGetValue(place.Id, out ItemStack worn) ? _catalog.Item(worn.Item).Guard : null;
 
         /// <summary>Quantité de <paramref name="item"/> dans l'inventaire (objets portés exclus).</summary>
         public int Count(string item) => _stacks.Where(s => s.Item == item).Sum(s => s.Count);
@@ -239,6 +351,21 @@ namespace EdS.World
         public bool CanAdd(string item, int count) => Room(item, count) is int needed && needed <= FreePlaces;
 
         /// <summary>
+        /// Sous-lot V1.3 : range une instance d'objet. Aux propriétés tirées (valides pour le catalogue), elle prend une place libre à la fin ;
+        /// sinon, comme <see cref="Add(string, int)"/>. Tout ou rien.
+        /// </summary>
+        /// <exception cref="ArgumentException">Objet absent du catalogue, quantité non positive, ou propriétés refusées par le catalogue.</exception>
+        public InventoryRefusal Add(ItemStack stack)
+        {
+            if (stack is null) throw new ArgumentNullException(nameof(stack));
+            if (!stack.IsRolled) return Add(stack.Item, stack.Count);
+            if (_catalog.CheckInstance(stack) is string problem) throw new ArgumentException(problem, nameof(stack));
+            if (FreePlaces < 1) return InventoryRefusal.Full;
+            _stacks.Add(stack);
+            return InventoryRefusal.None;
+        }
+
+        /// <summary>
         /// Range <paramref name="count"/> <paramref name="item"/> en entier : d'abord dans les piles entamées du même objet, dans l'ordre, puis
         /// dans de nouvelles places ; sinon rien (<see cref="InventoryRefusal.Full"/>).
         /// </summary>
@@ -250,7 +377,7 @@ namespace EdS.World
             if (!CanAdd(item, count)) return InventoryRefusal.Full;
             int left = count;
             for (int i = 0; i < _stacks.Count && left > 0; i++)
-                if (_stacks[i].Item == item && _stacks[i].Count < definition.Stack)
+                if (_stacks[i].Item == item && !_stacks[i].IsRolled && _stacks[i].Count < definition.Stack)
                 {
                     int put = Math.Min(left, definition.Stack - _stacks[i].Count);
                     _stacks[i] = new ItemStack(item, _stacks[i].Count + put);
@@ -267,26 +394,70 @@ namespace EdS.World
 
         /// <summary>
         /// Retire <paramref name="count"/> <paramref name="item"/> en entier, des dernières places vers les premières ; sinon rien. Les objets
-        /// réservés (<see cref="Reserved"/>) ne se retirent pas.
+        /// réservés (<see cref="Reserved"/>) ne se retirent pas. Relecture de la PR #78 : les copies de base (sans propriété tirée) partent
+        /// d'abord ; une instance aux propriétés tirées n'est prise que si les copies de base ne suffisent pas (fabrication, objet pris par
+        /// une quête, livraison, vente par identifiant).
         /// </summary>
-        public InventoryRefusal Remove(string item, int count)
+        public InventoryRefusal Remove(string item, int count) => Remove(item, count, out _);
+
+        /// <summary>
+        /// Sous-lot V1.3 : comme <see cref="Remove(string, int)"/>, et rend les instances retirées (avec leurs propriétés tirées), dans l'ordre du
+        /// retrait, pour un rachat fidèle.
+        /// </summary>
+        public InventoryRefusal Remove(string item, int count, out IReadOnlyList<ItemStack> removed)
         {
+            removed = Array.Empty<ItemStack>();
             if (count < 1 || Available(item) < count) return InventoryRefusal.NotEnough;
-            Take(item, count);
+            removed = Take(item, count);
             return InventoryRefusal.None;
         }
 
-        private void Take(string item, int count)
+        /// <summary>
+        /// Sous-lot V1.3 : retire l'instance de la place <paramref name="place"/> de l'inventaire en entier (une instance aux propriétés tirées
+        /// se vend ou se jette elle-même, pas une autre du même objet). Refusé si la place est vide ou si une partie est réservée.
+        /// </summary>
+        public InventoryRefusal RemoveAt(int place, out ItemStack? removed)
         {
+            removed = null;
+            if (place < 0 || place >= _stacks.Count) return InventoryRefusal.NothingThere;
+            return RemoveAt(place, _stacks[place].Count, out removed);
+        }
+
+        /// <summary>
+        /// Relecture de la PR #78 : retire <paramref name="count"/> objets de <b>la place exacte</b> <paramref name="place"/> de l'inventaire
+        /// (la pile entière, ou seulement une partie : la place garde le reste), jamais d'une autre place du même objet. Tout ou rien : refusé
+        /// si la place est vide (<see cref="InventoryRefusal.NothingThere"/>), si la quantité est hors de [1, pile] ou si elle entamerait la
+        /// réserve (<see cref="InventoryRefusal.NotEnough"/>). Rend l'instance retirée (propriétés tirées comprises), à la quantité retirée.
+        /// </summary>
+        public InventoryRefusal RemoveAt(int place, int count, out ItemStack? removed)
+        {
+            removed = null;
+            if (place < 0 || place >= _stacks.Count) return InventoryRefusal.NothingThere;
+            ItemStack stack = _stacks[place];
+            if (count < 1 || count > stack.Count || Available(stack.Item) < count) return InventoryRefusal.NotEnough;
+            if (count == stack.Count) _stacks.RemoveAt(place);
+            else _stacks[place] = stack.WithCount(stack.Count - count);
+            removed = stack.WithCount(count);
+            return InventoryRefusal.None;
+        }
+
+        // Relecture de la PR #78 : deux passes, des dernières places vers les premières : les copies de base d'abord, puis seulement s'il en
+        // manque les instances aux propriétés tirées (une instance tirée ne part jamais quand les copies de base suffisent).
+        private IReadOnlyList<ItemStack> Take(string item, int count)
+        {
+            var removed = new List<ItemStack>();
             int left = count;
-            for (int i = _stacks.Count - 1; i >= 0 && left > 0; i--)
-                if (_stacks[i].Item == item)
-                {
-                    int take = Math.Min(left, _stacks[i].Count);
-                    if (take == _stacks[i].Count) _stacks.RemoveAt(i);
-                    else _stacks[i] = new ItemStack(item, _stacks[i].Count - take);
-                    left -= take;
-                }
+            foreach (bool rolled in new[] { false, true })
+                for (int i = _stacks.Count - 1; i >= 0 && left > 0; i--)
+                    if (_stacks[i].Item == item && _stacks[i].IsRolled == rolled)
+                    {
+                        int take = Math.Min(left, _stacks[i].Count);
+                        removed.Add(_stacks[i].WithCount(take));
+                        if (take == _stacks[i].Count) _stacks.RemoveAt(i);
+                        else _stacks[i] = _stacks[i].WithCount(_stacks[i].Count - take);
+                        left -= take;
+                    }
+            return removed;
         }
 
         /// <summary>Première place libre qui reçoit cet objet, dans l'ordre des places ; null si toutes sont prises ou s'il ne se porte pas.</summary>
@@ -327,9 +498,18 @@ namespace EdS.World
             if (item.Type != ItemType.Equipment) return InventoryRefusal.NotEquipment;
             if (slot is null || !_catalog.TryGetPlace(slot, out EquipmentPlace target) || target.Accepts != item.Slot) return InventoryRefusal.WrongSlot;
             if (item.RequiredLevel > level) return InventoryRefusal.LevelTooLow;
-            if (_equipped.TryGetValue(slot, out string previous)) _stacks[place] = new ItemStack(previous, 1);
+            ItemStack instance = _stacks[place];   // sous-lot V1.3 : l'instance, avec ses propriétés tirées
+            bool hadPrevious = _equipped.TryGetValue(slot, out ItemStack previous);
+            if (hadPrevious) _stacks[place] = previous;
             else _stacks.RemoveAt(place);
-            _equipped[slot] = item.Id;
+            _equipped[slot] = instance;
+            // Remarque de Codex sur la PR #78 : jamais un équipement que le combat refuserait ; sinon tout revient comme avant.
+            if (!GearWithinCombatLimit)
+            {
+                if (hadPrevious) { _equipped[slot] = previous; _stacks[place] = instance; }
+                else { _equipped.Remove(slot); _stacks.Insert(place, instance); }
+                return InventoryRefusal.GearLimit;
+            }
             return InventoryRefusal.None;
         }
 
@@ -340,11 +520,11 @@ namespace EdS.World
         /// </summary>
         public InventoryRefusal Unequip(string slot)
         {
-            if (slot is null || !_equipped.TryGetValue(slot, out string item)) return InventoryRefusal.NothingThere;
+            if (slot is null || !_equipped.TryGetValue(slot, out ItemStack item)) return InventoryRefusal.NothingThere;
             if (_catalog.TryGetPlace(slot, out EquipmentPlace place) && place.IsRequiredFor(ClassId)) return InventoryRefusal.Required;
             if (FreePlaces < 1) return InventoryRefusal.Full;
             _equipped.Remove(slot);
-            _stacks.Add(new ItemStack(item, 1));
+            _stacks.Add(item);
             return InventoryRefusal.None;
         }
 
@@ -358,7 +538,7 @@ namespace EdS.World
             if (first is null || second is null || first == second || !_catalog.TryGetPlace(first, out EquipmentPlace a) || !_catalog.TryGetPlace(second, out EquipmentPlace b)
                 || a.Accepts != b.Accepts)
                 return InventoryRefusal.WrongSlot;
-            bool hasA = _equipped.TryGetValue(first, out string itemA), hasB = _equipped.TryGetValue(second, out string itemB);
+            bool hasA = _equipped.TryGetValue(first, out ItemStack itemA), hasB = _equipped.TryGetValue(second, out ItemStack itemB);
             if (!hasA && !hasB) return InventoryRefusal.NothingThere;
             if ((!hasB && a.IsRequiredFor(ClassId)) || (!hasA && b.IsRequiredFor(ClassId))) return InventoryRefusal.Required;
             if (hasB) _equipped[first] = itemB; else _equipped.Remove(first);
@@ -372,17 +552,21 @@ namespace EdS.World
         /// </summary>
         public void Sort(InventorySort order)
         {
-            var counts = new List<(string Item, int Count)>();
+            // Sous-lot V1.3 : une instance aux propriétés tirées reste une entrée à part (elle ne s'empile pas) ; à objet égal, l'objet de base
+            // d'abord, puis les instances dans leur ordre d'avant (tri stable).
+            var entries = new List<(string Item, int Count, ItemStack? Rolled)>();
             foreach (ItemStack s in _stacks)
             {
-                int k = counts.FindIndex(c => c.Item == s.Item);
-                if (k < 0) counts.Add((s.Item, s.Count));
-                else counts[k] = (s.Item, checked(counts[k].Count + s.Count));
+                if (s.IsRolled) { entries.Add((s.Item, s.Count, s)); continue; }
+                int k = entries.FindIndex(c => c.Rolled is null && c.Item == s.Item);
+                if (k < 0) entries.Add((s.Item, s.Count, null));
+                else entries[k] = (s.Item, checked(entries[k].Count + s.Count), null);
             }
-            var sorted = counts.OrderBy(c => c.Item, Comparer<string>.Create((x, y) => Compare(order, x, y))).ToList();
+            var sorted = entries.OrderBy(c => c.Item, Comparer<string>.Create((x, y) => Compare(order, x, y))).ThenBy(c => c.Rolled is null ? 0 : 1).ToList();
             var stacks = new List<ItemStack>();
-            foreach ((string item, int count) in sorted)
+            foreach ((string item, int count, ItemStack? rolled) in sorted)
             {
+                if (rolled != null) { stacks.Add(rolled); continue; }
                 int stack = _catalog.Item(item).Stack, left = count;
                 while (left > 0)
                 {
@@ -462,14 +646,16 @@ namespace EdS.World
             _stacks.Clear();
             _stacks.AddRange(other._stacks);
             _equipped.Clear();
-            foreach (KeyValuePair<string, string> e in other._equipped) _equipped[e.Key] = e.Value;
+            foreach (KeyValuePair<string, ItemStack> e in other._equipped) _equipped[e.Key] = e.Value;
             _reserved.Clear();
             foreach (KeyValuePair<string, int> r in other._reserved) _reserved[r.Key] = r.Value;
         }
 
-        /// <summary>Personnage avec cet inventaire et cet équipement.</summary>
+        /// <summary>Personnage avec cet inventaire et cet équipement (sous-lot V1.3 : propriétés tirées comprises).</summary>
         public SavedCharacter SaveInto(SavedCharacter character) =>
-            (character ?? throw new ArgumentNullException(nameof(character))).WithItems(_stacks, new Dictionary<string, string>(_equipped, StringComparer.Ordinal));
+            (character ?? throw new ArgumentNullException(nameof(character))).WithItems(_stacks,
+                _equipped.ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal),
+                _equipped.Where(e => e.Value.IsRolled).ToDictionary(e => e.Key, e => e.Value.Properties, StringComparer.Ordinal));
 
         // Places nouvelles nécessaires pour ranger count item (piles entamées d'abord).
         private int? Room(string item, int count)
@@ -477,7 +663,7 @@ namespace EdS.World
             if (!_catalog.TryGetItem(item, out ItemDefinition definition) || count < 1) return null;
             long left = count;
             foreach (ItemStack s in _stacks)
-                if (s.Item == item) left -= definition.Stack - s.Count;
+                if (s.Item == item && !s.IsRolled) left -= definition.Stack - s.Count;
             if (left <= 0) return 0;
             return (int)((left + definition.Stack - 1) / definition.Stack);
         }

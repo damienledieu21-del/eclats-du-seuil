@@ -450,6 +450,12 @@ public class V16QuetesTests
         Assert.Equal(10, SaveValidator.CurrentSchemaVersion);   // V1.3 : 9 (instances d'objets) ; V1.7 : 10 (carte d'aventurier)
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
         Assert.Equal(text, SaveJsonReader.Write(SaveJsonReader.Read(text).Save!));
+        // Sous-lot V1.3 : une sauvegarde de version 8 (même forme, sans instance aux propriétés) est lue, mise à jour et réécrite en version 9,
+        // quête suivie comprise.
+        SaveLoadResult v8 = SaveJsonReader.Read(text.Replace(SaveVersion.Current, "\"schemaVersion\": 8"));   // fusion de main dans V1.7 : réécrite en version 10
+        Assert.True(v8.IsValid, v8.Report.ToString());
+        Assert.True(v8.Save!.Migrated);
+        Assert.Equal(text, SaveJsonReader.Write(v8.Save));
         // Versions 7 et 6 : sans quête suivie, mises à jour (réécrites en version 8, quête suivie nulle).
         string untracked = text.Replace($",\n        \"tracked\": \"{Peaux}\"\n", "\n");
         foreach (int version in new[] { 7, 6 })
@@ -471,7 +477,7 @@ public class V16QuetesTests
             ValidationError reward = Assert.Single(SaveJsonReader.Read(old.Replace("{\"step\": \"chasse\", \"progress\": 2}", "{\"step\": \"reward\", \"progress\": 0}")).Report.Errors);
             Assert.Equal(($"$.data.character.story.quests.{Peaux}.step", ValidationCode.InvalidValue), (reward.Path, reward.Code));
         }
-        // En version 8 : l'étape « reward » est lue ; quête suivie absente : manquante ; pas en cours : refusée ; version 9 refusée.
+        // En version 8 : l'étape « reward » est lue ; quête suivie absente : manquante ; pas en cours : refusée ; version 10 refusée.
         SaveLoadResult choosing = SaveJsonReader.Read(untracked.Replace("{\"step\": \"chasse\", \"progress\": 2}", "{\"step\": \"reward\", \"progress\": 0}")
             .Replace("\"discoveries\": []\n", "\"discoveries\": [],\n        \"tracked\": null\n"));
         Assert.True(choosing.IsValid, choosing.Report.ToString());
@@ -552,7 +558,8 @@ public class V16QuetesTests
     {
         // Fusion de main après la PR #75 (règles 0.13.0, garde des boucliers) : les bandits, leur chef et le loup blanc n'ont pas de
         // bouclier ; leur garde est celle des règles (Shield nul), et le Bastion entre avec la garde de son écu.
-        Assert.Equal("0.13.0-provisoire", ShippedData.Rules.ContentVersion);
+        // Fusion de main dans V1.3 : règles 0.14.0 (effets d'équipement) ; ces créatures n'ont pas d'équipement.
+        Assert.Equal("0.14.0-provisoire", ShippedData.Rules.ContentVersion);
         WorldSession w = Play(Zone(), Hero());
         Assert.NotNull(w.EnteredShield);
         string[] creatures = { "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "chef_des_bandits", "loup_blanc" };

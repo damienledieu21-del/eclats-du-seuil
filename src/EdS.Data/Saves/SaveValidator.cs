@@ -8,22 +8,58 @@ using EdS.Domain.Collections;
 
 namespace EdS.Data.Saves
 {
-    /// <summary>Sous-lot 12.3 : pile d'objets d'une place de l'inventaire (identifiant d'objet, quantité).</summary>
+    /// <summary>
+    /// Sous-lot V1.3 : une propriété tirée au hasard sur un objet du butin (identifiant « property.… » du catalogue, valeur entière ajoutée à sa
+    /// statistique). Immuable.
+    /// </summary>
+    public sealed class RolledProperty : IEquatable<RolledProperty>
+    {
+        public string Id { get; }
+        public int Value { get; }
+
+        public RolledProperty(string id, int value)
+        {
+            Id = id ?? throw new ArgumentNullException(nameof(id));
+            Value = value;
+        }
+
+        public bool Equals(RolledProperty? other) => other != null && other.Id == Id && other.Value == Value;
+        public override bool Equals(object? obj) => Equals(obj as RolledProperty);
+        public override int GetHashCode() => unchecked(StringComparer.Ordinal.GetHashCode(Id) * 31 + Value);
+        public override string ToString() => $"{Id} {Value}";
+    }
+
+    /// <summary>
+    /// Sous-lot 12.3 : pile d'objets d'une place de l'inventaire (identifiant d'objet, quantité). Sous-lot V1.3 : une <b>instance d'objet</b>
+    /// porte aussi ses propriétés tirées (<see cref="Properties"/>, vides pour un objet de base : marchand, récompense, objet nommé) ; une
+    /// instance aux propriétés tirées ne s'empile pas (quantité 1). La qualité de fabrication et l'usure (sous-lot V1.4) prendront place ici,
+    /// en champs nouveaux de l'instance (noms réservés dans la sauvegarde : <c>quality</c>, <c>wear</c>).
+    /// </summary>
     public sealed class ItemStack : IEquatable<ItemStack>
     {
         public string Item { get; }
         public int Count { get; }
 
-        public ItemStack(string item, int count)
+        /// <summary>Sous-lot V1.3 : propriétés tirées, dans l'ordre du tirage ; vide pour un objet de base.</summary>
+        public IReadOnlyList<RolledProperty> Properties { get; }
+
+        /// <summary>Instance aux propriétés tirées (elle ne s'empile pas).</summary>
+        public bool IsRolled => Properties.Count > 0;
+
+        public ItemStack(string item, int count, IEnumerable<RolledProperty>? properties = null)
         {
             Item = item ?? throw new ArgumentNullException(nameof(item));
             Count = count;
+            Properties = Frozen.ListOrEmpty(properties, nameof(properties));
         }
 
-        public bool Equals(ItemStack? other) => other != null && other.Item == Item && other.Count == Count;
+        /// <summary>Même instance avec une autre quantité.</summary>
+        public ItemStack WithCount(int count) => new ItemStack(Item, count, Properties);
+
+        public bool Equals(ItemStack? other) => other != null && other.Item == Item && other.Count == Count && other.Properties.SequenceEqual(Properties);
         public override bool Equals(object? obj) => Equals(obj as ItemStack);
-        public override int GetHashCode() => unchecked(StringComparer.Ordinal.GetHashCode(Item) * 31 + Count);
-        public override string ToString() => $"{Item} ×{Count}";
+        public override int GetHashCode() => unchecked(StringComparer.Ordinal.GetHashCode(Item) * 31 + Count + Properties.Count * 7919);
+        public override string ToString() => Properties.Count == 0 ? $"{Item} ×{Count}" : $"{Item} ×{Count} [{string.Join(", ", Properties)}]";
     }
 
     /// <summary>Sous-lot 12.5 : avancement d'une quête (étape en cours, ou <see cref="Done"/> ; compteur de l'objectif).</summary>
@@ -138,10 +174,16 @@ namespace EdS.Data.Saves
         /// </summary>
         public long Money { get; }
 
+        /// <summary>
+        /// Sous-lot V1.3 : propriétés tirées des objets portés, par emplacement (seulement les emplacements dont l'objet en a ; ordre ordinal).
+        /// Chaque emplacement cité porte un objet (<see cref="Equipment"/>).
+        /// </summary>
+        public IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>> EquipmentProperties { get; }
+
         public SavedCharacter(string id, string classId, long xp, IReadOnlyDictionary<string, int>? talents = null, IEnumerable<string>? activeSkills = null,
             string? ultimate = null, IEnumerable<string>? passiveSkills = null, IEnumerable<ItemStack>? inventory = null,
             IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null,
-            long money = 0)
+            long money = 0, IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null)
         {
             // Relecture de la PR #72 : une bourse hors bornes est refusée dès la construction (comme à la lecture d'une sauvegarde) ; une
             // partie ne peut donc jamais en porter une, et son affichage (Coins.Format) ne peut pas échouer.
@@ -153,6 +195,15 @@ namespace EdS.Data.Saves
             Inventory = Frozen.List(inventory ?? Array.Empty<ItemStack>(), nameof(inventory));
             Equipment = Frozen.Dictionary((equipment ?? new Dictionary<string, string>()).OrderBy(e => e.Key, StringComparer.Ordinal)
                 .ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal), nameof(equipment));
+            var rolled = new Dictionary<string, IReadOnlyList<RolledProperty>>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, IReadOnlyList<RolledProperty>> e in (equipmentProperties ?? new Dictionary<string, IReadOnlyList<RolledProperty>>())
+                .Where(e => e.Value != null && e.Value.Count > 0).OrderBy(e => e.Key, StringComparer.Ordinal))
+            {
+                if (!Equipment.ContainsKey(e.Key))
+                    throw new ArgumentException($"Propriétés tirées à l'emplacement vide « {e.Key} ».", nameof(equipmentProperties));
+                rolled[e.Key] = Frozen.List(e.Value, nameof(equipmentProperties));
+            }
+            EquipmentProperties = Frozen.Dictionary(rolled, nameof(equipmentProperties));
             Id = id ?? throw new ArgumentNullException(nameof(id));
             ClassId = classId ?? throw new ArgumentNullException(nameof(classId));
             Xp = xp;
@@ -164,15 +215,19 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, EquipmentProperties);
 
-        /// <summary>Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement.</summary>
-        public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money);
+        /// <summary>
+        /// Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement. Sous-lot V1.3 : avec les propriétés tirées des objets
+        /// portés (<paramref name="equipmentProperties"/>, aucune par défaut).
+        /// </summary>
+        public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment,
+            IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money, equipmentProperties);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, EquipmentProperties);
 
         /// <summary>
         /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
@@ -180,15 +235,15 @@ namespace EdS.Data.Saves
         /// </summary>
         public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
             new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
-                Equipment, Story, Professions, Money);
+                Equipment, Story, Professions, Money, EquipmentProperties);
 
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, EquipmentProperties);
 
         /// <summary>Sous-lot 12.9b : même personnage avec d'autres compétences équipées.</summary>
         public SavedCharacter WithSkills(IEnumerable<string> activeSkills, string? ultimate, IEnumerable<string> passiveSkills) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money);
+            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, EquipmentProperties);
 
         /// <summary>
         /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). Hors de [0, <see cref="Coins.Max"/>] : refusée
@@ -196,7 +251,7 @@ namespace EdS.Data.Saves
         /// qui refuse un dépassement.
         /// </summary>
         public SavedCharacter WithMoney(long money) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, EquipmentProperties);
     }
 
     /// <summary>
@@ -276,15 +331,65 @@ namespace EdS.Data.Saves
         /// antérieur refuse d'emblée une sauvegarde aux nouvelles places au lieu de la croire incohérente. Version 8 (sous-lot V1.6) :
         /// <c>tracked</c> obligatoire dans l'histoire (quête suivie, en cours, ou null) et étape réservée <c>reward</c> (récompense au choix en
         /// attente, <see cref="QuestProgress.Reward"/>) ; une sauvegarde de version 7 ou antérieure est mise à jour (aucune quête suivie) et
-        /// n'a pas d'étape <c>reward</c> (refusée à <c>quests.&lt;id&gt;.step</c>, comme <c>tracked</c>). Version 9 : celle du sous-lot V1.3
-        /// (instances d'objets, PR #78). Version 10 (sous-lot V1.7, <see cref="GuildCardSince"/>) : <c>guild</c> facultatif dans l'histoire
-        /// (la carte d'aventurier ; absent tant que le personnage n'est pas inscrit) ; une sauvegarde de version 9 ou antérieure est mise à
-        /// jour (pas de carte) et n'a pas de <c>guild</c> (refusé, champ inconnu).
+        /// n'a pas d'étape <c>reward</c> (refusée à <c>quests.&lt;id&gt;.step</c>, comme <c>tracked</c>). Version 9 (sous-lot V1.3) : <b>instance d'objet</b> : une place de l'inventaire peut porter <c>properties</c>
+        /// (propriétés tirées : <c>id</c> « property.… », <c>value</c> entière ; quantité 1), et un emplacement d'équipement peut s'écrire
+        /// <c>{ "item": …, "properties": […] }</c> au lieu du seul identifiant ; les noms <c>quality</c> et <c>wear</c> d'une instance sont
+        /// réservés au sous-lot V1.4 (refusés). Une sauvegarde de version 8 ou antérieure est lue telle quelle (objets de base, sans propriétés) et mise à jour.
+        /// Version 10 (sous-lot V1.7, <see cref="GuildCardSince"/>) : <c>guild</c> facultatif dans l'histoire (la carte d'aventurier ; absent
+        /// tant que le personnage n'est pas inscrit) et <c>hunted</c> facultatif (créatures rares déjà vaincues) ; une sauvegarde de version 9
+        /// ou antérieure est mise à jour (pas de carte) et n'a ni <c>guild</c> ni <c>hunted</c> (refusés, champs inconnus).
         /// </summary>
         public const int CurrentSchemaVersion = 10;
 
         /// <summary>Sous-lot V1.7 : version où la carte d'aventurier (<c>story.guild</c>) entre dans la sauvegarde.</summary>
         public const int GuildCardSince = 10;
+
+        /// <summary>Sous-lot V1.3 : propriétés tirées d'une instance d'objet, au plus.</summary>
+        public const int MaxProperties = 8;
+
+        /// <summary>Sous-lot V1.3 : valeur d'une propriété tirée, au plus (comme un bonus d'objet du catalogue).</summary>
+        public const int MaxPropertyValue = 50_000;
+
+        private static readonly Regex PropertyId = new Regex(@"^property(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>Identifiant de propriété tirée valide : « property.… », 200 caractères au plus.</summary>
+        public static bool IsPropertyId(string? id) => id != null && id.Length <= 200 && PropertyId.IsMatch(id);
+
+        /// <summary>
+        /// Sous-lot V1.3 : forme des propriétés d'une instance : 1 à <see cref="MaxProperties"/>, identifiants bien formés et distincts, valeurs
+        /// dans [1, <see cref="MaxPropertyValue"/>]. Leur accord avec le catalogue (propriété connue, admise pour cet objet, valeur dans ses
+        /// bornes) est vérifié quand la partie reprend (<c>ItemCatalog.CheckInstance</c>). Rend les propriétés, ou null en cas d'erreur.
+        /// </summary>
+        private static List<RolledProperty>? CheckProperties(List<PropertyRollData?> list, string path, ValidationReport report)
+        {
+            if (list.Count < 1 || list.Count > MaxProperties)
+            {
+                report.Add(path, ValidationCode.OutOfRange, $"{list.Count} propriétés, de 1 à {MaxProperties} (absentes pour un objet de base).");
+                return null;
+            }
+            var result = new List<RolledProperty>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            bool ok = true;
+            for (int k = 0; k < list.Count; k++)
+            {
+                string p = $"{path}[{k}]";
+                if (list[k] is not PropertyRollData r) { Missing(report, p, "propriété tirée"); ok = false; continue; }
+                if (r.Id is null) { Missing(report, p + ".id", "identifiant « property.… »"); ok = false; }
+                else if (!IsPropertyId(r.Id)) { report.Add(p + ".id", ValidationCode.InvalidValue, $"propriété « {r.Id} » mal formée."); ok = false; }
+                else if (!seen.Add(r.Id)) { report.Add(p + ".id", ValidationCode.DuplicateId, $"propriété « {r.Id} » déjà tirée."); ok = false; }
+                if (r.Value is null) { Missing(report, p + ".value", "valeur entière"); ok = false; }
+                else if (r.Value < 1 || r.Value > MaxPropertyValue) { report.Add(p + ".value", ValidationCode.OutOfRange, $"valeur hors de [1, {MaxPropertyValue}]."); ok = false; }
+                if (ok) result.Add(new RolledProperty(r.Id!, r.Value!.Value));
+            }
+            return ok ? result : null;
+        }
+
+        /// <summary>Sous-lot V1.3 : champs réservés d'une instance (<c>quality</c>, <c>wear</c>), refusés jusqu'au sous-lot V1.4.</summary>
+        private static void Reserved(ItemStackData stack, string path, ValidationReport report)
+        {
+            foreach (string field in stack.Reserved)
+                report.Add($"{path}.{field}", ValidationCode.UnknownField, $"« {field} » est réservé : qualité et usure viennent avec le sous-lot V1.4.");
+        }
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;
@@ -431,6 +536,18 @@ namespace EdS.Data.Saves
                         else if (!IsItemId(stack.Item)) report.Add(stackPath + ".item", ValidationCode.InvalidValue, $"identifiant d'objet « {stack.Item} » invalide.");
                         if (stack.Count is null) Missing(report, stackPath + ".count", "quantité");
                         else if (stack.Count < 1 || stack.Count > MaxStack) report.Add(stackPath + ".count", ValidationCode.OutOfRange, $"quantité hors de [1, {MaxStack}].");
+                        // Sous-lot V1.3 (version 9) : propriétés tirées d'une instance (quantité 1).
+                        Reserved(stack, stackPath, report);
+                        if (stack.Properties is { } properties)
+                        {
+                            if (version < 9) report.Add(stackPath + ".properties", ValidationCode.UnknownField, $"champ inconnu en version {version} (propriétés tirées : version 9).");
+                            else
+                            {
+                                CheckProperties(properties, stackPath + ".properties", report);
+                                if (stack.Count is int n && n != 1)
+                                    report.Add(stackPath + ".count", ValidationCode.InvalidValue, "une instance aux propriétés tirées ne s'empile pas : quantité 1.");
+                            }
+                        }
                     }
                 if (c.Equipment is null) Missing(report, path + ".equipment", "objet porté par emplacement, éventuellement vide");
                 else if (c.Equipment.Count > MaxEquipment)
@@ -449,6 +566,17 @@ namespace EdS.Data.Saves
                         else if (!IsItemId(e.Value)) report.Add(slotPath, ValidationCode.InvalidValue, $"identifiant d'objet « {e.Value} » invalide.");
                         else if (i > 0 && string.CompareOrdinal(c.Equipment[i - 1].Key, e.Key) > 0)
                             report.Add(slotPath, ValidationCode.InvalidValue, "emplacements hors de l'ordre ordinal (forme canonique).");
+                    }
+                    // Sous-lot V1.3 (version 9) : objets portés sous leur forme d'instance (propriétés tirées obligatoires : sans elles, la forme
+                    // simple, l'identifiant seul, est la forme canonique).
+                    foreach (KeyValuePair<string, ItemStackData> e in c.EquipmentInstances ?? new List<KeyValuePair<string, ItemStackData>>())
+                    {
+                        string slotPath = $"{path}.equipment.{e.Key}";
+                        if (version < 9) { report.Add(slotPath, ValidationCode.UnknownField, $"instance d'objet inconnue en version {version} (version 9)."); continue; }
+                        if (!c.Equipment.Any(x => x.Key == e.Key)) { report.Add(slotPath, ValidationCode.InvalidValue, "propriétés d'un emplacement vide."); continue; }
+                        Reserved(e.Value, slotPath, report);
+                        if (e.Value.Properties is null) Missing(report, slotPath + ".properties", "propriétés tirées (sinon, l'identifiant seul)");
+                        else CheckProperties(e.Value.Properties, slotPath + ".properties", report);
                     }
                 }
             }
@@ -494,10 +622,13 @@ namespace EdS.Data.Saves
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
-                version < 3 ? null : c.Inventory!.Select(st => new ItemStack(st!.Item!, st.Count!.Value)),
+                version < 3 ? null : c.Inventory!.Select(st => new ItemStack(st!.Item!, st.Count!.Value,
+                    st.Properties?.Select(r => new RolledProperty(r!.Id!, r.Value!.Value)))),
                 version < 3 ? null : c.Equipment!.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal), story,
                 version < 5 ? null : c.Professions!.ToDictionary(p => p.Key, p => p.Value!.Value, StringComparer.Ordinal),
-                version < 6 ? 0 : c.Money!.Value);
+                version < 6 ? 0 : c.Money!.Value,
+                version < 9 || c.EquipmentInstances is null ? null : c.EquipmentInstances.ToDictionary(e => e.Key,
+                    e => (IReadOnlyList<RolledProperty>)e.Value.Properties!.Select(r => new RolledProperty(r!.Id!, r.Value!.Value)).ToList(), StringComparer.Ordinal));
         }
 
         public const int MaxStoryEntries = 10_000;

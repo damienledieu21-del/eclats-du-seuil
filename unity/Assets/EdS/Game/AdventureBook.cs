@@ -263,7 +263,8 @@ namespace EdS.Game
                 pointer.Enter = () =>
                 {
                     int real = BagPlace(place);
-                    ShowTip(_session != null && real >= 0 && real < _session.World.Inventory.Stacks.Count ? _session.World.Inventory.Stacks[real].Item : null, cell.Rect, false);
+                    ShowTip(_session != null && real >= 0 && real < _session.World.Inventory.Stacks.Count ? _session.World.Inventory.Stacks[real].Item : null, cell.Rect, false,
+                        null, real);   // sous-lot V1.3 : la place, pour l'instance et ses propriétés tirées
                 };
                 pointer.Exit = () => HideTip(cell.Rect);
                 _bag.Add(cell);
@@ -433,17 +434,21 @@ namespace EdS.Game
         /// <summary>Sous-lot V1.2 : fiche élargie pour la comparaison.</summary>
         private const float TipWidth = 470f;
 
-        private void ShowTip(string item, RectTransform anchor, bool worn, string wornPlace = null)
+        private void ShowTip(string item, RectTransform anchor, bool worn, string wornPlace = null, int bagPlace = -1)
         {
             _tipItem = item;
             _tipAnchor = anchor;
             _tipWorn = worn;
             _tipPlace = worn ? wornPlace : null;
+            _tipBag = worn ? -1 : bagPlace;
             if (_session != null) RefreshTip(_session);
         }
 
         private bool _tipWorn;
         private string _tipPlace;
+
+        /// <summary>Sous-lot V1.3 : place du sac de l'objet survolé (−1 : porté, offre ou rachat), pour comparer l'instance elle-même.</summary>
+        private int _tipBag = -1;
 
         private void HideTip(RectTransform anchor)
         {
@@ -470,7 +475,7 @@ namespace EdS.Game
             _tipKind.Value = kind + " · " + RarityName(item.Rarity);
             var lines = new List<string>();
             // Sous-lot V1.2 : un équipement montre sa comparaison avec ce qui est porté à sa place (vert ou rouge, avec les chiffres).
-            float compared = RefreshCompare(a, item.Type == ItemType.Equipment ? item.Id : null, _tipPlace, 92f);
+            float compared = RefreshCompare(a, item.Type == ItemType.Equipment ? item.Id : null, _tipPlace, _tipBag, 92f);
             GearBonus b = compared >= 0f ? GearBonus.None : item.Bonus;
             void Add(int value, string label)
             {

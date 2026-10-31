@@ -89,7 +89,8 @@ namespace EdS.Data.Json
                 ["equipment"] = (v, p) =>
                 {
                     c.Present.Add("equipment");
-                    c.Equipment = ReadEquipment(input, v, p);
+                    c.Equipment = ReadEquipment(input, v, p, out List<KeyValuePair<string, ItemStackData>>? instances);
+                    c.EquipmentInstances = instances;
                 },
                 ["professions"] = (v, p) =>   // sous-lot 12.6 (version 5)
                 {
@@ -193,25 +194,59 @@ namespace EdS.Data.Json
             return ok ? g : null;
         }
 
-        private static ItemStackData? ReadStack(JsonInput input, JsonElement element, string path)
+        /// <summary>
+        /// Une place de l'inventaire (<c>item</c>, <c>count</c>) ; sous-lot V1.3 (version 9) : instance d'objet, avec <c>properties</c>
+        /// facultatif ; les noms <c>quality</c> et <c>wear</c> (sous-lot V1.4) sont relevés pour être refusés avec leur motif. Avec
+        /// <paramref name="withCount"/> faux (objet porté sous sa forme d'instance), pas de <c>count</c>.
+        /// </summary>
+        private static ItemStackData? ReadStack(JsonInput input, JsonElement element, string path, bool withCount = true)
         {
             var stack = new ItemStackData();
-            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            var fields = new Dictionary<string, Action<JsonElement, string>>
             {
                 ["item"] = (v, p) => stack.Item = input.Text(v, p),
-                ["count"] = (v, p) => stack.Count = input.Int32(v, p),
-            });
+                ["properties"] = (v, p) => stack.Properties = input.ReadLimitedList(v, p, SaveValidator.MaxProperties,
+                    n => $"{n} propriétés, au plus {SaveValidator.MaxProperties}.", (e, ip) => ReadProperty(input, e, ip)),
+                ["quality"] = (v, p) => stack.Reserved.Add("quality"),
+                ["wear"] = (v, p) => stack.Reserved.Add("wear"),
+            };
+            if (withCount) fields["count"] = (v, p) => stack.Count = input.Int32(v, p);
+            bool ok = input.ReadFields(element, path, fields);
             return ok ? stack : null;
         }
 
-        private static List<KeyValuePair<string, string?>>? ReadEquipment(JsonInput input, JsonElement element, string path)
+        private static PropertyRollData? ReadProperty(JsonInput input, JsonElement element, string path)
         {
+            var r = new PropertyRollData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => r.Id = input.Text(v, p),
+                ["value"] = (v, p) => r.Value = input.Int32(v, p),
+            });
+            return ok ? r : null;
+        }
+
+        /// <summary>
+        /// Objet porté par emplacement : l'identifiant de l'objet, ou (sous-lot V1.3, version 9) son instance <c>{ "item": …, "properties": […] }</c>,
+        /// gardée à part dans <paramref name="instances"/>.
+        /// </summary>
+        private static List<KeyValuePair<string, string?>>? ReadEquipment(JsonInput input, JsonElement element, string path,
+            out List<KeyValuePair<string, ItemStackData>>? instances)
+        {
+            instances = null;
             if (!input.RequireKind(element, JsonValueKind.Object, path, "objet « emplacement : objet »")) return null;
             var map = new List<KeyValuePair<string, string?>>();
             foreach (JsonProperty property in input.UniqueProperties(element, path))
             {
                 if (map.Count >= SaveValidator.MaxEquipment) { input.Report.Add(path, ValidationCode.LimitExceeded, $"au plus {SaveValidator.MaxEquipment} emplacements."); return null; }
-                map.Add(new KeyValuePair<string, string?>(property.Name, input.Text(property.Value, path + "." + property.Name)));
+                string p = path + "." + property.Name;
+                if (property.Value.ValueKind == JsonValueKind.Object)
+                {
+                    ItemStackData? instance = ReadStack(input, property.Value, p, withCount: false);
+                    map.Add(new KeyValuePair<string, string?>(property.Name, instance?.Item));
+                    if (instance != null) (instances ??= new List<KeyValuePair<string, ItemStackData>>()).Add(new KeyValuePair<string, ItemStackData>(property.Name, instance));
+                }
+                else map.Add(new KeyValuePair<string, string?>(property.Name, input.Text(property.Value, p)));
             }
             return map;
         }
@@ -226,6 +261,14 @@ namespace EdS.Data.Json
                 + ", \"day\": " + g.Day.ToString(CultureInfo.InvariantCulture) + ", \"taken\": " + List(g.Taken) + "}";
         }
 
+
+        /// <summary>Sous-lot V1.3 : propriétés tirées d'une instance, sur une ligne : <c>[{"id": "property.…", "value": 12}, …]</c>.</summary>
+        private static string Properties(IReadOnlyList<RolledProperty> properties)
+        {
+            if (properties.Any(r => !SaveValidator.IsPropertyId(r.Id) || r.Value < 1 || r.Value > SaveValidator.MaxPropertyValue))
+                throw new ArgumentException("Propriétés tirées hors du format des sauvegardes.", nameof(properties));
+            return "[" + string.Join(", ", properties.Select(r => "{\"id\": " + Quoted(r.Id) + ", \"value\": " + r.Value.ToString(CultureInfo.InvariantCulture) + "}")) + "]";
+        }
         // Identifiants écrits sans échappement : le format de SaveValidator.IsDataId, exigé aussi à la lecture (revue Codex de la PR #43).
         private static string Quoted(string id) =>
             SaveValidator.IsDataId(id) ? "\"" + id + "\"" : throw new ArgumentException($"Identifiant « {id} » hors du format des sauvegardes.", nameof(id));
@@ -294,14 +337,19 @@ namespace EdS.Data.Json
                 {
                     ItemStack stack = c.Inventory[i];
                     if (!SaveValidator.IsItemId(stack.Item)) throw new ArgumentException($"Objet « {stack.Item} » hors du format des sauvegardes.", nameof(c));
-                    b.Append("        {\"item\": ").Append(Quoted(stack.Item)).Append(", \"count\": ").Append(stack.Count.ToString(CultureInfo.InvariantCulture))
-                        .Append(i + 1 < c.Inventory.Count ? "},\n" : "}\n");
+                    b.Append("        {\"item\": ").Append(Quoted(stack.Item)).Append(", \"count\": ").Append(stack.Count.ToString(CultureInfo.InvariantCulture));
+                    if (stack.IsRolled) b.Append(", \"properties\": ").Append(Properties(stack.Properties));   // sous-lot V1.3 (version 9)
+                    b.Append(i + 1 < c.Inventory.Count ? "},\n" : "}\n");
                 }
                 b.Append("      ],\n");
             }
             if (c.Equipment.Any(e => !SaveValidator.IsItemId(e.Value) || !SaveValidator.IsDataId(e.Key)))
                 throw new ArgumentException("Équipement hors du format des sauvegardes.", nameof(c));
-            b.Append("      \"equipment\": {").Append(string.Join(", ", c.Equipment.Select(e => Quoted(e.Key) + ": " + Quoted(e.Value)))).Append("},\n");
+            // Sous-lot V1.3 (version 9) : un objet porté aux propriétés tirées s'écrit sous sa forme d'instance.
+            b.Append("      \"equipment\": {").Append(string.Join(", ", c.Equipment.Select(e => Quoted(e.Key) + ": "
+                + (c.EquipmentProperties.TryGetValue(e.Key, out IReadOnlyList<RolledProperty>? rolled)
+                    ? "{\"item\": " + Quoted(e.Value) + ", \"properties\": " + Properties(rolled) + "}"
+                    : Quoted(e.Value))))).Append("},\n");
             // Sous-lot 12.5 (version 4) : état narratif, sur une ligne par rubrique, dans l'ordre ordinal.
             SavedStory st = c.Story;
             if (st.Facts.Concat(st.Discoveries).Concat(st.Quests.Keys).Concat(st.Trust.Keys).Any(id => !SaveValidator.IsStoryId(id))

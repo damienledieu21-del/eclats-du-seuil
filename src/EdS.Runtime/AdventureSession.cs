@@ -288,6 +288,7 @@ namespace EdS.Runtime
             Opened = checked(Opened + 1);
             if (world.Learned.Count > 0) _dirty = true;   // sous-lot 12.9b : les compétences gagnées vont à la prochaine sauvegarde
             if (world.Restored.Count > 0) _dirty = true;   // sous-lot V1.2 : places obligatoires remplies, à garder
+            if (world.Adjusted.Count > 0) _dirty = true;   // relecture de la PR #78 : propriétés accordées au catalogue, à garder
         }
 
         /// <summary>Sous-lot 12.9b : annonce les compétences gagnées à l'ouverture de la session, avec leur touche.</summary>
@@ -295,6 +296,8 @@ namespace EdS.Runtime
         {
             // Sous-lot V1.2 : places obligatoires remplies à la reprise d'une ancienne sauvegarde (Éclat du Seuil, bouclier du Bastion).
             if (World.Restored.Count > 0) Say("text.ui.inventory.restored", string.Join(", ", World.Restored.Select(ItemName)));
+            // Relecture de la PR #78 : propriétés tirées accordées au catalogue actuel (bornes réglées, propriété retirée).
+            if (World.Adjusted.Count > 0) Say("text.ui.inventory.adjusted", string.Join(" ", World.Adjusted));
             foreach (SkillUnlock u in World.Learned)
                 if (u.Kind == SkillKind.Ultimate) Say("text.ui.ultimate_learned", SkillName(u.Skill));
                 else if (u.Kind == SkillKind.Active)
@@ -767,6 +770,17 @@ namespace EdS.Runtime
         /// <paramref name="wornPlace"/> : la place où il est porté, s'il l'est.
         /// </summary>
         public ItemComparison? Compare(string item, string? wornPlace = null) => ItemComparison.For(World.Inventory, item, wornPlace);
+
+        /// <summary>
+        /// Sous-lot V1.3 : comparaison de l'instance de la place <paramref name="bagPlace"/> du sac (propriétés tirées comprises), ou de l'objet
+        /// porté à <paramref name="wornPlace"/> ; null s'il n'y a rien à comparer.
+        /// </summary>
+        public ItemComparison? CompareInstance(int bagPlace, string? wornPlace = null)
+        {
+            if (wornPlace != null)
+                return World.Inventory.WornInstanceAt(wornPlace) is { } worn ? ItemComparison.For(World.Inventory, worn, wornPlace) : null;
+            return bagPlace >= 0 && bagPlace < World.Inventory.Stacks.Count ? ItemComparison.For(World.Inventory, World.Inventory.Stacks[bagPlace]) : null;
+        }
 
         private InventoryRefusal Done(InventoryRefusal refusal, string done)
         {

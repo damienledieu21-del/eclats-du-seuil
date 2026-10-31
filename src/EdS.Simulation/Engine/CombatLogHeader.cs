@@ -190,9 +190,44 @@ namespace EdS.Simulation.Engine
                     if (e.Status != null) w.Field("status", e.Status);
                     if (e.Resource is { } resource) w.Field("resource", TriggerIds.Of(resource));
                     Ranked("amount", e.Amount);
+                    if (e.Range is { } range) w.Field("range", range);   // sous-lot V1.3 : portée d'un effet d'équipement (jamais d'un assaillant)
                     w.EndObject();
                 }
                 w.EndArray().EndObject();
+            }
+            w.EndArray();
+        }
+
+        /// <summary>
+        /// Sous-lot V1.3 (format 20) : effets de l'équipement porté par un personnage, sous la forme du fichier de scénario (<c>id</c>,
+        /// <c>modifiers</c> et <c>triggers</c>, chacun seulement s'il y en a).
+        /// </summary>
+        private static void WriteEquipment(JsonLineWriter w, IReadOnlyList<EquipmentEffect> equipment)
+        {
+            w.Name("equipment").BeginArray();
+            foreach (EquipmentEffect effect in equipment)
+            {
+                w.BeginObject().Field("id", effect.Source);
+                if (effect.Modifiers.Count > 0)
+                {
+                    w.Name("modifiers").BeginArray();
+                    foreach (ModifierDefinition m in effect.Modifiers)
+                    {
+                        w.BeginObject().Field("key", m.Key);
+                        if (m.Add.PerRank == Domain.Numerics.Fixed.Zero) w.Field("add", m.Add.Base);
+                        else w.Name("add").BeginObject().Field("base", m.Add.Base).Field("perRank", m.Add.PerRank).EndObject();
+                        if (m.Conditions.Count > 0)
+                        {
+                            w.Name("conditions").BeginArray();
+                            foreach (ModifierCondition c in m.Conditions) w.Value(ModifierKeys.Of(c));
+                            w.EndArray();
+                        }
+                        w.EndObject();
+                    }
+                    w.EndArray();
+                }
+                if (effect.Triggers.Count > 0) WriteTriggers(w, effect.Triggers);
+                w.EndObject();
             }
             w.EndArray();
         }
@@ -241,6 +276,8 @@ namespace EdS.Simulation.Engine
                     if (character.Shield is { } shield)
                         w.Name("shield").BeginObject().Field(ShieldGuard.DamageReductionId, shield.DamageReduction)
                             .Field(ShieldGuard.CostPerBlockId, shield.CostPerBlock).Field(ShieldGuard.ParryWindowMsId, shield.ParryWindowMs).EndObject();
+                    // Sous-lot V1.3 (format 20) : effets de l'équipement porté, seulement s'il y en a.
+                    if (character.Equipment.Count > 0) WriteEquipment(w, character.Equipment);
                     break;
                 case DummySetup dummy:
                     w.Field("type", "dummy").Field("team", c.Team).Field("initiative", c.Initiative)

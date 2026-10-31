@@ -23,6 +23,12 @@ namespace EdS.Domain.Combat
 
         /// <summary>Valeur multipliée par le nombre de paliers complets de Résonance détenue (palier de <see cref="ModifierKeys.ResonanceStep"/>).</summary>
         PerResonanceStep = 2,
+
+        /// <summary>
+        /// Sous-lot V1.3 : la cible de l'impact est étourdie (elle porte une altération qui bloque ses compétences ou ses attaques
+        /// d'assaillant) : condition tout ou rien, lue sur l'état de la cible au calcul des dégâts. <c>damageDealt</c> seulement.
+        /// </summary>
+        TargetStunned = 3,
     }
 
     /// <summary>Ensemble de conditions (X2), forme agrégée d'une liste sans doublon.</summary>
@@ -33,6 +39,7 @@ namespace EdS.Domain.Combat
         WhileGuarding = 1,
         PerRampartCharge = 2,
         PerResonanceStep = 4,
+        TargetStunned = 8,
     }
 
     /// <summary>Règle visée par une clé de modificateur (liste fermée, sans formule libre).</summary>
@@ -246,6 +253,7 @@ namespace EdS.Domain.Combat
                 ["whileGuarding"] = ModifierCondition.WhileGuarding,
                 ["perRampartCharge"] = ModifierCondition.PerRampartCharge,
                 ["perResonanceStep"] = ModifierCondition.PerResonanceStep,
+                ["targetStunned"] = ModifierCondition.TargetStunned,   // sous-lot V1.3
             });
 
         public static string Of(ModifierCondition condition) => condition switch
@@ -253,13 +261,15 @@ namespace EdS.Domain.Combat
             ModifierCondition.WhileGuarding => "whileGuarding",
             ModifierCondition.PerRampartCharge => "perRampartCharge",
             ModifierCondition.PerResonanceStep => "perResonanceStep",
+            ModifierCondition.TargetStunned => "targetStunned",
             _ => throw new ArgumentOutOfRangeException(nameof(condition), condition, null),
         };
 
         /// <summary>Conditions d'un ensemble, dans l'ordre fixe de l'énumération.</summary>
         public static IEnumerable<ModifierCondition> Of(ModifierConditions set)
         {
-            foreach (ModifierCondition c in new[] { ModifierCondition.WhileGuarding, ModifierCondition.PerRampartCharge, ModifierCondition.PerResonanceStep })
+            foreach (ModifierCondition c in new[] { ModifierCondition.WhileGuarding, ModifierCondition.PerRampartCharge, ModifierCondition.PerResonanceStep,
+                ModifierCondition.TargetStunned })
                 if ((set & Flag(c)) != 0) yield return c;
         }
 
@@ -364,6 +374,9 @@ namespace EdS.Domain.Combat
             }
             if ((set & ModifierConditions.PerRampartCharge) != 0 && (set & ModifierConditions.PerResonanceStep) != 0)
                 errors.Add(new RuleViolation("au plus une condition multiplicative (perRampartCharge ou perResonanceStep).", p + ".conditions"));
+            // Sous-lot V1.3 : l'état de la cible n'a de sens que pour les dégâts infligés (le porteur est l'attaquant).
+            if ((set & ModifierConditions.TargetStunned) != 0 && spec.Field != ModifierField.DamageDealt)
+                errors.Add(new RuleViolation("« targetStunned » lit l'état de la cible d'un coup : damageDealt seulement.", p + ".conditions"));
             return errors.Count == before;
         }
 

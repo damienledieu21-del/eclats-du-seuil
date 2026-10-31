@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 13,
+  "schemaVersion": 14,
   "kind": "rules",
-  "contentVersion": "0.13.0-provisoire",
+  "contentVersion": "0.14.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -127,6 +127,17 @@
         "minCostPerBlock": 4,
         "maxCostPerBlock": 20,
         "parryWindowShiftMs": 50
+      },
+      "equipment": {
+        "maxDamageDealt": 0.25,
+        "maxDamageTaken": 0.15,
+        "maxHealthPercent": 0.15,
+        "maxEnduranceRegen": 3,
+        "maxStatusDurationMs": 1000,
+        "maxStrikeCoefficient": 1,
+        "maxGain": 2,
+        "minTriggerCooldownMs": 1000,
+        "allowedStatuses": []
       }
     },
     "statuses": [

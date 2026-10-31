@@ -250,7 +250,7 @@ public class Lot123ItemTests
         Assert.Equal(new[] { "weapon", "shield", "head", "shoulders", "cloak", "chest", "bracers", "hands", "belt", "legs", "feet", "neck",
             "ring_1", "ring_2", "relic_1", "relic_2", "shard", "tool" }, c.Slots);
         Assert.Equal(24, c.InventorySize);                                       // Q5 : 24 places gardées (les sacs viendront plus tard)
-        Assert.Equal(82, c.Items.Count);   // V1.2 : 73 équipements, puis les 9 matériaux et objets de soin d'avant
+        Assert.Equal(84, c.Items.Count);   // V1.2 : 73 équipements, puis les 9 matériaux et objets de soin d'avant ; V1.3 : deux pièces d'ensemble de plus
         ItemDefinition shield = c.Item("item.ecu_de_chene");
         Assert.Equal((ItemType.Equipment, "shield", 1, ItemRarity.Common, 1, 60), (shield.Type, shield.Slot, shield.RequiredLevel, shield.Rarity, shield.Stack, shield.Bonus.Armor));
         // H5 : deux boucliers de même niveau, d'orientations différentes.
