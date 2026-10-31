@@ -111,9 +111,17 @@ namespace EdS.Runtime
         /// <summary>Intérieurs : la zone est un intérieur (une pièce : l'aire en est le sol, ses bords les murs).</summary>
         public bool Indoor { get; }
 
+        /// <summary>
+        /// Sous-lot V1.6 : PNJ qui parlent dans cette pièce (identifiant, place en mètres) : le décor des intérieurs leur donne un corps
+        /// (<see cref="InteriorRules.Layout"/>). Vide dehors.
+        /// </summary>
+        public IReadOnlyList<(string Id, double X, double Z)> Speakers { get; }
+
         public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
-            IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false)
+            IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false,
+            IEnumerable<(string Id, double X, double Z)>? speakers = null)
         {
+            Speakers = (speakers ?? Array.Empty<(string, double, double)>()).ToList();
             if (space is null) throw new ArgumentNullException(nameof(space));
             MinX = Meters(space.Min.X.Raw);
             MinZ = Meters(space.Min.Z.Raw);

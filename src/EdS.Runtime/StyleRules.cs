@@ -1040,7 +1040,7 @@ namespace EdS.Runtime
             return (StyleMotion.Attack, NotJump, 1 + Variant(attackId, 997));
         }
 
-        private static readonly string[] CastAttackWords = { "onde", "pluie", "rugi", "roar", "hurle", "cri" };
+        private static readonly string[] CastAttackWords = { "onde", "pluie", "rugi", "roar", "hurle", "cri", "volee" };   // sous-lot V1.6 : la volée des bandits archers, comme la pluie
         private static readonly string[] LeapAttackWords = { "ruee", "bond", "saut", "jump", "ecras" };
 
         /// <summary>Préférence spéciale de <see cref="AttackAnimation"/> : toute attaque sauf le saut.</summary>

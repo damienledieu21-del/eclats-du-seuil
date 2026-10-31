@@ -48,9 +48,18 @@ namespace EdS.Game
         {
             _root = new GameObject("Repères");
             IReadOnlyList<WorldMarker> safePoints = adventure.SafePoints();
+            // Sous-lot V1.6 : dans une pièce, le corps d'un PNJ qui parle est un villageois du décor (InteriorRules) ; le repère ne garde que
+            // son nom (pas de capsule par-dessus), sauf sans personnages de villageois dans le catalogue.
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            bool dressedIndoors = adventure.Indoors && catalog != null && catalog.Villagers > 0 && catalog.Character("paysan") != null;
             foreach (WorldMarker npc in adventure.Npcs())
             {
                 Marker m = Add(npc, PrimitiveType.Capsule, new Vector3(0.8f, 1f, 0.8f), 1f, new Color(0.95f, 0.78f, 0.3f), 2.3f, NpcLabelRange);
+                if (dressedIndoors)
+                {
+                    m.Body.GetComponent<Renderer>().enabled = false;
+                    continue;
+                }
                 // Essai réaliste (demande de Damien du 26 octobre 2026) : le PNJ prend son personnage Mixamo (dossier Odile, Maelle,
                 // Gaspard) s'il existe, et respire en attendant (l'attente tourne en boucle sans autre mise à jour).
                 StyleBody look = StyleLook.Dress(m.Body, StyleSlot.Character, npc.Id, 1.75f);
