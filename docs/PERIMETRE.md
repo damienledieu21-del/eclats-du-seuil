@@ -4,7 +4,7 @@ Tri de toutes les décisions de la [feuille de route](FEUILLE_DE_ROUTE.md) (suje
 
 ## Comment lire ce document
 
-Ce tri est une **proposition de Claude, relue par Damien**. Damien a tranché les 10 points où Claude hésitait le 31 octobre 2026 à 1 h 20 (voir « Points tranchés » en bas). Il peut toujours **déplacer chaque ligne** d'une étape à l'autre, d'un simple mot (« ligne X en alpha »). Une décision rangée « Plus tard » n'est **pas abandonnée** : elle reste dans la feuille de route et arrive après. Le tri ne change aucune décision de gameplay ; il dit seulement **dans quel ordre** on les fait.
+Ce tri est une **proposition de Claude, relue par Damien**. Damien a tranché les 10 points où Claude hésitait le 31 octobre 2026 à 1 h 20 (voir « Points tranchés » en bas). Il peut toujours **déplacer chaque ligne** d'une étape à l'autre, d'un simple mot (« ligne X en alpha »). Une décision rangée « Plus tard » n'est **pas abandonnée** : elle reste dans la feuille de route et arrive après. Le tri ne change aucune décision de gameplay ; il dit seulement **dans quel ordre** on les fait. Seule exception : les chiffres intermédiaires marqués « (chiffre proposé par Claude) » ne viennent pas d'une décision ; ce sont des propositions, que Damien peut changer.
 
 Les quatre étapes :
 
@@ -23,9 +23,9 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 |---|---|---|---|
 | Combat dans l'espace, garde, parade, annonces au sol, mode Cible | Vallons | Déjà fait (lot 11), c'est la base | 3, L11 |
 | Classes : 1 dans les Vallons, 5 en alpha, 8 au lancement, 20 plus tard | Alpha | Nombre décidé par Damien pour chaque jalon | 22, 1 |
-| Les 4 classes de l'alpha : Liturge de l'Aube, Veilleur, Ombrelame, Tisse-Seuil | Alpha | Un peu de tout : soin, distance, agilité, magie | 22 |
+| Les 4 classes ajoutées en alpha (avec le Bastion) : Liturge de l'Aube, Veilleur, Ombrelame, Tisse-Seuil | Alpha | Un peu de tout : soin, distance, agilité, magie | 22 |
 | Ressource propre, 3 arbres de talents, rôle principal et secondaire par classe | Alpha | Cœur de l'identité ; chaque classe finit seule l'histoire | 1, 22, Q14 |
-| Compétences : 6 dans les Vallons, ~14 en alpha, ~24 au lancement | Lancement | 24 avec les ascensions ; l'alpha garde le tronc | 22 |
+| Compétences : 6 dans les Vallons, ~14 en alpha (chiffre proposé par Claude), ~24 au lancement | Lancement | 24 avec les ascensions ; l'alpha garde le tronc | 22 |
 | Barre : 6 places dans les Vallons, 8 + ultime au lancement | Lancement | 5e et 6e places prévues en V1.8 | 3 |
 | Ascensions (une par classe au lancement, la seconde plus tard) | Lancement | Gros travail par classe | 1, 22 |
 | Plusieurs armes par classe, attaque propre à chaque arme | Lancement | Beaucoup d'animations | 1, VSF |
@@ -65,7 +65,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Marqueurs au choix et mode « explorateur » ; tutoriel passable au 2e personnage | Lancement | Réglages simples | 29, 21 |
 | Façon de parler par peuple, réponses selon qui l'on est, mensonge et persuasion | Lancement | Valloniens d'abord, les autres avec leurs régions | 51 |
 | Conséquences à retardement, récapitulatif de fin de chapitre | Lancement | Avec plusieurs chapitres | 51 |
-| Livres : quelques-uns dans les Vallons, ~100 au lancement, 300 et plus plus tard | Lancement | Écriture longue, au fil du temps | 51 |
+| Livres : quelques-uns dans les Vallons, ~100 au lancement (chiffre proposé par Claude), 300 et plus plus tard | Lancement | Écriture longue, au fil du temps | 51 |
 | Église de l'Aube divisée, croyances des sept peuples, autels de confort | Lancement | Font partie de l'histoire et des régions | 45 |
 | Langue de l'Envers à apprendre dans l'Atlas | Lancement | Ouvre passages et dialogues cachés | 2, H11 |
 | Compagnons : 1 bête ou mercenaire dans les Vallons, 1 héros avec ordres et relation au lancement, 2 plus tard | Lancement | Sœur Albe ou Nyx au lancement | 11, VSF |
@@ -89,12 +89,12 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Jeu de cartes à la taverne, tir à l'arc et courses | Alpha | Décalé après le lot 13, ajouté pendant l'alpha (point 3) | VSF |
 | Carte peinte (faite) qui se dessine en explorant | Vallons | Le brouillard s'ajoute ensuite | 30 |
 | Donjons faits seul (avec compagnon) ou de 2 à 6 | Alpha | Les donjons des Vallons s'ouvrent aux groupes | 27 |
-| Régions : Vallons en alpha, 10 au lancement, d'autres avec les saisons | Lancement | Chiffre décidé par Damien ; l'alpha garde les Vallons seuls, sans morceau d'Havre d'Ambre (point 2) | 9 |
+| Régions : Vallons en alpha, 10 au lancement, d'autres avec les saisons | Lancement | Chiffre décidé par Damien ; l'alpha garde les Vallons seuls, sans morceau de Havre d'Ambre (point 2) | 9 |
 | Havre d'Ambre, Aubefort et Fêlune ; passages avec un court chargement | Lancement | Capitales des 10 régions | 9 |
 | Spécialités, montures, climat et météo propres à chaque région | Lancement | Font l'intérêt de chaque région | 9, 32 |
 | Donjons : 3 dans les Vallons, 1 à 2 par région au lancement (~15), quelques-uns ouverts | Lancement | Chiffre décidé | 27 |
 | Normal, Héroïque, Mythique et paliers sans fin | Lancement | Fin de jeu au lancement | 10, 27 |
-| Raids de 10 à 20 : 1 au lancement | Lancement | Fin de jeu promise aux groupes | 5, 27 |
+| Raids de 10 à 20 : 1 au lancement (chiffre proposé par Claude) | Lancement | Fin de jeu promise aux groupes | 5, 27 |
 | Brouillard, points de vue, repères personnels, carnet de l'explorateur | Lancement | Exploration récompensée | 30 |
 | Nage et plongée | Lancement | Côte des Brumes et lacs | 7, 30 |
 | Lune fendue (25 h en vrai) et ses phases, dormir à l'auberge | Lancement | Calendrier, Éclats, expérience reposée | 32 |
@@ -127,7 +127,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Bestiaire (10, 100, 1 000 bêtes) | Vallons | Vague 4 | VSF, 4 |
 | Événements ouverts (faille, attaque du hameau) où tous aident | Alpha | Les événements des Vallons en monde partagé | 5, VSF |
 | Récompense selon la participation (le soigneur gagne comme le frappeur) | Alpha | Juste dès le premier événement à plusieurs | 39, Q34 |
-| Créatures : 50 à 60 dans les Vallons, ~300 au lancement, ~575 plus tard | Lancement | Environ 30 par région | 28 |
+| Créatures : 50 à 60 dans les Vallons (chiffre proposé par Claude), ~300 au lancement, ~575 plus tard (estimation de Claude) | Lancement | Environ 30 par région | 28 |
 | Familles : 3 dans les Vallons, 11 au lancement | Lancement | Les régions apportent leurs familles | 28 |
 | Élites et champions aux traits tirés, groupes organisés d'ennemis | Lancement | Variété après la base | 3, 28 |
 | Un Gardien et un boss du monde par région | Lancement | Un Éclat, un Gardien par région | 2, 39 |
@@ -153,7 +153,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Hauts faits, titres, trophées de boss | Vallons | Vague 4 | VSF |
 | Fioles qui se remplissent, trois places de bonus (plat, élixir, huile) | Vallons | Potions faites ; la cuisine arrive après le lot 13 (point 3) | 36 |
 | Mort : retour au dernier point sûr, sans perte | Vallons | Déjà fait | 33, Q8 |
-| Plafond qui monte : 25 en alpha, relevé à chaque extension | Alpha | Décidé ; chiffre du lancement à fixer | 54 |
+| Plafond qui monte : par exemple 25 en alpha, relevé à chaque extension | Alpha | Décidé ; chiffre du lancement à fixer | 54 |
 | Refonte des arbres ; talents changés chez le maître de classe | Alpha | Proposée pour l'alpha (L11-D1) | Q18, Q21 |
 | 7 caractéristiques (avec la Constitution), 2 points par niveau, effet exact de chaque point, rendements décroissants | Alpha | Personnages des testeurs stables | 34 |
 | Seuils tous les 50 points, caractéristiques visibles sur le personnage, répartitions enregistrées | Lancement | Façons de jouer en plus, après la base | 34 |
@@ -196,14 +196,14 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Marché simple : échanges directs par la fenêtre officielle, un tableau de ventes | Alpha | Décidé pour l'alpha (lot 13) | VSF, 15, 16 |
 | Tout s'échange sauf les légendaires et mythiques liés | Alpha | Règle décidée pour le lot 13 | VSF |
 | Sorties d'or (réparation, voyage, taxe) mesurées | Alpha | Équilibre à vérifier avec les testeurs | 15, 25 |
-| Métiers : 5 dans les Vallons, ~12 au lancement, 36 plus tard | Lancement | Communs et avancés au lancement | VSF |
+| Métiers : 5 dans les Vallons, ~12 au lancement (chiffre proposé par Claude), 36 plus tard | Lancement | Communs et avancés au lancement | VSF |
 | Rangs d'Apprenti à Maître, 6 Maîtres au plus, un seul Grand Maître | Lancement | Règles décidées | VSF |
 | Recettes longues en temps réel, compétences de métier en combat | Lancement | Avec la cuisine et l'alchimie | VSF |
 | Hôtel des ventes de Havre d'Ambre, marchés des villes, ordres | Lancement | Économie complète | 15 |
 | Prix des PNJ qui bougent, jetons non échangeables, bornes contre les abus | Lancement | Avant le grand public | 15 |
 | Banque de Havre d'Ambre, tableau des commandes aux artisans | Lancement | Avec la capitale | 15, H10 |
 | Terrain dans un quartier en copies, payé une fois, jamais perdu, 6 colocataires | Lancement | Un quartier par capitale au départ | 50 |
-| Meubles : quelques dizaines dans les Vallons, ~300 au lancement, 2 000 plus tard | Lancement | Production longue | 50 |
+| Meubles : quelques dizaines dans les Vallons, ~300 au lancement (chiffre proposé par Claude), 2 000 plus tard | Lancement | Production longue | 50 |
 | Doyen d'un métier, Grand Livre des recettes, terroirs et saisons | Plus tard | Vit avec les saisons | VSF |
 | Apprentis, boutique qui vend sans toi, quêtes et outils légendaires de métier | Plus tard | Systèmes en plus | VSF |
 | Caravanes, contrats de transport, Gazette, événements économiques | Plus tard | Demande les régions et les routes | 15 |
@@ -215,7 +215,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Élément | Étape | Pourquoi | Sujet |
 |---|---|---|---|
 | Monde partagé : se voir, se déplacer, combattre ensemble | Alpha | But de l'alpha (lot 13) | Q9, L11-D8 |
-| Le jeu solo tourne sur le serveur | Alpha | Aucune triche sur le butin dès les testeurs | 54 |
+| Le jeu solo tourne sur le serveur | Alpha | Pas de triche locale sur le butin dès les testeurs | 54 |
 | Groupes de 2 à 6, liste d'amis, invitations | Alpha | Décidé pour l'alpha | 5, Q31 |
 | Chat : près de toi, région, groupe, messages privés | Alpha | Décidé pour l'alpha | 5 |
 | Chat : raid, commerce, entraide ; bulles, liens, marqueurs | Lancement | Avec ces systèmes ; le canal de guilde est en alpha | 5 |
@@ -227,7 +227,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Tableau de recrutement par capitale | Lancement | Aide les joueurs seuls | 40 |
 | Duels sur demande, arène classée 1c1, 2c2, 3c3, équipement égalisé | Lancement | JcJ promis au lancement | 38 |
 | Files PC et téléphone séparées en arène | Plus tard | Téléphone juste après le lancement sur PC (point 1) | 38 |
-| Jeu de rôle : 100 gestes, s'asseoir, serveurs dédiés, canal « en rôle » | Lancement | Décidé ; ~30 gestes d'abord | 46 |
+| Jeu de rôle : 100 gestes, s'asseoir, serveurs dédiés, canal « en rôle » | Lancement | Décidé ; ~30 gestes d'abord (chiffre proposé par Claude) | 46 |
 | Fiche de personnage écrite, modérée | Lancement | Comme le chat | 46, 8 |
 | Fort de guilde, alliances, rivalités, défis de la semaine | Plus tard | Système lourd | 5, 40 |
 | Rangs de saison, top 3, tournois, mode spectateur | Plus tard | Vit avec les saisons | 38 |
@@ -275,7 +275,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Sons d'interface et de combat libres, musiques libres par région | Vallons | Fait à l'essai 7 | VSF, 48 |
 | Sons-signaux en combat (un son par attaque, tintement de la parade) | Alpha | Le combat se lit à l'oreille | 48 |
 | Son en 3D au casque, volumes séparés | Alpha | Fournis par Unity, peu chers | 48 |
-| Couleur signature par région, violet réservé à l'Envers | Lancement | Une palette par région | 49 |
+| Couleur signature par région, violet réservé à l'Envers et, en plus sombre, à l'Ombre | Lancement | Une palette par région | 49 |
 | Visages marqués, peuples, architecture par peuple, capitales immenses | Lancement | Avec les régions | 49 |
 | Monde qui se déforme près des failles, ruines des Sept Couronnes | Lancement | Avec les régions | 49 |
 | Attaques annoncées intégrées au décor | Lancement | Généralisées après les Vallons | 49 |
@@ -298,7 +298,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Premier essai tactile, deux qualités de textures | Vallons | Déjà faits | L11-D11, VSF |
 | Parade en réseau (télégraphie avancée) | Vallons | Déjà faite (10.6) | — |
 | Serveur de zone, base de données, connexion (lot 13) | Alpha | Réglés par Claude au lot 13 | 54 |
-| Jouable à 150 ms, reconnexion automatique, esquive en réseau | Alpha | Serveur sur Internet | 42, CADRAGE |
+| Jouable à 150 ms, reconnexion automatique, esquive en réseau | Alpha | Serveur sur Internet | 42, L11-D8 |
 | Petit serveur de test en Europe, loué au mois | Alpha | Décision d'argent de Damien (prix au moment de payer) | 24 |
 | Sauvegardes toutes les heures, en double | Alpha | Ne pas perdre les personnages des testeurs | 24 |
 | PC minimum de 2018, 60 images sur le PC conseillé | Alpha | Les testeurs n'ont pas tous un gros PC | 42 |
@@ -345,7 +345,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 
 | Élément | Étape | Pourquoi | Sujet |
 |---|---|---|---|
-| Licences et origine de chaque contenu (`CREDITS.md`, registre Claude, Damien, gratuit, acheté) | Vallons | Déjà tenu ; sert à la déclaration de l'IA | 18, 23, 54 |
+| Licences et origine de chaque contenu (`CREDITS.md`, registre Claude, Damien, gratuit, acheté) | Vallons | `CREDITS.md` tenu ; registre par origine (Claude, Damien, gratuit, acheté) à créer ; sert à la déclaration de l'IA | 18, 23, 54 |
 | Marque à l'INPI avant de montrer le jeu | Alpha | Avant les vidéos ; dépense à confirmer par Damien | 23, 54 |
 | Données au strict minimum, serveurs en Europe, confidentialité courte | Alpha | Dès qu'il y a des comptes | 23 |
 | Discord, comptes des réseaux et nom de domaine réservés par Damien | Alpha | Testeurs et annonces ; réserver tôt | 16, 17, 54 |
@@ -356,7 +356,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Lieux traduits, noms gardés, glossaire, mots longs, canaux par langue | Lancement | Règles décidées | 52 |
 | Marque en Europe (EUIPO), entreprise avant la première vente | Lancement | Avant l'anglais et la boutique ; dépenses à confirmer | 54, 23 |
 | Conditions et mentions légales relues par un professionnel, accord parental | Lancement | Dépense à décider ; jeu dès 12 ans | 23 |
-| PEGI par IARC, déclaration honnête de l'IA sur Steam | Lancement | Liste du lancement | 54 |
+| Classification d'âge : questionnaire IARC (gratuit) pour Google Play, questionnaires propres à Steam et à l'App Store, à vérifier ; déclaration honnête de l'IA sur Steam | Lancement | Liste du lancement | 54 |
 | Feuille de route de l'entreprise (compte et assurance pros), aides publiques (CNC, crédit d'impôt, Bpifrance), DSA | Lancement | Avant la première vente, à vérifier avec un professionnel | 54 |
 | Jeu gratuit, boutique d'apparences et de confort, abonnement de confort | Lancement | Modèle décidé | 6 |
 | Aucune puissance vendue, aucun coffre au hasard, aucune publicité, prestige non vendu | Lancement | Promesse publique | 6, 44 |
@@ -381,7 +381,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 | Fiche par achat possible, point chaque semaine | Vallons | Règle des dépenses | 18 |
 | Équipe à trois jusqu'à l'alpha ; agent neuf avant Codex dès le lot 13 | Alpha | Décidé | 18 |
 | Tableau de bord du projet, plafond de dépenses mensuel, sauvegardes en trois copies, plan de secours | Alpha | Les premières dépenses arrivent avec le serveur | 54 |
-| Éditeur interne (quêtes, dialogues, créatures, bouton « Essayer ») | Alpha | Décidé au lot 13-14, avant les centaines de quêtes | 54 |
+| Éditeur interne (quêtes, dialogues, créatures, bouton « Essayer ») | Alpha | Décidé pendant le lot 13, avant l'alpha et les centaines de quêtes | 54 |
 | Carnet d'essai dans le jeu, bug envoyé avec le journal du combat | Alpha | Sert aux testeurs | 18, 25 |
 | Statistiques sans nom, désactivables : difficulté, parcours, économie, technique | Alpha | Le but de l'alpha | 25 |
 | Tableau de bord pour Damien, cartes de chaleur, alertes d'équilibrage | Lancement | Beaucoup de joueurs | 25 |
@@ -395,7 +395,7 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 ## Points tranchés par Damien (31 octobre 2026, 1 h 20)
 
 1. **Téléphone** : juste après le lancement. Lancement sur PC, téléphone quelques mois après, dans le même monde.
-2. **Alpha** : les Vallons seuls, sans morceau d'Havre d'Ambre.
+2. **Alpha** : les Vallons seuls, sans morceau de Havre d'Ambre.
 3. **Vagues 3 et 4 des Vallons** : une partie est décalée après le lot 13 (monde partagé) ; l'alpha y gagne environ un mois.
 4. **Guildes en alpha** : une version simple (créer, inviter, canal de guilde) ; le reste au lancement.
 5. **Souvenir jouable de la Rupture** : une version courte en alpha, la grande mise en scène au lancement.
@@ -427,8 +427,8 @@ Colonne **Sujet** : le numéro du sujet dans la feuille de route. « VSF » renv
 
 Ce que dit le tableau, honnêtement : le décalage d'une partie des vagues 3 et 4 retire **environ 10 sous-lots** avant l'alpha (environ un mois avec les essais et les relectures, comme prévu au point 3). Mais les versions simples demandées en alpha en ajoutent **environ 9** : livres de build (~4), cheval (~3), guildes simples (~2), moins un peu de travail sur le souvenir court. Le total reste donc **environ 80 sous-lots** : le mois gagné est presque entièrement repris. L'alpha y gagne surtout en sûreté (moins de contenu de vie à finir avant le lot 13, des testeurs qui ont guildes, cheval et livres).
 
-À 1 sous-lot par jour, cela fait environ 80 jours de travail, soit **fin février 2027 au plus tôt**. Il faut ajouter : les relectures de Damien (5 chapitres, une vingtaine de quêtes, les fiches de 4 classes), les essais dans Unity, les PR à format nouveau qui demandent beaucoup de tours de revue (une trentaine pour le 11.4d), les modèles et animations gratuites des 4 classes, et les jours sans travail. Avec ces retards, la fourchette réaliste est **mars à juin 2027**.
+À 1 sous-lot par jour, cela fait environ 80 jours de travail, soit **fin février 2027 au plus tôt**. Il faut ajouter : les relectures de Damien (5 chapitres, une vingtaine de quêtes, les fiches de 4 classes), les essais dans Unity, les PR à format nouveau qui demandent beaucoup de tours de revue (une trentaine pour le 11.4d), les modèles et animations gratuites des 4 classes, et les jours sans travail. Avec ces retards, la fourchette réaliste est **avril à juin 2027** (mai-juin le plus probable).
 
-**Verdict** : l'alpha au **printemps 2027 est tenable, mais serrée**. Elle est tenable surtout pour la fin du printemps (mai-juin), si les agents en parallèle tiennent leur rythme et si Damien relit vite. Mars 2027 ne paraît pas tenable : l'allègement des Vallons (point 3) est compensé par les versions simples (points 4, 6 et 8). Pour retrouver vraiment le mois, il faudrait reporter une partie des versions simples (les livres de build d'abord), ce que Damien n'a pas choisi. Les quatre classes et le lot 13 sont les plus gros risques ; le contenu écrit vient juste après.
+**Verdict** : l'alpha au **printemps 2027 est tenable, mais serrée**. Elle est tenable surtout pour la fin du printemps (mai-juin), si les agents en parallèle tiennent leur rythme et si Damien relit vite. Mars 2027 ne paraît pas tenable (d'où le début de la fourchette en avril) : l'allègement des Vallons (point 3) est compensé par les versions simples (points 4, 6 et 8). Pour retrouver vraiment le mois, il faudrait reporter une partie des versions simples (les livres de build d'abord), ce que Damien n'a pas choisi. Les quatre classes et le lot 13 sont les plus gros risques ; le contenu écrit vient juste après.
 
 **Pour le lancement**, à titre indicatif : 9 régions de plus, avec chacune environ 15 à 25 sous-lots (zone, histoire, ~25 quêtes, ~30 créatures, 1 à 2 donjons, Gardien, boss du monde), 3 classes de plus, l'Envers des Vallons, la grande mise en scène de la Rupture, ~500 hauts faits, la part décalée des Vallons si elle n'est pas finie pendant l'alpha, l'anglais, la boutique, le droit et la fin de jeu. Cela fait **plusieurs centaines de sous-lots**, et une bonne part des modèles 3D dépendra de dépenses pas encore décidées. Au rythme actuel, le lancement ne paraît **pas possible avant 2028**. Le téléphone (interface mobile, Android, iPhone) vient ensuite, quelques mois après : sortir sur PC d'abord retire ces sous-lots du chemin du lancement. Il faudra le réestimer après l'alpha, avec de vraies mesures.

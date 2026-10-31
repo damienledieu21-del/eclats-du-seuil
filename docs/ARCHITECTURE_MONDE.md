@@ -34,7 +34,7 @@ Exigences retenues, reprises du cadrage :
 
 - Le **serveur** détient l'état de référence : positions, attaques, dégâts, morts, puis butin, expérience, inventaires, états de quête. Il est seul juge, comme au lot 10.
 - Le **client** envoie des intentions (déplacement, garde, parade, compétence, cible, interaction) et affiche. Il peut **anticiper** son propre déplacement et certaines présentations, puis il se corrige sur l'état du serveur.
-- **En solo**, le jeu héberge la zone sur le poste, avec le même code, comme l'hôte du lot 10. Une partie solo n'a pas de valeur dans le monde public (Q10).
+- **En solo**, le jeu héberge la zone sur le poste, avec le même code, comme l'hôte du lot 10. Décision du 31 octobre 2026 ([feuille de route](FEUILLE_DE_ROUTE.md), sujet 54) : pour le jeu complet, le solo tourne sur le serveur ; l'hébergement local reste valable pour les prototypes. Une partie solo n'a pas de valeur dans le monde public (Q10).
 
 ## 4. La simulation de zone
 
