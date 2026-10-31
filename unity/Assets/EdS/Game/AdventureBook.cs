@@ -338,6 +338,11 @@ namespace EdS.Game
                 cell.Name.Value = item != null ? item.Name : a.Text("text.ui.empty_slot");
                 cell.Name.Color = item != null ? RarityColor(item.Rarity) : UiKit.Muted;
                 cell.Edge.color = item != null ? RarityColor(item.Rarity) : UiKit.Alpha(Color.white, 0.5f);
+                // Sous-lot V1.4 : une pièce usée à zéro ne donne plus ses bonus : bord rouge et icône éteinte, jusqu'à la réparation.
+                ItemStack instance = worn ? w.Inventory.WornInstanceAt(entry.Key) : null;
+                bool wornOut = instance != null && w.Inventory.Catalog.IsWornOut(instance);
+                if (wornOut) cell.Edge.color = UiKit.Danger;
+                cell.Icon.color = wornOut ? new Color(0.55f, 0.4f, 0.4f) : Color.white;
                 cell.Count.Value = "";
             }
             IReadOnlyList<ItemStack> stacks = w.Inventory.Stacks;
@@ -638,12 +643,16 @@ namespace EdS.Game
                 UiKit.Place(craft.Rect, new Vector2(660f, 132f), new Vector2(170f, 42f), new Vector2(1f, 1f));
                 _recipes.Add((card, icon, name, kind, recipe, state, craft));
             }
-            _craftProfessions = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 836f, 1380f, 22f, 0f, 0.5f, 6f);
+            _craftProfessions = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 836f, 1060f, 22f, 0f, 0.5f, 6f);
+            BuildForge(page);   // sous-lot V1.4 : le petit jeu de forge et la réparation (AdventureBook.Forge.cs)
         }
 
         private void Craft(int index)
         {
-            if (_session != null && index < _recipeData.Count) _session.Craft(_recipeData[index].Id);
+            if (_session == null || index >= _recipeData.Count) return;
+            // Sous-lot V1.4 : une recette à qualité se forge par le petit jeu (trois frappes) ; les autres se fabriquent tout de suite.
+            if (_recipeData[index].Quality) OpenForge(_recipeData[index].Id);
+            else _session.Craft(_recipeData[index].Id);
         }
 
         private void RefreshCrafting(AdventureSession a)
@@ -661,7 +670,9 @@ namespace EdS.Game
                 card.Kind.Value = r.Profession + " · " + string.Format(a.Text("text.ui.level_required"), r.RequiredLevel);
                 card.Recipe.Value = r.Inputs + "  »  " + r.Output;
                 card.State.Value = a.Text("text.ui.craft." + r.Refusal.ToString().ToLowerInvariant());
-                card.State.Color = possible ? UiKit.Teal : UiKit.Endurance;
+                // Sous-lot V1.4 : au-dessus de son niveau, la recette peut rater ; le risque se dit avant.
+                if (possible && r.LevelGap > 0) card.State.Value = string.Format(a.Text("text.ui.craft_risky"), r.Fail.Worst, r.Fail.Best);
+                card.State.Color = possible ? (r.LevelGap > 0 ? UiKit.Dawn : UiKit.Teal) : UiKit.Endurance;
                 card.Craft.Text.Value = a.Text("text.ui.craft");
                 card.Craft.Enable(possible);
                 card.Icon.sprite = UiKit.Icon(ProfessionIcon(r.Profession));
@@ -798,6 +809,7 @@ namespace EdS.Game
             _panel.localScale = new Vector3(zoom, zoom, 1f);
             UiKit.Show(_dialogue, talk);
             if (talk) RefreshDialogue(a);
+            if (!book || screens.Open != AdventureScreens.Panel.Crafting) CloseForge();   // sous-lot V1.4 : le petit jeu ne survit pas à l'atelier
             if (!book || screens.Open != AdventureScreens.Panel.Skills) LeaveSkills();   // sous-lot V1.5 : glissé, choix et message ne survivent pas à l'écran
             if (book)
             {
@@ -817,7 +829,10 @@ namespace EdS.Game
                 {
                     case AdventureScreens.Panel.Inventory: RefreshCharacter(a); break;
                     case AdventureScreens.Panel.Journal: RefreshJournal(a); break;
-                    case AdventureScreens.Panel.Crafting: RefreshCrafting(a); break;
+                    case AdventureScreens.Panel.Crafting:
+                        RefreshCrafting(a);
+                        RefreshForge(a, deltaTime);   // sous-lot V1.4
+                        break;
                     case AdventureScreens.Panel.Map: RefreshMap(a, enemies); break;
                     case AdventureScreens.Panel.Skills: RefreshSkills(a); break;
                 }

@@ -176,6 +176,19 @@ namespace EdS.Runtime
         {
             ItemCatalog catalog = inventory.Catalog;
             var details = new List<DetailLine>();
+            // Sous-lot V1.4 : qualité de fabrication (signature d'un chef-d'œuvre) et usure de l'instance, d'abord.
+            if (instance.Quality == ItemQuality.Masterwork)
+                details.Add(new DetailLine($"Chef-d'œuvre, signé {DisplayNames.Of(instance.SignedBy ?? "")} : +{catalog.MasterworkPercent} % au bonus de base", CompareTrend.Better));
+            else if (instance.Quality == ItemQuality.Superior)
+                details.Add(new DetailLine($"Qualité supérieure : +{catalog.SuperiorPercent} % au bonus de base", CompareTrend.Better));
+            // Une pièce neuve ne dit rien de sa solidité ; une pièce entamée la montre, une pièce usée à zéro dit qu'elle ne donne plus rien.
+            if (catalog.Wears(candidate) && instance.Wear is int)
+            {
+                int left = catalog.WearLeft(instance);
+                details.Add(left == 0
+                    ? new DetailLine($"Usé : solidité 0 / {catalog.WearMax}, plus aucun bonus (à réparer)", CompareTrend.Worse)
+                    : new DetailLine($"Solidité {left} / {catalog.WearMax} (à réparer)", CompareTrend.Worse, true));
+            }
             foreach (RolledProperty r in instance.Properties)
                 if (catalog.TryGetProperty(r.Id, out PropertyDefinition property))
                     details.Add(new DetailLine($"{property.Name} : +{r.Value} {BonusLabels[property.Stat].ToLowerInvariant()}", CompareTrend.Same));
