@@ -248,8 +248,10 @@ namespace EdS.World
                     refunded.Add((item, back));
                 }
                 inventory.CopyFrom(trial);
-                int level = Level(r.Profession);
-                done = new CraftEvent(CraftEventKind.Failed, r.Id, r.Profession, r.Output.Item, 0, 0, level, level, ItemQuality.Normal, refunded, fail, key);
+                // Sous-lot V1.8 (réponse de Damien du 31 octobre 2026) : une recette ratée donne un quart de l'expérience de métier.
+                CraftEvent learnt = Gain(CraftEventKind.Failed, r.Id, r.Profession, r.Output.Item, 0, _book.Failure.FailedXp(r.Xp));
+                done = new CraftEvent(CraftEventKind.Failed, r.Id, r.Profession, r.Output.Item, 0, learnt.Xp, learnt.LevelBefore, learnt.LevelAfter,
+                    ItemQuality.Normal, refunded, fail, key);
                 return CraftRefusal.None;
             }
             ItemQuality quality = !r.Quality ? ItemQuality.Normal : roll < master ? ItemQuality.Masterwork : roll < master + superior ? ItemQuality.Superior : ItemQuality.Normal;

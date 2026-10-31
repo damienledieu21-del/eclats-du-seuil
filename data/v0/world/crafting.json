@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/crafting.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "crafting",
-  "contentVersion": "0.3.0-provisoire",
+  "contentVersion": "0.4.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -357,7 +357,8 @@
       "maxLevels": 2,
       "percentPerLevel": 35,
       "skillReduction": 25,
-      "refundPercent": 50
+      "refundPercent": 50,
+      "xpPercent": 25
     },
     "repair": {
       "percent": 30,

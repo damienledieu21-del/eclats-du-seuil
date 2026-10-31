@@ -145,6 +145,7 @@ namespace EdS.Data.Json
                 ["percentPerLevel"] = (v, p) => x.PercentPerLevel = input.Int32(v, p),
                 ["skillReduction"] = (v, p) => x.SkillReduction = input.Int32(v, p),
                 ["refundPercent"] = (v, p) => x.RefundPercent = input.Int32(v, p),
+                ["xpPercent"] = (v, p) => x.XpPercent = input.Int32(v, p),   // sous-lot V1.8 (version 3)
             }) ? x : null;
         }
 

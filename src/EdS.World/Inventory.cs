@@ -676,7 +676,8 @@ namespace EdS.World
                 if (!_equipped.TryGetValue(place.Id, out ItemStack worn) || !_catalog.Wears(_catalog.Item(worn.Item))) continue;
                 int left = _catalog.WearLeft(worn);
                 if (left == 0) continue;
-                int after = Math.Max(0, left - loss);
+                int after = Math.Max(0, left - _catalog.PieceWearLoss(_catalog.Item(worn.Item), loss));   // sous-lot V1.8 : résistance
+                if (after == left) continue;
                 _equipped[place.Id] = worn.WithWear(after);
                 if (after == 0) wornOut.Add(worn.Item);
             }
@@ -690,14 +691,22 @@ namespace EdS.World
         /// qualité, usure), une place au plus par pièce ; une pièce qui ne s'use pas est sautée. Rend la nouvelle valeur de chaque pièce,
         /// dans l'ordre (la même si elle n'est plus là), et dans <paramref name="wornOut"/> les objets qui viennent d'arriver à zéro.
         /// </summary>
-        internal IReadOnlyList<ItemStack> WearPieces(IReadOnlyList<ItemStack> pieces, int loss, out IReadOnlyList<string> wornOut)
+        internal IReadOnlyList<ItemStack> WearPieces(IReadOnlyList<ItemStack> pieces, int loss, out IReadOnlyList<string> wornOut) =>
+            WearPieces(pieces, pieces.Select(_ => loss).ToList(), out wornOut);
+
+        /// <summary>
+        /// Sous-lot V1.8 : comme <see cref="WearPieces(IReadOnlyList{ItemStack}, int, out IReadOnlyList{string})"/>, chaque pièce avec sa
+        /// propre perte (<paramref name="losses"/>, même ordre : la résistance à l'usure dépend du niveau et de la rareté de la pièce).
+        /// </summary>
+        internal IReadOnlyList<ItemStack> WearPieces(IReadOnlyList<ItemStack> pieces, IReadOnlyList<int> losses, out IReadOnlyList<string> wornOut)
         {
             if (pieces is null) throw new ArgumentNullException(nameof(pieces));
-            if (loss < 0) throw new ArgumentOutOfRangeException(nameof(loss));
+            if (losses is null || losses.Count != pieces.Count) throw new ArgumentException("Une perte par pièce.", nameof(losses));
+            if (losses.Any(l => l < 0)) throw new ArgumentOutOfRangeException(nameof(losses));
             var updated = new List<ItemStack>(pieces);
             var zero = new List<string>();
             wornOut = zero;
-            if (loss == 0) return updated;
+            if (losses.All(l => l == 0)) return updated;
             var usedSlots = new HashSet<string>(StringComparer.Ordinal);
             var usedPlaces = new HashSet<int>();
             for (int k = 0; k < pieces.Count; k++)
@@ -706,7 +715,9 @@ namespace EdS.World
                 if (!_catalog.TryGetItem(piece.Item, out ItemDefinition item) || !_catalog.Wears(item)) continue;
                 int left = _catalog.WearLeft(piece);
                 if (left == 0) continue;
-                ItemStack after = piece.WithWear(Math.Max(0, left - loss));
+                int lost = losses[k];   // sous-lot V1.8 : perte propre à la pièce (résistance à l'usure)
+                if (lost == 0) continue;
+                ItemStack after = piece.WithWear(Math.Max(0, left - lost));
                 string? slot = _catalog.Places.Select(p => p.Id).FirstOrDefault(id => !usedSlots.Contains(id) && _equipped.TryGetValue(id, out ItemStack e) && e.Equals(piece));
                 if (slot != null)
                 {
@@ -749,6 +760,25 @@ namespace EdS.World
                 if (_equipped[slot].Wear != null) _equipped[slot] = _equipped[slot].WithWear(null);
             for (int i = 0; i < _stacks.Count; i++)
                 if (_stacks[i].Wear != null) _stacks[i] = _stacks[i].WithWear(null);
+        }
+
+        /// <summary>
+        /// Sous-lot V1.8 (réponse de Damien : réparer « tout d'un coup ou pièce par pièce ») : remet à neuf une seule pièce entamée, portée
+        /// à la place <paramref name="slot"/> ou (slot null) dans le sac à la place <paramref name="place"/>. Rend la pièce telle qu'elle
+        /// était, ou null si rien n'est entamé là (rien ne change).
+        /// </summary>
+        internal ItemStack? RepairOne(string? slot, int place)
+        {
+            if (slot != null)
+            {
+                if (!_equipped.TryGetValue(slot, out ItemStack worn) || worn.Wear is null) return null;
+                _equipped[slot] = worn.WithWear(null);
+                return worn;
+            }
+            if (place < 0 || place >= _stacks.Count || _stacks[place].Wear is null) return null;
+            ItemStack before = _stacks[place];
+            _stacks[place] = before.WithWear(null);
+            return before;
         }
 
         /// <summary>Sous-lot 12.5 : copie indépendante (pour essayer des opérations avant de les appliquer pour de bon).</summary>

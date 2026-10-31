@@ -72,8 +72,8 @@ public class V14ForgeTests
     [Fact]
     public void Catalogue_en_version_5_avec_qualite_et_usure()
     {
-        Assert.Equal(5, Items.SchemaVersion);
-        Assert.Equal((10, 20, 100, 10), (Items.SuperiorPercent, Items.MasterworkPercent, Items.WearMax, Items.WearPerFullHealth));
+        Assert.Equal(6, Items.SchemaVersion);   // sous-lot V1.8 : version 6, résistance à l'usure ; 3 points par PV maximaux (V18 : 30 à 40 combats)
+        Assert.Equal((10, 20, 100, 3), (Items.SuperiorPercent, Items.MasterworkPercent, Items.WearMax, Items.WearPerFullHealth));
         ItemDefinition sword = Items.Item("item.epee_de_garde");   // puissance physique 22
         Assert.True(Items.TakesQuality(sword));
         Assert.Equal(2, Items.QualityBonus(sword, ItemQuality.Superior).PhysicalPower);     // 10 % de 22, vers le bas
@@ -205,7 +205,7 @@ public class V14ForgeTests
     public void Metiers_en_version_2_forge_echec_et_reparation()
     {
         CraftingBook book = Crafting(Zone());
-        Assert.Equal(2, book.SchemaVersion);
+        Assert.Equal(3, book.SchemaVersion);   // sous-lot V1.8 : version 3 (expérience d'un échec)
         Assert.Equal(5, book.Recipes.Count(r => r.Quality));
         Assert.All(book.Recipes.Where(r => r.Quality), r => Assert.Equal(("forge", "forge", 1), (r.Profession, r.Place, r.Output.Count)));
         Assert.Equal(3, book.Forge.Strikes);
@@ -345,10 +345,11 @@ public class V14ForgeTests
             if (e.Kind == CraftEventKind.Failed)
             {
                 failed = true;
-                // Cinq minerais et une ferrure pris ; la moitié rendue, vers le bas : deux minerais, aucune ferrure. Rien d'appris.
+                // Cinq minerais et une ferrure pris ; la moitié rendue, vers le bas : deux minerais, aucune ferrure. Sous-lot V1.8 (réponse
+                // de Damien) : un quart de l'expérience de la recette (60 : 15).
                 Assert.Equal(new[] { ("item.minerai_de_fer", 2) }, e.Refunded);
-                Assert.Equal((2, 0, 0, 0L), (bag.Count("item.minerai_de_fer"), bag.Count("item.ferrure"), bag.Count("item.casque_de_fer"), shop.Xp("forge")));
-                Assert.Equal((0, 0L), (e.Count, e.Xp));
+                Assert.Equal((2, 0, 0, 15L), (bag.Count("item.minerai_de_fer"), bag.Count("item.ferrure"), bag.Count("item.casque_de_fer"), shop.Xp("forge")));
+                Assert.Equal((0, 15L), (e.Count, e.Xp));
             }
             else
             {

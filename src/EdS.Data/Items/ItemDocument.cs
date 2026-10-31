@@ -59,6 +59,12 @@ namespace EdS.Data.Items
 
         /// <summary>Points perdus par chaque pièce portée pour des dégâts reçus égaux aux PV maximaux du personnage.</summary>
         public int? PerFullHealth { get; set; }
+
+        /// <summary>Sous-lot V1.8 (version 6) : résistance à l'usure par niveau requis au-dessus du premier, en pour cent.</summary>
+        public int? LevelResistPercent { get; set; }
+
+        /// <summary>Sous-lot V1.8 (version 6) : résistance à l'usure de chaque rareté (commune à mythique, six valeurs), en pour cent.</summary>
+        public List<int?>? RarityResistPercent { get; set; }
     }
 
     /// <summary>Sous-lot V1.3 : un ensemble tel que lu.</summary>

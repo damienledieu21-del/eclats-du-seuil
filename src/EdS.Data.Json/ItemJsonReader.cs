@@ -71,6 +71,20 @@ namespace EdS.Data.Json
                     {
                         ["max"] = (wv, wp) => w.Max = input.Int32(wv, wp),
                         ["perFullHealth"] = (wv, wp) => w.PerFullHealth = input.Int32(wv, wp),
+                        ["levelResistPercent"] = (wv, wp) => w.LevelResistPercent = input.Int32(wv, wp),   // sous-lot V1.8 (version 6)
+                        ["rarityResistPercent"] = (wv, wp) =>
+                        {
+                            if (!input.RequireKind(wv, JsonValueKind.Array, wp, "six pourcentages")) return;
+                            if (wv.GetArrayLength() != ItemValidator.RarityCount)
+                            {
+                                input.Report.Add(wp, ValidationCode.InvalidValue, $"{wv.GetArrayLength()} valeurs, {ItemValidator.RarityCount} attendues (commune à mythique).");
+                                return;
+                            }
+                            var list = new List<int?>();
+                            int i = 0;
+                            foreach (JsonElement e in wv.EnumerateArray()) list.Add(input.Int32(e, $"{wp}[{i++}]"));
+                            w.RarityResistPercent = list;
+                        },
                     })) d.Wear = w;
                 },
             });

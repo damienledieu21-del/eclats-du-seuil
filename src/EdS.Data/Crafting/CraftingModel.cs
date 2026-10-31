@@ -71,6 +71,9 @@ namespace EdS.Data.Crafting
 
         /// <summary>Part de chaque matériau rendue en cas d'échec, en pour cent (arrondie vers le bas).</summary>
         public int? RefundPercent { get; set; }
+
+        /// <summary>Sous-lot V1.8 (version 3, réponse de Damien du 31 octobre 2026) : part de l'expérience de la recette gagnée en cas d'échec, en pour cent.</summary>
+        public int? XpPercent { get; set; }
     }
 
     public sealed class RepairData
@@ -254,13 +257,23 @@ namespace EdS.Data.Crafting
         public int SkillReduction { get; }
         public int RefundPercent { get; }
 
-        internal FailureRules(int maxLevels, int percentPerLevel, int skillReduction, int refundPercent)
+        /// <summary>
+        /// Sous-lot V1.8 (réponse de Damien du 31 octobre 2026 : « une recette ratée donne un quart de l'expérience ») : part de l'expérience
+        /// de la recette gagnée en cas d'échec, en pour cent (25 dans les données).
+        /// </summary>
+        public int XpPercent { get; }
+
+        internal FailureRules(int maxLevels, int percentPerLevel, int skillReduction, int refundPercent, int xpPercent = 0)
         {
             MaxLevels = maxLevels;
             PercentPerLevel = percentPerLevel;
             SkillReduction = skillReduction;
             RefundPercent = refundPercent;
+            XpPercent = xpPercent;
         }
+
+        /// <summary>Sous-lot V1.8 : expérience d'un échec pour une recette qui en donne <paramref name="xp"/> (part <see cref="XpPercent"/>, arrondie vers le bas, au moins 1 si la part n'est pas nulle).</summary>
+        public long FailedXp(long xp) => XpPercent == 0 || xp <= 0 ? 0 : Math.Max(1, checked(xp * XpPercent) / 100);
 
         /// <summary>
         /// Chance de rater (pour cent) à <paramref name="gap"/> niveaux sous le niveau requis, pour une adresse <paramref name="skill"/> (0 à 100) :
@@ -389,9 +402,10 @@ namespace EdS.Data.Crafting
         /// V1.4) : <c>quality</c> sur une recette (petit jeu de forge et qualité de fabrication ; produit : un seul équipement qui prend une
         /// qualité), <c>forge</c> (frappes, chances de la qualité supérieure et du chef-d'œuvre), <c>failure</c> (recette au-dessus de son
         /// niveau : niveaux tentés au plus, chance de rater, matériaux rendus) et <c>repair</c> (prix, lieux et marchands de la réparation).
-        /// Une version antérieure est refusée : le fichier se met à jour à la main.
+        /// Version 3 (sous-lot V1.8) : <c>failure.xpPercent</c> (part de l'expérience gagnée par une recette ratée). Une version antérieure
+        /// est refusée : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
 
         /// <summary>Sous-lot V1.4 : frappes du petit jeu, au plus ; niveaux tentés au-dessus du sien, au plus ; marchands et lieux de réparation, au plus.</summary>
         public const int MaxStrikes = 5, MaxOverLevels = 10, MaxRepairSpots = 16;
@@ -590,7 +604,7 @@ namespace EdS.Data.Crafting
         private static FailureRules? CheckFailure(FailureData? f, int max, ValidationReport r)
         {
             const string path = "$.data.failure";
-            if (f is null) { Missing(r, path, "recette au-dessus de son niveau : maxLevels, percentPerLevel, skillReduction, refundPercent"); return null; }
+            if (f is null) { Missing(r, path, "recette au-dessus de son niveau : maxLevels, percentPerLevel, skillReduction, refundPercent, xpPercent"); return null; }
             bool ok = true;
             if (f.MaxLevels is null) { Missing(r, path + ".maxLevels", "niveaux tentés au-dessus du sien, au plus"); ok = false; }
             else if (f.MaxLevels < 0 || f.MaxLevels > MaxOverLevels || (max > 0 && f.MaxLevels >= max))
@@ -598,7 +612,8 @@ namespace EdS.Data.Crafting
             int? per = Percent(f.PercentPerLevel, path + ".percentPerLevel", "chance de rater par niveau manquant", r);
             int? skill = Percent(f.SkillReduction, path + ".skillReduction", "chance retirée par une adresse parfaite", r);
             int? refund = Percent(f.RefundPercent, path + ".refundPercent", "part des matériaux rendue", r);
-            return ok && per is int p && skill is int s && refund is int d ? new FailureRules(f.MaxLevels!.Value, p, s, d) : null;
+            int? xp = Percent(f.XpPercent, path + ".xpPercent", "part de l'expérience gagnée par un échec", r);   // sous-lot V1.8 (version 3)
+            return ok && per is int p && skill is int s && refund is int d && xp is int x ? new FailureRules(f.MaxLevels!.Value, p, s, d, x) : null;
         }
 
         /// <summary>Sous-lot V1.4 : réparation (part de la valeur, prix minimal, lieux de la zone, marchands « merchant.… » ; au moins un lieu ou un marchand).</summary>

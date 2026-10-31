@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "kind": {
       "const": "crafting"
@@ -317,7 +317,8 @@
             "maxLevels",
             "percentPerLevel",
             "skillReduction",
-            "refundPercent"
+            "refundPercent",
+            "xpPercent"
           ],
           "properties": {
             "maxLevels": {
@@ -343,6 +344,12 @@
               "minimum": 0,
               "maximum": 100,
               "description": "Part de chaque matériau rendue en cas d'échec (arrondie vers le bas)."
+            },
+            "xpPercent": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Version 3 (sous-lot V1.8, réponse de Damien) : part de l'expérience de la recette gagnée par un échec (25 : un quart), arrondie vers le bas, au moins 1."
             }
           },
           "description": "Sous-lot V1.4 : une recette au-dessus de son niveau peut rater ; une partie des matériaux est rendue."
