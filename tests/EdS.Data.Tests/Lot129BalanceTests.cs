@@ -43,6 +43,7 @@ public class Lot129BalanceTests
                     if ((string)c!["id"]! == creature) c["position"] = new JsonArray(-15, -12);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), zone.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));
+            File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
             CopyMissingZoneScenarios(directory);   // intérieurs : reliés aux Vallons par leurs portes
             ItemCatalog catalog = Items;
             ZoneDefinition z = ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, catalog).Zone!;
@@ -97,10 +98,13 @@ public class Lot129BalanceTests
         // Bastion : l'écart grandit jusqu'à leur laisse (18 m), et ils lâchent.
         JsonObject zone = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
         double player = (double)JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "rules.json")))!["data"]!["combat"]!["movement"]!["speed"]!;
-        var wolves = zone["data"]!["combatants"]!.AsArray().Where(c => ((string)c!["id"]!).StartsWith("loup", StringComparison.Ordinal)).ToList();
+        // Sous-lot V1.6 : le loup blanc, bête élite, est à part (plus rapide que les loups, moins que le Bastion : on peut encore le semer).
+        var wolves = zone["data"]!["combatants"]!.AsArray().Where(c => ((string)c!["id"]!).StartsWith("loup", StringComparison.Ordinal) && (string)c!["id"]! != "loup_blanc").ToList();
         Assert.Equal(12, wolves.Count);   // Vallons agrandis : sept loups de plus (forêt des Loups, hautes pierres)
         Assert.All(wolves, w => Assert.Equal(4.0, (double)w!["speed"]!));
         Assert.Equal(5.0, player);
+        double white = (double)zone["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "loup_blanc")!["speed"]!;
+        Assert.True(white > 4.0 && white < player);
     }
 
     [Theory]

@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.24.0";
+        public const string Version = "0.25.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -92,9 +92,12 @@ namespace EdS.Simulation.Engine
         /// <c>charges</c>, <c>cooldownMs</c>), une commande <c>consume</c> son <c>item</c> ; nouvelle ligne <c>consumed</c> (observable) ; raisons
         /// <c>itemNotCarried</c>, <c>noCharges</c>, <c>consumableCooldown</c>, <c>healthFull</c> ; <c>healed</c> et <c>consumablesUsed</c> au
         /// bilan d'un personnage qui emporte des objets de soin. Sans objet de soin, un combat écrit exactement les mêmes lignes qu'au format 17.
-        /// Un journal d'un autre format est refusé au rejeu.
+        /// 19 (sous-lot V1.2) : un personnage de l'en-tête peut porter <c>shield</c> (garde du bouclier porté : <c>damageReduction</c>,
+        /// <c>costPerBlock</c>, <c>parryWindowMs</c>), qui remplace pour lui les valeurs de base de la garde et de la parade ; ses règles
+        /// effectives (<c>rules</c> de la ligne <c>combatant</c>) en tiennent compte. Sans bouclier, un combat écrit exactement les mêmes lignes
+        /// qu'au format 18. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 18;
+        public const int LogFormatVersion = 19;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -592,7 +595,7 @@ namespace EdS.Simulation.Engine
                     // Sous-lot 8.1 : mêmes fonctions que la validation (précontrôle) : modificateurs agrégés, statistiques, règles.
                     ModifierSet modifiers = ModifierSet.For(character);
                     f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build, modifiers, character.Gear);
-                    f.Rules = CombatantRules.For(_rules, modifiers);
+                    f.Rules = CombatantRules.For(_rules, modifiers, character.Shield);   // sous-lot V1.2 : garde du bouclier porté
                     f.MaxHealth = f.Stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                     f.Health = f.MaxHealth;
                     f.MaxEndurance = f.Stats.MaxEndurance.RoundToInt(RoundingMode.Floor);

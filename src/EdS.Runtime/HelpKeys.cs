@@ -49,6 +49,8 @@ namespace EdS.Runtime
         /// <summary>
         /// Aventure : combat, puis les touches des textes du monde (<paramref name="worldHelp"/>, éléments séparés par « · », la touche
         /// d'abord), la carte, les talents (essai réaliste 6, étape 2), les compétences (sous-lot V1.5), la pause, le réseau et l'aide. Un élément sans action est ignoré.
+        /// Sous-lot V1.2 : I ouvre le personnage et ses 18 places d'équipement (texte du monde « I personnage et équipement ») ; filtres,
+        /// rangement et échange se font à la souris ou au doigt, sans touche de plus.
         /// </summary>
         public static IReadOnlyList<HelpKey> Adventure(string worldHelp)
         {

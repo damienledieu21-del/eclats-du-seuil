@@ -1,6 +1,6 @@
 {
   "$schema": "../../data/schemas/scenario.schema.json",
-  "schemaVersion": 12,
+  "schemaVersion": 13,
   "kind": "scenario",
   "contentVersion": "0.2.0-provisoire",
   "data": {
@@ -2582,6 +2582,278 @@
           "minRange": 6,
           "aggroRange": 12,
           "pack": false
+        }
+      },
+      {
+        "id": "bandit_epee1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 180,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          100,
+          72
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        }
+      },
+      {
+        "id": "bandit_epee2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 180,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          128,
+          80
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        }
+      },
+      {
+        "id": "bandit_arc1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 130,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "tir",
+            "rawDamage": 13,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 11
+          },
+          {
+            "id": "volee",
+            "rawDamage": 17,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 2.2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          134,
+          68
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 10,
+          "minRange": 6,
+          "aggroRange": 13,
+          "pack": false
+        }
+      },
+      {
+        "id": "bandit_arc2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 130,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "tir",
+            "rawDamage": 13,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 11
+          },
+          {
+            "id": "volee",
+            "rawDamage": 17,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 2.2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          100,
+          96
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 10,
+          "minRange": 6,
+          "aggroRange": 13,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup_blanc",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 450,
+        "armor": 20,
+        "magicResistance": 10,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 18,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "bond",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 900,
+            "range": 8,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 1.5
+          },
+          {
+            "id": "hurlement",
+            "rawDamage": 22,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1500,
+            "radius": 3.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          -70,
+          90
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.8,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 10,
+          "encircle": true
         }
       }
     ],

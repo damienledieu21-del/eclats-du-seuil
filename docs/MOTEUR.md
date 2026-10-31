@@ -1,4 +1,4 @@
-# Moteur de simulation (lots 5 et 6, correctif 6.1, sous-lots 7.1 à 7.3, correctif 7.2, sous-lots 11.1 et 11.4a à 11.4c)
+# Moteur de simulation (lots 5 et 6, correctif 6.1, sous-lots 7.1 à 7.3, correctif 7.2, sous-lots 11.1 et 11.4a à 11.4c, sous-lot V1.2)
 
 Moteur de combat déterministe, sans Unity, sans réseau et sans horloge système. Code : `src/EdS.Simulation/Engine`. Toutes les valeurs sont **provisoires**.
 
@@ -71,7 +71,7 @@ Suspension (A1) : aucune régénération pendant la garde ni pendant la rupture.
 
 ## Garde (A1)
 
-Posture tenue de `guardStart` à `guardStop`. Valeurs de base ci-dessous ; depuis le sous-lot 8.1, chaque personnage applique ses valeurs effectives (voir « Modificateurs »). Pendant la garde :
+Posture tenue de `guardStart` à `guardStop`. Valeurs de base ci-dessous ; depuis le sous-lot 8.1, chaque personnage applique ses valeurs effectives (voir « Modificateurs ») ; depuis le sous-lot V1.2, un bouclier porté remplace la réduction, le coût d'un blocage et la fenêtre de parade de base (voir « Garde du bouclier »). Pendant la garde :
 
 - entretien de `combat.guard.upkeepPerSecond` (2/s), cumulé sur **tout le combat** (correctif 6.1, M01) : dû = ⌊ 2 × ticks gardés depuis le début du combat × 50 / 1000 ⌋, payé au fil des ticks, soit 1 point tous les 10 ticks gardés. Un tick est gardé si la garde est active en phase 4 : une garde prise puis quittée dans le même tick ne compte pas ; prise, quittée et reprise, elle compte une fois. Le coût ne dépend donc que du nombre de ticks réellement gardés, quelle que soit leur répartition (avant le correctif, le reliquat était perdu à chaque reprise : des gardes de 9 ticks ne coûtaient rien). S'il ne peut être payé, la garde est brisée (`upkeep`) et ce tick n'est pas compté : le reliquat reste dû à la garde suivante ;
 - chaque impact direct bloquable coûte `costPerBlock` (10) puis est réduit de `damageReduction` (60 %, au plus 75 % depuis le sous-lot 8.1) après armure (`blocked`, puis `damage` avec `defense: "guard"`). Si l'endurance manque, la garde est brisée **avant** la réduction : l'impact passe en entier (`defense: "guardBroken"`) ;
@@ -402,6 +402,15 @@ Un personnage porte un **bonus d'équipement** (`CharacterSetup.Gear`, type `Gea
 - **En cours de combat** : le bonus est celui de l'entrée ; un changement d'équipement prend effet à la prochaine entrée (comme un niveau gagné).
 
 Objets, inventaire et butin (projet `EdS.World`) : [MONDE.md](MONDE.md#objets-équipement-inventaire-sous-lot-123).
+
+## Garde du bouclier (sous-lot V1.2)
+
+Un personnage peut porter la **garde de son bouclier** (`CharacterSetup.Shield`, type `ShieldGuard` : part bloquée, endurance d'un blocage, fenêtre de parade). Moteur 0.25.0, journal au format 19, règles en schéma 13 (contenu 0.13.0), scénarios en schéma 13.
+
+- **Calcul** : la garde remplace, pour ce personnage, les trois valeurs de base des règles ; ses règles effectives (`CombatantRules.For(règles, modificateurs, bouclier)`, la même fonction pour la validation, le précontrôle et le moteur) y ajoutent les modificateurs sous les mêmes plafonds ([FORMULES.md](FORMULES.md#garde-du-bouclier-sous-lot-v12)). Les valeurs du bouclier sont d'abord ramenées dans les intervalles du moteur (garde au plus 0,75, coût positif, fenêtre d'un tick à 500 ms) : un bouclier ne sort jamais des plafonds, même s'il échappait à la validation. Garde, blocage, rupture et parade fonctionnent ensuite exactement comme avant.
+- **Validation** : la garde est jugée contre `combat.shield` des règles par `ShieldGuard.Check` ([DONNEES.md](DONNEES.md#garde-des-boucliers-sous-lot-v12)) ; refus avec le chemin `combatants[i].shield.<valeur>`.
+- **Journal (format 19)** : `shield` dans l'en-tête, après `gear`, seulement s'il y en a un ; la ligne `combatant` porte déjà les règles effectives (`guard.damageReduction`, `guard.costPerBlock`, `parry.windowMs`). **Sans bouclier, rien ne change** : le scénario de référence à déclencheurs garde le même corps qu'au moteur 0.24.0 ; nouvelle référence figée `reference-0.25.0-contenu-0.6.0-regles-0.13.0` (à déclencheurs et `entrainement_bouclier`), les anciennes restent intactes et sont refusées au rejeu.
+- **En cours de combat** : la garde est celle de l'entrée ; un changement de bouclier prend effet à la prochaine entrée, comme le reste de l'équipement.
 
 ## Soin (sous-lot 12.6)
 

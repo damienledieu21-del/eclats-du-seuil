@@ -70,7 +70,10 @@ namespace EdS.Runtime
         }
     }
 
-    /// <summary>Une quête du journal : nom, étape en cours (texte), avancement (« 2/3 ») ou accomplie.</summary>
+    /// <summary>
+    /// Une quête du journal : nom, étape en cours (texte), avancement (« 2/3 ») ou accomplie. Sous-lot V1.6 : identifiant, onglet (principale
+    /// ou secondaire), suivie ou non, et récompenses au choix en attente (noms traduits, dans l'ordre de <see cref="AdventureSession.ChooseReward"/>).
+    /// </summary>
     public sealed class JournalEntry
     {
         public string Name { get; }
@@ -78,12 +81,31 @@ namespace EdS.Runtime
         public string? Progress { get; }
         public bool Done { get; }
 
-        internal JournalEntry(string name, string? step, string? progress, bool done)
+        /// <summary>Sous-lot V1.6 : identifiant de la quête (pour <see cref="AdventureSession.Track"/> et <see cref="AdventureSession.ChooseReward"/>).</summary>
+        public string Id { get; }
+
+        /// <summary>Sous-lot V1.6 : onglet du journal.</summary>
+        public QuestCategory Category { get; }
+
+        /// <summary>Sous-lot V1.6 : la quête est suivie (son objectif sur la carte).</summary>
+        public bool Tracked { get; }
+
+        /// <summary>Sous-lot V1.6 : récompenses à choisir (« 3 × Potion de soin ») ; vide sans choix en attente.</summary>
+        public IReadOnlyList<string> RewardChoices { get; }
+
+        public bool ChoosingReward => RewardChoices.Count > 0;
+
+        internal JournalEntry(string name, string? step, string? progress, bool done, string id = "", QuestCategory category = QuestCategory.Main,
+            bool tracked = false, IReadOnlyList<string>? rewardChoices = null)
         {
             Name = name;
             Step = step;
             Progress = progress;
             Done = done;
+            Id = id;
+            Category = category;
+            Tracked = tracked;
+            RewardChoices = rewardChoices ?? Array.Empty<string>();
         }
     }
 
@@ -190,12 +212,14 @@ namespace EdS.Runtime
             SavePath = savePath;
             SaveReadResult read = SaveStore.Read(savePath);
             SaveProblem = read.Problem;
-            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), PlayerCharacters.Create(PlayerId, PlayerClass, progression));
-            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, PlayerCharacters.Create(PlayerId, PlayerClass, progression));
+            // Sous-lot V1.2 : un nouveau personnage porte son équipement de départ (l'Éclat du Seuil ; pour le Bastion, l'épée et l'écu).
+            SavedCharacter Fresh() => Inventory.Outfit(PlayerCharacters.Create(PlayerId, PlayerClass, progression), items);
+            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), Fresh());
+            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh());
             // Intérieurs : la partie reprend dans la zone de la sauvegarde (un intérieur : à son entrée) ; une zone que les données ne relient
             // plus reprend à l'entrée de la zone de départ.
             _zone = zones.FirstOrDefault(z => z.Id == save.Zone) ?? start;
-            if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character);
+            if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character, save.Migrated);
             _lastSafePoint = _zone.Entry.Id;
             Open(save, null);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
@@ -222,7 +246,9 @@ namespace EdS.Runtime
             ZoneDefinition definition = zones.Zones[0];
             TextsLoadResult texts = StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(dataDirectory));
             TextCatalog catalogTexts = Need(texts.Texts, "textes", () => texts.Report);
-            StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog);
+            // Sous-lot V1.6 : les PNJ des intérieurs vivent dans les zones reliées par des portes.
+            StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog,
+                zones.Zones.Skip(1).ToList());
             CraftingLoadResult crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(dataDirectory), catalogTexts, definition, catalog);
             StoryBook storyBook = Need(story.Story, "histoire", () => story.Report);
             // Sous-lot V1.1 : marchands et valeur des objets.
@@ -255,11 +281,14 @@ namespace EdS.Runtime
             foreach (KeyValuePair<string, int> c in world.Zone.Engine.View(PlayerId).ConsumableCharges) _drunk[c.Key] = c.Value;
             Opened = checked(Opened + 1);
             if (world.Learned.Count > 0) _dirty = true;   // sous-lot 12.9b : les compétences gagnées vont à la prochaine sauvegarde
+            if (world.Restored.Count > 0) _dirty = true;   // sous-lot V1.2 : places obligatoires remplies, à garder
         }
 
         /// <summary>Sous-lot 12.9b : annonce les compétences gagnées à l'ouverture de la session, avec leur touche.</summary>
         private void AnnounceLearned()
         {
+            // Sous-lot V1.2 : places obligatoires remplies à la reprise d'une ancienne sauvegarde (Éclat du Seuil, bouclier du Bastion).
+            if (World.Restored.Count > 0) Say("text.ui.inventory.restored", string.Join(", ", World.Restored.Select(ItemName)));
             foreach (SkillUnlock u in World.Learned)
                 if (u.Kind == SkillKind.Ultimate) Say("text.ui.ultimate_learned", SkillName(u.Skill));
                 else if (u.Kind == SkillKind.Active)
@@ -404,6 +433,22 @@ namespace EdS.Runtime
                 case StoryEventKind.MoneyGiven:   // sous-lot V1.1
                     Say("text.ui.money_given", MoneyText(e.Value));
                     break;
+                // Sous-lot V1.6.
+                case StoryEventKind.ObjectiveDone:   // relecture de la PR #76 : parler à ou livrer à un PNJ
+                    if (_story.Quest(e.Id).Steps.FirstOrDefault(st => st.Id == e.Step) is QuestStep done) Say("text.ui.objective_done", Text(done.Text));
+                    break;
+                case StoryEventKind.MoneyTaken:
+                    Say("text.ui.money_taken", MoneyText(e.Value));
+                    break;
+                case StoryEventKind.MoneyShort:
+                    Say("text.ui.reward_money_short");
+                    break;
+                case StoryEventKind.QuestLocked:
+                    Say("text.ui.reward_quest_locked");
+                    break;
+                case StoryEventKind.RewardToChoose:
+                    Say("text.ui.reward_to_choose", Text(_story.Quest(e.Id).Name));
+                    break;
                 case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
                     Say("text.ui.safe_point_found", _zone.SafePoints.FirstOrDefault(sp => sp.Id == e.Id)?.Name ?? e.Id);
                     break;
@@ -446,9 +491,15 @@ namespace EdS.Runtime
 
         private static bool Within(GroundVector a, GroundVector b, Fixed range) => Distance2(a, b) <= checked(range.Raw * range.Raw);
 
-        /// <summary>PNJ à qui parler (le plus proche à portée), ou null.</summary>
-        public Npc? NpcInReach => Me is GroundVector p && World.InStoryZone
-            ? _story.Npcs.Where(n => Within(p, n.Position, Narrative.TalkRange)).OrderBy(n => Distance2(p, n.Position)).FirstOrDefault() : null;
+        /// <summary>
+        /// PNJ à qui parler (le plus proche à portée), ou null. Sous-lot V1.6 : ceux de la zone où l'on est (dehors, ou dans un intérieur :
+        /// l'aubergiste, le prêtre, l'habitant).
+        /// </summary>
+        public Npc? NpcInReach => Me is GroundVector p
+            ? HereNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange)).OrderBy(n => Distance2(p, n.Position)).FirstOrDefault() : null;
+
+        /// <summary>Sous-lot V1.6 : PNJ de la zone en cours (ceux de l'histoire dehors, ceux de la pièce dans un intérieur).</summary>
+        private IEnumerable<Npc> HereNpcs => _story.NpcsIn(World.InStoryZone ? null : _zone.Id);
 
         /// <summary>Nœud de récolte prêt le plus proche à portée, ou null.</summary>
         public GatheringNode? NodeInReach => Me is GroundVector p && World.InStoryZone
@@ -473,6 +524,9 @@ namespace EdS.Runtime
                     if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
                 }
                 DialogueRefusal refusal = World.Talk(npc.Id, out _);
+                // Relecture de la PR #76 : un PNJ sans rien à dire, mais à qui l'on vient de parler ou de livrer pour une quête : l'objectif
+                // rempli s'annonce (au tick suivant), pas « rien à dire ».
+                if (refusal == DialogueRefusal.NothingToSay && World.Narrative?.LastTalkFilled > 0) return true;
                 if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(npc.Name));
                 return refusal == DialogueRefusal.None;
             }
@@ -577,6 +631,8 @@ namespace EdS.Runtime
             if (events.Count > 0) _dirty = true;
             if (refusal == DialogueRefusal.NoRoom) Say("text.ui.no_room");
             else if (refusal == DialogueRefusal.PurseFull) Say("text.ui.purse_full");
+            else if (refusal == DialogueRefusal.NotEnoughMoney) Say("text.ui.not_enough_money");   // sous-lot V1.6
+            else if (refusal == DialogueRefusal.Locked) Say("text.ui.quest_locked");
             else if (refusal == DialogueRefusal.TooFar) Say("text.ui.too_far");
             return refusal;
         }
@@ -658,14 +714,41 @@ namespace EdS.Runtime
             return refusal;
         }
 
-        /// <summary>Retire l'objet porté à l'emplacement <paramref name="slot"/> (effet à la prochaine halte).</summary>
-        public InventoryRefusal Unequip(string slot)
+        /// <summary>
+        /// Retire l'objet porté à l'emplacement <paramref name="slot"/> (effet à la prochaine halte). Sous-lot V1.2 : hors combat, et jamais
+        /// d'une place obligatoire (l'Éclat du Seuil, le bouclier du Bastion).
+        /// </summary>
+        public InventoryRefusal Unequip(string slot) => Done(World.Unequip(slot), "text.ui.unequipped");
+
+        /// <summary>Sous-lot V1.2 : porte l'objet de la place <paramref name="place"/> du sac à la place d'équipement <paramref name="slot"/>.</summary>
+        public InventoryRefusal EquipTo(int place, string slot) => Done(World.EquipTo(place, slot), "text.ui.equipped");
+
+        /// <summary>Sous-lot V1.2 : échange deux places d'une même sorte (les anneaux, les reliques).</summary>
+        public InventoryRefusal Swap(string first, string second) => Done(World.Swap(first, second), "text.ui.inventory.swapped");
+
+        /// <summary>Sous-lot V1.2 : range le sac (sans condition : rien ne change au combat) ; gardé à la prochaine sauvegarde.</summary>
+        public void SortInventory(InventorySort order)
         {
-            InventoryRefusal refusal = World.Inventory.Unequip(slot);
+            World.Inventory.Sort(order);
+            _dirty = true;
+            Say("text.ui.inventory.sorted");
+        }
+
+        /// <summary>Sous-lot V1.2 : places du sac qui passent le filtre, au niveau actuel du personnage.</summary>
+        public IReadOnlyList<int> InventoryPlaces(InventoryFilter filter) => World.Inventory.Filter(filter, World.Level);
+
+        /// <summary>
+        /// Sous-lot V1.2 : comparaison de l'objet <paramref name="item"/> avec ce qui est porté à sa place (null s'il ne se porte pas) ;
+        /// <paramref name="wornPlace"/> : la place où il est porté, s'il l'est.
+        /// </summary>
+        public ItemComparison? Compare(string item, string? wornPlace = null) => ItemComparison.For(World.Inventory, item, wornPlace);
+
+        private InventoryRefusal Done(InventoryRefusal refusal, string done)
+        {
             if (refusal == InventoryRefusal.None)
             {
                 _dirty = true;
-                Say("text.ui.unequipped");
+                Say(done);
             }
             else Say("text.ui.inventory." + refusal.ToString().ToLowerInvariant());
             return refusal;
@@ -843,20 +926,85 @@ namespace EdS.Runtime
 
         // --- Journal, carte ---------------------------------------------------------------------------------------------
 
-        /// <summary>Quêtes commencées : en cours d'abord (étape et avancement), puis accomplies.</summary>
-        public IReadOnlyList<JournalEntry> Journal()
+        /// <summary>
+        /// Quêtes commencées : en cours d'abord (étape et avancement, ou récompense à choisir), puis accomplies. Sous-lot V1.6 : celles d'un
+        /// onglet seulement (<paramref name="category"/>), ou toutes (null).
+        /// </summary>
+        public IReadOnlyList<JournalEntry> Journal(QuestCategory? category = null)
         {
             Narrative? n = World.Narrative;
+            if (n is null) return Array.Empty<JournalEntry>();
+            // Relecture de la PR #76 : le journal se recalcule seulement quand l'histoire change (l'interface le lit à chaque image).
+            if (!(ReferenceEquals(_journalOf, n) && _journalRevision == n.Revision)) _journal.Clear();
+            _journalOf = n;
+            _journalRevision = n.Revision;
+            if (_journal.TryGetValue(category?.ToString() ?? "", out IReadOnlyList<JournalEntry> cached)) return cached;
+            IReadOnlyList<JournalEntry> built = BuildJournal(n, category);
+            _journal[category?.ToString() ?? ""] = built;
+            return built;
+        }
+
+        private Narrative? _journalOf;
+        private long _journalRevision = -1;
+        private readonly Dictionary<string, IReadOnlyList<JournalEntry>> _journal = new Dictionary<string, IReadOnlyList<JournalEntry>>(StringComparer.Ordinal);
+
+        /// <summary>Relecture de la PR #76 : un onglet a une quête qui attend le choix de sa récompense (un repère sur l'onglet).</summary>
+        public bool RewardWaiting(QuestCategory category) => Journal(category).Any(q => q.ChoosingReward);
+
+        private IReadOnlyList<JournalEntry> BuildJournal(Narrative n, QuestCategory? category)
+        {
             var list = new List<JournalEntry>();
-            if (n is null) return list;
-            foreach (Quest q in _story.Quests.Where(q => n.IsActive(q.Id)))
+            IEnumerable<Quest> quests = _story.Quests.Where(q => category is null || q.Category == category);
+            foreach (Quest q in quests.Where(q => n.IsActive(q.Id)))
             {
+                bool tracked = n.Tracked == q.Id;
+                if (n.IsChoosingReward(q.Id))
+                {
+                    list.Add(new JournalEntry(Text(q.Name), Text("text.ui.journal.choose_reward"), null, false, q.Id, q.Category, tracked,
+                        q.RewardChoices.Select(c => c.Count > 1 ? $"{c.Count} × {ItemName(c.Item)}" : ItemName(c.Item)).ToList()));
+                    continue;
+                }
                 QuestStep step = n.CurrentStep(q.Id)!;
-                string? progress = step.Objective.Value > 1 ? $"{n.Progress(q.Id)}/{step.Objective.Value}" : null;
-                list.Add(new JournalEntry(Text(q.Name), Text(step.Text), progress, false));
+                string? progress = step.Objective.Value > 1 && step.Objective.Kind != ObjectiveKind.Deliver ? $"{n.Progress(q.Id)}/{step.Objective.Value}" : null;
+                list.Add(new JournalEntry(Text(q.Name), Text(step.Text), progress, false, q.Id, q.Category, tracked));
             }
-            foreach (Quest q in _story.Quests.Where(q => n.IsDone(q.Id))) list.Add(new JournalEntry(Text(q.Name), null, null, true));
+            foreach (Quest q in quests.Where(q => n.IsDone(q.Id))) list.Add(new JournalEntry(Text(q.Name), null, null, true, q.Id, q.Category));
             return list;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.6 : quête montrée sous la petite carte et dont l'objectif est sur la carte : la quête suivie, sinon la première en cours
+        /// (principales d'abord) ; null sans quête en cours.
+        /// </summary>
+        public JournalEntry? Followed
+        {
+            get
+            {
+                IReadOnlyList<JournalEntry> all = Journal();
+                return all.FirstOrDefault(q => q.Tracked) ?? all.FirstOrDefault(q => !q.Done && q.Category == QuestCategory.Main) ?? all.FirstOrDefault(q => !q.Done);
+            }
+        }
+
+        /// <summary>Sous-lot V1.6 : suit la quête en cours <paramref name="quest"/> (ou plus aucune : null) ; faux si elle n'est pas en cours.</summary>
+        public bool Track(string? quest)
+        {
+            if (World.Narrative is null || !World.Track(quest)) return false;
+            _dirty = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.6 : choisit la récompense de rang <paramref name="index"/> d'une quête qui l'attend (<see cref="JournalEntry.RewardChoices"/>) ;
+        /// un sac plein refuse sans rien changer (un message le dit).
+        /// </summary>
+        public DialogueRefusal ChooseReward(string quest, int index)
+        {
+            if (World.Narrative is null) return DialogueRefusal.Locked;
+            DialogueRefusal refusal = World.ChooseReward(quest, index, out IReadOnlyList<StoryEvent> events);
+            foreach (StoryEvent e in events) Story(e);
+            if (events.Count > 0) _dirty = true;
+            if (refusal == DialogueRefusal.NoRoom) Say("text.ui.no_room");
+            return refusal;
         }
 
         /// <summary>Découvertes faites, dans l'ordre de l'histoire (textes traduits).</summary>
@@ -866,9 +1014,8 @@ namespace EdS.Runtime
             return n is null ? Array.Empty<string>() : _story.Discoveries.Where(d => n.Discoveries.Contains(d.Id)).Select(d => Text(d.Text)).ToList();
         }
 
-        /// <summary>PNJ de l'histoire (dans la zone de l'histoire seulement : aucun dans un intérieur).</summary>
-        public IReadOnlyList<WorldMarker> Npcs() => World.InStoryZone
-            ? _story.Npcs.Select(n => new WorldMarker(n.Id, Text(n.Name), n.Position)).ToList() : (IReadOnlyList<WorldMarker>)Array.Empty<WorldMarker>();
+        /// <summary>PNJ de la zone en cours (sous-lot V1.6 : dans un intérieur, ceux de la pièce).</summary>
+        public IReadOnlyList<WorldMarker> Npcs() => HereNpcs.Select(n => new WorldMarker(n.Id, Text(n.Name), n.Position)).ToList();
 
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
         public IReadOnlyList<WorldMarker> Nodes() => World.InStoryZone
@@ -907,7 +1054,9 @@ namespace EdS.Runtime
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
                         Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
                             .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
-                        _zone.Doors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor);
+                        _zone.Doors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor,
+                        // Sous-lot V1.6 : les PNJ qui parlent dans une pièce y ont leur corps (décor des intérieurs).
+                        _zone.Indoor ? Npcs().Select(n => (n.Id, n.X, n.Z)) : null);
                     _mapSession = Opened;
                 }
                 return _map;
@@ -939,42 +1088,50 @@ namespace EdS.Runtime
         }
 
         /// <summary>
-        /// Sous-lot 12.9d : où mène l'étape en cours de la première quête active, d'après les données : lieu à atteindre (son centre),
-        /// créature à vaincre (sa place), fait appris d'un PNJ (le PNJ dont une réponse l'apprend) ou par la victoire sur le chef (sa première
-        /// forme), passage ouvert par un PNJ (celui dont une réponse l'ouvre). Null sans étape, ou sans lieu connu (objets à réunir).
+        /// Sous-lot 12.9d : où mène l'étape en cours de la quête suivie (sous-lot V1.6 : <see cref="Followed"/>), d'après les données : lieu à
+        /// atteindre (son centre), créature à vaincre (sa place ; la plus proche de sa famille), PNJ à qui parler ou livrer, fait appris d'un PNJ
+        /// (le PNJ dont une réponse l'apprend) ou par la victoire sur un chef (sa première forme), passage ouvert par un PNJ. Un PNJ d'une autre
+        /// zone (un intérieur) : la porte qui y mène ; dans un intérieur, la porte de sortie. Null sans étape, ou sans lieu connu.
         /// </summary>
         public MapMarker? Objective
         {
             get
             {
                 Narrative? n = World.Narrative;
-                if (n is null) return null;
-                foreach (Quest q in _story.Quests.Where(q => n.IsActive(q.Id)))
+                if (n is null || !(Followed is JournalEntry followed) || !(n.CurrentStep(followed.Id) is QuestStep step)) return null;
+                string label = Text("text.ui.map.objective");
+                MapMarker At(GroundVector p) => new MapMarker(MapMarkerKind.Objective, label, Meters(p.X), Meters(p.Z));
+                var o = step.Objective;
+                // PNJ visé, où qu'il vive.
+                Npc? npc = o.Kind switch
                 {
-                    if (!(n.CurrentStep(q.Id) is QuestStep step)) continue;
-                    string label = Text("text.ui.map.objective");
-                    // Intérieurs : l'étape se joue dehors ; dans un intérieur, l'objectif est sa porte (la première).
-                    if (!World.InStoryZone)
-                    {
-                        if (step.Objective.Kind == ObjectiveKind.Collect || _zone.Doors.Count == 0) return null;
-                        Door exit = _zone.Doors[0];
-                        return new MapMarker(MapMarkerKind.Objective, label, Meters(exit.Position.X), Meters(exit.Position.Z));
-                    }
-                    var o = step.Objective;
-                    switch (o.Kind)
-                    {
-                        case ObjectiveKind.Reach when _zone.Places.FirstOrDefault(p => p.Id == o.Id) is Place place:
-                            return new MapMarker(MapMarkerKind.Objective, label, (Meters(place.Min.X) + Meters(place.Max.X)) / 2,
-                                (Meters(place.Min.Z) + Meters(place.Max.Z)) / 2);
-                        case ObjectiveKind.Defeat when _zone.Populations.FirstOrDefault(p => p.Creature == o.Id)?.Template.Placement is CombatantPlacement at:
-                            return new MapMarker(MapMarkerKind.Objective, label, Meters(at.Position.X), Meters(at.Position.Z));
-                        case ObjectiveKind.Fact when NpcWith(EffectKind.SetFact, o.Id) is Npc npc:
-                            return new MapMarker(MapMarkerKind.Objective, label, Meters(npc.Position.X), Meters(npc.Position.Z));
-                        case ObjectiveKind.Fact when _zone.Boss is { } boss && boss.Fact == o.Id && boss.Forms[0].Placement is CombatantPlacement chef:
-                            return new MapMarker(MapMarkerKind.Objective, label, Meters(chef.Position.X), Meters(chef.Position.Z));
-                        case ObjectiveKind.Passage when NpcWith(EffectKind.OpenPassage, o.Id) is Npc opener:
-                            return new MapMarker(MapMarkerKind.Objective, label, Meters(opener.Position.X), Meters(opener.Position.Z));
-                    }
+                    ObjectiveKind.Talk => _story.Npc(o.Id),
+                    ObjectiveKind.Deliver => _story.Npc(o.Npc!),
+                    ObjectiveKind.Fact => NpcWith(EffectKind.SetFact, o.Id),
+                    ObjectiveKind.Passage => NpcWith(EffectKind.OpenPassage, o.Id),
+                    _ => null,
+                };
+                if (npc != null && npc.Zone == (World.InStoryZone ? null : _zone.Id)) return At(npc.Position);
+                // Intérieurs : le PNJ vit dans une pièce dont une porte est ici ; sinon, dans une pièce, la porte de sortie.
+                if (npc?.Zone != null && _zone.Doors.FirstOrDefault(d => d.To == npc.Zone) is Door toNpc) return At(toNpc.Position);
+                if (!World.InStoryZone)
+                {
+                    if (o.Kind == ObjectiveKind.Collect || o.Kind == ObjectiveKind.Equipped || _zone.Doors.Count == 0) return null;
+                    return At(_zone.Doors[0].Position);
+                }
+                switch (o.Kind)
+                {
+                    case ObjectiveKind.Reach when _zone.Places.FirstOrDefault(p => p.Id == o.Id) is Place place:
+                        return new MapMarker(MapMarkerKind.Objective, label, (Meters(place.Min.X) + Meters(place.Max.X)) / 2, (Meters(place.Min.Z) + Meters(place.Max.Z)) / 2);
+                    case ObjectiveKind.Defeat when _zone.Populations.FirstOrDefault(p => p.Creature == o.Id)?.Template.Placement is CombatantPlacement at:
+                        return At(at.Position);
+                    case ObjectiveKind.DefeatFamily:
+                        GroundVector from = Me ?? _zone.Entry.Position;
+                        CombatantPlacement? nearest = _zone.Populations.Where(p => p.Family == o.Id).Select(p => p.Template.Placement)
+                            .Where(x => x != null).OrderBy(x => Distance2(from, x!.Position)).FirstOrDefault();
+                        return nearest is null ? null : At(nearest.Position);
+                    case ObjectiveKind.Fact when _zone.Bosses.FirstOrDefault(b => b.Fact == o.Id) is { } boss && boss.Forms[0].Placement is CombatantPlacement chef:
+                        return At(chef.Position);
                 }
                 return null;
             }
@@ -1040,7 +1197,9 @@ namespace EdS.Runtime
         }
 
         /// <summary>Formes du chef de la zone (pour l'affichage).</summary>
-        public bool IsBoss(string combatant) => _zone.Boss is { } b && (b.Forms.Any(f => f.Id == combatant) || World.BossForm == combatant);   // forme revenue sous une nouvelle identité (revue Codex de la PR #48)
+        /// <remarks>Sous-lot V1.6 : tous les chefs de la zone (le chef des bandits aussi), y compris une forme revenue sous une nouvelle identité
+        /// (revue Codex de la PR #48).</remarks>
+        public bool IsBoss(string combatant) => World.IsBossForm(combatant);
 
         // --- Halte, reprise, sauvegarde ---------------------------------------------------------------------------------
 

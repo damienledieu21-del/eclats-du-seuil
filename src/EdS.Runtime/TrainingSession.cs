@@ -90,7 +90,7 @@ namespace EdS.Runtime
             ReferenceBuild? reference, string? customName)
         {
             IEnumerable<CombatantSetup> combatants = scenario.Combatants.Select(c => c == player && playerBuild != null
-                ? new CharacterSetup(player.Id, player.Team, player.Class, playerBuild, player.Initiative, player.Placement, player.ArrivalMs, player.Gear, player.Consumables)
+                ? new CharacterSetup(player.Id, player.Team, player.Class, playerBuild, player.Initiative, player.Placement, player.ArrivalMs, player.Gear, player.Consumables, player.Shield)
                 : c);
             var setup = new CombatSetup(scenario.Seed, duration, scenario.Stats, scenario.Damage, scenario.Progression, scenario.Combat, combatants,
                 Array.Empty<CombatCommand>(), scenario.Data, scenario.Space, scenario.Zone);

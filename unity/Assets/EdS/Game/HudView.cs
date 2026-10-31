@@ -874,7 +874,8 @@ namespace EdS.Game
             _placeSub.Value = a.ZoneName + " · " + a.TimeOfDay;
             _mapHint.Value = a.Text("text.ui.map.hint");
 
-            JournalEntry quest = compact ? null : a.Journal().FirstOrDefault(q => !q.Done);
+            // Sous-lot V1.6 : la quête suivie (choisie dans le journal), sinon la première principale en cours.
+            JournalEntry quest = compact ? null : a.Followed;
             UiKit.Show(_quest, quest != null);
             if (quest != null)
             {

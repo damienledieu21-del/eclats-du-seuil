@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/items.schema.json",
   "title": "Éclats du Seuil — catalogue des objets",
-  "description": "Sous-lot 12.3. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ItemValidator).",
+  "description": "Sous-lot 12.3, version 3 au sous-lot V1.2 (18 places, garde des boucliers, équipement de départ). Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ItemValidator).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "kind": {
       "const": "items"
@@ -30,6 +30,7 @@
       "required": [
         "slots",
         "inventorySize",
+        "starting",
         "items",
         "loot"
       ],
@@ -37,18 +38,39 @@
         "slots": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 12,
+          "maxItems": 20,
           "items": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*$"
+            "$ref": "#/$defs/slot"
           },
-          "description": "Emplacements d'équipement (tranche : quatre, dont le bouclier)."
+          "description": "Places d'équipement, dans l'ordre de l'écran (V1.2 : 18 places)."
         },
         "inventorySize": {
           "type": "integer",
           "minimum": 1,
           "maximum": 200,
           "description": "Places de l'inventaire (tranche : 24)."
+        },
+        "starting": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "item"
+            ],
+            "properties": {
+              "item": {
+                "type": "string",
+                "pattern": "^item(\\.[a-z0-9_]+)+$"
+              },
+              "class": {
+                "type": "string",
+                "description": "Classe qui le reçoit ; absente : toutes."
+              }
+            }
+          },
+          "description": "Équipement de départ, porté d'emblée par un nouveau personnage ; il remplit les places obligatoires."
         },
         "items": {
           "type": "array",
@@ -68,6 +90,47 @@
     }
   },
   "$defs": {
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "accepts": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Sorte d'objet reçue (ring pour les deux anneaux) ; absente : l'identifiant de la place."
+        },
+        "group": {
+          "enum": [
+            "combat",
+            "shard",
+            "tool"
+          ],
+          "description": "combat (défaut), shard (l'Éclat du Seuil) ou tool (outil de métier, sans bonus de combat)."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Toujours occupée, pour toutes les classes : on échange, on n'ôte pas."
+        },
+        "requiredBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Classes pour lesquelles la place est toujours occupée (le bouclier du Bastion)."
+        },
+        "guard": {
+          "type": "boolean",
+          "description": "La place porte la garde : ses objets ont une garde propre (le bouclier), une seule place."
+        }
+      }
+    },
     "item": {
       "type": "object",
       "additionalProperties": false,
@@ -85,6 +148,12 @@
         "name": {
           "type": "string",
           "minLength": 1
+        },
+        "icon": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "maxLength": 64,
+          "description": "Sous-lot V1.2 : icône peinte (Resources/EdsInterface/Peintes, sans extension) ; absente : la fin de l'identifiant."
         },
         "type": {
           "enum": [
@@ -112,7 +181,7 @@
         },
         "slot": {
           "type": "string",
-          "description": "Équipement seulement : un emplacement de slots."
+          "description": "Équipement seulement : une sorte de place (accepts d'une place)."
         },
         "requiredLevel": {
           "type": "integer",
@@ -176,6 +245,39 @@
           "minimum": 0,
           "maximum": 3600000,
           "description": "Objet de soin seulement : recharge partagée qui suit son usage, en ms (multiple de 50)."
+        },
+        "guard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "damageReduction",
+            "costPerBlock",
+            "parryWindowMs"
+          ],
+          "properties": {
+            "damageReduction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "costPerBlock": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "parryWindowMs": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "description": "Bouclier seulement (place qui porte la garde) : part bloquée, endurance d'un blocage, fenêtre de parade ; bornes : combat.shield des règles."
+        },
+        "fits": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string"
+          },
+          "description": "Équipement seulement : arbres de talents auxquels l'objet convient (adéquation au build, H5)."
         }
       }
     },

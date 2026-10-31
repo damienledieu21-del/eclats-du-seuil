@@ -305,8 +305,8 @@ public class InterieursTests : IDisposable
         Assert.Equal("zone.auberge", saved.Zone);
         Assert.True(saved.WorldTick >= tick);
         Assert.Equal(1, saved.Sessions);   // la session des Vallons jouée ; celle de l'auberge est la deuxième
-        // Dans l'intérieur : ni PNJ, ni nœud, ni atelier ; la porte ramène au bourg.
-        Assert.Empty(a.Npcs());
+        // Dans l'intérieur : ni nœud ni atelier ; la porte ramène au bourg. Sous-lot V1.6 : le seul PNJ est celui de la pièce, l'aubergiste.
+        Assert.Equal("npc.aubergiste", Assert.Single(a.Npcs()).Id);
         Assert.Empty(a.Nodes());
         Assert.Empty(a.Workshops());
         Assert.Equal("Bourg d'Aube", Assert.Single(a.Doors()).Name);

@@ -34,6 +34,8 @@ public class HelpKeysTests
         Assert.All(keys, k => Assert.True(char.IsUpper(k.Action[0]) || char.IsDigit(k.Action[0]), k.ToString()));
         // Sous-lot V1.5 : B ouvre l'écran des compétences (K reste l'atelier), dit autrement que les touches 1 à 4.
         Assert.Equal("Choisir ses compétences", keys.Single(k => k.Key == "B").Action);
+        // Sous-lot V1.2 : I ouvre l'écran du personnage et de ses 18 places ; aucune touche de plus (filtres, rangement, échange : à la souris).
+        Assert.Equal("Personnage et équipement", keys.Single(k => k.Key == "I").Action);
         Assert.Equal(keys.Count, keys.Select(k => k.Action).Distinct().Count());
     }
 

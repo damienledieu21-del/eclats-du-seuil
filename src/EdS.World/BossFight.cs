@@ -62,6 +62,14 @@ namespace EdS.World
         }
 
         public string CurrentForm => _current;
+
+        /// <summary>Sous-lot V1.6 : chef de ce combat.</summary>
+        public Boss Boss => _boss;
+
+        /// <summary>Sous-lot V1.6 : récompenses de la première victoire à donner (une place a manqué), et refus déjà annoncé.</summary>
+        public bool RewardPending { get; set; }
+
+        public bool RewardAnnounced { get; set; }
         public int Phase => _phase;
         public bool IsDefeated => _over;
 

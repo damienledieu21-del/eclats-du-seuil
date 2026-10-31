@@ -96,10 +96,19 @@ namespace EdS.Data.Story
 
         /// <summary>
         /// Version 1 (sous-lot 12.5) : PNJ, dialogues, quêtes, découvertes. Version 2 (sous-lot V1.1) : effet <c>giveMoney</c> (pièces de
-        /// cuivre données à la bourse, de 1 à <see cref="MaxMoney"/>). Une version antérieure est refusée (pré-alpha : aucune migration des
-        /// fichiers de données).
+        /// cuivre données à la bourse, de 1 à <see cref="MaxMoney"/>). Version 3 (sous-lot V1.6) : catégorie de quête obligatoire
+        /// (<c>category</c> : « main » ou « side »), conditions d'ouverture (<c>requires</c>) et récompenses au choix (<c>rewardChoice</c>,
+        /// deux ou trois <c>giveItem</c>) facultatives ; objectifs <c>talk</c>, <c>deliver</c> (avec <c>npc</c>), <c>defeatFamily</c>,
+        /// <c>equipped</c> ; effet <c>takeMoney</c> ; condition <c>levelAtLeast</c> ; zone facultative d'un PNJ (<c>zone</c> : un intérieur) ;
+        /// étape « reward » réservée. Une version antérieure est refusée (pré-alpha : aucune migration des fichiers de données).
         /// </summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
+
+        /// <summary>Sous-lot V1.6 : niveau le plus haut d'une condition <c>levelAtLeast</c> (les règles en permettent 30 ; marge).</summary>
+        public const long MaxLevel = 100;
+
+        /// <summary>Sous-lot V1.6 : récompenses au choix d'une quête, de 2 à 3 (« un objet parmi deux ou trois »).</summary>
+        public const int MinRewardChoices = 2, MaxRewardChoices = 3;
 
         /// <summary>Sous-lot V1.1 : pièces de cuivre données par un effet, au plus (10 000 or).</summary>
         public const long MaxMoney = 100_000_000;
@@ -114,19 +123,27 @@ namespace EdS.Data.Story
             ["questActive"] = ConditionKind.QuestActive, ["questAt"] = ConditionKind.QuestAt, ["questDone"] = ConditionKind.QuestDone,
             ["trustAtLeast"] = ConditionKind.TrustAtLeast, ["trustBelow"] = ConditionKind.TrustBelow, ["hasItem"] = ConditionKind.HasItem,
             ["phase"] = ConditionKind.Phase, ["inPlace"] = ConditionKind.InPlace, ["passageOpen"] = ConditionKind.PassageOpen,
+            ["levelAtLeast"] = ConditionKind.LevelAtLeast, ["questReward"] = ConditionKind.QuestReward,
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
         {
             ["setFact"] = EffectKind.SetFact, ["trust"] = EffectKind.Trust, ["startQuest"] = EffectKind.StartQuest, ["giveItem"] = EffectKind.GiveItem,
             ["takeItem"] = EffectKind.TakeItem, ["giveXp"] = EffectKind.GiveXp, ["openPassage"] = EffectKind.OpenPassage, ["discover"] = EffectKind.Discover,
-            ["giveMoney"] = EffectKind.GiveMoney,
+            ["giveMoney"] = EffectKind.GiveMoney, ["takeMoney"] = EffectKind.TakeMoney,
         });
 
         public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new ReadOnlyDictionary<string, ObjectiveKind>(new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
         {
             ["fact"] = ObjectiveKind.Fact, ["reach"] = ObjectiveKind.Reach, ["defeat"] = ObjectiveKind.Defeat, ["collect"] = ObjectiveKind.Collect,
-            ["passage"] = ObjectiveKind.Passage,
+            ["passage"] = ObjectiveKind.Passage, ["talk"] = ObjectiveKind.Talk, ["deliver"] = ObjectiveKind.Deliver,
+            ["defeatFamily"] = ObjectiveKind.DefeatFamily, ["equipped"] = ObjectiveKind.Equipped,
+        });
+
+        /// <summary>Sous-lot V1.6 : catégories de quête (onglets du journal).</summary>
+        public static IReadOnlyDictionary<string, QuestCategory> Categories { get; } = new ReadOnlyDictionary<string, QuestCategory>(new Dictionary<string, QuestCategory>(StringComparer.Ordinal)
+        {
+            ["main"] = QuestCategory.Main, ["side"] = QuestCategory.Side,
         });
 
         public static readonly IReadOnlyList<string> Phases = new ReadOnlyCollection<string>(new[] { "dawn", "day", "dusk", "night" });
@@ -138,7 +155,9 @@ namespace EdS.Data.Story
 
         public static bool IsFactId(string? id) => id != null && id.Length <= 200 && FactId.IsMatch(id);
 
-        public static StoryLoadResult Validate(StoryDocument document, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport? report = null)
+        /// <param name="interiors">Sous-lot V1.6 : autres zones du monde (intérieurs), où un PNJ peut vivre (<c>zone</c>) ; null : aucune.</param>
+        public static StoryLoadResult Validate(StoryDocument document, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport? report = null,
+            IReadOnlyList<ZoneDefinition>? interiors = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (texts is null) throw new ArgumentNullException(nameof(texts));
@@ -149,7 +168,7 @@ namespace EdS.Data.Story
                 return new StoryLoadResult(report, null);
             StoryData? d = document.Data;
             if (d is null) { TextsValidator.Missing(report, "$.data", "PNJ, dialogues, quêtes, découvertes"); return new StoryLoadResult(report, null); }
-            var c = new Checker(report, texts, zone, items, d);
+            var c = new Checker(report, texts, zone, items, d, interiors ?? Array.Empty<ZoneDefinition>());
             StoryBook? book = c.Run(document.SchemaVersion!.Value, document.ContentVersion);
             return new StoryLoadResult(report, report.IsValid ? book : null);
         }
@@ -167,9 +186,11 @@ namespace EdS.Data.Story
             private readonly HashSet<string> _discoveries = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
+            private readonly IReadOnlyList<ZoneDefinition> _interiors;
 
-            public Checker(ValidationReport report, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, StoryData data)
+            public Checker(ValidationReport report, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, StoryData data, IReadOnlyList<ZoneDefinition> interiors)
             {
+                _interiors = interiors;
                 _r = report;
                 _texts = texts;
                 _zone = zone;
@@ -203,11 +224,19 @@ namespace EdS.Data.Story
                         string path = $"$.data.npcs[{i}]";
                         if (_d.Npcs[i] is not NpcData n) continue;
                         bool ok = Text(n.Name, path + ".name");
+                        // Sous-lot V1.6 : un PNJ peut vivre dans un intérieur (une autre zone du monde) ; sa position est alors dans cette zone.
+                        ZoneDefinition home = _zone;
+                        if (n.Zone != null)
+                        {
+                            if (n.Zone == _zone.Id) { _r.Add(path + ".zone", ValidationCode.InvalidValue, "zone de l'histoire : ne pas la donner."); ok = false; }
+                            else if (_interiors.FirstOrDefault(z => z.Id == n.Zone) is ZoneDefinition inside) home = inside;
+                            else { _r.Add(path + ".zone", ValidationCode.UnknownReference, $"zone inconnue « {n.Zone} » (une zone reliée par des portes attendue)."); ok = false; }
+                        }
                         if (n.Position is null || n.Position.X is null || n.Position.Z is null) { TextsValidator.Missing(_r, path + ".position", "[x, z]"); ok = false; }
-                        else if (!Inside(Point(n.Position))) { _r.Add(path + ".position", ValidationCode.OutOfRange, "PNJ hors de l'aire praticable de la zone."); ok = false; }
+                        else if (!Inside(Point(n.Position), home)) { _r.Add(path + ".position", ValidationCode.OutOfRange, "PNJ hors de l'aire praticable de sa zone."); ok = false; }
                         if (n.Dialogue is null) { TextsValidator.Missing(_r, path + ".dialogue", "dialogue du PNJ"); ok = false; }
                         else if (!_dialogues.Contains(n.Dialogue)) { _r.Add(path + ".dialogue", ValidationCode.UnknownReference, $"dialogue inconnu « {n.Dialogue} »."); ok = false; }
-                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!));
+                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone));
                     }
 
                 var dialogues = new List<Dialogue>();
@@ -220,8 +249,9 @@ namespace EdS.Data.Story
                     for (int i = 0; i < _d.Quests.Count; i++)
                         if (_d.Quests[i] is QuestData q && CheckQuest(q, $"$.data.quests[{i}]") is { } quest) quests.Add(quest);
 
-                // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait.
-                if (_zone.Boss is { } boss) _factsSet.Add(boss.Fact);
+                CheckRequirementCycles(quests);
+                // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait ; sous-lot V1.6 : celle sur chaque chef aussi.
+                foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);
                 // Un fait attendu doit pouvoir être appris : sinon la condition ou l'objectif ne serait jamais rempli.
                 foreach (var (fact, path) in _factsNeeded)
                     if (!_factsSet.Contains(fact))
@@ -242,6 +272,48 @@ namespace EdS.Data.Story
                     if (value is null) TextsValidator.Missing(_r, p + ".id", "identifiant");
                     else if (value.Length > 200 || !pattern.IsMatch(value)) _r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {value} » mal formé.");
                     else if (!ids.Add(value)) _r.Add(p + ".id", ValidationCode.DuplicateId, $"identifiant « {value} » déjà donné plus haut.");
+                }
+            }
+
+            /// <summary>
+            /// Relecture de la PR #76 : les conditions d'ouverture « après une autre quête » (questDone, questActive, questAt, questReward) ne
+            /// forment pas de cycle (A s'ouvre après B, B après A : aucune ne s'ouvrirait). Chaque condition d'un cycle est refusée, à son
+            /// chemin <c>quests[i].requires[j]</c>.
+            /// </summary>
+            private void CheckRequirementCycles(IReadOnlyList<Quest> quests)
+            {
+                static bool Gate(StoryCondition c) => c.Kind is ConditionKind.QuestDone or ConditionKind.QuestActive or ConditionKind.QuestAt or ConditionKind.QuestReward;
+                // Revue Codex de la PR #76 : un identifiant de quête donné deux fois est déjà refusé (Declare) ; seule sa première quête compte
+                // ici (jamais d'exception avant le rapport).
+                var edges = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                foreach (Quest q in quests)
+                    if (!edges.ContainsKey(q.Id))
+                        edges[q.Id] = q.Requires.Where(Gate).Select(c => c.Id).Where(t => t != q.Id).Distinct(StringComparer.Ordinal).ToList();
+                bool Reaches(string from, string to)
+                {
+                    var seen = new HashSet<string>(StringComparer.Ordinal);
+                    var stack = new Stack<string>();
+                    stack.Push(from);
+                    while (stack.Count > 0)
+                    {
+                        string q = stack.Pop();
+                        if (q == to) return true;
+                        if (!seen.Add(q) || !edges.TryGetValue(q, out List<string> next)) continue;
+                        foreach (string n in next) stack.Push(n);
+                    }
+                    return false;
+                }
+                if (_d.Quests is null) return;
+                for (int i = 0; i < _d.Quests.Count; i++)
+                {
+                    if (_d.Quests[i]?.Id is not string id || quests.FirstOrDefault(q => q.Id == id) is not Quest quest) continue;
+                    if (_d.Quests.Take(i).Any(earlier => earlier?.Id == id)) continue;   // doublon : déjà refusé à son identifiant
+                    for (int j = 0; j < quest.Requires.Count; j++)
+                    {
+                        StoryCondition c = quest.Requires[j];
+                        if (Gate(c) && c.Id != id && Reaches(c.Id, id))
+                            _r.Add($"$.data.quests[{i}].requires[{j}]", ValidationCode.InvalidValue, $"cycle d'ouverture : « {c.Id} » s'ouvre elle-même après « {id} ».");
+                    }
                 }
             }
 
@@ -316,8 +388,12 @@ namespace EdS.Data.Story
                     if (q.Steps[i] is not QuestStepData s) { TextsValidator.Missing(_r, p, "étape"); ok = false; continue; }
                     bool stepOk = true;
                     if (s.Id is null) { TextsValidator.Missing(_r, p + ".id", "identifiant de l'étape"); stepOk = false; }
-                    else if (!LocalId.IsMatch(s.Id) || s.Id.Length > 64 || s.Id == Saves.QuestProgress.Done)
-                    { _r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {s.Id} » mal formé (« done » est réservé à une quête terminée)."); stepOk = false; }
+                    else if (!LocalId.IsMatch(s.Id) || s.Id.Length > 64 || s.Id == Saves.QuestProgress.Done || s.Id == Saves.QuestProgress.Reward)
+                    {
+                        _r.Add(p + ".id", ValidationCode.InvalidValue,
+                            $"identifiant « {s.Id} » mal formé (« done » est réservé à une quête terminée, « reward » à une récompense au choix en attente).");
+                        stepOk = false;
+                    }
                     else if (!ids.Add(s.Id)) { _r.Add(p + ".id", ValidationCode.DuplicateId, $"étape « {s.Id} » déjà donnée."); stepOk = false; }
                     stepOk &= Text(s.Text, p + ".text");
                     Objective? objective = ObjectiveOf(s.Objective, p + ".objective");
@@ -326,7 +402,36 @@ namespace EdS.Data.Story
                     else ok = false;
                 }
                 List<StoryEffect>? rewards = EffectsOf(q.Effects, path + ".effects");
-                return ok && rewards != null && q.Id != null ? new Quest(q.Id, q.Name!, steps, rewards) : null;
+                // Sous-lot V1.6 : onglet du journal (obligatoire), conditions d'ouverture et récompenses au choix (facultatives).
+                QuestCategory category = QuestCategory.Main;
+                if (q.Category is null) { TextsValidator.Missing(_r, path + ".category", "« main » ou « side »"); ok = false; }
+                else if (!Categories.TryGetValue(q.Category, out category))
+                { _r.Add(path + ".category", ValidationCode.InvalidValue, $"catégorie inconnue « {q.Category} » ; possibles : {string.Join(", ", Categories.Keys)}."); ok = false; }
+                List<StoryCondition>? requires = q.Requires is null ? new List<StoryCondition>() : ConditionsOf(q.Requires, path + ".requires");
+                // Relecture de la PR #76 : une quête ne s'ouvre pas sur son propre état (elle ne s'ouvrirait jamais).
+                if (requires != null && q.Id != null)
+                    for (int j = 0; j < requires.Count; j++)
+                        if (requires[j].Id == q.Id && requires[j].Kind is ConditionKind.QuestDone or ConditionKind.QuestActive or ConditionKind.QuestAt or ConditionKind.QuestReward)
+                        { _r.Add($"{path}.requires[{j}].id", ValidationCode.InvalidValue, "une quête ne s'ouvre pas sur son propre état : elle ne s'ouvrirait jamais."); ok = false; }
+                var choices = new List<RewardChoice>();
+                if (q.RewardChoice != null)
+                {
+                    string cp = path + ".rewardChoice";
+                    List<StoryEffect>? offered = EffectsOf(q.RewardChoice, cp);
+                    if (q.RewardChoice.Count < MinRewardChoices || q.RewardChoice.Count > MaxRewardChoices)
+                    { _r.Add(cp, ValidationCode.OutOfRange, $"de {MinRewardChoices} à {MaxRewardChoices} récompenses au choix."); ok = false; }
+                    if (offered is null) ok = false;
+                    else
+                        for (int i = 0; i < offered.Count; i++)
+                        {
+                            if (offered[i].Kind != EffectKind.GiveItem)
+                            { _r.Add($"{cp}[{i}].do", ValidationCode.InvalidValue, "une récompense au choix est un objet (giveItem)."); ok = false; }
+                            else if (choices.Any(x => x.Item == offered[i].Id))
+                            { _r.Add($"{cp}[{i}].id", ValidationCode.DuplicateId, $"objet « {offered[i].Id} » déjà proposé."); ok = false; }
+                            else choices.Add(new RewardChoice(offered[i].Id, (int)offered[i].Value));
+                        }
+                }
+                return ok && rewards != null && requires != null && q.Id != null ? new Quest(q.Id, q.Name!, steps, rewards, category, requires, choices) : null;
             }
 
             private List<StoryCondition>? ConditionsOf(List<TermData?>? terms, string path)
@@ -343,10 +448,13 @@ namespace EdS.Data.Story
                         _r.Add(p + ".if", ValidationCode.UnknownReference, $"condition inconnue « {t.Kind} » ; possibles : {string.Join(", ", Conditions.Keys)}.");
                         continue;
                     }
+                    if (!NoNpc(t, p)) continue;
                     bool ok = kind switch
                     {
+                        ConditionKind.LevelAtLeast => NoId(t, p) && Value(t, p, 1, MaxLevel) && NoStep(t, p),
                         ConditionKind.Fact or ConditionKind.NotFact => Fact(t, p, needed: kind == ConditionKind.Fact) && NoValue(t, p) && NoStep(t, p),
-                        ConditionKind.QuestNotStarted or ConditionKind.QuestActive or ConditionKind.QuestDone => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.QuestNotStarted or ConditionKind.QuestActive or ConditionKind.QuestDone or ConditionKind.QuestReward =>
+                            Ref(t, p, _quests.Keys, "quête") && NoValue(t, p) && NoStep(t, p),
                         ConditionKind.QuestAt => Ref(t, p, _quests.Keys, "quête") && QuestStepRef(t, p) && NoValue(t, p),
                         ConditionKind.TrustAtLeast or ConditionKind.TrustBelow => Ref(t, p, _npcs, "PNJ") && Value(t, p, -MaxTrust, MaxTrust) && NoStep(t, p),
                         ConditionKind.HasItem => ItemRef(t, p) && Value(t, p, 1, MaxCount) && NoStep(t, p),
@@ -354,7 +462,7 @@ namespace EdS.Data.Story
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
-                    if (ok) list.Add(new StoryCondition(kind, t.Id!, t.Value ?? 0, t.Step));
+                    if (ok) list.Add(new StoryCondition(kind, t.Id ?? string.Empty, t.Value ?? 0, t.Step));
                 }
                 return list.Count == terms.Count ? list : null;
             }
@@ -373,7 +481,7 @@ namespace EdS.Data.Story
                         _r.Add(p + ".do", ValidationCode.UnknownReference, $"effet inconnu « {t.Kind} » ; possibles : {string.Join(", ", Effects.Keys)}.");
                         continue;
                     }
-                    if (!NoStep(t, p)) continue;
+                    if (!NoStep(t, p) || !NoNpc(t, p)) continue;
                     bool ok = kind switch
                     {
                         EffectKind.SetFact => Fact(t, p, needed: false) && NoValue(t, p),
@@ -381,7 +489,7 @@ namespace EdS.Data.Story
                         EffectKind.StartQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p),
                         EffectKind.GiveItem or EffectKind.TakeItem => ItemRef(t, p) && Value(t, p, 1, MaxCount),
                         EffectKind.GiveXp => NoId(t, p) && Value(t, p, 1, MaxXp),
-                        EffectKind.GiveMoney => NoId(t, p) && Value(t, p, 1, MaxMoney),
+                        EffectKind.GiveMoney or EffectKind.TakeMoney => NoId(t, p) && Value(t, p, 1, MaxMoney),
                         EffectKind.OpenPassage => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p),
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };
@@ -400,15 +508,20 @@ namespace EdS.Data.Story
                     return null;
                 }
                 if (!NoStep(t, path)) return null;
+                if (kind != ObjectiveKind.Deliver && !NoNpc(t, path)) return null;
                 bool ok = kind switch
                 {
+                    ObjectiveKind.Talk => Ref(t, path, _npcs, "PNJ") && NoValue(t, path),
+                    ObjectiveKind.Deliver => ItemRef(t, path) && Value(t, path, 1, MaxCount) && NpcRef(t, path),
+                    ObjectiveKind.DefeatFamily => Ref(t, path, _zone.Populations.Select(x => x.Family), "famille de créatures") && Value(t, path, 1, MaxDefeat),
+                    ObjectiveKind.Equipped => EquipmentRef(t, path) && NoValue(t, path),
                     ObjectiveKind.Fact => Fact(t, path, needed: true) && NoValue(t, path),
                     ObjectiveKind.Reach => Ref(t, path, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, path),
                     ObjectiveKind.Defeat => Ref(t, path, _zone.Populations.Select(x => x.Creature), "population") && Value(t, path, 1, MaxDefeat),
                     ObjectiveKind.Collect => ItemRef(t, path) && Value(t, path, 1, MaxCount),
                     _ => Ref(t, path, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, path),
                 };
-                return ok ? new Objective(kind, t.Id!, t.Value ?? 1) : null;
+                return ok ? new Objective(kind, t.Id!, t.Value ?? 1, t.Npc) : null;
             }
 
             private bool Fact(TermData t, string p, bool needed)
@@ -471,6 +584,31 @@ namespace EdS.Data.Story
                 return false;
             }
 
+            /// <summary>Sous-lot V1.6 : seul l'objectif deliver nomme un PNJ (<c>npc</c>).</summary>
+            private bool NoNpc(TermData t, string p)
+            {
+                if (!t.Present.Contains("npc") && t.Npc is null) return true;
+                _r.Add(p + ".npc", ValidationCode.InvalidValue, "seul l'objectif deliver nomme un PNJ.");
+                return false;
+            }
+
+            private bool NpcRef(TermData t, string p)
+            {
+                if (t.Npc is null) { TextsValidator.Missing(_r, p + ".npc", "PNJ à qui livrer"); return false; }
+                if (_npcs.Contains(t.Npc)) return true;
+                _r.Add(p + ".npc", ValidationCode.UnknownReference, $"PNJ inconnu « {t.Npc} ».");
+                return false;
+            }
+
+            private bool EquipmentRef(TermData t, string p)
+            {
+                if (!ItemRef(t, p)) return false;
+                _items.TryGetItem(t.Id!, out ItemDefinition item);
+                if (item.Slot != null) return true;
+                _r.Add(p + ".id", ValidationCode.InvalidValue, $"« {t.Id} » ne se porte pas (aucun emplacement).");
+                return false;
+            }
+
             private bool NoStep(TermData t, string p)
             {
                 if (!t.Present.Contains("step") && t.Step is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
@@ -486,9 +624,11 @@ namespace EdS.Data.Story
                 return false;
             }
 
-            private bool Inside(GroundVector p)
+            private bool Inside(GroundVector p) => Inside(p, _zone);
+
+            private static bool Inside(GroundVector p, ZoneDefinition zone)
             {
-                CombatSpace s = _zone.Setup.Space!;
+                CombatSpace s = zone.Setup.Space!;
                 return p.X >= s.Min.X && p.X <= s.Max.X && p.Z >= s.Min.Z && p.Z <= s.Max.Z;
             }
 

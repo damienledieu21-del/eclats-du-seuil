@@ -22,6 +22,12 @@ namespace EdS.Runtime
             ["duelliste"] = "Duelliste",
             ["loup_cache"] = "Loup",
             ["pillard"] = "Pillard",
+            // Sous-lot V1.6 : bandits, leur chef et le loup blanc.
+            ["bandit_epee"] = "Bandit à l'épée",
+            ["bandit_arc"] = "Bandit archer",
+            ["chef_des_bandits"] = "Chef des bandits",
+            ["chef_des_bandits_furieux"] = "Chef des bandits furieux",
+            ["loup_blanc"] = "Loup blanc",
         };
 
         private static readonly Dictionary<string, string> Attacks = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -35,6 +41,8 @@ namespace EdS.Runtime
             ["onde_du_seuil"] = "Onde du Seuil",
             ["percee"] = "Percée",
             ["ruee"] = "Ruée",
+            ["volee"] = "Volée",   // sous-lot V1.6
+            ["charge_du_chef"] = "Charge du chef",
         };
 
         /// <summary>Nom à montrer pour le combattant <paramref name="id"/> (vide pour un identifiant vide).</summary>

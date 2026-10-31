@@ -65,6 +65,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - **Catalogue** : quelques dizaines d'objets pour les niveaux 1 à 20, plusieurs bons choix par tranche de niveau à rareté égale (H5) ; niveau requis, puissance, rareté et adéquation au build restent quatre notions distinctes.
 - **Inventaire** : 24 places gardées pour l'instant, avec des sacs plus tard (vague 4). Tri et filtres simples.
 - **Unity** : écran du personnage avec toutes les places, **comparaison claire** (vert ou rouge, avec les chiffres) en survolant un objet. Visible sur le Bastion : l'arme, le bouclier et la cape d'abord (les pièces d'armure attendront des modèles en morceaux, sans achat sans l'accord de Damien).
+- **État** (30 octobre 2026, en PR) : fait. 18 places (catalogue en version 3), bouclier du Bastion et Éclat du Seuil toujours portés, garde propre de chaque bouclier (règles 0.13.0, moteur 0.25.0, nouvelle référence figée), 73 équipements des niveaux 1 à 20 avec leurs prix, équipement de départ, tri et filtres, sauvegarde en version 7, écran aux 18 places avec comparaison, arme, bouclier et cape visibles (formes simples pour la cape et les armes autres que l'épée du paladin). Les effets, les ensembles et les propriétés tirées restent pour V1.3. Détail : [MONDE.md](MONDE.md#équipement-complet-sous-lot-v12).
 
 ### V1.3 — Effets d'équipement : armes, bijoux, ensembles, propriétés tirées (L)
 
@@ -95,6 +96,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - **PNJ des intérieurs** qui parlent (aubergiste, prêtre, habitant) : la limite « ni dialogue dans une pièce » des intérieurs saute.
 - **Nouveaux ennemis** : bandits (épée, arc), chef des bandits (à formes, comme le Gardien), une bête élite (« le loup blanc »), avec leurs attaques annoncées et leur butin.
 - **Formats** : histoire en nouvelle version (objectifs, effets, catégories de quête), validateur étendu, tests de chaque objectif et de chaque refus.
+- **État** (31 octobre 2026, en PR) : fait, sauf le rang de guilde (objectif) et les points de guilde (effet), laissés à la guilde (V1.7) qui en fixera le format. Histoire en schéma 3 (catégories, conditions d'ouverture dont `levelAtLeast`, récompenses au choix, objectifs `talk`, `deliver`, `defeatFamily`, `equipped`, effet `takeMoney`, PNJ des intérieurs), sauvegarde en version 8 (quête suivie, récompense en attente ; la version 7 est celle de V1.2, relue sans quête suivie), zones en schéma 5 (autres chefs à formes, familles) ; journal à onglets, suivi, récompenses au choix et dialogue des PNJ d'intérieur dans Unity ; bandits, chef des bandits à deux formes et loup blanc par les données de zone seulement (aucune règle ni aucun journal de référence changés par V1.6 ; ils suivent les règles 0.13.0 de V1.2, sans bouclier) ; deux quêtes d'exemple à l'auberge et à la chapelle (textes à relire). L'effet « donner de l'or » s'appelle `giveMoney` (V1.1). Détail : [MONDE.md](MONDE.md#quêtes--le-moteur-sous-lot-v16).
 
 ### V1.7 — Guilde des aventuriers (M)
 

@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 12
+      "const": 13
     },
     "kind": {
       "const": "scenario"
@@ -379,6 +379,31 @@
                 "minimum": 0,
                 "maximum": 86400000
               }
+            }
+          }
+        },
+        "shield": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Sous-lot V1.2 (schéma 13) : garde du bouclier porté par un personnage, qui remplace pour lui combat.guard.damageReduction, combat.guard.costPerBlock et combat.parry.windowMs ; bornes : combat.shield des règles.",
+          "required": [
+            "damageReduction",
+            "costPerBlock",
+            "parryWindowMs"
+          ],
+          "properties": {
+            "damageReduction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "costPerBlock": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "parryWindowMs": {
+              "type": "integer",
+              "minimum": 1
             }
           }
         }

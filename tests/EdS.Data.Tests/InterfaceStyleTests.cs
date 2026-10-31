@@ -122,7 +122,8 @@ public class InterfaceStyleTests
         foreach (JsonElement item in items.RootElement.GetProperty("data").GetProperty("items").EnumerateArray())
         {
             string id = item.GetProperty("id").GetString()!;
-            Assert.Contains(id.Substring(id.LastIndexOf('.') + 1), icons);
+            // Sous-lot V1.2 : une icône peut être donnée (provisoire : celle d'un objet voisin), sinon la fin de l'identifiant.
+            Assert.Contains(item.TryGetProperty("icon", out JsonElement icon) ? icon.GetString()! : id.Substring(id.LastIndexOf('.') + 1), icons);
             itemCount++;
         }
         Assert.True(itemCount >= 20);
@@ -251,7 +252,8 @@ public class InterfaceStyleTests
     public void Ecrans_de_l_aventure_en_ugui()
     {
         string game = Read("unity", "Assets", "EdS", "Game", "EdsGame.cs");
-        string book = Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs");
+        // Sous-lot V1.2 : les places, les filtres, le rangement et la comparaison sont dans AdventureBook.Equipment.cs.
+        string book = Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs") + Read("unity", "Assets", "EdS", "Game", "AdventureBook.Equipment.cs");
         string screens = Read("unity", "Assets", "EdS", "Game", "AdventureScreens.cs");
         Assert.Contains("_book = AdventureBook.Create();", game, StringComparison.Ordinal);
         Assert.Contains("AdventureBook.Request request = _book.Update(_adventure, _screens, AdventureEnemies(), deltaTime);", game, StringComparison.Ordinal);
@@ -260,7 +262,8 @@ public class InterfaceStyleTests
         Assert.DoesNotContain("Hud.", screens, StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "MiniMap.cs")));
         foreach (string action in new[] { "_session.Unequip(s);", "_session.Equip(place);", "_session.Craft(_recipeData[index].Id);", "_session?.Choose(index)",
-                     "_session?.CloseDialogue()" })
+                     "_session?.CloseDialogue()", "_session.Swap(slot, other.Id);", "_session.SortInventory(_sort);", "a.Compare(item, wornPlace)",
+                     "_visible = a.InventoryPlaces(_filter);" })
             Assert.Contains(action, book, StringComparison.Ordinal);
         Assert.Contains("_map.uvRect = PaintedMap.Area(map);", book, StringComparison.Ordinal);
         using JsonDocument texts = JsonDocument.Parse(Read("data", "v0", "world", "texts", "fr.json"));

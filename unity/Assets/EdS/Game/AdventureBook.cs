@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Items;
 using EdS.Data.Saves;
+using EdS.Data.Story;
 using EdS.Domain.Builds;
 using EdS.Domain.Stats;
 using EdS.Runtime;
@@ -70,10 +71,22 @@ namespace EdS.Game
         private string _tipItem;
         private RectTransform _tipAnchor;
 
-        // Journal.
-        private readonly List<(RectTransform Block, UiText Name, UiText Step, Image Bar, UiText Progress)> _quests = new List<(RectTransform, UiText, UiText, Image, UiText)>();
+        // Journal (sous-lot V1.6 : deux onglets, suivi d'une quête, récompenses au choix).
+        private sealed class QuestBlock
+        {
+            public RectTransform Block;
+            public UiText Name, Step, Progress;
+            public Image Bar;
+            public UiButton Track;
+            public readonly List<UiButton> Rewards = new List<UiButton>();
+            public string Quest;
+        }
+
+        private readonly List<QuestBlock> _quests = new List<QuestBlock>();
         private readonly List<UiText> _discoveries = new List<UiText>();
         private UiText _journalEmpty, _discoveriesTitle;
+        private UiText _mainTab, _sideTab;
+        private QuestCategory _journalTab = QuestCategory.Main;
 
         // Atelier.
         private readonly List<(RectTransform Card, Image Icon, UiText Name, UiText Kind, UiText Recipe, UiText State, UiButton Craft)> _recipes =
@@ -202,8 +215,6 @@ namespace EdS.Game
 
         // --- Personnage ------------------------------------------------------------------------------------------------------------
 
-        private static readonly (string Slot, float X, float Y)[] SlotPlaces = { ("weapon", 70f, 170f), ("shield", 520f, 170f), ("chest", 70f, 360f), ("neck", 520f, 360f) };
-
         private void BuildCharacter(RectTransform page)
         {
             // Sceau du Bastion au milieu de l'équipement.
@@ -212,27 +223,10 @@ namespace EdS.Game
             emblem.localScale = new Vector3(0.8f, 0.8f, 1f);
             foreach (string part in new[] { "sceau_fond", "sceau_fissure", "sceau_contour" })
                 UiKit.Fill(UiKit.Image(emblem, part, UiKit.Sprite(part), Color.white).rectTransform);
-            UiText caption = Text(page, UiFace.Title, 18f, Color.white, TextAnchor.MiddleCenter, 345f, 470f, 300f, 26f, 0.5f, 0.5f, 3f);
+            UiText caption = Text(page, UiFace.Title, 18f, Color.white, TextAnchor.MiddleCenter, 345f, 150f, 300f, 26f, 0.5f, 0.5f, 3f);
             caption.Gold();
             caption.Value = "Sceau du Bastion";
-            foreach ((string slot, float x, float y) in SlotPlaces)
-            {
-                Cell cell = MakeCell(page, x, y, 100f, true);
-                string s = slot;
-                UiPointer pointer = UiKit.Pointer(cell.Slab);
-                pointer.Left = () =>
-                {
-                    if (_session != null && _session.World.Inventory.Equipped.ContainsKey(s)) _session.Unequip(s);
-                };
-                pointer.Enter = () =>
-                {
-                    string worn = null;
-                    if (_session != null) _session.World.Inventory.Equipped.TryGetValue(s, out worn);
-                    ShowTip(worn, cell.Rect, true);
-                };
-                pointer.Exit = () => HideTip(cell.Rect);
-                _slots[slot] = cell;
-            }
+            BuildSlots(page);   // sous-lot V1.2 : les 18 places (AdventureBook.Equipment.cs)
 
             Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 532f, 300f, 20f, 0f, 0.5f, 14f, true).Value = "Statut";
             for (int i = 0; i < 6; i++)
@@ -262,25 +256,32 @@ namespace EdS.Game
                 int place = i;
                 Cell cell = MakeCell(page, 730f + (i % 8) * 90f, 192f + (i / 8) * 90f, 82f, false);
                 UiPointer pointer = UiKit.Pointer(cell.Slab);
-                pointer.Left = () => UseBag(place);
-                pointer.Enter = () => ShowTip(_session != null && place < _session.World.Inventory.Stacks.Count ? _session.World.Inventory.Stacks[place].Item : null, cell.Rect, false);
+                // Sous-lot V1.2 : la case montre une place selon le filtre. Relecture de la PR #75 : la place est recalculée au clic (le sac a
+                // pu changer depuis le dernier rafraîchissement : un objet porté, rangé ou vendu).
+                pointer.Left = () => UseBag(CurrentBagPlace(place));
+                pointer.Enter = () =>
+                {
+                    int real = BagPlace(place);
+                    ShowTip(_session != null && real >= 0 && real < _session.World.Inventory.Stacks.Count ? _session.World.Inventory.Stacks[real].Item : null, cell.Rect, false);
+                };
                 pointer.Exit = () => HideTip(cell.Rect);
                 _bag.Add(cell);
             }
-            Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 488f, 300f, 20f, 0f, 0.5f, 14f, true).Value = "Expérience";
-            _xpValue = Text(page, UiFace.Bold, 17f, UiKit.Ink, TextAnchor.MiddleRight, 1442f, 488f, 300f, 22f, 1f, 0.5f, 6f);
+            BuildBagTools(page, 460f);   // sous-lot V1.2 : filtres et rangement
+            Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 506f, 300f, 20f, 0f, 0.5f, 14f, true).Value = "Expérience";
+            _xpValue = Text(page, UiFace.Bold, 17f, UiKit.Ink, TextAnchor.MiddleRight, 1442f, 506f, 300f, 22f, 1f, 0.5f, 6f);
             Image track = UiKit.Image(page, "Fond de l'expérience", UiKit.Sprite("cible_remplissage"), new Color(0.06f, 0.08f, 0.11f, 1f));
-            UiKit.Place(track.rectTransform, new Vector2(730f, 504f), new Vector2(712f, 14f), Vector2.zero);
+            UiKit.Place(track.rectTransform, new Vector2(730f, 522f), new Vector2(712f, 14f), Vector2.zero);
             _xpBar = UiKit.Image(page, "Expérience", UiKit.Sprite("cible_remplissage"), UiKit.Rose, Image.Type.Filled);
-            UiKit.Place(_xpBar.rectTransform, new Vector2(730f, 504f), new Vector2(712f, 14f), Vector2.zero);
+            UiKit.Place(_xpBar.rectTransform, new Vector2(730f, 522f), new Vector2(712f, 14f), Vector2.zero);
             _xpBar.fillMethod = Image.FillMethod.Horizontal;
-            _xpNote = Text(page, UiFace.Body, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 536f, 712f, 22f, 0f, 0.5f);
+            _xpNote = Text(page, UiFace.Body, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 552f, 712f, 22f, 0f, 0.5f);
 
-            Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 590f, 300f, 20f, 0f, 0.5f, 14f, true).Value = "Métiers";
+            Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 600f, 300f, 20f, 0f, 0.5f, 14f, true).Value = "Métiers";
             for (int i = 0; i < 3; i++)
             {
                 RectTransform card = UiKit.Node(page, "Métier");
-                UiKit.Place(card, new Vector2(730f + i * 240f, 612f), new Vector2(228f, 66f), Vector2.zero);
+                UiKit.Place(card, new Vector2(730f + i * 240f, 622f), new Vector2(228f, 66f), Vector2.zero);
                 UiKit.Fill(UiKit.Image(card, "Fond", UiKit.Sprite("bouton_sobre", 12f), Color.white, Image.Type.Sliced).rectTransform);
                 Image edge = UiKit.Image(card, "Liseré", null, UiKit.Dawn);
                 UiKit.Place(edge.rectTransform, new Vector2(4f, 6f), new Vector2(3f, 54f), Vector2.zero);
@@ -291,12 +292,13 @@ namespace EdS.Game
                 _professions.Add((card, icon, name, level));
             }
             Text(page, UiFace.Body, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 712f, 712f, 40f, 0f, 0.5f).Value =
-                "Clic sur un objet du sac : le porter · clic sur un objet porté : le retirer · effet à ta prochaine halte.";
+                "Clic sur un objet du sac : le porter · clic sur un objet porté : le retirer · clic droit sur un anneau ou une relique : l'échanger avec l'autre · "
+                + "survol : comparaison (vert : mieux, rouge : moins bien) · hors combat, effet à ta prochaine halte.";
         }
 
         private void UseBag(int place)
         {
-            if (_session == null || place >= _session.World.Inventory.Stacks.Count) return;
+            if (_session == null || place < 0 || place >= _session.World.Inventory.Stacks.Count) return;
             ItemDefinition item = _session.Item(_session.World.Inventory.Stacks[place].Item);
             if (item.Type == ItemType.Equipment) _session.Equip(place);
         }
@@ -330,7 +332,7 @@ namespace EdS.Game
                 cell.Label.Value = a.Text("text.ui.slot." + entry.Key);
                 bool worn = w.Inventory.Equipped.TryGetValue(entry.Key, out string id);
                 ItemDefinition item = worn ? a.Item(id) : null;
-                cell.Icon.sprite = item != null ? UiKit.Icon(ShortId(item.Id)) : null;
+                cell.Icon.sprite = item != null ? UiKit.Icon(item.Icon) : null;
                 UiKit.Show(cell.Icon, cell.Icon.sprite != null);
                 cell.Name.Value = item != null ? item.Name : a.Text("text.ui.empty_slot");
                 cell.Name.Color = item != null ? RarityColor(item.Rarity) : UiKit.Muted;
@@ -340,13 +342,15 @@ namespace EdS.Game
             IReadOnlyList<ItemStack> stacks = w.Inventory.Stacks;
             _bagTitle.Value = $"Sac · {stacks.Count} / {w.Inventory.Catalog.InventorySize}";
             RefreshPurse(a);
-            for (int i = 0; i < _bag.Count; i++)
+            RefreshBagTools(a);   // sous-lot V1.2 : filtre du sac
+            for (int c = 0; c < _bag.Count; c++)
             {
-                Cell cell = _bag[i];
-                bool used = i < stacks.Count && i < w.Inventory.Catalog.InventorySize;
-                UiKit.Show(cell.Rect, i < w.Inventory.Catalog.InventorySize);
+                Cell cell = _bag[c];
+                int i = BagPlace(c);
+                bool used = i >= 0 && i < stacks.Count && i < w.Inventory.Catalog.InventorySize;
+                UiKit.Show(cell.Rect, c < w.Inventory.Catalog.InventorySize);
                 ItemDefinition item = used ? a.Item(stacks[i].Item) : null;
-                cell.Icon.sprite = item != null ? UiKit.Icon(ShortId(item.Id)) : null;
+                cell.Icon.sprite = item != null ? UiKit.Icon(item.Icon) : null;
                 UiKit.Show(cell.Icon, cell.Icon.sprite != null);
                 cell.Count.Value = used && stacks[i].Count > 1 ? stacks[i].Count.ToString() : "";
                 bool wearable = item != null && item.Type == ItemType.Equipment;
@@ -412,7 +416,7 @@ namespace EdS.Game
         private void BuildTip()
         {
             _tip = UiKit.Node(_panel, "Fiche de l'objet");
-            UiKit.Place(_tip, Vector2.zero, new Vector2(380f, 210f), Vector2.zero);
+            UiKit.Place(_tip, Vector2.zero, new Vector2(TipWidth, 210f), Vector2.zero);
             UiKit.Fill(UiKit.Image(_tip, "Dalle", UiKit.Sprite("dalle", 40f), Color.white, Image.Type.Sliced).rectTransform);
             _tipIcon = UiKit.Image(_tip, "Icône", null, Color.white);
             UiKit.Place(_tipIcon.rectTransform, new Vector2(22f, 22f), new Vector2(56f, 56f), Vector2.zero);
@@ -421,18 +425,24 @@ namespace EdS.Game
             _tipLines = Text(_tip, UiFace.Body, 17f, UiKit.Ink, TextAnchor.UpperLeft, 24f, 92f, 330f, 80f, 0f, 0f);
             _tipLines.Wrap();
             _tipAction = Text(_tip, UiFace.Bold, 14f, UiKit.Teal, TextAnchor.MiddleLeft, 24f, 186f, 330f, 20f, 0f, 0.5f, 8f, true);
+            BuildCompare();   // sous-lot V1.2 : comparaison
             UiKit.Show(_tip, false);
         }
 
-        private void ShowTip(string item, RectTransform anchor, bool worn)
+        /// <summary>Sous-lot V1.2 : fiche élargie pour la comparaison.</summary>
+        private const float TipWidth = 470f;
+
+        private void ShowTip(string item, RectTransform anchor, bool worn, string wornPlace = null)
         {
             _tipItem = item;
             _tipAnchor = anchor;
             _tipWorn = worn;
+            _tipPlace = worn ? wornPlace : null;
             if (_session != null) RefreshTip(_session);
         }
 
         private bool _tipWorn;
+        private string _tipPlace;
 
         private void HideTip(RectTransform anchor)
         {
@@ -452,13 +462,15 @@ namespace EdS.Game
             ItemDefinition item = a.Item(_tipItem);
             UiKit.Show(_tip, true);
             _tip.SetAsLastSibling();
-            _tipIcon.sprite = UiKit.Icon(ShortId(item.Id));
+            _tipIcon.sprite = UiKit.Icon(item.Icon);
             _tipName.Value = item.Name;
             _tipName.Color = RarityColor(item.Rarity);
             string kind = item.Type == ItemType.Equipment ? a.Text("text.ui.slot." + item.Slot) : item.Heal > 0 ? "Soin" : "Matériau";
             _tipKind.Value = kind + " · " + RarityName(item.Rarity);
             var lines = new List<string>();
-            GearBonus b = item.Bonus;
+            // Sous-lot V1.2 : un équipement montre sa comparaison avec ce qui est porté à sa place (vert ou rouge, avec les chiffres).
+            float compared = RefreshCompare(a, item.Type == ItemType.Equipment ? item.Id : null, _tipPlace, 92f);
+            GearBonus b = compared >= 0f ? GearBonus.None : item.Bonus;
             void Add(int value, string label)
             {
                 if (value != 0) lines.Add((value > 0 ? "+" : "") + value + " " + label);
@@ -472,27 +484,31 @@ namespace EdS.Game
             Add(b.MaxEndurance, "endurance maximale");
             Add(b.StatusResistance, "résistance aux altérations");
             if (item.Heal > 0) lines.Add($"Rend {item.Heal} PV (P en combat)");
-            if (item.Type == ItemType.Equipment) lines.Add($"Niveau {item.RequiredLevel} requis");
             _tipLines.Value = string.Join("\n", lines);
             _tipLines.Color = item.Type == ItemType.Equipment && a.World.Level < item.RequiredLevel ? UiKit.Endurance : UiKit.Ink;
             _tipAction.Value = item.Type != ItemType.Equipment ? "" : _tipWorn ? "Clic : retirer" : "Clic : porter";
+            float height = compared >= 0f ? 92f + compared + 44f : 210f;
+            UiKit.Place(_tipAction.Rect, new Vector2(24f, height - 24f), new Vector2(TipWidth - 48f, 20f), new Vector2(0f, 0.5f));
             // À droite de la case, ou à sa gauche près du bord du panneau.
             Vector2 p = _tipAnchor.anchoredPosition;   // coin haut gauche de la case (origine en haut à gauche du panneau)
             float x = p.x + _tipAnchor.sizeDelta.x + 12f;
-            if (x + 380f > PanelWidth - 20f) x = p.x - 392f;
-            float y = Mathf.Min(-p.y, PanelHeight - 230f);
-            UiKit.Place(_tip, new Vector2(x, y), new Vector2(380f, 210f), Vector2.zero);
+            if (x + TipWidth > PanelWidth - 20f) x = p.x - TipWidth - 12f;
+            float y = Mathf.Min(-p.y, PanelHeight - height - 20f);
+            UiKit.Place(_tip, new Vector2(x, y), new Vector2(TipWidth, height), Vector2.zero);
         }
 
         // --- Journal ---------------------------------------------------------------------------------------------------------------
 
         private void BuildJournal(RectTransform page)
         {
-            Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 168f, 400f, 20f, 0f, 0.5f, 14f, true).Value = "Quêtes";
+            // Sous-lot V1.6 : deux onglets, principales et secondaires (clic ou toucher ; aucune touche de plus que J).
+            _mainTab = JournalTab(page, 60f, QuestCategory.Main);
+            _sideTab = JournalTab(page, 260f, QuestCategory.Side);
             _journalEmpty = Text(page, UiFace.Body, 19f, UiKit.Muted, TextAnchor.UpperLeft, 60f, 196f, 800f, 60f, 0f, 0f);
             _journalEmpty.Wrap();
             for (int i = 0; i < 6; i++)
             {
+                var q = new QuestBlock();
                 RectTransform block = UiKit.Node(page, "Quête");
                 UiKit.Place(block, new Vector2(60f, 196f + i * 108f), new Vector2(840f, 100f), Vector2.zero);
                 Image edge = UiKit.Image(block, "Liseré", null, UiKit.Alpha(UiKit.Dawn, 0.8f));
@@ -507,7 +523,24 @@ namespace EdS.Game
                 UiKit.Place(bar.rectTransform, new Vector2(680f, 44f), new Vector2(150f, 10f), Vector2.zero);
                 bar.fillMethod = Image.FillMethod.Horizontal;
                 UiText progress = Text(block, UiFace.Bold, 17f, UiKit.Dawn, TextAnchor.MiddleRight, 830f, 28f, 120f, 22f, 1f, 0.5f);
-                _quests.Add((block, name, step, bar, progress));
+                // Suivre cette quête (son objectif sur la carte).
+                UiButton follow = UiKit.Button(block, "Suivre", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Muted, () => FollowQuest(q));
+                UiKit.Place(follow.Rect, new Vector2(830f, 92f), new Vector2(130f, 32f), new Vector2(1f, 1f));
+                // Récompenses au choix : un bouton par objet proposé (au plus trois).
+                for (int r = 0; r < 3; r++)
+                {
+                    int reward = r;
+                    UiButton pick = UiKit.Button(block, "Récompense", "bouton", "", UiFace.Bold, 14f, new Color(0.1f, 0.05f, 0.02f), () => PickReward(q, reward));
+                    UiKit.Place(pick.Rect, new Vector2(18f + r * 214f, 96f), new Vector2(206f, 34f), new Vector2(0f, 1f));
+                    q.Rewards.Add(pick);
+                }
+                q.Block = block;
+                q.Name = name;
+                q.Step = step;
+                q.Bar = bar;
+                q.Progress = progress;
+                q.Track = follow;
+                _quests.Add(q);
             }
             _discoveriesTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 960f, 168f, 400f, 20f, 0f, 0.5f, 14f, true);
             for (int i = 0; i < 9; i++)
@@ -518,21 +551,59 @@ namespace EdS.Game
             }
         }
 
+        private UiText JournalTab(RectTransform page, float x, QuestCategory category)
+        {
+            UiText tab = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, x, 168f, 190f, 24f, 0f, 0.5f, 14f, true);
+            Image hit = UiKit.Image(tab.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
+            UiKit.Fill(hit.rectTransform, -6f);
+            UiKit.Pointer(hit).Left = () => _journalTab = category;
+            return tab;
+        }
+
+        private void FollowQuest(QuestBlock q)
+        {
+            if (_session == null || q.Quest == null) return;
+            // Une quête déjà suivie ne l'est plus (la carte montre alors la première principale en cours).
+            bool tracked = _session.World.Narrative != null && _session.World.Narrative.Tracked == q.Quest;
+            _session.Track(tracked ? null : q.Quest);
+        }
+
+        private void PickReward(QuestBlock q, int index)
+        {
+            if (_session != null && q.Quest != null) _session.ChooseReward(q.Quest, index);
+        }
+
         private void RefreshJournal(AdventureSession a)
         {
-            IReadOnlyList<JournalEntry> quests = a.Journal();
-            _journalEmpty.Value = quests.Count == 0 ? a.Text("text.ui.journal_empty") : "";
+            // Relecture de la PR #76 : un repère sur l'onglet où une quête attend le choix de sa récompense (visible depuis l'autre onglet).
+            _mainTab.Value = a.Text("text.ui.journal.main") + (a.RewardWaiting(QuestCategory.Main) ? " •" : "");
+            _sideTab.Value = a.Text("text.ui.journal.side") + (a.RewardWaiting(QuestCategory.Side) ? " •" : "");
+            _mainTab.Color = _journalTab == QuestCategory.Main ? UiKit.Dawn : UiKit.Muted;
+            _sideTab.Color = _journalTab == QuestCategory.Side ? UiKit.Dawn : UiKit.Muted;
+            IReadOnlyList<JournalEntry> quests = a.Journal(_journalTab);
+            _journalEmpty.Value = quests.Count > 0 ? "" : a.Journal().Count == 0 ? a.Text("text.ui.journal_empty") : a.Text("text.ui.journal.empty_tab");
             for (int i = 0; i < _quests.Count; i++)
             {
+                QuestBlock block = _quests[i];
                 bool used = i < quests.Count;
-                UiKit.Show(_quests[i].Block, used);
+                UiKit.Show(block.Block, used);
                 if (!used) continue;
                 JournalEntry q = quests[i];
-                _quests[i].Name.Value = q.Name + (q.Done ? " · " + a.Text("text.ui.quest_done_mark") : "");
-                _quests[i].Step.Value = q.Step ?? "";
-                _quests[i].Progress.Value = q.Progress ?? (q.Done ? "fait" : "");
-                _quests[i].Bar.fillAmount = q.Done ? 1f : HudView.Progress(q.Progress);
-                UiKit.Show(_quests[i].Bar, q.Progress != null || q.Done);
+                block.Quest = q.Id;
+                block.Name.Value = q.Name + (q.Done ? " · " + a.Text("text.ui.quest_done_mark") : "");
+                block.Step.Value = q.Step ?? "";
+                block.Progress.Value = q.Progress ?? (q.Done ? "fait" : "");
+                block.Bar.fillAmount = q.Done ? 1f : HudView.Progress(q.Progress);
+                UiKit.Show(block.Bar, q.Progress != null || q.Done);
+                UiKit.Show(block.Track.Rect, !q.Done);
+                block.Track.Text.Value = a.Text(q.Tracked ? "text.ui.journal.tracked" : "text.ui.journal.track");
+                block.Track.Text.Color = q.Tracked ? UiKit.Dawn : UiKit.Muted;
+                for (int r = 0; r < block.Rewards.Count; r++)
+                {
+                    bool offered = r < q.RewardChoices.Count;
+                    UiKit.Show(block.Rewards[r].Rect, offered);
+                    if (offered) block.Rewards[r].Text.Value = q.RewardChoices[r];
+                }
             }
             IReadOnlyList<string> found = a.Discoveries();
             _discoveriesTitle.Value = a.Text("text.ui.title.discoveries") + " · " + found.Count;

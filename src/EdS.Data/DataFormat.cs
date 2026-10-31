@@ -30,12 +30,14 @@ namespace EdS.Data
     /// 11 (règles) et 9 (classes) = sous-lot 11.4b, portées d'un combat positionné : <c>statuses[].range</c> (protection seulement)
     /// dans les règles ; <c>combat.range</c>, <c>combat.applies[].range</c> et <c>triggers[].effects[].range</c> dans les classes ;
     /// 12 (règles) = sous-lot 11.4c : <c>combat.guard.arcDegrees</c> (arc frontal du bouclier) et <c>combat.telegraph.minReactionMs</c>
-    /// (réaction minimale des annonces). Classes inchangées (9).</para>
+    /// (réaction minimale des annonces). Classes inchangées (9) ; 13 (règles) = sous-lot V1.2 : bloc <c>combat.shield</c> (bornes de la garde
+    /// des boucliers : <c>minDamageReduction</c>, <c>maxDamageReduction</c>, <c>minCostPerBlock</c>, <c>maxCostPerBlock</c>,
+    /// <c>parryWindowShiftMs</c>). Classes inchangées (9).</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 12;
+        public const int RulesSchemaVersion = 13;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
         public const int ClassSchemaVersion = 9;
@@ -47,8 +49,9 @@ namespace EdS.Data
         /// Version de contenu des règles livrées : provisoires, non équilibrées. 0.7.0 : altérations du Bastion (sous-lot 8.4) ;
         /// 0.8.0 : altérations des talents du Gardien (sous-lot 8.5) ; 0.9.0 : déplacement et contact (sous-lot 11.4a) ; 0.10.0 :
         /// portée du lien protecteur (sous-lot 11.4b) ; 0.11.0 : arc du bouclier et réaction minimale des annonces (sous-lot 11.4c) ;
-        /// 0.12.0 : 128 combattants au plus (décision de Damien du 29 octobre 2026 : plus de réapparitions par session dans les Vallons).
+        /// 0.12.0 : 128 combattants au plus (décision de Damien du 29 octobre 2026 : plus de réapparitions par session dans les Vallons) ;
+        /// 0.13.0 : bornes de la garde des boucliers (sous-lot V1.2, schéma 13).
         /// </summary>
-        public const string ProvisionalRulesContentVersion = "0.12.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.13.0-provisoire";
     }
 }

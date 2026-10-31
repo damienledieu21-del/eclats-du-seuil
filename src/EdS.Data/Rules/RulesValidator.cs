@@ -233,6 +233,11 @@ namespace EdS.Data.Rules
                 LargeCreatureRadius = Dec(d, P(c, nameof(CombatRules.LargeCreatureRadius))),
                 GuardArcDegrees = (int)Int(d, P(c, nameof(CombatRules.GuardArcDegrees))),
                 TelegraphMinReactionMs = Int(d, P(c, nameof(CombatRules.TelegraphMinReactionMs))),
+                ShieldMinDamageReduction = Dec(d, P(c, nameof(CombatRules.ShieldMinDamageReduction))),
+                ShieldMaxDamageReduction = Dec(d, P(c, nameof(CombatRules.ShieldMaxDamageReduction))),
+                ShieldMinCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.ShieldMinCostPerBlock))),
+                ShieldMaxCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.ShieldMaxCostPerBlock))),
+                ShieldParryWindowShiftMs = Int(d, P(c, nameof(CombatRules.ShieldParryWindowShiftMs))),
                 Statuses = statuses,
             };
         }

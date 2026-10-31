@@ -202,11 +202,14 @@ public class Lot129SkillUnlockTests : IDisposable
             }
         File.WriteAllText(Path.Combine(scenarios, "zones", "vallons.json"), vallons.ToJsonString());
         File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(scenarios, "zones", "vallons_chef.json"));
+        File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(scenarios, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
         CopyMissingZoneScenarios(scenarios);   // intérieurs : reliés aux Vallons par leurs portes
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+        // Sous-lot V1.2 : le personnage porte son équipement de départ, comme une vraie partie (sinon ses places obligatoires seraient
+        // remplies au chargement, avec un message de plus).
         SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
-            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(519)));
+            Inventory.Outfit(PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(519), Items)));
         AdventureSession a = AdventureSession.Load(DataDirectory, scenarios, savePath);
         Assert.Equal(new[] { "Partie reprise." }, a.DrainMessages());
         Assert.Empty(a.World.Learned);
