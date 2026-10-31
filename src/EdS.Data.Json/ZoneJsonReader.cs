@@ -83,7 +83,23 @@ namespace EdS.Data.Json
                         $"scénario du chef « {bossName} » refusé : {loaded.Report.Errors.FirstOrDefault()?.ToString() ?? "illisible"}");
                 bossScenario = loaded.Setup;
             }
-            return ZoneValidator.Validate(document, scenario, items, report, bossScenario);
+            // Sous-lot V1.6 : scénario des formes de chaque autre chef.
+            var chiefScenarios = new List<CombatSetup?>();
+            if (document.Data?.Chiefs is { } chiefs)
+                for (int i = 0; i < chiefs.Count; i++)
+                {
+                    CombatSetup? setup = null;
+                    if (report.IsValid && chiefs[i]?.Scenario is string chiefName && ZoneValidator.IsScenarioPath(chiefName))
+                    {
+                        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(System.IO.Path.Combine(scenariosDirectory, chiefName + ".json"), data);
+                        if (loaded.Setup is null)
+                            report.Add($"$.data.chiefs[{i}].scenario", ValidationCode.InvalidValue,
+                                $"scénario du chef « {chiefName} » refusé : {loaded.Report.Errors.FirstOrDefault()?.ToString() ?? "illisible"}");
+                        setup = loaded.Setup;
+                    }
+                    chiefScenarios.Add(setup);
+                }
+            return ZoneValidator.Validate(document, scenario, items, report, bossScenario, chiefScenarios);
         }
 
         private static ZoneData? ReadData(JsonInput input, JsonElement element, string path)
@@ -104,6 +120,8 @@ namespace EdS.Data.Json
                 ["passages"] = (v, p) => d.Passages = input.ReadLimitedList(v, p, ZoneValidator.MaxPassages, n => $"{n} passages, au plus {ZoneValidator.MaxPassages}.",
                     (e, ip) => ReadPassage(input, e, ip)),
                 ["boss"] = (v, p) => d.Boss = ReadBoss(input, v, p),   // sous-lot 12.7 (schéma 2)
+                ["chiefs"] = (v, p) => d.Chiefs = input.ReadLimitedList(v, p, ZoneValidator.MaxChiefs, n => $"{n} chefs, au plus {ZoneValidator.MaxChiefs}.",
+                    (e, ip) => ReadBoss(input, e, ip)),   // sous-lot V1.6 (schéma 5)
                 ["roads"] = (v, p) => d.Roads = input.ReadLimitedList(v, p, ZoneValidator.MaxRoads, n => $"{n} routes, au plus {ZoneValidator.MaxRoads}.",
                     (e, ip) => ReadRoad(input, e, ip)),   // Vallons agrandis (schéma 3)
                 ["indoor"] = (v, p) => d.Indoor = input.Boolean(v, p),   // intérieurs (schéma 4)
@@ -220,6 +238,7 @@ namespace EdS.Data.Json
                 ["respawnMs"] = (v, p) => population.RespawnMs = input.Int64(v, p),
                 ["leashRange"] = (v, p) => population.LeashRange = input.Decimal(v, p),
                 ["loot"] = (v, p) => population.Loot = input.NullableText(v, p),
+                ["family"] = (v, p) => population.Family = input.Text(v, p),   // sous-lot V1.6 (schéma 5)
             });
             return ok ? population : null;
         }

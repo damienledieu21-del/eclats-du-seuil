@@ -31,6 +31,14 @@ namespace EdS.Data.Saves
         /// <summary>Étape réservée d'une quête terminée.</summary>
         public const string Done = "done";
 
+        /// <summary>
+        /// Sous-lot V1.6 (sauvegarde en version 7) : étape réservée d'une quête dont toutes les étapes sont franchies et qui attend le choix
+        /// de sa récompense (un objet parmi deux ou trois).
+        /// </summary>
+        public const string Reward = "reward";
+
+        public bool IsChoosingReward => Step == Reward;
+
         public string Step { get; }
 
         /// <summary>Compteur de l'objectif de l'étape (créatures vaincues pendant l'étape) ; 0 sinon.</summary>
@@ -62,9 +70,13 @@ namespace EdS.Data.Saves
         public IReadOnlyDictionary<string, int> Trust { get; }
         public IReadOnlyList<string> Discoveries { get; }
 
+        /// <summary>Sous-lot V1.6 (version 7) : quête suivie (son objectif sur la carte), ou null.</summary>
+        public string? Tracked { get; }
+
         public SavedStory(IEnumerable<string>? facts = null, IReadOnlyDictionary<string, QuestProgress>? quests = null,
-            IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null)
+            IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null, string? tracked = null)
         {
+            Tracked = tracked;
             Facts = Frozen.List((facts ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).OrderBy(f => f, StringComparer.Ordinal), nameof(facts));
             Quests = Frozen.Dictionary((quests ?? new Dictionary<string, QuestProgress>()).OrderBy(q => q.Key, StringComparer.Ordinal)
                 .ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal), nameof(quests));
@@ -241,9 +253,11 @@ namespace EdS.Data.Saves
         /// sauvegarde de version 4 est mise à jour (aucun métier). Version 6 (sous-lot V1.1) : <c>money</c> obligatoire dans le personnage
         /// (bourse en pièces de cuivre, de 0 à <see cref="Coins.Max"/>) ; une sauvegarde de version 5 est mise à jour (bourse vide). Les points
         /// sûrs découverts (voyage rapide) sont des clés du registre des événements consommés (<c>zone.vallons/safe/place_du_bourg</c>), déjà
-        /// gardé depuis la version 1.
+        /// gardé depuis la version 1. Version 7 (sous-lot V1.6) : <c>tracked</c> obligatoire dans l'histoire (quête suivie, en cours, ou
+        /// null) et étape réservée <c>reward</c> (récompense au choix en attente, <see cref="QuestProgress.Reward"/>) ; une sauvegarde de
+        /// version 6 est mise à jour (aucune quête suivie).
         /// </summary>
-        public const int CurrentSchemaVersion = 6;
+        public const int CurrentSchemaVersion = 7;
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;
@@ -419,7 +433,7 @@ namespace EdS.Data.Saves
                 if (c.Present.Contains("story") || c.Story != null)
                     report.Add(path + ".story", ValidationCode.UnknownField, $"champ inconnu en version {version} (histoire : version 4).");
             }
-            else if (c.Story is StoryStateData st) story = CheckStory(st, path + ".story", report);
+            else if (c.Story is StoryStateData st) story = CheckStory(st, path + ".story", version, report);
             else Missing(report, path + ".story", "faits, quêtes, confiance, découvertes");
             // Sous-lot 12.6 (version 5) : expérience des métiers.
             if (version < 5)
@@ -471,7 +485,7 @@ namespace EdS.Data.Saves
         public static bool IsStoryId(string? id) => id != null && id.Length <= 200
             && (FactId.IsMatch(id) || QuestId.IsMatch(id) || NpcId.IsMatch(id) || DiscoveryId.IsMatch(id) || SlotId.IsMatch(id));
 
-        private static SavedStory? CheckStory(StoryStateData st, string path, ValidationReport report)
+        private static SavedStory? CheckStory(StoryStateData st, string path, int version, ValidationReport report)
         {
             void Sorted(List<string?>? list, string field, Regex pattern, string what)
             {
@@ -517,9 +531,23 @@ namespace EdS.Data.Saves
                     else if (v == 0 || v < -MaxTrust || v > MaxTrust) report.Add(p, ValidationCode.OutOfRange, $"confiance hors de [−{MaxTrust}, {MaxTrust}] ou nulle (une confiance nulle n'est pas écrite).");
                     else if (i > 0 && string.CompareOrdinal(st.Trust[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "confiance hors de l'ordre ordinal ou en double.");
                 }
+            // Sous-lot V1.6 (version 7) : quête suivie, en cours (ni finie ni absente), ou null.
+            if (version < 7)
+            {
+                // Comme la bourse : refusée aussi quand elle est renseignée hors du lecteur JSON (pas de perte silencieuse).
+                if (st.HasTracked || st.Tracked != null)
+                    report.Add(path + ".tracked", ValidationCode.UnknownField, $"champ inconnu en version {version} (quête suivie : version 7).");
+            }
+            else if (!st.HasTracked && st.Tracked is null) Missing(report, path + ".tracked", "quête suivie, ou null");
+            else if (st.Tracked != null)
+            {
+                if (st.Tracked.Length > 200 || !QuestId.IsMatch(st.Tracked)) report.Add(path + ".tracked", ValidationCode.InvalidValue, "quête mal formée.");
+                else if (st.Quests is null || !st.Quests.Any(q => q.Id == st.Tracked && q.Value?.Step != null && q.Value.Step != QuestProgress.Done))
+                    report.Add(path + ".tracked", ValidationCode.UnknownReference, $"quête suivie « {st.Tracked} » absente des quêtes en cours.");
+            }
             if (!report.IsValid) return null;
             return new SavedStory(st.Facts!.Select(f => f!), st.Quests!.ToDictionary(q => q.Id, q => new QuestProgress(q.Value!.Step!, q.Value.Progress!.Value), StringComparer.Ordinal),
-                st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!));
+                st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!), version < 7 ? null : st.Tracked);
         }
 
         /// <summary>Sous-lot 12.3 : plus grand nombre de places d'un inventaire sauvegardé, et plus grande pile.</summary>

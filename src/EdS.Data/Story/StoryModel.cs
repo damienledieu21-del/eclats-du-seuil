@@ -33,6 +33,19 @@ namespace EdS.Data.Story
         InPlace = 10,
 
         PassageOpen = 11,
+
+        /// <summary>Sous-lot V1.6 (histoire en schéma 3) : le personnage a au moins ce niveau (d'après son expérience).</summary>
+        LevelAtLeast = 12,
+    }
+
+    /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>
+    public enum QuestCategory
+    {
+        /// <summary>Quête principale (« main »).</summary>
+        Main = 0,
+
+        /// <summary>Quête secondaire (« side »).</summary>
+        Side = 1,
     }
 
     public enum EffectKind
@@ -52,6 +65,12 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.1 (histoire en schéma 2) : donne des pièces (valeur en cuivre) à la bourse du personnage.</summary>
         GiveMoney = 8,
+
+        /// <summary>
+        /// Sous-lot V1.6 (histoire en schéma 3) : prend des pièces (valeur en cuivre) à la bourse ; refusé en entier, sans rien changer, si
+        /// elle ne suffit pas.
+        /// </summary>
+        TakeMoney = 9,
     }
 
     public enum ObjectiveKind
@@ -70,6 +89,21 @@ namespace EdS.Data.Story
 
         /// <summary>Un passage est ouvert.</summary>
         Passage = 4,
+
+        /// <summary>Sous-lot V1.6 : parler à un PNJ pendant l'étape (un dialogue s'ouvre).</summary>
+        Talk = 5,
+
+        /// <summary>
+        /// Sous-lot V1.6 : livrer des objets à un PNJ (<see cref="Objective.Npc"/>) : en lui parlant, s'ils sont dans l'inventaire et libres,
+        /// ils lui sont remis d'un coup.
+        /// </summary>
+        Deliver = 6,
+
+        /// <summary>Sous-lot V1.6 : vaincre des créatures d'une famille (toutes les populations de cette famille, morts attribuées pendant l'étape).</summary>
+        DefeatFamily = 7,
+
+        /// <summary>Sous-lot V1.6 : porter un objet (équipement).</summary>
+        Equipped = 8,
     }
 
     public sealed class StoryCondition
@@ -113,11 +147,15 @@ namespace EdS.Data.Story
         /// <summary>Nombre à atteindre (créatures, objets) ; 1 sinon.</summary>
         public long Value { get; }
 
-        internal Objective(ObjectiveKind kind, string id, long value)
+        /// <summary>Sous-lot V1.6 : PNJ à qui livrer (<see cref="ObjectiveKind.Deliver"/>) ; null sinon.</summary>
+        public string? Npc { get; }
+
+        internal Objective(ObjectiveKind kind, string id, long value, string? npc = null)
         {
             Kind = kind;
             Id = id;
             Value = value;
+            Npc = npc;
         }
     }
 
@@ -131,12 +169,19 @@ namespace EdS.Data.Story
         public GroundVector Position { get; }
         public string Dialogue { get; }
 
-        internal Npc(string id, string name, GroundVector position, string dialogue)
+        /// <summary>
+        /// Sous-lot V1.6 : zone où vit le PNJ, s'il n'est pas dans celle de l'histoire (un intérieur : l'aubergiste, le prêtre, l'habitant) ;
+        /// null : la zone de l'histoire. Sa position est dans cette zone.
+        /// </summary>
+        public string? Zone { get; }
+
+        internal Npc(string id, string name, GroundVector position, string dialogue, string? zone = null)
         {
             Id = id;
             Name = name;
             Position = position;
             Dialogue = dialogue;
+            Zone = zone;
         }
     }
 
@@ -214,6 +259,19 @@ namespace EdS.Data.Story
         }
     }
 
+    /// <summary>Sous-lot V1.6 : une récompense au choix (un objet, en quantité), parmi deux ou trois.</summary>
+    public sealed class RewardChoice
+    {
+        public string Item { get; }
+        public int Count { get; }
+
+        internal RewardChoice(string item, int count)
+        {
+            Item = item;
+            Count = count;
+        }
+    }
+
     public sealed class Quest
     {
         public string Id { get; }
@@ -221,12 +279,31 @@ namespace EdS.Data.Story
         public IReadOnlyList<QuestStep> Steps { get; }
         public IReadOnlyList<StoryEffect> Effects { get; }
 
-        internal Quest(string id, string name, IEnumerable<QuestStep> steps, IEnumerable<StoryEffect> effects)
+        /// <summary>Sous-lot V1.6 : onglet du journal (principale ou secondaire).</summary>
+        public QuestCategory Category { get; }
+
+        /// <summary>
+        /// Sous-lot V1.6 : conditions pour que la quête s'ouvre (niveau, autre quête finie…) ; vide : toujours ouverte. Un effet
+        /// <c>startQuest</c> sur une quête fermée est refusé ; une réponse de dialogue qui la commencerait n'est pas proposée.
+        /// </summary>
+        public IReadOnlyList<StoryCondition> Requires { get; }
+
+        /// <summary>
+        /// Sous-lot V1.6 : récompenses au choix (deux ou trois objets) ; vide : aucune. Quand la dernière étape est franchie, la quête attend
+        /// le choix du joueur (étape réservée <see cref="Saves.QuestProgress.Reward"/>) avant d'être finie.
+        /// </summary>
+        public IReadOnlyList<RewardChoice> RewardChoices { get; }
+
+        internal Quest(string id, string name, IEnumerable<QuestStep> steps, IEnumerable<StoryEffect> effects, QuestCategory category = QuestCategory.Main,
+            IEnumerable<StoryCondition>? requires = null, IEnumerable<RewardChoice>? rewardChoices = null)
         {
             Id = id;
             Name = name;
             Steps = Frozen.List(steps, nameof(steps));
             Effects = Frozen.List(effects, nameof(effects));
+            Category = category;
+            Requires = Frozen.List(requires ?? Array.Empty<StoryCondition>(), nameof(requires));
+            RewardChoices = Frozen.List(rewardChoices ?? Array.Empty<RewardChoice>(), nameof(rewardChoices));
         }
 
         public int StepIndex(string step)
@@ -298,5 +375,8 @@ namespace EdS.Data.Story
         public Quest Quest(string id) => Quests.FirstOrDefault(q => q.Id == id) ?? throw new ArgumentException($"Quête « {id} » inconnue.", nameof(id));
         public bool HasQuest(string id) => Quests.Any(q => q.Id == id);
         public bool HasNpc(string id) => Npcs.Any(n => n.Id == id);
+
+        /// <summary>Sous-lot V1.6 : PNJ qui vivent dans la zone <paramref name="zone"/> (null : la zone de l'histoire), dans l'ordre du fichier.</summary>
+        public IEnumerable<Npc> NpcsIn(string? zone) => Npcs.Where(n => n.Zone == zone);
     }
 }

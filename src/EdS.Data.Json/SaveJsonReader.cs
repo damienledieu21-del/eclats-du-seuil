@@ -126,6 +126,11 @@ namespace EdS.Data.Json
             {
                 ["facts"] = (v, p) => st.Facts = Ids(v, p),
                 ["discoveries"] = (v, p) => st.Discoveries = Ids(v, p),
+                ["tracked"] = (v, p) =>   // sous-lot V1.6 (version 7)
+                {
+                    st.HasTracked = true;
+                    st.Tracked = input.NullableText(v, p);
+                },
                 ["trust"] = (v, p) => st.Trust = ScenarioJsonReader.ReadIntegerMap(input, v, p),
                 ["quests"] = (v, p) =>
                 {
@@ -249,6 +254,7 @@ namespace EdS.Data.Json
             // Sous-lot 12.5 (version 4) : état narratif, sur une ligne par rubrique, dans l'ordre ordinal.
             SavedStory st = c.Story;
             if (st.Facts.Concat(st.Discoveries).Concat(st.Quests.Keys).Concat(st.Trust.Keys).Any(id => !SaveValidator.IsStoryId(id))
+                || (st.Tracked != null && !SaveValidator.IsStoryId(st.Tracked))
                 || st.Quests.Values.Any(q => !SaveValidator.IsDataId(q.Step) || q.Progress < 0 || q.Progress > SaveValidator.MaxProgress)
                 || st.Trust.Values.Any(t => t < -SaveValidator.MaxTrust || t > SaveValidator.MaxTrust))
                 throw new ArgumentException("Histoire hors du format des sauvegardes.", nameof(c));
@@ -257,7 +263,9 @@ namespace EdS.Data.Json
             b.Append("        \"quests\": {").Append(string.Join(", ", st.Quests.Select(q => Quoted(q.Key) + ": {\"step\": " + Quoted(q.Value.Step)
                 + ", \"progress\": " + q.Value.Progress.ToString(CultureInfo.InvariantCulture) + "}"))).Append("},\n");
             b.Append("        \"trust\": {").Append(string.Join(", ", st.Trust.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
-            b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append("\n");
+            b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append(",\n");
+            // Sous-lot V1.6 (version 7) : quête suivie, ou null.
+            b.Append("        \"tracked\": ").Append(st.Tracked is null ? "null" : Quoted(st.Tracked)).Append("\n");
             b.Append("      },\n");
             // Sous-lot 12.6 (version 5) : expérience des métiers, sur une ligne.
             if (c.Professions.Any(p => !SaveValidator.IsDataId(p.Key) || p.Value < 1 || p.Value > SaveValidator.MaxXp))

@@ -34,6 +34,12 @@ namespace EdS.Data.Zones
         public BossData? Boss { get; set; }
 
         /// <summary>
+        /// Sous-lot V1.6 (schéma 5) : autres chefs de la zone (le chef des bandits), chacun à formes comme le chef ; facultatif. Chacun a son
+        /// scénario, son fait et sa récompense de première victoire.
+        /// </summary>
+        public List<BossData?>? Chiefs { get; set; }
+
+        /// <summary>
         /// Vallons agrandis (schéma 3, demande de Damien du 28 octobre 2026 : « des bâtiments, des routes ») : routes et chemins de la
         /// zone, affichage seulement (le moteur ne les connaît pas) ; facultatif.
         /// </summary>
@@ -146,6 +152,12 @@ namespace EdS.Data.Zones
 
         /// <summary>Table de butin (catalogue des objets) ; facultative.</summary>
         public string? Loot { get; set; }
+
+        /// <summary>
+        /// Sous-lot V1.6 (schéma 5) : famille de la créature (« loup », « bandit ») pour les objectifs <c>defeatFamily</c> ; facultative
+        /// (absente : l'identifiant de la créature sans ses chiffres finaux, « loup12 » donne « loup »).
+        /// </summary>
+        public string? Family { get; set; }
     }
 
     /// <summary>Passage fermé par un obstacle du scénario, ouvert pour de bon par une étape du monde (raccourci du moulin).</summary>

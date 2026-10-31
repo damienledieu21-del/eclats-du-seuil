@@ -47,6 +47,9 @@ namespace EdS.Data.Story
 
         public PointData? Position { get; set; }
         public string? Dialogue { get; set; }
+
+        /// <summary>Sous-lot V1.6 (schéma 3) : zone d'un intérieur où vit le PNJ ; facultatif (absent : la zone de l'histoire).</summary>
+        public string? Zone { get; set; }
     }
 
     public sealed class DialogueData
@@ -92,6 +95,15 @@ namespace EdS.Data.Story
 
         /// <summary>Effets à la fin de la quête (récompenses).</summary>
         public List<TermData?>? Effects { get; set; }
+
+        /// <summary>Sous-lot V1.6 (schéma 3) : « main » (principale) ou « side » (secondaire) ; obligatoire.</summary>
+        public string? Category { get; set; }
+
+        /// <summary>Sous-lot V1.6 (schéma 3) : conditions d'ouverture ; facultatif.</summary>
+        public List<TermData?>? Requires { get; set; }
+
+        /// <summary>Sous-lot V1.6 (schéma 3) : récompenses au choix (effets <c>giveItem</c>, deux ou trois) ; facultatif.</summary>
+        public List<TermData?>? RewardChoice { get; set; }
     }
 
     public sealed class QuestStepData
@@ -120,6 +132,10 @@ namespace EdS.Data.Story
         public string? Id { get; set; }
         public long? Value { get; set; }
         public string? Step { get; set; }
+
+        /// <summary>Sous-lot V1.6 : PNJ à qui livrer (objectif <c>deliver</c>).</summary>
+        public string? Npc { get; set; }
+
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
 }
