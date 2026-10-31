@@ -1,12 +1,13 @@
 {
   "$schema": "../../schemas/guild.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "guild",
   "contentVersion": "0.1.0-provisoire",
   "data": {
     "npc": "npc.maitresse_guilde",
     "maxActive": 3,
     "daily": 2,
+    "rushDaily": 1,
     "ranks": [
       {
         "id": "g",
@@ -193,6 +194,38 @@
         "xp": 30
       },
       {
+        "id": "contract.presse_loups_du_soir",
+        "rank": "g",
+        "kind": "hunt",
+        "name": "text.contract.presse_loups_du_soir.name",
+        "text": "text.contract.presse_loups_du_soir.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "loup",
+          "value": 2
+        },
+        "money": 120,
+        "points": 15,
+        "xp": 50,
+        "rush": true
+      },
+      {
+        "id": "contract.presse_herbes_du_jour",
+        "rank": "g",
+        "kind": "delivery",
+        "name": "text.contract.presse_herbes_du_jour.name",
+        "text": "text.contract.presse_herbes_du_jour.text",
+        "objective": {
+          "kind": "deliver",
+          "id": "item.herbe_de_l_aube",
+          "value": 2
+        },
+        "money": 110,
+        "points": 14,
+        "xp": 40,
+        "rush": true
+      },
+      {
         "id": "contract.grande_battue",
         "rank": "f",
         "kind": "hunt",
@@ -253,6 +286,38 @@
         "xp": 150
       },
       {
+        "id": "contract.presse_sangliers",
+        "rank": "f",
+        "kind": "hunt",
+        "name": "text.contract.presse_sangliers.name",
+        "text": "text.contract.presse_sangliers.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "sanglier",
+          "value": 3
+        },
+        "money": 450,
+        "points": 35,
+        "xp": 140,
+        "rush": true
+      },
+      {
+        "id": "contract.presse_peaux",
+        "rank": "f",
+        "kind": "delivery",
+        "name": "text.contract.presse_peaux.name",
+        "text": "text.contract.presse_peaux.text",
+        "objective": {
+          "kind": "deliver",
+          "id": "item.peau_de_loup",
+          "value": 3
+        },
+        "money": 420,
+        "points": 33,
+        "xp": 120,
+        "rush": true
+      },
+      {
         "id": "contract.rodeurs_du_camp",
         "rank": "e",
         "kind": "hunt",
@@ -311,6 +376,38 @@
         "money": 800,
         "points": 50,
         "xp": 300
+      },
+      {
+        "id": "contract.presse_rodeurs",
+        "rank": "e",
+        "kind": "hunt",
+        "name": "text.contract.presse_rodeurs.name",
+        "text": "text.contract.presse_rodeurs.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "rodeur",
+          "value": 3
+        },
+        "money": 950,
+        "points": 60,
+        "xp": 330,
+        "rush": true
+      },
+      {
+        "id": "contract.presse_bandits",
+        "rank": "e",
+        "kind": "hunt",
+        "name": "text.contract.presse_bandits.name",
+        "text": "text.contract.presse_bandits.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "bandit",
+          "value": 3
+        },
+        "money": 900,
+        "points": 60,
+        "xp": 320,
+        "rush": true
       }
     ],
     "gates": [

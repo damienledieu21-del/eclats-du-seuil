@@ -61,6 +61,9 @@ namespace EdS.Data.Guild
         /// <summary>Contrats tirés chaque jour du monde, pour chaque rang ouvert.</summary>
         public int? Daily { get; set; }
 
+        /// <summary>Réponses de Damien du 31 octobre 2026 (schéma 2) : contrats pressés tirés en plus chaque jour pour chaque rang ouvert (0 à 8).</summary>
+        public int? RushDaily { get; set; }
+
         public List<RankData?>? Ranks { get; set; }
         public List<TitleData?>? Titles { get; set; }
         public List<ContractData?>? Contracts { get; set; }
@@ -121,6 +124,9 @@ namespace EdS.Data.Guild
 
         /// <summary>Expérience donnée à la réussite (0 : aucune).</summary>
         public long? Xp { get; set; }
+
+        /// <summary>Schéma 2 : contrat pressé (à finir avant la fin de la journée du monde) ; facultatif, faux par défaut.</summary>
+        public bool? Rush { get; set; }
     }
 
     public sealed class GateData
@@ -233,11 +239,19 @@ namespace EdS.Data.Guild
         public long Points { get; }
         public long Xp { get; }
 
+        /// <summary>
+        /// Réponses de Damien du 31 octobre 2026 : contrat pressé, proposé en plus des contrats normaux, mieux payé, à finir avant la fin de la
+        /// journée du monde où il a été pris (sinon il est perdu, sans pénalité).
+        /// </summary>
+        public bool Rush { get; }
+
         /// <summary>Effets de la réussite : pièces et expérience (s'il y en a), puis les points de guilde.</summary>
         public IReadOnlyList<StoryEffect> Rewards { get; }
 
-        internal GuildContract(string id, string rank, ContractKind kind, string name, string text, Objective objective, long money, long points, long xp)
+        internal GuildContract(string id, string rank, ContractKind kind, string name, string text, Objective objective, long money, long points, long xp,
+            bool rush = false)
         {
+            Rush = rush;
             Id = id;
             Rank = rank;
             Kind = kind;
@@ -288,6 +302,9 @@ namespace EdS.Data.Guild
         public int MaxActive { get; }
         public int Daily { get; }
 
+        /// <summary>Réponses du 31 octobre 2026 : contrats pressés tirés en plus chaque jour pour chaque rang ouvert.</summary>
+        public int RushDaily { get; }
+
         /// <summary>Les dix rangs, du plus bas au plus haut (<see cref="GuildRanks.Ids"/>).</summary>
         public IReadOnlyList<GuildRank> Ranks { get; }
 
@@ -309,8 +326,9 @@ namespace EdS.Data.Guild
 
         internal GuildBook(int schemaVersion, string contentVersion, string npc, int maxActive, int daily, IEnumerable<GuildRank> ranks,
             IEnumerable<GuildTitle> titles, IEnumerable<GuildContract> contracts, IEnumerable<GuildGate> gates, long mainQuest, long sideQuest,
-            long discovery, IEnumerable<KeyValuePair<string, long>> rare, IEnumerable<KeyValuePair<string, long>> facts)
+            long discovery, IEnumerable<KeyValuePair<string, long>> rare, IEnumerable<KeyValuePair<string, long>> facts, int rushDaily = 0)
         {
+            RushDaily = rushDaily;
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             Npc = npc;
@@ -384,9 +402,11 @@ namespace EdS.Data.Guild
         /// <c>title</c>, <c>points</c>, <c>open</c>, <c>trial</c>), <c>titles</c> (<c>id</c>, <c>name</c>), <c>contracts</c> (<c>id</c>,
         /// <c>rank</c>, <c>kind</c>, <c>name</c>, <c>text</c>, <c>objective</c>, <c>money</c>, <c>points</c>, <c>xp</c>), <c>gates</c>
         /// (<c>zone</c>, <c>door</c>, <c>rank</c>) et <c>points</c> (<c>mainQuest</c>, <c>sideQuest</c>, <c>discovery</c>, <c>rare</c>,
-        /// <c>facts</c>).
+        /// <c>facts</c>). Version 2 (réponses de Damien du 31 octobre 2026) : <c>rushDaily</c> obligatoire (contrats pressés tirés en plus chaque
+        /// jour pour chaque rang ouvert, 0 à 8) et <c>rush</c> facultatif sur un contrat (contrat pressé, à finir avant la fin de la journée du
+        /// monde) ; chaque rang ouvert a au moins <c>daily</c> contrats normaux et <c>rushDaily</c> contrats pressés.
         /// </summary>
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 2;
 
         public const int MaxTitles = 64, MaxContracts = 256, MaxGates = 32, MaxRare = 64, MaxFacts = 64;
 
@@ -455,6 +475,9 @@ namespace EdS.Data.Guild
                 else if (d.MaxActive < 1 || d.MaxActive > MaxActiveLimit) { _r.Add("$.data.maxActive", ValidationCode.OutOfRange, $"hors de [1, {MaxActiveLimit}]."); ok = false; }
                 if (d.Daily is null) { Missing(_r, "$.data.daily", "contrats tirés chaque jour pour chaque rang ouvert"); ok = false; }
                 else if (d.Daily < 1 || d.Daily > MaxDaily) { _r.Add("$.data.daily", ValidationCode.OutOfRange, $"hors de [1, {MaxDaily}]."); ok = false; }
+                // Réponses du 31 octobre 2026 (schéma 2) : contrats pressés tirés en plus chaque jour.
+                if (d.RushDaily is null) { Missing(_r, "$.data.rushDaily", "contrats pressés tirés en plus chaque jour pour chaque rang ouvert (0 : aucun)"); ok = false; }
+                else if (d.RushDaily < 0 || d.RushDaily > MaxDaily) { _r.Add("$.data.rushDaily", ValidationCode.OutOfRange, $"hors de [0, {MaxDaily}]."); ok = false; }
 
                 List<GuildTitle> titles = CheckTitles(d.Titles);
                 List<GuildRank> ranks = CheckRanks(d.Ranks, titles);
@@ -463,14 +486,14 @@ namespace EdS.Data.Guild
                 if (d.Ranks != null && d.Ranks.Count == GuildRanks.Ids.Count)
                     for (int i = 0; i < d.Ranks.Count; i++)
                         if (d.Ranks[i] is RankData x && x.Open == true && x.Id == GuildRanks.Ids[i]) open.Add(x.Id);
-                List<GuildContract> contracts = CheckContracts(d.Contracts, open, d.Npc, d.Daily);
+                List<GuildContract> contracts = CheckContracts(d.Contracts, open, d.Npc, d.Daily, d.RushDaily);
                 List<GuildGate> gates = CheckGates(d.Gates, open);
                 CheckPoints(d.Points, out long main, out long side, out long discovery, out var rare, out var facts);
                 if (merchants != null) CheckMerchants(merchants, open);
                 if (ranks.Count == GuildRanks.Ids.Count) CheckStoryRanks(open, ranks);
                 if (!ok || !_r.IsValid || contentVersion is null) return null;
                 return new GuildBook(schemaVersion, contentVersion, d.Npc!, d.MaxActive!.Value, d.Daily!.Value, ranks, titles, contracts, gates, main, side,
-                    discovery, rare, facts);
+                    discovery, rare, facts, d.RushDaily!.Value);
             }
 
             private List<GuildTitle> CheckTitles(List<TitleData?>? list)
@@ -552,7 +575,7 @@ namespace EdS.Data.Guild
                 return null;
             }
 
-            private List<GuildContract> CheckContracts(List<ContractData?>? list, HashSet<string> open, string? npc, int? daily)
+            private List<GuildContract> CheckContracts(List<ContractData?>? list, HashSet<string> open, string? npc, int? daily, int? rushDaily)
             {
                 var contracts = new List<GuildContract>();
                 const string path = "$.data.contracts";
@@ -579,14 +602,21 @@ namespace EdS.Data.Guild
                     ok &= Amount(x.Money, p + ".money", 0, StoryValidator.MaxMoney, "pièces de cuivre");
                     ok &= Amount(x.Points, p + ".points", 1, GuildRanks.MaxAward, "points de guilde");
                     ok &= Amount(x.Xp, p + ".xp", 0, StoryValidator.MaxXp, "expérience");
-                    if (ok) contracts.Add(new GuildContract(x.Id!, x.Rank!, kind, x.Name!, x.Text!, objective!, x.Money!.Value, x.Points!.Value, x.Xp!.Value));
+                    if (ok) contracts.Add(new GuildContract(x.Id!, x.Rank!, kind, x.Name!, x.Text!, objective!, x.Money!.Value, x.Points!.Value, x.Xp!.Value, x.Rush ?? false));
                 }
-                // Chaque rang ouvert a au moins autant de contrats que le tirage du jour en prend.
+                // Chaque rang ouvert a au moins autant de contrats normaux que le tirage du jour en prend, et autant de contrats pressés que leur
+                // tirage (réponses du 31 octobre 2026).
                 if (daily is int n && n >= 1 && n <= MaxDaily && _r.IsValid)
                     foreach (string rank in GuildRanks.Ids.Where(open.Contains))
                     {
-                        int count = contracts.Count(x => x.Rank == rank);
+                        int count = contracts.Count(x => x.Rank == rank && !x.Rush);
                         if (count < n) _r.Add(path, ValidationCode.OutOfRange, $"rang « {rank} » : {count} contrats, au moins {n} (tirage du jour, daily).");
+                    }
+                if (rushDaily is int r && r >= 1 && r <= MaxDaily && _r.IsValid)
+                    foreach (string rank in GuildRanks.Ids.Where(open.Contains))
+                    {
+                        int count = contracts.Count(x => x.Rank == rank && x.Rush);
+                        if (count < r) _r.Add(path, ValidationCode.OutOfRange, $"rang « {rank} » : {count} contrats pressés, au moins {r} (tirage du jour, rushDaily).");
                     }
                 return contracts;
             }

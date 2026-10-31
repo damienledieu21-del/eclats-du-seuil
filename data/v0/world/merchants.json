@@ -10,6 +10,10 @@
         "value": 300
       },
       {
+        "item": "item.epee_du_novice",
+        "value": 1
+      },
+      {
         "item": "item.hachette_du_bucheron",
         "value": 350
       },
@@ -58,6 +62,10 @@
         "value": 250
       },
       {
+        "item": "item.ecu_du_novice",
+        "value": 1
+      },
+      {
         "item": "item.targe_d_osier",
         "value": 350
       },
@@ -68,6 +76,10 @@
       {
         "item": "item.rondache_cerclee",
         "value": 1400
+      },
+      {
+        "item": "item.rondache_du_chef_des_bandits",
+        "value": 4000
       },
       {
         "item": "item.ecu_du_garde",
@@ -343,7 +355,7 @@
         "closed": [
           "night"
         ],
-        "daily": 2,
+        "daily": 4,
         "offers": [
           {
             "item": "item.epee_du_milicien",

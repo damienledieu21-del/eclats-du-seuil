@@ -178,9 +178,9 @@ public class V14ForgeTests
         var worn = hero.Equipment.ToDictionary(e => e.Key, e => e.Key == "shield" || e.Key == "weapon" ? new ItemStack(e.Value, 1, wear: 0) : new ItemStack(e.Value, 1));
         Inventory broken = Inventory.From(hero.WithItems(hero.Inventory, worn), Items, 20);
         Assert.Null(broken.Shield);   // la garde des règles
-        Assert.Equal(before.PhysicalPower - Items.Item("item.epee_du_milicien").Bonus.PhysicalPower, broken.Gear().PhysicalPower);
-        Assert.Equal(before.Armor - Items.Item("item.ecu_de_chene").Bonus.Armor, broken.Gear().Armor);
-        Assert.Equal("item.ecu_de_chene", broken.WornAt("shield"));   // toujours porté
+        Assert.Equal(before.PhysicalPower - Items.Item("item.epee_du_novice").Bonus.PhysicalPower, broken.Gear().PhysicalPower);
+        Assert.Equal(before.Armor - Items.Item("item.ecu_du_novice").Bonus.Armor, broken.Gear().Armor);
+        Assert.Equal("item.ecu_du_novice", broken.WornAt("shield"));   // toujours porté
         // Un objet nommé à effet, usé à zéro : plus d'effet.
         var lame = new Dictionary<string, ItemStack>(worn) { ["weapon"] = new ItemStack("item.lame_du_seuil", 1, wear: 0) };
         Assert.Empty(Inventory.From(hero.WithItems(hero.Inventory, lame), Items, 20).Effects());
@@ -471,7 +471,7 @@ public class V14ForgeTests
         Assert.Equal(2, reports.Count);
         Assert.True(reports[1].Lost > 0);
         // L'épée d'entrée, au sac, a perdu les deux usures ; la hachette, portée seulement après l'entrée, rien.
-        ItemStack sword = w.Inventory.Stacks.Single(x => x.Item == "item.epee_du_milicien");
+        ItemStack sword = w.Inventory.Stacks.Single(x => x.Item == "item.epee_du_novice");
         Assert.Equal(Math.Max(0, harsh.WearMax - reports[0].Lost - reports[1].Lost), harsh.WearLeft(sword));
         Assert.Null(w.Inventory.WornInstanceAt("weapon")!.Wear);
         // Le bouclier, resté porté, a perdu les deux.
@@ -508,12 +508,12 @@ public class V14ForgeTests
         // Le catalogue réglé à 100 points par PV maximaux : une usure visible dès le premier coup.
         ItemCatalog harsh = ItemsMutated(r => r["data"]!["wear"]!["perFullHealth"] = 100).Catalog!;
         var inventory = Inventory.From(Inventory.Outfit(Hero(), harsh), harsh, 1);
-        Assert.Equal(new[] { "item.epee_du_milicien", "item.ecu_de_chene" }, inventory.WearDown(150).OrderBy(x => x, StringComparer.Ordinal).Reverse());
+        Assert.Equal(new[] { "item.epee_du_novice", "item.ecu_du_novice" }, inventory.WearDown(150).OrderBy(x => x, StringComparer.Ordinal).Reverse());
         Assert.Equal(0, inventory.WornInstanceAt("weapon")!.Wear);
         Assert.Empty(inventory.WearDown(5));   // déjà à zéro : rien de plus, rien ne casse
         WorldSave save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), inventory.SaveInto(Hero()));
         string text = SaveJsonReader.Write(save);
-        Assert.Contains("\"weapon\": {\"item\": \"item.epee_du_milicien\", \"wear\": 0}", text);
+        Assert.Contains("\"weapon\": {\"item\": \"item.epee_du_novice\", \"wear\": 0}", text);
         Assert.Equal(0, SaveJsonReader.Read(text).Save!.Character!.WornInstance("weapon")!.Wear);
     }
 
@@ -521,7 +521,10 @@ public class V14ForgeTests
 
     private static SavedCharacter Damaged(long money)
     {
-        SavedCharacter hero = Inventory.Outfit(Hero(money), Items);
+        // Une partie d'avant les réponses de Damien du 31 octobre 2026 : l'épée du milicien et l'écu de chêne (l'équipement du novice vaut
+        // 1 cuivre, sa réparation coûte le minimum).
+        SavedCharacter hero = Hero(money).WithItems(Array.Empty<ItemStack>(), new Dictionary<string, string>
+            { ["weapon"] = "item.epee_du_milicien", ["shield"] = "item.ecu_de_chene", ["shard"] = "item.eclat_du_seuil_endormi" });
         var worn = hero.Equipment.ToDictionary(e => e.Key, e => e.Key switch
         {
             "weapon" => new ItemStack(e.Value, 1, wear: 40),   // 60 points manquent
@@ -599,7 +602,7 @@ public class V14ForgeTests
         Assert.Contains(SaveVersion.Current + ",", text);
         Assert.Contains("{\"item\": \"item.epee_de_garde\", \"count\": 1, \"quality\": \"masterwork\", \"signedBy\": \"bastion\"}", text);
         Assert.Contains("{\"item\": \"item.casque_de_fer\", \"count\": 1, \"quality\": \"superior\", \"wear\": 12}", text);
-        Assert.Contains("\"shield\": {\"item\": \"item.ecu_de_chene\", \"wear\": 0}", text);
+        Assert.Contains("\"shield\": {\"item\": \"item.ecu_de_chene\", \"wear\": 0}", text);   // Damaged : une partie d'avant l'équipement du novice
         Assert.Contains("\"crafts\": 3\n", text);
         SavedCharacter read = SaveJsonReader.Read(text).Save!.Character!;
         Assert.Equal(3L, read.Crafts);
@@ -637,7 +640,7 @@ public class V14ForgeTests
         Assert.All(old.Character.Equipment.Keys, slot => Assert.False(old.Character.WornInstance(slot)!.IsUnique));
         Assert.Equal(current, SaveJsonReader.Write(old));   // réécrite à la version courante
         // Version 9 avec un champ de la version 11 : refusé, champ inconnu.
-        ValidationError wear = SaveJsonReader.Read(v9.Replace("\"weapon\": \"item.epee_du_milicien\"", "\"weapon\": {\"item\": \"item.epee_du_milicien\", \"wear\": 3}")).Report.Errors[0];
+        ValidationError wear = SaveJsonReader.Read(v9.Replace("\"weapon\": \"item.epee_du_novice\"", "\"weapon\": {\"item\": \"item.epee_du_novice\", \"wear\": 3}")).Report.Errors[0];
         Assert.Equal(("$.data.character.equipment.weapon.wear", ValidationCode.UnknownField), (wear.Path, wear.Code));
         ValidationError crafts = SaveJsonReader.Read(v9.Replace("\"money\": 12\n", "\"money\": 12,\n      \"crafts\": 1\n")).Report.Errors[0];
         Assert.Equal(("$.data.character.crafts", ValidationCode.UnknownField), (crafts.Path, crafts.Code));
@@ -664,7 +667,7 @@ public class V14ForgeTests
         Assert.All(old.Equipment.Keys, slot => Assert.False(old.WornInstance(slot)!.IsUnique));
         Assert.Equal(current, SaveJsonReader.Write(read.Save));
         // En version 10, les champs de la version 11 sont inconnus.
-        ValidationError wear = SaveJsonReader.Read(v10.Replace("\"weapon\": \"item.epee_du_milicien\"", "\"weapon\": {\"item\": \"item.epee_du_milicien\", \"wear\": 3}")).Report.Errors[0];
+        ValidationError wear = SaveJsonReader.Read(v10.Replace("\"weapon\": \"item.epee_du_novice\"", "\"weapon\": {\"item\": \"item.epee_du_novice\", \"wear\": 3}")).Report.Errors[0];
         Assert.Equal(("$.data.character.equipment.weapon.wear", ValidationCode.UnknownField), (wear.Path, wear.Code));
     }
 

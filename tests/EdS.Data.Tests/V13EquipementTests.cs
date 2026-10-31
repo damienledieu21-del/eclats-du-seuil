@@ -60,8 +60,9 @@ public class V13EquipementTests
     {
         ItemCatalog c = ItemsCatalog;
         Assert.Equal((5, "0.4.0-provisoire"), (c.SchemaVersion, c.ContentVersion));   // sous-lot V1.4 : version 5 (qualité, usure)
-        Assert.Equal(new[] { "weapon", "neck", "ring_1", "ring_2", "relic_1", "relic_2" }, c.Places.Where(p => p.Effects).Select(p => p.Id));
-        Assert.Equal(new[] { "item.lame_du_seuil", "item.amulette_de_l_aube", "item.talisman_du_seuil" }, c.Items.Where(i => i.Effect != null).Select(i => i.Id));
+        // Réponses du 31 octobre 2026 : les boucliers aussi (la rondache du chef des bandits).
+        Assert.Equal(new[] { "weapon", "shield", "neck", "ring_1", "ring_2", "relic_1", "relic_2" }, c.Places.Where(p => p.Effects).Select(p => p.Id));
+        Assert.Equal(new[] { "item.lame_du_seuil", "item.rondache_du_chef_des_bandits", "item.amulette_de_l_aube", "item.talisman_du_seuil" }, c.Items.Where(i => i.Effect != null).Select(i => i.Id));
         Assert.Equal("Les coups sur un ennemi étourdi infligent 10 % de dégâts en plus.", c.Item("item.lame_du_seuil").Effect!.Text);
         Assert.Equal("item.lame_du_seuil", c.Item("item.lame_du_seuil").Effect!.Effect.Source);
         // Deux ensembles des niveaux 1 à 20 : 4 et 6 pièces, paliers croissants, sources « set.….<pièces> ».
@@ -73,7 +74,7 @@ public class V13EquipementTests
         Assert.Equal(new GearBonus(armor: 60), c.Sets[1].Bonuses[0].Bonus);
         // Tables : chaque rareté une fois ; la rareté fixe le nombre et l'échelle, pas le hasard (Q30).
         Assert.Equal(new[] { (ItemRarity.Common, 0, 100), (ItemRarity.Rare, 1, 100), (ItemRarity.VeryRare, 2, 110), (ItemRarity.Epic, 3, 120),
-            (ItemRarity.Legendary, 3, 135), (ItemRarity.Mythic, 4, 150) }, c.RarityRolls.Select(r => (r.Rarity, r.Count, r.ScalePercent)));
+            (ItemRarity.Legendary, 4, 135), (ItemRarity.Mythic, 5, 150) }, c.RarityRolls.Select(r => (r.Rarity, r.Count, r.ScalePercent)));   // 4 et 5 : réponses du 31 octobre 2026
         Assert.Equal(6, c.Properties.Count);
         // Le butin non nommé tire ; l'objet nommé, la pièce d'ensemble, l'Éclat et l'outil jamais.
         Assert.True(c.IsRollable(c.Item("item.bottes_du_renard")));

@@ -70,7 +70,7 @@ namespace EdS.Data.Items
 
         public bool Guard { get; }
 
-        /// <summary>Sous-lot V1.3 : ses objets peuvent porter des effets (armes et bijoux).</summary>
+        /// <summary>Sous-lot V1.3 : ses objets peuvent porter des effets (armes et bijoux ; boucliers depuis la réponse de Damien du 31 octobre 2026).</summary>
         public bool Effects { get; }
 
         internal EquipmentPlace(string id, string accepts, PlaceGroup group, bool required, IEnumerable<string> requiredBy, bool guard, bool effects = false)
@@ -667,7 +667,7 @@ namespace EdS.Data.Items
         /// <c>consumable</c> (objet de soin : <c>stack</c>, <c>heal</c>, <c>cooldownMs</c>). Version 3 (sous-lot V1.2) : les places deviennent des
         /// objets (<c>id</c>, <c>accepts</c>, <c>group</c>, <c>required</c>, <c>requiredBy</c>, <c>guard</c>), <c>starting[]</c> (équipement de
         /// départ), <c>guard</c> (garde d'un bouclier) et <c>fits</c> (arbres de talents) sur un équipement. Version 4 (sous-lot V1.3) :
-        /// <c>effects</c> sur une place (ses objets peuvent porter des effets : armes et bijoux) ; <c>named</c> (objet nommé fait à la main),
+        /// <c>effects</c> sur une place (ses objets peuvent porter des effets : armes et bijoux, puis boucliers, sans changer de version) ; <c>named</c> (objet nommé fait à la main),
         /// <c>set</c> (pièce d'un ensemble) et <c>effects</c> (texte, modificateurs, déclencheurs) sur un équipement ; <c>sets[]</c> (ensembles :
         /// bonus à 2, 4 et 6 pièces portées) et <c>properties</c> (tables des propriétés tirées : nombre et échelle par rareté, propriétés et
         /// leurs bornes par niveau). Version 5 (sous-lot V1.4) : <c>quality</c> (part du bonus de base ajoutée par la qualité supérieure et
@@ -1273,14 +1273,15 @@ namespace EdS.Data.Items
                 }
             }
             // Sous-lot V1.3 : objet nommé, pièce d'ensemble, effets. Une pièce d'ensemble et un objet à effets sont nommés (faits à la main) ; des
-            // effets seulement à une place qui les admet (armes et bijoux), avec leur texte, bornés par combat.equipment des règles.
+            // effets seulement à une place qui les admet (armes, boucliers et bijoux : réponse de Damien du 31 octobre 2026), avec leur texte,
+            // bornés par combat.equipment des règles.
             bool named = item.Named ?? false;
             if (item.Set != null && !IsSetId(item.Set)) { report.Add(path + ".set", ValidationCode.InvalidValue, "ensemble invalide : « set. » puis minuscules, chiffres, « _ » et « . »."); ok = false; }
             else if (item.Set != null && !named) { report.Add(path + ".named", ValidationCode.InvalidValue, "une pièce d'ensemble est un objet nommé (named: true)."); ok = false; }
             ItemEffect? effect = null;
             if (item.Effects is { } e)
             {
-                if (place != null && !place.Effects) { report.Add(path + ".effects", ValidationCode.InvalidValue, $"pas d'effet à la place « {place.Accepts} » (armes et bijoux seulement)."); ok = false; }
+                if (place != null && !place.Effects) { report.Add(path + ".effects", ValidationCode.InvalidValue, $"pas d'effet à la place « {place.Accepts} » (armes, boucliers et bijoux seulement)."); ok = false; }
                 else if (!named) { report.Add(path + ".named", ValidationCode.InvalidValue, "un objet à effets est un objet nommé (named: true)."); ok = false; }
                 else if (string.IsNullOrWhiteSpace(e.Text)) { Missing(report, path + ".effects.text", "texte montré au joueur"); ok = false; }
                 else

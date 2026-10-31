@@ -158,6 +158,25 @@ namespace EdS.Data.Zones
         /// (absente : l'identifiant de la créature sans ses chiffres finaux, « loup12 » donne « loup »).
         /// </summary>
         public string? Family { get; set; }
+
+        /// <summary>
+        /// Réponses de Damien du 31 octobre 2026 (schéma 6) : créature rare de la nuit (le loup blanc) ; facultatif. Elle n'est pas là au début
+        /// d'une session : elle a une chance d'apparaître chaque nuit du monde, après un signe.
+        /// </summary>
+        public NightData? Night { get; set; }
+    }
+
+    /// <summary>Schéma 6 : apparition d'une créature rare de la nuit (chance par nuit, délai entre le signe et l'arrivée, texte du signe).</summary>
+    public sealed class NightData
+    {
+        /// <summary>Chance d'apparaître une nuit donnée, en pour cent (1 à 100).</summary>
+        public long? ChancePercent { get; set; }
+
+        /// <summary>Délai entre le signe et l'arrivée, en ms (0 à 600 000, multiple du tick).</summary>
+        public long? SignMs { get; set; }
+
+        /// <summary>Clé du texte du signe (« Un hurlement glacé monte du pré… »).</summary>
+        public string? Sign { get; set; }
     }
 
     /// <summary>Passage fermé par un obstacle du scénario, ouvert pour de bon par une étape du monde (raccourci du moulin).</summary>

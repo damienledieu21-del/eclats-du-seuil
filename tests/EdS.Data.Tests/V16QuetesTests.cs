@@ -244,16 +244,19 @@ public class V16QuetesTests
     public void Livrer_a_un_PNJ_en_entier_ou_pas_du_tout()
     {
         StoryBook book = NearDoor("npc.aubergiste");
-        // Deux peaux seulement : rien n'est remis, l'étape attend.
+        // Deux peaux seulement : la réponse « Voici : … » n'est pas proposée (réponses du 31 octobre 2026), rien n'est remis, l'étape attend.
         WorldSession short_ = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 2)), Peaux, "peaux"));
-        Assert.Equal(DialogueRefusal.None, short_.Talk("npc.aubergiste", out _));
+        Assert.Equal(DialogueRefusal.NoSuchChoice, Deliver(short_, "npc.aubergiste"));
         Assert.Empty(Steps(short_));
         Assert.Equal(2, short_.Inventory.Count("item.peau_de_loup"));
         // Quatre : trois remises d'un coup, la dernière étape franchie, l'expérience et les pièces données, la récompense attend le choix.
         WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 4)), Peaux, "peaux", 0, Peaux));
         long xp = w.Character.Xp;
+        // Réponses du 31 octobre 2026 : parler ne livre plus ; la réponse « Voici : Peau de loup ×3. » promet les peaux.
         Assert.Equal(DialogueRefusal.None, w.Talk("npc.aubergiste", out _));
-        // Relecture de la PR #76 : promises en parlant, les peaux sont prises au tick suivant avec les effets de l'étape (tout ou rien).
+        Assert.Equal(0, w.Narrative!.Progress(Peaux));
+        Assert.Equal(DialogueRefusal.None, Deliver(w, "npc.aubergiste"));
+        // Relecture de la PR #76 : promises, les peaux sont prises au tick suivant avec les effets de l'étape (tout ou rien).
         Assert.Equal(4, w.Inventory.Count("item.peau_de_loup"));
         Assert.Equal(new[] { $"ObjectiveDone {Peaux}/peaux", $"StepCompleted {Peaux}/peaux", "ItemTaken item.peau_de_loup 3", "XpGiven xp 60",
             "MoneyGiven money 150", $"RewardToChoose {Peaux}" }, Steps(w));
@@ -521,7 +524,7 @@ public class V16QuetesTests
     public void Chef_des_bandits_livre_a_deux_formes()
     {
         ZoneDefinition z = Zone();
-        Assert.Equal(5, z.SchemaVersion);
+        Assert.Equal(6, z.SchemaVersion);   // 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit)
         Boss chef = Assert.Single(z.Chiefs);
         Assert.Equal(("chef_des_bandits", "fact.chef_des_bandits.vaincu", "loot.chef_des_bandits"), (chef.Id, chef.Fact, chef.Loot!));
         Assert.Equal(new[] { "chef_des_bandits", "chef_des_bandits_furieux" }, chef.Forms.Select(f => f.Id));
@@ -563,9 +566,11 @@ public class V16QuetesTests
         WorldSession w = Play(Zone(), Hero());
         Assert.NotNull(w.EnteredShield);
         string[] creatures = { "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "chef_des_bandits", "loup_blanc" };
-        foreach (string id in creatures.Where(c => w.Zone.Engine.View(c).IsPresent))
+        // Réponses du 31 octobre 2026 : le loup blanc n'est pas là au début d'une session (créature rare de la nuit).
+        bool Present(string c) => w.Zone.Engine.CombatantIds.Contains(c) && w.Zone.Engine.View(c).IsPresent;
+        foreach (string id in creatures.Where(Present))
             Assert.Null(w.Zone.Engine.View(id).Rules?.Shield);
-        Assert.Contains(creatures, c => w.Zone.Engine.View(c).IsPresent);
+        Assert.Contains(creatures, Present);
         // Quelques secondes de jeu : la session avance sans erreur (aucune garde de bouclier à contrôler pour eux).
         for (int i = 0; i < 200; i++) w.Step();
     }

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/zone.schema.json",
   "title": "Éclats du Seuil — zone du monde",
-  "description": "Sous-lot 12.4. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ZoneValidator), avec le scénario de zone et le catalogue des objets. Schéma 3 (Vallons agrandis, 28 octobre 2026) : routes et chemins facultatifs (roads), affichage seulement. Schéma 4 (intérieurs, 28 octobre 2026) : intérieur facultatif (indoor) et portes facultatives (doors) vers d'autres zones, qui se répondent. Schéma 5 (sous-lot V1.6) : autres chefs à formes facultatifs (chiefs, même forme que boss) et famille facultative d'une population (family, objectifs defeatFamily).",
+  "description": "Sous-lot 12.4. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ZoneValidator), avec le scénario de zone et le catalogue des objets. Schéma 3 (Vallons agrandis, 28 octobre 2026) : routes et chemins facultatifs (roads), affichage seulement. Schéma 4 (intérieurs, 28 octobre 2026) : intérieur facultatif (indoor) et portes facultatives (doors) vers d'autres zones, qui se répondent. Schéma 5 (sous-lot V1.6) : autres chefs à formes facultatifs (chiefs, même forme que boss) et famille facultative d'une population (family, objectifs defeatFamily). Schéma 6 (réponses de Damien du 31 octobre 2026) : créature rare de la nuit facultative sur une population (night : chancePercent, signMs, sign).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 5
+      "const": 6
     },
     "kind": {
       "const": "zone"
@@ -181,6 +181,35 @@
                 "pattern": "^[a-z][a-z0-9_]*$",
                 "maxLength": 64,
                 "description": "Sous-lot V1.6 : famille (objectifs defeatFamily) ; absente : la créature sans ses chiffres finaux."
+              },
+              "night": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "chancePercent",
+                  "signMs",
+                  "sign"
+                ],
+                "description": "Schéma 6 : créature rare de la nuit, absente au début d'une session ; une chance d'apparaître chaque nuit du monde (de 22 h à 5 h, tirage par la clé de la nuit), après un signe ; toujours là, après le signe, quand une quête ou un contrat en cours la demande.",
+                "properties": {
+                  "chancePercent": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "signMs": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 600000,
+                    "description": "Délai entre le signe et l'arrivée, multiple du tick."
+                  },
+                  "sign": {
+                    "type": "string",
+                    "pattern": "^text(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200,
+                    "description": "Clé du texte du signe."
+                  }
+                }
               }
             }
           }

@@ -250,7 +250,8 @@ public class Lot123ItemTests
         Assert.Equal(new[] { "weapon", "shield", "head", "shoulders", "cloak", "chest", "bracers", "hands", "belt", "legs", "feet", "neck",
             "ring_1", "ring_2", "relic_1", "relic_2", "shard", "tool" }, c.Slots);
         Assert.Equal(24, c.InventorySize);                                       // Q5 : 24 places gardées (les sacs viendront plus tard)
-        Assert.Equal(84, c.Items.Count);   // V1.2 : 73 équipements, puis les 9 matériaux et objets de soin d'avant ; V1.3 : deux pièces d'ensemble de plus
+        Assert.Equal(87, c.Items.Count);   // V1.2 : 73 équipements, puis les 9 matériaux et objets de soin d'avant ; V1.3 : deux pièces d'ensemble de plus ;
+        // réponses du 31 octobre 2026 : l'épée et l'écu du novice, la rondache du chef des bandits
         ItemDefinition shield = c.Item("item.ecu_de_chene");
         Assert.Equal((ItemType.Equipment, "shield", 1, ItemRarity.Common, 1, 60), (shield.Type, shield.Slot, shield.RequiredLevel, shield.Rarity, shield.Stack, shield.Bonus.Armor));
         // H5 : deux boucliers de même niveau, d'orientations différentes.
@@ -505,8 +506,8 @@ public class Lot123ItemTests
         var placement = new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5"));
         var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), loaded.Setup!, ShippedData, Progression, catalog, placement,
             new Dictionary<string, string> { ["loup1"] = "loot.loup" });
-        // Sous-lot V1.2 : le Bastion reçoit à l'entrée ses places obligatoires (l'écu de chêne, 60 d'armure, et l'Éclat, sans bonus).
-        Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, session.Restored);
+        // Sous-lot V1.2 : le Bastion reçoit à l'entrée ses places obligatoires (l'écu du novice depuis le 31 octobre 2026, 60 d'armure, et l'Éclat, sans bonus).
+        Assert.Equal(new[] { "item.ecu_du_novice", "item.eclat_du_seuil_endormi" }, session.Restored);
         Assert.Equal(new GearBonus(armor: 40 + 60, maxHealth: 40), session.EnteredGear);
         session.Step();
         long withGambison = session.Zone.Engine.View("bastion").MaxHealth!.Value;

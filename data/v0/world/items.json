@@ -14,7 +14,8 @@
         "requiredBy": [
           "class.bastion"
         ],
-        "guard": true
+        "guard": true,
+        "effects": true
       },
       {
         "id": "head"
@@ -83,11 +84,11 @@
         "item": "item.eclat_du_seuil_endormi"
       },
       {
-        "item": "item.epee_du_milicien",
+        "item": "item.epee_du_novice",
         "class": "class.bastion"
       },
       {
-        "item": "item.ecu_de_chene",
+        "item": "item.ecu_du_novice",
         "class": "class.bastion"
       }
     ],
@@ -95,6 +96,18 @@
       {
         "id": "item.epee_du_milicien",
         "name": "Épée du milicien",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "weapon",
+        "requiredLevel": 1,
+        "bonus": {
+          "physicalPower": 10
+        }
+      },
+      {
+        "id": "item.epee_du_novice",
+        "name": "Épée du novice",
+        "icon": "epee_du_milicien",
         "type": "equipment",
         "rarity": "common",
         "slot": "weapon",
@@ -293,6 +306,23 @@
         }
       },
       {
+        "id": "item.ecu_du_novice",
+        "name": "Écu du novice",
+        "icon": "ecu_de_chene",
+        "type": "equipment",
+        "rarity": "common",
+        "slot": "shield",
+        "requiredLevel": 1,
+        "bonus": {
+          "armor": 60
+        },
+        "guard": {
+          "damageReduction": 0.6,
+          "costPerBlock": 10,
+          "parryWindowMs": 150
+        }
+      },
+      {
         "id": "item.targe_d_osier",
         "name": "Targe d'osier",
         "icon": "rondache_cerclee",
@@ -352,6 +382,48 @@
         "fits": [
           "tree.bastion.contrecoup"
         ]
+      },
+      {
+        "id": "item.rondache_du_chef_des_bandits",
+        "name": "Rondache du chef des bandits",
+        "icon": "rondache_cerclee",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "shield",
+        "requiredLevel": 5,
+        "bonus": {
+          "armor": 90,
+          "physicalPower": 10
+        },
+        "guard": {
+          "damageReduction": 0.55,
+          "costPerBlock": 8,
+          "parryWindowMs": 200
+        },
+        "fits": [
+          "tree.bastion.contrecoup"
+        ],
+        "named": true,
+        "effects": {
+          "text": "Un coup bloqué renvoie une riposte à l'attaquant (40 % de la puissance, au plus toutes les 2 secondes).",
+          "triggers": [
+            {
+              "on": "onBlock",
+              "role": "target",
+              "cooldownMs": 2000,
+              "effects": [
+                {
+                  "type": "strike",
+                  "target": "eventSource",
+                  "coefficient": 0.4,
+                  "powerType": "physique",
+                  "damageType": "physique",
+                  "range": 2.5
+                }
+              ]
+            }
+          ]
+        }
       },
       {
         "id": "item.ecu_du_garde",
@@ -1609,12 +1681,12 @@
         },
         {
           "rarity": "legendary",
-          "count": 3,
+          "count": 4,
           "scalePercent": 135
         },
         {
           "rarity": "mythic",
-          "count": 4,
+          "count": 5,
           "scalePercent": 150
         }
       ],

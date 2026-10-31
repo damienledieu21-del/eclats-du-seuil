@@ -73,6 +73,18 @@ internal static class V11TestData
         return session;
     }
 
+    /// <summary>
+    /// Réponses de Damien du 31 octobre 2026 : parle au PNJ puis choisit sa première réponse de livraison (« Voici : … ») ; sans réponse de
+    /// livraison proposée (objets manquants, réservés), <see cref="DialogueRefusal.NoSuchChoice"/>, rien n'est promis.
+    /// </summary>
+    public static DialogueRefusal Deliver(WorldSession w, string npc)
+    {
+        DialogueRefusal talk = w.Talk(npc, out DialogueView? view);
+        if (talk != DialogueRefusal.None) return talk;
+        DialogueOption? option = view!.Options.FirstOrDefault(o => o.Delivery != null);
+        return option is null ? DialogueRefusal.NoSuchChoice : w.Choose(option.Index, out _, out _);
+    }
+
     /// <summary>Position du personnage (zone de la partie).</summary>
     public static GroundVector Position(WorldSession w) => w.Zone.Engine.View("bastion").Position!.Value;
 

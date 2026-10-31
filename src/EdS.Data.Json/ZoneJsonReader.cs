@@ -239,8 +239,21 @@ namespace EdS.Data.Json
                 ["leashRange"] = (v, p) => population.LeashRange = input.Decimal(v, p),
                 ["loot"] = (v, p) => population.Loot = input.NullableText(v, p),
                 ["family"] = (v, p) => population.Family = input.Text(v, p),   // sous-lot V1.6 (schéma 5)
+                ["night"] = (v, p) => population.Night = ReadNight(input, v, p),   // réponses du 31 octobre 2026 (schéma 6)
             });
             return ok ? population : null;
+        }
+
+        private static NightData? ReadNight(JsonInput input, JsonElement element, string path)
+        {
+            var night = new NightData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["chancePercent"] = (v, p) => night.ChancePercent = input.Int64(v, p),
+                ["signMs"] = (v, p) => night.SignMs = input.Int64(v, p),
+                ["sign"] = (v, p) => night.Sign = input.Text(v, p),
+            });
+            return ok ? night : null;
         }
 
         private static BossData? ReadBoss(JsonInput input, JsonElement element, string path)

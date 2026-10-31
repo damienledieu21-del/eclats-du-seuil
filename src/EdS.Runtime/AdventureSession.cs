@@ -411,6 +411,9 @@ namespace EdS.Runtime
                 else if (b.Kind == BossEventKind.Defeated) Say("text.ui.boss_defeated");
             }
             foreach ((string item, int count) in step.Rewards) Say("text.ui.reward", ItemName(item), count);
+            // Réponses de Damien du 31 octobre 2026 : le signe d'une créature rare de la nuit (« Un hurlement glacé monte du pré… »).
+            foreach (PopulationEvent p in step.Population)
+                if (p.Kind == PopulationEventKind.Sign) Say(p.Creature);
             foreach (StoryEvent e in step.Story) Story(e);
             if (step.Defeated) Say("text.ui.defeated");
             // Sous-lot V1.4 : une pièce usée à zéro par ce combat ne donne plus ses bonus (à réparer).
@@ -481,6 +484,8 @@ namespace EdS.Runtime
                 case StoryEventKind.ContractAbandoned:
                 case StoryEventKind.ContractDone:
                 case StoryEventKind.TitleShown:
+                case StoryEventKind.ContractExpired:   // réponses du 31 octobre 2026
+                case StoryEventKind.GuildReputation:
                     GuildMessage(e);
                     break;
                 case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
@@ -659,8 +664,13 @@ namespace EdS.Runtime
         /// <summary>Ce que dit le PNJ (traduit), ou null sans dialogue ouvert.</summary>
         public string? DialogueText => Dialogue is DialogueView d ? Text(d.Text) : null;
 
-        /// <summary>Réponses proposées (traduites), dans l'ordre de <see cref="Choose"/>.</summary>
-        public IReadOnlyList<string> DialogueAnswers => Dialogue is DialogueView d ? d.Options.Select(o => Text(o.Text)).ToList() : (IReadOnlyList<string>)Array.Empty<string>();
+        /// <summary>
+        /// Réponses proposées (traduites), dans l'ordre de <see cref="Choose"/>. Réponses du 31 octobre 2026 : une réponse de livraison dit ce
+        /// qui est livré (« Voici : Peau de loup ×3. »).
+        /// </summary>
+        public IReadOnlyList<string> DialogueAnswers => Dialogue is DialogueView d
+            ? d.Options.Select(o => o.Item is string item ? string.Format(CultureInfo.InvariantCulture, Text(o.Text), o.Count, ItemName(item)) : Text(o.Text)).ToList()
+            : (IReadOnlyList<string>)Array.Empty<string>();
 
         /// <summary>
         /// Choisit la réponse de rang <paramref name="index"/> parmi celles proposées (<see cref="DialogueAnswers"/>). Revue Codex de la PR #49 :

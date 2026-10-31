@@ -78,7 +78,7 @@ public class V16RelectureTests
             Quest(r, Peaux).Remove("rewardChoice");
         });
         WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 3)), Peaux, "peaux"));
-        w.Talk("npc.aubergiste", out _);
+        Deliver(w, "npc.aubergiste");   // réponses du 31 octobre 2026 : la livraison est une réponse du dialogue
         List<string> events = Steps(w, 20);
         Assert.DoesNotContain(events, e => e.StartsWith("QuestLocked", StringComparison.Ordinal));
         Assert.Contains($"QuestCompleted {Peaux}", events);
@@ -101,7 +101,7 @@ public class V16RelectureTests
                 Quest(r, Peaux)["effects"]!.AsArray().Add(new JsonObject { ["do"] = "startQuest", ["id"] = Bete });
             });
             WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 3)), Peaux, "peaux"));
-            w.Talk("npc.aubergiste", out _);
+            Deliver(w, "npc.aubergiste");   // réponses du 31 octobre 2026 : la livraison est une réponse du dialogue
             return w;
         }
         WorldSession reward = Play("questReward");
@@ -142,7 +142,7 @@ public class V16RelectureTests
         StoryBook book = NearDoor("npc.aubergiste", r =>
             Quest(r, Peaux)["steps"]![1]!["effects"]!.AsArray().Add(new JsonObject { ["do"] = "takeMoney", ["value"] = 50 }));
         WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 3)), Peaux, "peaux"));
-        w.Talk("npc.aubergiste", out _);
+        Deliver(w, "npc.aubergiste");   // réponses du 31 octobre 2026 : la livraison est une réponse du dialogue
         Assert.Equal(new[] { $"ObjectiveDone {Peaux}/peaux", $"MoneyShort {Peaux}/peaux" }, Steps(w, 10));
         Assert.Equal(3, w.Inventory.Count("item.peau_de_loup"));
         Assert.Equal("peaux", w.Narrative!.CurrentStep(Peaux)!.Id);
@@ -153,7 +153,7 @@ public class V16RelectureTests
     {
         StoryBook book = NearDoor("npc.aubergiste");
         WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 3)), Peaux, "peaux"));
-        w.Talk("npc.aubergiste", out _);
+        Deliver(w, "npc.aubergiste");   // réponses du 31 octobre 2026 : la livraison est une réponse du dialogue
         Assert.Equal(1, w.Narrative!.Progress(Peaux));
         Assert.Equal(InventoryRefusal.None, w.Inventory.Remove("item.peau_de_loup", 1));   // une peau partie avant le tick
         Steps(w, 3);
@@ -167,8 +167,9 @@ public class V16RelectureTests
         StoryBook book = NearDoor("npc.aubergiste", r => Quest(r, Peaux)["steps"]![1]!["objective"]!["id"] = "item.potion_de_soin");
         WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.potion_de_soin", 3)), Peaux, "peaux"));
         Assert.Equal(3, w.Inventory.Reserved("item.potion_de_soin"));
-        w.Talk("npc.aubergiste", out _);
-        Assert.Equal(0, w.Narrative!.LastTalkFilled);
+        // Réponses du 31 octobre 2026 : la réponse de livraison n'est pas proposée (rien de libre), rien n'est promis.
+        Assert.Equal(DialogueRefusal.NoSuchChoice, Deliver(w, "npc.aubergiste"));
+        Assert.DoesNotContain(w.Narrative!.Open!.Options, o => o.Delivery != null);
         Assert.Empty(Steps(w, 3));
         Assert.Equal((3, 0L), (w.Inventory.Count("item.potion_de_soin"), w.Narrative.Progress(Peaux)));
     }
@@ -221,6 +222,56 @@ public class V16RelectureTests
         Assert.Equal(new[] { $"ObjectiveDone {Bete}/temoin", $"StepCompleted {Bete}/temoin" }, Steps(w, 3));
     }
 
+    // --- Réponses de Damien du 31 octobre 2026 : la livraison est une réponse du dialogue ---------------------------------------
+
+    [Fact]
+    public void Livraison_par_une_reponse_seulement_quand_les_objets_sont_la()
+    {
+        StoryBook book = NearDoor("npc.aubergiste");
+        WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 3), new ItemStack("item.potion_de_soin", 2)), Peaux, "peaux"));
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.aubergiste", out DialogueView? view));
+        // Parler ne promet rien ; la réponse « Voici : … » est la dernière, après celles du nœud.
+        Assert.Equal(0, w.Narrative!.Progress(Peaux));
+        Assert.Empty(Steps(w, 2));
+        DialogueOption give = view!.Options.Last();
+        Assert.Equal((Peaux, "item.peau_de_loup", 3L), (give.Delivery, give.Item, give.Count));
+        Assert.Equal(book.Dialogue("dialogue.aubergiste").Node("peaux").Choices.Count, give.Index);
+        Assert.Equal(DialogueRefusal.None, w.Choose(give.Index, out DialogueView? next, out _));
+        // Le dialogue reste ouvert, sans la réponse de livraison (les peaux sont promises).
+        Assert.DoesNotContain(next!.Options, o => o.Delivery != null);
+        Assert.Equal(DialogueRefusal.NoSuchChoice, w.Choose(give.Index, out _, out _));
+        Assert.Equal(new[] { $"ObjectiveDone {Peaux}/peaux", $"StepCompleted {Peaux}/peaux", "ItemTaken item.peau_de_loup 3" },
+            Steps(w, 3).Take(3));
+        Assert.Equal(0, w.Inventory.Count("item.peau_de_loup"));
+        Assert.Equal(2, w.Inventory.Count("item.potion_de_soin"));
+        // Trop peu de peaux : pas de réponse de livraison.
+        WorldSession few = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 2)), Peaux, "peaux"));
+        few.Talk("npc.aubergiste", out DialogueView? none);
+        Assert.DoesNotContain(none!.Options, o => o.Delivery != null);
+    }
+
+    [Fact]
+    public void Un_PNJ_qui_n_a_rien_a_dire_ouvre_ses_seules_livraisons()
+    {
+        // L'aubergiste n'a plus que des entrées fermées : rien à dire, mais des peaux à recevoir.
+        StoryBook book = NearDoor("npc.aubergiste", r =>
+        {
+            JsonObject d = r["data"]!["dialogues"]!.AsArray().Single(x => (string)x!["id"]! == "dialogue.aubergiste")!.AsObject();
+            foreach (JsonNode? e in d["entries"]!.AsArray())
+                e!["conditions"] = new JsonArray(new JsonObject { ["if"] = "fact", ["id"] = "fact.chef.vaincu" });
+        });
+        WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 3)), Peaux, "peaux"));
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.aubergiste", out DialogueView? view));
+        Assert.Equal(("text.dialogue.livraison", 0), (view!.Text, view.Options.Single().Index));
+        Assert.Equal(DialogueRefusal.None, w.Choose(0, out DialogueView? next, out _));
+        Assert.Null(next);
+        Assert.Null(w.Narrative!.Open);   // plus rien à livrer : le dialogue se ferme
+        Assert.Equal(1, w.Narrative.Progress(Peaux));
+        // Sans peaux : rien à dire.
+        WorldSession empty = InRoom("zone.auberge", book, WithQuest(Hero(), Peaux, "peaux"));
+        Assert.Equal(DialogueRefusal.NothingToSay, empty.Talk("npc.aubergiste", out _));
+    }
+
     // --- P4 : dialogue pendant le choix de la récompense --------------------------------------------------------------------
 
     [Fact]
@@ -230,6 +281,10 @@ public class V16RelectureTests
         WorldSession w = InRoom("zone.auberge", book, WithQuest(Hero(0, new ItemStack("item.peau_de_loup", 3)), Peaux, "peaux"));
         w.Talk("npc.aubergiste", out DialogueView? first);
         Assert.Equal("text.aubergiste.peaux", first!.Text);
+        // Réponses du 31 octobre 2026 : la réponse de livraison vient après celles du nœud.
+        DialogueOption give = first.Options.Single(o => o.Delivery == Peaux);
+        Assert.Equal(("text.dialogue.livrer", "item.peau_de_loup", 3L), (give.Text, give.Item, give.Count));
+        Assert.Equal(DialogueRefusal.None, w.Choose(give.Index, out _, out _));
         Steps(w, 3);
         Assert.True(w.Narrative!.IsChoosingReward(Peaux));
         w.Talk("npc.aubergiste", out DialogueView? waiting);
@@ -333,8 +388,9 @@ public class V16RelectureTests
         WorldSession w = Play(z, Hero());
         List<SessionStep> steps = BeatBandit(w);
         Assert.Contains(steps.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated && b.Boss == "chef_des_bandits");
-        Assert.Equal(new[] { ("item.rondache_cerclee", 1) }, steps.SelectMany(s => s.Rewards));
-        Assert.Equal(1, w.Inventory.Count("item.rondache_cerclee"));
+        // Réponses de Damien du 31 octobre 2026 : sa récompense de première victoire est la rondache nommée du chef (effet de bouclier).
+        Assert.Equal(new[] { ("item.rondache_du_chef_des_bandits", 1) }, steps.SelectMany(s => s.Rewards));
+        Assert.Equal(1, w.Inventory.Count("item.rondache_du_chef_des_bandits"));
         Assert.True(w.Zone.IsConsumed("zone.vallons/boss/chef_des_bandits"));
         Assert.False(w.Zone.IsConsumed("zone.vallons/boss/gardien_du_seuil"));
         Assert.True(w.Narrative!.Knows("fact.chef_des_bandits.vaincu"));
@@ -345,7 +401,7 @@ public class V16RelectureTests
         List<SessionStep> second = BeatBandit(again);
         Assert.Contains(second.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated && b.Boss == "chef_des_bandits");
         Assert.Empty(second.SelectMany(s => s.Rewards));
-        Assert.Equal(1, again.Inventory.Count("item.rondache_cerclee"));
+        Assert.Equal(1, again.Inventory.Count("item.rondache_du_chef_des_bandits"));
     }
 
     [Theory]
@@ -363,7 +419,7 @@ public class V16RelectureTests
         for (int i = 0; i < 20; i++) steps.Add(w.Step());
         Assert.Contains(steps.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated && b.Boss == "chef_des_bandits");
         Assert.Equal(given, w.Zone.IsConsumed("zone.vallons/boss/chef_des_bandits"));
-        Assert.Equal(given ? 1 : 0, w.Inventory.Count("item.rondache_cerclee"));
+        Assert.Equal(given ? 1 : 0, w.Inventory.Count("item.rondache_du_chef_des_bandits"));
         Assert.Equal(given, w.Narrative!.Knows("fact.chef_des_bandits.vaincu"));
         Assert.Equal(given ? 0 : 1, steps.SelectMany(s => s.Story).Count(e => e.Kind == StoryEventKind.RewardBlocked && e.Id == "zone.vallons/boss/chef_des_bandits"));
     }
@@ -393,7 +449,7 @@ public class V16RelectureTests
         for (int i = 0; i < 3; i++) steps.Add(w.Step());
         SessionStep both = Assert.Single(steps, s => s.Boss.Count(b => b.Kind == BossEventKind.Defeated) == 2);
         Assert.Equal(new[] { "gardien_du_seuil", "chef_des_bandits" }, both.Boss.Where(b => b.Kind == BossEventKind.Defeated).Select(b => b.Boss));
-        Assert.Equal(new[] { ("item.lame_du_seuil", 1), ("item.rondache_cerclee", 1) }, both.Rewards);
+        Assert.Equal(new[] { ("item.lame_du_seuil", 1), ("item.rondache_du_chef_des_bandits", 1) }, both.Rewards);
         Assert.True(w.Zone.IsConsumed(z.VictoryKey) && w.Zone.IsConsumed(z.VictoryKeyOf(z.Chiefs[0])));
         Assert.True(w.Narrative!.Knows("fact.chef.vaincu") && w.Narrative.Knows("fact.chef_des_bandits.vaincu"));
     }

@@ -98,9 +98,13 @@ namespace EdS.Runtime
         /// <summary>Au tableau : refus qu'aurait la prise maintenant (<see cref="GuildRefusal.None"/> : possible).</summary>
         public GuildRefusal Refusal { get; }
 
+        /// <summary>Réponses du 31 octobre 2026 : contrat pressé (à finir avant la fin de la journée du monde).</summary>
+        public bool Rush { get; }
+
         internal ContractEntry(string id, string name, string kind, string rank, string text, string objective, string reward, string? progress, double fraction,
-            GuildRefusal refusal)
+            GuildRefusal refusal, bool rush = false)
         {
+            Rush = rush;
             Id = id;
             Name = name;
             Kind = kind;
@@ -225,8 +229,9 @@ namespace EdS.Runtime
                     : Format("text.ui.guild.progress", p, o.Value);
                 fraction = deliver ? (p >= 1 ? 1 : Math.Min(1, (double)World.Inventory.Available(o.Id) / o.Value)) : Math.Min(1, (double)p / o.Value);
             }
-            return new ContractEntry(c.Id, Text(c.Name), Text("text.ui.guild.kind." + KindKey(c.Kind)), RankName(c.Rank), Text(c.Text), objective, reward, shown,
-                fraction, refusal);
+            // Réponses du 31 octobre 2026 : un contrat pressé le dit avec sa sorte (« Chasse · pressé, avant minuit »).
+            string kind = Text("text.ui.guild.kind." + KindKey(c.Kind)) + (c.Rush ? Text("text.ui.guild.rush") : "");
+            return new ContractEntry(c.Id, Text(c.Name), kind, RankName(c.Rank), Text(c.Text), objective, reward, shown, fraction, refusal, c.Rush);
         }
 
         private static string KindKey(ContractKind kind) => kind switch
@@ -289,6 +294,12 @@ namespace EdS.Runtime
                     break;
                 case StoryEventKind.ContractDone:
                     Say("text.ui.guild.contract_done", ContractName(e.Id));
+                    break;
+                case StoryEventKind.ContractExpired:   // réponses du 31 octobre 2026 : contrat pressé pas fini avant minuit
+                    Say("text.ui.guild.contract_expired", ContractName(e.Id));
+                    break;
+                case StoryEventKind.GuildReputation:   // réponses du 31 octobre 2026 : exploits d'avant l'inscription
+                    Say("text.ui.guild.reputation", e.Value);
                     break;
                 case StoryEventKind.TitleShown:
                     if (e.Id.Length == 0) Say("text.ui.guild.title_hidden");
