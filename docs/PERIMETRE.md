@@ -2,6 +2,8 @@
 
 Tri de toutes les décisions de la [feuille de route](FEUILLE_DE_ROUTE.md) (sujets 1 à 54 et leurs « au max »), du [plan des Vallons](PLAN_VALLONS_SOLO.md) et du [cadrage](CADRAGE.md), en quatre étapes. Demandé par Damien le 31 octobre 2026 à 1 h 03 (sujet 54, série 1 : « Claude range toutes les décisions en alpha, lancement ou plus tard dans un tableau que Damien relit »).
 
+L'ordre de travail jusqu'à l'alpha, chantier par chantier, est dans [PLAN_ALPHA.md](PLAN_ALPHA.md) (proposition à relire par Damien).
+
 ## Comment lire ce document
 
 Ce tri est une **proposition de Claude, relue par Damien**. Damien a tranché les 10 points où Claude hésitait le 31 octobre 2026 à 1 h 20 (voir « Points tranchés » en bas). Il peut toujours **déplacer chaque ligne** d'une étape à l'autre, d'un simple mot (« ligne X en alpha »). Une décision rangée « Plus tard » n'est **pas abandonnée** : elle reste dans la feuille de route et arrive après. Le tri ne change aucune décision de gameplay ; il dit seulement **dans quel ordre** on les fait. Seule exception : les chiffres intermédiaires marqués « (chiffre proposé par Claude) » ne viennent pas d'une décision ; ce sont des propositions, que Damien peut changer.
