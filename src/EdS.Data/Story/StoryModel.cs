@@ -42,6 +42,12 @@ namespace EdS.Data.Story
         /// <see cref="QuestActive"/> pour les dialogues).
         /// </summary>
         QuestReward = 13,
+
+        /// <summary>
+        /// Sous-lot V1.7 (histoire en schéma 4) : le personnage est inscrit à la Guilde des aventuriers, à ce rang au moins (identifiant du
+        /// rang : « g », « f », « e »…). Rang G : inscrit.
+        /// </summary>
+        GuildRankAtLeast = 14,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>
@@ -77,6 +83,12 @@ namespace EdS.Data.Story
         /// elle ne suffit pas.
         /// </summary>
         TakeMoney = 9,
+
+        /// <summary>
+        /// Sous-lot V1.7 (histoire en schéma 4) : donne des points de guilde à la carte d'aventurier (valeur) ; sans effet tant que le personnage
+        /// n'est pas inscrit (jamais refusé : un plafond de la carte arrête le gain).
+        /// </summary>
+        GiveGuildPoints = 10,
     }
 
     public enum ObjectiveKind
@@ -113,6 +125,9 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.6 : porter un objet (équipement).</summary>
         Equipped = 8,
+
+        /// <summary>Sous-lot V1.7 (histoire en schéma 4) : atteindre un rang de la Guilde des aventuriers (identifiant du rang).</summary>
+        GuildRank = 9,
     }
 
     public sealed class StoryCondition
@@ -146,6 +161,10 @@ namespace EdS.Data.Story
             Id = id;
             Value = value;
         }
+
+        /// <summary>Sous-lot V1.7 : effet qui commence la quête <paramref name="quest"/> (l'épreuve de promotion de la guilde, prise au tableau).</summary>
+        public static StoryEffect StartQuest(string quest) =>
+            new StoryEffect(EffectKind.StartQuest, quest ?? throw new ArgumentNullException(nameof(quest)), 0);
     }
 
     public sealed class Objective

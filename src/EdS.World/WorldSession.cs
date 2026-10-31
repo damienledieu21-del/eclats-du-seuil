@@ -5,6 +5,7 @@ using EdS.Data;
 using EdS.Data.Characters;
 using EdS.Data.Classes;
 using EdS.Data.Crafting;
+using EdS.Data.Guild;
 using EdS.Data.Items;
 using EdS.Data.Saves;
 using EdS.Data.Story;
@@ -366,15 +367,18 @@ namespace EdS.World
         /// PNJ, on n'y atteint aucun lieu de l'histoire, on n'y récolte ni n'y fabrique ; le reste de l'histoire (faits, objets, journal) suit.</param>
         /// <param name="market">Sous-lot V1.1 : marchands et lots rachetables (la même instance d'une session à l'autre) ; demande l'histoire
         /// (les marchands sont ses PNJ). Null : partie sans commerce.</param>
+        /// <param name="guild">Sous-lot V1.7 : la Guilde des aventuriers (rangs, contrats, épreuves) ; demande l'histoire (sa maîtresse est un
+        /// PNJ). Null : partie sans guilde (une carte sauvegardée est gardée telle quelle).</param>
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
-            CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null, string? door = null, string? storyZone = null, Market? market = null)
+            CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null, string? door = null, string? storyZone = null, Market? market = null,
+            GuildBook? guild = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
-                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius), null, log, CheckZone(save, zone, story, crafting, market))
+                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius), null, log, CheckZone(save, zone, story, crafting, market, guild))
         {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
             _populations = new ZonePopulations(zone);
-            if (story != null) Narrative = new Narrative(story, _character.Story, this);
+            if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
             Market = market;
             // Sous-lot 12.7 : le chef arrive avec la session (sa première forme).
@@ -514,9 +518,11 @@ namespace EdS.World
         /// Contrôles faits avant l'ouverture de la zone (aucun journal écrit pour une session refusée) : sauvegarde de cette zone, état narratif
         /// et expérience des métiers qui vont avec l'histoire et les métiers chargés (revue Codex de la PR #47).
         /// </summary>
-        private static bool CheckZone(WorldSave save, ZoneDefinition zone, StoryBook? story, CraftingBook? crafting, Market? market)
+        private static bool CheckZone(WorldSave save, ZoneDefinition zone, StoryBook? story, CraftingBook? crafting, Market? market, GuildBook? guild = null)
         {
             if (save.Zone != zone.Id) throw new ArgumentException($"Sauvegarde de la zone « {save.Zone} », pas de « {zone.Id} ».", nameof(save));
+            // Sous-lot V1.7 : la maîtresse de guilde est un PNJ de l'histoire.
+            if (guild != null && (story is null || !story.HasNpc(guild.Npc))) throw new ArgumentException("Guilde sans l'histoire de sa maîtresse.", nameof(guild));
             // Sous-lot V1.1 : les marchands sont des PNJ de l'histoire.
             if (market != null && (story is null || market.Book.Merchants.Any(m => !story.HasNpc(m.Npc))))
                 throw new ArgumentException("Commerce sans l'histoire de ses PNJ.", nameof(market));
@@ -526,7 +532,7 @@ namespace EdS.World
                 // impossible (refusé ici, avant l'ouverture de la zone).
                 if (zone.Bosses.Any(x => x.Forms.Any(f => f.Id == c.Id)))
                     throw new ArgumentException($"Personnage « {c.Id} » : identité d'une forme du chef de {zone.Id}.", nameof(save));
-                if (story != null) Narrative.CheckSaved(story, c.Story);
+                if (story != null) Narrative.CheckSaved(story, c.Story, guild);
                 if (crafting != null) Workshop.CheckSaved(crafting, c.Professions);
             }
             return true;
@@ -735,7 +741,7 @@ namespace EdS.World
             if (Narrative != null) character = character.WithStory(Narrative.ToSaved());
             else if (_pendingFacts.Count > 0)
                 character = character.WithStory(new SavedStory(character.Story.Facts.Concat(_pendingFacts), character.Story.Quests, character.Story.Trust,
-                    character.Story.Discoveries, character.Story.Tracked));
+                    character.Story.Discoveries, character.Story.Tracked, character.Story.Guild, character.Story.Hunted));
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character);
         }

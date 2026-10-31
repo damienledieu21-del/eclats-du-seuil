@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Data.Guild;
 using EdS.Data.Items;
 using EdS.Data.Merchants;
 using EdS.Data.Saves;
@@ -49,20 +50,25 @@ namespace EdS.World
         public IReadOnlyList<MerchantOffer> Stock(string merchant) => NeedMarket().Stock(merchant, Zone.Time.Day);
 
         /// <summary>
-        /// La boutique de <paramref name="merchant"/> est ouverte au personnage : présent et vivant, dans la zone de l'histoire, à
-        /// <see cref="Narrative.TalkRange"/> de son PNJ (sinon <see cref="TradeRefusal.TooFar"/>), et pas à un moment de fermeture
-        /// (<see cref="TradeRefusal.Closed"/>).
+        /// La boutique de <paramref name="merchant"/> est ouverte au personnage : présent et vivant, dans la zone de son PNJ (sous-lot V1.7 : un
+        /// intérieur aussi, la boutique de la guilde), à <see cref="Narrative.TalkRange"/> de lui (sinon <see cref="TradeRefusal.TooFar"/>), pas
+        /// à un moment de fermeture (<see cref="TradeRefusal.Closed"/>), et (sous-lot V1.7) au rang de la guilde que demande la boutique
+        /// (<see cref="TradeRefusal.RankTooLow"/>).
         /// </summary>
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
         public TradeRefusal CanTrade(string merchant)
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
             Npc npc = (Narrative ?? throw new InvalidOperationException("Commerce sans histoire.")).Book.Npc(m.Npc);
-            if (!(((INarrativeWorld)this).PlayerPosition is GroundVector p) || ZonePopulations.Beyond(p, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange))
+            if (!(((INarrativeWorld)this).PlayerPositionIn(npc.Zone) is GroundVector p) || ZonePopulations.Beyond(p, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange))
                 return TradeRefusal.TooFar;
             if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
+            if (!HasRank(m.Rank)) return TradeRefusal.RankTooLow;
             return TradeRefusal.None;
         }
+
+        /// <summary>Sous-lot V1.7 : le personnage a au moins le rang de la guilde <paramref name="rank"/> (null : aucun rang demandé).</summary>
+        public bool HasRank(string? rank) => rank is null || (Narrative != null && Narrative.GuildRankIndex >= GuildRanks.IndexOf(rank));
 
         /// <summary>
         /// Achète <paramref name="count"/> <paramref name="item"/> à <paramref name="merchant"/>, au prix du jour : boutique ouverte, objet du
@@ -76,6 +82,7 @@ namespace EdS.World
             if (count < 1 || count > Market.MaxCount) return TradeRefusal.InvalidCount;
             if (item is null || !_items.TryGetItem(item, out _)) return TradeRefusal.UnknownItem;
             if (!(Stock(merchant).FirstOrDefault(o => o.Item == item) is MerchantOffer offer)) return TradeRefusal.NotForSale;
+            if (!HasRank(offer.Rank)) return TradeRefusal.RankTooLow;   // sous-lot V1.7 : offre de la boutique de la guilde réservée à un rang
             long price = checked(offer.Price * count);   // au plus 10^8 × 999
             if (!Coins.TryAdd(Money, -price, out long left)) return TradeRefusal.NotEnoughMoney;
             Inventory trial = Inventory.Clone();

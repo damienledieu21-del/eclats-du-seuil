@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using EdS.Data.Guild;
 using EdS.Data.Items;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
@@ -100,9 +101,11 @@ namespace EdS.Data.Story
         /// (<c>category</c> : « main » ou « side »), conditions d'ouverture (<c>requires</c>) et récompenses au choix (<c>rewardChoice</c>,
         /// deux ou trois <c>giveItem</c>) facultatives ; objectifs <c>talk</c>, <c>deliver</c> (avec <c>npc</c>), <c>defeatFamily</c>,
         /// <c>equipped</c> ; effet <c>takeMoney</c> ; condition <c>levelAtLeast</c> ; zone facultative d'un PNJ (<c>zone</c> : un intérieur) ;
-        /// étape « reward » réservée. Une version antérieure est refusée (pré-alpha : aucune migration des fichiers de données).
+        /// étape « reward » réservée. Version 4 (sous-lot V1.7) : objectif <c>guildRank</c> (atteindre un rang de la Guilde des aventuriers),
+        /// effet <c>giveGuildPoints</c> (points de guilde, de 1 à <see cref="GuildRanks.MaxAward"/>) et condition <c>guildRankAtLeast</c>.
+        /// Une version antérieure est refusée (pré-alpha : aucune migration des fichiers de données).
         /// </summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
 
         /// <summary>Sous-lot V1.6 : niveau le plus haut d'une condition <c>levelAtLeast</c> (les règles en permettent 30 ; marge).</summary>
         public const long MaxLevel = 100;
@@ -124,6 +127,7 @@ namespace EdS.Data.Story
             ["trustAtLeast"] = ConditionKind.TrustAtLeast, ["trustBelow"] = ConditionKind.TrustBelow, ["hasItem"] = ConditionKind.HasItem,
             ["phase"] = ConditionKind.Phase, ["inPlace"] = ConditionKind.InPlace, ["passageOpen"] = ConditionKind.PassageOpen,
             ["levelAtLeast"] = ConditionKind.LevelAtLeast, ["questReward"] = ConditionKind.QuestReward,
+            ["guildRankAtLeast"] = ConditionKind.GuildRankAtLeast,   // sous-lot V1.7
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -131,6 +135,7 @@ namespace EdS.Data.Story
             ["setFact"] = EffectKind.SetFact, ["trust"] = EffectKind.Trust, ["startQuest"] = EffectKind.StartQuest, ["giveItem"] = EffectKind.GiveItem,
             ["takeItem"] = EffectKind.TakeItem, ["giveXp"] = EffectKind.GiveXp, ["openPassage"] = EffectKind.OpenPassage, ["discover"] = EffectKind.Discover,
             ["giveMoney"] = EffectKind.GiveMoney, ["takeMoney"] = EffectKind.TakeMoney,
+            ["giveGuildPoints"] = EffectKind.GiveGuildPoints,   // sous-lot V1.7
         });
 
         public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new ReadOnlyDictionary<string, ObjectiveKind>(new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
@@ -138,6 +143,7 @@ namespace EdS.Data.Story
             ["fact"] = ObjectiveKind.Fact, ["reach"] = ObjectiveKind.Reach, ["defeat"] = ObjectiveKind.Defeat, ["collect"] = ObjectiveKind.Collect,
             ["passage"] = ObjectiveKind.Passage, ["talk"] = ObjectiveKind.Talk, ["deliver"] = ObjectiveKind.Deliver,
             ["defeatFamily"] = ObjectiveKind.DefeatFamily, ["equipped"] = ObjectiveKind.Equipped,
+            ["guildRank"] = ObjectiveKind.GuildRank,   // sous-lot V1.7
         });
 
         /// <summary>Sous-lot V1.6 : catégories de quête (onglets du journal).</summary>
@@ -452,6 +458,7 @@ namespace EdS.Data.Story
                     bool ok = kind switch
                     {
                         ConditionKind.LevelAtLeast => NoId(t, p) && Value(t, p, 1, MaxLevel) && NoStep(t, p),
+                        ConditionKind.GuildRankAtLeast => RankRef(t, p) && NoValue(t, p) && NoStep(t, p),   // sous-lot V1.7
                         ConditionKind.Fact or ConditionKind.NotFact => Fact(t, p, needed: kind == ConditionKind.Fact) && NoValue(t, p) && NoStep(t, p),
                         ConditionKind.QuestNotStarted or ConditionKind.QuestActive or ConditionKind.QuestDone or ConditionKind.QuestReward =>
                             Ref(t, p, _quests.Keys, "quête") && NoValue(t, p) && NoStep(t, p),
@@ -490,6 +497,7 @@ namespace EdS.Data.Story
                         EffectKind.GiveItem or EffectKind.TakeItem => ItemRef(t, p) && Value(t, p, 1, MaxCount),
                         EffectKind.GiveXp => NoId(t, p) && Value(t, p, 1, MaxXp),
                         EffectKind.GiveMoney or EffectKind.TakeMoney => NoId(t, p) && Value(t, p, 1, MaxMoney),
+                        EffectKind.GiveGuildPoints => NoId(t, p) && Value(t, p, 1, GuildRanks.MaxAward),   // sous-lot V1.7
                         EffectKind.OpenPassage => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p),
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };
@@ -515,6 +523,7 @@ namespace EdS.Data.Story
                     ObjectiveKind.Deliver => ItemRef(t, path) && Value(t, path, 1, MaxCount) && NpcRef(t, path),
                     ObjectiveKind.DefeatFamily => Ref(t, path, _zone.Populations.Select(x => x.Family), "famille de créatures") && Value(t, path, 1, MaxDefeat),
                     ObjectiveKind.Equipped => EquipmentRef(t, path) && NoValue(t, path),
+                    ObjectiveKind.GuildRank => RankRef(t, path) && NoValue(t, path),   // sous-lot V1.7
                     ObjectiveKind.Fact => Fact(t, path, needed: true) && NoValue(t, path),
                     ObjectiveKind.Reach => Ref(t, path, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, path),
                     ObjectiveKind.Defeat => Ref(t, path, _zone.Populations.Select(x => x.Creature), "population") && Value(t, path, 1, MaxDefeat),
@@ -597,6 +606,15 @@ namespace EdS.Data.Story
                 if (t.Npc is null) { TextsValidator.Missing(_r, p + ".npc", "PNJ à qui livrer"); return false; }
                 if (_npcs.Contains(t.Npc)) return true;
                 _r.Add(p + ".npc", ValidationCode.UnknownReference, $"PNJ inconnu « {t.Npc} ».");
+                return false;
+            }
+
+            /// <summary>Sous-lot V1.7 : un rang de la Guilde des aventuriers (« g » à « sss »).</summary>
+            private bool RankRef(TermData t, string p)
+            {
+                if (t.Id is null) { TextsValidator.Missing(_r, p + ".id", "rang de la guilde (g, f, e…)"); return false; }
+                if (GuildRanks.IsRank(t.Id)) return true;
+                _r.Add(p + ".id", ValidationCode.UnknownReference, $"rang inconnu « {t.Id} » ; possibles : {GuildRanks.Known}.");
                 return false;
             }
 

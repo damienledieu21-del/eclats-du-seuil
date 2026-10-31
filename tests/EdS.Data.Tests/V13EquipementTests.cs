@@ -274,7 +274,7 @@ public class V13EquipementTests
         SavedCharacter hero = Hero(10, new[] { boots, new ItemStack("item.peau_de_loup", 4) }, new Dictionary<string, string> { ["weapon"] = sword.Item },
             new Dictionary<string, IReadOnlyList<RolledProperty>> { ["weapon"] = sword.Properties });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), hero));
-        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // fusion de main dans V1.7 : version 10 (carte d'aventurier)
         Assert.Contains($"{{\"item\": \"item.bottes_du_renard\", \"count\": 1, \"properties\": [{{\"id\": \"{boots.Properties[0].Id}\", \"value\": {boots.Properties[0].Value}}}]}}",
             text, StringComparison.Ordinal);
         Assert.Contains($"\"weapon\": {{\"item\": \"item.epee_de_garde\", \"properties\": [", text, StringComparison.Ordinal);
@@ -287,6 +287,19 @@ public class V13EquipementTests
         WorldSession w = Play(Zone(), read.Save.Character);
         Assert.Equal(sword, w.Inventory.WornInstanceAt("weapon"));
         Assert.Equal(SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), hero)), text);
+        // Fusion de main dans V1.7 : une sauvegarde de version 9 (instances, sans carte d'aventurier) se relit, mise à jour, et se réécrit à
+        // l'identique en version 10 ; une carte ou des créatures rares y sont des champs inconnus.
+        string v9 = text.Replace(SaveVersion.Current, "\"schemaVersion\": 9");
+        SaveLoadResult old = SaveJsonReader.Read(v9);
+        Assert.True(old.IsValid, old.Report.ToString());
+        Assert.True(old.Save!.Migrated);
+        Assert.Equal(boots, old.Save.Character!.Inventory[0]);
+        Assert.Equal(sword.Properties, old.Save.Character.EquipmentProperties["weapon"]);
+        Assert.Null(old.Save.Character.Story.Guild);
+        Assert.Equal(text, SaveJsonReader.Write(old.Save));
+        string withCard = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(),
+            hero.WithStory(new SavedStory(guild: new SavedGuildCard("g", titles: new[] { "title.guilde.recrue" }))))).Replace(SaveVersion.Current, "\"schemaVersion\": 9");
+        Assert.Equal(("$.data.character.story.guild", ValidationCode.UnknownField), (Assert.Single(SaveJsonReader.Read(withCard).Report.Errors).Path, SaveJsonReader.Read(withCard).Report.Errors[0].Code));
     }
 
     [Fact]
@@ -297,7 +310,7 @@ public class V13EquipementTests
         string props = $"[{{\"id\": \"{boots.Properties[0].Id}\", \"value\": {boots.Properties[0].Value}}}]";
         ValidationError Only(string json) => Assert.Single(SaveJsonReader.Read(json).Report.Errors);
         // Version antérieure : les propriétés n'existaient pas.
-        Assert.Equal("$.data.character.inventory[0].properties", Only(text.Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 7")).Path);
+        Assert.Equal("$.data.character.inventory[0].properties", Only(text.Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 7")).Path);
         // Quantité, liste vide, doublon, valeur, identifiant.
         Assert.Equal("$.data.character.inventory[0].count", Only(text.Replace("\"count\": 1, \"properties\"", "\"count\": 2, \"properties\"")).Path);
         Assert.Equal("$.data.character.inventory[0].properties", Only(text.Replace(props, "[]")).Path);

@@ -1,0 +1,61 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 5,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.guilde",
+    "name": "Maison de la Guilde",
+    "scenario": "zones/guilde",
+    "indoor": true,
+    "entry": "salle_commune",
+    "safePoints": [
+      {
+        "id": "salle_commune",
+        "name": "Salle commune",
+        "position": [
+          -0.5,
+          0.6
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "guilde",
+        "name": "Maison de la Guilde",
+        "min": [
+          -6,
+          -4
+        ],
+        "max": [
+          6,
+          4
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bourg d'Aube",
+        "position": [
+          0,
+          -3.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_guilde"
+      },
+      {
+        "id": "archives",
+        "name": "Archives de la Guilde",
+        "position": [
+          5.3,
+          1.6
+        ],
+        "to": "zone.archives",
+        "toDoor": "sortie"
+      }
+    ]
+  }
+}

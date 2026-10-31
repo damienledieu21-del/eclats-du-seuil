@@ -79,6 +79,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 ### 4. V1.7 — Guilde des aventuriers (M)
 
 - La guilde au bourg, carte d'aventurier, rangs G, F et E, points, épreuves de promotion, contrats du jour, boutique et titre.
+- **En cours** (PR en brouillon, 31 octobre 2026) : fait ; histoire en schéma 4, marchands en schéma 2, **sauvegarde v10** (la v9 est celle de V1.3, PR #78).
 - Dépend de V1.6.
 - Formats : données de la guilde (nouveau fichier), sauvegarde (carte), textes par clés.
 

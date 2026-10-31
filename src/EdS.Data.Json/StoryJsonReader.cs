@@ -208,7 +208,7 @@ namespace EdS.Data.Json
                 (e, ip) => Term(input, e, ip, kindField));
 
         /// <summary>Condition (<c>if</c>), effet (<c>do</c>) ou objectif (<c>kind</c>), avec <c>id</c>, <c>value</c> et <c>step</c> facultatifs.</summary>
-        private static TermData? Term(JsonInput input, JsonElement element, string path, string kindField)
+        internal static TermData? Term(JsonInput input, JsonElement element, string path, string kindField)
         {
             var t = new TermData();
             return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>

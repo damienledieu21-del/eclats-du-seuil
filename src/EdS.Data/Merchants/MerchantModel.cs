@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using EdS.Data.Guild;
 using EdS.Data.Items;
 using EdS.Data.Story;
 using EdS.Data.Validation;
@@ -53,6 +54,9 @@ namespace EdS.Data.Merchants
         /// <summary>Nombre d'offres tournantes (non permanentes) tirées chaque jour du monde.</summary>
         public int? Daily { get; set; }
 
+        /// <summary>Sous-lot V1.7 (schéma 2) : rang de la guilde demandé pour ouvrir la boutique (la boutique de la guilde), ou null.</summary>
+        public string? Rank { get; set; }
+
         public List<OfferData?>? Offers { get; set; }
     }
 
@@ -65,6 +69,9 @@ namespace EdS.Data.Merchants
 
         /// <summary>Toujours en vente (sinon : tirée certains jours seulement).</summary>
         public bool? Always { get; set; }
+
+        /// <summary>Sous-lot V1.7 (schéma 2) : rang de la guilde demandé pour acheter cette offre, ou null.</summary>
+        public string? Rank { get; set; }
     }
 
     // --- Modèle validé ---------------------------------------------------------------------------------
@@ -76,11 +83,15 @@ namespace EdS.Data.Merchants
         public long Price { get; }
         public bool Always { get; }
 
-        internal MerchantOffer(string item, long price, bool always)
+        /// <summary>Sous-lot V1.7 : rang de la guilde demandé pour l'acheter (« f »…), ou null.</summary>
+        public string? Rank { get; }
+
+        internal MerchantOffer(string item, long price, bool always, string? rank = null)
         {
             Item = item;
             Price = price;
             Always = always;
+            Rank = rank;
         }
     }
 
@@ -102,8 +113,13 @@ namespace EdS.Data.Merchants
         public int Daily { get; }
         public IReadOnlyList<MerchantOffer> Offers { get; }
 
-        internal Merchant(string id, string npc, string greeting, int sellPercent, IEnumerable<string> closed, int daily, IEnumerable<MerchantOffer> offers)
+        /// <summary>Sous-lot V1.7 : rang de la guilde demandé pour ouvrir la boutique (la boutique de la guilde), ou null.</summary>
+        public string? Rank { get; }
+
+        internal Merchant(string id, string npc, string greeting, int sellPercent, IEnumerable<string> closed, int daily, IEnumerable<MerchantOffer> offers,
+            string? rank = null)
         {
+            Rank = rank;
             Id = id;
             Npc = npc;
             Greeting = greeting;
@@ -180,9 +196,11 @@ namespace EdS.Data.Merchants
 
         /// <summary>
         /// Version 1 (sous-lot V1.1) : <c>values</c> (<c>item</c>, <c>value</c>) et <c>merchants</c> (<c>id</c>, <c>npc</c>, <c>greeting</c>,
-        /// <c>sellPercent</c>, <c>closed</c>, <c>daily</c>, <c>offers</c> : <c>item</c>, <c>price</c>, <c>always</c>).
+        /// <c>sellPercent</c>, <c>closed</c>, <c>daily</c>, <c>offers</c> : <c>item</c>, <c>price</c>, <c>always</c>). Version 2 (sous-lot V1.7) :
+        /// <c>rank</c> facultatif d'un marchand (rang de la Guilde des aventuriers demandé pour ouvrir sa boutique : la boutique de la guilde)
+        /// et d'une offre (rang demandé pour l'acheter), au moins celui de la boutique. Une version antérieure est refusée (pré-alpha).
         /// </summary>
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 2;
 
         public const int MaxValues = 1024, MaxMerchants = 32, MaxOffers = 32;
 
@@ -294,7 +312,14 @@ namespace EdS.Data.Merchants
                     else if (offerOk && o.Price < value)
                     { r.Add(op + ".price", ValidationCode.InvalidValue, $"prix {o.Price} sous la valeur de base {value} : la revente rapporterait plus que l'achat."); offerOk = false; }
                     if (o.Always is null) { Missing(r, op + ".always", "toujours en vente (vrai) ou certains jours (faux)"); offerOk = false; }
-                    if (offerOk) offers.Add(new MerchantOffer(o.Item!, o.Price!.Value, o.Always!.Value));
+                    // Sous-lot V1.7 : rang demandé pour l'offre, au moins celui de la boutique (sinon il ne servirait à rien).
+                    if (o.Rank != null)
+                    {
+                        if (!GuildRanks.IsRank(o.Rank)) { r.Add(op + ".rank", ValidationCode.UnknownReference, $"rang inconnu « {o.Rank} » ; possibles : {GuildRanks.Known}."); offerOk = false; }
+                        else if (m.Rank != null && GuildRanks.IsRank(m.Rank) && GuildRanks.IndexOf(o.Rank) <= GuildRanks.IndexOf(m.Rank))
+                        { r.Add(op + ".rank", ValidationCode.InvalidValue, $"rang « {o.Rank} » pas au-dessus de celui de la boutique (« {m.Rank} ») : à retirer."); offerOk = false; }
+                    }
+                    if (offerOk) offers.Add(new MerchantOffer(o.Item!, o.Price!.Value, o.Always!.Value, o.Rank));
                     else ok = false;
                 }
 
@@ -302,7 +327,9 @@ namespace EdS.Data.Merchants
             if (m.Daily is null) { Missing(r, p + ".daily", "offres tirées chaque jour"); ok = false; }
             else if (m.Daily < 0 || m.Daily > rotating) { r.Add(p + ".daily", ValidationCode.OutOfRange, $"offres tirées chaque jour hors de [0, {rotating}] (offres non permanentes)."); ok = false; }
             else if (ok && m.Daily == 0 && offers.All(o => !o.Always)) { r.Add(p + ".daily", ValidationCode.InvalidValue, "aucun objet en vente : ni offre permanente, ni offre tirée."); ok = false; }
-            return ok ? new Merchant(m.Id!, m.Npc!, m.Greeting!, m.SellPercent!.Value, closed, m.Daily!.Value, offers) : null;
+            // Sous-lot V1.7 : rang de la guilde demandé pour ouvrir la boutique.
+            if (m.Rank != null && !GuildRanks.IsRank(m.Rank)) { r.Add(p + ".rank", ValidationCode.UnknownReference, $"rang inconnu « {m.Rank} » ; possibles : {GuildRanks.Known}."); ok = false; }
+            return ok ? new Merchant(m.Id!, m.Npc!, m.Greeting!, m.SellPercent!.Value, closed, m.Daily!.Value, offers, m.Rank) : null;
         }
 
         private static void Missing(ValidationReport report, string path, string what)

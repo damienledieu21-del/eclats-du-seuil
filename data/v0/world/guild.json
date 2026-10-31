@@ -1,0 +1,349 @@
+{
+  "$schema": "../../schemas/guild.schema.json",
+  "schemaVersion": 1,
+  "kind": "guild",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "npc": "npc.maitresse_guilde",
+    "maxActive": 3,
+    "daily": 2,
+    "ranks": [
+      {
+        "id": "g",
+        "name": "text.guild.rank.g",
+        "title": "title.guilde.recrue",
+        "points": 0,
+        "open": true,
+        "trial": null
+      },
+      {
+        "id": "f",
+        "name": "text.guild.rank.f",
+        "title": "title.guilde.eclaireur",
+        "points": 100,
+        "open": true,
+        "trial": "quest.epreuve_rang_f"
+      },
+      {
+        "id": "e",
+        "name": "text.guild.rank.e",
+        "title": "title.guilde.lame",
+        "points": 300,
+        "open": true,
+        "trial": "quest.epreuve_rang_e"
+      },
+      {
+        "id": "d",
+        "name": "text.guild.rank.d",
+        "title": "title.guilde.veneur",
+        "points": 800,
+        "open": false,
+        "trial": null
+      },
+      {
+        "id": "c",
+        "name": "text.guild.rank.c",
+        "title": "title.guilde.capitaine",
+        "points": 2000,
+        "open": false,
+        "trial": null
+      },
+      {
+        "id": "b",
+        "name": "text.guild.rank.b",
+        "title": "title.guilde.heros",
+        "points": 4500,
+        "open": false,
+        "trial": null
+      },
+      {
+        "id": "a",
+        "name": "text.guild.rank.a",
+        "title": "title.guilde.champion",
+        "points": 9000,
+        "open": false,
+        "trial": null
+      },
+      {
+        "id": "s",
+        "name": "text.guild.rank.s",
+        "title": "title.guilde.legende",
+        "points": 18000,
+        "open": false,
+        "trial": null
+      },
+      {
+        "id": "ss",
+        "name": "text.guild.rank.ss",
+        "title": "title.guilde.fleau",
+        "points": 36000,
+        "open": false,
+        "trial": null
+      },
+      {
+        "id": "sss",
+        "name": "text.guild.rank.sss",
+        "title": "title.guilde.gardien",
+        "points": 72000,
+        "open": false,
+        "trial": null
+      }
+    ],
+    "titles": [
+      {
+        "id": "title.guilde.recrue",
+        "name": "text.title.guilde.recrue"
+      },
+      {
+        "id": "title.guilde.eclaireur",
+        "name": "text.title.guilde.eclaireur"
+      },
+      {
+        "id": "title.guilde.lame",
+        "name": "text.title.guilde.lame"
+      },
+      {
+        "id": "title.guilde.veneur",
+        "name": "text.title.guilde.veneur"
+      },
+      {
+        "id": "title.guilde.capitaine",
+        "name": "text.title.guilde.capitaine"
+      },
+      {
+        "id": "title.guilde.heros",
+        "name": "text.title.guilde.heros"
+      },
+      {
+        "id": "title.guilde.champion",
+        "name": "text.title.guilde.champion"
+      },
+      {
+        "id": "title.guilde.legende",
+        "name": "text.title.guilde.legende"
+      },
+      {
+        "id": "title.guilde.fleau",
+        "name": "text.title.guilde.fleau"
+      },
+      {
+        "id": "title.guilde.gardien",
+        "name": "text.title.guilde.gardien"
+      }
+    ],
+    "contracts": [
+      {
+        "id": "contract.loups_du_pre",
+        "rank": "g",
+        "kind": "hunt",
+        "name": "text.contract.loups_du_pre.name",
+        "text": "text.contract.loups_du_pre.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "loup",
+          "value": 3
+        },
+        "money": 80,
+        "points": 12,
+        "xp": 40
+      },
+      {
+        "id": "contract.sangliers_des_champs",
+        "rank": "g",
+        "kind": "hunt",
+        "name": "text.contract.sangliers_des_champs.name",
+        "text": "text.contract.sangliers_des_champs.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "sanglier",
+          "value": 2
+        },
+        "money": 90,
+        "points": 12,
+        "xp": 40
+      },
+      {
+        "id": "contract.herbes_pour_sauge",
+        "rank": "g",
+        "kind": "delivery",
+        "name": "text.contract.herbes_pour_sauge.name",
+        "text": "text.contract.herbes_pour_sauge.text",
+        "objective": {
+          "kind": "deliver",
+          "id": "item.herbe_de_l_aube",
+          "value": 3
+        },
+        "money": 70,
+        "points": 10,
+        "xp": 30
+      },
+      {
+        "id": "contract.minerai_pour_la_forge",
+        "rank": "g",
+        "kind": "delivery",
+        "name": "text.contract.minerai_pour_la_forge.name",
+        "text": "text.contract.minerai_pour_la_forge.text",
+        "objective": {
+          "kind": "deliver",
+          "id": "item.minerai_de_fer",
+          "value": 3
+        },
+        "money": 90,
+        "points": 10,
+        "xp": 30
+      },
+      {
+        "id": "contract.grande_battue",
+        "rank": "f",
+        "kind": "hunt",
+        "name": "text.contract.grande_battue.name",
+        "text": "text.contract.grande_battue.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "loup",
+          "value": 6
+        },
+        "money": 250,
+        "points": 25,
+        "xp": 120
+      },
+      {
+        "id": "contract.archers_de_la_plaine",
+        "rank": "f",
+        "kind": "hunt",
+        "name": "text.contract.archers_de_la_plaine.name",
+        "text": "text.contract.archers_de_la_plaine.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "archer",
+          "value": 2
+        },
+        "money": 220,
+        "points": 22,
+        "xp": 100
+      },
+      {
+        "id": "contract.peaux_pour_la_guilde",
+        "rank": "f",
+        "kind": "delivery",
+        "name": "text.contract.peaux_pour_la_guilde.name",
+        "text": "text.contract.peaux_pour_la_guilde.text",
+        "objective": {
+          "kind": "deliver",
+          "id": "item.peau_de_loup",
+          "value": 4
+        },
+        "money": 200,
+        "points": 20,
+        "xp": 80
+      },
+      {
+        "id": "contract.prime_du_borgne",
+        "rank": "f",
+        "kind": "bounty",
+        "name": "text.contract.prime_du_borgne.name",
+        "text": "text.contract.prime_du_borgne.text",
+        "objective": {
+          "kind": "defeat",
+          "id": "le_borgne",
+          "value": 1
+        },
+        "money": 400,
+        "points": 30,
+        "xp": 150
+      },
+      {
+        "id": "contract.rodeurs_du_camp",
+        "rank": "e",
+        "kind": "hunt",
+        "name": "text.contract.rodeurs_du_camp.name",
+        "text": "text.contract.rodeurs_du_camp.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "rodeur",
+          "value": 2
+        },
+        "money": 600,
+        "points": 45,
+        "xp": 250
+      },
+      {
+        "id": "contract.bande_du_camp",
+        "rank": "e",
+        "kind": "hunt",
+        "name": "text.contract.bande_du_camp.name",
+        "text": "text.contract.bande_du_camp.text",
+        "objective": {
+          "kind": "defeatFamily",
+          "id": "bandit",
+          "value": 4
+        },
+        "money": 650,
+        "points": 45,
+        "xp": 260
+      },
+      {
+        "id": "contract.eclats_pour_les_archives",
+        "rank": "e",
+        "kind": "delivery",
+        "name": "text.contract.eclats_pour_les_archives.name",
+        "text": "text.contract.eclats_pour_les_archives.text",
+        "objective": {
+          "kind": "deliver",
+          "id": "item.eclat_de_seuil",
+          "value": 2
+        },
+        "money": 700,
+        "points": 40,
+        "xp": 200
+      },
+      {
+        "id": "contract.loup_blanc",
+        "rank": "e",
+        "kind": "hunt",
+        "name": "text.contract.loup_blanc.name",
+        "text": "text.contract.loup_blanc.text",
+        "objective": {
+          "kind": "defeat",
+          "id": "loup_blanc",
+          "value": 1
+        },
+        "money": 800,
+        "points": 50,
+        "xp": 300
+      }
+    ],
+    "gates": [
+      {
+        "zone": "zone.guilde",
+        "door": "archives",
+        "rank": "f"
+      }
+    ],
+    "points": {
+      "mainQuest": 40,
+      "sideQuest": 20,
+      "discovery": 5,
+      "rare": [
+        {
+          "creature": "loup_blanc",
+          "points": 25
+        },
+        {
+          "creature": "le_borgne",
+          "points": 20
+        }
+      ],
+      "facts": [
+        {
+          "fact": "fact.chef.vaincu",
+          "points": 60
+        },
+        {
+          "fact": "fact.chef_des_bandits.vaincu",
+          "points": 40
+        }
+      ]
+    }
+  }
+}

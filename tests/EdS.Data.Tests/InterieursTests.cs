@@ -95,25 +95,30 @@ public class InterieursTests : IDisposable
     {
         WorldZonesLoadResult linked = Linked();
         Assert.True(linked.IsValid, linked.Report.ToString());
-        Assert.Equal(new[] { "zone.vallons", "zone.auberge", "zone.chapelle", "zone.maison" }, linked.Zones.Select(z => z.Id));
+        // Sous-lot V1.7 : la Maison de la Guilde, et ses archives derrière elle (on y entre depuis la guilde).
+        Assert.Equal(new[] { "zone.vallons", "zone.auberge", "zone.chapelle", "zone.maison", "zone.guilde", "zone.archives" }, linked.Zones.Select(z => z.Id));
         Assert.All(linked.Zones, z => Assert.Equal(ZoneValidator.CurrentSchemaVersion, z.SchemaVersion));
         ZoneDefinition vallons = linked.Zones[0];
         Assert.False(vallons.Indoor);
-        Assert.Equal(new[] { ("porte_auberge", "auberge", "zone.auberge"), ("porte_chapelle", "chapelle", "zone.chapelle"), ("porte_maison", "maison5", "zone.maison") },
+        Assert.Equal(new[] { ("porte_auberge", "auberge", "zone.auberge"), ("porte_chapelle", "chapelle", "zone.chapelle"), ("porte_maison", "maison5", "zone.maison"),
+                ("porte_guilde", "maison6", "zone.guilde") },
             vallons.Doors.Select(d => (d.Id, d.Building!, d.To)));
         foreach (ZoneDefinition inside in linked.Zones.Skip(1))
         {
             Assert.True(inside.Indoor);
-            Door exit = Assert.Single(inside.Doors);
-            Assert.Equal(("sortie", "zone.vallons", (string?)null), (exit.Id, exit.To, exit.Building));
-            Assert.Equal(exit.Id, vallons.DoorOf(exit.ToDoor)!.ToDoor);
+            // Chaque pièce a sa sortie ; les archives sortent dans la guilde, la guilde a aussi la porte des archives.
+            Door exit = inside.DoorOf("sortie")!;
+            string outside = inside.Id == "zone.archives" ? "zone.guilde" : "zone.vallons";
+            Assert.Equal(("sortie", outside, (string?)null), (exit.Id, exit.To, exit.Building));
+            Assert.Equal(exit.Id, linked.Zones.Single(z => z.Id == outside).DoorOf(exit.ToDoor)!.ToDoor);
+            Assert.Equal(inside.Id == "zone.guilde" ? 2 : 1, inside.Doors.Count);
             // Un intérieur n'a ni créature ni chef : rien à y combattre.
             Assert.Empty(inside.Setup.Combatants);
             Assert.Empty(inside.Populations);
             Assert.Null(inside.Boss);
             Assert.Equal(inside.Name, Assert.Single(inside.Places).Name);
         }
-        Assert.Equal(new[] { "Auberge de l'Aube", "Chapelle du Bourg", "Maison du Bourg" }, linked.Zones.Skip(1).Select(z => z.Name));
+        Assert.Equal(new[] { "Auberge de l'Aube", "Chapelle du Bourg", "Maison du Bourg", "Maison de la Guilde", "Archives de la Guilde" }, linked.Zones.Skip(1).Select(z => z.Name));
         MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
         foreach (string zone in linked.Zones.Select(z => z.Id))
             Assert.True(schema.IsValid(JsonDocument.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, zone))).RootElement), zone);
@@ -198,22 +203,24 @@ public class InterieursTests : IDisposable
     {
         ZoneDefinition vallons = Read(ZoneJson("zone.vallons")).Zone!;
         ZoneDefinition chapelle = Read(ZoneJson("zone.chapelle")).Zone!, maison = Read(ZoneJson("zone.maison")).Zone!;
+        // Sous-lot V1.7 : la guilde et ses archives.
+        ZoneDefinition guilde = Read(ZoneJson("zone.guilde")).Zone!, archives = Read(ZoneJson("zone.archives")).Zone!;
         // Zones manquantes.
         ValidationReport alone = ZoneValidator.CheckDoors(new[] { vallons });
-        Assert.Equal(3, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));
-        Assert.True(ZoneValidator.CheckDoors(new[] { vallons, Read(ZoneJson("zone.auberge")).Zone!, chapelle, maison }).IsValid);
+        Assert.Equal(4, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));
+        Assert.True(ZoneValidator.CheckDoors(new[] { vallons, Read(ZoneJson("zone.auberge")).Zone!, chapelle, maison, guilde, archives }).IsValid);
 
         // La sortie de l'auberge mène à la porte de la chapelle : ni l'une ni l'autre ne se répondent.
         JsonObject wrong = ZoneJson("zone.auberge");
         Door(wrong)["toDoor"] = "porte_chapelle";
-        ValidationReport crossed = ZoneValidator.CheckDoors(new[] { vallons, Read(wrong).Zone!, chapelle, maison });
+        ValidationReport crossed = ZoneValidator.CheckDoors(new[] { vallons, Read(wrong).Zone!, chapelle, maison, guilde, archives });
         Assert.Contains(crossed.Errors, e => e.Path == "$.data.doors[0].toDoor" && e.Code == ValidationCode.InvalidValue && e.Message.Contains("zone.vallons, porte « porte_auberge »"));
         Assert.Contains(crossed.Errors, e => e.Path == "$.data.doors[0].toDoor" && e.Code == ValidationCode.InvalidValue && e.Message.Contains("zone.auberge, porte « sortie »"));
 
         // Porte d'arrivée absente.
         JsonObject renamed = ZoneJson("zone.auberge");
         Door(renamed)["id"] = "porte";
-        ValidationReport missing = ZoneValidator.CheckDoors(new[] { vallons, Read(renamed).Zone!, chapelle, maison });
+        ValidationReport missing = ZoneValidator.CheckDoors(new[] { vallons, Read(renamed).Zone!, chapelle, maison, guilde, archives });
         Assert.Contains(missing.Errors, e => e.Path == "$.data.doors[0].toDoor" && e.Code == ValidationCode.UnknownReference && e.Message.Contains("porte « sortie » absente de zone.auberge"));
 
         // Zone donnée deux fois.
@@ -288,7 +295,7 @@ public class InterieursTests : IDisposable
         Assert.False(a.Indoors);
         Assert.Equal("porte_auberge", a.DoorInReach!.Id);
         Assert.True(a.CanUseDoor);
-        Assert.Equal(3, a.Doors().Count);
+        Assert.Equal(4, a.Doors().Count);   // sous-lot V1.7 : et la Maison de la Guilde
         long tick = a.World.Save().WorldTick;
 
         Assert.True(a.Interact());   // F : la porte (ni PNJ ni nœud à portée)
@@ -324,7 +331,7 @@ public class InterieursTests : IDisposable
         Assert.Equal("Place du village", a.LastSafePoint);   // le point sûr le plus proche de la porte (posé devant elle ici)
         Assert.Equal("zone.vallons", SaveStore.Read(SavePath).Save!.Zone);
         Assert.False(a.Map.Indoor);
-        Assert.Equal(3, a.Map.Doors.Count);
+        Assert.Equal(4, a.Map.Doors.Count);
         Assert.NotEmpty(a.Npcs());
         Assert.False(a.Mood().Indoors);
     }
@@ -463,6 +470,9 @@ public class InterieursTests : IDisposable
                 InteriorProp.Chandelier, InteriorProp.Statue, InteriorProp.Painting, InteriorProp.Door }, 1),
             ["zone.maison"] = (InteriorStyle.House, new[] { InteriorProp.Bed, InteriorProp.Chest, InteriorProp.Cabinet, InteriorProp.SpinningWheel,
                 InteriorProp.Table, InteriorProp.Stool, InteriorProp.CuttingBoard, InteriorProp.Pot, InteriorProp.HangingLantern, InteriorProp.Door }, 1),
+            // Sous-lot V1.7 : la Maison de la Guilde (comptoir de la maîtresse, réserve de l'intendant) et ses archives, en genre maison.
+            ["zone.guilde"] = (InteriorStyle.House, new[] { InteriorProp.Table, InteriorProp.Crate, InteriorProp.Door }, 1),
+            ["zone.archives"] = (InteriorStyle.House, new[] { InteriorProp.Table, InteriorProp.Door }, 1),
         };
         List<ZoneDefinition> insides = Linked().Zones.Where(z => z.Indoor).ToList();
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), insides.Select(z => z.Id).OrderBy(k => k, StringComparer.Ordinal));
@@ -480,7 +490,7 @@ public class InterieursTests : IDisposable
             // Chaque meuble des données est reconnu ; les objets attendus du genre de la pièce sont là.
             foreach (SpaceObstacle o in map.Obstacles) Assert.True(InteriorRules.FurnitureFor(o.Id) != InteriorFurniture.None, inside.Id + " : " + o.Id);
             foreach (InteriorProp prop in props) Assert.True(layout.Pieces.Any(p => p.Prop == prop), inside.Id + " : " + prop);
-            Assert.Single(layout.Pieces, p => p.Prop == InteriorProp.Door);
+            Assert.Equal(map.Doors.Count, layout.Pieces.Count(p => p.Prop == InteriorProp.Door));   // sous-lot V1.7 : la guilde a deux portes
             // Identifiants uniques ; un objet posé sur un autre vient après lui ; tout est dans la pièce, sous le plafond.
             Assert.Equal(layout.Pieces.Count, layout.Pieces.Select(p => p.Id).Distinct(StringComparer.Ordinal).Count());
             for (int i = 0; i < layout.Pieces.Count; i++)

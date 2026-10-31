@@ -75,7 +75,7 @@ public class V16QuetesTests
     public void Histoire_livree_en_schema_3()
     {
         StoryBook book = Shipped;
-        Assert.Equal(3, book.SchemaVersion);
+        Assert.Equal(4, book.SchemaVersion);   // sous-lot V1.7 : schéma 4 (rang et points de guilde), formes du schéma 3 inchangées
         Assert.Equal(QuestCategory.Main, book.Quest("quest.traces_sous_le_moulin").Category);
         Assert.Equal(QuestCategory.Side, book.Quest(Peaux).Category);
         Assert.Equal(new[] { ("item.potion_de_soin", 3), ("item.remede_de_l_aube", 1) }, book.Quest(Peaux).RewardChoices.Select(c => (c.Item, c.Count)));
@@ -87,7 +87,7 @@ public class V16QuetesTests
         Assert.Equal((ObjectiveKind.DefeatFamily, "loup"), (book.Quest(Peaux).Steps[0].Objective.Kind, book.Quest(Peaux).Steps[0].Objective.Id));
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
-            book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)));
+            book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
         Assert.Equal(6, book.NpcsIn(null).Count());
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -101,7 +101,8 @@ public class V16QuetesTests
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Assert.Single(Read(root).Report.Errors).Path, Read(root).Report.Errors[0].Code));
         // Sans les intérieurs, leurs PNJ vivent dans une zone inconnue.
         StoryLoadResult alone = Read(StoryJson(), Array.Empty<ZoneDefinition>());
-        Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone" }, alone.Report.Errors.Select(e => e.Path));
+        Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone" },
+            alone.Report.Errors.Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
         Assert.All(alone.Report.Errors, e => Assert.Equal(ValidationCode.UnknownReference, e.Code));
     }
 
@@ -233,7 +234,7 @@ public class V16QuetesTests
         ZoneDefinition z = Zone();
         Assert.Equal("loup", z.PopulationOf("loup12")!.Family);   // par défaut : sans les chiffres finaux
         Assert.Equal("sanglier", z.PopulationOf("sanglier")!.Family);
-        Assert.Equal(new[] { "bandit_arc1", "bandit_arc2", "bandit_epee1", "bandit_epee2" },
+        Assert.Equal(new[] { "bandit_arc1", "bandit_arc2", "bandit_epee1", "bandit_epee2", "le_borgne" },   // sous-lot V1.7 : le Borgne
             z.Populations.Where(p => p.Family == "bandit").Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
         Assert.Equal("loup_blanc", z.PopulationOf("loup_blanc")!.Family);
         Assert.Equal(12, z.Populations.Count(p => p.Family == "loup"));
@@ -445,13 +446,13 @@ public class V16QuetesTests
         // Fusion de main après la PR #75 : la version 7 est celle du sous-lot V1.2 (18 places) ; la quête suivie et l'étape « reward »
         // passent en version 8.
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), WithQuest(Hero(), Peaux, "chasse", 2, Peaux)));
-        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);
-        Assert.Equal(9, SaveValidator.CurrentSchemaVersion);   // V1.3 : 9 (instances d'objets)
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
+        Assert.Equal(10, SaveValidator.CurrentSchemaVersion);   // V1.3 : 9 (instances d'objets) ; V1.7 : 10 (carte d'aventurier)
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
         Assert.Equal(text, SaveJsonReader.Write(SaveJsonReader.Read(text).Save!));
         // Sous-lot V1.3 : une sauvegarde de version 8 (même forme, sans instance aux propriétés) est lue, mise à jour et réécrite en version 9,
         // quête suivie comprise.
-        SaveLoadResult v8 = SaveJsonReader.Read(text.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 8"));
+        SaveLoadResult v8 = SaveJsonReader.Read(text.Replace(SaveVersion.Current, "\"schemaVersion\": 8"));   // fusion de main dans V1.7 : réécrite en version 10
         Assert.True(v8.IsValid, v8.Report.ToString());
         Assert.True(v8.Save!.Migrated);
         Assert.Equal(text, SaveJsonReader.Write(v8.Save));
@@ -459,17 +460,17 @@ public class V16QuetesTests
         string untracked = text.Replace($",\n        \"tracked\": \"{Peaux}\"\n", "\n");
         foreach (int version in new[] { 7, 6 })
         {
-            string old = untracked.Replace("\"schemaVersion\": 9", $"\"schemaVersion\": {version}");
+            string old = untracked.Replace(SaveVersion.Current, $"\"schemaVersion\": {version}");
             SaveLoadResult read = SaveJsonReader.Read(old);
             Assert.True(read.IsValid, read.Report.ToString());
             Assert.True(read.Save!.Migrated);
             Assert.Null(read.Save.Character!.Story.Tracked);
             Assert.Equal(2, read.Save.Character.Story.Quests[Peaux].Progress);
             string rewritten = SaveJsonReader.Write(read.Save);
-            Assert.Contains("\"schemaVersion\": 9,", rewritten, StringComparison.Ordinal);
+            Assert.Contains(SaveVersion.Current + ",", rewritten, StringComparison.Ordinal);
             Assert.Contains("\"tracked\": null\n", rewritten, StringComparison.Ordinal);
             // Quête suivie dans une version 7 ou 6 : champ inconnu, avec la version qui l'ajoute.
-            ValidationError unknown = Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 9", $"\"schemaVersion\": {version}")).Report.Errors);
+            ValidationError unknown = Assert.Single(SaveJsonReader.Read(text.Replace(SaveVersion.Current, $"\"schemaVersion\": {version}")).Report.Errors);
             Assert.Equal(("$.data.character.story.tracked", ValidationCode.UnknownField), (unknown.Path, unknown.Code));
             Assert.Contains("version 8", unknown.Message, StringComparison.Ordinal);
             // Étape réservée « reward » dans une version 7 ou 6 : refusée à l'étape de la quête.
@@ -489,7 +490,7 @@ public class V16QuetesTests
         Assert.Equal(("$.data.character.story.tracked", ValidationCode.InvalidValue), (bad.Path, bad.Code));
         string done = text.Replace("{\"step\": \"chasse\", \"progress\": 2}", "{\"step\": \"done\", \"progress\": 0}");
         Assert.Equal("$.data.character.story.tracked", Assert.Single(SaveJsonReader.Read(done).Report.Errors).Path);
-        ValidationError future = Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 10")).Report.Errors);
+        ValidationError future = Assert.Single(SaveJsonReader.Read(text.Replace(SaveVersion.Current, SaveVersion.Future)).Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (future.Path, future.Code));
     }
 
@@ -498,8 +499,8 @@ public class V16QuetesTests
     {
         // Une partie de V1.2 (version 7) avec une quête en cours : reprise sans quête suivie (l'étoile de la carte revient à la première
         // principale en cours, comme avant) ; ses places obligatoires sont remplies (FillRequired, à chaque chargement) ; on peut suivre.
-        string current = SaveJsonReader.Write(new WorldSave("zone.maison", 0, 0, Array.Empty<string>(), WithQuest(Hero(), Peaux, "chasse", 1)));
-        string v7 = current.Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 7");
+        string v8 = SaveJsonReader.Write(new WorldSave("zone.maison", 0, 0, Array.Empty<string>(), WithQuest(Hero(), Peaux, "chasse", 1)));
+        string v7 = v8.Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 7");
         SaveLoadResult read = SaveJsonReader.Read(v7);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.True(read.Save!.Migrated);
@@ -509,7 +510,7 @@ public class V16QuetesTests
         Assert.Contains("item.eclat_du_seuil_endormi", w.Restored);
         Assert.True(w.Track(Peaux));
         string rewritten = SaveJsonReader.Write(w.Save());
-        Assert.Contains("\"schemaVersion\": 9,", rewritten, StringComparison.Ordinal);
+        Assert.Contains(SaveVersion.Current + ",", rewritten, StringComparison.Ordinal);
         Assert.Contains($"\"tracked\": \"{Peaux}\"\n", rewritten, StringComparison.Ordinal);
         Assert.True(SaveJsonReader.Read(rewritten).IsValid);
     }

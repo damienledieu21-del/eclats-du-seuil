@@ -75,6 +75,7 @@ namespace EdS.Data.Json
                 ["sellPercent"] = (v, p) => x.SellPercent = input.Int32(v, p),
                 ["closed"] = (v, p) => x.Closed = input.ReadLimitedList(v, p, 4, n => $"{n} moments, au plus 4.", (e, ip) => input.Text(e, ip)),
                 ["daily"] = (v, p) => x.Daily = input.Int32(v, p),
+                ["rank"] = (v, p) => x.Rank = input.Text(v, p),   // sous-lot V1.7 (schéma 2)
                 ["offers"] = (v, p) => x.Offers = input.ReadLimitedList(v, p, MerchantValidator.MaxOffers,
                     n => $"{n} offres, au plus {MerchantValidator.MaxOffers}.", (e, ip) => ReadOffer(input, e, ip)),
             }) ? x : null;
@@ -88,6 +89,7 @@ namespace EdS.Data.Json
                 ["item"] = (v, p) => x.Item = input.Text(v, p),
                 ["price"] = (v, p) => x.Price = input.Int64(v, p),
                 ["always"] = (v, p) => x.Always = input.Boolean(v, p),
+                ["rank"] = (v, p) => x.Rank = input.Text(v, p),   // sous-lot V1.7 (schéma 2)
             }) ? x : null;
         }
     }

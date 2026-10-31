@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Data.Guild;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Domain.Space;
@@ -60,6 +61,30 @@ namespace EdS.World
 
         /// <summary>Sous-lot V1.6 : objectif « parler à » ou « livrer à » rempli en parlant au PNJ (identifiant de la quête, étape).</summary>
         ObjectiveDone = 18,
+
+        /// <summary>Sous-lot V1.7 : inscription à la Guilde des aventuriers (identifiant : le rang, « g »).</summary>
+        GuildJoined = 19,
+
+        /// <summary>
+        /// Sous-lot V1.7 : points de guilde gagnés (valeur : points réellement ajoutés ; identifiant : ce qui les donne, une quête, un contrat,
+        /// une découverte, une créature, un fait, ou « guild » pour un effet de l'histoire).
+        /// </summary>
+        GuildPoints = 20,
+
+        /// <summary>Sous-lot V1.7 : épreuve réussie, promotion au rang (identifiant du rang).</summary>
+        GuildPromoted = 21,
+
+        /// <summary>Sous-lot V1.7 : contrat pris au tableau (identifiant du contrat).</summary>
+        ContractTaken = 22,
+
+        /// <summary>Sous-lot V1.7 : contrat abandonné (identifiant du contrat ; il ne se reprend pas avant le lendemain).</summary>
+        ContractAbandoned = 23,
+
+        /// <summary>Sous-lot V1.7 : contrat réussi, récompenses données (identifiant du contrat).</summary>
+        ContractDone = 24,
+
+        /// <summary>Sous-lot V1.7 : titre affiché choisi (identifiant du titre ; vide : plus aucun).</summary>
+        TitleShown = 25,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -235,11 +260,35 @@ namespace EdS.World
 
         public StoryBook Book => _book;
 
-        internal Narrative(StoryBook book, SavedStory saved, INarrativeWorld world)
+        /// <summary>Sous-lot V1.7 : la Guilde des aventuriers (null : partie sans guilde ; la carte sauvegardée est alors gardée telle quelle).</summary>
+        public GuildBook? Guild => _guild;
+
+        private readonly GuildBook? _guild;
+
+        /// <summary>Sous-lot V1.7 : carte d'aventurier (null : pas inscrit, ou partie sans guilde).</summary>
+        private GuildCard? _card;
+
+        /// <summary>Sous-lot V1.7 : carte sauvegardée d'une partie sans guilde, rendue telle quelle à la sauvegarde.</summary>
+        private readonly SavedGuildCard? _keptCard;
+
+        /// <summary>
+        /// Relecture de la PR #79 : créatures rares de la guilde déjà vaincues, inscrit ou non (une victoire d'avant l'inscription ne rapporte
+        /// jamais de points plus tard).
+        /// </summary>
+        private readonly SortedSet<string> _hunted;
+
+        internal Narrative(StoryBook book, SavedStory saved, INarrativeWorld world, GuildBook? guild = null)
         {
             _book = book ?? throw new ArgumentNullException(nameof(book));
             _world = world ?? throw new ArgumentNullException(nameof(world));
-            CheckSaved(book, saved);
+            CheckSaved(book, saved, guild);
+            _guild = guild;
+            _hunted = new SortedSet<string>(saved.Hunted, StringComparer.Ordinal);
+            if (saved.Guild != null)
+            {
+                if (guild is null) _keptCard = saved.Guild;
+                else _card = GuildCard.From(saved.Guild);
+            }
             _facts = new SortedSet<string>(saved.Facts, StringComparer.Ordinal);
             _trust = new SortedDictionary<string, int>(saved.Trust.ToDictionary(t => t.Key, t => t.Value), StringComparer.Ordinal);
             _discoveries = new SortedSet<string>(saved.Discoveries, StringComparer.Ordinal);
@@ -258,10 +307,19 @@ namespace EdS.World
         /// session (revue Codex de la PR #47 : une session refusée n'a rien écrit).
         /// </summary>
         /// <exception cref="ArgumentException">Sauvegarde qui ne va pas avec ces données.</exception>
-        internal static void CheckSaved(StoryBook book, SavedStory saved)
+        internal static void CheckSaved(StoryBook book, SavedStory saved, GuildBook? guild = null)
         {
             if (book is null) throw new ArgumentNullException(nameof(book));
             if (saved is null) throw new ArgumentNullException(nameof(saved));
+            // Sous-lot V1.7 : la carte d'aventurier va avec la guilde chargée : rang ouvert, titres et contrats connus.
+            if (guild != null && saved.Guild is SavedGuildCard card)
+            {
+                if (!guild.Rank(card.Rank).Open) throw new ArgumentException($"Carte d'aventurier au rang fermé « {card.Rank} ».", nameof(saved));
+                foreach (string title in card.Titles)
+                    if (!guild.TryGetTitle(title, out _)) throw new ArgumentException($"Titre sauvegardé « {title} » absent de la guilde.", nameof(saved));
+                foreach (string contract in card.Active.Keys.Concat(card.Taken))
+                    if (!guild.TryGetContract(contract, out _)) throw new ArgumentException($"Contrat sauvegardé « {contract} » absent de la guilde.", nameof(saved));
+            }
             foreach (KeyValuePair<string, QuestProgress> q in saved.Quests)
             {
                 // Une quête sauvegardée doit exister, à une étape connue : sinon la sauvegarde ne va pas avec ces données.
@@ -295,7 +353,15 @@ namespace EdS.World
         /// <summary>
         /// Sous-lot V1.6 : la quête peut commencer : pas encore commencée, et ses conditions d'ouverture réunies (niveau, autre quête…).
         /// </summary>
-        public bool IsOpen(string quest) => !_quests.ContainsKey(quest) && All(_book.Quest(quest).Requires);
+        public bool IsOpen(string quest) => !_quests.ContainsKey(quest) && All(_book.Quest(quest).Requires) && TrialAllows(quest);
+
+        /// <summary>
+        /// Sous-lot V1.7 : une épreuve de promotion ne s'ouvre que pour un inscrit du rang juste en dessous, avec assez de points (une autre
+        /// quête n'est pas une épreuve : toujours vrai).
+        /// </summary>
+        private bool TrialAllows(string quest) => !(_guild?.TrialOf(quest) is GuildRank rank) || TrialOpenFor(rank);
+
+        private bool TrialOpenFor(GuildRank rank) => _card != null && rank.Open && _card.Rank + 1 == rank.Index && _card.Points >= rank.Points;
 
         /// <summary>Sous-lot V1.6 : quête suivie (son objectif sur la carte), ou null.</summary>
         public string? Tracked => _tracked;
@@ -321,7 +387,7 @@ namespace EdS.World
             _quests.ToDictionary(q => q.Key, q => new QuestProgress(q.Value.Step < 0 ? QuestProgress.Done
                     : q.Value.Step == _book.Quest(q.Key).Steps.Count ? QuestProgress.Reward : _book.Quest(q.Key).Steps[q.Value.Step].Id, q.Value.Progress),
                 StringComparer.Ordinal),
-            _trust, _discoveries, _tracked);
+            _trust, _discoveries, _tracked, _card?.ToSaved() ?? _keptCard, _hunted);
 
         // --- Dialogues ---------------------------------------------------------------------------
 
@@ -393,7 +459,7 @@ namespace EdS.World
             _bonusXp = xp;
             try
             {
-                return effects.Any(e => e.Kind == EffectKind.StartQuest && !_quests.ContainsKey(e.Id) && !All(_book.Quest(e.Id).Requires));
+                return effects.Any(e => e.Kind == EffectKind.StartQuest && !_quests.ContainsKey(e.Id) && (!All(_book.Quest(e.Id).Requires) || !TrialAllows(e.Id)));
             }
             finally
             {
@@ -427,6 +493,27 @@ namespace EdS.World
                 LastTalkFilled++;
                 Revision++;
             }
+            // Sous-lot V1.7 : les livraisons des contrats en cours à ce PNJ (la maîtresse de guilde), promises de même et remises au tick suivant.
+            if (_card is null || _guild is null) return;
+            foreach (string id in _card.Active.Keys.ToArray())
+            {
+                Objective o = _guild.Contract(id).Objective;
+                if (o.Kind != ObjectiveKind.Deliver || o.Npc != npc || _card.Active[id] >= 1 || _world.Inventory.Available(o.Id) < o.Value) continue;
+                _card.Active[id] = 1;
+                LastTalkFilled++;
+                Revision++;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V1.7 : le personnage s'adresse à <paramref name="npc"/> sans ouvrir son dialogue (le tableau de la guilde chez la maîtresse) :
+        /// ses objectifs « parler à » et « livrer à » sont remplis comme en lui parlant (<see cref="Talk"/>). Rend le nombre d'objectifs remplis.
+        /// </summary>
+        internal int Visit(string npc)
+        {
+            if (npc is null || !_book.HasNpc(npc) || !InRange(_book.Npc(npc))) return 0;
+            Spoke(npc);
+            return LastTalkFilled;
         }
 
         /// <summary>
@@ -447,6 +534,7 @@ namespace EdS.World
             if (_tracked == quest) _tracked = null;
             events.Add(new StoryEvent(StoryEventKind.ItemGiven, c.Item, null, c.Count));
             events.Add(new StoryEvent(StoryEventKind.QuestCompleted, quest));
+            QuestFinished(quest, events);   // sous-lot V1.7 : points de guilde
             return DialogueRefusal.None;
         }
 
@@ -458,6 +546,7 @@ namespace EdS.World
             if (!_facts.Add(fact)) return false;
             Revision++;
             events.Add(new StoryEvent(StoryEventKind.FactLearned, fact));
+            if (_guild != null && _guild.FactPoints.TryGetValue(fact, out long points)) Award(points, fact, events);   // sous-lot V1.7
             return true;
         }
 
@@ -467,15 +556,36 @@ namespace EdS.World
         /// </summary>
         internal void Defeated(string population, string? family = null)
         {
+            bool Counts(Objective o) => (o.Kind == ObjectiveKind.Defeat && o.Id == population) || (o.Kind == ObjectiveKind.DefeatFamily && family != null && o.Id == family);
             foreach (string id in _quests.Keys.ToArray())
-                if (CurrentStep(id) is { Objective: { } o }
-                    && ((o.Kind == ObjectiveKind.Defeat && o.Id == population) || (o.Kind == ObjectiveKind.DefeatFamily && family != null && o.Id == family))
-                    && _quests[id].Progress < o.Value)
+                if (CurrentStep(id) is { Objective: { } o } && Counts(o) && _quests[id].Progress < o.Value)
                 {
                     _quests[id] = (_quests[id].Step, checked(_quests[id].Progress + 1));
                     Revision++;
                 }
+            // Sous-lot V1.7 : la première victoire sur une créature rare de la guilde est gardée, inscrit ou non (relecture de la PR #79 : avant
+            // l'inscription, elle ne rapporte rien, ni alors ni plus tard) ; une fois inscrit, elle donne ses points (annoncés au tick).
+            if (_guild is null) return;
+            if (_guild.RarePoints.TryGetValue(population, out long rare) && _hunted.Count < SavedStory.MaxHunted && _hunted.Add(population))
+            {
+                Revision++;
+                Award(rare, population, _queued);
+            }
+            // Les contrats de chasse et les primes en cours comptent comme les quêtes.
+            if (_card is null) return;
+            foreach (string id in _card.Active.Keys.ToArray())
+            {
+                Objective o = _guild.Contract(id).Objective;
+                if (Counts(o) && _card.Active[id] < o.Value)
+                {
+                    _card.Active[id] = checked(_card.Active[id] + 1);
+                    Revision++;
+                }
+            }
         }
+
+        /// <summary>Relecture de la PR #79 : créatures rares de la guilde déjà vaincues (ordre ordinal).</summary>
+        public IReadOnlyList<string> Hunted => _hunted.ToList().AsReadOnly();
 
         /// <summary>Vérifie l'objectif de l'étape en cours de chaque quête (ordre ordinal) ; une étape au plus par quête et par tick.</summary>
         internal void Step(List<StoryEvent> events)
@@ -532,7 +642,201 @@ namespace EdS.World
                 events.Add(new StoryEvent(StoryEventKind.StepCompleted, id, s.Id));
                 events.AddRange(applied);
                 if (choose) events.Add(new StoryEvent(StoryEventKind.RewardToChoose, id));
-                else if (last) events.Add(new StoryEvent(StoryEventKind.QuestCompleted, id));
+                else if (last)
+                {
+                    events.Add(new StoryEvent(StoryEventKind.QuestCompleted, id));
+                    QuestFinished(id, events);   // sous-lot V1.7 : promotion (épreuve) ou points de guilde
+                }
+            }
+            StepContracts(events);
+        }
+
+        // --- Guilde des aventuriers (sous-lot V1.7) -----------------------------------------------------------------
+
+        /// <summary>Le personnage est inscrit à la guilde.</summary>
+        public bool IsMember => _card != null;
+
+        /// <summary>Rang de la carte (« g », « f »…), ou null sans carte.</summary>
+        public string? GuildRankId => _card is null ? null : GuildRanks.Ids[_card.Rank];
+
+        /// <summary>Indice du rang de la carte (0 : G), ou -1 sans carte.</summary>
+        public int GuildRankIndex => _card?.Rank ?? -1;
+
+        public long GuildPoints => _card?.Points ?? 0;
+        public long ContractsDone => _card?.Contracts ?? 0;
+
+        /// <summary>Titres gagnés (ordre ordinal), vide sans carte.</summary>
+        public IReadOnlyList<string> Titles => _card is null ? Array.Empty<string>() : (IReadOnlyList<string>)_card.Titles.ToList().AsReadOnly();
+
+        /// <summary>Titre affiché, ou null.</summary>
+        public string? ShownTitle => _card?.Title;
+
+        /// <summary>Contrats en cours et leur avancement (ordre ordinal), vide sans carte.</summary>
+        public IReadOnlyList<(string Contract, long Progress)> ActiveContracts =>
+            _card is null ? Array.Empty<(string, long)>() : (IReadOnlyList<(string, long)>)_card.Active.Select(a => (a.Key, a.Value)).ToList().AsReadOnly();
+
+        /// <summary>Le contrat a déjà été pris le jour <paramref name="day"/> (en cours, réussi ou abandonné).</summary>
+        public bool TakenOn(string contract, long day) => _card != null && _card.Day == day && _card.Taken.Contains(contract);
+
+        /// <summary>Carte telle qu'elle sera sauvegardée (null sans carte).</summary>
+        public SavedGuildCard? Card => _card?.ToSaved() ?? _keptCard;
+
+        /// <summary>Rang suivant (ouvert ou non), ou null au plus haut ; null sans carte ni guilde.</summary>
+        public GuildRank? NextRank => _card != null && _guild != null && _card.Rank + 1 < _guild.Ranks.Count ? _guild.Ranks[_card.Rank + 1] : null;
+
+        /// <summary>
+        /// Pourquoi l'épreuve du rang suivant ne peut pas commencer maintenant (<see cref="GuildRefusal.None"/> : elle le peut) : sans carte,
+        /// au plus haut rang ouvert, déjà en cours, pas assez de points.
+        /// </summary>
+        public GuildRefusal CanStartTrial()
+        {
+            if (_guild is null) return GuildRefusal.NoGuild;
+            if (_card is null) return GuildRefusal.NotMember;
+            if (!(NextRank is GuildRank next) || !next.Open || next.Trial is null) return GuildRefusal.TopRank;
+            if (_quests.ContainsKey(next.Trial)) return IsDone(next.Trial) ? GuildRefusal.Locked : GuildRefusal.TrialActive;
+            if (_card.Points < next.Points) return GuildRefusal.NotEnoughPoints;
+            // Relecture de la PR #79 : les conditions d'ouverture de la quête de l'épreuve comptent aussi (niveau, autre quête…).
+            if (!All(_book.Quest(next.Trial).Requires)) return GuildRefusal.Locked;
+            return GuildRefusal.None;
+        }
+
+        /// <summary>Inscription : la carte au rang G, avec le titre de ce rang (affiché). Refusée sans guilde, ou déjà inscrit.</summary>
+        internal GuildRefusal Join(List<StoryEvent> events)
+        {
+            if (_guild is null) return GuildRefusal.NoGuild;
+            if (_card != null) return GuildRefusal.AlreadyMember;
+            GuildRank g = _guild.Ranks[0];
+            _card = new GuildCard { Rank = 0, Title = g.Title };
+            _card.Titles.Add(g.Title);
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.GuildJoined, g.Id));
+            return GuildRefusal.None;
+        }
+
+        /// <summary>
+        /// Prend le contrat <paramref name="contract"/> du tableau du jour <paramref name="day"/> : inscrit ; contrat au tableau ; pas déjà pris ce
+        /// jour ; moins de <see cref="GuildBook.MaxActive"/> contrats en cours. Son avancement part de zéro. Tout ou rien.
+        /// </summary>
+        internal GuildRefusal TakeContract(string contract, long day, List<StoryEvent> events)
+        {
+            if (_guild is null) return GuildRefusal.NoGuild;
+            if (_card is null) return GuildRefusal.NotMember;
+            if (contract is null || GuildBoard.Of(_guild, _card.Rank, day).All(c => c.Id != contract)) return GuildRefusal.NotOnBoard;
+            if (_card.Active.ContainsKey(contract) || TakenOn(contract, day)) return GuildRefusal.AlreadyTaken;
+            if (_card.Active.Count >= Math.Min(_guild.MaxActive, SavedGuildCard.MaxActive)) return GuildRefusal.TooManyContracts;
+            if (!_card.MarkTaken(contract, day)) return GuildRefusal.TooManyContracts;
+            _card.Active[contract] = 0;
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.ContractTaken, contract));
+            return GuildRefusal.None;
+        }
+
+        /// <summary>
+        /// Abandonne un contrat en cours (sans perte ; il ne se reprend pas avant le lendemain). Relecture de la PR #79 : l'abandon compte comme
+        /// une prise du jour <paramref name="day"/>, même pour un contrat pris un autre jour (sinon il se reprendrait aussitôt) ; si la liste du
+        /// jour est pleine, l'abandon est refusé sans rien changer.
+        /// </summary>
+        internal GuildRefusal AbandonContract(string contract, long day, List<StoryEvent> events)
+        {
+            if (_guild is null) return GuildRefusal.NoGuild;
+            if (_card is null) return GuildRefusal.NotMember;
+            if (contract is null || !_card.Active.ContainsKey(contract)) return GuildRefusal.NotActive;
+            if (!_card.MarkTaken(contract, day)) return GuildRefusal.TooManyContracts;
+            _card.Active.Remove(contract);
+            _blocked.Remove("contract/" + contract);
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.ContractAbandoned, contract));
+            return GuildRefusal.None;
+        }
+
+        /// <summary>Commence l'épreuve du rang suivant (sa quête), si <see cref="CanStartTrial"/> le permet ; tout ou rien.</summary>
+        internal GuildRefusal StartTrial(List<StoryEvent> events)
+        {
+            GuildRefusal why = CanStartTrial();
+            if (why != GuildRefusal.None) return why;
+            var applied = new List<StoryEvent>();
+            if (Apply(new[] { StoryEffect.StartQuest(NextRank!.Trial!) }, applied) != DialogueRefusal.None) return GuildRefusal.Locked;
+            events.AddRange(applied);
+            return GuildRefusal.None;
+        }
+
+        /// <summary>Affiche le titre <paramref name="title"/> (un titre gagné), ou plus aucun (null).</summary>
+        internal GuildRefusal ShowTitle(string? title, List<StoryEvent> events)
+        {
+            if (_guild is null) return GuildRefusal.NoGuild;
+            if (_card is null) return GuildRefusal.NotMember;
+            if (title != null && !_card.Titles.Contains(title)) return GuildRefusal.UnknownTitle;
+            if (_card.Title == title) return GuildRefusal.None;
+            _card.Title = title;
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.TitleShown, title ?? string.Empty));
+            return GuildRefusal.None;
+        }
+
+        /// <summary>Ajoute des points de guilde à la carte (sans effet sans carte) et l'annonce ; arrêtés au plafond de la carte.</summary>
+        private void Award(long points, string source, List<StoryEvent> events)
+        {
+            if (_card is null || points <= 0) return;
+            long added = _card.Add(points);
+            if (added <= 0) return;
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.GuildPoints, source, null, added));
+        }
+
+        /// <summary>
+        /// Une quête est finie : une épreuve de promotion donne le rang (et son titre, affiché) ; une autre quête donne les points de guilde de
+        /// sa catégorie.
+        /// </summary>
+        private void QuestFinished(string quest, List<StoryEvent> events)
+        {
+            if (_guild is null || _card is null) return;
+            if (_guild.TrialOf(quest) is GuildRank rank)
+            {
+                if (_card.Rank + 1 != rank.Index) return;   // déjà au-dessus (ne peut arriver : l'épreuve ne s'ouvre qu'au rang juste en dessous)
+                _card.Rank = rank.Index;
+                _card.Titles.Add(rank.Title);
+                _card.Title = rank.Title;
+                Revision++;
+                events.Add(new StoryEvent(StoryEventKind.GuildPromoted, rank.Id));
+                return;
+            }
+            Award(_book.Quest(quest).Category == QuestCategory.Main ? _guild.MainQuestPoints : _guild.SideQuestPoints, quest, events);
+        }
+
+        /// <summary>
+        /// Sous-lot V1.7 : chaque contrat en cours dont l'objectif est atteint est réussi (ordre ordinal) : la remise des objets livrés et ses
+        /// récompenses (pièces, expérience, points de guilde) en une seule application atomique ; refusée (bourse pleine, sac plein), le contrat
+        /// attend, annoncé une fois. Des objets promis qui ont quitté le sac : la livraison est à refaire.
+        /// </summary>
+        private void StepContracts(List<StoryEvent> events)
+        {
+            if (_card is null || _guild is null) return;
+            foreach (string id in _card.Active.Keys.ToArray())
+            {
+                GuildContract contract = _guild.Contract(id);
+                Objective o = contract.Objective;
+                long progress = _card.Active[id];
+                if (o.Kind == ObjectiveKind.Deliver && progress >= 1 && _world.Inventory.Available(o.Id) < o.Value)
+                {
+                    _card.Active[id] = 0;
+                    Revision++;
+                    continue;
+                }
+                if (!Reached(o, progress)) continue;
+                var applied = new List<StoryEvent>();
+                DialogueRefusal blocked = Apply(o.Delivery.Concat(contract.Rewards).ToArray(), applied, id);
+                if (blocked != DialogueRefusal.None)
+                {
+                    StoryEventKind kind = blocked == DialogueRefusal.PurseFull ? StoryEventKind.PurseFull : StoryEventKind.RewardBlocked;
+                    if (_blocked.Add("contract/" + id)) events.Add(new StoryEvent(kind, id));
+                    continue;
+                }
+                _blocked.Remove("contract/" + id);
+                _card.Active.Remove(id);
+                _card.Contracts = Math.Min(SavedGuildCard.MaxContracts, checked(_card.Contracts + 1));
+                Revision++;
+                events.Add(new StoryEvent(StoryEventKind.ContractDone, id));
+                events.AddRange(applied);
             }
         }
 
@@ -546,6 +850,7 @@ namespace EdS.World
             // Sous-lot V1.6.
             ObjectiveKind.Talk or ObjectiveKind.Deliver => progress >= 1,
             ObjectiveKind.DefeatFamily => progress >= o.Value,
+            ObjectiveKind.GuildRank => _card != null && _card.Rank >= GuildRanks.IndexOf(o.Id),   // sous-lot V1.7
             _ => _world.IsEquipped(o.Id),
         };
 
@@ -569,6 +874,7 @@ namespace EdS.World
             ConditionKind.Phase => PhaseId(_world.Phase) == c.Id,
             ConditionKind.InPlace => _world.InPlace(c.Id),
             ConditionKind.LevelAtLeast => (_bonusXp > 0 ? _world.LevelWith(_bonusXp) : _world.Level) >= c.Value,   // sous-lot V1.6
+            ConditionKind.GuildRankAtLeast => _card != null && _card.Rank >= GuildRanks.IndexOf(c.Id),   // sous-lot V1.7
             _ => _world.IsPassageOpen(c.Id),
         };
 
@@ -586,7 +892,8 @@ namespace EdS.World
         /// si tout passe, tout est appliqué. Rend le motif d'un refus : <see cref="DialogueRefusal.PurseFull"/> pour la bourse,
         /// <see cref="DialogueRefusal.NoRoom"/> pour le reste.
         /// </summary>
-        private DialogueRefusal Apply(IReadOnlyList<StoryEffect> effects, List<StoryEvent> events)
+        /// <param name="source">Sous-lot V1.7 : ce qui donne les points de guilde d'un effet <c>giveGuildPoints</c> (un contrat), « guild » par défaut.</param>
+        private DialogueRefusal Apply(IReadOnlyList<StoryEffect> effects, List<StoryEvent> events, string source = "guild")
         {
             // Revue Codex de la PR #46 : les passages à ouvrir réservent leur place au registre avant toute mutation (registre plein : rien
             // n'est appliqué, ni retrait d'objets ni autre effet).
@@ -623,7 +930,14 @@ namespace EdS.World
                 switch (e.Kind)
                 {
                     case EffectKind.SetFact:
-                        if (_facts.Add(e.Id)) events.Add(new StoryEvent(StoryEventKind.FactLearned, e.Id));
+                        if (_facts.Add(e.Id))
+                        {
+                            events.Add(new StoryEvent(StoryEventKind.FactLearned, e.Id));
+                            if (_guild != null && _guild.FactPoints.TryGetValue(e.Id, out long factPoints)) Award(factPoints, e.Id, events);   // sous-lot V1.7
+                        }
+                        break;
+                    case EffectKind.GiveGuildPoints:   // sous-lot V1.7 : jamais refusé ; sans carte, sans effet
+                        Award(e.Value, source, events);
                         break;
                     case EffectKind.Trust:
                         int before = Trust(e.Id);
@@ -663,7 +977,11 @@ namespace EdS.World
                         events.Add(new StoryEvent(StoryEventKind.MoneyTaken, "money", null, e.Value));
                         break;
                     default:
-                        if (_discoveries.Add(e.Id)) events.Add(new StoryEvent(StoryEventKind.Discovered, e.Id));
+                        if (_discoveries.Add(e.Id))
+                        {
+                            events.Add(new StoryEvent(StoryEventKind.Discovered, e.Id));
+                            if (_guild != null) Award(_guild.DiscoveryPoints, e.Id, events);   // sous-lot V1.7
+                        }
                         break;
                 }
             return DialogueRefusal.None;

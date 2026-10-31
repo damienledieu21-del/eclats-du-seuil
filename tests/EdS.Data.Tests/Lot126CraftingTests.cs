@@ -404,17 +404,17 @@ public class Lot126CraftingTests
     {
         SavedCharacter hero = Hero(new Dictionary<string, long> { ["minage"] = 24, ["forge"] = 30, ["herboristerie"] = 0 });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), hero));
-        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie)
         Assert.Contains("      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0\n    },", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(text, SaveJsonReader.Write(read.Save!));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
-        string v4 = text.Replace(",\n      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 4");
+        string v4 = text.Replace(",\n      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 4");
         SaveLoadResult migrated = SaveJsonReader.Read(v4);
         Assert.True(migrated.IsValid, migrated.Report + "\n" + v4);
         Assert.Empty(migrated.Save!.Character!.Professions);
-        Assert.Equal("$.data.character.professions", Assert.Single(SaveJsonReader.Read(text.Replace(",\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 4")).Report.Errors).Path);
+        Assert.Equal("$.data.character.professions", Assert.Single(SaveJsonReader.Read(text.Replace(",\n      \"money\": 0\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 4")).Report.Errors).Path);
         Assert.Equal("$.data.character.professions.forge", SaveJsonReader.Read(text.Replace("\"forge\": 30", "\"forge\": 0")).Report.Errors[0].Path);
         Assert.Equal("$.data.character.professions.forge", SaveJsonReader.Read(text.Replace("{\"forge\": 30, \"minage\": 24}", "{\"minage\": 24, \"forge\": 30}")).Report.Errors[0].Path);
         // Un métier sauvegardé doit exister dans les données.

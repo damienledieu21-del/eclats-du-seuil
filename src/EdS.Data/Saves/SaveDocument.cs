@@ -105,6 +105,34 @@ namespace EdS.Data.Saves
 
         /// <summary>Le champ <c>tracked</c> est présent (null compris).</summary>
         public bool HasTracked { get; set; }
+
+        /// <summary>Sous-lot V1.7 (version 10) : carte d'aventurier, ou null (absente : pas encore inscrit).</summary>
+        public GuildCardData? Guild { get; set; }
+
+        /// <summary>Le champ <c>guild</c> est présent (null compris : refusé, la carte est absente tant qu'on n'est pas inscrit).</summary>
+        public bool HasGuild { get; set; }
+
+        /// <summary>Sous-lot V1.7 (version 10, relecture de la PR #79) : créatures rares déjà vaincues, ou null (absent).</summary>
+        public List<string?>? Hunted { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.7 : carte d'aventurier lue, avant validation.</summary>
+    public sealed class GuildCardData
+    {
+        public string? Rank { get; set; }
+        public long? Points { get; set; }
+        public long? Contracts { get; set; }
+        public List<string?>? Titles { get; set; }
+        public string? Title { get; set; }
+
+        /// <summary>Le champ <c>title</c> est présent (null compris).</summary>
+        public bool HasTitle { get; set; }
+
+        /// <summary>Contrats en cours : avancement par identifiant, dans l'ordre du fichier.</summary>
+        public List<KeyValuePair<string, long?>>? Active { get; set; }
+
+        public long? Day { get; set; }
+        public List<string?>? Taken { get; set; }
     }
 
     public sealed class QuestProgressData

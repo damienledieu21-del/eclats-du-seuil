@@ -107,6 +107,7 @@ Ordre proposé : d'abord ce qui sert à tout le reste (or, équipement), puis le
 - **Contrats** : chasses (vaincre tant de loups), livraisons (apporter des herbes, du minerai), primes (un bandit nommé). Tirés chaque jour du monde, de façon déterministe, parmi une liste en données ; un rang plus haut donne des contrats plus durs et mieux payés.
 - **Les quatre avantages** décidés : contrats plus durs et mieux payés, accès à des lieux, **boutique de la guilde**, **titre**.
 - **Formats** : données de la guilde (rangs, seuils, épreuves, contrats), sauvegarde (carte), textes par clés.
+- **État** (31 octobre 2026, en PR) : fait. Données de la guilde en schéma 1 (`guild.json` : les dix rangs, G, F et E ouverts, seuils, deux épreuves, titres, douze contrats, porte des archives au rang F, points des accomplissements), histoire en schéma 4 (objectif `guildRank`, effet `giveGuildPoints`, condition `guildRankAtLeast`), marchands en schéma 2 (réserve de la guilde selon le rang), sauvegarde en version 10 (carte d'aventurier ; la version 9 est celle de V1.3) ; Maison de la Guilde et ses archives (intérieurs), Dame Brunehilde, Aubin l'intendant, Ysaline l'archiviste et le Borgne (bandit nommé, par les données de zone seulement) ; tableau de la guilde, onglet « Carte d'aventurier » du journal et titre affiché dans Unity. Textes et valeurs à relire et régler. Détail : [MONDE.md](MONDE.md#guilde-des-aventuriers-sous-lot-v17).
 
 ### V1.8 — Progression et équilibrage (M)
 
