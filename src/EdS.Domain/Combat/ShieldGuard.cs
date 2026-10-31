@@ -37,8 +37,10 @@ namespace EdS.Domain.Combat
         /// Incohérences de cette garde avec les règles <paramref name="rules"/> : part bloquée dans
         /// [<see cref="CombatRules.ShieldMinDamageReduction"/>, <see cref="CombatRules.ShieldMaxDamageReduction"/>], coût d'un blocage dans
         /// [<see cref="CombatRules.ShieldMinCostPerBlock"/>, <see cref="CombatRules.ShieldMaxCostPerBlock"/>], fenêtre de parade à au plus
-        /// <see cref="CombatRules.ShieldParryWindowShiftMs"/> de celle des règles (« un peu plus large ou plus étroite »), multiple du tick et
-        /// d'au moins un tick. Chemins : <paramref name="path"/> suivi de l'identifiant de la valeur. Vide si la garde est jouable.
+        /// <see cref="CombatRules.ShieldParryWindowShiftMs"/> de celle des règles (« un peu plus large ou plus étroite »), multiple du tick,
+        /// d'au moins un tick et au plus le plafond du moteur (<see cref="CombatantRules.ParryWindowCap"/> : relecture de la PR #75, une
+        /// fenêtre acceptée ici n'est jamais écrêtée par le moteur). Chemins : <paramref name="path"/> suivi de l'identifiant de la valeur.
+        /// Vide si la garde est jouable.
         /// </summary>
         public IReadOnlyList<RuleViolation> Check(CombatRules rules, string path)
         {
@@ -54,6 +56,8 @@ namespace EdS.Domain.Combat
                     $"coût d'un blocage {CostPerBlock} hors de [{rules.ShieldMinCostPerBlock}, {rules.ShieldMaxCostPerBlock}] (combat.shield des règles).",
                     path + "." + CostPerBlockId));
             long low = rules.ParryWindowMs - rules.ShieldParryWindowShiftMs, high = rules.ParryWindowMs + rules.ShieldParryWindowShiftMs;
+            // Relecture de la PR #75 : jamais au-dessus du plafond du moteur (500 ms ramenées au tick), que les règles soient larges ou non.
+            if (rules.TickMilliseconds > 0) high = Math.Min(high, CombatantRules.ParryWindowCap(rules.TickMilliseconds));
             if (ParryWindowMs < Math.Max(low, rules.TickMilliseconds) || ParryWindowMs > high)
                 errors.Add(new RuleViolation(RuleViolationKind.InvalidValue,
                     $"fenêtre de parade {ParryWindowMs} ms hors de [{Math.Max(low, rules.TickMilliseconds)}, {high}] ms (combat.parry.windowMs ± combat.shield.parryWindowShiftMs).",

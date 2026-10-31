@@ -24,6 +24,14 @@ namespace EdS.Domain.Combat
         /// <summary>Fenêtre de parade maximale atteinte par modificateur (500 ms, ramenée au multiple du tick inférieur).</summary>
         public const long MaxParryWindowMs = 500;
 
+        /// <summary>
+        /// Relecture de la PR #75 : plafond effectif de la fenêtre de parade pour un tick de <paramref name="tickMs"/> ms,
+        /// <see cref="MaxParryWindowMs"/> ramené au multiple du tick inférieur. Un seul calcul, utilisé par le moteur (ci-dessous) et par
+        /// <see cref="ShieldGuard.Check"/>, pour que le contrôle d'un bouclier corresponde exactement à ce que le moteur applique.
+        /// </summary>
+        /// <remarks>Le tick vient de règles validées (diviseur strictement positif de 1000 ms).</remarks>
+        public static long ParryWindowCap(long tickMs) => MaxParryWindowMs - MaxParryWindowMs % tickMs;
+
         /// <summary>Charges de rempart maximales atteintes par modificateur.</summary>
         public const int MaxRampartCharges = 10;
 
@@ -94,7 +102,7 @@ namespace EdS.Domain.Combat
             // ajoutent comme aux valeurs des règles, sous les mêmes écrêtages. Les valeurs du bouclier sont d'abord ramenées dans leurs
             // intervalles de jeu (garde au plus son plafond, coût positif, fenêtre d'un tick à 500 ms) : à la différence d'une base des règles
             // de test, un bouclier ne sort jamais des plafonds.
-            long cap = MaxParryWindowMs - MaxParryWindowMs % _tickMs;
+            long cap = ParryWindowCap(_tickMs);
             Fixed guardBase = shield is null ? rules.GuardDamageReduction : Fixed.Clamp(shield.DamageReduction, Fixed.Zero, _maxGuardReduction);
             long costBase = shield is null ? rules.GuardCostPerBlock : Math.Max(0, shield.CostPerBlock);
             long windowBase = shield is null ? rules.ParryWindowMs : Math.Min(Math.Max(shield.ParryWindowMs, _tickMs), Math.Max(cap, _tickMs));
@@ -114,8 +122,7 @@ namespace EdS.Domain.Combat
                 Clamp(Fixed.Zero, m.Sum(ModifierField.GuardReductionAtZeroEndurance), Fixed.Zero, _maxGuardReduction));
             GuardBreakShortenPerChargeMs = GuardNoUpkeepBreak ? 0
                 : Whole(Clamp(Fixed.Zero, m.Sum(ModifierField.GuardBreakShortenPerCharge), Fixed.Zero, MaxDuration));
-            long windowCap = MaxParryWindowMs - MaxParryWindowMs % _tickMs;
-            ParryWindowMs = Whole(Clamp(Fixed.FromInt(windowBase), m.Sum(ModifierField.ParryWindowMs), Fixed.FromInt(_tickMs), Fixed.FromInt(windowCap)));
+            ParryWindowMs = Whole(Clamp(Fixed.FromInt(windowBase), m.Sum(ModifierField.ParryWindowMs), Fixed.FromInt(_tickMs), Fixed.FromInt(cap)));
             ParryFailureRecoveryMs = Whole(Clamp(Fixed.FromInt(rules.ParryFailureRecoveryMs), m.Sum(ModifierField.ParryFailureRecoveryMs), Fixed.Zero, MaxDuration));
             RampartChargesMax = (int)Whole(Clamp(Fixed.FromInt(rules.RampartChargesMax), m.Sum(ModifierField.RampartChargesMax), Fixed.Zero, Fixed.FromInt(MaxRampartCharges)));
             ResonancePerDirectHit = (int)Whole(Clamp(Fixed.FromInt(rules.ResonancePerDirectHit), m.Sum(ModifierField.ResonancePerDirectHit), Fixed.Zero, MaxInt));

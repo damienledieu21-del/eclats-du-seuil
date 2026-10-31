@@ -505,7 +505,9 @@ public class Lot123ItemTests
         var placement = new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5"));
         var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), loaded.Setup!, ShippedData, Progression, catalog, placement,
             new Dictionary<string, string> { ["loup1"] = "loot.loup" });
-        Assert.Equal(new GearBonus(armor: 40, maxHealth: 40), session.EnteredGear);
+        // Sous-lot V1.2 : le Bastion reçoit à l'entrée ses places obligatoires (l'écu de chêne, 60 d'armure, et l'Éclat, sans bonus).
+        Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, session.Restored);
+        Assert.Equal(new GearBonus(armor: 40 + 60, maxHealth: 40), session.EnteredGear);
         session.Step();
         long withGambison = session.Zone.Engine.View("bastion").MaxHealth!.Value;
         var loot = new List<LootGained>();
@@ -524,11 +526,12 @@ public class Lot123ItemTests
         Assert.Equal(withGambison, session.Zone.Engine.View("bastion").MaxHealth);
         WorldSave after = session.Save();
         Assert.Equal(new[] { new ItemStack("item.peau_de_loup", 1), new ItemStack("item.gambison", 1) }, after.Character!.Inventory);
-        Assert.Empty(after.Character.Equipment);
+        Assert.Equal(new[] { "shard", "shield" }, after.Character.Equipment.Keys.OrderBy(k => k, StringComparer.Ordinal));   // le gambison ôté
         var next = new WorldSession(SaveJsonReader.Read(SaveJsonReader.Write(after)).Save!, loaded.Setup!, ShippedData, Progression, catalog, placement,
             new Dictionary<string, string> { ["loup1"] = "loot.loup" });
         next.Step();
-        Assert.Equal(GearBonus.None, next.EnteredGear);
+        Assert.Equal(new GearBonus(armor: 60), next.EnteredGear);   // l'écu seul
+        Assert.Empty(next.Restored);
         Assert.Equal(withGambison - 40, next.Zone.Engine.View("bastion").MaxHealth);
         // La mort de la session précédente reste consommée : elle ne redonne rien (nouvelle session, nouvelle clé).
         Assert.Contains("zone.vallons/1/death/loup1", after.Consumed);

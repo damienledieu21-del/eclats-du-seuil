@@ -101,6 +101,9 @@ namespace EdS.World
         /// <summary>Objet porté par place (ordre ordinal ; vue en lecture seule).</summary>
         public IReadOnlyDictionary<string, string> Equipped => new ReadOnlyDictionary<string, string>(_equipped);
 
+        /// <summary>Relecture de la PR #75 : objet porté à la place <paramref name="place"/>, ou null (sans allouer de vue, pour l'affichage à chaque image).</summary>
+        public string? WornAt(string place) => place != null && _equipped.TryGetValue(place, out string id) ? id : null;
+
         public int FreePlaces => _catalog.InventorySize - _stacks.Count;
 
         public Inventory(ItemCatalog catalog, string? classId = null)
@@ -159,10 +162,11 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Sous-lot V1.2 : remplit les places obligatoires vides de ce personnage (sauvegarde mise à jour depuis une version antérieure : l'Éclat
-        /// du Seuil n'existait pas, et le bouclier du Bastion pouvait s'ôter). Pour chaque place vide : l'objet de l'inventaire de sa sorte, à
-        /// un niveau suffisant, le premier dans l'ordre des places ; sinon son objet de départ, donné. Rend les objets mis en place, dans
-        /// l'ordre des places (vide s'il n'y avait rien à faire).
+        /// Sous-lot V1.2 : remplit les places obligatoires vides de ce personnage (sauvegarde d'une version antérieure : l'Éclat du Seuil
+        /// n'existait pas, et le bouclier du Bastion pouvait s'ôter ; ou sauvegarde de version 7 aux places obligatoires vides). Pour chaque
+        /// place vide : l'objet de l'inventaire de sa sorte, à un niveau suffisant, le premier dans l'ordre des places ; sinon son objet de
+        /// départ, donné. Rend les objets mis en place, dans l'ordre des places (vide s'il n'y avait rien à faire). Idempotente : un second
+        /// appel ne change rien et rend une liste vide ; appelée à chaque chargement (relecture de la PR #75).
         /// </summary>
         public IReadOnlyList<string> FillRequired(int level)
         {

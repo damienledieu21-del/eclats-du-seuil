@@ -85,13 +85,25 @@ namespace EdS.Runtime
         }
 
         /// <summary>L'arme, le bouclier et la cape portés dans <paramref name="inventory"/>.</summary>
-        public static VisibleGear For(Inventory inventory)
+        public static VisibleGear For(Inventory inventory) => For(inventory, null);
+
+        /// <summary>
+        /// Relecture de la PR #75 : comme <see cref="For(Inventory)"/>, mais rend <paramref name="previous"/> lui-même s'il montre déjà
+        /// la même chose : appelé à chaque image, rien n'est alloué tant que l'équipement visible ne change pas.
+        /// </summary>
+        public static VisibleGear For(Inventory inventory, VisibleGear? previous)
         {
             if (inventory is null) throw new ArgumentNullException(nameof(inventory));
-            ItemDefinition? Worn(string place) => inventory.Equipped.TryGetValue(place, out string id) ? inventory.Catalog.Item(id) : null;
+            ItemDefinition? Worn(string place) => inventory.WornAt(place) is string id ? inventory.Catalog.Item(id) : null;
             ItemDefinition? weapon = Worn("weapon"), shield = Worn("shield"), cloak = Worn("cloak");
-            return new VisibleGear(weapon is null ? WeaponLook.None : WeaponOf(weapon.Id), weapon?.Rarity ?? ItemRarity.Common,
-                shield is null ? ShieldLook.None : ShieldOf(shield.Id), shield?.Rarity ?? ItemRarity.Common, cloak != null, cloak?.Rarity ?? ItemRarity.Common);
+            WeaponLook weaponLook = weapon is null ? WeaponLook.None : WeaponOf(weapon.Id);
+            ShieldLook shieldLook = shield is null ? ShieldLook.None : ShieldOf(shield.Id);
+            ItemRarity weaponRarity = weapon?.Rarity ?? ItemRarity.Common, shieldRarity = shield?.Rarity ?? ItemRarity.Common;
+            ItemRarity cloakRarity = cloak?.Rarity ?? ItemRarity.Common;
+            if (previous != null && previous.Weapon == weaponLook && previous.WeaponRarity == weaponRarity && previous.Shield == shieldLook
+                && previous.ShieldRarity == shieldRarity && previous.Cloak == (cloak != null) && previous.CloakRarity == cloakRarity)
+                return previous;
+            return new VisibleGear(weaponLook, weaponRarity, shieldLook, shieldRarity, cloak != null, cloakRarity);
         }
     }
 }

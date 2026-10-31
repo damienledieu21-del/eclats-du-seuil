@@ -257,9 +257,11 @@ namespace EdS.World
                 _lootTables[entry.Key] = items.TryGetLoot(entry.Value, out LootTable table) ? table
                     : throw new ArgumentException($"Table de butin « {entry.Value} » ({entry.Key}) absente du catalogue.", nameof(lootTables));
             Inventory = Inventory.From(_character, items, Level);
-            // Sous-lot V1.2 : une sauvegarde mise à jour depuis une version antérieure (avant les 18 places) reçoit ses places obligatoires :
-            // l'Éclat du Seuil, et pour le Bastion un bouclier (le sien s'il en a un dans l'inventaire, sinon l'écu de départ).
-            Restored = save.Migrated ? Inventory.FillRequired(Level) : Array.Empty<string>();
+            // Sous-lot V1.2 : les places obligatoires vides sont remplies : l'Éclat du Seuil, et pour le Bastion un bouclier (le sien s'il en a
+            // un dans l'inventaire, sinon l'écu de départ). Relecture de la PR #75 : à chaque chargement, pas seulement pour une sauvegarde mise
+            // à jour depuis une version antérieure (une sauvegarde de version 7 aux places obligatoires vides est réparée elle aussi).
+            // FillRequired est idempotente : sans place obligatoire vide, elle ne change rien et rend une liste vide.
+            Restored = Inventory.FillRequired(Level);
             // Sous-lot 12.6 : objets de soin de l'inventaire emportés au combat, au plus une pile de chacun (recharge partagée).
             var carried = new List<ConsumableSetup>();
             foreach (string id in Inventory.Stacks.Select(st => st.Item).Distinct().OrderBy(i => i, StringComparer.Ordinal))
@@ -516,7 +518,8 @@ namespace EdS.World
         public GearBonus EnteredGear { get; }
 
         /// <summary>
-        /// Sous-lot V1.2 : objets mis aux places obligatoires à l'entrée (sauvegarde mise à jour depuis une version antérieure) ; vide sinon.
+        /// Sous-lot V1.2 : objets mis aux places obligatoires vides à l'entrée (sauvegarde d'une version antérieure, ou de version 7 aux places
+        /// obligatoires vides) ; vide sinon.
         /// </summary>
         public IReadOnlyList<string> Restored { get; }
 

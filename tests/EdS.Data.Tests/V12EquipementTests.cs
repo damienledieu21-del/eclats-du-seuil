@@ -318,12 +318,57 @@ public class V12EquipementTests
         SaveLoadResult again = SaveJsonReader.Read(rewritten);
         Assert.False(again.Save!.Migrated);
         Assert.Empty(new WorldSession(again.Save, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone())).Restored);
-        // Sans bouclier dans le sac, l'écu de départ est donné ; une sauvegarde de version 7 n'est pas retouchée.
+        // Sans bouclier dans le sac, l'écu de départ est donné.
         string bare = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(1))).Replace("\"schemaVersion\": 7", "\"schemaVersion\": 6");
         WorldSession given = new(SaveJsonReader.Read(bare).Save!, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
         Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, given.Restored);
         // Une sauvegarde d'un programme futur (version 8) est refusée.
         Assert.False(SaveJsonReader.Read(rewritten.Replace("\"schemaVersion\": 7", "\"schemaVersion\": 8")).IsValid);
+    }
+
+    [Fact]
+    public void Sauvegarde_de_version_7_aux_places_obligatoires_vides_reparee()
+    {
+        // Relecture de la PR #75 (sonde P2) : une sauvegarde de version 7 (pas mise à jour) d'un Bastion qui ne porte rien est acceptée ;
+        // à la reprise, ses places obligatoires sont remplies comme pour une ancienne sauvegarde (le bouclier du sac d'abord, sinon l'écu
+        // de départ ; l'Éclat), au lieu de rester vides.
+        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(3, "item.peau_de_loup")));
+        SaveLoadResult read = SaveJsonReader.Read(text);
+        Assert.True(read.IsValid, read.Report.ToString());
+        Assert.False(read.Save!.Migrated);
+        var w = new WorldSession(read.Save, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
+        Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, w.Restored);
+        Assert.Equal(("item.ecu_de_chene", "item.eclat_du_seuil_endormi"), (w.Inventory.Equipped["shield"], w.Inventory.Equipped["shard"]));
+        Assert.Equal(new ShieldGuard(Fixed.Parse("0.6"), 10, 150), w.EnteredShield);   // la garde portée au combat, pas « aucune »
+        Assert.Equal(new[] { "item.peau_de_loup" }, w.Inventory.Stacks.Select(s => s.Item));
+        // Avec un bouclier dans le sac (version 7 aussi) : c'est lui qui est mis, il quitte le sac.
+        string withTarge = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(3, "item.targe_d_osier")));
+        var t = new WorldSession(SaveJsonReader.Read(withTarge).Save!, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
+        Assert.Equal(new[] { "item.targe_d_osier", "item.eclat_du_seuil_endormi" }, t.Restored);
+        Assert.Empty(t.Inventory.Stacks);
+        // Réécrite puis relue : plus rien à remplir.
+        string rewritten = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), w.Inventory.SaveInto(w.Character)));
+        Assert.Empty(new WorldSession(SaveJsonReader.Read(rewritten).Save!, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone())).Restored);
+    }
+
+    [Fact]
+    public void Remplir_les_places_obligatoires_est_idempotent_et_deterministe()
+    {
+        // Relecture de la PR #75 (sonde P3) : appelée à chaque chargement, FillRequired ne fait rien la seconde fois, et deux inventaires
+        // identiques donnent le même résultat.
+        SavedCharacter c = Bare(1, "item.ecu_de_chene", "item.targe_d_osier");
+        Inventory a = Inventory.From(c, ItemsCatalog, 1), b = Inventory.From(c, ItemsCatalog, 1);
+        IReadOnlyList<string> first = a.FillRequired(1);
+        Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, first);   // le premier bouclier du sac, puis l'Éclat
+        Assert.Equal(first, b.FillRequired(1));
+        Assert.Equal(State(a), State(b));
+        string after = State(a);
+        Assert.Empty(a.FillRequired(1));
+        Assert.Equal(after, State(a));
+        Assert.Equal(new[] { "item.targe_d_osier" }, a.Stacks.Select(s => s.Item));
+        // Un personnage déjà équipé (nouveau personnage) : rien à faire dès le premier appel.
+        Inventory outfitted = Inventory.From(Inventory.Outfit(Bare(1), ItemsCatalog), ItemsCatalog, 1);
+        Assert.Empty(outfitted.FillRequired(1));
     }
 
     [Fact]
@@ -404,9 +449,16 @@ public class V12EquipementVisibleTests
             .WithXp(Progression.XpToLevel[6]).WithItems(new[] { new ItemStack("item.cape_de_voyageur", 1), new ItemStack("item.marteau_du_carrier", 1),
                 new ItemStack("item.pavois_du_moulin", 1), new ItemStack("item.casque_de_fer", 1) }, new Dictionary<string, string>()), ItemsCatalog), ItemsCatalog, 7);
         Assert.Equal(new VisibleGear(WeaponLook.Sword, ItemRarity.Common, ShieldLook.Heater, ItemRarity.Common, false, ItemRarity.Common), GearLooks.For(inv));
+        // Relecture de la PR #75 : appelé à chaque image avec le précédent, il le rend tel quel tant que rien ne change (aucune allocation).
+        VisibleGear shown = GearLooks.For(inv);
+        Assert.Same(shown, GearLooks.For(inv, shown));
+        Assert.Equal("item.ecu_de_chene", inv.WornAt("shield"));
+        Assert.Null(inv.WornAt("cloak"));
         foreach (string id in new[] { "item.cape_de_voyageur", "item.marteau_du_carrier", "item.pavois_du_moulin", "item.casque_de_fer" })
             Assert.Equal(InventoryRefusal.None, inv.Equip(inv.Stacks.ToList().FindIndex(st => st.Item == id), 7));
         Assert.Equal(new VisibleGear(WeaponLook.Hammer, ItemRarity.Rare, ShieldLook.Tower, ItemRarity.Rare, true, ItemRarity.Rare), GearLooks.For(inv));
+        Assert.NotSame(shown, GearLooks.For(inv, shown));   // l'équipement a changé : un nouvel objet
+        Assert.Equal(GearLooks.For(inv), GearLooks.For(inv, shown));
         // Le casque porté ne change rien à ce qui se voit.
         Assert.True(inv.Equipped.ContainsKey("head"));
         foreach ((string id, WeaponLook look) in new[] { ("item.masse_benite", WeaponLook.Mace), ("item.fleau_du_hameau", WeaponLook.Mace),

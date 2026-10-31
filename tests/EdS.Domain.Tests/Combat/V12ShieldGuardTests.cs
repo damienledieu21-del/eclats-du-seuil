@@ -148,6 +148,32 @@ public class V12ShieldGuardTests
         Assert.Equal((F(reductionAfter), costAfter, windowAfter), (r.GuardDamageReduction, r.GuardCostPerBlock, r.ParryWindowMs));
     }
 
+    [Theory]
+    [InlineData(50, 500, 50)]     // règles larges : 550 ms dépasserait le plafond du moteur (500 ms)
+    [InlineData(50, 500, 150)]
+    [InlineData(40, 480, 40)]     // tick de 40 ms : plafond 480 ms (500 ramené au tick)
+    [InlineData(25, 450, 100)]    // tick de 25 ms : plafond 500 ms, atteint par 450 + 50
+    public void Fenetre_jamais_au_dessus_du_plafond_du_moteur(int tickMs, long rulesWindow, long shift)
+    {
+        // Relecture de la PR #75 (sonde P1) : une fenêtre acceptée par Check est exactement celle que le moteur applique ; au-dessus du
+        // plafond (500 ms ramenées au tick), elle est refusée, même si combat.parry.windowMs + l'écart la permettrait.
+        var rules = new CombatRules { TickMilliseconds = tickMs, ParryWindowMs = rulesWindow, ShieldParryWindowShiftMs = shift };
+        // (Seuls le tick, la fenêtre et l'écart comptent ici : Check et le moteur, pas les autres valeurs des règles.)
+        long cap = CombatantRules.ParryWindowCap(tickMs);
+        Assert.Equal(CombatantRules.MaxParryWindowMs - CombatantRules.MaxParryWindowMs % tickMs, cap);
+        IEnumerable<string> Fields(long window) => new ShieldGuard(F("0.6"), 10, window).Check(rules, "shield").SelectMany(v => v.Fields);
+        Assert.Empty(Fields(cap));                                     // N : le plafond lui-même est admis
+        Assert.Empty(Fields(cap - tickMs));                            // N − 1 tick
+        Assert.Contains("shield.parryWindowMs", Fields(cap + tickMs));  // N + 1 tick : refusé
+        // Propriété : pour toute fenêtre du tick admise, le moteur la garde telle quelle (aucun écrêtage caché).
+        for (long window = tickMs; window <= rulesWindow + shift + tickMs; window += tickMs)
+        {
+            bool accepted = !Fields(window).Any();
+            if (accepted) Assert.Equal(window, CombatantRules.For(rules, ModifierSet.Empty, new ShieldGuard(F("0.6"), 10, window)).ParryWindowMs);
+            Assert.Equal(window <= cap && window >= rulesWindow - shift, accepted);
+        }
+    }
+
     [Fact]
     public void Garde_hors_bornes_refusee_par_la_validation_du_combat()
     {
