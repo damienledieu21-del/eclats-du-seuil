@@ -5,6 +5,7 @@ using EdS.Data.Rules;
 using EdS.Data.Saves;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
+using EdS.Domain.Stats;
 using EdS.Runtime;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
@@ -339,6 +340,144 @@ public class V13RelectureTests : IDisposable
             Assert.Equal(ItemRolls.Roll(catalog, Boots, 1, key, 1), ItemRolls.Roll(catalog, Boots, 1, key, boots.Rank));
         }
         Assert.True(with && without);
+    }
+
+    // --- Remarque de Codex (tour 2) : cumul des bonus de l'équipement porté ----------------------------------------------------------
+
+    /// <summary>Catalogue des objets livré, modifié par <paramref name="change"/> sur son JSON, relu par le validateur.</summary>
+    private static ItemCatalogLoadResult Items(Action<JsonObject> change)
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ItemJsonReader.PathIn(DataDirectory)))!.AsObject();
+        change(root["data"]!.AsObject());
+        return ItemJsonReader.Read(root.ToJsonString(), ShippedData);
+    }
+
+    /// <summary>
+    /// Le scénario de Codex : les objets rares tirent huit propriétés, et huit propriétés distinctes de puissance physique valent 50 000
+    /// chacune : trois objets (une arme, deux anneaux) en portent déjà 1 200 000, au-delà de la limite du combat.
+    /// </summary>
+    private static void EightStrongProperties(JsonObject data, int value)
+    {
+        // Échelle de 100 % partout : une propriété peut alors valoir 50 000 (le plafond d'une valeur tirée).
+        foreach (JsonNode? r in data["properties"]!["rarities"]!.AsArray()) r!["scalePercent"] = 100;
+        data["properties"]!["rarities"]!.AsArray().Single(r => (string)r!["rarity"]! == "rare")!["count"] = 8;
+        JsonArray list = data["properties"]!["list"]!.AsArray();
+        for (int k = 0; k < 8; k++)
+            list.Add(new JsonObject
+            {
+                ["id"] = $"property.puissance_{k}", ["name"] = $"Puissance {k}", ["stat"] = "physicalPower",
+                ["min"] = value, ["max"] = value, ["minPerLevel"] = 0, ["maxPerLevel"] = 0,
+            });
+    }
+
+    [Fact]
+    public void Catalogue_au_pire_cumul_trop_fort_refuse_avec_son_chemin()
+    {
+        ItemCatalogLoadResult refused = Items(d => EightStrongProperties(d, 50_000));
+        Assert.False(refused.IsValid);
+        ValidationError e = Assert.Single(refused.Report.Errors);
+        Assert.Equal(("$.data.properties.list[6].max", ValidationCode.LimitExceeded), (e.Path, e.Code));
+        Assert.Contains("physicalPower", e.Message, StringComparison.Ordinal);
+        Assert.Contains($"au plus {GearBonus.MaxValue}", e.Message, StringComparison.Ordinal);
+        // Les mêmes propriétés, faibles : admises.
+        Assert.True(Items(d => EightStrongProperties(d, 10)).IsValid);
+        // Des bonus de base trop forts sur toutes les places : refusés à l'objet le plus fort.
+        ItemCatalogLoadResult heavy = Items(d =>
+        {
+            foreach (JsonNode? item in d["items"]!.AsArray())
+                if ((string)item!["type"]! == "equipment" && (string?)item["slot"] != "tool") item["bonus"] = new JsonObject { ["armor"] = 50_000 };
+            foreach (JsonNode? set in d["sets"]!.AsArray())
+                foreach (JsonNode? tier in set!["bonuses"]!.AsArray()) tier!["bonus"] = new JsonObject { ["armor"] = 50_000 };
+        });
+        ValidationError armor = Assert.Single(heavy.Report.Errors);
+        Assert.StartsWith("$.data.items[", armor.Path, StringComparison.Ordinal);
+        Assert.EndsWith("].bonus.armor", armor.Path, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Pire_cumul_du_catalogue_livre_dans_la_limite_du_combat()
+    {
+        for (int stat = 0; stat < GearBonus.Fields.Count; stat++)
+        {
+            (long bases, long rolled, long sets) = ItemsCatalog.WornBound(stat);
+            Assert.InRange(bases + rolled + sets, 0, GearBonus.MaxValue);
+        }
+        // La borne est atteinte par l'objet le plus fort de chaque place : elle n'est jamais sous ce que porte un personnage.
+        Inventory bag = Bag(ItemsCatalog.Items.Where(i => i.Type == ItemType.Equipment && ItemsCatalog.PlacesFor(i.Slot).Count > 0)
+            .GroupBy(i => i.Slot).Select(g => Base(g.OrderByDescending(i => i.Bonus.PhysicalPower).First().Id)).ToArray());
+        for (int k = bag.Stacks.Count - 1; k >= 0; k--) bag.Equip(k, 99);
+        for (int stat = 0; stat < GearBonus.Fields.Count; stat++)
+        {
+            (long bases, long rolled, long sets) = ItemsCatalog.WornBound(stat);
+            Assert.True(bag.Gear()[stat] <= bases + rolled + sets, GearBonus.Fields[stat]);
+        }
+    }
+
+    /// <summary>
+    /// Catalogue NON validé (le constructeur interne, par réflexion), pour éprouver les gardes de l'inventaire : la Force tirée vaut 400 000.
+    /// Un catalogue validé ne peut pas en arriver là.
+    /// </summary>
+    private static ItemCatalog Unchecked()
+    {
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        object force = typeof(PropertyDefinition).GetConstructors(flags).Single().Invoke(new object[]
+            { "property.force", "Force", GearBonus.FieldIndex("physicalPower"), 400_000, 400_000, 0, 0, new[] { "weapon", "ring" } });
+        var properties = ItemsCatalog.Properties.Select(p => p.Id == "property.force" ? (PropertyDefinition)force : p).ToList();
+        return (ItemCatalog)typeof(ItemCatalog).GetConstructors(flags).Single().Invoke(new object?[]
+        {
+            ItemsCatalog.SchemaVersion, ItemsCatalog.ContentVersion, ItemsCatalog.Places, ItemsCatalog.InventorySize, ItemsCatalog.Starting,
+            ItemsCatalog.Items, ItemsCatalog.Loot, ItemsCatalog.Sets, properties, ItemsCatalog.RarityRolls,
+        });
+    }
+
+    private static ItemStack Strong(string item) => new ItemStack(item, 1, new[] { new RolledProperty("property.force", 400_000) });
+
+    [Fact]
+    public void Porter_ne_depasse_jamais_la_limite_du_combat()
+    {
+        ItemCatalog catalog = Unchecked();
+        ItemStack sword = Strong("item.epee_de_garde"), first = Strong("item.anneau_du_guetteur"), second = Strong("item.anneau_de_force");
+        Assert.All(new[] { sword, first, second }, x => Assert.Null(catalog.CheckInstance(x)));
+        Inventory bag = Inventory.From(Bastion(10, new[] { sword, first, second, Base("item.anneau_de_cuivre") }), catalog, 10);
+        Assert.Equal(InventoryRefusal.None, bag.EquipTo(0, "weapon", 10));
+        Assert.Equal(InventoryRefusal.None, bag.EquipTo(0, "ring_1", 10));
+        Assert.Equal(InventoryRefusal.None, bag.EquipTo(1, "ring_2", 10));   // l'anneau de cuivre
+        string Seen(Inventory i) => string.Join(",", i.Stacks) + "|" + string.Join(",", i.Equipped.Select(e => e.Key + "=" + e.Value))
+            + "|" + i.WornInstanceAt("ring_1") + "|" + i.WornInstanceAt("ring_2");
+        // À la place de l'anneau de cuivre, le troisième objet fort mènerait la puissance physique au-delà de 1 000 000 : refusé, l'échange
+        // est défait.
+        string before = Seen(bag);
+        Assert.Equal(InventoryRefusal.GearLimit, bag.EquipTo(0, "ring_2", 10));
+        Assert.Equal(before, Seen(bag));
+        // Sur une place libre : refusé aussi, rien ne change.
+        Assert.Equal(InventoryRefusal.None, bag.Unequip("ring_2"));
+        before = Seen(bag);
+        Assert.Equal(InventoryRefusal.GearLimit, bag.EquipTo(0, "ring_2", 10));
+        Assert.Equal(InventoryRefusal.GearLimit, bag.Equip(0, 10));
+        Assert.Equal(before, Seen(bag));
+        Assert.True(bag.GearWithinCombatLimit);
+        Assert.True(Inventory.WithinCombatLimit(bag.Gear()));
+    }
+
+    [Fact]
+    public void Sauvegarde_au_dela_de_la_limite_reprise_sans_refus_du_combat()
+    {
+        ItemCatalog catalog = Unchecked();
+        ItemStack sword = Strong("item.epee_de_garde"), first = Strong("item.anneau_du_guetteur"), second = Strong("item.anneau_de_force");
+        SavedCharacter hero = Bastion(10, Array.Empty<ItemStack>(),
+            new Dictionary<string, string> { ["weapon"] = sword.Item, ["ring_1"] = first.Item, ["ring_2"] = second.Item },
+            new Dictionary<string, IReadOnlyList<RolledProperty>> { ["weapon"] = sword.Properties, ["ring_1"] = first.Properties, ["ring_2"] = second.Properties });
+        Inventory bag = Inventory.From(hero, catalog, 10, out IReadOnlyList<string> adjusted);
+        Assert.False(bag.GearWithinCombatLimit);
+        Assert.Equal(GearBonus.MaxValue, bag.Gear().PhysicalPower);
+        Assert.True(Inventory.WithinCombatLimit(bag.Gear()));
+        Assert.Contains(adjusted, n => n.Contains("physicalPower", StringComparison.Ordinal) && n.Contains("limite du combat", StringComparison.Ordinal));
+        // La partie reprend : le combat admet le personnage (la session entre dans sa zone).
+        ZoneDefinition zone = Zone();
+        var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), zone, ShippedData, Progression, catalog, Book(zone),
+            market: new Market(ShippedMerchants));
+        Assert.Equal(GearBonus.MaxValue, session.EnteredGear.PhysicalPower);
+        Assert.Contains(session.Adjusted, n => n.Contains("physicalPower", StringComparison.Ordinal));
     }
 
     // --- Outils ---------------------------------------------------------------------------------------------------------------------

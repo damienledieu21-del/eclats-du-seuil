@@ -39,6 +39,12 @@ namespace EdS.World
 
         /// <summary>Sous-lot V1.2 : en plein combat (<see cref="WorldSession.InCombat"/>) : l'équipement se change hors combat.</summary>
         InCombat = 8,
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #78 : porté, l'objet mènerait un bonus d'équipement au-delà de la limite du combat
+        /// (<see cref="GearBonus.MaxValue"/>) ; le combat refuserait le personnage. Un catalogue validé ne le permet pas (pire cumul borné).
+        /// </summary>
+        GearLimit = 9,
     }
 
     /// <summary>Sous-lot V1.2 : ordre du rangement de l'inventaire (<see cref="Inventory.Sort"/>).</summary>
@@ -171,6 +177,11 @@ namespace EdS.World
                 if (catalog.CheckInstance(worn) is string problem) throw new ArgumentException($"Équipement « {e.Key} » : {problem}", nameof(character));
                 inventory._equipped[e.Key] = worn;
             }
+            // Remarque de Codex sur la PR #78 : un équipement relu au-delà de la limite du combat (impossible avec un catalogue validé) est
+            // plafonné par Gear() ; le compte rendu le dit.
+            GearBonus raw = inventory.RawGear();
+            for (int g = 0; g < GearBonus.Fields.Count; g++)
+                if (raw[g] > GearBonus.MaxValue) notes.Add($"bonus d'équipement « {GearBonus.Fields[g]} » de {raw[g]} ramené à {GearBonus.MaxValue} (limite du combat).");
             return inventory;
         }
 
@@ -225,6 +236,18 @@ namespace EdS.World
         /// </summary>
         public GearBonus Gear()
         {
+            // Remarque de Codex sur la PR #78 : jamais au-delà de la limite du combat (dernier recours : un catalogue validé borne déjà le pire
+            // cumul, et EquipTo refuse ce qui la dépasserait).
+            GearBonus total = RawGear();
+            if (WithinCombatLimit(total)) return total;
+            var values = new int[GearBonus.Fields.Count];
+            for (int i = 0; i < values.Length; i++) values[i] = Math.Min(total[i], GearBonus.MaxValue);
+            return GearBonus.FromValues(values);
+        }
+
+        /// <summary>Somme des bonus portés, sans plafond.</summary>
+        private GearBonus RawGear()
+        {
             GearBonus total = GearBonus.None;
             foreach (ItemStack worn in _equipped.Values) total += _catalog.BonusOf(worn);
             foreach ((ItemSet set, int count) in WornSets())
@@ -232,6 +255,21 @@ namespace EdS.World
                     if (bonus.Pieces <= count) total += bonus.Bonus;
             return total;
         }
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #78 : chaque champ du bonus dans la limite que le combat admet (<c>CombatSetup.Validate</c> : de 0 à
+        /// <see cref="GearBonus.MaxValue"/>).
+        /// </summary>
+        public static bool WithinCombatLimit(GearBonus gear)
+        {
+            if (gear is null) throw new ArgumentNullException(nameof(gear));
+            for (int i = 0; i < GearBonus.Fields.Count; i++)
+                if (gear[i] < 0 || gear[i] > GearBonus.MaxValue) return false;
+            return true;
+        }
+
+        /// <summary>Remarque de Codex sur la PR #78 : le bonus porté, sans plafond, est-il dans la limite du combat ?</summary>
+        public bool GearWithinCombatLimit => WithinCombatLimit(RawGear());
 
         /// <summary>
         /// Sous-lot V1.3 : ensembles dont au moins une pièce est portée, dans l'ordre du catalogue, avec le nombre de pièces différentes portées
@@ -461,9 +499,17 @@ namespace EdS.World
             if (slot is null || !_catalog.TryGetPlace(slot, out EquipmentPlace target) || target.Accepts != item.Slot) return InventoryRefusal.WrongSlot;
             if (item.RequiredLevel > level) return InventoryRefusal.LevelTooLow;
             ItemStack instance = _stacks[place];   // sous-lot V1.3 : l'instance, avec ses propriétés tirées
-            if (_equipped.TryGetValue(slot, out ItemStack previous)) _stacks[place] = previous;
+            bool hadPrevious = _equipped.TryGetValue(slot, out ItemStack previous);
+            if (hadPrevious) _stacks[place] = previous;
             else _stacks.RemoveAt(place);
             _equipped[slot] = instance;
+            // Remarque de Codex sur la PR #78 : jamais un équipement que le combat refuserait ; sinon tout revient comme avant.
+            if (!GearWithinCombatLimit)
+            {
+                if (hadPrevious) { _equipped[slot] = previous; _stacks[place] = instance; }
+                else { _equipped.Remove(slot); _stacks.Insert(place, instance); }
+                return InventoryRefusal.GearLimit;
+            }
             return InventoryRefusal.None;
         }
 

@@ -412,6 +412,39 @@ namespace EdS.Data.Items
             item is null ? throw new ArgumentNullException(nameof(item)) : Properties.Where(p => p.FitsKind(item.Slot)).ToList();
 
         /// <summary>
+        /// Remarque de Codex sur la PR #78 : plus grande valeur que peut atteindre la statistique <paramref name="stat"/>
+        /// (<see cref="GearBonus.Fields"/>) dans le bonus de l'équipement porté (<c>Inventory.Gear</c>), quoi que porte le personnage. Pour
+        /// chaque place, l'objet qui y va au pire cas : son bonus de base plus ses propriétés tirées les plus fortes sur cette statistique
+        /// (au plus <see cref="RollCount"/> propriétés distinctes, chacune à la borne haute de <see cref="Bounds"/>) ; plus tous les paliers de
+        /// tous les ensembles. Une borne sûre (le vrai total ne la dépasse jamais) : <c>Base</c> pour les bonus de base, <c>Rolled</c> pour les
+        /// propriétés tirées, <c>Sets</c> pour les ensembles. Arithmétique sur 64 bits, sans débordement pour un catalogue validé.
+        /// </summary>
+        public (long Base, long Rolled, long Sets) WornBound(int stat)
+        {
+            if (stat < 0 || stat >= GearBonus.Fields.Count) throw new ArgumentOutOfRangeException(nameof(stat));
+            long sum = 0, rolledSum = 0, setSum = 0;
+            foreach (EquipmentPlace place in Places)
+            {
+                long bestBase = 0, bestRolled = 0;
+                foreach (ItemDefinition item in Items)
+                {
+                    if (item.Type != ItemType.Equipment || item.Slot != place.Accepts) continue;
+                    long rolled = 0;
+                    if (IsRollable(item))
+                        rolled = PropertiesFor(item).Where(p => p.Stat == stat).Select(p => (long)Bounds(p, item).Max)
+                            .OrderByDescending(v => v).Take(RollCount(item.Rarity)).Sum();
+                    if (item.Bonus[stat] + rolled > bestBase + bestRolled) { bestBase = item.Bonus[stat]; bestRolled = rolled; }
+                }
+                sum = checked(sum + bestBase);
+                rolledSum = checked(rolledSum + bestRolled);
+            }
+            foreach (ItemSet set in Sets)
+                foreach (SetBonus bonus in set.Bonuses)
+                    setSum = checked(setSum + bonus.Bonus[stat]);
+            return (sum, rolledSum, setSum);
+        }
+
+        /// <summary>
         /// Sous-lot V1.3 : bornes d'une propriété tirée sur <paramref name="item"/> : celles de la propriété au niveau requis de l'objet
         /// (min + minPerLevel × (niveau − 1), de même pour max), multipliées par l'échelle de sa rareté (pour cent, arrondi vers le bas), au
         /// moins 1. La rareté fixe le nombre et l'échelle ; le hasard ne choisit qu'à l'intérieur de ces bornes (Q30). Arithmétique vérifiée.
@@ -720,7 +753,56 @@ namespace EdS.Data.Items
                     && catalog.PropertiesFor(item).Count < catalog.RollCount(item.Rarity))
                     report.Add($"$.data.items[{i}].rarity", ValidationCode.InvalidValue,
                         $"« {id} » tire {catalog.RollCount(item.Rarity)} propriété(s), {catalog.PropertiesFor(item).Count} possible(s) pour « {item.Slot} ».");
+            // Remarque de Codex sur la PR #78 : le pire cumul de l'équipement porté (bonus de base, propriétés tirées, ensembles) reste dans la
+            // limite du combat (CombatSetup.Validate : chaque bonus d'équipement de 0 à GearBonus.MaxValue), sinon le personnage qui le porte
+            // ne pourrait plus entrer dans un combat.
+            for (int stat = 0; stat < GearBonus.Fields.Count; stat++)
+            {
+                (long baseBound, long rolledBound, long setBound) = catalog.WornBound(stat);
+                long total = checked(baseBound + rolledBound + setBound);
+                if (total <= GearBonus.MaxValue) continue;
+                report.Add(WornBoundPath(d, catalog, stat, rolledBound, setBound), ValidationCode.LimitExceeded,
+                    $"pire cumul de « {GearBonus.Fields[stat]} » sur l'équipement porté : {total} (objets {baseBound}, propriétés tirées {rolledBound}, " +
+                    $"ensembles {setBound}), au plus {GearBonus.MaxValue} (limite du combat).");
+            }
             return report.IsValid ? new ItemCatalogLoadResult(report, catalog) : new ItemCatalogLoadResult(report, null);
+        }
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #78 : chemin d'un pire cumul trop fort, vers sa plus grande cause : la propriété tirée la plus forte sur
+        /// cette statistique (<c>properties.list[k].max</c>) si les propriétés tirées dominent, sinon le palier d'ensemble le plus fort si les
+        /// ensembles dominent, sinon l'objet au plus fort bonus de base (<c>items[i].bonus.&lt;stat&gt;</c>).
+        /// </summary>
+        private static string WornBoundPath(ItemCatalogData d, ItemCatalog catalog, int stat, long rolled, long sets)
+        {
+            string field = GearBonus.Fields[stat];
+            (long baseBound, _, _) = catalog.WornBound(stat);
+            if (rolled >= baseBound && rolled >= sets && rolled > 0)
+            {
+                int best = -1;
+                long top = -1;
+                for (int k = 0; k < catalog.Properties.Count; k++)
+                {
+                    PropertyDefinition p = catalog.Properties[k];
+                    if (p.Stat != stat) continue;
+                    foreach (ItemDefinition item in catalog.Items)
+                        if (catalog.IsRollable(item) && p.FitsKind(item.Slot) && catalog.Bounds(p, item).Max > top) { top = catalog.Bounds(p, item).Max; best = k; }
+                }
+                if (best >= 0)
+                    for (int k = 0; d.Properties?.List != null && k < d.Properties.List.Count; k++)
+                        if (d.Properties.List[k]?.Id == catalog.Properties[best].Id) return $"$.data.properties.list[{k}].max";
+            }
+            if (sets >= baseBound && sets > 0)
+                for (int s = 0; d.Sets != null && s < d.Sets.Count; s++)
+                    if (d.Sets[s]?.Id is string id && catalog.TryGetSet(id, out ItemSet set))
+                        for (int b = 0; b < set.Bonuses.Count; b++)
+                            if (set.Bonuses[b].Bonus[stat] > 0 && set.Bonuses[b].Bonus[stat] == catalog.Sets.SelectMany(x => x.Bonuses).Max(x => x.Bonus[stat]))
+                                return $"$.data.sets[{s}].bonuses[{b}].bonus.{field}";
+            int strongest = -1, value = -1;
+            for (int i = 0; d.Items != null && i < d.Items.Count; i++)
+                if (d.Items[i]?.Id is string id && catalog.TryGetItem(id, out ItemDefinition item) && item.Bonus[stat] > value)
+                { value = item.Bonus[stat]; strongest = i; }
+            return strongest >= 0 ? $"$.data.items[{strongest}].bonus.{field}" : "$.data.items";
         }
 
         /// <summary>
