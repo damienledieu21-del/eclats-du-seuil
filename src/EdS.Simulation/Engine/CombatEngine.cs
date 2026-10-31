@@ -969,10 +969,6 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
-        /// Lot 7.2 (D11) : motif de refus d'une action bloquée par une altération active, juste après les motifs de mort ; si
-        /// plusieurs altérations bloquent l'action, la première dans l'ordre du catalogue l'emporte (étourdissement avant rupture).
-        /// </summary>
-        /// <summary>
         /// Sous-lot V1.3 : le combattant est-il étourdi, c'est-à-dire porte-t-il une altération active qui bloque ses compétences ou ses
         /// attaques d'assaillant (condition <c>targetStunned</c> des modificateurs) ? Lecture seule, sans ligne ni coût.
         /// </summary>
@@ -983,6 +979,10 @@ namespace EdS.Simulation.Engine
             return false;
         }
 
+        /// <summary>
+        /// Lot 7.2 (D11) : motif de refus d'une action bloquée par une altération active, juste après les motifs de mort ; si
+        /// plusieurs altérations bloquent l'action, la première dans l'ordre du catalogue l'emporte (étourdissement avant rupture).
+        /// </summary>
         private string? BlockReason(Fighter f, StatusBlocks action)
         {
             StatusDefinition? first = null;

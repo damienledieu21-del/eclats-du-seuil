@@ -55,6 +55,9 @@ namespace EdS.Game
         private const float DetailWidth = 422f;
         private const int DetailCharsPerLine = 58;
 
+        /// <summary>Relecture de la PR #78 : lignes de détail de la fiche (la dernière annonce « … et N de plus » s'il en manque).</summary>
+        private const int DetailRows = 14;
+
         private static readonly Color Better = new Color(0.45f, 0.9f, 0.5f), Worse = new Color(0.95f, 0.38f, 0.33f);
 
         private void BuildSlots(RectTransform page)
@@ -149,7 +152,7 @@ namespace EdS.Game
                 UiText delta = Text(_tip, UiFace.Bold, 15f, Color.white, TextAnchor.MiddleRight, 376f, 0f, 70f, 20f, 1f, 0.5f);
                 _compareRows.Add((label, values, delta));
             }
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < DetailRows; i++)
             {
                 UiText detail = Text(_tip, UiFace.Body, 14f, UiKit.Ink, TextAnchor.UpperLeft, 24f, 0f, DetailWidth, 20f, 0f, 0f);
                 detail.Wrap();
@@ -204,21 +207,30 @@ namespace EdS.Game
                 _compareRows[i].Delta.Show(false);
             }
             // Sous-lot V1.3 : détails sous les écarts (propriétés, effets, ensemble), en vert ou en rouge comme la comparaison.
+            // Relecture de la PR #78 : au-delà des lignes de la fiche, la dernière dit combien de détails ne sont pas montrés (rien n'est
+            // coupé sans prévenir).
             float detailsHeight = 0f;
             int details = 0;
             if (c != null)
-                foreach (DetailLine line in c.Details)
+            {
+                int total = c.Details.Count;
+                int room = total > _detailRows.Count ? _detailRows.Count - 1 : total;
+                for (int k = 0; k <= room && k < total; k++)
                 {
-                    if (details >= _detailRows.Count) break;
+                    bool more = k == room;
+                    string text = more ? string.Format("… et {0} de plus", total - room) : c.Details[k].Text;
                     UiText row = _detailRows[details++];
-                    float lines = Mathf.Ceil(Mathf.Max(1, line.Text.Length) / (float)DetailCharsPerLine);
+                    float lines = Mathf.Ceil(Mathf.Max(1, text.Length) / (float)DetailCharsPerLine);
                     float h = 18f * lines + 2f;
                     row.Show(true);
                     UiKit.Place(row.Rect, new Vector2(24f, top + 44f + shown * 22f + detailsHeight), new Vector2(DetailWidth, h), Vector2.zero);
-                    row.Value = line.Text;
-                    row.Color = line.Trend == CompareTrend.Better ? Better : line.Trend == CompareTrend.Worse ? Worse : line.Active ? UiKit.Ink : UiKit.Muted;
+                    row.Value = text;
+                    DetailLine line = more ? null : c.Details[k];
+                    row.Color = line == null ? UiKit.Muted
+                        : line.Trend == CompareTrend.Better ? Better : line.Trend == CompareTrend.Worse ? Worse : line.Active ? UiKit.Ink : UiKit.Muted;
                     detailsHeight += h;
                 }
+            }
             for (int i = details; i < _detailRows.Count; i++) _detailRows[i].Show(false);
             return c == null ? -1f : 40f + shown * 22f + (details > 0 ? detailsHeight + 6f : 0f);
         }

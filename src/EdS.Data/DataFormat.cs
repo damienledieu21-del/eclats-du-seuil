@@ -34,8 +34,9 @@ namespace EdS.Data
     /// des boucliers : <c>minDamageReduction</c>, <c>maxDamageReduction</c>, <c>minCostPerBlock</c>, <c>maxCostPerBlock</c>,
     /// <c>parryWindowShiftMs</c>). Classes inchangées (9) ; 14 (règles) = sous-lot V1.3 : bloc <c>combat.equipment</c> (bornes des effets
     /// d'équipement : <c>maxDamageDealt</c>, <c>maxDamageTaken</c>, <c>maxHealthPercent</c>, <c>maxEnduranceRegen</c>, <c>maxStatusDurationMs</c>,
-    /// <c>maxStrikeCoefficient</c>, <c>maxGain</c>, <c>minTriggerCooldownMs</c>) et condition <c>targetStunned</c> des modificateurs. Classes
-    /// inchangées (9) : la condition y est admise sans changer leur forme.</para>
+    /// <c>maxStrikeCoefficient</c>, <c>maxGain</c>, <c>minTriggerCooldownMs</c>, <c>allowedStatuses</c> : relecture de la PR #78) et condition
+    /// <c>targetStunned</c> des modificateurs, réservée à l'équipement. Classes inchangées (9) : la condition <c>targetStunned</c> y est
+    /// refusée (un talent ne la porte pas).</para>
     /// </summary>
     public static class DataFormat
     {
