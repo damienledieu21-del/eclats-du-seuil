@@ -352,10 +352,27 @@ namespace EdS.Data.Items
         private readonly Dictionary<string, ItemSet> _sets;
         private readonly Dictionary<string, PropertyDefinition> _properties;
 
+        /// <summary>Sous-lot V1.4 : part du bonus de base ajoutée par la qualité supérieure, en pour cent (0 à <see cref="ItemValidator.MaxQualityPercent"/>).</summary>
+        public int SuperiorPercent { get; }
+
+        /// <summary>Sous-lot V1.4 : part du bonus de base ajoutée par un chef-d'œuvre, en pour cent (au moins celle de la qualité supérieure).</summary>
+        public int MasterworkPercent { get; }
+
+        /// <summary>Sous-lot V1.4 : solidité d'une pièce neuve, en points (au moins 1).</summary>
+        public int WearMax { get; }
+
+        /// <summary>Sous-lot V1.4 : points perdus par chaque pièce portée pour des dégâts reçus égaux aux PV maximaux (0 : pas d'usure).</summary>
+        public int WearPerFullHealth { get; }
+
         internal ItemCatalog(int schemaVersion, string contentVersion, IEnumerable<EquipmentPlace> places, int inventorySize, IEnumerable<StartingItem> starting,
             IEnumerable<ItemDefinition> items, IEnumerable<LootTable> loot, IEnumerable<ItemSet>? sets = null, IEnumerable<PropertyDefinition>? properties = null,
-            IEnumerable<RarityRoll>? rarityRolls = null)
+            IEnumerable<RarityRoll>? rarityRolls = null, int superiorPercent = 0, int masterworkPercent = 0, int wearMax = ItemValidator.DefaultWearMax,
+            int wearPerFullHealth = 0)
         {
+            SuperiorPercent = superiorPercent;
+            MasterworkPercent = masterworkPercent;
+            WearMax = wearMax;
+            WearPerFullHealth = wearPerFullHealth;
             Sets = Frozen.ListOrEmpty(sets, nameof(sets));
             Properties = Frozen.ListOrEmpty(properties, nameof(properties));
             RarityRolls = Frozen.List((rarityRolls ?? Array.Empty<RarityRoll>()).OrderBy(r => (int)r.Rarity), nameof(rarityRolls));
@@ -412,11 +429,53 @@ namespace EdS.Data.Items
             item is null ? throw new ArgumentNullException(nameof(item)) : Properties.Where(p => p.FitsKind(item.Slot)).ToList();
 
         /// <summary>
+        /// Sous-lot V1.4 : l'objet peut avoir une qualité de fabrication (supérieure, chef-d'œuvre) : un équipement des places du combat, non
+        /// nommé (un objet nommé est fait à la main, il ne sort pas de la forge).
+        /// </summary>
+        public bool TakesQuality(ItemDefinition item) =>
+            item is { Type: ItemType.Equipment, Named: false } && PlacesFor(item.Slot).FirstOrDefault() is { Group: PlaceGroup.Combat };
+
+        /// <summary>
+        /// Sous-lot V1.4 : l'objet s'use au combat : tout équipement des places du combat (nommé compris) ; ni l'Éclat du Seuil, ni l'outil de
+        /// métier.
+        /// </summary>
+        public bool Wears(ItemDefinition item) =>
+            item is { Type: ItemType.Equipment } && PlacesFor(item.Slot).FirstOrDefault() is { Group: PlaceGroup.Combat };
+
+        /// <summary>Sous-lot V1.4 : part du bonus de base ajoutée par cette qualité, en pour cent (0 pour la qualité normale).</summary>
+        public int QualityPercent(ItemQuality quality) =>
+            quality == ItemQuality.Superior ? SuperiorPercent : quality == ItemQuality.Masterwork ? MasterworkPercent : 0;
+
+        /// <summary>
+        /// Sous-lot V1.4 : bonus ajouté par la qualité <paramref name="quality"/> à <paramref name="item"/> : pour chaque statistique non nulle
+        /// du bonus de base, sa part <see cref="QualityPercent"/> arrondie vers le bas, au moins 1 (une qualité supérieure se voit toujours) ;
+        /// rien pour une part nulle, la qualité normale ou un objet qui n'en prend pas. Borné : au plus le bonus de base lui-même
+        /// (<see cref="ItemValidator.MaxQualityPercent"/>), donc compté dans <see cref="WornBound"/>.
+        /// </summary>
+        public GearBonus QualityBonus(ItemDefinition item, ItemQuality quality)
+        {
+            if (item is null) throw new ArgumentNullException(nameof(item));
+            int percent = QualityPercent(quality);
+            if (percent == 0 || !TakesQuality(item)) return GearBonus.None;
+            var values = new int[GearBonus.Fields.Count];
+            for (int i = 0; i < values.Length; i++)
+                if (item.Bonus[i] > 0) values[i] = (int)Math.Max(1, checked((long)item.Bonus[i] * percent) / 100);
+            return GearBonus.FromValues(values);
+        }
+
+        /// <summary>Sous-lot V1.4 : la pièce est usée à zéro : elle ne donne plus ses bonus, ses effets, ni sa part d'ensemble (sans se casser).</summary>
+        public bool IsWornOut(ItemStack stack) => stack is { Wear: 0 } && TryGetItem(stack.Item, out ItemDefinition item) && Wears(item);
+
+        /// <summary>Sous-lot V1.4 : solidité qui reste à l'instance (<see cref="WearMax"/> pour une usure pleine).</summary>
+        public int WearLeft(ItemStack stack) => (stack ?? throw new ArgumentNullException(nameof(stack))).Wear is int w ? Math.Min(w, WearMax) : WearMax;
+
+        /// <summary>
         /// Remarque de Codex sur la PR #78 : plus grande valeur que peut atteindre la statistique <paramref name="stat"/>
         /// (<see cref="GearBonus.Fields"/>) dans le bonus de l'équipement porté (<c>Inventory.Gear</c>), quoi que porte le personnage. Pour
         /// chaque place, l'objet qui y va au pire cas : son bonus de base plus ses propriétés tirées les plus fortes sur cette statistique
         /// (au plus <see cref="RollCount"/> propriétés distinctes, chacune à la borne haute de <see cref="Bounds"/>) ; plus tous les paliers de
-        /// tous les ensembles. Une borne sûre (le vrai total ne la dépasse jamais) : <c>Base</c> pour les bonus de base, <c>Rolled</c> pour les
+        /// tous les ensembles. Sous-lot V1.4 : le bonus de base compte la meilleure qualité de fabrication (<see cref="QualityBonus"/> d'un
+        /// chef-d'œuvre) ; l'usure ne fait que retirer des bonus. Une borne sûre (le vrai total ne la dépasse jamais) : <c>Base</c> pour les bonus de base, <c>Rolled</c> pour les
         /// propriétés tirées, <c>Sets</c> pour les ensembles. Arithmétique sur 64 bits, sans débordement pour un catalogue validé.
         /// </summary>
         public (long Base, long Rolled, long Sets) WornBound(int stat)
@@ -429,11 +488,13 @@ namespace EdS.Data.Items
                 foreach (ItemDefinition item in Items)
                 {
                     if (item.Type != ItemType.Equipment || item.Slot != place.Accepts) continue;
+                    // Sous-lot V1.4 : la meilleure qualité de fabrication compte dans le bonus de base (au pire cas, un chef-d'œuvre).
+                    long baseValue = checked((long)item.Bonus[stat] + QualityBonus(item, ItemQuality.Masterwork)[stat]);
                     long rolled = 0;
                     if (IsRollable(item))
                         rolled = PropertiesFor(item).Where(p => p.Stat == stat).Select(p => (long)Bounds(p, item).Max)
                             .OrderByDescending(v => v).Take(RollCount(item.Rarity)).Sum();
-                    if (item.Bonus[stat] + rolled > bestBase + bestRolled) { bestBase = item.Bonus[stat]; bestRolled = rolled; }
+                    if (baseValue + rolled > bestBase + bestRolled) { bestBase = baseValue; bestRolled = rolled; }
                 }
                 sum = checked(sum + bestBase);
                 rolledSum = checked(rolledSum + bestRolled);
@@ -473,9 +534,18 @@ namespace EdS.Data.Items
         {
             if (stack is null) throw new ArgumentNullException(nameof(stack));
             if (!TryGetItem(stack.Item, out ItemDefinition item)) return $"objet « {stack.Item} » absent du catalogue.";
+            if (!stack.IsUnique) return null;
+            // Sous-lot V1.4 : qualité de fabrication (signature d'un chef-d'œuvre) et usure, sur les objets qui en prennent.
+            if (stack.Count != 1) return $"« {item.Id} » unique (propriétés tirées, qualité ou usure) : quantité 1 (il ne s'empile pas).";
+            if (stack.Quality != ItemQuality.Normal && !TakesQuality(item)) return $"« {item.Id} » ne prend pas de qualité de fabrication (objet nommé, ou hors des places du combat).";
+            if (stack.SignedBy != null && !SaveValidator.IsCharacterId(stack.SignedBy)) return $"signature « {stack.SignedBy} » mal formée.";
+            if (stack.Wear is int wear)
+            {
+                if (!Wears(item)) return $"« {item.Id} » ne s'use pas (hors des places du combat).";
+                if (wear >= WearMax) return $"« {item.Id} » : usure {wear}, de 0 à {WearMax - 1} (usure pleine : champ absent).";
+            }
             if (!stack.IsRolled) return null;
             if (!IsRollable(item)) return $"« {item.Id} » ne tire pas de propriété (objet nommé, pièce d'ensemble, rareté ou place sans tirage).";
-            if (stack.Count != 1) return $"« {item.Id} » aux propriétés tirées : quantité 1 (il ne s'empile pas).";
             int count = RollCount(item.Rarity);
             if (stack.Properties.Count > count) return $"« {item.Id} » ({RarityId(item.Rarity)}) tire au plus {count} propriété(s), {stack.Properties.Count} données.";
             var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -504,13 +574,30 @@ namespace EdS.Data.Items
         {
             if (stack is null) throw new ArgumentNullException(nameof(stack));
             changes = Array.Empty<string>();
-            if (!stack.IsRolled || !TryGetItem(stack.Item, out ItemDefinition item)) return stack;
+            if (!stack.IsUnique || !TryGetItem(stack.Item, out ItemDefinition item)) return stack;
             var notes = new List<string>();
+            // Sous-lot V1.4 : même règle sûre pour la qualité et l'usure : une qualité sur un objet qui n'en prend plus redevient normale ; une
+            // usure sur un objet qui ne s'use plus, ou au-delà de la solidité actuelle, redevient pleine.
+            if (stack.Quality != ItemQuality.Normal && !TakesQuality(item))
+            {
+                notes.Add($"{item.Name} : ne prend plus de qualité de fabrication, redevenu de qualité normale.");
+                stack = stack.WithQuality(ItemQuality.Normal, null);
+            }
+            if (stack.Wear is int wear && (!Wears(item) || wear >= WearMax))
+            {
+                notes.Add(Wears(item) ? $"{item.Name} : usure {wear} ramenée à la solidité pleine ({WearMax})." : $"{item.Name} : ne s'use plus, usure retirée.");
+                stack = stack.WithWear(null);
+            }
+            if (!stack.IsRolled)
+            {
+                changes = notes;
+                return stack;
+            }
             if (!IsRollable(item))
             {
                 notes.Add($"{item.Name} : ne tire plus de propriété, {stack.Properties.Count} retirée(s).");
                 changes = notes;
-                return new ItemStack(item.Id, stack.Count);
+                return stack.WithProperties(null);
             }
             int room = RollCount(item.Rarity);
             var kept = new List<RolledProperty>();
@@ -528,14 +615,19 @@ namespace EdS.Data.Items
             }
             if (notes.Count == 0) return stack;
             changes = notes;
-            return new ItemStack(item.Id, stack.Count, kept);
+            return stack.WithProperties(kept);
         }
 
-        /// <summary>Sous-lot V1.3 : bonus d'une instance : celui de l'objet, plus ses propriétés tirées (supposées valides).</summary>
+        /// <summary>
+        /// Sous-lot V1.3 : bonus d'une instance : celui de l'objet, plus ses propriétés tirées (supposées valides). Sous-lot V1.4 : plus le bonus
+        /// de sa qualité (<see cref="QualityBonus"/>) ; rien du tout pour une pièce usée à zéro (<see cref="IsWornOut"/>).
+        /// </summary>
         public GearBonus BonusOf(ItemStack stack)
         {
             if (stack is null) throw new ArgumentNullException(nameof(stack));
-            GearBonus bonus = Item(stack.Item).Bonus;
+            ItemDefinition item = Item(stack.Item);
+            if (IsWornOut(stack)) return GearBonus.None;
+            GearBonus bonus = item.Bonus + QualityBonus(item, stack.Quality);
             if (!stack.IsRolled) return bonus;
             var values = new int[GearBonus.Fields.Count];
             foreach (RolledProperty r in stack.Properties)
@@ -578,9 +670,17 @@ namespace EdS.Data.Items
         /// <c>effects</c> sur une place (ses objets peuvent porter des effets : armes et bijoux) ; <c>named</c> (objet nommé fait à la main),
         /// <c>set</c> (pièce d'un ensemble) et <c>effects</c> (texte, modificateurs, déclencheurs) sur un équipement ; <c>sets[]</c> (ensembles :
         /// bonus à 2, 4 et 6 pièces portées) et <c>properties</c> (tables des propriétés tirées : nombre et échelle par rareté, propriétés et
-        /// leurs bornes par niveau). Une version antérieure est refusée : le fichier se met à jour à la main.
+        /// leurs bornes par niveau). Version 5 (sous-lot V1.4) : <c>quality</c> (part du bonus de base ajoutée par la qualité supérieure et
+        /// par un chef-d'œuvre, en pour cent) et <c>wear</c> (solidité d'une pièce neuve, points perdus pour des dégâts reçus égaux aux PV
+        /// maximaux). Une version antérieure est refusée : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 4;
+        public const int CurrentSchemaVersion = 5;
+
+        /// <summary>Sous-lot V1.4 : part du bonus de base ajoutée par une qualité, au plus (le bonus de qualité ne dépasse jamais le bonus de base).</summary>
+        public const int MaxQualityPercent = 100;
+
+        /// <summary>Sous-lot V1.4 : solidité d'une pièce neuve, au plus, et par défaut (catalogue construit sans la donner).</summary>
+        public const int MaxWear = 1_000_000, DefaultWearMax = 100;
 
         /// <summary>Sous-lot V1.3 : ensembles, paliers d'un ensemble, propriétés qui peuvent être tirées, au plus.</summary>
         public const int MaxSets = 64, MaxSetBonuses = 3, MaxProperties = 256;
@@ -744,9 +844,36 @@ namespace EdS.Data.Items
             var rolls = new List<RarityRoll>();
             if (d.Properties is null) Missing(report, "$.data.properties", "tables des propriétés tirées : rarities, list");
             else CheckProperties(d.Properties, places, maxLevel, properties, rolls, report);
+            // Sous-lot V1.4 : qualité de fabrication et usure.
+            int superior = 0, masterwork = 0, wearMax = DefaultWearMax, perFullHealth = 0;
+            if (d.Quality is null) Missing(report, "$.data.quality", "bonus des qualités : superior, masterwork (pour cent)");
+            else
+            {
+                if (d.Quality.Superior is null) Missing(report, "$.data.quality.superior", "part du bonus de base ajoutée, en pour cent");
+                else if (d.Quality.Superior < 0 || d.Quality.Superior > MaxQualityPercent)
+                    report.Add("$.data.quality.superior", ValidationCode.OutOfRange, $"part hors de [0, {MaxQualityPercent}] %.");
+                else superior = d.Quality.Superior.Value;
+                if (d.Quality.Masterwork is null) Missing(report, "$.data.quality.masterwork", "part du bonus de base ajoutée, en pour cent");
+                else if (d.Quality.Masterwork < 0 || d.Quality.Masterwork > MaxQualityPercent)
+                    report.Add("$.data.quality.masterwork", ValidationCode.OutOfRange, $"part hors de [0, {MaxQualityPercent}] %.");
+                else if (d.Quality.Masterwork < superior)
+                    report.Add("$.data.quality.masterwork", ValidationCode.InvalidValue, "un chef-d'œuvre donne au moins le bonus de la qualité supérieure.");
+                else masterwork = d.Quality.Masterwork.Value;
+            }
+            if (d.Wear is null) Missing(report, "$.data.wear", "usure : max, perFullHealth");
+            else
+            {
+                if (d.Wear.Max is null) Missing(report, "$.data.wear.max", "solidité d'une pièce neuve");
+                else if (d.Wear.Max < 1 || d.Wear.Max > MaxWear) report.Add("$.data.wear.max", ValidationCode.OutOfRange, $"solidité hors de [1, {MaxWear}].");
+                else wearMax = d.Wear.Max.Value;
+                if (d.Wear.PerFullHealth is null) Missing(report, "$.data.wear.perFullHealth", "points perdus pour des dégâts égaux aux PV maximaux");
+                else if (d.Wear.PerFullHealth < 0 || d.Wear.PerFullHealth > wearMax)
+                    report.Add("$.data.wear.perFullHealth", ValidationCode.OutOfRange, $"perte hors de [0, {wearMax}] (la solidité).");
+                else perFullHealth = d.Wear.PerFullHealth.Value;
+            }
             if (!report.IsValid || document.ContentVersion is null) return new ItemCatalogLoadResult(report, null);
             var catalog = new ItemCatalog(document.SchemaVersion!.Value, document.ContentVersion, places, d.InventorySize!.Value, starting, items, loot, sets,
-                properties, rolls);
+                properties, rolls, superior, masterwork, wearMax, perFullHealth);
             // Chaque objet qui tire des propriétés en a assez de possibles pour sa sorte de place.
             for (int i = 0; i < d.Items!.Count; i++)
                 if (d.Items[i] is { Id: string id } && catalog.TryGetItem(id, out ItemDefinition item) && catalog.IsRollable(item)

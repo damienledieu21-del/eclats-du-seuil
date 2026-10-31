@@ -84,11 +84,17 @@ namespace EdS.World
         /// <summary>Sous-lot 12.7 : le personnage est tombé à ce tick (défaite : la partie reprend au point sûr, sans perte).</summary>
         public bool Defeated { get; }
 
-        public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0 && Story.Count == 0 && Boss.Count == 0 && Rewards.Count == 0 && !Defeated;
+        /// <summary>Sous-lot V1.4 : usure appliquée à ce tick (fin d'un combat), ou null.</summary>
+        public WearReport? Wear { get; }
+
+        public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0 && Story.Count == 0 && Boss.Count == 0 && Rewards.Count == 0 && !Defeated
+            && Wear is null;
 
         internal SessionStep(IReadOnlyList<ExperienceGained> experience, IReadOnlyList<LootGained> loot, IReadOnlyList<PopulationEvent> population,
-            IReadOnlyList<StoryEvent> story, IReadOnlyList<BossEvent>? boss = null, IReadOnlyList<(string, int)>? rewards = null, bool defeated = false)
+            IReadOnlyList<StoryEvent> story, IReadOnlyList<BossEvent>? boss = null, IReadOnlyList<(string, int)>? rewards = null, bool defeated = false,
+            WearReport? wear = null)
         {
+            Wear = wear;
             Experience = experience;
             Loot = loot;
             Population = population;
@@ -283,6 +289,7 @@ namespace EdS.World
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
             Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
+            _lastHealth = Zone.Engine.View(_character.Id).Health;   // sous-lot V1.4 : point de départ du relevé des dégâts reçus
             EnteredGear = setup.Gear;
             EnteredEffects = setup.Equipment;
         }
@@ -311,12 +318,22 @@ namespace EdS.World
             (Workshop ?? throw new InvalidOperationException("Partie sans métiers.")).Gather(node, Zone.Engine.CurrentTick, Zone.Engine.TickMilliseconds,
                 ((INarrativeWorld)this).PlayerPosition, Inventory, out done);
 
-        /// <summary>Sous-lot 12.6 : fabrique une recette dans son atelier (lieu de la zone).</summary>
-        public CraftRefusal Craft(string recipe, out CraftEvent? done)
+        /// <summary>Sous-lot 12.6 : fabrique une recette dans son atelier (lieu de la zone) ; une recette à qualité attend ses frappes (V1.4).</summary>
+        public CraftRefusal Craft(string recipe, out CraftEvent? done) => Craft(recipe, null, out done);
+
+        /// <summary>
+        /// Sous-lot V1.4 : fabrique une recette dans son atelier, avec les notes des frappes du petit jeu de forge pour une recette à qualité
+        /// (<see cref="Workshop.Craft"/>). Le tirage se fait sur la clé stable (recette, jour du monde, compteur des fabrications du
+        /// personnage) ; chaque tentative, réussie ou ratée, fait avancer le compteur (gardé dans la sauvegarde).
+        /// </summary>
+        public CraftRefusal Craft(string recipe, ForgeStrikes? strikes, out CraftEvent? done)
         {
             Workshop workshop = Workshop ?? throw new InvalidOperationException("Partie sans métiers.");
             Recipe? r = workshop.Book.Recipes.FirstOrDefault(x => x.Id == recipe);
-            return workshop.Craft(recipe, r != null && ((INarrativeWorld)this).InPlace(r.Place), Inventory, out done);
+            CraftRefusal refusal = workshop.Craft(recipe, r != null && ((INarrativeWorld)this).InPlace(r.Place), Inventory, strikes, _character.Id, Zone.Time.Day,
+                _character.Crafts, out done);
+            if (refusal == CraftRefusal.None) _character = _character.WithCrafts(Math.Min(SavedCharacter.MaxCrafts, checked(_character.Crafts + 1)));
+            return refusal;
         }
 
         /// <summary>Sous-lot 12.8 : refus qu'aurait la fabrication de <paramref name="recipe"/> maintenant (rien ne change).</summary>
@@ -529,6 +546,7 @@ namespace EdS.World
                 if (story != null) Narrative.CheckSaved(story, c.Story);
                 if (crafting != null) Workshop.CheckSaved(crafting, c.Professions);
             }
+            CheckRepairMerchants(crafting, market);   // sous-lot V1.4
             return true;
         }
 
@@ -642,12 +660,14 @@ namespace EdS.World
                 _defeated = true;
                 defeated = true;
             }
+            // Sous-lot V1.4 : dégâts reçus, et usure de l'équipement porté à la fin d'un combat (hors du moteur).
+            WearReport? wear = TrackWear(defeated);
             // Sous-lot V1.1 : points sûrs approchés, découverts pour de bon (voyage rapide).
             DiscoverSafePoints(story);
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
-            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated
-                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated);
+            return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated && wear is null
+                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated, wear);
         }
 
         /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
@@ -731,7 +751,8 @@ namespace EdS.World
         public WorldSave Save()
         {
             WorldSave world = Zone.Save();
-            SavedCharacter character = Inventory.SaveInto(_character);
+            // Sous-lot V1.4 : les dégâts déjà reçus dans le combat en cours comptent dans l'usure sauvegardée (halte, reprise, sortie).
+            SavedCharacter character = InventoryToSave().SaveInto(_character);
             if (Narrative != null) character = character.WithStory(Narrative.ToSaved());
             else if (_pendingFacts.Count > 0)
                 character = character.WithStory(new SavedStory(character.Story.Facts.Concat(_pendingFacts), character.Story.Quests, character.Story.Trust,

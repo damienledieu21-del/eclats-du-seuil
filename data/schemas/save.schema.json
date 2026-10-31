@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/save.schema.json",
   "title": "Éclats du Seuil — sauvegarde du monde",
-  "description": "Sous-lots 12.1 à 12.6, V1.1, V1.2, V1.6 et V1.3. Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 à 8 est mise à jour à la lecture.",
+  "description": "Sous-lots 12.1 à 12.6, V1.1, V1.2, V1.6, V1.3 et V1.4 (version 11 ; la version 10 est celle du sous-lot V1.7). Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 à 10 est mise à jour à la lecture.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 9
+      "const": 11
     },
     "kind": {
       "const": "save"
@@ -82,7 +82,8 @@
                 "equipment",
                 "story",
                 "professions",
-                "money"
+                "money",
+                "crafts"
               ],
               "properties": {
                 "id": {
@@ -145,7 +146,7 @@
                 "inventory": {
                   "type": "array",
                   "maxItems": 200,
-                  "description": "Sous-lot 12.3 (version 3) : places occupées de l'inventaire, dans l'ordre. Sous-lot V1.3 (version 9) : instance d'objet, avec ses propriétés tirées (quantité 1) ; quality et wear réservés au sous-lot V1.4.",
+                  "description": "Sous-lot 12.3 (version 3) : places occupées de l'inventaire, dans l'ordre. Sous-lot V1.3 (version 9) : instance d'objet, avec ses propriétés tirées (quantité 1). Sous-lot V1.4 (version 11) : qualité, signature et usure d'une instance (quantité 1).",
                   "items": {
                     "type": "object",
                     "additionalProperties": false,
@@ -189,13 +190,32 @@
                             }
                           }
                         }
+                      },
+                      "quality": {
+                        "enum": [
+                          "superior",
+                          "masterwork"
+                        ],
+                        "description": "Sous-lot V1.4 (version 11) : qualité de fabrication ; normale : champ absent."
+                      },
+                      "signedBy": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*$",
+                        "maxLength": 64,
+                        "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre, interdit sinon)."
+                      },
+                      "wear": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000,
+                        "description": "Sous-lot V1.4 (version 11) : points de solidité qui restent (sous la solidité du catalogue) ; usure pleine : champ absent."
                       }
                     }
                   }
                 },
                 "equipment": {
                   "type": "object",
-                  "description": "Sous-lot 12.3 (version 3) : objet porté par emplacement, emplacements dans l'ordre ordinal. Version 7 (sous-lot V1.2) : les 18 places du catalogue des objets (weapon, shield, head, shoulders, cloak, chest, bracers, hands, belt, legs, feet, neck, ring_1, ring_2, relic_1, relic_2, shard, tool). Sous-lot V1.3 (version 9) : un objet aux propriétés tirées s'écrit sous sa forme d'instance { item, properties }.",
+                  "description": "Sous-lot 12.3 (version 3) : objet porté par emplacement, emplacements dans l'ordre ordinal. Version 7 (sous-lot V1.2) : les 18 places du catalogue des objets (weapon, shield, head, shoulders, cloak, chest, bracers, hands, belt, legs, feet, neck, ring_1, ring_2, relic_1, relic_2, shard, tool). Sous-lot V1.3 (version 9) : un objet aux propriétés tirées s'écrit sous sa forme d'instance { item, properties }. Sous-lot V1.4 (version 11) : de même pour une qualité de fabrication ou une usure entamée ({ item, quality, signedBy, wear }).",
                   "additionalProperties": {
                     "anyOf": [
                       {
@@ -207,8 +227,7 @@
                         "type": "object",
                         "additionalProperties": false,
                         "required": [
-                          "item",
-                          "properties"
+                          "item"
                         ],
                         "properties": {
                           "item": {
@@ -241,8 +260,44 @@
                                 }
                               }
                             }
+                          },
+                          "quality": {
+                            "enum": [
+                              "superior",
+                              "masterwork"
+                            ],
+                            "description": "Sous-lot V1.4 (version 11) : qualité de fabrication ; normale : champ absent."
+                          },
+                          "signedBy": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_]*$",
+                            "maxLength": 64,
+                            "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre, interdit sinon)."
+                          },
+                          "wear": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000,
+                            "description": "Sous-lot V1.4 (version 11) : points de solidité qui restent (sous la solidité du catalogue) ; usure pleine : champ absent."
                           }
-                        }
+                        },
+                        "anyOf": [
+                          {
+                            "required": [
+                              "properties"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "quality"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "wear"
+                            ]
+                          }
+                        ]
                       }
                     ]
                   },
@@ -361,6 +416,12 @@
                   "minimum": 0,
                   "maximum": 9999999999,
                   "description": "Sous-lot V1.1 (version 6) : bourse du personnage, en pièces de cuivre (100 cuivre font 1 argent, 100 argent font 1 or)."
+                },
+                "crafts": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000000,
+                  "description": "Sous-lot V1.4 (version 11) : fabrications tentées par le personnage (compteur de la clé du tirage d'une fabrication) ; 0 pour une sauvegarde antérieure."
                 }
               }
             }

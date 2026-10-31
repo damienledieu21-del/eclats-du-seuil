@@ -114,6 +114,11 @@ namespace EdS.Data.Json
                     c.Present.Add("money");
                     c.Money = input.Int64(v, p);
                 },
+                ["crafts"] = (v, p) =>   // sous-lot V1.4 (version 11) : fabrications tentées
+                {
+                    c.Present.Add("crafts");
+                    c.Crafts = input.Int64(v, p);
+                },
             });
             return ok ? c : null;
         }
@@ -156,7 +161,7 @@ namespace EdS.Data.Json
 
         /// <summary>
         /// Une place de l'inventaire (<c>item</c>, <c>count</c>) ; sous-lot V1.3 (version 9) : instance d'objet, avec <c>properties</c>
-        /// facultatif ; les noms <c>quality</c> et <c>wear</c> (sous-lot V1.4) sont relevés pour être refusés avec leur motif. Avec
+        /// facultatif ; sous-lot V1.4 (version 11) : <c>quality</c>, <c>signedBy</c> et <c>wear</c>, facultatifs. Avec
         /// <paramref name="withCount"/> faux (objet porté sous sa forme d'instance), pas de <c>count</c>.
         /// </summary>
         private static ItemStackData? ReadStack(JsonInput input, JsonElement element, string path, bool withCount = true)
@@ -167,8 +172,22 @@ namespace EdS.Data.Json
                 ["item"] = (v, p) => stack.Item = input.Text(v, p),
                 ["properties"] = (v, p) => stack.Properties = input.ReadLimitedList(v, p, SaveValidator.MaxProperties,
                     n => $"{n} propriétés, au plus {SaveValidator.MaxProperties}.", (e, ip) => ReadProperty(input, e, ip)),
-                ["quality"] = (v, p) => stack.Reserved.Add("quality"),
-                ["wear"] = (v, p) => stack.Reserved.Add("wear"),
+                // Sous-lot V1.4 (version 11) : qualité de fabrication, signature d'un chef-d'œuvre, usure.
+                ["quality"] = (v, p) =>
+                {
+                    stack.Present.Add("quality");
+                    stack.Quality = input.Text(v, p);
+                },
+                ["signedBy"] = (v, p) =>
+                {
+                    stack.Present.Add("signedBy");
+                    stack.SignedBy = input.Text(v, p);
+                },
+                ["wear"] = (v, p) =>
+                {
+                    stack.Present.Add("wear");
+                    stack.Wear = input.Int32(v, p);
+                },
             };
             if (withCount) fields["count"] = (v, p) => stack.Count = input.Int32(v, p);
             bool ok = input.ReadFields(element, path, fields);
@@ -287,17 +306,18 @@ namespace EdS.Data.Json
                     ItemStack stack = c.Inventory[i];
                     if (!SaveValidator.IsItemId(stack.Item)) throw new ArgumentException($"Objet « {stack.Item} » hors du format des sauvegardes.", nameof(c));
                     b.Append("        {\"item\": ").Append(Quoted(stack.Item)).Append(", \"count\": ").Append(stack.Count.ToString(CultureInfo.InvariantCulture));
-                    if (stack.IsRolled) b.Append(", \"properties\": ").Append(Properties(stack.Properties));   // sous-lot V1.3 (version 9)
+                    b.Append(InstanceFields(stack));   // sous-lot V1.3 (version 9) : propriétés ; V1.4 (version 11) : qualité, usure
                     b.Append(i + 1 < c.Inventory.Count ? "},\n" : "}\n");
                 }
                 b.Append("      ],\n");
             }
             if (c.Equipment.Any(e => !SaveValidator.IsItemId(e.Value) || !SaveValidator.IsDataId(e.Key)))
                 throw new ArgumentException("Équipement hors du format des sauvegardes.", nameof(c));
-            // Sous-lot V1.3 (version 9) : un objet porté aux propriétés tirées s'écrit sous sa forme d'instance.
+            // Sous-lot V1.3 (version 9) : un objet porté aux propriétés tirées s'écrit sous sa forme d'instance ; sous-lot V1.4 (version 11) :
+            // de même pour une qualité de fabrication ou une usure entamée.
             b.Append("      \"equipment\": {").Append(string.Join(", ", c.Equipment.Select(e => Quoted(e.Key) + ": "
-                + (c.EquipmentProperties.TryGetValue(e.Key, out IReadOnlyList<RolledProperty>? rolled)
-                    ? "{\"item\": " + Quoted(e.Value) + ", \"properties\": " + Properties(rolled) + "}"
+                + (c.EquipmentInstances.TryGetValue(e.Key, out ItemStack? worn)
+                    ? "{\"item\": " + Quoted(e.Value) + InstanceFields(worn) + "}"
                     : Quoted(e.Value))))).Append("},\n");
             // Sous-lot 12.5 (version 4) : état narratif, sur une ligne par rubrique, dans l'ordre ordinal.
             SavedStory st = c.Story;
@@ -321,8 +341,36 @@ namespace EdS.Data.Json
             b.Append("      \"professions\": {").Append(string.Join(", ", c.Professions.Select(p => Quoted(p.Key) + ": " + p.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             // Sous-lot V1.1 (version 6) : bourse en pièces de cuivre, un seul nombre.
             if (!Coins.IsValid(c.Money)) throw new ArgumentException($"Bourse hors de [0, {Coins.Max}] cuivre.", nameof(c));
-            b.Append("      \"money\": ").Append(c.Money.ToString(CultureInfo.InvariantCulture)).Append("\n");
+            b.Append("      \"money\": ").Append(c.Money.ToString(CultureInfo.InvariantCulture)).Append(",\n");
+            // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
+            if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));
+            b.Append("      \"crafts\": ").Append(c.Crafts.ToString(CultureInfo.InvariantCulture)).Append("\n");
             b.Append("    },\n");
+        }
+
+        /// <summary>
+        /// Champs d'une instance après son objet (et sa quantité) : <c>properties</c> (sous-lot V1.3), puis <c>quality</c>, <c>signedBy</c> et
+        /// <c>wear</c> (sous-lot V1.4), seulement ceux qui diffèrent de l'objet de base ; vide pour un objet de base.
+        /// </summary>
+        private static string InstanceFields(ItemStack stack)
+        {
+            var b = new StringBuilder();
+            if (stack.IsRolled) b.Append(", \"properties\": ").Append(Properties(stack.Properties));
+            if (stack.Quality != ItemQuality.Normal)
+            {
+                b.Append(", \"quality\": \"").Append(SaveValidator.QualityId(stack.Quality)).Append('"');
+                if (stack.SignedBy is string signer)
+                {
+                    if (!SaveValidator.IsCharacterId(signer)) throw new ArgumentException($"Signature « {signer} » hors du format des sauvegardes.", nameof(stack));
+                    b.Append(", \"signedBy\": \"").Append(signer).Append('"');
+                }
+            }
+            if (stack.Wear is int wear)
+            {
+                if (wear < 0 || wear > SaveValidator.MaxWear) throw new ArgumentException($"Usure hors de [0, {SaveValidator.MaxWear}].", nameof(stack));
+                b.Append(", \"wear\": ").Append(wear.ToString(CultureInfo.InvariantCulture));
+            }
+            return b.ToString();
         }
     }
 }

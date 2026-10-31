@@ -171,7 +171,8 @@ namespace EdS.World
                     throw new ArgumentException($"Équipement « {e.Key} » : « {e.Value} » ne se porte pas à cet emplacement.", nameof(character));
                 if (item.RequiredLevel > level)
                     throw new ArgumentException($"Équipement « {e.Key} » : « {e.Value} » demande le niveau {item.RequiredLevel} (personnage niveau {level}).", nameof(character));
-                var worn = new ItemStack(e.Value, 1, character.EquipmentProperties.TryGetValue(e.Key, out IReadOnlyList<RolledProperty>? rolled) ? rolled : null);
+                // Sous-lot V1.4 : l'instance portée (propriétés, qualité, usure), ou l'objet de base.
+                ItemStack worn = character.WornInstance(e.Key)!;
                 worn = catalog.Settle(worn, out IReadOnlyList<string> settledWorn);
                 notes.AddRange(settledWorn);
                 if (catalog.CheckInstance(worn) is string problem) throw new ArgumentException($"Équipement « {e.Key} » : {problem}", nameof(character));
@@ -249,7 +250,7 @@ namespace EdS.World
         private GearBonus RawGear()
         {
             GearBonus total = GearBonus.None;
-            foreach (ItemStack worn in _equipped.Values) total += _catalog.BonusOf(worn);
+            foreach (ItemStack worn in _equipped.Values) total += _catalog.BonusOf(worn);   // sous-lot V1.4 : rien pour une pièce usée à zéro
             foreach ((ItemSet set, int count) in WornSets())
                 foreach (SetBonus bonus in set.Bonuses)
                     if (bonus.Pieces <= count) total += bonus.Bonus;
@@ -280,7 +281,8 @@ namespace EdS.World
             var worn = new List<(ItemSet, int)>();
             foreach (ItemSet set in _catalog.Sets)
             {
-                int count = _equipped.Values.Select(x => x.Item).Distinct(StringComparer.Ordinal).Count(id => set.Pieces.Contains(id));
+                // Sous-lot V1.4 : une pièce usée à zéro ne compte plus pour son ensemble.
+                int count = _equipped.Values.Where(x => !_catalog.IsWornOut(x)).Select(x => x.Item).Distinct(StringComparer.Ordinal).Count(id => set.Pieces.Contains(id));
                 if (count > 0) worn.Add((set, count));
             }
             return worn;
@@ -304,7 +306,7 @@ namespace EdS.World
             var effects = new List<EquipmentEffect>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (EquipmentPlace place in _catalog.Places)
-                if (_equipped.TryGetValue(place.Id, out ItemStack worn) && _catalog.Item(worn.Item).Effect is ItemEffect effect && seen.Add(worn.Item))
+                if (_equipped.TryGetValue(place.Id, out ItemStack worn) && !_catalog.IsWornOut(worn) && _catalog.Item(worn.Item).Effect is ItemEffect effect && seen.Add(worn.Item))
                     effects.Add(effect.Effect);
             foreach ((ItemSet set, int count) in WornSets())
                 foreach (SetBonus bonus in set.Bonuses)
@@ -313,8 +315,9 @@ namespace EdS.World
         }
 
         /// <summary>Sous-lot V1.2 : garde du bouclier porté (place qui porte la garde), ou null : celle des règles.</summary>
+        /// <remarks>Sous-lot V1.4 : un bouclier usé à zéro ne donne plus sa garde propre : celle des règles (il reste porté).</remarks>
         public ShieldGuard? Shield =>
-            _catalog.GuardPlace is { } place && _equipped.TryGetValue(place.Id, out ItemStack worn) ? _catalog.Item(worn.Item).Guard : null;
+            _catalog.GuardPlace is { } place && _equipped.TryGetValue(place.Id, out ItemStack worn) && !_catalog.IsWornOut(worn) ? _catalog.Item(worn.Item).Guard : null;
 
         /// <summary>Quantité de <paramref name="item"/> dans l'inventaire (objets portés exclus).</summary>
         public int Count(string item) => _stacks.Where(s => s.Item == item).Sum(s => s.Count);
@@ -358,7 +361,7 @@ namespace EdS.World
         public InventoryRefusal Add(ItemStack stack)
         {
             if (stack is null) throw new ArgumentNullException(nameof(stack));
-            if (!stack.IsRolled) return Add(stack.Item, stack.Count);
+            if (!stack.IsUnique) return Add(stack.Item, stack.Count);
             if (_catalog.CheckInstance(stack) is string problem) throw new ArgumentException(problem, nameof(stack));
             if (FreePlaces < 1) return InventoryRefusal.Full;
             _stacks.Add(stack);
@@ -377,7 +380,7 @@ namespace EdS.World
             if (!CanAdd(item, count)) return InventoryRefusal.Full;
             int left = count;
             for (int i = 0; i < _stacks.Count && left > 0; i++)
-                if (_stacks[i].Item == item && !_stacks[i].IsRolled && _stacks[i].Count < definition.Stack)
+                if (_stacks[i].Item == item && !_stacks[i].IsUnique && _stacks[i].Count < definition.Stack)
                 {
                     int put = Math.Min(left, definition.Stack - _stacks[i].Count);
                     _stacks[i] = new ItemStack(item, _stacks[i].Count + put);
@@ -449,7 +452,7 @@ namespace EdS.World
             int left = count;
             foreach (bool rolled in new[] { false, true })
                 for (int i = _stacks.Count - 1; i >= 0 && left > 0; i--)
-                    if (_stacks[i].Item == item && _stacks[i].IsRolled == rolled)
+                    if (_stacks[i].Item == item && _stacks[i].IsUnique == rolled)
                     {
                         int take = Math.Min(left, _stacks[i].Count);
                         removed.Add(_stacks[i].WithCount(take));
@@ -557,7 +560,7 @@ namespace EdS.World
             var entries = new List<(string Item, int Count, ItemStack? Rolled)>();
             foreach (ItemStack s in _stacks)
             {
-                if (s.IsRolled) { entries.Add((s.Item, s.Count, s)); continue; }
+                if (s.IsUnique) { entries.Add((s.Item, s.Count, s)); continue; }
                 int k = entries.FindIndex(c => c.Rolled is null && c.Item == s.Item);
                 if (k < 0) entries.Add((s.Item, s.Count, null));
                 else entries[k] = (s.Item, checked(entries[k].Count + s.Count), null);
@@ -629,6 +632,51 @@ namespace EdS.World
             return places;
         }
 
+        /// <summary>
+        /// Sous-lot V1.4 : use chaque pièce portée qui s'use (<see cref="ItemCatalog.Wears"/>) de <paramref name="loss"/> points de solidité,
+        /// sans descendre sous 0 (une pièce usée à zéro ne se casse pas). Rend les objets qui viennent d'arriver à zéro, dans l'ordre des
+        /// places du catalogue. Rien ne change pour une perte nulle.
+        /// </summary>
+        internal IReadOnlyList<string> WearDown(int loss)
+        {
+            if (loss < 0) throw new ArgumentOutOfRangeException(nameof(loss));
+            var wornOut = new List<string>();
+            if (loss == 0) return wornOut;
+            foreach (EquipmentPlace place in _catalog.Places)
+            {
+                if (!_equipped.TryGetValue(place.Id, out ItemStack worn) || !_catalog.Wears(_catalog.Item(worn.Item))) continue;
+                int left = _catalog.WearLeft(worn);
+                if (left == 0) continue;
+                int after = Math.Max(0, left - loss);
+                _equipped[place.Id] = worn.WithWear(after);
+                if (after == 0) wornOut.Add(worn.Item);
+            }
+            return wornOut;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.4 : pièces entamées (usure qui n'est pas pleine) : les objets portés dans l'ordre des places (<c>Slot</c>, place du sac
+        /// −1), puis ceux du sac dans l'ordre (<c>Slot</c> null, <c>Place</c> : leur place).
+        /// </summary>
+        public IReadOnlyList<(string? Slot, int Place, ItemStack Stack)> Damaged()
+        {
+            var damaged = new List<(string?, int, ItemStack)>();
+            foreach (EquipmentPlace place in _catalog.Places)
+                if (_equipped.TryGetValue(place.Id, out ItemStack worn) && worn.Wear != null) damaged.Add((place.Id, -1, worn));
+            for (int i = 0; i < _stacks.Count; i++)
+                if (_stacks[i].Wear != null) damaged.Add((null, i, _stacks[i]));
+            return damaged;
+        }
+
+        /// <summary>Sous-lot V1.4 : remet à neuf (usure pleine) toutes les pièces entamées, portées et dans le sac. Le reste ne change pas.</summary>
+        internal void RepairAll()
+        {
+            foreach (string slot in _equipped.Keys.ToList())
+                if (_equipped[slot].Wear != null) _equipped[slot] = _equipped[slot].WithWear(null);
+            for (int i = 0; i < _stacks.Count; i++)
+                if (_stacks[i].Wear != null) _stacks[i] = _stacks[i].WithWear(null);
+        }
+
         /// <summary>Sous-lot 12.5 : copie indépendante (pour essayer des opérations avant de les appliquer pour de bon).</summary>
         public Inventory Clone()
         {
@@ -652,10 +700,10 @@ namespace EdS.World
         }
 
         /// <summary>Personnage avec cet inventaire et cet équipement (sous-lot V1.3 : propriétés tirées comprises).</summary>
+        /// <remarks>Sous-lot V1.4 : chaque objet porté avec son instance (qualité et usure comprises).</remarks>
         public SavedCharacter SaveInto(SavedCharacter character) =>
             (character ?? throw new ArgumentNullException(nameof(character))).WithItems(_stacks,
-                _equipped.ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal),
-                _equipped.Where(e => e.Value.IsRolled).ToDictionary(e => e.Key, e => e.Value.Properties, StringComparer.Ordinal));
+                _equipped.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal));
 
         // Places nouvelles nécessaires pour ranger count item (piles entamées d'abord).
         private int? Room(string item, int count)
@@ -663,7 +711,7 @@ namespace EdS.World
             if (!_catalog.TryGetItem(item, out ItemDefinition definition) || count < 1) return null;
             long left = count;
             foreach (ItemStack s in _stacks)
-                if (s.Item == item && !s.IsRolled) left -= definition.Stack - s.Count;
+                if (s.Item == item && !s.IsUnique) left -= definition.Stack - s.Count;
             if (left <= 0) return 0;
             return (int)((left + definition.Stack - 1) / definition.Stack);
         }

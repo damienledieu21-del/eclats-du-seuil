@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/items.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "items",
-  "contentVersion": "0.3.0-provisoire",
+  "contentVersion": "0.4.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1716,6 +1716,14 @@
           ]
         }
       ]
+    },
+    "quality": {
+      "superior": 10,
+      "masterwork": 20
+    },
+    "wear": {
+      "max": 100,
+      "perFullHealth": 10
     }
   }
 }
