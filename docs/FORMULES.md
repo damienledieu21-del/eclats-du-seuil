@@ -50,6 +50,24 @@ Bornes d'un bouclier (`combat.shield` des règles, [DONNEES.md](DONNEES.md#garde
 
 Exemple vérifiable (scénario `entrainement_bouclier`, coups de 100 dégâts physiques, armure 0, Bastion sans talent) : un coup gardé avec le pavois (0,7) fait 100 × (1 − 0,7) = **30** et coûte 14 d'endurance ; avec la rondache (0,5), **50** pour 6 d'endurance. Une parade lancée 150 ms avant le coup le pare avec la rondache (fenêtre de 200 ms, 4 ticks) mais pas avec le pavois (100 ms, 2 ticks).
 
+## Effets d'équipement (sous-lot V1.3)
+
+Les modificateurs d'un objet nommé ou d'un palier d'ensemble s'ajoutent à ceux des talents et des passifs, dans les mêmes formules (`damageDealt` dans la catégorie « talent » des bonus, `damageTaken` dans la réduction totale plafonnée à 85 %, `maxHealth` en pourcentage des PV maximaux, `endurance.regenPerSecond` à la régénération). Nouvelle condition **`targetStunned`** (équipement seulement, `damageDealt`) : le bonus ne compte que si la cible de l'impact porte une altération qui bloque ses compétences ou ses attaques d'assaillant (l'étourdissement), lue au calcul des dégâts.
+
+Exemple vérifiable (scénario `entrainement_equipement`, Frappe du rempart sur un assaillant étourdi par le Heurt de bouclier, Bastion de niveau 10 sans talent) : **59** dégâts avec la Lame du Seuil (+10 % sur une cible étourdie), **56** sans ; deux coups bloqués de 100 bruts : **86** subis en tout avec la Garde de la tour à 2 pièces portées (−5 % en garde), **90** sans.
+
+## Propriétés tirées (sous-lot V1.3)
+
+Bornes d'une propriété `p` sur un objet de niveau requis `N` et de rareté `R` (échelle `s(R)` en pour cent, `rarities[].scalePercent` du catalogue) :
+
+```
+basse = max(1, ⌊(p.min + p.minPerLevel × (N − 1)) × s(R) / 100⌋)
+haute = max(basse, ⌊(p.max + p.maxPerLevel × (N − 1)) × s(R) / 100⌋)
+valeur tirée : uniforme dans [basse, haute] (Pcg32, rejet sans biais), propriétés distinctes, au nombre de count(R)
+```
+
+La rareté fixe le **nombre** de propriétés (commun 0, rare 1, très rare 2, épique 3, légendaire 3, mythique 4) et l'**échelle** (100 %, 100 %, 110 %, 120 %, 135 %, 150 %) ; le niveau fixe les bornes ; le hasard ne choisit qu'à l'intérieur (Q30). Exemple : Vigueur (PV maximaux : 5 à 10, +3 à +6 par niveau) sur les bottes du Renard (rares, niveau 6) : **20 à 40** ; sur la cape du Seuil (épique, niveau 19) : ⌊59 × 1,2⌋ = **70** à ⌊118 × 1,2⌋ = **141**.
+
 Étapes intermédiaires à 4 décimales ; l'étape de défense est calculée exactement (produit-quotient 128 bits).
 
 ## Exemple vérifiable (test `Exemple_1_coup_critique_physique_detaille`)
