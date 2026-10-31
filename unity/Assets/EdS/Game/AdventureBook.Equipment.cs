@@ -118,6 +118,14 @@ namespace EdS.Game
         /// <summary>Place réelle du sac montrée par la case <paramref name="cell"/>, ou −1.</summary>
         private int BagPlace(int cell) => cell < _visible.Count ? _visible[cell] : -1;
 
+        /// <summary>Relecture de la PR #75 : comme <see cref="BagPlace"/>, d'après le sac tel qu'il est maintenant (pour un clic), ou −1.</summary>
+        private int CurrentBagPlace(int cell)
+        {
+            if (_session == null) return -1;
+            IReadOnlyList<int> visible = _session.InventoryPlaces(_filter);
+            return cell >= 0 && cell < visible.Count ? visible[cell] : -1;
+        }
+
         private void BuildCompare()
         {
             _tipNotions = Text(_tip, UiFace.Body, 14f, UiKit.Muted, TextAnchor.UpperLeft, 24f, 92f, 360f, 36f, 0f, 0f);

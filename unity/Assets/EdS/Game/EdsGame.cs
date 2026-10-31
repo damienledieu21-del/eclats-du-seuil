@@ -355,6 +355,9 @@ namespace EdS.Game
         /// Une image de l'aventure. Le monde s'arrête (jeu en solo) pendant un dialogue, un écran ouvert, la pause ou après une défaite ;
         /// sinon les touches de combat, la marche et les actions (F parler ou récolter, P potion) passent au cœur, et le temps avance.
         /// </summary>
+        /// <summary>Relecture de la PR #75 : dernier équipement visible calculé (rendu tel quel tant qu'il ne change pas).</summary>
+        private VisibleGear _visibleGear;
+
         private void UpdateAdventure()
         {
             AdventureSession a = _adventure;
@@ -449,7 +452,10 @@ namespace EdS.Game
             _markers.Sync(a);
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
-            _arena.ShowGear(GearLooks.For(a.World.Inventory));   // sous-lot V1.2 : arme, bouclier et cape portés
+            // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
+            // à chaque image).
+            _visibleGear = GearLooks.For(a.World.Inventory, _visibleGear);
+            _arena.ShowGear(_visibleGear);
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison

@@ -243,7 +243,9 @@ namespace EdS.Game
                 int place = i;
                 Cell cell = MakeCell(page, 730f + (i % 8) * 90f, 192f + (i / 8) * 90f, 82f, false);
                 UiPointer pointer = UiKit.Pointer(cell.Slab);
-                pointer.Left = () => UseBag(BagPlace(place));   // sous-lot V1.2 : la case montre une place selon le filtre
+                // Sous-lot V1.2 : la case montre une place selon le filtre. Relecture de la PR #75 : la place est recalculée au clic (le sac a
+                // pu changer depuis le dernier rafraîchissement : un objet porté, rangé ou vendu).
+                pointer.Left = () => UseBag(CurrentBagPlace(place));
                 pointer.Enter = () =>
                 {
                     int real = BagPlace(place);

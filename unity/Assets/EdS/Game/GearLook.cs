@@ -23,6 +23,12 @@ namespace EdS.Game
         private readonly Transform _back;
         private VisibleGear _shown;
 
+        /// <summary>
+        /// Relecture de la PR #75 : couleurs de base des matériaux de l'épée et du bouclier du modèle, relevées une fois, pour les remettre
+        /// quand l'objet porté redevient commun (sinon la teinte d'un objet rare restait).
+        /// </summary>
+        private readonly Dictionary<Renderer, Color[]> _baseColors = new Dictionary<Renderer, Color[]>();
+
         public GearLook(Transform body, bool styled)
         {
             _body = body;
@@ -34,6 +40,13 @@ namespace EdS.Game
                 string n = (r.name ?? "").ToLowerInvariant();
                 if (n.Contains("sword")) _sword.Add(r);
                 else if (n.Contains("shield")) _shield.Add(r);
+                else continue;
+                // « materials » donne les copies propres à cette pièce (créées au premier appel, les mêmes ensuite) : on les teinte et on
+                // garde leur couleur d'origine.
+                Material[] materials = r.materials;
+                var colors = new Color[materials.Length];
+                for (int i = 0; i < materials.Length; i++) colors[i] = BaseColor(materials[i]);
+                _baseColors[r] = colors;
             }
             foreach (Transform t in body.GetComponentsInChildren<Transform>())
             {
@@ -66,11 +79,19 @@ namespace EdS.Game
             if (gear.Cloak) Cloak(gear.CloakRarity);
         }
 
-        private static void Tint(Renderer r, ItemRarity rarity)
+        /// <summary>Teinte de la rareté sur une pièce du modèle ; commune : ses couleurs d'origine remises (relecture de la PR #75).</summary>
+        private void Tint(Renderer r, ItemRarity rarity)
         {
-            if (rarity == ItemRarity.Common) return;   // les couleurs du modèle
-            foreach (Material m in r.materials) ArenaView.ApplyColor(m, Color.Lerp(Color.white, AdventureBook.RarityColor(rarity), 0.45f));
+            if (!_baseColors.TryGetValue(r, out Color[] colors)) return;
+            Material[] materials = r.materials;
+            Color tint = Color.Lerp(Color.white, AdventureBook.RarityColor(rarity), 0.45f);
+            for (int i = 0; i < materials.Length && i < colors.Length; i++)
+                if (materials[i] != null) ArenaView.ApplyColor(materials[i], rarity == ItemRarity.Common ? colors[i] : tint);
         }
+
+        /// <summary>Couleur de base d'un matériau (celle que <see cref="ArenaView.ApplyColor"/> remplace), blanc sans couleur.</summary>
+        private static Color BaseColor(Material m) =>
+            m == null ? Color.white : m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white;
 
         private GameObject Shape(string name, PrimitiveType type, Transform parent, Vector3 position, Vector3 euler, Vector3 scale, Color color)
         {

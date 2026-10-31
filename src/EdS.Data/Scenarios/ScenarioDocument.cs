@@ -226,7 +226,6 @@ namespace EdS.Data.Scenarios
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
 
-    /// <summary>Sous-lot 12.6 : objet de soin emporté (identifiant, soin, charges, recharge partagée en ms).</summary>
     /// <summary>Sous-lot V1.2 : garde d'un bouclier telle que lue (part bloquée, coût d'un blocage, fenêtre de parade en ms).</summary>
     public sealed class ShieldData
     {
@@ -235,6 +234,7 @@ namespace EdS.Data.Scenarios
         public long? ParryWindowMs { get; set; }
     }
 
+    /// <summary>Sous-lot 12.6 : objet de soin emporté (identifiant, soin, charges, recharge partagée en ms).</summary>
     public sealed class ConsumableData
     {
         public string? Id { get; set; }
