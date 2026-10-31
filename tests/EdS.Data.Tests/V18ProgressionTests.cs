@@ -59,7 +59,7 @@ public class V18ProgressionTests : IDisposable
     public void Niveaux_de_1_a_25_donnees_jusqu_a_30_et_cinq_chapitres()
     {
         CharacterProgression p = Progression;
-        Assert.Equal((3, "0.2.0-provisoire"), (p.SchemaVersion, p.ContentVersion));
+        Assert.Equal((3, "0.3.0-provisoire"), (p.SchemaVersion, p.ContentVersion));   // 0.3.0 : V1.8b, 6 PV par point d'expérience
         Assert.Equal((30, 25), (p.MaxLevel, p.LevelCap));
         Assert.Equal(30, p.XpToLevel.Count);
         Assert.Equal(30, p.ForClass("class.bastion").Attributes.Count);

@@ -1,8 +1,8 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "kind": "zone",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -50,6 +50,13 @@
         ]
       }
     ],
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
     "places": [
       {
         "id": "village",
@@ -61,7 +68,8 @@
         "max": [
           4,
           4
-        ]
+        ],
+        "minLevel": 1
       },
       {
         "id": "moulin",
@@ -73,7 +81,8 @@
         "max": [
           4,
           19
-        ]
+        ],
+        "minLevel": 1
       },
       {
         "id": "riviere",
@@ -85,7 +94,8 @@
         "max": [
           7,
           34
-        ]
+        ],
+        "minLevel": 1
       },
       {
         "id": "pre_nord",
@@ -97,7 +107,8 @@
         "max": [
           4,
           40
-        ]
+        ],
+        "minLevel": 1
       },
       {
         "id": "ruines",
@@ -109,7 +120,8 @@
         "max": [
           24,
           14
-        ]
+        ],
+        "minLevel": 6
       },
       {
         "id": "carriere",
@@ -121,7 +133,8 @@
         "max": [
           60,
           12
-        ]
+        ],
+        "minLevel": 6
       },
       {
         "id": "seuil",
@@ -133,7 +146,8 @@
         "max": [
           60,
           40
-        ]
+        ],
+        "minLevel": 21
       },
       {
         "id": "forge",
@@ -145,7 +159,8 @@
         "max": [
           -17,
           -1
-        ]
+        ],
+        "minLevel": 1
       },
       {
         "id": "bourg",
@@ -157,7 +172,8 @@
         "max": [
           -24,
           19
-        ]
+        ],
+        "minLevel": 1
       },
       {
         "id": "champs",
@@ -169,7 +185,8 @@
         "max": [
           -30,
           -25
-        ]
+        ],
+        "minLevel": 1
       },
       {
         "id": "lac",
@@ -181,7 +198,8 @@
         "max": [
           26,
           -42
-        ]
+        ],
+        "minLevel": 6
       },
       {
         "id": "vergers",
@@ -193,7 +211,8 @@
         "max": [
           64,
           -24
-        ]
+        ],
+        "minLevel": 6
       },
       {
         "id": "hameau",
@@ -205,7 +224,8 @@
         "max": [
           100,
           -16
-        ]
+        ],
+        "minLevel": 6
       },
       {
         "id": "plaine_est",
@@ -217,7 +237,8 @@
         "max": [
           140,
           -43
-        ]
+        ],
+        "minLevel": 11
       },
       {
         "id": "hautes_pierres",
@@ -229,7 +250,8 @@
         "max": [
           140,
           62
-        ]
+        ],
+        "minLevel": 16
       },
       {
         "id": "tour_de_guet",
@@ -241,7 +263,8 @@
         "max": [
           44,
           80
-        ]
+        ],
+        "minLevel": 11
       },
       {
         "id": "camp_des_rodeurs",
@@ -253,7 +276,8 @@
         "max": [
           140,
           100
-        ]
+        ],
+        "minLevel": 16
       },
       {
         "id": "foret_des_loups",
@@ -265,7 +289,8 @@
         "max": [
           4,
           100
-        ]
+        ],
+        "minLevel": 11
       }
     ],
     "populations": [

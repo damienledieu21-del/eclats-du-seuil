@@ -111,7 +111,7 @@ public class Lot129BalanceTests
     [InlineData("loup1", 0)]
     [InlineData("sanglier", 0)]
     [InlineData("archer", 0)]
-    [InlineData("rodeur", 520)]   // niveau 5
+    [InlineData("rodeur", 180)]   // niveau 3 (sous-lot V1.8 : au village, le rôdeur reste au niveau 1 ; plus haut, il monte avec le joueur)
     public void Une_creature_seule_se_bat_au_niveau_prevu(string creature, long xp)
     {
         WorldSession session = Duel(creature, xp);
@@ -120,24 +120,14 @@ public class Lot129BalanceTests
         Assert.True(left >= 50, $"{creature} : il ne reste que {left} PV au Bastion");
     }
 
-    [Fact]
-    public void Le_Gardien_demande_de_se_preparer()
-    {
-        // Niveau 10 sans potion : la première forme tombe, la seconde gagne ; avec cinq potions de soin, le Gardien est vaincu.
-        WorldSession bare = Duel("gardien", 1620);
-        Assert.Equal(0, Fight(bare, "gardien_du_seuil"));
-        Assert.False(bare.BossDefeated);
-        Assert.Equal("gardien_eveille", bare.BossForm);
-        WorldSession ready = Duel("gardien", 1620, new ItemStack("item.potion_de_soin", 5));
-        Assert.True(Fight(ready, "gardien_du_seuil") > 0);
-        Assert.True(ready.BossDefeated);
-    }
+    // Sous-lot V1.8 : le Gardien est la fin du chapitre 5 (niveau 25), au Seuil (niveau 21 au moins) : son combat est réglé dans
+    // V18EquilibreTests (Gardien au niveau 25, garde et parade demandées) ; l'essai du niveau 10 n'a plus de sens.
 
     [Fact]
     public void Experience_des_creatures()
     {
         // Une dizaine de créatures pour les premiers niveaux ; le Gardien vaut une montée de niveau.
         CharacterProgression p = Progression;
-        Assert.Equal((30L, 36L, 24L, 44L, 50L, 80L), (p.KillXp(150), p.KillXp(180), p.KillXp(120), p.KillXp(220), p.KillXp(250), p.KillXp(400)));
+        Assert.Equal((25L, 30L, 20L, 36L, 41L, 66L), (p.KillXp(150), p.KillXp(180), p.KillXp(120), p.KillXp(220), p.KillXp(250), p.KillXp(400)));
     }
 }

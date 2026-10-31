@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 6
+      "const": 7
     },
     "kind": {
       "const": "zone"
@@ -128,6 +128,11 @@
                 "items": {
                   "type": "number"
                 }
+              },
+              "minLevel": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Sous-lot V1.8 (schéma 7, zones en mélange) : niveau minimum du lieu (1 par défaut) ; ses créatures ne descendent jamais en dessous."
               }
             }
           }
@@ -213,6 +218,48 @@
               }
             }
           }
+        },
+        "scaling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseLevel",
+            "bossBaseLevel",
+            "healthPerLevelPercent",
+            "damagePerLevelPercent",
+            "easeLevels"
+          ],
+          "properties": {
+            "baseLevel": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Niveau pour lequel les chiffres des créatures du scénario sont écrits."
+            },
+            "bossBaseLevel": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Niveau pour lequel les chiffres des formes des chefs sont écrits."
+            },
+            "healthPerLevelPercent": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "PV en plus par niveau, en pour cent des PV écrits."
+            },
+            "damagePerLevelPercent": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Dégâts bruts en plus par niveau, en pour cent."
+            },
+            "easeLevels": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Les créatures montent au niveau du joueur moins ces niveaux (jamais sous le niveau minimum du lieu)."
+            }
+          },
+          "description": "Sous-lot V1.8 (schéma 7, sujet 4) : zones en mélange ; facultatif. Niveau d'une créature : max(niveau minimum de son lieu, niveau du joueur − easeLevels)."
         },
         "passages": {
           "type": "array",

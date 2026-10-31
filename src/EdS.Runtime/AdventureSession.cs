@@ -1229,6 +1229,20 @@ namespace EdS.Runtime
         /// <summary>Lieu où se trouve le personnage (nom), ou le nom de la zone.</summary>
         public string PlaceName => Me is GroundVector p && _zone.PlacesAt(p).FirstOrDefault() is Place place ? place.Name : _zone.Name;
 
+        /// <summary>
+        /// Sous-lot V1.8 (zones en mélange) : niveau minimum du lieu où se trouve le personnage, et niveau de ses créatures pour lui (le niveau
+        /// d'entrée de la session : le minimum du lieu, ou le sien moins le réglage de facilité s'il est plus fort) ; null sans réglage (un
+        /// intérieur, une zone sans mélange).
+        /// </summary>
+        public (int Min, int Creatures)? PlaceLevel =>
+            Me is GroundVector p && _zone.Scaling is ZoneScaling s
+                ? (_zone.MinLevelAt(p), s.CreatureLevel(_zone.MinLevelAt(p), World.EnteredLevel))
+                : ((int, int)?)null;
+
+        /// <summary>Sous-lot V1.8 : nom du lieu et niveau de ses créatures pour l'affichage (« Moulin · niveau 3 »).</summary>
+        public string PlaceLabel => PlaceLevel is (int _, int creatures)
+            ? string.Format(CultureInfo.InvariantCulture, Text("text.ui.place_level"), PlaceName, creatures) : PlaceName;
+
         /// <summary>Essai réaliste 6 : nom de la zone (« Vallons d'Aube »), sous le nom du lieu près de la petite carte.</summary>
         public string ZoneName => _zone.Name;
 

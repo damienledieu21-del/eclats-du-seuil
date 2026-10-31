@@ -125,6 +125,18 @@ namespace EdS.Data.Json
                 ["roads"] = (v, p) => d.Roads = input.ReadLimitedList(v, p, ZoneValidator.MaxRoads, n => $"{n} routes, au plus {ZoneValidator.MaxRoads}.",
                     (e, ip) => ReadRoad(input, e, ip)),   // Vallons agrandis (schéma 3)
                 ["indoor"] = (v, p) => d.Indoor = input.Boolean(v, p),   // intérieurs (schéma 4)
+                ["scaling"] = (v, p) =>   // sous-lot V1.8 (schéma 7) : zones en mélange
+                {
+                    var s = new ZoneScalingData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["baseLevel"] = (sv, sp) => s.BaseLevel = input.Int32(sv, sp),
+                        ["bossBaseLevel"] = (sv, sp) => s.BossBaseLevel = input.Int32(sv, sp),
+                        ["healthPerLevelPercent"] = (sv, sp) => s.HealthPerLevelPercent = input.Int32(sv, sp),
+                        ["damagePerLevelPercent"] = (sv, sp) => s.DamagePerLevelPercent = input.Int32(sv, sp),
+                        ["easeLevels"] = (sv, sp) => s.EaseLevels = input.Int32(sv, sp),
+                    })) d.Scaling = s;
+                },
                 ["doors"] = (v, p) => d.Doors = input.ReadLimitedList(v, p, ZoneValidator.MaxDoors, n => $"{n} portes, au plus {ZoneValidator.MaxDoors}.",
                     (e, ip) => ReadDoor(input, e, ip)),
             });
@@ -225,6 +237,7 @@ namespace EdS.Data.Json
                 ["name"] = (v, p) => place.Name = input.Text(v, p),
                 ["min"] = (v, p) => place.Min = ScenarioJsonReader.ReadPoint(input, v, p),
                 ["max"] = (v, p) => place.Max = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["minLevel"] = (v, p) => place.MinLevel = input.Int32(v, p),   // sous-lot V1.8 (schéma 7)
             });
             return ok ? place : null;
         }

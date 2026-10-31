@@ -35,12 +35,16 @@ namespace EdS.Data.Zones
         public GroundVector Min { get; }
         public GroundVector Max { get; }
 
-        internal Place(string id, string name, GroundVector min, GroundVector max)
+        /// <summary>Sous-lot V1.8 (schéma 7, zones en mélange) : niveau minimum du lieu (1 par défaut).</summary>
+        public int MinLevel { get; }
+
+        internal Place(string id, string name, GroundVector min, GroundVector max, int minLevel = 1)
         {
             Id = id;
             Name = name;
             Min = min;
             Max = max;
+            MinLevel = minLevel;
         }
 
         /// <summary>Le point est dans le lieu (bords compris).</summary>
@@ -246,8 +250,10 @@ namespace EdS.Data.Zones
 
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
-            IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null)
+            IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null,
+            ZoneScaling? scaling = null)
         {
+            Scaling = scaling;
             Boss = boss;
             Chiefs = Frozen.List(chiefs ?? Array.Empty<Boss>(), nameof(chiefs));
             Bosses = Frozen.List((boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(Chiefs), nameof(boss));
@@ -280,6 +286,47 @@ namespace EdS.Data.Zones
 
         /// <summary>Lieux qui contiennent ce point, dans l'ordre du fichier.</summary>
         public IEnumerable<Place> PlacesAt(GroundVector point) => Places.Where(p => p.Contains(point));
+
+        /// <summary>Sous-lot V1.8 (schéma 7) : zones en mélange, ou null (les créatures gardent leurs chiffres).</summary>
+        public ZoneScaling? Scaling { get; }
+
+        /// <summary>
+        /// Sous-lot V1.8 : niveau minimum en ce point : le plus haut des lieux qui le contiennent (un lieu dangereux dans un lieu calme
+        /// l'emporte), 1 hors de tout lieu.
+        /// </summary>
+        public int MinLevelAt(GroundVector point)
+        {
+            int level = 1;
+            foreach (Place p in Places) if (p.Contains(point) && p.MinLevel > level) level = p.MinLevel;
+            return level;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.8 (sujet 4, zones en mélange) : la zone telle qu'un personnage de niveau <paramref name="playerLevel"/> la trouve. Chaque
+        /// créature (populations, créatures du scénario, formes des chefs) monte au niveau <see cref="ZoneScaling.CreatureLevel"/> ; ses PV et
+        /// ses dégâts grandissent de <see cref="ZoneScaling.Scale(AssailantSetup, int, int)"/>. Sans <see cref="Scaling"/>, la zone telle quelle.
+        /// Rien n'est modifié : une nouvelle définition est rendue.
+        /// </summary>
+        public ZoneDefinition ForLevel(int playerLevel)
+        {
+            if (playerLevel < 1) throw new ArgumentOutOfRangeException(nameof(playerLevel));
+            if (Scaling is not ZoneScaling s) return this;
+            AssailantSetup One(AssailantSetup a, bool boss) =>
+                a.Placement is CombatantPlacement at
+                    ? s.Scale(a, boss ? s.BossBaseLevel : s.BaseLevel, s.CreatureLevel(MinLevelAt(at.Position), playerLevel))
+                    : a;
+            var bossForms = new HashSet<string>(Bosses.SelectMany(b => b.Forms).Select(f => f.Id), StringComparer.Ordinal);
+            var scaled = new Dictionary<string, AssailantSetup>(StringComparer.Ordinal);
+            foreach (CombatantSetup c in Setup.Combatants)
+                if (c is AssailantSetup a) scaled[a.Id] = One(a, bossForms.Contains(a.Id));
+            CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
+                Setup.Combatants.Select(c => c is AssailantSetup a ? scaled[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone);
+            var populations = Populations.Select(p => new Population(p.Creature, scaled.TryGetValue(p.Template.Id, out AssailantSetup t) ? t : One(p.Template, false),
+                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night)).ToList();
+            Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
+            return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
+                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling);
+        }
     }
 
     public sealed class ZoneLoadResult
@@ -314,9 +361,11 @@ namespace EdS.Data.Zones
         /// <c>building</c> facultatif). Version 5 (sous-lot V1.6) : <c>chiefs</c> facultatif (autres chefs à formes, même forme que
         /// <c>boss</c>, au plus <see cref="MaxChiefs"/>) et <c>family</c> facultatif sur une population (objectifs <c>defeatFamily</c>). Version 6
         /// (réponses de Damien du 31 octobre 2026) : <c>night</c> facultatif sur une population (créature rare de la nuit : <c>chancePercent</c>,
-        /// <c>signMs</c>, <c>sign</c>).
+        /// <c>signMs</c>, <c>sign</c>). Version 7 (sous-lot V1.8, zones en mélange) : <c>minLevel</c> facultatif sur un lieu (1 par défaut) et
+        /// <c>scaling</c> facultatif (<c>baseLevel</c>, <c>bossBaseLevel</c>, <c>healthPerLevelPercent</c>, <c>damagePerLevelPercent</c>,
+        /// <c>easeLevels</c>).
         /// </summary>
-        public const int CurrentSchemaVersion = 6;
+        public const int CurrentSchemaVersion = 7;
 
         /// <summary>Schéma 6 : délai au plus entre le signe d'une créature de la nuit et son arrivée (10 min de jeu).</summary>
         public const long MaxSignMs = 600_000;
@@ -422,7 +471,14 @@ namespace EdS.Data.Zones
                         GroundVector min = Point(p.Min!), max = Point(p.Max!);
                         if (min.X >= max.X || min.Z >= max.Z) { report.Add(path + ".max", ValidationCode.InvalidValue, "coin nord-est attendu au nord-est du coin sud-ouest."); ok = false; }
                         else if (!Inside(min) || !Inside(max)) { report.Add(path, ValidationCode.OutOfRange, "lieu hors de l'aire praticable de la zone."); ok = false; }
-                        if (ok) places.Add(new Place(p.Id!, p.Name!, min, max));
+                        // Sous-lot V1.8 (schéma 7) : niveau minimum, de 1 au niveau maximal des règles.
+                        int maxLevel = scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit;
+                        if (p.MinLevel is int ml && (ml < 1 || ml > maxLevel))
+                        {
+                            report.Add(path + ".minLevel", ValidationCode.OutOfRange, $"niveau minimum hors de [1, {maxLevel}].");
+                            ok = false;
+                        }
+                        if (ok) places.Add(new Place(p.Id!, p.Name!, min, max, p.MinLevel ?? 1));
                     }
                 }
             }
@@ -601,8 +657,10 @@ namespace EdS.Data.Zones
                 }
             }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
+            ZoneScaling? scaling = d.Scaling is null ? null : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, report);
+            if (!report.IsValid) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling));
         }
 
         /// <summary>Écart (m) entre un point et la boîte d'un obstacle (0 dedans ou sur le bord).</summary>
@@ -815,6 +873,24 @@ namespace EdS.Data.Zones
         }
 
         /// <summary>Point présent et complet (les deux coordonnées), y compris pour un document construit hors du lecteur JSON.</summary>
+        /// <summary>Sous-lot V1.8 (schéma 7) : zones en mélange (niveaux de 1 au niveau maximal des règles, pour cent et facilité bornés).</summary>
+        private static ZoneScaling? CheckScaling(ZoneScalingData d, int maxLevel, ValidationReport report)
+        {
+            const string path = "$.data.scaling";
+            int? Read(int? value, string field, string what, int min, int max)
+            {
+                if (value is null) { Missing(report, $"{path}.{field}", what); return null; }
+                if (value < min || value > max) { report.Add($"{path}.{field}", ValidationCode.OutOfRange, $"{what} hors de [{min}, {max}]."); return null; }
+                return value;
+            }
+            int? baseLevel = Read(d.BaseLevel, "baseLevel", "niveau des chiffres des créatures", 1, maxLevel);
+            int? bossLevel = Read(d.BossBaseLevel, "bossBaseLevel", "niveau des chiffres des chefs", 1, maxLevel);
+            int? health = Read(d.HealthPerLevelPercent, "healthPerLevelPercent", "PV en plus par niveau (pour cent)", 0, ZoneScaling.MaxPercentPerLevel);
+            int? damage = Read(d.DamagePerLevelPercent, "damagePerLevelPercent", "dégâts en plus par niveau (pour cent)", 0, ZoneScaling.MaxPercentPerLevel);
+            int? ease = Read(d.EaseLevels, "easeLevels", "niveaux sous le joueur", 0, ZoneScaling.MaxEaseLevels);
+            return baseLevel is int b && bossLevel is int bb && health is int h && damage is int dm && ease is int e ? new ZoneScaling(b, bb, h, dm, e) : null;
+        }
+
         private static bool CheckPoint(PointData? p, string path, string what, ValidationReport report)
         {
             if (p is null || p.X is null || p.Z is null) { Missing(report, path, what); return false; }

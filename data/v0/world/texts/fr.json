@@ -59,6 +59,7 @@
       "text.ui.loaded_backup": "Partie reprise depuis la copie de secours (la sauvegarde principale était abîmée).",
       "text.ui.xp": "+{0} points d'expérience",
       "text.ui.level": "Niveau {0} ! Il prendra effet à ta prochaine halte.",
+      "text.ui.place_level": "{0} · niveau {1}",
       "text.ui.map.you": "Toi",
       "text.ui.map.objective": "Objectif",
       "text.ui.title.map": "Carte des Vallons d'Aube",

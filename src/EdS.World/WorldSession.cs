@@ -392,9 +392,12 @@ namespace EdS.World
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
             CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null, string? door = null, string? storyZone = null, Market? market = null,
             GuildBook? guild = null)
-            : this(save ?? throw new ArgumentNullException(nameof(save)), ZoneSetups.For(zone ?? throw new ArgumentNullException(nameof(zone)), save.Consumed),
+            : this(save ?? throw new ArgumentNullException(nameof(save)),
+                ZoneSetups.For(ForPlayer(zone ?? throw new ArgumentNullException(nameof(zone)), save, progression), save.Consumed),
                 data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius), null, log, CheckZone(save, zone, story, crafting, market, guild))
         {
+            // Sous-lot V1.8 (zones en mélange) : la zone telle que le personnage la trouve à son niveau d'entrée (créatures, chefs).
+            zone = ForPlayer(zone, save, progression);
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
             _populations = new ZonePopulations(zone);
@@ -416,6 +419,13 @@ namespace EdS.World
             // Compétences données à l'entrée (réponse de Damien du 30 octobre 2026), après le chef comme la découverte.
             Give(_handedAtEntry);
         }
+
+        /// <summary>
+        /// Sous-lot V1.8 (sujet 4, zones en mélange) : <paramref name="zone"/> réglée pour le niveau du personnage de la sauvegarde
+        /// (<see cref="ZoneDefinition.ForLevel"/>) ; telle quelle sans personnage ni réglage.
+        /// </summary>
+        private static ZoneDefinition ForPlayer(ZoneDefinition zone, WorldSave save, CharacterProgression progression) =>
+            save.Character is SavedCharacter c && progression != null ? zone.ForLevel(PlayerCharacters.Level(c, progression)) : zone;
 
         private readonly BossFight? _boss;
         private readonly List<BossFight> _fights = new List<BossFight>();

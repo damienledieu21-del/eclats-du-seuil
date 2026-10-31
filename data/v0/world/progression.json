@@ -2,7 +2,7 @@
   "$schema": "../../schemas/progression.schema.json",
   "schemaVersion": 3,
   "kind": "progression",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "maxLevel": 30,
     "levelCap": 25,
@@ -39,7 +39,7 @@
       35810,
       40350
     ],
-    "killXpPerHealth": 5,
+    "killXpPerHealth": 6,
     "classes": [
       {
         "class": "class.bastion",
