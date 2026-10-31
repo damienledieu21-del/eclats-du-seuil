@@ -701,6 +701,46 @@ public class V14ForgeTests
         inventory.Add(new ItemStack("item.casque_de_fer", 1, wear: 37));
         Assert.Equal("Solidité 37 / 100 (à réparer)", ItemComparison.For(inventory, inventory.Stacks.Last())!.Details.Single().Text);
     }
+    [Fact]
+    public void Comparaison_d_une_piece_usee_a_effet_comme_l_inventaire()
+    {
+        // Remarque de Codex sur la PR #80 : une Lame du Seuil usée à zéro, au sac, ne montre pas son effet comme gagné.
+        var inventory = Inventory.From(Inventory.Outfit(Hero(), Items), Items, 20);
+        inventory.Add(new ItemStack("item.lame_du_seuil", 1, wear: 0));
+        DetailLine effect = ItemComparison.For(inventory, inventory.Stacks.Last())!.Details.Single(d => d.Text.Contains(Items.Item("item.lame_du_seuil").Effect!.Text));
+        Assert.Equal((CompareTrend.Same, false), (effect.Trend, effect.Active));
+        Assert.StartsWith("Effet (pièce usée, inactif)", effect.Text);
+        // Neuve : l'effet s'ajoute (vert). Portée et usée : l'inventaire ne la compte pas, la fiche non plus.
+        inventory.Add(new ItemStack("item.lame_du_seuil", 1));
+        Assert.Equal(CompareTrend.Better, ItemComparison.For(inventory, inventory.Stacks.Last())!.Details.Single(d => d.Text.StartsWith("Effet :")).Trend);
+        Assert.Equal(InventoryRefusal.None, inventory.Equip(inventory.Stacks.Count - 2, 20));   // la lame usée portée
+        Assert.Empty(inventory.Effects());
+        ItemComparison self = ItemComparison.For(inventory, inventory.WornInstanceAt("weapon")!, "weapon")!;
+        Assert.False(self.Details.Single(d => d.Text.Contains("Effet")).Active);
+    }
+
+    [Fact]
+    public void Comparaison_d_une_piece_d_ensemble_usee_comme_l_inventaire()
+    {
+        // Remarque de Codex sur la PR #80 : une pièce d'ensemble usée à zéro ne fait pas paraître un palier atteint, au sac comme portée.
+        SavedCharacter hero = Inventory.Outfit(Hero(), Items);
+        var worn = hero.Equipment.ToDictionary(e => e.Key, e => new ItemStack(e.Value, 1));
+        worn["legs"] = new ItemStack("item.jambieres_du_veneur", 1);
+        worn["shoulders"] = new ItemStack("item.spalieres_du_veneur", 1);
+        worn["chest"] = new ItemStack("item.cuirasse_du_veneur", 1, wear: 0);   // portée, usée à zéro
+        Inventory inventory = Inventory.From(hero.WithItems(new[] { new ItemStack("item.gants_du_veneur", 1, wear: 0), new ItemStack("item.gants_du_veneur", 1) }, worn), Items, 20);
+        Assert.Equal(2, inventory.WornPieces("set.tenue_du_veneur"));
+        // Portée et usée : la fiche compte 2 pièces, comme l'inventaire, et le dit.
+        ItemComparison chest = ItemComparison.For(inventory, inventory.WornInstanceAt("chest")!, "chest")!;
+        Assert.Contains(chest.Details, d => d.Text == "Ensemble « Tenue du veneur » : 2/4 pièces");
+        Assert.Contains(chest.Details, d => d.Text.StartsWith("Pièce usée : ne compte pas"));
+        Assert.False(chest.Details.Single(d => d.Text.StartsWith("(4)")).Active);
+        // Au sac et usée : la porter ne change pas le compte (2/4) ; neuve, elle le monte à 3/4.
+        ItemComparison usedGloves = ItemComparison.For(inventory, inventory.Stacks[0])!;
+        DetailLine set = usedGloves.Details.Single(d => d.Text.StartsWith("Ensemble"));
+        Assert.Equal(("Ensemble « Tenue du veneur » : 2/4 pièces", CompareTrend.Same), (set.Text, set.Trend));
+        Assert.Equal("Ensemble « Tenue du veneur » : 2 → 3/4 pièces", ItemComparison.For(inventory, inventory.Stacks[1])!.Details.Single(d => d.Text.StartsWith("Ensemble")).Text);
+    }
 }
 
 internal static class JsonObjectExtensions

@@ -192,15 +192,25 @@ namespace EdS.Runtime
             foreach (RolledProperty r in instance.Properties)
                 if (catalog.TryGetProperty(r.Id, out PropertyDefinition property))
                     details.Add(new DetailLine($"{property.Name} : +{r.Value} {BonusLabels[property.Stat].ToLowerInvariant()}", CompareTrend.Same));
-            // Objets portés après l'échange (une même pièce à deux places compte une fois).
-            var now = new HashSet<string>(inventory.Equipped.Values, StringComparer.Ordinal);
+            // Objets portés après l'échange (une même pièce à deux places compte une fois). Remarque de Codex sur la PR #80 : comme
+            // Inventory.Effects() et Inventory.WornSets(), une pièce usée à zéro ne compte pas (ni son effet, ni sa part d'ensemble), avant
+            // comme après l'échange.
+            bool candidateActive = !catalog.IsWornOut(instance);
+            var now = new HashSet<string>(StringComparer.Ordinal);
             var after = new HashSet<string>(StringComparer.Ordinal);
-            foreach (KeyValuePair<string, string> e in inventory.Equipped)
-                if (isWorn || e.Key != place) after.Add(e.Value);
-            after.Add(candidate.Id);
+            foreach (string slot in inventory.Places())
+            {
+                ItemStack w = inventory.WornInstanceAt(slot)!;
+                if (catalog.IsWornOut(w)) continue;
+                now.Add(w.Item);
+                if (isWorn || slot != place) after.Add(w.Item);
+            }
+            if (candidateActive) after.Add(candidate.Id);
             if (candidate.Effect is ItemEffect effect)
-                details.Add(new DetailLine("Effet : " + effect.Text, isWorn || now.Contains(candidate.Id) ? CompareTrend.Same : CompareTrend.Better));
-            if (!isWorn && worn?.Effect is ItemEffect lost && !after.Contains(worn.Id))
+                details.Add(!candidateActive
+                    ? new DetailLine("Effet (pièce usée, inactif) : " + effect.Text, CompareTrend.Same, false)
+                    : new DetailLine("Effet : " + effect.Text, isWorn || now.Contains(candidate.Id) ? CompareTrend.Same : CompareTrend.Better));
+            if (!isWorn && worn?.Effect is ItemEffect lost && now.Contains(worn.Id) && !after.Contains(worn.Id))
                 details.Add(new DetailLine("Effet perdu : " + lost.Text, CompareTrend.Worse));
             void SetLines(ItemSet set)
             {
@@ -214,7 +224,11 @@ namespace EdS.Runtime
                     details.Add(new DetailLine($"({bonus.Pieces}) {bonus.Text}", was == will ? CompareTrend.Same : will ? CompareTrend.Better : CompareTrend.Worse, will));
                 }
             }
-            if (candidate.Set is string setId && catalog.TryGetSet(setId, out ItemSet candidateSet)) SetLines(candidateSet);
+            if (candidate.Set is string setId && catalog.TryGetSet(setId, out ItemSet candidateSet))
+            {
+                if (!candidateActive) details.Add(new DetailLine($"Pièce usée : ne compte pas pour « {candidateSet.Name} » (à réparer)", CompareTrend.Worse, false));
+                SetLines(candidateSet);
+            }
             if (!isWorn && worn?.Set is string wornSet && wornSet != candidate.Set && catalog.TryGetSet(wornSet, out ItemSet lostSet)) SetLines(lostSet);
             return details;
         }
