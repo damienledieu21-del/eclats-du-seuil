@@ -295,6 +295,7 @@ But : se voir, se déplacer et combattre ensemble dans les Vallons, **le solo to
 
 - Unity devient un client seulement ; les sauvegardes locales d'aujourd'hui sont reprises sur le serveur ; l'hébergement local reste pour les prototypes et les essais.
 - Bonus (plat, élixir, huile) **gardés à la mort et arrêtés hors ligne**, règle du serveur (périmètre, section 5, rangée « Alpha »).
+- **Forge sur le serveur** (relecture indépendante de la PR #80, V1.4) : aujourd'hui le tirage de la forge se prévoit (clé connue du client) et se relance par une petite fabrication ou en rechargeant une sauvegarde, et le client note lui-même les frappes du petit jeu. Au lot 13 : un **secret du serveur** entre dans la graine du tirage, et le **serveur tient le temps du petit jeu** (il donne le tick de départ et la course du curseur, le client n'envoie que les ticks de ses frappes, le serveur les note).
 - Dépend de 13.2, 13.3 et 13.4.
 - Formats : sauvegarde (migration), Unity.
 

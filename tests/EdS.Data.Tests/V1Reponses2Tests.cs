@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using EdS.Data.Characters;
+using EdS.Data.Crafting;
 using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Guild;
@@ -93,6 +94,38 @@ public class V1Reponses2Tests
         WorldSession given = Play(Zone(), Level(1, new[] { new ItemStack("item.peau_de_loup", 1) }));
         Assert.Equal(new[] { NoviceShield, Shard }, given.Restored);
         Assert.Equal(NoviceShield, given.Inventory.Equipped["shield"]);
+    }
+
+    // --- Fusion de main après la PR #80 (V1.4 : forge, qualité, usure) -------------------------------------------------------
+
+    [Fact]
+    public void L_epee_du_novice_s_use_et_se_repare()
+    {
+        Inventory inv = Inventory.From(Inventory.Outfit(Hero(), ItemsCatalog), ItemsCatalog, 1);
+        Assert.Empty(inv.WearDown(30));   // entamée, pas usée à zéro
+        Assert.True(ItemsCatalog.WearLeft(inv.WornInstanceAt("weapon")!) < ItemsCatalog.WearMax);
+        // À la forge : réparée contre de l'or (le prix minimum : elle vaut 1 cuivre), solidité pleine.
+        ZoneDefinition forge = Zone(-19, -5);
+        CraftingBook crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, forge, ItemsCatalog).Book!;
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), inv.SaveInto(Hero(1000))), forge, ShippedData, Progression,
+            ItemsCatalog, Book(forge), crafting, market: new Market(ShippedMerchants));
+        w.Step();
+        long price = w.RepairPrice();
+        Assert.Equal(crafting.Repair.Price(1, ItemsCatalog.WearMax - ItemsCatalog.WearLeft(inv.WornInstanceAt("weapon")!), ItemsCatalog.WearMax)
+            + crafting.Repair.Price(1, ItemsCatalog.WearMax - ItemsCatalog.WearLeft(inv.WornInstanceAt("shield")!), ItemsCatalog.WearMax), price);
+        Assert.True(price > 0);
+        Assert.Equal(RepairRefusal.None, w.Repair(null, out long paid));
+        Assert.Equal((price, 1000 - price), (paid, w.Money));
+        Assert.Equal(ItemsCatalog.WearMax, ItemsCatalog.WearLeft(w.Inventory.WornInstanceAt("weapon")!));
+    }
+
+    [Fact]
+    public void La_rondache_usee_a_zero_perd_son_effet()
+    {
+        Dictionary<string, ItemStack> Worn(int wear) => new() { ["shield"] = new ItemStack(Rondache, 1, wear: wear), ["shard"] = new ItemStack(Shard, 1) };
+        SavedCharacter hero = Level(5);
+        Assert.DoesNotContain(Inventory.From(hero.WithItems(hero.Inventory, Worn(0)), ItemsCatalog, 5).Effects(), e => e.Source == Rondache);
+        Assert.Contains(Inventory.From(hero.WithItems(hero.Inventory, Worn(1)), ItemsCatalog, 5).Effects(), e => e.Source == Rondache);
     }
 
     // --- 2. Garin : quatre pièces du jour ---------------------------------------------------------------------------------------
@@ -467,7 +500,9 @@ public class V1Reponses2Tests
         Assert.Equal(new[] { 0, 1, 2, 3, 4, 5 }, order.Select(r => ItemsCatalog.RollCount(r)));
         // L'échelle reste de 100 à 150 %.
         Assert.Equal(new[] { 100, 100, 110, 120, 135, 150 }, order.Select(r => ItemsCatalog.RarityRolls.Single(x => x.Rarity == r).ScalePercent));
-        // Le pire cumul de l'équipement porté (WornBound) reste sous la limite du combat : aucune borne à ajuster.
+        // Le pire cumul de l'équipement porté (WornBound : chef-d'œuvre de V1.4 et propriétés de 0 à 5 compris) reste sous la limite du combat :
+        // aucune borne à ajuster.
+        Assert.True(ItemsCatalog.MasterworkPercent > 0);
         for (int stat = 0; stat < GearBonus.Fields.Count; stat++)
         {
             (long b, long rolled, long sets) = ItemsCatalog.WornBound(stat);

@@ -174,7 +174,7 @@ namespace EdS.Runtime
             if (!(Shop is string shop)) return Refused(TradeRefusal.TooFar);
             int wanted = count ?? stack.Count;
             int sold = wanted;
-            if (!stack.IsRolled && wanted >= 1)
+            if (!stack.IsUnique && wanted >= 1)
             {
                 // Pile de base : au plus la pile, et seulement la part vendable ; rien de vendable (tout est emporté au combat) : le monde
                 // dit pourquoi, sans rien changer. Une quantité impossible (< 1) garde son motif, venu du monde.

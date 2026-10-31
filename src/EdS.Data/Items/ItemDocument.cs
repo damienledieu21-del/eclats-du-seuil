@@ -33,6 +33,32 @@ namespace EdS.Data.Items
 
         /// <summary>Sous-lot V1.3 (version 4) : tables des propriétés tirées (nombre par rareté, propriétés et leurs bornes par niveau).</summary>
         public PropertyTablesData? Properties { get; set; }
+
+        /// <summary>Sous-lot V1.4 (version 5) : bonus de la qualité de fabrication (supérieure, chef-d'œuvre), en pour cent du bonus de base.</summary>
+        public QualityData? Quality { get; set; }
+
+        /// <summary>Sous-lot V1.4 (version 5) : usure de l'équipement (solidité d'une pièce, perte par combat selon les dégâts reçus).</summary>
+        public WearData? Wear { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.4 : bonus de la qualité de fabrication tel que lu.</summary>
+    public sealed class QualityData
+    {
+        /// <summary>Qualité supérieure : part du bonus de base ajoutée, en pour cent.</summary>
+        public int? Superior { get; set; }
+
+        /// <summary>Chef-d'œuvre : part du bonus de base ajoutée, en pour cent.</summary>
+        public int? Masterwork { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.4 : usure de l'équipement telle que lue.</summary>
+    public sealed class WearData
+    {
+        /// <summary>Solidité d'une pièce neuve, en points.</summary>
+        public int? Max { get; set; }
+
+        /// <summary>Points perdus par chaque pièce portée pour des dégâts reçus égaux aux PV maximaux du personnage.</summary>
+        public int? PerFullHealth { get; set; }
     }
 
     /// <summary>Sous-lot V1.3 : un ensemble tel que lu.</summary>

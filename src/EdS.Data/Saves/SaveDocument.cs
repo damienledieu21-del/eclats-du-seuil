@@ -68,6 +68,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V1.1 (version 6) : bourse du personnage, en pièces de cuivre.</summary>
         public long? Money { get; set; }
 
+        /// <summary>Sous-lot V1.4 (version 11) : fabrications tentées (compteur de la clé du tirage).</summary>
+        public long? Crafts { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -81,8 +84,17 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V1.3 (version 9) : propriétés tirées ; absentes pour un objet de base.</summary>
         public List<PropertyRollData?>? Properties { get; set; }
 
-        /// <summary>Champs réservés à une version suivante rencontrés (<c>quality</c>, <c>wear</c> : sous-lot V1.4), refusés avec leur motif.</summary>
-        public List<string> Reserved { get; } = new List<string>();
+        /// <summary>Sous-lot V1.4 (version 11) : qualité de fabrication (« superior », « masterwork ») ; absente : normale.</summary>
+        public string? Quality { get; set; }
+
+        /// <summary>Sous-lot V1.4 (version 11) : personnage qui a signé un chef-d'œuvre ; absent pour une autre qualité.</summary>
+        public string? SignedBy { get; set; }
+
+        /// <summary>Sous-lot V1.4 (version 11) : points de solidité qui restent ; absent : usure pleine.</summary>
+        public int? Wear { get; set; }
+
+        /// <summary>Champs de l'instance effectivement présents (<c>quality</c>, <c>signedBy</c>, <c>wear</c>), pour refuser ceux d'une version qui ne les a pas.</summary>
+        public HashSet<string> Present { get; } = new HashSet<string>();
     }
 
     /// <summary>Sous-lot V1.3 : propriété tirée d'une instance d'objet, telle que lue.</summary>

@@ -55,6 +55,24 @@ namespace EdS.Data.Json
                 ["sets"] = (v, p) => d.Sets = input.ReadLimitedList(v, p, ItemValidator.MaxSets, n => $"{n} ensembles, au plus {ItemValidator.MaxSets}.",
                     (e, ip) => ReadSet(input, e, ip)),   // sous-lot V1.3 (version 4)
                 ["properties"] = (v, p) => d.Properties = ReadProperties(input, v, p),
+                ["quality"] = (v, p) =>   // sous-lot V1.4 (version 5)
+                {
+                    var q = new QualityData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["superior"] = (qv, qp) => q.Superior = input.Int32(qv, qp),
+                        ["masterwork"] = (qv, qp) => q.Masterwork = input.Int32(qv, qp),
+                    })) d.Quality = q;
+                },
+                ["wear"] = (v, p) =>
+                {
+                    var w = new WearData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["max"] = (wv, wp) => w.Max = input.Int32(wv, wp),
+                        ["perFullHealth"] = (wv, wp) => w.PerFullHealth = input.Int32(wv, wp),
+                    })) d.Wear = w;
+                },
             });
             return ok ? d : null;
         }

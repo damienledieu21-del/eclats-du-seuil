@@ -138,6 +138,7 @@ public class Lot125StoryTests
         root["data"]!["character"]!.AsObject().Remove("story");
         root["data"]!["character"]!.AsObject().Remove("professions");   // sous-lot 12.6 (version 5)
         root["data"]!["character"]!.AsObject().Remove("money");   // sous-lot V1.1 (version 6)
+        root["data"]!["character"]!.AsObject().Remove("crafts");   // sous-lot V1.4 (version 11)
         string v3 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v3).IsValid);
         SaveDocument old = Document(v3);
@@ -448,7 +449,7 @@ public class Lot125StoryTests
             new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("rodeur", 0), ["quest.autre"] = new QuestProgress(QuestProgress.Done) },
             new Dictionary<string, int> { ["npc.odile"] = -1, ["npc.maelle"] = 2, ["npc.gaspard"] = 0 }, new[] { "discovery.manifestation" });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), Hero(story)));
-        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie)
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
         Assert.Contains("      \"story\": {\n        \"facts\": [\"fact.odile.vexee\", \"fact.traces.recit\"],\n"
             + "        \"quests\": {\"quest.autre\": {\"step\": \"done\", \"progress\": 0}, \"quest.traces_sous_le_moulin\": {\"step\": \"rodeur\", \"progress\": 0}},\n"
             + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"discoveries\": [\"discovery.manifestation\"],\n"

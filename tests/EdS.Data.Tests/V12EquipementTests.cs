@@ -60,7 +60,7 @@ public class V12EquipementTests
     public void Dix_huit_places_et_leurs_regles()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((4, 18, 24), (c.SchemaVersion, c.Places.Count, c.InventorySize));   // V1.3 : catalogue en version 4
+        Assert.Equal((5, 18, 24), (c.SchemaVersion, c.Places.Count, c.InventorySize));   // V1.3 : catalogue en version 4 ; V1.4 : 5
         Assert.Equal(16, c.Places.Count(p => p.Group == PlaceGroup.Combat));   // arme, bouclier, dix pièces, deux anneaux, deux reliques
         Assert.Equal(("shard", PlaceGroup.Shard, true), (c.Places[16].Id, c.Places[16].Group, c.Places[16].Required));
         Assert.Equal(("tool", PlaceGroup.Tool), (c.Places[17].Id, c.Places[17].Group));
@@ -301,7 +301,7 @@ public class V12EquipementTests
         // de pièces. Elle se relit, se met à jour (version courante à l'écriture : 7 au sous-lot V1.2, 8 depuis V1.6) et ses places obligatoires sont remplies à la reprise.
         SavedCharacter v11 = Bare(3, "item.peau_de_loup", "item.ecu_de_chene").WithMoney(345);
         v11 = v11.WithItems(v11.Inventory, new Dictionary<string, string> { ["weapon"] = "item.epee_du_milicien", ["neck"] = "item.amulette_de_l_aube" });
-        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 100, 2, Array.Empty<string>(), v11)).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 6");
+        string text = SaveV11.Older(SaveJsonReader.Write(new WorldSave("zone.vallons", 100, 2, Array.Empty<string>(), v11))).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 6");
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.True(read.Save!.Migrated);
@@ -320,10 +320,10 @@ public class V12EquipementTests
         Assert.False(again.Save!.Migrated);
         Assert.Empty(new WorldSession(again.Save, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone())).Restored);
         // Sans bouclier dans le sac, l'écu de départ est donné.
-        string bare = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(1))).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 6");
+        string bare = SaveV11.Older(SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(1)))).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 6");
         WorldSession given = new(SaveJsonReader.Read(bare).Save!, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
         Assert.Equal(new[] { "item.ecu_du_novice", "item.eclat_du_seuil_endormi" }, given.Restored);
-        // Une sauvegarde d'un programme futur (version 9) est refusée.
+        // Une sauvegarde d'un programme futur (version suivante) est refusée.
         Assert.False(SaveJsonReader.Read(rewritten.Replace(SaveVersion.Current, SaveVersion.Future)).IsValid);
     }
 
