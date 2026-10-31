@@ -117,14 +117,19 @@ namespace EdS.Runtime
         /// <summary>Accueil de la boutique ouverte (traduit), ou null.</summary>
         public string? ShopGreeting => OpenMerchant is Merchant m ? Text(m.Greeting) : null;
 
-        /// <summary>Offres du jour de la boutique ouverte, avec le refus qu'aurait l'achat d'une unité maintenant ; vide sans boutique.</summary>
+        /// <summary>
+        /// Offres du jour de la boutique ouverte, avec le refus qu'aurait l'achat d'une unité maintenant ; vide sans boutique. Relecture
+        /// indépendante de la PR #74 : une boutique devenue fermée (ou trop loin) le dit sur chaque offre, comme <see cref="WorldSession.Buy"/>.
+        /// </summary>
         public IReadOnlyList<ShopOffer> ShopOffers()
         {
             if (!(Shop is string id)) return Array.Empty<ShopOffer>();
             var list = new List<ShopOffer>();
+            TradeRefusal shop = World.CanTrade(id);
             foreach (MerchantOffer o in World.Stock(id))
             {
-                TradeRefusal refusal = World.Money < o.Price ? TradeRefusal.NotEnoughMoney
+                TradeRefusal refusal = shop != TradeRefusal.None ? shop
+                    : World.Money < o.Price ? TradeRefusal.NotEnoughMoney
                     : !World.Inventory.CanAdd(o.Item, 1) ? TradeRefusal.InventoryFull : TradeRefusal.None;
                 list.Add(new ShopOffer(o.Item, ItemName(o.Item), o.Price, MoneyText(o.Price), refusal));
             }

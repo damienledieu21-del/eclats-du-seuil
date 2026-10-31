@@ -112,8 +112,16 @@
         ],
         "skillUnlocks": [
           {
+            "level": 3,
+            "skill": "skill.bastion.provocation"
+          },
+          {
             "level": 5,
             "skill": "skill.bastion.barriere_d_acier"
+          },
+          {
+            "level": 7,
+            "skill": "skill.bastion.contrecoup"
           },
           {
             "level": 10,

@@ -37,10 +37,16 @@ namespace EdS.Domain.Builds
         SkillNotLearned,
 
         /// <summary>
-        /// Sous-lot V1.5 : une place ouverte de la barre reste vide alors qu'une compétence apprise de sa sorte attend. Jugé par la partie
-        /// (EdS.World), comme <see cref="SkillNotLearned"/>.
+        /// Sous-lot V1.5 : une place ouverte de la barre reste vide alors qu'une compétence apprise de sa sorte attend. Plus jamais rendu
+        /// depuis la réponse de Damien du 30 octobre 2026 (une place peut rester vide) ; gardé pour ne pas déplacer les valeurs du code.
         /// </summary>
         SlotLeftEmpty,
+
+        /// <summary>
+        /// Relecture indépendante de la PR #74 : le registre du monde n'a plus la place des compétences à donner avec ce changement de barre
+        /// (et des morts possibles d'un tick) ; le changement entier est refusé. Jugé par la partie (EdS.World).
+        /// </summary>
+        RegistryFull,
     }
 
     /// <summary>Une raison de refus, rattachée à l'élément concerné (talent, compétence, emplacement).</summary>

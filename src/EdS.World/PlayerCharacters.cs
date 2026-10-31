@@ -32,23 +32,43 @@ namespace EdS.World
         /// (<see cref="ClassProgression.SkillUnlocks"/>) qu'il n'a pas encore, chacune s'il lui reste un emplacement de sa sorte ouvert à ce niveau
         /// (règles : <see cref="ProgressionRules.ActiveSlotLevels"/>, <see cref="ProgressionRules.PassiveSlotLevels"/>,
         /// <see cref="ProgressionRules.UltimateUnlockLevel"/>). Une active prend l'emplacement libre suivant. Rend le personnage tel quel s'il n'y
-        /// a rien à gagner ; <paramref name="learned"/> dit ce qui a été équipé, dans l'ordre de la progression.
+        /// a rien à gagner ; <paramref name="learned"/> dit ce qui a été équipé, dans l'ordre de la progression. Cette forme ne connaît pas le
+        /// registre du monde : elle place toute compétence avec sa place qui manque, à chaque appel ; la partie utilise la forme avec le
+        /// registre, où une compétence sans place libre va dans la réserve pour de bon (donnée).
+        /// Réponse de Damien du 30 octobre 2026 : seules les compétences qui viennent avec leur place (<see cref="SkillUnlock.WithPlace"/>)
+        /// sont équipées ainsi ; les autres (Provocation, Contrecoup) vont dans la réserve, même si la barre a de la place : le joueur les
+        /// place lui-même avec l'écran des compétences.
         /// </summary>
         public static SavedCharacter Learn(SavedCharacter character, CharacterProgression progression, ProgressionRules rules,
-            out IReadOnlyList<SkillUnlock> learned)
+            out IReadOnlyList<SkillUnlock> learned) =>
+            Learn(character, progression, rules, _ => false, out learned, out _);
+
+        /// <summary>
+        /// Comme <see cref="Learn(SavedCharacter, CharacterProgression, ProgressionRules, out IReadOnlyList{SkillUnlock})"/>, sans redonner une
+        /// compétence déjà donnée (réponse de Damien du 30 octobre 2026 : une place peut rester vide) : <paramref name="given"/> dit si une clé
+        /// <see cref="SkillUnlock.GivenKey"/> est au registre du monde ; une compétence déjà donnée n'est plus placée d'office.
+        /// <paramref name="handed"/> rend les compétences avec leur place, gagnées jusqu'au niveau du personnage et pas encore données (placées
+        /// ici, déjà dans la barre, ou en réserve faute de place) : leurs clés sont à inscrire au registre. Rien n'est modifié ici.
+        /// </summary>
+        public static SavedCharacter Learn(SavedCharacter character, CharacterProgression progression, ProgressionRules rules, Func<string, bool> given,
+            out IReadOnlyList<SkillUnlock> learned, out IReadOnlyList<SkillUnlock> handed)
         {
             if (character is null) throw new ArgumentNullException(nameof(character));
             if (progression is null) throw new ArgumentNullException(nameof(progression));
             if (rules is null) throw new ArgumentNullException(nameof(rules));
+            if (given is null) throw new ArgumentNullException(nameof(given));
             int level = Level(character, progression);
             var actives = character.ActiveSkills.ToList();
             var passives = character.PassiveSkills.ToList();
             string? ultimate = character.Ultimate;
             int activeSlots = rules.ActiveSlotLevels.Count(l => l <= level), passiveSlots = rules.PassiveSlotLevels.Count(l => l <= level);
             var gained = new List<SkillUnlock>();
+            var handing = new List<SkillUnlock>();
             foreach (SkillUnlock u in progression.ForClass(character.ClassId).SkillUnlocks)
             {
-                if (u.Level > level || actives.Contains(u.Skill) || passives.Contains(u.Skill) || ultimate == u.Skill) continue;
+                if (u.Level > level || !u.WithPlace || given(u.GivenKey)) continue;
+                handing.Add(u);
+                if (actives.Contains(u.Skill) || passives.Contains(u.Skill) || ultimate == u.Skill) continue;
                 switch (u.Kind)
                 {
                     case SkillKind.Active when actives.Count < activeSlots:
@@ -61,11 +81,12 @@ namespace EdS.World
                         ultimate = u.Skill;
                         break;
                     default:
-                        continue;   // emplacement pris (choix futur du joueur) : la compétence attend
+                        continue;   // emplacement pris : la compétence va dans la réserve (donnée, la halte ne la placera plus)
                 }
                 gained.Add(u);
             }
             learned = gained;
+            handed = handing;
             return gained.Count == 0 ? character : character.WithSkills(actives, ultimate, passives);
         }
 
@@ -126,14 +147,11 @@ namespace EdS.World
         /// <list type="number">
         /// <item>une place fermée à ce niveau (<see cref="ClosedPlace"/>, avec le niveau qui l'ouvre) ;</item>
         /// <item>une compétence ni apprise (<see cref="Learned"/>) ni déjà dans la barre du personnage (<see cref="BuildViolationCode.SkillNotLearned"/>) ;</item>
-        /// <item>le validateur unique des builds (sorte de la place, doublon, niveau minimal, talents exigés) ;</item>
-        /// <item>la barre ne devient pas pire (<see cref="BuildViolationCode.SlotLeftEmpty"/>) : pour chaque sorte, le nombre de places
-        /// ouvertes vides qu'une compétence apprise de cette sorte, équipable, pourrait remplir ne monte pas par rapport à la barre que le
-        /// personnage aura à la prochaine halte (<see cref="Learn"/>). Une barre pleine ne se vide donc pas (comme <see cref="Learn"/> la
-        /// remplit à l'entrée, elle ne change pas à la halte suivante), et une barre trouée (sauvegarde d'avant, données changées) se répare
-        /// pas à pas, une compétence à la fois (relecture indépendante de la PR #71).</item>
+        /// <item>le validateur unique des builds (sorte de la place, doublon, niveau minimal, talents exigés).</item>
         /// </list>
-        /// Rien n'est modifié ici.
+        /// Une place ouverte peut rester vide (réponse de Damien du 30 octobre 2026 : « oui, permis ») : la règle « barre pas pire » de la
+        /// relecture de la PR #71 est retirée ; la halte ne remplit plus une place vidée (<see cref="SkillUnlock.GivenKey"/>, inscrite par
+        /// <c>WorldSession.SetSkills</c>). Rien n'est modifié ici.
         /// </summary>
         /// <exception cref="ArgumentException">Une liste contient null.</exception>
         public static BuildViolation? CheckSkills(SavedCharacter character, IReadOnlyList<string> actives, string? ultimate, IReadOnlyList<string> passives,
@@ -184,36 +202,8 @@ namespace EdS.World
             for (int i = 0; i < passives.Count; i++)
                 if (NotLearned(passives[i], $"passiveSkills[{i}]") is BuildViolation p) return p;
 
-            // 3. Le validateur unique des builds.
-            if (violations.Count > 0) return violations[0];
-
-            // 4. Barre pas pire : par sorte, les places ouvertes vides qu'une compétence apprise en attente (équipable) pourrait remplir ne
-            //    sont pas plus nombreuses qu'avant le changement (avant : la barre de la prochaine halte, compétences gagnées en route placées).
-            SavedCharacter shown = Learn(character, progression, rules, out _);
-            bool Equipable(string skill, SkillKind kind) => definition.TryGetSkill(skill, out SkillDefinition d) && d.Kind == kind && d.MinLevel <= level
-                && d.TalentRequirements.All(r => character.Talents.TryGetValue(r.TalentId, out int rank) && rank >= r.MinRank);
-            List<string> WaitingFor(SkillKind kind, IEnumerable<string> bar)
-            {
-                var placed = new HashSet<string>(bar, StringComparer.Ordinal);
-                return learned.Where(s => !placed.Contains(s) && Equipable(s, kind)).ToList();
-            }
-            IEnumerable<string> Bar(IEnumerable<string> a, string? u, IEnumerable<string> p) => u is null ? a.Concat(p) : a.Concat(p).Append(u);
-            IEnumerable<string> after = Bar(actives, ultimate, passives).ToList(), before = Bar(shown.ActiveSkills, shown.Ultimate, shown.PassiveSkills).ToList();
-            BuildViolation? Worse(SkillKind kind, int used, int usedBefore, int open, string subject, string label)
-            {
-                List<string> waiting = WaitingFor(kind, after);
-                int holes = Math.Min(Math.Max(0, open - used), waiting.Count);
-                int holesBefore = Math.Min(Math.Max(0, open - usedBefore), WaitingFor(kind, before).Count);
-                if (holes <= holesBefore) return null;
-                string name = definition.TryGetSkill(waiting[0], out SkillDefinition d) ? d.Name : waiting[0];
-                return new BuildViolation(BuildViolationCode.SlotLeftEmpty, subject,
-                    $"{label} vide alors que « {name} » attend : une place ouverte ne se vide pas.");
-            }
-            int openActives = rules.ActiveSlots(level), openUltimate = rules.IsUltimateUnlocked(level) ? 1 : 0, openPassives = rules.PassiveSlots(level);
-            return Worse(SkillKind.Active, actives.Count, shown.ActiveSkills.Count, openActives, $"activeSkills[{actives.Count}]", $"place active {actives.Count + 1}")
-                ?? Worse(SkillKind.Ultimate, ultimate is null ? 0 : 1, shown.Ultimate is null ? 0 : 1, openUltimate, "ultimate", "place de l'ultime")
-                ?? Worse(SkillKind.Passive, passives.Count, shown.PassiveSkills.Count, openPassives, $"passiveSkills[{passives.Count}]",
-                    $"place passive {passives.Count + 1}");
+            // 3. Le validateur unique des builds. Une place ouverte peut rester vide (réponse de Damien du 30 octobre 2026).
+            return violations.Count > 0 ? violations[0] : null;
         }
 
         public static int Level(SavedCharacter character, CharacterProgression progression) =>

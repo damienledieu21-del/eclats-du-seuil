@@ -48,6 +48,12 @@ dotnet test --filter Category=Scenario    # compteurs de mesure, pilote, scénar
 dotnet test --filter Category=Runtime     # pont temps réel, séance d'entraînement, paquet Unity, éditeur de talents (9.2 à 9.4)
 dotnet test --filter Category=Network     # protocole, transport TCP et réseau simulé (lot 10)
 scripts/test-category.sh -c Release Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network   # échoue si une catégorie est inconnue, vide, ou absente d'un projet qui la déclare
+# Comme la CI depuis le chantier « tests plus rapides » : l'exécution complète écrit ses résultats, et les recettes par catégorie les relisent
+# (liste filtrée de chaque catégorie, chaque test réussi dans l'exécution complète de la même construction) au lieu de relancer les tests.
+resultats=$(mktemp -d)   # dossier neuf à chaque fois : des résultats d'une exécution précédente y seraient refusés (un fichier par assemblage)
+dotnet test --no-build -c Release --logger trx --results-directory "$resultats"
+scripts/test-category.sh -c Release --resultats "$resultats" Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World
+python3 -m unittest discover -s scripts -p 'test_category_results.py' -v   # rapprochement des catégories (tests du script)
 dotnet run --project src/EdS.Cli -- validate
 dotnet run --project src/EdS.Cli -- validate data/v0/classes/bastion.json
 dotnet run --project src/EdS.Cli -- validate data/v0/builds/bastion.json
@@ -184,6 +190,8 @@ Sous-lot V1.1 (monnaie, marchands, voyage rapide, lot « Vallons solo finis ») 
 Plafond des combattants (décision de Damien du 29 octobre 2026, « relever le plafond ») : 128 combattants par combat ou par session au lieu de 64 (règles 0.12.0, schéma inchangé), soit 98 réapparitions par session dans les Vallons agrandis au lieu de 34 ; la forêt des Loups ne s'atteint que par la porte du moulin (choix gardé le même jour). Détail : [docs/MONDE.md](docs/MONDE.md#les-vallons-en-données-sous-lot-124).
 
 Sous-lot V1.5 (écran des compétences, lot « Vallons solo finis », décision de Damien : « partout hors combat ») : la barre (actives, ultime, passives) se change hors combat (aucun ennemi à moins de 12 m, aucun ennemi engagé qui vise le personnage), jugée par un seul juge (places ouvertes au niveau, compétences apprises, validateur des builds, barre qui ne se vide pas mais se répare pas à pas), gardée dans la sauvegarde (format inchangé) et prise en compte à la halte suivante ; dans Unity, touche B (K est l'atelier) ou onglet Compétences : glisser une compétence sur une place, à la souris ou au doigt. Les 5e et 6e places (proposition du plan : niveaux 15 et 20) attendent les niveaux au-delà de 10. Détail : [docs/MONDE.md](docs/MONDE.md#personnage-sous-lot-122).
+
+Réponses de Damien du 30 octobre 2026 (petit chantier « V1 réponses ») : Provocation s'apprend au niveau 3 et Contrecoup au niveau 7, dans la **réserve** (seule une compétence qui vient avec sa place, Barrière d'acier au 5, Onde de rupture et Bastion absolu au 10, est placée d'office à la halte) ; **une place de la barre peut rester vide** (règle « barre pas pire » retirée ; une compétence gagnée n'est donnée qu'une fois, clé au registre du monde, format de sauvegarde inchangé) ; **Garin et Bertille ferment la nuit**, Sauge jamais ; Bertille ne vend plus le **minerai de fer** (la ferrure demande d'aller miner) ; **une journée du monde dure 3 h de jeu** et **la nuit va de 22 h à 5 h**. Détail : [docs/MONDE.md](docs/MONDE.md).
 
 Les autres propositions de la section 6 du plan sont des valeurs initiales configurables.
 
