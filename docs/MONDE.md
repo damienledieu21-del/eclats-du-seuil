@@ -161,7 +161,7 @@ Le chef d'une zone est décrit dans la zone (schéma 2, bloc `boss`) ; ses forme
 
 Choix de Damien du 28 octobre 2026 (« on fait la façon 1 ») : on entre dans une maison par sa porte, qui mène à un **intérieur séparé**, une petite zone à part (comme les maisons de Skyrim), et non dans le bâtiment du village ouvert sur place. C'est la règle de [ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md) §7 : passer d'une zone à l'autre, c'est quitter une simulation et entrer dans l'autre avec l'état persistant.
 
-- **Données** (zone en schéma 4, [DONNEES.md](DONNEES.md#versions-de-format)) : une pièce est une zone `indoor: true` (son aire est le sol, ses bords les murs, ses obstacles les meubles ; son scénario n'a aucun combattant). Les portes (`doors[]`) vont par paires : `to` nomme l'autre zone, `toDoor` la porte d'en face, qui doit revenir ici ; `building` relie une porte des Vallons à l'obstacle de son bâtiment (à 2 m au plus), pour que la façade du modèle 3D se tourne vers elle. Livrés : l'**Auberge de l'Aube** (14 × 10 m), la **Chapelle du Bourg** (9 × 16 m) et la **Maison du Bourg** (8 × 6 m), chacune avec un point sûr et une porte « Bourg d'Aube ».
+- **Données** (zone en schéma 4, [DONNEES.md](DONNEES.md#versions-de-format)) : une pièce est une zone `indoor: true` (son aire est le sol, ses bords les murs, ses obstacles les meubles ; son scénario n'a aucun combattant). Les portes (`doors[]`) vont par paires : `to` nomme l'autre zone, `toDoor` la porte d'en face, qui doit revenir ici ; `building` relie une porte des Vallons à l'obstacle de son bâtiment (à 2 m au plus), pour que la façade du modèle 3D se tourne vers elle. Livrés : l'**Auberge de l'Aube** (14 × 10 m), la **Chapelle du Bourg** (9 × 16 m) et la **Maison du Bourg** (8 × 6 m), chacune avec un point sûr et une porte « Bourg d'Aube ». Sous-lot V1.7 : la **Maison de la Guilde** (12 × 8 m, porte sur la maison `maison6` du bourg) et, derrière elle, les **Archives de la Guilde** (7 × 5 m), une pièce qui ne s'ouvre que depuis la guilde ([guilde](#guilde-des-aventuriers-sous-lot-v17)).
 - **Chargement** : `ZoneJsonReader.ReadLinked` lit la zone de départ puis, de porte en porte, toutes les zones reliées (au plus 64) ; une zone introuvable, un fichier qui décrit une autre zone, ou deux portes qui ne se répondent pas refusent le monde. Le rapport est celui du fichier en cause : la porte qui mène à une zone introuvable, ou la première zone dont une porte ne trouve pas sa réponse (`ZoneValidator.CheckDoors`, `CheckDoorsOf`) ; une forme du chef ne peut pas être posée sur une porte (on y arrive comme à un point sûr).
 - **Passer une porte** (F à 2 m d'elle, quand aucun PNJ ni nœud de récolte n'est à portée) : même règle que la halte, aucun ennemi vivant à 12 m et pas de dialogue ouvert. La partie est sauvegardée dans la zone d'arrivée, puis une session de cette zone s'ouvre **à la porte d'en face** ; le dernier point sûr devient celui de la zone d'arrivée le plus proche de cette porte. Une sauvegarde impossible annule le passage. Une partie reprise l'est dans la zone sauvegardée, à son entrée (une zone inconnue ramène aux Vallons).
 - **Ce qui reste dehors** : l'histoire et les métiers sont ceux des Vallons (`WorldSession` reçoit la zone de l'histoire) : dans une pièce, ni récolte, ni atelier ; la carte montre la pièce, sa porte, et l'objectif « sortir ». Depuis le sous-lot V1.6, les **PNJ de la pièce parlent** (l'aubergiste, le prêtre, l'habitante : [quêtes](#quêtes--le-moteur-sous-lot-v16)).
@@ -279,15 +279,46 @@ Une étape se franchit au tick suivant, avec ses effets ; parler ou livrer s'ann
 
 La clé de victoire d'un chef réserve sa place au registre avec les morts possibles d'un tick, comme les autres clés (registre presque plein : la récompense attend, annoncé une fois) ; aucune forme d'un chef ne se pose sur la première forme d'un autre chef.
 
-Limites : le rang de guilde (objectif) et les points de guilde (effet) attendent la guilde (V1.7), qui en fixera le format ; les quêtes de la vague (V1.9) ne sont pas écrites ; les bandits, leur chef et le loup blanc gardent la forme simple (ou le loup) tant qu'ils n'ont pas de personnage Mixamo (dossiers `Bandit`, `Chef`) ; le loup blanc a le modèle du loup, sans teinte ; les quêtes n'ont pas encore de temps imparti (sujet 29) ni de signe au-dessus des PNJ.
+Limites : le rang de guilde (objectif `guildRank`) et les points de guilde (effet `giveGuildPoints`) sont arrivés avec la guilde (V1.7, histoire en schéma 4) ; les quêtes de la vague (V1.9) ne sont pas écrites ; les bandits, leur chef et le loup blanc gardent la forme simple (ou le loup) tant qu'ils n'ont pas de personnage Mixamo (dossiers `Bandit`, `Chef`) ; le loup blanc a le modèle du loup, sans teinte ; les quêtes n'ont pas encore de temps imparti (sujet 29) ni de signe au-dessus des PNJ.
+
+## Guilde des aventuriers (sous-lot V1.7)
+
+Septième sous-lot de la vague 1 ([PLAN_VALLONS_SOLO.md](PLAN_VALLONS_SOLO.md#v17--guilde-des-aventuriers-m)). Données de la guilde en schéma 1 (`data/v0/world/guild.json`, `kind` « guild », validées par `GuildValidator`), histoire en schéma 4, marchands en schéma 2, sauvegarde en version 10 ([DONNEES.md](DONNEES.md#versions-de-format)). Valeurs et textes **provisoires** (textes à relire par Damien).
+
+**Le lieu** : la **Maison de la Guilde**, au bourg (porte sur la maison `maison6`, au sud-ouest de la place), un intérieur avec son comptoir. **Dame Brunehilde**, la maîtresse de guilde, se tient derrière ; **Aubin l'intendant** tient la réserve ; une porte mène aux **Archives de la Guilde**, où **Ysaline l'archiviste** garde les registres.
+
+**La carte d'aventurier** (gardée avec l'histoire du personnage, `story.guild` de la sauvegarde) : rang, points de guilde, contrats réussis, titres gagnés et titre affiché, contrats en cours. On s'inscrit auprès de la maîtresse : rang **G**, titre « Recrue de la Guilde ». Avant l'inscription, il n'y a pas de carte.
+
+- **Rangs** : les dix de la feuille de route, **G, F, E, D, C, B, A, S, SS, SSS**, dans cet ordre (liste fixe dans le code, `GuildRanks`). Le fichier dit lesquels sont ouverts : **G, F et E** dans les Vallons (choix de Damien) ; D à SSS sont décrits (seuil, titre) mais fermés, ils viendront avec les régions suivantes. Seuils provisoires : F 100 points, E 300 ; D 800, C 2 000, B 4 500, A 9 000, S 18 000, SS 36 000, SSS 72 000.
+- **Points de guilde** (seulement une fois inscrit ; jamais refusés, arrêtés au plafond de la carte, 10 000 000) : chaque **contrat** réussi (10 à 50 points selon le rang), chaque **quête** finie (40 pour une principale, 20 pour une secondaire ; une épreuve donne le rang, pas de points), chaque **découverte** (5), la **première victoire sur une créature rare** (loup blanc 25, le Borgne 20 ; gardé dans la carte, `hunted`), certains **faits** (victoire sur le Gardien 60, sur le chef des bandits 40) et l'effet `giveGuildPoints` de l'histoire (l'archiviste en donne 20).
+- **Épreuve de promotion** : assez de points ouvrent l'épreuve du rang suivant, une quête de l'histoire qu'on ne commence **qu'au tableau** de la maîtresse (le validateur refuse un `startQuest` de l'histoire sur une épreuve, et une épreuve à récompense au choix). Sa dernière étape donne le rang et son titre (affiché d'office). **F, « la meute »** (une mission) : demander conseil à Gaspard, vaincre quatre loups, rapporter trois peaux de loup à la maîtresse. **E, « le loup blanc et le Borgne »** (un combat) : vaincre le loup blanc, puis le Borgne, revenir voir la maîtresse. Au rang E, le plus haut des Vallons, la carte dit que le rang suivant viendra avec les autres régions.
+
+**Contrats** (le tableau de la maîtresse) : chasses (vaincre tant de créatures d'une famille), livraisons (apporter des objets à la maîtresse) et primes (un ennemi nommé : **le Borgne**, un bandit au nord du camp des rôdeurs, ajouté par les données de zone, sans changer les règles). Leur objectif est un objectif du moteur des quêtes (V1.6 : `defeat`, `defeatFamily`, `deliver`) ; leurs récompenses sont des effets de l'histoire (pièces, expérience, points de guilde), donnés **en entier ou pas du tout** avec la remise des objets livrés (bourse pleine, sac plein : le contrat attend, annoncé une fois).
+
+- **Tableau du jour** (`GuildBoard`) : pour chaque rang ouvert jusqu'à celui du personnage, deux contrats de ce rang tirés par un `Pcg32` initialisé par l'empreinte FNV-1a de la clé du jour (`guild/f/day/3`), comme le stock des marchands ; même jour, même tableau, dans l'ordre du fichier. Un rang plus haut voit donc plus de contrats, plus durs et mieux payés (G : 70 à 90 cuivre ; F : 2 à 4 argent ; E : 6 à 8 argent).
+- On prend un contrat auprès de la maîtresse ; **trois en cours** au plus ; un contrat pris (même abandonné) ne se reprend pas le même jour. On l'abandonne de partout, sans perte. Il n'expire pas.
+- Une chasse avance avec les créatures vaincues après l'avoir pris ; elle est réussie dès que le compte y est. Une livraison se remet en parlant à la maîtresse (ouvrir son tableau suffit), au tick suivant, comme les livraisons des quêtes.
+
+**Les quatre avantages** :
+
+1. contrats plus durs et mieux payés (ci-dessus) ;
+2. **accès à des lieux** : une porte gardée par un rang (`gates` du fichier) ; les **archives** ne s'ouvrent qu'au rang **F** (« Réservé aux aventuriers du Rang F et plus. »). L'archiviste y donne 20 points et une découverte, puis la quête « Un nom dans les registres » (objectif `guildRank` : atteindre le rang E) ;
+3. **la réserve de la guilde** : un marchand de V1.1 qui demande un rang (`rank` du marchand : G, donc inscrit ; `rank` d'une offre : F ou E). Potion de soin moins chère qu'ailleurs ; casque et anneau du guetteur, spalières et jambières du veneur au rang F ; cuirasse du veneur et dent de loup au rang E. Une offre d'un rang trop haut est montrée, marquée « Rang F requis », et refusée (`RankTooLow`) ;
+4. **le titre** : chaque rang donne le sien ; on choisit celui qu'on affiche (ou aucun) dans la carte. Il s'affiche au-dessus du personnage et sous son nom dans le livre.
+
+**Histoire en schéma 4** : objectif `guildRank` (`id` : un rang, atteint quand la carte est à ce rang ou au-dessus), effet `giveGuildPoints` (`value` de 1 à 100 000, sans `id` ; sans carte, sans effet), condition `guildRankAtLeast` (`id` : un rang ; rang G : inscrit). La maîtresse change d'accueil selon le rang.
+
+**Dans Unity** : F près de la maîtresse ouvre le **tableau de la guilde** (au lieu de son dialogue ; le bouton Parler l'ouvre) : la carte à gauche (rang, points vers le rang suivant, contrats réussis, épreuve), S'inscrire et Passer l'épreuve ; les contrats du jour à droite (Prendre, grisé avec la raison) ; les contrats en cours en bas (Abandonner). La **carte d'aventurier** est un troisième onglet du journal (J, pas de nouvelle touche) : rang, titre, points, épreuve, titres (Afficher), contrats en cours. Les autres écrans ne changent pas.
+
+Limites : les textes sont provisoires (à relire) ; les points, seuils, prix et récompenses sont à régler avec l'équilibrage (V1.8) ; les accomplissements faits **avant l'inscription** ne donnent pas de points (question à Damien) ; un contrat n'a pas de temps imparti (sujet 29) ; la guilde et ses archives ont le décor d'une maison (comptoir, tables, étagères), sans tableau d'annonces dessiné ; Dame Brunehilde, Aubin, Ysaline et le Borgne gardent la forme simple tant qu'ils n'ont pas de personnage Mixamo ; le Borgne a l'apparence d'un bandit à l'épée.
 
 ## Sauvegarde
 
-Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 8 depuis le sous-lot V1.6 (quête suivie `tracked`, étape réservée `reward` d'une récompense au choix en attente) ; version 7 au sous-lot V1.2 (18 places), version 6 au sous-lot V1.1. Une version 7 se relit sans quête suivie (l'étoile de la carte revient à la première principale en cours) et n'a pas d'étape `reward` ; les versions 6 et plus anciennes se relisent comme avant :
+Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 10 depuis le sous-lot V1.7 (carte d'aventurier `story.guild`, facultative : absente tant que le personnage n'est pas inscrit) ; version 9 au sous-lot V1.3 (instances d'objets) ; version 8 au sous-lot V1.6 (quête suivie `tracked`, étape réservée `reward` d'une récompense au choix en attente) ; version 7 au sous-lot V1.2 (18 places), version 6 au sous-lot V1.1. Les versions 9 et plus anciennes se relisent sans carte (`guild` y est refusé, champ inconnu). Une version 7 se relit sans quête suivie (l'étoile de la carte revient à la première principale en cours) et n'a pas d'étape `reward` ; les versions 6 et plus anciennes se relisent comme avant :
 
 ```json
 {
-  "schemaVersion": 8,
+  "schemaVersion": 10,
   "kind": "save",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -312,7 +343,8 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
         "quests": {"quest.traces_sous_le_moulin": {"step": "traces", "progress": 0}},
         "trust": {"npc.odile": 1},
         "discoveries": [],
-        "tracked": "quest.traces_sous_le_moulin"
+        "tracked": "quest.traces_sous_le_moulin",
+        "guild": {"rank": "g", "points": 22, "contracts": 1, "titles": ["title.guilde.recrue"], "title": "title.guilde.recrue", "active": {"contract.herbes_pour_sauge": 0}, "day": 2, "taken": ["contract.herbes_pour_sauge", "contract.loups_du_pre"], "hunted": []}
       },
       "professions": {"minage": 24},
       "money": 34512
