@@ -178,7 +178,8 @@ public class Lot129SkillUnlockTests : IDisposable
     [Fact]
     public void La_session_equipe_les_competences_et_les_sauvegarde()
     {
-        var save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(440));   // niveau 5
+        // Sauvegarde de V1.8 (relecture de la PR #82) : le personnage a atteint le niveau 5 après V1.8.
+        var save = new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero(440));   // niveau 5
         var zone = ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"), Path.Combine(AppContext.BaseDirectory, "scenarios"),
             ShippedData, Items).Zone!;
         var first = new WorldSession(save, zone, ShippedData, Shipped, Items);

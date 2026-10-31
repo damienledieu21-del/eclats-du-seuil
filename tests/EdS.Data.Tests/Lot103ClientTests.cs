@@ -568,6 +568,23 @@ public class Lot103ClientTests
     }
 
     [Fact]
+    public void Client_du_protocole_4_refuse_un_serveur_du_protocole_3()
+    {
+        // Relecture indépendante de la PR #82 : au protocole 3, l'emplacement 4 était l'ultime ; un client du protocole 4 refuse donc
+        // l'accueil d'un serveur du protocole 3, sans entrer dans la salle.
+        var game = new Game(Calm(10_000));
+        NetworkClient a = game.Join("Dam", wrap: inner => new Tampering(inner)
+        {
+            Alter = m => m is WelcomeMessage w ? new WelcomeMessage(3, w.Seat, w.Token, w.TickMs) : m,
+        });
+        game.RunUntil(() => a.Status == ClientStatus.Failed, 2);
+        Assert.Equal(ClientStatus.Failed, a.Status);
+        Assert.Contains($"protocole 3 du serveur, version {Protocol.Version} attendue", a.Error);
+        Assert.Equal(4, Protocol.Version);
+        Assert.Null(a.Combat);
+    }
+
+    [Fact]
     public void Identifiant_de_combattant_hors_protocole_refuse_par_le_client_et_le_serveur()
     {
         // Revue Codex de la PR #20 (tour 4) : un ennemi dont l'identifiant dépasse 128 caractères serait visé, puis nommé dans un message

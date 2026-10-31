@@ -50,7 +50,8 @@ public class V11RelectureTests : IDisposable
             foreach (bool known in new[] { false, true })
             {
                 int n = SaveValidator.MaxConsumed - room;
-                IEnumerable<string> keys = Enumerable.Range(0, known ? n - 1 : n).Select(i => $"zone.vallons/test/k{i}");
+                // Sauvegarde de V1.8 (relecture de la PR #82) : PlayerCharacters.PlacesKey compte parmi les clés.
+                IEnumerable<string> keys = Enumerable.Range(0, (known ? n - 1 : n) - 1).Select(i => $"zone.vallons/test/k{i}").Append(PlayerCharacters.PlacesKey);
                 if (known) keys = keys.Append(safeKey);
                 var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, keys.ToArray(), Hero()), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
                 string label = $"place {room}, déjà découvert : {known}";

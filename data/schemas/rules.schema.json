@@ -359,11 +359,11 @@
               "properties": {
                 "activeUnlockLevels": {
                   "type": "array",
-                  "maxItems": 6,
+                  "maxItems": 8,
                   "items": {
                     "type": "integer"
                   },
-                  "description": "Niveaux de déblocage, un par emplacement, dans l'ordre croissant. Six places actives au plus (barre de combat, pont temps réel et protocole du réseau : sous-lot V1.8)."
+                  "description": "Niveaux de déblocage, un par emplacement, dans l'ordre croissant. Huit places actives au plus (barre de combat, pont temps réel et protocole du réseau : sous-lot V1.8, réponse de Damien du 31 octobre 2026 : la 7e et la 8e sont préparées, les règles 0.15.0 n'en ouvrent que six)."
                 },
                 "passiveUnlockLevels": {
                   "type": "array",

@@ -266,7 +266,7 @@ namespace EdS.Data.Characters
                 {
                     string path = $"$.data.classes[{i}]";
                     if (d.Classes[i] is not ClassProgressionData c) { Missing(report, path, "progression d'une classe"); continue; }
-                    if (CheckClass(c, path, max, data, seen, report) is { } loaded) classes.Add(loaded);
+                    if (CheckClass(c, path, max, cap, data, seen, report) is { } loaded) classes.Add(loaded);
                 }
                 // Revue Codex de la PR #43 : chaque classe chargée a sa progression ; sinon l'erreur ne se verrait qu'à la création d'un personnage.
                 foreach (LoadedClass loaded in data.Classes)
@@ -278,7 +278,7 @@ namespace EdS.Data.Characters
                 d.ChapterStartLevels!.Select(x => x!.Value), d.XpToLevel!.Select(x => x!.Value), d.KillXpPerHealth!.Value, classes));
         }
 
-        private static ClassProgression? CheckClass(ClassProgressionData c, string path, int max, GameData data, HashSet<string> seen, ValidationReport report)
+        private static ClassProgression? CheckClass(ClassProgressionData c, string path, int max, int cap, GameData data, HashSet<string> seen, ValidationReport report)
         {
             LoadedClass? loaded = null;
             if (c.Class is null) Missing(report, path + ".class", "identifiant de classe");
@@ -316,7 +316,7 @@ namespace EdS.Data.Characters
                     : v.Subject.StartsWith("passiveSkills", StringComparison.Ordinal) ? path + ".startPassiveSkills" : path,
                     ValidationCode.InvalidValue, $"build de départ invalide au niveau 1 ({v.Subject}) : {v.Message} [{v.Code}]");
             if (!report.IsValid) return null;
-            List<SkillUnlock>? unlocks = CheckUnlocks(c, path + ".skillUnlocks", loaded, levels, data, report);
+            List<SkillUnlock>? unlocks = CheckUnlocks(c, path + ".skillUnlocks", loaded, levels, cap, data, report);
             return unlocks != null && report.IsValid
                 ? new ClassProgression(loaded.Definition.Id, levels, c.StartActiveSkills!.Select(s => s!), c.StartPassiveSkills!.Select(s => s!), unlocks)
                 : null;
@@ -328,12 +328,20 @@ namespace EdS.Data.Characters
         /// gagné jusque-là <b>avec sa place</b> (<see cref="SkillUnlock.WithPlace"/>) doit être valide pour le validateur des builds
         /// (emplacements ouverts, sans talent). Réponse de Damien du 30 octobre 2026 : une compétence gagnée à un niveau où aucune place de sa
         /// sorte ne s'ouvre va dans la réserve ; elle n'a pas à tenir dans la barre.
+        /// Relecture indépendante de la PR #82 : à un même niveau, les compétences sont rangées de façon déterministe (par sorte : active,
+        /// ultime, passive ; puis par identifiant, ordre ordinal) avant de leur donner les places libres, quel que soit leur ordre dans le
+        /// fichier ; <see cref="ClassProgression.SkillUnlocks"/> garde cet ordre. Une compétence sans place libre va dans la réserve
+        /// (<see cref="SkillUnlock.WithPlace"/> faux) : c'est permis, avec un avertissement (le joueur devra la placer lui-même). Une
+        /// compétence gagnée au-dessus du plafond de niveau (<paramref name="cap"/>) reçoit aussi un avertissement : personne ne l'apprend
+        /// tant que le plafond ne monte pas. Comme les places sont données dans cet ordre, le build de chaque niveau tient toujours dans la
+        /// barre (contrôle gardé par sûreté).
         /// </summary>
-        private static List<SkillUnlock>? CheckUnlocks(ClassProgressionData c, string path, LoadedClass loaded, List<Attributes> levels, GameData data,
+        private static List<SkillUnlock>? CheckUnlocks(ClassProgressionData c, string path, LoadedClass loaded, List<Attributes> levels, int cap, GameData data,
             ValidationReport report)
         {
             var known = new HashSet<string>(c.StartActiveSkills!.Select(s => s!).Concat(c.StartPassiveSkills!.Select(s => s!)), StringComparer.Ordinal);
             var unlocks = new List<SkillUnlock>();
+            var candidates = new List<(int Level, string Skill, SkillKind Kind, string Path)>();
             int previous = 1;
             // Sous-lot V1.8 : places déjà promises par sorte (départ, puis compétences gagnées avec leur place).
             var promised = new Dictionary<SkillKind, int>
@@ -376,14 +384,27 @@ namespace EdS.Data.Characters
                     report.Add(at + ".level", ValidationCode.InvalidValue, $"« {u.Skill} » demande le niveau {skill.MinLevel}.");
                     continue;
                 }
-                promised.TryGetValue(skill.Kind, out int taken);
-                var unlock = new SkillUnlock(lvl, u.Skill, skill.Kind, SkillUnlock.HasFreePlace(skill.Kind, lvl, taken, data.Rules.Progression));
-                if (unlock.WithPlace) promised[skill.Kind] = taken + 1;
+                candidates.Add((lvl, u.Skill, skill.Kind, at));
+            }
+            if (!report.IsValid) return null;
+            // Même niveau : par sorte, puis par identifiant (ordre déterministe des places données).
+            candidates = candidates.OrderBy(x => x.Level).ThenBy(x => (int)x.Kind).ThenBy(x => x.Skill, StringComparer.Ordinal).ToList();
+            foreach ((int lvl, string id, SkillKind kind, string at) in candidates)
+            {
+                promised.TryGetValue(kind, out int taken);
+                var unlock = new SkillUnlock(lvl, id, kind, SkillUnlock.HasFreePlace(kind, lvl, taken, data.Rules.Progression));
+                if (unlock.WithPlace) promised[kind] = taken + 1;
                 if (unlock.WithPlace && !SaveValidator.IsEventKey(unlock.GivenKey))
                 {
                     report.Add(at + ".skill", ValidationCode.InvalidValue, $"identifiant trop long ou hors format pour la clé du registre « {unlock.GivenKey} ».");
                     continue;
                 }
+                if (!unlock.WithPlace)
+                    report.AddWarning(at + ".skill", ValidationCode.InvalidValue,
+                        $"« {id} » arrive au niveau {lvl} sans place libre de sa sorte : elle va dans la réserve (le joueur la place lui-même).");
+                if (cap > 0 && lvl > cap)
+                    report.AddWarning(at + ".level", ValidationCode.OutOfRange,
+                        $"« {id} » se gagne au niveau {lvl}, au-dessus du plafond actuel ({cap}) : personne ne l'apprend tant que le plafond ne monte pas.");
                 unlocks.Add(unlock);
             }
             if (!report.IsValid) return null;

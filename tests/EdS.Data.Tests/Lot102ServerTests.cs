@@ -422,6 +422,30 @@ public class Lot102ServerTests
 
     // --- Déconnexion et reconnexion ----------------------------------------------------------------------------------------
 
+    [Theory]
+    [InlineData(3)]   // relecture indépendante de la PR #82 : au protocole 3, l'emplacement 4 était l'ultime
+    [InlineData(5)]
+    public void Retour_avec_le_jeton_d_un_autre_protocole_refuse(int protocol)
+    {
+        var world = new World();
+        (Bot a, Bot b) = world.Start();
+        world.Run(0.2);
+        string token = a.Welcome.Token;
+        world.Net.Cut(a.Connection);
+        world.Run(0.2);
+        Bot back = world.Connect();
+        back.Send(new ReconnectMessage(protocol, token));
+        world.Run(0.05);
+        Assert.Contains($"protocole {protocol} non pris en charge : version {Protocol.Version} attendue", back.Last<ErrorMessage>().Reason);
+        Assert.False(back.Connection.IsOpen);
+        Assert.False(b.Last<LobbyMessage>().Seats[0].Connected);
+        // La place reste libre pour le bon protocole.
+        Bot good = world.Connect();
+        good.Send(new ReconnectMessage(Protocol.Version, token));
+        world.Run(0.05);
+        Assert.Equal(("bastion", token), (good.Welcome.Seat, good.Welcome.Token));
+    }
+
     [Fact]
     public void Deconnexion_combat_continue_garde_relachee_puis_retour_avec_le_jeton()
     {

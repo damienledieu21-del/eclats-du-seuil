@@ -60,14 +60,16 @@ public class ProgressionRulesTests
     public void Regles_provisoires_coherentes() => Assert.Empty(Rules.Validate());
 
     [Fact]
-    public void Six_places_actives_au_plus()
+    public void Huit_places_actives_au_plus()
     {
-        // Sous-lot V1.8 : la barre (pont temps réel, protocole 4) a six places actives ; une septième est refusée par le validateur des règles.
-        Assert.Equal(6, ProgressionRules.MaxActiveSlots);
-        Assert.Empty(new ProgressionRules { ActiveSlotLevels = new[] { 1, 1, 1, 1, 1, 1 } }.Validate());
-        RuleViolation seven = Assert.Single(new ProgressionRules { ActiveSlotLevels = new[] { 1, 1, 1, 1, 1, 1, 30 } }.Validate());
-        Assert.Contains(nameof(ProgressionRules.ActiveSlotLevels), seven.Fields);
-        Assert.Contains("6 au plus", seven.Message);
+        // Sous-lot V1.8 (réponse de Damien du 31 octobre 2026) : la barre (pont temps réel, protocole 4) a huit places actives ; une
+        // neuvième est refusée par le validateur des règles. Les règles livrées n'en ouvrent que six.
+        Assert.Equal(8, ProgressionRules.MaxActiveSlots);
+        Assert.Equal(6, Rules.ActiveSlotLevels.Count);
+        Assert.Empty(new ProgressionRules { ActiveSlotLevels = new[] { 1, 1, 1, 1, 10, 20, 25, 30 } }.Validate());
+        RuleViolation nine = Assert.Single(new ProgressionRules { ActiveSlotLevels = new[] { 1, 1, 1, 1, 1, 1, 1, 1, 30 } }.Validate());
+        Assert.Contains(nameof(ProgressionRules.ActiveSlotLevels), nine.Fields);
+        Assert.Contains("8 au plus", nine.Message);
         // Au-delà de la borne technique, une seule erreur (la liste n'est pas lue).
         Assert.Single(new ProgressionRules { ActiveSlotLevels = Enumerable.Repeat(1, ProgressionRules.MaxSlots + 1).ToArray() }.Validate());
     }

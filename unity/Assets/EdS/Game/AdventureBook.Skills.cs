@@ -10,7 +10,7 @@ namespace EdS.Game
     /// <summary>
     /// Sous-lot V1.5 (décisions de Damien : changer ses compétences « partout hors combat » ; la barre grandit avec le niveau) : l'onglet
     /// **Compétences** du panneau de l'aventure (touche B). À gauche, la barre telle qu'elle sera à la prochaine halte : les places
-    /// actives en éclats, comme en combat (touches 1 à 4), l'ultime (R), les passives en nœuds ; une place fermée montre le niveau qui
+    /// actives en éclats, comme en combat (touches 1 à 6 depuis le sous-lot V1.8), l'ultime (R), les passives en nœuds ; une place fermée montre le niveau qui
     /// l'ouvre. À droite, les compétences apprises (avec leur place, ou en réserve) et celles à apprendre plus haut. On glisse une
     /// compétence sur une place, à la souris ou au doigt, ou on la touche puis on touche la place ; deux places s'échangent de même ; clic
     /// droit sur une place : la vider (permis depuis la réponse de Damien du 30 octobre 2026). Tout passe par <see cref="AdventureSession.PlaceSkill"/> et <see cref="AdventureSession.RemoveSkill"/>,

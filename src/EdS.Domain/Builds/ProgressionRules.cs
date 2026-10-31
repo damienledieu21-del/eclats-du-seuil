@@ -20,11 +20,12 @@ namespace EdS.Domain.Builds
         public const int MaxSlots = 100;
 
         /// <summary>
-        /// Sous-lot V1.8 : places actives au plus dans la barre de combat (six), autant que le pont temps réel et le protocole du réseau en
-        /// connaissent (<c>RealtimeCombat.MaxActiveSlots</c>, <c>Protocol.MaxSlot</c>). La 7e et la 8e viendront avec les compétences
-        /// d'ascension, avec une nouvelle version du protocole.
+        /// Sous-lot V1.8 : places actives au plus dans la barre de combat (huit), autant que le pont temps réel et le protocole du réseau en
+        /// connaissent (<c>RealtimeCombat.MaxActiveSlots</c>, <c>Protocol.MaxSlot</c>). Réponse de Damien du 31 octobre 2026 : la 7e et la
+        /// 8e sont préparées tout de suite (protocole 4, ultime à l'emplacement 8), sans être ouvertes : les règles 0.15.0 n'en ouvrent
+        /// que six. Elles viendront avec les compétences d'ascension, sans nouveau protocole.
         /// </summary>
-        public const int MaxActiveSlots = 6;
+        public const int MaxActiveSlots = 8;
 
         public static readonly ProgressionRules Provisional = new ProgressionRules();
 
