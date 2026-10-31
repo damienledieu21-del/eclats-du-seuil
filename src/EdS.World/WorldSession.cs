@@ -621,7 +621,7 @@ namespace EdS.World
             if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
             // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
-            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _fights.Sum(f => f.FormsToCome)) ?? Array.Empty<PopulationEvent>();
+            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _fights.Sum(f => f.FormsToCome), NightWanted) ?? Array.Empty<PopulationEvent>();
             var story = new List<StoryEvent>();
             CombatantView me = Zone.Engine.View(_character.Id);
             // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
@@ -656,6 +656,29 @@ namespace EdS.World
                 ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated);
         }
 
+        /// <summary>
+        /// Réponses de Damien du 31 octobre 2026 : une créature rare de la nuit est voulue dans la zone au tick <paramref name="tick"/> de la
+        /// session quand une quête ou un contrat en cours la demande (elle vient alors à coup sûr, comme avant, après son signe), ou la nuit,
+        /// si le tirage de cette nuit la fait venir et qu'elle n'y a pas encore été vaincue.
+        /// </summary>
+        private bool NightWanted(Population population, long tick)
+        {
+            if (Narrative?.Hunts(population.Creature, population.Family) == true) return true;
+            if (!(NightCreatures.NightOf(Zone.Clock.At(checked(Zone.StartWorldTick + tick))) is long night)) return false;
+            return !Zone.IsConsumed(NightCreatures.Key(Zone.Id, night, population.Creature)) && NightCreatures.Appears(Zone.Id, night, population);
+        }
+
+        /// <summary>
+        /// Réponses du 31 octobre 2026 : une créature rare de la nuit vaincue la nuit garde la clé de cette nuit au registre du monde (elle ne
+        /// revient pas avant la nuit suivante, même après une halte). Le registre garde la place des morts possibles d'un tick : sans elle, la
+        /// clé n'est pas gardée (la créature pourra revenir cette nuit-là).
+        /// </summary>
+        internal void NightDefeated(Population population, long tick)
+        {
+            if (population.Night is null || !(NightCreatures.NightOf(Zone.Clock.At(checked(Zone.StartWorldTick + tick))) is long night)) return;
+            if (Zone.RegistryRoom - 1 >= Zone.Engine.CombatantIds.Count) Zone.Consume(NightCreatures.Key(Zone.Id, night, population.Creature));
+        }
+
         /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
         private void Reward(IReadOnlyList<ZoneEvent> events, bool wasPresent, out IReadOnlyList<ExperienceGained> experience, out IReadOnlyList<LootGained> rolls)
         {
@@ -668,6 +691,7 @@ namespace EdS.World
                 if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == _character.Id) continue;
                 CombatantView creature = Zone.Engine.View(e.Combatant);
                 if (creature.Kind != CombatantKind.Assailant || creature.MaxHealth is not long maxHealth) continue;
+                if (_populations?.Of(e.Combatant) is Population rare) NightDefeated(rare, e.Tick);   // réponses du 31 octobre 2026
                 // Le personnage doit être là, et vivant, quand la créature tombe (solo : il est seul à pouvoir l'avoir vaincue).
                 if (!here) continue;
                 int before = Level;

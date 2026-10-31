@@ -63,14 +63,41 @@ namespace EdS.Data.Zones
         /// <summary>Famille par défaut : l'identifiant sans ses chiffres finaux (« loup12 » donne « loup »).</summary>
         public static string DefaultFamily(string creature) => creature.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
 
-        internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null)
+        /// <summary>
+        /// Réponses de Damien du 31 octobre 2026 (schéma 6) : créature rare de la nuit, ou null. Absente au début d'une session, elle apparaît
+        /// après un signe, certaines nuits du monde (tirage par la clé de la nuit), ou quand une quête ou un contrat en cours la demande.
+        /// </summary>
+        public NightSpawn? Night { get; }
+
+        internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null, NightSpawn? night = null)
         {
+            Night = night;
             Family = family ?? DefaultFamily(creature);
             Creature = creature;
             Template = template;
             RespawnMs = respawnMs;
             LeashRange = leashRange;
             Loot = loot;
+        }
+    }
+
+    /// <summary>Réponses de Damien du 31 octobre 2026 (schéma 6) : apparition d'une créature rare de la nuit.</summary>
+    public sealed class NightSpawn
+    {
+        /// <summary>Chance d'apparaître une nuit donnée, en pour cent (1 à 100).</summary>
+        public int ChancePercent { get; }
+
+        /// <summary>Délai entre le signe et l'arrivée, en ms (multiple du tick).</summary>
+        public long SignMs { get; }
+
+        /// <summary>Clé du texte du signe.</summary>
+        public string Sign { get; }
+
+        internal NightSpawn(int chancePercent, long signMs, string sign)
+        {
+            ChancePercent = chancePercent;
+            SignMs = signMs;
+            Sign = sign;
         }
     }
 
@@ -285,9 +312,14 @@ namespace EdS.Data.Zones
         /// <c>width</c> de 1 à 20 m, <c>points</c> : de 2 à 32 points dans l'aire praticable). Version 4 (intérieurs, 28 octobre 2026) :
         /// <c>indoor</c> facultatif (booléen) et <c>doors</c> facultatif (<c>id</c>, <c>name</c>, <c>position</c>, <c>to</c>, <c>toDoor</c>,
         /// <c>building</c> facultatif). Version 5 (sous-lot V1.6) : <c>chiefs</c> facultatif (autres chefs à formes, même forme que
-        /// <c>boss</c>, au plus <see cref="MaxChiefs"/>) et <c>family</c> facultatif sur une population (objectifs <c>defeatFamily</c>).
+        /// <c>boss</c>, au plus <see cref="MaxChiefs"/>) et <c>family</c> facultatif sur une population (objectifs <c>defeatFamily</c>). Version 6
+        /// (réponses de Damien du 31 octobre 2026) : <c>night</c> facultatif sur une population (créature rare de la nuit : <c>chancePercent</c>,
+        /// <c>signMs</c>, <c>sign</c>).
         /// </summary>
-        public const int CurrentSchemaVersion = 5;
+        public const int CurrentSchemaVersion = 6;
+
+        /// <summary>Schéma 6 : délai au plus entre le signe d'une créature de la nuit et son arrivée (10 min de jeu).</summary>
+        public const long MaxSignMs = 600_000;
 
         /// <summary>Sous-lot V1.6 : autres chefs d'une zone, au plus.</summary>
         public const int MaxChiefs = 4;
@@ -313,6 +345,7 @@ namespace EdS.Data.Zones
         private static readonly Regex ScenarioPath = new Regex(@"^[a-z0-9_]+(/[a-z0-9_]+)*\z", RegexOptions.CultureInvariant);
 
         /// <summary>Suffixe réservé aux vies suivantes d'une créature (<c>_v2</c>…).</summary>
+        private static readonly Regex TextKey = new Regex(@"^text(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
         private static readonly Regex LifeSuffix = new Regex(@"_v[0-9]+\z", RegexOptions.CultureInvariant);
 
         public static bool IsScenarioPath(string? path) => path != null && path.Length <= 200 && ScenarioPath.IsMatch(path);
@@ -434,7 +467,23 @@ namespace EdS.Data.Zones
                     { report.Add(path + ".loot", ValidationCode.UnknownReference, $"table de butin inconnue « {p.Loot} »."); ok = false; }
                     if (p.Family != null && (p.Family.Length > 64 || !LocalId.IsMatch(p.Family)))
                     { report.Add(path + ".family", ValidationCode.InvalidValue, $"famille « {p.Family} » mal formée."); ok = false; }
-                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family));
+                    // Réponses de Damien du 31 octobre 2026 (schéma 6) : créature rare de la nuit.
+                    NightSpawn? night = null;
+                    if (p.Night is NightData n)
+                    {
+                        string np = path + ".night";
+                        bool nok = true;
+                        if (n.ChancePercent is null) { Missing(report, np + ".chancePercent", "chance par nuit, en pour cent"); nok = false; }
+                        else if (n.ChancePercent < 1 || n.ChancePercent > 100) { report.Add(np + ".chancePercent", ValidationCode.OutOfRange, "chance hors de [1, 100] %."); nok = false; }
+                        if (n.SignMs is null) { Missing(report, np + ".signMs", "délai entre le signe et l'arrivée, en ms"); nok = false; }
+                        else if (n.SignMs < 0 || n.SignMs > MaxSignMs) { report.Add(np + ".signMs", ValidationCode.OutOfRange, $"délai hors de [0, {MaxSignMs}] ms."); nok = false; }
+                        else if (n.SignMs % tick != 0) { report.Add(np + ".signMs", ValidationCode.InvalidValue, $"{n.SignMs} ms n'est pas un multiple de la durée du tick ({tick} ms)."); nok = false; }
+                        if (n.Sign is null) { Missing(report, np + ".sign", "clé du texte du signe"); nok = false; }
+                        else if (n.Sign.Length > 200 || !TextKey.IsMatch(n.Sign)) { report.Add(np + ".sign", ValidationCode.InvalidValue, $"clé de texte « {n.Sign} » mal formée : « text.… »."); nok = false; }
+                        if (nok) night = new NightSpawn((int)n.ChancePercent!.Value, n.SignMs!.Value, n.Sign!);
+                        else ok = false;
+                    }
+                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night));
                 }
             }
 

@@ -19,6 +19,15 @@ namespace EdS.World
 
         /// <summary>Plus de place pour une nouvelle vie dans cette session (plafond des combattants) : elle reviendra à la session suivante.</summary>
         Exhausted = 2,
+
+        /// <summary>
+        /// Réponses de Damien du 31 octobre 2026 : signe d'une créature rare de la nuit (« Un hurlement glacé monte du pré… ») ; elle arrive
+        /// après le délai de son signe (<see cref="NightSpawn.SignMs"/>). <see cref="PopulationEvent.Creature"/> : la clé du texte du signe.
+        /// </summary>
+        Sign = 3,
+
+        /// <summary>Réponses du 31 octobre 2026 : une créature rare de la nuit, au calme, s'en va (le jour se lève, la quête est finie).</summary>
+        Withdrew = 4,
     }
 
     public sealed class PopulationEvent
@@ -66,6 +75,15 @@ namespace EdS.World
             public long? RespawnAt;
             public bool Leashing;
             public bool Exhausted;
+
+            /// <summary>Créature rare de la nuit absente de la zone (pas encore venue, partie ou morte).</summary>
+            public bool Dormant;
+
+            /// <summary>Créature de la nuit annoncée par son signe : tick de son arrivée.</summary>
+            public long? ArriveAt;
+
+            /// <summary>Créature de la nuit qui s'en va d'elle-même (pas une laisse) : elle ne revient pas aussitôt.</summary>
+            public bool Withdrawing;
         }
 
         private readonly List<Life> _lives;
@@ -73,7 +91,8 @@ namespace EdS.World
 
         public ZonePopulations(ZoneDefinition zone)
         {
-            _lives = zone.Populations.Select(p => new Life { Population = p, Current = p.Creature }).ToList();
+            // Réponses du 31 octobre 2026 : une créature rare de la nuit n'est pas là au début de la session (ZoneSetups la retire).
+            _lives = zone.Populations.Select(p => new Life { Population = p, Current = p.Creature, Dormant = p.Night != null }).ToList();
             foreach (Population p in zone.Populations) _byCreature[p.Creature] = p;
         }
 
@@ -86,7 +105,9 @@ namespace EdS.World
         /// <summary>Après un tick de la zone : laisse, morts et départs à remplacer, arrivées dues au tick suivant.</summary>
         /// <param name="reserved">Revue Codex de la PR #48 : places de combattants gardées pour d'autres arrivées (formes du chef encore à venir) :
         /// les populations ne les prennent pas.</param>
-        public IReadOnlyList<PopulationEvent> Step(Zone zone, int reserved = 0)
+        /// <param name="wanted">Réponses de Damien du 31 octobre 2026 : une créature rare de la nuit (<see cref="Population.Night"/>) est-elle
+        /// voulue dans la zone au prochain tick (<c>(population, tick)</c>) ? Null : jamais.</param>
+        public IReadOnlyList<PopulationEvent> Step(Zone zone, int reserved = 0, Func<Population, long, bool>? wanted = null)
         {
             CombatEngine engine = zone.Engine;
             if (engine.IsFinished) return Array.Empty<PopulationEvent>();
@@ -96,6 +117,12 @@ namespace EdS.World
             foreach (Life life in _lives)
             {
                 if (life.Exhausted) continue;
+                if (life.Population.Night is NightSpawn night)
+                {
+                    PopulationEvent? n = StepNight(zone, life, night, now, tickMs, reserved, wanted);
+                    if (n != null) (events ??= new List<PopulationEvent>()).Add(n);
+                    continue;
+                }
                 if (life.RespawnAt is null)
                 {
                     CombatantView v = engine.View(life.Current);
@@ -120,6 +147,82 @@ namespace EdS.World
                 }
             }
             return events ?? (IReadOnlyList<PopulationEvent>)Array.Empty<PopulationEvent>();
+        }
+
+        /// <summary>
+        /// Réponses de Damien du 31 octobre 2026 : vie d'une créature rare de la nuit. Absente, elle vient quand elle est voulue
+        /// (<paramref name="wanted"/>) : d'abord son signe, puis son arrivée après <see cref="NightSpawn.SignMs"/> (si elle est toujours voulue) ;
+        /// morte, pas avant son délai de réapparition, et seulement si elle est voulue de nouveau ; présente et plus voulue, elle s'en va dès
+        /// qu'elle est au calme (pas engagée). La laisse reste celle des autres populations.
+        /// </summary>
+        private PopulationEvent? StepNight(Zone zone, Life life, NightSpawn night, long now, long tickMs, int reserved, Func<Population, long, bool>? wanted)
+        {
+            CombatEngine engine = zone.Engine;
+            bool want = wanted != null && wanted(life.Population, now);
+            if (life.Dormant)
+            {
+                if (life.RespawnAt is long due && due > now) return null;   // morte : son délai d'abord
+                if (life.ArriveAt is long at)
+                {
+                    if (at > now) return null;
+                    if (!want)
+                    {
+                        life.ArriveAt = null;   // plus voulue entre le signe et l'arrivée (le jour s'est levé) : elle ne vient pas
+                        return null;
+                    }
+                    PopulationEvent? arrived = Respawn(zone, life, now, tickMs, reserved);
+                    if (arrived != null && arrived.Kind == PopulationEventKind.Respawned)
+                    {
+                        life.Dormant = false;
+                        life.ArriveAt = null;
+                    }
+                    else if (arrived is null) life.ArriveAt = life.RespawnAt;   // place occupée : nouvel essai une seconde plus tard
+                    return arrived;
+                }
+                if (!want) return null;
+                life.RespawnAt = null;
+                life.ArriveAt = checked(now + night.SignMs / tickMs);
+                return new PopulationEvent(PopulationEventKind.Sign, life.Population.Creature, night.Sign, now);
+            }
+            CombatantView v = engine.View(life.Current);
+            bool refused = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick is long arrival && arrival < now;
+            if (v.IsDead)
+            {
+                life.Dormant = true;
+                life.Withdrawing = false;
+                life.RespawnAt = checked(now - 1 + life.Population.RespawnMs / tickMs);
+                return null;
+            }
+            if (v.HasLeft || refused)
+            {
+                if (life.Withdrawing || refused)
+                {
+                    // Partie d'elle-même (ou arrivée refusée) : absente jusqu'à ce qu'on la veuille de nouveau.
+                    life.Dormant = true;
+                    life.Withdrawing = false;
+                    life.RespawnAt = null;
+                    return null;
+                }
+                // Laisse : une vie calme la remplace aussitôt, comme les autres populations (place occupée : une seconde plus tard).
+                if (life.RespawnAt is long wait && wait > now) return null;
+                return Respawn(zone, life, now, tickMs, reserved);
+            }
+            if (life.Withdrawing || life.Leashing || !v.IsPresent) return null;
+            if (v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
+            {
+                if (TryLeave(zone, life.Current))
+                {
+                    life.Leashing = true;
+                    return new PopulationEvent(PopulationEventKind.Leashed, life.Population.Creature, life.Current, now);
+                }
+                return null;
+            }
+            if (!want && !v.Engaged && TryLeave(zone, life.Current))
+            {
+                life.Withdrawing = true;
+                return new PopulationEvent(PopulationEventKind.Withdrew, life.Population.Creature, life.Current, now);
+            }
+            return null;
         }
 
         private PopulationEvent? Respawn(Zone zone, Life life, long now, long tickMs, int reserved)

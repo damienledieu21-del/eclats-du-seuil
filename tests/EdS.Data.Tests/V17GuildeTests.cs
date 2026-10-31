@@ -573,20 +573,23 @@ public class V17GuildeTests : IDisposable
         long day = Enumerable.Range(0, 60).First(d => GuildBoard.Of(Guild, 0, d).Contains(herbs));
         WorldSession w = InGuild(WithCard(Hero(0, new ItemStack("item.herbe_de_l_aube", 2)), Card("g")), tick: day * DayTicks);
         Assert.Equal(GuildRefusal.None, w.TakeContract(herbs.Id, out _));
-        // Il en manque une : rien n'est promis.
-        Assert.Equal(GuildRefusal.None, w.VisitGuild());
+        // Il en manque une : la réponse de livraison n'est pas proposée, rien n'est promis (réponses du 31 octobre 2026).
+        Assert.Equal(DialogueRefusal.NoSuchChoice, Deliver(w, Mistress));
         Assert.Empty(Steps(w));
         Assert.Equal(0, w.Narrative!.ActiveContracts.Single().Progress);
         w.Inventory.Add("item.herbe_de_l_aube", 1);
-        // Remises d'un coup au tick suivant, avec les récompenses.
+        // Ouvrir le tableau ne livre plus.
         Assert.Equal(GuildRefusal.None, w.VisitGuild());
+        Assert.Equal(0, w.Narrative.ActiveContracts.Single().Progress);
+        // Remises d'un coup au tick suivant, avec les récompenses, après la réponse « Voici : … ».
+        Assert.Equal(DialogueRefusal.None, Deliver(w, Mistress));
         Assert.Equal(1, w.Narrative.ActiveContracts.Single().Progress);
         Assert.Equal(new[] { $"ContractDone {herbs.Id}", "ItemTaken item.herbe_de_l_aube 3", "MoneyGiven money 70", "XpGiven xp 30", $"GuildPoints {herbs.Id} 10" }, Steps(w));
         Assert.Equal(0, w.Inventory.Count("item.herbe_de_l_aube"));
         // Bourse pleine : le contrat attend (annoncé une fois), les herbes restent.
         WorldSession full = InGuild(WithCard(Hero(Coins.Max, new ItemStack("item.herbe_de_l_aube", 3)), Card("g")), tick: day * DayTicks);
         Assert.Equal(GuildRefusal.None, full.TakeContract(herbs.Id, out _));
-        full.VisitGuild();
+        Deliver(full, Mistress);
         Assert.Equal(new[] { $"PurseFull {herbs.Id}" }, Steps(full, 4));
         Assert.Equal(3, full.Inventory.Count("item.herbe_de_l_aube"));
         Assert.Single(full.Narrative!.ActiveContracts);
@@ -615,7 +618,10 @@ public class V17GuildeTests : IDisposable
         SavedCharacter hero = w.Save().Character!;
         var progress = new Dictionary<string, QuestProgress> { [TrialF] = new QuestProgress("preuves") };
         w = InGuild(WithCard(hero, hero.Story.Guild, progress));
+        // Réponses du 31 octobre 2026 : ouvrir le tableau ne livre plus ; la réponse « Voici : … » du dialogue de la maîtresse le fait.
         Assert.Equal(GuildRefusal.None, w.VisitGuild());
+        Assert.Empty(Steps(w));
+        Assert.Equal(DialogueRefusal.None, Deliver(w, Mistress));
         List<string> events = Steps(w);
         Assert.Equal(new[] { $"ObjectiveDone {TrialF}/preuves", $"StepCompleted {TrialF}/preuves", "ItemTaken item.peau_de_loup 3", "XpGiven xp 150", $"QuestCompleted {TrialF}",
             "GuildPromoted f" }, events);

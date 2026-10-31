@@ -74,7 +74,7 @@ public class V13EquipementTests
         Assert.Equal(new GearBonus(armor: 60), c.Sets[1].Bonuses[0].Bonus);
         // Tables : chaque rareté une fois ; la rareté fixe le nombre et l'échelle, pas le hasard (Q30).
         Assert.Equal(new[] { (ItemRarity.Common, 0, 100), (ItemRarity.Rare, 1, 100), (ItemRarity.VeryRare, 2, 110), (ItemRarity.Epic, 3, 120),
-            (ItemRarity.Legendary, 3, 135), (ItemRarity.Mythic, 4, 150) }, c.RarityRolls.Select(r => (r.Rarity, r.Count, r.ScalePercent)));
+            (ItemRarity.Legendary, 4, 135), (ItemRarity.Mythic, 5, 150) }, c.RarityRolls.Select(r => (r.Rarity, r.Count, r.ScalePercent)));   // 4 et 5 : réponses du 31 octobre 2026
         Assert.Equal(6, c.Properties.Count);
         // Le butin non nommé tire ; l'objet nommé, la pièce d'ensemble, l'Éclat et l'outil jamais.
         Assert.True(c.IsRollable(c.Item("item.bottes_du_renard")));

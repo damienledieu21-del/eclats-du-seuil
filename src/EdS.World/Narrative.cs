@@ -142,16 +142,32 @@ namespace EdS.World
         Locked = 7,
     }
 
-    /// <summary>Réponse proposée : son rang dans le nœud et la clé de son texte.</summary>
+    /// <summary>
+    /// Réponse proposée : son rang dans le nœud et la clé de son texte. Réponses de Damien du 31 octobre 2026 : une réponse de livraison
+    /// (« Voici les peaux ») vient après celles du nœud ; elle dit ce qui est livré (<see cref="Item"/>, <see cref="Count"/>), à montrer avec
+    /// son texte (<c>text.dialogue.livrer</c> : {0} le nombre, {1} le nom de l'objet).
+    /// </summary>
     public sealed class DialogueOption
     {
         public int Index { get; }
         public string Text { get; }
 
-        internal DialogueOption(int index, string text)
+        /// <summary>Livraison : la quête ou le contrat dont l'objectif <c>deliver</c> serait rempli ; null pour une réponse du nœud.</summary>
+        public string? Delivery { get; }
+
+        /// <summary>Livraison : l'objet livré, ou null.</summary>
+        public string? Item { get; }
+
+        /// <summary>Livraison : le nombre d'objets livrés ; 0 sinon.</summary>
+        public long Count { get; }
+
+        internal DialogueOption(int index, string text, string? delivery = null, string? item = null, long count = 0)
         {
             Index = index;
             Text = text;
+            Delivery = delivery;
+            Item = item;
+            Count = count;
         }
     }
 
@@ -235,7 +251,14 @@ namespace EdS.World
         private readonly SortedDictionary<string, int> _trust;
         private readonly SortedSet<string> _discoveries;
         private readonly HashSet<string> _blocked = new HashSet<string>(StringComparer.Ordinal);
-        private (string Npc, Dialogue Dialogue, DialogueNode Node)? _open;
+        /// <summary>Dialogue ouvert ; réponses du 31 octobre 2026 : nœud null quand le PNJ n'a rien à dire mais qu'on peut lui livrer.</summary>
+        private (string Npc, Dialogue Dialogue, DialogueNode? Node)? _open;
+
+        /// <summary>Réponses du 31 octobre 2026 : texte de la réponse de livraison (« Voici : {1} ×{0}. »).</summary>
+        public const string DeliverText = "text.dialogue.livrer";
+
+        /// <summary>Réponses du 31 octobre 2026 : ce que dit un PNJ qui n'a rien d'autre à dire, quand on peut lui livrer.</summary>
+        public const string DeliveryOnlyText = "text.dialogue.livraison";
 
         /// <summary>Sous-lot V1.6 : quête suivie (son objectif sur la carte), ou null.</summary>
         private string? _tracked;
@@ -398,13 +421,18 @@ namespace EdS.World
             if (npc is null || !_book.HasNpc(npc)) return DialogueRefusal.NothingToSay;
             Npc n = _book.Npc(npc);
             if (!InRange(n)) return DialogueRefusal.TooFar;
-            // Sous-lot V1.6 : parler au PNJ remplit les objectifs « parler à » et « livrer à » de lui en cours (avant son dialogue, qui peut
-            // dépendre de la livraison).
+            // Sous-lot V1.6 : parler au PNJ remplit les objectifs « parler à » de lui en cours (avant son dialogue, qui peut en dépendre).
+            // Réponses du 31 octobre 2026 : la livraison n'est plus automatique ; c'est une réponse du dialogue.
             Spoke(npc);
             Dialogue d = _book.Dialogue(n.Dialogue);
             DialogueEntry? entry = d.Entries.FirstOrDefault(e => All(e.Conditions));
-            if (entry is null) return DialogueRefusal.NothingToSay;
-            _open = (npc, d, d.Node(entry.Node));
+            if (entry is null)
+            {
+                // Rien à dire, mais des objets à lui livrer : le dialogue s'ouvre sur les seules réponses de livraison.
+                if (Deliveries(npc).Count == 0) return DialogueRefusal.NothingToSay;
+                _open = (npc, d, null);
+            }
+            else _open = (npc, d, d.Node(entry.Node));
             view = View(npc, _open.Value.Node);
             return DialogueRefusal.None;
         }
@@ -423,7 +451,9 @@ namespace EdS.World
                 _open = null;
                 return DialogueRefusal.TooFar;
             }
-            if (index < 0 || index >= o.Node.Choices.Count || !All(o.Node.Choices[index].Conditions)) return DialogueRefusal.NoSuchChoice;
+            int own = o.Node?.Choices.Count ?? 0;
+            if (index >= own) return ChooseDelivery(o.Npc, index - own, out next);
+            if (index < 0 || !All(o.Node!.Choices[index].Conditions)) return DialogueRefusal.NoSuchChoice;
             DialogueChoice choice = o.Node.Choices[index];
             DialogueRefusal applied = Apply(choice.Effects, events);
             if (applied != DialogueRefusal.None) return applied;
@@ -439,12 +469,66 @@ namespace EdS.World
         public void Close() => _open = null;
 
         /// <summary>
-        /// Réponses proposées : leurs conditions réunies, et (sous-lot V1.6) aucune quête encore fermée à commencer (une réponse qui ouvrirait
-        /// une quête avant son niveau n'apparaît pas).
+        /// Réponses de Damien du 31 octobre 2026 : choisit la réponse de livraison de rang <paramref name="k"/>. Les objets, toujours dans le
+        /// sac et libres, sont promis ; ils sont remis au tick suivant avec les effets de l'étape (ou les récompenses du contrat), en une seule
+        /// application atomique, comme avant : tout ou rien, les objets de base d'abord, jamais les potions réservées. Le dialogue reste ouvert
+        /// (sans cette réponse) ; s'il n'avait que des livraisons et qu'il n'en reste plus, il se ferme.
         /// </summary>
-        private DialogueView View(string npc, DialogueNode node) =>
-            new DialogueView(npc, node.Id, node.Text, node.Choices.Select((c, i) => (c, i)).Where(x => All(x.c.Conditions) && !StartsLocked(x.c.Effects))
-                .Select(x => new DialogueOption(x.i, x.c.Text)).ToArray());
+        private DialogueRefusal ChooseDelivery(string npc, int k, out DialogueView? next)
+        {
+            next = null;
+            IReadOnlyList<(string Id, bool Contract, Objective Objective)> list = Deliveries(npc);
+            if (k < 0 || k >= list.Count) return DialogueRefusal.NoSuchChoice;
+            (string id, bool contract, _) = list[k];
+            if (contract) _card!.Active[id] = 1;
+            else
+            {
+                _quests[id] = (_quests[id].Step, 1L);
+                _queued.Add(new StoryEvent(StoryEventKind.ObjectiveDone, id, CurrentStep(id)!.Id));
+            }
+            Revision++;
+            (string Npc, Dialogue Dialogue, DialogueNode? Node) o = _open!.Value;
+            if (o.Node is null && Deliveries(npc).Count == 0) _open = null;
+            else next = View(npc, o.Node);
+            return DialogueRefusal.None;
+        }
+
+        /// <summary>
+        /// Réponses du 31 octobre 2026 : livraisons qu'on peut faire maintenant à <paramref name="npc"/> : étapes en cours « livrer à » lui (ordre
+        /// ordinal des quêtes), puis contrats de livraison en cours à lui (ordre ordinal), pas encore promises, les objets dans le sac et libres
+        /// (pas réservés pour le combat).
+        /// </summary>
+        internal IReadOnlyList<(string Id, bool Contract, Objective Objective)> Deliveries(string npc)
+        {
+            var list = new List<(string, bool, Objective)>();
+            foreach (KeyValuePair<string, (int Step, long Progress)> q in _quests)
+                if (CurrentStep(q.Key) is { Objective: { Kind: ObjectiveKind.Deliver } o } && o.Npc == npc && q.Value.Progress < 1
+                    && _world.Inventory.Available(o.Id) >= o.Value)
+                    list.Add((q.Key, false, o));
+            if (_card != null && _guild != null)
+                foreach (KeyValuePair<string, long> a in _card.Active)
+                    if (_guild.Contract(a.Key).Objective is { Kind: ObjectiveKind.Deliver } o && o.Npc == npc && a.Value < 1 && _world.Inventory.Available(o.Id) >= o.Value)
+                        list.Add((a.Key, true, o));
+            return list;
+        }
+
+        /// <summary>
+        /// Réponses proposées : leurs conditions réunies, et (sous-lot V1.6) aucune quête encore fermée à commencer (une réponse qui ouvrirait
+        /// une quête avant son niveau n'apparaît pas). Réponses du 31 octobre 2026 : puis une réponse par livraison possible à ce PNJ
+        /// (<see cref="Deliveries"/>), de rang après celles du nœud. Sans nœud (rien d'autre à dire), les seules livraisons.
+        /// </summary>
+        private DialogueView View(string npc, DialogueNode? node)
+        {
+            var options = new List<DialogueOption>();
+            if (node != null)
+                options.AddRange(node.Choices.Select((c, i) => (c, i)).Where(x => All(x.c.Conditions) && !StartsLocked(x.c.Effects))
+                    .Select(x => new DialogueOption(x.i, x.c.Text)));
+            int own = node?.Choices.Count ?? 0;
+            IReadOnlyList<(string Id, bool Contract, Objective Objective)> deliveries = Deliveries(npc);
+            for (int k = 0; k < deliveries.Count; k++)
+                options.Add(new DialogueOption(own + k, DeliverText, deliveries[k].Id, deliveries[k].Objective.Id, deliveries[k].Objective.Value));
+            return new DialogueView(npc, node?.Id ?? string.Empty, node?.Text ?? DeliveryOnlyText, options);
+        }
 
         /// <summary>
         /// Une quête à commencer par ces effets est encore fermée. Relecture de la PR #76 : jugé après l'expérience que donnent ces mêmes effets
@@ -471,9 +555,9 @@ namespace EdS.World
             _world.PlayerPositionIn(n.Zone) is GroundVector p && !ZonePopulations.Beyond(p, EdS.Domain.Numerics.Fixed.Zero, n.Position, EdS.Domain.Numerics.Fixed.Zero, TalkRange);
 
         /// <summary>
-        /// Sous-lot V1.6 : le personnage parle à <paramref name="npc"/> : chaque étape en cours « parler à » ce PNJ est remplie ; chaque étape
-        /// « livrer à » ce PNJ l'est aussi si les objets sont dans l'inventaire et libres (pas réservés) : ils lui sont remis d'un coup, en
-        /// entier ou pas du tout (ordre ordinal des quêtes). L'étape se franchit au tick suivant, avec ses effets.
+        /// Sous-lot V1.6 : le personnage parle à <paramref name="npc"/> : chaque étape en cours « parler à » ce PNJ est remplie (ordre ordinal
+        /// des quêtes) ; l'étape se franchit au tick suivant, avec ses effets. Réponses de Damien du 31 octobre 2026 : les étapes « livrer à »
+        /// et les contrats de livraison ne se remplissent plus en parlant, mais par une réponse du dialogue (<see cref="Deliveries"/>).
         /// </summary>
         private void Spoke(string npc)
         {
@@ -481,25 +565,9 @@ namespace EdS.World
             foreach (string id in _quests.Keys.ToArray())
             {
                 if (!(CurrentStep(id) is QuestStep s) || _quests[id].Progress >= 1) continue;
-                Objective o = s.Objective;
-                // Relecture de la PR #76 : rien n'est pris en parlant. Les objets à livrer, s'ils sont là et libres, sont promis ; ils sont
-                // remis au tick suivant avec les effets de l'étape, en une seule application atomique (tout ou rien : une étape refusée ne garde
-                // jamais les objets).
-                bool filled = (o.Kind == ObjectiveKind.Talk && o.Id == npc)
-                    || (o.Kind == ObjectiveKind.Deliver && o.Npc == npc && _world.Inventory.Available(o.Id) >= o.Value);
-                if (!filled) continue;
+                if (s.Objective.Kind != ObjectiveKind.Talk || s.Objective.Id != npc) continue;
                 _quests[id] = (_quests[id].Step, 1L);
                 _queued.Add(new StoryEvent(StoryEventKind.ObjectiveDone, id, s.Id));
-                LastTalkFilled++;
-                Revision++;
-            }
-            // Sous-lot V1.7 : les livraisons des contrats en cours à ce PNJ (la maîtresse de guilde), promises de même et remises au tick suivant.
-            if (_card is null || _guild is null) return;
-            foreach (string id in _card.Active.Keys.ToArray())
-            {
-                Objective o = _guild.Contract(id).Objective;
-                if (o.Kind != ObjectiveKind.Deliver || o.Npc != npc || _card.Active[id] >= 1 || _world.Inventory.Available(o.Id) < o.Value) continue;
-                _card.Active[id] = 1;
                 LastTalkFilled++;
                 Revision++;
             }
@@ -507,7 +575,8 @@ namespace EdS.World
 
         /// <summary>
         /// Sous-lot V1.7 : le personnage s'adresse à <paramref name="npc"/> sans ouvrir son dialogue (le tableau de la guilde chez la maîtresse) :
-        /// ses objectifs « parler à » et « livrer à » sont remplis comme en lui parlant (<see cref="Talk"/>). Rend le nombre d'objectifs remplis.
+        /// ses objectifs « parler à » sont remplis comme en lui parlant (<see cref="Talk"/>) ; les livraisons se font par son dialogue (réponses du
+        /// 31 octobre 2026). Rend le nombre d'objectifs remplis.
         /// </summary>
         internal int Visit(string npc)
         {
@@ -582,6 +651,22 @@ namespace EdS.World
                     Revision++;
                 }
             }
+        }
+
+        /// <summary>
+        /// Réponses de Damien du 31 octobre 2026 : une quête en cours (étape actuelle) ou un contrat en cours demande encore de vaincre cette
+        /// créature (<c>defeat</c>) ou une créature de sa famille (<c>defeatFamily</c>). Une créature rare de la nuit vient alors à coup sûr.
+        /// </summary>
+        internal bool Hunts(string population, string family)
+        {
+            bool Wants(Objective o, long progress) => progress < o.Value
+                && ((o.Kind == ObjectiveKind.Defeat && o.Id == population) || (o.Kind == ObjectiveKind.DefeatFamily && o.Id == family));
+            foreach (KeyValuePair<string, (int Step, long Progress)> q in _quests)
+                if (CurrentStep(q.Key) is { Objective: { } o } && Wants(o, q.Value.Progress)) return true;
+            if (_card is null || _guild is null) return false;
+            foreach (KeyValuePair<string, long> a in _card.Active)
+                if (Wants(_guild.Contract(a.Key).Objective, a.Value)) return true;
+            return false;
         }
 
         /// <summary>Relecture de la PR #79 : créatures rares de la guilde déjà vaincues (ordre ordinal).</summary>

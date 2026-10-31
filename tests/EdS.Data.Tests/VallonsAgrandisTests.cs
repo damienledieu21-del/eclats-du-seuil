@@ -399,7 +399,7 @@ public class VallonsAgrandisTests
     public void Routes_livrees_au_schema_3()
     {
         ZoneDefinition zone = Zone();
-        Assert.Equal(5, zone.SchemaVersion);   // intérieurs (28 octobre 2026) : schéma 4, puis 5 (sous-lot V1.6 : chefs, familles) ; les routes restent
+        Assert.Equal(6, zone.SchemaVersion);   // intérieurs (28 octobre 2026) : schéma 4, puis 5 (sous-lot V1.6 : chefs, familles), 6 (créature de la nuit) ; les routes restent
         Assert.Equal(ZoneValidator.CurrentSchemaVersion, zone.SchemaVersion);
         Road place = zone.Roads.Single(r => r.Kind == RoadKind.Cobble);
         Assert.Equal(("place_du_bourg", 12.0), (place.Id, place.Width.Raw / 10000.0));

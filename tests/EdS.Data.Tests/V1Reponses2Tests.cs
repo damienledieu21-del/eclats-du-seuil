@@ -164,6 +164,157 @@ public class V1Reponses2Tests
         Assert.True(ShippedMerchants.Values[Rondache] > 0);
     }
 
+    // --- 4. Le loup blanc devient rare ------------------------------------------------------------------------------------------
+
+    private const string WhiteWolf = "loup_blanc";
+
+    /// <summary>Tick du monde au jour <paramref name="day"/>, à <paramref name="hour"/> h <paramref name="minute"/> (le monde commence à 8 h du jour 0).</summary>
+    private static long Tick(long day, int hour, int minute = 0) =>
+        (day * WorldClock.MinutesPerDay + hour * 60 + minute - WorldClock.DefaultStartMinute) * (new WorldClock(50).TicksPerDay / WorldClock.MinutesPerDay);
+
+    /// <summary>Partie ouverte dans les Vallons au tick du monde donné, un tick joué ; les événements de ce premier tick sont rendus.</summary>
+    private static WorldSession VallonsAt(long worldTick, SavedCharacter hero, out SessionStep first, IEnumerable<string>? consumed = null)
+    {
+        ZoneDefinition z = Zone();
+        var w = new WorldSession(new WorldSave("zone.vallons", worldTick, 0, consumed ?? Array.Empty<string>(), hero), z, ShippedData, Progression, ItemsCatalog, Book(z));
+        first = w.Step();
+        return w;
+    }
+
+    private static bool WolfHere(WorldSession w) => w.Zone.Engine.CombatantIds.Any(id => id.StartsWith(WhiteWolf, StringComparison.Ordinal) && w.Zone.Engine.View(id).IsPresent);
+
+    /// <summary>Premières nuits (numéros) où le tirage fait venir le loup blanc, et où il ne le fait pas.</summary>
+    private static (long Yes, long No) Nights()
+    {
+        Population wolf = Zone().PopulationOf(WhiteWolf)!;
+        long yes = -1, no = -1;
+        for (long n = 1; n < 100 && (yes < 0 || no < 0); n++)
+        {
+            if (NightCreatures.Appears("zone.vallons", n, wolf)) { if (yes < 0) yes = n; }
+            else if (no < 0) no = n;
+        }
+        return (yes, no);
+    }
+
+    [Fact]
+    public void Le_loup_blanc_est_une_creature_rare_de_la_nuit()
+    {
+        ZoneDefinition z = Zone();
+        Population wolf = z.PopulationOf(WhiteWolf)!;
+        NightSpawn night = wolf.Night!;
+        Assert.Equal((35, 15000L, "text.zone.loup_blanc.signe"), (night.ChancePercent, night.SignMs, night.Sign));
+        Assert.Equal("Un hurlement glacé monte du pré…", Texts.Get(night.Sign));
+        Assert.Equal(6, z.SchemaVersion);
+        // Il est dans le scénario de zone (son modèle), mais pas au début d'une session : il vient plus tard, après son signe.
+        Assert.Contains(z.Setup.Combatants, c => c.Id == WhiteWolf);
+        Assert.DoesNotContain(ZoneSetups.For(z, Array.Empty<string>()).Combatants, c => c.Id == WhiteWolf);
+        Assert.Equal(z.Setup.Combatants.Count - 1, ZoneSetups.For(z, Array.Empty<string>()).Combatants.Count);
+        // Seul le loup blanc est une créature de la nuit.
+        Assert.Equal(new[] { WhiteWolf }, z.Populations.Where(p => p.Night != null).Select(p => p.Creature));
+    }
+
+    [Fact]
+    public void Chaque_nuit_a_son_numero_et_son_tirage_deterministe()
+    {
+        var clock = new WorldClock(50);
+        Assert.Null(NightCreatures.NightOf(clock.At(0)));                      // 8 h du jour 0
+        Assert.Null(NightCreatures.NightOf(clock.At(Tick(0, 21, 59))));
+        Assert.Equal(0L, NightCreatures.NightOf(clock.At(Tick(0, 22))));
+        Assert.Equal(0L, NightCreatures.NightOf(clock.At(Tick(1, 4, 59))));      // la nuit du jour 0 se finit le jour 1 à 5 h
+        Assert.Null(NightCreatures.NightOf(clock.At(Tick(1, 5))));
+        Assert.Equal(3L, NightCreatures.NightOf(clock.At(Tick(3, 23, 30))));
+        Assert.Equal("zone.vallons/night/3/loup_blanc", NightCreatures.Key("zone.vallons", 3, WhiteWolf));
+        Assert.True(SaveValidator.IsEventKey(NightCreatures.Key("zone.vallons", 3, WhiteWolf)));
+        // Même nuit, même tirage ; environ une nuit sur trois (35 %) sur 1 000 nuits.
+        Population wolf = Zone().PopulationOf(WhiteWolf)!;
+        bool[] first = Enumerable.Range(0, 1000).Select(n => NightCreatures.Appears("zone.vallons", n, wolf)).ToArray();
+        Assert.Equal(first, Enumerable.Range(0, 1000).Select(n => NightCreatures.Appears("zone.vallons", n, wolf)));
+        int count = first.Count(b => b);
+        Assert.InRange(count, 300, 400);
+        Assert.False(NightCreatures.Appears("zone.vallons", 1, Zone().PopulationOf("loup1")!));   // une créature ordinaire n'a pas de tirage
+    }
+
+    [Fact]
+    public void Le_jour_et_les_nuits_sans_tirage_le_loup_blanc_ne_vient_pas()
+    {
+        var (_, no) = Nights();
+        foreach (long tick in new[] { Tick(no, 12), Tick(no, 23) })
+        {
+            WorldSession w = VallonsAt(tick, Hero(), out SessionStep first);
+            var events = new List<PopulationEvent>(first.Population);
+            for (int i = 0; i < 400; i++) events.AddRange(w.Step().Population);
+            Assert.DoesNotContain(events, e => e.Kind == PopulationEventKind.Sign);
+            Assert.False(WolfHere(w));
+        }
+    }
+
+    [Fact]
+    public void Une_nuit_tiree_le_loup_blanc_vient_apres_son_signe_et_part_a_l_aube()
+    {
+        var (yes, _) = Nights();
+        // 4 h 55 : le signe d'abord, l'arrivée 15 s plus tard (300 ticks), puis l'aube à 5 h : au calme, il s'en va.
+        WorldSession w = VallonsAt(Tick(yes + 1, 4, 55), Hero(), out SessionStep first);
+        PopulationEvent sign = Assert.Single(first.Population, e => e.Kind == PopulationEventKind.Sign);
+        Assert.Equal((WhiteWolf, "text.zone.loup_blanc.signe"), (sign.Population, sign.Creature));
+        Assert.False(WolfHere(w));
+        var events = new List<PopulationEvent>();
+        for (int i = 0; i < 298; i++) events.AddRange(w.Step().Population);
+        Assert.False(WolfHere(w));
+        for (int i = 0; i < 4; i++) events.AddRange(w.Step().Population);
+        PopulationEvent came = Assert.Single(events, e => e.Kind == PopulationEventKind.Respawned && e.Population == WhiteWolf);
+        Assert.Equal("loup_blanc_v2", came.Creature);
+        Assert.True(WolfHere(w));
+        Assert.DoesNotContain(events, e => e.Kind == PopulationEventKind.Sign);   // un seul signe
+        // L'aube (5 h) : il quitte la zone, sans mort ni butin.
+        while (w.Zone.Time.Phase == DayPhase.Night) events.AddRange(w.Step().Population);
+        for (int i = 0; i < 3; i++) events.AddRange(w.Step().Population);
+        Assert.Single(events, e => e.Kind == PopulationEventKind.Withdrew && e.Population == WhiteWolf);
+        Assert.False(WolfHere(w));
+        Assert.DoesNotContain(w.Zone.Consumed, k => k.Contains("/night/", StringComparison.Ordinal));
+        // Le même moment donne la même chose (tirage par la clé de la nuit, jamais par l'horloge réelle).
+        WorldSession again = VallonsAt(Tick(yes + 1, 4, 55), Hero(), out SessionStep same);
+        Assert.Equal(first.Population.Select(e => e.Kind + e.Creature), same.Population.Select(e => e.Kind + e.Creature));
+    }
+
+    [Fact]
+    public void Vaincu_cette_nuit_il_ne_revient_pas_avant_la_nuit_suivante()
+    {
+        var (yes, _) = Nights();
+        string key = NightCreatures.Key("zone.vallons", yes, WhiteWolf);
+        // La victoire de la nuit garde la clé de la nuit (vaincu de jour, rien n'est gardé).
+        WorldSession w = VallonsAt(Tick(yes, 23), Hero(), out _);
+        Population wolf = w.Definition!.PopulationOf(WhiteWolf)!;
+        w.NightDefeated(wolf, 0);
+        Assert.True(w.Zone.IsConsumed(key));
+        WorldSession day = VallonsAt(Tick(yes, 12), Hero(), out _);
+        day.NightDefeated(wolf, 0);
+        Assert.DoesNotContain(day.Zone.Consumed, k => k.Contains("/night/", StringComparison.Ordinal));
+        // Une halte (nouvelle session) la même nuit : la clé au registre, il ne revient pas.
+        WorldSession after = VallonsAt(Tick(yes, 23, 30), Hero(), out SessionStep first, new[] { key });
+        var events = new List<PopulationEvent>(first.Population);
+        for (int i = 0; i < 400; i++) events.AddRange(after.Step().Population);
+        Assert.DoesNotContain(events, e => e.Kind == PopulationEventKind.Sign);
+        Assert.False(WolfHere(after));
+    }
+
+    [Fact]
+    public void Une_quete_ou_l_epreuve_en_cours_le_fait_venir_a_coup_sur()
+    {
+        // Frère Anselme : « La bête blanche », à l'étape de la chasse ; l'épreuve E de la guilde, à l'étape du loup blanc. En plein jour.
+        foreach ((string quest, string step) in new[] { ("quest.bete_blanche", "chasse"), ("quest.epreuve_rang_e", "loup_blanc") })
+        {
+            SavedCharacter hero = Hero().WithStory(new SavedStory(quests: new Dictionary<string, QuestProgress> { [quest] = new QuestProgress(step) }));
+            WorldSession w = VallonsAt(Tick(2, 12), hero, out SessionStep first);
+            Assert.Single(first.Population, e => e.Kind == PopulationEventKind.Sign);
+            for (int i = 0; i < 302; i++) w.Step();
+            Assert.True(WolfHere(w), quest);
+        }
+        // Une fois la chasse faite (compteur au bout), il redevient rare.
+        SavedCharacter done = Hero().WithStory(new SavedStory(quests: new Dictionary<string, QuestProgress> { ["quest.bete_blanche"] = new QuestProgress("chasse", 1) }));
+        VallonsAt(Tick(2, 12), done, out SessionStep none);
+        Assert.DoesNotContain(none.Population, e => e.Kind == PopulationEventKind.Sign);
+    }
+
     // --- 6. Propriétés tirées par rareté : 0, 1, 2, 3, 4, 5 --------------------------------------------------------------------
 
     [Fact]

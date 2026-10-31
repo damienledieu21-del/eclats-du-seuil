@@ -137,7 +137,10 @@ public class Lot124ZoneTests
         ZoneDefinition z = Zone().Zone!;
         Assert.Contains(ZoneSetups.For(z, Array.Empty<string>()).Space!.Obstacles, o => o.Id == "porte_moulin");
         Assert.DoesNotContain(ZoneSetups.For(z, new[] { "zone.vallons/passage/moulin" }).Space!.Obstacles, o => o.Id == "porte_moulin");
-        Assert.Same(z.Setup, ZoneSetups.For(z, new[] { "zone.vallons/1/death/loup1" }));
+        // Réponses du 31 octobre 2026 : le loup blanc (créature de la nuit) n'est pas là au début ; sans passage ouvert, l'espace est celui du scénario.
+        CombatSetup unchanged = ZoneSetups.For(z, new[] { "zone.vallons/1/death/loup1" });
+        Assert.Same(z.Setup.Space, unchanged.Space);
+        Assert.Equal(z.Setup.Combatants.Where(c => c.Id != "loup_blanc"), unchanged.Combatants);
 
         var session = new WorldSession(NewGame(), z, ShippedData, Progression, Items);
         Assert.Contains(session.Zone.Setup.Space!.Obstacles, o => o.Id == "porte_moulin");
@@ -253,7 +256,8 @@ public class Lot124ZoneTests
         int creatures = z.Setup.Combatants.Count;
         Assert.Equal(33, creatures);   // sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne
         Assert.Equal(max - 2, session.Zone.Engine.CombatantIds.Count);
-        Assert.Equal(max - creatures - 5, population.Count(e => e.Kind == PopulationEventKind.Respawned));
+        // Réponses du 31 octobre 2026 : le loup blanc (créature de la nuit) n'est pas là au début : une vie suivante de plus avant le plafond.
+        Assert.Equal(max - (creatures - 1) - 5, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);
         for (int i = 0; i < 200; i++) Assert.Empty(session.Step().Population);
     }

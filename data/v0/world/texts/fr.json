@@ -503,7 +503,10 @@
       "text.ui.trade.ranktoolow": "Ton rang de guilde est trop bas pour cette réserve.",
       "text.ui.shop.rank": "{0} requis",
       "text.ui.journal.card": "Carte d'aventurier",
-      "text.ui.guild.trial_locked": "L'épreuve du {0} n'est pas encore ouverte : sa quête demande autre chose (niveau, quête…)."
+      "text.ui.guild.trial_locked": "L'épreuve du {0} n'est pas encore ouverte : sa quête demande autre chose (niveau, quête…).",
+      "text.zone.loup_blanc.signe": "Un hurlement glacé monte du pré…",
+      "text.dialogue.livrer": "Voici : {1} ×{0}.",
+      "text.dialogue.livraison": "Tu as quelque chose pour moi ?"
     }
   }
 }
