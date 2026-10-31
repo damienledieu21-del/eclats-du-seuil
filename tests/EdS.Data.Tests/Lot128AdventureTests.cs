@@ -239,8 +239,12 @@ public class Lot128AdventureTests : IDisposable
         AdventureSession a = New();
         a.DrainMessages();
         Assert.Equal(InventoryRefusal.NothingThere, a.Equip(0));
-        Assert.Equal(InventoryRefusal.NothingThere, a.Unequip("weapon"));
-        Assert.Equal(new[] { "Rien à cet endroit.", "Rien à cet endroit." }, a.DrainMessages());
+        Assert.Equal(InventoryRefusal.NothingThere, a.Unequip("ring_1"));
+        // Sous-lot V1.2 : une nouvelle partie porte l'équipement de départ ; le bouclier du Bastion et l'Éclat du Seuil ne s'ôtent pas.
+        Assert.Equal(InventoryRefusal.Required, a.Unequip("shield"));
+        Assert.Equal(InventoryRefusal.Required, a.Unequip("shard"));
+        Assert.Equal(new[] { "Rien à cet endroit.", "Rien à cet endroit.", "Cette place reste toujours occupée : porte un autre objet à la place.",
+            "Cette place reste toujours occupée : porte un autre objet à la place." }, a.DrainMessages());
     }
 
     [Fact]

@@ -43,9 +43,11 @@ namespace EdS.Data.Json
             var d = new ItemCatalogData();
             bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
             {
-                ["slots"] = (v, p) => d.Slots = input.ReadLimitedList(v, p, ItemValidator.MaxSlots, n => $"{n} emplacements, au plus {ItemValidator.MaxSlots}.",
-                    (e, ip) => input.Text(e, ip)),
+                ["slots"] = (v, p) => d.Slots = input.ReadLimitedList(v, p, ItemValidator.MaxSlots, n => $"{n} places, au plus {ItemValidator.MaxSlots}.",
+                    (e, ip) => ReadSlot(input, e, ip)),   // sous-lot V1.2 (version 3) : des objets
                 ["inventorySize"] = (v, p) => d.InventorySize = input.Int32(v, p),
+                ["starting"] = (v, p) => d.Starting = input.ReadLimitedList(v, p, ItemValidator.MaxStarting, n => $"{n} objets de départ, au plus {ItemValidator.MaxStarting}.",
+                    (e, ip) => ReadStarting(input, e, ip)),
                 ["items"] = (v, p) => d.Items = input.ReadLimitedList(v, p, ItemValidator.MaxItems, n => $"{n} objets, au plus {ItemValidator.MaxItems}.",
                     (e, ip) => ReadItem(input, e, ip)),
                 ["loot"] = (v, p) => d.Loot = input.ReadLimitedList(v, p, ItemValidator.MaxLootTables, n => $"{n} tables, au plus {ItemValidator.MaxLootTables}.",
@@ -74,8 +76,58 @@ namespace EdS.Data.Json
                 ["bonus"] = Track("bonus", (v, p) => item.Bonus = ScenarioJsonReader.ReadIntegerMap(input, v, p)),
                 ["heal"] = Track("heal", (v, p) => item.Heal = input.Int64(v, p)),               // sous-lot 12.6 (version 2)
                 ["cooldownMs"] = Track("cooldownMs", (v, p) => item.CooldownMs = input.Int64(v, p)),
+                ["guard"] = Track("guard", (v, p) => item.Guard = ReadGuard(input, v, p)),   // sous-lot V1.2 (version 3)
+                ["icon"] = (v, p) => item.Icon = input.Text(v, p),
+                ["fits"] = Track("fits", (v, p) => item.Fits = input.ReadLimitedList(v, p, ItemValidator.MaxFits, n => $"{n} arbres, au plus {ItemValidator.MaxFits}.",
+                    (e, ip) => input.Text(e, ip))),
             });
             return ok ? item : null;
+        }
+
+        /// <summary>Sous-lot V1.2 : une place d'équipement.</summary>
+        private static SlotData? ReadSlot(JsonInput input, JsonElement element, string path)
+        {
+            var slot = new SlotData();
+            Action<JsonElement, string> Track(string name, Action<JsonElement, string> read) => (v, p) =>
+            {
+                slot.Present.Add(name);
+                read(v, p);
+            };
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => slot.Id = input.Text(v, p),
+                ["accepts"] = Track("accepts", (v, p) => slot.Accepts = input.Text(v, p)),
+                ["group"] = Track("group", (v, p) => slot.Group = input.Text(v, p)),
+                ["required"] = Track("required", (v, p) => slot.Required = input.Boolean(v, p)),
+                ["requiredBy"] = Track("requiredBy", (v, p) => slot.RequiredBy = input.ReadLimitedList(v, p, 64, n => $"{n} classes, au plus 64.", (e, ip) => input.Text(e, ip))),
+                ["guard"] = Track("guard", (v, p) => slot.Guard = input.Boolean(v, p)),
+            });
+            return ok ? slot : null;
+        }
+
+        /// <summary>Sous-lot V1.2 : un objet de départ.</summary>
+        private static StartingItemData? ReadStarting(JsonInput input, JsonElement element, string path)
+        {
+            var s = new StartingItemData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["item"] = (v, p) => s.Item = input.Text(v, p),
+                ["class"] = (v, p) => s.Class = input.Text(v, p),
+            });
+            return ok ? s : null;
+        }
+
+        /// <summary>Sous-lot V1.2 : la garde d'un bouclier.</summary>
+        private static ItemGuardData? ReadGuard(JsonInput input, JsonElement element, string path)
+        {
+            var g = new ItemGuardData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                [EdS.Domain.Combat.ShieldGuard.DamageReductionId] = (v, p) => g.DamageReduction = input.Decimal(v, p),
+                [EdS.Domain.Combat.ShieldGuard.CostPerBlockId] = (v, p) => g.CostPerBlock = input.Int32(v, p),
+                [EdS.Domain.Combat.ShieldGuard.ParryWindowMsId] = (v, p) => g.ParryWindowMs = input.Int64(v, p),
+            });
+            return ok ? g : null;
         }
 
         private static LootTableData? ReadTable(JsonInput input, JsonElement element, string path)

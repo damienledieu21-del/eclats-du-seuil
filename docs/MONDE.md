@@ -207,13 +207,45 @@ Une vente peut porter sur **plusieurs lots d'un coup** (`Sell(marchand, lots)`, 
 
 Limites : les marchands n'ont ni quantités en stock ni prix qui varient ; les PNJ des marchands sont des capsules dorées tant qu'ils n'ont pas de personnage Mixamo (dossiers `Armurier`, `Herboriste`, `Epiciere`) ; les lots rachetables ne survivent pas à un redémarrage ; un point sûr se découvre en passant à 5 m, sans halte ; le voyage rend les PV pleins comme une halte (à confirmer par Damien : voir la PR #72) ; « en plein combat » a encore trois règles proches (`InCombat` du voyage, `CanUseDoor` des portes, à 12 m sans l'ennemi engagé qui vise de loin, et le verrou des compétences), à réunir plus tard.
 
+## Équipement complet (sous-lot V1.2)
+
+Deuxième sous-lot du lot « Vallons solo finis » ([PLAN_VALLONS_SOLO.md](PLAN_VALLONS_SOLO.md#v12--équipement-complet--places-boucliers-écran-l)). Valeurs **provisoires**.
+
+**18 places** (choix de Damien du 29 octobre 2026, [CADRAGE.md](CADRAGE.md) Q4), décrites dans le catalogue (`items.json`, version 3), dans l'ordre de l'écran :
+
+| Groupe | Places |
+|---|---|
+| combat (16) | `weapon` (arme), `shield` (bouclier, **porte la garde**), `head`, `shoulders`, `cloak` (cape), `chest`, `bracers`, `hands`, `belt`, `legs`, `feet`, `neck`, `ring_1` et `ring_2` (sorte `ring`), `relic_1` et `relic_2` (sorte `relic`) |
+| Éclat du Seuil (`shard`) | l'Éclat du personnage, **toujours porté** (`required`) ; il grandira avec l'histoire. Objet de départ : l'Éclat du Seuil endormi, sans bonus pour l'instant, sans valeur (il ne se vend pas) |
+| outil de métier (`tool`) | pioche du carrier, faucille de l'herboriste, marteau de forge : sans bonus de combat (refusé par le validateur) ; leur usage hors combat viendra avec les métiers |
+
+- Un objet porte une **sorte** de place (`slot` : `weapon`, `ring`…) ; une place la reçoit (`accepts`, son identifiant par défaut). Deux places de même sorte ont le même groupe.
+- **Places obligatoires** : `required` (toutes les classes : l'Éclat) ou `requiredBy` (certaines classes : le bouclier du Bastion, « il porte toujours un bouclier »). On y **échange** l'objet, on ne l'ôte pas (`InventoryRefusal.Required`).
+- **Équipement de départ** (`starting`) : l'Éclat pour tous, l'épée du milicien et l'écu de chêne pour le Bastion, portés par un nouveau personnage (`Inventory.Outfit`). Le validateur vérifie qu'il remplit toutes les places obligatoires de chaque classe, au niveau 1, sans plus d'objets d'une sorte que de places.
+- **Garde des boucliers** : chaque bouclier porte la sienne (`guard`), jugée contre `combat.shield` des règles ([DONNEES.md](DONNEES.md#garde-des-boucliers-sous-lot-v12)), donnée au moteur à l'entrée dans une zone (`Inventory.Shield`, [MOTEUR.md](MOTEUR.md#garde-du-bouclier-sous-lot-v12)). L'écu de chêne a exactement les valeurs des règles ; un bouclier léger (targe, rondaches : 0,5 ou 0,55, 6 ou 8 d'endurance, parade de 200 ms) rend la parade plus facile ; un pavois (0,7, 14 à 16, 100 ms) bloque plus et coûte plus.
+
+**Catalogue** : 73 équipements des niveaux 1 à 20 (12 armes, 10 boucliers, 33 pièces d'armure — 3 à 5 par place : 5 torses ; 4 coiffes, épaulières, capes et jambières ; 3 brassards, gants, ceintures et bottes —, 4 colliers, 6 anneaux, 4 reliques, l'Éclat, 3 outils), plus les 9 matériaux et objets de soin. Les **quatre notions de H5** restent distinctes : **niveau requis**, **puissance** (bonus et garde), **rareté**, **adéquation au build** (`fits` : arbres Rempart, Contrecoup ou Gardien, une indication sans effet). Chaque tranche de cinq niveaux a plusieurs choix de même rareté pour une même place (trois boucliers rares de niveau 5 : le pavois pour le Rempart, la rondache pour le Contrecoup, l'écu du garde pour le Gardien) ; la rareté n'est pas la puissance (la lame du Seuil, épique de niveau 8, bat moins fort que l'épée du capitaine, très rare de niveau 15). Les personnages ne dépassent pas encore le niveau 10 (V1.8) : les objets des niveaux 11 à 20 attendent. Les **effets** des armes et des bijoux, les **ensembles** et les **propriétés tirées au hasard** viennent avec V1.3 : ils seront des champs nouveaux d'un objet, dans une version suivante du catalogue, sans rien casser de la forme actuelle.
+
+**Prix** (`merchants.json`, valeur de base en cuivre) : les anciennes valeurs gardées ; les nouvelles selon le niveau et la rareté (commun 150 + 100 par niveau, rare 600 + 250, très rare 2 000 + 400, épique 5 000 + 600, à la dizaine). **Garin l'armurier** vend en plus, toujours, la targe d'osier, la coiffe de cuir, les bottes de cuir et la cape de laine ; et, certains jours, l'écu du garde, le casque de fer, les jambières de mailles, la cape de voyageur, les gantelets de fer et l'anneau de fer (prix : valeur × 1,3). Bertille vend la pioche, Sauge la faucille.
+
+**Inventaire et équipement** (`Inventory`, opérations **atomiques**, chacune avec son motif) :
+
+- `Equip(place, niveau)` : à la **première place libre** de la sorte (un anneau au premier doigt libre), sinon à la première (échange) ; `EquipTo(place, emplacement, niveau)` : à une place choisie (`WrongSlot` si elle ne reçoit pas cette sorte) ; `Unequip(emplacement)` : refusé à une place obligatoire (`Required`) ou sac plein ; `Swap(a, b)` : échange deux places d'une même sorte (les anneaux, les reliques), refusé si une place obligatoire restait vide.
+- **Hors combat seulement** : `WorldSession.Equip`, `EquipTo`, `Unequip` et `Swap` sont refusés en plein combat (`InCombat`) par la règle existante `WorldSession.InCombat` (celle de la halte, des talents et du voyage), sans nouvelle règle. L'effet vient à la prochaine entrée (halte, porte, voyage), comme avant.
+- **Rangement** (`Sort`) : par sorte (équipement dans l'ordre des places, puis soins, puis matériaux), par rareté ou par niveau ; les piles entamées d'un même objet se regroupent ; quantités, réserves et équipement inchangés. **Filtres** (`Filter`, une vue) : tout, équipement, à ma portée (portable au niveau actuel), soins, matériaux. Le sac garde 24 places ; les sacs viendront plus tard.
+- **Comparaison** (`ItemComparison`, dans `EdS.Runtime`) : pour l'objet survolé, la place où il irait et l'objet qui y est porté, chaque bonus (porté → candidat, écart) et, pour un bouclier, la part bloquée (plus haut : mieux), l'endurance par blocage (plus bas : mieux) et la fenêtre de parade (plus large : mieux), chaque ligne marquée mieux, moins bien ou pareil.
+
+**Sauvegarde en version 7** : même forme (objet porté par emplacement), avec les 18 places. Une sauvegarde de version 6 (ou plus ancienne) se relit : ses emplacements `weapon`, `shield`, `chest`, `neck` gardent leur nom ; à la reprise, ses **places obligatoires vides sont remplies** (`Inventory.FillRequired`) : par l'objet de sa sorte dans le sac, sinon par l'objet de départ (l'Éclat du Seuil ; pour un Bastion qui avait ôté son écu en V1.1, son bouclier du sac ou un écu de chêne), avec le message « Équipement mis à jour : … ». Le remplissage a lieu **à chaque chargement**, pas seulement pour une ancienne sauvegarde (relecture de la PR #75) : une sauvegarde de version 7 aux places obligatoires vides (écrite à la main, par exemple) est réparée de même ; sans place vide, il ne fait rien (il est idempotent).
+
+Limites : l'outil de métier et l'Éclat n'ont pas encore d'effet ; les objets des niveaux 11 à 20 attendent les niveaux au-delà de 10 (V1.8) ; aucune table de butin ne donne encore les nouvelles pièces (seuls les marchands et l'équipement de départ) ; l'aspect suit l'équipement porté tout de suite, ses effets attendent la prochaine entrée.
+
 ## Sauvegarde
 
-Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 6 depuis le sous-lot V1.1 :
+Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 7 depuis le sous-lot V1.2 (version 6 au sous-lot V1.1) :
 
 ```json
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "kind": "save",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -232,7 +264,7 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
         {"item": "item.peau_de_loup", "count": 3},
         {"item": "item.gambison", "count": 1}
       ],
-      "equipment": {"shield": "item.ecu_de_chene", "weapon": "item.epee_du_milicien"},
+      "equipment": {"ring_1": "item.anneau_de_cuivre", "shard": "item.eclat_du_seuil_endormi", "shield": "item.ecu_de_chene", "weapon": "item.epee_du_milicien"},
       "story": {
         "facts": ["fact.traces.recit"],
         "quests": {"quest.traces_sous_le_moulin": {"step": "traces", "progress": 0}},
@@ -258,6 +290,6 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
 - `story` (12.5) : état narratif personnel, trié : faits appris, avancement de chaque quête (étape en cours ou `done`, compteur de l'objectif), confiance non nulle des PNJ, découvertes. Il est vérifié contre l'histoire quand la partie reprend.
 - `professions` (12.6) : expérience non nulle de chaque métier.
 - `money` (V1.1) : bourse du personnage, en pièces de cuivre, de 0 à 9 999 999 999 (« 3 or 45 argent 12 cuivre » : 34512). Les **points sûrs découverts** (voyage rapide) sont des clés du registre `consumed` (`zone.vallons/safe/place_du_bourg`), comme les passages ouverts et, depuis la réponse de Damien du 30 octobre 2026, les compétences gagnées déjà données (`character/skill/skill.bastion.barriere_d_acier`) ; les lots rachetables chez les marchands ne sont pas sauvegardés.
-- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement), 3 (sans histoire), 4 (sans métiers) et 5 (sans bourse : bourse vide) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
+- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement), 3 (sans histoire), 4 (sans métiers), 5 (sans bourse : bourse vide) et 6 (quatre emplacements : places obligatoires remplies à la reprise) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
 
 Limites : [LIMITES_LOT_12.md](LIMITES_LOT_12.md).

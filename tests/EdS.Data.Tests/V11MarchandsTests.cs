@@ -56,8 +56,8 @@ public class V11MarchandsTests : IDisposable
                 Assert.True(o.Price >= book.Values[o.Item], $"{m.Id} {o.Item}");
                 foreach (Merchant buyer in book.Merchants) Assert.True(market.UnitPrice(buyer.Id, o.Item) <= o.Price, $"{buyer.Id} {o.Item}");
             }
-        // Tous les objets ont une valeur, sauf la ferrure (objet de quête).
-        Assert.Equal(new[] { "item.ferrure" }, ItemsCatalog.Items.Select(i => i.Id).Where(i => !book.Values.ContainsKey(i)));
+        // Tous les objets ont une valeur, sauf la ferrure (objet de quête) et l'Éclat du Seuil du personnage (sous-lot V1.2) : ils ne se vendent pas.
+        Assert.Equal(new[] { "item.eclat_du_seuil_endormi", "item.ferrure" }, ItemsCatalog.Items.Select(i => i.Id).Where(i => !book.Values.ContainsKey(i)));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
         // Les textes des marchands existent (noms, accueils, motifs de refus).
@@ -78,7 +78,7 @@ public class V11MarchandsTests : IDisposable
     [InlineData("closed", "[\"midi\"]", "$.data.merchants[0].closed[0]", ValidationCode.UnknownReference)]
     [InlineData("closed", "[\"night\", \"night\"]", "$.data.merchants[0].closed[1]", ValidationCode.DuplicateId)]
     [InlineData("closed", "[\"night\", \"dawn\", \"day\", \"dusk\"]", "$.data.merchants[0].closed", ValidationCode.InvalidValue)]
-    [InlineData("daily", "6", "$.data.merchants[0].daily", ValidationCode.OutOfRange)]
+    [InlineData("daily", "12", "$.data.merchants[0].daily", ValidationCode.OutOfRange)]   // V1.2 : onze offres tournantes chez Garin
     [InlineData("daily", "-1", "$.data.merchants[0].daily", ValidationCode.OutOfRange)]
     [InlineData("offers", "[]", "$.data.merchants[0].offers", ValidationCode.OutOfRange)]
     [InlineData("offers", "[{\"item\": \"item.potion_de_soin\", \"price\": 60}]", "$.data.merchants[0].offers[0].always", ValidationCode.MissingField)]

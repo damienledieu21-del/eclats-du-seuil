@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 12,
+  "schemaVersion": 13,
   "kind": "rules",
-  "contentVersion": "0.12.0-provisoire",
+  "contentVersion": "0.13.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -120,6 +120,13 @@
       },
       "telegraph": {
         "minReactionMs": 300
+      },
+      "shield": {
+        "minDamageReduction": 0.45,
+        "maxDamageReduction": 0.7,
+        "minCostPerBlock": 4,
+        "maxCostPerBlock": 20,
+        "parryWindowShiftMs": 50
       }
     },
     "statuses": [

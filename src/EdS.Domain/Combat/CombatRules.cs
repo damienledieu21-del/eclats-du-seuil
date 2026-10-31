@@ -186,6 +186,34 @@ namespace EdS.Domain.Combat
         /// <summary>Plafond technique de <see cref="TelegraphMinReactionMs"/>.</summary>
         public const long MaxTelegraphReactionMs = 10_000;
 
+        // Sous-lot V1.2 (schéma de règles 13, bloc combat.shield) : bornes de jeu de la garde propre d'un bouclier (ShieldGuard). Un bouclier
+        // lourd bloque plus et coûte plus d'endurance ; un bouclier léger rend la parade un peu plus facile. Valeurs provisoires.
+
+        /// <summary>Part bloquée la plus faible d'un bouclier (<c>combat.shield.minDamageReduction</c>, 0,45).</summary>
+        public Fixed ShieldMinDamageReduction { get; init; } = Fixed.FromRatio(45, 100);
+
+        /// <summary>
+        /// Part bloquée la plus forte d'un bouclier (<c>combat.shield.maxDamageReduction</c>, 0,7), sous le plafond de la garde livré
+        /// (<see cref="MaxGuardDamageReduction"/>, 0,75) : les talents de garde gardent de la place au-dessus ; au-delà, la garde effective
+        /// reste écrêtée à ce plafond.
+        /// </summary>
+        public Fixed ShieldMaxDamageReduction { get; init; } = Fixed.FromRatio(7, 10);
+
+        /// <summary>Coût d'un blocage le plus bas d'un bouclier (<c>combat.shield.minCostPerBlock</c>, 4).</summary>
+        public int ShieldMinCostPerBlock { get; init; } = 4;
+
+        /// <summary>Coût d'un blocage le plus haut d'un bouclier (<c>combat.shield.maxCostPerBlock</c>, 20).</summary>
+        public int ShieldMaxCostPerBlock { get; init; } = 20;
+
+        /// <summary>
+        /// Écart le plus grand entre la fenêtre de parade d'un bouclier et celle des règles (<c>combat.shield.parryWindowShiftMs</c>, 50 ms :
+        /// un tick), dans un sens ou dans l'autre ; multiple du tick.
+        /// </summary>
+        public long ShieldParryWindowShiftMs { get; init; } = 50;
+
+        /// <summary>Plafond technique des coûts de blocage d'un bouclier.</summary>
+        public const int MaxShieldCostPerBlock = 1_000_000;
+
         /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
@@ -316,6 +344,20 @@ namespace EdS.Domain.Combat
             Range(GuardArcDegrees, 1, 360, nameof(GuardArcDegrees));
             if (TelegraphMinReactionMs < 0 || TelegraphMinReactionMs > MaxTelegraphReactionMs)
                 errors.Add(new RuleViolation($"doit être compris entre 0 et {MaxTelegraphReactionMs} ms (plafond technique).", nameof(TelegraphMinReactionMs)));
+            // Sous-lot V1.2 : bornes de la garde des boucliers.
+            Fraction(ShieldMinDamageReduction, nameof(ShieldMinDamageReduction));
+            Fraction(ShieldMaxDamageReduction, nameof(ShieldMaxDamageReduction));
+            if (ShieldMinDamageReduction > ShieldMaxDamageReduction)
+                errors.Add(new RuleViolation("la part bloquée la plus faible dépasse la plus forte.", nameof(ShieldMinDamageReduction), nameof(ShieldMaxDamageReduction)));
+            // Une part au-dessus du plafond de la garde (règles d'essai) reste écrêtée par CombatantRules, comme une base des règles.
+            Range(ShieldMinCostPerBlock, 0, MaxShieldCostPerBlock, nameof(ShieldMinCostPerBlock));
+            Range(ShieldMaxCostPerBlock, 0, MaxShieldCostPerBlock, nameof(ShieldMaxCostPerBlock));
+            if (ShieldMinCostPerBlock > ShieldMaxCostPerBlock)
+                errors.Add(new RuleViolation("le coût de blocage le plus bas dépasse le plus haut.", nameof(ShieldMinCostPerBlock), nameof(ShieldMaxCostPerBlock)));
+            // L'écart n'a pas à tomber sur le tick des règles : la fenêtre d'un bouclier, elle, est un multiple du tick d'au moins un tick
+            // (ShieldGuard.Check), si bien que des règles d'essai à un autre tick restent valides.
+            if (ShieldParryWindowShiftMs < 0 || ShieldParryWindowShiftMs > CombatantRules.MaxParryWindowMs)
+                errors.Add(new RuleViolation($"doit être compris entre 0 et {CombatantRules.MaxParryWindowMs} ms (fenêtre de parade la plus large).", nameof(ShieldParryWindowShiftMs)));
             return errors;
         }
     }

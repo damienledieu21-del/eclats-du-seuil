@@ -39,7 +39,7 @@ public class Correctif731TriggerScenarioTests
     /// Référence du contenu livré (moteur 0.24.0, format 18, Bastion 0.6.0, règles 0.12.0 : 128 combattants au plus, décision de Damien du
     /// 29 octobre 2026).
     /// </summary>
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.24.0-contenu-0.6.0-regles-0.12.0", Name + ".jsonl");
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.25.0-contenu-0.6.0-regles-0.13.0", Name + ".jsonl");
 
     /// <summary>
     /// En-tête sans ce qui distingue légitimement deux moteurs (format et version, sous-lot 11.1) ni, sur demande, l'identité des règles
@@ -408,12 +408,14 @@ public class Correctif731TriggerScenarioTests
         Assert.Equal(ReplayStatus.Refused, outcome.Status);
         Assert.Null(outcome.Comparison);
         Assert.Contains(outcome.Problems, p => p.Contains("0.11.0-provisoire", StringComparison.Ordinal));
-        string[] current = File.ReadAllLines(FixturePath);
+        // Sous-lot V1.2 : la référence courante est celle du moteur 0.25.0 ; la comparaison se fait avec celle des règles 0.12.0 (même moteur
+        // 0.24.0), restée figée.
+        string[] current = File.ReadAllLines(FrozenPath("0.24.0-contenu-0.6.0-regles-0.12.0"));
         Assert.Equal(frozen.Skip(1), current.Skip(1));
         Assert.NotEqual(frozen[0], current[0]);
         Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(current[0], withoutRules: true));
         static string RulesVersion(string header) => JsonDocument.Parse(header).RootElement.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString()!;
-        Assert.Equal(("0.11.0-provisoire", DataFormat.ProvisionalRulesContentVersion), (RulesVersion(frozen[0]), RulesVersion(current[0])));
+        Assert.Equal(("0.11.0-provisoire", "0.12.0-provisoire"), (RulesVersion(frozen[0]), RulesVersion(current[0])));
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
         Assert.Equal((before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()),
             (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
@@ -437,7 +439,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((17, "0.23.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((18, "0.24.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((19, "0.25.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]
@@ -457,7 +459,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((16, "0.22.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((18, "0.24.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((19, "0.25.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]
@@ -477,7 +479,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((15, "0.21.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((18, "0.24.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((19, "0.25.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]
@@ -497,7 +499,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((14, "0.20.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((18, "0.24.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((19, "0.25.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]
