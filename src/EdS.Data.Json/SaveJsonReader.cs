@@ -138,6 +138,13 @@ namespace EdS.Data.Json
                     st.Tracked = input.NullableText(v, p);
                 },
                 ["trust"] = (v, p) => st.Trust = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["hunted"] = (v, p) => st.Hunted = input.ReadLimitedList(v, p, SavedStory.MaxHunted,   // relecture de la PR #79 (version 10)
+                    n => $"{n} créatures, au plus {SavedStory.MaxHunted}.", (e, ip) => input.Text(e, ip)),
+                ["guild"] = (v, p) =>   // sous-lot V1.7 (version 10) : carte d'aventurier
+                {
+                    st.HasGuild = true;
+                    st.Guild = v.ValueKind == JsonValueKind.Null ? null : ReadGuild(input, v, p);
+                },
                 ["quests"] = (v, p) =>
                 {
                     if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « quête : avancement »")) return;
@@ -157,6 +164,39 @@ namespace EdS.Data.Json
                 },
             });
             return ok ? st : null;
+        }
+
+        /// <summary>Sous-lot V1.7 : carte d'aventurier (<c>story.guild</c>, version 10).</summary>
+        private static GuildCardData? ReadGuild(JsonInput input, JsonElement element, string path)
+        {
+            var g = new GuildCardData();
+            List<string?>? Ids(JsonElement v, string p, int max) => input.ReadLimitedList(v, p, max, n => $"{n} entrées, au plus {max}.", (e, ip) => input.Text(e, ip));
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["rank"] = (v, p) => g.Rank = input.Text(v, p),
+                ["points"] = (v, p) => g.Points = input.Int64(v, p),
+                ["contracts"] = (v, p) => g.Contracts = input.Int64(v, p),
+                ["titles"] = (v, p) => g.Titles = Ids(v, p, SavedGuildCard.MaxTitles),
+                ["title"] = (v, p) =>
+                {
+                    g.HasTitle = true;
+                    g.Title = input.NullableText(v, p);
+                },
+                ["active"] = (v, p) =>
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « contrat : avancement »")) return;
+                    var list = new List<KeyValuePair<string, long?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (list.Count >= SavedGuildCard.MaxActive) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedGuildCard.MaxActive} contrats en cours."); return; }
+                        list.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
+                    }
+                    g.Active = list;
+                },
+                ["day"] = (v, p) => g.Day = input.Int64(v, p),
+                ["taken"] = (v, p) => g.Taken = Ids(v, p, SavedGuildCard.MaxTaken),
+            });
+            return ok ? g : null;
         }
 
         /// <summary>
@@ -229,6 +269,17 @@ namespace EdS.Data.Json
             }
             return map;
         }
+        /// <summary>Sous-lot V1.7 : la carte d'aventurier sur une ligne, dans l'ordre des champs du schéma.</summary>
+        private static string Guild(SavedGuildCard g)
+        {
+            string List(IEnumerable<string> ids) => "[" + string.Join(", ", ids.Select(Quoted)) + "]";
+            return "{\"rank\": " + Quoted(g.Rank) + ", \"points\": " + g.Points.ToString(CultureInfo.InvariantCulture)
+                + ", \"contracts\": " + g.Contracts.ToString(CultureInfo.InvariantCulture) + ", \"titles\": " + List(g.Titles)
+                + ", \"title\": " + (g.Title is null ? "null" : Quoted(g.Title))
+                + ", \"active\": {" + string.Join(", ", g.Active.Select(a => Quoted(a.Key) + ": " + a.Value.ToString(CultureInfo.InvariantCulture))) + "}"
+                + ", \"day\": " + g.Day.ToString(CultureInfo.InvariantCulture) + ", \"taken\": " + List(g.Taken) + "}";
+        }
+
 
         /// <summary>Sous-lot V1.3 : propriétés tirées d'une instance, sur une ligne : <c>[{"id": "property.…", "value": 12}, …]</c>.</summary>
         private static string Properties(IReadOnlyList<RolledProperty> properties)
@@ -333,7 +384,16 @@ namespace EdS.Data.Json
             b.Append("        \"trust\": {").Append(string.Join(", ", st.Trust.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append(",\n");
             // Sous-lot V1.6 (version 8) : quête suivie, ou null.
-            b.Append("        \"tracked\": ").Append(st.Tracked is null ? "null" : Quoted(st.Tracked)).Append("\n");
+            b.Append("        \"tracked\": ").Append(st.Tracked is null ? "null" : Quoted(st.Tracked)).Append(st.Guild is null && st.Hunted.Count == 0 ? "\n" : ",\n");
+            // Sous-lot V1.7 (version 10) : créatures rares déjà vaincues (absent s'il n'y en a aucune), puis la carte d'aventurier, sur une ligne
+            // chacune ; la carte est absente tant que le personnage n'est pas inscrit.
+            if (st.Hunted.Count > 0)
+            {
+                if (st.Hunted.Count > SavedStory.MaxHunted || st.Hunted.Any(h => h.Length > 64 || !SaveValidator.IsDataId(h)))
+                    throw new ArgumentException("Créatures rares hors du format des sauvegardes.", nameof(c));
+                b.Append("        \"hunted\": ").Append(List(st.Hunted)).Append(st.Guild is null ? "\n" : ",\n");
+            }
+            if (st.Guild is SavedGuildCard g) b.Append("        \"guild\": ").Append(Guild(g)).Append("\n");
             b.Append("      },\n");
             // Sous-lot 12.6 (version 5) : expérience des métiers, sur une ligne.
             if (c.Professions.Any(p => !SaveValidator.IsDataId(p.Key) || p.Value < 1 || p.Value > SaveValidator.MaxXp))

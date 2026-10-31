@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/story.schema.json",
   "title": "Éclats du Seuil — PNJ, dialogues, quêtes",
-  "description": "Sous-lot 12.5 ; sous-lot V1.1 (schéma 2) : effet giveMoney ; sous-lot V1.6 (schéma 3) : catégorie de quête (category), conditions d'ouverture (requires), récompenses au choix (rewardChoice), objectifs talk, deliver (npc), defeatFamily, equipped, effet takeMoney, condition levelAtLeast, zone d'un PNJ (intérieur). Documentation. La validation qui fait foi est celle du programme (StoryValidator), avec les textes, la zone, ses intérieurs et le catalogue des objets.",
+  "description": "Sous-lot 12.5 ; sous-lot V1.1 (schéma 2) : effet giveMoney ; sous-lot V1.6 (schéma 3) : catégorie de quête (category), conditions d'ouverture (requires), récompenses au choix (rewardChoice), objectifs talk, deliver (npc), defeatFamily, equipped, effet takeMoney, condition levelAtLeast, zone d'un PNJ (intérieur) ; sous-lot V1.7 (schéma 4) : objectif guildRank, effet giveGuildPoints, condition guildRankAtLeast (rangs g, f, e… de la Guilde des aventuriers). Documentation. La validation qui fait foi est celle du programme (StoryValidator), avec les textes, la zone, ses intérieurs et le catalogue des objets.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 3
+      "const": 4
     },
     "kind": {
       "const": "story"
@@ -242,7 +242,8 @@
                             "talk",
                             "deliver",
                             "defeatFamily",
-                            "equipped"
+                            "equipped",
+                            "guildRank"
                           ]
                         },
                         "id": {
@@ -352,7 +353,8 @@
             "inPlace",
             "passageOpen",
             "levelAtLeast",
-            "questReward"
+            "questReward",
+            "guildRankAtLeast"
           ]
         },
         "id": {
@@ -390,6 +392,7 @@
             "giveXp",
             "giveMoney",
             "takeMoney",
+            "giveGuildPoints",
             "openPassage",
             "discover"
           ]

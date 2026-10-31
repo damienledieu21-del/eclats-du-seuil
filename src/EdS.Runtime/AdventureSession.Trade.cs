@@ -22,13 +22,17 @@ namespace EdS.Runtime
         /// <summary>Refus qu'aurait l'achat d'une unité maintenant (<see cref="TradeRefusal.None"/> : possible) ; rien ne change.</summary>
         public TradeRefusal Refusal { get; }
 
-        internal ShopOffer(string item, string name, long price, string priceText, TradeRefusal refusal)
+        /// <summary>Sous-lot V1.7 : rang de la guilde que demande l'offre, traduit (« Rang F »), ou null.</summary>
+        public string? Rank { get; }
+
+        internal ShopOffer(string item, string name, long price, string priceText, TradeRefusal refusal, string? rank = null)
         {
             Item = item;
             Name = name;
             Price = price;
             PriceText = priceText;
             Refusal = refusal;
+            Rank = rank;
         }
     }
 
@@ -129,9 +133,10 @@ namespace EdS.Runtime
             foreach (MerchantOffer o in World.Stock(id))
             {
                 TradeRefusal refusal = shop != TradeRefusal.None ? shop
+                    : !World.HasRank(o.Rank) ? TradeRefusal.RankTooLow   // sous-lot V1.7 : offre réservée à un rang de la guilde
                     : World.Money < o.Price ? TradeRefusal.NotEnoughMoney
                     : !World.Inventory.CanAdd(o.Item, 1) ? TradeRefusal.InventoryFull : TradeRefusal.None;
-                list.Add(new ShopOffer(o.Item, ItemName(o.Item), o.Price, MoneyText(o.Price), refusal));
+                list.Add(new ShopOffer(o.Item, ItemName(o.Item), o.Price, MoneyText(o.Price), refusal, o.Rank is null ? null : RankName(o.Rank)));
             }
             return list;
         }

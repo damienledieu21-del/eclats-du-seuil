@@ -148,6 +148,7 @@ namespace EdS.Game
             Image rule = UiKit.Image(_panel, "Filet", null, UiKit.Alpha(UiKit.Dawn, 0.55f));
             UiKit.Place(rule.rectTransform, new Vector2(40f, 132f), new Vector2(PanelWidth - 80f, 2f), Vector2.zero);
             BuildMerchant(Page(AdventureScreens.Panel.Merchant));   // sous-lot V1.1 : la boutique (AdventureBook.Merchant.cs)
+            BuildGuild(Page(AdventureScreens.Panel.Guild));   // sous-lot V1.7 : le tableau de la guilde (AdventureBook.Guild.cs)
 
             BuildCharacter(Page(AdventureScreens.Panel.Inventory));
             BuildJournal(Page(AdventureScreens.Panel.Journal));
@@ -559,6 +560,7 @@ namespace EdS.Game
                 line.Wrap();
                 _discoveries.Add(line);
             }
+            BuildCard(page);   // sous-lot V1.7 : troisième onglet, la carte d'aventurier (AdventureBook.Guild.cs)
         }
 
         private UiText JournalTab(RectTransform page, float x, QuestCategory category)
@@ -566,7 +568,11 @@ namespace EdS.Game
             UiText tab = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, x, 168f, 190f, 24f, 0f, 0.5f, 14f, true);
             Image hit = UiKit.Image(tab.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
             UiKit.Fill(hit.rectTransform, -6f);
-            UiKit.Pointer(hit).Left = () => _journalTab = category;
+            UiKit.Pointer(hit).Left = () =>
+            {
+                _journalTab = category;
+                _cardShown = false;   // sous-lot V1.7 : on quitte la carte d'aventurier
+            };
             return tab;
         }
 
@@ -588,8 +594,18 @@ namespace EdS.Game
             // Relecture de la PR #76 : un repère sur l'onglet où une quête attend le choix de sa récompense (visible depuis l'autre onglet).
             _mainTab.Value = a.Text("text.ui.journal.main") + (a.RewardWaiting(QuestCategory.Main) ? " •" : "");
             _sideTab.Value = a.Text("text.ui.journal.side") + (a.RewardWaiting(QuestCategory.Side) ? " •" : "");
-            _mainTab.Color = _journalTab == QuestCategory.Main ? UiKit.Dawn : UiKit.Muted;
-            _sideTab.Color = _journalTab == QuestCategory.Side ? UiKit.Dawn : UiKit.Muted;
+            _mainTab.Color = _journalTab == QuestCategory.Main && !_cardShown ? UiKit.Dawn : UiKit.Muted;
+            _sideTab.Color = _journalTab == QuestCategory.Side && !_cardShown ? UiKit.Dawn : UiKit.Muted;
+            // Sous-lot V1.7 : l'onglet « Carte d'aventurier » remplace les quêtes et les découvertes.
+            RefreshCard(a);
+            if (_cardShown)
+            {
+                _journalEmpty.Value = "";
+                foreach (QuestBlock hidden in _quests) UiKit.Show(hidden.Block, false);
+                _discoveriesTitle.Value = "";
+                foreach (UiText line in _discoveries) line.Value = "";
+                return;
+            }
             IReadOnlyList<JournalEntry> quests = a.Journal(_journalTab);
             _journalEmpty.Value = quests.Count > 0 ? "" : a.Journal().Count == 0 ? a.Text("text.ui.journal_empty") : a.Text("text.ui.journal.empty_tab");
             for (int i = 0; i < _quests.Count; i++)
@@ -814,7 +830,8 @@ namespace EdS.Game
             if (book)
             {
                 _title.Value = "Le Bastion";
-                _subtitle.Value = $"Chevalier gardien · niveau {a.World.Level} · {a.PlaceName}";
+                // Sous-lot V1.7 : le titre affiché (Guilde des aventuriers) sous le nom.
+                _subtitle.Value = $"Chevalier gardien · niveau {a.World.Level} · {a.PlaceName}" + (a.ShownTitle != null ? " · " + a.ShownTitle : "");
                 _close.Value = KeyOf(screens.Open) + " · " + a.Text("text.ui.close");
                 for (int i = 0; i < _tabs.Count; i++)
                 {
@@ -825,6 +842,7 @@ namespace EdS.Game
                 foreach (KeyValuePair<AdventureScreens.Panel, RectTransform> page in _pages) UiKit.Show(page.Value, page.Key == screens.Open);
                 if (screens.Open != AdventureScreens.Panel.Inventory && screens.Open != AdventureScreens.Panel.Merchant) UiKit.Show(_tip, false);
                 if (screens.Open == AdventureScreens.Panel.Merchant) RefreshMerchant(a);   // sous-lot V1.1
+                if (screens.Open == AdventureScreens.Panel.Guild) RefreshGuild(a);   // sous-lot V1.7
                 switch (screens.Open)
                 {
                     case AdventureScreens.Panel.Inventory: RefreshCharacter(a); break;

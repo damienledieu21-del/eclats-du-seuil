@@ -175,7 +175,7 @@ public class Lot122CharacterTests
     [InlineData("\"xp\": 40", "\"xp\": 1000000001", "$.data.character.xp")]
     [InlineData("\"talents\": {}", "\"talents\": {\"t.a\": -1}", "$.data.character.talents.t.a")]
     [InlineData("\"activeSkills\": [", "\"activeSkills\": [null, ", "$.data.character.activeSkills[0]")]
-    [InlineData("{current}", "{future}", "$.schemaVersion")]
+    [InlineData("\"schemaVersion\": {current}", "\"schemaVersion\": {future}", "$.schemaVersion")]
     [InlineData("      \"ultimate\": null,\n", "", "$.data.character.ultimate")]                     // revue Codex de la PR #43 : obligatoire
     [InlineData("\"id\": \"bastion\"", "\"id\": \"b12345678901234567890123456789012345678901234567890123456789012345\"", "$.data.character.id")]   // 66 caractères
     [InlineData("\"class\": \"class.bastion\"", "\"class\": \"Classe Bastion\"", "$.data.character.class")]   // revue Codex de la PR #43 : format de l'écriture

@@ -118,7 +118,7 @@ public class V11MonnaieTests
     [InlineData("\"money\": 34512", "\"money\": \"3 or\"", "$.data.character.money", ValidationCode.WrongType)]
     [InlineData("\"money\": 34512", "\"money\": null", "$.data.character.money", ValidationCode.WrongType)]
     [InlineData("\n      \"money\": 34512,\n", "\n", "$.data.character.money", ValidationCode.MissingField)]
-    [InlineData("{current}", "{future}", "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion)]
+    [InlineData("\"schemaVersion\": {current}", "\"schemaVersion\": {future}", "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion)]
     public void Bourse_invalide_refusee_avec_son_chemin(string from, string to, string path, ValidationCode code)
     {
         (from, to) = (SaveVersion.Expand(from), SaveVersion.Expand(to));

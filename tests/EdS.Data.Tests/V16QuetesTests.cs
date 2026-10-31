@@ -75,7 +75,7 @@ public class V16QuetesTests
     public void Histoire_livree_en_schema_3()
     {
         StoryBook book = Shipped;
-        Assert.Equal(3, book.SchemaVersion);
+        Assert.Equal(4, book.SchemaVersion);   // sous-lot V1.7 : schéma 4 (rang et points de guilde), formes du schéma 3 inchangées
         Assert.Equal(QuestCategory.Main, book.Quest("quest.traces_sous_le_moulin").Category);
         Assert.Equal(QuestCategory.Side, book.Quest(Peaux).Category);
         Assert.Equal(new[] { ("item.potion_de_soin", 3), ("item.remede_de_l_aube", 1) }, book.Quest(Peaux).RewardChoices.Select(c => (c.Item, c.Count)));
@@ -87,7 +87,7 @@ public class V16QuetesTests
         Assert.Equal((ObjectiveKind.DefeatFamily, "loup"), (book.Quest(Peaux).Steps[0].Objective.Kind, book.Quest(Peaux).Steps[0].Objective.Id));
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
-            book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)));
+            book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
         Assert.Equal(6, book.NpcsIn(null).Count());
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -101,7 +101,8 @@ public class V16QuetesTests
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Assert.Single(Read(root).Report.Errors).Path, Read(root).Report.Errors[0].Code));
         // Sans les intérieurs, leurs PNJ vivent dans une zone inconnue.
         StoryLoadResult alone = Read(StoryJson(), Array.Empty<ZoneDefinition>());
-        Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone" }, alone.Report.Errors.Select(e => e.Path));
+        Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone" },
+            alone.Report.Errors.Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
         Assert.All(alone.Report.Errors, e => Assert.Equal(ValidationCode.UnknownReference, e.Code));
     }
 
@@ -233,7 +234,7 @@ public class V16QuetesTests
         ZoneDefinition z = Zone();
         Assert.Equal("loup", z.PopulationOf("loup12")!.Family);   // par défaut : sans les chiffres finaux
         Assert.Equal("sanglier", z.PopulationOf("sanglier")!.Family);
-        Assert.Equal(new[] { "bandit_arc1", "bandit_arc2", "bandit_epee1", "bandit_epee2" },
+        Assert.Equal(new[] { "bandit_arc1", "bandit_arc2", "bandit_epee1", "bandit_epee2", "le_borgne" },   // sous-lot V1.7 : le Borgne
             z.Populations.Where(p => p.Family == "bandit").Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
         Assert.Equal("loup_blanc", z.PopulationOf("loup_blanc")!.Family);
         Assert.Equal(12, z.Populations.Count(p => p.Family == "loup"));

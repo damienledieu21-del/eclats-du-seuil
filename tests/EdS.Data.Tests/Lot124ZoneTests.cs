@@ -93,7 +93,7 @@ public class Lot124ZoneTests
             "bourg", "champs", "lac", "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" },
             z.Places.Select(p => p.Id));   // Vallons agrandis : dix lieux de plus
         Assert.Equal(new[] { "village" }, z.PlacesAt(z.Entry.Position).Select(p => p.Id));
-        Assert.Equal(32, z.Populations.Count);   // sous-lot V1.6 : quatre bandits et le loup blanc
+        Assert.Equal(33, z.Populations.Count);   // sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne
         Assert.Equal(z.Setup.Combatants.Select(c => c.Id).OrderBy(i => i, StringComparer.Ordinal),
             z.Populations.Select(p => p.Creature).OrderBy(i => i, StringComparer.Ordinal));   // chaque créature du scénario est peuplée
         Population wolf = z.PopulationOf("loup1")!;
@@ -247,11 +247,11 @@ public class Lot124ZoneTests
         Assert.Empty(xp);
         Assert.Equal(new[] { "zone.vallons/safe/place_du_village" }, session.Save().Consumed);   // V1.1 : seul le point sûr d'entrée, découvert d'emblée
         // Plafond : 128 combattants depuis les règles 0.12.0 (64 avant ; décision de Damien du 29 octobre 2026) : les créatures de la zone
-        // (32 depuis le sous-lot V1.6), le Bastion, les premières formes du chef et du chef des bandits, puis les vies suivantes ; une place
+        // (32 depuis le sous-lot V1.6, 33 depuis V1.7), le Bastion, les premières formes du chef et du chef des bandits, puis les vies suivantes ; une place
         // gardée à la seconde forme de chacun (revue Codex de la PR #48) ; une seule annonce, puis plus rien pour cette population.
         int max = ShippedData.Rules.Combat.MaxCombatants;
         int creatures = z.Setup.Combatants.Count;
-        Assert.Equal(32, creatures);   // sous-lot V1.6 : quatre bandits et le loup blanc
+        Assert.Equal(33, creatures);   // sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne
         Assert.Equal(max - 2, session.Zone.Engine.CombatantIds.Count);
         Assert.Equal(max - creatures - 5, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);

@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "kind": "story",
-  "contentVersion": "0.3.0-provisoire",
+  "contentVersion": "0.4.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -88,6 +88,36 @@
         ],
         "dialogue": "dialogue.habitant",
         "zone": "zone.maison"
+      },
+      {
+        "id": "npc.maitresse_guilde",
+        "name": "text.npc.maitresse_guilde.name",
+        "position": [
+          0,
+          3.1
+        ],
+        "dialogue": "dialogue.maitresse_guilde",
+        "zone": "zone.guilde"
+      },
+      {
+        "id": "npc.intendant_guilde",
+        "name": "text.npc.intendant_guilde.name",
+        "position": [
+          -4.5,
+          2.8
+        ],
+        "dialogue": "dialogue.intendant_guilde",
+        "zone": "zone.guilde"
+      },
+      {
+        "id": "npc.archiviste",
+        "name": "text.npc.archiviste.name",
+        "position": [
+          1.2,
+          1.3
+        ],
+        "dialogue": "dialogue.archiviste",
+        "zone": "zone.archives"
       }
     ],
     "dialogues": [
@@ -863,6 +893,273 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.maitresse_guilde",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "guildRankAtLeast",
+                "id": "e"
+              }
+            ],
+            "node": "veteran"
+          },
+          {
+            "conditions": [
+              {
+                "if": "guildRankAtLeast",
+                "id": "g"
+              }
+            ],
+            "node": "membre"
+          },
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.maitresse.accueil",
+            "choices": [
+              {
+                "text": "text.maitresse.accueil.guilde",
+                "conditions": [],
+                "effects": [],
+                "next": "guilde"
+              },
+              {
+                "text": "text.maitresse.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "guilde",
+            "text": "text.maitresse.guilde",
+            "choices": [
+              {
+                "text": "text.maitresse.guilde.merci",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "membre",
+            "text": "text.maitresse.membre",
+            "choices": [
+              {
+                "text": "text.maitresse.membre.rangs",
+                "conditions": [],
+                "effects": [],
+                "next": "guilde"
+              },
+              {
+                "text": "text.maitresse.membre.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "veteran",
+            "text": "text.maitresse.veteran",
+            "choices": [
+              {
+                "text": "text.maitresse.veteran.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.intendant_guilde",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "guildRankAtLeast",
+                "id": "g"
+              }
+            ],
+            "node": "membre"
+          },
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.intendant.accueil",
+            "choices": [
+              {
+                "text": "text.intendant.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "membre",
+            "text": "text.intendant.membre",
+            "choices": [
+              {
+                "text": "text.intendant.membre.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.archiviste",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.registres_de_l_archiviste",
+                "step": "retour"
+              }
+            ],
+            "node": "retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "notFact",
+                "id": "fact.archives.consultees"
+              }
+            ],
+            "node": "accueil"
+          },
+          {
+            "conditions": [],
+            "node": "apres"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.archiviste.accueil",
+            "choices": [
+              {
+                "text": "text.archiviste.accueil.consulter",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.archives.consultees"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.archives.consultees"
+                  },
+                  {
+                    "do": "discover",
+                    "id": "discovery.archives_de_la_guilde"
+                  },
+                  {
+                    "do": "giveGuildPoints",
+                    "value": 20
+                  }
+                ],
+                "next": "registres"
+              },
+              {
+                "text": "text.archiviste.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "registres",
+            "text": "text.archiviste.registres",
+            "choices": [
+              {
+                "text": "text.archiviste.registres.promesse",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.registres_de_l_archiviste"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.registres_de_l_archiviste"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.archiviste.registres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "apres",
+            "text": "text.archiviste.apres",
+            "choices": [
+              {
+                "text": "text.archiviste.apres.promesse",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.registres_de_l_archiviste"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.registres_de_l_archiviste"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.archiviste.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.archiviste.retour",
+            "choices": [
+              {
+                "text": "text.archiviste.retour.merci",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
       }
     ],
     "quests": [
@@ -1125,6 +1422,131 @@
             "value": 1
           }
         ]
+      },
+      {
+        "id": "quest.epreuve_rang_f",
+        "name": "text.quest.epreuve_rang_f.name",
+        "category": "side",
+        "steps": [
+          {
+            "id": "conseil",
+            "text": "text.quest.epreuve_rang_f.conseil",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.gaspard"
+            },
+            "effects": []
+          },
+          {
+            "id": "meute",
+            "text": "text.quest.epreuve_rang_f.meute",
+            "objective": {
+              "kind": "defeatFamily",
+              "id": "loup",
+              "value": 4
+            },
+            "effects": []
+          },
+          {
+            "id": "preuves",
+            "text": "text.quest.epreuve_rang_f.preuves",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.peau_de_loup",
+              "value": 3,
+              "npc": "npc.maitresse_guilde"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 150
+          }
+        ]
+      },
+      {
+        "id": "quest.epreuve_rang_e",
+        "name": "text.quest.epreuve_rang_e.name",
+        "category": "side",
+        "steps": [
+          {
+            "id": "loup_blanc",
+            "text": "text.quest.epreuve_rang_e.loup_blanc",
+            "objective": {
+              "kind": "defeat",
+              "id": "loup_blanc",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "borgne",
+            "text": "text.quest.epreuve_rang_e.borgne",
+            "objective": {
+              "kind": "defeat",
+              "id": "le_borgne",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.quest.epreuve_rang_e.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.maitresse_guilde"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 400
+          }
+        ]
+      },
+      {
+        "id": "quest.registres_de_l_archiviste",
+        "name": "text.quest.registres_de_l_archiviste.name",
+        "category": "side",
+        "steps": [
+          {
+            "id": "rang_e",
+            "text": "text.quest.registres_de_l_archiviste.rang_e",
+            "objective": {
+              "kind": "guildRank",
+              "id": "e"
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.quest.registres_de_l_archiviste.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.archiviste"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveMoney",
+            "value": 500
+          },
+          {
+            "do": "giveXp",
+            "value": 200
+          },
+          {
+            "do": "giveItem",
+            "id": "item.anneau_du_guetteur",
+            "value": 1
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -1143,6 +1565,10 @@
       {
         "id": "discovery.gardien",
         "text": "text.discovery.gardien"
+      },
+      {
+        "id": "discovery.archives_de_la_guilde",
+        "text": "text.discovery.archives_de_la_guilde"
       }
     ]
   }

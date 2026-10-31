@@ -517,7 +517,7 @@ public class V14ForgeTests
     public void Sauvegarde_en_version_11_avec_qualite_usure_et_fabrications()
     {
         string text = Written();
-        Assert.Contains("\"schemaVersion\": 11", text);
+        Assert.Contains(SaveVersion.Current + ",", text);
         Assert.Contains("{\"item\": \"item.epee_de_garde\", \"count\": 1, \"quality\": \"masterwork\", \"signedBy\": \"bastion\"}", text);
         Assert.Contains("{\"item\": \"item.casque_de_fer\", \"count\": 1, \"quality\": \"superior\", \"wear\": 12}", text);
         Assert.Contains("\"shield\": {\"item\": \"item.ecu_de_chene\", \"wear\": 0}", text);
@@ -551,7 +551,7 @@ public class V14ForgeTests
     {
         // Une sauvegarde de version 9 (V1.3) : ni qualité, ni usure, ni fabrications ; relue, mise à jour, usure pleine, compteur à 0.
         string current = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 2, Array.Empty<string>(), Inventory.Outfit(Hero(12), Items)));
-        string v9 = current.Replace("\"schemaVersion\": 11", "\"schemaVersion\": 9").Replace(",\n      \"crafts\": 0\n", "\n");
+        string v9 = SaveV11.Older(current).Replace(SaveVersion.Current, "\"schemaVersion\": 9");
         WorldSave old = SaveJsonReader.Read(v9).Save!;
         Assert.True(old.Migrated);
         Assert.Equal(0L, old.Character!.Crafts);
@@ -562,6 +562,31 @@ public class V14ForgeTests
         Assert.Equal(("$.data.character.equipment.weapon.wear", ValidationCode.UnknownField), (wear.Path, wear.Code));
         ValidationError crafts = SaveJsonReader.Read(v9.Replace("\"money\": 12\n", "\"money\": 12,\n      \"crafts\": 1\n")).Report.Errors[0];
         Assert.Equal(("$.data.character.crafts", ValidationCode.UnknownField), (crafts.Path, crafts.Code));
+    }
+
+    [Fact]
+    public void Sauvegarde_de_version_10_avec_sa_carte_de_guilde_relue_en_version_11()
+    {
+        // Étape de lecture 10 → 11 : une partie de V1.7 (carte d'aventurier, créatures rares) sans qualité, usure ni fabrications se relit,
+        // carte comprise, puis se réécrit à la version courante avec un compteur à 0.
+        Assert.Equal(SaveValidator.GuildCardSince + 1, SaveValidator.ItemStateSince);
+        Assert.Equal(SaveValidator.ItemStateSince, SaveValidator.CurrentSchemaVersion);
+        SavedCharacter hero = Inventory.Outfit(Hero(12), Items)
+            .WithStory(new SavedStory(guild: new SavedGuildCard("g", titles: new[] { "title.guilde.recrue" }), hunted: new[] { "loup_blanc" }));
+        string current = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 2, Array.Empty<string>(), hero));
+        string v10 = SaveV11.Older(current).Replace(SaveVersion.Current, $"\"schemaVersion\": {SaveValidator.GuildCardSince}");
+        Assert.Contains("\"guild\": {", v10, StringComparison.Ordinal);
+        SaveLoadResult read = SaveJsonReader.Read(v10);
+        Assert.True(read.IsValid, read.Report.ToString());
+        Assert.True(read.Save!.Migrated);
+        SavedCharacter old = read.Save.Character!;
+        Assert.Equal(("g", 0L), (old.Story.Guild!.Rank, old.Crafts));
+        Assert.Equal(new[] { "loup_blanc" }, old.Story.Hunted);
+        Assert.All(old.Equipment.Keys, slot => Assert.False(old.WornInstance(slot)!.IsUnique));
+        Assert.Equal(current, SaveJsonReader.Write(read.Save));
+        // En version 10, les champs de la version 11 sont inconnus.
+        ValidationError wear = SaveJsonReader.Read(v10.Replace("\"weapon\": \"item.epee_du_milicien\"", "\"weapon\": {\"item\": \"item.epee_du_milicien\", \"wear\": 3}")).Report.Errors[0];
+        Assert.Equal(("$.data.character.equipment.weapon.wear", ValidationCode.UnknownField), (wear.Path, wear.Code));
     }
 
     // --- Petit jeu (client) et fiche ---------------------------------------------------------------------------------------

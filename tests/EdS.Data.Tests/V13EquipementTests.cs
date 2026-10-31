@@ -287,6 +287,19 @@ public class V13EquipementTests
         WorldSession w = Play(Zone(), read.Save.Character);
         Assert.Equal(sword, w.Inventory.WornInstanceAt("weapon"));
         Assert.Equal(SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), hero)), text);
+        // Fusion de main dans V1.7 : une sauvegarde de version 9 (instances, sans carte d'aventurier) se relit, mise à jour, et se réécrit à
+        // l'identique en version 10 ; une carte ou des créatures rares y sont des champs inconnus.
+        string v9 = SaveV11.Older(text).Replace(SaveVersion.Current, "\"schemaVersion\": 9");
+        SaveLoadResult old = SaveJsonReader.Read(v9);
+        Assert.True(old.IsValid, old.Report.ToString());
+        Assert.True(old.Save!.Migrated);
+        Assert.Equal(boots, old.Save.Character!.Inventory[0]);
+        Assert.Equal(sword.Properties, old.Save.Character.EquipmentProperties["weapon"]);
+        Assert.Null(old.Save.Character.Story.Guild);
+        Assert.Equal(text, SaveJsonReader.Write(old.Save));
+        string withCard = SaveV11.Older(SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(),
+            hero.WithStory(new SavedStory(guild: new SavedGuildCard("g", titles: new[] { "title.guilde.recrue" })))))).Replace(SaveVersion.Current, "\"schemaVersion\": 9");
+        Assert.Equal(("$.data.character.story.guild", ValidationCode.UnknownField), (Assert.Single(SaveJsonReader.Read(withCard).Report.Errors).Path, SaveJsonReader.Read(withCard).Report.Errors[0].Code));
     }
 
     [Fact]

@@ -124,12 +124,13 @@ public class V16RelectureTests
         // exception avant le rapport.
         JsonObject root = StoryJson();
         Quest(root, Bete)["requires"] = new JsonArray(new JsonObject { ["if"] = "questDone", ["id"] = Peaux });
+        int n = root["data"]!["quests"]!.AsArray().Count;   // sous-lot V1.7 : l'histoire livrée a aussi les épreuves de la guilde
         root["data"]!["quests"]!.AsArray().Add(Quest(root, Peaux).DeepClone());
         root["data"]!["quests"]!.AsArray().Add(Quest(root, Bete).DeepClone());
         StoryLoadResult r = Read(root);
         Assert.False(r.IsValid);
-        Assert.Contains(r.Report.Errors, e => e.Path == "$.data.quests[3].id" && e.Code == ValidationCode.DuplicateId);
-        Assert.Contains(r.Report.Errors, e => e.Path == "$.data.quests[4].id" && e.Code == ValidationCode.DuplicateId);
+        Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.quests[{n}].id" && e.Code == ValidationCode.DuplicateId);
+        Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.quests[{n + 1}].id" && e.Code == ValidationCode.DuplicateId);
         Assert.DoesNotContain(r.Report.Errors, e => e.Path.Contains("requires", StringComparison.Ordinal));
     }
 

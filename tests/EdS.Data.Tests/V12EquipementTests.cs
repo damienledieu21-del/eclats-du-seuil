@@ -322,7 +322,7 @@ public class V12EquipementTests
         string bare = SaveV11.Older(SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(1)))).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 6");
         WorldSession given = new(SaveJsonReader.Read(bare).Save!, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
         Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, given.Restored);
-        // Une sauvegarde d'un programme futur (version 10) est refusée.
+        // Une sauvegarde d'un programme futur (version suivante) est refusée.
         Assert.False(SaveJsonReader.Read(rewritten.Replace(SaveVersion.Current, SaveVersion.Future)).IsValid);
     }
 

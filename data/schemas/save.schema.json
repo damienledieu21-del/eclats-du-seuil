@@ -317,7 +317,7 @@
                     "discoveries",
                     "tracked"
                   ],
-                  "description": "Sous-lot 12.5 (version 4) : état narratif personnel (faits appris, avancement des quêtes, confiance des PNJ, découvertes), trié. Sous-lot V1.6 (version 8) : quête suivie (tracked, ou null) ; étape réservée « reward » (récompense au choix en attente). Une sauvegarde de version 7 ou antérieure n'a ni l'un ni l'autre (aucune quête suivie à la lecture).",
+                  "description": "Sous-lot 12.5 (version 4) : état narratif personnel (faits appris, avancement des quêtes, confiance des PNJ, découvertes), trié. Sous-lot V1.6 (version 8) : quête suivie (tracked, ou null) ; étape réservée « reward » (récompense au choix en attente). Une sauvegarde de version 7 ou antérieure n'a ni l'un ni l'autre (aucune quête suivie à la lecture). Sous-lot V1.7 (version 10) : carte d'aventurier facultative (guild).",
                   "properties": {
                     "facts": {
                       "type": "array",
@@ -394,6 +394,108 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "guild": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "description": "Sous-lot V1.7 (version 10) : carte d'aventurier de la Guilde ; absente tant que le personnage n'est pas inscrit. Rang, points, contrats réussis, titres gagnés et titre affiché, contrats en cours (avancement), contrats pris (ou abandonnés) le jour « day » du monde. Listes triées sans doublon.",
+                      "required": [
+                        "rank",
+                        "points",
+                        "contracts",
+                        "titles",
+                        "title",
+                        "active",
+                        "day",
+                        "taken"
+                      ],
+                      "properties": {
+                        "rank": {
+                          "enum": [
+                            "g",
+                            "f",
+                            "e",
+                            "d",
+                            "c",
+                            "b",
+                            "a",
+                            "s",
+                            "ss",
+                            "sss"
+                          ]
+                        },
+                        "points": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000000
+                        },
+                        "contracts": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000000
+                        },
+                        "titles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^title(\\.[a-z0-9_]+)+$",
+                            "maxLength": 200
+                          },
+                          "maxItems": 64,
+                          "uniqueItems": true
+                        },
+                        "title": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^title(\\.[a-z0-9_]+)+$",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "active": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "propertyNames": {
+                            "pattern": "^contract(\\.[a-z0-9_]+)+$",
+                            "maxLength": 200
+                          },
+                          "maxProperties": 8
+                        },
+                        "day": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "taken": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^contract(\\.[a-z0-9_]+)+$",
+                            "maxLength": 200
+                          },
+                          "maxItems": 128,
+                          "uniqueItems": true
+                        }
+                      }
+                    },
+                    "hunted": {
+                      "type": "array",
+                      "description": "Sous-lot V1.7 (version 10, relecture de la PR #79) : créatures rares de la guilde déjà vaincues, inscrit ou non (absent : aucune). Une victoire d'avant l'inscription ne rapporte jamais de points.",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*$",
+                        "maxLength": 64
+                      },
+                      "minItems": 1,
+                      "maxItems": 256,
+                      "uniqueItems": true
                     }
                   }
                 },

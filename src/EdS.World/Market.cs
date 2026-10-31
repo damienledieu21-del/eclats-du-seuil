@@ -52,6 +52,9 @@ namespace EdS.World
 
         /// <summary>Quantité impossible (moins de 1, plus que <see cref="Market.MaxCount"/>), ou vente vide ou trop longue.</summary>
         InvalidCount = 13,
+
+        /// <summary>Sous-lot V1.7 : rang de la Guilde des aventuriers trop bas pour cette boutique ou cette offre (la boutique de la guilde).</summary>
+        RankTooLow = 14,
     }
 
     /// <summary>Un lot vendu, rachetable au même prix pendant la session de jeu : objet, quantité, pièces reçues (cuivre).</summary>
