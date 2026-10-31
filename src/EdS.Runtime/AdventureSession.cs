@@ -717,7 +717,9 @@ namespace EdS.Runtime
                 CraftRefusal refusal = World.CanCraft(r.Id);
                 Workshop shop = World.Workshop!;
                 list.Add(new RecipeEntry(r.Id, Text(r.Name), Text(_crafting.Professions.First(p => p.Id == r.Profession).Name), r.RequiredLevel, inputs,
-                    $"{ItemName(r.Output.Item)} ×{r.Output.Count}", refusal, r.Quality, shop.LevelGap(r), (shop.Chances(r, 0).Fail, shop.Chances(r, 100).Fail)));
+                    // Relecture indépendante de la PR #80 : sans petit jeu, l'adresse ne change rien (le meilleur cas est le pire).
+                    $"{ItemName(r.Output.Item)} ×{r.Output.Count}", refusal, r.Quality, shop.LevelGap(r),
+                    (shop.Chances(r, 0).Fail, r.Quality ? shop.Chances(r, 100).Fail : shop.Chances(r, 0).Fail)));
             }
             return list;
         }

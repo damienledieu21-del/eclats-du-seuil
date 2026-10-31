@@ -112,7 +112,8 @@ namespace EdS.Game
         /// <summary>Bouton Réparer : montré où l'on peut réparer (forge, ou boutique d'un marchand qui répare), avec son prix.</summary>
         private void RefreshRepairButton(AdventureSession a, UiButton button, bool shop)
         {
-            bool here = a.CanRepair(out string merchant) && (shop ? merchant != null : merchant == null);
+            // Relecture indépendante de la PR #80 : le bouton de la forge se montre à la forge même si la boutique de l'armurier est ouverte.
+            bool here = shop ? a.CanRepairAtShop : a.CanRepairAtForge;
             UiKit.Show(button.Rect, here);
             if (!here) return;
             long price = a.RepairPrice;

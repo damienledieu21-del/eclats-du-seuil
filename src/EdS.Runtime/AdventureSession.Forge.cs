@@ -71,29 +71,21 @@ namespace EdS.Runtime
         /// <summary>Pièces entamées, portées et dans le sac.</summary>
         public int DamagedPieces => World.Inventory.Damaged().Count;
 
-        /// <summary>
-        /// On peut réparer ici : la boutique ouverte est celle d'un marchand qui répare (l'armurier), ou le personnage est à la forge. Rend
-        /// le marchand (null : la forge) dans <paramref name="merchant"/>.
-        /// </summary>
-        public bool CanRepair(out string? merchant)
-        {
-            merchant = null;
-            if (World.Workshop is null) return false;
-            if (Shop is string shop && World.CanRepairHere(shop) == RepairRefusal.None)
-            {
-                merchant = shop;
-                return true;
-            }
-            return World.CanRepairHere(null) == RepairRefusal.None;
-        }
+        /// <summary>On peut réparer à la forge (au lieu de réparation, hors combat), quelle que soit la boutique ouverte.</summary>
+        public bool CanRepairAtForge => World.Workshop != null && World.CanRepairHere(null) == RepairRefusal.None;
+
+        /// <summary>La boutique ouverte est celle d'un marchand qui répare (l'armurier), et il répare maintenant (à portée, ouverte).</summary>
+        public bool CanRepairAtShop => World.Workshop != null && Shop is string shop && World.CanRepairHere(shop) == RepairRefusal.None;
 
         /// <summary>
-        /// Répare tout l'équipement entamé, chez le marchand de la boutique ouverte s'il répare, sinon à la forge ; un message dit le prix payé
-        /// ou le refus. Les bonus reviennent à la prochaine halte.
+        /// Répare tout l'équipement entamé : chez le marchand de la boutique ouverte s'il répare maintenant
+        /// (<see cref="WorldSession.CanRepairHere"/> sans refus), sinon à la forge (relecture indépendante de la PR #80 : une boutique ouverte
+        /// mais hors de portée n'empêche pas de réparer à la forge) ; un message dit le prix payé ou le refus. Les bonus reviennent à la
+        /// prochaine halte.
         /// </summary>
         public RepairRefusal Repair()
         {
-            string? merchant = Shop is string shop && World.CanRepairHere(shop) != RepairRefusal.Closed ? shop : null;
+            string? merchant = CanRepairAtShop ? Shop : null;
             RepairRefusal refusal = World.Repair(merchant, out long paid);
             if (refusal == RepairRefusal.None)
             {

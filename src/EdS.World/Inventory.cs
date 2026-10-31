@@ -5,6 +5,7 @@ using System.Linq;
 using EdS.Data.Items;
 using EdS.Data.Saves;
 using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
 
 namespace EdS.World
@@ -118,6 +119,9 @@ namespace EdS.World
         public ItemStack? WornInstanceAt(string place) => place != null && _equipped.TryGetValue(place, out ItemStack worn) ? worn : null;
 
         public int FreePlaces => _catalog.InventorySize - _stacks.Count;
+
+        /// <summary>Sous-lot V1.4 : places d'équipement occupées, dans l'ordre des places du catalogue.</summary>
+        public IReadOnlyList<string> Places() => _catalog.Places.Select(p => p.Id).Where(_equipped.ContainsKey).ToList();
 
         public Inventory(ItemCatalog catalog, string? classId = null)
         {
@@ -315,9 +319,34 @@ namespace EdS.World
         }
 
         /// <summary>Sous-lot V1.2 : garde du bouclier porté (place qui porte la garde), ou null : celle des règles.</summary>
-        /// <remarks>Sous-lot V1.4 : un bouclier usé à zéro ne donne plus sa garde propre : celle des règles (il reste porté).</remarks>
+        /// <remarks>
+        /// Sous-lot V1.4 : un bouclier usé à zéro ne donne plus sa garde propre (null ici ; il reste porté). Au combat, voir
+        /// <see cref="ShieldFor"/> : la garde de repli n'est jamais meilleure que la sienne.
+        /// </remarks>
         public ShieldGuard? Shield =>
             _catalog.GuardPlace is { } place && _equipped.TryGetValue(place.Id, out ItemStack worn) && !_catalog.IsWornOut(worn) ? _catalog.Item(worn.Item).Guard : null;
+
+        /// <summary>
+        /// Sous-lot V1.4 (relecture indépendante de la PR #80) : garde avec laquelle le personnage entre au combat. Bouclier en état : sa
+        /// garde propre ; aucun bouclier : null (celle des règles). Bouclier usé à zéro : pour chaque valeur, <b>la plus faible</b> de la
+        /// sienne et de celle des règles (part bloquée la plus basse, coût d'un blocage le plus haut, fenêtre de parade la plus étroite),
+        /// ramenée dans les bornes d'un bouclier (<c>combat.shield</c>, <see cref="ShieldGuard.Check"/>) : jamais meilleure que la sienne, et
+        /// toujours admise par le combat.
+        /// </summary>
+        public ShieldGuard? ShieldFor(CombatRules rules)
+        {
+            if (rules is null) throw new ArgumentNullException(nameof(rules));
+            if (!(_catalog.GuardPlace is { } place) || !_equipped.TryGetValue(place.Id, out ItemStack worn) || !(_catalog.Item(worn.Item).Guard is ShieldGuard own))
+                return null;
+            if (!_catalog.IsWornOut(worn)) return own;
+            Fixed reduction = Fixed.Max(rules.ShieldMinDamageReduction, Fixed.Min(own.DamageReduction, rules.GuardDamageReduction));
+            int cost = Math.Min(rules.ShieldMaxCostPerBlock, Math.Max(own.CostPerBlock, rules.GuardCostPerBlock));
+            long low = Math.Max(rules.ParryWindowMs - rules.ShieldParryWindowShiftMs, rules.TickMilliseconds);
+            if (rules.TickMilliseconds > 0 && low % rules.TickMilliseconds != 0) low += rules.TickMilliseconds - low % rules.TickMilliseconds;
+            long window = Math.Min(own.ParryWindowMs, Math.Max(low, rules.ParryWindowMs));
+            var fallback = new ShieldGuard(reduction, cost, window);
+            return fallback.Check(rules, "shield").Count == 0 ? fallback : own;
+        }
 
         /// <summary>Quantité de <paramref name="item"/> dans l'inventaire (objets portés exclus).</summary>
         public int Count(string item) => _stacks.Where(s => s.Item == item).Sum(s => s.Count);
@@ -652,6 +681,51 @@ namespace EdS.World
                 if (after == 0) wornOut.Add(worn.Item);
             }
             return wornOut;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.4 (relecture indépendante de la PR #80) : use de <paramref name="loss"/> points les pièces <paramref name="pieces"/>
+        /// (celles portées à l'entrée dans la zone, celles du combat), où qu'elles soient maintenant : portées (à n'importe quelle place) ou
+        /// dans le sac ; une pièce vendue ou jetée depuis n'est plus usée. Chaque pièce est cherchée par sa valeur (objet, propriétés,
+        /// qualité, usure), une place au plus par pièce ; une pièce qui ne s'use pas est sautée. Rend la nouvelle valeur de chaque pièce,
+        /// dans l'ordre (la même si elle n'est plus là), et dans <paramref name="wornOut"/> les objets qui viennent d'arriver à zéro.
+        /// </summary>
+        internal IReadOnlyList<ItemStack> WearPieces(IReadOnlyList<ItemStack> pieces, int loss, out IReadOnlyList<string> wornOut)
+        {
+            if (pieces is null) throw new ArgumentNullException(nameof(pieces));
+            if (loss < 0) throw new ArgumentOutOfRangeException(nameof(loss));
+            var updated = new List<ItemStack>(pieces);
+            var zero = new List<string>();
+            wornOut = zero;
+            if (loss == 0) return updated;
+            var usedSlots = new HashSet<string>(StringComparer.Ordinal);
+            var usedPlaces = new HashSet<int>();
+            for (int k = 0; k < pieces.Count; k++)
+            {
+                ItemStack piece = pieces[k];
+                if (!_catalog.TryGetItem(piece.Item, out ItemDefinition item) || !_catalog.Wears(item)) continue;
+                int left = _catalog.WearLeft(piece);
+                if (left == 0) continue;
+                ItemStack after = piece.WithWear(Math.Max(0, left - loss));
+                string? slot = _catalog.Places.Select(p => p.Id).FirstOrDefault(id => !usedSlots.Contains(id) && _equipped.TryGetValue(id, out ItemStack e) && e.Equals(piece));
+                if (slot != null)
+                {
+                    usedSlots.Add(slot);
+                    _equipped[slot] = after;
+                }
+                else
+                {
+                    int place = -1;
+                    for (int i = 0; i < _stacks.Count && place < 0; i++)
+                        if (!usedPlaces.Contains(i) && _stacks[i].Equals(piece)) place = i;
+                    if (place < 0) continue;   // plus dans l'inventaire (vendue, jetée)
+                    usedPlaces.Add(place);
+                    _stacks[place] = after;
+                }
+                updated[k] = after;
+                if (after.Wear == 0) zero.Add(piece.Item);
+            }
+            return updated;
         }
 
         /// <summary>

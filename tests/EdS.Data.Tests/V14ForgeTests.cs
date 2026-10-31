@@ -332,6 +332,10 @@ public class V14ForgeTests
         (Workshop first, Inventory refused) = Bench(0);
         Assert.Equal(CraftRefusal.LevelTooLow, first.Craft("recipe.gantelets_de_fer", true, refused, new ForgeStrikes(100, 100, 100), "bastion", 0, 0, out _));
         Assert.Equal((70, 0, 15), first.Chances(first.Book.Recipe("recipe.casque_de_fer"), 0));
+        Assert.Equal(45, first.Chances(first.Book.Recipe("recipe.casque_de_fer"), 100).Fail);
+        // Relecture indépendante de la PR #80 : sans petit jeu (herboristerie), l'adresse ne change pas la chance de rater.
+        Assert.Equal(first.Chances(first.Book.Recipe("recipe.remede_de_l_aube"), 0), first.Chances(first.Book.Recipe("recipe.remede_de_l_aube"), 100));
+        Assert.Equal(70, first.Chances(first.Book.Recipe("recipe.remede_de_l_aube"), 100).Fail);
         bool failed = false, succeeded = false;
         for (int counter = 0; counter < 40 && !(failed && succeeded); counter++)
         {
@@ -411,6 +415,8 @@ public class V14ForgeTests
         }
         Assert.NotNull(report);
         Assert.True(report!.Damage > 0);
+        // Relecture indépendante de la PR #80 : les dégâts sont ceux du compteur du moteur (un soin ne les cache pas).
+        Assert.Equal(w.Zone.Engine.View("bastion").Counters.DamageTaken, report.Damage);
         Assert.Equal(0L, w.PendingDamage);
         Assert.Equal((int)(report.Damage * Items.WearPerFullHealth / maxHealth), report.Lost);
         // Chaque pièce portée qui s'use a perdu autant ; l'Éclat du Seuil ne s'use pas.
@@ -421,6 +427,79 @@ public class V14ForgeTests
         // Les bonus du combat en cours ne changent pas (entrée), ni le journal : l'usure est hors du moteur.
         Assert.Equal(w.EnteredGear, Inventory.From(hero, Items, 1).Gear());
         Assert.NotNull(midFight);   // une sauvegarde prise en plein combat compte déjà les dégâts reçus
+    }
+
+    [Fact]
+    public void Changer_d_equipement_apres_l_entree_n_evite_pas_l_usure()
+    {
+        // Relecture indépendante de la PR #80 : le combat garde l'équipement d'entrée ; c'est lui que l'usure use. Un loup au contact, un
+        // second qui arrive une minute plus tard ; entre les deux combats, l'épée d'entrée part au sac et une hachette la remplace.
+        ItemCatalog harsh = ItemsMutated(r => r["data"]!["wear"]!["perFullHealth"] = 100).Catalog!;
+        ScenarioLoadResult loaded = ReadMutated(root =>
+        {
+            foreach (JsonObject wolf in root["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Where(c => c["id"]!.GetValue<string>() is "loup1" or "loup2"))
+            {
+                wolf["health"] = 120;
+                wolf["position"] = new JsonArray(-16, -12);
+                if (wolf["id"]!.GetValue<string>() == "loup2") wolf["arrivalMs"] = 60_000;
+            }
+        }, scenario: "zones/vallons");
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        long xp = 0;
+        while (Progression.LevelFor(xp) < 2) xp++;   // la hachette demande le niveau 2
+        SavedCharacter outfit = Inventory.Outfit(Hero().WithXp(xp), harsh);
+        SavedCharacter hero = outfit.WithItems(new[] { new ItemStack("item.hachette_du_bucheron", 1) }, outfit.Equipment.ToDictionary(e => e.Key, e => new ItemStack(e.Value, 1)));
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), loaded.Setup!, ShippedData, Progression, harsh,
+            new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5")));
+        var reports = new List<WearReport>();
+        bool swapped = false;
+        for (int i = 0; i < 8000 && reports.Count < 2; i++)
+        {
+            string target = w.Zone.Engine.View("loup1").IsDead ? "loup2" : "loup1";
+            if (i % 20 == 1)
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", target)); }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException) { }
+            if (w.Step().Wear is WearReport r) reports.Add(r);
+            if (reports.Count == 1 && !swapped && !w.InCombat)
+            {
+                Assert.Equal(InventoryRefusal.None, w.Equip(0));   // la hachette prend la place de l'épée, qui part au sac
+                Assert.Equal("item.hachette_du_bucheron", w.Inventory.WornAt("weapon"));
+                swapped = true;
+            }
+        }
+        Assert.True(swapped);
+        Assert.Equal(2, reports.Count);
+        Assert.True(reports[1].Lost > 0);
+        // L'épée d'entrée, au sac, a perdu les deux usures ; la hachette, portée seulement après l'entrée, rien.
+        ItemStack sword = w.Inventory.Stacks.Single(x => x.Item == "item.epee_du_milicien");
+        Assert.Equal(Math.Max(0, harsh.WearMax - reports[0].Lost - reports[1].Lost), harsh.WearLeft(sword));
+        Assert.Null(w.Inventory.WornInstanceAt("weapon")!.Wear);
+        // Le bouclier, resté porté, a perdu les deux.
+        Assert.Equal(Math.Max(0, harsh.WearMax - reports[0].Lost - reports[1].Lost), harsh.WearLeft(w.Inventory.WornInstanceAt("shield")!));
+    }
+
+    [Fact]
+    public void Bouclier_use_a_zero_jamais_meilleur_que_sa_propre_garde()
+    {
+        // Relecture indépendante de la PR #80 : la garde de repli prend, pour chaque valeur, la plus faible de la sienne et de celle des règles.
+        CombatRules rules = ShippedData.Rules.Combat;
+        SavedCharacter hero = Inventory.Outfit(Hero(), Items);
+        foreach (string shield in Items.Items.Where(i => i.Guard != null).Select(i => i.Id))
+        {
+            var worn = hero.Equipment.ToDictionary(e => e.Key, e => e.Key == "shield" ? new ItemStack(shield, 1, wear: 0) : new ItemStack(e.Value, 1));
+            Inventory inventory = Inventory.From(hero.WithItems(hero.Inventory, worn), Items, 20);
+            ShieldGuard own = Items.Item(shield).Guard!, fallback = inventory.ShieldFor(rules)!;
+            Assert.True(fallback.DamageReduction <= own.DamageReduction && fallback.DamageReduction <= Fixed.Max(rules.GuardDamageReduction, rules.ShieldMinDamageReduction), shield);
+            Assert.True(fallback.CostPerBlock >= own.CostPerBlock, shield);
+            Assert.True(fallback.ParryWindowMs <= own.ParryWindowMs, shield);
+            Assert.Empty(fallback.Check(rules, "shield"));   // toujours admise par le combat
+            var fresh = hero.Equipment.ToDictionary(e => e.Key, e => e.Key == "shield" ? new ItemStack(shield, 1, wear: 1) : new ItemStack(e.Value, 1));
+            Assert.Equal(own, Inventory.From(hero.WithItems(hero.Inventory, fresh), Items, 20).ShieldFor(rules));
+        }
+        // La garde de repli entre au combat.
+        var broken = hero.Equipment.ToDictionary(e => e.Key, e => e.Key == "shield" ? new ItemStack(e.Value, 1, wear: 0) : new ItemStack(e.Value, 1));
+        WorldSession w = Open(Zone(), hero.WithItems(hero.Inventory, broken));
+        Assert.Equal(Inventory.From(hero.WithItems(hero.Inventory, broken), Items, 1).ShieldFor(rules), w.EnteredShield);
     }
 
     [Fact]

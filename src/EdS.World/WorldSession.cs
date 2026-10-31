@@ -285,12 +285,15 @@ namespace EdS.World
                     Inventory.Reserve(id, count);   // revue Codex de la PR #47 : emportés, ils ne se retirent plus de l'inventaire avant d'être bus
                 }
             CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried,
-                shield: Inventory.Shield,   // sous-lot V1.2 : garde du bouclier porté
+                shield: Inventory.ShieldFor(data.Rules.Combat),   // sous-lot V1.2 : garde du bouclier porté ; V1.4 : jamais meilleure s'il est usé à zéro
                 equipment: Inventory.Effects());   // sous-lot V1.3 : effets des objets nommés et des ensembles
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
             Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
-            _lastHealth = Zone.Engine.View(_character.Id).Health;   // sous-lot V1.4 : point de départ du relevé des dégâts reçus
+            // Sous-lot V1.4 : point de départ du relevé des dégâts reçus, et pièces portées à l'entrée (celles du combat de cette session).
+            _lastTaken = Zone.Engine.View(_character.Id).Counters.DamageTaken;
+            _entryPieces = Inventory.Places().Where(p => Inventory.WornInstanceAt(p) is { } x && items.Wears(items.Item(x.Item)))
+                .Select(p => Inventory.WornInstanceAt(p)!).ToList();
             EnteredGear = setup.Gear;
             EnteredEffects = setup.Equipment;
         }

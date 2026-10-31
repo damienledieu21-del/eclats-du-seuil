@@ -204,7 +204,8 @@ namespace EdS.World
         public (int Fail, int Masterwork, int Superior) Chances(Recipe recipe, int skill)
         {
             int gap = LevelGap(recipe);
-            int fail = _book.Failure.FailPercent(gap, skill);
+            // Sans petit jeu (recette sans qualité), pas d'adresse : la chance de rater est celle d'une adresse nulle.
+            int fail = _book.Failure.FailPercent(gap, recipe.Quality ? skill : 0);
             if (!recipe.Quality) return (fail, 0, 0);
             (int master, int superior) = _book.Forge.Chances(skill, Math.Max(0, Level(recipe.Profession) - recipe.RequiredLevel));
             return (fail, master, superior);

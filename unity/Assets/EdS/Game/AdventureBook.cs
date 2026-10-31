@@ -687,7 +687,9 @@ namespace EdS.Game
                 card.Recipe.Value = r.Inputs + "  »  " + r.Output;
                 card.State.Value = a.Text("text.ui.craft." + r.Refusal.ToString().ToLowerInvariant());
                 // Sous-lot V1.4 : au-dessus de son niveau, la recette peut rater ; le risque se dit avant.
-                if (possible && r.LevelGap > 0) card.State.Value = string.Format(a.Text("text.ui.craft_risky"), r.Fail.Worst, r.Fail.Best);
+                if (possible && r.LevelGap > 0)
+                    card.State.Value = r.Quality ? string.Format(a.Text("text.ui.craft_risky"), r.Fail.Worst, r.Fail.Best)
+                        : string.Format(a.Text("text.ui.craft_risky_plain"), r.Fail.Worst);
                 card.State.Color = possible ? (r.LevelGap > 0 ? UiKit.Dawn : UiKit.Teal) : UiKit.Endurance;
                 card.Craft.Text.Value = a.Text("text.ui.craft");
                 card.Craft.Enable(possible);

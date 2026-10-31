@@ -108,6 +108,7 @@
       "text.ui.crafted_superior": "Belle frappe : {0} de qualité supérieure !",
       "text.ui.crafted_masterwork": "Chef-d'œuvre ! {0}, signé de ton nom.",
       "text.ui.craft_risky": "Au-dessus de ton niveau : {0} % de risque de rater ({1} % avec des frappes parfaites).",
+      "text.ui.craft_risky_plain": "Au-dessus de ton niveau : {0} % de risque de rater.",
       "text.ui.forge.title": "Forge : {0}",
       "text.ui.forge.hint": "Espace ou clic : frappe quand le curseur passe sur la cible ({0} frappes).",
       "text.ui.forge.chances": "Chef-d'œuvre {0} % · supérieure {1} % · rater {2} %",

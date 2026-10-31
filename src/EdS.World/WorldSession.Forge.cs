@@ -52,8 +52,9 @@ namespace EdS.World
 
     /// <summary>
     /// Sous-lot V1.4 : forge, usure et réparation. <b>Usure</b> (plan des Vallons solo : « chaque combat use l'équipement porté selon les
-    /// dégâts reçus ») : la partie relève les PV perdus par le personnage à chaque tick (la baisse de ses PV ; un soin ne la compte pas) ;
-    /// à la fin du combat (le personnage n'est plus en combat, ou il est tombé), chaque pièce portée qui s'use perd
+    /// dégâts reçus ») : la partie relève les dégâts reçus par le personnage à chaque tick (compteur du moteur ; un soin ne les efface pas) ;
+    /// à la fin du combat (le personnage n'est plus en combat, ou il est tombé), chaque pièce portée à l'entrée dans la zone (celles du
+    /// combat, où qu'elles soient maintenant : portées ou dans le sac) qui s'use perd
     /// <c>dégâts × wear.perFullHealth / PV maximaux</c> points de solidité (catalogue des objets), arrondis vers le bas, le reste gardé pour
     /// le combat suivant de la session. L'usure se fait <b>hors du moteur de combat</b> : ni les règles ni les journaux ne changent, et elle
     /// prend effet à la prochaine entrée (le combat en cours garde ses bonus d'entrée, comme un équipement changé). Une sauvegarde prise en
@@ -62,13 +63,25 @@ namespace EdS.World
     /// </summary>
     public sealed partial class WorldSession
     {
-        /// <summary>PV du personnage au dernier relevé (null : absent).</summary>
-        private long? _lastHealth;
+        /// <summary>
+        /// Dégâts reçus par le personnage au dernier relevé (compteur du moteur, <see cref="CombatantCounters.DamageTaken"/>) : les dégâts du
+        /// combat se lisent par différence, sans qu'un soin du même tick en cache une partie (relecture indépendante de la PR #80).
+        /// </summary>
+        private long _lastTaken;
+
+        /// <summary>
+        /// Pièces portées à l'entrée dans la zone, celles du combat (le moteur garde l'équipement d'entrée) : c'est elles que l'usure use, où
+        /// qu'elles soient maintenant (relecture indépendante de la PR #80 : changer d'équipement après l'entrée n'évite pas l'usure).
+        /// </summary>
+        private IReadOnlyList<ItemStack> _entryPieces = Array.Empty<ItemStack>();
 
         /// <summary>Dégâts reçus depuis la dernière usure appliquée (combat en cours).</summary>
         private long _pendingDamage;
 
-        /// <summary>Reste de la division de l'usure (dégâts × perte, modulo les PV maximaux), gardé pour le combat suivant de la session.</summary>
+        /// <summary>
+        /// Reste de la division de l'usure (dégâts × perte, modulo les PV maximaux), gardé pour le combat suivant de la session. Il n'est
+        /// pas sauvegardé : une nouvelle session (halte, porte, reprise) repart d'un reste nul (au plus un point de solidité perdu de moins).
+        /// </summary>
         private long _wearCarry;
 
         /// <summary>Sous-lot V1.4 : dégâts reçus dans le combat en cours, pas encore passés dans l'usure.</summary>
@@ -78,15 +91,16 @@ namespace EdS.World
         private WearReport? TrackWear(bool defeated)
         {
             CombatantView me = Zone.Engine.View(_character.Id);
-            long? health = me.IsPresent ? me.Health : null;
-            if (health is long now && _lastHealth is long before && now < before) _pendingDamage = checked(_pendingDamage + (before - now));
-            _lastHealth = health;
+            long taken = me.Counters.DamageTaken;
+            if (taken > _lastTaken) _pendingDamage = checked(_pendingDamage + (taken - _lastTaken));
+            _lastTaken = Math.Max(_lastTaken, taken);
             if (_pendingDamage == 0 || (!defeated && !_defeated && InCombat)) return null;
             long damage = _pendingDamage;
             int lost = WearLoss(damage, _wearCarry, me.MaxHealth, out long carry);
             _pendingDamage = 0;
             _wearCarry = carry;
-            return new WearReport(damage, lost, Inventory.WearDown(lost));
+            _entryPieces = Inventory.WearPieces(_entryPieces, lost, out IReadOnlyList<string> wornOut);
+            return new WearReport(damage, lost, wornOut);
         }
 
         /// <summary>
@@ -111,7 +125,7 @@ namespace EdS.World
         {
             if (_pendingDamage == 0) return Inventory;
             Inventory copy = Inventory.Clone();
-            copy.WearDown(WearLoss(_pendingDamage, _wearCarry, Zone.Engine.View(_character.Id).MaxHealth, out _));
+            copy.WearPieces(_entryPieces, WearLoss(_pendingDamage, _wearCarry, Zone.Engine.View(_character.Id).MaxHealth, out _), out _);
             return copy;
         }
 
@@ -166,6 +180,7 @@ namespace EdS.World
             long price = RepairPrice();
             if (!Coins.TryAdd(Money, -price, out long left)) return RepairRefusal.NotEnoughMoney;
             Inventory.RepairAll();
+            _entryPieces = _entryPieces.Select(p => p.WithWear(null)).ToList();   // réparées, ce sont toujours les pièces du combat
             _character = _character.WithMoney(left);
             paid = price;
             return RepairRefusal.None;
