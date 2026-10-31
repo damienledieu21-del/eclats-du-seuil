@@ -226,11 +226,12 @@ public class V11RelectureTests : IDisposable
         // Le tirage du stock est un contrat (Pcg32 graine FNV-1a de la clé du jour) : ces jours-là, ces offres, pour de bon.
         var market = new Market(ShippedMerchants);
         // Sous-lot V1.2 : Garin vend aussi la targe, la coiffe, les bottes et la cape de laine (toujours), et six pièces tournantes de plus.
-        Assert.Equal(new[] { "item.epee_du_milicien", "item.ecu_de_chene", "item.gambison", "item.targe_d_osier", "item.coiffe_de_cuir", "item.bottes_de_cuir", "item.cape_de_laine", "item.jambieres_de_mailles", "item.anneau_de_fer" },
+        // Réponses de Damien du 31 octobre 2026 : quatre pièces tournantes par jour au lieu de deux (les deux premières tirées restent les mêmes).
+        Assert.Equal(new[] { "item.epee_du_milicien", "item.ecu_de_chene", "item.gambison", "item.rondache_cerclee", "item.marteau_du_carrier", "item.targe_d_osier", "item.coiffe_de_cuir", "item.bottes_de_cuir", "item.cape_de_laine", "item.jambieres_de_mailles", "item.anneau_de_fer" },
             market.Stock("merchant.armurier", 0).Select(o => o.Item));
-        Assert.Equal(new[] { "item.epee_du_milicien", "item.ecu_de_chene", "item.gambison", "item.marteau_du_carrier", "item.targe_d_osier", "item.coiffe_de_cuir", "item.bottes_de_cuir", "item.cape_de_laine", "item.anneau_de_fer" },
+        Assert.Equal(new[] { "item.epee_du_milicien", "item.ecu_de_chene", "item.gambison", "item.pavois_du_moulin", "item.marteau_du_carrier", "item.targe_d_osier", "item.coiffe_de_cuir", "item.bottes_de_cuir", "item.cape_de_laine", "item.casque_de_fer", "item.anneau_de_fer" },
             market.Stock("merchant.armurier", 3).Select(o => o.Item));
-        Assert.Equal(new[] { "item.epee_du_milicien", "item.ecu_de_chene", "item.gambison", "item.cotte_de_mailles", "item.targe_d_osier", "item.coiffe_de_cuir", "item.bottes_de_cuir", "item.cape_de_laine", "item.casque_de_fer" },
+        Assert.Equal(new[] { "item.epee_du_milicien", "item.ecu_de_chene", "item.gambison", "item.epee_de_garde", "item.rondache_cerclee", "item.cotte_de_mailles", "item.targe_d_osier", "item.coiffe_de_cuir", "item.bottes_de_cuir", "item.cape_de_laine", "item.casque_de_fer" },
             market.Stock("merchant.armurier", 4).Select(o => o.Item));
         Assert.Equal(new[] { "item.potion_de_soin", "item.herbe_de_l_aube", "item.remede_de_l_aube", "item.faucille_de_l_herboriste" }, market.Stock("merchant.herboriste", 0).Select(o => o.Item));
         Assert.Equal(new[] { "item.potion_de_soin", "item.herbe_de_l_aube", "item.eclat_de_seuil", "item.faucille_de_l_herboriste" }, market.Stock("merchant.herboriste", 1).Select(o => o.Item));

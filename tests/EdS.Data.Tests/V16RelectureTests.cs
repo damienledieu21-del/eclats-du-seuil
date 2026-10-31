@@ -333,8 +333,9 @@ public class V16RelectureTests
         WorldSession w = Play(z, Hero());
         List<SessionStep> steps = BeatBandit(w);
         Assert.Contains(steps.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated && b.Boss == "chef_des_bandits");
-        Assert.Equal(new[] { ("item.rondache_cerclee", 1) }, steps.SelectMany(s => s.Rewards));
-        Assert.Equal(1, w.Inventory.Count("item.rondache_cerclee"));
+        // Réponses de Damien du 31 octobre 2026 : sa récompense de première victoire est la rondache nommée du chef (effet de bouclier).
+        Assert.Equal(new[] { ("item.rondache_du_chef_des_bandits", 1) }, steps.SelectMany(s => s.Rewards));
+        Assert.Equal(1, w.Inventory.Count("item.rondache_du_chef_des_bandits"));
         Assert.True(w.Zone.IsConsumed("zone.vallons/boss/chef_des_bandits"));
         Assert.False(w.Zone.IsConsumed("zone.vallons/boss/gardien_du_seuil"));
         Assert.True(w.Narrative!.Knows("fact.chef_des_bandits.vaincu"));
@@ -345,7 +346,7 @@ public class V16RelectureTests
         List<SessionStep> second = BeatBandit(again);
         Assert.Contains(second.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated && b.Boss == "chef_des_bandits");
         Assert.Empty(second.SelectMany(s => s.Rewards));
-        Assert.Equal(1, again.Inventory.Count("item.rondache_cerclee"));
+        Assert.Equal(1, again.Inventory.Count("item.rondache_du_chef_des_bandits"));
     }
 
     [Theory]
@@ -363,7 +364,7 @@ public class V16RelectureTests
         for (int i = 0; i < 20; i++) steps.Add(w.Step());
         Assert.Contains(steps.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated && b.Boss == "chef_des_bandits");
         Assert.Equal(given, w.Zone.IsConsumed("zone.vallons/boss/chef_des_bandits"));
-        Assert.Equal(given ? 1 : 0, w.Inventory.Count("item.rondache_cerclee"));
+        Assert.Equal(given ? 1 : 0, w.Inventory.Count("item.rondache_du_chef_des_bandits"));
         Assert.Equal(given, w.Narrative!.Knows("fact.chef_des_bandits.vaincu"));
         Assert.Equal(given ? 0 : 1, steps.SelectMany(s => s.Story).Count(e => e.Kind == StoryEventKind.RewardBlocked && e.Id == "zone.vallons/boss/chef_des_bandits"));
     }
@@ -393,7 +394,7 @@ public class V16RelectureTests
         for (int i = 0; i < 3; i++) steps.Add(w.Step());
         SessionStep both = Assert.Single(steps, s => s.Boss.Count(b => b.Kind == BossEventKind.Defeated) == 2);
         Assert.Equal(new[] { "gardien_du_seuil", "chef_des_bandits" }, both.Boss.Where(b => b.Kind == BossEventKind.Defeated).Select(b => b.Boss));
-        Assert.Equal(new[] { ("item.lame_du_seuil", 1), ("item.rondache_cerclee", 1) }, both.Rewards);
+        Assert.Equal(new[] { ("item.lame_du_seuil", 1), ("item.rondache_du_chef_des_bandits", 1) }, both.Rewards);
         Assert.True(w.Zone.IsConsumed(z.VictoryKey) && w.Zone.IsConsumed(z.VictoryKeyOf(z.Chiefs[0])));
         Assert.True(w.Narrative!.Knows("fact.chef.vaincu") && w.Narrative.Knows("fact.chef_des_bandits.vaincu"));
     }

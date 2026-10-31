@@ -112,7 +112,7 @@ namespace EdS.Data.Items
         /// <summary>La place porte la garde du personnage : ses objets ont une garde propre (le bouclier).</summary>
         public bool? Guard { get; set; }
 
-        /// <summary>Sous-lot V1.3 (version 4) : ses objets peuvent porter des effets (armes et bijoux).</summary>
+        /// <summary>Sous-lot V1.3 (version 4) : ses objets peuvent porter des effets (armes, boucliers et bijoux).</summary>
         public bool? Effects { get; set; }
 
         /// <summary>Champs effectivement présents.</summary>

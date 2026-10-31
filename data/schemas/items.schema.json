@@ -251,7 +251,7 @@
         },
         "effects": {
           "type": "boolean",
-          "description": "Sous-lot V1.3 (version 4) : ses objets peuvent porter des effets (armes et bijoux) ; place du combat seulement."
+          "description": "Sous-lot V1.3 (version 4) : ses objets peuvent porter des effets (armes, boucliers et bijoux) ; place du combat seulement."
         }
       }
     },

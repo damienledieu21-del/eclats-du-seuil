@@ -68,7 +68,8 @@ public class V12EquipementTests
         Assert.Equal(new[] { "relic_1", "relic_2" }, c.PlacesFor("relic").Select(p => p.Id));
         EquipmentPlace shield = c.GuardPlace!;
         Assert.Equal(("shield", true, false), (shield.Id, shield.IsRequiredFor("class.bastion"), shield.IsRequiredFor("class.autre")));
-        Assert.Equal(new[] { "item.eclat_du_seuil_endormi", "item.epee_du_milicien", "item.ecu_de_chene" }, c.StartingFor("class.bastion"));
+        // Réponses du 31 octobre 2026 : l'épée et l'écu du novice remplacent l'épée du milicien et l'écu de chêne.
+        Assert.Equal(new[] { "item.eclat_du_seuil_endormi", "item.epee_du_novice", "item.ecu_du_novice" }, c.StartingFor("class.bastion"));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "items.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(CatalogPath)).RootElement));
     }
@@ -196,7 +197,7 @@ public class V12EquipementTests
         Assert.Equal(before, State(inv));
         // Échanger le bouclier est permis : l'écu revient dans le sac, à la place de la targe.
         Assert.Equal(InventoryRefusal.None, inv.Equip(3, 3));
-        Assert.Equal(("item.targe_d_osier", "item.ecu_de_chene"), (inv.Equipped["shield"], inv.Stacks[3].Item));
+        Assert.Equal(("item.targe_d_osier", "item.ecu_du_novice"), (inv.Equipped["shield"], inv.Stacks[3].Item));
         Assert.Equal(new ShieldGuard(Fixed.Parse("0.5"), 6, 200), inv.Shield);
         // Sac plein : ôter est refusé, rien ne change.
         var full = Inventory.From(Bare(3), ItemsCatalog, 3);
@@ -281,13 +282,13 @@ public class V12EquipementTests
     public void Nouveau_personnage_avec_son_equipement_de_depart()
     {
         SavedCharacter hero = Inventory.Outfit(Bare(1), ItemsCatalog);
-        Assert.Equal(new Dictionary<string, string> { ["shard"] = "item.eclat_du_seuil_endormi", ["shield"] = "item.ecu_de_chene", ["weapon"] = "item.epee_du_milicien" },
+        Assert.Equal(new Dictionary<string, string> { ["shard"] = "item.eclat_du_seuil_endormi", ["shield"] = "item.ecu_du_novice", ["weapon"] = "item.epee_du_novice" },
             hero.Equipment);
         Assert.Equal(hero.Equipment, Inventory.Outfit(hero, ItemsCatalog).Equipment);   // déjà équipé : rien de plus
         string temp = Path.Combine(Path.GetTempPath(), "eds_v12_" + Guid.NewGuid().ToString("N"), "partie.json");
         Directory.CreateDirectory(Path.GetDirectoryName(temp)!);
         AdventureSession a = Adventure(temp);
-        Assert.Equal("item.ecu_de_chene", a.World.Inventory.Equipped["shield"]);
+        Assert.Equal("item.ecu_du_novice", a.World.Inventory.Equipped["shield"]);
         Assert.Equal(new ShieldGuard(Fixed.Parse("0.6"), 10, 150), a.World.EnteredShield);
         Assert.Equal(60, a.World.EnteredGear.Armor);
         Directory.Delete(Path.GetDirectoryName(temp)!, true);
@@ -321,7 +322,7 @@ public class V12EquipementTests
         // Sans bouclier dans le sac, l'écu de départ est donné.
         string bare = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(1))).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 6");
         WorldSession given = new(SaveJsonReader.Read(bare).Save!, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
-        Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, given.Restored);
+        Assert.Equal(new[] { "item.ecu_du_novice", "item.eclat_du_seuil_endormi" }, given.Restored);
         // Une sauvegarde d'un programme futur (version 9) est refusée.
         Assert.False(SaveJsonReader.Read(rewritten.Replace(SaveVersion.Current, SaveVersion.Future)).IsValid);
     }
@@ -337,8 +338,8 @@ public class V12EquipementTests
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.False(read.Save!.Migrated);
         var w = new WorldSession(read.Save, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
-        Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, w.Restored);
-        Assert.Equal(("item.ecu_de_chene", "item.eclat_du_seuil_endormi"), (w.Inventory.Equipped["shield"], w.Inventory.Equipped["shard"]));
+        Assert.Equal(new[] { "item.ecu_du_novice", "item.eclat_du_seuil_endormi" }, w.Restored);
+        Assert.Equal(("item.ecu_du_novice", "item.eclat_du_seuil_endormi"), (w.Inventory.Equipped["shield"], w.Inventory.Equipped["shard"]));
         Assert.Equal(new ShieldGuard(Fixed.Parse("0.6"), 10, 150), w.EnteredShield);   // la garde portée au combat, pas « aucune »
         Assert.Equal(new[] { "item.peau_de_loup" }, w.Inventory.Stacks.Select(s => s.Item));
         // Avec un bouclier dans le sac (version courante aussi) : c'est lui qui est mis, il quitte le sac.
@@ -421,7 +422,7 @@ public class V12EquipementTests
     {
         var inv = Inventory.From(Inventory.Outfit(Bare(5, "item.pavois_du_moulin", "item.anneau_de_cuivre", "item.peau_de_loup"), ItemsCatalog), ItemsCatalog, 5);
         ItemComparison pavois = ItemComparison.For(inv, "item.pavois_du_moulin")!;
-        Assert.Equal(("shield", "item.ecu_de_chene"), (pavois.Place, pavois.Worn!.Id));
+        Assert.Equal(("shield", "item.ecu_du_novice"), (pavois.Place, pavois.Worn!.Id));
         string Line(ItemComparison c, string label) => c.Lines.Single(l => l.Label == label).ToString();
         Assert.Equal("Armure : 60 → 120 (+60)", Line(pavois, "Armure"));
         Assert.Equal("PV maximaux : 0 → 60 (+60)", Line(pavois, "PV maximaux"));
@@ -433,7 +434,7 @@ public class V12EquipementTests
         Assert.Equal(("ring_1", (ItemDefinition?)null), (ring.Place, ring.Worn));
         Assert.Equal("PV maximaux : – → 15 (+15)", ring.Lines.Single().ToString());
         Assert.Null(ItemComparison.For(inv, "item.peau_de_loup"));
-        Assert.True(ItemComparison.For(inv, "item.ecu_de_chene", "shield")!.IsWorn);
+        Assert.True(ItemComparison.For(inv, "item.ecu_du_novice", "shield")!.IsWorn);
         Assert.Equal(70, ItemComparison.Percent(Fixed.Parse("0.7")));
     }
 }
@@ -452,7 +453,7 @@ public class V12EquipementVisibleTests
         // Relecture de la PR #75 : appelé à chaque image avec le précédent, il le rend tel quel tant que rien ne change (aucune allocation).
         VisibleGear shown = GearLooks.For(inv);
         Assert.Same(shown, GearLooks.For(inv, shown));
-        Assert.Equal("item.ecu_de_chene", inv.WornAt("shield"));
+        Assert.Equal("item.ecu_du_novice", inv.WornAt("shield"));
         Assert.Null(inv.WornAt("cloak"));
         foreach (string id in new[] { "item.cape_de_voyageur", "item.marteau_du_carrier", "item.pavois_du_moulin", "item.casque_de_fer" })
             Assert.Equal(InventoryRefusal.None, inv.Equip(inv.Stacks.ToList().FindIndex(st => st.Item == id), 7));

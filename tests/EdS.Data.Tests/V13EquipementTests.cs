@@ -60,8 +60,9 @@ public class V13EquipementTests
     {
         ItemCatalog c = ItemsCatalog;
         Assert.Equal((4, "0.3.0-provisoire"), (c.SchemaVersion, c.ContentVersion));
-        Assert.Equal(new[] { "weapon", "neck", "ring_1", "ring_2", "relic_1", "relic_2" }, c.Places.Where(p => p.Effects).Select(p => p.Id));
-        Assert.Equal(new[] { "item.lame_du_seuil", "item.amulette_de_l_aube", "item.talisman_du_seuil" }, c.Items.Where(i => i.Effect != null).Select(i => i.Id));
+        // Réponses du 31 octobre 2026 : les boucliers aussi (la rondache du chef des bandits).
+        Assert.Equal(new[] { "weapon", "shield", "neck", "ring_1", "ring_2", "relic_1", "relic_2" }, c.Places.Where(p => p.Effects).Select(p => p.Id));
+        Assert.Equal(new[] { "item.lame_du_seuil", "item.rondache_du_chef_des_bandits", "item.amulette_de_l_aube", "item.talisman_du_seuil" }, c.Items.Where(i => i.Effect != null).Select(i => i.Id));
         Assert.Equal("Les coups sur un ennemi étourdi infligent 10 % de dégâts en plus.", c.Item("item.lame_du_seuil").Effect!.Text);
         Assert.Equal("item.lame_du_seuil", c.Item("item.lame_du_seuil").Effect!.Effect.Source);
         // Deux ensembles des niveaux 1 à 20 : 4 et 6 pièces, paliers croissants, sources « set.….<pièces> ».

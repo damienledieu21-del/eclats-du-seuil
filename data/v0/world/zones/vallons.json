@@ -842,7 +842,7 @@
         "fact": "fact.chef_des_bandits.vaincu",
         "rewards": [
           {
-            "item": "item.rondache_cerclee",
+            "item": "item.rondache_du_chef_des_bandits",
             "count": 1
           }
         ],
