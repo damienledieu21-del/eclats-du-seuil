@@ -151,8 +151,9 @@ namespace EdS.World
         /// <summary>
         /// Sous-lot V1.5 (écran des compétences, décision de Damien : changer ses compétences « partout hors combat ») : nouvelle barre du
         /// personnage, jugée à son niveau actuel par <see cref="PlayerCharacters.CheckSkills"/> (places ouvertes, compétences apprises,
-        /// validateur unique des builds, barre pas pire). Admise, elle est gardée (sauvegarde) et prend effet à la prochaine entrée dans une
-        /// zone, comme les talents (le combat en cours garde le build d'entrée) ; refusée, rien ne change et le premier motif est rendu.
+        /// validateur unique des builds ; une place peut rester vide). Admise, elle est gardée (sauvegarde) et prend effet à la prochaine
+        /// entrée dans une zone, comme les talents (le combat en cours garde le build d'entrée) ; refusée, rien ne change et le premier motif
+        /// est rendu.
         /// </summary>
         /// <exception cref="ArgumentException">Une liste contient null.</exception>
         public BuildViolation? SetSkills(IReadOnlyList<string> actives, string? ultimate, IReadOnlyList<string> passives)
@@ -160,16 +161,59 @@ namespace EdS.World
             if (actives is null) throw new ArgumentNullException(nameof(actives));
             if (passives is null) throw new ArgumentNullException(nameof(passives));
             BuildViolation? why = PlayerCharacters.CheckSkills(_character, actives, ultimate, passives, _progression, Class, _rules);
-            if (why is null) _character = _character.WithSkills(actives, ultimate, passives);
+            if (why is null)
+            {
+                // Réponse de Damien du 30 octobre 2026 (une place peut rester vide) : le joueur a changé la barre de la prochaine halte, où
+                // les compétences gagnées en route sont déjà placées ; elles sont données pour de bon, et la halte ne remet pas celle qu'il
+                // vient de retirer.
+                // Relecture indépendante de la PR #74 : tout ou rien. Sans la place de toutes les clés au registre, le changement entier est
+                // refusé (sinon une compétence retirée reviendrait à la halte et serait annoncée de nouveau).
+                PlayerCharacters.Learn(_character, _progression, _rules, Zone.IsConsumed, out _, out IReadOnlyList<SkillUnlock> handed);
+                if (!CanGive(handed))
+                    return new BuildViolation(BuildViolationCode.RegistryFull, "skills",
+                        "Le registre du monde est plein : ce changement de compétences ne peut pas être gardé.");
+                _character = _character.WithSkills(actives, ultimate, passives);
+                Give(handed);
+            }
             return why;
         }
+
+        /// <summary>Clés <see cref="SkillUnlock.GivenKey"/> de <paramref name="handed"/> pas encore au registre, sans doublon.</summary>
+        private List<string> ToGive(IEnumerable<SkillUnlock> handed) =>
+            handed.Select(u => u.GivenKey).Distinct(StringComparer.Ordinal).Where(k => !Zone.IsConsumed(k)).ToList();
+
+        /// <summary>
+        /// Le registre a la place de toutes les clés à donner, en gardant celle des morts possibles d'un tick (la règle de la découverte d'un
+        /// point sûr) ; vrai s'il n'y a rien à donner.
+        /// </summary>
+        private bool CanGive(IEnumerable<SkillUnlock> handed)
+        {
+            int count = ToGive(handed).Count;
+            return count == 0 || Zone.RegistryRoom - count >= Zone.Engine.CombatantIds.Count;
+        }
+
+        /// <summary>
+        /// Inscrit au registre du monde les compétences données (<see cref="SkillUnlock.GivenKey"/>), <b>toutes ou aucune</b> (relecture
+        /// indépendante de la PR #74) : seulement s'il reste au registre, après elles, la place des morts possibles d'un tick ; sinon rien
+        /// n'est inscrit (à l'entrée, elles seront données à une halte suivante ; un changement de barre est refusé avant, par
+        /// <see cref="CanGive"/>). Rend vrai si tout est inscrit.
+        /// </summary>
+        private bool Give(IEnumerable<SkillUnlock> handed)
+        {
+            if (!CanGive(handed)) return false;
+            foreach (string key in ToGive(handed)) Zone.Consume(key);
+            return true;
+        }
+
+        /// <summary>Compétences données à l'entrée de cette session (<see cref="Give"/>), inscrites quand la session est prête.</summary>
+        private readonly IReadOnlyList<SkillUnlock> _handedAtEntry;
 
         /// <summary>
         /// Sous-lot V1.5 : le personnage tel qu'il entrera dans la prochaine session : les compétences gagnées depuis cette entrée déjà
         /// équipées dans les places libres (<see cref="PlayerCharacters.Learn"/>, sans rien changer ici). C'est la barre que montre et
         /// que modifie l'écran des compétences.
         /// </summary>
-        public SavedCharacter NextEntry => PlayerCharacters.Learn(_character, _progression, _rules, out _);
+        public SavedCharacter NextEntry => PlayerCharacters.Learn(_character, _progression, _rules, Zone.IsConsumed, out _, out _);
 
         /// <summary>Sous-lot 12.9b : compétences gagnées et équipées à l'entrée dans cette session (niveau atteint depuis la précédente).</summary>
         public IReadOnlyList<SkillUnlock> Learned { get; }
@@ -185,6 +229,7 @@ namespace EdS.World
             CombatantPlacement placement, IReadOnlyDictionary<string, string>? lootTables = null, ICombatLog? log = null)
             : this(save, zoneSetup, data, progression, items, placement, lootTables, log, true)
         {
+            Give(_handedAtEntry);
         }
 
         private WorldSession(WorldSave save, CombatSetup zoneSetup, GameData data, CharacterProgression progression, ItemCatalog items,
@@ -200,7 +245,10 @@ namespace EdS.World
             if (!Coins.IsValid(_character.Money)) throw new ArgumentException($"Bourse hors de [0, {Coins.Max}] cuivre.", nameof(save));
             // Sous-lot 12.9b : un niveau prend effet à l'entrée, avec les compétences qu'il fait gagner (gardées dans la sauvegarde).
             if (data is null) throw new ArgumentNullException(nameof(data));
-            _character = PlayerCharacters.Learn(_character, _progression, data.Rules.Progression, out IReadOnlyList<SkillUnlock> learned);
+            // Réponse de Damien du 30 octobre 2026 : une compétence déjà donnée (clé au registre) n'est plus placée d'office.
+            var given = new HashSet<string>(save.Consumed, StringComparer.Ordinal);
+            _character = PlayerCharacters.Learn(_character, _progression, data.Rules.Progression, given.Contains, out IReadOnlyList<SkillUnlock> learned,
+                out _handedAtEntry);
             Learned = learned;
             _rules = data.Rules.Progression;
             _class = data.TryGetClass(_character.ClassId, out LoadedClass loaded) ? loaded.Definition : null;   // absente : refusée à l'entrée (Setup)
@@ -325,6 +373,8 @@ namespace EdS.World
             // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée. Après l'arrivée du
             // chef : sa première forme compte alors parmi les combattants, et la découverte lui laisse la place de sa mort dans le registre.
             if (door is null) Discover(safePoint ?? zone.Entry.Id);
+            // Compétences données à l'entrée (réponse de Damien du 30 octobre 2026), après le chef comme la découverte.
+            Give(_handedAtEntry);
         }
 
         private readonly BossFight? _boss;
