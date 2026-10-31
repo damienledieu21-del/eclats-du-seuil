@@ -393,7 +393,7 @@ public class Lot123ItemTests
             new[] { new ItemStack("item.peau_de_loup", 12), new ItemStack("item.gambison", 1) },
             new Dictionary<string, string> { ["weapon"] = "item.epee_du_milicien", ["shield"] = "item.ecu_de_chene" });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 1, Array.Empty<string>(), hero));
-        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.3 : 9 (instances d'objets)
+        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
         Assert.Contains("      \"inventory\": [\n        {\"item\": \"item.peau_de_loup\", \"count\": 12},\n        {\"item\": \"item.gambison\", \"count\": 1}\n      ],\n"
             + "      \"equipment\": {\"shield\": \"item.ecu_de_chene\", \"weapon\": \"item.epee_du_milicien\"},\n", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
@@ -413,14 +413,14 @@ public class Lot123ItemTests
             int a = t.IndexOf(",\n      \"" + field + "\"", StringComparison.Ordinal), b = t.IndexOf("\n    },", a, StringComparison.Ordinal);
             return t.Remove(a, b - a);
         }
-        string v2 = CutFrom(text, "inventory").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 2");
+        string v2 = CutFrom(text, "inventory").Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 2");
         SaveLoadResult migrated = SaveJsonReader.Read(v2);
         Assert.True(migrated.IsValid, migrated.Report.ToString() + "\n" + v2);
         Assert.True(migrated.Save!.Migrated);
         Assert.Empty(migrated.Save.Character!.Inventory);
         Assert.Empty(migrated.Save.Character.Equipment);
         Assert.Equal("$.data.character.inventory",
-            Assert.Single(SaveJsonReader.Read(CutFrom(text, "equipment").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 2")).Report.Errors).Path);
+            Assert.Single(SaveJsonReader.Read(CutFrom(text, "equipment").Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 2")).Report.Errors).Path);
     }
 
     [Theory]

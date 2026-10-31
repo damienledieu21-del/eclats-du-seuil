@@ -164,12 +164,12 @@ Choix de Damien du 28 octobre 2026 (« on fait la façon 1 ») : on entre dans u
 - **Données** (zone en schéma 4, [DONNEES.md](DONNEES.md#versions-de-format)) : une pièce est une zone `indoor: true` (son aire est le sol, ses bords les murs, ses obstacles les meubles ; son scénario n'a aucun combattant). Les portes (`doors[]`) vont par paires : `to` nomme l'autre zone, `toDoor` la porte d'en face, qui doit revenir ici ; `building` relie une porte des Vallons à l'obstacle de son bâtiment (à 2 m au plus), pour que la façade du modèle 3D se tourne vers elle. Livrés : l'**Auberge de l'Aube** (14 × 10 m), la **Chapelle du Bourg** (9 × 16 m) et la **Maison du Bourg** (8 × 6 m), chacune avec un point sûr et une porte « Bourg d'Aube ».
 - **Chargement** : `ZoneJsonReader.ReadLinked` lit la zone de départ puis, de porte en porte, toutes les zones reliées (au plus 64) ; une zone introuvable, un fichier qui décrit une autre zone, ou deux portes qui ne se répondent pas refusent le monde. Le rapport est celui du fichier en cause : la porte qui mène à une zone introuvable, ou la première zone dont une porte ne trouve pas sa réponse (`ZoneValidator.CheckDoors`, `CheckDoorsOf`) ; une forme du chef ne peut pas être posée sur une porte (on y arrive comme à un point sûr).
 - **Passer une porte** (F à 2 m d'elle, quand aucun PNJ ni nœud de récolte n'est à portée) : même règle que la halte, aucun ennemi vivant à 12 m et pas de dialogue ouvert. La partie est sauvegardée dans la zone d'arrivée, puis une session de cette zone s'ouvre **à la porte d'en face** ; le dernier point sûr devient celui de la zone d'arrivée le plus proche de cette porte. Une sauvegarde impossible annule le passage. Une partie reprise l'est dans la zone sauvegardée, à son entrée (une zone inconnue ramène aux Vallons).
-- **Ce qui reste dehors** : l'histoire et les métiers sont ceux des Vallons (`WorldSession` reçoit la zone de l'histoire) : dans une pièce, ni PNJ qui parle, ni récolte, ni atelier ; la carte montre la pièce, sa porte, et l'objectif « sortir ».
+- **Ce qui reste dehors** : l'histoire et les métiers sont ceux des Vallons (`WorldSession` reçoit la zone de l'histoire) : dans une pièce, ni récolte, ni atelier ; la carte montre la pièce, sa porte, et l'objectif « sortir ». Depuis le sous-lot V1.6, les **PNJ de la pièce parlent** (l'aubergiste, le prêtre, l'habitante : [quêtes](#quêtes--le-moteur-sous-lot-v16)).
 - **Rendu** (`InteriorRules.Layout`, déterministe : mêmes données, même pièce) : le genre de la pièce vient de son lieu (auberge, chapelle, sinon maison). Chaque meuble est reconnu au début de son identifiant (`comptoir`, `table`, `banc`, `cheminee`, `lit`, `etagere`, `caisse`, `armoire`, `rouet`, `statue`…) et garni : bancs ou tabourets, bougie, vaisselle, bouteilles ; étagères garnies ; caisses empilées ; lit, coffre, rouet et panier ; autel avec chandeliers et siège du prêtre. Aux murs : boucliers, épées, tableaux, lanternes ; au plafond : lanternes ou lustres et poutres ; des fenêtres sur les murs libres (hautes et étroites dans la chapelle) ; au plus 7 lumières (feu, bougies, lanternes) qui vacillent ; des villageois (aubergiste et deux clients, une fidèle, l'habitant). Les objets sont les modèles de Poly Haven rangés dans `PolyHaven/Interieurs` ([CREDITS.md](CREDITS.md)), sinon des formes simples faites par le code.
 
 Dans une pièce, ni oiseaux ni rivière, le vent du dehors à peine ; la carte est le plan de la pièce (plancher, meubles, murs, porte).
 
-Limites : une pièce n'a qu'un niveau (l'escalier de l'auberge est un décor) ; les portes ne se ferment pas à clé ; les PNJ des intérieurs sont du décor, sans dialogue. Passer une porte ouvre une nouvelle session, donc agit comme une halte (PV pleins, niveau et équipement appliqués) sans être près d'un point sûr : question posée à Damien. Ressortir reconstruit tout le décor des Vallons (un à-coup possible sur le téléphone).
+Limites : une pièce n'a qu'un niveau (l'escalier de l'auberge est un décor) ; les portes ne se ferment pas à clé ; seuls les PNJ de l'histoire d'une pièce parlent (les clients de l'auberge restent du décor). Passer une porte ouvre une nouvelle session, donc agit comme une halte (PV pleins, niveau et équipement appliqués) sans être près d'un point sûr : question posée à Damien. Ressortir reconstruit tout le décor des Vallons (un à-coup possible sur le téléphone).
 
 ## Monnaie, marchands et voyage rapide (sous-lot V1.1)
 
@@ -239,13 +239,55 @@ Deuxième sous-lot du lot « Vallons solo finis » ([PLAN_VALLONS_SOLO.md](PLAN_
 
 Limites : l'outil de métier et l'Éclat n'ont pas encore d'effet ; les objets des niveaux 11 à 20 attendent les niveaux au-delà de 10 (V1.8) ; aucune table de butin ne donne encore les nouvelles pièces (seuls les marchands et l'équipement de départ) ; l'aspect suit l'équipement porté tout de suite, ses effets attendent la prochaine entrée.
 
+## Quêtes : le moteur (sous-lot V1.6)
+
+Sixième sous-lot de la vague 1 ([PLAN_VALLONS_SOLO.md](PLAN_VALLONS_SOLO.md#v16--quêtes--le-moteur-m)). Histoire en schéma 3, sauvegarde en version 8 (la version 7 étant celle du sous-lot V1.2), zones en schéma 5 ([DONNEES.md](DONNEES.md#versions-de-format)). Valeurs et textes **provisoires** (textes à relire par Damien).
+
+**Journal à deux onglets** : chaque quête a sa catégorie (`category` : `main`, principale, ou `side`, secondaire) ; le journal (J) montre un onglet à la fois, en cours d'abord, puis accomplies. On **suit** une quête choisie (bouton « Suivre » du journal) : elle est montrée sous la petite carte et son objectif est l'étoile de la carte ; sans quête suivie, c'est la première principale en cours. Une quête commencée alors qu'aucune n'est suivie l'est d'emblée ; une quête finie ne l'est plus. La quête suivie est gardée dans la sauvegarde (`story.tracked`).
+
+**Objectifs** (en plus de `fact`, `reach`, `defeat`, `collect`, `passage`) :
+
+- `talk` : parler au PNJ pendant l'étape (à 3 m, dans sa zone), même s'il n'a rien à dire à ce moment : l'interface annonce alors l'objectif rempli (« Fait : … »), pas « rien à dire » ;
+- `deliver` : livrer des objets à un PNJ (`npc`) : en lui parlant, s'ils sont dans l'inventaire et libres (pas réservés pour le combat), ils sont promis, puis remis **d'un coup** au tick suivant **avec les effets de l'étape**, dans une seule application atomique (relecture de la PR #76) : si un effet est refusé (bourse trop légère, sac plein, quête fermée), rien n'est pris et l'étape attend ; il en manque, ou ils ont quitté le sac entre-temps : rien n'est remis, la livraison est à refaire ;
+- `defeat` : une créature précise (une population, comme avant) ; `defeatFamily` : un nombre de créatures d'une **famille** (champ `family` des populations ; par défaut la créature sans ses chiffres : `loup1` à `loup12` sont des « loup », les quatre bandits des « bandit », le loup blanc à part) ; le compteur s'arrête au nombre demandé ;
+- `equipped` : porter un objet (qui se porte).
+
+Une étape se franchit au tick suivant, avec ses effets ; parler ou livrer s'annonce (`ObjectiveDone`).
+
+**Effets** : `giveMoney` (V1.1) et **`takeMoney`** : les pièces prises doivent être dans la bourse, toutes ensemble, avant les dons (une réponse qui prend 10 et donne 4 passe avec 10 cuivre) ; sinon **rien** n'est appliqué (`DialogueRefusal.NotEnoughMoney`, « Ta bourse est trop légère pour ça. » ; une étape attend, `MoneyShort`, annoncé une fois). Exemple : l'offrande de 10 cuivre au prêtre.
+
+**Quêtes qui s'ouvrent** (`requires`, conditions de dialogue, dont la nouvelle `levelAtLeast`) : un `startQuest` sur une quête encore fermée est refusé en entier (`Locked` ; une étape attend, `QuestLocked`) et une réponse qui la commencerait **n'est pas proposée**. « Après une autre quête » s'écrit `questDone`. Relecture de la PR #76 :
+
+- les effets d'une étape se jugent **dans l'état d'après l'étape** : une quête dont la fin commence la suivante, ouverte « après elle » (`questDone`), la commence bien ; pour une quête à récompense au choix, l'état d'après est **l'attente du choix** (revue Codex de la PR #76) : la suivante s'ouvre alors sur `questReward`, pas sur `questDone` (qui ne serait vrai qu'après le choix : une telle fin attendrait, `QuestLocked`) ;
+- l'ouverture se juge **après l'expérience donnée par les mêmes effets** : une réponse qui donne le niveau 3 et commence une quête du niveau 3 est proposée et passe (piège d'écriture évité : l'ordre des effets ne compte pas) ;
+- le validateur refuse une quête qui s'ouvre sur son propre état (`questDone`, `questActive`, `questAt`, `questReward` sur elle-même) et les **cycles** d'ouverture (A après B, B après A), à leur chemin `quests[i].requires[j]`.
+
+**Récompenses au choix** (`rewardChoice` : deux ou trois objets) : quand la dernière étape est franchie, ses effets et ceux de la quête sont donnés (expérience, pièces), puis la quête **attend le choix** (étape réservée `reward`, gardée dans la sauvegarde) ; le journal montre un bouton par objet, et un repère « • » sur l'onglet où une récompense attend. Pendant l'attente, la quête n'est plus « en cours » pour les dialogues (`questActive` faux) ; la condition `questReward` la reconnaît (Mathurin et Frère Anselme en parlent). Le choix est atomique : un sac plein le refuse sans rien changer (`NoRoom`) ; une fois choisi, la quête est finie, et l'on ne choisit qu'une fois.
+
+**PNJ des intérieurs** : un PNJ peut vivre dans un intérieur (`zone` : `zone.auberge`, `zone.chapelle`, `zone.maison`), sa position étant dans la pièce. On lui parle quand on y est, comme dehors (F) ; le décor de la pièce lui donne un corps de villageois à sa place, tourné vers le milieu de la pièce. Livrés : **Mathurin l'aubergiste** (derrière son comptoir), **Frère Anselme** (près de l'autel) et **Rosalie** (dans la maison du bourg). L'objectif sur la carte d'un PNJ d'intérieur est, dehors, la porte de sa pièce.
+
+**Deux quêtes d'exemple** (secondaires, textes à relire) :
+
+1. **Des peaux pour l'auberge** (Mathurin) : vaincre trois loups (`defeatFamily`), puis lui apporter trois peaux de loup (`deliver`). 60 points d'expérience, 1 argent 50 cuivre, puis au choix trois potions de soin ou un remède de l'aube.
+2. **La bête blanche** (Frère Anselme, à partir du **niveau 3**) : parler à Rosalie (`talk`), porter un gambison (`equipped`), vaincre le loup blanc (`defeat`), revenir voir le frère (`talk`). 250 points d'expérience, 3 argent, confiance du frère, puis au choix le talisman du Seuil, une cotte de mailles ou une épée de garde.
+
+**Nouveaux ennemis** (données de zone seulement : ni règles, ni journaux de référence changés), chacun avec une attaque annoncée et son butin :
+
+- **bandits** au camp des rôdeurs : deux à l'épée (180 PV, taille, moulinet annoncé en cercle), deux à l'arc (130 PV, tir à 11 m, volée annoncée) ; famille « bandit » ; butin `loot.bandit` (potion, rarement une cotte de mailles) et `loot.bandit_arc` ;
+- **le chef des bandits**, au fond du camp, **à deux formes** comme le Gardien (zone en schéma 5, `chiefs`, scénario `zones/vallons_bandits`) : 320 PV (taille, charge annoncée en ligne), puis furieux, 380 PV (plus rapide, charge et tourbillon annoncés) ; sa première victoire apprend `fact.chef_des_bandits.vaincu` et donne une rondache cerclée, une seule fois (`zone.vallons/boss/chef_des_bandits`) ; butin `loot.chef_des_bandits` à chaque victoire ;
+- **le loup blanc**, bête élite au fond de la forêt des Loups : 450 PV, bond annoncé en ligne et hurlement annoncé en cercle, plus rapide que les loups mais moins que le Bastion (on peut le semer) ; butin `loot.loup_blanc` (trois peaux, parfois le talisman).
+
+La clé de victoire d'un chef réserve sa place au registre avec les morts possibles d'un tick, comme les autres clés (registre presque plein : la récompense attend, annoncé une fois) ; aucune forme d'un chef ne se pose sur la première forme d'un autre chef.
+
+Limites : le rang de guilde (objectif) et les points de guilde (effet) attendent la guilde (V1.7), qui en fixera le format ; les quêtes de la vague (V1.9) ne sont pas écrites ; les bandits, leur chef et le loup blanc gardent la forme simple (ou le loup) tant qu'ils n'ont pas de personnage Mixamo (dossiers `Bandit`, `Chef`) ; le loup blanc a le modèle du loup, sans teinte ; les quêtes n'ont pas encore de temps imparti (sujet 29) ni de signe au-dessus des PNJ.
+
 ## Sauvegarde
 
-Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 7 depuis le sous-lot V1.2 (version 6 au sous-lot V1.1) :
+Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 8 depuis le sous-lot V1.6 (quête suivie `tracked`, étape réservée `reward` d'une récompense au choix en attente) ; version 7 au sous-lot V1.2 (18 places), version 6 au sous-lot V1.1. Une version 7 se relit sans quête suivie (l'étoile de la carte revient à la première principale en cours) et n'a pas d'étape `reward` ; les versions 6 et plus anciennes se relisent comme avant :
 
 ```json
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "kind": "save",
   "contentVersion": "0.1.0-provisoire",
   "data": {
@@ -269,7 +311,8 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
         "facts": ["fact.traces.recit"],
         "quests": {"quest.traces_sous_le_moulin": {"step": "traces", "progress": 0}},
         "trust": {"npc.odile": 1},
-        "discoveries": []
+        "discoveries": [],
+        "tracked": "quest.traces_sous_le_moulin"
       },
       "professions": {"minage": 24},
       "money": 34512
@@ -287,9 +330,9 @@ Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict
 - **Bornes** : une sauvegarde fait au plus 32 Mio (100 000 événements de 200 caractères au plus), limite appliquée jusqu'à l'analyseur JSON ; l'écriture refuse ce que la lecture refuserait (temps, sessions, nombre d'événements). Une session de zone ne démarre que si elle tient entière sous la borne du temps du monde (un an de jeu) et que son registre de départ tient sous la sienne ; avant chaque tick, elle vérifie qu'il reste une place pour chaque mort qui ajouterait une clé (combattant mortel, ni mort ni parti, mort pas encore inscrite).
 - **Écriture atomique** (`SaveStore`) : le texte est écrit en entier dans `<fichier>.tmp`, vidé sur le disque, puis il remplace la sauvegarde ; la version précédente devient `<fichier>.bak` si elle est valide (une principale abîmée est remplacée sans toucher à la copie). Une coupure laisse toujours une sauvegarde complète. À la lecture, une sauvegarde absente ou invalide est remplacée par sa copie valide ; aucune des deux : nouvelle partie (ou « illisible », avec le motif).
 - `inventory` (12.3) : places occupées de l'inventaire, dans l'ordre, une pile par place (objet, quantité de 1 à 999) ; `equipment` : objet porté par emplacement, emplacements dans l'ordre ordinal. Objets, piles, emplacements et niveaux requis sont vérifiés contre le catalogue quand la partie reprend.
-- `story` (12.5) : état narratif personnel, trié : faits appris, avancement de chaque quête (étape en cours ou `done`, compteur de l'objectif), confiance non nulle des PNJ, découvertes. Il est vérifié contre l'histoire quand la partie reprend.
+- `story` (12.5) : état narratif personnel, trié : faits appris, avancement de chaque quête (étape en cours, `done`, ou `reward` en version 8 : récompense au choix en attente ; compteur de l'objectif), confiance non nulle des PNJ, découvertes ; `tracked` (V1.6, version 8) : quête suivie, en cours, ou `null`. Il est vérifié contre l'histoire quand la partie reprend.
 - `professions` (12.6) : expérience non nulle de chaque métier.
 - `money` (V1.1) : bourse du personnage, en pièces de cuivre, de 0 à 9 999 999 999 (« 3 or 45 argent 12 cuivre » : 34512). Les **points sûrs découverts** (voyage rapide) sont des clés du registre `consumed` (`zone.vallons/safe/place_du_bourg`), comme les passages ouverts et, depuis la réponse de Damien du 30 octobre 2026, les compétences gagnées déjà données (`character/skill/skill.bastion.barriere_d_acier`) ; les lots rachetables chez les marchands ne sont pas sauvegardés.
-- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement), 3 (sans histoire), 4 (sans métiers), 5 (sans bourse : bourse vide) et 6 (quatre emplacements : places obligatoires remplies à la reprise) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
+- **Versions** : les versions 1 (sans personnage), 2 (sans inventaire ni équipement), 3 (sans histoire), 4 (sans métiers), 5 (sans bourse : bourse vide), 6 (quatre emplacements : places obligatoires remplies à la reprise) et 7 (sans quête suivie : `tracked` nul ; pas d'étape `reward`) sont lues et **mises à jour** (`Migrated`) ; l'écriture donne toujours la version courante. Une version inconnue est refusée.
 
 Limites : [LIMITES_LOT_12.md](LIMITES_LOT_12.md).

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/zone.schema.json",
   "title": "Éclats du Seuil — zone du monde",
-  "description": "Sous-lot 12.4. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ZoneValidator), avec le scénario de zone et le catalogue des objets. Schéma 3 (Vallons agrandis, 28 octobre 2026) : routes et chemins facultatifs (roads), affichage seulement. Schéma 4 (intérieurs, 28 octobre 2026) : intérieur facultatif (indoor) et portes facultatives (doors) vers d'autres zones, qui se répondent.",
+  "description": "Sous-lot 12.4. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ZoneValidator), avec le scénario de zone et le catalogue des objets. Schéma 3 (Vallons agrandis, 28 octobre 2026) : routes et chemins facultatifs (roads), affichage seulement. Schéma 4 (intérieurs, 28 octobre 2026) : intérieur facultatif (indoor) et portes facultatives (doors) vers d'autres zones, qui se répondent. Schéma 5 (sous-lot V1.6) : autres chefs à formes facultatifs (chiefs, même forme que boss) et famille facultative d'une population (family, objectifs defeatFamily).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 4
+      "const": 5
     },
     "kind": {
       "const": "zone"
@@ -175,6 +175,12 @@
                     "type": "null"
                   }
                 ]
+              },
+              "family": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64,
+                "description": "Sous-lot V1.6 : famille (objectifs defeatFamily) ; absente : la créature sans ses chiffres finaux."
               }
             }
           }
@@ -283,6 +289,90 @@
                   "type": "null"
                 }
               ]
+            }
+          }
+        },
+        "chiefs": {
+          "type": "array",
+          "maxItems": 4,
+          "description": "Sous-lot V1.6 : autres chefs à formes (le chef des bandits).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "scenario",
+              "forms",
+              "fact",
+              "rewards"
+            ],
+            "description": "Sous-lot 12.7 (schéma 2) : chef à formes successives ; première victoire récompensée une seule fois.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "scenario": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+(/[a-z0-9_]+)*$",
+                "maxLength": 200
+              },
+              "forms": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]*$",
+                  "maxLength": 60,
+                  "not": {
+                    "pattern": "_v[0-9]+$"
+                  }
+                },
+                "uniqueItems": true
+              },
+              "fact": {
+                "type": "string",
+                "pattern": "^fact(\\.[a-z0-9_]+)+$",
+                "maxLength": 200
+              },
+              "rewards": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "item",
+                    "count"
+                  ],
+                  "properties": {
+                    "item": {
+                      "type": "string",
+                      "pattern": "^item(\\.[a-z0-9_]+)+$",
+                      "maxLength": 200
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 999
+                    }
+                  }
+                }
+              },
+              "loot": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^loot(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
             }
           }
         },

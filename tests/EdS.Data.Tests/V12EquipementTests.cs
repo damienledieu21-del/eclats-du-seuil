@@ -297,10 +297,10 @@ public class V12EquipementTests
     public void Sauvegarde_de_version_6_relue_et_mise_a_jour()
     {
         // Une partie de V1.1 : épée et écu de la tranche portés, l'écu ôté puis rangé dans le sac (permis avant le sous-lot), bourse pleine
-        // de pièces. Elle se relit, se met à jour (version 7 à l'écriture) et ses places obligatoires sont remplies à la reprise.
+        // de pièces. Elle se relit, se met à jour (version courante à l'écriture : 7 au sous-lot V1.2, 8 depuis V1.6) et ses places obligatoires sont remplies à la reprise.
         SavedCharacter v11 = Bare(3, "item.peau_de_loup", "item.ecu_de_chene").WithMoney(345);
         v11 = v11.WithItems(v11.Inventory, new Dictionary<string, string> { ["weapon"] = "item.epee_du_milicien", ["neck"] = "item.amulette_de_l_aube" });
-        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 100, 2, Array.Empty<string>(), v11)).Replace("\"schemaVersion\": 9", "\"schemaVersion\": 6");
+        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 100, 2, Array.Empty<string>(), v11)).Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 6");
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.True(read.Save!.Migrated);
@@ -314,22 +314,22 @@ public class V12EquipementTests
         string rewritten = SaveJsonReader.Write(new WorldSave("zone.vallons", 100, 2, Array.Empty<string>(), w.Inventory.SaveInto(w.Character)));
         Assert.Contains("\"schemaVersion\": 9,", rewritten, StringComparison.Ordinal);
         Assert.Contains("\"shard\": \"item.eclat_du_seuil_endormi\"", rewritten, StringComparison.Ordinal);
-        // Relue en version 7 : plus rien à remplir.
+        // Relue en version courante : plus rien à remplir.
         SaveLoadResult again = SaveJsonReader.Read(rewritten);
         Assert.False(again.Save!.Migrated);
         Assert.Empty(new WorldSession(again.Save, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone())).Restored);
         // Sans bouclier dans le sac, l'écu de départ est donné.
-        string bare = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(1))).Replace("\"schemaVersion\": 9", "\"schemaVersion\": 6");
+        string bare = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(1))).Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 6");
         WorldSession given = new(SaveJsonReader.Read(bare).Save!, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
         Assert.Equal(new[] { "item.ecu_de_chene", "item.eclat_du_seuil_endormi" }, given.Restored);
-        // Une sauvegarde d'un programme futur (version 8) est refusée.
+        // Une sauvegarde d'un programme futur (version 10) est refusée.
         Assert.False(SaveJsonReader.Read(rewritten.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 10")).IsValid);
     }
 
     [Fact]
     public void Sauvegarde_de_version_7_aux_places_obligatoires_vides_reparee()
     {
-        // Relecture de la PR #75 (sonde P2) : une sauvegarde de version 7 (pas mise à jour) d'un Bastion qui ne porte rien est acceptée ;
+        // Relecture de la PR #75 (sonde P2) : une sauvegarde de la version courante (7 au sous-lot V1.2, 8 depuis V1.6 ; pas mise à jour) d'un Bastion qui ne porte rien est acceptée ;
         // à la reprise, ses places obligatoires sont remplies comme pour une ancienne sauvegarde (le bouclier du sac d'abord, sinon l'écu
         // de départ ; l'Éclat), au lieu de rester vides.
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(3, "item.peau_de_loup")));
@@ -341,7 +341,7 @@ public class V12EquipementTests
         Assert.Equal(("item.ecu_de_chene", "item.eclat_du_seuil_endormi"), (w.Inventory.Equipped["shield"], w.Inventory.Equipped["shard"]));
         Assert.Equal(new ShieldGuard(Fixed.Parse("0.6"), 10, 150), w.EnteredShield);   // la garde portée au combat, pas « aucune »
         Assert.Equal(new[] { "item.peau_de_loup" }, w.Inventory.Stacks.Select(s => s.Item));
-        // Avec un bouclier dans le sac (version 7 aussi) : c'est lui qui est mis, il quitte le sac.
+        // Avec un bouclier dans le sac (version courante aussi) : c'est lui qui est mis, il quitte le sac.
         string withTarge = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Bare(3, "item.targe_d_osier")));
         var t = new WorldSession(SaveJsonReader.Read(withTarge).Save!, Zone(), ShippedData, Progression, ItemsCatalog, Book(Zone()));
         Assert.Equal(new[] { "item.targe_d_osier", "item.eclat_du_seuil_endormi" }, t.Restored);

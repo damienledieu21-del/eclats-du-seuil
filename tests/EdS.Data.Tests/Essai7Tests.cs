@@ -145,16 +145,21 @@ public class Essai7StyleTests
     {
         // Relecture de l'essai 7 : les identifiants des scénarios livrés, pas des noms inventés. Les ondes et la pluie sont des cris
         // (l'archer et le rôdeur, sans cri, prennent leur attaque), la ruée un saut.
-        var attacks = new[] { "zones/vallons", "zones/vallons_chef" }
+        var attacks = new[] { "zones/vallons", "zones/vallons_chef", "zones/vallons_bandits" }
             .SelectMany(f => JsonNode.Parse(File.ReadAllText(ScenarioPath(f)))!["data"]!["combatants"]!.AsArray())
             .SelectMany(c => c!["attacks"]?.AsArray() ?? new JsonArray()).Select(a => (string)a!["id"]!).Distinct().OrderBy(a => a, StringComparer.Ordinal).ToList();
-        Assert.Equal(new[] { "charge", "eclat", "fleche", "griffe", "morsure", "onde", "onde_du_seuil", "pluie", "ruee" }, attacks);
+        // Sous-lot V1.6 : bandits (taille, moulinet, tir, volée), chef des bandits (charge du chef, tourbillon), loup blanc (bond, hurlement).
+        Assert.Equal(new[] { "bond", "charge", "charge_du_chef", "eclat", "fleche", "griffe", "hurlement", "morsure", "moulinet", "onde", "onde_du_seuil", "pluie",
+            "ruee", "taille", "tir", "tourbillon", "volee" }, attacks);
         var expected = new Dictionary<string, (StyleMotion, string?)>
         {
             ["charge"] = (StyleMotion.Attack, StyleRules.NotJump), ["eclat"] = (StyleMotion.Attack, StyleRules.NotJump),
             ["fleche"] = (StyleMotion.Attack, StyleRules.NotJump), ["griffe"] = (StyleMotion.Attack, StyleRules.NotJump),
             ["morsure"] = (StyleMotion.Attack, StyleRules.NotJump), ["onde"] = (StyleMotion.Cast, null), ["onde_du_seuil"] = (StyleMotion.Cast, null),
             ["pluie"] = (StyleMotion.Cast, null), ["ruee"] = (StyleMotion.Attack, "jump"),
+            ["bond"] = (StyleMotion.Attack, "jump"), ["charge_du_chef"] = (StyleMotion.Attack, StyleRules.NotJump), ["hurlement"] = (StyleMotion.Cast, null),
+            ["moulinet"] = (StyleMotion.Attack, StyleRules.NotJump), ["taille"] = (StyleMotion.Attack, StyleRules.NotJump),
+            ["tir"] = (StyleMotion.Attack, StyleRules.NotJump), ["tourbillon"] = (StyleMotion.Attack, StyleRules.NotJump), ["volee"] = (StyleMotion.Cast, null),
         };
         foreach (string attack in attacks)
         {
@@ -343,6 +348,7 @@ public class Essai7MoodTests : IDisposable
                 if ((string)c!["id"]! == "loup1") c["position"] = new JsonArray(-15, -12);
             File.WriteAllText(Path.Combine(scenarios, "zones", "vallons.json"), vallons.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(scenarios, "zones", "vallons_chef.json"));
+            File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(scenarios, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
             CopyMissingZoneScenarios(scenarios);   // intérieurs : reliés aux Vallons par leurs portes
         }
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");

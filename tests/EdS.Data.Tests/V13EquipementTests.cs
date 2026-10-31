@@ -297,7 +297,7 @@ public class V13EquipementTests
         string props = $"[{{\"id\": \"{boots.Properties[0].Id}\", \"value\": {boots.Properties[0].Value}}}]";
         ValidationError Only(string json) => Assert.Single(SaveJsonReader.Read(json).Report.Errors);
         // Version antérieure : les propriétés n'existaient pas.
-        Assert.Equal("$.data.character.inventory[0].properties", Only(text.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 7")).Path);
+        Assert.Equal("$.data.character.inventory[0].properties", Only(text.Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 7")).Path);
         // Quantité, liste vide, doublon, valeur, identifiant.
         Assert.Equal("$.data.character.inventory[0].count", Only(text.Replace("\"count\": 1, \"properties\"", "\"count\": 2, \"properties\"")).Path);
         Assert.Equal("$.data.character.inventory[0].properties", Only(text.Replace(props, "[]")).Path);

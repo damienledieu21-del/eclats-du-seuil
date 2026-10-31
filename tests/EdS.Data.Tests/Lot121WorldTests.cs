@@ -63,7 +63,8 @@ public class Lot121WorldTests
         // tour de guet, hautes pierres et camp des rôdeurs peuplés à leur tour.
         Assert.Equal(new[] { "loup1", "loup2", "loup3", "sanglier", "archer", "loup4", "loup5", "sanglier2", "sanglier3", "rodeur",
             "loup6", "loup7", "loup8", "loup9", "loup10", "sanglier4", "sanglier5", "sanglier6", "sanglier7", "sanglier8", "archer2", "archer3",
-            "loup11", "loup12", "rodeur2", "rodeur3", "archer4" }, setup.Combatants.Select(c => c.Id));
+            "loup11", "loup12", "rodeur2", "rodeur3", "archer4", "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "loup_blanc" },
+            setup.Combatants.Select(c => c.Id));   // sous-lot V1.6 : bandits et loup blanc
         Assert.Single(setup.Combatants.Select(c => c.Team).Distinct());   // une seule équipe : les joueurs entrent ensuite
         Assert.True(setup.Space!.Obstacles.Single(o => o.Id == "riviere_sud").Low);
     }
@@ -447,7 +448,7 @@ public class Lot121WorldTests
     public void Versions_et_type_de_sauvegarde()
     {
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
-            (Assert.Single(SaveJsonReader.Read(SaveText(version: 10)).Report.Errors).Path, Assert.Single(SaveJsonReader.Read(SaveText(version: 10)).Report.Errors).Code));   // sous-lot V1.1 : version 6 courante ; V1.2 : 7 ; V1.3 : 9
+            (Assert.Single(SaveJsonReader.Read(SaveText(version: 10)).Report.Errors).Path, Assert.Single(SaveJsonReader.Read(SaveText(version: 10)).Report.Errors).Code));   // sous-lot V1.1 : version 6 courante ; V1.2 : 7 ; V1.6 : 8 ; V1.3 : 9
         Assert.Equal("$.kind", Assert.Single(SaveJsonReader.Read(SaveText(kind: "scenario")).Report.Errors).Path);
         Assert.Equal("$.data.worldTick", Assert.Single(SaveJsonReader.Read(SaveText(tick: (SaveValidator.MaxWorldTick + 1).ToString())).Report.Errors).Path);
         Assert.Contains(SaveJsonReader.Read("{\"schemaVersion\": 1, \"kind\": \"save\", \"contentVersion\": \"0.1.0\", \"data\": {\"zone\": \"zone.vallons\", \"worldTick\": 0, \"sessions\": 0, \"consumed\": [], \"extra\": 1}}").Report.Errors,

@@ -131,7 +131,7 @@ public class Lot122CharacterTests
     public void Sauvegarde_du_personnage_lue_et_ecrite_a_l_identique()
     {
         string text = SaveJsonReader.Write(HeroSave());
-        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.3 : 9 (instances d'objets)
+        Assert.Contains("\"schemaVersion\": 9,", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
         Assert.Contains("\"character\": {\n      \"id\": \"bastion\",\n      \"class\": \"class.bastion\",\n      \"xp\": 40,", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());

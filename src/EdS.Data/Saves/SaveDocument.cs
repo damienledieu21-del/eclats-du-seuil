@@ -99,6 +99,12 @@ namespace EdS.Data.Saves
         public List<(string Id, QuestProgressData? Value)>? Quests { get; set; }
         public List<KeyValuePair<string, int?>>? Trust { get; set; }
         public List<string?>? Discoveries { get; set; }
+
+        /// <summary>Sous-lot V1.6 (version 8) : quête suivie, ou null.</summary>
+        public string? Tracked { get; set; }
+
+        /// <summary>Le champ <c>tracked</c> est présent (null compris).</summary>
+        public bool HasTracked { get; set; }
     }
 
     public sealed class QuestProgressData

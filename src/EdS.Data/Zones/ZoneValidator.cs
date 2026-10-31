@@ -57,8 +57,15 @@ namespace EdS.Data.Zones
         public Fixed LeashRange { get; }
         public string? Loot { get; }
 
-        internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot)
+        /// <summary>Sous-lot V1.6 : famille de la créature (objectifs <c>defeatFamily</c>).</summary>
+        public string Family { get; }
+
+        /// <summary>Famille par défaut : l'identifiant sans ses chiffres finaux (« loup12 » donne « loup »).</summary>
+        public static string DefaultFamily(string creature) => creature.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+
+        internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null)
         {
+            Family = family ?? DefaultFamily(creature);
             Creature = creature;
             Template = template;
             RespawnMs = respawnMs;
@@ -186,6 +193,15 @@ namespace EdS.Data.Zones
         /// <summary>Sous-lot 12.7 : chef de la zone, ou null.</summary>
         public Boss? Boss { get; }
 
+        /// <summary>Sous-lot V1.6 (schéma 5) : autres chefs de la zone (le chef des bandits), dans l'ordre du fichier.</summary>
+        public IReadOnlyList<Boss> Chiefs { get; }
+
+        /// <summary>Sous-lot V1.6 : le chef, puis les autres chefs.</summary>
+        public IReadOnlyList<Boss> Bosses { get; }
+
+        /// <summary>Sous-lot V1.6 : clé du registre du monde de la première victoire sur le chef <paramref name="boss"/>.</summary>
+        public string VictoryKeyOf(Boss boss) => $"{Id}/boss/{(boss ?? throw new ArgumentNullException(nameof(boss))).Id}";
+
         /// <summary>Vallons agrandis (schéma 3) : routes et chemins, dans l'ordre du fichier (vide sans routes).</summary>
         public IReadOnlyList<Road> Roads { get; }
 
@@ -203,9 +219,11 @@ namespace EdS.Data.Zones
 
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
-            IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null)
+            IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null)
         {
             Boss = boss;
+            Chiefs = Frozen.List(chiefs ?? Array.Empty<Boss>(), nameof(chiefs));
+            Bosses = Frozen.List((boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(Chiefs), nameof(boss));
             Roads = Frozen.List(roads ?? Array.Empty<Road>(), nameof(roads));
             Indoor = indoor;
             Doors = Frozen.List(doors ?? Array.Empty<Door>(), nameof(doors));
@@ -266,9 +284,13 @@ namespace EdS.Data.Zones
         /// <c>loot</c>). Version 3 (Vallons agrandis, 28 octobre 2026) : <c>roads</c> facultatif (<c>id</c>, <c>kind</c> « terre » ou « pave »,
         /// <c>width</c> de 1 à 20 m, <c>points</c> : de 2 à 32 points dans l'aire praticable). Version 4 (intérieurs, 28 octobre 2026) :
         /// <c>indoor</c> facultatif (booléen) et <c>doors</c> facultatif (<c>id</c>, <c>name</c>, <c>position</c>, <c>to</c>, <c>toDoor</c>,
-        /// <c>building</c> facultatif).
+        /// <c>building</c> facultatif). Version 5 (sous-lot V1.6) : <c>chiefs</c> facultatif (autres chefs à formes, même forme que
+        /// <c>boss</c>, au plus <see cref="MaxChiefs"/>) et <c>family</c> facultatif sur une population (objectifs <c>defeatFamily</c>).
         /// </summary>
-        public const int CurrentSchemaVersion = 4;
+        public const int CurrentSchemaVersion = 5;
+
+        /// <summary>Sous-lot V1.6 : autres chefs d'une zone, au plus.</summary>
+        public const int MaxChiefs = 4;
 
         public const int MaxSafePoints = 32, MaxPlaces = 64, MaxPopulations = 256, MaxPassages = 32, MaxRoads = 32, MaxRoadPoints = 32;
 
@@ -298,8 +320,10 @@ namespace EdS.Data.Zones
         /// <param name="scenario">Simulation de la zone, chargée depuis <c>data.scenario</c> (null si elle n'a pas pu l'être : l'erreur est déjà au rapport).</param>
         /// <param name="bossScenario">Sous-lot 12.7 : scénario des formes du chef, chargé depuis <c>data.boss.scenario</c> (null sans chef, ou s'il n'a
         /// pas pu l'être : l'erreur est déjà au rapport).</param>
+        /// <param name="chiefScenarios">Sous-lot V1.6 : scénario des formes de chaque autre chef (<c>data.chiefs</c>), dans l'ordre (null pour un
+        /// scénario qui n'a pas pu être chargé).</param>
         public static ZoneLoadResult Validate(ZoneDocument document, CombatSetup? scenario, ItemCatalog items, ValidationReport? report = null,
-            CombatSetup? bossScenario = null)
+            CombatSetup? bossScenario = null, IReadOnlyList<CombatSetup?>? chiefScenarios = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (items is null) throw new ArgumentNullException(nameof(items));
@@ -408,7 +432,9 @@ namespace EdS.Data.Zones
                     { report.Add(path + ".leashRange", ValidationCode.OutOfRange, $"laisse hors de ]0, {MaxLeashRange}] m."); ok = false; }
                     if (p.Loot != null && !items.TryGetLoot(p.Loot, out _))
                     { report.Add(path + ".loot", ValidationCode.UnknownReference, $"table de butin inconnue « {p.Loot} »."); ok = false; }
-                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot));
+                    if (p.Family != null && (p.Family.Length > 64 || !LocalId.IsMatch(p.Family)))
+                    { report.Add(path + ".family", ValidationCode.InvalidValue, $"famille « {p.Family} » mal formée."); ok = false; }
+                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family));
                 }
             }
 
@@ -499,12 +525,33 @@ namespace EdS.Data.Zones
             }
 
             // Relecture indépendante : on arrive aussi par une porte ; une forme du chef n'occupe pas plus sa place que celle d'un point sûr.
+            // Sous-lot V1.6 : toutes les formes de tous les chefs comptent ensemble (plafond des combattants, identités, places de départ).
+            int allForms = (d.Boss?.Forms?.Count ?? 0) + (d.Chiefs?.Sum(c => c?.Forms?.Count ?? 0) ?? 0);
+            var admitted = new List<Boss>();
             Boss? boss = d.Boss is { } b
-                ? CheckBoss(b, scenario, bossScenario, items, report, safePoints, doors)
+                ? CheckBoss(b, "$.data.boss", scenario, bossScenario, items, report, safePoints, doors, allForms, admitted)
                 : null;
+            if (boss != null) admitted.Add(boss);
+            var chiefs = new List<Boss>();
+            if (d.Chiefs != null)
+            {
+                if (d.Chiefs.Count > MaxChiefs) report.Add("$.data.chiefs", ValidationCode.LimitExceeded, $"{d.Chiefs.Count} chefs, au plus {MaxChiefs}.");
+                for (int i = 0; i < d.Chiefs.Count; i++)
+                {
+                    string path = $"$.data.chiefs[{i}]";
+                    if (d.Chiefs[i] is not BossData c) { Missing(report, path, "chef"); continue; }
+                    if (admitted.Any(x => x.Id == c.Id)) { report.Add(path + ".id", ValidationCode.DuplicateId, $"chef « {c.Id} » déjà donné."); continue; }
+                    CombatSetup? forms = chiefScenarios != null && i < chiefScenarios.Count ? chiefScenarios[i] : null;
+                    if (CheckBoss(c, path, scenario, forms, items, report, safePoints, doors, allForms, admitted) is Boss chief)
+                    {
+                        chiefs.Add(chief);
+                        admitted.Add(chief);
+                    }
+                }
+            }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs));
         }
 
         /// <summary>Écart (m) entre un point et la boîte d'un obstacle (0 dedans ou sur le bord).</summary>
@@ -574,10 +621,9 @@ namespace EdS.Data.Zones
         public const int MaxForms = 8, MaxRewards = 8;
         private static readonly Regex FactId = new Regex(@"^fact(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
-        private static Boss? CheckBoss(BossData b, CombatSetup? scenario, CombatSetup? forms, ItemCatalog items, ValidationReport report,
-            IReadOnlyList<SafePoint> safePoints, IReadOnlyList<Door> doors)
+        private static Boss? CheckBoss(BossData b, string path, CombatSetup? scenario, CombatSetup? forms, ItemCatalog items, ValidationReport report,
+            IReadOnlyList<SafePoint> safePoints, IReadOnlyList<Door> doors, int allForms, IReadOnlyList<Boss> others)
         {
-            const string path = "$.data.boss";
             bool ok = true;
             if (b.Id is null || b.Id.Length > 64 || !LocalId.IsMatch(b.Id)) { report.Add(path + ".id", ValidationCode.InvalidValue, $"identifiant « {b.Id} » mal formé."); ok = false; }
             if (b.Scenario is null) { Missing(report, path + ".scenario", "scénario des formes du chef"); ok = false; }
@@ -585,10 +631,10 @@ namespace EdS.Data.Zones
             var templates = new List<AssailantSetup>();
             if (b.Forms is null || b.Forms.Count < 1 || b.Forms.Count > MaxForms) { report.Add(path + ".forms", ValidationCode.OutOfRange, $"de 1 à {MaxForms} formes."); ok = false; }
             // Revue Codex de la PR #48 (3e tour) : la session compte les créatures de la zone, le personnage qui entre et toutes les formes.
-            else if (scenario != null && checked(scenario.Combatants.Count + 1 + b.Forms.Count) > scenario.Combat.MaxCombatants)
+            else if (scenario != null && checked(scenario.Combatants.Count + 1 + allForms) > scenario.Combat.MaxCombatants)
             {
                 report.Add(path + ".forms", ValidationCode.LimitExceeded,
-                    $"{scenario.Combatants.Count} créatures, le personnage et {b.Forms.Count} formes : plus que les {scenario.Combat.MaxCombatants} combattants d'une session.");
+                    $"{scenario.Combatants.Count} créatures, le personnage et {allForms} formes de chefs : plus que les {scenario.Combat.MaxCombatants} combattants d'une session.");
                 ok = false;
             }
             else if (forms != null)
@@ -598,7 +644,12 @@ namespace EdS.Data.Zones
                     string? id = b.Forms[i];
                     if (id is null || forms.Combatants.FirstOrDefault(c => c.Id == id) is not AssailantSetup form || form.Health is null || form.Placement is null)
                     { report.Add(p, ValidationCode.UnknownReference, $"forme « {id} » absente du scénario du chef (assaillant mortel et placé attendu)."); ok = false; }
-                    else if (templates.Any(t => t.Id == id)) { report.Add(p, ValidationCode.DuplicateId, $"forme « {id} » déjà donnée."); ok = false; }
+                    else if (templates.Any(t => t.Id == id) || others.Any(o => o.Forms.Any(f => f.Id == id))) { report.Add(p, ValidationCode.DuplicateId, $"forme « {id} » déjà donnée."); ok = false; }
+                    // Sous-lot V1.6 : la première forme de chaque chef arrive avec la session et y reste tant qu'on ne la combat pas. Relecture de la
+                    // PR #76 : aucune forme d'un chef ne se pose sur la première forme d'un chef déjà admis (son arrivée serait refusée) ; la
+                    // première forme ne se pose sur aucune forme d'un chef déjà admis.
+                    else if (others.FirstOrDefault(o => (i == 0 ? o.Forms : o.Forms.Take(1)).Any(f => Overlap(f.Placement!, form.Placement))) is Boss near)
+                    { report.Add(p, ValidationCode.InvalidValue, $"la place de la forme « {id} » chevauche celle d'une forme du chef « {near.Id} »."); ok = false; }
                     else if (scenario != null && scenario.Combatants.Any(c => c.Id == id)) { report.Add(p, ValidationCode.DuplicateId, $"« {id} » est déjà une créature de la zone."); ok = false; }
                     else if (LifeSuffix.IsMatch(id) || id.Length > 60) { report.Add(p, ValidationCode.InvalidValue, "identifiant réservé (« _v<nombre> » final) ou trop long."); ok = false; }
                     // La forme arrive dans la simulation de la zone : sa place doit y tenir (aire, obstacles), sinon son arrivée serait refusée.
@@ -610,7 +661,8 @@ namespace EdS.Data.Zones
                     { report.Add(p, ValidationCode.InvalidValue, crowd); ok = false; }
                     // Revue Codex de la PR #48 : la forme arrive dans la simulation de la zone, qui revalide le combat complété : ses références
                     // (cible, déclencheurs…) doivent exister dans la zone ou parmi les formes, pas seulement dans le scénario du chef.
-                    else if (scenario != null && ArrivalRefused(scenario, templates, form) is string refused)
+                    // Relecture de la PR #76 : avec les formes de tous les chefs déjà admis.
+                    else if (scenario != null && ArrivalRefused(scenario, others.SelectMany(o => o.Forms).Concat(templates), form) is string refused)
                     { report.Add(p, ValidationCode.InvalidValue, $"forme refusée par la simulation de la zone : {refused}"); ok = false; }
                     else templates.Add(form);
                 }
@@ -629,6 +681,9 @@ namespace EdS.Data.Zones
             if (b.Loot != null && !items.TryGetLoot(b.Loot, out _)) { report.Add(path + ".loot", ValidationCode.UnknownReference, $"table de butin inconnue « {b.Loot} »."); ok = false; }
             return ok && forms != null ? new Boss(b.Id!, templates, b.Fact!, rewards, b.Loot) : null;
         }
+
+        private static bool Overlap(CombatantPlacement a, CombatantPlacement b) =>
+            Planar.CirclesOverlap(a.Position.X.Raw, a.Position.Z.Raw, a.Radius.Raw, b.Position.X.Raw, b.Position.Z.Raw, b.Radius.Raw);
 
         private static bool CheckId(string? id, string path, IEnumerable<string> previous, ValidationReport report)
         {

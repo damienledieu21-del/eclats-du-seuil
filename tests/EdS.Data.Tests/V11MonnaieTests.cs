@@ -132,7 +132,7 @@ public class V11MonnaieTests
     public void Ancienne_sauvegarde_lue_avec_une_bourse_vide()
     {
         string text = SaveWith(34512);
-        string v5 = text.Replace(",\n      \"money\": 34512\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5");
+        string v5 = text.Replace(",\n      \"money\": 34512\n", "\n").Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5");
         SaveLoadResult read = SaveJsonReader.Read(v5);
         Assert.True(read.IsValid, read.Report + "\n" + v5);
         Assert.True(read.Save!.Migrated);
@@ -144,8 +144,8 @@ public class V11MonnaieTests
         Assert.Contains("\"money\": 0\n", rewritten, StringComparison.Ordinal);
         // Une bourse dans une sauvegarde de version 5 n'existe pas encore : champ inconnu (en JSON comme en objets publics).
         Assert.Equal(("$.data.character.money", ValidationCode.UnknownField),
-            (Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5")).Report.Errors).Path,
-             Assert.Single(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5")).Report.Errors).Code));
+            (Assert.Single(SaveJsonReader.Read(text.Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5")).Report.Errors).Path,
+             Assert.Single(SaveJsonReader.Read(text.Replace(",\n        \"tracked\": null\n", "\n").Replace("\"schemaVersion\": 9", "\"schemaVersion\": 5")).Report.Errors).Code));
         var report = new ValidationReport();
         var document = new SaveDocument();
         JsonHeader header = JsonInput.Parse(JsonInput.Utf8(v5, report)!, report, (input, element) => document.Data = SaveJsonReader.ReadData(input, element, "$.data"));
@@ -169,7 +169,7 @@ public class V11MonnaieTests
 
     private static JsonObject StoryJson() => JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!.AsObject();
 
-    private static StoryLoadResult ReadStory(JsonObject root) => StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), ItemsCatalog);
+    private static StoryLoadResult ReadStory(JsonObject root) => StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), ItemsCatalog, V16TestData.Interiors);
 
     private static JsonObject Effect(JsonObject root, string step, int index) =>
         root["data"]!["quests"]![0]!["steps"]!.AsArray().Single(s => (string)s!["id"]! == step)!["effects"]![index]!.AsObject();
@@ -255,7 +255,7 @@ public class V11MonnaieTests
         merci["effects"]!.AsArray().Add(new JsonObject { ["do"] = "giveMoney", ["value"] = 25 });
         merci["effects"]!.AsArray().Add(new JsonObject { ["do"] = "giveItem", ["id"] = "item.potion_de_soin", ["value"] = 1 });
         ZoneDefinition zone = Zone(27, -15);
-        StoryBook book = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, zone, ItemsCatalog).Story!;
+        StoryBook book = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, zone, ItemsCatalog, V16TestData.Interiors).Story!;
         var story = new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("rodeur") });
         WorldSession Talk(long money)
         {
