@@ -662,29 +662,6 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Sous-lot V1.4 : use chaque pièce portée qui s'use (<see cref="ItemCatalog.Wears"/>) de <paramref name="loss"/> points de solidité,
-        /// sans descendre sous 0 (une pièce usée à zéro ne se casse pas). Rend les objets qui viennent d'arriver à zéro, dans l'ordre des
-        /// places du catalogue. Rien ne change pour une perte nulle.
-        /// </summary>
-        internal IReadOnlyList<string> WearDown(int loss)
-        {
-            if (loss < 0) throw new ArgumentOutOfRangeException(nameof(loss));
-            var wornOut = new List<string>();
-            if (loss == 0) return wornOut;
-            foreach (EquipmentPlace place in _catalog.Places)
-            {
-                if (!_equipped.TryGetValue(place.Id, out ItemStack worn) || !_catalog.Wears(_catalog.Item(worn.Item))) continue;
-                int left = _catalog.WearLeft(worn);
-                if (left == 0) continue;
-                int after = Math.Max(0, left - _catalog.PieceWearLoss(_catalog.Item(worn.Item), loss));   // sous-lot V1.8 : résistance
-                if (after == left) continue;
-                _equipped[place.Id] = worn.WithWear(after);
-                if (after == 0) wornOut.Add(worn.Item);
-            }
-            return wornOut;
-        }
-
-        /// <summary>
         /// Sous-lot V1.4 (relecture indépendante de la PR #80) : use de <paramref name="loss"/> points les pièces <paramref name="pieces"/>
         /// (celles portées à l'entrée dans la zone, celles du combat), où qu'elles soient maintenant : portées (à n'importe quelle place) ou
         /// dans le sac ; une pièce vendue ou jetée depuis n'est plus usée. Chaque pièce est cherchée par sa valeur (objet, propriétés,

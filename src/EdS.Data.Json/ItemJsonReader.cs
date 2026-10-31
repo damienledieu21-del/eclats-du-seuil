@@ -27,15 +27,19 @@ namespace EdS.Data.Json
             return Read(JsonInput.Utf8(json, report), data, report);
         }
 
-        private static ItemCatalogLoadResult Read(byte[]? json, GameData data, ValidationReport report)
+        private static ItemCatalogLoadResult Read(byte[]? json, GameData data, ValidationReport report) =>
+            ItemValidator.Validate(ReadDocument(json, report), data, report);
+
+        /// <summary>Document lu sans validation (tests : document retouché en objets publics, puis validé ; relecture de la PR #83).</summary>
+        internal static ItemCatalogDocument ReadDocument(byte[]? json, ValidationReport report)
         {
             var document = new ItemCatalogDocument();
-            if (json is null) return ItemValidator.Validate(document, data, report);
+            if (json is null) return document;
             JsonHeader header = JsonInput.Parse(json, report, (input, element) => document.Data = ReadData(input, element, "$.data"));
             document.SchemaVersion = header.SchemaVersion;
             document.Kind = header.Kind;
             document.ContentVersion = header.ContentVersion;
-            return ItemValidator.Validate(document, data, report);
+            return document;
         }
 
         internal static ItemCatalogData? ReadData(JsonInput input, JsonElement element, string path)

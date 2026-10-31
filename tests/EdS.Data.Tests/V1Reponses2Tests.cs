@@ -102,7 +102,9 @@ public class V1Reponses2Tests
     public void L_epee_du_novice_s_use_et_se_repare()
     {
         Inventory inv = Inventory.From(Inventory.Outfit(Hero(), ItemsCatalog), ItemsCatalog, 1);
-        Assert.Empty(inv.WearDown(30));   // entamée, pas usée à zéro
+        IReadOnlyList<ItemStack> worn = inv.Places().Select(p => inv.WornInstanceAt(p)).OfType<ItemStack>().Where(x => ItemsCatalog.Wears(ItemsCatalog.Item(x.Item))).ToList();
+        inv.WearPieces(worn, 30, out IReadOnlyList<string> zero);
+        Assert.Empty(zero);   // entamée, pas usée à zéro (relecture de la PR #83 : WearPieces, la seule usure de la partie)
         Assert.True(ItemsCatalog.WearLeft(inv.WornInstanceAt("weapon")!) < ItemsCatalog.WearMax);
         // À la forge : réparée contre de l'or (le prix minimum : elle vaut 1 cuivre), solidité pleine.
         ZoneDefinition forge = Zone(-19, -5);

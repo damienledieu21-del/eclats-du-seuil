@@ -75,19 +75,28 @@ namespace EdS.World
         /// </summary>
         private IReadOnlyList<ItemStack> _entryPieces = Array.Empty<ItemStack>();
 
+        /// <summary>
+        /// Relecture indépendante de la PR #83 : place où chaque pièce du combat était portée à l'entrée (même ordre que
+        /// <see cref="_entryPieces"/>). Une réparation pièce par pièce ne touche une pièce du combat que par sa place, jamais par sa valeur
+        /// (deux épées identiques, l'une portée, l'autre dans le sac).
+        /// </summary>
+        private IReadOnlyList<string> _entryPlaces = Array.Empty<string>();
+
         /// <summary>Dégâts reçus depuis la dernière usure appliquée (combat en cours).</summary>
         private long _pendingDamage;
 
         /// <summary>
         /// Reste de la division de l'usure (dégâts × perte, modulo les PV maximaux), gardé pour le combat suivant de la session. Il n'est
-        /// pas sauvegardé : une nouvelle session (halte, porte, reprise) repart d'un reste nul (au plus un point de solidité perdu de moins).
+        /// pas sauvegardé. Relecture indépendante de la PR #83 : au début d'une session (−1), le premier point est arrondi vers le haut
+        /// (reste de départ : le diviseur moins 1) ; ainsi un petit combat use toujours un peu, même si chaque halte ouvre une nouvelle
+        /// session, et une session use exactement l'arrondi vers le haut de ses dégâts.
         /// </summary>
-        private long _wearCarry;
+        private long _wearCarry = -1;
 
         /// <summary>
         /// Sous-lot V1.8 : reste de la division de l'usure propre à chaque pièce du combat (même ordre que <see cref="_entryPieces"/>), avec sa
         /// résistance : une pièce résistante perd exactement moins sur la durée, sans paliers d'arrondi. Pas sauvegardé, comme
-        /// <see cref="_wearCarry"/>.
+        /// <see cref="_wearCarry"/> : absent (ou −1) au début d'une session, le premier point de chaque pièce est arrondi vers le haut.
         /// </summary>
         private long[] _pieceCarry = Array.Empty<long>();
 
@@ -125,14 +134,16 @@ namespace EdS.World
             var losses = new int[n];
             if (damage <= 0 || maxHealth is not long max || max <= 0 || _items.WearPerFullHealth == 0)
             {
-                for (int k = 0; k < n; k++) newCarry[k] = k < carry.Length ? carry[k] : 0;
+                for (int k = 0; k < n; k++) newCarry[k] = k < carry.Length ? carry[k] : -1;
                 return losses;
             }
             for (int k = 0; k < n; k++)
             {
                 long resist = _items.TryGetItem(_entryPieces[k].Item, out ItemDefinition item) ? 100L + _items.WearResistPercent(item) : 100L;
-                long numerator = checked(damage * _items.WearPerFullHealth * 100 + (k < carry.Length ? carry[k] : 0));
                 long denominator = checked(max * resist);
+                // Relecture de la PR #83 : au début de la session (reste absent ou −1), le premier point est arrondi vers le haut.
+                long start = k < carry.Length && carry[k] >= 0 ? carry[k] : denominator - 1;
+                long numerator = checked(damage * _items.WearPerFullHealth * 100 + start);
                 newCarry[k] = numerator % denominator;
                 losses[k] = (int)Math.Min(_items.WearMax, numerator / denominator);
             }
@@ -148,7 +159,7 @@ namespace EdS.World
         {
             newCarry = carry;
             if (damage <= 0 || maxHealth is not long max || max <= 0 || _items.WearPerFullHealth == 0) return 0;
-            long numerator = checked(damage * _items.WearPerFullHealth + carry);
+            long numerator = checked(damage * _items.WearPerFullHealth + (carry >= 0 ? carry : max - 1));   // −1 : début de session, vers le haut
             newCarry = numerator % max;
             return (int)Math.Min(_items.WearMax, numerator / max);
         }
@@ -207,8 +218,11 @@ namespace EdS.World
             if (!Coins.TryAdd(Money, -price, out long left)) return RepairRefusal.NotEnoughMoney;
             ItemStack? before = Inventory.RepairOne(slot, place);
             if (before is null) return RepairRefusal.NothingToRepair;
-            // La pièce réparée, si elle est une des pièces du combat, y reste (même instance, usure pleine).
-            int k = _entryPieces.ToList().FindIndex(p => p.Equals(before));
+            // La pièce réparée, si elle est une des pièces du combat, y reste (même instance, usure pleine). Relecture de la PR #83 : seule une
+            // pièce portée peut l'être, reconnue par sa place (pas par sa valeur : deux épées identiques, l'une portée, l'autre dans le sac).
+            int k = -1;
+            for (int i = 0; slot != null && k < 0 && i < _entryPieces.Count && i < _entryPlaces.Count; i++)
+                if (_entryPlaces[i] == slot && _entryPieces[i].Equals(before)) k = i;
             if (k >= 0)
             {
                 var pieces = _entryPieces.ToList();

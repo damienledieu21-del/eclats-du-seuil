@@ -381,18 +381,6 @@ namespace EdS.Data.Items
             return checked(WearLevelResistPercent * Math.Max(0, item.RequiredLevel - 1) + rarity);
         }
 
-        /// <summary>
-        /// Sous-lot V1.8 : points de solidité que perd la pièce <paramref name="item"/> quand une pièce sans résistance en perd
-        /// <paramref name="loss"/> : <c>loss × 100 / (100 + résistance)</c>, arrondi au plus proche (moitié vers le haut). Une résistance
-        /// de 50 % fait durer la pièce une fois et demie plus longtemps.
-        /// </summary>
-        public int PieceWearLoss(ItemDefinition item, int loss)
-        {
-            if (loss < 0) throw new ArgumentOutOfRangeException(nameof(loss));
-            long resist = 100L + WearResistPercent(item);
-            return (int)((loss * 100L * 2 + resist) / (2 * resist));
-        }
-
         internal ItemCatalog(int schemaVersion, string contentVersion, IEnumerable<EquipmentPlace> places, int inventorySize, IEnumerable<StartingItem> starting,
             IEnumerable<ItemDefinition> items, IEnumerable<LootTable> loot, IEnumerable<ItemSet>? sets = null, IEnumerable<PropertyDefinition>? properties = null,
             IEnumerable<RarityRoll>? rarityRolls = null, int superiorPercent = 0, int masterworkPercent = 0, int wearMax = ItemValidator.DefaultWearMax,
@@ -913,6 +901,10 @@ namespace EdS.Data.Items
                     report.Add("$.data.wear.levelResistPercent", ValidationCode.OutOfRange, "résistance par niveau hors de [0, 100] %.");
                 else levelResist = d.Wear.LevelResistPercent.Value;
                 if (d.Wear.RarityResistPercent is null) Missing(report, "$.data.wear.rarityResistPercent", "résistance de chaque rareté, six valeurs");
+                // Relecture de la PR #83 (M5) : le nombre de valeurs est contrôlé ici aussi (un document construit hors du lecteur JSON).
+                else if (d.Wear.RarityResistPercent.Count != RarityCount)
+                    report.Add("$.data.wear.rarityResistPercent", ValidationCode.InvalidValue,
+                        $"{d.Wear.RarityResistPercent.Count} valeurs, {RarityCount} attendues (commune à mythique).");
                 else
                     for (int i = 0; i < d.Wear.RarityResistPercent.Count && i < RarityCount; i++)
                     {

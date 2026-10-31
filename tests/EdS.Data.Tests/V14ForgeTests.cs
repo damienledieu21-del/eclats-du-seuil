@@ -419,7 +419,8 @@ public class V14ForgeTests
         // Relecture indépendante de la PR #80 : les dégâts sont ceux du compteur du moteur (un soin ne les cache pas).
         Assert.Equal(w.Zone.Engine.View("bastion").Counters.DamageTaken, report.Damage);
         Assert.Equal(0L, w.PendingDamage);
-        Assert.Equal((int)(report.Damage * Items.WearPerFullHealth / maxHealth), report.Lost);
+        // Relecture de la PR #83 (M3) : au début de la session, le premier point est arrondi vers le haut.
+        Assert.Equal((int)((report.Damage * Items.WearPerFullHealth + maxHealth - 1) / maxHealth), report.Lost);
         // Chaque pièce portée qui s'use a perdu autant ; l'Éclat du Seuil ne s'use pas.
         int expected = Items.WearMax - report.Lost;
         Assert.Equal(report.Lost == 0 ? null : expected, w.Inventory.WornInstanceAt("weapon")!.Wear);
@@ -509,9 +510,13 @@ public class V14ForgeTests
         // Le catalogue réglé à 100 points par PV maximaux : une usure visible dès le premier coup.
         ItemCatalog harsh = ItemsMutated(r => r["data"]!["wear"]!["perFullHealth"] = 100).Catalog!;
         var inventory = Inventory.From(Inventory.Outfit(Hero(), harsh), harsh, 1);
-        Assert.Equal(new[] { "item.epee_du_novice", "item.ecu_du_novice" }, inventory.WearDown(150).OrderBy(x => x, StringComparer.Ordinal).Reverse());
+        // Relecture de la PR #83 (M4) : les pièces portées s'usent par WearPieces, la seule usure de la partie.
+        IReadOnlyList<ItemStack> worn = inventory.Places().Select(p => inventory.WornInstanceAt(p)).OfType<ItemStack>().Where(x => harsh.Wears(harsh.Item(x.Item))).ToList();
+        worn = inventory.WearPieces(worn, 150, out IReadOnlyList<string> zero);
+        Assert.Equal(new[] { "item.epee_du_novice", "item.ecu_du_novice" }, zero.OrderBy(x => x, StringComparer.Ordinal).Reverse());
         Assert.Equal(0, inventory.WornInstanceAt("weapon")!.Wear);
-        Assert.Empty(inventory.WearDown(5));   // déjà à zéro : rien de plus, rien ne casse
+        inventory.WearPieces(worn, 5, out zero);
+        Assert.Empty(zero);   // déjà à zéro : rien de plus, rien ne casse
         WorldSave save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), inventory.SaveInto(Hero()));
         string text = SaveJsonReader.Write(save);
         Assert.Contains("\"weapon\": {\"item\": \"item.epee_du_novice\", \"wear\": 0}", text);
@@ -540,6 +545,44 @@ public class V14ForgeTests
         RepairRules rules = Crafting(Zone()).Repair;
         return rules.Price(ShippedMerchants.Values["item.epee_du_milicien"], 60, 100) + rules.Price(ShippedMerchants.Values["item.ecu_de_chene"], 100, 100)
             + rules.Price(ShippedMerchants.Values["item.gambison"], 10, 100);
+    }
+
+    [Fact]
+    public void Reparer_la_copie_du_sac_ne_touche_pas_la_piece_portee()
+    {
+        // Relecture indépendante de la PR #83 (M1) : deux épées identiques (même usure), l'une portée, l'autre dans le sac. Réparer celle du
+        // sac ne remet pas à neuf l'entrée de celle qui est portée : au combat suivant, c'est toujours l'épée portée qui s'use.
+        ItemCatalog harsh = ItemsMutated(r => r["data"]!["wear"]!["perFullHealth"] = 100).Catalog!;
+        ZoneDefinition forge = Zone(AtForge.X, AtForge.Z, s =>
+        {
+            JsonObject wolf = s["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => c["id"]!.GetValue<string>() == "loup1");
+            wolf["health"] = 400;
+            wolf["position"] = new JsonArray(-15, -4);
+            wolf["arrivalMs"] = 20_000;   // après la réparation
+        });
+        var used = new ItemStack("item.epee_du_novice", 1, wear: 50);
+        SavedCharacter outfit = Inventory.Outfit(Hero(10_000), harsh);
+        SavedCharacter hero = outfit.WithItems(new[] { used }, outfit.Equipment.ToDictionary(e => e.Key, e => e.Key == "weapon" ? used : new ItemStack(e.Value, 1)));
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), forge, ShippedData, Progression, harsh, Book(forge),
+            Crafting(forge), market: new Market(ShippedMerchants));
+        w.Step();
+        int place = w.Inventory.Stacks.ToList().FindIndex(x => x.Item == "item.epee_du_novice");
+        Assert.Equal(RepairRefusal.None, w.RepairPiece(null, null, place, out long paid));
+        Assert.True(paid >= 1);
+        Assert.Null(w.Inventory.Stacks[place].Wear);   // celle du sac, à neuf
+        Assert.Equal(50, w.Inventory.WornInstanceAt("weapon")!.Wear);   // la portée, inchangée
+        WearReport? report = null;
+        for (int i = 0; i < 6000 && report is null; i++)
+        {
+            if (i % 20 == 1)
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", "loup1")); }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException) { }
+            report = w.Step().Wear;
+        }
+        Assert.NotNull(report);
+        Assert.True(report!.Lost > 0);
+        Assert.Equal(Math.Max(0, 50 - report.Lost), harsh.WearLeft(w.Inventory.WornInstanceAt("weapon")!));   // la portée s'use
+        Assert.Null(w.Inventory.Stacks.Single(x => x.Item == "item.epee_du_novice").Wear);   // celle du sac reste à neuf
     }
 
     [Fact]

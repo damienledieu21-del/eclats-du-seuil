@@ -312,8 +312,9 @@ namespace EdS.World
             EnteredLevel = setup.Build.Level;
             // Sous-lot V1.4 : point de départ du relevé des dégâts reçus, et pièces portées à l'entrée (celles du combat de cette session).
             _lastTaken = Zone.Engine.View(_character.Id).Counters.DamageTaken;
-            _entryPieces = Inventory.Places().Where(p => Inventory.WornInstanceAt(p) is { } x && items.Wears(items.Item(x.Item)))
-                .Select(p => Inventory.WornInstanceAt(p)!).ToList();
+            List<string> entryPlaces = Inventory.Places().Where(p => Inventory.WornInstanceAt(p) is { } x && items.Wears(items.Item(x.Item))).ToList();
+            _entryPieces = entryPlaces.Select(p => Inventory.WornInstanceAt(p)!).ToList();
+            _entryPlaces = entryPlaces;   // relecture de la PR #83 : la place de chaque pièce du combat
             EnteredGear = setup.Gear;
             EnteredEffects = setup.Equipment;
         }
@@ -413,11 +414,19 @@ namespace EdS.World
             CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null, string? door = null, string? storyZone = null, Market? market = null,
             GuildBook? guild = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)),
-                ZoneSetups.For(ForPlayer(zone ?? throw new ArgumentNullException(nameof(zone)), save, progression), save.Consumed),
-                data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius), null, log, CheckZone(save, zone, story, crafting, market, guild))
+                // Sous-lot V1.8 (zones en mélange) : la zone telle que le personnage la trouve à son niveau d'entrée (créatures, chefs),
+                // calculée une seule fois (relecture de la PR #83).
+                ForPlayer(zone ?? throw new ArgumentNullException(nameof(zone)), save, progression), data, progression, items, story, crafting, log, safePoint,
+                door, storyZone, market, guild, scaled: true)
         {
-            // Sous-lot V1.8 (zones en mélange) : la zone telle que le personnage la trouve à son niveau d'entrée (créatures, chefs).
-            zone = ForPlayer(zone, save, progression);
+        }
+
+        /// <summary>Forme de la session pour une zone déjà réglée au niveau du personnage (<paramref name="zone"/>, <see cref="ForPlayer"/>).</summary>
+        private WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story,
+            CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled)
+            : this(save, ZoneSetups.For(zone, save.Consumed), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius),
+                null, log, CheckZone(save, zone, story, crafting, market, guild))
+        {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
             _populations = new ZonePopulations(zone);

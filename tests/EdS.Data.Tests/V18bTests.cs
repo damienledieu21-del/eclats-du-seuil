@@ -42,9 +42,87 @@ public class V18bTests
         Assert.Equal(new[] { 1, 6, 11, 16, 21 }, z.Places.Select(p => p.MinLevel).Distinct().OrderBy(l => l));   // un niveau par chapitre
         // Le plus haut des lieux qui contiennent le point ; 1 hors de tout lieu.
         Assert.Equal(16, z.MinLevelAt(z.PopulationOf("bandit_epee1")!.Template.Placement!.Position));
-        Assert.Equal(1, z.MinLevelAt(z.PopulationOf("sanglier")!.Template.Placement!.Position));
+        Assert.Equal(1, z.MinLevelAt(new EdS.Domain.Space.GroundVector(EdS.Domain.Numerics.Fixed.FromInt(10), EdS.Domain.Numerics.Fixed.FromInt(-6))));
+        // Relecture de la PR #83 (M7) : chaque créature est dans un lieu (loup6 dans la forêt des Loups, le sanglier dans les ruines).
+        foreach (Population p in z.Populations)
+            Assert.True(z.Places.Any(pl => pl.Contains(p.Template.Placement!.Position)), $"{p.Creature} hors de tout lieu");
+        Assert.Equal((11, 6), (z.MinLevelAt(z.PopulationOf("loup6")!.Template.Placement!.Position), z.MinLevelAt(z.PopulationOf("sanglier")!.Template.Placement!.Position)));
+        // Relecture de la PR #83 : niveau propre d'une population (loup blanc au chapitre 1, Borgne au chapitre 2).
+        Assert.Equal(((int?)1, (int?)6), (z.PopulationOf("loup_blanc")!.Level, z.PopulationOf("le_borgne")!.Level));
+        Assert.Equal((1, 6), (z.OwnMinLevel("loup_blanc", z.PopulationOf("loup_blanc")!.Template.Placement!.Position),
+            z.OwnMinLevel("le_borgne", z.PopulationOf("le_borgne")!.Template.Placement!.Position)));
         // Les intérieurs n'ont pas de mélange.
         Assert.Null(ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, "zone.auberge"), ScenariosDirectory, ShippedData, ItemsCatalog).Zone!.Scaling);
+    }
+
+    /// <summary>Vallons lus avec un document de zone et un scénario retouchés (sans exiger qu'ils soient admis).</summary>
+    private static ZoneLoadResult VallonsMutated(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null)
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        zone?.Invoke(root);
+        string directory = Path.Combine(Path.GetTempPath(), "eds_v18b_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(directory, "zones"));
+            JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+            scenario?.Invoke(s);
+            File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
+            File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));
+            File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);
+            CopyMissingZoneScenarios(directory);
+            return ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, ItemsCatalog);
+        }
+        finally
+        {
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
+    public void Niveau_propre_d_une_population_controle_et_applique()
+    {
+        // Relecture de la PR #83 : le loup blanc garde le niveau 1 (chapitre 1), le Borgne le niveau 6 (chapitre 2), au lieu de 11 et 16.
+        ZoneDefinition z = Vallons;
+        AssailantSetup white = z.PopulationOf("loup_blanc")!.Template, borgne = z.PopulationOf("le_borgne")!.Template;
+        Assert.Same(white, z.ForLevel(3).PopulationOf("loup_blanc")!.Template);   // joueur 3 : niveau 1, tel qu'écrit
+        Assert.Equal(white.Health!.Value * 112 / 100, z.ForLevel(4).PopulationOf("loup_blanc")!.Template.Health);   // joueur 4 : niveau 2
+        Assert.Equal(borgne.Health!.Value * 160 / 100, z.ForLevel(3).PopulationOf("le_borgne")!.Template.Health);   // niveau 6 au moins
+        Assert.Equal(borgne.Health!.Value * 160 / 100, z.ForLevel(8).PopulationOf("le_borgne")!.Template.Health);
+        Assert.Equal(white.Health!.Value * (100 + 12 * 22) / 100, z.ForLevel(25).PopulationOf("loup_blanc")!.Template.Health);   // monte quand même : 23
+        // Les autres créatures de la forêt gardent le niveau de leur lieu.
+        Assert.Equal(z.PopulationOf("loup7")!.Template.Health!.Value * (100 + 12 * 10) / 100, z.ForLevel(3).PopulationOf("loup7")!.Template.Health);
+        foreach (int bad in new[] { 0, 31 })
+        {
+            ZoneLoadResult r = VallonsMutated(zone: root =>
+                root["data"]!["populations"]!.AsArray().First(p => (string)p!["creature"]! == "loup_blanc")!["level"] = bad);
+            Assert.False(r.IsValid);
+            Assert.Contains(r.Report.Errors, e => e.Path.EndsWith("].level", StringComparison.Ordinal) && e.Code == ValidationCode.OutOfRange);
+        }
+    }
+
+    [Theory]
+    [InlineData("health", "$.data.scaling.healthPerLevelPercent")]
+    [InlineData("rawDamage", "$.data.scaling.damagePerLevelPercent")]
+    public void Precontrole_numerique_de_la_mise_a_l_echelle(string field, string path)
+    {
+        // Relecture de la PR #83 (M2) : une créature portée au niveau maximal (30) ne dépasse ni 10⁹ PV ni 10⁹ dégâts bruts.
+        ZoneLoadResult r = VallonsMutated(scenario: s =>
+        {
+            JsonObject wolf = s["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => (string)c["id"]! == "loup1");
+            if (field == "health") wolf["health"] = 300_000_000;
+            else wolf["attacks"]![0]!["rawDamage"] = 300_000_000;
+        });
+        Assert.False(r.IsValid);
+        ValidationError e = Assert.Single(r.Report.Errors);
+        Assert.Equal((path, ValidationCode.OutOfRange), (e.Path, e.Code));
+        Assert.Contains("loup1", e.Message);
+        // Sans mélange (zone sans scaling), les mêmes chiffres sont admis.
+        Assert.True(VallonsMutated(zone: root => root["data"]!.AsObject().Remove("scaling"), scenario: s =>
+        {
+            JsonObject wolf = s["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => (string)c["id"]! == "loup1");
+            if (field == "health") wolf["health"] = 300_000_000;
+            else wolf["attacks"]![0]!["rawDamage"] = 300_000_000;
+        }).IsValid);
     }
 
     [Fact]
@@ -150,8 +228,9 @@ public class V18bTests
         Assert.InRange(Fights("item.epee_du_novice"), 30, 40);
         Assert.True(Fights("item.epee_longue_d_aube") > Fights("item.epee_du_novice"));
         Assert.True(Fights("item.lame_de_la_tour") > Fights("item.epee_longue_d_aube"));
-        Assert.Equal((3, 2, 2), (c.PieceWearLoss(c.Item("item.epee_du_novice"), 3), c.PieceWearLoss(c.Item("item.epee_longue_d_aube"), 3),
-            c.PieceWearLoss(c.Item("item.lame_de_la_tour"), 3)));
+        // Relecture de la PR #83 (M4) : une seule formule d'usure, celle de la partie (WorldSession.PieceLosses) ; plus d'arrondi à part.
+        Assert.Equal(0, c.WearResistPercent(c.Item("item.epee_du_novice")));
+        Assert.True(c.WearResistPercent(c.Item("item.lame_de_la_tour")) > c.WearResistPercent(c.Item("item.epee_longue_d_aube")));
     }
 
     [Theory]
@@ -171,6 +250,15 @@ public class V18bTests
         root["data"]!["wear"]!.AsObject().Remove("rarityResistPercent");
         Assert.Contains(ItemJsonReader.Read(root.ToJsonString(), ShippedData).Report.Errors,
             e => e.Path == "$.data.wear.rarityResistPercent" && e.Code == ValidationCode.MissingField);
+        // Relecture de la PR #83 (M5) : le validateur contrôle aussi le nombre de valeurs (document construit hors du lecteur JSON).
+        foreach (int count in new[] { 2, 7 })
+        {
+            var report = new ValidationReport();
+            ItemCatalogDocument document = ItemJsonReader.ReadDocument(File.ReadAllBytes(ItemJsonReader.PathIn(DataDirectory)), report);
+            document.Data!.Wear!.RarityResistPercent = Enumerable.Range(0, count).Select(i => (int?)(i * 10)).ToList();
+            ValidationError e = Assert.Single(ItemValidator.Validate(document, ShippedData, report).Report.Errors);
+            Assert.Equal(("$.data.wear.rarityResistPercent", ValidationCode.InvalidValue), (e.Path, e.Code));
+        }
     }
 
     [Fact]
