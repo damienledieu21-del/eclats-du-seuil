@@ -238,6 +238,14 @@ namespace EdS.Data.Rules
                 ShieldMinCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.ShieldMinCostPerBlock))),
                 ShieldMaxCostPerBlock = (int)Int(d, P(c, nameof(CombatRules.ShieldMaxCostPerBlock))),
                 ShieldParryWindowShiftMs = Int(d, P(c, nameof(CombatRules.ShieldParryWindowShiftMs))),
+                EquipmentMaxDamageDealt = Dec(d, P(c, nameof(CombatRules.EquipmentMaxDamageDealt))),
+                EquipmentMaxDamageTaken = Dec(d, P(c, nameof(CombatRules.EquipmentMaxDamageTaken))),
+                EquipmentMaxHealthPercent = Dec(d, P(c, nameof(CombatRules.EquipmentMaxHealthPercent))),
+                EquipmentMaxEnduranceRegen = Dec(d, P(c, nameof(CombatRules.EquipmentMaxEnduranceRegen))),
+                EquipmentMaxStatusDurationMs = Int(d, P(c, nameof(CombatRules.EquipmentMaxStatusDurationMs))),
+                EquipmentMaxStrikeCoefficient = Dec(d, P(c, nameof(CombatRules.EquipmentMaxStrikeCoefficient))),
+                EquipmentMaxGain = (int)Int(d, P(c, nameof(CombatRules.EquipmentMaxGain))),
+                EquipmentMinTriggerCooldownMs = Int(d, P(c, nameof(CombatRules.EquipmentMinTriggerCooldownMs))),
                 Statuses = statuses,
             };
         }

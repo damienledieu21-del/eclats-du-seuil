@@ -536,7 +536,7 @@ public class Lot81ModifierValidationTests
     }
 
     [Theory]
-    [InlineData(3)]
+    [InlineData(4)]   // sous-lot V1.3 : 3 est targetStunned
     [InlineData(-1)]
     [InlineData(99)]
     public void Condition_hors_enumeration_refusee(int brute)
@@ -855,7 +855,7 @@ public class Lot81ModifierImmutabilityTests
         Assert.False(ModifierKeys.Conditions is Dictionary<string, ModifierCondition>, "dictionnaire interne exposé");
         IDictionary<string, ModifierCondition> conditions = Assert.IsAssignableFrom<IDictionary<string, ModifierCondition>>(ModifierKeys.Conditions);
         Assert.Throws<NotSupportedException>(() => conditions["intrus"] = W);
-        Assert.Equal(new[] { "perRampartCharge", "perResonanceStep", "whileGuarding" }, ModifierKeys.Conditions.Keys.OrderBy(k => k, StringComparer.Ordinal));
+        Assert.Equal(new[] { "perRampartCharge", "perResonanceStep", "targetStunned", "whileGuarding" }, ModifierKeys.Conditions.Keys.OrderBy(k => k, StringComparer.Ordinal));   // V1.3 : targetStunned
     }
 
     /// <summary>Classe à cinq erreurs connues, reconstruite à l'identique à chaque appel.</summary>

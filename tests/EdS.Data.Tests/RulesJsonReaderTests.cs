@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(13, result.Rules!.SchemaVersion);   // sous-lot 11.4a : déplacement et contact ; 11.4b : portée des protections ; 11.4c : arc, annonces ; V1.2 : boucliers
-        Assert.Equal("0.13.0-provisoire", result.Rules.ContentVersion);   // 0.13.0 : garde des boucliers (V1.2) ; 0.12.0 : 128 combattants ; 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b) ; 0.11.0 : arc et annonces (11.4c)
+        Assert.Equal(14, result.Rules!.SchemaVersion);   // V1.3 : effets d'équipement ; sous-lot 11.4a : déplacement et contact ; 11.4b : portée des protections ; 11.4c : arc, annonces ; V1.2 : boucliers
+        Assert.Equal("0.14.0-provisoire", result.Rules.ContentVersion);   // 0.14.0 : effets d'équipement (V1.3) ; 0.13.0 : garde des boucliers (V1.2) ; 0.12.0 : 128 combattants ; 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b) ; 0.11.0 : arc et annonces (11.4c)
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -120,8 +120,9 @@ public class RulesJsonReaderTests
         // Sous-lot 11.4c : schéma 12, contenu 0.11.0 : combat.guard.arcDegrees et combat.telegraph.minReactionMs.
         // Décision de Damien du 29 octobre 2026 : contenu 0.12.0, schéma inchangé : combat.limits.maxCombatants de 64 à 128.
         // Sous-lot V1.2 : schéma 13, contenu 0.13.0 : combat.shield (bornes de la garde des boucliers ; ancienne empreinte 81d40127…).
+        // Sous-lot V1.3 : schéma 14, contenu 0.14.0 : combat.equipment (bornes des effets d'équipement ; ancienne empreinte d6dd1953…).
         Assert.Equal(
-            "sha256:d6dd195363ed19cc221460e9812ec1eae0799d7846449a21d5aaf99f41baf302",
+            "sha256:358fc35af7834e17f587c23a83d6bd6703b00c7c0ad6eca538d8d3b07c8b74f7",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -129,7 +130,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 14), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 15), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Format_5_sans_plafonds_refuse_explicitement()

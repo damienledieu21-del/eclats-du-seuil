@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "4673009e5cc325e945fd805def9ecf44001b2d8e167fb78ba3d3c5305274b9c2")]
-    [InlineData("entrainement_rupture", "197582fbf1cbbc8fd043d2a7c90bb64cd001b93809cdc945dfd33f258ac32e19")]
-    [InlineData("entrainement_alterations", "12b27118b80f95ed94f89398f42ba9e608a1f96672012c6fe15020ab50c4a752")]
-    [InlineData("entrainement_declencheurs", "4d847c01c5375767ffc14e3747ee57a1829b7c7d07ace54350c39e83fcd34b9f")]
+    [InlineData("entrainement_garde_parade", "a9f5a2c2ec41f2fc8a48204748f2b9499fa4fc65636f90f955464dd662a9eaab")]
+    [InlineData("entrainement_rupture", "ba04e3e2f1998dcf00955f5e6a0c204867b1bea65305f9e5700dabde6e7f7adf")]
+    [InlineData("entrainement_alterations", "88ff19eca89f213f2c20eb65b7b3649234f9e8294a191abf696a00c70bf87902")]
+    [InlineData("entrainement_declencheurs", "df43db86da9ca5e96e41629ba66c90f2fcfd73a15a5bddd42ea076ac11ee65e9")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -142,6 +142,8 @@ public class TrainingScenarioTests
         // référence dans Fixtures/reference-0.24.0-contenu-0.6.0-regles-0.12.0.
         // Sous-lot V1.2 : moteur 0.25.0, format 19, règles 0.13.0 (schéma 13, bornes de la garde des boucliers), scénarios en schéma 13 ;
         // aucun scénario d'entraînement n'a de bouclier : seul l'en-tête change ; référence dans Fixtures/reference-0.25.0-contenu-0.6.0-regles-0.13.0.
+        // Sous-lot V1.3 : moteur 0.26.0, format 20, règles 0.14.0 (schéma 14, bornes des effets d'équipement), scénarios en schéma 14 ; aucun de
+        // ces scénarios n'a d'effet d'équipement : seul l'en-tête change ; référence dans Fixtures/reference-0.26.0-contenu-0.6.0-regles-0.14.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

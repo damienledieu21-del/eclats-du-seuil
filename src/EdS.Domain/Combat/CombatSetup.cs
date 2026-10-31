@@ -96,8 +96,15 @@ namespace EdS.Domain.Combat
         /// </summary>
         public ShieldGuard? Shield { get; }
 
+        /// <summary>
+        /// Sous-lot V1.3 : effets de l'équipement porté (objets nommés, paliers d'ensemble), dans l'ordre donné ; vide par défaut. Leurs
+        /// modificateurs et leurs déclencheurs (origine <see cref="TriggerOrigin.Equipment"/>) s'ajoutent à ceux du build.
+        /// </summary>
+        public IReadOnlyList<EquipmentEffect> Equipment { get; }
+
         public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null,
-            long? arrivalMs = null, GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null, ShieldGuard? shield = null)
+            long? arrivalMs = null, GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null, ShieldGuard? shield = null,
+            IEnumerable<EquipmentEffect>? equipment = null)
             : base(id, team, initiative, placement, arrivalMs)
         {
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
@@ -105,6 +112,7 @@ namespace EdS.Domain.Combat
             Gear = gear ?? GearBonus.None;
             Consumables = Frozen.ListOrEmpty(consumables, nameof(consumables));
             Shield = shield;
+            Equipment = Frozen.ListOrEmpty(equipment, nameof(equipment));
         }
 
         /// <summary>Sous-lot V1.2 : règles effectives de ce personnage (modificateurs de son build, garde de son bouclier).</summary>
@@ -128,6 +136,10 @@ namespace EdS.Domain.Combat
                 if (equipped.Contains(skill.Id))
                     for (int k = 0; k < skill.Triggers.Count; k++)
                         yield return new BoundTrigger(skill.Kind == SkillKind.Passive ? TriggerOrigin.Passive : TriggerOrigin.Skill, skill.Id, k, 1, skill.Triggers[k]);
+            // Sous-lot V1.3 : déclencheurs de l'équipement porté (origine réservée depuis le lot 8), au rang 1, identité « source/indice ».
+            foreach (EquipmentEffect effect in Equipment)
+                for (int k = 0; k < effect.Triggers.Count; k++)
+                    yield return new BoundTrigger(TriggerOrigin.Equipment, effect.Source, k, 1, effect.Triggers[k]);
         }
 
         /// <summary>
@@ -147,6 +159,10 @@ namespace EdS.Domain.Combat
                 if (skill.Kind == SkillKind.Passive && passives.Contains(skill.Id))
                     for (int k = 0; k < skill.Modifiers.Count; k++)
                         yield return new BoundModifier(skill.Id, k, 1, skill.Modifiers[k]);
+            // Sous-lot V1.3 : modificateurs de l'équipement porté, au rang 1.
+            foreach (EquipmentEffect effect in Equipment)
+                for (int k = 0; k < effect.Modifiers.Count; k++)
+                    yield return new BoundModifier(effect.Source, k, 1, effect.Modifiers[k]);
         }
     }
 
@@ -816,6 +832,8 @@ namespace EdS.Domain.Combat
                                     $"bonus d'équipement {character.Gear[g]} hors de [0, {GearBonus.MaxValue}].", path + ".gear." + GearBonus.Fields[g]));
                         // Sous-lot V1.2 : garde du bouclier dans les bornes de jeu des règles (la même fonction que le catalogue des objets).
                         if (character.Shield is { } shield) errors.AddRange(shield.Check(Combat, path + ".shield"));
+                        // Sous-lot V1.3 : effets de l'équipement dans les bornes des règles (la même fonction que le catalogue des objets).
+                        errors.AddRange(EquipmentEffect.CheckList(character.Equipment, Combat, path + ".equipment"));
                         break;
                     case DummySetup dummy:
                         Defense(dummy.Armor, "l'armure du mannequin", path + ".armor", errors);
@@ -1549,7 +1567,14 @@ namespace EdS.Domain.Combat
                 {
                     case CharacterSetup c:
                         foreach (BoundTrigger b in c.ActiveTriggers())
-                            named.Add(new NamedTrigger($"{b.Label}@{c.Id}", $"combatants[{i}].class", b.Definition));
+                        {
+                            // Sous-lot V1.3 : un déclencheur d'équipement est rattaché à sa source (combatants[i].equipment[k]).
+                            string where = $"combatants[{i}].class";
+                            if (b.Origin == TriggerOrigin.Equipment)
+                                for (int k = 0; k < c.Equipment.Count; k++)
+                                    if (c.Equipment[k].Source == b.DefinitionId) where = $"combatants[{i}].equipment[{k}].triggers[{b.Index}]";
+                            named.Add(new NamedTrigger($"{b.Label}@{c.Id}", where, b.Definition));
+                        }
                         break;
                     case AssailantSetup a:
                         for (int k = 0; k < a.Triggers.Count; k++)

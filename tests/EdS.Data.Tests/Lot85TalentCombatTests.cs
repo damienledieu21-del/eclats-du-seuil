@@ -67,7 +67,7 @@ public class Lot85TalentCombatTests
     {
         var root = new JsonObject
         {
-            ["schemaVersion"] = 13, ["kind"] = "scenario", ["contentVersion"] = "0.1.0-test",
+            ["schemaVersion"] = 14, ["kind"] = "scenario", ["contentVersion"] = "0.1.0-test",
             ["data"] = new JsonObject
             {
                 ["seed"] = 1, ["durationMs"] = durationMs,

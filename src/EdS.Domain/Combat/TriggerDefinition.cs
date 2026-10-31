@@ -120,8 +120,8 @@ namespace EdS.Domain.Combat
     }
 
     /// <summary>
-    /// Origine d'un déclencheur. L'ordre de déclaration est le 3ᵉ critère de l'ordre des abonnés (§5.4). <see cref="Equipment"/>
-    /// est réservé (Q9) : aucun lecteur ne le produit en 7.3.
+    /// Origine d'un déclencheur. L'ordre de déclaration est le 3ᵉ critère de l'ordre des abonnés (§5.4). <see cref="Equipment"/>,
+    /// réservé depuis le lot 7.3 (Q9), est produit depuis le sous-lot V1.3 par les effets de l'équipement porté (<see cref="EquipmentEffect"/>).
     /// </summary>
     public enum TriggerOrigin
     {
@@ -312,7 +312,7 @@ namespace EdS.Domain.Combat
     /// <summary>
     /// Déclencheur en données (§4.1) : type d'abonnement, rôle du porteur, filtre, recharge interne et 1 à 4 effets exécutés
     /// dans l'ordre comme une seule réaction. Immuable. Porté par un talent, une compétence (passive, active ou ultime), une
-    /// altération ou un assaillant de scénario ; l'équipement est réservé (Q9).
+    /// altération, un assaillant de scénario ou, depuis le sous-lot V1.3, un effet d'équipement (<see cref="EquipmentEffect"/>).
     /// </summary>
     public sealed class TriggerDefinition
     {

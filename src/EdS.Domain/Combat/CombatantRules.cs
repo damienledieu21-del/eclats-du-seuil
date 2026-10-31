@@ -201,13 +201,14 @@ namespace EdS.Domain.Combat
         /// conditions tiennent, multiplié par les Charges ou les paliers de Résonance. Sans débordement possible : valeurs bornées par la
         /// validation, Charges ≤ max(base, 10), Résonance ≤ 2³¹.
         /// </summary>
-        private Fixed Evaluate(ModifierField field, Fixed permanent, bool guarding, long charges, long resonance)
+        private Fixed Evaluate(ModifierField field, Fixed permanent, bool guarding, long charges, long resonance, bool targetStunned = false)
         {
             Fixed total = permanent;
             foreach (ConditionalModifier c in Modifiers.Conditional)
             {
                 if (c.Field != field) continue;
                 if ((c.Conditions & ModifierConditions.WhileGuarding) != 0 && !guarding) continue;
+                if ((c.Conditions & ModifierConditions.TargetStunned) != 0 && !targetStunned) continue;   // sous-lot V1.3
                 long factor = (c.Conditions & ModifierConditions.PerRampartCharge) != 0 ? charges
                     : (c.Conditions & ModifierConditions.PerResonanceStep) != 0 ? resonance / ModifierKeys.ResonanceStep : 1;
                 total += c.Value * factor;
@@ -215,9 +216,12 @@ namespace EdS.Domain.Combat
             return total;
         }
 
-        /// <summary>Bonus de dégâts infligés (catégorie talent) de l'attaquant dans l'état donné.</summary>
-        public Fixed DamageDealtAt(bool guarding, long charges, long resonance) =>
-            Evaluate(ModifierField.DamageDealt, DamageDealt, guarding, charges, resonance);
+        /// <summary>
+        /// Bonus de dégâts infligés (catégorie talent) de l'attaquant dans l'état donné. Sous-lot V1.3 : <paramref name="targetStunned"/>, la
+        /// cible de l'impact est étourdie (condition <c>targetStunned</c>, faux par défaut).
+        /// </summary>
+        public Fixed DamageDealtAt(bool guarding, long charges, long resonance, bool targetStunned = false) =>
+            Evaluate(ModifierField.DamageDealt, DamageDealt, guarding, charges, resonance, targetStunned);
 
         /// <summary>Modificateur de dégâts subis du défenseur dans l'état donné, écrêté dans [−1, 0] : une réduction seulement.</summary>
         public Fixed DamageTakenAt(bool guarding, long charges, long resonance) =>

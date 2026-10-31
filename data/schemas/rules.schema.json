@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 13
+      "const": 14
     },
     "kind": {
       "const": "rules"
@@ -782,6 +782,71 @@
                 "parryWindowShiftMs"
               ],
               "description": "Bornes de la garde propre des boucliers (sous-lot V1.2, schéma 13)."
+            },
+            "equipment": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxDamageDealt": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10,
+                  "description": "Bonus de dégâts infligés d'un modificateur d'équipement, au plus (0,25 livrés)."
+                },
+                "maxDamageTaken": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Réduction des dégâts subis d'un modificateur d'équipement, au plus (0,15 livrés)."
+                },
+                "maxHealthPercent": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10,
+                  "description": "Pourcentage de PV maximaux d'un modificateur d'équipement, au plus (0,15 livrés)."
+                },
+                "maxEnduranceRegen": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Régénération d'endurance par seconde ajoutée par un modificateur d'équipement, au plus (3 livrés)."
+                },
+                "maxStatusDurationMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 86400000,
+                  "description": "Allongement (ms) d'une altération posée par un modificateur d'équipement, au plus (1 000 livrés)."
+                },
+                "maxStrikeCoefficient": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Coefficient d'une frappe de réaction d'équipement, au plus (1 livré)."
+                },
+                "maxGain": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Gain de ressource d'une réaction d'équipement, au plus (2 livrés)."
+                },
+                "minTriggerCooldownMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 86400000,
+                  "description": "Recharge interne d'un déclencheur d'équipement, au moins (ms, multiple du tick ; 1 000 livrés)."
+                }
+              },
+              "required": [
+                "maxDamageDealt",
+                "maxDamageTaken",
+                "maxHealthPercent",
+                "maxEnduranceRegen",
+                "maxStatusDurationMs",
+                "maxStrikeCoefficient",
+                "maxGain",
+                "minTriggerCooldownMs"
+              ],
+              "description": "Bornes des effets d'équipement (objets nommés, paliers d'ensemble ; sous-lot V1.3, schéma 14), vérifiées par EquipmentEffect.Check."
             }
           },
           "required": [
@@ -798,7 +863,8 @@
             "movement",
             "contact",
             "telegraph",
-            "shield"
+            "shield",
+            "equipment"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         },

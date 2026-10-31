@@ -29,8 +29,12 @@ namespace EdS.Data.Modifiers
     /// </summary>
     public static class ModifierShape
     {
-        /// <summary>Vérifie une liste facultative (null = absente, aucun modificateur).</summary>
-        public static void Check(List<ModifierData?>? modifiers, string path, ValidationReport report)
+        /// <summary>
+        /// Vérifie une liste facultative (null = absente, aucun modificateur). Sous-lot V1.3 : la condition <c>targetStunned</c> n'est admise
+        /// que pour l'équipement (<paramref name="equipment"/>) : les classes (schéma 9) et les règles ne la connaissent pas, leur forme ne
+        /// change pas.
+        /// </summary>
+        public static void Check(List<ModifierData?>? modifiers, string path, ValidationReport report, bool equipment = false)
         {
             if (modifiers is null) return;
             bool Present(object? value, string p, string description)
@@ -57,8 +61,9 @@ namespace EdS.Data.Modifiers
                     {
                         if (!report.HasErrorAtOrAbove(cp)) report.Add(cp, ValidationCode.WrongType, "identifiant attendu.");
                     }
-                    else if (!ModifierKeys.Conditions.ContainsKey(c))
-                        report.Add(cp, ValidationCode.UnknownReference, $"valeur inconnue « {c} » ; valeurs possibles : {string.Join(", ", ModifierKeys.Conditions.Keys)}.");
+                    else if (!ModifierKeys.Conditions.TryGetValue(c, out ModifierCondition condition) || (!equipment && condition == ModifierCondition.TargetStunned))
+                        report.Add(cp, ValidationCode.UnknownReference, $"valeur inconnue « {c} » ; valeurs possibles : " +
+                            $"{string.Join(", ", ModifierKeys.Conditions.Where(k => equipment || k.Value != ModifierCondition.TargetStunned).Select(k => k.Key))}.");
                 }
             }
         }

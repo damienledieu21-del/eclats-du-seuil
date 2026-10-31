@@ -32,12 +32,15 @@ namespace EdS.Data
     /// 12 (règles) = sous-lot 11.4c : <c>combat.guard.arcDegrees</c> (arc frontal du bouclier) et <c>combat.telegraph.minReactionMs</c>
     /// (réaction minimale des annonces). Classes inchangées (9) ; 13 (règles) = sous-lot V1.2 : bloc <c>combat.shield</c> (bornes de la garde
     /// des boucliers : <c>minDamageReduction</c>, <c>maxDamageReduction</c>, <c>minCostPerBlock</c>, <c>maxCostPerBlock</c>,
-    /// <c>parryWindowShiftMs</c>). Classes inchangées (9).</para>
+    /// <c>parryWindowShiftMs</c>). Classes inchangées (9) ; 14 (règles) = sous-lot V1.3 : bloc <c>combat.equipment</c> (bornes des effets
+    /// d'équipement : <c>maxDamageDealt</c>, <c>maxDamageTaken</c>, <c>maxHealthPercent</c>, <c>maxEnduranceRegen</c>, <c>maxStatusDurationMs</c>,
+    /// <c>maxStrikeCoefficient</c>, <c>maxGain</c>, <c>minTriggerCooldownMs</c>) et condition <c>targetStunned</c> des modificateurs. Classes
+    /// inchangées (9) : la condition y est admise sans changer leur forme.</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 13;
+        public const int RulesSchemaVersion = 14;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
         public const int ClassSchemaVersion = 9;
@@ -50,8 +53,9 @@ namespace EdS.Data
         /// 0.8.0 : altérations des talents du Gardien (sous-lot 8.5) ; 0.9.0 : déplacement et contact (sous-lot 11.4a) ; 0.10.0 :
         /// portée du lien protecteur (sous-lot 11.4b) ; 0.11.0 : arc du bouclier et réaction minimale des annonces (sous-lot 11.4c) ;
         /// 0.12.0 : 128 combattants au plus (décision de Damien du 29 octobre 2026 : plus de réapparitions par session dans les Vallons) ;
-        /// 0.13.0 : bornes de la garde des boucliers (sous-lot V1.2, schéma 13).
+        /// 0.13.0 : bornes de la garde des boucliers (sous-lot V1.2, schéma 13) ; 0.14.0 : bornes des effets d'équipement (sous-lot V1.3,
+        /// schéma 14).
         /// </summary>
-        public const string ProvisionalRulesContentVersion = "0.13.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.14.0-provisoire";
     }
 }

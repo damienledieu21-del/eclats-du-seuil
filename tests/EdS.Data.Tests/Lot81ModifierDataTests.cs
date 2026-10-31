@@ -958,7 +958,8 @@ public class Lot81ModifierDataSchemaTests
         JsonObject conditions = modifier["properties"]!["conditions"]!.AsObject();
         string[] tokens = conditions["items"]!["enum"]!.AsArray().Select(n => n!.GetValue<string>()).ToArray();
         Assert.Equal(new[] { "perRampartCharge", "perResonanceStep", "whileGuarding" }, tokens.OrderBy(t => t, StringComparer.Ordinal));
-        Assert.Equal(tokens.OrderBy(t => t, StringComparer.Ordinal), ModifierKeys.Conditions.Keys.OrderBy(t => t, StringComparer.Ordinal));
+        // Sous-lot V1.3 : targetStunned n'est admise que pour l'équipement ; le schéma des classes ne la connaît pas.
+        Assert.Equal(tokens.OrderBy(t => t, StringComparer.Ordinal), ModifierKeys.Conditions.Keys.Where(k => k != "targetStunned").OrderBy(t => t, StringComparer.Ordinal));
         Assert.Equal(2, conditions["maxItems"]!.GetValue<int>());
         Assert.True(conditions["uniqueItems"]!.GetValue<bool>());
 
@@ -1500,7 +1501,7 @@ public class Lot81ModifierDataImmutabilityTests
         Assert.True(((IDictionary<string, ModifierCondition>)ModifierKeys.Conditions).IsReadOnly);
         Assert.Throws<NotSupportedException>(() => ((IDictionary<string, ModifierCondition>)ModifierKeys.Conditions)["whileBlocking"] = ModifierCondition.WhileGuarding);
         Assert.Throws<NotSupportedException>(() => ((IList<ModifierSpec>)ModifierKeys.Specs).RemoveAt(0));
-        Assert.Equal(3, ModifierKeys.Conditions.Count);
+        Assert.Equal(4, ModifierKeys.Conditions.Count);   // V1.3 : targetStunned (équipement seulement)
         Assert.Equal(24, ModifierKeys.Specs.Count);   // 8.2 : shield.potencyDealt ; 8.3 : protection.redirectRatio et redirectThroughGuard ; 8.4 : guard.noUpkeep
     }
 
