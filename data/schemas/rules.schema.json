@@ -359,10 +359,11 @@
               "properties": {
                 "activeUnlockLevels": {
                   "type": "array",
+                  "maxItems": 6,
                   "items": {
                     "type": "integer"
                   },
-                  "description": "Niveaux de déblocage, un par emplacement, dans l'ordre croissant."
+                  "description": "Niveaux de déblocage, un par emplacement, dans l'ordre croissant. Six places actives au plus (barre de combat, pont temps réel et protocole du réseau : sous-lot V1.8)."
                 },
                 "passiveUnlockLevels": {
                   "type": "array",

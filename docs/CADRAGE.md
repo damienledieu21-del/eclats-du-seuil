@@ -193,7 +193,7 @@ Toutes **Retenu** : validées par Damien le 20 octobre 2026, dans les termes de 
 |---|---|---|---|
 | Niveau maximal 30, 1 point de talent par niveau dès le niveau 2 (29 points) | `rules.json`, `progression` | Configuration actuelle ; plafond final Ouvert (Q18) | Moteur actuel |
 | Talent majeur : 18 points investis dans son arbre, puis 1 point ; un seul par build | `rules.json`, `majorTalents` | Validé pour la configuration actuelle ; à relire avec livres et héritages (H6, H7) | Moteur actuel |
-| Actives 2, 3, 4 aux niveaux 1, 5, 10 ; ultime au niveau 10 ; passifs 1, 2, 3, 4 aux niveaux 1, 5, 20, 30 | `rules.json` | Validé pour la configuration actuelle | Moteur actuel |
+| Actives 2, 3, 4 aux niveaux 1, 5, 10 ; ultime au niveau 10 ; passifs 1, 2, 3, 4 aux niveaux 1, 5, 20, 30 (remplacé au sous-lot V1.8 par la décision de Damien : 4 actives et l'ultime au niveau 1, 5e au 10, 6e au 20) | `rules.json` | Validé pour la configuration actuelle | Moteur actuel |
 | Niveaux du premier parcours : 1 à 10 | à créer | Retenu (Q3, L11-D10) | Tranche |
 | Inventaire : 24 places | à créer | Retenu (Q5, L11-D10) | Tranche |
 | Emplacements d'équipement : 4 (tranche), 12 (final) | à créer | Tranche : Retenu (L11-D10) ; final : Recommandation (Q4) | Tranche, Final |

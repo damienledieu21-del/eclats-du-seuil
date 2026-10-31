@@ -39,49 +39,57 @@ public class V1ReponsesTests : IDisposable
         Onde = "skill.bastion.onde_de_rupture", Provocation = "skill.bastion.provocation", Contrecoup = "skill.bastion.contrecoup",
         Absolu = "skill.bastion.bastion_absolu", Roc = "skill.bastion.endurance_du_roc";
 
-    /// <summary>Expérience cumulée des niveaux 3, 4, 5, 6, 7 et 10 (progression livrée).</summary>
-    private const long Level3 = 220, Level4 = 360, Level5 = 520, Level6 = 700, Level7 = 900, Level10 = 1620;
+    /// <summary>Expérience cumulée des niveaux 3, 4, 5, 6, 7 et 10 (progression livrée ; sous-lot V1.8 : nouvelle courbe).</summary>
+    private const long Level3 = 180, Level4 = 300, Level5 = 440, Level6 = 740, Level7 = 1080, Level10 = 2350;
 
     private static ProgressionRules Rules => ShippedData.Rules.Progression;
 
     private static SavedCharacter Bastion(long xp, string[] actives, string? ultimate = null) =>
         PlayerCharacters.Create("bastion", "class.bastion", Progression).WithXp(xp).WithSkills(actives, ultimate, new[] { Roc });
 
-    // --- Provocation et Contrecoup s'apprennent, dans la réserve ---------------------------------------------------------------
+    // --- Provocation et Contrecoup s'apprennent ; sous-lot V1.8 : Provocation trouve une place libre, Contrecoup va dans la réserve -----
 
+    /// <summary>
+    /// Sous-lot V1.8 (barre « 4 + ultime dès le début ») : une compétence vient avec sa place quand une place de sa sorte est ouverte et pas
+    /// encore promise à son niveau (<see cref="SkillUnlock.WithPlace"/>). Provocation (niveau 3) et la Barrière (5) prennent les places 3
+    /// et 4, l'Onde (10) la 5e qui s'ouvre avec elle, Bastion absolu la place de l'ultime ; Contrecoup (7) va dans la réserve, la barre
+    /// étant pleine (avant V1.8, Provocation y allait aussi : aucune place ne s'ouvrait au niveau 3).
+    /// </summary>
     [Fact]
     public void Provocation_et_Contrecoup_s_apprennent_dans_la_reserve()
     {
         Assert.Equal(new[] { Provocation }, PlayerCharacters.Learned(Bastion(Level3, new[] { Frappe, Heurt }), Progression).Except(new[] { Frappe, Heurt, Roc }));
         Assert.DoesNotContain(Contrecoup, PlayerCharacters.Learned(Bastion(Level6, new[] { Frappe, Heurt, Barriere }), Progression));
         Assert.Contains(Contrecoup, PlayerCharacters.Learned(Bastion(Level7, new[] { Frappe, Heurt, Barriere }), Progression));
-        // La barre a de la place (une sauvegarde à une seule active) : la halte n'y met pas Provocation, ni Contrecoup.
+        Assert.Equal(new[] { (3, Provocation, true), (5, Barriere, true), (7, Contrecoup, false), (10, Onde, true), (10, Absolu, true) },
+            Progression.ForClass("class.bastion").SkillUnlocks.Select(u => (u.Level, u.Skill, u.WithPlace)));
+        // Une sauvegarde à une seule active : la halte y met Provocation (place libre), jamais Contrecoup.
         foreach (long xp in new[] { Level3, Level4 })
         {
             SavedCharacter hero = Bastion(xp, new[] { Frappe });
-            Assert.Same(hero, PlayerCharacters.Learn(hero, Progression, Rules, out IReadOnlyList<SkillUnlock> none));
-            Assert.Empty(none);
+            Assert.Equal(new[] { Frappe, Provocation }, PlayerCharacters.Learn(hero, Progression, Rules, out IReadOnlyList<SkillUnlock> one).ActiveSkills);
+            Assert.Equal(new[] { Provocation }, one.Select(u => u.Skill));
         }
         SavedCharacter seven = Bastion(Level7, new[] { Frappe, Heurt });
         SavedCharacter after = PlayerCharacters.Learn(seven, Progression, Rules, out IReadOnlyList<SkillUnlock> gained);
-        Assert.Equal(new[] { Barriere }, gained.Select(u => u.Skill));   // la Barrière vient avec sa place ; Provocation et Contrecoup attendent
-        Assert.Equal(new[] { Frappe, Heurt, Barriere }, after.ActiveSkills);
-        // Au niveau 5, la troisième place va à la Barrière (décision du 25 octobre 2026), pas à Provocation, apprise plus tôt.
+        Assert.Equal(new[] { Provocation, Barriere }, gained.Select(u => u.Skill));   // Contrecoup attend dans la réserve
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere }, after.ActiveSkills);
         SavedCharacter five = PlayerCharacters.Learn(Bastion(Level5, new[] { Frappe, Heurt }), Progression, Rules, out gained);
-        Assert.Equal(new[] { Barriere }, gained.Select(u => u.Skill));
-        Assert.Equal(new[] { Frappe, Heurt, Barriere }, five.ActiveSkills);
-        // Au niveau 10 : l'Onde prend la quatrième place, l'ultime arrive ; Provocation et Contrecoup restent dans la réserve.
-        SavedCharacter ten = PlayerCharacters.Learn(Bastion(Level10, new[] { Frappe, Heurt, Barriere }), Progression, Rules, out gained);
+        Assert.Equal(new[] { Provocation, Barriere }, gained.Select(u => u.Skill));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere }, five.ActiveSkills);
+        // Au niveau 10 : l'Onde prend la 5e place, l'ultime arrive ; Contrecoup reste dans la réserve (la 6e place s'ouvre au niveau 20).
+        SavedCharacter ten = PlayerCharacters.Learn(Bastion(Level10, new[] { Frappe, Heurt, Provocation, Barriere }), Progression, Rules, out gained);
         Assert.Equal(new[] { Onde, Absolu }, gained.Select(u => u.Skill));
-        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, ten.ActiveSkills);
-        // Le joueur les place lui-même : le juge l'admet.
-        Assert.Null(PlayerCharacters.CheckSkills(ten, new[] { Provocation, Heurt, Barriere, Contrecoup }, Absolu, new[] { Roc }, Progression,
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere, Onde }, ten.ActiveSkills);
+        // Le joueur le place lui-même : le juge l'admet.
+        Assert.Null(PlayerCharacters.CheckSkills(ten, new[] { Contrecoup, Heurt, Provocation, Barriere, Onde }, Absolu, new[] { Roc }, Progression,
             ShippedData.Classes.Single(c => c.Definition.Id == "class.bastion").Definition, Rules));
     }
 
     /// <summary>
-    /// Dans l'aventure : le niveau 3 gagné en route annonce Provocation dans la réserve (elle est apprise tout de suite, pas à la halte) ;
-    /// l'écran des compétences la montre en réserve et le joueur la place lui-même.
+    /// Dans l'aventure : le niveau 3 gagné en route annonce Provocation pour la halte (place libre, sous-lot V1.8) ; le niveau 7 annonce
+    /// Contrecoup dans la réserve (appris tout de suite, pas à la halte) ; l'écran des compétences le montre en réserve et le joueur le place
+    /// lui-même.
     /// </summary>
     [Fact]
     public void Le_niveau_3_annonce_Provocation_en_reserve()
@@ -89,14 +97,24 @@ public class V1ReponsesTests : IDisposable
         AdventureSession a = KillWeakWolf(Level3 - 1);
         IReadOnlyList<string> messages = a.DrainMessages();
         Assert.Contains("Niveau 3 ! Il prendra effet à ta prochaine halte.", messages);
-        Assert.Contains("Nouvelle compétence en réserve : Provocation. Place-la dans ta barre depuis l'écran des compétences.", messages);
-        Assert.DoesNotContain(messages, m => m.StartsWith("À ta prochaine halte, nouvelle compétence", StringComparison.Ordinal));
-        SkillBook book = a.Skills();
+        Assert.Contains("À ta prochaine halte, nouvelle compétence : Provocation.", messages);
+        Assert.DoesNotContain(messages, m => m.StartsWith("Nouvelle compétence en réserve", StringComparison.Ordinal));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, a.World.NextEntry.ActiveSkills);
+    }
+
+    [Fact]
+    public void Le_niveau_7_annonce_Contrecoup_en_reserve()
+    {
+        AdventureSession b = KillWeakWolf(Level7 - 1);
+        IReadOnlyList<string> messages = b.DrainMessages();
+        Assert.Contains("Niveau 7 ! Il prendra effet à ta prochaine halte.", messages);
+        Assert.Contains("Nouvelle compétence en réserve : Contrecoup. Place-la dans ta barre depuis l'écran des compétences.", messages);
+        SkillBook book = b.Skills();
         Assert.True(book.HasReserve(SkillKind.Active));
-        Assert.Null(book.Card(Provocation)!.Place);
-        Assert.Equal(new[] { Frappe, Heurt }, a.World.NextEntry.ActiveSkills);   // la halte ne la placera pas
-        Assert.Null(a.PlaceSkill(SkillKind.Active, 1, Provocation));
-        Assert.Equal(new[] { Frappe, Provocation }, a.World.Character.ActiveSkills);
+        Assert.Null(book.Card(Contrecoup)!.Place);
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere }, b.World.NextEntry.ActiveSkills);   // la halte ne le placera pas
+        Assert.Null(b.PlaceSkill(SkillKind.Active, 1, Contrecoup));
+        Assert.Equal(new[] { Frappe, Contrecoup, Provocation, Barriere }, b.World.Character.ActiveSkills);
     }
 
     // --- Une place de la barre peut rester vide ------------------------------------------------------------------------------
@@ -124,7 +142,7 @@ public class V1ReponsesTests : IDisposable
     {
         AdventureSession a = Load(Player(Level10));
         Assert.Equal(Absolu, a.World.Character.Ultimate);
-        Assert.Equal(new[] { Barriere, Onde, Absolu }, a.World.Learned.Select(u => u.Skill));   // placées à l'entrée, données pour de bon
+        Assert.Equal(new[] { Provocation, Barriere, Onde, Absolu }, a.World.Learned.Select(u => u.Skill));   // placées à l'entrée, données pour de bon
         Assert.True(a.World.Zone.IsConsumed("character/skill/" + Absolu));
         Assert.Null(a.RemoveSkill(SkillKind.Ultimate, 0));
         Assert.Contains("Compétences gardées : effet à ta prochaine halte.", a.DrainMessages());
@@ -149,26 +167,26 @@ public class V1ReponsesTests : IDisposable
     public void Une_place_active_videe_reste_vide()
     {
         AdventureSession a = Load(Player(Level5));
-        Assert.Equal(new[] { Frappe, Heurt, Barriere }, Engaged(a));
-        Assert.Null(a.RemoveSkill(SkillKind.Active, 2));   // la Barrière va dans la réserve, Provocation y attend déjà
-        Assert.Equal(new[] { Frappe, Heurt }, a.World.NextEntry.ActiveSkills);
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere }, Engaged(a));
+        Assert.Null(a.RemoveSkill(SkillKind.Active, 3));   // la Barrière va dans la réserve
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, a.World.NextEntry.ActiveSkills);
         Assert.True(a.Skills().HasReserve(SkillKind.Active));
         Assert.True(a.Rest());
-        Assert.Equal(new[] { Frappe, Heurt }, Engaged(a));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, Engaged(a));
         Assert.Empty(a.World.Learned);
         // Une place du milieu aussi : les places se remplissent dans l'ordre, la dernière reste vide.
         Assert.Null(a.RemoveSkill(SkillKind.Active, 0));
-        Assert.Equal(new[] { Heurt }, a.World.Character.ActiveSkills);
+        Assert.Equal(new[] { Heurt, Provocation }, a.World.Character.ActiveSkills);
         a.Advance(0.05);   // le personnage arrive dans la nouvelle session
         Assert.True(a.Rest());
-        Assert.Equal(new[] { Heurt }, Engaged(a));
-        // Le joueur place lui-même Provocation, depuis la réserve.
-        Assert.Null(a.PlaceSkill(SkillKind.Active, 1, Provocation));
-        Assert.Equal(new[] { Heurt, Provocation }, a.World.Character.ActiveSkills);
+        Assert.Equal(new[] { Heurt, Provocation }, Engaged(a));
+        // Le joueur remet lui-même la Barrière, depuis la réserve.
+        Assert.Null(a.PlaceSkill(SkillKind.Active, 2, Barriere));
+        Assert.Equal(new[] { Heurt, Provocation, Barriere }, a.World.Character.ActiveSkills);
     }
 
     /// <summary>
-    /// Un niveau gagné en route : l'écran montre déjà la Barrière dans la place 3 (barre de la prochaine halte). Le joueur la retire : la
+    /// Un niveau gagné en route : l'écran montre déjà la Barrière dans la place 4 (barre de la prochaine halte). Le joueur la retire : la
     /// halte ne la remet pas et ne l'annonce pas (elle est donnée quand il change sa barre).
     /// </summary>
     [Fact]
@@ -176,12 +194,12 @@ public class V1ReponsesTests : IDisposable
     {
         AdventureSession a = Load(Player(Level5 - 1));
         ((INarrativeWorld)a.World).GiveXp(1);   // niveau 5 en route
-        Assert.Equal(Barriere, a.Skills().Place(SkillKind.Active, 2)!.Skill);
-        Assert.Null(a.RemoveSkill(SkillKind.Active, 2));
-        Assert.Equal(new[] { Frappe, Heurt }, a.World.NextEntry.ActiveSkills);
+        Assert.Equal(Barriere, a.Skills().Place(SkillKind.Active, 3)!.Skill);
+        Assert.Null(a.RemoveSkill(SkillKind.Active, 3));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, a.World.NextEntry.ActiveSkills);
         a.DrainMessages();
         Assert.True(a.Rest());
-        Assert.Equal(new[] { Frappe, Heurt }, Engaged(a));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, Engaged(a));
         Assert.Empty(a.World.Learned);
         Assert.DoesNotContain(a.DrainMessages(), m => m.StartsWith("Nouvelle compétence", StringComparison.Ordinal));
     }
@@ -197,18 +215,23 @@ public class V1ReponsesTests : IDisposable
         AdventureSession a = Load(full);
         Assert.Empty(a.World.Learned);
         Assert.Equal(full.ActiveSkills, a.World.Character.ActiveSkills);
-        Assert.All(new[] { Barriere, Onde, Absolu }, s => Assert.True(a.World.Zone.IsConsumed("character/skill/" + s), s));
-        Assert.False(a.World.Zone.IsConsumed("character/skill/" + Provocation));   // la réserve n'a pas de clé : jamais placée d'office
+        Assert.All(new[] { Provocation, Barriere, Onde, Absolu }, s => Assert.True(a.World.Zone.IsConsumed("character/skill/" + s), s));
+        Assert.False(a.World.Zone.IsConsumed("character/skill/" + Contrecoup));   // la réserve n'a pas de clé : jamais placée d'office
         a.Save();
         Assert.Contains("character/skill/" + Barriere, SaveStore.Read(SavePath).Save!.Consumed);
-        // Niveau 5 sans la Barrière, place libre, pas de clé : elle est placée à l'entrée.
-        AdventureSession b = Load(Bastion(Level5, new[] { Frappe, Heurt }));
+        // Niveau 5 sans la Barrière, place libre, pas de clé : elle est placée à l'entrée (Provocation aussi : sous-lot V1.8).
+        AdventureSession b = Load(Bastion(Level5, new[] { Frappe, Heurt, Provocation }));
         Assert.Equal(new[] { Barriere }, b.World.Learned.Select(u => u.Skill));
-        Assert.Equal(new[] { Frappe, Heurt, Barriere }, Engaged(b));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere }, Engaged(b));
         // Avec la clé (elle a déjà été donnée, puis retirée) : la place reste vide.
-        AdventureSession c = Load(Bastion(Level5, new[] { Frappe, Heurt }), new[] { "character/skill/" + Barriere });
+        AdventureSession c = Load(Bastion(Level5, new[] { Frappe, Heurt, Provocation }), new[] { "character/skill/" + Barriere });
         Assert.Empty(c.World.Learned);
-        Assert.Equal(new[] { Frappe, Heurt }, Engaged(c));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, Engaged(c));
+        // Sauvegarde d'avant V1.8 au niveau 3 : Provocation y avait été mise dans la réserve, sans clé (aucune place ne s'ouvrait). Avec
+        // les places libres de V1.8, la première entrée l'y place une fois.
+        AdventureSession d = Load(Bastion(Level3, new[] { Frappe, Heurt }));
+        Assert.Equal(new[] { Provocation }, d.World.Learned.Select(u => u.Skill));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, Engaged(d));
     }
 
     [Fact]
@@ -216,16 +239,16 @@ public class V1ReponsesTests : IDisposable
     {
         SavedCharacter hero = Bastion(Level10, new[] { Frappe, Heurt });
         SavedCharacter placed = PlayerCharacters.Learn(hero, Progression, Rules, _ => false, out IReadOnlyList<SkillUnlock> learned, out IReadOnlyList<SkillUnlock> handed);
-        Assert.Equal(new[] { Barriere, Onde, Absolu }, learned.Select(u => u.Skill));
-        Assert.Equal(new[] { Barriere, Onde, Absolu }, handed.Select(u => u.Skill));   // jamais Provocation ni Contrecoup (réserve)
+        Assert.Equal(new[] { Provocation, Barriere, Onde, Absolu }, learned.Select(u => u.Skill));
+        Assert.Equal(new[] { Provocation, Barriere, Onde, Absolu }, handed.Select(u => u.Skill));   // jamais Contrecoup (réserve)
         Assert.Same(hero, PlayerCharacters.Learn(hero, Progression, Rules, _ => true, out learned, out handed));
         Assert.Empty(learned);
         Assert.Empty(handed);
         // Une seule déjà donnée : les autres le sont maintenant.
         SavedCharacter some = PlayerCharacters.Learn(hero, Progression, Rules, k => k == "character/skill/" + Barriere, out learned, out handed);
-        Assert.Equal(new[] { Onde, Absolu }, learned.Select(u => u.Skill));
-        Assert.Equal(new[] { Frappe, Heurt, Onde }, some.ActiveSkills);
-        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, placed.ActiveSkills);
+        Assert.Equal(new[] { Provocation, Onde, Absolu }, learned.Select(u => u.Skill));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Onde }, some.ActiveSkills);
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere, Onde }, placed.ActiveSkills);
         Assert.Throws<ArgumentNullException>(() => PlayerCharacters.Learn(hero, Progression, Rules, null!, out _, out _));
     }
 
@@ -238,8 +261,8 @@ public class V1ReponsesTests : IDisposable
     /// clés sans la place est refusé en entier, rien ne change.
     /// </summary>
     [Theory]
-    [InlineData(2, false)]   // place pour 2 clés sur 3 (plus les morts possibles d'un tick) : aucune inscrite
-    [InlineData(3, true)]    // place pour les 3 : toutes inscrites
+    [InlineData(3, false)]   // place pour 3 clés sur 4 (plus les morts possibles d'un tick) : aucune inscrite
+    [InlineData(4, true)]    // place pour les 4 (Provocation comprise depuis V1.8) : toutes inscrites
     public void Registre_presque_plein_tout_ou_rien(int extra, bool given)
     {
         SavedCharacter hero = Player(Level10);
@@ -247,8 +270,8 @@ public class V1ReponsesTests : IDisposable
         int combatants = Load(hero, new[] { safeKey }).World.Zone.Engine.CombatantIds.Count;
         string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - extra - 1).Select(i => $"probe/k{i:D6}").Append(safeKey).ToArray();
         AdventureSession a = Load(hero, keys);
-        Assert.Equal(new[] { Barriere, Onde, Absolu }, a.World.Learned.Select(u => u.Skill));   // placées à l'entrée dans tous les cas
-        string[] skillKeys = new[] { Barriere, Onde, Absolu }.Select(k => "character/skill/" + k).ToArray();
+        Assert.Equal(new[] { Provocation, Barriere, Onde, Absolu }, a.World.Learned.Select(u => u.Skill));   // placées à l'entrée dans tous les cas
+        string[] skillKeys = new[] { Provocation, Barriere, Onde, Absolu }.Select(k => "character/skill/" + k).ToArray();
         Assert.All(skillKeys, k => Assert.Equal(given, a.World.Zone.IsConsumed(k)));   // toutes ou aucune
         SavedCharacter before = a.World.Character;
         string? why = a.RemoveSkill(SkillKind.Ultimate, 0);
@@ -261,7 +284,7 @@ public class V1ReponsesTests : IDisposable
         Assert.Equal("Le registre du monde est plein : ce changement de compétences ne peut pas être gardé.", why);
         Assert.Same(before, a.World.Character);
         Assert.Equal(Absolu, a.World.NextEntry.Ultimate);
-        Assert.Equal(BuildViolationCode.RegistryFull, a.World.SetSkills(new[] { Frappe, Heurt, Barriere, Onde }, null, new[] { Roc })!.Code);
+        Assert.Equal(BuildViolationCode.RegistryFull, a.World.SetSkills(new[] { Frappe, Heurt, Provocation, Barriere, Onde }, null, new[] { Roc })!.Code);
         Assert.Same(before, a.World.Character);
         Assert.All(skillKeys, k => Assert.False(a.World.Zone.IsConsumed(k)));
         // À la halte : l'ultime est toujours là, et rien n'est annoncé de nouveau.

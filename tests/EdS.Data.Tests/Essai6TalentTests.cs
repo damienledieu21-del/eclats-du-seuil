@@ -29,7 +29,7 @@ public class Essai6TalentTests : IDisposable
     private static CharacterProgression Shipped =>
         ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
 
-    /// <summary>Partie au niveau 4 (519 points d'expérience) ; <paramref name="wolfNearEntry"/> : un loup posé près du point sûr d'entrée.</summary>
+    /// <summary>Partie au niveau 4 (439 points d'expérience) ; <paramref name="wolfNearEntry"/> : un loup posé près du point sûr d'entrée.</summary>
     private AdventureSession Start(bool wolfNearEntry = false)
     {
         string scenarios = Path.Combine(AppContext.BaseDirectory, "scenarios");
@@ -48,7 +48,7 @@ public class Essai6TalentTests : IDisposable
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
         SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
-            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(519)));
+            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(439)));   // niveau 4 (sous-lot V1.8 : courbe d'expérience)
         AdventureSession a = AdventureSession.Load(DataDirectory, scenarios, savePath);
         a.DrainMessages();
         a.Advance(0.05);

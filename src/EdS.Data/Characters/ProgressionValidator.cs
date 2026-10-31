@@ -48,10 +48,15 @@ namespace EdS.Data.Characters
         public SkillKind Kind { get; }
 
         /// <summary>
-        /// Réponse de Damien du 30 octobre 2026 : la compétence vient avec sa place (une place de sa sorte s'ouvre à son niveau dans les règles :
-        /// Barrière d'acier au niveau 5, Onde de rupture et Bastion absolu au niveau 10) et la halte l'y met d'elle-même (12.9b). Sinon
-        /// (Provocation au niveau 3, Contrecoup au niveau 7), elle va dans la réserve : le joueur la place lui-même avec l'écran des
-        /// compétences.
+        /// Réponse de Damien du 30 octobre 2026 : la compétence vient avec sa place, et la halte l'y met d'elle-même (12.9b) ; sinon, elle va
+        /// dans la réserve : le joueur la place lui-même avec l'écran des compétences. Sous-lot V1.8 (barre « 4 + ultime dès le début ») :
+        /// « avec sa place » se lit « une place de sa sorte est ouverte à son niveau et pas encore promise » : les places ouvertes à ce
+        /// niveau (règles) sont plus nombreuses que les compétences de départ de cette sorte et celles gagnées plus tôt avec leur place
+        /// (<see cref="HasFreePlace"/>). Avec les règles d'avant (places aux niveaux 1, 1, 5, 10, ultime au 10), cela donne exactement la
+        /// réponse de Damien (Barrière d'acier au niveau 5, Onde de rupture et Bastion absolu au niveau 10 ; Provocation et Contrecoup en
+        /// réserve). Avec celles de V1.8 (1, 1, 1, 1, 10, 20, ultime au 1) : Provocation (niveau 3) et Barrière d'acier (5) prennent les
+        /// places 3 et 4, Onde de rupture (10) la 5e qui s'ouvre avec elle, Bastion absolu (10) la place de l'ultime ; Contrecoup (7) va
+        /// dans la réserve (barre pleine), et la 6e place (niveau 20) l'attend.
         /// </summary>
         public bool WithPlace { get; }
 
@@ -73,15 +78,19 @@ namespace EdS.Data.Characters
         /// <summary>Début des clés <see cref="GivenKey"/> (« character/skill/skill.bastion.barriere_d_acier »).</summary>
         public const string GivenKeyPrefix = "character/skill/";
 
-        /// <summary>Une place de la sorte <paramref name="kind"/> s'ouvre-t-elle au niveau <paramref name="level"/> (règles) ?</summary>
-        public static bool PlaceOpensAt(SkillKind kind, int level, ProgressionRules rules)
+        /// <summary>
+        /// Sous-lot V1.8 : reste-t-il une place de la sorte <paramref name="kind"/> ouverte au niveau <paramref name="level"/> (règles) quand
+        /// <paramref name="promised"/> places de cette sorte sont déjà promises (compétences de départ et gagnées plus tôt avec leur place) ?
+        /// </summary>
+        public static bool HasFreePlace(SkillKind kind, int level, int promised, ProgressionRules rules)
         {
             if (rules is null) throw new ArgumentNullException(nameof(rules));
+            if (promised < 0) throw new ArgumentOutOfRangeException(nameof(promised));
             return kind switch
             {
-                SkillKind.Active => rules.ActiveSlotLevels.Contains(level),
-                SkillKind.Passive => rules.PassiveSlotLevels.Contains(level),
-                SkillKind.Ultimate => level == rules.UltimateUnlockLevel,
+                SkillKind.Active => rules.ActiveSlotLevels.Count(l => l <= level) > promised,
+                SkillKind.Passive => rules.PassiveSlotLevels.Count(l => l <= level) > promised,
+                SkillKind.Ultimate => level >= rules.UltimateUnlockLevel && promised == 0,
                 _ => false,
             };
         }
@@ -96,7 +105,17 @@ namespace EdS.Data.Characters
     {
         public int SchemaVersion { get; }
         public string ContentVersion { get; }
+        /// <summary>Niveau le plus haut décrit par les données (sous-lot V1.8 : 30, provisoire au-delà du plafond).</summary>
         public int MaxLevel { get; }
+
+        /// <summary>
+        /// Sous-lot V1.8 (sujet 54, « plafond qui monte ») : niveau le plus haut qu'un personnage atteint aujourd'hui (25 dans les Vallons, en
+        /// alpha), au plus <see cref="MaxLevel"/>. L'expérience continue de s'accumuler au plafond : quand il montera, elle comptera.
+        /// </summary>
+        public int LevelCap { get; }
+
+        /// <summary>Sous-lot V1.8 : premier niveau de chaque chapitre de la quête principale (1, 6, 11, 16, 21), strictement croissant.</summary>
+        public IReadOnlyList<int> ChapterStartLevels { get; }
 
         /// <summary>Expérience cumulée qu'il faut pour être à chaque niveau ; indice 0 : niveau 1 (0).</summary>
         public IReadOnlyList<long> XpToLevel { get; }
@@ -106,12 +125,14 @@ namespace EdS.Data.Characters
         /// <summary>Classes, par identifiant.</summary>
         public IReadOnlyList<ClassProgression> Classes { get; }
 
-        internal CharacterProgression(int schemaVersion, string contentVersion, int maxLevel, IEnumerable<long> xpToLevel, long killXpPerHealth,
-            IEnumerable<ClassProgression> classes)
+        internal CharacterProgression(int schemaVersion, string contentVersion, int maxLevel, int levelCap, IEnumerable<int> chapterStartLevels,
+            IEnumerable<long> xpToLevel, long killXpPerHealth, IEnumerable<ClassProgression> classes)
         {
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             MaxLevel = maxLevel;
+            LevelCap = levelCap;
+            ChapterStartLevels = Frozen.List(chapterStartLevels, nameof(chapterStartLevels));
             XpToLevel = Frozen.List(xpToLevel, nameof(xpToLevel));
             KillXpPerHealth = killXpPerHealth;
             Classes = Frozen.List(classes.OrderBy(c => c.ClassId, StringComparer.Ordinal), nameof(classes));
@@ -120,13 +141,22 @@ namespace EdS.Data.Characters
         public ClassProgression ForClass(string classId) =>
             Classes.FirstOrDefault(c => c.ClassId == classId) ?? throw new ArgumentException($"Classe « {classId} » sans progression.", nameof(classId));
 
-        /// <summary>Niveau atteint avec <paramref name="xp"/> d'expérience cumulée (au plus <see cref="MaxLevel"/>).</summary>
+        /// <summary>Niveau atteint avec <paramref name="xp"/> d'expérience cumulée (au plus <see cref="LevelCap"/>, sous-lot V1.8).</summary>
         public int LevelFor(long xp)
         {
             if (xp < 0) throw new ArgumentOutOfRangeException(nameof(xp));
             int level = 1;
-            while (level < MaxLevel && xp >= XpToLevel[level]) level++;
+            while (level < LevelCap && xp >= XpToLevel[level]) level++;
             return level;
+        }
+
+        /// <summary>Sous-lot V1.8 : chapitre (1 à <see cref="ChapterStartLevels"/>.Count) d'un niveau de 1 à <see cref="MaxLevel"/>.</summary>
+        public int ChapterOf(int level)
+        {
+            if (level < 1 || level > MaxLevel) throw new ArgumentOutOfRangeException(nameof(level));
+            int chapter = 1;
+            while (chapter < ChapterStartLevels.Count && level >= ChapterStartLevels[chapter]) chapter++;
+            return chapter;
         }
 
         /// <summary>Expérience d'une créature vaincue de <paramref name="maxHealth"/> PV maximaux : 1 par tranche de <see cref="KillXpPerHealth"/>, au moins 1.</summary>
@@ -159,9 +189,13 @@ namespace EdS.Data.Characters
 
         /// <summary>
         /// Version 1 (sous-lot 12.2) : <c>maxLevel</c>, <c>xpToLevel</c>, <c>killXpPerHealth</c>, <c>classes[]</c>. Version 2 (sous-lot 12.9b) :
-        /// <c>classes[].skillUnlocks</c> (compétences gagnées en montant de niveau).
+        /// <c>classes[].skillUnlocks</c> (compétences gagnées en montant de niveau). Version 3 (sous-lot V1.8) : <c>levelCap</c> (plafond de
+        /// niveau actuel, sujet 54) et <c>chapterStartLevels</c> (premier niveau de chaque chapitre).
         /// </summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
+
+        /// <summary>Sous-lot V1.8 : au plus 64 chapitres.</summary>
+        public const int MaxChapters = 64;
 
         /// <summary>Au plus 64 compétences gagnées par classe.</summary>
         public const int MaxSkillUnlocks = 64;
@@ -187,6 +221,23 @@ namespace EdS.Data.Characters
             else if (d.MaxLevel < 1 || d.MaxLevel > rulesMax)
                 report.Add("$.data.maxLevel", ValidationCode.OutOfRange, $"niveau maximal hors de [1, {rulesMax}] (progression.maxLevel des règles).");
             int max = d.MaxLevel is int m && m >= 1 && m <= rulesMax ? m : 0;
+            // Sous-lot V1.8 : plafond actuel et chapitres.
+            if (d.LevelCap is null) Missing(report, "$.data.levelCap", "plafond de niveau actuel");
+            else if (max > 0 && (d.LevelCap < 1 || d.LevelCap > max))
+                report.Add("$.data.levelCap", ValidationCode.OutOfRange, $"plafond hors de [1, {max}] (niveau maximal des données).");
+            int cap = d.LevelCap is int lc && lc >= 1 && lc <= max ? lc : 0;
+            if (d.ChapterStartLevels is null) Missing(report, "$.data.chapterStartLevels", "premier niveau de chaque chapitre");
+            else if (d.ChapterStartLevels.Count == 0) report.Add("$.data.chapterStartLevels", ValidationCode.InvalidValue, "au moins un chapitre.");
+            else
+                for (int i = 0; i < d.ChapterStartLevels.Count; i++)
+                {
+                    string path = $"$.data.chapterStartLevels[{i}]";
+                    if (d.ChapterStartLevels[i] is not int start) { Missing(report, path, "premier niveau du chapitre"); continue; }
+                    if (i == 0 && start != 1) report.Add(path, ValidationCode.InvalidValue, "le premier chapitre commence au niveau 1.");
+                    else if (cap > 0 && (start < 1 || start > cap)) report.Add(path, ValidationCode.OutOfRange, $"niveau hors de [1, {cap}] (plafond).");
+                    else if (i > 0 && d.ChapterStartLevels[i - 1] is int before && start <= before)
+                        report.Add(path, ValidationCode.InvalidValue, "les chapitres commencent à des niveaux strictement croissants.");
+                }
             if (d.XpToLevel is null) Missing(report, "$.data.xpToLevel", "expérience cumulée de chaque niveau");
             else
             {
@@ -222,9 +273,9 @@ namespace EdS.Data.Characters
                     if (!seen.Contains(loaded.Definition.Id))
                         report.Add("$.data.classes", ValidationCode.MissingField, $"progression absente pour la classe « {loaded.Definition.Id} ».");
             }
-            if (!report.IsValid || document.ContentVersion is null || max == 0) return new ProgressionLoadResult(report, null);
-            return new ProgressionLoadResult(report, new CharacterProgression(document.SchemaVersion!.Value, document.ContentVersion, max,
-                d.XpToLevel!.Select(x => x!.Value), d.KillXpPerHealth!.Value, classes));
+            if (!report.IsValid || document.ContentVersion is null || max == 0 || cap == 0) return new ProgressionLoadResult(report, null);
+            return new ProgressionLoadResult(report, new CharacterProgression(document.SchemaVersion!.Value, document.ContentVersion, max, cap,
+                d.ChapterStartLevels!.Select(x => x!.Value), d.XpToLevel!.Select(x => x!.Value), d.KillXpPerHealth!.Value, classes));
         }
 
         private static ClassProgression? CheckClass(ClassProgressionData c, string path, int max, GameData data, HashSet<string> seen, ValidationReport report)
@@ -284,6 +335,13 @@ namespace EdS.Data.Characters
             var known = new HashSet<string>(c.StartActiveSkills!.Select(s => s!).Concat(c.StartPassiveSkills!.Select(s => s!)), StringComparer.Ordinal);
             var unlocks = new List<SkillUnlock>();
             int previous = 1;
+            // Sous-lot V1.8 : places déjà promises par sorte (départ, puis compétences gagnées avec leur place).
+            var promised = new Dictionary<SkillKind, int>
+            {
+                [SkillKind.Active] = c.StartActiveSkills!.Count,
+                [SkillKind.Passive] = c.StartPassiveSkills!.Count,
+                [SkillKind.Ultimate] = 0,
+            };
             for (int i = 0; i < c.SkillUnlocks!.Count; i++)
             {
                 string at = $"{path}[{i}]";
@@ -318,7 +376,9 @@ namespace EdS.Data.Characters
                     report.Add(at + ".level", ValidationCode.InvalidValue, $"« {u.Skill} » demande le niveau {skill.MinLevel}.");
                     continue;
                 }
-                var unlock = new SkillUnlock(lvl, u.Skill, skill.Kind, SkillUnlock.PlaceOpensAt(skill.Kind, lvl, data.Rules.Progression));
+                promised.TryGetValue(skill.Kind, out int taken);
+                var unlock = new SkillUnlock(lvl, u.Skill, skill.Kind, SkillUnlock.HasFreePlace(skill.Kind, lvl, taken, data.Rules.Progression));
+                if (unlock.WithPlace) promised[skill.Kind] = taken + 1;
                 if (unlock.WithPlace && !SaveValidator.IsEventKey(unlock.GivenKey))
                 {
                     report.Add(at + ".skill", ValidationCode.InvalidValue, $"identifiant trop long ou hors format pour la clé du registre « {unlock.GivenKey} ».");

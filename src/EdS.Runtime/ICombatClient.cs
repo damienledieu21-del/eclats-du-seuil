@@ -37,7 +37,7 @@ namespace EdS.Runtime
 
         void Parry();
 
-        /// <summary>Compétence d'un emplacement (0 à 3 : actives, <see cref="RealtimeCombat.UltimateSlot"/> : ultime) au prochain tick.</summary>
+        /// <summary>Compétence d'un emplacement (0 à 5 : actives, <see cref="RealtimeCombat.UltimateSlot"/> : ultime) au prochain tick.</summary>
         bool UseSlot(int slot);
 
         void NextTarget();

@@ -126,8 +126,8 @@ public class IsolationAndLimitsTests
     [Fact]
     public void Build_invalide_refuse()
     {
-        // Cinq actives au niveau 10 (quatre emplacements).
-        var setup = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Character(actives: new[] { Frappe, Heurt, Onde, Gratuite, Inerte }), Dummy() });
+        // Six actives au niveau 10 (cinq emplacements depuis le sous-lot V1.8 ; la sixième, en double, est de trop).
+        var setup = Setup(Array.Empty<CombatCommand>(), new CombatantSetup[] { Character(actives: new[] { Frappe, Heurt, Onde, Gratuite, Inerte, Frappe }), Dummy() });
         Assert.Contains(setup.Validate(), v => v.Fields.Contains("combatants[0].build") && v.Message.Contains("TooManySkills"));
     }
 }

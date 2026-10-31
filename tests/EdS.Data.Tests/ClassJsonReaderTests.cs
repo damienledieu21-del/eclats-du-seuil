@@ -142,8 +142,14 @@ public class ClassJsonReaderTests
     [Fact]
     public void Ultime_avant_le_niveau_10_refusee()
     {
+        // Sous-lot V1.8 : la place de l'ultime s'ouvre au niveau 1 dans les règles livrées ; avec des règles où elle s'ouvre au niveau 10
+        // (celles d'avant), une ultime disponible au niveau 9 est toujours refusée.
         int ultimate = Bastion.Skills.ToList().FindIndex(s => s.Kind == SkillKind.Ultimate);
-        AssertError(ReadMutated(r => Skill(r, ultimate)["minLevel"] = 9), $"$.data.skills[{ultimate}].minLevel", ValidationCode.InvalidValue);
+        JsonObject root = Shipped();
+        Skill(root, ultimate)["minLevel"] = 9;
+        AssertError(ClassJsonReader.Read(ToJson(root), new ProgressionRules { UltimateUnlockLevel = 10 }), $"$.data.skills[{ultimate}].minLevel",
+            ValidationCode.InvalidValue);
+        Assert.True(ReadMutated(r => Skill(r, ultimate)["minLevel"] = 9).IsValid);
     }
 
     [Fact]

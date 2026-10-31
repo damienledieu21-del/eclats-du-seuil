@@ -833,15 +833,15 @@ namespace EdS.Runtime
         public ItemDefinition Item(string id) => _items.Item(id);
 
         /// <summary>
-        /// Essai réaliste 6 : expérience cumulée du niveau actuel et du suivant (null au niveau maximal), pour la barre de l'écran du
-        /// personnage.
+        /// Essai réaliste 6 : expérience cumulée du niveau actuel et du suivant (null au plafond de niveau : sous-lot V1.8), pour la barre de
+        /// l'écran du personnage.
         /// </summary>
         public (long From, long? To) LevelXp
         {
             get
             {
                 int level = World.Level;
-                return (_progression.XpToLevel[level - 1], level < _progression.MaxLevel ? _progression.XpToLevel[level] : (long?)null);
+                return (_progression.XpToLevel[level - 1], level < _progression.LevelCap ? _progression.XpToLevel[level] : (long?)null);
             }
         }
 

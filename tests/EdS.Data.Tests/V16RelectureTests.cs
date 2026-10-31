@@ -436,7 +436,7 @@ public class V16RelectureTests
         });
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         ZoneDefinition z = loaded.Zone!;
-        WorldSession w = Play(z, PlayerCharacters.Create("bastion", "class.bastion", Progression).WithXp(1620));
+        WorldSession w = Play(z, PlayerCharacters.Create("bastion", "class.bastion", Progression).WithXp(Progression.XpToLevel[9]));   // niveau 10
         Assert.Contains("skill.bastion.onde_de_rupture", w.Zone.Engine.View("bastion").Character!.Build.ActiveSkills);
         var steps = new List<SessionStep>();
         for (int i = 0; i < 200 && steps.SelectMany(s => s.Boss).Count(b => b.Kind == BossEventKind.Defeated) < 2; i++)

@@ -59,34 +59,33 @@ public class Lot129SkillUnlockTests : IDisposable
     public void Competences_gagnees_livrees()
     {
         ClassProgression bastion = Shipped.ForClass("class.bastion");
-        // Réponse de Damien du 30 octobre 2026 : Provocation au niveau 3 et Contrecoup au niveau 7, dans la réserve (aucune place ne s'ouvre à
-        // leur niveau) ; les autres viennent avec leur place.
-        Assert.Equal(new[] { (3, Provocation, SkillKind.Active, false), (5, Barriere, SkillKind.Active, true), (7, Contrecoup, SkillKind.Active, false),
+        // Réponse de Damien du 30 octobre 2026 : Provocation au niveau 3 et Contrecoup au niveau 7. Sous-lot V1.8 (4 places et l'ultime dès
+        // le niveau 1, 5e au niveau 10, 6e au niveau 20) : une compétence vient avec sa place quand une place de sa sorte est libre à son
+        // niveau ; Contrecoup arrive barre pleine, dans la réserve.
+        Assert.Equal(new[] { (3, Provocation, SkillKind.Active, true), (5, Barriere, SkillKind.Active, true), (7, Contrecoup, SkillKind.Active, false),
                 (10, Onde, SkillKind.Active, true), (10, Absolu, SkillKind.Ultimate, true) },
             bastion.SkillUnlocks.Select(u => (u.Level, u.Skill, u.Kind, u.WithPlace)));
-        // Les niveaux suivent les emplacements des règles (lot 4) : 2 actives au niveau 1, 3 au 5, 4 et l'ultime au 10.
-        Assert.Equal(new[] { 1, 1, 5, 10 }, Rules.ActiveSlotLevels);
-        Assert.Equal(10, Rules.UltimateUnlockLevel);
+        Assert.Equal(new[] { 1, 1, 1, 1, 10, 20 }, Rules.ActiveSlotLevels);
+        Assert.Equal(1, Rules.UltimateUnlockLevel);
     }
 
     [Theory]
     [InlineData(0L, 0)]       // niveau 1 : build de départ
-    [InlineData(220L, 0)]     // niveau 3 : Provocation, dans la réserve
-    [InlineData(360L, 0)]     // niveau 4
-    [InlineData(520L, 1)]     // niveau 5 : Barrière d'acier
-    [InlineData(900L, 1)]     // niveau 7 : Contrecoup, dans la réserve
-    [InlineData(1360L, 1)]    // niveau 9
-    [InlineData(1620L, 3)]    // niveau 10 : Onde de rupture et Bastion absolu
+    [InlineData(180L, 1)]     // niveau 3 : Provocation, dans la 3e place (sous-lot V1.8)
+    [InlineData(300L, 1)]     // niveau 4
+    [InlineData(440L, 2)]     // niveau 5 : Barrière d'acier, 4e place
+    [InlineData(1080L, 2)]    // niveau 7 : Contrecoup, dans la réserve
+    [InlineData(1880L, 2)]    // niveau 9
+    [InlineData(2350L, 4)]    // niveau 10 : Onde de rupture (5e place) et Bastion absolu
     public void Le_niveau_fait_gagner_ses_competences(long xp, int count)
     {
         SavedCharacter hero = Hero(xp);
         SavedCharacter learned = PlayerCharacters.Learn(hero, Shipped, Rules, out IReadOnlyList<SkillUnlock> gained);
         Assert.Equal(count, gained.Count);
         var expected = new List<string> { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier" };
-        if (count >= 1) expected.Add(Barriere);
-        if (count >= 2) expected.Add(Onde);
+        expected.AddRange(new[] { Provocation, Barriere, Onde }.Take(Math.Min(count, 3)));
         Assert.Equal(expected, learned.ActiveSkills);
-        Assert.Equal(count == 3 ? Absolu : null, learned.Ultimate);
+        Assert.Equal(count == 4 ? Absolu : null, learned.Ultimate);
         Assert.Equal(new[] { "skill.bastion.endurance_du_roc" }, learned.PassiveSkills);
         if (count == 0) Assert.Same(hero, learned);
         // Une seconde fois : rien de plus (le personnage les a déjà).
@@ -105,33 +104,34 @@ public class Lot129SkillUnlockTests : IDisposable
     [Fact]
     public void Un_emplacement_deja_pris_met_la_competence_dans_la_reserve()
     {
-        // Personnage qui a choisi lui-même sa troisième active : la Barrière ne remplace rien.
-        var chosen = new SavedCharacter("bastion", "class.bastion", 520, null,
-            new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier", "skill.bastion.provocation" }, null,
+        // Sous-lot V1.8 : au niveau 7, le joueur a mis lui-même Contrecoup dans la 4e place (la Barrière n'y était pas encore) : la
+        // Barrière ne remplace rien.
+        const string Frappe = "skill.bastion.frappe_du_rempart", Heurt = "skill.bastion.heurt_de_bouclier";
+        var chosen = new SavedCharacter("bastion", "class.bastion", 1080, null, new[] { Frappe, Heurt, Provocation, Contrecoup }, null,
             new[] { "skill.bastion.endurance_du_roc" });
         var registry = new HashSet<string>(StringComparer.Ordinal);
         Assert.Same(chosen, PlayerCharacters.Learn(chosen, Shipped, Rules, registry.Contains, out IReadOnlyList<SkillUnlock> none,
             out IReadOnlyList<SkillUnlock> handed));
         Assert.Empty(none);
-        Assert.Equal(new[] { Barriere }, handed.Select(u => u.Skill));   // donnée : en réserve
+        Assert.Equal(new[] { Provocation, Barriere }, handed.Select(u => u.Skill));   // données : Provocation déjà placée, la Barrière en réserve
         foreach (SkillUnlock u in handed) registry.Add(u.GivenKey);
-        // Au niveau 10, avec le registre : la Barrière reste dans la réserve, l'Onde prend la quatrième place, l'ultime arrive.
-        SavedCharacter tenGiven = PlayerCharacters.Learn(chosen.WithXp(1620), Shipped, Rules, registry.Contains, out IReadOnlyList<SkillUnlock> placed, out _);
+        // Au niveau 10, avec le registre : la Barrière reste dans la réserve, l'Onde prend la 5e place, l'ultime arrive.
+        SavedCharacter tenGiven = PlayerCharacters.Learn(chosen.WithXp(2350), Shipped, Rules, registry.Contains, out IReadOnlyList<SkillUnlock> placed, out _);
         Assert.Equal(new[] { Onde, Absolu }, placed.Select(u => u.Skill));
-        Assert.Equal(new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier", "skill.bastion.provocation", Onde }, tenGiven.ActiveSkills);
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Contrecoup, Onde }, tenGiven.ActiveSkills);
         // Sans registre (la fonction seule) :
         Assert.Same(chosen, PlayerCharacters.Learn(chosen, Shipped, Rules, out none));
         Assert.Empty(none);
         // Déjà équipée ailleurs : pas en double.
-        var already = new SavedCharacter("bastion", "class.bastion", 520, null, new[] { Barriere, "skill.bastion.heurt_de_bouclier" }, null,
+        var already = new SavedCharacter("bastion", "class.bastion", 1080, null, new[] { Barriere, Heurt, Provocation }, null,
             new[] { "skill.bastion.endurance_du_roc" });
         Assert.Same(already, PlayerCharacters.Learn(already, Shipped, Rules, out none));
         Assert.Empty(none);
-        // Sans registre, au niveau 10, dans l'ordre de la progression : la Barrière prend la quatrième place, l'Onde ne trouve plus de place,
-        // l'ultime arrive ; Contrecoup (réserve) n'est jamais placé d'office.
-        SavedCharacter ten = PlayerCharacters.Learn(chosen.WithXp(1620), Shipped, Rules, out IReadOnlyList<SkillUnlock> gained);
+        // Sans registre, au niveau 10, dans l'ordre de la progression : la Barrière prend la 5e place, l'Onde ne trouve plus de place,
+        // l'ultime arrive ; Contrecoup n'est jamais placé d'office.
+        SavedCharacter ten = PlayerCharacters.Learn(chosen.WithXp(2350), Shipped, Rules, out IReadOnlyList<SkillUnlock> gained);
         Assert.Equal(new[] { Barriere, Absolu }, gained.Select(u => u.Skill));
-        Assert.Equal(new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier", "skill.bastion.provocation", Barriere }, ten.ActiveSkills);
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Contrecoup, Barriere }, ten.ActiveSkills);
         Assert.Equal(Absolu, ten.Ultimate);
     }
 
@@ -140,20 +140,26 @@ public class Lot129SkillUnlockTests : IDisposable
     {
         const string at = "$.data.classes[0].skillUnlocks";
         Assert.Equal((at + "[0].level", ValidationCode.OutOfRange), Error(Mutated(u => u[0]!["level"] = 1)));
-        Assert.Equal((at + "[4].level", ValidationCode.OutOfRange), Error(Mutated(u => u[4]!["level"] = 11)));
+        Assert.Equal((at + "[4].level", ValidationCode.OutOfRange), Error(Mutated(u => u[4]!["level"] = 31)));   // données jusqu'au niveau 30
         Assert.Equal((at + "[0].skill", ValidationCode.UnknownReference), Error(Mutated(u => u[0]!["skill"] = "skill.bastion.inconnue")));
         Assert.Equal((at + "[0].skill", ValidationCode.DuplicateId), Error(Mutated(u => u[0]!["skill"] = "skill.bastion.frappe_du_rempart")));
         Assert.Equal((at + "[1].skill", ValidationCode.DuplicateId), Error(Mutated(u => u[1]!["skill"] = Provocation)));
         Assert.Equal((at + "[1].level", ValidationCode.InvalidValue), Error(Mutated(u => u[1]!["level"] = 2)));   // ordre des niveaux
         Assert.Equal((at + "[4].level", ValidationCode.InvalidValue), Error(Mutated(u => { for (int i = 1; i <= 4; i++) u[i]!["level"] = 5; })));   // l'ultime demande le niveau 10
-        // Contrecoup au niveau 5 : il viendrait avec la troisième place, déjà prise par la Barrière (une seule place s'ouvre).
-        Assert.Equal((at, ValidationCode.InvalidValue), Error(Mutated(u => u[2]!["level"] = 5)));
-        // Contrecoup au niveau 10 : une cinquième active avec sa place, pas d'emplacement.
-        Assert.Equal((at, ValidationCode.InvalidValue), Error(Mutated(u => u[2]!["level"] = 10)));
-        // Barrière au niveau 4 : aucune place ne s'ouvre, elle va dans la réserve ; admise (rien à faire tenir dans la barre).
-        ProgressionLoadResult reserve = Mutated(u => u[1]!["level"] = 4);
+        // Sous-lot V1.8 : une compétence ne vient avec sa place que si une place est libre : la barre tient toujours, une compétence de trop
+        // va dans la réserve. Contrecoup au niveau 5, après la Barrière : barre pleine, réserve.
+        ProgressionLoadResult reserve = Mutated(u => u[2]!["level"] = 5);
         Assert.True(reserve.IsValid, reserve.Report.ToString());
-        Assert.False(reserve.Progression!.ForClass("class.bastion").SkillUnlocks[1].WithPlace);
+        Assert.Equal(new[] { true, true, false, true, true }, reserve.Progression!.ForClass("class.bastion").SkillUnlocks.Select(u => u.WithPlace));
+        // Contrecoup au niveau 10, avant l'Onde dans le fichier : il prend la 5e place, l'Onde va dans la réserve.
+        ProgressionLoadResult first = Mutated(u => u[2]!["level"] = 10);
+        Assert.True(first.IsValid, first.Report.ToString());
+        Assert.Equal(new[] { (Contrecoup, true), (Onde, false) },
+            first.Progression!.ForClass("class.bastion").SkillUnlocks.Skip(2).Take(2).Select(u => (u.Skill, u.WithPlace)));
+        // Barrière au niveau 4 : la 4e place est libre depuis le niveau 1 ; elle vient avec sa place.
+        ProgressionLoadResult early = Mutated(u => u[1]!["level"] = 4);
+        Assert.True(early.IsValid, early.Report.ToString());
+        Assert.True(early.Progression!.ForClass("class.bastion").SkillUnlocks[1].WithPlace);
         Assert.Equal((at + "[1].level", ValidationCode.MissingField), Error(Mutated(u => u[1]!.AsObject().Remove("level"))));
         Assert.Equal((at + "[1].skill", ValidationCode.MissingField), Error(Mutated(u => u[1]!.AsObject().Remove("skill"))));
         Assert.Equal((at + "[1]", ValidationCode.WrongType), Error(Mutated(u => u[1] = null)));
@@ -172,14 +178,14 @@ public class Lot129SkillUnlockTests : IDisposable
     [Fact]
     public void La_session_equipe_les_competences_et_les_sauvegarde()
     {
-        var save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(520));
+        var save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(440));   // niveau 5
         var zone = ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"), Path.Combine(AppContext.BaseDirectory, "scenarios"),
             ShippedData, Items).Zone!;
         var first = new WorldSession(save, zone, ShippedData, Shipped, Items);
-        Assert.Equal(new[] { Barriere }, first.Learned.Select(u => u.Skill));
+        Assert.Equal(new[] { Provocation, Barriere }, first.Learned.Select(u => u.Skill));
         Assert.Contains(Barriere, first.Character.ActiveSkills);
         WorldSave saved = first.Save();
-        Assert.Equal(3, saved.Character!.ActiveSkills.Count);
+        Assert.Equal(4, saved.Character!.ActiveSkills.Count);
         // Relue : la sauvegarde garde la compétence, la session suivante n'a plus rien à gagner.
         WorldSave reread = SaveJsonReader.Read(SaveJsonReader.Write(saved)).Save!;
         var second = new WorldSession(reread, zone, ShippedData, Shipped, Items);
@@ -209,7 +215,9 @@ public class Lot129SkillUnlockTests : IDisposable
         // Sous-lot V1.2 : le personnage porte son équipement de départ, comme une vraie partie (sinon ses places obligatoires seraient
         // remplies au chargement, avec un message de plus).
         SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
-            Inventory.Outfit(PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(519), Items)));
+            Inventory.Outfit(PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(439)   // niveau 4
+                .WithSkills(new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier", Provocation }, null,
+                    new[] { "skill.bastion.endurance_du_roc" }), Items)));
         AdventureSession a = AdventureSession.Load(DataDirectory, scenarios, savePath);
         Assert.Equal(new[] { "Partie reprise." }, a.DrainMessages());
         Assert.Empty(a.World.Learned);
@@ -232,8 +240,8 @@ public class Lot129SkillUnlockTests : IDisposable
         IReadOnlyList<string> messages = a.DrainMessages();
         Assert.Contains("Niveau 5 ! Il prendra effet à ta prochaine halte.", messages);
         Assert.Contains("À ta prochaine halte, nouvelle compétence : Barrière d'acier.", messages);
-        Assert.Equal(2, a.World.Character.ActiveSkills.Count);   // pas avant la halte
-        // Retour au point sûr d'entrée, halte : la compétence est équipée sur la touche 3, et sauvegardée.
+        Assert.Equal(3, a.World.Character.ActiveSkills.Count);   // pas avant la halte
+        // Retour au point sûr d'entrée, halte : la compétence est équipée sur la touche 4, et sauvegardée.
         for (int i = 0; i < 400 && !a.CanRest; i++)
         {
             GroundVector p = e.View(AdventureSession.PlayerId).Position!.Value;
@@ -242,8 +250,8 @@ public class Lot129SkillUnlockTests : IDisposable
         }
         a.Combat.SetMove(0, 0);
         Assert.True(a.Rest());
-        Assert.Contains("Nouvelle compétence : Barrière d'acier (touche 3).", a.DrainMessages());
-        Assert.Equal(Barriere, a.World.Character.ActiveSkills[2]);
+        Assert.Contains("Nouvelle compétence : Barrière d'acier (touche 4).", a.DrainMessages());
+        Assert.Equal(Barriere, a.World.Character.ActiveSkills[3]);
         Assert.Contains(Barriere, a.World.Zone.Engine.View(AdventureSession.PlayerId).Character!.Build.ActiveSkills);   // au combat
         a.Save();
         Assert.Contains(Barriere, SaveStore.Read(savePath).Save!.Character!.ActiveSkills);

@@ -36,8 +36,8 @@ namespace EdS.World
         /// registre du monde : elle place toute compétence avec sa place qui manque, à chaque appel ; la partie utilise la forme avec le
         /// registre, où une compétence sans place libre va dans la réserve pour de bon (donnée).
         /// Réponse de Damien du 30 octobre 2026 : seules les compétences qui viennent avec leur place (<see cref="SkillUnlock.WithPlace"/>)
-        /// sont équipées ainsi ; les autres (Provocation, Contrecoup) vont dans la réserve, même si la barre a de la place : le joueur les
-        /// place lui-même avec l'écran des compétences.
+        /// sont équipées ainsi ; les autres (depuis le sous-lot V1.8 : Contrecoup, qui arrive barre pleine) vont dans la réserve, même si
+        /// la barre a de la place : le joueur les place lui-même avec l'écran des compétences.
         /// </summary>
         public static SavedCharacter Learn(SavedCharacter character, CharacterProgression progression, ProgressionRules rules,
             out IReadOnlyList<SkillUnlock> learned) =>

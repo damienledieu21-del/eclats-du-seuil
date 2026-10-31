@@ -10,12 +10,14 @@ namespace EdS.Net
     /// 4 octets (gros-boutiste). Les tailles sont bornées par sens : un client n'envoie que de petits messages (intentions, présentation),
     /// le serveur peut envoyer l'état courant d'un combat. Version 2 depuis le sous-lot 11.7 : marche dans les intentions, déplacements et
     /// sélections dans les commandes, état courant (<see cref="StateMessage"/>, instantané du moteur) à la place de l'historique. Version 3
-    /// depuis le sous-lot 11.9 : marche à reculons (<c>backward</c>) dans les intentions et les commandes de marche.
+    /// depuis le sous-lot 11.9 : marche à reculons (<c>backward</c>) dans les intentions et les commandes de marche. Version 4 depuis le
+    /// sous-lot V1.8 : six places actives et l'ultime (<see cref="MaxSlot"/> 6 : l'emplacement 4 est désormais la 5e active, plus
+    /// l'ultime) ; un client d'une autre version est refusé dès la présentation.
     /// Détail : <c>docs/RESEAU.md</c>.
     /// </summary>
     public static class Protocol
     {
-        public const int Version = 3;
+        public const int Version = 4;
 
         /// <summary>Port TCP par défaut du serveur (hôte Unity ou serveur dédié).</summary>
         public const int DefaultPort = 7777;
@@ -50,8 +52,11 @@ namespace EdS.Net
         /// <summary>Longueur maximale d'un texte libre (raison d'un refus, d'une fin de combat).</summary>
         public const int MaxReasonLength = 512;
 
-        /// <summary>Emplacement le plus haut d'une compétence (actives 0 à 3, ultime 4 : <c>RealtimeCombat.UltimateSlot</c>).</summary>
-        public const int MaxSlot = 4;
+        /// <summary>
+        /// Emplacement le plus haut d'une compétence (actives 0 à 5, ultime 6 : <c>RealtimeCombat.UltimateSlot</c>). Protocole 4 (sous-lot
+        /// V1.8) : six actives et l'ultime ; au protocole 3, 4 était l'ultime (un client de cette version est refusé à la présentation).
+        /// </summary>
+        public const int MaxSlot = EdS.Runtime.RealtimeCombat.UltimateSlot;
 
         /// <summary>
         /// Sous-lot 10.2 : texte libre rendu acceptable par <see cref="MessageCodec.IsText"/> (raison d'un refus, nom de build) : caractères

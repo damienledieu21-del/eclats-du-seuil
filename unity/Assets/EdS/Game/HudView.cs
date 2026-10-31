@@ -263,7 +263,9 @@ namespace EdS.Game
         /// </summary>
         private static readonly (float X, float Y, float Size, float Rot)[] ShardPlaces =
         {
-            (330f, 268f, 88f, -6f), (398f, 256f, 88f, 4f), (602f, 256f, 88f, -4f), (670f, 268f, 88f, 6f), (762f, 258f, 106f, 3f),
+            // Sous-lot V1.8 : six places actives (trois de chaque côté du sceau), puis l'ultime au bout, à droite.
+            (262f, 280f, 88f, -9f), (330f, 268f, 88f, -6f), (398f, 256f, 88f, 4f), (602f, 256f, 88f, -4f), (670f, 268f, 88f, 6f),
+            (738f, 280f, 88f, 9f), (830f, 266f, 106f, 3f),
         };
 
         /// <summary>Réduction des éclats de compétence (essai réaliste 7).</summary>
@@ -272,7 +274,8 @@ namespace EdS.Game
         private Shard BuildShard(int index)
         {
             (float x, float y, float s, float rot) = ShardPlaces[System.Math.Min(index, ShardPlaces.Length - 1)];
-            string shape = "eclat_" + (System.Math.Min(index, 4) + 1);
+            // Cinq formes d'éclat : les actives tournent sur les quatre premières, l'ultime (dernière place) prend la cinquième.
+            string shape = "eclat_" + (index >= ShardPlaces.Length - 1 ? 5 : index % 4 + 1);
             var shard = new Shard { Phase = index * 0.7f };
             shard.Node = At(UiKit.Node(_bottom, "Compétence " + (index + 1)), x, y, s, s, 0.5f, 0.5f);
             shard.Node.localRotation = Quaternion.Euler(0f, 0f, -rot);
@@ -610,16 +613,17 @@ namespace EdS.Game
             if (_shownCharges >= 0 && me.RampartCharges > _shownCharges) UiSounds.Play(UiCue.ChargeGained);
             _shownCharges = me.RampartCharges;
 
-            // Compétences : 1 à 4, puis l'ultime.
-            List<SkillSlot> slots = state.Slots.Where(s => !s.IsUltimate).Concat(state.Slots.Where(s => s.IsUltimate)).ToList();
-            while (_shards.Count < slots.Count) _shards.Add(BuildShard(_shards.Count));
+            // Compétences : 1 à 6, puis l'ultime. Sous-lot V1.8 : chaque éclat a sa place fixe (la place 3 vide laisse un trou, l'ultime
+            // reste au bout).
+            while (_shards.Count < ShardPlaces.Length) _shards.Add(BuildShard(_shards.Count));
             for (int i = 0; i < _shards.Count; i++)
             {
                 Shard shard = _shards[i];
-                bool used = i < slots.Count;
+                bool ultimatePlace = i == ShardPlaces.Length - 1;
+                SkillSlot slot = state.Slots.FirstOrDefault(s => ultimatePlace ? s.IsUltimate : !s.IsUltimate && s.Slot == i);
+                bool used = slot != null;
                 UiKit.Show(shard.Node, used);
                 if (!used) continue;
-                SkillSlot slot = slots[i];
                 if (shard.SkillId != slot.SkillId)
                 {
                     shard.SkillId = slot.SkillId;

@@ -39,7 +39,7 @@ Chaque message passe par l'analyseur strict du sous-lot 9.1 (`MessageCodec`) : t
 | `reconnect` | C → S | `protocol`, `token` | retour d'un joueur déconnecté |
 | `build` | C → S | `build` | changement de build en salle d'attente |
 | `ready` | C → S | `ready` | prêt ou non |
-| `input` | C → S | `guard`, `parry`, `slot` (0 à 4 ou null), `target`, `ally` (ou null) ; protocole 2 : `heading` (0 à 63 ou null) ; protocole 3 : `backward` | intentions pour le prochain tick |
+| `input` | C → S | `guard`, `parry`, `slot` (0 à 6 ou null ; 0 à 4 jusqu'au protocole 3), `target`, `ally` (ou null) ; protocole 2 : `heading` (0 à 63 ou null) ; protocole 3 : `backward` | intentions pour le prochain tick |
 | `ping` | C → S | `clientTime` | mesure du temps aller-retour |
 | `resyncRequest` | C → S | — | demande de l'historique (protocole 2 : de l'état courant) |
 | `bye` | C → S | — | départ volontaire |
@@ -147,6 +147,16 @@ Essai de Damien du 22 octobre 2026 : « le Bastion recule en regardant devant lu
 | `tick.commands` | `backward: true` sur un `move` à reculons (absent sinon ; faux, ou sur une autre action, refusé). |
 
 La salle tient le recul voulu avec le cap (`MovementIntent.Backward`) et renvoie un `move` quand seul le recul change. L'état courant n'écrit pas le recul : le moteur le déduit de la dernière commande `move` du combat complété ([MOTEUR.md](MOTEUR.md#réglages-après-lessai-sous-lot-119)).
+
+## Protocole 4 : six places et l'ultime (sous-lot V1.8)
+
+Décision de Damien (« 4 + ultime dès le début, puis plus en montant jusqu'à 8 + ultime ») : la barre de combat a **six places actives** (emplacements 0 à 5) et l'**ultime** à l'emplacement **6** (`RealtimeCombat.UltimateSlot`, `Protocol.MaxSlot`). Au protocole 3, l'emplacement 4 était l'ultime : un même message voudrait dire autre chose, donc le protocole passe à la **version 4** et un client ou un serveur du protocole 3 est refusé à la présentation (« protocole 3 non pris en charge »).
+
+| Changement | Détail |
+|---|---|
+| `input.slot` | de 0 à 6 ou null (0 à 5 : actives, 6 : ultime) ; 7 ou plus, ou négatif, refusé (« hors de [0, 6] »). |
+
+Rien d'autre ne change : le build envoyé reste une référence et des talents, jugé par le serveur avec les règles (au plus six places actives, `ProgressionRules.MaxActiveSlots`). La 7e et la 8e place viendront avec les compétences d'ascension, avec une nouvelle version du protocole.
 
 ## Réseau simulé
 

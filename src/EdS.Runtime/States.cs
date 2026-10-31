@@ -11,7 +11,7 @@ namespace EdS.Runtime
         public int ResonanceMax { get; }
         public int RampartChargesMax { get; }
 
-        /// <summary>Emplacements équipés : actives (0 à 3) puis l'ultime (<see cref="RealtimeCombat.UltimateSlot"/>).</summary>
+        /// <summary>Emplacements équipés : actives (0 à 5) puis l'ultime (<see cref="RealtimeCombat.UltimateSlot"/>).</summary>
         public IReadOnlyList<SkillSlot> Slots { get; }
         public string? TargetId { get; }
 

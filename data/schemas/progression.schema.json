@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/progression.schema.json",
   "title": "Éclats du Seuil — progression du personnage persistant",
-  "description": "Sous-lot 12.2. Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ProgressionValidator, contre les règles et les classes).",
+  "description": "Sous-lot 12.2 (schéma 3 : sous-lot V1.8, plafond de niveau et chapitres). Documentation et aide à la saisie. La validation qui fait foi est celle du programme (ProgressionValidator, contre les règles et les classes).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "kind": {
       "const": "progression"
@@ -29,6 +29,8 @@
       "additionalProperties": false,
       "required": [
         "maxLevel",
+        "levelCap",
+        "chapterStartLevels",
         "xpToLevel",
         "killXpPerHealth",
         "classes"
@@ -37,7 +39,22 @@
         "maxLevel": {
           "type": "integer",
           "minimum": 1,
-          "description": "Niveau maximal du parcours (cadrage Q3 : 10), au plus progression.maxLevel des règles."
+          "description": "Niveau le plus haut décrit par les données (sous-lot V1.8 : 30, valeurs provisoires au-delà du plafond), au plus progression.maxLevel des règles."
+        },
+        "levelCap": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Sous-lot V1.8 (sujet 54) : plafond de niveau actuel (25 dans les Vallons, en alpha), au plus maxLevel ; il monte à chaque extension. L'expérience continue de s'accumuler au plafond."
+        },
+        "chapterStartLevels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Sous-lot V1.8 : premier niveau de chaque chapitre de la quête principale, strictement croissant, le premier au niveau 1, tous au plus levelCap (le dernier chapitre va jusqu'au plafond)."
         },
         "xpToLevel": {
           "type": "array",

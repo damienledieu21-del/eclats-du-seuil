@@ -84,8 +84,9 @@ public class BastionBuildExamples
         { "Garde stable au rang 4 (maximum 3)", Build(30, new() { [R("garde_stable")] = 4 }), BuildViolationCode.RankOutOfRange },
         { "Niveau 31", Build(31, new()), BuildViolationCode.LevelOutOfRange },
         { "10 points au niveau 10 (9 disponibles)", Build(10, new() { [R("peau_de_fer")] = 5, [G("vigilance")] = 5 }), BuildViolationCode.TooManyPoints },
-        { "Ultime au niveau 9", Build(9, new(), ultimate: S("bastion_absolu")), BuildViolationCode.UltimateLocked },
-        { "3 actives au niveau 4", Build(4, new(), new[] { S("frappe_du_rempart"), S("provocation"), S("contrecoup") }), BuildViolationCode.TooManySkills },
+        // Sous-lot V1.8 : la place de l'ultime s'ouvre au niveau 1, Bastion absolu demande le niveau 10 ; 4 actives au niveau 1, 5 au 10.
+        { "Ultime au niveau 9", Build(9, new(), ultimate: S("bastion_absolu")), BuildViolationCode.SkillLevelTooLow },
+        { "5 actives au niveau 4", Build(4, new(), new[] { S("frappe_du_rempart"), S("heurt_de_bouclier"), S("provocation"), S("contrecoup"), S("barriere_d_acier") }), BuildViolationCode.TooManySkills },
         { "Compétence équipée deux fois", Build(10, new(), new[] { S("provocation"), S("provocation") }), BuildViolationCode.DuplicateSkill },
         { "Ultime dans un emplacement actif", Build(10, new(), new[] { S("bastion_absolu") }), BuildViolationCode.WrongSlotKind },
         { "Active dans un emplacement passif", Build(10, new(), passives: new[] { S("provocation") }), BuildViolationCode.WrongSlotKind },

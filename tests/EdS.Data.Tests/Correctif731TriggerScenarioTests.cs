@@ -36,9 +36,10 @@ public class Correctif731TriggerScenarioTests
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
     /// <summary>
-    /// Référence du contenu livré (moteur 0.26.0, format 20, Bastion 0.6.0, règles 0.14.0 : bornes des effets d'équipement, sous-lot V1.3).
+    /// Référence du contenu livré (moteur 0.26.0, format 20, Bastion 0.6.0, règles 0.15.0 : barre « 4 + ultime dès le début », sous-lot
+    /// V1.8). Celle des règles 0.14.0 (bornes des effets d'équipement, sous-lot V1.3) reste figée.
     /// </summary>
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.26.0-contenu-0.6.0-regles-0.14.0", Name + ".jsonl");
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.26.0-contenu-0.6.0-regles-0.15.0", Name + ".jsonl");
 
     /// <summary>
     /// En-tête sans ce qui distingue légitimement deux moteurs (format et version, sous-lot 11.1) ni, sur demande, l'identité des règles
@@ -415,6 +416,29 @@ public class Correctif731TriggerScenarioTests
         Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(current[0], withoutRules: true));
         static string RulesVersion(string header) => JsonDocument.Parse(header).RootElement.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString()!;
         Assert.Equal(("0.11.0-provisoire", "0.12.0-provisoire"), (RulesVersion(frozen[0]), RulesVersion(current[0])));
+        JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
+        Assert.Equal((before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()),
+            (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+    }
+
+    [Fact]
+    public void Reference_des_regles_0_14_0_refusee_et_corps_reproduit_avec_la_barre_de_V1_8()
+    {
+        // Sous-lot V1.8 (décision de Damien : « 4 + ultime dès le début, puis plus en montant ») : règles 0.15.0, places actives aux niveaux
+        // 1, 1, 1, 1, 10 et 20, ultime au niveau 1. La référence du sous-lot V1.3 (règles 0.14.0) est refusée au rejeu par l'identité des
+        // règles ; le même moteur 0.26.0 en reproduit octet par octet les lignes d'événements (la barre ne joue qu'à la validation des builds).
+        // L'en-tête ne diffère que par l'identité des règles.
+        string[] frozen = File.ReadAllLines(FrozenPath("0.26.0-contenu-0.6.0-regles-0.14.0"));
+        ReplayOutcome outcome = CombatLogReplayer.Replay(frozen, ShippedData);
+        Assert.Equal(ReplayStatus.Refused, outcome.Status);
+        Assert.Null(outcome.Comparison);
+        Assert.Contains(outcome.Problems, p => p.Contains("0.14.0-provisoire", StringComparison.Ordinal));
+        string[] current = File.ReadAllLines(FixturePath);
+        Assert.Equal(frozen.Skip(1), current.Skip(1));
+        Assert.NotEqual(frozen[0], current[0]);
+        Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(current[0], withoutRules: true));
+        static string RulesVersion(string header) => JsonDocument.Parse(header).RootElement.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString()!;
+        Assert.Equal(("0.14.0-provisoire", "0.15.0-provisoire"), (RulesVersion(frozen[0]), RulesVersion(current[0])));
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
         Assert.Equal((before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()),
             (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));

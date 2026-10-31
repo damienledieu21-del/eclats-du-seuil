@@ -9,7 +9,7 @@ namespace EdS.Game
     /// <see cref="Input.touches"/> (téléphone, ou simulateur d'appareils de l'éditeur). Disposition pour un téléphone tenu à l'horizontale :
     /// <list type="bullet">
     /// <item>moitié gauche : <b>stick</b> du pouce gauche, qui apparaît là où le pouce se pose (marche relative à la caméra) ;</item>
-    /// <item>à droite : <b>Garde</b> (maintenir), <b>Parade</b>, les quatre compétences et l'<b>ultime</b>, <b>Cible</b> (suivante),
+    /// <item>à droite : <b>Garde</b> (maintenir), <b>Parade</b>, les six compétences (sous-lot V1.8) et l'<b>ultime</b>, <b>Cible</b> (suivante),
     /// <b>Vue</b> (caméra remise derrière le personnage), <b>Allié</b> en réseau ;</item>
     /// <item>moitié droite hors des boutons : un doigt qui glisse <b>tourne et incline la vue</b>, deux doigts qui s'écartent ou se
     /// rapprochent <b>rapprochent ou éloignent la caméra</b> (essai réaliste 9) ;</item>
@@ -28,7 +28,7 @@ namespace EdS.Game
         /// <summary>Taille des boutons d'action (pixels virtuels), au moins 9 mm sur l'écran d'un téléphone (<see cref="TouchGestures.SmallButton"/>).</summary>
         private const float Big = TouchGestures.BigButton, Small = TouchGestures.SmallButton;
 
-        private enum ButtonId { Guard, Parry, Skill1, Skill2, Skill3, Skill4, Ultimate, Target, View, Ally, Menu, Help, Pause, Restart, NextScene, Act, Potion, Bag, Journal, Workshop, Map, Talents }
+        private enum ButtonId { Guard, Parry, Skill1, Skill2, Skill3, Skill4, Skill5, Skill6, Ultimate, Target, View, Ally, Menu, Help, Pause, Restart, NextScene, Act, Potion, Bag, Journal, Workshop, Map, Talents }
 
         private sealed class Button
         {
@@ -83,10 +83,11 @@ namespace EdS.Game
 
         private bool Tapped(ButtonId id) => _gestures.WasTapped((int)id);
 
-        /// <summary>Emplacement de compétence touché à cette image (0 à 3, 4 : ultime), ou -1.</summary>
+        /// <summary>Emplacement de compétence touché à cette image (0 à 5 ; l'ultime : <see cref="RealtimeCombat.UltimateSlot"/>), ou -1.</summary>
         public int SlotPressed =>
             Tapped(ButtonId.Skill1) ? 0 : Tapped(ButtonId.Skill2) ? 1 : Tapped(ButtonId.Skill3) ? 2
-            : Tapped(ButtonId.Skill4) ? 3 : Tapped(ButtonId.Ultimate) ? 4 : -1;
+            : Tapped(ButtonId.Skill4) ? 3 : Tapped(ButtonId.Skill5) ? 4 : Tapped(ButtonId.Skill6) ? 5
+            : Tapped(ButtonId.Ultimate) ? RealtimeCombat.UltimateSlot : -1;
 
         /// <summary>F8 : force les commandes tactiles à l'écran (essai à la souris sans simulateur) ; rend vrai si l'état a changé.</summary>
         public bool ToggleForced()
@@ -121,6 +122,9 @@ namespace EdS.Game
             Add(ButtonId.Skill2, gx - Big - m + (Big - Small) / 2, gy - Small - m, Small, "2");
             Add(ButtonId.Skill3, gx + (Big - Small) / 2, gy - Small - m, Small, "3");
             Add(ButtonId.Skill4, gx + (Big - Small) / 2, gy - 2 * (Small + m), Small, "4");
+            // Sous-lot V1.8 : 5e et 6e places, une colonne plus à gauche, au plus près du pouce sans cacher la garde.
+            Add(ButtonId.Skill5, gx - 3 * (Big + m) + (Big - Small), gy + (Big - Small), Small, "5");
+            Add(ButtonId.Skill6, gx - 3 * (Big + m) + (Big - Small), gy - Small - m, Small, "6");
             Add(ButtonId.Ultimate, gx - Big - m + (Big - Small) / 2, gy - 2 * (Small + m), Small, "Ultime");
             Add(ButtonId.Target, gx + (Big - Small) / 2, gy - 3 * (Small + m), Small, "Cible");
             Add(ButtonId.View, gx - Big - m + (Big - Small) / 2, gy - 3 * (Small + m), Small, "Vue");

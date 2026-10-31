@@ -11,9 +11,9 @@ Le moteur est générique : aucune règle ne dépend d'une classe. Ce document d
 | `majorTalents.threshold` | 18 | points déjà investis dans la branche avant d'acquérir son majeur |
 | `majorTalents.max` | 1 | talents majeurs par build |
 | `treesPerClass` | 3 | arbres par classe, librement combinables |
-| `slots.activeUnlockLevels` | [1, 1, 5, 10] | 2 actives au niveau 1, 3 au 5, 4 au 10 |
+| `slots.activeUnlockLevels` | [1, 1, 1, 1, 10, 20] | sous-lot V1.8 (règles 0.15.0, décision de Damien « 4 + ultime dès le début ») : 4 actives au niveau 1, 5 au 10, 6 au 20 ; six au plus (barre de combat, protocole 4) ; avant : [1, 1, 5, 10] |
 | `slots.passiveUnlockLevels` | [1, 5, 20, 30] | 1/2/3/4 passifs équipables |
-| `slots.ultimateUnlockLevel` | 10 | emplacement d'ultime dédié |
+| `slots.ultimateUnlockLevel` | 1 | emplacement d'ultime dédié, ouvert dès le niveau 1 (V1.8 ; avant : 10) ; l'ultime elle-même garde son niveau minimal (Bastion absolu : 10) |
 
 Un majeur coûte 1 point après les 18 : 19 points pour un majeur, il en reste 10 au niveau 30, donc un second est impossible même sans la limite explicite `max`, qui reste vérifiée.
 

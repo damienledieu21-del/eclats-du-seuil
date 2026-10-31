@@ -145,8 +145,9 @@ namespace EdS.Game
             var cell = new SkillCell { Kind = place.Kind, Index = place.Index, Rect = UiKit.Node(_skillsPage, "Place") };
             UiKit.Place(cell.Rect, new Vector2(x, y), new Vector2(size, size), Vector2.zero);
             bool passive = place.Kind == SkillKind.Passive;
-            // Les mêmes éclats que la barre de combat (1 à 4, le cinquième pour l'ultime) ; les passives en nœuds, comme l'arbre des Éclats.
-            string shape = passive ? "noeud" : "eclat_" + (place.Kind == SkillKind.Ultimate ? 5 : Mathf.Min(place.Index, 3) + 1);
+            // Les mêmes éclats que la barre de combat (les actives tournent sur les quatre premiers, depuis V1.8 six places ; le cinquième
+            // pour l'ultime) ; les passives en nœuds, comme l'arbre des Éclats.
+            string shape = passive ? "noeud" : "eclat_" + (place.Kind == SkillKind.Ultimate ? 5 : place.Index % 4 + 1);
             cell.Glow = UiKit.Image(cell.Rect, "Lueur", UiKit.Sprite("braise"), UiKit.Alpha(UiKit.Dawn, 0f));
             UiKit.Fill(cell.Glow.rectTransform, -size * 0.3f);
             cell.Hit = UiKit.Image(cell.Rect, "Fond", UiKit.Sprite(passive ? "noeud_fond" : shape + "_masque"), new Color(0.09f, 0.12f, 0.17f, 0.95f));

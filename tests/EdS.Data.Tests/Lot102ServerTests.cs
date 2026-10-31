@@ -215,8 +215,9 @@ public class Lot102ServerTests
     [Theory]
     [InlineData(1, Rempart, "protocole 1 non pris en charge")]   // sous-lot 11.7 : le protocole 1 (lot 10) n'est plus servi
     [InlineData(2, Rempart, "protocole 2 non pris en charge")]   // sous-lot 11.9 : protocole 3 (marche à reculons)
-    [InlineData(4, Rempart, "protocole 4 non pris en charge")]
-    [InlineData(3, "build.bastion.inconnu", "build de référence inconnu")]
+    [InlineData(3, Rempart, "protocole 3 non pris en charge")]   // sous-lot V1.8 : protocole 4 (six places et l'ultime)
+    [InlineData(5, Rempart, "protocole 5 non pris en charge")]
+    [InlineData(4, "build.bastion.inconnu", "build de référence inconnu")]
     public void Presentation_refusee(int protocol, string build, string expected)
     {
         var world = new World();
