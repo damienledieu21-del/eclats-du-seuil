@@ -374,7 +374,9 @@ namespace EdS.World
                 }
             // Sous-lot V1.8c : les bonus actifs s'ajoutent au bonus de l'équipement, dans la limite du combat (BoonGear).
             EnteredBoons = ActiveBoons;
-            CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: BoonGear(Inventory.Gear(), items, EnteredBoons), consumables: carried,
+            // Sous-lot V1.8d : bonus de l'équipement porté à l'entrée, base fixe de la session à laquelle s'ajoutent les bonus actifs.
+            _entryEquipmentGear = Inventory.Gear();
+            CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: BoonGear(_entryEquipmentGear, items, EnteredBoons), consumables: carried,
                 shield: Inventory.ShieldFor(data.Rules.Combat),   // sous-lot V1.2 : garde du bouclier porté ; V1.4 : jamais meilleure s'il est usé à zéro
                 equipment: Inventory.Effects());   // sous-lot V1.3 : effets des objets nommés et des ensembles
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
@@ -385,6 +387,7 @@ namespace EdS.World
             List<string> entryPlaces = Inventory.Places().Where(p => Inventory.WornInstanceAt(p) is { } x && items.Wears(items.Item(x.Item))).ToList();
             _entryPieces = entryPlaces.Select(p => Inventory.WornInstanceAt(p)!).ToList();   // les instances mêmes (suivi par identité)
             EnteredGear = setup.Gear;
+            _combatGear = setup.Gear;   // sous-lot V1.8d : bonus du combat, changé ensuite par les bonus modifiés
             EnteredEffects = setup.Equipment;
         }
 
@@ -754,6 +757,9 @@ namespace EdS.World
             SyncConsumables();
             // Sous-lot V1.8c : le temps des bonus actifs baisse d'un tick ; un bonus fini quitte sa place à ce tick précis.
             IReadOnlyList<BoonExpired> expired = TickBoons();
+            // Sous-lot V1.8d : effet immédiat : un bonus fini quitte le combat au tick suivant, le premier qu'il ne couvre plus (bonus modifié
+            // soumis maintenant, appliqué au début de ce tick) ; un bonus modifié encore refusé par le pilote est retenté.
+            if (expired.Count > 0 || _gearPending) SyncCombatGear();
             IReadOnlyList<ExperienceGained> gains = Array.Empty<ExperienceGained>();
             IReadOnlyList<LootGained> loot = Array.Empty<LootGained>();
             if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
