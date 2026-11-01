@@ -28,9 +28,10 @@ namespace EdS.Simulation.Engine
 
         /// <summary>
         /// Version du format de l'instantané (indépendante de celle du journal) : 2 depuis le sous-lot 11.5 (engagement des ennemis), 3 depuis
-        /// le sous-lot 12.6 (charges des objets de soin, recharge partagée, soins reçus).
+        /// le sous-lot 12.6 (charges des objets de soin, recharge partagée, soins reçus), 4 depuis le sous-lot V1.8d (bonus d'équipement en vigueur
+        /// d'un personnage, <c>gear</c>, et variation de ses PV manquants due aux bonus modifiés, <c>gearHealthShift</c>).
         /// </summary>
-        public const int FormatVersion = 3;
+        public const int FormatVersion = 4;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -208,6 +209,17 @@ namespace EdS.Simulation.Engine
             foreach (var c in f.ConsumableCharges) w.BeginArray().Value(c.Key).Value(c.Value).EndArray();
             w.EndArray();
             w.Field("consumableReadyTick", f.ConsumableReadyTick);
+            // Sous-lot V1.8d (format 4) : bonus d'équipement en vigueur (huit champs dans l'ordre de GearBonus.Fields ; null hors personnage)
+            // et variation des PV manquants due aux bonus modifiés.
+            w.Name("gear");
+            if (f.Character != null)
+            {
+                w.BeginArray();
+                for (int g = 0; g < GearBonus.Fields.Count; g++) w.Value(f.Gear[g]);
+                w.EndArray();
+            }
+            else w.Value((string?)null);
+            w.Field("gearHealthShift", f.GearHealthShift);
             w.Field("guarding", f.Guarding).Field("upkeepDue", f.GuardUpkeepDue).Field("upkeepRemainder", f.GuardUpkeepRemainder).Field("upkeepPaid", f.GuardUpkeepPaid)
                 .Field("parryOpen", f.ParryOpen).Field("parryStartTick", f.ParryStartTick).Field("parryEndTick", f.ParryEndTick)
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
@@ -748,7 +760,8 @@ namespace EdS.Simulation.Engine
                         arrivals.Add(arrival.Fighter);
                         break;
                     case CommandItem command:
-                        Require(phase == CombatPhase.Commands && tick == command.Command.AtMs / _tickMs && commands.Add(command.Index), $"{at} : commande hors de son tick ou en double.");
+                        // Sous-lot V1.8d : un bonus modifié attend en phase setup, toute autre commande en phase des commandes.
+                        Require(phase == PhaseOf(command.Command) && tick == command.Command.AtMs / _tickMs && commands.Add(command.Index), $"{at} : commande hors de son tick ou en double.");
                         break;
                     case AssailantTurn turn:
                         Require(phase == CombatPhase.Commands && turn.Fighter.Assailant != null && turn.Turn >= 0 && turn.Turn < turn.Fighter.NextTurn,
@@ -968,9 +981,19 @@ namespace EdS.Simulation.Engine
                 // Relecture d'ensemble (après le 18e tour) : sans soin, les PV ne baissent que des dégâts subis (après boucliers et transferts,
                 // PrepareDamage) : un vivant a perdu exactement ses dégâts subis, un mort au moins ses PV maximaux (dégâts au-delà de 0).
                 // Sous-lot 12.6 : les soins des objets emportés (Healed) remontent les PV d'autant ; seul un personnage qui en emporte en reçoit.
+                // Sous-lot V1.8d : les bonus modifiés font varier les PV manquants (règle proportionnelle) d'exactement gearHealthShift.
                 if (f.Health is long hp && f.MaxHealth is long maxHp)
-                    Require(f.IsDead ? f.Result.DamageTaken - f.Result.Healed >= maxHp - hp : f.Result.DamageTaken - f.Result.Healed == maxHp - hp,
+                    Require(f.IsDead ? f.Result.DamageTaken - f.Result.Healed + f.GearHealthShift >= maxHp - hp
+                            : f.Result.DamageTaken - f.Result.Healed + f.GearHealthShift == maxHp - hp,
                         $"Dégâts subis de {who} incohérents avec ses points de vie.");
+                // Sous-lot V1.8d : le bonus en vigueur est celui de l'en-tête ou celui d'un bonus modifié de ce personnage déjà passé ; sans un tel
+                // bonus modifié, il n'a fait varier aucun PV manquant. La variation reste sous le plafond des compteurs.
+                bool changed = _setup.Commands.Any(c => c.Action == CombatAction.Gear && c.Actor == f.Id && c.AtMs / _tickMs <= previous);
+                Require(f.Character is null
+                    ? f.GearHealthShift == 0
+                    : (f.Gear.Equals(f.Character.Gear) || _setup.Commands.Any(c => c.Action == CombatAction.Gear && c.Actor == f.Id && c.AtMs / _tickMs <= previous
+                        && f.Gear.Equals(c.Gear))) && (changed || f.GearHealthShift == 0) && Math.Abs(f.GearHealthShift) <= CounterCeiling,
+                    $"Bonus d'équipement de {who} sans commande à son origine.");
                 Require(f.Result.Healed >= 0 && (f.Result.Healed == 0 || f.Character is { Consumables: { Count: > 0 } }), $"Soins de {who} impossibles.");
                 // Charges des objets de soin dans [0, emportées] ; la recharge partagée ne dépasse pas la plus longue après le dernier tick simulé.
                 if (f.Character is { } carrier)
@@ -1869,6 +1892,45 @@ namespace EdS.Simulation.Engine
                 cause, n["source"].NullableString, instance, n["generation"].NullableInt);
         }
 
+        /// <summary>
+        /// Sous-lot V1.8d : bonus d'équipement en vigueur d'un personnage (null pour un autre combattant), chaque champ dans
+        /// [0, <see cref="GearBonus.MaxValue"/>] ; s'il diffère de celui de l'en-tête, statistiques et maximums sont recalculés avec lui (les
+        /// valeurs courantes sont celles de l'instantané). Sa cohérence avec les commandes est vérifiée ensuite (<see cref="ValidateLoaded"/>).
+        /// </summary>
+        private void LoadGear(Fighter f, SnapshotNode node)
+        {
+            if (f.Character is null)
+            {
+                if (!node.IsNull) throw new FormatException($"Bonus d'équipement de « {f.Id} », qui n'est pas un personnage.");
+                return;
+            }
+            IReadOnlyList<SnapshotNode> items = node.Items;
+            if (items.Count != GearBonus.Fields.Count) throw new FormatException($"Bonus d'équipement de « {f.Id} » : {GearBonus.Fields.Count} valeurs attendues.");
+            var values = new int[GearBonus.Fields.Count];
+            for (int g = 0; g < values.Length; g++)
+            {
+                long v = items[g].Long;
+                if (v < 0 || v > GearBonus.MaxValue) throw new FormatException($"Bonus d'équipement de « {f.Id} » hors de [0, {GearBonus.MaxValue}] : {v}.");
+                values[g] = (int)v;
+            }
+            var gear = GearBonus.FromValues(values);
+            if (gear.Equals(f.Gear)) return;
+            try
+            {
+                DerivedStats stats = CombatantStats.ForCharacter(_setup.Stats, f.Character.Build, ModifierSet.For(f.Character), gear);
+                long maxHealth = stats.MaxHealth.RoundToInt(RoundingMode.Floor);
+                long maxEndurance = stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
+                f.Gear = gear;
+                f.Stats = stats;
+                f.MaxHealth = maxHealth;
+                f.MaxEndurance = maxEndurance;
+            }
+            catch (OverflowException)
+            {
+                throw new FormatException($"Bonus d'équipement de « {f.Id} » hors des limites numériques.");
+            }
+        }
+
         private void LoadFighter(Fighter f, SnapshotNode n)
         {
             if (n["fighter"].String != f.Id) throw new FormatException($"Combattant « {n["fighter"].String} » à la place de « {f.Id} ».");
@@ -1895,6 +1957,8 @@ namespace EdS.Simulation.Engine
             }
             if (f.ConsumableCharges.Count != carried.Count) throw new FormatException($"Objets de soin de {f.Id} incomplets.");
             f.ConsumableReadyTick = n["consumableReadyTick"].Long;
+            LoadGear(f, n["gear"]);   // sous-lot V1.8d (format 4)
+            f.GearHealthShift = n["gearHealthShift"].Long;
             f.Guarding = n["guarding"].Bool;
             f.GuardUpkeepDue = n["upkeepDue"].Long;
             f.GuardUpkeepRemainder = n["upkeepRemainder"].Long;

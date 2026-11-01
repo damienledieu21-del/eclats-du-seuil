@@ -355,6 +355,11 @@ public class V18ProgressionTests : IDisposable
         Assert.Equal(before.GetProperty("engineVersion").GetString(), after.GetProperty("engineVersion").GetString());
         Assert.Equal("0.15.0-provisoire", after.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString());
         Assert.Equal(before.GetProperty("scenario").GetRawText(), after.GetProperty("scenario").GetRawText());
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(current, ShippedData).Status);
+        // Sous-lot V1.8d : moteur 0.27.0 (format 21) : la référence des règles 0.15.0 du moteur 0.26.0 reste figée et est refusée au rejeu à
+        // son tour ; la nouvelle référence (reference-0.27.0-contenu-0.6.0-regles-0.15.0) a le même corps et se rejoue à l'identique.
+        Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(current, ShippedData).Status);
+        string[] latest = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.27.0-contenu-0.6.0-regles-0.15.0", name + ".jsonl"));
+        Assert.Equal(current.Skip(1), latest.Skip(1));
+        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(latest, ShippedData).Status);
     }
 }

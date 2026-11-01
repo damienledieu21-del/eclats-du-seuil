@@ -225,6 +225,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 12.6 (schéma 12) : objet de soin d'un « consume ».</summary>
         public string? Item { get; set; }
 
+        /// <summary>Sous-lot V1.8d (schéma 15) : nouveau bonus d'équipement (total) d'un « gear » (bonus modifié), champs absents à 0.</summary>
+        public List<KeyValuePair<string, int?>>? Gear { get; set; }
+
         /// <summary>Champs effectivement présents dans le fichier.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

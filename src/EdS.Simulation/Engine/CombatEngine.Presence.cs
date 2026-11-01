@@ -42,6 +42,12 @@ namespace EdS.Simulation.Engine
         {
             while (_queue.TryPeek(tick, CombatPhase.Setup, out Scheduled item))
             {
+                // Sous-lot V1.8d : un bonus modifié se traite aussi au début du tick, dans l'ordre de la file avec les arrivées.
+                if (item is CommandItem gear)
+                {
+                    ChangeGear(tick, gear);
+                    continue;
+                }
                 Fighter f = ((ArrivalItem)item).Fighter;
                 Fighter? blocker = ArrivalBlocker(f);
                 AssailantSetup? assailant = blocker is null ? f.Assailant : null;

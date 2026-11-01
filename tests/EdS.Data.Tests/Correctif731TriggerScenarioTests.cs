@@ -36,10 +36,10 @@ public class Correctif731TriggerScenarioTests
     private const string Morsure = "assailant.assaillant/3@assaillant#0";
 
     /// <summary>
-    /// Référence du contenu livré (moteur 0.26.0, format 20, Bastion 0.6.0, règles 0.15.0 : barre « 4 + ultime dès le début », sous-lot
+    /// Référence du contenu livré (sous-lot V1.8d : moteur 0.27.0, format 21 ; Bastion 0.6.0, règles 0.15.0 : barre « 4 + ultime dès le début », sous-lot
     /// V1.8). Celle des règles 0.14.0 (bornes des effets d'équipement, sous-lot V1.3) reste figée.
     /// </summary>
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.26.0-contenu-0.6.0-regles-0.15.0", Name + ".jsonl");
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.27.0-contenu-0.6.0-regles-0.15.0", Name + ".jsonl");
 
     /// <summary>
     /// En-tête sans ce qui distingue légitimement deux moteurs (format et version, sous-lot 11.1) ni, sur demande, l'identité des règles
@@ -422,6 +422,26 @@ public class Correctif731TriggerScenarioTests
     }
 
     [Fact]
+    public void Reference_du_moteur_0_26_0_refusee_et_corps_reproduit_sans_bonus_modifie()
+    {
+        // Sous-lot V1.8d (effet immédiat des bonus) : la référence du sous-lot V1.8 (moteur 0.26.0, format 20, règles 0.15.0) est refusée au
+        // rejeu ; le moteur 0.27.0 (format 21) en reproduit octet par octet les lignes d'événements : sans commande « bonus modifié », rien ne
+        // change. L'en-tête ne diffère que par le format et la version.
+        string[] frozen = File.ReadAllLines(FrozenPath("0.26.0-contenu-0.6.0-regles-0.15.0"));
+        ReplayOutcome outcome = CombatLogReplayer.Replay(frozen, ShippedData);
+        Assert.Equal(ReplayStatus.Refused, outcome.Status);
+        Assert.Null(outcome.Comparison);
+        Assert.Contains(outcome.Problems, p => p.Contains("0.26.0", StringComparison.Ordinal));
+        string[] current = File.ReadAllLines(FixturePath);
+        Assert.Equal(frozen.Skip(1), current.Skip(1));
+        Assert.Equal(StableHeader(frozen[0], withoutRules: false), StableHeader(current[0], withoutRules: false));
+        JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
+        Assert.Equal((20, "0.26.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
+        Assert.Equal((21, "0.27.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(current, ShippedData).Status);
+    }
+
+    [Fact]
     public void Reference_des_regles_0_14_0_refusee_et_corps_reproduit_avec_la_barre_de_V1_8()
     {
         // Sous-lot V1.8 (décision de Damien : « 4 + ultime dès le début, puis plus en montant ») : règles 0.15.0, places actives aux niveaux
@@ -433,7 +453,7 @@ public class Correctif731TriggerScenarioTests
         Assert.Equal(ReplayStatus.Refused, outcome.Status);
         Assert.Null(outcome.Comparison);
         Assert.Contains(outcome.Problems, p => p.Contains("0.14.0-provisoire", StringComparison.Ordinal));
-        string[] current = File.ReadAllLines(FixturePath);
+        string[] current = File.ReadAllLines(FrozenPath("0.26.0-contenu-0.6.0-regles-0.15.0"));   // sous-lot V1.8d : figée à son tour (moteur 0.26.0)
         Assert.Equal(frozen.Skip(1), current.Skip(1));
         Assert.NotEqual(frozen[0], current[0]);
         Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(current[0], withoutRules: true));
@@ -462,7 +482,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((17, "0.23.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((20, "0.26.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((21, "0.27.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]
@@ -482,7 +502,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((16, "0.22.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((20, "0.26.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((21, "0.27.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]
@@ -502,7 +522,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((15, "0.21.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((20, "0.26.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((21, "0.27.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]
@@ -522,7 +542,7 @@ public class Correctif731TriggerScenarioTests
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement;
         Assert.Equal((14, "0.20.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
         JsonElement after = JsonDocument.Parse(current[0]).RootElement;
-        Assert.Equal((20, "0.26.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((21, "0.27.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
     [Fact]

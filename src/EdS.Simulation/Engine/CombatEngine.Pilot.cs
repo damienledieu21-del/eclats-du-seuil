@@ -42,6 +42,12 @@ namespace EdS.Simulation.Engine
         // Personnage seulement (valeurs neutres sinon).
         public CharacterSetup? Character { get; internal set; }
         public CombatantRules? Rules { get; internal set; }
+
+        /// <summary>
+        /// Sous-lot V1.8d : bonus d'équipement en vigueur au début du tick (celui de l'en-tête, puis du dernier bonus modifié accepté) ; null
+        /// hors personnage.
+        /// </summary>
+        public Domain.Stats.GearBonus? Gear { get; internal set; }
         public long Endurance { get; internal set; }
         public long MaxEndurance { get; internal set; }
         public int Resonance { get; internal set; }
@@ -202,6 +208,7 @@ namespace EdS.Simulation.Engine
             {
                 view.Character = f.Character;
                 view.Rules = f.Rules;
+                view.Gear = f.Gear;   // sous-lot V1.8d
                 view.Endurance = f.Endurance;
                 view.MaxEndurance = f.MaxEndurance;
                 view.Resonance = f.Resonance;
@@ -317,6 +324,18 @@ namespace EdS.Simulation.Engine
                         throw new ArgumentException($"Objet de soin « {command.Item} » absent de ce que « {command.Actor} » emporte.", nameof(commands));
                 }
                 else if (command.Item != null) throw new ArgumentException("Seul un soin (consume) nomme un objet.", nameof(commands));
+                // Sous-lot V1.8d : un bonus modifié porte un bonus bien formé, pour un personnage ; seule cette commande en porte un. Le
+                // précontrôle numérique du combat complété est vérifié plus bas, pour le groupe entier.
+                if (command.Action == CombatAction.Gear)
+                {
+                    if (command.Gear is not { } gear) throw new ArgumentException("Bonus modifié (gear) sans bonus.", nameof(commands));
+                    for (int k = 0; k < Domain.Stats.GearBonus.Fields.Count; k++)
+                        if (gear[k] < 0 || gear[k] > Domain.Stats.GearBonus.MaxValue)
+                            throw new ArgumentException($"Bonus modifié : {Domain.Stats.GearBonus.Fields[k]} {gear[k]} hors de [0, {Domain.Stats.GearBonus.MaxValue}].", nameof(commands));
+                    if (_byId[command.Actor].Character is null)
+                        throw new ArgumentException($"Bonus modifié de « {command.Actor} », qui n'est pas un personnage.", nameof(commands));
+                }
+                else if (command.Gear != null) throw new ArgumentException("Seul un bonus modifié (gear) porte un bonus d'équipement.", nameof(commands));
                 int earlier = groupPerActor.TryGetValue(command.Actor, out int g) ? g : 0;
                 int already = _commandsPerActorTick.TryGetValue((command.Actor, CurrentTick), out int n) ? n : 0;
                 if (checked(already + earlier) >= _rules.MaxCommandsPerActorPerTick)
@@ -330,12 +349,20 @@ namespace EdS.Simulation.Engine
                     throw new InvalidOperationException($"File pleine : capacité {_rules.MaxPendingEvents} (combat.limits.maxPendingEvents).");
                 groupPerActor[command.Actor] = earlier + 1;
             }
+            // Sous-lot V1.8d : un bonus modifié change les statistiques en cours de combat : le combat complété du groupe doit passer la
+            // validation entière (précontrôle numérique sur l'enveloppe des bonus compris), comme une arrivée (Join) ; sinon rien ne change.
+            if (commands.Any(c => c.Action == CombatAction.Gear))
+            {
+                IReadOnlyList<Domain.RuleViolation> violations = _setup.Completed(_joined, _submitted.Concat(commands)).Validate();
+                if (violations.Count > 0)
+                    throw new ArgumentException($"Bonus modifié refusé : {string.Join(" ; ", violations.Take(3).Select(v => $"{string.Join(", ", v.Fields)} : {v.Message}"))}", nameof(commands));
+            }
             _initialEvents = initialEvents;
             foreach (CombatCommand command in commands)
             {
                 CountSubmitted(command);
                 // Hors traitement, comme les commandes du scénario mises en file à la construction : aucun budget du tick n'est consommé.
-                _queue.Enqueue(CurrentTick, CombatPhase.Commands, new CommandItem { Index = _setup.Commands.Count + _submitted.Count, Command = command });
+                _queue.Enqueue(CurrentTick, PhaseOf(command), new CommandItem { Index = _setup.Commands.Count + _submitted.Count, Command = command });
                 if (_queue.Count > _peakPending) _peakPending = _queue.Count;
                 _submitted.Add(command);
             }

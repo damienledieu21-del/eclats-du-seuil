@@ -157,5 +157,7 @@ public class CombatReplayTests
     // Sous-lot V1.2 : moteur 0.25.0, format 19, règles 0.13.0 (boucliers) ; sans bouclier : seul l'en-tête change (ancienne empreinte 54db7080…).
     // Sous-lot V1.3 : moteur 0.26.0, format 20, règles 0.14.0 (effets d'équipement) ; sans équipement : seul l'en-tête change (ancienne empreinte 1869c250…).
     // Relecture de la PR #78 : combat.equipment.allowedStatuses ; seule l'empreinte des règles change dans l'en-tête (ancienne empreinte b0db8eb4…).
-    internal const string MannequinLogHash = "f4072715f62cf40c17b12cd4f48702f1fa0c680ee424b8b9fa41960e3d65a5d0";   // sous-lot V1.8 : règles 0.15.0
+    // Sous-lot V1.8 : règles 0.15.0 ; seule l'identité des règles change dans l'en-tête (ancienne empreinte b0db8eb4…, puis f4072715…).
+    // Sous-lot V1.8d : moteur 0.27.0, format 21, scénario en schéma 15 ; sans bonus modifié : seul l'en-tête change.
+    internal const string MannequinLogHash = "a10122977907dec395e8792fdeb6aadac54c3b053b4df489e48ae1edc2fc1883";
 }

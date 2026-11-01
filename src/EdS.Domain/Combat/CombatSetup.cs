@@ -479,6 +479,13 @@ namespace EdS.Domain.Combat
 
         /// <summary>Sous-lot 12.6 : utiliser un objet de soin emporté (<see cref="CombatCommand.Item"/>).</summary>
         Consume = 8,
+
+        /// <summary>
+        /// Sous-lot V1.8d : « bonus modifié ». Le bonus d'équipement d'un personnage devient <see cref="CombatCommand.Gear"/> (le total, pas
+        /// une différence) : effet immédiat d'un bonus consommé, remplacé ou fini en cours de session. Appliquée au début de son tick (phase
+        /// <c>setup</c>, juste après les arrivées et avant tout le reste) : tout le tick voit les nouvelles statistiques.
+        /// </summary>
+        Gear = 9,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -493,6 +500,7 @@ namespace EdS.Domain.Combat
         public const string Select = "select";
         public const string Leave = "leave";
         public const string Consume = "consume";
+        public const string Gear = "gear";
 
         /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
@@ -514,6 +522,7 @@ namespace EdS.Domain.Combat
             CombatAction.Select => Select,
             CombatAction.Leave => Leave,
             CombatAction.Consume => Consume,
+            CombatAction.Gear => Gear,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
@@ -571,6 +580,11 @@ namespace EdS.Domain.Combat
         /// <summary>Sous-lot 12.6 : objet de soin d'un <see cref="CombatAction.Consume"/> ; null pour toute autre commande.</summary>
         public string? Item { get; }
 
+        /// <summary>
+        /// Sous-lot V1.8d : nouveau bonus d'équipement (total) d'un <see cref="CombatAction.Gear"/> ; null pour toute autre commande.
+        /// </summary>
+        public GearBonus? Gear { get; }
+
         /// <summary>Commande « utiliser une compétence ».</summary>
         public CombatCommand(long atMs, string actor, string skill, string? target = null)
         {
@@ -587,6 +601,7 @@ namespace EdS.Domain.Combat
             if (action == CombatAction.UseSkill) throw new ArgumentException("Une compétence se lance avec le constructeur qui la nomme.", nameof(action));
             if (action == CombatAction.Move) throw new ArgumentException("Un déplacement se donne avec le constructeur qui porte sa direction.", nameof(action));
             if (action == CombatAction.Consume) throw new ArgumentException("Un soin se donne avec CombatCommand.Use, qui nomme l'objet.", nameof(action));
+            if (action == CombatAction.Gear) throw new ArgumentException("Un bonus modifié se donne avec CombatCommand.SetGear, qui porte le bonus.", nameof(action));
             AtMs = atMs;
             Actor = actor ?? throw new ArgumentNullException(nameof(actor));
             Action = action;
@@ -629,6 +644,20 @@ namespace EdS.Domain.Combat
             Actor = c.Actor;
             Action = c.Action;
             Item = item;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.8d : commande « bonus modifié » : le bonus d'équipement de <paramref name="actor"/> devient <paramref name="gear"/>
+        /// (total : équipement de l'entrée et bonus actifs), au début du tick de <paramref name="atMs"/>.
+        /// </summary>
+        public static CombatCommand SetGear(long atMs, string actor, GearBonus gear) => new CombatCommand(atMs, actor, gear ?? throw new ArgumentNullException(nameof(gear)));
+
+        private CombatCommand(long atMs, string actor, GearBonus gear)
+        {
+            AtMs = atMs;
+            Actor = actor ?? throw new ArgumentNullException(nameof(actor));
+            Action = CombatAction.Gear;
+            Gear = gear;
         }
     }
 
@@ -921,6 +950,21 @@ namespace EdS.Domain.Combat
                 }
                 else if (command.Item != null)
                     errors.Add(new RuleViolation("seul un soin (consume) nomme un objet.", path + ".item"));
+                // Sous-lot V1.8d : un bonus modifié porte le nouveau bonus d'un personnage (entiers de 0 à GearBonus.MaxValue, comme celui de
+                // l'en-tête) ; seule cette commande en porte un.
+                if (command.Action == CombatAction.Gear)
+                {
+                    if (command.Gear is not { } gear) errors.Add(new RuleViolation("bonus d'équipement obligatoire.", path + ".gear"));
+                    else
+                        for (int g = 0; g < GearBonus.Fields.Count; g++)
+                            if (gear[g] < 0 || gear[g] > GearBonus.MaxValue)
+                                errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                                    $"bonus d'équipement {gear[g]} hors de [0, {GearBonus.MaxValue}].", path + ".gear." + GearBonus.Fields[g]));
+                    if (ids.TryGetValue(command.Actor, out int bearer) && !(Combatants[bearer] is CharacterSetup))
+                        errors.Add(new RuleViolation("seul un personnage a un bonus d'équipement (bonus modifié).", path + ".actor"));
+                }
+                else if (command.Gear != null)
+                    errors.Add(new RuleViolation("seul un bonus modifié (gear) porte un bonus d'équipement.", path + ".gear"));
                 if (command.Action == CombatAction.Move)
                 {
                     if (command.Direction is not { } direction || !SpaceLimits.IsDirection(direction))
@@ -1641,6 +1685,27 @@ namespace EdS.Domain.Combat
         }
 
         /// <summary>
+        /// Sous-lot V1.8d : enveloppe du bonus d'équipement de <paramref name="character"/> sur tout le combat : le maximum, champ par champ,
+        /// de son bonus d'entrée et de ceux de ses commandes « bonus modifié » bien formées (une valeur hors de [0, <see cref="GearBonus.MaxValue"/>]
+        /// est refusée par la validation des commandes). Les statistiques dérivées croissent avec chaque champ : cette enveloppe en donne le pire cas.
+        /// </summary>
+        public GearBonus WorstGear(CharacterSetup character)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            var values = new int[GearBonus.Fields.Count];
+            for (int g = 0; g < values.Length; g++) values[g] = character.Gear[g];
+            foreach (CombatCommand command in Commands)
+            {
+                if (command.Action != CombatAction.Gear || command.Gear is not { } gear || !string.Equals(command.Actor, character.Id, StringComparison.Ordinal)) continue;
+                bool wellFormed = true;
+                for (int g = 0; g < values.Length; g++) wellFormed &= gear[g] >= 0 && gear[g] <= GearBonus.MaxValue;
+                if (!wellFormed) continue;
+                for (int g = 0; g < values.Length; g++) values[g] = Math.Max(values[g], gear[g]);
+            }
+            return GearBonus.FromValues(values);
+        }
+
+        /// <summary>
         /// Précontrôle numérique (correctif 6.1, M04 ; complété au correctif 6.1.1, CA-M01). Calcule à l'avance, pour chaque
         /// combattant, tout ce que le moteur calculera à sa construction (statistiques, PV, endurance, défenses, puissance de
         /// chaque attaque), puis vérifie, avant le premier tick et sans rien journaliser :
@@ -1678,12 +1743,15 @@ namespace EdS.Domain.Combat
                             // permanents) ; coefficient effectif de chaque compétence ; bonus talent du pire impact direct (permanent et
                             // conditionnels positifs à leur facteur maximal), compétences et frappes de réaction.
                             ModifierSet modifiers = ModifierSet.For(character);
-                            DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, ModifierSet.Empty, character.Gear);
+                            // Sous-lot V1.8d : le pire bonus d'équipement du combat, champ par champ, entre celui de l'entrée et ceux de ses
+                            // bonus modifiés (les statistiques croissent avec chaque champ) : le précontrôle couvre tout bonus qu'il aura.
+                            GearBonus worstGear = WorstGear(character);
+                            DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, ModifierSet.Empty, worstGear);
                             stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                             stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
                             overflowPath = path + ".class";
                             overflowMessage = "statistiques dérivées hors des limites numériques avec les modificateurs permanents de la classe (maxHealth, endurance.max, statusResistance).";
-                            stats = CombatantStats.ForCharacter(Stats, character.Build, modifiers, character.Gear);
+                            stats = CombatantStats.ForCharacter(Stats, character.Build, modifiers, worstGear);
                             stats.MaxHealth.RoundToInt(RoundingMode.Floor);
                             stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
                             overflowPath = path + ".build.attributes";

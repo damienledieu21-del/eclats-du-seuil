@@ -57,10 +57,11 @@ namespace EdS.Data.Scenarios
         /// <c>consume</c> avec son <c>item</c>. Version 13 (sous-lot V1.2) : <c>shield</c> facultatif sur un personnage (garde du bouclier porté :
         /// <c>damageReduction</c>, <c>costPerBlock</c>, <c>parryWindowMs</c>, toutes obligatoires, bornées par <c>combat.shield</c> des
         /// règles). Version 14 (sous-lot V1.3) : <c>equipment</c> facultatif sur un personnage (effets de l'équipement porté : <c>id</c> de la
-        /// source « item.… » ou « set.… », <c>modifiers</c> et <c>triggers</c>, bornés par <c>combat.equipment</c> des règles). Une version
-        /// antérieure est refusée sans migration : le fichier se met à jour à la main.
+        /// source « item.… » ou « set.… », <c>modifiers</c> et <c>triggers</c>, bornés par <c>combat.equipment</c> des règles). Version 15 (sous-lot
+        /// V1.8d) : action <c>gear</c> (« bonus modifié » d'un personnage) avec son <c>gear</c> (nouveau bonus d'équipement total, mêmes champs et
+        /// bornes que celui d'un personnage). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 14;
+        public const int CurrentSchemaVersion = 15;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -184,6 +185,8 @@ namespace EdS.Data.Scenarios
             }
             var commands = scenario.Commands!.Select(c => c!.Action == CombatActionIds.Consume
                 ? CombatCommand.Use(c.AtMs!.Value, c.Actor!, c.Item!)   // sous-lot 12.6
+                : c.Action == CombatActionIds.Gear
+                ? CombatCommand.SetGear(c.AtMs!.Value, c.Actor!, Gear(c.Gear))   // sous-lot V1.8d
                 : !CombatActionIds.TryParseNamed(c.Action, out CombatAction action)
                 ? new CombatCommand(c.AtMs!.Value, c.Actor!, c.Skill!, c.Target)
                 : action == CombatAction.Move
@@ -320,18 +323,7 @@ namespace EdS.Data.Scenarios
                         // Sous-lot 12.3 : bonus d'équipement par champ connu ; leurs bornes sont vérifiées par la validation du combat.
                         // Revue Codex de la PR #44 : un scénario construit sans le lecteur JSON (objets publics) est contrôlé de même : valeur
                         // présente, un seul bonus par nom.
-                        if (c.Gear is { } gear)
-                        {
-                            var seenGear = new HashSet<string>(StringComparer.Ordinal);
-                            foreach (KeyValuePair<string, int?> entry in gear)
-                                if (GearBonus.FieldIndex(entry.Key) < 0)
-                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.UnknownReference,
-                                        $"bonus d'équipement inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
-                                else if (!seenGear.Add(entry.Key))
-                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.DuplicateId, $"bonus « {entry.Key} » donné deux fois.");
-                                else if (entry.Value is null)
-                                    _report.Add($"{path}.gear.{entry.Key}", ValidationCode.MissingField, "valeur du bonus attendue (entier).");
-                        }
+                        if (c.Gear is { } gear) CheckGear(gear, path + ".gear");
                         break;
                     case "dummy":
                         Present(c.Armor, path + ".armor", "nombre décimal");
@@ -374,16 +366,35 @@ namespace EdS.Data.Scenarios
                         $"valeur inconnue « {a.Center} » ; valeurs possibles : {string.Join(", ", AttackShapeIds.Centers.Keys)}.");
             }
 
+            /// <summary>
+            /// Sous-lot 12.3 : bonus d'équipement par champ connu ; leurs bornes sont vérifiées par la validation du combat. Revue Codex de la
+            /// PR #44 : valeur présente, un seul bonus par nom. Sous-lot V1.8d : le même contrôle pour le bonus d'un bonus modifié.
+            /// </summary>
+            private void CheckGear(List<KeyValuePair<string, int?>> gear, string at)
+            {
+                var seenGear = new HashSet<string>(StringComparer.Ordinal);
+                foreach (KeyValuePair<string, int?> entry in gear)
+                    if (GearBonus.FieldIndex(entry.Key) < 0)
+                        _report.Add($"{at}.{entry.Key}", ValidationCode.UnknownReference,
+                            $"bonus d'équipement inconnu « {entry.Key} » ; bonus possibles : {string.Join(", ", GearBonus.Fields)}.");
+                    else if (!seenGear.Add(entry.Key))
+                        _report.Add($"{at}.{entry.Key}", ValidationCode.DuplicateId, $"bonus « {entry.Key} » donné deux fois.");
+                    else if (entry.Value is null)
+                        _report.Add($"{at}.{entry.Key}", ValidationCode.MissingField, "valeur du bonus attendue (entier).");
+            }
+
             private void CheckCommand(CommandData c, string path)
             {
                 Present(c.AtMs, path + ".atMs", "instant en millisecondes");
                 Present(c.Actor, path + ".actor", "identifiant du combattant");
-                string actions = string.Join(", ", CombatActionIds.Named.Concat(new[] { CombatActionIds.Consume }));
+                string actions = string.Join(", ", CombatActionIds.Named.Concat(new[] { CombatActionIds.Consume, CombatActionIds.Gear }));
                 if (!c.Present.Contains("action"))
                 {
                     Present(c.Skill, path + ".skill", "identifiant de compétence, ou champ action (" + actions + ")");
                     if (c.Present.Contains("item"))
                         _report.Add(path + ".item", ValidationCode.InvalidValue, "seul un soin (action consume) nomme un objet.");
+                    if (c.Present.Contains("gear"))
+                        _report.Add(path + ".gear", ValidationCode.InvalidValue, "seul un bonus modifié (action gear) porte un bonus d'équipement.");
                     if (c.Present.Contains("direction"))
                         _report.Add(path + ".direction", ValidationCode.InvalidValue, "seul un déplacement (action move) a une direction.");
                     if (c.Present.Contains("backward"))
@@ -395,10 +406,21 @@ namespace EdS.Data.Scenarios
                 if (c.Action == CombatActionIds.Consume)
                 {
                     Present(c.Item, path + ".item", "objet de soin emporté « item.… »");
-                    foreach (string field in new[] { "skill", "target", "direction", "backward" }.Where(c.Present.Contains))
+                    foreach (string field in new[] { "skill", "target", "direction", "backward", "gear" }.Where(c.Present.Contains))
                         _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "un soin ne prend que son objet (item).");
                     return;
                 }
+                // Sous-lot V1.8d : un bonus modifié porte son bonus (champs connus, une fois chacun, valeur entière), et rien d'autre ; ses bornes
+                // et la nature de l'acteur (un personnage) sont jugées par la validation du combat.
+                if (c.Action == CombatActionIds.Gear)
+                {
+                    if (Present(c.Gear, path + ".gear", "bonus d'équipement { champ: entier }")) CheckGear(c.Gear!, path + ".gear");
+                    foreach (string field in new[] { "skill", "target", "direction", "backward", "item" }.Where(c.Present.Contains))
+                        _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "un bonus modifié ne prend que son bonus (gear).");
+                    return;
+                }
+                if (c.Present.Contains("gear"))
+                    _report.Add(path + ".gear", ValidationCode.InvalidValue, "seul un bonus modifié (action gear) porte un bonus d'équipement.");
                 if (c.Present.Contains("item"))
                     _report.Add(path + ".item", ValidationCode.InvalidValue, "seul un soin (action consume) nomme un objet.");
                 if (Present(c.Action, path + ".action", actions) && !CombatActionIds.TryParseNamed(c.Action, out action))

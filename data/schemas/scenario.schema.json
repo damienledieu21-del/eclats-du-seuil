@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 14
+      "const": 15
     },
     "kind": {
       "const": "scenario"
@@ -534,9 +534,10 @@
             "stop",
             "select",
             "leave",
-            "consume"
+            "consume",
+            "gear"
           ],
-          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible) ; départ (leave, sous-lot 11.4d : effectif en fin de tick). Soin (consume, sous-lot 12.6) : utiliser l'objet de soin item emporté par le personnage."
+          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible) ; départ (leave, sous-lot 11.4d : effectif en fin de tick). Soin (consume, sous-lot 12.6) : utiliser l'objet de soin item emporté par le personnage. Bonus modifié (gear, sous-lot V1.8d) : le bonus d'équipement du personnage devient gear au début du tick (effet immédiat d'un bonus consommé, remplacé ou fini)."
         },
         "direction": {
           "$ref": "#/$defs/direction",
@@ -550,6 +551,53 @@
           "type": "string",
           "pattern": "^item(\\.[a-z0-9_]+)+$",
           "description": "Sous-lot 12.6 (schéma 12) : objet de soin d'une action consume, et d'elle seule."
+        },
+        "gear": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Sous-lot V1.8d (schéma 15) : action gear (bonus modifié) d'un personnage, et d'elle seule : son nouveau bonus d'équipement total (équipement de l'entrée et bonus actifs), champs absents à 0, appliqué au début du tick de atMs.",
+          "properties": {
+            "physicalPower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "agilePower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "magicPower": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "armor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "magicResistance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "maxHealth": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "maxEndurance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "statusResistance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            }
+          }
         }
       },
       "oneOf": [
@@ -658,6 +706,30 @@
             "not": {
               "required": [
                 "item"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "gear"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "gear"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "gear"
               ]
             }
           }
