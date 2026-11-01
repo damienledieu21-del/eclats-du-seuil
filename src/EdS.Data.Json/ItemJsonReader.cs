@@ -91,6 +91,16 @@ namespace EdS.Data.Json
                         },
                     })) d.Wear = w;
                 },
+                ["boons"] = (v, p) =>   // sous-lot V1.8c (version 7)
+                {
+                    var b = new BoonsData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["normalMinutes"] = (bv, bp) => b.NormalMinutes = input.Int32(bv, bp),
+                        ["superiorMinutes"] = (bv, bp) => b.SuperiorMinutes = input.Int32(bv, bp),
+                        ["masterworkMinutes"] = (bv, bp) => b.MasterworkMinutes = input.Int32(bv, bp),
+                    })) d.Boons = b;
+                },
             });
             return ok ? d : null;
         }
@@ -188,6 +198,8 @@ namespace EdS.Data.Json
                 ["named"] = Track("named", (v, p) => item.Named = input.Boolean(v, p)),   // sous-lot V1.3 (version 4)
                 ["set"] = Track("set", (v, p) => item.Set = input.Text(v, p)),
                 ["effects"] = Track("effects", (v, p) => item.Effects = EquipmentEffectJsonReader.Read(input, v, p, withId: false)),
+                ["boon"] = Track("boon", (v, p) => item.Boon = input.Text(v, p)),   // sous-lot V1.8c (version 7)
+                ["quality"] = Track("quality", (v, p) => item.Quality = input.Text(v, p)),
             });
             return ok ? item : null;
         }

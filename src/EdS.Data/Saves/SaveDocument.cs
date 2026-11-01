@@ -71,6 +71,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V1.4 (version 11) : fabrications tentées (compteur de la clé du tirage).</summary>
         public long? Crafts { get; set; }
 
+        /// <summary>Sous-lot V1.8c (version 12) : bonus actifs (plat, élixir, huile ou pierre d'arme), dans l'ordre des places.</summary>
+        public List<BoonData?>? Boons { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -95,6 +98,19 @@ namespace EdS.Data.Saves
 
         /// <summary>Champs de l'instance effectivement présents (<c>quality</c>, <c>signedBy</c>, <c>wear</c>), pour refuser ceux d'une version qui ne les a pas.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Sous-lot V1.8c : bonus actif lu, avant validation.</summary>
+    public sealed class BoonData
+    {
+        /// <summary>Place : « meal », « elixir » ou « weapon ».</summary>
+        public string? Kind { get; set; }
+
+        /// <summary>Objet consommé (« item.… »).</summary>
+        public string? Item { get; set; }
+
+        /// <summary>Ticks logiques qui restent.</summary>
+        public int? Ticks { get; set; }
     }
 
     /// <summary>Sous-lot V1.3 : propriété tirée d'une instance d'objet, telle que lue.</summary>

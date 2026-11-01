@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 2,
   "kind": "merchants",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "values": [
       {
@@ -344,6 +344,26 @@
       {
         "item": "item.remede_de_l_aube",
         "value": 150
+      },
+      {
+        "item": "item.pierre_a_aiguiser",
+        "value": 45
+      },
+      {
+        "item": "item.huile_d_eclat",
+        "value": 360
+      },
+      {
+        "item": "item.elixir_de_vigueur",
+        "value": 60
+      },
+      {
+        "item": "item.elixir_de_garde",
+        "value": 150
+      },
+      {
+        "item": "item.elixir_du_seuil",
+        "value": 900
       }
     ],
     "merchants": [

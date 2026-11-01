@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 3,
   "kind": "crafting",
-  "contentVersion": "0.4.0-provisoire",
+  "contentVersion": "0.5.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -204,6 +204,108 @@
         },
         "xp": 100,
         "quality": true
+      },
+      {
+        "id": "recipe.pierre_a_aiguiser",
+        "name": "text.recipe.pierre_a_aiguiser",
+        "profession": "forge",
+        "requiredLevel": 1,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.pierre_a_aiguiser",
+          "count": 1
+        },
+        "xp": 15
+      },
+      {
+        "id": "recipe.huile_d_eclat",
+        "name": "text.recipe.huile_d_eclat",
+        "profession": "forge",
+        "requiredLevel": 3,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 1
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.huile_d_eclat",
+          "count": 1
+        },
+        "xp": 35
+      },
+      {
+        "id": "recipe.elixir_de_vigueur",
+        "name": "text.recipe.elixir_de_vigueur",
+        "profession": "herboristerie",
+        "requiredLevel": 2,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.herbe_de_l_aube",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.elixir_de_vigueur",
+          "count": 1
+        },
+        "xp": 25
+      },
+      {
+        "id": "recipe.elixir_de_garde",
+        "name": "text.recipe.elixir_de_garde",
+        "profession": "herboristerie",
+        "requiredLevel": 4,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.herbe_de_l_aube",
+            "count": 3
+          },
+          {
+            "item": "item.defense_de_sanglier",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.elixir_de_garde",
+          "count": 1
+        },
+        "xp": 40
+      },
+      {
+        "id": "recipe.elixir_du_seuil",
+        "name": "text.recipe.elixir_du_seuil",
+        "profession": "herboristerie",
+        "requiredLevel": 6,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.herbe_de_l_aube",
+            "count": 4
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.elixir_du_seuil",
+          "count": 1
+        },
+        "xp": 70
       }
     ],
     "nodes": [

@@ -119,6 +119,21 @@ namespace EdS.Data.Json
                     c.Present.Add("crafts");
                     c.Crafts = input.Int64(v, p);
                 },
+                ["boons"] = (v, p) =>   // sous-lot V1.8c (version 12) : bonus actifs
+                {
+                    c.Present.Add("boons");
+                    c.Boons = input.ReadLimitedList(v, p, BoonKinds.Count, n => $"{n} bonus, au plus {BoonKinds.Count} (un par place).", (e, ip) =>
+                    {
+                        var b = new BoonData();
+                        bool bok = input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["kind"] = (bv, bp) => b.Kind = input.Text(bv, bp),
+                            ["item"] = (bv, bp) => b.Item = input.Text(bv, bp),
+                            ["ticks"] = (bv, bp) => b.Ticks = input.Int32(bv, bp),
+                        });
+                        return bok ? b : null;
+                    });
+                },
             });
             return ok ? c : null;
         }
@@ -404,7 +419,12 @@ namespace EdS.Data.Json
             b.Append("      \"money\": ").Append(c.Money.ToString(CultureInfo.InvariantCulture)).Append(",\n");
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));
-            b.Append("      \"crafts\": ").Append(c.Crafts.ToString(CultureInfo.InvariantCulture)).Append("\n");
+            b.Append("      \"crafts\": ").Append(c.Crafts.ToString(CultureInfo.InvariantCulture)).Append(",\n");
+            // Sous-lot V1.8c (version 12) : bonus actifs, sur une ligne, dans l'ordre des places.
+            if (c.Boons.Any(x => !SaveValidator.IsItemId(x.Item) || x.Ticks < 1 || x.Ticks > BoonKinds.MaxTicks))
+                throw new ArgumentException("Bonus actifs hors du format des sauvegardes.", nameof(c));
+            b.Append("      \"boons\": [").Append(string.Join(", ", c.Boons.Select(x => "{\"kind\": \"" + BoonKinds.Id(x.Kind) + "\", \"item\": " + Quoted(x.Item)
+                + ", \"ticks\": " + x.Ticks.ToString(CultureInfo.InvariantCulture) + "}"))).Append("]\n");
             b.Append("    },\n");
         }
 

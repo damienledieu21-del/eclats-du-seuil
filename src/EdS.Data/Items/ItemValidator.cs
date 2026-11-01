@@ -34,6 +34,12 @@ namespace EdS.Data.Items
 
         /// <summary>Sous-lot 12.6 : objet de soin (potion, remède) ; s'empile, se boit en combat (recharge partagée).</summary>
         Consumable = 2,
+
+        /// <summary>
+        /// Sous-lot V1.8c : objet de bonus (plat, élixir, huile ou pierre d'arme) ; s'empile, se consomme hors combat pour occuper sa place de
+        /// bonus pendant une durée fixée par sa qualité (de 30 minutes à 1 heure de jeu).
+        /// </summary>
+        Boon = 3,
     }
 
     /// <summary>Sous-lot V1.2 : groupe d'une place d'équipement.</summary>
@@ -150,10 +156,18 @@ namespace EdS.Data.Items
         /// <summary>Sous-lot V1.3 : effets de l'objet (texte, modificateurs, déclencheurs), ou null.</summary>
         public ItemEffect? Effect { get; }
 
+        /// <summary>Sous-lot V1.8c : place de bonus d'un objet de bonus (plat, élixir, huile ou pierre d'arme) ; null pour un autre type.</summary>
+        public BoonKind? Boon { get; }
+
+        /// <summary>Sous-lot V1.8c : qualité d'un objet de bonus, qui fixe sa durée (<see cref="ItemCatalog.BoonTicks"/>) ; normale sinon.</summary>
+        public ItemQuality BoonQuality { get; }
+
         internal ItemDefinition(string id, string name, ItemType type, ItemRarity rarity, int stack, string? slot, int requiredLevel, GearBonus bonus,
             long heal = 0, long cooldownMs = 0, ShieldGuard? guard = null, IEnumerable<string>? fits = null, string? icon = null, bool named = false,
-            string? set = null, ItemEffect? effect = null)
+            string? set = null, ItemEffect? effect = null, BoonKind? boon = null, ItemQuality boonQuality = ItemQuality.Normal)
         {
+            Boon = boon;
+            BoonQuality = boonQuality;
             Named = named;
             Set = set;
             Effect = effect;
@@ -371,6 +385,48 @@ namespace EdS.Data.Items
         public IReadOnlyList<int> WearRarityResistPercent { get; }
 
         /// <summary>
+        /// Sous-lot V1.8c : durée d'un objet de bonus de chaque qualité (indice : <see cref="ItemQuality"/>, normale, supérieure,
+        /// chef-d'œuvre), en minutes de jeu, de <see cref="BoonKinds.MinMinutes"/> à <see cref="BoonKinds.MaxMinutes"/>, croissante.
+        /// </summary>
+        public IReadOnlyList<int> BoonMinutes { get; }
+
+        /// <summary>
+        /// Sous-lot V1.8c (choix de Damien : « la qualité décide de la durée ») : durée de l'objet de bonus <paramref name="item"/>, en ticks
+        /// logiques de 50 ms (<see cref="BoonKinds.TicksPerMinute"/> par minute de jeu) ; 0 pour un objet qui n'est pas un objet de bonus.
+        /// </summary>
+        public int BoonTicks(ItemDefinition item)
+        {
+            if (item is null) throw new ArgumentNullException(nameof(item));
+            return item.Boon is null ? 0 : checked(BoonMinutes[(int)item.BoonQuality] * BoonKinds.TicksPerMinute);
+        }
+
+        /// <summary>
+        /// Sous-lot V1.8c : bonus des bonus actifs <paramref name="boons"/> (somme des bonus de leurs objets) ; un objet absent du catalogue ou qui
+        /// n'est pas un objet de bonus ne donne rien (accordé avant, quand la partie reprend).
+        /// </summary>
+        public GearBonus BoonBonus(IEnumerable<SavedBoon> boons)
+        {
+            GearBonus total = GearBonus.None;
+            foreach (SavedBoon b in boons ?? throw new ArgumentNullException(nameof(boons)))
+                if (TryGetItem(b.Item, out ItemDefinition item) && item.Boon == b.Kind) total += item.Bonus;
+            return total;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.8c : plus grande valeur que les bonus actifs peuvent ajouter à la statistique <paramref name="stat"/> : pour chaque
+        /// place de bonus, l'objet de bonus de cette place au plus fort sur elle (une seule par place). Comptée avec <see cref="WornBound"/>
+        /// dans le pire cumul admis par le combat.
+        /// </summary>
+        public long BoonBound(int stat)
+        {
+            if (stat < 0 || stat >= GearBonus.Fields.Count) throw new ArgumentOutOfRangeException(nameof(stat));
+            long sum = 0;
+            for (int k = 0; k < BoonKinds.Count; k++)
+                sum = checked(sum + Items.Where(i => i.Boon == (BoonKind)k).Select(i => (long)i.Bonus[stat]).DefaultIfEmpty(0).Max());
+            return sum;
+        }
+
+        /// <summary>
         /// Sous-lot V1.8 (réponse de Damien du 31 octobre 2026 : « l'usure dépend du niveau et de la rareté ») : résistance à l'usure d'une
         /// pièce, en pour cent : <c>levelResistPercent × (niveau requis − 1) + rarityResistPercent[rareté]</c>.
         /// </summary>
@@ -384,8 +440,10 @@ namespace EdS.Data.Items
         internal ItemCatalog(int schemaVersion, string contentVersion, IEnumerable<EquipmentPlace> places, int inventorySize, IEnumerable<StartingItem> starting,
             IEnumerable<ItemDefinition> items, IEnumerable<LootTable> loot, IEnumerable<ItemSet>? sets = null, IEnumerable<PropertyDefinition>? properties = null,
             IEnumerable<RarityRoll>? rarityRolls = null, int superiorPercent = 0, int masterworkPercent = 0, int wearMax = ItemValidator.DefaultWearMax,
-            int wearPerFullHealth = 0, int wearLevelResistPercent = 0, IEnumerable<int>? wearRarityResistPercent = null)
+            int wearPerFullHealth = 0, int wearLevelResistPercent = 0, IEnumerable<int>? wearRarityResistPercent = null, IEnumerable<int>? boonMinutes = null)
         {
+            BoonMinutes = Frozen.List(boonMinutes ?? new[] { BoonKinds.MinMinutes, BoonKinds.MinMinutes, BoonKinds.MinMinutes }, nameof(boonMinutes));
+            if (BoonMinutes.Count != 3) throw new ArgumentException("Trois durées attendues (normale, supérieure, chef-d'œuvre).", nameof(boonMinutes));
             SuperiorPercent = superiorPercent;
             MasterworkPercent = masterworkPercent;
             WearMax = wearMax;
@@ -692,10 +750,12 @@ namespace EdS.Data.Items
         /// leurs bornes par niveau). Version 5 (sous-lot V1.4) : <c>quality</c> (part du bonus de base ajoutée par la qualité supérieure et
         /// par un chef-d'œuvre, en pour cent) et <c>wear</c> (solidité d'une pièce neuve, points perdus pour des dégâts reçus égaux aux PV
         /// maximaux). Version 6 (sous-lot V1.8) : <c>wear.levelResistPercent</c> et <c>wear.rarityResistPercent</c> (résistance à l'usure par
-        /// niveau requis et par rareté : réponse de Damien du 31 octobre 2026). Une version antérieure est refusée : le fichier se met à jour à
-        /// la main.
+        /// niveau requis et par rareté : réponse de Damien du 31 octobre 2026). Version 7 (sous-lot V1.8c) : type <c>boon</c> (objet de bonus :
+        /// <c>stack</c>, <c>boon</c> « meal », « elixir » ou « weapon », <c>quality</c> « normal », « superior » ou « masterwork », <c>bonus</c>
+        /// aux statistiques) et <c>boons</c> (durée d'un objet de bonus de chaque qualité, en minutes de jeu, de 30 à 60). Une version antérieure
+        /// est refusée : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 6;
+        public const int CurrentSchemaVersion = 7;
 
         /// <summary>Sous-lot V1.4 : part du bonus de base ajoutée par une qualité, au plus (le bonus de qualité ne dépasse jamais le bonus de base).</summary>
         public const int MaxQualityPercent = 100;
@@ -751,6 +811,15 @@ namespace EdS.Data.Items
             ["equipment"] = ItemType.Equipment,
             ["material"] = ItemType.Material,
             ["consumable"] = ItemType.Consumable,
+            ["boon"] = ItemType.Boon,   // sous-lot V1.8c (version 7)
+        });
+
+        /// <summary>Sous-lot V1.8c : qualités d'un objet de bonus (elles fixent sa durée).</summary>
+        public static IReadOnlyDictionary<string, ItemQuality> BoonQualities { get; } = new ReadOnlyDictionary<string, ItemQuality>(new Dictionary<string, ItemQuality>(StringComparer.Ordinal)
+        {
+            ["normal"] = ItemQuality.Normal,
+            ["superior"] = ItemQuality.Superior,
+            ["masterwork"] = ItemQuality.Masterwork,
         });
 
         /// <summary>Sous-lot V1.2 : groupes des places.</summary>
@@ -786,12 +855,15 @@ namespace EdS.Data.Items
             "named" => item.Named != null,
             "set" => item.Set != null,
             "effects" => item.Effects != null,
+            "boon" => item.Boon != null,
+            "quality" => item.Quality != null,
             _ => false,
         };
 
         private static readonly string[] EquipmentFields = { "slot", "requiredLevel", "bonus", "guard", "fits", "named", "set", "effects" };
         private static readonly string[] MaterialFields = { "stack" };
         private static readonly string[] ConsumableFields = { "stack", "heal", "cooldownMs" };
+        private static readonly string[] BoonFields = { "stack", "boon", "quality", "bonus" };   // sous-lot V1.8c
 
         public static ItemCatalogLoadResult Validate(ItemCatalogDocument document, GameData data, ValidationReport? report = null)
         {
@@ -916,9 +988,26 @@ namespace EdS.Data.Items
                         else rarityResist[i] = v;
                     }
             }
+            // Sous-lot V1.8c (version 7) : durée des objets de bonus selon leur qualité.
+            int[] boonMinutes = { BoonKinds.MinMinutes, BoonKinds.MinMinutes, BoonKinds.MinMinutes };
+            if (d.Boons is null) Missing(report, "$.data.boons", "durée des objets de bonus : normalMinutes, superiorMinutes, masterworkMinutes");
+            else
+            {
+                (int? value, string field)[] durations = { (d.Boons.NormalMinutes, "normalMinutes"), (d.Boons.SuperiorMinutes, "superiorMinutes"), (d.Boons.MasterworkMinutes, "masterworkMinutes") };
+                for (int q = 0; q < durations.Length; q++)
+                {
+                    string path = "$.data.boons." + durations[q].field;
+                    if (durations[q].value is not int minutes) Missing(report, path, "minutes de jeu");
+                    else if (minutes < BoonKinds.MinMinutes || minutes > BoonKinds.MaxMinutes)
+                        report.Add(path, ValidationCode.OutOfRange, $"durée hors de [{BoonKinds.MinMinutes}, {BoonKinds.MaxMinutes}] minutes de jeu.");
+                    else if (q > 0 && durations[q - 1].value is int shorter && minutes < shorter)
+                        report.Add(path, ValidationCode.InvalidValue, "une qualité plus haute ne dure pas moins longtemps.");
+                    else boonMinutes[q] = minutes;
+                }
+            }
             if (!report.IsValid || document.ContentVersion is null) return new ItemCatalogLoadResult(report, null);
             var catalog = new ItemCatalog(document.SchemaVersion!.Value, document.ContentVersion, places, d.InventorySize!.Value, starting, items, loot, sets,
-                properties, rolls, superior, masterwork, wearMax, perFullHealth, levelResist, rarityResist);
+                properties, rolls, superior, masterwork, wearMax, perFullHealth, levelResist, rarityResist, boonMinutes);
             // Chaque objet qui tire des propriétés en a assez de possibles pour sa sorte de place.
             for (int i = 0; i < d.Items!.Count; i++)
                 if (d.Items[i] is { Id: string id } && catalog.TryGetItem(id, out ItemDefinition item) && catalog.IsRollable(item)
@@ -928,16 +1017,30 @@ namespace EdS.Data.Items
             // Remarque de Codex sur la PR #78 : le pire cumul de l'équipement porté (bonus de base, propriétés tirées, ensembles) reste dans la
             // limite du combat (CombatSetup.Validate : chaque bonus d'équipement de 0 à GearBonus.MaxValue), sinon le personnage qui le porte
             // ne pourrait plus entrer dans un combat.
+            // Sous-lot V1.8c : les trois places de bonus s'y ajoutent (l'objet de bonus le plus fort de chaque place).
             for (int stat = 0; stat < GearBonus.Fields.Count; stat++)
             {
                 (long baseBound, long rolledBound, long setBound) = catalog.WornBound(stat);
-                long total = checked(baseBound + rolledBound + setBound);
+                long boonBound = catalog.BoonBound(stat);
+                long total = checked(baseBound + rolledBound + setBound + boonBound);
                 if (total <= GearBonus.MaxValue) continue;
-                report.Add(WornBoundPath(d, catalog, stat, rolledBound, setBound), ValidationCode.LimitExceeded,
+                string where = boonBound >= baseBound && boonBound >= rolledBound && boonBound >= setBound ? BoonBoundPath(d, catalog, stat)
+                    : WornBoundPath(d, catalog, stat, rolledBound, setBound);
+                report.Add(where, ValidationCode.LimitExceeded,
                     $"pire cumul de « {GearBonus.Fields[stat]} » sur l'équipement porté : {total} (objets {baseBound}, propriétés tirées {rolledBound}, " +
-                    $"ensembles {setBound}), au plus {GearBonus.MaxValue} (limite du combat).");
+                    $"ensembles {setBound}, bonus actifs {boonBound}), au plus {GearBonus.MaxValue} (limite du combat).");
             }
             return report.IsValid ? new ItemCatalogLoadResult(report, catalog) : new ItemCatalogLoadResult(report, null);
+        }
+
+        /// <summary>Sous-lot V1.8c : chemin d'un pire cumul dominé par les bonus actifs : l'objet de bonus au plus fort bonus sur cette statistique.</summary>
+        private static string BoonBoundPath(ItemCatalogData d, ItemCatalog catalog, int stat)
+        {
+            int strongest = -1, value = -1;
+            for (int i = 0; d.Items != null && i < d.Items.Count; i++)
+                if (d.Items[i]?.Id is string id && catalog.TryGetItem(id, out ItemDefinition item) && item.Boon != null && item.Bonus[stat] > value)
+                { value = item.Bonus[stat]; strongest = i; }
+            return strongest >= 0 ? $"$.data.items[{strongest}].bonus.{GearBonus.Fields[stat]}" : "$.data.items";
         }
 
         /// <summary>
@@ -1201,6 +1304,42 @@ namespace EdS.Data.Items
             return ok ? new EquipmentPlace(slot.Id!, accepts, group, required, requiredBy, guard, effects) : null;
         }
 
+        /// <summary>
+        /// Sous-lot V1.8c : un objet de bonus : place de bonus connue (<c>boon</c>), qualité connue (<c>quality</c>, qui fixe sa durée), bonus aux
+        /// statistiques connus, bornés et non tous nuls (un objet de bonus sans effet n'aurait aucun sens) ; sa pile est déjà contrôlée.
+        /// </summary>
+        private static ItemDefinition? CheckBoon(ItemData item, string path, ItemRarity rarity, bool ok, ValidationReport report)
+        {
+            BoonKind kind = default;
+            if (item.Boon is null) { Missing(report, path + ".boon", string.Join(", ", BoonKinds.Ids)); ok = false; }
+            else if (!BoonKinds.TryParse(item.Boon, out kind))
+            {
+                report.Add(path + ".boon", ValidationCode.UnknownReference, $"place de bonus inconnue « {item.Boon} » ; valeurs possibles : {string.Join(", ", BoonKinds.Ids)}.");
+                ok = false;
+            }
+            ItemQuality quality = ItemQuality.Normal;
+            if (item.Quality is null) { Missing(report, path + ".quality", string.Join(", ", BoonQualities.Keys)); ok = false; }
+            else if (!BoonQualities.TryGetValue(item.Quality, out quality))
+            {
+                report.Add(path + ".quality", ValidationCode.UnknownReference, $"qualité inconnue « {item.Quality} » ; valeurs possibles : {string.Join(", ", BoonQualities.Keys)}.");
+                ok = false;
+            }
+            var values = new int[GearBonus.Fields.Count];
+            if (item.Bonus is null) { Missing(report, path + ".bonus", "bonus aux statistiques"); ok = false; }
+            else
+            {
+                bool before = ok;
+                values = CheckBonusMap(item.Bonus, path + ".bonus", report, ref ok);
+                if (before && ok && values.All(v => v == 0))
+                {
+                    report.Add(path + ".bonus", ValidationCode.InvalidValue, "un objet de bonus donne au moins un bonus non nul.");
+                    ok = false;
+                }
+            }
+            return ok ? new ItemDefinition(item.Id!, item.Name!, ItemType.Boon, rarity, item.Stack!.Value, null, 1, GearBonus.FromValues(values), icon: item.Icon,
+                boon: kind, boonQuality: quality) : null;
+        }
+
         private static ItemDefinition? CheckItem(ItemData item, string path, List<EquipmentPlace> places, int maxLevel, HashSet<string> trees, CombatRules rules,
             HashSet<string> ids, ValidationReport report)
         {
@@ -1222,15 +1361,15 @@ namespace EdS.Data.Items
                 report.Add(path + ".icon", ValidationCode.InvalidValue, "icône invalide : minuscules, chiffres et « _ », 64 caractères au plus.");
                 ok = false;
             }
-            if (item.Type is null) { Missing(report, path + ".type", "equipment, material ou consumable"); return null; }
+            if (item.Type is null) { Missing(report, path + ".type", "equipment, material, consumable ou boon"); return null; }
             if (!Types.TryGetValue(item.Type, out ItemType type))
             {
                 report.Add(path + ".type", ValidationCode.UnknownReference, $"type d'objet inconnu « {item.Type} » ; valeurs possibles : {string.Join(", ", Types.Keys)}.");
                 return null;
             }
-            string[] own = type == ItemType.Equipment ? EquipmentFields : type == ItemType.Material ? MaterialFields : ConsumableFields;
+            string[] own = type == ItemType.Equipment ? EquipmentFields : type == ItemType.Material ? MaterialFields : type == ItemType.Boon ? BoonFields : ConsumableFields;
             // Revue Codex de la PR #44 : un champ d'un autre type est refusé qu'il vienne du lecteur JSON (Present) ou d'un objet public renseigné.
-            foreach (string field in EquipmentFields.Concat(ConsumableFields).Distinct().Where(f => !own.Contains(f) && (item.Present.Contains(f) || IsSet(item, f))))
+            foreach (string field in EquipmentFields.Concat(ConsumableFields).Concat(BoonFields).Distinct().Where(f => !own.Contains(f) && (item.Present.Contains(f) || IsSet(item, f))))
             {
                 report.Add($"{path}.{field}", ValidationCode.InvalidValue, $"champ « {field} » sans objet pour le type {item.Type}.");
                 ok = false;
@@ -1240,6 +1379,7 @@ namespace EdS.Data.Items
                 if (item.Stack is null) { Missing(report, path + ".stack", "taille d'une pile"); ok = false; }
                 else if (item.Stack < 1 || item.Stack > MaxStack) { report.Add(path + ".stack", ValidationCode.OutOfRange, $"pile hors de [1, {MaxStack}]."); ok = false; }
                 long heal = 0, cooldown = 0;
+                if (type == ItemType.Boon) return CheckBoon(item, path, rarity, ok, report);
                 if (type == ItemType.Consumable)
                 {
                     // Sous-lot 12.6 : un objet de soin rend des PV (au plus jusqu'au maximum) et lance la recharge partagée.
