@@ -72,15 +72,12 @@ namespace EdS.World
         /// <summary>
         /// Pièces portées à l'entrée dans la zone, celles du combat (le moteur garde l'équipement d'entrée) : c'est elles que l'usure use, où
         /// qu'elles soient maintenant (relecture indépendante de la PR #80 : changer d'équipement après l'entrée n'évite pas l'usure).
+        /// Remarque de Codex sur la PR #83 : suivies par <b>identité</b> (la même instance, que l'inventaire déplace entre les places et le
+        /// sac ; chaque usure ou réparation remplace l'instance suivie par la nouvelle), jamais par valeur : une copie identique n'est pas
+        /// confondue avec la pièce du combat, et une pièce rangée dans le sac, réparée là puis remise, continue de s'user.
         /// </summary>
         private IReadOnlyList<ItemStack> _entryPieces = Array.Empty<ItemStack>();
 
-        /// <summary>
-        /// Relecture indépendante de la PR #83 : place où chaque pièce du combat était portée à l'entrée (même ordre que
-        /// <see cref="_entryPieces"/>). Une réparation pièce par pièce ne touche une pièce du combat que par sa place, jamais par sa valeur
-        /// (deux épées identiques, l'une portée, l'autre dans le sac).
-        /// </summary>
-        private IReadOnlyList<string> _entryPlaces = Array.Empty<string>();
 
         /// <summary>Dégâts reçus depuis la dernière usure appliquée (combat en cours).</summary>
         private long _pendingDamage;
@@ -216,22 +213,24 @@ namespace EdS.World
             if (piece is null) return RepairRefusal.NothingToRepair;
             long price = RepairPrice(piece);
             if (!Coins.TryAdd(Money, -price, out long left)) return RepairRefusal.NotEnoughMoney;
-            ItemStack? before = Inventory.RepairOne(slot, place);
-            if (before is null) return RepairRefusal.NothingToRepair;
-            // La pièce réparée, si elle est une des pièces du combat, y reste (même instance, usure pleine). Relecture de la PR #83 : seule une
-            // pièce portée peut l'être, reconnue par sa place (pas par sa valeur : deux épées identiques, l'une portée, l'autre dans le sac).
-            int k = -1;
-            for (int i = 0; slot != null && k < 0 && i < _entryPieces.Count && i < _entryPlaces.Count; i++)
-                if (_entryPlaces[i] == slot && _entryPieces[i].Equals(before)) k = i;
-            if (k >= 0)
-            {
-                var pieces = _entryPieces.ToList();
-                pieces[k] = before.WithWear(null);
-                _entryPieces = pieces;
-            }
+            ItemStack? before = Inventory.RepairOne(slot, place, out ItemStack? repaired);
+            if (before is null || repaired is null) return RepairRefusal.NothingToRepair;
+            // La pièce réparée, si elle est une des pièces du combat (portée ou rangée dans le sac depuis l'entrée), le reste : remarque de
+            // Codex sur la PR #83, reconnue par son identité (pas par sa valeur : une copie identique n'est pas la pièce du combat).
+            _entryPieces = Track(_entryPieces, new[] { (before, repaired) });
             _character = _character.WithMoney(left);
             paid = price;
             return RepairRefusal.None;
+        }
+
+        /// <summary>Remarque de Codex sur la PR #83 : remplace chaque pièce suivie par sa nouvelle instance (même identité seulement).</summary>
+        private static IReadOnlyList<ItemStack> Track(IReadOnlyList<ItemStack> tracked, IEnumerable<(ItemStack Before, ItemStack After)> replaced)
+        {
+            var pieces = tracked.ToList();
+            foreach ((ItemStack before, ItemStack after) in replaced)
+                for (int i = 0; i < pieces.Count; i++)
+                    if (ReferenceEquals(pieces[i], before)) pieces[i] = after;
+            return pieces;
         }
 
         /// <summary>
@@ -266,8 +265,8 @@ namespace EdS.World
             if (Inventory.Damaged().Count == 0) return RepairRefusal.NothingToRepair;
             long price = RepairPrice();
             if (!Coins.TryAdd(Money, -price, out long left)) return RepairRefusal.NotEnoughMoney;
-            Inventory.RepairAll();
-            _entryPieces = _entryPieces.Select(p => p.WithWear(null)).ToList();   // réparées, ce sont toujours les pièces du combat
+            // Réparées, ce sont toujours les pièces du combat (remarque de Codex sur la PR #83 : suivies par identité).
+            _entryPieces = Track(_entryPieces, Inventory.RepairAll());
             _character = _character.WithMoney(left);
             paid = price;
             return RepairRefusal.None;

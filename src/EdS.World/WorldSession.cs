@@ -253,7 +253,21 @@ namespace EdS.World
         /// Place à garder libre au registre pour convertir une sauvegarde d'avant V1.8 : ses clés (compétences, <see cref="PlayerCharacters.PlacesKey"/>),
         /// les morts possibles d'un tick (combattants de la zone, chefs et vies suivantes compris, avec une large marge) et la découverte.
         /// </summary>
-        private static int MigrationRoom(CombatSetup zoneSetup) => checked(zoneSetup.Combatants.Count * 2 + 256);
+        private static int MigrationRoom(int combatants) => checked(combatants * 2 + 256);
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #83 : expérience que le personnage de <paramref name="save"/> garde à l'entrée, après la conversion d'une
+        /// sauvegarde d'avant V1.8 (<see cref="PlayerCharacters.MigrateXp"/>), et si cette conversion a lieu (<paramref name="migrating"/>) :
+        /// clé <see cref="PlayerCharacters.PlacesKey"/> absente et registre assez grand pour elle (<see cref="MigrationRoom"/>, avec les
+        /// <paramref name="combatants"/> de la zone). Une seule règle pour le réglage de la zone (<see cref="ForPlayer"/>) et l'entrée du
+        /// personnage : les créatures sont réglées au niveau qu'il garde vraiment.
+        /// </summary>
+        private static long RetainedXp(WorldSave save, SavedCharacter character, CharacterProgression progression, int combatants, out bool migrating)
+        {
+            migrating = !save.Consumed.Contains(PlayerCharacters.PlacesKey)
+                && SaveValidator.MaxConsumed - save.Consumed.Count >= MigrationRoom(combatants);
+            return migrating ? PlayerCharacters.MigrateXp(character.Xp, progression) : character.Xp;
+        }
 
         /// <summary>
         /// Relecture indépendante de la PR #82 : compétences qu'une sauvegarde d'avant V1.8 connaissait déjà, inscrites comme données sans être
@@ -304,14 +318,12 @@ namespace EdS.World
             // l'expérience est convertie aux nouveaux seuils (le personnage garde son ancien niveau), une seule fois : la clé est inscrite avec
             // les compétences à l'entrée. Seulement si le registre a largement la place de cette clé (sinon elle ne serait pas gardée et la
             // conversion serait refaite) ; sinon l'expérience reste telle quelle et la barre est réparée plus bas.
-            bool migrating = !given.Contains(PlayerCharacters.PlacesKey);
-            if (migrating && SaveValidator.MaxConsumed - save.Consumed.Count >= MigrationRoom(zoneSetup))
+            long retained = RetainedXp(save, _character, _progression, zoneSetup.Combatants.Count, out bool migrating);
+            if (migrating)
             {
-                long xp = PlayerCharacters.MigrateXp(_character.Xp, _progression);
-                XpMigrated = xp != _character.Xp;
-                _character = _character.WithXp(xp);
+                XpMigrated = retained != _character.Xp;
+                _character = _character.WithXp(retained);
             }
-            else migrating = false;
             // Relecture indépendante de la PR #82 : au premier chargement d'une sauvegarde d'avant V1.8, ce que le personnage connaissait déjà
             // est donné sans être placé (Provocation, en réserve avec les anciennes règles, ne remplit pas une place vidée par le joueur).
             KnownBefore = PlayerCharacters.KnownBeforePlaces(_character, _progression, given.Contains);
@@ -363,8 +375,7 @@ namespace EdS.World
             // Sous-lot V1.4 : point de départ du relevé des dégâts reçus, et pièces portées à l'entrée (celles du combat de cette session).
             _lastTaken = Zone.Engine.View(_character.Id).Counters.DamageTaken;
             List<string> entryPlaces = Inventory.Places().Where(p => Inventory.WornInstanceAt(p) is { } x && items.Wears(items.Item(x.Item))).ToList();
-            _entryPieces = entryPlaces.Select(p => Inventory.WornInstanceAt(p)!).ToList();
-            _entryPlaces = entryPlaces;   // relecture de la PR #83 : la place de chaque pièce du combat
+            _entryPieces = entryPlaces.Select(p => Inventory.WornInstanceAt(p)!).ToList();   // les instances mêmes (suivi par identité)
             EnteredGear = setup.Gear;
             EnteredEffects = setup.Equipment;
         }
@@ -501,10 +512,17 @@ namespace EdS.World
 
         /// <summary>
         /// Sous-lot V1.8 (sujet 4, zones en mélange) : <paramref name="zone"/> réglée pour le niveau du personnage de la sauvegarde
-        /// (<see cref="ZoneDefinition.ForLevel"/>) ; telle quelle sans personnage ni réglage.
+        /// (<see cref="ZoneDefinition.ForLevel"/>) ; telle quelle sans personnage ni réglage. Remarque de Codex sur la PR #83 : le niveau est
+        /// celui que le personnage garde à l'entrée, après la conversion d'une sauvegarde d'avant V1.8 (<see cref="RetainedXp"/>, même règle
+        /// et même condition de place au registre que l'entrée ; la mise à l'échelle ne change pas le nombre de combattants).
         /// </summary>
-        private static ZoneDefinition ForPlayer(ZoneDefinition zone, WorldSave save, CharacterProgression progression) =>
-            save.Character is SavedCharacter c && progression != null ? zone.ForLevel(PlayerCharacters.Level(c, progression)) : zone;
+        private static ZoneDefinition ForPlayer(ZoneDefinition zone, WorldSave save, CharacterProgression progression)
+        {
+            if (save.Character is not SavedCharacter c || progression is null) return zone;
+            int combatants = ZoneSetups.For(zone, save.Consumed).Combatants.Count;
+            long xp = RetainedXp(save, c, progression, combatants, out _);
+            return zone.ForLevel(progression.LevelFor(xp));
+        }
 
         private readonly BossFight? _boss;
         private readonly List<BossFight> _fights = new List<BossFight>();

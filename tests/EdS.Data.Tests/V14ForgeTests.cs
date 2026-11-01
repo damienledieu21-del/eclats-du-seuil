@@ -585,6 +585,75 @@ public class V14ForgeTests
         Assert.Null(w.Inventory.Stacks.Single(x => x.Item == "item.epee_du_novice").Wear);   // celle du sac reste à neuf
     }
 
+    /// <summary>Forge, loup robuste qui arrive après 20 s ; le héros porte une épée entamée (50) et a, au besoin, une copie identique au sac.</summary>
+    private WorldSession ForgeWithWolf(ItemCatalog catalog, bool copyInBag)
+    {
+        ZoneDefinition forge = Zone(AtForge.X, AtForge.Z, s =>
+        {
+            JsonObject wolf = s["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => c["id"]!.GetValue<string>() == "loup1");
+            wolf["health"] = 400;
+            wolf["position"] = new JsonArray(-15, -4);
+            wolf["arrivalMs"] = 20_000;
+        });
+        SavedCharacter outfit = Inventory.Outfit(Hero(10_000), catalog);
+        ItemStack[] bag = copyInBag ? new[] { new ItemStack("item.epee_du_novice", 1, wear: 50) } : Array.Empty<ItemStack>();
+        SavedCharacter hero = outfit.WithItems(bag, outfit.Equipment.ToDictionary(e => e.Key, e => e.Key == "weapon" ? new ItemStack(e.Value, 1, wear: 50) : new ItemStack(e.Value, 1)));
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), forge, ShippedData, Progression, catalog, Book(forge),
+            Crafting(forge), market: new Market(ShippedMerchants));
+        w.Step();
+        return w;
+    }
+
+    private static WearReport FightWolf(WorldSession w)
+    {
+        WearReport? report = null;
+        for (int i = 0; i < 6000 && report is null; i++)
+        {
+            if (i % 20 == 1)
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", "loup1")); }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException) { }
+            report = w.Step().Wear;
+        }
+        Assert.NotNull(report);
+        Assert.True(report!.Lost > 0);
+        return report;
+    }
+
+    [Fact]
+    public void Piece_du_combat_rangee_reparee_au_sac_puis_remise_s_use_encore()
+    {
+        // Remarque de Codex sur la PR #83 : l'épée du combat rangée dans le sac, réparée là (RepairPiece sans place portée), puis remise :
+        // elle reste la pièce du combat et s'use au combat suivant.
+        ItemCatalog harsh = ItemsMutated(r => r["data"]!["wear"]!["perFullHealth"] = 100).Catalog!;
+        WorldSession w = ForgeWithWolf(harsh, copyInBag: false);
+        Assert.Equal(InventoryRefusal.None, w.Unequip("weapon"));
+        int place = w.Inventory.Stacks.ToList().FindIndex(x => x.Item == "item.epee_du_novice");
+        Assert.Equal(RepairRefusal.None, w.RepairPiece(null, null, place, out _));
+        Assert.Null(w.Inventory.Stacks[place].Wear);
+        Assert.Equal(InventoryRefusal.None, w.Equip(place));
+        Assert.Null(w.Inventory.WornInstanceAt("weapon")!.Wear);
+        WearReport report = FightWolf(w);
+        Assert.Equal(Math.Max(0, harsh.WearMax - report.Lost), harsh.WearLeft(w.Inventory.WornInstanceAt("weapon")!));
+    }
+
+    [Fact]
+    public void Copie_identique_au_sac_jamais_prise_pour_la_piece_du_combat()
+    {
+        // Remarque de Codex sur la PR #83 : l'épée du combat (50) rangée dans le sac après une copie identique (50). Réparée au sac, puis
+        // au combat suivant, c'est elle qui s'use ; la copie, jamais suivie, ne change pas.
+        ItemCatalog harsh = ItemsMutated(r => r["data"]!["wear"]!["perFullHealth"] = 100).Catalog!;
+        WorldSession w = ForgeWithWolf(harsh, copyInBag: true);
+        Assert.Equal(InventoryRefusal.None, w.Unequip("weapon"));
+        Assert.Equal(new int?[] { 50, 50 }, w.Inventory.Stacks.Where(x => x.Item == "item.epee_du_novice").Select(x => x.Wear));
+        int entry = w.Inventory.Stacks.ToList().FindLastIndex(x => x.Item == "item.epee_du_novice");
+        int copy = w.Inventory.Stacks.ToList().FindIndex(x => x.Item == "item.epee_du_novice");
+        Assert.NotEqual(copy, entry);
+        Assert.Equal(RepairRefusal.None, w.RepairPiece(null, null, entry, out _));
+        WearReport report = FightWolf(w);
+        Assert.Equal(50, w.Inventory.Stacks[copy].Wear);   // la copie n'est pas comptée
+        Assert.Equal(Math.Max(0, harsh.WearMax - report.Lost), harsh.WearLeft(w.Inventory.Stacks[entry]));   // la pièce du combat s'use
+    }
+
     [Fact]
     public void Reparation_a_la_forge_contre_de_l_or_tout_ou_rien()
     {

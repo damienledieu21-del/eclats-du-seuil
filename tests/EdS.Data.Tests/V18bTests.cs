@@ -126,6 +126,29 @@ public class V18bTests
     }
 
     [Fact]
+    public void Ancienne_sauvegarde_la_zone_suit_le_niveau_garde_apres_la_conversion()
+    {
+        // Remarque de Codex sur la PR #83 : 1 620 points d'avant V1.8 (niveau 10 ; niveau 8 aux nouveaux seuils sans conversion). Les
+        // créatures sont réglées pour le niveau 10, celui que le personnage garde, comme après une halte.
+        ZoneDefinition z = Vallons;
+        long At(int level) => z.ForLevel(level).PopulationOf("loup1")!.Template.Health!.Value;
+        Assert.NotEqual(At(8), At(10));
+        var old = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithXp(1620)), z, ShippedData, Progression, ItemsCatalog);
+        Assert.True(old.XpMigrated);
+        Assert.Equal((10, 10), (old.Level, old.EnteredLevel));
+        Assert.Equal(At(10), old.Definition!.PopulationOf("loup1")!.Template.Health);
+        var halt = new WorldSession(old.Save(), z, ShippedData, Progression, ItemsCatalog);
+        Assert.False(halt.XpMigrated);
+        Assert.Equal(At(10), halt.Definition!.PopulationOf("loup1")!.Template.Health);
+        // Sans la place au registre pour la conversion : ni conversion ni mise à l'échelle du niveau 10 (même règle aux deux endroits).
+        string[] full = Enumerable.Range(0, SaveValidator.MaxConsumed - 200).Select(i => $"probe/k{i:D6}").ToArray();
+        var crowded = new WorldSession(new WorldSave("zone.vallons", 0, 0, full, Hero().WithXp(1620)), z, ShippedData, Progression, ItemsCatalog);
+        Assert.False(crowded.XpMigrated);
+        Assert.Equal((8, 8), (crowded.Level, crowded.EnteredLevel));
+        Assert.Equal(At(8), crowded.Definition!.PopulationOf("loup1")!.Template.Health);
+    }
+
+    [Fact]
     public void Les_creatures_montent_au_niveau_du_joueur_moins_deux()
     {
         ZoneDefinition z = Vallons;
