@@ -122,18 +122,20 @@ namespace EdS.World
                     if (Inventory.Count(t.Key) >= t.Value) return TradeRefusal.Reserved;
                     return Inventory.Equipped.Values.Contains(t.Key) ? TradeRefusal.Equipped : TradeRefusal.NotEnough;
                 }
-            var paid = new long[lots.Count];
-            long gain = 0;
-            for (int i = 0; i < lots.Count; i++)
-            {
-                paid[i] = checked(market.UnitPrice(merchant, lots[i].Item) * lots[i].Count);
-                gain = checked(gain + paid[i]);
-            }
-            if (!Coins.TryAdd(Money, gain, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();
             var removed = new IReadOnlyList<ItemStack>[lots.Count];
             for (int i = 0; i < lots.Count; i++)
                 if (trial.Remove(lots[i].Item, lots[i].Count, out removed[i]) != InventoryRefusal.None) return TradeRefusal.NotEnough;
+            // Sous-lot V1.8 (réponse de Damien du 31 octobre 2026) : une pièce usée se vend moins cher, selon sa solidité (WornPrice).
+            var paid = new long[lots.Count];
+            long gain = 0;
+            for (int i = 0; i < lots.Count; i++)
+            {
+                long unit = market.UnitPrice(merchant, lots[i].Item);
+                foreach (ItemStack s in removed[i]) paid[i] = checked(paid[i] + WornPrice(unit, s) * s.Count);
+                gain = checked(gain + paid[i]);
+            }
+            if (!Coins.TryAdd(Money, gain, out long after)) return TradeRefusal.PurseFull;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(after);
             // Sous-lot V1.3 : un lot qui emporte des instances aux propriétés tirées les garde pour le rachat.
@@ -163,7 +165,7 @@ namespace EdS.World
             if (count > stack.Count) return TradeRefusal.NotEnough;
             if (!market.Book.TryGetValue(stack.Item, out _)) return TradeRefusal.NoValue;
             if (Inventory.Available(stack.Item) < count) return TradeRefusal.Reserved;
-            long paid = checked(market.UnitPrice(merchant, stack.Item) * count);
+            long paid = checked(WornPrice(market.UnitPrice(merchant, stack.Item), stack) * count);   // sous-lot V1.8 : pièce usée moins chère
             if (!Coins.TryAdd(Money, paid, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();
             if (trial.RemoveAt(place, count, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;
@@ -171,6 +173,19 @@ namespace EdS.World
             _character = _character.WithMoney(after);
             market.Record(new SoldLot(stack.Item, count, paid, removed.IsUnique ? new[] { removed } : null));
             return TradeRefusal.None;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.8 (réponse de Damien du 31 octobre 2026 : « une pièce usée se vend moins cher, proportionnellement à sa solidité, avec
+        /// un minimum d'une pièce de cuivre ») : prix d'une unité de <paramref name="stack"/> pour un prix plein <paramref name="unit"/> :
+        /// <c>unit × solidité restante / solidité pleine</c>, arrondi vers le bas, au moins 1 (si le prix plein n'est pas nul). Une pièce
+        /// neuve (usure absente) se vend au prix plein. Le rachat se fait au prix payé.
+        /// </summary>
+        public long WornPrice(long unit, ItemStack stack)
+        {
+            if (stack is null) throw new ArgumentNullException(nameof(stack));
+            if (unit <= 0 || stack.Wear is null) return unit;
+            return Math.Max(1, checked(unit * _items.WearLeft(stack)) / _items.WearMax);
         }
 
         /// <summary>

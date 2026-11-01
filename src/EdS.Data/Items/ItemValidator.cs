@@ -364,15 +364,34 @@ namespace EdS.Data.Items
         /// <summary>Sous-lot V1.4 : points perdus par chaque pièce portée pour des dégâts reçus égaux aux PV maximaux (0 : pas d'usure).</summary>
         public int WearPerFullHealth { get; }
 
+        /// <summary>Sous-lot V1.8 : résistance à l'usure par niveau requis au-dessus du premier, en pour cent.</summary>
+        public int WearLevelResistPercent { get; }
+
+        /// <summary>Sous-lot V1.8 : résistance à l'usure de chaque rareté (indice : <see cref="ItemRarity"/>), en pour cent.</summary>
+        public IReadOnlyList<int> WearRarityResistPercent { get; }
+
+        /// <summary>
+        /// Sous-lot V1.8 (réponse de Damien du 31 octobre 2026 : « l'usure dépend du niveau et de la rareté ») : résistance à l'usure d'une
+        /// pièce, en pour cent : <c>levelResistPercent × (niveau requis − 1) + rarityResistPercent[rareté]</c>.
+        /// </summary>
+        public int WearResistPercent(ItemDefinition item)
+        {
+            if (item is null) throw new ArgumentNullException(nameof(item));
+            int rarity = (int)item.Rarity < WearRarityResistPercent.Count ? WearRarityResistPercent[(int)item.Rarity] : 0;
+            return checked(WearLevelResistPercent * Math.Max(0, item.RequiredLevel - 1) + rarity);
+        }
+
         internal ItemCatalog(int schemaVersion, string contentVersion, IEnumerable<EquipmentPlace> places, int inventorySize, IEnumerable<StartingItem> starting,
             IEnumerable<ItemDefinition> items, IEnumerable<LootTable> loot, IEnumerable<ItemSet>? sets = null, IEnumerable<PropertyDefinition>? properties = null,
             IEnumerable<RarityRoll>? rarityRolls = null, int superiorPercent = 0, int masterworkPercent = 0, int wearMax = ItemValidator.DefaultWearMax,
-            int wearPerFullHealth = 0)
+            int wearPerFullHealth = 0, int wearLevelResistPercent = 0, IEnumerable<int>? wearRarityResistPercent = null)
         {
             SuperiorPercent = superiorPercent;
             MasterworkPercent = masterworkPercent;
             WearMax = wearMax;
             WearPerFullHealth = wearPerFullHealth;
+            WearLevelResistPercent = wearLevelResistPercent;
+            WearRarityResistPercent = Frozen.List(wearRarityResistPercent ?? new int[ItemValidator.RarityCount], nameof(wearRarityResistPercent));
             Sets = Frozen.ListOrEmpty(sets, nameof(sets));
             Properties = Frozen.ListOrEmpty(properties, nameof(properties));
             RarityRolls = Frozen.List((rarityRolls ?? Array.Empty<RarityRoll>()).OrderBy(r => (int)r.Rarity), nameof(rarityRolls));
@@ -672,15 +691,20 @@ namespace EdS.Data.Items
         /// bonus à 2, 4 et 6 pièces portées) et <c>properties</c> (tables des propriétés tirées : nombre et échelle par rareté, propriétés et
         /// leurs bornes par niveau). Version 5 (sous-lot V1.4) : <c>quality</c> (part du bonus de base ajoutée par la qualité supérieure et
         /// par un chef-d'œuvre, en pour cent) et <c>wear</c> (solidité d'une pièce neuve, points perdus pour des dégâts reçus égaux aux PV
-        /// maximaux). Une version antérieure est refusée : le fichier se met à jour à la main.
+        /// maximaux). Version 6 (sous-lot V1.8) : <c>wear.levelResistPercent</c> et <c>wear.rarityResistPercent</c> (résistance à l'usure par
+        /// niveau requis et par rareté : réponse de Damien du 31 octobre 2026). Une version antérieure est refusée : le fichier se met à jour à
+        /// la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 5;
+        public const int CurrentSchemaVersion = 6;
 
         /// <summary>Sous-lot V1.4 : part du bonus de base ajoutée par une qualité, au plus (le bonus de qualité ne dépasse jamais le bonus de base).</summary>
         public const int MaxQualityPercent = 100;
 
         /// <summary>Sous-lot V1.4 : solidité d'une pièce neuve, au plus, et par défaut (catalogue construit sans la donner).</summary>
         public const int MaxWear = 1_000_000, DefaultWearMax = 100;
+
+        /// <summary>Sous-lot V1.8 : raretés (commune à mythique) ; résistance à l'usure au plus, en pour cent (par niveau et par rareté).</summary>
+        public const int RarityCount = 6, MaxWearResistPercent = 1000;
 
         /// <summary>Sous-lot V1.3 : ensembles, paliers d'un ensemble, propriétés qui peuvent être tirées, au plus.</summary>
         public const int MaxSets = 64, MaxSetBonuses = 3, MaxProperties = 256;
@@ -845,7 +869,8 @@ namespace EdS.Data.Items
             if (d.Properties is null) Missing(report, "$.data.properties", "tables des propriétés tirées : rarities, list");
             else CheckProperties(d.Properties, places, maxLevel, properties, rolls, report);
             // Sous-lot V1.4 : qualité de fabrication et usure.
-            int superior = 0, masterwork = 0, wearMax = DefaultWearMax, perFullHealth = 0;
+            int superior = 0, masterwork = 0, wearMax = DefaultWearMax, perFullHealth = 0, levelResist = 0;
+            var rarityResist = new int[RarityCount];
             if (d.Quality is null) Missing(report, "$.data.quality", "bonus des qualités : superior, masterwork (pour cent)");
             else
             {
@@ -870,10 +895,30 @@ namespace EdS.Data.Items
                 else if (d.Wear.PerFullHealth < 0 || d.Wear.PerFullHealth > wearMax)
                     report.Add("$.data.wear.perFullHealth", ValidationCode.OutOfRange, $"perte hors de [0, {wearMax}] (la solidité).");
                 else perFullHealth = d.Wear.PerFullHealth.Value;
+                // Sous-lot V1.8 (version 6) : résistance à l'usure par niveau et par rareté.
+                if (d.Wear.LevelResistPercent is null) Missing(report, "$.data.wear.levelResistPercent", "résistance par niveau, en pour cent");
+                else if (d.Wear.LevelResistPercent < 0 || d.Wear.LevelResistPercent > 100)
+                    report.Add("$.data.wear.levelResistPercent", ValidationCode.OutOfRange, "résistance par niveau hors de [0, 100] %.");
+                else levelResist = d.Wear.LevelResistPercent.Value;
+                if (d.Wear.RarityResistPercent is null) Missing(report, "$.data.wear.rarityResistPercent", "résistance de chaque rareté, six valeurs");
+                // Relecture de la PR #83 (M5) : le nombre de valeurs est contrôlé ici aussi (un document construit hors du lecteur JSON).
+                else if (d.Wear.RarityResistPercent.Count != RarityCount)
+                    report.Add("$.data.wear.rarityResistPercent", ValidationCode.InvalidValue,
+                        $"{d.Wear.RarityResistPercent.Count} valeurs, {RarityCount} attendues (commune à mythique).");
+                else
+                    for (int i = 0; i < d.Wear.RarityResistPercent.Count && i < RarityCount; i++)
+                    {
+                        string path = $"$.data.wear.rarityResistPercent[{i}]";
+                        if (d.Wear.RarityResistPercent[i] is not int v) Missing(report, path, "pour cent");
+                        else if (v < 0 || v > MaxWearResistPercent) report.Add(path, ValidationCode.OutOfRange, $"résistance hors de [0, {MaxWearResistPercent}] %.");
+                        else if (i > 0 && d.Wear.RarityResistPercent[i - 1] is int before && v < before)
+                            report.Add(path, ValidationCode.InvalidValue, "une rareté plus haute ne s'use pas plus vite.");
+                        else rarityResist[i] = v;
+                    }
             }
             if (!report.IsValid || document.ContentVersion is null) return new ItemCatalogLoadResult(report, null);
             var catalog = new ItemCatalog(document.SchemaVersion!.Value, document.ContentVersion, places, d.InventorySize!.Value, starting, items, loot, sets,
-                properties, rolls, superior, masterwork, wearMax, perFullHealth);
+                properties, rolls, superior, masterwork, wearMax, perFullHealth, levelResist, rarityResist);
             // Chaque objet qui tire des propriétés en a assez de possibles pour sa sorte de place.
             for (int i = 0; i < d.Items!.Count; i++)
                 if (d.Items[i] is { Id: string id } && catalog.TryGetItem(id, out ItemDefinition item) && catalog.IsRollable(item)

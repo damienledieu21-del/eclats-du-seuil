@@ -876,7 +876,7 @@ namespace EdS.Game
             }
             for (int i = _markerCount; i < _markerPool.Count; i++) UiKit.Show(_markerPool[i], false);
             _you.rectTransform.SetAsLastSibling();
-            _place.Value = a.PlaceName;
+            _place.Value = a.PlaceLabel;   // sous-lot V1.8 : niveau des créatures du lieu (zones en mélange)
             _placeSub.Value = a.ZoneName + " · " + a.TimeOfDay;
             _mapHint.Value = a.Text("text.ui.map.hint");
 

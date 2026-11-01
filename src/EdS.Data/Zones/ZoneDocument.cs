@@ -28,6 +28,9 @@ namespace EdS.Data.Zones
         public List<SafePointData?>? SafePoints { get; set; }
         public List<PlaceData?>? Places { get; set; }
         public List<PopulationData?>? Populations { get; set; }
+
+        /// <summary>Sous-lot V1.8 (schéma 7, zones en mélange) : créatures qui montent au niveau du joueur ; facultatif (pas de mélange).</summary>
+        public ZoneScalingData? Scaling { get; set; }
         public List<PassageData?>? Passages { get; set; }
 
         /// <summary>Sous-lot 12.7 (schéma 2) : chef de la zone ; facultatif.</summary>
@@ -136,6 +139,19 @@ namespace EdS.Data.Zones
         public string? Name { get; set; }
         public PointData? Min { get; set; }
         public PointData? Max { get; set; }
+
+        /// <summary>Sous-lot V1.8 (schéma 7) : niveau minimum du lieu ; facultatif (1).</summary>
+        public int? MinLevel { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.8 (schéma 7) : zones en mélange (sujet 4).</summary>
+    public sealed class ZoneScalingData
+    {
+        public int? BaseLevel { get; set; }
+        public int? BossBaseLevel { get; set; }
+        public int? HealthPerLevelPercent { get; set; }
+        public int? DamagePerLevelPercent { get; set; }
+        public int? EaseLevels { get; set; }
     }
 
     /// <summary>Population : une créature du scénario qui réapparaît, avec sa laisse et son butin.</summary>
@@ -164,6 +180,12 @@ namespace EdS.Data.Zones
         /// d'une session : elle a une chance d'apparaître chaque nuit du monde, après un signe.
         /// </summary>
         public NightData? Night { get; set; }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #83 (schéma 7) : niveau propre de la créature, à la place du niveau minimum de son lieu ; facultatif.
+        /// Le loup blanc reste une bête du chapitre 1 et le Borgne un chef du chapitre 2, même dans un lieu d'un chapitre plus haut.
+        /// </summary>
+        public int? Level { get; set; }
     }
 
     /// <summary>Schéma 6 : apparition d'une créature rare de la nuit (chance par nuit, délai entre le signe et l'arrivée, texte du signe).</summary>

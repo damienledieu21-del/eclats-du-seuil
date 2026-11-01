@@ -27,15 +27,19 @@ namespace EdS.Data.Json
             return Read(JsonInput.Utf8(json, report), data, report);
         }
 
-        private static ItemCatalogLoadResult Read(byte[]? json, GameData data, ValidationReport report)
+        private static ItemCatalogLoadResult Read(byte[]? json, GameData data, ValidationReport report) =>
+            ItemValidator.Validate(ReadDocument(json, report), data, report);
+
+        /// <summary>Document lu sans validation (tests : document retouché en objets publics, puis validé ; relecture de la PR #83).</summary>
+        internal static ItemCatalogDocument ReadDocument(byte[]? json, ValidationReport report)
         {
             var document = new ItemCatalogDocument();
-            if (json is null) return ItemValidator.Validate(document, data, report);
+            if (json is null) return document;
             JsonHeader header = JsonInput.Parse(json, report, (input, element) => document.Data = ReadData(input, element, "$.data"));
             document.SchemaVersion = header.SchemaVersion;
             document.Kind = header.Kind;
             document.ContentVersion = header.ContentVersion;
-            return ItemValidator.Validate(document, data, report);
+            return document;
         }
 
         internal static ItemCatalogData? ReadData(JsonInput input, JsonElement element, string path)
@@ -71,6 +75,20 @@ namespace EdS.Data.Json
                     {
                         ["max"] = (wv, wp) => w.Max = input.Int32(wv, wp),
                         ["perFullHealth"] = (wv, wp) => w.PerFullHealth = input.Int32(wv, wp),
+                        ["levelResistPercent"] = (wv, wp) => w.LevelResistPercent = input.Int32(wv, wp),   // sous-lot V1.8 (version 6)
+                        ["rarityResistPercent"] = (wv, wp) =>
+                        {
+                            if (!input.RequireKind(wv, JsonValueKind.Array, wp, "six pourcentages")) return;
+                            if (wv.GetArrayLength() != ItemValidator.RarityCount)
+                            {
+                                input.Report.Add(wp, ValidationCode.InvalidValue, $"{wv.GetArrayLength()} valeurs, {ItemValidator.RarityCount} attendues (commune à mythique).");
+                                return;
+                            }
+                            var list = new List<int?>();
+                            int i = 0;
+                            foreach (JsonElement e in wv.EnumerateArray()) list.Add(input.Int32(e, $"{wp}[{i++}]"));
+                            w.RarityResistPercent = list;
+                        },
                     })) d.Wear = w;
                 },
             });

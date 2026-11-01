@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/items.schema.json",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "kind": "items",
-  "contentVersion": "0.4.0-provisoire",
+  "contentVersion": "0.5.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1795,7 +1795,9 @@
     },
     "wear": {
       "max": 100,
-      "perFullHealth": 10
+      "perFullHealth": 3,
+      "levelResistPercent": 1,
+      "rarityResistPercent": [0, 20, 40, 60, 80, 100]
     }
   }
 }

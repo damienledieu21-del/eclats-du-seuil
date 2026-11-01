@@ -64,7 +64,8 @@ public class Lot127BossTests
             c!["health"] = health;
             foreach (JsonNode? a in c["attacks"]!.AsArray()) a!["rawDamage"] = damage;
         }
-    }, x: 51.5, z: 36, calm: true, zoneScenario: zoneScenario).Zone!;
+    }, x: 51.5, z: 36, calm: true, zoneScenario: zoneScenario,
+        zone: root => root["data"]!.AsObject().Remove("scaling")).Zone!;   // sous-lot V1.8b : mécanique du chef, sans zones en mélange
 
     private static string First(ZoneLoadResult r)
     {

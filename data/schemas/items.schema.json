@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 5
+      "const": 6
     },
     "kind": {
       "const": "items"
@@ -236,7 +236,9 @@
           "additionalProperties": false,
           "required": [
             "max",
-            "perFullHealth"
+            "perFullHealth",
+            "levelResistPercent",
+            "rarityResistPercent"
           ],
           "properties": {
             "max": {
@@ -248,7 +250,24 @@
             "perFullHealth": {
               "type": "integer",
               "minimum": 0,
-              "description": "Points perdus par chaque pièce portée pour des dégâts reçus égaux aux PV maximaux (au plus max)."
+              "description": "Points perdus par chaque pièce portée pour des dégâts reçus égaux aux PV maximaux (au plus max), pour une pièce sans résistance."
+            },
+            "levelResistPercent": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Version 6 (sous-lot V1.8) : résistance à l'usure par niveau requis au-dessus du premier, en pour cent."
+            },
+            "rarityResistPercent": {
+              "type": "array",
+              "minItems": 6,
+              "maxItems": 6,
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000
+              },
+              "description": "Version 6 (sous-lot V1.8) : résistance à l'usure de chaque rareté (commune à mythique), en pour cent, jamais en baisse. Une pièce perd perte × 100 / (100 + résistance) points, arrondi au plus proche."
             }
           },
           "description": "Sous-lot V1.4 (version 5) : usure des équipements des places du combat ; à zéro, une pièce ne donne plus ses bonus, sans se casser."

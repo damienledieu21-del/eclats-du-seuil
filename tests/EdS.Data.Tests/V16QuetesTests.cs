@@ -524,7 +524,7 @@ public class V16QuetesTests
     public void Chef_des_bandits_livre_a_deux_formes()
     {
         ZoneDefinition z = Zone();
-        Assert.Equal(6, z.SchemaVersion);   // 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit)
+        Assert.Equal(7, z.SchemaVersion);   // 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit) ; 7 (V1.8 : zones en mélange)
         Boss chef = Assert.Single(z.Chiefs);
         Assert.Equal(("chef_des_bandits", "fact.chef_des_bandits.vaincu", "loot.chef_des_bandits"), (chef.Id, chef.Fact, chef.Loot!));
         Assert.Equal(new[] { "chef_des_bandits", "chef_des_bandits_furieux" }, chef.Forms.Select(f => f.Id));

@@ -151,6 +151,15 @@ namespace EdS.World
             var notes = new List<string>();
             adjusted = notes;
             var inventory = new Inventory(catalog, character.ClassId);
+            // Remarque de Codex sur la PR #83 : les pièces du combat sont suivies par identité ; chaque place de l'inventaire reçoit donc sa
+            // propre instance, même si le personnage donné partage un même objet entre deux places.
+            var seen = new List<ItemStack>();
+            ItemStack Distinct(ItemStack x)
+            {
+                if (seen.Any(y => ReferenceEquals(y, x))) x = x.WithCount(x.Count);
+                seen.Add(x);
+                return x;
+            }
             if (character.Inventory.Count > catalog.InventorySize)
                 throw new ArgumentException($"Inventaire de {character.Inventory.Count} places, au plus {catalog.InventorySize}.", nameof(character));
             for (int i = 0; i < character.Inventory.Count; i++)
@@ -165,7 +174,7 @@ namespace EdS.World
                 stack = catalog.Settle(stack, out IReadOnlyList<string> settled);
                 notes.AddRange(settled);
                 if (catalog.CheckInstance(stack) is string problem) throw new ArgumentException($"Inventaire, place {i} : {problem}", nameof(character));
-                inventory._stacks.Add(stack);
+                inventory._stacks.Add(Distinct(stack));
             }
             foreach (KeyValuePair<string, string> e in character.Equipment)
             {
@@ -179,6 +188,7 @@ namespace EdS.World
                 worn = catalog.Settle(worn, out IReadOnlyList<string> settledWorn);
                 notes.AddRange(settledWorn);
                 if (catalog.CheckInstance(worn) is string problem) throw new ArgumentException($"Équipement « {e.Key} » : {problem}", nameof(character));
+                worn = Distinct(worn);
                 // Remarque de Codex sur la PR #82 (le chargement d'une sauvegarde ne lève jamais pour un niveau devenu trop bas) : un objet
                 // porté qui demande un niveau plus haut est rangé dans le sac s'il y a de la place (sinon il reste porté) ; le compte rendu le dit.
                 if (item.RequiredLevel > level && inventory._stacks.Count < catalog.InventorySize)
@@ -397,7 +407,9 @@ namespace EdS.World
         public InventoryRefusal Add(ItemStack stack)
         {
             if (stack is null) throw new ArgumentNullException(nameof(stack));
-            if (!stack.IsUnique) return Add(stack.Item, stack.Count);
+            // Remarque de Codex sur la PR #83 (tri) : un objet qui ne s'empile pas (pile de 1 : l'équipement) garde son identité, même sans
+            // propriété ni usure : les pièces du combat sont suivies par identité.
+            if (!stack.IsUnique && (_catalog.Item(stack.Item).Stack > 1 || stack.Count != 1)) return Add(stack.Item, stack.Count);
             if (_catalog.CheckInstance(stack) is string problem) throw new ArgumentException(problem, nameof(stack));
             if (FreePlaces < 1) return InventoryRefusal.Full;
             _stacks.Add(stack);
@@ -476,7 +488,7 @@ namespace EdS.World
             if (count < 1 || count > stack.Count || Available(stack.Item) < count) return InventoryRefusal.NotEnough;
             if (count == stack.Count) _stacks.RemoveAt(place);
             else _stacks[place] = stack.WithCount(stack.Count - count);
-            removed = stack.WithCount(count);
+            removed = count == stack.Count ? stack : stack.WithCount(count);   // la pile entière : la même instance (suivi par identité)
             return InventoryRefusal.None;
         }
 
@@ -491,7 +503,7 @@ namespace EdS.World
                     if (_stacks[i].Item == item && _stacks[i].IsUnique == rolled)
                     {
                         int take = Math.Min(left, _stacks[i].Count);
-                        removed.Add(_stacks[i].WithCount(take));
+                        removed.Add(take == _stacks[i].Count ? _stacks[i] : _stacks[i].WithCount(take));   // pile entière : même instance
                         if (take == _stacks[i].Count) _stacks.RemoveAt(i);
                         else _stacks[i] = _stacks[i].WithCount(_stacks[i].Count - take);
                         left -= take;
@@ -593,15 +605,19 @@ namespace EdS.World
         {
             // Sous-lot V1.3 : une instance aux propriétés tirées reste une entrée à part (elle ne s'empile pas) ; à objet égal, l'objet de base
             // d'abord, puis les instances dans leur ordre d'avant (tri stable).
+            // Remarque de Codex sur la PR #83 (tri) : un objet qui ne s'empile pas (pile de 1 : l'équipement) ou qui s'use garde aussi son
+            // instance (les pièces du combat sont suivies par identité) ; rien ne change à l'ordre ni aux quantités.
             var entries = new List<(string Item, int Count, ItemStack? Rolled)>();
             foreach (ItemStack s in _stacks)
             {
-                if (s.IsUnique) { entries.Add((s.Item, s.Count, s)); continue; }
+                ItemDefinition definition = _catalog.Item(s.Item);
+                if (s.IsUnique || definition.Stack == 1 || _catalog.Wears(definition)) { entries.Add((s.Item, s.Count, s)); continue; }
                 int k = entries.FindIndex(c => c.Rolled is null && c.Item == s.Item);
                 if (k < 0) entries.Add((s.Item, s.Count, null));
                 else entries[k] = (s.Item, checked(entries[k].Count + s.Count), null);
             }
-            var sorted = entries.OrderBy(c => c.Item, Comparer<string>.Create((x, y) => Compare(order, x, y))).ThenBy(c => c.Rolled is null ? 0 : 1).ToList();
+            var sorted = entries.OrderBy(c => c.Item, Comparer<string>.Create((x, y) => Compare(order, x, y)))
+                .ThenBy(c => c.Rolled is null || !c.Rolled.IsUnique ? 0 : 1).ToList();
             var stacks = new List<ItemStack>();
             foreach ((string item, int count, ItemStack? rolled) in sorted)
             {
@@ -669,42 +685,29 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Sous-lot V1.4 : use chaque pièce portée qui s'use (<see cref="ItemCatalog.Wears"/>) de <paramref name="loss"/> points de solidité,
-        /// sans descendre sous 0 (une pièce usée à zéro ne se casse pas). Rend les objets qui viennent d'arriver à zéro, dans l'ordre des
-        /// places du catalogue. Rien ne change pour une perte nulle.
-        /// </summary>
-        internal IReadOnlyList<string> WearDown(int loss)
-        {
-            if (loss < 0) throw new ArgumentOutOfRangeException(nameof(loss));
-            var wornOut = new List<string>();
-            if (loss == 0) return wornOut;
-            foreach (EquipmentPlace place in _catalog.Places)
-            {
-                if (!_equipped.TryGetValue(place.Id, out ItemStack worn) || !_catalog.Wears(_catalog.Item(worn.Item))) continue;
-                int left = _catalog.WearLeft(worn);
-                if (left == 0) continue;
-                int after = Math.Max(0, left - loss);
-                _equipped[place.Id] = worn.WithWear(after);
-                if (after == 0) wornOut.Add(worn.Item);
-            }
-            return wornOut;
-        }
-
-        /// <summary>
         /// Sous-lot V1.4 (relecture indépendante de la PR #80) : use de <paramref name="loss"/> points les pièces <paramref name="pieces"/>
         /// (celles portées à l'entrée dans la zone, celles du combat), où qu'elles soient maintenant : portées (à n'importe quelle place) ou
-        /// dans le sac ; une pièce vendue ou jetée depuis n'est plus usée. Chaque pièce est cherchée par sa valeur (objet, propriétés,
-        /// qualité, usure), une place au plus par pièce ; une pièce qui ne s'use pas est sautée. Rend la nouvelle valeur de chaque pièce,
+        /// dans le sac ; une pièce vendue ou jetée depuis n'est plus usée. Remarque de Codex sur la PR #83 : chaque pièce est cherchée par
+        /// <b>son identité</b> (la même instance, que l'inventaire déplace telle quelle entre les places et le sac), jamais par sa valeur : une
+        /// copie identique dans le sac n'est pas usée à sa place ; une pièce qui ne s'use pas est sautée. Rend la nouvelle valeur de chaque pièce,
         /// dans l'ordre (la même si elle n'est plus là), et dans <paramref name="wornOut"/> les objets qui viennent d'arriver à zéro.
         /// </summary>
-        internal IReadOnlyList<ItemStack> WearPieces(IReadOnlyList<ItemStack> pieces, int loss, out IReadOnlyList<string> wornOut)
+        internal IReadOnlyList<ItemStack> WearPieces(IReadOnlyList<ItemStack> pieces, int loss, out IReadOnlyList<string> wornOut) =>
+            WearPieces(pieces, pieces.Select(_ => loss).ToList(), out wornOut);
+
+        /// <summary>
+        /// Sous-lot V1.8 : comme <see cref="WearPieces(IReadOnlyList{ItemStack}, int, out IReadOnlyList{string})"/>, chaque pièce avec sa
+        /// propre perte (<paramref name="losses"/>, même ordre : la résistance à l'usure dépend du niveau et de la rareté de la pièce).
+        /// </summary>
+        internal IReadOnlyList<ItemStack> WearPieces(IReadOnlyList<ItemStack> pieces, IReadOnlyList<int> losses, out IReadOnlyList<string> wornOut)
         {
             if (pieces is null) throw new ArgumentNullException(nameof(pieces));
-            if (loss < 0) throw new ArgumentOutOfRangeException(nameof(loss));
+            if (losses is null || losses.Count != pieces.Count) throw new ArgumentException("Une perte par pièce.", nameof(losses));
+            if (losses.Any(l => l < 0)) throw new ArgumentOutOfRangeException(nameof(losses));
             var updated = new List<ItemStack>(pieces);
             var zero = new List<string>();
             wornOut = zero;
-            if (loss == 0) return updated;
+            if (losses.All(l => l == 0)) return updated;
             var usedSlots = new HashSet<string>(StringComparer.Ordinal);
             var usedPlaces = new HashSet<int>();
             for (int k = 0; k < pieces.Count; k++)
@@ -713,8 +716,10 @@ namespace EdS.World
                 if (!_catalog.TryGetItem(piece.Item, out ItemDefinition item) || !_catalog.Wears(item)) continue;
                 int left = _catalog.WearLeft(piece);
                 if (left == 0) continue;
-                ItemStack after = piece.WithWear(Math.Max(0, left - loss));
-                string? slot = _catalog.Places.Select(p => p.Id).FirstOrDefault(id => !usedSlots.Contains(id) && _equipped.TryGetValue(id, out ItemStack e) && e.Equals(piece));
+                int lost = losses[k];   // sous-lot V1.8 : perte propre à la pièce (résistance à l'usure)
+                if (lost == 0) continue;
+                ItemStack after = piece.WithWear(Math.Max(0, left - lost));
+                string? slot = _catalog.Places.Select(p => p.Id).FirstOrDefault(id => !usedSlots.Contains(id) && _equipped.TryGetValue(id, out ItemStack e) && ReferenceEquals(e, piece));
                 if (slot != null)
                 {
                     usedSlots.Add(slot);
@@ -724,7 +729,7 @@ namespace EdS.World
                 {
                     int place = -1;
                     for (int i = 0; i < _stacks.Count && place < 0; i++)
-                        if (!usedPlaces.Contains(i) && _stacks[i].Equals(piece)) place = i;
+                        if (!usedPlaces.Contains(i) && ReferenceEquals(_stacks[i], piece)) place = i;
                     if (place < 0) continue;   // plus dans l'inventaire (vendue, jetée)
                     usedPlaces.Add(place);
                     _stacks[place] = after;
@@ -749,13 +754,51 @@ namespace EdS.World
             return damaged;
         }
 
-        /// <summary>Sous-lot V1.4 : remet à neuf (usure pleine) toutes les pièces entamées, portées et dans le sac. Le reste ne change pas.</summary>
-        internal void RepairAll()
+        /// <summary>
+        /// Sous-lot V1.4 : remet à neuf (usure pleine) toutes les pièces entamées, portées et dans le sac. Le reste ne change pas. Remarque de
+        /// Codex sur la PR #83 : rend chaque pièce remplacée avec la nouvelle instance (pour suivre les pièces du combat par identité).
+        /// </summary>
+        internal IReadOnlyList<(ItemStack Before, ItemStack After)> RepairAll()
         {
+            var replaced = new List<(ItemStack, ItemStack)>();
             foreach (string slot in _equipped.Keys.ToList())
-                if (_equipped[slot].Wear != null) _equipped[slot] = _equipped[slot].WithWear(null);
+                if (_equipped[slot].Wear != null)
+                {
+                    ItemStack after = _equipped[slot].WithWear(null);
+                    replaced.Add((_equipped[slot], after));
+                    _equipped[slot] = after;
+                }
             for (int i = 0; i < _stacks.Count; i++)
-                if (_stacks[i].Wear != null) _stacks[i] = _stacks[i].WithWear(null);
+                if (_stacks[i].Wear != null)
+                {
+                    ItemStack after = _stacks[i].WithWear(null);
+                    replaced.Add((_stacks[i], after));
+                    _stacks[i] = after;
+                }
+            return replaced;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.8 (réponse de Damien : réparer « tout d'un coup ou pièce par pièce ») : remet à neuf une seule pièce entamée, portée
+        /// à la place <paramref name="slot"/> ou (slot null) dans le sac à la place <paramref name="place"/>. Rend la pièce telle qu'elle
+        /// était, ou null si rien n'est entamé là (rien ne change) ; <paramref name="after"/> : la nouvelle instance (remarque de Codex sur la
+        /// PR #83 : suivi des pièces du combat par identité).
+        /// </summary>
+        internal ItemStack? RepairOne(string? slot, int place, out ItemStack? after)
+        {
+            after = null;
+            if (slot != null)
+            {
+                if (!_equipped.TryGetValue(slot, out ItemStack worn) || worn.Wear is null) return null;
+                after = worn.WithWear(null);
+                _equipped[slot] = after;
+                return worn;
+            }
+            if (place < 0 || place >= _stacks.Count || _stacks[place].Wear is null) return null;
+            ItemStack before = _stacks[place];
+            after = before.WithWear(null);
+            _stacks[place] = after;
+            return before;
         }
 
         /// <summary>Sous-lot 12.5 : copie indépendante (pour essayer des opérations avant de les appliquer pour de bon).</summary>
