@@ -251,6 +251,17 @@ namespace EdS.Data.Saves
         /// </summary>
         public long Crafts { get; }
 
+        /// <summary>
+        /// Sous-lot V1.8c : bonus actifs (plat, élixir, huile ou pierre d'arme), au plus un par place, dans l'ordre des places, avec le temps
+        /// qui leur reste en ticks logiques (arrêté hors ligne, gardé quand le personnage tombe).
+        /// </summary>
+        public IReadOnlyList<SavedBoon> Boons { get; }
+
+        /// <summary>Sous-lot V1.8c : même personnage avec d'autres bonus actifs.</summary>
+        public SavedCharacter WithBoons(IEnumerable<SavedBoon> boons) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
+                boons ?? throw new ArgumentNullException(nameof(boons)));
+
         /// <summary>Sous-lot V1.4 : fabrications gardées au plus (plafond technique du compteur).</summary>
         public const long MaxCrafts = 1_000_000_000;
 
@@ -262,8 +273,9 @@ namespace EdS.Data.Saves
             string? ultimate = null, IEnumerable<string>? passiveSkills = null, IEnumerable<ItemStack>? inventory = null,
             IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null,
             long money = 0, IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null,
-            IReadOnlyDictionary<string, ItemStack>? equipmentInstances = null, long crafts = 0)
+            IReadOnlyDictionary<string, ItemStack>? equipmentInstances = null, long crafts = 0, IEnumerable<SavedBoon>? boons = null)
         {
+            Boons = SavedBoon.Canonical(boons);
             if (crafts < 0 || crafts > MaxCrafts) throw new ArgumentOutOfRangeException(nameof(crafts), crafts, $"Fabrications hors de [0, {MaxCrafts}].");
             Crafts = crafts;
             // Relecture de la PR #72 : une bourse hors bornes est refusée dès la construction (comme à la lecture d'une sauvegarde) ; une
@@ -307,7 +319,7 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons);
 
         /// <summary>
         /// Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement. Sous-lot V1.3 : avec les propriétés tirées des objets
@@ -316,7 +328,7 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment,
             IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money, equipmentProperties,
-                null, Crafts);
+                null, Crafts, Boons);
 
         /// <summary>
         /// Sous-lot V1.4 : même personnage avec un autre inventaire et un autre équipement, chaque objet porté avec son instance
@@ -325,15 +337,15 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, ItemStack> worn) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory,
                 (worn ?? throw new ArgumentNullException(nameof(worn))).ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal), Story, Professions, Money,
-                null, worn, Crafts);
+                null, worn, Crafts, Boons);
 
         /// <summary>Sous-lot V1.4 : même personnage avec un autre compteur de fabrications.</summary>
         public SavedCharacter WithCrafts(long crafts) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons);
 
         /// <summary>
         /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
@@ -341,15 +353,15 @@ namespace EdS.Data.Saves
         /// </summary>
         public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
             new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
-                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts);
+                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons);
 
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons);
 
         /// <summary>Sous-lot 12.9b : même personnage avec d'autres compétences équipées.</summary>
         public SavedCharacter WithSkills(IEnumerable<string> activeSkills, string? ultimate, IEnumerable<string> passiveSkills) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts);
+            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons);
 
         /// <summary>
         /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). Hors de [0, <see cref="Coins.Max"/>] : refusée
@@ -357,7 +369,7 @@ namespace EdS.Data.Saves
         /// qui refuse un dépassement.
         /// </summary>
         public SavedCharacter WithMoney(long money) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons);
     }
 
     /// <summary>
@@ -450,8 +462,16 @@ namespace EdS.Data.Saves
         /// d'instance pour une qualité ou une usure seules ; <c>crafts</c> obligatoire dans le personnage (fabrications tentées). Une sauvegarde
         /// de version 10 ou antérieure est lue telle quelle (carte de guilde comprise ; usure pleine, qualité normale, aucune fabrication) et
         /// mise à jour ; elle n'a aucun de ces champs (refusés, champ inconnu).
+        /// Version 12 (sous-lot V1.8c, <see cref="BoonsSince"/>) : <c>boons</c> obligatoire dans le personnage : bonus actifs (plat, élixir,
+        /// huile ou pierre d'arme), une liste éventuellement vide, au plus un par place, dans l'ordre des places (« meal », « elixir »,
+        /// « weapon ») ; chacun <c>{ "kind", "item", "ticks" }</c>, le temps qui reste en ticks logiques, de 1 à <see cref="BoonKinds.MaxTicks"/>.
+        /// Une sauvegarde de version 11 ou antérieure est lue telle quelle (aucun bonus) et mise à jour ; elle n'a pas de <c>boons</c> (refusé,
+        /// champ inconnu). L'accord de chaque bonus avec le catalogue (objet de bonus de cette place) est vérifié quand la partie reprend.
         /// </summary>
-        public const int CurrentSchemaVersion = 11;
+        public const int CurrentSchemaVersion = 12;
+
+        /// <summary>Sous-lot V1.8c : version où les bonus actifs (<c>boons</c>) entrent dans la sauvegarde.</summary>
+        public const int BoonsSince = 12;
 
         /// <summary>Sous-lot V1.7 : version où la carte d'aventurier (<c>story.guild</c>) entre dans la sauvegarde.</summary>
         public const int GuildCardSince = 10;
@@ -792,6 +812,14 @@ namespace EdS.Data.Saves
             }
             else if (c.Crafts is null) Missing(report, path + ".crafts", "fabrications tentées, 0 au départ");
             else if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) report.Add(path + ".crafts", ValidationCode.OutOfRange, $"fabrications hors de [0, {SavedCharacter.MaxCrafts}].");
+            // Sous-lot V1.8c (version 12) : bonus actifs ; une sauvegarde antérieure n'en a aucun.
+            if (version < BoonsSince)
+            {
+                if (c.Present.Contains("boons") || c.Boons != null)
+                    report.Add(path + ".boons", ValidationCode.UnknownField, $"champ inconnu en version {version} (bonus actifs : version {BoonsSince}).");
+            }
+            else if (c.Boons is null) Missing(report, path + ".boons", "bonus actifs, éventuellement aucun");
+            else CheckBoons(c.Boons, path + ".boons", report);
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
@@ -801,7 +829,41 @@ namespace EdS.Data.Saves
                 version < 6 ? 0 : c.Money!.Value, null,
                 version < 9 || c.EquipmentInstances is null ? null : c.EquipmentInstances.ToDictionary(e => e.Key,
                     e => Instance(c.Equipment!.First(x => x.Key == e.Key).Value!, 1, e.Value, version), StringComparer.Ordinal),
-                version < ItemStateSince ? 0 : c.Crafts!.Value);
+                version < ItemStateSince ? 0 : c.Crafts!.Value,
+                version < BoonsSince ? null : c.Boons!.Select(b => new SavedBoon(BoonKindOf(b!.Kind!), b.Item!, b.Ticks!.Value)));
+        }
+
+        private static BoonKind BoonKindOf(string id) => BoonKinds.TryParse(id, out BoonKind kind) ? kind : throw new ArgumentException(id);
+
+        /// <summary>
+        /// Sous-lot V1.8c (version 12) : forme des bonus actifs : au plus <see cref="BoonKinds.Count"/>, chacun d'une place connue, une seule fois,
+        /// dans l'ordre des places ; objet « item.… » bien formé ; temps qui reste de 1 à <see cref="BoonKinds.MaxTicks"/> ticks (un bonus fini
+        /// n'est plus écrit). L'accord avec le catalogue est vérifié quand la partie reprend.
+        /// </summary>
+        private static void CheckBoons(List<BoonData?> boons, string path, ValidationReport report)
+        {
+            if (boons.Count > BoonKinds.Count)
+            {
+                report.Add(path, ValidationCode.LimitExceeded, $"{boons.Count} bonus, au plus {BoonKinds.Count} (un par place).");
+                return;
+            }
+            int last = -1;
+            for (int i = 0; i < boons.Count; i++)
+            {
+                string p = $"{path}[{i}]";
+                if (boons[i] is not BoonData b) { Missing(report, p, "bonus actif"); continue; }
+                if (b.Kind is null) Missing(report, p + ".kind", string.Join(", ", BoonKinds.Ids));
+                else if (!BoonKinds.TryParse(b.Kind, out BoonKind kind))
+                    report.Add(p + ".kind", ValidationCode.InvalidValue, $"place de bonus « {b.Kind} » inconnue ; possibles : {string.Join(", ", BoonKinds.Ids)}.");
+                else if ((int)kind <= last)
+                    report.Add(p + ".kind", ValidationCode.InvalidValue, "un bonus par place, dans l'ordre des places (forme canonique).");
+                else last = (int)kind;
+                if (b.Item is null) Missing(report, p + ".item", "objet consommé « item.… »");
+                else if (!IsItemId(b.Item)) report.Add(p + ".item", ValidationCode.InvalidValue, $"identifiant d'objet « {b.Item} » invalide.");
+                if (b.Ticks is null) Missing(report, p + ".ticks", "ticks qui restent");
+                else if (b.Ticks < 1 || b.Ticks > BoonKinds.MaxTicks)
+                    report.Add(p + ".ticks", ValidationCode.OutOfRange, $"temps hors de [1, {BoonKinds.MaxTicks}] ticks (une heure de jeu au plus ; un bonus fini n'est pas écrit).");
+            }
         }
 
         public const int MaxStoryEntries = 10_000;

@@ -156,7 +156,7 @@ public class Lot123ItemTests
         JsonObject root = JsonNode.Parse(text)!.AsObject();
         root["schemaVersion"] = 2;
         JsonObject character = root["data"]!["character"]!.AsObject();
-        foreach (string field in new[] { "inventory", "equipment", "story", "professions", "money", "crafts" }) character.Remove(field);   // V1.1 : bourse
+        foreach (string field in new[] { "inventory", "equipment", "story", "professions", "money", "crafts", "boons" }) character.Remove(field);   // V1.1 : bourse ; V1.8c : bonus
         string v2 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v2).IsValid);
         SaveDocument old = SaveDocumentOf(v2);
@@ -250,7 +250,7 @@ public class Lot123ItemTests
         Assert.Equal(new[] { "weapon", "shield", "head", "shoulders", "cloak", "chest", "bracers", "hands", "belt", "legs", "feet", "neck",
             "ring_1", "ring_2", "relic_1", "relic_2", "shard", "tool" }, c.Slots);
         Assert.Equal(24, c.InventorySize);                                       // Q5 : 24 places gardées (les sacs viendront plus tard)
-        Assert.Equal(87, c.Items.Count);   // V1.2 : 73 équipements, puis les 9 matériaux et objets de soin d'avant ; V1.3 : deux pièces d'ensemble de plus ;
+        Assert.Equal(92, c.Items.Count);   // V1.8c : cinq objets de bonus (deux huiles ou pierres, trois élixirs) ; V1.2 : 73 équipements, puis les 9 matériaux et objets de soin d'avant ; V1.3 : deux pièces d'ensemble de plus ;
         // réponses du 31 octobre 2026 : l'épée et l'écu du novice, la rondache du chef des bandits
         ItemDefinition shield = c.Item("item.ecu_de_chene");
         Assert.Equal((ItemType.Equipment, "shield", 1, ItemRarity.Common, 1, 60), (shield.Type, shield.Slot, shield.RequiredLevel, shield.Rarity, shield.Stack, shield.Bonus.Armor));

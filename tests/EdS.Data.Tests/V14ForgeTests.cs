@@ -72,7 +72,7 @@ public class V14ForgeTests
     [Fact]
     public void Catalogue_en_version_5_avec_qualite_et_usure()
     {
-        Assert.Equal(6, Items.SchemaVersion);   // sous-lot V1.8 : version 6, résistance à l'usure ; 3 points par PV maximaux (V18 : 30 à 40 combats)
+        Assert.Equal(7, Items.SchemaVersion);   // sous-lot V1.8c : version 7 (objets de bonus) ; V1.8 : version 6, résistance à l'usure ; 3 points par PV maximaux (V18 : 30 à 40 combats)
         Assert.Equal((10, 20, 100, 3), (Items.SuperiorPercent, Items.MasterworkPercent, Items.WearMax, Items.WearPerFullHealth));
         ItemDefinition sword = Items.Item("item.epee_de_garde");   // puissance physique 22
         Assert.True(Items.TakesQuality(sword));
@@ -775,7 +775,7 @@ public class V14ForgeTests
         Assert.Contains("{\"item\": \"item.epee_de_garde\", \"count\": 1, \"quality\": \"masterwork\", \"signedBy\": \"bastion\"}", text);
         Assert.Contains("{\"item\": \"item.casque_de_fer\", \"count\": 1, \"quality\": \"superior\", \"wear\": 12}", text);
         Assert.Contains("\"shield\": {\"item\": \"item.ecu_de_chene\", \"wear\": 0}", text);   // Damaged : une partie d'avant l'équipement du novice
-        Assert.Contains("\"crafts\": 3\n", text);
+        Assert.Contains("\"crafts\": 3,\n", text);
         SavedCharacter read = SaveJsonReader.Read(text).Save!.Character!;
         Assert.Equal(3L, read.Crafts);
         Assert.Equal((ItemQuality.Masterwork, "bastion"), (read.Inventory[2].Quality, read.Inventory[2].SignedBy));
@@ -789,8 +789,8 @@ public class V14ForgeTests
     [InlineData("\"quality\": \"superior\"", "\"quality\": \"normal\"", "$.data.character.inventory[3].quality", ValidationCode.InvalidValue)]
     [InlineData("\"wear\": 12", "\"wear\": -1", "$.data.character.inventory[3].wear", ValidationCode.OutOfRange)]
     [InlineData("\"signedBy\": \"bastion\"", "\"signedBy\": \"Bastion\"", "$.data.character.inventory[2].signedBy", ValidationCode.InvalidValue)]
-    [InlineData("\"crafts\": 3\n", "\"crafts\": -3\n", "$.data.character.crafts", ValidationCode.OutOfRange)]
-    [InlineData(",\n      \"crafts\": 3\n", "\n", "$.data.character.crafts", ValidationCode.MissingField)]
+    [InlineData("\"crafts\": 3,\n", "\"crafts\": -3,\n", "$.data.character.crafts", ValidationCode.OutOfRange)]
+    [InlineData(",\n      \"crafts\": 3,\n", ",\n", "$.data.character.crafts", ValidationCode.MissingField)]
     [InlineData("{\"item\": \"item.minerai_de_fer\", \"count\": 4}", "{\"item\": \"item.minerai_de_fer\", \"count\": 4, \"wear\": 3}", "$.data.character.inventory[1].count", ValidationCode.InvalidValue)]
     public void Sauvegarde_de_qualite_ou_d_usure_invalide_refusee_avec_son_chemin(string from, string to, string path, ValidationCode code)
     {
@@ -824,7 +824,8 @@ public class V14ForgeTests
         // Étape de lecture 10 → 11 : une partie de V1.7 (carte d'aventurier, créatures rares) sans qualité, usure ni fabrications se relit,
         // carte comprise, puis se réécrit à la version courante avec un compteur à 0.
         Assert.Equal(SaveValidator.GuildCardSince + 1, SaveValidator.ItemStateSince);
-        Assert.Equal(SaveValidator.ItemStateSince, SaveValidator.CurrentSchemaVersion);
+        Assert.Equal(SaveValidator.ItemStateSince + 1, SaveValidator.BoonsSince);   // sous-lot V1.8c : version 12 (bonus actifs)
+        Assert.Equal(SaveValidator.BoonsSince, SaveValidator.CurrentSchemaVersion);
         SavedCharacter hero = Inventory.Outfit(Hero(12), Items)
             .WithStory(new SavedStory(guild: new SavedGuildCard("g", titles: new[] { "title.guilde.recrue" }), hunted: new[] { "loup_blanc" }));
         string current = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 2, Array.Empty<string>(), hero));

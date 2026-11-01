@@ -294,7 +294,7 @@ namespace EdS.Game
                 _professions.Add((card, icon, name, level));
             }
             Text(page, UiFace.Body, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 712f, 712f, 40f, 0f, 0.5f).Value =
-                "Clic sur un objet du sac : le porter · clic sur un objet porté : le retirer · clic droit sur un anneau ou une relique : l'échanger avec l'autre · "
+                "Clic sur un objet du sac : le porter (plat, élixir, huile : le consommer) · clic sur un objet porté : le retirer · clic droit sur un anneau ou une relique : l'échanger avec l'autre · "
                 + "survol : comparaison (vert : mieux, rouge : moins bien) · hors combat, effet à ta prochaine halte.";
         }
 
@@ -303,6 +303,7 @@ namespace EdS.Game
             if (_session == null || place < 0 || place >= _session.World.Inventory.Stacks.Count) return;
             ItemDefinition item = _session.Item(_session.World.Inventory.Stacks[place].Item);
             if (item.Type == ItemType.Equipment) _session.Equip(place);
+            else if (item.Type == ItemType.Boon) _session.UseBoon(place);   // sous-lot V1.8c : plat, élixir, huile ou pierre d'arme
         }
 
         private void RefreshCharacter(AdventureSession a)
@@ -476,7 +477,8 @@ namespace EdS.Game
             _tipIcon.sprite = UiKit.Icon(item.Icon);
             _tipName.Value = item.Name;
             _tipName.Color = RarityColor(item.Rarity);
-            string kind = item.Type == ItemType.Equipment ? a.Text("text.ui.slot." + item.Slot) : item.Heal > 0 ? "Soin" : "Matériau";
+            string kind = item.Type == ItemType.Equipment ? a.Text("text.ui.slot." + item.Slot) : item.Heal > 0 ? "Soin"
+                : item.Boon == BoonKind.Meal ? "Plat" : item.Boon == BoonKind.Elixir ? "Élixir" : item.Boon == BoonKind.Weapon ? "Huile ou pierre d'arme" : "Matériau";
             _tipKind.Value = kind + " · " + RarityName(item.Rarity);
             var lines = new List<string>();
             // Sous-lot V1.2 : un équipement montre sa comparaison avec ce qui est porté à sa place (vert ou rouge, avec les chiffres).
@@ -495,9 +497,10 @@ namespace EdS.Game
             Add(b.MaxEndurance, "endurance maximale");
             Add(b.StatusResistance, "résistance aux altérations");
             if (item.Heal > 0) lines.Add($"Rend {item.Heal} PV (P en combat)");
+            if (item.Type == ItemType.Boon) lines.Add($"Bonus pendant {a.World.Inventory.Catalog.BoonTicks(item) / BoonKinds.TicksPerMinute} minutes de jeu");
             _tipLines.Value = string.Join("\n", lines);
             _tipLines.Color = item.Type == ItemType.Equipment && a.World.Level < item.RequiredLevel ? UiKit.Endurance : UiKit.Ink;
-            _tipAction.Value = item.Type != ItemType.Equipment ? "" : _tipWorn ? "Clic : retirer" : "Clic : porter";
+            _tipAction.Value = item.Type == ItemType.Boon ? "Clic : consommer" : item.Type != ItemType.Equipment ? "" : _tipWorn ? "Clic : retirer" : "Clic : porter";
             float height = compared >= 0f ? 92f + compared + 44f : 210f;
             UiKit.Place(_tipAction.Rect, new Vector2(24f, height - 24f), new Vector2(TipWidth - 48f, 20f), new Vector2(0f, 0.5f));
             // À droite de la case, ou à sa gauche près du bord du panneau.

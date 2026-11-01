@@ -88,13 +88,17 @@ namespace EdS.World
         /// <summary>Sous-lot V1.4 : usure appliquée à ce tick (fin d'un combat), ou null.</summary>
         public WearReport? Wear { get; }
 
+        /// <summary>Sous-lot V1.8c : bonus finis à ce tick (dans l'ordre des places), qui ont quitté leur place.</summary>
+        public IReadOnlyList<BoonExpired> BoonsExpired { get; }
+
         public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0 && Story.Count == 0 && Boss.Count == 0 && Rewards.Count == 0 && !Defeated
-            && Wear is null;
+            && Wear is null && BoonsExpired.Count == 0;
 
         internal SessionStep(IReadOnlyList<ExperienceGained> experience, IReadOnlyList<LootGained> loot, IReadOnlyList<PopulationEvent> population,
             IReadOnlyList<StoryEvent> story, IReadOnlyList<BossEvent>? boss = null, IReadOnlyList<(string, int)>? rewards = null, bool defeated = false,
-            WearReport? wear = null)
+            WearReport? wear = null, IReadOnlyList<BoonExpired>? boonsExpired = null)
         {
+            BoonsExpired = boonsExpired ?? Array.Empty<BoonExpired>();
             Wear = wear;
             Experience = experience;
             Loot = loot;
@@ -350,7 +354,9 @@ namespace EdS.World
                 _lootTables[entry.Key] = items.TryGetLoot(entry.Value, out LootTable table) ? table
                     : throw new ArgumentException($"Table de butin « {entry.Value} » ({entry.Key}) absente du catalogue.", nameof(lootTables));
             Inventory = Inventory.From(_character, items, Level, out IReadOnlyList<string> adjusted);
-            Adjusted = adjusted;   // relecture de la PR #78 : propriétés tirées accordées au catalogue actuel
+            // Sous-lot V1.8c : bonus actifs accordés au catalogue actuel (comme les propriétés tirées), après elles dans le compte rendu.
+            _boons = SettleBoons(_character.Boons, items, out IReadOnlyList<string> boonNotes);
+            Adjusted = boonNotes.Count == 0 ? adjusted : adjusted.Concat(boonNotes).ToList();   // relecture de la PR #78 : propriétés tirées accordées au catalogue actuel
             // Sous-lot V1.2 : les places obligatoires vides sont remplies : l'Éclat du Seuil, et pour le Bastion un bouclier (le sien s'il en a
             // un dans l'inventaire, sinon l'écu de départ). Relecture de la PR #75 : à chaque chargement, pas seulement pour une sauvegarde mise
             // à jour depuis une version antérieure (une sauvegarde de version 7 aux places obligatoires vides est réparée elle aussi).
@@ -366,7 +372,9 @@ namespace EdS.World
                     _carried[id] = count;
                     Inventory.Reserve(id, count);   // revue Codex de la PR #47 : emportés, ils ne se retirent plus de l'inventaire avant d'être bus
                 }
-            CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: Inventory.Gear(), consumables: carried,
+            // Sous-lot V1.8c : les bonus actifs s'ajoutent au bonus de l'équipement, dans la limite du combat (BoonGear).
+            EnteredBoons = ActiveBoons;
+            CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: BoonGear(Inventory.Gear(), items, EnteredBoons), consumables: carried,
                 shield: Inventory.ShieldFor(data.Rules.Combat),   // sous-lot V1.2 : garde du bouclier porté ; V1.4 : jamais meilleure s'il est usé à zéro
                 equipment: Inventory.Effects());   // sous-lot V1.3 : effets des objets nommés et des ensembles
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
@@ -744,6 +752,8 @@ namespace EdS.World
             bool wasPresent = Zone.Engine.View(_character.Id).IsPresent;
             IReadOnlyList<ZoneEvent> events = Zone.Step();
             SyncConsumables();
+            // Sous-lot V1.8c : le temps des bonus actifs baisse d'un tick ; un bonus fini quitte sa place à ce tick précis.
+            IReadOnlyList<BoonExpired> expired = TickBoons();
             IReadOnlyList<ExperienceGained> gains = Array.Empty<ExperienceGained>();
             IReadOnlyList<LootGained> loot = Array.Empty<LootGained>();
             if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
@@ -783,7 +793,8 @@ namespace EdS.World
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
             return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated && wear is null
-                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated, wear);
+                && expired.Count == 0
+                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated, wear, expired);
         }
 
         /// <summary>
@@ -898,6 +909,7 @@ namespace EdS.World
                 character = character.WithStory(new SavedStory(character.Story.Facts.Concat(_pendingFacts), character.Story.Quests, character.Story.Trust,
                     character.Story.Discoveries, character.Story.Tracked, character.Story.Guild, character.Story.Hunted));
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
+            character = character.WithBoons(ActiveBoons);   // sous-lot V1.8c : bonus actifs et temps qui leur reste, tel quel
             return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character);
         }
     }

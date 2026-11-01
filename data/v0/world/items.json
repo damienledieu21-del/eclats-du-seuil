@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/items.schema.json",
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.5.0-provisoire",
+  "contentVersion": "0.6.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1420,6 +1420,73 @@
         "stack": 3,
         "heal": 700,
         "cooldownMs": 20000
+      },
+      {
+        "id": "item.pierre_a_aiguiser",
+        "name": "Pierre à aiguiser",
+        "icon": "minerai_de_fer",
+        "type": "boon",
+        "rarity": "common",
+        "stack": 5,
+        "boon": "weapon",
+        "quality": "normal",
+        "bonus": {
+          "physicalPower": 4
+        }
+      },
+      {
+        "id": "item.huile_d_eclat",
+        "name": "Huile d'éclat",
+        "icon": "eclat_de_seuil",
+        "type": "boon",
+        "rarity": "rare",
+        "stack": 5,
+        "boon": "weapon",
+        "quality": "superior",
+        "bonus": {
+          "physicalPower": 7
+        }
+      },
+      {
+        "id": "item.elixir_de_vigueur",
+        "name": "Élixir de vigueur",
+        "icon": "potion_de_soin",
+        "type": "boon",
+        "rarity": "common",
+        "stack": 5,
+        "boon": "elixir",
+        "quality": "normal",
+        "bonus": {
+          "maxHealth": 40
+        }
+      },
+      {
+        "id": "item.elixir_de_garde",
+        "name": "Élixir de garde",
+        "icon": "remede_de_l_aube",
+        "type": "boon",
+        "rarity": "rare",
+        "stack": 5,
+        "boon": "elixir",
+        "quality": "superior",
+        "bonus": {
+          "armor": 25,
+          "statusResistance": 10
+        }
+      },
+      {
+        "id": "item.elixir_du_seuil",
+        "name": "Élixir du Seuil",
+        "icon": "remede_de_l_aube",
+        "type": "boon",
+        "rarity": "very_rare",
+        "stack": 3,
+        "boon": "elixir",
+        "quality": "masterwork",
+        "bonus": {
+          "maxHealth": 60,
+          "maxEndurance": 10
+        }
       }
     ],
     "loot": [
@@ -1798,6 +1865,11 @@
       "perFullHealth": 3,
       "levelResistPercent": 1,
       "rarityResistPercent": [0, 20, 40, 60, 80, 100]
+    },
+    "boons": {
+      "normalMinutes": 30,
+      "superiorMinutes": 45,
+      "masterworkMinutes": 60
     }
   }
 }

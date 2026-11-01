@@ -39,6 +39,17 @@ namespace EdS.Data.Items
 
         /// <summary>Sous-lot V1.4 (version 5) : usure de l'équipement (solidité d'une pièce, perte par combat selon les dégâts reçus).</summary>
         public WearData? Wear { get; set; }
+
+        /// <summary>Sous-lot V1.8c (version 7) : durée des objets de bonus de chaque qualité, en minutes de jeu.</summary>
+        public BoonsData? Boons { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.8c : durée des objets de bonus telle que lue.</summary>
+    public sealed class BoonsData
+    {
+        public int? NormalMinutes { get; set; }
+        public int? SuperiorMinutes { get; set; }
+        public int? MasterworkMinutes { get; set; }
     }
 
     /// <summary>Sous-lot V1.4 : bonus de la qualité de fabrication tel que lu.</summary>
@@ -173,7 +184,7 @@ namespace EdS.Data.Items
         public string? Id { get; set; }
         public string? Name { get; set; }
 
-        /// <summary>« equipment », « material » ou « consumable » (sous-lot 12.6).</summary>
+        /// <summary>« equipment », « material », « consumable » (sous-lot 12.6) ou « boon » (sous-lot V1.8c).</summary>
         public string? Type { get; set; }
 
         /// <summary>Rareté (« common »… « mythic »).</summary>
@@ -212,6 +223,12 @@ namespace EdS.Data.Items
 
         /// <summary>Sous-lot V1.3 (version 4) : effets d'un objet nommé (texte, modificateurs, déclencheurs) ; facultatifs.</summary>
         public EquipmentEffectData? Effects { get; set; }
+
+        /// <summary>Sous-lot V1.8c (version 7) : place d'un objet de bonus (« meal », « elixir », « weapon »).</summary>
+        public string? Boon { get; set; }
+
+        /// <summary>Sous-lot V1.8c (version 7) : qualité d'un objet de bonus (« normal », « superior », « masterwork »), qui fixe sa durée.</summary>
+        public string? Quality { get; set; }
 
         /// <summary>Champs effectivement présents, pour refuser ceux d'un autre type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();

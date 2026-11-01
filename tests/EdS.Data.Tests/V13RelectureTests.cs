@@ -429,6 +429,7 @@ public class V13RelectureTests : IDisposable
             ItemsCatalog.Items, ItemsCatalog.Loot, ItemsCatalog.Sets, properties, ItemsCatalog.RarityRolls,
             ItemsCatalog.SuperiorPercent, ItemsCatalog.MasterworkPercent, ItemsCatalog.WearMax, ItemsCatalog.WearPerFullHealth,   // sous-lot V1.4
             ItemsCatalog.WearLevelResistPercent, ItemsCatalog.WearRarityResistPercent,   // sous-lot V1.8
+            ItemsCatalog.BoonMinutes,   // sous-lot V1.8c
         });
     }
 
