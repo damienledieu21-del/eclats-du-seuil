@@ -106,8 +106,16 @@ Chaque chiffre provisoire des chantiers V1.1 à V1.7, réglé ou gardé, avec sa
 
 **Places de bonus** (sous-lot V1.8c, catalogue en version 7) :
 - Durée d'un objet de bonus : `minutes(qualité) × 1 200` ticks logiques (50 ms) ; livrées : normale **30 min** (36 000 ticks), supérieure **45 min** (54 000), chef-d'œuvre **60 min** (72 000), dans la fourchette de Damien (30 minutes à 1 heure de jeu).
-- Effet : bonus d'équipement en combat = `min(équipement + somme des bonus actifs, 1 000 000)` par statistique, à l'entrée dans une session ; le temps baisse de 1 par tick simulé.
+- Effet : bonus d'équipement en combat = `min(équipement + somme des bonus actifs, 1 000 000)` par statistique, à l'entrée dans une session ; le temps baisse de 1 par tick simulé. Sous-lot V1.8d : effet immédiat (ci-dessous).
 - Effets livrés modestes (provisoires) : +4 et +7 puissance physique (pierre, huile), +40 PV, +25 armure et +10 résistance aux altérations, +60 PV et +10 endurance (élixirs) : de l'ordre d'une pièce d'équipement des premiers niveaux, pour qu'un bonus aide sans remplacer l'équipement.
+
+### Bonus modifié (sous-lot V1.8d)
+
+Décision de Damien : effet **immédiat** des bonus. Le bonus d'équipement du combat = `min(équipement porté à l'entrée + somme des bonus actifs, 1 000 000)` par statistique, recalculé et envoyé au moteur (commande `gear`) dès qu'un bonus est consommé, remplacé ou fini :
+- **Calendrier** : consommé entre deux ticks, le bonus compte dès le tick simulé suivant (au début de ce tick, phase `setup`) ; un bonus de `N` ticks couvre exactement `N` ticks simulés, et le premier tick qu'il ne couvre plus est simulé sans lui. Un remplacement par le même total (le même objet repris) n'envoie rien.
+- **Valeurs courantes, règle proportionnelle** (choisie comme la plus naturelle et la plus prudente) : quand un maximum (PV ou endurance) passe de `M` à `M'`, la valeur courante `v` devient `M'` si `v = M` (pleine, elle reste pleine), sinon `⌊ v × M' / M ⌋` ; un vivant garde au moins 1 PV. Exemples : 70/100 PV avec +40 PV max → 98/140 ; 98/140 à la fin du bonus → 70/100 ; 100/100 → 140/140 → 100/100.
+- **Pourquoi** : la jauge garde la même part (ce que montre la barre de vie) ; un bonus ne donne pas plus de PV que sa part, ne tue jamais à sa fin et ne relève pas un mort ; un aller-retour ne rend rien (au plus un point perdu à l'arrondi par défaut), donc reprendre et laisser finir un élixir n'est pas un soin gratuit. Les deux autres règles possibles étaient moins bonnes : garder les PV manquants (+40 PV à la prise, rien de retiré à la fin si on est sous le nouveau maximum : un soin gratuit par élixir) ou ne jamais toucher aux PV (un élixir de PV bu à pleine santé ne servirait à rien avant un soin).
+- Les autres statistiques (puissances, défenses, résistance aux altérations) valent tout de suite pour tout ce que le moteur calcule ensuite ; un DOT déjà posé garde sa puissance figée et un bouclier déjà posé sa valeur (comme avant).
 
 **Usure et forge** (catalogue en version 6, métiers en version 3 ; réponses de Damien du 31 octobre 2026) :
 - `perFullHealth` **3** (au lieu de 10) : un combat difficile coûte environ une fois les PV maximaux (potions comprises) ; une pièce commune de niveau 1 perd 3 points sur 100 par combat difficile, soit **environ 33 combats difficiles**, dans la cible de 30 à 40.
