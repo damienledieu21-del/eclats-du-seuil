@@ -162,8 +162,10 @@ namespace EdS.Data.Story
         public static bool IsFactId(string? id) => id != null && id.Length <= 200 && FactId.IsMatch(id);
 
         /// <param name="interiors">Sous-lot V1.6 : autres zones du monde (intérieurs), où un PNJ peut vivre (<c>zone</c>) ; null : aucune.</param>
+        /// <param name="levelCap">Relecture indépendante de la PR #82 : plafond de niveau actuel (progression) ; une condition
+        /// <c>levelAtLeast</c> au-dessus reçoit un avertissement (personne ne l'atteint tant que le plafond ne monte pas). Null : pas de contrôle.</param>
         public static StoryLoadResult Validate(StoryDocument document, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport? report = null,
-            IReadOnlyList<ZoneDefinition>? interiors = null)
+            IReadOnlyList<ZoneDefinition>? interiors = null, int? levelCap = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (texts is null) throw new ArgumentNullException(nameof(texts));
@@ -174,7 +176,7 @@ namespace EdS.Data.Story
                 return new StoryLoadResult(report, null);
             StoryData? d = document.Data;
             if (d is null) { TextsValidator.Missing(report, "$.data", "PNJ, dialogues, quêtes, découvertes"); return new StoryLoadResult(report, null); }
-            var c = new Checker(report, texts, zone, items, d, interiors ?? Array.Empty<ZoneDefinition>());
+            var c = new Checker(report, texts, zone, items, d, interiors ?? Array.Empty<ZoneDefinition>()) { LevelCap = levelCap };
             StoryBook? book = c.Run(document.SchemaVersion!.Value, document.ContentVersion);
             return new StoryLoadResult(report, report.IsValid ? book : null);
         }
@@ -193,6 +195,9 @@ namespace EdS.Data.Story
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
             private readonly IReadOnlyList<ZoneDefinition> _interiors;
+
+            /// <summary>Plafond de niveau actuel, pour l'avertissement des conditions <c>levelAtLeast</c> trop hautes (null : aucun).</summary>
+            public int? LevelCap { get; set; }
 
             public Checker(ValidationReport report, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, StoryData data, IReadOnlyList<ZoneDefinition> interiors)
             {
@@ -463,7 +468,7 @@ namespace EdS.Data.Story
                     if (!NoNpc(t, p)) continue;
                     bool ok = kind switch
                     {
-                        ConditionKind.LevelAtLeast => NoId(t, p) && Value(t, p, 1, MaxLevel) && NoStep(t, p),
+                        ConditionKind.LevelAtLeast => NoId(t, p) && Value(t, p, 1, MaxLevel) && NoStep(t, p) && CapWarning(t, p),
                         ConditionKind.GuildRankAtLeast => RankRef(t, p) && NoValue(t, p) && NoStep(t, p),   // sous-lot V1.7
                         ConditionKind.Fact or ConditionKind.NotFact => Fact(t, p, needed: kind == ConditionKind.Fact) && NoValue(t, p) && NoStep(t, p),
                         ConditionKind.QuestNotStarted or ConditionKind.QuestActive or ConditionKind.QuestDone or ConditionKind.QuestReward =>
@@ -568,6 +573,15 @@ namespace EdS.Data.Story
                 if (_items.TryGetItem(t.Id, out _)) return true;
                 _r.Add(p + ".id", ValidationCode.UnknownReference, $"objet inconnu « {t.Id} ».");
                 return false;
+            }
+
+            /// <summary>Relecture de la PR #82 : avertit (sans refuser) d'une condition de niveau au-dessus du plafond actuel ; rend toujours vrai.</summary>
+            private bool CapWarning(TermData t, string p)
+            {
+                if (LevelCap is int cap && t.Value > cap)
+                    _r.AddWarning(p + ".value", ValidationCode.OutOfRange,
+                        $"niveau {t.Value} au-dessus du plafond actuel ({cap}) : la condition ne peut pas être remplie tant que le plafond ne monte pas.");
+                return true;
             }
 
             private bool Value(TermData t, string p, long min, long max)

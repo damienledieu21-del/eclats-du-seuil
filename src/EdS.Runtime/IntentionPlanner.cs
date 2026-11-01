@@ -42,7 +42,7 @@ namespace EdS.Runtime
             return groups;
         }
 
-        /// <summary>Compétence équipée dans un emplacement (0 à 3 : actives, <see cref="RealtimeCombat.UltimateSlot"/> : ultime) ; null sinon.</summary>
+        /// <summary>Compétence équipée dans un emplacement (0 à 7 : actives, <see cref="RealtimeCombat.UltimateSlot"/> : ultime) ; null sinon.</summary>
         public static SkillDefinition? SkillAt(CombatantView me, int slot)
         {
             if (me?.Character is null) return null;

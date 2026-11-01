@@ -48,7 +48,7 @@ public class V16RelectureTests
 
     private static WorldSession InRoom(string zone, StoryBook book, SavedCharacter hero)
     {
-        var s = new WorldSession(new WorldSave(zone, 0, 0, Array.Empty<string>(), hero), Inside(zone), ShippedData, Progression, ItemsCatalog, book,
+        var s = new WorldSession(new WorldSave(zone, 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), Inside(zone), ShippedData, Progression, ItemsCatalog, book,
             door: "sortie", storyZone: "zone.vallons");
         s.Step();
         return s;
@@ -359,7 +359,9 @@ public class V16RelectureTests
 
     private static WorldSession Play(ZoneDefinition zone, SavedCharacter hero, IEnumerable<string>? consumed = null)
     {
-        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, (consumed ?? Array.Empty<string>()).OrderBy(k => k, StringComparer.Ordinal).ToArray(), hero),
+        // Sauvegarde de V1.8 (relecture de la PR #82) : PlayerCharacters.PlacesKey déjà au registre.
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, (consumed ?? Array.Empty<string>()).Append(PlayerCharacters.PlacesKey)
+                .Distinct(StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal).ToArray(), hero),
             zone, ShippedData, Progression, ItemsCatalog, Book(zone));
         w.Step();
         return w;
@@ -413,7 +415,8 @@ public class V16RelectureTests
         string safe = z.SafePointKey(z.Entry.Id);
         int combatants = Play(z, Hero(), new[] { safe }).Zone.Engine.CombatantIds.Count;
         // Avant la mort du chef : combattants + extra places ; sa mort en prend une.
-        string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - extra - 1).Select(i => $"probe/k{i:D6}").Append(safe).ToArray();
+        // Une clé de moins pour PlayerCharacters.PlacesKey (ajoutée par Play).
+        string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - combatants - extra - 2).Select(i => $"probe/k{i:D6}").Append(safe).ToArray();
         WorldSession w = Play(z, Hero(), keys);
         List<SessionStep> steps = BeatBandit(w);
         for (int i = 0; i < 20; i++) steps.Add(w.Step());
@@ -436,7 +439,7 @@ public class V16RelectureTests
         });
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         ZoneDefinition z = loaded.Zone!;
-        WorldSession w = Play(z, PlayerCharacters.Create("bastion", "class.bastion", Progression).WithXp(1620));
+        WorldSession w = Play(z, PlayerCharacters.Create("bastion", "class.bastion", Progression).WithXp(Progression.XpToLevel[9]));   // niveau 10
         Assert.Contains("skill.bastion.onde_de_rupture", w.Zone.Engine.View("bastion").Character!.Build.ActiveSkills);
         var steps = new List<SessionStep>();
         for (int i = 0; i < 200 && steps.SelectMany(s => s.Boss).Count(b => b.Kind == BossEventKind.Defeated) < 2; i++)

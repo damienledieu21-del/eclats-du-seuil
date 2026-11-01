@@ -19,6 +19,14 @@ namespace EdS.Domain.Builds
         public const int MaxTrees = 100;
         public const int MaxSlots = 100;
 
+        /// <summary>
+        /// Sous-lot V1.8 : places actives au plus dans la barre de combat (huit), autant que le pont temps réel et le protocole du réseau en
+        /// connaissent (<c>RealtimeCombat.MaxActiveSlots</c>, <c>Protocol.MaxSlot</c>). Réponse de Damien du 31 octobre 2026 : la 7e et la
+        /// 8e sont préparées tout de suite (protocole 4, ultime à l'emplacement 8), sans être ouvertes : les règles 0.15.0 n'en ouvrent
+        /// que six. Elles viendront avec les compétences d'ascension, sans nouveau protocole.
+        /// </summary>
+        public const int MaxActiveSlots = 8;
+
         public static readonly ProgressionRules Provisional = new ProgressionRules();
 
         public int MaxLevel { get; init; } = 30;
@@ -36,7 +44,10 @@ namespace EdS.Domain.Builds
         /// <summary>Nombre d'arbres de talents par classe.</summary>
         public int TreesPerClass { get; init; } = 3;
 
-        /// <summary>Niveau de déblocage de chaque emplacement actif, dans l'ordre (2 au niveau 1, 3 au niveau 5, 4 au niveau 10).</summary>
+        /// <summary>
+        /// Niveau de déblocage de chaque emplacement actif, dans l'ordre. Sous-lot V1.8 (décision de Damien : « 4 + ultime dès le début, puis
+        /// plus en montant jusqu'à 8 + ultime ») : 4 au niveau 1, la 5e au niveau 10, la 6e au niveau 20 ; au plus <see cref="MaxActiveSlots"/>.
+        /// </summary>
         public IReadOnlyList<int> ActiveSlotLevels
         {
             get => _activeSlotLevels;
@@ -50,10 +61,11 @@ namespace EdS.Domain.Builds
             init => _passiveSlotLevels = Frozen.ListOrNull(value, nameof(PassiveSlotLevels))!;
         }
 
-        private readonly IReadOnlyList<int> _activeSlotLevels = Frozen.List(new[] { 1, 1, 5, 10 }, nameof(ActiveSlotLevels));
+        private readonly IReadOnlyList<int> _activeSlotLevels = Frozen.List(new[] { 1, 1, 1, 1, 10, 20 }, nameof(ActiveSlotLevels));
         private readonly IReadOnlyList<int> _passiveSlotLevels = Frozen.List(new[] { 1, 5, 20, 30 }, nameof(PassiveSlotLevels));
 
-        public int UltimateUnlockLevel { get; init; } = 10;
+        /// <summary>Niveau où la place de l'ultime s'ouvre (sous-lot V1.8 : dès le niveau 1 ; avant, au niveau 10).</summary>
+        public int UltimateUnlockLevel { get; init; } = 1;
 
         public int TalentPoints(int level)
         {
@@ -102,6 +114,8 @@ namespace EdS.Domain.Builds
             Range(MaxMajorTalents, 0, MaxThreshold, nameof(MaxMajorTalents));
             Range(TreesPerClass, 1, MaxTrees, nameof(TreesPerClass));
             CheckLevels(ActiveSlotLevels, nameof(ActiveSlotLevels), errors);
+            if (ActiveSlotLevels is { Count: > MaxActiveSlots and <= MaxSlots })
+                errors.Add(new RuleViolation($"{ActiveSlotLevels.Count} places actives ; la barre de combat en a {MaxActiveSlots} au plus.", nameof(ActiveSlotLevels)));
             CheckLevels(PassiveSlotLevels, nameof(PassiveSlotLevels), errors);
             if (UltimateUnlockLevel < 1 || UltimateUnlockLevel > MaxLevel)
                 errors.Add(new RuleViolation($"doit être compris entre 1 et le niveau maximum ({MaxLevel}).", nameof(UltimateUnlockLevel)));

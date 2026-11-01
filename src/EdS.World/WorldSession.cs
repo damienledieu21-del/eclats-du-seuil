@@ -180,26 +180,29 @@ namespace EdS.World
                 // Relecture indépendante de la PR #74 : tout ou rien. Sans la place de toutes les clés au registre, le changement entier est
                 // refusé (sinon une compétence retirée reviendrait à la halte et serait annoncée de nouveau).
                 PlayerCharacters.Learn(_character, _progression, _rules, Zone.IsConsumed, out _, out IReadOnlyList<SkillUnlock> handed);
-                if (!CanGive(handed))
+                if (!CanGive(Keys(handed)))
                     return new BuildViolation(BuildViolationCode.RegistryFull, "skills",
                         "Le registre du monde est plein : ce changement de compétences ne peut pas être gardé.");
                 _character = _character.WithSkills(actives, ultimate, passives);
-                Give(handed);
+                Give(Keys(handed));
             }
             return why;
         }
 
-        /// <summary>Clés <see cref="SkillUnlock.GivenKey"/> de <paramref name="handed"/> pas encore au registre, sans doublon.</summary>
-        private List<string> ToGive(IEnumerable<SkillUnlock> handed) =>
-            handed.Select(u => u.GivenKey).Distinct(StringComparer.Ordinal).Where(k => !Zone.IsConsumed(k)).ToList();
+        /// <summary>Clés <see cref="SkillUnlock.GivenKey"/> de <paramref name="handed"/>.</summary>
+        private static IEnumerable<string> Keys(IEnumerable<SkillUnlock> handed) => handed.Select(u => u.GivenKey);
+
+        /// <summary>Clés de <paramref name="keys"/> pas encore au registre, sans doublon.</summary>
+        private List<string> ToGive(IEnumerable<string> keys) =>
+            keys.Distinct(StringComparer.Ordinal).Where(k => !Zone.IsConsumed(k)).ToList();
 
         /// <summary>
         /// Le registre a la place de toutes les clés à donner, en gardant celle des morts possibles d'un tick (la règle de la découverte d'un
         /// point sûr) ; vrai s'il n'y a rien à donner.
         /// </summary>
-        private bool CanGive(IEnumerable<SkillUnlock> handed)
+        private bool CanGive(IEnumerable<string> keys)
         {
-            int count = ToGive(handed).Count;
+            int count = ToGive(keys).Count;
             return count == 0 || Zone.RegistryRoom - count >= Zone.Engine.CombatantIds.Count;
         }
 
@@ -209,15 +212,54 @@ namespace EdS.World
         /// n'est inscrit (à l'entrée, elles seront données à une halte suivante ; un changement de barre est refusé avant, par
         /// <see cref="CanGive"/>). Rend vrai si tout est inscrit.
         /// </summary>
-        private bool Give(IEnumerable<SkillUnlock> handed)
+        private bool Give(IEnumerable<string> keys)
         {
-            if (!CanGive(handed)) return false;
-            foreach (string key in ToGive(handed)) Zone.Consume(key);
+            if (!CanGive(keys)) return false;
+            foreach (string key in ToGive(keys)) Zone.Consume(key);
             return true;
         }
 
-        /// <summary>Compétences données à l'entrée de cette session (<see cref="Give"/>), inscrites quand la session est prête.</summary>
-        private readonly IReadOnlyList<SkillUnlock> _handedAtEntry;
+        /// <summary>
+        /// Clés à inscrire à l'entrée de cette session (<see cref="Give"/>), quand la session est prête : compétences données par la halte,
+        /// et pour une sauvegarde d'avant V1.8, les compétences déjà connues (données sans être placées) et <see cref="PlayerCharacters.PlacesKey"/>.
+        /// Toutes ou aucune : sans la place au registre, la migration recommence au chargement suivant.
+        /// </summary>
+        private readonly IReadOnlyList<string> _keysAtEntry;
+
+        /// <summary>
+        /// Inscrit les clés de l'entrée (<see cref="Give"/>, toutes ou aucune). Remarque de Codex sur la PR #82 : si la conversion d'avant V1.8
+        /// a été faite et que tout n'a pas pu être inscrit, la clé <see cref="PlayerCharacters.PlacesKey"/> l'est seule (la place en a été
+        /// vérifiée avant la conversion) : la conversion n'est jamais refaite.
+        /// </summary>
+        private void GiveAtEntry()
+        {
+            if (!Give(_keysAtEntry) && _migrating && !Zone.IsConsumed(PlayerCharacters.PlacesKey) && Zone.RegistryRoom > 0)
+                Zone.Consume(PlayerCharacters.PlacesKey);
+        }
+
+        /// <summary>Remarque de Codex sur la PR #82 : l'expérience d'une sauvegarde d'avant V1.8 a été convertie à cette entrée.</summary>
+        public bool XpMigrated { get; }
+
+        /// <summary>Remarque de Codex sur la PR #82 : compétences retirées de la barre à l'entrée (build devenu invalide), dans la réserve.</summary>
+        public IReadOnlyList<string> RemovedSkills { get; } = Array.Empty<string>();
+
+        /// <summary>Remarque de Codex sur la PR #82 : points de talent rendus à l'entrée (dépense devenue invalide).</summary>
+        public int RefundedTalentPoints { get; }
+
+        /// <summary>Cette entrée applique la conversion d'avant V1.8 : <see cref="PlayerCharacters.PlacesKey"/> doit être inscrite.</summary>
+        private readonly bool _migrating;
+
+        /// <summary>
+        /// Place à garder libre au registre pour convertir une sauvegarde d'avant V1.8 : ses clés (compétences, <see cref="PlayerCharacters.PlacesKey"/>),
+        /// les morts possibles d'un tick (combattants de la zone, chefs et vies suivantes compris, avec une large marge) et la découverte.
+        /// </summary>
+        private static int MigrationRoom(CombatSetup zoneSetup) => checked(zoneSetup.Combatants.Count * 2 + 256);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #82 : compétences qu'une sauvegarde d'avant V1.8 connaissait déjà, inscrites comme données sans être
+        /// placées au premier chargement (<see cref="PlayerCharacters.KnownBeforePlaces"/>) ; vide pour une sauvegarde de V1.8.
+        /// </summary>
+        public IReadOnlyList<SkillUnlock> KnownBefore { get; }
 
         /// <summary>
         /// Sous-lot V1.5 : le personnage tel qu'il entrera dans la prochaine session : les compétences gagnées depuis cette entrée déjà
@@ -240,7 +282,7 @@ namespace EdS.World
             CombatantPlacement placement, IReadOnlyDictionary<string, string>? lootTables = null, ICombatLog? log = null)
             : this(save, zoneSetup, data, progression, items, placement, lootTables, log, true)
         {
-            Give(_handedAtEntry);
+            GiveAtEntry();
         }
 
         private WorldSession(WorldSave save, CombatSetup zoneSetup, GameData data, CharacterProgression progression, ItemCatalog items,
@@ -258,11 +300,39 @@ namespace EdS.World
             if (data is null) throw new ArgumentNullException(nameof(data));
             // Réponse de Damien du 30 octobre 2026 : une compétence déjà donnée (clé au registre) n'est plus placée d'office.
             var given = new HashSet<string>(save.Consumed, StringComparer.Ordinal);
+            // Remarque de Codex sur la PR #82 : au premier chargement d'une sauvegarde d'avant V1.8 (sans PlayerCharacters.PlacesKey),
+            // l'expérience est convertie aux nouveaux seuils (le personnage garde son ancien niveau), une seule fois : la clé est inscrite avec
+            // les compétences à l'entrée. Seulement si le registre a largement la place de cette clé (sinon elle ne serait pas gardée et la
+            // conversion serait refaite) ; sinon l'expérience reste telle quelle et la barre est réparée plus bas.
+            bool migrating = !given.Contains(PlayerCharacters.PlacesKey);
+            if (migrating && SaveValidator.MaxConsumed - save.Consumed.Count >= MigrationRoom(zoneSetup))
+            {
+                long xp = PlayerCharacters.MigrateXp(_character.Xp, _progression);
+                XpMigrated = xp != _character.Xp;
+                _character = _character.WithXp(xp);
+            }
+            else migrating = false;
+            // Relecture indépendante de la PR #82 : au premier chargement d'une sauvegarde d'avant V1.8, ce que le personnage connaissait déjà
+            // est donné sans être placé (Provocation, en réserve avec les anciennes règles, ne remplit pas une place vidée par le joueur).
+            KnownBefore = PlayerCharacters.KnownBeforePlaces(_character, _progression, given.Contains);
+            foreach (SkillUnlock known in KnownBefore) given.Add(known.GivenKey);
             _character = PlayerCharacters.Learn(_character, _progression, data.Rules.Progression, given.Contains, out IReadOnlyList<SkillUnlock> learned,
-                out _handedAtEntry);
+                out IReadOnlyList<SkillUnlock> handedAtEntry);
+            var keysAtEntry = Keys(KnownBefore).Concat(Keys(handedAtEntry)).ToList();
+            if (migrating) keysAtEntry.Add(PlayerCharacters.PlacesKey);
+            _keysAtEntry = keysAtEntry;
+            _migrating = migrating;
             Learned = learned;
             _rules = data.Rules.Progression;
             _class = data.TryGetClass(_character.ClassId, out LoadedClass loaded) ? loaded.Definition : null;   // absente : refusée à l'entrée (Setup)
+            // Remarque de Codex sur la PR #82 : le chargement ne lève jamais pour un build devenu invalide (niveau plus bas, talents en trop) :
+            // la barre et les talents sont réparés de façon déterministe, et c'est annoncé.
+            if (_class != null)
+            {
+                _character = PlayerCharacters.RepairBuild(_character, _progression, _class, _rules, out IReadOnlyList<string> removed, out int refunded);
+                RemovedSkills = removed;
+                RefundedTalentPoints = refunded;
+            }
             _lootTables = new Dictionary<string, LootTable>(StringComparer.Ordinal);
             foreach (KeyValuePair<string, string> entry in lootTables ?? new Dictionary<string, string>())
                 _lootTables[entry.Key] = items.TryGetLoot(entry.Value, out LootTable table) ? table
@@ -414,7 +484,7 @@ namespace EdS.World
             // chef : sa première forme compte alors parmi les combattants, et la découverte lui laisse la place de sa mort dans le registre.
             if (door is null) Discover(safePoint ?? zone.Entry.Id);
             // Compétences données à l'entrée (réponse de Damien du 30 octobre 2026), après le chef comme la découverte.
-            Give(_handedAtEntry);
+            GiveAtEntry();
         }
 
         private readonly BossFight? _boss;

@@ -38,9 +38,12 @@ namespace EdS.Data.Validation
             Warnings = _warnings.AsReadOnly();
         }
 
-        public void AddWarning(string path, string message)
+        public void AddWarning(string path, string message) => AddWarning(path, ValidationCode.TriggerCycle, message);
+
+        /// <summary>Avertissement d'une autre nature que les cycles de déclencheurs (sous-lot V1.8 : compétence en réserve, niveau au-dessus du plafond).</summary>
+        public void AddWarning(string path, ValidationCode code, string message)
         {
-            if (_warnings.Count < InputLimits.MaxReportedErrors) _warnings.Add(new ValidationError(path, ValidationCode.TriggerCycle, message));
+            if (_warnings.Count < InputLimits.MaxReportedErrors) _warnings.Add(new ValidationError(path, code, message));
         }
         public bool IsValid => TotalCount == 0;
 

@@ -19,8 +19,15 @@ namespace EdS.Runtime
     /// </summary>
     public sealed class RealtimeCombat : ICombatClient
     {
-        /// <summary>Emplacement de l'ultime dans <see cref="UseSlot"/> (les actives occupent 0 à 3).</summary>
-        public const int UltimateSlot = 4;
+        /// <summary>
+        /// Sous-lot V1.8 : places actives de la barre (0 à 7), autant que les règles en permettent au plus
+        /// (<see cref="ProgressionRules.MaxActiveSlots"/>) ; avant, quatre. Réponse de Damien du 31 octobre 2026 : la 7e et la 8e (6 et 7)
+        /// sont prêtes ici sans être ouvertes par les règles 0.15.0 (six places) : elles restent vides.
+        /// </summary>
+        public const int MaxActiveSlots = ProgressionRules.MaxActiveSlots;
+
+        /// <summary>Emplacement de l'ultime dans <see cref="UseSlot"/>, après les actives (0 à 7) : 8 depuis le sous-lot V1.8 (4 avant).</summary>
+        public const int UltimateSlot = MaxActiveSlots;
 
         /// <summary>Retours conservés au plus (les plus anciens sont abandonnés si le client ne les lit pas).</summary>
         public const int MaxPendingFeedback = FeedbackTracker.MaxPending;
@@ -166,7 +173,7 @@ namespace EdS.Runtime
         public void Parry() => _parryRequested = true;
 
         /// <summary>
-        /// Compétence d'un emplacement du build (0 à 3 : actives, <see cref="UltimateSlot"/> : ultime) au prochain tick. Un emplacement vide
+        /// Compétence d'un emplacement du build (0 à 7 : actives, <see cref="UltimateSlot"/> : ultime) au prochain tick. Un emplacement vide
         /// ou une compétence visiblement indisponible (recharge, ressources, contrôle) donne un retour <see cref="FeedbackKind.Unavailable"/>
         /// sans commande ; le reste est soumis au moteur, qui reste seul juge (un refus donne <see cref="FeedbackKind.Rejected"/>). Seule la
         /// dernière demande d'un tick compte : une demande refusée ici annule aussi la précédente (revue Codex de la PR #13).

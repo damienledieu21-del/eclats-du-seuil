@@ -26,7 +26,7 @@ public class V13EffetsMoteurTests
 {
     private const string Equipement = "entrainement_equipement";
     private static string Reference(string name) =>
-        Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.26.0-contenu-0.6.0-regles-0.14.0", name + ".jsonl");
+        Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.26.0-contenu-0.6.0-regles-0.15.0", name + ".jsonl");   // sous-lot V1.8 : règles 0.15.0, même moteur
     private static string Frozen(string version, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-" + version, name + ".jsonl");
 
     private static CombatSetup Load(string name)
@@ -59,9 +59,10 @@ public class V13EffetsMoteurTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal(("0.26.0", 20), (CombatEngine.Version, CombatEngine.LogFormatVersion));
-        Assert.Equal((14, "0.14.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));
+        // Sous-lot V1.8 : règles 0.15.0 (barre « 4 + ultime dès le début »), schéma inchangé.
+        Assert.Equal((14, "0.15.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));
         Assert.Equal(14, ScenarioValidator.CurrentSchemaVersion);
-        Assert.Equal("0.14.0-provisoire", ShippedData.Rules.ContentVersion);
+        Assert.Equal("0.15.0-provisoire", ShippedData.Rules.ContentVersion);
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.Parse("0.25"), Fixed.Parse("0.15"), Fixed.Parse("0.15"), Fixed.Parse("3"), 1000L, Fixed.One, 2, 1000L),
             (rules.EquipmentMaxDamageDealt, rules.EquipmentMaxDamageTaken, rules.EquipmentMaxHealthPercent, rules.EquipmentMaxEnduranceRegen,

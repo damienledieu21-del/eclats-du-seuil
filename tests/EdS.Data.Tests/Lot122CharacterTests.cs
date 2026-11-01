@@ -56,9 +56,11 @@ public class Lot122CharacterTests
         ProgressionLoadResult loaded = ProgressionJsonReader.ReadFile(ProgressionPath, ShippedData);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         CharacterProgression p = loaded.Progression!;
-        Assert.Equal(10, p.MaxLevel);   // cadrage Q3 : niveaux 1 à 10
-        Assert.Equal(new long[] { 0, 100, 220, 360, 520, 700, 900, 1120, 1360, 1620 }, p.XpToLevel);
-        Assert.Equal((1, 1, 2, 9, 10, 10), (p.LevelFor(0), p.LevelFor(99), p.LevelFor(100), p.LevelFor(1619), p.LevelFor(1620), p.LevelFor(1_000_000)));
+        // Sous-lot V1.8 : données jusqu'au niveau 30, plafond au niveau 25 (sujet 54), rapide jusqu'au niveau 5 puis plus lent
+        // (V18ProgressionTests).
+        Assert.Equal((30, 25), (p.MaxLevel, p.LevelCap));
+        Assert.Equal(new long[] { 0, 80, 180, 300, 440, 740, 1080, 1460, 1880, 2350 }, p.XpToLevel.Take(10));
+        Assert.Equal((1, 1, 2, 9, 10, 25), (p.LevelFor(0), p.LevelFor(79), p.LevelFor(80), p.LevelFor(2349), p.LevelFor(2350), p.LevelFor(1_000_000)));
         // Essai du 12.9 (25 octobre 2026) : 1 point d'expérience par tranche de 5 PV, pour les créatures rééquilibrées du niveau 1.
         Assert.Equal((30L, 52L, 24L, 1L), (p.KillXp(150), p.KillXp(260), p.KillXp(120), p.KillXp(4)));   // loup, sanglier, archer, 1 au moins
         ClassProgression bastion = p.ForClass("class.bastion");
@@ -66,7 +68,7 @@ public class Lot122CharacterTests
         Assert.Equal(new Attributes(18, 7, 5, 18, 10, 10), bastion.At(10));
         Assert.Equal(new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier" }, bastion.StartActiveSkills);
         Assert.Equal(new[] { "skill.bastion.endurance_du_roc" }, bastion.StartPassiveSkills);
-        Assert.Throws<ArgumentOutOfRangeException>(() => bastion.At(11));
+        Assert.Throws<ArgumentOutOfRangeException>(() => bastion.At(31));
         Assert.Throws<ArgumentException>(() => p.ForClass("class.mage"));
         Assert.Throws<ArgumentOutOfRangeException>(() => p.LevelFor(-1));
         // Le fichier livré suit son schéma JSON.
@@ -78,21 +80,25 @@ public class Lot122CharacterTests
     public void Progression_invalide_refusee_avec_son_chemin()
     {
         Assert.Equal("$.data.maxLevel", Error(Mutated(r => Data(r)["maxLevel"] = 31)).Path);
-        Assert.Equal("$.data.xpToLevel", Error(Mutated(r => Data(r)["xpToLevel"]!.AsArray().RemoveAt(9))).Path);
+        Assert.Equal("$.data.xpToLevel", Error(Mutated(r => Data(r)["xpToLevel"]!.AsArray().RemoveAt(29))).Path);
         Assert.Equal("$.data.xpToLevel[0]", Error(Mutated(r => Data(r)["xpToLevel"]![0] = 5)).Path);
-        Assert.Equal("$.data.xpToLevel[3]", Error(Mutated(r => Data(r)["xpToLevel"]![3] = 220)).Path);
+        Assert.Equal("$.data.xpToLevel[3]", Error(Mutated(r => Data(r)["xpToLevel"]![3] = 180)).Path);
         Assert.Equal("$.data.killXpPerHealth", Error(Mutated(r => Data(r)["killXpPerHealth"] = 0)).Path);
         Assert.Equal("$.data.classes[0].class", Error(Mutated(r => Bastion(r)["class"] = "class.mage")).Path);
         Assert.Equal("$.data.classes[0].attributes", Error(Mutated(r => Bastion(r)["attributes"]!.AsArray().RemoveAt(0))).Path);
         Assert.Equal("$.data.classes[0].attributes[5].force", Error(Mutated(r => Bastion(r)["attributes"]![5]!["force"] = 1)).Path);
         Assert.Equal("$.data.classes[0].attributes[2].volonte", Error(Mutated(r => Bastion(r)["attributes"]![2]!.AsObject().Remove("volonte"))).Path);
         Assert.Equal("$.data.classes[0].attributes[0].chance", Error(Mutated(r => Bastion(r)["attributes"]![0]!["chance"] = 1)).Path);
-        // Trois actives au niveau 1 (deux emplacements) : le build de départ est refusé par le validateur des builds.
-        Assert.Equal("$.data.classes[0].startActiveSkills", Error(Mutated(r => Bastion(r)["startActiveSkills"]!.AsArray().Add("skill.bastion.provocation"))).Path);
+        // Cinq actives au niveau 1 (quatre emplacements depuis le sous-lot V1.8) : le build de départ est refusé par le validateur des builds.
+        Assert.Equal("$.data.classes[0].startActiveSkills", Error(Mutated(r =>
+        {
+            foreach (string s in new[] { "skill.bastion.contrecoup", "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier" })
+                Bastion(r)["startActiveSkills"]!.AsArray().Add(s);
+        })).Path);
         Assert.Equal("$.data.classes[0].startPassiveSkills", Error(Mutated(r => Bastion(r)["startPassiveSkills"] = new JsonArray("skill.bastion.inconnue"))).Path);
         Assert.Equal("$.data.classes[1].class", Error(Mutated(r => Data(r)["classes"]!.AsArray().Add(Bastion(r).DeepClone()))).Path);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
-            (Error(Mutated(r => r["schemaVersion"] = 3)).Path, Error(Mutated(r => r["schemaVersion"] = 3)).Code));
+            (Error(Mutated(r => r["schemaVersion"] = 4)).Path, Error(Mutated(r => r["schemaVersion"] = 4)).Code));
         // Sous-lot 12.9b : la version 1 (sans compétences gagnées) est refusée.
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
             (Error(Mutated(r => r["schemaVersion"] = 1)).Path, Error(Mutated(r => r["schemaVersion"] = 1)).Code));
@@ -229,7 +235,7 @@ public class Lot122CharacterTests
         CharacterProgression quick = Mutated(r =>
         {
             Data(r)["killXpPerHealth"] = 1;
-            Data(r)["xpToLevel"] = new JsonArray(0, 50, 220, 360, 520, 700, 900, 1120, 1360, 1620);
+            Data(r)["xpToLevel"]![1] = 50;   // sous-lot V1.8 : les autres niveaux suivent la courbe livrée
         }).Progression!;
         ScenarioLoadResult loaded = ReadMutated(root =>
         {
@@ -273,7 +279,7 @@ public class Lot122CharacterTests
             wolf["health"] = 60;
             wolf["position"] = new JsonArray(-16, -12);
         }, scenario: "zones/vallons");
-        var save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", Shipped).WithXp(xp));
+        var save = new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, PlayerCharacters.Create("bastion", "class.bastion", Shipped).WithXp(xp));
         var session = new WorldSession(save, loaded.Setup!, ShippedData, Shipped, Items, new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5")), log: log);
         var gains = new List<ExperienceGained>();
         for (int i = 0; i < 600 && !session.Zone.Engine.View("loup1").IsDead; i++)

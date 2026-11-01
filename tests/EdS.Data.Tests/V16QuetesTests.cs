@@ -51,7 +51,7 @@ public class V16QuetesTests
     /// <summary>Partie ouverte dans l'intérieur <paramref name="zone"/>, arrivée par sa porte, un tick joué.</summary>
     private static WorldSession InRoom(string zone, StoryBook book, SavedCharacter hero, bool step = true)
     {
-        var session = new WorldSession(new WorldSave(zone, 0, 0, Array.Empty<string>(), hero), Inside(zone), ShippedData, Progression, ItemsCatalog, book,
+        var session = new WorldSession(new WorldSave(zone, 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), Inside(zone), ShippedData, Progression, ItemsCatalog, book,
             door: "sortie", storyZone: "zone.vallons");
         if (step) session.Step();
         return session;
@@ -562,7 +562,8 @@ public class V16QuetesTests
         // Fusion de main après la PR #75 (règles 0.13.0, garde des boucliers) : les bandits, leur chef et le loup blanc n'ont pas de
         // bouclier ; leur garde est celle des règles (Shield nul), et le Bastion entre avec la garde de son écu.
         // Fusion de main dans V1.3 : règles 0.14.0 (effets d'équipement) ; ces créatures n'ont pas d'équipement.
-        Assert.Equal("0.14.0-provisoire", ShippedData.Rules.ContentVersion);
+        // Sous-lot V1.8 : règles 0.15.0 (barre), rien de changé pour ces créatures.
+        Assert.Equal("0.15.0-provisoire", ShippedData.Rules.ContentVersion);
         WorldSession w = Play(Zone(), Hero());
         Assert.NotNull(w.EnteredShield);
         string[] creatures = { "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "chef_des_bandits", "loup_blanc" };

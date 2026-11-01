@@ -6,7 +6,10 @@ namespace EdS.Domain.Tests.Builds;
 [Trait("Category", "Build")]
 public class BuildValidatorTests
 {
-    private static readonly ProgressionRules Rules = ProgressionRules.Provisional;
+    // Sous-lot V1.8 : ces tests jugent la mécanique des places (actives qui s'ouvrent en montant, ultime fermée avant son niveau) avec les
+    // règles d'avant (2 actives au niveau 1, 3 au 5, 4 et l'ultime au 10) ; les règles livrées (4 et l'ultime au niveau 1) sont dans
+    // ProgressionRulesTests.
+    private static readonly ProgressionRules Rules = new ProgressionRules { ActiveSlotLevels = new[] { 1, 1, 5, 10 }, UltimateUnlockLevel = 10 };
 
     private static IReadOnlyList<BuildViolation> Validate(CharacterBuild build) => BuildValidator.Validate(build, Definition, Rules);
 

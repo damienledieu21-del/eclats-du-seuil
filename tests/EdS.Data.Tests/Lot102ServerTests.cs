@@ -215,8 +215,9 @@ public class Lot102ServerTests
     [Theory]
     [InlineData(1, Rempart, "protocole 1 non pris en charge")]   // sous-lot 11.7 : le protocole 1 (lot 10) n'est plus servi
     [InlineData(2, Rempart, "protocole 2 non pris en charge")]   // sous-lot 11.9 : protocole 3 (marche à reculons)
-    [InlineData(4, Rempart, "protocole 4 non pris en charge")]
-    [InlineData(3, "build.bastion.inconnu", "build de référence inconnu")]
+    [InlineData(3, Rempart, "protocole 3 non pris en charge")]   // sous-lot V1.8 : protocole 4 (six places et l'ultime)
+    [InlineData(5, Rempart, "protocole 5 non pris en charge")]
+    [InlineData(4, "build.bastion.inconnu", "build de référence inconnu")]
     public void Presentation_refusee(int protocol, string build, string expected)
     {
         var world = new World();
@@ -420,6 +421,30 @@ public class Lot102ServerTests
     }
 
     // --- Déconnexion et reconnexion ----------------------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(3)]   // relecture indépendante de la PR #82 : au protocole 3, l'emplacement 4 était l'ultime
+    [InlineData(5)]
+    public void Retour_avec_le_jeton_d_un_autre_protocole_refuse(int protocol)
+    {
+        var world = new World();
+        (Bot a, Bot b) = world.Start();
+        world.Run(0.2);
+        string token = a.Welcome.Token;
+        world.Net.Cut(a.Connection);
+        world.Run(0.2);
+        Bot back = world.Connect();
+        back.Send(new ReconnectMessage(protocol, token));
+        world.Run(0.05);
+        Assert.Contains($"protocole {protocol} non pris en charge : version {Protocol.Version} attendue", back.Last<ErrorMessage>().Reason);
+        Assert.False(back.Connection.IsOpen);
+        Assert.False(b.Last<LobbyMessage>().Seats[0].Connected);
+        // La place reste libre pour le bon protocole.
+        Bot good = world.Connect();
+        good.Send(new ReconnectMessage(Protocol.Version, token));
+        world.Run(0.05);
+        Assert.Equal(("bastion", token), (good.Welcome.Seat, good.Welcome.Token));
+    }
 
     [Fact]
     public void Deconnexion_combat_continue_garde_relachee_puis_retour_avec_le_jeton()

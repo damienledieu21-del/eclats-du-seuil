@@ -757,19 +757,21 @@ namespace EdS.Game
             _combat.SetGuard(PointerInput.Guard(Input.touchCount, Input.GetMouseButton(1),
                 Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), _touch.GuardHeld));
             if (Input.GetKeyDown(KeyCode.Space) || _touch.ParryPressed) _combat.Parry();
-            // Sous-lot 11.8 : boutons tactiles (compétences 1 à 4 et ultime, cible suivante, allié visé en réseau).
+            // Sous-lot 11.8 : boutons tactiles (compétences 1 à 6 depuis V1.8, et ultime, cible suivante, allié visé en réseau).
             // Essai de style : le modèle du joueur n'attaque que si la compétence part (revue Codex de la PR #55 : UseSlot rend faux pour une
             // compétence en recharge, un emplacement vide ou un étourdissement, sans rien envoyer).
-            if (_touch.SlotPressed >= 0 && _combat.UseSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed))
-                StrikeSlot(_touch.SlotPressed == 4 ? RealtimeCombat.UltimateSlot : _touch.SlotPressed);
+            // Sous-lot V1.8 : six places et l'ultime (SlotPressed rend déjà RealtimeCombat.UltimateSlot pour l'ultime).
+            if (_touch.SlotPressed >= 0 && _combat.UseSlot(_touch.SlotPressed)) StrikeSlot(_touch.SlotPressed);
             if (_touch.TargetPressed) _combat.NextTarget();
             if (_touch.AllyPressed && _combat is NetworkCombat ally) ally.NextAlly();
-            KeyCode[] slots = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4 };
-            KeyCode[] pad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4 };
-            for (int i = 0; i < slots.Length; i++)
+            // Sous-lot V1.8 : touches 1 à 6 pour les six places actives que les règles ouvrent, R pour l'ultime ; 5 n'est plus l'ultime.
+            // Réponse de Damien du 31 octobre 2026 : le pont et le protocole connaissent huit places (0 à 7) et l'ultime (8), mais les
+            // touches 7 et 8 ne servent pas encore (aucune règle n'ouvre la 7e ni la 8e place) ; R reste l'ultime.
+            KeyCode[] slots = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4, KeyCode.Alpha5, KeyCode.Alpha6 };
+            KeyCode[] pad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4, KeyCode.Keypad5, KeyCode.Keypad6 };
+            for (int i = 0; i < slots.Length && i < RealtimeCombat.MaxActiveSlots; i++)
                 if ((Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i])) && _combat.UseSlot(i)) StrikeSlot(i);
-            if ((Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5)) && _combat.UseSlot(RealtimeCombat.UltimateSlot))
-                StrikeSlot(RealtimeCombat.UltimateSlot);
+            if (Input.GetKeyDown(KeyCode.R) && _combat.UseSlot(RealtimeCombat.UltimateSlot)) StrikeSlot(RealtimeCombat.UltimateSlot);
             if (Input.GetKeyDown(KeyCode.Tab)) _combat.NextTarget();
             if (Input.GetKeyDown(KeyCode.G) && _combat is NetworkCombat network) network.NextAlly();
         }

@@ -10,7 +10,7 @@ namespace EdS.Game
     /// <summary>
     /// Sous-lot V1.5 (décisions de Damien : changer ses compétences « partout hors combat » ; la barre grandit avec le niveau) : l'onglet
     /// **Compétences** du panneau de l'aventure (touche B). À gauche, la barre telle qu'elle sera à la prochaine halte : les places
-    /// actives en éclats, comme en combat (touches 1 à 4), l'ultime (R), les passives en nœuds ; une place fermée montre le niveau qui
+    /// actives en éclats, comme en combat (touches 1 à 6 depuis le sous-lot V1.8), l'ultime (R), les passives en nœuds ; une place fermée montre le niveau qui
     /// l'ouvre. À droite, les compétences apprises (avec leur place, ou en réserve) et celles à apprendre plus haut. On glisse une
     /// compétence sur une place, à la souris ou au doigt, ou on la touche puis on touche la place ; deux places s'échangent de même ; clic
     /// droit sur une place : la vider (permis depuis la réponse de Damien du 30 octobre 2026). Tout passe par <see cref="AdventureSession.PlaceSkill"/> et <see cref="AdventureSession.RemoveSkill"/>,
@@ -145,8 +145,9 @@ namespace EdS.Game
             var cell = new SkillCell { Kind = place.Kind, Index = place.Index, Rect = UiKit.Node(_skillsPage, "Place") };
             UiKit.Place(cell.Rect, new Vector2(x, y), new Vector2(size, size), Vector2.zero);
             bool passive = place.Kind == SkillKind.Passive;
-            // Les mêmes éclats que la barre de combat (1 à 4, le cinquième pour l'ultime) ; les passives en nœuds, comme l'arbre des Éclats.
-            string shape = passive ? "noeud" : "eclat_" + (place.Kind == SkillKind.Ultimate ? 5 : Mathf.Min(place.Index, 3) + 1);
+            // Les mêmes éclats que la barre de combat (les actives tournent sur les quatre premiers, depuis V1.8 six places ; le cinquième
+            // pour l'ultime) ; les passives en nœuds, comme l'arbre des Éclats.
+            string shape = passive ? "noeud" : "eclat_" + (place.Kind == SkillKind.Ultimate ? 5 : place.Index % 4 + 1);
             cell.Glow = UiKit.Image(cell.Rect, "Lueur", UiKit.Sprite("braise"), UiKit.Alpha(UiKit.Dawn, 0f));
             UiKit.Fill(cell.Glow.rectTransform, -size * 0.3f);
             cell.Hit = UiKit.Image(cell.Rect, "Fond", UiKit.Sprite(passive ? "noeud_fond" : shape + "_masque"), new Color(0.09f, 0.12f, 0.17f, 0.95f));

@@ -44,6 +44,8 @@ namespace EdS.Data.Json
             bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
             {
                 ["maxLevel"] = (v, p) => d.MaxLevel = input.Int32(v, p),
+                ["levelCap"] = (v, p) => d.LevelCap = input.Int32(v, p),   // sous-lot V1.8 (schéma 3)
+                ["chapterStartLevels"] = (v, p) => d.ChapterStartLevels = ReadInts(input, v, p, ProgressionValidator.MaxChapters, "chapitres"),
                 ["xpToLevel"] = (v, p) => d.XpToLevel = ReadLongs(input, v, p),
                 ["killXpPerHealth"] = (v, p) => d.KillXpPerHealth = input.Int64(v, p),
                 ["classes"] = (v, p) => d.Classes = input.ReadLimitedList(v, p, 64, n => $"{n} classes, au plus 64.", (e, ip) => ReadClass(input, e, ip)),
@@ -61,6 +63,21 @@ namespace EdS.Data.Json
                 if (i >= 1000) { input.Report.Add(path, ValidationCode.LimitExceeded, "au plus 1000 niveaux."); return null; }
                 list.Add(input.Int64(item, $"{path}[{i++}]"));
             }
+            return list;
+        }
+
+        /// <summary>Sous-lot V1.8 : liste d'entiers plafonnée (longueur lue avant tout élément).</summary>
+        private static List<int?>? ReadInts(JsonInput input, JsonElement element, string path, int max, string what)
+        {
+            if (!input.RequireKind(element, JsonValueKind.Array, path, "liste d'entiers")) return null;
+            if (element.GetArrayLength() > max)
+            {
+                input.Report.Add(path, ValidationCode.LimitExceeded, $"{element.GetArrayLength()} {what}, au plus {max}.");
+                return null;
+            }
+            var list = new List<int?>();
+            int i = 0;
+            foreach (JsonElement item in element.EnumerateArray()) list.Add(input.Int32(item, $"{path}[{i++}]"));
             return list;
         }
 

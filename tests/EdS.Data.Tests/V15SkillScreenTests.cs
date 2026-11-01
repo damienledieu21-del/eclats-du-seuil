@@ -24,8 +24,8 @@ public class V15SkillScreenTests : IDisposable
         Onde = "skill.bastion.onde_de_rupture", Provocation = "skill.bastion.provocation", Contrecoup = "skill.bastion.contrecoup",
         Absolu = "skill.bastion.bastion_absolu", Roc = "skill.bastion.endurance_du_roc", BouclierLourd = "skill.bastion.bouclier_lourd";
 
-    /// <summary>Expérience cumulée des niveaux 1, 4, 5, 9 et 10 (progression livrée).</summary>
-    private const long Level1 = 0, Level4 = 519, Level5 = 520, Level9 = 1360, Level10 = 1620;
+    /// <summary>Expérience cumulée des niveaux 1, 4, 5, 9, 10 et 20 (progression livrée ; sous-lot V1.8 : courbe jusqu'au niveau 30).</summary>
+    private const long Level1 = 0, Level4 = 439, Level5 = 440, Level9 = 1880, Level10 = 2350, Level20 = 11610;
 
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "eds_v15_" + Guid.NewGuid().ToString("N"));
 
@@ -64,22 +64,25 @@ public class V15SkillScreenTests : IDisposable
     [Fact]
     public void Changer_l_ordre_de_la_barre_est_admis()
     {
+        // Sous-lot V1.8 : Provocation (niveau 3) et Barrière d'acier (5) prennent les places 3 et 4, Onde de rupture la 5e (niveau 10).
         SavedCharacter hero = Hero(Level10);
-        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, hero.ActiveSkills);
-        Assert.Null(Check(hero, new[] { Onde, Barriere, Heurt, Frappe }, Absolu, new[] { Roc }));
-        Assert.Null(Check(hero, new[] { Frappe, Heurt, Barriere, Onde }, Absolu, new[] { Roc }));   // la même barre
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere, Onde }, hero.ActiveSkills);
+        Assert.Null(Check(hero, new[] { Onde, Barriere, Provocation, Heurt, Frappe }, Absolu, new[] { Roc }));
+        Assert.Null(Check(hero, new[] { Frappe, Heurt, Provocation, Barriere, Onde }, Absolu, new[] { Roc }));   // la même barre
         Assert.Null(Check(Hero(Level1), new[] { Heurt, Frappe }, null, new[] { Roc }));
     }
 
+    // Sous-lot V1.8 : 4 places au niveau 1, la 5e au niveau 10, la 6e au niveau 20, six au plus.
     [Theory]
-    [InlineData(Level1, 3, "place active 3 fermée : elle s'ouvre au niveau 5 (niveau actuel 1).")]
-    [InlineData(Level4, 3, "place active 3 fermée : elle s'ouvre au niveau 5 (niveau actuel 4).")]
-    [InlineData(Level5, 4, "place active 4 fermée : elle s'ouvre au niveau 10 (niveau actuel 5).")]
-    [InlineData(Level10, 5, "la barre n'a que 4 place(s) active(s).")]
+    [InlineData(Level1, 5, "place active 5 fermée : elle s'ouvre au niveau 10 (niveau actuel 1).")]
+    [InlineData(Level4, 5, "place active 5 fermée : elle s'ouvre au niveau 10 (niveau actuel 4).")]
+    [InlineData(Level9, 5, "place active 5 fermée : elle s'ouvre au niveau 10 (niveau actuel 9).")]
+    [InlineData(Level10, 6, "place active 6 fermée : elle s'ouvre au niveau 20 (niveau actuel 10).")]
+    [InlineData(Level20, 7, "la barre n'a que 6 place(s) active(s).")]
     public void Une_place_active_fermee_est_refusee_avec_son_niveau(long xp, int count, string message)
     {
         SavedCharacter hero = Hero(xp);
-        string[] actives = new[] { Frappe, Heurt, Barriere, Onde, Provocation }.Take(count).ToArray();
+        string[] actives = new[] { Frappe, Heurt, Barriere, Onde, Provocation, Contrecoup, Frappe }.Take(count).ToArray();
         BuildViolation why = Check(hero, actives, hero.Ultimate, hero.PassiveSkills.ToArray())!;
         Assert.Equal(BuildViolationCode.TooManySkills, why.Code);
         Assert.Equal($"activeSkills[{count - 1}]", why.Subject);
@@ -89,9 +92,15 @@ public class V15SkillScreenTests : IDisposable
     [Fact]
     public void Ultime_et_passives_fermees_aussi()
     {
+        // Sous-lot V1.8 : la place de l'ultime est ouverte dès le niveau 1 ; Bastion absolu, lui, s'apprend au niveau 10.
+        Assert.Null(PlayerCharacters.ClosedPlace(SkillKind.Ultimate, 0, 1, Rules));
         BuildViolation ultimate = Check(Hero(Level9), new[] { Frappe, Heurt, Barriere }, Absolu, new[] { Roc })!;
-        Assert.Equal(BuildViolationCode.UltimateLocked, ultimate.Code);
-        Assert.Equal("place de l'ultime fermée : elle s'ouvre au niveau 10 (niveau actuel 9).", ultimate.Message);
+        Assert.Equal(BuildViolationCode.SkillNotLearned, ultimate.Code);
+        Assert.Equal("« Bastion absolu » n'est pas encore apprise : elle s'apprend au niveau 10 (niveau actuel 9).", ultimate.Message);
+        // Avec des règles où l'ultime s'ouvre plus tard (celles d'avant V1.8), la place fermée est toujours refusée avec son niveau.
+        BuildViolation closed = PlayerCharacters.ClosedPlace(SkillKind.Ultimate, 0, 9, new ProgressionRules { UltimateUnlockLevel = 10 })!;
+        Assert.Equal(BuildViolationCode.UltimateLocked, closed.Code);
+        Assert.Equal("place de l'ultime fermée : elle s'ouvre au niveau 10 (niveau actuel 9).", closed.Message);
         BuildViolation passive = Check(Hero(Level1), new[] { Frappe, Heurt }, null, new[] { Roc, BouclierLourd })!;
         Assert.Equal(BuildViolationCode.TooManySkills, passive.Code);
         Assert.Equal("passiveSkills[1]", passive.Subject);
@@ -151,7 +160,7 @@ public class V15SkillScreenTests : IDisposable
         Assert.Null(Check(empty, new[] { Frappe }, null, Array.Empty<string>()));
         Assert.Null(Check(empty, new[] { Heurt, Frappe }, null, new[] { Roc }));
         Assert.Null(Check(empty, Array.Empty<string>(), null, Array.Empty<string>()));
-        SavedCharacter late = Hero(Level10).WithSkills(new[] { Barriere, Onde }, Absolu, new[] { Roc });
+        SavedCharacter late = Hero(Level10).WithSkills(new[] { Barriere, Onde, Provocation }, Absolu, new[] { Roc });
         Assert.Same(late, PlayerCharacters.Learn(late, Shipped, Rules, out _));
         Assert.Null(Check(late, new[] { Barriere, Onde, Frappe }, Absolu, new[] { Roc }));
         Assert.Null(Check(late, new[] { Barriere }, Absolu, new[] { Roc }));
@@ -212,7 +221,7 @@ public class V15SkillScreenTests : IDisposable
                         checkedBars++;
                         bool expected = actives.Distinct().Count() == actives.Length && actives.All(learnedActives.Contains)
                             && actives.Length <= Rules.ActiveSlots(level)
-                            && (ultimate is null || level >= 10)
+                            && (ultimate is null || level >= 10)   // V1.8 : place ouverte au niveau 1, Bastion absolu apprise au niveau 10
                             && (passives.Length == 0 || passives.SequenceEqual(new[] { Roc }));
                         BuildViolation? why = Check(hero, actives, ultimate, passives);
                         Assert.True(expected == (why is null), $"niveau {level}, [{string.Join(", ", actives)}], {ultimate}, [{string.Join(", ", passives)}] : {why}");
@@ -224,10 +233,10 @@ public class V15SkillScreenTests : IDisposable
                     }
         }
         Assert.True(checkedBars > 15_000, checkedBars.ToString());
-        // Suites d'actives apprises distinctes, de 0 au nombre de places : niveau 1, 1 + 2 + 2 = 5 (2 apprises, 2 places) ; niveau 5,
-        // 1 + 4 + 12 + 24 = 41 (4 apprises, Provocation comprise, 3 places) ; niveau 10, 1 + 5 + 20 + 60 + 120 = 206 (5 apprises de l'univers,
-        // 4 places). Fois l'ultime (vide, ou Bastion absolu au niveau 10) et la passive (vide ou Endurance du roc).
-        Assert.Equal(5 * 1 * 2 + 41 * 1 * 2 + 206 * 2 * 2, admitted);
+        // Suites d'actives apprises distinctes, de 0 à 4 (barres de l'univers) : niveau 1, 1 + 2 + 2 = 5 (2 apprises, 4 places) ; niveau 5,
+        // 1 + 4 + 12 + 24 + 24 = 65 (4 apprises, Provocation comprise, 4 places) ; niveau 10, 1 + 5 + 20 + 60 + 120 = 206 (5 apprises de
+        // l'univers, 5 places). Fois l'ultime (vide, ou Bastion absolu au niveau 10) et la passive (vide ou Endurance du roc).
+        Assert.Equal(5 * 1 * 2 + 65 * 1 * 2 + 206 * 2 * 2, admitted);
     }
 
     // --- La barre et l'écran (EdS.Runtime) ---------------------------------------------------------------------------------------
@@ -263,16 +272,19 @@ public class V15SkillScreenTests : IDisposable
         Assert.Null(book.Locked);
         // La 2e place passive est ouverte, mais aucune passive n'attend : l'écran dit « rien à placer » (relecture de la PR #71).
         Assert.False(book.HasReserve(SkillKind.Passive));
-        Assert.True(book.HasReserve(SkillKind.Active));   // Provocation, apprise au niveau 3, attend dans la réserve
+        // Sous-lot V1.8 : Provocation (niveau 3) a pris la 3e place ; rien n'attend dans la réserve avant Contrecoup (niveau 7).
+        Assert.False(book.HasReserve(SkillKind.Active));
+        Assert.True(SkillBook.For(Hero(Level9), Shipped, Bastion, Rules, null).HasReserve(SkillKind.Active));
         Assert.False(SkillBook.For(Hero(Level5), Shipped, Bastion, Rules, "motif").CanChange);
-        Assert.Equal(new[] { ("1", 1, true, Frappe), ("2", 1, true, Heurt), ("3", 5, true, Barriere), ("4", 10, false, (string?)null) },
+        Assert.Equal(new[] { ("1", 1, true, Frappe), ("2", 1, true, Heurt), ("3", 1, true, Provocation), ("4", 1, true, Barriere),
+                ("5", 10, false, (string?)null), ("6", 20, false, (string?)null) },
             book.Places.Where(p => p.Kind == SkillKind.Active).Select(p => (p.Key, p.OpenLevel, p.IsOpen, p.Skill)));
         SkillPlace ultimate = book.Place(SkillKind.Ultimate, 0)!;
-        Assert.Equal(("R", 10, false, (string?)null), (ultimate.Key, ultimate.OpenLevel, ultimate.IsOpen, ultimate.Skill));
+        Assert.Equal(("R", 1, true, (string?)null), (ultimate.Key, ultimate.OpenLevel, ultimate.IsOpen, ultimate.Skill));
         Assert.Equal(new[] { (1, true, Roc), (5, true, (string?)null), (20, false, null), (30, false, null) },
             book.Places.Where(p => p.Kind == SkillKind.Passive).Select(p => (p.OpenLevel, p.IsOpen, p.Skill)));
         Assert.Equal(new[] { Frappe, Heurt, Roc, Provocation, Barriere }, book.Learned.Select(c => c.Id));
-        Assert.All(book.Learned, c => Assert.True(c.Learned && (c.Place != null) == (c.Id != Provocation)));
+        Assert.All(book.Learned, c => Assert.True(c.Learned && c.Place != null));
         Assert.Equal(new[] { (Contrecoup, 7), (Onde, 10), (Absolu, 10) }, book.Upcoming.Select(c => (c.Id, c.Level)));
         Assert.All(book.Upcoming, c => Assert.True(!c.Learned && c.Place == null));
         SkillCard frappe = book.Card(Frappe)!;
@@ -280,7 +292,8 @@ public class V15SkillScreenTests : IDisposable
         Assert.Equal(5, book.Card(Barriere)!.Level);
         Assert.Equal(3, book.Card(Provocation)!.Level);
         Assert.Null(book.Card(BouclierLourd));
-        Assert.Null(book.Place(SkillKind.Active, 4));
+        Assert.NotNull(book.Place(SkillKind.Active, 5));
+        Assert.Null(book.Place(SkillKind.Active, 6));
     }
 
     [Fact]
@@ -317,7 +330,8 @@ public class V15SkillScreenTests : IDisposable
         }
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
-        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+        // Sauvegarde de V1.8 (relecture de la PR #82) : le personnage a atteint son niveau après V1.8.
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
             character ?? PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(xp)));
         AdventureSession a = AdventureSession.Load(DataDirectory, scenarios, savePath);
         a.DrainMessages();
@@ -332,20 +346,21 @@ public class V15SkillScreenTests : IDisposable
     {
         AdventureSession a = Start(Level10);
         Assert.True(a.CanChangeSkills);
-        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, Engaged(a));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere, Onde }, Engaged(a));
         Assert.Null(a.PlaceSkill(SkillKind.Active, 0, Onde));
         Assert.Contains("Compétences gardées : effet à ta prochaine halte.", a.DrainMessages());
-        Assert.Equal(new[] { Onde, Heurt, Barriere, Frappe }, a.World.Character.ActiveSkills);
-        Assert.Equal(new[] { Onde, Heurt, Barriere, Frappe }, a.Skills().Places.Where(p => p.Kind == SkillKind.Active).Select(p => p.Skill));
+        string[] swapped = { Onde, Heurt, Provocation, Barriere, Frappe };
+        Assert.Equal(swapped, a.World.Character.ActiveSkills);
+        Assert.Equal(new string?[] { Onde, Heurt, Provocation, Barriere, Frappe, null }, a.Skills().Places.Where(p => p.Kind == SkillKind.Active).Select(p => p.Skill));   // 6e place fermée
         // Le combat en cours garde la barre d'entrée ; la halte prend la nouvelle, sans rien « apprendre » de nouveau.
-        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, Engaged(a));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere, Onde }, Engaged(a));
         Assert.True(a.Rest());
-        Assert.Equal(new[] { Onde, Heurt, Barriere, Frappe }, Engaged(a));
+        Assert.Equal(swapped, Engaged(a));
         Assert.Empty(a.World.Learned);
         // Gardée dans la sauvegarde : une partie relue la reprend.
         AdventureSession again = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), a.SavePath);
-        Assert.Equal(new[] { Onde, Heurt, Barriere, Frappe }, again.World.Character.ActiveSkills);
-        Assert.Equal(new[] { Onde, Heurt, Barriere, Frappe }, Engaged(again));
+        Assert.Equal(swapped, again.World.Character.ActiveSkills);
+        Assert.Equal(swapped, Engaged(again));
         Assert.Equal(Absolu, again.World.Character.Ultimate);
     }
 
@@ -356,12 +371,13 @@ public class V15SkillScreenTests : IDisposable
         a.Save();   // Barrière d'acier, gagnée au niveau 5, vient d'être équipée à l'entrée : sauvegardée d'abord
         SavedCharacter before = a.World.Character;
         string saved = File.ReadAllText(a.SavePath);
-        Assert.Equal("place active 4 fermée : elle s'ouvre au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 3, Frappe));
-        Assert.Equal("place de l'ultime fermée : elle s'ouvre au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Ultimate, 0, Absolu));
+        Assert.Equal("place active 5 fermée : elle s'ouvre au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 4, Frappe));
+        // Sous-lot V1.8 : la place de l'ultime est ouverte, mais Bastion absolu n'est pas encore apprise.
+        Assert.Equal("« Bastion absolu » n'est pas encore apprise : elle s'apprend au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Ultimate, 0, Absolu));
         Assert.Equal("« Contrecoup » n'est pas encore apprise : elle s'apprend au niveau 7 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 0, Contrecoup));
         Assert.Equal("« Onde de rupture » n'est pas encore apprise : elle s'apprend au niveau 10 (niveau actuel 5).", a.PlaceSkill(SkillKind.Active, 1, Onde));
         Assert.StartsWith("« Frappe du rempart » est une compétence active", a.PlaceSkill(SkillKind.Passive, 1, Frappe));
-        Assert.Equal(BuildViolationCode.DuplicateSkill, a.World.SetSkills(new[] { Frappe, Frappe, Barriere }, null, new[] { Roc })!.Code);
+        Assert.Equal(BuildViolationCode.DuplicateSkill, a.World.SetSkills(new[] { Frappe, Frappe, Provocation, Barriere }, null, new[] { Roc })!.Code);
         Assert.Same(before, a.World.Character);
         Assert.DoesNotContain("Compétences gardées : effet à ta prochaine halte.", a.DrainMessages());
         a.Advance(AdventureSession.AutosaveSeconds + 1);   // rien de changé : pas de sauvegarde à faire
@@ -386,7 +402,7 @@ public class V15SkillScreenTests : IDisposable
         Assert.Equal("Pas en plein combat : éloigne-toi des ennemis pour changer tes compétences.", a.PlaceSkill(SkillKind.Active, 0, Onde));
         Assert.Contains("Pas en plein combat : éloigne-toi des ennemis pour changer tes compétences.", a.DrainMessages());
         Assert.Equal("Pas en plein combat : éloigne-toi des ennemis pour changer tes compétences.",
-            a.SetSkills(new[] { Onde, Heurt, Barriere, Frappe }, Absolu, new[] { Roc }));
+            a.SetSkills(new[] { Onde, Heurt, Provocation, Barriere, Frappe }, Absolu, new[] { Roc }));
         Assert.Same(before, a.World.Character);
     }
 
@@ -451,7 +467,7 @@ public class V15SkillScreenTests : IDisposable
         if (allowed)
         {
             Assert.Null(why);
-            Assert.Equal(new[] { Onde, Heurt, Barriere, Frappe }, a.World.Character.ActiveSkills);
+            Assert.Equal(new[] { Onde, Heurt, Provocation, Barriere, Frappe }, a.World.Character.ActiveSkills);
         }
         else
         {
@@ -475,7 +491,8 @@ public class V15SkillScreenTests : IDisposable
         File.WriteAllText(zone, root.ToJsonString());
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
-        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+        // Sauvegarde de V1.8 (relecture de la PR #82) : le personnage a atteint son niveau après V1.8.
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
             PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(Level10)));
         AdventureSession a = AdventureSession.Load(data, scenarios, savePath);
         for (int i = 0; i < 1200 && !a.World.IsDefeated; i++) a.Advance(0.05);
@@ -525,33 +542,33 @@ public class V15SkillScreenTests : IDisposable
         AdventureSession a = Start(Level4);
         ((INarrativeWorld)a.World).GiveXp(1);   // niveau 5 en route
         SavedCharacter before = a.World.Character;
-        Assert.Equal(new[] { Frappe, Heurt }, before.ActiveSkills);
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, before.ActiveSkills);
         a.DrainMessages();
-        Assert.Null(a.PlaceSkill(SkillKind.Active, 2, Barriere));   // sur sa propre place (barre de la prochaine halte)
-        Assert.Equal("la barre n'a que 4 place(s) active(s).", a.PlaceSkill(SkillKind.Active, 7, Barriere));   // refus : rien d'écrit
-        Assert.Null(a.SetSkills(new[] { Frappe, Heurt, Barriere }, null, new[] { Roc }));   // la même barre
+        Assert.Null(a.PlaceSkill(SkillKind.Active, 3, Barriere));   // sur sa propre place (barre de la prochaine halte)
+        Assert.Equal("la barre n'a que 6 place(s) active(s).", a.PlaceSkill(SkillKind.Active, 7, Barriere));   // refus : rien d'écrit
+        Assert.Null(a.SetSkills(new[] { Frappe, Heurt, Provocation, Barriere }, null, new[] { Roc }));   // la même barre
         Assert.Null(a.RemoveSkill(SkillKind.Passive, 1));   // place vide : rien à retirer
         Assert.Same(before, a.World.Character);
         Assert.Empty(a.DrainMessages());
         Assert.True(a.Rest());
         Assert.Equal(new[] { Barriere }, a.World.Learned.Select(u => u.Skill));
-        Assert.Contains(a.DrainMessages(), m => m.StartsWith("Nouvelle compétence : Barrière d'acier (touche 3", StringComparison.Ordinal));
+        Assert.Contains(a.DrainMessages(), m => m.StartsWith("Nouvelle compétence : Barrière d'acier (touche 4", StringComparison.Ordinal));
     }
 
     [Fact]
     public void Un_niveau_gagne_en_route_ouvre_sa_place_tout_de_suite_dans_l_ecran()
     {
         AdventureSession a = Start(Level4);
-        Assert.Equal(new[] { Frappe, Heurt }, a.World.Character.ActiveSkills);
+        Assert.Equal(new[] { Frappe, Heurt, Provocation }, a.World.Character.ActiveSkills);
         ((INarrativeWorld)a.World).GiveXp(1);   // niveau 5 en route
         Assert.Equal(5, a.World.Level);
-        // L'écran montre déjà la barre de la prochaine halte : Barrière d'acier dans la place 3, qui vient de s'ouvrir.
+        // L'écran montre déjà la barre de la prochaine halte : Barrière d'acier dans la place 4, libre depuis le niveau 1 (sous-lot V1.8).
         SkillBook book = a.Skills();
-        Assert.Equal(Barriere, book.Place(SkillKind.Active, 2)!.Skill);
+        Assert.Equal(Barriere, book.Place(SkillKind.Active, 3)!.Skill);
         Assert.Null(a.PlaceSkill(SkillKind.Active, 0, Barriere));
-        Assert.Equal(new[] { Barriere, Heurt, Frappe }, a.World.Character.ActiveSkills);
+        Assert.Equal(new[] { Barriere, Heurt, Provocation, Frappe }, a.World.Character.ActiveSkills);
         Assert.True(a.Rest());
-        Assert.Equal(new[] { Barriere, Heurt, Frappe }, Engaged(a));
+        Assert.Equal(new[] { Barriere, Heurt, Provocation, Frappe }, Engaged(a));
         Assert.Empty(a.World.Learned);   // déjà placée : rien à annoncer ni à déplacer à la halte
     }
 
@@ -561,7 +578,7 @@ public class V15SkillScreenTests : IDisposable
         AdventureSession a = Start(Level4);
         ((INarrativeWorld)a.World).GiveXp(1);
         Assert.True(a.Rest());
-        Assert.Equal(new[] { Frappe, Heurt, Barriere }, Engaged(a));
+        Assert.Equal(new[] { Frappe, Heurt, Provocation, Barriere }, Engaged(a));
         Assert.Equal(new[] { Barriere }, a.World.Learned.Select(u => u.Skill));
     }
 }

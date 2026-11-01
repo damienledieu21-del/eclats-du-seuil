@@ -14,8 +14,14 @@ namespace EdS.Data.Characters
 
     public sealed class ProgressionData
     {
-        /// <summary>Niveau maximal du premier parcours (cadrage Q3 : 1 à 10).</summary>
+        /// <summary>Niveau le plus haut décrit par les données (cadrage Q3 : 10 ; sous-lot V1.8 : 30).</summary>
         public int? MaxLevel { get; set; }
+
+        /// <summary>Sous-lot V1.8 (schéma 3, sujet 54) : plafond de niveau actuel, au plus <see cref="MaxLevel"/>.</summary>
+        public int? LevelCap { get; set; }
+
+        /// <summary>Sous-lot V1.8 (schéma 3) : premier niveau de chaque chapitre de la quête principale.</summary>
+        public List<int?>? ChapterStartLevels { get; set; }
 
         /// <summary>Expérience cumulée qu'il faut pour être à chaque niveau, du niveau 1 (0) au niveau maximal.</summary>
         public List<long?>? XpToLevel { get; set; }

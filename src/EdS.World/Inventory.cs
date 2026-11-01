@@ -134,7 +134,8 @@ namespace EdS.World
         /// <see cref="ItemCatalog.InventorySize"/> places, équipement à une place qui reçoit sa sorte et à un niveau suffisant. Une sauvegarde
         /// de version 6 a ses quatre emplacements (arme, bouclier, torse, cou), qui gardent leur nom parmi les 18 places.
         /// </summary>
-        /// <exception cref="ArgumentException">Sauvegarde incohérente avec le catalogue (premier motif dans le message).</exception>
+        /// <exception cref="ArgumentException">Sauvegarde incohérente avec le catalogue (premier motif dans le message). Remarque de Codex sur la
+        /// PR #82 : un objet porté au-dessus du niveau n'en est plus une ; il est rangé dans le sac (voir l'autre forme).</exception>
         public static Inventory From(SavedCharacter character, ItemCatalog catalog, int level) => From(character, catalog, level, out _);
 
         /// <summary>
@@ -173,13 +174,19 @@ namespace EdS.World
                     throw new ArgumentException($"Équipement « {e.Key} » : objet « {e.Value} » absent du catalogue.", nameof(character));
                 if (item.Type != ItemType.Equipment || item.Slot != place.Accepts)
                     throw new ArgumentException($"Équipement « {e.Key} » : « {e.Value} » ne se porte pas à cet emplacement.", nameof(character));
-                if (item.RequiredLevel > level)
-                    throw new ArgumentException($"Équipement « {e.Key} » : « {e.Value} » demande le niveau {item.RequiredLevel} (personnage niveau {level}).", nameof(character));
                 // Sous-lot V1.4 : l'instance portée (propriétés, qualité, usure), ou l'objet de base.
                 ItemStack worn = character.WornInstance(e.Key)!;
                 worn = catalog.Settle(worn, out IReadOnlyList<string> settledWorn);
                 notes.AddRange(settledWorn);
                 if (catalog.CheckInstance(worn) is string problem) throw new ArgumentException($"Équipement « {e.Key} » : {problem}", nameof(character));
+                // Remarque de Codex sur la PR #82 (le chargement d'une sauvegarde ne lève jamais pour un niveau devenu trop bas) : un objet
+                // porté qui demande un niveau plus haut est rangé dans le sac s'il y a de la place (sinon il reste porté) ; le compte rendu le dit.
+                if (item.RequiredLevel > level && inventory._stacks.Count < catalog.InventorySize)
+                {
+                    inventory._stacks.Add(worn);
+                    notes.Add($"« {item.Id} » demande le niveau {item.RequiredLevel} (niveau {level}) : rangé dans le sac.");
+                    continue;
+                }
                 inventory._equipped[e.Key] = worn;
             }
             // Remarque de Codex sur la PR #78 : un équipement relu au-delà de la limite du combat (impossible avec un catalogue validé) est

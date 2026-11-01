@@ -278,8 +278,13 @@ public class Lot85BuildDataTests
         AssertError(ReadMutated(r => Entry(r, 0)["build"]!["level"] = 31), $"{B}[0].build.level", ValidationCode.InvalidValue, "[LevelOutOfRange]");
         AssertError(ReadMutated(r => Entry(r, 0)["build"]!["attributes"]!["force"] = 1_000_001), $"{B}[0].build.attributes.force", ValidationCode.InvalidValue,
             "[AttributeOutOfRange]");
-        BuildSetLoadResult locked = ReadMutated(r => Entry(r, 4)["build"]!["level"] = 9);
-        AssertError(locked, $"{B}[4].build.ultimate", ValidationCode.InvalidValue, "[UltimateLocked]");
+        // Sous-lot V1.8 : la place de l'ultime est ouverte dès le niveau 1 (Bastion absolu demande le niveau 10) ; 4 actives jusqu'au niveau 9.
+        BuildSetLoadResult locked = ReadMutated(r =>
+        {
+            Entry(r, 4)["build"]!["level"] = 9;
+            Entry(r, 4)["build"]!["activeSkills"]!.AsArray().Add(S("onde_de_rupture"));
+        });
+        AssertError(locked, $"{B}[4].build.ultimate", ValidationCode.InvalidValue, "[SkillLevelTooLow]");
         AssertError(locked, $"{B}[4].build.activeSkills", ValidationCode.InvalidValue, "[TooManySkills]");
         Assert.DoesNotContain(locked.Report.Errors, e => e.Path == $"{B}[4].build");   // plus aucune erreur sur le bloc entier
     }

@@ -309,7 +309,7 @@ public class Lot127BossTests
             new Dictionary<string, int> { ["npc.odile"] = 1 }, new[] { "discovery.manifestation" });
         SavedCharacter hero = Hero(acquired, new ItemStack("item.gambison", 1), new ItemStack("item.peau_de_loup", 7)).WithXp(900)
             .WithProfessions(new Dictionary<string, long> { ["forge"] = 30 });
-        WorldSession session = Play(arena, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero));
+        WorldSession session = Play(arena, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero));
         List<SessionStep> steps = Fight(session);
         Assert.True(session.IsDefeated);
         Assert.Single(steps, s => s.Defeated);

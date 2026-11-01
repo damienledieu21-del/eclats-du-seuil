@@ -17,16 +17,18 @@ public class ProgressionRulesTests
     public void Points_de_talent_egaux_au_niveau_moins_un(int level, int points) =>
         Assert.Equal(points, Rules.TalentPoints(level));
 
+    // Sous-lot V1.8 (décision de Damien : « 4 + ultime dès le début, puis plus en montant ») : 4 actives et l'ultime au niveau 1, la 5e au
+    // niveau 10, la 6e au niveau 20 ; les passives ne changent pas.
     [Theory]
-    [InlineData(1, 2, 1, false)]
-    [InlineData(4, 2, 1, false)]
-    [InlineData(5, 3, 2, false)]
-    [InlineData(9, 3, 2, false)]
-    [InlineData(10, 4, 2, true)]
-    [InlineData(19, 4, 2, true)]
-    [InlineData(20, 4, 3, true)]
-    [InlineData(29, 4, 3, true)]
-    [InlineData(30, 4, 4, true)]
+    [InlineData(1, 4, 1, true)]
+    [InlineData(4, 4, 1, true)]
+    [InlineData(5, 4, 2, true)]
+    [InlineData(9, 4, 2, true)]
+    [InlineData(10, 5, 2, true)]
+    [InlineData(19, 5, 2, true)]
+    [InlineData(20, 6, 3, true)]
+    [InlineData(29, 6, 3, true)]
+    [InlineData(30, 6, 4, true)]
     public void Emplacements_par_niveau(int level, int actives, int passives, bool ultimate)
     {
         Assert.Equal(actives, Rules.ActiveSlots(level));
@@ -56,6 +58,21 @@ public class ProgressionRulesTests
 
     [Fact]
     public void Regles_provisoires_coherentes() => Assert.Empty(Rules.Validate());
+
+    [Fact]
+    public void Huit_places_actives_au_plus()
+    {
+        // Sous-lot V1.8 (réponse de Damien du 31 octobre 2026) : la barre (pont temps réel, protocole 4) a huit places actives ; une
+        // neuvième est refusée par le validateur des règles. Les règles livrées n'en ouvrent que six.
+        Assert.Equal(8, ProgressionRules.MaxActiveSlots);
+        Assert.Equal(6, Rules.ActiveSlotLevels.Count);
+        Assert.Empty(new ProgressionRules { ActiveSlotLevels = new[] { 1, 1, 1, 1, 10, 20, 25, 30 } }.Validate());
+        RuleViolation nine = Assert.Single(new ProgressionRules { ActiveSlotLevels = new[] { 1, 1, 1, 1, 1, 1, 1, 1, 30 } }.Validate());
+        Assert.Contains(nameof(ProgressionRules.ActiveSlotLevels), nine.Fields);
+        Assert.Contains("8 au plus", nine.Message);
+        // Au-delà de la borne technique, une seule erreur (la liste n'est pas lue).
+        Assert.Single(new ProgressionRules { ActiveSlotLevels = Enumerable.Repeat(1, ProgressionRules.MaxSlots + 1).ToArray() }.Validate());
+    }
 
     [Fact]
     public void Regles_incoherentes_signalees()

@@ -1,21 +1,43 @@
 {
   "$schema": "../../schemas/progression.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "progression",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
-    "maxLevel": 10,
+    "maxLevel": 30,
+    "levelCap": 25,
+    "chapterStartLevels": [1, 6, 11, 16, 21],
     "xpToLevel": [
       0,
-      100,
-      220,
-      360,
-      520,
-      700,
-      900,
-      1120,
-      1360,
-      1620
+      80,
+      180,
+      300,
+      440,
+      740,
+      1080,
+      1460,
+      1880,
+      2350,
+      2880,
+      3470,
+      4130,
+      4870,
+      5700,
+      6630,
+      7670,
+      8840,
+      10150,
+      11610,
+      13250,
+      15080,
+      17130,
+      19430,
+      22010,
+      24900,
+      28130,
+      31750,
+      35810,
+      40350
     ],
     "killXpPerHealth": 5,
     "classes": [
@@ -101,6 +123,166 @@
             "vitalite": 18,
             "volonte": 10,
             "endurance": 10
+          },
+          {
+            "force": 19,
+            "dexterite": 7,
+            "intelligence": 5,
+            "vitalite": 19,
+            "volonte": 10,
+            "endurance": 10
+          },
+          {
+            "force": 19,
+            "dexterite": 7,
+            "intelligence": 5,
+            "vitalite": 19,
+            "volonte": 10,
+            "endurance": 10
+          },
+          {
+            "force": 20,
+            "dexterite": 7,
+            "intelligence": 5,
+            "vitalite": 20,
+            "volonte": 10,
+            "endurance": 11
+          },
+          {
+            "force": 21,
+            "dexterite": 7,
+            "intelligence": 5,
+            "vitalite": 21,
+            "volonte": 11,
+            "endurance": 11
+          },
+          {
+            "force": 21,
+            "dexterite": 8,
+            "intelligence": 5,
+            "vitalite": 21,
+            "volonte": 11,
+            "endurance": 11
+          },
+          {
+            "force": 22,
+            "dexterite": 8,
+            "intelligence": 5,
+            "vitalite": 22,
+            "volonte": 11,
+            "endurance": 12
+          },
+          {
+            "force": 23,
+            "dexterite": 8,
+            "intelligence": 5,
+            "vitalite": 23,
+            "volonte": 11,
+            "endurance": 12
+          },
+          {
+            "force": 23,
+            "dexterite": 8,
+            "intelligence": 5,
+            "vitalite": 23,
+            "volonte": 12,
+            "endurance": 12
+          },
+          {
+            "force": 24,
+            "dexterite": 8,
+            "intelligence": 5,
+            "vitalite": 24,
+            "volonte": 12,
+            "endurance": 13
+          },
+          {
+            "force": 25,
+            "dexterite": 9,
+            "intelligence": 6,
+            "vitalite": 25,
+            "volonte": 12,
+            "endurance": 13
+          },
+          {
+            "force": 25,
+            "dexterite": 9,
+            "intelligence": 6,
+            "vitalite": 25,
+            "volonte": 12,
+            "endurance": 13
+          },
+          {
+            "force": 26,
+            "dexterite": 9,
+            "intelligence": 6,
+            "vitalite": 26,
+            "volonte": 13,
+            "endurance": 14
+          },
+          {
+            "force": 27,
+            "dexterite": 9,
+            "intelligence": 6,
+            "vitalite": 27,
+            "volonte": 13,
+            "endurance": 14
+          },
+          {
+            "force": 27,
+            "dexterite": 9,
+            "intelligence": 6,
+            "vitalite": 27,
+            "volonte": 13,
+            "endurance": 14
+          },
+          {
+            "force": 28,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 28,
+            "volonte": 13,
+            "endurance": 15
+          },
+          {
+            "force": 29,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 29,
+            "volonte": 14,
+            "endurance": 15
+          },
+          {
+            "force": 29,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 29,
+            "volonte": 14,
+            "endurance": 15
+          },
+          {
+            "force": 30,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 30,
+            "volonte": 14,
+            "endurance": 16
+          },
+          {
+            "force": 31,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 31,
+            "volonte": 14,
+            "endurance": 16
+          },
+          {
+            "force": 31,
+            "dexterite": 11,
+            "intelligence": 7,
+            "vitalite": 31,
+            "volonte": 15,
+            "endurance": 16
           }
         ],
         "startActiveSkills": [

@@ -30,7 +30,7 @@ public class RulesJsonReaderTests
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
         Assert.Equal(14, result.Rules!.SchemaVersion);   // V1.3 : effets d'équipement ; sous-lot 11.4a : déplacement et contact ; 11.4b : portée des protections ; 11.4c : arc, annonces ; V1.2 : boucliers
-        Assert.Equal("0.14.0-provisoire", result.Rules.ContentVersion);   // 0.14.0 : effets d'équipement (V1.3) ; 0.13.0 : garde des boucliers (V1.2) ; 0.12.0 : 128 combattants ; 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b) ; 0.11.0 : arc et annonces (11.4c)
+        Assert.Equal("0.15.0-provisoire", result.Rules.ContentVersion);   // 0.15.0 : barre de V1.8 ; 0.14.0 : effets d'équipement (V1.3) ; 0.13.0 : garde des boucliers (V1.2) ; 0.12.0 : 128 combattants ; 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b) ; 0.11.0 : arc et annonces (11.4c)
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -122,8 +122,10 @@ public class RulesJsonReaderTests
         // Sous-lot V1.2 : schéma 13, contenu 0.13.0 : combat.shield (bornes de la garde des boucliers ; ancienne empreinte 81d40127…).
         // Sous-lot V1.3 : schéma 14, contenu 0.14.0 : combat.equipment (bornes des effets d'équipement ; ancienne empreinte d6dd1953…).
         // Relecture de la PR #78 : combat.equipment.allowedStatuses (liste vide), schéma 14 et contenu 0.14.0 gardés (non fusionnés ; empreinte de la PR avant : 358fc35a…).
+        // Sous-lot V1.8 : contenu 0.15.0, schéma inchangé : places actives aux niveaux 1, 1, 1, 1, 10, 20 et ultime au niveau 1 (ancienne
+        // empreinte 0413744a…).
         Assert.Equal(
-            "sha256:0413744ac77641fff7ad7b45c86d46f2b2ee048e3ad48f3374236950e43866c9",
+            "sha256:88485de3f23cf9939076093b906523137e9e08a40373dc2771c19fe838a76164",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 

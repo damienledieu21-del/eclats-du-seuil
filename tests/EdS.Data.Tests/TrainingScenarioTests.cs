@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "e947091de43306ef334ad3c3218b2852e0b49e1596d879da09dcdd681468fcdd")]
-    [InlineData("entrainement_rupture", "7fb85206f93053636823ce13b2778297bf6fafd8e2a75e2440f9d6df565f23fd")]
-    [InlineData("entrainement_alterations", "5a19899569b6bc96a60a1d4fee4e01a740f8718ecbcdb6a9bc034ea0a9bb1e2a")]
-    [InlineData("entrainement_declencheurs", "63d5ad67c68e3d1cc55cabdbc599df5348dab472c6d400d10e2e80968afa3c00")]
+    [InlineData("entrainement_garde_parade", "151338ffd5491b5e3a9dea24ea2539dfe5d0fed73e518f3127958a6e1ef068e1")]
+    [InlineData("entrainement_rupture", "648114e2c083faeec1cf6f073fe0ebf7bcf5edcfcb3ae2f1ca209fdc886f2597")]
+    [InlineData("entrainement_alterations", "a9de278ac76c26ccd52d05d619ef1d64bdb8c2fac95365ae453d42f52932beac")]
+    [InlineData("entrainement_declencheurs", "2779803d2926fa77a64f6d6f026097c81dabf477b625defa9c52f7c405d783c8")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -146,6 +146,8 @@ public class TrainingScenarioTests
         // ces scénarios n'a d'effet d'équipement : seul l'en-tête change ; référence dans Fixtures/reference-0.26.0-contenu-0.6.0-regles-0.14.0.
         // Relecture de la PR #78 : combat.equipment.allowedStatuses (vide) change l'empreinte des règles 0.14.0 (non fusionnées) : seule
         // l'empreinte de l'en-tête change ; la référence 0.26.0, elle aussi non fusionnée, est regénérée.
+        // Sous-lot V1.8 : règles 0.15.0 (barre « 4 + ultime dès le début »), même moteur et même format : seule l'identité des règles change
+        // dans l'en-tête ; référence dans Fixtures/reference-0.26.0-contenu-0.6.0-regles-0.15.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

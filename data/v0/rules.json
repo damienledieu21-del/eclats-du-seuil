@@ -2,7 +2,7 @@
   "$schema": "../schemas/rules.schema.json",
   "schemaVersion": 14,
   "kind": "rules",
-  "contentVersion": "0.14.0-provisoire",
+  "contentVersion": "0.15.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -57,9 +57,9 @@
       },
       "treesPerClass": 3,
       "slots": {
-        "activeUnlockLevels": [1, 1, 5, 10],
+        "activeUnlockLevels": [1, 1, 1, 1, 10, 20],
         "passiveUnlockLevels": [1, 5, 20, 30],
-        "ultimateUnlockLevel": 10
+        "ultimateUnlockLevel": 1
       }
     },
     "combat": {
