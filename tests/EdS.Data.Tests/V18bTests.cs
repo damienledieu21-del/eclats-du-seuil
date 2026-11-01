@@ -227,7 +227,7 @@ public class V18bTests
     public void Usure_selon_le_niveau_et_la_rarete()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((6, "0.5.0-provisoire"), (c.SchemaVersion, c.ContentVersion));
+        Assert.Equal((7, "0.6.0-provisoire"), (c.SchemaVersion, c.ContentVersion));   // V1.8c : version 7 (objets de bonus)
         Assert.Equal((100, 3, 1), (c.WearMax, c.WearPerFullHealth, c.WearLevelResistPercent));
         Assert.Equal(new[] { 0, 20, 40, 60, 80, 100 }, c.WearRarityResistPercent);
         Assert.Equal(0, c.WearResistPercent(c.Item("item.epee_du_novice")));            // commune de niveau 1
@@ -316,7 +316,7 @@ public class V18bTests
     public void Metiers_en_version_3_un_quart_de_l_experience_pour_un_echec()
     {
         CraftingBook book = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, Vallons, ItemsCatalog).Book!;
-        Assert.Equal((3, "0.4.0-provisoire", 25), (book.SchemaVersion, book.ContentVersion, book.Failure.XpPercent));
+        Assert.Equal((3, "0.5.0-provisoire", 25), (book.SchemaVersion, book.ContentVersion, book.Failure.XpPercent));
         Assert.Equal((15L, 1L, 0L, 1L), (book.Failure.FailedXp(60), book.Failure.FailedXp(2), book.Failure.FailedXp(0), book.Failure.FailedXp(4)));
         JsonObject root = JsonNode.Parse(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)))!.AsObject();
         root["data"]!["failure"]!["xpPercent"] = 101;
