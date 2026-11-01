@@ -513,6 +513,30 @@ public class V18cBonusTests : IDisposable
         Assert.Null(a.World.BoonAt(BoonKind.Weapon));
     }
 
+    [Fact]
+    public void Sauvegarde_automatique_garde_le_temps_qui_baisse()
+    {
+        // Remarque de Codex sur la PR #84 : un bonus actif, rien d'autre ne se passe ; après un intervalle de sauvegarde automatique, la
+        // sauvegarde sur disque porte le temps réduit (et pas celui de la sauvegarde précédente).
+        string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+        SavedCharacter hero = PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Progression)
+            .WithBoons(new[] { new SavedBoon(BoonKind.Elixir, Garde, 20_000) });
+        SaveStore.Write(savePath, SaveOf(hero));
+        AdventureSession a = Adventure(savePath);
+        a.Save();
+        int saved = SaveStore.Read(savePath).Save!.Character!.Boons.Single().Ticks;
+        Assert.Equal(a.World.BoonAt(BoonKind.Elixir)!.Ticks, saved);
+        // Avant l'intervalle : rien n'est écrit.
+        a.Advance(1);
+        Assert.Equal(saved, SaveStore.Read(savePath).Save!.Character!.Boons.Single().Ticks);
+        for (int i = 0; i < 6 * 20; i++) a.Advance(0.05);
+        int now = a.World.BoonAt(BoonKind.Elixir)!.Ticks;
+        int onDisk = SaveStore.Read(savePath).Save!.Character!.Boons.Single().Ticks;
+        Assert.True(onDisk < saved, $"sauvegarde automatique : {onDisk} ticks, {saved} avant");
+        Assert.InRange(onDisk, now, now + (int)(AdventureSession.AutosaveSeconds * 20) + 1);
+    }
+
     // --- Accord avec le catalogue -----------------------------------------------------------------------------------------------
 
     [Fact]

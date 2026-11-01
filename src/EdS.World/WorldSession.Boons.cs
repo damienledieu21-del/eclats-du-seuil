@@ -50,9 +50,9 @@ namespace EdS.World
     /// <item><b>Remplacement</b> : un nouvel objet de la même place remplace l'ancien bonus, qui est perdu (sans rien rendre, le temps qui lui
     /// restait compris) ; le nouveau part de sa durée pleine, même s'il est le même objet (on « reprend » un plat). Les deux autres places ne
     /// changent pas.</item>
-    /// <item>Le temps qui reste baisse d'un tick à chaque tick simulé de la partie (<see cref="Step"/>), y compris quand le personnage est
-    /// tombé ; jamais hors ligne (seule la session qui tourne le fait baisser : règle du serveur). À zéro, le bonus quitte sa place à ce tick
-    /// précis (<see cref="SessionStep.BoonsExpired"/>).</item>
+    /// <item>Le temps qui reste baisse d'un tick à chaque tick simulé de la partie (<see cref="Step"/>) ; jamais hors ligne (seule la session
+    /// qui tourne le fait baisser : règle du serveur). Après une défaite, l'aventure ne simule plus de tick avant la reprise : le temps est
+    /// alors arrêté. À zéro, le bonus quitte sa place à ce tick précis (<see cref="SessionStep.BoonsExpired"/>).</item>
     /// <item>Les bonus sont <b>gardés quand le personnage tombe</b> : la reprise ouvre une session sur <see cref="Save"/>, qui les garde avec
     /// leur temps.</item>
     /// <item>Effet en combat : le bonus des objets des bonus actifs s'ajoute au bonus de l'équipement (<see cref="BoonGear"/>, dans la limite

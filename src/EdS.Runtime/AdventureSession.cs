@@ -334,7 +334,11 @@ namespace EdS.Runtime
         /// </summary>
         public int Advance(double seconds)
         {
+            // Remarque de Codex sur la PR #84 : le temps des bonus actifs baisse à chaque tick simulé sans autre événement ; il est gardé à la
+            // cadence de la sauvegarde automatique (pas à chaque tick), pour qu'une reprise après un arrêt brutal ne rende pas un temps ancien.
+            bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
+            if (boons && steps > 0) _dirty = true;
             _sinceSave += seconds;
             // Revue Codex de la PR #49 : la défaite ne perd rien (cadrage Q8) : les acquis d'avant la chute se sauvegardent encore
             // (World.Save garde l'expérience, les objets, l'histoire ; jamais les PV du combat).
