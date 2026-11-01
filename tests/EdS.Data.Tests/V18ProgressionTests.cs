@@ -121,7 +121,7 @@ public class V18ProgressionTests : IDisposable
         // La barre d'expérience de l'écran du personnage s'arrête au plafond (25), pas au niveau 30 des données.
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
-        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },   // sauvegarde de V1.8
             PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Progression).WithXp(Progression.XpToLevel[24] + 500)));
         AdventureSession a = AdventureSession.Load(DataDirectory, ScenariosDirectory, savePath);
         Assert.Equal(25, a.World.Level);

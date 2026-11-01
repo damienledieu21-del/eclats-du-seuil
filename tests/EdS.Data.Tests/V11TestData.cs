@@ -67,7 +67,9 @@ internal static class V11TestData
     /// <summary>Partie ouverte sur la zone avec un commerce (une instance donnée, ou neuve), un tick simulé (le personnage est arrivé).</summary>
     public static WorldSession Play(ZoneDefinition zone, SavedCharacter hero, Market? market = null, IEnumerable<string>? consumed = null)
     {
-        var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, consumed ?? Array.Empty<string>(), hero), zone, ShippedData, Progression, ItemsCatalog,
+        // Sauvegarde de V1.8 (remarque de Codex sur la PR #82) : l'expérience suit déjà les seuils de V1.8, sans conversion.
+        var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, (consumed ?? Array.Empty<string>()).Append(PlayerCharacters.PlacesKey)
+            .Distinct(StringComparer.Ordinal), hero), zone, ShippedData, Progression, ItemsCatalog,
             Book(zone), market: market ?? new Market(ShippedMerchants));
         session.Step();
         return session;

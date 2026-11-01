@@ -280,7 +280,7 @@ public class Lot122CharacterTests
             wolf["health"] = 60;
             wolf["position"] = new JsonArray(-16, -12);
         }, scenario: "zones/vallons");
-        var save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), PlayerCharacters.Create("bastion", "class.bastion", Shipped).WithXp(xp));
+        var save = new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, PlayerCharacters.Create("bastion", "class.bastion", Shipped).WithXp(xp));
         var session = new WorldSession(save, loaded.Setup!, ShippedData, Shipped, Items, new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5")), log: log);
         var gains = new List<ExperienceGained>();
         for (int i = 0; i < 600 && !session.Zone.Engine.View("loup1").IsDead; i++)

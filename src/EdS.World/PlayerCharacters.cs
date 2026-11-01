@@ -233,6 +233,95 @@ namespace EdS.World
             return violations.Count > 0 ? violations[0] : null;
         }
 
+        /// <summary>
+        /// Remarque de Codex sur la PR #82 : expérience cumulée par niveau avant V1.8 (progression en schéma 2, contenu 0.1.0 : niveaux 1 à 10).
+        /// Gardée ici pour convertir une seule fois l'expérience d'une sauvegarde d'avant V1.8 (<see cref="MigrateXp"/>) : les nouveaux seuils
+        /// sont plus hauts à partir du niveau 6 et feraient redescendre le personnage.
+        /// </summary>
+        public static readonly IReadOnlyList<long> PreV18XpToLevel = Array.AsReadOnly(new long[] { 0, 100, 220, 360, 520, 700, 900, 1120, 1360, 1620 });
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #82 : expérience d'une sauvegarde d'avant V1.8 convertie aux seuils de <paramref name="progression"/>, pour
+        /// que le personnage garde <b>exactement son ancien niveau</b> : le nouveau seuil de ce niveau, plus la même part de progression dans le
+        /// niveau (arrondi vers le bas), sans atteindre le niveau suivant. Au niveau 10 (l'ancien maximum), l'expérience au-delà du seuil est
+        /// gardée telle quelle, sous le seuil du niveau 11. Déterministe ; arithmétique vérifiée. À n'appliquer qu'une fois (clé
+        /// <see cref="PlacesKey"/> absente).
+        /// </summary>
+        public static long MigrateXp(long xp, CharacterProgression progression)
+        {
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            if (xp <= 0) return xp;
+            IReadOnlyList<long> old = PreV18XpToLevel, now = progression.XpToLevel;
+            int level = 1;
+            while (level < old.Count && xp >= old[level]) level++;
+            if (level > now.Count) return xp;
+            long from = now[level - 1];
+            long? to = level < now.Count && level < progression.LevelCap ? now[level] : (long?)null;
+            long extra = level < old.Count
+                ? checked((xp - old[level - 1]) * ((to ?? from) - from)) / (old[level] - old[level - 1])
+                : xp - old[level - 1];
+            if (to is long next) extra = Math.Min(extra, next - from - 1);
+            return checked(from + Math.Max(0, extra));
+        }
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #82 (le chargement d'une sauvegarde ne lève jamais) : rend une barre et des talents admis par le validateur
+        /// unique des builds au niveau du personnage, en réparant de façon déterministe ce qui ne l'est plus, une violation à la fois, dans
+        /// l'ordre du validateur : un point de talent rendu (le talent fautif, ou celui d'identifiant le plus grand pour le total ou les
+        /// majeurs) ; une compétence retirée de sa place (elle reste apprise : dans la réserve). Sans issue, la barre de départ de la classe
+        /// et aucun talent. <paramref name="removed"/> : compétences retirées de la barre ; <paramref name="refunded"/> : points de talent rendus.
+        /// Le personnage tel quel s'il est déjà admis.
+        /// </summary>
+        public static SavedCharacter RepairBuild(SavedCharacter character, CharacterProgression progression, ClassDefinition definition, ProgressionRules rules,
+            out IReadOnlyList<string> removed, out int refunded)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            if (definition is null) throw new ArgumentNullException(nameof(definition));
+            if (rules is null) throw new ArgumentNullException(nameof(rules));
+            var gone = new List<string>();
+            removed = gone;
+            refunded = 0;
+            var actives = character.ActiveSkills.ToList();
+            var passives = character.PassiveSkills.ToList();
+            string? ultimate = character.Ultimate;
+            var talents = new SortedDictionary<string, int>(character.Talents.ToDictionary(t => t.Key, t => t.Value), StringComparer.Ordinal);
+            int level = Level(character, progression);
+            ClassProgression p = progression.ForClass(character.ClassId);
+            bool changed = false;
+            for (int guard = 0; guard < 1000; guard++)
+            {
+                var build = new CharacterBuild(character.ClassId, level, p.At(level), talents, actives.ToArray(), ultimate, passives.ToArray());
+                BuildViolation? v = BuildValidator.Validate(build, definition, rules).FirstOrDefault();
+                if (v is null) return changed ? character.WithTalents(talents).WithSkills(actives, ultimate, passives) : character;
+                changed = true;
+                if (TryIndex(v.Subject, "activeSkills", out int a) && a < actives.Count) { gone.Add(actives[a]); actives.RemoveAt(a); }
+                else if (v.Subject == "activeSkills" && actives.Count > 0) { gone.Add(actives[^1]); actives.RemoveAt(actives.Count - 1); }
+                else if (TryIndex(v.Subject, "passiveSkills", out int s) && s < passives.Count) { gone.Add(passives[s]); passives.RemoveAt(s); }
+                else if (v.Subject == "passiveSkills" && passives.Count > 0) { gone.Add(passives[^1]); passives.RemoveAt(passives.Count - 1); }
+                else if (v.Subject == "ultimate" && ultimate != null) { gone.Add(ultimate); ultimate = null; }
+                else if (talents.Count > 0 && (talents.ContainsKey(v.Subject) || v.Subject == "talents"))
+                {
+                    string talent = talents.ContainsKey(v.Subject) ? v.Subject : talents.Keys.Last();
+                    if (talents[talent] <= 1) talents.Remove(talent); else talents[talent]--;
+                    refunded++;
+                }
+                else break;
+            }
+            // Sans issue : la barre de départ de la classe, sans talent (admise au niveau 1, donc à tout niveau).
+            gone.AddRange(actives.Concat(passives).Concat(ultimate is null ? Array.Empty<string>() : new[] { ultimate })
+                .Where(x => !p.StartActiveSkills.Contains(x) && !p.StartPassiveSkills.Contains(x)));
+            refunded += talents.Values.Sum();
+            return character.WithTalents(new Dictionary<string, int>()).WithSkills(p.StartActiveSkills, null, p.StartPassiveSkills);
+        }
+
+        private static bool TryIndex(string subject, string prefix, out int index)
+        {
+            index = -1;
+            return subject.StartsWith(prefix + "[", StringComparison.Ordinal) && subject.EndsWith("]", StringComparison.Ordinal)
+                && int.TryParse(subject.Substring(prefix.Length + 1, subject.Length - prefix.Length - 2), out index);
+        }
+
         public static int Level(SavedCharacter character, CharacterProgression progression) =>
             (progression ?? throw new ArgumentNullException(nameof(progression))).LevelFor((character ?? throw new ArgumentNullException(nameof(character))).Xp);
 

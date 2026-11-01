@@ -109,7 +109,7 @@ public class V1Reponses2Tests
         // À la forge : réparée contre de l'or (le prix minimum : elle vaut 1 cuivre), solidité pleine.
         ZoneDefinition forge = Zone(-19, -5);
         CraftingBook crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, forge, ItemsCatalog).Book!;
-        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), inv.SaveInto(Hero(1000))), forge, ShippedData, Progression,
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, inv.SaveInto(Hero(1000))), forge, ShippedData, Progression,
             ItemsCatalog, Book(forge), crafting, market: new Market(ShippedMerchants));
         w.Step();
         long price = w.RepairPrice();
@@ -214,7 +214,7 @@ public class V1Reponses2Tests
     private static WorldSession VallonsAt(long worldTick, SavedCharacter hero, out SessionStep first, IEnumerable<string>? consumed = null)
     {
         ZoneDefinition z = Zone();
-        var w = new WorldSession(new WorldSave("zone.vallons", worldTick, 0, consumed ?? Array.Empty<string>(), hero), z, ShippedData, Progression, ItemsCatalog, Book(z));
+        var w = new WorldSession(new WorldSave("zone.vallons", worldTick, 0, (consumed ?? Array.Empty<string>()).Append(PlayerCharacters.PlacesKey).Distinct(StringComparer.Ordinal), hero), z, ShippedData, Progression, ItemsCatalog, Book(z));
         first = w.Step();
         return w;
     }
@@ -404,7 +404,7 @@ public class V1Reponses2Tests
     {
         ZoneDefinition z = Zone(-70, 88, scenario: s =>
             s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == WhiteWolf)!["health"] = 1);
-        var w = new WorldSession(new WorldSave("zone.vallons", Tick(night, 23), 0, consumed(z).OrderBy(k => k, StringComparer.Ordinal).ToArray(),
+        var w = new WorldSession(new WorldSave("zone.vallons", Tick(night, 23), 0, consumed(z).Append(PlayerCharacters.PlacesKey).Distinct(StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal).ToArray(),
             Hero().WithXp(1620)), z, ShippedData, Progression, ItemsCatalog, Book(z));
         for (int i = 0; i < 900; i++)
         {
@@ -562,7 +562,7 @@ public class V1Reponses2GuildeTests
 
     private static WorldSession InGuild(SavedCharacter hero, long tick = 0)
     {
-        var session = new WorldSession(new WorldSave("zone.guilde", tick, 0, Array.Empty<string>(), hero), Inside("zone.guilde"), ShippedData, Progression,
+        var session = new WorldSession(new WorldSave("zone.guilde", tick, 0, new[] { PlayerCharacters.PlacesKey }, hero), Inside("zone.guilde"), ShippedData, Progression,
             ItemsCatalog, NearDoor.Value, door: "sortie", storyZone: "zone.vallons", guild: Guild);
         session.Step();
         return session;
@@ -652,14 +652,14 @@ public class V1Reponses2GuildeTests
         w.Narrative!.Defeated("loup1", "loup");   // une seule créature : pas fini
         SavedCharacter hero = w.Save().Character!;
         // Le lendemain : perdu au premier tick, sans pénalité (bourse, points, contrats réussis inchangés), et rien d'autre.
-        WorldSession next = new(new WorldSave("zone.guilde", (day + 1) * DayTicks, 0, Array.Empty<string>(), hero), Inside("zone.guilde"), ShippedData,
+        WorldSession next = new(new WorldSave("zone.guilde", (day + 1) * DayTicks, 0, new[] { PlayerCharacters.PlacesKey }, hero), Inside("zone.guilde"), ShippedData,
             Progression, ItemsCatalog, NearDoor.Value, door: "sortie", storyZone: "zone.vallons", guild: Guild);
         Assert.Equal(new[] { $"ContractExpired {rush.Id}" }, next.Step().Story.Select(e => e.ToString()));
         Assert.Empty(next.Narrative!.ActiveContracts);
         Assert.Equal((100L, 0L, 0L), (next.Money, next.Narrative.GuildPoints, next.Narrative.ContractsDone));
         Assert.Empty(Steps(next));
         // Il ne s'abandonne pas une fois la journée finie (rien à abandonner).
-        WorldSession late = new(new WorldSave("zone.guilde", (day + 1) * DayTicks, 0, Array.Empty<string>(), hero), Inside("zone.guilde"), ShippedData,
+        WorldSession late = new(new WorldSave("zone.guilde", (day + 1) * DayTicks, 0, new[] { PlayerCharacters.PlacesKey }, hero), Inside("zone.guilde"), ShippedData,
             Progression, ItemsCatalog, NearDoor.Value, door: "sortie", storyZone: "zone.vallons", guild: Guild);
         Assert.Equal(GuildRefusal.NotActive, late.AbandonContract(rush.Id, out IReadOnlyList<StoryEvent> none));
         Assert.Empty(none);
@@ -810,11 +810,11 @@ public class V1Reponses2GuildeTests
         var active = new Dictionary<string, long> { ["contract.loup_blanc"] = 0 };
         SavedCharacter hero = Hero().WithStory(new SavedStory(guild: Card("e", active)));
         ZoneDefinition z = Vallons.Value;
-        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), z, ShippedData, Progression, ItemsCatalog,
+        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), z, ShippedData, Progression, ItemsCatalog,
             ShippedStory.Value, guild: Guild);
         Assert.Single(w.Step().Population, e => e.Kind == PopulationEventKind.Sign);
         // Sans le contrat, à 8 h du jour 0 : rien.
-        var plain = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithStory(new SavedStory(guild: Card("e")))), z,
+        var plain = new WorldSession(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero().WithStory(new SavedStory(guild: Card("e")))), z,
             ShippedData, Progression, ItemsCatalog, ShippedStory.Value, guild: Guild);
         Assert.DoesNotContain(plain.Step().Population, e => e.Kind == PopulationEventKind.Sign);
     }
