@@ -72,7 +72,7 @@ namespace EdS.World
         /// <summary>L'équipement que le personnage peut porter à son niveau.</summary>
         Wearable = 2,
 
-        /// <summary>Les objets de soin.</summary>
+        /// <summary>Les objets de soin, et (sous-lot V1.8c) les objets de bonus.</summary>
         Consumables = 3,
 
         /// <summary>Les matériaux.</summary>
@@ -652,7 +652,10 @@ namespace EdS.World
             return name != 0 ? name : string.CompareOrdinal(a.Id, b.Id);
         }
 
-        /// <summary>Rang de sorte : l'équipement dans l'ordre des places, puis les objets de soin, puis les matériaux.</summary>
+        /// <summary>
+        /// Rang de sorte : l'équipement dans l'ordre des places, puis les objets de soin, puis les objets de bonus (sous-lot V1.8c), puis les
+        /// matériaux.
+        /// </summary>
         private int KindRank(ItemDefinition item)
         {
             if (item.Type == ItemType.Equipment)
@@ -661,7 +664,7 @@ namespace EdS.World
                     if (_catalog.Places[i].Accepts == item.Slot) return i;
                 return _catalog.Places.Count;
             }
-            return item.Type == ItemType.Consumable ? _catalog.Places.Count + 1 : _catalog.Places.Count + 2;
+            return item.Type == ItemType.Consumable ? _catalog.Places.Count + 1 : item.Type == ItemType.Boon ? _catalog.Places.Count + 2 : _catalog.Places.Count + 3;
         }
 
         /// <summary>Sous-lot V1.2 : places de l'inventaire qui passent le filtre, dans l'ordre (une vue : rien ne change).</summary>
@@ -675,7 +678,7 @@ namespace EdS.World
                 {
                     InventoryFilter.Equipment => item.Type == ItemType.Equipment,
                     InventoryFilter.Wearable => item.Type == ItemType.Equipment && item.RequiredLevel <= level,
-                    InventoryFilter.Consumables => item.Type == ItemType.Consumable,
+                    InventoryFilter.Consumables => item.Type == ItemType.Consumable || item.Type == ItemType.Boon,   // sous-lot V1.8c : objets de bonus compris
                     InventoryFilter.Materials => item.Type == ItemType.Material,
                     _ => true,
                 };

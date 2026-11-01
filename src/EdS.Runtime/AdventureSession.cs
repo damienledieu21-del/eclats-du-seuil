@@ -423,6 +423,12 @@ namespace EdS.Runtime
             if (step.Defeated) Say("text.ui.defeated");
             // Sous-lot V1.4 : une pièce usée à zéro par ce combat ne donne plus ses bonus (à réparer).
             if (step.Wear is WearReport wear && wear.WornOut.Count > 0) Say("text.ui.worn_out", string.Join(", ", wear.WornOut.Select(ItemName)));
+            // Sous-lot V1.8c : un bonus fini quitte sa place (sauvegardé : la place libre est gardée).
+            foreach (BoonExpired b in step.BoonsExpired)
+            {
+                _dirty = true;
+                Say("text.ui.boon.expired", ItemName(b.Item));
+            }
         }
 
         private void Story(StoryEvent e)
@@ -770,6 +776,33 @@ namespace EdS.Runtime
         /// <summary>Métiers : nom traduit, niveau et expérience.</summary>
         public IReadOnlyList<(string Name, int Level, long Xp)> Professions() =>
             _crafting.Professions.Select(p => (Text(p.Name), World.Workshop!.Level(p.Id), World.Workshop.Xp(p.Id))).ToList();
+
+        /// <summary>
+        /// Sous-lot V1.8c : consomme l'objet de bonus de la place <paramref name="place"/> du sac (plat, élixir, huile ou pierre d'arme ;
+        /// <see cref="WorldSession.UseBoon(string, out SavedBoon?)"/>) : hors combat, il occupe sa place de bonus (effet à la prochaine halte), en
+        /// remplaçant le bonus de la même place ; un message dit le résultat ou le refus.
+        /// </summary>
+        public BoonRefusal UseBoon(int place)
+        {
+            if (place < 0 || place >= World.Inventory.Stacks.Count)
+            {
+                Say("text.ui.boon.nothingthere");
+                return BoonRefusal.NothingThere;
+            }
+            string item = World.Inventory.Stacks[place].Item;
+            BoonRefusal refusal = World.UseBoon(item, out SavedBoon? replaced);
+            if (refusal != BoonRefusal.None)
+            {
+                Say("text.ui.boon." + refusal.ToString().ToLowerInvariant());
+                return refusal;
+            }
+            _dirty = true;
+            SavedBoon now = World.BoonAt(_items.Item(item).Boon!.Value)!;
+            int minutes = now.Ticks / BoonKinds.TicksPerMinute;
+            if (replaced != null) Say("text.ui.boon.replaced", ItemName(item), minutes, ItemName(replaced.Item));
+            else Say("text.ui.boon.used", ItemName(item), minutes);
+            return refusal;
+        }
 
         /// <summary>Porte l'objet de la place <paramref name="place"/> (effet à la prochaine halte).</summary>
         public InventoryRefusal Equip(int place)
