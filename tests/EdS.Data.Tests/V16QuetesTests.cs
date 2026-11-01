@@ -51,7 +51,7 @@ public class V16QuetesTests
     /// <summary>Partie ouverte dans l'intérieur <paramref name="zone"/>, arrivée par sa porte, un tick joué.</summary>
     private static WorldSession InRoom(string zone, StoryBook book, SavedCharacter hero, bool step = true)
     {
-        var session = new WorldSession(new WorldSave(zone, 0, 0, Array.Empty<string>(), hero), Inside(zone), ShippedData, Progression, ItemsCatalog, book,
+        var session = new WorldSession(new WorldSave(zone, 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), Inside(zone), ShippedData, Progression, ItemsCatalog, book,
             door: "sortie", storyZone: "zone.vallons");
         if (step) session.Step();
         return session;

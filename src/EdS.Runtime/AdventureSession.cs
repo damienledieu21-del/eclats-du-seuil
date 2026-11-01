@@ -302,6 +302,8 @@ namespace EdS.Runtime
             if (world.Learned.Count > 0) _dirty = true;   // sous-lot 12.9b : les compétences gagnées vont à la prochaine sauvegarde
             if (world.Restored.Count > 0) _dirty = true;   // sous-lot V1.2 : places obligatoires remplies, à garder
             if (world.Adjusted.Count > 0) _dirty = true;   // relecture de la PR #78 : propriétés accordées au catalogue, à garder
+            // Remarque de Codex sur la PR #82 : expérience convertie, barre ou talents réparés : à garder.
+            if (world.XpMigrated || world.RemovedSkills.Count > 0 || world.RefundedTalentPoints > 0) _dirty = true;
         }
 
         /// <summary>Sous-lot 12.9b : annonce les compétences gagnées à l'ouverture de la session, avec leur touche.</summary>
@@ -311,6 +313,9 @@ namespace EdS.Runtime
             if (World.Restored.Count > 0) Say("text.ui.inventory.restored", string.Join(", ", World.Restored.Select(ItemName)));
             // Relecture de la PR #78 : propriétés tirées accordées au catalogue actuel (bornes réglées, propriété retirée).
             if (World.Adjusted.Count > 0) Say("text.ui.inventory.adjusted", string.Join(" ", World.Adjusted));
+            // Remarque de Codex sur la PR #82 : barre ou talents devenus invalides, réparés au chargement.
+            if (World.RemovedSkills.Count > 0) Say("text.ui.skills.repaired", string.Join(", ", World.RemovedSkills.Select(SkillName)));
+            if (World.RefundedTalentPoints > 0) Say("text.ui.talents.refunded", World.RefundedTalentPoints.ToString(System.Globalization.CultureInfo.InvariantCulture));
             foreach (SkillUnlock u in World.Learned)
                 if (u.Kind == SkillKind.Ultimate) Say("text.ui.ultimate_learned", SkillName(u.Skill));
                 else if (u.Kind == SkillKind.Active)

@@ -218,8 +218,8 @@ public class V1ReponsesTests : IDisposable
     [Fact]
     public void Sauvegarde_d_avant()
     {
-        // Niveau 10 avec la barre des anciennes règles (Barrière, Onde, Bastion absolu placés ; Provocation et Contrecoup en réserve).
-        SavedCharacter old = Bastion(Level10, new[] { Frappe, Heurt, Barriere, Onde }).WithSkills(new[] { Frappe, Heurt, Barriere, Onde }, Absolu, new[] { Roc });
+        // Niveau 10 avec l'expérience et la barre des anciennes règles (Barrière, Onde, Bastion absolu placés ; Provocation et Contrecoup en réserve).
+        SavedCharacter old = Bastion(OldXp[9], new[] { Frappe, Heurt, Barriere, Onde }).WithSkills(new[] { Frappe, Heurt, Barriere, Onde }, Absolu, new[] { Roc });
         AdventureSession a = Load(old, old: true);
         Assert.Empty(a.World.Learned);
         Assert.Equal(new[] { Provocation, Barriere, Onde, Absolu }, a.World.KnownBefore.Select(u => u.Skill));
@@ -244,6 +244,116 @@ public class V1ReponsesTests : IDisposable
         Assert.Equal(new[] { Frappe, Heurt, Provocation }, Engaged(c));
     }
 
+    // --- Remarque de Codex sur la PR #82 : expérience des anciennes sauvegardes -------------------------------------------------
+
+    /// <summary>Seuils d'expérience d'avant V1.8 (progression en schéma 2, contenu 0.1.0), recopiés ici : niveaux 1 à 10.</summary>
+    private static readonly long[] OldXp = { 0, 100, 220, 360, 520, 700, 900, 1120, 1360, 1620 };
+
+    private static int OldLevel(long xp)
+    {
+        int level = 1;
+        while (level < OldXp.Length && xp >= OldXp[level]) level++;
+        return level;
+    }
+
+    [Fact]
+    public void Ancienne_sauvegarde_a_1620_points_reste_au_niveau_10_avec_l_ultime()
+    {
+        // 1 620 points : niveau 10 avant V1.8, avec Bastion absolu ; avec les nouveaux seuils, sans conversion, ce serait le niveau 8
+        // (l'ultime demande le niveau 10) et le chargement levait.
+        Assert.Equal(8, Progression.LevelFor(1620));
+        SavedCharacter old = Bastion(1620, new[] { Frappe, Heurt, Barriere, Onde }, Absolu);
+        AdventureSession a = Load(old, new[] { "character/skill/" + Barriere, "character/skill/" + Onde, "character/skill/" + Absolu }, old: true);
+        Assert.Equal(10, a.World.Level);
+        Assert.True(a.World.XpMigrated);
+        Assert.Equal(Progression.XpToLevel[9], a.World.Character.Xp);
+        Assert.Equal(Absolu, EngagedUltimate(a));
+        Assert.Equal(new[] { Frappe, Heurt, Barriere, Onde }, Engaged(a));
+        Assert.Empty(a.World.RemovedSkills);
+        Assert.Equal(0, a.World.RefundedTalentPoints);
+        // Une seule fois : sauvegardée, relue, rien ne change.
+        a.Save();
+        WorldSave saved = SaveStore.Read(SavePath).Save!;
+        Assert.Equal(Progression.XpToLevel[9], saved.Character!.Xp);
+        Assert.Contains(PlayerCharacters.PlacesKey, saved.Consumed);
+        AdventureSession again = AdventureSession.Load(DataDirectory, ScenariosDirectory, SavePath);
+        again.Advance(0.05);
+        Assert.False(again.World.XpMigrated);
+        Assert.Equal((10, Progression.XpToLevel[9]), (again.World.Level, again.World.Character.Xp));
+        Assert.Equal(Absolu, EngagedUltimate(again));
+    }
+
+    /// <summary>Chaque seuil de l'ancienne table, et le point juste avant le suivant : le personnage garde exactement son ancien niveau.</summary>
+    [Fact]
+    public void Ancienne_experience_convertie_garde_le_niveau_a_chaque_seuil()
+    {
+        var probes = new List<long>();
+        for (int i = 0; i < OldXp.Length; i++)
+        {
+            probes.Add(OldXp[i]);
+            if (i + 1 < OldXp.Length) probes.Add(OldXp[i + 1] - 1);
+        }
+        probes.AddRange(new long[] { 1620 + 400, 50_000 });   // au-delà de l'ancien maximum : toujours le niveau 10
+        long previous = -1;
+        foreach (long xp in probes)
+        {
+            long converted = PlayerCharacters.MigrateXp(xp, Progression);
+            Assert.True(OldLevel(xp) == Progression.LevelFor(converted), $"{xp} points : niveau {OldLevel(xp)} avant, {Progression.LevelFor(converted)} après");
+            Assert.True(converted >= previous, "la conversion garde l'ordre");
+            previous = converted;
+        }
+        Assert.Equal(0, PlayerCharacters.MigrateXp(0, Progression));
+        Assert.Equal(Progression.XpToLevel[4], PlayerCharacters.MigrateXp(520, Progression));   // seuil du niveau 5
+        // Mi-chemin du niveau 6 (700 à 900 avant) : mi-chemin du nouveau niveau 6 (740 à 1 080).
+        Assert.Equal(740 + 170, PlayerCharacters.MigrateXp(800, Progression));
+        // Sur une vraie partie, à chaque ancien seuil.
+        foreach (int level in new[] { 2, 5, 6, 9, 10 })
+        {
+            AdventureSession a = Load(Player(OldXp[level - 1]), old: true);
+            Assert.Equal(level, a.World.Level);
+        }
+    }
+
+    [Fact]
+    public void Talents_en_trop_rendus_et_barre_reparee_sans_lever()
+    {
+        // Sauvegarde de V1.8 (pas de conversion) au niveau 3 : 10 points de talent dépensés, et Bastion absolu (niveau 10) dans la barre.
+        SavedCharacter hero = Player(Progression.XpToLevel[2]).WithTalents(new Dictionary<string, int>
+        {
+            ["talent.bastion.rempart.peau_de_fer"] = 5,
+            ["talent.bastion.rempart.souffle_du_roc"] = 5,
+        }).WithSkills(new[] { Frappe, Heurt }, Absolu, new[] { Roc });
+        AdventureSession a = Load(hero);
+        Assert.Equal(3, a.World.Level);
+        int budget = Rules.TalentPoints(3);
+        Assert.Equal(10 - budget, a.World.RefundedTalentPoints);
+        Assert.Equal(budget, a.World.Character.Talents.Values.Sum());
+        Assert.Equal(new[] { Absolu }, a.World.RemovedSkills);
+        Assert.Null(EngagedUltimate(a));
+        Assert.True(a.Skills().Card(Absolu) is null || a.Skills().Card(Absolu)!.Place is null);
+        // Annoncé, et gardé à la prochaine sauvegarde.
+        a.Save();
+        Assert.Equal(budget, SaveStore.Read(SavePath).Save!.Character!.Talents.Values.Sum());
+    }
+
+    [Fact]
+    public void Ancienne_sauvegarde_registre_presque_plein_charge_sans_lever()
+    {
+        // Sans la place au registre pour la clé de conversion, l'expérience n'est pas convertie (elle serait refaite) : le personnage tombe au
+        // niveau 8, et la barre est réparée au lieu de lever (Bastion absolu dans la réserve).
+        string[] keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 200).Select(i => $"probe/k{i:D6}").ToArray();
+        SavedCharacter old = Bastion(1620, new[] { Frappe, Heurt, Barriere, Onde }, Absolu);
+        Directory.CreateDirectory(Path.GetDirectoryName(SavePath)!);
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, keys, old));
+        AdventureSession? a = null;
+        Exception? error = Record.Exception(() => a = AdventureSession.Load(DataDirectory, ScenariosDirectory, SavePath));
+        Assert.Null(error);
+        Assert.False(a!.World.XpMigrated);
+        Assert.Equal(8, a.World.Level);
+        Assert.Contains(Absolu, a.World.RemovedSkills);
+        Assert.Null(a.World.Character.Ultimate);
+    }
+
     /// <summary>
     /// Relecture indépendante de la PR #82 (cas de la sonde) : sauvegardes d'avant V1.8 aux niveaux 4, 7 et 12, dont le joueur a vidé une
     /// place. Avec les anciennes règles, Provocation allait dans la réserve, sans clé. Au premier chargement, elle est inscrite comme
@@ -252,16 +362,17 @@ public class V1ReponsesTests : IDisposable
     [Theory]
     [InlineData(4)]
     [InlineData(7)]
-    [InlineData(12)]
+    [InlineData(10)]   // remarque de Codex : une sauvegarde d'avant V1.8 va au plus au niveau 10 (anciens seuils, recopiés dans OldXp)
     public void Ancienne_sauvegarde_la_halte_ne_remplit_pas_une_place_videe(int level)
     {
-        // Barre des anciennes règles à ce niveau, puis le joueur a vidé la 2e place (Heurt de bouclier retiré).
+        // Barre des anciennes règles à ce niveau (expérience aux anciens seuils, convertie au chargement), puis le joueur a vidé la 2e
+        // place (Heurt de bouclier retiré).
         string[] bar = level >= 10 ? new[] { Frappe, Barriere, Onde } : level >= 5 ? new[] { Frappe, Barriere } : new[] { Frappe };
         string? ultimate = level >= 10 ? Absolu : null;
         var keys = new List<string>();
         if (level >= 5) keys.Add("character/skill/" + Barriere);
         if (level >= 10) keys.AddRange(new[] { "character/skill/" + Onde, "character/skill/" + Absolu });
-        SavedCharacter old = Player(Progression.XpToLevel[level - 1]).WithSkills(bar, ultimate, new[] { Roc });
+        SavedCharacter old = Player(OldXp[level - 1]).WithSkills(bar, ultimate, new[] { Roc });   // expérience aux anciens seuils
         AdventureSession a = Load(old, keys, old: true);
         Assert.Equal(level, a.World.Level);
         Assert.Empty(a.World.Learned);

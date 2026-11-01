@@ -299,7 +299,8 @@ public class V12EquipementTests
     {
         // Une partie de V1.1 : épée et écu de la tranche portés, l'écu ôté puis rangé dans le sac (permis avant le sous-lot), bourse pleine
         // de pièces. Elle se relit, se met à jour (version courante à l'écriture : 7 au sous-lot V1.2, 8 depuis V1.6) et ses places obligatoires sont remplies à la reprise.
-        SavedCharacter v11 = Bare(3, "item.peau_de_loup", "item.ecu_de_chene").WithMoney(345);
+        // Remarque de Codex sur la PR #82 : une vraie sauvegarde d'avant V1.8, au niveau 3 des anciens seuils (220 points, convertis au chargement).
+        SavedCharacter v11 = Bare(3, "item.peau_de_loup", "item.ecu_de_chene").WithMoney(345).WithXp(220);
         v11 = v11.WithItems(v11.Inventory, new Dictionary<string, string> { ["weapon"] = "item.epee_du_milicien", ["neck"] = "item.amulette_de_l_aube" });
         string text = SaveV11.Older(SaveJsonReader.Write(new WorldSave("zone.vallons", 100, 2, Array.Empty<string>(), v11))).Replace(",\n        \"tracked\": null\n", "\n").Replace(SaveVersion.Current, "\"schemaVersion\": 6");
         SaveLoadResult read = SaveJsonReader.Read(text);

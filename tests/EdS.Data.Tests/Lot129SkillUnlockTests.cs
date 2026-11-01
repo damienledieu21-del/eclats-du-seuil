@@ -215,7 +215,7 @@ public class Lot129SkillUnlockTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
         // Sous-lot V1.2 : le personnage porte son équipement de départ, comme une vraie partie (sinon ses places obligatoires seraient
         // remplies au chargement, avec un message de plus).
-        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+        SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
             Inventory.Outfit(PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Shipped).WithXp(439)   // niveau 4
                 .WithSkills(new[] { "skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier", Provocation }, null,
                     new[] { "skill.bastion.endurance_du_roc" }), Items)));

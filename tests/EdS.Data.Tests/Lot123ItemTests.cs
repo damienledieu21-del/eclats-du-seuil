@@ -360,8 +360,11 @@ public class Lot123ItemTests
         Assert.Contains("absent du catalogue", Assert.Throws<ArgumentException>(() => Inventory.From(With(new[] { new ItemStack("item.inconnu", 1) }), Catalog, 1)).Message);
         Assert.Contains("pile", Assert.Throws<ArgumentException>(() => Inventory.From(With(new[] { new ItemStack("item.peau_de_loup", 21) }), Catalog, 1)).Message);
         Assert.Throws<ArgumentException>(() => Inventory.From(With(Enumerable.Repeat(new ItemStack("item.gambison", 1), 25).ToArray()), Catalog, 1));
-        Assert.Contains("niveau 5", Assert.Throws<ArgumentException>(() => Inventory.From(With(Array.Empty<ItemStack>(),
-            new Dictionary<string, string> { ["shield"] = "item.pavois_du_moulin" }), Catalog, 4)).Message);
+        // Remarque de Codex sur la PR #82 : un objet porté au-dessus du niveau ne rend plus la sauvegarde illisible ; il est rangé dans le sac.
+        Inventory low = Inventory.From(With(Array.Empty<ItemStack>(), new Dictionary<string, string> { ["shield"] = "item.pavois_du_moulin" }), Catalog, 4,
+            out IReadOnlyList<string> notes);
+        Assert.Equal((false, 1), (low.Equipped.ContainsKey("shield"), low.Count("item.pavois_du_moulin")));
+        Assert.Contains(notes, n => n.Contains("niveau 5", StringComparison.Ordinal));
         Assert.Throws<ArgumentException>(() => Inventory.From(With(Array.Empty<ItemStack>(), new Dictionary<string, string> { ["weapon"] = "item.ecu_de_chene" }), Catalog, 1));
         Assert.Throws<ArgumentException>(() => Inventory.From(With(Array.Empty<ItemStack>(), new Dictionary<string, string> { ["feet"] = "item.ecu_de_chene" }), Catalog, 1));
     }
