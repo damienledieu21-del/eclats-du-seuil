@@ -93,7 +93,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 ### 6. V1.8 — Progression et équilibrage (M)
 
 - Niveaux jusqu'à 25 dans les Vallons (plafond qui monte, sujet 54 : 25 en alpha), données jusqu'à 30 ; 5e et 6e places de la barre (réponses de Damien du 30 octobre 2026) ; zones en mélange avec niveau minimum ; difficulté normale vérifiée par des combats simulés pour chaque chapitre ; rythme rapide puis plus lent.
-- Trois places de bonus (plat, élixir, huile), à côté des fioles (périmètre, section 5, sujet 36) ; les plats arriveront avec la cuisine, après l'ouverture de l'alpha (point 3).
+- Trois places de bonus (plat, élixir, huile), à côté des fioles (périmètre, section 5, sujet 36) ; les plats arriveront avec la cuisine, après l'ouverture de l'alpha (point 3). **Fait dans V1.8c** (en PR) : élixirs et huiles en recettes, place du plat prête et testée, sauvegarde v12 ; effet à la prochaine entrée dans une session ([MONDE.md](MONDE.md#les-trois-places-de-bonus-sous-lot-v18c)).
 - Dépend de V1.2 à V1.7.
 - Formats : progression, zones (niveau minimum), pont temps réel et **protocole réseau** (deux places de plus), sauvegarde (bonus en cours) et règles si besoin, nouveaux journaux figés.
 
