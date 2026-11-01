@@ -407,7 +407,9 @@ namespace EdS.World
         public InventoryRefusal Add(ItemStack stack)
         {
             if (stack is null) throw new ArgumentNullException(nameof(stack));
-            if (!stack.IsUnique) return Add(stack.Item, stack.Count);
+            // Remarque de Codex sur la PR #83 (tri) : un objet qui ne s'empile pas (pile de 1 : l'équipement) garde son identité, même sans
+            // propriété ni usure : les pièces du combat sont suivies par identité.
+            if (!stack.IsUnique && (_catalog.Item(stack.Item).Stack > 1 || stack.Count != 1)) return Add(stack.Item, stack.Count);
             if (_catalog.CheckInstance(stack) is string problem) throw new ArgumentException(problem, nameof(stack));
             if (FreePlaces < 1) return InventoryRefusal.Full;
             _stacks.Add(stack);
@@ -486,7 +488,7 @@ namespace EdS.World
             if (count < 1 || count > stack.Count || Available(stack.Item) < count) return InventoryRefusal.NotEnough;
             if (count == stack.Count) _stacks.RemoveAt(place);
             else _stacks[place] = stack.WithCount(stack.Count - count);
-            removed = stack.WithCount(count);
+            removed = count == stack.Count ? stack : stack.WithCount(count);   // la pile entière : la même instance (suivi par identité)
             return InventoryRefusal.None;
         }
 
@@ -501,7 +503,7 @@ namespace EdS.World
                     if (_stacks[i].Item == item && _stacks[i].IsUnique == rolled)
                     {
                         int take = Math.Min(left, _stacks[i].Count);
-                        removed.Add(_stacks[i].WithCount(take));
+                        removed.Add(take == _stacks[i].Count ? _stacks[i] : _stacks[i].WithCount(take));   // pile entière : même instance
                         if (take == _stacks[i].Count) _stacks.RemoveAt(i);
                         else _stacks[i] = _stacks[i].WithCount(_stacks[i].Count - take);
                         left -= take;
@@ -603,15 +605,19 @@ namespace EdS.World
         {
             // Sous-lot V1.3 : une instance aux propriétés tirées reste une entrée à part (elle ne s'empile pas) ; à objet égal, l'objet de base
             // d'abord, puis les instances dans leur ordre d'avant (tri stable).
+            // Remarque de Codex sur la PR #83 (tri) : un objet qui ne s'empile pas (pile de 1 : l'équipement) ou qui s'use garde aussi son
+            // instance (les pièces du combat sont suivies par identité) ; rien ne change à l'ordre ni aux quantités.
             var entries = new List<(string Item, int Count, ItemStack? Rolled)>();
             foreach (ItemStack s in _stacks)
             {
-                if (s.IsUnique) { entries.Add((s.Item, s.Count, s)); continue; }
+                ItemDefinition definition = _catalog.Item(s.Item);
+                if (s.IsUnique || definition.Stack == 1 || _catalog.Wears(definition)) { entries.Add((s.Item, s.Count, s)); continue; }
                 int k = entries.FindIndex(c => c.Rolled is null && c.Item == s.Item);
                 if (k < 0) entries.Add((s.Item, s.Count, null));
                 else entries[k] = (s.Item, checked(entries[k].Count + s.Count), null);
             }
-            var sorted = entries.OrderBy(c => c.Item, Comparer<string>.Create((x, y) => Compare(order, x, y))).ThenBy(c => c.Rolled is null ? 0 : 1).ToList();
+            var sorted = entries.OrderBy(c => c.Item, Comparer<string>.Create((x, y) => Compare(order, x, y)))
+                .ThenBy(c => c.Rolled is null || !c.Rolled.IsUnique ? 0 : 1).ToList();
             var stacks = new List<ItemStack>();
             foreach ((string item, int count, ItemStack? rolled) in sorted)
             {
