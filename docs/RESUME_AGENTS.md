@@ -12,7 +12,7 @@
 
 - Ne jamais fusionner une PR sans l'accord explicite de Damien pour cette PR précise. Jamais d'auto-merge, jamais de push sur `main`, jamais de `--force`, jamais de suppression de branche distante.
 - Tout passe par une branche et une PR (brouillon tant qu'elle n'est pas prête). Ne jamais réécrire un commit poussé : corriger par un nouveau commit.
-- Ne pas modifier `.github/workflows/` sans le signaler dans la PR. Aucun secret nulle part.
+- Ne pas modifier `.github/workflows/` sans le signaler dans la PR. Aucun secret nulle part. Ne toucher à aucun autre dépôt.
 - Les décisions de gameplay validées ne changent jamais en silence : poser la question à Damien dans la PR.
 - Ne pas affirmer sans preuve : distinguer « code écrit », « tests locaux verts », « CI verte », « revu », « fusionné ».
 - S'arrêter pour demander seulement pour : arbitrage de gameplay non couvert, dépense, rupture d'architecture, fusion.
@@ -33,7 +33,7 @@
 |---|---|---|
 | Sauvegarde | v12 | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
-| Règles (contenu) | 0.15.0 | `data/v0/rules.json` (`contentVersion`) |
+| Règles (contenu) | 0.15.0 (écrit « 0.15.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
 | Moteur | 0.27.0 | `CombatEngine.cs` (`Version`) |
 | Journal | 21 | `CombatEngine.cs` (`LogFormatVersion`) |
 | Scénarios (schéma) | 15 | `ScenarioValidator.cs` |
@@ -49,21 +49,21 @@ Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.27.0-contenu-0.6
 
 | Sujet | Fichier | Exemple |
 |---|---|---|
-| Lot en cours, décisions validées | `docs/FEUILLE_DE_ROUTE.md` | `grep -n "Lot 13" docs/FEUILLE_DE_ROUTE.md` |
+| Lot en cours, décisions validées | `docs/FEUILLE_DE_ROUTE.md` | `grep -ni "lot 13" docs/FEUILLE_DE_ROUTE.md` |
 | Vision, choix du jeu complet | `docs/CADRAGE.md`, `docs/cadrage/` | `grep -n "Q18" docs/CADRAGE.md` |
 | Ordre des chantiers | `docs/PLAN_LOT_11.md`, `docs/PLAN_ALPHA.md` | `grep -n "L11-D1" docs/PLAN_LOT_11.md` |
 | Moteur de combat | `docs/MOTEUR.md`, `src/EdS.Simulation` | `grep -rn "LogFormatVersion" src` |
 | Formats et données | `docs/DONNEES.md`, `src/EdS.Data*`, `data/` | `grep -n "schéma" docs/DONNEES.md` |
 | Builds, classes | `docs/BUILDS.md` | `grep -n "talent" docs/BUILDS.md` |
-| Formules | `docs/FORMULES.md` | `grep -n "Fixed" docs/FORMULES.md` |
+| Formules | `docs/FORMULES.md` | `grep -rn "Fixed" src/EdS.Domain` |
 | Monde, zones | `docs/MONDE.md`, `docs/ARCHITECTURE_MONDE.md`, `src/EdS.World` | `grep -rn "ZoneValidator" src` |
 | Combat dans l'espace | `docs/COMBAT_ESPACE.md` | `grep -n "portée" docs/COMBAT_ESPACE.md` |
 | Réseau, serveur | `docs/RESEAU.md`, `src/EdS.Net`, `src/EdS.Server` | `grep -n "Version" src/EdS.Net/Protocol.cs` |
-| Unity | `docs/UNITY.md`, `tests/EdS.Unity.CompileCheck` | `grep -n "asmdef" docs/UNITY.md` |
-| Limites connues d'un lot | `docs/LIMITES_LOT_*.md` | `grep -n "limite" docs/LIMITES_LOT_12.md` |
-| Périmètre, crédits, builds CI | `docs/PERIMETRE.md`, `docs/CREDITS.md` | `grep -n "hors périmètre" docs/PERIMETRE.md` |
+| Unity | `docs/UNITY.md`, `tests/EdS.Unity.CompileCheck` | `find src -name "*.asmdef"` |
+| Limites connues d'un lot | `docs/LIMITES_LOT_*.md` | `grep -ni "limite" docs/LIMITES_LOT_12.md` |
+| Périmètre, crédits, builds CI | `docs/PERIMETRE.md`, `docs/CREDITS.md` | `grep -n "^#" docs/PERIMETRE.md` |
 | Tests | `tests/EdS.{Domain,Data,Simulation}.Tests` | `grep -rn "\[Trait(\"Category\"" tests` |
-| Catégories de tests | `scripts/test-category.sh` | `grep -n "Lot12" scripts/test-category.sh` |
+| Catégories de tests | `scripts/test-category.sh` | `grep -n "World" scripts/test-category.sh .github/workflows/ci.yml` |
 | Scénarios | `scenarios/` (dont `zones/`, `coop/`, `mesures/`) | `ls scenarios/zones` |
 | CI | `.github/workflows/ci.yml` | `grep -n "name:" .github/workflows/ci.yml` |
 | Outils, ligne de commande | `src/EdS.Tools`, `src/EdS.Cli` | `grep -rn "simulate" src/EdS.Cli` |
@@ -85,7 +85,7 @@ dotnet test --no-build -c Release --filter "<classes ou catégories touchées>" 
 - `gh pr` ne marche pas en session cloud : utiliser `gh api` (REST), par exemple `gh api repos/{owner}/{repo}/commits/{sha}/check-runs`.
 - Message de commit : `Lot 8.2 (n/m) : …`. Rapport de PR : SHA, ce qui est fait, tests (chiffres), limites, questions pour Damien.
 
-## 7. Méthode économe
+## 7. Méthode économe (choix de Damien du 4 novembre 2026, en plus de CLAUDE.md)
 
 - Lire avec `offset`/`limit` ; jamais un gros doc en entier.
 - Filtrer toutes les sorties (`grep`, `tail`, `head`, `cut -c1-200`).
