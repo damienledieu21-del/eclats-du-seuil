@@ -8,8 +8,11 @@ on:
 permissions:
   contents: read
 
+# CI plus rapide (choix de Damien du 4 novembre 2026) : les mêmes étapes qu'avant, réparties sur trois machines qui travaillent en même
+# temps (Release ; Debug en deux parts), avec le cache NuGet. Le check `build-test` reste le seul à exiger : il attend les autres travaux,
+# échoue si l'un d'eux n'a pas réussi, puis écrit le rapport auto-déclaré comme avant.
 jobs:
-  build-test:
+  release:
     runs-on: ubuntu-latest
     # Revue de la PR #73 : limite de durée (main a déjà pris 55 min ; sans limite, un test bloqué tiendrait le job six heures).
     timeout-minutes: 120
@@ -18,6 +21,11 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'Directory.Build.props', '**/*.csproj') }}
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release -warnaserror
       # Tests plus rapides (décision de Damien du 29 octobre 2026) : l'exécution complète écrit aussi ses résultats (TRX), relus par les
@@ -35,9 +43,64 @@ jobs:
           dotnet run --no-build -c Release --project src/EdS.Cli -- simulate scenarios/entrainement_declencheurs.json --out "$RUNNER_TEMP/declencheurs.jsonl"
           cmp "$RUNNER_TEMP/declencheurs.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.27.0-contenu-0.6.0-regles-0.15.0/entrainement_declencheurs.jsonl
           dotnet run --no-build -c Release --project src/EdS.Cli -- replay "$RUNNER_TEMP/declencheurs.jsonl"
-      # Correctif 7.3.1 : Debug aussi, où les réserves de budget sont vérifiées exactes à chaque traitement.
+
+  # Correctif 7.3.1 : Debug aussi, où les réserves de budget sont vérifiées exactes à chaque traitement.
+  # CI plus rapide : le cas « zones/vallons.json » de Lot114dSnapshotDataTests prend à lui seul l'essentiel du temps ; il tourne sur sa
+  # propre machine. Les deux filtres sont l'exact contraire l'un de l'autre (~ et !~ sur le même texte) : à eux deux, ils couvrent
+  # tous les tests, quoi que contienne le dépôt. Chaque part doit exécuter au moins un test.
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        part:
+          - name: vallons
+            filter: DisplayName~zones/vallons.json
+          - name: reste
+            filter: DisplayName!~zones/vallons.json
+    name: debug (${{ matrix.part.name }})
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'Directory.Build.props', '**/*.csproj') }}
+      - run: dotnet restore
       - run: dotnet build --no-restore -c Debug -warnaserror
-      - run: dotnet test --no-build -c Debug
+      - name: Tests Debug (${{ matrix.part.name }})
+        run: |
+          dotnet test --no-build -c Debug --filter "${{ matrix.part.filter }}" --logger trx --results-directory "$RUNNER_TEMP/resultats-debug"
+          python3 - "$RUNNER_TEMP/resultats-debug" <<'EOF'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          total = 0
+          for trx in pathlib.Path(sys.argv[1]).glob("*.trx"):
+              counters = ET.parse(trx).getroot().find("t:ResultSummary/t:Counters", ns)
+              total += int(counters.get("executed", "0"))
+          print(f"tests exécutés dans cette part : {total}")
+          sys.exit(0 if total > 0 else "aucun test exécuté dans cette part")
+          EOF
+
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [release, debug]
+    # Toujours lancé, pour qu'un travail en échec ou annulé rende ce check rouge (un check « ignoré » passerait pour réussi).
+    if: always()
+    steps:
+      - name: Tous les travaux de test ont réussi
+        env:
+          RELEASE: ${{ needs.release.result }}
+          DEBUG: ${{ needs.debug.result }}
+        run: |
+          echo "release=$RELEASE debug=$DEBUG"
+          test "$RELEASE" = success && test "$DEBUG" = success
+      - uses: actions/checkout@v5
       # These commands run only when every previous test step has succeeded.
       # This is an UNSIGNED self-report, NOT independent CI attestation.
       - name: Check EdS CI report generator (offline)
