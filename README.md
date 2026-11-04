@@ -70,7 +70,7 @@ python3 -m unittest discover -s scripts -p 'test_ci_provenance.py' -v   # géné
 
 Prérequis : SDK .NET 10 (voir `global.json`) ; Python 3 (bibliothèque standard seulement) pour le rapport CI.
 
-CI (`.github/workflows/ci.yml`, check `build-test`) : jeton GitHub en lecture seule (`contents: read`) ; après toutes les étapes de test, `scripts/make_ci_provenance.py` écrit un **rapport auto-déclaré non signé** (`eds-provenance.json` : SHA de tête de la PR et SHA réellement testé, séparés, blob Git du workflow, run et tentative), déposé comme artefact `eds-ci-provenance` pendant 14 jours. Ce n'est **pas** une attestation indépendante : il ne prouve ni la provenance du runner ni l'intégrité des tests ; la signature par un attesteur indépendant est un chantier ultérieur.
+CI (`.github/workflows/ci.yml`, check `build-test`) : trois travaux en parallèle (Release avec catégories et scénario de référence ; Debug en deux parts aux filtres exactement contraires), cache NuGet, puis le check `build-test` qui exige leur réussite (choix de Damien du 4 novembre 2026) ; jeton GitHub en lecture seule (`contents: read`) ; après toutes les étapes de test, `scripts/make_ci_provenance.py` écrit un **rapport auto-déclaré non signé** (`eds-provenance.json` : SHA de tête de la PR et SHA réellement testé, séparés, blob Git du workflow, run et tentative), déposé comme artefact `eds-ci-provenance` pendant 14 jours. Ce n'est **pas** une attestation indépendante : il ne prouve ni la provenance du runner ni l'intégrité des tests ; la signature par un attesteur indépendant est un chantier ultérieur.
 
 ## Décisions validées (revue du plan v0.1)
 
