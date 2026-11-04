@@ -73,8 +73,9 @@ Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.27.0-contenu-0.6
 Avant chaque push : **une seule vérification**, limitée à ce qui est touché, sorties filtrées.
 
 ```bash
+set -o pipefail   # sans lui, un tube rend le code de tail, et un échec passerait pour réussi
 dotnet restore 2>&1 | tail -3
-dotnet build --no-restore -c Release -warnaserror 2>&1 | grep -E "error|Warn|Erreur|Avertissement" | tail -15
+dotnet build --no-restore -c Release -warnaserror 2>&1 | tail -15
 dotnet test --no-build -c Release --filter "<classes ou catégories touchées>" 2>&1 | tail -8
 # + scénario de référence (simulate, cmp avec le journal figé, replay) si règle, donnée ou moteur change
 ```
