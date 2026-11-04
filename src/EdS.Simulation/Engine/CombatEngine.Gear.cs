@@ -16,7 +16,9 @@ namespace EdS.Simulation.Engine
     /// l'empêchent pas : un bonus qui finit en plein combat finit à son tick.</item>
     /// <item><b>Valeurs courantes, règle proportionnelle</b> : PV et endurance gardent la même part de leur maximum, arrondie par défaut
     /// (<c>⌊ valeur × nouveau max / ancien max ⌋</c>) ; une jauge pleine reste pleine ; un vivant garde au moins 1 PV. Un bonus ne soigne donc
-    /// pas plus que sa part, ne tue jamais à sa fin, ne ressuscite pas, et un aller-retour ne rend rien (au plus un point perdu à l'arrondi).</item>
+    /// pas plus que sa part, ne tue jamais à sa fin et ne ressuscite pas. Une hausse puis la baisse qui la défait ne rendent rien (au plus un
+    /// point perdu à l'arrondi) ; une baisse puis la hausse qui la défait peuvent perdre jusqu'à environ ancien maximum / nouveau maximum
+    /// points (arrondi par défaut sur la jauge réduite), et n'en gagner que par le plancher de 1 PV.</item>
     /// <item>Statistiques recalculées par la même fonction qu'à l'entrée (<see cref="CombatantStats.ForCharacter"/>) ; le précontrôle numérique
     /// couvre l'enveloppe de tous les bonus du combat (<see cref="CombatSetup.WorstGear"/>). Ligne <c>gearChanged</c> (journal au format 21).</item>
     /// </list>
@@ -59,8 +61,7 @@ namespace EdS.Simulation.Engine
                 }
             }
             long shift = reason is null ? checked(actor.GearHealthShift + (maxHealth - health) - (actor.MaxHealth!.Value - actor.Health!.Value)) : 0;
-            ReserveAndDequeue(Cost.Op + Cost.Line);
-            Charge(1);
+            Reserve(Cost.Line);   // retiré de la file par RunArrivals (une opération), comme une commande
             if (Reject(tick, CombatPhase.Setup, item, actor, reason)) return;
             actor.Gear = gear;
             actor.Stats = stats!;

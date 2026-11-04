@@ -95,7 +95,10 @@ namespace EdS.World
         /// <summary>
         /// Sous-lot V1.8d : soumet au combat un bonus modifié (commande <c>gear</c>, au tick courant, appliquée au début de ce tick) si le bonus
         /// voulu (<see cref="CombatGear"/>) diffère du dernier soumis. Personnage mort ou absent : rien (le moteur le refuserait ; la session
-        /// suivante entre avec le bon bonus). Refusé par le pilote (plafond de commandes, file pleine, combat fini) : retenté au tick suivant.
+        /// suivante entre avec le bon bonus). Refusé par le pilote pour une cause passagère (plafond de commandes du tick, file pleine :
+        /// <see cref="InvalidOperationException"/>) : retenté au tick suivant. Relecture de la PR #85 : tout autre refus (combat complété
+        /// refusé par la validation, <see cref="ArgumentException"/> : un catalogue validé ne le produit jamais) n'est pas avalé ni retenté
+        /// sans fin : l'exception remonte.
         /// </summary>
         private void SyncCombatGear()
         {
@@ -109,7 +112,7 @@ namespace EdS.World
                 Zone.Engine.Submit(CombatCommand.SetGear(checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), _character.Id, wanted));
                 _combatGear = wanted;
             }
-            catch (Exception e) when (e is InvalidOperationException || e is ArgumentException)
+            catch (InvalidOperationException)
             {
                 _gearPending = true;
             }

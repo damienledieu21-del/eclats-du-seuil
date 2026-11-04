@@ -1737,9 +1737,32 @@ namespace EdS.Simulation.Engine
         {
             long best = 0;
             foreach (Fighter source in PossibleSources(keySource))
-                best = Math.Max(best, ShieldAmount(source, definition, StrongestApplication(source, definition.Id)));
+            {
+                Fixed? coefficient = StrongestApplication(source, definition.Id);
+                long amount = definition.IsShield && coefficient is { } c ? Shields.Value(EnvelopeOf(source).MaxHealth, c, source.Rules.ShieldPotencyDealt) : 0;
+                best = Math.Max(best, amount);
+            }
             return best;
         }
+
+        /// <summary>
+        /// Remarque de Codex sur la PR #85 : statistiques et PV maximaux les plus forts qu'une source a pu avoir pendant le combat. Pour un
+        /// personnage, avec l'enveloppe de ses bonus (<see cref="CombatSetup.WorstGear"/> : un bouclier posé sous un bonus de PV, ou un DOT
+        /// sous un bonus de puissance, garde sa valeur après la fin du bonus) ; pour un autre combattant, ses statistiques. Calculées une fois
+        /// par reprise.
+        /// </summary>
+        private (DerivedStats Stats, long? MaxHealth) EnvelopeOf(Fighter source)
+        {
+            if (source.Character is not { } character) return (source.Stats, source.MaxHealth);
+            _envelopes ??= new Dictionary<Fighter, (DerivedStats, long?)>();
+            if (_envelopes.TryGetValue(source, out var known)) return known;
+            DerivedStats stats = CombatantStats.ForCharacter(_setup.Stats, character.Build, ModifierSet.For(character), _setup.WorstGear(character));
+            var envelope = (stats, (long?)Math.Max(stats.MaxHealth.RoundToInt(RoundingMode.Floor), source.MaxHealth ?? 0));
+            _envelopes[source] = envelope;
+            return envelope;
+        }
+
+        private Dictionary<Fighter, (DerivedStats Stats, long? MaxHealth)>? _envelopes;
 
         /// <summary>
         /// Relecture d'ensemble (20e tour) : plus forte puissance qu'un DOT <paramref name="definition"/> a pu recevoir (<see cref="DotPower"/> :
@@ -1752,7 +1775,7 @@ namespace EdS.Simulation.Engine
             Fixed best = Fixed.Zero;
             foreach (Fighter source in PossibleSources(keySource))
             {
-                Fixed power = source.Stats.GetPower(type);
+                Fixed power = Fixed.Max(source.Stats.GetPower(type), EnvelopeOf(source).Stats.GetPower(type));   // remarque de Codex sur la PR #85
                 foreach (DerivedStats stats in source.AttackStats.Values) power = Fixed.Max(power, stats.GetPower(type));
                 best = Fixed.Max(best, Fixed.Max(Fixed.Zero, power) * StrongestApplication(source, definition.Id));
             }

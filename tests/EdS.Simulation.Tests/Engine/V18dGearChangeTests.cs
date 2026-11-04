@@ -121,6 +121,30 @@ public class V18dGearChangeTests
     }
 
     [Fact]
+    public void Propriete_une_baisse_puis_une_hausse_perd_au_plus_le_rapport_des_maximums()
+    {
+        // Relecture de la PR #85 : dans ce sens, l'arrondi par défaut se fait sur la jauge réduite ; la perte est bornée par environ
+        // ancien maximum / nouveau maximum, et rien n'est gagné, sauf par le plancher de 1 PV d'un vivant.
+        var random = new Random(11);
+        for (int i = 0; i < 5000; i++)
+        {
+            long max = random.Next(2, 2_000_000), newMax = random.Next(1, (int)max), value = random.Next(1, (int)max + 1);
+            long down = CombatEngine.Rescale(value, max, newMax, keepOne: true);
+            long back = CombatEngine.Rescale(down, newMax, max, keepOne: true);
+            if (value == max) Assert.Equal(max, back);   // pleine : pleine
+            bool floored = value * newMax / max < 1;     // le plancher de 1 PV a joué
+            if (!floored)
+            {
+                Assert.True(back <= value, $"{value}/{max} → {down}/{newMax} → {back}/{max}");
+                Assert.True(value - back <= (max + newMax - 1) / newMax, $"{value}/{max} → {down}/{newMax} → {back}/{max}");
+            }
+            else Assert.Equal(1, down);
+        }
+        // Exemple : 99/100 → 9/10 → 90/100 (9 points perdus, sous 100 / 10).
+        Assert.Equal(90, CombatEngine.Rescale(CombatEngine.Rescale(99, 100, 10, keepOne: true), 10, 100, keepOne: true));
+    }
+
+    [Fact]
     public void Propriete_bornes_sur_un_echantillon()
     {
         var random = new Random(7);
@@ -286,5 +310,57 @@ public class V18dGearChangeTests
         Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(forged), NullCombatLog.Instance));
         Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text.Replace("\"gear\":[0,0,0,20,0,140,0,0]", "\"gear\":[0,0,0,-1,0,140,0,0]")), NullCombatLog.Instance));
         Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(text.Replace("\"gear\":null", "\"gear\":[0,0,0,0,0,0,0,0]")), NullCombatLog.Instance));
+    }
+
+    // --- Remarques de Codex sur la PR #85 --------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Bonus_modifie_puis_arrivee_au_meme_tick_rejeu_identique()
+    {
+        // Le pilote soumet un bonus modifié, puis fait arriver un combattant au même tick : arrivées d'abord, bonus ensuite, comme au rejeu
+        // du combat complété (où les arrivées sont mises en file avant les commandes).
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(With(Array.Empty<CombatCommand>(), others: Assailant(firstAttackMs: 500, intervalMs: 500, attacks: Blow(20))), log);
+        for (int i = 0; i < 10; i++) engine.Step();
+        long at = engine.CurrentTick * 50;
+        engine.Submit(Gear(at, Entry + new GearBonus(maxHealth: 40)));
+        engine.Join(new CharacterSetup("renfort", "joueurs", Essai, Hero().Build, arrivalMs: at, gear: Entry));
+        engine.Submit(Gear(at, Entry + new GearBonus(armor: 5), actor: "renfort"));
+        while (engine.CurrentTick < 30) engine.Step();
+        List<JsonElement> tick10 = Events(log).Where(e => e.Tick() == 10).ToList();
+        Assert.Equal(new[] { "combatantJoined", "gearChanged", "gearChanged" }, tick10.Take(3).Select(e => e.Str("event")));
+        var again = new MemoryCombatLog();
+        var replay = new CombatEngine(engine.CompletedSetup(), again);
+        while (replay.CurrentTick < 30) replay.Step();
+        Assert.Equal(log.Lines.Skip(1), again.Lines.Skip(1));
+    }
+
+    [Fact]
+    public void Instantane_apres_la_fin_du_bonus_bouclier_et_DOT_encore_actifs()
+    {
+        // Un bouclier (passif : à chaque compétence lancée) et une brûlure posés sous un bonus de PV et de puissance magique, puis le bonus
+        // finit : l'instantané pris ensuite garde leur valeur et se relit, vérifié par le rejeu.
+        var shield = new StatusDefinition("egide", StatusCategory.Shield, 4000, StatusStacking.PerSourceKeepStronger);
+        var rules = new CombatRules { Statuses = new StatusCatalog(StatusCatalog.Provisional.Definitions.Append(shield)) };
+        var definition = Class(passiveTriggers: new[] { new TriggerDefinition(TriggerEvent.SkillCast,
+            new[] { TriggerEffect.ApplyStatus(TriggerTarget.Bearer, "egide", EdS.Domain.Numerics.Fixed.Parse("0.5")) }) });
+        var hero = new CharacterSetup("bastion", "joueurs", definition, new CharacterBuild("class.essai", 10, Attrs(vitalite: 20, endurance: 10), null,
+            new[] { Gratuite, Brasier, Frappe, Heurt }, Ultime, new[] { Passif }), gear: Entry);
+        var boosted = Entry + new GearBonus(magicPower: 500, maxHealth: 5000);
+        var assailant = new AssailantSetup("assaillant", "cibles", EdS.Domain.Numerics.Fixed.Zero, EdS.Domain.Numerics.Fixed.Zero, "bastion", 9000, 2000,
+            new[] { Blow(1) }, health: 1_000_000);
+        CombatSetup setup = new(42, 10_000, StatRules.Provisional, DamageRules.Provisional, ProgressionRules.Provisional, rules,
+            new CombatantSetup[] { hero, assailant }, new[] { Gear(500, boosted), Cmd(1000, Brasier, target: "assaillant"), Gear(1500, Entry) }, Identity);
+        Assert.Empty(setup.Validate());
+        var engine = new CombatEngine(setup, NullCombatLog.Instance);
+        while (engine.CurrentTick < 40) engine.Step();
+        CombatantView me = engine.View("bastion");
+        Assert.Equal(Entry, me.Gear);
+        Assert.Contains("egide", me.States);
+        Assert.Contains("burn", engine.View("assaillant").States);
+        CombatSnapshot snapshot = engine.Snapshot();
+        Assert.NotNull(CombatEngine.Restore(engine.CompletedSetup(), snapshot, NullCombatLog.Instance));
+        CombatEngine verified = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, new MemoryCombatLog());
+        Assert.Equal(engine.View("bastion").Health, verified.View("bastion").Health);
     }
 }
