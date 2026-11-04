@@ -26,7 +26,7 @@ public class V13EffetsMoteurTests
 {
     private const string Equipement = "entrainement_equipement";
     private static string Reference(string name) =>
-        Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.26.0-contenu-0.6.0-regles-0.15.0", name + ".jsonl");   // sous-lot V1.8 : règles 0.15.0, même moteur
+        Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.27.0-contenu-0.6.0-regles-0.15.0", name + ".jsonl");   // sous-lot V1.8 : règles 0.15.0, même moteur
     private static string Frozen(string version, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-" + version, name + ".jsonl");
 
     private static CombatSetup Load(string name)
@@ -58,10 +58,10 @@ public class V13EffetsMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.26.0", 20), (CombatEngine.Version, CombatEngine.LogFormatVersion));
+        Assert.Equal(("0.27.0", 21), (CombatEngine.Version, CombatEngine.LogFormatVersion));
         // Sous-lot V1.8 : règles 0.15.0 (barre « 4 + ultime dès le début »), schéma inchangé.
         Assert.Equal((14, "0.15.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));
-        Assert.Equal(14, ScenarioValidator.CurrentSchemaVersion);
+        Assert.Equal(15, ScenarioValidator.CurrentSchemaVersion);   // sous-lot V1.8d : 15 (bonus modifié), moteur 0.27.0, format 21
         Assert.Equal("0.15.0-provisoire", ShippedData.Rules.ContentVersion);
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.Parse("0.25"), Fixed.Parse("0.15"), Fixed.Parse("0.15"), Fixed.Parse("3"), 1000L, Fixed.One, 2, 1000L),
@@ -214,7 +214,7 @@ public class V13EffetsMoteurTests
         Assert.Equal(frozen.Skip(1), current.Skip(1));
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
         Assert.Equal((19, "0.25.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
-        Assert.Equal((20, "0.26.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((21, "0.27.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
         Assert.Equal(before.GetProperty("scenario").GetRawText(), after.GetProperty("scenario").GetRawText());
         Assert.Equal(before.GetProperty("data").GetProperty("classes").GetRawText(), after.GetProperty("data").GetProperty("classes").GetRawText());
     }

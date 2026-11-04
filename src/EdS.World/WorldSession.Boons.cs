@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Items;
 using EdS.Data.Saves;
+using EdS.Domain.Combat;
 using EdS.Domain.Stats;
 using EdS.Simulation.Engine;
 
@@ -56,8 +57,10 @@ namespace EdS.World
     /// <item>Les bonus sont <b>gardés quand le personnage tombe</b> : la reprise ouvre une session sur <see cref="Save"/>, qui les garde avec
     /// leur temps.</item>
     /// <item>Effet en combat : le bonus des objets des bonus actifs s'ajoute au bonus de l'équipement (<see cref="BoonGear"/>, dans la limite
-    /// du combat), à l'entrée dans une session (halte, porte, voyage, reprise), comme un équipement changé : le combat en cours garde les
-    /// bonus de son entrée (<see cref="EnteredBoons"/>).</item>
+    /// du combat). Sous-lot V1.8d (décision de Damien : effet immédiat) : à l'entrée dans une session, puis à chaque changement des bonus
+    /// actifs (consommé, remplacé, fini), par un « bonus modifié » du moteur (commande <c>gear</c>, <see cref="SyncCombatGear"/>) : le bonus
+    /// d'un objet consommé compte dès le tick simulé suivant, et un bonus fini ne compte plus dès le premier tick qu'il ne couvre pas. La
+    /// base reste l'équipement porté à l'entrée (changer d'équipement vaut toujours à l'entrée suivante).</item>
     /// </list>
     /// </summary>
     public sealed partial class WorldSession
@@ -71,8 +74,49 @@ namespace EdS.World
         /// <summary>Bonus actif de la place <paramref name="kind"/>, ou null.</summary>
         public SavedBoon? BoonAt(BoonKind kind) => Enum.IsDefined(typeof(BoonKind), kind) ? _boons[(int)kind] : null;
 
-        /// <summary>Bonus actifs à l'entrée dans la session : ceux dont le combat en cours a reçu l'effet.</summary>
+        /// <summary>Bonus actifs à l'entrée dans la session (ceux de l'en-tête du combat ; les changements suivants passent par les bonus modifiés).</summary>
         public IReadOnlyList<SavedBoon> EnteredBoons { get; }
+
+        /// <summary>Sous-lot V1.8d : bonus de l'équipement porté à l'entrée, sans les bonus actifs (base de <see cref="CombatGear"/>).</summary>
+        private readonly GearBonus _entryEquipmentGear;
+
+        /// <summary>Sous-lot V1.8d : dernier bonus d'équipement soumis au combat (celui de l'entrée, puis du dernier bonus modifié admis).</summary>
+        private GearBonus _combatGear;
+
+        /// <summary>Sous-lot V1.8d : un bonus modifié attend d'être admis par le pilote (refusé : retenté au tick suivant).</summary>
+        private bool _gearPending;
+
+        /// <summary>
+        /// Sous-lot V1.8d : bonus d'équipement que le combat doit avoir maintenant : celui de l'équipement porté à l'entrée plus les bonus
+        /// actifs, dans la limite du combat (<see cref="BoonGear"/>). Le moteur l'a dès le tick simulé suivant (<see cref="CombatantView.Gear"/>).
+        /// </summary>
+        public GearBonus CombatGear => BoonGear(_entryEquipmentGear, _items, ActiveBoons);
+
+        /// <summary>
+        /// Sous-lot V1.8d : soumet au combat un bonus modifié (commande <c>gear</c>, au tick courant, appliquée au début de ce tick) si le bonus
+        /// voulu (<see cref="CombatGear"/>) diffère du dernier soumis. Personnage mort ou absent : rien (le moteur le refuserait ; la session
+        /// suivante entre avec le bon bonus). Refusé par le pilote pour une cause passagère (plafond de commandes du tick, file pleine :
+        /// <see cref="InvalidOperationException"/>) : retenté au tick suivant. Relecture de la PR #85 : tout autre refus (combat complété
+        /// refusé par la validation, <see cref="ArgumentException"/> : un catalogue validé ne le produit jamais) n'est pas avalé ni retenté
+        /// sans fin : l'exception remonte.
+        /// </summary>
+        private void SyncCombatGear()
+        {
+            GearBonus wanted = CombatGear;
+            _gearPending = false;
+            if (wanted.Equals(_combatGear) || Zone.Engine.IsFinished) return;
+            CombatantView me = Zone.Engine.View(_character.Id);
+            if (me.IsDead || !me.IsPresent) return;
+            try
+            {
+                Zone.Engine.Submit(CombatCommand.SetGear(checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), _character.Id, wanted));
+                _combatGear = wanted;
+            }
+            catch (InvalidOperationException)
+            {
+                _gearPending = true;
+            }
+        }
 
         /// <summary>Refus qu'aurait <see cref="UseBoon"/> maintenant (rien ne change).</summary>
         public BoonRefusal CanUseBoon(string item)
@@ -87,7 +131,8 @@ namespace EdS.World
         /// <summary>
         /// Consomme un exemplaire de l'objet de bonus <paramref name="item"/> : il quitte l'inventaire et occupe sa place de bonus avec sa durée
         /// pleine, en remplaçant le bonus de la même place s'il y en avait un (<paramref name="replaced"/>, perdu). Refusé
-        /// (<see cref="CanUseBoon"/>) : rien ne change. L'effet en combat vient à la prochaine entrée dans une session.
+        /// (<see cref="CanUseBoon"/>) : rien ne change. Sous-lot V1.8d : l'effet en combat est immédiat (bonus modifié appliqué au début du
+        /// prochain tick simulé ; un remplacement échange les deux effets d'un seul coup).
         /// </summary>
         public BoonRefusal UseBoon(string item, out SavedBoon? replaced)
         {
@@ -99,6 +144,7 @@ namespace EdS.World
             if (Inventory.Remove(item, 1) != InventoryRefusal.None) return BoonRefusal.NothingThere;   // contrôlé plus haut : jamais
             replaced = _boons[(int)boon.Kind];
             _boons[(int)boon.Kind] = boon;
+            SyncCombatGear();   // sous-lot V1.8d : effet immédiat
             return BoonRefusal.None;
         }
 

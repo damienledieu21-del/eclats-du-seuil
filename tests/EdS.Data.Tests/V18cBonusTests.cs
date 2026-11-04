@@ -375,7 +375,7 @@ public class V18cBonusTests : IDisposable
     }
 
     [Fact]
-    public void Trois_places_ensemble_et_effet_a_la_prochaine_entree()
+    public void Trois_places_ensemble_et_effet_jusqu_a_la_prochaine_entree()
     {
         SavedCharacter hero = Inventory.Outfit(Hero(0, new ItemStack(Ragout, 1), new ItemStack(Seuil, 1), new ItemStack(Huile, 1)), WithMeal);
         WorldSession w = Open(hero, WithMeal);
@@ -384,8 +384,10 @@ public class V18cBonusTests : IDisposable
         foreach (string item in new[] { Huile, Ragout, Seuil }) Assert.Equal(BoonRefusal.None, w.UseBoon(item));
         Assert.Equal(new[] { BoonKind.Meal, BoonKind.Elixir, BoonKind.Weapon }, w.ActiveBoons.Select(b => b.Kind));   // ordre des places
         Assert.Equal(new[] { 54_000, 72_000, 54_000 }, w.ActiveBoons.Select(b => b.Ticks));
-        // Le combat en cours garde le bonus de son entrée (comme un équipement changé).
+        // L'en-tête de la session garde le bonus de son entrée ; sous-lot V1.8d : le combat reçoit les bonus tout de suite (bonus modifié,
+        // V18dEffetImmediatTests), et la session suivante entre avec eux.
         Assert.Equal(gear, w.EnteredGear);
+        Assert.Equal(gear + new GearBonus(physicalPower: 7, maxHealth: 60, maxEndurance: 16), w.CombatGear);
         Assert.Empty(w.EnteredBoons);
         WorldSession next = Reopen(Offline(w), WithMeal);
         Assert.Equal(3, next.EnteredBoons.Count);
@@ -501,9 +503,9 @@ public class V18cBonusTests : IDisposable
         a.DrainMessages();
         int place = a.World.Inventory.Stacks.Select((s, i) => (s, i)).First(p => p.s.Item == Vigueur).i;
         Assert.Equal(BoonRefusal.None, a.UseBoon(place));
-        Assert.Contains("Élixir de vigueur : bonus actif pendant 30 minutes de jeu, effet à ta prochaine halte.", a.DrainMessages());
+        Assert.Contains("Élixir de vigueur : bonus actif tout de suite, pendant 30 minutes de jeu.", a.DrainMessages());
         Assert.Equal(BoonRefusal.None, a.UseBoon(place));
-        Assert.Contains("Élixir de vigueur : bonus actif pendant 30 minutes de jeu (remplace Élixir de vigueur), effet à ta prochaine halte.", a.DrainMessages());
+        Assert.Contains("Élixir de vigueur : bonus actif tout de suite, pendant 30 minutes de jeu (remplace Élixir de vigueur).", a.DrainMessages());
         int herb = a.World.Inventory.Stacks.Select((s, i) => (s, i)).First(p => p.s.Item == "item.herbe_de_l_aube").i;
         Assert.Equal(BoonRefusal.NotBoon, a.UseBoon(herb));
         Assert.Contains("Cet objet ne donne pas de bonus.", a.DrainMessages());

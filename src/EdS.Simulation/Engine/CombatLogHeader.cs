@@ -49,6 +49,7 @@ namespace EdS.Simulation.Engine
                 if (c.Direction is { } direction) WritePoint(w.Name("direction"), direction);   // sous-lot 11.4 : telle que donnée
                 if (c.Backward) w.Field("backward", true);   // sous-lot 11.9 (format 15) : seulement à reculons
                 if (c.Item != null) w.Field("item", c.Item);   // sous-lot 12.6 (format 18) : objet de soin d'un consume
+                if (c.Gear is { } gear) CombatEngine.WriteGear(w, gear);   // sous-lot V1.8d (format 21) : bonus d'un gear, champs non nuls
                 w.EndObject();
             }
             w.EndArray().EndObject();

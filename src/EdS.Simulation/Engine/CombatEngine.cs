@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.26.0";
+        public const string Version = "0.27.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -99,9 +99,13 @@ namespace EdS.Simulation.Engine
         /// <c>id</c> de la source, <c>modifiers</c>, <c>triggers</c>), qui s'ajoutent à ceux de son build : déclencheurs d'origine
         /// <c>equipment</c> (identité <c>source/indice@porteur#0</c>) et modificateurs dans ses règles effectives ; nouvelle condition
         /// <c>targetStunned</c> des modificateurs (cible de l'impact étourdie). Sans effet d'équipement, un combat écrit exactement les mêmes
-        /// lignes qu'au format 19. Un journal d'un autre format est refusé au rejeu.
+        /// lignes qu'au format 19. 21 (sous-lot V1.8d, effet immédiat des bonus) : commande <c>gear</c> (« bonus modifié ») d'un personnage, avec son
+        /// <c>gear</c> (nouveau bonus d'équipement total, champs non nuls seulement), traitée au début de son tick (nouvelle phase <c>gear</c>, après les arrivées) ; nouvelle
+        /// ligne <c>gearChanged</c> (<c>gear</c>, <c>maxHealth</c>, <c>health</c>, <c>maxEndurance</c>, <c>endurance</c>) ; raison de refus
+        /// <c>maxHealthTooLow</c>. Sans bonus modifié, un combat écrit exactement les mêmes lignes qu'au format 20. Un journal d'un autre format
+        /// est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 20;
+        public const int LogFormatVersion = 21;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -114,6 +118,18 @@ namespace EdS.Simulation.Engine
             public CharacterSetup? Character;
             public AssailantSetup? Assailant;
             public DerivedStats Stats = null!;
+
+            /// <summary>
+            /// Sous-lot V1.8d : bonus d'équipement en vigueur (personnage) : celui de l'en-tête, puis celui du dernier « bonus modifié »
+            /// accepté ; <see cref="GearBonus.None"/> hors personnage. <see cref="Stats"/> est toujours calculé avec lui.
+            /// </summary>
+            public GearBonus Gear = GearBonus.None;
+
+            /// <summary>
+            /// Sous-lot V1.8d : variation cumulée des PV manquants (maximum − PV) due aux bonus modifiés (règle proportionnelle, signée) :
+            /// sans elle, les PV manquants d'un vivant sont exactement ses dégâts subis moins ses soins (contrôle de l'instantané).
+            /// </summary>
+            public long GearHealthShift;
 
             /// <summary>Sous-lot 8.1 : règles effectives (règles de base et modificateurs X1, évaluation des X2) ; neutres hors personnage.</summary>
             public CombatantRules Rules = null!;
@@ -561,7 +577,7 @@ namespace EdS.Simulation.Engine
             for (int i = 0; i < setup.Commands.Count; i++)
             {
                 CombatCommand command = setup.Commands[i];
-                Schedule(command.AtMs / _tickMs, CombatPhase.Commands, new CommandItem { Index = i, Command = command });
+                Schedule(command.AtMs / _tickMs, PhaseOf(command), new CommandItem { Index = i, Command = command });
             }
             foreach (Fighter f in _fighters)
                 if (!f.Absent && f.Assailant is { } assailant && assailant.FirstAttackMs / _tickMs < _durationTicks)
@@ -598,6 +614,7 @@ namespace EdS.Simulation.Engine
                     f.Character = character;
                     // Sous-lot 8.1 : mêmes fonctions que la validation (précontrôle) : modificateurs agrégés, statistiques, règles.
                     ModifierSet modifiers = ModifierSet.For(character);
+                    f.Gear = character.Gear;
                     f.Stats = CombatantStats.ForCharacter(_setup.Stats, character.Build, modifiers, character.Gear);
                     f.Rules = CombatantRules.For(_rules, modifiers, character.Shield);   // sous-lot V1.2 : garde du bouclier porté
                     f.MaxHealth = f.Stats.MaxHealth.RoundToInt(RoundingMode.Floor);
@@ -647,6 +664,7 @@ namespace EdS.Simulation.Engine
             try
             {
                 RunArrivals(tick);   // sous-lot 11.4d : combattants qui arrivent à ce tick
+                RunGear(tick);       // sous-lot V1.8d : bonus modifiés, après toutes les arrivées
                 RunExpirations(tick);
                 RunEngagements(tick);   // sous-lot 11.5 : ennemis qui s'engagent
                 List<PendingAction> actions = RunCommands(tick);
@@ -950,12 +968,15 @@ namespace EdS.Simulation.Engine
                 ChargesSpent = chargesSpent };
         }
 
-        private bool Reject(long tick, CommandItem item, Fighter actor, string? reason)
+        private bool Reject(long tick, CommandItem item, Fighter actor, string? reason) => Reject(tick, CombatPhase.Commands, item, actor, reason);
+
+        /// <summary>Sous-lot V1.8d : refus d'une commande dans sa phase (<c>setup</c> pour un bonus modifié).</summary>
+        private bool Reject(long tick, CombatPhase phase, CommandItem item, Fighter actor, string? reason)
         {
             if (reason is null) return false;
             CombatCommand command = item.Command;
             actor.Result.CommandsRejected++;
-            EmitDiagnostic(tick, CombatPhase.Commands, "commandRejected", w => w
+            EmitDiagnostic(tick, phase, "commandRejected", w => w
                 .Field("actor", actor.Id).Field("action", CombatActionIds.Of(command.Action)).Field("skill", command.Skill)
                 .Field("target", command.Target).Field("command", item.Index).Field("reason", reason));
             return true;
@@ -2605,6 +2626,7 @@ namespace EdS.Simulation.Engine
         private static string PhaseId(CombatPhase phase) => phase switch
         {
             CombatPhase.Setup => "setup",
+            CombatPhase.Gear => "gear",
             CombatPhase.Expirations => "expirations",
             CombatPhase.Commands => "commands",
             CombatPhase.Movement => "movement",

@@ -783,7 +783,7 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V1.8c : consomme l'objet de bonus de la place <paramref name="place"/> du sac (plat, élixir, huile ou pierre d'arme ;
-        /// <see cref="WorldSession.UseBoon(string, out SavedBoon?)"/>) : hors combat, il occupe sa place de bonus (effet à la prochaine halte), en
+        /// <see cref="WorldSession.UseBoon(string, out SavedBoon?)"/>) : hors combat, il occupe sa place de bonus (effet immédiat, sous-lot V1.8d), en
         /// remplaçant le bonus de la même place ; un message dit le résultat ou le refus.
         /// </summary>
         public BoonRefusal UseBoon(int place)

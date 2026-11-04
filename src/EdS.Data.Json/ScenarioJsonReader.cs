@@ -246,6 +246,7 @@ namespace EdS.Data.Json
                 ["direction"] = Track("direction", (v, p) => c.Direction = ReadPoint(input, v, p)),   // sous-lot 11.4
                 ["backward"] = Track("backward", (v, p) => c.Backward = input.Boolean(v, p)),       // sous-lot 11.9 (schéma 9)
                 ["item"] = Track("item", (v, p) => c.Item = input.Text(v, p)),                     // sous-lot 12.6 (schéma 12)
+                ["gear"] = Track("gear", (v, p) => c.Gear = ReadIntegerMap(input, v, p)),          // sous-lot V1.8d (schéma 15)
             });
             return ok ? c : null;
         }

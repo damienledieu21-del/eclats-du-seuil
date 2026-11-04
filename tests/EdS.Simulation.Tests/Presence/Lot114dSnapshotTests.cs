@@ -135,7 +135,7 @@ public class Lot114dSnapshotTests
         CombatSetup lateSetup = training.CompletedSetup();
         long tick = training.CurrentTick + 5;
         string Stale(string state, long generation) =>
-            $"\"tick\":{tick},\"phase\":1,\"item\":\"expiry\",\"fighter\":\"assaillant\",\"state\":\"{state}\",\"keySource\":null,\"instance\":{gone},\"generation\":{generation}}}";
+            $"\"tick\":{tick},\"phase\":2,\"item\":\"expiry\",\"fighter\":\"assaillant\",\"state\":\"{state}\",\"keySource\":null,\"instance\":{gone},\"generation\":{generation}}}";
         string once = WithEntry(late, Stale("stun", 1));
         Assert.Equal(once, CombatEngine.Restore(lateSetup, CombatSnapshot.Parse(once), NullCombatLog.Instance).Snapshot().Text);   // échéance périmée possible
         AssertRefused(lateSetup, WithEntry(once, Stale("freeze", 2)), "autre identité");
@@ -362,7 +362,7 @@ public class Lot114dSnapshotTests
         while (engine.CurrentTick < 20) engine.Step();
         engine.Submit(GuardStart(1000, "allie"));
         string text = engine.Snapshot().Text;
-        List<string> batch = text.Split('\n').Where(l => l.Contains(",\"tick\":20,\"phase\":2,", StringComparison.Ordinal)).ToList();
+        List<string> batch = text.Split('\n').Where(l => l.Contains(",\"tick\":20,\"phase\":3,", StringComparison.Ordinal)).ToList();
         int turn = batch.FindIndex(l => l.Contains("\"item\":\"turn\"", StringComparison.Ordinal));
         int submitted = batch.FindIndex(l => l.Contains("\"item\":\"command\",\"index\":7", StringComparison.Ordinal));   // les sept commandes du scénario, puis celle soumise
         Assert.True(turn >= 0 && submitted > turn, string.Join("\n", batch));
@@ -515,12 +515,12 @@ public class Lot114dSnapshotTests
         Assert.Throws<FormatException>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(snapshot.Text + "\n{\"entry\":0}"), NullCombatLog.Instance));
         // Revue Codex de la PR #32 : curseur de file et éléments relus tels qu'entre deux ticks.
         string head = snapshot.Text.Split('\n')[0];
-        Assert.Contains("\"queue\":{\"started\":true,\"tick\":29,\"phase\":7,", head);
+        Assert.Contains("\"queue\":{\"started\":true,\"tick\":29,\"phase\":8,", head);
         Assert.Contains("Curseur", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
-            CombatSnapshot.Parse(snapshot.Text.Replace("\"queue\":{\"started\":true,\"tick\":29,\"phase\":7,", "\"queue\":{\"started\":true,\"tick\":30,\"phase\":7,")),
+            CombatSnapshot.Parse(snapshot.Text.Replace("\"queue\":{\"started\":true,\"tick\":29,\"phase\":8,", "\"queue\":{\"started\":true,\"tick\":30,\"phase\":8,")),
             NullCombatLog.Instance)).Message);
         Assert.Contains("Curseur", Assert.Throws<FormatException>(() => CombatEngine.Restore(setup,
-            CombatSnapshot.Parse(snapshot.Text.Replace("\"queue\":{\"started\":true,\"tick\":29,\"phase\":7,", "\"queue\":{\"started\":true,\"tick\":29,\"phase\":2,")),
+            CombatSnapshot.Parse(snapshot.Text.Replace("\"queue\":{\"started\":true,\"tick\":29,\"phase\":8,", "\"queue\":{\"started\":true,\"tick\":29,\"phase\":3,")),
             NullCombatLog.Instance)).Message);
         string firstEntry = snapshot.Text.Split('\n').First(l => l.StartsWith("{\"entry\":", StringComparison.Ordinal));
         string past = System.Text.RegularExpressions.Regex.Replace(firstEntry, "\"tick\":[0-9]+", "\"tick\":12");
@@ -643,7 +643,7 @@ public class Lot114dSnapshotTests
             (Impact, "\"pulse\":0", "\"pulse\":1", "impact impossible"),
             (Impact, "\"assailant\":\"ogre\"", "\"assailant\":\"bastion\"", "pas un assaillant"),
             (Turn, "\"fighter\":\"ogre\"", "\"fighter\":\"bastion\"", "tour impossible"),
-            (Turn, "\"phase\":2", "\"phase\":3", "tour impossible"),
+            (Turn, "\"phase\":3", "\"phase\":4", "tour impossible"),
             // Compteurs.
             (Head, "\"initialEvents\":-1", "\"initialEvents\":5", "Compteurs"),
             (Head, "\"deferredPending\":0", "\"deferredPending\":1", "réactions reportées"),

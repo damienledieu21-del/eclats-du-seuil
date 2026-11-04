@@ -152,6 +152,8 @@ public class Lot101ProtocolTests
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[],\"hash\":\"fnv1a64:0123\"}", "empreinte invalide")]
     [InlineData("{\"type\":\"tick\",\"tick\":-1,\"commands\":[],\"hash\":\"fnv1a64:0123456789abcdef\"}", "hors de")]
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"a\",\"action\":\"dance\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "action inconnue")]
+    // Sous-lot V1.8d : le bonus modifié n'est jamais transmis (protocole 4 inchangé) : un client ne change pas un bonus d'équipement.
+    [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"a\",\"action\":\"gear\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "action inconnue")]
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"a\",\"action\":\"skill\",\"skill\":\"s.k\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "« target » obligatoire")]
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":50,\"actor\":\"a\",\"action\":\"parry\",\"skill\":\"s.k\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "réservés")]
     [InlineData("{\"type\":\"tick\",\"tick\":1,\"commands\":[{\"atMs\":-50,\"actor\":\"a\",\"action\":\"parry\"}],\"hash\":\"fnv1a64:0123456789abcdef\"}", "hors de")]
