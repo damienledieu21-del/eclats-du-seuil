@@ -483,7 +483,7 @@ namespace EdS.Domain.Combat
         /// <summary>
         /// Sous-lot V1.8d : « bonus modifié ». Le bonus d'équipement d'un personnage devient <see cref="CombatCommand.Gear"/> (le total, pas
         /// une différence) : effet immédiat d'un bonus consommé, remplacé ou fini en cours de session. Appliquée au début de son tick (phase
-        /// <c>setup</c>, juste après les arrivées et avant tout le reste) : tout le tick voit les nouvelles statistiques.
+        /// <c>gear</c>, juste après les arrivées et avant tout le reste) : tout le tick voit les nouvelles statistiques.
         /// </summary>
         Gear = 9,
     }

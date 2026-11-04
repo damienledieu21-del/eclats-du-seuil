@@ -114,7 +114,7 @@ public class V18dBonusModifieDataTests
         List<JsonElement> changes = frozen.Skip(1).Select(l => JsonDocument.Parse(l).RootElement.Clone())
             .Where(e => e.GetProperty("event").GetString() == "gearChanged").ToList();
         Assert.Equal(new[] { 30L, 70L, 150L }, changes.Select(e => e.GetProperty("tick").GetInt64()));
-        Assert.All(changes, e => Assert.Equal("setup", e.GetProperty("phase").GetString()));
+        Assert.All(changes, e => Assert.Equal("gear", e.GetProperty("phase").GetString()));
         // En-tête : le bonus de chaque commande gear, champs non nuls seulement.
         JsonElement header = JsonDocument.Parse(frozen[0]).RootElement;
         JsonElement logged = header.GetProperty("scenario").GetProperty("commands")[1];

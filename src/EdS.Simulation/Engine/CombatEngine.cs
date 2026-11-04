@@ -100,7 +100,7 @@ namespace EdS.Simulation.Engine
         /// <c>equipment</c> (identité <c>source/indice@porteur#0</c>) et modificateurs dans ses règles effectives ; nouvelle condition
         /// <c>targetStunned</c> des modificateurs (cible de l'impact étourdie). Sans effet d'équipement, un combat écrit exactement les mêmes
         /// lignes qu'au format 19. 21 (sous-lot V1.8d, effet immédiat des bonus) : commande <c>gear</c> (« bonus modifié ») d'un personnage, avec son
-        /// <c>gear</c> (nouveau bonus d'équipement total, champs non nuls seulement), traitée au début de son tick (phase <c>setup</c>) ; nouvelle
+        /// <c>gear</c> (nouveau bonus d'équipement total, champs non nuls seulement), traitée au début de son tick (nouvelle phase <c>gear</c>, après les arrivées) ; nouvelle
         /// ligne <c>gearChanged</c> (<c>gear</c>, <c>maxHealth</c>, <c>health</c>, <c>maxEndurance</c>, <c>endurance</c>) ; raison de refus
         /// <c>maxHealthTooLow</c>. Sans bonus modifié, un combat écrit exactement les mêmes lignes qu'au format 20. Un journal d'un autre format
         /// est refusé au rejeu.
@@ -664,6 +664,7 @@ namespace EdS.Simulation.Engine
             try
             {
                 RunArrivals(tick);   // sous-lot 11.4d : combattants qui arrivent à ce tick
+                RunGear(tick);       // sous-lot V1.8d : bonus modifiés, après toutes les arrivées
                 RunExpirations(tick);
                 RunEngagements(tick);   // sous-lot 11.5 : ennemis qui s'engagent
                 List<PendingAction> actions = RunCommands(tick);
@@ -2625,6 +2626,7 @@ namespace EdS.Simulation.Engine
         private static string PhaseId(CombatPhase phase) => phase switch
         {
             CombatPhase.Setup => "setup",
+            CombatPhase.Gear => "gear",
             CombatPhase.Expirations => "expirations",
             CombatPhase.Commands => "commands",
             CombatPhase.Movement => "movement",

@@ -45,7 +45,7 @@ public class V18dGearChangeTests
         var (_, plain) = Run(With(new[] { Cmd(1000, Gratuite) }));
         List<JsonElement> events = Events(log);
         JsonElement changed = Assert.Single(events.OfKind("gearChanged"));
-        Assert.Equal((20L, "setup"), (changed.Tick(), changed.Str("phase")));
+        Assert.Equal((20L, "gear"), (changed.Tick(), changed.Str("phase")));
         Assert.Equal(50, changed.GetProperty("gear").GetProperty("physicalPower").GetInt32());
         Assert.False(changed.GetProperty("gear").TryGetProperty("agilePower", out _));   // champs non nuls seulement
         Assert.Equal(MaxHp(more), changed.Int("maxHealth"));
@@ -188,7 +188,7 @@ public class V18dGearChangeTests
         List<JsonElement> events = Events(log);
         Assert.Empty(events.OfKind("gearChanged"));
         JsonElement rejected = Assert.Single(events.OfKind("commandRejected"), e => e.Str("action") == "gear");
-        Assert.Equal(("actorDead", "setup"), (rejected.Str("reason"), rejected.Str("phase")));
+        Assert.Equal(("actorDead", "gear"), (rejected.Str("reason"), rejected.Str("phase")));
         Assert.Equal(1, result.Combatants.Single(c => c.Id == "bastion").CommandsRejected);
     }
 
@@ -362,5 +362,28 @@ public class V18dGearChangeTests
         Assert.NotNull(CombatEngine.Restore(engine.CompletedSetup(), snapshot, NullCombatLog.Instance));
         CombatEngine verified = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, new MemoryCombatLog());
         Assert.Equal(engine.View("bastion").Health, verified.View("bastion").Health);
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(12)]
+    [InlineData(25)]
+    public void Budget_du_tick_epuise_par_les_bonus_modifies_pilote_et_rejeu_identiques(int workBudget)
+    {
+        // Remarque de Codex sur la PR #85 (head c32782c) : dix bonus modifiés soumis, puis une arrivée au même tick, avec un budget de travail
+        // qui ne tient pas le tout : l'arrêt (workBudgetExceeded) tombe au même endroit pour le pilote et pour le rejeu du combat complété.
+        var rules = new CombatRules { MaxWorkPerTick = workBudget, MaxEventsPerTick = workBudget, MaxCommandsPerActorPerTick = 16 };
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(With(Array.Empty<CombatCommand>(), rules: rules), log);
+        for (int i = 0; i < 5; i++) engine.Step();
+        long at = engine.CurrentTick * 50;
+        for (int k = 1; k <= 10; k++) engine.Submit(Gear(at, Entry + new GearBonus(armor: k)));
+        engine.Join(new CharacterSetup("renfort", "joueurs", Essai, Hero().Build, arrivalMs: at, gear: Entry));
+        while (engine.Step()) { }
+        Assert.Contains(log.Lines, l => l.Contains("\"event\":\"combatantJoined\"", StringComparison.Ordinal));
+        if (workBudget < 25) Assert.Contains(log.Lines, l => l.Contains("workBudgetExceeded", StringComparison.Ordinal));
+        var again = new MemoryCombatLog();
+        CombatEngine.Run(engine.CompletedSetup(), again);
+        Assert.Equal(log.Lines.Skip(1), again.Lines.Skip(1));
     }
 }

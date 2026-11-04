@@ -494,10 +494,12 @@ namespace EdS.Simulation.Engine
                 return text.IndexOf(',', start + entry.Length, length - entry.Length);
             }
 
-            // Longueur du préfixe « ,"tick":N,"phase":2, » d'un élément de la phase des commandes (séparateur suivant compris), -1 sinon.
+            // Longueur du préfixe « ,"tick":N,"phase":<commandes>, » d'un élément de la phase des commandes (séparateur suivant compris), -1
+            // sinon. Sous-lot V1.8d : le rang de la phase se déduit de l'énumération (la phase gear a décalé les suivantes).
             static int CommandsKey(string text, int comma, int length)
             {
-                const string tick = ",\"tick\":", phase = ",\"phase\":2";
+                const string tick = ",\"tick\":";
+                string phase = CommandsPhaseKey;
                 if (length < tick.Length || string.CompareOrdinal(text, comma, tick, 0, tick.Length) != 0) return -1;
                 int i = comma + tick.Length, stop = comma + length;
                 while (i < stop && text[i] >= '0' && text[i] <= '9') i++;
@@ -682,6 +684,9 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private const long CounterCeiling = long.MaxValue / 1024;
 
+        /// <summary>Sous-lot V1.8d : clé de phase des éléments de la phase des commandes dans le texte d'un instantané.</summary>
+        private static readonly string CommandsPhaseKey = ",\"phase\":" + ((int)CombatPhase.Commands).ToString(CultureInfo.InvariantCulture);
+
         /// <summary>
         /// 9e tour : une échéance (ou un tick de DOT) cite une instance numérotée par le moteur ; si l'altération est encore là, c'est sa clé,
         /// et une échéance n'en cite pas une génération à venir.
@@ -760,7 +765,7 @@ namespace EdS.Simulation.Engine
                         arrivals.Add(arrival.Fighter);
                         break;
                     case CommandItem command:
-                        // Sous-lot V1.8d : un bonus modifié attend en phase setup, toute autre commande en phase des commandes.
+                        // Sous-lot V1.8d : un bonus modifié attend en phase gear, toute autre commande en phase des commandes.
                         Require(phase == PhaseOf(command.Command) && tick == command.Command.AtMs / _tickMs && commands.Add(command.Index), $"{at} : commande hors de son tick ou en double.");
                         break;
                     case AssailantTurn turn:

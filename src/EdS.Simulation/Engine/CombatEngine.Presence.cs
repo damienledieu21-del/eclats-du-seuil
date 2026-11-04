@@ -40,20 +40,8 @@ namespace EdS.Simulation.Engine
 
         private void RunArrivals(long tick)
         {
-            List<CommandItem>? gears = null;
             while (_queue.TryPeek(tick, CombatPhase.Setup, out Scheduled item))
             {
-                // Sous-lot V1.8d : un bonus modifié se traite aussi au début du tick, mais après toutes les arrivées du tick, dans l'ordre des
-                // commandes (remarque de Codex sur la PR #85) : l'ordre de la file diffère entre le pilote (Submit puis Join au même tick) et le
-                // rejeu du combat complété (arrivées mises en file avant les commandes) ; trier ainsi rend les deux identiques. Retiré ici
-                // comme une commande (RunCommands), son effet est réservé et appliqué ensuite (ChangeGear).
-                if (item is CommandItem gear)
-                {
-                    ReserveAndDequeue(Cost.Op);
-                    Charge(1);
-                    (gears ??= new List<CommandItem>()).Add(gear);
-                    continue;
-                }
                 Fighter f = ((ArrivalItem)item).Fighter;
                 Fighter? blocker = ArrivalBlocker(f);
                 AssailantSetup? assailant = blocker is null ? f.Assailant : null;
@@ -79,8 +67,6 @@ namespace EdS.Simulation.Engine
                     Schedule(firstTurn, CombatPhase.Commands, new AssailantTurn { Fighter = f, Turn = f.NextTurn++ });
                 }
             }
-            if (gears != null)
-                foreach (CommandItem gear in gears.OrderBy(g => g.Index)) ChangeGear(tick, gear);
         }
 
         /// <summary>

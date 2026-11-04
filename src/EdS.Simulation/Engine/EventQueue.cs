@@ -10,15 +10,23 @@ namespace EdS.Simulation.Engine
     public enum CombatPhase
     {
         Setup = 0,
-        Expirations = 1,
-        Commands = 2,
+
+        /// <summary>
+        /// Sous-lot V1.8d : bonus modifiés (commande <c>gear</c>), après toutes les arrivées du tick et avant tout le reste. Phase à part
+        /// (remarque de Codex sur la PR #85) : le pilote (un bonus soumis puis une arrivée au même tick) et le rejeu du combat complété
+        /// (arrivées mises en file avant les commandes) traitent et réservent leurs éléments dans le même ordre, budget du tick compris.
+        /// Les phases suivantes sont décalées d'un rang (instantané au format 4).
+        /// </summary>
+        Gear = 1,
+        Expirations = 2,
+        Commands = 3,
 
         /// <summary>Sous-lot 11.4 : déplacement des combattants d'un combat positionné, après les commandes et avant les impacts.</summary>
-        Movement = 3,
-        Resolution = 4,
-        Periodic = 5,
-        Regeneration = 6,
-        EndOfTick = 7,
+        Movement = 4,
+        Resolution = 5,
+        Periodic = 6,
+        Regeneration = 7,
+        EndOfTick = 8,
     }
 
     /// <summary>

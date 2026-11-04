@@ -8,7 +8,7 @@ namespace EdS.Simulation.Engine
     /// Sous-lot V1.8d (décision de Damien : effet immédiat des bonus) : « bonus modifié » (commande <c>gear</c>), le bonus d'équipement d'un
     /// personnage changé en cours de combat.
     /// <list type="bullet">
-    /// <item>Traité au <b>début de son tick</b> (phase <c>setup</c>, dans l'ordre de la file avec les arrivées), avant les expirations et les
+    /// <item>Traité au <b>début de son tick</b> (phase <c>gear</c>, juste après les arrivées), avant les expirations et les
     /// commandes : tout le tick, et les suivants, voient les nouvelles statistiques. La commande porte le <b>total</b> (équipement de l'entrée et
     /// bonus actifs), jamais une différence : un remplacement est un seul changement, sans trou ni double compte.</item>
     /// <item>Refusé (<c>commandRejected</c>, rien ne change) pour un mort ou un absent (<c>actorDead</c>, <c>actorAbsent</c>), et si les PV
@@ -25,8 +25,17 @@ namespace EdS.Simulation.Engine
     /// </summary>
     public sealed partial class CombatEngine
     {
-        /// <summary>Phase où une commande est traitée : <see cref="CombatPhase.Setup"/> pour un bonus modifié, <see cref="CombatPhase.Commands"/> sinon.</summary>
-        internal static CombatPhase PhaseOf(CombatCommand command) => command.Action == CombatAction.Gear ? CombatPhase.Setup : CombatPhase.Commands;
+        /// <summary>Phase où une commande est traitée : <see cref="CombatPhase.Gear"/> pour un bonus modifié, <see cref="CombatPhase.Commands"/> sinon.</summary>
+        internal static CombatPhase PhaseOf(CombatCommand command) => command.Action == CombatAction.Gear ? CombatPhase.Gear : CombatPhase.Commands;
+
+        /// <summary>
+        /// Phase <c>gear</c> : les bonus modifiés du tick, dans l'ordre de la file (celui des commandes, sur les deux chemins : le constructeur
+        /// et le pilote les mettent en file par rang croissant), chacun réservé puis retiré avant toute mutation.
+        /// </summary>
+        private void RunGear(long tick)
+        {
+            while (_queue.TryPeek(tick, CombatPhase.Gear, out Scheduled item)) ChangeGear(tick, (CommandItem)item);
+        }
 
         /// <summary>
         /// Nouvelle valeur d'une jauge (PV ou endurance) quand son maximum passe de <paramref name="max"/> à <paramref name="newMax"/> : même part
@@ -61,8 +70,9 @@ namespace EdS.Simulation.Engine
                 }
             }
             long shift = reason is null ? checked(actor.GearHealthShift + (maxHealth - health) - (actor.MaxHealth!.Value - actor.Health!.Value)) : 0;
-            Reserve(Cost.Line);   // retiré de la file par RunArrivals (une opération), comme une commande
-            if (Reject(tick, CombatPhase.Setup, item, actor, reason)) return;
+            ReserveAndDequeue(Cost.Op + Cost.Line);
+            Charge(1);
+            if (Reject(tick, CombatPhase.Gear, item, actor, reason)) return;
             actor.Gear = gear;
             actor.Stats = stats!;
             actor.MaxHealth = maxHealth;
@@ -70,7 +80,7 @@ namespace EdS.Simulation.Engine
             actor.MaxEndurance = maxEndurance;
             actor.Endurance = endurance;
             actor.GearHealthShift = shift;
-            Emit(tick, CombatPhase.Setup, "gearChanged", Provenance.NewRoot($"command:{item.Index}", actor.Id), w =>
+            Emit(tick, CombatPhase.Gear, "gearChanged", Provenance.NewRoot($"command:{item.Index}", actor.Id), w =>
             {
                 w.Field("actor", actor.Id).Field("command", item.Index);
                 WriteGear(w, gear);
