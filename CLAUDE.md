@@ -1,5 +1,7 @@
 # Consignes pour les agents Claude — Éclats du Seuil
 
+> **Agents : lire d'abord [docs/RESUME_AGENTS.md](docs/RESUME_AGENTS.md).**
+
 Ce fichier est lu au début de chaque session (interactive ou planifiée). Il est volontairement court : le détail est dans les documents cités.
 
 ## Le projet
