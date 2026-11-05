@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 7,
   "kind": "zone",
-  "contentVersion": "0.4.0-provisoire",
+  "contentVersion": "0.5.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -524,6 +524,14 @@
         "respawnMs": 150000,
         "leashRange": 20,
         "loot": "loot.bandit_arc",
+        "family": "bandit"
+      },
+      {
+        "creature": "grand_borgne",
+        "level": 17,
+        "respawnMs": 300000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
         "family": "bandit"
       }
     ],

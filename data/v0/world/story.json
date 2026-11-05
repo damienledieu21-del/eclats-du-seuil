@@ -3220,7 +3220,7 @@
                 "conditions": [
                   {
                     "if": "fact",
-                    "id": "fact.ch4.chef.epargne"
+                    "id": "fact.ch4.chef.livre"
                   }
                 ],
                 "effects": [
@@ -3229,7 +3229,7 @@
                     "id": "fact.ch4.albe.sans_repos"
                   }
                 ],
-                "next": "ch4_epargne"
+                "next": "ch4_livre"
               },
               {
                 "text": "text.ch4.albe.sans_repos.abattu",
@@ -3250,7 +3250,7 @@
             ]
           },
           {
-            "id": "ch4_epargne",
+            "id": "ch4_livre",
             "text": "text.ch4.albe.epargne",
             "choices": [
               {
@@ -4972,10 +4972,10 @@
             "conditions": [
               {
                 "if": "fact",
-                "id": "fact.ch4.chef.epargne"
+                "id": "fact.ch4.chef.livre"
               }
             ],
-            "node": "ch4_apres_epargne"
+            "node": "ch4_apres_livre"
           },
           {
             "conditions": [
@@ -5058,14 +5058,14 @@
                 "effects": [
                   {
                     "do": "setFact",
-                    "id": "fact.ch4.chef.epargne"
+                    "id": "fact.ch4.chef.livre"
                   },
                   {
                     "do": "setFact",
                     "id": "fact.ch4.chef.decide"
                   }
                 ],
-                "next": "ch4_epargne"
+                "next": "ch4_livre"
               },
               {
                 "text": "text.ch4.thibaut.chef.tirer",
@@ -5090,7 +5090,7 @@
             ]
           },
           {
-            "id": "ch4_epargne",
+            "id": "ch4_livre",
             "text": "text.ch4.thibaut.epargne",
             "choices": [
               {
@@ -5119,7 +5119,7 @@
             "choices": []
           },
           {
-            "id": "ch4_apres_epargne",
+            "id": "ch4_apres_livre",
             "text": "text.ch4.thibaut.apres_epargne",
             "choices": [
               {
@@ -5211,6 +5211,19 @@
           {
             "conditions": [
               {
+                "if": "fact",
+                "id": "fact.ch4.chef.livre"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.ch4.capitaine.chef"
+              }
+            ],
+            "node": "ch4_chef_livre"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questDone",
                 "id": "quest.tour_silencieuse"
               }
@@ -5232,6 +5245,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
               }
             ]
           },
@@ -5255,6 +5279,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
               }
             ]
           },
@@ -5267,6 +5302,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
               }
             ]
           },
@@ -5312,6 +5358,34 @@
                 "text": "text.ch4.capitaine.accueil.partir",
                 "conditions": [],
                 "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
+              }
+            ]
+          },
+          {
+            "id": "ch4_chef_livre",
+            "text": "text.ch4.capitaine.chef_livre",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.chef_livre.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.capitaine.chef"
+                  }
+                ],
                 "next": null
               }
             ]
@@ -7380,7 +7454,7 @@
             "text": "text.ch4.quest.prime.borgne",
             "objective": {
               "kind": "defeat",
-              "id": "le_borgne",
+              "id": "grand_borgne",
               "value": 1
             },
             "effects": [
