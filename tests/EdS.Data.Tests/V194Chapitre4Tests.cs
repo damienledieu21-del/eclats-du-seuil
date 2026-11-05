@@ -149,16 +149,33 @@ public class V194Chapitre4Tests
         // Récompenses au choix : des pièces de la garde de la tour (déjà au catalogue, vendues par les marchands).
         Assert.Equal(new[] { "item.plastron_de_la_tour", "item.lame_de_la_tour" }, book.Quest(Tour).RewardChoices.Select(c => c.Item));
         Assert.Equal(new[] { "item.gantelets_de_la_tour", "item.brassards_de_garde" }, book.Quest(Prime).RewardChoices.Select(c => c.Item));
-        // Créatures existantes seulement : les archers de la tour (lieu de niveau 11), un bandit et le Borgne au camp (niveau 16) ; toutes montent
-        // au niveau du joueur moins deux.
+        // Créatures : les archers de la tour (lieu de niveau 11), un bandit du camp (niveau 16), et une seule nouvelle, le Grand Borgne ; toutes
+        // montent au niveau du joueur moins deux.
         ZoneDefinition zone = Vallons.Value;
-        foreach ((string creature, string place) in new[] { ("archer2", "tour_de_guet"), ("archer3", "tour_de_guet"), ("bandit_epee2", "camp_des_rodeurs"), ("le_borgne", "camp_des_rodeurs") })
+        foreach ((string creature, string place) in new[] { ("archer2", "tour_de_guet"), ("archer3", "tour_de_guet"), ("bandit_epee2", "camp_des_rodeurs"), ("grand_borgne", "camp_des_rodeurs") })
             Assert.Equal(place, zone.Places.Last(pl => Inside(pl, zone.PopulationOf(creature)!.Template.Placement!.Position)).Id);
         Assert.Contains(zone.Bosses, b => b.Id == "chef_des_bandits" && b.Fact == "fact.chef_des_bandits.vaincu");
-        // La prime de la quête et le contrat de la guilde « Prime : le Borgne » visent la même victoire : les deux se font ensemble.
+        // Réponse de Damien du 5 novembre 2026 : le contrat « Prime : le Borgne » (rang F) garde le Borgne cadet, de niveau 6 ; la quête vise son
+        // aîné, le Grand Borgne, une créature à part de niveau 17 au nord du camp : ils ne se marchent pas dessus.
         GuildContract contract = Guilde.Value.Contract("contract.prime_du_borgne");
         Objective borgne = book.Quest(Prime).Steps.Single(s => s.Id == "borgne").Objective;
-        Assert.Equal((contract.Objective.Kind, contract.Objective.Id, contract.Objective.Value), (borgne.Kind, borgne.Id, borgne.Value));
+        Assert.Equal((ObjectiveKind.Defeat, "le_borgne"), (contract.Objective.Kind, contract.Objective.Id));
+        Assert.Equal((ObjectiveKind.Defeat, "grand_borgne", 1L), (borgne.Kind, borgne.Id, borgne.Value));
+        Assert.Equal(((int?)6, (int?)17), (zone.PopulationOf("le_borgne")!.Level, zone.PopulationOf("grand_borgne")!.Level));
+        Assert.Equal("bandit", zone.PopulationOf("grand_borgne")!.Family);
+        Assert.Equal(17, zone.OwnMinLevel("grand_borgne", zone.PopulationOf("grand_borgne")!.Template.Placement!.Position));
+        Assert.True(zone.Scaling!.CreatureLevel(17, 15) == 17 && zone.Scaling.CreatureLevel(6, 15) == 13);
+        // Placé dans le camp, au nord, hors obstacle (1 m de marge), à plus de 10 m de toute route, dans l'aire praticable (2 m des bords).
+        GroundVector gb = zone.PopulationOf("grand_borgne")!.Template.Placement!.Position;
+        double gx = gb.X.Raw / 10000.0, gz = gb.Z.Raw / 10000.0;
+        Assert.Equal("camp_des_rodeurs", zone.Places.Last(pl => Inside(pl, gb)).Id);
+        Assert.All(zone.Setup.Space!.Obstacles, o => Assert.False(o.Points.Min(p => p.X.Raw) / 10000.0 - 1 < gx && gx < o.Points.Max(p => p.X.Raw) / 10000.0 + 1
+            && o.Points.Min(p => p.Z.Raw) / 10000.0 - 1 < gz && gz < o.Points.Max(p => p.Z.Raw) / 10000.0 + 1, o.Id));
+        foreach (Road r in zone.Roads)
+            for (int i = 0; i + 1 < r.Points.Count; i++)
+                Assert.True(Segment(gx, gz, r.Points[i], r.Points[i + 1]) - r.Width.Raw / 20000.0 > 10, r.Id);
+        GroundVector lo = zone.Setup.Space.Min, hi = zone.Setup.Space.Max;
+        Assert.True(lo.X.Raw / 10000.0 + 2 <= gx && gx <= hi.X.Raw / 10000.0 - 2 && lo.Z.Raw / 10000.0 + 2 <= gz && gz <= hi.Z.Raw / 10000.0 - 2);
         Assert.Equal(new[] { "npc.thibaut", "npc.capitaine", "npc.deserteur" }, book.Npcs.Skip(23).Select(n => n.Id));
         // Les six objets de quête ne se vendent pas.
         foreach (string item in new[] { "item.lettre_de_rosalie", "item.lettre_de_thibaut", "item.registre_de_garde", "item.cor_de_la_tour", "item.oeil_de_verre", "item.carnet_de_renart" })
@@ -170,6 +187,14 @@ public class V194Chapitre4Tests
             Assert.Contains(book.Discoveries, x => x.Id == d);
         // Le dialogue de Sœur Albe garde ses seize entrées (le maximum) : le chapitre 4 passe par des réponses de ses nœuds existants.
         Assert.Equal(StoryValidator.MaxEntries, book.Dialogue("dialogue.albe").Entries.Count);
+    }
+
+    /// <summary>Distance du point (<paramref name="x"/>, <paramref name="z"/>) au segment [<paramref name="a"/>, <paramref name="b"/>], en mètres.</summary>
+    private static double Segment(double x, double z, GroundVector a, GroundVector b)
+    {
+        double ax = a.X.Raw / 10000.0, az = a.Z.Raw / 10000.0, dx = b.X.Raw / 10000.0 - ax, dz = b.Z.Raw / 10000.0 - az;
+        double t = Math.Clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz), 0, 1);
+        return Math.Sqrt((x - ax - t * dx) * (x - ax - t * dx) + (z - az - t * dz) * (z - az - t * dz));
     }
 
     private static bool Inside(Place p, GroundVector at) => p.Min.X <= at.X && at.X <= p.Max.X && p.Min.Z <= at.Z && at.Z <= p.Max.Z;
@@ -207,7 +232,7 @@ public class V194Chapitre4Tests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Chapitre_4_joue_de_bout_en_bout(bool epargner)
+    public void Chapitre_4_joue_de_bout_en_bout(bool livrer)
     {
         // Fin du chapitre 3 (Sœur Albe lit l'ordre scellé) : la fin du chapitre 3 commence le chapitre 4. La lanterne de Rosalie est déjà
         // allumée (chapitre 2), les herbes de Sœur Albe pas encore cueillies : son offre passe d'abord, le chapitre 4 par une réponse.
@@ -248,14 +273,15 @@ public class V194Chapitre4Tests
         List<string> chef = Ticks(w);
         Assert.Contains($"StepCompleted {Main}/chef", chef);
         Assert.Contains("Discovered discovery.mots_du_chef", chef);
-        // Le premier choix, chez Thibaut : l'épargner ou non. Il reste écrit dans les faits.
+        // Le premier choix, chez Thibaut (réponses de Damien du 5 novembre 2026) : livrer Mâchefer au capitaine, ou le tuer de sa main. Il reste
+        // écrit dans les faits, et le capitaine en parle une fois si Mâchefer lui est livré.
         w = Go(w, Thibaut);
         DialogueView choice = Say(w, "npc.thibaut", "ch4_chef");
         Assert.Equal(2, choice.Options.Count);
-        Choose(w, epargner ? 0 : 1, epargner ? "ch4_epargne" : "ch4_abattu");
+        Choose(w, livrer ? 0 : 1, livrer ? "ch4_livre" : "ch4_abattu");
         Choose(w, 0);
         Assert.Contains($"StepCompleted {Main}/choix", Ticks(w));
-        Assert.Equal((epargner, !epargner), (w.Narrative!.Knows("fact.ch4.chef.epargne"), w.Narrative.Knows("fact.ch4.chef.abattu")));
+        Assert.Equal((livrer, !livrer), (w.Narrative!.Knows("fact.ch4.chef.livre"), w.Narrative.Knows("fact.ch4.chef.abattu")));
         // La lettre de Rosalie donnée à Thibaut ; il répond.
         Say(w, "npc.thibaut", "ch4_lettre");
         Assert.Equal(DialogueRefusal.None, Deliver(w, "npc.thibaut"));
@@ -263,7 +289,12 @@ public class V194Chapitre4Tests
         Assert.Contains("ItemTaken item.lettre_de_rosalie 1", lettre);
         Assert.Contains($"StepCompleted {Main}/lettre", lettre);
         Assert.Equal(1, w.Inventory.Count("item.lettre_de_thibaut"));
-        Say(w, "npc.thibaut", epargner ? "ch4_apres_epargne" : "ch4_apres_abattu");
+        Say(w, "npc.thibaut", livrer ? "ch4_apres_livre" : "ch4_apres_abattu");
+        w = Go(w, Capitaine);
+        // Son offre de la tour passe d'abord ; une réponse mène à Mâchefer.
+        if (livrer) Assert.Contains("FactLearned fact.ch4.capitaine.chef", LeadsTo(w, "npc.capitaine", "ch4_tour", "text.ch4.capitaine.vers_chef", "ch4_chef_livre")
+            .Concat(Choose(w, 0)));
+        else LeadsTo(w, "npc.capitaine", "ch4_tour", "text.ch4.capitaine.vers_chef", null);
         // La réponse portée à Rosalie.
         w = Go(w, Rosalie, "zone.maison");
         Say(w, "npc.habitant", "ch4_reponse");
@@ -279,7 +310,7 @@ public class V194Chapitre4Tests
         Assert.Equal(DialogueRefusal.None, w.Choose(Assert.Single(herbes.Options, o => o.Text == "text.ch4.albe.vers_sans_repos").Index, out DialogueView? sansRepos, out _));
         Assert.Equal("ch4_sans_repos", sansRepos!.Node);
         // Sœur Albe répond selon le choix : une seule réponse, celle du choix fait.
-        Choose(w, Assert.Single(sansRepos.Options).Index, epargner ? "ch4_epargne" : "ch4_abattu");
+        Choose(w, Assert.Single(sansRepos.Options).Index, livrer ? "ch4_livre" : "ch4_abattu");
         Choose(w, 0);
         List<string> end = Ticks(w);
         Assert.Contains($"QuestCompleted {Main}", end);
@@ -401,10 +432,12 @@ public class V194Chapitre4Tests
         Say(w, "npc.epiciere", "ch4_borgne");
         Choose(w, 0);
         Assert.Contains($"StepCompleted {Prime}/bertille", Ticks(w));
-        // Victoire annoncée à l'histoire (contournement : les combats ont leurs tests) : le Borgne, pas un autre bandit.
+        // Victoire annoncée à l'histoire (contournement : les combats ont leurs tests) : le Grand Borgne, l'aîné ; ni un autre bandit, ni
+        // le Borgne cadet du contrat de la guilde (niveau 6), qui garde sa prime à lui.
         w.Narrative!.Defeated("bandit_epee1", "bandit");
-        Assert.Empty(Ticks(w, 1));
         w.Narrative.Defeated("le_borgne", "bandit");
+        Assert.DoesNotContain($"StepCompleted {Prime}/borgne", Ticks(w, 1));
+        w.Narrative.Defeated("grand_borgne", "bandit");
         Assert.Contains($"StepCompleted {Prime}/borgne", Ticks(w, 1));
         Assert.Equal(1, w.Inventory.Count("item.oeil_de_verre"));
         Say(w, "npc.epiciere", "ch4_oeil");
