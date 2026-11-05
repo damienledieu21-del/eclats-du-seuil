@@ -523,6 +523,103 @@ public class V196OuvertureTests
         }
     }
 
+    /// <summary>Partie à l'étape de la meute, chargée par l'aventure ; la meute vaincue (annoncée à l'histoire), quelques ticks joués.</summary>
+    private static AdventureSession AfterPack(string path, params string[] facts)
+    {
+        var story = new SavedStory(new[] { "fact.traces.recit", "fact.moulin.porte_ouverte" }.Concat(facts),
+            new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("meute") });
+        SaveStore.Write(path, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero(0).WithStory(story)));
+        AdventureSession a = Adventure(path);
+        a.DrainMessages();
+        foreach (string loup in new[] { "loup1", "loup2", "loup3" }) a.World.Narrative!.Defeated(loup, "loup");
+        a.Advance(0.2);
+        Assert.Contains("discovery.souvenir_de_la_rupture", a.World.Narrative!.Discoveries);   // gardée au journal
+        return a;
+    }
+
+    private const string Fallback = "Souvenir de la Rupture. Le pré s'efface";
+
+    [Fact]
+    public void Le_texte_du_souvenir_ne_s_affiche_qu_en_repli_une_seule_fois()
+    {
+        // Revue Codex de la PR #94 : la meute finie, la scène est proposée sans afficher le texte du souvenir ; il vient une fois, en la passant.
+        string dir = Path.Combine(Path.GetTempPath(), "eds_v196_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            AdventureSession a = AfterPack(Path.Combine(dir, "nouvelle.json"));
+            Assert.Equal(Scene, a.PendingScene!.Id);
+            var said = a.DrainMessages().ToList();
+            Assert.DoesNotContain(said, m => m.Contains(Fallback));
+            Assert.Contains(said, m => m.Contains("Croc-Gris"));   // l'étape suivante, elle, s'annonce
+            Assert.True(a.SkipScene());
+            a.Advance(0.2);
+            said.AddRange(a.DrainMessages());
+            Assert.Single(said, m => m.Contains(Fallback));
+            // Jouée et finie : le texte du retour, jamais le repli (Le_souvenir_se_joue_dans_sa_scene_puis_ramene_au_pre).
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void Sans_scene_a_jouer_le_souvenir_s_affiche_comme_avant()
+    {
+        // Une partie qui n'a pas de scène à jouer (ici : déjà vécue) garde l'affichage du texte à la découverte.
+        string dir = Path.Combine(Path.GetTempPath(), "eds_v196_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            AdventureSession a = AfterPack(Path.Combine(dir, "vecue.json"), "fact.ch1.souvenir.vecu");
+            Assert.Null(a.PendingScene);
+            Assert.Single(a.DrainMessages(), m => m.Contains(Fallback));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void Passer_la_scene_de_l_interieur_est_atomique()
+    {
+        // Revue Codex de la PR #94 : passer le souvenir depuis la scène alors que la sauvegarde ne s'écrit pas : rien ne change (toujours dans la
+        // scène, fait de fin pas appris, pas de texte de repli) ; un nouvel essai, l'écriture revenue, réussit.
+        string dir = Path.Combine(Path.GetTempPath(), "eds_v196_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string path = Path.Combine(dir, "partie.json");
+            var story = new SavedStory(new[] { "fact.ch1.souvenir.a_revivre" }, new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("croc_gris") });
+            SaveStore.Write(path, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero(0).WithStory(story)));
+            AdventureSession a = Adventure(path);
+            Assert.True(a.EnterScene());
+            a.DrainMessages();
+            Directory.CreateDirectory(path + ".tmp");   // l'écriture du fichier temporaire échoue
+            Assert.False(a.SkipScene());
+            Assert.True(a.InScene);
+            Assert.False(a.World.Narrative!.Knows("fact.ch1.souvenir.vecu"));
+            a.Advance(0.2);
+            Assert.False(a.World.Narrative!.Knows("fact.ch1.souvenir.vecu"));
+            List<string> failed = a.DrainMessages().ToList();
+            Assert.Contains(failed, m => m.StartsWith("Sauvegarde impossible", StringComparison.Ordinal));
+            Assert.DoesNotContain(failed, m => m.Contains(Fallback));
+            Directory.Delete(path + ".tmp");
+            Assert.True(a.SkipScene());
+            Assert.Equal("zone.vallons", a.CurrentZone);
+            a.Advance(0.2);
+            Assert.True(a.World.Narrative!.Knows("fact.ch1.souvenir.vecu"));
+            Assert.Single(a.DrainMessages(), m => m.Contains(Fallback));
+            Assert.Null(a.PendingScene);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
     [Fact]
     public void Une_ancienne_partie_n_a_pas_de_scene_a_jouer()
     {

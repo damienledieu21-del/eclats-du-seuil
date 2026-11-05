@@ -547,6 +547,8 @@ Demande de Damien du 5 novembre 2026, avant son essai complet sous Unity : un ch
 
 **Relecture indépendante de la PR #94** : l'ouverture et ses deux potions ne vont qu'à une vraie nouvelle partie (aucune sauvegarde) : une sauvegarde valide sans personnage reçoit un personnage neuf sans elles ; l'étape « boire » ne se bloque jamais : sans plus aucun objet de soin (bus avant l'étape, vendus), elle est remplie.
 
+**Revue Codex de la PR #94** : quand la scène est proposée, la découverte du souvenir (gardée au journal) n'affiche pas son texte : il ne vient qu'en repli, une seule fois, si l'on passe la scène ; sans scène à jouer, il s'affiche comme avant. Passer la scène depuis son intérieur est atomique : on en sort d'abord, et si la sauvegarde ne s'écrit pas, rien ne change (le fait de fin n'est appris qu'une fois dehors).
+
 Limites : le pilote de l'ouverture annonce ses gestes à l'histoire (un second test les fait faire au moteur, contre **un seul** loup : contre les trois loups du moulin à la fois, le pilote de mesure tombe au niveau 1 avec l'équipement de départ, question posée à Damien) ; l'ouverture n'a pas de bouton « passer le tutoriel » ; la victoire sur Croc-Gris est annoncée par son fait dans les pilotes des chapitres (son combat a son test) ; l'ordre de la scène n'est pas imposé (on peut combattre l'écho avant de parler à Ysolde) ; la salle du souvenir a l'aménagement provisoire d'une maison (statues, la porte de lumière en autel) en attendant la PR B ; Ysolde et Croc-Gris n'ont pas de modèle à eux ; le croc a l'icône provisoire des quêtes ; les figurants (Seuillards) ne sont pas des PNJ.
 
 ## Sauvegarde

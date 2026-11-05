@@ -466,8 +466,14 @@ namespace EdS.Runtime
                     Say("text.ui.quest_done", Text(_story.Quest(e.Id).Name));
                     break;
                 case StoryEventKind.Discovered:
-                    Say("text.ui.discovered", Text(_story.Discoveries.First(d => d.Id == e.Id).Text));
+                {
+                    // Revue Codex de la PR #94 : une découverte dont le texte est le repli d'une scène à jouer (le souvenir de la Rupture) ne
+                    // s'affiche pas à l'annonce : la scène est proposée, et ce texte ne vient qu'en la passant. Elle reste au journal.
+                    string text = _story.Discoveries.First(d => d.Id == e.Id).Text;
+                    if (World.PendingScene is Scene pending && pending.Text == text) break;
+                    Say("text.ui.discovered", Text(text));
                     break;
+                }
                 case StoryEventKind.TrustChanged:
                     Say(e.Value > 0 ? "text.ui.trust_up" : "text.ui.trust_down", Text(_story.Npc(e.Id).Name));
                     break;
@@ -738,10 +744,13 @@ namespace EdS.Runtime
         {
             Scene? scene = CurrentScene ?? PendingScene;
             if (scene is null || World.Narrative is null || World.Narrative.Knows(scene.End)) return false;
+            // Revue Codex de la PR #94 : pendant la scène, on en sort d'abord ; si la sortie échoue (sauvegarde impossible), rien n'a changé
+            // et l'on peut réessayer. Le fait de fin est appris ensuite, dehors (sauvegardé par la sauvegarde automatique suivante).
+            if (InScene && !LeaveScene(quiet: true)) return false;
             if (!World.SkipScene(scene.Id)) return false;
             _dirty = true;
             Say("text.ui.discovered", Text(scene.Text));
-            return !InScene || LeaveScene(quiet: true);
+            return true;
         }
 
         /// <summary>
