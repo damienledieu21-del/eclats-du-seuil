@@ -132,6 +132,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 - Le rôdeur du Seuil, le Gardien et sa forme éveillée, le retour chez Odile, la voix de l'Envers (niveaux 20 à 25) ; quêtes proposées : « Le loup blanc », « Les pierres gravées ».
 - Dépend de V1.9.4.
 - **Relecture de Damien** : chapitre 5. La répartition des vingt quêtes entre les chapitres est une proposition ; la liste est celle du [plan des Vallons](PLAN_VALLONS_SOLO.md#4-la-quête-principale-et-les-quêtes-secondaires).
+- **État** (5 novembre 2026, en PR) : fait ([MONDE.md](MONDE.md#chapitre-5--le-seuil--et-ses-quêtes-sous-lot-v195), [ECRITURE.md](ECRITURE.md)), sans changement de format (sauvegarde v12 : l'avancement de l'ancienne mission est converti à la lecture) ; la fin de l'ancienne mission (manifestation, rôdeur, Gardien, retour chez Odile) est passée du chapitre 1 au chapitre 5 ; « Le loup blanc » (le loup blanc de « La bête blanche » qui revient) et « Les pierres gravées » ; un lieu « cœur du Seuil » met le Gardien au niveau 23 au moins ; aucune créature ajoutée. **Avec lui, le V1.9 est fini** : les cinq chapitres et les vingt quêtes secondaires du plan des Vallons (en plus de celles d'avant : les peaux pour l'auberge, la bête blanche, les registres de l'archiviste et les épreuves de la guilde), textes et questions à relire.
 
 ### 12. V1.10 — Places des maisons et essai de la vague 1 (S)
 

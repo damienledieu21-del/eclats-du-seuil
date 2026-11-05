@@ -189,7 +189,7 @@ public class V192Chapitre2Tests
         List<string> start = Ticks(w);
         Assert.Contains($"StepCompleted {Mission}/gaspard", start);
         Assert.Contains($"QuestStarted {Bourg}/chapelle", start);
-        Assert.Equal("manifestation", w.Narrative!.CurrentStep(Mission)!.Id);   // la suite de l'ancienne mission reste à sa place
+        Assert.True(w.Narrative!.IsDone(Mission));   // sous-lot V1.9.5 : le chapitre 1 finit chez Gaspard (la suite est au chapitre 5)
         long xp0 = w.Character.Xp, money0 = w.Money;
         // Sœur Albe reconnaît l'Éclat et parle des vols.
         w = Go(w, Albe, "zone.chapelle");

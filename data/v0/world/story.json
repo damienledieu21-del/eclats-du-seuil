@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 5,
   "kind": "story",
-  "contentVersion": "0.9.0-provisoire",
+  "contentVersion": "0.10.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -245,6 +245,15 @@
           -30
         ],
         "dialogue": "dialogue.deserteur"
+      },
+      {
+        "id": "npc.ysarn",
+        "name": "text.ch5.npc.ysarn.name",
+        "position": [
+          66,
+          50
+        ],
+        "dialogue": "dialogue.ysarn"
       }
     ],
     "dialogues": [
@@ -255,7 +264,7 @@
             "conditions": [
               {
                 "if": "questAt",
-                "id": "quest.traces_sous_le_moulin",
+                "id": "quest.le_seuil",
                 "step": "retour"
               },
               {
@@ -332,10 +341,38 @@
             "conditions": [
               {
                 "if": "questDone",
-                "id": "quest.traces_sous_le_moulin"
+                "id": "quest.le_seuil"
               }
             ],
             "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.le_seuil",
+                "step": "voix"
+              }
+            ],
+            "node": "ch5_porte"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.le_seuil"
+              }
+            ],
+            "node": "ch5_en_cours"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              }
+            ],
+            "node": "ch5_ch1_apres"
           },
           {
             "conditions": [
@@ -454,7 +491,7 @@
                     "value": 1
                   }
                 ],
-                "next": null
+                "next": "ch5_aveu"
               },
               {
                 "text": "text.odile.retour.froid",
@@ -475,7 +512,7 @@
                     "id": "fact.odile.retour"
                   }
                 ],
-                "next": null
+                "next": "ch5_aveu"
               }
             ]
           },
@@ -579,6 +616,63 @@
           {
             "id": "ch3_pont_recompense",
             "text": "text.ch3.odile.pont_recompense",
+            "choices": []
+          },
+          {
+            "id": "ch5_aveu",
+            "text": "text.ch5.odile.aveu",
+            "choices": [
+              {
+                "text": "text.ch5.odile.aveu.ecouter",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch5.odile.vers_ferrure",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.moulin.porte_ouverte"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.ferrure_de_rechange"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_ferrure"
+              },
+              {
+                "text": "text.ch3.odile.vers_pont",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pont_des_vallons"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 12
+                  }
+                ],
+                "effects": [],
+                "next": "ch3_pont"
+              }
+            ]
+          },
+          {
+            "id": "ch5_porte",
+            "text": "text.ch5.odile.porte",
+            "choices": []
+          },
+          {
+            "id": "ch5_en_cours",
+            "text": "text.ch5.odile.en_cours",
+            "choices": []
+          },
+          {
+            "id": "ch5_ch1_apres",
+            "text": "text.ch5.odile.ch1_apres",
             "choices": []
           }
         ]
@@ -833,7 +927,7 @@
             "conditions": [
               {
                 "if": "questAt",
-                "id": "quest.traces_sous_le_moulin",
+                "id": "quest.le_seuil",
                 "step": "rodeur"
               },
               {
@@ -842,6 +936,109 @@
               }
             ],
             "node": "rodeur"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.le_loup_blanc"
+              }
+            ],
+            "node": "ch5_loup_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.pierres_gravees"
+              }
+            ],
+            "node": "ch5_pierres_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.le_loup_blanc",
+                "step": "retour"
+              }
+            ],
+            "node": "ch5_loup_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.pierres_gravees",
+                "step": "retour"
+              }
+            ],
+            "node": "ch5_pierres_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.le_loup_blanc"
+              }
+            ],
+            "node": "ch5_loup_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.pierres_gravees"
+              }
+            ],
+            "node": "ch5_pierres_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.le_loup_blanc"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 21
+              },
+              {
+                "if": "questDone",
+                "id": "quest.bete_blanche"
+              }
+            ],
+            "node": "ch5_loup"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.pierres_gravees"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 21
+              }
+            ],
+            "node": "ch5_pierres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.le_loup_blanc"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 21
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.bete_blanche"
+              }
+            ],
+            "node": "ch5_loup_anselme"
           },
           {
             "conditions": [],
@@ -878,6 +1075,40 @@
                   }
                 ],
                 "next": null
+              },
+              {
+                "text": "text.ch5.gaspard.vers_loup",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_loup_blanc"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 21
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.bete_blanche"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_loup"
+              },
+              {
+                "text": "text.ch5.gaspard.vers_pierres",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pierres_gravees"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 21
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_pierres"
               }
             ]
           },
@@ -940,6 +1171,193 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_loup",
+            "text": "text.ch5.gaspard.loup",
+            "choices": [
+              {
+                "text": "text.ch5.gaspard.loup.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.le_loup_blanc"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch5.gaspard.loup.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch5.gaspard.vers_pierres",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pierres_gravees"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 21
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_pierres"
+              }
+            ]
+          },
+          {
+            "id": "ch5_loup_anselme",
+            "text": "text.ch5.gaspard.loup_anselme",
+            "choices": []
+          },
+          {
+            "id": "ch5_loup_attente",
+            "text": "text.ch5.gaspard.loup_attente",
+            "choices": [
+              {
+                "text": "text.ch5.gaspard.vers_pierres",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pierres_gravees"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 21
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_pierres"
+              }
+            ]
+          },
+          {
+            "id": "ch5_loup_retour",
+            "text": "text.ch5.gaspard.loup_retour",
+            "choices": []
+          },
+          {
+            "id": "ch5_loup_recompense",
+            "text": "text.ch5.gaspard.loup_recompense",
+            "choices": [
+              {
+                "text": "text.ch5.gaspard.vers_pierres",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pierres_gravees"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 21
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_pierres"
+              }
+            ]
+          },
+          {
+            "id": "ch5_pierres",
+            "text": "text.ch5.gaspard.pierres",
+            "choices": [
+              {
+                "text": "text.ch5.gaspard.pierres.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.pierres_gravees"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch5.gaspard.pierres.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch5.gaspard.vers_loup",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_loup_blanc"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 21
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.bete_blanche"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_loup"
+              }
+            ]
+          },
+          {
+            "id": "ch5_pierres_attente",
+            "text": "text.ch5.gaspard.pierres_attente",
+            "choices": [
+              {
+                "text": "text.ch5.gaspard.vers_loup",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_loup_blanc"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 21
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.bete_blanche"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_loup"
+              }
+            ]
+          },
+          {
+            "id": "ch5_pierres_retour",
+            "text": "text.ch5.gaspard.pierres_retour",
+            "choices": []
+          },
+          {
+            "id": "ch5_pierres_recompense",
+            "text": "text.ch5.gaspard.pierres_recompense",
+            "choices": [
+              {
+                "text": "text.ch5.gaspard.vers_loup",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_loup_blanc"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 21
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.bete_blanche"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_loup"
               }
             ]
           }
@@ -1426,6 +1844,16 @@
           {
             "conditions": [
               {
+                "if": "questAt",
+                "id": "quest.le_loup_blanc",
+                "step": "anselme"
+              }
+            ],
+            "node": "ch5_loup"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questReward",
                 "id": "quest.bete_blanche"
               }
@@ -1713,6 +2141,18 @@
             "choices": [
               {
                 "text": "text.ch2.pretre.cloches_apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_loup",
+            "text": "text.ch5.pretre.loup",
+            "choices": [
+              {
+                "text": "text.ch5.pretre.loup.partir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -2678,62 +3118,6 @@
                 "id": "quest.bourg_d_aube"
               },
               {
-                "if": "questAt",
-                "id": "quest.traces_sous_le_moulin",
-                "step": "manifestation"
-              }
-            ],
-            "node": "ch2_ancienne"
-          },
-          {
-            "conditions": [
-              {
-                "if": "questNotStarted",
-                "id": "quest.bourg_d_aube"
-              },
-              {
-                "if": "questAt",
-                "id": "quest.traces_sous_le_moulin",
-                "step": "rodeur"
-              }
-            ],
-            "node": "ch2_ancienne"
-          },
-          {
-            "conditions": [
-              {
-                "if": "questNotStarted",
-                "id": "quest.bourg_d_aube"
-              },
-              {
-                "if": "questAt",
-                "id": "quest.traces_sous_le_moulin",
-                "step": "chef"
-              }
-            ],
-            "node": "ch2_ancienne"
-          },
-          {
-            "conditions": [
-              {
-                "if": "questNotStarted",
-                "id": "quest.bourg_d_aube"
-              },
-              {
-                "if": "questAt",
-                "id": "quest.traces_sous_le_moulin",
-                "step": "retour"
-              }
-            ],
-            "node": "ch2_ancienne"
-          },
-          {
-            "conditions": [
-              {
-                "if": "questNotStarted",
-                "id": "quest.bourg_d_aube"
-              },
-              {
                 "if": "questDone",
                 "id": "quest.traces_sous_le_moulin"
               }
@@ -2792,6 +3176,18 @@
                   }
                 ],
                 "next": null
+              },
+              {
+                "text": "text.ch5.albe.vers_voix",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.le_seuil",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_voix"
               }
             ]
           },
@@ -2883,6 +3279,18 @@
                 ],
                 "effects": [],
                 "next": "ch3_lettre"
+              },
+              {
+                "text": "text.ch5.albe.vers_voix",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.le_seuil",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_voix"
               }
             ]
           },
@@ -3039,6 +3447,38 @@
                 ],
                 "effects": [],
                 "next": "ch3_lettre"
+              },
+              {
+                "text": "text.ch5.albe.vers_voix",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.le_seuil",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_voix"
+              },
+              {
+                "text": "text.ch5.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.tour_et_camp"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "next": "ch5_ancienne"
               }
             ]
           },
@@ -3094,6 +3534,38 @@
                 ],
                 "effects": [],
                 "next": "ch4_sans_repos"
+              },
+              {
+                "text": "text.ch5.albe.vers_voix",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.le_seuil",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_voix"
+              },
+              {
+                "text": "text.ch5.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.tour_et_camp"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "next": "ch5_ancienne"
               }
             ]
           },
@@ -3158,6 +3630,38 @@
                 ],
                 "effects": [],
                 "next": "ch3_lettre"
+              },
+              {
+                "text": "text.ch5.albe.vers_voix",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.le_seuil",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_voix"
+              },
+              {
+                "text": "text.ch5.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.tour_et_camp"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "next": "ch5_ancienne"
               }
             ]
           },
@@ -3202,6 +3706,38 @@
                 ],
                 "effects": [],
                 "next": "ch4_sans_repos"
+              },
+              {
+                "text": "text.ch5.albe.vers_voix",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.le_seuil",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_voix"
+              },
+              {
+                "text": "text.ch5.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.tour_et_camp"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "next": "ch5_ancienne"
               }
             ]
           },
@@ -3373,6 +3909,17 @@
             "text": "text.ch4.albe.apres",
             "choices": [
               {
+                "text": "text.ch5.albe.vers_apres",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.le_seuil"
+                  }
+                ],
+                "effects": [],
+                "next": "ch5_apres"
+              },
+              {
                 "text": "text.ch3.albe.apres.partir",
                 "conditions": [],
                 "effects": [],
@@ -3398,6 +3945,64 @@
                     "value": 1
                   }
                 ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_voix",
+            "text": "text.ch5.albe.voix",
+            "choices": [
+              {
+                "text": "text.ch5.albe.voix.porte",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch5.albe.voix"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch5.albe.voix"
+                  }
+                ],
+                "next": "ch5_suite"
+              }
+            ]
+          },
+          {
+            "id": "ch5_suite",
+            "text": "text.ch5.albe.suite",
+            "choices": [
+              {
+                "text": "text.ch3.albe.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_ancienne",
+            "text": "text.ch5.albe.ancienne_texte",
+            "choices": [
+              {
+                "text": "text.ch5.albe.ancienne.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_apres",
+            "text": "text.ch5.albe.apres",
+            "choices": [
+              {
+                "text": "text.ch3.albe.apres.partir",
+                "conditions": [],
+                "effects": [],
                 "next": null
               }
             ]
@@ -5677,6 +6282,134 @@
             "choices": []
           }
         ]
+      },
+      {
+        "id": "dialogue.ysarn",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.pierres_gravees",
+                "step": "ysarn"
+              }
+            ],
+            "node": "ch5_lecture"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.le_seuil"
+              }
+            ],
+            "node": "ch5_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.le_seuil"
+              }
+            ],
+            "node": "ch5_seuil"
+          },
+          {
+            "conditions": [],
+            "node": "ch5_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch5_accueil",
+            "text": "text.ch5.ysarn.accueil",
+            "choices": [
+              {
+                "text": "text.ch5.ysarn.accueil.qui",
+                "conditions": [],
+                "effects": [],
+                "next": "ch5_qui"
+              },
+              {
+                "text": "text.ch5.ysarn.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_qui",
+            "text": "text.ch5.ysarn.qui",
+            "choices": [
+              {
+                "text": "text.ch5.ysarn.qui.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_lecture",
+            "text": "text.ch5.ysarn.lecture",
+            "choices": [
+              {
+                "text": "text.ch5.ysarn.lecture.lire",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch5.pierres.lues"
+                  }
+                ],
+                "next": "ch5_lu"
+              }
+            ]
+          },
+          {
+            "id": "ch5_lu",
+            "text": "text.ch5.ysarn.lu",
+            "choices": [
+              {
+                "text": "text.ch5.ysarn.lu.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_seuil",
+            "text": "text.ch5.ysarn.seuil",
+            "choices": [
+              {
+                "text": "text.ch5.ysarn.accueil.qui",
+                "conditions": [],
+                "effects": [],
+                "next": "ch5_qui"
+              },
+              {
+                "text": "text.ch5.ysarn.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch5_apres",
+            "text": "text.ch5.ysarn.apres",
+            "choices": [
+              {
+                "text": "text.ch5.ysarn.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
       }
     ],
     "quests": [
@@ -5784,74 +6517,9 @@
                 "id": "quest.bourg_d_aube"
               }
             ]
-          },
-          {
-            "id": "manifestation",
-            "text": "text.quest.traces.manifestation",
-            "objective": {
-              "kind": "reach",
-              "id": "seuil"
-            },
-            "effects": [
-              {
-                "do": "discover",
-                "id": "discovery.manifestation"
-              },
-              {
-                "do": "setFact",
-                "id": "fact.manifestation.vue"
-              }
-            ]
-          },
-          {
-            "id": "rodeur",
-            "text": "text.quest.traces.rodeur",
-            "objective": {
-              "kind": "defeat",
-              "id": "rodeur",
-              "value": 1
-            },
-            "effects": [
-              {
-                "do": "giveMoney",
-                "value": 150
-              }
-            ]
-          },
-          {
-            "id": "chef",
-            "text": "text.quest.traces.chef",
-            "objective": {
-              "kind": "fact",
-              "id": "fact.chef.vaincu"
-            },
-            "effects": [
-              {
-                "do": "discover",
-                "id": "discovery.gardien"
-              }
-            ]
-          },
-          {
-            "id": "retour",
-            "text": "text.quest.traces.retour",
-            "objective": {
-              "kind": "fact",
-              "id": "fact.odile.retour"
-            },
-            "effects": []
           }
         ],
-        "effects": [
-          {
-            "do": "giveXp",
-            "value": 300
-          },
-          {
-            "do": "giveMoney",
-            "value": 500
-          }
-        ]
+        "effects": []
       },
       {
         "id": "quest.peaux_pour_l_auberge",
@@ -7379,6 +8047,10 @@
               {
                 "do": "giveXp",
                 "value": 200
+              },
+              {
+                "do": "startQuest",
+                "id": "quest.le_seuil"
               }
             ]
           }
@@ -7694,6 +8366,366 @@
             "value": 450
           }
         ]
+      },
+      {
+        "id": "quest.le_seuil",
+        "name": "text.ch5.quest.seuil.name",
+        "category": "main",
+        "steps": [
+          {
+            "id": "manifestation",
+            "text": "text.ch5.quest.seuil.manifestation",
+            "objective": {
+              "kind": "reach",
+              "id": "seuil"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.manifestation"
+              },
+              {
+                "do": "setFact",
+                "id": "fact.manifestation.vue"
+              },
+              {
+                "do": "giveXp",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "id": "rodeur",
+            "text": "text.ch5.quest.seuil.rodeur",
+            "objective": {
+              "kind": "defeat",
+              "id": "rodeur",
+              "value": 1
+            },
+            "effects": [
+              {
+                "do": "giveMoney",
+                "value": 150
+              },
+              {
+                "do": "giveXp",
+                "value": 500
+              }
+            ]
+          },
+          {
+            "id": "chef",
+            "text": "text.ch5.quest.seuil.chef",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.chef.vaincu"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.gardien"
+              },
+              {
+                "do": "giveXp",
+                "value": 800
+              },
+              {
+                "do": "giveMoney",
+                "value": 500
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.ch5.quest.seuil.retour",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.odile.retour"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "id": "voix",
+            "text": "text.ch5.quest.seuil.voix",
+            "objective": {
+              "kind": "reach",
+              "id": "moulin"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.celui_qui_attend"
+              },
+              {
+                "do": "setFact",
+                "id": "fact.ch5.voix.entendue"
+              },
+              {
+                "do": "giveXp",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "id": "albe",
+            "text": "text.ch5.quest.seuil.albe",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch5.albe.voix"
+            },
+            "effects": [
+              {
+                "do": "setFact",
+                "id": "fact.ch5.vers_la_suite"
+              },
+              {
+                "do": "giveXp",
+                "value": 200
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1000
+          },
+          {
+            "do": "giveMoney",
+            "value": 1500
+          }
+        ]
+      },
+      {
+        "id": "quest.le_loup_blanc",
+        "name": "text.ch5.quest.loup.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 21
+          },
+          {
+            "if": "questDone",
+            "id": "quest.bete_blanche"
+          }
+        ],
+        "steps": [
+          {
+            "id": "traces",
+            "text": "text.ch5.quest.loup.traces",
+            "objective": {
+              "kind": "reach",
+              "id": "foret_des_loups"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.traces_du_loup_blanc"
+              }
+            ]
+          },
+          {
+            "id": "loup",
+            "text": "text.ch5.quest.loup.loup",
+            "objective": {
+              "kind": "defeat",
+              "id": "loup_blanc",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "anselme",
+            "text": "text.ch5.quest.loup.anselme",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.pretre"
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.ch5.quest.loup.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.gaspard"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1200
+          },
+          {
+            "do": "giveMoney",
+            "value": 800
+          },
+          {
+            "do": "trust",
+            "id": "npc.gaspard",
+            "value": 1
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.cape_du_seuil",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.pavois_des_hautes_pierres",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.pierres_gravees",
+        "name": "text.ch5.quest.pierres.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 21
+          }
+        ],
+        "steps": [
+          {
+            "id": "ruines",
+            "text": "text.ch5.quest.pierres.ruines",
+            "objective": {
+              "kind": "reach",
+              "id": "ruines"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.pierre_gravee_ruines"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "lac",
+            "text": "text.ch5.quest.pierres.lac",
+            "objective": {
+              "kind": "reach",
+              "id": "lac"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.pierre_gravee_lac"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "foret",
+            "text": "text.ch5.quest.pierres.foret",
+            "objective": {
+              "kind": "reach",
+              "id": "foret_des_loups"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.pierre_gravee_foret"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "plaine",
+            "text": "text.ch5.quest.pierres.plaine",
+            "objective": {
+              "kind": "reach",
+              "id": "plaine_est"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.pierre_gravee_plaine"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "ysarn",
+            "text": "text.ch5.quest.pierres.ysarn",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch5.pierres.lues"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.lecture_des_pierres"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.ch5.quest.pierres.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.gaspard"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1000
+          },
+          {
+            "do": "giveMoney",
+            "value": 600
+          },
+          {
+            "do": "giveItem",
+            "id": "item.pierre_gravee",
+            "value": 1
+          },
+          {
+            "do": "trust",
+            "id": "npc.gaspard",
+            "value": 1
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.anneau_du_seuil",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.marteau_des_hautes_pierres",
+            "value": 1
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -7748,6 +8780,34 @@
       {
         "id": "discovery.carnet_de_renart",
         "text": "text.ch4.discovery.carnet"
+      },
+      {
+        "id": "discovery.celui_qui_attend",
+        "text": "text.ch5.discovery.voix"
+      },
+      {
+        "id": "discovery.traces_du_loup_blanc",
+        "text": "text.ch5.discovery.traces_loup"
+      },
+      {
+        "id": "discovery.pierre_gravee_ruines",
+        "text": "text.ch5.discovery.pierre_ruines"
+      },
+      {
+        "id": "discovery.pierre_gravee_lac",
+        "text": "text.ch5.discovery.pierre_lac"
+      },
+      {
+        "id": "discovery.pierre_gravee_foret",
+        "text": "text.ch5.discovery.pierre_foret"
+      },
+      {
+        "id": "discovery.pierre_gravee_plaine",
+        "text": "text.ch5.discovery.pierre_plaine"
+      },
+      {
+        "id": "discovery.lecture_des_pierres",
+        "text": "text.ch5.discovery.lecture"
       }
     ]
   }

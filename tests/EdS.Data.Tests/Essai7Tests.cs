@@ -390,7 +390,8 @@ public class Essai7MoodTests : IDisposable
     public void Les_annonces_comptent_les_quetes_et_les_butins()
     {
         // Relecture de l'essai 7 : les compteurs avancent vraiment. Données copiées, le point d'arrivée à côté d'Odile ; la mission à son
-        // retour, Odile en confiance : l'amulette de l'aube (un objet donné), puis la mission finie.
+        // retour, Odile en confiance : l'amulette de l'aube (un objet donné), puis une quête finie. Sous-lot V1.9.5 : le retour est une
+        // étape du chapitre 5, qui continue ; la quête finie est la ferrure de rechange, livrée à Odile dans le même dialogue.
         string data = Path.Combine(_folder, "donnees");
         foreach (string file in Directory.GetFiles(DataDirectory, "*", SearchOption.AllDirectories))
         {
@@ -403,12 +404,15 @@ public class Essai7MoodTests : IDisposable
         zone["data"]!["safePoints"]![0]!["position"] = new JsonArray(-9, 2);
         File.WriteAllText(zonePath, zone.ToJsonString());
         var progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(data), ShippedData).Progression!;
-        var story = new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("retour") },
-            new Dictionary<string, int> { ["npc.odile"] = 1 });
+        var story = new SavedStory(new[] { "fact.moulin.porte_ouverte" }, new Dictionary<string, QuestProgress>
+            {
+                ["quest.traces_sous_le_moulin"] = new QuestProgress("retour"), ["quest.ferrure_de_rechange"] = new QuestProgress("livrer"),
+            }, new Dictionary<string, int> { ["npc.odile"] = 1 });
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+        SavedCharacter hero = PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, progression).WithStory(story);
         SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
-            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, progression).WithStory(story)));
+            hero.WithItems(hero.Inventory.Append(new ItemStack("item.ferrure", 1)), hero.Equipment)));
         AdventureSession a = AdventureSession.Load(data, Path.Combine(AppContext.BaseDirectory, "scenarios"), savePath);
         a.Advance(0.05);
         a.DrainMessages();
@@ -416,6 +420,7 @@ public class Essai7MoodTests : IDisposable
         Assert.True(a.Interact());
         Assert.Equal(DialogueRefusal.None, a.Choose(0));
         Assert.Equal(1, a.LootAnnounced);
+        Assert.Equal(DialogueRefusal.None, a.Choose(1));   // après « J'irai écouter à cette porte. » : la livraison de la ferrure
         a.Advance(0.05);
         Assert.Equal(1, a.QuestsAnnounced);
         Assert.Equal(2, a.LootAnnounced);   // sous-lot V1.1 : la récompense finale donne aussi des pièces (le bruit des pièces)

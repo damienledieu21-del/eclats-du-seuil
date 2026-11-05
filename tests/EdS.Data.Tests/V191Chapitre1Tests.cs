@@ -85,8 +85,9 @@ public class V191Chapitre1Tests
     public void Chapitre_1_et_ses_quetes_livres()
     {
         StoryBook book = Book(Zone());
-        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard", "manifestation", "rodeur", "chef", "retour" },
-            book.Quest(Mission).Steps.Select(s => s.Id));
+        // Sous-lot V1.9.5 (choix de Damien du 5 novembre 2026) : le chapitre 1 finit chez Gaspard ; ses quatre dernières étapes sont au chapitre 5.
+        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard" }, book.Quest(Mission).Steps.Select(s => s.Id));
+        Assert.Empty(book.Quest(Mission).Effects);
         Assert.Equal(new[] { Ferrure, Pain, Fleches }, book.Quests.Skip(6).Take(3).Select(q => q.Id));   // ajoutées à la fin : les chemins d'avant restent (V1.9.2 : le chapitre 2 suit)
         Assert.All(new[] { Ferrure, Pain, Fleches }, q => Assert.Equal(QuestCategory.Side, book.Quest(q).Category));
         Assert.Equal(QuestCategory.Main, book.Quest(Mission).Category);
@@ -161,7 +162,8 @@ public class V191Chapitre1Tests
         Assert.Contains("XpGiven xp 100", end);
         Assert.Equal(money + 100, w.Money);
         Assert.True(w.Narrative!.Knows("fact.ch1.vers_le_bourg"));
-        Assert.Equal("manifestation", w.Narrative.CurrentStep(Mission)!.Id);   // la suite reste celle d'avant (chapitre 5 plus tard)
+        Assert.Contains($"QuestCompleted {Mission}", end);   // sous-lot V1.9.5 : fin du chapitre 1 (la suite de l'ancienne mission est au chapitre 5)
+        Assert.True(w.Narrative.IsDone(Mission));
         // Rythme « rapide jusqu'au niveau 5 » : la mission seule, sans les loups ni les quêtes secondaires, mène au niveau 3.
         Assert.Equal(3, Progression.LevelFor(w.Character.Xp));
         Say(w, "npc.gaspard", "garde");   // ensuite, Gaspard reprend ses conseils

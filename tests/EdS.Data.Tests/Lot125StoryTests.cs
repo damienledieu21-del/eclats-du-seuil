@@ -232,11 +232,13 @@ public class Lot125StoryTests
         // V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste.
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant",
                 "npc.maitresse_guilde", "npc.intendant_guilde", "npc.archiviste", "npc.boulanger", "npc.archer_garde", "npc.albe", "npc.renart", "npc.lison", "npc.apprentie",
-                "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur" },   // V1.9.1 : chapitre 1 ; V1.9.2 : chapitre 2 ; V1.9.3 : chapitre 3 ; V1.9.4 : chapitre 4
+                "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn" },   // V1.9.1 : chapitre 1 ; V1.9.2 : chapitre 2 ; V1.9.3 : chapitre 3 ; V1.9.4 : chapitre 4 ; V1.9.5 : chapitre 5
             book.Npcs.Select(n => n.Id));
         Quest mission = book.Quest(Mission);
-        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard", "manifestation", "rodeur", "chef", "retour" }, mission.Steps.Select(s => s.Id));   // 12.7 : le chef ; V1.9.1 : la meute et Gaspard (fin du chapitre 1)
-        Assert.Equal(13, book.Discoveries.Count);   // V1.9.4 : la tour vide, les mots du chef, le registre de la garde, le carnet de Renart ; V1.9.3 : l'ordre scellé ; V1.7 : les archives de la guilde ; V1.9.1 : le souvenir de la Rupture ; V1.9.2 : le sceau d'ambre, la voix du puits
+        // 12.7 : le chef ; V1.9.1 : la meute et Gaspard (fin du chapitre 1) ; V1.9.5 : manifestation, rôdeur, chef et retour au chapitre 5.
+        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard" }, mission.Steps.Select(s => s.Id));
+        Assert.Equal(new[] { "manifestation", "rodeur", "chef", "retour", "voix", "albe" }, book.Quest("quest.le_seuil").Steps.Select(s => s.Id));
+        Assert.Equal(20, book.Discoveries.Count);   // V1.9.5 : la voix de l'Envers, les traces du loup blanc, quatre pierres gravées et leur lecture ;   // V1.9.4 : la tour vide, les mots du chef, le registre de la garde, le carnet de Renart ; V1.9.3 : l'ordre scellé ; V1.7 : les archives de la guilde ; V1.9.1 : le souvenir de la Rupture ; V1.9.2 : le sceau d'ambre, la voix du puits
         // Chaque texte livré sert, et chaque clé employée existe (le validateur le garantit dans ce sens).
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));
         Assert.True(Schema("story.schema.json").IsValid(JsonDocument.Parse(File.ReadAllText(StoryPath)).RootElement));
@@ -340,11 +342,13 @@ public class Lot125StoryTests
         Assert.Equal(DialogueRefusal.None, warm.Choose(retour.Options[0].Index, out _, out IReadOnlyList<StoryEvent> given));
         Assert.Contains(given, e => e.Kind == StoryEventKind.ItemGiven && e.Id == "item.amulette_de_l_aube");
         Assert.Equal(1, warm.Inventory.Count("item.amulette_de_l_aube"));
-        Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/retour", "XpGiven xp 300", "MoneyGiven money 500", "QuestCompleted quest.traces_sous_le_moulin" },   // V1.1 : 5 argent
-            warm.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V1.9.5 : le retour est passé au chapitre 5 (la partie, arrêtée au retour, est convertie à la lecture : chapitre 1 fini) ;
+        // il donne 300 points, puis Odile avoue les voix de la porte (étape suivante) ; les 5 argent sont à la fin du chapitre 5.
+        Assert.Equal(new[] { "StepCompleted quest.le_seuil/retour", "XpGiven xp 300" }, warm.Step().Story.Select(e => e.ToString()));
         Assert.True(warm.Narrative!.IsDone(Mission));
+        Assert.Equal("voix", warm.Narrative.CurrentStep("quest.le_seuil")!.Id);
         warm.Talk("npc.odile", out DialogueView? apres);
-        Assert.Equal("apres", apres!.Node);
+        Assert.Equal("ch5_porte", apres!.Node);
         Assert.Equal(QuestProgress.Done, warm.Save().Character!.Story.Quests[Mission].Step);
 
         // Confiance perdue : un merci sec, pas d'amulette.
@@ -372,7 +376,7 @@ public class Lot125StoryTests
         odile.Talk("npc.odile", out DialogueView? retour);
         Assert.Equal(DialogueRefusal.None, odile.Choose(retour!.Options[0].Index, out _, out _));
         odile.Talk("npc.odile", out DialogueView? encore);
-        Assert.Equal("en_cours", encore!.Node);
+        Assert.Equal("ch5_en_cours", encore!.Node);   // sous-lot V1.9.5 : le retour est une étape du chapitre 5
         Assert.Equal(1, odile.Inventory.Count("item.amulette_de_l_aube"));
 
         WorldSession maelle = Play(Zone(-19, -5), Hero(At("passage", odile: 1), new ItemStack("item.ferrure", 2)));
@@ -438,8 +442,9 @@ public class Lot125StoryTests
                 catch (ArgumentException) { }
             story.AddRange(hunt.Step().Story);
         }
-        Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/rodeur", "MoneyGiven money 150" }, story.Select(e => e.ToString()));   // V1.1 : 1 argent 50 cuivre
-        Assert.Equal("chef", hunt.Narrative!.CurrentStep(Mission)!.Id);   // sous-lot 12.7 : le chef avant le retour
+        // V1.1 : 1 argent 50 cuivre ; sous-lot V1.9.5 : l'étape est au chapitre 5 (partie convertie à la lecture), avec 500 points.
+        Assert.Equal(new[] { "StepCompleted quest.le_seuil/rodeur", "MoneyGiven money 150", "XpGiven xp 500" }, story.Select(e => e.ToString()));
+        Assert.Equal("chef", hunt.Narrative!.CurrentStep("quest.le_seuil")!.Id);   // sous-lot 12.7 : le chef avant le retour
     }
 
     // --- Sauvegarde, version 4 ---------------------------------------------------------------------

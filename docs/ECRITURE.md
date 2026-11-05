@@ -73,6 +73,10 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 | Cor de la tour | Le cor qui appelle toute la garde des Vallons ; volé par les bandits (chapitre 4). |
 | Registre de la garde | Le cahier où les gardes de la tour notent chaque nuit ; la dernière ligne est de Thibaut (chapitre 4). |
 | Carnet de Renart | Ses ventes, à qui, pour combien ; un seul acheteur sans nom, « le Rassembleur » (chapitre 4). |
+| Celui-qui-Attend | Le nom que murmure la voix de l'Envers derrière la vieille porte du moulin (chapitre 5) : « Celui-qui-Attend… attend. » Dans aucun livre de l'Ordre ; **ce n'est pas le Sans-Repos** (réponse de Damien du 5 novembre 2026). Rien de plus n'est dit. |
+| Cœur du Seuil | Le centre des pierres dressées, où veille le Gardien du Seuil (chapitre 5). |
+| Pierres gravées | Cinq pierres des Seuillards (celle de Gaspard, et quatre aux ruines, au lac, dans la forêt des Loups et dans la plaine de l'est) ; quatre lignes : « Nous avons ouvert pour la reine. » « Nous n'avons pas su refermer. » « Quelqu'un attend de l'autre côté. » « Toi qui viens après, ne réponds pas. » (proposition, chapitre 5). |
+| Écho (d'une bête) | Une bête qu'on tue et qui revient, comme le loup blanc : depuis la Rupture, « même les loups ne passent plus » (Gaspard, d'après son grand-père ; chapitre 5). |
 
 **Jurons** : « Par la Fêlure ! » (tous), « Lune fendue ! » (Valloniens), « Pierre et ancêtres ! » (Roche-nés), « Que l'Aube me garde ! » (Ordre de l'Aube, et les gens pieux), « Cendres et serments ! » (Cendrés), « Par mes reflets ! » (Lacustres).
 
@@ -92,10 +96,12 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 - « Un garde note tout, même sa mort, s'il en a le temps. » (le capitaine Bérenger.)
 - « Tout se revend, mon petit. Même un œil. » (Bertille, après le Borgne.)
 - « Je suis le chien, pas le loup. » (le chef des bandits : il obéit aux Rassembleurs.)
+- « Ne réponds pas. » (les pierres gravées, Odile et Ysarn : à une voix de l'autre côté qui connaît ton nom.)
+- « Une, deux, trois… Ça fait taire. » (Ysarn compte les pierres pour ne plus entendre l'Envers.)
 
 ## 3. Fiches des PNJ importants (Vallons, chapitre 1)
 
-Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langage. Les PNJ des chapitres suivants reçoivent leur fiche avec leur chapitre (chapitre 2 : section 3 bis ; chapitre 3 : section 3 ter ; chapitre 4 : section 3 quater).
+Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langage. Les PNJ des chapitres suivants reçoivent leur fiche avec leur chapitre (chapitre 2 : section 3 bis ; chapitre 3 : section 3 ter ; chapitre 4 : section 3 quater ; chapitre 5 : section 3 quinquies).
 
 **Odile, la meunière** (Vallonienne, la cinquantaine). Parle simplement, avec chaleur et un brin d'inquiétude ; tutoie le joueur. *Veut* : que son moulin tourne et que les nuits redeviennent calmes. *Cache* : la porte du moulin a été condamnée l'hiver dernier parce qu'elle y entendait des voix. *Tics* : parle de sa roue comme d'une personne ; « Que l'aube te garde. »
 
@@ -147,6 +153,12 @@ PNJ déjà là, repris au chapitre 3 : **Renart** (son étal : il vend un peu pl
 
 PNJ déjà là, repris au chapitre 4 : **Rosalie** (sa lettre à Thibaut, puis la réponse ; « Garde la lanterne allumée ») ; **Sœur Albe** (le Sans-Repos, d'après les vieux livres de l'Ordre ; son secret reste gardé) ; **Aubine** (son secret devient « Le déserteur ») ; **Dame Brunehilde** et **Bertille** (la prime du Grand Borgne ; l'œil de verre) ; **Renart** (son carnet, cohérent avec sa fiche : il a peur d'avoir trop parlé, et il paie « presque toujours ») ; **maître Josse** (« La pierre se souvient, mais elle ne parle pas »).
 
+## 3 quinquies. Fiches des PNJ du Seuil (chapitre 5, sous-lot V1.9.5)
+
+**Ysarn, le Fêlé des hautes pierres** (Fêlé, la soixantaine, seul parmi les hautes pierres, à l'est des pierres dressées). Tutoie, phrases cassées, répétitions, l'Envers à la lisière des mots (la voix des Fêlés) ; le joueur le vouvoie. *Veut* : qu'on laisse les pierres parler, et ne plus entendre l'autre côté les nuits de lune. *Cache* : il entend Celui-qui-Attend depuis des années, et parfois il lui répond (« Moi, je… parfois, je réponds » : piste pour plus tard). *Tics* : « Chut. Chut. » ; compte les pierres (« Une, deux, trois… Ça fait taire ») ; « la porte, toujours la porte ». Il lit les pierres gravées (« Les pierres gravées »).
+
+PNJ déjà là, repris au chapitre 5 : **Odile** (son secret devient la fin du chapitre : la voix de la vieille porte, « avec la bouche de ma mère » ; « Si tu entends ma mère, ne lui réponds pas ») ; **Gaspard** (le rôdeur, le loup blanc qui revient, la pierre gravée de son grand-père : sa fiche dit qu'il croit à la Rupture plus qu'il ne l'avoue) ; **Frère Anselme** (la bête qu'il avait bénie ne trouve pas le repos : doux et inquiet) ; **Sœur Albe** (Celui-qui-Attend n'est dans aucun livre ; elle écrit à « ceux qui l'ont envoyée » : son secret reste gardé).
+
 ## 4. Clés des textes
 
-Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`). De même pour le chapitre 3 (`text.ch3.…`, par exemple `ch3.doyen.raid`) ; l'accueil de l'étal de Renart suit les autres marchands (`text.merchant.renart.greeting`). Le chapitre 4 a des clés `text.ch4.…` (par exemple `ch4.thibaut.chef`).
+Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`). De même pour le chapitre 3 (`text.ch3.…`, par exemple `ch3.doyen.raid`) ; l'accueil de l'étal de Renart suit les autres marchands (`text.merchant.renart.greeting`). Le chapitre 4 a des clés `text.ch4.…` (par exemple `ch4.thibaut.chef`). Le chapitre 5 a des clés `text.ch5.…` (par exemple `ch5.odile.aveu`) ; les quatre étapes reprises de l'ancienne mission ont des textes neufs (`text.ch5.quest.seuil.…`), et les quatre anciens textes du journal (`text.quest.traces.manifestation`, `.rodeur`, `.chef`, `.retour`) sont retirés.

@@ -322,6 +322,8 @@ namespace EdS.World
         {
             _book = book ?? throw new ArgumentNullException(nameof(book));
             _world = world ?? throw new ArgumentNullException(nameof(world));
+            // Sous-lot V1.9.5 : l'avancement de l'ancienne mission est converti à la lecture (sa fin est passée au chapitre 5).
+            saved = StoryConversions.Upgrade(book, saved ?? throw new ArgumentNullException(nameof(saved)));
             CheckSaved(book, saved, guild);
             _guild = guild;
             _hunted = new SortedSet<string>(saved.Hunted, StringComparer.Ordinal);
@@ -352,6 +354,7 @@ namespace EdS.World
         {
             if (book is null) throw new ArgumentNullException(nameof(book));
             if (saved is null) throw new ArgumentNullException(nameof(saved));
+            saved = StoryConversions.Upgrade(book, saved);   // sous-lot V1.9.5 : contrôlé tel qu'il sera lu
             // Sous-lot V1.7 : la carte d'aventurier va avec la guilde chargée : rang ouvert, titres et contrats connus.
             if (guild != null && saved.Guild is SavedGuildCard card)
             {

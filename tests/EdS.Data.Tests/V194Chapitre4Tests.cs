@@ -134,7 +134,7 @@ public class V194Chapitre4Tests
     public void Chapitre_4_et_ses_quetes_livres()
     {
         StoryBook book = Story.Value;
-        Assert.Equal(new[] { Main, Tour, Deserteur, Prime, Carnet }, book.Quests.Skip(22).Select(q => q.Id));   // ajoutées à la fin
+        Assert.Equal(new[] { Main, Tour, Deserteur, Prime, Carnet }, book.Quests.Skip(22).Take(5).Select(q => q.Id));   // ajoutées à la fin
         Assert.Equal(QuestCategory.Main, book.Quest(Main).Category);
         Assert.Equal(new[] { "rosalie", "tour", "camp", "chef", "choix", "lettre", "reponse", "albe" }, book.Quest(Main).Steps.Select(s => s.Id));
         Assert.Empty(book.Quest(Main).Requires);   // commencée par la fin du chapitre 3 : jamais fermée
@@ -176,7 +176,7 @@ public class V194Chapitre4Tests
                 Assert.True(Segment(gx, gz, r.Points[i], r.Points[i + 1]) - r.Width.Raw / 20000.0 > 10, r.Id);
         GroundVector lo = zone.Setup.Space.Min, hi = zone.Setup.Space.Max;
         Assert.True(lo.X.Raw / 10000.0 + 2 <= gx && gx <= hi.X.Raw / 10000.0 - 2 && lo.Z.Raw / 10000.0 + 2 <= gz && gz <= hi.Z.Raw / 10000.0 - 2);
-        Assert.Equal(new[] { "npc.thibaut", "npc.capitaine", "npc.deserteur" }, book.Npcs.Skip(23).Select(n => n.Id));
+        Assert.Equal(new[] { "npc.thibaut", "npc.capitaine", "npc.deserteur" }, book.Npcs.Skip(23).Take(3).Select(n => n.Id));
         // Les six objets de quête ne se vendent pas.
         foreach (string item in new[] { "item.lettre_de_rosalie", "item.lettre_de_thibaut", "item.registre_de_garde", "item.cor_de_la_tour", "item.oeil_de_verre", "item.carnet_de_renart" })
         {
@@ -185,8 +185,9 @@ public class V194Chapitre4Tests
         }
         foreach (string d in new[] { "discovery.tour_vide", "discovery.mots_du_chef", "discovery.registre_de_garde", "discovery.carnet_de_renart" })
             Assert.Contains(book.Discoveries, x => x.Id == d);
-        // Le dialogue de Sœur Albe garde ses seize entrées (le maximum) : le chapitre 4 passe par des réponses de ses nœuds existants.
-        Assert.Equal(StoryValidator.MaxEntries, book.Dialogue("dialogue.albe").Entries.Count);
+        // Le dialogue de Sœur Albe avait seize entrées (le maximum) : le chapitre 4 passe par des réponses de ses nœuds existants. Sous-lot
+        // V1.9.5 : les quatre entrées des anciennes étapes de la mission sont parties (parties converties à la lecture) ; il en garde douze.
+        Assert.Equal(12, book.Dialogue("dialogue.albe").Entries.Count);
     }
 
     /// <summary>Distance du point (<paramref name="x"/>, <paramref name="z"/>) au segment [<paramref name="a"/>, <paramref name="b"/>], en mètres.</summary>

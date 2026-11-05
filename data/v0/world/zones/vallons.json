@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 7,
   "kind": "zone",
-  "contentVersion": "0.5.0-provisoire",
+  "contentVersion": "0.6.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -148,6 +148,19 @@
           40
         ],
         "minLevel": 21
+      },
+      {
+        "id": "coeur_du_seuil",
+        "name": "Cœur du Seuil",
+        "min": [
+          50,
+          30
+        ],
+        "max": [
+          60,
+          40
+        ],
+        "minLevel": 23
       },
       {
         "id": "forge",
