@@ -200,11 +200,34 @@ namespace EdS.Game
         [Tooltip("Meubles et objets des intérieurs (Poly Haven, dossier « Interieurs »), remplis par le menu ; sans modèle, une forme simple.")]
         public InteriorLook[] Furniture = new InteriorLook[0];
         [Tooltip("Lumière d'ambiance des intérieurs (les feux, bougies et lanternes éclairent le reste).")]
-        public Color IndoorAmbient = new Color(0.2f, 0.16f, 0.13f);
+        public Color IndoorAmbient = DefaultIndoorAmbient;
         [Tooltip("Luminosité générale des intérieurs.")]
-        [Range(-2f, 2f)] public float IndoorExposure = 0.15f;
+        [Range(-2f, 2f)] public float IndoorExposure = DefaultIndoorExposure;
         [Tooltip("Force des feux, bougies et lanternes des intérieurs.")]
-        [Range(0f, 4f)] public float IndoorLights = 1f;
+        [Range(0f, 4f)] public float IndoorLights = DefaultIndoorLights;
+
+        /// <summary>
+        /// V1.10 (essai 10 de Damien : « intérieur trop sombre ») : version des réglages par défaut de la lumière des intérieurs. Le menu
+        /// « Préparer l'essai de style » remet une fois les nouveaux (ambiance plus claire, exposition et lumières plus fortes) ; les
+        /// retouches faites ensuite par Damien sont gardées. Les réglages du dehors (<see cref="AmbienceVersion"/>) ne bougent pas.
+        /// </summary>
+        public const int IndoorDefaults = 1;
+
+        [HideInInspector] public int IndoorVersion;
+
+        private static readonly Color DefaultIndoorAmbient = new Color(0.38f, 0.31f, 0.25f);
+        private const float DefaultIndoorExposure = 0.3f;
+        private const float DefaultIndoorLights = 1.6f;
+
+        /// <summary>Remet la lumière des intérieurs aux réglages de l'essai (clic droit sur le catalogue dans l'inspecteur).</summary>
+        [ContextMenu("Remettre la lumière des intérieurs par défaut")]
+        public void ResetIndoor()
+        {
+            IndoorAmbient = DefaultIndoorAmbient;
+            IndoorExposure = DefaultIndoorExposure;
+            IndoorLights = DefaultIndoorLights;
+            IndoorVersion = IndoorDefaults;
+        }
 
         [Header("Essai réaliste : décor (pris au lancement du combat)")]
         [Tooltip("Taille (m) d'une répétition des textures du sol.")]

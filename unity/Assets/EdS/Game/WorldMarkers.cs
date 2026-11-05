@@ -227,7 +227,7 @@ namespace EdS.Game
             embers.transform.localScale = new Vector3(b.size.x * 0.55f, 0.03f, b.size.z * 0.55f);
             Material glow = Made(new Color(0.25f, 0.06f, 0.02f));
             glow.EnableKeyword("_EMISSION");
-            glow.SetColor("_EmissionColor", new Color(3.2f, 0.9f, 0.2f));
+            glow.SetColor("_EmissionColor", new Color(1.4f, 0.42f, 0.1f));   // V1.10 : moins fort, pour ne pas blanchir sous le halo
             embers.GetComponent<Renderer>().sharedMaterial = glow;
             var light = new GameObject("Lueur du foyer").AddComponent<Light>();
             light.transform.SetParent(holder, false);
@@ -240,7 +240,8 @@ namespace EdS.Game
             _fireBase = light.intensity;
             // Essai réaliste 8 : sur ordinateur, les flammes et la fumée du Particle Pack de Unity dans le foyer, s'il est importé.
             Effects.Ambient(StyleVfx.ForgeFire, holder, new Vector3(b.center.x, b.min.y + 0.1f, b.center.z));
-            Effects.Ambient(StyleVfx.ForgeSmoke, holder, new Vector3(b.center.x, b.max.y + 0.2f, b.center.z));
+            // V1.10 (essai 10 : « fumée noire de la forge ») : la fumée du jeu, claire et non éclairée, à la place de celle du pack (Effects.Smoke).
+            Effects.Smoke(holder, new Vector3(b.center.x, b.max.y + 0.2f, b.center.z));
         }
 
         /// <summary>Enclume de fer sombre faite de quatre pavés (pied, taille, table, bigorne), d'environ 0,8 m de haut.</summary>

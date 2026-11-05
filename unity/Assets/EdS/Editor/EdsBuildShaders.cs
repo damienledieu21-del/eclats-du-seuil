@@ -54,6 +54,18 @@ namespace EdS.Editor
                     + ") ; menu Éclats du Seuil → Configurer le rendu URP, puis reconstruire.");
             if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/EdS", "Resources");
             AssetDatabase.CreateAsset(new Material(shader), TemplatePath);
+            if (urp)
+            {
+                // V1.10 : les décors qui cachent le joueur passent en transparence (SpaceView.PrepareFade) : un modèle transparent garde la
+                // variante « _SURFACE_TYPE_TRANSPARENT » du shader dans le jeu construit (sinon retirée, aucun matériau ne l'employant).
+                var faded = new Material(shader);
+                faded.SetFloat("_Surface", 1f);
+                faded.SetFloat("_ZWrite", 0f);
+                faded.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                faded.SetOverrideTag("RenderType", "Transparent");
+                faded.renderQueue = 3000;
+                AssetDatabase.CreateAsset(faded, Folder + "/" + TemplateName + "Fondu.mat");
+            }
             Shader text = Shader.Find(TextShader);
             if (text != null)
             {

@@ -255,6 +255,11 @@ namespace EdS.Game.Editor
                 catalog.ResetAmbience();
                 notes.Add("Lumière et couleurs remises aux réglages de l'essai (version " + StyleCatalog.AmbienceDefaults + ").");
             }
+            if (catalog.IndoorVersion < StyleCatalog.IndoorDefaults)
+            {
+                catalog.ResetIndoor();
+                notes.Add("Lumière des intérieurs remise aux réglages de l'essai (version " + StyleCatalog.IndoorDefaults + ", V1.10 : plus claire).");
+            }
             catalog.Terrain = TerrainMaterial();
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
@@ -1045,7 +1050,7 @@ namespace EdS.Game.Editor
                 return null;
             }
             foreach (UniversalRenderPipelineAsset pipeline in pipelines)
-                Tune(pipeline, 90f, 4, 4096, true, 4, sceneTextures);
+                Tune(pipeline, 90f, 4, 4096, true, 4, sceneTextures, 8);
             if (sceneTextures) notes.Add("Rendu de l'ordinateur : image et profondeur de la scène gardées pour l'eau du sample (reflets, lit vu par transparence).");
             int ssao = 0;
             foreach (string path in AssetDatabase.FindAssets("t:UniversalRendererData", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath)
@@ -1072,7 +1077,7 @@ namespace EdS.Game.Editor
                 phoneRenderer.postProcessData = data;
                 EditorUtility.SetDirty(phoneRenderer);
             }
-            Tune(phone, 35f, 2, 1024, false, 2, false);
+            Tune(phone, 35f, 2, 1024, false, 2, false, 4);
             AssetDatabase.SaveAssets();
             return phone;
         }
@@ -1083,7 +1088,7 @@ namespace EdS.Game.Editor
         /// ces deux réglages restent tels quels).
         /// </summary>
         private static void Tune(UniversalRenderPipelineAsset pipeline, float shadowDistance, int cascades, int shadowResolution, bool softShadows, int msaa,
-            bool sceneTextures)
+            bool sceneTextures, int lightsPerObject)
         {
             var so = new SerializedObject(pipeline);
             void Set(string name, System.Action<SerializedProperty> apply)
@@ -1100,7 +1105,10 @@ namespace EdS.Game.Editor
             Set("m_MSAA", p => p.intValue = msaa);
             Set("m_SupportsHDR", p => p.boolValue = true);
             Set("m_AdditionalLightsRenderingMode", p => p.intValue = 1);   // LightRenderingMode.PerPixel (1 ; PerVertex vaut 2)
-            Set("m_AdditionalLightsPerObjectLimit", p => p.intValue = 4);
+            // V1.10 (essai 10 : « intérieur trop sombre ») : URP n'éclaire chaque objet que par ses 4 lumières d'appoint les plus fortes ;
+            // une pièce en a jusqu'à 7 (feu, bougies, lanternes, jour des fenêtres) et son sol et ses murs sont chacun un seul objet :
+            // trois lumières sur sept ne les touchaient pas. Huit sur ordinateur (le plafond d'URP en rendu Forward), quatre sur téléphone.
+            Set("m_AdditionalLightsPerObjectLimit", p => p.intValue = lightsPerObject);
             // Seulement mis, jamais retirés (d'autres réglages du projet peuvent s'en servir).
             if (sceneTextures)
             {

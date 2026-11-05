@@ -1033,8 +1033,8 @@ public class StyleRulesTests
         Assert.Contains("QualitySettings.renderPipeline = catalog.PhonePipeline;", world, StringComparison.Ordinal);
         Assert.Contains("QualitySettings.shadows = UnityEngine.ShadowQuality.HardOnly;", world, StringComparison.Ordinal);   // nom qualifié (URP a le sien)
         Assert.Contains("if (phoneShadows) light.shadows = LightShadows.Hard;", world, StringComparison.Ordinal);
-        Assert.Contains("Tune(pipeline, 90f, 4, 4096, true, 4, sceneTextures);", editor, StringComparison.Ordinal);
-        Assert.Contains("Tune(phone, 35f, 2, 1024, false, 2, false);", editor, StringComparison.Ordinal);
+        Assert.Contains("Tune(pipeline, 90f, 4, 4096, true, 4, sceneTextures, 8);", editor, StringComparison.Ordinal);
+        Assert.Contains("Tune(phone, 35f, 2, 1024, false, 2, false, 4);", editor, StringComparison.Ordinal);
         Assert.Contains("\"UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion\"", editor, StringComparison.Ordinal);
         // Lumières des feux par pixel : LightRenderingMode.PerPixel vaut 1 (PerVertex vaut 2).
         Assert.Contains("Set(\"m_AdditionalLightsRenderingMode\", p => p.intValue = 1);", editor, StringComparison.Ordinal);

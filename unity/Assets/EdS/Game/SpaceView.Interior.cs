@@ -17,6 +17,13 @@ namespace EdS.Game
     /// </summary>
     public sealed partial class SpaceView
     {
+        /// <summary>
+        /// V1.10 (essai 10 : « tache blanche du feu ») : force de la lueur des braises de la cheminée. À 3,5, la plaque de braises (0,9 ×
+        /// 0,45 m) dépassait trois fois le blanc : le tonemapping la blanchissait et le halo (bloom) des intérieurs l'étalait en une tache
+        /// blanche sur le foyer. À 1,4, elle reste orange et brille encore un peu.
+        /// </summary>
+        private const float EmberGlow = 1.4f;
+
         /// <summary>Épaisseur (m) des murs d'une pièce (dessinés hors de l'aire).</summary>
         private const float WallThickness = 0.3f;
 
@@ -325,7 +332,16 @@ namespace EdS.Game
                 Vector3 center = layout.BeamsAlongX ? new Vector3((minX + maxX) / 2f, y, (float)at) : new Vector3((float)at, y, (minZ + maxZ) / 2f);
                 Vector3 size = layout.BeamsAlongX ? new Vector3(maxX - minX + 2 * WallThickness, 0.3f, 0.24f) : new Vector3(0.24f, 0.3f, maxZ - minZ + 2 * WallThickness);
                 GameObject beam = Box("Poutre", center, size, darkWood, woodTile);
-                AddOccluder(beam.transform, false, center - size / 2f, center + size / 2f);
+                // V1.10 (essai 10 : « la caméra passe dans les poutres ») : la caméra d'une pièce se tient au-dessus du plafond (jusqu'à 8 m
+                // du personnage, 22° par défaut : 4 à 5 m de haut, poutres à 2,7 m) ; seules les poutres sur la ligne de la tête
+                // s'effaçaient, les autres traversaient l'image et la caméra passait dedans en tournant. Une poutre est un décor
+                // « au-dessus » : elle disparaît en fondu dès que la caméra arrive à sa hauteur (OccluderRules.Overhead), et revient quand
+                // la caméra repasse dessous (de près, vue basse).
+                _occluders.Add(new Occluder
+                {
+                    Transform = beam.transform, Renderer = beam.GetComponent<Renderer>(), Lower = false, Overhead = true,
+                    Min = center - size / 2f, Max = center + size / 2f,
+                });
             }
         }
 
@@ -408,7 +424,7 @@ namespace EdS.Game
                 log.transform.SetParent(t, true);
             }
             GameObject embers = Block(id + " (braises)", fire + Vector3.up * 0.01f, alongX ? new Vector3(0.9f, 0.04f, 0.45f) : new Vector3(0.45f, 0.04f, 0.9f),
-                Glow(new Color(1f, 0.35f, 0.08f), 3.5f));
+                Glow(new Color(1f, 0.35f, 0.08f), EmberGlow));
             embers.transform.SetParent(t, true);
             Effects.Ambient(StyleVfx.ForgeFire, t, fire + Vector3.up * 0.12f);
             // Bois empilé aux deux bouts (dans l'emprise).

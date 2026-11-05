@@ -93,6 +93,21 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// V1.10 (essai 10 de Damien : « tache blanche du feu ») : partie d'un effet continu d'un pack (feu de la forge, de la cheminée) qui
+        /// n'est qu'un halo ou de l'air qui ondule (« glow », « halo », « distort », « heat », « haze », « refract » dans le nom de l'objet ou
+        /// de son matériau) : une grande lueur additive qui sature en blanc sous le halo et l'exposition d'URP. Elle n'est pas dessinée.
+        /// </summary>
+        public static bool AmbientHalo(string? objectName, string? materialName)
+        {
+            foreach (string name in new[] { StyleRules.Key(objectName ?? string.Empty), StyleRules.Key(materialName ?? string.Empty) })
+                foreach (string word in HaloWords)
+                    if (name.Contains(word)) return true;
+            return false;
+        }
+
+        private static readonly string[] HaloWords = { "glow", "halo", "distort", "heat", "haze", "refract" };
+
+        /// <summary>
         /// Shader de particules du rendu intégré (sortirait rose avec URP) : « Particles/… » (shaders standard) ou les anciens
         /// (« Legacy Shaders/Particles/… », « Mobile/Particles/… »). Les shaders d'URP et les Shader Graph des packs ne comptent pas.
         /// </summary>

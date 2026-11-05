@@ -117,7 +117,84 @@ namespace EdS.Game
                     main.scalingMode = ParticleSystemScalingMode.Hierarchy;
                 }
             }
+            // V1.10 (essai 10 : « tache blanche du feu ») : le halo et l'air qui ondule du pack (une grande lueur additive et un disque de
+            // distorsion, faits pour l'ancien rendu) saturent en blanc sous le halo (bloom) et l'exposition d'URP ; la lumière du foyer
+            // éclaire déjà. Ils ne sont plus dessinés : restent les flammes, les braises et les étincelles.
+            foreach (ParticleSystemRenderer r in fx.GetComponentsInChildren<ParticleSystemRenderer>())
+            {
+                Material m = r.sharedMaterial;
+                if (ParticleRules.AmbientHalo(r.gameObject.name, m != null ? m.name : null)) r.enabled = false;
+            }
             return fx;
+        }
+
+        /// <summary>
+        /// V1.10 (essai 10 : « fumée noire de la forge ») : fumée continue faite par le jeu, à la place de celle du Particle Pack. Celle du
+        /// pack est une fumée éclairée (« Particles/Standard Surface », passée sur « Particles/Lit » d'URP) : elle ne prend que la lumière qui
+        /// la touche, et au-dessus du foyer (à l'ombre du toit, la lueur orange par dessous) elle sortait presque noire. Celle-ci n'est pas
+        /// éclairée : gris clair, mélange alpha (shader « EdS/Particule », texture « fumee »), qui monte, grossit et s'efface. Null sans le
+        /// shader ou la texture (pas de fumée).
+        /// </summary>
+        public static GameObject Smoke(Transform parent, Vector3 at)
+        {
+            Material template = Resources.Load<Material>(MaterialName);
+            if (template == null)
+            {
+                Shader shader = Shader.Find("EdS/Particule");
+                if (shader == null || !shader.isSupported) return null;
+                template = new Material(shader);
+            }
+            Texture2D image = UiKit.Texture("EdsInterface/Particules/fumee");
+            if (image == null) return null;
+            var go = new GameObject("Fumée de la forge");
+            go.transform.SetParent(parent, false);
+            go.transform.position = at;
+            ParticleSystem system = go.AddComponent<ParticleSystem>();
+            system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ParticleSystem.MainModule main = system.main;
+            main.loop = true;
+            main.playOnAwake = false;
+            main.duration = 5f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = Application.isMobilePlatform ? 16 : 40;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(3.5f, 5f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.45f, 0.75f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.45f, 0.75f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.78f, 0.76f, 0.74f, 0.42f), new Color(0.88f, 0.86f, 0.84f, 0.3f));
+            main.gravityModifier = -0.02f;
+            ParticleSystem.EmissionModule emission = system.emission;
+            emission.enabled = true;
+            emission.rateOverTime = Application.isMobilePlatform ? 3f : 7f;
+            ParticleSystem.ShapeModule shape = system.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 12f;
+            shape.radius = 0.2f;
+            go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);   // le cône d'émission vers le haut
+            ParticleSystem.ColorOverLifetimeModule fade = system.colorOverLifetime;
+            fade.enabled = true;
+            var gradient = new Gradient();
+            gradient.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0.6f, 0.6f), new GradientAlphaKey(0f, 1f) });
+            fade.color = new ParticleSystem.MinMaxGradient(gradient);
+            ParticleSystem.SizeOverLifetimeModule grow = system.sizeOverLifetime;
+            grow.enabled = true;
+            grow.size = new ParticleSystem.MinMaxCurve(1f, Grow(0.7f, 3.2f));
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            var material = new Material(template);
+            material.SetTexture("_MainTex", image);
+            material.SetFloat("_SrcBlend", 5f);    // SrcAlpha
+            material.SetFloat("_DstBlend", 10f);   // OneMinusSrcAlpha : fumée claire, jamais additive ni multipliée
+            material.SetFloat("_Intensity", 1f);
+            material.SetFloat("_White", 1f);       // fondu sans bords sombres (comme la fumée des combats)
+            material.renderQueue = 3100;
+            renderer.sharedMaterial = material;
+            system.Play();
+            return go;
         }
 
         /// <summary>Coup reçu : gerbe d'étincelles, éclair, gouttes sombres ; <paramref name="strength"/> de 0 à 1 (part de vie perdue).</summary>
