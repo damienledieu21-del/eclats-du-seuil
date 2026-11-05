@@ -61,7 +61,7 @@ Touches (clavier AZERTY) : **Z Q S D** marcher · **souris** tourner la caméra 
 |---|---|---|---|---|
 | 4.1 | Entrer dans l'auberge, la chapelle, la maison et la guilde (disque doré, **F**) | **Intérieur assez clair** : sol, murs et meubles bien visibles autour du feu et des bougies | [ ] | |
 | 4.2 | Dans une pièce : tourner la caméra (souris), zoomer et dézoomer (molette) | **La caméra ne passe plus dans les poutres** : quand elle monte à leur hauteur, elles s'effacent en douceur ; de près, en vue basse, elles reviennent | [ ] | |
-| 4.3 | Dans une pièce, puis dehors derrière une maison : te mettre derrière un mur | **Le mur devient transparent** en fondu (on le devine, on te voit), puis redevient plein quand tu t'éloignes | [ ] | |
+| 4.3 | Dans une pièce, puis dehors derrière une maison : te mettre derrière un mur | **Le mur devient transparent** en fondu (à 25 %, ton choix : on le devine, on te voit), puis redevient plein quand tu t'éloignes | [ ] | |
 | 4.4 | Regarder la cheminée de l'auberge et de la maison | **Plus de tache blanche** : braises orange, flammes, pas de grand disque blanc | [ ] | |
 | 4.5 | Aller à la forge de Maëlle (village) | **Fumée claire** (gris pâle) qui monte et s'efface ; **plus de fumée noire** ; flammes sans tache blanche | [ ] | |
 | 4.6 | Si un intérieur reste trop sombre ou trop clair | Noter la pièce ; réglage : catalogue `Assets/Style/Resources/StyleCatalog`, champs `IndoorAmbient`, `IndoorExposure`, `IndoorLights` | [ ] | |
@@ -70,7 +70,7 @@ Touches (clavier AZERTY) : **Z Q S D** marcher · **souris** tourner la caméra 
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 5.1 | Aller au bourg (carte **L**, voyage rapide « Place du Bourg ») et faire le tour | Huit maisons plus grandes (environ 10 m au lieu de 6 à 8 m), belles maisons de Sketchfab | [ ] | |
+| 5.1 | Aller au bourg (carte **L**, voyage rapide « Place du Bourg ») et faire le tour | Des maisons de toutes tailles : trois petites, deux moyennes, trois grandes (la Maison de la Guilde, celle du boulanger au nord de la place, celle au sud de la place) | [ ] | |
 | 5.2 | Longer chaque maison | Rien ne flotte ni ne s'enfonce, pas de mur invisible loin du mur visible | [ ] | |
 | 5.3 | Regarder les portes | Chaque porte tournée vers la rue ; disques dorés de la maison et de la guilde devant la porte | [ ] | |
 | 5.4 | Parler à Firmin, Bertille l'épicière, Garin l'armurier, Sauge l'herboriste, Renart, Lison, Mahaut ; puis Rosalie dans la maison du bourg (porte dorée) | Personne dans un mur, chacun accessible (**F**) | [ ] | |
