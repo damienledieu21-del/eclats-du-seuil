@@ -869,8 +869,9 @@ public class V17GuildeTests : IDisposable
         Assert.Contains("story.json", e.Message, StringComparison.Ordinal);
         // Condition guildRankAtLeast d'un rang fermé, dans un dialogue et dans des conditions d'ouverture.
         int d = story["data"]!["dialogues"]!.AsArray().ToList().FindIndex(x => (string)x!["id"]! == "dialogue.maitresse_guilde");
-        r = GuildWithStory(s => s["data"]!["dialogues"]![d]!["entries"]![0]!["conditions"]![0]!["id"] = "d");
-        Assert.Equal(($"$.data.dialogues[{d}].entries[0].conditions[0].id", ValidationCode.InvalidValue), (Assert.Single(r.Report.Errors).Path, r.Report.Errors[0].Code));
+        int v = story["data"]!["dialogues"]![d]!["entries"]!.AsArray().ToList().FindIndex(x => (string)x!["node"]! == "veteran");   // V1.9.4 : la prime du Borgne passe avant
+        r = GuildWithStory(s => s["data"]!["dialogues"]![d]!["entries"]![v]!["conditions"]![0]!["id"] = "d");
+        Assert.Equal(($"$.data.dialogues[{d}].entries[{v}].conditions[0].id", ValidationCode.InvalidValue), (Assert.Single(r.Report.Errors).Path, r.Report.Errors[0].Code));
         r = GuildWithStory(s => QuestOf(s, "quest.registres_de_l_archiviste")["requires"] = new JsonArray(new JsonObject { ["if"] = "guildRankAtLeast", ["id"] = "sss" }));
         Assert.Equal($"$.data.quests[{q}].requires[0].id", Assert.Single(r.Report.Errors).Path);
     }

@@ -59,7 +59,7 @@ public class V13EquipementTests
     public void Catalogue_en_version_4_avec_objets_nommes_ensembles_et_proprietes()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((7, "0.9.0-provisoire"), (c.SchemaVersion, c.ContentVersion));   // V1.9.3 : contenu 0.9.0 ; V1.9.2 : contenu 0.8.0 ; V1.9.1 : contenu 0.7.0 ; sous-lot V1.4 : version 5 (qualité, usure) ; V1.8 : 6 (résistance à l'usure) ; V1.8c : 7 (objets de bonus)
+        Assert.Equal((7, "0.10.0-provisoire"), (c.SchemaVersion, c.ContentVersion));   // V1.9.4 : contenu 0.10.0 ; V1.9.3 : contenu 0.9.0 ; V1.9.2 : contenu 0.8.0 ; V1.9.1 : contenu 0.7.0 ; sous-lot V1.4 : version 5 (qualité, usure) ; V1.8 : 6 (résistance à l'usure) ; V1.8c : 7 (objets de bonus)
         // Réponses du 31 octobre 2026 : les boucliers aussi (la rondache du chef des bandits).
         Assert.Equal(new[] { "weapon", "shield", "neck", "ring_1", "ring_2", "relic_1", "relic_2" }, c.Places.Where(p => p.Effects).Select(p => p.Id));
         Assert.Equal(new[] { "item.lame_du_seuil", "item.rondache_du_chef_des_bandits", "item.amulette_de_l_aube", "item.talisman_du_seuil" }, c.Items.Where(i => i.Effect != null).Select(i => i.Id));

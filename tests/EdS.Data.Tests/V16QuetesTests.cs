@@ -88,7 +88,7 @@ public class V16QuetesTests
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
             book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
-        Assert.Equal(16, book.NpcsIn(null).Count());   // V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
+        Assert.Equal(19, book.NpcsIn(null).Count());   // V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
