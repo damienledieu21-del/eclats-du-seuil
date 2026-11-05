@@ -394,13 +394,14 @@ public class V193bSuitesTests
     public void Albe_garde_seize_entrees_et_la_lettre_passe_par_ses_noeuds()
     {
         Dialogue albe = Story.Value.Dialogue("dialogue.albe");
-        Assert.Equal(StoryValidator.MaxEntries, albe.Entries.Count);
+        // Sous-lot V1.9.5 : douze entrées (les quatre des anciennes étapes de la mission sont parties : parties converties à la lecture).
+        Assert.Equal(12, albe.Entries.Count);
         Assert.Equal(new[] { "ch2_accueil", "ch2_en_cours", "ch2_apres", "ch2_herbes_attente" },
             albe.Nodes.Where(n => n.Choices.Any(c => c.Next == "ch3_lettre")).Select(n => n.Id));
         // Le mot d'après le chapitre 2 garde ses réponses d'avant, dans l'ordre ; la lettre vient après.
         // V1.9.4 : les réponses du chapitre 4 viennent avant la lettre (fusion de main dans la PR #92).
         Assert.Equal(new[] { "text.ch2.albe.apres.partir", "text.ch3.albe.vers_tour", "text.ch4.albe.ancienne", "text.ch4.albe.vers_sans_repos", "text.ch4.albe.vers_apres",
-            "text.ch3.albe.lettre.montrer" }, albe.Node("ch2_apres").Choices.Select(c => c.Text));
+            "text.ch3.albe.lettre.montrer", "text.ch5.albe.vers_voix", "text.ch5.albe.ancienne" }, albe.Node("ch2_apres").Choices.Select(c => c.Text));   // V1.9.5 : le chapitre 5 après
         foreach (string key in new[] { "text.ch2.quest.apprentie.epee", "text.ch2.maelle.apprentie_epee", "text.ch2.apprentie.epee", "text.ch3.albe.lettre",
             "text.ch3.albe.lettre.montrer", "text.ch3.albe.lettre.partir" })
             Assert.True(Texts.Has(key), key);

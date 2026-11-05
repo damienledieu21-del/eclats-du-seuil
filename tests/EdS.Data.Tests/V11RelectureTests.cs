@@ -141,15 +141,16 @@ public class V11RelectureTests : IDisposable
     [Fact]
     public void Bourse_pleine_a_son_propre_message()
     {
-        // Récompense de quête qui attend : la bourse déborderait (500 pièces de la mission).
-        var story = new SavedStory(new[] { "fact.odile.retour" }, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("retour") });
-        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(Coins.Max - 499).WithStory(story)));
+        // Récompense de quête qui attend : la bourse déborderait (15 argent de la fin du chapitre 5 : sous-lot V1.9.5, les 5 argent de la
+        // fin de l'ancienne mission y sont passés).
+        var story = new SavedStory(new[] { "fact.ch5.albe.voix" }, new Dictionary<string, QuestProgress> { ["quest.le_seuil"] = new QuestProgress("albe") });
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(Coins.Max - 1499).WithStory(story)));
         AdventureSession a = Adventure(SavePath);
         a.Advance(0.2);
         string[] said = a.DrainMessages().ToArray();
         Assert.Contains("Bourse pleine : dépense des pièces pour recevoir ta récompense.", said);
         Assert.DoesNotContain(said, m => m.StartsWith("Inventaire plein", StringComparison.Ordinal));
-        Assert.Equal(Coins.Max - 499, a.Money);
+        Assert.Equal(Coins.Max - 1499, a.Money);
 
         // Réponse qui donne des pièces : refusée, avec le message de la bourse.
         (string data, string scenarios) = DataCopy((27, -15), story: root =>
@@ -158,7 +159,7 @@ public class V11RelectureTests : IDisposable
             merci["effects"]!.AsArray().Add(new JsonObject { ["do"] = "giveMoney", ["value"] = 25 });
         });
         string other = Path.Combine(_folder, "autre", "sauvegarde.json");
-        var rodeur = new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("rodeur") });
+        var rodeur = new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("rodeur") });   // convertie à la lecture (V1.9.5)
         SaveStore.Write(other, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(Coins.Max - 24).WithStory(rodeur)));
         AdventureSession b = Adventure(other, data, scenarios);
         Assert.Equal("npc.gaspard", b.NpcInReach!.Id);

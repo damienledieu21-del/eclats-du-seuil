@@ -181,11 +181,13 @@ public class V11MonnaieTests
         StoryLoadResult story = ReadStory(StoryJson());
         Assert.True(story.IsValid, story.Report.ToString());
         Assert.Equal(StoryValidator.CurrentSchemaVersion, story.Story!.SchemaVersion);
-        Quest mission = story.Story.Quest("quest.traces_sous_le_moulin");
+        Quest mission = story.Story.Quest("quest.traces_sous_le_moulin"), seuil = story.Story.Quest("quest.le_seuil");
         long Money(IEnumerable<StoryEffect> effects) => effects.Where(e => e.Kind == EffectKind.GiveMoney).Sum(e => e.Value);
         Assert.Equal(50, Money(mission.Steps.Single(s => s.Id == "passage").Effects));
-        Assert.Equal(150, Money(mission.Steps.Single(s => s.Id == "rodeur").Effects));
-        Assert.Equal(500, Money(mission.Effects));
+        // Sous-lot V1.9.5 : le rôdeur et la fin de l'ancienne mission sont au chapitre 5 (les 5 argent de la fin y sont, dans 15 argent).
+        Assert.Equal(0, Money(mission.Effects));
+        Assert.Equal(150, Money(seuil.Steps.Single(s => s.Id == "rodeur").Effects));
+        Assert.Equal(1500, Money(seuil.Effects));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
@@ -217,10 +219,13 @@ public class V11MonnaieTests
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Assert.Single(result.Report.Errors).Path, result.Report.Errors[0].Code));
     }
 
-    /// <summary>Partie au retour chez Odile (le fait du retour appris) : la récompense finale se donne au prochain tick.</summary>
+    /// <summary>
+    /// Partie à la dernière étape du chapitre 5 (le fait du mot de Sœur Albe appris) : la récompense finale (15 argent) se donne au prochain
+    /// tick. Sous-lot V1.9.5 : avant, la fin de l'ancienne mission (5 argent).
+    /// </summary>
     private static WorldSession Return(long money)
     {
-        var story = new SavedStory(new[] { "fact.odile.retour" }, new Dictionary<string, QuestProgress> { ["quest.traces_sous_le_moulin"] = new QuestProgress("retour") });
+        var story = new SavedStory(new[] { "fact.ch5.albe.voix" }, new Dictionary<string, QuestProgress> { ["quest.le_seuil"] = new QuestProgress("albe") });
         ZoneDefinition zone = Zone();
         var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(money).WithStory(story)), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
         return session;
@@ -230,21 +235,21 @@ public class V11MonnaieTests
     public void Pieces_de_quete_atomiques_avec_les_autres_recompenses()
     {
         // Bourse qui déborderait : ni pièces, ni expérience, l'étape attend (annoncé une fois).
-        WorldSession full = Return(Coins.Max - 499);
+        WorldSession full = Return(Coins.Max - 1499);
         long xp = full.Character.Xp;
         var events = new List<StoryEvent>();
         for (int i = 0; i < 5; i++) events.AddRange(full.Step().Story);
         // Relecture de la PR #72 : la bourse pleine a son propre événement (pas « inventaire plein »).
-        Assert.Equal(new[] { "PurseFull quest.traces_sous_le_moulin/retour" }, events.Select(e => e.ToString()));
-        Assert.Equal((Coins.Max - 499, xp), (full.Money, full.Character.Xp));
-        Assert.Equal("retour", full.Narrative!.CurrentStep("quest.traces_sous_le_moulin")!.Id);
+        Assert.Equal(new[] { "PurseFull quest.le_seuil/albe" }, events.Select(e => e.ToString()));
+        Assert.Equal((Coins.Max - 1499, xp), (full.Money, full.Character.Xp));
+        Assert.Equal("albe", full.Narrative!.CurrentStep("quest.le_seuil")!.Id);
 
         // Juste la place : tout est donné, la bourse est pleine.
-        WorldSession exact = Return(Coins.Max - 500);
-        Assert.Contains("MoneyGiven money 500", exact.Step().Story.Select(e => e.ToString()));
+        WorldSession exact = Return(Coins.Max - 1500);
+        Assert.Contains("MoneyGiven money 1500", exact.Step().Story.Select(e => e.ToString()));
         Assert.Equal(Coins.Max, exact.Money);
         Assert.Equal(Coins.Max, exact.Save().Character!.Money);
-        Assert.True(exact.Narrative!.IsDone("quest.traces_sous_le_moulin"));
+        Assert.True(exact.Narrative!.IsDone("quest.le_seuil"));
     }
 
     [Fact]

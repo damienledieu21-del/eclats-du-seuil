@@ -88,7 +88,7 @@ public class V16QuetesTests
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
             book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
-        Assert.Equal(19, book.NpcsIn(null).Count());   // V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
+        Assert.Equal(20, book.NpcsIn(null).Count());   // V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
@@ -135,8 +135,9 @@ public class V16QuetesTests
             r => r["data"]!["dialogues"]![7]!["nodes"]![0]!["choices"]![0]!["effects"]![0]!["value"] = 0);
         yield return Case("$.data.dialogues[7].nodes[0].choices[0].effects[0].id", ValidationCode.InvalidValue,
             r => r["data"]!["dialogues"]![7]!["nodes"]![0]!["choices"]![0]!["effects"]![0]!["id"] = "npc.pretre");
-        yield return Case("$.data.dialogues[7].entries[4].conditions[1].value", ValidationCode.MissingField,
-            r => r["data"]!["dialogues"]![7]!["entries"]![4]!["conditions"]![1]!.AsObject().Remove("value"));
+        // Sous-lot V1.9.5 : l'entrée du loup blanc passe devant (l'offre de la bête blanche est la sixième).
+        yield return Case("$.data.dialogues[7].entries[5].conditions[1].value", ValidationCode.MissingField,
+            r => r["data"]!["dialogues"]![7]!["entries"]![5]!["conditions"]![1]!.AsObject().Remove("value"));
         // PNJ des intérieurs.
         yield return Case("$.data.npcs[6].zone", ValidationCode.UnknownReference, r => Npc(r, "npc.aubergiste")["zone"] = "zone.cave");
         yield return Case("$.data.npcs[6].zone", ValidationCode.InvalidValue, r => Npc(r, "npc.aubergiste")["zone"] = "zone.vallons");

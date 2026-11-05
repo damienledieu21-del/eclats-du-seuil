@@ -307,7 +307,8 @@ public class Lot127BossTests
     {
         // Chef mortel : le Bastion tombe. Rien d'acquis n'est perdu ; la partie reprend au point sûr, PV pleins.
         ZoneDefinition arena = Arena(damage: 100_000, health: 1_000_000);
-        var acquired = new SavedStory(new[] { "fact.traces.recit" }, new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress("chef") },
+        // Sous-lot V1.9.5 : le Gardien est une étape du chapitre 5 (le chapitre 1 fini).
+        var acquired = new SavedStory(new[] { "fact.traces.recit" }, new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress(QuestProgress.Done), ["quest.le_seuil"] = new QuestProgress("chef") },
             new Dictionary<string, int> { ["npc.odile"] = 1 }, new[] { "discovery.manifestation" });
         SavedCharacter hero = Hero(acquired, new ItemStack("item.gambison", 1), new ItemStack("item.peau_de_loup", 7)).WithXp(900)
             .WithProfessions(new Dictionary<string, long> { ["forge"] = 30 });

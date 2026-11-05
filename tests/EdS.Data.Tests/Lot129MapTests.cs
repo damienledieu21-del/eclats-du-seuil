@@ -63,7 +63,7 @@ public class Lot129MapTests : IDisposable
         Assert.Equal((1.0, 1.0), map.ToMap(140, -70));
         Assert.Throws<ArgumentOutOfRangeException>(() => map.Render(0, 10));
         Assert.Throws<ArgumentOutOfRangeException>(() => map.Render(10, 2049));
-        Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "forge", "bourg", "champs", "lac", "vergers",
+        Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge", "bourg", "champs", "lac", "vergers",
             "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" }, map.Places.Select(p => p.Id));
         // Les routes viennent des données, dans leur ordre.
         Assert.Equal(new[] { "grand_rue", "chemin_de_la_place", "place_du_bourg", "grand_rue_ouest", "chemin_des_champs", "chemin_du_moulin", "passage_des_ruines", "chemin_de_l_est",
@@ -88,7 +88,7 @@ public class Lot129MapTests : IDisposable
     {
         AdventureSession a = At(null);
         IReadOnlyList<MapMarker> markers = a.MapMarkers();
-        Assert.Equal(new[] { "Odile", "Maëlle", "Gaspard", "Garin", "Sauge", "Bertille", "Firmin", "Aldric", "Renart", "Lison", "Colombe", "Maître Josse", "Aubine", "Achille", "Garance", "Mahaut", "Thibaut", "Le capitaine Bérenger", "Colin" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));   // V1.1 : marchands
+        Assert.Equal(new[] { "Odile", "Maëlle", "Gaspard", "Garin", "Sauge", "Bertille", "Firmin", "Aldric", "Renart", "Lison", "Colombe", "Maître Josse", "Aubine", "Achille", "Garance", "Mahaut", "Thibaut", "Le capitaine Bérenger", "Colin", "Ysarn" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));   // V1.1 : marchands
         Assert.Equal(5, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // Vallons agrandis : bourg, ferme, hameau
         MapMarker forge = Assert.Single(markers, m => m.Kind == MapMarkerKind.Workshop);
         Assert.Equal((-20.0, -4.0), (forge.X, forge.Z));

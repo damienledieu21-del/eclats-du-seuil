@@ -77,7 +77,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(new[] { "Nouvelle partie : bienvenue dans les Vallons d'Aube." }, a.DrainMessages());
         Assert.Equal(1, a.Opened);
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
-        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
+        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
         Assert.Equal(11, a.Nodes().Count);   // Vallons agrandis
         Assert.All(a.Nodes(), n => Assert.True(n.Ready));
@@ -134,6 +134,8 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(DialogueRefusal.None, a.Choose(0));
         Assert.True(a.World.Narrative!.Knows("fact.odile.retour"));
         Assert.Equal(0, a.World.Inventory.Count("item.amulette_de_l_aube"));
+        // Sous-lot V1.9.5 : Odile avoue ensuite les voix de la porte (chapitre 5) ; la première réponse ferme le dialogue.
+        Assert.Equal(DialogueRefusal.None, a.Choose(0));
         Assert.Equal(DialogueRefusal.NoSuchChoice, a.Choose(0));   // plus de dialogue ouvert
     }
 
