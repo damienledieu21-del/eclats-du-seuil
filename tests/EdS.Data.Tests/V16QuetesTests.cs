@@ -88,7 +88,7 @@ public class V16QuetesTests
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
             book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
-        Assert.Equal(8, book.NpcsIn(null).Count());   // V1.9.1 : le boulanger et l'archer de la garde
+        Assert.Equal(11, book.NpcsIn(null).Count());   // V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
@@ -101,7 +101,7 @@ public class V16QuetesTests
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Assert.Single(Read(root).Report.Errors).Path, Read(root).Report.Errors[0].Code));
         // Sans les intérieurs, leurs PNJ vivent dans une zone inconnue.
         StoryLoadResult alone = Read(StoryJson(), Array.Empty<ZoneDefinition>());
-        Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone" },
+        Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone", "$.data.npcs[14].zone" },
             alone.Report.Errors.Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
         Assert.All(alone.Report.Errors, e => Assert.Equal(ValidationCode.UnknownReference, e.Code));
     }
