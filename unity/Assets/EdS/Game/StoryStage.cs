@@ -273,8 +273,14 @@ namespace EdS.Game
             Scene scene = a.CurrentScene ?? a.PendingScene;
             if (scene == null) return;
             bool inside = a.InScene;
-            if (a.Dialogue != null) a.CloseDialogue();   // le souvenir s'arrête, la conversation avec lui
-            if (!a.SkipScene()) return;
+            // Revue Codex de la PR #96 : la conversation n'est fermée qu'une fois le souvenir passé ; si la sortie échoue (sauvegarde
+            // impossible), rien ne change (dialogue compris) et le cœur affiche son message d'échec (« text.ui.save_failed »).
+            if (!a.SkipScene())
+            {
+                UiSounds.Play(UiCue.Error);
+                return;
+            }
+            if (a.Dialogue != null) a.CloseDialogue();
             UiSounds.Play(UiCue.Close);
             // Le texte de repli est long : il reste à l'écran le temps d'être lu (le message, lui, ne dure que trois secondes).
             _returnCaption = null;
