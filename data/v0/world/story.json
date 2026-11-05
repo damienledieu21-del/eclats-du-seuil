@@ -145,15 +145,6 @@
           {
             "conditions": [
               {
-                "if": "questDone",
-                "id": "quest.traces_sous_le_moulin"
-              }
-            ],
-            "node": "apres"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.traces_sous_le_moulin",
                 "step": "retour"
@@ -196,6 +187,15 @@
               }
             ],
             "node": "ch1_ferrure"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              }
+            ],
+            "node": "apres"
           },
           {
             "conditions": [

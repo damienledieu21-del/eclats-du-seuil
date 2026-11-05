@@ -198,6 +198,25 @@ public class V191Chapitre1Tests
     }
 
     [Fact]
+    public void Quetes_d_Odile_encore_offertes_une_fois_la_mission_finie()
+    {
+        // Revue Codex de la PR #88 : la mission finie (ou une ancienne sauvegarde où elle l'est) ne masque plus les quêtes d'Odile.
+        var done = new SavedStory(new[] { "fact.traces.recit", "fact.moulin.porte_ouverte", "fact.odile.retour" },
+            new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress(QuestProgress.Done) });
+        WorldSession w = Open(Odile, Hero(done));
+        Say(w, "npc.odile", "ch1_ferrure");
+        Assert.Contains($"QuestStarted {Ferrure}/forger", Choose(w, 0));
+        Say(w, "npc.odile", "ch1_ferrure_attente");
+        var pain = new SavedStory(new[] { "fact.traces.recit", "fact.odile.retour" },
+            new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress(QuestProgress.Done), [Pain] = new QuestProgress("odile") });
+        Say(Open(Odile, Hero(pain, new ItemStack("item.miche_du_matin", 2))), "npc.odile", "ch1_pain");
+        // Sans quête en attente, le merci d'après la mission.
+        var after = new SavedStory(new[] { "fact.traces.recit", "fact.odile.retour" },
+            new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress(QuestProgress.Done) });
+        Say(Open(Odile, Hero(after)), "npc.odile", "apres");
+    }
+
+    [Fact]
     public void Le_pain_du_matin_de_bout_en_bout()
     {
         WorldSession w = Open(Boulanger, Hero(null));
