@@ -89,6 +89,13 @@ namespace EdS.Data.Story
         /// n'est pas inscrit (jamais refusé : un plafond de la carte arrête le gain).
         /// </summary>
         GiveGuildPoints = 10,
+
+        /// <summary>
+        /// Sous-lot V1.9.7 (histoire en schéma 7) : passe la quête <c>id</c> en cours (une étape, ou le choix de sa récompense) : elle est
+        /// finie, <b>sans</b> les effets de ses étapes restantes ni sa récompense finale, et n'est plus suivie. Sans effet sur une quête pas
+        /// commencée ou déjà finie. Exemple : « Je sais me battre », chez Odile, passe le tutoriel de l'ouverture (sans ses 30 points).
+        /// </summary>
+        SkipQuest = 11,
     }
 
     public enum ObjectiveKind

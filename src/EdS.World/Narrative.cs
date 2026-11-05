@@ -97,6 +97,12 @@ namespace EdS.World
         /// comptent, une seule fois (valeur : points réellement ajoutés). La maîtresse le remarque : « Ta réputation te précède… ».
         /// </summary>
         GuildReputation = 27,
+
+        /// <summary>
+        /// Sous-lot V1.9.7 : une quête en cours a été passée (effet <c>skipQuest</c>, « Je sais me battre » chez Odile) : finie sans ses
+        /// étapes restantes ni sa récompense.
+        /// </summary>
+        QuestSkipped = 28,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -1213,6 +1219,16 @@ namespace EdS.World
                         break;
                     case EffectKind.TakeMoney:   // sous-lot V1.6 : déjà prises, toutes ensemble, plus haut
                         events.Add(new StoryEvent(StoryEventKind.MoneyTaken, "money", null, e.Value));
+                        break;
+                    case EffectKind.SkipQuest:
+                        // Sous-lot V1.9.7 : la quête en cours (étape ou choix de la récompense) est finie, sans effets ni récompense ; elle
+                        // n'est plus suivie. Pas commencée ou déjà finie : sans effet. Jamais refusé (rien à réserver).
+                        if (_quests.TryGetValue(e.Id, out (int Step, long Progress) skipped) && skipped.Step >= 0)
+                        {
+                            _quests[e.Id] = (-1, 0L);
+                            if (_tracked == e.Id) _tracked = null;
+                            events.Add(new StoryEvent(StoryEventKind.QuestSkipped, e.Id));
+                        }
                         break;
                     default:
                         if (_discoveries.Add(e.Id))

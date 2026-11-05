@@ -465,6 +465,9 @@ namespace EdS.Runtime
                 case StoryEventKind.QuestCompleted:
                     Say("text.ui.quest_done", Text(_story.Quest(e.Id).Name));
                     break;
+                case StoryEventKind.QuestSkipped:   // sous-lot V1.9.7
+                    Say("text.ui.quest_skipped", Text(_story.Quest(e.Id).Name));
+                    break;
                 case StoryEventKind.Discovered:
                 {
                     // Revue Codex de la PR #94 : une découverte dont le texte est le repli d'une scène à jouer (le souvenir de la Rupture) ne

@@ -112,14 +112,20 @@ namespace EdS.Data.Story
         /// <see cref="PracticeActions"/>, <c>value</c> nombre de fois, de 1 à <see cref="MaxPractice"/>) et liste facultative <c>scenes</c>
         /// (scènes jouées dans un intérieur : <c>id</c> « scene.… », <c>zone</c>, <c>actor</c>, <c>start</c>, <c>end</c>, <c>text</c>,
         /// <c>back</c> ; voir <see cref="Scene"/>). Les versions 4 et 5 restent lues telles quelles (elles ne connaissent ni l'un ni l'autre).
+        /// Version 7 (sous-lot V1.9.7, chapitre 1 enrichi, suite) : effet <c>skipQuest</c> (<c>id</c> d'une quête, sans valeur : la quête en
+        /// cours est finie sans ses effets restants ni sa récompense ; voir <see cref="EffectKind.SkipQuest"/>). Les versions 4, 5 et 6 restent
+        /// lues telles quelles (elles ne le connaissent pas).
         /// </summary>
-        public const int CurrentSchemaVersion = 6;
+        public const int CurrentSchemaVersion = 7;
 
         /// <summary>Sous-lot V1.9.3b : plus ancienne version encore lue (sous-ensemble de la version 5, sans l'objectif <c>craftQuality</c>).</summary>
         public const int PreviousSchemaVersion = 4;
 
         /// <summary>Sous-lot V1.9.6 : version 5, encore lue (sans <c>practice</c> ni <c>scenes</c>).</summary>
         public const int Schema5 = 5;
+
+        /// <summary>Sous-lot V1.9.7 : version 6, encore lue (sans l'effet <c>skipQuest</c>).</summary>
+        public const int Schema6 = 6;
 
         /// <summary>Sous-lot V1.9.6 : gestes d'un objectif <c>practice</c>.</summary>
         public static readonly IReadOnlyList<string> PracticeActions = new ReadOnlyCollection<string>(new[] { "strike", "guard", "parry", "drink" });
@@ -163,6 +169,7 @@ namespace EdS.Data.Story
             ["takeItem"] = EffectKind.TakeItem, ["giveXp"] = EffectKind.GiveXp, ["openPassage"] = EffectKind.OpenPassage, ["discover"] = EffectKind.Discover,
             ["giveMoney"] = EffectKind.GiveMoney, ["takeMoney"] = EffectKind.TakeMoney,
             ["giveGuildPoints"] = EffectKind.GiveGuildPoints,   // sous-lot V1.7
+            ["skipQuest"] = EffectKind.SkipQuest,   // sous-lot V1.9.7 (schéma 7)
         });
 
         public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new ReadOnlyDictionary<string, ObjectiveKind>(new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
@@ -202,8 +209,9 @@ namespace EdS.Data.Story
             if (items is null) throw new ArgumentNullException(nameof(items));
             report ??= new ValidationReport();
             // Sous-lot V1.9.3b : la version 4 est encore lue (sous-ensemble de la version 5).
-            // Sous-lot V1.9.6 : la version 5 aussi (sous-ensemble de la version 6).
-            int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema5 ? document.SchemaVersion.Value : CurrentSchemaVersion;
+            // Sous-lot V1.9.6 : la version 5 aussi (sous-ensemble de la version 6) ; sous-lot V1.9.7 : la version 6 aussi (sans skipQuest).
+            int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema5 || document.SchemaVersion == Schema6
+                ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
             // Revue Codex de la PR #91 : version absente ou mal typée, déjà signalée par l'en-tête : refus structuré, jamais d'exception.
@@ -326,9 +334,9 @@ namespace EdS.Data.Story
             {
                 var scenes = new List<Scene>();
                 if (_d.Scenes is null) return scenes;
-                if (_schema < CurrentSchemaVersion)
+                if (_schema < Schema6)
                 {
-                    _r.Add("$.data.scenes", ValidationCode.InvalidValue, $"scènes inconnues en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add("$.data.scenes", ValidationCode.InvalidValue, $"scènes inconnues en version {_schema} du format : version {Schema6} demandée.");
                     return scenes;
                 }
                 var ids = new HashSet<string>(StringComparer.Ordinal);
@@ -466,7 +474,7 @@ namespace EdS.Data.Story
                             if (n.Choices[k] is not DialogueChoiceData ch) { TextsValidator.Missing(_r, cp, "réponse"); nodeOk = false; continue; }
                             bool chOk = Text(ch.Text, cp + ".text");
                             List<StoryCondition>? conditions = ConditionsOf(ch.Conditions, cp + ".conditions");
-                            List<StoryEffect>? effects = EffectsOf(ch.Effects, cp + ".effects");
+                            List<StoryEffect>? effects = EffectsOf(ch.Effects, cp + ".effects", skip: true);
                             if (!ch.HasNext) { TextsValidator.Missing(_r, cp + ".next", "nœud suivant, ou null pour finir"); chOk = false; }
                             else if (ch.Next != null && !nodeIds.Contains(ch.Next)) { _r.Add(cp + ".next", ValidationCode.UnknownReference, $"nœud inconnu « {ch.Next} »."); chOk = false; }
                             if (chOk && conditions != null && effects != null) choices.Add(new DialogueChoice(ch.Text!, conditions, effects, ch.Next));
@@ -572,7 +580,9 @@ namespace EdS.Data.Story
                 return list.Count == terms.Count ? list : null;
             }
 
-            private List<StoryEffect>? EffectsOf(List<TermData?>? terms, string path)
+            /// <param name="skip">Sous-lot V1.9.7 : l'effet <c>skipQuest</c> est permis (réponses de dialogue seulement : dans une quête, il se
+            /// mêlerait à l'avancement de l'étape qui l'applique).</param>
+            private List<StoryEffect>? EffectsOf(List<TermData?>? terms, string path, bool skip = false)
             {
                 if (terms is null) { TextsValidator.Missing(_r, path, "effets, éventuellement vide"); return null; }
                 if (terms.Count > MaxTerms) { _r.Add(path, ValidationCode.LimitExceeded, $"au plus {MaxTerms} effets."); return null; }
@@ -587,11 +597,22 @@ namespace EdS.Data.Story
                         continue;
                     }
                     if (!NoStep(t, p) || !NoNpc(t, p) || !NoQuality(t, p)) continue;
+                    // Sous-lot V1.9.7 : skipQuest est nouveau en version 7.
+                    if (kind == EffectKind.SkipQuest && _schema < CurrentSchemaVersion)
+                    {
+                        _r.Add(p + ".do", ValidationCode.InvalidValue, $"effet « skipQuest » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                        continue;
+                    }
+                    if (kind == EffectKind.SkipQuest && !skip)
+                    {
+                        _r.Add(p + ".do", ValidationCode.InvalidValue, "effet « skipQuest » permis seulement dans une réponse de dialogue.");
+                        continue;
+                    }
                     bool ok = kind switch
                     {
                         EffectKind.SetFact => Fact(t, p, needed: false) && NoValue(t, p),
                         EffectKind.Trust => Ref(t, p, _npcs, "PNJ") && Value(t, p, -MaxTrust, MaxTrust) && NonZero(t, p),
-                        EffectKind.StartQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p),
+                        EffectKind.StartQuest or EffectKind.SkipQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p),
                         EffectKind.GiveItem or EffectKind.TakeItem => ItemRef(t, p) && Value(t, p, 1, MaxCount),
                         EffectKind.GiveXp => NoId(t, p) && Value(t, p, 1, MaxXp),
                         EffectKind.GiveMoney or EffectKind.TakeMoney => NoId(t, p) && Value(t, p, 1, MaxMoney),
@@ -622,9 +643,9 @@ namespace EdS.Data.Story
                     return null;
                 }
                 // Sous-lot V1.9.6 : practice est nouveau en version 6.
-                if (kind == ObjectiveKind.Practice && _schema < CurrentSchemaVersion)
+                if (kind == ObjectiveKind.Practice && _schema < Schema6)
                 {
-                    _r.Add(path + ".kind", ValidationCode.InvalidValue, $"objectif « practice » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add(path + ".kind", ValidationCode.InvalidValue, $"objectif « practice » inconnu en version {_schema} du format : version {Schema6} demandée.");
                     return null;
                 }
                 if (kind != ObjectiveKind.CraftQuality && !NoQuality(t, path)) return null;

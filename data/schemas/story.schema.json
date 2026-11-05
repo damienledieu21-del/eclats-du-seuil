@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/story.schema.json",
   "title": "Éclats du Seuil — PNJ, dialogues, quêtes",
-  "description": "Sous-lot 12.5 ; sous-lot V1.1 (schéma 2) : effet giveMoney ; sous-lot V1.6 (schéma 3) : catégorie de quête (category), conditions d'ouverture (requires), récompenses au choix (rewardChoice), objectifs talk, deliver (npc), defeatFamily, equipped, effet takeMoney, condition levelAtLeast, zone d'un PNJ (intérieur) ; sous-lot V1.7 (schéma 4) : objectif guildRank, effet giveGuildPoints, condition guildRankAtLeast (rangs g, f, e… de la Guilde des aventuriers). Documentation. La validation qui fait foi est celle du programme (StoryValidator), avec les textes, la zone, ses intérieurs et le catalogue des objets. Sous-lot V1.9.6 (schéma 6) : objectif practice (geste de combat du joueur : strike, guard, parry, drink) et liste facultative scenes (scènes jouées dans un intérieur : zone, actor, start, end, text, back).",
+  "description": "Sous-lot 12.5 ; sous-lot V1.1 (schéma 2) : effet giveMoney ; sous-lot V1.6 (schéma 3) : catégorie de quête (category), conditions d'ouverture (requires), récompenses au choix (rewardChoice), objectifs talk, deliver (npc), defeatFamily, equipped, effet takeMoney, condition levelAtLeast, zone d'un PNJ (intérieur) ; sous-lot V1.7 (schéma 4) : objectif guildRank, effet giveGuildPoints, condition guildRankAtLeast (rangs g, f, e… de la Guilde des aventuriers). Documentation. La validation qui fait foi est celle du programme (StoryValidator), avec les textes, la zone, ses intérieurs et le catalogue des objets. Sous-lot V1.9.6 (schéma 6) : objectif practice (geste de combat du joueur : strike, guard, parry, drink) et liste facultative scenes (scènes jouées dans un intérieur : zone, actor, start, end, text, back). Sous-lot V1.9.7 (schéma 7) : effet skipQuest (une quête en cours est finie sans ses effets restants ni sa récompense : « Je sais me battre » passe le tutoriel).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -19,7 +19,8 @@
       "enum": [
         4,
         5,
-        6
+        6,
+        7
       ]
     },
     "kind": {
@@ -451,7 +452,8 @@
             "takeMoney",
             "giveGuildPoints",
             "openPassage",
-            "discover"
+            "discover",
+            "skipQuest"
           ]
         },
         "id": {
