@@ -233,6 +233,9 @@ namespace EdS.Data.Story
             private readonly HashSet<string> _npcs = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _dialogues = new HashSet<string>(StringComparer.Ordinal);
             private readonly Dictionary<string, List<string>> _quests = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+            /// <summary>Sous-lot V1.9.7 : quêtes marquées <c>skippable</c> (les seules qu'un effet <c>skipQuest</c> peut viser).</summary>
+            private readonly HashSet<string> _skippable = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _discoveries = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
@@ -265,7 +268,10 @@ namespace EdS.Data.Story
                 if (_d.Quests != null)
                     foreach (QuestData? q in _d.Quests)
                         if (q?.Id is string id && questIds.Contains(id) && !_quests.ContainsKey(id))
+                        {
                             _quests[id] = (q.Steps ?? new List<QuestStepData?>()).Select(s => s?.Id ?? string.Empty).ToList();
+                            if (q.Skippable == true) _skippable.Add(id);
+                        }
                 Declare(_d.Discoveries, "$.data.discoveries", MaxDiscoveries, x => x?.Id, DiscoveryId, _discoveries);
                 // Relecture de la PR #81 : le signe d'une créature rare de la nuit (zones en schéma 6) est un texte du jeu : il doit exister,
                 // comme les autres clés de texte. La zone est validée sans les textes ; l'histoire, qui les a, vérifie ses signes (chemin dans
@@ -543,7 +549,14 @@ namespace EdS.Data.Story
                             else choices.Add(new RewardChoice(offered[i].Id, (int)offered[i].Value));
                         }
                 }
-                return ok && rewards != null && requires != null && q.Id != null ? new Quest(q.Id, q.Name!, steps, rewards, category, requires, choices) : null;
+                // Sous-lot V1.9.7 : « skippable » est nouveau en version 7.
+                if (q.Skippable != null && _schema < CurrentSchemaVersion)
+                {
+                    _r.Add(path + ".skippable", ValidationCode.InvalidValue, $"champ « skippable » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    ok = false;
+                }
+                return ok && rewards != null && requires != null && q.Id != null
+                    ? new Quest(q.Id, q.Name!, steps, rewards, category, requires, choices, q.Skippable == true) : null;
             }
 
             private List<StoryCondition>? ConditionsOf(List<TermData?>? terms, string path)
@@ -580,6 +593,14 @@ namespace EdS.Data.Story
                 return list.Count == terms.Count ? list : null;
             }
 
+            /// <summary>Sous-lot V1.9.7 : un effet <c>skipQuest</c> ne vise qu'une quête marquée <c>skippable</c>.</summary>
+            private bool Skippable(TermData t, string p)
+            {
+                if (_skippable.Contains(t.Id!)) return true;
+                _r.Add(p + ".id", ValidationCode.InvalidValue, $"la quête « {t.Id} » n'est pas marquée « skippable » : elle ne se passe pas.");
+                return false;
+            }
+
             /// <param name="skip">Sous-lot V1.9.7 : l'effet <c>skipQuest</c> est permis (réponses de dialogue seulement : dans une quête, il se
             /// mêlerait à l'avancement de l'étape qui l'applique).</param>
             private List<StoryEffect>? EffectsOf(List<TermData?>? terms, string path, bool skip = false)
@@ -612,7 +633,8 @@ namespace EdS.Data.Story
                     {
                         EffectKind.SetFact => Fact(t, p, needed: false) && NoValue(t, p),
                         EffectKind.Trust => Ref(t, p, _npcs, "PNJ") && Value(t, p, -MaxTrust, MaxTrust) && NonZero(t, p),
-                        EffectKind.StartQuest or EffectKind.SkipQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p),
+                        EffectKind.StartQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p),
+                        EffectKind.SkipQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p) && Skippable(t, p),   // sous-lot V1.9.7
                         EffectKind.GiveItem or EffectKind.TakeItem => ItemRef(t, p) && Value(t, p, 1, MaxCount),
                         EffectKind.GiveXp => NoId(t, p) && Value(t, p, 1, MaxXp),
                         EffectKind.GiveMoney or EffectKind.TakeMoney => NoId(t, p) && Value(t, p, 1, MaxMoney),

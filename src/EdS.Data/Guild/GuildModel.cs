@@ -555,6 +555,8 @@ namespace EdS.Data.Guild
                     else if (i == 0 || x.Open != true) { _r.Add(p + ".trial", ValidationCode.InvalidValue, "pas d'épreuve pour le rang G ni pour un rang fermé."); ok = false; }
                     else if (!_story.HasQuest(x.Trial)) { _r.Add(p + ".trial", ValidationCode.UnknownReference, $"quête inconnue « {x.Trial} »."); ok = false; }
                     else if (!trials.Add(x.Trial)) { _r.Add(p + ".trial", ValidationCode.DuplicateId, $"quête « {x.Trial} » déjà l'épreuve d'un autre rang."); ok = false; }
+                    else if (_story.Quest(x.Trial).Skippable)   // sous-lot V1.9.7 : une épreuve ne se passe pas
+                    { _r.Add(p + ".trial", ValidationCode.InvalidValue, "une épreuve ne se passe pas : sa quête n'est pas « skippable »."); ok = false; }
                     else if (_story.Quest(x.Trial).RewardChoices.Count > 0)
                     { _r.Add(p + ".trial", ValidationCode.InvalidValue, "une épreuve n'a pas de récompense au choix : la promotion vient à sa dernière étape."); ok = false; }
                     else if (StartedByStory(x.Trial) is string where)

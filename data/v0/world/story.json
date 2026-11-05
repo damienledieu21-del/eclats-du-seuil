@@ -2822,6 +2822,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.habitant.vers_chat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.chat_de_rosalie"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_chat"
               }
             ]
           },
@@ -2934,13 +2945,44 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.habitant.vers_lanterne",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.derniere_lanterne"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_lanterne"
               }
             ]
           },
           {
             "id": "ch1_chat_livrer",
             "text": "text.ch1.habitant.chat_livrer",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.habitant.vers_lanterne",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.derniere_lanterne"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_lanterne"
+              }
+            ]
           },
           {
             "id": "ch1_chat_apres",
@@ -3891,12 +3933,44 @@
           {
             "id": "en_cours",
             "text": "text.ch1.archer_garde.en_cours",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_garde",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.garde_de_nuit"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 3
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_garde"
+              }
+            ]
           },
           {
             "id": "recompense",
             "text": "text.ch1.archer_garde.recompense",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_garde",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.garde_de_nuit"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 3
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_garde"
+              }
+            ]
           },
           {
             "id": "apres",
@@ -3960,7 +4034,23 @@
           {
             "id": "ch1_garde_jour",
             "text": "text.ch1.archer_garde.garde_jour",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_fleches",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.fleches_perdues"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 4
+                  }
+                ],
+                "effects": [],
+                "next": "demande"
+              }
+            ]
           },
           {
             "id": "ch1_garde_nuit",
@@ -3982,7 +4072,23 @@
           {
             "id": "ch1_garde_attente",
             "text": "text.ch1.archer_garde.garde_attente",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_fleches",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.fleches_perdues"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 4
+                  }
+                ],
+                "effects": [],
+                "next": "demande"
+              }
+            ]
           },
           {
             "id": "ch1_garde_choix",
@@ -7206,6 +7312,10 @@
                   {
                     "if": "questNotStarted",
                     "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
                   }
                 ],
                 "effects": [],
@@ -7233,13 +7343,44 @@
                 ],
                 "effects": [],
                 "next": "ch4_chef_livre"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
               }
             ]
           },
           {
             "id": "ch4_tour_rapport",
             "text": "text.ch4.capitaine.tour_rapport",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
+              }
+            ]
           },
           {
             "id": "ch4_tour_cor",
@@ -7250,13 +7391,44 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
               }
             ]
           },
           {
             "id": "ch4_tour_livrer",
             "text": "text.ch4.capitaine.tour_livrer",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
+              }
+            ]
           },
           {
             "id": "ch4_tour_recompense",
@@ -7267,6 +7439,21 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
               }
             ]
           },
@@ -7351,17 +7538,65 @@
           {
             "id": "ch1_contrat_attente",
             "text": "text.ch1.capitaine.contrat_attente",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_tour",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_silencieuse"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 16
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_tour"
+              }
+            ]
           },
           {
             "id": "ch1_contrat_retour",
             "text": "text.ch1.capitaine.contrat_retour",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_tour",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_silencieuse"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 16
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_tour"
+              }
+            ]
           },
           {
             "id": "ch1_contrat_recompense",
             "text": "text.ch1.capitaine.contrat_recompense",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_tour",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_silencieuse"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 16
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_tour"
+              }
+            ]
           },
           {
             "id": "ch1_aldric_moque",
@@ -10205,7 +10440,8 @@
             "do": "giveXp",
             "value": 30
           }
-        ]
+        ],
+        "skippable": true
       },
       {
         "id": "quest.chat_de_rosalie",

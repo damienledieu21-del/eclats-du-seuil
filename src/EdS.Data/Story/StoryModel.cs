@@ -355,9 +355,16 @@ namespace EdS.Data.Story
         /// </summary>
         public IReadOnlyList<RewardChoice> RewardChoices { get; }
 
+        /// <summary>
+        /// Sous-lot V1.9.7 (schéma 7) : la quête peut être passée par un effet <c>skipQuest</c> (le tutoriel de l'ouverture). Une quête qui
+        /// n'est pas marquée ainsi ne peut pas l'être (refus du validateur), ni une épreuve de la guilde (refus du validateur de la guilde).
+        /// </summary>
+        public bool Skippable { get; }
+
         internal Quest(string id, string name, IEnumerable<QuestStep> steps, IEnumerable<StoryEffect> effects, QuestCategory category = QuestCategory.Main,
-            IEnumerable<StoryCondition>? requires = null, IEnumerable<RewardChoice>? rewardChoices = null)
+            IEnumerable<StoryCondition>? requires = null, IEnumerable<RewardChoice>? rewardChoices = null, bool skippable = false)
         {
+            Skippable = skippable;
             Id = id;
             Name = name;
             Steps = Frozen.List(steps, nameof(steps));

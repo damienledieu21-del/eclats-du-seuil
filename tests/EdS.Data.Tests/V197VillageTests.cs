@@ -158,6 +158,9 @@ public class V197VillageTests
         Assert.False(refused.IsValid);
         Assert.Contains(refused.Report.Errors, e => e.Path.StartsWith("$.data.dialogues[0].nodes[", StringComparison.Ordinal)
             && e.Path.EndsWith(".do", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue && e.Message.Contains("skipQuest"));
+        JsonArray quests = root["data"]!["quests"]!.AsArray();
+        int opening = quests.ToList().FindIndex(x => x!["id"]!.GetValue<string>() == Opening);
+        Assert.Contains(refused.Report.Errors, e => e.Path == $"$.data.quests[{opening}].skippable" && e.Code == ValidationCode.InvalidValue);
         foreach (JsonNode? dialogue in root["data"]!["dialogues"]!.AsArray())
             foreach (JsonNode? node in dialogue!["nodes"]!.AsArray())
             {
@@ -165,6 +168,7 @@ public class V197VillageTests
                 for (int i = choices.Count - 1; i >= 0; i--)
                     if (choices[i]!.ToJsonString().Contains("skipQuest")) choices.RemoveAt(i);
             }
+        quests[opening]!.AsObject().Remove("skippable");
         StoryLoadResult read = Read(root);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(6, read.Story!.SchemaVersion);
@@ -186,6 +190,11 @@ public class V197VillageTests
         choices[c]!["effects"]![0]!["id"] = "quest.inconnue";
         string path = $"$.data.dialogues[{d}].nodes[{n}].choices[{c}].effects[0]";
         Assert.Contains(Read(root).Report.Errors, e => e.Path == path + ".id" && e.Code == ValidationCode.UnknownReference);
+        // Une quête qui n'est pas marquée « skippable » (la mission) : refusée.
+        root = StoryJson();
+        root["data"]!["dialogues"]![d]!["nodes"]![n]!["choices"]![c]!["effects"]![0]!["id"] = Mission;
+        Assert.Contains(Read(root).Report.Errors, e => e.Path == path + ".id" && e.Code == ValidationCode.InvalidValue && e.Message.Contains("skippable"));
+        Assert.Equal(new[] { Opening }, Story.Value.Quests.Where(x => x.Skippable).Select(x => x.Id));
         // Une valeur : refusée.
         root = StoryJson();
         root["data"]!["dialogues"]![d]!["nodes"]![n]!["choices"]![c]!["effects"]![0]!["value"] = 1;
@@ -199,6 +208,66 @@ public class V197VillageTests
         StoryLoadResult r = Read(root);
         Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.quests[{q}].steps[0].effects[0].do" && e.Code == ValidationCode.InvalidValue);
         Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.quests[{q}].effects[2].do" && e.Code == ValidationCode.InvalidValue);
+    }
+
+    [Fact]
+    public void Une_epreuve_de_guilde_ne_se_passe_pas()
+    {
+        // L'épreuve du rang F marquée « skippable » : l'histoire est valide, la guilde la refuse au chemin de l'épreuve.
+        JsonObject root = StoryJson();
+        JsonArray quests = root["data"]!["quests"]!.AsArray();
+        quests.Single(x => x!["id"]!.GetValue<string>() == "quest.epreuve_rang_f")!["skippable"] = true;
+        StoryLoadResult story = Read(root);
+        Assert.True(story.IsValid, story.Report.ToString());
+        ZoneDefinition zone = Zone();
+        GuildLoadResult guild = GuildJsonReader.ReadFile(GuildJsonReader.PathIn(DataDirectory), Texts, story.Story!, zone,
+            new[] { zone }.Concat(V16TestData.Interiors).ToList(), ItemsCatalog, ShippedMerchants);
+        Assert.False(guild.IsValid);
+        Assert.Contains(guild.Report.Errors, e => e.Path.EndsWith(".trial", StringComparison.Ordinal) && e.Code == ValidationCode.InvalidValue && e.Message.Contains("skippable"));
+    }
+
+    [Fact]
+    public void Passer_une_quete_directement()
+    {
+        // Le chat suivi à une étape, le puits en cours, les champignons au choix de leur récompense, les miches finies, le contrat jamais commencé.
+        var story = new SavedStory(Array.Empty<string>(), new Dictionary<string, QuestProgress>
+        {
+            [Chat] = new QuestProgress("moulin"), [Puits] = new QuestProgress("loup"), [Champignons] = new QuestProgress(QuestProgress.Reward),
+            [Pain] = new QuestProgress(QuestProgress.Done),
+        }, tracked: Chat);
+        WorldSession w = Open(Boulanger, Hero(5, story));
+        Narrative n = w.Narrative!;
+        var events = new List<StoryEvent>();
+        // Pas commencée, ou finie : rien.
+        Assert.False(n.Skip(Contrat, events));
+        Assert.False(n.Skip(Pain, events));
+        Assert.Empty(events);
+        Assert.False(n.IsActive(Contrat));
+        // Une quête non suivie : passée, la quête suivie le reste.
+        long xp = w.Character.Xp, money = w.Money;
+        Assert.True(n.Skip(Puits, events));
+        Assert.Equal((true, Chat), (n.IsDone(Puits), n.Tracked));
+        // Au choix de sa récompense : passée, sans récompense ; le choix n'est plus possible.
+        Assert.True(n.Skip(Champignons, events));
+        Assert.True(n.IsDone(Champignons));
+        Assert.NotEqual(DialogueRefusal.None, w.ChooseReward(Champignons, 0, out _));
+        // La quête suivie : passée, plus suivie.
+        Assert.True(n.Skip(Chat, events));
+        Assert.Null(n.Tracked);
+        Assert.Equal(new[] { $"QuestSkipped {Puits}", $"QuestSkipped {Champignons}", $"QuestSkipped {Chat}" }, events.Select(e => e.ToString()));
+        // Une seconde fois : rien. Aucune récompense, aucun objet, aucun point.
+        Assert.False(n.Skip(Chat, events));
+        Assert.DoesNotContain(Ticks(w), e => e.StartsWith("QuestCompleted", StringComparison.Ordinal) || e.StartsWith("XpGiven", StringComparison.Ordinal));
+        Assert.Equal((xp, money, 0), (w.Character.Xp, w.Money, w.Inventory.Count("item.remede_de_l_aube")));
+        // Aller-retour par la sauvegarde : les trois restent finies, aucune suivie, rien n'est rejoué.
+        string text = SaveJsonReader.Write(w.Save());
+        w = Go(w, Boulanger, "zone.vallons", out List<string> arrival);
+        Assert.All(new[] { Chat, Puits, Champignons }, q => Assert.True(w.Narrative!.IsDone(q), q));
+        Assert.Null(w.Narrative!.Tracked);
+        Assert.DoesNotContain(arrival, e => e.Contains(Chat) || e.Contains(Puits) || e.Contains(Champignons));
+        SavedStory saved = SaveJsonReader.Read(text).Save!.Character!.Story;
+        Assert.All(new[] { Chat, Puits, Champignons, Pain }, q => Assert.Equal(QuestProgress.Done, saved.Quests[q].Step));
+        Assert.Null(saved.Tracked);
     }
 
     // --- Corrections de la PR #94 ------------------------------------------------------------------------------------------

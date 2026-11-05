@@ -119,6 +119,9 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.6 (schéma 3) : récompenses au choix (effets <c>giveItem</c>, deux ou trois) ; facultatif.</summary>
         public List<TermData?>? RewardChoice { get; set; }
+
+        /// <summary>Sous-lot V1.9.7 (schéma 7) : la quête peut être passée (effet <c>skipQuest</c>) ; facultatif, faux par défaut.</summary>
+        public bool? Skippable { get; set; }
     }
 
     public sealed class QuestStepData

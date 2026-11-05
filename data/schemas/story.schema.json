@@ -290,6 +290,10 @@
               "requires": {
                 "$ref": "#/$defs/conditions"
               },
+              "skippable": {
+                "type": "boolean",
+                "description": "Sous-lot V1.9.7 (schéma 7) : la quête peut être passée par un effet skipQuest (le tutoriel) ; faux par défaut ; jamais une épreuve de la guilde."
+              },
               "rewardChoice": {
                 "type": "array",
                 "minItems": 2,

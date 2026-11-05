@@ -1131,6 +1131,21 @@ namespace EdS.World
         };
 
         /// <summary>
+        /// Sous-lot V1.9.7 (effet <c>skipQuest</c>) : la quête en cours (à une étape, ou au choix de sa récompense) est finie, sans les effets de
+        /// ses étapes restantes ni sa récompense ; elle n'est plus suivie si elle l'était (une autre quête suivie le reste). Pas commencée ou
+        /// déjà finie : sans effet (rend faux). Jamais refusé (rien à réserver). Les points de guilde d'une quête finie ne sont pas donnés.
+        /// </summary>
+        internal bool Skip(string quest, List<StoryEvent> events)
+        {
+            if (!_quests.TryGetValue(quest, out (int Step, long Progress) skipped) || skipped.Step < 0) return false;
+            _quests[quest] = (-1, 0L);
+            if (_tracked == quest) _tracked = null;
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.QuestSkipped, quest));
+            return true;
+        }
+
+        /// <summary>
         /// Applique des effets en entier ou pas du tout : les passages à ouvrir doivent trouver place au registre du monde, les pièces données
         /// dans la bourse (sous-lot V1.1), les objets sont d'abord essayés sur une copie de l'inventaire (retraits puis dons, dans l'ordre) ;
         /// si tout passe, tout est appliqué. Rend le motif d'un refus : <see cref="DialogueRefusal.PurseFull"/> pour la bourse,
@@ -1221,14 +1236,7 @@ namespace EdS.World
                         events.Add(new StoryEvent(StoryEventKind.MoneyTaken, "money", null, e.Value));
                         break;
                     case EffectKind.SkipQuest:
-                        // Sous-lot V1.9.7 : la quête en cours (étape ou choix de la récompense) est finie, sans effets ni récompense ; elle
-                        // n'est plus suivie. Pas commencée ou déjà finie : sans effet. Jamais refusé (rien à réserver).
-                        if (_quests.TryGetValue(e.Id, out (int Step, long Progress) skipped) && skipped.Step >= 0)
-                        {
-                            _quests[e.Id] = (-1, 0L);
-                            if (_tracked == e.Id) _tracked = null;
-                            events.Add(new StoryEvent(StoryEventKind.QuestSkipped, e.Id));
-                        }
+                        Skip(e.Id, events);
                         break;
                     default:
                         if (_discoveries.Add(e.Id))
