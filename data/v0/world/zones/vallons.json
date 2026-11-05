@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 7,
   "kind": "zone",
-  "contentVersion": "0.6.0-provisoire",
+  "contentVersion": "0.7.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -903,6 +903,16 @@
         "to": "zone.guilde",
         "toDoor": "sortie",
         "building": "maison6"
+      },
+      {
+        "id": "souvenir",
+        "name": "Souvenir de la Rupture",
+        "position": [
+          -18,
+          23
+        ],
+        "to": "zone.souvenir_rupture",
+        "toDoor": "reveil"
       }
     ],
     "chiefs": [
@@ -921,6 +931,22 @@
           }
         ],
         "loot": "loot.chef_des_bandits"
+      },
+      {
+        "id": "croc_gris",
+        "scenario": "zones/vallons_croc_gris",
+        "forms": [
+          "croc_gris",
+          "croc_gris_enrage"
+        ],
+        "fact": "fact.croc_gris.vaincu",
+        "rewards": [
+          {
+            "item": "item.croc_de_croc_gris",
+            "count": 1
+          }
+        ],
+        "loot": "loot.loup"
       }
     ]
   }

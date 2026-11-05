@@ -95,9 +95,9 @@ public class Lot129MapTests : IDisposable
         Assert.Contains(markers, m => m.Kind == MapMarkerKind.Node);
         MapMarker me = Assert.Single(markers, m => m.Kind == MapMarkerKind.Player);
         Assert.True(Math.Abs(me.X + 18) < 1 && Math.Abs(me.Z + 12) < 1, $"({me.X}, {me.Z})");
-        // Nouvelle partie : pas encore de quête, pas d'objectif.
-        Assert.Null(a.Objective);
-        Assert.DoesNotContain(markers, m => m.Kind == MapMarkerKind.Objective);
+        // Nouvelle partie : depuis V1.9.6, l'ouverture est suivie, son objectif est chez Odile.
+        MapMarker objective = a.Objective!;
+        Assert.True(Math.Abs(objective.X + 8) < 1.5 && Math.Abs(objective.Z - 3) < 1.5, $"({objective.X}, {objective.Z})");
     }
 
     [Theory]

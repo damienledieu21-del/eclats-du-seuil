@@ -1,0 +1,184 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 15,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 302,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -4.5,
+          -8
+        ],
+        "max": [
+          4.5,
+          8
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "autel_porte_de_lumiere",
+          "points": [
+            [
+              -2,
+              5
+            ],
+            [
+              2,
+              5
+            ],
+            [
+              2,
+              6
+            ],
+            [
+              -2,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "statue_seuillard_1",
+          "points": [
+            [
+              -4,
+              -2
+            ],
+            [
+              -3.2,
+              -2
+            ],
+            [
+              -3.2,
+              -1.2
+            ],
+            [
+              -4,
+              -1.2
+            ]
+          ]
+        },
+        {
+          "id": "statue_seuillard_2",
+          "points": [
+            [
+              3.2,
+              -2
+            ],
+            [
+              4,
+              -2
+            ],
+            [
+              4,
+              -1.2
+            ],
+            [
+              3.2,
+              -1.2
+            ]
+          ]
+        },
+        {
+          "id": "statue_seuillard_3",
+          "points": [
+            [
+              -4,
+              2.5
+            ],
+            [
+              -3.2,
+              2.5
+            ],
+            [
+              -3.2,
+              3.3
+            ],
+            [
+              -4,
+              3.3
+            ]
+          ]
+        },
+        {
+          "id": "statue_seuillard_4",
+          "points": [
+            [
+              3.2,
+              2.5
+            ],
+            [
+              4,
+              2.5
+            ],
+            [
+              4,
+              3.3
+            ],
+            [
+              3.2,
+              3.3
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "echo_de_la_rupture",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1900,
+        "attacks": [
+          {
+            "id": "eclat",
+            "rawDamage": 8,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.8
+          },
+          {
+            "id": "onde_du_seuil",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 2.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          0,
+          3.6
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 3,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 5,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

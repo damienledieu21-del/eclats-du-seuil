@@ -1,0 +1,132 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 15,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 301,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -4.5,
+          -8
+        ],
+        "max": [
+          4.5,
+          8
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "autel_porte_de_lumiere",
+          "points": [
+            [
+              -2,
+              5
+            ],
+            [
+              2,
+              5
+            ],
+            [
+              2,
+              6
+            ],
+            [
+              -2,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "statue_seuillard_1",
+          "points": [
+            [
+              -4,
+              -2
+            ],
+            [
+              -3.2,
+              -2
+            ],
+            [
+              -3.2,
+              -1.2
+            ],
+            [
+              -4,
+              -1.2
+            ]
+          ]
+        },
+        {
+          "id": "statue_seuillard_2",
+          "points": [
+            [
+              3.2,
+              -2
+            ],
+            [
+              4,
+              -2
+            ],
+            [
+              4,
+              -1.2
+            ],
+            [
+              3.2,
+              -1.2
+            ]
+          ]
+        },
+        {
+          "id": "statue_seuillard_3",
+          "points": [
+            [
+              -4,
+              2.5
+            ],
+            [
+              -3.2,
+              2.5
+            ],
+            [
+              -3.2,
+              3.3
+            ],
+            [
+              -4,
+              3.3
+            ]
+          ]
+        },
+        {
+          "id": "statue_seuillard_4",
+          "points": [
+            [
+              3.2,
+              2.5
+            ],
+            [
+              4,
+              2.5
+            ],
+            [
+              4,
+              3.3
+            ],
+            [
+              3.2,
+              3.3
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

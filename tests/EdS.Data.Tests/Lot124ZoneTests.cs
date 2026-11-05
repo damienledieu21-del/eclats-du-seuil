@@ -48,6 +48,7 @@ public class Lot124ZoneTests
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));   // sous-lot 12.7 : formes du chef
             File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
+            CopyMissingZoneScenarios(directory);   // sous-lot V1.9.6 : formes de Croc-Gris
             return ZoneJsonReader.Read(root.ToJsonString(), directory, data, Items);
         }
         finally
@@ -255,9 +256,10 @@ public class Lot124ZoneTests
         int max = ShippedData.Rules.Combat.MaxCombatants;
         int creatures = z.Setup.Combatants.Count;
         Assert.Equal(37, creatures);   // V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits du chapitre 3
-        Assert.Equal(max - 2, session.Zone.Engine.CombatantIds.Count);
+        Assert.Equal(max - 3, session.Zone.Engine.CombatantIds.Count);   // V1.9.6 : trois secondes formes gardées (Croc-Gris)
         // Réponses du 31 octobre 2026 : le loup blanc (créature de la nuit) n'est pas là au début : une vie suivante de plus avant le plafond.
-        Assert.Equal(max - (creatures - 1) - 5, population.Count(e => e.Kind == PopulationEventKind.Respawned));
+        // Sous-lot V1.9.6 : Croc-Gris, un troisième chef à deux formes (sa première arrivée, une place gardée à la seconde) : 7 au lieu de 5.
+        Assert.Equal(max - (creatures - 1) - 7, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);
         for (int i = 0; i < 200; i++) Assert.Empty(session.Step().Population);
     }
