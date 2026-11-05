@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.7.0-provisoire",
+  "contentVersion": "0.8.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1410,6 +1410,46 @@
         "type": "material",
         "rarity": "common",
         "stack": 5
+      },
+      {
+        "id": "item.bourse_d_eclats",
+        "name": "Bourse d'éclats volés",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.bourse_de_renart",
+        "name": "Bourse de Renart",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.corde_de_cloche",
+        "name": "Corde de cloche",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.huile_de_lampe",
+        "name": "Huile de lampe",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.pierre_benie",
+        "name": "Pierre bénie",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
       },
       {
         "id": "item.potion_de_soin",
