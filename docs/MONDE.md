@@ -543,6 +543,10 @@ Demande de Damien du 5 novembre 2026, avant son essai complet sous Unity : un ch
 5. **Croc-Gris** : un grand loup gris, plus massif que les autres, cicatrices ; le **bond** et le **hurlement** ont leur barre de télégraphe (comme les autres attaques annoncées) ; un hurlement au passage de la seconde forme (« Croc-Gris enragé »).
 6. **Indices** : la silhouette (découverte `discovery.ch1.silhouette`) peut se montrer un instant à la lisière nord du pré, puis disparaître ; la pierre du pré peut être un rocher plat gravé près des éclats.
 
+**Choix de Damien du 5 novembre 2026** (questions de la PR #94) : les dix propositions sont retenues (réveil sur la place, deux potions, Croc-Gris obligatoire, scène jouée une seule fois, Galeran avec les compétences du joueur, anciennes parties sans la scène, silhouette sans nom jusqu'au chapitre 4…) ; un seul loup près du moulin, le tutoriel qu'on peut passer et un vrai objet en récompense de Croc-Gris (questions 1, 2 et 6) viendront avec la PR A2.
+
+**Relecture indépendante de la PR #94** : l'ouverture et ses deux potions ne vont qu'à une vraie nouvelle partie (aucune sauvegarde) : une sauvegarde valide sans personnage reçoit un personnage neuf sans elles ; l'étape « boire » ne se bloque jamais : sans plus aucun objet de soin (bus avant l'étape, vendus), elle est remplie.
+
 Limites : le pilote de l'ouverture annonce ses gestes à l'histoire (un second test les fait faire au moteur, contre **un seul** loup : contre les trois loups du moulin à la fois, le pilote de mesure tombe au niveau 1 avec l'équipement de départ, question posée à Damien) ; l'ouverture n'a pas de bouton « passer le tutoriel » ; la victoire sur Croc-Gris est annoncée par son fait dans les pilotes des chapitres (son combat a son test) ; l'ordre de la scène n'est pas imposé (on peut combattre l'écho avant de parler à Ysolde) ; la salle du souvenir a l'aménagement provisoire d'une maison (statues, la porte de lumière en autel) en attendant la PR B ; Ysolde et Croc-Gris n'ont pas de modèle à eux ; le croc a l'icône provisoire des quêtes ; les figurants (Seuillards) ne sont pas des PNJ.
 
 ## Sauvegarde

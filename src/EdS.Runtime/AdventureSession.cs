@@ -233,16 +233,19 @@ namespace EdS.Runtime
             SaveProblem = read.Problem;
             // Sous-lot V1.2 : un nouveau personnage porte son équipement de départ (l'Éclat du Seuil ; pour le Bastion, l'épée et l'écu).
             // Sous-lot V1.9.6 : il commence l'ouverture (le réveil, tutoriel), avec deux potions de soin pour son étape « boire » (emportées dès
-            // la première session) ; une partie déjà commencée n'y est jamais renvoyée.
-            SavedCharacter Fresh()
+            // la première session) ; une partie déjà commencée n'y est jamais renvoyée. Relecture indépendante de la PR #94 : seulement pour
+            // une vraie nouvelle partie (aucune sauvegarde) ; une sauvegarde valide sans personnage (monde déjà joué) reçoit un personnage
+            // neuf sans l'ouverture ni les potions.
+            SavedCharacter Fresh(bool opening)
             {
-                SavedCharacter c = PlayerCharacters.Create(PlayerId, PlayerClass, progression).WithStory(StoryConversions.NewGame(story));
-                if (story.HasQuest(StoryConversions.Opening))
-                    c = c.WithItems(new[] { new ItemStack(OpeningPotion, OpeningPotions) }, new Dictionary<string, string>(StringComparer.Ordinal));
+                SavedCharacter c = PlayerCharacters.Create(PlayerId, PlayerClass, progression);
+                if (opening && story.HasQuest(StoryConversions.Opening))
+                    c = c.WithStory(StoryConversions.NewGame(story))
+                        .WithItems(new[] { new ItemStack(OpeningPotion, OpeningPotions) }, new Dictionary<string, string>(StringComparer.Ordinal));
                 return Inventory.Outfit(c, items);
             }
-            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), Fresh());
-            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh());
+            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), Fresh(true));
+            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh(false));
             // Intérieurs : la partie reprend dans la zone de la sauvegarde (un intérieur : à son entrée) ; une zone que les données ne relient
             // plus reprend à l'entrée de la zone de départ.
             _zone = zones.FirstOrDefault(z => z.Id == save.Zone) ?? start;

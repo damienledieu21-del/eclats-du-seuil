@@ -77,7 +77,6 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 | Cœur du Seuil | Le centre des pierres dressées, où veille le Gardien du Seuil (chapitre 5). |
 | Pierres gravées | Cinq pierres des Seuillards (celle de Gaspard, et quatre aux ruines, au lac, dans la forêt des Loups et dans la plaine de l'est) ; quatre lignes : « Nous avons ouvert pour la reine. » « Nous n'avons pas su refermer. » « Quelqu'un attend de l'autre côté. » « Toi qui viens après, ne réponds pas. » (proposition, chapitre 5). |
 | Écho (d'une bête) | Une bête qu'on tue et qui revient, comme le loup blanc : depuis la Rupture, « même les loups ne passent plus » (Gaspard, d'après son grand-père ; chapitre 5). |
-
 | Galeran | Le jeune garde de la reine, il y a trois cents ans, dont l'Éclat fait revivre les souvenirs ; le joueur est dans sa peau pendant le souvenir de la Rupture (scène jouée, sous-lot V1.9.6). |
 | Reine Ysolde | La reine qui fit ouvrir le Seuil pour ramener son fils (lexique : la Rupture) ; dans le souvenir, elle serre un petit linceul blanc et dit « Tiens bon, Galeran ». |
 | Porte de lumière | Le Seuil ouvert, tel que Galeran le voit dans le souvenir : une porte de lumière blanche, sept Seuillards qui chantent autour. |

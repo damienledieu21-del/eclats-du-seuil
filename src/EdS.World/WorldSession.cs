@@ -915,11 +915,18 @@ namespace EdS.World
                 Narrative.Practiced("strike", c.Hits - _hitsSeen);
                 Narrative.Practiced("guard", c.Blocks - _blocksSeen);
                 Narrative.Practiced("parry", c.PerfectParries - _parriesSeen);
+                // Relecture indépendante de la PR #94 : une étape « boire » ne se bloque jamais. Sans plus aucun objet de soin (bus avant
+                // l'étape, vendus), le geste ne peut plus être demandé : l'étape est remplie.
+                if (Narrative.WantsPractice("drink") && !HasHealing()) Narrative.Practiced("drink", StoryValidator.MaxPractice);
             }
             _hitsSeen = c.Hits;
             _blocksSeen = c.Blocks;
             _parriesSeen = c.PerfectParries;
         }
+
+        /// <summary>Relecture de la PR #94 : il reste un objet de soin à boire (emporté et pas bu, ou dans le sac pour la session suivante).</summary>
+        private bool HasHealing() =>
+            _carried.Values.Any(n => n > 0) || Inventory.Stacks.Any(s => _items.Item(s.Item) is { Type: ItemType.Consumable } i && i.Heal > 0);
 
         /// <summary>Sous-lot V1.9.6 : scène à jouer (voir <see cref="Scene"/>), ou null.</summary>
         public Scene? PendingScene => Narrative?.PendingScene;

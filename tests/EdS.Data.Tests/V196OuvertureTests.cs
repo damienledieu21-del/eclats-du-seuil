@@ -374,6 +374,46 @@ public class V196OuvertureTests
     }
 
     [Fact]
+    public void Une_sauvegarde_sans_personnage_n_a_ni_ouverture_ni_potions()
+    {
+        // Relecture indépendante de la PR #94 : une sauvegarde valide sans personnage (monde déjà joué) reçoit un personnage neuf, sans
+        // l'ouverture ni les deux potions : elles vont à une vraie nouvelle partie seulement.
+        string dir = Path.Combine(Path.GetTempPath(), "eds_v196_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string path = Path.Combine(dir, "sans_personnage.json");
+            SaveStore.Write(path, new WorldSave("zone.vallons", 7200, 1, Array.Empty<string>(), null));
+            AdventureSession a = AdventureSession.Load(DataDirectory, ScenariosDirectory, path);
+            Assert.Empty(a.World.Narrative!.ToSaved().Quests);
+            Assert.Null(a.World.Narrative.Tracked);
+            Assert.Equal(0, a.World.Inventory.Count(AdventureSession.OpeningPotion));
+            Assert.Equal("item.eclat_du_seuil_endormi", a.World.Inventory.Equipped["shard"]);   // l'équipement de départ, lui, est là
+            Assert.DoesNotContain(a.DrainMessages(), m => m.Contains("Tu te réveilles"));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void L_etape_boire_ne_se_bloque_jamais()
+    {
+        // Relecture indépendante de la PR #94 : les deux potions bues avant l'étape « boire » : sans plus aucun objet de soin, elle est
+        // remplie ; Odile ne reste pas sur son « en cours ».
+        StoryBook book = Book(Zone());
+        var story = new SavedStory(null, new Dictionary<string, QuestProgress> { [Opening] = new QuestProgress("boire") }, tracked: Opening);
+        WorldSession dry = Open(Odile, Fresh(book).WithStory(story));
+        Assert.Equal("retour", dry.Narrative!.CurrentStep(Opening)!.Id);
+        Say(dry, "npc.odile", "reveil_retour");
+        // Avec une potion encore emportée, il faut la boire (le geste est demandé).
+        WorldSession wet = Open(Odile, Fresh(book, new ItemStack("item.potion_de_soin", 1)).WithStory(story));
+        Ticks(wet, 5);
+        Assert.Equal("boire", wet.Narrative!.CurrentStep(Opening)!.Id);
+    }
+
+    [Fact]
     public void L_ouverture_ne_masque_aucune_offre()
     {
         // Le pain du matin, accepté avant d'aller voir Odile : sa livraison passe avant l'ouverture ; puis l'ouverture reprend.

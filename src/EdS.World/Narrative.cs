@@ -711,6 +711,10 @@ namespace EdS.World
                 }
         }
 
+        /// <summary>Relecture de la PR #94 : une quête en cours demande encore le geste <paramref name="action"/> à son étape actuelle.</summary>
+        internal bool WantsPractice(string action) =>
+            _quests.Any(q => CurrentStep(q.Key) is { Objective: { Kind: ObjectiveKind.Practice } o } && o.Id == action && q.Value.Progress < o.Value);
+
         /// <summary>
         /// Sous-lot V1.9.6 : la scène à jouer (son fait de début appris, pas encore celui de fin), la première dans l'ordre du fichier ; null
         /// s'il n'y en a pas.
