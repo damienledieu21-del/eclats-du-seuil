@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 3,
   "kind": "merchants",
-  "contentVersion": "0.5.0-provisoire",
+  "contentVersion": "0.6.0-provisoire",
   "data": {
     "values": [
       {
@@ -364,6 +364,14 @@
       {
         "item": "item.elixir_du_seuil",
         "value": 900
+      },
+      {
+        "item": "item.collier_de_croc_gris",
+        "value": 900
+      },
+      {
+        "item": "item.chapeau_de_lune",
+        "value": 25
       }
     ],
     "merchants": [

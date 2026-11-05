@@ -97,6 +97,12 @@ namespace EdS.World
         /// comptent, une seule fois (valeur : points réellement ajoutés). La maîtresse le remarque : « Ta réputation te précède… ».
         /// </summary>
         GuildReputation = 27,
+
+        /// <summary>
+        /// Sous-lot V1.9.7 : une quête en cours a été passée (effet <c>skipQuest</c>, « Je sais me battre » chez Odile) : finie sans ses
+        /// étapes restantes ni sa récompense.
+        /// </summary>
+        QuestSkipped = 28,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -1125,6 +1131,21 @@ namespace EdS.World
         };
 
         /// <summary>
+        /// Sous-lot V1.9.7 (effet <c>skipQuest</c>) : la quête en cours (à une étape, ou au choix de sa récompense) est finie, sans les effets de
+        /// ses étapes restantes ni sa récompense ; elle n'est plus suivie si elle l'était (une autre quête suivie le reste). Pas commencée ou
+        /// déjà finie : sans effet (rend faux). Jamais refusé (rien à réserver). Les points de guilde d'une quête finie ne sont pas donnés.
+        /// </summary>
+        internal bool Skip(string quest, List<StoryEvent> events)
+        {
+            if (!_quests.TryGetValue(quest, out (int Step, long Progress) skipped) || skipped.Step < 0) return false;
+            _quests[quest] = (-1, 0L);
+            if (_tracked == quest) _tracked = null;
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.QuestSkipped, quest));
+            return true;
+        }
+
+        /// <summary>
         /// Applique des effets en entier ou pas du tout : les passages à ouvrir doivent trouver place au registre du monde, les pièces données
         /// dans la bourse (sous-lot V1.1), les objets sont d'abord essayés sur une copie de l'inventaire (retraits puis dons, dans l'ordre) ;
         /// si tout passe, tout est appliqué. Rend le motif d'un refus : <see cref="DialogueRefusal.PurseFull"/> pour la bourse,
@@ -1213,6 +1234,9 @@ namespace EdS.World
                         break;
                     case EffectKind.TakeMoney:   // sous-lot V1.6 : déjà prises, toutes ensemble, plus haut
                         events.Add(new StoryEvent(StoryEventKind.MoneyTaken, "money", null, e.Value));
+                        break;
+                    case EffectKind.SkipQuest:
+                        Skip(e.Id, events);
                         break;
                     default:
                         if (_discoveries.Add(e.Id))

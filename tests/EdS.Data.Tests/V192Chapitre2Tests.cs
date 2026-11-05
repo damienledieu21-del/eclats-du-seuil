@@ -381,7 +381,7 @@ public class V192Chapitre2Tests
         Assert.Contains("TrustChanged npc.habitant 1", end);
         Assert.Contains($"QuestCompleted {Lanterne}", end);
         Assert.Equal((xp + 120, money + 80), (w.Character.Xp, w.Money));
-        Say(w, "npc.habitant", "ch2_lanterne_apres");
+        Say(w, "npc.habitant", "ch1_chat");   // V1.9.7 : l'offre du chat (niveau 1) passe avant le mot d'après
     }
 
     [Fact]
@@ -534,7 +534,7 @@ public class V192Chapitre2Tests
         Say(OpenIn("zone.maison", Rosalie, Hero(8, With(facts, (Bete, "temoin")))), "npc.habitant", "temoin");
         Assert.DoesNotContain(Say(OpenIn("zone.auberge", Mathurin, Hero(4, null)), "npc.aubergiste", "accueil").Options,
             o => o.Text == "text.ch2.aubergiste.accueil.ardoise");
-        Say(OpenIn("zone.maison", Rosalie, Hero(4, null)), "npc.habitant", "accueil");
+        Say(OpenIn("zone.maison", Rosalie, Hero(4, null)), "npc.habitant", "ch1_chat");   // V1.9.7 : le chat de Rosalie, dès le niveau 1
         Say(Open(Lison, Hero(4, null)), "npc.lison", "ch2_accueil");
     }
 

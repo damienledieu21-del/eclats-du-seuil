@@ -182,6 +182,7 @@ namespace EdS.Data.Json
                 ["category"] = (v, p) => q.Category = input.Text(v, p),
                 ["requires"] = (v, p) => q.Requires = Terms(input, v, p, "if"),
                 ["rewardChoice"] = (v, p) => q.RewardChoice = Terms(input, v, p, "do"),
+                ["skippable"] = (v, p) => q.Skippable = input.Boolean(v, p),   // sous-lot V1.9.7 (schéma 7)
             }) ? q : null;
         }
 

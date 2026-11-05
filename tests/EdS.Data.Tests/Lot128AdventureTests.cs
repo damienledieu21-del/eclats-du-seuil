@@ -97,7 +97,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
-        Assert.Equal(11, a.Nodes().Count);   // Vallons agrandis
+        Assert.Equal(13, a.Nodes().Count);   // Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune
         Assert.All(a.Nodes(), n => Assert.True(n.Ready));
         Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere" }, a.SafePoints().Select(s => s.Id));
         Assert.Equal("quest.reveil", Assert.Single(a.Journal()).Id);   // sous-lot V1.9.6 : l'ouverture
@@ -116,11 +116,12 @@ public class Lot128AdventureTests : IDisposable
     {
         AdventureSession a = New();
         // Vers le pré des loups (sud de la meute) : dès qu'un loup est à 20 m et en vue, il devient la cible, le plus proche d'abord.
+        // Sous-lot V1.9.7 : un seul loup reste derrière le moulin (les deux autres sont au pré) ; on longe le moulin par l'ouest pour le voir.
         string? target = null;
         for (int i = 0; i < 1200 && target is null; i++)
         {
             GroundVector p = Position(a);
-            a.Combat.SetMove(-4 - p.X.Raw / 1e4, 0 - p.Z.Raw / 1e4);
+            a.Combat.SetMove(-8 - p.X.Raw / 1e4, 13 - p.Z.Raw / 1e4);
             a.Advance(0.05);
             target = a.Combat.TargetId;
         }

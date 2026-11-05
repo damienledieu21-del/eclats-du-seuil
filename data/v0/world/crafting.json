@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 3,
   "kind": "crafting",
-  "contentVersion": "0.5.0-provisoire",
+  "contentVersion": "0.6.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -440,6 +440,30 @@
         ],
         "respawnMs": 60000,
         "xp": 12
+      },
+      {
+        "id": "champignons_pre",
+        "profession": "herboristerie",
+        "item": "item.chapeau_de_lune",
+        "count": 1,
+        "position": [
+          -15,
+          24
+        ],
+        "respawnMs": 60000,
+        "xp": 8
+      },
+      {
+        "id": "champignons_rond",
+        "profession": "herboristerie",
+        "item": "item.chapeau_de_lune",
+        "count": 1,
+        "position": [
+          -21,
+          24
+        ],
+        "respawnMs": 60000,
+        "xp": 8
       }
     ],
     "forge": {

@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "kind": "story",
-  "contentVersion": "0.11.0-provisoire",
+  "contentVersion": "0.12.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -499,6 +499,43 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.odile.excuser",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.odile.vexee"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.excuses"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.excuses"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.odile",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_excuses"
+              },
+              {
+                "text": "text.ch1.odile.vers_roue",
+                "conditions": [
+                  {
+                    "if": "trustAtLeast",
+                    "id": "npc.odile",
+                    "value": 1
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_roue"
               }
             ]
           },
@@ -746,6 +783,22 @@
                   }
                 ],
                 "next": "reveil_porte"
+              },
+              {
+                "text": "text.ch1.odile.reveil.passer",
+                "conditions": [
+                  {
+                    "if": "questActive",
+                    "id": "quest.reveil"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "skipQuest",
+                    "id": "quest.reveil"
+                  }
+                ],
+                "next": "reveil_passe"
               }
             ]
           },
@@ -758,13 +811,46 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.odile.reveil.passer",
+                "conditions": [
+                  {
+                    "if": "questActive",
+                    "id": "quest.reveil"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "skipQuest",
+                    "id": "quest.reveil"
+                  }
+                ],
+                "next": "reveil_passe"
               }
             ]
           },
           {
             "id": "reveil_en_cours",
             "text": "text.ch1.odile.reveil_en_cours",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.odile.reveil.passer",
+                "conditions": [
+                  {
+                    "if": "questActive",
+                    "id": "quest.reveil"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "skipQuest",
+                    "id": "quest.reveil"
+                  }
+                ],
+                "next": "reveil_passe"
+              }
+            ]
           },
           {
             "id": "reveil_retour",
@@ -775,6 +861,42 @@
                 "conditions": [],
                 "effects": [],
                 "next": "recit"
+              }
+            ]
+          },
+          {
+            "id": "reveil_passe",
+            "text": "text.ch1.odile.reveil_passe",
+            "choices": [
+              {
+                "text": "text.odile.accueil.raconter",
+                "conditions": [],
+                "effects": [],
+                "next": "recit"
+              }
+            ]
+          },
+          {
+            "id": "ch1_excuses",
+            "text": "text.ch1.odile.excuses",
+            "choices": [
+              {
+                "text": "text.ch1.odile.excuses.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_roue",
+            "text": "text.ch1.odile.roue",
+            "choices": [
+              {
+                "text": "text.ch1.odile.roue.promettre",
+                "conditions": [],
+                "effects": [],
+                "next": null
               }
             ]
           }
@@ -887,6 +1009,15 @@
             "node": "ch2_apprentie_apres"
           },
           {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch1_nuit"
+          },
+          {
             "conditions": [],
             "node": "bonjour"
           }
@@ -989,6 +1120,11 @@
           {
             "id": "ch2_apprentie_epee",
             "text": "text.ch2.maelle.apprentie_epee",
+            "choices": []
+          },
+          {
+            "id": "ch1_nuit",
+            "text": "text.ch1.maelle.nuit",
             "choices": []
           }
         ]
@@ -1154,6 +1290,15 @@
             "node": "ch1_croc"
           },
           {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch1_nuit"
+          },
+          {
             "conditions": [],
             "node": "garde"
           }
@@ -1162,7 +1307,35 @@
           {
             "id": "garde",
             "text": "text.gaspard.garde",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.gaspard.vers_odile",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.odile.vexee"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.excuses"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_odile_vexee"
+              },
+              {
+                "text": "text.ch1.gaspard.vers_odile",
+                "conditions": [
+                  {
+                    "if": "trustAtLeast",
+                    "id": "npc.odile",
+                    "value": 1
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_odile_confiance"
+              }
+            ]
           },
           {
             "id": "rodeur",
@@ -1501,6 +1674,49 @@
                 "next": "ch1_ordre"
               }
             ]
+          },
+          {
+            "id": "ch1_odile_vexee",
+            "text": "text.ch1.gaspard.odile_vexee",
+            "choices": []
+          },
+          {
+            "id": "ch1_odile_confiance",
+            "text": "text.ch1.gaspard.odile_confiance",
+            "choices": []
+          },
+          {
+            "id": "ch1_nuit",
+            "text": "text.ch1.gaspard.nuit",
+            "choices": [
+              {
+                "text": "text.ch1.gaspard.vers_odile",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.odile.vexee"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.excuses"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_odile_vexee"
+              },
+              {
+                "text": "text.ch1.gaspard.vers_odile",
+                "conditions": [
+                  {
+                    "if": "trustAtLeast",
+                    "id": "npc.odile",
+                    "value": 1
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_odile_confiance"
+              }
+            ]
           }
         ]
       },
@@ -1536,6 +1752,54 @@
               }
             ],
             "node": "ch2_huile"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.champignons_de_sauge"
+              }
+            ],
+            "node": "ch1_champignons_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.champignons_de_sauge"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 4
+              },
+              {
+                "if": "passageOpen",
+                "id": "moulin"
+              }
+            ],
+            "node": "ch1_champignons"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.champignons_de_sauge"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.ch1.sauge.rond"
+              }
+            ],
+            "node": "ch1_champignons_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch1_nuit"
           },
           {
             "conditions": [],
@@ -1574,6 +1838,56 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch1_champignons",
+            "text": "text.ch1.herboriste.champignons",
+            "choices": [
+              {
+                "text": "text.ch1.herboriste.champignons.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.champignons_de_sauge"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.herboriste.champignons.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_champignons_attente",
+            "text": "text.ch1.herboriste.champignons_attente",
+            "choices": []
+          },
+          {
+            "id": "ch1_champignons_apres",
+            "text": "text.ch1.herboriste.champignons_apres",
+            "choices": [
+              {
+                "text": "text.ch1.herboriste.champignons_apres.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.sauge.rond"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_nuit",
+            "text": "text.ch1.herboriste.nuit",
+            "choices": []
           }
         ]
       },
@@ -1613,6 +1927,15 @@
               }
             ],
             "node": "ch2_corde"
+          },
+          {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch1_nuit"
           },
           {
             "conditions": [],
@@ -1667,6 +1990,11 @@
           {
             "id": "ch4_oeil",
             "text": "text.ch4.epiciere.oeil",
+            "choices": []
+          },
+          {
+            "id": "ch1_nuit",
+            "text": "text.ch1.epiciere.nuit",
             "choices": []
           }
         ]
@@ -2338,6 +2666,25 @@
           {
             "conditions": [
               {
+                "if": "questAt",
+                "id": "quest.chat_de_rosalie",
+                "step": "livrer"
+              }
+            ],
+            "node": "ch1_chat_livrer"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.chat_de_rosalie"
+              }
+            ],
+            "node": "ch1_chat_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questActive",
                 "id": "quest.derniere_lanterne"
               }
@@ -2360,6 +2707,15 @@
           {
             "conditions": [
               {
+                "if": "questNotStarted",
+                "id": "quest.chat_de_rosalie"
+              }
+            ],
+            "node": "ch1_chat"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questDone",
                 "id": "quest.tour_et_camp"
               }
@@ -2374,6 +2730,24 @@
               }
             ],
             "node": "ch2_lanterne_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch1_nuit"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.chat_de_rosalie"
+              }
+            ],
+            "node": "ch1_chat_apres"
           },
           {
             "conditions": [],
@@ -2425,6 +2799,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.habitant.vers_chat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.chat_de_rosalie"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_chat"
               }
             ]
           },
@@ -2437,6 +2822,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.habitant.vers_chat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.chat_de_rosalie"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_chat"
               }
             ]
           },
@@ -2496,6 +2892,131 @@
             "choices": [
               {
                 "text": "text.ch2.habitant.lanterne_apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_chat",
+            "text": "text.ch1.habitant.chat",
+            "choices": [
+              {
+                "text": "text.ch1.habitant.chat.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.chat_de_rosalie"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.habitant.chat.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.habitant.vers_lanterne",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.derniere_lanterne"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_lanterne"
+              }
+            ]
+          },
+          {
+            "id": "ch1_chat_attente",
+            "text": "text.ch1.habitant.chat_attente",
+            "choices": [
+              {
+                "text": "text.habitant.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.habitant.vers_lanterne",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.derniere_lanterne"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_lanterne"
+              }
+            ]
+          },
+          {
+            "id": "ch1_chat_livrer",
+            "text": "text.ch1.habitant.chat_livrer",
+            "choices": [
+              {
+                "text": "text.ch1.habitant.vers_lanterne",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.derniere_lanterne"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_lanterne"
+              }
+            ]
+          },
+          {
+            "id": "ch1_chat_apres",
+            "text": "text.ch1.habitant.chat_apres",
+            "choices": [
+              {
+                "text": "text.habitant.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.habitant.vers_lanterne",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.derniere_lanterne"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_lanterne"
+              }
+            ]
+          },
+          {
+            "id": "ch1_nuit",
+            "text": "text.ch1.habitant.nuit",
+            "choices": [
+              {
+                "text": "text.habitant.accueil.partir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -2914,11 +3435,12 @@
           {
             "conditions": [
               {
-                "if": "questDone",
-                "id": "quest.pain_du_matin"
+                "if": "questAt",
+                "id": "quest.chat_de_rosalie",
+                "step": "firmin"
               }
             ],
-            "node": "apres"
+            "node": "ch1_chat"
           },
           {
             "conditions": [
@@ -2934,14 +3456,76 @@
             "conditions": [
               {
                 "if": "questActive",
+                "id": "quest.puits_du_moulin"
+              }
+            ],
+            "node": "ch1_puits_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
                 "id": "quest.pain_du_matin"
               }
             ],
             "node": "en_cours"
           },
           {
-            "conditions": [],
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.puits_du_moulin"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 2
+              }
+            ],
+            "node": "ch1_puits"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.pain_du_matin"
+              }
+            ],
             "node": "accueil"
+          },
+          {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch1_nuit"
+          },
+          {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "dawn"
+              }
+            ],
+            "node": "ch1_aube"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.puits_du_moulin"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.ch1.boulanger.puits"
+              }
+            ],
+            "node": "ch1_puits_apres"
+          },
+          {
+            "conditions": [],
+            "node": "apres"
           }
         ],
         "nodes": [
@@ -2999,6 +3583,21 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.boulanger.vers_puits",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 2
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_puits"
               }
             ]
           },
@@ -3033,6 +3632,96 @@
             "id": "apres",
             "text": "text.ch1.boulanger.apres",
             "choices": []
+          },
+          {
+            "id": "ch1_chat",
+            "text": "text.ch1.boulanger.chat",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.chat.merci",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_puits",
+            "text": "text.ch1.boulanger.puits",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.puits.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.puits_du_moulin"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.boulanger.puits.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.boulanger.vers_pain",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pain_du_matin"
+                  }
+                ],
+                "effects": [],
+                "next": "accueil"
+              }
+            ]
+          },
+          {
+            "id": "ch1_puits_attente",
+            "text": "text.ch1.boulanger.puits_attente",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.vers_pain",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pain_du_matin"
+                  }
+                ],
+                "effects": [],
+                "next": "accueil"
+              }
+            ]
+          },
+          {
+            "id": "ch1_puits_apres",
+            "text": "text.ch1.boulanger.puits_apres",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.puits_apres.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.puits"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_aube",
+            "text": "text.ch1.boulanger.aube",
+            "choices": []
+          },
+          {
+            "id": "ch1_nuit",
+            "text": "text.ch1.boulanger.nuit",
+            "choices": []
           }
         ]
       },
@@ -3042,11 +3731,59 @@
           {
             "conditions": [
               {
-                "if": "questDone",
-                "id": "quest.fleches_perdues"
+                "if": "questAt",
+                "id": "quest.garde_de_nuit",
+                "step": "nuit"
+              },
+              {
+                "if": "phase",
+                "id": "night"
               }
             ],
-            "node": "apres"
+            "node": "ch1_garde_nuit"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.garde_de_nuit",
+                "step": "nuit"
+              },
+              {
+                "if": "phase",
+                "id": "dusk"
+              }
+            ],
+            "node": "ch1_garde_nuit"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.garde_de_nuit",
+                "step": "nuit"
+              }
+            ],
+            "node": "ch1_garde_jour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.garde_de_nuit",
+                "step": "choix"
+              }
+            ],
+            "node": "ch1_garde_choix"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.garde_de_nuit"
+              }
+            ],
+            "node": "ch1_garde_attente"
           },
           {
             "conditions": [
@@ -3071,9 +3808,62 @@
               {
                 "if": "levelAtLeast",
                 "value": 4
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.fleches_perdues"
               }
             ],
             "node": "demande"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.garde_de_nuit"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 3
+              }
+            ],
+            "node": "ch1_garde"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.ch1.aldric.moque"
+              }
+            ],
+            "node": "ch1_garde_moque"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.ch1.aldric.secret"
+              }
+            ],
+            "node": "ch1_garde_secret"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.fleches_perdues"
+              }
+            ],
+            "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch1_nuit"
           },
           {
             "conditions": [],
@@ -3122,22 +3912,297 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.archer_garde.vers_garde",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.garde_de_nuit"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 3
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_garde"
               }
             ]
           },
           {
             "id": "en_cours",
             "text": "text.ch1.archer_garde.en_cours",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_garde",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.garde_de_nuit"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 3
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_garde"
+              }
+            ]
           },
           {
             "id": "recompense",
             "text": "text.ch1.archer_garde.recompense",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_garde",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.garde_de_nuit"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 3
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_garde"
+              }
+            ]
           },
           {
             "id": "apres",
             "text": "text.ch1.archer_garde.apres",
+            "choices": []
+          },
+          {
+            "id": "ch1_garde",
+            "text": "text.ch1.archer_garde.garde",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.garde.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.garde_de_nuit"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.archer_garde.garde.moquer",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.garde_de_nuit"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.archer_garde",
+                    "value": -1
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.archer_garde.garde.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.archer_garde.vers_fleches",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.fleches_perdues"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 4
+                  }
+                ],
+                "effects": [],
+                "next": "demande"
+              }
+            ]
+          },
+          {
+            "id": "ch1_garde_jour",
+            "text": "text.ch1.archer_garde.garde_jour",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_fleches",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.fleches_perdues"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 4
+                  }
+                ],
+                "effects": [],
+                "next": "demande"
+              }
+            ]
+          },
+          {
+            "id": "ch1_garde_nuit",
+            "text": "text.ch1.archer_garde.garde_nuit",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.garde_nuit.veiller",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.garde.veille"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_garde_attente",
+            "text": "text.ch1.archer_garde.garde_attente",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_fleches",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.fleches_perdues"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 4
+                  }
+                ],
+                "effects": [],
+                "next": "demande"
+              }
+            ]
+          },
+          {
+            "id": "ch1_garde_choix",
+            "text": "text.ch1.archer_garde.garde_choix",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.garde_choix.taire",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.garde.choix"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.archer_garde",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_garde_merci"
+              },
+              {
+                "text": "text.ch1.archer_garde.garde_choix.peur",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.garde.choix"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.archer_garde",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_garde_merci"
+              },
+              {
+                "text": "text.ch1.archer_garde.garde_choix.denoncer",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.garde.choix"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.archer_garde",
+                    "value": -1
+                  }
+                ],
+                "next": "ch1_garde_froid"
+              }
+            ]
+          },
+          {
+            "id": "ch1_garde_merci",
+            "text": "text.ch1.archer_garde.garde_merci",
+            "choices": []
+          },
+          {
+            "id": "ch1_garde_froid",
+            "text": "text.ch1.archer_garde.garde_froid",
+            "choices": []
+          },
+          {
+            "id": "ch1_garde_secret",
+            "text": "text.ch1.archer_garde.garde_secret",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_apres",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.fleches_perdues"
+                  }
+                ],
+                "effects": [],
+                "next": "apres"
+              }
+            ]
+          },
+          {
+            "id": "ch1_garde_moque",
+            "text": "text.ch1.archer_garde.garde_moque",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.vers_apres",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.fleches_perdues"
+                  }
+                ],
+                "effects": [],
+                "next": "apres"
+              }
+            ]
+          },
+          {
+            "id": "ch1_nuit",
+            "text": "text.ch1.archer_garde.nuit",
             "choices": []
           }
         ]
@@ -6076,6 +7141,34 @@
           {
             "conditions": [
               {
+                "if": "questReward",
+                "id": "quest.premier_contrat"
+              }
+            ],
+            "node": "ch1_contrat_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.premier_contrat",
+                "step": "retour"
+              }
+            ],
+            "node": "ch1_contrat_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.premier_contrat"
+              }
+            ],
+            "node": "ch1_contrat_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questNotStarted",
                 "id": "quest.tour_silencieuse"
               },
@@ -6085,6 +7178,19 @@
               }
             ],
             "node": "ch4_tour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.premier_contrat"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 5
+              }
+            ],
+            "node": "ch1_contrat"
           },
           {
             "conditions": [
@@ -6107,6 +7213,15 @@
               }
             ],
             "node": "ch4_tour_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch1_nuit"
           },
           {
             "conditions": [],
@@ -6134,6 +7249,28 @@
                 ],
                 "effects": [],
                 "next": "ch4_chef_livre"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_aldric",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_aldric",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_aldric_secret"
               }
             ]
           },
@@ -6168,6 +7305,21 @@
                 ],
                 "effects": [],
                 "next": "ch4_chef_livre"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
               }
             ]
           },
@@ -6191,13 +7343,44 @@
                 ],
                 "effects": [],
                 "next": "ch4_chef_livre"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
               }
             ]
           },
           {
             "id": "ch4_tour_rapport",
             "text": "text.ch4.capitaine.tour_rapport",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
+              }
+            ]
           },
           {
             "id": "ch4_tour_cor",
@@ -6208,13 +7391,44 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
               }
             ]
           },
           {
             "id": "ch4_tour_livrer",
             "text": "text.ch4.capitaine.tour_livrer",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
+              }
+            ]
           },
           {
             "id": "ch4_tour_recompense",
@@ -6225,6 +7439,21 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.capitaine.vers_contrat",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.premier_contrat"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_contrat"
               }
             ]
           },
@@ -6265,6 +7494,156 @@
                   }
                 ],
                 "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_contrat",
+            "text": "text.ch1.capitaine.contrat",
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.contrat.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.premier_contrat"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.capitaine.contrat.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.capitaine.vers_tour",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_silencieuse"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 16
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_tour"
+              }
+            ]
+          },
+          {
+            "id": "ch1_contrat_attente",
+            "text": "text.ch1.capitaine.contrat_attente",
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_tour",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_silencieuse"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 16
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_tour"
+              }
+            ]
+          },
+          {
+            "id": "ch1_contrat_retour",
+            "text": "text.ch1.capitaine.contrat_retour",
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_tour",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_silencieuse"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 16
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_tour"
+              }
+            ]
+          },
+          {
+            "id": "ch1_contrat_recompense",
+            "text": "text.ch1.capitaine.contrat_recompense",
+            "choices": [
+              {
+                "text": "text.ch1.capitaine.vers_tour",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_silencieuse"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 16
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_tour"
+              }
+            ]
+          },
+          {
+            "id": "ch1_aldric_moque",
+            "text": "text.ch1.capitaine.aldric_moque",
+            "choices": []
+          },
+          {
+            "id": "ch1_aldric_secret",
+            "text": "text.ch1.capitaine.aldric_secret",
+            "choices": []
+          },
+          {
+            "id": "ch1_nuit",
+            "text": "text.ch1.capitaine.nuit",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_aldric",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_aldric",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_aldric_secret"
               }
             ]
           }
@@ -9061,6 +10440,323 @@
             "do": "giveXp",
             "value": 30
           }
+        ],
+        "skippable": true
+      },
+      {
+        "id": "quest.chat_de_rosalie",
+        "name": "text.ch1.quest.chat.name",
+        "category": "side",
+        "steps": [
+          {
+            "id": "firmin",
+            "text": "text.ch1.quest.chat.firmin",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.boulanger"
+            },
+            "effects": []
+          },
+          {
+            "id": "moulin",
+            "text": "text.ch1.quest.chat.moulin",
+            "objective": {
+              "kind": "reach",
+              "id": "moulin"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.ch1.chat_au_moulin"
+              },
+              {
+                "do": "giveItem",
+                "id": "item.chat_de_rosalie",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch1.quest.chat.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.chat_de_rosalie",
+              "value": 1,
+              "npc": "npc.habitant"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.habitant",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 50
+          },
+          {
+            "do": "giveMoney",
+            "value": 40
+          }
+        ]
+      },
+      {
+        "id": "quest.puits_du_moulin",
+        "name": "text.ch1.quest.puits.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 2
+          }
+        ],
+        "steps": [
+          {
+            "id": "loup",
+            "text": "text.ch1.quest.puits.loup",
+            "objective": {
+              "kind": "defeat",
+              "id": "loup1",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "puiser",
+            "text": "text.ch1.quest.puits.puiser",
+            "objective": {
+              "kind": "reach",
+              "id": "moulin"
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.seau_d_eau_du_moulin",
+                "value": 1
+              },
+              {
+                "do": "discover",
+                "id": "discovery.ch1.puits_tiede"
+              }
+            ]
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch1.quest.puits.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.seau_d_eau_du_moulin",
+              "value": 1,
+              "npc": "npc.boulanger"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.boulanger",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 60
+          },
+          {
+            "do": "giveMoney",
+            "value": 50
+          }
+        ]
+      },
+      {
+        "id": "quest.garde_de_nuit",
+        "name": "text.ch1.quest.garde.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 3
+          }
+        ],
+        "steps": [
+          {
+            "id": "nuit",
+            "text": "text.ch1.quest.garde.nuit",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch1.garde.veille"
+            },
+            "effects": []
+          },
+          {
+            "id": "loups",
+            "text": "text.ch1.quest.garde.loups",
+            "objective": {
+              "kind": "defeatFamily",
+              "id": "loup",
+              "value": 2
+            },
+            "effects": []
+          },
+          {
+            "id": "choix",
+            "text": "text.ch1.quest.garde.choix",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch1.garde.choix"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 80
+          },
+          {
+            "do": "giveMoney",
+            "value": 70
+          }
+        ]
+      },
+      {
+        "id": "quest.champignons_de_sauge",
+        "name": "text.ch1.quest.champignons.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 4
+          },
+          {
+            "if": "passageOpen",
+            "id": "moulin"
+          }
+        ],
+        "steps": [
+          {
+            "id": "cueillir",
+            "text": "text.ch1.quest.champignons.cueillir",
+            "objective": {
+              "kind": "collect",
+              "id": "item.chapeau_de_lune",
+              "value": 4
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch1.quest.champignons.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.chapeau_de_lune",
+              "value": 4,
+              "npc": "npc.herboriste"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.herboriste",
+                "value": 1
+              },
+              {
+                "do": "discover",
+                "id": "discovery.ch1.rond_de_sorciere"
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 90
+          },
+          {
+            "do": "giveMoney",
+            "value": 60
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.potion_de_soin",
+            "value": 3
+          },
+          {
+            "do": "giveItem",
+            "id": "item.remede_de_l_aube",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.premier_contrat",
+        "name": "text.ch1.quest.contrat.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 5
+          }
+        ],
+        "steps": [
+          {
+            "id": "loups",
+            "text": "text.ch1.quest.contrat.loups",
+            "objective": {
+              "kind": "defeatFamily",
+              "id": "loup",
+              "value": 3
+            },
+            "effects": []
+          },
+          {
+            "id": "sanglier",
+            "text": "text.ch1.quest.contrat.sanglier",
+            "objective": {
+              "kind": "defeat",
+              "id": "sanglier",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.ch1.quest.contrat.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.capitaine"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 120
+          },
+          {
+            "do": "giveMoney",
+            "value": 120
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.elixir_de_vigueur",
+            "value": 2
+          },
+          {
+            "do": "giveItem",
+            "id": "item.pierre_a_aiguiser",
+            "value": 2
+          }
         ]
       }
     ],
@@ -9156,6 +10852,18 @@
       {
         "id": "discovery.ch1.silhouette",
         "text": "text.ch1.discovery.silhouette"
+      },
+      {
+        "id": "discovery.ch1.chat_au_moulin",
+        "text": "text.ch1.discovery.chat_au_moulin"
+      },
+      {
+        "id": "discovery.ch1.puits_tiede",
+        "text": "text.ch1.discovery.puits_tiede"
+      },
+      {
+        "id": "discovery.ch1.rond_de_sorciere",
+        "text": "text.ch1.discovery.rond_de_sorciere"
       }
     ],
     "scenes": [
