@@ -16,7 +16,10 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 4
+      "enum": [
+        4,
+        5
+      ]
     },
     "kind": {
       "const": "story"
@@ -243,7 +246,8 @@
                             "deliver",
                             "defeatFamily",
                             "equipped",
-                            "guildRank"
+                            "guildRank",
+                            "craftQuality"
                           ]
                         },
                         "id": {
@@ -255,6 +259,13 @@
                         },
                         "npc": {
                           "type": "string"
+                        },
+                        "quality": {
+                          "enum": [
+                            "superior",
+                            "masterwork"
+                          ],
+                          "description": "Sous-lot V1.9.3b (schéma 5) : qualité minimale de l'objectif craftQuality (équipement forgé) ; seul cet objectif a une qualité."
                         }
                       }
                     },

@@ -57,6 +57,9 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V1.7 (schéma 2) : rang de la guilde demandé pour ouvrir la boutique (la boutique de la guilde), ou null.</summary>
         public string? Rank { get; set; }
 
+        /// <summary>Sous-lot V1.9.3b (schéma 3) : fait de l'histoire demandé pour ouvrir la boutique (l'étal de Renart, après son aveu), ou null.</summary>
+        public string? Fact { get; set; }
+
         public List<OfferData?>? Offers { get; set; }
     }
 
@@ -116,10 +119,14 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V1.7 : rang de la guilde demandé pour ouvrir la boutique (la boutique de la guilde), ou null.</summary>
         public string? Rank { get; }
 
+        /// <summary>Sous-lot V1.9.3b : fait de l'histoire demandé pour ouvrir la boutique (appris par le personnage), ou null.</summary>
+        public string? Fact { get; }
+
         internal Merchant(string id, string npc, string greeting, int sellPercent, IEnumerable<string> closed, int daily, IEnumerable<MerchantOffer> offers,
-            string? rank = null)
+            string? rank = null, string? fact = null)
         {
             Rank = rank;
+            Fact = fact;
             Id = id;
             Npc = npc;
             Greeting = greeting;
@@ -198,9 +205,15 @@ namespace EdS.Data.Merchants
         /// Version 1 (sous-lot V1.1) : <c>values</c> (<c>item</c>, <c>value</c>) et <c>merchants</c> (<c>id</c>, <c>npc</c>, <c>greeting</c>,
         /// <c>sellPercent</c>, <c>closed</c>, <c>daily</c>, <c>offers</c> : <c>item</c>, <c>price</c>, <c>always</c>). Version 2 (sous-lot V1.7) :
         /// <c>rank</c> facultatif d'un marchand (rang de la Guilde des aventuriers demandé pour ouvrir sa boutique : la boutique de la guilde)
-        /// et d'une offre (rang demandé pour l'acheter), au moins celui de la boutique. Une version antérieure est refusée (pré-alpha).
+        /// et d'une offre (rang demandé pour l'acheter), au moins celui de la boutique. Version 3 (sous-lot V1.9.3b) : <c>fact</c> facultatif
+        /// d'un marchand (fait de l'histoire demandé pour ouvrir sa boutique, posé par au moins un effet <c>setFact</c> de l'histoire : l'étal
+        /// de Renart, après son aveu). Un fichier en version 2 (<see cref="PreviousSchemaVersion"/>) reste lu (sans <c>fact</c>) ; une version
+        /// plus ancienne est refusée (pré-alpha).
         /// </summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
+
+        /// <summary>Sous-lot V1.9.3b : version précédente, encore lue (sous-ensemble de la version 3, sans <c>fact</c>).</summary>
+        public const int PreviousSchemaVersion = 2;
 
         public const int MaxValues = 1024, MaxMerchants = 32, MaxOffers = 32;
 
@@ -218,8 +231,11 @@ namespace EdS.Data.Merchants
             if (story is null) throw new ArgumentNullException(nameof(story));
             if (items is null) throw new ArgumentNullException(nameof(items));
             ValidationReport r = report ?? new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, r))
+            // Sous-lot V1.9.3b : la version 2 est encore lue (sous-ensemble de la version 3).
+            int supported = document.SchemaVersion == PreviousSchemaVersion ? PreviousSchemaVersion : CurrentSchemaVersion;
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, r))
                 return new MerchantsLoadResult(r, null);
+            int schema = document.SchemaVersion!.Value;
             MerchantsData? d = document.Data;
             if (d is null) { Missing(r, "$.data", "valeurs des objets et marchands"); return new MerchantsLoadResult(r, null); }
 
@@ -253,7 +269,7 @@ namespace EdS.Data.Merchants
                 {
                     string p = $"$.data.merchants[{i}]";
                     if (d.Merchants[i] is not MerchantData m) { Missing(r, p, "marchand"); continue; }
-                    if (CheckMerchant(m, p, texts, story, items, values, merchantIds, npcs, r) is Merchant merchant) merchants.Add(merchant);
+                    if (CheckMerchant(m, p, texts, story, items, values, merchantIds, npcs, r, schema) is Merchant merchant) merchants.Add(merchant);
                 }
 
             if (!r.IsValid || document.ContentVersion is null) return new MerchantsLoadResult(r, null);
@@ -261,7 +277,7 @@ namespace EdS.Data.Merchants
         }
 
         private static Merchant? CheckMerchant(MerchantData m, string p, TextCatalog texts, StoryBook story, ItemCatalog items, IReadOnlyDictionary<string, long> values,
-            HashSet<string> merchantIds, HashSet<string> npcs, ValidationReport r)
+            HashSet<string> merchantIds, HashSet<string> npcs, ValidationReport r, int schema)
         {
             bool ok = true;
             if (m.Id is null) { Missing(r, p + ".id", "identifiant « merchant.… »"); ok = false; }
@@ -329,7 +345,25 @@ namespace EdS.Data.Merchants
             else if (ok && m.Daily == 0 && offers.All(o => !o.Always)) { r.Add(p + ".daily", ValidationCode.InvalidValue, "aucun objet en vente : ni offre permanente, ni offre tirée."); ok = false; }
             // Sous-lot V1.7 : rang de la guilde demandé pour ouvrir la boutique.
             if (m.Rank != null && !GuildRanks.IsRank(m.Rank)) { r.Add(p + ".rank", ValidationCode.UnknownReference, $"rang inconnu « {m.Rank} » ; possibles : {GuildRanks.Known}."); ok = false; }
-            return ok ? new Merchant(m.Id!, m.Npc!, m.Greeting!, m.SellPercent!.Value, closed, m.Daily!.Value, offers, m.Rank) : null;
+            // Sous-lot V1.9.3b (schéma 3) : fait demandé pour ouvrir la boutique, posé quelque part dans l'histoire (sinon jamais ouverte).
+            if (m.Fact != null)
+            {
+                if (schema < CurrentSchemaVersion)
+                { r.Add(p + ".fact", ValidationCode.InvalidValue, $"champ « fact » inconnu en version {schema} du format : version {CurrentSchemaVersion} demandée."); ok = false; }
+                else if (!StoryValidator.IsFactId(m.Fact)) { r.Add(p + ".fact", ValidationCode.InvalidValue, $"fait « {m.Fact} » mal formé : « fact.… »."); ok = false; }
+                else if (!FactsSet(story).Contains(m.Fact))
+                { r.Add(p + ".fact", ValidationCode.UnknownReference, $"fait « {m.Fact} » jamais posé par l'histoire (aucun setFact) : la boutique ne s'ouvrirait jamais."); ok = false; }
+            }
+            return ok ? new Merchant(m.Id!, m.Npc!, m.Greeting!, m.SellPercent!.Value, closed, m.Daily!.Value, offers, m.Rank, m.Fact) : null;
+        }
+
+        /// <summary>Sous-lot V1.9.3b : faits posés par l'histoire (effets <c>setFact</c> des réponses, des étapes et des quêtes).</summary>
+        private static HashSet<string> FactsSet(StoryBook story)
+        {
+            IEnumerable<StoryEffect> effects = story.Dialogues.SelectMany(d => d.Nodes).SelectMany(n => n.Choices).SelectMany(c => c.Effects)
+                .Concat(story.Quests.SelectMany(q => q.Steps).SelectMany(s => s.Effects))
+                .Concat(story.Quests.SelectMany(q => q.Effects));
+            return new HashSet<string>(effects.Where(e => e.Kind == EffectKind.SetFact).Select(e => e.Id), StringComparer.Ordinal);
         }
 
         private static void Missing(ValidationReport report, string path, string what)

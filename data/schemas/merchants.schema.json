@@ -16,7 +16,10 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 2
+      "enum": [
+        2,
+        3
+      ]
     },
     "kind": {
       "const": "merchants"
@@ -123,6 +126,12 @@
                   "sss"
                 ],
                 "description": "Sous-lot V1.7 (schéma 2) : rang de la Guilde des aventuriers demandé pour ouvrir la boutique (la boutique de la guilde) ; facultatif."
+              },
+              "fact": {
+                "type": "string",
+                "pattern": "^fact(\\.[a-z0-9_]+)+$",
+                "maxLength": 200,
+                "description": "Sous-lot V1.9.3b (schéma 3) : fait de l'histoire demandé pour ouvrir la boutique (posé par un setFact de l'histoire) ; facultatif."
               },
               "daily": {
                 "type": "integer",

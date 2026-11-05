@@ -76,6 +76,7 @@ namespace EdS.Data.Json
                 ["closed"] = (v, p) => x.Closed = input.ReadLimitedList(v, p, 4, n => $"{n} moments, au plus 4.", (e, ip) => input.Text(e, ip)),
                 ["daily"] = (v, p) => x.Daily = input.Int32(v, p),
                 ["rank"] = (v, p) => x.Rank = input.Text(v, p),   // sous-lot V1.7 (schéma 2)
+                ["fact"] = (v, p) => x.Fact = input.Text(v, p),   // sous-lot V1.9.3b (schéma 3)
                 ["offers"] = (v, p) => x.Offers = input.ReadLimitedList(v, p, MerchantValidator.MaxOffers,
                     n => $"{n} offres, au plus {MerchantValidator.MaxOffers}.", (e, ip) => ReadOffer(input, e, ip)),
             }) ? x : null;

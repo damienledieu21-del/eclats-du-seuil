@@ -369,6 +369,14 @@ namespace EdS.World
         public int Count(string item) => _stacks.Where(s => s.Item == item).Sum(s => s.Count);
 
         /// <summary>
+        /// Sous-lot V1.9.3b : nombre d'objets <paramref name="item"/> d'une qualité de fabrication au moins égale à <paramref name="minimum"/>,
+        /// dans le sac et portés (objectif <c>craftQuality</c> : la pièce forgée peut déjà être portée).
+        /// </summary>
+        public int CountAtLeast(string item, ItemQuality minimum) =>
+            checked(_stacks.Where(s => s.Item == item && s.Quality >= minimum).Sum(s => s.Count)
+                + _equipped.Values.Where(s => s.Item == item && s.Quality >= minimum).Sum(s => s.Count));
+
+        /// <summary>
         /// Sous-lot 12.6 : quantité réservée (objets de soin emportés au combat) : elle reste dans l'inventaire et la sauvegarde, mais
         /// <see cref="Remove"/> ne peut pas la prendre ; seul le moteur l'use, quand le personnage boit.
         /// </summary>

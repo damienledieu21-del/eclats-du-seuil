@@ -53,7 +53,8 @@ namespace EdS.World
         /// La boutique de <paramref name="merchant"/> est ouverte au personnage : présent et vivant, dans la zone de son PNJ (sous-lot V1.7 : un
         /// intérieur aussi, la boutique de la guilde), à <see cref="Narrative.TalkRange"/> de lui (sinon <see cref="TradeRefusal.TooFar"/>), pas
         /// à un moment de fermeture (<see cref="TradeRefusal.Closed"/>), et (sous-lot V1.7) au rang de la guilde que demande la boutique
-        /// (<see cref="TradeRefusal.RankTooLow"/>).
+        /// (<see cref="TradeRefusal.RankTooLow"/>), et (sous-lot V1.9.3b) quand le personnage sait le fait que demande la boutique
+        /// (<see cref="TradeRefusal.NotYetOpen"/> : le PNJ parle alors comme un autre).
         /// </summary>
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
         public TradeRefusal CanTrade(string merchant)
@@ -64,6 +65,7 @@ namespace EdS.World
                 return TradeRefusal.TooFar;
             if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
             if (!HasRank(m.Rank)) return TradeRefusal.RankTooLow;
+            if (m.Fact != null && !Narrative.Knows(m.Fact)) return TradeRefusal.NotYetOpen;   // sous-lot V1.9.3b : l'étal de Renart, après son aveu
             return TradeRefusal.None;
         }
 

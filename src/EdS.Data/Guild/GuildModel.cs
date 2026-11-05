@@ -637,6 +637,8 @@ namespace EdS.Data.Guild
                 };
                 if (!fits) { _r.Add(p + ".kind", ValidationCode.InvalidValue, $"objectif « {t.Kind} » contraire à la sorte du contrat."); return null; }
                 if (t.Step != null || t.Present.Contains("step")) { _r.Add(p + ".step", ValidationCode.InvalidValue, "pas d'étape dans un objectif."); return null; }
+                // Sous-lot V1.9.3b : la qualité n'appartient qu'à l'objectif craftQuality de l'histoire.
+                if (t.Quality != null || t.Present.Contains("quality")) { _r.Add(p + ".quality", ValidationCode.InvalidValue, "pas de qualité dans un objectif de contrat."); return null; }
                 if (t.Id is null) { Missing(_r, p + ".id", o == ObjectiveKind.Deliver ? "objet" : "créature ou famille"); return null; }
                 bool ok = true;
                 switch (o)
