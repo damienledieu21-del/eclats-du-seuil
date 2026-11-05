@@ -1,3 +1,5 @@
+using System;
+
 namespace EdS.Runtime
 {
     /// <summary>
@@ -99,13 +101,18 @@ namespace EdS.Runtime
         /// </summary>
         public static bool AmbientHalo(string? objectName, string? materialName)
         {
-            foreach (string name in new[] { StyleRules.Key(objectName ?? string.Empty), StyleRules.Key(materialName ?? string.Empty) })
-                foreach (string word in HaloWords)
-                    if (name.Contains(word)) return true;
+            // Relecture de la PR #97 : des mots entiers (séparés par tout ce qui n'est ni lettre ni chiffre), pas des bouts de mot : « wheat »,
+            // « sheath » ou « EmberGlow » ne comptent pas ; un mot qui finit par « distortion » ou « refraction » (« HeatDistortion ») compte.
+            foreach (string? name in new[] { objectName, materialName })
+                foreach (string word in (name ?? string.Empty).ToLowerInvariant().Split(NotWord, StringSplitOptions.RemoveEmptyEntries))
+                    if (Array.IndexOf(HaloWords, word) >= 0 || word.EndsWith("distortion", StringComparison.Ordinal)
+                        || word.EndsWith("refraction", StringComparison.Ordinal)) return true;
             return false;
         }
 
-        private static readonly string[] HaloWords = { "glow", "halo", "distort", "heat", "haze", "refract" };
+        private static readonly string[] HaloWords = { "glow", "halo", "distort", "distortion", "heat", "haze", "heathaze", "refract", "refraction" };
+
+        private static readonly char[] NotWord = " _-.()[]/\\|:,;'\"0123456789".ToCharArray();
 
         /// <summary>
         /// Shader de particules du rendu intégré (sortirait rose avec URP) : « Particles/… » (shaders standard) ou les anciens

@@ -37,6 +37,16 @@ namespace EdS.Game
             public Material[][] Clear;
             public float[][] Alpha;
             public bool Clearing;
+
+            /// <summary>V1.10 (relecture) : état d'origine de chaque renderer (un renderer éteint ailleurs le reste).</summary>
+            public bool[] WasEnabled;
+
+            /// <summary>V1.10 (relecture) : dernière opacité appliquée, et si le décor était dessiné (rien n'est réappliqué sans changement).</summary>
+            public float Applied = 1f;
+            public bool AppliedShown = true;
+
+            /// <summary>V1.10 (relecture) : la caméra est-elle à hauteur de ce décor au-dessus (avec hystérésis) ?</summary>
+            public bool AtHeight;
         }
 
         /// <summary>
@@ -1080,7 +1090,8 @@ namespace EdS.Game
                 if (o.Transform == null) continue;
                 // V1.10 (essai 10) : un décor au-dessus atteint par la caméra, ou le toit sous lequel on se tient, disparaît ; un décor entre
                 // la caméra et le corps (bas des jambes, milieu ou tête : avant, la tête seule) cache le joueur.
-                bool hidden = o.Overhead && OccluderRules.Overhead(camera.y, o.Min.y) || underRoof && o.Min.y >= 2.9f && Overlaps(o, _roofMin, _roofMax);
+                if (o.Overhead) o.AtHeight = OccluderRules.Overhead(camera.y, o.Min.y, o.AtHeight);
+                bool hidden = o.Overhead && o.AtHeight || underRoof && o.Min.y >= 2.9f && Overlaps(o, _roofMin, _roofMax);
                 bool masks = hidden || Masks(camera, player, o);
                 if (!o.FadeChecked && masks) PrepareFade(o);
                 if (o.Faded != null)
@@ -1106,9 +1117,7 @@ namespace EdS.Game
         /// <summary>V1.10 : le décor est-il entre la caméra et l'un des points du corps (<see cref="OccluderRules.BodyPoints"/>) ?</summary>
         private static bool Masks(Vector3 camera, Vector3 player, Occluder o)
         {
-            foreach (double up in OccluderRules.BodyPoints)
-                if (SegmentHitsBox(camera, player + Vector3.up * (float)up, o.Min, o.Max)) return true;
-            return false;
+            return OccluderRules.MasksBody((camera.x, camera.y, camera.z), (player.x, player.y, player.z), (o.Min.x, o.Min.y, o.Min.z), (o.Max.x, o.Max.y, o.Max.z));
         }
 
         /// <summary>
@@ -1149,6 +1158,9 @@ namespace EdS.Game
                 }
             }
             o.Faded = renderers.ToArray();
+            o.WasEnabled = renderers.Select(r => r.enabled).ToArray();
+            o.Applied = 1f;
+            o.AppliedShown = true;
             o.Solid = solid;
             o.Clear = clear;
             o.Alpha = alpha;
@@ -1176,9 +1188,14 @@ namespace EdS.Game
             return copy;
         }
 
-        /// <summary>V1.10 : met l'opacité du décor (copies transparentes tant qu'il n'est pas plein, matériaux d'origine sinon).</summary>
+        /// <summary>
+        /// V1.10 : met l'opacité du décor (copies transparentes tant qu'il n'est pas plein, matériaux d'origine sinon). Relecture : rien
+        /// n'est réappliqué si l'opacité n'a pas changé ; un renderer n'est allumé ou éteint qu'au passage du seuil <see cref="OccluderRules.Shown"/>,
+        /// et un renderer éteint avant le fondu (ailleurs dans le jeu) n'est jamais rallumé.
+        /// </summary>
         private static void ApplyFade(Occluder o)
         {
+            if (Mathf.Abs(o.Cut - o.Applied) < 1e-4f) return;
             bool clear = OccluderRules.Clear(o.Cut);
             bool shown = OccluderRules.Shown(o.Cut);
             for (int i = 0; i < o.Faded.Length; i++)
@@ -1186,8 +1203,8 @@ namespace EdS.Game
                 Renderer r = o.Faded[i];
                 if (r == null) continue;
                 if (clear != o.Clearing) r.sharedMaterials = clear ? o.Clear[i] : o.Solid[i];
-                r.enabled = shown;
-                if (!clear) continue;
+                if (shown != o.AppliedShown) r.enabled = shown && o.WasEnabled[i];
+                if (!clear || !shown) continue;
                 for (int k = 0; k < o.Clear[i].Length; k++)
                 {
                     Material m = o.Clear[i][k];
@@ -1197,6 +1214,8 @@ namespace EdS.Game
                 }
             }
             o.Clearing = clear;
+            o.AppliedShown = shown;
+            o.Applied = o.Cut;
         }
 
         /// <summary>V1.10 : rend au décor ses matériaux d'origine et libère les copies transparentes.</summary>
@@ -1209,7 +1228,7 @@ namespace EdS.Game
                 if (o.Faded[i] != null)
                 {
                     o.Faded[i].sharedMaterials = o.Solid[i];
-                    o.Faded[i].enabled = true;
+                    if (!o.AppliedShown) o.Faded[i].enabled = o.WasEnabled[i];   // rendu à son état d'origine
                 }
                 foreach (Material m in o.Clear[i]) made.Add(m);
             }
@@ -1221,36 +1240,6 @@ namespace EdS.Game
 
         private static bool Overlaps(Occluder o, Vector3 min, Vector3 max) =>
             o.Max.x >= min.x && o.Min.x <= max.x && o.Max.z >= min.z && o.Min.z <= max.z;
-
-        /// <summary>Le segment [a, b] traverse-t-il la boîte alignée [min, max] ? (méthode des dalles)</summary>
-        private static bool SegmentHitsBox(Vector3 a, Vector3 b, Vector3 min, Vector3 max)
-        {
-            float t0 = 0f, t1 = 1f;
-            Vector3 d = b - a;
-            for (int axis = 0; axis < 3; axis++)
-            {
-                float start = axis == 0 ? a.x : axis == 1 ? a.y : a.z;
-                float delta = axis == 0 ? d.x : axis == 1 ? d.y : d.z;
-                float lo = axis == 0 ? min.x : axis == 1 ? min.y : min.z;
-                float hi = axis == 0 ? max.x : axis == 1 ? max.y : max.z;
-                if (Mathf.Abs(delta) < 1e-6f)
-                {
-                    if (start < lo || start > hi) return false;
-                    continue;
-                }
-                float u = (lo - start) / delta, v = (hi - start) / delta;
-                if (u > v)
-                {
-                    float t = u;
-                    u = v;
-                    v = t;
-                }
-                t0 = Mathf.Max(t0, u);
-                t1 = Mathf.Min(t1, v);
-                if (t0 > t1) return false;
-            }
-            return true;
-        }
 
         // --- Attaques annoncées au sol -------------------------------------------------------------------------------------
 

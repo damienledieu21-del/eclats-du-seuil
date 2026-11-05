@@ -30,8 +30,52 @@ namespace EdS.Runtime
         /// </summary>
         public static readonly IReadOnlyList<double> BodyPoints = new[] { -0.7, 0.0, 1.0 };
 
+        /// <summary>Hystérésis (m) du décor au-dessus : la caméra doit redescendre de plus que cela pour le faire revenir (pas d'oscillation).</summary>
+        public const double OverheadHysteresis = 0.1;
+
         /// <summary>La caméra (à la hauteur <paramref name="cameraY"/>) est-elle à hauteur d'un décor au-dessus dont le bas est <paramref name="bottom"/> ?</summary>
         public static bool Overhead(double cameraY, double bottom) => cameraY > bottom - OverheadMargin;
+
+        /// <summary>
+        /// Même question, avec hystérésis (relecture de la PR #97) : déjà à sa hauteur (<paramref name="wasAtHeight"/>), la caméra le reste
+        /// tant qu'elle ne redescend pas de plus de <see cref="OverheadHysteresis"/> sous le seuil d'entrée.
+        /// </summary>
+        public static bool Overhead(double cameraY, double bottom, bool wasAtHeight) =>
+            wasAtHeight ? cameraY > bottom - OverheadMargin - OverheadHysteresis : Overhead(cameraY, bottom);
+
+        /// <summary>Le segment [<paramref name="a"/>, <paramref name="b"/>] traverse-t-il la boîte alignée [<paramref name="min"/>, <paramref name="max"/>] ? (méthode des dalles)</summary>
+        public static bool SegmentHitsBox((double X, double Y, double Z) a, (double X, double Y, double Z) b, (double X, double Y, double Z) min,
+            (double X, double Y, double Z) max)
+        {
+            double t0 = 0, t1 = 1;
+            double[] start = { a.X, a.Y, a.Z }, delta = { b.X - a.X, b.Y - a.Y, b.Z - a.Z }, lo = { min.X, min.Y, min.Z }, hi = { max.X, max.Y, max.Z };
+            for (int axis = 0; axis < 3; axis++)
+            {
+                if (Math.Abs(delta[axis]) < 1e-9)
+                {
+                    if (start[axis] < lo[axis] || start[axis] > hi[axis]) return false;
+                    continue;
+                }
+                double u = (lo[axis] - start[axis]) / delta[axis], v = (hi[axis] - start[axis]) / delta[axis];
+                if (u > v) (u, v) = (v, u);
+                t0 = Math.Max(t0, u);
+                t1 = Math.Min(t1, v);
+                if (t0 > t1) return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Le décor (boîte [<paramref name="min"/>, <paramref name="max"/>]) cache-t-il le joueur, vu de <paramref name="camera"/> : est-il
+        /// entre la caméra et l'un des points du corps (<see cref="BodyPoints"/>, au-dessus du milieu du corps <paramref name="player"/>) ?
+        /// </summary>
+        public static bool MasksBody((double X, double Y, double Z) camera, (double X, double Y, double Z) player, (double X, double Y, double Z) min,
+            (double X, double Y, double Z) max)
+        {
+            foreach (double up in BodyPoints)
+                if (SegmentHitsBox(camera, (player.X, player.Y + up, player.Z), min, max)) return true;
+            return false;
+        }
 
         /// <summary>
         /// Opacité visée : 0 pour un décor au-dessus atteint par la caméra (ou un toit sous lequel on se tient), <see cref="FadeAlpha"/> pour

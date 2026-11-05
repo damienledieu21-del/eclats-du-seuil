@@ -137,15 +137,8 @@ namespace EdS.Game
         /// </summary>
         public static GameObject Smoke(Transform parent, Vector3 at)
         {
-            Material template = Resources.Load<Material>(MaterialName);
-            if (template == null)
-            {
-                Shader shader = Shader.Find("EdS/Particule");
-                if (shader == null || !shader.isSupported) return null;
-                template = new Material(shader);
-            }
-            Texture2D image = UiKit.Texture("EdsInterface/Particules/fumee");
-            if (image == null) return null;
+            Material material = SmokeMaterial();
+            if (material == null) return null;
             var go = new GameObject("Fumée de la forge");
             go.transform.SetParent(parent, false);
             go.transform.position = at;
@@ -185,17 +178,39 @@ namespace EdS.Game
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            var material = new Material(template);
+            renderer.sharedMaterial = material;
+            system.Play();
+            return go;
+        }
+
+        /// <summary>
+        /// Relecture de la PR #97 : matériau de la fumée des forges, fait une fois et partagé par toutes (jamais une copie par forge, qui
+        /// n'était pas détruite avec elle) ; null sans le shader ou la texture.
+        /// </summary>
+        private static Material SmokeMaterial()
+        {
+            if (_smoke != null) return _smoke;
+            Material template = Resources.Load<Material>(MaterialName);
+            if (template == null)
+            {
+                Shader shader = Shader.Find("EdS/Particule");
+                if (shader == null || !shader.isSupported) return null;
+                template = new Material(shader);
+            }
+            Texture2D image = UiKit.Texture("EdsInterface/Particules/fumee");
+            if (image == null) return null;
+            var material = new Material(template) { name = "Fumée de la forge" };
             material.SetTexture("_MainTex", image);
             material.SetFloat("_SrcBlend", 5f);    // SrcAlpha
             material.SetFloat("_DstBlend", 10f);   // OneMinusSrcAlpha : fumée claire, jamais additive ni multipliée
             material.SetFloat("_Intensity", 1f);
             material.SetFloat("_White", 1f);       // fondu sans bords sombres (comme la fumée des combats)
             material.renderQueue = 3100;
-            renderer.sharedMaterial = material;
-            system.Play();
-            return go;
+            _smoke = material;
+            return _smoke;
         }
+
+        private static Material _smoke;
 
         /// <summary>Coup reçu : gerbe d'étincelles, éclair, gouttes sombres ; <paramref name="strength"/> de 0 à 1 (part de vie perdue).</summary>
         public void Hit(Vector3 feet, float height, float strength, bool critical)

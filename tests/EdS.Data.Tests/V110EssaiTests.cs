@@ -47,12 +47,43 @@ public class V110EssaiTests
     public void Les_poutres_s_effacent_quand_la_camera_arrive_a_leur_hauteur(double cameraY, double beamBottom, bool hidden) =>
         Assert.Equal(hidden, OccluderRules.Overhead(cameraY, beamBottom));
 
+    [Fact]
+    public void Les_poutres_ne_clignotent_pas_quand_la_camera_hesite()
+    {
+        // Relecture de la PR #97 : hystérésis de 10 cm ; à 2,15 m sous une poutre à 2,55 m, la réponse dépend de l'état d'avant.
+        Assert.False(OccluderRules.Overhead(2.15, 2.55, false));
+        Assert.True(OccluderRules.Overhead(2.15, 2.55, true));
+        Assert.False(OccluderRules.Overhead(2.05, 2.55, true));
+        Assert.True(OccluderRules.Overhead(2.25, 2.55, false));
+    }
+
+    [Fact]
+    public void Un_mur_qui_ne_cache_que_les_jambes_compte()
+    {
+        // Caméra à 8 m au sud, haute (4,6 m) ; joueur au milieu du corps à 1 m ; muret de 1,2 m à 0,7 m devant lui, côté caméra : il cache
+        // les jambes (point à 0,3 m), pas la tête. Avant V1.10 (la tête seule), il restait plein.
+        var camera = (0.0, 4.6, -8.0);
+        var player = (0.0, 1.0, 0.0);
+        (double, double, double) min = (-3.0, 0.0, -1.0), max = (3.0, 1.2, -0.7);
+        Assert.False(OccluderRules.SegmentHitsBox(camera, (0.0, 2.0, 0.0), min, max));   // la tête : non
+        Assert.True(OccluderRules.MasksBody(camera, player, min, max));                  // les jambes : oui
+        // Un mur derrière le joueur ne cache rien ; un mur haut entre les deux cache tout.
+        Assert.False(OccluderRules.MasksBody(camera, player, (-3.0, 0.0, 1.0), (3.0, 3.0, 1.3)));
+        Assert.True(OccluderRules.MasksBody(camera, player, (-3.0, 0.0, -3.0), (3.0, 3.0, -2.7)));
+        // La caméra dans la boîte : touchée.
+        Assert.True(OccluderRules.SegmentHitsBox((0.0, 1.0, 0.0), (5.0, 1.0, 0.0), (-1.0, 0.0, -1.0), (1.0, 2.0, 1.0)));
+    }
+
     [Theory]
     [InlineData("Glow", "FlameMaterial", true)]
     [InlineData("Flames", "HeatDistortion", true)]
     [InlineData("Fire Halo", null, true)]
+    [InlineData("Glow01", null, true)]
     [InlineData("Flames", "FlameRoundYellow", false)]
     [InlineData("Sparks", "SparkMaterial", false)]
+    [InlineData("Wheat", "WheatField", false)]
+    [InlineData("Sheath", null, false)]
+    [InlineData("EmberGlow", "Embers", false)]
     [InlineData(null, null, false)]
     public void Le_halo_d_un_feu_de_pack_n_est_plus_dessine(string? objectName, string? materialName, bool halo) =>
         Assert.Equal(halo, ParticleRules.AmbientHalo(objectName, materialName));

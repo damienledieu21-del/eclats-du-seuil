@@ -47,7 +47,6 @@ public class V110BourgTests
             double w = b.X1 - b.X0, d = b.Z1 - b.Z0;
             // Au moins 7 × 9 m (avant : 6 × 6 à 8 × 6) : une maison de Sketchfab de 11 m y tient, écrasée d'un quart au plus.
             Assert.True(Math.Min(w, d) >= 7 && Math.Max(w, d) >= 9, $"{id} : {w} × {d} m");
-            Assert.True(Math.Max(w, d) * 1.25 >= 11, id);
         }
         // Les maisons hors du bourg (champs, hameau) ne bougent pas.
         Assert.Equal((-74.0, -52.0, -67.0, -46.0), boxes["maison9"]);
@@ -68,6 +67,32 @@ public class V110BourgTests
         {
             var b = boxes[id];
             Assert.True(b.X0 >= -100 && b.X1 <= -24 && b.Z0 >= -24 && b.Z1 <= 17, id);
+        }
+    }
+
+    [Fact]
+    public void Les_maisons_laissent_la_place_aux_obstacles_et_aux_routes()
+    {
+        // Relecture de la PR #97 : vérifié ici, et pas seulement par les tests des Vallons agrandis. Un mètre et demi au moins entre une
+        // maison et tout autre obstacle ; la route passe à une demi-largeur plus un demi-mètre au moins de chaque maison.
+        ZoneDefinition zone = Zone();
+        var boxes = Boxes(zone);
+        foreach (string id in BourgHouses)
+        {
+            foreach (var (other, b) in boxes.Where(kv => kv.Key != id))
+                Assert.True(Gap(boxes[id], b) >= 1.5, $"{id} et {other} : {Gap(boxes[id], b):0.##} m");
+            foreach (StyleRoad road in AdventureSession.Roads(zone))
+                for (int i = 0; i + 1 < road.Points.Count; i++)
+                {
+                    var (ax, az) = road.Points[i];
+                    var (bx, bz) = road.Points[i + 1];
+                    double length = Math.Sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az));
+                    for (double s = 0; s <= length; s += 0.1)
+                    {
+                        double x = ax + (bx - ax) * s / length, z = az + (bz - az) * s / length;
+                        Assert.True(Gap(x, z, boxes[id]) >= road.Width / 2 + 0.5, $"{road.Id} à {Gap(x, z, boxes[id]):0.##} m de {id} en ({x:0.#}, {z:0.#})");
+                    }
+                }
         }
     }
 
