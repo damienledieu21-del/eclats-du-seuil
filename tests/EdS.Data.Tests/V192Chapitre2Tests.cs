@@ -129,7 +129,7 @@ public class V192Chapitre2Tests
     public void Chapitre_2_et_ses_quetes_livres()
     {
         StoryBook book = Story.Value;
-        Assert.Equal(new[] { Bourg, Dette, Cloches, Lanterne, Puits, Apprentie, Herbes }, book.Quests.Skip(9).Select(q => q.Id));   // ajoutées à la fin
+        Assert.Equal(new[] { Bourg, Dette, Cloches, Lanterne, Puits, Apprentie, Herbes }, book.Quests.Skip(9).Take(7).Select(q => q.Id));   // ajoutées à la fin (V1.9.3 : le chapitre 3 suit)
         Assert.Equal(QuestCategory.Main, book.Quest(Bourg).Category);
         Assert.Equal(new[] { "chapelle", "mathurin", "renart", "ruines", "retour", "guilde", "aveu" }, book.Quest(Bourg).Steps.Select(s => s.Id));
         Assert.Empty(book.Quest(Bourg).Requires);   // commencée par le chapitre 1 : jamais fermée
@@ -145,7 +145,7 @@ public class V192Chapitre2Tests
         CraftingBook crafting = Crafting(zone);
         foreach (string node in new[] { "filon_ouest", "filon_centre", "filon_est", "herbes_lac", "herbes_verger" })
             Assert.Equal(6, zone.MinLevelAt(crafting.Nodes.Single(n => n.Id == node).Position));
-        Assert.Equal(new[] { "npc.albe", "npc.renart", "npc.lison", "npc.apprentie" }, book.Npcs.Skip(14).Select(n => n.Id));
+        Assert.Equal(new[] { "npc.albe", "npc.renart", "npc.lison", "npc.apprentie" }, book.Npcs.Skip(14).Take(4).Select(n => n.Id));
         Assert.Equal("zone.chapelle", book.Npc("npc.albe").Zone);
         // Les cinq objets de quête ne se vendent pas.
         foreach (string item in new[] { "item.bourse_d_eclats", "item.bourse_de_renart", "item.corde_de_cloche", "item.huile_de_lampe", "item.pierre_benie" })
@@ -320,7 +320,7 @@ public class V192Chapitre2Tests
         Say(w, "npc.renart", "ch2_dette");
         Assert.Equal(new[] { "ItemGiven item.bourse_de_renart 1", "FactLearned fact.ch2.dette.bourse" }, Choose(w, 0));
         Assert.Contains($"StepCompleted {Dette}/renart", Ticks(w));
-        Say(w, "npc.renart", "ch2_apres");
+        Say(w, "npc.renart", "ch3_ancienne");   // V1.9.3 : chapitre 2 fini avant le chapitre 3, Renart l'envoie au hameau
         // Rapportée à Mathurin.
         w = Go(w, Mathurin, "zone.auberge");
         long xp = w.Character.Xp, money = w.Money;
