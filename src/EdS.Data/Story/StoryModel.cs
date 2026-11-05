@@ -135,6 +135,13 @@ namespace EdS.Data.Story
         /// portées. Seule la forge donne une qualité (butin, marchands et récompenses sont de qualité normale) ; l'objet n'est pas pris.
         /// </summary>
         CraftQuality = 10,
+
+        /// <summary>
+        /// Sous-lot V1.9.6 (histoire en schéma 6, tutoriel de l'ouverture) : le joueur fait lui-même un geste de combat pendant l'étape,
+        /// <see cref="Objective.Value"/> fois : <c>strike</c> (un coup porté à un ennemi), <c>guard</c> (un coup bloqué par la garde),
+        /// <c>parry</c> (une parade parfaite), <c>drink</c> (un objet de soin bu). Compté par la partie d'après les compteurs du moteur.
+        /// </summary>
+        Practice = 11,
     }
 
     public sealed class StoryCondition
@@ -373,6 +380,36 @@ namespace EdS.Data.Story
         }
     }
 
+    /// <summary>
+    /// Sous-lot V1.9.6 (histoire en schéma 6) : une scène jouée, comme le souvenir de la Rupture. La scène est une petite zone (un intérieur,
+    /// <see cref="Zone"/>) où le joueur incarne quelqu'un d'autre (<see cref="Actor"/>, un texte : son nom à l'écran). Elle est <b>à jouer</b>
+    /// quand le fait <see cref="Start"/> est appris et pas encore le fait <see cref="End"/> ; les portes qui mènent à sa zone ne s'ouvrent
+    /// qu'alors (l'interface y fait entrer elle-même, elles ne se montrent pas). Elle est finie quand <see cref="End"/> est appris : par la
+    /// victoire sur le chef de sa zone (qui l'apprend), ou en la passant (le texte <see cref="Text"/>, le repli, s'affiche alors) ; au retour,
+    /// le texte <see cref="Back"/>.
+    /// </summary>
+    public sealed class Scene
+    {
+        public string Id { get; }
+        public string Zone { get; }
+        public string Actor { get; }
+        public string Start { get; }
+        public string End { get; }
+        public string Text { get; }
+        public string Back { get; }
+
+        internal Scene(string id, string zone, string actor, string start, string end, string text, string back)
+        {
+            Id = id;
+            Zone = zone;
+            Actor = actor;
+            Start = start;
+            End = end;
+            Text = text;
+            Back = back;
+        }
+    }
+
     /// <summary>Sous-lot 12.5 (cadrage Q37) : textes d'une langue, par clé.</summary>
     public sealed class TextCatalog
     {
@@ -406,9 +443,13 @@ namespace EdS.Data.Story
         public IReadOnlyList<Quest> Quests { get; }
         public IReadOnlyList<Discovery> Discoveries { get; }
 
+        /// <summary>Sous-lot V1.9.6 (schéma 6) : scènes jouées (vide avant).</summary>
+        public IReadOnlyList<Scene> Scenes { get; }
+
         internal StoryBook(int schemaVersion, string contentVersion, IEnumerable<Npc> npcs, IEnumerable<Dialogue> dialogues, IEnumerable<Quest> quests,
-            IEnumerable<Discovery> discoveries)
+            IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null)
         {
+            Scenes = Frozen.List(scenes ?? Array.Empty<Scene>(), nameof(scenes));
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             Npcs = Frozen.List(npcs, nameof(npcs));
@@ -425,5 +466,8 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.6 : PNJ qui vivent dans la zone <paramref name="zone"/> (null : la zone de l'histoire), dans l'ordre du fichier.</summary>
         public IEnumerable<Npc> NpcsIn(string? zone) => Npcs.Where(n => n.Zone == zone);
+
+        /// <summary>Sous-lot V1.9.6 : scène jouée dans la zone <paramref name="zone"/>, ou null.</summary>
+        public Scene? SceneIn(string? zone) => Scenes.FirstOrDefault(s => s.Zone == zone);
     }
 }

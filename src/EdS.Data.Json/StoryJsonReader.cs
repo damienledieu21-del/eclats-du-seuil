@@ -95,6 +95,7 @@ namespace EdS.Data.Json
                     ["dialogues"] = (v, p) => d.Dialogues = List(input, v, p, StoryValidator.MaxDialogues, ReadDialogue),
                     ["quests"] = (v, p) => d.Quests = List(input, v, p, StoryValidator.MaxQuests, ReadQuest),
                     ["discoveries"] = (v, p) => d.Discoveries = List(input, v, p, StoryValidator.MaxDiscoveries, ReadDiscovery),
+                    ["scenes"] = (v, p) => d.Scenes = List(input, v, p, StoryValidator.MaxScenes, ReadScene),   // sous-lot V1.9.6 (schéma 6)
                 });
                 document.Data = ok ? d : null;
             });
@@ -203,6 +204,21 @@ namespace EdS.Data.Json
             {
                 ["id"] = (v, p) => x.Id = input.Text(v, p),
                 ["text"] = (v, p) => x.Text = input.Text(v, p),
+            }) ? x : null;
+        }
+
+        private static SceneData? ReadScene(JsonInput input, JsonElement element, string path)
+        {
+            var x = new SceneData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => x.Id = input.Text(v, p),
+                ["zone"] = (v, p) => x.Zone = input.Text(v, p),
+                ["actor"] = (v, p) => x.Actor = input.Text(v, p),
+                ["start"] = (v, p) => x.Start = input.Text(v, p),
+                ["end"] = (v, p) => x.End = input.Text(v, p),
+                ["text"] = (v, p) => x.Text = input.Text(v, p),
+                ["back"] = (v, p) => x.Back = input.Text(v, p),
             }) ? x : null;
         }
 

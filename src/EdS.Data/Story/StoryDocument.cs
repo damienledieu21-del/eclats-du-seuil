@@ -36,6 +36,21 @@ namespace EdS.Data.Story
         public List<DialogueData?>? Dialogues { get; set; }
         public List<QuestData?>? Quests { get; set; }
         public List<DiscoveryData?>? Discoveries { get; set; }
+
+        /// <summary>Sous-lot V1.9.6 (schéma 6) : scènes jouées, facultatives.</summary>
+        public List<SceneData?>? Scenes { get; set; }
+    }
+
+    /// <summary>Sous-lot V1.9.6 (schéma 6) : scène jouée (voir <see cref="Scene"/>).</summary>
+    public sealed class SceneData
+    {
+        public string? Id { get; set; }
+        public string? Zone { get; set; }
+        public string? Actor { get; set; }
+        public string? Start { get; set; }
+        public string? End { get; set; }
+        public string? Text { get; set; }
+        public string? Back { get; set; }
     }
 
     public sealed class NpcData
