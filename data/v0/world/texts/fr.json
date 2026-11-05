@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.11.0-provisoire",
+  "contentVersion": "0.11.1-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1188,6 +1188,9 @@
       "text.ch1.quest.contrat.sanglier": "Le sanglier des ruines, à l'est du gué, a éventré deux chiens. Abats-le (niveau 6 : garde-toi quand il charge).",
       "text.ch1.quest.contrat.retour": "Retourne voir le capitaine Bérenger, près du gué, pour ta paie.",
       "text.ui.quest_skipped": "Quête passée : {0}",
+      "text.ui.souvenir.prompt": "Un souvenir remonte",
+      "text.ui.souvenir.call": "L'Éclat brûle dans ta paume.",
+      "text.ui.reveil.aguerri": "Déjà aguerri ? Dis à Odile « Je sais me battre ».",
       "text.ch1.archer_garde.vers_garde": "Et cette garde de nuit au gué ?",
       "text.ch1.habitant.vers_chat": "Et votre chat, Rosalie ?",
       "text.ch1.capitaine.vers_contrat": "Et ce contrat de chasse, capitaine ?"

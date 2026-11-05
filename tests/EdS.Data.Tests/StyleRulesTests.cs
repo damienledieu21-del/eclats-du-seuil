@@ -151,6 +151,12 @@ public class StyleRulesTests
         Assert.Equal(StyleSlot.Wolf, StyleRules.ForCombatant("loup1", false));
         Assert.Equal(StyleSlot.Wolf, StyleRules.ForCombatant("loup4_v3", false));   // une vie suivante
         Assert.Equal(StyleSlot.Boar, StyleRules.ForCombatant("sanglier2", false));
+        // Sous-lot V1.9.8 : Croc-Gris et sa seconde forme sont des loups, plus grands que les autres.
+        Assert.Equal(StyleSlot.Wolf, StyleRules.ForCombatant("croc_gris", false));
+        Assert.Equal(StyleSlot.Wolf, StyleRules.ForCombatant("croc_gris_enrage", false));
+        Assert.Equal(0.95, StyleRules.BeastHeight("loup1"));
+        Assert.True(StyleRules.BeastHeight("croc_gris") > 1.3);
+        Assert.True(StyleRules.BeastHeight("croc_gris_enrage") > StyleRules.BeastHeight("croc_gris"));
         // Essai réaliste (demande de Damien du 26 octobre 2026) : les autres prennent leur personnage Mixamo (s'il existe dans le catalogue).
         Assert.Equal(StyleSlot.Character, StyleRules.ForCombatant("archer", false));
         Assert.Equal(StyleSlot.Character, StyleRules.ForCombatant("gardien_du_seuil", false));

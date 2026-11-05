@@ -138,6 +138,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 
 - Demande de Damien du 5 novembre 2026, avant son essai complet sous Unity : un chapitre 1 « Les traces sous le moulin » beaucoup plus riche, six idées choisies. **PR A1** (cœur et données) : les trois premières et les indices du mystère ; **PR A2** : quatre ou cinq quêtes de plus et le village vivant ; **PR B** : la présentation sous Unity.
 - **État** (5 novembre 2026, PR A1 en brouillon) : fait ([MONDE.md](MONDE.md#chapitre-1-enrichi--louverture-le-souvenir-jouable-croc-gris-sous-lot-v196), [ECRITURE.md](ECRITURE.md)) : l'ouverture « Le réveil » (tutoriel : marcher, frapper, se garder, parer, boire), le souvenir de la Rupture en scène jouée (une petite zone où l'on est Galeran, texte de repli gardé), Croc-Gris (chef de la meute du pré, deux formes), trois indices ; **histoire en schéma 6** (objectif `practice`, scènes), sauvegarde v12 inchangée.
+- **PR B** (sous-lot V1.9.8, en brouillon) : la présentation sous Unity (réveil, bulles du tutoriel, souvenir joué avec son ambiance, Croc-Gris, silhouette, pierre, collier, « Quête passée ») ; à vérifier à l'écran par Damien ([UNITY.md](UNITY.md#chapitre-1--louverture-et-le-souvenir-jouable-sous-lot-v198-5-novembre-2026)).
 
 ### 12. V1.10 — Places des maisons et essai de la vague 1 (S)
 

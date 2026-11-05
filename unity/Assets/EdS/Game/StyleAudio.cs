@@ -84,6 +84,11 @@ namespace EdS.Game
         /// Plusieurs fois par seconde : la musique et les ambiances d'après <paramref name="mood"/> ; en pause, tout baisse de moitié.
         /// <paramref name="deltaTime"/> : temps écoulé depuis l'appel précédent.
         /// </summary>
+        /// <summary>
+        /// Sous-lot V1.9.8 : musique et nappes se taisent (fondu) : le souvenir de la Rupture a son propre chant (<see cref="StoryStage"/>).
+        /// </summary>
+        public bool Hushed { get; set; }
+
         public void Update(AdventureMood mood, bool paused, float deltaTime)
         {
             float now = Time.time;
@@ -104,8 +109,8 @@ namespace EdS.Game
             }
             else _candidate = null;
 
-            float level = _catalog.MusicVolume * (paused ? 0.5f : 1f);
-            float step = level > 0f ? level * deltaTime / CrossFade : 1f;
+            float level = Hushed ? 0f : _catalog.MusicVolume * (paused ? 0.5f : 1f);
+            float step = level > 0f ? level * deltaTime / CrossFade : Hushed ? _catalog.MusicVolume * deltaTime / CrossFade + 0.0001f : 1f;
             foreach (KeyValuePair<StyleMusic, AudioSource> music in _music)
             {
                 AudioSource source = music.Value;
@@ -115,7 +120,7 @@ namespace EdS.Game
                 if (target <= 0f && source.volume <= 0f && source.isPlaying) source.Pause();
             }
 
-            float ambience = _catalog.AmbienceVolume * (paused ? 0.5f : 1f);
+            float ambience = Hushed ? 0f : _catalog.AmbienceVolume * (paused ? 0.5f : 1f);
             foreach (KeyValuePair<StyleAmbience, AudioSource> layer in _ambience)
             {
                 // Relecture de l'essai 7 : une nappe arrêtée (aventure quittée puis reprise) repart.

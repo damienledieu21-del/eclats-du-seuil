@@ -1266,9 +1266,22 @@ namespace EdS.Runtime
         {
             if (player) return StyleSlot.Hero;
             string key = Key(id);
-            if (key.StartsWith("loup", StringComparison.Ordinal)) return StyleSlot.Wolf;
+            // Sous-lot V1.9.8 : Croc-Gris (ses deux formes) est un loup.
+            if (key.StartsWith("loup", StringComparison.Ordinal) || key.StartsWith("crocgris", StringComparison.Ordinal)) return StyleSlot.Wolf;
             if (key.StartsWith("sanglier", StringComparison.Ordinal)) return StyleSlot.Boar;
             return StyleSlot.Character;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.9.8 : hauteur (m) du modèle d'une bête (loup, sanglier) : 0,95 ; Croc-Gris, le chef de la meute du pré, est bien plus
+        /// massif que les autres loups (1,4 ; enragé, 1,5). Affichage seulement.
+        /// </summary>
+        public static double BeastHeight(string id)
+        {
+            string key = Key(id);
+            if (key.StartsWith("crocgrisenrage", StringComparison.Ordinal)) return 1.5;
+            if (key.StartsWith("crocgris", StringComparison.Ordinal)) return 1.4;
+            return 0.95;
         }
 
         /// <summary>

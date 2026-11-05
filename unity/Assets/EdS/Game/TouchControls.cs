@@ -83,6 +83,12 @@ namespace EdS.Game
 
         private bool Tapped(ButtonId id) => _gestures.WasTapped((int)id);
 
+        /// <summary>
+        /// Sous-lot V1.9.8 : libellé du bouton mis en valeur (le geste de l'étape du tutoriel : « Garde », « Parade », « Potion », « 1 »,
+        /// « Agir »), ou null.
+        /// </summary>
+        public string Highlight { get; set; }
+
         /// <summary>Emplacement de compétence touché à cette image (0 à 5 ; l'ultime : <see cref="RealtimeCombat.UltimateSlot"/>), ou -1.</summary>
         public int SlotPressed =>
             Tapped(ButtonId.Skill1) ? 0 : Tapped(ButtonId.Skill2) ? 1 : Tapped(ButtonId.Skill3) ? 2
@@ -220,6 +226,15 @@ namespace EdS.Game
             foreach (Button b in _buttons)
             {
                 bool held = _gestures.IsHeld((int)b.Id);
+                if (Highlight != null && b.Label == Highlight)
+                {
+                    // Sous-lot V1.9.8 : un halo d'or qui bat autour du bouton à toucher (dessiné dessous).
+                    float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f);
+                    float grow = 6f + 10f * pulse;
+                    var halo = new Rect(b.Rect.x - grow, b.Rect.y - grow, b.Rect.width + 2f * grow, b.Rect.height + 2f * grow);
+                    Hud.Fill(halo, new Color(1f, 0.8f, 0.3f, 0.18f + 0.22f * pulse));
+                    HudArt.Frame(halo);
+                }
                 Hud.Panel(b.Rect, held ? new Color(1f, 0.85f, 0.3f, 0.55f) : new Color(0f, 0f, 0f, 0.35f));
                 Hud.Centered(b.Rect, b.Label, Color.white);
             }
