@@ -44,6 +44,9 @@ namespace EdS.Game
         private const string OpeningName = "text.ch1.quest.reveil.name";
         private const string MeadowPlace = "pre_nord";
         private const string Vallons = "zone.vallons";
+        private const string PromptTitle = "text.ui.souvenir.prompt";
+        private const string PromptCall = "text.ui.souvenir.call";
+        private const string SkipHint = "text.ui.reveil.aguerri";
 
         /// <summary>Étapes de l'ouverture, dans l'ordre (pour « étape 2/6 »).</summary>
         private static readonly string[] OpeningSteps = { "odile", "frapper", "garder", "parer", "boire", "retour" };
@@ -77,7 +80,7 @@ namespace EdS.Game
         private float _bannerBorn = -99f;
 
         // Tutoriel.
-        private string _shownStep;
+        private string _shownStep, _stepHeader, _stepText, _stepKeys;
         private float _stepBorn = -99f;
 
         // Souvenir.
@@ -132,7 +135,9 @@ namespace EdS.Game
             Reset();
             Narrative story = a.World.Narrative;
             QuestStep step = story?.CurrentStep(StoryConversions.Opening);
-            if (step != null && step.Id == WakeStep && !a.InScene)
+            // Une seule fois : sur une partie dont l'horloge du monde n'a jamais avancé (nouvelle partie ; le monde attend pendant le
+            // réveil). Dès qu'on a joué, la sauvegarde garde un temps du monde positif : le réveil ne se rejoue plus (aucun format changé).
+            if (step != null && step.Id == WakeStep && !a.InScene && a.World.Zone.StartWorldTick == 0)
             {
                 _wake = 0f;
                 _wakeLine = FirstSentence(a.Text(step.Text));
@@ -177,8 +182,9 @@ namespace EdS.Game
             {
                 StyleWorld.SetMemory(true);
                 _backKey = a.CurrentScene?.Back;
-                _sceneDone = a.SceneFinished;
-                _leaveAt = -1f;
+                // Relecture de la PR #96 : une partie reprise dans le souvenir déjà fini (l'Écho vaincu, puis quittée) rentre au pré seule.
+                _sceneDone = false;
+                _leaveAt = a.SceneFinished ? Time.unscaledTime + 1.5f : -1f;
                 BuildMemory(a);
                 Fade(1f, 0f, 2.8f);
                 Caption(a.ZoneName, a.SceneActor, 5f);
@@ -234,16 +240,22 @@ namespace EdS.Game
         /// Touches de la mise en scène, avant le reste de l'image : passer le réveil (n'importe quelle touche, après une seconde), V revivre
         /// le souvenir proposé, X le passer (proposé, ou pendant qu'on le joue). <paramref name="free"/> : aucun dialogue ni écran ouvert.
         /// </summary>
-        public void ReadInput(AdventureSession a, bool free)
+        public void ReadInput(AdventureSession a, bool free, bool calm)
         {
-            if (_wake >= 1f && _wake < EyesAt && (Input.anyKeyDown || Input.touchCount > 0)) _wake = EyesAt;
+            // Relecture de la PR #96 : Échap met en pause (EdsGame) ; il ne passe pas aussi l'écran noir.
+            if (_wake >= 1f && _wake < EyesAt && (Input.anyKeyDown && !Input.GetKeyDown(KeyCode.Escape) || Input.touchCount > 0)) _wake = EyesAt;
+            // Pendant le souvenir, X le passe à tout moment, même pendant un dialogue (pas en pause ni sur un écran : <paramref name="calm"/>).
+            if (calm && a.InScene && !a.SceneFinished && Input.GetKeyDown(KeyCode.X))
+            {
+                Skip(a);
+                return;
+            }
             if (!free || _wake >= 0f && _wake < StandAt) return;
             if (Prompting(a, true))
             {
                 if (Input.GetKeyDown(KeyCode.V)) Relive(a);
                 else if (Input.GetKeyDown(KeyCode.X)) Skip(a);
             }
-            else if (a.InScene && !a.SceneFinished && Input.GetKeyDown(KeyCode.X)) Skip(a);
         }
 
         private bool Prompting(AdventureSession a, bool free) =>
@@ -261,6 +273,7 @@ namespace EdS.Game
             Scene scene = a.CurrentScene ?? a.PendingScene;
             if (scene == null) return;
             bool inside = a.InScene;
+            if (a.Dialogue != null) a.CloseDialogue();   // le souvenir s'arrête, la conversation avec lui
             if (!a.SkipScene()) return;
             UiSounds.Play(UiCue.Close);
             // Le texte de repli est long : il reste à l'écran le temps d'être lu (le message, lui, ne dure que trois secondes).
@@ -295,13 +308,13 @@ namespace EdS.Game
         }
 
         /// <summary>Après que l'arène a placé les corps : réveil, décor du souvenir, Croc-Gris, silhouette, collier ; fin du souvenir.</summary>
-        public void AfterSync(AdventureSession a, ICombatClient combat, ArenaView arena, Effects effects, CameraRig camera, float deltaTime)
+        public void AfterSync(AdventureSession a, ICombatClient combat, ArenaView arena, Effects effects, CameraRig camera, float deltaTime, bool free)
         {
             float now = Time.unscaledTime;
             _white = Mathf.MoveTowards(_white, _whiteTarget, _whiteRate * deltaTime);
             Wake(arena, deltaTime);
             Gear(a, arena);
-            if (_memory != null) Memory(a, arena, effects, camera, now);
+            if (_memory != null) Memory(a, arena, effects, camera, now, free);
             if (_vallons != null) Meadow(a, combat, arena, effects, camera, now);
             Voices(a, deltaTime);
             // L'Éclat brûle dans la paume tant qu'un souvenir attend d'être revécu.
@@ -408,9 +421,11 @@ namespace EdS.Game
 
         private static bool Wears(AdventureSession a, string item)
         {
+            // Relecture de la PR #96 : appelé à chaque image : les emplacements fixes du catalogue, sans LINQ ni allocation.
             Inventory inventory = a.World.Inventory;
-            foreach (string place in inventory.Places())
-                if (inventory.WornAt(place) == item) return true;
+            var places = inventory.Catalog.Places;
+            for (int i = 0; i < places.Count; i++)
+                if (inventory.WornAt(places[i].Id) == item) return true;
             return false;
         }
 
@@ -553,7 +568,7 @@ namespace EdS.Game
             for (int i = 0; i < 6; i++) _motes.Add(Part(root, "Écho (voix)", PrimitiveType.Sphere, Vector3.zero, new Vector3(0.1f, 0.1f, 0.1f), voice, true).transform);
         }
 
-        private void Memory(AdventureSession a, ArenaView arena, Effects effects, CameraRig camera, float now)
+        private void Memory(AdventureSession a, ArenaView arena, Effects effects, CameraRig camera, float now, bool free)
         {
             // La porte s'ouvre (dernière réponse d'Ysolde) : éclair blanc, des milliers de voix, la lune se fend.
             if (!_gateOpen && a.World.Narrative?.Knows(GateFact) == true)
@@ -617,7 +632,7 @@ namespace EdS.Game
             if (a.SceneFinished && !_sceneDone)
             {
                 _sceneDone = true;
-                _leaveAt = now + 2.6f;
+                if (_leaveAt < 0f) _leaveAt = now + 2.6f;
                 if (feet.HasValue) effects?.LevelUp(feet.Value);
                 camera?.Shake(0.6);
             }
@@ -625,7 +640,7 @@ namespace EdS.Game
             {
                 // Le blanc monte, puis le pré revient (le cœur dit le texte du retour ; la légende le garde à l'écran).
                 if (now >= _leaveAt - 1.5f && _whiteTarget < 1f) Fade(_white, 1f, 1.5f);
-                if (now >= _leaveAt && a.InScene && a.Dialogue == null && !a.MustContinue)
+                if (now >= _leaveAt && free && a.InScene && a.Dialogue == null && !a.MustContinue)
                 {
                     _returnCaption = _backKey != null ? a.Text(_backKey) : null;
                     if (!a.LeaveScene())
@@ -784,9 +799,6 @@ namespace EdS.Game
                 go.transform.SetParent(_ear, false);
                 _choir = Source(go, Choir("Chant des Seuillards", new[] { 146.875f, 220f, 293.625f, 349.25f, 440f }, 1));
                 _voices = Source(go, Choir("Milliers de voix", new[] { 146.875f, 147.125f, 220f, 220.25f, 293.625f, 293.875f, 349.25f, 440f, 440.5f, 587.25f, 698.5f, 880f }, 2));
-                _oneShot = go.AddComponent<AudioSource>();
-                _oneShot.playOnAwake = false;
-                _oneShot.spatialBlend = 0f;
             }
             if (_choir == null) return;
             float choir = inScene ? (_gateOpen ? 0.12f : 0.3f) : 0f;
@@ -795,6 +807,19 @@ namespace EdS.Game
             _voices.volume = Mathf.MoveTowards(_voices.volume, voices, deltaTime * (voices > 0f ? 0.6f : 0.3f));
             Keep(_choir);
             Keep(_voices);
+        }
+
+        /// <summary>Relecture de la PR #96 : une seule source des sons ponctuels (hurlement), créée une fois, sur la caméra.</summary>
+        private bool EnsureOneShot()
+        {
+            if (_oneShot != null) return true;
+            if (_ear == null) return false;
+            var go = new GameObject("Sons ponctuels de l'histoire (V1.9.8)");
+            go.transform.SetParent(_ear, false);
+            _oneShot = go.AddComponent<AudioSource>();
+            _oneShot.playOnAwake = false;
+            _oneShot.spatialBlend = 0f;
+            return true;
         }
 
         private static void Keep(AudioSource source)
@@ -816,15 +841,7 @@ namespace EdS.Game
 
         private void Howl()
         {
-            if (_ear == null) return;
-            if (_oneShot == null)
-            {
-                var go = new GameObject("Hurlement (V1.9.8)");
-                go.transform.SetParent(_ear, false);
-                _oneShot = go.AddComponent<AudioSource>();
-                _oneShot.playOnAwake = false;
-                _oneShot.spatialBlend = 0f;
-            }
+            if (!EnsureOneShot()) return;
             if (_howl == null) _howl = HowlClip();
             if (_howl != null) _oneShot.PlayOneShot(_howl, 0.9f);
         }
@@ -898,7 +915,7 @@ namespace EdS.Game
         /// Dessine la mise en scène par-dessus l'aventure : voile blanc, réveil, proposition du souvenir (boutons), bulle du tutoriel,
         /// bandeau et légende. <paramref name="free"/> : aucun dialogue ni écran ouvert.
         /// </summary>
-        public void Draw(AdventureSession a, bool free)
+        public void Draw(AdventureSession a, bool free, bool calm, bool touch)
         {
             Styles();
             float w = Hud.Width, h = Hud.VirtualHeight, now = Time.unscaledTime;
@@ -909,7 +926,15 @@ namespace EdS.Game
                 return;
             }
             if (Prompting(a, free)) DrawPrompt(a, w, h, now);
-            if (free && a.InScene && !a.SceneFinished) Hud.Centered(new Rect(w / 2f - 300f, h - 64f, 600f, 30f), "X : passer le souvenir", new Color(0.85f, 0.9f, 1f, 0.75f));
+            if (calm && a.InScene && !a.SceneFinished)
+            {
+                // Relecture de la PR #96 : l'indice reste visible pendant un dialogue ; au doigt, un bouton (pas de touche X).
+                if (touch)
+                {
+                    if (Hud.Button(new Rect(w / 2f - 150f, 120f, 300f, 54f), "Passer le souvenir", true)) Skip(a);
+                }
+                else Hud.Centered(new Rect(w / 2f - 300f, h - 64f, 600f, 30f), "X : passer le souvenir", new Color(0.85f, 0.9f, 1f, 0.75f));
+            }
             if (free && !a.InScene) DrawTutorial(a, now);
             DrawBanner(w, now);
             DrawCaption(w, h, now);
@@ -951,8 +976,8 @@ namespace EdS.Game
             var panel = new Rect(w / 2f - 330f, h - 330f, 660f, 160f);
             Hud.Fill(new Rect(panel.x - 8f, panel.y - 8f, panel.width + 16f, panel.height + 16f), new Color(0.55f, 0.75f, 1f, 0.12f + 0.12f * pulse));
             Hud.Panel(panel, new Color(0.05f, 0.06f, 0.12f, 0.9f));
-            Label(new Rect(panel.x, panel.y + 12f, panel.width, 40f), "Un souvenir remonte", _gold, 1f);
-            Label(new Rect(panel.x, panel.y + 50f, panel.width, 28f), "L'Éclat brûle dans ta paume.", _small, 0.9f);
+            Label(new Rect(panel.x, panel.y + 12f, panel.width, 40f), a.Text(PromptTitle), _gold, 1f);
+            Label(new Rect(panel.x, panel.y + 50f, panel.width, 28f), a.Text(PromptCall), _small, 0.9f, TextAnchor.MiddleCenter);
             if (Hud.Button(new Rect(panel.x + 30f, panel.y + 96f, 330f, 46f), "Revivre le souvenir (V)", true)) Relive(a);
             if (Hud.Button(new Rect(panel.x + 380f, panel.y + 96f, 250f, 46f), "Passer (X)", true)) Skip(a);
         }
@@ -965,20 +990,23 @@ namespace EdS.Game
                 if (step == null) _shownStep = null;
                 return;
             }
+            int index = Array.IndexOf(OpeningSteps, step.Id);
             if (step.Id != _shownStep)
             {
+                // Relecture de la PR #96 : les chaînes de la bulle ne sont faites qu'au changement d'étape.
                 if (_shownStep != null) UiSounds.Play(UiCue.SkillReady);
                 _shownStep = step.Id;
                 _stepBorn = now;
+                _stepHeader = a.Text(OpeningName) + (index >= 0 ? " · étape " + (index + 1) + "/" + OpeningSteps.Length : "");
+                _stepText = a.Text(step.Text);
+                _stepKeys = KeysOf(step.Id);
             }
-            int index = Array.IndexOf(OpeningSteps, step.Id);
             float pop = Smooth((now - _stepBorn) / 0.35f);
             var panel = new Rect(24f - 40f * (1f - pop), 400f, 600f, 250f);
             Hud.Panel(panel, new Color(0.07f, 0.06f, 0.05f, 0.88f * pop));
-            string header = a.Text(OpeningName) + (index >= 0 ? " · étape " + (index + 1) + "/" + OpeningSteps.Length : "");
-            Label(new Rect(panel.x + 20f, panel.y + 12f, panel.width - 40f, 34f), header, _gold, pop, TextAnchor.MiddleLeft);
-            Label(new Rect(panel.x + 20f, panel.y + 50f, panel.width - 40f, 130f), a.Text(step.Text), _small, pop, TextAnchor.UpperLeft);
-            string keys = KeysOf(step.Id);
+            Label(new Rect(panel.x + 20f, panel.y + 12f, panel.width - 40f, 34f), _stepHeader, _gold, pop, TextAnchor.MiddleLeft);
+            Label(new Rect(panel.x + 20f, panel.y + 50f, panel.width - 40f, 130f), _stepText, _small, pop, TextAnchor.UpperLeft);
+            string keys = _stepKeys;
             if (keys != null)
             {
                 float glow = 0.5f + 0.5f * Mathf.Sin(now * 5f);
@@ -988,7 +1016,7 @@ namespace EdS.Game
                 Label(badge, keys, _line, pop);
             }
             if (index >= 1 && index <= 4)
-                Label(new Rect(panel.x + 296f, panel.y + 180f, panel.width - 316f, 56f), "Déjà aguerri ? Dis à Odile « Je sais me battre ».", _small, 0.7f * pop, TextAnchor.MiddleLeft);
+                Label(new Rect(panel.x + 296f, panel.y + 180f, panel.width - 316f, 56f), a.Text(SkipHint), _small, 0.7f * pop, TextAnchor.MiddleLeft);
         }
 
         /// <summary>Touches du PC de l'étape (le doigt a son bouton mis en valeur).</summary>

@@ -404,7 +404,8 @@ namespace EdS.Game
             }
             else if (Input.GetKeyDown(KeyCode.Escape) || _touch.PausePressed) _paused = !_paused;
             // Sous-lot V1.9.8 : passer le réveil, revivre (V) ou passer (X) le souvenir.
-            _stage?.ReadInput(a, !talking && !TalentsOpen && !_paused && _screens.Open == AdventureScreens.Panel.None);
+            bool calm = !TalentsOpen && !_paused && _screens.Open == AdventureScreens.Panel.None;   // un dialogue reste possible
+            _stage?.ReadInput(a, calm && !talking, calm);
             if (!TalentsOpen)
             {
                 if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
@@ -487,7 +488,8 @@ namespace EdS.Game
             _visibleGear = GearLooks.For(a.World.Inventory, _visibleGear);
             _arena.ShowGear(a.InScene ? NoGear : _visibleGear);
             // Sous-lot V1.9.8 : réveil, souvenir, Croc-Gris, silhouette, collier ; la fin du souvenir (retour au pré).
-            _stage?.AfterSync(a, _combat, _arena, _effects, _camera, Time.deltaTime);
+            _stage?.AfterSync(a, _combat, _arena, _effects, _camera, Time.deltaTime,
+                !_paused && !TalentsOpen && _screens.Open == AdventureScreens.Panel.None && a.Dialogue == null);
             _touch.Highlight = _stage?.TouchHighlight(a);
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
@@ -1443,7 +1445,8 @@ namespace EdS.Game
                 // Intérieurs : fondu au noir après une porte.
                 if (_fade > 0f) Hud.Fill(new Rect(0f, 0f, Hud.Width, Hud.VirtualHeight), new Color(0f, 0f, 0f, _fade));
                 // Sous-lot V1.9.8 : réveil, souvenir (proposition, fondu blanc, titre), bulle du tutoriel, « Quête passée », légendes.
-                _stage?.Draw(_adventure, _adventure.Dialogue == null && _screens.Open == AdventureScreens.Panel.None && !TalentsOpen && !_paused);
+                bool calm = _screens.Open == AdventureScreens.Panel.None && !TalentsOpen && !_paused;
+                _stage?.Draw(_adventure, calm && _adventure.Dialogue == null, calm, _touch.Active);
                 return;
             }
             _touch.Draw(Network);   // sous-lot 11.8

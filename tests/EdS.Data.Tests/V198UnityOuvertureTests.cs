@@ -41,7 +41,7 @@ public class V198UnityOuvertureTests
         Assert.Contains("\"" + Const("GateFact") + "\"", Read("data", "v0", "world", "story.json"), StringComparison.Ordinal);
         Assert.Contains("\"" + Const("CollarItem") + "\"", Read("data", "v0", "world", "items.json"), StringComparison.Ordinal);
         string texts = Read("data", "v0", "world", "texts", "fr.json");
-        foreach (string key in new[] { Const("ChapterName"), Const("OpeningName"), Const("SilhouetteText"), "text.ui.quest_skipped" })
+        foreach (string key in new[] { Const("ChapterName"), Const("OpeningName"), Const("SilhouetteText"), Const("PromptTitle"), Const("PromptCall"), Const("SkipHint"), "text.ui.quest_skipped" })
             Assert.Contains("\"" + key + "\":", texts, StringComparison.Ordinal);
         Assert.Contains("\"id\": \"" + Const("MeadowPlace") + "\"", Read("data", "v0", "world", "zones", "vallons.json"), StringComparison.Ordinal);
         Assert.Contains("\"id\": \"" + Const("Vallons") + "\"", Read("data", "v0", "world", "zones", "vallons.json"), StringComparison.Ordinal);

@@ -25,6 +25,9 @@ namespace EdS.Game
         private readonly GameObject _root;
         private readonly Dictionary<string, GameObject> _bodies = new Dictionary<string, GameObject>();
         private readonly Dictionary<string, Renderer> _renderers = new Dictionary<string, Renderer>();
+
+        /// <summary>Sous-lot V1.9.8 : matériaux des formes qui brillent (<see cref="Glow"/>), détruits au prochain <see cref="Populate"/>.</summary>
+        private readonly Dictionary<string, Material> _glowing = new Dictionary<string, Material>();
         private readonly Dictionary<string, Color> _baseColors = new Dictionary<string, Color>();
         private GameObject _player;
         private string _playerId;
@@ -138,6 +141,9 @@ namespace EdS.Game
             _bodies.Clear();
             _looks.Clear();
             _renderers.Clear();
+            foreach (Material material in _glowing.Values)
+                if (material != null) Object.Destroy(material);
+            _glowing.Clear();
             _baseColors.Clear();
             if (_player != null) Object.Destroy(_player);
             if (_targetRing != null) Object.Destroy(_targetRing);
@@ -261,7 +267,12 @@ namespace EdS.Game
         public void Glow(string id, Color emission)
         {
             if (!_renderers.TryGetValue(id, out Renderer renderer) || renderer == null) return;
-            Material material = renderer.material;
+            // Relecture de la PR #96 : l'instance du matériau est gardée, et détruite au prochain Populate.
+            if (!_glowing.TryGetValue(id, out Material material) || material == null)
+            {
+                material = renderer.material;
+                _glowing[id] = material;
+            }
             if (!material.HasProperty("_EmissionColor")) return;
             material.EnableKeyword("_EMISSION");
             material.SetColor("_EmissionColor", emission);
