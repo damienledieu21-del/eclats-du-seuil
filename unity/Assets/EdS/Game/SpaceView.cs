@@ -26,6 +26,27 @@ namespace EdS.Game
             public Vector3 Min;
             public Vector3 Max;
             public float Cut = 1f;
+
+            /// <summary>V1.10 : décor au-dessus (poutres) : il disparaît en fondu dès que la caméra arrive à sa hauteur.</summary>
+            public bool Overhead;
+
+            /// <summary>V1.10 : fondu préparé (renderers, matériaux d'origine et leurs copies transparentes), ou non encore regardé.</summary>
+            public bool FadeChecked;
+            public Renderer[] Faded;
+            public Material[][] Solid;
+            public Material[][] Clear;
+            public float[][] Alpha;
+            public bool Clearing;
+
+            /// <summary>V1.10 (relecture) : état d'origine de chaque renderer (un renderer éteint ailleurs le reste).</summary>
+            public bool[] WasEnabled;
+
+            /// <summary>V1.10 (relecture) : dernière opacité appliquée, et si le décor était dessiné (rien n'est réappliqué sans changement).</summary>
+            public float Applied = 1f;
+            public bool AppliedShown = true;
+
+            /// <summary>V1.10 (relecture) : la caméra est-elle à hauteur de ce décor au-dessus (avec hystérésis) ?</summary>
+            public bool AtHeight;
         }
 
         /// <summary>
@@ -1055,6 +1076,8 @@ namespace EdS.Game
         /// <summary>
         /// Coupe ce qui se trouve entre la caméra et le joueur (et le toit quand il est dessous) ; le reste reprend sa taille. Seul
         /// l'affichage change : un ennemi derrière une paroi reste caché (<see cref="EdS.Runtime.OtherState.InSight"/>).
+        /// <paramref name="player"/> est le **milieu du corps** affiché (les pieds plus 1 m, comme <c>ArenaView.Feet</c> l'enlève), le
+        /// repère de <see cref="OccluderRules.BodyPoints"/> (V1.10).
         /// </summary>
         public void Cut(Vector3 camera, Vector3 player, float deltaTime)
         {
@@ -1063,11 +1086,24 @@ namespace EdS.Game
             if (_indoor) Flicker();   // intérieurs : le feu, les bougies et les lanternes vacillent
             foreach (StyleGrass crop in _crops) crop.Draw(camera);   // Vallons agrandis : le blé des champs
             StyleWorld.AnimateWater(Time.time);   // essai réaliste : les vagues de la rivière glissent
-            Vector3 head = player + Vector3.up * 1f;
             bool underRoof = _hasRoof && player.x >= _roofMin.x && player.x <= _roofMax.x && player.z >= _roofMin.z && player.z <= _roofMax.z;
             foreach (Occluder o in _occluders)
             {
-                bool masks = SegmentHitsBox(camera, head, o.Min, o.Max) || underRoof && o.Min.y >= 2.9f && Overlaps(o, _roofMin, _roofMax);
+                if (o.Transform == null) continue;
+                // V1.10 (essai 10) : un décor au-dessus atteint par la caméra, ou le toit sous lequel on se tient, disparaît ; un décor entre
+                // la caméra et le corps (bas des jambes, milieu ou tête : avant, la tête seule) cache le joueur.
+                if (o.Overhead) o.AtHeight = OccluderRules.Overhead(camera.y, o.Min.y, o.AtHeight);
+                bool hidden = o.Overhead && o.AtHeight || underRoof && o.Min.y >= 2.9f && Overlaps(o, _roofMin, _roofMax);
+                bool masks = hidden || Masks(camera, player, o);
+                if (!o.FadeChecked && masks) PrepareFade(o);
+                if (o.Faded != null)
+                {
+                    // V1.10 : fondu en transparence (matériaux d'URP), au lieu de s'abaisser ou de disparaître d'un coup.
+                    o.Cut = (float)OccluderRules.Step(o.Cut, OccluderRules.Target(masks, hidden), deltaTime);
+                    ApplyFade(o);
+                    continue;
+                }
+                // Décor sans matériau qui sache devenir transparent (shader d'un pack) : coupe d'avant, abaissé ou retiré.
                 float height = o.Max.y - o.Min.y;
                 float target = !masks ? 1f : o.Lower && height > CutHeight ? CutHeight / height : CutHeight;
                 o.Cut = Mathf.MoveTowards(o.Cut, target, deltaTime * 4f);
@@ -1080,38 +1116,132 @@ namespace EdS.Game
             }
         }
 
+        /// <summary>V1.10 : le décor est-il entre la caméra et l'un des points du corps (<see cref="OccluderRules.BodyPoints"/>) ?</summary>
+        private static bool Masks(Vector3 camera, Vector3 player, Occluder o)
+        {
+            return OccluderRules.MasksBody((camera.x, camera.y, camera.z), (player.x, player.y, player.z), (o.Min.x, o.Min.y, o.Min.z), (o.Max.x, o.Max.y, o.Max.z));
+        }
+
+        /// <summary>
+        /// V1.10 : prépare le fondu d'un décor, la première fois qu'il cache le joueur : ses renderers (ceux de ses enfants pour un mur
+        /// d'intérieur, qui porte aussi ses meubles accrochés), leurs matériaux et une copie transparente de chacun. Un seul matériau qui
+        /// ne sait pas devenir transparent (shader sans « _Surface » ni « _BaseColor », comme les feuillages) : pas de fondu, la coupe
+        /// d'avant reste. Les particules (feu de la cheminée) ne s'effacent pas.
+        /// </summary>
+        private static void PrepareFade(Occluder o)
+        {
+            o.FadeChecked = true;
+            Renderer[] all = o.Renderer != null ? new[] { o.Renderer } : o.Transform.GetComponentsInChildren<Renderer>();
+            var renderers = new List<Renderer>();
+            foreach (Renderer r in all)
+                if (r != null && !(r is ParticleSystemRenderer)) renderers.Add(r);
+            if (renderers.Count == 0) return;
+            var copies = new Dictionary<Material, Material>();
+            var solid = new Material[renderers.Count][];
+            var clear = new Material[renderers.Count][];
+            var alpha = new float[renderers.Count][];
+            for (int i = 0; i < renderers.Count; i++)
+            {
+                Material[] materials = renderers[i].sharedMaterials ?? new Material[0];
+                solid[i] = materials;
+                clear[i] = new Material[materials.Length];
+                alpha[i] = new float[materials.Length];
+                for (int k = 0; k < materials.Length; k++)
+                {
+                    Material m = materials[k];
+                    if (m == null || !m.HasProperty("_Surface") || !m.HasProperty("_BaseColor"))
+                    {
+                        foreach (Material made in copies.Values) Object.Destroy(made);
+                        return;
+                    }
+                    if (!copies.TryGetValue(m, out Material copy)) copies[m] = copy = Transparent(m);
+                    clear[i][k] = copy;
+                    alpha[i][k] = m.GetColor("_BaseColor").a;
+                }
+            }
+            o.Faded = renderers.ToArray();
+            o.WasEnabled = renderers.Select(r => r.enabled).ToArray();
+            o.Applied = 1f;
+            o.AppliedShown = true;
+            o.Solid = solid;
+            o.Clear = clear;
+            o.Alpha = alpha;
+        }
+
+        /// <summary>
+        /// V1.10 : copie transparente (mélange alpha d'URP, sans écriture de profondeur, file des transparents) d'un matériau d'URP. Le modèle
+        /// transparent est emporté par la construction (<c>EdsBuildShaders</c>, « EdsCouleurFondu ») pour que sa variante reste dans le jeu.
+        /// </summary>
+        private static Material Transparent(Material source)
+        {
+            var copy = new Material(source);
+            if (source.GetFloat("_Surface") > 0.5f) return copy;   // déjà transparent (rais de lumière) : son mélange reste
+            ParticleBlend blend = ParticleRules.Transparent(0);
+            copy.SetFloat("_Surface", blend.Surface);
+            copy.SetFloat("_Blend", blend.Blend);
+            copy.SetFloat("_SrcBlend", blend.Src);
+            copy.SetFloat("_DstBlend", blend.Dst);
+            copy.SetFloat("_SrcBlendAlpha", blend.SrcAlpha);
+            copy.SetFloat("_DstBlendAlpha", blend.DstAlpha);
+            copy.SetFloat("_ZWrite", 0f);
+            copy.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            copy.SetOverrideTag("RenderType", "Transparent");
+            copy.renderQueue = blend.Queue;
+            return copy;
+        }
+
+        /// <summary>
+        /// V1.10 : met l'opacité du décor (copies transparentes tant qu'il n'est pas plein, matériaux d'origine sinon). Relecture : rien
+        /// n'est réappliqué si l'opacité n'a pas changé ; un renderer n'est allumé ou éteint qu'au passage du seuil <see cref="OccluderRules.Shown"/>,
+        /// et un renderer éteint avant le fondu (ailleurs dans le jeu) n'est jamais rallumé.
+        /// </summary>
+        private static void ApplyFade(Occluder o)
+        {
+            if (Mathf.Abs(o.Cut - o.Applied) < 1e-4f) return;
+            bool clear = OccluderRules.Clear(o.Cut);
+            bool shown = OccluderRules.Shown(o.Cut);
+            for (int i = 0; i < o.Faded.Length; i++)
+            {
+                Renderer r = o.Faded[i];
+                if (r == null) continue;
+                if (clear != o.Clearing) r.sharedMaterials = clear ? o.Clear[i] : o.Solid[i];
+                if (shown != o.AppliedShown) r.enabled = shown && o.WasEnabled[i];
+                if (!clear || !shown) continue;
+                for (int k = 0; k < o.Clear[i].Length; k++)
+                {
+                    Material m = o.Clear[i][k];
+                    Color c = m.GetColor("_BaseColor");
+                    c.a = o.Alpha[i][k] * o.Cut;
+                    m.SetColor("_BaseColor", c);
+                }
+            }
+            o.Clearing = clear;
+            o.AppliedShown = shown;
+            o.Applied = o.Cut;
+        }
+
+        /// <summary>V1.10 : rend au décor ses matériaux d'origine et libère les copies transparentes.</summary>
+        private static void ReleaseFade(Occluder o)
+        {
+            if (o.Faded == null) return;
+            var made = new HashSet<Material>();
+            for (int i = 0; i < o.Faded.Length; i++)
+            {
+                if (o.Faded[i] != null)
+                {
+                    o.Faded[i].sharedMaterials = o.Solid[i];
+                    if (!o.AppliedShown) o.Faded[i].enabled = o.WasEnabled[i];   // rendu à son état d'origine
+                }
+                foreach (Material m in o.Clear[i]) made.Add(m);
+            }
+            foreach (Material m in made) Object.Destroy(m);
+            o.Faded = null;
+            o.FadeChecked = false;
+            o.Clearing = false;
+        }
+
         private static bool Overlaps(Occluder o, Vector3 min, Vector3 max) =>
             o.Max.x >= min.x && o.Min.x <= max.x && o.Max.z >= min.z && o.Min.z <= max.z;
-
-        /// <summary>Le segment [a, b] traverse-t-il la boîte alignée [min, max] ? (méthode des dalles)</summary>
-        private static bool SegmentHitsBox(Vector3 a, Vector3 b, Vector3 min, Vector3 max)
-        {
-            float t0 = 0f, t1 = 1f;
-            Vector3 d = b - a;
-            for (int axis = 0; axis < 3; axis++)
-            {
-                float start = axis == 0 ? a.x : axis == 1 ? a.y : a.z;
-                float delta = axis == 0 ? d.x : axis == 1 ? d.y : d.z;
-                float lo = axis == 0 ? min.x : axis == 1 ? min.y : min.z;
-                float hi = axis == 0 ? max.x : axis == 1 ? max.y : max.z;
-                if (Mathf.Abs(delta) < 1e-6f)
-                {
-                    if (start < lo || start > hi) return false;
-                    continue;
-                }
-                float u = (lo - start) / delta, v = (hi - start) / delta;
-                if (u > v)
-                {
-                    float t = u;
-                    u = v;
-                    v = t;
-                }
-                t0 = Mathf.Max(t0, u);
-                t1 = Mathf.Min(t1, v);
-                if (t0 > t1) return false;
-            }
-            return true;
-        }
 
         // --- Attaques annoncées au sol -------------------------------------------------------------------------------------
 
@@ -1155,6 +1285,7 @@ namespace EdS.Game
             _grass?.Destroy();
             foreach (StyleGrass crop in _crops) crop.Destroy();
             foreach (Mesh mesh in _meshes) Object.Destroy(mesh);   // relecture des Vallons agrandis : les maillages faits par le code
+            foreach (Occluder o in _occluders) ReleaseFade(o);   // V1.10 : copies transparentes des décors passés en fondu
             StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);   // essai réaliste 5 : plus de pont cintré sous les pieds
             if (_indoor) StyleWorld.SetIndoors(false);   // intérieurs : le ciel, le soleil et la brume reviennent
             Object.Destroy(_root);
@@ -1171,6 +1302,11 @@ namespace EdS.Game
             foreach (Occluder o in _occluders)
             {
                 o.Cut = 1f;
+                if (o.Faded != null)
+                {
+                    ApplyFade(o);   // V1.10 : matériaux d'origine, décor plein
+                    continue;
+                }
                 if (o.Lower)
                 {
                     Vector3 s = o.Transform.localScale;

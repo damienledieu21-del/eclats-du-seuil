@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 7,
   "kind": "zone",
-  "contentVersion": "0.8.0-provisoire",
+  "contentVersion": "0.9.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -897,7 +897,7 @@
         "id": "porte_guilde",
         "name": "Maison de la Guilde",
         "position": [
-          -89.5,
+          -91,
           -6
         ],
         "to": "zone.guilde",

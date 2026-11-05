@@ -1,3 +1,5 @@
+using System;
+
 namespace EdS.Runtime
 {
     /// <summary>
@@ -91,6 +93,26 @@ namespace EdS.Runtime
             if (name.Contains("multiply")) return 6;
             return 2;
         }
+
+        /// <summary>
+        /// V1.10 (essai 10 de Damien : « tache blanche du feu ») : partie d'un effet continu d'un pack (feu de la forge, de la cheminée) qui
+        /// n'est qu'un halo ou de l'air qui ondule (« glow », « halo », « distort », « heat », « haze », « refract » dans le nom de l'objet ou
+        /// de son matériau) : une grande lueur additive qui sature en blanc sous le halo et l'exposition d'URP. Elle n'est pas dessinée.
+        /// </summary>
+        public static bool AmbientHalo(string? objectName, string? materialName)
+        {
+            // Relecture de la PR #97 : des mots entiers (séparés par tout ce qui n'est ni lettre ni chiffre), pas des bouts de mot : « wheat »,
+            // « sheath » ou « EmberGlow » ne comptent pas ; un mot qui finit par « distortion » ou « refraction » (« HeatDistortion ») compte.
+            foreach (string? name in new[] { objectName, materialName })
+                foreach (string word in (name ?? string.Empty).ToLowerInvariant().Split(NotWord, StringSplitOptions.RemoveEmptyEntries))
+                    if (Array.IndexOf(HaloWords, word) >= 0 || word.EndsWith("distortion", StringComparison.Ordinal)
+                        || word.EndsWith("refraction", StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        private static readonly string[] HaloWords = { "glow", "halo", "distort", "distortion", "heat", "haze", "heathaze", "refract", "refraction" };
+
+        private static readonly char[] NotWord = " _-.()[]/\\|:,;'\"0123456789".ToCharArray();
 
         /// <summary>
         /// Shader de particules du rendu intégré (sortirait rose avec URP) : « Particles/… » (shaders standard) ou les anciens

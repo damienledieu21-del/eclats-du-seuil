@@ -147,6 +147,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 - Dépend de tout le bloc 1.
 - Formats : zone des Vallons.
 - Essai : **la partie complète** (vague 1, de bout en bout, captures, avis, puis corrections). Premiers testeurs amis possibles (sujet 18 : testeurs dès la vague 1).
+- **État** (5 novembre 2026, PR en brouillon) : maisons du bourg de toutes tailles (petites, moyennes et grandes, choix de Damien ; `V110BourgTests`) ; murs transparents à 25 % retenus par Damien ; les cinq défauts de l'essai 10 sous Unity corrigés (intérieur sombre, poutres, murs en fondu, tache blanche du feu, fumée noire de la forge : [UNITY.md](UNITY.md#essai-v110--maisons-du-bourg-agrandies-et-les-5-défauts-de-lessai-10-5-novembre-2026)) ; liste de vérification de l'essai : [ESSAI_V1.10.md](ESSAI_V1.10.md). Restent : sauvegarde du dossier des ressources et bouton « Préparer et lancer l'essai ».
 
 ## Bloc 2 — Vague 2, le monde vivant (V2.1 à V2.8)
 

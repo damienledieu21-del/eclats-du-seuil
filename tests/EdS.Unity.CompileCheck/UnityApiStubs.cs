@@ -88,13 +88,14 @@ namespace UnityEngine
     public enum ParticleSystemStopBehavior { StopEmittingAndClear = 0, StopEmitting = 1 }
     public sealed class ParticleSystemRenderer : Renderer { public ParticleSystemRenderMode renderMode { get; set; } public float velocityScale { get; set; } public float lengthScale { get; set; } public Material trailMaterial { get; set; } }
     public enum ParticleSystemScalingMode { Hierarchy, Local, Shape }
+    public enum ParticleSystemShapeType { Sphere = 0, Hemisphere = 2, Cone = 4, Box = 5 }
     public sealed class ParticleSystem : Component
     {
-        public struct MinMaxCurve { public MinMaxCurve(float constant) { } public MinMaxCurve(float multiplier, AnimationCurve curve) { } public static implicit operator MinMaxCurve(float constant) => default; }
-        public struct MinMaxGradient { public MinMaxGradient(Gradient gradient) { } public MinMaxGradient(Color color) { } public static implicit operator MinMaxGradient(Color color) => default; }
-        public struct MainModule { public bool loop { get; set; } public bool playOnAwake { get; set; } public float duration { get; set; } public ParticleSystemSimulationSpace simulationSpace { get; set; } public int maxParticles { get; set; } public MinMaxCurve gravityModifier { get; set; } public MinMaxCurve startSpeed { get; set; } public ParticleSystemCullingMode cullingMode { get; set; } public ParticleSystemScalingMode scalingMode { get; set; } }
-        public struct EmissionModule { public bool enabled { get; set; } }
-        public struct ShapeModule { public bool enabled { get; set; } }
+        public struct MinMaxCurve { public MinMaxCurve(float constant) { } public MinMaxCurve(float min, float max) { } public MinMaxCurve(float multiplier, AnimationCurve curve) { } public static implicit operator MinMaxCurve(float constant) => default; }
+        public struct MinMaxGradient { public MinMaxGradient(Gradient gradient) { } public MinMaxGradient(Color color) { } public MinMaxGradient(Color min, Color max) { } public static implicit operator MinMaxGradient(Color color) => default; }
+        public struct MainModule { public bool loop { get; set; } public bool playOnAwake { get; set; } public float duration { get; set; } public ParticleSystemSimulationSpace simulationSpace { get; set; } public int maxParticles { get; set; } public MinMaxCurve gravityModifier { get; set; } public MinMaxCurve startSpeed { get; set; } public ParticleSystemCullingMode cullingMode { get; set; } public ParticleSystemScalingMode scalingMode { get; set; } public MinMaxCurve startLifetime { get; set; } public MinMaxCurve startSize { get; set; } public MinMaxCurve startRotation { get; set; } public MinMaxGradient startColor { get; set; } }
+        public struct EmissionModule { public bool enabled { get; set; } public MinMaxCurve rateOverTime { get; set; } }
+        public struct ShapeModule { public bool enabled { get; set; } public ParticleSystemShapeType shapeType { get; set; } public float angle { get; set; } public float radius { get; set; } }
         public struct ColorOverLifetimeModule { public bool enabled { get; set; } public MinMaxGradient color { get; set; } }
         public struct SizeOverLifetimeModule { public bool enabled { get; set; } public MinMaxCurve size { get; set; } }
         public struct EmitParams { public Vector3 position { get; set; } public Vector3 velocity { get; set; } public float startSize { get; set; } public float startLifetime { get; set; } public Color32 startColor { get; set; } public float rotation { get; set; } public bool applyShapeToPosition { get; set; } }

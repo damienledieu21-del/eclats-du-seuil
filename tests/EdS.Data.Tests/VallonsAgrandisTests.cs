@@ -63,8 +63,8 @@ public class VallonsAgrandisTests
         Assert.All(hedge, s => Assert.Equal(19.5, s.Z, 9));
         Assert.Equal(-99.5, hedge[0].X, 9);
         Assert.Single(TownRules.GroundSpots(new[] { ("arbre1", -12.4, 3.6, -11.6, 4.4) }));
-        List<StyleSpot> house = TownRules.GroundSpots(new[] { ("maison1", -34.0, 4.0, -26.0, 10.0) });
-        Assert.Equal(2, house.Count);   // 8 × 6 m : deux taches de terre battue le long du grand côté
+        List<StyleSpot> house = TownRules.GroundSpots(new[] { ("maison1", -32.0, 4.0, -25.0, 10.5) });   // V1.10 : petite maison
+        Assert.Equal(2, house.Count);   // 7 × 6,5 m : deux taches de terre battue le long du grand côté
         Assert.All(house, s => Assert.Equal(StyleGround.Soil, s.Ground));
         Assert.Empty(TownRules.GroundSpots(new[] { ("bois_no1", -80.0, 43.0, -44.0, 76.0) }));
         Assert.Empty(TownRules.GroundSpots(new[] { ("riviere_nord", 4.0, 1.5, 7.0, 100.0) }));
@@ -194,8 +194,8 @@ public class VallonsAgrandisTests
                 double best = roads.Min(r => TownRules.RoadAt(x, z, new[] { r }).Edge);
                 Assert.Equal(best, TownRules.RoadAt(x, z, roads).Edge, 9);
             }
-        Assert.Equal((0, 1), TownRules.Facing(-93, -14, -86, -7, roads));    // maison6 : au nord, vers la grand-rue de l'ouest
-        Assert.Equal((0, -1), TownRules.Facing(-99, 5, -93, 11, roads));     // maison8 : au sud
+        Assert.Equal((0, 1), TownRules.Facing(-98, -20, -84, -7, roads));    // maison6 (V1.10) : au nord, vers la grand-rue de l'ouest
+        Assert.Equal((0, -1), TownRules.Facing(-99, 4, -93, 10.5, roads));   // maison8 (V1.10) : au sud
     }
 
     [Fact]
