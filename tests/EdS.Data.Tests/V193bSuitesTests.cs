@@ -106,6 +106,13 @@ public class V193bSuitesTests
             root["schemaVersion"] = version;
             Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
         }
+        // Revue Codex de la PR #91 : version absente ou mal typée : refus au chemin précis, sans exception.
+        root.Remove("schemaVersion");
+        StoryLoadResult missing = ReadStory(root);
+        Assert.False(missing.IsValid);
+        Assert.Contains(missing.Report.Errors, e => e.Path == "$.schemaVersion");
+        root["schemaVersion"] = "cinq";
+        Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == "$.schemaVersion");
     }
 
     [Theory]
@@ -192,6 +199,13 @@ public class V193bSuitesTests
         Assert.Equal((2, null), (read.Book!.SchemaVersion, read.Book.Merchant("merchant.renart").Fact));
         root["schemaVersion"] = 1;
         Assert.Contains(ReadMerchants(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
+        // Revue Codex de la PR #91 : version absente ou mal typée : refus au chemin précis, sans exception.
+        root.Remove("schemaVersion");
+        MerchantsLoadResult missing = ReadMerchants(root);
+        Assert.False(missing.IsValid);
+        Assert.Contains(missing.Report.Errors, e => e.Path == "$.schemaVersion");
+        root["schemaVersion"] = "trois";
+        Assert.Contains(ReadMerchants(root).Report.Errors, e => e.Path == "$.schemaVersion");
     }
 
     // --- Pilotes ---------------------------------------------------------------------------------------------------------

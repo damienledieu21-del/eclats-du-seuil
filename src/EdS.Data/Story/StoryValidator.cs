@@ -190,10 +190,12 @@ namespace EdS.Data.Story
             int supported = document.SchemaVersion == PreviousSchemaVersion ? PreviousSchemaVersion : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
+            // Revue Codex de la PR #91 : version absente ou mal typée, déjà signalée par l'en-tête : refus structuré, jamais d'exception.
+            if (!(document.SchemaVersion is int schema)) return new StoryLoadResult(report, null);
             StoryData? d = document.Data;
             if (d is null) { TextsValidator.Missing(report, "$.data", "PNJ, dialogues, quêtes, découvertes"); return new StoryLoadResult(report, null); }
             var c = new Checker(report, texts, zone, items, d, interiors ?? Array.Empty<ZoneDefinition>()) { LevelCap = levelCap };
-            StoryBook? book = c.Run(document.SchemaVersion!.Value, document.ContentVersion);
+            StoryBook? book = c.Run(schema, document.ContentVersion);
             return new StoryLoadResult(report, report.IsValid ? book : null);
         }
 

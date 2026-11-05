@@ -235,7 +235,8 @@ namespace EdS.Data.Merchants
             int supported = document.SchemaVersion == PreviousSchemaVersion ? PreviousSchemaVersion : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, r))
                 return new MerchantsLoadResult(r, null);
-            int schema = document.SchemaVersion!.Value;
+            // Revue Codex de la PR #91 : version absente ou mal typée, déjà signalée par l'en-tête : refus structuré, jamais d'exception.
+            if (!(document.SchemaVersion is int schema)) return new MerchantsLoadResult(r, null);
             MerchantsData? d = document.Data;
             if (d is null) { Missing(r, "$.data", "valeurs des objets et marchands"); return new MerchantsLoadResult(r, null); }
 
