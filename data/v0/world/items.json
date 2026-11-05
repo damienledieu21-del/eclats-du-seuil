@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.6.0-provisoire",
+  "contentVersion": "0.7.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1399,6 +1399,14 @@
       {
         "id": "item.ferrure",
         "name": "Ferrure",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5
+      },
+      {
+        "id": "item.miche_du_matin",
+        "name": "Miche du matin",
+        "icon": "quete",
         "type": "material",
         "rarity": "common",
         "stack": 5

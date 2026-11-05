@@ -88,7 +88,7 @@ public class Lot129MapTests : IDisposable
     {
         AdventureSession a = At(null);
         IReadOnlyList<MapMarker> markers = a.MapMarkers();
-        Assert.Equal(new[] { "Odile", "Maëlle", "Gaspard", "Garin", "Sauge", "Bertille" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));   // V1.1 : marchands
+        Assert.Equal(new[] { "Odile", "Maëlle", "Gaspard", "Garin", "Sauge", "Bertille", "Firmin", "Aldric" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));   // V1.1 : marchands
         Assert.Equal(5, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // Vallons agrandis : bourg, ferme, hameau
         MapMarker forge = Assert.Single(markers, m => m.Kind == MapMarkerKind.Workshop);
         Assert.Equal((-20.0, -4.0), (forge.X, forge.Z));
@@ -105,6 +105,7 @@ public class Lot129MapTests : IDisposable
     [InlineData("traces", -3.0, 11.5)]     // atteindre le moulin : centre du lieu
     [InlineData("passage", -20.0, -4.0)]   // la porte : Maëlle la pose
     [InlineData("pre", -10.0, 30.0)]       // le pré des loups
+    [InlineData("gaspard", 27.0, -13.0)]   // V1.9.1 : fin du chapitre 1, Gaspard au camp de la carrière
     [InlineData("manifestation", 50.0, 32.0)]
     [InlineData("rodeur", 42.0, 26.0)]     // la place du rôdeur (relecture de la PR #83 : éloigné du Gardien)
     [InlineData("retour", -8.0, 3.0)]      // revenir chez Odile

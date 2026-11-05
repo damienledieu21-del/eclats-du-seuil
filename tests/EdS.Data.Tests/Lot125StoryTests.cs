@@ -231,11 +231,11 @@ public class Lot125StoryTests
         // V1.1 : les marchands du bourg ; V1.6 : l'aubergiste, le prêtre et l'habitante, dans leurs intérieurs.
         // V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste.
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant",
-                "npc.maitresse_guilde", "npc.intendant_guilde", "npc.archiviste" },
+                "npc.maitresse_guilde", "npc.intendant_guilde", "npc.archiviste", "npc.boulanger", "npc.archer_garde" },   // V1.9.1 : chapitre 1
             book.Npcs.Select(n => n.Id));
         Quest mission = book.Quest(Mission);
-        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "manifestation", "rodeur", "chef", "retour" }, mission.Steps.Select(s => s.Id));   // 12.7 : le chef
-        Assert.Equal(5, book.Discoveries.Count);   // V1.7 : les archives de la guilde
+        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard", "manifestation", "rodeur", "chef", "retour" }, mission.Steps.Select(s => s.Id));   // 12.7 : le chef ; V1.9.1 : la meute et Gaspard (fin du chapitre 1)
+        Assert.Equal(6, book.Discoveries.Count);   // V1.7 : les archives de la guilde ; V1.9.1 : le souvenir de la Rupture
         // Chaque texte livré sert, et chaque clé employée existe (le validateur le garantit dans ce sens).
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));
         Assert.True(Schema("story.schema.json").IsValid(JsonDocument.Parse(File.ReadAllText(StoryPath)).RootElement));
